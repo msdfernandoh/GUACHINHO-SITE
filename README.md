@@ -116,7 +116,9 @@ O Next.js vive em **`gauchinho-app/`**. O SQL do Supabase fica na **raiz** (`sup
 
 1. Código no GitHub (`main`), por exemplo `msdfernandoh/GUACHINHO-SITE`.
 2. [Vercel](https://vercel.com) → **Add New… → Project** → importar o repositório.
-3. **Root Directory:** `gauchinho-app` (obrigatório — não use `./` na raiz do repo).
+3. **Root Directory:** `gauchinho-app` (obrigatório — não use `./` na raiz do repo).  
+   Se o Root Directory for `gauchinho-app`, a Vercel ignora o `vercel.json` da raiz do repositório e usa `gauchinho-app/vercel.json`.  
+   Se o Root Directory for `./`, o `vercel.json` na raiz do repo redireciona install/build para `gauchinho-app/` (fallback).
 4. **Framework Preset:** Next.js (detectado dentro de `gauchinho-app`).
 5. **Install Command:** `npm install`
 6. **Build Command:** `npm run build`
@@ -164,6 +166,7 @@ Podem ir no Git: `.env.example`, `gauchinho-app/.env.example`, `supabase/migrati
 
 | Sintoma | Verificar |
 |---------|-----------|
+| **`404: NOT_FOUND` na URL `.vercel.app`** | Quase sempre **Root Directory** errado ou deploy sem sucesso. Em **Project Settings → General → Root Directory** use `gauchinho-app` (não `./`). Em **Build & Development**, deixe Install `npm install` e Build `npm run build` (ou vazio para usar o `gauchinho-app/vercel.json`). Abra **Deployments** e confirme que o último deploy de `main` está **Ready** (não Failed). A URL correta é a do projeto (ex.: `guachinho-site.vercel.app`); domínios antigos de preview não servem como produção. |
 | Erro de env no build/runtime | Variáveis na Vercel; `SUPABASE_SERVICE_ROLE_KEY` definida |
 | Login ok, admin nega | `usuarios.auth_user_id`, `perfil = master`, `ativo = true` |
 | Auth redirect falha | `NEXT_PUBLIC_SITE_URL` + Redirect URLs no Supabase |
