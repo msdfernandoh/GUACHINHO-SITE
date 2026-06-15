@@ -1,0 +1,19 @@
+﻿# Environment (keep example templates)
+.env
+.env.*
+!.env.example
+
+# Dependencies and build
+node_modules/
+.next/
+out/
+dist/
+build/
+
+# Nested empty clone (embedded .git)
+GUACHINHO-SITE/
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.vercel

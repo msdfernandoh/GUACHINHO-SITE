@@ -1,0 +1,97 @@
+"use client";
+
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import {
+  LayoutDashboard,
+  Users,
+  UserCircle,
+  FileText,
+  Layers,
+  Settings,
+  Clock,
+  Building2,
+  Home,
+  Handshake,
+  Lightbulb,
+} from "lucide-react";
+import { cn } from "@/lib/utils/cn";
+
+const mainNav = [
+  { href: "/admin", label: "Dashboard", icon: LayoutDashboard, exact: true },
+  { href: "/admin/leads", label: "Leads", icon: Users },
+  { href: "/admin/propostas", label: "Propostas", icon: FileText },
+  { href: "/admin/grupos", label: "Grupos", icon: Layers },
+  { href: "/admin/usuarios", label: "Usuários", icon: UserCircle, masterOnly: true },
+  { href: "/admin/configuracoes", label: "Configurações", icon: Settings, masterOnly: true },
+];
+
+const futureNav = [
+  { label: "Cartas Contempladas", icon: FileText },
+  { label: "Imobiliárias", icon: Building2 },
+  { label: "Imóveis", icon: Home },
+  { label: "Parceiros", icon: Handshake },
+  { label: "Casos de Sucesso", icon: Lightbulb },
+  { label: "Dicas do Tchê", icon: Lightbulb },
+];
+
+export function AdminSidebar({
+  perfil,
+}: {
+  perfil: string;
+}) {
+  const pathname = usePathname();
+  const isMaster = perfil === "master";
+
+  return (
+    <aside className="flex w-60 shrink-0 flex-col border-r border-zinc-200 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-950">
+      <div className="border-b border-zinc-200 px-4 py-5 dark:border-zinc-800">
+        <p className="text-xs font-semibold uppercase tracking-wide text-amber-600">
+          Gauchinho
+        </p>
+        <p className="text-sm text-zinc-600 dark:text-zinc-400">Painel admin</p>
+      </div>
+      <nav className="flex-1 space-y-1 p-3">
+        {mainNav.map((item) => {
+          if (item.masterOnly && !isMaster) return null;
+          const active = item.exact
+            ? pathname === item.href
+            : pathname.startsWith(item.href);
+          const Icon = item.icon;
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={cn(
+                "flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                active
+                  ? "bg-zinc-900 text-white dark:bg-amber-500 dark:text-zinc-950"
+                  : "text-zinc-700 hover:bg-zinc-200/80 dark:text-zinc-300 dark:hover:bg-zinc-800",
+              )}
+            >
+              <Icon className="h-4 w-4 shrink-0" />
+              {item.label}
+            </Link>
+          );
+        })}
+        <div className="pt-4">
+          <p className="mb-2 flex items-center gap-1 px-3 text-xs font-semibold uppercase text-zinc-400">
+            <Clock className="h-3 w-3" /> Em breve
+          </p>
+          {futureNav.map((item) => {
+            const Icon = item.icon;
+            return (
+              <span
+                key={item.label}
+                className="flex cursor-not-allowed items-center gap-2 rounded-lg px-3 py-2 text-sm text-zinc-400"
+              >
+                <Icon className="h-4 w-4" />
+                {item.label}
+              </span>
+            );
+          })}
+        </div>
+      </nav>
+    </aside>
+  );
+}
