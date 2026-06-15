@@ -120,6 +120,17 @@ export async function saveFinanciamentoConfigAction(formData: FormData) {
   revalidatePath("/simulador");
 }
 
+export async function saveHomeCartasConfigAction(formData: FormData) {
+  await requireMasterConfig();
+  await saveConfigJson("home_cartas_contempladas", {
+    exibirNaHome: formData.get("exibirNaHome") === "on",
+    quantidade: numField(formData, "quantidade", 3),
+    mostrarBotaoVerCartas: formData.get("mostrarBotaoVerCartas") === "on",
+    mostrarApenasDestaque: formData.get("mostrarApenasDestaque") === "on",
+  });
+  revalidatePath("/admin/configuracoes");
+}
+
 export async function fetchWhatsappOrigens() {
   const supabase = await createClient();
   const { data } = await supabase.from("whatsapp_origens").select("*").order("origem");

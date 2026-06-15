@@ -69,6 +69,12 @@ insert into public.configuracoes_sistema (chave, valor) values
     "indiceReajusteOpcional": 0,
     "parceiroPadrao": "",
     "mostrarComparacaoConsorcio": true
+  }'::jsonb),
+  ('home_cartas_contempladas', '{
+    "exibirNaHome": false,
+    "quantidade": 3,
+    "mostrarBotaoVerCartas": true,
+    "mostrarApenasDestaque": true
   }'::jsonb)
 on conflict (chave) do nothing;
 
@@ -79,7 +85,8 @@ values
   ('contato', true, true, true),
   ('proposta', true, true, true),
   ('simulador_consorcio', true, true, true),
-  ('simulador_financiamento', true, true, true)
+  ('simulador_financiamento', true, true, true),
+  ('carta_contemplada', true, true, true)
 on conflict (origem) do nothing;
 
 -- ---------------------------------------------------------------------------

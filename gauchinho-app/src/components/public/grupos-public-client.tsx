@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState } from "react";
 import { Search, Sparkles } from "lucide-react";
 import type { GrupoConsorcio, GrupoCota } from "@/lib/types";
@@ -19,7 +20,13 @@ export type PublicGrupoRow = {
 
 type ModalFiltro = (typeof MODALIDADE_FILTRO_PUBLICO)[number];
 
-export function GruposPublicClient({ rows }: { rows: PublicGrupoRow[] }) {
+export function GruposPublicClient({
+  rows,
+  isStaff = false,
+}: {
+  rows: PublicGrupoRow[];
+  isStaff?: boolean;
+}) {
   const [filtro, setFiltro] = useState<ModalFiltro>("Todos");
   const [busca, setBusca] = useState("");
   const [selected, setSelected] = useState<Record<string, string>>({});
@@ -30,6 +37,9 @@ export function GruposPublicClient({ rows }: { rows: PublicGrupoRow[] }) {
   const [loading, setLoading] = useState(false);
   const [resultMsg, setResultMsg] = useState<string | null>(null);
   const [pdfLink, setPdfLink] = useState<string | null>(null);
+  const [toastMsg, setToastMsg] = useState<string | null>(null);
+
+  const hasSelection = Object.keys(selected).length > 0;
 
   const filtered = useMemo(() => {
     const q = busca.trim().toLowerCase();
@@ -79,11 +89,17 @@ export function GruposPublicClient({ rows }: { rows: PublicGrupoRow[] }) {
   }
 
   function openModal(acao: typeof modalAcao) {
-    if (!Object.keys(selected).length) return;
+    if (!hasSelection) {
+      if (acao === "simulacao") {
+        setToastMsg("Selecione ao menos uma cota em um grupo para gerar a simulação.");
+      }
+      return;
+    }
     setModalAcao(acao);
     setModalOpen(true);
     setResultMsg(null);
     setPdfLink(null);
+    setToastMsg(null);
   }
 
   async function submitModal(e: React.FormEvent) {
@@ -165,6 +181,27 @@ export function GruposPublicClient({ rows }: { rows: PublicGrupoRow[] }) {
         </div>
 
         <div className="overflow-x-auto rounded-2xl border border-zinc-800 bg-zinc-900/50">
+          {rows.length === 0 ? (
+            <div className="px-6 py-16 text-center">
+              <p className="text-lg text-zinc-300">Nenhum grupo disponível no momento.</p>
+              <p className="mt-2 text-sm text-zinc-500">
+                Volte em breve ou fale com um especialista para conhecer as opções de consórcio.
+              </p>
+              {isStaff ? (
+                <p className="mt-4 text-sm text-amber-400/90">
+                  Você está logado como equipe.{" "}
+                  <Link href="/admin/grupos" className="underline hover:text-amber-300">
+                    Cadastre grupos no admin
+                  </Link>{" "}
+                  ou use &quot;Popular grupos de teste&quot; (Master).
+                </p>
+              ) : null}
+            </div>
+          ) : filtered.length === 0 ? (
+            <div className="px-6 py-12 text-center text-zinc-400">
+              Nenhum resultado para os filtros atuais. Ajuste a busca ou a modalidade.
+            </div>
+          ) : (
           <table className="min-w-full text-sm">
             <thead className="border-b border-zinc-800 text-left text-xs uppercase tracking-wide text-zinc-500">
               <tr>
@@ -227,6 +264,7 @@ export function GruposPublicClient({ rows }: { rows: PublicGrupoRow[] }) {
               })}
             </tbody>
           </table>
+          )}
         </div>
 
         <div className="sticky bottom-4 mt-8 rounded-2xl border border-amber-500/30 bg-zinc-900/95 p-6 shadow-2xl backdrop-blur">
@@ -254,13 +292,26 @@ export function GruposPublicClient({ rows }: { rows: PublicGrupoRow[] }) {
             <Button type="button" variant="gold" onClick={() => openModal("simulacao")}>
               Gerar simulação
             </Button>
-            <Button type="button" variant="outline" className="border-zinc-600 text-zinc-100" onClick={() => openModal("proposta")}>
+            <Button
+              type="button"
+              variant="outline"
+              className="border-zinc-600 text-zinc-100"
+              disabled={!hasSelection}
+              onClick={() => openModal("proposta")}
+            >
               Gerar proposta
             </Button>
-            <Button type="button" variant="outline" className="border-zinc-600 text-zinc-100" onClick={() => openModal("especialista")}>
+            <Button
+              type="button"
+              variant="outline"
+              className="border-zinc-600 text-zinc-100"
+              disabled={!hasSelection}
+              onClick={() => openModal("especialista")}
+            >
               Falar com especialista
             </Button>
           </div>
+          {toastMsg ? <p className="mt-3 text-sm text-amber-300">{toastMsg}</p> : null}
           {resultMsg ? <p className="mt-3 text-sm text-emerald-400">{resultMsg}</p> : null}
           {pdfLink ? (
             <a href={pdfLink} target="_blank" rel="noreferrer" className="mt-2 inline-block text-sm text-amber-400 underline">

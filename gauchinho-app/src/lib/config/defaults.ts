@@ -56,6 +56,20 @@ export type FinanciamentoConfig = {
   mostrarComparacaoConsorcio: boolean;
 };
 
+export type HomeCartasConfig = {
+  exibirNaHome: boolean;
+  quantidade: number;
+  mostrarBotaoVerCartas: boolean;
+  mostrarApenasDestaque: boolean;
+};
+
+export const DEFAULT_HOME_CARTAS: HomeCartasConfig = {
+  exibirNaHome: false,
+  quantidade: 3,
+  mostrarBotaoVerCartas: true,
+  mostrarApenasDestaque: true,
+};
+
 export const DEFAULT_SITE: SiteConfig = {
   nomeEmpresa: "Gauchinho Escritório de Soluções Financeiras",
   subtitulo: "",

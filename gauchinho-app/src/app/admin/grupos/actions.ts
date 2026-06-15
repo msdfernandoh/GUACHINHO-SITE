@@ -4,9 +4,15 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { requireUsuario } from "@/lib/auth/get-usuario";
-import { canDeleteRecords, canManageGrupos } from "@/lib/auth/permissions";
+import {
+  canDeleteRecords,
+  canEditSettings,
+  canManageGrupos,
+} from "@/lib/auth/permissions";
 import { DEFAULT_LEADS, getConfigJson } from "@/server/config";
 import { parseBulkCreditLines } from "@/lib/utils/format";
+import { estimarCamposCotaBulk } from "@/lib/grupos/calculos";
+import { GRUPOS_TESTE } from "@/lib/grupos/dados-teste";
 
 function grupoFromForm(formData: FormData) {
   return {
@@ -17,6 +23,7 @@ function grupoFromForm(formData: FormData) {
     fundo_reserva_percentual: Number(formData.get("fundo_reserva_percentual") ?? 0),
     seguro_habilitado: formData.get("seguro_habilitado") === "on",
     seguro_percentual: Number(formData.get("seguro_percentual") ?? 0),
+    seguro_valor: Number(formData.get("seguro_valor") ?? 0) || null,
     tem_parcela_reduzida: formData.get("tem_parcela_reduzida") === "on",
     percentual_parcela_reduzida: Number(formData.get("percentual_parcela_reduzida") ?? 0),
     permite_lance_embutido: formData.get("permite_lance_embutido") === "on",
@@ -30,7 +37,7 @@ function grupoFromForm(formData: FormData) {
     seguro_pos_contemplacao: formData.get("seguro_pos_contemplacao") === "on",
     cet_percentual: Number(formData.get("cet_percentual") ?? 0) || null,
     status: String(formData.get("status") ?? "Disponível").trim(),
-    ativo: formData.get("ativo") !== "off",
+    ativo: formData.get("ativo") === "on",
     observacoes: String(formData.get("observacoes") ?? "").trim() || null,
   };
 }
@@ -42,6 +49,44 @@ async function assertCanManageGrupos() {
     throw new Error("Sem permissão para gerenciar grupos");
   }
   return usuario;
+}
+
+type GrupoBulkConfig = Parameters<typeof estimarCamposCotaBulk>[1];
+
+function cotaRowsFromCreditos(
+  grupoId: string,
+  creditos: number[],
+  grupoConfig: GrupoBulkConfig,
+  ordemStart = 0,
+) {
+  return creditos.map((valor_credito, i) => {
+    const est = estimarCamposCotaBulk(valor_credito, grupoConfig);
+    return {
+      grupo_id: grupoId,
+      valor_credito,
+      saldo_devedor: est.saldo_devedor,
+      valor_parcela: est.valor_parcela,
+      parcela_integral: est.parcela_integral,
+      parcela_reduzida: est.parcela_reduzida,
+      parcela_com_seguro: est.parcela_com_seguro,
+      parcela_sem_seguro: est.parcela_sem_seguro,
+      status: "Disponível" as const,
+      ativo: true,
+      ordem: ordemStart + i,
+    };
+  });
+}
+
+async function insertCotasFromBulk(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  grupoId: string,
+  bulk: string,
+  grupoConfig: GrupoBulkConfig,
+  ordemStart = 0,
+) {
+  const creditos = parseBulkCreditLines(bulk);
+  if (!creditos.length) return;
+  await supabase.from("grupos_cotas").insert(cotaRowsFromCreditos(grupoId, creditos, grupoConfig, ordemStart));
 }
 
 export async function fetchGruposList(filters: {
@@ -89,18 +134,7 @@ export async function createGrupoAction(formData: FormData) {
   const { data, error } = await supabase.from("grupos_consorcio").insert(grupo).select("id").single();
   if (error) throw new Error(error.message);
 
-  const creditos = parseBulkCreditLines(bulk);
-  if (creditos.length) {
-    await supabase.from("grupos_cotas").insert(
-      creditos.map((valor_credito, ordem) => ({
-        grupo_id: data.id,
-        valor_credito,
-        status: "Disponível",
-        ativo: true,
-        ordem,
-      })),
-    );
-  }
+  await insertCotasFromBulk(supabase, data.id, bulk, grupo);
 
   revalidatePath("/admin/grupos");
   redirect(`/admin/grupos/${data.id}`);
@@ -114,26 +148,15 @@ export async function updateGrupoAction(grupoId: string, formData: FormData) {
   if (error) throw new Error(error.message);
 
   const bulk = String(formData.get("cotas_bulk") ?? "");
-  const creditos = parseBulkCreditLines(bulk);
-  if (creditos.length) {
-    const { data: maxOrdem } = await supabase
-      .from("grupos_cotas")
-      .select("ordem")
-      .eq("grupo_id", grupoId)
-      .order("ordem", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    let ordem = (maxOrdem?.ordem ?? -1) + 1;
-    await supabase.from("grupos_cotas").insert(
-      creditos.map((valor_credito) => ({
-        grupo_id: grupoId,
-        valor_credito,
-        status: "Disponível",
-        ativo: true,
-        ordem: ordem++,
-      })),
-    );
-  }
+  const { data: maxOrdem } = await supabase
+    .from("grupos_cotas")
+    .select("ordem")
+    .eq("grupo_id", grupoId)
+    .order("ordem", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const ordemStart = (maxOrdem?.ordem ?? -1) + 1;
+  await insertCotasFromBulk(supabase, grupoId, bulk, grupo, ordemStart);
 
   revalidatePath(`/admin/grupos/${grupoId}`);
   revalidatePath("/admin/grupos");
@@ -219,4 +242,59 @@ export async function fetchPublicGruposRows() {
   });
 
   return rows;
+}
+
+export async function popularGruposTesteAction(): Promise<{
+  created: number;
+  skipped: number;
+}> {
+  const usuario = await requireUsuario();
+  if (!canEditSettings(usuario.perfil)) {
+    throw new Error("Apenas Master pode popular grupos de teste");
+  }
+
+  const supabase = await createClient();
+  let created = 0;
+  let skipped = 0;
+
+  for (const def of GRUPOS_TESTE) {
+    const { data: existing } = await supabase
+      .from("grupos_consorcio")
+      .select("id")
+      .eq("codigo_grupo", def.codigo_grupo)
+      .maybeSingle();
+
+    if (existing) {
+      skipped += 1;
+      continue;
+    }
+
+    const { creditos, ...grupoFields } = def;
+    const grupoRow = {
+      ...grupoFields,
+      administradora: "Racon",
+      observacoes: "Dados de teste",
+      ativo: true,
+    };
+
+    const { data: inserted, error } = await supabase
+      .from("grupos_consorcio")
+      .insert(grupoRow)
+      .select("id")
+      .single();
+    if (error) throw new Error(error.message);
+
+    if (creditos.length) {
+      const { error: cotaErr } = await supabase
+        .from("grupos_cotas")
+        .insert(cotaRowsFromCreditos(inserted.id, creditos, grupoRow));
+      if (cotaErr) throw new Error(cotaErr.message);
+    }
+
+    created += 1;
+  }
+
+  revalidatePath("/admin/grupos");
+  revalidatePath("/grupos");
+  return { created, skipped };
 }

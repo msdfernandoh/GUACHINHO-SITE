@@ -7,6 +7,7 @@ import {
   fetchLeadDetail,
   updateLeadAction,
 } from "../actions";
+import { gerarPropostaFromCartaLeadAction } from "@/app/admin/cartas-contempladas/actions";
 import { getUsuarioNegocio } from "@/lib/auth/get-usuario";
 import { canDeleteRecords } from "@/lib/auth/permissions";
 import { Button, Input, Label, Select, Textarea } from "@/components/ui/form-primitives";
@@ -33,6 +34,9 @@ export default async function LeadDetailPage({
   const retornoWithId = agendarRetornoAction.bind(null, id);
   const fecharWithId = fecharLeadAction.bind(null, id);
   const deleteWithId = deleteLeadAction.bind(null, id);
+  const gerarPropostaCarta = gerarPropostaFromCartaLeadAction.bind(null, id);
+  const podeGerarPropostaCarta =
+    !!lead.carta_contemplada_id || lead.tipo_interesse === "carta_contemplada";
 
   return (
     <div className="space-y-8">
@@ -175,6 +179,13 @@ export default async function LeadDetailPage({
 
       <section>
         <h2 className="mb-2 font-semibold">Propostas</h2>
+        {podeGerarPropostaCarta ? (
+          <form action={gerarPropostaCarta} className="mb-3">
+            <Button type="submit" variant="gold" size="sm">
+              Gerar proposta (carta contemplada)
+            </Button>
+          </form>
+        ) : null}
         <ul className="space-y-2 text-sm">
           {propostas.map((p) => (
             <li key={p.id} className="flex flex-wrap items-center gap-2 rounded-lg border px-3 py-2 dark:border-zinc-800">

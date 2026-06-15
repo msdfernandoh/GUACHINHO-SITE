@@ -11,6 +11,7 @@ import {
   saveSimuladorImovelConfigAction,
   saveSimuladorAutomovelConfigAction,
   saveFinanciamentoConfigAction,
+  saveHomeCartasConfigAction,
 } from "./actions";
 import { Button, Input, Label, Textarea } from "@/components/ui/form-primitives";
 import { cn } from "@/lib/utils/cn";
@@ -20,9 +21,11 @@ import {
 } from "./simulador-forms";
 import {
   DEFAULT_FINANCIAMENTO_CONFIG,
+  DEFAULT_HOME_CARTAS,
   DEFAULT_SIMULADOR_AUTOMOVEL,
   DEFAULT_SIMULADOR_IMOVEL,
   type FinanciamentoConfig,
+  type HomeCartasConfig,
   type SimuladorTipoBemConfig,
 } from "@/lib/config/defaults";
 
@@ -34,6 +37,7 @@ const TABS: Array<{ id: string; label: string; future?: boolean }> = [
   { id: "whatsapp", label: "WhatsApp por Origem" },
   { id: "simulador", label: "Simulador" },
   { id: "financiamento", label: "Financiamento" },
+  { id: "cartas_home", label: "Cartas Home" },
   { id: "futuro1", label: "Identidade Visual", future: true },
   { id: "futuro2", label: "Menus", future: true },
 ] ;
@@ -52,6 +56,7 @@ export function ConfigTabs({ configs, whatsapp }: Props) {
   const simImovel = { ...DEFAULT_SIMULADOR_IMOVEL, ...(configs.simulador_imovel as SimuladorTipoBemConfig | undefined) };
   const simAuto = { ...DEFAULT_SIMULADOR_AUTOMOVEL, ...(configs.simulador_automovel as SimuladorTipoBemConfig | undefined) };
   const finCfg = { ...DEFAULT_FINANCIAMENTO_CONFIG, ...(configs.financiamento_config as FinanciamentoConfig | undefined) };
+  const homeCartas = { ...DEFAULT_HOME_CARTAS, ...(configs.home_cartas_contempladas as HomeCartasConfig | undefined) };
 
   const current = TABS.find((t) => t.id === tab);
 
@@ -221,6 +226,31 @@ export function ConfigTabs({ configs, whatsapp }: Props) {
 
       {tab === "financiamento" ? (
         <FinanciamentoConfigForm action={saveFinanciamentoConfigAction} cfg={finCfg} />
+      ) : null}
+
+      {tab === "cartas_home" ? (
+        <form action={saveHomeCartasConfigAction} className="max-w-xl space-y-3">
+          <p className="text-sm text-zinc-500">
+            Configuração para exibir cartas na home (Fase 6). Campos prontos para uso futuro.
+          </p>
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" name="exibirNaHome" defaultChecked={homeCartas.exibirNaHome} />
+            Exibir na home
+          </label>
+          <div>
+            <Label>Quantidade de cards</Label>
+            <Input name="quantidade" type="number" min={1} max={12} defaultValue={String(homeCartas.quantidade)} />
+          </div>
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" name="mostrarBotaoVerCartas" defaultChecked={homeCartas.mostrarBotaoVerCartas} />
+            Mostrar botão &quot;Ver cartas&quot;
+          </label>
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" name="mostrarApenasDestaque" defaultChecked={homeCartas.mostrarApenasDestaque} />
+            Mostrar apenas destaque
+          </label>
+          <Button type="submit">Salvar Cartas Home</Button>
+        </form>
       ) : null}
     </div>
   );

@@ -2,6 +2,9 @@ import Link from "next/link";
 import { fetchGruposList } from "./actions";
 import { Button, Input, Label, Select } from "@/components/ui/form-primitives";
 import { MODALIDADES_GRUPO } from "@/lib/types";
+import { getUsuarioNegocio } from "@/lib/auth/get-usuario";
+import { canEditSettings } from "@/lib/auth/permissions";
+import { PopularGruposTesteButton } from "@/components/admin/popular-grupos-teste-button";
 
 export default async function GruposAdminPage({
   searchParams,
@@ -10,6 +13,8 @@ export default async function GruposAdminPage({
 }) {
   const sp = await searchParams;
   const grupos = await fetchGruposList(sp);
+  const usuario = await getUsuarioNegocio();
+  const showPopular = canEditSettings(usuario?.perfil);
 
   return (
     <div className="space-y-6">
@@ -18,9 +23,12 @@ export default async function GruposAdminPage({
           <h1 className="text-2xl font-bold">Grupos</h1>
           <p className="text-sm text-zinc-500">Consórcio — grupos e cotas</p>
         </div>
-        <Link href="/admin/grupos/novo">
-          <Button>Novo grupo</Button>
-        </Link>
+        <div className="flex flex-wrap items-center gap-3">
+          {showPopular ? <PopularGruposTesteButton /> : null}
+          <Link href="/admin/grupos/novo">
+            <Button>Novo grupo</Button>
+          </Link>
+        </div>
       </div>
       <form method="get" className="flex flex-wrap gap-3 rounded-xl border bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
         <div>

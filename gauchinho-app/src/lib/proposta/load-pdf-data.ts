@@ -127,8 +127,21 @@ export async function buildPropostaPdfData(
   const detalhesLinhas: Array<{ label: string; value: string }> = [];
   const tipo = String(p.tipo_proposta ?? "");
   const isFin = tipo.toLowerCase().includes("financiamento");
+  const isCarta = tipo.toLowerCase().includes("carta");
+  const cartaDados = (dadosSim.carta ?? null) as Record<string, unknown> | null;
 
-  if (isFin) {
+  if (isCarta && cartaDados) {
+    detalhesLinhas.push(
+      { label: "Administradora", value: String(cartaDados.administradora ?? "—") },
+      { label: "Valor do crédito", value: fmtMoney(num(p.valor_credito) ?? num(cartaDados.credito)) },
+      { label: "Entrada", value: fmtMoney(num(p.entrada) ?? num(cartaDados.entrada)) },
+      { label: "Prazo (parcelas)", value: String(num(p.prazo) ?? num(cartaDados.prazo_quantidade) ?? "—") },
+      { label: "Parcela", value: fmtMoney(num(p.valor_parcela) ?? num(cartaDados.valor_parcela)) },
+      { label: "Saldo devedor", value: fmtMoney(num(cartaDados.saldo_devedor)) },
+      { label: "Próxima parcela", value: cartaDados.proxima_parcela_data ? fmtDateBr(String(cartaDados.proxima_parcela_data)) : "—" },
+      { label: "Taxa de transferência", value: fmtMoney(num(cartaDados.taxa_transferencia)) },
+    );
+  } else if (isFin) {
     detalhesLinhas.push(
       { label: "Valor do bem", value: fmtMoney(num(p.valor_credito)) },
       { label: "Entrada", value: fmtMoney(num(p.entrada)) },
@@ -238,6 +251,6 @@ export async function buildPropostaPdfData(
     gruposTotais,
     comparativo,
     marcosProjecao,
-    mostrarProjecao: !isFin && marcosProjecao.length > 0,
+    mostrarProjecao: !isFin && !isCarta && marcosProjecao.length > 0,
   };
 }

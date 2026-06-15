@@ -22,12 +22,12 @@ const mainNav = [
   { href: "/admin/leads", label: "Leads", icon: Users },
   { href: "/admin/propostas", label: "Propostas", icon: FileText },
   { href: "/admin/grupos", label: "Grupos", icon: Layers },
+  { href: "/admin/cartas-contempladas", label: "Cartas Contempladas", icon: FileText },
   { href: "/admin/usuarios", label: "Usuários", icon: UserCircle, masterOnly: true },
   { href: "/admin/configuracoes", label: "Configurações", icon: Settings, masterOnly: true },
 ];
 
 const futureNav = [
-  { label: "Cartas Contempladas", icon: FileText },
   { label: "Imobiliárias", icon: Building2 },
   { label: "Imóveis", icon: Home },
   { label: "Parceiros", icon: Handshake },

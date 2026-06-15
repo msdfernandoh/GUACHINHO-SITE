@@ -8,12 +8,14 @@ import {
   DEFAULT_SIMULADOR_AUTOMOVEL,
   DEFAULT_SIMULADOR_IMOVEL,
   DEFAULT_SITE,
+  DEFAULT_HOME_CARTAS,
   type FinanciamentoConfig,
   type LeadsConfig,
   type PropostasConfig,
   type ContatoConfig,
   type SimuladorTipoBemConfig,
   type SiteConfig,
+  type HomeCartasConfig,
 } from "@/lib/config/defaults";
 
 export {
@@ -24,12 +26,14 @@ export {
   DEFAULT_SIMULADOR_AUTOMOVEL,
   DEFAULT_SIMULADOR_IMOVEL,
   DEFAULT_SITE,
+  DEFAULT_HOME_CARTAS,
   type FinanciamentoConfig,
   type LeadsConfig,
   type PropostasConfig,
   type ContatoConfig,
   type SimuladorTipoBemConfig,
   type SiteConfig,
+  type HomeCartasConfig,
 };
 
 export async function getConfigJson<T>(chave: string, fallback: T): Promise<T> {

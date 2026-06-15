@@ -181,6 +181,61 @@ export function grupoToParametros(grupo: {
 }
 
 /** Calcula totais para uma cota/grupo e agrega várias seleções. */
+export type GrupoBulkEstimateInput = {
+  taxa_administrativa_percentual?: number | null;
+  fundo_reserva_percentual?: number | null;
+  seguro_habilitado?: boolean;
+  seguro_percentual?: number | null;
+  tem_parcela_reduzida?: boolean;
+  percentual_parcela_reduzida?: number | null;
+  prazo_total?: number | null;
+  parcelas_realizadas?: number | null;
+  prazo_restante?: number | null;
+};
+
+/** Estima parcela e saldo quando só o crédito é colado no bulk paste. */
+export function estimarCamposCotaBulk(
+  valorCredito: number,
+  grupo: GrupoBulkEstimateInput,
+): {
+  saldo_devedor: number;
+  valor_parcela: number;
+  parcela_integral: number;
+  parcela_reduzida: number | null;
+  parcela_com_seguro: number;
+  parcela_sem_seguro: number;
+} {
+  const params = grupoToParametros(grupo);
+  const saldo_devedor = valorCredito;
+  const prazo = Math.max(calcularParcelasRestantes(params), 1);
+  const taxaTotal =
+    (num(params.taxaAdministrativaPercentual) + num(params.fundoReservaPercentual)) /
+    100;
+  const saldoComTaxas = valorCredito * (1 + taxaTotal);
+  const parcela_integral = Math.round((saldoComTaxas / prazo) * 100) / 100;
+  const temReduzida = !!grupo.tem_parcela_reduzida;
+  const pctRed = num(grupo.percentual_parcela_reduzida, 100);
+  const parcela_reduzida = temReduzida
+    ? Math.round(((parcela_integral * pctRed) / 100) * 100) / 100
+    : null;
+  const valor_parcela = parcela_reduzida ?? parcela_integral;
+  const seguroMensal = params.seguroHabilitado
+    ? Math.round(((saldo_devedor * (num(params.seguroPercentual) / 100)) / prazo) * 100) /
+      100
+    : 0;
+  const parcela_sem_seguro = parcela_integral;
+  const parcela_com_seguro = Math.round((parcela_integral + seguroMensal) * 100) / 100;
+
+  return {
+    saldo_devedor,
+    valor_parcela,
+    parcela_integral,
+    parcela_reduzida,
+    parcela_com_seguro,
+    parcela_sem_seguro,
+  };
+}
+
 export function calcularTotaisGrupos(
   selecoes: Array<{
     linha: LinhaCalculoCota;

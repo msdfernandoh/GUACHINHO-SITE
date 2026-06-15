@@ -33,7 +33,14 @@ export function GrupoFormFields({ initial }: { initial?: GrupoInitial }) {
             <Input name="status" defaultValue={String(g.status ?? "Disponível")} />
           </div>
           <div className="flex items-center gap-2 pt-6">
-            <input type="checkbox" name="ativo" defaultChecked={g.ativo !== false} id="ativo" />
+            <input type="hidden" name="ativo" value="off" />
+            <input
+              type="checkbox"
+              name="ativo"
+              value="on"
+              defaultChecked={g.ativo !== false}
+              id="ativo"
+            />
             <Label htmlFor="ativo" className="mb-0">
               Ativo
             </Label>
@@ -109,6 +116,15 @@ export function GrupoFormFields({ initial }: { initial?: GrupoInitial }) {
           <div>
             <Label>Seguro %</Label>
             <Input name="seguro_percentual" type="number" step="0.01" defaultValue={String(g.seguro_percentual ?? 0)} />
+          </div>
+          <div>
+            <Label>Seguro valor (R$)</Label>
+            <Input
+              name="seguro_valor"
+              type="number"
+              step="0.01"
+              defaultValue={String(g.seguro_valor ?? "")}
+            />
           </div>
           <div>
             <Label>% parcela reduzida</Label>
