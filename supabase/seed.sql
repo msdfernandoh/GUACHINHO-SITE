@@ -26,6 +26,49 @@ insert into public.configuracoes_sistema (chave, valor) values
     "statusInicialPadrao": "Novo",
     "permitirCriarLeadManual": true,
     "permitirArquivarLead": true
+  }'::jsonb),
+  ('simulador_imovel', '{
+    "taxaAdministrativaPadrao": 22,
+    "fundoReservaPadrao": 2,
+    "seguroPrestamistaPadrao": 0.038,
+    "reajusteAnualCredito": 8,
+    "correcaoAnualParcela": 8,
+    "rentabilidadeAnualComparativa": 8,
+    "valorMinimoCredito": 150000,
+    "valorMaximoCredito": 3000000,
+    "valorPadraoInicial": 500000,
+    "prazosDisponiveis": [120, 150, 180, 200, 220],
+    "prazoPadrao": 200,
+    "quantidadePrazosExibidos": 5,
+    "mostrarComparacaoFinanciamento": true,
+    "mostrarTabelaAnoAno": true,
+    "exibirTabelaCompletaPorPadrao": false
+  }'::jsonb),
+  ('simulador_automovel', '{
+    "taxaAdministrativaPadrao": 20,
+    "fundoReservaPadrao": 2,
+    "seguroPrestamistaPadrao": 0,
+    "reajusteAnualCredito": 5,
+    "correcaoAnualParcela": 5,
+    "rentabilidadeAnualComparativa": 6,
+    "valorMinimoCredito": 30000,
+    "valorMaximoCredito": 300000,
+    "valorPadraoInicial": 100000,
+    "prazosDisponiveis": [36, 48, 60, 72, 80],
+    "prazoPadrao": 60,
+    "quantidadePrazosExibidos": 5,
+    "mostrarComparacaoFinanciamento": true,
+    "mostrarTabelaAnoAno": true,
+    "exibirTabelaCompletaPorPadrao": false
+  }'::jsonb),
+  ('financiamento_config', '{
+    "taxaMensalPadrao": 1,
+    "entradaMinimaSugeridaPercentual": 20,
+    "prazoPadrao": 240,
+    "prazoMaximo": 360,
+    "indiceReajusteOpcional": 0,
+    "parceiroPadrao": "",
+    "mostrarComparacaoConsorcio": true
   }'::jsonb)
 on conflict (chave) do nothing;
 
@@ -34,7 +77,9 @@ insert into public.whatsapp_origens (origem, ativo, exibir_botao_apos_lead, usar
 values
   ('grupos', true, true, true),
   ('contato', true, true, true),
-  ('proposta', true, true, true)
+  ('proposta', true, true, true),
+  ('simulador_consorcio', true, true, true),
+  ('simulador_financiamento', true, true, true)
 on conflict (origem) do nothing;
 
 -- ---------------------------------------------------------------------------

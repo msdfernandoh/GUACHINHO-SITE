@@ -1,5 +1,28 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import {
+  DEFAULT_FINANCIAMENTO_CONFIG,
+  DEFAULT_LEADS,
+  DEFAULT_SIMULADOR_AUTOMOVEL,
+  DEFAULT_SIMULADOR_IMOVEL,
+  DEFAULT_SITE,
+  type FinanciamentoConfig,
+  type LeadsConfig,
+  type SimuladorTipoBemConfig,
+  type SiteConfig,
+} from "@/lib/config/defaults";
+
+export {
+  DEFAULT_FINANCIAMENTO_CONFIG,
+  DEFAULT_LEADS,
+  DEFAULT_SIMULADOR_AUTOMOVEL,
+  DEFAULT_SIMULADOR_IMOVEL,
+  DEFAULT_SITE,
+  type FinanciamentoConfig,
+  type LeadsConfig,
+  type SimuladorTipoBemConfig,
+  type SiteConfig,
+};
 
 export async function getConfigJson<T>(chave: string, fallback: T): Promise<T> {
   const supabase = await createClient();
@@ -36,34 +59,11 @@ export async function getConfigJsonPublic<T>(chave: string, fallback: T): Promis
   }
 }
 
-export type SiteConfig = {
-  nomeEmpresa: string;
-  subtitulo: string;
-  descricaoInstitucional: string;
-  siteUrl: string;
-  statusAtivo: boolean;
-  exibirBotaoGruposNoSite: boolean;
-};
-
-export type LeadsConfig = {
-  statusInicialPadrao: string;
-  permitirCriarLeadManual: boolean;
-  permitirArquivarLead: boolean;
-  srdPodeEditarGrupos?: boolean;
-};
-
-export const DEFAULT_SITE: SiteConfig = {
-  nomeEmpresa: "Gauchinho Escritório de Soluções Financeiras",
-  subtitulo: "",
-  descricaoInstitucional: "",
-  siteUrl: "",
-  statusAtivo: true,
-  exibirBotaoGruposNoSite: false,
-};
-
-export const DEFAULT_LEADS: LeadsConfig = {
-  statusInicialPadrao: "Novo",
-  permitirCriarLeadManual: true,
-  permitirArquivarLead: true,
-  srdPodeEditarGrupos: false,
-};
+export async function getSimuladorConfigsPublic() {
+  const [imovel, automovel, financiamento] = await Promise.all([
+    getConfigJsonPublic("simulador_imovel", DEFAULT_SIMULADOR_IMOVEL),
+    getConfigJsonPublic("simulador_automovel", DEFAULT_SIMULADOR_AUTOMOVEL),
+    getConfigJsonPublic("financiamento_config", DEFAULT_FINANCIAMENTO_CONFIG),
+  ]);
+  return { imovel, automovel, financiamento };
+}

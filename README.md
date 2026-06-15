@@ -95,6 +95,7 @@ Abra `http://localhost:3000` · Admin: `http://localhost:3000/login` · Grupos p
 |------|-----------|
 | `/` | Home pública (tema escuro/dourado) |
 | `/grupos` | Simulador público de grupos/cotas |
+| `/simulador` | Consórcio + financiamento (Fase 2), comparação e captura de lead |
 | `/login` | Auth Supabase |
 | `/admin` | Dashboard (8 cards + 3 tabelas) |
 | `/admin/leads` | Leads + filtros, manual, detalhe, histórico |
@@ -103,7 +104,9 @@ Abra `http://localhost:3000` · Admin: `http://localhost:3000/login` · Grupos p
 | `/admin/usuarios` | Master — Auth + `usuarios` |
 | `/admin/configuracoes` | Abas Site, Contato, Propostas, Leads, WhatsApp |
 
-API pública: `POST /api/public/grupos/fluxo` (lead + simulação + proposta opcional; usa service role no servidor).
+API pública: `POST /api/public/grupos/fluxo` · `POST /api/public/simulador/captura`
+
+Testes: `cd gauchinho-app && npm test` · Docs: `docs/RELATORIO-TESTES-FASE-1.md`, `docs/CALCULOS-GRUPOS.md`, `docs/TESTES-SIMULADORES-FASE-2.md`
 
 ## 4. Deploy na Vercel via Git
 

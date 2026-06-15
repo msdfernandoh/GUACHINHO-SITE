@@ -8,9 +8,23 @@ import {
   saveSiteConfigAction,
   saveWhatsappOrigemAction,
   deleteWhatsappOrigemAction,
+  saveSimuladorImovelConfigAction,
+  saveSimuladorAutomovelConfigAction,
+  saveFinanciamentoConfigAction,
 } from "./actions";
 import { Button, Input, Label, Textarea } from "@/components/ui/form-primitives";
 import { cn } from "@/lib/utils/cn";
+import {
+  FinanciamentoConfigForm,
+  SimuladorBemConfigForm,
+} from "./simulador-forms";
+import {
+  DEFAULT_FINANCIAMENTO_CONFIG,
+  DEFAULT_SIMULADOR_AUTOMOVEL,
+  DEFAULT_SIMULADOR_IMOVEL,
+  type FinanciamentoConfig,
+  type SimuladorTipoBemConfig,
+} from "@/lib/config/defaults";
 
 const TABS: Array<{ id: string; label: string; future?: boolean }> = [
   { id: "site", label: "Site" },
@@ -18,9 +32,10 @@ const TABS: Array<{ id: string; label: string; future?: boolean }> = [
   { id: "propostas", label: "Propostas" },
   { id: "leads", label: "Leads" },
   { id: "whatsapp", label: "WhatsApp por Origem" },
+  { id: "simulador", label: "Simulador" },
+  { id: "financiamento", label: "Financiamento" },
   { id: "futuro1", label: "Identidade Visual", future: true },
   { id: "futuro2", label: "Menus", future: true },
-  { id: "futuro3", label: "Simulador", future: true },
 ] ;
 
 type Props = {
@@ -34,6 +49,9 @@ export function ConfigTabs({ configs, whatsapp }: Props) {
   const contato = configs.contato ?? {};
   const propostas = configs.propostas ?? {};
   const leads = configs.leads ?? {};
+  const simImovel = { ...DEFAULT_SIMULADOR_IMOVEL, ...(configs.simulador_imovel as SimuladorTipoBemConfig | undefined) };
+  const simAuto = { ...DEFAULT_SIMULADOR_AUTOMOVEL, ...(configs.simulador_automovel as SimuladorTipoBemConfig | undefined) };
+  const finCfg = { ...DEFAULT_FINANCIAMENTO_CONFIG, ...(configs.financiamento_config as FinanciamentoConfig | undefined) };
 
   const current = TABS.find((t) => t.id === tab);
 
@@ -184,6 +202,25 @@ export function ConfigTabs({ configs, whatsapp }: Props) {
             </form>
           ))}
         </div>
+      ) : null}
+
+      {tab === "simulador" ? (
+        <div className="space-y-8">
+          <SimuladorBemConfigForm
+            title="Imóvel"
+            action={saveSimuladorImovelConfigAction}
+            cfg={simImovel}
+          />
+          <SimuladorBemConfigForm
+            title="Automóvel"
+            action={saveSimuladorAutomovelConfigAction}
+            cfg={simAuto}
+          />
+        </div>
+      ) : null}
+
+      {tab === "financiamento" ? (
+        <FinanciamentoConfigForm action={saveFinanciamentoConfigAction} cfg={finCfg} />
       ) : null}
     </div>
   );

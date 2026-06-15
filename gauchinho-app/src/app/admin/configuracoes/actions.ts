@@ -58,6 +58,68 @@ export async function saveLeadsConfigAction(formData: FormData) {
   revalidatePath("/admin/configuracoes");
 }
 
+function numField(formData: FormData, name: string, fallback = 0) {
+  const v = Number(formData.get(name));
+  return Number.isFinite(v) ? v : fallback;
+}
+
+function prazosFromForm(formData: FormData, name: string): number[] {
+  const raw = String(formData.get(name) ?? "");
+  return raw
+    .split(/[,;\s]+/)
+    .map((s) => parseInt(s.trim(), 10))
+    .filter((n) => Number.isFinite(n) && n > 0);
+}
+
+function simuladorPayloadFromForm(formData: FormData) {
+  return {
+    taxaAdministrativaPadrao: numField(formData, "taxaAdministrativaPadrao"),
+    fundoReservaPadrao: numField(formData, "fundoReservaPadrao"),
+    seguroPrestamistaPadrao: numField(formData, "seguroPrestamistaPadrao"),
+    reajusteAnualCredito: numField(formData, "reajusteAnualCredito"),
+    correcaoAnualParcela: numField(formData, "correcaoAnualParcela"),
+    rentabilidadeAnualComparativa: numField(formData, "rentabilidadeAnualComparativa"),
+    valorMinimoCredito: numField(formData, "valorMinimoCredito"),
+    valorMaximoCredito: numField(formData, "valorMaximoCredito"),
+    valorPadraoInicial: numField(formData, "valorPadraoInicial"),
+    prazosDisponiveis: prazosFromForm(formData, "prazosDisponiveis"),
+    prazoPadrao: numField(formData, "prazoPadrao"),
+    quantidadePrazosExibidos: numField(formData, "quantidadePrazosExibidos", 5),
+    mostrarComparacaoFinanciamento: formData.get("mostrarComparacaoFinanciamento") === "on",
+    mostrarTabelaAnoAno: formData.get("mostrarTabelaAnoAno") === "on",
+    exibirTabelaCompletaPorPadrao: formData.get("exibirTabelaCompletaPorPadrao") === "on",
+  };
+}
+
+export async function saveSimuladorImovelConfigAction(formData: FormData) {
+  await requireMasterConfig();
+  await saveConfigJson("simulador_imovel", simuladorPayloadFromForm(formData));
+  revalidatePath("/admin/configuracoes");
+  revalidatePath("/simulador");
+}
+
+export async function saveSimuladorAutomovelConfigAction(formData: FormData) {
+  await requireMasterConfig();
+  await saveConfigJson("simulador_automovel", simuladorPayloadFromForm(formData));
+  revalidatePath("/admin/configuracoes");
+  revalidatePath("/simulador");
+}
+
+export async function saveFinanciamentoConfigAction(formData: FormData) {
+  await requireMasterConfig();
+  await saveConfigJson("financiamento_config", {
+    taxaMensalPadrao: numField(formData, "taxaMensalPadrao"),
+    entradaMinimaSugeridaPercentual: numField(formData, "entradaMinimaSugeridaPercentual"),
+    prazoPadrao: numField(formData, "prazoPadrao"),
+    prazoMaximo: numField(formData, "prazoMaximo"),
+    indiceReajusteOpcional: numField(formData, "indiceReajusteOpcional"),
+    parceiroPadrao: String(formData.get("parceiroPadrao") ?? ""),
+    mostrarComparacaoConsorcio: formData.get("mostrarComparacaoConsorcio") === "on",
+  });
+  revalidatePath("/admin/configuracoes");
+  revalidatePath("/simulador");
+}
+
 export async function fetchWhatsappOrigens() {
   const supabase = await createClient();
   const { data } = await supabase.from("whatsapp_origens").select("*").order("origem");

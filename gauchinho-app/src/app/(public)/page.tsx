@@ -21,6 +21,12 @@ export default async function HomePage() {
           </p>
         )}
         <div className="mt-10 flex flex-wrap justify-center gap-4">
+          <Link
+            href="/simulador"
+            className="rounded-full bg-amber-500 px-8 py-3 font-semibold text-zinc-950 transition hover:bg-amber-400"
+          >
+            Simular consórcio ou financiamento
+          </Link>
           {site.exibirBotaoGruposNoSite ? (
             <Link
               href="/grupos"
