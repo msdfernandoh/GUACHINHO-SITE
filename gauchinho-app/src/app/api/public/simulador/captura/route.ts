@@ -7,6 +7,7 @@ type Body = {
   nome: string;
   whatsapp: string;
   cidade?: string;
+  email?: string;
   modo: "consorcio" | "financiamento";
   tipoBem?: "imovel" | "automovel";
   acao: "analise" | "proposta" | "especialista";
@@ -36,6 +37,7 @@ export async function POST(request: Request) {
       .insert({
         nome: body.nome.trim(),
         whatsapp: body.whatsapp.trim(),
+        email: body.email?.trim() || null,
         cidade: body.cidade?.trim() || null,
         origem,
         origem_detalhe: body.acao,

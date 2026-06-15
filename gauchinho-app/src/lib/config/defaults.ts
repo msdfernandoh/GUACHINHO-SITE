@@ -44,6 +44,9 @@ export type SimuladorTipoBemConfig = {
   mostrarComparacaoFinanciamento: boolean;
   mostrarTabelaAnoAno: boolean;
   exibirTabelaCompletaPorPadrao: boolean;
+  /** Exibir opção parcela reduzida no simulador */
+  temParcelaReduzida?: boolean;
+  percentualParcelaReduzida?: number;
 };
 
 export type FinanciamentoConfig = {
@@ -116,6 +119,8 @@ export const DEFAULT_SIMULADOR_IMOVEL: SimuladorTipoBemConfig = {
   mostrarComparacaoFinanciamento: true,
   mostrarTabelaAnoAno: true,
   exibirTabelaCompletaPorPadrao: false,
+  temParcelaReduzida: true,
+  percentualParcelaReduzida: 50,
 };
 
 export const DEFAULT_SIMULADOR_AUTOMOVEL: SimuladorTipoBemConfig = {
@@ -134,6 +139,8 @@ export const DEFAULT_SIMULADOR_AUTOMOVEL: SimuladorTipoBemConfig = {
   mostrarComparacaoFinanciamento: true,
   mostrarTabelaAnoAno: true,
   exibirTabelaCompletaPorPadrao: false,
+  temParcelaReduzida: true,
+  percentualParcelaReduzida: 50,
 };
 
 export const DEFAULT_FINANCIAMENTO_CONFIG: FinanciamentoConfig = {

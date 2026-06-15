@@ -1,50 +1,107 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { ChevronDown, ChevronUp, Scale } from "lucide-react";
-import type {
-  FinanciamentoConfig,
-  SimuladorTipoBemConfig,
-} from "@/lib/config/defaults";
+import type { SimuladorTipoBemConfig } from "@/lib/config/defaults";
 import { calcularParcelaConsorcio, type EntradaConsorcio } from "@/lib/simulador/consorcio";
 import { simularFinanciamento } from "@/lib/simulador/financiamento";
 import { compararConsorcioFinanciamento } from "@/lib/simulador/comparativo";
 import { gerarProjecaoAnoAno } from "@/lib/simulador/projecao";
-import { formatCurrency } from "@/lib/utils/format";
-import { cn } from "@/lib/utils/cn";
-import { Button, Input, Label } from "@/components/ui/form-primitives";
+import { Button } from "@/components/ui/form-primitives";
+import { SimuladorPageShell } from "./simulador-page-shell";
+import { SolutionSelector } from "./solution-selector";
+import { AssetTypeSelector } from "./asset-type-selector";
+import { CreditValueStep } from "./credit-value-step";
+import { PrazoStep } from "./prazo-step";
+import { PaymentStrategyStep } from "./payment-strategy-step";
+import { AdvancedStrategyAccordion } from "./advanced-strategy-accordion";
+import { FinanciamentoDetailsStep } from "./financiamento-details-step";
+import { ConsorcioResultCards } from "./consorcio-result-cards";
+import { FinanciamentoResultCards } from "./financiamento-result-cards";
+import { ComparisonSection } from "./comparison-section";
+import { ProjectionSection } from "./projection-section";
+import { LeadCaptureModal } from "./lead-capture-modal";
+import type {
+  AcaoCaptura,
+  EstrategiaPagamento,
+  Modo,
+  SimuladorConfigs,
+  TipoBem,
+} from "./simulador-types";
 
-export const AVISO_PROJECAO =
-  "Projeção estimada com base nos índices configurados. Os valores podem variar conforme administradora, grupo, índice de reajuste, regras contratuais e data de contemplação. Esta simulação não representa garantia de rentabilidade, contemplação ou disponibilidade.";
+export type { SimuladorConfigs } from "./simulador-types";
+export { AVISO_PROJECAO } from "./simulador-types";
 
-export type SimuladorConfigs = {
-  imovel: SimuladorTipoBemConfig;
-  automovel: SimuladorTipoBemConfig;
-  financiamento: FinanciamentoConfig;
-};
+const PRAZOS_FIN = [60, 84, 120, 180, 240, 300, 360];
 
-type Modo = "consorcio" | "financiamento";
-type TipoBem = "imovel" | "automovel";
-type AcaoCaptura = "analise" | "proposta" | "especialista";
+function prazosFinanciamento(prazoPadrao: number, prazoMaximo: number) {
+  const list = PRAZOS_FIN.filter((p) => p <= prazoMaximo);
+  if (!list.includes(prazoPadrao)) list.push(prazoPadrao);
+  return [...new Set(list)].sort((a, b) => a - b);
+}
+
+function buildEntradaConsorcio(
+  valorCredito: number,
+  prazo: number,
+  taxaAdm: number,
+  fundoReserva: number,
+  seguro: number,
+  lanceProprio: number,
+  lanceEmbutido: number,
+  reajusteCredito: number,
+  correcaoParcela: number,
+): EntradaConsorcio {
+  return {
+    valorCredito,
+    prazoMeses: prazo,
+    taxaAdministrativaPercentual: taxaAdm,
+    fundoReservaPercentual: fundoReserva,
+    seguroPrestamistaPercentual: seguro,
+    entrada: lanceProprio,
+    lanceEmbutido,
+    reajusteAnualCredito: reajusteCredito,
+    correcaoAnualParcela: correcaoParcela,
+  };
+}
+
+function parcelaConsorcioParaPrazo(
+  base: Omit<EntradaConsorcio, "prazoMeses">,
+  prazoMeses: number,
+  estrategia: EstrategiaPagamento,
+  bemCfg: SimuladorTipoBemConfig,
+) {
+  const r = calcularParcelaConsorcio({ ...base, prazoMeses });
+  const integral = r.parcelaEstimada;
+  if (estrategia === "reduzida" && bemCfg.temParcelaReduzida) {
+    const pct = bemCfg.percentualParcelaReduzida ?? 50;
+    return integral * (pct / 100);
+  }
+  return integral;
+}
 
 export function SimuladorApp({ configs }: { configs: SimuladorConfigs }) {
+  const resultRef = useRef<HTMLDivElement>(null);
+
   const [modo, setModo] = useState<Modo>("consorcio");
   const [tipoBem, setTipoBem] = useState<TipoBem>("imovel");
   const [avancado, setAvancado] = useState(false);
-  const [simulado, setSimulado] = useState(false);
+  const [estrategia, setEstrategia] = useState<EstrategiaPagamento>("integral");
+  const [resultoDestacado, setResultoDestacado] = useState(false);
   const [tabelaAberta, setTabelaAberta] = useState(false);
+
   const [capturaOpen, setCapturaOpen] = useState(false);
   const [capturaAcao, setCapturaAcao] = useState<AcaoCaptura>("analise");
   const [nome, setNome] = useState("");
   const [whatsapp, setWhatsapp] = useState("");
   const [cidade, setCidade] = useState("");
+  const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [waLink, setWaLink] = useState<string | null>(null);
   const [pdfLink, setPdfLink] = useState<string | null>(null);
 
-  const bemCfg = tipoBem === "imovel" ? configs.imovel : configs.automovel;
+  const bemCfg =
+    tipoBem === "automovel" ? configs.automovel : configs.imovel;
   const finCfg = configs.financiamento;
 
   const [valorCredito, setValorCredito] = useState(bemCfg.valorPadraoInicial);
@@ -54,7 +111,7 @@ export function SimuladorApp({ configs }: { configs: SimuladorConfigs }) {
   const [seguro, setSeguro] = useState(bemCfg.seguroPrestamistaPadrao);
   const [reajusteCredito, setReajusteCredito] = useState(bemCfg.reajusteAnualCredito);
   const [correcaoParcela, setCorrecaoParcela] = useState(bemCfg.correcaoAnualParcela);
-  const [entrada, setEntrada] = useState(0);
+  const [lanceProprio, setLanceProprio] = useState(0);
   const [lanceEmbutido, setLanceEmbutido] = useState(0);
 
   const [valorBem, setValorBem] = useState(500_000);
@@ -62,32 +119,64 @@ export function SimuladorApp({ configs }: { configs: SimuladorConfigs }) {
   const [taxaMensal, setTaxaMensal] = useState(finCfg.taxaMensalPadrao);
   const [prazoFin, setPrazoFin] = useState(finCfg.prazoPadrao);
 
-  const prazosExibidos = useMemo(() => {
+  const lanceTotal = lanceProprio + lanceEmbutido;
+  const creditoLiquido = Math.max(0, valorCredito - lanceEmbutido);
+
+  const prazosConsorcio = useMemo(() => {
     const list = bemCfg.prazosDisponiveis?.length
       ? bemCfg.prazosDisponiveis
       : [bemCfg.prazoPadrao];
     return list.slice(0, bemCfg.quantidadePrazosExibidos ?? list.length);
   }, [bemCfg]);
 
-  const entradaConsorcio: EntradaConsorcio = useMemo(
-    () => ({
-      valorCredito,
-      prazoMeses: prazo,
-      taxaAdministrativaPercentual: taxaAdm,
-      fundoReservaPercentual: fundoReserva,
-      seguroPrestamistaPercentual: seguro,
-      entrada,
-      lanceEmbutido,
-      reajusteAnualCredito: reajusteCredito,
-      correcaoAnualParcela: correcaoParcela,
-    }),
+  const prazosFin = useMemo(
+    () => prazosFinanciamento(finCfg.prazoPadrao, finCfg.prazoMaximo),
+    [finCfg],
+  );
+
+  const entradaConsorcio = useMemo(
+    () =>
+      buildEntradaConsorcio(
+        valorCredito,
+        prazo,
+        taxaAdm,
+        fundoReserva,
+        seguro,
+        lanceProprio,
+        lanceEmbutido,
+        reajusteCredito,
+        correcaoParcela,
+      ),
     [
       valorCredito,
       prazo,
       taxaAdm,
       fundoReserva,
       seguro,
-      entrada,
+      lanceProprio,
+      lanceEmbutido,
+      reajusteCredito,
+      correcaoParcela,
+    ],
+  );
+
+  const baseConsorcioSemPrazo = useMemo(
+    () => ({
+      valorCredito,
+      taxaAdministrativaPercentual: taxaAdm,
+      fundoReservaPercentual: fundoReserva,
+      seguroPrestamistaPercentual: seguro,
+      entrada: lanceProprio,
+      lanceEmbutido,
+      reajusteAnualCredito: reajusteCredito,
+      correcaoAnualParcela: correcaoParcela,
+    }),
+    [
+      valorCredito,
+      taxaAdm,
+      fundoReserva,
+      seguro,
+      lanceProprio,
       lanceEmbutido,
       reajusteCredito,
       correcaoParcela,
@@ -95,39 +184,41 @@ export function SimuladorApp({ configs }: { configs: SimuladorConfigs }) {
   );
 
   const resultadoConsorcio = useMemo(
-    () => (simulado && modo === "consorcio" ? calcularParcelaConsorcio(entradaConsorcio) : null),
-    [simulado, modo, entradaConsorcio],
+    () => calcularParcelaConsorcio(entradaConsorcio),
+    [entradaConsorcio],
   );
+
+  const parcelaIntegral = resultadoConsorcio.parcelaEstimada;
+  const pctReduzida = bemCfg.percentualParcelaReduzida ?? 50;
+  const parcelaReduzida = parcelaIntegral * (pctReduzida / 100);
+  const parcelaExibidaConsorcio =
+    estrategia === "reduzida" && bemCfg.temParcelaReduzida ? parcelaReduzida : parcelaIntegral;
 
   const resultadoFin = useMemo(
     () =>
-      simulado && modo === "financiamento"
-        ? simularFinanciamento({
-            valorBem,
-            entrada: entradaFin,
-            taxaMensalPercentual: taxaMensal,
-            prazoMeses: prazoFin,
-          })
-        : null,
-    [simulado, modo, valorBem, entradaFin, taxaMensal, prazoFin],
+      simularFinanciamento({
+        valorBem,
+        entrada: entradaFin,
+        taxaMensalPercentual: taxaMensal,
+        prazoMeses: prazoFin,
+      }),
+    [valorBem, entradaFin, taxaMensal, prazoFin],
   );
 
   const comparativo = useMemo(() => {
-    if (!simulado) return null;
     const entradaFinCmp = {
       valorBem: modo === "consorcio" ? valorCredito : valorBem,
-      entrada: modo === "consorcio" ? entrada : entradaFin,
+      entrada: modo === "consorcio" ? lanceProprio : entradaFin,
       taxaMensalPercentual: taxaMensal,
       prazoMeses: modo === "consorcio" ? prazo : prazoFin,
     };
     return compararConsorcioFinanciamento(entradaConsorcio, entradaFinCmp);
   }, [
-    simulado,
     modo,
     entradaConsorcio,
     valorCredito,
     valorBem,
-    entrada,
+    lanceProprio,
     entradaFin,
     taxaMensal,
     prazo,
@@ -135,13 +226,31 @@ export function SimuladorApp({ configs }: { configs: SimuladorConfigs }) {
   ]);
 
   const projecao = useMemo(() => {
-    if (!simulado || modo !== "consorcio" || !bemCfg.mostrarTabelaAnoAno) return [];
+    if (modo !== "consorcio" || !bemCfg.mostrarTabelaAnoAno) return [];
     return gerarProjecaoAnoAno(entradaConsorcio);
-  }, [simulado, modo, entradaConsorcio, bemCfg.mostrarTabelaAnoAno]);
+  }, [modo, entradaConsorcio, bemCfg.mostrarTabelaAnoAno]);
 
   const resumoAno1 = projecao[0];
 
+  const parcelaForPrazoConsorcio = useCallback(
+    (meses: number) =>
+      parcelaConsorcioParaPrazo(baseConsorcioSemPrazo, meses, estrategia, bemCfg),
+    [baseConsorcioSemPrazo, estrategia, bemCfg],
+  );
+
+  const parcelaForPrazoFin = useCallback(
+    (meses: number) =>
+      simularFinanciamento({
+        valorBem,
+        entrada: entradaFin,
+        taxaMensalPercentual: taxaMensal,
+        prazoMeses: meses,
+      }).parcelaEstimada,
+    [valorBem, entradaFin, taxaMensal],
+  );
+
   function aplicarDefaultsBem(b: TipoBem) {
+    if (b !== "imovel" && b !== "automovel") return;
     const c = b === "imovel" ? configs.imovel : configs.automovel;
     setValorCredito(c.valorPadraoInicial);
     setPrazo(c.prazoPadrao);
@@ -150,13 +259,24 @@ export function SimuladorApp({ configs }: { configs: SimuladorConfigs }) {
     setSeguro(c.seguroPrestamistaPadrao);
     setReajusteCredito(c.reajusteAnualCredito);
     setCorrecaoParcela(c.correcaoAnualParcela);
+    setLanceProprio(0);
+    setLanceEmbutido(0);
+    if (!c.temParcelaReduzida) setEstrategia("integral");
   }
 
-  function handleSimular() {
-    setSimulado(true);
+  function handleModoChange(m: Modo) {
+    setModo(m);
+    setResultoDestacado(false);
+    setMsg(null);
+  }
+
+  function scrollToResult() {
+    setResultoDestacado(true);
     setTabelaAberta(bemCfg.exibirTabelaCompletaPorPadrao ?? false);
     setMsg(null);
-    setWaLink(null);
+    requestAnimationFrame(() => {
+      resultRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
   }
 
   function openCaptura(acao: AcaoCaptura) {
@@ -171,9 +291,16 @@ export function SimuladorApp({ configs }: { configs: SimuladorConfigs }) {
     setMsg(null);
     setWaLink(null);
     try {
-      const resultado =
+      const resultadoPayload =
         modo === "consorcio"
-          ? { ...resultadoConsorcio, comparativo }
+          ? {
+              ...resultadoConsorcio,
+              parcelaExibida: parcelaExibidaConsorcio,
+              estrategia,
+              lanceTotal,
+              creditoLiquido,
+              comparativo,
+            }
           : { ...resultadoFin, comparativo };
       const res = await fetch("/api/public/simulador/captura", {
         method: "POST",
@@ -182,14 +309,25 @@ export function SimuladorApp({ configs }: { configs: SimuladorConfigs }) {
           nome,
           whatsapp,
           cidade,
+          email: email.trim() || undefined,
           modo,
-          tipoBem: modo === "consorcio" ? tipoBem : undefined,
+          tipoBem:
+            modo === "consorcio" || modo === "financiamento"
+              ? tipoBem === "automovel"
+                ? "automovel"
+                : "imovel"
+              : undefined,
           acao: capturaAcao,
           entrada:
             modo === "consorcio"
               ? entradaConsorcio
-              : { valorBem, entrada: entradaFin, taxaMensalPercentual: taxaMensal, prazoMeses: prazoFin },
-          resultado,
+              : {
+                  valorBem,
+                  entrada: entradaFin,
+                  taxaMensalPercentual: taxaMensal,
+                  prazoMeses: prazoFin,
+                },
+          resultado: resultadoPayload,
         }),
       });
       const data = await res.json();
@@ -214,331 +352,222 @@ export function SimuladorApp({ configs }: { configs: SimuladorConfigs }) {
   }
 
   const mostrarComparativo =
-    simulado &&
-    comparativo &&
-    ((modo === "consorcio" && bemCfg.mostrarComparacaoFinanciamento) ||
-      (modo === "financiamento" && finCfg.mostrarComparacaoConsorcio));
+    (modo === "consorcio" && bemCfg.mostrarComparacaoFinanciamento) ||
+    (modo === "financiamento" && finCfg.mostrarComparacaoConsorcio);
 
-  return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100">
-      <div className="mx-auto max-w-5xl px-4 py-10">
-        <div className="mb-8 text-center">
-          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-amber-500">
-            Simulador Gauchinho
-          </p>
-          <h1 className="mt-2 text-4xl font-bold text-white">Planeje seu consórcio ou financiamento</h1>
-          <p className="mt-2 text-zinc-400">Resultado imediato — cadastro só para análise completa ou proposta.</p>
-        </div>
+  const estrategiaLabel =
+    estrategia === "reduzida" && bemCfg.temParcelaReduzida
+      ? `Parcela reduzida (${pctReduzida}% até contemplação)`
+      : "Parcela integral";
 
-        <div className="mb-6 flex flex-wrap justify-center gap-2">
-          {(["consorcio", "financiamento"] as Modo[]).map((m) => (
-            <button
-              key={m}
-              type="button"
-              onClick={() => {
-                setModo(m);
-                setSimulado(false);
-              }}
-              className={cn(
-                "rounded-full px-5 py-2 text-sm font-medium capitalize",
-                modo === m ? "bg-amber-500 text-zinc-950" : "border border-zinc-700 text-zinc-300",
-              )}
-            >
-              {m === "consorcio" ? "Consórcio" : "Financiamento"}
-            </button>
-          ))}
-        </div>
-
-        <div className="rounded-2xl border border-zinc-800 bg-zinc-900/60 p-6 shadow-xl">
-          {modo === "consorcio" ? (
-            <>
-              <div className="mb-4 flex gap-2">
-                {(["imovel", "automovel"] as TipoBem[]).map((b) => (
-                  <button
-                    key={b}
-                    type="button"
-                    onClick={() => {
-                      setTipoBem(b);
-                      aplicarDefaultsBem(b);
-                      setSimulado(false);
-                    }}
-                    className={cn(
-                      "rounded-lg px-4 py-2 text-sm capitalize",
-                      tipoBem === b ? "bg-zinc-800 text-amber-400" : "text-zinc-400",
-                    )}
-                  >
-                    {b === "imovel" ? "Imóvel" : "Automóvel"}
-                  </button>
-                ))}
-              </div>
-              <div className="space-y-4">
-                <div>
-                  <Label>Valor do crédito: {formatCurrency(valorCredito)}</Label>
-                  <input
-                    type="range"
-                    min={bemCfg.valorMinimoCredito}
-                    max={bemCfg.valorMaximoCredito}
-                    step={1000}
-                    value={valorCredito}
-                    onChange={(e) => setValorCredito(Number(e.target.value))}
-                    className="mt-2 w-full accent-amber-500"
-                  />
-                </div>
-                <div>
-                  <Label>Prazo: {prazo} meses</Label>
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    {prazosExibidos.map((p) => (
-                      <button
-                        key={p}
-                        type="button"
-                        onClick={() => setPrazo(p)}
-                        className={cn(
-                          "rounded-lg px-3 py-1 text-sm",
-                          prazo === p ? "bg-amber-500 text-zinc-950" : "bg-zinc-800",
-                        )}
-                      >
-                        {p}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  className="text-sm text-amber-400 underline"
-                  onClick={() => setAvancado((v) => !v)}
-                >
-                  {avancado ? "− Ocultar opções avançadas" : "+ Opções avançadas"}
-                </button>
-                {avancado ? (
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <Input type="number" placeholder="Entrada / recurso próprio" value={entrada || ""} onChange={(e) => setEntrada(Number(e.target.value))} className="bg-zinc-950" />
-                    <Input type="number" placeholder="Lance embutido" value={lanceEmbutido || ""} onChange={(e) => setLanceEmbutido(Number(e.target.value))} className="bg-zinc-950" />
-                    <Input type="number" placeholder="Taxa adm %" value={taxaAdm} onChange={(e) => setTaxaAdm(Number(e.target.value))} className="bg-zinc-950" />
-                    <Input type="number" placeholder="Fundo reserva %" value={fundoReserva} onChange={(e) => setFundoReserva(Number(e.target.value))} className="bg-zinc-950" />
-                    <Input type="number" placeholder="Seguro % a.a." value={seguro} onChange={(e) => setSeguro(Number(e.target.value))} className="bg-zinc-950" />
-                    <Input type="number" placeholder="Reajuste crédito % a.a." value={reajusteCredito} onChange={(e) => setReajusteCredito(Number(e.target.value))} className="bg-zinc-950" />
-                    <Input type="number" placeholder="Correção parcela % a.a." value={correcaoParcela} onChange={(e) => setCorrecaoParcela(Number(e.target.value))} className="bg-zinc-950" />
-                  </div>
-                ) : null}
-              </div>
-            </>
-          ) : (
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div>
-                <Label>Valor do bem</Label>
-                <Input type="number" value={valorBem} onChange={(e) => setValorBem(Number(e.target.value))} className="bg-zinc-950" />
-              </div>
-              <div>
-                <Label>Entrada</Label>
-                <Input type="number" value={entradaFin} onChange={(e) => setEntradaFin(Number(e.target.value))} className="bg-zinc-950" />
-              </div>
-              <div>
-                <Label>Taxa mensal (%)</Label>
-                <Input type="number" step="0.01" value={taxaMensal} onChange={(e) => setTaxaMensal(Number(e.target.value))} className="bg-zinc-950" />
-              </div>
-              <div>
-                <Label>Prazo (meses)</Label>
-                <Input type="number" value={prazoFin} onChange={(e) => setPrazoFin(Number(e.target.value))} className="bg-zinc-950" />
-              </div>
-            </div>
-          )}
-
-          <Button type="button" variant="gold" className="mt-6 w-full sm:w-auto" onClick={handleSimular}>
-            Simular
+  const footerCta =
+    resultoDestacado ? (
+      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-800 bg-slate-950/95 p-3 backdrop-blur sm:hidden">
+        <div className="flex gap-2">
+          <Button type="button" variant="gold" className="min-h-11 flex-1" onClick={() => openCaptura("proposta")}>
+            Gerar proposta
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            className="min-h-11 flex-1 border-slate-600"
+            onClick={() => openCaptura("especialista")}
+          >
+            Especialista
           </Button>
         </div>
+      </div>
+    ) : null;
 
-        {simulado && modo === "consorcio" && resultadoConsorcio ? (
-          <div className="mt-8 space-y-6">
-            <div className="rounded-2xl border border-amber-500/40 bg-gradient-to-br from-zinc-900 to-zinc-950 p-6">
-              <p className="text-sm text-zinc-500">Parcela estimada</p>
-              <p className="text-4xl font-bold text-amber-400">{formatCurrency(resultadoConsorcio.parcelaEstimada)}</p>
-              <div className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
-                <p>Crédito: {formatCurrency(resultadoConsorcio.valorCredito)}</p>
-                <p>Prazo: {resultadoConsorcio.prazoMeses} meses</p>
-                <p>Taxa adm total: {formatCurrency(resultadoConsorcio.taxaAdministrativaTotal)}</p>
-                <p>Fundo reserva: {formatCurrency(resultadoConsorcio.fundoReservaTotal)}</p>
-                <p>Seguro (est.): {formatCurrency(resultadoConsorcio.seguroTotalEstimado)}</p>
-                <p>Total estimado: {formatCurrency(resultadoConsorcio.valorTotalEstimado)}</p>
-              </div>
-            </div>
+  return (
+    <SimuladorPageShell footer={footerCta}>
+      <div className="space-y-5 sm:space-y-6">
+        <SolutionSelector value={modo} onChange={handleModoChange} />
+        <AssetTypeSelector
+          modo={modo}
+          value={tipoBem}
+          onChange={(b) => {
+            setTipoBem(b);
+            aplicarDefaultsBem(b);
+          }}
+        />
 
-            {resumoAno1 ? (
-              <div className="rounded-xl border border-zinc-800 p-5">
-                <h3 className="font-semibold text-amber-400">Vantagem da Programação Financeira</h3>
-                <div className="mt-3 grid gap-2 sm:grid-cols-3 text-sm">
-                  <div className="rounded-lg bg-zinc-900 p-3">
-                    <p className="text-zinc-500">Total pago em 1 ano</p>
-                    <p className="text-lg font-semibold">{formatCurrency(resumoAno1.totalPagoAcumulado)}</p>
-                  </div>
-                  <div className="rounded-lg bg-zinc-900 p-3">
-                    <p className="text-zinc-500">Crédito estimado em 1 ano</p>
-                    <p className="text-lg font-semibold">{formatCurrency(resumoAno1.creditoEstimadoReajustado)}</p>
-                  </div>
-                  <div className="rounded-lg bg-zinc-900 p-3">
-                    <p className="text-zinc-500">Ganho patrimonial est.</p>
-                    <p className="text-lg font-semibold">{formatCurrency(resumoAno1.ganhoPatrimonialEstimado)}</p>
-                  </div>
-                </div>
-                <p className="mt-3 text-xs text-zinc-500">{AVISO_PROJECAO}</p>
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="mt-3 border-zinc-600"
-                  onClick={() => setTabelaAberta((v) => !v)}
-                >
-                  {tabelaAberta ? (
-                    <>
-                      <ChevronUp className="mr-1 h-4 w-4" /> Ocultar projeção completa
-                    </>
-                  ) : (
-                    <>
-                      <ChevronDown className="mr-1 h-4 w-4" /> Ver projeção completa
-                    </>
-                  )}
-                </Button>
-                {tabelaAberta && projecao.length ? (
-                  <div className="mt-4 max-h-80 overflow-auto rounded-lg border border-zinc-800">
-                    <table className="min-w-full text-xs">
-                      <thead className="bg-zinc-900 text-left text-zinc-500">
-                        <tr>
-                          <th className="p-2">Ano</th>
-                          <th className="p-2">Meses</th>
-                          <th className="p-2">Total pago</th>
-                          <th className="p-2">Crédito reaj.</th>
-                          <th className="p-2">Ganho pat.</th>
-                          <th className="p-2">Parcela</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {projecao.map((l) => (
-                          <tr key={l.ano} className="border-t border-zinc-800">
-                            <td className="p-2">{l.ano}</td>
-                            <td className="p-2">{l.mesesPagosAcumulados}</td>
-                            <td className="p-2">{formatCurrency(l.totalPagoAcumulado)}</td>
-                            <td className="p-2">{formatCurrency(l.creditoEstimadoReajustado)}</td>
-                            <td className="p-2">{formatCurrency(l.ganhoPatrimonialEstimado)}</td>
-                            <td className="p-2">{formatCurrency(l.parcelaEstimadaNoPeriodo)}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                ) : null}
-              </div>
-            ) : null}
-          </div>
-        ) : null}
+        {modo === "consorcio" ? (
+          <>
+            <CreditValueStep
+              title="1. Valor do crédito"
+              valueLabel="Valor do crédito desejado"
+              value={valorCredito}
+              min={bemCfg.valorMinimoCredito}
+              max={bemCfg.valorMaximoCredito}
+              onChange={setValorCredito}
+            />
+            <PrazoStep
+              prazos={prazosConsorcio}
+              selected={prazo}
+              onSelect={setPrazo}
+              parcelaForPrazo={parcelaForPrazoConsorcio}
+            />
+            <PaymentStrategyStep
+              estrategia={estrategia}
+              onChange={setEstrategia}
+              mostrarReduzida={!!bemCfg.temParcelaReduzida}
+              percentualReduzida={pctReduzida}
+              parcelaIntegral={parcelaIntegral}
+              parcelaReduzida={parcelaReduzida}
+            />
+            <AdvancedStrategyAccordion
+              open={avancado}
+              onToggle={() => setAvancado((v) => !v)}
+              lanceProprio={lanceProprio}
+              onLanceProprio={setLanceProprio}
+              lanceEmbutido={lanceEmbutido}
+              onLanceEmbutido={setLanceEmbutido}
+              lanceTotal={lanceTotal}
+              taxaAdm={taxaAdm}
+              onTaxaAdm={setTaxaAdm}
+              fundoReserva={fundoReserva}
+              onFundoReserva={setFundoReserva}
+              seguro={seguro}
+              onSeguro={setSeguro}
+              reajusteCredito={reajusteCredito}
+              onReajusteCredito={setReajusteCredito}
+              correcaoParcela={correcaoParcela}
+              onCorrecaoParcela={setCorrecaoParcela}
+              maxLanceEmbutido={valorCredito}
+            />
+          </>
+        ) : (
+          <>
+            <CreditValueStep
+              title="1. Valor do bem"
+              valueLabel="Valor do bem"
+              value={valorBem}
+              min={30_000}
+              max={3_000_000}
+              onChange={setValorBem}
+            />
+            <PrazoStep
+              prazos={prazosFin}
+              selected={prazoFin}
+              onSelect={setPrazoFin}
+              parcelaForPrazo={parcelaForPrazoFin}
+            />
+            <FinanciamentoDetailsStep
+              entrada={entradaFin}
+              onEntrada={setEntradaFin}
+              taxaMensal={taxaMensal}
+              onTaxaMensal={setTaxaMensal}
+              valorBem={valorBem}
+            />
+          </>
+        )}
 
-        {simulado && modo === "financiamento" && resultadoFin ? (
-          <div className="mt-8 rounded-2xl border border-zinc-700 bg-zinc-900/80 p-6">
-            <p className="text-sm text-zinc-500">Parcela estimada (prestação fixa)</p>
-            <p className="text-4xl font-bold text-white">{formatCurrency(resultadoFin.parcelaEstimada)}</p>
-            <div className="mt-4 grid gap-2 text-sm sm:grid-cols-2">
-              <p>Valor financiado: {formatCurrency(resultadoFin.valorFinanciado)}</p>
-              <p>Total pago: {formatCurrency(resultadoFin.valorTotalPago)}</p>
-              <p>Juros totais: {formatCurrency(resultadoFin.jurosTotais)}</p>
-              <p>Custo final: {formatCurrency(resultadoFin.custoFinal)}</p>
-            </div>
-          </div>
-        ) : null}
+        <Button
+          type="button"
+          variant="gold"
+          className="min-h-14 w-full text-base font-bold sm:text-lg"
+          onClick={scrollToResult}
+        >
+          Ver simulação completa
+        </Button>
 
-        {mostrarComparativo && comparativo ? (
-          <div className="mt-8 rounded-2xl border border-zinc-800 p-6">
-            <h3 className="mb-4 flex items-center gap-2 font-semibold">
-              <Scale className="h-5 w-5 text-amber-400" /> Consórcio x Financiamento
-            </h3>
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="rounded-xl bg-emerald-950/40 p-4 border border-emerald-800/50">
-                <p className="font-medium text-emerald-300">Consórcio</p>
-                <ul className="mt-2 list-inside list-disc text-xs text-zinc-400">
-                  <li>Sem juros</li>
-                  <li>Compra planejada</li>
-                  <li>Taxa administrativa</li>
-                  <li>Possibilidade de lance</li>
-                </ul>
-                <p className="mt-3 text-lg font-semibold">{formatCurrency(comparativo.consorcio.parcelaEstimada)}/mês</p>
-                <p className="text-sm text-zinc-500">Total est.: {formatCurrency(comparativo.consorcio.valorTotalEstimado)}</p>
-              </div>
-              <div className="rounded-xl bg-sky-950/40 p-4 border border-sky-800/50">
-                <p className="font-medium text-sky-300">Financiamento</p>
-                <ul className="mt-2 list-inside list-disc text-xs text-zinc-400">
-                  <li>Compra imediata</li>
-                  <li>Juros mensais</li>
-                  <li>Análise de crédito</li>
-                  <li>Custo final maior</li>
-                </ul>
-                <p className="mt-3 text-lg font-semibold">{formatCurrency(comparativo.financiamento.parcelaEstimada)}/mês</p>
-                <p className="text-sm text-zinc-500">Total: {formatCurrency(comparativo.financiamento.custoFinal)}</p>
-              </div>
-            </div>
-            <p className="mt-4 text-sm text-amber-200/90">
-              Diferença estimada de custo total: {formatCurrency(comparativo.diferencaCustoTotal)} · Diferença de parcela:{" "}
-              {formatCurrency(comparativo.diferencaParcela)}
-            </p>
-          </div>
-        ) : null}
+        <div
+          ref={resultRef}
+          className={
+            resultoDestacado ? "space-y-5 scroll-mt-6 ring-2 ring-amber-400/20 rounded-2xl p-1" : "space-y-5"
+          }
+        >
+          {modo === "consorcio" ? (
+            <ConsorcioResultCards
+              resultado={resultadoConsorcio}
+              parcelaExibida={parcelaExibidaConsorcio}
+              lanceTotal={lanceTotal}
+              creditoLiquido={creditoLiquido}
+              estrategiaLabel={estrategiaLabel}
+            />
+          ) : (
+            <FinanciamentoResultCards
+              resultado={resultadoFin}
+              valorBem={valorBem}
+              entrada={entradaFin}
+              taxaMensal={taxaMensal}
+            />
+          )}
 
-        {simulado ? (
-          <div className="mt-8 flex flex-wrap gap-3">
-            <Button type="button" variant="gold" onClick={() => openCaptura("analise")}>
-              Ver análise completa
-            </Button>
-            <Button type="button" variant="outline" className="border-zinc-600" onClick={() => openCaptura("proposta")}>
+          {modo === "consorcio" && bemCfg.mostrarTabelaAnoAno ? (
+            <ProjectionSection
+              resumoAno1={resumoAno1}
+              projecao={projecao}
+              tabelaAberta={tabelaAberta}
+              onToggleTabela={() => setTabelaAberta((v) => !v)}
+            />
+          ) : null}
+
+          {mostrarComparativo ? <ComparisonSection modo={modo} comparativo={comparativo} /> : null}
+
+          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+            <Button
+              type="button"
+              variant="gold"
+              className="min-h-12 flex-1 text-base sm:min-w-[12rem]"
+              onClick={() => openCaptura("proposta")}
+            >
               Gerar proposta
             </Button>
-            <Button type="button" variant="outline" className="border-zinc-600" onClick={() => openCaptura("especialista")}>
+            <Button
+              type="button"
+              variant="outline"
+              className="min-h-12 flex-1 border-slate-600 text-base sm:min-w-[12rem]"
+              onClick={() => openCaptura("analise")}
+            >
+              Ver análise completa
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              className="min-h-12 flex-1 border-slate-600 text-base sm:min-w-[12rem]"
+              onClick={() => openCaptura("especialista")}
+            >
               Falar com especialista
             </Button>
           </div>
-        ) : null}
+        </div>
 
-        {msg ? <p className="mt-4 text-sm text-emerald-400">{msg}</p> : null}
+        {msg ? <p className="text-sm text-emerald-400">{msg}</p> : null}
         {pdfLink ? (
-          <a href={pdfLink} target="_blank" rel="noreferrer" className="mt-2 inline-block text-sm text-amber-400 underline">
+          <a href={pdfLink} target="_blank" rel="noreferrer" className="inline-block text-sm text-amber-400 underline">
             Baixar proposta PDF
           </a>
         ) : null}
         {waLink ? (
-          <a href={waLink} target="_blank" rel="noreferrer" className="mt-2 inline-block text-sm text-amber-400 underline">
+          <a href={waLink} target="_blank" rel="noreferrer" className="inline-block text-sm text-amber-400 underline">
             Abrir WhatsApp
           </a>
         ) : null}
 
-        <p className="mt-10 text-center text-sm text-zinc-500">
-          <Link href="/grupos" className="text-amber-400 hover:underline">
+        <p className="pt-4 text-center text-sm text-slate-500">
+          <Link href="/grupos" className="font-medium text-amber-400 hover:underline">
             Ver grupos disponíveis
           </Link>
         </p>
       </div>
 
-      {capturaOpen ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-          <form onSubmit={submitCaptura} className="w-full max-w-md space-y-3 rounded-2xl border border-zinc-700 bg-zinc-900 p-6">
-            <h2 className="text-lg font-semibold">Seus dados</h2>
-            <div>
-              <Label>Nome</Label>
-              <Input required value={nome} onChange={(e) => setNome(e.target.value)} className="bg-zinc-950" />
-            </div>
-            <div>
-              <Label>WhatsApp</Label>
-              <Input required value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)} className="bg-zinc-950" />
-            </div>
-            <div>
-              <Label>Cidade (opcional)</Label>
-              <Input value={cidade} onChange={(e) => setCidade(e.target.value)} className="bg-zinc-950" />
-            </div>
-            <div className="flex gap-2">
-              <Button type="submit" variant="gold" disabled={loading}>
-                {loading ? "Salvando…" : "Enviar"}
-              </Button>
-              <Button type="button" variant="ghost" onClick={() => setCapturaOpen(false)}>
-                Cancelar
-              </Button>
-            </div>
-          </form>
-        </div>
-      ) : null}
-    </div>
+      <LeadCaptureModal
+        open={capturaOpen}
+        acao={capturaAcao}
+        nome={nome}
+        whatsapp={whatsapp}
+        cidade={cidade}
+        email={email}
+        loading={loading}
+        onClose={() => setCapturaOpen(false)}
+        onSubmit={submitCaptura}
+        onNome={setNome}
+        onWhatsapp={setWhatsapp}
+        onCidade={setCidade}
+        onEmail={setEmail}
+      />
+    </SimuladorPageShell>
   );
 }
