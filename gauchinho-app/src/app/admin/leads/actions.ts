@@ -223,7 +223,7 @@ export async function fetchLeadDetail(leadId: string) {
 
   const { data: propostas } = await supabase
     .from("propostas")
-    .select("id, created_at, status, valor_credito")
+    .select("id, created_at, status, tipo_proposta, valor_credito, pdf_url, lead_id")
     .eq("lead_id", leadId)
     .order("created_at", { ascending: false });
 

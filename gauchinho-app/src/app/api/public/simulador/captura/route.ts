@@ -93,6 +93,43 @@ export async function POST(request: Request) {
         .select("id")
         .single();
       propostaId = prop?.id ?? null;
+      if (propostaId) {
+        const { enrichPropostaProjecaoFromSimulacao, generateAndStorePropostaPdf } = await import(
+          "@/lib/proposta/generate-pdf"
+        );
+        await enrichPropostaProjecaoFromSimulacao(propostaId);
+        const pdf = await generateAndStorePropostaPdf(propostaId, {
+          origem,
+          pagina: "/simulador",
+        });
+        await registrarEvento({
+          tipo_evento: "lead_criado",
+          origem,
+          pagina: "/simulador",
+          lead_id: leadId,
+          dados_evento: { acao: body.acao, modo: body.modo },
+        });
+        await registrarEvento({
+          tipo_evento: "clique_gerar_proposta",
+          origem,
+          lead_id: leadId,
+          entidade_id: propostaId,
+        });
+        const { data: waOrigem } = await admin
+          .from("whatsapp_origens")
+          .select("*")
+          .eq("origem", "proposta")
+          .eq("ativo", true)
+          .maybeSingle();
+        return NextResponse.json({
+          ok: true,
+          leadId,
+          propostaId,
+          pdfDownloadUrl: pdf.signedUrl,
+          pdfPath: `/api/propostas/${propostaId}/pdf`,
+          whatsappOrigem: waOrigem,
+        });
+      }
     }
 
     const { data: waOrigem } = await admin

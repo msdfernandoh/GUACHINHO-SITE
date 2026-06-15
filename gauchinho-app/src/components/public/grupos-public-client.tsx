@@ -29,6 +29,7 @@ export function GruposPublicClient({ rows }: { rows: PublicGrupoRow[] }) {
   const [whatsapp, setWhatsapp] = useState("");
   const [loading, setLoading] = useState(false);
   const [resultMsg, setResultMsg] = useState<string | null>(null);
+  const [pdfLink, setPdfLink] = useState<string | null>(null);
 
   const filtered = useMemo(() => {
     const q = busca.trim().toLowerCase();
@@ -82,12 +83,14 @@ export function GruposPublicClient({ rows }: { rows: PublicGrupoRow[] }) {
     setModalAcao(acao);
     setModalOpen(true);
     setResultMsg(null);
+    setPdfLink(null);
   }
 
   async function submitModal(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
     setResultMsg(null);
+    setPdfLink(null);
     try {
       const res = await fetch("/api/public/grupos/fluxo", {
         method: "POST",
@@ -104,9 +107,11 @@ export function GruposPublicClient({ rows }: { rows: PublicGrupoRow[] }) {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Falha");
+      const pdfHref = (data.pdfPath as string) ?? (data.pdfDownloadUrl as string) ?? null;
+      setPdfLink(pdfHref);
       setResultMsg(
         modalAcao === "proposta"
-          ? `Proposta rascunho criada. Crédito líquido: ${formatCurrency(data.creditoLiquido)}`
+          ? `Proposta criada. Crédito líquido: ${formatCurrency(data.creditoLiquido)}`
           : `Simulação salva. Crédito líquido: ${formatCurrency(data.creditoLiquido)}`,
       );
       setModalOpen(false);
@@ -257,6 +262,11 @@ export function GruposPublicClient({ rows }: { rows: PublicGrupoRow[] }) {
             </Button>
           </div>
           {resultMsg ? <p className="mt-3 text-sm text-emerald-400">{resultMsg}</p> : null}
+          {pdfLink ? (
+            <a href={pdfLink} target="_blank" rel="noreferrer" className="mt-2 inline-block text-sm text-amber-400 underline">
+              Baixar proposta PDF
+            </a>
+          ) : null}
         </div>
       </div>
 

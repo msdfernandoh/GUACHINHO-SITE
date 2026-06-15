@@ -3,11 +3,15 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import {
   DEFAULT_FINANCIAMENTO_CONFIG,
   DEFAULT_LEADS,
+  DEFAULT_PROPOSTAS,
+  DEFAULT_CONTATO,
   DEFAULT_SIMULADOR_AUTOMOVEL,
   DEFAULT_SIMULADOR_IMOVEL,
   DEFAULT_SITE,
   type FinanciamentoConfig,
   type LeadsConfig,
+  type PropostasConfig,
+  type ContatoConfig,
   type SimuladorTipoBemConfig,
   type SiteConfig,
 } from "@/lib/config/defaults";
@@ -15,11 +19,15 @@ import {
 export {
   DEFAULT_FINANCIAMENTO_CONFIG,
   DEFAULT_LEADS,
+  DEFAULT_PROPOSTAS,
+  DEFAULT_CONTATO,
   DEFAULT_SIMULADOR_AUTOMOVEL,
   DEFAULT_SIMULADOR_IMOVEL,
   DEFAULT_SITE,
   type FinanciamentoConfig,
   type LeadsConfig,
+  type PropostasConfig,
+  type ContatoConfig,
   type SimuladorTipoBemConfig,
   type SiteConfig,
 };

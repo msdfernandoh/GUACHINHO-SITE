@@ -152,6 +152,43 @@ export async function POST(request: Request) {
       propostaId = prop?.id ?? null;
       if (propostaId) {
         await admin.from("simulacoes_grupos").update({ proposta_id: propostaId }).eq("id", sim.id);
+        const { enrichPropostaProjecaoFromSimulacao, generateAndStorePropostaPdf } = await import(
+          "@/lib/proposta/generate-pdf"
+        );
+        await enrichPropostaProjecaoFromSimulacao(propostaId);
+        const pdf = await generateAndStorePropostaPdf(propostaId, {
+          origem: "grupos",
+          pagina: "/grupos",
+        });
+        await registrarEvento({
+          tipo_evento: "lead_criado",
+          origem: "grupos",
+          pagina: "/grupos",
+          lead_id: leadId,
+        });
+        await registrarEvento({
+          tipo_evento: "simulacao_grupo_criada",
+          origem: "grupos",
+          entidade_tipo: "simulacao_grupo",
+          entidade_id: sim.id,
+          lead_id: leadId,
+          dados_evento: { acao: body.acao },
+        });
+        await registrarEvento({
+          tipo_evento: "clique_gerar_proposta",
+          origem: "grupos",
+          lead_id: leadId,
+          entidade_id: propostaId,
+        });
+        return NextResponse.json({
+          ok: true,
+          leadId,
+          simulacaoId: sim.id,
+          propostaId,
+          creditoLiquido: totais.creditoLiquido,
+          pdfDownloadUrl: pdf.signedUrl,
+          pdfPath: `/api/propostas/${propostaId}/pdf`,
+        });
       }
     }
 

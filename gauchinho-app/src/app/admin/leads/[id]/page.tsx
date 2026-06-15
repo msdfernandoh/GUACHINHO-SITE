@@ -174,13 +174,28 @@ export default async function LeadDetailPage({
       </div>
 
       <section>
-        <h2 className="mb-2 font-semibold">Propostas vinculadas</h2>
-        <ul className="space-y-1 text-sm">
+        <h2 className="mb-2 font-semibold">Propostas</h2>
+        <ul className="space-y-2 text-sm">
           {propostas.map((p) => (
-            <li key={p.id}>
-              <Link href={`/admin/propostas/${p.id}`} className="text-amber-600 hover:underline">
-                {formatDate(p.created_at)} — {p.status} — {formatCurrency(Number(p.valor_credito))}
+            <li key={p.id} className="flex flex-wrap items-center gap-2 rounded-lg border px-3 py-2 dark:border-zinc-800">
+              <Link href={`/admin/propostas/${p.id}`} className="font-medium text-amber-600 hover:underline">
+                {formatDate(p.created_at)} — {p.tipo_proposta ?? "Proposta"} — {p.status}
               </Link>
+              <span>{formatCurrency(Number(p.valor_credito))}</span>
+              {p.pdf_url ? (
+                <a
+                  href={`/api/propostas/${p.id}/pdf`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-amber-600 underline"
+                >
+                  Baixar PDF
+                </a>
+              ) : (
+                <Link href={`/admin/propostas/${p.id}`} className="text-zinc-500 underline">
+                  Gerar PDF
+                </Link>
+              )}
             </li>
           ))}
           {propostas.length === 0 ? <p className="text-zinc-500">Nenhuma proposta</p> : null}

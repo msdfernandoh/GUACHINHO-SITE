@@ -14,6 +14,20 @@ export type LeadsConfig = {
   srdPodeEditarGrupos?: boolean;
 };
 
+export type PropostasConfig = {
+  validadePadraoDias: number;
+  textoResumoExecutivo: string;
+  avisoLegalPadrao: string;
+};
+
+export type ContatoConfig = {
+  whatsappPrincipal: string;
+  telefone: string;
+  email: string;
+  endereco: string;
+  instagram: string;
+};
+
 export type SimuladorTipoBemConfig = {
   taxaAdministrativaPadrao: number;
   fundoReservaPadrao: number;
@@ -56,6 +70,20 @@ export const DEFAULT_LEADS: LeadsConfig = {
   permitirCriarLeadManual: true,
   permitirArquivarLead: true,
   srdPodeEditarGrupos: false,
+};
+
+export const DEFAULT_PROPOSTAS: PropostasConfig = {
+  validadePadraoDias: 7,
+  textoResumoExecutivo: "",
+  avisoLegalPadrao: "",
+};
+
+export const DEFAULT_CONTATO: ContatoConfig = {
+  whatsappPrincipal: "",
+  telefone: "",
+  email: "",
+  endereco: "",
+  instagram: "",
 };
 
 export const DEFAULT_SIMULADOR_IMOVEL: SimuladorTipoBemConfig = {

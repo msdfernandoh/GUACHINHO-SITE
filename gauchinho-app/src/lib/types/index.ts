@@ -22,6 +22,7 @@ export const PRODUTOS_FECHADOS = [
 
 export const PROPOSTA_STATUS = [
   "Gerada",
+  "PDF gerado",
   "Enviada",
   "Em negociação",
   "Aprovada",

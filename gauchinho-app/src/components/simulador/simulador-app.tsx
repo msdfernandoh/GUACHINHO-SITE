@@ -42,6 +42,7 @@ export function SimuladorApp({ configs }: { configs: SimuladorConfigs }) {
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [waLink, setWaLink] = useState<string | null>(null);
+  const [pdfLink, setPdfLink] = useState<string | null>(null);
 
   const bemCfg = tipoBem === "imovel" ? configs.imovel : configs.automovel;
   const finCfg = configs.financiamento;
@@ -194,9 +195,10 @@ export function SimuladorApp({ configs }: { configs: SimuladorConfigs }) {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Falha");
       setCapturaOpen(false);
+      setPdfLink((data.pdfPath as string) ?? (data.pdfDownloadUrl as string) ?? null);
       setMsg(
         capturaAcao === "proposta"
-          ? "Proposta básica criada. Nossa equipe dará sequência."
+          ? "Proposta básica criada com PDF premium."
           : "Dados registrados. Em breve um especialista entrará em contato.",
       );
       const wa = data.whatsappOrigem;
@@ -492,6 +494,11 @@ export function SimuladorApp({ configs }: { configs: SimuladorConfigs }) {
         ) : null}
 
         {msg ? <p className="mt-4 text-sm text-emerald-400">{msg}</p> : null}
+        {pdfLink ? (
+          <a href={pdfLink} target="_blank" rel="noreferrer" className="mt-2 inline-block text-sm text-amber-400 underline">
+            Baixar proposta PDF
+          </a>
+        ) : null}
         {waLink ? (
           <a href={waLink} target="_blank" rel="noreferrer" className="mt-2 inline-block text-sm text-amber-400 underline">
             Abrir WhatsApp

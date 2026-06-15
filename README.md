@@ -172,9 +172,13 @@ Podem ir no Git: `.env.example`, `gauchinho-app/.env.example`, `supabase/migrati
 | Auth redirect falha | `NEXT_PUBLIC_SITE_URL` + Redirect URLs no Supabase |
 | RLS / insert público | Service role só em `src/lib/supabase/admin.ts` e rotas servidor |
 
-## Storage (Fase 3+)
+## Storage — propostas PDF (Fase 3)
 
-Criar bucket `propostas-pdf` (privado) e políticas via dashboard ou migration futura.
+- Bucket Supabase: **`propostas-pdf`** (privado). Ver `supabase/migrations/002_storage_propostas_pdf.sql` e `docs/PROPOSTA-PDF-FASE-3.md`.
+- Geração: `@react-pdf/renderer` no servidor; download via URL assinada ou `/api/propostas/[id]/pdf`.
+- Testes: `docs/TESTES-FASE-3-PROPOSTAS.md`.
+
+## Storage (Fase 3+ — outros)
 
 ## Próximos passos (Fase 2+)
 
