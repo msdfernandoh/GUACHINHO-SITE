@@ -16,11 +16,11 @@ export async function PublicHeader({ showNav = true, className }: Props) {
   return (
     <header
       className={cn(
-        "sticky top-0 z-40 border-b border-zinc-800/80 bg-zinc-950/95 backdrop-blur-sm",
+        "sticky top-0 z-40 border-b border-zinc-800/60 bg-zinc-950/70 backdrop-blur-xl supports-[backdrop-filter]:bg-zinc-950/55",
         className,
       )}
     >
-      <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3 sm:py-4">
+      <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3 sm:px-6 sm:py-4">
         <PublicLogo
           href="/"
           logoUrl={site.logoUrl}

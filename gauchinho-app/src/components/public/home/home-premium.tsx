@@ -1,32 +1,32 @@
 import { loadHomePageData } from "@/lib/home/load-home-data";
-import { HomeHero } from "./home-hero";
-import { HomeDreamCards } from "./home-dream-cards";
-import { HomeQuickSimulator } from "./home-quick-simulator";
-import { HomeAbout } from "./home-about";
-import { HomeSolutions } from "./home-solutions";
-import { HomeGruposDestaque } from "./home-grupos-destaque";
-import { HomeCartasDestaque } from "./home-cartas-destaque";
-import { HomeImoveisDestaque } from "./home-imoveis-destaque";
-import { HomePlaceholders } from "./home-placeholders";
-import { HomeParceiros } from "./home-parceiros";
-import { HomeContato } from "./home-contato";
+import { HomeHeroPremium } from "./home-hero-premium";
+import { DreamCardsSection } from "./dream-cards-section";
+import { HomeVideoSection } from "./home-video-section";
+import { QuickSimulatorSection } from "./quick-simulator-section";
+import { AuthoritySection } from "./authority-section";
+import { SolutionsSection } from "./solutions-section";
+import { FeaturedGroupsSection } from "./featured-groups-section";
+import { FeaturedLettersSection } from "./featured-letters-section";
+import { FeaturedPropertiesSection } from "./featured-properties-section";
+import { PartnersSection } from "./partners-section";
+import { FinalCTASection } from "./final-cta-section";
 
 export async function HomePremium() {
   const data = await loadHomePageData();
 
   return (
-    <>
-      <HomeHero site={data.site} />
-      <HomeDreamCards />
-      <HomeQuickSimulator defaults={data.simuladorDefaults} />
-      <HomeAbout site={data.site} />
-      <HomeSolutions />
-      <HomeGruposDestaque items={data.gruposDestaque} />
-      <HomeCartasDestaque cartas={data.cartasDestaque} />
-      <HomeImoveisDestaque imoveis={data.imoveisDestaque} config={data.homeOportunidades} />
-      <HomePlaceholders />
-      <HomeParceiros imobiliarias={data.imobiliariasParceiras} />
-      <HomeContato contato={data.contato} />
-    </>
+    <main className="overflow-x-hidden">
+      <HomeHeroPremium site={data.site} />
+      <DreamCardsSection />
+      <HomeVideoSection />
+      <QuickSimulatorSection defaults={data.simuladorDefaults} />
+      <AuthoritySection />
+      <SolutionsSection />
+      <FeaturedGroupsSection items={data.gruposDestaque} />
+      <FeaturedLettersSection cartas={data.cartasDestaque} />
+      <FeaturedPropertiesSection imoveis={data.imoveisDestaque} config={data.homeOportunidades} />
+      <PartnersSection imobiliarias={data.imobiliariasParceiras} />
+      <FinalCTASection contato={data.contato} />
+    </main>
   );
 }

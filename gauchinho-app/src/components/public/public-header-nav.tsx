@@ -35,10 +35,10 @@ export function PublicHeaderNav() {
   return (
     <>
       <nav
-        className="hidden items-center gap-x-5 text-sm font-medium text-zinc-400 md:flex"
+        className="hidden items-center gap-x-6 text-sm font-medium text-zinc-400 md:flex"
         aria-label="Navegação principal"
       >
-        {LINKS.map((l) => (
+        {LINKS.filter((l) => l.href !== "/login").map((l) => (
           <Link
             key={l.href}
             href={l.href}
@@ -50,6 +50,12 @@ export function PublicHeaderNav() {
             {l.label}
           </Link>
         ))}
+        <Link
+          href="#contato"
+          className="rounded-full border border-amber-500/40 bg-amber-500/10 px-4 py-2 text-xs font-bold uppercase tracking-wide text-amber-300 transition hover:bg-amber-500/20 hover:text-amber-200"
+        >
+          Especialista
+        </Link>
       </nav>
       <button
         type="button"
@@ -90,6 +96,12 @@ export function PublicHeaderNav() {
                 {l.label}
               </Link>
             ))}
+            <Link
+              href="#contato"
+              className="mt-2 rounded-full bg-amber-500 px-4 py-3 text-center text-sm font-bold text-zinc-950"
+            >
+              Falar com especialista
+            </Link>
           </nav>
         </div>
       ) : null}

@@ -47,7 +47,7 @@ export function PublicLogo({
         </span>
       ) : (
         <>
-          <span className={cn(titleClass, "text-amber-400 group-hover:text-amber-300")}>
+          <span className={cn(titleClass, "bg-gradient-to-r from-amber-200 to-amber-500 bg-clip-text text-transparent group-hover:from-amber-100 group-hover:to-amber-400")}>
             {title.toUpperCase()}
           </span>
           {subtitle ? (
