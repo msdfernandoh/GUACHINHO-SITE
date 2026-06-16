@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Menu, X } from "lucide-react";
+import { Menu, X, LogIn } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 
 const LINKS = [
@@ -55,6 +55,13 @@ export function PublicHeaderNav() {
           className="rounded-full border border-amber-500/40 bg-amber-500/10 px-4 py-2 text-xs font-bold uppercase tracking-wide text-amber-300 transition hover:bg-amber-500/20 hover:text-amber-200"
         >
           Especialista
+        </Link>
+        <Link
+          href="/login"
+          className="inline-flex items-center gap-1.5 rounded-full border border-zinc-600/60 px-4 py-2 text-xs font-bold uppercase tracking-wide text-zinc-300 transition hover:border-amber-500/40 hover:text-amber-300"
+        >
+          <LogIn className="h-3.5 w-3.5" />
+          Login
         </Link>
       </nav>
       <button
