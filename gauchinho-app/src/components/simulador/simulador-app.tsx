@@ -93,6 +93,8 @@ export type SimuladorPrefill = {
   tipo?: TipoBem;
   origem?: string;
   imovelId?: string;
+  solucao?: Modo;
+  prazo?: number;
 };
 
 export function SimuladorApp({
@@ -169,6 +171,9 @@ export function SimuladorApp({
 
   useEffect(() => {
     if (!prefill) return;
+    if (prefill.solucao === "consorcio" || prefill.solucao === "financiamento") {
+      setModo(prefill.solucao);
+    }
     if (prefill.tipo === "imovel" || prefill.tipo === "automovel") {
       setTipoBem(prefill.tipo);
     }
@@ -176,8 +181,13 @@ export function SimuladorApp({
       setValorCredito(prefill.valor);
       setValorBem(prefill.valor);
     }
+    if (prefill.prazo != null && Number.isFinite(prefill.prazo) && prefill.prazo > 0) {
+      setPrazo(prefill.prazo);
+      setPrazoFin(prefill.prazo);
+    }
     if (prefill.origem === "oportunidade_imobiliaria") {
       setModo("consorcio");
+      setTipoBem("imovel");
     }
   }, [prefill]);
 

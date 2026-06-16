@@ -105,7 +105,7 @@ Abra `http://localhost:3000` · Admin: `http://localhost:3000/login` · Grupos p
 
 | Rota | Descrição |
 |------|-----------|
-| `/` | Home pública (tema escuro/dourado) |
+| `/` | Home premium (Fase 6) — hero, sonhos, simulador rápido, destaques |
 | `/grupos` | Simulador público de grupos/cotas |
 | `/oportunidades-imobiliarias` | Vitrine de imóveis e imobiliárias parceiras (Fase 5) |
 | `/simulador` | Consórcio + financiamento (Fase 2), comparação e captura de lead |
@@ -122,7 +122,7 @@ Abra `http://localhost:3000` · Admin: `http://localhost:3000/login` · Grupos p
 
 API pública: `POST /api/public/grupos/fluxo` · `POST /api/public/simulador/captura`
 
-Testes: `cd gauchinho-app && npm test` · Docs: `docs/RELATORIO-TESTES-FASE-1.md`, `docs/CALCULOS-GRUPOS.md`, `docs/TESTES-SIMULADORES-FASE-2.md`, `docs/TESTES-GRUPOS-TABELA-FUNCIONAL.md`
+Testes: `cd gauchinho-app && npm test` · Docs: `docs/RELATORIO-TESTES-FASE-1.md`, `docs/CALCULOS-GRUPOS.md`, `docs/TESTES-SIMULADORES-FASE-2.md`, `docs/TESTES-GRUPOS-TABELA-FUNCIONAL.md`, `docs/TESTES-FASE-6-HOME-PREMIUM.md`
 
 ### Migration obrigatória — grupos funcionais (004)
 
