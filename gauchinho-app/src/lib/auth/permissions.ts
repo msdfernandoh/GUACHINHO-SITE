@@ -67,6 +67,11 @@ export function canManageImobiliarias(perfil: Perfil | null | undefined): boolea
   return isMaster(perfil);
 }
 
+/** Conteúdo / prova social — master e SRD */
+export function canManageConteudo(perfil: Perfil | null | undefined): boolean {
+  return perfil === "master" || perfil === "srd";
+}
+
 export function canViewAllImoveis(perfil: Perfil | null | undefined): boolean {
   return isMaster(perfil) || perfil === "srd" || perfil === "visualizador";
 }

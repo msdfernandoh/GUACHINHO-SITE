@@ -9,6 +9,8 @@ import { SolutionsSection } from "./solutions-section";
 import { FeaturedGroupsSection } from "./featured-groups-section";
 import { FeaturedLettersSection } from "./featured-letters-section";
 import { FeaturedPropertiesSection } from "./featured-properties-section";
+import { FeaturedCasosSection } from "./featured-casos-section";
+import { FeaturedDicasSection } from "./featured-dicas-section";
 import { PartnersSection } from "./partners-section";
 import { FinalCTASection } from "./final-cta-section";
 
@@ -29,7 +31,12 @@ export async function HomePremium() {
       <FeaturedGroupsSection items={data.gruposDestaque} />
       <FeaturedLettersSection cartas={data.cartasDestaque} />
       <FeaturedPropertiesSection imoveis={data.imoveisDestaque} config={data.homeOportunidades} />
-      <PartnersSection imobiliarias={data.imobiliariasParceiras} />
+      <FeaturedCasosSection casos={data.casosDestaque} />
+      <FeaturedDicasSection dicas={data.dicasDestaque} />
+      <PartnersSection
+        imobiliarias={data.imobiliariasParceiras}
+        parceirosCms={data.parceirosDestaque}
+      />
       <FinalCTASection contato={data.contato} />
     </main>
   );

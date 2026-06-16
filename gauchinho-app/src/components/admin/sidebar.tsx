@@ -9,11 +9,9 @@ import {
   FileText,
   Layers,
   Settings,
-  Clock,
   Building2,
   Home,
-  Handshake,
-  Lightbulb,
+  BookOpen,
 } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 
@@ -25,6 +23,7 @@ const staffNav = [
   { href: "/admin/cartas-contempladas", label: "Cartas Contempladas", icon: FileText },
   { href: "/admin/imobiliarias", label: "Imobiliárias", icon: Building2, masterOnly: true },
   { href: "/admin/imoveis", label: "Imóveis", icon: Home },
+  { href: "/admin/conteudo", label: "Conteúdo", icon: BookOpen, conteudoOnly: true },
   { href: "/admin/usuarios", label: "Usuários", icon: UserCircle, masterOnly: true },
   { href: "/admin/configuracoes", label: "Configurações", icon: Settings, masterOnly: true },
 ];
@@ -34,16 +33,11 @@ const imobiliariaNav = [
   { href: "/admin/imoveis", label: "Meus imóveis", icon: Home },
 ];
 
-const futureNav = [
-  { label: "Parceiros", icon: Handshake },
-  { label: "Casos de Sucesso", icon: Lightbulb },
-  { label: "Dicas do Tchê", icon: Lightbulb },
-];
-
 export function AdminSidebar({ perfil }: { perfil: string }) {
   const pathname = usePathname();
   const isMaster = perfil === "master";
   const isImob = perfil === "imobiliaria";
+  const canConteudo = perfil === "master" || perfil === "srd";
   const nav = isImob ? imobiliariaNav : staffNav;
 
   return (
@@ -65,6 +59,7 @@ export function AdminSidebar({ perfil }: { perfil: string }) {
       <nav className="flex-1 space-y-1 p-3">
         {nav.map((item) => {
           if ("masterOnly" in item && item.masterOnly && !isMaster) return null;
+          if ("conteudoOnly" in item && item.conteudoOnly && !canConteudo) return null;
           const active =
             "exact" in item && item.exact
               ? pathname === item.href
@@ -86,25 +81,6 @@ export function AdminSidebar({ perfil }: { perfil: string }) {
             </Link>
           );
         })}
-        {!isImob && (
-          <div className="pt-4">
-            <p className="mb-2 flex items-center gap-1 px-3 text-xs font-semibold uppercase text-zinc-400">
-              <Clock className="h-3 w-3" /> Em breve
-            </p>
-            {futureNav.map((item) => {
-              const Icon = item.icon;
-              return (
-                <span
-                  key={item.label}
-                  className="flex cursor-not-allowed items-center gap-2 rounded-lg px-3 py-2 text-sm text-zinc-400"
-                >
-                  <Icon className="h-4 w-4" />
-                  {item.label}
-                </span>
-              );
-            })}
-          </div>
-        )}
       </nav>
     </aside>
   );

@@ -2,9 +2,15 @@ import { createAdminClient } from "@/lib/supabase/admin";
 
 const BUCKET_IMOB = "imobiliarias";
 const BUCKET_IMOVEIS = "imoveis";
+export type StorageBucketPublico =
+  | typeof BUCKET_IMOB
+  | typeof BUCKET_IMOVEIS
+  | "conteudo"
+  | "depoimentos"
+  | "parceiros";
 
 export async function uploadImagemPublica(
-  bucket: typeof BUCKET_IMOB | typeof BUCKET_IMOVEIS,
+  bucket: StorageBucketPublico,
   path: string,
   file: File,
 ): Promise<string> {

@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils/cn";
 const LINKS = [
   { href: "/", label: "Início" },
   { href: "/simulador", label: "Simulador" },
+  { href: "/calculadoras", label: "Calculadoras" },
   { href: "/grupos", label: "Grupos" },
   { href: "/cartas-contempladas", label: "Cartas" },
   { href: "/oportunidades-imobiliarias", label: "Imóveis" },

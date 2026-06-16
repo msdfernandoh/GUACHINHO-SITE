@@ -11,9 +11,30 @@ type ImobParceira = {
   cidade: string | null;
 };
 
-export function PartnersSection({ imobiliarias }: { imobiliarias: ImobParceira[] }) {
+type ParceiroCms = {
+  id: string;
+  nome: string;
+  logo_url: string | null;
+  tipo: string | null;
+};
+
+export function PartnersSection({
+  imobiliarias,
+  parceirosCms = [],
+}: {
+  imobiliarias: ImobParceira[];
+  parceirosCms?: ParceiroCms[];
+}) {
+  const cmsItems = parceirosCms.map((p) => ({
+    id: p.id,
+    nome: p.nome,
+    tag: p.tipo || "Parceiro",
+    logo_url: p.logo_url,
+  }));
+
   const all = [
     ...PARCEIROS_FIXOS.map((p) => ({ id: p.nome, nome: p.nome, tag: p.tag, logo_url: null as string | null })),
+    ...cmsItems,
     ...imobiliarias.map((im) => ({
       id: im.id,
       nome: im.nome,
@@ -29,6 +50,14 @@ export function PartnersSection({ imobiliarias }: { imobiliarias: ImobParceira[]
       subtitle="Administradoras, crédito, educação e imobiliárias em vitrine premium."
       className="border-y border-zinc-800/60"
     >
+      <div className="mb-8 flex justify-end">
+        <a
+          href="/parceiros"
+          className="text-sm font-semibold text-amber-400 hover:text-amber-300"
+        >
+          Ver todos os parceiros →
+        </a>
+      </div>
       <div className="flex flex-wrap justify-center gap-4 md:gap-5">
         {all.map((p, i) => (
           <HomeReveal key={p.id} delayMs={i * 40}>

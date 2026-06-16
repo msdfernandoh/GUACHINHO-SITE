@@ -17,6 +17,12 @@ import type { ImovelPublic } from "@/lib/imoveis/types";
 import type { PublicGrupoAggregate } from "@/lib/types";
 import { getConfigJsonPublic, getSimuladorConfigsPublic } from "@/server/config";
 import { safeFetch } from "./safe-fetch";
+import {
+  fetchPublicCasosSucesso,
+  fetchPublicDicas,
+  fetchPublicParceiros,
+} from "@/lib/conteudo/fetch-public";
+import type { CasoSucesso, DicaTche, ParceiroInstitucional } from "@/lib/conteudo/types";
 
 export type HomeGrupoDestaque = {
   grupo: PublicGrupoAggregate["grupo"];
@@ -38,6 +44,9 @@ export type HomePageData = {
   cartasDestaque: CartaContemplada[];
   imoveisDestaque: ImovelPublic[];
   imobiliariasParceiras: Awaited<ReturnType<typeof fetchPublicImobiliariasParceiras>>;
+  casosDestaque: CasoSucesso[];
+  dicasDestaque: DicaTche[];
+  parceirosDestaque: ParceiroInstitucional[];
 };
 
 const GRUPOS_HOME_LIMIT = 6;
@@ -92,6 +101,29 @@ export async function loadHomePageData(): Promise<HomePageData> {
     [] as Awaited<ReturnType<typeof fetchPublicImobiliariasParceiras>>,
   );
 
+  const casosDestaque = await safeFetch(
+    () => fetchPublicCasosSucesso({ destaque: true, limit: 3 }),
+    [] as CasoSucesso[],
+  );
+  let casosHome = casosDestaque;
+  if (!casosHome.length) {
+    casosHome = await safeFetch(() => fetchPublicCasosSucesso({ limit: 3 }), [] as CasoSucesso[]);
+  }
+
+  const dicasDestaque = await safeFetch(
+    () => fetchPublicDicas({ destaque: true, limit: 3 }),
+    [] as DicaTche[],
+  );
+  let dicasHome = dicasDestaque;
+  if (!dicasHome.length) {
+    dicasHome = await safeFetch(() => fetchPublicDicas({ limit: 3 }), [] as DicaTche[]);
+  }
+
+  const parceirosDestaque = await safeFetch(
+    () => fetchPublicParceiros({ destaque: true, limit: 12 }),
+    [] as ParceiroInstitucional[],
+  );
+
   return {
     site,
     contato,
@@ -107,5 +139,8 @@ export async function loadHomePageData(): Promise<HomePageData> {
     cartasDestaque,
     imoveisDestaque,
     imobiliariasParceiras,
+    casosDestaque: casosHome,
+    dicasDestaque: dicasHome,
+    parceirosDestaque,
   };
 }
