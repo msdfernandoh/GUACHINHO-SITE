@@ -88,7 +88,20 @@ function primeiraOpcaoId(cfg: SimuladorTipoBemConfig) {
   return opcoesParcelaAtivas(cfg)[0]?.id ?? "integral";
 }
 
-export function SimuladorApp({ configs }: { configs: SimuladorConfigs }) {
+export type SimuladorPrefill = {
+  valor?: number;
+  tipo?: TipoBem;
+  origem?: string;
+  imovelId?: string;
+};
+
+export function SimuladorApp({
+  configs,
+  prefill,
+}: {
+  configs: SimuladorConfigs;
+  prefill?: SimuladorPrefill;
+}) {
   const resultRef = useRef<HTMLDivElement>(null);
 
   const [modo, setModo] = useState<Modo>("consorcio");
@@ -153,6 +166,20 @@ export function SimuladorApp({ configs }: { configs: SimuladorConfigs }) {
       setOpcaoParcelaId(opcoesParcela[0].id);
     }
   }, [opcoesParcela, opcaoParcelaId]);
+
+  useEffect(() => {
+    if (!prefill) return;
+    if (prefill.tipo === "imovel" || prefill.tipo === "automovel") {
+      setTipoBem(prefill.tipo);
+    }
+    if (prefill.valor != null && Number.isFinite(prefill.valor) && prefill.valor > 0) {
+      setValorCredito(prefill.valor);
+      setValorBem(prefill.valor);
+    }
+    if (prefill.origem === "oportunidade_imobiliaria") {
+      setModo("consorcio");
+    }
+  }, [prefill]);
 
   const prazosConsorcio = useMemo(() => {
     const list = bemCfg.prazosDisponiveis?.length
@@ -384,8 +411,8 @@ export function SimuladorApp({ configs }: { configs: SimuladorConfigs }) {
     (modo === "financiamento" && finCfg.mostrarComparacaoConsorcio);
 
   const avisoLance =
-    lanceTotal > contemplacao.saldoDevedorInicial
-      ? "Lance total superior ao saldo devedor inicial."
+    lanceTotal > contemplacao.saldoDevedorEstimado
+      ? "Lance total superior ao saldo devedor estimado."
       : null;
 
   const estrategiaLabel = opcaoSelecionada
@@ -402,7 +429,7 @@ export function SimuladorApp({ configs }: { configs: SimuladorConfigs }) {
           <Button
             type="button"
             variant="outline"
-            className="min-h-11 flex-1 border-slate-600"
+            className="min-h-11 flex-1 border-slate-600 bg-slate-900 text-slate-100 hover:bg-slate-800"
             onClick={() => openCaptura("especialista")}
           >
             Especialista
@@ -551,7 +578,7 @@ export function SimuladorApp({ configs }: { configs: SimuladorConfigs }) {
             <Button
               type="button"
               variant="outline"
-              className="min-h-12 flex-1 border-slate-600 text-base sm:min-w-[12rem]"
+              className="min-h-12 flex-1 border-slate-600 bg-slate-900 text-slate-100 hover:bg-slate-800 sm:min-w-[12rem]"
               onClick={() => openCaptura("analise")}
             >
               Ver análise completa
@@ -559,7 +586,7 @@ export function SimuladorApp({ configs }: { configs: SimuladorConfigs }) {
             <Button
               type="button"
               variant="outline"
-              className="min-h-12 flex-1 border-slate-600 text-base sm:min-w-[12rem]"
+              className="min-h-12 flex-1 border-slate-600 bg-slate-900 text-slate-100 hover:bg-slate-800 sm:min-w-[12rem]"
               onClick={() => openCaptura("especialista")}
             >
               Falar com especialista

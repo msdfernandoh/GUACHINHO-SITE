@@ -160,14 +160,16 @@ export async function buildPropostaPdfData(
     detalhesLinhas.push(
       { label: "Valor do crédito", value: fmtMoney(num(p.valor_credito)) },
       { label: "Prazo (meses)", value: String(num(p.prazo) ?? "—") },
-      { label: "Parcela inicial estimada", value: fmtMoney(num(p.valor_parcela) ?? num(res.primeiraParcela)) },
+      { label: "Parcela inicial estimada", value: fmtMoney(num(p.valor_parcela) ?? num(res.parcelaEstimada) ?? num(res.primeiraParcela)) },
+      { label: "Saldo devedor estimado", value: fmtMoney(num(res.saldoDevedorEstimado) ?? num(res.valorTotalEstimado)) },
+      { label: "Total pago em 1 ano (est.)", value: fmtMoney((num(res.parcelaEstimada) ?? num(res.primeiraParcela) ?? 0) * 12) },
       { label: "Lance próprio", value: fmtMoney(num(p.entrada) ?? num(res.entrada)) },
       { label: "Lance embutido", value: fmtMoney(num(res.lanceEmbutido)) },
       { label: "Lance total", value: fmtMoney(num(res.lanceTotal)) },
-      { label: "Saldo devedor inicial", value: fmtMoney(num(res.saldoDevedorInicial)) },
-      { label: "Saldo devedor final", value: fmtMoney(num(res.saldoDevedorFinal)) },
-      { label: "Parcela pós-contemplação", value: fmtMoney(num(res.parcelaPosContemplacao)) },
-      { label: "Parcelas restantes", value: String(num(res.parcelasRestantes) ?? "—") },
+      {
+        label: "Parcela pós-contemplação (avanc.)",
+        value: fmtMoney(num(res.parcelaPosContemplacao)),
+      },
       {
         label: "Custo adm. efetivo mensal",
         value: res.custoAdmEfetivoMensalPercentual != null
@@ -227,9 +229,9 @@ export async function buildPropostaPdfData(
   if (overrides?.validade_data) validadeTexto = fmtDateBr(overrides.validade_data);
 
   const valorTotal =
-    num((comparativoRaw as Record<string, unknown>)?.saldoDevedorInicial) ??
-    comparativo?.consorcioTotal ??
+    num((comparativoRaw?.consorcio as Record<string, unknown>)?.saldoDevedorEstimado) ??
     num((comparativoRaw?.consorcio as Record<string, unknown>)?.valorTotalEstimado) ??
+    comparativo?.consorcioTotal ??
     null;
 
   return {

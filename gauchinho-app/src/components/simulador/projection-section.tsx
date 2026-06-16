@@ -44,7 +44,7 @@ export function ProjectionSection({
       <Button
         type="button"
         variant="outline"
-        className="mt-4 w-full border-slate-600 sm:w-auto"
+        className="mt-4 w-full border-slate-600 bg-slate-900 text-slate-100 hover:bg-slate-800 sm:w-auto"
         onClick={onToggleTabela}
       >
         {tabelaAberta ? (

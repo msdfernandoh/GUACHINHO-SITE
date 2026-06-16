@@ -58,6 +58,9 @@ export type ResultadoConsorcio = {
 
   valorTotalEstimado: number;
 
+  /** Crédito + taxa administrativa + fundo de reserva (total estimado do plano). */
+  saldoDevedorEstimado: number;
+
   entrada: number;
 
   lanceEmbutido: number;
@@ -362,21 +365,17 @@ export function calcularParcelaConsorcio(entrada: EntradaConsorcio): ResultadoCo
 
   const lanceEmbutido = Math.max(0, entrada.lanceEmbutido ?? 0);
 
-  const parcelaBase = calcularParcelaBaseConsorcio(
+  const saldoDevedorEstimado = credito + taxaAdministrativaTotal + fundoReservaTotal;
 
-    credito,
+  const baseAmortizavel = Math.max(
 
-    prazo,
+    saldoDevedorEstimado - entradaValor - lanceEmbutido,
 
-    taxaAdministrativaTotal,
-
-    fundoReservaTotal,
-
-    entradaValor,
-
-    lanceEmbutido,
+    0,
 
   );
+
+  const parcelaBase = baseAmortizavel / prazo;
 
   const parcelaIntegral = calcularParcelaComSeguro(parcelaBase, seguroMensal);
 
@@ -384,17 +383,7 @@ export function calcularParcelaConsorcio(entrada: EntradaConsorcio): ResultadoCo
 
   const parcelaEstimada = calcularParcelaReduzida(parcelaIntegral, percentualParcelaInicial);
 
-  const valorTotalEstimado = calcularValorTotalConsorcio(
-
-    parcelaEstimada,
-
-    prazo,
-
-    entradaValor,
-
-    lanceEmbutido,
-
-  );
+  const valorTotalEstimado = saldoDevedorEstimado;
 
 
 
@@ -419,6 +408,8 @@ export function calcularParcelaConsorcio(entrada: EntradaConsorcio): ResultadoCo
     seguroTotalEstimado,
 
     valorTotalEstimado,
+
+    saldoDevedorEstimado,
 
     entrada: entradaValor,
 
@@ -446,17 +437,7 @@ export function calcularContemplacaoPrimeiroMes(
 
   const primeiraParcela = base.parcelaEstimada;
 
-  const saldoDevedorInicial = calcularSaldoDevedorInicial(
-
-    base.parcelaIntegral,
-
-    base.prazoMeses,
-
-    lanceProprio,
-
-    lanceEmbutido,
-
-  );
+  const saldoDevedorInicial = base.saldoDevedorEstimado;
 
   const { saldo: saldoDevedorFinal, zerado: saldoDevedorZerado } = calcularSaldoDevedorFinal(
 
@@ -642,9 +623,9 @@ function parcelaNoMesSimulacao(
 
 export function calcularProjecaoConsorcio(entrada: EntradaConsorcio): LinhaProjecaoAnual[] {
 
-  const contemplacao = calcularContemplacaoPrimeiroMes(entrada);
+  const base = calcularParcelaConsorcio(entrada);
 
-  const { primeiraParcela, parcelaPosContemplacao, prazoMeses: prazo } = contemplacao;
+  const parcelaInicial = base.parcelaEstimada;
 
   const reajuste = entrada.reajusteAnualCredito ?? 0;
 
@@ -653,6 +634,8 @@ export function calcularProjecaoConsorcio(entrada: EntradaConsorcio): LinhaProje
   const lanceEmbutido = entrada.lanceEmbutido ?? 0;
 
   const creditoInicial = entrada.valorCredito;
+
+  const prazo = base.prazoMeses;
 
   const anosTotais = Math.ceil(prazo / 12);
 
@@ -672,39 +655,13 @@ export function calcularProjecaoConsorcio(entrada: EntradaConsorcio): LinhaProje
 
 
 
-    let pagoAno = 0;
+    const parcelaNoPeriodo = calcularParcelaNoAno(parcelaInicial, correcaoParcela, ano);
 
-    for (let m = 0; m < mesesEsteAno; m++) {
-
-      const mesGlobal = mesesAcumulados + m + 1;
-
-      pagoAno += parcelaNoMesSimulacao(
-
-        mesGlobal,
-
-        primeiraParcela,
-
-        parcelaPosContemplacao,
-
-        correcaoParcela,
-
-      );
-
-    }
+    const pagoAno = parcelaNoPeriodo * mesesEsteAno;
 
     mesesAcumulados += mesesEsteAno;
 
     totalPagoRunning += pagoAno;
-
-
-
-    const parcelaNoPeriodo =
-
-      ano === 1
-
-        ? parcelaPosContemplacao
-
-        : calcularParcelaNoAno(parcelaPosContemplacao, correcaoParcela, ano);
 
 
 

@@ -4,7 +4,6 @@ import {
   calcularParcelaConsorcio,
   calcularParcelaReduzida,
   calcularProjecaoConsorcio,
-  calcularTotalPagoPrimeiroAnoAposContemplacao,
 } from "./consorcio";
 import { simularFinanciamento } from "./financiamento";
 import { compararConsorcioFinanciamento } from "./comparativo";
@@ -24,9 +23,10 @@ describe("simulador consórcio — caso Fase 2", () => {
     });
     expect(r.taxaAdministrativaTotal).toBe(20_000);
     expect(r.fundoReservaTotal).toBe(2_000);
+    expect(r.saldoDevedorEstimado).toBe(122_000);
     expect(r.parcelaIntegral).toBeCloseTo(2033.33, 1);
     expect(r.parcelaEstimada).toBeCloseTo(2033.33, 1);
-    expect(r.valorTotalEstimado).toBeCloseTo(122_000, 0);
+    expect(r.valorTotalEstimado).toBe(122_000);
   });
 
   it("parcela reduzida aplica percentual sobre a integral", () => {
@@ -69,6 +69,7 @@ describe("comparativo e projeção", () => {
       },
     );
     expect(c.diferencaParcela).toBeDefined();
+    expect(c.consorcio.valorTotalEstimado).toBe(122_000);
     expect(c.financiamento.parcelaEstimada).toBeGreaterThan(c.consorcio.parcelaEstimada);
   });
 
@@ -78,71 +79,91 @@ describe("comparativo e projeção", () => {
       prazoMeses: 220,
       taxaAdministrativaPercentual: 22,
       fundoReservaPercentual: 2,
-      seguroPrestamistaPercentual: 0.038,
+      seguroPrestamistaPercentual: 0,
       reajusteAnualCredito: 8,
       correcaoAnualParcela: 8,
       percentualParcelaInicial: 100,
     });
     expect(linhas.length).toBeGreaterThanOrEqual(18);
     expect(linhas[0].ano).toBe(1);
-    expect(linhas.find((l) => l.ano === 3)).toBeDefined();
   });
 
-  it("caso 1 — projeção ano 1 com contemplação no 1º mês", () => {
+  it("caso manual — 1M, 22% adm, 2% fundo, 220m, 60% parcela, 6% reajuste", () => {
     const entrada = {
-      valorCredito: 500_000,
+      valorCredito: 1_000_000,
       prazoMeses: 220,
       taxaAdministrativaPercentual: 22,
       fundoReservaPercentual: 2,
-      seguroPrestamistaPercentual: 0.038,
+      seguroPrestamistaPercentual: 0,
       percentualParcelaInicial: 60,
       reajusteAnualCredito: 6,
       correcaoAnualParcela: 0,
     };
-    const c = calcularContemplacaoPrimeiroMes(entrada);
+    const base = calcularParcelaConsorcio(entrada);
+    expect(base.taxaAdministrativaTotal).toBe(220_000);
+    expect(base.fundoReservaTotal).toBe(20_000);
+    expect(base.saldoDevedorEstimado).toBe(1_240_000);
+    expect(base.parcelaIntegral).toBeCloseTo(5636.36, 1);
+    expect(base.parcelaEstimada).toBeCloseTo(3381.82, 1);
+
     const [y1] = calcularProjecaoConsorcio(entrada);
-    const totalAno1 = calcularTotalPagoPrimeiroAnoAposContemplacao(
-      c.primeiraParcela,
-      c.parcelaPosContemplacao,
-    );
-    expect(y1.totalPagoAcumulado).toBeCloseTo(totalAno1, 0);
-    expect(y1.creditoEstimadoReajustado).toBeCloseTo(530_000, 0);
-    expect(y1.ganhoPatrimonialEstimado).toBeCloseTo(30_000, 0);
+    expect(y1.totalPagoAcumulado).toBeCloseTo(base.parcelaEstimada * 12, 0);
+    expect(y1.parcelaEstimadaNoPeriodo).toBeCloseTo(base.parcelaEstimada, 1);
+    expect(y1.creditoEstimadoReajustado).toBeCloseTo(1_060_000, 0);
+    expect(y1.ganhoPatrimonialEstimado).toBeCloseTo(60_000, 0);
+
+    const c = calcularContemplacaoPrimeiroMes(entrada);
+    expect(c.custoAdmEfetivoMensalPercentual).toBeCloseTo(0.1, 2);
+    expect(c.custoAdmEfetivoAnualPercentual).toBeCloseTo(1.2, 2);
   });
 
-  it("caso 2 — correção anual sobre parcela pós-contemplação", () => {
+  it("projeção ano 1 usa parcela escolhida, não pós-contemplação", () => {
     const entrada = {
       valorCredito: 500_000,
       prazoMeses: 220,
       taxaAdministrativaPercentual: 22,
       fundoReservaPercentual: 2,
-      seguroPrestamistaPercentual: 0.038,
+      seguroPrestamistaPercentual: 0,
+      percentualParcelaInicial: 60,
+      reajusteAnualCredito: 6,
+      correcaoAnualParcela: 0,
+    };
+    const base = calcularParcelaConsorcio(entrada);
+    const [y1] = calcularProjecaoConsorcio(entrada);
+    expect(y1.totalPagoAcumulado).toBeCloseTo(base.parcelaEstimada * 12, 0);
+    expect(y1.ganhoPatrimonialEstimado).toBeCloseTo(30_000, 0);
+  });
+
+  it("correção anual sobre parcela escolhida a partir do ano 2", () => {
+    const entrada = {
+      valorCredito: 500_000,
+      prazoMeses: 220,
+      taxaAdministrativaPercentual: 22,
+      fundoReservaPercentual: 2,
+      seguroPrestamistaPercentual: 0,
       percentualParcelaInicial: 60,
       reajusteAnualCredito: 6,
       correcaoAnualParcela: 8,
     };
-    const c = calcularContemplacaoPrimeiroMes(entrada);
+    const base = calcularParcelaConsorcio(entrada);
     const linhas = calcularProjecaoConsorcio(entrada);
     const y1 = linhas[0];
     const y2 = linhas[1];
-    expect(y1.totalPagoAcumulado).toBeCloseTo(
-      calcularTotalPagoPrimeiroAnoAposContemplacao(c.primeiraParcela, c.parcelaPosContemplacao),
-      0,
-    );
-    expect(y2.parcelaEstimadaNoPeriodo).toBeCloseTo(c.parcelaPosContemplacao * 1.08, 1);
+    expect(y1.parcelaEstimadaNoPeriodo).toBeCloseTo(base.parcelaEstimada, 1);
+    expect(y2.parcelaEstimadaNoPeriodo).toBeCloseTo(base.parcelaEstimada * 1.08, 1);
     expect(y2.totalPagoAcumulado).toBeCloseTo(
       y1.totalPagoAcumulado + y2.parcelaEstimadaNoPeriodo * 12,
       0,
     );
   });
 
-  it("contemplação no 1º mês — lances e custo adm. efetivo", () => {
+  it("contemplação avançada — lances e parcela pós-contemplação", () => {
     const entrada = {
       valorCredito: 500_000,
       prazoMeses: 220,
       taxaAdministrativaPercentual: 22,
       fundoReservaPercentual: 2,
-      seguroPrestamistaPercentual: 0.038,
+      seguroPrestamistaPercentual: 0,
       percentualParcelaInicial: 50,
       entrada: 25_000,
       lanceEmbutido: 50_000,
@@ -152,18 +173,9 @@ describe("comparativo e projeção", () => {
     const c = calcularContemplacaoPrimeiroMes(entrada);
     expect(c.lanceTotal).toBe(75_000);
     expect(c.parcelasRestantes).toBe(219);
-    expect(c.custoAdmEfetivoMensalPercentual).toBeCloseTo(0.1, 2);
-    expect(c.custoAdmEfetivoAnualPercentual).toBeCloseTo(1.2, 2);
-    expect(c.saldoDevedorFinal).toBeCloseTo(
-      c.saldoDevedorInicial - c.primeiraParcela - 25_000 - 50_000,
-      0,
-    );
+    expect(c.saldoDevedorInicial).toBe(c.saldoDevedorEstimado);
     expect(c.parcelaPosContemplacao).toBeCloseTo(c.saldoDevedorFinal / 219, 0);
     const [y1] = calcularProjecaoConsorcio(entrada);
-    expect(y1.totalPagoAcumulado).toBeCloseTo(
-      c.primeiraParcela + c.parcelaPosContemplacao * 11,
-      0,
-    );
-    expect(y1.ganhoPatrimonialEstimado).toBeCloseTo(30_000, 0);
+    expect(y1.totalPagoAcumulado).toBeCloseTo(c.parcelaEstimada * 12, 0);
   });
 });
