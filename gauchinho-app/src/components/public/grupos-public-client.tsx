@@ -302,16 +302,25 @@ export function GruposPublicClient({
               <p className="text-xl font-semibold">{formatCurrency(totais.primeiraParcela)}</p>
             </div>
             <div>
-              <p className="text-xs uppercase text-zinc-500">Lance total</p>
-              <p className="text-lg font-semibold">{formatCurrency(totais.lanceTotal)}</p>
-              <p className="text-[10px] text-zinc-500">
-                Emb. {formatCurrency(totais.lanceEmbutido)} · Próprio{" "}
-                {formatCurrency(totais.recursoProprio)}
-              </p>
+              <p className="text-xs uppercase text-zinc-500">Lance embutido</p>
+              <p className="text-lg font-semibold">{formatCurrency(totais.lanceEmbutido)}</p>
             </div>
             <div>
               <p className="text-xs uppercase text-zinc-500">Saldo devedor</p>
-              <p className="text-lg font-semibold">{formatCurrency(totais.saldoDevedorFinal)}</p>
+              <p className="text-lg font-semibold">{formatCurrency(totais.saldoDevedorInicial)}</p>
+            </div>
+            <div>
+              <p className="text-xs uppercase text-zinc-500">Pós-contemplação (soma)</p>
+              <p className="text-lg font-semibold text-emerald-300">
+                {formatCurrency(totais.parcelaPosContemplacaoTotal)}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs uppercase text-zinc-500">Lance total</p>
+              <p className="text-lg font-semibold">{formatCurrency(totais.lanceTotal)}</p>
+              <p className="text-[10px] text-zinc-500">
+                Próprio {formatCurrency(totais.recursoProprio)}
+              </p>
             </div>
             {totais.seguroTotal > 0 ? (
               <div>
@@ -333,7 +342,7 @@ export function GruposPublicClient({
             <Button
               type="button"
               variant="outline"
-              className="border-zinc-600 text-zinc-100"
+              className="border-zinc-600 bg-slate-900 text-slate-100 hover:bg-slate-800 disabled:border-zinc-700 disabled:bg-zinc-800 disabled:text-zinc-500"
               disabled={!hasSelection}
               onClick={() => openModal("proposta")}
             >
@@ -342,7 +351,7 @@ export function GruposPublicClient({
             <Button
               type="button"
               variant="outline"
-              className="border-zinc-600 text-zinc-100"
+              className="border-zinc-600 bg-slate-900 text-slate-100 hover:bg-slate-800 disabled:border-zinc-700 disabled:bg-zinc-800 disabled:text-zinc-500"
               disabled={!hasSelection}
               onClick={() => openModal("especialista")}
             >

@@ -46,6 +46,7 @@ Faça isto **antes** de testar login e admin em produção:
    - `supabase/migrations/002_storage_propostas_pdf.sql` (PDF)
    - `supabase/migrations/003_cartas_contempladas.sql` (se usar cartas)
    - **`supabase/migrations/004_grupos_modalidades_lance.sql`** — **obrigatória para `/grupos` funcional** (ver abaixo)
+   - **`supabase/migrations/005_oportunidades_imobiliarias.sql`** — imobiliárias, imóveis, Storage `imobiliarias`/`imoveis`, config home oportunidades
    - **CLI (raiz do repo):** `supabase link --project-ref SEU_PROJECT_REF` → `supabase db push`
    - **Ou** SQL Editor → colar cada arquivo → Run.
 4. Rodar `supabase/seed.sql` (SQL Editor ou `supabase db execute -f supabase/seed.sql`).

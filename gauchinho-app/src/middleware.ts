@@ -45,7 +45,27 @@ export async function middleware(request: NextRequest) {
   }
 
   if (path === "/login" && user) {
-    return NextResponse.redirect(new URL("/admin", request.url));
+    const { data: perfilRow } = await supabase
+      .from("usuarios")
+      .select("perfil")
+      .eq("auth_user_id", user.id)
+      .eq("ativo", true)
+      .maybeSingle();
+    const dest =
+      perfilRow?.perfil === "imobiliaria" ? "/admin/minha-imobiliaria" : "/admin";
+    return NextResponse.redirect(new URL(dest, request.url));
+  }
+
+  if (path.startsWith("/admin") && user) {
+    const { data: perfilRow } = await supabase
+      .from("usuarios")
+      .select("perfil")
+      .eq("auth_user_id", user.id)
+      .eq("ativo", true)
+      .maybeSingle();
+    if (perfilRow?.perfil === "imobiliaria" && path === "/admin") {
+      return NextResponse.redirect(new URL("/admin/minha-imobiliaria", request.url));
+    }
   }
 
   return response;

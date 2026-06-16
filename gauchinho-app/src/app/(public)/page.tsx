@@ -5,8 +5,7 @@ export default async function HomePage() {
   const site = await getConfigJsonPublic("site", DEFAULT_SITE);
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100">
-      <div className="mx-auto flex max-w-4xl flex-col items-center px-6 py-24 text-center">
+    <div className="mx-auto flex max-w-4xl flex-col items-center px-6 py-16 text-center">
         <p className="text-sm font-semibold uppercase tracking-[0.2em] text-amber-500">
           Escritório de Soluções Financeiras
         </p>
@@ -49,7 +48,6 @@ export default async function HomePage() {
             Área admin
           </Link>
         </div>
-      </div>
     </div>
   );
 }

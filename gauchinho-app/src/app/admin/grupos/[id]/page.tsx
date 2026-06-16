@@ -9,17 +9,20 @@ import {
   updateGrupoAction,
 } from "../actions";
 import { GrupoFormFields } from "@/components/admin/grupo-form-fields";
+import { GrupoCotasAdmin } from "@/components/admin/grupo-cotas-admin";
 import { getUsuarioNegocio } from "@/lib/auth/get-usuario";
 import { canDeleteRecords } from "@/lib/auth/permissions";
 import { Button } from "@/components/ui/form-primitives";
-import { formatCurrency } from "@/lib/utils/format";
 
 export default async function GrupoEditPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ saved?: string }>;
 }) {
   const { id } = await params;
+  const sp = await searchParams;
   const usuario = await getUsuarioNegocio();
   let data;
   try {
@@ -39,21 +42,26 @@ export default async function GrupoEditPage({
       <Link href="/admin/grupos" className="text-sm text-amber-600 hover:underline">
         ← Grupos
       </Link>
+      {sp.saved === "1" ? (
+        <p className="rounded-lg border border-emerald-600/40 bg-emerald-500/10 px-4 py-2 text-sm text-emerald-700 dark:text-emerald-300">
+          Grupo salvo com sucesso.
+        </p>
+      ) : null}
       <div className="flex flex-wrap gap-2">
         <form action={dup}>
-          <Button type="submit" variant="outline" size="sm">
+          <Button type="submit" variant="outline" size="sm" className="border-zinc-600 bg-zinc-900 text-zinc-100">
             Duplicar
           </Button>
         </form>
         {data.grupo.ativo ? (
           <form action={toggleOff}>
-            <Button type="submit" variant="outline" size="sm">
+            <Button type="submit" variant="outline" size="sm" className="border-zinc-600 bg-zinc-900 text-zinc-100">
               Inativar
             </Button>
           </form>
         ) : (
           <form action={toggleOn}>
-            <Button type="submit" variant="outline" size="sm">
+            <Button type="submit" variant="outline" size="sm" className="border-zinc-600 bg-zinc-900 text-zinc-100">
               Reativar
             </Button>
           </form>
@@ -73,17 +81,11 @@ export default async function GrupoEditPage({
           modalidadesInitial={modalidades}
         />
       </form>
-      <section className="rounded-xl border bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
-        <h2 className="mb-3 font-semibold">Cotas cadastradas</h2>
-        <ul className="space-y-1 text-sm">
-          {data.cotas.map((c) => (
-            <li key={c.id}>
-              {formatCurrency(Number(c.valor_credito))} — {c.status}
-              {c.valor_parcela ? ` · parcela ${formatCurrency(Number(c.valor_parcela))}` : ""}
-            </li>
-          ))}
-        </ul>
-      </section>
+      <GrupoCotasAdmin
+        grupoId={id}
+        cotas={data.cotas}
+        canHardDelete={canDeleteRecords(usuario?.perfil)}
+      />
     </div>
   );
 }

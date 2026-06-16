@@ -34,12 +34,37 @@ Cobre:
 - [ ] **Gerar simulação** e **Gerar proposta** com seleção ativa
 - [ ] Mobile: cards expansíveis com os mesmos campos
 
-## Admin `/admin/grupos`
+## Validação contra Excel
 
-- [ ] Várias cotas via bulk paste
-- [ ] Seção **Modalidades de lance** (criar, editar, inativar)
-- [ ] Seguro aceita `0,0004` (vírgula ou ponto)
-- [ ] Salvar e reabrir grupo persiste modalidades e seguro
+Caso de referência (grupos **1513** e **1533**, 1 cota cada, modalidade **40%** embutido sobre saldo devedor cadastrado):
+
+| Campo | Entrada / fixture | Esperado (planilha) |
+| --- | --- | --- |
+| Grupo 1513 | Crédito R$ 1.050.000; saldo cadastrado R$ 1.037.000; taxa adm 22%; fundo 2% | — |
+| Grupo 1533 | Crédito R$ 1.000.000; saldo cadastrado R$ 1.040.000; taxa adm 22%; fundo 2% | — |
+| Soma das cotas | 1 + 1 cotas | R$ 2.050.000,00 |
+| Lance embutido | 40% × (1.037.000 + 1.040.000) | R$ 830.800,00 |
+| Crédito líquido | soma cotas − lance embutido (recurso próprio não reduz crédito) | R$ 1.219.200,00 |
+
+**Resultado do sistema:** coberto por `simulacao-linha.test.ts` → `caso Excel — grupos 1513 e 1533` (deve passar em `npm test -- src/lib/grupos`).
+
+**Regras documentadas no código:**
+
+- `credito_liquido = soma_cotas - lance_embutido`
+- `lance_embutido = saldo_devedor × % modalidade` (saldo prioriza valor cadastrado na cota × quantidade)
+- `seguro_mensal = saldo_devedor × fator` (fator decimal `0,0004` sem dividir por 100)
+- `saldo_devedor` sem cadastro: `soma_cotas + taxa_adm% + fundo_reserva%` sobre a soma
+
+**Observações:** primeira parcela e saldo devedor total na planilha dependem dos valores cadastrados por cota (`valor_parcela`, `saldo_devedor`); use os mesmos no admin para bater linha a linha.
+
+**Pendências:** conferência manual da parcela pós-contemplação e do PDF após alterar dados reais no Supabase.
+
+## Admin `/admin/grupos` (salvar e cotas)
+
+- [ ] **Salvar grupo** persiste dados principais, financeiro, modalidades e flags **sem** exigir nova cota no bulk
+- [ ] **Cotas cadastradas:** editar, inativar/reativar, excluir (Master) com confirmação
+- [ ] `/grupos` lista apenas cotas **ativas**
+
 
 ## Banco
 

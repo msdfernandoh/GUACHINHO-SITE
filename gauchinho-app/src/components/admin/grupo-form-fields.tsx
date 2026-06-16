@@ -41,7 +41,6 @@ export function GrupoFormFields({
             <Input name="status" defaultValue={String(g.status ?? "Disponível")} />
           </div>
           <div className="flex items-center gap-2 pt-6">
-            <input type="hidden" name="ativo" value="off" />
             <input
               type="checkbox"
               name="ativo"
@@ -104,19 +103,19 @@ export function GrupoFormFields({
         </div>
         <div className="flex flex-wrap gap-4">
           <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" name="seguro_habilitado" defaultChecked={!!g.seguro_habilitado} />
+            <input type="checkbox" name="seguro_habilitado" value="on" defaultChecked={!!g.seguro_habilitado} />
             Seguro habilitado
           </label>
           <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" name="tem_parcela_reduzida" defaultChecked={!!g.tem_parcela_reduzida} />
+            <input type="checkbox" name="tem_parcela_reduzida" value="on" defaultChecked={!!g.tem_parcela_reduzida} />
             Parcela reduzida
           </label>
           <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" name="permite_lance_embutido" defaultChecked={!!g.permite_lance_embutido} />
+            <input type="checkbox" name="permite_lance_embutido" value="on" defaultChecked={!!g.permite_lance_embutido} />
             Lance embutido
           </label>
           <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" name="seguro_pos_contemplacao" defaultChecked={!!g.seguro_pos_contemplacao} />
+            <input type="checkbox" name="seguro_pos_contemplacao" value="on" defaultChecked={!!g.seguro_pos_contemplacao} />
             Seguro pós-contemplação
           </label>
         </div>
@@ -179,8 +178,15 @@ export function GrupoFormFields({
           rows={6}
           placeholder={"55214,00\n65258,58\n75000,00"}
         />
-        <Button type="submit">Salvar grupo</Button>
+        <p className="text-xs text-zinc-500">
+          Opcional: cole novos créditos para adicionar cotas. Salvar funciona sem preencher este campo.
+        </p>
       </section>
+      <div className="flex justify-end">
+        <Button type="submit" variant="gold">
+          Salvar grupo
+        </Button>
+      </div>
     </>
   );
 }

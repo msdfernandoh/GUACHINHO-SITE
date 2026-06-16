@@ -2,12 +2,14 @@ import Link from "next/link";
 import { fetchLeadsList, fetchSrdOptions } from "./actions";
 import { Button, Input, Label, Select } from "@/components/ui/form-primitives";
 import { formatDate } from "@/lib/utils/format";
+import { requireStaffAdmin } from "@/lib/auth/require-staff-admin";
 
 export default async function LeadsListPage({
   searchParams,
 }: {
   searchParams: Promise<Record<string, string | undefined>>;
 }) {
+  await requireStaffAdmin();
   const sp = await searchParams;
   const filters = {
     periodo: sp.periodo,

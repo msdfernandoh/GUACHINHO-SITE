@@ -130,3 +130,75 @@ describe("simulacao linha grupo", () => {
     expect(formatPrazoGrupo(grupoBase)).toBe("220 / 209 / 11");
   });
 });
+
+describe("caso Excel — grupos 1513 e 1533", () => {
+  const grupoExcel = (codigo: string, id: string): GrupoConsorcio => ({
+    ...grupoBase,
+    id,
+    codigo_grupo: codigo,
+    taxa_administrativa_percentual: 22,
+    fundo_reserva_percentual: 2,
+    seguro_habilitado: false,
+    percentual_lance_embutido: 40,
+    permite_lance_embutido: true,
+  });
+
+  const mod40 = [
+    {
+      id: "m40",
+      grupo_id: "g",
+      nome: "40% embutido",
+      percentual_lance_embutido: 40,
+      percentual_recurso_proprio_minimo: 0,
+      descricao: null,
+      ativo: true,
+      ordem: 0,
+      created_at: "",
+      updated_at: "",
+    },
+  ];
+
+  it("soma, lance e crédito líquido batem com planilha", () => {
+    const c1513: GrupoCota = {
+      ...cota,
+      id: "c1513",
+      valor_credito: 1_050_000,
+      saldo_devedor: 1_037_000,
+      valor_parcela: 3726.77,
+    };
+    const c1533: GrupoCota = {
+      ...cota,
+      id: "c1533",
+      valor_credito: 1_000_000,
+      saldo_devedor: 1_040_000,
+      valor_parcela: 3726.76,
+    };
+    const cfg = {
+      cotaId: "",
+      quantidadeCotas: 1,
+      modalidadeParcela: "reduzida" as const,
+      usaLanceEmbutido: true,
+      modalidadeLanceId: "m40",
+      usaRecursoProprio: false,
+      recursoProprioModo: "percentual" as const,
+      recursoProprioInput: 0,
+      usaSeguro: false,
+    };
+    const r1 = calcularLinhaSimulacaoGrupo({
+      grupo: grupoExcel("1513", "g1513"),
+      cota: c1513,
+      modalidades: mod40,
+      config: { ...cfg, cotaId: c1513.id },
+    });
+    const r2 = calcularLinhaSimulacaoGrupo({
+      grupo: grupoExcel("1533", "g1533"),
+      cota: c1533,
+      modalidades: mod40,
+      config: { ...cfg, cotaId: c1533.id },
+    });
+    const tot = agregarResultadosLinhas([r1, r2]);
+    expect(tot.somaCotas).toBe(2_050_000);
+    expect(tot.lanceEmbutido).toBeCloseTo(830_800, 0);
+    expect(tot.creditoLiquido).toBeCloseTo(1_219_200, 0);
+  });
+});

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  calcularCreditoLiquido,
+  calcularCreditoLiquidoPosContemplacao,
   calcularLanceEmbutido,
   calcularLanceTotal,
   calcularParcelasRestantes,
@@ -59,8 +59,8 @@ describe("calculos grupos", () => {
     expect(calcularParcelasRestantes(paramsBase)).toBe(50);
   });
 
-  it("crédito líquido", () => {
-    expect(calcularCreditoLiquido(100_000, 15_000)).toBe(85_000);
+  it("crédito líquido (Excel: soma − embutido)", () => {
+    expect(calcularCreditoLiquidoPosContemplacao(100_000, 10_000)).toBe(90_000);
   });
 
   it("primeira parcela soma parcelas informadas", () => {
@@ -80,8 +80,8 @@ describe("calculos grupos", () => {
       },
     ]);
     expect(tot.somaCotas).toBe(100_000);
-    expect(tot.lanceEmbutido).toBe(10_000);
+    expect(tot.lanceEmbutido).toBe(12_200);
     expect(tot.recursoProprio).toBe(5_000);
-    expect(tot.creditoLiquido).toBe(85_000);
+    expect(tot.creditoLiquido).toBe(87_800);
   });
 });

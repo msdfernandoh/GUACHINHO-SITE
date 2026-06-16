@@ -1,7 +1,9 @@
 import type { GrupoConsorcio, GrupoCota, GrupoModalidadeLance } from "@/lib/types";
 import {
-  calcularCreditoLiquido,
+  calcularCreditoLiquidoPosContemplacao,
+  calcularLanceEmbutidoLinha,
   calcularParcelasRestantes,
+  calcularSaldoDevedorLinha,
   grupoToParametros,
   type ParametrosGrupo,
 } from "./calculos";
@@ -73,17 +75,27 @@ export function listarModalidadesLanceAtivas(
   ];
 }
 
-function parcelaDaCota(
+function parcelaMensalDaCota(
   cota: GrupoCota,
   modalidade: ModalidadeParcelaLinha,
   grupo: GrupoConsorcio,
+  usaSeguro: boolean,
+  seguroUnitario: number,
 ): number {
-  const integral = num(cota.parcela_integral ?? cota.parcela_sem_seguro ?? cota.valor_parcela);
-  const reduzida = cota.parcela_reduzida != null ? num(cota.parcela_reduzida) : null;
-  if (modalidade === "reduzida" && grupo.tem_parcela_reduzida && reduzida != null) {
-    return reduzida;
+  if (usaSeguro && cota.parcela_com_seguro != null) {
+    return num(cota.parcela_com_seguro);
   }
-  return integral;
+  if (cota.valor_parcela != null) {
+    const base = num(cota.valor_parcela);
+    return usaSeguro && grupo.seguro_habilitado ? base + seguroUnitario : base;
+  }
+  const integral = num(cota.parcela_integral ?? cota.parcela_sem_seguro);
+  const reduzida = cota.parcela_reduzida != null ? num(cota.parcela_reduzida) : null;
+  let base = integral;
+  if (modalidade === "reduzida" && grupo.tem_parcela_reduzida && reduzida != null) {
+    base = reduzida;
+  }
+  return usaSeguro && grupo.seguro_habilitado ? base + seguroUnitario : base;
 }
 
 function resolveModalidadeLance(
@@ -132,9 +144,12 @@ export function calcularLinhaSimulacaoGrupo(args: {
 
   const valorCredito = num(cota.valor_credito);
   const somaCotas = valorCredito * qty;
-  const saldoUnit =
-    cota.saldo_devedor != null ? num(cota.saldo_devedor) : valorCredito;
-  const saldoDevedorInicial = saldoUnit * qty;
+  const saldoDevedorInicial = calcularSaldoDevedorLinha(
+    somaCotas,
+    params,
+    cota.saldo_devedor,
+    qty,
+  );
 
   const modalidadesAtivas = listarModalidadesLanceAtivas(grupo, modalidades);
   const modLance = resolveModalidadeLance(config, modalidadesAtivas);
@@ -142,7 +157,7 @@ export function calcularLinhaSimulacaoGrupo(args: {
   const pctRecursoMin = config.usaLanceEmbutido && modLance ? num(modLance.percentual_recurso_proprio_minimo) : 0;
 
   const lanceEmbutido =
-    pctEmbutido > 0 ? Math.round(saldoDevedorInicial * (pctEmbutido / 100) * 100) / 100 : 0;
+    pctEmbutido > 0 ? calcularLanceEmbutidoLinha(saldoDevedorInicial, pctEmbutido) : 0;
 
   let recursoProprio = 0;
   if (config.usaRecursoProprio) {
@@ -162,15 +177,25 @@ export function calcularLinhaSimulacaoGrupo(args: {
     }
   }
 
-  const parcelaBase = parcelaDaCota(cota, config.modalidadeParcela, grupo);
+  const saldoUnit = qty > 0 ? saldoDevedorInicial / qty : 0;
   const fatorSeg = fatorSeguroGrupo(grupo.seguro_percentual);
   const seguroUnitario =
     config.usaSeguro && params.seguroHabilitado && fatorSeg > 0
       ? Math.round(saldoUnit * fatorSeg * 100) / 100
       : 0;
-  const seguroMensalTotal = Math.round(seguroUnitario * qty * 100) / 100;
 
-  const primeiraParcela = Math.round((parcelaBase * qty + seguroMensalTotal) * 100) / 100;
+  const parcelaBase = parcelaMensalDaCota(
+    cota,
+    config.modalidadeParcela,
+    grupo,
+    config.usaSeguro,
+    seguroUnitario,
+  );
+  const primeiraParcela = Math.round(parcelaBase * qty * 100) / 100;
+  const seguroMensalExibicao =
+    config.usaSeguro && params.seguroHabilitado && fatorSeg > 0
+      ? Math.round(seguroUnitario * qty * 100) / 100
+      : 0;
 
   const lanceTotal = lanceEmbutido + recursoProprio;
   const saldoDevedorFinal = Math.max(
@@ -188,7 +213,7 @@ export function calcularLinhaSimulacaoGrupo(args: {
     parcelaPosBase +
     (config.usaSeguro && params.seguroHabilitado ? seguroUnitario : 0);
 
-  const creditoLiquido = calcularCreditoLiquido(somaCotas, lanceTotal);
+  const creditoLiquido = calcularCreditoLiquidoPosContemplacao(somaCotas, lanceEmbutido);
 
   return {
     ativo: true,
@@ -196,12 +221,12 @@ export function calcularLinhaSimulacaoGrupo(args: {
     saldoDevedorInicial,
     saldoDevedorFinal,
     primeiraParcela,
-    parcelaBase: Math.round(parcelaBase * 100) / 100,
+    parcelaBase: Math.round((parcelaBase) * 100) / 100,
     parcelaPosContemplacao: Math.round(parcelaPosContemplacao * 100) / 100,
     lanceEmbutido,
     recursoProprio,
     lanceTotal,
-    seguroMensal: seguroMensalTotal,
+    seguroMensal: Math.round(seguroMensalExibicao * 100) / 100,
     quantidadeCotas: qty,
     creditoLiquido,
     parcelasRestantesPosContemplacao,
@@ -225,6 +250,8 @@ export function agregarResultadosLinhas(
   saldoDevedorFinal: number;
   seguroTotal: number;
   creditoLiquido: number;
+  parcelaPosContemplacaoTotal: number;
+  parcelasRestantesMax: number;
   parcelaPosContemplacaoMedia: number;
 } {
   const ativas = linhas.filter((l) => l.ativo);
@@ -241,6 +268,11 @@ export function agregarResultadosLinhas(
     saldoDevedorFinal: ativas.reduce((a, l) => a + l.saldoDevedorFinal, 0),
     seguroTotal: ativas.reduce((a, l) => a + l.seguroMensal, 0),
     creditoLiquido: ativas.reduce((a, l) => a + l.creditoLiquido, 0),
+    parcelaPosContemplacaoTotal: ativas.reduce((a, l) => a + l.parcelaPosContemplacao, 0),
+    parcelasRestantesMax:
+      ativas.length > 0
+        ? Math.max(...ativas.map((l) => l.parcelasRestantesPosContemplacao))
+        : 0,
     parcelaPosContemplacaoMedia:
       ativas.length > 0
         ? ativas.reduce((a, l) => a + l.parcelaPosContemplacao, 0) / ativas.length

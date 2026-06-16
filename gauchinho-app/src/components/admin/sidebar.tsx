@@ -17,46 +17,58 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 
-const mainNav = [
+const staffNav = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard, exact: true },
   { href: "/admin/leads", label: "Leads", icon: Users },
   { href: "/admin/propostas", label: "Propostas", icon: FileText },
   { href: "/admin/grupos", label: "Grupos", icon: Layers },
   { href: "/admin/cartas-contempladas", label: "Cartas Contempladas", icon: FileText },
+  { href: "/admin/imobiliarias", label: "Imobiliárias", icon: Building2, masterOnly: true },
+  { href: "/admin/imoveis", label: "Imóveis", icon: Home },
   { href: "/admin/usuarios", label: "Usuários", icon: UserCircle, masterOnly: true },
   { href: "/admin/configuracoes", label: "Configurações", icon: Settings, masterOnly: true },
 ];
 
+const imobiliariaNav = [
+  { href: "/admin/minha-imobiliaria", label: "Minha imobiliária", icon: Building2 },
+  { href: "/admin/imoveis", label: "Meus imóveis", icon: Home },
+];
+
 const futureNav = [
-  { label: "Imobiliárias", icon: Building2 },
-  { label: "Imóveis", icon: Home },
   { label: "Parceiros", icon: Handshake },
   { label: "Casos de Sucesso", icon: Lightbulb },
   { label: "Dicas do Tchê", icon: Lightbulb },
 ];
 
-export function AdminSidebar({
-  perfil,
-}: {
-  perfil: string;
-}) {
+export function AdminSidebar({ perfil }: { perfil: string }) {
   const pathname = usePathname();
   const isMaster = perfil === "master";
+  const isImob = perfil === "imobiliaria";
+  const nav = isImob ? imobiliariaNav : staffNav;
 
   return (
     <aside className="flex w-60 shrink-0 flex-col border-r border-zinc-200 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-950">
       <div className="border-b border-zinc-200 px-4 py-5 dark:border-zinc-800">
-        <p className="text-xs font-semibold uppercase tracking-wide text-amber-600">
-          Gauchinho
-        </p>
-        <p className="text-sm text-zinc-600 dark:text-zinc-400">Painel admin</p>
+        <Link href="/admin" className="block transition-opacity hover:opacity-90">
+          <p className="text-xs font-semibold uppercase tracking-wide text-amber-600">Gauchinho</p>
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            {isImob ? "Área parceiro" : "Painel admin"}
+          </p>
+        </Link>
+        <Link
+          href="/"
+          className="mt-2 inline-block text-xs text-zinc-500 hover:text-amber-600 dark:hover:text-amber-400"
+        >
+          Ver site →
+        </Link>
       </div>
       <nav className="flex-1 space-y-1 p-3">
-        {mainNav.map((item) => {
-          if (item.masterOnly && !isMaster) return null;
-          const active = item.exact
-            ? pathname === item.href
-            : pathname.startsWith(item.href);
+        {nav.map((item) => {
+          if ("masterOnly" in item && item.masterOnly && !isMaster) return null;
+          const active =
+            "exact" in item && item.exact
+              ? pathname === item.href
+              : pathname.startsWith(item.href);
           const Icon = item.icon;
           return (
             <Link
@@ -74,23 +86,25 @@ export function AdminSidebar({
             </Link>
           );
         })}
-        <div className="pt-4">
-          <p className="mb-2 flex items-center gap-1 px-3 text-xs font-semibold uppercase text-zinc-400">
-            <Clock className="h-3 w-3" /> Em breve
-          </p>
-          {futureNav.map((item) => {
-            const Icon = item.icon;
-            return (
-              <span
-                key={item.label}
-                className="flex cursor-not-allowed items-center gap-2 rounded-lg px-3 py-2 text-sm text-zinc-400"
-              >
-                <Icon className="h-4 w-4" />
-                {item.label}
-              </span>
-            );
-          })}
-        </div>
+        {!isImob && (
+          <div className="pt-4">
+            <p className="mb-2 flex items-center gap-1 px-3 text-xs font-semibold uppercase text-zinc-400">
+              <Clock className="h-3 w-3" /> Em breve
+            </p>
+            {futureNav.map((item) => {
+              const Icon = item.icon;
+              return (
+                <span
+                  key={item.label}
+                  className="flex cursor-not-allowed items-center gap-2 rounded-lg px-3 py-2 text-sm text-zinc-400"
+                >
+                  <Icon className="h-4 w-4" />
+                  {item.label}
+                </span>
+              );
+            })}
+          </div>
+        )}
       </nav>
     </aside>
   );

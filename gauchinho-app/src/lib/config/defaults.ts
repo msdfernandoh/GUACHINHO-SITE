@@ -11,6 +11,8 @@ export type SiteConfig = {
   siteUrl: string;
   statusAtivo: boolean;
   exibirBotaoGruposNoSite: boolean;
+  /** URL da logo (Storage ou CDN) — opcional; futuro via admin */
+  logoUrl?: string;
 };
 
 export type LeadsConfig = {
@@ -74,6 +76,24 @@ export type HomeCartasConfig = {
   quantidade: number;
   mostrarBotaoVerCartas: boolean;
   mostrarApenasDestaque: boolean;
+};
+
+export type HomeOportunidadesConfig = {
+  exibir_home: boolean;
+  quantidade: number;
+  mostrar_nome_imobiliaria: boolean;
+  mostrar_valor: boolean;
+  mostrar_botao_simular: boolean;
+  mostrar_botao_ver_oportunidades: boolean;
+};
+
+export const DEFAULT_HOME_OPORTUNIDADES: HomeOportunidadesConfig = {
+  exibir_home: false,
+  quantidade: 6,
+  mostrar_nome_imobiliaria: true,
+  mostrar_valor: true,
+  mostrar_botao_simular: true,
+  mostrar_botao_ver_oportunidades: true,
 };
 
 export const DEFAULT_HOME_CARTAS: HomeCartasConfig = {

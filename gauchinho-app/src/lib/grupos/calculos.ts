@@ -61,14 +61,13 @@ export function calcularSaldoDevedor(
   linhas: LinhaCalculoCota[],
   params: ParametrosGrupo,
 ): number {
-  void params;
   return linhas.reduce((acc, l) => {
     const q = l.quantidadeCotas ?? 1;
-    const base =
-      l.saldoDevedorInformado != null
-        ? num(l.saldoDevedorInformado)
-        : num(l.valorCredito);
-    return acc + base * q;
+    const soma = num(l.valorCredito) * q;
+    return (
+      acc +
+      calcularSaldoDevedorLinha(soma, params, l.saldoDevedorInformado, q)
+    );
   }, 0);
 }
 
@@ -140,14 +139,56 @@ export function calcularParcelasRestantes(params: ParametrosGrupo): number {
 }
 
 /**
- * Crédito líquido após contemplação (crédito − lances).
- * TODO Excel: ordem de abatimentos e seguro pós-contemplação.
+ * Crédito líquido após contemplação (planilha Excel): soma das cotas − lance embutido.
+ * Recurso próprio não reduz o crédito da carta.
  */
+export function calcularCreditoLiquidoPosContemplacao(
+  somaCotas: number,
+  lanceEmbutido: number,
+): number {
+  return Math.max(somaCotas - lanceEmbutido, 0);
+}
+
+/** @deprecated use calcularCreditoLiquidoPosContemplacao com lance embutido apenas */
 export function calcularCreditoLiquido(
   somaCotas: number,
   lanceTotal: number,
 ): number {
   return Math.max(somaCotas - lanceTotal, 0);
+}
+
+/** Saldo devedor da linha: saldo cadastrado na cota × qtd ou crédito + taxas + fundo. */
+export function calcularSaldoDevedorLinha(
+  somaCotas: number,
+  params: ParametrosGrupo,
+  saldoDevedorUnitCadastrado?: number | null,
+  quantidade = 1,
+): number {
+  const q = Math.max(quantidade, 1);
+  if (saldoDevedorUnitCadastrado != null && Number.isFinite(saldoDevedorUnitCadastrado)) {
+    return Math.round(num(saldoDevedorUnitCadastrado) * q * 100) / 100;
+  }
+  const taxa = calcularTaxaAdministrativaTotal(somaCotas, params.taxaAdministrativaPercentual);
+  const fundo = calcularFundoReservaTotal(somaCotas, params.fundoReservaPercentual);
+  return Math.round((somaCotas + taxa + fundo) * 100) / 100;
+}
+
+export function calcularTaxaAdministrativaTotal(credito: number, taxaPercentual: number): number {
+  return credito * (num(taxaPercentual) / 100);
+}
+
+export function calcularFundoReservaTotal(credito: number, fundoPercentual: number): number {
+  return credito * (num(fundoPercentual) / 100);
+}
+
+/** Lance embutido sobre o saldo devedor da linha (base Excel). */
+export function calcularLanceEmbutidoLinha(
+  saldoDevedor: number,
+  percentualEmbutido: number,
+): number {
+  const pct = num(percentualEmbutido);
+  if (pct <= 0) return 0;
+  return Math.round(saldoDevedor * (pct / 100) * 100) / 100;
 }
 
 export function grupoToParametros(grupo: {
@@ -208,13 +249,14 @@ export function estimarCamposCotaBulk(
   parcela_sem_seguro: number;
 } {
   const params = grupoToParametros(grupo);
-  const saldo_devedor = valorCredito;
+  const taxaAdm = calcularTaxaAdministrativaTotal(
+    valorCredito,
+    params.taxaAdministrativaPercentual,
+  );
+  const fundo = calcularFundoReservaTotal(valorCredito, params.fundoReservaPercentual);
+  const saldo_devedor = Math.round((valorCredito + taxaAdm + fundo) * 100) / 100;
   const prazo = Math.max(calcularParcelasRestantes(params), 1);
-  const taxaTotal =
-    (num(params.taxaAdministrativaPercentual) + num(params.fundoReservaPercentual)) /
-    100;
-  const saldoComTaxas = valorCredito * (1 + taxaTotal);
-  const parcela_integral = Math.round((saldoComTaxas / prazo) * 100) / 100;
+  const parcela_integral = Math.round((saldo_devedor / prazo) * 100) / 100;
   const temReduzida = !!grupo.tem_parcela_reduzida;
   const pctRed = num(grupo.percentual_parcela_reduzida, 100);
   const parcela_reduzida = temReduzida
@@ -249,15 +291,12 @@ export function calcularTotaisGrupos(
     const sd = calcularSaldoDevedor([s.linha], s.params);
     return acc + sd;
   }, 0);
-  const lanceEmbutido = selecoes.reduce(
-    (acc, s) =>
-      acc +
-      calcularLanceEmbutido(
-        calcularSaldoDevedor([s.linha], s.params),
-        s.params,
-      ),
-    0,
-  );
+  const lanceEmbutido = selecoes.reduce((acc, s) => {
+    const sd = calcularSaldoDevedor([s.linha], s.params);
+    const pct = s.params.percentualLanceEmbutido;
+    if (!s.params.permiteLanceEmbutido || pct <= 0) return acc;
+    return acc + calcularLanceEmbutidoLinha(sd, pct);
+  }, 0);
   const recursoProprio = selecoes.reduce(
     (acc, s) =>
       acc +
@@ -282,7 +321,10 @@ export function calcularTotaisGrupos(
           ...selecoes.map((s) => calcularParcelasRestantes(s.params)),
         )
       : 0;
-  const creditoLiquido = calcularCreditoLiquido(somaCotas, lanceTotal);
+  const creditoLiquido = calcularCreditoLiquidoPosContemplacao(
+    somaCotas,
+    lanceEmbutido,
+  );
 
   return {
     somaCotas,

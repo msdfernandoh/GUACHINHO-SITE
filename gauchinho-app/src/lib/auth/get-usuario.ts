@@ -16,7 +16,7 @@ export async function getUsuarioNegocio(): Promise<UsuarioNegocio | null> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("usuarios")
-    .select("id, auth_user_id, nome, email, perfil, ativo")
+    .select("id, auth_user_id, nome, email, perfil, ativo, imobiliaria_id")
     .eq("auth_user_id", user.id)
     .maybeSingle();
 
@@ -29,6 +29,7 @@ export async function getUsuarioNegocio(): Promise<UsuarioNegocio | null> {
     email: data.email,
     perfil: data.perfil as Perfil,
     ativo: data.ativo,
+    imobiliaria_id: data.imobiliaria_id ?? null,
   };
 }
 

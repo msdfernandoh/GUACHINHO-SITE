@@ -7,6 +7,7 @@ import {
 } from "@/server/dashboard";
 import { Card } from "@/components/ui/form-primitives";
 import { formatCurrency, formatDate, formatDateTime } from "@/lib/utils/format";
+import { requireStaffAdmin } from "@/lib/auth/require-staff-admin";
 
 const cards = [
   { key: "leadsNovos", label: "Leads novos" },
@@ -20,6 +21,7 @@ const cards = [
 ] as const;
 
 export default async function AdminDashboardPage() {
+  await requireStaffAdmin();
   const [stats, ultimosLeads, retornos, propostas] = await Promise.all([
     fetchDashboardStats(),
     fetchUltimosLeads(),

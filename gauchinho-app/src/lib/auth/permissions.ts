@@ -19,6 +19,7 @@ export type UsuarioNegocio = {
   email: string;
   perfil: Perfil;
   ativo: boolean;
+  imobiliaria_id: string | null;
 };
 
 export function isMaster(perfil: Perfil | null | undefined): boolean {
@@ -56,4 +57,24 @@ export function canManageLeads(perfil: Perfil | null | undefined): boolean {
 
 export function canCreateProposta(perfil: Perfil | null | undefined): boolean {
   return perfil === "master" || perfil === "srd";
+}
+
+export function isImobiliaria(perfil: Perfil | null | undefined): boolean {
+  return perfil === "imobiliaria";
+}
+
+export function canManageImobiliarias(perfil: Perfil | null | undefined): boolean {
+  return isMaster(perfil);
+}
+
+export function canViewAllImoveis(perfil: Perfil | null | undefined): boolean {
+  return isMaster(perfil) || perfil === "srd" || perfil === "visualizador";
+}
+
+/** Rotas admin permitidas para perfil imobiliária */
+export function imobiliariaAdminPathAllowed(pathname: string): boolean {
+  if (pathname === "/admin/minha-imobiliaria") return true;
+  if (pathname === "/admin/imoveis") return true;
+  if (pathname.startsWith("/admin/imoveis/")) return true;
+  return false;
 }

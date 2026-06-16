@@ -12,7 +12,7 @@ export default async function LoginPage({
   const next = sp.next ?? "/admin";
 
   return (
-    <div className="flex min-h-full flex-1 items-center justify-center bg-zinc-100 px-4 dark:bg-zinc-950">
+    <div className="flex min-h-[calc(100vh-8rem)] flex-1 items-center justify-center px-4 pb-8">
       <div className="w-full max-w-md rounded-2xl border border-zinc-200 bg-white p-8 shadow-lg dark:border-zinc-800 dark:bg-zinc-900">
         <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">
           Gauchinho Admin
@@ -44,7 +44,7 @@ export default async function LoginPage({
           </Button>
         </form>
         <p className="mt-6 text-center text-sm text-zinc-500">
-          <Link href="/" className="text-amber-600 hover:underline">
+          <Link href="/" className="text-amber-600 hover:underline dark:text-amber-500">
             Voltar ao site
           </Link>
         </p>

@@ -220,6 +220,53 @@ export async function updateGrupoAction(grupoId: string, formData: FormData) {
 
   revalidatePath(`/admin/grupos/${grupoId}`);
   revalidatePath("/admin/grupos");
+  revalidatePath("/grupos");
+  redirect(`/admin/grupos/${grupoId}?saved=1`);
+}
+
+function cotaFromForm(formData: FormData) {
+  return {
+    valor_credito: Number(formData.get("valor_credito") ?? 0),
+    valor_parcela: Number(formData.get("valor_parcela") ?? 0) || null,
+    parcela_integral: Number(formData.get("parcela_integral") ?? 0) || null,
+    parcela_reduzida: Number(formData.get("parcela_reduzida") ?? 0) || null,
+    parcela_com_seguro: Number(formData.get("parcela_com_seguro") ?? 0) || null,
+    parcela_sem_seguro: Number(formData.get("parcela_sem_seguro") ?? 0) || null,
+    saldo_devedor: Number(formData.get("saldo_devedor") ?? 0) || null,
+    status: String(formData.get("status") ?? "Disponível").trim(),
+    ativo: formData.get("ativo") === "on",
+  };
+}
+
+export async function updateCotaAction(cotaId: string, grupoId: string, formData: FormData) {
+  await assertCanManageGrupos();
+  const supabase = await createClient();
+  const row = cotaFromForm(formData);
+  const { error } = await supabase.from("grupos_cotas").update(row).eq("id", cotaId);
+  if (error) throw new Error(error.message);
+  revalidatePath(`/admin/grupos/${grupoId}`);
+  revalidatePath("/grupos");
+}
+
+export async function setCotaAtivoAction(cotaId: string, grupoId: string, ativo: boolean) {
+  await assertCanManageGrupos();
+  const supabase = await createClient();
+  const { error } = await supabase.from("grupos_cotas").update({ ativo }).eq("id", cotaId);
+  if (error) throw new Error(error.message);
+  revalidatePath(`/admin/grupos/${grupoId}`);
+  revalidatePath("/grupos");
+}
+
+export async function deleteCotaAction(cotaId: string, grupoId: string) {
+  const usuario = await requireUsuario();
+  if (!canDeleteRecords(usuario.perfil)) {
+    throw new Error("Apenas Master pode excluir cotas definitivamente");
+  }
+  const supabase = await createClient();
+  const { error } = await supabase.from("grupos_cotas").delete().eq("id", cotaId);
+  if (error) throw new Error(error.message);
+  revalidatePath(`/admin/grupos/${grupoId}`);
+  revalidatePath("/grupos");
 }
 
 export async function duplicateGrupoAction(grupoId: string) {
