@@ -3,33 +3,48 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { Search, Sparkles } from "lucide-react";
-import type { GrupoConsorcio, GrupoCota } from "@/lib/types";
+import type { PublicGrupoAggregate } from "@/lib/types";
 import { MODALIDADE_FILTRO_PUBLICO } from "@/lib/types";
 import {
-  calcularTotaisGrupos,
-  grupoToParametros,
-} from "@/lib/grupos/calculos";
+  agregarResultadosLinhas,
+  calcularLinhaSimulacaoGrupo,
+  defaultConfigLinha,
+  type ConfigLinhaSimulacaoGrupo,
+} from "@/lib/grupos/simulacao-linha";
 import { formatCurrency } from "@/lib/utils/format";
 import { cn } from "@/lib/utils/cn";
 import { Button, Input, Label } from "@/components/ui/form-primitives";
-
-export type PublicGrupoRow = {
-  grupo: GrupoConsorcio;
-  cota: GrupoCota;
-};
+import {
+  GrupoLinhaDesktopRow,
+  GrupoPrazoCell,
+  GrupoSimulacaoLinhaControls,
+} from "@/components/public/grupos-linha-controls";
 
 type ModalFiltro = (typeof MODALIDADE_FILTRO_PUBLICO)[number];
 
+export type SelecaoGrupoPayload = {
+  grupoId: string;
+  cotaId: string;
+  config: ConfigLinhaSimulacaoGrupo;
+  resultado: ReturnType<typeof calcularLinhaSimulacaoGrupo>;
+};
+
 export function GruposPublicClient({
-  rows,
+  aggregates,
   isStaff = false,
 }: {
-  rows: PublicGrupoRow[];
+  aggregates: PublicGrupoAggregate[];
   isStaff?: boolean;
 }) {
   const [filtro, setFiltro] = useState<ModalFiltro>("Todos");
   const [busca, setBusca] = useState("");
-  const [selected, setSelected] = useState<Record<string, string>>({});
+  const [configs, setConfigs] = useState<Record<string, ConfigLinhaSimulacaoGrupo>>(() => {
+    const init: Record<string, ConfigLinhaSimulacaoGrupo> = {};
+    aggregates.forEach(({ grupo, cotas, modalidades }) => {
+      init[grupo.id] = defaultConfigLinha(grupo, cotas, modalidades);
+    });
+    return init;
+  });
   const [modalOpen, setModalOpen] = useState(false);
   const [modalAcao, setModalAcao] = useState<"simulacao" | "proposta" | "especialista">("simulacao");
   const [nome, setNome] = useState("");
@@ -39,59 +54,53 @@ export function GruposPublicClient({
   const [pdfLink, setPdfLink] = useState<string | null>(null);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
 
-  const hasSelection = Object.keys(selected).length > 0;
-
   const filtered = useMemo(() => {
     const q = busca.trim().toLowerCase();
-    return rows.filter(({ grupo, cota }) => {
+    return aggregates.filter(({ grupo, cotas }) => {
+      if (!cotas.length) return false;
       if (filtro !== "Todos" && grupo.modalidade !== filtro) return false;
       if (!q) return true;
-      const credito = String(cota.valor_credito);
       return (
         grupo.codigo_grupo.toLowerCase().includes(q) ||
-        credito.includes(q.replace(",", "."))
+        cotas.some((c) => String(c.valor_credito).includes(q.replace(",", ".")))
       );
     });
-  }, [rows, filtro, busca]);
+  }, [aggregates, filtro, busca]);
 
-  const selecoes = useMemo(() => {
-    return Object.entries(selected).map(([grupoId, cotaId]) => {
-      const row = rows.find((r) => r.grupo.id === grupoId && r.cota.id === cotaId);
-      return row!;
-    }).filter(Boolean);
-  }, [selected, rows]);
-
-  const totais = useMemo(() => {
-    if (!selecoes.length) return null;
-    return calcularTotaisGrupos(
-      selecoes.map(({ grupo, cota }) => ({
-        linha: {
-          valorCredito: Number(cota.valor_credito),
-          saldoDevedorInformado: cota.saldo_devedor,
-          valorParcelaInformado: cota.valor_parcela ?? cota.parcela_com_seguro,
-          quantidadeCotas: 1,
-        },
-        params: grupoToParametros(grupo),
-      })),
-    );
-  }, [selecoes]);
-
-  function toggleCota(grupoId: string, cotaId: string) {
-    setSelected((prev) => {
-      const next = { ...prev };
-      if (next[grupoId] === cotaId) {
-        delete next[grupoId];
-      } else {
-        next[grupoId] = cotaId;
+  const linhasAtivas = useMemo(() => {
+    const out: SelecaoGrupoPayload[] = [];
+    aggregates.forEach(({ grupo, cotas, modalidades }) => {
+      const config = configs[grupo.id];
+      if (!config) return;
+      const cota = cotas.find((c) => c.id === config.cotaId);
+      const resultado = calcularLinhaSimulacaoGrupo({
+        grupo,
+        cota: cota ?? null,
+        config,
+        modalidades,
+      });
+      if (resultado.ativo && cota) {
+        out.push({ grupoId: grupo.id, cotaId: cota.id, config, resultado });
       }
-      return next;
     });
+    return out;
+  }, [aggregates, configs]);
+
+  const totais = useMemo(
+    () => agregarResultadosLinhas(linhasAtivas.map((l) => l.resultado)),
+    [linhasAtivas],
+  );
+
+  const hasSelection = linhasAtivas.length > 0;
+
+  function setConfig(grupoId: string, config: ConfigLinhaSimulacaoGrupo) {
+    setConfigs((prev) => ({ ...prev, [grupoId]: config }));
   }
 
   function openModal(acao: typeof modalAcao) {
     if (!hasSelection) {
       if (acao === "simulacao") {
-        setToastMsg("Selecione ao menos uma cota em um grupo para gerar a simulação.");
+        setToastMsg("Informe cota e quantidade (mín. 1) em ao menos um grupo.");
       }
       return;
     }
@@ -115,9 +124,10 @@ export function GruposPublicClient({
           nome,
           whatsapp,
           acao: modalAcao,
-          selecoes: Object.entries(selected).map(([grupoId, cotaId]) => ({
-            grupoId,
-            cotaId,
+          selecoes: linhasAtivas.map((s) => ({
+            grupoId: s.grupoId,
+            cotaId: s.cotaId,
+            config: s.config,
           })),
         }),
       });
@@ -140,7 +150,7 @@ export function GruposPublicClient({
 
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100">
-      <div className="mx-auto max-w-6xl px-4 py-10">
+      <div className="mx-auto max-w-[1400px] px-4 py-10">
         <div className="mb-8 text-center">
           <p className="inline-flex items-center gap-2 text-sm text-amber-400">
             <Sparkles className="h-4 w-4" /> Simulador premium
@@ -149,7 +159,8 @@ export function GruposPublicClient({
             Nossos Grupos
           </h1>
           <p className="mx-auto mt-3 max-w-2xl text-zinc-400">
-            Escolha uma cota por grupo e monte sua simulação personalizada.
+            Monte sua simulação por grupo: escolha o crédito, quantidade de cotas e estratégia de
+            lance — como na planilha, com visual profissional.
           </p>
         </div>
 
@@ -180,111 +191,138 @@ export function GruposPublicClient({
           </div>
         </div>
 
-        <div className="overflow-x-auto rounded-2xl border border-zinc-800 bg-zinc-900/50">
-          {rows.length === 0 ? (
-            <div className="px-6 py-16 text-center">
-              <p className="text-lg text-zinc-300">Nenhum grupo disponível no momento.</p>
-              <p className="mt-2 text-sm text-zinc-500">
-                Volte em breve ou fale com um especialista para conhecer as opções de consórcio.
+        {aggregates.length === 0 ? (
+          <div className="rounded-2xl border border-zinc-800 bg-zinc-900/50 px-6 py-16 text-center">
+            <p className="text-lg text-zinc-300">Nenhum grupo disponível no momento.</p>
+            {isStaff ? (
+              <p className="mt-4 text-sm text-amber-400/90">
+                <Link href="/admin/grupos" className="underline hover:text-amber-300">
+                  Cadastre grupos no admin
+                </Link>
               </p>
-              {isStaff ? (
-                <p className="mt-4 text-sm text-amber-400/90">
-                  Você está logado como equipe.{" "}
-                  <Link href="/admin/grupos" className="underline hover:text-amber-300">
-                    Cadastre grupos no admin
-                  </Link>{" "}
-                  ou use &quot;Popular grupos de teste&quot; (Master).
-                </p>
-              ) : null}
-            </div>
-          ) : filtered.length === 0 ? (
-            <div className="px-6 py-12 text-center text-zinc-400">
-              Nenhum resultado para os filtros atuais. Ajuste a busca ou a modalidade.
-            </div>
-          ) : (
-          <table className="min-w-full text-sm">
-            <thead className="border-b border-zinc-800 text-left text-xs uppercase tracking-wide text-zinc-500">
-              <tr>
-                <th className="px-4 py-3">Grupo</th>
-                <th className="px-4 py-3">Tipo</th>
-                <th className="px-4 py-3">Crédito</th>
-                <th className="px-4 py-3">Parcela</th>
-                <th className="px-4 py-3">Prazo</th>
-                <th className="px-4 py-3">Vagas</th>
-                <th className="px-4 py-3">Status</th>
-                <th className="px-4 py-3">Ação</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map(({ grupo, cota }) => {
-                const isSelected = selected[grupo.id] === cota.id;
-                const esgotado = cota.status === "Esgotado";
-                return (
-                  <tr
-                    key={cota.id}
-                    className={cn(
-                      "border-b border-zinc-800/80 transition",
-                      isSelected && "bg-amber-500/10",
-                    )}
-                  >
-                    <td className="px-4 py-3 font-semibold text-amber-400">{grupo.codigo_grupo}</td>
-                    <td className="px-4 py-3">{grupo.modalidade}</td>
-                    <td className="px-4 py-3">{formatCurrency(Number(cota.valor_credito))}</td>
-                    <td className="px-4 py-3">
-                      {formatCurrency(Number(cota.valor_parcela ?? cota.parcela_reduzida))}
-                    </td>
-                    <td className="px-4 py-3">{grupo.prazo_restante ?? grupo.prazo_total ?? "—"}</td>
-                    <td className="px-4 py-3">{cota.vagas_texto ?? cota.vagas_percentual ?? "—"}</td>
-                    <td className="px-4 py-3">
-                      <span
-                        className={cn(
-                          "rounded-full px-2 py-0.5 text-xs",
-                          cota.status === "Últimas" && "bg-amber-500/20 text-amber-300",
-                          cota.status === "Disponível" && "bg-emerald-500/20 text-emerald-300",
-                          esgotado && "bg-zinc-700 text-zinc-400",
-                        )}
-                      >
-                        {cota.status}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant={isSelected ? "gold" : "outline"}
-                        disabled={esgotado}
-                        className={!isSelected ? "border-zinc-600 text-zinc-200" : undefined}
-                        onClick={() => toggleCota(grupo.id, cota.id)}
-                      >
-                        {isSelected ? "Selecionado" : "Selecionar"}
-                      </Button>
-                    </td>
+            ) : null}
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="rounded-2xl border border-zinc-800 px-6 py-12 text-center text-zinc-400">
+            Nenhum resultado para os filtros atuais.
+          </div>
+        ) : (
+          <>
+            <div className="hidden overflow-x-auto rounded-2xl border border-zinc-800 bg-zinc-900/50 lg:block">
+              <table className="min-w-full text-sm">
+                <thead className="border-b border-zinc-800 text-left text-[10px] uppercase tracking-wide text-zinc-500">
+                  <tr>
+                    <th className="px-3 py-3">Grupo</th>
+                    <th className="min-w-[320px] px-3 py-3">Montagem</th>
+                    <th className="px-3 py-3" title="Total / restante / realizadas">
+                      Prazo (T / R / Real.)
+                    </th>
+                    <th className="px-3 py-3">Saldo final</th>
+                    <th className="px-3 py-3">Pós-contempl.</th>
+                    <th className="px-3 py-3">Status</th>
                   </tr>
+                </thead>
+                <tbody>
+                  {filtered.map(({ grupo, cotas, modalidades }) => {
+                    const config =
+                      configs[grupo.id] ?? defaultConfigLinha(grupo, cotas, modalidades);
+                    return (
+                      <GrupoLinhaDesktopRow
+                        key={grupo.id}
+                        grupo={grupo}
+                        cotas={cotas}
+                        modalidades={modalidades}
+                        config={config}
+                        onChange={(c) => setConfig(grupo.id, c)}
+                      />
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="space-y-4 lg:hidden">
+              {filtered.map(({ grupo, cotas, modalidades }) => {
+                const config =
+                  configs[grupo.id] ?? defaultConfigLinha(grupo, cotas, modalidades);
+                const resultado = calcularLinhaSimulacaoGrupo({
+                  grupo,
+                  cota: cotas.find((c) => c.id === config.cotaId) ?? null,
+                  config,
+                  modalidades,
+                });
+                return (
+                  <details
+                    key={grupo.id}
+                    className={cn(
+                      "rounded-2xl border border-zinc-800 bg-zinc-900/80 p-4",
+                      resultado.ativo && "border-amber-500/40",
+                    )}
+                    open={resultado.ativo}
+                  >
+                    <summary className="cursor-pointer list-none font-semibold text-amber-400">
+                      Grupo {grupo.codigo_grupo}
+                      <span className="ml-2 text-xs font-normal text-zinc-500">
+                        <GrupoPrazoCell grupo={grupo} />
+                      </span>
+                    </summary>
+                    <div className="mt-4">
+                      <GrupoSimulacaoLinhaControls
+                        grupo={grupo}
+                        cotas={cotas}
+                        modalidades={modalidades}
+                        config={config}
+                        onChange={(c) => setConfig(grupo.id, c)}
+                        compact
+                      />
+                    </div>
+                  </details>
                 );
               })}
-            </tbody>
-          </table>
-          )}
-        </div>
+            </div>
+          </>
+        )}
 
         <div className="sticky bottom-4 mt-8 rounded-2xl border border-amber-500/30 bg-zinc-900/95 p-6 shadow-2xl backdrop-blur">
-          <div className="grid gap-4 md:grid-cols-4">
+          <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-6">
             <div>
               <p className="text-xs uppercase text-zinc-500">Grupos</p>
-              <p className="text-xl font-semibold">{Object.keys(selected).length}</p>
+              <p className="text-xl font-semibold">{totais.gruposSelecionados}</p>
             </div>
             <div>
-              <p className="text-xs uppercase text-zinc-500">Total crédito</p>
-              <p className="text-xl font-semibold">{formatCurrency(totais?.somaCotas ?? 0)}</p>
+              <p className="text-xs uppercase text-zinc-500">Qtd. cotas</p>
+              <p className="text-xl font-semibold">{totais.totalCotas}</p>
+            </div>
+            <div>
+              <p className="text-xs uppercase text-zinc-500">Soma das cotas</p>
+              <p className="text-xl font-semibold">{formatCurrency(totais.somaCotas)}</p>
             </div>
             <div>
               <p className="text-xs uppercase text-zinc-500">1ª parcela</p>
-              <p className="text-xl font-semibold">{formatCurrency(totais?.primeiraParcela ?? 0)}</p>
+              <p className="text-xl font-semibold">{formatCurrency(totais.primeiraParcela)}</p>
             </div>
             <div>
+              <p className="text-xs uppercase text-zinc-500">Lance total</p>
+              <p className="text-lg font-semibold">{formatCurrency(totais.lanceTotal)}</p>
+              <p className="text-[10px] text-zinc-500">
+                Emb. {formatCurrency(totais.lanceEmbutido)} · Próprio{" "}
+                {formatCurrency(totais.recursoProprio)}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs uppercase text-zinc-500">Saldo devedor</p>
+              <p className="text-lg font-semibold">{formatCurrency(totais.saldoDevedorFinal)}</p>
+            </div>
+            {totais.seguroTotal > 0 ? (
+              <div>
+                <p className="text-xs uppercase text-zinc-500">Seguro (mensal)</p>
+                <p className="text-lg font-semibold">{formatCurrency(totais.seguroTotal)}</p>
+              </div>
+            ) : null}
+            <div className="md:col-span-2">
               <p className="text-xs uppercase text-amber-400">Crédito líquido</p>
               <p className="text-3xl font-bold text-amber-400">
-                {formatCurrency(totais?.creditoLiquido ?? 0)}
+                {formatCurrency(totais.creditoLiquido)}
               </p>
             </div>
           </div>
@@ -314,7 +352,12 @@ export function GruposPublicClient({
           {toastMsg ? <p className="mt-3 text-sm text-amber-300">{toastMsg}</p> : null}
           {resultMsg ? <p className="mt-3 text-sm text-emerald-400">{resultMsg}</p> : null}
           {pdfLink ? (
-            <a href={pdfLink} target="_blank" rel="noreferrer" className="mt-2 inline-block text-sm text-amber-400 underline">
+            <a
+              href={pdfLink}
+              target="_blank"
+              rel="noreferrer"
+              className="mt-2 inline-block text-sm text-amber-400 underline"
+            >
               Baixar proposta PDF
             </a>
           ) : null}
@@ -330,11 +373,21 @@ export function GruposPublicClient({
             <h2 className="text-lg font-semibold text-white">Seus dados</h2>
             <div>
               <Label>Nome</Label>
-              <Input required value={nome} onChange={(e) => setNome(e.target.value)} className="bg-zinc-950" />
+              <Input
+                required
+                value={nome}
+                onChange={(e) => setNome(e.target.value)}
+                className="bg-zinc-950"
+              />
             </div>
             <div>
               <Label>WhatsApp</Label>
-              <Input required value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)} className="bg-zinc-950" />
+              <Input
+                required
+                value={whatsapp}
+                onChange={(e) => setWhatsapp(e.target.value)}
+                className="bg-zinc-950"
+              />
             </div>
             <div className="flex gap-2">
               <Button type="submit" variant="gold" disabled={loading}>

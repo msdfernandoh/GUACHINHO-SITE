@@ -87,7 +87,12 @@ export async function POST(request: Request) {
           prazo: prazo,
           entrada: entradaVal,
           valor_parcela: parcela || null,
-          dados_simulacao: body.entrada,
+          dados_simulacao: {
+            ...(body.entrada as object),
+            modo: body.modo,
+            tipoBem: body.tipoBem,
+            resultado: body.resultado,
+          },
           comparativo_financiamento: body.resultado,
           status: "Gerada",
           pdf_url: null,

@@ -1,16 +1,79 @@
 "use client";
 
-import type { FinanciamentoConfig, SimuladorTipoBemConfig } from "@/lib/config/defaults";
-import { Button, Input, Label } from "@/components/ui/form-primitives";
+import type { OpcaoParcelaConsorcio } from "@/lib/config/simulador-parcela-opcoes";
+import { normalizarOpcoesParcela } from "@/lib/config/simulador-parcela-opcoes";
+import type { SimuladorTipoBemConfig } from "@/lib/config/defaults";
+import { Button, Input, Label, Textarea } from "@/components/ui/form-primitives";
 
-type Props = {
+const MAX_OPCOES = 5;
+
+function OpcaoParcelaFields({
+  index,
+  op,
+}: {
+  index: number;
+  op: OpcaoParcelaConsorcio;
+}) {
+  return (
+    <div className="rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
+      <p className="mb-2 text-xs font-semibold uppercase text-zinc-500">Opção {index + 1}</p>
+      <input type="hidden" name={`opcao_${index}_id`} defaultValue={op.id} />
+      <div className="grid gap-2 sm:grid-cols-2">
+        <div>
+          <Label>Nome</Label>
+          <Input name={`opcao_${index}_nome`} defaultValue={op.nome} placeholder="Ex.: 60% da parcela" />
+        </div>
+        <div>
+          <Label>Percentual (%)</Label>
+          <Input
+            name={`opcao_${index}_percentual`}
+            type="number"
+            step="0.01"
+            defaultValue={op.percentual}
+          />
+        </div>
+        <div>
+          <Label>Ordem</Label>
+          <Input name={`opcao_${index}_ordem`} type="number" defaultValue={op.ordem} />
+        </div>
+        <label className="flex items-center gap-2 self-end pb-2 text-sm">
+          <input type="checkbox" name={`opcao_${index}_ativa`} defaultChecked={op.ativa} />
+          Ativa
+        </label>
+        <div className="sm:col-span-2">
+          <Label>Descrição curta</Label>
+          <Textarea name={`opcao_${index}_descricao`} rows={2} defaultValue={op.descricao} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function SimuladorBemConfigForm({
+  title,
+  action,
+  cfg,
+}: {
   title: string;
   action: (formData: FormData) => Promise<void>;
   cfg: SimuladorTipoBemConfig;
-};
-
-export function SimuladorBemConfigForm({ title, action, cfg }: Props) {
+}) {
   const prazos = (cfg.prazosDisponiveis ?? []).join(", ");
+  const opcoes = normalizarOpcoesParcela(cfg);
+  const slots: OpcaoParcelaConsorcio[] = [];
+  for (let i = 0; i < MAX_OPCOES; i++) {
+    slots.push(
+      opcoes[i] ?? {
+        id: `nova_${i}`,
+        nome: "",
+        percentual: 100,
+        descricao: "",
+        ativa: false,
+        ordem: i + 1,
+      },
+    );
+  }
+
   return (
     <form action={action} className="max-w-2xl space-y-3 rounded-xl border p-4">
       <h3 className="font-semibold">{title}</h3>
@@ -28,11 +91,11 @@ export function SimuladorBemConfigForm({ title, action, cfg }: Props) {
           <Input name="seguroPrestamistaPadrao" type="number" step="0.001" defaultValue={cfg.seguroPrestamistaPadrao} />
         </div>
         <div>
-          <Label>Reajuste anual crédito (%)</Label>
+          <Label>Reajuste anual do crédito (%)</Label>
           <Input name="reajusteAnualCredito" type="number" step="0.01" defaultValue={cfg.reajusteAnualCredito} />
         </div>
         <div>
-          <Label>Correção anual parcela (%)</Label>
+          <Label>Correção anual da parcela (%)</Label>
           <Input name="correcaoAnualParcela" type="number" step="0.01" defaultValue={cfg.correcaoAnualParcela} />
         </div>
         <div>
@@ -64,6 +127,18 @@ export function SimuladorBemConfigForm({ title, action, cfg }: Props) {
           <Input name="quantidadePrazosExibidos" type="number" defaultValue={cfg.quantidadePrazosExibidos} />
         </div>
       </div>
+
+      <div className="space-y-3 border-t pt-4">
+        <h4 className="font-semibold">Opções de parcela inicial (consórcio)</h4>
+        <p className="text-xs text-zinc-500">
+          Deixe o nome vazio para ignorar a linha. Com uma opção ativa, o simulador usa automaticamente;
+          com várias, o visitante escolhe.
+        </p>
+        {slots.map((op, i) => (
+          <OpcaoParcelaFields key={op.id + i} index={i} op={op} />
+        ))}
+      </div>
+
       <label className="flex items-center gap-2 text-sm">
         <input type="checkbox" name="mostrarComparacaoFinanciamento" defaultChecked={cfg.mostrarComparacaoFinanciamento} />
         Mostrar comparação com financiamento
@@ -86,7 +161,7 @@ export function FinanciamentoConfigForm({
   cfg,
 }: {
   action: (formData: FormData) => Promise<void>;
-  cfg: FinanciamentoConfig;
+  cfg: import("@/lib/config/defaults").FinanciamentoConfig;
 }) {
   return (
     <form action={action} className="max-w-xl space-y-3 rounded-xl border p-4">

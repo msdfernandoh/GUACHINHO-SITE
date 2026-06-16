@@ -2,15 +2,18 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { registrarEvento } from "@/lib/eventos/registrar";
 import {
-  calcularTotaisGrupos,
-  grupoToParametros,
-} from "@/lib/grupos/calculos";
-import type { GrupoConsorcio, GrupoCota } from "@/lib/types";
+  calcularLinhaSimulacaoGrupo,
+  agregarResultadosLinhas,
+  type ConfigLinhaSimulacaoGrupo,
+} from "@/lib/grupos/simulacao-linha";
+import { fatorSeguroGrupo } from "@/lib/grupos/seguro";
+import type { GrupoConsorcio, GrupoCota, GrupoModalidadeLance } from "@/lib/types";
 import { DEFAULT_LEADS, getConfigJsonPublic } from "@/server/config";
 
 type SelecaoPayload = {
   grupoId: string;
   cotaId: string;
+  config: ConfigLinhaSimulacaoGrupo;
 };
 
 type Body = {
@@ -54,33 +57,36 @@ export async function POST(request: Request) {
     const grupoIds = [...new Set(body.selecoes.map((s) => s.grupoId))];
     const cotaIds = body.selecoes.map((s) => s.cotaId);
 
-    const [{ data: grupos }, { data: cotas }] = await Promise.all([
+    const [{ data: grupos }, { data: cotas }, { data: modalidades }] = await Promise.all([
       admin.from("grupos_consorcio").select("*").in("id", grupoIds),
       admin.from("grupos_cotas").select("*").in("id", cotaIds),
+      admin.from("grupos_modalidades_lance").select("*").in("grupo_id", grupoIds),
     ]);
 
     const grupoMap = new Map((grupos ?? []).map((g) => [g.id, g as GrupoConsorcio]));
     const cotaMap = new Map((cotas ?? []).map((c) => [c.id, c as GrupoCota]));
+    const modsByGrupo = new Map<string, GrupoModalidadeLance[]>();
+    (modalidades ?? []).forEach((m) => {
+      const list = modsByGrupo.get(m.grupo_id) ?? [];
+      list.push(m as GrupoModalidadeLance);
+      modsByGrupo.set(m.grupo_id, list);
+    });
 
     const selecoesCalc = body.selecoes.map((s) => {
       const grupo = grupoMap.get(s.grupoId)!;
       const cota = cotaMap.get(s.cotaId)!;
-      return {
-        linha: {
-          valorCredito: Number(cota.valor_credito),
-          saldoDevedorInformado: cota.saldo_devedor,
-          valorParcelaInformado: cota.valor_parcela ?? cota.parcela_com_seguro,
-          quantidadeCotas: 1,
-        },
-        params: grupoToParametros(grupo),
+      const mods = modsByGrupo.get(s.grupoId) ?? [];
+      const resultado = calcularLinhaSimulacaoGrupo({
         grupo,
         cota,
-      };
+        config: s.config,
+        modalidades: mods,
+      });
+      return { grupo, cota, config: s.config, resultado, mods };
     });
 
-    const totais = calcularTotaisGrupos(
-      selecoesCalc.map(({ linha, params }) => ({ linha, params })),
-    );
+    const totais = agregarResultadosLinhas(selecoesCalc.map((s) => s.resultado));
+    const totalCotas = selecoesCalc.reduce((a, s) => a + s.resultado.quantidadeCotas, 0);
 
     const { data: sim, error: simErr } = await admin
       .from("simulacoes_grupos")
@@ -91,15 +97,15 @@ export async function POST(request: Request) {
         dados_totais: totais,
         credito_liquido: totais.creditoLiquido,
         total_grupos: grupoIds.length,
-        total_cotas: body.selecoes.length,
+        total_cotas: totalCotas,
         total_credito: totais.somaCotas,
-        total_saldo_devedor: totais.saldoDevedor,
+        total_saldo_devedor: totais.saldoDevedorFinal,
         total_lance_embutido: totais.lanceEmbutido,
         total_recurso_proprio: totais.recursoProprio,
         total_lance: totais.lanceTotal,
         total_primeira_parcela: totais.primeiraParcela,
-        total_seguro: totais.seguro,
-        total_parcelas_restantes: totais.parcelasRestantes,
+        total_seguro: totais.seguroTotal,
+        total_parcelas_restantes: selecoesCalc[0]?.resultado.parcelasRestantesPosContemplacao ?? 0,
       })
       .select("id")
       .single();
@@ -116,19 +122,35 @@ export async function POST(request: Request) {
         codigo_grupo: s.grupo.codigo_grupo,
         modalidade: s.grupo.modalidade,
         valor_credito: s.cota.valor_credito,
-        quantidade_cotas: 1,
-        soma_cotas: s.linha.valorCredito,
-        saldo_devedor: s.linha.saldoDevedorInformado,
-        lance_embutido: calcularTotaisGrupos([{ linha: s.linha, params: s.params }]).lanceEmbutido,
-        recurso_proprio: calcularTotaisGrupos([{ linha: s.linha, params: s.params }]).recursoProprio,
-        lance_total: calcularTotaisGrupos([{ linha: s.linha, params: s.params }]).lanceTotal,
-        primeira_parcela: s.linha.valorParcelaInformado,
-        seguro: calcularTotaisGrupos([{ linha: s.linha, params: s.params }]).seguro,
+        quantidade_cotas: s.resultado.quantidadeCotas,
+        soma_cotas: s.resultado.somaCotas,
+        saldo_devedor: s.resultado.saldoDevedorInicial,
+        saldo_devedor_inicial: s.resultado.saldoDevedorInicial,
+        saldo_devedor_final: s.resultado.saldoDevedorFinal,
+        lance_embutido: s.resultado.lanceEmbutido,
+        recurso_proprio: s.resultado.recursoProprio,
+        lance_total: s.resultado.lanceTotal,
+        primeira_parcela: s.resultado.primeiraParcela,
+        seguro: s.resultado.seguroMensal,
         parcelas_realizadas: s.grupo.parcelas_realizadas,
         prazo_restante: s.grupo.prazo_restante,
-        seguro_pos_contemplacao: s.grupo.seguro_pos_contemplacao,
-        parcelas_restantes: s.params.prazoRestante ?? s.params.prazoTotal,
+        seguro_pos_contemplacao: s.config.usaSeguro,
+        parcelas_restantes: s.resultado.parcelasRestantesPosContemplacao,
         cet_percentual: s.grupo.cet_percentual,
+        modalidade_parcela: s.config.modalidadeParcela,
+        usa_lance_embutido: s.config.usaLanceEmbutido,
+        modalidade_lance_id: s.config.modalidadeLanceId?.startsWith("fallback-")
+          ? null
+          : s.config.modalidadeLanceId,
+        percentual_lance_embutido: s.resultado.percentualLanceEmbutido,
+        usa_recurso_proprio: s.config.usaRecursoProprio,
+        recurso_proprio_tipo: s.config.recursoProprioModo,
+        recurso_proprio_valor: s.resultado.recursoProprio,
+        usa_seguro: s.config.usaSeguro,
+        percentual_seguro: fatorSeguroGrupo(s.grupo.seguro_percentual),
+        parcela_pos_contemplacao: s.resultado.parcelaPosContemplacao,
+        credito_liquido: s.resultado.creditoLiquido,
+        dados_linha: { config: s.config, resultado: s.resultado },
       })),
     );
 
@@ -143,7 +165,18 @@ export async function POST(request: Request) {
           tipo_proposta: "Consórcio — Grupos",
           valor_credito: totais.somaCotas,
           valor_parcela: totais.primeiraParcela,
-          dados_simulacao: { simulacao_grupo_id: sim.id, totais, selecoes: body.selecoes },
+          dados_simulacao: {
+            simulacao_grupo_id: sim.id,
+            totais,
+            selecoes: selecoesCalc.map((s) => ({
+              grupoId: s.grupo.id,
+              codigoGrupo: s.grupo.codigo_grupo,
+              cotaId: s.cota.id,
+              credito: s.cota.valor_credito,
+              config: s.config,
+              resultado: s.resultado,
+            })),
+          },
           status: "Gerada",
           pdf_url: null,
         })
@@ -206,14 +239,6 @@ export async function POST(request: Request) {
       lead_id: leadId,
       dados_evento: { acao: body.acao },
     });
-    if (body.acao === "proposta") {
-      await registrarEvento({
-        tipo_evento: "clique_gerar_proposta",
-        origem: "grupos",
-        lead_id: leadId,
-        entidade_id: propostaId ?? undefined,
-      });
-    }
 
     return NextResponse.json({
       ok: true,

@@ -1,3 +1,9 @@
+import type { OpcaoParcelaConsorcio } from "./simulador-parcela-opcoes";
+import {
+  DEFAULT_OPCOES_PARCELA_AUTOMOVEL,
+  DEFAULT_OPCOES_PARCELA_IMOVEL,
+} from "./simulador-parcela-opcoes";
+
 export type SiteConfig = {
   nomeEmpresa: string;
   subtitulo: string;
@@ -28,6 +34,8 @@ export type ContatoConfig = {
   instagram: string;
 };
 
+export type { OpcaoParcelaConsorcio } from "./simulador-parcela-opcoes";
+
 export type SimuladorTipoBemConfig = {
   taxaAdministrativaPadrao: number;
   fundoReservaPadrao: number;
@@ -44,8 +52,10 @@ export type SimuladorTipoBemConfig = {
   mostrarComparacaoFinanciamento: boolean;
   mostrarTabelaAnoAno: boolean;
   exibirTabelaCompletaPorPadrao: boolean;
-  /** Exibir opção parcela reduzida no simulador */
+  opcoesParcela?: OpcaoParcelaConsorcio[];
+  /** @deprecated use opcoesParcela */
   temParcelaReduzida?: boolean;
+  /** @deprecated use opcoesParcela */
   percentualParcelaReduzida?: number;
 };
 
@@ -119,8 +129,7 @@ export const DEFAULT_SIMULADOR_IMOVEL: SimuladorTipoBemConfig = {
   mostrarComparacaoFinanciamento: true,
   mostrarTabelaAnoAno: true,
   exibirTabelaCompletaPorPadrao: false,
-  temParcelaReduzida: true,
-  percentualParcelaReduzida: 50,
+  opcoesParcela: DEFAULT_OPCOES_PARCELA_IMOVEL,
 };
 
 export const DEFAULT_SIMULADOR_AUTOMOVEL: SimuladorTipoBemConfig = {
@@ -139,8 +148,7 @@ export const DEFAULT_SIMULADOR_AUTOMOVEL: SimuladorTipoBemConfig = {
   mostrarComparacaoFinanciamento: true,
   mostrarTabelaAnoAno: true,
   exibirTabelaCompletaPorPadrao: false,
-  temParcelaReduzida: true,
-  percentualParcelaReduzida: 50,
+  opcoesParcela: DEFAULT_OPCOES_PARCELA_AUTOMOVEL,
 };
 
 export const DEFAULT_FINANCIAMENTO_CONFIG: FinanciamentoConfig = {

@@ -1,9 +1,16 @@
 "use client";
 
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import type { SimuladorTipoBemConfig } from "@/lib/config/defaults";
-import { calcularParcelaConsorcio, type EntradaConsorcio } from "@/lib/simulador/consorcio";
+import { opcoesParcelaAtivas } from "@/lib/config/simulador-parcela-opcoes";
+import {
+  calcularContemplacaoPrimeiroMes,
+  calcularLancePorTipo,
+  calcularParcelaConsorcio,
+  type EntradaConsorcio,
+  type ModoLanceInput,
+} from "@/lib/simulador/consorcio";
 import { simularFinanciamento } from "@/lib/simulador/financiamento";
 import { compararConsorcioFinanciamento } from "@/lib/simulador/comparativo";
 import { gerarProjecaoAnoAno } from "@/lib/simulador/projecao";
@@ -23,7 +30,6 @@ import { ProjectionSection } from "./projection-section";
 import { LeadCaptureModal } from "./lead-capture-modal";
 import type {
   AcaoCaptura,
-  EstrategiaPagamento,
   Modo,
   SimuladorConfigs,
   TipoBem,
@@ -50,6 +56,7 @@ function buildEntradaConsorcio(
   lanceEmbutido: number,
   reajusteCredito: number,
   correcaoParcela: number,
+  percentualParcelaInicial: number,
 ): EntradaConsorcio {
   return {
     valorCredito,
@@ -61,22 +68,24 @@ function buildEntradaConsorcio(
     lanceEmbutido,
     reajusteAnualCredito: reajusteCredito,
     correcaoAnualParcela: correcaoParcela,
+    percentualParcelaInicial,
   };
 }
 
 function parcelaConsorcioParaPrazo(
   base: Omit<EntradaConsorcio, "prazoMeses">,
   prazoMeses: number,
-  estrategia: EstrategiaPagamento,
-  bemCfg: SimuladorTipoBemConfig,
+  percentualParcela: number,
 ) {
-  const r = calcularParcelaConsorcio({ ...base, prazoMeses });
-  const integral = r.parcelaEstimada;
-  if (estrategia === "reduzida" && bemCfg.temParcelaReduzida) {
-    const pct = bemCfg.percentualParcelaReduzida ?? 50;
-    return integral * (pct / 100);
-  }
-  return integral;
+  return calcularParcelaConsorcio({
+    ...base,
+    prazoMeses,
+    percentualParcelaInicial: percentualParcela,
+  }).parcelaEstimada;
+}
+
+function primeiraOpcaoId(cfg: SimuladorTipoBemConfig) {
+  return opcoesParcelaAtivas(cfg)[0]?.id ?? "integral";
 }
 
 export function SimuladorApp({ configs }: { configs: SimuladorConfigs }) {
@@ -85,7 +94,7 @@ export function SimuladorApp({ configs }: { configs: SimuladorConfigs }) {
   const [modo, setModo] = useState<Modo>("consorcio");
   const [tipoBem, setTipoBem] = useState<TipoBem>("imovel");
   const [avancado, setAvancado] = useState(false);
-  const [estrategia, setEstrategia] = useState<EstrategiaPagamento>("integral");
+  const [opcaoParcelaId, setOpcaoParcelaId] = useState(() => primeiraOpcaoId(configs.imovel));
   const [resultoDestacado, setResultoDestacado] = useState(false);
   const [tabelaAberta, setTabelaAberta] = useState(false);
 
@@ -111,16 +120,39 @@ export function SimuladorApp({ configs }: { configs: SimuladorConfigs }) {
   const [seguro, setSeguro] = useState(bemCfg.seguroPrestamistaPadrao);
   const [reajusteCredito, setReajusteCredito] = useState(bemCfg.reajusteAnualCredito);
   const [correcaoParcela, setCorrecaoParcela] = useState(bemCfg.correcaoAnualParcela);
-  const [lanceProprio, setLanceProprio] = useState(0);
-  const [lanceEmbutido, setLanceEmbutido] = useState(0);
+  const [lanceProprioModo, setLanceProprioModo] = useState<ModoLanceInput>("percent");
+  const [lanceEmbutidoModo, setLanceEmbutidoModo] = useState<ModoLanceInput>("percent");
+  const [lanceProprioInput, setLanceProprioInput] = useState(0);
+  const [lanceEmbutidoInput, setLanceEmbutidoInput] = useState(0);
 
   const [valorBem, setValorBem] = useState(500_000);
   const [entradaFin, setEntradaFin] = useState(100_000);
   const [taxaMensal, setTaxaMensal] = useState(finCfg.taxaMensalPadrao);
   const [prazoFin, setPrazoFin] = useState(finCfg.prazoPadrao);
 
-  const lanceTotal = lanceProprio + lanceEmbutido;
-  const creditoLiquido = Math.max(0, valorCredito - lanceEmbutido);
+  const opcoesParcela = useMemo(() => opcoesParcelaAtivas(bemCfg), [bemCfg]);
+  const opcaoSelecionada = useMemo(
+    () => opcoesParcela.find((o) => o.id === opcaoParcelaId) ?? opcoesParcela[0],
+    [opcoesParcela, opcaoParcelaId],
+  );
+  const percentualParcela = opcaoSelecionada?.percentual ?? 100;
+
+  const lanceProprioValor = useMemo(
+    () => calcularLancePorTipo(valorCredito, lanceProprioInput, lanceProprioModo),
+    [valorCredito, lanceProprioInput, lanceProprioModo],
+  );
+  const lanceEmbutidoValor = useMemo(
+    () => calcularLancePorTipo(valorCredito, lanceEmbutidoInput, lanceEmbutidoModo),
+    [valorCredito, lanceEmbutidoInput, lanceEmbutidoModo],
+  );
+  const lanceTotal = lanceProprioValor + lanceEmbutidoValor;
+
+  useEffect(() => {
+    if (!opcoesParcela.length) return;
+    if (!opcoesParcela.some((o) => o.id === opcaoParcelaId)) {
+      setOpcaoParcelaId(opcoesParcela[0].id);
+    }
+  }, [opcoesParcela, opcaoParcelaId]);
 
   const prazosConsorcio = useMemo(() => {
     const list = bemCfg.prazosDisponiveis?.length
@@ -142,10 +174,11 @@ export function SimuladorApp({ configs }: { configs: SimuladorConfigs }) {
         taxaAdm,
         fundoReserva,
         seguro,
-        lanceProprio,
-        lanceEmbutido,
+        lanceProprioValor,
+        lanceEmbutidoValor,
         reajusteCredito,
         correcaoParcela,
+        percentualParcela,
       ),
     [
       valorCredito,
@@ -153,10 +186,11 @@ export function SimuladorApp({ configs }: { configs: SimuladorConfigs }) {
       taxaAdm,
       fundoReserva,
       seguro,
-      lanceProprio,
-      lanceEmbutido,
+      lanceProprioValor,
+      lanceEmbutidoValor,
       reajusteCredito,
       correcaoParcela,
+      percentualParcela,
     ],
   );
 
@@ -166,33 +200,31 @@ export function SimuladorApp({ configs }: { configs: SimuladorConfigs }) {
       taxaAdministrativaPercentual: taxaAdm,
       fundoReservaPercentual: fundoReserva,
       seguroPrestamistaPercentual: seguro,
-      entrada: lanceProprio,
-      lanceEmbutido,
+      entrada: lanceProprioValor,
+      lanceEmbutido: lanceEmbutidoValor,
       reajusteAnualCredito: reajusteCredito,
       correcaoAnualParcela: correcaoParcela,
+      percentualParcelaInicial: percentualParcela,
     }),
     [
       valorCredito,
       taxaAdm,
       fundoReserva,
       seguro,
-      lanceProprio,
-      lanceEmbutido,
+      lanceProprioValor,
+      lanceEmbutidoValor,
       reajusteCredito,
       correcaoParcela,
+      percentualParcela,
     ],
   );
 
-  const resultadoConsorcio = useMemo(
-    () => calcularParcelaConsorcio(entradaConsorcio),
+  const contemplacao = useMemo(
+    () => calcularContemplacaoPrimeiroMes(entradaConsorcio),
     [entradaConsorcio],
   );
 
-  const parcelaIntegral = resultadoConsorcio.parcelaEstimada;
-  const pctReduzida = bemCfg.percentualParcelaReduzida ?? 50;
-  const parcelaReduzida = parcelaIntegral * (pctReduzida / 100);
-  const parcelaExibidaConsorcio =
-    estrategia === "reduzida" && bemCfg.temParcelaReduzida ? parcelaReduzida : parcelaIntegral;
+  const parcelaIntegral = contemplacao.parcelaIntegral;
 
   const resultadoFin = useMemo(
     () =>
@@ -208,7 +240,7 @@ export function SimuladorApp({ configs }: { configs: SimuladorConfigs }) {
   const comparativo = useMemo(() => {
     const entradaFinCmp = {
       valorBem: modo === "consorcio" ? valorCredito : valorBem,
-      entrada: modo === "consorcio" ? lanceProprio : entradaFin,
+      entrada: modo === "consorcio" ? lanceProprioValor : entradaFin,
       taxaMensalPercentual: taxaMensal,
       prazoMeses: modo === "consorcio" ? prazo : prazoFin,
     };
@@ -218,7 +250,7 @@ export function SimuladorApp({ configs }: { configs: SimuladorConfigs }) {
     entradaConsorcio,
     valorCredito,
     valorBem,
-    lanceProprio,
+    lanceProprioValor,
     entradaFin,
     taxaMensal,
     prazo,
@@ -233,9 +265,8 @@ export function SimuladorApp({ configs }: { configs: SimuladorConfigs }) {
   const resumoAno1 = projecao[0];
 
   const parcelaForPrazoConsorcio = useCallback(
-    (meses: number) =>
-      parcelaConsorcioParaPrazo(baseConsorcioSemPrazo, meses, estrategia, bemCfg),
-    [baseConsorcioSemPrazo, estrategia, bemCfg],
+    (meses: number) => parcelaConsorcioParaPrazo(baseConsorcioSemPrazo, meses, percentualParcela),
+    [baseConsorcioSemPrazo, percentualParcela],
   );
 
   const parcelaForPrazoFin = useCallback(
@@ -259,9 +290,9 @@ export function SimuladorApp({ configs }: { configs: SimuladorConfigs }) {
     setSeguro(c.seguroPrestamistaPadrao);
     setReajusteCredito(c.reajusteAnualCredito);
     setCorrecaoParcela(c.correcaoAnualParcela);
-    setLanceProprio(0);
-    setLanceEmbutido(0);
-    if (!c.temParcelaReduzida) setEstrategia("integral");
+    setLanceProprioInput(0);
+    setLanceEmbutidoInput(0);
+    setOpcaoParcelaId(primeiraOpcaoId(c));
   }
 
   function handleModoChange(m: Modo) {
@@ -294,11 +325,8 @@ export function SimuladorApp({ configs }: { configs: SimuladorConfigs }) {
       const resultadoPayload =
         modo === "consorcio"
           ? {
-              ...resultadoConsorcio,
-              parcelaExibida: parcelaExibidaConsorcio,
-              estrategia,
-              lanceTotal,
-              creditoLiquido,
+              ...contemplacao,
+              opcaoParcela: opcaoSelecionada,
               comparativo,
             }
           : { ...resultadoFin, comparativo };
@@ -355,10 +383,14 @@ export function SimuladorApp({ configs }: { configs: SimuladorConfigs }) {
     (modo === "consorcio" && bemCfg.mostrarComparacaoFinanciamento) ||
     (modo === "financiamento" && finCfg.mostrarComparacaoConsorcio);
 
-  const estrategiaLabel =
-    estrategia === "reduzida" && bemCfg.temParcelaReduzida
-      ? `Parcela reduzida (${pctReduzida}% até contemplação)`
-      : "Parcela integral";
+  const avisoLance =
+    lanceTotal > contemplacao.saldoDevedorInicial
+      ? "Lance total superior ao saldo devedor inicial."
+      : null;
+
+  const estrategiaLabel = opcaoSelecionada
+    ? `${opcaoSelecionada.nome} (${percentualParcela}% da parcela integral)`
+    : "Parcela integral";
 
   const footerCta =
     resultoDestacado ? (
@@ -408,21 +440,28 @@ export function SimuladorApp({ configs }: { configs: SimuladorConfigs }) {
               onSelect={setPrazo}
               parcelaForPrazo={parcelaForPrazoConsorcio}
             />
-            <PaymentStrategyStep
-              estrategia={estrategia}
-              onChange={setEstrategia}
-              mostrarReduzida={!!bemCfg.temParcelaReduzida}
-              percentualReduzida={pctReduzida}
-              parcelaIntegral={parcelaIntegral}
-              parcelaReduzida={parcelaReduzida}
-            />
+            {opcoesParcela.length ? (
+              <PaymentStrategyStep
+                opcoes={opcoesParcela}
+                selectedId={opcaoParcelaId}
+                onSelect={setOpcaoParcelaId}
+                parcelaIntegral={parcelaIntegral}
+              />
+            ) : null}
             <AdvancedStrategyAccordion
               open={avancado}
               onToggle={() => setAvancado((v) => !v)}
-              lanceProprio={lanceProprio}
-              onLanceProprio={setLanceProprio}
-              lanceEmbutido={lanceEmbutido}
-              onLanceEmbutido={setLanceEmbutido}
+              valorCredito={valorCredito}
+              lanceProprioModo={lanceProprioModo}
+              onLanceProprioModo={setLanceProprioModo}
+              lanceProprioInput={lanceProprioInput}
+              onLanceProprioInput={setLanceProprioInput}
+              lanceProprioValor={lanceProprioValor}
+              lanceEmbutidoModo={lanceEmbutidoModo}
+              onLanceEmbutidoModo={setLanceEmbutidoModo}
+              lanceEmbutidoInput={lanceEmbutidoInput}
+              onLanceEmbutidoInput={setLanceEmbutidoInput}
+              lanceEmbutidoValor={lanceEmbutidoValor}
               lanceTotal={lanceTotal}
               taxaAdm={taxaAdm}
               onTaxaAdm={setTaxaAdm}
@@ -434,7 +473,7 @@ export function SimuladorApp({ configs }: { configs: SimuladorConfigs }) {
               onReajusteCredito={setReajusteCredito}
               correcaoParcela={correcaoParcela}
               onCorrecaoParcela={setCorrecaoParcela}
-              maxLanceEmbutido={valorCredito}
+              avisoLance={avisoLance}
             />
           </>
         ) : (
@@ -479,13 +518,7 @@ export function SimuladorApp({ configs }: { configs: SimuladorConfigs }) {
           }
         >
           {modo === "consorcio" ? (
-            <ConsorcioResultCards
-              resultado={resultadoConsorcio}
-              parcelaExibida={parcelaExibidaConsorcio}
-              lanceTotal={lanceTotal}
-              creditoLiquido={creditoLiquido}
-              estrategiaLabel={estrategiaLabel}
-            />
+            <ConsorcioResultCards contemplacao={contemplacao} estrategiaLabel={estrategiaLabel} />
           ) : (
             <FinanciamentoResultCards
               resultado={resultadoFin}

@@ -71,6 +71,25 @@ export type GrupoConsorcio = {
   updated_at: string;
 };
 
+export type GrupoModalidadeLance = {
+  id: string;
+  grupo_id: string;
+  nome: string;
+  percentual_lance_embutido: number;
+  percentual_recurso_proprio_minimo: number;
+  descricao: string | null;
+  ativo: boolean;
+  ordem: number;
+  created_at: string;
+  updated_at: string;
+};
+
+export type PublicGrupoAggregate = {
+  grupo: GrupoConsorcio;
+  cotas: GrupoCota[];
+  modalidades: GrupoModalidadeLance[];
+};
+
 export type GrupoCota = {
   id: string;
   grupo_id: string;

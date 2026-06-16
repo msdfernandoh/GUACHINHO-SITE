@@ -1,9 +1,17 @@
 import { Button, Input, Label, Select, Textarea } from "@/components/ui/form-primitives";
 import { MODALIDADES_GRUPO } from "@/lib/types";
+import { GrupoModalidadesEditor } from "@/components/admin/grupo-modalidades-editor";
+import type { GrupoModalidadeLance } from "@/lib/types";
 
 type GrupoInitial = Record<string, unknown> | undefined;
 
-export function GrupoFormFields({ initial }: { initial?: GrupoInitial }) {
+export function GrupoFormFields({
+  initial,
+  modalidadesInitial,
+}: {
+  initial?: GrupoInitial;
+  modalidadesInitial?: GrupoModalidadeLance[];
+}) {
   const g = initial ?? {};
   return (
     <>
@@ -114,8 +122,14 @@ export function GrupoFormFields({ initial }: { initial?: GrupoInitial }) {
         </div>
         <div className="grid gap-3 sm:grid-cols-3">
           <div>
-            <Label>Seguro %</Label>
-            <Input name="seguro_percentual" type="number" step="0.01" defaultValue={String(g.seguro_percentual ?? 0)} />
+            <Label>Seguro % (fator ou % — ex. 0,0004)</Label>
+            <Input
+              name="seguro_percentual"
+              type="text"
+              inputMode="decimal"
+              placeholder="0,0004"
+              defaultValue={String(g.seguro_percentual ?? 0)}
+            />
           </div>
           <div>
             <Label>Seguro valor (R$)</Label>
@@ -155,6 +169,8 @@ export function GrupoFormFields({ initial }: { initial?: GrupoInitial }) {
           </div>
         </div>
       </section>
+
+      <GrupoModalidadesEditor initial={modalidadesInitial} />
 
       <section className="space-y-3 rounded-xl border bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
         <h2 className="font-semibold">Cotas — colar créditos (uma linha = uma cota)</h2>

@@ -1,18 +1,59 @@
 "use client";
 
 import { formatCurrency } from "@/lib/utils/format";
+import type { ModoLanceInput } from "@/lib/simulador/consorcio";
 import { CurrencyInput } from "./currency-input";
 import { PercentInput } from "./percent-input";
 import { fieldHelpClass, sectionCardClass } from "./simulador-ui";
 import { cn } from "@/lib/utils/cn";
 
+function ModoToggle({
+  modo,
+  onModo,
+}: {
+  modo: ModoLanceInput;
+  onModo: (m: ModoLanceInput) => void;
+}) {
+  return (
+    <div className="mb-2 flex gap-2">
+      <button
+        type="button"
+        onClick={() => onModo("percent")}
+        className={cn(
+          "rounded-lg px-3 py-1.5 text-xs font-semibold",
+          modo === "percent" ? "bg-amber-400 text-slate-950" : "bg-slate-800 text-slate-300",
+        )}
+      >
+        %
+      </button>
+      <button
+        type="button"
+        onClick={() => onModo("valor")}
+        className={cn(
+          "rounded-lg px-3 py-1.5 text-xs font-semibold",
+          modo === "valor" ? "bg-amber-400 text-slate-950" : "bg-slate-800 text-slate-300",
+        )}
+      >
+        R$
+      </button>
+    </div>
+  );
+}
+
 type Props = {
   open: boolean;
   onToggle: () => void;
-  lanceProprio: number;
-  onLanceProprio: (v: number) => void;
-  lanceEmbutido: number;
-  onLanceEmbutido: (v: number) => void;
+  valorCredito: number;
+  lanceProprioModo: ModoLanceInput;
+  onLanceProprioModo: (m: ModoLanceInput) => void;
+  lanceProprioInput: number;
+  onLanceProprioInput: (v: number) => void;
+  lanceProprioValor: number;
+  lanceEmbutidoModo: ModoLanceInput;
+  onLanceEmbutidoModo: (m: ModoLanceInput) => void;
+  lanceEmbutidoInput: number;
+  onLanceEmbutidoInput: (v: number) => void;
+  lanceEmbutidoValor: number;
   lanceTotal: number;
   taxaAdm: number;
   onTaxaAdm: (v: number) => void;
@@ -24,16 +65,23 @@ type Props = {
   onReajusteCredito: (v: number) => void;
   correcaoParcela: number;
   onCorrecaoParcela: (v: number) => void;
-  maxLanceEmbutido?: number;
+  avisoLance?: string | null;
 };
 
 export function AdvancedStrategyAccordion({
   open,
   onToggle,
-  lanceProprio,
-  onLanceProprio,
-  lanceEmbutido,
-  onLanceEmbutido,
+  valorCredito,
+  lanceProprioModo,
+  onLanceProprioModo,
+  lanceProprioInput,
+  onLanceProprioInput,
+  lanceProprioValor,
+  lanceEmbutidoModo,
+  onLanceEmbutidoModo,
+  lanceEmbutidoInput,
+  onLanceEmbutidoInput,
+  lanceEmbutidoValor,
   lanceTotal,
   taxaAdm,
   onTaxaAdm,
@@ -45,7 +93,7 @@ export function AdvancedStrategyAccordion({
   onReajusteCredito,
   correcaoParcela,
   onCorrecaoParcela,
-  maxLanceEmbutido,
+  avisoLance,
 }: Props) {
   return (
     <section className={sectionCardClass("overflow-hidden")}>
@@ -69,41 +117,69 @@ export function AdvancedStrategyAccordion({
             <div>
               <h3 className="text-sm font-bold uppercase tracking-wide text-slate-300">Lance</h3>
               <p className={fieldHelpClass()}>
-                Lance próprio é o valor que você pretende usar com recursos próprios. Lance embutido é
-                uma parte do crédito utilizada na estratégia de contemplação, quando permitido.
+                Lance próprio é o recurso que você aporta. Lance embutido utiliza parte do crédito na
+                estratégia de contemplação, quando permitido. Simulação considera contemplação no 1º mês.
               </p>
               <div className="mt-4 grid gap-4 sm:grid-cols-2">
-                <CurrencyInput
-                  label="Lance próprio / recurso próprio"
-                  value={lanceProprio}
-                  onChange={onLanceProprio}
-                  help="Recursos que você aporta do seu bolso."
-                />
-                <CurrencyInput
-                  label="Valor do lance embutido"
-                  value={lanceEmbutido}
-                  max={maxLanceEmbutido}
-                  onChange={onLanceEmbutido}
-                  help="Parte do crédito usada como lance, conforme regras."
-                />
+                <div>
+                  <p className="mb-1 text-sm font-medium text-slate-200">Lance próprio / recurso próprio</p>
+                  <ModoToggle modo={lanceProprioModo} onModo={onLanceProprioModo} />
+                  {lanceProprioModo === "percent" ? (
+                    <PercentInput
+                      label="Percentual sobre o crédito (%)"
+                      value={lanceProprioInput}
+                      onChange={onLanceProprioInput}
+                      max={100}
+                    />
+                  ) : (
+                    <CurrencyInput
+                      label="Valor do lance próprio"
+                      value={lanceProprioInput}
+                      onChange={onLanceProprioInput}
+                      max={valorCredito}
+                    />
+                  )}
+                  <p className="mt-1 text-xs text-amber-400/90">
+                    Valor aplicado: {formatCurrency(lanceProprioValor)}
+                  </p>
+                </div>
+                <div>
+                  <p className="mb-1 text-sm font-medium text-slate-200">Lance embutido</p>
+                  <ModoToggle modo={lanceEmbutidoModo} onModo={onLanceEmbutidoModo} />
+                  {lanceEmbutidoModo === "percent" ? (
+                    <PercentInput
+                      label="Percentual sobre o crédito (%)"
+                      value={lanceEmbutidoInput}
+                      onChange={onLanceEmbutidoInput}
+                      max={100}
+                    />
+                  ) : (
+                    <CurrencyInput
+                      label="Valor do lance embutido"
+                      value={lanceEmbutidoInput}
+                      onChange={onLanceEmbutidoInput}
+                      max={valorCredito}
+                    />
+                  )}
+                  <p className="mt-1 text-xs text-amber-400/90">
+                    Valor aplicado: {formatCurrency(lanceEmbutidoValor)}
+                  </p>
+                </div>
               </div>
               <div className="mt-4 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3">
                 <p className="text-xs font-semibold uppercase text-amber-200/90">Lance total</p>
                 <p className="text-xl font-bold text-amber-400">{formatCurrency(lanceTotal)}</p>
-                <p className="text-xs text-slate-400">Lance próprio + lance embutido (calculado automaticamente)</p>
               </div>
+              {avisoLance ? <p className="mt-2 text-xs text-red-300">{avisoLance}</p> : null}
             </div>
             <div>
-              <h3 className="text-sm font-bold uppercase tracking-wide text-slate-300">
-                Taxas e índices
-              </h3>
+              <h3 className="text-sm font-bold uppercase tracking-wide text-slate-300">Taxas e índices</h3>
               <div className="mt-4 grid gap-4 sm:grid-cols-2">
                 <PercentInput
                   label="Taxa administrativa (%)"
                   value={taxaAdm}
                   onChange={onTaxaAdm}
                   step={0.01}
-                  help="Percentual sobre o crédito contratado."
                 />
                 <PercentInput
                   label="Fundo de reserva (%)"
@@ -116,7 +192,6 @@ export function AdvancedStrategyAccordion({
                   value={seguro}
                   onChange={onSeguro}
                   step={0.001}
-                  help="Percentual anual sobre o crédito."
                 />
                 <PercentInput
                   label="Reajuste anual do crédito (%)"

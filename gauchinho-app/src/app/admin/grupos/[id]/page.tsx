@@ -4,6 +4,7 @@ import {
   deleteGrupoAction,
   duplicateGrupoAction,
   fetchGrupoWithCotas,
+  fetchModalidadesByGrupoId,
   toggleGrupoAtivoAction,
   updateGrupoAction,
 } from "../actions";
@@ -26,6 +27,7 @@ export default async function GrupoEditPage({
   } catch {
     notFound();
   }
+  const modalidades = await fetchModalidadesByGrupoId(id);
   const update = updateGrupoAction.bind(null, id);
   const dup = duplicateGrupoAction.bind(null, id);
   const del = deleteGrupoAction.bind(null, id);
@@ -66,7 +68,10 @@ export default async function GrupoEditPage({
       </div>
       <h1 className="text-2xl font-bold">Grupo {data.grupo.codigo_grupo}</h1>
       <form action={update} className="space-y-6">
-        <GrupoFormFields initial={data.grupo as Record<string, unknown>} />
+        <GrupoFormFields
+          initial={data.grupo as Record<string, unknown>}
+          modalidadesInitial={modalidades}
+        />
       </form>
       <section className="rounded-xl border bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
         <h2 className="mb-3 font-semibold">Cotas cadastradas</h2>

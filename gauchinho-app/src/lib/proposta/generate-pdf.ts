@@ -68,18 +68,21 @@ export async function enrichPropostaProjecaoFromSimulacao(propostaId: string) {
   const { data: p } = await admin.from("propostas").select("*").eq("id", propostaId).single();
   if (!p) return;
   const ds = (p.dados_simulacao ?? {}) as Record<string, unknown>;
-  const entrada = (ds.entrada ?? ds) as EntradaConsorcio;
-  if (!entrada?.valorCredito || !entrada?.prazoMeses) return;
+  const entradaRaw = (ds.entrada ?? ds) as Record<string, unknown>;
+  if (!entradaRaw?.valorCredito || !entradaRaw?.prazoMeses) return;
   const linhas = gerarProjecaoAnoAno({
-    valorCredito: Number(entrada.valorCredito),
-    prazoMeses: Number(entrada.prazoMeses),
-    taxaAdministrativaPercentual: Number(entrada.taxaAdministrativaPercentual ?? 20),
-    fundoReservaPercentual: Number(entrada.fundoReservaPercentual ?? 2),
-    seguroPrestamistaPercentual: Number(entrada.seguroPrestamistaPercentual ?? 0),
-    reajusteAnualCredito: Number(entrada.reajusteAnualCredito ?? 8),
-    correcaoAnualParcela: Number(entrada.correcaoAnualParcela ?? 8),
+    valorCredito: Number(entradaRaw.valorCredito),
+    prazoMeses: Number(entradaRaw.prazoMeses),
+    taxaAdministrativaPercentual: Number(entradaRaw.taxaAdministrativaPercentual ?? 20),
+    fundoReservaPercentual: Number(entradaRaw.fundoReservaPercentual ?? 2),
+    seguroPrestamistaPercentual: Number(entradaRaw.seguroPrestamistaPercentual ?? 0),
+    entrada: Number(entradaRaw.entrada ?? 0),
+    lanceEmbutido: Number(entradaRaw.lanceEmbutido ?? 0),
+    reajusteAnualCredito: Number(entradaRaw.reajusteAnualCredito ?? 8),
+    correcaoAnualParcela: Number(entradaRaw.correcaoAnualParcela ?? 8),
+    percentualParcelaInicial: Number(entradaRaw.percentualParcelaInicial ?? 100),
   });
-  const prazo = Number(entrada.prazoMeses);
+  const prazo = Number(entradaRaw.prazoMeses);
   const anos = Math.ceil(prazo / 12);
   const marcos = [1, 3, 5, 10].filter((a) => a <= anos);
   if (!marcos.includes(anos)) marcos.push(anos);

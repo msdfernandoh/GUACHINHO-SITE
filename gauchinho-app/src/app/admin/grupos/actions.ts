@@ -12,9 +12,12 @@ import {
 import { DEFAULT_LEADS, getConfigJson } from "@/server/config";
 import { parseBulkCreditLines } from "@/lib/utils/format";
 import { estimarCamposCotaBulk } from "@/lib/grupos/calculos";
+import { parseSeguroInput } from "@/lib/grupos/seguro";
 import { GRUPOS_TESTE } from "@/lib/grupos/dados-teste";
+import type { GrupoModalidadeLance, PublicGrupoAggregate } from "@/lib/types";
 
 function grupoFromForm(formData: FormData) {
+  const seguroRaw = String(formData.get("seguro_percentual") ?? "");
   return {
     codigo_grupo: String(formData.get("codigo_grupo") ?? "").trim(),
     modalidade: String(formData.get("modalidade") ?? "Imóvel").trim(),
@@ -22,7 +25,7 @@ function grupoFromForm(formData: FormData) {
     taxa_administrativa_percentual: Number(formData.get("taxa_administrativa_percentual") ?? 0),
     fundo_reserva_percentual: Number(formData.get("fundo_reserva_percentual") ?? 0),
     seguro_habilitado: formData.get("seguro_habilitado") === "on",
-    seguro_percentual: Number(formData.get("seguro_percentual") ?? 0),
+    seguro_percentual: parseSeguroInput(seguroRaw),
     seguro_valor: Number(formData.get("seguro_valor") ?? 0) || null,
     tem_parcela_reduzida: formData.get("tem_parcela_reduzida") === "on",
     percentual_parcela_reduzida: Number(formData.get("percentual_parcela_reduzida") ?? 0),
@@ -40,6 +43,59 @@ function grupoFromForm(formData: FormData) {
     ativo: formData.get("ativo") === "on",
     observacoes: String(formData.get("observacoes") ?? "").trim() || null,
   };
+}
+
+async function syncModalidadesLance(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  grupoId: string,
+  formData: FormData,
+) {
+  const raw = String(formData.get("modalidades_json") ?? "[]");
+  let rows: Array<{
+    id?: string;
+    nome: string;
+    percentual_lance_embutido: number;
+    percentual_recurso_proprio_minimo: number;
+    descricao?: string | null;
+    ativo: boolean;
+    ordem: number;
+  }> = [];
+  try {
+    rows = JSON.parse(raw);
+  } catch {
+    rows = [];
+  }
+  const { error: delErr } = await supabase
+    .from("grupos_modalidades_lance")
+    .delete()
+    .eq("grupo_id", grupoId);
+  if (delErr && !delErr.message.includes("does not exist")) {
+    throw new Error(delErr.message);
+  }
+  if (!rows.length || delErr) return;
+  const { error: insErr } = await supabase.from("grupos_modalidades_lance").insert(
+    rows.map((r) => ({
+      grupo_id: grupoId,
+      nome: r.nome || "Modalidade",
+      percentual_lance_embutido: r.percentual_lance_embutido,
+      percentual_recurso_proprio_minimo: r.percentual_recurso_proprio_minimo,
+      descricao: r.descricao ?? null,
+      ativo: r.ativo,
+      ordem: r.ordem,
+    })),
+  );
+  if (insErr) throw new Error(insErr.message);
+}
+
+export async function fetchModalidadesByGrupoId(grupoId: string): Promise<GrupoModalidadeLance[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("grupos_modalidades_lance")
+    .select("*")
+    .eq("grupo_id", grupoId)
+    .order("ordem", { ascending: true });
+  if (error) return [];
+  return (data ?? []) as GrupoModalidadeLance[];
 }
 
 async function assertCanManageGrupos() {
@@ -136,6 +192,8 @@ export async function createGrupoAction(formData: FormData) {
 
   await insertCotasFromBulk(supabase, data.id, bulk, grupo);
 
+  await syncModalidadesLance(supabase, data.id, formData);
+
   revalidatePath("/admin/grupos");
   redirect(`/admin/grupos/${data.id}`);
 }
@@ -157,6 +215,8 @@ export async function updateGrupoAction(grupoId: string, formData: FormData) {
     .maybeSingle();
   const ordemStart = (maxOrdem?.ordem ?? -1) + 1;
   await insertCotasFromBulk(supabase, grupoId, bulk, grupo, ordemStart);
+
+  await syncModalidadesLance(supabase, grupoId, formData);
 
   revalidatePath(`/admin/grupos/${grupoId}`);
   revalidatePath("/admin/grupos");
@@ -208,7 +268,7 @@ export async function deleteGrupoAction(grupoId: string) {
   redirect("/admin/grupos");
 }
 
-export async function fetchPublicGruposRows() {
+export async function fetchPublicGruposAggregates(): Promise<PublicGrupoAggregate[]> {
   const supabase = await createClient();
   const { data: grupos } = await supabase
     .from("grupos_consorcio")
@@ -222,27 +282,50 @@ export async function fetchPublicGruposRows() {
     .select("*")
     .eq("ativo", true)
     .neq("status", "Inativo")
-    .neq("status", "Esgotado");
+    .neq("status", "Esgotado")
+    .order("ordem", { ascending: true });
 
-  const cotasByGrupo = new Map<string, typeof cotas>();
+  const { data: modalidades } = await supabase
+    .from("grupos_modalidades_lance")
+    .select("*")
+    .eq("ativo", true)
+    .order("ordem", { ascending: true });
+
+  const cotasByGrupo = new Map<string, NonNullable<typeof cotas>>();
   (cotas ?? []).forEach((c) => {
     const list = cotasByGrupo.get(c.grupo_id) ?? [];
     list.push(c);
     cotasByGrupo.set(c.grupo_id, list);
   });
 
-  const rows: Array<{
-    grupo: NonNullable<typeof grupos>[number];
-    cota: NonNullable<typeof cotas>[number];
-  }> = [];
-
-  (grupos ?? []).forEach((g) => {
-    const list = cotasByGrupo.get(g.id) ?? [];
-    list.forEach((cota) => rows.push({ grupo: g, cota }));
+  const modsByGrupo = new Map<string, GrupoModalidadeLance[]>();
+  (modalidades ?? []).forEach((m) => {
+    const list = modsByGrupo.get(m.grupo_id) ?? [];
+    list.push(m as GrupoModalidadeLance);
+    modsByGrupo.set(m.grupo_id, list);
   });
 
-  return rows;
+  const aggregates: PublicGrupoAggregate[] = [];
+  (grupos ?? []).forEach((g) => {
+    const list = cotasByGrupo.get(g.id) ?? [];
+    if (!list.length) return;
+    list.sort((a, b) => Number(b.valor_credito) - Number(a.valor_credito));
+    aggregates.push({
+      grupo: g,
+      cotas: list,
+      modalidades: modsByGrupo.get(g.id) ?? [],
+    });
+  });
+
+  return aggregates;
 }
+
+/** @deprecated use fetchPublicGruposAggregates */
+export async function fetchPublicGruposRows() {
+  const aggregates = await fetchPublicGruposAggregates();
+  return aggregates.flatMap(({ grupo, cotas }) => cotas.map((cota) => ({ grupo, cota })));
+}
+
 
 export async function popularGruposTesteAction(): Promise<{
   created: number;

@@ -78,7 +78,7 @@ function ResumoCards({ data }: { data: PropostaPdfData }) {
     { label: "Parcela estimada", value: fmtMoney(data.resumo.parcela) },
     { label: "Entrada / recurso", value: fmtMoney(data.resumo.entrada) },
     { label: "Lance embutido", value: fmtMoney(data.resumo.lanceEmbutido) },
-    { label: "Valor total est.", value: fmtMoney(data.resumo.valorTotal) },
+    { label: "Saldo devedor inicial", value: fmtMoney(data.resumo.valorTotal) },
     { label: "Crédito líquido", value: fmtMoney(data.resumo.creditoLiquido) },
   ];
   return (

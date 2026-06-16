@@ -1,7 +1,8 @@
 /**
  * Fórmulas de grupos/cotas — única fonte para UI e persistência.
- * TODO: validar cada função contra planilha Excel antes de travar regras.
  */
+
+import { fatorSeguroGrupo } from "./seguro";
 
 export type ParametrosGrupo = {
   taxaAdministrativaPercentual: number;
@@ -126,7 +127,8 @@ export function calcularSeguro(
   params: ParametrosGrupo,
 ): number {
   if (!params.seguroHabilitado) return 0;
-  return saldoDevedor * (num(params.seguroPercentual) / 100);
+  const fator = fatorSeguroGrupo(params.seguroPercentual);
+  return Math.round(saldoDevedor * fator * 100) / 100;
 }
 
 /** Parcelas restantes (prazo restante do grupo). */
@@ -220,8 +222,7 @@ export function estimarCamposCotaBulk(
     : null;
   const valor_parcela = parcela_reduzida ?? parcela_integral;
   const seguroMensal = params.seguroHabilitado
-    ? Math.round(((saldo_devedor * (num(params.seguroPercentual) / 100)) / prazo) * 100) /
-      100
+    ? Math.round(saldo_devedor * fatorSeguroGrupo(params.seguroPercentual) * 100) / 100
     : 0;
   const parcela_sem_seguro = parcela_integral;
   const parcela_com_seguro = Math.round((parcela_integral + seguroMensal) * 100) / 100;

@@ -156,10 +156,30 @@ export async function buildPropostaPdfData(
       );
     }
   } else {
+    const res = (comparativoRaw ?? dadosSim.resultado ?? {}) as Record<string, unknown>;
     detalhesLinhas.push(
       { label: "Valor do crédito", value: fmtMoney(num(p.valor_credito)) },
       { label: "Prazo (meses)", value: String(num(p.prazo) ?? "—") },
-      { label: "Parcela estimada", value: fmtMoney(num(p.valor_parcela)) },
+      { label: "Parcela inicial estimada", value: fmtMoney(num(p.valor_parcela) ?? num(res.primeiraParcela)) },
+      { label: "Lance próprio", value: fmtMoney(num(p.entrada) ?? num(res.entrada)) },
+      { label: "Lance embutido", value: fmtMoney(num(res.lanceEmbutido)) },
+      { label: "Lance total", value: fmtMoney(num(res.lanceTotal)) },
+      { label: "Saldo devedor inicial", value: fmtMoney(num(res.saldoDevedorInicial)) },
+      { label: "Saldo devedor final", value: fmtMoney(num(res.saldoDevedorFinal)) },
+      { label: "Parcela pós-contemplação", value: fmtMoney(num(res.parcelaPosContemplacao)) },
+      { label: "Parcelas restantes", value: String(num(res.parcelasRestantes) ?? "—") },
+      {
+        label: "Custo adm. efetivo mensal",
+        value: res.custoAdmEfetivoMensalPercentual != null
+          ? `${Number(res.custoAdmEfetivoMensalPercentual).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}% a.m.`
+          : "—",
+      },
+      {
+        label: "Custo adm. efetivo anual",
+        value: res.custoAdmEfetivoAnualPercentual != null
+          ? `${Number(res.custoAdmEfetivoAnualPercentual).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}% a.a.`
+          : "—",
+      },
       { label: "Taxa administrativa (%)", value: String(num(p.taxa_administrativa) ?? "—") },
       { label: "Fundo de reserva (%)", value: String(num(p.fundo_reserva) ?? "—") },
       { label: "Seguro prestamista (%)", value: String(num(p.seguro_prestamista) ?? "—") },
@@ -207,6 +227,7 @@ export async function buildPropostaPdfData(
   if (overrides?.validade_data) validadeTexto = fmtDateBr(overrides.validade_data);
 
   const valorTotal =
+    num((comparativoRaw as Record<string, unknown>)?.saldoDevedorInicial) ??
     comparativo?.consorcioTotal ??
     num((comparativoRaw?.consorcio as Record<string, unknown>)?.valorTotalEstimado) ??
     null;

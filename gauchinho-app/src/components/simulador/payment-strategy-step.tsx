@@ -1,63 +1,69 @@
 import { formatCurrency } from "@/lib/utils/format";
-import type { EstrategiaPagamento } from "./simulador-types";
+import type { OpcaoParcelaConsorcio } from "@/lib/config/simulador-parcela-opcoes";
+import { calcularParcelaReduzida } from "@/lib/simulador/consorcio";
 import { choiceCardClass, sectionCardClass, stepBadgeClass } from "./simulador-ui";
 
 type Props = {
-  estrategia: EstrategiaPagamento;
-  onChange: (e: EstrategiaPagamento) => void;
-  mostrarReduzida: boolean;
-  percentualReduzida: number;
+  opcoes: OpcaoParcelaConsorcio[];
+  selectedId: string;
+  onSelect: (id: string) => void;
   parcelaIntegral: number;
-  parcelaReduzida: number;
 };
 
 export function PaymentStrategyStep({
-  estrategia,
-  onChange,
-  mostrarReduzida,
-  percentualReduzida,
+  opcoes,
+  selectedId,
+  onSelect,
   parcelaIntegral,
-  parcelaReduzida,
 }: Props) {
+  const selected = opcoes.find((o) => o.id === selectedId) ?? opcoes[0];
+  const multipla = opcoes.length > 1;
+
   return (
     <section className={sectionCardClass()}>
       <div className="mb-4 flex items-start gap-3">
         <span className={stepBadgeClass()}>5</span>
         <div>
-          <h2 className="text-lg font-bold text-white">Estratégia de pagamento</h2>
-          <p className="text-sm text-slate-400">Como você prefere pagar as parcelas iniciais?</p>
+          <h2 className="text-lg font-bold text-white">Opção de parcela inicial</h2>
+          <p className="text-sm text-slate-400">
+            {multipla
+              ? "Escolha como deseja pagar no início do plano."
+              : "Opção de parcela aplicada nesta simulação."}
+          </p>
         </div>
       </div>
-      <div className="grid gap-3 sm:grid-cols-2">
-        {mostrarReduzida ? (
-          <button
-            type="button"
-            onClick={() => onChange("reduzida")}
-            className={choiceCardClass(estrategia === "reduzida", "p-5 text-left")}
-          >
-            <p className="text-lg font-bold">Parcela reduzida</p>
-            <p className="mt-1 text-sm opacity-90">
-              Parcela inicial menor para facilitar a entrada no plano.
-            </p>
-            <p className="mt-3 text-xs font-semibold uppercase tracking-wide opacity-80">
-              {percentualReduzida}% da parcela integral
-            </p>
-            <p className="mt-1 text-2xl font-extrabold">{formatCurrency(parcelaReduzida)}</p>
-            <p className="mt-2 text-xs opacity-75">
-              Após contemplação, a parcela pode ser complementada conforme regras do grupo.
-            </p>
-          </button>
-        ) : null}
-        <button
-          type="button"
-          onClick={() => onChange("integral")}
-          className={choiceCardClass(estrategia === "integral", "p-5 text-left")}
-        >
-          <p className="text-lg font-bold">Parcela integral</p>
-          <p className="mt-1 text-sm opacity-90">Pagamento completo desde o início.</p>
-          <p className="mt-4 text-2xl font-extrabold">{formatCurrency(parcelaIntegral)}</p>
-        </button>
-      </div>
+      {multipla ? (
+        <div className="grid gap-3 sm:grid-cols-2">
+          {opcoes.map((op) => {
+            const parcela = calcularParcelaReduzida(parcelaIntegral, op.percentual);
+            const sel = op.id === selectedId;
+            return (
+              <button
+                key={op.id}
+                type="button"
+                onClick={() => onSelect(op.id)}
+                className={choiceCardClass(sel, "p-5 text-left")}
+              >
+                <p className="text-lg font-bold">{op.nome}</p>
+                {op.descricao ? <p className="mt-1 text-sm opacity-90">{op.descricao}</p> : null}
+                <p className="mt-3 text-2xl font-extrabold">{formatCurrency(parcela)}</p>
+                <p className="mt-1 text-xs opacity-75">{op.percentual}% da parcela integral</p>
+              </button>
+            );
+          })}
+        </div>
+      ) : selected ? (
+        <div className="rounded-2xl border border-amber-500/40 bg-amber-500/10 p-5">
+          <p className="text-lg font-bold text-amber-300">{selected.nome}</p>
+          {selected.descricao ? (
+            <p className="mt-1 text-sm text-slate-300">{selected.descricao}</p>
+          ) : null}
+          <p className="mt-3 text-3xl font-extrabold text-white">
+            {formatCurrency(calcularParcelaReduzida(parcelaIntegral, selected.percentual))}
+          </p>
+          <p className="mt-1 text-xs text-slate-400">{selected.percentual}% da parcela integral</p>
+        </div>
+      ) : null}
     </section>
   );
 }

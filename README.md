@@ -41,9 +41,13 @@ Faça isto **antes** de testar login e admin em produção:
 
 1. Criar projeto no [Supabase Dashboard](https://supabase.com/dashboard).
 2. Copiar **Project URL**, **anon key** e **service role key** (Settings → API). A service role **só no servidor** (Vercel env, nunca `NEXT_PUBLIC_*`).
-3. Aplicar migration `supabase/migrations/001_initial_schema.sql`:
+3. Aplicar migrations em ordem no Supabase:
+   - `supabase/migrations/001_initial_schema.sql`
+   - `supabase/migrations/002_storage_propostas_pdf.sql` (PDF)
+   - `supabase/migrations/003_cartas_contempladas.sql` (se usar cartas)
+   - **`supabase/migrations/004_grupos_modalidades_lance.sql`** — **obrigatória para `/grupos` funcional** (ver abaixo)
    - **CLI (raiz do repo):** `supabase link --project-ref SEU_PROJECT_REF` → `supabase db push`
-   - **Ou** SQL Editor → colar o arquivo → Run.
+   - **Ou** SQL Editor → colar cada arquivo → Run.
 4. Rodar `supabase/seed.sql` (SQL Editor ou `supabase db execute -f supabase/seed.sql`).
 5. **Authentication → Providers:** habilitar **Email** (e-mail/senha).
 6. **Authentication → URL Configuration:**
@@ -106,7 +110,41 @@ Abra `http://localhost:3000` · Admin: `http://localhost:3000/login` · Grupos p
 
 API pública: `POST /api/public/grupos/fluxo` · `POST /api/public/simulador/captura`
 
-Testes: `cd gauchinho-app && npm test` · Docs: `docs/RELATORIO-TESTES-FASE-1.md`, `docs/CALCULOS-GRUPOS.md`, `docs/TESTES-SIMULADORES-FASE-2.md`
+Testes: `cd gauchinho-app && npm test` · Docs: `docs/RELATORIO-TESTES-FASE-1.md`, `docs/CALCULOS-GRUPOS.md`, `docs/TESTES-SIMULADORES-FASE-2.md`, `docs/TESTES-GRUPOS-TABELA-FUNCIONAL.md`
+
+### Migration obrigatória — grupos funcionais (004)
+
+Para a tabela pública `/grupos` (uma linha por grupo, modalidades de lance, seguro `0,0004`, persistência completa da simulação), aplique no **Supabase SQL Editor**:
+
+```txt
+supabase/migrations/004_grupos_modalidades_lance.sql
+```
+
+A migration cria a tabela `grupos_modalidades_lance`, amplia `simulacoes_grupos_itens`, ajusta precisão de `seguro_percentual` e políticas RLS. É **compatível** com dados já existentes (`IF NOT EXISTS` / colunas opcionais).
+
+**Sem a 004:**
+
+- modalidades de lance no admin podem falhar ao salvar;
+- campos novos da simulação em `/grupos` podem não ser persistidos corretamente;
+- o PDF pode não receber todos os dados novos da seleção.
+
+#### Checklist manual pós-migration
+
+1. Entrar como **Master**.
+2. Ir em `/admin/grupos`.
+3. Criar ou editar um grupo.
+4. Cadastrar modalidades de lance (ex.: **25% embutido**; **50% embutido + 10% próprio**).
+5. Salvar.
+6. Reabrir o grupo e confirmar que as modalidades persistiram.
+7. Ir em `/grupos`.
+8. Escolher **valor da cota** no select e informar **quantidade**.
+9. Escolher **modalidade de lance** (se houver mais de uma).
+10. Usar **recurso próprio** em **%**, depois testar em **R$**.
+11. Testar **com seguro** e **sem seguro**.
+12. Ativar **mais de um grupo** e conferir o **resumo consolidado**.
+13. **Gerar simulação** → **Gerar proposta** → **baixar PDF**.
+
+Detalhes e testes automatizados: [`docs/TESTES-GRUPOS-TABELA-FUNCIONAL.md`](docs/TESTES-GRUPOS-TABELA-FUNCIONAL.md).
 
 ## 4. Deploy na Vercel via Git
 

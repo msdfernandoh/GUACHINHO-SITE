@@ -71,7 +71,28 @@ function prazosFromForm(formData: FormData, name: string): number[] {
     .filter((n) => Number.isFinite(n) && n > 0);
 }
 
+import type { OpcaoParcelaConsorcio } from "@/lib/config/simulador-parcela-opcoes";
+
+function opcoesParcelaFromForm(formData: FormData): OpcaoParcelaConsorcio[] {
+  const out: OpcaoParcelaConsorcio[] = [];
+  for (let i = 0; i < 5; i++) {
+    const nome = String(formData.get(`opcao_${i}_nome`) ?? "").trim();
+    if (!nome) continue;
+    const idRaw = String(formData.get(`opcao_${i}_id`) ?? "").trim();
+    out.push({
+      id: idRaw || `op_${i}`,
+      nome,
+      percentual: numField(formData, `opcao_${i}_percentual`, 100),
+      descricao: String(formData.get(`opcao_${i}_descricao`) ?? "").trim(),
+      ativa: formData.get(`opcao_${i}_ativa`) === "on",
+      ordem: numField(formData, `opcao_${i}_ordem`, i + 1),
+    });
+  }
+  return out.sort((a, b) => a.ordem - b.ordem);
+}
+
 function simuladorPayloadFromForm(formData: FormData) {
+  const opcoesParcela = opcoesParcelaFromForm(formData);
   return {
     taxaAdministrativaPadrao: numField(formData, "taxaAdministrativaPadrao"),
     fundoReservaPadrao: numField(formData, "fundoReservaPadrao"),
@@ -88,6 +109,7 @@ function simuladorPayloadFromForm(formData: FormData) {
     mostrarComparacaoFinanciamento: formData.get("mostrarComparacaoFinanciamento") === "on",
     mostrarTabelaAnoAno: formData.get("mostrarTabelaAnoAno") === "on",
     exibirTabelaCompletaPorPadrao: formData.get("exibirTabelaCompletaPorPadrao") === "on",
+    ...(opcoesParcela.length ? { opcoesParcela } : {}),
   };
 }
 
