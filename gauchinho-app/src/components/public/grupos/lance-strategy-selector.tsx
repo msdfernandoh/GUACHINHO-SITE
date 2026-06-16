@@ -56,8 +56,8 @@ export function LanceStrategySelector({
           const sel = selectedId === m.id;
           const pctEmb = Number(m.percentual_lance_embutido);
           const pctRec = Number(m.percentual_recurso_proprio_minimo);
-          const baseLance = saldoDevedorLance > 0 ? saldoDevedorLance : somaCotas;
-          const embR$ = minimoRecursoValor(baseLance, pctEmb);
+          const baseLance = saldoDevedorLance;
+          const embR$ = pctEmb > 0 ? minimoRecursoValor(baseLance, pctEmb) : 0;
           const recMinR$ = minimoRecursoValor(baseLance, pctRec);
           const parcelaLbl = labelParcelaModalidade(m);
           return (

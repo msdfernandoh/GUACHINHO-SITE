@@ -210,6 +210,11 @@ export function GrupoRowAdjustments({ grupo, cotas, modalidades, config, onChang
         <div className="grid grid-cols-2 gap-2 text-xs">
           <div className="rounded-md bg-zinc-950/60 p-2">
             <p className="text-[10px] text-zinc-500">Embutido</p>
+            {resultado.percentualLanceEmbutido > 0 ? (
+              <p className="text-[9px] text-zinc-600">
+                {resultado.percentualLanceEmbutido}% sobre saldo devedor
+              </p>
+            ) : null}
             <MoneyValue
               value={resultado.lanceEmbutido}
               compact
@@ -226,6 +231,7 @@ export function GrupoRowAdjustments({ grupo, cotas, modalidades, config, onChang
           </div>
           <div className="rounded-md bg-zinc-950/60 p-2">
             <p className="text-[10px] text-zinc-500">Crédito líquido</p>
+            <p className="text-[9px] text-zinc-600">Crédito contratado − embutido</p>
             <MoneyValue value={resultado.creditoLiquido} compact className="text-amber-400" />
           </div>
           <div className="rounded-md bg-zinc-950/60 p-2">
@@ -244,13 +250,13 @@ export function GrupoRowAdjustments({ grupo, cotas, modalidades, config, onChang
             <p className="text-xs text-zinc-400">Anual: {formatCustoEfetivoAnual(grupo)}</p>
           </div>
           <div className="rounded-md bg-zinc-950/60 p-2">
-            <p className="text-[10px] text-zinc-500">Saldo devedor total</p>
+            <p className="text-[10px] text-zinc-500">Saldo devedor</p>
             <MoneyValue value={resultado.saldoDevedorInicial} compact className="text-zinc-200" />
-            <p className="text-[9px] text-zinc-600">Sem lances</p>
+            <p className="text-[9px] text-zinc-600">Base dos lances %</p>
           </div>
           <div className="rounded-md bg-zinc-950/60 p-2">
-            <p className="text-[10px] text-zinc-500">Saldo final</p>
-            <MoneyValue value={resultado.saldoDevedorFinal} compact />
+            <p className="text-[10px] text-zinc-500">Saldo pós-lance</p>
+            <MoneyValue value={resultado.saldoPosLance} compact />
           </div>
           <div className="col-span-2 rounded-md bg-zinc-950/60 p-2">
             <p className="text-[10px] text-zinc-500">Prazo</p>

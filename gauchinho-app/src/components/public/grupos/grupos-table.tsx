@@ -24,14 +24,14 @@ export function GruposTable({ rows, configs, onConfigChange }: Props) {
             <Th>Cota</Th>
             <Th>Qtd.</Th>
             <Th>Soma</Th>
+            <Th title="Crédito + taxas e fundo — base dos lances %">Saldo devedor</Th>
             <Th>Parcela</Th>
-            <Th title="Lance embutido">Embutido</Th>
-            <Th>Próprio</Th>
+            <Th title="Lance embutido (% sobre saldo devedor)">Embutido</Th>
+            <Th title="Recurso próprio (% sobre saldo devedor)">Próprio</Th>
             <Th>Lance total</Th>
             <Th>Seguro</Th>
-            <Th>Crédito líquido</Th>
-            <Th title="Crédito + taxas e fundo, sem lances">Saldo devedor</Th>
-            <Th title="Após 1ª parcela e lances">Saldo final</Th>
+            <Th title="Crédito contratado − lance embutido">Crédito líquido</Th>
+            <Th title="Saldo devedor − lance total">Saldo pós-lance</Th>
             <Th>Pós-cont.</Th>
             <Th title="Total / restante / realizadas">Prazo</Th>
             <Th className="sticky right-0 bg-zinc-950/95">Ajustes</Th>

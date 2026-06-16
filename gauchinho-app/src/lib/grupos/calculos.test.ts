@@ -4,6 +4,7 @@ import {
   calcularParcelasSeguroDaCota,
   estimarCamposCotaBulk,
   calcularLanceEmbutido,
+  calcularLanceEmbutidoLinha,
   calcularLanceTotal,
   calcularParcelasRestantes,
   calcularPrimeiraParcela,
@@ -54,6 +55,15 @@ describe("calculos grupos", () => {
     const rec = calcularRecursoProprio(100_000, paramsBase);
     expect(rec).toBe(5_000);
     expect(calcularLanceTotal(emb, rec)).toBe(15_000);
+  });
+
+  it("lance % sobre saldo 620k — embutido 25% e próprio 10%", () => {
+    const saldo = 620_000;
+    expect(calcularLanceEmbutidoLinha(saldo, 25)).toBe(155_000);
+    expect(calcularLanceEmbutidoLinha(saldo, 10)).toBe(62_000);
+    expect(calcularCreditoLiquidoPosContemplacao(500_000, 155_000)).toBe(345_000);
+    expect(calcularLanceTotal(155_000, 62_000)).toBe(217_000);
+    expect(saldo - 217_000).toBe(403_000);
   });
 
   it("seguro e parcelas restantes", () => {

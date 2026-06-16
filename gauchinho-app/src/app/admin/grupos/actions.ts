@@ -205,9 +205,17 @@ async function recalcularParcelasCotasGrupo(
   }
 }
 
+async function modalidadesSupabaseClient() {
+  try {
+    return createAdminClient();
+  } catch {
+    return await createClient();
+  }
+}
+
 async function syncModalidadesLance(grupoId: string, formData: FormData) {
   const rows = parseModalidadesJson(String(formData.get("modalidades_json") ?? "[]"));
-  const admin = createAdminClient();
+  const admin = await modalidadesSupabaseClient();
 
   const { error: delErr } = await admin
     .from("grupos_modalidades_lance")

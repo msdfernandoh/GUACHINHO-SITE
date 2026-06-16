@@ -31,6 +31,9 @@ export type ResultadoLinhaSimulacaoGrupo = {
   ativo: boolean;
   somaCotas: number;
   saldoDevedorInicial: number;
+  /** Saldo devedor − lance total (base comercial dos lances). */
+  saldoPosLance: number;
+  /** Saldo após 1ª parcela (base da parcela pós-contemplação). */
   saldoDevedorFinal: number;
   primeiraParcela: number;
   parcelaBase: number;
@@ -195,6 +198,7 @@ export function calcularLinhaSimulacaoGrupo(args: {
     ativo: false,
     somaCotas: 0,
     saldoDevedorInicial: 0,
+    saldoPosLance: 0,
     saldoDevedorFinal: 0,
     primeiraParcela: 0,
     parcelaBase: 0,
@@ -274,11 +278,13 @@ export function calcularLinhaSimulacaoGrupo(args: {
       : 0;
 
   const lanceTotal = lanceEmbutido + recursoProprio;
+  const saldoPosLance = Math.max(
+    0,
+    Math.round((saldoDevedorInicial - lanceTotal) * 100) / 100,
+  );
   const saldoDevedorFinal = Math.max(
     0,
-    Math.round(
-      (saldoDevedorInicial - primeiraParcela - lanceEmbutido - recursoProprio) * 100,
-    ) / 100,
+    Math.round((saldoPosLance - primeiraParcela) * 100) / 100,
   );
 
   const prazoRestante = calcularParcelasRestantes(params);
@@ -295,6 +301,7 @@ export function calcularLinhaSimulacaoGrupo(args: {
     ativo: true,
     somaCotas,
     saldoDevedorInicial,
+    saldoPosLance,
     saldoDevedorFinal,
     primeiraParcela,
     parcelaBase: Math.round((parcelaBase) * 100) / 100,
@@ -323,6 +330,7 @@ export function agregarResultadosLinhas(
   recursoProprio: number;
   lanceTotal: number;
   saldoDevedorInicial: number;
+  saldoPosLance: number;
   saldoDevedorFinal: number;
   seguroTotal: number;
   creditoLiquido: number;
@@ -341,6 +349,7 @@ export function agregarResultadosLinhas(
     recursoProprio: ativas.reduce((a, l) => a + l.recursoProprio, 0),
     lanceTotal: ativas.reduce((a, l) => a + l.lanceTotal, 0),
     saldoDevedorInicial: ativas.reduce((a, l) => a + l.saldoDevedorInicial, 0),
+    saldoPosLance: ativas.reduce((a, l) => a + l.saldoPosLance, 0),
     saldoDevedorFinal: ativas.reduce((a, l) => a + l.saldoDevedorFinal, 0),
     seguroTotal: ativas.reduce((a, l) => a + l.seguroMensal, 0),
     creditoLiquido: ativas.reduce((a, l) => a + l.creditoLiquido, 0),

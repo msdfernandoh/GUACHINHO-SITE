@@ -167,6 +167,56 @@ describe("simulacao linha grupo", () => {
   it("formato prazo", () => {
     expect(formatPrazoGrupo(grupoBase)).toBe("220 / 209 / 11");
   });
+
+  it("caso obrigatório 500k / 24% / lances 25% + 10%", () => {
+    const g: GrupoConsorcio = {
+      ...grupoBase,
+      taxa_administrativa_percentual: 22,
+      fundo_reserva_percentual: 2,
+      percentual_lance_embutido: 25,
+    };
+    const c: GrupoCota = {
+      ...cota,
+      valor_credito: 500_000,
+      saldo_devedor: null,
+    };
+    const mods = [
+      {
+        id: "m25",
+        grupo_id: "g1",
+        nome: "25% + 10% próprio",
+        percentual_lance_embutido: 25,
+        percentual_recurso_proprio_minimo: 10,
+        descricao: null,
+        ativo: true,
+        ordem: 0,
+        created_at: "",
+        updated_at: "",
+      },
+    ];
+    const r = calcularLinhaSimulacaoGrupo({
+      grupo: g,
+      cota: c,
+      modalidades: mods,
+      config: {
+        cotaId: c.id,
+        quantidadeCotas: 1,
+        modalidadeParcela: "integral",
+        usaLanceEmbutido: true,
+        modalidadeLanceId: "m25",
+        usaRecursoProprio: true,
+        recursoProprioModo: "percentual",
+        recursoProprioInput: 10,
+        usaSeguro: false,
+      },
+    });
+    expect(r.saldoDevedorInicial).toBe(620_000);
+    expect(r.lanceEmbutido).toBe(155_000);
+    expect(r.recursoProprio).toBe(62_000);
+    expect(r.lanceTotal).toBe(217_000);
+    expect(r.saldoPosLance).toBe(403_000);
+    expect(r.creditoLiquido).toBe(345_000);
+  });
 });
 
 describe("caso Excel — grupos 1513 e 1533", () => {

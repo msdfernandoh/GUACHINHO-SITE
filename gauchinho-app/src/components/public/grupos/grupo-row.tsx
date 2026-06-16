@@ -58,8 +58,11 @@ export function GrupoRow({
   const recursoPct =
     config.usaRecursoProprio && config.recursoProprioModo === "percentual"
       ? config.recursoProprioInput
-      : config.usaRecursoProprio && resultado.somaCotas > 0
-        ? Math.round((resultado.recursoProprio / resultado.somaCotas) * 10000) / 100
+      : config.usaRecursoProprio &&
+          resultado.saldoDevedorInicial > 0
+        ? Math.round(
+            (resultado.recursoProprio / resultado.saldoDevedorInicial) * 10000,
+          ) / 100
         : null;
 
   const modalidadeLabel =
@@ -118,6 +121,14 @@ export function GrupoRow({
         <Td>
           {ativo ? (
             <MoneyValue value={resultado.somaCotas} compact className="text-amber-300" />
+          ) : (
+            <CellDash />
+          )}
+        </Td>
+
+        <Td title="Base dos lances percentuais">
+          {ativo ? (
+            <MoneyValue value={resultado.saldoDevedorInicial} compact className="text-zinc-200" />
           ) : (
             <CellDash />
           )}
@@ -255,17 +266,9 @@ export function GrupoRow({
           )}
         </Td>
 
-        <Td title="Crédito + taxas e fundo (sem lances)">
+        <Td title="Saldo devedor − lance total">
           {ativo ? (
-            <MoneyValue value={resultado.saldoDevedorInicial} compact className="text-zinc-200" />
-          ) : (
-            <CellDash />
-          )}
-        </Td>
-
-        <Td title="Após 1ª parcela e lances">
-          {ativo ? (
-            <MoneyValue value={resultado.saldoDevedorFinal} compact className="text-zinc-300" />
+            <MoneyValue value={resultado.saldoPosLance} compact className="text-zinc-300" />
           ) : (
             <CellDash />
           )}
