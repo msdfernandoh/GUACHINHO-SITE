@@ -17,6 +17,8 @@ import { ValorFuturoCalculator } from "./valor-futuro-calculator";
 import { FinanciamentoCalculator } from "./financiamento-calculator";
 import { CorrecaoValoresCalculator } from "./correcao-valores-calculator";
 
+import type { IndicePublico } from "@/lib/indices-financeiros/types";
+
 type SimSnapshot = {
   id: CalculadoraId;
   inputs: Record<string, unknown>;
@@ -26,9 +28,10 @@ type SimSnapshot = {
 type Props = {
   config: CalculadorasFinanceirasConfig;
   initialCalc?: CalculadoraId;
+  indices: IndicePublico[];
 };
 
-export function CalculadorasPage({ config, initialCalc }: Props) {
+export function CalculadorasPage({ config, initialCalc, indices }: Props) {
   const ativas = useMemo(() => calculadorasAtivas(config), [config]);
   const [activeId, setActiveId] = useState<CalculadoraId | null>(() => {
     if (initialCalc && ativas.some((a) => a.id === initialCalc)) return initialCalc;
@@ -61,6 +64,26 @@ export function CalculadorasPage({ config, initialCalc }: Props) {
           entidade_tipo: id,
         }),
       });
+      if (id === "correcao") {
+        void fetch("/api/public/eventos", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            tipo_evento: "calculadora_aluguel_utilizada",
+            origem: "calculadora_financeira",
+          }),
+        });
+      }
+      if (id === "aplicacao_mensal") {
+        void fetch("/api/public/eventos", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            tipo_evento: "calculadora_aplicacao_comparativo_utilizada",
+            origem: "calculadora_financeira",
+          }),
+        });
+      }
     },
     [],
   );
@@ -177,6 +200,7 @@ export function CalculadorasPage({ config, initialCalc }: Props) {
               <CalculatorPanel
                 meta={activeMeta}
                 config={config}
+                indices={indices}
                 onResult={(inputs, resultado) => onResult(activeMeta.id, inputs, resultado)}
               />
             ) : null}
@@ -241,16 +265,22 @@ export function CalculadorasPage({ config, initialCalc }: Props) {
 function CalculatorPanel({
   meta,
   config,
+  indices,
   onResult,
 }: {
   meta: CalculadoraMeta;
   config: CalculadorasFinanceirasConfig;
+  indices: IndicePublico[];
   onResult: (inputs: Record<string, unknown>, resultado: Record<string, unknown>) => void;
 }) {
   switch (meta.id) {
     case "aplicacao_mensal":
       return (
-        <AplicacaoMensalCalculator taxaPadrao={config.rentabilidadeMensalPadrao} onResult={onResult} />
+        <AplicacaoMensalCalculator
+          indices={indices}
+          taxaPadrao={config.rentabilidadeMensalPadrao}
+          onResult={onResult}
+        />
       );
     case "valor_futuro":
       return <ValorFuturoCalculator taxaPadrao={config.rentabilidadeMensalPadrao} onResult={onResult} />;
@@ -259,6 +289,6 @@ function CalculatorPanel({
         <FinanciamentoCalculator taxaPadrao={config.taxaFinanciamentoPadrao} onResult={onResult} />
       );
     case "correcao":
-      return <CorrecaoValoresCalculator onResult={onResult} />;
+      return <CorrecaoValoresCalculator indices={indices} onResult={onResult} />;
   }
 }

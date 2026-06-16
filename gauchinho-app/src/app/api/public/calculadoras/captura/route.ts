@@ -38,7 +38,37 @@ export async function POST(request: Request) {
     ]);
 
     const tipoInteresse = labelCalculadora(body.calculadoraId);
-    const valorSim = Number(body.inputs.valorInicial ?? body.inputs.valorBem ?? 0) || null;
+    const dadosSimulacaoBase = {
+      calculadoraId: body.calculadoraId,
+      inputs: body.inputs,
+      resultado: body.resultado,
+    };
+
+    const resultado = body.resultado as Record<string, unknown>;
+    let dados_simulacao: Record<string, unknown> = dadosSimulacaoBase;
+
+    if (resultado.tipo_calculadora === "correcao_aluguel") {
+      dados_simulacao = {
+        tipo_calculadora: "correcao_aluguel",
+        valor_atual: resultado.valorAtual,
+        indice: resultado.indice,
+        percentual_aplicado: resultado.percentualAplicado,
+        novo_valor: resultado.novoValor,
+        data_referencia_indice: resultado.data_referencia_indice,
+      };
+    } else if (resultado.tipo_calculadora === "aplicacao_comparativo") {
+      dados_simulacao = {
+        tipo_calculadora: "aplicacao_comparativo",
+        valor_inicial: body.inputs.valorInicial,
+        aporte_mensal: body.inputs.aporteMensal,
+        prazo_meses: body.inputs.prazoMeses,
+        opcoes_comparadas: body.inputs.opcoes_comparadas,
+        melhor_resultado_estimado: resultado.melhorResultadoEstimado,
+      };
+    }
+
+    const valorSim =
+      Number(body.inputs.valorInicial ?? body.inputs.valorAtual ?? body.inputs.valorBem ?? 0) || null;
     const prazo = Number(body.inputs.prazoMeses ?? 0) || null;
     const entradaVal = Number(body.inputs.entrada ?? 0) || null;
 
@@ -56,11 +86,7 @@ export async function POST(request: Request) {
         valor_simulado: valorSim,
         prazo_simulado: prazo,
         entrada: entradaVal,
-        dados_simulacao: {
-          calculadoraId: body.calculadoraId,
-          inputs: body.inputs,
-          resultado: body.resultado,
-        },
+        dados_simulacao,
         resultado_resumido: JSON.stringify(body.resultado).slice(0, 500),
         status: leadsConfig.statusInicialPadrao,
         criado_manual: false,

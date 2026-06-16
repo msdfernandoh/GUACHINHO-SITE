@@ -12,6 +12,7 @@ import {
   Building2,
   Home,
   BookOpen,
+  TrendingUp,
 } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 
@@ -25,6 +26,7 @@ const staffNav = [
   { href: "/admin/imoveis", label: "Imóveis", icon: Home },
   { href: "/admin/conteudo", label: "Conteúdo", icon: BookOpen, conteudoOnly: true },
   { href: "/admin/usuarios", label: "Usuários", icon: UserCircle, masterOnly: true },
+  { href: "/admin/indices-financeiros", label: "Índices financeiros", icon: TrendingUp, masterOnly: true },
   { href: "/admin/configuracoes", label: "Configurações", icon: Settings, masterOnly: true },
 ];
 

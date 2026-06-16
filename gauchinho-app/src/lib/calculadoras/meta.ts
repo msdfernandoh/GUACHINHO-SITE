@@ -6,6 +6,7 @@ export type CalculadoraMeta = {
   title: string;
   question: string;
   description: string;
+  subtitle?: string;
 };
 
 export const CALCULADORAS_META: CalculadoraMeta[] = [
@@ -13,7 +14,8 @@ export const CALCULADORAS_META: CalculadoraMeta[] = [
     id: "aplicacao_mensal",
     title: "Aplicação mensal",
     question: "Quanto vou acumular investindo todos os meses?",
-    description: "Valor inicial, aportes e rentabilidade ao longo do prazo.",
+    description: "Compare Poupança, CDI, Tesouro Direto e taxa personalizada.",
+    subtitle: "Compare Poupança, CDI, Tesouro Direto e taxa personalizada.",
   },
   {
     id: "valor_futuro",
@@ -29,9 +31,10 @@ export const CALCULADORAS_META: CalculadoraMeta[] = [
   },
   {
     id: "correcao",
-    title: "Correção de valores",
-    question: "Quanto vale hoje um valor corrigido por percentual?",
-    description: "Correção mensal ou anual acumulada.",
+    title: "Correção de aluguel e valores",
+    question: "Qual o novo valor do aluguel após o reajuste?",
+    description: "Atualize valores por IPCA, IGP-M ou uma taxa personalizada.",
+    subtitle: "Atualize valores por IPCA, IGP-M ou uma taxa personalizada.",
   },
 ];
 
