@@ -234,21 +234,13 @@ export function calcularCustoEfetivoAnual(custoMensalPercentual: number): number
 
 
 export function calcularLancePorTipo(
-
-  credito: number,
-
+  baseSaldoDevedor: number,
   valorOuPercentual: number,
-
   modo: ModoLanceInput,
-
 ): number {
-
   const v = Math.max(0, valorOuPercentual);
-
-  if (modo === "percent") return credito * (Math.min(v, 100) / 100);
-
+  if (modo === "percent") return baseSaldoDevedor * (Math.min(v, 100) / 100);
   return v;
-
 }
 
 

@@ -231,15 +231,15 @@ export function calcularLinhaSimulacaoGrupo(args: {
     (modLance && parcelaTipoFromModalidade(modLance)) || config.modalidadeParcela;
 
   const lanceEmbutido =
-    pctEmbutido > 0
-      ? Math.round(somaCotas * (pctEmbutido / 100) * 100) / 100
-      : 0;
+    pctEmbutido > 0 ? calcularLanceEmbutidoLinha(saldoDevedorInicial, pctEmbutido) : 0;
 
   let recursoProprio = 0;
   if (config.usaRecursoProprio) {
     if (config.recursoProprioModo === "percentual") {
-      recursoProprio =
-        Math.round(somaCotas * (num(config.recursoProprioInput) / 100) * 100) / 100;
+      recursoProprio = calcularLanceEmbutidoLinha(
+        saldoDevedorInicial,
+        num(config.recursoProprioInput),
+      );
     } else {
       recursoProprio = Math.max(0, num(config.recursoProprioInput));
     }
@@ -247,7 +247,7 @@ export function calcularLinhaSimulacaoGrupo(args: {
 
   let avisoRecursoProprio: string | null = null;
   if (config.usaLanceEmbutido && pctRecursoMin > 0) {
-    const minimo = Math.round(somaCotas * (pctRecursoMin / 100) * 100) / 100;
+    const minimo = calcularLanceEmbutidoLinha(saldoDevedorInicial, pctRecursoMin);
     if (recursoProprio + 0.009 < minimo) {
       avisoRecursoProprio = `Recurso próprio mínimo: ${pctRecursoMin}% (${minimo.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })})`;
     }

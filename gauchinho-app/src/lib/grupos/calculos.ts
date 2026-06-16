@@ -108,14 +108,14 @@ export function calcularLanceEmbutido(
   return saldoDevedor * (num(p.percentualLanceEmbutido) / 100);
 }
 
-/** Recurso próprio sugerido sobre o crédito (ou valor manual por linha). */
+/** Recurso próprio sugerido sobre o saldo devedor (ou valor manual por linha). */
 export function calcularRecursoProprio(
-  credito: number,
+  saldoDevedor: number,
   params: ParametrosGrupo,
   manual?: number | null,
 ): number {
   if (manual != null && manual >= 0) return manual;
-  return credito * (num(params.percentualRecursoProprioSugerido) / 100);
+  return saldoDevedor * (num(params.percentualRecursoProprioSugerido) / 100);
 }
 
 /** Lance total = embutido + recurso próprio. */
@@ -403,16 +403,10 @@ export function calcularTotaisGrupos(
     if (!s.params.permiteLanceEmbutido || pct <= 0) return acc;
     return acc + calcularLanceEmbutidoLinha(sd, pct);
   }, 0);
-  const recursoProprio = selecoes.reduce(
-    (acc, s) =>
-      acc +
-      calcularRecursoProprio(
-        num(s.linha.valorCredito) * (s.linha.quantidadeCotas ?? 1),
-        s.params,
-        s.linha.recursoProprioManual,
-      ),
-    0,
-  );
+  const recursoProprio = selecoes.reduce((acc, s) => {
+    const sd = calcularSaldoDevedor([s.linha], s.params);
+    return acc + calcularRecursoProprio(sd, s.params, s.linha.recursoProprioManual);
+  }, 0);
   const lanceTotal = calcularLanceTotal(lanceEmbutido, recursoProprio);
   const primeiraParcela = calcularPrimeiraParcela(linhas);
   const seguro = selecoes.reduce(

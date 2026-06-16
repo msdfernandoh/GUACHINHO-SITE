@@ -83,7 +83,7 @@ describe("calculos grupos", () => {
     ]);
     expect(tot.somaCotas).toBe(100_000);
     expect(tot.lanceEmbutido).toBe(12_200);
-    expect(tot.recursoProprio).toBe(5_000);
+    expect(tot.recursoProprio).toBe(6_100);
     expect(tot.creditoLiquido).toBe(87_800);
   });
 

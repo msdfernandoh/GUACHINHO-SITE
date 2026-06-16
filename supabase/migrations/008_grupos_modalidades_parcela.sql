@@ -56,8 +56,17 @@ create policy "grupos_modalidades_lance_staff_all"
   using (
     exists (
       select 1 from public.usuarios u
-      where u.id = auth.uid()
-        and u.perfil in ('Master', 'Admin', 'SRD')
+      where u.auth_user_id = auth.uid()
+        and u.ativo = true
+        and lower(u.perfil) in ('master', 'srd')
+    )
+  )
+  with check (
+    exists (
+      select 1 from public.usuarios u
+      where u.auth_user_id = auth.uid()
+        and u.ativo = true
+        and lower(u.perfil) in ('master', 'srd')
     )
   );
 

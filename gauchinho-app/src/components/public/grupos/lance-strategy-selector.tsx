@@ -10,6 +10,8 @@ type Props = {
   grupoId: string;
   mods: GrupoModalidadeLance[];
   somaCotas: number;
+  /** Saldo devedor da linha (base para % de lance). */
+  saldoDevedorLance: number;
   selectedId: string | null;
   onSelect: (mod: GrupoModalidadeLance) => void;
   onClearEmbutido?: () => void;
@@ -20,6 +22,7 @@ export function LanceStrategySelector({
   grupoId,
   mods,
   somaCotas,
+  saldoDevedorLance,
   selectedId,
   onSelect,
   onClearEmbutido,
@@ -53,8 +56,9 @@ export function LanceStrategySelector({
           const sel = selectedId === m.id;
           const pctEmb = Number(m.percentual_lance_embutido);
           const pctRec = Number(m.percentual_recurso_proprio_minimo);
-          const embR$ = minimoRecursoValor(somaCotas, pctEmb);
-          const recMinR$ = minimoRecursoValor(somaCotas, pctRec);
+          const baseLance = saldoDevedorLance > 0 ? saldoDevedorLance : somaCotas;
+          const embR$ = minimoRecursoValor(baseLance, pctEmb);
+          const recMinR$ = minimoRecursoValor(baseLance, pctRec);
           const parcelaLbl = labelParcelaModalidade(m);
           return (
             <button

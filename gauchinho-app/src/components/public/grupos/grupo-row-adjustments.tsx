@@ -62,6 +62,7 @@ export function GrupoRowAdjustments({ grupo, cotas, modalidades, config, onChang
               grupoId={grupo.id}
               mods={mods}
               somaCotas={resultado.somaCotas}
+              saldoDevedorLance={resultado.saldoDevedorInicial}
               selectedId={modSelecionadaId}
               onSelect={handlers.selectModalidadeLance}
               onClearEmbutido={handlers.clearLanceEmbutido}

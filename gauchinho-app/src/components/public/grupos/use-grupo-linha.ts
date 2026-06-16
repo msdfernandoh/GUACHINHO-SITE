@@ -9,8 +9,8 @@ import {
 } from "@/lib/grupos/simulacao-linha";
 import { parcelaTipoFromModalidade } from "@/lib/grupos/modalidades-admin";
 
-export function minimoRecursoValor(somaCotas: number, pct: number) {
-  return Math.round(somaCotas * (pct / 100) * 100) / 100;
+export function minimoRecursoValor(saldoDevedor: number, pct: number) {
+  return Math.round(saldoDevedor * (pct / 100) * 100) / 100;
 }
 
 type Base = {

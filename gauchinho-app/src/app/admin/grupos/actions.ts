@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { requireUsuario } from "@/lib/auth/get-usuario";
 import {
   canDeleteRecords,
@@ -204,14 +205,11 @@ async function recalcularParcelasCotasGrupo(
   }
 }
 
-async function syncModalidadesLance(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-  grupoId: string,
-  formData: FormData,
-) {
+async function syncModalidadesLance(grupoId: string, formData: FormData) {
   const rows = parseModalidadesJson(String(formData.get("modalidades_json") ?? "[]"));
+  const admin = createAdminClient();
 
-  const { error: delErr } = await supabase
+  const { error: delErr } = await admin
     .from("grupos_modalidades_lance")
     .delete()
     .eq("grupo_id", grupoId);
@@ -239,7 +237,7 @@ async function syncModalidadesLance(
     percentual_parcela_reduzida: r.percentual_parcela_reduzida ?? null,
   }));
 
-  let { error: insErr } = await supabase.from("grupos_modalidades_lance").insert(fullPayload);
+  let { error: insErr } = await admin.from("grupos_modalidades_lance").insert(fullPayload);
   if (
     insErr &&
     (insErr.message.includes("tipo_parcela") ||
@@ -248,7 +246,7 @@ async function syncModalidadesLance(
     const legacyPayload = fullPayload.map(
       ({ tipo_parcela: _t, percentual_parcela_reduzida: _p, ...rest }) => rest,
     );
-    ({ error: insErr } = await supabase.from("grupos_modalidades_lance").insert(legacyPayload));
+    ({ error: insErr } = await admin.from("grupos_modalidades_lance").insert(legacyPayload));
   }
   if (insErr) throw new Error(insErr.message);
 }
@@ -358,7 +356,7 @@ export async function createGrupoAction(formData: FormData) {
 
   await insertCotasFromBulk(supabase, data.id, bulk, grupo);
 
-  await syncModalidadesLance(supabase, data.id, formData);
+  await syncModalidadesLance(data.id, formData);
 
   revalidatePath("/admin/grupos");
   redirect(`/admin/grupos/${data.id}`);
@@ -386,7 +384,7 @@ export async function updateGrupoAction(grupoId: string, formData: FormData) {
       await insertCotasFromBulk(supabase, grupoId, bulk, grupo, ordemStart);
     }
 
-    await syncModalidadesLance(supabase, grupoId, formData);
+    await syncModalidadesLance(grupoId, formData);
   } catch (err) {
     const digest =
       typeof err === "object" && err !== null && "digest" in err

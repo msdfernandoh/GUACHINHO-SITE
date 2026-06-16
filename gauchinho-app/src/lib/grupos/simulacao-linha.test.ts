@@ -129,6 +129,41 @@ describe("simulacao linha grupo", () => {
     expect(tot.somaCotas).toBe(1_500_000);
   });
 
+  it("lance percentual usa saldo devedor da linha", () => {
+    const r = calcularLinhaSimulacaoGrupo({
+      grupo: grupoBase,
+      cota,
+      modalidades: [
+        {
+          id: "m25",
+          grupo_id: "g1",
+          nome: "25% embutido",
+          percentual_lance_embutido: 25,
+          percentual_recurso_proprio_minimo: 0,
+          descricao: null,
+          ativo: true,
+          ordem: 0,
+          created_at: "",
+          updated_at: "",
+        },
+      ],
+      config: {
+        cotaId: cota.id,
+        quantidadeCotas: 1,
+        modalidadeParcela: "reduzida",
+        usaLanceEmbutido: true,
+        modalidadeLanceId: "m25",
+        usaRecursoProprio: false,
+        recursoProprioModo: "percentual",
+        recursoProprioInput: 0,
+        usaSeguro: false,
+      },
+    });
+    expect(r.saldoDevedorInicial).toBeCloseTo(623_483.33, 0);
+    expect(r.lanceEmbutido).toBeCloseTo(623_483.33 * 0.25, 0);
+    expect(r.lanceEmbutido).not.toBeCloseTo(cota.valor_credito! * 0.25, 0);
+  });
+
   it("formato prazo", () => {
     expect(formatPrazoGrupo(grupoBase)).toBe("220 / 209 / 11");
   });
@@ -201,8 +236,8 @@ describe("caso Excel — grupos 1513 e 1533", () => {
     });
     const tot = agregarResultadosLinhas([r1, r2]);
     expect(tot.somaCotas).toBe(2_050_000);
-    expect(tot.lanceEmbutido).toBeCloseTo(820_000, 0);
-    expect(tot.creditoLiquido).toBeCloseTo(1_230_000, 0);
+    expect(tot.lanceEmbutido).toBeCloseTo(830_800, 0);
+    expect(tot.creditoLiquido).toBeCloseTo(1_219_200, 0);
   });
 
   it("parcela reduzida usa prazo total (Excel 1533)", () => {

@@ -6,8 +6,10 @@ import type { SimuladorTipoBemConfig } from "@/lib/config/defaults";
 import { opcoesParcelaAtivas } from "@/lib/config/simulador-parcela-opcoes";
 import {
   calcularContemplacaoPrimeiroMes,
+  calcularFundoReservaTotal,
   calcularLancePorTipo,
   calcularParcelaConsorcio,
+  calcularTaxaAdministrativaTotal,
   type EntradaConsorcio,
   type ModoLanceInput,
 } from "@/lib/simulador/consorcio";
@@ -153,13 +155,19 @@ export function SimuladorApp({
   );
   const percentualParcela = opcaoSelecionada?.percentual ?? 100;
 
+  const saldoDevedorBaseLance = useMemo(() => {
+    const taxa = calcularTaxaAdministrativaTotal(valorCredito, taxaAdm);
+    const fundo = calcularFundoReservaTotal(valorCredito, fundoReserva);
+    return valorCredito + taxa + fundo;
+  }, [valorCredito, taxaAdm, fundoReserva]);
+
   const lanceProprioValor = useMemo(
-    () => calcularLancePorTipo(valorCredito, lanceProprioInput, lanceProprioModo),
-    [valorCredito, lanceProprioInput, lanceProprioModo],
+    () => calcularLancePorTipo(saldoDevedorBaseLance, lanceProprioInput, lanceProprioModo),
+    [saldoDevedorBaseLance, lanceProprioInput, lanceProprioModo],
   );
   const lanceEmbutidoValor = useMemo(
-    () => calcularLancePorTipo(valorCredito, lanceEmbutidoInput, lanceEmbutidoModo),
-    [valorCredito, lanceEmbutidoInput, lanceEmbutidoModo],
+    () => calcularLancePorTipo(saldoDevedorBaseLance, lanceEmbutidoInput, lanceEmbutidoModo),
+    [saldoDevedorBaseLance, lanceEmbutidoInput, lanceEmbutidoModo],
   );
   const lanceTotal = lanceProprioValor + lanceEmbutidoValor;
 
