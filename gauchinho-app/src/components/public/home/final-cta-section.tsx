@@ -20,14 +20,20 @@ export function FinalCTASection({ contato }: { contato: ContatoConfig }) {
       eyebrow="Próximo passo"
       title="Pronto para escolher o melhor caminho?"
       subtitle="Fale com um especialista e receba uma orientação personalizada para seu objetivo."
-      className="pb-24"
+      className="bg-gradient-to-b from-zinc-950 via-zinc-900/60 to-zinc-950 pb-24"
     >
       <HomeReveal>
-        <div className="relative overflow-hidden rounded-3xl border border-amber-500/25 bg-gradient-to-br from-zinc-900 via-zinc-950 to-zinc-900 p-8 md:p-12">
+        <div className="relative overflow-hidden rounded-3xl border border-amber-500/25 bg-gradient-to-br from-zinc-900/90 via-zinc-950 to-zinc-900/80 p-8 shadow-2xl shadow-black/50 md:p-12">
+          {/* glow blobs */}
           <div
-            className="pointer-events-none absolute -right-20 -top-20 h-64 w-64 rounded-full bg-amber-500/15 blur-3xl"
+            className="pointer-events-none absolute -right-20 -top-20 h-72 w-72 rounded-full bg-amber-500/18 blur-3xl"
             aria-hidden
           />
+          <div
+            className="pointer-events-none absolute -bottom-16 -left-16 h-56 w-56 rounded-full bg-amber-600/12 blur-3xl"
+            aria-hidden
+          />
+
           <div className="relative grid gap-10 lg:grid-cols-2 lg:items-center">
             <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
               {wa ? (
@@ -35,8 +41,12 @@ export function FinalCTASection({ contato }: { contato: ContatoConfig }) {
                   href={wa}
                   target="_blank"
                   rel="noreferrer"
-                  className="relative inline-flex items-center justify-center overflow-hidden rounded-full bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600 px-8 py-4 text-sm font-bold text-zinc-950 shadow-lg shadow-amber-500/30 transition hover:brightness-105"
+                  className="group relative inline-flex items-center justify-center overflow-hidden rounded-full bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600 px-8 py-4 text-sm font-bold text-zinc-950 shadow-lg shadow-amber-500/35 transition hover:scale-[1.02] hover:brightness-110 active:scale-[0.98]"
                 >
+                  <span
+                    className="pointer-events-none absolute inset-0 -translate-x-full skew-x-12 bg-gradient-to-r from-transparent via-white/25 to-transparent transition-transform duration-700 group-hover:translate-x-full"
+                    aria-hidden
+                  />
                   Falar com especialista
                 </a>
               ) : (
@@ -46,12 +56,17 @@ export function FinalCTASection({ contato }: { contato: ContatoConfig }) {
                 Simular agora
               </HomeCtaLink>
             </div>
-            <div className="space-y-3 rounded-2xl border border-zinc-800/80 bg-zinc-950/50 p-6 text-sm text-zinc-400">
+            <div className="space-y-3 rounded-2xl border border-zinc-800/80 bg-zinc-950/60 p-6 text-sm text-zinc-400 backdrop-blur-sm">
               {contato.whatsappPrincipal ? (
                 <p>
                   <span className="text-zinc-500">WhatsApp: </span>
                   {wa ? (
-                    <a href={wa} className="text-amber-400 hover:underline" target="_blank" rel="noreferrer">
+                    <a
+                      href={wa}
+                      className="text-amber-400 hover:underline"
+                      target="_blank"
+                      rel="noreferrer"
+                    >
                       {contato.whatsappPrincipal}
                     </a>
                   ) : (

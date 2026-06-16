@@ -3,6 +3,7 @@ import Link from "next/link";
 import type { SiteConfig } from "@/lib/config/defaults";
 import { HOME_MEDIA } from "@/lib/home/home-media";
 import { HomeCtaLink } from "./home-section";
+import { HeroTitleAnimated } from "./hero-title-animated";
 
 type Props = { site: SiteConfig };
 
@@ -47,12 +48,7 @@ export function HomeHeroPremium({ site }: Props) {
             <span className="h-1.5 w-1.5 rounded-full bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.9)]" />
             {brand}
           </p>
-          <h1 className="mt-6 text-4xl font-bold leading-[1.05] tracking-tight text-white sm:text-5xl lg:text-6xl xl:text-[3.4rem]">
-            Qual sonho você quer{" "}
-            <span className="bg-gradient-to-r from-amber-200 via-amber-400 to-amber-600 bg-clip-text text-transparent">
-              realizar?
-            </span>
-          </h1>
+          <HeroTitleAnimated />
           <p className="mt-6 max-w-2xl text-lg leading-relaxed text-zinc-300 md:text-xl">
             Consórcio, financiamento e oportunidades inteligentes para você conquistar imóveis,
             veículos e grandes projetos com planejamento, segurança e estratégia.

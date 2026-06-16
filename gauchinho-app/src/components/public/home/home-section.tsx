@@ -47,13 +47,19 @@ export function HomeCtaLink({
       href={href}
       {...(external ? { target: "_blank", rel: "noreferrer" } : {})}
       className={cn(
-        "relative inline-flex items-center justify-center overflow-hidden rounded-full px-7 py-3.5 text-sm font-semibold transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]",
+        "group relative inline-flex items-center justify-center overflow-hidden rounded-full px-7 py-3.5 text-sm font-semibold transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]",
         variant === "gold" &&
           "bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600 text-zinc-950 shadow-lg shadow-amber-500/30 hover:shadow-amber-500/45 hover:brightness-105",
         variant === "outline" &&
           "border border-zinc-600 bg-zinc-900/80 text-zinc-100 hover:border-amber-500/50 hover:text-amber-300",
       )}
     >
+      {variant === "gold" && (
+        <span
+          className="pointer-events-none absolute inset-0 -translate-x-full skew-x-12 bg-gradient-to-r from-transparent via-white/25 to-transparent transition-transform duration-700 group-hover:translate-x-full"
+          aria-hidden
+        />
+      )}
       {children}
     </a>
   );

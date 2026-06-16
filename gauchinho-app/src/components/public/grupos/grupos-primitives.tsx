@@ -3,6 +3,8 @@
 import { cn } from "@/lib/utils/cn";
 import { formatCurrency } from "@/lib/utils/format";
 
+export const GRUPO_TABLE_COLSPAN = 14;
+
 type MoneyProps = {
   value: number;
   className?: string;

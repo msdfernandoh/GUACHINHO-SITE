@@ -7,6 +7,7 @@ import { formatPrazoGrupo, type ConfigLinhaSimulacaoGrupo } from "@/lib/grupos/s
 import { cn } from "@/lib/utils/cn";
 import { Button } from "@/components/ui/form-primitives";
 import { GrupoRowAdjustments } from "@/components/public/grupos/grupo-row-adjustments";
+import { GRUPO_TABLE_COLSPAN } from "@/components/public/grupos/grupos-primitives";
 import {
   CellDash,
   CompactNumberInput,
@@ -119,25 +120,16 @@ export function GrupoRow({
           )}
         </Td>
 
-        <Td className="min-w-[100px]">
+        <Td className="min-w-[88px]">
           {ativo ? (
             <div className="leading-tight">
-              {temReduzida ? (
-                <CompactSelect
-                  className="mb-0.5 h-7 text-[10px]"
-                  value={config.modalidadeParcela}
-                  onChange={(e) =>
-                    handlers.patch({
-                      modalidadeParcela: e.target.value as "reduzida" | "integral",
-                    })
-                  }
-                >
-                  <option value="reduzida">Reduzida</option>
-                  <option value="integral">Integral</option>
-                </CompactSelect>
-              ) : (
-                <span className="text-[10px] text-zinc-500">Integral</span>
-              )}
+              <span className="text-[10px] capitalize text-zinc-500">
+                {temReduzida
+                  ? config.modalidadeParcela === "reduzida"
+                    ? "Reduzida"
+                    : "Integral"
+                  : "Integral"}
+              </span>
               <MoneyValue value={resultado.parcelaBase} compact />
             </div>
           ) : (
@@ -258,12 +250,6 @@ export function GrupoRow({
           </span>
         </Td>
 
-        <Td>
-          <span className="rounded bg-zinc-800/80 px-1.5 py-0.5 text-[10px] text-zinc-400">
-            {grupo.status}
-          </span>
-        </Td>
-
         <Td className="sticky right-0 bg-zinc-900/95">
           <Button
             type="button"
@@ -284,7 +270,7 @@ export function GrupoRow({
 
       {expanded ? (
         <tr className="border-b border-zinc-800/80 bg-zinc-950/80">
-          <td colSpan={15} className="px-3 py-3">
+          <td colSpan={GRUPO_TABLE_COLSPAN} className="px-3 py-3">
             <GrupoRowAdjustments
               grupo={grupo}
               cotas={cotas}

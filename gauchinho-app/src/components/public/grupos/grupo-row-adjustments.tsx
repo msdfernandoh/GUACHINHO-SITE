@@ -11,7 +11,11 @@ import {
   createGrupoLinhaHandlers,
   useGrupoLinhaCalculo,
 } from "@/components/public/grupos/use-grupo-linha";
-import { MoneyValue } from "@/components/public/grupos/grupos-primitives";
+import { MoneyValue, CompactSelect } from "@/components/public/grupos/grupos-primitives";
+import {
+  formatCustoEfetivoAnual,
+  formatCustoEfetivoMensal,
+} from "@/components/public/grupos/custo-efetivo-grupo";
 
 type Props = {
   grupo: GrupoConsorcio;
@@ -29,6 +33,7 @@ export function GrupoRowAdjustments({ grupo, cotas, modalidades, config, onChang
     config,
   });
   const temSeguro = grupoUsaSeguroNaParcela(grupo);
+  const temReduzida = grupo.tem_parcela_reduzida;
   const exibeLance = grupo.permite_lance_embutido && mods.length > 0;
   const pctMinRecurso = modAtiva ? Number(modAtiva.percentual_recurso_proprio_minimo) : 0;
   const handlers = createGrupoLinhaHandlers(config, onChange, mods, pctMinRecurso);
@@ -76,17 +81,45 @@ export function GrupoRowAdjustments({ grupo, cotas, modalidades, config, onChang
 
       <div>
         <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-amber-500/90">
-          Recurso próprio e seguro
+          Parcela, recurso e seguro
         </p>
         <div className="space-y-3 rounded-lg border border-zinc-800 bg-zinc-950/40 p-3">
-          <label className="flex items-center gap-2 text-xs text-zinc-200">
-            <input
-              type="checkbox"
-              checked={config.usaRecursoProprio}
-              onChange={(e) => handlers.patch({ usaRecursoProprio: e.target.checked })}
-            />
-            Recurso próprio
-          </label>
+          <div>
+            <p className="mb-1 text-[10px] uppercase text-zinc-500">Tipo de parcela</p>
+            {temReduzida ? (
+              <CompactSelect
+                className="max-w-[140px]"
+                value={config.modalidadeParcela}
+                onChange={(e) =>
+                  handlers.patch({
+                    modalidadeParcela: e.target.value as "reduzida" | "integral",
+                  })
+                }
+              >
+                <option value="reduzida">Reduzida</option>
+                <option value="integral">Integral</option>
+              </CompactSelect>
+            ) : (
+              <span className="text-xs text-zinc-400">Integral (única opção)</span>
+            )}
+            <p className="mt-1.5 text-xs text-zinc-500">1ª parcela (un.)</p>
+            <MoneyValue value={resultado.parcelaBase} compact className="text-white" />
+            {resultado.quantidadeCotas > 1 ? (
+              <p className="text-[10px] text-zinc-500">
+                Total linha: {formatCurrency(resultado.primeiraParcela)}
+              </p>
+            ) : null}
+          </div>
+
+          <div className="border-t border-zinc-800 pt-3">
+            <label className="flex items-center gap-2 text-xs text-zinc-200">
+              <input
+                type="checkbox"
+                checked={config.usaRecursoProprio}
+                onChange={(e) => handlers.patch({ usaRecursoProprio: e.target.checked })}
+              />
+              Recurso próprio
+            </label>
           {config.usaRecursoProprio ? (
             <div className="flex gap-1">
               <Select
@@ -128,6 +161,7 @@ export function GrupoRowAdjustments({ grupo, cotas, modalidades, config, onChang
           {resultado.avisoRecursoProprio ? (
             <p className="text-[10px] text-red-400">{resultado.avisoRecursoProprio}</p>
           ) : null}
+          </div>
 
           <div className="border-t border-zinc-800 pt-3">
             <p className="mb-1 text-[10px] uppercase text-zinc-500">Seguro na parcela</p>
@@ -197,6 +231,13 @@ export function GrupoRowAdjustments({ grupo, cotas, modalidades, config, onChang
               compact
               className="text-emerald-300"
             />
+          </div>
+          <div className="col-span-2 rounded-md bg-zinc-950/60 p-2">
+            <p className="text-[10px] text-zinc-500">Custo efetivo (adm.)</p>
+            <p className="text-xs font-medium text-zinc-200">
+              Mensal: {formatCustoEfetivoMensal(grupo)}
+            </p>
+            <p className="text-xs text-zinc-400">Anual: {formatCustoEfetivoAnual(grupo)}</p>
           </div>
           <div className="col-span-2 rounded-md bg-zinc-950/60 p-2">
             <p className="text-[10px] text-zinc-500">Saldo final · Prazo</p>

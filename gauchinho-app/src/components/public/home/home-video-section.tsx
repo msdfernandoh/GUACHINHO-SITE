@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { Pause, Play } from "lucide-react";
+import { Check, Pause, Play } from "lucide-react";
 import { HOME_MEDIA } from "@/lib/home/home-media";
 import { HomeCtaLink, HomeSection } from "./home-section";
 import { HomeReveal } from "./home-reveal";
@@ -40,16 +40,16 @@ export function HomeVideoSection() {
             para transformar objetivos em planos executáveis — com transparência em cada etapa.
           </p>
           <ul className="mt-6 space-y-3 text-sm text-zinc-300">
-            <li className="flex gap-3">
-              <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500" />
+            <li className="flex items-start gap-3">
+              <Check className="mt-0.5 h-4 w-4 shrink-0 text-green-400" aria-hidden />
               Consórcio e financiamento com comparativo real
             </li>
-            <li className="flex gap-3">
-              <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500" />
+            <li className="flex items-start gap-3">
+              <Check className="mt-0.5 h-4 w-4 shrink-0 text-green-400" aria-hidden />
               Cartas contempladas e oportunidades imobiliárias integradas
             </li>
-            <li className="flex gap-3">
-              <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500" />
+            <li className="flex items-start gap-3">
+              <Check className="mt-0.5 h-4 w-4 shrink-0 text-green-400" aria-hidden />
               Atendimento consultivo, não robô de formulário
             </li>
           </ul>

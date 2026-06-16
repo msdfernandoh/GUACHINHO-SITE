@@ -6,9 +6,7 @@ import { defaultConfigLinha, type ConfigLinhaSimulacaoGrupo } from "@/lib/grupos
 import { GrupoRow } from "@/components/public/grupos/grupo-row";
 import { Th } from "@/components/public/grupos/grupos-primitives";
 
-type Props = {
-  rows: PublicGrupoAggregate[];
-  configs: Record<string, ConfigLinhaSimulacaoGrupo>;
+type Props = {  rows: PublicGrupoAggregate[];  configs: Record<string, ConfigLinhaSimulacaoGrupo>;
   onConfigChange: (grupoId: string, config: ConfigLinhaSimulacaoGrupo) => void;
 };
 
@@ -33,7 +31,6 @@ export function GruposTable({ rows, configs, onConfigChange }: Props) {
             <Th>Saldo final</Th>
             <Th>Pós-cont.</Th>
             <Th title="Total / restante / realizadas">Prazo</Th>
-            <Th>Status</Th>
             <Th className="sticky right-0 bg-zinc-950/95">Ajustes</Th>
           </tr>
         </thead>

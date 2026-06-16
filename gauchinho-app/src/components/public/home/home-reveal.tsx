@@ -1,45 +1,30 @@
 "use client";
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { motion, useReducedMotion } from "framer-motion";
 import { cn } from "@/lib/utils/cn";
 
 type Props = {
-  children: ReactNode;
+  children: React.ReactNode;
   className?: string;
   delayMs?: number;
 };
 
 export function HomeReveal({ children, className, delayMs = 0 }: Props) {
-  const ref = useRef<HTMLDivElement>(null);
-  const [visible, setVisible] = useState(false);
-
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const obs = new IntersectionObserver(
-      ([entry]) => {
-        if (entry?.isIntersecting) {
-          setVisible(true);
-          obs.disconnect();
-        }
-      },
-      { threshold: 0.12, rootMargin: "0px 0px -40px 0px" },
-    );
-    obs.observe(el);
-    return () => obs.disconnect();
-  }, []);
+  const shouldReduce = useReducedMotion();
 
   return (
-    <div
-      ref={ref}
-      className={cn(
-        "transition-all duration-700 ease-out motion-reduce:transition-none",
-        visible ? "translate-y-0 opacity-100" : "translate-y-8 opacity-0",
-        className,
-      )}
-      style={visible && delayMs ? { transitionDelay: `${delayMs}ms` } : undefined}
+    <motion.div
+      className={cn(className)}
+      initial={shouldReduce ? false : { opacity: 0, y: 28 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: "-40px" }}
+      transition={{
+        duration: 0.65,
+        ease: [0.25, 0.1, 0.25, 1],
+        delay: delayMs / 1000,
+      }}
     >
       {children}
-    </div>
+    </motion.div>
   );
 }
