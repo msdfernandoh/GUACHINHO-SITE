@@ -13,6 +13,7 @@ import { canDeleteRecords } from "@/lib/auth/permissions";
 import { Button, Input, Label, Select, Textarea } from "@/components/ui/form-primitives";
 import { PRODUTOS_FECHADOS, TIPOS_INTERESSE } from "@/lib/types";
 import { formatCurrency, formatDate } from "@/lib/utils/format";
+import { IaLeadSummarySection } from "../ia-lead-summary";
 
 export default async function LeadDetailPage({
   params,
@@ -27,7 +28,7 @@ export default async function LeadDetailPage({
   } catch {
     notFound();
   }
-  const { lead, historico, propostas } = detail;
+  const { lead, historico, propostas, iaConversa, iaMensagens } = detail;
   const podeExcluir = canDeleteRecords(usuario?.perfil);
 
   const updateWithId = updateLeadAction.bind(null, id);
@@ -176,6 +177,12 @@ export default async function LeadDetailPage({
           </form>
         </div>
       </div>
+
+      <IaLeadSummarySection
+        lead={lead as Record<string, unknown>}
+        iaConversa={iaConversa as Record<string, unknown> | null}
+        iaMensagens={(iaMensagens ?? []) as Array<Record<string, unknown>>}
+      />
 
       <section>
         <h2 className="mb-2 font-semibold">Propostas</h2>

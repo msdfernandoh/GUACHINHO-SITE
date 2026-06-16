@@ -227,7 +227,27 @@ export async function fetchLeadDetail(leadId: string) {
     .eq("lead_id", leadId)
     .order("created_at", { ascending: false });
 
-  return { lead, historico: historicoRows ?? [], propostas: propostas ?? [] };
+  let iaConversa: Record<string, unknown> | null = null;
+  let iaMensagens: Array<Record<string, unknown>> = [];
+  if (lead.origem === "ia_chat") {
+    const { data: conv } = await supabase
+      .from("ia_conversas")
+      .select("*")
+      .eq("lead_id", leadId)
+      .maybeSingle();
+    iaConversa = conv ?? null;
+    if (conv?.id) {
+      const { data: msgs } = await supabase
+        .from("ia_mensagens")
+        .select("id, role, content, created_at")
+        .eq("conversa_id", conv.id)
+        .order("created_at", { ascending: true })
+        .limit(50);
+      iaMensagens = msgs ?? [];
+    }
+  }
+
+  return { lead, historico: historicoRows ?? [], propostas: propostas ?? [], iaConversa, iaMensagens };
 }
 
 export async function fetchSrdOptions() {

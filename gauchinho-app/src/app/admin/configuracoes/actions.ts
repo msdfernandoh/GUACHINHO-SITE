@@ -158,6 +158,46 @@ export async function saveCalculadorasConfigAction(formData: FormData) {
   revalidatePath("/calculadoras");
 }
 
+export async function saveIaConfigAction(formData: FormData) {
+  await requireMasterConfig();
+  await saveConfigJson("ia_config", {
+    ativo: formData.get("ativo") === "on",
+    capturaLeadAtiva: formData.get("capturaLeadAtiva") === "on",
+    exigirWhatsappAnalise: formData.get("exigirWhatsappAnalise") === "on",
+    mostrarWhatsappPosLead: formData.get("mostrarWhatsappPosLead") === "on",
+    whatsappOrigem: String(formData.get("whatsappOrigem") ?? "ia_chat").trim(),
+    identidade: {
+      nomeIa: String(formData.get("nomeIa") ?? ""),
+      mensagemInicial: String(formData.get("mensagemInicial") ?? ""),
+      tomAtendimento: String(formData.get("tomAtendimento") ?? ""),
+      nomeEmpresa: String(formData.get("nomeEmpresa") ?? ""),
+    },
+    empresa: {
+      descricao: String(formData.get("empresaDescricao") ?? ""),
+      cidadesAtendidas: String(formData.get("empresaCidades") ?? ""),
+      diferenciais: String(formData.get("empresaDiferenciais") ?? ""),
+      parceiros: String(formData.get("empresaParceiros") ?? ""),
+    },
+    conteudo: {
+      consorcio: String(formData.get("conteudoConsorcio") ?? ""),
+      financiamento: String(formData.get("conteudoFinanciamento") ?? ""),
+      cartas: String(formData.get("conteudoCartas") ?? ""),
+      grupos: String(formData.get("conteudoGrupos") ?? ""),
+      oportunidades: String(formData.get("conteudoOportunidades") ?? ""),
+      planejamento: String(formData.get("conteudoPlanejamento") ?? ""),
+      calculadoras: String(formData.get("conteudoCalculadoras") ?? ""),
+    },
+    regras: {
+      podeFalar: String(formData.get("regrasPodeFalar") ?? ""),
+      naoPrometer: String(formData.get("regrasNaoPrometer") ?? ""),
+      mensagemCapturaLead: String(formData.get("regrasCapturaLead") ?? ""),
+      mensagemPosCadastro: String(formData.get("regrasPosCadastro") ?? ""),
+    },
+  });
+  revalidatePath("/admin/configuracoes");
+  revalidatePath("/", "layout");
+}
+
 export async function saveHomeCartasConfigAction(formData: FormData) {
   await requireMasterConfig();
   await saveConfigJson("home_cartas_contempladas", {

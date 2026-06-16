@@ -90,3 +90,8 @@ export async function getCalculadorasConfigPublic() {
     DEFAULT_CALCULADORAS_FINANCEIRAS,
   );
 }
+
+export async function getIaConfigPublic() {
+  const { DEFAULT_IA_CONFIG } = await import("@/lib/config/ia-defaults");
+  return getConfigJsonPublic("ia_config", DEFAULT_IA_CONFIG);
+}

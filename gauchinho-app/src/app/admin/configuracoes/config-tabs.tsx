@@ -20,6 +20,7 @@ import {
   FinanciamentoConfigForm,
   SimuladorBemConfigForm,
 } from "./simulador-forms";
+import { IaConfigForm } from "./ia-config-form";
 import {
   DEFAULT_FINANCIAMENTO_CONFIG,
   DEFAULT_HOME_CARTAS,
@@ -31,6 +32,7 @@ import {
   type SimuladorTipoBemConfig,
   type CalculadorasFinanceirasConfig,
 } from "@/lib/config/defaults";
+import { DEFAULT_IA_CONFIG, type IaConfig } from "@/lib/config/ia-defaults";
 
 const TABS: Array<{ id: string; label: string; future?: boolean }> = [
   { id: "site", label: "Site" },
@@ -41,6 +43,7 @@ const TABS: Array<{ id: string; label: string; future?: boolean }> = [
   { id: "simulador", label: "Simulador" },
   { id: "financiamento", label: "Financiamento" },
   { id: "calculadoras", label: "Calculadoras" },
+  { id: "ia", label: "IA" },
   { id: "cartas_home", label: "Cartas Home" },
   { id: "futuro1", label: "Identidade Visual", future: true },
   { id: "futuro2", label: "Menus", future: true },
@@ -65,6 +68,7 @@ export function ConfigTabs({ configs, whatsapp }: Props) {
     ...DEFAULT_CALCULADORAS_FINANCEIRAS,
     ...(configs.calculadoras_financeiras as CalculadorasFinanceirasConfig | undefined),
   };
+  const iaCfg = { ...DEFAULT_IA_CONFIG, ...(configs.ia_config as IaConfig | undefined) };
 
   const current = TABS.find((t) => t.id === tab);
 
@@ -288,6 +292,8 @@ export function ConfigTabs({ configs, whatsapp }: Props) {
           <Button type="submit">Salvar Calculadoras</Button>
         </form>
       ) : null}
+
+      {tab === "ia" ? <IaConfigForm cfg={iaCfg} /> : null}
 
       {tab === "cartas_home" ? (
         <form action={saveHomeCartasConfigAction} className="max-w-xl space-y-3">
