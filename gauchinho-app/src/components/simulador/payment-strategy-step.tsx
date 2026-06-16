@@ -7,14 +7,20 @@ type Props = {
   opcoes: OpcaoParcelaConsorcio[];
   selectedId: string;
   onSelect: (id: string) => void;
-  parcelaIntegral: number;
+  parcelaAmortizacao: number;
+  seguroMensal: number;
 };
+
+function parcelaOpcao(parcelaAmortizacao: number, seguroMensal: number, percentual: number) {
+  return calcularParcelaReduzida(parcelaAmortizacao, percentual) + seguroMensal;
+}
 
 export function PaymentStrategyStep({
   opcoes,
   selectedId,
   onSelect,
-  parcelaIntegral,
+  parcelaAmortizacao,
+  seguroMensal,
 }: Props) {
   const selected = opcoes.find((o) => o.id === selectedId) ?? opcoes[0];
   const multipla = opcoes.length > 1;
@@ -35,7 +41,7 @@ export function PaymentStrategyStep({
       {multipla ? (
         <div className="grid gap-3 sm:grid-cols-2">
           {opcoes.map((op) => {
-            const parcela = calcularParcelaReduzida(parcelaIntegral, op.percentual);
+            const parcela = parcelaOpcao(parcelaAmortizacao, seguroMensal, op.percentual);
             const sel = op.id === selectedId;
             return (
               <button
@@ -59,7 +65,7 @@ export function PaymentStrategyStep({
             <p className="mt-1 text-sm text-slate-300">{selected.descricao}</p>
           ) : null}
           <p className="mt-3 text-3xl font-extrabold text-white">
-            {formatCurrency(calcularParcelaReduzida(parcelaIntegral, selected.percentual))}
+            {formatCurrency(parcelaOpcao(parcelaAmortizacao, seguroMensal, selected.percentual))}
           </p>
           <p className="mt-1 text-xs text-slate-400">{selected.percentual}% da parcela integral</p>
         </div>

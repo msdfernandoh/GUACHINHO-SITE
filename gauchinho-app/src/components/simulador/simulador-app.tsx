@@ -251,8 +251,6 @@ export function SimuladorApp({
     [entradaConsorcio],
   );
 
-  const parcelaIntegral = contemplacao.parcelaIntegral;
-
   const resultadoFin = useMemo(
     () =>
       simularFinanciamento({
@@ -472,7 +470,8 @@ export function SimuladorApp({
                 opcoes={opcoesParcela}
                 selectedId={opcaoParcelaId}
                 onSelect={setOpcaoParcelaId}
-                parcelaIntegral={parcelaIntegral}
+                parcelaAmortizacao={contemplacao.parcelaAmortizacao}
+                seguroMensal={contemplacao.seguroMensal}
               />
             ) : null}
             <AdvancedStrategyAccordion

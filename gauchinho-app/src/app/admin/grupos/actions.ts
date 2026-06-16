@@ -45,6 +45,41 @@ function grupoFromForm(formData: FormData) {
   };
 }
 
+async function recalcularParcelasCotasGrupo(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  grupoId: string,
+  grupoConfig: ReturnType<typeof grupoFromForm>,
+) {
+  const { data: cotas, error } = await supabase
+    .from("grupos_cotas")
+    .select("id, valor_credito, saldo_devedor")
+    .eq("grupo_id", grupoId);
+  if (error) throw new Error(error.message);
+  if (!cotas?.length) return;
+
+  for (const cota of cotas) {
+    const credito = Number(cota.valor_credito);
+    if (!Number.isFinite(credito) || credito <= 0) continue;
+    const saldo =
+      cota.saldo_devedor != null && Number(cota.saldo_devedor) > 0
+        ? Number(cota.saldo_devedor)
+        : null;
+    const est = estimarCamposCotaBulk(credito, grupoConfig, saldo);
+    const { error: upErr } = await supabase
+      .from("grupos_cotas")
+      .update({
+        saldo_devedor: est.saldo_devedor,
+        valor_parcela: est.valor_parcela,
+        parcela_integral: est.parcela_integral,
+        parcela_reduzida: est.parcela_reduzida,
+        parcela_com_seguro: est.parcela_com_seguro,
+        parcela_sem_seguro: est.parcela_sem_seguro,
+      })
+      .eq("id", cota.id);
+    if (upErr) throw new Error(upErr.message);
+  }
+}
+
 async function syncModalidadesLance(
   supabase: Awaited<ReturnType<typeof createClient>>,
   grupoId: string,
@@ -65,14 +100,24 @@ async function syncModalidadesLance(
   } catch {
     rows = [];
   }
+  if (!Array.isArray(rows)) rows = [];
+
   const { error: delErr } = await supabase
     .from("grupos_modalidades_lance")
     .delete()
     .eq("grupo_id", grupoId);
-  if (delErr && !delErr.message.includes("does not exist")) {
+
+  const tableMissing =
+    delErr &&
+    (delErr.message.includes("does not exist") ||
+      delErr.message.includes("grupos_modalidades_lance") ||
+      delErr.code === "42P01");
+
+  if (delErr && !tableMissing) {
     throw new Error(delErr.message);
   }
-  if (!rows.length || delErr) return;
+  if (tableMissing || !rows.length) return;
+
   const { error: insErr } = await supabase.from("grupos_modalidades_lance").insert(
     rows.map((r) => ({
       grupo_id: grupoId,
@@ -142,7 +187,8 @@ async function insertCotasFromBulk(
 ) {
   const creditos = parseBulkCreditLines(bulk);
   if (!creditos.length) return;
-  await supabase.from("grupos_cotas").insert(cotaRowsFromCreditos(grupoId, creditos, grupoConfig, ordemStart));
+  const { error } = await supabase.from("grupos_cotas").insert(cotaRowsFromCreditos(grupoId, creditos, grupoConfig, ordemStart));
+  if (error) throw new Error(error.message);
 }
 
 export async function fetchGruposList(filters: {
@@ -202,21 +248,35 @@ export async function updateGrupoAction(grupoId: string, formData: FormData) {
   await assertCanManageGrupos();
   const supabase = await createClient();
   const grupo = grupoFromForm(formData);
-  const { error } = await supabase.from("grupos_consorcio").update(grupo).eq("id", grupoId);
-  if (error) throw new Error(error.message);
+  try {
+    const { error } = await supabase.from("grupos_consorcio").update(grupo).eq("id", grupoId);
+    if (error) throw new Error(error.message);
 
-  const bulk = String(formData.get("cotas_bulk") ?? "");
-  const { data: maxOrdem } = await supabase
-    .from("grupos_cotas")
-    .select("ordem")
-    .eq("grupo_id", grupoId)
-    .order("ordem", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  const ordemStart = (maxOrdem?.ordem ?? -1) + 1;
-  await insertCotasFromBulk(supabase, grupoId, bulk, grupo, ordemStart);
+    await recalcularParcelasCotasGrupo(supabase, grupoId, grupo);
 
-  await syncModalidadesLance(supabase, grupoId, formData);
+    const bulk = String(formData.get("cotas_bulk") ?? "").trim();
+    if (bulk) {
+      const { data: maxOrdem } = await supabase
+        .from("grupos_cotas")
+        .select("ordem")
+        .eq("grupo_id", grupoId)
+        .order("ordem", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      const ordemStart = (maxOrdem?.ordem ?? -1) + 1;
+      await insertCotasFromBulk(supabase, grupoId, bulk, grupo, ordemStart);
+    }
+
+    await syncModalidadesLance(supabase, grupoId, formData);
+  } catch (err) {
+    const digest =
+      typeof err === "object" && err !== null && "digest" in err
+        ? String((err as { digest: unknown }).digest)
+        : "";
+    if (digest.startsWith("NEXT_REDIRECT")) throw err;
+    const msg = err instanceof Error ? err.message : "Erro ao salvar grupo";
+    redirect(`/admin/grupos/${grupoId}?error=${encodeURIComponent(msg)}`);
+  }
 
   revalidatePath(`/admin/grupos/${grupoId}`);
   revalidatePath("/admin/grupos");

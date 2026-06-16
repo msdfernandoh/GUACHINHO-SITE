@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   calcularCreditoLiquidoPosContemplacao,
+  estimarCamposCotaBulk,
   calcularLanceEmbutido,
   calcularLanceTotal,
   calcularParcelasRestantes,
@@ -83,5 +84,23 @@ describe("calculos grupos", () => {
     expect(tot.lanceEmbutido).toBe(12_200);
     expect(tot.recursoProprio).toBe(5_000);
     expect(tot.creditoLiquido).toBe(87_800);
+  });
+
+  it("parcela reduzida usa prazo total (Excel 1533)", () => {
+    const grupo = {
+      taxa_administrativa_percentual: 22,
+      fundo_reserva_percentual: 2,
+      seguro_habilitado: false,
+      seguro_pos_contemplacao: true,
+      seguro_percentual: 0.0004,
+      tem_parcela_reduzida: true,
+      percentual_parcela_reduzida: 60,
+      prazo_total: 220,
+      parcelas_realizadas: 11,
+      prazo_restante: 209,
+    };
+    const est = estimarCamposCotaBulk(1_000_000, grupo);
+    expect(est.parcela_integral).toBeCloseTo(5636.36, 1);
+    expect(est.valor_parcela).toBeCloseTo(3381.82, 1);
   });
 });

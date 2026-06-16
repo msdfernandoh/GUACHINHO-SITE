@@ -19,7 +19,7 @@ export default async function GrupoEditPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ saved?: string }>;
+  searchParams: Promise<{ saved?: string; error?: string }>;
 }) {
   const { id } = await params;
   const sp = await searchParams;
@@ -42,6 +42,11 @@ export default async function GrupoEditPage({
       <Link href="/admin/grupos" className="text-sm text-amber-600 hover:underline">
         ← Grupos
       </Link>
+      {sp.error ? (
+        <p className="rounded-lg border border-red-600/40 bg-red-500/10 px-4 py-2 text-sm text-red-700 dark:text-red-300">
+          {decodeURIComponent(sp.error)}
+        </p>
+      ) : null}
       {sp.saved === "1" ? (
         <p className="rounded-lg border border-emerald-600/40 bg-emerald-500/10 px-4 py-2 text-sm text-emerald-700 dark:text-emerald-300">
           Grupo salvo com sucesso.

@@ -201,4 +201,41 @@ describe("caso Excel — grupos 1513 e 1533", () => {
     expect(tot.lanceEmbutido).toBeCloseTo(830_800, 0);
     expect(tot.creditoLiquido).toBeCloseTo(1_219_200, 0);
   });
+
+  it("parcela reduzida usa prazo total (Excel 1533)", () => {
+    const g1533 = {
+      ...grupoExcel("1533", "g1533"),
+      seguro_pos_contemplacao: true,
+      seguro_percentual: 0.0004,
+      percentual_parcela_reduzida: 60,
+    };
+    const c1533: GrupoCota = {
+      ...cota,
+      id: "c1533x",
+      valor_credito: 1_000_000,
+      saldo_devedor: 1_240_000,
+      valor_parcela: 3381.82,
+      parcela_integral: 5636.36,
+      parcela_reduzida: 3381.82,
+      parcela_com_seguro: 6132.36,
+      parcela_sem_seguro: 5636.36,
+    };
+    const r = calcularLinhaSimulacaoGrupo({
+      grupo: g1533,
+      cota: c1533,
+      modalidades: mod40,
+      config: {
+        cotaId: c1533.id,
+        quantidadeCotas: 1,
+        modalidadeParcela: "reduzida",
+        usaLanceEmbutido: true,
+        modalidadeLanceId: "m40",
+        usaRecursoProprio: false,
+        recursoProprioModo: "percentual",
+        recursoProprioInput: 0,
+        usaSeguro: false,
+      },
+    });
+    expect(r.parcelaBase).toBeCloseTo(3381.82, 1);
+  });
 });

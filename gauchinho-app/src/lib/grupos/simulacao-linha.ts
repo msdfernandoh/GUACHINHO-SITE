@@ -8,6 +8,7 @@ import {
   type ParametrosGrupo,
 } from "./calculos";
 import { fatorSeguroGrupo } from "./seguro";
+import { grupoUsaSeguroNaParcela } from "./calculos";
 
 export type ModalidadeParcelaLinha = "reduzida" | "integral";
 export type RecursoProprioModo = "percentual" | "valor";
@@ -82,20 +83,30 @@ function parcelaMensalDaCota(
   usaSeguro: boolean,
   seguroUnitario: number,
 ): number {
-  if (usaSeguro && cota.parcela_com_seguro != null) {
-    return num(cota.parcela_com_seguro);
-  }
-  if (cota.valor_parcela != null) {
-    const base = num(cota.valor_parcela);
-    return usaSeguro && grupo.seguro_habilitado ? base + seguroUnitario : base;
-  }
+  const usaSeguroGrupo = grupoUsaSeguroNaParcela(grupo);
   const integral = num(cota.parcela_integral ?? cota.parcela_sem_seguro);
-  const reduzida = cota.parcela_reduzida != null ? num(cota.parcela_reduzida) : null;
-  let base = integral;
-  if (modalidade === "reduzida" && grupo.tem_parcela_reduzida && reduzida != null) {
-    base = reduzida;
+  const reduzidaVal = cota.parcela_reduzida != null ? num(cota.parcela_reduzida) : null;
+  const baseReduzida = reduzidaVal ?? (num(cota.valor_parcela) || integral);
+  const baseIntegral = integral || baseReduzida;
+
+  let base =
+    modalidade === "reduzida" && grupo.tem_parcela_reduzida ? baseReduzida : baseIntegral;
+
+  if (usaSeguro && usaSeguroGrupo) {
+    if (
+      modalidade === "integral" &&
+      cota.parcela_com_seguro != null &&
+      num(cota.parcela_com_seguro) > 0
+    ) {
+      return num(cota.parcela_com_seguro);
+    }
+    return Math.round((base + seguroUnitario) * 100) / 100;
   }
-  return usaSeguro && grupo.seguro_habilitado ? base + seguroUnitario : base;
+
+  if (cota.valor_parcela != null && modalidade === "reduzida") {
+    return num(cota.valor_parcela);
+  }
+  return base;
 }
 
 function resolveModalidadeLance(
@@ -304,6 +315,6 @@ export function defaultConfigLinha(
     usaRecursoProprio: false,
     recursoProprioModo: "percentual",
     recursoProprioInput: num(grupo.percentual_recurso_proprio_sugerido),
-    usaSeguro: grupo.seguro_habilitado,
+    usaSeguro: grupoUsaSeguroNaParcela(grupo),
   };
 }

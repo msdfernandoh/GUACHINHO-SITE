@@ -1,8 +1,8 @@
 /**
-
  * Cálculos de consórcio — única fonte (UI, projeção e PDF consomem estes exports).
-
  */
+
+import { fatorSeguroGrupo } from "@/lib/grupos/seguro";
 
 
 
@@ -43,6 +43,9 @@ export type ResultadoConsorcio = {
   prazoMeses: number;
 
   parcelaIntegral: number;
+
+  /** Amortização mensal (sem seguro prestamista). */
+  parcelaAmortizacao: number;
 
   parcelaEstimada: number;
 
@@ -112,33 +115,28 @@ export function calcularFundoReservaTotal(credito: number, fundoPercentual: numb
 
 
 export function calcularSeguroPrestamistaMensal(
-
+  saldoDevedor: number,
   credito: number,
-
-  seguroAnualPercentual: number,
-
+  seguroInput: number,
 ): number {
-
-  if (!seguroAnualPercentual) return 0;
-
-  return (credito * (seguroAnualPercentual / 100)) / 12;
-
+  if (!seguroInput) return 0;
+  /** Fator mensal sobre saldo (planilha grupos — ex. 0,0004). */
+  if (seguroInput <= 0.001) {
+    const fator = fatorSeguroGrupo(seguroInput);
+    return Math.round(saldoDevedor * fator * 100) / 100;
+  }
+  return Math.round(((credito * seguroInput) / 100 / 12) * 100) / 100;
 }
 
 
 
 export function calcularSeguroPrestamistaTotal(
-
+  saldoDevedor: number,
   credito: number,
-
-  seguroAnualPercentual: number,
-
+  seguroInput: number,
   prazoMeses: number,
-
 ): number {
-
-  return calcularSeguroPrestamistaMensal(credito, seguroAnualPercentual) * prazoMeses;
-
+  return calcularSeguroPrestamistaMensal(saldoDevedor, credito, seguroInput) * prazoMeses;
 }
 
 
@@ -351,12 +349,12 @@ export function calcularParcelaConsorcio(entrada: EntradaConsorcio): ResultadoCo
 
   const fundoReservaTotal = calcularFundoReservaTotal(credito, entrada.fundoReservaPercentual);
 
+  const saldoDevedorEstimado = credito + taxaAdministrativaTotal + fundoReservaTotal;
+
   const seguroMensal = calcularSeguroPrestamistaMensal(
-
+    saldoDevedorEstimado,
     credito,
-
     entrada.seguroPrestamistaPercentual,
-
   );
 
   const seguroTotalEstimado = seguroMensal * prazo;
@@ -365,23 +363,17 @@ export function calcularParcelaConsorcio(entrada: EntradaConsorcio): ResultadoCo
 
   const lanceEmbutido = Math.max(0, entrada.lanceEmbutido ?? 0);
 
-  const saldoDevedorEstimado = credito + taxaAdministrativaTotal + fundoReservaTotal;
-
   const baseAmortizavel = Math.max(
-
     saldoDevedorEstimado - entradaValor - lanceEmbutido,
-
     0,
-
   );
 
   const parcelaBase = baseAmortizavel / prazo;
-
+  const parcelaAmortizacao = parcelaBase;
   const parcelaIntegral = calcularParcelaComSeguro(parcelaBase, seguroMensal);
-
   const percentualParcelaInicial = entrada.percentualParcelaInicial ?? 100;
-
-  const parcelaEstimada = calcularParcelaReduzida(parcelaIntegral, percentualParcelaInicial);
+  const parcelaEstimada =
+    calcularParcelaReduzida(parcelaBase, percentualParcelaInicial) + seguroMensal;
 
   const valorTotalEstimado = saldoDevedorEstimado;
 
@@ -394,6 +386,8 @@ export function calcularParcelaConsorcio(entrada: EntradaConsorcio): ResultadoCo
     prazoMeses: prazo,
 
     parcelaIntegral,
+
+    parcelaAmortizacao,
 
     parcelaEstimada,
 

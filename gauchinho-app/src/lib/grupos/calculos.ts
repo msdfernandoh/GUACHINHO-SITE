@@ -4,6 +4,27 @@
 
 import { fatorSeguroGrupo } from "./seguro";
 
+/** Seguro entra na parcela “com seguro” quando habilitado ou pós-contemplação (planilha). */
+export function grupoUsaSeguroNaParcela(grupo: {
+  seguro_habilitado?: boolean;
+  seguro_pos_contemplacao?: boolean;
+}): boolean {
+  return !!grupo.seguro_habilitado || !!grupo.seguro_pos_contemplacao;
+}
+
+export function seguroMensalSobreSaldo(
+  saldoDevedor: number,
+  grupo: GrupoBulkEstimateInput,
+): number {
+  if (!grupoUsaSeguroNaParcela(grupo)) return 0;
+  const valorFixo = grupo.seguro_valor != null ? num(grupo.seguro_valor) : 0;
+  const pct = fatorSeguroGrupo(grupo.seguro_percentual);
+  if (pct > 0 && saldoDevedor > 0) {
+    return Math.round(saldoDevedor * pct * 100) / 100;
+  }
+  return valorFixo > 0 ? valorFixo : 0;
+}
+
 export type ParametrosGrupo = {
   taxaAdministrativaPercentual: number;
   fundoReservaPercentual: number;
@@ -138,6 +159,11 @@ export function calcularParcelasRestantes(params: ParametrosGrupo): number {
   return Math.max(total - realizadas, 0);
 }
 
+/** Prazo do grupo para parcela inicial (planilha: saldo ÷ prazo total, ex. 220). */
+export function prazoParcelaInicialGrupo(params: ParametrosGrupo): number {
+  return Math.max(num(params.prazoTotal), 1);
+}
+
 /**
  * Crédito líquido após contemplação (planilha Excel): soma das cotas − lance embutido.
  * Recurso próprio não reduz o crédito da carta.
@@ -208,7 +234,7 @@ export function grupoToParametros(grupo: {
   return {
     taxaAdministrativaPercentual: num(grupo.taxa_administrativa_percentual),
     fundoReservaPercentual: num(grupo.fundo_reserva_percentual),
-    seguroHabilitado: !!grupo.seguro_habilitado,
+    seguroHabilitado: grupoUsaSeguroNaParcela(grupo),
     seguroPercentual: num(grupo.seguro_percentual),
     permiteLanceEmbutido: !!grupo.permite_lance_embutido,
     percentualLanceEmbutido: num(grupo.percentual_lance_embutido),
@@ -228,7 +254,9 @@ export type GrupoBulkEstimateInput = {
   taxa_administrativa_percentual?: number | null;
   fundo_reserva_percentual?: number | null;
   seguro_habilitado?: boolean;
+  seguro_pos_contemplacao?: boolean;
   seguro_percentual?: number | null;
+  seguro_valor?: number | null;
   tem_parcela_reduzida?: boolean;
   percentual_parcela_reduzida?: number | null;
   prazo_total?: number | null;
@@ -236,10 +264,34 @@ export type GrupoBulkEstimateInput = {
   prazo_restante?: number | null;
 };
 
+/** Recalcula parcela com/sem seguro a partir dos dados já cadastrados na cota. */
+export function aplicarSeguroParcelaCota(
+  cota: {
+    saldo_devedor?: number | null;
+    valor_credito?: number | null;
+    parcela_integral?: number | null;
+    parcela_sem_seguro?: number | null;
+    parcela_reduzida?: number | null;
+    valor_parcela?: number | null;
+  },
+  grupo: GrupoBulkEstimateInput,
+): { parcela_com_seguro: number; parcela_sem_seguro: number } {
+  const saldo = num(cota.saldo_devedor) || num(cota.valor_credito);
+  const parcela_sem_seguro =
+    num(cota.parcela_sem_seguro) ||
+    num(cota.parcela_integral) ||
+    num(cota.valor_parcela) ||
+    num(cota.parcela_reduzida);
+  const seguroMensal = seguroMensalSobreSaldo(saldo, grupo);
+  const parcela_com_seguro = Math.round((parcela_sem_seguro + seguroMensal) * 100) / 100;
+  return { parcela_com_seguro, parcela_sem_seguro };
+}
+
 /** Estima parcela e saldo quando só o crédito é colado no bulk paste. */
 export function estimarCamposCotaBulk(
   valorCredito: number,
   grupo: GrupoBulkEstimateInput,
+  saldoDevedorInformado?: number | null,
 ): {
   saldo_devedor: number;
   valor_parcela: number;
@@ -254,8 +306,11 @@ export function estimarCamposCotaBulk(
     params.taxaAdministrativaPercentual,
   );
   const fundo = calcularFundoReservaTotal(valorCredito, params.fundoReservaPercentual);
-  const saldo_devedor = Math.round((valorCredito + taxaAdm + fundo) * 100) / 100;
-  const prazo = Math.max(calcularParcelasRestantes(params), 1);
+  const saldo_devedor =
+    saldoDevedorInformado != null && Number.isFinite(saldoDevedorInformado) && saldoDevedorInformado > 0
+      ? Math.round(saldoDevedorInformado * 100) / 100
+      : Math.round((valorCredito + taxaAdm + fundo) * 100) / 100;
+  const prazo = prazoParcelaInicialGrupo(params);
   const parcela_integral = Math.round((saldo_devedor / prazo) * 100) / 100;
   const temReduzida = !!grupo.tem_parcela_reduzida;
   const pctRed = num(grupo.percentual_parcela_reduzida, 100);
@@ -263,9 +318,7 @@ export function estimarCamposCotaBulk(
     ? Math.round(((parcela_integral * pctRed) / 100) * 100) / 100
     : null;
   const valor_parcela = parcela_reduzida ?? parcela_integral;
-  const seguroMensal = params.seguroHabilitado
-    ? Math.round(saldo_devedor * fatorSeguroGrupo(params.seguroPercentual) * 100) / 100
-    : 0;
+  const seguroMensal = seguroMensalSobreSaldo(saldo_devedor, grupo);
   const parcela_sem_seguro = parcela_integral;
   const parcela_com_seguro = Math.round((parcela_integral + seguroMensal) * 100) / 100;
 
