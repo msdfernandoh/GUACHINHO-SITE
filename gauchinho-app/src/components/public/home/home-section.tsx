@@ -18,7 +18,7 @@ export function HomeSection({ id, eyebrow, title, subtitle, className, children 
             {eyebrow}
           </p>
         ) : null}
-        <h2 className="mt-3 max-w-3xl text-3xl font-bold tracking-tight text-white md:text-4xl">
+        <h2 className="mt-3 max-w-3xl text-3xl font-bold tracking-tight text-white md:text-5xl">
           {title}
         </h2>
         {subtitle ? (
