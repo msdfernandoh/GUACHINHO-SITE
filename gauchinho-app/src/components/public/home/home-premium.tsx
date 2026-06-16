@@ -1,5 +1,6 @@
 import { loadHomePageData } from "@/lib/home/load-home-data";
-import { HomeHeroPremium } from "./home-hero-premium";
+import { HeroMascote } from "./hero-mascote";
+import { TrustBadgesSection } from "./trust-badges-section";
 import { DreamCardsSection } from "./dream-cards-section";
 import { HomeVideoSection } from "./home-video-section";
 import { QuickSimulatorSection } from "./quick-simulator-section";
@@ -13,10 +14,13 @@ import { FinalCTASection } from "./final-cta-section";
 
 export async function HomePremium() {
   const data = await loadHomePageData();
+  const brand =
+    data.site.nomeEmpresa?.trim() || "Gauchinho Escritório de Soluções Financeiras";
 
   return (
     <main className="overflow-x-hidden">
-      <HomeHeroPremium site={data.site} />
+      <HeroMascote brand={brand} />
+      <TrustBadgesSection />
       <DreamCardsSection />
       <HomeVideoSection />
       <QuickSimulatorSection defaults={data.simuladorDefaults} />

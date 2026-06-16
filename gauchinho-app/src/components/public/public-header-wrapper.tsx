@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
-import { cn } from "@/lib/utils/cn";
 
 export function PublicHeaderWrapper({
   className,
@@ -21,13 +20,21 @@ export function PublicHeaderWrapper({
 
   return (
     <header
-      className={cn(
-        "sticky top-0 z-40 border-b transition-all duration-500",
-        scrolled
-          ? "border-zinc-700/60 bg-zinc-950/85 shadow-xl shadow-black/40 backdrop-blur-2xl"
-          : "border-zinc-800/60 bg-zinc-950/70 backdrop-blur-xl supports-[backdrop-filter]:bg-zinc-950/55",
-        className,
-      )}
+      className={className}
+      style={{
+        position: "sticky",
+        top: 0,
+        zIndex: 40,
+        transition: "all 0.4s ease",
+        borderBottom: scrolled
+          ? "1px solid rgba(201,168,76,0.2)"
+          : "1px solid rgba(255,255,255,0.06)",
+        background: scrolled
+          ? "rgba(10,22,40,0.92)"
+          : "rgba(10,22,40,0.60)",
+        backdropFilter: "blur(20px)",
+        boxShadow: scrolled ? "0 4px 32px rgba(0,0,0,0.4)" : "none",
+      }}
     >
       {children}
     </header>

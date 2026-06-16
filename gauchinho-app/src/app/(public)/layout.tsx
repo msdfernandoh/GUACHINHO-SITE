@@ -4,7 +4,7 @@ import { LenisProvider } from "@/components/public/lenis-provider";
 export default function PublicLayout({ children }: { children: React.ReactNode }) {
   return (
     <LenisProvider>
-      <div className="min-h-screen bg-zinc-950 text-zinc-100">
+      <div className="min-h-screen text-zinc-100" style={{ background: "var(--brand-blue)" }}>
         <PublicHeader />
         {children}
       </div>
