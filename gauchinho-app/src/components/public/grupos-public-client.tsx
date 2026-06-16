@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Search, Sparkles } from "lucide-react";
 import type { PublicGrupoAggregate } from "@/lib/types";
 import { MODALIDADE_FILTRO_PUBLICO } from "@/lib/types";
@@ -11,7 +11,7 @@ import {
   defaultConfigLinha,
   type ConfigLinhaSimulacaoGrupo,
 } from "@/lib/grupos/simulacao-linha";
-import { formatCurrency } from "@/lib/utils/format";
+import { digitsOnlyPhone, formatCurrency, formatWhatsappBrInput } from "@/lib/utils/format";
 import { cn } from "@/lib/utils/cn";
 import { Button, Input } from "@/components/ui/form-primitives";
 import { GrupoMobileCard } from "@/components/public/grupos/grupo-mobile-card";
@@ -51,6 +51,18 @@ export function GruposPublicClient({
   const [resultMsg, setResultMsg] = useState<string | null>(null);
   const [pdfLink, setPdfLink] = useState<string | null>(null);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
+
+  const modalCancelClass =
+    "border-zinc-500 bg-zinc-900 text-zinc-100 hover:border-zinc-400 hover:bg-zinc-800 hover:text-zinc-100";
+
+  useEffect(() => {
+    if (!modalOpen) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [modalOpen]);
 
   const filtered = useMemo(() => {
     const q = busca.trim().toLowerCase();
@@ -120,7 +132,7 @@ export function GruposPublicClient({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           nome,
-          whatsapp,
+          whatsapp: digitsOnlyPhone(whatsapp),
           acao: modalAcao,
           selecoes: linhasAtivas.map((s) => ({
             grupoId: s.grupoId,
@@ -147,7 +159,7 @@ export function GruposPublicClient({
   }
 
   return (
-    <div className="min-h-screen bg-zinc-950 pb-32 text-zinc-100">
+    <div className="bg-zinc-950 pb-52 text-zinc-100 md:pb-48">
       <div className="mx-auto max-w-[1600px] px-4 py-8 md:px-6">
         <div className="mb-6 text-center md:mb-8">
           <p className="inline-flex items-center gap-2 text-sm text-amber-400">
@@ -232,18 +244,18 @@ export function GruposPublicClient({
             </div>
           </>
         )}
-
-        <GrupoTotalsBar
-          totais={totais}
-          hasSelection={hasSelection}
-          toastMsg={toastMsg}
-          resultMsg={resultMsg}
-          pdfLink={pdfLink}
-          onSimulacao={() => openModal("simulacao")}
-          onProposta={() => openModal("proposta")}
-          onEspecialista={() => openModal("especialista")}
-        />
       </div>
+
+      <GrupoTotalsBar
+        totais={totais}
+        hasSelection={hasSelection}
+        toastMsg={toastMsg}
+        resultMsg={resultMsg}
+        pdfLink={pdfLink}
+        onSimulacao={() => openModal("simulacao")}
+        onProposta={() => openModal("proposta")}
+        onEspecialista={() => openModal("especialista")}
+      />
 
       {modalOpen ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
@@ -260,16 +272,24 @@ export function GruposPublicClient({
               <label className="mb-1 block text-sm font-medium text-zinc-300">WhatsApp</label>
               <Input
                 required
+                inputMode="tel"
+                autoComplete="tel"
+                placeholder="(51) 99999-9999"
                 value={whatsapp}
-                onChange={(e) => setWhatsapp(e.target.value)}
+                onChange={(e) => setWhatsapp(formatWhatsappBrInput(e.target.value))}
                 className="bg-zinc-950"
               />
             </div>
             <div className="flex gap-2">
-              <Button type="submit" variant="gold" disabled={loading}>
+              <Button type="submit" variant="gold" disabled={loading || digitsOnlyPhone(whatsapp).length < 10}>
                 {loading ? "Enviando…" : "Confirmar"}
               </Button>
-              <Button type="button" variant="ghost" onClick={() => setModalOpen(false)}>
+              <Button
+                type="button"
+                variant="outline"
+                className={modalCancelClass}
+                onClick={() => setModalOpen(false)}
+              >
                 Cancelar
               </Button>
             </div>

@@ -14,11 +14,11 @@ export default async function AdminLayout({
   }
 
   return (
-    <div className="flex min-h-screen bg-zinc-100 dark:bg-zinc-950">
+    <div className="flex min-h-screen bg-zinc-100 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
       <AdminSidebar perfil={usuario.perfil} />
       <div className="flex min-w-0 flex-1 flex-col">
         <AdminHeader nome={usuario.nome} perfil={usuario.perfil} />
-        <main className="flex-1 overflow-auto p-6">{children}</main>
+        <main className="flex-1 overflow-auto p-6 text-inherit">{children}</main>
       </div>
     </div>
   );

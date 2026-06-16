@@ -6,7 +6,7 @@ export default async function AuthLayout({ children }: { children: React.ReactNo
   const site = await getConfigJsonPublic("site", DEFAULT_SITE);
 
   return (
-    <div className="flex min-h-screen flex-col bg-zinc-100 dark:bg-zinc-950">
+    <div className="flex min-h-screen flex-col bg-zinc-100 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
       <div className="flex justify-center px-4 pt-6 sm:pt-8">
         <PublicLogo
           href="/"

@@ -14,6 +14,7 @@ import {
 import { simularFinanciamento } from "@/lib/simulador/financiamento";
 import { compararConsorcioFinanciamento } from "@/lib/simulador/comparativo";
 import { gerarProjecaoAnoAno } from "@/lib/simulador/projecao";
+import { digitsOnlyPhone } from "@/lib/utils/format";
 import { Button } from "@/components/ui/form-primitives";
 import { SimuladorPageShell } from "./simulador-page-shell";
 import { SolutionSelector } from "./solution-selector";
@@ -370,7 +371,7 @@ export function SimuladorApp({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           nome,
-          whatsapp,
+          whatsapp: digitsOnlyPhone(whatsapp),
           cidade,
           email: email.trim() || undefined,
           modo,

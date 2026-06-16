@@ -2,6 +2,7 @@
 
 import type { AcaoCaptura } from "./simulador-types";
 import { Button, Input, Label } from "@/components/ui/form-primitives";
+import { digitsOnlyPhone, formatWhatsappBrInput } from "@/lib/utils/format";
 
 const TITULOS: Record<AcaoCaptura, string> = {
   analise: "Ver análise completa",
@@ -42,6 +43,9 @@ export function LeadCaptureModal({
 }: Props) {
   if (!open) return null;
 
+  const cancelClass =
+    "border-zinc-500 bg-zinc-900 text-zinc-100 hover:border-zinc-400 hover:bg-zinc-800 hover:text-zinc-100";
+
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/75 p-4 sm:items-center">
       <form
@@ -58,8 +62,10 @@ export function LeadCaptureModal({
           <Label className="text-slate-200">WhatsApp</Label>
           <Input
             required
+            inputMode="tel"
+            autoComplete="tel"
             value={whatsapp}
-            onChange={(e) => onWhatsapp(e.target.value)}
+            onChange={(e) => onWhatsapp(formatWhatsappBrInput(e.target.value))}
             className="mt-1 bg-slate-950"
             placeholder="(51) 99999-9999"
           />
@@ -78,10 +84,10 @@ export function LeadCaptureModal({
           />
         </div>
         <div className="flex flex-col gap-2 sm:flex-row">
-          <Button type="submit" variant="gold" disabled={loading} className="min-h-12 flex-1 text-base">
+          <Button type="submit" variant="gold" disabled={loading || digitsOnlyPhone(whatsapp).length < 10} className="min-h-12 flex-1 text-base">
             {loading ? "Enviando…" : "Continuar"}
           </Button>
-          <Button type="button" variant="ghost" onClick={onClose} className="min-h-12">
+          <Button type="button" variant="outline" className={`min-h-12 ${cancelClass}`} onClick={onClose}>
             Cancelar
           </Button>
         </div>

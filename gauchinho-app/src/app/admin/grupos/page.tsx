@@ -20,7 +20,7 @@ export default async function GruposAdminPage({
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold">Grupos</h1>
+          <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">Grupos</h1>
           <p className="text-sm text-zinc-500">Consórcio — grupos e cotas</p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
@@ -66,14 +66,24 @@ export default async function GruposAdminPage({
               <th className="px-3 py-2" />
             </tr>
           </thead>
-          <tbody>
+          <tbody className="text-zinc-800">
+            {grupos.length === 0 ? (
+              <tr>
+                <td colSpan={6} className="px-3 py-10 text-center text-zinc-500">
+                  Nenhum grupo encontrado. Ajuste os filtros ou cadastre um novo grupo.
+                </td>
+              </tr>
+            ) : null}
             {grupos.map((g) => {
               const count = Array.isArray(g.grupos_cotas)
                 ? g.grupos_cotas[0]?.count
                 : (g.grupos_cotas as { count: number } | undefined)?.count;
               return (
-                <tr key={g.id} className="border-b dark:border-zinc-800">
-                  <td className="px-3 py-2 font-medium">{g.codigo_grupo}</td>
+                <tr
+                  key={g.id}
+                  className="border-b border-zinc-100 transition-colors hover:bg-zinc-50 dark:border-zinc-800 dark:hover:bg-zinc-800/40"
+                >
+                  <td className="px-3 py-2 font-medium text-zinc-900">{g.codigo_grupo}</td>
                   <td className="px-3 py-2">{g.modalidade}</td>
                   <td className="px-3 py-2">{g.status}</td>
                   <td className="px-3 py-2">{count ?? 0}</td>

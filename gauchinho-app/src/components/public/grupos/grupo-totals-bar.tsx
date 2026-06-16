@@ -61,8 +61,8 @@ export function GrupoTotalsBar({
     "border-zinc-500 bg-zinc-900 text-zinc-100 hover:border-amber-500/50 hover:bg-zinc-800 disabled:border-zinc-700 disabled:bg-zinc-800/80 disabled:text-zinc-400";
 
   return (
-    <div className="sticky bottom-0 z-20 mt-6 border-t border-amber-500/20 bg-zinc-950/95 px-1 py-4 backdrop-blur-md">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+    <div className="fixed bottom-0 left-0 right-0 z-20 border-t border-amber-500/20 bg-zinc-950/95 px-4 py-4 backdrop-blur-md md:px-6">
+      <div className="mx-auto flex max-w-[1600px] flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div className="flex gap-2 overflow-x-auto pb-1">
           <TotalCard label="Grupos" value={String(totais.gruposSelecionados)} />
           <TotalCard label="Qtd. cotas" value={String(totais.totalCotas)} />
