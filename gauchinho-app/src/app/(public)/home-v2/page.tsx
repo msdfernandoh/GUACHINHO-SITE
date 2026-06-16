@@ -217,18 +217,23 @@ function ObjetivosSection() {
               aria-hidden
               className="h-full w-full object-cover"
             />
-            {/* Overlay gradiente pesado */}
+            {/* Overlay: lado esquerdo mais claro para a imagem aparecer */}
             <div
               className="absolute inset-0"
               style={{
                 background: `linear-gradient(
-                  105deg,
-                  rgba(7,17,31,0.97) 0%,
-                  rgba(7,17,31,0.88) 45%,
-                  rgba(7,17,31,0.55) 75%,
-                  rgba(7,17,31,0.35) 100%
+                  100deg,
+                  rgba(7,17,31,0.72) 0%,
+                  rgba(7,17,31,0.45) 40%,
+                  rgba(7,17,31,0.18) 70%,
+                  rgba(7,17,31,0.05) 100%
                 )`,
               }}
+            />
+            {/* Sombra no rodapé para legibilidade */}
+            <div
+              className="absolute inset-x-0 bottom-0 h-40"
+              style={{ background: "linear-gradient(to top, rgba(7,17,31,0.85), transparent)" }}
             />
           </motion.div>
         </AnimatePresence>
@@ -299,9 +304,8 @@ function ObjetivosSection() {
         {/* Layout principal */}
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1fr_380px]">
 
-          {/* Esquerda — conteúdo do card ativo */}
-          <div className="relative min-h-[340px] overflow-hidden rounded-3xl border p-8 backdrop-blur-sm"
-            style={{ background: "rgba(7,17,31,0.65)", borderColor: C.goldBorder }}>
+          {/* Esquerda — conteúdo flutuante SOBRE a imagem, sem caixa opaca */}
+          <div className="relative min-h-[340px] flex flex-col justify-end pb-2">
 
             <AnimatePresence custom={dir} mode="wait">
               <motion.div
@@ -313,49 +317,68 @@ function ObjetivosSection() {
                 exit="exit"
               >
                 {/* Número + ícone */}
-                <div className="mb-6 flex items-center gap-4">
+                <div className="mb-5 flex items-center gap-3">
                   <span
-                    className="inline-flex h-14 w-14 items-center justify-center rounded-2xl text-2xl font-black"
-                    style={{ background: `rgba(201,168,76,0.12)`, border: `1.5px solid ${C.goldBorder}`, color: C.gold }}
+                    className="inline-flex h-11 w-11 items-center justify-center rounded-xl text-lg font-black"
+                    style={{
+                      background: "rgba(7,17,31,0.6)",
+                      border: `1.5px solid ${C.goldBorder}`,
+                      color: C.gold,
+                      backdropFilter: "blur(8px)",
+                    }}
                   >
                     {item.num}
                   </span>
                   <div
-                    className="flex h-14 w-14 items-center justify-center rounded-2xl"
-                    style={{ background: "rgba(201,168,76,0.08)", border: `1px solid ${C.goldBorder}` }}
+                    className="flex h-11 w-11 items-center justify-center rounded-xl"
+                    style={{
+                      background: "rgba(7,17,31,0.6)",
+                      border: `1px solid ${C.goldBorder}`,
+                      backdropFilter: "blur(8px)",
+                    }}
                   >
-                    <Icon className="h-7 w-7" style={{ color: C.gold }} />
+                    <Icon className="h-5 w-5" style={{ color: C.gold }} />
                   </div>
                 </div>
 
-                <h3 className="mb-1 text-4xl font-black text-white lg:text-5xl">{item.title}</h3>
-                <p className="mb-1 text-base font-semibold" style={{ color: C.gold }}>{item.sub}</p>
+                <h3
+                  className="mb-1 text-5xl font-black text-white lg:text-6xl"
+                  style={{ textShadow: "0 2px 24px rgba(0,0,0,0.8), 0 0 60px rgba(0,0,0,0.5)" }}
+                >
+                  {item.title}
+                </h3>
+                <p className="mb-1 text-base font-semibold" style={{ color: C.gold, textShadow: "0 1px 8px rgba(0,0,0,0.9)" }}>
+                  {item.sub}
+                </p>
                 {"legenda" in item && (
-                  <p className="mb-4 font-mono text-xs" style={{ color: "rgba(201,168,76,0.5)" }}>
+                  <p className="mb-4 font-mono text-xs" style={{ color: "rgba(201,168,76,0.6)", textShadow: "0 1px 6px rgba(0,0,0,0.9)" }}>
                     📁 {(item as typeof item & { legenda: string }).legenda}
                   </p>
                 )}
-                <p className="mb-8 max-w-lg text-lg leading-relaxed" style={{ color: C.muted }}>{item.desc}</p>
+                <p
+                  className="mb-8 max-w-lg text-base leading-relaxed"
+                  style={{ color: "rgba(255,255,255,0.85)", textShadow: "0 1px 12px rgba(0,0,0,0.9)" }}
+                >
+                  {item.desc}
+                </p>
 
                 {/* CTA */}
-                <div>
-                  <motion.div whileHover={shouldReduce ? undefined : { scale: 1.03 }} whileTap={shouldReduce ? undefined : { scale: 0.97 }}>
-                    <Link
-                      href={item.href}
-                      className="group inline-flex items-center gap-3 rounded-2xl px-8 py-4 text-base font-black"
-                      style={{ background: `linear-gradient(135deg, ${C.gold}, ${C.goldLight}, ${C.gold})`, color: C.bg }}
-                    >
-                      Simular {item.title}
-                      <ArrowRight className="h-5 w-5 transition-transform duration-200 group-hover:translate-x-1" />
-                    </Link>
-                  </motion.div>
-                </div>
+                <motion.div whileHover={shouldReduce ? undefined : { scale: 1.03 }} whileTap={shouldReduce ? undefined : { scale: 0.97 }}>
+                  <Link
+                    href={item.href}
+                    className="group inline-flex items-center gap-3 rounded-2xl px-8 py-4 text-base font-black"
+                    style={{ background: `linear-gradient(135deg, ${C.gold}, ${C.goldLight}, ${C.gold})`, color: C.bg }}
+                  >
+                    Simular {item.title}
+                    <ArrowRight className="h-5 w-5 transition-transform duration-200 group-hover:translate-x-1" />
+                  </Link>
+                </motion.div>
               </motion.div>
             </AnimatePresence>
 
-            {/* Barra de progresso */}
-            <div className="absolute bottom-0 left-0 right-0 h-[3px] rounded-b-3xl overflow-hidden"
-              style={{ background: "rgba(201,168,76,0.12)" }}>
+            {/* Barra de progresso na base */}
+            <div className="mt-8 h-[3px] w-full overflow-hidden rounded-full"
+              style={{ background: "rgba(201,168,76,0.15)" }}>
               {!shouldReduce && (
                 <motion.div
                   key={`bar-${active}`}
@@ -585,50 +608,53 @@ export default function HomeV2() {
               </motion.div>
             </AnimatePresence>
 
-            <motion.div
-              animate={shouldReduce ? undefined : { y: [0, -12, 0] }}
-              transition={{ duration: 3.5, repeat: Infinity, ease: "easeInOut" }}
-              className="relative"
+            {/* Sombra dourada no chão */}
+            <div
+              className="pointer-events-none absolute bottom-4 left-1/2 h-12 w-48 -translate-x-1/2 rounded-full blur-2xl"
+              style={{ background: "rgba(201,168,76,0.4)" }}
+              aria-hidden
+            />
+
+            {/* Animação de float — CSS puro para não criar stacking context isolado */}
+            <style>{`
+              @keyframes mascote-float {
+                0%, 100% { transform: translateY(0px); }
+                50% { transform: translateY(-14px); }
+              }
+              .mascote-float { animation: mascote-float 3.5s ease-in-out infinite; }
+            `}</style>
+
+            {/* Wrapper com fundo igual ao da seção para o multiply funcionar */}
+            <div
+              className="mascote-float relative"
+              style={{ isolation: "auto" }}
             >
-              {/* Sombra dourada (separada da img para não conflitar com blend) */}
-              <div
-                className="pointer-events-none absolute bottom-4 left-1/2 h-16 w-56 -translate-x-1/2 rounded-full blur-2xl"
-                style={{ background: "rgba(201,168,76,0.35)" }}
-                aria-hidden
-              />
-              {/* Glow aura ao redor */}
-              <div
-                className="pointer-events-none absolute inset-0 rounded-full blur-3xl"
-                style={{ background: "radial-gradient(circle, rgba(201,168,76,0.18), transparent 70%)" }}
-                aria-hidden
-              />
-              {/* GIF mascote — mix-blend-mode:multiply remove fundo branco */}
               {!mascoteError ? (
                 <img
                   src="/media/gauchinho-mascote.gif"
                   alt="Mascote Gauchinho"
-                  className="relative z-10 w-56 object-contain sm:w-64 lg:w-72 xl:w-80"
+                  className="w-56 object-contain sm:w-64 lg:w-72 xl:w-80"
                   style={{
+                    /* multiply: branco (1×cor_fundo = cor_fundo) → some o quadrado branco */
                     mixBlendMode: "multiply",
-                    filter: "brightness(0.9) contrast(1.08) saturate(1.1)",
+                    filter: "contrast(1.05) saturate(1.1)",
+                    display: "block",
                   }}
                   draggable={false}
                   onError={() => setMascoteError(true)}
                 />
               ) : (
-                /* Fallback visual se o GIF não carregar */
                 <div
-                  className="relative z-10 flex h-64 w-64 items-center justify-center rounded-full text-8xl"
+                  className="flex h-64 w-64 items-center justify-center rounded-full text-8xl"
                   style={{
                     background: "radial-gradient(circle, rgba(201,168,76,0.15), rgba(7,17,31,0.8))",
                     border: `2px solid ${C.goldBorder}`,
-                    filter: "drop-shadow(0 0 40px rgba(201,168,76,0.4))",
                   }}
                 >
                   🤠
                 </div>
               )}
-            </motion.div>
+            </div>
           </div>
         </div>
       </section>
