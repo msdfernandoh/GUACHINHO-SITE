@@ -4,6 +4,7 @@ import { Settings2 } from "lucide-react";
 import type { GrupoConsorcio, GrupoCota, GrupoModalidadeLance } from "@/lib/types";
 import { grupoUsaSeguroNaParcela } from "@/lib/grupos/calculos";
 import { formatPrazoGrupo, type ConfigLinhaSimulacaoGrupo } from "@/lib/grupos/simulacao-linha";
+import { tooltipPrazoAutomatico } from "@/lib/grupos/prazos";
 import { cn } from "@/lib/utils/cn";
 import { Button } from "@/components/ui/form-primitives";
 import { GrupoRowAdjustments } from "@/components/public/grupos/grupo-row-adjustments";
@@ -290,7 +291,7 @@ export function GrupoRow({
         <Td>
           <span
             className="font-mono text-[11px] text-zinc-400"
-            title="Total / restante / realizadas"
+            title={tooltipPrazoAutomatico(grupo) ?? "Total / restante / realizadas"}
           >
             {formatPrazoGrupo(grupo)}
           </span>
@@ -335,7 +336,7 @@ export function GrupoPrazoCell({ grupo }: { grupo: GrupoConsorcio }) {
   return (
     <span
       className="whitespace-nowrap font-mono text-xs text-zinc-300"
-      title="Total / restantes / realizadas"
+      title={tooltipPrazoAutomatico(grupo) ?? "Total / restantes / realizadas"}
     >
       {formatPrazoGrupo(grupo)}
     </span>

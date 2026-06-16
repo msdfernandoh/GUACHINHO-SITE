@@ -3,6 +3,8 @@
  */
 
 import { fatorSeguroGrupo } from "./seguro";
+import { calcularPrazoGrupoFromRow } from "./prazos";
+import type { GrupoConsorcio } from "@/lib/types";
 
 /** Seguro entra na parcela “com seguro” quando habilitado ou pós-contemplação (planilha). */
 export function grupoUsaSeguroNaParcela(grupo: {
@@ -228,9 +230,13 @@ export function grupoToParametros(grupo: {
   prazo_total?: number | null;
   parcelas_realizadas?: number | null;
   prazo_restante?: number | null;
+  parcelas_realizadas_base?: number | null;
+  data_base_parcelas?: string | null;
+  atualizacao_parcelas_automatica?: boolean | null;
   seguro_pos_contemplacao?: boolean;
   cet_percentual?: number | null;
 }): ParametrosGrupo {
+  const prazo = calcularPrazoGrupoFromRow(grupo as GrupoConsorcio);
   return {
     taxaAdministrativaPercentual: num(grupo.taxa_administrativa_percentual),
     fundoReservaPercentual: num(grupo.fundo_reserva_percentual),
@@ -241,9 +247,9 @@ export function grupoToParametros(grupo: {
     percentualRecursoProprioSugerido: num(
       grupo.percentual_recurso_proprio_sugerido,
     ),
-    prazoTotal: num(grupo.prazo_total),
-    parcelasRealizadas: num(grupo.parcelas_realizadas),
-    prazoRestante: grupo.prazo_restante ?? undefined,
+    prazoTotal: prazo.prazoTotal,
+    parcelasRealizadas: prazo.parcelasRealizadasAtuais,
+    prazoRestante: prazo.prazoRestanteAtual,
     seguroPosContemplacao: !!grupo.seguro_pos_contemplacao,
     cetPercentual: grupo.cet_percentual ?? undefined,
   };

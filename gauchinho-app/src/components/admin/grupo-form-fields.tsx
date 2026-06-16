@@ -1,18 +1,23 @@
 import { Button, Input, Label, Select, Textarea } from "@/components/ui/form-primitives";
 import { MODALIDADES_GRUPO } from "@/lib/types";
 import { GrupoModalidadesEditor } from "@/components/admin/grupo-modalidades-editor";
+import { GrupoPrazoAdminPreview } from "@/components/admin/grupo-prazo-admin-preview";
 import type { GrupoModalidadeLance } from "@/lib/types";
 
 type GrupoInitial = Record<string, unknown> | undefined;
 
 export function GrupoFormFields({
+  formId = "grupo-form",
   initial,
   modalidadesInitial,
 }: {
+  formId?: string;
   initial?: GrupoInitial;
   modalidadesInitial?: GrupoModalidadeLance[];
 }) {
   const g = initial ?? {};
+  const dataBase =
+    g.data_base_parcelas != null ? String(g.data_base_parcelas).slice(0, 10) : "";
   return (
     <>
       <section className="space-y-3 rounded-xl border bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
@@ -88,16 +93,73 @@ export function GrupoFormFields({
             <Label>Prazo total</Label>
             <Input name="prazo_total" type="number" defaultValue={String(g.prazo_total ?? "")} />
           </div>
+        </div>
+
+        <div className="space-y-3 rounded-lg border border-zinc-200 p-4 dark:border-zinc-700">
+          <h3 className="text-sm font-semibold">Controle automático de parcelas</h3>
+          <p className="text-xs text-zinc-500">
+            Informe quantas parcelas já estavam realizadas na data base. O sistema atualizará
+            automaticamente mês a mês o número de parcelas realizadas e restantes (sem cron — cálculo
+            ao abrir a tela).
+          </p>
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              name="atualizacao_parcelas_automatica"
+              value="on"
+              defaultChecked={!!g.atualizacao_parcelas_automatica}
+            />
+            Atualizar parcelas automaticamente
+          </label>
+          <div className="grid gap-3 sm:grid-cols-3">
+            <div>
+              <Label>Parcelas realizadas na data base</Label>
+              <Input
+                name="parcelas_realizadas_base"
+                type="number"
+                defaultValue={String(
+                  g.parcelas_realizadas_base ?? g.parcelas_realizadas ?? 0,
+                )}
+              />
+            </div>
+            <div>
+              <Label>Data base da informação</Label>
+              <Input name="data_base_parcelas" type="date" defaultValue={dataBase} />
+            </div>
+          </div>
+          <GrupoPrazoAdminPreview
+            formId={formId}
+            initial={{
+              prazo_total: g.prazo_total != null ? Number(g.prazo_total) : null,
+              parcelas_realizadas:
+                g.parcelas_realizadas != null ? Number(g.parcelas_realizadas) : null,
+              prazo_restante: g.prazo_restante != null ? Number(g.prazo_restante) : null,
+              parcelas_realizadas_base:
+                g.parcelas_realizadas_base != null
+                  ? Number(g.parcelas_realizadas_base)
+                  : null,
+              data_base_parcelas: dataBase || null,
+              atualizacao_parcelas_automatica: !!g.atualizacao_parcelas_automatica,
+            }}
+          />
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" name="fixar_base_parcelas" value="on" />
+            Atualizar base para hoje (grava realizadas atuais e data de hoje ao salvar)
+          </label>
+        </div>
+
+        <div className="grid gap-3 sm:grid-cols-3">
           <div>
-            <Label>Parcelas realizadas</Label>
+            <Label>Parcelas realizadas (manual)</Label>
             <Input
               name="parcelas_realizadas"
               type="number"
               defaultValue={String(g.parcelas_realizadas ?? 0)}
             />
+            <p className="mt-1 text-xs text-zinc-500">Usado quando a atualização automática está desligada.</p>
           </div>
           <div>
-            <Label>Prazo restante</Label>
+            <Label>Prazo restante (manual)</Label>
             <Input name="prazo_restante" type="number" defaultValue={String(g.prazo_restante ?? "")} />
           </div>
         </div>

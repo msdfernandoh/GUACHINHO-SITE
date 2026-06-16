@@ -10,6 +10,7 @@ import {
   type ConfigLinhaSimulacaoGrupo,
 } from "@/lib/grupos/simulacao-linha";
 import { fatorSeguroGrupo } from "@/lib/grupos/seguro";
+import { calcularPrazoGrupoFromRow } from "@/lib/grupos/prazos";
 import type { GrupoConsorcio, GrupoCota, GrupoModalidadeLance } from "@/lib/types";
 import { DEFAULT_LEADS, getConfigJsonPublic } from "@/server/config";
 
@@ -139,8 +140,14 @@ export async function POST(request: Request) {
         lance_total: s.resultado.lanceTotal,
         primeira_parcela: s.resultado.primeiraParcela,
         seguro: s.resultado.seguroMensal,
-        parcelas_realizadas: s.grupo.parcelas_realizadas,
-        prazo_restante: s.grupo.prazo_restante,
+        parcelas_realizadas: (() => {
+          const p = calcularPrazoGrupoFromRow(s.grupo);
+          return p.parcelasRealizadasAtuais;
+        })(),
+        prazo_restante: (() => {
+          const p = calcularPrazoGrupoFromRow(s.grupo);
+          return p.prazoRestanteAtual;
+        })(),
         seguro_pos_contemplacao: s.config.usaSeguro,
         parcelas_restantes: s.resultado.parcelasRestantesPosContemplacao,
         cet_percentual: s.grupo.cet_percentual,

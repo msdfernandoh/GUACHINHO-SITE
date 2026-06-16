@@ -62,6 +62,9 @@ export type GrupoConsorcio = {
   prazo_total: number | null;
   parcelas_realizadas: number | null;
   prazo_restante: number | null;
+  parcelas_realizadas_base?: number | null;
+  data_base_parcelas?: string | null;
+  atualizacao_parcelas_automatica?: boolean | null;
   seguro_pos_contemplacao: boolean;
   cet_percentual: number | null;
   status: string;

@@ -12,11 +12,29 @@ import {
 import { DEFAULT_LEADS, getConfigJson } from "@/server/config";
 import { parseBulkCreditLines } from "@/lib/utils/format";
 import { estimarCamposCotaBulk, calcularParcelasSeguroDaCota, type GrupoBulkEstimateInput } from "@/lib/grupos/calculos";
+import { calcularPrazoGrupo } from "@/lib/grupos/prazos";
 import { parseSeguroInput } from "@/lib/grupos/seguro";
 import { GRUPOS_TESTE } from "@/lib/grupos/dados-teste";
-import type { GrupoModalidadeLance, PublicGrupoAggregate } from "@/lib/types";
+import type { GrupoModalidadeLance, GrupoConsorcio, PublicGrupoAggregate } from "@/lib/types";
+
+function isoDateLocal(d = new Date()) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
 
 function grupoConfigSeguroFromRow(grupo: Record<string, unknown>): GrupoBulkEstimateInput {
+  const prazo = calcularPrazoGrupo({
+    prazoTotal: grupo.prazo_total != null ? Number(grupo.prazo_total) : null,
+    parcelasRealizadasBase:
+      grupo.parcelas_realizadas_base != null
+        ? Number(grupo.parcelas_realizadas_base)
+        : grupo.parcelas_realizadas != null
+          ? Number(grupo.parcelas_realizadas)
+          : null,
+    dataBaseParcelas: (grupo.data_base_parcelas as string) ?? null,
+    atualizacaoAutomatica: !!grupo.atualizacao_parcelas_automatica,
+    parcelasRealizadasManual: Number(grupo.parcelas_realizadas ?? 0),
+    prazoRestanteManual: grupo.prazo_restante != null ? Number(grupo.prazo_restante) : null,
+  });
   return {
     seguro_habilitado: !!grupo.seguro_habilitado,
     seguro_pos_contemplacao: !!grupo.seguro_pos_contemplacao,
@@ -30,14 +48,44 @@ function grupoConfigSeguroFromRow(grupo: Record<string, unknown>): GrupoBulkEsti
         : null,
     taxa_administrativa_percentual: Number(grupo.taxa_administrativa_percentual ?? 0),
     fundo_reserva_percentual: Number(grupo.fundo_reserva_percentual ?? 0),
-    prazo_total: grupo.prazo_total != null ? Number(grupo.prazo_total) : null,
-    parcelas_realizadas: Number(grupo.parcelas_realizadas ?? 0),
-    prazo_restante: grupo.prazo_restante != null ? Number(grupo.prazo_restante) : null,
+    prazo_total: prazo.prazoTotal || null,
+    parcelas_realizadas: prazo.parcelasRealizadasAtuais,
+    prazo_restante: prazo.prazoRestanteAtual,
   };
 }
 
 function grupoFromForm(formData: FormData) {
   const seguroRaw = String(formData.get("seguro_percentual") ?? "");
+  const prazo_total = Number(formData.get("prazo_total") ?? 0) || null;
+  const parcelas_realizadas = Number(formData.get("parcelas_realizadas") ?? 0) || 0;
+  const prazo_restante = Number(formData.get("prazo_restante") ?? 0) || null;
+  const parcelas_base_raw = String(formData.get("parcelas_realizadas_base") ?? "").trim();
+  const parcelas_realizadas_base = parcelas_base_raw
+    ? Number(parcelas_base_raw) || 0
+    : null;
+  const data_base_parcelas =
+    String(formData.get("data_base_parcelas") ?? "").trim() || null;
+  const atualizacao_parcelas_automatica =
+    formData.get("atualizacao_parcelas_automatica") === "on";
+
+  let finalBase = parcelas_realizadas_base;
+  let finalDataBase = data_base_parcelas;
+  let finalAuto = atualizacao_parcelas_automatica;
+
+  if (formData.get("fixar_base_parcelas") === "on") {
+    const calc = calcularPrazoGrupo({
+      prazoTotal: prazo_total,
+      parcelasRealizadasBase: parcelas_realizadas_base ?? parcelas_realizadas,
+      dataBaseParcelas: data_base_parcelas ?? isoDateLocal(),
+      atualizacaoAutomatica: true,
+      parcelasRealizadasManual: parcelas_realizadas,
+      prazoRestanteManual: prazo_restante,
+    });
+    finalBase = calc.parcelasRealizadasAtuais;
+    finalDataBase = isoDateLocal();
+    finalAuto = true;
+  }
+
   return {
     codigo_grupo: String(formData.get("codigo_grupo") ?? "").trim(),
     modalidade: String(formData.get("modalidade") ?? "Imóvel").trim(),
@@ -54,9 +102,12 @@ function grupoFromForm(formData: FormData) {
     percentual_recurso_proprio_sugerido: Number(
       formData.get("percentual_recurso_proprio_sugerido") ?? 0,
     ),
-    prazo_total: Number(formData.get("prazo_total") ?? 0) || null,
-    parcelas_realizadas: Number(formData.get("parcelas_realizadas") ?? 0) || 0,
-    prazo_restante: Number(formData.get("prazo_restante") ?? 0) || null,
+    prazo_total,
+    parcelas_realizadas,
+    prazo_restante,
+    parcelas_realizadas_base: finalBase,
+    data_base_parcelas: finalDataBase,
+    atualizacao_parcelas_automatica: finalAuto,
     seguro_pos_contemplacao: formData.get("seguro_pos_contemplacao") === "on",
     cet_percentual: Number(formData.get("cet_percentual") ?? 0) || null,
     status: String(formData.get("status") ?? "Disponível").trim(),

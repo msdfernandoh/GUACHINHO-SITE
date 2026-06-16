@@ -81,8 +81,9 @@ export default async function GrupoEditPage({
         ) : null}
       </div>
       <h1 className="text-2xl font-bold">Grupo {data.grupo.codigo_grupo}</h1>
-      <form action={update} className="space-y-6">
+      <form id="grupo-form" action={update} className="space-y-6">
         <GrupoFormFields
+          formId="grupo-form"
           initial={data.grupo as Record<string, unknown>}
           modalidadesInitial={modalidades}
         />

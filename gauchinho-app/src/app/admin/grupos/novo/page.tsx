@@ -9,8 +9,8 @@ export default function NovoGrupoPage() {
         ← Grupos
       </Link>
       <h1 className="text-2xl font-bold">Novo grupo</h1>
-      <form action={createGrupoAction} className="space-y-6">
-        <GrupoFormFields />
+      <form id="grupo-form" action={createGrupoAction} className="space-y-6">
+        <GrupoFormFields formId="grupo-form" />
       </form>
     </div>
   );

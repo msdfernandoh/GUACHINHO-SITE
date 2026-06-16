@@ -18,6 +18,7 @@ Cobre:
 - Agregação de totais
 - Formato de prazo `total / restante / realizadas`
 - Lance embutido = **soma das cotas × % modalidade**
+- Prazos automáticos (`prazos.test.ts`) — meses decorridos e limites
 
 ## Tela pública `/grupos` — UI/UX
 
@@ -69,6 +70,24 @@ Caso de referência (grupos **1513** e **1533**, 1 cota cada, modalidade **40%**
 - `lance_embutido = soma_cotas × % modalidade` (modalidade escolhida ou fallback do grupo)
 - `seguro_mensal = saldo_devedor × fator` (ex. `0,0004`)
 
+## Atualização automática de parcelas
+
+No admin (`/admin/grupos/[id]`):
+
+1. [ ] Marcar **Atualizar parcelas automaticamente**
+2. [ ] Informar **Parcelas realizadas na data base** e **Data base**
+3. [ ] Conferir **Prévia (hoje)** — realizadas e restantes
+4. [ ] Opcional: **Atualizar base para hoje** ao salvar
+
+Em `/grupos`:
+
+5. [ ] Coluna **Prazo** reflete cálculo atual (ex. após 1 mês completo desde a data base, +1 realizada)
+6. [ ] Tooltip quando automático: *Atualizado automaticamente com base em DD/MM/AAAA*
+
+Grupos antigos sem data base continuam no modo **manual** (parcelas realizadas / prazo restante fixos).
+
+Cálculo: `realizadas = base + meses_decorridos` (ciclo mensal no mesmo dia); `restante = prazo_total - realizadas`. Sem cron — calculado ao carregar a tela.
+
 ## Admin
 
 - [ ] Modalidades de lance em `/admin/grupos/[id]`
@@ -77,3 +96,4 @@ Caso de referência (grupos **1513** e **1533**, 1 cota cada, modalidade **40%**
 ## Banco
 
 Migration `004_grupos_modalidades_lance.sql` aplicada no Supabase de produção.
+Migration `007_grupos_parcelas_automaticas.sql` — campos de data base e atualização automática.

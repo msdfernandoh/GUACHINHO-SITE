@@ -9,6 +9,7 @@ import {
   type ParametrosGrupo,
 } from "./calculos";
 import { fatorSeguroGrupo } from "./seguro";
+import { calcularPrazoGrupoFromRow } from "./prazos";
 
 export type ModalidadeParcelaLinha = "reduzida" | "integral";
 export type RecursoProprioModo = "percentual" | "valor";
@@ -352,12 +353,9 @@ export function agregarResultadosLinhas(
 }
 
 export function formatPrazoGrupo(grupo: GrupoConsorcio): string {
-  const total = grupo.prazo_total ?? "—";
-  const rest = grupo.prazo_restante ?? (grupo.prazo_total != null && grupo.parcelas_realizadas != null
-    ? Math.max(grupo.prazo_total - grupo.parcelas_realizadas, 0)
-    : "—");
-  const real = grupo.parcelas_realizadas ?? 0;
-  return `${total} / ${rest} / ${real}`;
+  const p = calcularPrazoGrupoFromRow(grupo);
+  const total = p.prazoTotal > 0 ? p.prazoTotal : (grupo.prazo_total ?? "—");
+  return `${total} / ${p.prazoRestanteAtual} / ${p.parcelasRealizadasAtuais}`;
 }
 
 export function defaultConfigLinha(
