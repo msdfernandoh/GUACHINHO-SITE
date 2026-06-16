@@ -68,10 +68,16 @@ export function GrupoRowAdjustments({ grupo, cotas, modalidades, config, onChang
               selectedId={modSelecionadaId}
               usaLanceEmbutido={config.usaLanceEmbutido}
               onSelect={handlers.selectModalidadeLance}
+              onClearEmbutido={handlers.clearLanceEmbutido}
               compact
             />
             {mods.length > 1 && !config.usaLanceEmbutido ? (
-              <p className="mt-2 text-[10px] text-amber-400">Escolha uma modalidade.</p>
+              <p className="mt-2 text-[10px] text-zinc-500">
+                Escolha uma modalidade ou deixe sem embutido.
+              </p>
+            ) : null}
+            {mods.length > 1 && config.usaLanceEmbutido && !modSelecionadaId ? (
+              <p className="mt-2 text-[10px] text-amber-400">Selecione a modalidade de lance.</p>
             ) : null}
           </>
         ) : (
@@ -239,12 +245,18 @@ export function GrupoRowAdjustments({ grupo, cotas, modalidades, config, onChang
             </p>
             <p className="text-xs text-zinc-400">Anual: {formatCustoEfetivoAnual(grupo)}</p>
           </div>
+          <div className="rounded-md bg-zinc-950/60 p-2">
+            <p className="text-[10px] text-zinc-500">Saldo devedor total</p>
+            <MoneyValue value={resultado.saldoDevedorInicial} compact className="text-zinc-200" />
+            <p className="text-[9px] text-zinc-600">Sem lances</p>
+          </div>
+          <div className="rounded-md bg-zinc-950/60 p-2">
+            <p className="text-[10px] text-zinc-500">Saldo final</p>
+            <MoneyValue value={resultado.saldoDevedorFinal} compact />
+          </div>
           <div className="col-span-2 rounded-md bg-zinc-950/60 p-2">
-            <p className="text-[10px] text-zinc-500">Saldo final · Prazo</p>
-            <p className="font-medium text-zinc-200">
-              {formatCurrency(resultado.saldoDevedorFinal)}{" "}
-              <span className="font-mono text-zinc-500">· {formatPrazoGrupo(grupo)}</span>
-            </p>
+            <p className="text-[10px] text-zinc-500">Prazo</p>
+            <p className="font-mono text-xs text-zinc-400">{formatPrazoGrupo(grupo)}</p>
           </div>
         </div>
         <Button

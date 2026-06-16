@@ -3,7 +3,7 @@
 import { cn } from "@/lib/utils/cn";
 import { formatCurrency } from "@/lib/utils/format";
 
-export const GRUPO_TABLE_COLSPAN = 14;
+export const GRUPO_TABLE_COLSPAN = 15;
 
 type MoneyProps = {
   value: number;
@@ -99,8 +99,21 @@ export function Th({
   );
 }
 
-export function Td({ children, className }: { children: React.ReactNode; className?: string }) {
+export function Td({
+  children,
+  className,
+  title,
+}: {
+  children: React.ReactNode;
+  className?: string;
+  title?: string;
+}) {
   return (
-    <td className={cn("whitespace-nowrap px-2 py-2 align-middle text-xs", className)}>{children}</td>
+    <td
+      className={cn("whitespace-nowrap px-2 py-2 align-middle text-xs", className)}
+      title={title}
+    >
+      {children}
+    </td>
   );
 }

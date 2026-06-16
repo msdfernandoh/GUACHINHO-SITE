@@ -51,6 +51,13 @@ export function GrupoRow({
   const pctMinRecurso = modAtiva ? Number(modAtiva.percentual_recurso_proprio_minimo) : 0;
   const handlers = createGrupoLinhaHandlers(config, onChange, mods, pctMinRecurso);
   const ativo = resultado.ativo;
+  const exibeLance = grupo.permite_lance_embutido && mods.length > 0;
+  const modSelecionadaId =
+    config.usaLanceEmbutido && config.modalidadeLanceId
+      ? config.modalidadeLanceId
+      : config.usaLanceEmbutido && mods.length === 1
+        ? mods[0]!.id
+        : null;
 
   const recursoPct =
     config.usaRecursoProprio && config.recursoProprioModo === "percentual"
@@ -62,8 +69,8 @@ export function GrupoRow({
   const modalidadeLabel =
     ativo && config.usaLanceEmbutido && modAtiva
       ? modAtiva.nome
-      : ativo && mods.length
-        ? "—"
+      : ativo && exibeLance && !config.usaLanceEmbutido
+        ? "Sem embutido"
         : null;
 
   return (
@@ -120,30 +127,61 @@ export function GrupoRow({
           )}
         </Td>
 
-        <Td className="min-w-[88px]">
+        <Td className="min-w-[88px] !whitespace-normal">
           {ativo ? (
-            <div className="leading-tight">
-              <span className="text-[10px] capitalize text-zinc-500">
+            <div className="flex flex-col leading-tight">
+              <span className="block text-[10px] text-zinc-500">
                 {temReduzida
                   ? config.modalidadeParcela === "reduzida"
                     ? "Reduzida"
                     : "Integral"
                   : "Integral"}
               </span>
-              <MoneyValue value={resultado.parcelaBase} compact />
+              <MoneyValue value={resultado.parcelaBase} compact className="mt-0.5" />
             </div>
           ) : (
             <CellDash />
           )}
         </Td>
 
-        <Td>
-          {ativo && resultado.lanceEmbutido > 0 ? (
-            <MoneyPair
-              pct={resultado.percentualLanceEmbutido}
-              value={resultado.lanceEmbutido}
-              valueClassName="text-zinc-200"
-            />
+        <Td className="!whitespace-normal min-w-[96px]">
+          {ativo && exibeLance ? (
+            <div className="flex flex-col gap-1">
+              {mods.length > 1 ? (
+                <CompactSelect
+                  className="h-7 max-w-[112px] text-[10px]"
+                  value={
+                    config.usaLanceEmbutido ? config.modalidadeLanceId ?? "" : "__sem__"
+                  }
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    if (v === "__sem__") handlers.clearLanceEmbutido();
+                    else {
+                      const mod = mods.find((m) => m.id === v);
+                      if (mod) handlers.selectModalidadeLance(mod);
+                    }
+                  }}
+                >
+                  <option value="__sem__">Sem embutido</option>
+                  {mods.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.nome}
+                    </option>
+                  ))}
+                </CompactSelect>
+              ) : null}
+              {config.usaLanceEmbutido && resultado.lanceEmbutido > 0 ? (
+                <MoneyPair
+                  pct={resultado.percentualLanceEmbutido}
+                  value={resultado.lanceEmbutido}
+                  valueClassName="text-zinc-200"
+                />
+              ) : (
+                <span className="text-[10px] text-zinc-500">Sem embutido</span>
+              )}
+            </div>
+          ) : ativo ? (
+            <CellDash />
           ) : (
             <CellDash />
           )}
@@ -221,7 +259,15 @@ export function GrupoRow({
           )}
         </Td>
 
-        <Td>
+        <Td title="Crédito + taxas e fundo (sem lances)">
+          {ativo ? (
+            <MoneyValue value={resultado.saldoDevedorInicial} compact className="text-zinc-200" />
+          ) : (
+            <CellDash />
+          )}
+        </Td>
+
+        <Td title="Após 1ª parcela e lances">
           {ativo ? (
             <MoneyValue value={resultado.saldoDevedorFinal} compact className="text-zinc-300" />
           ) : (

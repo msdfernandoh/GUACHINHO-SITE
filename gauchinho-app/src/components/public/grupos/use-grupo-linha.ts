@@ -70,8 +70,18 @@ export function createGrupoLinhaHandlers(
       next.usaRecursoProprio = true;
       next.recursoProprioModo = "percentual";
       next.recursoProprioInput = Math.max(config.recursoProprioInput, minPct);
+    } else if (!config.usaRecursoProprio) {
+      next.recursoProprioInput = config.recursoProprioInput;
     }
     onChange(next);
+  }
+
+  function clearLanceEmbutido() {
+    onChange({
+      ...config,
+      usaLanceEmbutido: false,
+      modalidadeLanceId: null,
+    });
   }
 
   function onRecursoInputChange(raw: string) {
@@ -91,6 +101,7 @@ export function createGrupoLinhaHandlers(
     onCotaChange,
     onQtyChange,
     selectModalidadeLance,
+    clearLanceEmbutido,
     onRecursoInputChange,
     clearSelection,
   };
