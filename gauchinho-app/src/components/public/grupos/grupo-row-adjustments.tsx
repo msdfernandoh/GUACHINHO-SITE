@@ -126,7 +126,7 @@ export function GrupoRowAdjustments({ grupo, cotas, modalidades, config, onChang
           {config.usaRecursoProprio ? (
             <div className="flex gap-1">
               <Select
-                className="h-8 w-14 border-zinc-700 bg-zinc-950 text-xs"
+                className="h-8 w-14 border-zinc-700 bg-zinc-950 text-xs text-zinc-100"
                 value={config.recursoProprioModo}
                 onChange={(e) =>
                   handlers.patch({
@@ -143,7 +143,7 @@ export function GrupoRowAdjustments({ grupo, cotas, modalidades, config, onChang
                 min={
                   config.recursoProprioModo === "percentual" && pctMinRecurso > 0 ? pctMinRecurso : 0
                 }
-                className="h-8 flex-1 border-zinc-700 bg-zinc-950 text-xs"
+                className="h-8 flex-1 border-zinc-700 bg-zinc-950 text-xs text-zinc-100"
                 value={config.recursoProprioInput}
                 onChange={(e) => handlers.onRecursoInputChange(e.target.value)}
               />

@@ -9,6 +9,7 @@ import {
   DEFAULT_SIMULADOR_IMOVEL,
   DEFAULT_SITE,
   DEFAULT_HOME_CARTAS,
+  DEFAULT_CALCULADORAS_FINANCEIRAS,
   type FinanciamentoConfig,
   type LeadsConfig,
   type PropostasConfig,
@@ -16,6 +17,7 @@ import {
   type SimuladorTipoBemConfig,
   type SiteConfig,
   type HomeCartasConfig,
+  type CalculadorasFinanceirasConfig,
 } from "@/lib/config/defaults";
 
 export {
@@ -27,6 +29,7 @@ export {
   DEFAULT_SIMULADOR_IMOVEL,
   DEFAULT_SITE,
   DEFAULT_HOME_CARTAS,
+  DEFAULT_CALCULADORAS_FINANCEIRAS,
   type FinanciamentoConfig,
   type LeadsConfig,
   type PropostasConfig,
@@ -34,6 +37,7 @@ export {
   type SimuladorTipoBemConfig,
   type SiteConfig,
   type HomeCartasConfig,
+  type CalculadorasFinanceirasConfig,
 };
 
 export async function getConfigJson<T>(chave: string, fallback: T): Promise<T> {
@@ -78,4 +82,11 @@ export async function getSimuladorConfigsPublic() {
     getConfigJsonPublic("financiamento_config", DEFAULT_FINANCIAMENTO_CONFIG),
   ]);
   return { imovel, automovel, financiamento };
+}
+
+export async function getCalculadorasConfigPublic() {
+  return getConfigJsonPublic(
+    "calculadoras_financeiras",
+    DEFAULT_CALCULADORAS_FINANCEIRAS,
+  );
 }

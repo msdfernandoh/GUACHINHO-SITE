@@ -10,7 +10,7 @@ import { IMOVEL_STATUS, IMOVEL_TIPOS } from "@/lib/imoveis/types";
 import { MessageCircle, Calculator, MapPin } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import { formatCurrency } from "@/lib/utils/format";
-import { Button, Input, Label, Select } from "@/components/ui/form-primitives";
+import { Button, Input, Label, Select, surfaceInputDark, surfaceSelectDark } from "@/components/ui/form-primitives";
 
 type Filters = {
   tipo?: string;
@@ -151,7 +151,7 @@ export function ImoveisPublicClient({
           <div>
             <Label className="text-zinc-400">Bairro</Label>
             <Input
-              className="mt-1 border-zinc-700 bg-zinc-950"
+              className={cn("mt-1", surfaceInputDark)}
               value={filters.bairro ?? ""}
               onChange={(e) => setFilters((f) => ({ ...f, bairro: e.target.value || undefined }))}
               placeholder="Bairro"
@@ -179,7 +179,7 @@ export function ImoveisPublicClient({
           <div>
             <Label className="text-zinc-400">Busca</Label>
             <Input
-              className="mt-1 border-zinc-700 bg-zinc-950"
+              className={cn("mt-1", surfaceInputDark)}
               placeholder="Título, cidade..."
               value={filters.q ?? ""}
               onChange={(e) => setFilters((f) => ({ ...f, q: e.target.value || undefined }))}
@@ -357,7 +357,7 @@ function FilterSelect({
   return (
     <div>
       <Label className="text-zinc-400">{label}</Label>
-      <Select className="mt-1 border-zinc-700 bg-zinc-950" value={value} onChange={(e) => onChange(e.target.value)}>
+      <Select className={cn("mt-1", surfaceSelectDark)} value={value} onChange={(e) => onChange(e.target.value)}>
         {options.map((o) => (
           <option key={o.value || "all"} value={o.value}>
             {o.label}

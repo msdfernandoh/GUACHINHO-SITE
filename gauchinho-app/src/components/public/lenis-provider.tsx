@@ -7,7 +7,11 @@ import Lenis from "lenis";
 /** Rotas com scroll nativo (planilhas/modais longos); Lenis trunca a altura scrollável. */
 function lenisDisabledForPath(pathname: string | null): boolean {
   if (!pathname) return false;
-  return pathname === "/grupos" || pathname.startsWith("/simulador");
+  return (
+    pathname === "/grupos" ||
+    pathname.startsWith("/simulador") ||
+    pathname.startsWith("/calculadoras")
+  );
 }
 
 export function LenisProvider({ children }: { children: ReactNode }) {

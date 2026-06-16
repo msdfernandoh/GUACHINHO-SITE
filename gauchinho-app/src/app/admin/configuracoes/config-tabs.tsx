@@ -12,6 +12,7 @@ import {
   saveSimuladorAutomovelConfigAction,
   saveFinanciamentoConfigAction,
   saveHomeCartasConfigAction,
+  saveCalculadorasConfigAction,
 } from "./actions";
 import { Button, Input, Label, Textarea } from "@/components/ui/form-primitives";
 import { cn } from "@/lib/utils/cn";
@@ -22,11 +23,13 @@ import {
 import {
   DEFAULT_FINANCIAMENTO_CONFIG,
   DEFAULT_HOME_CARTAS,
+  DEFAULT_CALCULADORAS_FINANCEIRAS,
   DEFAULT_SIMULADOR_AUTOMOVEL,
   DEFAULT_SIMULADOR_IMOVEL,
   type FinanciamentoConfig,
   type HomeCartasConfig,
   type SimuladorTipoBemConfig,
+  type CalculadorasFinanceirasConfig,
 } from "@/lib/config/defaults";
 
 const TABS: Array<{ id: string; label: string; future?: boolean }> = [
@@ -37,6 +40,7 @@ const TABS: Array<{ id: string; label: string; future?: boolean }> = [
   { id: "whatsapp", label: "WhatsApp por Origem" },
   { id: "simulador", label: "Simulador" },
   { id: "financiamento", label: "Financiamento" },
+  { id: "calculadoras", label: "Calculadoras" },
   { id: "cartas_home", label: "Cartas Home" },
   { id: "futuro1", label: "Identidade Visual", future: true },
   { id: "futuro2", label: "Menus", future: true },
@@ -57,6 +61,10 @@ export function ConfigTabs({ configs, whatsapp }: Props) {
   const simAuto = { ...DEFAULT_SIMULADOR_AUTOMOVEL, ...(configs.simulador_automovel as SimuladorTipoBemConfig | undefined) };
   const finCfg = { ...DEFAULT_FINANCIAMENTO_CONFIG, ...(configs.financiamento_config as FinanciamentoConfig | undefined) };
   const homeCartas = { ...DEFAULT_HOME_CARTAS, ...(configs.home_cartas_contempladas as HomeCartasConfig | undefined) };
+  const calcCfg = {
+    ...DEFAULT_CALCULADORAS_FINANCEIRAS,
+    ...(configs.calculadoras_financeiras as CalculadorasFinanceirasConfig | undefined),
+  };
 
   const current = TABS.find((t) => t.id === tab);
 
@@ -226,6 +234,59 @@ export function ConfigTabs({ configs, whatsapp }: Props) {
 
       {tab === "financiamento" ? (
         <FinanciamentoConfigForm action={saveFinanciamentoConfigAction} cfg={finCfg} />
+      ) : null}
+
+      {tab === "calculadoras" ? (
+        <form action={saveCalculadorasConfigAction} className="max-w-xl space-y-3">
+          <p className="text-sm text-zinc-500">Calculadoras financeiras públicas em /calculadoras</p>
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" name="ativoAplicacaoMensal" defaultChecked={calcCfg.ativoAplicacaoMensal} />
+            Ativar aplicação mensal
+          </label>
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" name="ativoValorFuturo" defaultChecked={calcCfg.ativoValorFuturo} />
+            Ativar valor futuro
+          </label>
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" name="ativoFinanciamento" defaultChecked={calcCfg.ativoFinanciamento} />
+            Ativar financiamento
+          </label>
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" name="ativoCorrecao" defaultChecked={calcCfg.ativoCorrecao} />
+            Ativar correção de valores
+          </label>
+          <div>
+            <Label>Rentabilidade mensal padrão (%)</Label>
+            <Input
+              name="rentabilidadeMensalPadrao"
+              type="number"
+              step="0.01"
+              defaultValue={String(calcCfg.rentabilidadeMensalPadrao)}
+            />
+          </div>
+          <div>
+            <Label>Taxa financiamento padrão (% a.m.)</Label>
+            <Input
+              name="taxaFinanciamentoPadrao"
+              type="number"
+              step="0.01"
+              defaultValue={String(calcCfg.taxaFinanciamentoPadrao)}
+            />
+          </div>
+          <div>
+            <Label>Texto CTA após resultado</Label>
+            <Textarea
+              name="textoCtaAposResultado"
+              rows={2}
+              defaultValue={calcCfg.textoCtaAposResultado}
+            />
+          </div>
+          <div>
+            <Label>WhatsApp — chave de origem</Label>
+            <Input name="whatsappOrigem" defaultValue={calcCfg.whatsappOrigem} placeholder="calculadora_financeira" />
+          </div>
+          <Button type="submit">Salvar Calculadoras</Button>
+        </form>
       ) : null}
 
       {tab === "cartas_home" ? (

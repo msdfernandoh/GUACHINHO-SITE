@@ -1,0 +1,264 @@
+"use client";
+
+import { useCallback, useMemo, useState } from "react";
+import Link from "next/link";
+import { MessageCircle } from "lucide-react";
+import type { CalculadorasFinanceirasConfig } from "@/lib/config/defaults";
+import type { CalculadoraId } from "@/lib/calculadoras/types";
+import { calculadorasAtivas, type CalculadoraMeta } from "@/lib/calculadoras/meta";
+import { mensagemWhatsappCalculadora } from "@/lib/calculadoras/whatsapp-messages";
+import type { WhatsappOrigemRow } from "@/lib/whatsapp/resolve-origem";
+import { simuladorShell, sectionCardClass } from "@/components/simulador/simulador-ui";
+import { Button } from "@/components/ui/form-primitives";
+import { CalculadoraCard } from "./calculadora-card";
+import { CalculatorLeadModal, type AcaoCalculadoraLead } from "./calculator-lead-modal";
+import { AplicacaoMensalCalculator } from "./aplicacao-mensal-calculator";
+import { ValorFuturoCalculator } from "./valor-futuro-calculator";
+import { FinanciamentoCalculator } from "./financiamento-calculator";
+import { CorrecaoValoresCalculator } from "./correcao-valores-calculator";
+
+type SimSnapshot = {
+  id: CalculadoraId;
+  inputs: Record<string, unknown>;
+  resultado: Record<string, unknown>;
+};
+
+type Props = {
+  config: CalculadorasFinanceirasConfig;
+  initialCalc?: CalculadoraId;
+};
+
+export function CalculadorasPage({ config, initialCalc }: Props) {
+  const ativas = useMemo(() => calculadorasAtivas(config), [config]);
+  const [activeId, setActiveId] = useState<CalculadoraId | null>(() => {
+    if (initialCalc && ativas.some((a) => a.id === initialCalc)) return initialCalc;
+    return ativas[0]?.id ?? null;
+  });
+  const [snapshot, setSnapshot] = useState<SimSnapshot | null>(null);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [acao, setAcao] = useState<AcaoCalculadoraLead>("analise");
+  const [nome, setNome] = useState("");
+  const [whatsapp, setWhatsapp] = useState("");
+  const [cidade, setCidade] = useState("");
+  const [email, setEmail] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [waLink, setWaLink] = useState<string | null>(null);
+  const [leadMsg, setLeadMsg] = useState<string | null>(null);
+
+  const activeMeta = ativas.find((m) => m.id === activeId);
+
+  const onResult = useCallback(
+    (id: CalculadoraId, inputs: Record<string, unknown>, resultado: Record<string, unknown>) => {
+      setSnapshot({ id, inputs, resultado });
+      setWaLink(null);
+      setLeadMsg(null);
+      void fetch("/api/public/eventos", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          tipo_evento: "calculadora_utilizada",
+          origem: "calculadora_financeira",
+          entidade_tipo: id,
+        }),
+      });
+    },
+    [],
+  );
+
+  function openLead(nextAcao: AcaoCalculadoraLead) {
+    if (!snapshot || snapshot.id !== activeId) return;
+    setAcao(nextAcao);
+    setModalOpen(true);
+    setLeadMsg(null);
+  }
+
+  async function submitLead(e: React.FormEvent) {
+    e.preventDefault();
+    if (!snapshot || !activeId) return;
+    setLoading(true);
+    setLeadMsg(null);
+    setWaLink(null);
+    try {
+      const res = await fetch("/api/public/calculadoras/captura", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          nome,
+          whatsapp,
+          cidade,
+          email,
+          calculadoraId: activeId,
+          acao,
+          inputs: snapshot.inputs,
+          resultado: snapshot.resultado,
+        }),
+      });
+      const data = (await res.json()) as {
+        ok?: boolean;
+        error?: string;
+        whatsappOrigem?: WhatsappOrigemRow | null;
+      };
+      if (!res.ok || !data.ok) {
+        setLeadMsg(data.error ?? "Não foi possível salvar.");
+        return;
+      }
+      setModalOpen(false);
+      setLeadMsg("Lead registrado. Você pode falar com nosso time agora.");
+
+      const wa = data.whatsappOrigem;
+      if (wa?.whatsapp_destino && wa.exibir_botao_apos_lead !== false) {
+        const text = mensagemWhatsappCalculadora(activeId, nome);
+        setWaLink(
+          `https://wa.me/${wa.whatsapp_destino.replace(/\D/g, "")}?text=${encodeURIComponent(text)}`,
+        );
+      }
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function onWaClick() {
+    void fetch("/api/public/eventos", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        tipo_evento: "clique_whatsapp_pos_lead",
+        origem: "calculadora_financeira",
+        entidade_tipo: activeId ?? undefined,
+      }),
+    });
+  }
+
+  if (ativas.length === 0) {
+    return (
+      <div className={simuladorShell}>
+        <div className="mx-auto max-w-lg px-4 py-16 text-center text-slate-300">
+          <p>Calculadoras temporariamente indisponíveis.</p>
+          <Link href="/" className="mt-4 inline-block text-amber-400 underline">
+            Voltar ao início
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className={simuladorShell}>
+      <div className="mx-auto max-w-5xl px-4 pb-16 pt-10 sm:pt-14">
+        <header className="mb-8 text-center sm:mb-10">
+          <p className="text-xs font-bold uppercase tracking-[0.25em] text-amber-400/90">Gauchinho</p>
+          <h1 className="mt-2 text-3xl font-extrabold tracking-tight text-white sm:text-4xl">
+            Calculadoras Financeiras
+          </h1>
+          <p className="mx-auto mt-3 max-w-2xl text-sm leading-relaxed text-slate-400 sm:text-base">
+            Planeje melhor suas decisões antes de contratar consórcio, financiamento ou investimento.
+          </p>
+        </header>
+
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
+          <div className="space-y-3">
+            {ativas.map((meta) => (
+              <CalculadoraCard
+                key={meta.id}
+                meta={meta}
+                selected={meta.id === activeId}
+                onSelect={() => {
+                  setActiveId(meta.id);
+                  setSnapshot(null);
+                  setWaLink(null);
+                  setLeadMsg(null);
+                }}
+              />
+            ))}
+          </div>
+
+          <div className="min-w-0">
+            {activeMeta ? (
+              <CalculatorPanel
+                meta={activeMeta}
+                config={config}
+                onResult={(inputs, resultado) => onResult(activeMeta.id, inputs, resultado)}
+              />
+            ) : null}
+
+            {snapshot && snapshot.id === activeId ? (
+              <section className={sectionCardClass("mt-6 border-amber-500/25")}>
+                <p className="text-center text-base font-semibold text-white">
+                  {config.textoCtaAposResultado ||
+                    "Quer uma análise personalizada para seu objetivo?"}
+                </p>
+                <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-center">
+                  <Button type="button" variant="gold" className="min-h-12 flex-1 sm:flex-none" onClick={() => openLead("analise")}>
+                    Receber análise completa
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="min-h-12 flex-1 border-slate-600 bg-slate-900 text-white hover:bg-slate-800 sm:flex-none"
+                    onClick={() => openLead("especialista")}
+                  >
+                    Falar com especialista
+                  </Button>
+                </div>
+                {leadMsg ? <p className="mt-3 text-center text-sm text-emerald-400">{leadMsg}</p> : null}
+                {waLink ? (
+                  <a
+                    href={waLink}
+                    target="_blank"
+                    rel="noreferrer"
+                    onClick={onWaClick}
+                    className="mt-4 flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 font-semibold text-white hover:bg-emerald-500"
+                  >
+                    <MessageCircle className="h-5 w-5" />
+                    Chamar no WhatsApp
+                  </a>
+                ) : null}
+              </section>
+            ) : null}
+          </div>
+        </div>
+      </div>
+
+      <CalculatorLeadModal
+        open={modalOpen}
+        acao={acao}
+        nome={nome}
+        whatsapp={whatsapp}
+        cidade={cidade}
+        email={email}
+        loading={loading}
+        onClose={() => setModalOpen(false)}
+        onSubmit={submitLead}
+        onNome={setNome}
+        onWhatsapp={setWhatsapp}
+        onCidade={setCidade}
+        onEmail={setEmail}
+      />
+    </div>
+  );
+}
+
+function CalculatorPanel({
+  meta,
+  config,
+  onResult,
+}: {
+  meta: CalculadoraMeta;
+  config: CalculadorasFinanceirasConfig;
+  onResult: (inputs: Record<string, unknown>, resultado: Record<string, unknown>) => void;
+}) {
+  switch (meta.id) {
+    case "aplicacao_mensal":
+      return (
+        <AplicacaoMensalCalculator taxaPadrao={config.rentabilidadeMensalPadrao} onResult={onResult} />
+      );
+    case "valor_futuro":
+      return <ValorFuturoCalculator taxaPadrao={config.rentabilidadeMensalPadrao} onResult={onResult} />;
+    case "financiamento":
+      return (
+        <FinanciamentoCalculator taxaPadrao={config.taxaFinanciamentoPadrao} onResult={onResult} />
+      );
+    case "correcao":
+      return <CorrecaoValoresCalculator onResult={onResult} />;
+  }
+}

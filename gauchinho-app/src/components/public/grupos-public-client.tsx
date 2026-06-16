@@ -13,7 +13,7 @@ import {
 } from "@/lib/grupos/simulacao-linha";
 import { digitsOnlyPhone, formatCurrency, formatWhatsappBrInput } from "@/lib/utils/format";
 import { cn } from "@/lib/utils/cn";
-import { Button, Input } from "@/components/ui/form-primitives";
+import { Button, Input, surfaceInputDark } from "@/components/ui/form-primitives";
 import { GrupoMobileCard } from "@/components/public/grupos/grupo-mobile-card";
 import { GrupoTotalsBar } from "@/components/public/grupos/grupo-totals-bar";
 import { GruposTable } from "@/components/public/grupos/grupos-table";
@@ -266,7 +266,12 @@ export function GruposPublicClient({
             <h2 className="text-lg font-semibold text-white">Seus dados</h2>
             <div>
               <label className="mb-1 block text-sm font-medium text-zinc-300">Nome</label>
-              <Input required value={nome} onChange={(e) => setNome(e.target.value)} className="bg-zinc-950" />
+              <Input
+                required
+                value={nome}
+                onChange={(e) => setNome(e.target.value)}
+                className={surfaceInputDark}
+              />
             </div>
             <div>
               <label className="mb-1 block text-sm font-medium text-zinc-300">WhatsApp</label>
@@ -277,7 +282,7 @@ export function GruposPublicClient({
                 placeholder="(51) 99999-9999"
                 value={whatsapp}
                 onChange={(e) => setWhatsapp(formatWhatsappBrInput(e.target.value))}
-                className="bg-zinc-950"
+                className={surfaceInputDark}
               />
             </div>
             <div className="flex gap-2">

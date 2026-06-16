@@ -1,19 +1,19 @@
 "use client";
 
-import type { AcaoCaptura } from "./simulador-types";
 import { cn } from "@/lib/utils/cn";
 import { Button, Input, Label, surfaceInputDarkSlate } from "@/components/ui/form-primitives";
 import { digitsOnlyPhone, formatWhatsappBrInput } from "@/lib/utils/format";
 
-const TITULOS: Record<AcaoCaptura, string> = {
-  analise: "Ver análise completa",
-  proposta: "Gerar proposta",
+export type AcaoCalculadoraLead = "analise" | "especialista";
+
+const TITULOS: Record<AcaoCalculadoraLead, string> = {
+  analise: "Receber análise completa",
   especialista: "Falar com especialista",
 };
 
 type Props = {
   open: boolean;
-  acao: AcaoCaptura;
+  acao: AcaoCalculadoraLead;
   nome: string;
   whatsapp: string;
   cidade: string;
@@ -27,7 +27,7 @@ type Props = {
   onEmail: (v: string) => void;
 };
 
-export function LeadCaptureModal({
+export function CalculatorLeadModal({
   open,
   acao,
   nome,
@@ -54,7 +54,7 @@ export function LeadCaptureModal({
         className="w-full max-w-md space-y-4 rounded-2xl border border-slate-600 bg-slate-900 p-6 shadow-2xl"
       >
         <h2 className="text-xl font-bold text-white">{TITULOS[acao]}</h2>
-        <p className="text-sm text-slate-400">Informe seus dados para continuar com segurança.</p>
+        <p className="text-sm text-slate-400">Informe seus dados para receber orientação personalizada.</p>
         <div>
           <Label className="text-slate-200">Nome</Label>
           <Input required value={nome} onChange={(e) => onNome(e.target.value)} className={cn("mt-1", surfaceInputDarkSlate)} />
@@ -77,16 +77,11 @@ export function LeadCaptureModal({
         </div>
         <div>
           <Label className="text-slate-200">E-mail (opcional)</Label>
-          <Input
-            type="email"
-            value={email}
-            onChange={(e) => onEmail(e.target.value)}
-            className={cn("mt-1", surfaceInputDarkSlate)}
-          />
+          <Input type="email" value={email} onChange={(e) => onEmail(e.target.value)} className={cn("mt-1", surfaceInputDarkSlate)} />
         </div>
         <div className="flex flex-col gap-2 sm:flex-row">
           <Button type="submit" variant="gold" disabled={loading || digitsOnlyPhone(whatsapp).length < 10} className="min-h-12 flex-1 text-base">
-            {loading ? "Enviando…" : "Continuar"}
+            {loading ? "Enviando…" : "Salvar e continuar"}
           </Button>
           <Button type="button" variant="outline" className={`min-h-12 ${cancelClass}`} onClick={onClose}>
             Cancelar

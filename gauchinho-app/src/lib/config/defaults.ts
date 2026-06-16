@@ -180,3 +180,25 @@ export const DEFAULT_FINANCIAMENTO_CONFIG: FinanciamentoConfig = {
   parceiroPadrao: "",
   mostrarComparacaoConsorcio: true,
 };
+
+export type CalculadorasFinanceirasConfig = {
+  ativoAplicacaoMensal: boolean;
+  ativoValorFuturo: boolean;
+  ativoFinanciamento: boolean;
+  ativoCorrecao: boolean;
+  rentabilidadeMensalPadrao: number;
+  taxaFinanciamentoPadrao: number;
+  textoCtaAposResultado: string;
+  whatsappOrigem: string;
+};
+
+export const DEFAULT_CALCULADORAS_FINANCEIRAS: CalculadorasFinanceirasConfig = {
+  ativoAplicacaoMensal: true,
+  ativoValorFuturo: true,
+  ativoFinanciamento: true,
+  ativoCorrecao: true,
+  rentabilidadeMensalPadrao: 0.8,
+  taxaFinanciamentoPadrao: 1,
+  textoCtaAposResultado: "Quer uma análise personalizada para seu objetivo?",
+  whatsappOrigem: "calculadora_financeira",
+};

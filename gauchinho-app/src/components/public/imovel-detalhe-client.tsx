@@ -9,7 +9,8 @@ import { IMOVEL_TIPOS, IMOVEL_STATUS } from "@/lib/imoveis/types";
 import type { ImobiliariaPublic } from "@/lib/imobiliarias/public-card-utils";
 import { ImobiliariaInfoPanel } from "@/components/public/imobiliaria-public-card";
 import { formatCurrency } from "@/lib/utils/format";
-import { Button, Input, Label } from "@/components/ui/form-primitives";
+import { cn } from "@/lib/utils/cn";
+import { Button, Input, Label, surfaceInputDark } from "@/components/ui/form-primitives";
 
 export function ImovelDetalheClient({
   imovel,
@@ -123,9 +124,9 @@ export function ImovelDetalheClient({
             {!waLink ? (
               <>
                 <Label>Nome</Label>
-                <Input className="mb-3 border-zinc-700 bg-zinc-950" value={nome} onChange={(e) => setNome(e.target.value)} />
+                <Input className={cn("mb-3", surfaceInputDark)} value={nome} onChange={(e) => setNome(e.target.value)} />
                 <Label>WhatsApp</Label>
-                <Input className="mb-3 border-zinc-700 bg-zinc-950" value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)} />
+                <Input className={cn("mb-3", surfaceInputDark)} value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)} />
                 <div className="flex gap-2">
                   <Button variant="outline" className="border-zinc-600 bg-zinc-900 text-zinc-100" onClick={() => setOpen(false)}>
                     Cancelar

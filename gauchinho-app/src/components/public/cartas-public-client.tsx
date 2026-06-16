@@ -7,7 +7,7 @@ import type { CartaContemplada } from "@/lib/cartas/types";
 import { CARTA_STATUS_LABELS, CARTA_TIPOS } from "@/lib/cartas/types";
 import { formatCurrency, formatDate } from "@/lib/utils/format";
 import { cn } from "@/lib/utils/cn";
-import { Button, Input, Label, Select } from "@/components/ui/form-primitives";
+import { Button, Input, Label, Select, surfaceInputDark } from "@/components/ui/form-primitives";
 import {
   buildCartaInteresseMensagem,
   type WhatsappOrigemRow,
@@ -291,19 +291,19 @@ export function CartasPublicClient({ cartas }: { cartas: CartaContemplada[] }) {
             <div className="mt-4 space-y-3">
               <div>
                 <Label>Nome</Label>
-                <Input value={nome} onChange={(e) => setNome(e.target.value)} required />
+                <Input value={nome} onChange={(e) => setNome(e.target.value)} required className={surfaceInputDark} />
               </div>
               <div>
                 <Label>WhatsApp</Label>
-                <Input value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)} required />
+                <Input value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)} required className={surfaceInputDark} />
               </div>
               <div>
                 <Label>Cidade (opcional)</Label>
-                <Input value={cidade} onChange={(e) => setCidade(e.target.value)} />
+                <Input value={cidade} onChange={(e) => setCidade(e.target.value)} className={surfaceInputDark} />
               </div>
               <div>
                 <Label>E-mail (opcional)</Label>
-                <Input value={email} onChange={(e) => setEmail(e.target.value)} type="email" />
+                <Input value={email} onChange={(e) => setEmail(e.target.value)} type="email" className={surfaceInputDark} />
               </div>
             </div>
             {msg ? <p className="mt-3 text-sm text-amber-200">{msg}</p> : null}

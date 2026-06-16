@@ -142,6 +142,22 @@ export async function saveFinanciamentoConfigAction(formData: FormData) {
   revalidatePath("/simulador");
 }
 
+export async function saveCalculadorasConfigAction(formData: FormData) {
+  await requireMasterConfig();
+  await saveConfigJson("calculadoras_financeiras", {
+    ativoAplicacaoMensal: formData.get("ativoAplicacaoMensal") === "on",
+    ativoValorFuturo: formData.get("ativoValorFuturo") === "on",
+    ativoFinanciamento: formData.get("ativoFinanciamento") === "on",
+    ativoCorrecao: formData.get("ativoCorrecao") === "on",
+    rentabilidadeMensalPadrao: numField(formData, "rentabilidadeMensalPadrao", 0.8),
+    taxaFinanciamentoPadrao: numField(formData, "taxaFinanciamentoPadrao", 1),
+    textoCtaAposResultado: String(formData.get("textoCtaAposResultado") ?? ""),
+    whatsappOrigem: String(formData.get("whatsappOrigem") ?? "calculadora_financeira").trim(),
+  });
+  revalidatePath("/admin/configuracoes");
+  revalidatePath("/calculadoras");
+}
+
 export async function saveHomeCartasConfigAction(formData: FormData) {
   await requireMasterConfig();
   await saveConfigJson("home_cartas_contempladas", {

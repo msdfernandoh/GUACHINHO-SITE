@@ -1,6 +1,15 @@
 import { cn } from "@/lib/utils/cn";
 import type { ButtonHTMLAttributes } from "react";
 
+/** Campos em modais/páginas com fundo escuro (sobrescreve text-zinc-900 do input padrão). */
+export const surfaceInputDark =
+  "border-zinc-700 bg-zinc-950 text-zinc-100 placeholder:text-zinc-500 caret-zinc-100";
+
+export const surfaceInputDarkSlate =
+  "border-slate-600 bg-slate-950 text-slate-100 placeholder:text-slate-500 caret-slate-100";
+
+export const surfaceSelectDark = "border-zinc-700 bg-zinc-950 text-zinc-100";
+
 type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: "default" | "outline" | "ghost" | "gold" | "danger";
   size?: "sm" | "md";
