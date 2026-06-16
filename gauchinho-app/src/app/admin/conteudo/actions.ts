@@ -413,3 +413,37 @@ export async function deleteParceiroAction(id: string) {
   revalidateConteudo();
   redirect("/admin/conteudo/parceiros");
 }
+
+/** Popula FAQ institucional (dev/staging ou quando explicitamente permitido). Não cria depoimentos fictícios. */
+export async function popularFaqInstitucionalAction(): Promise<{ inserted: number; skipped: number }> {
+  await assertConteudo();
+  if (process.env.NODE_ENV === "production" && process.env.ALLOW_FAQ_SEED !== "1") {
+    throw new Error("Seed de FAQ bloqueado em produção");
+  }
+  const { FAQ_INSTITUCIONAL_SEED } = await import("@/lib/conteudo/faq-seed");
+  const supabase = await createClient();
+  let inserted = 0;
+  let skipped = 0;
+  for (const row of FAQ_INSTITUCIONAL_SEED) {
+    const { data: existing } = await supabase
+      .from("perguntas_frequentes")
+      .select("id")
+      .eq("pergunta", row.pergunta)
+      .maybeSingle();
+    if (existing) {
+      skipped += 1;
+      continue;
+    }
+    const { error } = await supabase.from("perguntas_frequentes").insert({
+      pergunta: row.pergunta,
+      resposta: row.resposta,
+      categoria: row.categoria,
+      ordem: row.ordem,
+      publicado: true,
+    });
+    if (error) throw new Error(error.message);
+    inserted += 1;
+  }
+  revalidateConteudo();
+  return { inserted, skipped };
+}

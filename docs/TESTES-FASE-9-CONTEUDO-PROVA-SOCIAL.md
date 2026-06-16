@@ -19,16 +19,14 @@ Migration: `supabase/migrations/010_conteudo_prova_social.sql` (no repositório,
 - [ ] `/admin/conteudo/casos` — criar, editar, publicar, destaque, upload imagem
 - [ ] `/admin/conteudo/dicas` — idem
 - [ ] `/admin/conteudo/depoimentos` — CRUD (sem página pública dedicada)
-- [ ] `/admin/conteudo/faq` — CRUD + seed inicial após migration
+- [ ] `/admin/conteudo/faq` — CRUD + botão **Popular FAQ institucional** (dev; produção exige `ALLOW_FAQ_SEED=1`)
 - [ ] `/admin/conteudo/parceiros` — CRUD + logo
 - [ ] Excluir — apenas **master**
 
 ## Home
 
-- [ ] Até 3 casos em destaque (fallback para publicados se não houver destaque)
-- [ ] Até 3 dicas em destaque
-- [ ] Parceiros CMS em destaque na seção Parceiros
-- [ ] Seções de casos/dicas ocultas quando não há conteúdo publicado
+- [ ] **Home principal (`/`, Home V2)** — seções Fase 9 antes do CTA final (casos, dicas, parceiros CMS)
+- [ ] **Home v1 (`/home-v1`)** — `HomePremium` com mesmas seções + grupos/cartas/imóveis
 
 ## IA
 

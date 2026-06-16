@@ -13,6 +13,10 @@ import {
   computeQuickSimulatorParcela,
   type SimuladorConfigsBundle,
 } from "@/lib/simulador/preview-home";
+import type { HomeConteudoDestaques } from "@/lib/home/load-home-data";
+import { FeaturedCasosSection } from "@/components/public/home/featured-casos-section";
+import { FeaturedDicasSection } from "@/components/public/home/featured-dicas-section";
+import { FeaturedParceirosCmsSection } from "@/components/public/home/featured-parceiros-cms-section";
 
 const C = {
   bg:         "#07111F",
@@ -477,9 +481,10 @@ function ObjetivosSection() {
 // ─── COMPONENTE PRINCIPAL ──────────────────────────────────
 export type HomeV2ClientProps = {
   simuladorConfigs: SimuladorConfigsBundle;
+  conteudoDestaques: HomeConteudoDestaques;
 };
 
-export function HomeV2Client({ simuladorConfigs }: HomeV2ClientProps) {
+export function HomeV2Client({ simuladorConfigs, conteudoDestaques }: HomeV2ClientProps) {
   const shouldReduce = useReducedMotion();
   const [fraseAtual, setFraseAtual] = useState(0);
   const [tabSimulador, setTabSimulador] = useState<"consorcio" | "financiamento">("consorcio");
@@ -879,6 +884,17 @@ export function HomeV2Client({ simuladorConfigs }: HomeV2ClientProps) {
           </div>
         </div>
       </section>
+
+      {/* Fase 9 — conteúdo publicado (oculto se vazio) */}
+      <div style={{ background: C.bgCard }}>
+        <FeaturedCasosSection casos={conteudoDestaques.casosDestaque} />
+      </div>
+      <div style={{ background: C.bg }}>
+        <FeaturedDicasSection dicas={conteudoDestaques.dicasDestaque} />
+      </div>
+      <div style={{ background: C.bgCard }}>
+        <FeaturedParceirosCmsSection parceiros={conteudoDestaques.parceirosDestaque} />
+      </div>
 
       {/* ══════════════════════════════════════════
           SEÇÃO 7 — CTA FINAL

@@ -9,8 +9,8 @@ export function FeaturedCasosSection({ casos }: { casos: CasoSucesso[] }) {
   return (
     <FeaturedContentSection
       eyebrow="Prova social"
-      title="Histórias de clientes"
-      subtitle="Exemplos de planejamento e acompanhamento — sem promessa de resultado."
+      title="Histórias de conquistas planejadas"
+      subtitle="Veja exemplos de clientes que buscaram orientação para transformar planos em conquistas com estratégia, análise e acompanhamento."
       ctaHref="/casos-de-sucesso"
       ctaLabel="Ver histórias"
       hideIfEmpty

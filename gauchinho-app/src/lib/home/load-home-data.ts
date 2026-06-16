@@ -144,3 +144,41 @@ export async function loadHomePageData(): Promise<HomePageData> {
     parceirosDestaque,
   };
 }
+
+export type HomeConteudoDestaques = {
+  casosDestaque: CasoSucesso[];
+  dicasDestaque: DicaTche[];
+  parceirosDestaque: ParceiroInstitucional[];
+};
+
+/** Casos, dicas e parceiros para vitrine na Home (sem carregar grupos/cartas). */
+export async function loadHomeConteudoDestaques(): Promise<HomeConteudoDestaques> {
+  const casosDestaque = await safeFetch(
+    () => fetchPublicCasosSucesso({ destaque: true, limit: 3 }),
+    [] as CasoSucesso[],
+  );
+  let casosHome = casosDestaque;
+  if (!casosHome.length) {
+    casosHome = await safeFetch(() => fetchPublicCasosSucesso({ limit: 3 }), [] as CasoSucesso[]);
+  }
+
+  const dicasDestaque = await safeFetch(
+    () => fetchPublicDicas({ destaque: true, limit: 3 }),
+    [] as DicaTche[],
+  );
+  let dicasHome = dicasDestaque;
+  if (!dicasHome.length) {
+    dicasHome = await safeFetch(() => fetchPublicDicas({ limit: 3 }), [] as DicaTche[]);
+  }
+
+  const parceirosDestaque = await safeFetch(
+    () => fetchPublicParceiros({ destaque: true, limit: 12 }),
+    [] as ParceiroInstitucional[],
+  );
+
+  return {
+    casosDestaque: casosHome,
+    dicasDestaque: dicasHome,
+    parceirosDestaque,
+  };
+}

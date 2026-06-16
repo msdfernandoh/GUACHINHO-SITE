@@ -4,6 +4,7 @@ import { getUsuarioNegocio } from "@/lib/auth/get-usuario";
 import { canManageConteudo } from "@/lib/auth/permissions";
 import { fetchAdminFaq } from "../actions";
 import { Button } from "@/components/ui/form-primitives";
+import { FaqInstitucionalSeedButton } from "@/components/admin/conteudo/faq-seed-button";
 
 export default async function AdminFaqPage() {
   const u = await getUsuarioNegocio();
@@ -23,6 +24,10 @@ export default async function AdminFaqPage() {
           <Button>Nova pergunta</Button>
         </Link>
       </div>
+      <FaqInstitucionalSeedButton />
+      <p className="text-xs text-zinc-500">
+        Respostas genéricas e seguras. Em produção, use variável ALLOW_FAQ_SEED=1 se necessário.
+      </p>
       <table className="min-w-full rounded-xl border text-sm dark:border-zinc-800">
         <thead className="bg-zinc-50 text-left text-xs uppercase dark:bg-zinc-800/50">
           <tr>

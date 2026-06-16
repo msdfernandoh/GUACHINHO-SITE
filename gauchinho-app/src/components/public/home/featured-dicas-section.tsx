@@ -9,8 +9,8 @@ export function FeaturedDicasSection({ dicas }: { dicas: DicaTche[] }) {
   return (
     <FeaturedContentSection
       eyebrow="Dicas do Tchê"
-      title="Conteúdo rápido e direto"
-      subtitle="Entenda consórcio, financiamento e cartas com linguagem simples."
+      title="Dicas do Tchê"
+      subtitle="Conteúdos rápidos para você entender melhor consórcio, financiamento, cartas contempladas e planejamento financeiro."
       ctaHref="/dicas-do-tche"
       ctaLabel="Ver dicas"
       hideIfEmpty
