@@ -35,9 +35,7 @@ const FALAS = [
 ];
 
 /**
- * Coloque suas fotos na pasta /public/foto/
- * e altere o imageSrc para ex: "/foto/imovel.jpg"
- * Por enquanto usando imagens de referência.
+ * Imagens em /public/foto/ — troque os arquivos para atualizar os cards.
  */
 const SONHOS_CARDS: CardStackItem[] = [
   {
@@ -45,7 +43,7 @@ const SONHOS_CARDS: CardStackItem[] = [
     title: "Imóveis",
     description: "Casa, apartamento ou terreno com planejamento e consórcio orientado.",
     href: "/simulador?solucao=consorcio&tipo=imovel",
-    imageSrc: "https://images.unsplash.com/photo-1613977257363-707ba9348227?w=800&q=80",
+    imageSrc: "/foto/imovel.png",
     tag: "01",
   },
   {
@@ -53,7 +51,7 @@ const SONHOS_CARDS: CardStackItem[] = [
     title: "Veículos",
     description: "Carro novo ou seminovo com parcelas alinhadas ao seu orçamento.",
     href: "/simulador?solucao=consorcio&tipo=automovel",
-    imageSrc: "https://images.unsplash.com/photo-1606664515524-ed2f786a0bd6?w=800&q=80",
+    imageSrc: "/foto/veiculos.png",
     tag: "02",
   },
   {
@@ -61,7 +59,7 @@ const SONHOS_CARDS: CardStackItem[] = [
     title: "Motos",
     description: "Mobilidade com crédito planejado e consultoria de lance.",
     href: "/simulador?tipo=moto&solucao=consorcio",
-    imageSrc: "https://images.unsplash.com/photo-1558981806-ec527fa84c39?w=800&q=80",
+    imageSrc: "/foto/motos.png",
     tag: "03",
   },
   {
@@ -69,7 +67,7 @@ const SONHOS_CARDS: CardStackItem[] = [
     title: "Caminhonetes",
     description: "Utilitários para trabalho e lazer com estratégia comercial.",
     href: "/simulador?tipo=caminhonete&solucao=consorcio",
-    imageSrc: "https://images.unsplash.com/photo-1559416523-140ddc3d238c?w=800&q=80",
+    imageSrc: "/foto/caminhonetes.png",
     tag: "04",
   },
   {
@@ -77,7 +75,7 @@ const SONHOS_CARDS: CardStackItem[] = [
     title: "Caminhões",
     description: "Frota e transporte com análise patrimonial e comparativo.",
     href: "/simulador?tipo=caminhao&solucao=consorcio",
-    imageSrc: "https://images.unsplash.com/photo-1586191582056-b7d8c6a1c433?w=800&q=80",
+    imageSrc: "/foto/caminhonetes.png",
     tag: "05",
   },
   {
@@ -85,7 +83,7 @@ const SONHOS_CARDS: CardStackItem[] = [
     title: "Máquinas Agrícolas",
     description: "Produtividade e performance para o campo e para a obra.",
     href: "/simulador?tipo=maquinario&solucao=consorcio",
-    imageSrc: "https://images.unsplash.com/photo-1574943320219-553eb213f72d?w=800&q=80",
+    imageSrc: "/foto/maquinas.png",
     tag: "06",
   },
 ];
