@@ -3,6 +3,7 @@
 import type { GrupoConsorcio, GrupoCota, GrupoModalidadeLance } from "@/lib/types";
 import { grupoUsaSeguroNaParcela } from "@/lib/grupos/calculos";
 import { formatPrazoGrupo, type ConfigLinhaSimulacaoGrupo } from "@/lib/grupos/simulacao-linha";
+import { parcelaTipoFromModalidade } from "@/lib/grupos/modalidades-admin";
 import { formatCurrency } from "@/lib/utils/format";
 import { cn } from "@/lib/utils/cn";
 import { Button, Input, Select } from "@/components/ui/form-primitives";
@@ -34,16 +35,12 @@ export function GrupoRowAdjustments({ grupo, cotas, modalidades, config, onChang
   });
   const temSeguro = grupoUsaSeguroNaParcela(grupo);
   const temReduzida = grupo.tem_parcela_reduzida;
-  const exibeLance = grupo.permite_lance_embutido && mods.length > 0;
+  const exibeEstrategias = mods.length > 0;
   const pctMinRecurso = modAtiva ? Number(modAtiva.percentual_recurso_proprio_minimo) : 0;
   const handlers = createGrupoLinhaHandlers(config, onChange, mods, pctMinRecurso);
 
-  const modSelecionadaId =
-    config.usaLanceEmbutido && config.modalidadeLanceId
-      ? config.modalidadeLanceId
-      : mods.length === 1
-        ? mods[0]!.id
-        : null;
+  const modSelecionadaId = config.modalidadeLanceId;
+  const parcelaFixaNaMod = modAtiva ? parcelaTipoFromModalidade(modAtiva) : null;
 
   if (!resultado.ativo) {
     return (
@@ -57,31 +54,27 @@ export function GrupoRowAdjustments({ grupo, cotas, modalidades, config, onChang
     <div className="grid gap-4 lg:grid-cols-3">
       <div>
         <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-amber-500/90">
-          Estratégia de lance
+          Estratégias (lance e parcela)
         </p>
-        {exibeLance ? (
+        {exibeEstrategias ? (
           <>
             <LanceStrategySelector
               grupoId={grupo.id}
               mods={mods}
               somaCotas={resultado.somaCotas}
               selectedId={modSelecionadaId}
-              usaLanceEmbutido={config.usaLanceEmbutido}
               onSelect={handlers.selectModalidadeLance}
               onClearEmbutido={handlers.clearLanceEmbutido}
               compact
             />
-            {mods.length > 1 && !config.usaLanceEmbutido ? (
-              <p className="mt-2 text-[10px] text-zinc-500">
-                Escolha uma modalidade ou deixe sem embutido.
-              </p>
-            ) : null}
-            {mods.length > 1 && config.usaLanceEmbutido && !modSelecionadaId ? (
-              <p className="mt-2 text-[10px] text-amber-400">Selecione a modalidade de lance.</p>
+            {mods.length > 1 && !modSelecionadaId ? (
+              <p className="mt-2 text-[10px] text-amber-400">Selecione uma estratégia.</p>
             ) : null}
           </>
         ) : (
-          <p className="text-xs text-zinc-500">Lance embutido não disponível neste grupo.</p>
+          <p className="text-xs text-zinc-500">
+            Cadastre estratégias no admin (lance embutido / parcela reduzida).
+          </p>
         )}
       </div>
 
@@ -92,7 +85,11 @@ export function GrupoRowAdjustments({ grupo, cotas, modalidades, config, onChang
         <div className="space-y-3 rounded-lg border border-zinc-800 bg-zinc-950/40 p-3">
           <div>
             <p className="mb-1 text-[10px] uppercase text-zinc-500">Tipo de parcela</p>
-            {temReduzida ? (
+            {parcelaFixaNaMod ? (
+              <span className="text-xs text-emerald-300/90">
+                {parcelaFixaNaMod === "reduzida" ? "Reduzida (estratégia)" : "Integral (estratégia)"}
+              </span>
+            ) : temReduzida ? (
               <CompactSelect
                 className="max-w-[140px]"
                 value={config.modalidadeParcela}

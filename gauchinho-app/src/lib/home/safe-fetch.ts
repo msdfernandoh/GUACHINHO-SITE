@@ -11,9 +11,13 @@ export function isMissingDbObjectError(err: unknown): boolean {
       : "";
   return (
     code === "42P01" ||
+    code === "PGRST204" ||
+    code === "42703" ||
     /does not exist/i.test(msg) ||
     /relation .* does not exist/i.test(msg) ||
-    /Could not find the table/i.test(msg)
+    /Could not find the table/i.test(msg) ||
+    /Could not find the .* column/i.test(msg) ||
+    /schema cache/i.test(msg)
   );
 }
 

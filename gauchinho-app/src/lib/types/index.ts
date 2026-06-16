@@ -83,6 +83,8 @@ export type GrupoModalidadeLance = {
   descricao: string | null;
   ativo: boolean;
   ordem: number;
+  tipo_parcela?: "integral" | "reduzida" | null;
+  percentual_parcela_reduzida?: number | null;
   created_at: string;
   updated_at: string;
 };

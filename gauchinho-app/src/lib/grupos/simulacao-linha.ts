@@ -10,6 +10,7 @@ import {
 } from "./calculos";
 import { fatorSeguroGrupo } from "./seguro";
 import { calcularPrazoGrupoFromRow } from "./prazos";
+import { parcelaTipoFromModalidade } from "./modalidades-admin";
 
 export type ModalidadeParcelaLinha = "reduzida" | "integral";
 export type RecursoProprioModo = "percentual" | "valor";
@@ -115,10 +116,10 @@ function resolveModalidadeLance(
   modalidades: GrupoModalidadeLance[],
 ): GrupoModalidadeLance | null {
   if (!modalidades.length) return null;
-  if (!config.usaLanceEmbutido) return null;
   if (config.modalidadeLanceId) {
-    return modalidades.find((m) => m.id === config.modalidadeLanceId) ?? modalidades[0] ?? null;
+    return modalidades.find((m) => m.id === config.modalidadeLanceId) ?? null;
   }
+  if (!config.usaLanceEmbutido) return null;
   return modalidades.length === 1 ? modalidades[0]! : null;
 }
 
@@ -223,8 +224,11 @@ export function calcularLinhaSimulacaoGrupo(args: {
 
   const modalidadesAtivas = listarModalidadesLanceAtivas(grupo, modalidades);
   const modLance = resolveModalidadeLance(config, modalidadesAtivas);
-  const pctEmbutido = config.usaLanceEmbutido && modLance ? num(modLance.percentual_lance_embutido) : 0;
-  const pctRecursoMin = config.usaLanceEmbutido && modLance ? num(modLance.percentual_recurso_proprio_minimo) : 0;
+  const pctEmbutido = modLance && config.usaLanceEmbutido ? num(modLance.percentual_lance_embutido) : 0;
+  const pctRecursoMin =
+    modLance && config.usaLanceEmbutido ? num(modLance.percentual_recurso_proprio_minimo) : 0;
+  const parcelaTipoLinha =
+    (modLance && parcelaTipoFromModalidade(modLance)) || config.modalidadeParcela;
 
   const lanceEmbutido =
     pctEmbutido > 0
@@ -258,7 +262,7 @@ export function calcularLinhaSimulacaoGrupo(args: {
 
   const parcelaBase = parcelaMensalDaCota(
     cota,
-    config.modalidadeParcela,
+    parcelaTipoLinha,
     grupo,
     config.usaSeguro,
     seguroUnitario,
@@ -364,13 +368,16 @@ export function defaultConfigLinha(
   modalidades: GrupoModalidadeLance[],
 ): ConfigLinhaSimulacaoGrupo {
   const mods = listarModalidadesLanceAtivas(grupo, modalidades);
-  const umaMod = mods.length === 1;
+  const umaMod = mods.length === 1 ? mods[0]! : null;
+  const parcelaTipo = umaMod ? parcelaTipoFromModalidade(umaMod) : null;
+  const pctEmb = umaMod ? num(umaMod.percentual_lance_embutido) : 0;
   return {
     cotaId: cotas[0]?.id ?? null,
     quantidadeCotas: 0,
-    modalidadeParcela: grupo.tem_parcela_reduzida ? "reduzida" : "integral",
-    usaLanceEmbutido: grupo.permite_lance_embutido && umaMod,
-    modalidadeLanceId: umaMod ? mods[0]!.id : null,
+    modalidadeParcela:
+      parcelaTipo ?? (grupo.tem_parcela_reduzida ? "reduzida" : "integral"),
+    usaLanceEmbutido: !!umaMod && pctEmb > 0,
+    modalidadeLanceId: umaMod?.id ?? null,
     usaRecursoProprio: false,
     recursoProprioModo: "percentual",
     recursoProprioInput: num(grupo.percentual_recurso_proprio_sugerido),

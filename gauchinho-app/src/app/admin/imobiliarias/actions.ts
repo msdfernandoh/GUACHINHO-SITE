@@ -237,9 +237,7 @@ export async function fetchPublicImobiliariasParceiras() {
   const admin = createAdminClient();
   const { data, error } = await admin
     .from("imobiliarias")
-    .select(
-      "id, nome, slug, logo_url, banner_url, cidade, estado, endereco, numero, bairro, complemento, telefone, whatsapp, site, descricao_curta, descricao",
-    )
+    .select("*")
     .eq("ativo", true)
     .order("ordem")
     .order("nome");

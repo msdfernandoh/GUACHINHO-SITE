@@ -3,6 +3,8 @@ import Link from "next/link";
 import Image from "next/image";
 import { fetchImobiliariaBySlug } from "@/app/admin/imobiliarias/actions";
 import { fetchPublicImoveis } from "@/app/admin/imoveis/actions";
+import { safeFetch } from "@/lib/home/safe-fetch";
+import type { ImovelPublic } from "@/lib/imoveis/types";
 import { ImovelCardInline } from "@/components/public/imovel-card-inline";
 import { ImobiliariaPublicCard } from "@/components/public/imobiliaria-public-card";
 import { toImobiliariaPublic } from "@/lib/imobiliarias/public-card-utils";
@@ -17,12 +19,15 @@ export default async function ImobiliariaPublicPage({
 }) {
   const { slug } = await params;
   const [imob, contato] = await Promise.all([
-    fetchImobiliariaBySlug(slug),
+    safeFetch(() => fetchImobiliariaBySlug(slug), null),
     getConfigJsonPublic("contato", DEFAULT_CONTATO),
   ]);
   if (!imob) notFound();
 
-  const imoveis = await fetchPublicImoveis({ imobiliaria_id: imob.id });
+  const imoveis = await safeFetch(
+    () => fetchPublicImoveis({ imobiliaria_id: imob.id }),
+    [] as ImovelPublic[],
+  );
   const profile = toImobiliariaPublic(imob);
 
   return (

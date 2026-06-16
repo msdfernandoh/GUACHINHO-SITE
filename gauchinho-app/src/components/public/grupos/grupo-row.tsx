@@ -52,13 +52,8 @@ export function GrupoRow({
   const pctMinRecurso = modAtiva ? Number(modAtiva.percentual_recurso_proprio_minimo) : 0;
   const handlers = createGrupoLinhaHandlers(config, onChange, mods, pctMinRecurso);
   const ativo = resultado.ativo;
-  const exibeLance = grupo.permite_lance_embutido && mods.length > 0;
-  const modSelecionadaId =
-    config.usaLanceEmbutido && config.modalidadeLanceId
-      ? config.modalidadeLanceId
-      : config.usaLanceEmbutido && mods.length === 1
-        ? mods[0]!.id
-        : null;
+  const exibeLance = mods.length > 0;
+  const modSelecionadaId = config.modalidadeLanceId;
 
   const recursoPct =
     config.usaRecursoProprio && config.recursoProprioModo === "percentual"
@@ -68,10 +63,10 @@ export function GrupoRow({
         : null;
 
   const modalidadeLabel =
-    ativo && config.usaLanceEmbutido && modAtiva
+    ativo && modAtiva
       ? modAtiva.nome
-      : ativo && exibeLance && !config.usaLanceEmbutido
-        ? "Sem embutido"
+      : ativo && exibeLance && !modSelecionadaId
+        ? "Sem estratégia"
         : null;
 
   return (

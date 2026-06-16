@@ -337,13 +337,6 @@ function ObjetivosSection() {
                 )}
                 <p className="mb-8 max-w-lg text-lg leading-relaxed" style={{ color: C.muted }}>{item.desc}</p>
 
-                {/* Stat */}
-                <div className="mb-8 inline-flex flex-col rounded-2xl border px-6 py-4"
-                  style={{ background: "rgba(201,168,76,0.06)", borderColor: C.goldBorder }}>
-                  <span className="text-3xl font-black" style={{ color: C.gold }}>{item.stat.value}</span>
-                  <span className="text-sm" style={{ color: C.muted }}>{item.stat.label}</span>
-                </div>
-
                 {/* CTA */}
                 <div>
                   <motion.div whileHover={shouldReduce ? undefined : { scale: 1.03 }} whileTap={shouldReduce ? undefined : { scale: 0.97 }}>
@@ -534,25 +527,8 @@ export default function HomeV2() {
             </motion.p>
 
             <motion.div
-              initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-              transition={{ delay: 0.4 }}
-              className="mb-8 flex flex-wrap justify-center gap-8 border-t border-white/10 pt-6 lg:justify-start"
-            >
-              {[
-                { value: "+500", label: "Clientes atendidos" },
-                { value: "R$ 80M+", label: "Em crédito gerenciado" },
-                { value: "10+", label: "Anos de experiência" },
-              ].map(({ value, label }) => (
-                <div key={label}>
-                  <p className="text-2xl font-black text-white">{value}</p>
-                  <p className="text-xs" style={{ color: C.muted }}>{label}</p>
-                </div>
-              ))}
-            </motion.div>
-
-            <motion.div
               initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.5, duration: 0.5 }}
+              transition={{ delay: 0.4, duration: 0.5 }}
               className="flex flex-wrap justify-center gap-3 lg:justify-start"
             >
               <motion.div whileHover={shouldReduce ? undefined : { scale: 1.04 }} whileTap={shouldReduce ? undefined : { scale: 0.97 }}>

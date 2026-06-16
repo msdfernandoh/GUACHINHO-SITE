@@ -15,7 +15,67 @@ import { estimarCamposCotaBulk, calcularParcelasSeguroDaCota, type GrupoBulkEsti
 import { calcularPrazoGrupo } from "@/lib/grupos/prazos";
 import { parseSeguroInput } from "@/lib/grupos/seguro";
 import { GRUPOS_TESTE } from "@/lib/grupos/dados-teste";
+import {
+  deriveGrupoFlagsFromModalidades,
+  parseModalidadesJson,
+} from "@/lib/grupos/modalidades-admin";
 import type { GrupoModalidadeLance, GrupoConsorcio, PublicGrupoAggregate } from "@/lib/types";
+
+const GRUPO_AUTO_PARCEL_COLS = [
+  "parcelas_realizadas_base",
+  "data_base_parcelas",
+  "atualizacao_parcelas_automatica",
+] as const;
+
+type GrupoRow = ReturnType<typeof grupoFromForm> & ReturnType<typeof deriveGrupoFlagsFromModalidades>;
+
+function stripAutoParcelCols<T extends Record<string, unknown>>(row: T): T {
+  const next = { ...row };
+  for (const k of GRUPO_AUTO_PARCEL_COLS) delete next[k];
+  return next;
+}
+
+function isMissingAutoParcelColumnError(message: string): boolean {
+  return GRUPO_AUTO_PARCEL_COLS.some((c) => message.includes(c));
+}
+
+async function insertGrupoConsorcio(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  row: GrupoRow,
+) {
+  let { data, error } = await supabase.from("grupos_consorcio").insert(row).select("id").single();
+  if (error && isMissingAutoParcelColumnError(error.message)) {
+    ({ data, error } = await supabase
+      .from("grupos_consorcio")
+      .insert(stripAutoParcelCols(row))
+      .select("id")
+      .single());
+  }
+  if (error) throw new Error(error.message);
+  return data!;
+}
+
+async function updateGrupoConsorcio(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  grupoId: string,
+  row: GrupoRow,
+) {
+  let { error } = await supabase.from("grupos_consorcio").update(row).eq("id", grupoId);
+  if (error && isMissingAutoParcelColumnError(error.message)) {
+    ({ error } = await supabase
+      .from("grupos_consorcio")
+      .update(stripAutoParcelCols(row))
+      .eq("id", grupoId));
+  }
+  if (error) throw new Error(error.message);
+}
+
+function buildGrupoPayloadFromForm(formData: FormData): GrupoRow {
+  const base = grupoFromForm(formData);
+  const mods = parseModalidadesJson(String(formData.get("modalidades_json") ?? "[]"));
+  const derived = deriveGrupoFlagsFromModalidades(mods);
+  return { ...base, ...derived };
+}
 
 function isoDateLocal(d = new Date()) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -95,13 +155,6 @@ function grupoFromForm(formData: FormData) {
     seguro_habilitado: formData.get("seguro_habilitado") === "on",
     seguro_percentual: parseSeguroInput(seguroRaw),
     seguro_valor: Number(formData.get("seguro_valor") ?? 0) || null,
-    tem_parcela_reduzida: formData.get("tem_parcela_reduzida") === "on",
-    percentual_parcela_reduzida: Number(formData.get("percentual_parcela_reduzida") ?? 0),
-    permite_lance_embutido: formData.get("permite_lance_embutido") === "on",
-    percentual_lance_embutido: Number(formData.get("percentual_lance_embutido") ?? 0),
-    percentual_recurso_proprio_sugerido: Number(
-      formData.get("percentual_recurso_proprio_sugerido") ?? 0,
-    ),
     prazo_total,
     parcelas_realizadas,
     prazo_restante,
@@ -156,22 +209,7 @@ async function syncModalidadesLance(
   grupoId: string,
   formData: FormData,
 ) {
-  const raw = String(formData.get("modalidades_json") ?? "[]");
-  let rows: Array<{
-    id?: string;
-    nome: string;
-    percentual_lance_embutido: number;
-    percentual_recurso_proprio_minimo: number;
-    descricao?: string | null;
-    ativo: boolean;
-    ordem: number;
-  }> = [];
-  try {
-    rows = JSON.parse(raw);
-  } catch {
-    rows = [];
-  }
-  if (!Array.isArray(rows)) rows = [];
+  const rows = parseModalidadesJson(String(formData.get("modalidades_json") ?? "[]"));
 
   const { error: delErr } = await supabase
     .from("grupos_modalidades_lance")
@@ -189,17 +227,29 @@ async function syncModalidadesLance(
   }
   if (tableMissing || !rows.length) return;
 
-  const { error: insErr } = await supabase.from("grupos_modalidades_lance").insert(
-    rows.map((r) => ({
-      grupo_id: grupoId,
-      nome: r.nome || "Modalidade",
-      percentual_lance_embutido: r.percentual_lance_embutido,
-      percentual_recurso_proprio_minimo: r.percentual_recurso_proprio_minimo,
-      descricao: r.descricao ?? null,
-      ativo: r.ativo,
-      ordem: r.ordem,
-    })),
-  );
+  const fullPayload = rows.map((r) => ({
+    grupo_id: grupoId,
+    nome: r.nome || "Modalidade",
+    percentual_lance_embutido: r.percentual_lance_embutido,
+    percentual_recurso_proprio_minimo: r.percentual_recurso_proprio_minimo,
+    descricao: r.descricao ?? null,
+    ativo: r.ativo,
+    ordem: r.ordem,
+    tipo_parcela: r.tipo_parcela ?? null,
+    percentual_parcela_reduzida: r.percentual_parcela_reduzida ?? null,
+  }));
+
+  let { error: insErr } = await supabase.from("grupos_modalidades_lance").insert(fullPayload);
+  if (
+    insErr &&
+    (insErr.message.includes("tipo_parcela") ||
+      insErr.message.includes("percentual_parcela_reduzida"))
+  ) {
+    const legacyPayload = fullPayload.map(
+      ({ tipo_parcela: _t, percentual_parcela_reduzida: _p, ...rest }) => rest,
+    );
+    ({ error: insErr } = await supabase.from("grupos_modalidades_lance").insert(legacyPayload));
+  }
   if (insErr) throw new Error(insErr.message);
 }
 
@@ -301,11 +351,10 @@ export async function fetchGrupoWithCotas(id: string) {
 export async function createGrupoAction(formData: FormData) {
   await assertCanManageGrupos();
   const supabase = await createClient();
-  const grupo = grupoFromForm(formData);
+  const grupo = buildGrupoPayloadFromForm(formData);
   const bulk = String(formData.get("cotas_bulk") ?? "");
 
-  const { data, error } = await supabase.from("grupos_consorcio").insert(grupo).select("id").single();
-  if (error) throw new Error(error.message);
+  const data = await insertGrupoConsorcio(supabase, grupo);
 
   await insertCotasFromBulk(supabase, data.id, bulk, grupo);
 
@@ -318,10 +367,9 @@ export async function createGrupoAction(formData: FormData) {
 export async function updateGrupoAction(grupoId: string, formData: FormData) {
   await assertCanManageGrupos();
   const supabase = await createClient();
-  const grupo = grupoFromForm(formData);
+  const grupo = buildGrupoPayloadFromForm(formData);
   try {
-    const { error } = await supabase.from("grupos_consorcio").update(grupo).eq("id", grupoId);
-    if (error) throw new Error(error.message);
+    await updateGrupoConsorcio(supabase, grupoId, grupo);
 
     await recalcularParcelasCotasGrupo(supabase, grupoId, grupo);
 

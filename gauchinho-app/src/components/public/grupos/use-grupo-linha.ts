@@ -7,6 +7,7 @@ import {
   resolveModalidadeLanceAtiva,
   type ConfigLinhaSimulacaoGrupo,
 } from "@/lib/grupos/simulacao-linha";
+import { parcelaTipoFromModalidade } from "@/lib/grupos/modalidades-admin";
 
 export function minimoRecursoValor(somaCotas: number, pct: number) {
   return Math.round(somaCotas * (pct / 100) * 100) / 100;
@@ -48,8 +49,11 @@ export function createGrupoLinhaHandlers(
       quantidadeCotas: config.quantidadeCotas > 0 ? config.quantidadeCotas : 1,
     };
     if (mods.length === 1 && !config.modalidadeLanceId) {
-      next.modalidadeLanceId = mods[0]!.id;
-      next.usaLanceEmbutido = true;
+      const mod = mods[0]!;
+      next.modalidadeLanceId = mod.id;
+      next.usaLanceEmbutido = Number(mod.percentual_lance_embutido) > 0;
+      const pt = parcelaTipoFromModalidade(mod);
+      if (pt) next.modalidadeParcela = pt;
     }
     patch(next);
   }
@@ -61,12 +65,17 @@ export function createGrupoLinhaHandlers(
 
   function selectModalidadeLance(mod: GrupoModalidadeLance) {
     const minPct = Number(mod.percentual_recurso_proprio_minimo) || 0;
+    const pctEmb = Number(mod.percentual_lance_embutido) || 0;
+    const parcelaFixa = parcelaTipoFromModalidade(mod);
     const next: ConfigLinhaSimulacaoGrupo = {
       ...config,
       modalidadeLanceId: mod.id,
-      usaLanceEmbutido: true,
+      usaLanceEmbutido: pctEmb > 0,
     };
-    if (minPct > 0) {
+    if (parcelaFixa) {
+      next.modalidadeParcela = parcelaFixa;
+    }
+    if (minPct > 0 && pctEmb > 0) {
       next.usaRecursoProprio = true;
       next.recursoProprioModo = "percentual";
       next.recursoProprioInput = Math.max(config.recursoProprioInput, minPct);

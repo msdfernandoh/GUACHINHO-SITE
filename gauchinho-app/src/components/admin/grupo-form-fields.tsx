@@ -28,8 +28,8 @@ export function GrupoFormFields({
             <Input name="codigo_grupo" required defaultValue={String(g.codigo_grupo ?? "")} />
           </div>
           <div>
-            <Label>Modalidade</Label>
-            <Select name="modalidade" defaultValue={String(g.modalidade ?? "Imóvel")}>
+            <Label>Modalidade (tipo de bem)</Label>
+            <Select name="modalidade" required defaultValue={String(g.modalidade ?? "Imóvel")}>
               {MODALIDADES_GRUPO.map((m) => (
                 <option key={m} value={m}>
                   {m}
@@ -169,19 +169,11 @@ export function GrupoFormFields({
             Seguro habilitado
           </label>
           <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" name="tem_parcela_reduzida" value="on" defaultChecked={!!g.tem_parcela_reduzida} />
-            Parcela reduzida
-          </label>
-          <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" name="permite_lance_embutido" value="on" defaultChecked={!!g.permite_lance_embutido} />
-            Lance embutido
-          </label>
-          <label className="flex items-center gap-2 text-sm">
             <input type="checkbox" name="seguro_pos_contemplacao" value="on" defaultChecked={!!g.seguro_pos_contemplacao} />
             Seguro pós-contemplação
           </label>
         </div>
-        <div className="grid gap-3 sm:grid-cols-3">
+        <div className="grid gap-3 sm:grid-cols-2">
           <div>
             <Label>Seguro % (fator ou % — ex. 0,0004)</Label>
             <Input
@@ -205,37 +197,10 @@ export function GrupoFormFields({
               defaultValue={String(g.seguro_valor ?? "")}
             />
           </div>
-          <div>
-            <Label>% parcela reduzida</Label>
-            <Input
-              name="percentual_parcela_reduzida"
-              type="number"
-              step="0.01"
-              defaultValue={String(g.percentual_parcela_reduzida ?? 0)}
-            />
-          </div>
-          <div>
-            <Label>% lance embutido</Label>
-            <Input
-              name="percentual_lance_embutido"
-              type="number"
-              step="0.01"
-              defaultValue={String(g.percentual_lance_embutido ?? 0)}
-            />
-          </div>
-          <div>
-            <Label>% recurso próprio sugerido</Label>
-            <Input
-              name="percentual_recurso_proprio_sugerido"
-              type="number"
-              step="0.01"
-              defaultValue={String(g.percentual_recurso_proprio_sugerido ?? 0)}
-            />
-          </div>
         </div>
       </section>
 
-      <GrupoModalidadesEditor initial={modalidadesInitial} />
+      <GrupoModalidadesEditor initial={modalidadesInitial} legacyGrupo={g} />
 
       <section className="space-y-3 rounded-xl border bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
         <h2 className="font-semibold">Cotas — colar créditos (uma linha = uma cota)</h2>
