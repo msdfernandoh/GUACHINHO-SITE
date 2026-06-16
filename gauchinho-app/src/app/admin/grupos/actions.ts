@@ -11,10 +11,30 @@ import {
 } from "@/lib/auth/permissions";
 import { DEFAULT_LEADS, getConfigJson } from "@/server/config";
 import { parseBulkCreditLines } from "@/lib/utils/format";
-import { estimarCamposCotaBulk } from "@/lib/grupos/calculos";
+import { estimarCamposCotaBulk, calcularParcelasSeguroDaCota, type GrupoBulkEstimateInput } from "@/lib/grupos/calculos";
 import { parseSeguroInput } from "@/lib/grupos/seguro";
 import { GRUPOS_TESTE } from "@/lib/grupos/dados-teste";
 import type { GrupoModalidadeLance, PublicGrupoAggregate } from "@/lib/types";
+
+function grupoConfigSeguroFromRow(grupo: Record<string, unknown>): GrupoBulkEstimateInput {
+  return {
+    seguro_habilitado: !!grupo.seguro_habilitado,
+    seguro_pos_contemplacao: !!grupo.seguro_pos_contemplacao,
+    seguro_percentual:
+      grupo.seguro_percentual != null ? Number(grupo.seguro_percentual) : null,
+    seguro_valor: grupo.seguro_valor != null ? Number(grupo.seguro_valor) : null,
+    tem_parcela_reduzida: !!grupo.tem_parcela_reduzida,
+    percentual_parcela_reduzida:
+      grupo.percentual_parcela_reduzida != null
+        ? Number(grupo.percentual_parcela_reduzida)
+        : null,
+    taxa_administrativa_percentual: Number(grupo.taxa_administrativa_percentual ?? 0),
+    fundo_reserva_percentual: Number(grupo.fundo_reserva_percentual ?? 0),
+    prazo_total: grupo.prazo_total != null ? Number(grupo.prazo_total) : null,
+    parcelas_realizadas: Number(grupo.parcelas_realizadas ?? 0),
+    prazo_restante: grupo.prazo_restante != null ? Number(grupo.prazo_restante) : null,
+  };
+}
 
 function grupoFromForm(formData: FormData) {
   const seguroRaw = String(formData.get("seguro_percentual") ?? "");
@@ -301,7 +321,29 @@ function cotaFromForm(formData: FormData) {
 export async function updateCotaAction(cotaId: string, grupoId: string, formData: FormData) {
   await assertCanManageGrupos();
   const supabase = await createClient();
+  const { data: grupo, error: gErr } = await supabase
+    .from("grupos_consorcio")
+    .select("*")
+    .eq("id", grupoId)
+    .single();
+  if (gErr) throw new Error(gErr.message);
   const row = cotaFromForm(formData);
+  const saldo =
+    row.saldo_devedor != null && row.saldo_devedor > 0
+      ? row.saldo_devedor
+      : row.valor_credito;
+  const integral = row.parcela_integral ?? row.parcela_sem_seguro ?? row.valor_parcela ?? 0;
+  const seguroCfg = grupoConfigSeguroFromRow(grupo as Record<string, unknown>);
+  const parcelas = calcularParcelasSeguroDaCota(
+    {
+      saldoDevedor: saldo,
+      parcelaIntegral: integral,
+      parcelaReduzida: row.parcela_reduzida,
+    },
+    seguroCfg,
+  );
+  row.parcela_sem_seguro = parcelas.parcelaSemSeguro;
+  row.parcela_com_seguro = parcelas.parcelaComSeguroPersistida;
   const { error } = await supabase.from("grupos_cotas").update(row).eq("id", cotaId);
   if (error) throw new Error(error.message);
   revalidatePath(`/admin/grupos/${grupoId}`);

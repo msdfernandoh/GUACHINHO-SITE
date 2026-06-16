@@ -129,6 +129,10 @@ export function GrupoFormFields({
               placeholder="0,0004"
               defaultValue={String(g.seguro_percentual ?? 0)}
             />
+            <p className="mt-1 text-xs text-zinc-500">
+              Mensal = saldo devedor × fator (ex. 0,0004). Soma à parcela integral ou à reduzida no
+              simulador e ao salvar grupo/cota.
+            </p>
           </div>
           <div>
             <Label>Seguro valor (R$)</Label>

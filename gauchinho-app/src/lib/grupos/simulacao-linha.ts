@@ -5,10 +5,10 @@ import {
   calcularParcelasRestantes,
   calcularSaldoDevedorLinha,
   grupoToParametros,
+  grupoUsaSeguroNaParcela,
   type ParametrosGrupo,
 } from "./calculos";
 import { fatorSeguroGrupo } from "./seguro";
-import { grupoUsaSeguroNaParcela } from "./calculos";
 
 export type ModalidadeParcelaLinha = "reduzida" | "integral";
 export type RecursoProprioModo = "percentual" | "valor";

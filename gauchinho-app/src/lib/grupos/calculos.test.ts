@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   calcularCreditoLiquidoPosContemplacao,
+  calcularParcelasSeguroDaCota,
   estimarCamposCotaBulk,
   calcularLanceEmbutido,
   calcularLanceTotal,
@@ -90,8 +91,8 @@ describe("calculos grupos", () => {
     const grupo = {
       taxa_administrativa_percentual: 22,
       fundo_reserva_percentual: 2,
-      seguro_habilitado: false,
-      seguro_pos_contemplacao: true,
+      seguro_habilitado: true,
+      seguro_pos_contemplacao: false,
       seguro_percentual: 0.0004,
       tem_parcela_reduzida: true,
       percentual_parcela_reduzida: 60,
@@ -99,8 +100,24 @@ describe("calculos grupos", () => {
       parcelas_realizadas: 11,
       prazo_restante: 209,
     };
-    const est = estimarCamposCotaBulk(1_000_000, grupo);
-    expect(est.parcela_integral).toBeCloseTo(5636.36, 1);
-    expect(est.valor_parcela).toBeCloseTo(3381.82, 1);
+    const est = estimarCamposCotaBulk(1_000_000, grupo, 1_050_000);
+    expect(est.parcela_integral).toBeCloseTo(4772.73, 1);
+    expect(est.valor_parcela).toBeCloseTo(2863.64, 1);
+    expect(est.parcela_com_seguro).toBeCloseTo(2863.64 + 420, 1);
+  });
+
+  it("seguro 0,0004 do saldo — integral e reduzida", () => {
+    const p = calcularParcelasSeguroDaCota(
+      { saldoDevedor: 1_050_000, parcelaIntegral: 4772.73, parcelaReduzida: 2863.64 },
+      {
+        seguro_habilitado: true,
+        seguro_percentual: 0.0004,
+        tem_parcela_reduzida: true,
+      },
+    );
+    expect(p.seguroMensal).toBe(420);
+    expect(p.parcelaIntegralComSeguro).toBeCloseTo(5192.73, 2);
+    expect(p.parcelaReduzidaComSeguro).toBeCloseTo(3283.64, 2);
+    expect(p.parcelaComSeguroPersistida).toBeCloseTo(3283.64, 2);
   });
 });

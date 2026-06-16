@@ -264,7 +264,47 @@ export type GrupoBulkEstimateInput = {
   prazo_restante?: number | null;
 };
 
-/** Recalcula parcela com/sem seguro a partir dos dados já cadastrados na cota. */
+/** Recalcula parcelas com seguro (0,0004 ou % do saldo devedor) — integral e reduzida. */
+export function calcularParcelasSeguroDaCota(
+  entradas: {
+    saldoDevedor: number;
+    parcelaIntegral: number;
+    parcelaReduzida: number | null;
+  },
+  grupo: GrupoBulkEstimateInput,
+): {
+  seguroMensal: number;
+  parcelaIntegralComSeguro: number;
+  parcelaReduzidaComSeguro: number | null;
+  /** Campo `parcela_com_seguro`: reduzida+seguro se o grupo usa parcela reduzida. */
+  parcelaComSeguroPersistida: number;
+  parcelaSemSeguro: number;
+} {
+  const saldo = Math.max(num(entradas.saldoDevedor), 0);
+  const integral = num(entradas.parcelaIntegral);
+  const reduzida =
+    entradas.parcelaReduzida != null && Number.isFinite(entradas.parcelaReduzida)
+      ? num(entradas.parcelaReduzida)
+      : null;
+  const seguroMensal = seguroMensalSobreSaldo(saldo, grupo);
+  const parcelaSemSeguro = integral;
+  const parcelaIntegralComSeguro = Math.round((integral + seguroMensal) * 100) / 100;
+  const parcelaReduzidaComSeguro =
+    reduzida != null ? Math.round((reduzida + seguroMensal) * 100) / 100 : null;
+  const parcelaComSeguroPersistida =
+    grupo.tem_parcela_reduzida && reduzida != null && parcelaReduzidaComSeguro != null
+      ? parcelaReduzidaComSeguro
+      : parcelaIntegralComSeguro;
+  return {
+    seguroMensal,
+    parcelaIntegralComSeguro,
+    parcelaReduzidaComSeguro,
+    parcelaComSeguroPersistida,
+    parcelaSemSeguro,
+  };
+}
+
+/** @deprecated use calcularParcelasSeguroDaCota */
 export function aplicarSeguroParcelaCota(
   cota: {
     saldo_devedor?: number | null;
@@ -277,14 +317,20 @@ export function aplicarSeguroParcelaCota(
   grupo: GrupoBulkEstimateInput,
 ): { parcela_com_seguro: number; parcela_sem_seguro: number } {
   const saldo = num(cota.saldo_devedor) || num(cota.valor_credito);
-  const parcela_sem_seguro =
-    num(cota.parcela_sem_seguro) ||
+  const integral =
     num(cota.parcela_integral) ||
+    num(cota.parcela_sem_seguro) ||
     num(cota.valor_parcela) ||
     num(cota.parcela_reduzida);
-  const seguroMensal = seguroMensalSobreSaldo(saldo, grupo);
-  const parcela_com_seguro = Math.round((parcela_sem_seguro + seguroMensal) * 100) / 100;
-  return { parcela_com_seguro, parcela_sem_seguro };
+  const reduzida = cota.parcela_reduzida != null ? num(cota.parcela_reduzida) : null;
+  const p = calcularParcelasSeguroDaCota(
+    { saldoDevedor: saldo, parcelaIntegral: integral, parcelaReduzida: reduzida },
+    grupo,
+  );
+  return {
+    parcela_com_seguro: p.parcelaComSeguroPersistida,
+    parcela_sem_seguro: p.parcelaSemSeguro,
+  };
 }
 
 /** Estima parcela e saldo quando só o crédito é colado no bulk paste. */
@@ -318,17 +364,18 @@ export function estimarCamposCotaBulk(
     ? Math.round(((parcela_integral * pctRed) / 100) * 100) / 100
     : null;
   const valor_parcela = parcela_reduzida ?? parcela_integral;
-  const seguroMensal = seguroMensalSobreSaldo(saldo_devedor, grupo);
-  const parcela_sem_seguro = parcela_integral;
-  const parcela_com_seguro = Math.round((parcela_integral + seguroMensal) * 100) / 100;
+  const seguro = calcularParcelasSeguroDaCota(
+    { saldoDevedor: saldo_devedor, parcelaIntegral: parcela_integral, parcelaReduzida: parcela_reduzida },
+    grupo,
+  );
 
   return {
     saldo_devedor,
     valor_parcela,
     parcela_integral,
     parcela_reduzida,
-    parcela_com_seguro,
-    parcela_sem_seguro,
+    parcela_com_seguro: seguro.parcelaComSeguroPersistida,
+    parcela_sem_seguro: seguro.parcelaSemSeguro,
   };
 }
 

@@ -41,14 +41,21 @@ Faça isto **antes** de testar login e admin em produção:
 
 1. Criar projeto no [Supabase Dashboard](https://supabase.com/dashboard).
 2. Copiar **Project URL**, **anon key** e **service role key** (Settings → API). A service role **só no servidor** (Vercel env, nunca `NEXT_PUBLIC_*`).
-3. Aplicar migrations em ordem no Supabase:
-   - `supabase/migrations/001_initial_schema.sql`
-   - `supabase/migrations/002_storage_propostas_pdf.sql` (PDF)
-   - `supabase/migrations/003_cartas_contempladas.sql` (se usar cartas)
-   - **`supabase/migrations/004_grupos_modalidades_lance.sql`** — **obrigatória para `/grupos` funcional** (ver abaixo)
-   - **`supabase/migrations/005_oportunidades_imobiliarias.sql`** — imobiliárias, imóveis, Storage `imobiliarias`/`imoveis`, config home oportunidades
-   - **CLI (raiz do repo):** `supabase link --project-ref SEU_PROJECT_REF` → `supabase db push`
-   - **Ou** SQL Editor → colar cada arquivo → Run.
+3. Aplicar migrations **na ordem** no Supabase (SQL Editor ou `supabase db push` após `supabase link`):
+
+```txt
+supabase/migrations/001_initial_schema.sql
+supabase/migrations/002_storage_propostas_pdf.sql
+supabase/migrations/003_cartas_contempladas.sql
+supabase/migrations/004_grupos_modalidades_lance.sql
+supabase/migrations/005_oportunidades_imobiliarias.sql
+```
+
+   - **004** — obrigatória para `/grupos` funcional (modalidades de lance, seguro `0,0004`, persistência da simulação).
+   - **005** — obrigatória para **Oportunidades Imobiliárias** e login de imobiliária (tabelas, RLS, Storage, config home, origem WhatsApp).
+
+   **CLI (raiz do repo):** `supabase link --project-ref SEU_PROJECT_REF` → `supabase db push`  
+   **Ou** SQL Editor → colar cada arquivo → Run.
 4. Rodar `supabase/seed.sql` (SQL Editor ou `supabase db execute -f supabase/seed.sql`).
 5. **Authentication → Providers:** habilitar **Email** (e-mail/senha).
 6. **Authentication → URL Configuration:**
@@ -100,12 +107,16 @@ Abra `http://localhost:3000` · Admin: `http://localhost:3000/login` · Grupos p
 |------|-----------|
 | `/` | Home pública (tema escuro/dourado) |
 | `/grupos` | Simulador público de grupos/cotas |
+| `/oportunidades-imobiliarias` | Vitrine de imóveis e imobiliárias parceiras (Fase 5) |
 | `/simulador` | Consórcio + financiamento (Fase 2), comparação e captura de lead |
 | `/login` | Auth Supabase |
 | `/admin` | Dashboard (8 cards + 3 tabelas) |
 | `/admin/leads` | Leads + filtros, manual, detalhe, histórico |
 | `/admin/propostas` | CRUD propostas (`pdf_url` reservado) |
 | `/admin/grupos` | CRUD grupos, cotas, colar lote, duplicar |
+| `/admin/imobiliarias` | Master — imobiliárias parceiras (Fase 5) |
+| `/admin/imoveis` | Imóveis (Master ou imobiliária — escopo por perfil) |
+| `/admin/minha-imobiliaria` | Perfil imobiliária — dados próprios |
 | `/admin/usuarios` | Master — Auth + `usuarios` |
 | `/admin/configuracoes` | Abas Site, Contato, Propostas, Leads, WhatsApp |
 
@@ -146,6 +157,28 @@ A migration cria a tabela `grupos_modalidades_lance`, amplia `simulacoes_grupos_
 13. **Gerar simulação** → **Gerar proposta** → **baixar PDF**.
 
 Detalhes e testes automatizados: [`docs/TESTES-GRUPOS-TABELA-FUNCIONAL.md`](docs/TESTES-GRUPOS-TABELA-FUNCIONAL.md).
+
+### Migration obrigatória — oportunidades imobiliárias (005)
+
+Arquivo:
+
+```txt
+supabase/migrations/005_oportunidades_imobiliarias.sql
+```
+
+Contém: tabelas `imobiliarias` e `imoveis`, FKs em `usuarios`, `leads` e `eventos_site`, RLS, buckets Storage **`imobiliarias`** e **`imoveis`**, config JSON **`home_oportunidades_imobiliarias`** e origem WhatsApp **`oportunidade_imobiliaria`**.
+
+**Sem a 005:**
+
+- `/oportunidades-imobiliarias` pode falhar (tabelas inexistentes);
+- admin de imobiliárias/imóveis não funciona;
+- login de usuário **imobiliária** não tem vínculo (`imobiliaria_id`);
+- upload de logo, banner e foto do imóvel pode falhar;
+- fluxo de lead **Tenho interesse** / WhatsApp por imóvel não funciona.
+
+Checklist manual pós-005: [`docs/TESTES-FASE-5-OPORTUNIDADES-IMOBILIARIAS.md`](docs/TESTES-FASE-5-OPORTUNIDADES-IMOBILIARIAS.md).
+
+**Build local:** `npm run build` **não** aplica SQL; só compila o app. Em runtime/prerender, rotas que consultam `imobiliarias`/`imoveis` exigem a **005 já aplicada** no projeto Supabase apontado por `.env.local`.
 
 ## 4. Deploy na Vercel via Git
 

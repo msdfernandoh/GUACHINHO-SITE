@@ -12,6 +12,7 @@ import { GrupoFormFields } from "@/components/admin/grupo-form-fields";
 import { GrupoCotasAdmin } from "@/components/admin/grupo-cotas-admin";
 import { getUsuarioNegocio } from "@/lib/auth/get-usuario";
 import { canDeleteRecords } from "@/lib/auth/permissions";
+import type { GrupoConsorcio } from "@/lib/types";
 import { Button } from "@/components/ui/form-primitives";
 
 export default async function GrupoEditPage({
@@ -88,6 +89,7 @@ export default async function GrupoEditPage({
       </form>
       <GrupoCotasAdmin
         grupoId={id}
+        grupo={data.grupo as GrupoConsorcio}
         cotas={data.cotas}
         canHardDelete={canDeleteRecords(usuario?.perfil)}
       />
