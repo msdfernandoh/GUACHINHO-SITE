@@ -11,16 +11,22 @@ type Props = {
 
 export function HomeSection({ id, eyebrow, title, subtitle, className, children }: Props) {
   return (
-    <section id={id} className={cn("scroll-mt-24 py-14 md:py-20", className)}>
-      <div className="mx-auto max-w-6xl px-4">
+    <section id={id} className={cn("scroll-mt-24 py-16 md:py-24", className)}>
+      <div className="mx-auto max-w-7xl px-4 sm:px-6">
         {eyebrow ? (
-          <p className="text-xs font-semibold uppercase tracking-[0.25em] text-amber-500/90">
+          <p className="text-xs font-semibold uppercase tracking-[0.28em] text-amber-500/90">
             {eyebrow}
           </p>
         ) : null}
-        <h2 className="mt-2 text-2xl font-bold tracking-tight text-white md:text-3xl">{title}</h2>
-        {subtitle ? <p className="mt-3 max-w-2xl text-zinc-400">{subtitle}</p> : null}
-        {children ? <div className="mt-10">{children}</div> : null}
+        <h2 className="mt-3 max-w-3xl text-3xl font-bold tracking-tight text-white md:text-4xl">
+          {title}
+        </h2>
+        {subtitle ? (
+          <p className="mt-4 max-w-2xl text-base leading-relaxed text-zinc-400 md:text-lg">
+            {subtitle}
+          </p>
+        ) : null}
+        {children ? <div className="mt-12 md:mt-14">{children}</div> : null}
       </div>
     </section>
   );
@@ -41,9 +47,9 @@ export function HomeCtaLink({
       href={href}
       {...(external ? { target: "_blank", rel: "noreferrer" } : {})}
       className={cn(
-        "inline-flex items-center justify-center rounded-full px-6 py-3 text-sm font-semibold transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]",
+        "relative inline-flex items-center justify-center overflow-hidden rounded-full px-7 py-3.5 text-sm font-semibold transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]",
         variant === "gold" &&
-          "bg-amber-500 text-zinc-950 shadow-lg shadow-amber-500/20 hover:bg-amber-400",
+          "bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600 text-zinc-950 shadow-lg shadow-amber-500/30 hover:shadow-amber-500/45 hover:brightness-105",
         variant === "outline" &&
           "border border-zinc-600 bg-zinc-900/80 text-zinc-100 hover:border-amber-500/50 hover:text-amber-300",
       )}
