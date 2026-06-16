@@ -23,72 +23,103 @@ const C = {
 } as const;
 
 // ─── CATEGORIAS ────────────────────────────────────────────
+// Arquivo da foto aparece como legenda — troque o arquivo para atualizar
 const SONHOS = [
   {
-    id: "imovel",
+    id: "casa",
     icon: Home,
     num: "01",
-    title: "Imóveis",
-    sub: "Casa própria, apartamento ou terreno",
-    desc: "Planejamento sob medida para conquistar o imóvel dos sonhos com as melhores estratégias de lance e parcelas que cabem no seu bolso.",
-    img: "/foto/imovel.png",
+    title: "Casa",
+    sub: "Imóvel residencial",
+    legenda: "Casa.png",
+    desc: "Planejamento sob medida para conquistar a casa dos sonhos com estratégias de lance e parcelas que cabem no seu bolso.",
+    img: "/foto/Casa.png",
     href: "/simulador?solucao=consorcio&tipo=imovel",
     stat: { value: "220", label: "meses de prazo" },
   },
   {
-    id: "veiculos",
-    icon: Car,
+    id: "apartamento",
+    icon: Home,
     num: "02",
-    title: "Veículos",
-    sub: "Carros novos e seminovos",
+    title: "Apartamento",
+    sub: "Imóvel urbano",
+    legenda: "Apartamento.jpg",
+    desc: "Apartamentos com crédito planejado e sem juros. Consultoria completa para encontrar o grupo ideal para o seu momento.",
+    img: "/foto/Apartamento.jpg",
+    href: "/simulador?solucao=consorcio&tipo=imovel",
+    stat: { value: "R$ 80M+", label: "em crédito gerenciado" },
+  },
+  {
+    id: "casa-popular",
+    icon: Home,
+    num: "03",
+    title: "Casa Popular",
+    sub: "Primeira moradia",
+    legenda: "Casa-Popular.png",
+    desc: "Realize o sonho da primeira moradia com parcelas acessíveis. Grupos especiais e estratégia de lance para contemplação rápida.",
+    img: "/foto/Casa-Popular.png",
+    href: "/simulador?solucao=consorcio&tipo=imovel",
+    stat: { value: "+500", label: "clientes atendidos" },
+  },
+  {
+    id: "carros",
+    icon: Car,
+    num: "04",
+    title: "Carros",
+    sub: "Veículos novos e seminovos",
+    legenda: "Carros.png",
     desc: "Seu próximo carro com parcelas planejadas, sem juros abusivos. Comparativo financeiro completo entre consórcio e financiamento.",
-    img: "/foto/veiculos.png",
+    img: "/foto/Carros.png",
     href: "/simulador?solucao=consorcio&tipo=automovel",
     stat: { value: "100%", label: "do crédito para compra" },
   },
   {
     id: "motos",
     icon: Bike,
-    num: "03",
+    num: "05",
     title: "Motos",
     sub: "Mobilidade com planejamento",
+    legenda: "Motos.png",
     desc: "Mobilidade com crédito planejado e consultoria de lance. Encontre o grupo certo para o seu objetivo com atendimento personalizado.",
-    img: "/foto/motos.png",
+    img: "/foto/Motos.png",
     href: "/simulador?tipo=moto&solucao=consorcio",
     stat: { value: "0%", label: "de juros no consórcio" },
   },
   {
-    id: "caminhonetes",
+    id: "frota",
     icon: Truck,
-    num: "04",
-    title: "Caminhonetes",
-    sub: "Trabalho e lazer com estratégia",
-    desc: "Utilitários e picapes com análise comercial completa. Estratégias de lance embutido e livre para enxergar risco e oportunidade.",
-    img: "/foto/caminhonetes.png",
-    href: "/simulador?tipo=caminhonete&solucao=consorcio",
-    stat: { value: "+500", label: "clientes atendidos" },
-  },
-  {
-    id: "caminhoes",
-    icon: Truck,
-    num: "05",
-    title: "Caminhões",
-    sub: "Frota e transporte profissional",
-    desc: "Frota e transporte com análise patrimonial e comparativo financeiro. Propostas em PDF para compartilhar com sócios e contador.",
-    img: "/foto/caminhonetes.png",
-    href: "/simulador?tipo=caminhao&solucao=consorcio",
-    stat: { value: "R$ 80M+", label: "em crédito gerenciado" },
-  },
-  {
-    id: "maquinas",
-    icon: Tractor,
     num: "06",
-    title: "Máquinas Agrícolas",
-    sub: "Campo e obra com performance",
-    desc: "Colheitadeiras, tratores e equipamentos pesados com crédito planejado. Consultoria especializada para o agronegócio e construção civil.",
-    img: "/foto/maquinas.png",
-    href: "/simulador?tipo=maquinario&solucao=consorcio",
+    title: "Caminhões e Frota",
+    sub: "Transporte profissional",
+    legenda: "Caminhoes-e-Frota.png",
+    desc: "Frota e transporte com análise patrimonial e comparativo financeiro. Propostas em PDF para compartilhar com sócios e contador.",
+    img: "/foto/Caminhoes-e-Frota.png",
+    href: "/simulador?tipo=caminhao&solucao=consorcio",
     stat: { value: "10+", label: "anos de experiência" },
+  },
+  {
+    id: "maquinas-agricolas",
+    icon: Tractor,
+    num: "07",
+    title: "Máquinas Agrícolas",
+    sub: "Agronegócio e campo",
+    legenda: "Maquinas-Agricolas.png",
+    desc: "Colheitadeiras, tratores e equipamentos do campo com crédito planejado. Consultoria especializada para o agronegócio.",
+    img: "/foto/Maquinas-Agricolas.png",
+    href: "/simulador?tipo=maquinario&solucao=consorcio",
+    stat: { value: "220", label: "meses de prazo" },
+  },
+  {
+    id: "maquinas-pesadas",
+    icon: Tractor,
+    num: "08",
+    title: "Máquinas Pesadas",
+    sub: "Construção e obra",
+    legenda: "Maquinas-Pesadas.png",
+    desc: "Equipamentos pesados para construção civil e mineração com análise de crédito profissional e estratégias de lance.",
+    img: "/foto/Maquinas-Pesadas.png",
+    href: "/simulador?tipo=maquinario&solucao=consorcio",
+    stat: { value: "R$ 80M+", label: "em crédito gerenciado" },
   },
 ];
 
@@ -298,7 +329,12 @@ function ObjetivosSection() {
                 </div>
 
                 <h3 className="mb-1 text-4xl font-black text-white lg:text-5xl">{item.title}</h3>
-                <p className="mb-5 text-base font-semibold" style={{ color: C.gold }}>{item.sub}</p>
+                <p className="mb-1 text-base font-semibold" style={{ color: C.gold }}>{item.sub}</p>
+                {"legenda" in item && (
+                  <p className="mb-4 font-mono text-xs" style={{ color: "rgba(201,168,76,0.5)" }}>
+                    📁 {(item as typeof item & { legenda: string }).legenda}
+                  </p>
+                )}
                 <p className="mb-8 max-w-lg text-lg leading-relaxed" style={{ color: C.muted }}>{item.desc}</p>
 
                 {/* Stat */}
@@ -578,18 +614,28 @@ export default function HomeV2() {
               transition={{ duration: 3.5, repeat: Infinity, ease: "easeInOut" }}
               className="relative"
             >
+              {/* Sombra dourada (separada da img para não conflitar com blend) */}
               <div
                 className="pointer-events-none absolute bottom-4 left-1/2 h-16 w-56 -translate-x-1/2 rounded-full blur-2xl"
-                style={{ background: "rgba(201,168,76,0.3)" }}
+                style={{ background: "rgba(201,168,76,0.35)" }}
                 aria-hidden
               />
-              {/* GIF mascote — com fallback se não carregar */}
+              {/* Glow aura ao redor */}
+              <div
+                className="pointer-events-none absolute inset-0 rounded-full blur-3xl"
+                style={{ background: "radial-gradient(circle, rgba(201,168,76,0.18), transparent 70%)" }}
+                aria-hidden
+              />
+              {/* GIF mascote — mix-blend-mode:multiply remove fundo branco */}
               {!mascoteError ? (
                 <img
                   src="/media/gauchinho-mascote.gif"
                   alt="Mascote Gauchinho"
                   className="relative z-10 w-56 object-contain sm:w-64 lg:w-72 xl:w-80"
-                  style={{ filter: "drop-shadow(0 0 40px rgba(201,168,76,0.5))" }}
+                  style={{
+                    mixBlendMode: "multiply",
+                    filter: "brightness(0.9) contrast(1.08) saturate(1.1)",
+                  }}
                   draggable={false}
                   onError={() => setMascoteError(true)}
                 />
