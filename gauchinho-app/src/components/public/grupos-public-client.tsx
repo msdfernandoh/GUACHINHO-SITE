@@ -13,12 +13,10 @@ import {
 } from "@/lib/grupos/simulacao-linha";
 import { formatCurrency } from "@/lib/utils/format";
 import { cn } from "@/lib/utils/cn";
-import { Button, Input, Label } from "@/components/ui/form-primitives";
-import {
-  GrupoLinhaDesktopRow,
-  GrupoPrazoCell,
-  GrupoSimulacaoLinhaControls,
-} from "@/components/public/grupos-linha-controls";
+import { Button, Input } from "@/components/ui/form-primitives";
+import { GrupoMobileCard } from "@/components/public/grupos/grupo-mobile-card";
+import { GrupoTotalsBar } from "@/components/public/grupos/grupo-totals-bar";
+import { GruposTable } from "@/components/public/grupos/grupos-table";
 
 type ModalFiltro = (typeof MODALIDADE_FILTRO_PUBLICO)[number];
 
@@ -149,29 +147,29 @@ export function GruposPublicClient({
   }
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100">
-      <div className="mx-auto max-w-[1400px] px-4 py-10">
-        <div className="mb-8 text-center">
+    <div className="min-h-screen bg-zinc-950 pb-32 text-zinc-100">
+      <div className="mx-auto max-w-[1600px] px-4 py-8 md:px-6">
+        <div className="mb-6 text-center md:mb-8">
           <p className="inline-flex items-center gap-2 text-sm text-amber-400">
             <Sparkles className="h-4 w-4" /> Simulador premium
           </p>
-          <h1 className="mt-2 text-4xl font-bold tracking-tight text-white md:text-5xl">
+          <h1 className="mt-2 text-3xl font-bold tracking-tight text-white md:text-4xl">
             Nossos Grupos
           </h1>
-          <p className="mx-auto mt-3 max-w-2xl text-zinc-400">
-            Monte sua simulação por grupo: escolha o crédito, quantidade de cotas e estratégia de
-            lance — como na planilha, com visual profissional.
+          <p className="mx-auto mt-2 max-w-2xl text-sm text-zinc-400 md:text-base">
+            Planilha inteligente: compare grupos na linha e use <strong className="font-medium text-zinc-300">Ajustar</strong>{" "}
+            para modalidades de lance e recurso próprio.
           </p>
         </div>
 
-        <div className="mb-6 flex flex-wrap items-center gap-3">
+        <div className="mb-4 flex flex-wrap items-center gap-2 md:mb-5">
           {MODALIDADE_FILTRO_PUBLICO.map((m) => (
             <button
               key={m}
               type="button"
               onClick={() => setFiltro(m)}
               className={cn(
-                "rounded-full px-4 py-2 text-sm font-medium transition",
+                "rounded-full px-3 py-1.5 text-xs font-medium transition md:text-sm md:px-4 md:py-2",
                 filtro === m
                   ? "bg-amber-500 text-zinc-950"
                   : "border border-zinc-700 text-zinc-300 hover:border-amber-500/50",
@@ -180,11 +178,11 @@ export function GruposPublicClient({
               {m}
             </button>
           ))}
-          <div className="relative ml-auto min-w-[240px] flex-1 md:max-w-sm">
+          <div className="relative ml-auto min-w-[200px] flex-1 md:max-w-xs">
             <Search className="absolute left-3 top-2.5 h-4 w-4 text-zinc-500" />
             <Input
-              className="border-zinc-700 bg-zinc-900 pl-9 text-zinc-100"
-              placeholder="Buscar por crédito ou grupo..."
+              className="h-9 border-zinc-700 bg-zinc-900 pl-9 text-sm text-zinc-100"
+              placeholder="Grupo ou crédito…"
               value={busca}
               onChange={(e) => setBusca(e.target.value)}
             />
@@ -192,7 +190,7 @@ export function GruposPublicClient({
         </div>
 
         {aggregates.length === 0 ? (
-          <div className="rounded-2xl border border-zinc-800 bg-zinc-900/50 px-6 py-16 text-center">
+          <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 px-6 py-16 text-center">
             <p className="text-lg text-zinc-300">Nenhum grupo disponível no momento.</p>
             {isStaff ? (
               <p className="mt-4 text-sm text-amber-400/90">
@@ -203,199 +201,48 @@ export function GruposPublicClient({
             ) : null}
           </div>
         ) : filtered.length === 0 ? (
-          <div className="rounded-2xl border border-zinc-800 px-6 py-12 text-center text-zinc-400">
+          <div className="rounded-xl border border-zinc-800 px-6 py-12 text-center text-zinc-400">
             Nenhum resultado para os filtros atuais.
           </div>
         ) : (
           <>
-            <div className="hidden overflow-x-auto rounded-2xl border border-zinc-800 bg-zinc-900/50 lg:block">
-              <table className="min-w-full text-sm">
-                <thead className="border-b border-zinc-800 text-left text-[10px] uppercase tracking-wide text-zinc-500">
-                  <tr>
-                    <th className="px-3 py-3">Grupo</th>
-                    <th className="min-w-[320px] px-3 py-3">Montagem</th>
-                    <th className="px-3 py-3" title="Total / restante / realizadas">
-                      Prazo (T / R / Real.)
-                    </th>
-                    <th className="px-3 py-3">Saldo final</th>
-                    <th className="px-3 py-3">Pós-contempl.</th>
-                    <th className="px-3 py-3">Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filtered.map(({ grupo, cotas, modalidades }) => {
-                    const config =
-                      configs[grupo.id] ?? defaultConfigLinha(grupo, cotas, modalidades);
-                    return (
-                      <GrupoLinhaDesktopRow
-                        key={grupo.id}
-                        grupo={grupo}
-                        cotas={cotas}
-                        modalidades={modalidades}
-                        config={config}
-                        onChange={(c) => setConfig(grupo.id, c)}
-                      />
-                    );
-                  })}
-                </tbody>
-              </table>
+            <div className="hidden lg:block">
+              <GruposTable
+                rows={filtered}
+                configs={configs}
+                onConfigChange={setConfig}
+              />
             </div>
 
-            <div className="space-y-4 lg:hidden">
+            <div className="space-y-3 lg:hidden">
               {filtered.map(({ grupo, cotas, modalidades }) => {
                 const config =
                   configs[grupo.id] ?? defaultConfigLinha(grupo, cotas, modalidades);
-                const resultado = calcularLinhaSimulacaoGrupo({
-                  grupo,
-                  cota: cotas.find((c) => c.id === config.cotaId) ?? null,
-                  config,
-                  modalidades,
-                });
                 return (
-                  <details
+                  <GrupoMobileCard
                     key={grupo.id}
-                    className={cn(
-                      "rounded-2xl border border-zinc-800 bg-zinc-900/80",
-                      resultado.ativo && "border-amber-500/40",
-                    )}
-                    open={resultado.ativo}
-                  >
-                    <summary className="cursor-pointer list-none p-4 font-semibold text-amber-400">
-                      <div className="flex flex-wrap items-baseline justify-between gap-2">
-                        <span>Grupo {grupo.codigo_grupo}</span>
-                        {resultado.ativo ? (
-                          <span className="text-xs font-normal text-zinc-400">
-                            Líquido {formatCurrency(resultado.creditoLiquido)} · Pós-contempl.{" "}
-                            {formatCurrency(resultado.parcelaPosContemplacao)}
-                          </span>
-                        ) : (
-                          <span className="text-xs font-normal text-zinc-500">
-                            <GrupoPrazoCell grupo={grupo} />
-                          </span>
-                        )}
-                      </div>
-                      {resultado.ativo && config.cotaId ? (
-                        <p className="mt-1 text-xs font-normal text-zinc-500">
-                          {formatCurrency(Number(cotas.find((c) => c.id === config.cotaId)?.valor_credito))}{" "}
-                          × {config.quantidadeCotas} cota(s)
-                        </p>
-                      ) : null}
-                    </summary>
-                    <div className="border-t border-zinc-800 p-4 pt-0">
-                      <GrupoSimulacaoLinhaControls
-                        grupo={grupo}
-                        cotas={cotas}
-                        modalidades={modalidades}
-                        config={config}
-                        onChange={(c) => setConfig(grupo.id, c)}
-                        compact
-                      />
-                    </div>
-                  </details>
+                    grupo={grupo}
+                    cotas={cotas}
+                    modalidades={modalidades}
+                    config={config}
+                    onChange={(c) => setConfig(grupo.id, c)}
+                  />
                 );
               })}
             </div>
           </>
         )}
 
-        <div className="sticky bottom-4 mt-8 rounded-2xl border border-amber-500/30 bg-zinc-900/95 p-6 shadow-2xl backdrop-blur">
-          <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-6">
-            <div>
-              <p className="text-xs uppercase text-zinc-500">Grupos</p>
-              <p className="text-xl font-semibold">{totais.gruposSelecionados}</p>
-            </div>
-            <div>
-              <p className="text-xs uppercase text-zinc-500">Qtd. cotas</p>
-              <p className="text-xl font-semibold">{totais.totalCotas}</p>
-            </div>
-            <div>
-              <p className="text-xs uppercase text-zinc-500">Soma das cotas</p>
-              <p className="text-xl font-semibold">{formatCurrency(totais.somaCotas)}</p>
-            </div>
-            <div>
-              <p className="text-xs uppercase text-zinc-500">1ª parcela</p>
-              <p className="text-xl font-semibold">{formatCurrency(totais.primeiraParcela)}</p>
-            </div>
-            <div>
-              <p className="text-xs uppercase text-zinc-500">Lance embutido</p>
-              <p className="text-lg font-semibold">{formatCurrency(totais.lanceEmbutido)}</p>
-            </div>
-            <div>
-              <p className="text-xs uppercase text-zinc-500">Saldo devedor</p>
-              <p className="text-lg font-semibold">{formatCurrency(totais.saldoDevedorInicial)}</p>
-            </div>
-            <div>
-              <p className="text-xs uppercase text-zinc-500">Pós-contemplação (soma)</p>
-              <p className="text-lg font-semibold text-emerald-300">
-                {formatCurrency(totais.parcelaPosContemplacaoTotal)}
-              </p>
-            </div>
-            <div>
-              <p className="text-xs uppercase text-zinc-500">Lance total</p>
-              <p className="text-lg font-semibold">{formatCurrency(totais.lanceTotal)}</p>
-              <p className="text-[10px] text-zinc-500">
-                Próprio {formatCurrency(totais.recursoProprio)}
-              </p>
-            </div>
-            {totais.seguroTotal > 0 ? (
-              <div>
-                <p className="text-xs uppercase text-zinc-500">Seguro (mensal)</p>
-                <p className="text-lg font-semibold">{formatCurrency(totais.seguroTotal)}</p>
-              </div>
-            ) : null}
-            <div className="md:col-span-2 lg:col-span-3">
-              <p className="text-xs uppercase text-amber-400">Crédito líquido</p>
-              <p className="text-3xl font-bold text-amber-400">
-                {formatCurrency(totais.creditoLiquido)}
-              </p>
-            </div>
-            <div className="md:col-span-2 lg:col-span-3 rounded-xl border border-zinc-700/80 bg-zinc-950/50 p-4">
-              <p className="text-xs uppercase text-zinc-500">Lance total (todos os grupos)</p>
-              <p className="text-2xl font-bold text-white">{formatCurrency(totais.lanceTotal)}</p>
-              <p className="mt-2 text-sm text-zinc-400">
-                Embutido: {formatCurrency(totais.lanceEmbutido)}
-              </p>
-              <p className="text-sm text-zinc-400">
-                Recurso próprio: {formatCurrency(totais.recursoProprio)}
-              </p>
-            </div>
-          </div>
-          <div className="mt-4 flex flex-wrap gap-3">
-            <Button type="button" variant="gold" onClick={() => openModal("simulacao")}>
-              Gerar simulação
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              className="border-zinc-500 bg-slate-900 text-slate-100 hover:border-amber-500/50 hover:bg-slate-800 disabled:border-zinc-700 disabled:bg-zinc-800 disabled:text-zinc-500"
-              disabled={!hasSelection}
-              onClick={() => openModal("proposta")}
-            >
-              Gerar proposta
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              className="border-zinc-500 bg-slate-900 text-slate-100 hover:border-amber-500/50 hover:bg-slate-800 disabled:border-zinc-700 disabled:bg-zinc-800 disabled:text-zinc-500"
-              disabled={!hasSelection}
-              onClick={() => openModal("especialista")}
-            >
-              Falar com especialista
-            </Button>
-          </div>
-          {toastMsg ? <p className="mt-3 text-sm text-amber-300">{toastMsg}</p> : null}
-          {resultMsg ? <p className="mt-3 text-sm text-emerald-400">{resultMsg}</p> : null}
-          {pdfLink ? (
-            <a
-              href={pdfLink}
-              target="_blank"
-              rel="noreferrer"
-              className="mt-2 inline-block text-sm text-amber-400 underline"
-            >
-              Baixar proposta PDF
-            </a>
-          ) : null}
-        </div>
+        <GrupoTotalsBar
+          totais={totais}
+          hasSelection={hasSelection}
+          toastMsg={toastMsg}
+          resultMsg={resultMsg}
+          pdfLink={pdfLink}
+          onSimulacao={() => openModal("simulacao")}
+          onProposta={() => openModal("proposta")}
+          onEspecialista={() => openModal("especialista")}
+        />
       </div>
 
       {modalOpen ? (
@@ -406,16 +253,11 @@ export function GruposPublicClient({
           >
             <h2 className="text-lg font-semibold text-white">Seus dados</h2>
             <div>
-              <Label>Nome</Label>
-              <Input
-                required
-                value={nome}
-                onChange={(e) => setNome(e.target.value)}
-                className="bg-zinc-950"
-              />
+              <label className="mb-1 block text-sm font-medium text-zinc-300">Nome</label>
+              <Input required value={nome} onChange={(e) => setNome(e.target.value)} className="bg-zinc-950" />
             </div>
             <div>
-              <Label>WhatsApp</Label>
+              <label className="mb-1 block text-sm font-medium text-zinc-300">WhatsApp</label>
               <Input
                 required
                 value={whatsapp}

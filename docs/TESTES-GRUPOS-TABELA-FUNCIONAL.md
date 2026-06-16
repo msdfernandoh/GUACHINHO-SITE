@@ -39,10 +39,10 @@ Cobre:
 
 ### Organização da linha
 
-11. [ ] Blocos: **Cota**, **Parcela**, **Estratégia de lance**, **Resultado**
-12. [ ] Seguro **Com/Sem** quando grupo usa seguro (habilitado ou pós-contemplação)
-13. [ ] Desktop: coluna Montagem com grid organizado (não uma linha única)
-14. [ ] Mobile: card expansível com resumo (líquido, pós-contemplação) no `summary`
+11. [ ] Desktop: linha horizontal compacta com colunas (cota, qtd, soma, parcela, lances, líquido, pós-cont., prazo)
+12. [ ] **Ajustar** expande painel em 3 colunas (modalidades, recurso/seguro, resultado) — linha principal permanece baixa
+13. [ ] Seguro **C/S** na linha principal quando grupo usa seguro
+14. [ ] Mobile: card com resumo + **Ajustar lance e seguro** expansível
 
 ### Fluxo e PDF
 
