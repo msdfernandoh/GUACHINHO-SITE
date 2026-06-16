@@ -90,23 +90,32 @@ export async function buildPropostaPdfData(
         .from("simulacoes_grupos_itens")
         .select("*")
         .eq("simulacao_grupo_id", simId);
-      gruposCotas = (itens ?? []).map((it) => ({
-        codigoGrupo: String(it.codigo_grupo ?? ""),
-        modalidade: String(it.modalidade ?? ""),
-        valorCredito: num(it.valor_credito) ?? 0,
-        parcela: num(it.primeira_parcela) ?? 0,
-        saldoDevedor: num(it.saldo_devedor) ?? 0,
-        lanceEmbutido: num(it.lance_embutido) ?? 0,
-        recursoProprio: num(it.recurso_proprio) ?? 0,
-        lanceTotal: num(it.lance_total) ?? 0,
-        seguro: num(it.seguro) ?? 0,
-        prazoRestante: it.parcelas_restantes ?? "—",
-      }));
+      gruposCotas = (itens ?? []).map((it) => {
+        const dadosLinha = (it.dados_linha ?? {}) as Record<string, unknown>;
+        const modLance = dadosLinha.modalidade_lance as { nome?: string } | null | undefined;
+        return {
+          codigoGrupo: String(it.codigo_grupo ?? ""),
+          modalidade: String(it.modalidade ?? ""),
+          valorCredito: num(it.valor_credito) ?? 0,
+          parcela: num(it.primeira_parcela) ?? 0,
+          saldoDevedor: num(it.saldo_devedor) ?? 0,
+          lanceEmbutido: num(it.lance_embutido) ?? 0,
+          recursoProprio: num(it.recurso_proprio) ?? 0,
+          lanceTotal: num(it.lance_total) ?? 0,
+          seguro: num(it.seguro) ?? 0,
+          prazoRestante: it.parcelas_restantes ?? "—",
+          modalidadeLanceNome: modLance?.nome ? String(modLance.nome) : null,
+          parcelaPosContemplacao: num(it.parcela_pos_contemplacao),
+          creditoLiquido: num(it.credito_liquido),
+        };
+      });
       const { data: sim } = await admin.from("simulacoes_grupos").select("*").eq("id", simId).maybeSingle();
       if (sim) {
         gruposTotais = {
           creditoTotal: num(sim.total_credito) ?? 0,
           lanceTotal: num(sim.total_lance) ?? 0,
+          lanceEmbutido: num(sim.total_lance_embutido) ?? 0,
+          recursoProprio: num(sim.total_recurso_proprio) ?? 0,
           primeiraParcela: num(sim.total_primeira_parcela) ?? 0,
           creditoLiquido: num(sim.credito_liquido) ?? 0,
         };
@@ -119,6 +128,8 @@ export async function buildPropostaPdfData(
     gruposTotais = {
       creditoTotal: num(totaisGrupos.somaCotas) ?? num(p.valor_credito) ?? 0,
       lanceTotal: num(totaisGrupos.lanceTotal) ?? 0,
+      lanceEmbutido: num(totaisGrupos.lanceEmbutido) ?? 0,
+      recursoProprio: num(totaisGrupos.recursoProprio) ?? 0,
       primeiraParcela: num(totaisGrupos.primeiraParcela) ?? num(p.valor_parcela) ?? 0,
       creditoLiquido: num(totaisGrupos.creditoLiquido) ?? 0,
     };

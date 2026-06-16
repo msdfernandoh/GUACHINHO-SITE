@@ -34,11 +34,16 @@ export type ImobiliariaRow = {
   telefone: string | null;
   cidade: string | null;
   endereco: string | null;
+  estado?: string | null;
+  numero?: string | null;
+  bairro?: string | null;
+  complemento?: string | null;
   site: string | null;
   instagram: string | null;
   logo_url: string | null;
   banner_url: string | null;
   descricao: string | null;
+  descricao_curta?: string | null;
   ativo: boolean;
   exibir_home: boolean;
   ordem: number;
@@ -74,4 +79,5 @@ export type ImovelPublic = ImovelRow & {
   imobiliaria_nome: string;
   imobiliaria_slug: string;
   imobiliaria_whatsapp: string | null;
+  imobiliaria?: import("@/lib/imobiliarias/public-card-utils").ImobiliariaPublic;
 };

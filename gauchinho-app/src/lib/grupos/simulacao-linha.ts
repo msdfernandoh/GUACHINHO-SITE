@@ -113,11 +113,69 @@ function resolveModalidadeLance(
   config: ConfigLinhaSimulacaoGrupo,
   modalidades: GrupoModalidadeLance[],
 ): GrupoModalidadeLance | null {
-  if (!config.usaLanceEmbutido || !modalidades.length) return null;
+  if (!modalidades.length) return null;
+  if (!config.usaLanceEmbutido) return null;
   if (config.modalidadeLanceId) {
     return modalidades.find((m) => m.id === config.modalidadeLanceId) ?? modalidades[0] ?? null;
   }
   return modalidades.length === 1 ? modalidades[0]! : null;
+}
+
+export function resolveModalidadeLanceAtiva(
+  config: ConfigLinhaSimulacaoGrupo,
+  modalidades: GrupoModalidadeLance[],
+): GrupoModalidadeLance | null {
+  return resolveModalidadeLance(config, modalidades);
+}
+
+export type SnapshotLanceLinha = {
+  modalidade_lance: {
+    id: string | null;
+    nome: string;
+    percentual_lance_embutido: number;
+    percentual_recurso_proprio_minimo: number;
+  } | null;
+  lance_embutido: { percentual: number; valor: number };
+  recurso_proprio: {
+    ativo: boolean;
+    tipo: RecursoProprioModo;
+    percentual: number | null;
+    valor: number;
+  };
+  lance_total: number;
+};
+
+export function buildSnapshotLanceLinha(
+  config: ConfigLinhaSimulacaoGrupo,
+  resultado: ResultadoLinhaSimulacaoGrupo,
+  mod: GrupoModalidadeLance | null,
+): SnapshotLanceLinha {
+  const modId =
+    mod && !String(mod.id).startsWith("fallback-") ? mod.id : mod ? null : null;
+  return {
+    modalidade_lance: mod
+      ? {
+          id: modId,
+          nome: mod.nome,
+          percentual_lance_embutido: num(mod.percentual_lance_embutido),
+          percentual_recurso_proprio_minimo: num(mod.percentual_recurso_proprio_minimo),
+        }
+      : null,
+    lance_embutido: {
+      percentual: resultado.percentualLanceEmbutido,
+      valor: resultado.lanceEmbutido,
+    },
+    recurso_proprio: {
+      ativo: config.usaRecursoProprio,
+      tipo: config.recursoProprioModo,
+      percentual:
+        config.usaRecursoProprio && config.recursoProprioModo === "percentual"
+          ? num(config.recursoProprioInput)
+          : null,
+      valor: resultado.recursoProprio,
+    },
+    lance_total: resultado.lanceTotal,
+  };
 }
 
 export function calcularLinhaSimulacaoGrupo(args: {
@@ -168,7 +226,9 @@ export function calcularLinhaSimulacaoGrupo(args: {
   const pctRecursoMin = config.usaLanceEmbutido && modLance ? num(modLance.percentual_recurso_proprio_minimo) : 0;
 
   const lanceEmbutido =
-    pctEmbutido > 0 ? calcularLanceEmbutidoLinha(saldoDevedorInicial, pctEmbutido) : 0;
+    pctEmbutido > 0
+      ? Math.round(somaCotas * (pctEmbutido / 100) * 100) / 100
+      : 0;
 
   let recursoProprio = 0;
   if (config.usaRecursoProprio) {
@@ -306,12 +366,13 @@ export function defaultConfigLinha(
   modalidades: GrupoModalidadeLance[],
 ): ConfigLinhaSimulacaoGrupo {
   const mods = listarModalidadesLanceAtivas(grupo, modalidades);
+  const umaMod = mods.length === 1;
   return {
     cotaId: cotas[0]?.id ?? null,
     quantidadeCotas: 0,
     modalidadeParcela: grupo.tem_parcela_reduzida ? "reduzida" : "integral",
-    usaLanceEmbutido: grupo.permite_lance_embutido && mods.length > 0,
-    modalidadeLanceId: mods.length === 1 ? mods[0]!.id : mods[0]?.id ?? null,
+    usaLanceEmbutido: grupo.permite_lance_embutido && umaMod,
+    modalidadeLanceId: umaMod ? mods[0]!.id : null,
     usaRecursoProprio: false,
     recursoProprioModo: "percentual",
     recursoProprioInput: num(grupo.percentual_recurso_proprio_sugerido),

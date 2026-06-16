@@ -150,12 +150,21 @@ export function PropostaPdfDocument({ data }: { data: PropostaPdfData }) {
               ))}
             </View>
             {data.gruposCotas.map((g, i) => (
-              <View key={i} style={s.tableRow}>
-                <Text style={s.cell}>{g.codigoGrupo}</Text>
-                <Text style={s.cell}>{g.modalidade}</Text>
-                <Text style={s.cell}>{fmtMoney(g.valorCredito)}</Text>
-                <Text style={s.cell}>{fmtMoney(g.parcela)}</Text>
-                <Text style={s.cell}>{fmtMoney(g.lanceTotal)}</Text>
+              <View key={i} style={{ marginBottom: 10 }}>
+                <View style={s.tableRow}>
+                  <Text style={s.cell}>{g.codigoGrupo}</Text>
+                  <Text style={s.cell}>{g.modalidade}</Text>
+                  <Text style={s.cell}>{fmtMoney(g.valorCredito)}</Text>
+                  <Text style={s.cell}>{fmtMoney(g.parcela)}</Text>
+                  <Text style={s.cell}>{fmtMoney(g.lanceTotal)}</Text>
+                </View>
+                {g.modalidadeLanceNome ? (
+                  <Text style={{ fontSize: 9, color: "#64748b", marginTop: 2 }}>
+                    Lance: {g.modalidadeLanceNome} · Embutido {fmtMoney(g.lanceEmbutido)} · Próprio{" "}
+                    {fmtMoney(g.recursoProprio)} · Pós-contempl. {fmtMoney(g.parcelaPosContemplacao)} ·
+                    Líquido {fmtMoney(g.creditoLiquido)}
+                  </Text>
+                ) : null}
               </View>
             ))}
             {data.gruposTotais ? (
@@ -163,6 +172,10 @@ export function PropostaPdfDocument({ data }: { data: PropostaPdfData }) {
                 <Text style={s.badge}>Totais</Text>
                 <Text>Crédito total: {fmtMoney(data.gruposTotais.creditoTotal)}</Text>
                 <Text>Lance total: {fmtMoney(data.gruposTotais.lanceTotal)}</Text>
+                <Text>
+                  Composição lance — Embutido: {fmtMoney(data.gruposTotais.lanceEmbutido)} · Próprio:{" "}
+                  {fmtMoney(data.gruposTotais.recursoProprio)}
+                </Text>
                 <Text>1ª parcela total: {fmtMoney(data.gruposTotais.primeiraParcela)}</Text>
                 <Text style={s.gold}>Crédito líquido: {fmtMoney(data.gruposTotais.creditoLiquido)}</Text>
               </View>

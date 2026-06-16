@@ -3,14 +3,14 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { Building2, MessageCircle, Calculator, MapPin } from "lucide-react";
+import { ImobiliariaPublicCard } from "@/components/public/imobiliaria-public-card";
+import type { ImobiliariaPublic } from "@/lib/imobiliarias/public-card-utils";
 import type { ImovelPublic } from "@/lib/imoveis/types";
 import { IMOVEL_STATUS, IMOVEL_TIPOS } from "@/lib/imoveis/types";
-import { formatCurrency } from "@/lib/utils/format";
+import { MessageCircle, Calculator, MapPin } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
+import { formatCurrency } from "@/lib/utils/format";
 import { Button, Input, Label, Select } from "@/components/ui/form-primitives";
-
-type Parceira = { id: string; nome: string; slug: string; logo_url: string | null; cidade: string | null };
 
 type Filters = {
   tipo?: string;
@@ -28,9 +28,11 @@ type Filters = {
 export function ImoveisPublicClient({
   imoveis,
   parceiras,
+  whatsappFallback,
 }: {
   imoveis: ImovelPublic[];
-  parceiras: Parceira[];
+  parceiras: ImobiliariaPublic[];
+  whatsappFallback?: string | null;
 }) {
   const [filters, setFilters] = useState<Filters>({});
   const [modal, setModal] = useState<ImovelPublic | null>(null);
@@ -42,6 +44,12 @@ export function ImoveisPublicClient({
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [waLink, setWaLink] = useState<string | null>(null);
+
+  const imoveisPorImob = useMemo(() => {
+    const m = new Map<string, number>();
+    imoveis.forEach((i) => m.set(i.imobiliaria_id, (m.get(i.imobiliaria_id) ?? 0) + 1));
+    return m;
+  }, [imoveis]);
 
   const cidades = useMemo(() => {
     const s = new Set<string>();
@@ -198,26 +206,19 @@ export function ImoveisPublicClient({
         )}
 
         <section className="mt-16 border-t border-zinc-800 pt-12">
-          <h2 className="flex items-center gap-2 text-xl font-semibold text-amber-400">
-            <Building2 className="h-5 w-5" /> Imobiliárias parceiras
-          </h2>
-          <div className="mt-6 flex flex-wrap gap-4">
+          <h2 className="text-xl font-semibold text-amber-400">Imobiliárias parceiras</h2>
+          <p className="mt-2 max-w-2xl text-sm text-zinc-500">
+            Conheça quem comercializa os imóveis — fale direto ou veja o portfólio completo.
+          </p>
+          <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {parceiras.map((p) => (
-              <Link
+              <ImobiliariaPublicCard
                 key={p.id}
-                href={`/oportunidades-imobiliarias/${p.slug}`}
-                className="flex items-center gap-3 rounded-lg border border-zinc-800 bg-zinc-900/40 px-4 py-3 transition hover:border-amber-600/50"
-              >
-                {p.logo_url ? (
-                  <Image src={p.logo_url} alt="" width={40} height={40} className="rounded object-cover" />
-                ) : (
-                  <Building2 className="h-8 w-8 text-amber-500" />
-                )}
-                <div>
-                  <p className="font-medium">{p.nome}</p>
-                  {p.cidade && <p className="text-xs text-zinc-500">{p.cidade}</p>}
-                </div>
-              </Link>
+                imob={p}
+                variant="grid"
+                whatsappFallback={whatsappFallback}
+                imoveisCount={imoveisPorImob.get(p.id) ?? 0}
+              />
             ))}
           </div>
         </section>

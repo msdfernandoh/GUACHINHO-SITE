@@ -28,8 +28,13 @@ function imobiliariaFromForm(formData: FormData, masterFields: boolean) {
     telefone: String(formData.get("telefone") ?? "").trim() || null,
     cidade: String(formData.get("cidade") ?? "").trim() || null,
     endereco: String(formData.get("endereco") ?? "").trim() || null,
+    numero: String(formData.get("numero") ?? "").trim() || null,
+    bairro: String(formData.get("bairro") ?? "").trim() || null,
+    complemento: String(formData.get("complemento") ?? "").trim() || null,
+    estado: String(formData.get("estado") ?? "").trim() || null,
     site: String(formData.get("site") ?? "").trim() || null,
     instagram: String(formData.get("instagram") ?? "").trim() || null,
+    descricao_curta: String(formData.get("descricao_curta") ?? "").trim() || null,
     descricao: String(formData.get("descricao") ?? "").trim() || null,
     logo_url: String(formData.get("logo_url") ?? "").trim() || null,
     banner_url: String(formData.get("banner_url") ?? "").trim() || null,
@@ -232,7 +237,9 @@ export async function fetchPublicImobiliariasParceiras() {
   const admin = createAdminClient();
   const { data, error } = await admin
     .from("imobiliarias")
-    .select("id, nome, slug, logo_url, cidade, whatsapp")
+    .select(
+      "id, nome, slug, logo_url, banner_url, cidade, estado, endereco, numero, bairro, complemento, telefone, whatsapp, site, descricao_curta, descricao",
+    )
     .eq("ativo", true)
     .order("ordem")
     .order("nome");

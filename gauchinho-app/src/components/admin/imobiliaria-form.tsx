@@ -38,14 +38,36 @@ export function ImobiliariaForm({ action, masterFields, imob }: Props) {
         <Label>Responsável</Label>
         <Input name="responsavel" defaultValue={imob?.responsavel ?? ""} />
       </div>
+      <div>
+        <Label>E-mail</Label>
+        <Input name="email" type="email" defaultValue={imob?.email ?? ""} />
+      </div>
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
-          <Label>E-mail</Label>
-          <Input name="email" type="email" defaultValue={imob?.email ?? ""} />
+          <Label>Cidade</Label>
+          <Input name="cidade" defaultValue={imob?.cidade ?? ""} />
         </div>
         <div>
-          <Label>WhatsApp</Label>
-          <Input name="whatsapp" defaultValue={imob?.whatsapp ?? ""} />
+          <Label>Estado (UF)</Label>
+          <Input name="estado" defaultValue={imob?.estado ?? ""} placeholder="MT" maxLength={2} />
+        </div>
+      </div>
+      <div>
+        <Label>Logradouro</Label>
+        <Input name="endereco" defaultValue={imob?.endereco ?? ""} placeholder="Av. dos Ingás" />
+      </div>
+      <div className="grid gap-4 sm:grid-cols-3">
+        <div>
+          <Label>Número</Label>
+          <Input name="numero" defaultValue={imob?.numero ?? ""} />
+        </div>
+        <div>
+          <Label>Bairro</Label>
+          <Input name="bairro" defaultValue={imob?.bairro ?? ""} />
+        </div>
+        <div>
+          <Label>Complemento</Label>
+          <Input name="complemento" defaultValue={imob?.complemento ?? ""} />
         </div>
       </div>
       <div className="grid gap-4 sm:grid-cols-2">
@@ -54,18 +76,14 @@ export function ImobiliariaForm({ action, masterFields, imob }: Props) {
           <Input name="telefone" defaultValue={imob?.telefone ?? ""} />
         </div>
         <div>
-          <Label>Cidade</Label>
-          <Input name="cidade" defaultValue={imob?.cidade ?? ""} />
+          <Label>WhatsApp</Label>
+          <Input name="whatsapp" defaultValue={imob?.whatsapp ?? ""} />
         </div>
-      </div>
-      <div>
-        <Label>Endereço</Label>
-        <Input name="endereco" defaultValue={imob?.endereco ?? ""} />
       </div>
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
-          <Label>Site</Label>
-          <Input name="site" defaultValue={imob?.site ?? ""} />
+          <Label>Site (URL)</Label>
+          <Input name="site" defaultValue={imob?.site ?? ""} placeholder="https://..." />
         </div>
         <div>
           <Label>Instagram</Label>
@@ -73,7 +91,11 @@ export function ImobiliariaForm({ action, masterFields, imob }: Props) {
         </div>
       </div>
       <div>
-        <Label>Descrição</Label>
+        <Label>Descrição curta (vitrine)</Label>
+        <Textarea name="descricao_curta" rows={2} defaultValue={imob?.descricao_curta ?? ""} />
+      </div>
+      <div>
+        <Label>Descrição completa</Label>
         <Textarea name="descricao" rows={4} defaultValue={imob?.descricao ?? ""} />
       </div>
       <div className="grid gap-4 sm:grid-cols-2">

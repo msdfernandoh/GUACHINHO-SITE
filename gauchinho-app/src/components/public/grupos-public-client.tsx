@@ -255,18 +255,33 @@ export function GruposPublicClient({
                   <details
                     key={grupo.id}
                     className={cn(
-                      "rounded-2xl border border-zinc-800 bg-zinc-900/80 p-4",
+                      "rounded-2xl border border-zinc-800 bg-zinc-900/80",
                       resultado.ativo && "border-amber-500/40",
                     )}
                     open={resultado.ativo}
                   >
-                    <summary className="cursor-pointer list-none font-semibold text-amber-400">
-                      Grupo {grupo.codigo_grupo}
-                      <span className="ml-2 text-xs font-normal text-zinc-500">
-                        <GrupoPrazoCell grupo={grupo} />
-                      </span>
+                    <summary className="cursor-pointer list-none p-4 font-semibold text-amber-400">
+                      <div className="flex flex-wrap items-baseline justify-between gap-2">
+                        <span>Grupo {grupo.codigo_grupo}</span>
+                        {resultado.ativo ? (
+                          <span className="text-xs font-normal text-zinc-400">
+                            Líquido {formatCurrency(resultado.creditoLiquido)} · Pós-contempl.{" "}
+                            {formatCurrency(resultado.parcelaPosContemplacao)}
+                          </span>
+                        ) : (
+                          <span className="text-xs font-normal text-zinc-500">
+                            <GrupoPrazoCell grupo={grupo} />
+                          </span>
+                        )}
+                      </div>
+                      {resultado.ativo && config.cotaId ? (
+                        <p className="mt-1 text-xs font-normal text-zinc-500">
+                          {formatCurrency(Number(cotas.find((c) => c.id === config.cotaId)?.valor_credito))}{" "}
+                          × {config.quantidadeCotas} cota(s)
+                        </p>
+                      ) : null}
                     </summary>
-                    <div className="mt-4">
+                    <div className="border-t border-zinc-800 p-4 pt-0">
                       <GrupoSimulacaoLinhaControls
                         grupo={grupo}
                         cotas={cotas}
@@ -328,10 +343,20 @@ export function GruposPublicClient({
                 <p className="text-lg font-semibold">{formatCurrency(totais.seguroTotal)}</p>
               </div>
             ) : null}
-            <div className="md:col-span-2">
+            <div className="md:col-span-2 lg:col-span-3">
               <p className="text-xs uppercase text-amber-400">Crédito líquido</p>
               <p className="text-3xl font-bold text-amber-400">
                 {formatCurrency(totais.creditoLiquido)}
+              </p>
+            </div>
+            <div className="md:col-span-2 lg:col-span-3 rounded-xl border border-zinc-700/80 bg-zinc-950/50 p-4">
+              <p className="text-xs uppercase text-zinc-500">Lance total (todos os grupos)</p>
+              <p className="text-2xl font-bold text-white">{formatCurrency(totais.lanceTotal)}</p>
+              <p className="mt-2 text-sm text-zinc-400">
+                Embutido: {formatCurrency(totais.lanceEmbutido)}
+              </p>
+              <p className="text-sm text-zinc-400">
+                Recurso próprio: {formatCurrency(totais.recursoProprio)}
               </p>
             </div>
           </div>
@@ -342,7 +367,7 @@ export function GruposPublicClient({
             <Button
               type="button"
               variant="outline"
-              className="border-zinc-600 bg-slate-900 text-slate-100 hover:bg-slate-800 disabled:border-zinc-700 disabled:bg-zinc-800 disabled:text-zinc-500"
+              className="border-zinc-500 bg-slate-900 text-slate-100 hover:border-amber-500/50 hover:bg-slate-800 disabled:border-zinc-700 disabled:bg-zinc-800 disabled:text-zinc-500"
               disabled={!hasSelection}
               onClick={() => openModal("proposta")}
             >
@@ -351,7 +376,7 @@ export function GruposPublicClient({
             <Button
               type="button"
               variant="outline"
-              className="border-zinc-600 bg-slate-900 text-slate-100 hover:bg-slate-800 disabled:border-zinc-700 disabled:bg-zinc-800 disabled:text-zinc-500"
+              className="border-zinc-500 bg-slate-900 text-slate-100 hover:border-amber-500/50 hover:bg-slate-800 disabled:border-zinc-700 disabled:bg-zinc-800 disabled:text-zinc-500"
               disabled={!hasSelection}
               onClick={() => openModal("especialista")}
             >

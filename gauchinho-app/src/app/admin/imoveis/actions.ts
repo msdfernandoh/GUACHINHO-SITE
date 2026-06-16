@@ -14,7 +14,9 @@ import {
 import { slugify, uniqueSlug } from "@/lib/utils/slug";
 import { parseBrazilianNumber } from "@/lib/utils/format";
 import { uploadImagemPublica } from "@/lib/storage/imagens";
-import { IMOVEL_STATUS, type ImovelPublic, type ImovelRow } from "@/lib/imoveis/types";
+import type { ImovelPublic, ImovelRow, ImobiliariaRow } from "@/lib/imoveis/types";
+import { IMOVEL_STATUS } from "@/lib/imoveis/types";
+import { toImobiliariaPublic } from "@/lib/imobiliarias/public-card-utils";
 import { registrarEvento } from "@/lib/eventos/registrar";
 
 function numForm(formData: FormData, name: string): number | null {
@@ -174,13 +176,14 @@ export async function fetchPublicImovelBySlug(slug: string) {
     .maybeSingle();
   if (error) throw new Error(error.message);
   if (!data) return null;
-  const imob = data.imobiliarias as { nome: string; slug: string; whatsapp: string | null; ativo: boolean };
-  if (!imob.ativo) return null;
+  const imobRow = data.imobiliarias as ImobiliariaRow;
+  if (!imobRow.ativo) return null;
   return {
     ...(data as ImovelRow),
-    imobiliaria_nome: imob.nome,
-    imobiliaria_slug: imob.slug,
-    imobiliaria_whatsapp: imob.whatsapp,
+    imobiliaria_nome: imobRow.nome,
+    imobiliaria_slug: imobRow.slug,
+    imobiliaria_whatsapp: imobRow.whatsapp,
+    imobiliaria: toImobiliariaPublic(imobRow),
   } as ImovelPublic;
 }
 

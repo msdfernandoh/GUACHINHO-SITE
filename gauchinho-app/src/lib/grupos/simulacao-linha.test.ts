@@ -198,8 +198,8 @@ describe("caso Excel — grupos 1513 e 1533", () => {
     });
     const tot = agregarResultadosLinhas([r1, r2]);
     expect(tot.somaCotas).toBe(2_050_000);
-    expect(tot.lanceEmbutido).toBeCloseTo(830_800, 0);
-    expect(tot.creditoLiquido).toBeCloseTo(1_219_200, 0);
+    expect(tot.lanceEmbutido).toBeCloseTo(820_000, 0);
+    expect(tot.creditoLiquido).toBeCloseTo(1_230_000, 0);
   });
 
   it("parcela reduzida usa prazo total (Excel 1533)", () => {

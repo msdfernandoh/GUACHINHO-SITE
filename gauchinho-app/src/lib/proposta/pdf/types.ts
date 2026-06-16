@@ -24,6 +24,9 @@ export type GrupoCotaPdfRow = {
   lanceTotal: number;
   seguro: number;
   prazoRestante: number | string;
+  modalidadeLanceNome: string | null;
+  parcelaPosContemplacao: number | null;
+  creditoLiquido: number | null;
 };
 
 export type MarcoProjecaoPdf = {
@@ -74,6 +77,8 @@ export type PropostaPdfData = {
   gruposTotais: {
     creditoTotal: number;
     lanceTotal: number;
+    lanceEmbutido: number;
+    recursoProprio: number;
     primeiraParcela: number;
     creditoLiquido: number;
   } | null;

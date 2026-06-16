@@ -4,6 +4,9 @@ import { registrarEvento } from "@/lib/eventos/registrar";
 import {
   calcularLinhaSimulacaoGrupo,
   agregarResultadosLinhas,
+  buildSnapshotLanceLinha,
+  resolveModalidadeLanceAtiva,
+  listarModalidadesLanceAtivas,
   type ConfigLinhaSimulacaoGrupo,
 } from "@/lib/grupos/simulacao-linha";
 import { fatorSeguroGrupo } from "@/lib/grupos/seguro";
@@ -115,7 +118,11 @@ export async function POST(request: Request) {
     }
 
     await admin.from("simulacoes_grupos_itens").insert(
-      selecoesCalc.map((s) => ({
+      selecoesCalc.map((s) => {
+        const modsAtivas = listarModalidadesLanceAtivas(s.grupo, s.mods);
+        const mod = resolveModalidadeLanceAtiva(s.config, modsAtivas);
+        const lanceSnapshot = buildSnapshotLanceLinha(s.config, s.resultado, mod);
+        return {
         simulacao_grupo_id: sim.id,
         grupo_id: s.grupo.id,
         grupo_cota_id: s.cota.id,
@@ -150,8 +157,13 @@ export async function POST(request: Request) {
         percentual_seguro: fatorSeguroGrupo(s.grupo.seguro_percentual),
         parcela_pos_contemplacao: s.resultado.parcelaPosContemplacao,
         credito_liquido: s.resultado.creditoLiquido,
-        dados_linha: { config: s.config, resultado: s.resultado },
-      })),
+        dados_linha: {
+          config: s.config,
+          resultado: s.resultado,
+          ...lanceSnapshot,
+        },
+      };
+      }),
     );
 
     let propostaId: string | null = null;
@@ -168,14 +180,19 @@ export async function POST(request: Request) {
           dados_simulacao: {
             simulacao_grupo_id: sim.id,
             totais,
-            selecoes: selecoesCalc.map((s) => ({
-              grupoId: s.grupo.id,
-              codigoGrupo: s.grupo.codigo_grupo,
-              cotaId: s.cota.id,
-              credito: s.cota.valor_credito,
-              config: s.config,
-              resultado: s.resultado,
-            })),
+            selecoes: selecoesCalc.map((s) => {
+              const modsAtivas = listarModalidadesLanceAtivas(s.grupo, s.mods);
+              const mod = resolveModalidadeLanceAtiva(s.config, modsAtivas);
+              return {
+                grupoId: s.grupo.id,
+                codigoGrupo: s.grupo.codigo_grupo,
+                cotaId: s.cota.id,
+                credito: s.cota.valor_credito,
+                config: s.config,
+                resultado: s.resultado,
+                ...buildSnapshotLanceLinha(s.config, s.resultado, mod),
+              };
+            }),
           },
           status: "Gerada",
           pdf_url: null,
