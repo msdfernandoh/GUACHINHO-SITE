@@ -43,9 +43,9 @@ const SONHOS = [
     num: "02",
     title: "Apartamento",
     sub: "Imóvel urbano",
-    legenda: "Apartamento.jpg",
+    legenda: "apartamento.jpg",
     desc: "Apartamentos com crédito planejado e sem juros. Consultoria completa para encontrar o grupo ideal para o seu momento.",
-    img: "/foto/Apartamento.jpg",
+    img: "/foto/apartamento.jpg",
     href: "/simulador?solucao=consorcio&tipo=imovel",
     stat: { value: "R$ 80M+", label: "em crédito gerenciado" },
   },
@@ -79,9 +79,9 @@ const SONHOS = [
     num: "05",
     title: "Motos",
     sub: "Mobilidade com planejamento",
-    legenda: "Motos.png",
+    legenda: "motos.png",
     desc: "Mobilidade com crédito planejado e consultoria de lance. Encontre o grupo certo para o seu objetivo com atendimento personalizado.",
-    img: "/foto/Motos.png",
+    img: "/foto/motos.png",
     href: "/simulador?tipo=moto&solucao=consorcio",
     stat: { value: "0%", label: "de juros no consórcio" },
   },
@@ -631,13 +631,11 @@ export default function HomeV2() {
             >
               {!mascoteError ? (
                 <img
-                  src="/media/gauchinho-mascote.gif"
+                  src="/media/gauchinho-sem-fundo.svg"
                   alt="Mascote Gauchinho"
                   className="w-56 object-contain sm:w-64 lg:w-72 xl:w-80"
                   style={{
-                    /* multiply: branco (1×cor_fundo = cor_fundo) → some o quadrado branco */
-                    mixBlendMode: "multiply",
-                    filter: "contrast(1.05) saturate(1.1)",
+                    filter: "drop-shadow(0 0 60px rgba(201,168,76,0.4))",
                     display: "block",
                   }}
                   draggable={false}

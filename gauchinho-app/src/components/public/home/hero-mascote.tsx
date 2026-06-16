@@ -4,6 +4,7 @@ import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Sparkles } from "lucide-react";
+import { HOME_MEDIA } from "@/lib/home/home-media";
 
 const FALAS = [
   "Sem juros é consórcio! 🤝",
@@ -223,7 +224,7 @@ export function HeroMascote({ brand }: Props) {
             </div>
           )}
 
-          {/* Floating mascote video */}
+          {/* Floating mascote */}
           <motion.div
             animate={shouldReduce ? undefined : { y: [0, -14, 0] }}
             transition={
@@ -232,12 +233,9 @@ export function HeroMascote({ brand }: Props) {
                 : { duration: 3, repeat: Infinity, ease: "easeInOut" }
             }
           >
-            <video
-              src="/media/gauchinho-video.mp4"
-              autoPlay
-              loop
-              muted
-              playsInline
+            <img
+              src={HOME_MEDIA.mascoteSvg}
+              alt="Mascote Gauchinho"
               className="w-full max-w-[300px] sm:max-w-sm lg:max-w-md"
               style={{
                 filter: "drop-shadow(0 0 60px rgba(201,168,76,0.4))",
