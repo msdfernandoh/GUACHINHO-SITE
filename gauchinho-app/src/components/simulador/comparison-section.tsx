@@ -19,6 +19,13 @@ export function ComparisonSection({ modo, comparativo }: Props) {
           <p className="mt-1 text-sm text-slate-400">
             Veja como essa programação pode se comparar a uma compra financiada.
           </p>
+          <p className="mt-2 text-xs text-slate-500">
+            Referência financiamento: {formatCurrency(comparativo.financiamento.valorBem)} ·{" "}
+            {comparativo.financiamento.prazoMeses} meses
+            {comparativo.financiamento.entrada > 0
+              ? ` · entrada ${formatCurrency(comparativo.financiamento.entrada)}`
+              : null}
+          </p>
         </>
       ) : (
         <>

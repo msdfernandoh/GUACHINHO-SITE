@@ -243,6 +243,15 @@ export function calcularLancePorTipo(
   return v;
 }
 
+/** Lance embutido padrão com a própria carta (sem desembolso), em % do saldo devedor estimado. */
+export const PERCENTUAL_LANCE_PROPIA_CARTA_PADRAO = 0.25;
+
+export function calcularLancePropriaCartaSemBolso(
+  saldoDevedorEstimado: number,
+  percentual: number = PERCENTUAL_LANCE_PROPIA_CARTA_PADRAO,
+): number {
+  return Math.round(saldoDevedorEstimado * percentual * 100) / 100;
+}
 
 
 export function calcularSaldoDevedorInicial(

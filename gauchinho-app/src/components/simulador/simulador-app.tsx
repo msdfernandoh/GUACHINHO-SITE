@@ -14,7 +14,7 @@ import {
   type ModoLanceInput,
 } from "@/lib/simulador/consorcio";
 import { simularFinanciamento } from "@/lib/simulador/financiamento";
-import { compararConsorcioFinanciamento } from "@/lib/simulador/comparativo";
+import { compararConsorcioFinanciamento, montarEntradaFinanciamentoComparativo } from "@/lib/simulador/comparativo";
 import { gerarProjecaoAnoAno } from "@/lib/simulador/projecao";
 import { digitsOnlyPhone } from "@/lib/utils/format";
 import { Button } from "@/components/ui/form-primitives";
@@ -281,20 +281,31 @@ export function SimuladorApp({
     [valorBem, entradaFin, taxaMensal, prazoFin],
   );
 
-  const comparativo = useMemo(() => {
-    const entradaFinCmp = {
-      valorBem: modo === "consorcio" ? valorCredito : valorBem,
-      entrada: modo === "consorcio" ? lanceProprioValor : entradaFin,
-      taxaMensalPercentual: taxaMensal,
-      prazoMeses: modo === "consorcio" ? prazo : prazoFin,
+  const entradaConsorcioComparativo = useMemo(() => {
+    if (modo !== "financiamento") return entradaConsorcio;
+    return {
+      ...entradaConsorcio,
+      valorCredito: valorBem,
+      prazoMeses: prazoFin,
     };
-    return compararConsorcioFinanciamento(entradaConsorcio, entradaFinCmp);
+  }, [modo, entradaConsorcio, valorBem, prazoFin]);
+
+  const comparativo = useMemo(() => {
+    const entradaFinCmp = montarEntradaFinanciamentoComparativo({
+      modo,
+      valorCreditoConsorcio: valorCredito,
+      prazoConsorcioMeses: prazo,
+      valorBemFinanciamento: valorBem,
+      entradaFinanciamento: entradaFin,
+      prazoFinanciamentoMeses: prazoFin,
+      taxaMensalPercentual: taxaMensal,
+    });
+    return compararConsorcioFinanciamento(entradaConsorcioComparativo, entradaFinCmp);
   }, [
     modo,
-    entradaConsorcio,
+    entradaConsorcioComparativo,
     valorCredito,
     valorBem,
-    lanceProprioValor,
     entradaFin,
     taxaMensal,
     prazo,

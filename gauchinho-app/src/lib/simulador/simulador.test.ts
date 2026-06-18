@@ -1,12 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
   calcularContemplacaoPrimeiroMes,
+  calcularLancePropriaCartaSemBolso,
   calcularParcelaConsorcio,
   calcularParcelaReduzida,
   calcularProjecaoConsorcio,
 } from "./consorcio";
 import { simularFinanciamento } from "./financiamento";
-import { compararConsorcioFinanciamento } from "./comparativo";
+import { compararConsorcioFinanciamento, montarEntradaFinanciamentoComparativo } from "./comparativo";
 import { gerarProjecaoAnoAno } from "./projecao";
 
 describe("simulador consórcio — caso Fase 2", () => {
@@ -71,6 +72,53 @@ describe("comparativo e projeção", () => {
     expect(c.diferencaParcela).toBeDefined();
     expect(c.consorcio.valorTotalEstimado).toBe(122_000);
     expect(c.financiamento.parcelaEstimada).toBeGreaterThan(c.consorcio.parcelaEstimada);
+  });
+
+  it("financiamento comparativo usa crédito e prazo do consórcio sem entrada", () => {
+    const fin = montarEntradaFinanciamentoComparativo({
+      modo: "consorcio",
+      valorCreditoConsorcio: 500_000,
+      prazoConsorcioMeses: 220,
+      valorBemFinanciamento: 800_000,
+      entradaFinanciamento: 100_000,
+      prazoFinanciamentoMeses: 360,
+      taxaMensalPercentual: 1.2,
+    });
+    expect(fin.valorBem).toBe(500_000);
+    expect(fin.prazoMeses).toBe(220);
+    expect(fin.entrada).toBe(0);
+
+    const cmp = compararConsorcioFinanciamento(
+      {
+        valorCredito: 500_000,
+        prazoMeses: 220,
+        taxaAdministrativaPercentual: 22,
+        fundoReservaPercentual: 2,
+        seguroPrestamistaPercentual: 0,
+        percentualParcelaInicial: 60,
+      },
+      fin,
+    );
+    expect(cmp.financiamento.valorFinanciado).toBe(500_000);
+    expect(cmp.financiamento.prazoMeses).toBe(220);
+  });
+
+  it("caso UI — 500k / 220m: parcela integral e lance 25% do saldo", () => {
+    const entrada = {
+      valorCredito: 500_000,
+      prazoMeses: 220,
+      taxaAdministrativaPercentual: 22,
+      fundoReservaPercentual: 2,
+      seguroPrestamistaPercentual: 0,
+      percentualParcelaInicial: 60,
+      reajusteAnualCredito: 6,
+      correcaoAnualParcela: 0,
+    };
+    const c = calcularContemplacaoPrimeiroMes(entrada);
+    expect(c.saldoDevedorEstimado).toBe(620_000);
+    expect(c.parcelaIntegral).toBeCloseTo(2818.18, 1);
+    expect(c.parcelaEstimada).toBeCloseTo(1690.91, 1);
+    expect(calcularLancePropriaCartaSemBolso(c.saldoDevedorEstimado)).toBe(155_000);
   });
 
   it("projeção imóvel 1M / 220 meses gera linhas", () => {

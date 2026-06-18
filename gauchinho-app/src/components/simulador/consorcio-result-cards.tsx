@@ -1,6 +1,8 @@
 import { formatCurrency } from "@/lib/utils/format";
 import {
   formatarPercentualSimulador,
+  calcularLancePropriaCartaSemBolso,
+  PERCENTUAL_LANCE_PROPIA_CARTA_PADRAO,
   type ResultadoContemplacaoMes1,
 } from "@/lib/simulador/consorcio";
 import { sectionCardClass } from "./simulador-ui";
@@ -39,6 +41,8 @@ function Metric({
 export function ConsorcioResultCards({ contemplacao, estrategiaLabel }: Props) {
   const c = contemplacao;
   const temLance = c.entrada > 0 || c.lanceEmbutido > 0;
+  const lancePropriaCarta = calcularLancePropriaCartaSemBolso(c.saldoDevedorEstimado);
+  const pctLanceLabel = Math.round(PERCENTUAL_LANCE_PROPIA_CARTA_PADRAO * 100);
 
   return (
     <section className={sectionCardClass("border-amber-500/30 bg-gradient-to-br from-slate-900/90 to-slate-950")}>
@@ -59,8 +63,16 @@ export function ConsorcioResultCards({ contemplacao, estrategiaLabel }: Props) {
           value={formatCurrency(c.saldoDevedorEstimado)}
           sub="Total estimado do plano (crédito + taxa adm. + fundo reserva)"
         />
-        <Metric label="Taxa administrativa total" value={formatCurrency(c.taxaAdministrativaTotal)} />
-        <Metric label="Fundo de reserva total" value={formatCurrency(c.fundoReservaTotal)} />
+        <Metric
+          label="Parcela após contemplação"
+          value={formatCurrency(c.parcelaIntegral)}
+          sub="Parcela integral do plano (amortização + seguro)"
+        />
+        <Metric
+          label="Lance usando própria carta sem tirar dinheiro do bolso"
+          value={formatCurrency(lancePropriaCarta)}
+          sub={`${pctLanceLabel}% do saldo devedor estimado`}
+        />
         <Metric
           label="Custo adm. efetivo mensal"
           value={`${formatarPercentualSimulador(c.custoAdmEfetivoMensalPercentual)} a.m.`}
