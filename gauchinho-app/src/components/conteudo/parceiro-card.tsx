@@ -1,4 +1,5 @@
 import { ConteudoLogoImage } from "@/components/conteudo/conteudo-logo-image";
+import type { ParceiroInstitucional } from "@/lib/conteudo/types";
 import { cn } from "@/lib/utils/cn";
 
 export function ParceiroCard({ parceiro, className }: { parceiro: ParceiroInstitucional; className?: string }) {
