@@ -1,48 +1,46 @@
-import type { FinanciamentoConfig, SimuladorTipoBemConfig } from "@/lib/config/defaults";
-import { calcularParcelaConsorcio } from "@/lib/simulador/consorcio";
-import { simularFinanciamento } from "@/lib/simulador/financiamento";
+import type { SimuladorConfigsBundle } from "@/lib/simulador/simulador-shared";
+import {
+  computeQuickSimulatorPreview,
+  computeQuickSimulatorParcela,
+  getQuickSimDefaults,
+  listPrazosConsorcio,
+  listPrazosFinanciamento,
+  entradaFinanciamentoInicial,
+  financiamentoTaxaConfigurada,
+} from "@/lib/simulador/simulador-shared";
 
-export type SimuladorConfigsBundle = {
-  imovel: SimuladorTipoBemConfig;
-  automovel: SimuladorTipoBemConfig;
-  financiamento: FinanciamentoConfig;
+export type { SimuladorConfigsBundle };
+
+export {
+  computeQuickSimulatorParcela,
+  computeQuickSimulatorPreview,
+  getQuickSimDefaults,
+  listPrazosConsorcio,
+  listPrazosFinanciamento,
+  entradaFinanciamentoInicial,
+  financiamentoTaxaConfigurada,
 };
 
-export function computeQuickSimulatorParcela(
+export type QuickSimulatorResult = {
+  ok: boolean;
+  parcela: number | null;
+  prazoEfetivo: number;
+  motivo: string | null;
+};
+
+export function computeQuickSimulatorResult(
   modo: "consorcio" | "financiamento",
   valorCredito: number,
   prazoMeses: number,
   configs: SimuladorConfigsBundle,
   tipoBem: "imovel" | "automovel" = "imovel",
-): number {
-  const valor = Math.max(0, valorCredito);
-  const prazo = Math.max(1, prazoMeses);
-
-  if (modo === "consorcio") {
-    const cfg = tipoBem === "automovel" ? configs.automovel : configs.imovel;
-    const prazoEfetivo =
-      cfg.prazosDisponiveis?.length && !cfg.prazosDisponiveis.includes(prazo)
-        ? cfg.prazoPadrao
-        : prazo;
-    const r = calcularParcelaConsorcio({
-      valorCredito: valor,
-      prazoMeses: prazoEfetivo,
-      taxaAdministrativaPercentual: cfg.taxaAdministrativaPadrao,
-      fundoReservaPercentual: cfg.fundoReservaPadrao,
-      seguroPrestamistaPercentual: cfg.seguroPrestamistaPadrao,
-      percentualParcelaInicial: 100,
-    });
-    return r.parcelaEstimada;
-  }
-
-  const fin = configs.financiamento;
-  const prazoFin = prazo || fin.prazoPadrao;
-  const entrada =
-    valor * (Math.max(0, fin.entradaMinimaSugeridaPercentual) / 100);
-  return simularFinanciamento({
-    valorBem: valor,
-    entrada,
-    taxaMensalPercentual: fin.taxaMensalPadrao,
-    prazoMeses: prazoFin,
-  }).parcelaEstimada;
+): QuickSimulatorResult {
+  const r = computeQuickSimulatorPreview(modo, valorCredito, prazoMeses, configs, tipoBem);
+  const ok = r.parcela != null && Number.isFinite(r.parcela) && r.parcela > 0;
+  return {
+    ok,
+    parcela: ok ? r.parcela : null,
+    prazoEfetivo: r.prazoMeses,
+    motivo: ok ? null : r.aviso,
+  };
 }

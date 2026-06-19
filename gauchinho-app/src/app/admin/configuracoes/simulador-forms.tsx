@@ -163,15 +163,48 @@ export function FinanciamentoConfigForm({
   action: (formData: FormData) => Promise<void>;
   cfg: import("@/lib/config/defaults").FinanciamentoConfig;
 }) {
+  const prazos = (cfg.prazosDisponiveis ?? []).join(", ");
   return (
     <form action={action} className="max-w-xl space-y-3 rounded-xl border p-4">
       <h3 className="font-semibold">Financiamento</h3>
-      <Input name="taxaMensalPadrao" type="number" step="0.01" placeholder="Taxa mensal %" defaultValue={cfg.taxaMensalPadrao} />
-      <Input name="entradaMinimaSugeridaPercentual" type="number" step="0.01" placeholder="Entrada mínima sugerida %" defaultValue={cfg.entradaMinimaSugeridaPercentual} />
-      <Input name="prazoPadrao" type="number" placeholder="Prazo padrão (meses)" defaultValue={cfg.prazoPadrao} />
-      <Input name="prazoMaximo" type="number" placeholder="Prazo máximo" defaultValue={cfg.prazoMaximo} />
-      <Input name="indiceReajusteOpcional" type="number" step="0.01" placeholder="Índice reajuste opcional %" defaultValue={cfg.indiceReajusteOpcional} />
-      <Input name="parceiroPadrao" placeholder="Parceiro padrão" defaultValue={cfg.parceiroPadrao} />
+      <div>
+        <Label>Taxa mensal de financiamento (% a.m.)</Label>
+        <Input name="taxaMensalPadrao" type="number" step="0.01" defaultValue={cfg.taxaMensalPadrao} />
+      </div>
+      <div>
+        <Label>Entrada mínima sugerida (% do valor do bem)</Label>
+        <Input
+          name="entradaMinimaSugeridaPercentual"
+          type="number"
+          step="0.01"
+          defaultValue={cfg.entradaMinimaSugeridaPercentual}
+        />
+      </div>
+      <div>
+        <Label>Prazo padrão (meses)</Label>
+        <Input name="prazoPadrao" type="number" defaultValue={cfg.prazoPadrao} />
+      </div>
+      <div>
+        <Label>Prazo máximo (meses)</Label>
+        <Input name="prazoMaximo" type="number" defaultValue={cfg.prazoMaximo} />
+      </div>
+      <div>
+        <Label>Prazos disponíveis (vírgula)</Label>
+        <Input
+          name="prazosDisponiveis"
+          defaultValue={prazos}
+          placeholder="60, 120, 220, 360, 420"
+        />
+        <p className="mt-1 text-xs text-zinc-500">Usados na Home e no simulador completo.</p>
+      </div>
+      <div>
+        <Label>Índice de reajuste opcional (%)</Label>
+        <Input name="indiceReajusteOpcional" type="number" step="0.01" defaultValue={cfg.indiceReajusteOpcional} />
+      </div>
+      <div>
+        <Label>Parceiro padrão</Label>
+        <Input name="parceiroPadrao" defaultValue={cfg.parceiroPadrao} />
+      </div>
       <label className="flex items-center gap-2 text-sm">
         <input type="checkbox" name="mostrarComparacaoConsorcio" defaultChecked={cfg.mostrarComparacaoConsorcio} />
         Mostrar comparação com consórcio

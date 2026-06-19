@@ -66,6 +66,8 @@ export type FinanciamentoConfig = {
   entradaMinimaSugeridaPercentual: number;
   prazoPadrao: number;
   prazoMaximo: number;
+  /** Prazos exibidos na home e no simulador (mesma lista). Se vazio, usa lista padrão interna. */
+  prazosDisponiveis?: number[];
   indiceReajusteOpcional: number;
   parceiroPadrao: string;
   mostrarComparacaoConsorcio: boolean;

@@ -6,6 +6,8 @@ import { requireUsuario } from "@/lib/auth/get-usuario";
 import { canEditSettings } from "@/lib/auth/permissions";
 import { saveConfigJson } from "@/server/config";
 
+import { parsePrazosLista } from "@/lib/simulador/prazos";
+
 async function requireMasterConfig() {
   const u = await requireUsuario();
   if (!canEditSettings(u.perfil)) throw new Error("Sem permissão");
@@ -118,6 +120,7 @@ export async function saveSimuladorImovelConfigAction(formData: FormData) {
   await saveConfigJson("simulador_imovel", simuladorPayloadFromForm(formData));
   revalidatePath("/admin/configuracoes");
   revalidatePath("/simulador");
+  revalidatePath("/", "layout");
 }
 
 export async function saveSimuladorAutomovelConfigAction(formData: FormData) {
@@ -125,21 +128,24 @@ export async function saveSimuladorAutomovelConfigAction(formData: FormData) {
   await saveConfigJson("simulador_automovel", simuladorPayloadFromForm(formData));
   revalidatePath("/admin/configuracoes");
   revalidatePath("/simulador");
+  revalidatePath("/", "layout");
 }
 
 export async function saveFinanciamentoConfigAction(formData: FormData) {
   await requireMasterConfig();
   await saveConfigJson("financiamento_config", {
-    taxaMensalPadrao: numField(formData, "taxaMensalPadrao"),
+    taxaMensalPadrao: numField(formData, "taxaMensalPadrao", 1),
     entradaMinimaSugeridaPercentual: numField(formData, "entradaMinimaSugeridaPercentual"),
     prazoPadrao: numField(formData, "prazoPadrao"),
     prazoMaximo: numField(formData, "prazoMaximo"),
+    prazosDisponiveis: parsePrazosLista(String(formData.get("prazosDisponiveis") ?? "")),
     indiceReajusteOpcional: numField(formData, "indiceReajusteOpcional"),
     parceiroPadrao: String(formData.get("parceiroPadrao") ?? ""),
     mostrarComparacaoConsorcio: formData.get("mostrarComparacaoConsorcio") === "on",
   });
   revalidatePath("/admin/configuracoes");
   revalidatePath("/simulador");
+  revalidatePath("/", "layout");
 }
 
 export async function saveCalculadorasConfigAction(formData: FormData) {

@@ -10,9 +10,13 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import {
-  computeQuickSimulatorParcela,
+  computeQuickSimulatorResult,
   type SimuladorConfigsBundle,
 } from "@/lib/simulador/preview-home";
+import { getQuickSimDefaults } from "@/lib/simulador/simulador-shared";
+import { buildSimuladorUrl } from "@/lib/home/build-simulador-url";
+import { formatCurrency } from "@/lib/utils/format";
+import { snapPrazoToLista } from "@/lib/simulador/prazos";
 import type { HomeConteudoDestaques } from "@/lib/home/load-home-data";
 import { FeaturedCasosSection } from "@/components/public/home/featured-casos-section";
 import { FeaturedDicasSection } from "@/components/public/home/featured-dicas-section";
@@ -486,29 +490,50 @@ export type HomeV2ClientProps = {
 
 export function HomeV2Client({ simuladorConfigs, conteudoDestaques }: HomeV2ClientProps) {
   const shouldReduce = useReducedMotion();
+  const quickDefaults = useMemo(() => getQuickSimDefaults(simuladorConfigs), [simuladorConfigs]);
   const [fraseAtual, setFraseAtual] = useState(0);
   const [tabSimulador, setTabSimulador] = useState<"consorcio" | "financiamento">("consorcio");
-  const [valorCredito, setValorCredito] = useState(300000);
-  const [prazo, setPrazo] = useState(100);
+  const [valorCredito, setValorCredito] = useState(quickDefaults.valorCredito);
+  const [prazoIndex, setPrazoIndex] = useState(() => {
+    const idx = quickDefaults.prazosConsorcio.indexOf(quickDefaults.prazo);
+    return idx >= 0 ? idx : 0;
+  });
   const [mascoteError, setMascoteError] = useState(false);
+
+  const prazosAtivos =
+    tabSimulador === "consorcio" ? quickDefaults.prazosConsorcio : quickDefaults.prazosFinanciamento;
+  const prazo =
+    prazosAtivos[Math.min(prazoIndex, Math.max(0, prazosAtivos.length - 1))] ?? quickDefaults.prazo;
+
+  useEffect(() => {
+    setPrazoIndex((i) => Math.min(i, Math.max(0, prazosAtivos.length - 1)));
+  }, [tabSimulador, prazosAtivos.length]);
+
+  function onTabSimulador(tab: "consorcio" | "financiamento") {
+    setTabSimulador(tab);
+    const lista = tab === "consorcio" ? quickDefaults.prazosConsorcio : quickDefaults.prazosFinanciamento;
+    const snapped = snapPrazoToLista(prazo, lista, quickDefaults.prazo);
+    const idx = lista.indexOf(snapped);
+    setPrazoIndex(idx >= 0 ? idx : 0);
+  }
 
   useEffect(() => {
     const t = setInterval(() => setFraseAtual((p) => (p + 1) % FALAS.length), 3000);
     return () => clearInterval(t);
   }, []);
 
-  const parcelaNum = useMemo(() => {
-    const n = computeQuickSimulatorParcela(
-      tabSimulador,
-      valorCredito,
-      prazo,
-      simuladorConfigs,
-      "imovel",
-    );
-    return n.toFixed(2);
-  }, [tabSimulador, valorCredito, prazo, simuladorConfigs]);
+  const quickSim = useMemo(
+    () => computeQuickSimulatorResult(tabSimulador, valorCredito, prazo, simuladorConfigs, "imovel"),
+    [tabSimulador, valorCredito, prazo, simuladorConfigs],
+  );
 
-  const parcela = parcelaNum.replace(".", ",").replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  const simuladorCompletoHref = buildSimuladorUrl({
+    solucao: tabSimulador,
+    tipo: "imovel",
+    valor: valorCredito,
+    prazo: quickSim.prazoEfetivo,
+    origem: "home_simulador_rapido",
+  });
 
   const fadeUp = {
     hidden: shouldReduce ? { opacity: 1, y: 0 } : { opacity: 0, y: 40 },
@@ -711,7 +736,7 @@ export function HomeV2Client({ simuladorConfigs, conteudoDestaques }: HomeV2Clie
                 <button
                   key={tab}
                   type="button"
-                  onClick={() => setTabSimulador(tab)}
+                  onClick={() => onTabSimulador(tab)}
                   className="flex-1 rounded-xl py-3 text-sm font-bold capitalize transition-all"
                   style={tabSimulador === tab ? { background: C.gold, color: C.bg } : { color: C.muted }}
                 >
@@ -725,11 +750,12 @@ export function HomeV2Client({ simuladorConfigs, conteudoDestaques }: HomeV2Clie
                 <label className="text-sm font-semibold" style={{ color: C.muted }}>Valor do crédito</label>
                 <span className="text-lg font-black" style={{ color: C.gold }}>R$ {valorCredito.toLocaleString("pt-BR")}</span>
               </div>
-              <input type="range" min={80000} max={2000000} step={10000}
+              <input type="range" min={quickDefaults.valorMin} max={quickDefaults.valorMax} step={10000}
                 value={valorCredito} onChange={(e) => setValorCredito(Number(e.target.value))}
                 className="w-full accent-[#C9A84C]" />
               <div className="mt-1 flex justify-between text-xs" style={{ color: C.muted }}>
-                <span>R$ 80.000</span><span>R$ 2.000.000</span>
+                <span>{formatCurrency(quickDefaults.valorMin)}</span>
+                <span>{formatCurrency(quickDefaults.valorMax)}</span>
               </div>
             </div>
 
@@ -738,26 +764,45 @@ export function HomeV2Client({ simuladorConfigs, conteudoDestaques }: HomeV2Clie
                 <label className="text-sm font-semibold" style={{ color: C.muted }}>Prazo</label>
                 <span className="text-lg font-black" style={{ color: C.gold }}>{prazo} meses</span>
               </div>
-              <input type="range" min={24} max={220} step={1}
-                value={prazo} onChange={(e) => setPrazo(Number(e.target.value))}
-                className="w-full accent-[#C9A84C]" />
-              <div className="mt-1 flex justify-between text-xs" style={{ color: C.muted }}>
-                <span>24 meses</span><span>220 meses</span>
+              <input
+                type="range"
+                min={0}
+                max={Math.max(0, prazosAtivos.length - 1)}
+                step={1}
+                value={Math.min(prazoIndex, Math.max(0, prazosAtivos.length - 1))}
+                onChange={(e) => setPrazoIndex(Number(e.target.value))}
+                className="w-full accent-[#C9A84C]"
+                disabled={prazosAtivos.length <= 1}
+              />
+              <div className="mt-1 flex flex-wrap justify-between gap-1 text-xs" style={{ color: C.muted }}>
+                {prazosAtivos.map((p, i) => (
+                  <span key={p} style={{ color: i === prazoIndex ? C.gold : C.muted }}>
+                    {p}
+                  </span>
+                ))}
               </div>
             </div>
 
             <div className="mb-6 rounded-2xl border p-6 text-center"
               style={{ background: C.bgMid, borderColor: C.goldBorder }}>
               <p className="mb-2 text-sm" style={{ color: C.muted }}>Parcela estimada</p>
-              <p className="text-4xl font-black" style={{ color: C.gold }}>
-                R$ {parcela}<span className="text-lg font-normal">/mês</span>
-              </p>
+              {quickSim.ok && quickSim.parcela != null ? (
+                <p className="text-4xl font-black" style={{ color: C.gold }}>
+                  {formatCurrency(quickSim.parcela)}
+                  <span className="text-lg font-normal">/mês</span>
+                </p>
+              ) : (
+                <p className="text-sm leading-relaxed" style={{ color: C.muted }}>
+                  {quickSim.motivo ??
+                    "Configure as taxas de financiamento no admin para exibir a simulação."}
+                </p>
+              )}
               <p className="mt-2 text-xs" style={{ color: C.muted }}>Valor orientativo. Simulação completa na próxima página.</p>
             </div>
 
             <motion.div whileHover={shouldReduce ? undefined : { scale: 1.02 }} whileTap={shouldReduce ? undefined : { scale: 0.98 }}>
               <Link
-                href="/simulador"
+                href={simuladorCompletoHref}
                 className="group relative flex w-full items-center justify-center gap-2 overflow-hidden rounded-2xl py-4 text-lg font-black"
                 style={{ background: `linear-gradient(135deg, ${C.gold}, ${C.goldLight}, ${C.gold})`, color: C.bg }}
               >

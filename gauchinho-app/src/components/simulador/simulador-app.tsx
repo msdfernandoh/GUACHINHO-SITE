@@ -41,13 +41,8 @@ import type {
 export type { SimuladorConfigs } from "./simulador-types";
 export { AVISO_PROJECAO } from "./simulador-types";
 
-const PRAZOS_FIN = [60, 84, 120, 180, 240, 300, 360];
-
-function prazosFinanciamento(prazoPadrao: number, prazoMaximo: number) {
-  const list = PRAZOS_FIN.filter((p) => p <= prazoMaximo);
-  if (!list.includes(prazoPadrao)) list.push(prazoPadrao);
-  return [...new Set(list)].sort((a, b) => a - b);
-}
+import { listPrazosConsorcio, listPrazosFinanciamento } from "@/lib/simulador/prazos";
+import { entradaPadraoFinanciamento } from "@/lib/simulador/financiamento-entrada";
 
 function buildEntradaConsorcio(
   valorCredito: number,
@@ -143,8 +138,10 @@ export function SimuladorApp({
   const [lanceProprioInput, setLanceProprioInput] = useState(0);
   const [lanceEmbutidoInput, setLanceEmbutidoInput] = useState(0);
 
-  const [valorBem, setValorBem] = useState(500_000);
-  const [entradaFin, setEntradaFin] = useState(100_000);
+  const [valorBem, setValorBem] = useState(bemCfg.valorPadraoInicial);
+  const [entradaFin, setEntradaFin] = useState(() =>
+    entradaPadraoFinanciamento(bemCfg.valorPadraoInicial, finCfg),
+  );
   const [taxaMensal, setTaxaMensal] = useState(finCfg.taxaMensalPadrao);
   const [prazoFin, setPrazoFin] = useState(finCfg.prazoPadrao);
 
@@ -189,6 +186,7 @@ export function SimuladorApp({
     if (prefill.valor != null && Number.isFinite(prefill.valor) && prefill.valor > 0) {
       setValorCredito(prefill.valor);
       setValorBem(prefill.valor);
+      setEntradaFin(entradaPadraoFinanciamento(prefill.valor, finCfg));
     }
     if (prefill.prazo != null && Number.isFinite(prefill.prazo) && prefill.prazo > 0) {
       setPrazo(prefill.prazo);
@@ -198,17 +196,12 @@ export function SimuladorApp({
       setModo("consorcio");
       setTipoBem("imovel");
     }
-  }, [prefill]);
+  }, [prefill, finCfg]);
 
-  const prazosConsorcio = useMemo(() => {
-    const list = bemCfg.prazosDisponiveis?.length
-      ? bemCfg.prazosDisponiveis
-      : [bemCfg.prazoPadrao];
-    return list.slice(0, bemCfg.quantidadePrazosExibidos ?? list.length);
-  }, [bemCfg]);
+  const prazosConsorcio = useMemo(() => listPrazosConsorcio(bemCfg), [bemCfg]);
 
   const prazosFin = useMemo(
-    () => prazosFinanciamento(finCfg.prazoPadrao, finCfg.prazoMaximo),
+    () => listPrazosFinanciamento(finCfg),
     [finCfg],
   );
 
