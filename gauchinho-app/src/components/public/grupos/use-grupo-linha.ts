@@ -79,8 +79,8 @@ export function createGrupoLinhaHandlers(
       next.usaRecursoProprio = true;
       next.recursoProprioModo = "percentual";
       next.recursoProprioInput = Math.max(config.recursoProprioInput, minPct);
-    } else if (!config.usaRecursoProprio) {
-      next.recursoProprioInput = config.recursoProprioInput;
+    } else {
+      next.usaRecursoProprio = false;
     }
     onChange(next);
   }
@@ -90,6 +90,7 @@ export function createGrupoLinhaHandlers(
       ...config,
       usaLanceEmbutido: false,
       modalidadeLanceId: null,
+      usaRecursoProprio: false,
     });
   }
 

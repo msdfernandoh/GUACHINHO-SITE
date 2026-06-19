@@ -55,5 +55,6 @@ create policy lead_atividades_staff_all on public.lead_atividades
     )
   );
 
+drop trigger if exists lead_atividades_updated_at on public.lead_atividades;
 create trigger lead_atividades_updated_at before update on public.lead_atividades
   for each row execute function public.set_updated_at();

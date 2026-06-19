@@ -48,6 +48,7 @@ create policy indices_financeiros_staff_all on public.indices_financeiros
     )
   );
 
+drop trigger if exists indices_financeiros_updated_at on public.indices_financeiros;
 create trigger indices_financeiros_updated_at before update on public.indices_financeiros
   for each row execute function public.set_updated_at();
 

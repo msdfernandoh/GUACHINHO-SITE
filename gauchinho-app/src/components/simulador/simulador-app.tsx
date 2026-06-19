@@ -41,8 +41,20 @@ import type {
 export type { SimuladorConfigs } from "./simulador-types";
 export { AVISO_PROJECAO } from "./simulador-types";
 
-import { listPrazosConsorcio, listPrazosFinanciamento } from "@/lib/simulador/prazos";
-import { entradaPadraoFinanciamento } from "@/lib/simulador/financiamento-entrada";
+import {
+  listPrazosConsorcio,
+  listPrazosFinanciamento,
+  snapPrazoToLista,
+} from "@/lib/simulador/prazos";
+import {
+  entradaFinanciamentoParaCalculo,
+  entradaPadraoFinanciamento,
+  taxaMensalFinanciamentoCalculo,
+} from "@/lib/simulador/financiamento-entrada";
+
+function clampValorBemFinanciamento(valor: number, bem: SimuladorTipoBemConfig) {
+  return Math.min(bem.valorMaximoCredito, Math.max(bem.valorMinimoCredito, valor));
+}
 
 function buildEntradaConsorcio(
   valorCredito: number,
@@ -184,19 +196,22 @@ export function SimuladorApp({
       setTipoBem(prefill.tipo);
     }
     if (prefill.valor != null && Number.isFinite(prefill.valor) && prefill.valor > 0) {
-      setValorCredito(prefill.valor);
-      setValorBem(prefill.valor);
-      setEntradaFin(entradaPadraoFinanciamento(prefill.valor, finCfg));
+      const vCred = clampValorBemFinanciamento(prefill.valor, bemCfg);
+      setValorCredito(vCred);
+      const vBem = clampValorBemFinanciamento(prefill.valor, bemCfg);
+      setValorBem(vBem);
+      setEntradaFin(entradaPadraoFinanciamento(vBem, finCfg));
     }
     if (prefill.prazo != null && Number.isFinite(prefill.prazo) && prefill.prazo > 0) {
       setPrazo(prefill.prazo);
-      setPrazoFin(prefill.prazo);
+      const prazos = listPrazosFinanciamento(finCfg);
+      setPrazoFin(snapPrazoToLista(prefill.prazo, prazos, finCfg.prazoPadrao));
     }
     if (prefill.origem === "oportunidade_imobiliaria") {
       setModo("consorcio");
       setTipoBem("imovel");
     }
-  }, [prefill, finCfg]);
+  }, [prefill, finCfg, bemCfg]);
 
   const prazosConsorcio = useMemo(() => listPrazosConsorcio(bemCfg), [bemCfg]);
 
@@ -204,6 +219,30 @@ export function SimuladorApp({
     () => listPrazosFinanciamento(finCfg),
     [finCfg],
   );
+
+  const taxaMensalCalc = useMemo(
+    () => taxaMensalFinanciamentoCalculo(taxaMensal, finCfg),
+    [taxaMensal, finCfg],
+  );
+
+  const entradaFinCalc = useMemo(
+    () => entradaFinanciamentoParaCalculo(valorBem, entradaFin),
+    [valorBem, entradaFin],
+  );
+
+  const updateValorBemFin = useCallback(
+    (raw: number) => {
+      const v = clampValorBemFinanciamento(raw, bemCfg);
+      setValorBem(v);
+      setEntradaFin(entradaPadraoFinanciamento(v, finCfg));
+    },
+    [bemCfg, finCfg],
+  );
+
+  useEffect(() => {
+    if (!prazosFin.length) return;
+    setPrazoFin((p) => snapPrazoToLista(p, prazosFin, finCfg.prazoPadrao));
+  }, [prazosFin, finCfg.prazoPadrao]);
 
   const entradaConsorcio = useMemo(
     () =>
@@ -267,11 +306,11 @@ export function SimuladorApp({
     () =>
       simularFinanciamento({
         valorBem,
-        entrada: entradaFin,
-        taxaMensalPercentual: taxaMensal,
+        entrada: entradaFinCalc,
+        taxaMensalPercentual: taxaMensalCalc,
         prazoMeses: prazoFin,
       }),
-    [valorBem, entradaFin, taxaMensal, prazoFin],
+    [valorBem, entradaFinCalc, taxaMensalCalc, prazoFin],
   );
 
   const entradaConsorcioComparativo = useMemo(() => {
@@ -289,9 +328,9 @@ export function SimuladorApp({
       valorCreditoConsorcio: valorCredito,
       prazoConsorcioMeses: prazo,
       valorBemFinanciamento: valorBem,
-      entradaFinanciamento: entradaFin,
+      entradaFinanciamento: entradaFinCalc,
       prazoFinanciamentoMeses: prazoFin,
-      taxaMensalPercentual: taxaMensal,
+      taxaMensalPercentual: taxaMensalCalc,
     });
     return compararConsorcioFinanciamento(entradaConsorcioComparativo, entradaFinCmp);
   }, [
@@ -299,8 +338,8 @@ export function SimuladorApp({
     entradaConsorcioComparativo,
     valorCredito,
     valorBem,
-    entradaFin,
-    taxaMensal,
+    entradaFinCalc,
+    taxaMensalCalc,
     prazo,
     prazoFin,
   ]);
@@ -321,18 +360,23 @@ export function SimuladorApp({
     (meses: number) =>
       simularFinanciamento({
         valorBem,
-        entrada: entradaFin,
-        taxaMensalPercentual: taxaMensal,
+        entrada: entradaFinCalc,
+        taxaMensalPercentual: taxaMensalCalc,
         prazoMeses: meses,
       }).parcelaEstimada,
-    [valorBem, entradaFin, taxaMensal],
+    [valorBem, entradaFinCalc, taxaMensalCalc],
   );
 
   function aplicarDefaultsBem(b: TipoBem) {
     if (b !== "imovel" && b !== "automovel") return;
     const c = b === "imovel" ? configs.imovel : configs.automovel;
+    const prazos = listPrazosFinanciamento(finCfg);
     setValorCredito(c.valorPadraoInicial);
+    setValorBem(c.valorPadraoInicial);
     setPrazo(c.prazoPadrao);
+    setEntradaFin(entradaPadraoFinanciamento(c.valorPadraoInicial, finCfg));
+    setTaxaMensal(finCfg.taxaMensalPadrao);
+    setPrazoFin(snapPrazoToLista(c.prazoPadrao, prazos, finCfg.prazoPadrao));
     setTaxaAdm(c.taxaAdministrativaPadrao);
     setFundoReserva(c.fundoReservaPadrao);
     setSeguro(c.seguroPrestamistaPadrao);
@@ -347,6 +391,14 @@ export function SimuladorApp({
     setModo(m);
     setResultoDestacado(false);
     setMsg(null);
+    if (m === "financiamento") {
+      const v = clampValorBemFinanciamento(valorCredito, bemCfg);
+      const prazos = listPrazosFinanciamento(finCfg);
+      setValorBem(v);
+      setEntradaFin(entradaPadraoFinanciamento(v, finCfg));
+      setTaxaMensal(finCfg.taxaMensalPadrao);
+      setPrazoFin(snapPrazoToLista(prazoFin, prazos, finCfg.prazoPadrao));
+    }
   }
 
   function scrollToResult() {
@@ -531,9 +583,9 @@ export function SimuladorApp({
               title="1. Valor do bem"
               valueLabel="Valor do bem"
               value={valorBem}
-              min={30_000}
-              max={3_000_000}
-              onChange={setValorBem}
+              min={bemCfg.valorMinimoCredito}
+              max={bemCfg.valorMaximoCredito}
+              onChange={updateValorBemFin}
             />
             <PrazoStep
               prazos={prazosFin}

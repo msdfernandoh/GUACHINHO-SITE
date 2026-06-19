@@ -24,6 +24,8 @@ export function CreditValueStep({
   step = 1000,
   onChange,
 }: Props) {
+  const sliderValue = Math.min(max, Math.max(min, value));
+
   return (
     <section className={sectionCardClass()}>
       <div className="mb-5 flex items-start gap-3">
@@ -41,7 +43,7 @@ export function CreditValueStep({
         min={min}
         max={max}
         step={step}
-        value={value}
+        value={sliderValue}
         onChange={(e) => onChange(Number(e.target.value))}
         className={cn(
           "mt-6 h-3 w-full cursor-pointer appearance-none rounded-full bg-slate-800",

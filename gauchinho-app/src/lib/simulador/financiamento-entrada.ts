@@ -18,3 +18,24 @@ export function taxaFinanciamentoEfetiva(fin: FinanciamentoConfig): number | nul
   if (t == null || !Number.isFinite(t) || t <= 0) return null;
   return t;
 }
+
+/** Taxa usada nos cálculos (estado do simulador + fallback da config). */
+export function taxaMensalFinanciamentoCalculo(
+  taxaInformada: number,
+  fin: FinanciamentoConfig,
+): number {
+  return (
+    taxaFinanciamentoEfetiva({ ...fin, taxaMensalPadrao: taxaInformada }) ??
+    taxaFinanciamentoEfetiva(fin) ??
+    1
+  );
+}
+
+/** Garante valor financiado > 0 quando o bem tem valor positivo. */
+export function entradaFinanciamentoParaCalculo(valorBem: number, entrada: number): number {
+  const v = Math.max(0, valorBem);
+  const e = Math.max(0, entrada);
+  if (v <= 0) return 0;
+  if (e >= v) return Math.max(0, v - 0.01);
+  return e;
+}

@@ -115,6 +115,7 @@ export function GrupoRowAdjustments({ grupo, cotas, modalidades, config, onChang
             ) : null}
           </div>
 
+          {pctMinRecurso > 0 && config.usaLanceEmbutido ? (
           <div className="border-t border-zinc-800 pt-3">
             <label className="flex items-center gap-2 text-xs text-zinc-200">
               <input
@@ -166,6 +167,7 @@ export function GrupoRowAdjustments({ grupo, cotas, modalidades, config, onChang
             <p className="text-[10px] text-red-400">{resultado.avisoRecursoProprio}</p>
           ) : null}
           </div>
+          ) : null}
 
           <div className="border-t border-zinc-800 pt-3">
             <p className="mb-1 text-[10px] uppercase text-zinc-500">Seguro na parcela</p>
