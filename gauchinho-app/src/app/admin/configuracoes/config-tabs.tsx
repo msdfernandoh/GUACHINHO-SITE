@@ -102,11 +102,11 @@ export function ConfigTabs({ configs, whatsapp }: Props) {
       {tab === "site" ? (
         <form action={saveSiteConfigAction} className="max-w-xl space-y-3">
           <div>
-            <Label>Nome empresa</Label>
+            <Label>Marca no header (ex.: Gauchinho)</Label>
             <Input name="nomeEmpresa" defaultValue={String(site.nomeEmpresa ?? "")} />
           </div>
           <div>
-            <Label>Subtítulo</Label>
+            <Label>Linha abaixo da marca (ex.: Consórcios e soluções financeiras)</Label>
             <Input name="subtitulo" defaultValue={String(site.subtitulo ?? "")} />
           </div>
           <div>

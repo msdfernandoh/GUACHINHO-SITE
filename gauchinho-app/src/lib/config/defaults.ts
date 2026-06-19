@@ -106,8 +106,8 @@ export const DEFAULT_HOME_CARTAS: HomeCartasConfig = {
 };
 
 export const DEFAULT_SITE: SiteConfig = {
-  nomeEmpresa: "Gauchinho Escritório de Soluções Financeiras",
-  subtitulo: "",
+  nomeEmpresa: "Gauchinho",
+  subtitulo: "Consórcios e soluções financeiras",
   descricaoInstitucional: "",
   siteUrl: "",
   statusAtivo: true,

@@ -64,6 +64,7 @@ export function ParceiroForm({ action, initial, deleteAction }: Props) {
         name="logo_url"
         label="Logomarca (vitrine home e página Parceiros)"
         defaultUrl={initial?.logo_url}
+        hint="PNG ou SVG com fundo transparente, até 5 MB. O arquivo vai para o bucket público parceiros no Supabase."
       />
       <div className="flex flex-wrap gap-6">
         <label className="flex items-center gap-2 text-sm">
