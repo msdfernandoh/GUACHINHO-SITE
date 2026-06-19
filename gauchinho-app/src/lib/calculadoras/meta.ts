@@ -20,8 +20,9 @@ export const CALCULADORAS_META: CalculadoraMeta[] = [
   {
     id: "valor_futuro",
     title: "Valor futuro",
-    question: "Quanto um valor pode render ao longo do tempo?",
-    description: "Projeção com juros compostos sobre um capital inicial.",
+    question: "Quanto um valor pode render — ou qual taxa você paga?",
+    description:
+      "Projeção com juros compostos ou descubra a taxa mensal de uma proposta a partir do crédito, prazo e parcela.",
   },
   {
     id: "financiamento",

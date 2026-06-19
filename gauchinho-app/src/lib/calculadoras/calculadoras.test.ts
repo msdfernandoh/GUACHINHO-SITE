@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { calcularAplicacaoMensal } from "./aplicacao";
 import { calcularValorFuturo } from "./valor-futuro";
+import { calcularTaxaOperacaoPrice } from "./taxa-operacao-price";
 import { calcularFinanciamentoCalculadora } from "./financiamento-calc";
 import { calcularCorrecaoValores, taxaMensalFromInput } from "./correcao";
 
@@ -36,6 +37,32 @@ describe("calcularValorFuturo", () => {
       prazoMeses: 12,
     });
     expect(r.valorFuturo).toBeGreaterThan(1000);
+  });
+});
+
+describe("calcularTaxaOperacaoPrice", () => {
+  it("exemplo proposta 100k, 430 meses, parcela 742", () => {
+    const r = calcularTaxaOperacaoPrice({
+      valorCredito: 100_000,
+      prazoMeses: 430,
+      parcela: 742,
+    });
+    expect("erro" in r).toBe(false);
+    if ("erro" in r) return;
+    expect(r.taxaMensalPercentual).toBeCloseTo(0.706, 2);
+    expect(r.taxaAnualEquivalentePercentual).toBeCloseTo(8.81, 1);
+    expect(r.jurosTotais).toBeCloseTo(742 * 430 - 100_000, 0);
+  });
+
+  it("taxa zero quando parcela = amortização linear", () => {
+    const r = calcularTaxaOperacaoPrice({
+      valorCredito: 12_000,
+      prazoMeses: 12,
+      parcela: 1000,
+    });
+    expect("erro" in r).toBe(false);
+    if ("erro" in r) return;
+    expect(r.taxaMensalPercentual).toBe(0);
   });
 });
 
