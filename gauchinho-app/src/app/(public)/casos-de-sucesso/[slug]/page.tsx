@@ -54,7 +54,7 @@ export default async function CasoSucessoSlugPage({ params }: Props) {
         entidade_id={caso.id}
       />
       <div className="mx-auto max-w-4xl px-4 pt-8 sm:px-6">
-        <ConteudoBackLink href="/casos-de-sucesso">Casos de sucesso</ConteudoBackLink>
+        <ConteudoBackLink href="/depoimentos#casos-de-sucesso">Depoimentos e casos</ConteudoBackLink>
       </div>
       <ConteudoHero title={caso.titulo} eyebrow={caso.categoria ?? undefined} subtitle={caso.descricao_curta ?? undefined} />
       <article className="mx-auto max-w-4xl px-4 pb-16 sm:px-6">

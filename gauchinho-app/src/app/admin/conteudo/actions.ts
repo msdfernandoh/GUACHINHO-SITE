@@ -54,6 +54,7 @@ export async function uploadConteudoMediaAction(formData: FormData) {
 
 const REVALidate = [
   "/",
+  "/depoimentos",
   "/casos-de-sucesso",
   "/dicas-do-tche",
   "/perguntas-frequentes",

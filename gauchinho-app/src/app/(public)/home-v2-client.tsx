@@ -20,7 +20,7 @@ import { snapPrazoToLista } from "@/lib/simulador/prazos";
 import type { HomeConteudoDestaques } from "@/lib/home/load-home-data";
 import { FeaturedCasosSection } from "@/components/public/home/featured-casos-section";
 import { FeaturedDicasSection } from "@/components/public/home/featured-dicas-section";
-import { FeaturedParceirosCmsSection } from "@/components/public/home/featured-parceiros-cms-section";
+import { HomeV2ParceirosStrip } from "@/components/public/home/home-v2-parceiros-strip";
 
 const C = {
   bg:         "#07111F",
@@ -783,48 +783,67 @@ export function HomeV2Client({ simuladorConfigs, conteudoDestaques }: HomeV2Clie
               </div>
             </div>
 
-            <div className="mb-6 rounded-2xl border p-6 text-center"
-              style={{ background: C.bgMid, borderColor: C.goldBorder }}>
+            <div className="mb-6 space-y-3">
               {quickSim.ok && quickSim.parcela != null ? (
                 tabSimulador === "consorcio" &&
                 quickSim.parcelaIntegral != null &&
                 quickSim.parcelaReduzida != null ? (
-                  <div className="grid gap-5 sm:grid-cols-2 sm:text-left">
-                    <div className="text-center sm:text-left">
-                      <p className="mb-1 text-xs font-semibold uppercase tracking-wide" style={{ color: C.muted }}>
-                        Parcela integral
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div
+                      className="rounded-2xl p-5 text-left"
+                      style={{ background: C.gold, color: C.bg }}
+                    >
+                      <p className="text-base font-black">60% da parcela</p>
+                      <p className="mt-1 text-xs leading-snug opacity-90">
+                        Parcela inicial reduzida para facilitar a entrada no plano.
                       </p>
-                      <p className="text-3xl font-black sm:text-2xl lg:text-3xl" style={{ color: C.gold }}>
-                        {formatCurrency(quickSim.parcelaIntegral)}
-                        <span className="text-base font-normal">/mês</span>
-                      </p>
-                    </div>
-                    <div className="text-center sm:text-left">
-                      <p className="mb-1 text-xs font-semibold uppercase tracking-wide" style={{ color: C.muted }}>
-                        Parcela reduzida (60%)
-                      </p>
-                      <p className="text-3xl font-black sm:text-2xl lg:text-3xl" style={{ color: C.gold }}>
+                      <p className="mt-4 text-3xl font-black lg:text-4xl">
                         {formatCurrency(quickSim.parcelaReduzida)}
-                        <span className="text-base font-normal">/mês</span>
+                      </p>
+                      <p className="mt-2 text-xs font-semibold opacity-80">60% da parcela integral</p>
+                    </div>
+                    <div
+                      className="rounded-2xl border p-5 text-left"
+                      style={{ background: C.bgMid, borderColor: C.goldBorder, color: C.text }}
+                    >
+                      <p className="text-base font-black text-white">Parcela integral</p>
+                      <p className="mt-1 text-xs leading-snug" style={{ color: C.muted }}>
+                        Pagamento completo da parcela desde o início.
+                      </p>
+                      <p className="mt-4 text-3xl font-black text-white lg:text-4xl">
+                        {formatCurrency(quickSim.parcelaIntegral)}
+                      </p>
+                      <p className="mt-2 text-xs font-semibold" style={{ color: C.muted }}>
+                        100% da parcela integral
                       </p>
                     </div>
                   </div>
                 ) : (
-                  <>
-                    <p className="mb-2 text-sm" style={{ color: C.muted }}>Parcela estimada</p>
+                  <div
+                    className="rounded-2xl border p-6 text-center"
+                    style={{ background: C.bgMid, borderColor: C.goldBorder }}
+                  >
+                    <p className="mb-2 text-sm" style={{ color: C.muted }}>
+                      Parcela estimada
+                    </p>
                     <p className="text-4xl font-black" style={{ color: C.gold }}>
                       {formatCurrency(quickSim.parcela)}
                       <span className="text-lg font-normal">/mês</span>
                     </p>
-                  </>
+                  </div>
                 )
               ) : (
-                <p className="text-sm leading-relaxed" style={{ color: C.muted }}>
-                  {quickSim.motivo ??
-                    "Configure as taxas de financiamento no admin para exibir a simulação."}
-                </p>
+                <div
+                  className="rounded-2xl border p-6 text-center"
+                  style={{ background: C.bgMid, borderColor: C.goldBorder }}
+                >
+                  <p className="text-sm leading-relaxed" style={{ color: C.muted }}>
+                    {quickSim.motivo ??
+                      "Configure as taxas de financiamento no admin para exibir a simulação."}
+                  </p>
+                </div>
               )}
-              <p className="mt-4 text-xs" style={{ color: C.muted }}>
+              <p className="text-center text-xs" style={{ color: C.muted }}>
                 Valor orientativo. Simulação completa na próxima página.
               </p>
             </div>
@@ -967,7 +986,7 @@ export function HomeV2Client({ simuladorConfigs, conteudoDestaques }: HomeV2Clie
         <FeaturedDicasSection dicas={conteudoDestaques.dicasDestaque} />
       </div>
       <div style={{ background: C.bgCard }}>
-        <FeaturedParceirosCmsSection parceiros={conteudoDestaques.parceirosDestaque} />
+        <HomeV2ParceirosStrip parceiros={conteudoDestaques.parceirosDestaque} />
       </div>
 
       {/* ══════════════════════════════════════════

@@ -4,9 +4,9 @@ import { getUsuarioNegocio } from "@/lib/auth/get-usuario";
 import { canManageConteudo } from "@/lib/auth/permissions";
 
 const LINKS = [
-  { href: "/admin/conteudo/casos", label: "Casos de sucesso", desc: "Histórias e prova social" },
+  { href: "/admin/conteudo/casos", label: "Casos de sucesso", desc: "Histórias na página Depoimentos (#casos-de-sucesso)" },
   { href: "/admin/conteudo/dicas", label: "Dicas do Tchê", desc: "Artigos educativos" },
-  { href: "/admin/conteudo/depoimentos", label: "Depoimentos", desc: "Textos e fotos de clientes" },
+  { href: "/admin/conteudo/depoimentos", label: "Depoimentos", desc: "Página pública /depoimentos (com casos abaixo)" },
   { href: "/admin/conteudo/faq", label: "FAQ", desc: "Perguntas frequentes" },
   { href: "/admin/conteudo/parceiros", label: "Parceiros", desc: "Vitrine institucional" },
 ];

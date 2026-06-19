@@ -65,9 +65,9 @@ export const IA_QUICK_ACTIONS: IaQuickAction[] = [
   },
   {
     id: "casos",
-    label: "Casos de sucesso",
-    message: "Quero ver histórias de clientes no site.",
-    href: "/casos-de-sucesso",
+    label: "Depoimentos e casos",
+    message: "Quero ver depoimentos e histórias de clientes no site.",
+    href: "/depoimentos",
     evento: "ia_cta_casos",
   },
   {

@@ -34,7 +34,7 @@ LINKS ÚTEIS (sugira quando fizer sentido, sem afirmar estoque)
 - /calculadoras — calculadoras financeiras
 - /perguntas-frequentes — FAQ institucional
 - /dicas-do-tche — conteúdos educativos
-- /casos-de-sucesso — histórias de clientes (prova social, sem promessa)
+- /depoimentos — depoimentos e casos de sucesso (prova social, sem promessa)
 
 O QUE PODE FAZER
 ${regras.podeFalar}

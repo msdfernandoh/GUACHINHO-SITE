@@ -11,7 +11,7 @@ const LINKS = [
   { href: "/simulador", label: "Simulador" },
   { href: "/calculadoras", label: "Calculadoras" },
   { href: "/grupos", label: "Grupos" },
-  { href: "/cartas-contempladas", label: "Cartas" },
+  { href: "/cartas-contempladas", label: "Contempladas" },
   { href: "/oportunidades-imobiliarias", label: "Imóveis" },
   { href: "/login", label: "Admin" },
 ] as const;

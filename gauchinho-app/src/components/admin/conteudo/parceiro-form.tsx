@@ -59,13 +59,19 @@ export function ParceiroForm({ action, initial, deleteAction }: Props) {
         <Label htmlFor="descricao">Descrição</Label>
         <Textarea id="descricao" name="descricao" rows={3} defaultValue={initial?.descricao ?? ""} />
       </div>
-      <ConteudoImageField bucket="parceiros" name="logo_url" label="Logo" defaultUrl={initial?.logo_url} />
+      <ConteudoImageField
+        bucket="parceiros"
+        name="logo_url"
+        label="Logomarca (vitrine home e página Parceiros)"
+        defaultUrl={initial?.logo_url}
+      />
       <div className="flex flex-wrap gap-6">
         <label className="flex items-center gap-2 text-sm">
           <input type="checkbox" name="publicado" defaultChecked={initial?.publicado ?? true} /> Publicado
         </label>
         <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" name="destaque" defaultChecked={initial?.destaque ?? false} /> Destaque home
+          <input type="checkbox" name="destaque" defaultChecked={initial?.destaque ?? false} /> Destaque na home
+          <span className="text-zinc-500">(faixa estreita de logos)</span>
         </label>
       </div>
       <div className="flex gap-3">
