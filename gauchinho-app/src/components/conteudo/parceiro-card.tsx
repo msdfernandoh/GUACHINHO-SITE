@@ -1,5 +1,4 @@
-import Image from "next/image";
-import type { ParceiroInstitucional } from "@/lib/conteudo/types";
+import { ConteudoLogoImage } from "@/components/conteudo/conteudo-logo-image";
 import { cn } from "@/lib/utils/cn";
 
 export function ParceiroCard({ parceiro, className }: { parceiro: ParceiroInstitucional; className?: string }) {
@@ -15,7 +14,7 @@ export function ParceiroCard({ parceiro, className }: { parceiro: ParceiroInstit
     >
       {parceiro.logo_url ? (
         <div className="relative mx-auto mb-4 h-12 w-32">
-          <Image src={parceiro.logo_url} alt="" fill className="object-contain" />
+          <ConteudoLogoImage src={parceiro.logo_url} alt={parceiro.nome} fill sizes="128px" />
         </div>
       ) : (
         <p className="text-lg font-bold text-white">{parceiro.nome}</p>

@@ -69,6 +69,7 @@ export function PublicLogo({
                 className="object-contain object-center drop-shadow-sm"
                 sizes="48px"
                 priority
+                unoptimized
               />
             </span>
           ) : null}

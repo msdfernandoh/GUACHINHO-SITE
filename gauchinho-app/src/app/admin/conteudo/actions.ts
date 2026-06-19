@@ -8,6 +8,7 @@ import { canManageConteudo, canDeleteRecords } from "@/lib/auth/permissions";
 import { slugify, uniqueSlug } from "@/lib/utils/slug";
 import { parseBrazilianNumber } from "@/lib/utils/format";
 import { uploadImagemPublica, type StorageBucketPublico } from "@/lib/storage/imagens";
+import { normalizeConteudoImageUrl } from "@/lib/conteudo/normalize-image-url";
 
 async function assertConteudo() {
   const u = await requireUsuario();
@@ -381,7 +382,7 @@ export async function saveParceiroAction(formData: FormData) {
     nome,
     tipo: str(formData, "tipo") || null,
     descricao: str(formData, "descricao") || null,
-    logo_url: str(formData, "logo_url") || null,
+    logo_url: normalizeConteudoImageUrl(str(formData, "logo_url")) || null,
     site_url: str(formData, "site_url") || null,
     whatsapp: str(formData, "whatsapp") || null,
     cidade: str(formData, "cidade") || null,

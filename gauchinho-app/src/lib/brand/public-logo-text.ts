@@ -1,8 +1,8 @@
 const DEFAULT_TITLE = "GAUCHINHO";
 const DEFAULT_SUBTITLE = "Consórcios e soluções financeiras";
 
-/** Mascote estático ao lado do wordmark (quando não há logo upload). */
-export const PUBLIC_LOGO_MASCOT_SRC = "/media/gauchinho-sem-fundo.svg";
+/** Ícone estático ao lado do wordmark (quando não há logo upload). */
+export const PUBLIC_LOGO_MASCOT_SRC = "/foto/ICONE.svg";
 
 /**
  * Evita duplicar "Escritório de Soluções Financeiras" no header:

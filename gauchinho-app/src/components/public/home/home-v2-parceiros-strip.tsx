@@ -1,8 +1,8 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { motion } from "framer-motion";
+import { ConteudoLogoImage } from "@/components/conteudo/conteudo-logo-image";
 import type { ParceiroInstitucional } from "@/lib/conteudo/types";
 
 const C = {
@@ -48,7 +48,7 @@ export function HomeV2ParceirosStrip({ parceiros }: Props) {
             >
               {p.logo_url ? (
                 <div className="relative h-9 w-[100px]">
-                  <Image src={p.logo_url} alt={p.nome} fill className="object-contain" sizes="100px" />
+                  <ConteudoLogoImage src={p.logo_url} alt={p.nome} fill sizes="100px" />
                 </div>
               ) : (
                 <span className="text-center text-xs font-bold leading-tight text-white">{p.nome}</span>
