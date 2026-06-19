@@ -33,7 +33,12 @@ export default async function AdminDashboardPage() {
     <div className="space-y-8">
       <div>
         <h1 className="text-2xl font-bold">Dashboard</h1>
-        <p className="text-sm text-zinc-500">Visão operacional do dia</p>
+        <p className="text-sm text-zinc-500">
+          Visão operacional do dia —{" "}
+          <Link href="/admin/relatorios" className="text-amber-600 hover:underline">
+            relatórios comerciais
+          </Link>
+        </p>
       </div>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {cards.map((c) => {

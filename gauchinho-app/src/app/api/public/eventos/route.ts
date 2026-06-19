@@ -8,6 +8,7 @@ export async function POST(request: Request) {
       origem?: string;
       entidade_tipo?: string;
       entidade_id?: string;
+      lead_id?: string;
     };
     if (!body.tipo_evento) {
       return NextResponse.json({ error: "tipo_evento obrigatório" }, { status: 400 });
@@ -17,6 +18,7 @@ export async function POST(request: Request) {
       origem: body.origem ?? "client",
       entidade_tipo: body.entidade_tipo,
       entidade_id: body.entidade_id,
+      lead_id: body.lead_id,
     });
     return NextResponse.json({ ok: true });
   } catch (e) {

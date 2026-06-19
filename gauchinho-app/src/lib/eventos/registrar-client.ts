@@ -6,6 +6,7 @@ export async function registrarEventoClient(input: {
   origem?: string;
   entidade_tipo?: string;
   entidade_id?: string;
+  lead_id?: string;
 }) {
   try {
     await fetch("/api/public/eventos", {

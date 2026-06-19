@@ -12,6 +12,7 @@ import {
   Building2,
   Home,
   BookOpen,
+  BarChart2,
   TrendingUp,
 } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
@@ -19,6 +20,7 @@ import { cn } from "@/lib/utils/cn";
 const staffNav = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard, exact: true },
   { href: "/admin/leads", label: "Leads", icon: Users },
+  { href: "/admin/relatorios", label: "Relatórios", icon: BarChart2 },
   { href: "/admin/propostas", label: "Propostas", icon: FileText },
   { href: "/admin/grupos", label: "Grupos", icon: Layers },
   { href: "/admin/cartas-contempladas", label: "Cartas Contempladas", icon: FileText },
