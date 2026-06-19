@@ -785,19 +785,48 @@ export function HomeV2Client({ simuladorConfigs, conteudoDestaques }: HomeV2Clie
 
             <div className="mb-6 rounded-2xl border p-6 text-center"
               style={{ background: C.bgMid, borderColor: C.goldBorder }}>
-              <p className="mb-2 text-sm" style={{ color: C.muted }}>Parcela estimada</p>
               {quickSim.ok && quickSim.parcela != null ? (
-                <p className="text-4xl font-black" style={{ color: C.gold }}>
-                  {formatCurrency(quickSim.parcela)}
-                  <span className="text-lg font-normal">/mês</span>
-                </p>
+                tabSimulador === "consorcio" &&
+                quickSim.parcelaIntegral != null &&
+                quickSim.parcelaReduzida != null ? (
+                  <div className="grid gap-5 sm:grid-cols-2 sm:text-left">
+                    <div className="text-center sm:text-left">
+                      <p className="mb-1 text-xs font-semibold uppercase tracking-wide" style={{ color: C.muted }}>
+                        Parcela integral
+                      </p>
+                      <p className="text-3xl font-black sm:text-2xl lg:text-3xl" style={{ color: C.gold }}>
+                        {formatCurrency(quickSim.parcelaIntegral)}
+                        <span className="text-base font-normal">/mês</span>
+                      </p>
+                    </div>
+                    <div className="text-center sm:text-left">
+                      <p className="mb-1 text-xs font-semibold uppercase tracking-wide" style={{ color: C.muted }}>
+                        Parcela reduzida (60%)
+                      </p>
+                      <p className="text-3xl font-black sm:text-2xl lg:text-3xl" style={{ color: C.gold }}>
+                        {formatCurrency(quickSim.parcelaReduzida)}
+                        <span className="text-base font-normal">/mês</span>
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <p className="mb-2 text-sm" style={{ color: C.muted }}>Parcela estimada</p>
+                    <p className="text-4xl font-black" style={{ color: C.gold }}>
+                      {formatCurrency(quickSim.parcela)}
+                      <span className="text-lg font-normal">/mês</span>
+                    </p>
+                  </>
+                )
               ) : (
                 <p className="text-sm leading-relaxed" style={{ color: C.muted }}>
                   {quickSim.motivo ??
                     "Configure as taxas de financiamento no admin para exibir a simulação."}
                 </p>
               )}
-              <p className="mt-2 text-xs" style={{ color: C.muted }}>Valor orientativo. Simulação completa na próxima página.</p>
+              <p className="mt-4 text-xs" style={{ color: C.muted }}>
+                Valor orientativo. Simulação completa na próxima página.
+              </p>
             </div>
 
             <motion.div whileHover={shouldReduce ? undefined : { scale: 1.02 }} whileTap={shouldReduce ? undefined : { scale: 0.98 }}>

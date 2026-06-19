@@ -1,5 +1,4 @@
 import type { FinanciamentoConfig, SimuladorTipoBemConfig } from "@/lib/config/defaults";
-import { opcoesParcelaAtivas } from "@/lib/config/simulador-parcela-opcoes";
 import { calcularParcelaConsorcio } from "@/lib/simulador/consorcio";
 import {
   entradaPadraoFinanciamento,
@@ -42,9 +41,16 @@ export function financiamentoEntradaValida(
 
 export type QuickSimulatorPreview = {
   parcela: number | null;
+  /** Consórcio na Home: parcela a 100% da amortização + seguro. */
+  parcelaIntegral?: number | null;
+  /** Consórcio na Home: parcela reduzida (60% da integral). */
+  parcelaReduzida?: number | null;
   prazoMeses: number;
   aviso: string | null;
 };
+
+/** Percentual exibido como parcela reduzida no simulador rápido da Home (consórcio). */
+export const HOME_PREVIEW_PARCELA_REDUZIDA_PERCENT = 60;
 
 export function computeQuickSimulatorPreview(
   modo: "consorcio" | "financiamento",
@@ -60,16 +66,28 @@ export function computeQuickSimulatorPreview(
   if (modo === "consorcio") {
     const prazos = listPrazosConsorcio(bemCfg);
     const prazo = snapPrazoToLista(prazoMeses, prazos, bemCfg.prazoPadrao);
-    const percentualParcela = opcoesParcelaAtivas(bemCfg)[0]?.percentual ?? 100;
-    const r = calcularParcelaConsorcio({
+    const base = {
       valorCredito: valor,
       prazoMeses: prazo,
       taxaAdministrativaPercentual: bemCfg.taxaAdministrativaPadrao,
       fundoReservaPercentual: bemCfg.fundoReservaPadrao,
       seguroPrestamistaPercentual: bemCfg.seguroPrestamistaPadrao,
-      percentualParcelaInicial: percentualParcela,
-    });
-    return { parcela: r.parcelaEstimada, prazoMeses: prazo, aviso: null };
+    };
+    const integral = calcularParcelaConsorcio({
+      ...base,
+      percentualParcelaInicial: 100,
+    }).parcelaEstimada;
+    const reduzida = calcularParcelaConsorcio({
+      ...base,
+      percentualParcelaInicial: HOME_PREVIEW_PARCELA_REDUZIDA_PERCENT,
+    }).parcelaEstimada;
+    return {
+      parcela: integral,
+      parcelaIntegral: integral,
+      parcelaReduzida: reduzida,
+      prazoMeses: prazo,
+      aviso: null,
+    };
   }
 
   const prazos = listPrazosFinanciamento(finCfg);

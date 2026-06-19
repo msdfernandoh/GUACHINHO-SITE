@@ -5,7 +5,6 @@ import {
 } from "@/lib/config/defaults";
 import { computeQuickSimulatorResult } from "@/lib/simulador/preview-home";
 import { calcularParcelaConsorcio } from "@/lib/simulador/consorcio";
-import { opcoesParcelaAtivas } from "@/lib/config/simulador-parcela-opcoes";
 import { simularFinanciamento } from "@/lib/simulador/financiamento";
 import { entradaPadraoFinanciamento } from "@/lib/simulador/financiamento-entrada";
 
@@ -19,17 +18,26 @@ describe("preview simulador Home", () => {
   it("consórcio usa mesma fórmula do simulador completo", () => {
     const valor = 500_000;
     const prazo = 180;
-    const pct = opcoesParcelaAtivas(bundle.imovel)[0]?.percentual ?? 100;
     const home = computeQuickSimulatorResult("consorcio", valor, prazo, bundle);
-    const full = calcularParcelaConsorcio({
+    const integral = calcularParcelaConsorcio({
       valorCredito: valor,
       prazoMeses: home.prazoEfetivo,
       taxaAdministrativaPercentual: bundle.imovel.taxaAdministrativaPadrao,
       fundoReservaPercentual: bundle.imovel.fundoReservaPadrao,
       seguroPrestamistaPercentual: bundle.imovel.seguroPrestamistaPadrao,
-      percentualParcelaInicial: pct,
+      percentualParcelaInicial: 100,
     }).parcelaEstimada;
-    expect(home.parcela).toBeCloseTo(full, 2);
+    const reduzida = calcularParcelaConsorcio({
+      valorCredito: valor,
+      prazoMeses: home.prazoEfetivo,
+      taxaAdministrativaPercentual: bundle.imovel.taxaAdministrativaPadrao,
+      fundoReservaPercentual: bundle.imovel.fundoReservaPadrao,
+      seguroPrestamistaPercentual: bundle.imovel.seguroPrestamistaPadrao,
+      percentualParcelaInicial: 60,
+    }).parcelaEstimada;
+    expect(home.parcelaIntegral).toBeCloseTo(integral, 2);
+    expect(home.parcelaReduzida).toBeCloseTo(reduzida, 2);
+    expect(home.parcela).toBeCloseTo(integral, 2);
   });
 
   it("financiamento usa taxa e entrada da config oficial", () => {

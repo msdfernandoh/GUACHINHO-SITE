@@ -24,6 +24,8 @@ export {
 export type QuickSimulatorResult = {
   ok: boolean;
   parcela: number | null;
+  parcelaIntegral?: number | null;
+  parcelaReduzida?: number | null;
   prazoEfetivo: number;
   motivo: string | null;
 };
@@ -40,6 +42,8 @@ export function computeQuickSimulatorResult(
   return {
     ok,
     parcela: ok ? r.parcela : null,
+    parcelaIntegral: r.parcelaIntegral ?? null,
+    parcelaReduzida: r.parcelaReduzida ?? null,
     prazoEfetivo: r.prazoMeses,
     motivo: ok ? null : r.aviso,
   };
