@@ -33,25 +33,24 @@ export function HomeV2ParceirosStrip({ parceiros }: Props) {
         </p>
       </div>
 
-      <div className="mx-auto mt-8 max-w-2xl">
+      <div className="mx-auto mt-8 max-w-3xl">
         <div
-          className="flex gap-3 overflow-x-auto rounded-2xl border px-4 py-5 scrollbar-thin sm:justify-center sm:overflow-x-visible sm:flex-wrap"
+          className="flex gap-4 overflow-x-auto rounded-2xl border px-5 py-6 scrollbar-thin sm:justify-center sm:overflow-x-visible sm:flex-wrap"
           style={{ background: C.bg, borderColor: C.goldBorder }}
         >
           {parceiros.map((p) => (
             <motion.div
               key={p.id}
               whileHover={{ scale: 1.03 }}
-              className="flex h-16 min-w-[120px] shrink-0 items-center justify-center rounded-xl border px-4 sm:min-w-[130px]"
-              style={{ borderColor: C.border, background: "rgba(13,30,51,0.8)" }}
+              className="flex h-[7.5rem] w-[7.5rem] shrink-0 items-center justify-center rounded-2xl border border-zinc-200/90 bg-white p-3 shadow-md shadow-black/25 sm:h-32 sm:w-32 sm:p-4"
               title={p.nome}
             >
               {p.logo_url ? (
-                <div className="relative h-9 w-[100px]">
-                  <ConteudoLogoImage src={p.logo_url} alt={p.nome} fill sizes="100px" />
+                <div className="relative h-full w-full min-h-[4.5rem] min-w-[4.5rem]">
+                  <ConteudoLogoImage src={p.logo_url} alt={p.nome} fill sizes="128px" />
                 </div>
               ) : (
-                <span className="text-center text-xs font-bold leading-tight text-white">{p.nome}</span>
+                <span className="text-center text-xs font-bold leading-tight text-zinc-800">{p.nome}</span>
               )}
             </motion.div>
           ))}
