@@ -132,10 +132,15 @@ export function AplicacaoMensalCalculator({ indices, taxaPadrao, prefill, onResu
     );
   }
 
+  const hasResult = result != null;
+  const isCompararTodos = result?.perfilSelecionado === "comparar_todos";
+  const showConsorcio = Boolean(result?.compararComConsorcio && result?.consorcio);
+
   return (
-    <div className="space-y-8 lg:space-y-10">
-      <div className="grid gap-6 lg:grid-cols-2 lg:items-start lg:gap-8">
-        <div className={sectionCardClass("border-amber-500/20 p-5 shadow-lg shadow-black/25 sm:p-7")}>
+    <div className="grid gap-6 lg:grid-cols-12 lg:items-start lg:gap-8">
+      {/* Formulário — coluna vertical estreita, fixa ao rolar no desktop */}
+      <div className="lg:col-span-5 lg:sticky lg:top-24">
+        <div className={sectionCardClass("border-amber-500/20 p-5 shadow-lg shadow-black/25 sm:p-6")}>
           <p className="text-base font-bold text-white">Configure sua simulação</p>
           <p className="mt-2 text-xs leading-relaxed text-slate-500">{AVISO_APLICACAO}</p>
 
@@ -165,7 +170,7 @@ export function AplicacaoMensalCalculator({ indices, taxaPadrao, prefill, onResu
           ) : null}
 
           <FormSection title="Dados da aplicação">
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-4">
               <div>
                 <Label className="text-sm font-medium text-slate-200">Valor inicial</Label>
                 <MoneyInput
@@ -193,8 +198,8 @@ export function AplicacaoMensalCalculator({ indices, taxaPadrao, prefill, onResu
           </FormSection>
 
           <FormSection title="Perfil de rendimento">
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="sm:col-span-2">
+            <div className="grid gap-4">
+              <div>
                 <Label className="text-sm font-medium text-slate-200">Perfil de cálculo</Label>
                 <Select
                   value={perfil}
@@ -211,7 +216,7 @@ export function AplicacaoMensalCalculator({ indices, taxaPadrao, prefill, onResu
                 </Select>
               </div>
               {perfil === "cdi" || perfil === "comparar_todos" ? (
-                <div className="sm:col-span-2">
+                <div>
                   <Label className="text-sm font-medium text-slate-200">Percentual do CDI</Label>
                   <Select
                     value={cdiPreset}
@@ -273,7 +278,7 @@ export function AplicacaoMensalCalculator({ indices, taxaPadrao, prefill, onResu
               </span>
             </label>
             {compararConsorcio ? (
-              <div className="mt-4 grid gap-4 sm:grid-cols-2">
+              <div className="mt-4 grid gap-4">
                 <Field
                   label="Reajuste anual do crédito (%)"
                   value={reajusteCredito}
@@ -290,7 +295,6 @@ export function AplicacaoMensalCalculator({ indices, taxaPadrao, prefill, onResu
                   label="Prazo do consórcio (meses)"
                   value={prazoConsorcio}
                   onChange={setPrazoConsorcio}
-                  className="sm:col-span-2"
                 />
               </div>
             ) : null}
@@ -299,172 +303,163 @@ export function AplicacaoMensalCalculator({ indices, taxaPadrao, prefill, onResu
           <Button
             type="button"
             variant="gold"
-            className="mt-6 w-full min-h-12 text-base font-bold shadow-lg shadow-amber-900/25 sm:w-auto sm:min-w-[10rem]"
+            className="mt-6 w-full min-h-12 text-base font-bold shadow-lg shadow-amber-900/25"
             onClick={calcular}
           >
             Calcular cenário
           </Button>
         </div>
+      </div>
 
-        {result && result.perfilSelecionado !== "comparar_todos" ? (
-          <CalculatorResultCard
-            title="Resultado principal"
-            variant="accent"
-            heroMetric={{
-              label: "Valor final estimado",
-              value: formatCurrency(result.valorFinalEstimado),
-            }}
-            rows={[
-              { label: "Total investido", value: formatCurrency(result.totalInvestido) },
-              { label: "Rendimento estimado", value: formatCurrency(result.rendimentoEstimado) },
-              ...(result.taxaAnualUsada != null
-                ? [
-                    {
-                      label: "Índice usado",
-                      value: `${result.taxaAnualUsada.toFixed(2)}% a.a.`,
-                    },
-                  ]
-                : []),
-              ...(result.taxaMensalEquivalente != null
-                ? [
-                    {
-                      label: "Taxa mensal equivalente",
-                      value: `${result.taxaMensalEquivalente.toFixed(2)}% a.m.`,
-                    },
-                  ]
-                : []),
-              {
-                label: "Prazo da aplicação",
-                value: `${Math.floor(num(prazo))} meses`,
-              },
-              ...(ultimaAtualizacao
-                ? [{ label: "Última atualização", value: ultimaAtualizacao }]
-                : []),
-            ]}
-            extra={
-              result.comparativo.some((c) => c.estimativaTesouro) ? (
-                <p className="text-xs leading-relaxed text-slate-400">{AVISO_TESOURO}</p>
-              ) : null
-            }
-          />
-        ) : result && result.perfilSelecionado === "comparar_todos" ? (
-          <div className={sectionCardClass("border-amber-500/25 p-6")}>
-            <p className="text-xs font-bold uppercase tracking-[0.2em] text-amber-400">Comparar todos</p>
-            <p className="mt-2 text-sm text-slate-400">Melhor cenário estimado abaixo.</p>
-          </div>
-        ) : (
+      {/* Resultados — coluna larga ao lado do formulário */}
+      <div className="lg:col-span-7">
+        {!hasResult ? (
           <div
             className={cn(
               sectionCardClass("border-dashed border-slate-700/60 p-8"),
-              "hidden lg:flex lg:min-h-[16rem] lg:flex-col lg:items-center lg:justify-center lg:text-center",
+              "flex min-h-[16rem] flex-col items-center justify-center text-center",
             )}
           >
-            <p className="text-sm font-medium text-slate-400">Preencha os dados ao lado</p>
-            <p className="mt-1 text-xs text-slate-500">Clique em Calcular cenário para ver o resultado aqui.</p>
+            <p className="text-sm font-medium text-slate-400">Seu resultado aparece aqui</p>
+            <p className="mt-1 text-xs text-slate-500">
+              Preencha os dados ao lado e clique em Calcular cenário.
+            </p>
+          </div>
+        ) : isCompararTodos ? (
+          <div className="space-y-4">
+            <div className={sectionCardClass("border-amber-500/25 p-5")}>
+              <p className="text-xs font-bold uppercase tracking-[0.2em] text-amber-400">Comparar todos</p>
+              <p className="mt-2 text-sm text-slate-400">Melhor cenário estimado destacado abaixo.</p>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              {result!.comparativo.map((item) => (
+                <div
+                  key={item.codigo}
+                  className={cn(
+                    sectionCardClass("p-5"),
+                    item.codigo === result!.melhorResultadoEstimado &&
+                      "border-emerald-500/40 ring-1 ring-emerald-500/20",
+                  )}
+                >
+                  <p className="text-sm font-bold text-white">{item.label}</p>
+                  <p className="mt-1 text-xs text-slate-400">{item.taxaMensalPercentual.toFixed(2)}% a.m.</p>
+                  <p className="mt-3 text-2xl font-extrabold text-amber-400">
+                    {formatCurrency(item.resultado.valorFuturo)}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-5">
+            {showConsorcio ? (
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[0.22em] text-amber-400/95">
+                  Comparativo patrimonial
+                </p>
+                <h2 className="mt-1 text-xl font-bold text-white sm:text-2xl">
+                  Aplicação mensal × Consórcio programado
+                </h2>
+                <p className="mt-2 max-w-2xl text-sm text-slate-500">{TEXTO_PARCELA_REDUZIDA_COMPARATIVO}</p>
+              </div>
+            ) : null}
+
+            <div className={cn("grid gap-4", showConsorcio && "sm:grid-cols-2")}>
+              <CalculatorResultCard
+                title="Resultado da aplicação"
+                variant="accent"
+                heroMetric={{
+                  label: "Valor final estimado",
+                  value: formatCurrency(result!.valorFinalEstimado),
+                }}
+                rows={[
+                  { label: "Total investido", value: formatCurrency(result!.totalInvestido) },
+                  { label: "Rendimento estimado", value: formatCurrency(result!.rendimentoEstimado) },
+                  ...(result!.taxaAnualUsada != null
+                    ? [{ label: "Índice usado", value: `${result!.taxaAnualUsada.toFixed(2)}% a.a.` }]
+                    : []),
+                  ...(result!.taxaMensalEquivalente != null
+                    ? [
+                        {
+                          label: "Taxa mensal equivalente",
+                          value: `${result!.taxaMensalEquivalente.toFixed(2)}% a.m.`,
+                        },
+                      ]
+                    : []),
+                  { label: "Prazo da aplicação", value: `${Math.floor(num(prazo))} meses` },
+                  ...(ultimaAtualizacao
+                    ? [{ label: "Última atualização", value: ultimaAtualizacao }]
+                    : []),
+                ]}
+                extra={
+                  result!.comparativo.some((c) => c.estimativaTesouro) ? (
+                    <p className="text-xs leading-relaxed text-slate-400">{AVISO_TESOURO}</p>
+                  ) : null
+                }
+              />
+
+              {showConsorcio && result!.consorcio ? (
+                <CalculatorResultCard
+                  title="Consórcio programado"
+                  variant="default"
+                  heroMetric={{
+                    label: "Crédito reajustado estimado",
+                    value: formatCurrency(result!.consorcio.creditoReajustadoConsorcio),
+                  }}
+                  rows={[
+                    {
+                      label: "Parcela reduzida estimada",
+                      value: formatCurrency(result!.consorcio.parcelaReduzidaEstimada),
+                    },
+                    {
+                      label: "Parcela integral estimada",
+                      value: formatCurrency(result!.consorcio.parcelaIntegralEstimada),
+                    },
+                    {
+                      label: "Reajuste anual usado",
+                      value: `${result!.consorcio.reajusteAnualCreditoPercentual.toFixed(2)}% a.a.`,
+                    },
+                    {
+                      label: "Prazo do consórcio",
+                      value: `${result!.consorcio.prazoConsorcioMeses} meses`,
+                    },
+                  ]}
+                  extra={
+                    <p className="text-xs leading-relaxed text-slate-500">{TEXTO_PRAZO_COMPARACAO_CONSORCIO}</p>
+                  }
+                />
+              ) : null}
+            </div>
+
+            {showConsorcio && result!.consorcio && result!.diferencaPatrimonial != null ? (
+              <CalculatorResultCard
+                title="Diferença patrimonial"
+                variant="sell"
+                heroMetric={{
+                  label: "Diferença estimada",
+                  value: formatCurrency(result!.diferencaPatrimonial),
+                }}
+                rows={[
+                  {
+                    label: "Crédito reajustado (consórcio)",
+                    value: formatCurrency(result!.consorcio.creditoReajustadoConsorcio),
+                  },
+                  {
+                    label: "Valor final da aplicação",
+                    value: formatCurrency(result!.valorFinalEstimado),
+                  },
+                ]}
+                extra={
+                  <>
+                    <p className="text-sm leading-relaxed text-slate-300">{TEXTO_DIFERENCA_PATRIMONIAL}</p>
+                    <p className="mt-3 text-xs leading-relaxed text-slate-500">{AVISO_COMPARATIVO_CONSORCIO}</p>
+                  </>
+                }
+              />
+            ) : null}
           </div>
         )}
       </div>
-
-      {result && result.perfilSelecionado === "comparar_todos" ? (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {result.comparativo.map((item) => (
-            <div
-              key={item.codigo}
-              className={cn(
-                sectionCardClass("p-5"),
-                item.codigo === result.melhorResultadoEstimado && "border-emerald-500/40 ring-1 ring-emerald-500/20",
-              )}
-            >
-              <p className="text-sm font-bold text-white">{item.label}</p>
-              <p className="mt-1 text-xs text-slate-400">{item.taxaMensalPercentual.toFixed(2)}% a.m.</p>
-              <p className="mt-3 text-2xl font-extrabold text-amber-400">
-                {formatCurrency(item.resultado.valorFuturo)}
-              </p>
-            </div>
-          ))}
-        </div>
-      ) : null}
-
-      {result?.compararComConsorcio && result.consorcio ? (
-        <section className="space-y-6">
-          <div className="text-center">
-            <p className="text-xs font-bold uppercase tracking-[0.22em] text-amber-400/95">
-              Comparativo patrimonial
-            </p>
-            <h2 className="mt-2 text-xl font-bold text-white sm:text-2xl">
-              Aplicação mensal × Consórcio programado
-            </h2>
-            <p className="mx-auto mt-2 max-w-2xl text-sm text-slate-500">{TEXTO_PARCELA_REDUZIDA_COMPARATIVO}</p>
-          </div>
-
-          <div className="grid gap-4 lg:grid-cols-2">
-            <CalculatorResultCard
-              title="Aplicação mensal"
-              variant="default"
-              heroMetric={{
-                label: "Valor final da aplicação",
-                value: formatCurrency(result.valorFinalEstimado),
-              }}
-              rows={[
-                { label: "Total investido", value: formatCurrency(result.totalInvestido) },
-                { label: "Rendimento estimado", value: formatCurrency(result.rendimentoEstimado) },
-              ]}
-            />
-            <CalculatorResultCard
-              title="Consórcio programado"
-              variant="default"
-              heroMetric={{
-                label: "Crédito reajustado estimado",
-                value: formatCurrency(result.consorcio.creditoReajustadoConsorcio),
-              }}
-              rows={[
-                {
-                  label: "Parcela reduzida estimada",
-                  value: formatCurrency(result.consorcio.parcelaReduzidaEstimada),
-                },
-                {
-                  label: "Parcela integral estimada",
-                  value: formatCurrency(result.consorcio.parcelaIntegralEstimada),
-                },
-                {
-                  label: "Prazo do consórcio",
-                  value: `${result.consorcio.prazoConsorcioMeses} meses`,
-                },
-              ]}
-              extra={
-                <p className="text-xs leading-relaxed text-slate-500">{TEXTO_PRAZO_COMPARACAO_CONSORCIO}</p>
-              }
-            />
-          </div>
-
-          {result.diferencaPatrimonial != null ? (
-            <CalculatorResultCard
-              title="Diferença patrimonial"
-              variant="sell"
-              heroMetric={{
-                label: "Diferença estimada",
-                value: formatCurrency(result.diferencaPatrimonial),
-              }}
-              rows={[
-                {
-                  label: "Crédito reajustado (consórcio)",
-                  value: formatCurrency(result.consorcio.creditoReajustadoConsorcio),
-                },
-                {
-                  label: "Valor final da aplicação",
-                  value: formatCurrency(result.valorFinalEstimado),
-                },
-              ]}
-              extra={
-                <>
-                  <p className="text-sm leading-relaxed text-slate-300">{TEXTO_DIFERENCA_PATRIMONIAL}</p>
-                  <p className="mt-3 text-xs leading-relaxed text-slate-500">{AVISO_COMPARATIVO_CONSORCIO}</p>
-                </>
-              }
-            />
-          ) : null}
-        </section>
-      ) : null}
     </div>
   );
 }
