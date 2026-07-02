@@ -11,9 +11,11 @@ export type DadosLeadExtraidos = {
   cidade?: string;
   tipoInteresse?: string;
   produtoInteresse?: string;
+  tipoCredito?: string;
   valorAproximado?: number;
   urgencia?: string;
   recursoProprio?: number;
+  observacao?: string;
   resumo?: string;
 };
 

@@ -38,4 +38,15 @@ describe("taxaMensalAplicacaoFromIndice", () => {
     const t110 = taxaMensalAplicacaoFromIndice("cdi", cdi, { percentualCdi: 110 })!;
     expect(t110).toBeGreaterThan(t100);
   });
+
+  it("CDI 14,15% a.a. não vira 14,15% a.m.", () => {
+    const cdi1415: IndicePublico = {
+      ...cdi,
+      valor_anual: 14.15,
+      valor_acumulado_12m: 14.15,
+    };
+    const t = taxaMensalAplicacaoFromIndice("cdi", cdi1415, { percentualCdi: 100 })!;
+    expect(t).toBeCloseTo(taxaAnualParaMensalPercentual(14.15), 1);
+    expect(t).toBeLessThan(2);
+  });
 });

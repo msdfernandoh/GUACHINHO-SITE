@@ -7,6 +7,7 @@ import { canEditSettings } from "@/lib/auth/permissions";
 import { saveConfigJson } from "@/server/config";
 
 import { parsePrazosLista } from "@/lib/simulador/prazos";
+import type { FinanciamentoTipoConfig } from "@/lib/config/financiamento-por-tipo";
 
 async function requireMasterConfig() {
   const u = await requireUsuario();
@@ -131,17 +132,25 @@ export async function saveSimuladorAutomovelConfigAction(formData: FormData) {
   revalidatePath("/", "layout");
 }
 
+function financiamentoTipoFromForm(formData: FormData, prefix: "imovel" | "veiculo"): FinanciamentoTipoConfig {
+  return {
+    taxaMensalPercentual: numField(formData, `${prefix}_taxaMensalPercentual`, 1),
+    taxaAnualPercentual: numField(formData, `${prefix}_taxaAnualPercentual`, 0),
+    entradaPercentualPadrao: numField(formData, `${prefix}_entradaPercentualPadrao`, 0),
+    prazoPadrao: numField(formData, `${prefix}_prazoPadrao`, 60),
+    prazoMaximo: numField(formData, `${prefix}_prazoMaximo`, 360),
+    prazosDisponiveis: parsePrazosLista(String(formData.get(`${prefix}_prazosDisponiveis`) ?? "")),
+    parceiroPadrao: String(formData.get(`${prefix}_parceiroPadrao`) ?? ""),
+    mostrarComparacaoComConsorcio: formData.get(`${prefix}_mostrarComparacaoComConsorcio`) === "on",
+    indiceReajusteOpcional: 0,
+  };
+}
+
 export async function saveFinanciamentoConfigAction(formData: FormData) {
   await requireMasterConfig();
   await saveConfigJson("financiamento_config", {
-    taxaMensalPadrao: numField(formData, "taxaMensalPadrao", 1),
-    entradaMinimaSugeridaPercentual: numField(formData, "entradaMinimaSugeridaPercentual"),
-    prazoPadrao: numField(formData, "prazoPadrao"),
-    prazoMaximo: numField(formData, "prazoMaximo"),
-    prazosDisponiveis: parsePrazosLista(String(formData.get("prazosDisponiveis") ?? "")),
-    indiceReajusteOpcional: numField(formData, "indiceReajusteOpcional"),
-    parceiroPadrao: String(formData.get("parceiroPadrao") ?? ""),
-    mostrarComparacaoConsorcio: formData.get("mostrarComparacaoConsorcio") === "on",
+    imovel: financiamentoTipoFromForm(formData, "imovel"),
+    veiculo: financiamentoTipoFromForm(formData, "veiculo"),
   });
   revalidatePath("/admin/configuracoes");
   revalidatePath("/simulador");
@@ -155,6 +164,7 @@ export async function saveCalculadorasConfigAction(formData: FormData) {
     ativoValorFuturo: formData.get("ativoValorFuturo") === "on",
     ativoFinanciamento: formData.get("ativoFinanciamento") === "on",
     ativoCorrecao: formData.get("ativoCorrecao") === "on",
+    ativoJurosReal: formData.get("ativoJurosReal") === "on",
     rentabilidadeMensalPadrao: numField(formData, "rentabilidadeMensalPadrao", 0.8),
     taxaFinanciamentoPadrao: numField(formData, "taxaFinanciamentoPadrao", 1),
     textoCtaAposResultado: String(formData.get("textoCtaAposResultado") ?? ""),

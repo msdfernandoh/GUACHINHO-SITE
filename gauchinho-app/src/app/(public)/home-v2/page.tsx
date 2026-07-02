@@ -1,7 +1,7 @@
 "use client";
 
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import {
   Brain, Target, BarChart2, FileText,
   Home, Car, Bike, Truck, Tractor,
@@ -154,28 +154,44 @@ const GRUPOS = [
 ];
 
 // ─── SEÇÃO OBJETIVOS CINEMATOGRÁFICA ──────────────────────
+const CAROUSEL_INTERVAL_MS = 6000;
+
 function ObjetivosSection() {
   const shouldReduce = useReducedMotion();
   const [active, setActive] = useState(0);
   const [prev, setPrev] = useState<number | null>(null);
   const [dir, setDir] = useState(1);
   const [paused, setPaused] = useState(false);
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const go = (next: number, direction: number) => {
-    setPrev(active);
-    setDir(direction);
-    setActive(next);
-  };
+  const goToIndex = useCallback((next: number, direction: number) => {
+    setActive((current) => {
+      setPrev(current);
+      setDir(direction);
+      return next;
+    });
+  }, []);
 
-  const goNext = () => go((active + 1) % SONHOS.length, 1);
-  const goPrev = () => go((active - 1 + SONHOS.length) % SONHOS.length, -1);
+  const goNext = useCallback(() => {
+    setActive((current) => {
+      setPrev(current);
+      setDir(1);
+      return (current + 1) % SONHOS.length;
+    });
+  }, []);
+
+  const goPrev = useCallback(() => {
+    setActive((current) => {
+      setPrev(current);
+      setDir(-1);
+      return (current - 1 + SONHOS.length) % SONHOS.length;
+    });
+  }, []);
 
   useEffect(() => {
-    if (paused || shouldReduce) return;
-    timerRef.current = setInterval(goNext, 4000);
-    return () => { if (timerRef.current) clearInterval(timerRef.current); };
-  }, [active, paused, shouldReduce]);
+    if (paused || shouldReduce || SONHOS.length <= 1) return;
+    const id = window.setInterval(goNext, CAROUSEL_INTERVAL_MS);
+    return () => window.clearInterval(id);
+  }, [paused, shouldReduce, goNext]);
 
   const item = SONHOS[active]!;
   const Icon = item.icon;
@@ -244,7 +260,7 @@ function ObjetivosSection() {
             className="pointer-events-none absolute inset-x-0 h-[2px] z-10"
             style={{ background: `linear-gradient(to right, transparent, ${C.gold}, transparent)`, opacity: 0.4 }}
             animate={{ top: ["0%", "100%"] }}
-            transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
+            transition={{ duration: CAROUSEL_INTERVAL_MS / 1000, repeat: Infinity, ease: "linear" }}
             aria-hidden
           />
         )}
@@ -350,11 +366,6 @@ function ObjetivosSection() {
                 <p className="mb-1 text-base font-semibold" style={{ color: C.gold, textShadow: "0 1px 8px rgba(0,0,0,0.9)" }}>
                   {item.sub}
                 </p>
-                {"legenda" in item && (
-                  <p className="mb-4 font-mono text-xs" style={{ color: "rgba(201,168,76,0.6)", textShadow: "0 1px 6px rgba(0,0,0,0.9)" }}>
-                    📁 {(item as typeof item & { legenda: string }).legenda}
-                  </p>
-                )}
                 <p
                   className="mb-8 max-w-lg text-base leading-relaxed"
                   style={{ color: "rgba(255,255,255,0.85)", textShadow: "0 1px 12px rgba(0,0,0,0.9)" }}
@@ -386,7 +397,7 @@ function ObjetivosSection() {
                   style={{ background: `linear-gradient(to right, ${C.gold}, ${C.goldLight})` }}
                   initial={{ width: "0%" }}
                   animate={{ width: paused ? undefined : "100%" }}
-                  transition={{ duration: 4, ease: "linear" }}
+                  transition={{ duration: CAROUSEL_INTERVAL_MS / 1000, ease: "linear" }}
                 />
               )}
             </div>
@@ -401,7 +412,7 @@ function ObjetivosSection() {
                 <motion.button
                   key={s.id}
                   type="button"
-                  onClick={() => go(i, i > active ? 1 : -1)}
+                  onClick={() => goToIndex(i, i > active ? 1 : -1)}
                   whileHover={shouldReduce ? undefined : { x: isOn ? 0 : 4 }}
                   className="flex items-center gap-3 rounded-2xl border px-4 py-3 text-left transition-all duration-200"
                   style={{
@@ -449,7 +460,7 @@ function ObjetivosSection() {
             <button
               key={s.id}
               type="button"
-              onClick={() => go(i, i > active ? 1 : -1)}
+              onClick={() => goToIndex(i, i > active ? 1 : -1)}
               className="h-2 rounded-full transition-all duration-300"
               style={{
                 width: i === active ? "24px" : "8px",

@@ -1,0 +1,23 @@
+export type SeguradoraRow = {
+  id: string;
+  nome: string;
+  slug: string | null;
+  logo_url: string | null;
+  imagem_url: string | null;
+  cidade: string | null;
+  estado: string | null;
+  endereco: string | null;
+  numero: string | null;
+  bairro: string | null;
+  complemento: string | null;
+  telefone: string | null;
+  whatsapp: string | null;
+  site_url: string | null;
+  descricao: string | null;
+  observacoes: string | null;
+  ativo: boolean;
+  publicado: boolean;
+  ordem: number;
+  created_at: string;
+  updated_at: string;
+};

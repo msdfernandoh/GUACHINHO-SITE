@@ -40,9 +40,13 @@ function Metric({
 
 export function ConsorcioResultCards({ contemplacao, estrategiaLabel }: Props) {
   const c = contemplacao;
-  const temLance = c.entrada > 0 || c.lanceEmbutido > 0;
+  const temLanceAvancado = c.entrada > 0 || c.lanceEmbutido > 0;
   const lancePropriaCarta = calcularLancePropriaCartaSemBolso(c.saldoDevedorEstimado);
   const pctLanceLabel = Math.round(PERCENTUAL_LANCE_PROPIA_CARTA_PADRAO * 100);
+  const creditoLiquidoEstimado = Math.max(0, c.valorCredito - lancePropriaCarta);
+  const saldoDevedorAposLanceEmbutido = Math.max(0, c.saldoDevedorEstimado - lancePropriaCarta);
+  const saldoPosContemplacaoExibicao =
+    c.lanceEmbutido > 0 || c.entrada > 0 ? c.saldoDevedorFinal : saldoDevedorAposLanceEmbutido;
 
   return (
     <section className={sectionCardClass("border-amber-500/30 bg-gradient-to-br from-slate-900/90 to-slate-950")}>
@@ -71,17 +75,20 @@ export function ConsorcioResultCards({ contemplacao, estrategiaLabel }: Props) {
         <Metric
           label="Lance usando própria carta sem tirar dinheiro do bolso"
           value={formatCurrency(lancePropriaCarta)}
-          sub={`${pctLanceLabel}% do saldo devedor estimado`}
+          sub={`${pctLanceLabel}% do saldo devedor · saldo após lance ${formatCurrency(saldoDevedorAposLanceEmbutido)}`}
         />
         <Metric
-          label="Custo adm. efetivo mensal"
+          label="Crédito líquido estimado"
+          value={formatCurrency(creditoLiquidoEstimado)}
+          sub="Crédito contratado menos lance embutido (25% do saldo devedor)"
+          highlight
+        />
+        <Metric
+          label="Custo adm. efetivo"
           value={`${formatarPercentualSimulador(c.custoAdmEfetivoMensalPercentual)} a.m.`}
+          sub={`${formatarPercentualSimulador(c.custoAdmEfetivoAnualPercentual)} a.a.`}
         />
-        <Metric
-          label="Custo adm. efetivo anual"
-          value={`${formatarPercentualSimulador(c.custoAdmEfetivoAnualPercentual)} a.a.`}
-        />
-        {temLance ? (
+        {temLanceAvancado ? (
           <>
             <Metric label="Lance próprio" value={formatCurrency(c.entrada)} />
             <Metric label="Lance embutido" value={formatCurrency(c.lanceEmbutido)} />
@@ -101,7 +108,10 @@ export function ConsorcioResultCards({ contemplacao, estrategiaLabel }: Props) {
         <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
           <Metric label="Parcela pós-contemplação" value={formatCurrency(c.parcelaPosContemplacao)} highlight />
           <Metric label="Parcelas restantes" value={String(c.parcelasRestantes)} />
-          <Metric label="Saldo após 1º mês (simulação)" value={formatCurrency(c.saldoDevedorFinal)} />
+          <Metric
+            label="Saldo após lance embutido (est.)"
+            value={formatCurrency(saldoPosContemplacaoExibicao)}
+          />
         </div>
       </details>
     </section>

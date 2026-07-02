@@ -16,6 +16,8 @@ import { AplicacaoMensalCalculator } from "./aplicacao-mensal-calculator";
 import { ValorFuturoCalculator } from "./valor-futuro-calculator";
 import { FinanciamentoCalculator } from "./financiamento-calculator";
 import { CorrecaoValoresCalculator } from "./correcao-valores-calculator";
+import { JurosRealCalculator } from "./juros-real-calculator";
+import { MascoteGauchinho } from "@/components/public/mascote-gauchinho";
 
 import type { IndicePublico } from "@/lib/indices-financeiros/types";
 
@@ -167,6 +169,9 @@ export function CalculadorasPage({ config, initialCalc, indices }: Props) {
 
   return (
     <div className={simuladorShell}>
+      <div className="pointer-events-none fixed bottom-24 right-4 z-30 hidden opacity-80 sm:block">
+        <MascoteGauchinho variant="floating" />
+      </div>
       <div className="mx-auto max-w-5xl px-4 pb-16 pt-10 sm:pt-14">
         <header className="mb-8 text-center sm:mb-10">
           <p className="text-xs font-bold uppercase tracking-[0.25em] text-amber-400/90">Gauchinho</p>
@@ -290,5 +295,7 @@ function CalculatorPanel({
       );
     case "correcao":
       return <CorrecaoValoresCalculator indices={indices} onResult={onResult} />;
+    case "juros_real":
+      return <JurosRealCalculator onResult={onResult} />;
   }
 }

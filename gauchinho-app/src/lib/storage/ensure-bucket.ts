@@ -30,6 +30,11 @@ const BUCKET_META: Record<
     fileSizeLimit: 5_242_880,
     allowedMimeTypes: ["image/jpeg", "image/png", "image/webp", "image/gif", "image/svg+xml"],
   },
+  seguradoras: {
+    public: true,
+    fileSizeLimit: 5_242_880,
+    allowedMimeTypes: ["image/jpeg", "image/png", "image/webp", "image/gif"],
+  },
 };
 
 /** Garante bucket público antes do upload (útil se a migration ainda não rodou). */

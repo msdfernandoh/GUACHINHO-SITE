@@ -82,7 +82,7 @@ export async function POST(request: Request) {
           cidade_cliente: body.cidade?.trim() || null,
           tipo_proposta:
             body.modo === "financiamento" ? "Financiamento" : "Consórcio — Simulador",
-          tipo_bem: body.tipoBem === "imovel" ? "Imóvel" : body.tipoBem === "automovel" ? "Automóvel" : null,
+          tipo_bem: body.tipoBem === "imovel" ? "Imóvel" : body.tipoBem === "automovel" ? "Veículo" : null,
           valor_credito: valorSim,
           prazo: prazo,
           entrada: entradaVal,

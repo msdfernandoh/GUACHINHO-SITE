@@ -8,7 +8,8 @@ export type StorageBucketPublico =
   | typeof BUCKET_IMOVEIS
   | "conteudo"
   | "depoimentos"
-  | "parceiros";
+  | "parceiros"
+  | "seguradoras";
 
 const ALLOWED_EXT = new Set(["jpeg", "jpg", "png", "webp", "gif", "svg"]);
 

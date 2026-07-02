@@ -17,8 +17,9 @@ import { Button, Input, surfaceInputDark } from "@/components/ui/form-primitives
 import { GrupoMobileCard } from "@/components/public/grupos/grupo-mobile-card";
 import { GrupoTotalsBar } from "@/components/public/grupos/grupo-totals-bar";
 import { GruposTable } from "@/components/public/grupos/grupos-table";
+import { MascoteGauchinho } from "@/components/public/mascote-gauchinho";
 
-type ModalFiltro = (typeof MODALIDADE_FILTRO_PUBLICO)[number];
+type ModalFiltro = (typeof MODALIDADE_FILTRO_PUBLICO)[number]["value"];
 
 export type SelecaoGrupoPayload = {
   grupoId: string;
@@ -160,6 +161,9 @@ export function GruposPublicClient({
 
   return (
     <div className="bg-zinc-950 pb-52 text-zinc-100 md:pb-48">
+      <div className="pointer-events-none fixed bottom-24 right-4 z-30 hidden opacity-80 sm:block">
+        <MascoteGauchinho variant="floating" />
+      </div>
       <div className="mx-auto max-w-[1600px] px-4 py-8 md:px-6">
         <div className="mb-6 text-center md:mb-8">
           <p className="inline-flex items-center gap-2 text-sm text-amber-400">
@@ -177,17 +181,17 @@ export function GruposPublicClient({
         <div className="mb-4 flex flex-wrap items-center gap-2 md:mb-5">
           {MODALIDADE_FILTRO_PUBLICO.map((m) => (
             <button
-              key={m}
+              key={m.value}
               type="button"
-              onClick={() => setFiltro(m)}
+              onClick={() => setFiltro(m.value)}
               className={cn(
                 "rounded-full px-3 py-1.5 text-xs font-medium transition md:text-sm md:px-4 md:py-2",
-                filtro === m
+                filtro === m.value
                   ? "bg-amber-500 text-zinc-950"
                   : "border border-zinc-700 text-zinc-300 hover:border-amber-500/50",
               )}
             >
-              {m}
+              {m.label}
             </button>
           ))}
           <div className="relative ml-auto min-w-[200px] flex-1 md:max-w-xs">

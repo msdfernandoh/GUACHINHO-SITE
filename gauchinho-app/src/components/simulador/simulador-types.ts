@@ -1,12 +1,10 @@
-import type {
-  FinanciamentoConfig,
-  SimuladorTipoBemConfig,
-} from "@/lib/config/defaults";
+import type { SimuladorTipoBemConfig } from "@/lib/config/defaults";
+import type { FinanciamentoConfigStored } from "@/lib/config/financiamento-por-tipo";
 
 export type SimuladorConfigs = {
   imovel: SimuladorTipoBemConfig;
   automovel: SimuladorTipoBemConfig;
-  financiamento: FinanciamentoConfig;
+  financiamento: FinanciamentoConfigStored;
 };
 
 export type Modo = "consorcio" | "financiamento";

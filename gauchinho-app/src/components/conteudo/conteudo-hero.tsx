@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { cn } from "@/lib/utils/cn";
+import { MascoteGauchinho } from "@/components/public/mascote-gauchinho";
 
 type Props = {
   title: string;
@@ -30,7 +31,14 @@ export function ConteudoHero({ title, subtitle, eyebrow, className }: Props) {
 }
 
 export function ConteudoPageShell({ children }: { children: React.ReactNode }) {
-  return <main className="pb-20">{children}</main>;
+  return (
+    <main className="pb-20">
+      <div className="pointer-events-none fixed bottom-24 right-4 z-30 hidden opacity-80 sm:block">
+        <MascoteGauchinho variant="floating" />
+      </div>
+      {children}
+    </main>
+  );
 }
 
 export function ConteudoBackLink({ href, children }: { href: string; children: React.ReactNode }) {

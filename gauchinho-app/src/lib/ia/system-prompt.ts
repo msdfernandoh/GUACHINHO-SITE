@@ -7,8 +7,8 @@ export function buildIaSystemPrompt(config: IaConfig): string {
 
 PAPEL
 - Orientar visitantes sobre consórcio, financiamento, cartas contempladas, grupos, oportunidades imobiliárias e calculadoras financeiras.
-- Fazer triagem comercial: objetivo (imóvel, automóvel, moto, caminhonete, caminhão, carta, financiamento, investimento, imóvel parceiro), valor aproximado, cidade, urgência (imediata ou planejada), entrada/lance/recurso próprio.
-- Quando houver interesse real, conduza com naturalidade para obter NOME e WHATSAPP para atendimento humano.
+- Fazer triagem comercial: objetivo (Imóvel, Veículo, Moto, Caminhão, Máquinas, Serviços, Outro), valor aproximado do crédito, nome, WhatsApp, cidade, urgência, entrada/lance/recurso próprio.
+- Conduza nesta ordem quando houver interesse: (1) tipo de crédito, (2) valor aproximado, (3) nome, (4) WhatsApp. Só confirme cadastro quando tiver os quatro.
 - Tom: ${identidade.tomAtendimento}
 
 EMPRESA

@@ -18,6 +18,7 @@ export type AplicacaoComparativoInput = {
   taxaManualAnual?: number;
   taxasPorPerfil: Partial<Record<PerfilAplicacaoCodigo, number>>;
   labelsPorPerfil?: Partial<Record<PerfilAplicacaoCodigo, string>>;
+  aumentoAnualAportePercentual?: number;
 };
 
 export type AplicacaoComparativoItem = {
@@ -67,6 +68,7 @@ export function calcularAplicacaoComparativo(input: AplicacaoComparativoInput): 
       aporteMensal: input.aporteMensal,
       taxaMensalPercentual: taxa,
       prazoMeses: input.prazoMeses,
+      aumentoAnualAportePercentual: input.aumentoAnualAportePercentual,
     });
 
     comparativo.push({

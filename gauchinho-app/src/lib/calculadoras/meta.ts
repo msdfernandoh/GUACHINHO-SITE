@@ -37,6 +37,13 @@ export const CALCULADORAS_META: CalculadoraMeta[] = [
     description: "Atualize valores por IPCA, IGP-M ou uma taxa personalizada.",
     subtitle: "Atualize valores por IPCA, IGP-M ou uma taxa personalizada.",
   },
+  {
+    id: "juros_real",
+    title: "Descobrir juros real",
+    question: "Qual juros real estou pagando?",
+    description: "Veja qual taxa está embutida em uma parcela.",
+    subtitle: "Descubra a taxa mensal e anual a partir do valor financiado, parcela e prazo.",
+  },
 ];
 
 export function calculadorasAtivas(config: CalculadorasFinanceirasConfig): CalculadoraMeta[] {
@@ -45,12 +52,19 @@ export function calculadorasAtivas(config: CalculadorasFinanceirasConfig): Calcu
     valor_futuro: config.ativoValorFuturo !== false,
     financiamento: config.ativoFinanciamento !== false,
     correcao: config.ativoCorrecao !== false,
+    juros_real: config.ativoJurosReal !== false,
   };
   return CALCULADORAS_META.filter((m) => flags[m.id]);
 }
 
 export function parseCalcId(raw: string | undefined): CalculadoraId | undefined {
-  if (raw === "aplicacao_mensal" || raw === "valor_futuro" || raw === "financiamento" || raw === "correcao") {
+  if (
+    raw === "aplicacao_mensal" ||
+    raw === "valor_futuro" ||
+    raw === "financiamento" ||
+    raw === "correcao" ||
+    raw === "juros_real"
+  ) {
     return raw;
   }
   return undefined;

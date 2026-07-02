@@ -158,57 +158,66 @@ export function SimuladorBemConfigForm({
 
 export function FinanciamentoConfigForm({
   action,
-  cfg,
+  stored,
 }: {
   action: (formData: FormData) => Promise<void>;
-  cfg: import("@/lib/config/defaults").FinanciamentoConfig;
+  stored: import("@/lib/config/financiamento-por-tipo").FinanciamentoConfigStored;
 }) {
-  const prazos = (cfg.prazosDisponiveis ?? []).join(", ");
+  function TipoFields({
+    prefix,
+    title,
+    cfg,
+  }: {
+    prefix: "imovel" | "veiculo";
+    title: string;
+    cfg: import("@/lib/config/financiamento-por-tipo").FinanciamentoTipoConfig;
+  }) {
+    const prazos = (cfg.prazosDisponiveis ?? []).join(", ");
+    return (
+      <fieldset className="space-y-3 rounded-xl border p-4 dark:border-zinc-700">
+        <legend className="px-1 text-sm font-bold">{title}</legend>
+        <div>
+          <Label>Taxa mensal de financiamento (% a.m.)</Label>
+          <Input name={`${prefix}_taxaMensalPercentual`} type="number" step="0.01" defaultValue={cfg.taxaMensalPercentual} />
+        </div>
+        <div>
+          <Label>Taxa anual (opcional, % a.a.)</Label>
+          <Input name={`${prefix}_taxaAnualPercentual`} type="number" step="0.01" defaultValue={cfg.taxaAnualPercentual ?? 0} />
+        </div>
+        <div>
+          <Label>Entrada padrão (% do valor do bem)</Label>
+          <Input name={`${prefix}_entradaPercentualPadrao`} type="number" step="0.01" defaultValue={cfg.entradaPercentualPadrao} />
+        </div>
+        <div>
+          <Label>Prazo padrão (meses)</Label>
+          <Input name={`${prefix}_prazoPadrao`} type="number" defaultValue={cfg.prazoPadrao} />
+        </div>
+        <div>
+          <Label>Prazo máximo (meses)</Label>
+          <Input name={`${prefix}_prazoMaximo`} type="number" defaultValue={cfg.prazoMaximo} />
+        </div>
+        <div>
+          <Label>Prazos disponíveis (vírgula)</Label>
+          <Input name={`${prefix}_prazosDisponiveis`} defaultValue={prazos} />
+        </div>
+        <div>
+          <Label>Parceiro padrão</Label>
+          <Input name={`${prefix}_parceiroPadrao`} defaultValue={cfg.parceiroPadrao} />
+        </div>
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" name={`${prefix}_mostrarComparacaoComConsorcio`} defaultChecked={cfg.mostrarComparacaoComConsorcio} />
+          Mostrar comparação com consórcio
+        </label>
+      </fieldset>
+    );
+  }
+
   return (
-    <form action={action} className="max-w-xl space-y-3 rounded-xl border p-4">
-      <h3 className="font-semibold">Financiamento</h3>
-      <div>
-        <Label>Taxa mensal de financiamento (% a.m.)</Label>
-        <Input name="taxaMensalPadrao" type="number" step="0.01" defaultValue={cfg.taxaMensalPadrao} />
-      </div>
-      <div>
-        <Label>Entrada mínima sugerida (% do valor do bem)</Label>
-        <Input
-          name="entradaMinimaSugeridaPercentual"
-          type="number"
-          step="0.01"
-          defaultValue={cfg.entradaMinimaSugeridaPercentual}
-        />
-      </div>
-      <div>
-        <Label>Prazo padrão (meses)</Label>
-        <Input name="prazoPadrao" type="number" defaultValue={cfg.prazoPadrao} />
-      </div>
-      <div>
-        <Label>Prazo máximo (meses)</Label>
-        <Input name="prazoMaximo" type="number" defaultValue={cfg.prazoMaximo} />
-      </div>
-      <div>
-        <Label>Prazos disponíveis (vírgula)</Label>
-        <Input
-          name="prazosDisponiveis"
-          defaultValue={prazos}
-          placeholder="60, 120, 220, 360, 420"
-        />
-        <p className="mt-1 text-xs text-zinc-500">Usados na Home e no simulador completo.</p>
-      </div>
-      <div>
-        <Label>Índice de reajuste opcional (%)</Label>
-        <Input name="indiceReajusteOpcional" type="number" step="0.01" defaultValue={cfg.indiceReajusteOpcional} />
-      </div>
-      <div>
-        <Label>Parceiro padrão</Label>
-        <Input name="parceiroPadrao" defaultValue={cfg.parceiroPadrao} />
-      </div>
-      <label className="flex items-center gap-2 text-sm">
-        <input type="checkbox" name="mostrarComparacaoConsorcio" defaultChecked={cfg.mostrarComparacaoConsorcio} />
-        Mostrar comparação com consórcio
-      </label>
+    <form action={action} className="max-w-2xl space-y-6">
+      <h3 className="font-semibold">Financiamento por tipo de bem</h3>
+      <p className="text-sm text-zinc-500">Imóvel e veículo usam listas de prazo e taxas independentes no simulador e na Home.</p>
+      <TipoFields prefix="imovel" title="Imóvel" cfg={stored.imovel} />
+      <TipoFields prefix="veiculo" title="Veículo" cfg={stored.veiculo} />
       <Button type="submit">Salvar Financiamento</Button>
     </form>
   );

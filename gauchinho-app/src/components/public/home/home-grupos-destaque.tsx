@@ -3,6 +3,7 @@ import type { HomeGrupoDestaque } from "@/lib/home/load-home-data";
 import { formatCurrency } from "@/lib/utils/format";
 import { formatPrazoGrupo } from "@/lib/grupos/simulacao-linha";
 import { HomeCtaLink, HomeSection } from "./home-section";
+import { labelModalidadeGrupoPublica } from "@/lib/grupos/modalidade-label-publica";
 
 export function HomeGruposDestaque({ items }: { items: HomeGrupoDestaque[] }) {
   if (!items.length) return null;
@@ -22,7 +23,7 @@ export function HomeGruposDestaque({ items }: { items: HomeGrupoDestaque[] }) {
             <div className="flex items-baseline justify-between gap-2">
               <h3 className="text-lg font-bold text-white">Grupo {grupo.codigo_grupo}</h3>
               <span className="text-xs font-medium uppercase tracking-wide text-amber-500/90">
-                {grupo.modalidade}
+                {labelModalidadeGrupoPublica(grupo.modalidade)}
               </span>
             </div>
             <dl className="mt-4 space-y-2 text-sm">

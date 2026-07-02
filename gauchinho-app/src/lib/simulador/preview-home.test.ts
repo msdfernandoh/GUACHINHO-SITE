@@ -8,10 +8,18 @@ import { calcularParcelaConsorcio } from "@/lib/simulador/consorcio";
 import { simularFinanciamento } from "@/lib/simulador/financiamento";
 import { entradaPadraoFinanciamento } from "@/lib/simulador/financiamento-entrada";
 
+import {
+  financiamentoConfigParaTipo,
+  normalizeFinanciamentoStored,
+} from "@/lib/config/financiamento-por-tipo";
+
+const financiamentoStored = normalizeFinanciamentoStored(DEFAULT_FINANCIAMENTO_CONFIG);
+const finImovel = financiamentoConfigParaTipo(financiamentoStored, "imovel");
+
 const bundle = {
   imovel: DEFAULT_SIMULADOR_IMOVEL,
   automovel: DEFAULT_SIMULADOR_IMOVEL,
-  financiamento: DEFAULT_FINANCIAMENTO_CONFIG,
+  financiamento: financiamentoStored,
 };
 
 describe("preview simulador Home", () => {
@@ -42,13 +50,13 @@ describe("preview simulador Home", () => {
 
   it("financiamento usa taxa e entrada da config oficial", () => {
     const valor = 500_000;
-    const prazo = bundle.financiamento.prazoPadrao;
+    const prazo = finImovel.prazoPadrao;
     const home = computeQuickSimulatorResult("financiamento", valor, prazo, bundle);
-    const entrada = entradaPadraoFinanciamento(valor, bundle.financiamento);
+    const entrada = entradaPadraoFinanciamento(valor, finImovel);
     const full = simularFinanciamento({
       valorBem: valor,
       entrada,
-      taxaMensalPercentual: bundle.financiamento.taxaMensalPadrao,
+      taxaMensalPercentual: finImovel.taxaMensalPadrao,
       prazoMeses: home.prazoEfetivo,
     }).parcelaEstimada;
     expect(home.parcela).toBeCloseTo(full, 2);

@@ -12,14 +12,14 @@ type AssetOption = {
 
 const CONSORCIO: AssetOption[] = [
   { id: "imovel", label: "Imóvel", icon: Home },
-  { id: "automovel", label: "Automóvel", icon: Car },
+  { id: "automovel", label: "Veículo", icon: Car },
   { id: "moto", label: "Moto", icon: Bike, soon: true },
   { id: "caminhonete", label: "Caminhonete", icon: Truck, soon: true },
 ];
 
 const FIN: AssetOption[] = [
   { id: "imovel", label: "Imóvel", icon: Home },
-  { id: "automovel", label: "Automóvel", icon: Car },
+  { id: "automovel", label: "Veículo", icon: Car },
 ];
 
 type Props = {

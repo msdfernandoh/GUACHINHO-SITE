@@ -12,6 +12,7 @@ import {
   buildCartaInteresseMensagem,
   type WhatsappOrigemRow,
 } from "@/lib/whatsapp/carta-messages";
+import { MascoteGauchinho } from "@/components/public/mascote-gauchinho";
 
 type Filters = {
   tipo?: string;
@@ -110,6 +111,9 @@ export function CartasPublicClient({ cartas }: { cartas: CartaContemplada[] }) {
 
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100">
+      <div className="pointer-events-none fixed bottom-24 right-4 z-30 hidden opacity-80 sm:block">
+        <MascoteGauchinho variant="floating" />
+      </div>
       <div className="mx-auto max-w-6xl px-4 py-12">
         <div className="mb-10 text-center">
           <p className="text-sm font-semibold uppercase tracking-[0.2em] text-amber-500">

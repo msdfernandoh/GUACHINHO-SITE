@@ -22,16 +22,15 @@ import {
 } from "./simulador-forms";
 import { IaConfigForm } from "./ia-config-form";
 import {
-  DEFAULT_FINANCIAMENTO_CONFIG,
   DEFAULT_HOME_CARTAS,
   DEFAULT_CALCULADORAS_FINANCEIRAS,
   DEFAULT_SIMULADOR_AUTOMOVEL,
   DEFAULT_SIMULADOR_IMOVEL,
-  type FinanciamentoConfig,
   type HomeCartasConfig,
   type SimuladorTipoBemConfig,
   type CalculadorasFinanceirasConfig,
 } from "@/lib/config/defaults";
+import { normalizeFinanciamentoStored } from "@/lib/config/financiamento-por-tipo";
 import { DEFAULT_IA_CONFIG, type IaConfig } from "@/lib/config/ia-defaults";
 
 const TABS: Array<{ id: string; label: string; future?: boolean }> = [
@@ -62,7 +61,7 @@ export function ConfigTabs({ configs, whatsapp }: Props) {
   const leads = configs.leads ?? {};
   const simImovel = { ...DEFAULT_SIMULADOR_IMOVEL, ...(configs.simulador_imovel as SimuladorTipoBemConfig | undefined) };
   const simAuto = { ...DEFAULT_SIMULADOR_AUTOMOVEL, ...(configs.simulador_automovel as SimuladorTipoBemConfig | undefined) };
-  const finCfg = { ...DEFAULT_FINANCIAMENTO_CONFIG, ...(configs.financiamento_config as FinanciamentoConfig | undefined) };
+  const finStored = normalizeFinanciamentoStored(configs.financiamento_config);
   const homeCartas = { ...DEFAULT_HOME_CARTAS, ...(configs.home_cartas_contempladas as HomeCartasConfig | undefined) };
   const calcCfg = {
     ...DEFAULT_CALCULADORAS_FINANCEIRAS,
@@ -237,7 +236,7 @@ export function ConfigTabs({ configs, whatsapp }: Props) {
       ) : null}
 
       {tab === "financiamento" ? (
-        <FinanciamentoConfigForm action={saveFinanciamentoConfigAction} cfg={finCfg} />
+        <FinanciamentoConfigForm action={saveFinanciamentoConfigAction} stored={finStored} />
       ) : null}
 
       {tab === "calculadoras" ? (
@@ -258,6 +257,10 @@ export function ConfigTabs({ configs, whatsapp }: Props) {
           <label className="flex items-center gap-2 text-sm">
             <input type="checkbox" name="ativoCorrecao" defaultChecked={calcCfg.ativoCorrecao} />
             Ativar correção de valores
+          </label>
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" name="ativoJurosReal" defaultChecked={calcCfg.ativoJurosReal !== false} />
+            Ativar juros real da parcela
           </label>
           <div>
             <Label>Rentabilidade mensal padrão (%)</Label>

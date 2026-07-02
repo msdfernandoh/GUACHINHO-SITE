@@ -37,7 +37,9 @@ export async function POST(request: Request) {
       getConfigJsonPublic("calculadoras_financeiras", DEFAULT_CALCULADORAS_FINANCEIRAS),
     ]);
 
-    const tipoInteresse = labelCalculadora(body.calculadoraId);
+    const tipoInteresse =
+      body.calculadoraId === "juros_real" ? "juros_real" : labelCalculadora(body.calculadoraId);
+
     const dadosSimulacaoBase = {
       calculadoraId: body.calculadoraId,
       inputs: body.inputs,
@@ -56,14 +58,29 @@ export async function POST(request: Request) {
         novo_valor: resultado.novoValor,
         data_referencia_indice: resultado.data_referencia_indice,
       };
-    } else if (resultado.tipo_calculadora === "aplicacao_comparativo") {
+    } else if (
+      resultado.tipo_calculadora === "aplicacao_comparativo_consorcio" ||
+      resultado.tipo_calculadora === "aplicacao_comparativo"
+    ) {
+      const lead =
+        (resultado.lead as Record<string, unknown> | undefined) ??
+        (resultado.tipo_calculadora === "aplicacao_comparativo_consorcio" ? resultado : null);
+      dados_simulacao =
+        lead && typeof lead === "object" && "tipo_calculadora" in lead
+          ? lead
+          : {
+              tipo_calculadora: "aplicacao_comparativo",
+              valor_inicial: body.inputs.valorInicial,
+              aporte_mensal: body.inputs.aporteMensal,
+              prazo_meses: body.inputs.prazoMeses,
+              opcoes_comparadas: body.inputs.opcoes_comparadas,
+              melhor_resultado_estimado: resultado.melhorResultadoEstimado,
+            };
+    } else if (resultado.tipo_calculadora === "juros_real") {
       dados_simulacao = {
-        tipo_calculadora: "aplicacao_comparativo",
-        valor_inicial: body.inputs.valorInicial,
-        aporte_mensal: body.inputs.aporteMensal,
-        prazo_meses: body.inputs.prazoMeses,
-        opcoes_comparadas: body.inputs.opcoes_comparadas,
-        melhor_resultado_estimado: resultado.melhorResultadoEstimado,
+        tipo_calculadora: "juros_real",
+        inputs: body.inputs,
+        resultado,
       };
     }
 
@@ -71,6 +88,10 @@ export async function POST(request: Request) {
       Number(body.inputs.valorInicial ?? body.inputs.valorAtual ?? body.inputs.valorBem ?? 0) || null;
     const prazo = Number(body.inputs.prazoMeses ?? 0) || null;
     const entradaVal = Number(body.inputs.entrada ?? 0) || null;
+    const valorCreditoLead =
+      body.calculadoraId === "juros_real" && resultado.ok
+        ? Number(resultado.valorFinanciado ?? valorSim)
+        : valorSim;
 
     const { data: leadRow, error: leadErr } = await admin
       .from("leads")
@@ -83,6 +104,7 @@ export async function POST(request: Request) {
         origem_detalhe: body.acao,
         tipo_interesse: tipoInteresse,
         produto_interesse: "análise financeira",
+        valor_credito: valorCreditoLead,
         valor_simulado: valorSim,
         prazo_simulado: prazo,
         entrada: entradaVal,

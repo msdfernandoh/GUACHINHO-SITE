@@ -14,7 +14,7 @@ import {
   type ModoLanceInput,
 } from "@/lib/simulador/consorcio";
 import { simularFinanciamento } from "@/lib/simulador/financiamento";
-import { compararConsorcioFinanciamento, montarEntradaFinanciamentoComparativo } from "@/lib/simulador/comparativo";
+import { compararConsorcioFinanciamento, detalharAlternativaConsorcio, montarEntradaFinanciamentoComparativo } from "@/lib/simulador/comparativo";
 import { gerarProjecaoAnoAno } from "@/lib/simulador/projecao";
 import { digitsOnlyPhone } from "@/lib/utils/format";
 import { Button } from "@/components/ui/form-primitives";
@@ -45,7 +45,8 @@ import {
   listPrazosConsorcio,
   listPrazosFinanciamento,
   snapPrazoToLista,
-} from "@/lib/simulador/prazos";
+  resolveFinanciamentoCfg,
+} from "@/lib/simulador/simulador-shared";
 import {
   entradaFinanciamentoParaCalculo,
   entradaPadraoFinanciamento,
@@ -115,6 +116,7 @@ export function SimuladorApp({
   prefill?: SimuladorPrefill;
 }) {
   const resultRef = useRef<HTMLDivElement>(null);
+  const prefillAppliedRef = useRef(false);
 
   const [modo, setModo] = useState<Modo>("consorcio");
   const [tipoBem, setTipoBem] = useState<TipoBem>("imovel");
@@ -136,7 +138,10 @@ export function SimuladorApp({
 
   const bemCfg =
     tipoBem === "automovel" ? configs.automovel : configs.imovel;
-  const finCfg = configs.financiamento;
+  const finCfg = useMemo(
+    () => resolveFinanciamentoCfg(configs, tipoBem),
+    [configs, tipoBem],
+  );
 
   const [valorCredito, setValorCredito] = useState(bemCfg.valorPadraoInicial);
   const [prazo, setPrazo] = useState(bemCfg.prazoPadrao);
@@ -188,17 +193,20 @@ export function SimuladorApp({
   }, [opcoesParcela, opcaoParcelaId]);
 
   useEffect(() => {
-    if (!prefill) return;
+    if (!prefill || prefillAppliedRef.current) return;
+    prefillAppliedRef.current = true;
     if (prefill.solucao === "consorcio" || prefill.solucao === "financiamento") {
       setModo(prefill.solucao);
     }
     if (prefill.tipo === "imovel" || prefill.tipo === "automovel") {
       setTipoBem(prefill.tipo);
     }
+    const cfgBem =
+      prefill.tipo === "automovel" ? configs.automovel : configs.imovel;
     if (prefill.valor != null && Number.isFinite(prefill.valor) && prefill.valor > 0) {
-      const vCred = clampValorBemFinanciamento(prefill.valor, bemCfg);
+      const vCred = clampValorBemFinanciamento(prefill.valor, cfgBem);
       setValorCredito(vCred);
-      const vBem = clampValorBemFinanciamento(prefill.valor, bemCfg);
+      const vBem = clampValorBemFinanciamento(prefill.valor, cfgBem);
       setValorBem(vBem);
       setEntradaFin(entradaPadraoFinanciamento(vBem, finCfg));
     }
@@ -211,7 +219,7 @@ export function SimuladorApp({
       setModo("consorcio");
       setTipoBem("imovel");
     }
-  }, [prefill, finCfg, bemCfg]);
+  }, [prefill, finCfg, configs.automovel, configs.imovel]);
 
   const prazosConsorcio = useMemo(() => listPrazosConsorcio(bemCfg), [bemCfg]);
 
@@ -315,12 +323,29 @@ export function SimuladorApp({
 
   const entradaConsorcioComparativo = useMemo(() => {
     if (modo !== "financiamento") return entradaConsorcio;
-    return {
-      ...entradaConsorcio,
-      valorCredito: valorBem,
-      prazoMeses: prazoFin,
-    };
-  }, [modo, entradaConsorcio, valorBem, prazoFin]);
+    return buildEntradaConsorcio(
+      valorBem,
+      prazoFin,
+      taxaAdm,
+      fundoReserva,
+      seguro,
+      0,
+      0,
+      reajusteCredito,
+      correcaoParcela,
+      100,
+    );
+  }, [
+    modo,
+    entradaConsorcio,
+    valorBem,
+    prazoFin,
+    taxaAdm,
+    fundoReserva,
+    seguro,
+    reajusteCredito,
+    correcaoParcela,
+  ]);
 
   const comparativo = useMemo(() => {
     const entradaFinCmp = montarEntradaFinanciamentoComparativo({
@@ -478,6 +503,11 @@ export function SimuladorApp({
       setLoading(false);
     }
   }
+
+  const alternativaConsorcio = useMemo(() => {
+    if (modo !== "financiamento") return null;
+    return detalharAlternativaConsorcio(entradaConsorcioComparativo, bemCfg);
+  }, [modo, entradaConsorcioComparativo, bemCfg]);
 
   const mostrarComparativo =
     (modo === "consorcio" && bemCfg.mostrarComparacaoFinanciamento) ||
@@ -638,7 +668,13 @@ export function SimuladorApp({
             />
           ) : null}
 
-          {mostrarComparativo ? <ComparisonSection modo={modo} comparativo={comparativo} /> : null}
+          {mostrarComparativo ? (
+            <ComparisonSection
+              modo={modo}
+              comparativo={comparativo}
+              alternativaConsorcio={alternativaConsorcio}
+            />
+          ) : null}
 
           <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
             <Button

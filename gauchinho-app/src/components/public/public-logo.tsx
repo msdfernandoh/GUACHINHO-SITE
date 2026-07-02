@@ -82,7 +82,11 @@ export function PublicLogo({
             >
               {title.toUpperCase()}
             </span>
-            {subtitle ? <span className={cn(subClass, "mt-0.5")}>{subtitle}</span> : null}
+            {subtitle ? (
+              <span className={cn(subClass, "mt-0.5 hidden max-w-[10rem] truncate sm:inline sm:max-w-none")}>
+                {subtitle}
+              </span>
+            ) : null}
           </span>
         </>
       )}

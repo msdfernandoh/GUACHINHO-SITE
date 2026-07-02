@@ -9,11 +9,18 @@ import { calcularParcelaConsorcio } from "@/lib/simulador/consorcio";
 import { simularFinanciamento } from "@/lib/simulador/financiamento";
 import { entradaPadraoFinanciamento } from "@/lib/simulador/financiamento-entrada";
 import { listPrazosFinanciamento, snapPrazoToLista } from "@/lib/simulador/prazos";
+import {
+  financiamentoConfigParaTipo,
+  normalizeFinanciamentoStored,
+} from "@/lib/config/financiamento-por-tipo";
+
+const financiamentoStored = normalizeFinanciamentoStored(DEFAULT_FINANCIAMENTO_CONFIG);
+const finImovel = financiamentoConfigParaTipo(financiamentoStored, "imovel");
 
 const bundle = {
   imovel: DEFAULT_SIMULADOR_IMOVEL,
   automovel: DEFAULT_SIMULADOR_IMOVEL,
-  financiamento: DEFAULT_FINANCIAMENTO_CONFIG,
+  financiamento: financiamentoStored,
 };
 
 describe("getQuickSimDefaults", () => {
@@ -53,13 +60,13 @@ describe("Home vs simulador completo — mesma parcela", () => {
     const valor = 500_000;
     const prazo = 220;
     const home = computeQuickSimulatorResult("financiamento", valor, prazo, bundle);
-    const prazos = listPrazosFinanciamento(bundle.financiamento);
-    const prazoEfetivo = snapPrazoToLista(prazo, prazos, bundle.financiamento.prazoPadrao);
-    const entrada = entradaPadraoFinanciamento(valor, bundle.financiamento);
+    const prazos = listPrazosFinanciamento(finImovel);
+    const prazoEfetivo = snapPrazoToLista(prazo, prazos, finImovel.prazoPadrao);
+    const entrada = entradaPadraoFinanciamento(valor, finImovel);
     const full = simularFinanciamento({
       valorBem: valor,
       entrada,
-      taxaMensalPercentual: bundle.financiamento.taxaMensalPadrao,
+      taxaMensalPercentual: finImovel.taxaMensalPadrao,
       prazoMeses: prazoEfetivo,
     }).parcelaEstimada;
     expect(home.ok).toBe(true);
@@ -68,10 +75,14 @@ describe("Home vs simulador completo — mesma parcela", () => {
   });
 
   it("financiamento sem taxa — não retorna parcela zero válida", () => {
-    const finZero = { ...bundle.financiamento, taxaMensalPadrao: 0 };
+    const finZeroStored = normalizeFinanciamentoStored({
+      ...DEFAULT_FINANCIAMENTO_CONFIG,
+      taxaMensalPadrao: 0,
+    });
+    finZeroStored.imovel = { ...finZeroStored.imovel, taxaMensalPercentual: 0 };
     const r = computeQuickSimulatorResult("financiamento", 500_000, 220, {
       ...bundle,
-      financiamento: finZero,
+      financiamento: finZeroStored,
     });
     expect(r.ok).toBe(false);
     expect(r.parcela).toBeNull();

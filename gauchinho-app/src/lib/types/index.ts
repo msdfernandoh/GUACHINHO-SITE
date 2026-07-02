@@ -42,7 +42,13 @@ export const MODALIDADES_GRUPO = [
   "Outros",
 ] as const;
 
-export const MODALIDADE_FILTRO_PUBLICO = ["Todos", "Imóvel", "Auto", "Moto"] as const;
+/** `value` bate com `grupos.modalidade` no banco; `label` é o texto na UI. */
+export const MODALIDADE_FILTRO_PUBLICO = [
+  { value: "Todos", label: "Todos" },
+  { value: "Imóvel", label: "Imóvel" },
+  { value: "Auto", label: "Veículo" },
+  { value: "Moto", label: "Moto" },
+] as const;
 
 export type GrupoConsorcio = {
   id: string;

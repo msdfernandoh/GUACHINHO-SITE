@@ -11,6 +11,8 @@ export function mensagemWhatsappCalculadora(id: CalculadoraId, nome: string): st
       return `Olá, fiz uma simulação de financiamento no site Gauchinho e gostaria de comparar com consórcio. Meu nome é ${n}.`;
     case "correcao":
       return `Olá, fiz uma simulação de correção de valores no site Gauchinho e gostaria de uma orientação. Meu nome é ${n}.`;
+    case "juros_real":
+      return `Olá, usei a calculadora de juros real no site Gauchinho e gostaria de uma análise. Meu nome é ${n}.`;
   }
 }
 
@@ -24,5 +26,7 @@ export function labelCalculadora(id: CalculadoraId): string {
       return "Financiamento";
     case "correcao":
       return "Correção de valores";
+    case "juros_real":
+      return "Juros real da parcela";
   }
 }

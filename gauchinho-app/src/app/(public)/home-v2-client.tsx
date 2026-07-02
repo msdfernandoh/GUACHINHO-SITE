@@ -1,7 +1,7 @@
 "use client";
 
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import {
   Brain, Target, BarChart2, FileText,
   Home, Car, Bike, Truck, Tractor,
@@ -166,28 +166,44 @@ const GRUPOS = [
 ];
 
 // ─── SEÇÃO OBJETIVOS CINEMATOGRÁFICA ──────────────────────
+const CAROUSEL_INTERVAL_MS = 6000;
+
 function ObjetivosSection() {
   const shouldReduce = useReducedMotion();
   const [active, setActive] = useState(0);
   const [prev, setPrev] = useState<number | null>(null);
   const [dir, setDir] = useState(1);
   const [paused, setPaused] = useState(false);
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const go = (next: number, direction: number) => {
-    setPrev(active);
-    setDir(direction);
-    setActive(next);
-  };
+  const goToIndex = useCallback((next: number, direction: number) => {
+    setActive((current) => {
+      setPrev(current);
+      setDir(direction);
+      return next;
+    });
+  }, []);
 
-  const goNext = () => go((active + 1) % SONHOS.length, 1);
-  const goPrev = () => go((active - 1 + SONHOS.length) % SONHOS.length, -1);
+  const goNext = useCallback(() => {
+    setActive((current) => {
+      setPrev(current);
+      setDir(1);
+      return (current + 1) % SONHOS.length;
+    });
+  }, []);
+
+  const goPrev = useCallback(() => {
+    setActive((current) => {
+      setPrev(current);
+      setDir(-1);
+      return (current - 1 + SONHOS.length) % SONHOS.length;
+    });
+  }, []);
 
   useEffect(() => {
-    if (paused || shouldReduce) return;
-    timerRef.current = setInterval(goNext, 4000);
-    return () => { if (timerRef.current) clearInterval(timerRef.current); };
-  }, [active, paused, shouldReduce]);
+    if (paused || shouldReduce || SONHOS.length <= 1) return;
+    const id = window.setInterval(goNext, CAROUSEL_INTERVAL_MS);
+    return () => window.clearInterval(id);
+  }, [paused, shouldReduce, goNext]);
 
   const item = SONHOS[active]!;
   const Icon = item.icon;
@@ -228,6 +244,9 @@ function ObjetivosSection() {
               alt=""
               aria-hidden
               className="h-full w-full object-cover"
+              onError={(e) => {
+                e.currentTarget.style.opacity = "0.15";
+              }}
             />
             {/* Overlay: lado esquerdo mais claro para a imagem aparecer */}
             <div
@@ -256,7 +275,7 @@ function ObjetivosSection() {
             className="pointer-events-none absolute inset-x-0 h-[2px] z-10"
             style={{ background: `linear-gradient(to right, transparent, ${C.gold}, transparent)`, opacity: 0.4 }}
             animate={{ top: ["0%", "100%"] }}
-            transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
+            transition={{ duration: CAROUSEL_INTERVAL_MS / 1000, repeat: Infinity, ease: "linear" }}
             aria-hidden
           />
         )}
@@ -362,11 +381,6 @@ function ObjetivosSection() {
                 <p className="mb-1 text-base font-semibold" style={{ color: C.gold, textShadow: "0 1px 8px rgba(0,0,0,0.9)" }}>
                   {item.sub}
                 </p>
-                {"legenda" in item && (
-                  <p className="mb-4 font-mono text-xs" style={{ color: "rgba(201,168,76,0.6)", textShadow: "0 1px 6px rgba(0,0,0,0.9)" }}>
-                    📁 {(item as typeof item & { legenda: string }).legenda}
-                  </p>
-                )}
                 <p
                   className="mb-8 max-w-lg text-base leading-relaxed"
                   style={{ color: "rgba(255,255,255,0.85)", textShadow: "0 1px 12px rgba(0,0,0,0.9)" }}
@@ -398,7 +412,7 @@ function ObjetivosSection() {
                   style={{ background: `linear-gradient(to right, ${C.gold}, ${C.goldLight})` }}
                   initial={{ width: "0%" }}
                   animate={{ width: paused ? undefined : "100%" }}
-                  transition={{ duration: 4, ease: "linear" }}
+                  transition={{ duration: CAROUSEL_INTERVAL_MS / 1000, ease: "linear" }}
                 />
               )}
             </div>
@@ -413,7 +427,7 @@ function ObjetivosSection() {
                 <motion.button
                   key={s.id}
                   type="button"
-                  onClick={() => go(i, i > active ? 1 : -1)}
+                  onClick={() => goToIndex(i, i > active ? 1 : -1)}
                   whileHover={shouldReduce ? undefined : { x: isOn ? 0 : 4 }}
                   className="flex items-center gap-3 rounded-2xl border px-4 py-3 text-left transition-all duration-200"
                   style={{
@@ -461,7 +475,7 @@ function ObjetivosSection() {
             <button
               key={s.id}
               type="button"
-              onClick={() => go(i, i > active ? 1 : -1)}
+              onClick={() => goToIndex(i, i > active ? 1 : -1)}
               className="h-2 rounded-full transition-all duration-300"
               style={{
                 width: i === active ? "24px" : "8px",
@@ -490,7 +504,11 @@ export type HomeV2ClientProps = {
 
 export function HomeV2Client({ simuladorConfigs, conteudoDestaques }: HomeV2ClientProps) {
   const shouldReduce = useReducedMotion();
-  const quickDefaults = useMemo(() => getQuickSimDefaults(simuladorConfigs), [simuladorConfigs]);
+  const [quickTipoBem, setQuickTipoBem] = useState<"imovel" | "automovel">("imovel");
+  const quickDefaults = useMemo(
+    () => getQuickSimDefaults(simuladorConfigs, quickTipoBem),
+    [simuladorConfigs, quickTipoBem],
+  );
   const [fraseAtual, setFraseAtual] = useState(0);
   const [tabSimulador, setTabSimulador] = useState<"consorcio" | "financiamento">("consorcio");
   const [valorCredito, setValorCredito] = useState(quickDefaults.valorCredito);
@@ -507,7 +525,13 @@ export function HomeV2Client({ simuladorConfigs, conteudoDestaques }: HomeV2Clie
 
   useEffect(() => {
     setPrazoIndex((i) => Math.min(i, Math.max(0, prazosAtivos.length - 1)));
-  }, [tabSimulador, prazosAtivos.length]);
+  }, [tabSimulador, prazosAtivos.length, quickTipoBem]);
+
+  useEffect(() => {
+    setValorCredito((v) =>
+      Math.min(Math.max(v, quickDefaults.valorMin), quickDefaults.valorMax),
+    );
+  }, [quickTipoBem, quickDefaults.valorMin, quickDefaults.valorMax]);
 
   function onTabSimulador(tab: "consorcio" | "financiamento") {
     setTabSimulador(tab);
@@ -523,13 +547,13 @@ export function HomeV2Client({ simuladorConfigs, conteudoDestaques }: HomeV2Clie
   }, []);
 
   const quickSim = useMemo(
-    () => computeQuickSimulatorResult(tabSimulador, valorCredito, prazo, simuladorConfigs, "imovel"),
-    [tabSimulador, valorCredito, prazo, simuladorConfigs],
+    () => computeQuickSimulatorResult(tabSimulador, valorCredito, prazo, simuladorConfigs, quickTipoBem),
+    [tabSimulador, valorCredito, prazo, simuladorConfigs, quickTipoBem],
   );
 
   const simuladorCompletoHref = buildSimuladorUrl({
     solucao: tabSimulador,
-    tipo: "imovel",
+    tipo: quickTipoBem,
     valor: valorCredito,
     prazo: quickSim.prazoEfetivo,
     origem: "home_simulador_rapido",
@@ -731,6 +755,21 @@ export function HomeV2Client({ simuladorConfigs, conteudoDestaques }: HomeV2Clie
             className="rounded-3xl border p-8"
             style={{ background: C.bgCard, borderColor: C.goldBorder }}
           >
+            <div className="mb-6 flex gap-2 rounded-2xl p-1" style={{ background: C.bgMid }}>
+              {(["imovel", "automovel"] as const).map((tb) => (
+                <button
+                  key={tb}
+                  type="button"
+                  onClick={() => setQuickTipoBem(tb)}
+                  className="flex-1 rounded-xl py-2 text-xs font-bold sm:text-sm"
+                  style={
+                    quickTipoBem === tb ? { background: C.goldBorder, color: C.gold } : { color: C.muted }
+                  }
+                >
+                  {tb === "imovel" ? "Imóvel" : "Veículo"}
+                </button>
+              ))}
+            </div>
             <div className="mb-8 flex gap-2 rounded-2xl p-1" style={{ background: C.bgMid }}>
               {(["consorcio", "financiamento"] as const).map((tab) => (
                 <button

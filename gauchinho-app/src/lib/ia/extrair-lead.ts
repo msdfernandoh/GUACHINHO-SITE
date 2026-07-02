@@ -1,4 +1,5 @@
 import type { DadosLeadExtraidos, ExtrairLeadResult, IaChatMessage } from "./types";
+import { TIPOS_CREDITO_PUBLICO, type TipoCreditoPublico } from "@/lib/leads/tipo-credito";
 
 function textoConversa(messages: IaChatMessage[]): string {
   return messages
@@ -110,7 +111,7 @@ function extrairInteresse(text: string): { tipo?: string; produto?: string } {
     return { tipo: "Consórcio moto", produto: "moto" };
   }
   if (/automóvel|automovel|carro|veículo|veiculo/i.test(lower)) {
-    return { tipo: "Consórcio automóvel", produto: "automovel" };
+    return { tipo: "Consórcio veículo", produto: "automovel" };
   }
   if (/imóvel|imovel|casa|apartamento/i.test(lower)) {
     return { tipo: "Consórcio imóvel", produto: "imovel" };
@@ -151,9 +152,24 @@ export function buildResumoIa(dados: DadosLeadExtraidos): string {
   return parts.join(" ");
 }
 
+function mapTipoCreditoPublico(produto?: string, tipoInteresse?: string): TipoCreditoPublico | undefined {
+  const p = (produto ?? "").toLowerCase();
+  if (p === "imovel" || /imóvel|imovel|casa/.test(tipoInteresse ?? "")) return "Imóvel";
+  if (p === "automovel" || p === "veiculo") return "Veículo";
+  if (p === "moto") return "Moto";
+  if (p === "caminhao" || /caminhão|caminhao/.test(tipoInteresse ?? "")) return "Caminhão";
+  if (/máquina|maquina|maquinario/.test(tipoInteresse ?? "")) return "Máquinas";
+  if (/serviço|servico/.test(tipoInteresse ?? "")) return "Serviços";
+  for (const t of TIPOS_CREDITO_PUBLICO) {
+    if (tipoInteresse?.includes(t)) return t;
+  }
+  return undefined;
+}
+
 export function extrairLeadDaConversa(messages: IaChatMessage[]): ExtrairLeadResult {
   const text = textoConversa(messages);
   const { tipo, produto } = extrairInteresse(text);
+  const tipoCredito = mapTipoCreditoPublico(produto, tipo);
 
   const dados: DadosLeadExtraidos = {
     nome: extrairNome(text),
@@ -161,9 +177,11 @@ export function extrairLeadDaConversa(messages: IaChatMessage[]): ExtrairLeadRes
     cidade: extrairCidade(text),
     tipoInteresse: tipo,
     produtoInteresse: produto,
+    tipoCredito,
     valorAproximado: extrairValor(text),
     urgencia: extrairUrgencia(text),
     recursoProprio: extrairRecurso(text),
+    observacao: text.length > 400 ? text.slice(-400) : undefined,
   };
 
   dados.resumo = buildResumoIa(dados);
@@ -171,7 +189,9 @@ export function extrairLeadDaConversa(messages: IaChatMessage[]): ExtrairLeadRes
   const prontoParaLead = Boolean(
     dados.nome?.trim() &&
       dados.whatsapp &&
-      (dados.tipoInteresse || dados.produtoInteresse),
+      dados.tipoCredito &&
+      dados.valorAproximado != null &&
+      dados.valorAproximado > 0,
   );
 
   return { dados, prontoParaLead };

@@ -97,13 +97,16 @@ export const CASO_CATEGORIAS = [
 export const DICA_CATEGORIAS = [
   "Consórcio",
   "Financiamento",
-  "Cartas contempladas",
+  "Carta contemplada",
   "Lance",
-  "Imóveis",
-  "Veículos",
   "Planejamento financeiro",
   "Dicas rápidas",
+  "Mercado",
+  "Perguntas frequentes",
 ] as const;
+
+/** Categorias legadas ainda possíveis no banco — não oferecidas em cadastro novo. */
+export const DICA_CATEGORIAS_LEGADAS = ["Imóveis", "Imóvel", "Veículos", "Veículo"] as const;
 
 export const FAQ_CATEGORIAS = [
   "Consórcio",

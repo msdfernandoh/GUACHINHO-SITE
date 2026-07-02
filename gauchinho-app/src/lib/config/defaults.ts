@@ -188,6 +188,7 @@ export type CalculadorasFinanceirasConfig = {
   ativoValorFuturo: boolean;
   ativoFinanciamento: boolean;
   ativoCorrecao: boolean;
+  ativoJurosReal: boolean;
   rentabilidadeMensalPadrao: number;
   taxaFinanciamentoPadrao: number;
   textoCtaAposResultado: string;
@@ -199,6 +200,7 @@ export const DEFAULT_CALCULADORAS_FINANCEIRAS: CalculadorasFinanceirasConfig = {
   ativoValorFuturo: true,
   ativoFinanciamento: true,
   ativoCorrecao: true,
+  ativoJurosReal: true,
   rentabilidadeMensalPadrao: 0.8,
   taxaFinanciamentoPadrao: 1,
   textoCtaAposResultado: "Quer uma análise personalizada para seu objetivo?",

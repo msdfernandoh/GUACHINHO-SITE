@@ -1,15 +1,30 @@
 import { formatCurrency } from "@/lib/utils/format";
-import type { ComparativoConsorcioFinanciamento } from "@/lib/simulador/comparativo";
+import type {
+  ComparativoConsorcioFinanciamento,
+  DetalheAlternativaConsorcio,
+} from "@/lib/simulador/comparativo";
 import type { Modo } from "./simulador-types";
 import { sectionCardClass } from "./simulador-ui";
 
 type Props = {
   modo: Modo;
   comparativo: ComparativoConsorcioFinanciamento;
+  alternativaConsorcio?: DetalheAlternativaConsorcio | null;
 };
 
-export function ComparisonSection({ modo, comparativo }: Props) {
+function Metric({ label, value, sub }: { label: string; value: string; sub?: string }) {
+  return (
+    <div className="rounded-lg border border-slate-700/50 bg-slate-950/40 p-3">
+      <p className="text-[10px] font-medium uppercase tracking-wide text-slate-500">{label}</p>
+      <p className="mt-1 text-base font-bold text-white">{value}</p>
+      {sub ? <p className="mt-0.5 text-[10px] text-slate-500">{sub}</p> : null}
+    </div>
+  );
+}
+
+export function ComparisonSection({ modo, comparativo, alternativaConsorcio }: Props) {
   const isConsorcioPrimary = modo === "consorcio";
+  const alt = !isConsorcioPrimary ? alternativaConsorcio : null;
 
   return (
     <section className={sectionCardClass("border-slate-700/40 bg-slate-900/30")}>
@@ -31,8 +46,8 @@ export function ComparisonSection({ modo, comparativo }: Props) {
         <>
           <h3 className="text-lg font-bold text-white">Consórcio como alternativa de planejamento</h3>
           <p className="mt-1 text-sm text-slate-400">
-            Se a compra não precisa ser imediata, o consórcio pode ser uma alternativa para reduzir o
-            custo total estimado.
+            Mesmo crédito ({formatCurrency(alt?.valorCredito ?? comparativo.consorcio.valorCredito)}) e prazo (
+            {alt?.prazoMeses ?? comparativo.consorcio.prazoMeses} meses) — estimativa de consórcio.
           </p>
         </>
       )}
@@ -59,18 +74,37 @@ export function ComparisonSection({ modo, comparativo }: Props) {
               </p>
             </div>
           </>
+        ) : alt ? (
+          <div className="sm:col-span-2 space-y-4 rounded-xl border border-amber-500/40 bg-amber-500/10 p-5">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Metric label="Parcela cheia" value={`${formatCurrency(alt.parcelaCheia)}/mês`} />
+              <Metric
+                label="Parcela reduzida"
+                value={`${formatCurrency(alt.parcelaReduzida)}/mês`}
+                sub={alt.labelParcelaReduzida}
+              />
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              <Metric label="Crédito desejado" value={formatCurrency(alt.valorCredito)} />
+              <Metric label="Prazo" value={`${alt.prazoMeses} meses`} />
+              <Metric label="Saldo devedor est." value={formatCurrency(alt.saldoDevedorEstimado)} />
+              <Metric
+                label="Lance (própria carta)"
+                value={formatCurrency(alt.lancePropriaCarta)}
+                sub="Sem tirar dinheiro do bolso"
+              />
+              <Metric label="Crédito líquido est." value={formatCurrency(alt.creditoLiquidoEstimado)} />
+            </div>
+            <p className="text-xs text-slate-500">
+              Financiamento simulado: {formatCurrency(comparativo.financiamento.parcelaEstimada)}/mês · custo final{" "}
+              {formatCurrency(comparativo.financiamento.custoFinal)}
+            </p>
+          </div>
         ) : (
           <div className="sm:col-span-2 rounded-xl border border-amber-500/40 bg-amber-500/10 p-5">
             <p className="text-sm font-bold uppercase tracking-wide text-amber-300">Consórcio (alternativa)</p>
             <p className="mt-2 text-2xl font-bold text-white">
               {formatCurrency(comparativo.consorcio.parcelaEstimada)}/mês
-            </p>
-            <p className="text-sm text-slate-400">
-              Total estimado: {formatCurrency(comparativo.consorcio.valorTotalEstimado)}
-            </p>
-            <p className="mt-3 text-xs text-slate-500">
-              Financiamento simulado: {formatCurrency(comparativo.financiamento.parcelaEstimada)}/mês · custo final{" "}
-              {formatCurrency(comparativo.financiamento.custoFinal)}
             </p>
           </div>
         )}

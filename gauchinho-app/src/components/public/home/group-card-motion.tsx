@@ -5,6 +5,7 @@ import Link from "next/link";
 import { formatCurrency } from "@/lib/utils/format";
 import { formatPrazoGrupo } from "@/lib/grupos/simulacao-linha";
 import type { HomeGrupoDestaque } from "@/lib/home/load-home-data";
+import { labelModalidadeGrupoPublica } from "@/lib/grupos/modalidade-label-publica";
 
 export function GroupCardMotion({
   grupo,
@@ -25,7 +26,7 @@ export function GroupCardMotion({
       <div className="flex items-baseline justify-between gap-2">
         <h3 className="text-xl font-bold text-white">Grupo {grupo.codigo_grupo}</h3>
         <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-400">
-          {grupo.modalidade}
+          {labelModalidadeGrupoPublica(grupo.modalidade)}
         </span>
       </div>
       <dl className="mt-5 space-y-3 text-sm">

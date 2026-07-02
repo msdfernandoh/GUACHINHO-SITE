@@ -14,6 +14,7 @@ import {
   BookOpen,
   BarChart2,
   TrendingUp,
+  Shield,
 } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 
@@ -25,6 +26,7 @@ const staffNav = [
   { href: "/admin/grupos", label: "Grupos", icon: Layers },
   { href: "/admin/cartas-contempladas", label: "Cartas Contempladas", icon: FileText },
   { href: "/admin/imobiliarias", label: "Imobiliárias", icon: Building2, masterOnly: true },
+  { href: "/admin/seguradoras", label: "Seguradoras", icon: Shield, masterOnly: true },
   { href: "/admin/imoveis", label: "Imóveis", icon: Home },
   { href: "/admin/conteudo", label: "Conteúdo", icon: BookOpen, conteudoOnly: true },
   { href: "/admin/usuarios", label: "Usuários", icon: UserCircle, masterOnly: true },

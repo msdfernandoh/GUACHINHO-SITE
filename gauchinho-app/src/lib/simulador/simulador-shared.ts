@@ -1,4 +1,10 @@
 import type { FinanciamentoConfig, SimuladorTipoBemConfig } from "@/lib/config/defaults";
+import type { FinanciamentoConfigStored } from "@/lib/config/financiamento-por-tipo";
+import {
+  financiamentoConfigParaTipo,
+  normalizeFinanciamentoStored,
+  tipoFinanciamentoFromBem,
+} from "@/lib/config/financiamento-por-tipo";
 import { calcularParcelaConsorcio } from "@/lib/simulador/consorcio";
 import {
   entradaPadraoFinanciamento,
@@ -15,8 +21,16 @@ import {
 export type SimuladorConfigsBundle = {
   imovel: SimuladorTipoBemConfig;
   automovel: SimuladorTipoBemConfig;
-  financiamento: FinanciamentoConfig;
+  financiamento: FinanciamentoConfigStored;
 };
+
+export function resolveFinanciamentoCfg(
+  configs: SimuladorConfigsBundle,
+  tipoBem: "imovel" | "automovel" | "moto" | "caminhonete",
+): FinanciamentoConfig {
+  const stored = normalizeFinanciamentoStored(configs.financiamento);
+  return financiamentoConfigParaTipo(stored, tipoFinanciamentoFromBem(tipoBem));
+}
 
 export {
   listPrazosConsorcio,
@@ -61,7 +75,7 @@ export function computeQuickSimulatorPreview(
 ): QuickSimulatorPreview {
   const valor = Math.max(0, valorCredito);
   const bemCfg = tipoBem === "automovel" ? configs.automovel : configs.imovel;
-  const finCfg = configs.financiamento;
+  const finCfg = resolveFinanciamentoCfg(configs, tipoBem);
 
   if (modo === "consorcio") {
     const prazos = listPrazosConsorcio(bemCfg);
@@ -140,8 +154,12 @@ export function computeQuickSimulatorParcela(
   return r.parcela ?? 0;
 }
 
-export function getQuickSimDefaults(configs: SimuladorConfigsBundle, tipoBem: "imovel" | "automovel" = "imovel") {
+export function getQuickSimDefaults(
+  configs: SimuladorConfigsBundle,
+  tipoBem: "imovel" | "automovel" = "imovel",
+) {
   const cfg = tipoBem === "automovel" ? configs.automovel : configs.imovel;
+  const finCfg = resolveFinanciamentoCfg(configs, tipoBem);
   const prazos = listPrazosConsorcio(cfg);
   const prazo =
     prazos.find((p) => p === cfg.prazoPadrao) ?? prazos[Math.floor(prazos.length / 2)] ?? cfg.prazoPadrao;
@@ -151,6 +169,6 @@ export function getQuickSimDefaults(configs: SimuladorConfigsBundle, tipoBem: "i
     valorMax: cfg.valorMaximoCredito,
     prazo,
     prazosConsorcio: prazos,
-    prazosFinanciamento: listPrazosFinanciamento(configs.financiamento),
+    prazosFinanciamento: listPrazosFinanciamento(finCfg),
   };
 }
