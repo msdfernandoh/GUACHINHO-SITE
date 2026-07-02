@@ -1,9 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { parseBrazilianNumber } from "@/lib/utils/format";
-import { formatCurrency } from "@/lib/utils/format";
 import { cn } from "@/lib/utils/cn";
+import { formatBRL, maskBRLMoneyInput, parseBRLMoney } from "@/lib/formatters/money";
 import { Input, Label } from "@/components/ui/form-primitives";
 
 type Props = {
@@ -29,17 +28,18 @@ export function CurrencyInput({
   className,
   highlight,
 }: Props) {
-  const [draft, setDraft] = useState(formatCurrency(value));
+  const [draft, setDraft] = useState(() => formatBRL(value));
 
   useEffect(() => {
-    setDraft(formatCurrency(value));
+    setDraft(formatBRL(value));
   }, [value]);
 
-  function commit(raw: string) {
-    let n = parseBrazilianNumber(raw.replace(/[^\d.,-]/g, ""));
+  function commitFromDisplay(raw: string) {
+    let n = parseBRLMoney(raw) ?? 0;
     if (max != null) n = Math.min(max, n);
     n = Math.max(min, n);
     onChange(n);
+    setDraft(formatBRL(n));
   }
 
   return (
@@ -49,10 +49,20 @@ export function CurrencyInput({
       </Label>
       <Input
         id={id}
-        inputMode="decimal"
+        inputMode="numeric"
         value={draft}
-        onChange={(e) => setDraft(e.target.value)}
-        onBlur={() => commit(draft)}
+        onChange={(e) => {
+          const masked = maskBRLMoneyInput(e.target.value);
+          setDraft(masked);
+          const parsed = parseBRLMoney(masked);
+          if (parsed != null) {
+            let n = parsed;
+            if (max != null) n = Math.min(max, n);
+            n = Math.max(min, n);
+            onChange(n);
+          }
+        }}
+        onBlur={() => commitFromDisplay(draft)}
         className={cn(
           "mt-1 border-slate-600 bg-slate-950/80 text-base text-slate-100",
           highlight && "text-lg font-semibold",

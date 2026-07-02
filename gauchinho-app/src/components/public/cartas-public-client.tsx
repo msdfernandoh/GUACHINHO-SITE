@@ -13,7 +13,6 @@ import {
   type WhatsappOrigemRow,
 } from "@/lib/whatsapp/carta-messages";
 import { MascoteGauchinho } from "@/components/public/mascote-gauchinho";
-
 type Filters = {
   tipo?: string;
   administradora?: string;
@@ -111,20 +110,20 @@ export function CartasPublicClient({ cartas }: { cartas: CartaContemplada[] }) {
 
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100">
-      <div className="pointer-events-none fixed bottom-24 right-4 z-30 hidden opacity-80 sm:block">
-        <MascoteGauchinho variant="floating" />
-      </div>
       <div className="mx-auto max-w-6xl px-4 py-12">
-        <div className="mb-10 text-center">
+        <div className="mb-10 flex flex-col items-center gap-3 text-center sm:flex-row sm:text-left">
+          <MascoteGauchinho variant="compact" className="shrink-0" />
+          <div>
           <p className="text-sm font-semibold uppercase tracking-[0.2em] text-amber-500">
             <Sparkles className="mr-1 inline h-4 w-4" />
             Gauchinho
           </p>
           <h1 className="mt-2 text-4xl font-bold text-white">Cartas Contempladas</h1>
-          <p className="mx-auto mt-3 max-w-2xl text-zinc-400">
+          <p className="mx-auto mt-3 max-w-2xl text-zinc-400 sm:mx-0">
             Oportunidades de crédito já contemplado. Confira os valores e manifeste seu interesse — sempre
             consulte a disponibilidade atualizada com nossa equipe.
           </p>
+          </div>
         </div>
 
         <div className="mb-8 grid gap-3 rounded-2xl border border-amber-500/20 bg-zinc-900/80 p-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -326,7 +325,7 @@ export function CartasPublicClient({ cartas }: { cartas: CartaContemplada[] }) {
               <Button variant="gold" disabled={loading || !nome.trim() || !whatsapp.trim()} onClick={submitInteresse}>
                 {loading ? "Enviando…" : "Confirmar"}
               </Button>
-              <Button variant="outline" onClick={() => setModalCarta(null)}>
+              <Button variant="outlineGold" onClick={() => setModalCarta(null)}>
                 Fechar
               </Button>
             </div>

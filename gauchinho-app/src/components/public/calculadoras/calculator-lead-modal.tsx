@@ -3,6 +3,7 @@
 import { cn } from "@/lib/utils/cn";
 import { Button, Input, Label, surfaceInputDarkSlate } from "@/components/ui/form-primitives";
 import { digitsOnlyPhone, formatWhatsappBrInput } from "@/lib/utils/format";
+import { useLockBodyScroll } from "@/lib/ui/use-lock-body-scroll";
 
 export type AcaoCalculadoraLead = "analise" | "especialista";
 
@@ -42,10 +43,9 @@ export function CalculatorLeadModal({
   onCidade,
   onEmail,
 }: Props) {
-  if (!open) return null;
+  useLockBodyScroll(open);
 
-  const cancelClass =
-    "border-zinc-500 bg-zinc-900 text-zinc-100 hover:border-zinc-400 hover:bg-zinc-800 hover:text-zinc-100";
+  if (!open) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/75 p-4 sm:items-center">
@@ -83,7 +83,7 @@ export function CalculatorLeadModal({
           <Button type="submit" variant="gold" disabled={loading || digitsOnlyPhone(whatsapp).length < 10} className="min-h-12 flex-1 text-base">
             {loading ? "Enviando…" : "Salvar e continuar"}
           </Button>
-          <Button type="button" variant="outline" className={`min-h-12 ${cancelClass}`} onClick={onClose}>
+          <Button type="button" variant="outlineGold" className="min-h-12 flex-1" onClick={onClose}>
             Cancelar
           </Button>
         </div>

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { taxaAnualParaMensalPercentual, taxaMensalParaAnualPercentual } from "./math";
-import { taxaMensalAplicacaoFromIndice } from "./index";
+import { cdiAnualReferenciaPercentual, taxaMensalAplicacaoFromIndice } from "./index";
+import { taxaCdiEfetivaAnual } from "@/lib/calculadoras/aplicacao-comparativo";
 import type { IndicePublico } from "./types";
 
 describe("taxa anual/mensal", () => {
@@ -37,6 +38,8 @@ describe("taxaMensalAplicacaoFromIndice", () => {
     const t100 = taxaMensalAplicacaoFromIndice("cdi", cdi, { percentualCdi: 100 })!;
     const t110 = taxaMensalAplicacaoFromIndice("cdi", cdi, { percentualCdi: 110 })!;
     expect(t110).toBeGreaterThan(t100);
+    expect(taxaCdiEfetivaAnual(14.15, 110)).toBeCloseTo(15.565, 3);
+    expect(taxaMensalAplicacaoFromIndice("cdi", { ...cdi, valor_anual: 14.15, valor_acumulado_12m: 14.15 }, { percentualCdi: 110 })!).toBeGreaterThan(0);
   });
 
   it("CDI 14,15% a.a. não vira 14,15% a.m.", () => {

@@ -9,6 +9,7 @@ import type { IndicePublico } from "@/lib/indices-financeiros/types";
 import { formatCurrency } from "@/lib/utils/format";
 import { CalculatorResultCard } from "./calculator-result-card";
 import { sectionCardClass } from "@/components/simulador/simulador-ui";
+import { MoneyInput } from "@/components/ui/money-input";
 
 type Props = {
   indices: IndicePublico[];
@@ -25,7 +26,7 @@ function findIndice(indices: IndicePublico[], codigo: string) {
 }
 
 export function CorrecaoValoresCalculator({ indices, onResult }: Props) {
-  const [valorAtual, setValorAtual] = useState("2000");
+  const [valorAtual, setValorAtual] = useState<number | null>(2000);
   const [indice, setIndice] = useState<IndiceAluguelCodigo>("ipca");
   const [usarIndiceAtual, setUsarIndiceAtual] = useState(true);
   const [percentualManual, setPercentualManual] = useState("5");
@@ -44,7 +45,7 @@ export function CorrecaoValoresCalculator({ indices, onResult }: Props) {
 
   function calcular() {
     const inputs = {
-      valorAtual: num(valorAtual),
+      valorAtual: valorAtual ?? 0,
       indice,
       usarIndiceAtual,
       percentualManual: num(percentualManual),
@@ -92,9 +93,9 @@ export function CorrecaoValoresCalculator({ indices, onResult }: Props) {
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
           <div>
             <Label className="text-slate-300">Valor atual do aluguel (R$)</Label>
-            <Input
+            <MoneyInput
               value={valorAtual}
-              onChange={(e) => setValorAtual(e.target.value)}
+              onValueChange={setValorAtual}
               className={cn("mt-1", surfaceInputDarkSlate)}
             />
           </div>

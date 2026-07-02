@@ -61,6 +61,22 @@ export function percentualReajusteAluguel12m(indice: IndicePublico | null, manua
   return manual;
 }
 
+/** CDI cadastrado como taxa anual (% a.a.); ignora 0,05 e outros valores incompatíveis com anual. */
+export function cdiAnualReferenciaPercentual(indice: IndicePublico | null): number | null {
+  if (!indice) return null;
+  for (const v of [indice.valor_anual, indice.valor_acumulado_12m]) {
+    if (v != null && Number.isFinite(v) && v >= 1 && v <= 30) return v;
+  }
+  return null;
+}
+
+function selicAnualReferenciaPercentual(indice: IndicePublico): number | null {
+  if (indice.valor_anual != null && indice.valor_anual >= 1 && indice.valor_anual <= 30) {
+    return indice.valor_anual;
+  }
+  return null;
+}
+
 /** Taxa mensal (% a.m.) para simulação de aplicação a partir do índice. */
 export function taxaMensalAplicacaoFromIndice(
   codigo: IndiceCodigo,
@@ -81,9 +97,16 @@ export function taxaMensalAplicacaoFromIndice(
 
   if (codigo === "cdi") {
     const pct = opts.percentualCdi ?? 100;
-    const anual = (indice.valor_anual ?? indice.valor_acumulado_12m ?? 0) * (pct / 100);
-    if (anual === 0) return 0;
-    return taxaAnualParaMensalPercentual(anual);
+    const base = cdiAnualReferenciaPercentual(indice);
+    if (base == null) return null;
+    return taxaAnualParaMensalPercentual(base * (pct / 100));
+  }
+
+  if (codigo === "selic") {
+    const anual = selicAnualReferenciaPercentual(indice);
+    if (anual != null) return taxaAnualParaMensalPercentual(anual);
+    if (indice.valor_mensal != null && indice.valor_mensal > 0) return indice.valor_mensal;
+    return null;
   }
 
   if (codigo === "poupanca") {

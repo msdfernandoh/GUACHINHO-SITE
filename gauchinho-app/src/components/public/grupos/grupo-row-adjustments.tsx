@@ -268,7 +268,7 @@ export function GrupoRowAdjustments({ grupo, cotas, modalidades, config, onChang
         <Button
           type="button"
           size="sm"
-          variant="outline"
+          variant="outlineGold"
           className="mt-3 border-zinc-600 bg-zinc-900 text-zinc-100 hover:bg-zinc-800"
           onClick={handlers.clearSelection}
         >

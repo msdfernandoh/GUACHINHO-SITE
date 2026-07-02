@@ -532,7 +532,7 @@ export function SimuladorApp({
           </Button>
           <Button
             type="button"
-            variant="outline"
+            variant="outlineGold"
             className="min-h-11 flex-1 border-slate-600 bg-slate-900 text-slate-100 hover:bg-slate-800"
             onClick={() => openCaptura("especialista")}
           >
@@ -693,7 +693,7 @@ export function SimuladorApp({
             </Button>
             <Button
               type="button"
-              variant="outline"
+              variant="outlineGold"
               className="min-h-12 flex-1 border-slate-600 bg-slate-900 text-slate-100 hover:bg-slate-800 sm:min-w-[12rem]"
               onClick={() => openCaptura("analise")}
             >
@@ -701,7 +701,7 @@ export function SimuladorApp({
             </Button>
             <Button
               type="button"
-              variant="outline"
+              variant="outlineGold"
               className="min-h-12 flex-1 border-slate-600 bg-slate-900 text-slate-100 hover:bg-slate-800 sm:min-w-[12rem]"
               onClick={() => openCaptura("especialista")}
             >

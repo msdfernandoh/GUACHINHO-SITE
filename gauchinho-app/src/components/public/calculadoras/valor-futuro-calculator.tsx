@@ -8,6 +8,7 @@ import { calcularTaxaOperacaoPrice } from "@/lib/calculadoras/taxa-operacao-pric
 import { formatCurrency } from "@/lib/utils/format";
 import { CalculatorResultCard } from "./calculator-result-card";
 import { sectionCardClass } from "@/components/simulador/simulador-ui";
+import { MoneyInput } from "@/components/ui/money-input";
 
 type Props = {
   taxaPadrao: number;
@@ -28,13 +29,13 @@ function formatPercent(value: number, decimals = 4) {
 export function ValorFuturoCalculator({ taxaPadrao, onResult }: Props) {
   const [modo, setModo] = useState<Modo>("investimento");
 
-  const [valorInicial, setValorInicial] = useState("10000");
+  const [valorInicial, setValorInicial] = useState<number | null>(10_000);
   const [taxa, setTaxa] = useState(String(taxaPadrao));
   const [prazo, setPrazo] = useState("12");
   const [resultInv, setResultInv] = useState<ReturnType<typeof calcularValorFuturo> | null>(null);
 
-  const [valorCredito, setValorCredito] = useState("100000");
-  const [parcela, setParcela] = useState("742");
+  const [valorCredito, setValorCredito] = useState<number | null>(100_000);
+  const [parcela, setParcela] = useState<number | null>(742);
   const [prazoOp, setPrazoOp] = useState("430");
   const [resultTaxa, setResultTaxa] = useState<ReturnType<typeof calcularTaxaOperacaoPrice> | null>(null);
   const [erroTaxa, setErroTaxa] = useState<string | null>(null);
@@ -44,7 +45,7 @@ export function ValorFuturoCalculator({ taxaPadrao, onResult }: Props) {
     setResultTaxa(null);
     const inputs = {
       modo: "investimento",
-      valorInicial: num(valorInicial),
+      valorInicial: valorInicial ?? 0,
       taxaMensalPercentual: num(taxa),
       prazoMeses: Math.floor(num(prazo)),
     };
@@ -57,8 +58,8 @@ export function ValorFuturoCalculator({ taxaPadrao, onResult }: Props) {
     setResultInv(null);
     const inputs = {
       modo: "taxa_operacao",
-      valorCredito: num(valorCredito),
-      parcela: num(parcela),
+      valorCredito: valorCredito ?? 0,
+      parcela: parcela ?? 0,
       prazoMeses: Math.floor(num(prazoOp)),
     };
     const r = calcularTaxaOperacaoPrice(inputs);
@@ -120,9 +121,9 @@ export function ValorFuturoCalculator({ taxaPadrao, onResult }: Props) {
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
               <div>
                 <Label className="text-slate-300">Valor inicial (R$)</Label>
-                <Input
+                <MoneyInput
                   value={valorInicial}
-                  onChange={(e) => setValorInicial(e.target.value)}
+                  onValueChange={setValorInicial}
                   className={cn("mt-1", surfaceInputDarkSlate)}
                 />
               </div>
@@ -146,9 +147,9 @@ export function ValorFuturoCalculator({ taxaPadrao, onResult }: Props) {
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
               <div>
                 <Label className="text-slate-300">Valor do crédito (R$)</Label>
-                <Input
+                <MoneyInput
                   value={valorCredito}
-                  onChange={(e) => setValorCredito(e.target.value)}
+                  onValueChange={setValorCredito}
                   className={cn("mt-1", surfaceInputDarkSlate)}
                 />
               </div>
@@ -158,7 +159,11 @@ export function ValorFuturoCalculator({ taxaPadrao, onResult }: Props) {
               </div>
               <div className="sm:col-span-2">
                 <Label className="text-slate-300">Valor da parcela (R$)</Label>
-                <Input value={parcela} onChange={(e) => setParcela(e.target.value)} className={cn("mt-1", surfaceInputDarkSlate)} />
+                <MoneyInput
+                  value={parcela}
+                  onValueChange={setParcela}
+                  className={cn("mt-1", surfaceInputDarkSlate)}
+                />
               </div>
             </div>
           </>

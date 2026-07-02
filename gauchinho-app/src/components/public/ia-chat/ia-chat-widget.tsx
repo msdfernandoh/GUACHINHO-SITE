@@ -8,11 +8,14 @@ import type { IaConfig } from "@/lib/config/ia-defaults";
 import type { WhatsappOrigemRow } from "@/lib/whatsapp/resolve-origem";
 import { TIPOS_CREDITO_PUBLICO } from "@/lib/leads/tipo-credito";
 import { formatWhatsappBrInput, digitsOnlyPhone } from "@/lib/utils/format";
+import { MoneyInput } from "@/components/ui/money-input";
+import { surfaceInputDarkSlate } from "@/components/ui/form-primitives";
 import {
   buildWhatsappPosLead,
   getOrCreateSessionId,
   IA_QUICK_ACTIONS,
 } from "@/lib/ia/chat-client";
+import { useLockBodyScroll } from "@/lib/ui/use-lock-body-scroll";
 
 type ChatMsg = { role: "user" | "assistant"; content: string };
 
@@ -34,7 +37,7 @@ export function IaChatWidget({ config }: Props) {
   const [formNome, setFormNome] = useState("");
   const [formWhatsapp, setFormWhatsapp] = useState("");
   const [formTipo, setFormTipo] = useState("");
-  const [formValor, setFormValor] = useState("");
+  const [formValor, setFormValor] = useState<number | null>(null);
   const [formLoading, setFormLoading] = useState(false);
   const [formMsg, setFormMsg] = useState<string | null>(null);
   const listRef = useRef<HTMLDivElement>(null);
@@ -74,6 +77,8 @@ export function IaChatWidget({ config }: Props) {
     window.addEventListener("gauchinho:open-ia-chat", handler);
     return () => window.removeEventListener("gauchinho:open-ia-chat", handler);
   }, [onOpen]);
+
+  useLockBodyScroll(open);
 
   const sendMessage = useCallback(
     async (text: string, action?: { href?: string; evento?: string; openLeadForm?: boolean }) => {
@@ -162,7 +167,7 @@ export function IaChatWidget({ config }: Props) {
           nome: formNome,
           whatsapp: digitsOnlyPhone(formWhatsapp) || formWhatsapp,
           tipoCredito: formTipo || undefined,
-          valorCredito: formValor || undefined,
+          valorCredito: formValor ?? undefined,
           sessionId: getOrCreateSessionId(),
           paginaOrigem: pathname ?? "/",
         }),
@@ -276,11 +281,11 @@ export function IaChatWidget({ config }: Props) {
                     </option>
                   ))}
                 </select>
-                <input
-                  placeholder="Valor aproximado (ex. 300000)"
+                <MoneyInput
                   value={formValor}
-                  onChange={(e) => setFormValor(e.target.value)}
-                  className="w-full rounded-lg border border-slate-600 bg-slate-950 px-2 py-2 text-white"
+                  onValueChange={setFormValor}
+                  placeholder="Valor aproximado"
+                  className={cn(surfaceInputDarkSlate)}
                 />
                 {formMsg ? <p className="text-xs text-emerald-400">{formMsg}</p> : null}
                 <button

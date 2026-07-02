@@ -8,6 +8,7 @@ import { calcularFinanciamentoCalculadora } from "@/lib/calculadoras/financiamen
 import { formatCurrency } from "@/lib/utils/format";
 import { CalculatorResultCard } from "./calculator-result-card";
 import { sectionCardClass } from "@/components/simulador/simulador-ui";
+import { MoneyInput } from "@/components/ui/money-input";
 
 type Props = {
   taxaPadrao: number;
@@ -20,8 +21,8 @@ function num(v: string) {
 }
 
 export function FinanciamentoCalculator({ taxaPadrao, onResult }: Props) {
-  const [valorBem, setValorBem] = useState("300000");
-  const [entrada, setEntrada] = useState("60000");
+  const [valorBem, setValorBem] = useState<number | null>(300_000);
+  const [entrada, setEntrada] = useState<number | null>(60_000);
   const [taxa, setTaxa] = useState(String(taxaPadrao));
   const [prazo, setPrazo] = useState("240");
   const [tipoBem, setTipoBem] = useState<"imovel" | "automovel">("imovel");
@@ -29,8 +30,8 @@ export function FinanciamentoCalculator({ taxaPadrao, onResult }: Props) {
 
   function calcular() {
     const inputs = {
-      valorBem: num(valorBem),
-      entrada: num(entrada),
+      valorBem: valorBem ?? 0,
+      entrada: entrada ?? 0,
       taxaMensalPercentual: num(taxa),
       prazoMeses: Math.floor(num(prazo)),
       tipoBem,
@@ -42,7 +43,7 @@ export function FinanciamentoCalculator({ taxaPadrao, onResult }: Props) {
 
   const simLink =
     result != null
-      ? `/simulador?solucao=consorcio&tipo=${tipoBem}&valor=${Math.round(num(valorBem))}`
+      ? `/simulador?solucao=consorcio&tipo=${tipoBem}&valor=${Math.round(valorBem ?? 0)}`
       : null;
 
   return (
@@ -52,11 +53,11 @@ export function FinanciamentoCalculator({ taxaPadrao, onResult }: Props) {
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
           <div>
             <Label className="text-slate-300">Valor do bem (R$)</Label>
-            <Input value={valorBem} onChange={(e) => setValorBem(e.target.value)} className={cn("mt-1", surfaceInputDarkSlate)} />
+            <MoneyInput value={valorBem} onValueChange={setValorBem} className={cn("mt-1", surfaceInputDarkSlate)} />
           </div>
           <div>
             <Label className="text-slate-300">Entrada (R$)</Label>
-            <Input value={entrada} onChange={(e) => setEntrada(e.target.value)} className={cn("mt-1", surfaceInputDarkSlate)} />
+            <MoneyInput value={entrada} onValueChange={setEntrada} className={cn("mt-1", surfaceInputDarkSlate)} />
           </div>
           <div>
             <Label className="text-slate-300">Taxa mensal (%)</Label>

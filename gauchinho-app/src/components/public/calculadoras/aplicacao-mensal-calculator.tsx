@@ -10,16 +10,20 @@ import {
   AVISO_COMPARATIVO_CONSORCIO,
   TEXTO_DIFERENCA_PATRIMONIAL,
   TEXTO_PARCELA_REDUZIDA_COMPARATIVO,
+  TEXTO_PRAZO_COMPARACAO_CONSORCIO,
 } from "@/lib/calculadoras/aplicacao-consorcio-comparativo";
-import type { PerfilAplicacaoCodigo } from "@/lib/calculadoras/aplicacao-comparativo";
+import {
+  buildTaxasPorPerfil,
+  type PerfilAplicacaoCodigo,
+} from "@/lib/calculadoras/aplicacao-comparativo";
 import { DEFAULT_SIMULADOR_IMOVEL } from "@/lib/config/defaults";
 import { percentualParcelaReduzidaPadrao } from "@/lib/config/simulador-parcela-opcoes";
-import { formatDataReferenciaBr, taxaMensalAplicacaoFromIndice } from "@/lib/indices-financeiros";
-import { taxaMensalParaAnualPercentual } from "@/lib/indices-financeiros/math";
+import { formatDataReferenciaBr } from "@/lib/indices-financeiros";
 import type { IndicePublico } from "@/lib/indices-financeiros/types";
 import { formatCurrency } from "@/lib/utils/format";
 import { CalculatorResultCard } from "./calculator-result-card";
 import { sectionCardClass } from "@/components/simulador/simulador-ui";
+import { MoneyInput } from "@/components/ui/money-input";
 
 type Props = {
   indices: IndicePublico[];
@@ -56,10 +60,8 @@ function indiceDesatualizado(indice: IndicePublico | null): boolean {
 }
 
 export function AplicacaoMensalCalculator({ indices, taxaPadrao, prefill, onResult }: Props) {
-  const [valorInicial, setValorInicial] = useState("0");
-  const [aporte, setAporte] = useState(() =>
-    prefill?.aporte != null ? String(prefill.aporte) : "500",
-  );
+  const [valorInicial, setValorInicial] = useState<number | null>(0);
+  const [aporte, setAporte] = useState<number | null>(() => prefill?.aporte ?? 500);
   const [prazo, setPrazo] = useState(() =>
     prefill?.prazoMeses != null ? String(prefill.prazoMeses) : "120",
   );
@@ -72,28 +74,27 @@ export function AplicacaoMensalCalculator({ indices, taxaPadrao, prefill, onResu
   const [cdiPreset, setCdiPreset] = useState("100");
   const [percentualCdiManual, setPercentualCdiManual] = useState("100");
   const [taxaManual, setTaxaManual] = useState(String(taxaPadrao));
+  const [taxaManualTipo, setTaxaManualTipo] = useState<"mensal" | "anual">("mensal");
   const [result, setResult] = useState<ReturnType<typeof calcularAplicacaoComConsorcio> | null>(null);
 
   const percentualCdi = cdiPreset === "custom" ? num(percentualCdiManual) : num(cdiPreset);
 
-  const taxasPorPerfil = useMemo(() => {
-    const map: Partial<Record<PerfilAplicacaoCodigo, number>> = {};
-    const perfis: PerfilAplicacaoCodigo[] = [
-      "poupanca",
-      "cdi",
-      "tesouro_selic",
-      "tesouro_ipca",
-      "taxa_manual",
-    ];
-    for (const p of perfis) {
-      const taxa = taxaMensalAplicacaoFromIndice(p, findIndice(indices, p), {
+  const taxaManualOpts = useMemo(
+    () => ({
+      taxaManualMensal: taxaManualTipo === "mensal" ? num(taxaManual) : undefined,
+      taxaManualAnual: taxaManualTipo === "anual" ? num(taxaManual) : undefined,
+    }),
+    [taxaManual, taxaManualTipo],
+  );
+
+  const taxasPorPerfil = useMemo(
+    () =>
+      buildTaxasPorPerfil((p) => findIndice(indices, p), {
         percentualCdi,
-        taxaManualMensal: num(taxaManual),
-      });
-      if (taxa != null) map[p] = taxa;
-    }
-    return map;
-  }, [indices, percentualCdi, taxaManual]);
+        ...taxaManualOpts,
+      }),
+    [indices, percentualCdi, taxaManualOpts],
+  );
 
   const indicePerfil =
     perfil !== "comparar_todos" && perfil !== "taxa_manual" ? findIndice(indices, perfil) : null;
@@ -102,20 +103,20 @@ export function AplicacaoMensalCalculator({ indices, taxaPadrao, prefill, onResu
     if (perfil === "comparar_todos") return null;
     return infoTaxaAplicacaoIndice(perfil, indicePerfil ?? findIndice(indices, perfil), {
       percentualCdi,
-      taxaManualMensal: num(taxaManual),
+      ...taxaManualOpts,
     });
-  }, [perfil, indicePerfil, indices, percentualCdi, taxaManual]);
+  }, [perfil, indicePerfil, indices, percentualCdi, taxaManualOpts]);
 
   const ultimaAtualizacao = formatDataReferenciaBr(taxaInfo?.ultimaAtualizacao);
 
   function calcular() {
     const inputs = {
-      valorInicial: num(valorInicial),
-      aporteMensal: num(aporte),
+      valorInicial: valorInicial ?? 0,
+      aporteMensal: aporte ?? 0,
       prazoMeses: Math.floor(num(prazo)),
       perfil,
       percentualCdi,
-      taxaManualMensal: num(taxaManual),
+      ...taxaManualOpts,
       aumentoAnualAportePercentual: num(aumentoAnualAporte),
       compararComConsorcio: compararConsorcio,
       reajusteAnualCreditoPercentual: num(reajusteCredito),
@@ -150,12 +151,13 @@ export function AplicacaoMensalCalculator({ indices, taxaPadrao, prefill, onResu
         {taxaInfo && perfil !== "comparar_todos" ? (
           <div className="mt-3 rounded-lg border border-slate-700/80 bg-slate-900/40 px-3 py-2 text-xs text-slate-300">
             <p className="font-semibold text-amber-200/90">Taxa usada no cálculo</p>
-            {perfil === "cdi" && taxaInfo.taxaAnualPercentual != null ? (
+            {perfil === "cdi" && taxaInfo.cdiAnualBasePercentual != null ? (
               <>
-                <p className="mt-1">
-                  CDI atual: {taxaInfo.taxaAnualPercentual.toFixed(2)}% a.a.
-                  {percentualCdi !== 100 ? ` (${percentualCdi}% do CDI)` : ""}
-                </p>
+                <p className="mt-1">CDI atual: {taxaInfo.cdiAnualBasePercentual.toFixed(2)}% a.a.</p>
+                <p>Percentual usado: {percentualCdi}% do CDI</p>
+                {taxaInfo.taxaAnualPercentual != null ? (
+                  <p>Taxa anual usada: {taxaInfo.taxaAnualPercentual.toFixed(2)}% a.a.</p>
+                ) : null}
                 {taxaInfo.taxaMensalPercentual != null ? (
                   <p>Taxa mensal equivalente: {taxaInfo.taxaMensalPercentual.toFixed(2)}% a.m.</p>
                 ) : null}
@@ -165,9 +167,17 @@ export function AplicacaoMensalCalculator({ indices, taxaPadrao, prefill, onResu
               <p className="mt-1">
                 Poupança: {taxaInfo.taxaMensalPercentual.toFixed(2)}% a.m.
                 {taxaInfo.taxaAnualPercentual != null
-                  ? ` / ${taxaInfo.taxaAnualPercentual.toFixed(2)}% a.a.`
-                  : ` / ${taxaMensalParaAnualPercentual(taxaInfo.taxaMensalPercentual).toFixed(2)}% a.a.`}
+                  ? ` · Taxa anual equivalente: ${taxaInfo.taxaAnualPercentual.toFixed(2)}% a.a.`
+                  : ""}
               </p>
+            ) : null}
+            {perfil === "selic" && taxaInfo.taxaAnualPercentual != null ? (
+              <>
+                <p className="mt-1">Selic: {taxaInfo.taxaAnualPercentual.toFixed(2)}% a.a.</p>
+                {taxaInfo.taxaMensalPercentual != null ? (
+                  <p>Taxa mensal equivalente: {taxaInfo.taxaMensalPercentual.toFixed(2)}% a.m.</p>
+                ) : null}
+              </>
             ) : null}
             {(perfil === "tesouro_selic" || perfil === "tesouro_ipca") &&
             taxaInfo.taxaAnualPercentual != null ? (
@@ -182,7 +192,11 @@ export function AplicacaoMensalCalculator({ indices, taxaPadrao, prefill, onResu
             ) : null}
             {perfil === "taxa_manual" && taxaInfo.taxaMensalPercentual != null ? (
               <p className="mt-1">
-                Taxa manual informada: {taxaInfo.taxaMensalPercentual.toFixed(2)}% a.m.
+                Taxa manual ({taxaManualTipo === "anual" ? "anual" : "mensal"}):{" "}
+                {num(taxaManual).toFixed(2)}% {taxaManualTipo === "anual" ? "a.a." : "a.m."}
+                {taxaManualTipo === "anual" && taxaInfo.taxaMensalPercentual != null
+                  ? ` · equivalente ${taxaInfo.taxaMensalPercentual.toFixed(2)}% a.m.`
+                  : ""}
               </p>
             ) : null}
             {ultimaAtualizacao ? <p className="mt-1 text-slate-500">Última atualização: {ultimaAtualizacao}</p> : null}
@@ -201,8 +215,22 @@ export function AplicacaoMensalCalculator({ indices, taxaPadrao, prefill, onResu
         ) : null}
 
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
-          <Field label="Valor inicial (R$)" value={valorInicial} onChange={setValorInicial} />
-          <Field label="Aporte mensal (R$)" value={aporte} onChange={setAporte} />
+          <div>
+            <Label className="text-slate-300">Valor inicial (R$)</Label>
+            <MoneyInput
+              value={valorInicial}
+              onValueChange={setValorInicial}
+              className={cn("mt-1", surfaceInputDarkSlate)}
+            />
+          </div>
+          <div>
+            <Label className="text-slate-300">Aporte mensal (R$)</Label>
+            <MoneyInput
+              value={aporte}
+              onValueChange={setAporte}
+              className={cn("mt-1", surfaceInputDarkSlate)}
+            />
+          </div>
           <Field label="Prazo (meses)" value={prazo} onChange={setPrazo} />
           <Field
             label="Aumento anual do aporte (%)"
@@ -219,6 +247,7 @@ export function AplicacaoMensalCalculator({ indices, taxaPadrao, prefill, onResu
             >
               <option value="poupanca">Poupança</option>
               <option value="cdi">CDI</option>
+              <option value="selic">Selic</option>
               <option value="tesouro_selic">Tesouro Selic</option>
               <option value="tesouro_ipca">Tesouro IPCA+</option>
               <option value="taxa_manual">Taxa manual</option>
@@ -249,12 +278,25 @@ export function AplicacaoMensalCalculator({ indices, taxaPadrao, prefill, onResu
             </div>
           ) : null}
           {perfil === "taxa_manual" || perfil === "comparar_todos" ? (
-            <Field
-              label="Rentabilidade manual mensal (%)"
-              value={taxaManual}
-              onChange={setTaxaManual}
-              step="0.01"
-            />
+            <>
+              <div>
+                <Label className="text-slate-300">Tipo de taxa manual</Label>
+                <Select
+                  value={taxaManualTipo}
+                  onChange={(e) => setTaxaManualTipo(e.target.value as "mensal" | "anual")}
+                  className={cn("mt-1", surfaceSelectDark)}
+                >
+                  <option value="mensal">Mensal (% a.m.)</option>
+                  <option value="anual">Anual (% a.a.)</option>
+                </Select>
+              </div>
+              <Field
+                label={taxaManualTipo === "anual" ? "Taxa manual anual (%)" : "Taxa manual mensal (%)"}
+                value={taxaManual}
+                onChange={setTaxaManual}
+                step="0.01"
+              />
+            </>
           ) : null}
           <label className="flex cursor-pointer items-center gap-2 sm:col-span-2">
             <input
@@ -306,11 +348,19 @@ export function AplicacaoMensalCalculator({ indices, taxaPadrao, prefill, onResu
                   value: formatCurrency(result.valorFinalEstimado),
                   highlight: true,
                 },
+                ...(result.taxaMensalEquivalente != null
+                  ? [
+                      {
+                        label: "Taxa mensal usada",
+                        value: `${result.taxaMensalEquivalente.toFixed(2)}% a.m.`,
+                      },
+                    ]
+                  : []),
                 ...(result.aumentoAnualAportePercentual > 0
                   ? [
                       {
                         label: "Aporte inicial mensal",
-                        value: formatCurrency(num(aporte)),
+                        value: formatCurrency(aporte ?? 0),
                       },
                       {
                         label: "Reajuste anual do aporte",
@@ -383,6 +433,10 @@ export function AplicacaoMensalCalculator({ indices, taxaPadrao, prefill, onResu
                       value: formatCurrency(result.consorcio.creditoReajustadoConsorcio),
                     },
                     {
+                      label: "Período da comparação",
+                      value: `${result.consorcio.periodoComparacaoMeses} meses`,
+                    },
+                    {
                       label: "Reajuste anual usado",
                       value: `${result.consorcio.reajusteAnualCreditoPercentual.toFixed(2)}% a.a.`,
                     },
@@ -395,6 +449,11 @@ export function AplicacaoMensalCalculator({ indices, taxaPadrao, prefill, onResu
                       value: formatCurrency(result.consorcio.saldoDevedorEstimado),
                     },
                   ]}
+                  extra={
+                    <p className="text-xs leading-relaxed text-slate-400">
+                      {TEXTO_PRAZO_COMPARACAO_CONSORCIO}
+                    </p>
+                  }
                 />
                 {result.diferencaPatrimonial != null ? (
                   <CalculatorResultCard

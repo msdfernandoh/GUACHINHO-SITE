@@ -299,7 +299,7 @@ export function GrupoRow({
           <Button
             type="button"
             size="sm"
-            variant="outline"
+            variant="outlineGold"
             className={cn(
               "h-8 gap-1 border-zinc-600 bg-zinc-900 px-2 text-[11px] text-zinc-100 hover:border-amber-500/40 hover:bg-zinc-800",
               expanded && "border-amber-500/50 text-amber-200",

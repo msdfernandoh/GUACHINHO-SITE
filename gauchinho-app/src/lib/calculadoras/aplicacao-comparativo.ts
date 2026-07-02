@@ -1,12 +1,39 @@
 import { calcularAplicacaoMensal, type AplicacaoMensalResult } from "./aplicacao";
-import type { IndiceCodigo } from "@/lib/indices-financeiros/types";
+import { taxaMensalAplicacaoFromIndice } from "@/lib/indices-financeiros";
+import type { IndicePublico, IndiceCodigo } from "@/lib/indices-financeiros/types";
 
 export type PerfilAplicacaoCodigo =
   | "poupanca"
   | "cdi"
+  | "selic"
   | "tesouro_selic"
   | "tesouro_ipca"
   | "taxa_manual";
+
+export const PERFIS_APLICACAO_CALCULADORA: PerfilAplicacaoCodigo[] = [
+  "poupanca",
+  "cdi",
+  "selic",
+  "tesouro_selic",
+  "tesouro_ipca",
+  "taxa_manual",
+];
+
+export function buildTaxasPorPerfil(
+  findIndice: (codigo: PerfilAplicacaoCodigo) => IndicePublico | null,
+  opts: {
+    percentualCdi?: number;
+    taxaManualMensal?: number;
+    taxaManualAnual?: number;
+  },
+): Partial<Record<PerfilAplicacaoCodigo, number>> {
+  const map: Partial<Record<PerfilAplicacaoCodigo, number>> = {};
+  for (const p of PERFIS_APLICACAO_CALCULADORA) {
+    const taxa = taxaMensalAplicacaoFromIndice(p, findIndice(p), opts);
+    if (taxa != null && Number.isFinite(taxa)) map[p] = taxa;
+  }
+  return map;
+}
 
 export type AplicacaoComparativoInput = {
   valorInicial: number;
@@ -42,6 +69,7 @@ export type AplicacaoComparativoResult = {
 const DEFAULT_LABELS: Record<PerfilAplicacaoCodigo, string> = {
   poupanca: "Poupança",
   cdi: "CDI",
+  selic: "Selic",
   tesouro_selic: "Tesouro Selic",
   tesouro_ipca: "Tesouro IPCA+",
   taxa_manual: "Taxa manual",
@@ -53,9 +81,7 @@ export function taxaCdiEfetivaAnual(cdiAnualPercentual: number, percentualDoCdi:
 
 export function calcularAplicacaoComparativo(input: AplicacaoComparativoInput): AplicacaoComparativoResult {
   const perfis: PerfilAplicacaoCodigo[] =
-    input.perfil === "comparar_todos"
-      ? ["poupanca", "cdi", "tesouro_selic", "tesouro_ipca", "taxa_manual"]
-      : [input.perfil];
+    input.perfil === "comparar_todos" ? [...PERFIS_APLICACAO_CALCULADORA] : [input.perfil];
 
   const comparativo: AplicacaoComparativoItem[] = [];
 

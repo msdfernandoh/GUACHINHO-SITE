@@ -1,6 +1,7 @@
 import { DEFAULT_SIMULADOR_IMOVEL } from "@/lib/config/defaults";
 import { percentualParcelaReduzidaPadrao } from "@/lib/config/simulador-parcela-opcoes";
-import { taxaAnualParaMensalPercentual } from "@/lib/indices-financeiros/math";
+import { cdiAnualReferenciaPercentual, taxaMensalAplicacaoFromIndice } from "@/lib/indices-financeiros";
+import { taxaAnualParaMensalPercentual, taxaMensalParaAnualPercentual } from "@/lib/indices-financeiros/math";
 import type { IndicePublico } from "@/lib/indices-financeiros/types";
 import {
   calcularAplicacaoComparativo,
@@ -23,6 +24,9 @@ export const TEXTO_DIFERENCA_PATRIMONIAL =
 export const TEXTO_PARCELA_REDUZIDA_COMPARATIVO =
   "A comparação usa a parcela reduzida inicial do consórcio como referência para aproximar o valor do aporte mensal. O crédito estimado considera uma parcela reduzida inicial próxima ao aporte mensal informado. A parcela integral é exibida apenas como referência da parcela cheia do plano.";
 
+export const TEXTO_PRAZO_COMPARACAO_CONSORCIO =
+  "O prazo do consórcio é usado para estimar a parcela reduzida. A valorização do crédito é projetada pelo mesmo período da aplicação.";
+
 export type TaxaIndiceAplicacaoInfo = {
   perfil: PerfilAplicacaoCodigo;
   label: string;
@@ -31,27 +35,41 @@ export type TaxaIndiceAplicacaoInfo = {
   ultimaAtualizacao: string | null;
   fonte: string | null;
   percentualCdi?: number;
+  cdiAnualBasePercentual?: number;
   taxaManualMensal?: number;
+  taxaManualAnual?: number;
 };
 
 export function infoTaxaAplicacaoIndice(
   perfil: PerfilAplicacaoCodigo,
   indice: IndicePublico | null,
-  opts: { percentualCdi?: number; taxaManualMensal?: number },
+  opts: { percentualCdi?: number; taxaManualMensal?: number; taxaManualAnual?: number },
 ): TaxaIndiceAplicacaoInfo {
   const ultimaAtualizacao = indice?.ultima_atualizacao?.slice(0, 10) ?? indice?.data_referencia ?? null;
   const fonte = indice?.fonte ?? null;
 
   if (perfil === "taxa_manual") {
-    const m = opts.taxaManualMensal ?? null;
+    const m =
+      opts.taxaManualMensal != null
+        ? opts.taxaManualMensal
+        : opts.taxaManualAnual != null
+          ? taxaAnualParaMensalPercentual(opts.taxaManualAnual)
+          : null;
+    const anual =
+      opts.taxaManualAnual != null
+        ? opts.taxaManualAnual
+        : m != null
+          ? taxaMensalParaAnualPercentual(m)
+          : null;
     return {
       perfil,
       label: "Taxa manual",
-      taxaAnualPercentual: m != null ? null : null,
+      taxaAnualPercentual: anual,
       taxaMensalPercentual: m,
       ultimaAtualizacao: null,
       fonte: null,
-      taxaManualMensal: m ?? undefined,
+      taxaManualMensal: opts.taxaManualMensal,
+      taxaManualAnual: opts.taxaManualAnual,
     };
   }
 
@@ -68,18 +86,37 @@ export function infoTaxaAplicacaoIndice(
 
   if (perfil === "cdi") {
     const pct = opts.percentualCdi ?? 100;
-    const cdiAnual = indice.valor_anual ?? indice.valor_acumulado_12m ?? null;
-    const anualUsada = cdiAnual != null ? taxaCdiEfetivaAnual(cdiAnual, pct) : null;
-    const mensal =
-      anualUsada != null ? taxaAnualParaMensalPercentual(anualUsada) : null;
+    const cdiBase = cdiAnualReferenciaPercentual(indice);
+    const anualUsada = cdiBase != null ? taxaCdiEfetivaAnual(cdiBase, pct) : null;
+    const mensal = anualUsada != null ? taxaAnualParaMensalPercentual(anualUsada) : null;
     return {
       perfil,
-      label: pct === 100 ? "CDI" : `${pct}% do CDI`,
+      label: "CDI",
       taxaAnualPercentual: anualUsada,
       taxaMensalPercentual: mensal,
       ultimaAtualizacao,
       fonte,
       percentualCdi: pct,
+      cdiAnualBasePercentual: cdiBase ?? undefined,
+    };
+  }
+
+  if (perfil === "selic") {
+    const anual =
+      indice.valor_anual != null && indice.valor_anual >= 1 ? indice.valor_anual : null;
+    const mensal =
+      anual != null
+        ? taxaAnualParaMensalPercentual(anual)
+        : indice.valor_mensal != null
+          ? indice.valor_mensal
+          : null;
+    return {
+      perfil,
+      label: "Selic",
+      taxaAnualPercentual: anual ?? (mensal != null ? taxaMensalParaAnualPercentual(mensal) : null),
+      taxaMensalPercentual: mensal,
+      ultimaAtualizacao,
+      fonte,
     };
   }
 
@@ -88,6 +125,7 @@ export function infoTaxaAplicacaoIndice(
     let anual: number | null = null;
     if (indice.valor_mensal != null) {
       mensal = indice.valor_mensal;
+      anual = taxaMensalParaAnualPercentual(mensal);
     } else if (indice.valor_anual != null) {
       anual = indice.valor_anual;
       mensal = taxaAnualParaMensalPercentual(anual);
@@ -145,6 +183,7 @@ export type ConsorcioComparativoBloco = {
   creditoReajustadoConsorcio: number;
   reajusteAnualCreditoPercentual: number;
   prazoConsorcioMeses: number;
+  periodoComparacaoMeses: number;
   percentualParcelaReduzida: number;
 };
 
@@ -167,8 +206,24 @@ export function calcularAplicacaoComConsorcio(
   const aumentoAnualAporte = input.aumentoAnualAportePercentual ?? 0;
   const comparar = input.compararComConsorcio !== false;
 
+  const taxasPorPerfil: Partial<Record<PerfilAplicacaoCodigo, number>> = {
+    ...input.taxasPorPerfil,
+  };
+  if (input.perfil !== "comparar_todos" && input.perfil !== "taxa_manual") {
+    const atual = taxasPorPerfil[input.perfil];
+    if ((atual == null || atual === 0) && input.indicePrincipal) {
+      const t = taxaMensalAplicacaoFromIndice(input.perfil, input.indicePrincipal, {
+        percentualCdi: input.percentualCdi,
+        taxaManualMensal: input.taxaManualMensal,
+        taxaManualAnual: input.taxaManualAnual,
+      });
+      if (t != null && t > 0) taxasPorPerfil[input.perfil] = t;
+    }
+  }
+
   const baseComReajuste = calcularAplicacaoComparativo({
     ...input,
+    taxasPorPerfil,
     aumentoAnualAportePercentual: aumentoAnualAporte,
   });
 
@@ -181,6 +236,7 @@ export function calcularAplicacaoComConsorcio(
     ? infoTaxaAplicacaoIndice(perfilAtivo, input.indicePrincipal ?? null, {
         percentualCdi: input.percentualCdi,
         taxaManualMensal: input.taxaManualMensal,
+        taxaManualAnual: input.taxaManualAnual,
       })
     : null;
 
@@ -221,6 +277,7 @@ export function calcularAplicacaoComConsorcio(
         creditoReajustadoConsorcio: creditoReajustado,
         reajusteAnualCreditoPercentual: reajusteCredito,
         prazoConsorcioMeses: prazoConsorcio,
+        periodoComparacaoMeses: input.prazoMeses,
         percentualParcelaReduzida: pctReduzida,
       };
       diferencaPatrimonial =

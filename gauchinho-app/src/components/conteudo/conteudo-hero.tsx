@@ -18,6 +18,9 @@ export function ConteudoHero({ title, subtitle, eyebrow, className }: Props) {
       )}
     >
       <div className="mx-auto max-w-7xl px-4 sm:px-6">
+        <div className="flex items-start gap-3 md:gap-4">
+          <MascoteGauchinho variant="compact" className="mt-1 shrink-0 opacity-95" />
+          <div className="min-w-0 flex-1">
         {eyebrow ? (
           <p className="text-xs font-bold uppercase tracking-[0.28em] text-amber-500">{eyebrow}</p>
         ) : null}
@@ -25,20 +28,15 @@ export function ConteudoHero({ title, subtitle, eyebrow, className }: Props) {
         {subtitle ? (
           <p className="mt-4 max-w-2xl text-base leading-relaxed text-slate-400 md:text-lg">{subtitle}</p>
         ) : null}
+          </div>
+        </div>
       </div>
     </header>
   );
 }
 
 export function ConteudoPageShell({ children }: { children: React.ReactNode }) {
-  return (
-    <main className="pb-20">
-      <div className="pointer-events-none fixed bottom-24 right-4 z-30 hidden opacity-80 sm:block">
-        <MascoteGauchinho variant="floating" />
-      </div>
-      {children}
-    </main>
-  );
+  return <main className="pb-28">{children}</main>;
 }
 
 export function ConteudoBackLink({ href, children }: { href: string; children: React.ReactNode }) {

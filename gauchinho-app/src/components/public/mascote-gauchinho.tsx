@@ -20,7 +20,7 @@ const SIZES = {
 export function MascoteGauchinho({ variant = "compact", className }: Props) {
   return (
     <span
-      className={cn("relative inline-block shrink-0", SIZES[variant], className)}
+      className={cn("relative inline-block shrink-0 pointer-events-none", SIZES[variant], className)}
       aria-hidden
     >
       <Image

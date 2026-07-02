@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { ChevronDown, LogIn, Menu, X } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import { EspecialistaLeadModal } from "@/components/public/especialista-lead-modal";
+import { useLockBodyScroll } from "@/lib/ui/use-lock-body-scroll";
 
 const PRIMARY_LINKS = [
   { href: "/", label: "Início" },
@@ -36,14 +37,7 @@ export function PublicHeaderNav() {
     setMoreOpen(false);
   }, [pathname]);
 
-  useEffect(() => {
-    if (!open) return;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = prev;
-    };
-  }, [open]);
+  useLockBodyScroll(open);
 
   const linkClass = (href: string) =>
     cn("whitespace-nowrap transition hover:text-amber-400", pathname === href && "text-amber-400");

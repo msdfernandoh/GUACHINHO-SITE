@@ -99,7 +99,7 @@ export function GrupoTotalsBar({
           </Button>
           <Button
             type="button"
-            variant="outline"
+            variant="outlineGold"
             className={outlineBtn}
             disabled={!hasSelection}
             onClick={onProposta}
@@ -108,7 +108,7 @@ export function GrupoTotalsBar({
           </Button>
           <Button
             type="button"
-            variant="outline"
+            variant="outlineGold"
             className={outlineBtn}
             disabled={!hasSelection}
             onClick={onEspecialista}

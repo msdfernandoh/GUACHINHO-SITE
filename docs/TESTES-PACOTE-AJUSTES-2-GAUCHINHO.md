@@ -110,3 +110,18 @@ cd gauchinho-app
 npm test
 npm run build
 ```
+
+## Correção final da calculadora de aplicação
+
+- **Índices mantidos no dropdown:** Poupança, CDI, Selic, Tesouro Selic, Tesouro IPCA+, Taxa manual (+ comparar todos).
+- **CDI:** taxa anual válida (≥ 1% a.a., série BCB 4389); percentual 90/100/110/manual; ignora cadastro errado (ex.: 0,05 como anual).
+- **Total investido:** soma do valor inicial + aportes mensais reajustados; **rendimento** = valor final − total investido; **valor final** = saldo com juros compostos.
+- **Consórcio:** prazo do consórcio (ex.: 220 meses) só para crédito/parcela; **crédito reajustado** usa **período da aplicação** (ex.: 120 meses). A tela exibe os dois prazos.
+- **Exemplo CDI 110%:** 14,15% × 1,10 = 15,565% a.a. → mensal equivalente composta (~1,21% a.m.).
+- Testes: `aplicacao-comparativo.test.ts`, `indices.test.ts`.
+
+## Botões e campos monetários (público)
+
+- Variante **`outlineGold`** em botões secundários sobre fundo escuro (`form-primitives`).
+- **`MoneyInput`** + `src/lib/formatters/money.ts` — máscara BRL na digitação; salvar número no banco.
+- Detalhes: `docs/TESTES-CORRECAO-MONEY-INPUT-BOTOES.md`.

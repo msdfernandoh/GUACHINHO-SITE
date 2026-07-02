@@ -11,16 +11,7 @@ type Props = {
 /** Mascote discreto + card opcional para páginas públicas. */
 export function PublicMascoteAssist({ variant = "floating", className, showCta = false }: Props) {
   if (variant === "floating") {
-    return (
-      <div
-        className={cn(
-          "pointer-events-none fixed bottom-24 right-4 z-30 hidden sm:block",
-          className,
-        )}
-      >
-        <MascoteGauchinho variant="floating" />
-      </div>
-    );
+    return null;
   }
 
   return (

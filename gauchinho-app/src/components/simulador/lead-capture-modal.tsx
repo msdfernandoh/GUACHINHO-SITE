@@ -4,6 +4,7 @@ import type { AcaoCaptura } from "./simulador-types";
 import { cn } from "@/lib/utils/cn";
 import { Button, Input, Label, surfaceInputDarkSlate } from "@/components/ui/form-primitives";
 import { digitsOnlyPhone, formatWhatsappBrInput } from "@/lib/utils/format";
+import { useLockBodyScroll } from "@/lib/ui/use-lock-body-scroll";
 
 const TITULOS: Record<AcaoCaptura, string> = {
   analise: "Ver análise completa",
@@ -42,6 +43,8 @@ export function LeadCaptureModal({
   onCidade,
   onEmail,
 }: Props) {
+  useLockBodyScroll(open);
+
   if (!open) return null;
 
   const cancelClass =
@@ -88,7 +91,7 @@ export function LeadCaptureModal({
           <Button type="submit" variant="gold" disabled={loading || digitsOnlyPhone(whatsapp).length < 10} className="min-h-12 flex-1 text-base">
             {loading ? "Enviando…" : "Continuar"}
           </Button>
-          <Button type="button" variant="outline" className={`min-h-12 ${cancelClass}`} onClick={onClose}>
+          <Button type="button" variant="outlineGold" className={`min-h-12 ${cancelClass}`} onClick={onClose}>
             Cancelar
           </Button>
         </div>

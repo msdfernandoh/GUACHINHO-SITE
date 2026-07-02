@@ -7,6 +7,7 @@ import { calcularTaxaRealDoBem } from "@/lib/calculadoras/juros-real";
 import { formatCurrency } from "@/lib/utils/format";
 import { CalculatorResultCard } from "./calculator-result-card";
 import { sectionCardClass } from "@/components/simulador/simulador-ui";
+import { MoneyInput } from "@/components/ui/money-input";
 
 type Props = {
   onResult: (inputs: Record<string, unknown>, resultado: Record<string, unknown>) => void;
@@ -18,17 +19,17 @@ function num(v: string) {
 }
 
 export function JurosRealCalculator({ onResult }: Props) {
-  const [valorBem, setValorBem] = useState("100000");
-  const [entrada, setEntrada] = useState("0");
-  const [parcela, setParcela] = useState("2500");
+  const [valorBem, setValorBem] = useState<number | null>(100_000);
+  const [entrada, setEntrada] = useState<number | null>(0);
+  const [parcela, setParcela] = useState<number | null>(2500);
   const [prazo, setPrazo] = useState("60");
   const [result, setResult] = useState<ReturnType<typeof calcularTaxaRealDoBem> | null>(null);
 
   function calcular() {
     const inputs = {
-      valorBem: num(valorBem),
-      entrada: num(entrada),
-      parcela: num(parcela),
+      valorBem: valorBem ?? 0,
+      entrada: entrada ?? 0,
+      parcela: parcela ?? 0,
       prazoMeses: Math.floor(num(prazo)),
     };
     const r = calcularTaxaRealDoBem(inputs.valorBem, inputs.entrada, inputs.parcela, inputs.prazoMeses);
@@ -42,15 +43,15 @@ export function JurosRealCalculator({ onResult }: Props) {
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
             <Label>Valor do bem / financiado</Label>
-            <Input className={cn("mt-1", surfaceInputDarkSlate)} value={valorBem} onChange={(e) => setValorBem(e.target.value)} />
+            <MoneyInput className={cn("mt-1", surfaceInputDarkSlate)} value={valorBem} onValueChange={setValorBem} />
           </div>
           <div>
             <Label>Entrada (opcional)</Label>
-            <Input className={cn("mt-1", surfaceInputDarkSlate)} value={entrada} onChange={(e) => setEntrada(e.target.value)} />
+            <MoneyInput className={cn("mt-1", surfaceInputDarkSlate)} value={entrada} onValueChange={setEntrada} />
           </div>
           <div>
             <Label>Valor da parcela</Label>
-            <Input className={cn("mt-1", surfaceInputDarkSlate)} value={parcela} onChange={(e) => setParcela(e.target.value)} />
+            <MoneyInput className={cn("mt-1", surfaceInputDarkSlate)} value={parcela} onValueChange={setParcela} />
           </div>
           <div>
             <Label>Prazo (meses)</Label>

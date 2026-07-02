@@ -97,7 +97,7 @@ export function HomeQuickSimulator({ defaults }: Props) {
           </Button>
           <Button
             type="button"
-            variant="outline"
+            variant="outlineGold"
             className="rounded-full border-zinc-600 bg-zinc-900 text-zinc-100"
             onClick={() =>
               router.push(buildSimuladorUrl({ solucao: "financiamento", valor, prazo }))

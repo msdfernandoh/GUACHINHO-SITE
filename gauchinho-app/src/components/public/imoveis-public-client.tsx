@@ -129,15 +129,17 @@ export function ImoveisPublicClient({
 
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100">
-      <div className="pointer-events-none fixed bottom-24 right-4 z-30 hidden opacity-80 sm:block">
-        <MascoteGauchinho variant="floating" />
-      </div>
       <div className="mx-auto max-w-6xl px-4 py-12">
+        <div className="flex items-start gap-3">
+          <MascoteGauchinho variant="compact" className="mt-1 shrink-0" />
+          <div>
         <p className="text-sm font-medium uppercase tracking-widest text-amber-500">Gauchinho</p>
         <h1 className="mt-2 text-4xl font-bold text-white md:text-5xl">Oportunidades imobiliárias</h1>
         <p className="mt-3 max-w-2xl text-zinc-400">
           Imóveis selecionados de parceiros. Demonstre interesse e fale direto com a imobiliária.
         </p>
+          </div>
+        </div>
 
         <div className="mt-8 grid gap-3 rounded-xl border border-zinc-800 bg-zinc-900/50 p-4 md:grid-cols-3 lg:grid-cols-4">
           <FilterSelect
@@ -256,7 +258,7 @@ export function ImoveisPublicClient({
                   <Input value={mensagem} onChange={(e) => setMensagem(e.target.value)} />
                 </div>
                 <div className="flex gap-2 pt-2">
-                  <Button type="button" onClick={() => setModal(null)} variant="outline">
+                  <Button type="button" onClick={() => setModal(null)} variant="outlineGold">
                     Cancelar
                   </Button>
                   <Button type="button" disabled={loading} onClick={submitInteresse}>
@@ -272,7 +274,7 @@ export function ImoveisPublicClient({
                     <MessageCircle className="h-4 w-4" /> Chamar no WhatsApp
                   </Button>
                 </a>
-                <Button type="button" variant="outline" className="w-full" onClick={() => setModal(null)}>
+                <Button type="button" variant="outlineGold" className="w-full" onClick={() => setModal(null)}>
                   Fechar
                 </Button>
               </div>
@@ -336,7 +338,7 @@ function ImovelCard({
           </Button>
           {imovel.exibir_valor_publico && imovel.valor != null && (
             <Link href={simularHref}>
-              <Button type="button" size="sm" variant="outline" className="gap-1">
+              <Button type="button" size="sm" variant="outlineGold" className="gap-1">
                 <Calculator className="h-3 w-3" /> Simular compra
               </Button>
             </Link>

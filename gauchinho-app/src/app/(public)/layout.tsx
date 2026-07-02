@@ -2,6 +2,7 @@ import { PublicHeader } from "@/components/public/public-header";
 import { PublicFooter } from "@/components/public/public-footer";
 import { LenisProvider } from "@/components/public/lenis-provider";
 import { IaChatWidget } from "@/components/public/ia-chat/ia-chat-widget";
+import { PublicFloatingMascot } from "@/components/public/public-floating-mascot";
 import { getIaConfigPublic } from "@/server/config";
 
 export default async function PublicLayout({ children }: { children: React.ReactNode }) {
@@ -13,6 +14,7 @@ export default async function PublicLayout({ children }: { children: React.React
         <PublicHeader />
         {children}
         <PublicFooter />
+        <PublicFloatingMascot />
         <IaChatWidget config={iaConfig} />
       </div>
     </LenisProvider>

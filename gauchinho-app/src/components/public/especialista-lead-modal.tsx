@@ -6,6 +6,8 @@ import { cn } from "@/lib/utils/cn";
 import { Button, Input, Label, Textarea, surfaceInputDarkSlate } from "@/components/ui/form-primitives";
 import { digitsOnlyPhone, formatWhatsappBrInput } from "@/lib/utils/format";
 import { TIPOS_CREDITO_PUBLICO } from "@/lib/leads/tipo-credito";
+import { MoneyInput } from "@/components/ui/money-input";
+import { useLockBodyScroll } from "@/lib/ui/use-lock-body-scroll";
 
 type WhatsappOrigem = {
   exibir_botao_apos_lead?: boolean;
@@ -22,7 +24,7 @@ export function EspecialistaLeadModal({ open, onClose }: Props) {
   const [nome, setNome] = useState("");
   const [whatsapp, setWhatsapp] = useState("");
   const [tipoCredito, setTipoCredito] = useState("");
-  const [valorCredito, setValorCredito] = useState("");
+  const [valorCredito, setValorCredito] = useState<number | null>(null);
   const [observacao, setObservacao] = useState("");
   const [loading, setLoading] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
@@ -40,13 +42,15 @@ export function EspecialistaLeadModal({ open, onClose }: Props) {
       .catch(() => setEventoDestaque(null));
   }, [open]);
 
+  useLockBodyScroll(open);
+
   if (!open) return null;
 
   const reset = () => {
     setNome("");
     setWhatsapp("");
     setTipoCredito("");
-    setValorCredito("");
+    setValorCredito(null);
     setObservacao("");
     setErro(null);
     setSucesso(false);
@@ -70,7 +74,7 @@ export function EspecialistaLeadModal({ open, onClose }: Props) {
           nome,
           whatsapp,
           tipoCredito: tipoCredito || undefined,
-          valorCredito: valorCredito || undefined,
+          valorCredito: valorCredito ?? undefined,
           observacao: observacao || undefined,
         }),
       });
@@ -110,7 +114,7 @@ export function EspecialistaLeadModal({ open, onClose }: Props) {
                 Abrir WhatsApp
               </a>
             ) : null}
-            <Button type="button" variant="outline" className="w-full min-h-11" onClick={handleClose}>
+            <Button type="button" variant="outlineGold" className="w-full min-h-11" onClick={handleClose}>
               Fechar
             </Button>
           </>
@@ -164,12 +168,10 @@ export function EspecialistaLeadModal({ open, onClose }: Props) {
             </div>
             <div>
               <Label className="text-slate-200">Valor do crédito</Label>
-              <Input
-                inputMode="decimal"
+              <MoneyInput
                 value={valorCredito}
-                onChange={(e) => setValorCredito(e.target.value)}
+                onValueChange={setValorCredito}
                 className={cn("mt-1", surfaceInputDarkSlate)}
-                placeholder="Ex.: 500000"
               />
             </div>
             <div>
@@ -191,7 +193,7 @@ export function EspecialistaLeadModal({ open, onClose }: Props) {
               >
                 {loading ? "Enviando…" : "Enviar cadastro"}
               </Button>
-              <Button type="button" variant="outline" className="min-h-12 flex-1" onClick={handleClose}>
+              <Button type="button" variant="outlineGold" className="min-h-12 flex-1" onClick={handleClose}>
                 Cancelar
               </Button>
             </div>

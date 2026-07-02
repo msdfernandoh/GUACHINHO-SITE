@@ -6,13 +6,14 @@ import { cn } from "@/lib/utils/cn";
 import { Button, Input, Label, Textarea, surfaceInputDarkSlate } from "@/components/ui/form-primitives";
 import { digitsOnlyPhone, formatWhatsappBrInput } from "@/lib/utils/format";
 import { TIPOS_CREDITO_PUBLICO } from "@/lib/leads/tipo-credito";
+import { MoneyInput } from "@/components/ui/money-input";
 
 type IndicadoForm = {
   id: string;
   nome: string;
   whatsapp: string;
   tipoCredito: string;
-  valorCredito: string;
+  valorCredito: number | null;
   observacao: string;
 };
 
@@ -22,7 +23,7 @@ function emptyIndicado(): IndicadoForm {
     nome: "",
     whatsapp: "",
     tipoCredito: "",
-    valorCredito: "",
+    valorCredito: null,
     observacao: "",
   };
 }
@@ -55,7 +56,7 @@ export function IndicacaoForm() {
             nome,
             whatsapp,
             tipoCredito: tipoCredito || undefined,
-            valorCredito: valorCredito || undefined,
+            valorCredito: valorCredito ?? undefined,
             observacao: observacao || undefined,
           })),
         }),
@@ -78,7 +79,7 @@ export function IndicacaoForm() {
     indicados.every((i) => i.nome.trim() && digitsOnlyPhone(i.whatsapp).length >= 10);
 
   return (
-    <form onSubmit={handleSubmit} className="mx-auto max-w-2xl space-y-8">
+    <form onSubmit={handleSubmit} className="mx-auto max-w-2xl space-y-8 pb-24">
       <section className="space-y-4 rounded-2xl border border-zinc-800 bg-zinc-900/60 p-6">
         <h2 className="text-lg font-bold text-white">Quem indicou</h2>
         <div>
@@ -153,10 +154,9 @@ export function IndicacaoForm() {
           </div>
           <div>
             <Label>Valor do crédito</Label>
-            <Input
-              inputMode="decimal"
+            <MoneyInput
               value={ind.valorCredito}
-              onChange={(e) => updateIndicado(ind.id, { valorCredito: e.target.value })}
+              onValueChange={(v) => updateIndicado(ind.id, { valorCredito: v })}
               className={cn("mt-1", surfaceInputDarkSlate)}
             />
           </div>
@@ -174,8 +174,8 @@ export function IndicacaoForm() {
 
       <Button
         type="button"
-        variant="outline"
-        className="w-full border-dashed border-amber-500/40 text-amber-200"
+        variant="outlineGold"
+        className="w-full border-dashed"
         onClick={() => setIndicados((list) => [...list, emptyIndicado()])}
       >
         <Plus className="mr-2 h-4 w-4" /> Adicionar outra indicação

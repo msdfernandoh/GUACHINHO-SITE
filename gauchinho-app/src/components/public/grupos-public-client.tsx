@@ -18,6 +18,7 @@ import { GrupoMobileCard } from "@/components/public/grupos/grupo-mobile-card";
 import { GrupoTotalsBar } from "@/components/public/grupos/grupo-totals-bar";
 import { GruposTable } from "@/components/public/grupos/grupos-table";
 import { MascoteGauchinho } from "@/components/public/mascote-gauchinho";
+import { useLockBodyScroll } from "@/lib/ui/use-lock-body-scroll";
 
 type ModalFiltro = (typeof MODALIDADE_FILTRO_PUBLICO)[number]["value"];
 
@@ -56,14 +57,7 @@ export function GruposPublicClient({
   const modalCancelClass =
     "border-zinc-500 bg-zinc-900 text-zinc-100 hover:border-zinc-400 hover:bg-zinc-800 hover:text-zinc-100";
 
-  useEffect(() => {
-    if (!modalOpen) return;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = prev;
-    };
-  }, [modalOpen]);
+  useLockBodyScroll(modalOpen);
 
   const filtered = useMemo(() => {
     const q = busca.trim().toLowerCase();
@@ -161,11 +155,11 @@ export function GruposPublicClient({
 
   return (
     <div className="bg-zinc-950 pb-52 text-zinc-100 md:pb-48">
-      <div className="pointer-events-none fixed bottom-24 right-4 z-30 hidden opacity-80 sm:block">
-        <MascoteGauchinho variant="floating" />
-      </div>
       <div className="mx-auto max-w-[1600px] px-4 py-8 md:px-6">
         <div className="mb-6 text-center md:mb-8">
+          <div className="mx-auto flex max-w-3xl items-start justify-center gap-3">
+            <MascoteGauchinho variant="compact" className="mt-1 shrink-0" />
+            <div>
           <p className="inline-flex items-center gap-2 text-sm text-amber-400">
             <Sparkles className="h-4 w-4" /> Simulador premium
           </p>
@@ -176,6 +170,8 @@ export function GruposPublicClient({
             Planilha inteligente: compare grupos na linha e use <strong className="font-medium text-zinc-300">Ajustar</strong>{" "}
             para modalidades de lance e recurso próprio.
           </p>
+            </div>
+          </div>
         </div>
 
         <div className="mb-4 flex flex-wrap items-center gap-2 md:mb-5">
@@ -295,7 +291,7 @@ export function GruposPublicClient({
               </Button>
               <Button
                 type="button"
-                variant="outline"
+                variant="outlineGold"
                 className={modalCancelClass}
                 onClick={() => setModalOpen(false)}
               >

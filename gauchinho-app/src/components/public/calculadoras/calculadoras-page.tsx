@@ -170,11 +170,11 @@ export function CalculadorasPage({ config, initialCalc, indices, aplicacaoPrefil
 
   return (
     <div className={simuladorShell}>
-      <div className="pointer-events-none fixed bottom-24 right-4 z-30 hidden opacity-80 sm:block">
-        <MascoteGauchinho variant="floating" />
-      </div>
       <div className="mx-auto max-w-5xl px-4 pb-16 pt-10 sm:pt-14">
         <header className="mb-8 text-center sm:mb-10">
+          <div className="mx-auto flex max-w-2xl items-start justify-center gap-3 text-left sm:text-center">
+            <MascoteGauchinho variant="compact" className="mt-1 shrink-0 sm:mt-2" />
+            <div>
           <p className="text-xs font-bold uppercase tracking-[0.25em] text-amber-400/90">Gauchinho</p>
           <h1 className="mt-2 text-3xl font-extrabold tracking-tight text-white sm:text-4xl">
             Calculadoras Financeiras
@@ -182,6 +182,8 @@ export function CalculadorasPage({ config, initialCalc, indices, aplicacaoPrefil
           <p className="mx-auto mt-3 max-w-2xl text-sm leading-relaxed text-slate-400 sm:text-base">
             Planeje melhor suas decisões antes de contratar consórcio, financiamento ou investimento.
           </p>
+            </div>
+          </div>
         </header>
 
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
@@ -224,7 +226,7 @@ export function CalculadorasPage({ config, initialCalc, indices, aplicacaoPrefil
                   </Button>
                   <Button
                     type="button"
-                    variant="outline"
+                    variant="outlineGold"
                     className="min-h-12 flex-1 border-slate-600 bg-slate-900 text-white hover:bg-slate-800 sm:flex-none"
                     onClick={() => openLead("especialista")}
                   >

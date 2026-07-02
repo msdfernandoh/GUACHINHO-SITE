@@ -11,7 +11,7 @@ export const surfaceInputDarkSlate =
 export const surfaceSelectDark = "border-zinc-700 bg-zinc-950 text-zinc-100";
 
 type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
-  variant?: "default" | "outline" | "ghost" | "gold" | "danger";
+  variant?: "default" | "outline" | "outlineGold" | "ghost" | "gold" | "danger";
   size?: "sm" | "md";
 };
 
@@ -29,6 +29,8 @@ export function Button({
         variant === "default" && "bg-zinc-900 text-white hover:bg-zinc-800 disabled:bg-zinc-800 disabled:text-zinc-400",
         variant === "outline" &&
           "border border-zinc-300 bg-white text-zinc-900 hover:bg-zinc-50 disabled:bg-zinc-100 disabled:text-zinc-500 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800 dark:disabled:bg-zinc-900 dark:disabled:text-zinc-500",
+        variant === "outlineGold" &&
+          "border border-amber-500/55 bg-slate-950/80 text-amber-100 hover:bg-amber-500 hover:text-slate-950 disabled:border-slate-600 disabled:bg-slate-900/80 disabled:text-slate-500",
         variant === "ghost" &&
           "text-zinc-800 hover:bg-zinc-100 disabled:text-zinc-400 dark:text-zinc-200 dark:hover:bg-zinc-800 dark:disabled:text-zinc-500",
         variant === "gold" &&
