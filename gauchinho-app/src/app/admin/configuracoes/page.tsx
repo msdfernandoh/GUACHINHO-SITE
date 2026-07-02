@@ -20,7 +20,15 @@ export default async function ConfiguracoesPage() {
         <h1 className="text-2xl font-bold">Configurações gerais</h1>
         <p className="text-sm text-zinc-500">Master — chaves JSON em configuracoes_sistema</p>
       </div>
-      <ConfigTabs configs={configs} whatsapp={whatsapp as Array<Record<string, unknown>>} />
+      <ConfigTabs
+        configs={configs}
+        whatsapp={whatsapp as Array<Record<string, unknown>>}
+        iaEnv={{
+          hasOpenAiKey: Boolean(process.env.OPENAI_API_KEY?.trim()),
+          provider: process.env.IA_PROVIDER ?? "openai",
+          model: process.env.IA_MODEL?.trim() || "gpt-4o-mini",
+        }}
+      />
     </div>
   );
 }

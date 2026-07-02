@@ -8,6 +8,12 @@ export type IaQuickAction = {
 
 export const IA_QUICK_ACTIONS: IaQuickAction[] = [
   {
+    id: "verificar",
+    label: "Verificar crédito",
+    message: "Quero verificar meu crédito e entender as melhores opções.",
+    evento: "ia_cta_verificar_credito",
+  },
+  {
     id: "simulador",
     label: "Simular consórcio",
     message: "Quero simular um consórcio.",

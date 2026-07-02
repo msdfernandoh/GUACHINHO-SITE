@@ -42,7 +42,7 @@ export const DEFAULT_IA_CONFIG: IaConfig = {
   identidade: {
     nomeIa: "Assistente Gauchinho",
     mensagemInicial:
-      "Olá! Sou o assistente do Gauchinho Escritório de Soluções Financeiras. Posso te ajudar a simular um consórcio, comparar financiamento, consultar grupos, cartas contempladas ou oportunidades imobiliárias. Qual sonho você quer realizar?",
+      "Olá! Sou o assistente do Gauchinho. Posso te ajudar a simular consórcio, comparar financiamento, consultar grupos, cartas contempladas, oportunidades imobiliárias ou calcular melhor seu objetivo. Qual sonho você quer realizar?",
     tomAtendimento: "Claro, consultivo e comercial, sem pressão. Use simulação e estimativa.",
     nomeEmpresa: "Gauchinho Escritório de Soluções Financeiras",
   },

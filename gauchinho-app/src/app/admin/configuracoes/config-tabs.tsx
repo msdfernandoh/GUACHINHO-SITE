@@ -21,6 +21,7 @@ import {
   SimuladorBemConfigForm,
 } from "./simulador-forms";
 import { IaConfigForm } from "./ia-config-form";
+import { IaEnvStatusBanner } from "./ia-env-status";
 import { HomeModulosForm } from "./home-modulos-form";
 import {
   DEFAULT_HOME_CARTAS,
@@ -53,9 +54,10 @@ const TABS: Array<{ id: string; label: string; future?: boolean }> = [
 type Props = {
   configs: Record<string, Record<string, unknown>>;
   whatsapp: Array<Record<string, unknown>>;
+  iaEnv?: { hasOpenAiKey: boolean; provider: string; model: string };
 };
 
-export function ConfigTabs({ configs, whatsapp }: Props) {
+export function ConfigTabs({ configs, whatsapp, iaEnv }: Props) {
   const [tab, setTab] = useState<string>("site");
   const site = configs.site ?? {};
   const contato = configs.contato ?? {};
@@ -298,7 +300,18 @@ export function ConfigTabs({ configs, whatsapp }: Props) {
         </form>
       ) : null}
 
-      {tab === "ia" ? <IaConfigForm cfg={iaCfg} /> : null}
+      {tab === "ia" ? (
+        <>
+          {iaEnv ? (
+            <IaEnvStatusBanner
+              hasOpenAiKey={iaEnv.hasOpenAiKey}
+              provider={iaEnv.provider}
+              model={iaEnv.model}
+            />
+          ) : null}
+          <IaConfigForm cfg={iaCfg} />
+        </>
+      ) : null}
 
       {tab === "cartas_home" ? (
         <form action={saveHomeCartasConfigAction} className="max-w-xl space-y-3">

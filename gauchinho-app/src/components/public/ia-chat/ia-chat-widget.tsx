@@ -6,6 +6,8 @@ import { MessageCircle, Sparkles, X, Send } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import type { IaConfig } from "@/lib/config/ia-defaults";
 import type { WhatsappOrigemRow } from "@/lib/whatsapp/resolve-origem";
+import { TIPOS_CREDITO_PUBLICO } from "@/lib/leads/tipo-credito";
+import { formatWhatsappBrInput, digitsOnlyPhone } from "@/lib/utils/format";
 import {
   buildWhatsappPosLead,
   getOrCreateSessionId,
@@ -28,6 +30,13 @@ export function IaChatWidget({ config }: Props) {
   const [waLink, setWaLink] = useState<string | null>(null);
   const [leadNome, setLeadNome] = useState("");
   const [leadInteresse, setLeadInteresse] = useState("");
+  const [showLeadForm, setShowLeadForm] = useState(false);
+  const [formNome, setFormNome] = useState("");
+  const [formWhatsapp, setFormWhatsapp] = useState("");
+  const [formTipo, setFormTipo] = useState("");
+  const [formValor, setFormValor] = useState("");
+  const [formLoading, setFormLoading] = useState(false);
+  const [formMsg, setFormMsg] = useState<string | null>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const openedRef = useRef(false);
 
@@ -42,7 +51,7 @@ export function IaChatWidget({ config }: Props) {
 
   useEffect(() => {
     listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: "smooth" });
-  }, [messages, loading]);
+  }, [messages, loading, showLeadForm]);
 
   const registrarEvento = useCallback((tipo: string, extra?: Record<string, unknown>) => {
     void fetch("/api/public/eventos", {
@@ -67,14 +76,24 @@ export function IaChatWidget({ config }: Props) {
   }, [onOpen]);
 
   const sendMessage = useCallback(
-    async (text: string, action?: { href?: string; evento?: string }) => {
+    async (text: string, action?: { href?: string; evento?: string; openLeadForm?: boolean }) => {
       const trimmed = text.trim();
       if (!trimmed || loading) return;
 
       if (action?.evento) registrarEvento(action.evento);
+      if (action?.openLeadForm) {
+        setShowLeadForm(true);
+        setFormMsg(null);
+      }
       if (action?.href) router.push(action.href);
 
-      setMessages((m) => [...m, { role: "user", content: trimmed }]);
+      const nextUser: ChatMsg = { role: "user", content: trimmed };
+      const historyForApi = [...messages, nextUser].map((m) => ({
+        role: m.role,
+        content: m.content,
+      }));
+
+      setMessages((m) => [...m, nextUser]);
       setInput("");
       setLoading(true);
 
@@ -88,22 +107,28 @@ export function IaChatWidget({ config }: Props) {
             message: trimmed,
             paginaOrigem: pathname ?? "/",
             urlOrigem: typeof window !== "undefined" ? window.location.href : pathname,
+            history: historyForApi,
           }),
         });
         const data = (await res.json()) as {
           reply?: string;
+          message?: string;
           leadCreated?: boolean;
           whatsappOrigem?: WhatsappOrigemRow | null;
-          providerUnavailable?: boolean;
+          showLeadCapture?: boolean;
           nomeLead?: string;
           tipoInteresseLead?: string;
+          mode?: string;
         };
 
         const reply =
+          data.message ??
           data.reply ??
-          "Assistente temporariamente indisponível. Fale com um especialista pelo WhatsApp.";
+          "Posso te ajudar pelos atalhos abaixo ou registrar seu interesse para um especialista.";
 
         setMessages((m) => [...m, { role: "assistant", content: reply }]);
+
+        if (data.showLeadCapture) setShowLeadForm(true);
 
         if (
           data.leadCreated &&
@@ -115,16 +140,51 @@ export function IaChatWidget({ config }: Props) {
           const interesse = data.tipoInteresseLead?.trim() || leadInteresse || "atendimento comercial";
           if (data.nomeLead) setLeadNome(data.nomeLead);
           if (data.tipoInteresseLead) setLeadInteresse(data.tipoInteresseLead);
-          setWaLink(
-            buildWhatsappPosLead(nome, interesse, data.whatsappOrigem.whatsapp_destino),
-          );
+          setWaLink(buildWhatsappPosLead(nome, interesse, data.whatsappOrigem.whatsapp_destino));
+          setShowLeadForm(false);
         }
       } finally {
         setLoading(false);
       }
     },
-    [loading, pathname, registrarEvento, router, leadInteresse, leadNome],
+    [loading, messages, pathname, registrarEvento, router, leadInteresse, leadNome, config.mostrarWhatsappPosLead],
   );
+
+  async function submitLeadForm(e: React.FormEvent) {
+    e.preventDefault();
+    setFormLoading(true);
+    setFormMsg(null);
+    try {
+      const res = await fetch("/api/public/leads/ia-fallback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          nome: formNome,
+          whatsapp: digitsOnlyPhone(formWhatsapp) || formWhatsapp,
+          tipoCredito: formTipo || undefined,
+          valorCredito: formValor || undefined,
+          sessionId: getOrCreateSessionId(),
+          paginaOrigem: pathname ?? "/",
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Falha ao enviar");
+      setFormMsg("Interesse registrado! Em breve um especialista pode entrar em contato.");
+      setShowLeadForm(false);
+      setMessages((m) => [
+        ...m,
+        {
+          role: "assistant",
+          content: "Registrei seus dados. Use o botão WhatsApp abaixo ou os atalhos para continuar explorando o site.",
+        },
+      ]);
+      registrarEvento("ia_lead_fallback_form");
+    } catch (err) {
+      setFormMsg(err instanceof Error ? err.message : "Erro ao enviar");
+    } finally {
+      setFormLoading(false);
+    }
+  }
 
   if (!config.ativo) return null;
 
@@ -176,7 +236,7 @@ export function IaChatWidget({ config }: Props) {
               <div
                 key={`${m.role}-${i}`}
                 className={cn(
-                  "max-w-[92%] rounded-2xl px-3 py-2 text-sm leading-relaxed",
+                  "max-w-[92%] whitespace-pre-wrap rounded-2xl px-3 py-2 text-sm leading-relaxed",
                   m.role === "user"
                     ? "ml-auto bg-amber-400/90 text-slate-950"
                     : "mr-auto border border-slate-700/80 bg-slate-800/90 text-slate-100",
@@ -185,8 +245,52 @@ export function IaChatWidget({ config }: Props) {
                 {m.content}
               </div>
             ))}
-            {loading ? (
-              <p className="text-xs text-amber-400/80">Assistente digitando…</p>
+            {loading ? <p className="text-xs text-amber-400/80">Assistente digitando…</p> : null}
+
+            {showLeadForm ? (
+              <form onSubmit={submitLeadForm} className="mr-auto max-w-[92%] space-y-2 rounded-2xl border border-amber-500/30 bg-slate-900/90 p-3 text-sm">
+                <p className="font-semibold text-amber-200">Registrar interesse</p>
+                <input
+                  required
+                  placeholder="Nome"
+                  value={formNome}
+                  onChange={(e) => setFormNome(e.target.value)}
+                  className="w-full rounded-lg border border-slate-600 bg-slate-950 px-2 py-2 text-white"
+                />
+                <input
+                  required
+                  placeholder="WhatsApp"
+                  value={formWhatsapp}
+                  onChange={(e) => setFormWhatsapp(formatWhatsappBrInput(e.target.value))}
+                  className="w-full rounded-lg border border-slate-600 bg-slate-950 px-2 py-2 text-white"
+                />
+                <select
+                  value={formTipo}
+                  onChange={(e) => setFormTipo(e.target.value)}
+                  className="w-full rounded-lg border border-slate-600 bg-slate-950 px-2 py-2 text-white"
+                >
+                  <option value="">Tipo de crédito</option>
+                  {TIPOS_CREDITO_PUBLICO.map((t) => (
+                    <option key={t} value={t}>
+                      {t}
+                    </option>
+                  ))}
+                </select>
+                <input
+                  placeholder="Valor aproximado (ex. 300000)"
+                  value={formValor}
+                  onChange={(e) => setFormValor(e.target.value)}
+                  className="w-full rounded-lg border border-slate-600 bg-slate-950 px-2 py-2 text-white"
+                />
+                {formMsg ? <p className="text-xs text-emerald-400">{formMsg}</p> : null}
+                <button
+                  type="submit"
+                  disabled={formLoading}
+                  className="w-full rounded-lg bg-amber-400 py-2 font-semibold text-slate-950 disabled:opacity-50"
+                >
+                  {formLoading ? "Enviando…" : "Enviar dados"}
+                </button>
+              </form>
             ) : null}
           </div>
 
@@ -197,7 +301,13 @@ export function IaChatWidget({ config }: Props) {
                   key={a.id}
                   type="button"
                   disabled={loading}
-                  onClick={() => void sendMessage(a.message ?? a.label, { href: a.href, evento: a.evento })}
+                  onClick={() =>
+                    void sendMessage(a.message ?? a.label, {
+                      href: a.href,
+                      evento: a.evento,
+                      openLeadForm: a.id === "verificar" || a.id === "especialista",
+                    })
+                  }
                   className="rounded-full border border-slate-600 bg-slate-800/80 px-2.5 py-1 text-[11px] font-medium text-amber-200/90 hover:border-amber-500/50"
                 >
                   {a.label}
@@ -228,6 +338,12 @@ export function IaChatWidget({ config }: Props) {
                 onChange={(e) => setInput(e.target.value)}
                 placeholder="Digite sua mensagem…"
                 className="min-h-11 flex-1 rounded-xl border border-slate-600 bg-slate-950 px-3 text-sm text-white placeholder:text-slate-500"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    void sendMessage(input);
+                  }
+                }}
               />
               <button
                 type="submit"
