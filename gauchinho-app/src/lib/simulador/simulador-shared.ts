@@ -26,7 +26,7 @@ export type SimuladorConfigsBundle = {
 
 export function resolveFinanciamentoCfg(
   configs: SimuladorConfigsBundle,
-  tipoBem: "imovel" | "automovel" | "moto" | "caminhonete",
+  tipoBem: "imovel" | "automovel" | "moto" | "caminhoes_frota" | "caminhonete",
 ): FinanciamentoConfig {
   const stored = normalizeFinanciamentoStored(configs.financiamento);
   return financiamentoConfigParaTipo(stored, tipoFinanciamentoFromBem(tipoBem));

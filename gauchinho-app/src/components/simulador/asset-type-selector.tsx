@@ -2,24 +2,24 @@ import type { Modo, TipoBem } from "./simulador-types";
 import { choiceCardClass, sectionCardClass, stepBadgeClass } from "./simulador-ui";
 import { Car, Home, Truck, Bike } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
+import { TIPO_BEM_LABEL } from "@/lib/simulador/tipos-credito";
 
 type AssetOption = {
   id: TipoBem;
   label: string;
   icon: typeof Home;
-  soon?: boolean;
 };
 
 const CONSORCIO: AssetOption[] = [
-  { id: "imovel", label: "Imóvel", icon: Home },
-  { id: "automovel", label: "Veículo", icon: Car },
-  { id: "moto", label: "Moto", icon: Bike, soon: true },
-  { id: "caminhonete", label: "Caminhonete", icon: Truck, soon: true },
+  { id: "imovel", label: TIPO_BEM_LABEL.imovel, icon: Home },
+  { id: "automovel", label: TIPO_BEM_LABEL.automovel, icon: Car },
+  { id: "moto", label: TIPO_BEM_LABEL.moto, icon: Bike },
+  { id: "caminhoes_frota", label: TIPO_BEM_LABEL.caminhoes_frota, icon: Truck },
 ];
 
 const FIN: AssetOption[] = [
-  { id: "imovel", label: "Imóvel", icon: Home },
-  { id: "automovel", label: "Veículo", icon: Car },
+  { id: "imovel", label: TIPO_BEM_LABEL.imovel, icon: Home },
+  { id: "automovel", label: TIPO_BEM_LABEL.automovel, icon: Car },
 ];
 
 type Props = {
@@ -45,25 +45,16 @@ export function AssetTypeSelector({ modo, value, onChange }: Props) {
       <div className={cn("grid gap-3", modo === "consorcio" ? "grid-cols-2" : "grid-cols-2")}>
         {options.map((opt) => {
           const Icon = opt.icon;
-          const selected = value === opt.id && !opt.soon;
+          const selected = value === opt.id;
           return (
             <button
               key={opt.id}
               type="button"
-              disabled={opt.soon}
-              onClick={() => !opt.soon && onChange(opt.id)}
-              className={cn(
-                choiceCardClass(selected, "flex flex-col items-center gap-2 p-4 text-center"),
-                opt.soon && "cursor-not-allowed opacity-50",
-              )}
+              onClick={() => onChange(opt.id)}
+              className={cn(choiceCardClass(selected, "flex flex-col items-center gap-2 p-4 text-center"))}
             >
               <Icon className="h-6 w-6" />
               <span className="font-semibold">{opt.label}</span>
-              {opt.soon ? (
-                <span className="text-xs font-medium uppercase tracking-wide text-amber-400/90">
-                  Em breve
-                </span>
-              ) : null}
             </button>
           );
         })}

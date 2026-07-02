@@ -1,6 +1,7 @@
 import { SimuladorApp, type SimuladorPrefill } from "@/components/simulador/simulador-app";
 import { getSimuladorConfigsPublic } from "@/server/config";
-import type { Modo, TipoBem } from "@/components/simulador/simulador-types";
+import type { Modo } from "@/components/simulador/simulador-types";
+import { parseTipoBemFromQuery } from "@/lib/simulador/tipos-credito";
 
 function parseModo(raw: string | undefined): Modo | undefined {
   if (raw === "financiamento") return "financiamento";
@@ -19,6 +20,7 @@ export default async function SimuladorPage({
   const valorRaw = sp.valor ? Number(sp.valor) : undefined;
   const prazoRaw = sp.prazo ? Number(sp.prazo) : undefined;
   const solucao = parseModo(sp.solucao);
+  const tipoParsed = parseTipoBemFromQuery(sp.tipo);
 
   const prefill: SimuladorPrefill | undefined =
     sp.origem || sp.valor || sp.tipo || sp.solucao || sp.prazo
@@ -28,9 +30,7 @@ export default async function SimuladorPage({
           valor: valorRaw != null && Number.isFinite(valorRaw) ? valorRaw : undefined,
           prazo: prazoRaw != null && Number.isFinite(prazoRaw) ? prazoRaw : undefined,
           solucao,
-          tipo: (sp.tipo === "imovel" || sp.tipo === "automovel" ? sp.tipo : undefined) as
-            | TipoBem
-            | undefined,
+          tipo: tipoParsed,
         }
       : undefined;
 

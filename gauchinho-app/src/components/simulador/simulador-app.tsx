@@ -49,13 +49,18 @@ import {
   resolveFinanciamentoCfg,
 } from "@/lib/simulador/simulador-shared";
 import {
+  clampValorCreditoTipo,
+  parseTipoBemFromQuery,
+  resolveBemConfigSimulador,
+} from "@/lib/simulador/tipos-credito";
+import {
   entradaFinanciamentoParaCalculo,
   entradaPadraoFinanciamento,
   taxaMensalFinanciamentoCalculo,
 } from "@/lib/simulador/financiamento-entrada";
 
-function clampValorBemFinanciamento(valor: number, bem: SimuladorTipoBemConfig) {
-  return Math.min(bem.valorMaximoCredito, Math.max(bem.valorMinimoCredito, valor));
+function clampValorBemFinanciamento(valor: number, tipo: TipoBem, configs: SimuladorConfigs) {
+  return clampValorCreditoTipo(tipo, valor, configs);
 }
 
 function buildEntradaConsorcio(
@@ -137,8 +142,10 @@ export function SimuladorApp({
   const [waLink, setWaLink] = useState<string | null>(null);
   const [pdfLink, setPdfLink] = useState<string | null>(null);
 
-  const bemCfg =
-    tipoBem === "automovel" ? configs.automovel : configs.imovel;
+  const bemCfg = useMemo(
+    () => resolveBemConfigSimulador(tipoBem, configs),
+    [tipoBem, configs],
+  );
   const finCfg = useMemo(
     () => resolveFinanciamentoCfg(configs, tipoBem),
     [configs, tipoBem],
@@ -199,28 +206,35 @@ export function SimuladorApp({
     if (prefill.solucao === "consorcio" || prefill.solucao === "financiamento") {
       setModo(prefill.solucao);
     }
-    if (prefill.tipo === "imovel" || prefill.tipo === "automovel") {
+    if (prefill.tipo) {
       setTipoBem(prefill.tipo);
     }
-    const cfgBem =
-      prefill.tipo === "automovel" ? configs.automovel : configs.imovel;
+    const tipoPref = prefill.tipo ?? "imovel";
+    const cfgBem = resolveBemConfigSimulador(tipoPref, configs);
+    const finPref = resolveFinanciamentoCfg(configs, tipoPref);
     if (prefill.valor != null && Number.isFinite(prefill.valor) && prefill.valor > 0) {
-      const vCred = clampValorBemFinanciamento(prefill.valor, cfgBem);
+      const vCred = clampValorBemFinanciamento(prefill.valor, tipoPref, configs);
       setValorCredito(vCred);
-      const vBem = clampValorBemFinanciamento(prefill.valor, cfgBem);
+      const vBem = clampValorBemFinanciamento(prefill.valor, tipoPref, configs);
       setValorBem(vBem);
-      setEntradaFin(entradaPadraoFinanciamento(vBem, finCfg));
+      setEntradaFin(entradaPadraoFinanciamento(vBem, finPref));
     }
     if (prefill.prazo != null && Number.isFinite(prefill.prazo) && prefill.prazo > 0) {
       setPrazo(prefill.prazo);
-      const prazos = listPrazosFinanciamento(finCfg);
-      setPrazoFin(snapPrazoToLista(prefill.prazo, prazos, finCfg.prazoPadrao));
+      const prazos = listPrazosFinanciamento(finPref);
+      setPrazoFin(snapPrazoToLista(prefill.prazo, prazos, finPref.prazoPadrao));
     }
     if (prefill.origem === "oportunidade_imobiliaria") {
       setModo("consorcio");
       setTipoBem("imovel");
     }
-  }, [prefill, finCfg, configs.automovel, configs.imovel]);
+  }, [prefill, configs]);
+
+  useEffect(() => {
+    if (modo === "financiamento" && (tipoBem === "moto" || tipoBem === "caminhoes_frota")) {
+      setTipoBem("automovel");
+    }
+  }, [modo, tipoBem]);
 
   const prazosConsorcio = useMemo(() => listPrazosConsorcio(bemCfg), [bemCfg]);
 
@@ -241,11 +255,11 @@ export function SimuladorApp({
 
   const updateValorBemFin = useCallback(
     (raw: number) => {
-      const v = clampValorBemFinanciamento(raw, bemCfg);
+      const v = clampValorBemFinanciamento(raw, tipoBem, configs);
       setValorBem(v);
       setEntradaFin(entradaPadraoFinanciamento(v, finCfg));
     },
-    [bemCfg, finCfg],
+    [tipoBem, configs, finCfg],
   );
 
   useEffect(() => {
@@ -394,15 +408,16 @@ export function SimuladorApp({
   );
 
   function aplicarDefaultsBem(b: TipoBem) {
-    if (b !== "imovel" && b !== "automovel") return;
-    const c = b === "imovel" ? configs.imovel : configs.automovel;
-    const prazos = listPrazosFinanciamento(finCfg);
-    setValorCredito(c.valorPadraoInicial);
-    setValorBem(c.valorPadraoInicial);
+    const c = resolveBemConfigSimulador(b, configs);
+    const fin = resolveFinanciamentoCfg(configs, b);
+    const prazos = listPrazosFinanciamento(fin);
+    const v = clampValorCreditoTipo(b, c.valorPadraoInicial, configs);
+    setValorCredito(v);
+    setValorBem(v);
     setPrazo(c.prazoPadrao);
-    setEntradaFin(entradaPadraoFinanciamento(c.valorPadraoInicial, finCfg));
-    setTaxaMensal(finCfg.taxaMensalPadrao);
-    setPrazoFin(snapPrazoToLista(c.prazoPadrao, prazos, finCfg.prazoPadrao));
+    setEntradaFin(entradaPadraoFinanciamento(v, fin));
+    setTaxaMensal(fin.taxaMensalPadrao);
+    setPrazoFin(snapPrazoToLista(c.prazoPadrao, prazos, fin.prazoPadrao));
     setTaxaAdm(c.taxaAdministrativaPadrao);
     setFundoReserva(c.fundoReservaPadrao);
     setSeguro(c.seguroPrestamistaPadrao);
@@ -418,7 +433,13 @@ export function SimuladorApp({
     setResultoDestacado(false);
     setMsg(null);
     if (m === "financiamento") {
-      const v = clampValorBemFinanciamento(valorCredito, bemCfg);
+      const tipoFin = tipoBem === "imovel" ? "imovel" : "automovel";
+      if (tipoBem !== tipoFin) {
+        setTipoBem(tipoFin);
+        aplicarDefaultsBem(tipoFin);
+        return;
+      }
+      const v = clampValorBemFinanciamento(valorCredito, tipoBem, configs);
       const prazos = listPrazosFinanciamento(finCfg);
       setValorBem(v);
       setEntradaFin(entradaPadraoFinanciamento(v, finCfg));
@@ -563,7 +584,7 @@ export function SimuladorApp({
               value={valorCredito}
               min={bemCfg.valorMinimoCredito}
               max={bemCfg.valorMaximoCredito}
-              onChange={setValorCredito}
+              onChange={(v) => setValorCredito(clampValorCreditoTipo(tipoBem, v, configs))}
             />
             <PrazoStep
               prazos={prazosConsorcio}

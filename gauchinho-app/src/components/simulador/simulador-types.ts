@@ -8,7 +8,7 @@ export type SimuladorConfigs = {
 };
 
 export type Modo = "consorcio" | "financiamento";
-export type TipoBem = "imovel" | "automovel" | "moto" | "caminhonete";
+export type TipoBem = "imovel" | "automovel" | "moto" | "caminhoes_frota";
 export type EstrategiaPagamento = "integral" | "reduzida";
 export type AcaoCaptura = "analise" | "proposta" | "especialista";
 

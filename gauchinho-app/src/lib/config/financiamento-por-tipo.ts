@@ -97,10 +97,33 @@ export function normalizeFinanciamentoStored(raw: unknown): FinanciamentoConfigS
 
 export type TipoFinanciamentoBem = "imovel" | "veiculo";
 
-export function tipoFinanciamentoFromBem(
-  tipo: "imovel" | "automovel" | "moto" | "caminhonete",
+/** Normaliza texto ou slug de tipo de bem para config de financiamento. */
+export function normalizeTipoFinanciamento(
+  input: string | "imovel" | "automovel" | "moto" | "caminhoes_frota" | "caminhonete",
 ): TipoFinanciamentoBem {
-  return tipo === "imovel" ? "imovel" : "veiculo";
+  const t = String(input).trim().toLowerCase().normalize("NFD").replace(/\p{M}/gu, "");
+  if (t === "imovel" || t === "casa" || t === "apartamento") return "imovel";
+  if (
+    t === "veiculo" ||
+    t === "auto" ||
+    t === "automovel" ||
+    t === "carro" ||
+    t === "carros" ||
+    t === "moto" ||
+    t === "caminhonete" ||
+    t === "caminhoes_frota" ||
+    t === "caminhoes" ||
+    t === "frota"
+  ) {
+    return "veiculo";
+  }
+  return t === "imovel" ? "imovel" : "veiculo";
+}
+
+export function tipoFinanciamentoFromBem(
+  tipo: "imovel" | "automovel" | "moto" | "caminhoes_frota" | "caminhonete",
+): TipoFinanciamentoBem {
+  return normalizeTipoFinanciamento(tipo);
 }
 
 /** Converte config por tipo para o formato usado pelo simulador/prazos. */

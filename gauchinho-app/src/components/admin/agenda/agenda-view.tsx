@@ -140,13 +140,19 @@ export function AgendaView({ month, year, compromissos, srds, initialDay, initia
               </div>
               <div>
                 <Label>Consultor</Label>
-                <Select name="consultor_id" defaultValue={srds[0]?.id ?? ""}>
-                  {srds.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.nome}
-                    </option>
-                  ))}
-                </Select>
+                {srds.length === 0 ? (
+                  <p className="mt-1 text-sm text-amber-400/90">
+                    Nenhum consultor cadastrado. Marque usuários como consultores em Admin → Usuários.
+                  </p>
+                ) : (
+                  <Select name="consultor_id" defaultValue={srds[0]?.id ?? ""} required>
+                    {srds.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.nome}
+                      </option>
+                    ))}
+                  </Select>
+                )}
               </div>
               <div>
                 <Label>Lead (UUID — opcional)</Label>

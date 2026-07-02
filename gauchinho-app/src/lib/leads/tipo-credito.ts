@@ -2,7 +2,7 @@ export const TIPOS_CREDITO_PUBLICO = [
   "Imóvel",
   "Veículo",
   "Moto",
-  "Caminhão",
+  "Caminhões e Frota",
   "Máquinas",
   "Serviços",
   "Outro",

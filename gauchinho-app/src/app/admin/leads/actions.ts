@@ -399,12 +399,9 @@ export async function fetchLeadDetail(leadId: string) {
   };
 }
 
+import { listarConsultores } from "@/lib/admin/consultores";
+
 export async function fetchSrdOptions() {
   const supabase = await createClient();
-  const { data } = await supabase
-    .from("usuarios")
-    .select("id, nome")
-    .eq("perfil", "srd")
-    .eq("ativo", true);
-  return data ?? [];
+  return listarConsultores(supabase);
 }

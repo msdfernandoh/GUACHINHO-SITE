@@ -104,8 +104,8 @@ function extrairInteresse(text: string): { tipo?: string; produto?: string } {
   if (/caminhão|caminhao/i.test(lower)) {
     return { tipo: "Consórcio caminhão", produto: "caminhao" };
   }
-  if (/caminhonete|pickup/i.test(lower)) {
-    return { tipo: "Consórcio caminhonete", produto: "caminhonete" };
+  if (/caminhonete|pickup|frota|caminhao/i.test(lower)) {
+    return { tipo: "Consórcio caminhões e frota", produto: "caminhoes_frota" };
   }
   if (/moto|motocicleta/i.test(lower)) {
     return { tipo: "Consórcio moto", produto: "moto" };
@@ -157,7 +157,7 @@ function mapTipoCreditoPublico(produto?: string, tipoInteresse?: string): TipoCr
   if (p === "imovel" || /imóvel|imovel|casa/.test(tipoInteresse ?? "")) return "Imóvel";
   if (p === "automovel" || p === "veiculo") return "Veículo";
   if (p === "moto") return "Moto";
-  if (p === "caminhao" || /caminhão|caminhao/.test(tipoInteresse ?? "")) return "Caminhão";
+  if (p === "caminhao" || /caminhão|caminhao|caminhonete|frota/i.test(tipoInteresse ?? "")) return "Caminhões e Frota";
   if (/máquina|maquina|maquinario/.test(tipoInteresse ?? "")) return "Máquinas";
   if (/serviço|servico/.test(tipoInteresse ?? "")) return "Serviços";
   for (const t of TIPOS_CREDITO_PUBLICO) {

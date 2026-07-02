@@ -54,11 +54,31 @@ async function syncEventoDestaque(admin: ReturnType<typeof createAdminClient>, e
   await admin.from("eventos").update({ evento_destaque: false }).neq("id", eventoId);
 }
 
-export async function fetchEventosAdminList() {
+export async function fetchEventosAdminList(): Promise<import("@/lib/comercial-eventos/types").EventoRow[]> {
   const supabase = await createClient();
   const { data, error } = await supabase.from("eventos").select("*").order("data_evento", { ascending: false, nullsFirst: false });
   if (error) throw new Error(error.message);
-  return (data ?? []) as EventoRow[];
+  return (data ?? []) as import("@/lib/comercial-eventos/types").EventoRow[];
+}
+
+/** Lista eventos ou null se tabelas não existirem (migration pendente). */
+export async function fetchEventosAdminListSafe(): Promise<
+  | { ok: true; list: import("@/lib/comercial-eventos/types").EventoRow[] }
+  | { ok: false; migrationMissing: true; message: string }
+  | { ok: false; migrationMissing: false; message: string }
+> {
+  try {
+    const list = await fetchEventosAdminList();
+    return { ok: true, list };
+  } catch (e) {
+    const { isDbMissingRelationError, EVENTOS_MIGRATION_HINT } = await import("@/lib/comercial-eventos/db-ready");
+    const message = e instanceof Error ? e.message : String(e);
+    console.error("[admin/eventos] fetch list:", message);
+    if (isDbMissingRelationError(e)) {
+      return { ok: false, migrationMissing: true, message: EVENTOS_MIGRATION_HINT };
+    }
+    return { ok: false, migrationMissing: false, message };
+  }
 }
 
 export async function fetchEventoAdmin(id: string) {

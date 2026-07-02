@@ -1,8 +1,8 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { getUsuarioNegocio } from "@/lib/auth/get-usuario";
 import { canManageImobiliarias } from "@/lib/auth/permissions";
-import { fetchEventosAdminList } from "./actions";
+import { fetchEventosAdminListSafe } from "./actions";
 import { Button } from "@/components/ui/form-primitives";
 import { formatDateTime } from "@/lib/utils/format";
 
@@ -10,7 +10,21 @@ export default async function EventosAdminPage() {
   const u = await getUsuarioNegocio();
   if (!canManageImobiliarias(u?.perfil)) redirect("/admin");
 
-  const list = await fetchEventosAdminList();
+  const result = await fetchEventosAdminListSafe();
+
+  if (!result.ok) {
+    return (
+      <div className="space-y-4">
+        <h1 className="text-2xl font-bold">Eventos</h1>
+        <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-4 text-sm text-amber-100">
+          <p className="font-semibold">Não foi possível carregar os eventos</p>
+          <p className="mt-2 whitespace-pre-wrap opacity-90">{result.message}</p>
+        </div>
+      </div>
+    );
+  }
+
+  const list = result.list;
 
   return (
     <div className="space-y-6">

@@ -79,6 +79,20 @@ function withState(reply: string, state: GuidedFlowState): string {
 
 function bemConfigForTipo(tipo: TipoCreditoPublico): SimuladorTipoBemConfig {
   if (tipo === "Imóvel" || tipo === "Serviços" || tipo === "Outro") return DEFAULT_SIMULADOR_IMOVEL;
+  if (tipo === "Moto") {
+    return {
+      ...DEFAULT_SIMULADOR_AUTOMOVEL,
+      valorMinimoCredito: 30_000,
+      valorMaximoCredito: 150_000,
+    };
+  }
+  if (tipo === "Caminhões e Frota") {
+    return {
+      ...DEFAULT_SIMULADOR_AUTOMOVEL,
+      valorMinimoCredito: 100_000,
+      valorMaximoCredito: 1_000_000,
+    };
+  }
   return DEFAULT_SIMULADOR_AUTOMOVEL;
 }
 
@@ -120,7 +134,7 @@ export function parseTipoCreditoFromText(text: string): TipoCreditoPublico | und
   const t = text.toLowerCase().normalize("NFD").replace(/\p{M}/gu, "");
   const map: [RegExp, TipoCreditoPublico][] = [
     [/imovel|imóvel|casa|apartamento/, "Imóvel"],
-    [/caminhao|caminhão/, "Caminhão"],
+    [/caminhoes e frota|caminhao|caminhonete|frota|pickup/, "Caminhões e Frota"],
     [/maquina|máquina/, "Máquinas"],
     [/moto\b/, "Moto"],
     [/veiculo|veículo|carro|automovel/, "Veículo"],
