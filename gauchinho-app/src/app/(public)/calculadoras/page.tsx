@@ -14,6 +14,19 @@ export default async function CalculadorasPublicPage({
     getIndicesPublicos({ tentarAtualizarAutomaticos: false }),
   ]);
   const initialCalc = parseCalcId(sp.calc);
+  const aporteRaw = sp.aporte ? Number(String(sp.aporte).replace(",", ".")) : NaN;
+  const prazoRaw = sp.prazo ? parseInt(String(sp.prazo), 10) : NaN;
+  const aplicacaoPrefill =
+    Number.isFinite(aporteRaw) && aporteRaw > 0 && Number.isFinite(prazoRaw) && prazoRaw > 0
+      ? { aporte: aporteRaw, prazoMeses: prazoRaw }
+      : undefined;
 
-  return <CalculadorasPage config={config} initialCalc={initialCalc} indices={indices} />;
+  return (
+    <CalculadorasPage
+      config={config}
+      initialCalc={initialCalc}
+      indices={indices}
+      aplicacaoPrefill={aplicacaoPrefill}
+    />
+  );
 }

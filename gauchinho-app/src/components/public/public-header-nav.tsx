@@ -10,6 +10,7 @@ import { EspecialistaLeadModal } from "@/components/public/especialista-lead-mod
 const PRIMARY_LINKS = [
   { href: "/", label: "Início" },
   { href: "/simulador", label: "Simulador" },
+  { href: "/calculadoras", label: "Calculadoras" },
   { href: "/grupos", label: "Grupos" },
   { href: "/cartas-contempladas", label: "Contempladas" },
   { href: "/oportunidades-imobiliarias", label: "Imóveis" },
@@ -17,8 +18,10 @@ const PRIMARY_LINKS = [
 ] as const;
 
 const MORE_LINKS = [
-  { href: "/calculadoras", label: "Calculadoras" },
   { href: "/dicas-do-tche", label: "Dicas" },
+  { href: "/indicar", label: "Indicar cliente" },
+  { href: "/perguntas-frequentes", label: "FAQ" },
+  { href: "/parceiros", label: "Parceiros" },
 ] as const;
 
 export function PublicHeaderNav() {
@@ -44,7 +47,7 @@ export function PublicHeaderNav() {
   const linkClass = (href: string) =>
     cn("whitespace-nowrap transition hover:text-amber-400", pathname === href && "text-amber-400");
 
-  const allMobile = [...PRIMARY_LINKS, ...MORE_LINKS, { href: "/login", label: "Admin" }] as const;
+  const allMobile = [...PRIMARY_LINKS, ...MORE_LINKS, { href: "/login", label: "Login" }] as const;
 
   return (
     <>

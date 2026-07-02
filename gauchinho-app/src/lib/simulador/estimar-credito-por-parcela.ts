@@ -1,8 +1,12 @@
-import { calcularParcelaConsorcio } from "@/lib/simulador/consorcio";
+import {
+  calcularParcelaConsorcio,
+  calcularParcelaReduzida,
+} from "@/lib/simulador/consorcio";
 
 export type EstimarCreditoPorParcelaInput = {
   parcelaDesejada: number;
   prazoMeses: number;
+  /** Percentual sobre a parcela integral (ex.: 60 = parcela reduzida). */
   percentualParcelaReduzida: number;
   taxaAdministrativaPercentual: number;
   fundoReservaPercentual: number;
@@ -14,44 +18,52 @@ export type EstimarCreditoPorParcelaResult = {
   parcelaReduzida: number;
   parcelaIntegral: number;
   saldoDevedorEstimado: number;
+  percentualParcelaReduzida: number;
 };
 
-function parcelaReduzidaParaCredito(
-  credito: number,
-  input: EstimarCreditoPorParcelaInput,
-): number {
-  const r = calcularParcelaConsorcio({
+function resultadoIntegral(credito: number, input: EstimarCreditoPorParcelaInput) {
+  return calcularParcelaConsorcio({
     valorCredito: credito,
     prazoMeses: input.prazoMeses,
     taxaAdministrativaPercentual: input.taxaAdministrativaPercentual,
     fundoReservaPercentual: input.fundoReservaPercentual,
     seguroPrestamistaPercentual: input.seguroPrestamistaPercentual ?? 0,
-    percentualParcelaInicial: input.percentualParcelaReduzida,
+    percentualParcelaInicial: 100,
   });
-  return r.parcelaEstimada;
+}
+
+/** Parcela reduzida comercial: percentual sobre a parcela integral (não sobre a amortização isolada). */
+export function parcelaReduzidaComparacaoAplicacao(
+  credito: number,
+  input: EstimarCreditoPorParcelaInput,
+): number {
+  const pct = Math.min(100, Math.max(1, input.percentualParcelaReduzida));
+  const r = resultadoIntegral(credito, input);
+  if (pct >= 100) return r.parcelaIntegral;
+  return calcularParcelaReduzida(r.parcelaIntegral, pct);
 }
 
 function resultadoParaCredito(
   credito: number,
   input: EstimarCreditoPorParcelaInput,
 ): EstimarCreditoPorParcelaResult {
-  const r = calcularParcelaConsorcio({
-    valorCredito: credito,
-    prazoMeses: input.prazoMeses,
-    taxaAdministrativaPercentual: input.taxaAdministrativaPercentual,
-    fundoReservaPercentual: input.fundoReservaPercentual,
-    seguroPrestamistaPercentual: input.seguroPrestamistaPercentual ?? 0,
-    percentualParcelaInicial: input.percentualParcelaReduzida,
-  });
+  const pct = Math.min(100, Math.max(1, input.percentualParcelaReduzida));
+  const r = resultadoIntegral(credito, input);
+  const reduzida =
+    pct >= 100 ? r.parcelaIntegral : calcularParcelaReduzida(r.parcelaIntegral, pct);
   return {
     creditoContratadoEstimado: Math.round(credito * 100) / 100,
-    parcelaReduzida: Math.round(r.parcelaEstimada * 100) / 100,
+    parcelaReduzida: Math.round(reduzida * 100) / 100,
     parcelaIntegral: Math.round(r.parcelaIntegral * 100) / 100,
     saldoDevedorEstimado: Math.round(r.saldoDevedorEstimado * 100) / 100,
+    percentualParcelaReduzida: pct,
   };
 }
 
-/** Busca binária: crédito cujo parcela reduzida se aproxima da parcela desejada. */
+/**
+ * Busca binária: crédito cuja parcela reduzida (sobre a integral) se aproxima do aporte mensal.
+ * Não usa parcela integral como alvo, salvo quando percentual = 100%.
+ */
 export function estimarCreditoConsorcioPorParcela(
   input: EstimarCreditoPorParcelaInput,
 ): EstimarCreditoPorParcelaResult | null {
@@ -63,16 +75,16 @@ export function estimarCreditoConsorcioPorParcela(
 
   let lo = 1_000;
   let hi = 50_000_000;
-  while (parcelaReduzidaParaCredito(hi, base) < alvo && hi < 200_000_000) {
+  while (parcelaReduzidaComparacaoAplicacao(hi, base) < alvo && hi < 200_000_000) {
     hi *= 2;
   }
-  if (parcelaReduzidaParaCredito(lo, base) > alvo) {
+  if (parcelaReduzidaComparacaoAplicacao(lo, base) > alvo) {
     return resultadoParaCredito(lo, base);
   }
 
   for (let i = 0; i < 64; i++) {
     const mid = (lo + hi) / 2;
-    const p = parcelaReduzidaParaCredito(mid, base);
+    const p = parcelaReduzidaComparacaoAplicacao(mid, base);
     if (p > alvo) hi = mid;
     else lo = mid;
   }

@@ -31,9 +31,10 @@ type Props = {
   config: CalculadorasFinanceirasConfig;
   initialCalc?: CalculadoraId;
   indices: IndicePublico[];
+  aplicacaoPrefill?: { aporte: number; prazoMeses: number };
 };
 
-export function CalculadorasPage({ config, initialCalc, indices }: Props) {
+export function CalculadorasPage({ config, initialCalc, indices, aplicacaoPrefill }: Props) {
   const ativas = useMemo(() => calculadorasAtivas(config), [config]);
   const [activeId, setActiveId] = useState<CalculadoraId | null>(() => {
     if (initialCalc && ativas.some((a) => a.id === initialCalc)) return initialCalc;
@@ -206,6 +207,7 @@ export function CalculadorasPage({ config, initialCalc, indices }: Props) {
                 meta={activeMeta}
                 config={config}
                 indices={indices}
+                aplicacaoPrefill={aplicacaoPrefill}
                 onResult={(inputs, resultado) => onResult(activeMeta.id, inputs, resultado)}
               />
             ) : null}
@@ -271,11 +273,13 @@ function CalculatorPanel({
   meta,
   config,
   indices,
+  aplicacaoPrefill,
   onResult,
 }: {
   meta: CalculadoraMeta;
   config: CalculadorasFinanceirasConfig;
   indices: IndicePublico[];
+  aplicacaoPrefill?: { aporte: number; prazoMeses: number };
   onResult: (inputs: Record<string, unknown>, resultado: Record<string, unknown>) => void;
 }) {
   switch (meta.id) {
@@ -284,6 +288,7 @@ function CalculatorPanel({
         <AplicacaoMensalCalculator
           indices={indices}
           taxaPadrao={config.rentabilidadeMensalPadrao}
+          prefill={aplicacaoPrefill}
           onResult={onResult}
         />
       );

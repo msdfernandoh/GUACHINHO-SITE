@@ -99,6 +99,13 @@ export function opcoesParcelaAtivas(cfg: SimuladorTipoBemConfig): OpcaoParcelaCo
     .sort((a, b) => a.ordem - b.ordem);
 }
 
+/** Percentual padrão da parcela reduzida para comparativo (primeira opção < 100%). */
+export function percentualParcelaReduzidaPadrao(cfg: SimuladorTipoBemConfig): number {
+  const opcoes = opcoesParcelaAtivas(cfg);
+  const reduzida = opcoes.find((o) => o.percentual < 100);
+  return reduzida?.percentual ?? 60;
+}
+
 export function opcaoParcelaPorId(
   cfg: SimuladorTipoBemConfig,
   id: string,

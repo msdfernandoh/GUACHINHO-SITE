@@ -47,7 +47,7 @@ export function IndicesFinanceirosAdmin({ initial }: Props) {
     startTransition(async () => {
       const r = await atualizarIndiceAgora(codigo);
       if (r.ok) {
-        setMsg(`${codigo}: atualizado com sucesso.`);
+        setMsg(r.message ?? `${codigo}: atualizado com sucesso.`);
       } else {
         setMsg(r.message ?? `${codigo}: falha na atualização`);
       }

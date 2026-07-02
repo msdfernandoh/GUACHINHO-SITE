@@ -3,17 +3,16 @@ import { PublicFooter } from "@/components/public/public-footer";
 import { LenisProvider } from "@/components/public/lenis-provider";
 import { IaChatWidget } from "@/components/public/ia-chat/ia-chat-widget";
 import { getIaConfigPublic } from "@/server/config";
-import { loadFooterPartners } from "@/lib/footer/load-footer-partners";
 
 export default async function PublicLayout({ children }: { children: React.ReactNode }) {
-  const [iaConfig, footerPartners] = await Promise.all([getIaConfigPublic(), loadFooterPartners()]);
+  const iaConfig = await getIaConfigPublic();
 
   return (
     <LenisProvider>
       <div className="min-h-screen text-zinc-100" style={{ background: "var(--brand-blue)" }}>
         <PublicHeader />
         {children}
-        <PublicFooter partners={footerPartners} />
+        <PublicFooter />
         <IaChatWidget config={iaConfig} />
       </div>
     </LenisProvider>

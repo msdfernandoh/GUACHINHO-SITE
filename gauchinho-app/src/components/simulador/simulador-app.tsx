@@ -29,6 +29,7 @@ import { FinanciamentoDetailsStep } from "./financiamento-details-step";
 import { ConsorcioResultCards } from "./consorcio-result-cards";
 import { FinanciamentoResultCards } from "./financiamento-result-cards";
 import { ComparisonSection } from "./comparison-section";
+import { SimuladorCalculadoraAplicacaoCta } from "./simulador-calculadora-aplicacao-cta";
 import { ProjectionSection } from "./projection-section";
 import { LeadCaptureModal } from "./lead-capture-modal";
 import type {
@@ -675,6 +676,11 @@ export function SimuladorApp({
               alternativaConsorcio={alternativaConsorcio}
             />
           ) : null}
+
+          <SimuladorCalculadoraAplicacaoCta
+            aporte={modo === "consorcio" ? contemplacao.parcelaEstimada : resultadoFin.parcelaEstimada}
+            prazoMeses={modo === "consorcio" ? prazo : prazoFin}
+          />
 
           <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
             <Button

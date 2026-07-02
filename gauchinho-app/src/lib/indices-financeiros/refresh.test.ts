@@ -3,6 +3,7 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 vi.mock("./bcb", () => ({
   fetchIpcaAcumulado12m: vi.fn(async () => null),
   fetchSelicAnual: vi.fn(async () => null),
+  fetchCdiAnualReferencia: vi.fn(async () => null),
   fetchCdiAcumulado12m: vi.fn(async () => null),
 }));
 

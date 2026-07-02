@@ -21,6 +21,7 @@ import {
   SimuladorBemConfigForm,
 } from "./simulador-forms";
 import { IaConfigForm } from "./ia-config-form";
+import { HomeModulosForm } from "./home-modulos-form";
 import {
   DEFAULT_HOME_CARTAS,
   DEFAULT_CALCULADORAS_FINANCEIRAS,
@@ -44,6 +45,7 @@ const TABS: Array<{ id: string; label: string; future?: boolean }> = [
   { id: "calculadoras", label: "Calculadoras" },
   { id: "ia", label: "IA" },
   { id: "cartas_home", label: "Cartas Home" },
+  { id: "home_modulos", label: "Home" },
   { id: "futuro1", label: "Identidade Visual", future: true },
   { id: "futuro2", label: "Menus", future: true },
 ] ;
@@ -321,6 +323,10 @@ export function ConfigTabs({ configs, whatsapp }: Props) {
           </label>
           <Button type="submit">Salvar Cartas Home</Button>
         </form>
+      ) : null}
+
+      {tab === "home_modulos" ? (
+        <HomeModulosForm stored={configs.home_modulos_config} />
       ) : null}
     </div>
   );

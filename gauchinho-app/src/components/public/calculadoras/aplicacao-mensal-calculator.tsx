@@ -9,8 +9,11 @@ import {
   leadPayloadAplicacaoConsorcio,
   AVISO_COMPARATIVO_CONSORCIO,
   TEXTO_DIFERENCA_PATRIMONIAL,
+  TEXTO_PARCELA_REDUZIDA_COMPARATIVO,
 } from "@/lib/calculadoras/aplicacao-consorcio-comparativo";
 import type { PerfilAplicacaoCodigo } from "@/lib/calculadoras/aplicacao-comparativo";
+import { DEFAULT_SIMULADOR_IMOVEL } from "@/lib/config/defaults";
+import { percentualParcelaReduzidaPadrao } from "@/lib/config/simulador-parcela-opcoes";
 import { formatDataReferenciaBr, taxaMensalAplicacaoFromIndice } from "@/lib/indices-financeiros";
 import { taxaMensalParaAnualPercentual } from "@/lib/indices-financeiros/math";
 import type { IndicePublico } from "@/lib/indices-financeiros/types";
@@ -21,6 +24,7 @@ import { sectionCardClass } from "@/components/simulador/simulador-ui";
 type Props = {
   indices: IndicePublico[];
   taxaPadrao: number;
+  prefill?: { aporte: number; prazoMeses: number };
   onResult: (inputs: Record<string, unknown>, resultado: Record<string, unknown>) => void;
 };
 
@@ -39,13 +43,30 @@ const AVISO_APLICACAO =
 const AVISO_TESOURO =
   "Estimativa com base na taxa cadastrada. Não considera impostos, taxas, marcação a mercado ou custos operacionais.";
 
-export function AplicacaoMensalCalculator({ indices, taxaPadrao, onResult }: Props) {
+const PARCELA_REDUZIDA_PADRAO = String(percentualParcelaReduzidaPadrao(DEFAULT_SIMULADOR_IMOVEL));
+
+function indiceDesatualizado(indice: IndicePublico | null): boolean {
+  if (!indice?.ultima_atualizacao && !indice?.data_referencia) return true;
+  const ref = indice.ultima_atualizacao ?? indice.data_referencia;
+  if (!ref) return false;
+  const d = new Date(ref.slice(0, 10));
+  if (Number.isNaN(d.getTime())) return false;
+  const now = new Date();
+  return d.getUTCFullYear() < now.getUTCFullYear() || d.getUTCMonth() < now.getUTCMonth();
+}
+
+export function AplicacaoMensalCalculator({ indices, taxaPadrao, prefill, onResult }: Props) {
   const [valorInicial, setValorInicial] = useState("0");
-  const [aporte, setAporte] = useState("500");
-  const [prazo, setPrazo] = useState("120");
+  const [aporte, setAporte] = useState(() =>
+    prefill?.aporte != null ? String(prefill.aporte) : "500",
+  );
+  const [prazo, setPrazo] = useState(() =>
+    prefill?.prazoMeses != null ? String(prefill.prazoMeses) : "120",
+  );
   const [aumentoAnualAporte, setAumentoAnualAporte] = useState("6");
   const [compararConsorcio, setCompararConsorcio] = useState(true);
   const [reajusteCredito, setReajusteCredito] = useState("6");
+  const [parcelaReduzidaPct, setParcelaReduzidaPct] = useState(PARCELA_REDUZIDA_PADRAO);
   const [prazoConsorcio, setPrazoConsorcio] = useState("220");
   const [perfil, setPerfil] = useState<PerfilAplicacaoCodigo | "comparar_todos">("cdi");
   const [cdiPreset, setCdiPreset] = useState("100");
@@ -99,7 +120,7 @@ export function AplicacaoMensalCalculator({ indices, taxaPadrao, onResult }: Pro
       compararComConsorcio: compararConsorcio,
       reajusteAnualCreditoPercentual: num(reajusteCredito),
       prazoConsorcioMeses: Math.floor(num(prazoConsorcio)),
-      percentualParcelaReduzidaConsorcio: 60,
+      percentualParcelaReduzidaConsorcio: num(parcelaReduzidaPct),
     };
     const r = calcularAplicacaoComConsorcio({
       ...inputs,
@@ -167,6 +188,11 @@ export function AplicacaoMensalCalculator({ indices, taxaPadrao, onResult }: Pro
             {ultimaAtualizacao ? <p className="mt-1 text-slate-500">Última atualização: {ultimaAtualizacao}</p> : null}
             {indicePerfil?.fonte ? (
               <p className="text-slate-500">Fonte: {indicePerfil.fonte}</p>
+            ) : perfil === "taxa_manual" ? (
+              <p className="text-slate-500">Fonte: Cadastro manual</p>
+            ) : null}
+            {indicePerfil && indiceDesatualizado(indicePerfil) ? (
+              <p className="mt-1 text-amber-300">Atenção: índice não atualizado neste mês.</p>
             ) : null}
             {indicePerfil?.usando_fallback ? (
               <p className="mt-1 text-amber-300">Usando último índice cadastrado no sistema.</p>
@@ -248,6 +274,12 @@ export function AplicacaoMensalCalculator({ indices, taxaPadrao, onResult }: Pro
                 hint="Estimativa de valorização/reajuste anual do crédito contratado."
               />
               <Field
+                label="Parcela reduzida do consórcio (%)"
+                value={parcelaReduzidaPct}
+                onChange={setParcelaReduzidaPct}
+                hint="Usado para estimar qual crédito caberia em uma parcela reduzida parecida com o aporte mensal."
+              />
+              <Field
                 label="Prazo do consórcio (meses)"
                 value={prazoConsorcio}
                 onChange={setPrazoConsorcio}
@@ -326,6 +358,9 @@ export function AplicacaoMensalCalculator({ indices, taxaPadrao, onResult }: Pro
               <h2 className="text-center text-lg font-bold text-white">
                 Aplicação mensal x Consórcio programado
               </h2>
+              <p className="text-center text-xs leading-relaxed text-slate-400">
+                {TEXTO_PARCELA_REDUZIDA_COMPARATIVO}
+              </p>
               <div className="grid gap-4 lg:grid-cols-2">
                 <CalculatorResultCard
                   title="Consórcio programado (estimativa)"

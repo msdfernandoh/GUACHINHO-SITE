@@ -18,9 +18,22 @@ import { buildSimuladorUrl } from "@/lib/home/build-simulador-url";
 import { formatCurrency } from "@/lib/utils/format";
 import { snapPrazoToLista } from "@/lib/simulador/prazos";
 import type { HomeConteudoDestaques } from "@/lib/home/load-home-data";
+import type { CartaContemplada } from "@/lib/cartas/types";
+import type { ImovelPublic } from "@/lib/imoveis/types";
+import type { HomeOportunidadesConfig } from "@/lib/config/defaults";
+import { DEFAULT_HOME_OPORTUNIDADES } from "@/lib/config/defaults";
+import {
+  DEFAULT_HOME_MODULOS,
+  homeModuloFlexOrder,
+  homeModuloSectionClass,
+  type HomeModulosConfig,
+} from "@/lib/config/home-modulos";
 import { FeaturedCasosSection } from "@/components/public/home/featured-casos-section";
 import { FeaturedDicasSection } from "@/components/public/home/featured-dicas-section";
+import { FeaturedLettersSection } from "@/components/public/home/featured-letters-section";
+import { HomeImoveisDestaque } from "@/components/public/home/home-imoveis-destaque";
 import { HomeV2ParceirosStrip } from "@/components/public/home/home-v2-parceiros-strip";
+import { cn } from "@/lib/utils/cn";
 
 const C = {
   bg:         "#07111F",
@@ -500,9 +513,20 @@ function ObjetivosSection() {
 export type HomeV2ClientProps = {
   simuladorConfigs: SimuladorConfigsBundle;
   conteudoDestaques: HomeConteudoDestaques;
+  homeModulos?: HomeModulosConfig;
+  cartasDestaque?: CartaContemplada[];
+  imoveisDestaque?: ImovelPublic[];
+  homeOportunidades?: HomeOportunidadesConfig;
 };
 
-export function HomeV2Client({ simuladorConfigs, conteudoDestaques }: HomeV2ClientProps) {
+export function HomeV2Client({
+  simuladorConfigs,
+  conteudoDestaques,
+  homeModulos = DEFAULT_HOME_MODULOS,
+  cartasDestaque = [],
+  imoveisDestaque = [],
+  homeOportunidades = DEFAULT_HOME_OPORTUNIDADES,
+}: HomeV2ClientProps) {
   const shouldReduce = useReducedMotion();
   const [quickTipoBem, setQuickTipoBem] = useState<"imovel" | "automovel">("imovel");
   const quickDefaults = useMemo(
@@ -567,20 +591,28 @@ export function HomeV2Client({ simuladorConfigs, conteudoDestaques }: HomeV2Clie
     },
   };
 
+  const modStyle = (id: Parameters<typeof homeModuloFlexOrder>[1]) => ({
+    order: homeModuloFlexOrder(homeModulos, id),
+  });
+  const modHidden = (id: Parameters<typeof homeModuloSectionClass>[1]) =>
+    homeModuloSectionClass(homeModulos, id);
+
   return (
-    <main style={{ background: C.bg, color: C.text, fontFamily: "inherit" }}>
+    <main className="flex flex-col" style={{ background: C.bg, color: C.text, fontFamily: "inherit" }}>
 
       {/* ══════════════════════════════════════════
           SEÇÃO 1 — OBJETIVOS CINEMATOGRÁFICOS
       ══════════════════════════════════════════ */}
-      <ObjetivosSection />
+      <div className={modHidden("hero")} style={modStyle("hero")}>
+        <ObjetivosSection />
+      </div>
 
       {/* ══════════════════════════════════════════
           SEÇÃO 2 — MASCOTE + COPY HERO
       ══════════════════════════════════════════ */}
       <section
-        className="relative overflow-hidden px-4 py-20 sm:px-6 lg:px-16"
-        style={{ background: `linear-gradient(135deg, ${C.bg} 0%, ${C.bgCard} 60%, ${C.bg} 100%)` }}
+        className={cn("relative overflow-hidden px-4 py-20 sm:px-6 lg:px-16", modHidden("hero"))}
+        style={{ ...modStyle("hero"), background: `linear-gradient(135deg, ${C.bg} 0%, ${C.bgCard} 60%, ${C.bg} 100%)` }}
       >
         <div
           className="pointer-events-none absolute right-1/4 top-1/2 h-[500px] w-[500px] -translate-y-1/2 rounded-full opacity-[0.08] blur-3xl"
@@ -732,8 +764,8 @@ export function HomeV2Client({ simuladorConfigs, conteudoDestaques }: HomeV2Clie
           SEÇÃO 3 — SIMULADOR RÁPIDO
       ══════════════════════════════════════════ */}
       <section
-        className="px-4 py-24 sm:px-6 lg:px-16"
-        style={{ background: `linear-gradient(180deg, ${C.bg} 0%, ${C.bgCard} 50%, ${C.bg} 100%)` }}
+        className={cn("px-4 py-24 sm:px-6 lg:px-16", modHidden("simulador_rapido"))}
+        style={{ ...modStyle("simulador_rapido"), background: `linear-gradient(180deg, ${C.bg} 0%, ${C.bgCard} 50%, ${C.bg} 100%)` }}
       >
         <div className="container mx-auto max-w-3xl">
           <motion.div
@@ -901,6 +933,7 @@ export function HomeV2Client({ simuladorConfigs, conteudoDestaques }: HomeV2Clie
         </div>
       </section>
 
+      <div className={modHidden("beneficios")} style={modStyle("beneficios")}>
       {/* ══════════════════════════════════════════
           SEÇÃO 4 — BADGES
       ══════════════════════════════════════════ */}
@@ -951,11 +984,15 @@ export function HomeV2Client({ simuladorConfigs, conteudoDestaques }: HomeV2Clie
           </div>
         </div>
       </section>
+      </div>
 
       {/* ══════════════════════════════════════════
           SEÇÃO 6 — GRUPOS EM DESTAQUE
       ══════════════════════════════════════════ */}
-      <section className="px-4 py-24 sm:px-6 lg:px-16" style={{ background: C.bg }}>
+      <section
+        className={cn("px-4 py-24 sm:px-6 lg:px-16", modHidden("grupos"))}
+        style={{ ...modStyle("grupos"), background: C.bg }}
+      >
         <div className="container mx-auto">
           <motion.div variants={fadeUp} initial="hidden" whileInView="visible"
             viewport={{ once: true }} className="mb-16 text-center">
@@ -1017,21 +1054,66 @@ export function HomeV2Client({ simuladorConfigs, conteudoDestaques }: HomeV2Clie
         </div>
       </section>
 
-      {/* Fase 9 — conteúdo publicado (oculto se vazio) */}
-      <div style={{ background: C.bgCard }}>
+      <div
+        className={cn(modHidden("contempladas"), !cartasDestaque.length && "hidden")}
+        style={{ ...modStyle("contempladas"), background: C.bgCard }}
+      >
+        <FeaturedLettersSection cartas={cartasDestaque} />
+      </div>
+
+      <div className={cn(modHidden("imoveis"), !imoveisDestaque.length && "hidden")} style={modStyle("imoveis")}>
+        <HomeImoveisDestaque imoveis={imoveisDestaque} config={homeOportunidades} />
+      </div>
+
+      <section
+        className={cn("px-4 py-16 sm:px-6", modHidden("seguradoras"))}
+        style={{ ...modStyle("seguradoras"), background: C.bg }}
+      >
+        <div className="container mx-auto max-w-3xl text-center">
+          <p className="text-xs font-bold uppercase tracking-widest" style={{ color: C.gold }}>
+            Proteção
+          </p>
+          <h2 className="mt-2 text-2xl font-black text-white sm:text-3xl">Seguradoras parceiras</h2>
+          <p className="mt-2 text-sm" style={{ color: C.muted }}>
+            Conheça as seguradoras com as quais trabalhamos.
+          </p>
+          <Link
+            href="/seguradoras"
+            className="mt-6 inline-block rounded-2xl border-2 px-8 py-3 text-sm font-bold transition-colors hover:bg-[#C9A84C]/10"
+            style={{ borderColor: C.gold, color: C.gold }}
+          >
+            Ver seguradoras →
+          </Link>
+        </div>
+      </section>
+
+      <div
+        className={cn(modHidden("casos"), !conteudoDestaques.casosDestaque.length && "hidden")}
+        style={{ ...modStyle("casos"), background: C.bgCard }}
+      >
         <FeaturedCasosSection casos={conteudoDestaques.casosDestaque} />
       </div>
-      <div style={{ background: C.bg }}>
+      <div
+        className={cn(modHidden("dicas"), !conteudoDestaques.dicasDestaque.length && "hidden")}
+        style={{ ...modStyle("dicas"), background: C.bg }}
+      >
         <FeaturedDicasSection dicas={conteudoDestaques.dicasDestaque} />
       </div>
-      <div style={{ background: C.bgCard }}>
+      <div
+        className={cn(modHidden("parceiros"), !conteudoDestaques.parceirosDestaque.length && "hidden")}
+        style={{ ...modStyle("parceiros"), background: C.bgCard }}
+      >
         <HomeV2ParceirosStrip parceiros={conteudoDestaques.parceirosDestaque} />
       </div>
 
       {/* ══════════════════════════════════════════
           SEÇÃO 7 — CTA FINAL
       ══════════════════════════════════════════ */}
-      <section id="contato" className="relative overflow-hidden px-4 py-32 text-center sm:px-6" style={{ background: C.bg }}>
+      <section
+        id="contato"
+        className={cn("relative overflow-hidden px-4 py-32 text-center sm:px-6", modHidden("cta_final"))}
+        style={{ ...modStyle("cta_final"), background: C.bg }}
+      >
         <div className="pointer-events-none absolute inset-0"
           style={{ background: "radial-gradient(ellipse 60% 50% at 50% 50%, rgba(201,168,76,0.08), transparent)" }}
           aria-hidden />

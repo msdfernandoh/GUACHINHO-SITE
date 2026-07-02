@@ -100,3 +100,18 @@ export async function getIaConfigPublic() {
   const { DEFAULT_IA_CONFIG } = await import("@/lib/config/ia-defaults");
   return getConfigJsonPublic("ia_config", DEFAULT_IA_CONFIG);
 }
+
+export async function getHomeModulosConfigPublic() {
+  const { DEFAULT_HOME_MODULOS, normalizeHomeModulosConfig } = await import("@/lib/config/home-modulos");
+  try {
+    const admin = createAdminClient();
+    const { data } = await admin
+      .from("configuracoes_sistema")
+      .select("valor")
+      .eq("chave", "home_modulos_config")
+      .maybeSingle();
+    return normalizeHomeModulosConfig(data?.valor);
+  } catch {
+    return DEFAULT_HOME_MODULOS;
+  }
+}

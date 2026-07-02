@@ -223,6 +223,20 @@ export async function saveHomeCartasConfigAction(formData: FormData) {
     mostrarApenasDestaque: formData.get("mostrarApenasDestaque") === "on",
   });
   revalidatePath("/admin/configuracoes");
+  revalidatePath("/");
+}
+
+export async function saveHomeModulosConfigAction(formData: FormData) {
+  await requireMasterConfig();
+  const { DEFAULT_HOME_MODULOS } = await import("@/lib/config/home-modulos");
+  const modulos = DEFAULT_HOME_MODULOS.modulos.map((base) => {
+    const ativo = formData.get(`ativo_${base.id}`) === "on";
+    const ordem = numField(formData, `ordem_${base.id}`, base.ordem);
+    return { ...base, ativo, ordem };
+  });
+  await saveConfigJson("home_modulos_config", { modulos });
+  revalidatePath("/admin/configuracoes");
+  revalidatePath("/");
 }
 
 export async function fetchWhatsappOrigens() {

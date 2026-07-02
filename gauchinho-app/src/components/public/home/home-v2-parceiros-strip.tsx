@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { ConteudoLogoImage } from "@/components/conteudo/conteudo-logo-image";
+import { PartnerLogoImage } from "@/components/public/partner-logo-image";
 import type { ParceiroInstitucional } from "@/lib/conteudo/types";
 
 const C = {
@@ -47,7 +47,7 @@ export function HomeV2ParceirosStrip({ parceiros }: Props) {
             >
               {p.logo_url ? (
                 <div className="relative h-full w-full min-h-[4.5rem] min-w-[4.5rem]">
-                  <ConteudoLogoImage src={p.logo_url} alt={p.nome} fill sizes="128px" />
+                  <PartnerLogoImage src={p.logo_url} alt={p.nome} fill sizes="128px" fallbackText={p.nome} />
                 </div>
               ) : (
                 <span className="text-center text-xs font-bold leading-tight text-zinc-800">{p.nome}</span>

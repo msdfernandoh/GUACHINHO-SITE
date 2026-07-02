@@ -21,18 +21,45 @@
 
 ## Menu público
 
-- Ordem desktop: Início, Simulador, Grupos, Contempladas, Imóveis, Seguradoras, Mais (Calculadoras, Dicas), Especialista, Login.
-- Mobile: mesma ordem + Especialista; menu abaixo do header (`top-14`).
+- Ordem desktop: Início, Simulador, **Calculadoras**, Grupos, Contempladas, Imóveis, Seguradoras, **Mais** (Dicas, Indicar cliente, FAQ, Parceiros), Especialista, Login.
+- Calculadoras **não** fica dentro de Mais no desktop.
+- Mobile: links principais + Mais + Login; menu abaixo do header (`top-14`).
+
+## Correção layout Home / Menu / Parceiros / Mascote
+
+### Parceiros sem duplicidade
+
+- **Causa:** vitrine de logos em `PublicFooter` (via `loadFooterPartners`) **e** `HomeV2ParceirosStrip` na Home.
+- **Correção:** rodapé só links (Parceiros, Indicar, FAQ) + copyright; logos apenas no módulo **Parceiros** da Home (`home-v2-parceiros-strip.tsx`).
+
+### Módulos configuráveis da Home
+
+- Chave: `configuracoes_sistema.home_modulos_config` (JSON `{ modulos: [{ id, nome, ativo, ordem }] }`).
+- Admin: `/admin/configuracoes` → aba **Home** (`HomeModulosForm`).
+- Runtime: `home-v2-client.tsx` usa `order` CSS flex + `hidden` por módulo; ordem numérica menor = mais acima.
+- Módulos sem conteúdo (cartas, imóveis, casos, dicas, parceiros vazios) permanecem ocultos mesmo ativos.
+
+### CTA simulador → calculadora de aplicação
+
+- Componente: `SimuladorCalculadoraAplicacaoCta` abaixo do comparativo / resultados.
+- Link: `/calculadoras?calc=aplicacao_mensal&aporte=…&prazo=…` (parcela estimada e prazo atuais).
+
+### Logos de parceiros
+
+- `PartnerLogoImage`: fallback com nome do parceiro se URL vazia ou erro de carregamento.
+
+### Mascote
+
+- `ConteudoPageShell` (FAQ, parceiros, indicar, seguradoras, etc.) + páginas de vitrine (grupos, cartas, imóveis, calculadoras) + Home hero + simulador shell.
 
 ## Dicas do Tchê
 
 - Categorias de cadastro: `DICA_CATEGORIAS` em `lib/conteudo/types.ts` (sem Imóvel/Veículo).
 - Conteúdos legados com categorias antigas continuam visíveis em “Todas”.
 
-## Rodapé parceiros
+## Rodapé (atualizado)
 
-- `PublicFooter` + `loadFooterPartners` (parceiros institucionais, imobiliárias ativas, seguradoras publicadas).
-- Seção oculta quando lista vazia.
+- `PublicFooter` sem vitrine de logos — apenas navegação institucional.
 
 ## Calculadora juros real
 
@@ -66,6 +93,15 @@
 2. Ativar comparativo consórcio → crédito estimado e crédito reajustado 6% a.a.
 3. Aumento anual do aporte 6% → total investido maior que aporte fixo.
 4. Gerar lead e conferir JSON em `dados_simulacao`.
+
+## Correção CDI e comparativo consórcio por parcela reduzida
+
+- **Consórcio na aplicação:** busca binária usa `parcelaReduzidaComparacaoAplicacao` — percentual sobre a **parcela integral**, alvo = aporte mensal (não parcela cheia como crédito ~80k).
+- Campo **Parcela reduzida do consórcio (%)** (padrão 60 ou opção do simulador imóvel).
+- **CDI admin:** série BCB **4389** (CDI a.a. ~14%); série **4390** era taxa mensal/diária (~0,05) — não gravar como anual.
+- Validação em `validation.ts` impede CDI anual &lt; 1% ou &gt; 30%; falha preserva último valor válido.
+- Cron Vercel: `GET /api/cron/indices-financeiros` com `Authorization: Bearer CRON_SECRET` (dia 1, 11:00 UTC).
+- Admin: mensagens de sucesso/erro ao clicar **Atualizar agora**.
 
 ## Comandos
 

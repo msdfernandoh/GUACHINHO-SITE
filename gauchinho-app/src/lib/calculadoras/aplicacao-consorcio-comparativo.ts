@@ -1,4 +1,5 @@
 import { DEFAULT_SIMULADOR_IMOVEL } from "@/lib/config/defaults";
+import { percentualParcelaReduzidaPadrao } from "@/lib/config/simulador-parcela-opcoes";
 import { taxaAnualParaMensalPercentual } from "@/lib/indices-financeiros/math";
 import type { IndicePublico } from "@/lib/indices-financeiros/types";
 import {
@@ -18,6 +19,9 @@ export const AVISO_COMPARATIVO_CONSORCIO =
 
 export const TEXTO_DIFERENCA_PATRIMONIAL =
   "Em muitos cenários, o crédito programado pode gerar uma projeção patrimonial maior, porque a valorização incide sobre o crédito contratado, não apenas sobre os aportes mensais.";
+
+export const TEXTO_PARCELA_REDUZIDA_COMPARATIVO =
+  "A comparação usa a parcela reduzida inicial do consórcio como referência para aproximar o valor do aporte mensal. O crédito estimado considera uma parcela reduzida inicial próxima ao aporte mensal informado. A parcela integral é exibida apenas como referência da parcela cheia do plano.";
 
 export type TaxaIndiceAplicacaoInfo = {
   perfil: PerfilAplicacaoCodigo;
@@ -184,7 +188,9 @@ export function calcularAplicacaoComConsorcio(
   let diferencaPatrimonial: number | null = null;
 
   if (comparar && input.aporteMensal > 0 && input.prazoMeses > 0) {
-    const pctReduzida = input.percentualParcelaReduzidaConsorcio ?? 60;
+    const pctReduzida =
+      input.percentualParcelaReduzidaConsorcio ??
+      percentualParcelaReduzidaPadrao(DEFAULT_SIMULADOR_IMOVEL);
     const reajusteCredito = input.reajusteAnualCreditoPercentual ?? 6;
     const prazoConsorcio = input.prazoConsorcioMeses ?? 220;
     const taxaAdm = input.taxaAdministrativaConsorcio ?? DEFAULT_SIMULADOR_IMOVEL.taxaAdministrativaPadrao;
