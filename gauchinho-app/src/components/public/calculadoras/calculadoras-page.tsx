@@ -10,6 +10,7 @@ import { mensagemWhatsappCalculadora } from "@/lib/calculadoras/whatsapp-message
 import type { WhatsappOrigemRow } from "@/lib/whatsapp/resolve-origem";
 import { simuladorShell, sectionCardClass } from "@/components/simulador/simulador-ui";
 import { Button } from "@/components/ui/form-primitives";
+import { GauchinhoMascotInline } from "@/components/public/gauchinho-mascot-inline";
 import { CalculadoraCard } from "./calculadora-card";
 import { CalculatorLeadModal, type AcaoCalculadoraLead } from "./calculator-lead-modal";
 import { AplicacaoMensalCalculator } from "./aplicacao-mensal-calculator";
@@ -170,7 +171,11 @@ export function CalculadorasPage({ config, initialCalc, indices, aplicacaoPrefil
   return (
     <div className={simuladorShell}>
       <div className="mx-auto max-w-7xl px-4 pb-20 pt-10 sm:px-6 sm:pt-14">
-        <header className="mb-8 sm:mb-10">
+        <header className="relative mb-8 sm:mb-10">
+          <GauchinhoMascotInline
+            context="calculadoras"
+            className="mx-auto mb-6 w-fit lg:absolute lg:left-0 lg:top-1/2 lg:mb-0 lg:-translate-y-1/2"
+          />
           <div className="mx-auto max-w-3xl text-center">
             <p className="text-xs font-bold uppercase tracking-[0.28em] text-amber-400/90">
               Gauchinho · Ferramentas

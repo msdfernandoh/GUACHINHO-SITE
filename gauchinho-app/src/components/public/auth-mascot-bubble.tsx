@@ -1,10 +1,9 @@
-import { Suspense } from "react";
-import { PublicFloatingMascot } from "@/components/public/public-floating-mascot";
+import { GauchinhoMascotInline } from "@/components/public/gauchinho-mascot-inline";
 
 export function AuthMascotBubble() {
   return (
-    <Suspense fallback={null}>
-      <PublicFloatingMascot />
-    </Suspense>
+    <div className="flex justify-center px-4 pb-6">
+      <GauchinhoMascotInline context="login" size="sm" />
+    </div>
   );
 }
