@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import Link from "next/link";
 import { cn } from "@/lib/utils/cn";
 import { Button, Input, Label, Textarea, surfaceInputDarkSlate } from "@/components/ui/form-primitives";
 import { digitsOnlyPhone, formatWhatsappBrInput } from "@/lib/utils/format";
@@ -27,6 +28,17 @@ export function EspecialistaLeadModal({ open, onClose }: Props) {
   const [erro, setErro] = useState<string | null>(null);
   const [sucesso, setSucesso] = useState(false);
   const [waLink, setWaLink] = useState<string | null>(null);
+  const [eventoDestaque, setEventoDestaque] = useState<{ slug: string; nome: string } | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    void fetch("/api/public/eventos/destaque")
+      .then((r) => r.json())
+      .then((d: { evento?: { slug: string; nome: string } | null }) => {
+        setEventoDestaque(d.evento ?? null);
+      })
+      .catch(() => setEventoDestaque(null));
+  }, [open]);
 
   if (!open) return null;
 
@@ -106,6 +118,15 @@ export function EspecialistaLeadModal({ open, onClose }: Props) {
           <form onSubmit={handleSubmit} className="space-y-4">
             <h2 className="text-xl font-bold text-white">Falar com especialista</h2>
             <p className="text-sm text-slate-400">Conte seu objetivo — retornamos pelo WhatsApp.</p>
+            {eventoDestaque ? (
+              <Link
+                href={`/eventos/${eventoDestaque.slug}`}
+                className="block rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm font-semibold text-amber-200 hover:bg-amber-500/15"
+                onClick={handleClose}
+              >
+                Inscrever-se no evento: {eventoDestaque.nome} →
+              </Link>
+            ) : null}
             <div>
               <Label className="text-slate-200">Nome *</Label>
               <Input

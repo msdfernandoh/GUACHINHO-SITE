@@ -11,6 +11,7 @@ const PRIMARY_LINKS = [
   { href: "/", label: "Início" },
   { href: "/simulador", label: "Simulador" },
   { href: "/calculadoras", label: "Calculadoras" },
+  { href: "/eventos", label: "Eventos" },
   { href: "/grupos", label: "Grupos" },
   { href: "/cartas-contempladas", label: "Contempladas" },
   { href: "/oportunidades-imobiliarias", label: "Imóveis" },

@@ -6,8 +6,9 @@ import { FUNNEL_STATUSES, LEAD_TEMPERATURES } from "@/lib/crm/constants";
 import { Button, Input, Label, Select } from "@/components/ui/form-primitives";
 
 type Srd = { id: string; nome: string };
+type EventoOpt = { id: string; nome: string };
 
-export function LeadFilters({ srds }: { srds: Srd[] }) {
+export function LeadFilters({ srds, eventos = [] }: { srds: Srd[]; eventos?: EventoOpt[] }) {
   const sp = useSearchParams();
   const q = (k: string) => sp.get(k) ?? "";
 
@@ -39,6 +40,17 @@ export function LeadFilters({ srds }: { srds: Srd[] }) {
       <div>
         <Label>Origem</Label>
         <Input name="origem" defaultValue={q("origem")} placeholder="simulador…" />
+      </div>
+      <div>
+        <Label>Evento</Label>
+        <Select name="evento" defaultValue={q("evento")}>
+          <option value="">Todos</option>
+          {eventos.map((ev) => (
+            <option key={ev.id} value={ev.id}>
+              {ev.nome}
+            </option>
+          ))}
+        </Select>
       </div>
       <div>
         <Label>Temperatura</Label>

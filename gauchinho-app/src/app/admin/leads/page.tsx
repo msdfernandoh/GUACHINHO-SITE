@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Suspense } from "react";
 import { fetchLeadsList, fetchSrdOptions } from "./actions";
+import { fetchEventosOptionsForFilter } from "@/app/admin/eventos/actions";
 import { requireStaffAdmin } from "@/lib/auth/require-staff-admin";
 import { Button } from "@/components/ui/form-primitives";
 import { LeadFilters } from "@/components/admin/crm/lead-filters";
@@ -29,8 +30,13 @@ export default async function LeadsListPage({
     somente_novos: sp.somente_novos,
     somente_quentes: sp.somente_quentes,
     acao_vencida: sp.acao_vencida,
+    evento: sp.evento,
   };
-  const [leads, srds] = await Promise.all([fetchLeadsList(filters), fetchSrdOptions()]);
+  const [leads, srds, eventos] = await Promise.all([
+    fetchLeadsList(filters),
+    fetchSrdOptions(),
+    fetchEventosOptionsForFilter(),
+  ]);
 
   return (
     <div className="space-y-6">
@@ -55,7 +61,7 @@ export default async function LeadsListPage({
       </div>
 
       <Suspense fallback={null}>
-        <LeadFilters srds={srds} />
+        <LeadFilters srds={srds} eventos={eventos} />
       </Suspense>
 
       <LeadTable leads={leads} />

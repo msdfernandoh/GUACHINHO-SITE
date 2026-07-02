@@ -17,7 +17,7 @@ import { getUsuarioNegocio } from "@/lib/auth/get-usuario";
 import { canDeleteRecords } from "@/lib/auth/permissions";
 import { Button, Input, Label, Select, Textarea } from "@/components/ui/form-primitives";
 import { PRODUTOS_FECHADOS, TIPOS_INTERESSE } from "@/lib/types";
-import { formatCurrency, formatDate } from "@/lib/utils/format";
+import { formatCurrency, formatDate, formatDateTime } from "@/lib/utils/format";
 import { IaLeadSummarySection } from "../ia-lead-summary";
 import { FUNNEL_STATUSES, LEAD_TEMPERATURES } from "@/lib/crm/constants";
 import { LeadStatusBadge } from "@/components/admin/crm/lead-status-badge";
@@ -25,6 +25,7 @@ import { LeadTemperatureBadge } from "@/components/admin/crm/lead-temperature-ba
 import { LeadWhatsappButton } from "@/components/admin/crm/lead-whatsapp-button";
 import { LeadActivityTimeline } from "@/components/admin/crm/lead-activity-timeline";
 import { LeadActivityForm } from "@/components/admin/crm/lead-activity-form";
+import { fetchCompromissosLead } from "@/app/admin/agenda/actions";
 
 export default async function LeadDetailPage({
   params,
@@ -41,7 +42,14 @@ export default async function LeadDetailPage({
   }
   const { lead, historico, propostas, iaConversa, iaMensagens, atividades, timeline } = detail;
   const srds = await fetchSrdOptions();
+  const agendaItens = await fetchCompromissosLead(id);
   const podeExcluir = canDeleteRecords(usuario?.perfil);
+  const leadEvento = lead as typeof lead & {
+    evento_id?: string | null;
+    evento_nome?: string | null;
+    parceiro_indicador_nome?: string | null;
+    parceiro_indicador_empresa?: string | null;
+  };
 
   const updateWithId = updateLeadAction.bind(null, id);
   const retornoWithId = agendarRetornoAction.bind(null, id);
@@ -82,6 +90,44 @@ export default async function LeadDetailPage({
           ) : null}
         </div>
       </div>
+
+      {leadEvento.origem === "evento" || leadEvento.evento_nome ? (
+        <section className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-4 text-sm text-zinc-200">
+          <p>
+            <span className="font-semibold text-amber-300">Evento de origem:</span>{" "}
+            {leadEvento.evento_nome ?? "—"}
+          </p>
+          {leadEvento.parceiro_indicador_nome ? (
+            <p className="mt-1">
+              <span className="font-semibold">Quem convidou:</span> {leadEvento.parceiro_indicador_nome}
+              {leadEvento.parceiro_indicador_empresa ? ` (${leadEvento.parceiro_indicador_empresa})` : ""}
+            </p>
+          ) : null}
+        </section>
+      ) : null}
+
+      <section className="rounded-xl border border-zinc-800 bg-zinc-900/60 p-4">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="font-semibold text-zinc-100">Agenda</h2>
+          <Link href={`/admin/agenda?lead=${id}`} className="text-sm text-amber-400 hover:underline">
+            Agendar compromisso →
+          </Link>
+        </div>
+        {agendaItens.length === 0 ? (
+          <p className="mt-2 text-sm text-zinc-500">Nenhum compromisso vinculado.</p>
+        ) : (
+          <ul className="mt-3 space-y-2 text-sm">
+            {agendaItens.map((c) => (
+              <li key={c.id} className="flex flex-wrap justify-between gap-2 border-b border-zinc-800/80 pb-2">
+                <span>
+                  {c.titulo} — {formatDateTime(c.data_inicio, null)} ({c.status})
+                </span>
+                {c.resultado ? <span className="text-zinc-500">{c.resultado}</span> : null}
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
 
       <div className="grid gap-6 lg:grid-cols-2">
         <form

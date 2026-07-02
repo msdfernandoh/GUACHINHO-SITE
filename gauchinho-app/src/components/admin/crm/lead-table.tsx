@@ -66,6 +66,9 @@ export function LeadTable({ leads }: { leads: LeadListRow[] }) {
                     <Link href={`/admin/leads/${l.id}`} className="text-xs text-amber-400 hover:underline">
                       Detalhe
                     </Link>
+                    <Link href={`/admin/agenda?lead=${l.id}`} className="text-xs text-zinc-400 hover:underline">
+                      Agendar
+                    </Link>
                     <LeadWhatsappButton
                       nome={l.nome}
                       whatsapp={l.whatsapp}

@@ -58,4 +58,5 @@ export type LeadFilters = {
   somente_novos?: string;
   somente_quentes?: string;
   acao_vencida?: string;
+  evento?: string;
 };

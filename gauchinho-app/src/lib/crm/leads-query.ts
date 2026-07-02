@@ -9,6 +9,7 @@ export async function queryLeadsList(filters: LeadFilters, limit = 200): Promise
   let query = supabase.from("leads").select(LIST_SELECT).order("created_at", { ascending: false }).limit(limit);
 
   if (filters.origem) query = query.eq("origem", filters.origem);
+  if (filters.evento) query = query.eq("evento_id", filters.evento);
   if (filters.status) query = query.eq("status", filters.status);
   if (filters.srd) query = query.eq("srd_responsavel_id", filters.srd);
   if (filters.temperatura) query = query.eq("temperatura", filters.temperatura);
