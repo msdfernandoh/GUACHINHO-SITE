@@ -49,16 +49,6 @@ const AVISO_TESOURO =
 
 const PARCELA_REDUZIDA_PADRAO = String(percentualParcelaReduzidaPadrao(DEFAULT_SIMULADOR_IMOVEL));
 
-function indiceDesatualizado(indice: IndicePublico | null): boolean {
-  if (!indice?.ultima_atualizacao && !indice?.data_referencia) return true;
-  const ref = indice.ultima_atualizacao ?? indice.data_referencia;
-  if (!ref) return false;
-  const d = new Date(ref.slice(0, 10));
-  if (Number.isNaN(d.getTime())) return false;
-  const now = new Date();
-  return d.getUTCFullYear() < now.getUTCFullYear() || d.getUTCMonth() < now.getUTCMonth();
-}
-
 export function AplicacaoMensalCalculator({ indices, taxaPadrao, prefill, onResult }: Props) {
   const [valorInicial, setValorInicial] = useState<number | null>(0);
   const [aporte, setAporte] = useState<number | null>(() => prefill?.aporte ?? 500);
@@ -143,78 +133,38 @@ export function AplicacaoMensalCalculator({ indices, taxaPadrao, prefill, onResu
   }
 
   return (
-    <div className="space-y-5">
-      <div className={sectionCardClass()}>
-        <p className="text-sm font-semibold text-white">Aplicação com índices reais</p>
-        <p className="mt-1 text-xs text-slate-400">{AVISO_APLICACAO}</p>
+    <div className="space-y-4">
+      <div className="grid gap-4 lg:grid-cols-2 lg:items-start">
+        <div className={sectionCardClass()}>
+          <p className="text-sm font-semibold text-white">Configurar aplicação</p>
+          <p className="mt-1 text-[11px] leading-relaxed text-slate-500">{AVISO_APLICACAO}</p>
 
-        {taxaInfo && perfil !== "comparar_todos" ? (
-          <div className="mt-3 rounded-lg border border-slate-700/80 bg-slate-900/40 px-3 py-2 text-xs text-slate-300">
-            <p className="font-semibold text-amber-200/90">Taxa usada no cálculo</p>
-            {perfil === "cdi" && taxaInfo.cdiAnualBasePercentual != null ? (
-              <>
-                <p className="mt-1">CDI atual: {taxaInfo.cdiAnualBasePercentual.toFixed(2)}% a.a.</p>
-                <p>Percentual usado: {percentualCdi}% do CDI</p>
-                {taxaInfo.taxaAnualPercentual != null ? (
-                  <p>Taxa anual usada: {taxaInfo.taxaAnualPercentual.toFixed(2)}% a.a.</p>
-                ) : null}
-                {taxaInfo.taxaMensalPercentual != null ? (
-                  <p>Taxa mensal equivalente: {taxaInfo.taxaMensalPercentual.toFixed(2)}% a.m.</p>
-                ) : null}
-              </>
-            ) : null}
-            {perfil === "poupanca" && taxaInfo.taxaMensalPercentual != null ? (
-              <p className="mt-1">
-                Poupança: {taxaInfo.taxaMensalPercentual.toFixed(2)}% a.m.
-                {taxaInfo.taxaAnualPercentual != null
-                  ? ` · Taxa anual equivalente: ${taxaInfo.taxaAnualPercentual.toFixed(2)}% a.a.`
-                  : ""}
-              </p>
-            ) : null}
-            {perfil === "selic" && taxaInfo.taxaAnualPercentual != null ? (
-              <>
-                <p className="mt-1">Selic: {taxaInfo.taxaAnualPercentual.toFixed(2)}% a.a.</p>
-                {taxaInfo.taxaMensalPercentual != null ? (
-                  <p>Taxa mensal equivalente: {taxaInfo.taxaMensalPercentual.toFixed(2)}% a.m.</p>
-                ) : null}
-              </>
-            ) : null}
-            {(perfil === "tesouro_selic" || perfil === "tesouro_ipca") &&
-            taxaInfo.taxaAnualPercentual != null ? (
-              <>
-                <p className="mt-1">
-                  {taxaInfo.label}: {taxaInfo.taxaAnualPercentual.toFixed(2)}% a.a.
+          {taxaInfo && perfil !== "comparar_todos" ? (
+            <div className="mt-2 rounded-lg border border-slate-700/80 bg-slate-900/40 px-3 py-2 text-[11px] text-slate-400">
+              {perfil === "cdi" && taxaInfo.cdiAnualBasePercentual != null ? (
+                <p>
+                  CDI {taxaInfo.cdiAnualBasePercentual.toFixed(2)}% a.a. · {percentualCdi}% →{" "}
+                  {taxaInfo.taxaAnualPercentual?.toFixed(2)}% a.a.
+                  {taxaInfo.taxaMensalPercentual != null
+                    ? ` (${taxaInfo.taxaMensalPercentual.toFixed(2)}% a.m.)`
+                    : ""}
                 </p>
-                {taxaInfo.taxaMensalPercentual != null ? (
-                  <p>Taxa mensal equivalente: {taxaInfo.taxaMensalPercentual.toFixed(2)}% a.m.</p>
-                ) : null}
-              </>
-            ) : null}
-            {perfil === "taxa_manual" && taxaInfo.taxaMensalPercentual != null ? (
-              <p className="mt-1">
-                Taxa manual ({taxaManualTipo === "anual" ? "anual" : "mensal"}):{" "}
-                {num(taxaManual).toFixed(2)}% {taxaManualTipo === "anual" ? "a.a." : "a.m."}
-                {taxaManualTipo === "anual" && taxaInfo.taxaMensalPercentual != null
-                  ? ` · equivalente ${taxaInfo.taxaMensalPercentual.toFixed(2)}% a.m.`
-                  : ""}
-              </p>
-            ) : null}
-            {ultimaAtualizacao ? <p className="mt-1 text-slate-500">Última atualização: {ultimaAtualizacao}</p> : null}
-            {indicePerfil?.fonte ? (
-              <p className="text-slate-500">Fonte: {indicePerfil.fonte}</p>
-            ) : perfil === "taxa_manual" ? (
-              <p className="text-slate-500">Fonte: Cadastro manual</p>
-            ) : null}
-            {indicePerfil && indiceDesatualizado(indicePerfil) ? (
-              <p className="mt-1 text-amber-300">Atenção: índice não atualizado neste mês.</p>
-            ) : null}
-            {indicePerfil?.usando_fallback ? (
-              <p className="mt-1 text-amber-300">Usando último índice cadastrado no sistema.</p>
-            ) : null}
-          </div>
-        ) : null}
+              ) : (
+                <p>
+                  {taxaInfo.label}
+                  {taxaInfo.taxaAnualPercentual != null
+                    ? `: ${taxaInfo.taxaAnualPercentual.toFixed(2)}% a.a.`
+                    : ""}
+                  {taxaInfo.taxaMensalPercentual != null
+                    ? ` · ${taxaInfo.taxaMensalPercentual.toFixed(2)}% a.m.`
+                    : ""}
+                </p>
+              )}
+              {ultimaAtualizacao ? <p className="mt-0.5">Atualização: {ultimaAtualizacao}</p> : null}
+            </div>
+          ) : null}
 
-        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          <div className="mt-3 grid gap-2.5 sm:grid-cols-2">
           <div>
             <Label className="text-slate-300">Valor inicial (R$)</Label>
             <MoneyInput
@@ -231,7 +181,7 @@ export function AplicacaoMensalCalculator({ indices, taxaPadrao, prefill, onResu
               className={cn("mt-1", surfaceInputDarkSlate)}
             />
           </div>
-          <Field label="Prazo (meses)" value={prazo} onChange={setPrazo} />
+          <Field label="Prazo da aplicação (meses)" value={prazo} onChange={setPrazo} />
           <Field
             label="Aumento anual do aporte (%)"
             value={aumentoAnualAporte}
@@ -330,14 +280,91 @@ export function AplicacaoMensalCalculator({ indices, taxaPadrao, prefill, onResu
             </>
           ) : null}
         </div>
-        <Button type="button" variant="gold" className="mt-4 w-full min-h-12 sm:w-auto" onClick={calcular}>
-          Calcular
-        </Button>
+          <Button type="button" variant="gold" className="mt-3 w-full min-h-11 sm:w-auto" onClick={calcular}>
+            Calcular
+          </Button>
+        </div>
+
+        {result && result.perfilSelecionado !== "comparar_todos" ? (
+          <CalculatorResultCard
+            title="Resultado da aplicação"
+            rows={[
+              { label: "Total investido", value: formatCurrency(result.totalInvestido) },
+              { label: "Rendimento estimado", value: formatCurrency(result.rendimentoEstimado) },
+              {
+                label: "Valor final estimado",
+                value: formatCurrency(result.valorFinalEstimado),
+                highlight: true,
+              },
+              ...(result.taxaAnualUsada != null
+                ? [
+                    {
+                      label: "Taxa usada no cálculo",
+                      value: `${result.taxaAnualUsada.toFixed(2)}% a.a.`,
+                    },
+                  ]
+                : []),
+              ...(result.taxaMensalEquivalente != null
+                ? [
+                    {
+                      label: "Taxa mensal equivalente",
+                      value: `${result.taxaMensalEquivalente.toFixed(2)}% a.m.`,
+                    },
+                  ]
+                : []),
+              ...(ultimaAtualizacao
+                ? [{ label: "Última atualização", value: ultimaAtualizacao }]
+                : []),
+            ]}
+            extra={
+              result.comparativo.some((c) => c.estimativaTesouro) ? (
+                <p className="text-xs text-slate-400">{AVISO_TESOURO}</p>
+              ) : null
+            }
+          />
+        ) : result && result.perfilSelecionado === "comparar_todos" ? (
+          <div className={sectionCardClass()}>
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-amber-400">Comparar todos</p>
+            <p className="mt-2 text-sm text-slate-400">Melhor cenário estimado abaixo.</p>
+          </div>
+        ) : (
+          <div
+            className={cn(
+              sectionCardClass(),
+              "hidden border-dashed border-slate-700/60 lg:flex lg:min-h-[12rem] lg:items-center lg:justify-center",
+            )}
+          >
+            <p className="text-center text-sm text-slate-500">Preencha os dados e clique em Calcular</p>
+          </div>
+        )}
       </div>
 
-      {result ? (
-        <>
-          {result.perfilSelecionado !== "comparar_todos" ? (
+      {result && result.perfilSelecionado === "comparar_todos" ? (
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {result.comparativo.map((item) => (
+            <div
+              key={item.codigo}
+              className={cn(
+                sectionCardClass("py-3"),
+                item.codigo === result.melhorResultadoEstimado && "border-emerald-500/40",
+              )}
+            >
+              <p className="text-sm font-bold text-white">{item.label}</p>
+              <p className="mt-1 text-xs text-slate-400">
+                {item.taxaMensalPercentual.toFixed(2)}% a.m.
+              </p>
+              <p className="mt-2 text-lg font-semibold text-amber-300">
+                {formatCurrency(item.resultado.valorFuturo)}
+              </p>
+            </div>
+          ))}
+        </div>
+      ) : null}
+
+      {result?.compararComConsorcio && result.consorcio ? (
+        <section className="space-y-3">
+          <p className="text-center text-xs text-slate-500">{TEXTO_PARCELA_REDUZIDA_COMPARATIVO}</p>
+          <div className="grid gap-3 lg:grid-cols-2">
             <CalculatorResultCard
               title="Aplicação financeira"
               rows={[
@@ -348,143 +375,94 @@ export function AplicacaoMensalCalculator({ indices, taxaPadrao, prefill, onResu
                   value: formatCurrency(result.valorFinalEstimado),
                   highlight: true,
                 },
-                ...(result.taxaMensalEquivalente != null
-                  ? [
-                      {
-                        label: "Taxa mensal usada",
-                        value: `${result.taxaMensalEquivalente.toFixed(2)}% a.m.`,
-                      },
-                    ]
+                ...(result.taxaAnualUsada != null
+                  ? [{ label: "Índice usado", value: `${result.taxaAnualUsada.toFixed(2)}% a.a.` }]
                   : []),
-                ...(result.aumentoAnualAportePercentual > 0
-                  ? [
-                      {
-                        label: "Aporte inicial mensal",
-                        value: formatCurrency(aporte ?? 0),
-                      },
-                      {
-                        label: "Reajuste anual do aporte",
-                        value: `${result.aumentoAnualAportePercentual.toFixed(2)}% a.a.`,
-                      },
-                    ]
-                  : []),
+                {
+                  label: "Aporte inicial mensal",
+                  value: formatCurrency(aporte ?? 0),
+                },
+                {
+                  label: "Reajuste anual do aporte",
+                  value: `${result.aumentoAnualAportePercentual.toFixed(2)}% a.a.`,
+                },
+                {
+                  label: "Prazo da aplicação",
+                  value: `${result.consorcio.periodoComparacaoMeses} meses`,
+                },
+              ]}
+            />
+            <CalculatorResultCard
+              title="Consórcio programado"
+              rows={[
+                {
+                  label: "Parcela reduzida estimada",
+                  value: formatCurrency(result.consorcio.parcelaReduzidaEstimada),
+                },
+                {
+                  label: "Crédito contratado estimado",
+                  value: formatCurrency(result.consorcio.creditoContratadoEstimado),
+                  highlight: true,
+                },
+                {
+                  label: "Parcela integral estimada",
+                  value: formatCurrency(result.consorcio.parcelaIntegralEstimada),
+                },
+                {
+                  label: "Crédito reajustado no período",
+                  value: formatCurrency(result.consorcio.creditoReajustadoConsorcio),
+                  highlight: true,
+                },
+                {
+                  label: "Período da comparação",
+                  value: `${result.consorcio.periodoComparacaoMeses} meses`,
+                },
+                {
+                  label: "Reajuste anual usado",
+                  value: `${result.consorcio.reajusteAnualCreditoPercentual.toFixed(2)}% a.a.`,
+                },
+                {
+                  label: "Prazo do consórcio",
+                  value: `${result.consorcio.prazoConsorcioMeses} meses`,
+                },
+                {
+                  label: `Reajuste no final de ${result.consorcio.prazoConsorcioMeses} meses`,
+                  value: formatCurrency(result.consorcio.reajusteFinalConsorcio),
+                  highlight: true,
+                },
               ]}
               extra={
-                result.comparativo.some((c) => c.estimativaTesouro) ? (
-                  <p className="text-xs text-slate-400">{AVISO_TESOURO}</p>
-                ) : null
+                <p className="text-xs leading-relaxed text-slate-400">{TEXTO_PRAZO_COMPARACAO_CONSORCIO}</p>
               }
             />
-          ) : (
-            <div className="grid gap-3 sm:grid-cols-2">
-              {result.comparativo.map((item) => (
-                <div
-                  key={item.codigo}
-                  className={cn(
-                    sectionCardClass(),
-                    item.codigo === result.melhorResultadoEstimado && "border-emerald-500/40",
-                  )}
-                >
-                  <p className="text-sm font-bold text-white">{item.label}</p>
-                  <p className="mt-2 text-xs text-slate-400">
-                    Taxa mensal: {item.taxaMensalPercentual.toFixed(2)}% a.m.
-                  </p>
-                  <p className="mt-2 text-lg font-semibold text-amber-300">
-                    {formatCurrency(item.resultado.valorFuturo)}
-                  </p>
-                  <p className="text-xs text-slate-500">
-                    Rendimento: {formatCurrency(item.resultado.rendimentoEstimado)}
-                  </p>
-                  {item.estimativaTesouro ? (
-                    <p className="mt-2 text-[11px] text-slate-500">{AVISO_TESOURO}</p>
-                  ) : null}
-                </div>
-              ))}
-            </div>
-          )}
-
-          {result.compararComConsorcio && result.consorcio ? (
-            <section className="space-y-4">
-              <h2 className="text-center text-lg font-bold text-white">
-                Aplicação mensal x Consórcio programado
-              </h2>
-              <p className="text-center text-xs leading-relaxed text-slate-400">
-                {TEXTO_PARCELA_REDUZIDA_COMPARATIVO}
-              </p>
-              <div className="grid gap-4 lg:grid-cols-2">
-                <CalculatorResultCard
-                  title="Consórcio programado (estimativa)"
-                  rows={[
-                    {
-                      label: "Parcela reduzida estimada",
-                      value: formatCurrency(result.consorcio.parcelaReduzidaEstimada),
-                    },
-                    {
-                      label: "Crédito contratado estimado",
-                      value: formatCurrency(result.consorcio.creditoContratadoEstimado),
-                      highlight: true,
-                    },
-                    {
-                      label: "Parcela integral estimada",
-                      value: formatCurrency(result.consorcio.parcelaIntegralEstimada),
-                    },
-                    {
-                      label: "Crédito reajustado no período",
-                      value: formatCurrency(result.consorcio.creditoReajustadoConsorcio),
-                    },
-                    {
-                      label: "Período da comparação",
-                      value: `${result.consorcio.periodoComparacaoMeses} meses`,
-                    },
-                    {
-                      label: "Reajuste anual usado",
-                      value: `${result.consorcio.reajusteAnualCreditoPercentual.toFixed(2)}% a.a.`,
-                    },
-                    {
-                      label: "Prazo do consórcio",
-                      value: `${result.consorcio.prazoConsorcioMeses} meses`,
-                    },
-                    {
-                      label: "Saldo devedor estimado",
-                      value: formatCurrency(result.consorcio.saldoDevedorEstimado),
-                    },
-                  ]}
-                  extra={
-                    <p className="text-xs leading-relaxed text-slate-400">
-                      {TEXTO_PRAZO_COMPARACAO_CONSORCIO}
-                    </p>
-                  }
-                />
-                {result.diferencaPatrimonial != null ? (
-                  <CalculatorResultCard
-                    title="Diferença patrimonial estimada"
-                    rows={[
-                      {
-                        label: "Valor final da aplicação",
-                        value: formatCurrency(result.valorFinalEstimado),
-                      },
-                      {
-                        label: "Crédito reajustado (consórcio)",
-                        value: formatCurrency(result.consorcio.creditoReajustadoConsorcio),
-                      },
-                      {
-                        label: "Diferença estimada",
-                        value: formatCurrency(result.diferencaPatrimonial),
-                        highlight: true,
-                      },
-                    ]}
-                    extra={
-                      <p className="text-xs leading-relaxed text-slate-400">{TEXTO_DIFERENCA_PATRIMONIAL}</p>
-                    }
-                  />
-                ) : null}
-              </div>
-              <p className="rounded-lg border border-slate-700/80 bg-slate-900/50 px-4 py-3 text-xs leading-relaxed text-slate-400">
-                {AVISO_COMPARATIVO_CONSORCIO}
-              </p>
-            </section>
+          </div>
+          {result.diferencaPatrimonial != null ? (
+            <CalculatorResultCard
+              title="Diferença patrimonial"
+              rows={[
+                {
+                  label: "Diferença estimada",
+                  value: formatCurrency(result.diferencaPatrimonial),
+                  highlight: true,
+                },
+                {
+                  label: "Crédito reajustado (consórcio)",
+                  value: formatCurrency(result.consorcio.creditoReajustadoConsorcio),
+                },
+                {
+                  label: "Valor final da aplicação",
+                  value: formatCurrency(result.valorFinalEstimado),
+                },
+              ]}
+              extra={
+                <>
+                  <p className="text-xs leading-relaxed text-slate-400">{TEXTO_DIFERENCA_PATRIMONIAL}</p>
+                  <p className="mt-2 text-xs leading-relaxed text-slate-500">{AVISO_COMPARATIVO_CONSORCIO}</p>
+                </>
+              }
+            />
           ) : null}
-        </>
+        </section>
       ) : null}
     </div>
   );

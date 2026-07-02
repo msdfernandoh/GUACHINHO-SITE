@@ -120,6 +120,15 @@ npm run build
 - **Exemplo CDI 110%:** 14,15% × 1,10 = 15,565% a.a. → mensal equivalente composta (~1,21% a.m.).
 - Testes: `aplicacao-comparativo.test.ts`, `indices.test.ts`.
 
+## Reorganização UI/UX das calculadoras e comparativo com consórcio
+
+- **Layout `/calculadoras`:** tabs horizontais no topo (scroll no mobile); painel em largura total (`max-w-6xl`); CTA compacto logo abaixo do resultado.
+- **Aplicação mensal:** grid desktop — coluna esquerda “Configurar aplicação”, direita “Resultado da aplicação”; comparativo em duas colunas (Aplicação financeira | Consórcio programado); faixa “Diferença patrimonial” em largura total.
+- **Projeção consórcio:** mesma regra do simulador (`calcularProjecaoConsorcio` + linhas anuais em `projecao-financeira.ts`); crédito reajustado no **período da aplicação**; **Reajuste no final de {prazo consórcio} meses** = última linha da projeção (ano inteiro, ex. 19º ano em 220 meses).
+- **CDI:** inalterado — todos os perfis no dropdown; anual → mensal composta.
+- **Lead:** `dados_simulacao` com campos completos (`rendimento_estimado`, `reajuste_final_consorcio`, `credito_reajustado_periodo`, etc.).
+- Testes: `aplicacao-comparativo.test.ts`, `projecao-financeira.test.ts`, `indices.test.ts`.
+
 ## Botões e campos monetários (público)
 
 - Variante **`outlineGold`** em botões secundários sobre fundo escuro (`form-primitives`).

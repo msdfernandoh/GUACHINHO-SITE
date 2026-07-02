@@ -170,7 +170,7 @@ export function CalculadorasPage({ config, initialCalc, indices, aplicacaoPrefil
 
   return (
     <div className={simuladorShell}>
-      <div className="mx-auto max-w-5xl px-4 pb-16 pt-10 sm:pt-14">
+      <div className="mx-auto max-w-6xl px-4 pb-16 pt-10 sm:pt-14">
         <header className="mb-8 text-center sm:mb-10">
           <div className="mx-auto flex max-w-2xl items-start justify-center gap-3 text-left sm:text-center">
             <MascoteGauchinho variant="compact" className="mt-1 shrink-0 sm:mt-2" />
@@ -186,25 +186,30 @@ export function CalculadorasPage({ config, initialCalc, indices, aplicacaoPrefil
           </div>
         </header>
 
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
-          <div className="space-y-3">
-            {ativas.map((meta) => (
-              <CalculadoraCard
-                key={meta.id}
-                meta={meta}
-                selected={meta.id === activeId}
-                onSelect={() => {
-                  setActiveId(meta.id);
-                  setSnapshot(null);
-                  setWaLink(null);
-                  setLeadMsg(null);
-                }}
-              />
-            ))}
-          </div>
+        <nav
+          className="-mx-1 mb-6 flex gap-2 overflow-x-auto pb-1 scrollbar-thin"
+          aria-label="Calculadoras"
+        >
+          {ativas.map((meta) => (
+            <CalculadoraCard
+              key={meta.id}
+              variant="tab"
+              meta={meta}
+              selected={meta.id === activeId}
+              onSelect={() => {
+                setActiveId(meta.id);
+                setSnapshot(null);
+                setWaLink(null);
+                setLeadMsg(null);
+              }}
+            />
+          ))}
+        </nav>
 
-          <div className="min-w-0">
-            {activeMeta ? (
+        <div className="min-w-0">
+          {activeMeta ? (
+            <>
+              <p className="mb-4 text-sm text-slate-400">{activeMeta.question}</p>
               <CalculatorPanel
                 meta={activeMeta}
                 config={config}
@@ -212,43 +217,48 @@ export function CalculadorasPage({ config, initialCalc, indices, aplicacaoPrefil
                 aplicacaoPrefill={aplicacaoPrefill}
                 onResult={(inputs, resultado) => onResult(activeMeta.id, inputs, resultado)}
               />
-            ) : null}
+            </>
+          ) : null}
 
-            {snapshot && snapshot.id === activeId ? (
-              <section className={sectionCardClass("mt-6 border-amber-500/25")}>
-                <p className="text-center text-base font-semibold text-white">
-                  {config.textoCtaAposResultado ||
-                    "Quer uma análise personalizada para seu objetivo?"}
-                </p>
-                <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-center">
-                  <Button type="button" variant="gold" className="min-h-12 flex-1 sm:flex-none" onClick={() => openLead("analise")}>
-                    Receber análise completa
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outlineGold"
-                    className="min-h-12 flex-1 border-slate-600 bg-slate-900 text-white hover:bg-slate-800 sm:flex-none"
-                    onClick={() => openLead("especialista")}
-                  >
-                    Falar com especialista
-                  </Button>
-                </div>
-                {leadMsg ? <p className="mt-3 text-center text-sm text-emerald-400">{leadMsg}</p> : null}
-                {waLink ? (
-                  <a
-                    href={waLink}
-                    target="_blank"
-                    rel="noreferrer"
-                    onClick={onWaClick}
-                    className="mt-4 flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 font-semibold text-white hover:bg-emerald-500"
-                  >
-                    <MessageCircle className="h-5 w-5" />
-                    Chamar no WhatsApp
-                  </a>
-                ) : null}
-              </section>
-            ) : null}
-          </div>
+          {snapshot && snapshot.id === activeId ? (
+            <section className={sectionCardClass("mt-4 border-amber-500/25 py-4")}>
+              <p className="text-center text-sm font-semibold text-white">
+                {config.textoCtaAposResultado ||
+                  "Quer uma análise personalizada para seu objetivo?"}
+              </p>
+              <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:justify-center">
+                <Button
+                  type="button"
+                  variant="gold"
+                  className="min-h-11 flex-1 sm:flex-none sm:px-6"
+                  onClick={() => openLead("analise")}
+                >
+                  Receber análise completa
+                </Button>
+                <Button
+                  type="button"
+                  variant="outlineGold"
+                  className="min-h-11 flex-1 border-slate-600 bg-slate-900 text-white hover:bg-slate-800 sm:flex-none sm:px-6"
+                  onClick={() => openLead("especialista")}
+                >
+                  Falar com especialista
+                </Button>
+              </div>
+              {leadMsg ? <p className="mt-2 text-center text-sm text-emerald-400">{leadMsg}</p> : null}
+              {waLink ? (
+                <a
+                  href={waLink}
+                  target="_blank"
+                  rel="noreferrer"
+                  onClick={onWaClick}
+                  className="mt-3 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 text-sm font-semibold text-white hover:bg-emerald-500"
+                >
+                  <MessageCircle className="h-5 w-5" />
+                  Chamar no WhatsApp
+                </a>
+              ) : null}
+            </section>
+          ) : null}
         </div>
       </div>
 

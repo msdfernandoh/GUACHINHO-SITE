@@ -32,14 +32,14 @@ export const CALCULADORAS_META: CalculadoraMeta[] = [
   },
   {
     id: "correcao",
-    title: "Correção de aluguel e valores",
+    title: "Correção aluguel",
     question: "Qual o novo valor do aluguel após o reajuste?",
     description: "Atualize valores por IPCA, IGP-M ou uma taxa personalizada.",
     subtitle: "Atualize valores por IPCA, IGP-M ou uma taxa personalizada.",
   },
   {
     id: "juros_real",
-    title: "Descobrir juros real",
+    title: "Juros real",
     question: "Qual juros real estou pagando?",
     description: "Veja qual taxa está embutida em uma parcela.",
     subtitle: "Descubra a taxa mensal e anual a partir do valor financiado, parcela e prazo.",

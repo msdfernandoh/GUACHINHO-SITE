@@ -12,11 +12,16 @@ import {
 } from "./aplicacao-comparativo";
 import {
   estimarCreditoConsorcioPorParcela,
-  projetarCreditoReajustado,
 } from "@/lib/simulador/estimar-credito-por-parcela";
+import type { EntradaConsorcio } from "@/lib/simulador/consorcio";
+import {
+  calcularProjecaoComparativoConsorcio,
+  creditoReajustadoAposMesesNaProjecao,
+  creditoReajustadoFinalConsorcio,
+} from "@/lib/simulador/projecao-financeira";
 
 export const AVISO_COMPARATIVO_CONSORCIO =
-  "Na aplicação financeira, o rendimento incide apenas sobre os valores depositados ao longo do tempo. No consórcio, a projeção considera o crédito contratado inteiro, que pode ser reajustado conforme as regras do grupo e da administradora. Esta comparação é uma estimativa e não representa garantia de contemplação, rentabilidade ou disponibilidade.";
+  "Na aplicação financeira, o rendimento incide sobre os aportes realizados ao longo do tempo. No consórcio, a projeção considera o crédito contratado, que pode ser reajustado conforme as regras do grupo e da administradora.";
 
 export const TEXTO_DIFERENCA_PATRIMONIAL =
   "Em muitos cenários, o crédito programado pode gerar uma projeção patrimonial maior, porque a valorização incide sobre o crédito contratado, não apenas sobre os aportes mensais.";
@@ -179,8 +184,8 @@ export type ConsorcioComparativoBloco = {
   parcelaReduzidaEstimada: number;
   parcelaIntegralEstimada: number;
   creditoContratadoEstimado: number;
-  saldoDevedorEstimado: number;
   creditoReajustadoConsorcio: number;
+  reajusteFinalConsorcio: number;
   reajusteAnualCreditoPercentual: number;
   prazoConsorcioMeses: number;
   periodoComparacaoMeses: number;
@@ -264,17 +269,29 @@ export function calcularAplicacaoComConsorcio(
     });
 
     if (estimado) {
-      const creditoReajustado = projetarCreditoReajustado(
-        estimado.creditoContratadoEstimado,
-        reajusteCredito,
-        input.prazoMeses,
-      );
+      const entradaProjecao: EntradaConsorcio = {
+        valorCredito: estimado.creditoContratadoEstimado,
+        prazoMeses: prazoConsorcio,
+        taxaAdministrativaPercentual: taxaAdm,
+        fundoReservaPercentual: fundo,
+        seguroPrestamistaPercentual: seguro,
+        reajusteAnualCredito: reajusteCredito,
+        correcaoAnualParcela: 0,
+        percentualParcelaInicial: pctReduzida,
+      };
+      const linhas = calcularProjecaoComparativoConsorcio(entradaProjecao);
+      const creditoReajustado =
+        creditoReajustadoAposMesesNaProjecao(linhas, input.prazoMeses) ??
+        estimado.creditoContratadoEstimado;
+      const reajusteFinal =
+        creditoReajustadoFinalConsorcio(linhas) ?? estimado.creditoContratadoEstimado;
+
       consorcio = {
         parcelaReduzidaEstimada: estimado.parcelaReduzida,
         parcelaIntegralEstimada: estimado.parcelaIntegral,
         creditoContratadoEstimado: estimado.creditoContratadoEstimado,
-        saldoDevedorEstimado: estimado.saldoDevedorEstimado,
-        creditoReajustadoConsorcio: creditoReajustado,
+        creditoReajustadoConsorcio: Math.round(creditoReajustado * 100) / 100,
+        reajusteFinalConsorcio: Math.round(reajusteFinal * 100) / 100,
         reajusteAnualCreditoPercentual: reajusteCredito,
         prazoConsorcioMeses: prazoConsorcio,
         periodoComparacaoMeses: input.prazoMeses,
@@ -300,26 +317,37 @@ export function calcularAplicacaoComConsorcio(
   };
 }
 
-/** Payload estruturado para lead / dados_simulacao. */
 export function leadPayloadAplicacaoConsorcio(
   input: AplicacaoComConsorcioInput,
   result: AplicacaoComConsorcioResult,
 ): Record<string, unknown> {
+  const perfil =
+    result.indiceAplicacao === "comparar_todos"
+      ? result.melhorResultadoEstimado ?? "cdi"
+      : result.indiceAplicacao;
+
   return {
     tipo_calculadora: "aplicacao_comparativo_consorcio",
-    aporte_inicial_mensal: input.aporteMensal,
+    valor_inicial: input.valorInicial,
+    aporte_mensal: input.aporteMensal,
+    prazo_aplicacao_meses: input.prazoMeses,
     aumento_anual_aporte_percentual: result.aumentoAnualAportePercentual,
-    prazo_meses: input.prazoMeses,
-    indice_aplicacao: result.indiceAplicacao,
+    perfil_calculo: perfil,
+    percentual_cdi: input.percentualCdi ?? 100,
     taxa_anual_usada: result.taxaAnualUsada,
     taxa_mensal_equivalente: result.taxaMensalEquivalente,
     total_investido: result.totalInvestido,
+    rendimento_estimado: result.rendimentoEstimado,
     valor_final_aplicacao: result.valorFinalEstimado,
-    credito_consorcio_estimado: result.consorcio?.creditoContratadoEstimado ?? null,
+    comparar_com_consorcio: result.compararComConsorcio,
+    prazo_consorcio_meses: result.consorcio?.prazoConsorcioMeses ?? input.prazoConsorcioMeses ?? null,
+    parcela_reduzida_percentual: result.consorcio?.percentualParcelaReduzida ?? null,
+    credito_contratado_estimado: result.consorcio?.creditoContratadoEstimado ?? null,
     parcela_reduzida_estimada: result.consorcio?.parcelaReduzidaEstimada ?? null,
     parcela_integral_estimada: result.consorcio?.parcelaIntegralEstimada ?? null,
+    credito_reajustado_periodo: result.consorcio?.creditoReajustadoConsorcio ?? null,
+    reajuste_final_consorcio: result.consorcio?.reajusteFinalConsorcio ?? null,
     reajuste_anual_credito_percentual: result.consorcio?.reajusteAnualCreditoPercentual ?? null,
-    credito_reajustado_consorcio: result.consorcio?.creditoReajustadoConsorcio ?? null,
     diferenca_patrimonial: result.diferencaPatrimonial,
   };
 }

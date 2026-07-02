@@ -5,16 +5,14 @@ import {
   taxaCdiEfetivaAnual,
 } from "./aplicacao-comparativo";
 import { calcularAplicacaoMensal, aporteMensalNoMes } from "./aplicacao";
-import {
-  calcularAplicacaoComConsorcio,
-  leadPayloadAplicacaoConsorcio,
-} from "./aplicacao-consorcio-comparativo";
+import { calcularAplicacaoComConsorcio, leadPayloadAplicacaoConsorcio } from "./aplicacao-consorcio-comparativo";
+import { calcularCreditoReajustado, calcularProjecaoConsorcio } from "@/lib/simulador/consorcio";
+import { creditoReajustadoAposMesesNaProjecao } from "@/lib/simulador/projecao-financeira";
 import {
   cdiAnualReferenciaPercentual,
   taxaMensalAplicacaoFromIndice,
 } from "@/lib/indices-financeiros";
 import { taxaAnualParaMensalPercentual } from "@/lib/indices-financeiros/math";
-import { projetarCreditoReajustado } from "@/lib/simulador/estimar-credito-por-parcela";
 import type { IndicePublico } from "@/lib/indices-financeiros/types";
 
 describe("PERFIS_APLICACAO_CALCULADORA", () => {
@@ -120,14 +118,46 @@ describe("aporte reajustado", () => {
   });
 });
 
-describe("projetarCreditoReajustado", () => {
-  it("usa prazo da aplicação (10 anos), não prazo do consórcio", () => {
-    const credito = 294_047.15;
-    const r120 = projetarCreditoReajustado(credito, 6, 120);
-    const r220 = projetarCreditoReajustado(credito, 6, 220);
-    expect(r120).toBeCloseTo(credito * Math.pow(1.06, 10), 0);
-    expect(r220).toBeCloseTo(credito * Math.pow(1.06, 220 / 12), 0);
-    expect(r120).toBeLessThan(r220);
+describe("crédito reajustado — mesma regra do simulador", () => {
+  it("período da aplicação (120m) bate com linha 10 anos da projeção", () => {
+    const input = {
+      valorInicial: 0,
+      aporteMensal: 500,
+      prazoMeses: 120,
+      perfil: "taxa_manual" as const,
+      percentualCdi: 100,
+      taxaManualMensal: 0.5,
+      taxasPorPerfil: { taxa_manual: 0.5 },
+      compararComConsorcio: true,
+      reajusteAnualCreditoPercentual: 6,
+      prazoConsorcioMeses: 220,
+      percentualParcelaReduzidaConsorcio: 60,
+      taxaAdministrativaConsorcio: 22,
+      fundoReservaConsorcio: 2,
+      seguroPrestamistaConsorcio: 0.038,
+    };
+    const r = calcularAplicacaoComConsorcio(input);
+    const credito = r.consorcio!.creditoContratadoEstimado;
+    const linhas = calcularProjecaoConsorcio({
+      valorCredito: credito,
+      prazoMeses: 220,
+      taxaAdministrativaPercentual: 22,
+      fundoReservaPercentual: 2,
+      seguroPrestamistaPercentual: 0.038,
+      reajusteAnualCredito: 6,
+      correcaoAnualParcela: 0,
+      percentualParcelaInicial: 60,
+    });
+    const esperado = creditoReajustadoAposMesesNaProjecao(linhas, 120);
+    expect(r.consorcio!.creditoReajustadoConsorcio).toBeCloseTo(esperado!, 2);
+    expect(r.consorcio!.creditoReajustadoConsorcio).toBeCloseTo(
+      calcularCreditoReajustado(credito, 6, 10),
+      0,
+    );
+    expect(r.consorcio!.reajusteFinalConsorcio).toBeCloseTo(
+      linhas[linhas.length - 1]!.creditoEstimadoReajustado,
+      2,
+    );
   });
 });
 
@@ -161,7 +191,9 @@ describe("calcularAplicacaoComConsorcio", () => {
     );
     const lead = leadPayloadAplicacaoConsorcio(input, r);
     expect(lead.tipo_calculadora).toBe("aplicacao_comparativo_consorcio");
-    expect(lead.credito_consorcio_estimado).toBeGreaterThan(0);
+    expect(lead.credito_contratado_estimado).toBeGreaterThan(0);
+    expect(lead.rendimento_estimado).toBeGreaterThan(0);
+    expect(lead.reajuste_final_consorcio).toBeGreaterThan(lead.credito_reajustado_periodo as number);
   });
 });
 

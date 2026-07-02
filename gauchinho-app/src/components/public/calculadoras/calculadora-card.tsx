@@ -7,9 +7,28 @@ type Props = {
   meta: CalculadoraMeta;
   selected: boolean;
   onSelect: () => void;
+  variant?: "sidebar" | "tab";
 };
 
-export function CalculadoraCard({ meta, selected, onSelect }: Props) {
+export function CalculadoraCard({ meta, selected, onSelect, variant = "sidebar" }: Props) {
+  if (variant === "tab") {
+    return (
+      <button
+        type="button"
+        onClick={onSelect}
+        className={cn(
+          "shrink-0 rounded-xl border px-4 py-2.5 text-sm font-semibold transition-all",
+          "whitespace-nowrap shadow-md shadow-black/20",
+          selected
+            ? "border-amber-400/90 bg-amber-400/15 text-amber-100 ring-2 ring-amber-400/35"
+            : "border-slate-700/80 bg-slate-900/80 text-slate-300 hover:border-slate-500 hover:text-white",
+        )}
+      >
+        {meta.title}
+      </button>
+    );
+  }
+
   return (
     <button
       type="button"
