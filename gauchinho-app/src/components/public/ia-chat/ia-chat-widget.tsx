@@ -15,6 +15,7 @@ import {
   getOrCreateSessionId,
   IA_QUICK_ACTIONS,
 } from "@/lib/ia/chat-client";
+import { stripGuidedMarker } from "@/lib/ia/guided-assistant";
 import { useLockBodyScroll } from "@/lib/ui/use-lock-body-scroll";
 
 type ChatMsg = { role: "user" | "assistant"; content: string };
@@ -247,7 +248,7 @@ export function IaChatWidget({ config }: Props) {
                     : "mr-auto border border-slate-700/80 bg-slate-800/90 text-slate-100",
                 )}
               >
-                {m.content}
+                {stripGuidedMarker(m.content)}
               </div>
             ))}
             {loading ? <p className="text-xs text-amber-400/80">Assistente digitando…</p> : null}
@@ -310,7 +311,7 @@ export function IaChatWidget({ config }: Props) {
                     void sendMessage(a.message ?? a.label, {
                       href: a.href,
                       evento: a.evento,
-                      openLeadForm: a.id === "verificar" || a.id === "especialista",
+                      openLeadForm: a.id === "especialista",
                     })
                   }
                   className="rounded-full border border-slate-600 bg-slate-800/80 px-2.5 py-1 text-[11px] font-medium text-amber-200/90 hover:border-amber-500/50"

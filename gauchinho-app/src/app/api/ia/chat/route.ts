@@ -2,17 +2,20 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { registrarEvento } from "@/lib/eventos/registrar";
 import { DEFAULT_CONTATO, DEFAULT_LEADS, getConfigJsonPublic } from "@/server/config";
-import { DEFAULT_IA_CONFIG, type IaConfig } from "@/lib/config/ia-defaults";
+import { DEFAULT_IA_CONFIG, resolveIaAssistantMode, type IaConfig } from "@/lib/config/ia-defaults";
 import { buildIaSystemPrompt } from "@/lib/ia/system-prompt";
 import { chatWithIaProvider } from "@/lib/ia/provider";
 import { extrairLeadDaConversa } from "@/lib/ia/extrair-lead";
 import {
   buildFallbackReply,
-  FALLBACK_PROVIDER_ERROR,
-  FALLBACK_WELCOME_NO_AI,
   isOpenAiConfigured,
   logIaDiagnostics,
 } from "@/lib/ia/fallback-engine";
+import {
+  buildGuidedReply,
+  stripGuidedMarker,
+  type GuidedLeadPayload,
+} from "@/lib/ia/guided-assistant";
 import {
   getOrCreateConversa,
   loadMensagens,
@@ -23,6 +26,7 @@ import { resolveWhatsappOrigem } from "@/lib/whatsapp/resolve-origem";
 import type { IaChatMessage } from "@/lib/ia/types";
 
 const ORIGEM = "ia_chat";
+const ORIGEM_GUIDED = "ia_chat_guided";
 
 type Body = {
   sessionId: string;
@@ -35,10 +39,11 @@ type Body = {
 
 type ChatResponse = {
   ok: boolean;
-  mode: "ai" | "fallback";
+  mode: "ai" | "fallback" | "guided" | "guided_fallback";
   message: string;
   reply: string;
   showLeadCapture?: boolean;
+  showGuided?: boolean;
   leadCreated?: boolean;
   leadId?: string | null;
   whatsappOrigem?: unknown;
@@ -47,6 +52,97 @@ type ChatResponse = {
   tipoInteresseLead?: string;
   analiseResumo?: string;
 };
+
+async function criarLeadGuided(
+  payload: GuidedLeadPayload,
+  body: Body,
+  pagina: string,
+  url: string,
+  sessionId: string,
+  conversaId: string | null,
+  iaConfig: IaConfig,
+) {
+  const admin = createAdminClient();
+  const leadsConfig = await getConfigJsonPublic("leads", DEFAULT_LEADS);
+
+  const { data: leadRow, error: leadErr } = await admin
+    .from("leads")
+    .insert({
+      nome: payload.nome!.trim(),
+      whatsapp: payload.whatsapp!,
+      origem: ORIGEM_GUIDED,
+      origem_detalhe: pagina,
+      tipo_interesse: payload.intencao ?? "IA Chat guiado",
+      tipo_credito: payload.tipoCredito ?? null,
+      valor_credito: payload.valorCredito ?? null,
+      valor_simulado: payload.valorCredito ?? null,
+      observacoes: payload.observacao?.slice(0, 500) ?? null,
+      dados_simulacao: {
+        sessionId,
+        pagina_origem: pagina,
+        url_origem: url,
+        ...payload.dadosSimulacao,
+      },
+      status: leadsConfig.statusInicialPadrao,
+      criado_manual: false,
+    })
+    .select("id")
+    .single();
+
+  if (leadErr || !leadRow) {
+    console.error("[ia/chat] erro lead guiado:", leadErr?.message);
+    return null;
+  }
+
+  const leadId = leadRow.id as string;
+  if (conversaId) {
+    try {
+      await updateConversaLead(conversaId, leadId, {
+        nome: payload.nome,
+        whatsapp: payload.whatsapp,
+        tipoCredito: payload.tipoCredito,
+        valorAproximado: payload.valorCredito,
+        observacao: payload.observacao,
+      });
+    } catch (e) {
+      console.warn("[ia/chat] updateConversaLead guiado:", e);
+    }
+  }
+
+  await registrarEvento({
+    tipo_evento: "lead_criado",
+    origem: ORIGEM_GUIDED,
+    pagina,
+    lead_id: leadId,
+  });
+  await registrarEvento({
+    tipo_evento: "ia_lead_criado",
+    origem: ORIGEM_GUIDED,
+    pagina,
+    lead_id: leadId,
+    entidade_id: conversaId ?? undefined,
+  });
+
+  let whatsappOrigem = await resolveWhatsappOrigem(iaConfig.whatsappOrigem?.trim() || ORIGEM);
+  if (!whatsappOrigem) whatsappOrigem = await resolveWhatsappOrigem(ORIGEM);
+  if (!whatsappOrigem && iaConfig.mostrarWhatsappPosLead) {
+    const contato = await getConfigJsonPublic("contato", DEFAULT_CONTATO);
+    const tel = contato.whatsappPrincipal?.trim();
+    if (tel) {
+      whatsappOrigem = {
+        origem: ORIGEM,
+        ativo: true,
+        exibir_botao_apos_lead: true,
+        nome_atendimento: null,
+        whatsapp_destino: tel,
+        mensagem_padrao: null,
+        usar_whatsapp_principal_fallback: true,
+      };
+    }
+  }
+
+  return { leadId, whatsappOrigem };
+}
 
 async function criarLeadFromConversa(
   dadosFinal: ReturnType<typeof extrairLeadDaConversa>["dados"],
@@ -158,6 +254,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Chat desativado" }, { status: 403 });
     }
 
+    const assistantMode = resolveIaAssistantMode(iaConfig);
+
     const pagina = body.paginaOrigem ?? "/";
     const url = body.urlOrigem ?? pagina;
     const sessionId = body.sessionId.trim();
@@ -187,46 +285,74 @@ export async function POST(request: Request) {
     });
 
     const aiReady = isOpenAiConfigured();
-    logIaDiagnostics(aiReady ? "provider ok" : "fallback (sem chave)");
+    logIaDiagnostics(aiReady ? "provider ok" : "sem chave openai");
 
-    let mode: "ai" | "fallback" = "fallback";
-    let reply: string;
+    let mode: ChatResponse["mode"] = "guided";
+    let replyRaw: string;
     let showLeadCapture = false;
     let providerUnavailable = false;
+    let showGuided = false;
+    let guidedLead: GuidedLeadPayload | undefined;
 
-    if (aiReady) {
+    const useGuidedOnly = assistantMode === "guided";
+    const tryOpenAi = assistantMode === "openai" || assistantMode === "hybrid";
+
+    if (useGuidedOnly) {
+      const guided = buildGuidedReply(history, iaConfig);
+      replyRaw = guided.reply;
+      showLeadCapture = guided.showLeadCapture;
+      if (guided.prontoParaLead && guided.leadPayload) guidedLead = guided.leadPayload;
+      mode = "guided";
+    } else if (tryOpenAi && aiReady) {
       const systemPrompt = buildIaSystemPrompt(iaConfig);
       const providerResult = await chatWithIaProvider(systemPrompt, history);
 
       if (providerResult.ok) {
         mode = "ai";
-        reply = providerResult.content;
-      } else {
+        replyRaw = providerResult.content;
+      } else if (assistantMode === "hybrid") {
         providerUnavailable = true;
         await registrarEvento({
           tipo_evento: "ia_provider_erro",
           origem: ORIGEM,
           pagina,
-          dados_evento: { reason: providerResult.reason },
+          dados_evento: { reason: providerResult.reason, modo: "hybrid" },
         });
-        console.error("[ia/chat] provider erro:", providerResult.reason, providerResult.message?.slice(0, 200));
-        const fb = buildFallbackReply(history, iaConfig);
-        reply = `${FALLBACK_PROVIDER_ERROR}\n\n${fb.reply}`;
-        showLeadCapture = fb.showLeadCapture || providerResult.reason === "provider_error";
+        const guided = buildGuidedReply(history, iaConfig);
+        replyRaw = guided.reply;
+        showLeadCapture = guided.showLeadCapture;
+        if (guided.prontoParaLead && guided.leadPayload) guidedLead = guided.leadPayload;
+        mode = "guided_fallback";
+      } else {
+        providerUnavailable = true;
+        showGuided = true;
+        const guided = buildGuidedReply(history, iaConfig);
+        replyRaw = guided.reply;
+        showLeadCapture = guided.showLeadCapture;
+        if (guided.prontoParaLead && guided.leadPayload) guidedLead = guided.leadPayload;
+        mode = "guided_fallback";
       }
-    } else {
+    } else if (assistantMode === "openai" && !aiReady) {
       providerUnavailable = true;
-      const fb = buildFallbackReply(history, iaConfig);
-      reply =
-        history.filter((m) => m.role === "user").length <= 1
-          ? `${FALLBACK_WELCOME_NO_AI}\n\n${fb.reply}`
-          : fb.reply;
-      showLeadCapture = fb.showLeadCapture;
+      showGuided = true;
+      const guided = buildGuidedReply(history, iaConfig);
+      replyRaw = guided.reply;
+      showLeadCapture = guided.showLeadCapture;
+      if (guided.prontoParaLead && guided.leadPayload) guidedLead = guided.leadPayload;
+      mode = "guided_fallback";
+    } else {
+      const guided = buildGuidedReply(history, iaConfig);
+      replyRaw = guided.reply;
+      showLeadCapture = guided.showLeadCapture;
+      if (guided.prontoParaLead && guided.leadPayload) guidedLead = guided.leadPayload;
+      mode = "guided_fallback";
     }
+
+    const reply = stripGuidedMarker(replyRaw);
 
     if (conversaId) {
       try {
-        await saveMensagem(conversaId, "assistant", reply);
+        await saveMensagem(conversaId, "assistant", replyRaw);
       } catch (e) {
         console.warn("[ia/chat] save assistant:", e);
       }
@@ -234,6 +360,31 @@ export async function POST(request: Request) {
 
     let leadCreated = false;
     let whatsappOrigem = null;
+
+    if (
+      iaConfig.capturaLeadAtiva &&
+      guidedLead?.nome &&
+      guidedLead.whatsapp &&
+      !leadId
+    ) {
+      const created = await criarLeadGuided(
+        guidedLead,
+        body,
+        pagina,
+        url,
+        sessionId,
+        conversaId,
+        iaConfig,
+      );
+      if (created) {
+        leadCreated = true;
+        leadId = created.leadId;
+        whatsappOrigem = created.whatsappOrigem;
+        if (iaConfig.regras.mensagemPosCadastro) {
+          replyRaw = `${replyRaw}\n\n${iaConfig.regras.mensagemPosCadastro}`;
+        }
+      }
+    }
 
     const extracaoPosAssistant = extrairLeadDaConversa([
       ...history,
@@ -244,6 +395,7 @@ export async function POST(request: Request) {
       iaConfig.capturaLeadAtiva &&
       extracaoPosAssistant.prontoParaLead &&
       !leadId &&
+      !guidedLead &&
       dadosFinal.nome &&
       dadosFinal.whatsapp;
 
@@ -263,36 +415,47 @@ export async function POST(request: Request) {
         leadId = created.leadId;
         whatsappOrigem = created.whatsappOrigem;
         if (iaConfig.regras.mensagemPosCadastro) {
-          reply = `${reply}\n\n${iaConfig.regras.mensagemPosCadastro}`;
+          replyRaw = `${replyRaw}\n\n${iaConfig.regras.mensagemPosCadastro}`;
         }
       }
     }
 
+    const replyFinal = stripGuidedMarker(replyRaw);
+
     const payload: ChatResponse = {
       ok: true,
       mode,
-      message: reply,
-      reply,
+      message: replyFinal,
+      reply: replyFinal,
       showLeadCapture: showLeadCapture && !leadCreated,
+      showGuided,
       leadCreated,
       leadId,
       whatsappOrigem,
       providerUnavailable,
-      nomeLead: dadosFinal.nome,
-      tipoInteresseLead: dadosFinal.tipoInteresse,
+      nomeLead: guidedLead?.nome ?? dadosFinal.nome,
+      tipoInteresseLead: guidedLead?.intencao ?? dadosFinal.tipoInteresse,
       analiseResumo: dadosFinal.resumo,
     };
+
+    if (assistantMode === "openai" && !aiReady && showGuided) {
+      payload.ok = true;
+      payload.message = replyFinal;
+    }
 
     return NextResponse.json(payload);
   } catch (e) {
     const message = e instanceof Error ? e.message : "Erro interno";
     console.error("[ia/chat] fatal:", message);
+    const guided = buildGuidedReply([], DEFAULT_IA_CONFIG);
+    const replyFinal = stripGuidedMarker(guided.reply);
     const payload: ChatResponse = {
-      ok: false,
-      mode: "fallback",
-      message: FALLBACK_PROVIDER_ERROR,
-      reply: FALLBACK_PROVIDER_ERROR,
-      showLeadCapture: true,
+      ok: true,
+      mode: "guided_fallback",
+      message: replyFinal,
+      reply: replyFinal,
+      showLeadCapture: guided.showLeadCapture,
+      showGuided: true,
       providerUnavailable: true,
     };
     return NextResponse.json(payload, { status: 200 });

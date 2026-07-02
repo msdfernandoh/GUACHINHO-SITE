@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { requireUsuario } from "@/lib/auth/get-usuario";
 import { canEditSettings } from "@/lib/auth/permissions";
 import { saveConfigJson } from "@/server/config";
+import { DEFAULT_IA_CONFIG, resolveIaAssistantMode, type IaConfig } from "@/lib/config/ia-defaults";
 
 import { parsePrazosLista } from "@/lib/simulador/prazos";
 import type { FinanciamentoTipoConfig } from "@/lib/config/financiamento-por-tipo";
@@ -178,6 +179,10 @@ export async function saveIaConfigAction(formData: FormData) {
   await requireMasterConfig();
   await saveConfigJson("ia_config", {
     ativo: formData.get("ativo") === "on",
+    modo: resolveIaAssistantMode({
+      ...DEFAULT_IA_CONFIG,
+      modo: String(formData.get("modo") ?? "guided") as IaConfig["modo"],
+    }),
     capturaLeadAtiva: formData.get("capturaLeadAtiva") === "on",
     exigirWhatsappAnalise: formData.get("exigirWhatsappAnalise") === "on",
     mostrarWhatsappPosLead: formData.get("mostrarWhatsappPosLead") === "on",

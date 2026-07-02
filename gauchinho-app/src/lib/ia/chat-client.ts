@@ -8,10 +8,10 @@ export type IaQuickAction = {
 
 export const IA_QUICK_ACTIONS: IaQuickAction[] = [
   {
-    id: "verificar",
-    label: "Verificar crédito",
-    message: "Quero verificar meu crédito e entender as melhores opções.",
-    evento: "ia_cta_verificar_credito",
+    id: "quanto_credito",
+    label: "Quanto consigo de crédito?",
+    message: "Quanto consigo de crédito?",
+    evento: "ia_cta_quanto_credito",
   },
   {
     id: "simulador",
@@ -35,18 +35,11 @@ export const IA_QUICK_ACTIONS: IaQuickAction[] = [
     evento: "ia_cta_grupos",
   },
   {
-    id: "cartas",
-    label: "Cartas contempladas",
-    message: "Quero saber sobre cartas contempladas.",
-    href: "/cartas-contempladas",
-    evento: "ia_cta_cartas",
-  },
-  {
-    id: "imoveis",
-    label: "Oportunidades imobiliárias",
-    message: "Quero ver oportunidades imobiliárias.",
-    href: "/oportunidades-imobiliarias",
-    evento: "ia_cta_imoveis",
+    id: "eventos",
+    label: "Ver eventos",
+    message: "Quero ver eventos.",
+    href: "/eventos",
+    evento: "ia_cta_eventos",
   },
   {
     id: "calculadoras",
@@ -56,31 +49,17 @@ export const IA_QUICK_ACTIONS: IaQuickAction[] = [
     evento: "ia_cta_calculadoras",
   },
   {
-    id: "faq",
-    label: "Perguntas frequentes",
-    message: "Quero ler o FAQ sobre consórcio e financiamento.",
-    href: "/perguntas-frequentes",
-    evento: "ia_cta_faq",
-  },
-  {
-    id: "dicas",
-    label: "Dicas do Tchê",
-    message: "Quero ver as Dicas do Tchê.",
-    href: "/dicas-do-tche",
-    evento: "ia_cta_dicas",
-  },
-  {
-    id: "casos",
-    label: "Depoimentos e casos",
-    message: "Quero ver depoimentos e histórias de clientes no site.",
-    href: "/depoimentos",
-    evento: "ia_cta_casos",
-  },
-  {
     id: "especialista",
     label: "Falar com especialista",
     message: "Quero falar com um especialista.",
     evento: "ia_cta_whatsapp",
+  },
+  {
+    id: "indicar",
+    label: "Indicar alguém",
+    message: "Quero indicar alguém.",
+    href: "/indicar",
+    evento: "ia_cta_indicar",
   },
 ];
 

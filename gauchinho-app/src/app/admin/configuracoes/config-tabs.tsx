@@ -33,7 +33,7 @@ import {
   type CalculadorasFinanceirasConfig,
 } from "@/lib/config/defaults";
 import { normalizeFinanciamentoStored } from "@/lib/config/financiamento-por-tipo";
-import { DEFAULT_IA_CONFIG, type IaConfig } from "@/lib/config/ia-defaults";
+import { DEFAULT_IA_CONFIG, resolveIaAssistantMode, type IaConfig } from "@/lib/config/ia-defaults";
 
 const TABS: Array<{ id: string; label: string; future?: boolean }> = [
   { id: "site", label: "Site" },
@@ -307,6 +307,7 @@ export function ConfigTabs({ configs, whatsapp, iaEnv }: Props) {
               hasOpenAiKey={iaEnv.hasOpenAiKey}
               provider={iaEnv.provider}
               model={iaEnv.model}
+              assistantMode={resolveIaAssistantMode(iaCfg)}
             />
           ) : null}
           <IaConfigForm cfg={iaCfg} />

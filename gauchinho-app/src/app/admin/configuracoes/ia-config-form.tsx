@@ -1,14 +1,53 @@
 "use client";
 
-import type { IaConfig } from "@/lib/config/ia-defaults";
+import type { IaAssistantMode, IaConfig } from "@/lib/config/ia-defaults";
 import { saveIaConfigAction } from "./actions";
 import { Button, Input, Label, Textarea } from "@/components/ui/form-primitives";
+import { resolveIaAssistantMode } from "@/lib/config/ia-defaults";
 
 type Props = { cfg: IaConfig };
 
+const MODO_OPTIONS: { value: IaAssistantMode; label: string; hint: string }[] = [
+  {
+    value: "guided",
+    label: "Guiado",
+    hint: "Sem custo de IA, usa fluxo estruturado e cálculos do site",
+  },
+  {
+    value: "openai",
+    label: "OpenAI",
+    hint: "Usa IA generativa quando configurada",
+  },
+  {
+    value: "hybrid",
+    label: "Híbrido",
+    hint: "Usa OpenAI e cai para guiado se houver falha",
+  },
+];
+
 export function IaConfigForm({ cfg }: Props) {
+  const modoAtual = resolveIaAssistantMode(cfg);
   return (
     <form action={saveIaConfigAction} className="max-w-2xl space-y-6">
+      <section className="space-y-3 rounded-xl border p-4">
+        <h3 className="font-semibold">Modo do assistente</h3>
+        <div>
+          <Label htmlFor="modo">Modo do assistente</Label>
+          <select
+            id="modo"
+            name="modo"
+            defaultValue={modoAtual}
+            className="mt-1 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-600 dark:bg-zinc-900"
+          >
+            {MODO_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label} — {o.hint}
+              </option>
+            ))}
+          </select>
+        </div>
+      </section>
+
       <section className="space-y-3 rounded-xl border p-4">
         <h3 className="font-semibold">Ativação</h3>
         <label className="flex items-center gap-2 text-sm">

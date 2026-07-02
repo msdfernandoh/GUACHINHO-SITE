@@ -1,5 +1,9 @@
+export type IaAssistantMode = "guided" | "openai" | "hybrid";
+
 export type IaConfig = {
   ativo: boolean;
+  /** Modo do assistente: guiado (sem OpenAI), OpenAI ou híbrido. */
+  modo?: IaAssistantMode;
   capturaLeadAtiva: boolean;
   exigirWhatsappAnalise: boolean;
   mostrarWhatsappPosLead: boolean;
@@ -33,8 +37,15 @@ export type IaConfig = {
   };
 };
 
+export function resolveIaAssistantMode(cfg: IaConfig): IaAssistantMode {
+  const m = cfg.modo;
+  if (m === "openai" || m === "hybrid" || m === "guided") return m;
+  return "guided";
+}
+
 export const DEFAULT_IA_CONFIG: IaConfig = {
   ativo: true,
+  modo: "guided",
   capturaLeadAtiva: true,
   exigirWhatsappAnalise: true,
   mostrarWhatsappPosLead: true,
