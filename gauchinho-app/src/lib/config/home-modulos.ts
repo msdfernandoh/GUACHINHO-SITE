@@ -26,7 +26,7 @@ export const DEFAULT_HOME_MODULOS: HomeModulosConfig = {
   modulos: [
     { id: "hero", nome: "Hero principal", ativo: true, ordem: 1 },
     { id: "simulador_rapido", nome: "Simulador rápido", ativo: true, ordem: 2 },
-    { id: "beneficios", nome: "Benefícios", ativo: true, ordem: 3 },
+    { id: "beneficios", nome: "Calculadoras financeiras", ativo: true, ordem: 3 },
     { id: "grupos", nome: "Grupos em destaque", ativo: true, ordem: 4 },
     { id: "contempladas", nome: "Cartas contempladas", ativo: true, ordem: 5 },
     { id: "imoveis", nome: "Imóveis", ativo: true, ordem: 6 },

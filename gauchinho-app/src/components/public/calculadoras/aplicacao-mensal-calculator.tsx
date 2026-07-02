@@ -299,7 +299,7 @@ export function AplicacaoMensalCalculator({ indices, taxaPadrao, prefill, onResu
               ...(result.taxaAnualUsada != null
                 ? [
                     {
-                      label: "Taxa usada no cálculo",
+                      label: "Índice usado",
                       value: `${result.taxaAnualUsada.toFixed(2)}% a.a.`,
                     },
                   ]
@@ -312,6 +312,18 @@ export function AplicacaoMensalCalculator({ indices, taxaPadrao, prefill, onResu
                     },
                   ]
                 : []),
+              {
+                label: "Aporte inicial mensal",
+                value: formatCurrency(aporte ?? 0),
+              },
+              {
+                label: "Reajuste anual do aporte",
+                value: `${result.aumentoAnualAportePercentual.toFixed(2)}% a.a.`,
+              },
+              {
+                label: "Prazo da aplicação",
+                value: `${Math.floor(num(prazo))} meses`,
+              },
               ...(ultimaAtualizacao
                 ? [{ label: "Última atualização", value: ultimaAtualizacao }]
                 : []),
@@ -363,35 +375,11 @@ export function AplicacaoMensalCalculator({ indices, taxaPadrao, prefill, onResu
 
       {result?.compararComConsorcio && result.consorcio ? (
         <section className="space-y-3">
+          <h2 className="text-center text-sm font-semibold text-slate-300">
+            Comparativo: aplicação × consórcio
+          </h2>
           <p className="text-center text-xs text-slate-500">{TEXTO_PARCELA_REDUZIDA_COMPARATIVO}</p>
           <div className="grid gap-3 lg:grid-cols-2">
-            <CalculatorResultCard
-              title="Aplicação financeira"
-              rows={[
-                { label: "Total investido", value: formatCurrency(result.totalInvestido) },
-                { label: "Rendimento estimado", value: formatCurrency(result.rendimentoEstimado) },
-                {
-                  label: "Valor final estimado",
-                  value: formatCurrency(result.valorFinalEstimado),
-                  highlight: true,
-                },
-                ...(result.taxaAnualUsada != null
-                  ? [{ label: "Índice usado", value: `${result.taxaAnualUsada.toFixed(2)}% a.a.` }]
-                  : []),
-                {
-                  label: "Aporte inicial mensal",
-                  value: formatCurrency(aporte ?? 0),
-                },
-                {
-                  label: "Reajuste anual do aporte",
-                  value: `${result.aumentoAnualAportePercentual.toFixed(2)}% a.a.`,
-                },
-                {
-                  label: "Prazo da aplicação",
-                  value: `${result.consorcio.periodoComparacaoMeses} meses`,
-                },
-              ]}
-            />
             <CalculatorResultCard
               title="Consórcio programado"
               rows={[
@@ -435,33 +423,33 @@ export function AplicacaoMensalCalculator({ indices, taxaPadrao, prefill, onResu
                 <p className="text-xs leading-relaxed text-slate-400">{TEXTO_PRAZO_COMPARACAO_CONSORCIO}</p>
               }
             />
+            {result.diferencaPatrimonial != null ? (
+              <CalculatorResultCard
+                title="Diferença patrimonial"
+                rows={[
+                  {
+                    label: "Diferença estimada",
+                    value: formatCurrency(result.diferencaPatrimonial),
+                    highlight: true,
+                  },
+                  {
+                    label: "Crédito reajustado (consórcio)",
+                    value: formatCurrency(result.consorcio.creditoReajustadoConsorcio),
+                  },
+                  {
+                    label: "Valor final da aplicação",
+                    value: formatCurrency(result.valorFinalEstimado),
+                  },
+                ]}
+                extra={
+                  <>
+                    <p className="text-xs leading-relaxed text-slate-400">{TEXTO_DIFERENCA_PATRIMONIAL}</p>
+                    <p className="mt-2 text-xs leading-relaxed text-slate-500">{AVISO_COMPARATIVO_CONSORCIO}</p>
+                  </>
+                }
+              />
+            ) : null}
           </div>
-          {result.diferencaPatrimonial != null ? (
-            <CalculatorResultCard
-              title="Diferença patrimonial"
-              rows={[
-                {
-                  label: "Diferença estimada",
-                  value: formatCurrency(result.diferencaPatrimonial),
-                  highlight: true,
-                },
-                {
-                  label: "Crédito reajustado (consórcio)",
-                  value: formatCurrency(result.consorcio.creditoReajustadoConsorcio),
-                },
-                {
-                  label: "Valor final da aplicação",
-                  value: formatCurrency(result.valorFinalEstimado),
-                },
-              ]}
-              extra={
-                <>
-                  <p className="text-xs leading-relaxed text-slate-400">{TEXTO_DIFERENCA_PATRIMONIAL}</p>
-                  <p className="mt-2 text-xs leading-relaxed text-slate-500">{AVISO_COMPARATIVO_CONSORCIO}</p>
-                </>
-              }
-            />
-          ) : null}
         </section>
       ) : null}
     </div>

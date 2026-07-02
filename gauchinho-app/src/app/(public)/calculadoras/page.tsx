@@ -13,7 +13,9 @@ export default async function CalculadorasPublicPage({
     getCalculadorasConfigPublic(),
     getIndicesPublicos({ tentarAtualizarAutomaticos: false }),
   ]);
-  const initialCalc = parseCalcId(sp.calc);
+  const initialCalc =
+    parseCalcId(sp.calc) ??
+    (sp.tipo === "aplicacao" ? ("aplicacao_mensal" as const) : undefined);
   const aporteRaw = sp.aporte ? Number(String(sp.aporte).replace(",", ".")) : NaN;
   const prazoRaw = sp.prazo ? parseInt(String(sp.prazo), 10) : NaN;
   const aplicacaoPrefill =

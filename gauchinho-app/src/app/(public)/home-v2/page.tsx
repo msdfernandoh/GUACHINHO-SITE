@@ -5,10 +5,10 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import {
   Brain, Target, BarChart2, FileText,
   Home, Car, Bike, Truck, Tractor,
-  Shield, Trophy, Wallet, BadgeCheck,
   ChevronLeft, ChevronRight, ArrowRight,
 } from "lucide-react";
 import Link from "next/link";
+import { FinancialCalculatorsPromo } from "@/components/public/home/financial-calculators-promo";
 
 const C = {
   bg:         "#07111F",
@@ -137,13 +137,6 @@ const DIFERENCIAIS = [
   { icon: Target,    titulo: "Estratégias de lance",      desc: "Cenários de lance embutido e livre para enxergar risco e oportunidade." },
   { icon: BarChart2, titulo: "Consórcio × Financiamento", desc: "Comparativo financeiro lado a lado, sem jargão e sem promessa vazia." },
   { icon: FileText,  titulo: "Propostas em PDF",          desc: "Material profissional para compartilhar com família, sócios ou contador." },
-];
-
-const BADGES = [
-  { icon: BadgeCheck, texto: "Sem juros é consórcio!" },
-  { icon: Wallet,     texto: "Parcelas que cabem no bolso" },
-  { icon: Trophy,     texto: "Contemplação por lance ou sorteio" },
-  { icon: Shield,     texto: "Segurança e transparência" },
 ];
 
 const GRUPOS = [
@@ -758,25 +751,7 @@ export default function HomeV2() {
         </div>
       </section>
 
-      {/* ══════════════════════════════════════════
-          SEÇÃO 4 — BADGES
-      ══════════════════════════════════════════ */}
-      <section className="border-y px-4 py-16 sm:px-6 lg:px-16"
-        style={{ background: C.bg, borderColor: C.border }}>
-        <div className="container mx-auto grid grid-cols-2 gap-4 lg:grid-cols-4">
-          {BADGES.map(({ icon: Icon, texto }, i) => (
-            <motion.div key={texto}
-              initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }} transition={{ delay: i * 0.1 }}
-              className="flex flex-col items-center gap-3 rounded-2xl border p-5 text-center transition-transform duration-200 hover:scale-[1.03]"
-              style={{ background: "rgba(201,168,76,0.05)", borderColor: C.goldBorder }}
-            >
-              <Icon size={28} style={{ color: C.gold }} aria-hidden />
-              <span className="text-sm font-semibold text-white">{texto}</span>
-            </motion.div>
-          ))}
-        </div>
-      </section>
+      <FinancialCalculatorsPromo />
 
       {/* ══════════════════════════════════════════
           SEÇÃO 5 — DIFERENCIAIS
