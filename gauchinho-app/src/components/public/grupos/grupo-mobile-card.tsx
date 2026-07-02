@@ -10,6 +10,7 @@ import { CompactNumberInput, CompactSelect } from "@/components/public/grupos/gr
 import { GrupoRowAdjustments } from "@/components/public/grupos/grupo-row-adjustments";
 import { GrupoPrazoCell } from "@/components/public/grupos/grupo-row";
 import { createGrupoLinhaHandlers, useGrupoLinhaCalculo } from "@/components/public/grupos/use-grupo-linha";
+import { GrupoEmbutidoSelect, GrupoRecursoProprioCell } from "@/components/public/grupos/grupo-lance-cells";
 
 type Props = {
   grupo: GrupoConsorcio;
@@ -59,6 +60,23 @@ export function GrupoMobileCard({ grupo, cotas, modalidades, config, onChange }:
               onChange={(e) => handlers.onQtyChange(e.target.value)}
             />
           </div>
+          {resultado.ativo && mods.length > 0 ? (
+            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+              <div>
+                <p className="mb-1 text-[10px] uppercase text-zinc-500">Embutido</p>
+                <GrupoEmbutidoSelect config={config} mods={mods} handlers={handlers} className="max-w-full" />
+              </div>
+              <div>
+                <p className="mb-1 text-[10px] uppercase text-zinc-500">Próprio</p>
+                <GrupoRecursoProprioCell
+                  config={config}
+                  resultado={resultado}
+                  handlers={handlers}
+                  pctMinRecurso={pctMinRecurso}
+                />
+              </div>
+            </div>
+          ) : null}
         </div>
         {resultado.ativo ? (
           <div className="text-right text-xs">

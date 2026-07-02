@@ -44,18 +44,10 @@ export function createGrupoLinhaHandlers(
   }
 
   function onCotaChange(cotaId: string) {
-    const next: Partial<ConfigLinhaSimulacaoGrupo> = {
+    patch({
       cotaId,
       quantidadeCotas: config.quantidadeCotas > 0 ? config.quantidadeCotas : 1,
-    };
-    if (mods.length === 1 && !config.modalidadeLanceId) {
-      const mod = mods[0]!;
-      next.modalidadeLanceId = mod.id;
-      next.usaLanceEmbutido = Number(mod.percentual_lance_embutido) > 0;
-      const pt = parcelaTipoFromModalidade(mod);
-      if (pt) next.modalidadeParcela = pt;
-    }
-    patch(next);
+    });
   }
 
   function onQtyChange(raw: string) {

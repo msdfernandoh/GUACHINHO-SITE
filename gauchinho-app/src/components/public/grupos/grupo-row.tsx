@@ -21,6 +21,7 @@ import {
   createGrupoLinhaHandlers,
   useGrupoLinhaCalculo,
 } from "@/components/public/grupos/use-grupo-linha";
+import { GrupoEmbutidoSelect, GrupoRecursoProprioCell } from "@/components/public/grupos/grupo-lance-cells";
 
 export type GrupoRowProps = {
   grupo: GrupoConsorcio;
@@ -54,16 +55,6 @@ export function GrupoRow({
   const ativo = resultado.ativo;
   const exibeLance = mods.length > 0;
   const modSelecionadaId = config.modalidadeLanceId;
-
-  const recursoPct =
-    config.usaRecursoProprio && config.recursoProprioModo === "percentual"
-      ? config.recursoProprioInput
-      : config.usaRecursoProprio &&
-          resultado.saldoDevedorInicial > 0
-        ? Math.round(
-            (resultado.recursoProprio / resultado.saldoDevedorInicial) * 10000,
-          ) / 100
-        : null;
 
   const modalidadeLabel =
     ativo && modAtiva
@@ -154,29 +145,7 @@ export function GrupoRow({
         <Td className="!whitespace-normal min-w-[96px]">
           {ativo && exibeLance ? (
             <div className="flex flex-col gap-1">
-              {mods.length > 1 ? (
-                <CompactSelect
-                  className="h-7 max-w-[112px] text-[10px]"
-                  value={
-                    config.usaLanceEmbutido ? config.modalidadeLanceId ?? "" : "__sem__"
-                  }
-                  onChange={(e) => {
-                    const v = e.target.value;
-                    if (v === "__sem__") handlers.clearLanceEmbutido();
-                    else {
-                      const mod = mods.find((m) => m.id === v);
-                      if (mod) handlers.selectModalidadeLance(mod);
-                    }
-                  }}
-                >
-                  <option value="__sem__">Sem embutido</option>
-                  {mods.map((m) => (
-                    <option key={m.id} value={m.id}>
-                      {m.nome}
-                    </option>
-                  ))}
-                </CompactSelect>
-              ) : null}
+              <GrupoEmbutidoSelect config={config} mods={mods} handlers={handlers} />
               {config.usaLanceEmbutido && resultado.lanceEmbutido > 0 ? (
                 <MoneyPair
                   pct={resultado.percentualLanceEmbutido}
@@ -194,13 +163,14 @@ export function GrupoRow({
           )}
         </Td>
 
-        <Td>
-          {ativo && config.usaRecursoProprio && resultado.recursoProprio > 0 ? (
-            <MoneyPair pct={recursoPct} value={resultado.recursoProprio} />
-          ) : ativo && pctMinRecurso > 0 && !config.usaRecursoProprio ? (
-            <span className="text-[10px] text-amber-500/80" title="Ajuste na expansão">
-              mín. {pctMinRecurso}%
-            </span>
+        <Td className="!whitespace-normal">
+          {ativo ? (
+            <GrupoRecursoProprioCell
+              config={config}
+              resultado={resultado}
+              handlers={handlers}
+              pctMinRecurso={pctMinRecurso}
+            />
           ) : (
             <CellDash />
           )}
