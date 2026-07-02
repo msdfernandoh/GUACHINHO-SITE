@@ -1074,12 +1074,6 @@ export function HomeV2Client({
       >
         <FeaturedDicasSection dicas={conteudoDestaques.dicasDestaque} />
       </div>
-      <div
-        className={cn(modHidden("parceiros"), !conteudoDestaques.parceirosDestaque.length && "hidden")}
-        style={{ ...modStyle("parceiros"), background: C.bgCard }}
-      >
-        <HomeV2ParceirosStrip parceiros={conteudoDestaques.parceirosDestaque} />
-      </div>
 
       {/* ══════════════════════════════════════════
           SEÇÃO 7 — CTA FINAL
@@ -1120,6 +1114,20 @@ export function HomeV2Client({
           </div>
         </motion.div>
       </section>
+
+      {/* Parceiros — sempre última faixa da Home (acima do rodapé global) */}
+      <div
+        className={cn(
+          modHidden("parceiros"),
+          !conteudoDestaques.parceirosDestaque.length && "hidden",
+        )}
+        style={{ order: 9999 }}
+      >
+        <HomeV2ParceirosStrip
+          parceiros={conteudoDestaques.parceirosDestaque}
+          anchorFooter
+        />
+      </div>
 
     </main>
   );

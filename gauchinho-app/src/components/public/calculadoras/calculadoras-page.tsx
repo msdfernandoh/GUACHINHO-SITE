@@ -17,7 +17,6 @@ import { ValorFuturoCalculator } from "./valor-futuro-calculator";
 import { FinanciamentoCalculator } from "./financiamento-calculator";
 import { CorrecaoValoresCalculator } from "./correcao-valores-calculator";
 import { JurosRealCalculator } from "./juros-real-calculator";
-import { MascoteGauchinho } from "@/components/public/mascote-gauchinho";
 
 import type { IndicePublico } from "@/lib/indices-financeiros/types";
 
@@ -170,24 +169,24 @@ export function CalculadorasPage({ config, initialCalc, indices, aplicacaoPrefil
 
   return (
     <div className={simuladorShell}>
-      <div className="mx-auto max-w-6xl px-4 pb-16 pt-10 sm:pt-14">
-        <header className="mb-8 text-center sm:mb-10">
-          <div className="mx-auto flex max-w-2xl items-start justify-center gap-3 text-left sm:text-center">
-            <MascoteGauchinho variant="compact" className="mt-1 shrink-0 sm:mt-2" />
-            <div>
-          <p className="text-xs font-bold uppercase tracking-[0.25em] text-amber-400/90">Gauchinho</p>
-          <h1 className="mt-2 text-3xl font-extrabold tracking-tight text-white sm:text-4xl">
-            Calculadoras Financeiras
-          </h1>
-          <p className="mx-auto mt-3 max-w-2xl text-sm leading-relaxed text-slate-400 sm:text-base">
-            Planeje melhor suas decisões antes de contratar consórcio, financiamento ou investimento.
-          </p>
-            </div>
+      <div className="mx-auto max-w-7xl px-4 pb-20 pt-10 sm:px-6 sm:pt-14">
+        <header className="mb-8 sm:mb-10">
+          <div className="mx-auto max-w-3xl text-center">
+            <p className="text-xs font-bold uppercase tracking-[0.28em] text-amber-400/90">
+              Gauchinho · Ferramentas
+            </p>
+            <h1 className="mt-3 text-3xl font-extrabold tracking-tight text-white sm:text-4xl lg:text-[2.75rem]">
+              Calculadoras Gauchinho
+            </h1>
+            <p className="mx-auto mt-4 max-w-2xl text-base leading-relaxed text-slate-400">
+              Compare cenários e descubra qual estratégia combina melhor com seu objetivo — antes de
+              financiar, investir ou fechar negócio.
+            </p>
           </div>
         </header>
 
         <nav
-          className="-mx-1 mb-6 flex gap-2 overflow-x-auto pb-1 scrollbar-thin"
+          className="-mx-1 mb-8 flex gap-2.5 overflow-x-auto pb-2 pt-1 scrollbar-thin sm:justify-center sm:overflow-x-visible sm:flex-wrap"
           aria-label="Calculadoras"
         >
           {ativas.map((meta) => (
@@ -209,7 +208,19 @@ export function CalculadorasPage({ config, initialCalc, indices, aplicacaoPrefil
         <div className="min-w-0">
           {activeMeta ? (
             <>
-              <p className="mb-4 text-sm text-slate-400">{activeMeta.question}</p>
+              {activeMeta.id === "aplicacao_mensal" ? (
+                <div className="mb-6 rounded-2xl border border-amber-500/20 bg-slate-900/40 px-5 py-5 sm:px-7 sm:py-6">
+                  <h2 className="text-xl font-bold text-white sm:text-2xl">
+                    Aplicação mensal × Consórcio
+                  </h2>
+                  <p className="mt-2 max-w-3xl text-sm leading-relaxed text-slate-400 sm:text-base">
+                    Veja quanto você pode acumular investindo mês a mês e compare com o poder de compra
+                    de um consórcio programado.
+                  </p>
+                </div>
+              ) : (
+                <p className="mb-5 text-base text-slate-400">{activeMeta.question}</p>
+              )}
               <CalculatorPanel
                 meta={activeMeta}
                 config={config}
@@ -221,16 +232,24 @@ export function CalculadorasPage({ config, initialCalc, indices, aplicacaoPrefil
           ) : null}
 
           {snapshot && snapshot.id === activeId ? (
-            <section className={sectionCardClass("mt-4 border-amber-500/25 py-4")}>
-              <p className="text-center text-sm font-semibold text-white">
+            <section
+              className={sectionCardClass(
+                "mt-8 overflow-hidden border-amber-500/35 bg-gradient-to-br from-slate-900/95 via-slate-900/80 to-amber-950/20 p-6 sm:p-8",
+              )}
+            >
+              <p className="text-center text-lg font-bold text-white sm:text-xl">
                 {config.textoCtaAposResultado ||
-                  "Quer uma análise personalizada para seu objetivo?"}
+                  "Quer uma análise personalizada para o seu objetivo?"}
               </p>
-              <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:justify-center">
+              <p className="mx-auto mt-2 max-w-xl text-center text-sm leading-relaxed text-slate-400">
+                Um especialista pode comparar os cenários com seus dados reais e montar uma estratégia
+                mais segura.
+              </p>
+              <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-center">
                 <Button
                   type="button"
                   variant="gold"
-                  className="min-h-11 flex-1 sm:flex-none sm:px-6"
+                  className="min-h-12 flex-1 text-base font-bold shadow-lg shadow-amber-900/30 sm:max-w-xs sm:flex-none sm:px-8"
                   onClick={() => openLead("analise")}
                 >
                   Receber análise completa
@@ -238,7 +257,7 @@ export function CalculadorasPage({ config, initialCalc, indices, aplicacaoPrefil
                 <Button
                   type="button"
                   variant="outlineGold"
-                  className="min-h-11 flex-1 border-slate-600 bg-slate-900 text-white hover:bg-slate-800 sm:flex-none sm:px-6"
+                  className="min-h-12 flex-1 border-slate-600 bg-slate-950/80 text-base font-semibold text-white hover:bg-slate-800 sm:max-w-xs sm:flex-none sm:px-8"
                   onClick={() => openLead("especialista")}
                 >
                   Falar com especialista

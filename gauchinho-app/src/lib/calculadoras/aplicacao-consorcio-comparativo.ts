@@ -24,7 +24,7 @@ export const AVISO_COMPARATIVO_CONSORCIO =
   "Na aplicação financeira, o rendimento incide sobre os aportes realizados ao longo do tempo. No consórcio, a projeção considera o crédito contratado, que pode ser reajustado conforme as regras do grupo e da administradora.";
 
 export const TEXTO_DIFERENCA_PATRIMONIAL =
-  "Em muitos cenários, o crédito programado pode gerar uma projeção patrimonial maior, porque a valorização incide sobre o crédito contratado, não apenas sobre os aportes mensais.";
+  "Em muitos cenários, o consórcio programado pode gerar maior poder de compra futuro porque o crédito contratado acompanha reajustes, enquanto na aplicação o crescimento depende apenas dos aportes e do rendimento financeiro.";
 
 export const TEXTO_PARCELA_REDUZIDA_COMPARATIVO =
   "A comparação usa a parcela reduzida inicial do consórcio como referência para aproximar o valor do aporte mensal. O crédito estimado considera uma parcela reduzida inicial próxima ao aporte mensal informado. A parcela integral é exibida apenas como referência da parcela cheia do plano.";

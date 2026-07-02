@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { AuthMascotBubble } from "@/components/public/auth-mascot-bubble";
 import { PublicLogo } from "@/components/public/public-logo";
 import { resolvePublicLogoText } from "@/lib/brand/public-logo-text";
 import { getConfigJsonPublic, DEFAULT_SITE } from "@/server/config";
@@ -13,6 +14,7 @@ export default async function AuthLayout({ children }: { children: React.ReactNo
         <PublicLogo href="/" logoUrl={site.logoUrl} title={title} subtitle={subtitle} />
       </div>
       <div className="flex flex-1 flex-col">{children}</div>
+      <AuthMascotBubble />
       <p className="pb-6 text-center text-xs text-zinc-500">
         <Link href="/" className="hover:text-amber-500">
           ← Voltar para o site

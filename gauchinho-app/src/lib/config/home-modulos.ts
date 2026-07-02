@@ -31,10 +31,10 @@ export const DEFAULT_HOME_MODULOS: HomeModulosConfig = {
     { id: "contempladas", nome: "Cartas contempladas", ativo: true, ordem: 5 },
     { id: "imoveis", nome: "Imóveis", ativo: true, ordem: 6 },
     { id: "seguradoras", nome: "Seguradoras", ativo: true, ordem: 7 },
-    { id: "parceiros", nome: "Parceiros", ativo: true, ordem: 8 },
     { id: "dicas", nome: "Dicas do Tchê", ativo: true, ordem: 9 },
     { id: "casos", nome: "Casos de sucesso", ativo: true, ordem: 10 },
     { id: "cta_final", nome: "CTA final", ativo: true, ordem: 11 },
+    { id: "parceiros", nome: "Parceiros", ativo: true, ordem: 12 },
   ],
 };
 

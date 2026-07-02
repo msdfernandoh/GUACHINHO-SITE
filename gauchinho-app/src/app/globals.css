@@ -57,6 +57,26 @@ body {
   }
 }
 
+@keyframes gauchinho-mascot-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+.animate-gauchinho-mascot-float {
+  animation: gauchinho-mascot-float 3.5s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-gauchinho-mascot-float {
+    animation: none;
+  }
+}
+
 .home-cta-shimmer {
   background-image: linear-gradient(
     105deg,

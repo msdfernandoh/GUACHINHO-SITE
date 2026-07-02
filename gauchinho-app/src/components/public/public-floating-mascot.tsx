@@ -1,19 +1,23 @@
 "use client";
 
-import { MascoteGauchinho } from "@/components/public/mascote-gauchinho";
-import { cn } from "@/lib/utils/cn";
+import { Suspense } from "react";
+import { GauchinhoMascotBubble } from "@/components/public/gauchinho-mascot-bubble";
 
-/** Mascote fixo (ICONE.svg) em todas as páginas públicas — não captura scroll/clique. */
-export function PublicFloatingMascot() {
+type Props = {
+  disabled?: boolean;
+};
+
+function GauchinhoMascotBubbleInner(props: Props) {
+  return <GauchinhoMascotBubble avoidBottomRightFab {...props} />;
+}
+
+/** Mascote fixo com balão contextual — substitui o ícone flutuante antigo. */
+export function PublicFloatingMascot(props: Props) {
   return (
-    <div
-      className={cn(
-        "pointer-events-none fixed z-30 opacity-90",
-        "bottom-[5.5rem] left-3 sm:bottom-24 sm:left-auto sm:right-4",
-      )}
-      aria-hidden
-    >
-      <MascoteGauchinho variant="floating" className="h-12 w-12 sm:h-14 sm:w-14" />
-    </div>
+    <Suspense fallback={null}>
+      <GauchinhoMascotBubbleInner {...props} />
+    </Suspense>
   );
 }
+
+export { GauchinhoMascotBubble } from "@/components/public/gauchinho-mascot-bubble";
