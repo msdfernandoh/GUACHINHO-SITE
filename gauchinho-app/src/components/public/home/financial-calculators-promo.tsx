@@ -7,7 +7,6 @@ import {
   BarChart3,
   Building2,
   Calculator,
-  ChevronRight,
   Percent,
   PieChart,
   Shield,
@@ -35,9 +34,8 @@ const BENEFITS = [
 ] as const;
 
 const CALC_PRIMARY_HREF = "/calculadoras?calc=aplicacao_mensal";
-const CALC_SECONDARY_HREF = "/calculadoras";
 
-function trackHomeCalculadorasClick(cta: "usar_calculadoras_agora" | "ver_calculadoras") {
+function trackHomeCalculadorasClick(cta: "usar_calculadoras_agora") {
   void fetch("/api/public/eventos", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -207,9 +205,6 @@ export function FinancialCalculatorsPromo() {
           </div>
           <h2 className="mt-4 font-serif text-3xl font-bold leading-tight text-white sm:text-4xl lg:text-[2.65rem]">
             Calculadoras Financeiras
-            <span className="mt-1 block font-serif text-3xl sm:text-4xl lg:text-[2.65rem]" style={{ color: C.goldLight }}>
-              para usar sempre
-            </span>
           </h2>
           <p className="mt-4 max-w-xl text-base leading-relaxed sm:text-lg" style={{ color: C.muted }}>
             Compare índices, reajuste aluguel, descubra a taxa real do financiamento, simule rendimentos e
@@ -219,16 +214,16 @@ export function FinancialCalculatorsPromo() {
             {BENEFITS.map(({ Icon, text }, i) => (
               <HomeReveal key={text} delayMs={i * 60}>
                 <li
-                  className="flex items-center gap-2 rounded-xl border px-3 py-2.5 text-sm font-medium text-white"
+                  className="flex items-center gap-2.5 rounded-xl border px-3.5 py-3 text-base font-semibold text-white sm:text-lg"
                   style={{ background: "rgba(201,168,76,0.06)", borderColor: C.goldBorder }}
                 >
-                  <Icon className="h-4 w-4 shrink-0" style={{ color: C.gold }} aria-hidden />
+                  <Icon className="h-5 w-5 shrink-0 sm:h-5 sm:w-5" style={{ color: C.gold }} aria-hidden />
                   <span className="leading-snug">{text}</span>
                 </li>
               </HomeReveal>
             ))}
           </ul>
-          <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+          <div className="mt-8">
             <Link
               href={CALC_PRIMARY_HREF}
               onClick={() => trackHomeCalculadorasClick("usar_calculadoras_agora")}
@@ -241,15 +236,6 @@ export function FinancialCalculatorsPromo() {
               <Calculator className="h-5 w-5" aria-hidden />
               Usar calculadoras agora
               <ArrowRight className="h-5 w-5 transition group-hover:translate-x-0.5" aria-hidden />
-            </Link>
-            <Link
-              href={CALC_SECONDARY_HREF}
-              onClick={() => trackHomeCalculadorasClick("ver_calculadoras")}
-              className="inline-flex min-h-12 items-center justify-center gap-1 rounded-xl border px-6 text-base font-semibold text-white transition hover:bg-white/5"
-              style={{ borderColor: C.goldBorder }}
-            >
-              Ver calculadoras
-              <ChevronRight className="h-5 w-5" style={{ color: C.gold }} aria-hidden />
             </Link>
           </div>
           <p className="mt-6 flex items-start gap-2 text-sm" style={{ color: C.gold }}>

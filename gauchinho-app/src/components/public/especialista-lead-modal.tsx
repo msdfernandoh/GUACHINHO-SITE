@@ -96,8 +96,8 @@ export function EspecialistaLeadModal({ open, onClose }: Props) {
   }
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-end justify-center bg-black/75 p-4 sm:items-center">
-      <div className="w-full max-w-md space-y-4 rounded-2xl border border-slate-600 bg-slate-900 p-6 shadow-2xl">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/75 p-4 sm:p-6">
+      <div className="max-h-[calc(100vh-48px)] w-full max-w-md space-y-4 overflow-y-auto overscroll-contain rounded-2xl border border-slate-600 bg-slate-900 p-6 shadow-2xl">
         {sucesso ? (
           <>
             <h2 className="text-xl font-bold text-white">Cadastro recebido</h2>

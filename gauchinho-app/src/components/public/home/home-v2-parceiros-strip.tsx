@@ -32,10 +32,7 @@ export function HomeV2ParceirosStrip({ parceiros, anchorFooter = false }: Props)
       style={{ background: anchorFooter ? "#0a1628" : C.bgCard }}
     >
       <div className="mx-auto max-w-4xl text-center">
-        <p className="text-xs font-bold uppercase tracking-widest" style={{ color: C.gold }}>
-          Confiança
-        </p>
-        <h2 className="mt-2 text-2xl font-black text-white sm:text-3xl">Parceiros</h2>
+        <h2 className="text-2xl font-black text-white sm:text-3xl">Parceiros</h2>
         <p className="mt-2 text-sm leading-relaxed" style={{ color: C.muted }}>
           Administradoras e empresas que reforçam nossa atuação.
         </p>

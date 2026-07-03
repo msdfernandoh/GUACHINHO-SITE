@@ -8,7 +8,6 @@ import type { DicaTche } from "@/lib/conteudo/types";
 export function FeaturedDicasSection({ dicas }: { dicas: DicaTche[] }) {
   return (
     <FeaturedContentSection
-      eyebrow="Dicas do Tchê"
       title="Dicas do Tchê"
       subtitle="Conteúdos rápidos para você entender melhor consórcio, financiamento, cartas contempladas e planejamento financeiro."
       ctaHref="/dicas-do-tche"

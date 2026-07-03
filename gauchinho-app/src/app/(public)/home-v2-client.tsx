@@ -936,7 +936,6 @@ export function HomeV2Client({
         <div className="container mx-auto">
           <motion.div variants={fadeUp} initial="hidden" whileInView="visible"
             viewport={{ once: true }} className="mb-16 text-center">
-            <p className="mb-3 text-xs font-bold uppercase tracking-widest" style={{ color: C.gold }}>Por que o Gauchinho?</p>
             <h2 className="text-4xl font-black text-white lg:text-5xl">
               Consultoria que sustenta <span style={{ color: C.gold }}>cada número</span>
             </h2>
@@ -971,7 +970,6 @@ export function HomeV2Client({
         <div className="container mx-auto">
           <motion.div variants={fadeUp} initial="hidden" whileInView="visible"
             viewport={{ once: true }} className="mb-16 text-center">
-            <p className="mb-3 text-xs font-bold uppercase tracking-widest" style={{ color: C.gold }}>Disponíveis agora</p>
             <h2 className="text-4xl font-black text-white lg:text-5xl">
               Grupos em <span style={{ color: C.gold }}>destaque</span>
             </h2>

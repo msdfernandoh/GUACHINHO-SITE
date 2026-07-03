@@ -3,7 +3,7 @@ import { HomeCtaLink, HomeSection } from "@/components/public/home/home-section"
 import { HomeReveal } from "@/components/public/home/home-reveal";
 
 type Props = {
-  eyebrow: string;
+  eyebrow?: string;
   title: string;
   subtitle?: string;
   ctaHref: string;
