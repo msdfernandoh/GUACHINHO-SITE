@@ -7,6 +7,13 @@ import { cn } from "@/lib/utils/cn";
 import type { EventoRow } from "@/lib/comercial-eventos/types";
 import { EventoImageField } from "./evento-image-field";
 
+function toDatetimeLocalValue(iso: string | null | undefined): string {
+  if (!iso?.trim()) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toISOString().slice(0, 16);
+}
+
 type Props = {
   evento?: EventoRow;
   action: (formData: FormData) => Promise<void>;
@@ -46,9 +53,7 @@ function SubmitButton({ creating }: { creating: boolean }) {
 }
 
 export function EventoAdminForm({ evento, action }: Props) {
-  const dataLocal = evento?.data_evento
-    ? new Date(evento.data_evento).toISOString().slice(0, 16)
-    : "";
+  const dataLocal = toDatetimeLocalValue(evento?.data_evento);
 
   const [nome, setNome] = useState(evento?.nome ?? "");
   const [slug, setSlug] = useState(evento?.slug ?? "");

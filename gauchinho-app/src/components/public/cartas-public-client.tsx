@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { Sparkles, MessageCircle } from "lucide-react";
+import { MessageCircle } from "lucide-react";
 import type { CartaContemplada } from "@/lib/cartas/types";
 import { CARTA_STATUS_LABELS, CARTA_TIPOS } from "@/lib/cartas/types";
 import { formatCurrency, formatDate } from "@/lib/utils/format";
@@ -12,7 +12,8 @@ import {
   buildCartaInteresseMensagem,
   type WhatsappOrigemRow,
 } from "@/lib/whatsapp/carta-messages";
-import { MascoteGauchinho } from "@/components/public/mascote-gauchinho";
+import { PublicPremiumHero } from "@/components/public/public-premium-hero";
+import { simuladorShell } from "@/components/simulador/simulador-ui";
 type Filters = {
   tipo?: string;
   administradora?: string;
@@ -109,22 +110,13 @@ export function CartasPublicClient({ cartas }: { cartas: CartaContemplada[] }) {
   }
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100">
-      <div className="mx-auto max-w-6xl px-4 py-12">
-        <div className="mb-10 flex flex-col items-center gap-3 text-center sm:flex-row sm:text-left">
-          <MascoteGauchinho variant="compact" className="shrink-0" />
-          <div>
-          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-amber-500">
-            <Sparkles className="mr-1 inline h-4 w-4" />
-            Gauchinho
-          </p>
-          <h1 className="mt-2 text-4xl font-bold text-white">Cartas Contempladas</h1>
-          <p className="mx-auto mt-3 max-w-2xl text-zinc-400 sm:mx-0">
-            Oportunidades de crédito já contemplado. Confira os valores e manifeste seu interesse — sempre
-            consulte a disponibilidade atualizada com nossa equipe.
-          </p>
-          </div>
-        </div>
+    <div className={simuladorShell}>
+      <div className="mx-auto max-w-6xl px-4 pb-12 pt-10 sm:px-6 sm:pt-14">
+        <PublicPremiumHero
+          eyebrow="Gauchinho · Contempladas"
+          title="Cartas Contempladas"
+          subtitle="Oportunidades de crédito já contemplado. Confira os valores e manifeste seu interesse — sempre consulte a disponibilidade atualizada com nossa equipe."
+        />
 
         <div className="mb-8 grid gap-3 rounded-2xl border border-amber-500/20 bg-zinc-900/80 p-4 sm:grid-cols-2 lg:grid-cols-4">
           <div>

@@ -15,7 +15,7 @@ const PRIMARY_LINKS = [
   { href: "/eventos", label: "Eventos" },
   { href: "/grupos", label: "Grupos" },
   { href: "/cartas-contempladas", label: "Contempladas" },
-  { href: "/oportunidades-imobiliarias", label: "Imóveis" },
+  { href: "/oportunidades-imobiliarias", label: "Imobiliárias" },
   { href: "/seguradoras", label: "Seguradoras" },
 ] as const;
 

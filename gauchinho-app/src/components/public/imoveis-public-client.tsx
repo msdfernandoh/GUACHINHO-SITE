@@ -11,7 +11,9 @@ import { MessageCircle, Calculator, MapPin } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import { formatCurrency } from "@/lib/utils/format";
 import { Button, Input, Label, Select, surfaceInputDark, surfaceSelectDark } from "@/components/ui/form-primitives";
-import { MascoteGauchinho } from "@/components/public/mascote-gauchinho";
+import { PublicPremiumHero } from "@/components/public/public-premium-hero";
+import { EspecialistaLeadModal } from "@/components/public/especialista-lead-modal";
+import { simuladorShell } from "@/components/simulador/simulador-ui";
 
 type Filters = {
   tipo?: string;
@@ -45,6 +47,7 @@ export function ImoveisPublicClient({
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [waLink, setWaLink] = useState<string | null>(null);
+  const [propostaModalOpen, setPropostaModalOpen] = useState(false);
 
   const imoveisPorImob = useMemo(() => {
     const m = new Map<string, number>();
@@ -128,20 +131,26 @@ export function ImoveisPublicClient({
   }
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100">
-      <div className="mx-auto max-w-6xl px-4 py-12">
-        <div className="flex items-start gap-3">
-          <MascoteGauchinho variant="compact" className="mt-1 shrink-0" />
-          <div>
-        <p className="text-sm font-medium uppercase tracking-widest text-amber-500">Gauchinho</p>
-        <h1 className="mt-2 text-4xl font-bold text-white md:text-5xl">Oportunidades imobiliárias</h1>
-        <p className="mt-3 max-w-2xl text-zinc-400">
-          Imóveis selecionados de parceiros. Demonstre interesse e fale direto com a imobiliária.
-        </p>
-          </div>
+    <div className={simuladorShell}>
+      <div className="mx-auto max-w-6xl px-4 pb-12 pt-10 sm:px-6 sm:pt-14">
+        <PublicPremiumHero
+          eyebrow="Gauchinho · Imobiliárias"
+          title="Imobiliárias parceiras"
+          subtitle="Imóveis selecionados de parceiros. Demonstre interesse, solicite uma proposta e fale direto com nossa equipe."
+        />
+
+        <div className="mb-8 flex justify-center">
+          <Button
+            type="button"
+            variant="gold"
+            className="min-h-12 w-full max-w-md px-8 text-base font-bold sm:w-auto"
+            onClick={() => setPropostaModalOpen(true)}
+          >
+            Solicitar proposta
+          </Button>
         </div>
 
-        <div className="mt-8 grid gap-3 rounded-xl border border-zinc-800 bg-zinc-900/50 p-4 md:grid-cols-3 lg:grid-cols-4">
+        <div className="grid gap-3 rounded-xl border border-zinc-800 bg-zinc-900/50 p-4 md:grid-cols-3 lg:grid-cols-4">
           <FilterSelect
             label="Tipo"
             value={filters.tipo ?? ""}
@@ -283,6 +292,8 @@ export function ImoveisPublicClient({
           </div>
         </div>
       )}
+
+      <EspecialistaLeadModal open={propostaModalOpen} onClose={() => setPropostaModalOpen(false)} />
     </div>
   );
 }

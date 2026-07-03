@@ -10,6 +10,7 @@ import { slugify } from "@/lib/utils/slug";
 import { uploadImagemPublica } from "@/lib/storage/imagens";
 import type { EventoParticipanteRow, EventoPostRow, EventoRow, ParticipanteStatus } from "@/lib/comercial-eventos/types";
 import { somarVagasUsadas, STATUS_OCUPA_VAGA } from "@/lib/comercial-eventos/vagas";
+import { isDbMissingColumnError } from "@/lib/comercial-eventos/db-ready";
 
 function boolForm(formData: FormData, name: string): boolean {
   return formData.get(name) === "on";
@@ -99,6 +100,27 @@ async function syncEventoDestaque(admin: ReturnType<typeof createAdminClient>, e
   await admin.from("eventos").update({ evento_destaque: false }).neq("id", eventoId);
 }
 
+type EventoPayload = ReturnType<typeof eventoFromForm>;
+
+async function persistEventoInsert(admin: ReturnType<typeof createAdminClient>, payload: EventoPayload) {
+  let { data, error } = await admin.from("eventos").insert(payload).select("id").single();
+  if (error && isDbMissingColumnError(error)) {
+    const { inscricao_tipo: _t, inscricao_url_externa: _u, ...rest } = payload;
+    ({ data, error } = await admin.from("eventos").insert(rest).select("id").single());
+  }
+  if (error) throw new Error(error.message);
+  return data!;
+}
+
+async function persistEventoUpdate(admin: ReturnType<typeof createAdminClient>, id: string, payload: EventoPayload) {
+  let { error } = await admin.from("eventos").update(payload).eq("id", id);
+  if (error && isDbMissingColumnError(error)) {
+    const { inscricao_tipo: _t, inscricao_url_externa: _u, ...rest } = payload;
+    ({ error } = await admin.from("eventos").update(rest).eq("id", id));
+  }
+  if (error) throw new Error(error.message);
+}
+
 export async function fetchEventosAdminList(): Promise<import("@/lib/comercial-eventos/types").EventoRow[]> {
   const supabase = await createClient();
   const { data, error } = await supabase.from("eventos").select("*").order("data_evento", { ascending: false, nullsFirst: false });
@@ -145,8 +167,7 @@ export async function createEventoAction(formData: FormData) {
   if (!canManageImobiliarias(u.perfil)) throw new Error("Sem permissão");
   const payload = eventoFromForm(formData);
   const admin = createAdminClient();
-  const { data, error } = await admin.from("eventos").insert(payload).select("id").single();
-  if (error) throw new Error(error.message);
+  const data = await persistEventoInsert(admin, payload);
   await syncEventoDestaque(admin, data.id, payload.evento_destaque);
   revalidatePath("/admin/eventos");
   revalidatePath("/eventos");
@@ -158,8 +179,7 @@ export async function updateEventoAction(id: string, formData: FormData) {
   if (!canManageImobiliarias(u.perfil)) throw new Error("Sem permissão");
   const payload = eventoFromForm(formData);
   const admin = createAdminClient();
-  const { error } = await admin.from("eventos").update(payload).eq("id", id);
-  if (error) throw new Error(error.message);
+  await persistEventoUpdate(admin, id, payload);
   await syncEventoDestaque(admin, id, payload.evento_destaque);
   revalidatePath("/admin/eventos");
   revalidatePath(`/admin/eventos/${id}`);
@@ -198,7 +218,11 @@ export async function updateParticipanteStatusAction(participanteId: string, eve
 export async function fetchEventoPosts(eventoId: string) {
   const supabase = await createClient();
   const { data, error } = await supabase.from("eventos_posts").select("*").eq("evento_id", eventoId).order("ordem");
-  if (error) throw new Error(error.message);
+  if (error) {
+    const { isDbMissingRelationError } = await import("@/lib/comercial-eventos/db-ready");
+    if (isDbMissingRelationError(error)) return [] as EventoPostRow[];
+    throw new Error(error.message);
+  }
   return (data ?? []) as EventoPostRow[];
 }
 

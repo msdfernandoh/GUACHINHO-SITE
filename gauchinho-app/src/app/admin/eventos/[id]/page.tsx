@@ -12,6 +12,8 @@ import {
 } from "../actions";
 import { EventoAdminForm } from "@/components/admin/eventos/evento-admin-form";
 import { Button, Input, Label, Textarea } from "@/components/ui/form-primitives";
+import { EVENTOS_INSCRICAO_MIGRATION_HINT } from "@/lib/comercial-eventos/db-ready";
+import type { EventoPostRow } from "@/lib/comercial-eventos/types";
 
 export default async function EditarEventoPage({ params }: { params: Promise<{ id: string }> }) {
   const u = await getUsuarioNegocio();
@@ -24,9 +26,15 @@ export default async function EditarEventoPage({ params }: { params: Promise<{ i
     notFound();
   }
   const [posts, vagas] = await Promise.all([
-    fetchEventoPosts(id),
-    eventoVagasResumo(id, evento.limite_participantes),
+    fetchEventoPosts(id).catch(() => [] as EventoPostRow[]),
+    eventoVagasResumo(id, evento.limite_participantes).catch(() => ({
+      usadas: 0,
+      limite: evento.limite_participantes,
+      restantes: evento.limite_participantes,
+    })),
   ]);
+  const inscricaoMigrationPending =
+    evento.inscricao_tipo === undefined && evento.inscricao_url_externa === undefined;
   const update = updateEventoAction.bind(null, id);
   const savePost = saveEventoPostAction.bind(null, id);
 
@@ -47,6 +55,12 @@ export default async function EditarEventoPage({ params }: { params: Promise<{ i
           <Button variant="outline">Participantes</Button>
         </Link>
       </div>
+
+      {inscricaoMigrationPending ? (
+        <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-900 dark:text-amber-100">
+          {EVENTOS_INSCRICAO_MIGRATION_HINT}
+        </div>
+      ) : null}
 
       <EventoAdminForm evento={evento} action={update} />
 
