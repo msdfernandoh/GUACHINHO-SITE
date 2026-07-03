@@ -8,6 +8,8 @@ type Props = {
   subtitle?: string;
   ctaHref: string;
   ctaLabel: string;
+  secondaryCtaHref?: string;
+  secondaryCtaLabel?: string;
   children: React.ReactNode;
   hideIfEmpty?: boolean;
   empty?: boolean;
@@ -19,6 +21,8 @@ export function FeaturedContentSection({
   subtitle,
   ctaHref,
   ctaLabel,
+  secondaryCtaHref,
+  secondaryCtaLabel,
   children,
   hideIfEmpty,
   empty,
@@ -29,10 +33,15 @@ export function FeaturedContentSection({
     <HomeSection eyebrow={eyebrow} title={title} subtitle={subtitle}>
       <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">{children}</div>
       {!empty ? (
-        <div className="mt-10">
+        <div className="mt-10 flex flex-wrap items-center gap-4">
           <HomeCtaLink href={ctaHref} variant="outline">
             {ctaLabel}
           </HomeCtaLink>
+          {secondaryCtaHref && secondaryCtaLabel ? (
+            <HomeCtaLink href={secondaryCtaHref} variant="outline">
+              {secondaryCtaLabel}
+            </HomeCtaLink>
+          ) : null}
         </div>
       ) : null}
     </HomeSection>

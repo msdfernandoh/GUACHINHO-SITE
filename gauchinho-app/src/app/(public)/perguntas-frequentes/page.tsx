@@ -18,7 +18,7 @@ export const metadata: Metadata = {
 function whatsappHref(contato: ContatoConfig) {
   const n = contato.whatsappPrincipal?.replace(/\D/g, "");
   if (!n) return "#contato";
-  return `https://wa.me/${n}?text=${encodeURIComponent("Olá! Tenho uma dúvida após ler o FAQ do site.")}`;
+  return `https://wa.me/${n}?text=${encodeURIComponent("Olá! Tenho uma dúvida após ler as perguntas frequentes do site.")}`;
 }
 
 export default async function PerguntasFrequentesPage() {
@@ -31,7 +31,7 @@ export default async function PerguntasFrequentesPage() {
     <ConteudoPageShell>
       <ConteudoViewTracker tipo_evento="faq_visualizado" entidade_tipo="lista" />
       <ConteudoHero
-        eyebrow="FAQ"
+        eyebrow="Gauchinho"
         title="Perguntas frequentes"
         subtitle="Orientações gerais sobre consórcio, financiamento e cartas. Para sua situação específica, use a simulação ou fale com um especialista."
       />

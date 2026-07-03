@@ -12,6 +12,8 @@ export function FeaturedDicasSection({ dicas }: { dicas: DicaTche[] }) {
       subtitle="Conteúdos rápidos para você entender melhor consórcio, financiamento, cartas contempladas e planejamento financeiro."
       ctaHref="/dicas-do-tche"
       ctaLabel="Ver dicas"
+      secondaryCtaHref="/perguntas-frequentes"
+      secondaryCtaLabel="Ver perguntas frequentes"
       hideIfEmpty
       empty={!dicas.length}
     >

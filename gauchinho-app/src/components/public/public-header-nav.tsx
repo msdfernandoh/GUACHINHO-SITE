@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { ChevronDown, LogIn, Menu, X } from "lucide-react";
+import { LogIn, Menu, X } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import { EspecialistaLeadModal } from "@/components/public/especialista-lead-modal";
 
@@ -17,13 +17,7 @@ const PRIMARY_LINKS = [
   { href: "/cartas-contempladas", label: "Contempladas" },
   { href: "/oportunidades-imobiliarias", label: "Imobiliárias" },
   { href: "/seguradoras", label: "Seguradoras" },
-] as const;
-
-const MORE_LINKS = [
-  { href: "/dicas-do-tche", label: "Dicas" },
-  { href: "/indicar", label: "Indicar cliente" },
-  { href: "/perguntas-frequentes", label: "FAQ" },
-  { href: "/parceiros", label: "Parceiros" },
+  { href: "/indicar", label: "Indicação" },
 ] as const;
 
 function readPublicHeaderHeight(): number {
@@ -35,7 +29,6 @@ function readPublicHeaderHeight(): number {
 export function PublicHeaderNav() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
-  const [moreOpen, setMoreOpen] = useState(false);
   const [especialistaOpen, setEspecialistaOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [menuTopPx, setMenuTopPx] = useState(64);
@@ -46,7 +39,6 @@ export function PublicHeaderNav() {
 
   useEffect(() => {
     setOpen(false);
-    setMoreOpen(false);
   }, [pathname]);
 
   useEffect(() => {
@@ -62,7 +54,7 @@ export function PublicHeaderNav() {
   const linkClass = (href: string) =>
     cn("whitespace-nowrap transition hover:text-amber-400", pathname === href && "text-amber-400");
 
-  const allMobile = [...PRIMARY_LINKS, ...MORE_LINKS] as const;
+  const allMobile = PRIMARY_LINKS;
 
   const mobilePanel =
     open && mounted ? (
@@ -121,30 +113,6 @@ export function PublicHeaderNav() {
               {l.label}
             </Link>
           ))}
-          <div className="relative">
-            <button
-              type="button"
-              className="inline-flex items-center gap-1 whitespace-nowrap hover:text-amber-400"
-              onClick={() => setMoreOpen((v) => !v)}
-              aria-expanded={moreOpen}
-            >
-              Mais <ChevronDown className="h-4 w-4" />
-            </button>
-            {moreOpen ? (
-              <div className="absolute right-0 top-full z-50 mt-2 min-w-[11rem] rounded-xl border border-zinc-700 bg-zinc-950 py-1 shadow-xl">
-                {MORE_LINKS.map((l) => (
-                  <Link
-                    key={l.href}
-                    href={l.href}
-                    className="block px-4 py-2 text-sm text-zinc-200 hover:bg-zinc-900"
-                    onClick={() => setMoreOpen(false)}
-                  >
-                    {l.label}
-                  </Link>
-                ))}
-              </div>
-            ) : null}
-          </div>
           <button
             type="button"
             onClick={() => setEspecialistaOpen(true)}

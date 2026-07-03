@@ -15,7 +15,7 @@ export function PublicFooter() {
             Indicar cliente
           </Link>
           <Link href="/perguntas-frequentes" className="hover:text-amber-400">
-            FAQ
+            Perguntas frequentes
           </Link>
         </nav>
       </div>

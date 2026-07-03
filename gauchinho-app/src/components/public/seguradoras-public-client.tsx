@@ -12,7 +12,7 @@ function waHref(num: string | null) {
 export function SeguradorasPublicClient({ seguradoras }: { seguradoras: SeguradoraRow[] }) {
   if (!seguradoras.length) {
     return (
-      <p className="rounded-xl border border-zinc-800 bg-zinc-900/50 px-6 py-12 text-center text-zinc-400">
+      <p className="rounded-2xl border border-slate-700/60 bg-slate-900/50 p-8 text-center text-slate-400 shadow-lg shadow-black/20">
         Nenhuma seguradora publicada no momento.
       </p>
     );
