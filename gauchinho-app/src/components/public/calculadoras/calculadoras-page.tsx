@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { MessageCircle } from "lucide-react";
 import type { CalculadorasFinanceirasConfig } from "@/lib/config/defaults";
@@ -10,7 +11,8 @@ import { mensagemWhatsappCalculadora } from "@/lib/calculadoras/whatsapp-message
 import type { WhatsappOrigemRow } from "@/lib/whatsapp/resolve-origem";
 import { simuladorShell, sectionCardClass } from "@/components/simulador/simulador-ui";
 import { Button } from "@/components/ui/form-primitives";
-import { GauchinhoMascotInline } from "@/components/public/gauchinho-mascot-inline";
+import { MascoteGauchinho } from "@/components/public/mascote-gauchinho";
+import { HOME_MEDIA } from "@/lib/home/home-media";
 import { CalculadoraCard } from "./calculadora-card";
 import { CalculatorLeadModal, type AcaoCalculadoraLead } from "./calculator-lead-modal";
 import { AplicacaoMensalCalculator } from "./aplicacao-mensal-calculator";
@@ -172,18 +174,40 @@ export function CalculadorasPage({ config, initialCalc, indices, aplicacaoPrefil
     <div className={simuladorShell}>
       <div className="mx-auto max-w-7xl px-4 pb-20 pt-10 sm:px-6 sm:pt-14">
         <header className="relative mb-8 sm:mb-10">
-          <GauchinhoMascotInline
-            context="calculadoras"
-            className="mx-auto mb-6 w-fit lg:absolute lg:left-0 lg:top-1/2 lg:mb-0 lg:-translate-y-1/2"
-          />
-          <div className="mx-auto max-w-3xl text-center">
-            <p className="text-xs font-bold uppercase tracking-[0.28em] text-amber-400/90">
+          <div
+            className="pointer-events-none absolute -left-2 top-1/2 hidden -translate-y-1/2 select-none opacity-80 lg:block xl:-left-6"
+            aria-hidden
+          >
+            <div className="relative h-40 w-40 xl:h-52 xl:w-52">
+              <Image
+                src={HOME_MEDIA.mascoteSvg}
+                alt=""
+                fill
+                unoptimized
+                className="object-contain object-bottom drop-shadow-[0_12px_32px_rgba(0,0,0,0.45)]"
+                sizes="208px"
+              />
+            </div>
+          </div>
+          <div
+            className="pointer-events-none absolute left-2 top-2 opacity-[0.12] sm:left-4 lg:hidden"
+            aria-hidden
+          >
+            <div className="relative h-16 w-16">
+              <Image src={HOME_MEDIA.mascoteSvg} alt="" fill unoptimized className="object-contain" sizes="64px" />
+            </div>
+          </div>
+          <div className="relative z-[1] mx-auto max-w-3xl text-center">
+            <div className="mb-4 flex justify-center">
+              <MascoteGauchinho variant="cta" />
+            </div>
+            <p className="text-xs font-bold uppercase tracking-[0.25em] text-amber-400 sm:text-sm">
               Gauchinho · Ferramentas
             </p>
-            <h1 className="mt-3 text-3xl font-extrabold tracking-tight text-white sm:text-4xl lg:text-[2.75rem]">
+            <h1 className="mt-3 text-3xl font-extrabold leading-tight tracking-tight text-white sm:text-4xl lg:text-[2.75rem]">
               Calculadoras Gauchinho
             </h1>
-            <p className="mx-auto mt-4 max-w-2xl text-base leading-relaxed text-slate-400">
+            <p className="mx-auto mt-4 max-w-2xl text-base leading-relaxed text-slate-400 sm:text-lg">
               Compare cenários e descubra qual estratégia combina melhor com seu objetivo — antes de
               financiar, investir ou fechar negócio.
             </p>

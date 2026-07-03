@@ -10,7 +10,6 @@ import {
   Percent,
   PieChart,
   Shield,
-  Sparkles,
   TrendingUp,
 } from "lucide-react";
 import { HomeReveal } from "./home-reveal";
@@ -199,11 +198,7 @@ export function FinancialCalculatorsPromo() {
       />
       <div className="container relative mx-auto grid gap-10 lg:grid-cols-2 lg:items-center lg:gap-12">
         <HomeReveal>
-          <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.2em]" style={{ color: C.gold }}>
-            <Sparkles className="h-4 w-4" aria-hidden />
-            Ferramenta inteligente
-          </div>
-          <h2 className="mt-4 font-serif text-3xl font-bold leading-tight text-white sm:text-4xl lg:text-[2.65rem]">
+          <h2 className="font-serif text-3xl font-bold leading-tight text-white sm:text-4xl lg:text-[2.65rem]">
             Calculadoras Financeiras
           </h2>
           <p className="mt-4 max-w-xl text-base leading-relaxed sm:text-lg" style={{ color: C.muted }}>

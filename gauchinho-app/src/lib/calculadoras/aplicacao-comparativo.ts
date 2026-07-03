@@ -10,6 +10,9 @@ export type PerfilAplicacaoCodigo =
   | "tesouro_ipca"
   | "taxa_manual";
 
+/** Percentual fixo do CDI na calculadora (sem seletor na UI). */
+export const PERCENTUAL_CDI_PADRAO = 100;
+
 export const PERFIS_APLICACAO_CALCULADORA: PerfilAplicacaoCodigo[] = [
   "poupanca",
   "cdi",
@@ -27,10 +30,14 @@ export function buildTaxasPorPerfil(
     taxaManualAnual?: number;
   },
 ): Partial<Record<PerfilAplicacaoCodigo, number>> {
+  const pctCdi =
+    opts.percentualCdi == null || !Number.isFinite(opts.percentualCdi) || opts.percentualCdi <= 0
+      ? PERCENTUAL_CDI_PADRAO
+      : opts.percentualCdi;
   const map: Partial<Record<PerfilAplicacaoCodigo, number>> = {};
   for (const p of PERFIS_APLICACAO_CALCULADORA) {
-    const taxa = taxaMensalAplicacaoFromIndice(p, findIndice(p), opts);
-    if (taxa != null && Number.isFinite(taxa)) map[p] = taxa;
+    const taxa = taxaMensalAplicacaoFromIndice(p, findIndice(p), { ...opts, percentualCdi: pctCdi });
+    if (taxa != null && Number.isFinite(taxa) && taxa > 0) map[p] = taxa;
   }
   return map;
 }

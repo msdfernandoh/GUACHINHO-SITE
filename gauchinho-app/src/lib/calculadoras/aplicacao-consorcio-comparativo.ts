@@ -215,10 +215,14 @@ export function calcularAplicacaoComConsorcio(
     ...input.taxasPorPerfil,
   };
   if (input.perfil !== "comparar_todos" && input.perfil !== "taxa_manual") {
+    const pctCdi =
+      input.percentualCdi == null || !Number.isFinite(input.percentualCdi) || input.percentualCdi <= 0
+        ? 100
+        : input.percentualCdi;
     const atual = taxasPorPerfil[input.perfil];
     if ((atual == null || atual === 0) && input.indicePrincipal) {
       const t = taxaMensalAplicacaoFromIndice(input.perfil, input.indicePrincipal, {
-        percentualCdi: input.percentualCdi,
+        percentualCdi: pctCdi,
         taxaManualMensal: input.taxaManualMensal,
         taxaManualAnual: input.taxaManualAnual,
       });
@@ -228,6 +232,10 @@ export function calcularAplicacaoComConsorcio(
 
   const baseComReajuste = calcularAplicacaoComparativo({
     ...input,
+    percentualCdi:
+      input.percentualCdi == null || !Number.isFinite(input.percentualCdi) || input.percentualCdi <= 0
+        ? 100
+        : input.percentualCdi,
     taxasPorPerfil,
     aumentoAnualAportePercentual: aumentoAnualAporte,
   });

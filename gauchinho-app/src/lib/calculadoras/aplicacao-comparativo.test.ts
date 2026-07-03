@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   calcularAplicacaoComparativo,
+  buildTaxasPorPerfil,
   PERFIS_APLICACAO_CALCULADORA,
+  PERCENTUAL_CDI_PADRAO,
   taxaCdiEfetivaAnual,
 } from "./aplicacao-comparativo";
 import { calcularAplicacaoMensal, aporteMensalNoMes } from "./aplicacao";
@@ -14,6 +16,56 @@ import {
 } from "@/lib/indices-financeiros";
 import { taxaAnualParaMensalPercentual } from "@/lib/indices-financeiros/math";
 import type { IndicePublico } from "@/lib/indices-financeiros/types";
+
+describe("PERCENTUAL_CDI_PADRAO", () => {
+  it("usa 100% do CDI na calculadora", () => {
+    expect(PERCENTUAL_CDI_PADRAO).toBe(100);
+  });
+});
+
+describe("buildTaxasPorPerfil — CDI", () => {
+  const cdi1415: IndicePublico = {
+    codigo: "cdi",
+    nome: "CDI",
+    valor_mensal: null,
+    valor_anual: 14.15,
+    valor_acumulado_12m: 14.15,
+    data_referencia: "2026-07-02",
+    ultima_atualizacao: "2026-07-02",
+    fonte: "test",
+    usando_fallback: false,
+    atualizacao_automatica: true,
+  };
+
+  it("CDI 14,15% a.a. não gera taxa mensal zero", () => {
+    const taxas = buildTaxasPorPerfil((p) => (p === "cdi" ? cdi1415 : null), {});
+    expect(taxas.cdi).toBeDefined();
+    expect(taxas.cdi!).toBeGreaterThan(0);
+  });
+
+  it("percentual inválido cai para 100% do CDI", () => {
+    const taxas = buildTaxasPorPerfil((p) => (p === "cdi" ? cdi1415 : null), { percentualCdi: 0 });
+    expect(taxas.cdi!).toBeGreaterThan(0);
+  });
+
+  it("simulação CDI com índice configurado rende acima de zero", () => {
+    const taxas = buildTaxasPorPerfil((p) => (p === "cdi" ? cdi1415 : null), {
+      percentualCdi: PERCENTUAL_CDI_PADRAO,
+    });
+    const r = calcularAplicacaoComConsorcio({
+      valorInicial: 0,
+      aporteMensal: 500,
+      prazoMeses: 24,
+      perfil: "cdi",
+      percentualCdi: PERCENTUAL_CDI_PADRAO,
+      taxasPorPerfil: taxas,
+      indicePrincipal: cdi1415,
+      compararComConsorcio: false,
+    });
+    expect(r.rendimentoEstimado).toBeGreaterThan(0);
+    expect(r.valorFinalEstimado).toBeGreaterThan(r.totalInvestido);
+  });
+});
 
 describe("PERFIS_APLICACAO_CALCULADORA", () => {
   it("mantém todos os índices", () => {

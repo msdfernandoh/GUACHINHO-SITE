@@ -1,4 +1,4 @@
-import { taxaAnualParaMensalPercentual } from "./math";
+import { taxaAnualParaMensalPercentual, taxaMensalParaAnualPercentual } from "./math";
 import { getIndiceByCodigo, listIndicesFinanceiros } from "./repository";
 import { refreshIndiceAutomatico, refreshTodosAutomaticos } from "./refresh";
 import type { IndiceCodigo, IndiceFinanceiroRow, IndicePublico, IndiceRefreshResult } from "./types";
@@ -67,6 +67,14 @@ export function cdiAnualReferenciaPercentual(indice: IndicePublico | null): numb
   for (const v of [indice.valor_anual, indice.valor_acumulado_12m]) {
     if (v != null && Number.isFinite(v) && v >= 1 && v <= 30) return v;
   }
+  if (
+    indice.valor_mensal != null &&
+    Number.isFinite(indice.valor_mensal) &&
+    indice.valor_mensal >= 0.3 &&
+    indice.valor_mensal <= 2.5
+  ) {
+    return taxaMensalParaAnualPercentual(indice.valor_mensal);
+  }
   return null;
 }
 
@@ -96,7 +104,10 @@ export function taxaMensalAplicacaoFromIndice(
   if (!indice) return null;
 
   if (codigo === "cdi") {
-    const pct = opts.percentualCdi ?? 100;
+    const pct =
+      opts.percentualCdi == null || !Number.isFinite(opts.percentualCdi) || opts.percentualCdi <= 0
+        ? 100
+        : opts.percentualCdi;
     const base = cdiAnualReferenciaPercentual(indice);
     if (base == null) return null;
     return taxaAnualParaMensalPercentual(base * (pct / 100));

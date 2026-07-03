@@ -52,4 +52,16 @@ describe("taxaMensalAplicacaoFromIndice", () => {
     expect(t).toBeCloseTo(taxaAnualParaMensalPercentual(14.15), 1);
     expect(t).toBeLessThan(2);
   });
+
+  it("deriva anual a partir de mensal válido quando anual ausente", () => {
+    const soMensal: IndicePublico = {
+      ...cdi,
+      valor_anual: null,
+      valor_acumulado_12m: null,
+      valor_mensal: 1.11,
+    };
+    expect(cdiAnualReferenciaPercentual(soMensal)).toBeCloseTo(14.15, 0);
+    const t = taxaMensalAplicacaoFromIndice("cdi", soMensal, { percentualCdi: 100 })!;
+    expect(t).toBeCloseTo(1.11, 1);
+  });
 });

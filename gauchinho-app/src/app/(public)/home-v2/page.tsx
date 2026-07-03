@@ -857,7 +857,6 @@ export default function HomeV2() {
         <motion.div variants={fadeUp} initial="hidden" whileInView="visible"
           viewport={{ once: true }}
           className="relative z-10 mx-auto max-w-2xl">
-          <p className="mb-4 text-xs font-bold uppercase tracking-widest" style={{ color: C.gold }}>Próximo passo</p>
           <h2 className="mb-6 text-5xl font-black text-white lg:text-6xl">
             Pronto para realizar<br />
             <span style={{ color: C.gold }}>seu sonho?</span>

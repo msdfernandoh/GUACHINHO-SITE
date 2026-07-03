@@ -14,6 +14,7 @@ import {
 } from "@/lib/calculadoras/aplicacao-consorcio-comparativo";
 import {
   buildTaxasPorPerfil,
+  PERCENTUAL_CDI_PADRAO,
   type PerfilAplicacaoCodigo,
 } from "@/lib/calculadoras/aplicacao-comparativo";
 import { DEFAULT_SIMULADOR_IMOVEL } from "@/lib/config/defaults";
@@ -60,14 +61,12 @@ export function AplicacaoMensalCalculator({ indices, taxaPadrao, prefill, onResu
   const [reajusteCredito, setReajusteCredito] = useState("6");
   const [parcelaReduzidaPct, setParcelaReduzidaPct] = useState(PARCELA_REDUZIDA_PADRAO);
   const [prazoConsorcio, setPrazoConsorcio] = useState("220");
-  const [perfil, setPerfil] = useState<PerfilAplicacaoCodigo | "comparar_todos">("cdi");
-  const [cdiPreset, setCdiPreset] = useState("100");
-  const [percentualCdiManual, setPercentualCdiManual] = useState("100");
+  const [perfil, setPerfil] = useState<PerfilAplicacaoCodigo | "comparar_todos">("poupanca");
   const [taxaManual, setTaxaManual] = useState(String(taxaPadrao));
   const [taxaManualTipo, setTaxaManualTipo] = useState<"mensal" | "anual">("mensal");
   const [result, setResult] = useState<ReturnType<typeof calcularAplicacaoComConsorcio> | null>(null);
 
-  const percentualCdi = cdiPreset === "custom" ? num(percentualCdiManual) : num(cdiPreset);
+  const percentualCdi = PERCENTUAL_CDI_PADRAO;
 
   const taxaManualOpts = useMemo(
     () => ({
@@ -148,7 +147,7 @@ export function AplicacaoMensalCalculator({ indices, taxaPadrao, prefill, onResu
             <div className="mt-4 rounded-xl border border-slate-700/80 bg-slate-950/40 px-4 py-3 text-xs text-slate-400">
               {perfil === "cdi" && taxaInfo.cdiAnualBasePercentual != null ? (
                 <p>
-                  CDI {taxaInfo.cdiAnualBasePercentual.toFixed(2)}% a.a. · {percentualCdi}% →{" "}
+                  CDI {taxaInfo.cdiAnualBasePercentual.toFixed(2)}% a.a. · CDI 100% →{" "}
                   {taxaInfo.taxaAnualPercentual?.toFixed(2)}% a.a.
                   {taxaInfo.taxaMensalPercentual != null
                     ? ` (${taxaInfo.taxaMensalPercentual.toFixed(2)}% a.m.)`
@@ -215,29 +214,6 @@ export function AplicacaoMensalCalculator({ indices, taxaPadrao, prefill, onResu
                   <option value="comparar_todos">Comparar todos</option>
                 </Select>
               </div>
-              {perfil === "cdi" || perfil === "comparar_todos" ? (
-                <div>
-                  <Label className="text-sm font-medium text-slate-200">Percentual do CDI</Label>
-                  <Select
-                    value={cdiPreset}
-                    onChange={(e) => setCdiPreset(e.target.value)}
-                    className={cn("mt-2 min-h-11", surfaceSelectDark)}
-                  >
-                    <option value="100">100% do CDI</option>
-                    <option value="90">90% do CDI</option>
-                    <option value="110">110% do CDI</option>
-                    <option value="custom">Manual</option>
-                  </Select>
-                  {cdiPreset === "custom" ? (
-                    <Input
-                      className={cn("mt-2 min-h-11", surfaceInputDarkSlate)}
-                      value={percentualCdiManual}
-                      onChange={(e) => setPercentualCdiManual(e.target.value)}
-                      placeholder="% do CDI"
-                    />
-                  ) : null}
-                </div>
-              ) : null}
               {perfil === "taxa_manual" || perfil === "comparar_todos" ? (
                 <>
                   <div>
