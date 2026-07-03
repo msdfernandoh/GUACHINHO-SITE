@@ -1,5 +1,14 @@
 const DEFAULT_TITLE = "GAUCHINHO";
 const DEFAULT_SUBTITLE = "Consórcios e soluções financeiras";
+/** Tagline curta exibida no header público (wordmark). */
+export const PUBLIC_HEADER_TAGLINE = "Consórcios";
+
+/**
+ * No header, exibir só "Consórcios" (sem "e soluções financeiras").
+ */
+export function publicHeaderTagline(_subtitulo?: string | null): string {
+  return PUBLIC_HEADER_TAGLINE;
+}
 
 /** Ícone estático ao lado do wordmark (quando não há logo upload). */
 export const PUBLIC_LOGO_MASCOT_SRC = "/foto/ICONE.svg";

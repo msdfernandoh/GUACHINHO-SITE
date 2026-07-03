@@ -1,7 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { cn } from "@/lib/utils/cn";
-import { PUBLIC_LOGO_MASCOT_SRC } from "@/lib/brand/public-logo-text";
+import { PUBLIC_LOGO_MASCOT_SRC, publicHeaderTagline } from "@/lib/brand/public-logo-text";
 
 export type PublicLogoProps = {
   href?: string;
@@ -26,6 +26,8 @@ export function PublicLogo({
   showMascot = true,
   mascotSrc = PUBLIC_LOGO_MASCOT_SRC,
 }: PublicLogoProps) {
+  const tagline = publicHeaderTagline(subtitle);
+
   const titleClass =
     size === "sm"
       ? "text-lg font-black tracking-[0.14em] sm:text-xl"
@@ -33,8 +35,8 @@ export function PublicLogo({
 
   const subClass =
     size === "sm"
-      ? "text-[7px] font-semibold uppercase leading-[1.25] tracking-[0.06em] text-zinc-400 sm:text-[7.5px]"
-      : "text-[7px] font-semibold uppercase leading-[1.25] tracking-[0.07em] text-zinc-400 sm:text-[8px] md:text-[8.5px]";
+      ? "text-[11px] font-bold uppercase tracking-[0.14em] text-white sm:text-xs"
+      : "text-xs font-bold uppercase tracking-[0.16em] text-white sm:text-sm";
 
   const mascotSize = size === "sm" ? "h-9 w-9" : "h-11 w-11 sm:h-12 sm:w-12";
 
@@ -42,7 +44,7 @@ export function PublicLogo({
     <Link
       href={href}
       className={cn(
-        "group inline-flex max-w-[min(100%,13.5rem)] shrink-0 items-center gap-2 transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-500 sm:max-w-[14.5rem] md:max-w-[15.5rem] lg:max-w-[16.5rem]",
+        "group inline-flex max-w-[min(100%,12rem)] shrink-0 items-center gap-2.5 transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-500 sm:max-w-[13rem]",
         className,
       )}
       aria-label="Gauchinho — voltar ao início"
@@ -73,23 +75,18 @@ export function PublicLogo({
               />
             </span>
           ) : null}
-          <span className="flex min-w-0 flex-col">
+          <span className="flex min-w-0 flex-col items-center text-center">
             <span
               className={cn(
                 titleClass,
-                "bg-gradient-to-r from-amber-200 to-amber-500 bg-clip-text text-transparent group-hover:from-amber-100 group-hover:to-amber-400",
+                "w-full bg-gradient-to-r from-amber-200 to-amber-500 bg-clip-text text-transparent group-hover:from-amber-100 group-hover:to-amber-400",
               )}
             >
               {title.toUpperCase()}
             </span>
-            {subtitle ? (
-              <span
-                className={cn(
-                  subClass,
-                  "mt-0.5 hidden max-w-[8.25rem] whitespace-normal sm:block sm:max-w-[8.75rem] md:max-w-[9.25rem] lg:max-w-[10rem]",
-                )}
-              >
-                {subtitle}
+            {tagline ? (
+              <span className={cn(subClass, "mt-0.5 hidden w-full whitespace-nowrap sm:block")}>
+                {tagline.toUpperCase()}
               </span>
             ) : null}
           </span>
