@@ -8,6 +8,28 @@ import {
   type ConfigLinhaSimulacaoGrupo,
 } from "@/lib/grupos/simulacao-linha";
 import { parcelaTipoFromModalidade } from "@/lib/grupos/modalidades-admin";
+import { parseBRLMoney } from "@/lib/formatters/money";
+
+/** Valor em R$ a partir do texto do campo (máscara BRL ou número simples). */
+export function parseRecursoProprioValorInput(raw: string): number {
+  const trimmed = raw.trim();
+  if (!trimmed) return 0;
+  if (/R\$|[,.]/.test(trimmed)) {
+    const fromMask = parseBRLMoney(trimmed);
+    return fromMask != null ? Math.max(0, fromMask) : 0;
+  }
+  const digits = trimmed.replace(/\D/g, "");
+  if (!digits) return 0;
+  const n = parseInt(digits, 10);
+  return Number.isFinite(n) ? Math.max(0, n) : 0;
+}
+
+export function parseRecursoProprioPercentualInput(raw: string): number {
+  const trimmed = raw.trim().replace(",", ".");
+  if (!trimmed) return 0;
+  const n = Number(trimmed);
+  return Number.isFinite(n) ? Math.max(0, n) : 0;
+}
 
 export function minimoRecursoValor(saldoDevedor: number, pct: number) {
   return Math.round(saldoDevedor * (pct / 100) * 100) / 100;
@@ -87,7 +109,10 @@ export function createGrupoLinhaHandlers(
   }
 
   function onRecursoInputChange(raw: string) {
-    let v = Number(raw) || 0;
+    let v =
+      config.recursoProprioModo === "valor"
+        ? parseRecursoProprioValorInput(raw)
+        : parseRecursoProprioPercentualInput(raw);
     if (config.recursoProprioModo === "percentual" && pctMinRecurso > 0) {
       v = Math.max(v, pctMinRecurso);
     }

@@ -12,7 +12,7 @@ import {
   createGrupoLinhaHandlers,
   useGrupoLinhaCalculo,
 } from "@/components/public/grupos/use-grupo-linha";
-import { MoneyValue, CompactSelect } from "@/components/public/grupos/grupos-primitives";
+import { MoneyValue, CompactSelect, CompactMoneyInput } from "@/components/public/grupos/grupos-primitives";
 import {
   formatCustoEfetivoAnual,
   formatCustoEfetivoMensal,
@@ -139,16 +139,28 @@ export function GrupoRowAdjustments({ grupo, cotas, modalidades, config, onChang
                 <option value="percentual">%</option>
                 <option value="valor">R$</option>
               </Select>
-              <Input
-                type="number"
-                step="0.01"
-                min={
-                  config.recursoProprioModo === "percentual" && pctMinRecurso > 0 ? pctMinRecurso : 0
-                }
-                className="h-8 flex-1 border-zinc-700 bg-zinc-950 text-xs text-zinc-100"
-                value={config.recursoProprioInput}
-                onChange={(e) => handlers.onRecursoInputChange(e.target.value)}
-              />
+              {config.recursoProprioModo === "valor" ? (
+                <CompactMoneyInput
+                  className="h-8 min-w-0 flex-1"
+                  value={config.recursoProprioInput}
+                  onValueChange={(v) => {
+                    if (v <= 0) {
+                      handlers.patch({ usaRecursoProprio: false, recursoProprioInput: 0 });
+                      return;
+                    }
+                    handlers.patch({ usaRecursoProprio: true, recursoProprioInput: v });
+                  }}
+                />
+              ) : (
+                <Input
+                  type="number"
+                  step="0.01"
+                  min={pctMinRecurso > 0 ? pctMinRecurso : 0}
+                  className="h-8 flex-1 border-zinc-700 bg-zinc-950 text-xs text-zinc-100"
+                  value={config.recursoProprioInput || ""}
+                  onChange={(e) => handlers.onRecursoInputChange(e.target.value)}
+                />
+              )}
             </div>
           ) : null}
           {config.usaRecursoProprio ? (

@@ -1,7 +1,9 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils/cn";
 import { formatCurrency } from "@/lib/utils/format";
+import { formatBRL, maskBRLMoneyInput, parseBRLMoney } from "@/lib/formatters/money";
 
 export const GRUPO_TABLE_COLSPAN = 15;
 
@@ -75,6 +77,51 @@ export function CompactNumberInput({
   ...props
 }: React.InputHTMLAttributes<HTMLInputElement>) {
   return <input className={cn(compactField, "w-14", className)} {...props} />;
+}
+
+type CompactMoneyInputProps = {
+  value: number;
+  onValueChange: (value: number) => void;
+  className?: string;
+  placeholder?: string;
+};
+
+/** Campo compacto da tabela de grupos — mesma máscara BRL do MoneyInput. */
+export function CompactMoneyInput({
+  value,
+  onValueChange,
+  className,
+  placeholder = "R$ 0,00",
+}: CompactMoneyInputProps) {
+  const [display, setDisplay] = useState(() => (value > 0 ? formatBRL(value) : ""));
+
+  useEffect(() => {
+    const formatted = value > 0 ? formatBRL(value) : "";
+    setDisplay((prev) => {
+      const parsedPrev = parseBRLMoney(prev);
+      if (parsedPrev === value && prev === formatted) return prev;
+      if (value <= 0 && prev === "") return prev;
+      return formatted;
+    });
+  }, [value]);
+
+  return (
+    <input
+      inputMode="numeric"
+      className={cn(compactField, className)}
+      value={display}
+      placeholder={placeholder}
+      onChange={(e) => {
+        const masked = maskBRLMoneyInput(e.target.value);
+        setDisplay(masked);
+        onValueChange(parseBRLMoney(masked) ?? 0);
+      }}
+      onBlur={() => {
+        if (value > 0) setDisplay(formatBRL(value));
+        else setDisplay("");
+      }}
+    />
+  );
 }
 
 export function Th({

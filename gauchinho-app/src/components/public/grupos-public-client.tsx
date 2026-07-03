@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { Search, Sparkles } from "lucide-react";
+import { Search } from "lucide-react";
 import type { PublicGrupoAggregate } from "@/lib/types";
 import { MODALIDADE_FILTRO_PUBLICO } from "@/lib/types";
 import {
@@ -17,7 +17,8 @@ import { Button, Input, surfaceInputDark } from "@/components/ui/form-primitives
 import { GrupoMobileCard } from "@/components/public/grupos/grupo-mobile-card";
 import { GrupoTotalsBar } from "@/components/public/grupos/grupo-totals-bar";
 import { GruposTable } from "@/components/public/grupos/grupos-table";
-import { MascoteGauchinho } from "@/components/public/mascote-gauchinho";
+import { PublicPremiumHero } from "@/components/public/public-premium-hero";
+import { simuladorShell } from "@/components/simulador/simulador-ui";
 import { useLockBodyScroll } from "@/lib/ui/use-lock-body-scroll";
 
 type ModalFiltro = (typeof MODALIDADE_FILTRO_PUBLICO)[number]["value"];
@@ -46,7 +47,6 @@ export function GruposPublicClient({
     return init;
   });
   const [modalOpen, setModalOpen] = useState(false);
-  const [modalAcao, setModalAcao] = useState<"simulacao" | "proposta" | "especialista">("simulacao");
   const [nome, setNome] = useState("");
   const [whatsapp, setWhatsapp] = useState("");
   const [loading, setLoading] = useState(false);
@@ -102,14 +102,11 @@ export function GruposPublicClient({
     setConfigs((prev) => ({ ...prev, [grupoId]: config }));
   }
 
-  function openModal(acao: typeof modalAcao) {
+  function openPropostaModal() {
     if (!hasSelection) {
-      if (acao === "simulacao") {
-        setToastMsg("Informe cota e quantidade (mín. 1) em ao menos um grupo.");
-      }
+      setToastMsg("Informe cota e quantidade (mín. 1) em ao menos um grupo.");
       return;
     }
-    setModalAcao(acao);
     setModalOpen(true);
     setResultMsg(null);
     setPdfLink(null);
@@ -128,7 +125,7 @@ export function GruposPublicClient({
         body: JSON.stringify({
           nome,
           whatsapp: digitsOnlyPhone(whatsapp),
-          acao: modalAcao,
+          acao: "proposta",
           selecoes: linhasAtivas.map((s) => ({
             grupoId: s.grupoId,
             cotaId: s.cotaId,
@@ -140,11 +137,7 @@ export function GruposPublicClient({
       if (!res.ok) throw new Error(data.error ?? "Falha");
       const pdfHref = (data.pdfPath as string) ?? (data.pdfDownloadUrl as string) ?? null;
       setPdfLink(pdfHref);
-      setResultMsg(
-        modalAcao === "proposta"
-          ? `Proposta criada. Crédito líquido: ${formatCurrency(data.creditoLiquido)}`
-          : `Simulação salva. Crédito líquido: ${formatCurrency(data.creditoLiquido)}`,
-      );
+      setResultMsg(`Proposta criada. Crédito líquido: ${formatCurrency(data.creditoLiquido)}`);
       setModalOpen(false);
     } catch (err) {
       setResultMsg(err instanceof Error ? err.message : "Erro ao enviar");
@@ -154,25 +147,13 @@ export function GruposPublicClient({
   }
 
   return (
-    <div className="bg-zinc-950 pb-52 text-zinc-100 md:pb-48">
+    <div className={cn(simuladorShell, "pb-[22rem] sm:pb-[20rem] lg:pb-[18rem]")}>
       <div className="mx-auto max-w-[1600px] px-4 py-8 md:px-6">
-        <div className="mb-6 text-center md:mb-8">
-          <div className="mx-auto flex max-w-3xl items-start justify-center gap-3">
-            <MascoteGauchinho variant="compact" className="mt-1 shrink-0" />
-            <div>
-          <p className="inline-flex items-center gap-2 text-sm text-amber-400">
-            <Sparkles className="h-4 w-4" /> Simulador premium
-          </p>
-          <h1 className="mt-2 text-3xl font-bold tracking-tight text-white md:text-4xl">
-            Nossos Grupos
-          </h1>
-          <p className="mx-auto mt-2 max-w-2xl text-sm text-zinc-400 md:text-base">
-            Planilha inteligente: compare grupos na linha e use <strong className="font-medium text-zinc-300">Ajustar</strong>{" "}
-            para modalidades de lance e recurso próprio.
-          </p>
-            </div>
-          </div>
-        </div>
+        <PublicPremiumHero
+          eyebrow="Gauchinho · Grupos"
+          title="Nossos Grupos"
+          subtitle="Planilha inteligente: compare grupos na linha e use Ajustar para modalidades de lance e recurso próprio."
+        />
 
         <div className="mb-4 flex flex-wrap items-center gap-2 md:mb-5">
           {MODALIDADE_FILTRO_PUBLICO.map((m) => (
@@ -248,13 +229,10 @@ export function GruposPublicClient({
 
       <GrupoTotalsBar
         totais={totais}
-        hasSelection={hasSelection}
         toastMsg={toastMsg}
         resultMsg={resultMsg}
         pdfLink={pdfLink}
-        onSimulacao={() => openModal("simulacao")}
-        onProposta={() => openModal("proposta")}
-        onEspecialista={() => openModal("especialista")}
+        onProposta={openPropostaModal}
       />
 
       {modalOpen ? (

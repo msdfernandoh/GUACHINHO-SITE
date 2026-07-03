@@ -3,7 +3,12 @@
 import type { GrupoModalidadeLance } from "@/lib/types";
 import type { ConfigLinhaSimulacaoGrupo } from "@/lib/grupos/simulacao-linha";
 import { cn } from "@/lib/utils/cn";
-import { CompactNumberInput, CompactSelect, MoneyValue } from "@/components/public/grupos/grupos-primitives";
+import {
+  CompactMoneyInput,
+  CompactNumberInput,
+  CompactSelect,
+  MoneyValue,
+} from "@/components/public/grupos/grupos-primitives";
 
 type EmbutidoHandlers = {
   clearLanceEmbutido: () => void;
@@ -70,7 +75,7 @@ export function GrupoRecursoProprioCell({
   pctMinRecurso: number;
 }) {
   const modo = config.recursoProprioModo;
-  const inputVal = config.recursoProprioInput > 0 ? config.recursoProprioInput : "";
+  const pctInputVal = config.recursoProprioInput > 0 ? config.recursoProprioInput : "";
 
   return (
     <div className="flex min-w-[92px] flex-col gap-1">
@@ -112,22 +117,36 @@ export function GrupoRecursoProprioCell({
           R$
         </button>
       </div>
-      <CompactNumberInput
-        className="w-full min-w-[72px]"
-        min={0}
-        step={modo === "percentual" ? 0.01 : 1}
-        placeholder={modo === "percentual" ? "%" : "R$"}
-        value={inputVal}
-        onChange={(e) => {
-          const raw = e.target.value;
-          if (!raw.trim()) {
-            handlers.patch({ usaRecursoProprio: false, recursoProprioInput: 0 });
-            return;
-          }
-          handlers.patch({ usaRecursoProprio: true });
-          handlers.onRecursoInputChange(raw);
-        }}
-      />
+      {modo === "valor" ? (
+        <CompactMoneyInput
+          className="w-full min-w-[88px]"
+          value={config.recursoProprioInput}
+          onValueChange={(v) => {
+            if (v <= 0) {
+              handlers.patch({ usaRecursoProprio: false, recursoProprioInput: 0 });
+              return;
+            }
+            handlers.patch({ usaRecursoProprio: true, recursoProprioInput: v });
+          }}
+        />
+      ) : (
+        <CompactNumberInput
+          className="w-full min-w-[72px]"
+          min={0}
+          step={0.01}
+          placeholder="%"
+          value={pctInputVal}
+          onChange={(e) => {
+            const raw = e.target.value;
+            if (!raw.trim()) {
+              handlers.patch({ usaRecursoProprio: false, recursoProprioInput: 0 });
+              return;
+            }
+            handlers.patch({ usaRecursoProprio: true });
+            handlers.onRecursoInputChange(raw);
+          }}
+        />
+      )}
       {config.usaRecursoProprio && resultado.recursoProprio > 0 ? (
         <MoneyValue value={resultado.recursoProprio} compact className="text-zinc-200" />
       ) : pctMinRecurso > 0 && config.usaLanceEmbutido ? (
