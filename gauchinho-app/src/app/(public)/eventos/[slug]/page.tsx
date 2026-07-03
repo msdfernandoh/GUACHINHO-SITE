@@ -33,6 +33,8 @@ export default async function EventoSlugPage({ params }: Props) {
     countVagasUsadasEvento(evento.id),
   ]);
   const restantes = vagasRestantes(evento.limite_participantes, vagasUsadas);
+  const inscricaoExterna =
+    (evento.inscricao_tipo ?? "interno") === "externo" && Boolean(evento.inscricao_url_externa?.trim());
 
   return (
     <ConteudoPageShell>
@@ -103,11 +105,22 @@ export default async function EventoSlugPage({ params }: Props) {
                   : null}
             </p>
           ) : null}
-          <EventoInscricaoForm
-            slug={evento.slug}
-            permitirAcompanhante={evento.permitir_acompanhante}
-            exigirConvidou={evento.exigir_convidou}
-          />
+          {inscricaoExterna ? (
+            <a
+              href={evento.inscricao_url_externa!}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex min-h-12 w-full items-center justify-center rounded-xl bg-amber-500 px-4 text-center text-base font-bold text-zinc-950 transition hover:bg-amber-400 active:scale-[0.98]"
+            >
+              Inscrever-se no site parceiro
+            </a>
+          ) : (
+            <EventoInscricaoForm
+              slug={evento.slug}
+              permitirAcompanhante={evento.permitir_acompanhante}
+              exigirConvidou={evento.exigir_convidou}
+            />
+          )}
         </aside>
       </div>
     </ConteudoPageShell>

@@ -31,6 +31,8 @@ export type EventoRow = {
   mostrar_vagas: boolean;
   mensagem_confirmacao: string | null;
   observacoes_internas: string | null;
+  inscricao_tipo?: "interno" | "externo";
+  inscricao_url_externa?: string | null;
   created_at: string;
   updated_at: string;
 };

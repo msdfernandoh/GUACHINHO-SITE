@@ -7,6 +7,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { requireUsuario } from "@/lib/auth/get-usuario";
 import { canManageImobiliarias } from "@/lib/auth/permissions";
 import { slugify } from "@/lib/utils/slug";
+import { uploadImagemPublica } from "@/lib/storage/imagens";
 import type { EventoParticipanteRow, EventoPostRow, EventoRow, ParticipanteStatus } from "@/lib/comercial-eventos/types";
 import { somarVagasUsadas, STATUS_OCUPA_VAGA } from "@/lib/comercial-eventos/vagas";
 
@@ -21,9 +22,31 @@ function intOrNull(formData: FormData, name: string): number | null {
   return Number.isFinite(n) && n > 0 ? n : null;
 }
 
+function strForm(formData: FormData, name: string): string {
+  return String(formData.get(name) ?? "").trim();
+}
+
+function inscricaoFromForm(formData: FormData) {
+  const tipo = strForm(formData, "inscricao_tipo") === "externo" ? "externo" : "interno";
+  const url = strForm(formData, "inscricao_url_externa") || null;
+  if (tipo === "externo") {
+    if (!url) throw new Error("Informe o link externo de inscrição.");
+    try {
+      const parsed = new URL(url);
+      if (!["http:", "https:"].includes(parsed.protocol)) {
+        throw new Error("URL inválida");
+      }
+    } catch {
+      throw new Error("Informe uma URL externa válida (http ou https).");
+    }
+  }
+  return { inscricao_tipo: tipo as "interno" | "externo", inscricao_url_externa: tipo === "externo" ? url : null };
+}
+
 function eventoFromForm(formData: FormData) {
   const nome = String(formData.get("nome") ?? "").trim();
   if (!nome) throw new Error("Nome obrigatório");
+  const inscricao = inscricaoFromForm(formData);
   return {
     nome,
     slug: slugify(String(formData.get("slug") ?? nome)),
@@ -46,7 +69,29 @@ function eventoFromForm(formData: FormData) {
     mostrar_vagas: boolForm(formData, "mostrar_vagas"),
     mensagem_confirmacao: String(formData.get("mensagem_confirmacao") ?? "").trim() || null,
     observacoes_internas: String(formData.get("observacoes_internas") ?? "").trim() || null,
+    ...inscricao,
   };
+}
+
+const EVENTO_IMAGE_MIME = new Set(["image/jpeg", "image/png", "image/webp"]);
+
+export async function uploadEventoImagemAction(formData: FormData) {
+  const u = await requireUsuario();
+  if (!canManageImobiliarias(u.perfil)) throw new Error("Sem permissão");
+  const kind = strForm(formData, "kind");
+  if (kind !== "capa" && kind !== "banner") throw new Error("Tipo de imagem inválido");
+  const file = formData.get("file");
+  if (!(file instanceof File) || file.size === 0) throw new Error("Arquivo inválido");
+  if (file.size > 5 * 1024 * 1024) throw new Error("Arquivo maior que 5 MB.");
+  if (file.type && !EVENTO_IMAGE_MIME.has(file.type)) {
+    throw new Error("Formato inválido. Use JPEG, PNG ou WebP.");
+  }
+  const slugHint = slugify(strForm(formData, "slug_hint") || "evento") || "evento";
+  const date = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+  const id = crypto.randomUUID().slice(0, 8);
+  const folder = kind === "capa" ? "capas" : "banners";
+  const path = `${folder}/${date}-${slugHint}-${id}`;
+  return uploadImagemPublica("eventos", path, file);
 }
 
 async function syncEventoDestaque(admin: ReturnType<typeof createAdminClient>, eventoId: string, destaque: boolean) {

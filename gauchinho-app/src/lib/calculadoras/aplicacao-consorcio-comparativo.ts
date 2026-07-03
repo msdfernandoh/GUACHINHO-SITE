@@ -30,7 +30,7 @@ export const TEXTO_PARCELA_REDUZIDA_COMPARATIVO =
   "A comparação usa a parcela reduzida inicial do consórcio como referência para aproximar o valor do aporte mensal. O crédito estimado considera uma parcela reduzida inicial próxima ao aporte mensal informado. A parcela integral é exibida apenas como referência da parcela cheia do plano.";
 
 export const TEXTO_PRAZO_COMPARACAO_CONSORCIO =
-  "O prazo do consórcio é usado para estimar a parcela reduzida. A valorização do crédito é projetada pelo mesmo período da aplicação.";
+  "A parcela é estimada com base no prazo do consórcio configurado. Já o crédito reajustado acima é projetado pelo mesmo período da aplicação.";
 
 export type TaxaIndiceAplicacaoInfo = {
   perfil: PerfilAplicacaoCodigo;

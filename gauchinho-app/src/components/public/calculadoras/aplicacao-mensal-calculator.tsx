@@ -396,8 +396,8 @@ export function AplicacaoMensalCalculator({ indices, taxaPadrao, prefill, onResu
                       value: `${result!.consorcio.reajusteAnualCreditoPercentual.toFixed(2)}% a.a.`,
                     },
                     {
-                      label: "Prazo do consórcio",
-                      value: `${result!.consorcio.prazoConsorcioMeses} meses`,
+                      label: "Período comparado",
+                      value: `${result!.consorcio.periodoComparacaoMeses} meses`,
                     },
                   ]}
                   extra={

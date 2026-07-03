@@ -45,9 +45,9 @@ export function CalculatorResultCard({
       <p className="text-xs font-bold uppercase tracking-[0.2em] text-amber-400/95">{title}</p>
 
       {heroMetric ? (
-        <div className="mt-5 rounded-2xl border border-amber-400/30 bg-slate-950/50 px-4 py-5 text-center sm:px-6">
+        <div className="mt-5 min-w-0 rounded-2xl border border-amber-400/30 bg-slate-950/50 px-3 py-4 text-center sm:px-5 sm:py-5">
           <p className="text-xs font-medium uppercase tracking-wide text-slate-400">{heroMetric.label}</p>
-          <p className="mt-2 text-3xl font-black tracking-tight text-amber-400 sm:text-4xl">
+          <p className="mt-2 break-words text-2xl font-black leading-tight tracking-tight text-amber-400 sm:text-3xl lg:text-3xl xl:text-4xl">
             {heroMetric.value}
           </p>
         </div>
