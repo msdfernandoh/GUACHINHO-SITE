@@ -7,7 +7,12 @@ export const metadata: Metadata = {
   description: "Indique um ou mais clientes para o Gauchinho Consórcios.",
 };
 
-export default function IndicarPage() {
+export default async function IndicarPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ origem?: string }>;
+}) {
+  const { origem } = await searchParams;
   return (
     <ConteudoPageShell>
       <ConteudoHero
@@ -15,7 +20,7 @@ export default function IndicarPage() {
         title="Indicar cliente"
         subtitle="Preencha quem indicou uma vez e adicione quantos indicados precisar."
       />
-      <IndicacaoForm />
+      <IndicacaoForm origem={origem} />
     </ConteudoPageShell>
   );
 }

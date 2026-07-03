@@ -28,8 +28,9 @@ function emptyIndicado(): IndicadoForm {
   };
 }
 
-export function IndicacaoForm() {
+export function IndicacaoForm({ origem }: { origem?: string | null }) {
   const [indicadorNome, setIndicadorNome] = useState("");
+  const [indicadorTelefone, setIndicadorTelefone] = useState("");
   const [indicadorEmpresa, setIndicadorEmpresa] = useState("");
   const [indicados, setIndicados] = useState<IndicadoForm[]>(() => [emptyIndicado()]);
   const [loading, setLoading] = useState(false);
@@ -51,7 +52,9 @@ export function IndicacaoForm() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           indicadorNome,
+          indicadorTelefone: indicadorTelefone.trim() || undefined,
           indicadorEmpresa: indicadorEmpresa || undefined,
+          origem: origem?.trim() || undefined,
           indicados: indicados.map(({ nome, whatsapp, tipoCredito, valorCredito, observacao }) => ({
             nome,
             whatsapp,
@@ -88,6 +91,17 @@ export function IndicacaoForm() {
             required
             value={indicadorNome}
             onChange={(e) => setIndicadorNome(e.target.value)}
+            className={cn("mt-1", surfaceInputDarkSlate)}
+          />
+        </div>
+        <div>
+          <Label>Telefone / WhatsApp de quem indicou</Label>
+          <Input
+            inputMode="tel"
+            autoComplete="tel"
+            placeholder="(66) 99999-9999"
+            value={indicadorTelefone}
+            onChange={(e) => setIndicadorTelefone(formatWhatsappBrInput(e.target.value))}
             className={cn("mt-1", surfaceInputDarkSlate)}
           />
         </div>

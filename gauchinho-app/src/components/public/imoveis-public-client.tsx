@@ -12,7 +12,6 @@ import { cn } from "@/lib/utils/cn";
 import { formatCurrency } from "@/lib/utils/format";
 import { Button, Input, Label, Select, surfaceInputDark, surfaceSelectDark } from "@/components/ui/form-primitives";
 import { PublicPremiumHero } from "@/components/public/public-premium-hero";
-import { EspecialistaLeadModal } from "@/components/public/especialista-lead-modal";
 import { simuladorShell } from "@/components/simulador/simulador-ui";
 
 type Filters = {
@@ -47,7 +46,6 @@ export function ImoveisPublicClient({
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [waLink, setWaLink] = useState<string | null>(null);
-  const [propostaModalOpen, setPropostaModalOpen] = useState(false);
 
   const imoveisPorImob = useMemo(() => {
     const m = new Map<string, number>();
@@ -140,14 +138,15 @@ export function ImoveisPublicClient({
         />
 
         <div className="mb-8 flex justify-center">
-          <Button
-            type="button"
-            variant="gold"
-            className="min-h-12 w-full max-w-md px-8 text-base font-bold sm:w-auto"
-            onClick={() => setPropostaModalOpen(true)}
-          >
-            Solicitar proposta
-          </Button>
+          <Link href="/indicar?origem=imobiliarias">
+            <Button
+              type="button"
+              variant="gold"
+              className="min-h-12 w-full max-w-md px-8 text-base font-bold sm:w-auto"
+            >
+              Solicitar proposta
+            </Button>
+          </Link>
         </div>
 
         <div className="grid gap-3 rounded-xl border border-zinc-800 bg-zinc-900/50 p-4 md:grid-cols-3 lg:grid-cols-4">
@@ -293,7 +292,6 @@ export function ImoveisPublicClient({
         </div>
       )}
 
-      <EspecialistaLeadModal open={propostaModalOpen} onClose={() => setPropostaModalOpen(false)} />
     </div>
   );
 }

@@ -49,6 +49,7 @@ export default async function LeadDetailPage({
     evento_nome?: string | null;
     parceiro_indicador_nome?: string | null;
     parceiro_indicador_empresa?: string | null;
+    parceiro_indicador_telefone?: string | null;
   };
 
   const updateWithId = updateLeadAction.bind(null, id);
@@ -101,6 +102,9 @@ export default async function LeadDetailPage({
             <p className="mt-1">
               <span className="font-semibold">Quem convidou:</span> {leadEvento.parceiro_indicador_nome}
               {leadEvento.parceiro_indicador_empresa ? ` (${leadEvento.parceiro_indicador_empresa})` : ""}
+              {leadEvento.parceiro_indicador_telefone ? (
+                <> · Tel. {leadEvento.parceiro_indicador_telefone}</>
+              ) : null}
             </p>
           ) : null}
         </section>
