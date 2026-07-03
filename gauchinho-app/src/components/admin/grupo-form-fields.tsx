@@ -1,4 +1,5 @@
-import { Button, Input, Label, Select, Textarea } from "@/components/ui/form-primitives";
+import { AdminFormSubmitButton } from "@/components/admin/admin-form-submit-button";
+import { Input, Label, Select, Textarea } from "@/components/ui/form-primitives";
 import { MODALIDADES_GRUPO } from "@/lib/types";
 import { GrupoModalidadesEditor } from "@/components/admin/grupo-modalidades-editor";
 import { GrupoPrazoAdminPreview } from "@/components/admin/grupo-prazo-admin-preview";
@@ -214,9 +215,7 @@ export function GrupoFormFields({
         </p>
       </section>
       <div className="flex justify-end">
-        <Button type="submit" variant="gold">
-          Salvar grupo
-        </Button>
+        <AdminFormSubmitButton variant="gold" label="Salvar grupo" />
       </div>
     </>
   );

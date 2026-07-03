@@ -1,5 +1,6 @@
 import { createLeadManualAction, fetchSrdOptions } from "../actions";
-import { Button, Input, Label, Select, Textarea } from "@/components/ui/form-primitives";
+import { AdminFormSubmitButton } from "@/components/admin/admin-form-submit-button";
+import { Input, Label, Select, Textarea } from "@/components/ui/form-primitives";
 import { TIPOS_INTERESSE } from "@/lib/types";
 import Link from "next/link";
 
@@ -66,7 +67,7 @@ export default async function NovoLeadPage() {
           <Label>Observações</Label>
           <Textarea name="observacoes" rows={3} />
         </div>
-        <Button type="submit">Salvar lead</Button>
+        <AdminFormSubmitButton label="Salvar lead" />
       </form>
     </div>
   );

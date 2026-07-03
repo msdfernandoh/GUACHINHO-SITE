@@ -1,6 +1,7 @@
 import type { DicaTche } from "@/lib/conteudo/types";
 import { DICA_CATEGORIAS } from "@/lib/conteudo/types";
 import { ConteudoImageField } from "./conteudo-image-field";
+import { AdminFormSubmitButton } from "@/components/admin/admin-form-submit-button";
 import { Button, Input, Label, Textarea } from "@/components/ui/form-primitives";
 import { slugify } from "@/lib/utils/slug";
 
@@ -73,16 +74,24 @@ export function DicaTcheForm({ action, initial, deleteAction }: Props) {
         <label className="flex items-center gap-2 text-sm">
           <input type="checkbox" name="publicado" defaultChecked={initial?.publicado ?? false} /> Publicado
         </label>
-        <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" name="destaque" defaultChecked={initial?.destaque ?? false} /> Destaque
+        <label className="flex flex-col gap-1 text-sm sm:flex-row sm:items-center sm:gap-2">
+          <span className="flex items-center gap-2">
+            <input type="checkbox" name="destaque" defaultChecked={initial?.destaque ?? false} /> Fixar na Home
+          </span>
+          <span className="text-xs text-zinc-500">
+            Dicas fixadas aparecem primeiro na seção Dicas do Tchê da página inicial.
+          </span>
         </label>
       </div>
       <div className="flex gap-3">
-        <Button type="submit">Salvar</Button>
+        <AdminFormSubmitButton label="Salvar" />
         {initial?.id && deleteAction ? (
-          <Button type="submit" formAction={deleteAction.bind(null, initial.id)} variant="outline">
-            Excluir
-          </Button>
+          <AdminFormSubmitButton
+            formAction={deleteAction.bind(null, initial.id)}
+            variant="outline"
+            label="Excluir"
+            pendingLabel="Excluindo…"
+          />
         ) : null}
       </div>
     </form>

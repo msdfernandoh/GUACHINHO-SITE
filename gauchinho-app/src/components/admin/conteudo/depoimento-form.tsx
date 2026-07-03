@@ -1,6 +1,7 @@
 import type { Depoimento } from "@/lib/conteudo/types";
 import { ConteudoImageField } from "./conteudo-image-field";
-import { Button, Input, Label, Textarea } from "@/components/ui/form-primitives";
+import { AdminFormSubmitButton } from "@/components/admin/admin-form-submit-button";
+import { Input, Label, Textarea } from "@/components/ui/form-primitives";
 
 type Props = {
   action: (formData: FormData) => Promise<void>;
@@ -56,11 +57,14 @@ export function DepoimentoForm({ action, initial, deleteAction }: Props) {
         </label>
       </div>
       <div className="flex gap-3">
-        <Button type="submit">Salvar</Button>
+        <AdminFormSubmitButton label="Salvar" />
         {initial?.id && deleteAction ? (
-          <Button type="submit" formAction={deleteAction.bind(null, initial.id)} variant="outline">
-            Excluir
-          </Button>
+          <AdminFormSubmitButton
+            formAction={deleteAction.bind(null, initial.id)}
+            variant="outline"
+            label="Excluir"
+            pendingLabel="Excluindo…"
+          />
         ) : null}
       </div>
     </form>

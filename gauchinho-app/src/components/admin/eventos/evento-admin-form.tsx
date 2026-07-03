@@ -1,9 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { useFormStatus } from "react-dom";
-import { Button, Input, Label, Textarea } from "@/components/ui/form-primitives";
-import { cn } from "@/lib/utils/cn";
+import { Input, Label, Textarea } from "@/components/ui/form-primitives";
+import { AdminFormSubmitButton } from "@/components/admin/admin-form-submit-button";
 import type { EventoRow } from "@/lib/comercial-eventos/types";
 import { EventoImageField } from "./evento-image-field";
 
@@ -28,29 +27,6 @@ function FormSection({ title, children }: { title: string; children: React.React
   );
 }
 
-function SubmitButton({ creating }: { creating: boolean }) {
-  const { pending } = useFormStatus();
-  const label = creating ? (pending ? "Criando…" : "Criar evento") : pending ? "Salvando…" : "Salvar evento";
-  return (
-    <Button
-      type="submit"
-      disabled={pending}
-      className={cn(
-        "min-h-11 min-w-[10rem] transition active:scale-[0.98]",
-        pending && "cursor-not-allowed opacity-70",
-      )}
-    >
-      {pending ? (
-        <span className="inline-flex items-center gap-2">
-          <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" aria-hidden />
-          {label}
-        </span>
-      ) : (
-        label
-      )}
-    </Button>
-  );
-}
 
 export function EventoAdminForm({ evento, action }: Props) {
   const dataLocal = toDatetimeLocalValue(evento?.data_evento);
@@ -255,7 +231,12 @@ export function EventoAdminForm({ evento, action }: Props) {
         </div>
       </FormSection>
 
-      <SubmitButton creating={!evento} />
+      <AdminFormSubmitButton
+        creating={!evento}
+        label="Salvar evento"
+        createLabel="Criar evento"
+        className="min-h-11 min-w-[10rem]"
+      />
     </form>
   );
 }

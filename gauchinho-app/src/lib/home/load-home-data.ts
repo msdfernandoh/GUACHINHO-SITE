@@ -19,7 +19,7 @@ import { getConfigJsonPublic, getSimuladorConfigsPublic } from "@/server/config"
 import { safeFetch } from "./safe-fetch";
 import {
   fetchPublicCasosSucesso,
-  fetchPublicDicas,
+  fetchPublicDicasForHome,
   fetchPublicParceiros,
 } from "@/lib/conteudo/fetch-public";
 import type { CasoSucesso, DicaTche, ParceiroInstitucional } from "@/lib/conteudo/types";
@@ -110,14 +110,7 @@ export async function loadHomePageData(): Promise<HomePageData> {
     casosHome = await safeFetch(() => fetchPublicCasosSucesso({ limit: 3 }), [] as CasoSucesso[]);
   }
 
-  const dicasDestaque = await safeFetch(
-    () => fetchPublicDicas({ destaque: true, limit: 3 }),
-    [] as DicaTche[],
-  );
-  let dicasHome = dicasDestaque;
-  if (!dicasHome.length) {
-    dicasHome = await safeFetch(() => fetchPublicDicas({ limit: 3 }), [] as DicaTche[]);
-  }
+  const dicasHome = await safeFetch(() => fetchPublicDicasForHome(3), [] as DicaTche[]);
 
   const parceirosDestaque = await safeFetch(
     () => fetchPublicParceiros({ destaque: true, limit: 12 }),
@@ -162,14 +155,7 @@ export async function loadHomeConteudoDestaques(): Promise<HomeConteudoDestaques
     casosHome = await safeFetch(() => fetchPublicCasosSucesso({ limit: 3 }), [] as CasoSucesso[]);
   }
 
-  const dicasDestaque = await safeFetch(
-    () => fetchPublicDicas({ destaque: true, limit: 3 }),
-    [] as DicaTche[],
-  );
-  let dicasHome = dicasDestaque;
-  if (!dicasHome.length) {
-    dicasHome = await safeFetch(() => fetchPublicDicas({ limit: 3 }), [] as DicaTche[]);
-  }
+  const dicasHome = await safeFetch(() => fetchPublicDicasForHome(3), [] as DicaTche[]);
 
   const parceirosDestaque = await safeFetch(
     () => fetchPublicParceiros({ destaque: true, limit: 12 }),

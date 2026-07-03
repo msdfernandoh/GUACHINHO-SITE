@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import { ConteudoHero, ConteudoPageShell } from "@/components/conteudo/conteudo-hero";
+import { PublicPremiumHero } from "@/components/public/public-premium-hero";
+import { simuladorShell } from "@/components/simulador/simulador-ui";
 import { IndicacaoForm } from "@/components/public/indicacao-form";
 
 export const metadata: Metadata = {
@@ -13,14 +14,17 @@ export default async function IndicarPage({
   searchParams: Promise<{ origem?: string }>;
 }) {
   const { origem } = await searchParams;
+
   return (
-    <ConteudoPageShell>
-      <ConteudoHero
-        eyebrow="Parceiros"
-        title="Indicar cliente"
-        subtitle="Preencha quem indicou uma vez e adicione quantos indicados precisar."
-      />
-      <IndicacaoForm origem={origem} />
-    </ConteudoPageShell>
+    <div className={simuladorShell}>
+      <div className="mx-auto max-w-7xl px-4 pb-16 pt-10 sm:px-6 sm:pt-14">
+        <PublicPremiumHero
+          eyebrow="Gauchinho · Indicação"
+          title="Indicar cliente"
+          subtitle="Preencha quem indicou uma vez e adicione quantos indicados precisar."
+        />
+        <IndicacaoForm origem={origem} />
+      </div>
+    </div>
   );
 }

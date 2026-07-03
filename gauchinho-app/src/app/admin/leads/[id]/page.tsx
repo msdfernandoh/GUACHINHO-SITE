@@ -15,7 +15,8 @@ import { MOTIVOS_PERDA } from "@/lib/crm/constants";
 import { gerarPropostaFromCartaLeadAction } from "@/app/admin/cartas-contempladas/actions";
 import { getUsuarioNegocio } from "@/lib/auth/get-usuario";
 import { canDeleteRecords } from "@/lib/auth/permissions";
-import { Button, Input, Label, Select, Textarea } from "@/components/ui/form-primitives";
+import { AdminFormSubmitButton } from "@/components/admin/admin-form-submit-button";
+import { Input, Label, Select, Textarea } from "@/components/ui/form-primitives";
 import { PRODUTOS_FECHADOS, TIPOS_INTERESSE } from "@/lib/types";
 import { formatCurrency, formatDate, formatDateTime } from "@/lib/utils/format";
 import { IaLeadSummarySection } from "../ia-lead-summary";
@@ -84,9 +85,7 @@ export default async function LeadDetailPage({
           />
           {podeExcluir ? (
             <form action={deleteWithId}>
-              <Button type="submit" variant="danger" size="sm">
-                Excluir (Master)
-              </Button>
+              <AdminFormSubmitButton variant="danger" size="sm" label="Excluir (Master)" pendingLabel="Excluindo…" />
             </form>
           ) : null}
         </div>
@@ -233,9 +232,7 @@ export default async function LeadDetailPage({
             <Textarea name="observacoes" rows={3} defaultValue={lead.observacoes ?? ""} />
           </div>
           <input type="hidden" name="origem" value={lead.origem ?? ""} />
-          <Button type="submit" size="sm">
-            Salvar alterações
-          </Button>
+          <AdminFormSubmitButton size="sm" label="Salvar alterações" />
         </form>
 
         <div className="space-y-6">
@@ -265,9 +262,7 @@ export default async function LeadDetailPage({
               </div>
             </div>
             <Textarea name="retorno_observacao" rows={2} defaultValue={lead.retorno_observacao ?? ""} />
-            <Button type="submit" size="sm">
-              Salvar retorno
-            </Button>
+            <AdminFormSubmitButton size="sm" label="Salvar retorno" />
           </form>
 
           <form
@@ -301,9 +296,12 @@ export default async function LeadDetailPage({
               <Textarea name="observacao_fechamento" rows={2} />
             </div>
             <input type="hidden" name="fechado" value="true" />
-            <Button type="submit" variant="gold" size="sm">
-              Marcar como fechado
-            </Button>
+            <AdminFormSubmitButton
+              variant="gold"
+              size="sm"
+              label="Marcar como fechado"
+              pendingLabel="Salvando…"
+            />
           </form>
 
           <form
@@ -326,9 +324,12 @@ export default async function LeadDetailPage({
             </div>
             <Textarea name="observacao_perda" rows={2} placeholder="Observação opcional" />
             <input type="hidden" name="perdido" value="true" />
-            <Button type="submit" variant="danger" size="sm">
-              Marcar perdido
-            </Button>
+            <AdminFormSubmitButton
+              variant="danger"
+              size="sm"
+              label="Marcar perdido"
+              pendingLabel="Salvando…"
+            />
           </form>
         </div>
       </div>
@@ -356,14 +357,10 @@ export default async function LeadDetailPage({
                 {a.status === "pendente" ? (
                   <div className="flex gap-2">
                     <form action={complete}>
-                      <Button type="submit" size="sm" variant="outline">
-                        Concluir
-                      </Button>
+                      <AdminFormSubmitButton size="sm" variant="outline" label="Concluir" pendingLabel="Salvando…" />
                     </form>
                     <form action={cancel}>
-                      <Button type="submit" size="sm" variant="outline">
-                        Cancelar
-                      </Button>
+                      <AdminFormSubmitButton size="sm" variant="outline" label="Cancelar" pendingLabel="Cancelando…" />
                     </form>
                   </div>
                 ) : null}
@@ -384,9 +381,12 @@ export default async function LeadDetailPage({
         <h2 className="mb-2 font-semibold text-zinc-100">Propostas</h2>
         {podeGerarPropostaCarta ? (
           <form action={gerarPropostaCarta} className="mb-3">
-            <Button type="submit" variant="gold" size="sm">
-              Gerar proposta (carta contemplada)
-            </Button>
+            <AdminFormSubmitButton
+              variant="gold"
+              size="sm"
+              label="Gerar proposta (carta contemplada)"
+              pendingLabel="Gerando…"
+            />
           </form>
         ) : null}
         <ul className="space-y-2 text-sm">

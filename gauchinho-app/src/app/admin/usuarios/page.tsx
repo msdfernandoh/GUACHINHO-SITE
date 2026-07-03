@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getUsuarioNegocio } from "@/lib/auth/get-usuario";
 import { canManageUsers } from "@/lib/auth/permissions";
 import { createUsuarioAction, fetchUsuarios, toggleUsuarioAtivoAction, toggleUsuarioConsultorAction } from "./actions";
+import { AdminFormSubmitButton } from "@/components/admin/admin-form-submit-button";
 import { Button, Input, Label, Select } from "@/components/ui/form-primitives";
 import { PERFIS } from "@/lib/auth/permissions";
 import { formatDate } from "@/lib/utils/format";
@@ -54,7 +55,7 @@ export default async function UsuariosPage() {
         <p className="text-xs text-zinc-500">
           Usuários marcados como consultores aparecem nas agendas e nos compromissos com leads.
         </p>
-        <Button type="submit">Criar usuário</Button>
+        <AdminFormSubmitButton label="Criar usuário" pendingLabel="Criando…" />
       </form>
       <div className="overflow-x-auto rounded-xl border bg-white dark:border-zinc-800 dark:bg-zinc-900">
         <table className="min-w-full text-sm">

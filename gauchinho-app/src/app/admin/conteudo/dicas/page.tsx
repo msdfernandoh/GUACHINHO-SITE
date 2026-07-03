@@ -28,7 +28,7 @@ export default async function AdminDicasPage() {
           id: r.id,
           cols: [r.titulo, r.categoria ?? "—", r.publicado ? "Sim" : "Não", r.destaque ? "Sim" : "Não", String(r.ordem)],
         }))}
-        headers={["Título", "Categoria", "Publicado", "Destaque", "Ordem"]}
+        headers={["Título", "Categoria", "Publicado", "Fixada na Home", "Ordem"]}
         editPrefix="/admin/conteudo/dicas"
       />
     </div>

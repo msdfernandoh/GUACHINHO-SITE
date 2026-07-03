@@ -1,5 +1,6 @@
+import { AdminFormSubmitButton } from "@/components/admin/admin-form-submit-button";
 import { ATIVIDADE_TIPOS } from "@/lib/crm/constants";
-import { Button, Input, Label, Select, Textarea } from "@/components/ui/form-primitives";
+import { Input, Label, Select, Textarea } from "@/components/ui/form-primitives";
 
 type Props = {
   action: (formData: FormData) => Promise<void>;
@@ -33,9 +34,7 @@ export function LeadActivityForm({ action }: Props) {
         <Label>Descrição</Label>
         <Textarea name="descricao" rows={2} />
       </div>
-      <Button type="submit" size="sm">
-        Criar follow-up
-      </Button>
+      <AdminFormSubmitButton size="sm" label="Criar follow-up" pendingLabel="Criando…" />
     </form>
   );
 }

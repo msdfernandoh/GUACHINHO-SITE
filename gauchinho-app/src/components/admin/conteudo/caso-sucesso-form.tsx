@@ -1,7 +1,8 @@
 import type { CasoSucesso } from "@/lib/conteudo/types";
 import { CASO_CATEGORIAS } from "@/lib/conteudo/types";
 import { ConteudoImageField } from "./conteudo-image-field";
-import { Button, Input, Label, Textarea } from "@/components/ui/form-primitives";
+import { AdminFormSubmitButton } from "@/components/admin/admin-form-submit-button";
+import { Input, Label, Textarea } from "@/components/ui/form-primitives";
 import { slugify } from "@/lib/utils/slug";
 
 type Props = {
@@ -99,11 +100,14 @@ export function CasoSucessoForm({ action, initial, deleteAction }: Props) {
         </label>
       </div>
       <div className="flex flex-wrap gap-3">
-        <Button type="submit">Salvar</Button>
+        <AdminFormSubmitButton label="Salvar" />
         {initial?.id && deleteAction ? (
-          <Button type="submit" formAction={deleteAction.bind(null, initial.id)} variant="outline">
-            Excluir
-          </Button>
+          <AdminFormSubmitButton
+            formAction={deleteAction.bind(null, initial.id)}
+            variant="outline"
+            label="Excluir"
+            pendingLabel="Excluindo…"
+          />
         ) : null}
       </div>
     </form>

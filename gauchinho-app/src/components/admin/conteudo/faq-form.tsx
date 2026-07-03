@@ -1,6 +1,7 @@
 import type { PerguntaFrequente } from "@/lib/conteudo/types";
 import { FAQ_CATEGORIAS } from "@/lib/conteudo/types";
-import { Button, Input, Label, Textarea } from "@/components/ui/form-primitives";
+import { AdminFormSubmitButton } from "@/components/admin/admin-form-submit-button";
+import { Input, Label, Textarea } from "@/components/ui/form-primitives";
 
 type Props = {
   action: (formData: FormData) => Promise<void>;
@@ -44,11 +45,14 @@ export function FaqForm({ action, initial, deleteAction }: Props) {
         <input type="checkbox" name="publicado" defaultChecked={initial?.publicado ?? true} /> Publicado
       </label>
       <div className="flex gap-3">
-        <Button type="submit">Salvar</Button>
+        <AdminFormSubmitButton label="Salvar" />
         {initial?.id && deleteAction ? (
-          <Button type="submit" formAction={deleteAction.bind(null, initial.id)} variant="outline">
-            Excluir
-          </Button>
+          <AdminFormSubmitButton
+            formAction={deleteAction.bind(null, initial.id)}
+            variant="outline"
+            label="Excluir"
+            pendingLabel="Excluindo…"
+          />
         ) : null}
       </div>
     </form>

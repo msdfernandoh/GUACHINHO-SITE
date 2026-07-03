@@ -1,5 +1,6 @@
 import { savePropostaAction } from "@/app/admin/propostas/actions";
-import { Button, Input, Label, Select, Textarea } from "@/components/ui/form-primitives";
+import { AdminFormSubmitButton } from "@/components/admin/admin-form-submit-button";
+import { Input, Label, Select, Textarea } from "@/components/ui/form-primitives";
 import { PROPOSTA_STATUS } from "@/lib/types";
 import { PARCEIROS_SUGERIDOS } from "@/lib/proposta/pdf/types";
 
@@ -110,7 +111,7 @@ export function PropostaForm({ initial }: { initial?: Record<string, unknown> })
         <Label>Observações</Label>
         <Textarea name="observacoes" rows={3} defaultValue={String(initial?.observacoes ?? "")} />
       </div>
-      <Button type="submit">Salvar proposta</Button>
+      <AdminFormSubmitButton label="Salvar proposta" />
     </form>
   );
 }

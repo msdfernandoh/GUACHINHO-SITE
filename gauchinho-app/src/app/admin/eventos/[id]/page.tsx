@@ -11,6 +11,7 @@ import {
   updateEventoAction,
 } from "../actions";
 import { EventoAdminForm } from "@/components/admin/eventos/evento-admin-form";
+import { AdminFormSubmitButton } from "@/components/admin/admin-form-submit-button";
 import { Button, Input, Label, Textarea } from "@/components/ui/form-primitives";
 import { EVENTOS_INSCRICAO_MIGRATION_HINT } from "@/lib/comercial-eventos/db-ready";
 import type { EventoPostRow } from "@/lib/comercial-eventos/types";
@@ -103,7 +104,7 @@ export default async function EditarEventoPage({ params }: { params: Promise<{ i
           <label className="flex items-center gap-2 text-sm">
             <input type="checkbox" name="publicado" defaultChecked /> Publicado
           </label>
-          <Button type="submit">Adicionar post</Button>
+          <AdminFormSubmitButton label="Adicionar post" pendingLabel="Adicionando…" />
         </form>
       </section>
     </div>

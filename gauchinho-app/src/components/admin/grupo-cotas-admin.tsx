@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { GrupoConsorcio, GrupoCota } from "@/lib/types";
+import { AdminFormSubmitButton } from "@/components/admin/admin-form-submit-button";
 import { Button, Input, Label } from "@/components/ui/form-primitives";
 import { formatCurrency } from "@/lib/utils/format";
 import {
@@ -204,9 +205,7 @@ export function GrupoCotasAdmin({ grupoId, grupo, cotas, canHardDelete }: Props)
                   </label>
                 </div>
                 <div className="sm:col-span-2 lg:col-span-3">
-                  <Button type="submit" variant="gold" size="sm">
-                    Salvar cota
-                  </Button>
+                  <AdminFormSubmitButton variant="gold" size="sm" label="Salvar cota" />
                 </div>
               </form>
             </div>

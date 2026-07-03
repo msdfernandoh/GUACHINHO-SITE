@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import type { AgendaCompromissoRow } from "@/lib/agenda/types";
 import { AGENDA_TIPOS, AGENDA_RESULTADOS } from "@/lib/agenda/types";
 import { cancelCompromissoAction, concluirCompromissoAction, createCompromissoAction } from "@/app/admin/agenda/actions";
+import { AdminFormSubmitButton } from "@/components/admin/admin-form-submit-button";
 import { Button, Input, Label, Select, Textarea } from "@/components/ui/form-primitives";
 import { formatDateTime } from "@/lib/utils/format";
 
@@ -167,7 +168,7 @@ export function AgendaView({ month, year, compromissos, srds, initialDay, initia
                 <Textarea name="descricao" rows={2} />
               </div>
               <div className="flex gap-2">
-                <Button type="submit">Salvar</Button>
+                <AdminFormSubmitButton label="Salvar" />
                 <Button type="button" variant="outline" onClick={() => setShowNew(false)}>
                   Cancelar
                 </Button>
@@ -201,9 +202,7 @@ export function AgendaView({ month, year, compromissos, srds, initialDay, initia
                         ) : null}
                         {c.status === "agendado" ? (
                           <form action={cancelCompromissoAction.bind(null, c.id)}>
-                            <Button type="submit" size="sm" variant="outline">
-                              Cancelar
-                            </Button>
+                            <AdminFormSubmitButton size="sm" variant="outline" label="Cancelar" pendingLabel="Cancelando…" />
                           </form>
                         ) : null}
                       </div>
@@ -224,9 +223,11 @@ export function AgendaView({ month, year, compromissos, srds, initialDay, initia
                           <Input name="proxima_hora" type="time" defaultValue="10:00" />
                         </div>
                         <Textarea name="observacao_resultado" rows={2} placeholder="Observação" />
-                        <Button type="submit" size="sm">
-                          Registrar conclusão
-                        </Button>
+                        <AdminFormSubmitButton
+                          size="sm"
+                          label="Registrar conclusão"
+                          pendingLabel="Registrando…"
+                        />
                       </form>
                     ) : null}
                   </li>

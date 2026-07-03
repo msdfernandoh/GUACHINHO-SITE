@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import { ConteudoHero, ConteudoPageShell } from "@/components/conteudo/conteudo-hero";
+import { PublicPremiumHero } from "@/components/public/public-premium-hero";
+import { simuladorShell } from "@/components/simulador/simulador-ui";
 import { FAQAccordion } from "@/components/conteudo/faq-accordion";
 import { ConteudoCTA } from "@/components/conteudo/conteudo-cta";
 import { ConteudoViewTracker } from "@/components/conteudo/conteudo-view-tracker";
@@ -28,22 +29,24 @@ export default async function PerguntasFrequentesPage() {
   ]);
 
   return (
-    <ConteudoPageShell>
+    <div className={simuladorShell}>
       <ConteudoViewTracker tipo_evento="faq_visualizado" entidade_tipo="lista" />
-      <ConteudoHero
-        eyebrow="Gauchinho"
-        title="Perguntas frequentes"
-        subtitle="Orientações gerais sobre consórcio, financiamento e cartas. Para sua situação específica, use a simulação ou fale com um especialista."
-      />
-      <div className="mx-auto max-w-4xl px-4 pb-20 sm:px-6">
-        <FAQAccordion items={items} categorias={FAQ_CATEGORIAS} />
-        <div className="mt-12">
-          <ConteudoCTA
-            simuladorHref={buildSimuladorUrl({ origem: "faq" })}
-            whatsappHref={whatsappHref(contato)}
-          />
+      <div className="mx-auto max-w-7xl px-4 pb-20 pt-10 sm:px-6 sm:pt-14">
+        <PublicPremiumHero
+          eyebrow="Gauchinho · Ajuda"
+          title="Perguntas frequentes"
+          subtitle="Tire as principais dúvidas antes de simular, indicar ou falar com um especialista."
+        />
+        <div className="mx-auto max-w-4xl">
+          <FAQAccordion items={items} categorias={FAQ_CATEGORIAS} />
+          <div className="mt-12">
+            <ConteudoCTA
+              simuladorHref={buildSimuladorUrl({ origem: "faq" })}
+              whatsappHref={whatsappHref(contato)}
+            />
+          </div>
         </div>
       </div>
-    </ConteudoPageShell>
+    </div>
   );
 }

@@ -1,5 +1,6 @@
 import type { ImovelRow } from "@/lib/imoveis/types";
 import { IMOVEL_STATUS, IMOVEL_TIPOS } from "@/lib/imoveis/types";
+import { AdminFormSubmitButton } from "@/components/admin/admin-form-submit-button";
 import { Button, Input, Label, Select, Textarea } from "@/components/ui/form-primitives";
 
 type ImobOption = { id: string; nome: string };
@@ -110,7 +111,7 @@ export function ImovelForm({
       <label className="flex items-center gap-2 text-sm">
         <input type="checkbox" name="ativo" defaultChecked={imovel?.ativo ?? true} /> Ativo
       </label>
-      <Button type="submit">Salvar imóvel</Button>
+      <AdminFormSubmitButton label="Salvar imóvel" />
     </form>
   );
 }

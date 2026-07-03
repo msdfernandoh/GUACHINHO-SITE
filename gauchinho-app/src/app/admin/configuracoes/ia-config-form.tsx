@@ -2,7 +2,8 @@
 
 import type { IaAssistantMode, IaConfig } from "@/lib/config/ia-defaults";
 import { saveIaConfigAction } from "./actions";
-import { Button, Input, Label, Textarea } from "@/components/ui/form-primitives";
+import { AdminFormSubmitButton } from "@/components/admin/admin-form-submit-button";
+import { Input, Label, Textarea } from "@/components/ui/form-primitives";
 import { resolveIaAssistantMode } from "@/lib/config/ia-defaults";
 
 type Props = { cfg: IaConfig };
@@ -130,7 +131,7 @@ export function IaConfigForm({ cfg }: Props) {
         <Textarea name="regrasPosCadastro" rows={2} defaultValue={cfg.regras.mensagemPosCadastro} />
       </section>
 
-      <Button type="submit">Salvar IA</Button>
+      <AdminFormSubmitButton label="Salvar IA" />
     </form>
   );
 }

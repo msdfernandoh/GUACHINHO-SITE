@@ -3,7 +3,8 @@
 import type { OpcaoParcelaConsorcio } from "@/lib/config/simulador-parcela-opcoes";
 import { normalizarOpcoesParcela } from "@/lib/config/simulador-parcela-opcoes";
 import type { SimuladorTipoBemConfig } from "@/lib/config/defaults";
-import { Button, Input, Label, Textarea } from "@/components/ui/form-primitives";
+import { AdminFormSubmitButton } from "@/components/admin/admin-form-submit-button";
+import { Input, Label, Textarea } from "@/components/ui/form-primitives";
 
 const MAX_OPCOES = 5;
 
@@ -151,7 +152,7 @@ export function SimuladorBemConfigForm({
         <input type="checkbox" name="exibirTabelaCompletaPorPadrao" defaultChecked={cfg.exibirTabelaCompletaPorPadrao} />
         Exibir tabela completa por padrão
       </label>
-      <Button type="submit">Salvar {title}</Button>
+      <AdminFormSubmitButton label={`Salvar ${title}`} />
     </form>
   );
 }
@@ -218,7 +219,7 @@ export function FinanciamentoConfigForm({
       <p className="text-sm text-zinc-500">Imóvel e veículo usam listas de prazo e taxas independentes no simulador e na Home.</p>
       <TipoFields prefix="imovel" title="Imóvel" cfg={stored.imovel} />
       <TipoFields prefix="veiculo" title="Veículo" cfg={stored.veiculo} />
-      <Button type="submit">Salvar Financiamento</Button>
+      <AdminFormSubmitButton label="Salvar Financiamento" />
     </form>
   );
 }

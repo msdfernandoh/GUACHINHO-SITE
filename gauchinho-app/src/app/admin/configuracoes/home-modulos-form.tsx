@@ -1,7 +1,8 @@
 "use client";
 
 import { saveHomeModulosConfigAction } from "./actions";
-import { Button, Input } from "@/components/ui/form-primitives";
+import { AdminFormSubmitButton } from "@/components/admin/admin-form-submit-button";
+import { Input } from "@/components/ui/form-primitives";
 import {
   DEFAULT_HOME_MODULOS,
   normalizeHomeModulosConfig,
@@ -58,7 +59,7 @@ export function HomeModulosForm({ stored }: Props) {
       <p className="text-xs text-zinc-500">
         Chave no banco: <code className="rounded bg-zinc-100 px-1 dark:bg-zinc-900">home_modulos_config</code>
       </p>
-      <Button type="submit">Salvar módulos da Home</Button>
+      <AdminFormSubmitButton label="Salvar módulos da Home" />
     </form>
   );
 }

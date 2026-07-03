@@ -7,7 +7,8 @@ import {
   updateImobiliariaMasterAction,
 } from "../actions";
 import { ImobiliariaForm } from "@/components/admin/imobiliaria-form";
-import { Button, Input, Label } from "@/components/ui/form-primitives";
+import { AdminFormSubmitButton } from "@/components/admin/admin-form-submit-button";
+import { Input, Label } from "@/components/ui/form-primitives";
 
 export default async function EditarImobiliariaPage({
   params,
@@ -44,7 +45,7 @@ export default async function EditarImobiliariaPage({
           <Label>Senha inicial</Label>
           <Input name="password" type="password" minLength={8} required />
         </div>
-        <Button type="submit">Criar login imobiliária</Button>
+        <AdminFormSubmitButton label="Criar login imobiliária" pendingLabel="Criando…" />
       </form>
     </div>
   );

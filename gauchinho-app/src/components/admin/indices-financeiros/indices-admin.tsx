@@ -13,6 +13,7 @@ export function IndicesFinanceirosAdmin({ initial }: Props) {
   const [rows, setRows] = useState(initial);
   const [msg, setMsg] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const [savingCodigo, setSavingCodigo] = useState<string | null>(null);
 
   function updateLocal(codigo: string, patch: Partial<IndiceFinanceiroRow>) {
     setRows((prev) => prev.map((r) => (r.codigo === codigo ? { ...r, ...patch } : r)));
@@ -20,6 +21,7 @@ export function IndicesFinanceirosAdmin({ initial }: Props) {
 
   function saveRow(row: IndiceFinanceiroRow) {
     setMsg(null);
+    setSavingCodigo(row.codigo);
     startTransition(async () => {
       try {
         await saveIndiceAdmin({
@@ -38,6 +40,8 @@ export function IndicesFinanceirosAdmin({ initial }: Props) {
         setMsg(`Índice ${row.codigo} salvo.`);
       } catch (e) {
         setMsg(e instanceof Error ? e.message : "Erro ao salvar");
+      } finally {
+        setSavingCodigo(null);
       }
     });
   }
@@ -158,7 +162,17 @@ export function IndicesFinanceirosAdmin({ initial }: Props) {
                 </td>
                 <td className="px-3 py-2 space-y-1">
                   <Button type="button" size="sm" disabled={pending} onClick={() => saveRow(row)}>
-                    Salvar
+                    {savingCodigo === row.codigo && pending ? (
+                      <span className="inline-flex items-center gap-1.5">
+                        <span
+                          className="h-3 w-3 animate-spin rounded-full border-2 border-current border-t-transparent"
+                          aria-hidden
+                        />
+                        Salvando…
+                      </span>
+                    ) : (
+                      "Salvar"
+                    )}
                   </Button>
                   {row.atualizacao_automatica ? (
                     <Button

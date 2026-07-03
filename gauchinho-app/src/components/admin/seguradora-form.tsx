@@ -1,5 +1,6 @@
 import type { SeguradoraRow } from "@/lib/seguradoras/types";
-import { Button, Input, Label, Textarea } from "@/components/ui/form-primitives";
+import { AdminFormSubmitButton } from "@/components/admin/admin-form-submit-button";
+import { Input, Label, Textarea } from "@/components/ui/form-primitives";
 
 type Props = {
   action: (formData: FormData) => void | Promise<void>;
@@ -97,7 +98,7 @@ export function SeguradoraForm({ action, seguradora }: Props) {
       </div>
       <input type="hidden" name="logo_url" value={seguradora?.logo_url ?? ""} />
       <input type="hidden" name="imagem_url" value={seguradora?.imagem_url ?? ""} />
-      <Button type="submit">Salvar</Button>
+      <AdminFormSubmitButton label="Salvar" />
     </form>
   );
 }

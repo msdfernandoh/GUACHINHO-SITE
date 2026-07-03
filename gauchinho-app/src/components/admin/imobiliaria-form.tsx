@@ -1,5 +1,6 @@
 import type { ImobiliariaRow } from "@/lib/imoveis/types";
-import { Button, Input, Label, Textarea } from "@/components/ui/form-primitives";
+import { AdminFormSubmitButton } from "@/components/admin/admin-form-submit-button";
+import { Input, Label, Textarea } from "@/components/ui/form-primitives";
 
 type Props = {
   action: (formData: FormData) => void | Promise<void>;
@@ -112,7 +113,7 @@ export function ImobiliariaForm({ action, masterFields, imob }: Props) {
       </div>
       <input type="hidden" name="logo_url" value={imob?.logo_url ?? ""} />
       <input type="hidden" name="banner_url" value={imob?.banner_url ?? ""} />
-      <Button type="submit">Salvar</Button>
+      <AdminFormSubmitButton label="Salvar" />
     </form>
   );
 }

@@ -40,6 +40,7 @@ export async function fetchPublicCasoBySlug(slug: string): Promise<CasoSucesso |
 
 export async function fetchPublicDicas(opts?: {
   categoria?: string;
+  /** Dicas marcadas como fixadas na Home (campo `destaque` no admin). */
   destaque?: boolean;
   limit?: number;
 }): Promise<DicaTche[]> {
@@ -51,6 +52,47 @@ export async function fetchPublicDicas(opts?: {
     if (error) throw error;
     const list = (data ?? []) as DicaTche[];
     return opts?.limit ? list.slice(0, opts.limit) : list;
+  } catch {
+    return [];
+  }
+}
+
+const HOME_DICAS_LIMIT = 3;
+
+/** Fixadas na Home primeiro (`destaque`), depois completa com dicas publicadas recentes. */
+export async function fetchPublicDicasForHome(limit = HOME_DICAS_LIMIT): Promise<DicaTche[]> {
+  try {
+    const { data: pinnedRaw, error: pinnedErr } = await admin()
+      .from("dicas_tche")
+      .select("*")
+      .eq("publicado", true)
+      .eq("destaque", true)
+      .order("ordem")
+      .order("created_at", { ascending: false });
+    if (pinnedErr) throw pinnedErr;
+    const pinned = (pinnedRaw ?? []) as DicaTche[];
+    if (pinned.length >= limit) return pinned.slice(0, limit);
+
+    const { data: allRaw, error: allErr } = await admin()
+      .from("dicas_tche")
+      .select("*")
+      .eq("publicado", true)
+      .order("ordem")
+      .order("created_at", { ascending: false });
+    if (allErr) throw allErr;
+
+    const seen = new Set<string>();
+    const merged: DicaTche[] = [];
+    for (const d of pinned) {
+      merged.push(d);
+      seen.add(d.id);
+    }
+    for (const d of (allRaw ?? []) as DicaTche[]) {
+      if (seen.has(d.id)) continue;
+      merged.push(d);
+      if (merged.length >= limit) break;
+    }
+    return merged;
   } catch {
     return [];
   }

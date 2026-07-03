@@ -2,7 +2,8 @@
 
 import type { ParsedCartaWhatsApp } from "@/lib/cartas/types";
 import { CARTA_STATUS, CARTA_STATUS_LABELS, CARTA_TIPOS } from "@/lib/cartas/types";
-import { Button, Input, Label, Select, Textarea } from "@/components/ui/form-primitives";
+import { AdminFormSubmitButton } from "@/components/admin/admin-form-submit-button";
+import { Input, Label, Select, Textarea } from "@/components/ui/form-primitives";
 
 type Initial = Record<string, unknown> | ParsedCartaWhatsApp | undefined;
 
@@ -104,7 +105,7 @@ export function CartaFormFields({
         <Textarea name="observacoes" rows={3} defaultValue={str(g.observacoes)} />
       </div>
       <input type="hidden" name="texto_original" value={str(g.texto_original)} />
-      <Button type="submit">{submitLabel}</Button>
+      <AdminFormSubmitButton label={submitLabel} />
     </div>
   );
 }

@@ -33,8 +33,8 @@ export function PublicLogo({
 
   const subClass =
     size === "sm"
-      ? "text-[8px] font-semibold uppercase leading-tight tracking-[0.08em] text-zinc-400 sm:text-[9px]"
-      : "text-[9px] font-semibold uppercase leading-tight tracking-[0.1em] text-zinc-400 sm:text-[10px]";
+      ? "text-[7px] font-semibold uppercase leading-[1.25] tracking-[0.06em] text-zinc-400 sm:text-[7.5px]"
+      : "text-[7px] font-semibold uppercase leading-[1.25] tracking-[0.07em] text-zinc-400 sm:text-[8px] md:text-[8.5px]";
 
   const mascotSize = size === "sm" ? "h-9 w-9" : "h-11 w-11 sm:h-12 sm:w-12";
 
@@ -42,7 +42,7 @@ export function PublicLogo({
     <Link
       href={href}
       className={cn(
-        "group inline-flex max-w-[min(100%,22rem)] items-center gap-2.5 transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-500",
+        "group inline-flex max-w-[min(100%,13.5rem)] shrink-0 items-center gap-2 transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-500 sm:max-w-[14.5rem] md:max-w-[15.5rem] lg:max-w-[16.5rem]",
         className,
       )}
       aria-label="Gauchinho — voltar ao início"
@@ -83,7 +83,12 @@ export function PublicLogo({
               {title.toUpperCase()}
             </span>
             {subtitle ? (
-              <span className={cn(subClass, "mt-0.5 hidden max-w-[10rem] truncate sm:inline sm:max-w-none")}>
+              <span
+                className={cn(
+                  subClass,
+                  "mt-0.5 hidden max-w-[8.25rem] whitespace-normal sm:block sm:max-w-[8.75rem] md:max-w-[9.25rem] lg:max-w-[10rem]",
+                )}
+              >
                 {subtitle}
               </span>
             ) : null}

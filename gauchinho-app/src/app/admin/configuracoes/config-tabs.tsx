@@ -14,6 +14,7 @@ import {
   saveHomeCartasConfigAction,
   saveCalculadorasConfigAction,
 } from "./actions";
+import { AdminFormSubmitButton } from "@/components/admin/admin-form-submit-button";
 import { Button, Input, Label, Textarea } from "@/components/ui/form-primitives";
 import { cn } from "@/lib/utils/cn";
 import {
@@ -124,7 +125,7 @@ export function ConfigTabs({ configs, whatsapp, iaEnv }: Props) {
             <input type="checkbox" name="exibirBotaoGruposNoSite" defaultChecked={!!site.exibirBotaoGruposNoSite} />
             Exibir botão grupos no site
           </label>
-          <Button type="submit">Salvar Site</Button>
+          <AdminFormSubmitButton label="Salvar Site" />
         </form>
       ) : null}
 
@@ -135,7 +136,7 @@ export function ConfigTabs({ configs, whatsapp, iaEnv }: Props) {
           <Input name="email" placeholder="E-mail" defaultValue={String(contato.email ?? "")} />
           <Textarea name="endereco" placeholder="Endereço" defaultValue={String(contato.endereco ?? "")} />
           <Input name="instagram" placeholder="Instagram" defaultValue={String(contato.instagram ?? "")} />
-          <Button type="submit">Salvar Contato</Button>
+          <AdminFormSubmitButton label="Salvar Contato" />
         </form>
       ) : null}
 
@@ -147,7 +148,7 @@ export function ConfigTabs({ configs, whatsapp, iaEnv }: Props) {
           </div>
           <Textarea name="textoResumoExecutivo" rows={3} defaultValue={String(propostas.textoResumoExecutivo ?? "")} />
           <Textarea name="avisoLegalPadrao" rows={3} defaultValue={String(propostas.avisoLegalPadrao ?? "")} />
-          <Button type="submit">Salvar Propostas</Button>
+          <AdminFormSubmitButton label="Salvar Propostas" />
         </form>
       ) : null}
 
@@ -169,7 +170,7 @@ export function ConfigTabs({ configs, whatsapp, iaEnv }: Props) {
             <input type="checkbox" name="srdPodeEditarGrupos" defaultChecked={!!leads.srdPodeEditarGrupos} />
             SRD pode cadastrar/editar grupos
           </label>
-          <Button type="submit">Salvar Leads</Button>
+          <AdminFormSubmitButton label="Salvar Leads" />
         </form>
       ) : null}
 
@@ -193,7 +194,7 @@ export function ConfigTabs({ configs, whatsapp, iaEnv }: Props) {
               <input type="checkbox" name="usar_whatsapp_principal_fallback" defaultChecked />
               Fallback WhatsApp principal
             </label>
-            <Button type="submit">Adicionar</Button>
+            <AdminFormSubmitButton label="Adicionar" pendingLabel="Adicionando…" />
           </form>
           {whatsapp.map((w) => (
             <form key={String(w.id)} action={saveWhatsappOrigemAction} className="max-w-xl space-y-2 rounded-xl border p-4">
@@ -207,17 +208,14 @@ export function ConfigTabs({ configs, whatsapp, iaEnv }: Props) {
                 Ativo
               </label>
               <div className="flex gap-2">
-                <Button type="submit" size="sm">
-                  Salvar
-                </Button>
-                <Button
-                  type="submit"
+                <AdminFormSubmitButton size="sm" label="Salvar" />
+                <AdminFormSubmitButton
                   size="sm"
                   variant="danger"
                   formAction={deleteWhatsappOrigemAction.bind(null, String(w.id))}
-                >
-                  Excluir
-                </Button>
+                  label="Excluir"
+                  pendingLabel="Excluindo…"
+                />
               </div>
             </form>
           ))}
@@ -296,7 +294,7 @@ export function ConfigTabs({ configs, whatsapp, iaEnv }: Props) {
             <Label>WhatsApp — chave de origem</Label>
             <Input name="whatsappOrigem" defaultValue={calcCfg.whatsappOrigem} placeholder="calculadora_financeira" />
           </div>
-          <Button type="submit">Salvar Calculadoras</Button>
+          <AdminFormSubmitButton label="Salvar Calculadoras" />
         </form>
       ) : null}
 
@@ -335,7 +333,7 @@ export function ConfigTabs({ configs, whatsapp, iaEnv }: Props) {
             <input type="checkbox" name="mostrarApenasDestaque" defaultChecked={homeCartas.mostrarApenasDestaque} />
             Mostrar apenas destaque
           </label>
-          <Button type="submit">Salvar Cartas Home</Button>
+          <AdminFormSubmitButton label="Salvar Cartas Home" />
         </form>
       ) : null}
 

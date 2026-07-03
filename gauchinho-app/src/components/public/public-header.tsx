@@ -18,13 +18,13 @@ export async function PublicHeader({ showNav = true, className }: Props) {
 
   return (
     <PublicHeaderWrapper className={className}>
-      <div className="mx-auto flex max-w-7xl items-center justify-between gap-2 px-4 py-3 sm:gap-3 sm:px-6 sm:py-4">
+      <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3 sm:gap-6 sm:px-6 md:gap-8 sm:py-4">
         <PublicLogo
           href="/"
           logoUrl={site.logoUrl}
           title={logoTitle}
           subtitle={logoSubtitle}
-          className="min-w-0 flex-1 sm:flex-none"
+          className="min-w-0 shrink-0"
         />
         {showNav ? <PublicHeaderNav /> : null}
       </div>
