@@ -531,7 +531,7 @@ export default function HomeV2() {
               className="mb-6 inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold"
               style={{ borderColor: C.goldBorder, color: C.gold, background: "rgba(201,168,76,0.08)" }}
             >
-              ★ Gauchinho Escritório de Soluções Financeiras
+              ★ Gauchinho Consórcios e Soluções Financeiras
             </motion.div>
 
             <motion.h2
@@ -674,7 +674,6 @@ export default function HomeV2() {
             viewport={{ once: true }}
             className="mb-12 text-center"
           >
-            <p className="mb-3 text-xs font-bold uppercase tracking-widest" style={{ color: C.gold }}>Ferramenta gratuita</p>
             <h2 className="mb-4 text-4xl font-black text-white lg:text-5xl">
               Simule agora,{" "}
               <span style={{ color: C.gold }}>sem compromisso</span>

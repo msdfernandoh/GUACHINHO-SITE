@@ -24,7 +24,7 @@ export async function PublicHeader({ showNav = true, className }: Props) {
           logoUrl={site.logoUrl}
           title={logoTitle}
           subtitle={logoSubtitle}
-          className="min-w-0 shrink-0"
+          className="shrink-0"
         />
         {showNav ? <PublicHeaderNav /> : null}
       </div>

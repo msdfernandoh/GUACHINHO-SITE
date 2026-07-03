@@ -6,6 +6,7 @@ import { DICA_CATEGORIAS } from "@/lib/conteudo/types";
 import { DicaTcheCard } from "./dica-tche-card";
 import { ConteudoCTA } from "./conteudo-cta";
 import { ConteudoViewTracker } from "./conteudo-view-tracker";
+import { EspecialistaLeadModal } from "@/components/public/especialista-lead-modal";
 import { cn } from "@/lib/utils/cn";
 
 type Props = {
@@ -16,6 +17,7 @@ type Props = {
 
 export function DicasTchePublicClient({ dicas, simuladorHref, whatsappHref }: Props) {
   const [categoria, setCategoria] = useState("");
+  const [tcheModalOpen, setTcheModalOpen] = useState(false);
   const filtered = useMemo(
     () => (categoria ? dicas.filter((d) => d.categoria === categoria) : dicas),
     [dicas, categoria],
@@ -45,9 +47,22 @@ export function DicasTchePublicClient({ dicas, simuladorHref, whatsappHref }: Pr
           </div>
         )}
         <div className="mt-16">
-          <ConteudoCTA simuladorHref={simuladorHref} whatsappHref={whatsappHref} />
+          <ConteudoCTA
+            simuladorHref={simuladorHref}
+            whatsappHref={whatsappHref}
+            whatsappLabel="Falar com Tchê"
+            showAssistente={false}
+            contactMode="modal"
+            onContactClick={() => setTcheModalOpen(true)}
+          />
         </div>
       </div>
+      <EspecialistaLeadModal
+        open={tcheModalOpen}
+        onClose={() => setTcheModalOpen(false)}
+        variant="compact"
+        leadContext="Dicas do Tchê"
+      />
     </>
   );
 }

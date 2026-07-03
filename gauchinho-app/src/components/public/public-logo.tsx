@@ -44,7 +44,7 @@ export function PublicLogo({
     <Link
       href={href}
       className={cn(
-        "group inline-flex max-w-[min(100%,12rem)] shrink-0 items-center gap-2.5 transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-500 sm:max-w-[13rem]",
+        "group inline-flex shrink-0 items-center gap-2.5 transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-500",
         className,
       )}
       aria-label="Gauchinho — voltar ao início"
@@ -75,17 +75,17 @@ export function PublicLogo({
               />
             </span>
           ) : null}
-          <span className="flex min-w-0 flex-col items-center text-center">
+          <span className="flex shrink-0 flex-col items-center text-center">
             <span
               className={cn(
                 titleClass,
-                "w-full bg-gradient-to-r from-amber-200 to-amber-500 bg-clip-text text-transparent group-hover:from-amber-100 group-hover:to-amber-400",
+                "whitespace-nowrap bg-gradient-to-r from-amber-200 to-amber-500 bg-clip-text text-transparent group-hover:from-amber-100 group-hover:to-amber-400",
               )}
             >
               {title.toUpperCase()}
             </span>
             {tagline ? (
-              <span className={cn(subClass, "mt-0.5 hidden w-full whitespace-nowrap sm:block")}>
+              <span className={cn(subClass, "mt-0.5 hidden whitespace-nowrap sm:block")}>
                 {tagline.toUpperCase()}
               </span>
             ) : null}

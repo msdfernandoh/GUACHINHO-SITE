@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import { ConteudoHero, ConteudoPageShell } from "@/components/conteudo/conteudo-hero";
+import { PublicPremiumHero } from "@/components/public/public-premium-hero";
+import { simuladorShell } from "@/components/simulador/simulador-ui";
 import { DicasTchePublicClient } from "@/components/conteudo/dicas-tche-public-client";
 import { fetchPublicDicas } from "@/lib/conteudo/fetch-public";
 import { buildSimuladorUrl } from "@/lib/home/build-simulador-url";
@@ -25,17 +26,19 @@ export default async function DicasDoTchePage() {
   ]);
 
   return (
-    <ConteudoPageShell>
-      <ConteudoHero
-        eyebrow="Conteúdo"
-        title="Dicas do Tchê"
-        subtitle="Conteúdos rápidos para você entender melhor consórcio, financiamento, cartas contempladas e planejamento financeiro."
-      />
-      <DicasTchePublicClient
-        dicas={dicas}
-        simuladorHref={buildSimuladorUrl({ origem: "dicas_tche" })}
-        whatsappHref={whatsappHref(contato)}
-      />
-    </ConteudoPageShell>
+    <div className={simuladorShell}>
+      <div className="mx-auto max-w-7xl px-4 pb-16 pt-10 sm:px-6 sm:pt-14">
+        <PublicPremiumHero
+          eyebrow="Gauchinho · Conteúdo"
+          title="Dicas do Tchê"
+          subtitle="Conteúdos rápidos para você entender melhor consórcio, financiamento, cartas contempladas e planejamento financeiro."
+        />
+        <DicasTchePublicClient
+          dicas={dicas}
+          simuladorHref={buildSimuladorUrl({ origem: "dicas_tche" })}
+          whatsappHref={whatsappHref(contato)}
+        />
+      </div>
+    </div>
   );
 }
