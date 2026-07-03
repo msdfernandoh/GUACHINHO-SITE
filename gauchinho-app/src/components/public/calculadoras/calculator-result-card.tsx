@@ -13,6 +13,8 @@ type Props = {
   heroMetric?: { label: string; value: string };
   variant?: "default" | "accent" | "sell";
   className?: string;
+  /** Evita quebra de linha nos valores grandes (Aplicação mensal × Consórcio). */
+  heroCompact?: boolean;
 };
 
 export function CalculatorResultCard({
@@ -22,6 +24,7 @@ export function CalculatorResultCard({
   heroMetric,
   variant = "default",
   className,
+  heroCompact = false,
 }: Props) {
   const filteredRows = heroMetric
     ? rows.filter((r) => r.label !== heroMetric.label)
@@ -32,7 +35,7 @@ export function CalculatorResultCard({
       className={cn(
         sectionCardClass(
           cn(
-            "p-5 shadow-lg shadow-black/25 sm:p-6",
+            heroCompact ? "p-4 shadow-lg shadow-black/25 sm:p-5" : "p-5 shadow-lg shadow-black/25 sm:p-6",
             variant === "default" && "border-amber-500/25",
             variant === "accent" && "border-amber-400/40 bg-slate-900/80",
             variant === "sell" &&
@@ -45,9 +48,21 @@ export function CalculatorResultCard({
       <p className="text-xs font-bold uppercase tracking-[0.2em] text-amber-400/95">{title}</p>
 
       {heroMetric ? (
-        <div className="mt-5 min-w-0 rounded-2xl border border-amber-400/30 bg-slate-950/50 px-3 py-4 text-center sm:px-5 sm:py-5">
+        <div
+          className={cn(
+            "min-w-0 rounded-2xl border border-amber-400/30 bg-slate-950/50 text-center",
+            heroCompact ? "mt-4 px-3 py-3 sm:px-4 sm:py-4" : "mt-5 px-3 py-4 sm:px-5 sm:py-5",
+          )}
+        >
           <p className="text-xs font-medium uppercase tracking-wide text-slate-400">{heroMetric.label}</p>
-          <p className="mt-2 break-words text-2xl font-black leading-tight tracking-tight text-amber-400 sm:text-3xl lg:text-3xl xl:text-4xl">
+          <p
+            className={cn(
+              "mt-2 font-black text-amber-400 tabular-nums",
+              heroCompact
+                ? "whitespace-nowrap text-[clamp(1.125rem,2.6vw,1.875rem)] leading-none tracking-tight"
+                : "break-words text-2xl leading-tight tracking-tight sm:text-3xl lg:text-3xl xl:text-4xl",
+            )}
+          >
             {heroMetric.value}
           </p>
         </div>

@@ -136,10 +136,10 @@ export function AplicacaoMensalCalculator({ indices, taxaPadrao, prefill, onResu
   const showConsorcio = Boolean(result?.compararComConsorcio && result?.consorcio);
 
   return (
-    <div className="grid gap-6 lg:grid-cols-12 lg:items-start lg:gap-8">
-      {/* Formulário — coluna vertical estreita, fixa ao rolar no desktop */}
-      <div className="lg:col-span-5 lg:sticky lg:top-24">
-        <div className={sectionCardClass("border-amber-500/20 p-5 shadow-lg shadow-black/25 sm:p-6")}>
+    <div className="grid gap-6 lg:grid-cols-[minmax(0,24rem)_minmax(0,1fr)] lg:items-start lg:gap-8 xl:grid-cols-[minmax(0,26rem)_minmax(0,1fr)]">
+      {/* Formulário — coluna mais estreita no desktop */}
+      <div className="lg:sticky lg:top-24 lg:max-w-[26rem] lg:justify-self-start">
+        <div className={sectionCardClass("border-amber-500/20 p-4 shadow-lg shadow-black/25 sm:p-5")}>
           <p className="text-base font-bold text-white">Configure sua simulação</p>
           <p className="mt-2 text-xs leading-relaxed text-slate-500">{AVISO_APLICACAO}</p>
 
@@ -287,8 +287,8 @@ export function AplicacaoMensalCalculator({ indices, taxaPadrao, prefill, onResu
         </div>
       </div>
 
-      {/* Resultados — coluna larga ao lado do formulário */}
-      <div className="lg:col-span-7">
+      {/* Resultados — mais largura no desktop */}
+      <div className="min-w-0">
         {!hasResult ? (
           <div
             className={cn(
@@ -340,10 +340,11 @@ export function AplicacaoMensalCalculator({ indices, taxaPadrao, prefill, onResu
               </div>
             ) : null}
 
-            <div className={cn("grid gap-4", showConsorcio && "sm:grid-cols-2")}>
+            <div className={cn("grid gap-4", showConsorcio && "sm:grid-cols-2 xl:grid-cols-2")}>
               <CalculatorResultCard
                 title="Resultado da aplicação"
                 variant="accent"
+                heroCompact
                 heroMetric={{
                   label: "Valor final estimado",
                   value: formatCurrency(result!.valorFinalEstimado),
@@ -378,6 +379,7 @@ export function AplicacaoMensalCalculator({ indices, taxaPadrao, prefill, onResu
                 <CalculatorResultCard
                   title="Consórcio programado"
                   variant="default"
+                  heroCompact
                   heroMetric={{
                     label: "Crédito reajustado estimado",
                     value: formatCurrency(result!.consorcio.creditoReajustadoConsorcio),
@@ -411,6 +413,7 @@ export function AplicacaoMensalCalculator({ indices, taxaPadrao, prefill, onResu
               <CalculatorResultCard
                 title="Diferença patrimonial"
                 variant="sell"
+                heroCompact
                 heroMetric={{
                   label: "Diferença estimada",
                   value: formatCurrency(result!.diferencaPatrimonial),
