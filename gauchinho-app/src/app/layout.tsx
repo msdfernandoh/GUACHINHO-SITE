@@ -12,9 +12,29 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL?.trim().replace(/\/$/, "");
+
 export const metadata: Metadata = {
-  title: "Gauchinho — Soluções Financeiras",
-  description: "Escritório de soluções financeiras — consórcio, financiamento e grupos.",
+  metadataBase: siteUrl ? new URL(`${siteUrl}/`) : undefined,
+  title: {
+    default: "Gauchinho Consórcios e Soluções Financeiras",
+    template: "%s | Gauchinho",
+  },
+  description:
+    "Consórcio, simulador, calculadoras e soluções financeiras no Rio Grande do Sul. Gauchinho Consórcios e Soluções Financeiras.",
+  verification: {
+    google: "JoZmaDBhXbcdFfJKHd4uXE-ogA6NuOzLdFCKoAKll84",
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: { index: true, follow: true, "max-image-preview": "large" },
+  },
+  openGraph: {
+    type: "website",
+    locale: "pt_BR",
+    siteName: "Gauchinho Consórcios e Soluções Financeiras",
+  },
 };
 
 export default function RootLayout({

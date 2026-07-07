@@ -1,8 +1,13 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import { AuthMascotBubble } from "@/components/public/auth-mascot-bubble";
 import { PublicLogo } from "@/components/public/public-logo";
 import { resolvePublicLogoText } from "@/lib/brand/public-logo-text";
 import { getConfigJsonPublic, DEFAULT_SITE } from "@/server/config";
+
+export const metadata: Metadata = {
+  robots: { index: false, follow: false },
+};
 
 export default async function AuthLayout({ children }: { children: React.ReactNode }) {
   const site = await getConfigJsonPublic("site", DEFAULT_SITE);
