@@ -3,7 +3,7 @@ import { fetchPublicImobiliariasParceiras } from "@/app/admin/imobiliarias/actio
 import { fetchPublicImoveis } from "@/app/admin/imoveis/actions";
 import { fetchPublicEventosList } from "@/lib/comercial-eventos/public";
 import { fetchPublicCasosSucesso, fetchPublicDicas } from "@/lib/conteudo/fetch-public";
-import { getPublicSiteUrl } from "@/lib/seo/site-url";
+import { resolvePublicSiteUrl } from "@/lib/seo/site-url";
 
 const PUBLIC_PATHS = [
   "/",
@@ -35,8 +35,7 @@ function absoluteUrl(base: string, path: string): string {
 }
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const siteUrl = getPublicSiteUrl();
-  const base = siteUrl ?? "http://localhost:3000";
+  const base = resolvePublicSiteUrl();
 
   const [dicas, casos, eventos, imoveis, imobiliarias] = await Promise.all([
     fetchPublicDicas().catch(() => []),

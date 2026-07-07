@@ -1,8 +1,9 @@
 import type { MetadataRoute } from "next";
-import { getPublicSiteUrl } from "@/lib/seo/site-url";
+import { resolvePublicSiteUrl } from "@/lib/seo/site-url";
 
 export default function robots(): MetadataRoute.Robots {
-  const siteUrl = getPublicSiteUrl();
+  const siteUrl = resolvePublicSiteUrl();
+  const isLocal = siteUrl.startsWith("http://localhost");
 
   return {
     rules: {
@@ -10,6 +11,6 @@ export default function robots(): MetadataRoute.Robots {
       allow: "/",
       disallow: ["/admin/", "/login", "/api/"],
     },
-    sitemap: siteUrl ? `${siteUrl}/sitemap.xml` : undefined,
+    sitemap: isLocal ? undefined : `${siteUrl}/sitemap.xml`,
   };
 }
