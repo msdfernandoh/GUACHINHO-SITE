@@ -33,6 +33,7 @@ import { FeaturedLettersSection } from "@/components/public/home/featured-letter
 import { HomeImoveisDestaque } from "@/components/public/home/home-imoveis-destaque";
 import { HomeV2ParceirosStrip } from "@/components/public/home/home-v2-parceiros-strip";
 import { FinancialCalculatorsPromo } from "@/components/public/home/financial-calculators-promo";
+import type { HomeSorteioDestaque } from "@/lib/eventos-sorteio/types";
 import { cn } from "@/lib/utils/cn";
 
 const C = {
@@ -510,6 +511,7 @@ export type HomeV2ClientProps = {
   cartasDestaque?: CartaContemplada[];
   imoveisDestaque?: ImovelPublic[];
   homeOportunidades?: HomeOportunidadesConfig;
+  sorteioDestaque?: HomeSorteioDestaque | null;
 };
 
 export function HomeV2Client({
@@ -519,6 +521,7 @@ export function HomeV2Client({
   cartasDestaque = [],
   imoveisDestaque = [],
   homeOportunidades = DEFAULT_HOME_OPORTUNIDADES,
+  sorteioDestaque = null,
 }: HomeV2ClientProps) {
   const shouldReduce = useReducedMotion();
   const [quickTipoBem, setQuickTipoBem] = useState<"imovel" | "automovel">("imovel");
@@ -599,6 +602,32 @@ export function HomeV2Client({
       <div className={modHidden("hero")} style={modStyle("hero")}>
         <ObjetivosSection />
       </div>
+
+      {sorteioDestaque ? (
+        <section
+          className="border-y px-4 py-8 sm:px-6"
+          style={{ borderColor: C.goldBorder, background: C.bgCard }}
+        >
+          <div className="container mx-auto flex flex-col items-center justify-between gap-4 sm:flex-row">
+            <div className="text-center sm:text-left">
+              <p className="text-sm font-semibold uppercase tracking-wide" style={{ color: C.gold }}>
+                {sorteioDestaque.eventoNome}
+              </p>
+              <h2 className="mt-1 text-xl font-bold text-white">Participe do evento e concorra a brindes</h2>
+              <p className="mt-1 text-sm" style={{ color: C.muted }}>
+                {sorteioDestaque.titulo}
+              </p>
+            </div>
+            <Link
+              href={`/eventos/${sorteioDestaque.eventoSlug}/sorteio`}
+              className="inline-flex rounded-2xl px-8 py-3 text-base font-bold"
+              style={{ background: C.gold, color: C.bg }}
+            >
+              Participar do sorteio
+            </Link>
+          </div>
+        </section>
+      ) : null}
 
       {/* ══════════════════════════════════════════
           SEÇÃO 2 — MASCOTE + COPY HERO

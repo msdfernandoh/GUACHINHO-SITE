@@ -62,6 +62,9 @@ export default async function EditarEventoPage({ params }: { params: Promise<{ i
           <Link href={`/admin/eventos/listas-convidados?evento_id=${id}`}>
             <Button variant="outline">Ver listas</Button>
           </Link>
+          <Link href={`/admin/eventos/${id}/sorteio`}>
+            <Button variant="outline">Sorteio / Brindes</Button>
+          </Link>
         </div>
       </div>
 
