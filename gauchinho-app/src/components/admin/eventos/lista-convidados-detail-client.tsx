@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { Plus } from "lucide-react";
 import {
@@ -93,8 +93,40 @@ function TagGroup<T extends string>({
   );
 }
 
+function ListaConvidadoPhoneInput({
+  telefone,
+  syncKey,
+  onCommit,
+}: {
+  telefone: string | null;
+  syncKey: string;
+  onCommit: (formatted: string) => void;
+}) {
+  const [value, setValue] = useState(() => formatWhatsappBrInput(telefone ?? ""));
+
+  useEffect(() => {
+    setValue(formatWhatsappBrInput(telefone ?? ""));
+  }, [syncKey, telefone]);
+
+  return (
+    <Input
+      value={value}
+      onChange={(e) => setValue(formatWhatsappBrInput(e.target.value))}
+      onBlur={() => onCommit(value)}
+      className="h-8 min-w-[130px] text-sm tabular-nums"
+      inputMode="tel"
+      placeholder="(51) 99999-9999"
+    />
+  );
+}
+
 export function ListaConvidadosDetailClient({ lista, itens, eventos }: Props) {
-  const [rows, setRows] = useState(itens);
+  const [rows, setRows] = useState(() =>
+    itens.map((item) => ({
+      ...item,
+      telefone: item.telefone ? formatWhatsappBrInput(item.telefone) : null,
+    })),
+  );
   const [eventoId, setEventoId] = useState(lista.evento_id);
   const [eventoLabel, setEventoLabel] = useState(lista.evento_nome);
   const [consultorNome, setConsultorNome] = useState(lista.consultor_nome);
@@ -117,6 +149,12 @@ export function ListaConvidadosDetailClient({ lista, itens, eventos }: Props) {
           ? {
               ...r,
               ...patch,
+              telefone:
+                patch.telefone !== undefined
+                  ? patch.telefone
+                    ? formatWhatsappBrInput(patch.telefone)
+                    : null
+                  : r.telefone,
               valor: patch.valor !== undefined ? patch.valor : r.valor,
               resultado: patch.resultado !== undefined ? patch.resultado : r.resultado,
             }
@@ -324,13 +362,10 @@ export function ListaConvidadosDetailClient({ lista, itens, eventos }: Props) {
                   />
                 </td>
                 <td className="px-2 py-2">
-                  <Input
-                    key={`${row.id}-tel-${row.updated_at}`}
-                    defaultValue={row.telefone ?? ""}
-                    className="h-8 min-w-[120px] text-sm"
-                    inputMode="tel"
-                    placeholder="(51) 99999-9999"
-                    onBlur={(e) => commitTextField(row, "telefone", e.target.value)}
+                  <ListaConvidadoPhoneInput
+                    telefone={row.telefone}
+                    syncKey={`${row.id}-${row.updated_at}`}
+                    onCommit={(formatted) => commitTextField(row, "telefone", formatted)}
                   />
                 </td>
                 <td className="px-2 py-2">
