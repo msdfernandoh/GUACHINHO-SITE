@@ -16,6 +16,7 @@ import {
   TrendingUp,
   CalendarDays,
   Calendar,
+  ClipboardList,
   Shield,
 } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
@@ -25,6 +26,7 @@ const staffNav = [
   { href: "/admin/leads", label: "Leads", icon: Users },
   { href: "/admin/agenda", label: "Agenda", icon: CalendarDays },
   { href: "/admin/eventos", label: "Eventos", icon: Calendar, masterOnly: true },
+  { href: "/admin/eventos/listas-convidados", label: "Listas convidados", icon: ClipboardList },
   { href: "/admin/relatorios", label: "Relatórios", icon: BarChart2 },
   { href: "/admin/propostas", label: "Propostas", icon: FileText },
   { href: "/admin/grupos", label: "Grupos", icon: Layers },

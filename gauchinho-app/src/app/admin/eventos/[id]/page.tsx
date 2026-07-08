@@ -52,9 +52,17 @@ export default async function EditarEventoPage({ params }: { params: Promise<{ i
             {vagas.limite ? ` / ${vagas.limite}` : " (sem limite)"}
           </p>
         </div>
-        <Link href={`/admin/eventos/${id}/participantes`}>
-          <Button variant="outline">Participantes</Button>
-        </Link>
+        <div className="flex flex-wrap gap-2">
+          <Link href={`/admin/eventos/${id}/participantes`}>
+            <Button variant="outline">Participantes</Button>
+          </Link>
+          <Link href={`/admin/eventos/listas-convidados/nova?evento_id=${id}`}>
+            <Button variant="outline">Nova lista convidados</Button>
+          </Link>
+          <Link href={`/admin/eventos/listas-convidados?evento_id=${id}`}>
+            <Button variant="outline">Ver listas</Button>
+          </Link>
+        </div>
       </div>
 
       {inscricaoMigrationPending ? (

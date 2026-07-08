@@ -64,6 +64,9 @@ export default async function EventosAdminPage() {
                   <Link href={`/admin/eventos/${row.id}/participantes`} className="ml-3 text-amber-600 hover:underline">
                     Participantes
                   </Link>
+                  <Link href={`/admin/eventos/listas-convidados?evento_id=${row.id}`} className="ml-3 text-amber-600 hover:underline">
+                    Listas
+                  </Link>
                   {row.publicado ? (
                     <Link href={`/eventos/${row.slug}`} className="ml-3 text-zinc-500 hover:underline" target="_blank">
                       Ver público
