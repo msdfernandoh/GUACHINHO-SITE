@@ -22,6 +22,7 @@ import {
   LISTA_STATUS_LABEL,
 } from "@/lib/comercial-eventos/listas-convidados-types";
 import { countListaConvidadosItens, resolveConvidadoPor } from "@/lib/comercial-eventos/listas-convidados-stats";
+import { ListaConvidadosPublicSettings } from "@/components/admin/eventos/lista-convidados-public-settings";
 import { Button, Input, Label, Select } from "@/components/ui/form-primitives";
 import { formatCurrency, formatWhatsappBrInput } from "@/lib/utils/format";
 import { cn } from "@/lib/utils/cn";
@@ -265,6 +266,14 @@ export function ListaConvidadosDetailClient({ lista, itens, eventos }: Props) {
           </p>
         </div>
       </div>
+
+      <ListaConvidadosPublicSettings
+        listaId={lista.id}
+        initialPublica={lista.publica ?? false}
+        initialSlug={lista.slug}
+        consultorNome={consultorNome}
+        eventoNome={eventoLabel}
+      />
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {[

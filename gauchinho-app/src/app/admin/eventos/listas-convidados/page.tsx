@@ -79,6 +79,7 @@ export default async function ListasConvidadosPage({
             <tr>
               <th className="px-3 py-2">Evento</th>
               <th className="px-3 py-2">Consultor</th>
+              <th className="px-3 py-2">Pública</th>
               <th className="px-3 py-2">Total</th>
               <th className="px-3 py-2">Confirmados</th>
               <th className="px-3 py-2">Presentes</th>
@@ -89,7 +90,7 @@ export default async function ListasConvidadosPage({
           <tbody>
             {listas.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-3 py-8 text-center text-zinc-500">
+                <td colSpan={8} className="px-3 py-8 text-center text-zinc-500">
                   Nenhuma lista ainda.{" "}
                   <Link href="/admin/eventos/listas-convidados/nova" className="text-amber-600 hover:underline">
                     Criar primeira lista
@@ -101,6 +102,15 @@ export default async function ListasConvidadosPage({
                 <tr key={row.id} className="border-b dark:border-zinc-800">
                   <td className="px-3 py-2 font-medium">{row.evento_nome}</td>
                   <td className="px-3 py-2">{row.consultor_nome}</td>
+                  <td className="px-3 py-2">
+                    {row.publica && row.slug ? (
+                      <Link href={`/lista-convidados/${row.slug}`} className="text-emerald-600 hover:underline" target="_blank">
+                        Sim
+                      </Link>
+                    ) : (
+                      "Não"
+                    )}
+                  </td>
                   <td className="px-3 py-2 tabular-nums">{row.total}</td>
                   <td className="px-3 py-2 tabular-nums">{row.confirmados}</td>
                   <td className="px-3 py-2 tabular-nums">{row.presentes}</td>

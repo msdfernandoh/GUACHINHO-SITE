@@ -17,6 +17,7 @@ import type {
 } from "@/lib/comercial-eventos/listas-convidados-types";
 import { LISTA_CONVIDADO_RESULTADO, LISTA_CONVIDADO_STATUS } from "@/lib/comercial-eventos/listas-convidados-types";
 import { fetchEventosOptionsForFilter } from "../actions";
+import { slugify } from "@/lib/utils/slug";
 
 const BASE = "/admin/eventos/listas-convidados";
 
@@ -208,6 +209,77 @@ export async function updateListaMetaAction(listaId: string, input: { consultor_
 
   revalidatePath(BASE);
   revalidatePath(`${BASE}/${listaId}`);
+}
+
+export async function updateListaPublicaAction(
+  listaId: string,
+  input: { publica: boolean; slug?: string },
+) {
+  const u = await requireUsuario();
+  assertCanManageListas(u.perfil);
+  await assertListaAccess(listaId, u.id, u.perfil);
+
+  const supabase = await createClient();
+  const { data: lista, error: loadErr } = await supabase
+    .from("eventos_listas_convidados")
+    .select("id, consultor_nome, slug, eventos(nome)")
+    .eq("id", listaId)
+    .single();
+
+  if (loadErr) throw new Error(loadErr.message);
+
+  type L = { consultor_nome: string; slug: string | null; eventos: { nome: string } | { nome: string }[] | null };
+  const row = lista as unknown as L;
+  const evRaw = row.eventos;
+  const evNome = (Array.isArray(evRaw) ? evRaw[0]?.nome : evRaw?.nome) ?? "evento";
+
+  let slug: string | null = row.slug;
+  let publica = input.publica;
+
+  if (publica) {
+    const raw = input.slug?.trim() || slug || `${row.consultor_nome}-${evNome}`;
+    let candidate = slugify(raw) || `lista-${listaId.slice(0, 8)}`;
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      const trySlug = attempt === 0 ? candidate : `${candidate}-${listaId.slice(0, 6)}`;
+      const { data: clash } = await supabase
+        .from("eventos_listas_convidados")
+        .select("id")
+        .eq("slug", trySlug)
+        .eq("publica", true)
+        .neq("id", listaId)
+        .maybeSingle();
+      if (!clash) {
+        slug = trySlug;
+        break;
+      }
+      candidate = `${candidate}-${attempt + 2}`;
+    }
+    if (!slug) throw new Error("Não foi possível gerar um link único. Ajuste o slug manualmente.");
+  }
+
+  const { error } = await supabase
+    .from("eventos_listas_convidados")
+    .update({
+      publica,
+      slug: publica ? slug : row.slug,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", listaId);
+
+  if (error) {
+    if (/slug|publica|unique/.test(error.message)) {
+      throw new Error("Este link (slug) já está em uso em outra lista pública.");
+    }
+    throw new Error(error.message);
+  }
+
+  revalidatePath(BASE);
+  revalidatePath(`${BASE}/${listaId}`);
+  if (publica && slug) {
+    revalidatePath(`/lista-convidados/${slug}`);
+  }
+
+  return { publica, slug: publica ? slug : row.slug };
 }
 
 export async function addConvidadoToListaAction(listaId: string, guest: GuestDraft) {

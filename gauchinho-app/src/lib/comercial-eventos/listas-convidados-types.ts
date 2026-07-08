@@ -10,6 +10,8 @@ export type EventoListaConvidadosRow = {
   consultor_nome: string;
   consultor_usuario_id: string | null;
   criado_por_usuario_id: string | null;
+  publica: boolean;
+  slug: string | null;
   created_at: string;
   updated_at: string;
 };
