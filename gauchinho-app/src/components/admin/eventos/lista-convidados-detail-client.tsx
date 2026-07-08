@@ -21,7 +21,7 @@ import {
   LISTA_RESULTADO_LABEL,
   LISTA_STATUS_LABEL,
 } from "@/lib/comercial-eventos/listas-convidados-types";
-import { countListaConvidadosItens } from "@/lib/comercial-eventos/listas-convidados-stats";
+import { countListaConvidadosItens, resolveConvidadoPor } from "@/lib/comercial-eventos/listas-convidados-stats";
 import { Button, Input, Label, Select } from "@/components/ui/form-primitives";
 import { formatCurrency, formatWhatsappBrInput } from "@/lib/utils/format";
 import { cn } from "@/lib/utils/cn";
@@ -174,6 +174,9 @@ export function ListaConvidadosDetailClient({ lista, itens, eventos }: Props) {
       setErro("Nome do convidado não pode ficar vazio.");
       return;
     }
+    if (field === "convidado_por") {
+      value = resolveConvidadoPor(value, consultorNome);
+    }
     const prev =
       field === "nome"
         ? row.nome
@@ -181,7 +184,7 @@ export function ListaConvidadosDetailClient({ lista, itens, eventos }: Props) {
           ? row.empresa ?? ""
           : field === "telefone"
             ? row.telefone ?? ""
-            : row.convidado_por ?? "";
+            : resolveConvidadoPor(row.convidado_por, consultorNome);
     if (value === prev) return;
 
     const patch =
@@ -191,7 +194,7 @@ export function ListaConvidadosDetailClient({ lista, itens, eventos }: Props) {
           ? { empresa: value || null }
           : field === "telefone"
             ? { telefone: value || null }
-            : { convidado_por: value || null };
+            : { convidado_por: value };
 
     patchItem(row.id, patch);
   };
@@ -324,9 +327,9 @@ export function ListaConvidadosDetailClient({ lista, itens, eventos }: Props) {
                 <td className="px-2 py-2">
                   <Input
                     key={`${row.id}-conv-${row.updated_at}`}
-                    defaultValue={row.convidado_por ?? ""}
+                    defaultValue={resolveConvidadoPor(row.convidado_por, consultorNome)}
                     className="h-8 min-w-[100px] text-sm"
-                    placeholder="—"
+                    placeholder={consultorNome}
                     onBlur={(e) => commitTextField(row, "convidado_por", e.target.value)}
                   />
                 </td>

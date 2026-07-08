@@ -128,12 +128,12 @@ export function ListaConvidadosCreateForm({ eventos, defaultConsultorNome, prefi
             </div>
             <div className="sm:col-span-3">
               <Label className="text-xs">Convidado por</Label>
-              <Input
-                value={guest.convidado_por}
-                onChange={(e) => updateGuest(index, "convidado_por", e.target.value)}
-                className="mt-1 h-9"
-                placeholder="Quem indicou (opcional)"
-              />
+            <Input
+              value={guest.convidado_por}
+              onChange={(e) => updateGuest(index, "convidado_por", e.target.value)}
+              className="mt-1 h-9"
+              placeholder="Vazio = nome do consultor"
+            />
             </div>
             <div className="flex justify-end sm:col-span-2">
               <Button

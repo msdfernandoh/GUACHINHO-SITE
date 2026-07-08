@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireUsuario } from "@/lib/auth/get-usuario";
 import { canManageLeads, isMaster } from "@/lib/auth/permissions";
-import { countListaConvidadosItens } from "@/lib/comercial-eventos/listas-convidados-stats";
+import { countListaConvidadosItens, resolveConvidadoPor } from "@/lib/comercial-eventos/listas-convidados-stats";
 import type {
   EventoListaConvidadosItemRow,
   EventoListaConvidadosRow,
@@ -124,9 +124,13 @@ export async function fetchListaConvidadosDetail(listaId: string): Promise<
   if (itensErr) throw new Error(itensErr.message);
 
   const { eventos, ...lista } = listaRow;
+  const consultor = lista.consultor_nome;
   return {
     lista: { ...lista, evento_nome: eventos?.nome ?? "—" },
-    itens: (itens ?? []) as EventoListaConvidadosItemRow[],
+    itens: ((itens ?? []) as EventoListaConvidadosItemRow[]).map((item) => ({
+      ...item,
+      convidado_por: resolveConvidadoPor(item.convidado_por, consultor),
+    })),
   };
 }
 
@@ -148,7 +152,7 @@ export async function createListaConvidadosAction(input: {
       nome: c.nome.trim(),
       empresa: c.empresa.trim() || null,
       telefone: c.telefone.trim() || null,
-      convidado_por: c.convidado_por.trim() || null,
+      convidado_por: resolveConvidadoPor(c.convidado_por, consultor_nome),
     }))
     .filter((c) => c.nome.length > 0);
 
@@ -225,12 +229,19 @@ export async function addConvidadoToListaAction(listaId: string, guest: GuestDra
 
   const ordem = (last?.ordem ?? -1) + 1;
 
+  const { data: listaMeta, error: listaMetaErr } = await supabase
+    .from("eventos_listas_convidados")
+    .select("consultor_nome")
+    .eq("id", listaId)
+    .single();
+  if (listaMetaErr) throw new Error(listaMetaErr.message);
+
   const { error } = await supabase.from("eventos_listas_convidados_itens").insert({
     lista_id: listaId,
     nome,
     empresa: guest.empresa.trim() || null,
     telefone: guest.telefone.trim() || null,
-    convidado_por: guest.convidado_por.trim() || null,
+    convidado_por: resolveConvidadoPor(guest.convidado_por, listaMeta.consultor_nome),
     ordem,
   });
   if (error) throw new Error(error.message);
@@ -265,9 +276,21 @@ export async function updateConvidadoItemAction(
   }
 
   const supabase = await createClient();
+
+  const payload = { ...patch, updated_at: new Date().toISOString() };
+  if (payload.convidado_por !== undefined) {
+    const { data: listaMeta, error: listaMetaErr } = await supabase
+      .from("eventos_listas_convidados")
+      .select("consultor_nome")
+      .eq("id", listaId)
+      .single();
+    if (listaMetaErr) throw new Error(listaMetaErr.message);
+    payload.convidado_por = resolveConvidadoPor(payload.convidado_por, listaMeta.consultor_nome);
+  }
+
   const { error } = await supabase
     .from("eventos_listas_convidados_itens")
-    .update({ ...patch, updated_at: new Date().toISOString() })
+    .update(payload)
     .eq("id", itemId)
     .eq("lista_id", listaId);
   if (error) throw new Error(error.message);

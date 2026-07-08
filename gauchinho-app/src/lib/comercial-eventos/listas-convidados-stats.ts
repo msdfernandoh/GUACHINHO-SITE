@@ -1,5 +1,15 @@
 import type { EventoListaConvidadosItemRow } from "./listas-convidados-types";
 
+/** Se vazio, usa o consultor responsável pela lista. */
+export function resolveConvidadoPor(
+  convidadoPor: string | null | undefined,
+  consultorNome: string,
+): string {
+  const trimmed = convidadoPor?.trim();
+  if (trimmed) return trimmed;
+  return consultorNome.trim();
+}
+
 export function countListaConvidadosItens(itens: Pick<EventoListaConvidadosItemRow, "status_presenca">[]) {
   let confirmados = 0;
   let presentes = 0;
