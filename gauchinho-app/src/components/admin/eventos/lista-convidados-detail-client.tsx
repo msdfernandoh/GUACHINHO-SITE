@@ -94,9 +94,12 @@ function TagGroup<T extends string>({
 
 export function ListaConvidadosDetailClient({ lista, itens, eventos }: Props) {
   const [rows, setRows] = useState(itens);
-  const [editMeta, setEditMeta] = useState(false);
   const [eventoId, setEventoId] = useState(lista.evento_id);
+  const [eventoLabel, setEventoLabel] = useState(lista.evento_nome);
   const [consultorNome, setConsultorNome] = useState(lista.consultor_nome);
+  const [savedConsultor, setSavedConsultor] = useState(lista.consultor_nome);
+  const [savedEventoId, setSavedEventoId] = useState(lista.evento_id);
+  const [metaSaved, setMetaSaved] = useState(true);
   const [quickNome, setQuickNome] = useState("");
   const [quickEmpresa, setQuickEmpresa] = useState("");
   const [quickTel, setQuickTel] = useState("");
@@ -121,6 +124,7 @@ export function ListaConvidadosDetailClient({ lista, itens, eventos }: Props) {
     );
     startTransition(async () => {
       try {
+        setErro(null);
         await updateConvidadoItemAction(itemId, lista.id, patch);
       } catch (e) {
         setErro(e instanceof Error ? e.message : "Erro ao atualizar");
@@ -128,16 +132,68 @@ export function ListaConvidadosDetailClient({ lista, itens, eventos }: Props) {
     });
   };
 
-  const saveMeta = () => {
-    setErro(null);
+  const saveListaMeta = (next: { evento_id: string; consultor_nome: string }) => {
+    setMetaSaved(false);
     startTransition(async () => {
       try {
-        await updateListaMetaAction(lista.id, { evento_id: eventoId, consultor_nome: consultorNome });
-        setEditMeta(false);
+        setErro(null);
+        await updateListaMetaAction(lista.id, next);
+        setSavedConsultor(next.consultor_nome);
+        setSavedEventoId(next.evento_id);
+        setMetaSaved(true);
       } catch (e) {
-        setErro(e instanceof Error ? e.message : "Erro ao salvar");
+        setErro(e instanceof Error ? e.message : "Erro ao salvar lista");
+        setMetaSaved(false);
       }
     });
+  };
+
+  const onEventoChange = (nextId: string) => {
+    setEventoId(nextId);
+    const ev = eventos.find((e) => e.id === nextId);
+    setEventoLabel(ev?.nome ?? eventoLabel);
+    saveListaMeta({ evento_id: nextId, consultor_nome: consultorNome.trim() || savedConsultor });
+  };
+
+  const onConsultorBlur = () => {
+    const trimmed = consultorNome.trim();
+    if (!trimmed || trimmed === savedConsultor) return;
+    saveListaMeta({ evento_id: eventoId, consultor_nome: trimmed });
+  };
+
+  const commitTextField = (
+    row: EventoListaConvidadosItemRow,
+    field: "nome" | "empresa" | "telefone" | "convidado_por",
+    raw: string,
+  ) => {
+    let value = raw.trim();
+    if (field === "telefone") {
+      value = formatWhatsappBrInput(value);
+    }
+    if (field === "nome" && !value) {
+      setErro("Nome do convidado não pode ficar vazio.");
+      return;
+    }
+    const prev =
+      field === "nome"
+        ? row.nome
+        : field === "empresa"
+          ? row.empresa ?? ""
+          : field === "telefone"
+            ? row.telefone ?? ""
+            : row.convidado_por ?? "";
+    if (value === prev) return;
+
+    const patch =
+      field === "nome"
+        ? { nome: value }
+        : field === "empresa"
+          ? { empresa: value || null }
+          : field === "telefone"
+            ? { telefone: value || null }
+            : { convidado_por: value || null };
+
+    patchItem(row.id, patch);
   };
 
   const addQuick = () => {
@@ -164,50 +220,47 @@ export function ListaConvidadosDetailClient({ lista, itens, eventos }: Props) {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <Link href="/admin/eventos/listas-convidados" className="text-sm text-amber-600 hover:underline">
-            ← Listas de convidados
-          </Link>
-          {!editMeta ? (
-            <>
-              <h1 className="mt-2 text-2xl font-bold">{lista.evento_nome}</h1>
-              <p className="text-sm text-zinc-500">
-                Consultor: <span className="font-medium text-zinc-700 dark:text-zinc-200">{lista.consultor_nome}</span>
-              </p>
-            </>
-          ) : (
-            <div className="mt-3 grid max-w-xl gap-3 sm:grid-cols-2">
-              <div>
-                <Label>Evento</Label>
-                <Select value={eventoId} onChange={(e) => setEventoId(e.target.value)} className="mt-1">
-                  {eventos.map((ev) => (
-                    <option key={ev.id} value={ev.id}>
-                      {ev.nome}
-                    </option>
-                  ))}
-                </Select>
-              </div>
-              <div>
-                <Label>Consultor</Label>
-                <Input value={consultorNome} onChange={(e) => setConsultorNome(e.target.value)} className="mt-1" />
-              </div>
-              <div className="flex gap-2 sm:col-span-2">
-                <Button type="button" size="sm" onClick={saveMeta} disabled={pending}>
-                  Salvar
-                </Button>
-                <Button type="button" size="sm" variant="outline" onClick={() => setEditMeta(false)}>
-                  Cancelar
-                </Button>
-              </div>
-            </div>
-          )}
+      <div>
+        <Link href="/admin/eventos/listas-convidados" className="text-sm text-amber-600 hover:underline">
+          ← Listas de convidados
+        </Link>
+        <h1 className="mt-2 text-2xl font-bold">Editar lista</h1>
+        <p className="text-sm text-zinc-500">
+          Altere evento, consultor e convidados direto na tabela (salva ao sair do campo).
+        </p>
+      </div>
+
+      <div className="grid gap-3 rounded-xl border bg-zinc-50/80 p-4 dark:border-zinc-800 dark:bg-zinc-900/50 sm:grid-cols-12 sm:items-end">
+        <div className="sm:col-span-5">
+          <Label>Evento</Label>
+          <Select value={eventoId} onChange={(e) => onEventoChange(e.target.value)} className="mt-1">
+            {eventos.map((ev) => (
+              <option key={ev.id} value={ev.id}>
+                {ev.nome}
+              </option>
+            ))}
+          </Select>
+          <p className="mt-1 text-xs text-zinc-500">Trocar evento move a lista inteira para outro encontro.</p>
         </div>
-        {!editMeta ? (
-          <Button type="button" variant="outline" size="sm" onClick={() => setEditMeta(true)}>
-            Editar lista
-          </Button>
-        ) : null}
+        <div className="sm:col-span-4">
+          <Label>Consultor</Label>
+          <Input
+            value={consultorNome}
+            onChange={(e) => {
+              setConsultorNome(e.target.value);
+              setMetaSaved(false);
+            }}
+            onBlur={onConsultorBlur}
+            className="mt-1"
+          />
+        </div>
+        <div className="sm:col-span-3">
+          <p className="text-xs text-zinc-500">Lista vinculada a</p>
+          <p className="mt-1 text-sm font-medium leading-snug">{eventoLabel}</p>
+          <p className="mt-1 text-xs text-emerald-600 dark:text-emerald-400">
+            {metaSaved ? "Dados da lista salvos" : pending ? "Salvando…" : "Alteração pendente…"}
+          </p>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -225,13 +278,13 @@ export function ListaConvidadosDetailClient({ lista, itens, eventos }: Props) {
       </div>
 
       <div className="overflow-x-auto rounded-xl border dark:border-zinc-800">
-        <table className="min-w-[1100px] w-full text-sm">
+        <table className="min-w-[1200px] w-full text-sm">
           <thead className="border-b bg-zinc-50 text-left text-xs uppercase dark:bg-zinc-900">
             <tr>
-              <th className="px-2 py-2">Nome</th>
-              <th className="px-2 py-2">Empresa</th>
-              <th className="px-2 py-2">Telefone</th>
-              <th className="px-2 py-2">Convidado por</th>
+              <th className="min-w-[160px] px-2 py-2">Nome</th>
+              <th className="min-w-[120px] px-2 py-2">Empresa</th>
+              <th className="min-w-[130px] px-2 py-2">Telefone</th>
+              <th className="min-w-[120px] px-2 py-2">Convidado por</th>
               <th className="px-2 py-2">Presença</th>
               <th className="px-2 py-2">Resultado</th>
               <th className="px-2 py-2">Valor</th>
@@ -241,10 +294,42 @@ export function ListaConvidadosDetailClient({ lista, itens, eventos }: Props) {
           <tbody>
             {rows.map((row) => (
               <tr key={row.id} className="border-b align-top dark:border-zinc-800">
-                <td className="px-2 py-2 font-medium">{row.nome}</td>
-                <td className="px-2 py-2 text-zinc-500">{row.empresa ?? "—"}</td>
-                <td className="px-2 py-2">{row.telefone ?? "—"}</td>
-                <td className="px-2 py-2 text-zinc-500">{row.convidado_por ?? "—"}</td>
+                <td className="px-2 py-2">
+                  <Input
+                    key={`${row.id}-nome-${row.updated_at}`}
+                    defaultValue={row.nome}
+                    className="h-8 min-w-[140px] text-sm font-medium"
+                    onBlur={(e) => commitTextField(row, "nome", e.target.value)}
+                  />
+                </td>
+                <td className="px-2 py-2">
+                  <Input
+                    key={`${row.id}-empresa-${row.updated_at}`}
+                    defaultValue={row.empresa ?? ""}
+                    className="h-8 min-w-[100px] text-sm"
+                    placeholder="—"
+                    onBlur={(e) => commitTextField(row, "empresa", e.target.value)}
+                  />
+                </td>
+                <td className="px-2 py-2">
+                  <Input
+                    key={`${row.id}-tel-${row.updated_at}`}
+                    defaultValue={row.telefone ?? ""}
+                    className="h-8 min-w-[120px] text-sm"
+                    inputMode="tel"
+                    placeholder="(51) 99999-9999"
+                    onBlur={(e) => commitTextField(row, "telefone", e.target.value)}
+                  />
+                </td>
+                <td className="px-2 py-2">
+                  <Input
+                    key={`${row.id}-conv-${row.updated_at}`}
+                    defaultValue={row.convidado_por ?? ""}
+                    className="h-8 min-w-[100px] text-sm"
+                    placeholder="—"
+                    onBlur={(e) => commitTextField(row, "convidado_por", e.target.value)}
+                  />
+                </td>
                 <td className="px-2 py-2">
                   <TagGroup
                     value={row.status_presenca}
