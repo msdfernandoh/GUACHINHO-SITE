@@ -13,6 +13,9 @@ type Props = {
   resultMsg: string | null;
   pdfLink: string | null;
   onProposta: () => void;
+  onContratar: () => void;
+  onGerarLink?: () => void;
+  contratarLoading?: boolean;
 };
 
 function TotalCard({
@@ -59,6 +62,9 @@ export function GrupoTotalsBar({
   resultMsg,
   pdfLink,
   onProposta,
+  onContratar,
+  onGerarLink,
+  contratarLoading,
 }: Props) {
   return (
     <div className="fixed bottom-0 left-0 right-0 z-20 border-t border-amber-500/20 bg-zinc-950/95 backdrop-blur-md">
@@ -86,14 +92,36 @@ export function GrupoTotalsBar({
             label="Saldo pós-lance"
             value={formatCurrency(totais.saldoPosLance)}
           />
-          <Button
-            type="button"
-            variant="gold"
-            className="h-full min-h-12 w-full whitespace-nowrap px-6 text-base font-bold xl:min-w-[200px] xl:w-auto xl:self-stretch"
-            onClick={onProposta}
-          >
-            Gerar proposta
-          </Button>
+          <div className="flex flex-col gap-2 xl:col-span-1 xl:justify-stretch">
+            <Button
+              type="button"
+              variant="gold"
+              className="h-full min-h-12 w-full whitespace-nowrap px-6 text-base font-bold"
+              disabled={contratarLoading}
+              onClick={onContratar}
+            >
+              Contratar agora
+            </Button>
+            {onGerarLink ? (
+              <Button
+                type="button"
+                variant="outlineGold"
+                className="min-h-10 w-full border-zinc-600 bg-zinc-900 text-sm"
+                disabled={contratarLoading}
+                onClick={onGerarLink}
+              >
+                Gerar link da proposta
+              </Button>
+            ) : null}
+            <Button
+              type="button"
+              variant="outlineGold"
+              className="min-h-10 w-full border-zinc-600 bg-zinc-900 text-xs"
+              onClick={onProposta}
+            >
+              Gerar proposta PDF
+            </Button>
+          </div>
         </div>
 
         {toastMsg ? <p className="mt-3 text-sm text-amber-300">{toastMsg}</p> : null}

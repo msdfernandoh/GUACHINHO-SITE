@@ -22,6 +22,7 @@ import {
   SimuladorBemConfigForm,
 } from "./simulador-forms";
 import { IaConfigForm } from "./ia-config-form";
+import { ContratacaoConfigForm } from "./contratacao-config-form";
 import { IaEnvStatusBanner } from "./ia-env-status";
 import { HomeModulosForm } from "./home-modulos-form";
 import {
@@ -35,11 +36,16 @@ import {
 } from "@/lib/config/defaults";
 import { normalizeFinanciamentoStored } from "@/lib/config/financiamento-por-tipo";
 import { DEFAULT_IA_CONFIG, resolveIaAssistantMode, type IaConfig } from "@/lib/config/ia-defaults";
+import {
+  DEFAULT_CONTRATACAO_ONLINE_CONFIG,
+  type ContratacaoOnlineConfig,
+} from "@/lib/contratacoes-online/pagamento";
 
 const TABS: Array<{ id: string; label: string; future?: boolean }> = [
   { id: "site", label: "Site" },
   { id: "contato", label: "Contato" },
   { id: "propostas", label: "Propostas" },
+  { id: "contratacao", label: "Contratação" },
   { id: "leads", label: "Leads" },
   { id: "whatsapp", label: "WhatsApp por Origem" },
   { id: "simulador", label: "Simulador" },
@@ -73,6 +79,10 @@ export function ConfigTabs({ configs, whatsapp, iaEnv }: Props) {
     ...(configs.calculadoras_financeiras as CalculadorasFinanceirasConfig | undefined),
   };
   const iaCfg = { ...DEFAULT_IA_CONFIG, ...(configs.ia_config as IaConfig | undefined) };
+  const contratacaoCfg = {
+    ...DEFAULT_CONTRATACAO_ONLINE_CONFIG,
+    ...(configs.contratacao_online_config as ContratacaoOnlineConfig | undefined),
+  };
 
   const current = TABS.find((t) => t.id === tab);
 
@@ -151,6 +161,8 @@ export function ConfigTabs({ configs, whatsapp, iaEnv }: Props) {
           <AdminFormSubmitButton label="Salvar Propostas" />
         </form>
       ) : null}
+
+      {tab === "contratacao" ? <ContratacaoConfigForm initial={contratacaoCfg} /> : null}
 
       {tab === "leads" ? (
         <form action={saveLeadsConfigAction} className="max-w-xl space-y-3">

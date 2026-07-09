@@ -32,6 +32,8 @@ import { ComparisonSection } from "./comparison-section";
 import { SimuladorCalculadoraAplicacaoCta } from "./simulador-calculadora-aplicacao-cta";
 import { ProjectionSection } from "./projection-section";
 import { LeadCaptureModal } from "./lead-capture-modal";
+import { PropostaLinkModal } from "@/components/contratacao/proposta-link-modal";
+import { useIniciarContratacao } from "@/lib/contratacoes-online/use-iniciar-contratacao";
 import type {
   AcaoCaptura,
   Modo,
@@ -117,9 +119,11 @@ export type SimuladorPrefill = {
 export function SimuladorApp({
   configs,
   prefill,
+  isConsultor = false,
 }: {
   configs: SimuladorConfigs;
   prefill?: SimuladorPrefill;
+  isConsultor?: boolean;
 }) {
   const resultRef = useRef<HTMLDivElement>(null);
   const prefillAppliedRef = useRef(false);
@@ -141,6 +145,15 @@ export function SimuladorApp({
   const [msg, setMsg] = useState<string | null>(null);
   const [waLink, setWaLink] = useState<string | null>(null);
   const [pdfLink, setPdfLink] = useState<string | null>(null);
+  const [contratarEscolhaOpen, setContratarEscolhaOpen] = useState(false);
+  const [linkModal, setLinkModal] = useState<{
+    protocolo: string;
+    url: string;
+    credito: number | null;
+    parcela: number | null;
+    tipoBem: string | null;
+  } | null>(null);
+  const { iniciar: iniciarContratacao, loading: contratacaoLoading } = useIniciarContratacao();
 
   const bemCfg = useMemo(
     () => resolveBemConfigSimulador(tipoBem, configs),
@@ -457,6 +470,73 @@ export function SimuladorApp({
     });
   }
 
+  function buildDadosSimulacaoPayload() {
+    const resultadoPayload =
+      modo === "consorcio"
+        ? {
+            ...contemplacao,
+            opcaoParcela: opcaoSelecionada,
+            comparativo,
+          }
+        : { ...resultadoFin, comparativo };
+    return {
+      modo,
+      tipoBem:
+        modo === "consorcio" || modo === "financiamento"
+          ? tipoBem === "automovel"
+            ? "automovel"
+            : "imovel"
+          : undefined,
+      entrada:
+        modo === "consorcio"
+          ? entradaConsorcio
+          : {
+              valorBem,
+              entrada: entradaFin,
+              taxaMensalPercentual: taxaMensal,
+              prazoMeses: prazoFin,
+            },
+      resultado: resultadoPayload,
+    };
+  }
+
+  async function executarContratacao(modoContrat: "cliente_site" | "sdr_link") {
+    setMsg(null);
+    try {
+      const result = await iniciarContratacao({
+        modo: modoContrat,
+        origem: "simulador",
+        dados_simulacao: buildDadosSimulacaoPayload(),
+        redirectCliente: modoContrat === "cliente_site",
+      });
+      if (modoContrat === "sdr_link" && result) {
+        setLinkModal({
+          protocolo: result.protocolo,
+          url: result.url,
+          credito: modo === "consorcio" ? valorCredito : valorBem,
+          parcela:
+            modo === "consorcio" ? contemplacao.parcelaEstimada : resultadoFin.parcelaEstimada,
+          tipoBem: tipoBem === "automovel" ? "Veículo" : "Imóvel",
+        });
+        setContratarEscolhaOpen(false);
+      }
+    } catch (err) {
+      setMsg(err instanceof Error ? err.message : "Erro ao iniciar contratação");
+    }
+  }
+
+  function onContratarAgora() {
+    if (!resultoDestacado) {
+      scrollToResult();
+      return;
+    }
+    if (isConsultor) {
+      setContratarEscolhaOpen(true);
+      return;
+    }
+    void executarContratacao("cliente_site");
+  }
+
   function openCaptura(acao: AcaoCaptura) {
     setCapturaAcao(acao);
     setCapturaOpen(true);
@@ -548,15 +628,16 @@ export function SimuladorApp({
     resultoDestacado ? (
       <div className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-800 bg-slate-950/95 p-3 backdrop-blur sm:hidden">
         <div className="flex gap-2">
-          <Button type="button" variant="gold" className="min-h-11 flex-1" onClick={() => openCaptura("proposta")}>
-            Gerar proposta
-          </Button>
           <Button
             type="button"
-            variant="outlineGold"
-            className="min-h-11 flex-1 border-slate-600 bg-slate-900 text-slate-100 hover:bg-slate-800"
-            onClick={() => openCaptura("especialista")}
+            variant="gold"
+            className="min-h-11 flex-1"
+            disabled={contratacaoLoading}
+            onClick={onContratarAgora}
           >
+            Contratar agora
+          </Button>
+          <Button type="button" variant="outlineGold" className="min-h-11 flex-1 border-slate-600 bg-slate-900 text-slate-100 hover:bg-slate-800" onClick={() => openCaptura("especialista")}>
             Especialista
           </Button>
         </div>
@@ -708,9 +789,18 @@ export function SimuladorApp({
               type="button"
               variant="gold"
               className="min-h-12 flex-1 text-base sm:min-w-[12rem]"
+              disabled={contratacaoLoading}
+              onClick={onContratarAgora}
+            >
+              Contratar agora
+            </Button>
+            <Button
+              type="button"
+              variant="outlineGold"
+              className="min-h-12 flex-1 border-slate-600 bg-slate-900 text-slate-100 hover:bg-slate-800 sm:min-w-[12rem]"
               onClick={() => openCaptura("proposta")}
             >
-              Gerar proposta
+              Gerar proposta PDF
             </Button>
             <Button
               type="button"
@@ -764,6 +854,46 @@ export function SimuladorApp({
         onWhatsapp={setWhatsapp}
         onCidade={setCidade}
         onEmail={setEmail}
+      />
+
+      {contratarEscolhaOpen ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+          <div className="w-full max-w-md space-y-4 rounded-2xl border border-slate-700 bg-slate-900 p-6">
+            <h2 className="text-lg font-semibold text-white">Contratar agora</h2>
+            <p className="text-sm text-slate-400">Escolha como deseja prosseguir com esta simulação.</p>
+            <Button
+              type="button"
+              variant="gold"
+              className="w-full"
+              disabled={contratacaoLoading}
+              onClick={() => void executarContratacao("cliente_site")}
+            >
+              Continuar como cliente
+            </Button>
+            <Button
+              type="button"
+              variant="outlineGold"
+              className="w-full border-slate-600 bg-slate-950"
+              disabled={contratacaoLoading}
+              onClick={() => void executarContratacao("sdr_link")}
+            >
+              Gerar link para enviar ao cliente
+            </Button>
+            <Button type="button" variant="outline" className="w-full" onClick={() => setContratarEscolhaOpen(false)}>
+              Cancelar
+            </Button>
+          </div>
+        </div>
+      ) : null}
+
+      <PropostaLinkModal
+        open={Boolean(linkModal)}
+        onClose={() => setLinkModal(null)}
+        protocolo={linkModal?.protocolo ?? ""}
+        url={linkModal?.url ?? ""}
+        credito={linkModal?.credito}
+        parcela={linkModal?.parcela}
+        tipoBem={linkModal?.tipoBem}
       />
     </SimuladorPageShell>
   );

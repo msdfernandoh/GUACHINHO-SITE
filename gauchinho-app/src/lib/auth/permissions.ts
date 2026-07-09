@@ -55,6 +55,14 @@ export function canManageLeads(perfil: Perfil | null | undefined): boolean {
   return isStaff(perfil);
 }
 
+/** Documentos de contratações online — master, SRD e visualizador (não imobiliária). */
+export function canAccessContratacaoDocumentos(perfil: Perfil | null | undefined): boolean {
+  return isStaff(perfil);
+}
+
+export const MSG_SEM_PERMISSAO_DOCUMENTOS_CONTRATACAO =
+  "Você não tem permissão para acessar documentos desta contratação.";
+
 export function canCreateProposta(perfil: Perfil | null | undefined): boolean {
   return perfil === "master" || perfil === "srd";
 }

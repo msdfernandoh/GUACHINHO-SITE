@@ -29,6 +29,7 @@ const staffNav = [
   { href: "/admin/eventos/listas-convidados", label: "Listas convidados", icon: ClipboardList },
   { href: "/admin/relatorios", label: "Relatórios", icon: BarChart2 },
   { href: "/admin/propostas", label: "Propostas", icon: FileText },
+  { href: "/admin/contratacoes", label: "Contratações", icon: FileText },
   { href: "/admin/grupos", label: "Grupos", icon: Layers },
   { href: "/admin/cartas-contempladas", label: "Cartas Contempladas", icon: FileText },
   { href: "/admin/imobiliarias", label: "Imobiliárias", icon: Building2, masterOnly: true },

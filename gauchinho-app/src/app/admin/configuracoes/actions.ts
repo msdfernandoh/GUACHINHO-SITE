@@ -62,6 +62,18 @@ export async function saveLeadsConfigAction(formData: FormData) {
   revalidatePath("/admin/configuracoes");
 }
 
+export async function saveContratacaoOnlineConfigAction(formData: FormData) {
+  await requireMasterConfig();
+  await saveConfigJson("contratacao_online_config", {
+    pix_primeira_parcela_ativo: formData.get("pix_primeira_parcela_ativo") === "on",
+    pix_chave: String(formData.get("pix_chave") ?? "").trim(),
+    pix_recebedor: String(formData.get("pix_recebedor") ?? "").trim(),
+    pix_instrucoes: String(formData.get("pix_instrucoes") ?? "").trim(),
+    comprovante_pix_obrigatorio: formData.get("comprovante_pix_obrigatorio") === "on",
+  });
+  revalidatePath("/admin/configuracoes");
+}
+
 function numField(formData: FormData, name: string, fallback = 0) {
   const v = Number(formData.get(name));
   return Number.isFinite(v) ? v : fallback;

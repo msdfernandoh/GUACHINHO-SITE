@@ -20,6 +20,9 @@ import { GruposTable } from "@/components/public/grupos/grupos-table";
 import { PublicPremiumHero } from "@/components/public/public-premium-hero";
 import { simuladorShell } from "@/components/simulador/simulador-ui";
 import { useLockBodyScroll } from "@/lib/ui/use-lock-body-scroll";
+import { PropostaLinkModal } from "@/components/contratacao/proposta-link-modal";
+import { useIniciarContratacao } from "@/lib/contratacoes-online/use-iniciar-contratacao";
+import { buildDadosSimulacaoGrupos } from "@/lib/contratacoes-online/build-grupos-payload";
 
 type ModalFiltro = (typeof MODALIDADE_FILTRO_PUBLICO)[number]["value"];
 
@@ -33,9 +36,11 @@ export type SelecaoGrupoPayload = {
 export function GruposPublicClient({
   aggregates,
   isStaff = false,
+  isConsultor = false,
 }: {
   aggregates: PublicGrupoAggregate[];
   isStaff?: boolean;
+  isConsultor?: boolean;
 }) {
   const [filtro, setFiltro] = useState<ModalFiltro>("Todos");
   const [busca, setBusca] = useState("");
@@ -53,6 +58,14 @@ export function GruposPublicClient({
   const [resultMsg, setResultMsg] = useState<string | null>(null);
   const [pdfLink, setPdfLink] = useState<string | null>(null);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
+  const [linkModal, setLinkModal] = useState<{
+    protocolo: string;
+    url: string;
+    credito: number | null;
+    parcela: number | null;
+    tipoBem: string | null;
+  } | null>(null);
+  const { iniciar: iniciarContratacao, loading: contratacaoLoading } = useIniciarContratacao();
 
   const modalCancelClass =
     "border-zinc-500 bg-zinc-900 text-zinc-100 hover:border-zinc-400 hover:bg-zinc-800 hover:text-zinc-100";
@@ -100,6 +113,58 @@ export function GruposPublicClient({
 
   function setConfig(grupoId: string, config: ConfigLinhaSimulacaoGrupo) {
     setConfigs((prev) => ({ ...prev, [grupoId]: config }));
+  }
+
+  const linhasEnriquecidas = useMemo(() => {
+    return linhasAtivas.map((l) => {
+      const agg = aggregates.find((a) => a.grupo.id === l.grupoId);
+      return {
+        ...l,
+        grupo: agg?.grupo ?? aggregates[0]?.grupo,
+      };
+    }).filter((l) => l.grupo);
+  }, [linhasAtivas, aggregates]);
+
+  function buildPayloadGrupos() {
+    return buildDadosSimulacaoGrupos(
+      linhasEnriquecidas.map((l) => ({
+        grupoId: l.grupoId,
+        cotaId: l.cotaId,
+        config: l.config,
+        resultado: l.resultado,
+        grupo: l.grupo!,
+      })),
+      totais as unknown as Record<string, unknown>,
+    );
+  }
+
+  async function iniciarContratacaoGrupos(modo: "cliente_site" | "sdr_link") {
+    if (!hasSelection) {
+      setToastMsg("Informe cota e quantidade (mín. 1) em ao menos um grupo.");
+      return;
+    }
+    setToastMsg(null);
+    try {
+      const result = await iniciarContratacao({
+        modo,
+        origem: "grupos",
+        dados_simulacao: buildPayloadGrupos(),
+        cliente_pre_nome: nome.trim() || undefined,
+        cliente_pre_telefone: whatsapp ? digitsOnlyPhone(whatsapp) : undefined,
+        redirectCliente: modo === "cliente_site",
+      });
+      if (modo === "sdr_link" && result) {
+        setLinkModal({
+          protocolo: result.protocolo,
+          url: result.url,
+          credito: totais.creditoLiquido,
+          parcela: totais.primeiraParcela,
+          tipoBem: linhasEnriquecidas.map((l) => l.grupo?.modalidade).join(", "),
+        });
+      }
+    } catch (err) {
+      setToastMsg(err instanceof Error ? err.message : "Erro ao criar proposta");
+    }
   }
 
   function openPropostaModal() {
@@ -233,6 +298,9 @@ export function GruposPublicClient({
         resultMsg={resultMsg}
         pdfLink={pdfLink}
         onProposta={openPropostaModal}
+        onContratar={() => void iniciarContratacaoGrupos("cliente_site")}
+        onGerarLink={isConsultor ? () => void iniciarContratacaoGrupos("sdr_link") : undefined}
+        contratarLoading={contratacaoLoading}
       />
 
       {modalOpen ? (
@@ -279,6 +347,16 @@ export function GruposPublicClient({
           </form>
         </div>
       ) : null}
+
+      <PropostaLinkModal
+        open={Boolean(linkModal)}
+        onClose={() => setLinkModal(null)}
+        protocolo={linkModal?.protocolo ?? ""}
+        url={linkModal?.url ?? ""}
+        credito={linkModal?.credito}
+        parcela={linkModal?.parcela}
+        tipoBem={linkModal?.tipoBem}
+      />
     </div>
   );
 }

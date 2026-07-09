@@ -2,6 +2,8 @@ import { SimuladorApp, type SimuladorPrefill } from "@/components/simulador/simu
 import { getSimuladorConfigsPublic } from "@/server/config";
 import type { Modo } from "@/components/simulador/simulador-types";
 import { parseTipoBemFromQuery } from "@/lib/simulador/tipos-credito";
+import { getUsuarioNegocio } from "@/lib/auth/get-usuario";
+import { canCreateProposta } from "@/lib/auth/permissions";
 
 function parseModo(raw: string | undefined): Modo | undefined {
   if (raw === "financiamento") return "financiamento";
@@ -16,6 +18,8 @@ export default async function SimuladorPage({
 }) {
   const sp = await searchParams;
   const configs = await getSimuladorConfigsPublic();
+  const usuario = await getUsuarioNegocio();
+  const isConsultor = canCreateProposta(usuario?.perfil);
 
   const valorRaw = sp.valor ? Number(sp.valor) : undefined;
   const prazoRaw = sp.prazo ? Number(sp.prazo) : undefined;
@@ -34,5 +38,5 @@ export default async function SimuladorPage({
         }
       : undefined;
 
-  return <SimuladorApp configs={configs} prefill={prefill} />;
+  return <SimuladorApp configs={configs} prefill={prefill} isConsultor={isConsultor} />;
 }
