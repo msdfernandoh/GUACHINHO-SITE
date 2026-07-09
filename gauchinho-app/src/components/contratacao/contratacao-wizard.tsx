@@ -5,9 +5,23 @@ import QRCode from "react-qr-code";
 import Link from "next/link";
 import { Button, Input, Label } from "@/components/ui/form-primitives";
 import { sectionCardClass, simuladorShell } from "@/components/simulador/simulador-ui";
-import { formatCurrency, formatWhatsappBrInput } from "@/lib/utils/format";
-import { digitsOnlyPhone } from "@/lib/utils/format";
+import {
+  formatCurrency,
+  formatWhatsappBrInput,
+  formatCpfBrInput,
+  formatCnpjBrInput,
+  digitsOnlyPhone,
+} from "@/lib/utils/format";
 import type { ContratacaoOnlineRow, FormaPagamento, TipoPessoa } from "@/lib/contratacoes-online/types";
+import type { DocumentoContratacaoPublico } from "@/lib/contratacoes-online/sanitize-public";
+import { documentosObrigatoriosPendentes } from "@/lib/contratacoes-online/documentos-obrigatorios";
+import { ContratacaoWizardProgress } from "@/components/contratacao/contratacao-wizard-progress";
+import type { Step } from "@/components/contratacao/contratacao-wizard-steps";
+import {
+  ContratacaoDocUploadField,
+  wizardFieldLabelClass,
+  wizardSectionTitleClass,
+} from "@/components/contratacao/contratacao-doc-upload-field";
 import { cn } from "@/lib/utils/cn";
 
 type ResumoFinanceiro = Record<string, number | string | null>;
@@ -15,6 +29,7 @@ type ResumoFinanceiro = Record<string, number | string | null>;
 type ApiPayload = {
   contratacao: ContratacaoOnlineRow;
   resumoFinanceiro: ResumoFinanceiro;
+  documentos: DocumentoContratacaoPublico[];
   formasPagamento: FormaPagamento[];
   pixConfig: {
     chave: string;
@@ -24,16 +39,9 @@ type ApiPayload = {
   } | null;
 };
 
-type Step =
-  | "confirm"
-  | "dados"
-  | "pessoa"
-  | "docs"
-  | "pagamento"
-  | "pix"
-  | "boleto"
-  | "cartao"
-  | "success";
+function WizardLabel(props: React.LabelHTMLAttributes<HTMLLabelElement>) {
+  return <Label className={wizardFieldLabelClass()} {...props} />;
+}
 
 function Row({ label, value }: { label: string; value: string | null | undefined }) {
   if (!value) return null;
@@ -67,10 +75,10 @@ export function ContratacaoWizard({ publicToken }: { publicToken: string }) {
   const [respNome, setRespNome] = useState("");
   const [respCpf, setRespCpf] = useState("");
   const [formaPagamento, setFormaPagamento] = useState<FormaPagamento | null>(null);
-  const [uploadMsg, setUploadMsg] = useState<string | null>(null);
+  const [docsAviso, setDocsAviso] = useState<string | null>(null);
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const load = useCallback(async (opts?: { silent?: boolean }) => {
+    if (!opts?.silent) setLoading(true);
     setError(null);
     try {
       const res = await fetch(`/api/public/contratacoes/${publicToken}`);
@@ -81,6 +89,9 @@ export function ContratacaoWizard({ publicToken }: { publicToken: string }) {
       setNome(c.nome ?? "");
       setTelefone(c.telefone ? formatWhatsappBrInput(c.telefone) : "");
       setEmail(c.email ?? "");
+      if (c.cpf) setCpf(formatCpfBrInput(c.cpf));
+      if (c.cnpj) setCnpj(formatCnpjBrInput(c.cnpj));
+      if (c.responsavel_cpf) setRespCpf(formatCpfBrInput(c.responsavel_cpf));
       if (c.tipo_pessoa) setTipoPessoa(c.tipo_pessoa);
       if (c.status === "aguardando_consultor" || c.status === "finalizado") {
         setStep("success");
@@ -95,7 +106,7 @@ export function ContratacaoWizard({ publicToken }: { publicToken: string }) {
     } catch (e) {
       setError(e instanceof Error ? e.message : "Erro");
     } finally {
-      setLoading(false);
+      if (!opts?.silent) setLoading(false);
     }
   }, [publicToken]);
 
@@ -105,6 +116,18 @@ export function ContratacaoWizard({ publicToken }: { publicToken: string }) {
 
   const c = data?.contratacao;
   const fin = data?.resumoFinanceiro ?? {};
+  const documentos = data?.documentos ?? [];
+
+  const docPorTipo = useMemo(() => {
+    const map = new Map<string, DocumentoContratacaoPublico>();
+    for (const d of documentos) {
+      const prev = map.get(d.tipo_documento);
+      if (!prev || new Date(d.created_at) > new Date(prev.created_at)) {
+        map.set(d.tipo_documento, d);
+      }
+    }
+    return map;
+  }, [documentos]);
 
   const origemLabel = c?.origem === "grupos" ? "Grupo" : "Simulador";
 
@@ -176,7 +199,6 @@ export function ContratacaoWizard({ publicToken }: { publicToken: string }) {
 
   async function uploadDoc(tipo: string, file: File | null) {
     if (!file) return;
-    setUploadMsg(null);
     const fd = new FormData();
     fd.set("tipo_documento", tipo);
     fd.set("arquivo", file);
@@ -186,11 +208,19 @@ export function ContratacaoWizard({ publicToken }: { publicToken: string }) {
     });
     const json = await res.json();
     if (!res.ok) throw new Error(json.error ?? "Falha no upload");
-    setUploadMsg(`Arquivo ${file.name} enviado.`);
-    await load();
+    await load({ silent: true });
   }
 
   async function continuarDocs() {
+    setDocsAviso(null);
+    const pendentes = documentosObrigatoriosPendentes(
+      tipoPessoa,
+      documentos.map((d) => d.tipo_documento),
+    );
+    if (pendentes.length > 0) {
+      setDocsAviso("Envie os documentos obrigatórios antes de continuar.");
+      return;
+    }
     setSubmitting(true);
     try {
       await patch({ etapa: "documentos" });
@@ -237,8 +267,10 @@ export function ContratacaoWizard({ publicToken }: { publicToken: string }) {
   }
 
   const pixChave = c?.pix_chave || data?.pixConfig?.chave || "";
-  const comprovanteObrigatorio =
-    data?.pixConfig?.comprovanteObrigatorio ?? false;
+  const comprovanteObrigatorio = data?.pixConfig?.comprovanteObrigatorio ?? false;
+  const comprovantePixEnviado =
+    Boolean((c as { pix_comprovante_enviado?: boolean }).pix_comprovante_enviado) ||
+    docPorTipo.has("comprovante_pix");
 
   const successExtra = useMemo(() => {
     if (formaPagamento === "boleto" || c?.forma_pagamento === "boleto") {
@@ -290,6 +322,12 @@ export function ContratacaoWizard({ publicToken }: { publicToken: string }) {
           <p className="mt-1 text-xs text-slate-500">Protocolo {c.protocolo}</p>
         </header>
 
+        {step !== "success" ? (
+          <div className={sectionCardClass()}>
+            <ContratacaoWizardProgress step={step} />
+          </div>
+        ) : null}
+
         {error ? <p className="text-center text-sm text-red-400">{error}</p> : null}
 
         {step === "confirm" ? (
@@ -300,7 +338,7 @@ export function ContratacaoWizard({ publicToken }: { publicToken: string }) {
               </h2>
               <Row label="Tipo do bem" value={c.tipo_bem} />
               <Row label="Crédito selecionado" value={money(c.credito_selecionado)} />
-              <Row label="Parcela estimada" value={money(c.parcela_estimada)} />
+              <Row label="Parcela inicial estimada" value={money(c.parcela_estimada)} />
               <Row label="Prazo" value={c.prazo ? `${c.prazo} meses` : null} />
               <Row label="Origem" value={origemLabel} />
               <Row label="Administradora" value={c.administradora} />
@@ -313,6 +351,10 @@ export function ContratacaoWizard({ publicToken }: { publicToken: string }) {
               <Row label="Saldo devedor" value={money(fin.saldoDevedor as number)} />
               <Row label="Parcela integral" value={money(fin.parcelaIntegral as number)} />
               <Row label="Parcela reduzida" value={money(fin.parcelaReduzida as number)} />
+              <Row
+                label="Parcela após contemplação"
+                value={money(fin.parcelaPosContemplacao as number)}
+              />
               <Row label="Lance embutido" value={money(fin.lanceEmbutido as number)} />
               <Row label="Recurso próprio" value={money(fin.recursoProprio as number)} />
               <Row label="Lance total" value={money(fin.lanceTotal as number)} />
@@ -338,13 +380,13 @@ export function ContratacaoWizard({ publicToken }: { publicToken: string }) {
 
         {step === "dados" ? (
           <form onSubmit={salvarDados} className={cn(sectionCardClass(), "space-y-4")}>
-            <h2 className="text-lg font-semibold text-white">Dados do interessado</h2>
+            <h2 className={wizardSectionTitleClass()}>Dados do interessado</h2>
             <div>
-              <Label>Nome completo</Label>
+              <WizardLabel>Nome completo</WizardLabel>
               <Input required value={nome} onChange={(e) => setNome(e.target.value)} className="mt-1" />
             </div>
             <div>
-              <Label>Telefone / WhatsApp</Label>
+              <WizardLabel>Telefone / WhatsApp</WizardLabel>
               <Input
                 required
                 value={telefone}
@@ -353,7 +395,7 @@ export function ContratacaoWizard({ publicToken }: { publicToken: string }) {
               />
             </div>
             <div>
-              <Label>E-mail</Label>
+              <WizardLabel>E-mail</WizardLabel>
               <Input required type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="mt-1" />
             </div>
             <Button type="submit" variant="gold" className="w-full" disabled={submitting}>
@@ -364,7 +406,7 @@ export function ContratacaoWizard({ publicToken }: { publicToken: string }) {
 
         {step === "pessoa" ? (
           <form onSubmit={salvarPessoa} className={cn(sectionCardClass(), "space-y-4")}>
-            <h2 className="text-lg font-semibold text-white">A contratação será em CPF ou CNPJ?</h2>
+            <h2 className={wizardSectionTitleClass()}>A contratação será em CPF ou CNPJ?</h2>
             <div className="grid gap-2 sm:grid-cols-2">
               {(["cpf", "cnpj"] as const).map((t) => (
                 <button
@@ -385,31 +427,49 @@ export function ContratacaoWizard({ publicToken }: { publicToken: string }) {
             {tipoPessoa === "cpf" ? (
               <>
                 <div>
-                  <Label>CPF</Label>
-                  <Input required value={cpf} onChange={(e) => setCpf(e.target.value)} className="mt-1" />
+                  <WizardLabel>CPF</WizardLabel>
+                  <Input
+                    required
+                    value={cpf}
+                    onChange={(e) => setCpf(formatCpfBrInput(e.target.value))}
+                    className="mt-1"
+                    inputMode="numeric"
+                  />
                 </div>
                 <div>
-                  <Label>Data de nascimento (opcional)</Label>
+                  <WizardLabel>Data de nascimento (opcional)</WizardLabel>
                   <Input type="date" value={dataNascimento} onChange={(e) => setDataNascimento(e.target.value)} className="mt-1" />
                 </div>
               </>
             ) : (
               <>
                 <div>
-                  <Label>Razão social</Label>
+                  <WizardLabel>Razão social</WizardLabel>
                   <Input required value={razaoSocial} onChange={(e) => setRazaoSocial(e.target.value)} className="mt-1" />
                 </div>
                 <div>
-                  <Label>CNPJ</Label>
-                  <Input required value={cnpj} onChange={(e) => setCnpj(e.target.value)} className="mt-1" />
+                  <WizardLabel>CNPJ</WizardLabel>
+                  <Input
+                    required
+                    value={cnpj}
+                    onChange={(e) => setCnpj(formatCnpjBrInput(e.target.value))}
+                    className="mt-1"
+                    inputMode="numeric"
+                  />
                 </div>
                 <div>
-                  <Label>Nome do responsável</Label>
+                  <WizardLabel>Nome do responsável</WizardLabel>
                   <Input required value={respNome} onChange={(e) => setRespNome(e.target.value)} className="mt-1" />
                 </div>
                 <div>
-                  <Label>CPF do responsável</Label>
-                  <Input required value={respCpf} onChange={(e) => setRespCpf(e.target.value)} className="mt-1" />
+                  <WizardLabel>CPF do responsável</WizardLabel>
+                  <Input
+                    required
+                    value={respCpf}
+                    onChange={(e) => setRespCpf(formatCpfBrInput(e.target.value))}
+                    className="mt-1"
+                    inputMode="numeric"
+                  />
                 </div>
               </>
             )}
@@ -421,29 +481,67 @@ export function ContratacaoWizard({ publicToken }: { publicToken: string }) {
 
         {step === "docs" ? (
           <div className={cn(sectionCardClass(), "space-y-4")}>
-            <h2 className="text-lg font-semibold text-white">Envio de documentos</h2>
+            <h2 className={wizardSectionTitleClass()}>Envio de documentos</h2>
             <p className="text-sm text-slate-400">
               Envie os documentos para agilizar a emissão da proposta e do contrato pela nossa equipe.
             </p>
             {tipoPessoa === "cpf" ? (
               <>
-                <DocUpload label="CNH ou RG" tipo="documento_foto" onUpload={uploadDoc} />
-                <DocUpload label="CPF (se separado)" tipo="cpf" onUpload={uploadDoc} />
-                <DocUpload label="Comprovante de endereço (opcional)" tipo="comprovante_endereco" onUpload={uploadDoc} />
+                <ContratacaoDocUploadField
+                  label="CNH ou RG"
+                  tipo="documento_foto"
+                  obrigatorio
+                  enviado={docPorTipo.get("documento_foto") ?? null}
+                  onUpload={uploadDoc}
+                />
+                <ContratacaoDocUploadField
+                  label="CPF (se separado)"
+                  tipo="cpf"
+                  enviado={docPorTipo.get("cpf") ?? null}
+                  onUpload={uploadDoc}
+                />
+                <ContratacaoDocUploadField
+                  label="Comprovante de endereço (opcional)"
+                  tipo="comprovante_endereco"
+                  enviado={docPorTipo.get("comprovante_endereco") ?? null}
+                  onUpload={uploadDoc}
+                />
               </>
             ) : (
               <>
-                <DocUpload label="Cartão CNPJ" tipo="cartao_cnpj" onUpload={uploadDoc} />
-                <DocUpload label="Documento do responsável — CNH ou RG" tipo="documento_responsavel" onUpload={uploadDoc} />
-                <DocUpload label="CPF do responsável (se separado)" tipo="cpf_responsavel" onUpload={uploadDoc} />
-                <DocUpload label="Comprovante de endereço da empresa (opcional)" tipo="comprovante_endereco" onUpload={uploadDoc} />
+                <ContratacaoDocUploadField
+                  label="Cartão CNPJ"
+                  tipo="cartao_cnpj"
+                  obrigatorio
+                  enviado={docPorTipo.get("cartao_cnpj") ?? null}
+                  onUpload={uploadDoc}
+                />
+                <ContratacaoDocUploadField
+                  label="Documento do responsável — CNH ou RG"
+                  tipo="documento_responsavel"
+                  obrigatorio
+                  enviado={docPorTipo.get("documento_responsavel") ?? null}
+                  onUpload={uploadDoc}
+                />
+                <ContratacaoDocUploadField
+                  label="CPF do responsável (se separado)"
+                  tipo="cpf_responsavel"
+                  enviado={docPorTipo.get("cpf_responsavel") ?? null}
+                  onUpload={uploadDoc}
+                />
+                <ContratacaoDocUploadField
+                  label="Comprovante de endereço da empresa (opcional)"
+                  tipo="comprovante_endereco"
+                  enviado={docPorTipo.get("comprovante_endereco") ?? null}
+                  onUpload={uploadDoc}
+                />
               </>
             )}
             <p className="text-xs text-slate-500">
               Seus documentos serão utilizados apenas para análise e formalização da proposta, conforme
               nossa política de privacidade.
             </p>
-            {uploadMsg ? <p className="text-sm text-emerald-400">{uploadMsg}</p> : null}
+            {docsAviso ? <p className="text-sm font-medium text-amber-300">{docsAviso}</p> : null}
             <Button type="button" variant="gold" className="w-full" disabled={submitting} onClick={continuarDocs}>
               Continuar para pagamento
             </Button>
@@ -496,11 +594,16 @@ export function ContratacaoWizard({ publicToken }: { publicToken: string }) {
             >
               Copiar chave Pix
             </Button>
-            <DocUpload label="Comprovante Pix" tipo="comprovante_pix" onUpload={uploadDoc} />
+            <ContratacaoDocUploadField
+              label="Comprovante Pix"
+              tipo="comprovante_pix"
+              enviado={docPorTipo.get("comprovante_pix") ?? null}
+              onUpload={uploadDoc}
+            />
             <Button type="button" variant="gold" className="w-full" disabled={submitting} onClick={finalizar}>
               Finalizar solicitação
             </Button>
-            {comprovanteObrigatorio && !c.pix_comprovante_url ? (
+            {comprovanteObrigatorio && !comprovantePixEnviado ? (
               <p className="text-xs text-amber-300">Comprovante obrigatório para finalizar.</p>
             ) : null}
           </div>
@@ -553,40 +656,6 @@ export function ContratacaoWizard({ publicToken }: { publicToken: string }) {
           </div>
         ) : null}
       </div>
-    </div>
-  );
-}
-
-function DocUpload({
-  label,
-  tipo,
-  onUpload,
-}: {
-  label: string;
-  tipo: string;
-  onUpload: (tipo: string, file: File | null) => Promise<void>;
-}) {
-  const [busy, setBusy] = useState(false);
-  return (
-    <div>
-      <Label>{label}</Label>
-      <Input
-        type="file"
-        accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/*"
-        className="mt-1 text-sm"
-        disabled={busy}
-        onChange={async (e) => {
-          const file = e.target.files?.[0] ?? null;
-          setBusy(true);
-          try {
-            await onUpload(tipo, file);
-          } finally {
-            setBusy(false);
-            e.target.value = "";
-          }
-        }}
-      />
-      <p className="mt-0.5 text-xs text-slate-500">PDF, JPG, PNG ou WEBP — máx. 5 MB</p>
     </div>
   );
 }

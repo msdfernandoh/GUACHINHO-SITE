@@ -4,6 +4,7 @@ import {
   confirmarProposta,
   marcarPrimeiroAcesso,
   atualizarContratacaoPublica,
+  listarDocumentos,
 } from "@/lib/contratacoes-online/service";
 import { isValidPublicToken } from "@/lib/contratacoes-online/public-token";
 import { resumoFinanceiroFromDados } from "@/lib/contratacoes-online/extract-fields";
@@ -13,7 +14,10 @@ import {
   formasPagamentoDisponiveis,
 } from "@/lib/contratacoes-online/pagamento";
 import type { PatchContratacaoPublica } from "@/lib/contratacoes-online/service";
-import { sanitizeContratacaoPublica } from "@/lib/contratacoes-online/sanitize-public";
+import {
+  sanitizeContratacaoPublica,
+  sanitizeDocumentosPublicos,
+} from "@/lib/contratacoes-online/sanitize-public";
 
 type Ctx = { params: Promise<{ token: string }> };
 
@@ -30,10 +34,12 @@ export async function GET(_req: Request, ctx: Ctx) {
       "contratacao_online_config",
       DEFAULT_CONTRATACAO_ONLINE_CONFIG,
     );
+    const documentosRaw = await listarDocumentos(row.id);
     return NextResponse.json({
       ok: true,
       contratacao: sanitizeContratacaoPublica(row),
       resumoFinanceiro: resumoFinanceiroFromDados(row.origem, row.dados_simulacao),
+      documentos: sanitizeDocumentosPublicos(documentosRaw),
       formasPagamento: formasPagamentoDisponiveis(cfg),
       pixConfig: cfg.pix_primeira_parcela_ativo
         ? {

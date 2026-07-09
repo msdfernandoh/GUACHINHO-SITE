@@ -4,6 +4,11 @@ import { requireStaffAdmin } from "@/lib/auth/require-staff-admin";
 import { formatCurrency } from "@/lib/utils/format";
 import { statusLabel } from "@/lib/contratacoes-online/status";
 import type { ContratacaoStatus } from "@/lib/contratacoes-online/types";
+import {
+  adminTableCellClass,
+  adminTableHeadClass,
+} from "@/components/admin/admin-contrast";
+import { cn } from "@/lib/utils/cn";
 
 export default async function ContratacoesAdminPage() {
   await requireStaffAdmin();
@@ -12,12 +17,12 @@ export default async function ContratacoesAdminPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-zinc-100">Contratações online</h1>
-        <p className="text-sm text-zinc-500">Fechamento de proposta — simulador e grupos</p>
+        <h1 className="text-2xl font-bold text-white">Contratações online</h1>
+        <p className="text-sm font-medium text-zinc-400">Fechamento de proposta — simulador e grupos</p>
       </div>
-      <div className="overflow-x-auto rounded-xl border border-zinc-800">
+      <div className="overflow-x-auto rounded-xl border border-zinc-700 bg-zinc-950">
         <table className="min-w-full text-sm">
-          <thead className="bg-zinc-900/80 text-left text-zinc-400">
+          <thead className={adminTableHeadClass}>
             <tr>
               <th className="px-3 py-2">Protocolo</th>
               <th className="px-3 py-2">Data</th>
@@ -33,8 +38,8 @@ export default async function ContratacoesAdminPage() {
           </thead>
           <tbody>
             {rows.map((r) => (
-              <tr key={r.id} className="border-t border-zinc-800 text-zinc-200">
-                <td className="px-3 py-2 font-mono text-xs text-amber-400/90">{r.protocolo}</td>
+              <tr key={r.id} className="border-t border-zinc-800 hover:bg-zinc-900/80">
+                <td className={cn(adminTableCellClass, "font-mono text-xs text-amber-300")}>{r.protocolo}</td>
                 <td className="px-3 py-2 whitespace-nowrap">
                   {new Date(r.created_at).toLocaleString("pt-BR")}
                 </td>

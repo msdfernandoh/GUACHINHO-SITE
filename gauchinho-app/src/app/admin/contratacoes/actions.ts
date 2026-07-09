@@ -13,6 +13,7 @@ import {
   obterSignedUrlDocumentoContratacao,
 } from "@/lib/contratacoes-online/documentos-admin";
 import { statusLabel } from "@/lib/contratacoes-online/status";
+import { resumoFinanceiroFromDados } from "@/lib/contratacoes-online/extract-fields";
 import type { ContratacaoDocumentoRow, ContratacaoOnlineRow } from "@/lib/contratacoes-online/types";
 import { buildPropostaPublicUrl } from "@/lib/url/public-url";
 import { DEFAULT_SITE, getConfigJsonPublic } from "@/server/config";
@@ -53,10 +54,15 @@ export async function fetchContratacaoDetalhe(id: string) {
 
   const site = await getConfigJsonPublic("site", DEFAULT_SITE);
   const publicUrl = buildPropostaPublicUrl(data.public_token, site.siteUrl || undefined);
+  const resumoFinanceiro = resumoFinanceiroFromDados(
+    data.origem,
+    (data.dados_simulacao ?? {}) as Record<string, unknown>,
+  );
   return {
     contratacao: data as ContratacaoOnlineRow,
     documentos,
     publicUrl,
+    resumoFinanceiro,
     statusLabel: statusLabel(data.status),
     podeAcessarDocumentos,
     mensagemSemPermissaoDocumentos: MSG_SEM_PERMISSAO_DOCUMENTOS_CONTRATACAO,

@@ -93,6 +93,7 @@ export function resumoFinanceiroFromDados(
       creditoLiquido: num(resultado.creditoLiquidoPosLance) ?? num(resultado.creditoLiquido),
       saldoPosLance: num(resultado.saldoPosLance) ?? num(resultado.saldoDevedorEstimado),
       seguro: num(resultado.seguroMensal),
+      parcelaPosContemplacao: num(resultado.parcelaPosContemplacao),
     };
   }
   const selecoes = Array.isArray(dados.selecoes) ? dados.selecoes : [];
@@ -114,6 +115,8 @@ export function resumoFinanceiroFromDados(
     saldoPosLance: num(resultado.saldoPosLance) ?? num(totais.saldoPosLance),
     seguro: num(resultado.seguroMensal) ?? num(totais.seguroTotal),
     parcelaPosContemplacao:
-      num(resultado.parcelaPosContemplacao) ?? num(totais.parcelaPosContemplacao),
+      num(resultado.parcelaPosContemplacao) ??
+      num(totais.parcelaPosContemplacaoTotal) ??
+      num(totais.parcelaPosContemplacao),
   };
 }

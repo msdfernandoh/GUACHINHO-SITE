@@ -121,6 +121,7 @@ describe("calcularLinhaSimulacaoGrupo — saldo e parcelas", () => {
     expect(r.lanceTotal).toBe(325_500);
     expect(r.creditoLiquido).toBe(724_500);
     expect(r.saldoPosLance).toBe(976_500);
+    expect(r.parcelaPosContemplacao).toBeCloseTo(4442.69, 1);
   });
 
   it("caso 3 — embutido 25% + próprio 10%", () => {

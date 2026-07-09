@@ -7,12 +7,17 @@ import { formatCurrency, formatDate, formatDateTime } from "@/lib/utils/format";
 import { LeadStatusBadge } from "./lead-status-badge";
 import { LeadTemperatureBadge } from "./lead-temperature-badge";
 import { LeadWhatsappButton } from "./lead-whatsapp-button";
+import {
+  adminTableCellClass,
+  adminTableHeadClass,
+} from "@/components/admin/admin-contrast";
+import { cn } from "@/lib/utils/cn";
 
 export function LeadTable({ leads }: { leads: LeadListRow[] }) {
   return (
-    <div className="overflow-x-auto rounded-xl border border-zinc-800 bg-zinc-900/60">
+    <div className="overflow-x-auto rounded-xl border border-zinc-700 bg-zinc-950">
       <table className="min-w-[1100px] w-full text-sm">
-        <thead className="border-b border-zinc-800 bg-zinc-950/80 text-left text-[10px] uppercase tracking-wide text-zinc-500">
+        <thead className={adminTableHeadClass}>
           <tr>
             <th className="px-3 py-2">Lead</th>
             <th className="px-3 py-2">Origem</th>
@@ -34,14 +39,14 @@ export function LeadTable({ leads }: { leads: LeadListRow[] }) {
               l.proxima_acao ??
               (l.proximo_retorno_data ? `Retorno ${formatDate(l.proximo_retorno_data)}` : "—");
             return (
-              <tr key={l.id} className="border-b border-zinc-800/80 hover:bg-zinc-800/30">
-                <td className="px-3 py-2">
-                  <Link href={`/admin/leads/${l.id}`} className="font-medium text-amber-400 hover:underline">
+              <tr key={l.id} className="border-b border-zinc-800 hover:bg-zinc-900/70">
+                <td className={adminTableCellClass}>
+                  <Link href={`/admin/leads/${l.id}`} className="font-semibold text-amber-300 hover:underline">
                     {l.nome}
                   </Link>
-                  <p className="text-xs text-zinc-500">{l.whatsapp ?? "—"}</p>
+                  <p className="text-xs text-zinc-400">{l.whatsapp ?? "—"}</p>
                 </td>
-                <td className="px-3 py-2 text-zinc-400">{labelOrigem(l.origem)}</td>
+                <td className={cn(adminTableCellClass, "text-zinc-300")}>{labelOrigem(l.origem)}</td>
                 <td className="px-3 py-2">{l.produto_interesse ?? l.tipo_interesse ?? "—"}</td>
                 <td className="px-3 py-2">{valor > 0 ? formatCurrency(valor) : "—"}</td>
                 <td className="px-3 py-2">{l.cidade ?? "—"}</td>

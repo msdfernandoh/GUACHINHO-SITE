@@ -5,7 +5,14 @@ import { ExternalLink, Download, Eye } from "lucide-react";
 import { Button } from "@/components/ui/form-primitives";
 import { getContratacaoDocumentoSignedUrlAction } from "../actions";
 import type { ContratacaoDocumentoRow } from "@/lib/contratacoes-online/types";
+import { cn } from "@/lib/utils/cn";
 import { formatTamanhoArquivo, labelTipoDocumento } from "@/lib/contratacoes-online/documentos-labels";
+import {
+  adminSectionClass,
+  adminSectionTitleClass,
+  adminTableCellClass,
+  adminTableHeadClass,
+} from "@/components/admin/admin-contrast";
 
 type Props = {
   contratacaoId: string;
@@ -48,47 +55,47 @@ export function ContratacaoDocumentosSection({
 
   if (!podeAcessarDocumentos) {
     return (
-      <section className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-4">
-        <h2 className="mb-3 font-semibold text-zinc-200">Documentos</h2>
-        <p className="text-sm text-amber-200/90">{mensagemSemPermissao}</p>
+      <section className={adminSectionClass}>
+        <h2 className={adminSectionTitleClass}>Documentos</h2>
+        <p className="text-sm font-medium text-amber-200">{mensagemSemPermissao}</p>
       </section>
     );
   }
 
   return (
-    <section className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-4">
-      <h2 className="mb-3 font-semibold text-zinc-200">Documentos enviados</h2>
-      <p className="mb-4 text-xs text-zinc-500">
+    <section className={adminSectionClass}>
+      <h2 className={adminSectionTitleClass}>Documentos enviados</h2>
+      <p className="mb-4 text-xs text-zinc-400">
         Links temporários (≈1 h). O bucket permanece privado; não há URL pública permanente.
       </p>
-      {erro ? <p className="mb-3 text-sm text-red-400">{erro}</p> : null}
+      {erro ? <p className="mb-3 text-sm font-medium text-red-400">{erro}</p> : null}
       {documentos.length === 0 ? (
-        <p className="text-sm text-zinc-500">Nenhum documento enviado.</p>
+        <p className="text-sm text-zinc-300">Nenhum documento enviado.</p>
       ) : (
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto rounded-lg border border-zinc-700">
           <table className="min-w-full text-sm">
-            <thead className="text-left text-zinc-500">
+            <thead className={adminTableHeadClass}>
               <tr>
-                <th className="pb-2 pr-4 font-medium">Tipo</th>
-                <th className="pb-2 pr-4 font-medium">Arquivo</th>
-                <th className="pb-2 pr-4 font-medium">Enviado em</th>
-                <th className="pb-2 pr-4 font-medium">Tamanho</th>
-                <th className="pb-2 font-medium">Ações</th>
+                <th className="px-3 py-2">Tipo</th>
+                <th className="px-3 py-2">Arquivo</th>
+                <th className="px-3 py-2">Enviado em</th>
+                <th className="px-3 py-2">Tamanho</th>
+                <th className="px-3 py-2">Ações</th>
               </tr>
             </thead>
-            <tbody className="text-zinc-300">
+            <tbody>
               {documentos.map((d) => {
                 const busyView = loadingId === `${d.id}-view`;
                 const busyDown = loadingId === `${d.id}-download`;
                 return (
                   <tr key={d.id} className="border-t border-zinc-800">
-                    <td className="py-3 pr-4 align-top">{labelTipoDocumento(d.tipo_documento)}</td>
-                    <td className="py-3 pr-4 align-top break-all">{d.arquivo_nome ?? "—"}</td>
-                    <td className="py-3 pr-4 align-top whitespace-nowrap">
+                    <td className={adminTableCellClass}>{labelTipoDocumento(d.tipo_documento)}</td>
+                    <td className={cn(adminTableCellClass, "break-all")}>{d.arquivo_nome ?? "—"}</td>
+                    <td className={cn(adminTableCellClass, "whitespace-nowrap")}>
                       {new Date(d.created_at).toLocaleString("pt-BR")}
                     </td>
-                    <td className="py-3 pr-4 align-top">{formatTamanhoArquivo(d.tamanho_bytes)}</td>
-                    <td className="py-3 align-top">
+                    <td className={adminTableCellClass}>{formatTamanhoArquivo(d.tamanho_bytes)}</td>
+                    <td className={adminTableCellClass}>
                       <div className="flex flex-wrap gap-2">
                         <Button
                           type="button"

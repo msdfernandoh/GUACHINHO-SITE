@@ -42,8 +42,8 @@ export default async function LeadsListPage({
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-zinc-100">Leads — CRM</h1>
-          <p className="text-sm text-zinc-500">Funil comercial, follow-ups e conversão</p>
+          <h1 className="text-2xl font-bold text-white">Leads — CRM</h1>
+          <p className="text-sm font-medium text-zinc-400">Funil comercial, follow-ups e conversão</p>
         </div>
         <div className="flex flex-wrap gap-2">
           <Link href="/admin/relatorios">

@@ -3,16 +3,37 @@
 import Link from "next/link";
 import { useState } from "react";
 import { Button } from "@/components/ui/form-primitives";
-import { formatCurrency } from "@/lib/utils/format";
+import { formatCurrency, formatWhatsappBrInput } from "@/lib/utils/format";
+import { formatCpfBrInput, formatCnpjBrInput } from "@/lib/utils/format";
 import { buildWhatsappLink, buildWhatsappPropostaMessage } from "@/lib/contratacoes-online/whatsapp-message";
 import type { ContratacaoDocumentoRow, ContratacaoOnlineRow } from "@/lib/contratacoes-online/types";
 import { ContratacaoDocumentosSection } from "./contratacao-documentos-section";
+import {
+  adminDdClass,
+  adminDtClass,
+  adminSectionClass,
+  adminSectionTitleClass,
+} from "@/components/admin/admin-contrast";
+
+function Field({ label, value }: { label: string; value: string | null | undefined }) {
+  return (
+    <div className="grid gap-0.5 sm:grid-cols-[140px_1fr] sm:gap-3">
+      <dt className={adminDtClass}>{label}</dt>
+      <dd className={adminDdClass}>{value?.trim() ? value : "—"}</dd>
+    </div>
+  );
+}
+
+function money(v: number | null | undefined) {
+  return v != null && Number.isFinite(v) ? formatCurrency(v) : "—";
+}
 
 export function ContratacaoDetalheClient({
   contratacao,
   documentos,
   publicUrl,
   statusLabelText,
+  resumoFinanceiro,
   podeAcessarDocumentos,
   mensagemSemPermissaoDocumentos,
 }: {
@@ -20,12 +41,15 @@ export function ContratacaoDetalheClient({
   documentos: ContratacaoDocumentoRow[];
   publicUrl: string;
   statusLabelText: string;
+  resumoFinanceiro: Record<string, number | string | null>;
   podeAcessarDocumentos: boolean;
   mensagemSemPermissaoDocumentos: string;
 }) {
   const [copied, setCopied] = useState(false);
+  const [jsonCopied, setJsonCopied] = useState(false);
   const waMsg = buildWhatsappPropostaMessage(publicUrl);
   const waCliente = buildWhatsappLink(contratacao.telefone ?? "", waMsg);
+  const fin = resumoFinanceiro;
 
   async function copyLink() {
     await navigator.clipboard.writeText(publicUrl);
@@ -33,15 +57,28 @@ export function ContratacaoDetalheClient({
     setTimeout(() => setCopied(false), 2000);
   }
 
+  async function copyJson() {
+    await navigator.clipboard.writeText(JSON.stringify(contratacao.dados_simulacao, null, 2));
+    setJsonCopied(true);
+    setTimeout(() => setJsonCopied(false), 2000);
+  }
+
+  const telFmt = contratacao.telefone ? formatWhatsappBrInput(contratacao.telefone) : null;
+  const cpfFmt = contratacao.cpf ? formatCpfBrInput(contratacao.cpf) : null;
+  const cnpjFmt = contratacao.cnpj ? formatCnpjBrInput(contratacao.cnpj) : null;
+  const respCpfFmt = contratacao.responsavel_cpf
+    ? formatCpfBrInput(contratacao.responsavel_cpf)
+    : null;
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <Link href="/admin/contratacoes" className="text-sm text-amber-400 hover:underline">
+          <Link href="/admin/contratacoes" className="text-sm font-medium text-amber-400 hover:underline">
             ← Contratações
           </Link>
-          <h1 className="mt-2 text-2xl font-bold text-zinc-100">{contratacao.protocolo}</h1>
-          <p className="text-sm text-zinc-500">{statusLabelText}</p>
+          <h1 className="mt-2 text-2xl font-bold text-white">{contratacao.protocolo}</h1>
+          <p className="text-sm font-medium text-zinc-400">{statusLabelText}</p>
         </div>
         <div className="flex flex-wrap gap-2">
           <Button type="button" variant="outline" onClick={copyLink}>
@@ -68,63 +105,62 @@ export function ContratacaoDetalheClient({
       </div>
 
       <section className="grid gap-4 lg:grid-cols-2">
-        <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-4">
-          <h2 className="mb-3 font-semibold text-zinc-200">Cliente</h2>
-          <dl className="space-y-1 text-sm text-zinc-300">
-            <div>Nome: {contratacao.nome ?? "—"}</div>
-            <div>Telefone: {contratacao.telefone ?? "—"}</div>
-            <div>E-mail: {contratacao.email ?? "—"}</div>
-            <div>Tipo: {contratacao.tipo_pessoa?.toUpperCase() ?? "—"}</div>
+        <div className={adminSectionClass}>
+          <h2 className={adminSectionTitleClass}>Cliente</h2>
+          <dl className="space-y-3">
+            <Field label="Nome" value={contratacao.nome} />
+            <Field label="Telefone" value={telFmt} />
+            <Field label="E-mail" value={contratacao.email} />
+            <Field label="Tipo pessoa" value={contratacao.tipo_pessoa?.toUpperCase()} />
             {contratacao.tipo_pessoa === "cpf" ? (
-              <div>CPF: {contratacao.cpf ?? "—"}</div>
+              <Field label="CPF" value={cpfFmt} />
             ) : (
               <>
-                <div>Razão social: {contratacao.razao_social ?? "—"}</div>
-                <div>CNPJ: {contratacao.cnpj ?? "—"}</div>
-                <div>Responsável: {contratacao.responsavel_nome ?? "—"}</div>
-                <div>CPF resp.: {contratacao.responsavel_cpf ?? "—"}</div>
+                <Field label="Razão social" value={contratacao.razao_social} />
+                <Field label="CNPJ" value={cnpjFmt} />
+                <Field label="Responsável" value={contratacao.responsavel_nome} />
+                <Field label="CPF responsável" value={respCpfFmt} />
               </>
             )}
           </dl>
         </div>
-        <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-4">
-          <h2 className="mb-3 font-semibold text-zinc-200">Proposta</h2>
-          <dl className="space-y-1 text-sm text-zinc-300">
-            <div>Origem: {contratacao.origem}</div>
-            <div>Tipo bem: {contratacao.tipo_bem ?? "—"}</div>
-            <div>
-              Crédito:{" "}
-              {contratacao.credito_selecionado != null
-                ? formatCurrency(contratacao.credito_selecionado)
-                : "—"}
-            </div>
-            <div>
-              Parcela:{" "}
-              {contratacao.parcela_estimada != null
-                ? formatCurrency(contratacao.parcela_estimada)
-                : "—"}
-            </div>
-            <div>Grupo: {contratacao.grupo_nome ?? "—"}</div>
-            <div>Administradora: {contratacao.administradora ?? "—"}</div>
-            <div>Gerado por: {contratacao.gerado_por_nome ?? "Cliente no site"}</div>
-            <div>
-              Link: <span className="break-all text-amber-400/90">{publicUrl}</span>
+        <div className={adminSectionClass}>
+          <h2 className={adminSectionTitleClass}>Proposta</h2>
+          <dl className="space-y-3">
+            <Field label="Origem" value={contratacao.origem} />
+            <Field label="Tipo do bem" value={contratacao.tipo_bem} />
+            <Field label="Crédito" value={money(contratacao.credito_selecionado)} />
+            <Field label="Parcela inicial" value={money(contratacao.parcela_estimada)} />
+            <Field label="Parcela integral" value={money(fin.parcelaIntegral as number)} />
+            <Field label="Parcela reduzida" value={money(fin.parcelaReduzida as number)} />
+            <Field
+              label="Parcela após contemplação"
+              value={money(fin.parcelaPosContemplacao as number)}
+            />
+            <Field label="Grupo" value={contratacao.grupo_nome} />
+            <Field label="Administradora" value={contratacao.administradora} />
+            <Field label="Gerado por" value={contratacao.gerado_por_nome ?? "Cliente no site"} />
+            <div className="grid gap-0.5 sm:grid-cols-[140px_1fr] sm:gap-3">
+              <dt className={adminDtClass}>Link público</dt>
+              <dd className="break-all text-sm font-semibold text-amber-300">{publicUrl}</dd>
             </div>
           </dl>
         </div>
       </section>
 
-      <section className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-4">
-        <h2 className="mb-3 font-semibold text-zinc-200">Pagamento</h2>
-        <p className="text-sm text-zinc-300 capitalize">
-          Forma: {contratacao.forma_pagamento ?? "—"}
-        </p>
-        {contratacao.forma_pagamento === "pix" ? (
-          <p className="mt-2 text-sm text-zinc-400">
-            Comprovante: {contratacao.pix_comprovante_url ? "Enviado" : "Não enviado"} (
-            {contratacao.pix_status})
-          </p>
-        ) : null}
+      <section className={adminSectionClass}>
+        <h2 className={adminSectionTitleClass}>Pagamento</h2>
+        <dl className="space-y-3">
+          <Field label="Forma" value={contratacao.forma_pagamento ?? "—"} />
+          {contratacao.forma_pagamento === "pix" ? (
+            <Field
+              label="Comprovante Pix"
+              value={
+                contratacao.pix_comprovante_url ? `Enviado (${contratacao.pix_status})` : "Não enviado"
+              }
+            />
+          ) : null}
+        </dl>
       </section>
 
       <ContratacaoDocumentosSection
@@ -134,9 +170,14 @@ export function ContratacaoDetalheClient({
         mensagemSemPermissao={mensagemSemPermissaoDocumentos}
       />
 
-      <section className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-4">
-        <h2 className="mb-2 font-semibold text-zinc-200">Dados simulados (JSON)</h2>
-        <pre className="max-h-96 overflow-auto rounded-lg bg-zinc-950 p-3 text-xs text-zinc-400">
+      <section className={adminSectionClass}>
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <h2 className={adminSectionTitleClass}>Dados simulados (JSON)</h2>
+          <Button type="button" variant="outline" className="h-8 text-xs" onClick={copyJson}>
+            {jsonCopied ? "Copiado" : "Copiar JSON"}
+          </Button>
+        </div>
+        <pre className="max-h-80 overflow-auto rounded-lg border border-zinc-700 bg-slate-950 p-3 font-mono text-xs leading-relaxed text-slate-100">
           {JSON.stringify(contratacao.dados_simulacao, null, 2)}
         </pre>
       </section>
