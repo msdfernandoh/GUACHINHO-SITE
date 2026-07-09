@@ -14,6 +14,7 @@ import {
 } from "@/lib/contratacoes-online/documentos-admin";
 import { statusLabel } from "@/lib/contratacoes-online/status";
 import type { ContratacaoDocumentoRow, ContratacaoOnlineRow } from "@/lib/contratacoes-online/types";
+import { buildPropostaPublicUrl } from "@/lib/url/public-url";
 import { DEFAULT_SITE, getConfigJsonPublic } from "@/server/config";
 
 export async function fetchContratacoesList(): Promise<ContratacaoOnlineRow[]> {
@@ -51,9 +52,7 @@ export async function fetchContratacaoDetalhe(id: string) {
   }
 
   const site = await getConfigJsonPublic("site", DEFAULT_SITE);
-  const base = (site.siteUrl || process.env.NEXT_PUBLIC_SITE_URL || "").replace(/\/$/, "");
-  const publicPath = `/proposta/${data.public_token}`;
-  const publicUrl = base ? `${base}${publicPath}` : publicPath;
+  const publicUrl = buildPropostaPublicUrl(data.public_token, site.siteUrl || undefined);
   return {
     contratacao: data as ContratacaoOnlineRow,
     documentos,

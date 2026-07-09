@@ -3,6 +3,7 @@
 import { useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { ContratacaoModo, ContratacaoOrigem } from "@/lib/contratacoes-online/types";
+import { ensureAbsolutePropostaUrl } from "@/lib/url/public-url";
 
 export type IniciarContratacaoResult = {
   public_token: string;
@@ -41,9 +42,15 @@ export function useIniciarContratacao() {
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error ?? "Falha ao criar proposta");
-        const result = data as IniciarContratacaoResult & { ok: boolean };
+        const raw = data as IniciarContratacaoResult & { ok: boolean };
+        const result: IniciarContratacaoResult = {
+          public_token: raw.public_token,
+          protocolo: raw.protocolo,
+          path: raw.path || `/proposta/${raw.public_token}`,
+          url: ensureAbsolutePropostaUrl(raw.url || raw.path, raw.public_token),
+        };
         if (opts.redirectCliente !== false && opts.modo === "cliente_site") {
-          router.push(result.path || `/proposta/${result.public_token}`);
+          router.push(result.path);
         }
         return result;
       } finally {

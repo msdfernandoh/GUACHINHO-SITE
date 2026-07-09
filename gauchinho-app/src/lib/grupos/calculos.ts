@@ -3,6 +3,7 @@
  */
 
 import { fatorSeguroGrupo } from "./seguro";
+import { normalizarPercentualGrupo } from "./percentual";
 import { calcularPrazoGrupoFromRow } from "./prazos";
 import type { GrupoConsorcio } from "@/lib/types";
 
@@ -242,7 +243,7 @@ export function calcularParcelasLinhaGrupo(args: {
   const saldoUnit = args.saldoDevedor / q;
   const prazo = Math.max(num(args.prazoTotal), 1);
   const parcelaIntegral = Math.round((saldoUnit / prazo) * 100) / 100;
-  const pctRed = num(args.percentualParcelaReduzida, 100);
+  const pctRed = normalizarPercentualGrupo(args.percentualParcelaReduzida) || 100;
   const parcelaReduzida = args.temParcelaReduzida
     ? Math.round(parcelaIntegral * (pctRed / 100) * 100) / 100
     : null;
@@ -258,7 +259,7 @@ export function calcularLanceEmbutidoLinha(
   saldoDevedor: number,
   percentualEmbutido: number,
 ): number {
-  const pct = num(percentualEmbutido);
+  const pct = normalizarPercentualGrupo(percentualEmbutido);
   if (pct <= 0) return 0;
   return Math.round(saldoDevedor * (pct / 100) * 100) / 100;
 }
@@ -282,13 +283,13 @@ export function grupoToParametros(grupo: {
 }): ParametrosGrupo {
   const prazo = calcularPrazoGrupoFromRow(grupo as GrupoConsorcio);
   return {
-    taxaAdministrativaPercentual: num(grupo.taxa_administrativa_percentual),
-    fundoReservaPercentual: num(grupo.fundo_reserva_percentual),
+    taxaAdministrativaPercentual: normalizarPercentualGrupo(grupo.taxa_administrativa_percentual),
+    fundoReservaPercentual: normalizarPercentualGrupo(grupo.fundo_reserva_percentual),
     seguroHabilitado: grupoUsaSeguroNaParcela(grupo),
     seguroPercentual: num(grupo.seguro_percentual),
     permiteLanceEmbutido: !!grupo.permite_lance_embutido,
-    percentualLanceEmbutido: num(grupo.percentual_lance_embutido),
-    percentualRecursoProprioSugerido: num(
+    percentualLanceEmbutido: normalizarPercentualGrupo(grupo.percentual_lance_embutido),
+    percentualRecursoProprioSugerido: normalizarPercentualGrupo(
       grupo.percentual_recurso_proprio_sugerido,
     ),
     prazoTotal: prazo.prazoTotal,
@@ -409,7 +410,7 @@ export function estimarCamposCotaBulk(
   const prazo = prazoParcelaInicialGrupo(params);
   const parcela_integral = Math.round((saldo_devedor / prazo) * 100) / 100;
   const temReduzida = !!grupo.tem_parcela_reduzida;
-  const pctRed = num(grupo.percentual_parcela_reduzida, 100);
+  const pctRed = normalizarPercentualGrupo(grupo.percentual_parcela_reduzida) || 100;
   const parcela_reduzida = temReduzida
     ? Math.round(((parcela_integral * pctRed) / 100) * 100) / 100
     : null;

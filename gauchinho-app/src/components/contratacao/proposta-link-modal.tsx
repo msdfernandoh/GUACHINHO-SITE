@@ -97,7 +97,7 @@ export function PropostaLinkModal({
               Enviar pelo WhatsApp
             </Button>
           </a>
-          <a href={url.startsWith("http") ? url : url} target="_blank" rel="noreferrer">
+          <a href={url} target="_blank" rel="noreferrer">
             <Button type="button" variant="outlineGold" className="border-zinc-600 bg-zinc-900">
               <ExternalLink className="mr-2 h-4 w-4" />
               Abrir proposta

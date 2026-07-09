@@ -11,6 +11,7 @@ import {
 } from "./calculos";
 import { fatorSeguroGrupo } from "./seguro";
 import { calcularPrazoGrupoFromRow } from "./prazos";
+import { normalizarPercentualGrupo } from "./percentual";
 import { parcelaTipoFromModalidade } from "./modalidades-admin";
 
 export type ModalidadeParcelaLinha = "reduzida" | "integral";
@@ -228,9 +229,14 @@ export function calcularLinhaSimulacaoGrupo(args: {
 
   const modalidadesAtivas = listarModalidadesLanceAtivas(grupo, modalidades);
   const modLance = resolveModalidadeLance(config, modalidadesAtivas);
-  const pctEmbutido = modLance && config.usaLanceEmbutido ? num(modLance.percentual_lance_embutido) : 0;
+  const pctEmbutido =
+    modLance && config.usaLanceEmbutido
+      ? normalizarPercentualGrupo(modLance.percentual_lance_embutido)
+      : 0;
   const pctRecursoMin =
-    modLance && config.usaLanceEmbutido ? num(modLance.percentual_recurso_proprio_minimo) : 0;
+    modLance && config.usaLanceEmbutido
+      ? normalizarPercentualGrupo(modLance.percentual_recurso_proprio_minimo)
+      : 0;
   const parcelaTipoLinha =
     (modLance && parcelaTipoFromModalidade(modLance)) || config.modalidadeParcela;
 

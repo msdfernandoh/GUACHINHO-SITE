@@ -3,6 +3,7 @@
 import type { GrupoConsorcio, GrupoCota, GrupoModalidadeLance } from "@/lib/types";
 import { grupoUsaSeguroNaParcela } from "@/lib/grupos/calculos";
 import { formatPrazoGrupo, type ConfigLinhaSimulacaoGrupo } from "@/lib/grupos/simulacao-linha";
+import { normalizarPercentualGrupo } from "@/lib/grupos/percentual";
 import { parcelaTipoFromModalidade } from "@/lib/grupos/modalidades-admin";
 import { formatCurrency } from "@/lib/utils/format";
 import { cn } from "@/lib/utils/cn";
@@ -108,6 +109,23 @@ export function GrupoRowAdjustments({ grupo, cotas, modalidades, config, onChang
             )}
             <p className="mt-1.5 text-xs text-zinc-500">1ª parcela (un.)</p>
             <MoneyValue value={resultado.parcelaBase} compact className="text-white" />
+            {temReduzida && resultado.parcelaReduzida != null ? (
+              <div className="mt-2 space-y-0.5 border-t border-zinc-800 pt-2 text-[10px] text-zinc-500">
+                <p>
+                  Integral:{" "}
+                  <span className="text-zinc-300">
+                    {formatCurrency(resultado.parcelaIntegral)}
+                  </span>
+                </p>
+                <p>
+                  Reduzida ({normalizarPercentualGrupo(grupo.percentual_parcela_reduzida) || 60}
+                  %):{" "}
+                  <span className="text-zinc-300">
+                    {formatCurrency(resultado.parcelaReduzida)}
+                  </span>
+                </p>
+              </div>
+            ) : null}
             {resultado.quantidadeCotas > 1 ? (
               <p className="text-[10px] text-zinc-500">
                 Total linha: {formatCurrency(resultado.primeiraParcela)}

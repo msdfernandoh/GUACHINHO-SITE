@@ -3,6 +3,7 @@ import { getUsuarioNegocio } from "@/lib/auth/get-usuario";
 import { canCreateProposta } from "@/lib/auth/permissions";
 import { criarContratacaoOnline } from "@/lib/contratacoes-online/service";
 import type { IniciarContratacaoBody } from "@/lib/contratacoes-online/types";
+import { buildPropostaPublicUrl } from "@/lib/url/public-url";
 import { DEFAULT_SITE, getConfigJsonPublic } from "@/server/config";
 
 export async function POST(request: Request) {
@@ -27,8 +28,7 @@ export async function POST(request: Request) {
 
     const { row, publicPath } = await criarContratacaoOnline(body, usuario);
     const site = await getConfigJsonPublic("site", DEFAULT_SITE);
-    const base = (site.siteUrl || process.env.NEXT_PUBLIC_SITE_URL || "").replace(/\/$/, "");
-    const url = base ? `${base}${publicPath}` : publicPath;
+    const url = buildPropostaPublicUrl(row.public_token, site.siteUrl || undefined);
 
     return NextResponse.json({
       ok: true,
