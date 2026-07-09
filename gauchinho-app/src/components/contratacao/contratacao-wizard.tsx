@@ -310,8 +310,9 @@ export function ContratacaoWizard({ publicToken }: { publicToken: string }) {
               <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-amber-400/90">
                 Detalhes financeiros
               </h2>
-              <Row label="Parcela reduzida" value={money(fin.parcelaReduzida as number)} />
+              <Row label="Saldo devedor" value={money(fin.saldoDevedor as number)} />
               <Row label="Parcela integral" value={money(fin.parcelaIntegral as number)} />
+              <Row label="Parcela reduzida" value={money(fin.parcelaReduzida as number)} />
               <Row label="Lance embutido" value={money(fin.lanceEmbutido as number)} />
               <Row label="Recurso próprio" value={money(fin.recursoProprio as number)} />
               <Row label="Lance total" value={money(fin.lanceTotal as number)} />

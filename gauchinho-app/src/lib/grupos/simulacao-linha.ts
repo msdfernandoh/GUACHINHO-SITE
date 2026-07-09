@@ -2,8 +2,9 @@ import type { GrupoConsorcio, GrupoCota, GrupoModalidadeLance } from "@/lib/type
 import {
   calcularCreditoLiquidoPosContemplacao,
   calcularLanceEmbutidoLinha,
+  calcularParcelasLinhaGrupo,
   calcularParcelasRestantes,
-  calcularSaldoDevedorLinha,
+  calcularSaldoDevedorSimulacao,
   grupoToParametros,
   grupoUsaSeguroNaParcela,
   type ParametrosGrupo,
@@ -37,6 +38,8 @@ export type ResultadoLinhaSimulacaoGrupo = {
   saldoDevedorFinal: number;
   primeiraParcela: number;
   parcelaBase: number;
+  parcelaIntegral: number;
+  parcelaReduzida: number | null;
   parcelaPosContemplacao: number;
   lanceEmbutido: number;
   recursoProprio: number;
@@ -202,6 +205,8 @@ export function calcularLinhaSimulacaoGrupo(args: {
     saldoDevedorFinal: 0,
     primeiraParcela: 0,
     parcelaBase: 0,
+    parcelaIntegral: 0,
+    parcelaReduzida: null,
     parcelaPosContemplacao: 0,
     lanceEmbutido: 0,
     recursoProprio: 0,
@@ -219,12 +224,7 @@ export function calcularLinhaSimulacaoGrupo(args: {
 
   const valorCredito = num(cota.valor_credito);
   const somaCotas = valorCredito * qty;
-  const saldoDevedorInicial = calcularSaldoDevedorLinha(
-    somaCotas,
-    params,
-    cota.saldo_devedor,
-    qty,
-  );
+  const saldoDevedorInicial = calcularSaldoDevedorSimulacao(somaCotas, params);
 
   const modalidadesAtivas = listarModalidadesLanceAtivas(grupo, modalidades);
   const modLance = resolveModalidadeLance(config, modalidadesAtivas);
@@ -257,6 +257,15 @@ export function calcularLinhaSimulacaoGrupo(args: {
     }
   }
 
+  const parcelasCalc = calcularParcelasLinhaGrupo({
+    saldoDevedor: saldoDevedorInicial,
+    prazoTotal: params.prazoTotal,
+    quantidadeCotas: qty,
+    temParcelaReduzida: !!grupo.tem_parcela_reduzida,
+    percentualParcelaReduzida: num(grupo.percentual_parcela_reduzida, 100),
+    modalidadeParcela: parcelaTipoLinha,
+  });
+
   const saldoUnit = qty > 0 ? saldoDevedorInicial / qty : 0;
   const fatorSeg = fatorSeguroGrupo(grupo.seguro_percentual);
   const seguroUnitario =
@@ -264,13 +273,11 @@ export function calcularLinhaSimulacaoGrupo(args: {
       ? Math.round(saldoUnit * fatorSeg * 100) / 100
       : 0;
 
-  const parcelaBase = parcelaMensalDaCota(
-    cota,
-    parcelaTipoLinha,
-    grupo,
-    config.usaSeguro,
-    seguroUnitario,
-  );
+  let parcelaBase = parcelasCalc.parcelaExibida;
+  if (config.usaSeguro && params.seguroHabilitado && seguroUnitario > 0) {
+    parcelaBase = Math.round((parcelaBase + seguroUnitario) * 100) / 100;
+  }
+
   const primeiraParcela = Math.round(parcelaBase * qty * 100) / 100;
   const seguroMensalExibicao =
     config.usaSeguro && params.seguroHabilitado && fatorSeg > 0
@@ -280,7 +287,7 @@ export function calcularLinhaSimulacaoGrupo(args: {
   const lanceTotal = lanceEmbutido + recursoProprio;
   const saldoPosLance = Math.max(
     0,
-    Math.round((saldoDevedorInicial - lanceTotal) * 100) / 100,
+    Math.round((saldoDevedorInicial - lanceEmbutido - recursoProprio) * 100) / 100,
   );
   const saldoDevedorFinal = Math.max(
     0,
@@ -304,7 +311,9 @@ export function calcularLinhaSimulacaoGrupo(args: {
     saldoPosLance,
     saldoDevedorFinal,
     primeiraParcela,
-    parcelaBase: Math.round((parcelaBase) * 100) / 100,
+    parcelaBase: Math.round(parcelaBase * 100) / 100,
+    parcelaIntegral: parcelasCalc.parcelaIntegral,
+    parcelaReduzida: parcelasCalc.parcelaReduzida,
     parcelaPosContemplacao: Math.round(parcelaPosContemplacao * 100) / 100,
     lanceEmbutido,
     recursoProprio,

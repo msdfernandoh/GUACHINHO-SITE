@@ -87,7 +87,7 @@ describe("simulacao linha grupo", () => {
     expect(r.somaCotas).toBe(4_500_000);
   });
 
-  it("seguro mensal sobre saldo", () => {
+  it("seguro mensal sobre saldo calculado (crédito + taxas)", () => {
     const r = calcularLinhaSimulacaoGrupo({
       grupo: grupoBase,
       cota,
@@ -104,7 +104,9 @@ describe("simulacao linha grupo", () => {
         usaSeguro: true,
       },
     });
-    expect(r.seguroMensal).toBeCloseTo(623_483.33 * 0.0004, 1);
+    const saldoEsperado = 750_000 * 1.22;
+    expect(r.saldoDevedorInicial).toBeCloseTo(saldoEsperado, 0);
+    expect(r.seguroMensal).toBeCloseTo(saldoEsperado * 0.0004, 1);
   });
 
   it("agrega múltiplos grupos", () => {
@@ -159,8 +161,8 @@ describe("simulacao linha grupo", () => {
         usaSeguro: false,
       },
     });
-    expect(r.saldoDevedorInicial).toBeCloseTo(623_483.33, 0);
-    expect(r.lanceEmbutido).toBeCloseTo(623_483.33 * 0.25, 0);
+    expect(r.saldoDevedorInicial).toBeCloseTo(750_000 * 1.22, 0);
+    expect(r.lanceEmbutido).toBeCloseTo(750_000 * 1.22 * 0.25, 0);
     expect(r.lanceEmbutido).not.toBeCloseTo(cota.valor_credito! * 0.25, 0);
   });
 
@@ -335,8 +337,8 @@ describe("caso Excel — grupos 1513 e 1533", () => {
     });
     const tot = agregarResultadosLinhas([r1, r2]);
     expect(tot.somaCotas).toBe(2_050_000);
-    expect(tot.lanceEmbutido).toBeCloseTo(830_800, 0);
-    expect(tot.creditoLiquido).toBeCloseTo(1_219_200, 0);
+    expect(tot.lanceEmbutido).toBeCloseTo(1_016_800, 0);
+    expect(tot.creditoLiquido).toBeCloseTo(1_033_200, 0);
   });
 
   it("parcela reduzida usa prazo total (Excel 1533)", () => {
@@ -373,6 +375,8 @@ describe("caso Excel — grupos 1513 e 1533", () => {
         usaSeguro: false,
       },
     });
+    expect(r.parcelaIntegral).toBeCloseTo(5636.36, 1);
+    expect(r.parcelaReduzida).toBeCloseTo(3381.82, 1);
     expect(r.parcelaBase).toBeCloseTo(3381.82, 1);
   });
 });

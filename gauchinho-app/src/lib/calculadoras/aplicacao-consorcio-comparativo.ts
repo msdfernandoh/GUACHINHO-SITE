@@ -21,16 +21,19 @@ import {
 } from "@/lib/simulador/projecao-financeira";
 
 export const AVISO_COMPARATIVO_CONSORCIO =
-  "Na aplicação financeira, o rendimento incide sobre os aportes realizados ao longo do tempo. No consórcio, a projeção considera o crédito contratado, que pode ser reajustado conforme as regras do grupo e da administradora.";
+  "Na aplicação, o rendimento acontece sobre os aportes realizados mês a mês. No consórcio, a projeção considera o crédito contratado estimado a partir da parcela reduzida.";
 
 export const TEXTO_DIFERENCA_PATRIMONIAL =
   "Em muitos cenários, o consórcio programado pode gerar maior poder de compra futuro porque o crédito contratado acompanha reajustes, enquanto na aplicação o crescimento depende apenas dos aportes e do rendimento financeiro.";
 
 export const TEXTO_PARCELA_REDUZIDA_COMPARATIVO =
-  "A comparação usa a parcela reduzida inicial do consórcio como referência para aproximar o valor do aporte mensal. O crédito estimado considera uma parcela reduzida inicial próxima ao aporte mensal informado. A parcela integral é exibida apenas como referência da parcela cheia do plano.";
+  "A comparação usa a parcela reduzida inicial do consórcio como referência para aproximar o valor do aporte mensal. O crédito contratado estimado considera uma parcela reduzida inicial próxima ao aporte mensal informado. A parcela integral é exibida apenas como referência da parcela cheia do plano.";
 
 export const TEXTO_PRAZO_COMPARACAO_CONSORCIO =
   "A parcela é estimada com base no prazo do consórcio configurado. Já o crédito reajustado acima é projetado pelo mesmo período da aplicação.";
+
+export const TEXTO_CREDITO_CONTRATADO_ESTIMADO =
+  "A parcela reduzida informada é usada para estimar qual crédito contratado caberia nesse valor mensal. Depois, esse crédito é projetado pelo reajuste anual informado.";
 
 export type TaxaIndiceAplicacaoInfo = {
   perfil: PerfilAplicacaoCodigo;

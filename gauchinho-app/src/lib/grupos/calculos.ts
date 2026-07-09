@@ -209,6 +209,50 @@ export function calcularFundoReservaTotal(credito: number, fundoPercentual: numb
   return credito * (num(fundoPercentual) / 100);
 }
 
+/**
+ * Saldo devedor para simulação pública: crédito × (1 + taxa adm + fundo reserva).
+ * Não usa saldo cadastrado na cota (evita crédito bruto sem taxas).
+ */
+export function calcularSaldoDevedorSimulacao(
+  somaCotas: number,
+  params: ParametrosGrupo,
+): number {
+  const taxa = num(params.taxaAdministrativaPercentual) / 100;
+  const fundo = num(params.fundoReservaPercentual) / 100;
+  return Math.round(somaCotas * (1 + taxa + fundo) * 100) / 100;
+}
+
+export type ParcelasLinhaGrupo = {
+  parcelaIntegral: number;
+  parcelaReduzida: number | null;
+  /** Parcela da 1ª mensalidade conforme modalidade (reduzida ou integral). */
+  parcelaExibida: number;
+};
+
+/** Parcela integral = saldo unitário / prazo total; reduzida = integral × %. */
+export function calcularParcelasLinhaGrupo(args: {
+  saldoDevedor: number;
+  prazoTotal: number;
+  quantidadeCotas: number;
+  temParcelaReduzida: boolean;
+  percentualParcelaReduzida: number;
+  modalidadeParcela: "reduzida" | "integral";
+}): ParcelasLinhaGrupo {
+  const q = Math.max(args.quantidadeCotas, 1);
+  const saldoUnit = args.saldoDevedor / q;
+  const prazo = Math.max(num(args.prazoTotal), 1);
+  const parcelaIntegral = Math.round((saldoUnit / prazo) * 100) / 100;
+  const pctRed = num(args.percentualParcelaReduzida, 100);
+  const parcelaReduzida = args.temParcelaReduzida
+    ? Math.round(parcelaIntegral * (pctRed / 100) * 100) / 100
+    : null;
+  const parcelaExibida =
+    args.modalidadeParcela === "reduzida" && parcelaReduzida != null
+      ? parcelaReduzida
+      : parcelaIntegral;
+  return { parcelaIntegral, parcelaReduzida, parcelaExibida };
+}
+
 /** Lance embutido sobre o saldo devedor da linha (base Excel). */
 export function calcularLanceEmbutidoLinha(
   saldoDevedor: number,

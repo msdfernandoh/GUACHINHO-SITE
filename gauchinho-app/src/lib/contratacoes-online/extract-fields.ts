@@ -99,15 +99,20 @@ export function resumoFinanceiroFromDados(
   const totais = (dados.totais ?? {}) as Record<string, unknown>;
   const first = (selecoes[0] ?? {}) as Record<string, unknown>;
   const resultado = (first.resultado ?? {}) as Record<string, unknown>;
+  const parcelaReduzida = num(resultado.parcelaReduzida);
+  const parcelaIntegral =
+    num(resultado.parcelaIntegral) ?? num(resultado.parcelaBase) ?? num(totais.parcelaIntegral);
   return {
-    parcelaReduzida: null,
-    parcelaIntegral: num(resultado.parcelaBase) ?? num(totais.parcelaBase),
+    saldoDevedor:
+      num(resultado.saldoDevedorInicial) ?? num(totais.saldoDevedorInicial),
+    parcelaReduzida,
+    parcelaIntegral,
     lanceEmbutido: num(resultado.lanceEmbutido) ?? num(totais.lanceEmbutido),
     recursoProprio: num(resultado.recursoProprio) ?? num(totais.recursoProprio),
     lanceTotal: num(resultado.lanceTotal) ?? num(totais.lanceTotal),
     creditoLiquido: num(resultado.creditoLiquido) ?? num(totais.creditoLiquido),
     saldoPosLance: num(resultado.saldoPosLance) ?? num(totais.saldoPosLance),
-    seguro: num(resultado.seguroMensal),
+    seguro: num(resultado.seguroMensal) ?? num(totais.seguroTotal),
     parcelaPosContemplacao:
       num(resultado.parcelaPosContemplacao) ?? num(totais.parcelaPosContemplacao),
   };

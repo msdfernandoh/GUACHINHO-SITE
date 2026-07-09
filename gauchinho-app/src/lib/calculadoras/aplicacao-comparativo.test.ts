@@ -214,24 +214,25 @@ describe("crédito reajustado — mesma regra do simulador", () => {
 });
 
 describe("calcularAplicacaoComConsorcio", () => {
+  const inputBase = {
+    valorInicial: 0,
+    aporteMensal: 500,
+    prazoMeses: 120,
+    perfil: "taxa_manual" as const,
+    percentualCdi: 100,
+    taxaManualMensal: 0.5,
+    taxasPorPerfil: { taxa_manual: 0.5 },
+    aumentoAnualAportePercentual: 6,
+    reajusteAnualCreditoPercentual: 6,
+    prazoConsorcioMeses: 220,
+    percentualParcelaReduzidaConsorcio: 60,
+    taxaAdministrativaConsorcio: 22,
+    fundoReservaConsorcio: 2,
+    seguroPrestamistaConsorcio: 0.038,
+  };
+
   it("diferença patrimonial coerente", () => {
-    const input = {
-      valorInicial: 0,
-      aporteMensal: 500,
-      prazoMeses: 120,
-      perfil: "taxa_manual" as const,
-      percentualCdi: 100,
-      taxaManualMensal: 0.5,
-      taxasPorPerfil: { taxa_manual: 0.5 },
-      aumentoAnualAportePercentual: 6,
-      compararComConsorcio: true,
-      reajusteAnualCreditoPercentual: 6,
-      prazoConsorcioMeses: 220,
-      percentualParcelaReduzidaConsorcio: 60,
-      taxaAdministrativaConsorcio: 22,
-      fundoReservaConsorcio: 2,
-      seguroPrestamistaConsorcio: 0.038,
-    };
+    const input = { ...inputBase, compararComConsorcio: true };
     const r = calcularAplicacaoComConsorcio(input);
     expect(r.consorcio).not.toBeNull();
     expect(r.consorcio!.periodoComparacaoMeses).toBe(120);
@@ -246,6 +247,28 @@ describe("calcularAplicacaoComConsorcio", () => {
     expect(lead.credito_contratado_estimado).toBeGreaterThan(0);
     expect(lead.rendimento_estimado).toBeGreaterThan(0);
     expect(lead.reajuste_final_consorcio).toBeGreaterThan(lead.credito_reajustado_periodo as number);
+  });
+
+  it("retorna creditoContratadoEstimado e projeta o reajuste a partir dele", () => {
+    const r = calcularAplicacaoComConsorcio({ ...inputBase, compararComConsorcio: true });
+    expect(r.consorcio).not.toBeNull();
+    expect(r.consorcio!.creditoContratadoEstimado).toBeGreaterThan(0);
+    expect(r.consorcio!.parcelaReduzidaEstimada).toBeCloseTo(500, 0);
+    expect(r.consorcio!.parcelaIntegralEstimada).toBeCloseTo(500 / 0.6, 0);
+    expect(r.consorcio!.creditoReajustadoConsorcio).toBeGreaterThan(
+      r.consorcio!.creditoContratadoEstimado,
+    );
+    expect(r.consorcio!.creditoReajustadoConsorcio).toBeCloseTo(
+      calcularCreditoReajustado(r.consorcio!.creditoContratadoEstimado, 6, 10),
+      0,
+    );
+  });
+
+  it("não retorna bloco de consórcio quando comparação está desativada", () => {
+    const r = calcularAplicacaoComConsorcio({ ...inputBase, compararComConsorcio: false });
+    expect(r.compararComConsorcio).toBe(false);
+    expect(r.consorcio).toBeNull();
+    expect(r.diferencaPatrimonial).toBeNull();
   });
 });
 

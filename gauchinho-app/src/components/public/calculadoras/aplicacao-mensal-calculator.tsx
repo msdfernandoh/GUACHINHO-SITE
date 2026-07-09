@@ -8,6 +8,7 @@ import {
   infoTaxaAplicacaoIndice,
   leadPayloadAplicacaoConsorcio,
   AVISO_COMPARATIVO_CONSORCIO,
+  TEXTO_CREDITO_CONTRATADO_ESTIMADO,
   TEXTO_DIFERENCA_PATRIMONIAL,
   TEXTO_PARCELA_REDUZIDA_COMPARATIVO,
   TEXTO_PRAZO_COMPARACAO_CONSORCIO,
@@ -386,6 +387,11 @@ export function AplicacaoMensalCalculator({ indices, taxaPadrao, prefill, onResu
                   }}
                   rows={[
                     {
+                      label: "Crédito contratado estimado",
+                      value: formatCurrency(result!.consorcio.creditoContratadoEstimado),
+                      highlight: true,
+                    },
+                    {
                       label: "Parcela reduzida estimada",
                       value: formatCurrency(result!.consorcio.parcelaReduzidaEstimada),
                     },
@@ -401,9 +407,20 @@ export function AplicacaoMensalCalculator({ indices, taxaPadrao, prefill, onResu
                       label: "Período comparado",
                       value: `${result!.consorcio.periodoComparacaoMeses} meses`,
                     },
+                    {
+                      label: "Prazo do consórcio",
+                      value: `${result!.consorcio.prazoConsorcioMeses} meses`,
+                    },
                   ]}
                   extra={
-                    <p className="text-xs leading-relaxed text-slate-500">{TEXTO_PRAZO_COMPARACAO_CONSORCIO}</p>
+                    <>
+                      <p className="text-sm leading-relaxed text-slate-300">
+                        {TEXTO_CREDITO_CONTRATADO_ESTIMADO}
+                      </p>
+                      <p className="mt-3 text-xs leading-relaxed text-slate-500">
+                        {TEXTO_PRAZO_COMPARACAO_CONSORCIO}
+                      </p>
+                    </>
                   }
                 />
               ) : null}
@@ -420,7 +437,12 @@ export function AplicacaoMensalCalculator({ indices, taxaPadrao, prefill, onResu
                 }}
                 rows={[
                   {
-                    label: "Crédito reajustado (consórcio)",
+                    label: "Crédito contratado estimado",
+                    value: formatCurrency(result!.consorcio.creditoContratadoEstimado),
+                    highlight: true,
+                  },
+                  {
+                    label: "Crédito reajustado estimado",
                     value: formatCurrency(result!.consorcio.creditoReajustadoConsorcio),
                   },
                   {
