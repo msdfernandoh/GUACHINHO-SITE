@@ -29,7 +29,6 @@ type ResumoFinanceiro = Record<string, number | string | null>;
 type ApiPayload = {
   contratacao: ContratacaoOnlineRow;
   resumoFinanceiro: ResumoFinanceiro;
-  documentos: DocumentoContratacaoPublico[];
   formasPagamento: FormaPagamento[];
   pixConfig: {
     chave: string;
@@ -76,15 +75,32 @@ export function ContratacaoWizard({ publicToken }: { publicToken: string }) {
   const [respCpf, setRespCpf] = useState("");
   const [formaPagamento, setFormaPagamento] = useState<FormaPagamento | null>(null);
   const [docsAviso, setDocsAviso] = useState<string | null>(null);
+  const [documentos, setDocumentos] = useState<DocumentoContratacaoPublico[]>([]);
+
+  const fetchDocumentos = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/public/contratacoes/${publicToken}/documentos`);
+      const json = (await res.json()) as { documentos?: DocumentoContratacaoPublico[] };
+      if (res.ok) setDocumentos(json.documentos ?? []);
+    } catch {
+      setDocumentos([]);
+    }
+  }, [publicToken]);
 
   const load = useCallback(async (opts?: { silent?: boolean }) => {
     if (!opts?.silent) setLoading(true);
     setError(null);
     try {
       const res = await fetch(`/api/public/contratacoes/${publicToken}`);
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error ?? "Erro ao carregar");
+      let json: Record<string, unknown> = {};
+      try {
+        json = await res.json();
+      } catch {
+        throw new Error("Resposta inválida do servidor");
+      }
+      if (!res.ok) throw new Error(String(json.error ?? "Erro ao carregar"));
       setData(json as ApiPayload);
+      void fetchDocumentos();
       const c = json.contratacao as ContratacaoOnlineRow;
       setNome(c.nome ?? "");
       setTelefone(c.telefone ? formatWhatsappBrInput(c.telefone) : "");
@@ -108,7 +124,7 @@ export function ContratacaoWizard({ publicToken }: { publicToken: string }) {
     } finally {
       if (!opts?.silent) setLoading(false);
     }
-  }, [publicToken]);
+  }, [publicToken, fetchDocumentos]);
 
   useEffect(() => {
     void load();
@@ -116,7 +132,6 @@ export function ContratacaoWizard({ publicToken }: { publicToken: string }) {
 
   const c = data?.contratacao;
   const fin = data?.resumoFinanceiro ?? {};
-  const documentos = data?.documentos ?? [];
 
   const docPorTipo = useMemo(() => {
     const map = new Map<string, DocumentoContratacaoPublico>();
@@ -208,7 +223,7 @@ export function ContratacaoWizard({ publicToken }: { publicToken: string }) {
     });
     const json = await res.json();
     if (!res.ok) throw new Error(json.error ?? "Falha no upload");
-    await load({ silent: true });
+    await Promise.all([load({ silent: true }), fetchDocumentos()]);
   }
 
   async function continuarDocs() {

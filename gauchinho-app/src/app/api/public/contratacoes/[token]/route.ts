@@ -4,7 +4,6 @@ import {
   confirmarProposta,
   marcarPrimeiroAcesso,
   atualizarContratacaoPublica,
-  listarDocumentos,
 } from "@/lib/contratacoes-online/service";
 import { isValidPublicToken } from "@/lib/contratacoes-online/public-token";
 import { resumoFinanceiroFromDados } from "@/lib/contratacoes-online/extract-fields";
@@ -16,7 +15,6 @@ import {
 import type { PatchContratacaoPublica } from "@/lib/contratacoes-online/service";
 import {
   sanitizeContratacaoPublica,
-  sanitizeDocumentosPublicos,
 } from "@/lib/contratacoes-online/sanitize-public";
 
 type Ctx = { params: Promise<{ token: string }> };
@@ -34,12 +32,11 @@ export async function GET(_req: Request, ctx: Ctx) {
       "contratacao_online_config",
       DEFAULT_CONTRATACAO_ONLINE_CONFIG,
     );
-    const documentosRaw = await listarDocumentos(row.id);
+    const dadosSim = (row.dados_simulacao ?? {}) as Record<string, unknown>;
     return NextResponse.json({
       ok: true,
       contratacao: sanitizeContratacaoPublica(row),
-      resumoFinanceiro: resumoFinanceiroFromDados(row.origem, row.dados_simulacao),
-      documentos: sanitizeDocumentosPublicos(documentosRaw),
+      resumoFinanceiro: resumoFinanceiroFromDados(row.origem, dadosSim),
       formasPagamento: formasPagamentoDisponiveis(cfg),
       pixConfig: cfg.pix_primeira_parcela_ativo
         ? {
@@ -65,10 +62,10 @@ export async function PATCH(request: Request, ctx: Ctx) {
     const body = (await request.json()) as PatchContratacaoPublica & { acao?: string };
     if (body.acao === "confirmar") {
       const row = await confirmarProposta(token);
-      return NextResponse.json({ ok: true, contratacao: row });
+      return NextResponse.json({ ok: true, contratacao: sanitizeContratacaoPublica(row) });
     }
     const row = await atualizarContratacaoPublica(token, body);
-    return NextResponse.json({ ok: true, contratacao: row });
+    return NextResponse.json({ ok: true, contratacao: sanitizeContratacaoPublica(row) });
   } catch (e) {
     const message = e instanceof Error ? e.message : "Erro interno";
     return NextResponse.json({ error: message }, { status: 400 });
