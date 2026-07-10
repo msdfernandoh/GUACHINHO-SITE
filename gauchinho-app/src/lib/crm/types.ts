@@ -19,6 +19,7 @@ export type LeadListRow = {
   valor_estimado: number | null;
   valor_simulado: number | null;
   fechado: boolean;
+  evento_id?: string | null;
 };
 
 export type LeadAtividade = {

@@ -11,6 +11,11 @@ import { LeadSummaryCards } from "@/components/admin/crm/lead-summary-cards";
 import { LeadOriginReport } from "@/components/admin/crm/lead-origin-report";
 import { LeadFunnelReport } from "@/components/admin/crm/lead-funnel-report";
 import { LeadConsultorReport } from "@/components/admin/crm/lead-consultor-report";
+import {
+  adminPageSubtitleClass,
+  adminPageTitleClass,
+  adminSectionHeadingClass,
+} from "@/components/admin/admin-contrast";
 
 export default async function RelatoriosPage() {
   await requireStaffAdmin();
@@ -27,8 +32,8 @@ export default async function RelatoriosPage() {
         <Link href="/admin/leads" className="text-sm text-amber-400 hover:underline">
           ← Leads
         </Link>
-        <h1 className="mt-2 text-2xl font-bold text-zinc-100">Relatórios comerciais</h1>
-        <p className="text-sm text-zinc-500">Origem, funil, consultores e alertas operacionais</p>
+        <h1 className={`mt-2 ${adminPageTitleClass}`}>Relatórios comerciais</h1>
+        <p className={adminPageSubtitleClass}>Origem, funil, consultores e alertas operacionais</p>
       </div>
 
       <LeadSummaryCards metrics={metrics} />
@@ -45,20 +50,20 @@ export default async function RelatoriosPage() {
       )}
 
       <section>
-        <h2 className="mb-3 text-lg font-semibold text-zinc-200">Origem dos leads</h2>
+        <h2 className={adminSectionHeadingClass}>Origem dos leads</h2>
         <LeadOriginReport rows={origem} />
       </section>
 
       <section>
-        <h2 className="mb-3 text-lg font-semibold text-zinc-200">Funil</h2>
+        <h2 className={adminSectionHeadingClass}>Funil</h2>
         <LeadFunnelReport rows={funil} />
-        <p className="mt-2 text-xs text-zinc-500">
+        <p className="mt-2 text-xs text-zinc-400">
           Valor potencial total em aberto: {formatCurrency(metrics.valorPotencial)}
         </p>
       </section>
 
       <section>
-        <h2 className="mb-3 text-lg font-semibold text-zinc-200">Por consultor</h2>
+        <h2 className={adminSectionHeadingClass}>Por consultor</h2>
         <LeadConsultorReport rows={consultores} />
       </section>
     </div>

@@ -16,6 +16,8 @@ function toDatetimeLocalValue(iso: string | null | undefined): string {
 type Props = {
   evento?: EventoRow;
   action: (formData: FormData) => Promise<void>;
+  usuariosStaff?: { id: string; nome: string }[];
+  leadsUsuariosIds?: string[];
 };
 
 function FormSection({ title, children }: { title: string; children: React.ReactNode }) {
@@ -28,7 +30,12 @@ function FormSection({ title, children }: { title: string; children: React.React
 }
 
 
-export function EventoAdminForm({ evento, action }: Props) {
+export function EventoAdminForm({
+  evento,
+  action,
+  usuariosStaff = [],
+  leadsUsuariosIds = [],
+}: Props) {
   const dataLocal = toDatetimeLocalValue(evento?.data_evento);
 
   const [nome, setNome] = useState(evento?.nome ?? "");
@@ -37,6 +44,7 @@ export function EventoAdminForm({ evento, action }: Props) {
     evento?.inscricao_tipo === "externo" ? "externo" : "interno",
   );
   const [formError, setFormError] = useState<string | null>(null);
+  const [leadsAcessoTodos, setLeadsAcessoTodos] = useState(evento?.leads_acesso_todos !== false);
 
   const slugHint = slug.trim() || nome.trim() || "evento";
 
@@ -210,6 +218,37 @@ export function EventoAdminForm({ evento, action }: Props) {
             vagas
           </label>
         </div>
+      </FormSection>
+
+      <FormSection title="Acesso aos leads do evento">
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            name="leads_acesso_todos"
+            checked={leadsAcessoTodos}
+            onChange={(e) => setLeadsAcessoTodos(e.target.checked)}
+          />
+          Todos os usuários com menu Leads podem ver leads deste evento
+        </label>
+        {!leadsAcessoTodos ? (
+          <>
+            <input type="hidden" name="leads_acesso_todos" value="off" />
+            <p className="text-xs text-zinc-500">Marque quem pode ver leads gerados por este evento:</p>
+            <div className="grid max-h-48 gap-2 overflow-y-auto sm:grid-cols-2">
+              {usuariosStaff.map((u) => (
+                <label key={u.id} className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    name="leads_usuario_id"
+                    value={u.id}
+                    defaultChecked={leadsUsuariosIds.includes(u.id)}
+                  />
+                  {u.nome}
+                </label>
+              ))}
+            </div>
+          </>
+        ) : null}
       </FormSection>
 
       <FormSection title="Publicação">

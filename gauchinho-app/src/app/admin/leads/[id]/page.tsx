@@ -198,7 +198,6 @@ export default async function LeadDetailPage({
                 </option>
               ))}
             </Select>
-            <input type="hidden" name="srd_responsavel_nome" value="" />
           </div>
           <div>
             <Label>Próxima ação</Label>

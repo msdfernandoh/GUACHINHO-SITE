@@ -2,38 +2,42 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 export type ConsultorOption = { id: string; nome: string; email?: string | null };
 
-function isMissingConsultorColumn(error: { message?: string } | null): boolean {
+function isMissingColumn(error: { message?: string } | null, col: string): boolean {
   const msg = error?.message ?? "";
-  return /is_consultor/.test(msg) || /column/.test(msg);
+  return new RegExp(col).test(msg) && /column|Could not find/i.test(msg);
 }
 
-/** Usuários marcados como consultores comerciais (agenda e leads). */
+/** Usuários ativos elegíveis como consultor responsável em leads. */
 export async function listarConsultores(supabase: SupabaseClient): Promise<ConsultorOption[]> {
-  const withFlag = await supabase
+  const staff = await supabase
     .from("usuarios")
-    .select("id, nome, email")
+    .select("id, nome, email, perfil, is_consultor")
     .eq("ativo", true)
-    .eq("is_consultor", true)
+    .in("perfil", ["master", "srd", "visualizador"])
     .order("nome");
 
-  if (!withFlag.error) {
-    return (withFlag.data ?? []) as ConsultorOption[];
+  if (!staff.error) {
+    return (staff.data ?? []).map((u) => ({
+      id: u.id as string,
+      nome: u.nome as string,
+      email: (u.email as string | null) ?? null,
+    }));
   }
 
-  if (isMissingConsultorColumn(withFlag.error)) {
+  if (isMissingColumn(staff.error, "is_consultor")) {
     const legacy = await supabase
       .from("usuarios")
       .select("id, nome, email")
       .eq("ativo", true)
-      .eq("perfil", "srd")
+      .in("perfil", ["master", "srd", "visualizador"])
       .order("nome");
     if (legacy.error) {
-      console.warn("[consultores] fallback srd:", legacy.error.message);
+      console.warn("[consultores] listar:", legacy.error.message);
       return [];
     }
     return (legacy.data ?? []) as ConsultorOption[];
   }
 
-  console.warn("[consultores] listar:", withFlag.error.message);
+  console.warn("[consultores] listar:", staff.error.message);
   return [];
 }

@@ -1,11 +1,18 @@
 import type { OrigemReportRow } from "@/lib/crm/reports";
 import { formatCurrency } from "@/lib/utils/format";
+import {
+  adminTableCellClass,
+  adminTableCellMutedClass,
+  adminTableHeadClass,
+  adminTableRowClass,
+  adminTableWrapClass,
+} from "@/components/admin/admin-contrast";
 
 export function LeadOriginReport({ rows }: { rows: OrigemReportRow[] }) {
   return (
-    <div className="overflow-x-auto rounded-xl border border-zinc-800">
+    <div className={adminTableWrapClass}>
       <table className="min-w-full text-sm">
-        <thead className="bg-zinc-950/80 text-left text-[10px] uppercase text-zinc-500">
+        <thead className={adminTableHeadClass}>
           <tr>
             <th className="px-3 py-2">Origem</th>
             <th className="px-3 py-2">Leads</th>
@@ -18,14 +25,14 @@ export function LeadOriginReport({ rows }: { rows: OrigemReportRow[] }) {
         </thead>
         <tbody>
           {rows.map((r) => (
-            <tr key={r.origem} className="border-t border-zinc-800">
-              <td className="px-3 py-2 font-medium text-zinc-200">{r.label}</td>
-              <td className="px-3 py-2">{r.leads}</td>
-              <td className="px-3 py-2">{r.qualificados}</td>
-              <td className="px-3 py-2">{r.propostas}</td>
-              <td className="px-3 py-2">{r.fechados}</td>
-              <td className="px-3 py-2">{r.perdidos}</td>
-              <td className="px-3 py-2">{formatCurrency(r.valorPotencial)}</td>
+            <tr key={r.origem} className={adminTableRowClass}>
+              <td className={`${adminTableCellClass} font-medium text-zinc-50`}>{r.label}</td>
+              <td className={adminTableCellMutedClass}>{r.leads}</td>
+              <td className={adminTableCellMutedClass}>{r.qualificados}</td>
+              <td className={adminTableCellMutedClass}>{r.propostas}</td>
+              <td className={adminTableCellMutedClass}>{r.fechados}</td>
+              <td className={adminTableCellMutedClass}>{r.perdidos}</td>
+              <td className={adminTableCellMutedClass}>{formatCurrency(r.valorPotencial)}</td>
             </tr>
           ))}
         </tbody>

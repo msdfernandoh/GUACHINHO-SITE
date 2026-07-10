@@ -4,6 +4,8 @@ import { getUsuarioNegocio } from "@/lib/auth/get-usuario";
 import { canManageImobiliarias } from "@/lib/auth/permissions";
 import {
   deleteEventoPostAction,
+  fetchEventoLeadsUsuariosIds,
+  fetchUsuariosStaffAtivos,
   eventoVagasResumo,
   fetchEventoAdmin,
   fetchEventoPosts,
@@ -26,13 +28,15 @@ export default async function EditarEventoPage({ params }: { params: Promise<{ i
   } catch {
     notFound();
   }
-  const [posts, vagas] = await Promise.all([
+  const [posts, vagas, usuariosStaff, leadsUsuariosIds] = await Promise.all([
     fetchEventoPosts(id).catch(() => [] as EventoPostRow[]),
     eventoVagasResumo(id, evento.limite_participantes).catch(() => ({
       usadas: 0,
       limite: evento.limite_participantes,
       restantes: evento.limite_participantes,
     })),
+    fetchUsuariosStaffAtivos(),
+    fetchEventoLeadsUsuariosIds(id),
   ]);
   const inscricaoMigrationPending =
     evento.inscricao_tipo === undefined && evento.inscricao_url_externa === undefined;
@@ -74,7 +78,12 @@ export default async function EditarEventoPage({ params }: { params: Promise<{ i
         </div>
       ) : null}
 
-      <EventoAdminForm evento={evento} action={update} />
+      <EventoAdminForm
+        evento={evento}
+        action={update}
+        usuariosStaff={usuariosStaff}
+        leadsUsuariosIds={leadsUsuariosIds}
+      />
 
       <section className="max-w-2xl space-y-4 rounded-xl border p-4 dark:border-zinc-800">
         <h2 className="text-lg font-semibold">Posts / fotos (página social)</h2>

@@ -20,6 +20,8 @@ export type UsuarioNegocio = {
   perfil: Perfil;
   ativo: boolean;
   imobiliaria_id: string | null;
+  admin_menus: string[] | null;
+  leads_apenas_proprios: boolean;
 };
 
 export function isMaster(perfil: Perfil | null | undefined): boolean {

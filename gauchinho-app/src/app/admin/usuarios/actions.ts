@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireUsuario } from "@/lib/auth/get-usuario";
 import { canManageUsers } from "@/lib/auth/permissions";
+import type { AdminMenuKey } from "@/lib/admin/admin-menus";
 
 export async function fetchUsuarios() {
   const supabase = await createClient();
@@ -37,6 +38,9 @@ export async function createUsuarioAction(formData: FormData) {
   const perfil = String(formData.get("perfil") ?? "srd").trim();
   const telefone = String(formData.get("telefone") ?? "").trim() || null;
   const isConsultor = formData.get("is_consultor") === "on";
+  const leadsApenasProprios = formData.get("leads_apenas_proprios") === "on";
+  const menuKeys = formData.getAll("admin_menu").map((v) => String(v).trim()) as AdminMenuKey[];
+  const adminMenus = menuKeys.length ? menuKeys : null;
 
   const admin = createAdminClient();
   const { data: authUser, error: authError } = await admin.auth.admin.createUser({
@@ -54,8 +58,10 @@ export async function createUsuarioAction(formData: FormData) {
     perfil,
     ativo: true,
     is_consultor: isConsultor,
+    leads_apenas_proprios: leadsApenasProprios,
+    admin_menus: adminMenus,
   });
-  if (error && /is_consultor/.test(error.message)) {
+  if (error && /is_consultor|admin_menus|leads_apenas_proprios/.test(error.message)) {
     const { error: err2 } = await admin.from("usuarios").insert({
       auth_user_id: authUser.user.id,
       nome,
@@ -63,6 +69,7 @@ export async function createUsuarioAction(formData: FormData) {
       telefone,
       perfil,
       ativo: true,
+      ...(menuKeys.length || leadsApenasProprios ? {} : { is_consultor: isConsultor }),
     });
     if (err2) throw new Error(err2.message);
   } else if (error) {

@@ -4,10 +4,10 @@ import { formatCurrency } from "@/lib/utils/format";
 export function LeadFunnelReport({ rows }: { rows: FunnelReportRow[] }) {
   const max = Math.max(...rows.map((r) => r.quantidade), 1);
   return (
-    <div className="space-y-2">
+    <div className="space-y-2 rounded-xl border border-zinc-700 bg-zinc-900/50 p-4">
       {rows.map((r) => (
         <div key={r.status} className="flex items-center gap-3 text-sm">
-          <span className="w-36 shrink-0 text-zinc-400">{r.status}</span>
+          <span className="w-36 shrink-0 font-medium text-zinc-300">{r.status}</span>
           <div className="h-2 flex-1 overflow-hidden rounded-full bg-zinc-800">
             <div
               className="h-full rounded-full bg-amber-500/80"

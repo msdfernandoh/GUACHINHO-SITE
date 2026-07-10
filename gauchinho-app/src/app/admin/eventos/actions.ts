@@ -70,6 +70,7 @@ function eventoFromForm(formData: FormData) {
     mostrar_vagas: boolForm(formData, "mostrar_vagas"),
     mensagem_confirmacao: String(formData.get("mensagem_confirmacao") ?? "").trim() || null,
     observacoes_internas: String(formData.get("observacoes_internas") ?? "").trim() || null,
+    leads_acesso_todos: formData.get("leads_acesso_todos") !== "off",
     ...inscricao,
   };
 }
@@ -98,6 +99,52 @@ export async function uploadEventoImagemAction(formData: FormData) {
 async function syncEventoDestaque(admin: ReturnType<typeof createAdminClient>, eventoId: string, destaque: boolean) {
   if (!destaque) return;
   await admin.from("eventos").update({ evento_destaque: false }).neq("id", eventoId);
+}
+
+async function syncEventoLeadsUsuarios(
+  admin: ReturnType<typeof createAdminClient>,
+  eventoId: string,
+  leadsAcessoTodos: boolean,
+  usuarioIds: string[],
+) {
+  try {
+    await admin.from("eventos").update({ leads_acesso_todos: leadsAcessoTodos }).eq("id", eventoId);
+    await admin.from("eventos_leads_usuarios").delete().eq("evento_id", eventoId);
+    if (!leadsAcessoTodos && usuarioIds.length) {
+      await admin.from("eventos_leads_usuarios").insert(
+        usuarioIds.map((usuario_id) => ({ evento_id: eventoId, usuario_id })),
+      );
+    }
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    if (!/eventos_leads_usuarios|leads_acesso_todos/.test(msg)) throw e;
+  }
+}
+
+export async function fetchUsuariosStaffAtivos() {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("usuarios")
+    .select("id, nome")
+    .eq("ativo", true)
+    .in("perfil", ["master", "srd", "visualizador"])
+    .order("nome");
+  if (error) throw new Error(error.message);
+  return (data ?? []) as { id: string; nome: string }[];
+}
+
+export async function fetchEventoLeadsUsuariosIds(eventoId: string): Promise<string[]> {
+  const supabase = await createClient();
+  try {
+    const { data, error } = await supabase
+      .from("eventos_leads_usuarios")
+      .select("usuario_id")
+      .eq("evento_id", eventoId);
+    if (error) throw error;
+    return (data ?? []).map((r) => r.usuario_id as string);
+  } catch {
+    return [];
+  }
 }
 
 type EventoPayload = ReturnType<typeof eventoFromForm>;
@@ -166,9 +213,11 @@ export async function createEventoAction(formData: FormData) {
   const u = await requireUsuario();
   if (!canManageImobiliarias(u.perfil)) throw new Error("Sem permissão");
   const payload = eventoFromForm(formData);
+  const usuarioIds = formData.getAll("leads_usuario_id").map((v) => String(v).trim()).filter(Boolean);
   const admin = createAdminClient();
   const data = await persistEventoInsert(admin, payload);
   await syncEventoDestaque(admin, data.id, payload.evento_destaque);
+  await syncEventoLeadsUsuarios(admin, data.id, payload.leads_acesso_todos, usuarioIds);
   revalidatePath("/admin/eventos");
   revalidatePath("/eventos");
   redirect(`/admin/eventos/${data.id}`);
@@ -178,9 +227,11 @@ export async function updateEventoAction(id: string, formData: FormData) {
   const u = await requireUsuario();
   if (!canManageImobiliarias(u.perfil)) throw new Error("Sem permissão");
   const payload = eventoFromForm(formData);
+  const usuarioIds = formData.getAll("leads_usuario_id").map((v) => String(v).trim()).filter(Boolean);
   const admin = createAdminClient();
   await persistEventoUpdate(admin, id, payload);
   await syncEventoDestaque(admin, id, payload.evento_destaque);
+  await syncEventoLeadsUsuarios(admin, id, payload.leads_acesso_todos, usuarioIds);
   revalidatePath("/admin/eventos");
   revalidatePath(`/admin/eventos/${id}`);
   revalidatePath("/eventos");

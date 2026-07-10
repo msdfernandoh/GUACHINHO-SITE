@@ -5,8 +5,8 @@ import { fetchEventosOptionsForFilter } from "@/app/admin/eventos/actions";
 import { requireStaffAdmin } from "@/lib/auth/require-staff-admin";
 import { Button } from "@/components/ui/form-primitives";
 import { LeadFilters } from "@/components/admin/crm/lead-filters";
-import { LeadTable } from "@/components/admin/crm/lead-table";
-import { ExportCsvButton } from "@/components/admin/crm/export-csv-button";
+import { LeadListWithBulk } from "@/components/admin/crm/lead-list-with-bulk";
+import { ExportLeadsButton } from "@/components/admin/crm/export-leads-button";
 import type { LeadFilters as LF } from "@/lib/crm/types";
 
 export default async function LeadsListPage({
@@ -55,7 +55,7 @@ export default async function LeadsListPage({
             <Button>Novo lead manual</Button>
           </Link>
           <Suspense fallback={null}>
-            <ExportCsvButton />
+            <ExportLeadsButton />
           </Suspense>
         </div>
       </div>
@@ -64,7 +64,7 @@ export default async function LeadsListPage({
         <LeadFilters srds={srds} eventos={eventos} />
       </Suspense>
 
-      <LeadTable leads={leads} />
+      <LeadListWithBulk leads={leads} consultores={srds} />
     </div>
   );
 }

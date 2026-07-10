@@ -7,6 +7,13 @@ import { cancelCompromissoAction, concluirCompromissoAction, createCompromissoAc
 import { AdminFormSubmitButton } from "@/components/admin/admin-form-submit-button";
 import { Button, Input, Label, Select, Textarea } from "@/components/ui/form-primitives";
 import { formatDateTime } from "@/lib/utils/format";
+import {
+  adminMutedLabelClass,
+  adminPanelClass,
+  adminSectionTitleClass,
+  adminStatCardClass,
+} from "@/components/admin/admin-contrast";
+import { surfaceInputDark, surfaceSelectDark } from "@/components/ui/form-primitives";
 
 type Srd = { id: string; nome: string };
 
@@ -55,26 +62,26 @@ export function AgendaView({ month, year, compromissos, srds, initialDay, initia
   return (
     <div className="space-y-6">
       <div className="grid gap-4 sm:grid-cols-3">
-        <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-4">
-          <p className="text-xs uppercase text-zinc-500">Hoje</p>
-          <p className="text-2xl font-bold text-white">{hojeItems.length}</p>
+        <div className={adminStatCardClass}>
+          <p className={adminMutedLabelClass}>Hoje</p>
+          <p className="text-2xl font-bold text-zinc-50">{hojeItems.length}</p>
         </div>
-        <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-4">
-          <p className="text-xs uppercase text-zinc-500">Atrasados</p>
+        <div className={adminStatCardClass}>
+          <p className={adminMutedLabelClass}>Atrasados</p>
           <p className="text-2xl font-bold text-amber-400">{atrasados.length}</p>
         </div>
-        <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-4">
-          <p className="text-xs uppercase text-zinc-500">Mês</p>
-          <p className="text-2xl font-bold text-white">{compromissos.length}</p>
+        <div className={adminStatCardClass}>
+          <p className={adminMutedLabelClass}>Mês</p>
+          <p className="text-2xl font-bold text-zinc-50">{compromissos.length}</p>
         </div>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,340px)_1fr]">
-        <div className="rounded-xl border border-zinc-800 p-4">
-          <p className="mb-3 text-sm font-semibold text-zinc-300">
+        <div className={adminPanelClass}>
+          <p className="mb-3 text-sm font-semibold text-zinc-200">
             {pad(month)}/{year}
           </p>
-          <div className="grid grid-cols-7 gap-1 text-center text-[10px] text-zinc-500">
+          <div className="grid grid-cols-7 gap-1 text-center text-[10px] font-medium text-zinc-400">
             {["D", "S", "T", "Q", "Q", "S", "S"].map((d) => (
               <span key={d}>{d}</span>
             ))}
@@ -94,7 +101,7 @@ export function AgendaView({ month, year, compromissos, srds, initialDay, initia
                     setShowNew(false);
                   }}
                   className={`relative rounded-lg py-2 text-sm ${
-                    active ? "bg-amber-500 text-zinc-950 font-bold" : "hover:bg-zinc-800 text-zinc-200"
+                    active ? "bg-amber-500 text-zinc-950 font-bold" : "text-zinc-100 hover:bg-zinc-800"
                   }`}
                 >
                   {day}
@@ -112,26 +119,26 @@ export function AgendaView({ month, year, compromissos, srds, initialDay, initia
 
         <div className="space-y-4">
           {showNew ? (
-            <form action={createCompromissoAction} className="space-y-3 rounded-xl border border-zinc-800 p-4">
-              <h3 className="font-semibold text-white">Novo compromisso</h3>
+            <form action={createCompromissoAction} className={`space-y-3 ${adminPanelClass}`}>
+              <h3 className={adminSectionTitleClass}>Novo compromisso</h3>
               <input type="hidden" name="data" value={selected} />
               <div>
                 <Label>Título</Label>
-                <Input name="titulo" required defaultValue="Atendimento" />
+                <Input name="titulo" required defaultValue="Atendimento" className={surfaceInputDark} />
               </div>
               <div className="grid gap-3 sm:grid-cols-2">
                 <div>
                   <Label>Hora</Label>
-                  <Input name="hora" type="time" defaultValue="10:00" required />
+                  <Input name="hora" type="time" defaultValue="10:00" required className={surfaceInputDark} />
                 </div>
                 <div>
                   <Label>Duração (min)</Label>
-                  <Input name="duracao_minutos" type="number" defaultValue="60" />
+                  <Input name="duracao_minutos" type="number" defaultValue="60" className={surfaceInputDark} />
                 </div>
               </div>
               <div>
                 <Label>Tipo</Label>
-                <Select name="tipo" defaultValue="Atendimento">
+                <Select name="tipo" defaultValue="Atendimento" className={surfaceSelectDark}>
                   {AGENDA_TIPOS.map((t) => (
                     <option key={t} value={t}>
                       {t}
@@ -146,7 +153,7 @@ export function AgendaView({ month, year, compromissos, srds, initialDay, initia
                     Nenhum consultor cadastrado. Marque usuários como consultores em Admin → Usuários.
                   </p>
                 ) : (
-                  <Select name="consultor_id" defaultValue={srds[0]?.id ?? ""} required>
+                  <Select name="consultor_id" defaultValue={srds[0]?.id ?? ""} required className={surfaceSelectDark}>
                     {srds.map((s) => (
                       <option key={s.id} value={s.id}>
                         {s.nome}
@@ -157,15 +164,15 @@ export function AgendaView({ month, year, compromissos, srds, initialDay, initia
               </div>
               <div>
                 <Label>Lead (UUID — opcional)</Label>
-                <Input name="lead_id" defaultValue={initialLeadId ?? ""} placeholder="cole o id do lead" />
+                <Input name="lead_id" defaultValue={initialLeadId ?? ""} placeholder="cole o id do lead" className={surfaceInputDark} />
               </div>
               <div>
                 <Label>Local</Label>
-                <Input name="local" />
+                <Input name="local" className={surfaceInputDark} />
               </div>
               <div>
                 <Label>Descrição</Label>
-                <Textarea name="descricao" rows={2} />
+                <Textarea name="descricao" rows={2} className={surfaceInputDark} />
               </div>
               <div className="flex gap-2">
                 <AdminFormSubmitButton label="Salvar" />
@@ -176,18 +183,18 @@ export function AgendaView({ month, year, compromissos, srds, initialDay, initia
             </form>
           ) : null}
 
-          <div className="rounded-xl border border-zinc-800 p-4">
-            <h3 className="font-semibold text-white">Compromissos — {selected}</h3>
+          <div className={adminPanelClass}>
+            <h3 className={adminSectionTitleClass}>Compromissos — {selected}</h3>
             {dayItems.length === 0 ? (
-              <p className="mt-3 text-sm text-zinc-500">Nenhum compromisso neste dia.</p>
+              <p className="mt-3 text-sm text-zinc-400">Nenhum compromisso neste dia.</p>
             ) : (
               <ul className="mt-3 space-y-3">
                 {dayItems.map((c) => (
-                  <li key={c.id} className="rounded-lg border border-zinc-800/80 p-3 text-sm">
+                  <li key={c.id} className="rounded-lg border border-zinc-700 bg-zinc-950/60 p-3 text-sm">
                     <div className="flex flex-wrap items-start justify-between gap-2">
                       <div>
-                        <p className="font-medium text-white">{c.titulo}</p>
-                        <p className="text-xs text-zinc-500">
+                        <p className="font-medium text-zinc-50">{c.titulo}</p>
+                        <p className="text-xs text-zinc-400">
                           {formatDateTime(c.data_inicio, null)} · {c.tipo} · {c.status}
                         </p>
                         <p className="text-xs text-zinc-400">
@@ -210,7 +217,7 @@ export function AgendaView({ month, year, compromissos, srds, initialDay, initia
                     {concluirId === c.id ? (
                       <form action={concluirCompromissoAction.bind(null, c.id)} className="mt-3 space-y-2 border-t border-zinc-800 pt-3">
                         <Label>Resultado</Label>
-                        <Select name="resultado" required>
+                        <Select name="resultado" required className={surfaceSelectDark}>
                           {AGENDA_RESULTADOS.map((r) => (
                             <option key={r} value={r}>
                               {r}
@@ -219,10 +226,10 @@ export function AgendaView({ month, year, compromissos, srds, initialDay, initia
                         </Select>
                         <Label>Nova data (se retorno)</Label>
                         <div className="grid grid-cols-2 gap-2">
-                          <Input name="proxima_data" type="date" />
-                          <Input name="proxima_hora" type="time" defaultValue="10:00" />
+                          <Input name="proxima_data" type="date" className={surfaceInputDark} />
+                          <Input name="proxima_hora" type="time" defaultValue="10:00" className={surfaceInputDark} />
                         </div>
-                        <Textarea name="observacao_resultado" rows={2} placeholder="Observação" />
+                        <Textarea name="observacao_resultado" rows={2} placeholder="Observação" className={surfaceInputDark} />
                         <AdminFormSubmitButton
                           size="sm"
                           label="Registrar conclusão"

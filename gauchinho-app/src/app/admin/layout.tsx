@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { getUsuarioNegocio } from "@/lib/auth/get-usuario";
 import { AdminSidebar } from "@/components/admin/sidebar";
 import { AdminHeader } from "@/components/admin/header";
+import type { AdminMenuKey } from "@/lib/admin/admin-menus";
 
 export const metadata: Metadata = {
   robots: { index: false, follow: false },
@@ -19,8 +20,11 @@ export default async function AdminLayout({
   }
 
   return (
-    <div className="flex min-h-screen bg-zinc-100 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
-      <AdminSidebar perfil={usuario.perfil} />
+    <div className="dark flex min-h-screen bg-zinc-950 text-zinc-100">
+      <AdminSidebar
+        perfil={usuario.perfil}
+        adminMenus={(usuario.admin_menus as AdminMenuKey[] | null) ?? null}
+      />
       <div className="flex min-w-0 flex-1 flex-col">
         <AdminHeader nome={usuario.nome} perfil={usuario.perfil} />
         <main className="flex-1 overflow-auto p-6 text-inherit">{children}</main>

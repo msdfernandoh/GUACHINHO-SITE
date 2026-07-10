@@ -6,6 +6,7 @@ import { AdminFormSubmitButton } from "@/components/admin/admin-form-submit-butt
 import { Button, Input, Label, Select } from "@/components/ui/form-primitives";
 import { PERFIS } from "@/lib/auth/permissions";
 import { formatDate } from "@/lib/utils/format";
+import { ADMIN_MENU_ITEMS, resolveAdminMenus, type AdminMenuKey } from "@/lib/admin/admin-menus";
 
 export default async function UsuariosPage() {
   const current = await getUsuarioNegocio();
@@ -13,6 +14,7 @@ export default async function UsuariosPage() {
     redirect("/admin");
   }
   const usuarios = await fetchUsuarios();
+  const defaultMenus = resolveAdminMenus("srd", null);
 
   return (
     <div className="space-y-8">
@@ -52,6 +54,22 @@ export default async function UsuariosPage() {
           <input type="checkbox" name="is_consultor" />
           Consultor comercial
         </label>
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" name="leads_apenas_proprios" />
+          Ver apenas leads em que for consultor responsável
+        </label>
+        <div className="space-y-2 rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
+          <p className="text-sm font-semibold">Menus do painel</p>
+          <p className="text-xs text-zinc-500">Marque o que este usuário pode acessar. Se nenhum for marcado, usa o padrão do perfil.</p>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {ADMIN_MENU_ITEMS.map((m) => (
+              <label key={m.key} className="flex items-center gap-2 text-sm">
+                <input type="checkbox" name="admin_menu" value={m.key} defaultChecked={defaultMenus.includes(m.key)} />
+                {m.label}
+              </label>
+            ))}
+          </div>
+        </div>
         <p className="text-xs text-zinc-500">
           Usuários marcados como consultores aparecem nas agendas e nos compromissos com leads.
         </p>

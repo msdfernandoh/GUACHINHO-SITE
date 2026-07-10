@@ -1,5 +1,6 @@
 import type { CrmDashboardMetrics } from "@/lib/crm/reports";
 import { formatCurrency } from "@/lib/utils/format";
+import { adminMutedLabelClass, adminStatCardClass } from "@/components/admin/admin-contrast";
 
 export function LeadSummaryCards({ metrics }: { metrics: CrmDashboardMetrics }) {
   const cards = [
@@ -17,11 +18,8 @@ export function LeadSummaryCards({ metrics }: { metrics: CrmDashboardMetrics }) 
   return (
     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
       {cards.map((c) => (
-        <div
-          key={c.label}
-          className="rounded-xl border border-zinc-800 bg-zinc-900/60 p-4 shadow-sm"
-        >
-          <p className="text-[10px] font-bold uppercase tracking-wide text-zinc-500">{c.label}</p>
+        <div key={c.label} className={adminStatCardClass}>
+          <p className={adminMutedLabelClass}>{c.label}</p>
           <p className="mt-2 text-2xl font-bold text-amber-400">{c.value}</p>
         </div>
       ))}

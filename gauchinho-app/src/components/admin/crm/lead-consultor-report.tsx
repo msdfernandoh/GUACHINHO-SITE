@@ -1,11 +1,18 @@
 import type { ConsultorReportRow } from "@/lib/crm/reports";
 import { formatCurrency } from "@/lib/utils/format";
+import {
+  adminTableCellClass,
+  adminTableCellMutedClass,
+  adminTableHeadClass,
+  adminTableRowClass,
+  adminTableWrapClass,
+} from "@/components/admin/admin-contrast";
 
 export function LeadConsultorReport({ rows }: { rows: ConsultorReportRow[] }) {
   return (
-    <div className="overflow-x-auto rounded-xl border border-zinc-800">
+    <div className={adminTableWrapClass}>
       <table className="min-w-full text-sm">
-        <thead className="bg-zinc-950/80 text-left text-[10px] uppercase text-zinc-500">
+        <thead className={adminTableHeadClass}>
           <tr>
             <th className="px-3 py-2">Consultor</th>
             <th className="px-3 py-2">Recebidos</th>
@@ -18,14 +25,14 @@ export function LeadConsultorReport({ rows }: { rows: ConsultorReportRow[] }) {
         </thead>
         <tbody>
           {rows.map((r) => (
-            <tr key={r.consultorId ?? r.consultorNome} className="border-t border-zinc-800">
-              <td className="px-3 py-2 font-medium text-zinc-200">{r.consultorNome}</td>
-              <td className="px-3 py-2">{r.recebidos}</td>
-              <td className="px-3 py-2">{r.emAtendimento}</td>
-              <td className="px-3 py-2">{r.propostas}</td>
-              <td className="px-3 py-2">{r.fechados}</td>
-              <td className="px-3 py-2">{r.perdidos}</td>
-              <td className="px-3 py-2">{formatCurrency(r.valorFechado)}</td>
+            <tr key={r.consultorId ?? r.consultorNome} className={adminTableRowClass}>
+              <td className={`${adminTableCellClass} font-medium text-zinc-50`}>{r.consultorNome}</td>
+              <td className={adminTableCellMutedClass}>{r.recebidos}</td>
+              <td className={adminTableCellMutedClass}>{r.emAtendimento}</td>
+              <td className={adminTableCellMutedClass}>{r.propostas}</td>
+              <td className={adminTableCellMutedClass}>{r.fechados}</td>
+              <td className={adminTableCellMutedClass}>{r.perdidos}</td>
+              <td className={adminTableCellMutedClass}>{formatCurrency(r.valorFechado)}</td>
             </tr>
           ))}
         </tbody>

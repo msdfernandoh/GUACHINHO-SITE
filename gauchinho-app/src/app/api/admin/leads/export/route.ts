@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
+import { getUsuarioNegocio } from "@/lib/auth/get-usuario";
 import { requireStaffAdmin } from "@/lib/auth/require-staff-admin";
 import { queryLeadsList } from "@/lib/crm/leads-query";
 import { leadsToCsv } from "@/lib/crm/csv-export";
+import { filterLeadsByScope, loadLeadAccessScope } from "@/lib/crm/lead-access";
 import type { LeadFilters } from "@/lib/crm/types";
 
 function filtersFromSearchParams(sp: URLSearchParams): LeadFilters {
@@ -20,18 +22,42 @@ function filtersFromSearchParams(sp: URLSearchParams): LeadFilters {
     somente_novos: get("somente_novos"),
     somente_quentes: get("somente_quentes"),
     acao_vencida: get("acao_vencida"),
+    evento: get("evento"),
   };
 }
 
 export async function GET(request: Request) {
   await requireStaffAdmin();
+  const usuario = await getUsuarioNegocio();
+  if (!usuario) {
+    return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
+  }
+
   const sp = new URL(request.url).searchParams;
-  const rows = await queryLeadsList(filtersFromSearchParams(sp), 5000);
+  const format = sp.get("format") === "xls" ? "xls" : "csv";
+  let rows = await queryLeadsList(filtersFromSearchParams(sp), 5000);
+  const scope = await loadLeadAccessScope(
+    usuario.id,
+    usuario.perfil,
+    usuario.leads_apenas_proprios,
+  );
+  rows = filterLeadsByScope(rows, scope);
+
   const csv = leadsToCsv(rows);
+  const date = new Date().toISOString().slice(0, 10);
+  if (format === "xls") {
+    const bom = "\uFEFF";
+    return new NextResponse(bom + csv.replace(/,/g, ";"), {
+      headers: {
+        "Content-Type": "application/vnd.ms-excel; charset=utf-8",
+        "Content-Disposition": `attachment; filename="leads-${date}.xls"`,
+      },
+    });
+  }
   return new NextResponse(csv, {
     headers: {
       "Content-Type": "text/csv; charset=utf-8",
-      "Content-Disposition": `attachment; filename="leads-${new Date().toISOString().slice(0, 10)}.csv"`,
+      "Content-Disposition": `attachment; filename="leads-${date}.csv"`,
     },
   });
 }

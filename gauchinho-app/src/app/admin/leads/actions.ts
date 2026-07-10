@@ -8,6 +8,7 @@ import { canDeleteRecords } from "@/lib/auth/permissions";
 import { DEFAULT_LEADS, getConfigJson } from "@/server/config";
 import { registrarEvento } from "@/lib/eventos/registrar";
 import { queryLeadsForKanban, queryLeadsList } from "@/lib/crm/leads-query";
+import { filterLeadsByScope, loadLeadAccessScope } from "@/lib/crm/lead-access";
 import type { LeadFilters } from "@/lib/crm/types";
 import { buildLeadTimeline } from "@/lib/crm/timeline";
 import { MOTIVOS_PERDA } from "@/lib/crm/constants";
@@ -224,7 +225,14 @@ export async function deleteLeadAction(leadId: string) {
 }
 
 export async function fetchLeadsList(filters: LeadFilters) {
-  return queryLeadsList(filters);
+  const usuario = await requireUsuario();
+  const rows = await queryLeadsList(filters);
+  const scope = await loadLeadAccessScope(
+    usuario.id,
+    usuario.perfil,
+    usuario.leads_apenas_proprios,
+  );
+  return filterLeadsByScope(rows, scope);
 }
 
 export async function fetchLeadsKanban() {
@@ -270,6 +278,24 @@ export async function assignConsultorAction(leadId: string, srdId: string, srdNo
     usuario_id: usuario.id,
   });
   revalidatePath(`/admin/leads/${leadId}`);
+  revalidatePath("/admin/leads");
+}
+
+export async function bulkAssignConsultorAction(leadIds: string[], srdId: string) {
+  const usuario = await requireUsuario();
+  if (!leadIds.length) throw new Error("Selecione ao menos um lead.");
+  const supabase = await createClient();
+  const { data: srdUser } = await supabase.from("usuarios").select("nome").eq("id", srdId).maybeSingle();
+  const srdNome = srdUser?.nome ?? "";
+  const { error } = await supabase
+    .from("leads")
+    .update({ srd_responsavel_id: srdId, srd_responsavel_nome: srdNome })
+    .in("id", leadIds);
+  if (error) throw new Error(error.message);
+  for (const leadId of leadIds) {
+    await touchInteracao(supabase, leadId);
+    await historico(leadId, usuario.id, "lead_consultor_atribuido", srdNome || "Consultor atribuído em lote");
+  }
   revalidatePath("/admin/leads");
 }
 

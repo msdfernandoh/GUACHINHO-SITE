@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { requireStaffAdmin } from "@/lib/auth/require-staff-admin";
 import { fetchSrdOptions } from "@/app/admin/leads/actions";
 import { fetchCompromissosRange } from "./actions";
+import { adminPageSubtitleClass, adminPageTitleClass } from "@/components/admin/admin-contrast";
 import { AgendaView } from "@/components/admin/agenda/agenda-view";
 
 export default async function AgendaAdminPage({
@@ -21,8 +22,8 @@ export default async function AgendaAdminPage({
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-zinc-100">Agenda comercial</h1>
-        <p className="text-sm text-zinc-500">Compromissos com leads — clique no dia para agendar</p>
+        <h1 className={adminPageTitleClass}>Agenda comercial</h1>
+        <p className={adminPageSubtitleClass}>Compromissos com leads — clique no dia para agendar</p>
       </div>
       <AgendaView
         month={month}

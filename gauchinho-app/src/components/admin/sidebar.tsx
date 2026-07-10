@@ -20,25 +20,34 @@ import {
   Shield,
 } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
+import type { AdminMenuKey } from "@/lib/admin/admin-menus";
+import { resolveAdminMenus } from "@/lib/admin/admin-menus";
 
-const staffNav = [
-  { href: "/admin", label: "Dashboard", icon: LayoutDashboard, exact: true },
-  { href: "/admin/leads", label: "Leads", icon: Users },
-  { href: "/admin/agenda", label: "Agenda", icon: CalendarDays },
-  { href: "/admin/eventos", label: "Eventos", icon: Calendar, masterOnly: true },
-  { href: "/admin/eventos/listas-convidados", label: "Listas convidados", icon: ClipboardList },
-  { href: "/admin/relatorios", label: "Relatórios", icon: BarChart2 },
-  { href: "/admin/propostas", label: "Propostas", icon: FileText },
-  { href: "/admin/contratacoes", label: "Contratações", icon: FileText },
-  { href: "/admin/grupos", label: "Grupos", icon: Layers },
-  { href: "/admin/cartas-contempladas", label: "Cartas Contempladas", icon: FileText },
-  { href: "/admin/imobiliarias", label: "Imobiliárias", icon: Building2, masterOnly: true },
-  { href: "/admin/seguradoras", label: "Seguradoras", icon: Shield, masterOnly: true },
-  { href: "/admin/imoveis", label: "Imóveis", icon: Home },
-  { href: "/admin/conteudo", label: "Conteúdo", icon: BookOpen, conteudoOnly: true },
-  { href: "/admin/usuarios", label: "Usuários", icon: UserCircle, masterOnly: true },
-  { href: "/admin/indices-financeiros", label: "Índices financeiros", icon: TrendingUp, masterOnly: true },
-  { href: "/admin/configuracoes", label: "Configurações", icon: Settings, masterOnly: true },
+const NAV: Array<{
+  key: AdminMenuKey;
+  href: string;
+  label: string;
+  icon: typeof LayoutDashboard;
+  masterOnly?: boolean;
+  conteudoOnly?: boolean;
+}> = [
+  { key: "dashboard", href: "/admin", label: "Dashboard", icon: LayoutDashboard },
+  { key: "leads", href: "/admin/leads", label: "Leads", icon: Users },
+  { key: "agenda", href: "/admin/agenda", label: "Agenda", icon: CalendarDays },
+  { key: "eventos", href: "/admin/eventos", label: "Eventos", icon: Calendar, masterOnly: true },
+  { key: "listas_convidados", href: "/admin/eventos/listas-convidados", label: "Listas convidados", icon: ClipboardList },
+  { key: "relatorios", href: "/admin/relatorios", label: "Relatórios", icon: BarChart2 },
+  { key: "propostas", href: "/admin/propostas", label: "Propostas", icon: FileText },
+  { key: "contratacoes", href: "/admin/contratacoes", label: "Contratações", icon: FileText },
+  { key: "grupos", href: "/admin/grupos", label: "Grupos", icon: Layers },
+  { key: "cartas", href: "/admin/cartas-contempladas", label: "Cartas Contempladas", icon: FileText },
+  { key: "imobiliarias", href: "/admin/imobiliarias", label: "Imobiliárias", icon: Building2, masterOnly: true },
+  { key: "seguradoras", href: "/admin/seguradoras", label: "Seguradoras", icon: Shield, masterOnly: true },
+  { key: "imoveis", href: "/admin/imoveis", label: "Imóveis", icon: Home },
+  { key: "conteudo", href: "/admin/conteudo", label: "Conteúdo", icon: BookOpen, conteudoOnly: true },
+  { key: "usuarios", href: "/admin/usuarios", label: "Usuários", icon: UserCircle, masterOnly: true },
+  { key: "indices", href: "/admin/indices-financeiros", label: "Índices financeiros", icon: TrendingUp, masterOnly: true },
+  { key: "configuracoes", href: "/admin/configuracoes", label: "Configurações", icon: Settings, masterOnly: true },
 ];
 
 const imobiliariaNav = [
@@ -46,12 +55,19 @@ const imobiliariaNav = [
   { href: "/admin/imoveis", label: "Meus imóveis", icon: Home },
 ];
 
-export function AdminSidebar({ perfil }: { perfil: string }) {
+export function AdminSidebar({
+  perfil,
+  adminMenus,
+}: {
+  perfil: string;
+  adminMenus: AdminMenuKey[] | null;
+}) {
   const pathname = usePathname();
   const isMaster = perfil === "master";
   const isImob = perfil === "imobiliaria";
   const canConteudo = perfil === "master" || perfil === "srd";
-  const nav = isImob ? imobiliariaNav : staffNav;
+  const allowed = resolveAdminMenus(perfil, adminMenus);
+  const customMenus = Boolean(adminMenus?.length);
 
   return (
     <aside className="flex w-60 shrink-0 flex-col border-r border-zinc-200 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-950">
@@ -70,30 +86,51 @@ export function AdminSidebar({ perfil }: { perfil: string }) {
         </Link>
       </div>
       <nav className="flex-1 space-y-1 p-3">
-        {nav.map((item) => {
-          if ("masterOnly" in item && item.masterOnly && !isMaster) return null;
-          if ("conteudoOnly" in item && item.conteudoOnly && !canConteudo) return null;
-          const active =
-            "exact" in item && item.exact
-              ? pathname === item.href
-              : pathname.startsWith(item.href);
-          const Icon = item.icon;
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={cn(
-                "flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
-                active
-                  ? "bg-zinc-900 text-white dark:bg-amber-500 dark:text-zinc-950"
-                  : "text-zinc-700 hover:bg-zinc-200/80 dark:text-zinc-300 dark:hover:bg-zinc-800",
-              )}
-            >
-              <Icon className="h-4 w-4 shrink-0" />
-              {item.label}
-            </Link>
-          );
-        })}
+        {isImob
+          ? imobiliariaNav.map((item) => {
+              const active = pathname.startsWith(item.href);
+              const Icon = item.icon;
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={cn(
+                    "flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                    active
+                      ? "bg-zinc-900 text-white dark:bg-amber-500 dark:text-zinc-950"
+                      : "text-zinc-700 hover:bg-zinc-200/80 dark:text-zinc-300 dark:hover:bg-zinc-800",
+                  )}
+                >
+                  <Icon className="h-4 w-4 shrink-0" />
+                  {item.label}
+                </Link>
+              );
+            })
+          : NAV.map((item) => {
+              if (!allowed.includes(item.key)) return null;
+              if (!customMenus && item.masterOnly && !isMaster) return null;
+              if (!customMenus && item.conteudoOnly && !canConteudo) return null;
+              const active =
+                item.key === "dashboard"
+                  ? pathname === item.href
+                  : pathname === item.href || pathname.startsWith(`${item.href}/`);
+              const Icon = item.icon;
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={cn(
+                    "flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                    active
+                      ? "bg-zinc-900 text-white dark:bg-amber-500 dark:text-zinc-950"
+                      : "text-zinc-700 hover:bg-zinc-200/80 dark:text-zinc-300 dark:hover:bg-zinc-800",
+                  )}
+                >
+                  <Icon className="h-4 w-4 shrink-0" />
+                  {item.label}
+                </Link>
+              );
+            })}
       </nav>
     </aside>
   );

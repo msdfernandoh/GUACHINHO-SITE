@@ -33,6 +33,7 @@ export type EventoRow = {
   observacoes_internas: string | null;
   inscricao_tipo?: "interno" | "externo";
   inscricao_url_externa?: string | null;
+  leads_acesso_todos?: boolean;
   created_at: string;
   updated_at: string;
 };
