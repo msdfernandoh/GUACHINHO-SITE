@@ -130,6 +130,33 @@ export async function cadastrarParticipanteSorteioPublico(
   });
   if (partErr) return { ok: false, error: partErr.message };
 
+  const { data: partRow, error: partFetchErr } = await admin
+    .from("eventos_sorteio_participantes")
+    .select("id")
+    .eq("sorteio_id", view.sorteioId)
+    .eq("evento_id", view.eventoId)
+    .eq("codigo", codigo)
+    .maybeSingle();
+  if (partFetchErr || !partRow?.id) {
+    return { ok: false, error: partFetchErr?.message ?? "Falha ao vincular ao evento." };
+  }
+
+  const { vincularNovoCadastroSorteioAoEvento } = await import("./sync-inscritos");
+  try {
+    await vincularNovoCadastroSorteioAoEvento(
+      view.eventoId,
+      view.sorteioId,
+      partRow.id,
+      nome,
+      telefone,
+      leadRow.id,
+      "participando",
+    );
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    return { ok: false, error: msg };
+  }
+
   await registrarEvento({
     tipo_evento: "evento_sorteio_cadastro",
     origem: "evento_sorteio",
