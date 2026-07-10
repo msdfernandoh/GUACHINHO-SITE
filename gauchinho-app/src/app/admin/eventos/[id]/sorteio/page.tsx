@@ -28,11 +28,11 @@ export default async function EventoSorteioAdminPage({ params }: { params: Promi
   try {
     sorteio = await fetchSorteioAdminByEventoId(id);
     if (sorteio?.id) {
-      participantes = await fetchParticipantesSorteioAdmin(sorteio.id);
+      participantes = await fetchParticipantesSorteioAdmin(sorteio.id, id);
     }
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
-    if (/eventos_sorteios|does not exist|Could not find/i.test(msg)) {
+    if (/eventos_sorteios|does not exist|Could not find|evento_participante_id/i.test(msg)) {
       migrationHint = EVENTOS_SORTEIO_MIGRATION_HINT;
     } else {
       throw e;

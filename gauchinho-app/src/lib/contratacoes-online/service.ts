@@ -25,6 +25,12 @@ import {
   validarCpf,
   validarEmail,
 } from "./validacao";
+import {
+  enderecoJsonFromCampos,
+  enderecoToDbUpdates,
+  parseEnderecoContratacao,
+  type EnderecoContratacaoPatch,
+} from "./endereco";
 
 const MIME_PERMITIDOS = new Set([
   "application/pdf",
@@ -161,7 +167,7 @@ export type PatchContratacaoPublica = {
   responsavel_nome?: string;
   responsavel_cpf?: string;
   forma_pagamento?: FormaPagamento;
-};
+} & EnderecoContratacaoPatch;
 
 export async function atualizarContratacaoPublica(
   token: string,
@@ -219,6 +225,8 @@ export async function atualizarContratacaoPublica(
     } else {
       throw new Error("Tipo de pessoa inválido");
     }
+    const endereco = parseEnderecoContratacao(patch);
+    Object.assign(updates, enderecoToDbUpdates(endereco));
   }
 
   if (patch.etapa === "documentos") {
@@ -254,7 +262,11 @@ export async function atualizarContratacaoPublica(
     .select("*")
     .single();
   if (error) throw new Error(error.message);
-  return data as ContratacaoOnlineRow;
+  const rowUpdated = data as ContratacaoOnlineRow;
+  if (patch.etapa === "pessoa") {
+    await syncLeadEnderecoContratacao(rowUpdated);
+  }
+  return rowUpdated;
 }
 
 async function upsertLeadContratacao(
@@ -312,6 +324,33 @@ async function upsertLeadContratacao(
   if (leadRow?.id) {
     await admin.from("contratacoes_online").update({ lead_id: leadRow.id }).eq("id", row.id);
   }
+}
+
+async function syncLeadEnderecoContratacao(row: ContratacaoOnlineRow) {
+  if (!row.lead_id || !row.cep) return;
+  const admin = createAdminClient();
+  const { data: lead } = await admin
+    .from("leads")
+    .select("dados_simulacao")
+    .eq("id", row.lead_id)
+    .maybeSingle();
+  const prev = (lead?.dados_simulacao ?? {}) as Record<string, unknown>;
+  const endereco = enderecoJsonFromCampos({
+    cep: row.cep,
+    endereco: row.endereco ?? "",
+    numero: row.numero ?? "",
+    complemento: row.complemento,
+    bairro: row.bairro ?? "",
+    cidade: row.cidade ?? "",
+    uf: row.uf ?? "",
+  });
+  await admin
+    .from("leads")
+    .update({
+      cidade: row.cidade?.trim() || null,
+      dados_simulacao: { ...prev, endereco },
+    })
+    .eq("id", row.lead_id);
 }
 
 export async function uploadDocumentoContratacao(

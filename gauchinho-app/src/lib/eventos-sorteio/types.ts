@@ -26,6 +26,7 @@ export type SorteioParticipanteRow = {
   id: string;
   sorteio_id: string;
   evento_id: string;
+  evento_participante_id?: string | null;
   lead_id: string | null;
   codigo: string;
   nome: string;

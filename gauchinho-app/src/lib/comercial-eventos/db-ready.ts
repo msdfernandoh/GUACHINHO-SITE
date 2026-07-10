@@ -16,7 +16,7 @@ export const EVENTOS_INSCRICAO_MIGRATION_HINT =
   "Para inscrição externa e upload de imagens, aplique supabase/migrations/018_eventos_inscricao_externa_storage.sql no Supabase.";
 
 export const EVENTOS_SORTEIO_MIGRATION_HINT =
-  "Para sorteio de brindes, aplique supabase/migrations/022_eventos_sorteios.sql no Supabase.";
+  "Para sorteio de brindes, aplique supabase/migrations/022_eventos_sorteios.sql e 026_eventos_sorteio_inscricao_link.sql no Supabase.";
 
 export function isDbMissingColumnError(error: unknown): boolean {
   const msg = error instanceof Error ? error.message : String(error);

@@ -150,13 +150,4 @@ export async function fetchSorteioAdminByEventoId(eventoId: string): Promise<Eve
   return (data as EventoSorteioRow | null) ?? null;
 }
 
-export async function fetchParticipantesSorteioAdmin(sorteioId: string): Promise<SorteioParticipanteRow[]> {
-  const admin = createAdminClient();
-  const { data, error } = await admin
-    .from("eventos_sorteio_participantes")
-    .select("*")
-    .eq("sorteio_id", sorteioId)
-    .order("created_at", { ascending: false });
-  if (error) throw new Error(error.message);
-  return (data ?? []) as SorteioParticipanteRow[];
-}
+export { fetchParticipantesSorteioAdmin } from "./sync-inscritos";

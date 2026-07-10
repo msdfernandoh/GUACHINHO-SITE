@@ -22,7 +22,22 @@ import {
   wizardFieldLabelClass,
   wizardSectionTitleClass,
 } from "@/components/contratacao/contratacao-doc-upload-field";
+import {
+  ContratacaoEnderecoFields,
+  type EnderecoFormState,
+} from "@/components/contratacao/contratacao-endereco-fields";
+import { formatCepBrInput } from "@/lib/contratacoes-online/endereco";
 import { cn } from "@/lib/utils/cn";
+
+const ENDERECO_VAZIO: EnderecoFormState = {
+  cep: "",
+  endereco: "",
+  numero: "",
+  complemento: "",
+  bairro: "",
+  cidade: "",
+  uf: "",
+};
 
 type ResumoFinanceiro = Record<string, number | string | null>;
 
@@ -73,6 +88,7 @@ export function ContratacaoWizard({ publicToken }: { publicToken: string }) {
   const [cnpj, setCnpj] = useState("");
   const [respNome, setRespNome] = useState("");
   const [respCpf, setRespCpf] = useState("");
+  const [enderecoForm, setEnderecoForm] = useState<EnderecoFormState>(ENDERECO_VAZIO);
   const [formaPagamento, setFormaPagamento] = useState<FormaPagamento | null>(null);
   const [docsAviso, setDocsAviso] = useState<string | null>(null);
   const [documentos, setDocumentos] = useState<DocumentoContratacaoPublico[]>([]);
@@ -108,6 +124,18 @@ export function ContratacaoWizard({ publicToken }: { publicToken: string }) {
       if (c.cpf) setCpf(formatCpfBrInput(c.cpf));
       if (c.cnpj) setCnpj(formatCnpjBrInput(c.cnpj));
       if (c.responsavel_cpf) setRespCpf(formatCpfBrInput(c.responsavel_cpf));
+      if (c.razao_social) setRazaoSocial(c.razao_social);
+      if (c.responsavel_nome) setRespNome(c.responsavel_nome);
+      if (c.data_nascimento) setDataNascimento(c.data_nascimento);
+      setEnderecoForm({
+        cep: c.cep ? formatCepBrInput(c.cep) : "",
+        endereco: c.endereco ?? "",
+        numero: c.numero ?? "",
+        complemento: c.complemento ?? "",
+        bairro: c.bairro ?? "",
+        cidade: c.cidade ?? "",
+        uf: c.uf ?? "",
+      });
       if (c.tipo_pessoa) setTipoPessoa(c.tipo_pessoa);
       if (c.status === "aguardando_consultor" || c.status === "finalizado") {
         setStep("success");
@@ -129,6 +157,18 @@ export function ContratacaoWizard({ publicToken }: { publicToken: string }) {
   useEffect(() => {
     void load();
   }, [load]);
+
+  const patchEndereco = useCallback((patch: Partial<EnderecoFormState>) => {
+    setEnderecoForm((prev) => {
+      const next = { ...prev };
+      for (const [key, value] of Object.entries(patch)) {
+        if (value !== undefined) {
+          next[key as keyof EnderecoFormState] = value;
+        }
+      }
+      return next;
+    });
+  }, []);
 
   const c = data?.contratacao;
   const fin = data?.resumoFinanceiro ?? {};
@@ -206,6 +246,13 @@ export function ContratacaoWizard({ publicToken }: { publicToken: string }) {
         cnpj: tipoPessoa === "cnpj" ? cnpj : undefined,
         responsavel_nome: tipoPessoa === "cnpj" ? respNome : undefined,
         responsavel_cpf: tipoPessoa === "cnpj" ? respCpf : undefined,
+        cep: enderecoForm.cep,
+        endereco: enderecoForm.endereco,
+        numero: enderecoForm.numero,
+        complemento: enderecoForm.complemento || undefined,
+        bairro: enderecoForm.bairro,
+        cidade: enderecoForm.cidade,
+        uf: enderecoForm.uf,
       });
       setStep("docs");
     } catch (err) {
@@ -490,6 +537,7 @@ export function ContratacaoWizard({ publicToken }: { publicToken: string }) {
                 </div>
               </>
             )}
+            <ContratacaoEnderecoFields values={enderecoForm} onChange={patchEndereco} />
             <Button type="submit" variant="gold" className="w-full" disabled={submitting}>
               Continuar
             </Button>

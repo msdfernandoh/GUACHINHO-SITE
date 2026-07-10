@@ -5,6 +5,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/form-primitives";
 import { formatCurrency, formatWhatsappBrInput } from "@/lib/utils/format";
 import { formatCpfBrInput, formatCnpjBrInput } from "@/lib/utils/format";
+import { formatCepBrInput } from "@/lib/contratacoes-online/endereco";
 import { buildWhatsappLink, buildWhatsappPropostaMessage } from "@/lib/contratacoes-online/whatsapp-message";
 import type { ContratacaoDocumentoRow, ContratacaoOnlineRow } from "@/lib/contratacoes-online/types";
 import { ContratacaoDocumentosSection } from "./contratacao-documentos-section";
@@ -69,6 +70,16 @@ export function ContratacaoDetalheClient({
   const respCpfFmt = contratacao.responsavel_cpf
     ? formatCpfBrInput(contratacao.responsavel_cpf)
     : null;
+  const cepFmt = contratacao.cep ? formatCepBrInput(contratacao.cep) : null;
+  const temEndereco =
+    contratacao.cep ||
+    contratacao.endereco ||
+    contratacao.numero ||
+    contratacao.bairro ||
+    contratacao.cidade ||
+    contratacao.uf;
+  const enderecoLinha = contratacao.endereco;
+  const cidadeUf = [contratacao.cidade, contratacao.uf?.toUpperCase()].filter(Boolean).join(" / ");
 
   return (
     <div className="space-y-6">
@@ -123,6 +134,21 @@ export function ContratacaoDetalheClient({
               </>
             )}
           </dl>
+          {temEndereco ? (
+            <>
+              <h3 className="mb-3 mt-6 text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                Endereço
+              </h3>
+              <dl className="space-y-3">
+                <Field label="CEP" value={cepFmt} />
+                <Field label="Endereço" value={enderecoLinha} />
+                <Field label="Número" value={contratacao.numero} />
+                <Field label="Complemento" value={contratacao.complemento} />
+                <Field label="Bairro" value={contratacao.bairro} />
+                <Field label="Cidade/UF" value={cidadeUf || null} />
+              </dl>
+            </>
+          ) : null}
         </div>
         <div className={adminSectionClass}>
           <h2 className={adminSectionTitleClass}>Proposta</h2>

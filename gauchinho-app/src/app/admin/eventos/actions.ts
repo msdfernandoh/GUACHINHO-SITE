@@ -213,6 +213,7 @@ export async function updateParticipanteStatusAction(participanteId: string, eve
   const { error } = await supabase.from("eventos_participantes").update(patch).eq("id", participanteId);
   if (error) throw new Error(error.message);
   revalidatePath(`/admin/eventos/${eventoId}/participantes`);
+  revalidatePath(`/admin/eventos/${eventoId}/sorteio`);
 }
 
 export async function fetchEventoPosts(eventoId: string) {

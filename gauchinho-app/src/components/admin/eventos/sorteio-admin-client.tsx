@@ -194,6 +194,13 @@ export function SorteioAdminClient({
 
           <section className="space-y-3">
             <h2 className="text-lg font-semibold">Participantes ({filtered.length})</h2>
+            <p className="text-sm text-zinc-500">
+              Lista sincronizada com as inscrições oficiais em{" "}
+              <Link href={`/admin/eventos/${eventoId}/participantes`} className="text-amber-600 hover:underline">
+                Participantes do evento
+              </Link>
+              . Cadastros feitos só pelo QR do sorteio não entram aqui quando já existem inscrições no evento.
+            </p>
             <div className="flex flex-wrap gap-2 text-sm">
               <select
                 value={filtroTipo}

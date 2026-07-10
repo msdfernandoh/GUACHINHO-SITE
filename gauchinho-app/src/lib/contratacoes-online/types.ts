@@ -48,6 +48,13 @@ export type ContratacaoOnlineRow = {
   cnpj: string | null;
   responsavel_nome: string | null;
   responsavel_cpf: string | null;
+  cep: string | null;
+  endereco: string | null;
+  numero: string | null;
+  complemento: string | null;
+  bairro: string | null;
+  cidade: string | null;
+  uf: string | null;
   tipo_bem: string | null;
   credito_selecionado: number | null;
   parcela_estimada: number | null;

@@ -8,7 +8,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { fetchEventoAdmin } from "@/app/admin/eventos/actions";
 import { DEFAULTS_SORTEIO, type SorteioStatus } from "@/lib/eventos-sorteio/types";
 import { filtrarElegiveisSorteio } from "@/lib/eventos-sorteio/sorteio";
-import { isDbMissingRelationError } from "@/lib/comercial-eventos/db-ready";
+import { fetchParticipantesSorteioAdmin } from "@/lib/eventos-sorteio/public";
 
 function boolForm(formData: FormData, name: string): boolean {
   return formData.get(name) === "on";
@@ -146,28 +146,22 @@ export async function listDrawCandidatesAction(
   sorteioId: string,
 ): Promise<SorteioDrawCandidate[]> {
   await assertEventoAccess(eventoId);
-  const admin = createAdminClient();
-  const { data, error } = await admin
-    .from("eventos_sorteio_participantes")
-    .select("id, codigo, nome, telefone, status, ganhador")
-    .eq("sorteio_id", sorteioId)
-    .eq("evento_id", eventoId);
-  if (error) {
-    if (isDbMissingRelationError(error)) return [];
-    throw new Error(error.message);
-  }
-  return filtrarElegiveisSorteio((data ?? []) as SorteioDrawCandidate[]);
+  const rows = await fetchParticipantesSorteioAdmin(sorteioId, eventoId);
+  return filtrarElegiveisSorteio(
+    rows.map((r) => ({
+      id: r.id,
+      codigo: r.codigo,
+      nome: r.nome,
+      telefone: r.telefone,
+      status: r.status,
+      ganhador: r.ganhador,
+    })),
+  );
 }
 
 export async function exportParticipantesCsvAction(eventoId: string, sorteioId: string): Promise<string> {
   await assertEventoAccess(eventoId);
-  const admin = createAdminClient();
-  const { data, error } = await admin
-    .from("eventos_sorteio_participantes")
-    .select("*")
-    .eq("sorteio_id", sorteioId)
-    .order("created_at", { ascending: true });
-  if (error) throw new Error(error.message);
+  const data = await fetchParticipantesSorteioAdmin(sorteioId, eventoId);
 
   const header = [
     "codigo",
@@ -181,7 +175,7 @@ export async function exportParticipantesCsvAction(eventoId: string, sorteioId: 
     "created_at",
   ];
   const lines = [header.join(";")];
-  for (const row of data ?? []) {
+  for (const row of data) {
     lines.push(
       [
         row.codigo,
