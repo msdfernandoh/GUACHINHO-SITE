@@ -64,6 +64,8 @@ export type ContratacaoOnlineRow = {
   pix_recebedor: string | null;
   pix_instrucoes: string | null;
   pix_comprovante_url: string | null;
+  /** Preenchido na API pública (sanitize); não persiste no banco. */
+  pix_comprovante_enviado?: boolean;
   pix_status: string;
   confirmado_em: string | null;
   finalizado_em: string | null;

@@ -154,8 +154,11 @@ export function ContratacaoWizard({ publicToken }: { publicToken: string }) {
     });
     const json = await res.json();
     if (!res.ok) throw new Error(json.error ?? "Falha ao salvar");
-    setData((prev) => (prev ? { ...prev, contratacao: json.contratacao } : prev));
-    return json.contratacao as ContratacaoOnlineRow;
+    const updated = json.contratacao as ContratacaoOnlineRow | undefined;
+    if (updated) {
+      setData((prev) => (prev ? { ...prev, contratacao: updated } : prev));
+    }
+    return updated;
   }
 
   async function confirmar() {
@@ -281,12 +284,6 @@ export function ContratacaoWizard({ publicToken }: { publicToken: string }) {
     }
   }
 
-  const pixChave = c?.pix_chave || data?.pixConfig?.chave || "";
-  const comprovanteObrigatorio = data?.pixConfig?.comprovanteObrigatorio ?? false;
-  const comprovantePixEnviado =
-    Boolean((c as { pix_comprovante_enviado?: boolean }).pix_comprovante_enviado) ||
-    docPorTipo.has("comprovante_pix");
-
   const successExtra = useMemo(() => {
     if (formaPagamento === "boleto" || c?.forma_pagamento === "boleto") {
       return "Você escolheu boleto bancário. O boleto em PDF será enviado junto com o link de aceite do contrato.";
@@ -307,6 +304,11 @@ export function ContratacaoWizard({ publicToken }: { publicToken: string }) {
       </div>
     );
   }
+
+  const pixChave = c?.pix_chave || data?.pixConfig?.chave || "";
+  const comprovanteObrigatorio = data?.pixConfig?.comprovanteObrigatorio ?? false;
+  const comprovantePixEnviado =
+    Boolean(c?.pix_comprovante_enviado) || docPorTipo.has("comprovante_pix");
 
   if (error && !c) {
     return (
