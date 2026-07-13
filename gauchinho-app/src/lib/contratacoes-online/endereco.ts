@@ -1,4 +1,5 @@
 import { sanitizeDigits } from "./validacao";
+import type { ContratacaoOnlineRow } from "./types";
 
 export type EnderecoContratacaoPatch = {
   cep?: string;
@@ -133,3 +134,77 @@ export type EnderecoViaCep = {
   localidade: string;
   uf: string;
 };
+
+const ENDERECO_DB_COLUMNS = [
+  "cep",
+  "endereco",
+  "numero",
+  "complemento",
+  "bairro",
+  "cidade",
+  "uf",
+] as const;
+
+export const CONTRATACAO_ENDERECO_MIGRATION = "supabase/migrations/025_contratacoes_endereco.sql";
+
+export function isContratacaoEnderecoSchemaError(message: string): boolean {
+  return (
+    /schema cache/i.test(message) &&
+    /contratacoes_online/i.test(message) &&
+    /(cep|endereco|numero|complemento|bairro|cidade|uf)/i.test(message)
+  );
+}
+
+export function enderecoCamposFromJson(
+  raw: unknown,
+): EnderecoContratacaoCampos | null {
+  if (!raw || typeof raw !== "object") return null;
+  const o = raw as Record<string, unknown>;
+  try {
+    return parseEnderecoContratacao({
+      cep: String(o.cep ?? ""),
+      endereco: String(o.endereco ?? ""),
+      numero: String(o.numero ?? ""),
+      complemento: o.complemento != null ? String(o.complemento) : undefined,
+      bairro: String(o.bairro ?? ""),
+      cidade: String(o.cidade ?? ""),
+      uf: String(o.uf ?? ""),
+    });
+  } catch {
+    return null;
+  }
+}
+
+/** Preenche colunas de endereço a partir de dados_simulacao quando migration 025 ainda não foi aplicada. */
+export function hydrateContratacaoEndereco(row: ContratacaoOnlineRow): ContratacaoOnlineRow {
+  if (row.cep?.trim()) return row;
+  const dados = row.dados_simulacao;
+  if (!dados || typeof dados !== "object") return row;
+  const nested = (dados as Record<string, unknown>).endereco;
+  const campos = enderecoCamposFromJson(nested);
+  if (!campos) return row;
+  return {
+    ...row,
+    cep: campos.cep,
+    endereco: campos.endereco,
+    numero: campos.numero,
+    complemento: campos.complemento,
+    bairro: campos.bairro,
+    cidade: campos.cidade,
+    uf: campos.uf,
+  };
+}
+
+export function stripEnderecoDbUpdates(
+  updates: Record<string, unknown>,
+): Record<string, unknown> {
+  const next = { ...updates };
+  for (const key of ENDERECO_DB_COLUMNS) {
+    delete next[key];
+  }
+  return next;
+}
+
+export function contratacaoEnderecoMigrationHint(): string {
+  return `Aplique a migration ${CONTRATACAO_ENDERECO_MIGRATION} no Supabase (SQL Editor) e aguarde alguns segundos para o cache do schema atualizar.`;
+}

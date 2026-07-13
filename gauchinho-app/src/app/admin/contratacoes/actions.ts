@@ -12,6 +12,7 @@ import {
   listarDocumentosContratacaoStaff,
   obterSignedUrlDocumentoContratacao,
 } from "@/lib/contratacoes-online/documentos-admin";
+import { hydrateContratacaoEndereco } from "@/lib/contratacoes-online/endereco";
 import { statusLabel } from "@/lib/contratacoes-online/status";
 import { resumoFinanceiroFromDados } from "@/lib/contratacoes-online/extract-fields";
 import type { ContratacaoDocumentoRow, ContratacaoOnlineRow } from "@/lib/contratacoes-online/types";
@@ -41,6 +42,7 @@ export async function fetchContratacaoDetalhe(id: string) {
   if (error) throw new Error(error.message);
   if (!data) return null;
 
+  const contratacao = hydrateContratacaoEndereco(data as ContratacaoOnlineRow);
   const podeAcessarDocumentos = canAccessContratacaoDocumentos(usuario.perfil);
   let documentos: ContratacaoDocumentoRow[] = [];
   if (podeAcessarDocumentos) {
@@ -53,17 +55,17 @@ export async function fetchContratacaoDetalhe(id: string) {
   }
 
   const site = await getConfigJsonPublic("site", DEFAULT_SITE);
-  const publicUrl = buildPropostaPublicUrl(data.public_token, site.siteUrl || undefined);
+  const publicUrl = buildPropostaPublicUrl(contratacao.public_token, site.siteUrl || undefined);
   const resumoFinanceiro = resumoFinanceiroFromDados(
-    data.origem,
-    (data.dados_simulacao ?? {}) as Record<string, unknown>,
+    contratacao.origem,
+    (contratacao.dados_simulacao ?? {}) as Record<string, unknown>,
   );
   return {
-    contratacao: data as ContratacaoOnlineRow,
+    contratacao,
     documentos,
     publicUrl,
     resumoFinanceiro,
-    statusLabel: statusLabel(data.status),
+    statusLabel: statusLabel(contratacao.status),
     podeAcessarDocumentos,
     mensagemSemPermissaoDocumentos: MSG_SEM_PERMISSAO_DOCUMENTOS_CONTRATACAO,
   };

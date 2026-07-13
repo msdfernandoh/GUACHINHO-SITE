@@ -28,7 +28,12 @@ import {
 import {
   enderecoJsonFromCampos,
   enderecoToDbUpdates,
+  hydrateContratacaoEndereco,
+  isContratacaoEnderecoSchemaError,
   parseEnderecoContratacao,
+  stripEnderecoDbUpdates,
+  contratacaoEnderecoMigrationHint,
+  type EnderecoContratacaoCampos,
   type EnderecoContratacaoPatch,
 } from "./endereco";
 
@@ -113,7 +118,8 @@ export async function buscarContratacaoPorToken(
     .select("*")
     .eq("public_token", token)
     .maybeSingle();
-  return (data as ContratacaoOnlineRow) ?? null;
+  const row = (data as ContratacaoOnlineRow) ?? null;
+  return row ? hydrateContratacaoEndereco(row) : null;
 }
 
 export async function marcarPrimeiroAcesso(row: ContratacaoOnlineRow): Promise<ContratacaoOnlineRow> {
@@ -181,6 +187,7 @@ export async function atualizarContratacaoPublica(
 
   const admin = createAdminClient();
   const updates: Record<string, unknown> = {};
+  let enderecoCampos: EnderecoContratacaoCampos | null = null;
 
   if (patch.etapa === "dados") {
     const nome = patch.nome?.trim();
@@ -226,6 +233,7 @@ export async function atualizarContratacaoPublica(
       throw new Error("Tipo de pessoa inválido");
     }
     const endereco = parseEnderecoContratacao(patch);
+    enderecoCampos = endereco;
     Object.assign(updates, enderecoToDbUpdates(endereco));
   }
 
@@ -255,16 +263,44 @@ export async function atualizarContratacaoPublica(
     }
   }
 
+  let rowUpdated: ContratacaoOnlineRow;
   const { data, error } = await admin
     .from("contratacoes_online")
     .update(updates)
     .eq("id", row.id)
     .select("*")
     .single();
-  if (error) throw new Error(error.message);
-  const rowUpdated = data as ContratacaoOnlineRow;
-  if (patch.etapa === "pessoa") {
-    await syncLeadEnderecoContratacao(rowUpdated);
+
+  if (error && patch.etapa === "pessoa" && enderecoCampos && isContratacaoEnderecoSchemaError(error.message)) {
+    const dadosPrev = (row.dados_simulacao ?? {}) as Record<string, unknown>;
+    const fallbackUpdates = stripEnderecoDbUpdates(updates);
+    fallbackUpdates.dados_simulacao = {
+      ...dadosPrev,
+      endereco: enderecoJsonFromCampos(enderecoCampos),
+    };
+    const retry = await admin
+      .from("contratacoes_online")
+      .update(fallbackUpdates)
+      .eq("id", row.id)
+      .select("*")
+      .single();
+    if (retry.error) {
+      throw new Error(
+        `Não foi possível salvar o endereço. ${contratacaoEnderecoMigrationHint()} Detalhe: ${retry.error.message}`,
+      );
+    }
+    rowUpdated = hydrateContratacaoEndereco(retry.data as ContratacaoOnlineRow);
+  } else if (error) {
+    if (isContratacaoEnderecoSchemaError(error.message)) {
+      throw new Error(contratacaoEnderecoMigrationHint());
+    }
+    throw new Error(error.message);
+  } else {
+    rowUpdated = hydrateContratacaoEndereco(data as ContratacaoOnlineRow);
+  }
+
+  if (patch.etapa === "pessoa" && enderecoCampos) {
+    await syncLeadEnderecoContratacao(rowUpdated, enderecoCampos);
   }
   return rowUpdated;
 }
@@ -326,8 +362,11 @@ async function upsertLeadContratacao(
   }
 }
 
-async function syncLeadEnderecoContratacao(row: ContratacaoOnlineRow) {
-  if (!row.lead_id || !row.cep) return;
+async function syncLeadEnderecoContratacao(
+  row: ContratacaoOnlineRow,
+  endereco: EnderecoContratacaoCampos,
+) {
+  if (!row.lead_id) return;
   const admin = createAdminClient();
   const { data: lead } = await admin
     .from("leads")
@@ -335,20 +374,12 @@ async function syncLeadEnderecoContratacao(row: ContratacaoOnlineRow) {
     .eq("id", row.lead_id)
     .maybeSingle();
   const prev = (lead?.dados_simulacao ?? {}) as Record<string, unknown>;
-  const endereco = enderecoJsonFromCampos({
-    cep: row.cep,
-    endereco: row.endereco ?? "",
-    numero: row.numero ?? "",
-    complemento: row.complemento,
-    bairro: row.bairro ?? "",
-    cidade: row.cidade ?? "",
-    uf: row.uf ?? "",
-  });
+  const enderecoJson = enderecoJsonFromCampos(endereco);
   await admin
     .from("leads")
     .update({
-      cidade: row.cidade?.trim() || null,
-      dados_simulacao: { ...prev, endereco },
+      cidade: endereco.cidade.trim() || null,
+      dados_simulacao: { ...prev, endereco: enderecoJson },
     })
     .eq("id", row.lead_id);
 }

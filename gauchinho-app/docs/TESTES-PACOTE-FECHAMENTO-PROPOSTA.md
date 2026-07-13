@@ -47,4 +47,10 @@ Migration `024_contratacoes_documentos_storage_rls.sql` alinha Storage ao RLS da
 
 ## Migration
 
-Aplicar `supabase/migrations/023_contratacoes_online.sql` no projeto Supabase.
+Aplicar no Supabase (SQL Editor), nesta ordem:
+
+1. `supabase/migrations/023_contratacoes_online.sql`
+2. `supabase/migrations/024_contratacoes_documentos_storage_rls.sql` (opcional, storage)
+3. **`supabase/migrations/025_contratacoes_endereco.sql`** — colunas `cep`, `endereco`, `numero`, `complemento`, `bairro`, `cidade`, `uf` (etapa CPF/CNPJ)
+
+Sem a **025**, a etapa de endereço falha com erro de *schema cache* até a migration ser aplicada.

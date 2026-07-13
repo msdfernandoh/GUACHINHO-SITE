@@ -2,9 +2,12 @@ import { describe, expect, it } from "vitest";
 import {
   enderecoToDbUpdates,
   formatCepBrInput,
+  hydrateContratacaoEndereco,
+  isContratacaoEnderecoSchemaError,
   parseEnderecoContratacao,
   sanitizeCep,
 } from "./endereco";
+import type { ContratacaoOnlineRow } from "./types";
 
 describe("endereco contratacao", () => {
   it("máscara e sanitização de CEP", () => {
@@ -89,5 +92,32 @@ describe("endereco contratacao", () => {
     });
     expect(campos.complemento).toBeNull();
     expect(enderecoToDbUpdates(campos).complemento).toBeNull();
+  });
+
+  it("detecta erro de coluna de endereço no schema cache", () => {
+    expect(
+      isContratacaoEnderecoSchemaError(
+        "Could not find the 'bairro' column of 'contratacoes_online' in the schema cache",
+      ),
+    ).toBe(true);
+  });
+
+  it("hidrata endereço de dados_simulacao", () => {
+    const row = hydrateContratacaoEndereco({
+      cep: null,
+      dados_simulacao: {
+        endereco: {
+          cep: "90000000",
+          endereco: "Rua B",
+          numero: "10",
+          complemento: null,
+          bairro: "Centro",
+          cidade: "Porto Alegre",
+          uf: "RS",
+        },
+      },
+    } as ContratacaoOnlineRow);
+    expect(row.cep).toBe("90000000");
+    expect(row.bairro).toBe("Centro");
   });
 });
