@@ -212,7 +212,14 @@ export function GruposPublicClient({
   }
 
   return (
-    <div className={cn(simuladorShell, "pb-[22rem] sm:pb-[20rem] lg:pb-[18rem]")}>
+    <div
+      className={cn(
+        simuladorShell,
+        "pb-[4.75rem] lg:pb-[18rem]",
+        /* espaço extra quando o resumo mobile está expandido — evita sobrepor últimos cards */
+        "max-lg:has-[button[aria-expanded=true]]:pb-[min(46vh,22rem)]",
+      )}
+    >
       <div className="mx-auto max-w-[1600px] px-4 py-8 md:px-6">
         <PublicPremiumHero
           eyebrow="Gauchinho · Grupos"

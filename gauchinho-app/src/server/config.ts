@@ -77,16 +77,26 @@ export async function getConfigJsonPublic<T>(chave: string, fallback: T): Promis
 
 export async function getSimuladorConfigsPublic() {
   const { normalizeFinanciamentoStored } = await import("@/lib/config/financiamento-por-tipo");
-  const [imovel, automovel, financiamentoRaw] = await Promise.all([
-    getConfigJsonPublic("simulador_imovel", DEFAULT_SIMULADOR_IMOVEL),
-    getConfigJsonPublic("simulador_automovel", DEFAULT_SIMULADOR_AUTOMOVEL),
-    getConfigJsonPublic("financiamento_config", DEFAULT_FINANCIAMENTO_CONFIG),
-  ]);
-  return {
-    imovel,
-    automovel,
-    financiamento: normalizeFinanciamentoStored(financiamentoRaw),
-  };
+  try {
+    const [imovel, automovel, financiamentoRaw] = await Promise.all([
+      getConfigJsonPublic("simulador_imovel", DEFAULT_SIMULADOR_IMOVEL),
+      getConfigJsonPublic("simulador_automovel", DEFAULT_SIMULADOR_AUTOMOVEL),
+      getConfigJsonPublic("financiamento_config", DEFAULT_FINANCIAMENTO_CONFIG),
+    ]);
+    return {
+      imovel,
+      automovel,
+      financiamento: normalizeFinanciamentoStored(financiamentoRaw),
+    };
+  } catch (err) {
+    console.error("[getSimuladorConfigsPublic]", err);
+    const { normalizeFinanciamentoStored: norm } = await import("@/lib/config/financiamento-por-tipo");
+    return {
+      imovel: DEFAULT_SIMULADOR_IMOVEL,
+      automovel: DEFAULT_SIMULADOR_AUTOMOVEL,
+      financiamento: norm(DEFAULT_FINANCIAMENTO_CONFIG),
+    };
+  }
 }
 
 export async function getCalculadorasConfigPublic() {

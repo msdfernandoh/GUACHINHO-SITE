@@ -70,21 +70,20 @@ export async function fetchPublicSorteioByEventoSlug(slug: string): Promise<Publ
 }
 
 export async function fetchHomeSorteioDestaque(): Promise<HomeSorteioDestaque | null> {
-  const admin = createAdminClient();
-  const { data, error } = await admin
-    .from("eventos_sorteios")
-    .select("titulo, mostrar_home, ativo, status, eventos(nome, slug, ativo, publicado, evento_destaque, data_evento)")
-    .eq("ativo", true)
-    .eq("mostrar_home", true)
-    .eq("status", "aberto")
-    .order("updated_at", { ascending: false });
+  try {
+    const admin = createAdminClient();
+    const { data, error } = await admin
+      .from("eventos_sorteios")
+      .select("titulo, mostrar_home, ativo, status, eventos(nome, slug, ativo, publicado, evento_destaque, data_evento)")
+      .eq("ativo", true)
+      .eq("mostrar_home", true)
+      .eq("status", "aberto")
+      .order("updated_at", { ascending: false });
 
-  if (error) {
-    if (/eventos_sorteios/.test(error.message) && /schema cache|does not exist|Could not find/i.test(error.message)) {
+    if (error) {
+      console.error("[fetchHomeSorteioDestaque]", error.message);
       return null;
     }
-    throw new Error(error.message);
-  }
 
   type Ev = {
     nome: string;
@@ -136,6 +135,10 @@ export async function fetchHomeSorteioDestaque(): Promise<HomeSorteioDestaque | 
     eventoSlug: top.eventoSlug,
     titulo: top.titulo,
   };
+  } catch (err) {
+    console.error("[fetchHomeSorteioDestaque]", err);
+    return null;
+  }
 }
 
 export async function fetchSorteioAdminByEventoId(eventoId: string): Promise<EventoSorteioRow | null> {
