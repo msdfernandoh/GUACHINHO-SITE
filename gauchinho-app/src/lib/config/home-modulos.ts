@@ -59,9 +59,12 @@ export function normalizeHomeModulosConfig(raw: unknown): HomeModulosConfig {
 }
 
 export function modulosHomeAtivosOrdenados(config: HomeModulosConfig): HomeModuloConfigItem[] {
+  const ordemFallback = (m: HomeModuloConfigItem) =>
+    typeof m.ordem === "number" ? m.ordem : (DEFAULT_BY_ID.get(m.id)?.ordem ?? 9999);
+
   return [...config.modulos]
     .filter((m) => m.ativo)
-    .sort((a, b) => a.ordem - b.ordem || DEFAULT_BY_ID.get(a.id)!.ordem - DEFAULT_BY_ID.get(b.id)!.ordem);
+    .sort((a, b) => ordemFallback(a) - ordemFallback(b));
 }
 
 export function isHomeModuloAtivo(config: HomeModulosConfig, id: HomeModuloId): boolean {
