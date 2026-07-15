@@ -35,6 +35,26 @@ describe("resumoFinanceiroFromDados — grupos", () => {
     expect(fin.parcelaPosContemplacao).not.toBe(fin.parcelaIntegral);
   });
 
+  it("usa parcela personalizada no campo reduzida quando modalidade é personalizada", () => {
+    const fin = resumoFinanceiroFromDados("grupos", {
+      selecoes: [
+        {
+          config: { modalidadeParcela: "personalizada", percentualParcelaPersonalizada: 40 },
+          resultado: {
+            parcelaIntegral: 1704.55,
+            parcelaReduzida: 1022.73,
+            parcelaPersonalizada: 681.82,
+            parcelaBase: 681.82,
+            primeiraParcela: 681.82,
+          },
+        },
+      ],
+      totais: {},
+    });
+    expect(fin.parcelaReduzida).toBe(681.82);
+    expect(fin.parcelaIntegral).toBe(1704.55);
+  });
+
   it("usa parcelaPosContemplacaoTotal dos totais quando linha não traz o campo", () => {
     const fin = resumoFinanceiroFromDados("grupos", {
       selecoes: [{ resultado: { parcelaIntegral: 100, parcelaReduzida: 60 } }],

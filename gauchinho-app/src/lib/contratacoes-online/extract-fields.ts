@@ -99,8 +99,15 @@ export function resumoFinanceiroFromDados(
   const selecoes = Array.isArray(dados.selecoes) ? dados.selecoes : [];
   const totais = (dados.totais ?? {}) as Record<string, unknown>;
   const first = (selecoes[0] ?? {}) as Record<string, unknown>;
+  const config = (first.config ?? {}) as Record<string, unknown>;
   const resultado = (first.resultado ?? {}) as Record<string, unknown>;
-  const parcelaReduzida = num(resultado.parcelaReduzida);
+  let parcelaReduzida = num(resultado.parcelaReduzida);
+  if (str(config.modalidadeParcela) === "personalizada") {
+    parcelaReduzida =
+      num(resultado.parcelaPersonalizada) ??
+      num(resultado.parcelaBase) ??
+      parcelaReduzida;
+  }
   const parcelaIntegral =
     num(resultado.parcelaIntegral) ?? num(resultado.parcelaBase) ?? num(totais.parcelaIntegral);
   return {
