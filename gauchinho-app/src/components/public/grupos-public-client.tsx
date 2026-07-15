@@ -23,6 +23,8 @@ import { useLockBodyScroll } from "@/lib/ui/use-lock-body-scroll";
 import { PropostaLinkModal } from "@/components/contratacao/proposta-link-modal";
 import { useIniciarContratacao } from "@/lib/contratacoes-online/use-iniciar-contratacao";
 import { buildDadosSimulacaoGrupos } from "@/lib/contratacoes-online/build-grupos-payload";
+import { GruposSorteioPublicSection } from "@/components/grupos-sorteio/grupos-sorteio-admin-client";
+import type { GrupoSorteioOption } from "@/components/grupos-sorteio/grupos-sorteio-panel";
 
 type ModalFiltro = (typeof MODALIDADE_FILTRO_PUBLICO)[number]["value"];
 
@@ -37,10 +39,14 @@ export function GruposPublicClient({
   aggregates,
   isStaff = false,
   isConsultor = false,
+  gruposSorteio = [],
+  canManageSorteios = false,
 }: {
   aggregates: PublicGrupoAggregate[];
   isStaff?: boolean;
   isConsultor?: boolean;
+  gruposSorteio?: GrupoSorteioOption[];
+  canManageSorteios?: boolean;
 }) {
   const [filtro, setFiltro] = useState<ModalFiltro>("Todos");
   const [busca, setBusca] = useState("");
@@ -253,6 +259,8 @@ export function GruposPublicClient({
             />
           </div>
         </div>
+
+        <GruposSorteioPublicSection grupos={gruposSorteio} canManage={canManageSorteios} />
 
         {aggregates.length === 0 ? (
           <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 px-6 py-16 text-center">

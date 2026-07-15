@@ -167,7 +167,18 @@ function grupoFromForm(formData: FormData) {
     status: String(formData.get("status") ?? "Disponível").trim(),
     ativo: formData.get("ativo") === "on",
     observacoes: String(formData.get("observacoes") ?? "").trim() || null,
+    quantidade_cotas_sorteio: parseQuantidadeCotasSorteioForm(formData),
   };
+}
+
+function parseQuantidadeCotasSorteioForm(formData: FormData): number | null {
+  const raw = String(formData.get("quantidade_cotas_sorteio") ?? "").trim();
+  if (!raw) return null;
+  const n = Number(raw);
+  if (!Number.isInteger(n) || n <= 0) {
+    throw new Error("Quantidade de cotas para sorteio deve ser um inteiro maior que zero.");
+  }
+  return n;
 }
 
 async function recalcularParcelasCotasGrupo(

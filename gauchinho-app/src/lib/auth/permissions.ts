@@ -53,6 +53,14 @@ export function canManageGrupos(
   return false;
 }
 
+/** Sorteio de grupos pela Loteria Federal — mesma regra de edição de grupos. */
+export function canManageGruposSorteios(
+  perfil: Perfil | null | undefined,
+  srdPodeEditarGrupos?: boolean,
+): boolean {
+  return canManageGrupos(perfil, srdPodeEditarGrupos);
+}
+
 export function canManageLeads(perfil: Perfil | null | undefined): boolean {
   return isStaff(perfil);
 }

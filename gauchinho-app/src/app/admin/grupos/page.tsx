@@ -25,6 +25,9 @@ export default async function GruposAdminPage({
         </div>
         <div className="flex flex-wrap items-center gap-3">
           {showPopular ? <PopularGruposTesteButton /> : null}
+          <Link href="/admin/grupos/sorteios" className="text-sm text-amber-600 hover:underline">
+            Sorteios Loteria Federal
+          </Link>
           <Link href="/admin/grupos/novo">
             <Button>Novo grupo</Button>
           </Link>

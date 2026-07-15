@@ -76,8 +76,33 @@ export type GrupoConsorcio = {
   status: string;
   ativo: boolean;
   observacoes: string | null;
+  quantidade_cotas_sorteio?: number | null;
   created_at: string;
   updated_at: string;
+};
+
+export type GrupoSorteioLoteria = {
+  id: string;
+  grupo_id: string;
+  periodo_ref: string;
+  ano: number;
+  mes: number;
+  primeiro_premio: string;
+  quantidade_cotas: number;
+  palavra_chave: number;
+  data_sorteio: string | null;
+  fonte_resultado: string | null;
+  resultado_buscado_automaticamente: boolean;
+  observacao: string | null;
+  criado_por_usuario_id: string | null;
+  criado_por_nome: string | null;
+  criado_por_email: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type GrupoSorteioLoteriaRow = GrupoSorteioLoteria & {
+  grupo?: Pick<GrupoConsorcio, "id" | "codigo_grupo" | "modalidade">;
 };
 
 export type GrupoModalidadeLance = {

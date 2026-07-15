@@ -58,6 +58,23 @@ export function GrupoFormFields({
               Ativo
             </Label>
           </div>
+          <div>
+            <Label>Quantidade de participantes / cotas (sorteio)</Label>
+            <Input
+              name="quantidade_cotas_sorteio"
+              type="number"
+              min={1}
+              step={1}
+              inputMode="numeric"
+              placeholder="Ex.: 999"
+              defaultValue={
+                g.quantidade_cotas_sorteio != null ? String(g.quantidade_cotas_sorteio) : ""
+              }
+            />
+            <p className="mt-1 text-xs text-zinc-500">
+              Obrigatório para registrar sorteio mensal pela Loteria Federal.
+            </p>
+          </div>
         </div>
         <div>
           <Label>Observações</Label>
