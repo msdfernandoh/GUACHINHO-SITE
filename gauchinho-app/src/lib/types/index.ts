@@ -62,6 +62,8 @@ export type GrupoConsorcio = {
   seguro_valor: number | null;
   tem_parcela_reduzida: boolean;
   percentual_parcela_reduzida: number | null;
+  permite_parcela_reduzida_personalizada?: boolean;
+  percentual_parcela_reduzida_personalizada?: number | null;
   permite_lance_embutido: boolean;
   percentual_lance_embutido: number | null;
   percentual_recurso_proprio_sugerido: number | null;

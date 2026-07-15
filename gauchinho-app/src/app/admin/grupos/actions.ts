@@ -28,16 +28,23 @@ const GRUPO_AUTO_PARCEL_COLS = [
   "atualizacao_parcelas_automatica",
 ] as const;
 
+const GRUPO_PARCELA_PERSONALIZADA_COLS = [
+  "permite_parcela_reduzida_personalizada",
+  "percentual_parcela_reduzida_personalizada",
+] as const;
+
+const GRUPO_OPTIONAL_COLS = [...GRUPO_AUTO_PARCEL_COLS, ...GRUPO_PARCELA_PERSONALIZADA_COLS] as const;
+
 type GrupoRow = ReturnType<typeof grupoFromForm> & ReturnType<typeof deriveGrupoFlagsFromModalidades>;
 
 function stripAutoParcelCols<T extends Record<string, unknown>>(row: T): T {
   const next = { ...row };
-  for (const k of GRUPO_AUTO_PARCEL_COLS) delete next[k];
+  for (const k of GRUPO_OPTIONAL_COLS) delete next[k];
   return next;
 }
 
 function isMissingAutoParcelColumnError(message: string): boolean {
-  return GRUPO_AUTO_PARCEL_COLS.some((c) => message.includes(c));
+  return GRUPO_OPTIONAL_COLS.some((c) => message.includes(c));
 }
 
 async function insertGrupoConsorcio(
@@ -168,7 +175,22 @@ function grupoFromForm(formData: FormData) {
     ativo: formData.get("ativo") === "on",
     observacoes: String(formData.get("observacoes") ?? "").trim() || null,
     quantidade_cotas_sorteio: parseQuantidadeCotasSorteioForm(formData),
+    permite_parcela_reduzida_personalizada:
+      formData.get("permite_parcela_reduzida_personalizada") === "on",
+    percentual_parcela_reduzida_personalizada: parsePercentualParcelaPersonalizadaForm(formData),
   };
+}
+
+function parsePercentualParcelaPersonalizadaForm(formData: FormData): number | null {
+  const raw = String(formData.get("percentual_parcela_reduzida_personalizada") ?? "").trim();
+  if (!raw) return null;
+  const n = Number(raw.replace(",", "."));
+  if (!Number.isFinite(n) || n <= 0 || n >= 100) {
+    throw new Error(
+      "Percentual da parcela reduzida personalizada deve ser entre 0 e 100 (ex.: 40).",
+    );
+  }
+  return n;
 }
 
 function parseQuantidadeCotasSorteioForm(formData: FormData): number | null {

@@ -81,6 +81,7 @@ describe("simulacao linha grupo", () => {
         recursoProprioModo: "percentual",
         recursoProprioInput: 0,
         usaSeguro: false,
+        percentualParcelaPersonalizada: null,
       },
     });
     expect(r.ativo).toBe(true);
@@ -102,6 +103,7 @@ describe("simulacao linha grupo", () => {
         recursoProprioModo: "percentual",
         recursoProprioInput: 0,
         usaSeguro: true,
+        percentualParcelaPersonalizada: null,
       },
     });
     const saldoEsperado = 750_000 * 1.22;
@@ -124,6 +126,7 @@ describe("simulacao linha grupo", () => {
         recursoProprioModo: "percentual",
         recursoProprioInput: 0,
         usaSeguro: false,
+        percentualParcelaPersonalizada: null,
       },
     });
     const tot = agregarResultadosLinhas([linha]);
@@ -159,6 +162,7 @@ describe("simulacao linha grupo", () => {
         recursoProprioModo: "percentual",
         recursoProprioInput: 0,
         usaSeguro: false,
+        percentualParcelaPersonalizada: null,
       },
     });
     expect(r.saldoDevedorInicial).toBeCloseTo(750_000 * 1.22, 0);
@@ -210,6 +214,7 @@ describe("simulacao linha grupo", () => {
         recursoProprioModo: "percentual",
         recursoProprioInput: 10,
         usaSeguro: false,
+        percentualParcelaPersonalizada: null,
       },
     });
     expect(r.saldoDevedorInicial).toBe(620_000);
@@ -260,6 +265,7 @@ describe("simulacao linha grupo", () => {
         recursoProprioModo: "valor",
         recursoProprioInput: 15_000,
         usaSeguro: false,
+        percentualParcelaPersonalizada: null,
       },
     });
     expect(r.saldoDevedorInicial).toBe(460_000);
@@ -322,6 +328,7 @@ describe("caso Excel — grupos 1513 e 1533", () => {
       recursoProprioModo: "percentual" as const,
       recursoProprioInput: 0,
       usaSeguro: false,
+      percentualParcelaPersonalizada: null,
     };
     const r1 = calcularLinhaSimulacaoGrupo({
       grupo: grupoExcel("1513", "g1513"),
@@ -373,6 +380,7 @@ describe("caso Excel — grupos 1513 e 1533", () => {
         recursoProprioModo: "percentual",
         recursoProprioInput: 0,
         usaSeguro: false,
+        percentualParcelaPersonalizada: null,
       },
     });
     expect(r.parcelaIntegral).toBeCloseTo(5636.36, 1);

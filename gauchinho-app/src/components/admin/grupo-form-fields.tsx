@@ -220,6 +220,42 @@ export function GrupoFormFields({
         </div>
       </section>
 
+      <section className="space-y-3 rounded-xl border border-amber-500/25 bg-amber-500/5 p-4 dark:border-amber-500/30">
+        <h2 className="font-semibold text-zinc-900 dark:text-zinc-100">Parcela reduzida personalizada</h2>
+        <p className="text-xs text-zinc-500">
+          Para promoções pontuais (ex.: 40% da integral). No simulador /grupos, quem ajustar a linha
+          poderá escolher &quot;Personalizada&quot; e informar o percentual.
+        </p>
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            name="permite_parcela_reduzida_personalizada"
+            value="on"
+            defaultChecked={!!g.permite_parcela_reduzida_personalizada}
+          />
+          Permitir parcela reduzida personalizada neste grupo
+        </label>
+        <div className="max-w-xs">
+          <Label>Percentual sugerido (opcional)</Label>
+          <Input
+            name="percentual_parcela_reduzida_personalizada"
+            type="number"
+            min={1}
+            max={99}
+            step="0.01"
+            placeholder="Ex.: 40"
+            defaultValue={
+              g.percentual_parcela_reduzida_personalizada != null
+                ? String(g.percentual_parcela_reduzida_personalizada)
+                : ""
+            }
+          />
+          <p className="mt-1 text-xs text-zinc-500">
+            Pré-preenche o campo na tela de ajuste; o consultor ainda pode alterar na simulação.
+          </p>
+        </div>
+      </section>
+
       <GrupoModalidadesEditor initial={modalidadesInitial} legacyGrupo={g} />
 
       <section className="space-y-3 rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-700 dark:bg-zinc-900/90">

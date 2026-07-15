@@ -71,6 +71,7 @@ function configBase(
     recursoProprioModo: "percentual",
     recursoProprioInput: 0,
     usaSeguro: false,
+    percentualParcelaPersonalizada: null,
     ...overrides,
   };
 }
@@ -141,5 +142,23 @@ describe("calcularLinhaSimulacaoGrupo — saldo e parcelas", () => {
     expect(r.lanceTotal).toBe(455_700);
     expect(r.creditoLiquido).toBe(724_500);
     expect(r.saldoPosLance).toBe(846_300);
+  });
+
+  it("parcela personalizada usa percentual informado na linha", () => {
+    const r = calcularLinhaSimulacaoGrupo({
+      grupo: grupoFixture({
+        permite_parcela_reduzida_personalizada: true,
+        percentual_parcela_reduzida_personalizada: 40,
+      }),
+      cota: cotaFixture(),
+      modalidades: [],
+      config: configBase({
+        modalidadeParcela: "personalizada",
+        percentualParcelaPersonalizada: 40,
+      }),
+    });
+    expect(r.parcelaIntegral).toBeCloseTo(5918.18, 1);
+    expect(r.parcelaPersonalizada).toBeCloseTo(2367.27, 1);
+    expect(r.parcelaBase).toBeCloseTo(2367.27, 1);
   });
 });

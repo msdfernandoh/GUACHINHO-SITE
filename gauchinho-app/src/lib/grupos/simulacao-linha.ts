@@ -14,13 +14,15 @@ import { calcularPrazoGrupoFromRow } from "./prazos";
 import { normalizarPercentualGrupo } from "./percentual";
 import { parcelaTipoFromModalidade } from "./modalidades-admin";
 
-export type ModalidadeParcelaLinha = "reduzida" | "integral";
+export type ModalidadeParcelaLinha = "reduzida" | "integral" | "personalizada";
 export type RecursoProprioModo = "percentual" | "valor";
 
 export type ConfigLinhaSimulacaoGrupo = {
   cotaId: string | null;
   quantidadeCotas: number;
   modalidadeParcela: ModalidadeParcelaLinha;
+  /** Percentual sobre a integral quando modalidadeParcela = personalizada (ex.: 40). */
+  percentualParcelaPersonalizada: number | null;
   usaLanceEmbutido: boolean;
   modalidadeLanceId: string | null;
   usaRecursoProprio: boolean;
@@ -41,6 +43,7 @@ export type ResultadoLinhaSimulacaoGrupo = {
   parcelaBase: number;
   parcelaIntegral: number;
   parcelaReduzida: number | null;
+  parcelaPersonalizada: number | null;
   parcelaPosContemplacao: number;
   lanceEmbutido: number;
   recursoProprio: number;
@@ -208,6 +211,7 @@ export function calcularLinhaSimulacaoGrupo(args: {
     parcelaBase: 0,
     parcelaIntegral: 0,
     parcelaReduzida: null,
+    parcelaPersonalizada: null,
     parcelaPosContemplacao: 0,
     lanceEmbutido: 0,
     recursoProprio: 0,
@@ -237,7 +241,7 @@ export function calcularLinhaSimulacaoGrupo(args: {
     modLance && config.usaLanceEmbutido
       ? normalizarPercentualGrupo(modLance.percentual_recurso_proprio_minimo)
       : 0;
-  const parcelaTipoLinha =
+  const parcelaTipoLinha: ModalidadeParcelaLinha =
     (modLance && parcelaTipoFromModalidade(modLance)) || config.modalidadeParcela;
 
   const lanceEmbutido =
@@ -263,6 +267,15 @@ export function calcularLinhaSimulacaoGrupo(args: {
     }
   }
 
+  const pctPersonalLinha =
+    parcelaTipoLinha === "personalizada"
+      ? num(
+          config.percentualParcelaPersonalizada ??
+            grupo.percentual_parcela_reduzida_personalizada,
+          0,
+        )
+      : null;
+
   const parcelasCalc = calcularParcelasLinhaGrupo({
     saldoDevedor: saldoDevedorInicial,
     prazoTotal: params.prazoTotal,
@@ -270,6 +283,7 @@ export function calcularLinhaSimulacaoGrupo(args: {
     temParcelaReduzida: !!grupo.tem_parcela_reduzida,
     percentualParcelaReduzida: num(grupo.percentual_parcela_reduzida, 100),
     modalidadeParcela: parcelaTipoLinha,
+    percentualParcelaPersonalizada: pctPersonalLinha,
   });
 
   const saldoUnit = qty > 0 ? saldoDevedorInicial / qty : 0;
@@ -320,6 +334,7 @@ export function calcularLinhaSimulacaoGrupo(args: {
     parcelaBase: Math.round(parcelaBase * 100) / 100,
     parcelaIntegral: parcelasCalc.parcelaIntegral,
     parcelaReduzida: parcelasCalc.parcelaReduzida,
+    parcelaPersonalizada: parcelasCalc.parcelaPersonalizada,
     parcelaPosContemplacao: Math.round(parcelaPosContemplacao * 100) / 100,
     lanceEmbutido,
     recursoProprio,
@@ -386,6 +401,27 @@ export function formatPrazoGrupo(grupo: GrupoConsorcio): string {
   return `${total} / ${p.prazoRestanteAtual} / ${p.parcelasRealizadasAtuais}`;
 }
 
+export function labelModalidadeParcelaLinha(
+  config: Pick<ConfigLinhaSimulacaoGrupo, "modalidadeParcela" | "percentualParcelaPersonalizada">,
+  grupo?: Pick<
+    GrupoConsorcio,
+    "percentual_parcela_reduzida" | "percentual_parcela_reduzida_personalizada"
+  >,
+): string {
+  if (config.modalidadeParcela === "personalizada") {
+    const pct =
+      config.percentualParcelaPersonalizada ??
+      grupo?.percentual_parcela_reduzida_personalizada ??
+      null;
+    return pct != null && pct > 0 ? `Personalizada (${pct}%)` : "Personalizada";
+  }
+  if (config.modalidadeParcela === "reduzida") {
+    const pct = normalizarPercentualGrupo(grupo?.percentual_parcela_reduzida) || 60;
+    return `Reduzida (${pct}%)`;
+  }
+  return "Integral";
+}
+
 export function defaultConfigLinha(
   grupo: GrupoConsorcio,
   cotas: GrupoCota[],
@@ -400,6 +436,10 @@ export function defaultConfigLinha(
     quantidadeCotas: 0,
     modalidadeParcela:
       parcelaTipo ?? (grupo.tem_parcela_reduzida ? "reduzida" : "integral"),
+    percentualParcelaPersonalizada:
+      grupo.percentual_parcela_reduzida_personalizada != null
+        ? num(grupo.percentual_parcela_reduzida_personalizada)
+        : null,
     usaLanceEmbutido: !!umaMod && pctEmb > 0,
     modalidadeLanceId: umaMod?.id ?? null,
     usaRecursoProprio: false,

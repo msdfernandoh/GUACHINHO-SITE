@@ -3,7 +3,7 @@
 import { Settings2 } from "lucide-react";
 import type { GrupoConsorcio, GrupoCota, GrupoModalidadeLance } from "@/lib/types";
 import { grupoUsaSeguroNaParcela } from "@/lib/grupos/calculos";
-import { formatPrazoGrupo, type ConfigLinhaSimulacaoGrupo } from "@/lib/grupos/simulacao-linha";
+import { formatPrazoGrupo, labelModalidadeParcelaLinha, type ConfigLinhaSimulacaoGrupo } from "@/lib/grupos/simulacao-linha";
 import { tooltipPrazoAutomatico } from "@/lib/grupos/prazos";
 import { cn } from "@/lib/utils/cn";
 import { Button } from "@/components/ui/form-primitives";
@@ -129,11 +129,7 @@ export function GrupoRow({
           {ativo ? (
             <div className="flex flex-col leading-tight">
               <span className="block text-[10px] text-zinc-500">
-                {temReduzida
-                  ? config.modalidadeParcela === "reduzida"
-                    ? "Reduzida"
-                    : "Integral"
-                  : "Integral"}
+                {ativo ? labelModalidadeParcelaLinha(config, grupo) : ""}
               </span>
               <MoneyValue value={resultado.parcelaBase} compact className="mt-0.5" />
             </div>

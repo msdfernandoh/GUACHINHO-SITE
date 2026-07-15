@@ -226,18 +226,20 @@ export function calcularSaldoDevedorSimulacao(
 export type ParcelasLinhaGrupo = {
   parcelaIntegral: number;
   parcelaReduzida: number | null;
-  /** Parcela da 1ª mensalidade conforme modalidade (reduzida ou integral). */
+  parcelaPersonalizada: number | null;
+  /** Parcela da 1ª mensalidade conforme modalidade (reduzida, personalizada ou integral). */
   parcelaExibida: number;
 };
 
-/** Parcela integral = saldo unitário / prazo total; reduzida = integral × %. */
+/** Parcela integral = saldo unitário / prazo total; reduzida = integral × % do grupo; personalizada = integral × % informado. */
 export function calcularParcelasLinhaGrupo(args: {
   saldoDevedor: number;
   prazoTotal: number;
   quantidadeCotas: number;
   temParcelaReduzida: boolean;
   percentualParcelaReduzida: number;
-  modalidadeParcela: "reduzida" | "integral";
+  modalidadeParcela: "reduzida" | "integral" | "personalizada";
+  percentualParcelaPersonalizada?: number | null;
 }): ParcelasLinhaGrupo {
   const q = Math.max(args.quantidadeCotas, 1);
   const saldoUnit = args.saldoDevedor / q;
@@ -247,11 +249,19 @@ export function calcularParcelasLinhaGrupo(args: {
   const parcelaReduzida = args.temParcelaReduzida
     ? Math.round(parcelaIntegral * (pctRed / 100) * 100) / 100
     : null;
-  const parcelaExibida =
-    args.modalidadeParcela === "reduzida" && parcelaReduzida != null
-      ? parcelaReduzida
-      : parcelaIntegral;
-  return { parcelaIntegral, parcelaReduzida, parcelaExibida };
+  const pctPersonal = normalizarPercentualGrupo(args.percentualParcelaPersonalizada);
+  const parcelaPersonalizada =
+    pctPersonal > 0 && pctPersonal < 100
+      ? Math.round(parcelaIntegral * (pctPersonal / 100) * 100) / 100
+      : null;
+
+  let parcelaExibida = parcelaIntegral;
+  if (args.modalidadeParcela === "personalizada" && parcelaPersonalizada != null) {
+    parcelaExibida = parcelaPersonalizada;
+  } else if (args.modalidadeParcela === "reduzida" && parcelaReduzida != null) {
+    parcelaExibida = parcelaReduzida;
+  }
+  return { parcelaIntegral, parcelaReduzida, parcelaPersonalizada, parcelaExibida };
 }
 
 /** Lance embutido sobre o saldo devedor da linha (base Excel). */

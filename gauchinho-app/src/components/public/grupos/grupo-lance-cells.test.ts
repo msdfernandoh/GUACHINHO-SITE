@@ -16,6 +16,7 @@ describe("embutidoSelectValue", () => {
         recursoProprioModo: "percentual",
         recursoProprioInput: 0,
         usaSeguro: false,
+        percentualParcelaPersonalizada: null,
       }),
     ).toBe("__sem__");
   });
