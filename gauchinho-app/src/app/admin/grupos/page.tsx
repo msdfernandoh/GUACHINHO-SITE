@@ -70,7 +70,8 @@ export default async function GruposAdminPage({
               <th className="px-3 py-2">Código</th>
               <th className="px-3 py-2">Modalidade</th>
               <th className="px-3 py-2">Status</th>
-              <th className="px-3 py-2">Cotas</th>
+              <th className="px-3 py-2">Cotas (valores)</th>
+              <th className="px-3 py-2">Participantes</th>
               <th className="px-3 py-2">Ativo</th>
               <th className="px-3 py-2" />
             </tr>
@@ -78,7 +79,7 @@ export default async function GruposAdminPage({
           <tbody className="text-zinc-800 dark:text-zinc-200">
             {grupos.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-3 py-10 text-center text-zinc-500 dark:text-zinc-400">
+                <td colSpan={7} className="px-3 py-10 text-center text-zinc-500 dark:text-zinc-400">
                   Nenhum grupo encontrado. Ajuste os filtros ou cadastre um novo grupo.
                 </td>
               </tr>
@@ -98,6 +99,11 @@ export default async function GruposAdminPage({
                   <td className="px-3 py-2 text-zinc-700 dark:text-zinc-200">{g.modalidade}</td>
                   <td className="px-3 py-2 text-zinc-700 dark:text-zinc-200">{g.status}</td>
                   <td className="px-3 py-2 text-zinc-700 dark:text-zinc-200">{count ?? 0}</td>
+                  <td className="px-3 py-2 text-zinc-700 dark:text-zinc-200">
+                    {g.quantidade_cotas_sorteio != null && g.quantidade_cotas_sorteio > 0
+                      ? g.quantidade_cotas_sorteio
+                      : "—"}
+                  </td>
                   <td className="px-3 py-2 text-zinc-700 dark:text-zinc-200">
                     {g.ativo ? "Sim" : "Não"}
                   </td>

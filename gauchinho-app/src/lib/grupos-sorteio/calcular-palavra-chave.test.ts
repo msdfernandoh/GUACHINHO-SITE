@@ -6,6 +6,10 @@ import {
 } from "./calcular-palavra-chave";
 
 describe("calcularPalavraChave", () => {
+  it("80246 com 2000 retorna 246 (exemplo veículo)", () => {
+    expect(calcularPalavraChave("80246", 2000)).toBe(246);
+  });
+
   it("95866 com 999 retorna 961", () => {
     expect(calcularPalavraChave("95866", 999)).toBe(961);
   });

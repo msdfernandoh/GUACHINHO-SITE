@@ -33,6 +33,7 @@ type Props = {
   grupos: GrupoSorteioOption[];
   canManage: boolean;
   variant?: "public" | "admin";
+  showTopTrigger?: boolean;
   onSalvar?: (payload: {
     grupoId: string;
     periodo: string;
@@ -51,7 +52,33 @@ type Props = {
     buscadoAutomaticamente: boolean;
     atualizarSeExistir: boolean;
   }) => Promise<{ salvos: number }>;
+  onExcluirRegistro?: (id: string) => Promise<void>;
+  onLimparSorteios?: (filters: {
+    ano?: number;
+    mes?: number;
+    grupoId?: string;
+  }) => Promise<{ removidos: number }>;
 };
+
+const SORTEIOS_OCULTOS_STORAGE_KEY = "gauchinho-grupos-sorteios-ocultos";
+
+function readOcultosFromStorage(): Set<string> {
+  if (typeof window === "undefined") return new Set();
+  try {
+    const raw = localStorage.getItem(SORTEIOS_OCULTOS_STORAGE_KEY);
+    if (!raw) return new Set();
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) return new Set();
+    return new Set(parsed.filter((x): x is string => typeof x === "string"));
+  } catch {
+    return new Set();
+  }
+}
+
+function persistOcultos(ids: Set<string>) {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(SORTEIOS_OCULTOS_STORAGE_KEY, JSON.stringify([...ids]));
+}
 
 function defaultPeriodo(): string {
   const d = new Date();
@@ -62,8 +89,11 @@ export function GruposSorteioPanel({
   grupos,
   canManage,
   variant = "public",
+  showTopTrigger = true,
   onSalvar,
   onSalvarTodos,
+  onExcluirRegistro,
+  onLimparSorteios,
 }: Props) {
   const [modalOpen, setModalOpen] = useState(false);
   const [periodo, setPeriodo] = useState(defaultPeriodo);
@@ -84,6 +114,9 @@ export function GruposSorteioPanel({
   const [histGrupo, setHistGrupo] = useState("");
   const [historico, setHistorico] = useState<SorteioHistoricoRow[]>([]);
   const [histLoading, setHistLoading] = useState(false);
+  const [ocultosIds, setOcultosIds] = useState<Set<string>>(() => readOcultosFromStorage());
+  const [actionMsg, setActionMsg] = useState<string | null>(null);
+  const [limparLoading, setLimparLoading] = useState(false);
 
   useLockBodyScroll(modalOpen);
 
@@ -262,31 +295,103 @@ export function GruposSorteioPanel({
       }));
   }, [modoTodos, primeiroPremio, grupos]);
 
+  const historicoVisivel = useMemo(
+    () => historico.filter((row) => !ocultosIds.has(row.id)),
+    [historico, ocultosIds],
+  );
+
+  const ocultosCount = historico.length - historicoVisivel.length;
+
+  function excluirDaVisualizacao(id: string) {
+    setOcultosIds((prev) => {
+      const next = new Set(prev);
+      next.add(id);
+      persistOcultos(next);
+      return next;
+    });
+  }
+
+  function restaurarOcultos() {
+    setOcultosIds(new Set());
+    persistOcultos(new Set());
+  }
+
+  async function excluirRegistro(id: string) {
+    if (!onExcluirRegistro) return;
+    if (!window.confirm("Excluir este sorteio permanentemente?")) return;
+    setActionMsg(null);
+    try {
+      await onExcluirRegistro(id);
+      setOcultosIds((prev) => {
+        if (!prev.has(id)) return prev;
+        const next = new Set(prev);
+        next.delete(id);
+        persistOcultos(next);
+        return next;
+      });
+      await loadHistorico();
+      setActionMsg("Sorteio excluído.");
+    } catch (e) {
+      setActionMsg(e instanceof Error ? e.message : "Erro ao excluir.");
+    }
+  }
+
+  async function limparSorteios() {
+    if (!onLimparSorteios) return;
+    const filtros: { ano?: number; mes?: number; grupoId?: string } = {};
+    if (histAno) filtros.ano = Number(histAno);
+    if (histMes) filtros.mes = Number(histMes);
+    if (histGrupo) filtros.grupoId = histGrupo;
+    const desc =
+      histAno || histMes || histGrupo
+        ? "os sorteios que correspondem aos filtros atuais"
+        : "todos os sorteios cadastrados";
+    if (!window.confirm(`Limpar ${desc}? Esta ação não pode ser desfeita.`)) return;
+    setLimparLoading(true);
+    setActionMsg(null);
+    try {
+      const r = await onLimparSorteios(filtros);
+      await loadHistorico();
+      restaurarOcultos();
+      setActionMsg(`${r.removidos} sorteio(s) removido(s).`);
+    } catch (e) {
+      setActionMsg(e instanceof Error ? e.message : "Erro ao limpar sorteios.");
+    } finally {
+      setLimparLoading(false);
+    }
+  }
+
   const isDark = variant === "public";
+  const cellText = isDark ? "text-zinc-100" : "text-zinc-800 dark:text-zinc-200";
+  const cellMuted = isDark ? "text-zinc-400" : "text-zinc-500 dark:text-zinc-400";
+  const headText = isDark ? "text-zinc-400" : "text-zinc-600 dark:text-zinc-400";
+  const rowBorder = isDark ? "border-zinc-700/80" : "border-zinc-200 dark:border-zinc-800/60";
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-2">
-        <Button
-          type="button"
-          variant={isDark ? "outline" : "default"}
-          className={cn(
-            isDark &&
-              "border-amber-500/60 text-amber-400 hover:bg-amber-500/10 hover:text-amber-300",
-          )}
-          onClick={() => {
-            setModalOpen(true);
-            setSaveMsg(null);
-          }}
-        >
-          Sorteio
-        </Button>
-        {canManage ? (
-          <span className="text-xs text-zinc-500">
-            Staff: calcule e salve resultados pela Loteria Federal.
-          </span>
-        ) : null}
-      </div>
+      {showTopTrigger ? (
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            type="button"
+            variant={isDark ? "outline" : "default"}
+            className={cn(
+              isDark &&
+                "border-amber-500/60 text-amber-400 hover:bg-amber-500/10 hover:text-amber-300",
+            )}
+            onClick={() => {
+              setModalOpen(true);
+              setSaveMsg(null);
+            }}
+          >
+            Sorteios
+          </Button>
+          {canManage ? (
+            <span className="text-xs text-zinc-500">
+              Staff: calcule e salve resultados pela Loteria Federal.
+            </span>
+          ) : null}
+        </div>
+      ) : null}
 
       <section
         className={cn(
@@ -296,9 +401,64 @@ export function GruposSorteioPanel({
             : "border-zinc-200 bg-white dark:border-zinc-700 dark:bg-zinc-900/90",
         )}
       >
-        <h2 className="text-lg font-semibold text-amber-500/90 dark:text-amber-400">
-          Histórico de sorteios
-        </h2>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-semibold text-amber-500/90 dark:text-amber-400">
+              Histórico de sorteios
+            </h2>
+            <p className={cn("mt-1 text-xs", isDark ? "text-zinc-400" : "text-zinc-500")}>
+              Consulte sorteios de meses anteriores pela Loteria Federal.
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            {!showTopTrigger && canManage ? (
+              <Button
+                type="button"
+                size="sm"
+                variant={isDark ? "outline" : "default"}
+                className={cn(
+                  isDark &&
+                    "border-amber-500/60 text-amber-400 hover:bg-amber-500/10 hover:text-amber-300",
+                )}
+                onClick={() => {
+                  setModalOpen(true);
+                  setSaveMsg(null);
+                }}
+              >
+                Registrar sorteio
+              </Button>
+            ) : null}
+            {ocultosCount > 0 ? (
+              <Button type="button" size="sm" variant="outline" onClick={restaurarOcultos}>
+                Mostrar ocultos ({ocultosCount})
+              </Button>
+            ) : null}
+            {canManage && onLimparSorteios ? (
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                disabled={limparLoading}
+                className={cn(
+                  isDark && "border-red-500/40 text-red-300 hover:bg-red-500/10",
+                )}
+                onClick={() => void limparSorteios()}
+              >
+                {limparLoading ? "Limpando…" : "Limpar sorteios"}
+              </Button>
+            ) : null}
+          </div>
+        </div>
+        {canManage && !showTopTrigger ? (
+          <p className="mt-2 text-xs text-zinc-500">
+            Staff: calcule e salve resultados pela Loteria Federal.
+          </p>
+        ) : null}
+        {actionMsg ? (
+          <p className={cn("mt-2 text-sm", isDark ? "text-zinc-300" : "text-zinc-600")}>
+            {actionMsg}
+          </p>
+        ) : null}
         <div className="mt-3 flex flex-wrap gap-2">
           <div>
             <Label className={isDark ? "text-zinc-400" : undefined}>Ano</Label>
@@ -339,51 +499,75 @@ export function GruposSorteioPanel({
         </div>
         <div className="mt-4 overflow-x-auto">
           <table className="min-w-full text-sm">
-            <thead className="text-left text-xs uppercase text-zinc-600 dark:text-zinc-400">
+            <thead className={cn("text-left text-xs uppercase", headText)}>
               <tr>
                 <th className="px-2 py-2">Período</th>
                 <th className="px-2 py-2">Grupo</th>
                 <th className="px-2 py-2">1º Prêmio</th>
                 <th className="px-2 py-2">Cotas</th>
                 <th className="px-2 py-2">Cota sorteada</th>
+                <th className="px-2 py-2 text-right">Ações</th>
               </tr>
             </thead>
             <tbody>
               {histLoading ? (
                 <tr>
-                  <td colSpan={5} className="px-2 py-6 text-center text-zinc-500">
+                  <td colSpan={6} className="px-2 py-6 text-center text-zinc-500">
                     Carregando…
                   </td>
                 </tr>
-              ) : historico.length === 0 ? (
+              ) : historicoVisivel.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-2 py-6 text-center text-zinc-500">
+                  <td colSpan={6} className="px-2 py-6 text-center text-zinc-500">
                     Nenhum sorteio encontrado para os filtros.
                   </td>
                 </tr>
               ) : (
-                historico.map((row) => (
-                  <tr key={row.id} className="border-t border-zinc-200 dark:border-zinc-800/60">
-                    <td className="px-2 py-2 text-zinc-800 dark:text-zinc-200">
+                historicoVisivel.map((row) => (
+                  <tr key={row.id} className={cn("border-t", rowBorder)}>
+                    <td className={cn("px-2 py-2", cellText)}>
                       {formatPeriodoBr(row.ano, row.mes)}
                     </td>
-                    <td className="px-2 py-2 text-zinc-800 dark:text-zinc-200">
+                    <td className={cn("px-2 py-2", cellText)}>
                       {row.grupo?.codigo_grupo ?? "—"}
                       {row.grupo?.modalidade ? (
-                        <span className="text-zinc-500 dark:text-zinc-400">
-                          {" "}
-                          · {row.grupo.modalidade}
-                        </span>
+                        <span className={cellMuted}> · {row.grupo.modalidade}</span>
                       ) : null}
                     </td>
-                    <td className="px-2 py-2 font-mono text-zinc-800 dark:text-zinc-200">
-                      {row.primeiro_premio}
-                    </td>
-                    <td className="px-2 py-2 text-zinc-800 dark:text-zinc-200">
-                      {row.quantidade_cotas}
-                    </td>
-                    <td className="px-2 py-2 font-semibold text-amber-600 dark:text-amber-400">
+                    <td className={cn("px-2 py-2 font-mono", cellText)}>{row.primeiro_premio}</td>
+                    <td className={cn("px-2 py-2", cellText)}>{row.quantidade_cotas}</td>
+                    <td className="px-2 py-2 font-semibold text-amber-500 dark:text-amber-400">
                       {row.palavra_chave}
+                    </td>
+                    <td className="px-2 py-2 text-right">
+                      <div className="flex flex-wrap justify-end gap-1">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className={cn(
+                            "text-xs",
+                            isDark && "border-zinc-600 text-zinc-300 hover:border-zinc-500",
+                          )}
+                          onClick={() => excluirDaVisualizacao(row.id)}
+                        >
+                          Excluir da visualização
+                        </Button>
+                        {canManage && onExcluirRegistro ? (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            className={cn(
+                              "text-xs",
+                              isDark && "border-red-500/40 text-red-300 hover:bg-red-500/10",
+                            )}
+                            onClick={() => void excluirRegistro(row.id)}
+                          >
+                            Excluir registro
+                          </Button>
+                        ) : null}
+                      </div>
                     </td>
                   </tr>
                 ))

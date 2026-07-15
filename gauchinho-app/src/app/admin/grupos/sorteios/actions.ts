@@ -186,3 +186,21 @@ export async function excluirSorteioAction(id: string) {
   revalidatePath("/grupos");
   revalidatePath("/admin/grupos/sorteios");
 }
+
+export async function limparSorteiosAction(filters: {
+  ano?: number;
+  mes?: number;
+  grupoId?: string;
+}) {
+  await assertCanManageSorteios();
+  const supabase = await createClient();
+  let q = supabase.from("grupos_sorteios_loteria").delete({ count: "exact" });
+  if (filters.ano) q = q.eq("ano", filters.ano);
+  if (filters.mes) q = q.eq("mes", filters.mes);
+  if (filters.grupoId) q = q.eq("grupo_id", filters.grupoId);
+  const { error, count } = await q;
+  if (error) throw new Error(error.message);
+  revalidatePath("/grupos");
+  revalidatePath("/admin/grupos/sorteios");
+  return { removidos: count ?? 0 };
+}

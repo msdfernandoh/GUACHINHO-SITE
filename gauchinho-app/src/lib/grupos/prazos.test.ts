@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { calcularPrazoGrupo, mesesDecorridosCicloMensal } from "@/lib/grupos/prazos";
+import {
+  calcularCicloGrupoDatas,
+  calcularPrazoGrupo,
+  mesesDecorridosCicloMensal,
+} from "@/lib/grupos/prazos";
 
 describe("mesesDecorridosCicloMensal", () => {
   it("conta ciclo no mesmo dia do mês seguinte", () => {
@@ -12,6 +16,21 @@ describe("mesesDecorridosCicloMensal", () => {
 
   it("conta dois meses", () => {
     expect(mesesDecorridosCicloMensal("2026-06-16", "2026-08-16")).toBe(2);
+  });
+});
+
+describe("calcularCicloGrupoDatas", () => {
+  it("calcula início e término a partir da base e prazo total", () => {
+    const r = calcularCicloGrupoDatas({
+      quantidade_cotas_sorteio: 999,
+      data_base_parcelas: "2026-06-16",
+      parcelas_realizadas_base: 25,
+      parcelas_realizadas: 25,
+      prazo_total: 100,
+    });
+    expect(r.participantes).toBe(999);
+    expect(r.dataPrimeiraAssembleia).toBe("2024-05-16");
+    expect(r.dataTerminoGrupo).toBe("2032-09-16");
   });
 });
 

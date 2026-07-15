@@ -18,6 +18,7 @@ import {
   formatCustoEfetivoAnual,
   formatCustoEfetivoMensal,
 } from "@/components/public/grupos/custo-efetivo-grupo";
+import { GrupoCicloDetalhes } from "@/components/public/grupos/grupo-ciclo-detalhes";
 
 type Props = {
   grupo: GrupoConsorcio;
@@ -45,14 +46,19 @@ export function GrupoRowAdjustments({ grupo, cotas, modalidades, config, onChang
 
   if (!resultado.ativo) {
     return (
-      <p className="text-xs text-zinc-500">
-        Selecione cota e quantidade (mín. 1) para ajustar lance e seguro.
-      </p>
+      <div className="space-y-3">
+        <GrupoCicloDetalhes grupo={grupo} />
+        <p className="text-xs text-zinc-500">
+          Selecione cota e quantidade (mín. 1) para ajustar lance e seguro.
+        </p>
+      </div>
     );
   }
 
   return (
-    <div className="grid gap-4 lg:grid-cols-3">
+    <div className="space-y-4">
+      <GrupoCicloDetalhes grupo={grupo} />
+      <div className="grid gap-4 lg:grid-cols-3">
       <div>
         <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-amber-500/90">
           Estratégias (lance e parcela)
@@ -305,6 +311,7 @@ export function GrupoRowAdjustments({ grupo, cotas, modalidades, config, onChang
           Limpar seleção
         </Button>
       </div>
+    </div>
     </div>
   );
 }

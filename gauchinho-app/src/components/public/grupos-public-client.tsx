@@ -27,6 +27,7 @@ import { GruposSorteioPublicSection } from "@/components/grupos-sorteio/grupos-s
 import type { GrupoSorteioOption } from "@/components/grupos-sorteio/grupos-sorteio-panel";
 
 type ModalFiltro = (typeof MODALIDADE_FILTRO_PUBLICO)[number]["value"];
+type AbaGruposPublic = "simulacao" | "sorteios";
 
 export type SelecaoGrupoPayload = {
   grupoId: string;
@@ -49,6 +50,7 @@ export function GruposPublicClient({
   canManageSorteios?: boolean;
 }) {
   const [filtro, setFiltro] = useState<ModalFiltro>("Todos");
+  const [aba, setAba] = useState<AbaGruposPublic>("simulacao");
   const [busca, setBusca] = useState("");
   const [configs, setConfigs] = useState<Record<string, ConfigLinhaSimulacaoGrupo>>(() => {
     const init: Record<string, ConfigLinhaSimulacaoGrupo> = {};
@@ -238,10 +240,13 @@ export function GruposPublicClient({
             <button
               key={m.value}
               type="button"
-              onClick={() => setFiltro(m.value)}
+              onClick={() => {
+                setAba("simulacao");
+                setFiltro(m.value);
+              }}
               className={cn(
                 "rounded-full px-3 py-1.5 text-xs font-medium transition md:text-sm md:px-4 md:py-2",
-                filtro === m.value
+                aba === "simulacao" && filtro === m.value
                   ? "bg-amber-500 text-zinc-950"
                   : "border border-zinc-700 text-zinc-300 hover:border-amber-500/50",
               )}
@@ -249,6 +254,18 @@ export function GruposPublicClient({
               {m.label}
             </button>
           ))}
+          <button
+            type="button"
+            onClick={() => setAba("sorteios")}
+            className={cn(
+              "rounded-full px-3 py-1.5 text-xs font-medium transition md:text-sm md:px-4 md:py-2",
+              aba === "sorteios"
+                ? "bg-amber-500 text-zinc-950"
+                : "border border-zinc-700 text-zinc-300 hover:border-amber-500/50",
+            )}
+          >
+            Sorteios
+          </button>
           <div className="relative ml-auto min-w-[200px] flex-1 md:max-w-xs">
             <Search className="absolute left-3 top-2.5 h-4 w-4 text-zinc-500" />
             <Input
@@ -256,13 +273,14 @@ export function GruposPublicClient({
               placeholder="Grupo ou crédito…"
               value={busca}
               onChange={(e) => setBusca(e.target.value)}
+              disabled={aba === "sorteios"}
             />
           </div>
         </div>
 
-        <GruposSorteioPublicSection grupos={gruposSorteio} canManage={canManageSorteios} />
-
-        {aggregates.length === 0 ? (
+        {aba === "sorteios" ? (
+          <GruposSorteioPublicSection grupos={gruposSorteio} canManage={canManageSorteios} />
+        ) : aggregates.length === 0 ? (
           <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 px-6 py-16 text-center">
             <p className="text-lg text-zinc-300">Nenhum grupo disponível no momento.</p>
             {isStaff ? (
@@ -305,8 +323,10 @@ export function GruposPublicClient({
             </div>
           </>
         )}
+
       </div>
 
+      {aba === "simulacao" ? (
       <GrupoTotalsBar
         totais={totais}
         toastMsg={toastMsg}
@@ -317,6 +337,7 @@ export function GruposPublicClient({
         onGerarLink={isConsultor ? () => void iniciarContratacaoGrupos("sdr_link") : undefined}
         contratarLoading={contratacaoLoading}
       />
+      ) : null}
 
       {modalOpen ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
