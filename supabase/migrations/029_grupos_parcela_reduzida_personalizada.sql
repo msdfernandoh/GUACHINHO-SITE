@@ -12,7 +12,7 @@ begin
     raise exception
       'Tabela public.grupos_consorcio não existe neste projeto. '
       'Aplique antes as migrations 001–028 (ou o bloco grupos em docs/supabase-aplicar-tudo.sql). '
-      'No SQL Editor, confira: select tablename from pg_tables where schemaname = ''public'' and tablename like ''%grupo%'';';
+      'No SQL Editor, confira: select tablename from pg_tables where schemaname = ''public'' and tablename like ''%%grupo%%'';';
   end if;
 end $$;
 
