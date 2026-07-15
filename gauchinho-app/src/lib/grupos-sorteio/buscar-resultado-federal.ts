@@ -102,7 +102,12 @@ async function findConcursoByDateIso(dataIso: string): Promise<CaixaFederalPaylo
       hi = mid - 1;
       continue;
     }
-    const iso = parseBrDateToIso(payload.dataApuracao);
+    const dataApuracao = payload.dataApuracao;
+    if (!dataApuracao) {
+      hi = mid - 1;
+      continue;
+    }
+    const iso = parseBrDateToIso(dataApuracao);
     if (!iso) {
       hi = mid - 1;
       continue;
