@@ -189,7 +189,11 @@ export function GruposSorteioPanel({
       setPrimeiroPremio(String(json.primeiroPremio));
       setBuscadoAuto(true);
       setFonteResultado(json.fonte ?? null);
-      setBuscaMsg(null);
+      if (json.concurso) {
+        setBuscaMsg(`Concurso ${json.concurso} encontrado na ${json.fonte ?? "fonte oficial"}.`);
+      } else {
+        setBuscaMsg(null);
+      }
     } catch {
       setBuscaMsg(
         "Não foi possível consultar o resultado agora. Informe o 1º prêmio manualmente.",

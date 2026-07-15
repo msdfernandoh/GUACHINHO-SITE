@@ -1,7 +1,9 @@
 const CAIXA_FEDERAL_API =
   "https://servicebus2.caixa.gov.br/portaldeloterias/api/federal";
 const FONTE_CAIXA = "caixa_portaldeloterias_api";
-const FETCH_TIMEOUT_MS = 12_000;
+const FETCH_TIMEOUT_MS = 10_000;
+const USER_AGENT =
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
 
 export type BuscaFederalResult = {
   encontrado: boolean;
@@ -18,10 +20,23 @@ type CaixaFederalPayload = {
   dezenasSorteadasOrdemSorteio?: string[];
 };
 
+export function normalizarDataSorteioIso(data: string): string | null {
+  const t = data.trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(t)) return t;
+  const br = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(t);
+  if (br) return `${br[3]}-${br[2]}-${br[1]}`;
+  return null;
+}
+
 function parseBrDateToIso(dataApuracao: string): string | null {
   const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(dataApuracao.trim());
   if (!m) return null;
   return `${m[3]}-${m[2]}-${m[1]}`;
+}
+
+function isoToBr(dataIso: string): string {
+  const [y, m, d] = dataIso.split("-");
+  return `${d}/${m}/${y}`;
 }
 
 /** Extrai 5 dígitos do 1º número sorteado (bilhete federal com 6 dígitos na API). */
@@ -40,7 +55,8 @@ async function fetchConcursoFederal(numero: number): Promise<CaixaFederalPayload
       signal: controller.signal,
       headers: {
         Accept: "application/json",
-        "User-Agent": "GauchinhoConsorcios/1.0",
+        "Accept-Language": "pt-BR,pt;q=0.9",
+        "User-Agent": USER_AGENT,
       },
       cache: "no-store",
     });
@@ -55,55 +71,115 @@ async function fetchConcursoFederal(numero: number): Promise<CaixaFederalPayload
   }
 }
 
-async function findLatestConcursoNumber(): Promise<number> {
-  let low = 5500;
-  let high = 6500;
-  let best = 6000;
-  while (low <= high) {
-    const mid = Math.floor((low + high) / 2);
+/** Maior número de concurso publicado (busca binária + extensão linear). */
+async function findMaxConcursoNumber(): Promise<number> {
+  let lo = 5500;
+  let hi = 7000;
+  while (lo < hi) {
+    const mid = Math.ceil((lo + hi) / 2);
     const payload = await fetchConcursoFederal(mid);
-    if (payload?.numero) {
-      best = payload.numero;
-      low = mid + 1;
-    } else {
-      high = mid - 1;
-    }
+    if (payload?.numero) lo = mid;
+    else hi = mid - 1;
   }
-  return best;
+  let n = lo;
+  for (let i = 0; i < 30; i++) {
+    const next = await fetchConcursoFederal(n + 1);
+    if (!next?.numero) break;
+    n = next.numero;
+  }
+  return n;
 }
 
 async function findConcursoByDateIso(dataIso: string): Promise<CaixaFederalPayload | null> {
-  let numero = await findLatestConcursoNumber();
-  for (let i = 0; i < 120; i++) {
-    const payload = await fetchConcursoFederal(numero);
-    if (!payload?.dataApuracao) {
-      numero -= 1;
+  const max = await findMaxConcursoNumber();
+  let lo = Math.max(1, max - 400);
+  let hi = max;
+
+  while (lo <= hi) {
+    const mid = Math.floor((lo + hi) / 2);
+    const payload = await fetchConcursoFederal(mid);
+    if (!payload) {
+      hi = mid - 1;
       continue;
     }
     const iso = parseBrDateToIso(payload.dataApuracao);
     if (!iso) {
-      numero -= 1;
+      hi = mid - 1;
       continue;
     }
     if (iso === dataIso) return payload;
-    if (iso > dataIso) numero -= 1;
-    else numero += 1;
+    if (iso < dataIso) lo = mid + 1;
+    else hi = mid - 1;
   }
   return null;
+}
+
+/** Tenta endpoint com query de data (comportamento variável na API Caixa). */
+async function buscarPorQueryDataCaixa(dataIso: string): Promise<CaixaFederalPayload | null> {
+  const dataBr = isoToBr(dataIso);
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+  try {
+    const url = `${CAIXA_FEDERAL_API}?data=${encodeURIComponent(dataBr)}`;
+    const res = await fetch(url, {
+      signal: controller.signal,
+      headers: {
+        Accept: "application/json",
+        "Accept-Language": "pt-BR,pt;q=0.9",
+        "User-Agent": USER_AGENT,
+      },
+      cache: "no-store",
+    });
+    if (!res.ok) return null;
+    const json = (await res.json()) as CaixaFederalPayload;
+    if (!json?.numero || !json.dataApuracao) return null;
+    const iso = parseBrDateToIso(json.dataApuracao);
+    if (iso !== dataIso) return null;
+    return json;
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+function payloadParaResultado(
+  payload: CaixaFederalPayload,
+  dataIso: string,
+  fonte: string,
+): BuscaFederalResult {
+  const primeiroPremio = extrairPrimeiroPremioFederal(payload.dezenasSorteadasOrdemSorteio);
+  if (!primeiroPremio) {
+    return {
+      encontrado: false,
+      mensagem:
+        "Não encontramos resultado da Loteria Federal para esta data. Confira a data ou informe o 1º prêmio manualmente.",
+    };
+  }
+  return {
+    encontrado: true,
+    primeiroPremio,
+    concurso: String(payload.numero),
+    dataSorteio: parseBrDateToIso(payload.dataApuracao!) ?? dataIso,
+    fonte,
+  };
 }
 
 export async function buscarPrimeiroPremioFederalPorData(
   data: string,
 ): Promise<BuscaFederalResult> {
-  const dataIso = /^\d{4}-\d{2}-\d{2}$/.test(data) ? data : null;
+  const dataIso = normalizarDataSorteioIso(data);
   if (!dataIso) {
     return {
       encontrado: false,
-      mensagem: "Data inválida. Use o formato AAAA-MM-DD.",
+      mensagem: "Data inválida. Use o formato AAAA-MM-DD ou DD/MM/AAAA.",
     };
   }
 
   try {
+    const porQuery = await buscarPorQueryDataCaixa(dataIso);
+    if (porQuery) return payloadParaResultado(porQuery, dataIso, FONTE_CAIXA);
+
     const payload = await findConcursoByDateIso(dataIso);
     if (!payload) {
       return {
@@ -113,22 +189,7 @@ export async function buscarPrimeiroPremioFederalPorData(
       };
     }
 
-    const primeiroPremio = extrairPrimeiroPremioFederal(payload.dezenasSorteadasOrdemSorteio);
-    if (!primeiroPremio) {
-      return {
-        encontrado: false,
-        mensagem:
-          "Não encontramos resultado da Loteria Federal para esta data. Confira a data ou informe o 1º prêmio manualmente.",
-      };
-    }
-
-    return {
-      encontrado: true,
-      primeiroPremio,
-      concurso: String(payload.numero),
-      dataSorteio: parseBrDateToIso(payload.dataApuracao!) ?? dataIso,
-      fonte: FONTE_CAIXA,
-    };
+    return payloadParaResultado(payload, dataIso, FONTE_CAIXA);
   } catch {
     return {
       encontrado: false,

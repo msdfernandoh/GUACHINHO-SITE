@@ -19,11 +19,10 @@ Coluna no banco: `grupos_consorcio.quantidade_cotas_sorteio`.
 
 ## Busca automática do 1º prêmio (admin)
 
-1. Admin → **Grupos** → **Sorteios Loteria Federal** (ou modal Sorteio na página pública, logado como staff).
-2. Informar **Data do sorteio** e clicar **Buscar 1º prêmio**.
-3. O sistema consulta a API oficial da Caixa (`portaldeloterias`) e preenche o campo com 5 dígitos.
-4. Revisar/editar manualmente se necessário; falha na busca não impede entrada manual.
-5. Histórico grava `data_sorteio`, `fonte_resultado` e `resultado_buscado_automaticamente`.
+1. Informar **Data do sorteio** (campo de data ou `DD/MM/AAAA`) e clicar **Buscar 1º prêmio**.
+2. O sistema consulta a API oficial da Caixa e localiza o concurso pela data (busca binária).
+3. Exemplo **04/07/2026** → concurso **6080**, 1º bilhete `080246` → campo preenchido com **`80246`** (5 dígitos finais do bilhete).
+4. Exemplo **11/07/2026** → 1º bilhete `095866` → **`95866`**.
 
 ## Calcular para todos os grupos
 

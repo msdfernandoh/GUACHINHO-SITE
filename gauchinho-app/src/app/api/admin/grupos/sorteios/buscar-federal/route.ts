@@ -4,6 +4,8 @@ import { canManageGruposSorteios } from "@/lib/auth/permissions";
 import { DEFAULT_LEADS, getConfigJson } from "@/server/config";
 import { buscarPrimeiroPremioFederalPorData } from "@/lib/grupos-sorteio/buscar-resultado-federal";
 
+export const maxDuration = 60;
+
 export async function GET(request: Request) {
   const usuario = await getUsuarioNegocio();
   if (!usuario) {
