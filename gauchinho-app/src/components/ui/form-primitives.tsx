@@ -26,7 +26,8 @@ export function Button({
       className={cn(
         "inline-flex items-center justify-center rounded-lg font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-60",
         size === "sm" ? "px-3 py-1.5 text-sm" : "px-4 py-2 text-sm",
-        variant === "default" && "bg-zinc-900 text-white hover:bg-zinc-800 disabled:bg-zinc-800 disabled:text-zinc-400",
+        variant === "default" &&
+          "bg-zinc-900 text-white hover:bg-zinc-800 disabled:bg-zinc-800 disabled:text-zinc-400 dark:bg-amber-500 dark:text-zinc-950 dark:hover:bg-amber-400 dark:disabled:bg-zinc-700 dark:disabled:text-zinc-500",
         variant === "outline" &&
           "border border-zinc-300 bg-white text-zinc-900 hover:bg-zinc-50 disabled:bg-zinc-100 disabled:text-zinc-500 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800 dark:disabled:bg-zinc-900 dark:disabled:text-zinc-500",
         variant === "outlineGold" &&

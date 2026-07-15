@@ -29,8 +29,12 @@ export function PopularGruposTesteButton() {
       <Button type="button" variant="outline" disabled={pending} onClick={handleClick}>
         {pending ? "Populando…" : "Popular grupos de teste"}
       </Button>
-      {message ? <p className="max-w-xs text-right text-xs text-emerald-600">{message}</p> : null}
-      {error ? <p className="max-w-xs text-right text-xs text-red-600">{error}</p> : null}
+      {message ? (
+        <p className="max-w-xs text-right text-xs text-emerald-600 dark:text-emerald-400">{message}</p>
+      ) : null}
+      {error ? (
+        <p className="max-w-xs text-right text-xs text-red-600 dark:text-red-400">{error}</p>
+      ) : null}
     </div>
   );
 }

@@ -27,7 +27,7 @@ export default async function AdminLayout({
       />
       <div className="flex min-w-0 flex-1 flex-col">
         <AdminHeader nome={usuario.nome} perfil={usuario.perfil} />
-        <main className="flex-1 overflow-auto p-6 text-inherit">{children}</main>
+        <main className="flex-1 overflow-auto bg-zinc-950 p-6 text-zinc-100">{children}</main>
       </div>
     </div>
   );

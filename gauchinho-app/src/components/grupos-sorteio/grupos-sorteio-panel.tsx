@@ -287,10 +287,14 @@ export function GruposSorteioPanel({
       <section
         className={cn(
           "rounded-xl border p-4",
-          isDark ? "border-zinc-800 bg-zinc-900/40" : "border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900",
+          isDark
+            ? "border-zinc-800 bg-zinc-900/40"
+            : "border-zinc-200 bg-white dark:border-zinc-700 dark:bg-zinc-900/90",
         )}
       >
-        <h2 className="text-lg font-semibold text-amber-500/90">Histórico de sorteios</h2>
+        <h2 className="text-lg font-semibold text-amber-500/90 dark:text-amber-400">
+          Histórico de sorteios
+        </h2>
         <div className="mt-3 flex flex-wrap gap-2">
           <div>
             <Label className={isDark ? "text-zinc-400" : undefined}>Ano</Label>
@@ -331,7 +335,7 @@ export function GruposSorteioPanel({
         </div>
         <div className="mt-4 overflow-x-auto">
           <table className="min-w-full text-sm">
-            <thead className="text-left text-xs uppercase text-zinc-500">
+            <thead className="text-left text-xs uppercase text-zinc-600 dark:text-zinc-400">
               <tr>
                 <th className="px-2 py-2">Período</th>
                 <th className="px-2 py-2">Grupo</th>
@@ -355,17 +359,28 @@ export function GruposSorteioPanel({
                 </tr>
               ) : (
                 historico.map((row) => (
-                  <tr key={row.id} className="border-t border-zinc-800/60">
-                    <td className="px-2 py-2">{formatPeriodoBr(row.ano, row.mes)}</td>
-                    <td className="px-2 py-2">
+                  <tr key={row.id} className="border-t border-zinc-200 dark:border-zinc-800/60">
+                    <td className="px-2 py-2 text-zinc-800 dark:text-zinc-200">
+                      {formatPeriodoBr(row.ano, row.mes)}
+                    </td>
+                    <td className="px-2 py-2 text-zinc-800 dark:text-zinc-200">
                       {row.grupo?.codigo_grupo ?? "—"}
                       {row.grupo?.modalidade ? (
-                        <span className="text-zinc-500"> · {row.grupo.modalidade}</span>
+                        <span className="text-zinc-500 dark:text-zinc-400">
+                          {" "}
+                          · {row.grupo.modalidade}
+                        </span>
                       ) : null}
                     </td>
-                    <td className="px-2 py-2 font-mono">{row.primeiro_premio}</td>
-                    <td className="px-2 py-2">{row.quantidade_cotas}</td>
-                    <td className="px-2 py-2 font-semibold text-amber-400">{row.palavra_chave}</td>
+                    <td className="px-2 py-2 font-mono text-zinc-800 dark:text-zinc-200">
+                      {row.primeiro_premio}
+                    </td>
+                    <td className="px-2 py-2 text-zinc-800 dark:text-zinc-200">
+                      {row.quantidade_cotas}
+                    </td>
+                    <td className="px-2 py-2 font-semibold text-amber-600 dark:text-amber-400">
+                      {row.palavra_chave}
+                    </td>
                   </tr>
                 ))
               )}

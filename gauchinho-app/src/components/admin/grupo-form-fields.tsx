@@ -21,8 +21,8 @@ export function GrupoFormFields({
     g.data_base_parcelas != null ? String(g.data_base_parcelas).slice(0, 10) : "";
   return (
     <>
-      <section className="space-y-3 rounded-xl border bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
-        <h2 className="font-semibold">Dados principais</h2>
+      <section className="space-y-3 rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-700 dark:bg-zinc-900/90">
+        <h2 className="font-semibold text-zinc-900 dark:text-zinc-100">Dados principais</h2>
         <div className="grid gap-3 sm:grid-cols-2">
           <div>
             <Label>Código grupo</Label>
@@ -82,8 +82,8 @@ export function GrupoFormFields({
         </div>
       </section>
 
-      <section className="space-y-3 rounded-xl border bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
-        <h2 className="font-semibold">Financeiro</h2>
+      <section className="space-y-3 rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-700 dark:bg-zinc-900/90">
+        <h2 className="font-semibold text-zinc-900 dark:text-zinc-100">Financeiro</h2>
         <div className="grid gap-3 sm:grid-cols-3">
           <div>
             <Label>Taxa admin %</Label>
@@ -114,7 +114,9 @@ export function GrupoFormFields({
         </div>
 
         <div className="space-y-3 rounded-lg border border-zinc-200 p-4 dark:border-zinc-700">
-          <h3 className="text-sm font-semibold">Controle automático de parcelas</h3>
+          <h3 className="text-sm font-semibold text-zinc-800 dark:text-zinc-200">
+            Controle automático de parcelas
+          </h3>
           <p className="text-xs text-zinc-500">
             Informe quantas parcelas já estavam realizadas na data base. O sistema atualizará
             automaticamente mês a mês o número de parcelas realizadas e restantes (sem cron — cálculo
@@ -220,8 +222,10 @@ export function GrupoFormFields({
 
       <GrupoModalidadesEditor initial={modalidadesInitial} legacyGrupo={g} />
 
-      <section className="space-y-3 rounded-xl border bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
-        <h2 className="font-semibold">Cotas — colar créditos (uma linha = uma cota)</h2>
+      <section className="space-y-3 rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-700 dark:bg-zinc-900/90">
+        <h2 className="font-semibold text-zinc-900 dark:text-zinc-100">
+          Cotas — colar créditos (uma linha = uma cota)
+        </h2>
         <Textarea
           name="cotas_bulk"
           rows={6}

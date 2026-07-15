@@ -21,11 +21,14 @@ export default async function GruposAdminPage({
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">Grupos</h1>
-          <p className="text-sm text-zinc-500">Consórcio — grupos e cotas</p>
+          <p className="text-sm text-zinc-500 dark:text-zinc-400">Consórcio — grupos e cotas</p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
           {showPopular ? <PopularGruposTesteButton /> : null}
-          <Link href="/admin/grupos/sorteios" className="text-sm text-amber-600 hover:underline">
+          <Link
+            href="/admin/grupos/sorteios"
+            className="text-sm text-amber-600 hover:underline dark:text-amber-400 dark:hover:text-amber-300"
+          >
             Sorteios Loteria Federal
           </Link>
           <Link href="/admin/grupos/novo">
@@ -33,7 +36,10 @@ export default async function GruposAdminPage({
           </Link>
         </div>
       </div>
-      <form method="get" className="flex flex-wrap gap-3 rounded-xl border bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
+      <form
+        method="get"
+        className="flex flex-wrap gap-3 rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-700 dark:bg-zinc-900/90"
+      >
         <div>
           <Label>Modalidade</Label>
           <Select name="modalidade" defaultValue={sp.modalidade ?? ""}>
@@ -57,9 +63,9 @@ export default async function GruposAdminPage({
           Filtrar
         </Button>
       </form>
-      <div className="overflow-x-auto rounded-xl border bg-white dark:border-zinc-800 dark:bg-zinc-900">
+      <div className="overflow-x-auto rounded-xl border border-zinc-200 bg-white dark:border-zinc-700 dark:bg-zinc-900/90">
         <table className="min-w-full text-sm">
-          <thead className="border-b bg-zinc-50 text-left text-xs uppercase text-zinc-500 dark:bg-zinc-800/50">
+          <thead className="border-b border-zinc-200 bg-zinc-50 text-left text-xs uppercase tracking-wide text-zinc-600 dark:border-zinc-700 dark:bg-zinc-800/80 dark:text-zinc-300">
             <tr>
               <th className="px-3 py-2">Código</th>
               <th className="px-3 py-2">Modalidade</th>
@@ -69,10 +75,10 @@ export default async function GruposAdminPage({
               <th className="px-3 py-2" />
             </tr>
           </thead>
-          <tbody className="text-zinc-800">
+          <tbody className="text-zinc-800 dark:text-zinc-200">
             {grupos.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-3 py-10 text-center text-zinc-500">
+                <td colSpan={6} className="px-3 py-10 text-center text-zinc-500 dark:text-zinc-400">
                   Nenhum grupo encontrado. Ajuste os filtros ou cadastre um novo grupo.
                 </td>
               </tr>
@@ -84,15 +90,22 @@ export default async function GruposAdminPage({
               return (
                 <tr
                   key={g.id}
-                  className="border-b border-zinc-100 transition-colors hover:bg-zinc-50 dark:border-zinc-800 dark:hover:bg-zinc-800/40"
+                  className="border-b border-zinc-100 transition-colors hover:bg-zinc-50 dark:border-zinc-800 dark:hover:bg-zinc-800/60"
                 >
-                  <td className="px-3 py-2 font-medium text-zinc-900">{g.codigo_grupo}</td>
-                  <td className="px-3 py-2">{g.modalidade}</td>
-                  <td className="px-3 py-2">{g.status}</td>
-                  <td className="px-3 py-2">{count ?? 0}</td>
-                  <td className="px-3 py-2">{g.ativo ? "Sim" : "Não"}</td>
+                  <td className="px-3 py-2 font-medium text-zinc-900 dark:text-zinc-50">
+                    {g.codigo_grupo}
+                  </td>
+                  <td className="px-3 py-2 text-zinc-700 dark:text-zinc-200">{g.modalidade}</td>
+                  <td className="px-3 py-2 text-zinc-700 dark:text-zinc-200">{g.status}</td>
+                  <td className="px-3 py-2 text-zinc-700 dark:text-zinc-200">{count ?? 0}</td>
+                  <td className="px-3 py-2 text-zinc-700 dark:text-zinc-200">
+                    {g.ativo ? "Sim" : "Não"}
+                  </td>
                   <td className="px-3 py-2">
-                    <Link href={`/admin/grupos/${g.id}`} className="text-amber-600 hover:underline">
+                    <Link
+                      href={`/admin/grupos/${g.id}`}
+                      className="text-amber-600 hover:underline dark:text-amber-400"
+                    >
                       Editar
                     </Link>
                   </td>
