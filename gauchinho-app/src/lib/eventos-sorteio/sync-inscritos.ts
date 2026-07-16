@@ -283,6 +283,17 @@ export async function vincularNovoCadastroSorteioAoEvento(
     })
     .eq("id", sorteioParticipanteId);
   if (linkErr) {
+    // Migration 026 ainda não aplicada — inscrição do evento já foi criada; segue sem o vínculo.
+    if (
+      /evento_participante_id/i.test(linkErr.message) &&
+      /schema cache|does not exist|Could not find/i.test(linkErr.message)
+    ) {
+      await admin
+        .from("eventos_sorteio_participantes")
+        .update({ lead_id: leadId, updated_at: new Date().toISOString() })
+        .eq("id", sorteioParticipanteId);
+      return;
+    }
     if (/eventos_sorteio_participantes_inscricao_unique|duplicate key/i.test(linkErr.message)) {
       const { data: outro } = await admin
         .from("eventos_sorteio_participantes")

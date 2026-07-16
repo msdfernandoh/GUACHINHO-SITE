@@ -16,7 +16,7 @@ export const EVENTOS_INSCRICAO_MIGRATION_HINT =
   "Para inscrição externa e upload de imagens, aplique supabase/migrations/018_eventos_inscricao_externa_storage.sql no Supabase.";
 
 export const EVENTOS_SORTEIO_MIGRATION_HINT =
-  "Para sorteio de brindes, aplique supabase/migrations/022_eventos_sorteios.sql, 026_eventos_sorteio_inscricao_link.sql e 030_eventos_sorteio_fases_qr_unico.sql no Supabase.";
+  "Para sorteio de brindes (fases/NPS/QR), aplique no Supabase: 022_eventos_sorteios.sql, 026_eventos_sorteio_inscricao_link.sql e 030_eventos_sorteio_fases_qr_unico.sql. Depois rode NOTIFY pgrst, 'reload schema'; no SQL Editor se o erro de schema cache continuar.";
 
 export function isDbMissingColumnError(error: unknown): boolean {
   const msg = error instanceof Error ? error.message : String(error);

@@ -168,12 +168,22 @@ export async function cadastrarParticipanteSorteioFase1(
   };
   if (payload.qrCodeUnicoId) insertPart.qr_code_unico_id = payload.qrCodeUnicoId;
 
-  const { data: partRow, error: partErr } = await admin
-    .from("eventos_sorteio_participantes")
-    .insert(insertPart)
-    .select("id")
-    .single();
-  if (partErr || !partRow) return { ok: false, error: partErr?.message ?? "Falha ao registrar participação." };
+  let partRow: { id: string } | null = null;
+  {
+    const first = await admin.from("eventos_sorteio_participantes").insert(insertPart).select("id").single();
+    if (first.error && /fase_cadastro|origem_cupom|qr_code_unico_id|schema cache|Could not find/i.test(first.error.message)) {
+      const { fase_cadastro: _f, origem_cupom: _o, qr_code_unico_id: _q, ...legacy } = insertPart;
+      const retry = await admin.from("eventos_sorteio_participantes").insert(legacy).select("id").single();
+      if (retry.error || !retry.data) {
+        return { ok: false, error: retry.error?.message ?? first.error.message };
+      }
+      partRow = retry.data as { id: string };
+    } else if (first.error || !first.data) {
+      return { ok: false, error: first.error?.message ?? "Falha ao registrar participação." };
+    } else {
+      partRow = first.data as { id: string };
+    }
+  }
 
   const { vincularNovoCadastroSorteioAoEvento } = await import("./sync-inscritos");
   try {
@@ -188,7 +198,10 @@ export async function cadastrarParticipanteSorteioFase1(
     );
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
-    return { ok: false, error: msg };
+    // Não bloqueia o cupom se o vínculo com inscrição oficial falhar por schema antigo
+    if (!/evento_participante_id|schema cache|Could not find/i.test(msg)) {
+      return { ok: false, error: msg };
+    }
   }
 
   await registrarEvento({
@@ -244,16 +257,26 @@ export async function salvarNpsSorteioFase2(
   if (!valid.ok) return { ok: false, error: valid.error };
 
   const now = new Date().toISOString();
+  const payloadNps = {
+    nps_respostas: valid.clean,
+    nps_completo_em: now,
+    fase_cadastro: "fase2",
+    updated_at: now,
+  };
   const { error: updErr } = await admin
     .from("eventos_sorteio_participantes")
-    .update({
-      nps_respostas: valid.clean,
-      nps_completo_em: now,
-      fase_cadastro: "fase2",
-      updated_at: now,
-    })
+    .update(payloadNps)
     .eq("id", participanteId);
-  if (updErr) return { ok: false, error: updErr.message };
+  if (updErr) {
+    if (/nps_respostas|nps_completo_em|fase_cadastro|schema cache|Could not find/i.test(updErr.message)) {
+      return {
+        ok: false,
+        error:
+          "Banco desatualizado para o NPS. Aplique no Supabase: 026_eventos_sorteio_inscricao_link.sql e 030_eventos_sorteio_fases_qr_unico.sql",
+      };
+    }
+    return { ok: false, error: updErr.message };
+  }
 
   return { ok: true, participanteId };
 }
