@@ -175,22 +175,17 @@ export function EventoSorteioPublicForm({ sorteio, qrCodeUnicoId }: Props) {
         <p className="mt-2 text-sm text-slate-500">{textoFinal}</p>
         <div className="mt-8 flex flex-col gap-2">
           <Button type="button" variant="gold" className="w-full" onClick={abrirListaVip}>
-            Incluir amigo na lista VIP
+            Voltar e incluir amigo na lista VIP
           </Button>
-          <div className="flex flex-col gap-2 sm:flex-row sm:justify-center">
-            <Link
-              href="/simulador"
-              className="inline-flex items-center justify-center rounded-lg border border-zinc-600 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800"
-            >
-              Falar com especialista
-            </Link>
-            <Link
-              href={`/eventos/${sorteio.eventoSlug}`}
-              className="inline-flex items-center justify-center rounded-lg border border-zinc-600 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800"
-            >
-              Voltar para o evento
-            </Link>
-          </div>
+          <p className="text-center text-xs text-slate-500">
+            Cada novo amigo válido gera mais um cupom para você.
+          </p>
+          <Link
+            href={`/eventos/${sorteio.eventoSlug}`}
+            className="inline-flex items-center justify-center rounded-lg border border-zinc-600 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800"
+          >
+            Voltar para o evento
+          </Link>
         </div>
       </div>
     );
