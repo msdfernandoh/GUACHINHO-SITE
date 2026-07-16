@@ -66,6 +66,8 @@ export type ContratacaoOnlineRow = {
   dados_simulacao: Record<string, unknown>;
   forma_pagamento: FormaPagamento | null;
   pagamento_observacao: string | null;
+  /** Observação livre do cliente (etapa documentos). */
+  observacao_cliente?: string | null;
   pix_ativo_na_solicitacao: boolean;
   pix_chave: string | null;
   pix_recebedor: string | null;

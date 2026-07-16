@@ -138,6 +138,7 @@ export function ContratacaoDetalheClient({
                 <Field label="CPF responsável" value={respCpfFmt} />
               </>
             )}
+            <Field label="Observação do cliente" value={contratacao.observacao_cliente} />
           </dl>
           {temEndereco ? (
             <>

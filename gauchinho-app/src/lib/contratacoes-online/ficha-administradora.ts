@@ -66,6 +66,7 @@ export function buildFichaAdministradoraCampos(args: {
   pushCampo(out, "Crédito líquido", money(fin.creditoLiquido as number));
   pushCampo(out, "Lance total", money(fin.lanceTotal as number));
   pushCampo(out, "Forma pagamento", c.forma_pagamento ?? null);
+  pushCampo(out, "Observação do cliente", c.observacao_cliente ?? null);
 
   gruposLinhas.forEach((g, i) => {
     const prefix = gruposLinhas.length > 1 ? `Grupo ${i + 1} — ` : "Grupo — ";

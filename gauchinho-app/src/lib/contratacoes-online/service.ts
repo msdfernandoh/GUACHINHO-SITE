@@ -173,6 +173,7 @@ export type PatchContratacaoPublica = {
   responsavel_nome?: string;
   responsavel_cpf?: string;
   forma_pagamento?: FormaPagamento;
+  observacao_cliente?: string;
 } & EnderecoContratacaoPatch;
 
 export async function atualizarContratacaoPublica(
@@ -239,6 +240,10 @@ export async function atualizarContratacaoPublica(
 
   if (patch.etapa === "documentos") {
     updates.status = "documentos_enviados";
+    if (patch.observacao_cliente !== undefined) {
+      const obs = patch.observacao_cliente.trim();
+      updates.observacao_cliente = obs || null;
+    }
   }
 
   if (patch.etapa === "pagamento") {
@@ -293,6 +298,11 @@ export async function atualizarContratacaoPublica(
   } else if (error) {
     if (isContratacaoEnderecoSchemaError(error.message)) {
       throw new Error(contratacaoEnderecoMigrationHint());
+    }
+    if (/observacao_cliente/i.test(error.message)) {
+      throw new Error(
+        "Campo observação ainda não está no banco. Aplique supabase/migrations/031_contratacoes_observacao_cliente.sql.",
+      );
     }
     throw new Error(error.message);
   } else {

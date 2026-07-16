@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import QRCode from "react-qr-code";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Button, Input, Label } from "@/components/ui/form-primitives";
+import { Button, Input, Label, Textarea } from "@/components/ui/form-primitives";
 import { sectionCardClass, simuladorShell } from "@/components/simulador/simulador-ui";
 import {
   formatCurrency,
@@ -109,6 +109,7 @@ export function ContratacaoWizard({
   const [formaPagamento, setFormaPagamento] = useState<FormaPagamento | null>(null);
   const [docsAviso, setDocsAviso] = useState<string | null>(null);
   const [documentos, setDocumentos] = useState<DocumentoContratacaoPublico[]>([]);
+  const [observacaoCliente, setObservacaoCliente] = useState("");
 
   const fetchDocumentos = useCallback(async () => {
     if (!publicToken) {
@@ -143,7 +144,8 @@ export function ContratacaoWizard({
       cidade: c.cidade ?? "",
       uf: c.uf ?? "",
     });
-    if (c.tipo_pessoa) setTipoPessoa(c.tipo_pessoa);
+      if (c.tipo_pessoa) setTipoPessoa(c.tipo_pessoa);
+    if (c.observacao_cliente) setObservacaoCliente(c.observacao_cliente);
     if (c.status === "aguardando_consultor" || c.status === "finalizado") {
       setStep("success");
     } else if (c.status === "pagamento_escolhido" && c.forma_pagamento === "pix") {
@@ -379,7 +381,10 @@ export function ContratacaoWizard({
     }
     setSubmitting(true);
     try {
-      await patch({ etapa: "documentos" });
+      await patch({
+        etapa: "documentos",
+        observacao_cliente: observacaoCliente,
+      });
       setStep("pagamento");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Erro");
@@ -697,6 +702,17 @@ export function ContratacaoWizard({
                 />
               </>
             )}
+            <div>
+              <WizardLabel>Observação (opcional)</WizardLabel>
+              <Textarea
+                value={observacaoCliente}
+                onChange={(e) => setObservacaoCliente(e.target.value)}
+                rows={3}
+                maxLength={2000}
+                placeholder="Alguma informação adicional para nossa equipe? Ex.: preferência de horário, dúvida sobre o grupo, etc."
+                className="mt-1"
+              />
+            </div>
             <p className="text-xs text-slate-500">
               Seus documentos serão utilizados apenas para análise e formalização da proposta, conforme
               nossa política de privacidade.
