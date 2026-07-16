@@ -1,6 +1,18 @@
+/** Extrai mensagem de Error, PostgrestError ({ message }) ou string. */
+export function dbErrorMessage(error: unknown): string {
+  if (error == null) return "";
+  if (typeof error === "string") return error;
+  if (error instanceof Error) return error.message;
+  if (typeof error === "object" && "message" in error) {
+    const m = (error as { message?: unknown }).message;
+    if (typeof m === "string") return m;
+  }
+  return String(error);
+}
+
 /** Erros comuns quando tabelas de eventos/agenda ainda não existem no Supabase. */
 export function isDbMissingRelationError(error: unknown): boolean {
-  const msg = error instanceof Error ? error.message : String(error);
+  const msg = dbErrorMessage(error);
   return (
     /relation .* does not exist/i.test(msg) ||
     /Could not find the table/i.test(msg) ||
@@ -19,10 +31,11 @@ export const EVENTOS_SORTEIO_MIGRATION_HINT =
   "Para sorteio de brindes (fases/NPS/QR), aplique no Supabase: 022_eventos_sorteios.sql, 026_eventos_sorteio_inscricao_link.sql e 030_eventos_sorteio_fases_qr_unico.sql. Depois rode NOTIFY pgrst, 'reload schema'; no SQL Editor se o erro de schema cache continuar.";
 
 export function isDbMissingColumnError(error: unknown): boolean {
-  const msg = error instanceof Error ? error.message : String(error);
+  const msg = dbErrorMessage(error);
   return (
     /column .* does not exist/i.test(msg) ||
-    /Could not find the .* column/i.test(msg) ||
+    /Could not find the ['"]?[\w.]+['"]? column/i.test(msg) ||
+    /schema cache/i.test(msg) ||
     /42703/.test(msg) ||
     /PGRST204/.test(msg)
   );

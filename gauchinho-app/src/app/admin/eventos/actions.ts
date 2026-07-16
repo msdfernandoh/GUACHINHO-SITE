@@ -10,7 +10,7 @@ import { slugify } from "@/lib/utils/slug";
 import { uploadImagemPublica } from "@/lib/storage/imagens";
 import type { EventoParticipanteRow, EventoPostRow, EventoRow, ParticipanteStatus } from "@/lib/comercial-eventos/types";
 import { somarVagasUsadas, STATUS_OCUPA_VAGA } from "@/lib/comercial-eventos/vagas";
-import { isDbMissingColumnError } from "@/lib/comercial-eventos/db-ready";
+import { dbErrorMessage, isDbMissingColumnError } from "@/lib/comercial-eventos/db-ready";
 
 function boolForm(formData: FormData, name: string): boolean {
   return formData.get(name) === "on";
@@ -114,7 +114,10 @@ export async function uploadEventoImagemAction(formData: FormData) {
 
 async function syncEventoDestaque(admin: ReturnType<typeof createAdminClient>, eventoId: string, destaque: boolean) {
   if (!destaque) return;
-  await admin.from("eventos").update({ evento_destaque: false }).neq("id", eventoId);
+  const { error } = await admin.from("eventos").update({ evento_destaque: false }).neq("id", eventoId);
+  if (error && !isDbMissingColumnError(error)) {
+    throw new Error(dbErrorMessage(error));
+  }
 }
 
 async function syncEventoLeadsUsuarios(
@@ -123,17 +126,37 @@ async function syncEventoLeadsUsuarios(
   leadsAcessoTodos: boolean,
   usuarioIds: string[],
 ) {
-  try {
-    await admin.from("eventos").update({ leads_acesso_todos: leadsAcessoTodos }).eq("id", eventoId);
-    await admin.from("eventos_leads_usuarios").delete().eq("evento_id", eventoId);
-    if (!leadsAcessoTodos && usuarioIds.length) {
-      await admin.from("eventos_leads_usuarios").insert(
-        usuarioIds.map((usuario_id) => ({ evento_id: eventoId, usuario_id })),
-      );
+  const { error: updErr } = await admin
+    .from("eventos")
+    .update({ leads_acesso_todos: leadsAcessoTodos })
+    .eq("id", eventoId);
+  if (updErr) {
+    // Migration 027 ainda não aplicada — nome/slug e demais campos já podem ter sido salvos
+    if (
+      isDbMissingColumnError(updErr) ||
+      /leads_acesso_todos|schema cache/i.test(dbErrorMessage(updErr))
+    ) {
+      return;
     }
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : String(e);
-    if (!/eventos_leads_usuarios|leads_acesso_todos/.test(msg)) throw e;
+    throw new Error(dbErrorMessage(updErr));
+  }
+
+  const { error: delErr } = await admin.from("eventos_leads_usuarios").delete().eq("evento_id", eventoId);
+  if (delErr) {
+    if (
+      /eventos_leads_usuarios|does not exist|schema cache/i.test(dbErrorMessage(delErr))
+    ) {
+      return;
+    }
+    throw new Error(dbErrorMessage(delErr));
+  }
+  if (!leadsAcessoTodos && usuarioIds.length) {
+    const { error: insErr } = await admin.from("eventos_leads_usuarios").insert(
+      usuarioIds.map((usuario_id) => ({ evento_id: eventoId, usuario_id })),
+    );
+    if (insErr && !/eventos_leads_usuarios|does not exist|schema cache/i.test(dbErrorMessage(insErr))) {
+      throw new Error(dbErrorMessage(insErr));
+    }
   }
 }
 
@@ -165,47 +188,71 @@ export async function fetchEventoLeadsUsuariosIds(eventoId: string): Promise<str
 
 type EventoPayload = ReturnType<typeof eventoFromForm>;
 
+const EVENTO_OPTIONAL_COLUMNS = [
+  "inscricao_tipo",
+  "inscricao_url_externa",
+  "leads_acesso_todos",
+  "evento_destaque",
+  "endereco",
+] as const;
+
 async function persistEventoInsert(admin: ReturnType<typeof createAdminClient>, payload: EventoPayload) {
-  let { data, error } = await admin.from("eventos").insert(payload).select("id").single();
-  if (error && isDbMissingColumnError(error)) {
-    const { inscricao_tipo: _t, inscricao_url_externa: _u, ...rest } = payload;
-    ({ data, error } = await admin.from("eventos").insert(rest).select("id").single());
+  let row: Record<string, unknown> = { ...payload };
+  for (let attempt = 0; attempt < 8; attempt++) {
+    const { data, error } = await admin.from("eventos").insert(row).select("id").single();
+    if (!error && data) return data;
+    if (!error) throw new Error("Falha ao criar evento.");
+    if (!isDbMissingColumnError(error)) throw new Error(dbErrorMessage(error));
+    const msg = dbErrorMessage(error);
+    const stripped = { ...row };
+    let removed = false;
+    for (const key of Object.keys(stripped)) {
+      if (msg.includes(key)) {
+        delete stripped[key];
+        removed = true;
+      }
+    }
+    if (!removed) {
+      for (const key of EVENTO_OPTIONAL_COLUMNS) {
+        if (key in stripped) {
+          delete stripped[key];
+          removed = true;
+          break;
+        }
+      }
+    }
+    if (!removed) throw new Error(msg);
+    row = stripped;
   }
-  if (error) throw new Error(error.message);
-  return data!;
+  throw new Error("Não foi possível criar o evento (colunas incompatíveis com o banco).");
 }
 
 async function persistEventoUpdate(admin: ReturnType<typeof createAdminClient>, id: string, payload: EventoPayload) {
   let row: Record<string, unknown> = { ...payload };
-  for (let attempt = 0; attempt < 6; attempt++) {
+  for (let attempt = 0; attempt < 8; attempt++) {
     const { error } = await admin.from("eventos").update(row).eq("id", id);
     if (!error) return;
-    if (!isDbMissingColumnError(error)) throw new Error(error.message);
-    const msg = error.message;
+    if (!isDbMissingColumnError(error)) throw new Error(dbErrorMessage(error));
+    const msg = dbErrorMessage(error);
     const stripped = { ...row };
     let removed = false;
     for (const key of Object.keys(stripped)) {
-      if (new RegExp(`['"]${key}['"]|\\b${key}\\b`, "i").test(msg)) {
+      if (msg.includes(key) || new RegExp(`['"]${key}['"]`, "i").test(msg)) {
         delete stripped[key];
         removed = true;
       }
     }
     // Fallback: remove optional columns that often lag behind migrations
     if (!removed) {
-      for (const key of [
-        "inscricao_tipo",
-        "inscricao_url_externa",
-        "leads_acesso_todos",
-        "evento_destaque",
-        "endereco",
-      ]) {
+      for (const key of EVENTO_OPTIONAL_COLUMNS) {
         if (key in stripped) {
           delete stripped[key];
           removed = true;
+          break; // remove one per attempt so we learn which column failed
         }
       }
     }
-    if (!removed) throw new Error(error.message);
+    if (!removed) throw new Error(msg);
     row = stripped;
   }
   throw new Error("Não foi possível salvar o evento (colunas incompatíveis com o banco).");
