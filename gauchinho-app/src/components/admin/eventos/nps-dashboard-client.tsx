@@ -158,7 +158,7 @@ export function NpsDashboardClient({ eventos, selectedEventoId, data }: Props) {
                   {data.respostas.map((r) => (
                     <tr key={r.participanteId} className="border-b dark:border-zinc-800">
                       <td className="px-3 py-2 whitespace-nowrap">
-                        {r.npsCompletoEm ? formatDateTime(r.npsCompletoEm) : "—"}
+                        {r.npsCompletoEm ? formatDateTime(r.npsCompletoEm, null) : "—"}
                       </td>
                       <td className="px-3 py-2">{r.nome}</td>
                       <td className="px-3 py-2">{formatWhatsappBrInput(r.telefone)}</td>
@@ -201,7 +201,7 @@ export function NpsDashboardClient({ eventos, selectedEventoId, data }: Props) {
                 <tbody>
                   {data.indicacoes.map((i) => (
                     <tr key={i.id} className="border-b dark:border-zinc-800">
-                      <td className="px-3 py-2 whitespace-nowrap">{formatDateTime(i.createdAt)}</td>
+                      <td className="px-3 py-2 whitespace-nowrap">{formatDateTime(i.createdAt, null)}</td>
                       <td className="px-3 py-2">{i.nome}</td>
                       <td className="px-3 py-2 capitalize">{i.tipo}</td>
                       <td className="px-3 py-2">{formatWhatsappBrInput(i.telefone)}</td>
