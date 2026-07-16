@@ -315,6 +315,159 @@ export async function atualizarContratacaoPublica(
   return rowUpdated;
 }
 
+export type PatchDadosClienteAdmin = {
+  nome: string;
+  telefone: string;
+  email?: string | null;
+  tipo_pessoa?: TipoPessoa | null;
+  cpf?: string | null;
+  data_nascimento?: string | null;
+  razao_social?: string | null;
+  cnpj?: string | null;
+  responsavel_nome?: string | null;
+  responsavel_cpf?: string | null;
+  observacao_cliente?: string | null;
+} & EnderecoContratacaoPatch;
+
+/** Atualiza dados pessoais do cliente pelo painel admin (não depende do status público). */
+export async function atualizarDadosClienteAdmin(
+  contratacaoId: string,
+  patch: PatchDadosClienteAdmin,
+): Promise<ContratacaoOnlineRow> {
+  const admin = createAdminClient();
+  const { data: existing, error: findErr } = await admin
+    .from("contratacoes_online")
+    .select("*")
+    .eq("id", contratacaoId)
+    .maybeSingle();
+  if (findErr) throw new Error(findErr.message);
+  if (!existing) throw new Error("Contratação não encontrada");
+
+  const row = hydrateContratacaoEndereco(existing as ContratacaoOnlineRow);
+  const nome = patch.nome?.trim() ?? "";
+  const telefone = patch.telefone ? sanitizeTelefone(patch.telefone) : "";
+  const emailRaw = patch.email?.trim() ?? "";
+  if (!nome) throw new Error("Nome é obrigatório");
+  if (telefone.length < 10) throw new Error("Telefone/WhatsApp inválido");
+  if (emailRaw && !validarEmail(emailRaw)) throw new Error("E-mail inválido");
+
+  const updates: Record<string, unknown> = {
+    nome,
+    telefone,
+    email: emailRaw || null,
+  };
+
+  const tipo = patch.tipo_pessoa ?? row.tipo_pessoa;
+  if (tipo === "cpf") {
+    const cpf = sanitizeCpf(patch.cpf ?? row.cpf ?? "");
+    if (!validarCpf(cpf)) throw new Error("CPF inválido");
+    updates.tipo_pessoa = "cpf";
+    updates.cpf = cpf;
+    updates.data_nascimento = patch.data_nascimento?.trim() || null;
+    updates.razao_social = null;
+    updates.cnpj = null;
+    updates.responsavel_nome = null;
+    updates.responsavel_cpf = null;
+  } else if (tipo === "cnpj") {
+    const cnpj = sanitizeCnpj(patch.cnpj ?? row.cnpj ?? "");
+    if (!validarCnpj(cnpj)) throw new Error("CNPJ inválido");
+    const respCpf = sanitizeCpf(patch.responsavel_cpf ?? row.responsavel_cpf ?? "");
+    if (!validarCpf(respCpf)) throw new Error("CPF do responsável inválido");
+    const razao = (patch.razao_social ?? row.razao_social ?? "").trim();
+    const respNome = (patch.responsavel_nome ?? row.responsavel_nome ?? "").trim();
+    if (!razao || !respNome) throw new Error("Razão social e responsável são obrigatórios");
+    updates.tipo_pessoa = "cnpj";
+    updates.cnpj = cnpj;
+    updates.razao_social = razao;
+    updates.responsavel_nome = respNome;
+    updates.responsavel_cpf = respCpf;
+    updates.cpf = null;
+    updates.data_nascimento = null;
+  }
+
+  if (patch.observacao_cliente !== undefined) {
+    const obs = patch.observacao_cliente?.trim() ?? "";
+    updates.observacao_cliente = obs || null;
+  }
+
+  const temAlgumEndereco = Boolean(
+    patch.cep?.trim() ||
+      patch.endereco?.trim() ||
+      patch.numero?.trim() ||
+      patch.bairro?.trim() ||
+      patch.cidade?.trim() ||
+      patch.uf?.trim(),
+  );
+
+  let enderecoCampos: EnderecoContratacaoCampos | null = null;
+  if (temAlgumEndereco) {
+    enderecoCampos = parseEnderecoContratacao(patch);
+    Object.assign(updates, enderecoToDbUpdates(enderecoCampos));
+  } else if (
+    patch.cep !== undefined ||
+    patch.endereco !== undefined ||
+    patch.numero !== undefined
+  ) {
+    // Limpar endereço quando o admin enviar campos vazios explicitamente
+    Object.assign(updates, {
+      cep: null,
+      endereco: null,
+      numero: null,
+      complemento: null,
+      bairro: null,
+      cidade: null,
+      uf: null,
+    });
+  }
+
+  let rowUpdated: ContratacaoOnlineRow;
+  const { data, error } = await admin
+    .from("contratacoes_online")
+    .update(updates)
+    .eq("id", contratacaoId)
+    .select("*")
+    .single();
+
+  if (error && enderecoCampos && isContratacaoEnderecoSchemaError(error.message)) {
+    const dadosPrev = (row.dados_simulacao ?? {}) as Record<string, unknown>;
+    const fallbackUpdates = stripEnderecoDbUpdates(updates);
+    fallbackUpdates.dados_simulacao = {
+      ...dadosPrev,
+      endereco: enderecoJsonFromCampos(enderecoCampos),
+    };
+    const retry = await admin
+      .from("contratacoes_online")
+      .update(fallbackUpdates)
+      .eq("id", contratacaoId)
+      .select("*")
+      .single();
+    if (retry.error) throw new Error(retry.error.message);
+    rowUpdated = hydrateContratacaoEndereco(retry.data as ContratacaoOnlineRow);
+  } else if (error) {
+    if (/observacao_cliente/i.test(error.message)) {
+      throw new Error(
+        "Campo observação ainda não está no banco. Aplique supabase/migrations/031_contratacoes_observacao_cliente.sql.",
+      );
+    }
+    if (isContratacaoEnderecoSchemaError(error.message)) {
+      throw new Error(contratacaoEnderecoMigrationHint());
+    }
+    throw new Error(error.message);
+  } else {
+    rowUpdated = hydrateContratacaoEndereco(data as ContratacaoOnlineRow);
+  }
+
+  await upsertLeadContratacao(rowUpdated, {
+    nome,
+    telefone,
+    email: emailRaw || "",
+  });
+  if (enderecoCampos) {
+    await syncLeadEnderecoContratacao(rowUpdated, enderecoCampos);
+  }
+  return rowUpdated;
+}
+
 async function upsertLeadContratacao(
   row: ContratacaoOnlineRow,
   cliente: { nome: string; telefone: string; email: string },

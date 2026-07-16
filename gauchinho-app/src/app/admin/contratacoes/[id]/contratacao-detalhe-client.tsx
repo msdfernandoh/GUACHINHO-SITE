@@ -18,6 +18,7 @@ import {
   adminSectionTitleClass,
 } from "@/components/admin/admin-contrast";
 import { ContratacaoCopyPanel } from "@/components/admin/contratacao-copy-panel";
+import { ContratacaoClienteEditForm } from "./contratacao-cliente-edit-form";
 
 function Field({ label, value }: { label: string; value: string | null | undefined }) {
   return (
@@ -53,6 +54,7 @@ export function ContratacaoDetalheClient({
 }) {
   const [copied, setCopied] = useState(false);
   const [jsonCopied, setJsonCopied] = useState(false);
+  const [editandoCliente, setEditandoCliente] = useState(false);
   const waMsg = buildWhatsappPropostaMessage(publicUrl);
   const waCliente = buildWhatsappLink(contratacao.telefone ?? "", waMsg);
   const fin = resumoFinanceiro;
@@ -122,39 +124,60 @@ export function ContratacaoDetalheClient({
 
       <section className="grid gap-4 lg:grid-cols-2">
         <div className={adminSectionClass}>
-          <h2 className={adminSectionTitleClass}>Cliente</h2>
-          <dl className="space-y-3">
-            <Field label="Nome" value={contratacao.nome} />
-            <Field label="Telefone" value={telFmt} />
-            <Field label="E-mail" value={contratacao.email} />
-            <Field label="Tipo pessoa" value={contratacao.tipo_pessoa?.toUpperCase()} />
-            {contratacao.tipo_pessoa === "cpf" ? (
-              <Field label="CPF" value={cpfFmt} />
-            ) : (
-              <>
-                <Field label="Razão social" value={contratacao.razao_social} />
-                <Field label="CNPJ" value={cnpjFmt} />
-                <Field label="Responsável" value={contratacao.responsavel_nome} />
-                <Field label="CPF responsável" value={respCpfFmt} />
-              </>
-            )}
-            <Field label="Observação do cliente" value={contratacao.observacao_cliente} />
-          </dl>
-          {temEndereco ? (
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <h2 className={adminSectionTitleClass}>Cliente</h2>
+            {!editandoCliente ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setEditandoCliente(true)}
+              >
+                Editar dados
+              </Button>
+            ) : null}
+          </div>
+          {editandoCliente ? (
+            <ContratacaoClienteEditForm
+              contratacao={contratacao}
+              onCancel={() => setEditandoCliente(false)}
+            />
+          ) : (
             <>
-              <h3 className="mb-3 mt-6 text-xs font-semibold uppercase tracking-wide text-zinc-500">
-                Endereço
-              </h3>
               <dl className="space-y-3">
-                <Field label="CEP" value={cepFmt} />
-                <Field label="Endereço" value={enderecoLinha} />
-                <Field label="Número" value={contratacao.numero} />
-                <Field label="Complemento" value={contratacao.complemento} />
-                <Field label="Bairro" value={contratacao.bairro} />
-                <Field label="Cidade/UF" value={cidadeUf || null} />
+                <Field label="Nome" value={contratacao.nome} />
+                <Field label="Telefone" value={telFmt} />
+                <Field label="E-mail" value={contratacao.email} />
+                <Field label="Tipo pessoa" value={contratacao.tipo_pessoa?.toUpperCase()} />
+                {contratacao.tipo_pessoa === "cpf" ? (
+                  <Field label="CPF" value={cpfFmt} />
+                ) : (
+                  <>
+                    <Field label="Razão social" value={contratacao.razao_social} />
+                    <Field label="CNPJ" value={cnpjFmt} />
+                    <Field label="Responsável" value={contratacao.responsavel_nome} />
+                    <Field label="CPF responsável" value={respCpfFmt} />
+                  </>
+                )}
+                <Field label="Observação do cliente" value={contratacao.observacao_cliente} />
               </dl>
+              {temEndereco ? (
+                <>
+                  <h3 className="mb-3 mt-6 text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                    Endereço
+                  </h3>
+                  <dl className="space-y-3">
+                    <Field label="CEP" value={cepFmt} />
+                    <Field label="Endereço" value={enderecoLinha} />
+                    <Field label="Número" value={contratacao.numero} />
+                    <Field label="Complemento" value={contratacao.complemento} />
+                    <Field label="Bairro" value={contratacao.bairro} />
+                    <Field label="Cidade/UF" value={cidadeUf || null} />
+                  </dl>
+                </>
+              ) : null}
             </>
-          ) : null}
+          )}
         </div>
         <div className={adminSectionClass}>
           <h2 className={adminSectionTitleClass}>Proposta</h2>

@@ -208,3 +208,43 @@ export async function updateContratacaoStatusAction(id: string, status: string) 
   revalidatePath(`/admin/contratacoes/${id}`);
   revalidatePath("/admin/contratacoes");
 }
+
+export type UpdateContratacaoClienteInput = {
+  nome: string;
+  telefone: string;
+  email?: string;
+  tipo_pessoa: "cpf" | "cnpj";
+  cpf?: string;
+  data_nascimento?: string;
+  razao_social?: string;
+  cnpj?: string;
+  responsavel_nome?: string;
+  responsavel_cpf?: string;
+  observacao_cliente?: string;
+  cep?: string;
+  endereco?: string;
+  numero?: string;
+  complemento?: string;
+  bairro?: string;
+  cidade?: string;
+  uf?: string;
+};
+
+export async function updateContratacaoClienteAction(
+  id: string,
+  input: UpdateContratacaoClienteInput,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  try {
+    await requireStaffAdmin();
+    const { atualizarDadosClienteAdmin } = await import("@/lib/contratacoes-online/service");
+    await atualizarDadosClienteAdmin(id, input);
+    revalidatePath(`/admin/contratacoes/${id}`);
+    revalidatePath("/admin/contratacoes");
+    if (input.telefone || input.nome) {
+      revalidatePath("/admin/leads");
+    }
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Falha ao salvar dados do cliente." };
+  }
+}
