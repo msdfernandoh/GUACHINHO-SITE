@@ -200,6 +200,33 @@ export async function getContratacaoDocumentoSignedUrlAction(
   }
 }
 
+export async function uploadContratacaoDocumentoAdminAction(
+  formData: FormData,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  try {
+    const usuario = await requireStaffAdmin();
+    assertAcessoDocumentosContratacao(usuario);
+    const contratacaoId = String(formData.get("contratacao_id") ?? "").trim();
+    const tipo = String(formData.get("tipo_documento") ?? "").trim();
+    const file = formData.get("arquivo");
+    if (!contratacaoId) return { ok: false, error: "Contratação inválida." };
+    if (!(file instanceof File)) return { ok: false, error: "Selecione um arquivo." };
+
+    const { uploadDocumentoContratacaoAdmin } = await import(
+      "@/lib/contratacoes-online/documentos-admin"
+    );
+    await uploadDocumentoContratacaoAdmin(contratacaoId, tipo, file);
+    revalidatePath(`/admin/contratacoes/${contratacaoId}`);
+    revalidatePath("/admin/contratacoes");
+    return { ok: true };
+  } catch (e) {
+    return {
+      ok: false,
+      error: e instanceof Error ? e.message : MSG_SEM_PERMISSAO_DOCUMENTOS_CONTRATACAO,
+    };
+  }
+}
+
 export async function updateContratacaoStatusAction(id: string, status: string) {
   await requireStaffAdmin();
   const supabase = await createClient();
