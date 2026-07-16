@@ -146,6 +146,9 @@ export function ContratacaoWizard({
     });
     if (c.tipo_pessoa) setTipoPessoa(c.tipo_pessoa);
     if (c.observacao_cliente) setObservacaoCliente(c.observacao_cliente);
+  }, []);
+
+  const syncStepFromStatus = useCallback((c: ContratacaoOnlineRow) => {
     if (c.status === "aguardando_consultor" || c.status === "finalizado") {
       setStep("success");
     } else if (c.status === "pagamento_escolhido" && c.forma_pagamento === "pix") {
@@ -155,8 +158,16 @@ export function ContratacaoWizard({
       setStep("boleto");
     } else if (c.status === "pagamento_escolhido" && c.forma_pagamento === "cartao") {
       setStep("cartao");
+    } else if (c.status === "documentos_enviados") {
+      setStep("pagamento");
     } else if (c.status === "dados_preenchidos") {
-      setStep("pessoa");
+      // Pessoa salva não muda o status; se já tem CPF/CNPJ, retoma em Documentos
+      const pessoaOk =
+        (c.tipo_pessoa === "cpf" && Boolean(c.cpf)) ||
+        (c.tipo_pessoa === "cnpj" && Boolean(c.cnpj));
+      setStep(pessoaOk ? "docs" : "pessoa");
+    } else if (c.status === "proposta_confirmada") {
+      setStep("dados");
     }
   }, []);
 
@@ -184,7 +195,7 @@ export function ContratacaoWizard({
     }
   }, []);
 
-  const load = useCallback(async (opts?: { silent?: boolean }) => {
+  const load = useCallback(async (opts?: { silent?: boolean; syncStep?: boolean }) => {
     if (!publicToken) return;
     if (!opts?.silent) setLoading(true);
     setError(null);
@@ -199,13 +210,18 @@ export function ContratacaoWizard({
       if (!res.ok) throw new Error(String(json.error ?? "Erro ao carregar"));
       setData(json as ApiPayload);
       void fetchDocumentos();
-      hydrateFromContratacao(json.contratacao as ContratacaoOnlineRow);
+      const contratacao = json.contratacao as ContratacaoOnlineRow;
+      hydrateFromContratacao(contratacao);
+      // Em reload silencioso (ex.: após upload) não remapeia a etapa — evita voltar docs → pessoa
+      if (opts?.syncStep !== false && !opts?.silent) {
+        syncStepFromStatus(contratacao);
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Erro");
     } finally {
       if (!opts?.silent) setLoading(false);
     }
-  }, [publicToken, fetchDocumentos, hydrateFromContratacao]);
+  }, [publicToken, fetchDocumentos, hydrateFromContratacao, syncStepFromStatus]);
 
   useEffect(() => {
     if (isDraft) void loadDraft();
@@ -228,13 +244,16 @@ export function ContratacaoWizard({
   const fin = data?.resumoFinanceiro ?? {};
   const gruposLinhas = data?.gruposLinhas ?? [];
 
-  const docPorTipo = useMemo(() => {
-    const map = new Map<string, DocumentoContratacaoPublico>();
+  const docsPorTipo = useMemo(() => {
+    const map = new Map<string, DocumentoContratacaoPublico[]>();
     for (const d of documentos) {
-      const prev = map.get(d.tipo_documento);
-      if (!prev || new Date(d.created_at) > new Date(prev.created_at)) {
-        map.set(d.tipo_documento, d);
-      }
+      const list = map.get(d.tipo_documento) ?? [];
+      list.push(d);
+      map.set(d.tipo_documento, list);
+    }
+    for (const [tipo, list] of map) {
+      list.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+      map.set(tipo, list);
     }
     return map;
   }, [documentos]);
@@ -366,7 +385,8 @@ export function ContratacaoWizard({
     });
     const json = await res.json();
     if (!res.ok) throw new Error(json.error ?? "Falha no upload");
-    await Promise.all([load({ silent: true }), fetchDocumentos()]);
+    // Só atualiza a lista — não recarrega a contratação (evita voltar à fase CPF/CNPJ)
+    await fetchDocumentos();
   }
 
   async function continuarDocs() {
@@ -451,7 +471,7 @@ export function ContratacaoWizard({
   const pixChave = c?.pix_chave || data?.pixConfig?.chave || "";
   const comprovanteObrigatorio = data?.pixConfig?.comprovanteObrigatorio ?? false;
   const comprovantePixEnviado =
-    Boolean(c?.pix_comprovante_enviado) || docPorTipo.has("comprovante_pix");
+    Boolean(c?.pix_comprovante_enviado) || (docsPorTipo.get("comprovante_pix")?.length ?? 0) > 0;
 
   if (error && !c) {
     return (
@@ -654,21 +674,23 @@ export function ContratacaoWizard({
               <>
                 <ContratacaoDocUploadField
                   label="CNH ou RG"
+                  hint="Pode enviar frente e verso (mais de um arquivo)."
                   tipo="documento_foto"
                   obrigatorio
-                  enviado={docPorTipo.get("documento_foto") ?? null}
+                  enviados={docsPorTipo.get("documento_foto") ?? []}
                   onUpload={uploadDoc}
                 />
                 <ContratacaoDocUploadField
                   label="CPF (se separado)"
+                  hint="Pode anexar mais de um arquivo se precisar."
                   tipo="cpf"
-                  enviado={docPorTipo.get("cpf") ?? null}
+                  enviados={docsPorTipo.get("cpf") ?? []}
                   onUpload={uploadDoc}
                 />
                 <ContratacaoDocUploadField
                   label="Comprovante de endereço (opcional)"
                   tipo="comprovante_endereco"
-                  enviado={docPorTipo.get("comprovante_endereco") ?? null}
+                  enviados={docsPorTipo.get("comprovante_endereco") ?? []}
                   onUpload={uploadDoc}
                 />
               </>
@@ -678,26 +700,27 @@ export function ContratacaoWizard({
                   label="Cartão CNPJ"
                   tipo="cartao_cnpj"
                   obrigatorio
-                  enviado={docPorTipo.get("cartao_cnpj") ?? null}
+                  enviados={docsPorTipo.get("cartao_cnpj") ?? []}
                   onUpload={uploadDoc}
                 />
                 <ContratacaoDocUploadField
                   label="Documento do responsável — CNH ou RG"
+                  hint="Pode enviar frente e verso (mais de um arquivo)."
                   tipo="documento_responsavel"
                   obrigatorio
-                  enviado={docPorTipo.get("documento_responsavel") ?? null}
+                  enviados={docsPorTipo.get("documento_responsavel") ?? []}
                   onUpload={uploadDoc}
                 />
                 <ContratacaoDocUploadField
                   label="CPF do responsável (se separado)"
                   tipo="cpf_responsavel"
-                  enviado={docPorTipo.get("cpf_responsavel") ?? null}
+                  enviados={docsPorTipo.get("cpf_responsavel") ?? []}
                   onUpload={uploadDoc}
                 />
                 <ContratacaoDocUploadField
                   label="Comprovante de endereço da empresa (opcional)"
                   tipo="comprovante_endereco"
-                  enviado={docPorTipo.get("comprovante_endereco") ?? null}
+                  enviados={docsPorTipo.get("comprovante_endereco") ?? []}
                   onUpload={uploadDoc}
                 />
               </>
@@ -773,7 +796,7 @@ export function ContratacaoWizard({
             <ContratacaoDocUploadField
               label="Comprovante Pix"
               tipo="comprovante_pix"
-              enviado={docPorTipo.get("comprovante_pix") ?? null}
+              enviados={docsPorTipo.get("comprovante_pix") ?? []}
               onUpload={uploadDoc}
             />
             <Button type="button" variant="gold" className="w-full" disabled={submitting} onClick={finalizar}>
