@@ -144,7 +144,7 @@ export function ContratacaoWizard({
       cidade: c.cidade ?? "",
       uf: c.uf ?? "",
     });
-      if (c.tipo_pessoa) setTipoPessoa(c.tipo_pessoa);
+    if (c.tipo_pessoa) setTipoPessoa(c.tipo_pessoa);
     if (c.observacao_cliente) setObservacaoCliente(c.observacao_cliente);
     if (c.status === "aguardando_consultor" || c.status === "finalizado") {
       setStep("success");
