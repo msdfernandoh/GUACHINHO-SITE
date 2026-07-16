@@ -19,6 +19,12 @@ import {
   type SorteioParticipanteRow,
 } from "@/lib/eventos-sorteio/types";
 import { escolherParticipanteAleatorio, codigosParaAnimacao } from "@/lib/eventos-sorteio/sorteio";
+import {
+  NPS_PERGUNTAS_FIXAS,
+  parseNpsConfig,
+  type NpsConfigStored,
+} from "@/lib/eventos-sorteio/nps";
+import type { QrCodeUnicoRow, QrCodeVinculoRow } from "@/lib/eventos-sorteio/qr-unico";
 import { formatWhatsappBrInput, digitsOnlyPhone } from "@/lib/utils/format";
 
 function whatsappHref(telefone: string) {
@@ -34,7 +40,17 @@ type Props = {
   sorteio: EventoSorteioRow | null;
   participantes: SorteioParticipanteRow[];
   migrationHint?: string | null;
+  qrDisponiveis?: QrCodeUnicoRow[];
+  qrVinculo?: (QrCodeVinculoRow & { qr: QrCodeUnicoRow }) | null;
 };
+
+function toDatetimeLocalValue(iso: string | null | undefined): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
 
 export function SorteioAdminClient({
   eventoId,
@@ -44,11 +60,17 @@ export function SorteioAdminClient({
   sorteio,
   participantes,
   migrationHint,
+  qrDisponiveis = [],
+  qrVinculo = null,
 }: Props) {
   const publicUrl = `${publicBaseUrl.replace(/\/$/, "")}/eventos/${eventoSlug}/sorteio`;
+  const npsConfig: NpsConfigStored = parseNpsConfig(sorteio?.nps_config);
+  const desativadas = new Set(npsConfig.desativadas ?? []);
+  const customIds = (npsConfig.custom ?? []).map((c) => c.id).join(",");
   const [filtroTipo, setFiltroTipo] = useState("");
   const [filtroGanhador, setFiltroGanhador] = useState<"" | "sim" | "nao">("");
   const [filtroStatus, setFiltroStatus] = useState<"" | "participando" | "cancelado">("");
+  const [usarQrUnico, setUsarQrUnico] = useState(Boolean(qrVinculo?.ativo));
   const [drawOpen, setDrawOpen] = useState(false);
   const [spinCode, setSpinCode] = useState("");
   const [winner, setWinner] = useState<SorteioParticipanteRow | null>(null);
@@ -176,12 +198,173 @@ export function SorteioAdminClient({
           />
           Permitir múltiplos cadastros com mesmo telefone
         </label>
+
+        <div
+          id="nps-config"
+          className="scroll-mt-24 space-y-3 rounded-xl border-2 border-amber-500/40 bg-amber-500/5 p-4"
+        >
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            <div>
+              <h3 className="text-base font-bold text-amber-800 dark:text-amber-300">
+                Perguntas NPS (fase 2 do formulário)
+              </h3>
+              <p className="mt-1 text-xs text-zinc-600 dark:text-zinc-400">
+                Marque/desmarque as perguntas fixas. Desativadas somem do formulário público. Use o
+                campo abaixo para acrescentar perguntas extras neste evento.
+              </p>
+            </div>
+            <Link
+              href={`/admin/eventos/nps?evento_id=${eventoId}`}
+              className="text-sm font-medium text-amber-700 hover:underline dark:text-amber-400"
+            >
+              Ver dashboard NPS →
+            </Link>
+          </div>
+          <div className="space-y-2 rounded-lg border bg-white/80 p-3 dark:border-zinc-700 dark:bg-zinc-950/60">
+            <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
+              Perguntas fixas (ligar / desligar)
+            </p>
+            {NPS_PERGUNTAS_FIXAS.map((p) => (
+              <label key={p.chave} className="flex items-start gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  name={`nps_fixa_${p.chave}`}
+                  defaultChecked={!desativadas.has(p.chave)}
+                  className="mt-0.5"
+                />
+                <span>
+                  {p.titulo}
+                  <span className="ml-1 text-xs text-zinc-500">
+                    ({p.tipo === "escala_0_10" ? "0–10" : p.tipo === "sim_nao" ? "Sim/Não" : "Texto"}
+                    {p.obrigatoria ? " · obrigatória" : " · opcional"})
+                  </span>
+                </span>
+              </label>
+            ))}
+          </div>
+          <input type="hidden" name="nps_custom_ids" value={customIds} />
+          {(npsConfig.custom ?? []).length > 0 ? (
+            <div className="space-y-3 rounded-lg border bg-white/80 p-3 dark:border-zinc-700 dark:bg-zinc-950/60">
+              <p className="text-sm font-medium">Perguntas acrescentadas neste evento</p>
+              {(npsConfig.custom ?? []).map((c) => (
+                <div key={c.id} className="grid gap-2 sm:grid-cols-3">
+                  <div className="sm:col-span-2">
+                    <Label>Texto</Label>
+                    <Input name={`nps_custom_titulo_${c.id}`} defaultValue={c.titulo} />
+                  </div>
+                  <div>
+                    <Label>Tipo</Label>
+                    <select
+                      name={`nps_custom_tipo_${c.id}`}
+                      defaultValue={c.tipo}
+                      className="mt-1 w-full rounded-lg border px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-950"
+                    >
+                      <option value="escala_0_10">0 a 10</option>
+                      <option value="sim_nao">Sim / Não</option>
+                      <option value="texto">Texto</option>
+                    </select>
+                  </div>
+                  <label className="flex items-center gap-2 text-sm sm:col-span-3">
+                    <input type="checkbox" name={`nps_custom_ativa_${c.id}`} defaultChecked={c.ativa} />
+                    Ativa neste evento
+                  </label>
+                </div>
+              ))}
+            </div>
+          ) : null}
+          <div className="grid gap-2 rounded-lg border-2 border-dashed border-amber-500/40 bg-white/60 p-3 dark:bg-zinc-950/40 sm:grid-cols-3">
+            <div className="sm:col-span-2">
+              <Label>Acrescentar nova pergunta</Label>
+              <Input name="nps_custom_nova_titulo" placeholder="Ex.: Organização do evento" />
+              <p className="mt-1 text-xs text-zinc-500">
+                Preencha e clique em &quot;Salvar sorteio&quot; para incluir.
+              </p>
+            </div>
+            <div>
+              <Label>Tipo</Label>
+              <select
+                name="nps_custom_nova_tipo"
+                defaultValue="escala_0_10"
+                className="mt-1 w-full rounded-lg border px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-950"
+              >
+                <option value="escala_0_10">0 a 10</option>
+                <option value="sim_nao">Sim / Não</option>
+                <option value="texto">Texto</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div className="space-y-3 border-t pt-4 dark:border-zinc-800">
+          <h3 className="font-semibold">QR Code único</h3>
+          <p className="text-xs text-zinc-500">
+            Cadastre QRs em{" "}
+            <Link href="/admin/configuracoes/qr-codes" className="text-amber-600 hover:underline">
+              Configurações → QR Codes únicos
+            </Link>
+            . Enquanto ativo neste evento, não fica disponível para outro.
+          </p>
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              name="usar_qr_unico"
+              checked={usarQrUnico}
+              onChange={(e) => setUsarQrUnico(e.target.checked)}
+            />
+            Usar QR Code único neste evento
+          </label>
+          {usarQrUnico ? (
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="sm:col-span-2">
+                <Label>QR Code</Label>
+                <select
+                  name="qr_code_unico_id"
+                  defaultValue={qrVinculo?.qr_code_id ?? ""}
+                  required={usarQrUnico}
+                  className="mt-1 w-full rounded-lg border px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-950"
+                >
+                  <option value="">Selecione…</option>
+                  {qrDisponiveis.map((q) => (
+                    <option key={q.id} value={q.id}>
+                      {q.nome} (/qr/{q.slug})
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <Label>Início do período</Label>
+                <Input
+                  name="qr_periodo_inicio"
+                  type="datetime-local"
+                  defaultValue={toDatetimeLocalValue(qrVinculo?.periodo_inicio)}
+                  required={usarQrUnico}
+                />
+              </div>
+              <div>
+                <Label>Fim do período</Label>
+                <Input
+                  name="qr_periodo_fim"
+                  type="datetime-local"
+                  defaultValue={toDatetimeLocalValue(qrVinculo?.periodo_fim)}
+                  required={usarQrUnico}
+                />
+              </div>
+            </div>
+          ) : null}
+        </div>
+
         <AdminFormSubmitButton label="Salvar sorteio" pendingLabel="Salvando…" />
       </form>
 
       {sorteio?.ativo ? (
         <>
           <SorteioQrPanel url={publicUrl} eventoNome={eventoNome} />
+          {qrVinculo?.qr ? (
+            <SorteioQrPanel
+              url={`${publicBaseUrl.replace(/\/$/, "")}/qr/${qrVinculo.qr.slug}`}
+              eventoNome={`QR único: ${qrVinculo.qr.nome}`}
+            />
+          ) : null}
 
           <div className="flex flex-wrap gap-2">
             <Button type="button" onClick={runDraw} disabled={!sorteio || pending}>
@@ -241,6 +424,7 @@ export function SorteioAdminClient({
                     <th className="px-3 py-2">Código</th>
                     <th className="px-3 py-2">Nome</th>
                     <th className="px-3 py-2">Telefone</th>
+                    <th className="px-3 py-2">Origem</th>
                     <th className="px-3 py-2">Sonho</th>
                     <th className="px-3 py-2">Valor/mês</th>
                     <th className="px-3 py-2">Status</th>
@@ -254,6 +438,9 @@ export function SorteioAdminClient({
                       <td className="px-3 py-2 font-mono">{p.codigo}</td>
                       <td className="px-3 py-2">{p.nome}</td>
                       <td className="px-3 py-2">{p.telefone}</td>
+                      <td className="px-3 py-2 text-xs">
+                        {(p.origem_cupom ?? "cadastro") === "indicacao" ? "Indicação" : "Cadastro"}
+                      </td>
                       <td className="px-3 py-2">{p.tipo_sonho}</td>
                       <td className="px-3 py-2">
                         {p.valor_mensal_disponivel != null ? formatBRL(Number(p.valor_mensal_disponivel)) : "—"}
@@ -304,7 +491,7 @@ export function SorteioAdminClient({
                   ))}
                   {filtered.length === 0 ? (
                     <tr>
-                      <td colSpan={8} className="px-3 py-6 text-center text-zinc-500">
+                      <td colSpan={9} className="px-3 py-6 text-center text-zinc-500">
                         Nenhum participante ainda.
                       </td>
                     </tr>

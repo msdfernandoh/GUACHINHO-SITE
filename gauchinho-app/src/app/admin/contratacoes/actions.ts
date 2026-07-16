@@ -26,9 +26,15 @@ export async function fetchContratacoesList(): Promise<ContratacaoOnlineRow[]> {
     .from("contratacoes_online")
     .select("*")
     .order("created_at", { ascending: false })
-    .limit(200);
+    .limit(300);
   if (error) throw new Error(error.message);
-  return (data ?? []) as ContratacaoOnlineRow[];
+  // Oculta simulações abandonadas na tela inicial (sem nome do cliente)
+  return ((data ?? []) as ContratacaoOnlineRow[]).filter((row) => {
+    if (row.nome?.trim()) return true;
+    // Links gerados por consultor ainda podem aparecer sem nome
+    if (row.status === "link_gerado" || row.gerado_por_usuario_id) return true;
+    return false;
+  });
 }
 
 export async function fetchContratacaoDetalhe(id: string) {

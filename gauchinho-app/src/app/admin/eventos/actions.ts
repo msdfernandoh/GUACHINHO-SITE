@@ -44,13 +44,18 @@ function inscricaoFromForm(formData: FormData) {
   return { inscricao_tipo: tipo as "interno" | "externo", inscricao_url_externa: tipo === "externo" ? url : null };
 }
 
-function eventoFromForm(formData: FormData) {
+function eventoFromForm(formData: FormData, opts?: { preserveSlug?: string | null }) {
   const nome = String(formData.get("nome") ?? "").trim();
   if (!nome) throw new Error("Nome obrigatório");
+  const slugRaw = String(formData.get("slug") ?? "").trim();
+  // Nome e slug são independentes: alterar o nome NÃO muda o link.
+  // Em edição, se o slug vier vazio, preserva o atual.
+  const slug = slugify(slugRaw || opts?.preserveSlug || nome);
+  if (!slug) throw new Error("Slug (link) inválido");
   const inscricao = inscricaoFromForm(formData);
   return {
     nome,
-    slug: slugify(String(formData.get("slug") ?? nome)),
+    slug,
     descricao_curta: String(formData.get("descricao_curta") ?? "").trim() || null,
     descricao: String(formData.get("descricao") ?? "").trim() || null,
     data_evento: String(formData.get("data_evento") ?? "").trim() || null,
@@ -209,6 +214,19 @@ export async function fetchEventosOptionsForFilter() {
   return (data ?? []) as { id: string; nome: string }[];
 }
 
+async function syncQrVinculoFromEventoForm(eventoId: string, formData: FormData) {
+  const { vincularQrAoEvento, desativarVinculoQrEvento } = await import("@/lib/eventos-sorteio/qr-unico");
+  const usar = formData.get("usar_qr_unico") === "on";
+  const qrCodeId = strForm(formData, "qr_code_unico_id");
+  const periodoInicio = strForm(formData, "qr_periodo_inicio");
+  const periodoFim = strForm(formData, "qr_periodo_fim");
+  if (usar && qrCodeId && periodoInicio && periodoFim) {
+    await vincularQrAoEvento({ qrCodeId, eventoId, periodoInicio, periodoFim });
+  } else if (!usar) {
+    await desativarVinculoQrEvento(eventoId);
+  }
+}
+
 export async function createEventoAction(formData: FormData) {
   const u = await requireUsuario();
   if (!canManageImobiliarias(u.perfil)) throw new Error("Sem permissão");
@@ -218,24 +236,40 @@ export async function createEventoAction(formData: FormData) {
   const data = await persistEventoInsert(admin, payload);
   await syncEventoDestaque(admin, data.id, payload.evento_destaque);
   await syncEventoLeadsUsuarios(admin, data.id, payload.leads_acesso_todos, usuarioIds);
+  try {
+    await syncQrVinculoFromEventoForm(data.id, formData);
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    if (!/qr_codes_unicos|does not exist|schema cache/i.test(msg)) throw e;
+  }
   revalidatePath("/admin/eventos");
   revalidatePath("/eventos");
+  revalidatePath("/admin/configuracoes/qr-codes");
   redirect(`/admin/eventos/${data.id}`);
 }
 
 export async function updateEventoAction(id: string, formData: FormData) {
   const u = await requireUsuario();
   if (!canManageImobiliarias(u.perfil)) throw new Error("Sem permissão");
-  const payload = eventoFromForm(formData);
+  const existing = await fetchEventoAdmin(id);
+  const payload = eventoFromForm(formData, { preserveSlug: existing.slug });
   const usuarioIds = formData.getAll("leads_usuario_id").map((v) => String(v).trim()).filter(Boolean);
   const admin = createAdminClient();
   await persistEventoUpdate(admin, id, payload);
   await syncEventoDestaque(admin, id, payload.evento_destaque);
   await syncEventoLeadsUsuarios(admin, id, payload.leads_acesso_todos, usuarioIds);
+  try {
+    await syncQrVinculoFromEventoForm(id, formData);
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    if (!/qr_codes_unicos|does not exist|schema cache/i.test(msg)) throw e;
+  }
   revalidatePath("/admin/eventos");
   revalidatePath(`/admin/eventos/${id}`);
   revalidatePath("/eventos");
   revalidatePath(`/eventos/${payload.slug}`);
+  if (existing.slug !== payload.slug) revalidatePath(`/eventos/${existing.slug}`);
+  revalidatePath("/admin/configuracoes/qr-codes");
   redirect(`/admin/eventos/${id}`);
 }
 

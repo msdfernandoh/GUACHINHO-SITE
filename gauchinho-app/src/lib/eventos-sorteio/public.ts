@@ -4,8 +4,8 @@ import {
   type EventoSorteioRow,
   type HomeSorteioDestaque,
   type PublicSorteioView,
-  type SorteioParticipanteRow,
 } from "./types";
+import { parseNpsConfig, resolverPerguntasNpsPublicas, type NpsPerguntaPublica } from "./nps";
 
 function mapPublicView(
   sorteio: {
@@ -14,8 +14,10 @@ function mapPublicView(
     descricao: string | null;
     texto_agradecimento: string | null;
     status: string;
+    nps_config?: unknown;
   },
   evento: { id: string; nome: string; slug: string; data_evento: string | null },
+  npsPerguntas?: NpsPerguntaPublica[],
 ): PublicSorteioView {
   return {
     sorteioId: sorteio.id,
@@ -28,6 +30,8 @@ function mapPublicView(
     textoAgradecimento:
       sorteio.texto_agradecimento?.trim() || DEFAULTS_SORTEIO.texto_agradecimento,
     status: sorteio.status === "encerrado" ? "encerrado" : "aberto",
+    npsPerguntas:
+      npsPerguntas ?? resolverPerguntasNpsPublicas(parseNpsConfig(sorteio.nps_config)),
   };
 }
 
@@ -53,7 +57,7 @@ export async function fetchPublicSorteioByEventoSlug(slug: string): Promise<Publ
 
   const { data: sorteio, error } = await admin
     .from("eventos_sorteios")
-    .select("id, titulo, descricao, texto_agradecimento, status, ativo")
+    .select("id, titulo, descricao, texto_agradecimento, status, ativo, nps_config")
     .eq("evento_id", evento.id)
     .eq("ativo", true)
     .maybeSingle();

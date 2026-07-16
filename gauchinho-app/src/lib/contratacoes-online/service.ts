@@ -441,6 +441,9 @@ export async function finalizarContratacao(token: string): Promise<ContratacaoOn
   if (!statusPermiteEdicaoPublica(row.status)) {
     throw new Error("Esta solicitação já foi finalizada");
   }
+  if (!row.nome?.trim()) {
+    throw new Error("Informe o nome do cliente antes de finalizar a contratação.");
+  }
   if (!row.forma_pagamento) throw new Error("Selecione a forma de pagamento");
 
   const cfg = await getConfigJsonPublic(

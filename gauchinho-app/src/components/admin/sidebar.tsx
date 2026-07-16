@@ -18,6 +18,7 @@ import {
   Calendar,
   ClipboardList,
   Shield,
+  QrCode,
 } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import type { AdminMenuKey } from "@/lib/admin/admin-menus";
@@ -35,6 +36,7 @@ const NAV: Array<{
   { key: "leads", href: "/admin/leads", label: "Leads", icon: Users },
   { key: "agenda", href: "/admin/agenda", label: "Agenda", icon: CalendarDays },
   { key: "eventos", href: "/admin/eventos", label: "Eventos", icon: Calendar, masterOnly: true },
+  { key: "eventos", href: "/admin/eventos/nps", label: "Dashboard NPS", icon: BarChart2, masterOnly: true },
   { key: "listas_convidados", href: "/admin/eventos/listas-convidados", label: "Listas convidados", icon: ClipboardList },
   { key: "relatorios", href: "/admin/relatorios", label: "Relatórios", icon: BarChart2 },
   { key: "propostas", href: "/admin/propostas", label: "Propostas", icon: FileText },
@@ -48,6 +50,7 @@ const NAV: Array<{
   { key: "usuarios", href: "/admin/usuarios", label: "Usuários", icon: UserCircle, masterOnly: true },
   { key: "indices", href: "/admin/indices-financeiros", label: "Índices financeiros", icon: TrendingUp, masterOnly: true },
   { key: "configuracoes", href: "/admin/configuracoes", label: "Configurações", icon: Settings, masterOnly: true },
+  { key: "configuracoes", href: "/admin/configuracoes/qr-codes", label: "QR Codes únicos", icon: QrCode, masterOnly: true },
 ];
 
 const imobiliariaNav = [
@@ -111,9 +114,16 @@ export function AdminSidebar({
               if (!customMenus && item.masterOnly && !isMaster) return null;
               if (!customMenus && item.conteudoOnly && !canConteudo) return null;
               const active =
-                item.key === "dashboard"
-                  ? pathname === item.href
-                  : pathname === item.href || pathname.startsWith(`${item.href}/`);
+                item.href === "/admin/configuracoes"
+                  ? pathname === "/admin/configuracoes"
+                  : item.href === "/admin/eventos"
+                    ? pathname === "/admin/eventos" ||
+                      (pathname.startsWith("/admin/eventos/") &&
+                        !pathname.startsWith("/admin/eventos/nps") &&
+                        !pathname.startsWith("/admin/eventos/listas-convidados"))
+                    : item.key === "dashboard"
+                      ? pathname === item.href
+                      : pathname === item.href || pathname.startsWith(`${item.href}/`);
               const Icon = item.icon;
               return (
                 <Link

@@ -4,12 +4,17 @@ import { useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { ContratacaoModo, ContratacaoOrigem } from "@/lib/contratacoes-online/types";
 import { ensureAbsolutePropostaUrl } from "@/lib/url/public-url";
+import {
+  type ContratacaoDraftPayload,
+  writeContratacaoDraftToStorage,
+} from "@/lib/contratacoes-online/draft";
 
 export type IniciarContratacaoResult = {
   public_token: string;
   protocolo: string;
   url: string;
   path: string;
+  draft?: boolean;
 };
 
 export function useIniciarContratacao() {
@@ -42,12 +47,28 @@ export function useIniciarContratacao() {
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error ?? "Falha ao criar proposta");
+
+        if (data.draft && data.draftPayload) {
+          writeContratacaoDraftToStorage(data.draftPayload as ContratacaoDraftPayload);
+          if (opts.redirectCliente !== false && opts.modo === "cliente_site") {
+            router.push("/proposta/rascunho");
+          }
+          return {
+            public_token: "",
+            protocolo: "RASCUNHO",
+            path: "/proposta/rascunho",
+            url: "",
+            draft: true,
+          };
+        }
+
         const raw = data as IniciarContratacaoResult & { ok: boolean };
         const result: IniciarContratacaoResult = {
           public_token: raw.public_token,
           protocolo: raw.protocolo,
           path: raw.path || `/proposta/${raw.public_token}`,
           url: ensureAbsolutePropostaUrl(raw.url || raw.path, raw.public_token),
+          draft: false,
         };
         if (opts.redirectCliente !== false && opts.modo === "cliente_site") {
           router.push(result.path);

@@ -1,3 +1,4 @@
+import { normalizeTelefoneSorteio } from "./vagas";
 import type { SorteioParticipanteRow } from "./types";
 
 export type ParticipanteElegivel = Pick<
@@ -8,6 +9,17 @@ export type ParticipanteElegivel = Pick<
 /** Participantes aptos ao sorteio (não ganhadores anteriores, status participando). */
 export function filtrarElegiveisSorteio(participantes: ParticipanteElegivel[]): ParticipanteElegivel[] {
   return participantes.filter((p) => p.status === "participando" && !p.ganhador);
+}
+
+/** Ids de todos os cupons do mesmo telefone (chave de “ganha só uma vez”). */
+export function idsCuponsMesmoTelefone(
+  participantes: ParticipanteElegivel[],
+  telefone: string,
+): string[] {
+  const norm = normalizeTelefoneSorteio(telefone);
+  return participantes
+    .filter((p) => normalizeTelefoneSorteio(p.telefone) === norm)
+    .map((p) => p.id);
 }
 
 /** Escolhe um participante aleatório entre os elegíveis, excluindo ids já sorteados na sessão. */

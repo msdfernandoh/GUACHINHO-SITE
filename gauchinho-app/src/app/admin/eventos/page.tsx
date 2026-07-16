@@ -33,9 +33,14 @@ export default async function EventosAdminPage() {
           <h1 className="text-2xl font-bold">Eventos</h1>
           <p className="text-sm text-zinc-500">Encontros comerciais, inscrições e participantes</p>
         </div>
-        <Link href="/admin/eventos/novo">
-          <Button>Novo evento</Button>
-        </Link>
+        <div className="flex flex-wrap gap-2">
+          <Link href="/admin/eventos/nps">
+            <Button variant="outline">Dashboard NPS</Button>
+          </Link>
+          <Link href="/admin/eventos/novo">
+            <Button>Novo evento</Button>
+          </Link>
+        </div>
       </div>
       <div className="overflow-x-auto rounded-xl border bg-white dark:border-zinc-800 dark:bg-zinc-900">
         <table className="min-w-full text-sm">
@@ -63,6 +68,12 @@ export default async function EventosAdminPage() {
                   </Link>
                   <Link href={`/admin/eventos/${row.id}/participantes`} className="ml-3 text-amber-600 hover:underline">
                     Participantes
+                  </Link>
+                  <Link href={`/admin/eventos/${row.id}/sorteio#nps-config`} className="ml-3 text-amber-600 hover:underline">
+                    NPS
+                  </Link>
+                  <Link href={`/admin/eventos/nps?evento_id=${row.id}`} className="ml-3 text-amber-600 hover:underline">
+                    Gráficos
                   </Link>
                   <Link href={`/admin/eventos/listas-convidados?evento_id=${row.id}`} className="ml-3 text-amber-600 hover:underline">
                     Listas

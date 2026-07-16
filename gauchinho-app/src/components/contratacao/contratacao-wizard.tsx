@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import QRCode from "react-qr-code";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Button, Input, Label } from "@/components/ui/form-primitives";
 import { sectionCardClass, simuladorShell } from "@/components/simulador/simulador-ui";
 import {
@@ -30,6 +31,10 @@ import { formatCepBrInput } from "@/lib/contratacoes-online/endereco";
 import { cn } from "@/lib/utils/cn";
 import { ContratacaoGruposResumo } from "@/components/contratacao/contratacao-grupos-resumo";
 import type { LinhaGrupoPropostaResumo } from "@/lib/contratacoes-online/extract-fields";
+import {
+  clearContratacaoDraftStorage,
+  readContratacaoDraftFromStorage,
+} from "@/lib/contratacoes-online/draft";
 
 const ENDERECO_VAZIO: EnderecoFormState = {
   cep: "",
@@ -74,7 +79,16 @@ function money(v: number | null | undefined) {
   return v != null && Number.isFinite(v) ? formatCurrency(v) : null;
 }
 
-export function ContratacaoWizard({ publicToken }: { publicToken: string }) {
+export function ContratacaoWizard({
+  publicToken: initialToken,
+  draftMode = false,
+}: {
+  publicToken?: string;
+  draftMode?: boolean;
+}) {
+  const router = useRouter();
+  const [publicToken, setPublicToken] = useState(initialToken ?? "");
+  const [isDraft, setIsDraft] = useState(Boolean(draftMode && !initialToken));
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<ApiPayload | null>(null);
@@ -97,6 +111,10 @@ export function ContratacaoWizard({ publicToken }: { publicToken: string }) {
   const [documentos, setDocumentos] = useState<DocumentoContratacaoPublico[]>([]);
 
   const fetchDocumentos = useCallback(async () => {
+    if (!publicToken) {
+      setDocumentos([]);
+      return;
+    }
     try {
       const res = await fetch(`/api/public/contratacoes/${publicToken}/documentos`);
       const json = (await res.json()) as { documentos?: DocumentoContratacaoPublico[] };
@@ -106,7 +124,66 @@ export function ContratacaoWizard({ publicToken }: { publicToken: string }) {
     }
   }, [publicToken]);
 
+  const hydrateFromContratacao = useCallback((c: ContratacaoOnlineRow) => {
+    setNome(c.nome ?? "");
+    setTelefone(c.telefone ? formatWhatsappBrInput(c.telefone) : "");
+    setEmail(c.email ?? "");
+    if (c.cpf) setCpf(formatCpfBrInput(c.cpf));
+    if (c.cnpj) setCnpj(formatCnpjBrInput(c.cnpj));
+    if (c.responsavel_cpf) setRespCpf(formatCpfBrInput(c.responsavel_cpf));
+    if (c.razao_social) setRazaoSocial(c.razao_social);
+    if (c.responsavel_nome) setRespNome(c.responsavel_nome);
+    if (c.data_nascimento) setDataNascimento(c.data_nascimento);
+    setEnderecoForm({
+      cep: c.cep ? formatCepBrInput(c.cep) : "",
+      endereco: c.endereco ?? "",
+      numero: c.numero ?? "",
+      complemento: c.complemento ?? "",
+      bairro: c.bairro ?? "",
+      cidade: c.cidade ?? "",
+      uf: c.uf ?? "",
+    });
+    if (c.tipo_pessoa) setTipoPessoa(c.tipo_pessoa);
+    if (c.status === "aguardando_consultor" || c.status === "finalizado") {
+      setStep("success");
+    } else if (c.status === "pagamento_escolhido" && c.forma_pagamento === "pix") {
+      setStep("pix");
+      setFormaPagamento("pix");
+    } else if (c.status === "pagamento_escolhido" && c.forma_pagamento === "boleto") {
+      setStep("boleto");
+    } else if (c.status === "pagamento_escolhido" && c.forma_pagamento === "cartao") {
+      setStep("cartao");
+    } else if (c.status === "dados_preenchidos") {
+      setStep("pessoa");
+    }
+  }, []);
+
+  const loadDraft = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const draft = readContratacaoDraftFromStorage();
+      if (!draft) {
+        throw new Error("Rascunho não encontrado. Volte ao simulador e clique em Contratar novamente.");
+      }
+      const res = await fetch("/api/public/contratacoes/rascunho/preview", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(draft),
+      });
+      const json = (await res.json()) as Record<string, unknown>;
+      if (!res.ok) throw new Error(String(json.error ?? "Erro ao carregar rascunho"));
+      setData(json as ApiPayload);
+      setStep("confirm");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Erro");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   const load = useCallback(async (opts?: { silent?: boolean }) => {
+    if (!publicToken) return;
     if (!opts?.silent) setLoading(true);
     setError(null);
     try {
@@ -120,46 +197,18 @@ export function ContratacaoWizard({ publicToken }: { publicToken: string }) {
       if (!res.ok) throw new Error(String(json.error ?? "Erro ao carregar"));
       setData(json as ApiPayload);
       void fetchDocumentos();
-      const c = json.contratacao as ContratacaoOnlineRow;
-      setNome(c.nome ?? "");
-      setTelefone(c.telefone ? formatWhatsappBrInput(c.telefone) : "");
-      setEmail(c.email ?? "");
-      if (c.cpf) setCpf(formatCpfBrInput(c.cpf));
-      if (c.cnpj) setCnpj(formatCnpjBrInput(c.cnpj));
-      if (c.responsavel_cpf) setRespCpf(formatCpfBrInput(c.responsavel_cpf));
-      if (c.razao_social) setRazaoSocial(c.razao_social);
-      if (c.responsavel_nome) setRespNome(c.responsavel_nome);
-      if (c.data_nascimento) setDataNascimento(c.data_nascimento);
-      setEnderecoForm({
-        cep: c.cep ? formatCepBrInput(c.cep) : "",
-        endereco: c.endereco ?? "",
-        numero: c.numero ?? "",
-        complemento: c.complemento ?? "",
-        bairro: c.bairro ?? "",
-        cidade: c.cidade ?? "",
-        uf: c.uf ?? "",
-      });
-      if (c.tipo_pessoa) setTipoPessoa(c.tipo_pessoa);
-      if (c.status === "aguardando_consultor" || c.status === "finalizado") {
-        setStep("success");
-      } else if (c.status === "pagamento_escolhido" && c.forma_pagamento === "pix") {
-        setStep("pix");
-        setFormaPagamento("pix");
-      } else if (c.status === "pagamento_escolhido" && c.forma_pagamento === "boleto") {
-        setStep("boleto");
-      } else if (c.status === "pagamento_escolhido" && c.forma_pagamento === "cartao") {
-        setStep("cartao");
-      }
+      hydrateFromContratacao(json.contratacao as ContratacaoOnlineRow);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Erro");
     } finally {
       if (!opts?.silent) setLoading(false);
     }
-  }, [publicToken, fetchDocumentos]);
+  }, [publicToken, fetchDocumentos, hydrateFromContratacao]);
 
   useEffect(() => {
-    void load();
-  }, [load]);
+    if (isDraft) void loadDraft();
+    else if (publicToken) void load();
+  }, [isDraft, publicToken, load, loadDraft]);
 
   const patchEndereco = useCallback((patch: Partial<EnderecoFormState>) => {
     setEnderecoForm((prev) => {
@@ -191,6 +240,7 @@ export function ContratacaoWizard({ publicToken }: { publicToken: string }) {
   const origemLabel = c?.origem === "grupos" ? "Grupo" : "Simulador";
 
   async function patch(body: Record<string, unknown>) {
+    if (!publicToken) throw new Error("Proposta ainda não foi gravada.");
     const res = await fetch(`/api/public/contratacoes/${publicToken}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -207,7 +257,13 @@ export function ContratacaoWizard({ publicToken }: { publicToken: string }) {
 
   async function confirmar() {
     setSubmitting(true);
+    setError(null);
     try {
+      if (isDraft) {
+        // Rascunho: ainda não grava no banco
+        setStep("dados");
+        return;
+      }
       await patch({ acao: "confirmar" });
       setStep("dados");
     } catch (e) {
@@ -222,6 +278,37 @@ export function ContratacaoWizard({ publicToken }: { publicToken: string }) {
     setSubmitting(true);
     setError(null);
     try {
+      if (isDraft) {
+        const draft = readContratacaoDraftFromStorage();
+        if (!draft) throw new Error("Rascunho expirado. Reinicie a contratação.");
+        const res = await fetch("/api/public/contratacoes/rascunho/materializar", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            draft,
+            nome,
+            telefone: digitsOnlyPhone(telefone),
+            email,
+          }),
+        });
+        const json = (await res.json()) as {
+          error?: string;
+          public_token?: string;
+          contratacao?: ContratacaoOnlineRow;
+        };
+        if (!res.ok || !json.public_token) {
+          throw new Error(json.error ?? "Falha ao gravar contratação");
+        }
+        clearContratacaoDraftStorage();
+        setPublicToken(json.public_token);
+        setIsDraft(false);
+        if (json.contratacao) {
+          setData((prev) => (prev ? { ...prev, contratacao: json.contratacao! } : prev));
+        }
+        router.replace(`/proposta/${json.public_token}`);
+        setStep("pessoa");
+        return;
+      }
       await patch({
         etapa: "dados",
         nome,

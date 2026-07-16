@@ -17,6 +17,10 @@ import { AdminFormSubmitButton } from "@/components/admin/admin-form-submit-butt
 import { Button, Input, Label, Textarea } from "@/components/ui/form-primitives";
 import { EVENTOS_INSCRICAO_MIGRATION_HINT } from "@/lib/comercial-eventos/db-ready";
 import type { EventoPostRow } from "@/lib/comercial-eventos/types";
+import {
+  fetchVinculoAtivoDoEvento,
+  listQrCodesDisponiveisParaEvento,
+} from "@/lib/eventos-sorteio/qr-unico";
 
 export default async function EditarEventoPage({ params }: { params: Promise<{ id: string }> }) {
   const u = await getUsuarioNegocio();
@@ -38,6 +42,18 @@ export default async function EditarEventoPage({ params }: { params: Promise<{ i
     fetchUsuariosStaffAtivos(),
     fetchEventoLeadsUsuariosIds(id),
   ]);
+
+  let qrDisponiveis: Awaited<ReturnType<typeof listQrCodesDisponiveisParaEvento>> = [];
+  let qrVinculo: Awaited<ReturnType<typeof fetchVinculoAtivoDoEvento>> = null;
+  try {
+    [qrDisponiveis, qrVinculo] = await Promise.all([
+      listQrCodesDisponiveisParaEvento(id),
+      fetchVinculoAtivoDoEvento(id),
+    ]);
+  } catch {
+    // Migration 030 ainda não aplicada — formulário segue sem QR
+  }
+
   const inscricaoMigrationPending =
     evento.inscricao_tipo === undefined && evento.inscricao_url_externa === undefined;
   const update = updateEventoAction.bind(null, id);
@@ -66,8 +82,11 @@ export default async function EditarEventoPage({ params }: { params: Promise<{ i
           <Link href={`/admin/eventos/listas-convidados?evento_id=${id}`}>
             <Button variant="outline">Ver listas</Button>
           </Link>
-          <Link href={`/admin/eventos/${id}/sorteio`}>
-            <Button variant="outline">Sorteio / Brindes</Button>
+          <Link href={`/admin/eventos/${id}/sorteio#nps-config`}>
+            <Button variant="outline">Sorteio / NPS</Button>
+          </Link>
+          <Link href={`/admin/eventos/nps?evento_id=${id}`}>
+            <Button variant="outline">Dashboard NPS</Button>
           </Link>
         </div>
       </div>
@@ -83,6 +102,8 @@ export default async function EditarEventoPage({ params }: { params: Promise<{ i
         action={update}
         usuariosStaff={usuariosStaff}
         leadsUsuariosIds={leadsUsuariosIds}
+        qrDisponiveis={qrDisponiveis}
+        qrVinculo={qrVinculo}
       />
 
       <section className="max-w-2xl space-y-4 rounded-xl border p-4 dark:border-zinc-800">

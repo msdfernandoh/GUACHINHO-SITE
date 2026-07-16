@@ -26,12 +26,30 @@ export async function POST(request: Request) {
       }
     }
 
+    // Cliente no site sem nome: não grava no banco (rascunho só no browser).
+    // Evita lixo de "Proposta aberta" quando a pessoa para na tela inicial.
+    const nomePre = body.cliente_pre_nome?.trim() ?? "";
+    if (body.modo === "cliente_site" && !nomePre) {
+      return NextResponse.json({
+        ok: true,
+        draft: true,
+        path: "/proposta/rascunho",
+        draftPayload: {
+          modo: body.modo,
+          origem: body.origem,
+          dados_simulacao: body.dados_simulacao,
+          createdAt: new Date().toISOString(),
+        },
+      });
+    }
+
     const { row, publicPath } = await criarContratacaoOnline(body, usuario);
     const site = await getConfigJsonPublic("site", DEFAULT_SITE);
     const url = buildPropostaPublicUrl(row.public_token, site.siteUrl || undefined);
 
     return NextResponse.json({
       ok: true,
+      draft: false,
       public_token: row.public_token,
       protocolo: row.protocolo,
       url,

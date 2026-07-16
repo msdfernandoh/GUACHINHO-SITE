@@ -4,27 +4,58 @@ import { registrarEvento } from "@/lib/eventos/registrar";
 import { proximoCodigoFromExisting } from "./codigo";
 import { isTipoSonhoSorteio, tipoSonhoParaCreditoLead } from "./lead-map";
 import {
+  normalizeTelefoneSorteio,
   telefoneJaParticipouSorteio,
   telefoneSorteioValido,
 } from "./vagas";
 import type { TipoSonhoSorteio } from "./types";
 import { fetchPublicSorteioByEventoSlug } from "./public";
+import {
+  parseNpsConfig,
+  resolverPerguntasNpsPublicas,
+  validarRespostasNps,
+} from "./nps";
 
 export type CadastroSorteioPayload = {
   nome: string;
   telefone: string;
   valorMensalDisponivel: number;
   tipoSonho: string;
+  qrCodeUnicoId?: string | null;
 };
 
-export type CadastroSorteioResult =
-  | { ok: true; codigo: string; textoAgradecimento: string; eventoSlug: string }
+export type CadastroSorteioFase1Result =
+  | {
+      ok: true;
+      participanteId: string;
+      codigo: string;
+      textoAgradecimento: string;
+      eventoSlug: string;
+    }
   | { ok: false; error: string };
 
+export type CadastroSorteioResult = CadastroSorteioFase1Result;
+
+export type LeadSemEventoResult =
+  | { ok: true; leadId: string }
+  | { ok: false; error: string };
+
+export type NpsFaseResult =
+  | { ok: true; participanteId: string }
+  | { ok: false; error: string };
+
+/** @deprecated use cadastrarParticipanteSorteioFase1 — mantido para compat */
 export async function cadastrarParticipanteSorteioPublico(
   eventoSlug: string,
   payload: CadastroSorteioPayload,
 ): Promise<CadastroSorteioResult> {
+  return cadastrarParticipanteSorteioFase1(eventoSlug, payload);
+}
+
+export async function cadastrarParticipanteSorteioFase1(
+  eventoSlug: string,
+  payload: CadastroSorteioPayload,
+): Promise<CadastroSorteioFase1Result> {
   const view = await fetchPublicSorteioByEventoSlug(eventoSlug);
   if (!view) return { ok: false, error: "Sorteio não encontrado ou indisponível." };
   if (view.status !== "aberto") return { ok: false, error: "Este sorteio está encerrado." };
@@ -57,15 +88,19 @@ export async function cadastrarParticipanteSorteioPublico(
 
   const { data: existentes, error: telErr } = await admin
     .from("eventos_sorteio_participantes")
-    .select("telefone")
+    .select("telefone, origem_cupom")
     .eq("sorteio_id", view.sorteioId)
     .eq("status", "participando");
   if (telErr) return { ok: false, error: telErr.message };
 
+  const telefonesCadastro = (existentes ?? [])
+    .filter((r) => (r.origem_cupom ?? "cadastro") === "cadastro")
+    .map((r) => r.telefone as string);
+
   if (
     telefoneJaParticipouSorteio(
       telefone,
-      (existentes ?? []).map((r) => r.telefone as string),
+      telefonesCadastro,
       !!sorteioRow.permitir_telefone_duplicado,
     )
   ) {
@@ -89,6 +124,7 @@ export async function cadastrarParticipanteSorteioPublico(
     valor_mensal_disponivel: valor,
     evento_id: view.eventoId,
     evento_nome: view.eventoNome,
+    qr_code_unico_id: payload.qrCodeUnicoId ?? null,
   };
 
   const leadsConfig = await getConfigJsonPublic("leads", DEFAULT_LEADS);
@@ -116,7 +152,7 @@ export async function cadastrarParticipanteSorteioPublico(
     .single();
   if (leadErr || !leadRow) return { ok: false, error: leadErr?.message ?? "Falha ao registrar lead." };
 
-  const { error: partErr } = await admin.from("eventos_sorteio_participantes").insert({
+  const insertPart: Record<string, unknown> = {
     sorteio_id: view.sorteioId,
     evento_id: view.eventoId,
     lead_id: leadRow.id,
@@ -127,19 +163,17 @@ export async function cadastrarParticipanteSorteioPublico(
     tipo_sonho: tipoSonho,
     status: "participando",
     ganhador: false,
-  });
-  if (partErr) return { ok: false, error: partErr.message };
+    fase_cadastro: "fase1",
+    origem_cupom: "cadastro",
+  };
+  if (payload.qrCodeUnicoId) insertPart.qr_code_unico_id = payload.qrCodeUnicoId;
 
-  const { data: partRow, error: partFetchErr } = await admin
+  const { data: partRow, error: partErr } = await admin
     .from("eventos_sorteio_participantes")
+    .insert(insertPart)
     .select("id")
-    .eq("sorteio_id", view.sorteioId)
-    .eq("evento_id", view.eventoId)
-    .eq("codigo", codigo)
-    .maybeSingle();
-  if (partFetchErr || !partRow?.id) {
-    return { ok: false, error: partFetchErr?.message ?? "Falha ao vincular ao evento." };
-  }
+    .single();
+  if (partErr || !partRow) return { ok: false, error: partErr?.message ?? "Falha ao registrar participação." };
 
   const { vincularNovoCadastroSorteioAoEvento } = await import("./sync-inscritos");
   try {
@@ -162,13 +196,129 @@ export async function cadastrarParticipanteSorteioPublico(
     origem: "evento_sorteio",
     lead_id: leadRow.id,
     entidade_tipo: view.sorteioId,
-    dados_evento: { codigo, evento_slug: view.eventoSlug },
+    dados_evento: {
+      codigo,
+      evento_slug: view.eventoSlug,
+      fase: "fase1",
+      qr_code_unico_id: payload.qrCodeUnicoId ?? null,
+    },
   });
 
   return {
     ok: true,
+    participanteId: partRow.id as string,
     codigo,
     textoAgradecimento: view.textoAgradecimento,
     eventoSlug: view.eventoSlug,
   };
+}
+
+export async function salvarNpsSorteioFase2(
+  participanteId: string,
+  respostas: Record<string, unknown>,
+): Promise<NpsFaseResult> {
+  const admin = createAdminClient();
+  const { data: part, error } = await admin
+    .from("eventos_sorteio_participantes")
+    .select("id, sorteio_id, status, origem_cupom, fase_cadastro, nps_completo_em")
+    .eq("id", participanteId)
+    .maybeSingle();
+  if (error || !part) return { ok: false, error: error?.message ?? "Participante não encontrado." };
+  if (part.status !== "participando") return { ok: false, error: "Participação cancelada." };
+  if ((part.origem_cupom ?? "cadastro") !== "cadastro") {
+    return { ok: false, error: "NPS inválido para este cupom." };
+  }
+  if (part.nps_completo_em) {
+    return { ok: true, participanteId };
+  }
+
+  const { data: sorteio, error: sErr } = await admin
+    .from("eventos_sorteios")
+    .select("nps_config")
+    .eq("id", part.sorteio_id)
+    .maybeSingle();
+  if (sErr || !sorteio) return { ok: false, error: sErr?.message ?? "Sorteio indisponível." };
+
+  const perguntas = resolverPerguntasNpsPublicas(parseNpsConfig(sorteio.nps_config));
+  const valid = validarRespostasNps(perguntas, respostas);
+  if (!valid.ok) return { ok: false, error: valid.error };
+
+  const now = new Date().toISOString();
+  const { error: updErr } = await admin
+    .from("eventos_sorteio_participantes")
+    .update({
+      nps_respostas: valid.clean,
+      nps_completo_em: now,
+      fase_cadastro: "fase2",
+      updated_at: now,
+    })
+    .eq("id", participanteId);
+  if (updErr) return { ok: false, error: updErr.message };
+
+  return { ok: true, participanteId };
+}
+
+/** Cadastro via QR único fora do período / sem evento vinculado. */
+export async function cadastrarLeadQrSemEvento(
+  payload: CadastroSorteioPayload & { qrCodeUnicoId: string; qrSlug: string; qrNome: string },
+): Promise<LeadSemEventoResult> {
+  const nome = payload.nome?.trim();
+  const telefone = payload.telefone?.trim();
+  if (!nome) return { ok: false, error: "Informe seu nome." };
+  if (!telefone || !telefoneSorteioValido(telefone)) {
+    return { ok: false, error: "Informe um telefone/WhatsApp válido." };
+  }
+  if (!payload.valorMensalDisponivel || payload.valorMensalDisponivel <= 0) {
+    return { ok: false, error: "Informe o valor mensal disponível." };
+  }
+  const tipoRaw = payload.tipoSonho?.trim();
+  if (!tipoRaw || !isTipoSonhoSorteio(tipoRaw)) {
+    return { ok: false, error: "Selecione o tipo do sonho." };
+  }
+  const tipoSonho = tipoRaw as TipoSonhoSorteio;
+  const valor = payload.valorMensalDisponivel;
+  const tipoCredito = tipoSonhoParaCreditoLead(tipoSonho);
+  const admin = createAdminClient();
+  const leadsConfig = await getConfigJsonPublic("leads", DEFAULT_LEADS);
+
+  const { data: leadRow, error: leadErr } = await admin
+    .from("leads")
+    .insert({
+      nome,
+      whatsapp: telefone,
+      origem: "qr_unico",
+      origem_detalhe: payload.qrSlug,
+      tipo_interesse: tipoCredito,
+      tipo_credito: tipoCredito,
+      valor_credito: valor,
+      valor_estimado: valor,
+      valor_simulado: valor,
+      produto_interesse: payload.qrNome,
+      evento_id: null,
+      evento_nome: null,
+      dados_simulacao: {
+        origem: "qr_unico",
+        qr_code_unico_id: payload.qrCodeUnicoId,
+        qr_slug: payload.qrSlug,
+        tipo_sonho: tipoSonho,
+        valor_mensal_disponivel: valor,
+        sem_evento: true,
+        telefone_norm: normalizeTelefoneSorteio(telefone),
+      },
+      status: leadsConfig.statusInicialPadrao ?? "Novo",
+      criado_manual: false,
+    })
+    .select("id")
+    .single();
+  if (leadErr || !leadRow) return { ok: false, error: leadErr?.message ?? "Falha ao registrar." };
+
+  await registrarEvento({
+    tipo_evento: "qr_unico_cadastro_sem_evento",
+    origem: "qr_unico",
+    lead_id: leadRow.id,
+    entidade_tipo: payload.qrCodeUnicoId,
+    dados_evento: { qr_slug: payload.qrSlug },
+  });
+
+  return { ok: true, leadId: leadRow.id as string };
 }

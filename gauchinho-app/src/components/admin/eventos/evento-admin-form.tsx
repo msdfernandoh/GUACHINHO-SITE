@@ -1,16 +1,19 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { Input, Label, Textarea } from "@/components/ui/form-primitives";
 import { AdminFormSubmitButton } from "@/components/admin/admin-form-submit-button";
 import type { EventoRow } from "@/lib/comercial-eventos/types";
+import type { QrCodeUnicoRow, QrCodeVinculoRow } from "@/lib/eventos-sorteio/qr-unico";
 import { EventoImageField } from "./evento-image-field";
 
 function toDatetimeLocalValue(iso: string | null | undefined): string {
   if (!iso?.trim()) return "";
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "";
-  return d.toISOString().slice(0, 16);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
 type Props = {
@@ -18,6 +21,8 @@ type Props = {
   action: (formData: FormData) => Promise<void>;
   usuariosStaff?: { id: string; nome: string }[];
   leadsUsuariosIds?: string[];
+  qrDisponiveis?: QrCodeUnicoRow[];
+  qrVinculo?: (QrCodeVinculoRow & { qr: QrCodeUnicoRow }) | null;
 };
 
 function FormSection({ title, children }: { title: string; children: React.ReactNode }) {
@@ -35,6 +40,8 @@ export function EventoAdminForm({
   action,
   usuariosStaff = [],
   leadsUsuariosIds = [],
+  qrDisponiveis = [],
+  qrVinculo = null,
 }: Props) {
   const dataLocal = toDatetimeLocalValue(evento?.data_evento);
 
@@ -45,8 +52,10 @@ export function EventoAdminForm({
   );
   const [formError, setFormError] = useState<string | null>(null);
   const [leadsAcessoTodos, setLeadsAcessoTodos] = useState(evento?.leads_acesso_todos !== false);
+  const [usarQrUnico, setUsarQrUnico] = useState(Boolean(qrVinculo?.ativo));
 
   const slugHint = slug.trim() || nome.trim() || "evento";
+  const isEdit = Boolean(evento?.id);
 
   async function onSubmit(formData: FormData) {
     setFormError(null);
@@ -70,22 +79,29 @@ export function EventoAdminForm({
 
       <FormSection title="Informações básicas">
         <div>
-          <Label>Nome *</Label>
+          <Label>Nome do evento *</Label>
           <Input
             name="nome"
             value={nome}
             onChange={(e) => setNome(e.target.value)}
             required
           />
+          <p className="mt-1 text-xs text-zinc-500">
+            Pode alterar o nome quando quiser — isso não muda o link nem o QR Code.
+          </p>
         </div>
         <div>
-          <Label>Slug</Label>
+          <Label>Link permanente (slug)</Label>
           <Input
             name="slug"
             value={slug}
             onChange={(e) => setSlug(e.target.value)}
-            placeholder="gerado-do-nome"
+            placeholder={isEdit ? "mantem-o-link-atual" : "ex-sinop"}
           />
+          <p className="mt-1 text-xs text-zinc-500">
+            URL pública: /eventos/{slugHint || "…"}. Independente do nome. Só altere se quiser mudar o
+            link do evento.
+          </p>
         </div>
         <div>
           <Label>Data do evento</Label>
@@ -109,6 +125,72 @@ export function EventoAdminForm({
           <Label>Estado (UF)</Label>
           <Input name="estado" maxLength={2} defaultValue={evento?.estado ?? ""} />
         </div>
+      </FormSection>
+
+      <FormSection title="QR Code único">
+        <p className="text-sm text-zinc-500">
+          Cadastre QR Codes em{" "}
+          <Link href="/admin/configuracoes/qr-codes" className="font-medium text-amber-600 hover:underline">
+            Configurações → QR Codes únicos
+          </Link>
+          . O link impresso (/qr/slug) continua o mesmo mesmo se você mudar o nome do evento.
+        </p>
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            name="usar_qr_unico"
+            checked={usarQrUnico}
+            onChange={(e) => setUsarQrUnico(e.target.checked)}
+          />
+          Usar QR Code único neste evento
+        </label>
+        {usarQrUnico ? (
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="sm:col-span-2">
+              <Label>Selecionar QR Code cadastrado</Label>
+              <select
+                name="qr_code_unico_id"
+                defaultValue={qrVinculo?.qr_code_id ?? ""}
+                required={usarQrUnico}
+                className="mt-1 w-full rounded-lg border px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-950"
+              >
+                <option value="">Selecione…</option>
+                {qrDisponiveis.map((q) => (
+                  <option key={q.id} value={q.id}>
+                    {q.nome} (/qr/{q.slug})
+                  </option>
+                ))}
+              </select>
+              {qrDisponiveis.length === 0 ? (
+                <p className="mt-1 text-xs text-amber-700 dark:text-amber-400">
+                  Nenhum QR disponível.{" "}
+                  <Link href="/admin/configuracoes/qr-codes" className="underline">
+                    Cadastre um QR Code único
+                  </Link>{" "}
+                  ou desative o vínculo ativo em outro evento.
+                </p>
+              ) : null}
+            </div>
+            <div>
+              <Label>Início do período de uso</Label>
+              <Input
+                name="qr_periodo_inicio"
+                type="datetime-local"
+                defaultValue={toDatetimeLocalValue(qrVinculo?.periodo_inicio)}
+                required={usarQrUnico}
+              />
+            </div>
+            <div>
+              <Label>Fim do período de uso</Label>
+              <Input
+                name="qr_periodo_fim"
+                type="datetime-local"
+                defaultValue={toDatetimeLocalValue(qrVinculo?.periodo_fim)}
+                required={usarQrUnico}
+              />
+            </div>
+          </div>
+        ) : null}
       </FormSection>
 
       <FormSection title="Textos do evento">
