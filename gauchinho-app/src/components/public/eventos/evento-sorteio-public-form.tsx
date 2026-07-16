@@ -346,7 +346,7 @@ export function EventoSorteioPublicForm({ sorteio, qrCodeUnicoId }: Props) {
             <Button
               type="button"
               variant="outline"
-              className="min-h-14 border-slate-500 text-base font-bold text-white"
+              className="min-h-14 border-slate-400 bg-white text-base font-bold text-zinc-950 hover:bg-slate-100 hover:text-zinc-950"
               disabled={pending}
               onClick={() => responderTemIndicacao(false)}
             >
