@@ -2,9 +2,11 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { requireStaffAdmin } from "@/lib/auth/require-staff-admin";
 import {
   canAccessContratacaoDocumentos,
+  canDeleteRecords,
   MSG_SEM_PERMISSAO_DOCUMENTOS_CONTRATACAO,
 } from "@/lib/auth/permissions";
 import {
@@ -28,13 +30,77 @@ export async function fetchContratacoesList(): Promise<ContratacaoOnlineRow[]> {
     .order("created_at", { ascending: false })
     .limit(300);
   if (error) throw new Error(error.message);
-  // Oculta simulações abandonadas na tela inicial (sem nome do cliente)
-  return ((data ?? []) as ContratacaoOnlineRow[]).filter((row) => {
-    if (row.nome?.trim()) return true;
-    // Links gerados por consultor ainda podem aparecer sem nome
-    if (row.status === "link_gerado" || row.gerado_por_usuario_id) return true;
-    return false;
-  });
+  return (data ?? []) as ContratacaoOnlineRow[];
+}
+
+async function removerArquivosDocumentos(contratacaoIds: string[]) {
+  if (contratacaoIds.length === 0) return;
+  const admin = createAdminClient();
+  const { data: docs } = await admin
+    .from("contratacoes_documentos")
+    .select("arquivo_url")
+    .in("contratacao_id", contratacaoIds);
+  const paths = (docs ?? [])
+    .map((d) => d.arquivo_url as string | null)
+    .filter((p): p is string => Boolean(p?.trim()));
+  if (paths.length === 0) return;
+  // remove em lotes
+  for (let i = 0; i < paths.length; i += 50) {
+    await admin.storage.from("contratacoes-documentos").remove(paths.slice(i, i + 50));
+  }
+}
+
+export async function deleteContratacaoAction(
+  id: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  try {
+    const usuario = await requireStaffAdmin();
+    if (!canDeleteRecords(usuario.perfil) && usuario.perfil !== "srd") {
+      return { ok: false, error: "Sem permissão para excluir contratações." };
+    }
+    await removerArquivosDocumentos([id]);
+    const admin = createAdminClient();
+    const { error } = await admin.from("contratacoes_online").delete().eq("id", id);
+    if (error) return { ok: false, error: error.message };
+    revalidatePath("/admin/contratacoes");
+    revalidatePath(`/admin/contratacoes/${id}`);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Falha ao excluir." };
+  }
+}
+
+/** Remove propostas sem nome do cliente (lixo de simulações abandonadas). */
+export async function deleteContratacoesSemClienteAction(): Promise<
+  { ok: true; removed: number } | { ok: false; error: string }
+> {
+  try {
+    const usuario = await requireStaffAdmin();
+    if (!canDeleteRecords(usuario.perfil) && usuario.perfil !== "srd") {
+      return { ok: false, error: "Sem permissão para excluir contratações." };
+    }
+    const admin = createAdminClient();
+    const { data: rows, error: listErr } = await admin
+      .from("contratacoes_online")
+      .select("id, nome")
+      .order("created_at", { ascending: false })
+      .limit(500);
+    if (listErr) return { ok: false, error: listErr.message };
+
+    const ids = ((rows ?? []) as Array<{ id: string; nome: string | null }>)
+      .filter((r) => !r.nome?.trim())
+      .map((r) => r.id);
+    if (ids.length === 0) return { ok: true, removed: 0 };
+
+    await removerArquivosDocumentos(ids);
+    const { error } = await admin.from("contratacoes_online").delete().in("id", ids);
+    if (error) return { ok: false, error: error.message };
+
+    revalidatePath("/admin/contratacoes");
+    return { ok: true, removed: ids.length };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Falha ao excluir." };
+  }
 }
 
 export async function fetchContratacaoDetalhe(id: string) {
