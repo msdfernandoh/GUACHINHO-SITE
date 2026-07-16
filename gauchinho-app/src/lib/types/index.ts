@@ -73,6 +73,8 @@ export type GrupoConsorcio = {
   parcelas_realizadas_base?: number | null;
   data_base_parcelas?: string | null;
   atualizacao_parcelas_automatica?: boolean | null;
+  /** Último marco 12/24/36… em que o crédito foi reajustado (remove destaque na lista). */
+  credito_reajustado_ate_meses?: number | null;
   seguro_pos_contemplacao: boolean;
   cet_percentual: number | null;
   status: string;

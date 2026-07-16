@@ -136,6 +136,22 @@ export function calcularPrazoGrupoFromRow(
   });
 }
 
+/** Marco de 12 meses atingido (12, 24, 36, 48…). 0 se ainda não chegou em 12. */
+export function milestoneReajusteMeses(parcelasRealizadas: number): number {
+  const n = Math.max(0, Math.floor(parcelasRealizadas));
+  if (n < 12) return 0;
+  return Math.floor(n / 12) * 12;
+}
+
+/** Destaque de reajuste: prazo chegou em 12/24/36… e ainda não foi marcado como reajustado nesse marco. */
+export function grupoPrecisaReajusteCredito(
+  parcelasRealizadas: number,
+  creditoReajustadoAteMeses: number | null | undefined,
+): boolean {
+  const milestone = milestoneReajusteMeses(parcelasRealizadas);
+  return milestone >= 12 && milestone > (creditoReajustadoAteMeses ?? 0);
+}
+
 export function tooltipPrazoAutomatico(
   grupo: Pick<
     GrupoConsorcio,

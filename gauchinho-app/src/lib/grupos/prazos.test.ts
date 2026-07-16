@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 import {
   calcularCicloGrupoDatas,
   calcularPrazoGrupo,
+  grupoPrecisaReajusteCredito,
   mesesDecorridosCicloMensal,
+  milestoneReajusteMeses,
 } from "@/lib/grupos/prazos";
 
 describe("mesesDecorridosCicloMensal", () => {
@@ -108,5 +110,23 @@ describe("calcularPrazoGrupo — manual", () => {
       dataBaseParcelas: null,
     });
     expect(r.prazoRestanteAtual).toBe(195);
+  });
+});
+
+describe("reajuste crédito a cada 12 meses", () => {
+  it("marca marcos 12/24/36", () => {
+    expect(milestoneReajusteMeses(11)).toBe(0);
+    expect(milestoneReajusteMeses(12)).toBe(12);
+    expect(milestoneReajusteMeses(23)).toBe(12);
+    expect(milestoneReajusteMeses(24)).toBe(24);
+    expect(milestoneReajusteMeses(36)).toBe(36);
+  });
+
+  it("pede reajuste só se o marco ainda não foi marcado", () => {
+    expect(grupoPrecisaReajusteCredito(12, 0)).toBe(true);
+    expect(grupoPrecisaReajusteCredito(12, 12)).toBe(false);
+    expect(grupoPrecisaReajusteCredito(24, 12)).toBe(true);
+    expect(grupoPrecisaReajusteCredito(24, 24)).toBe(false);
+    expect(grupoPrecisaReajusteCredito(11, 0)).toBe(false);
   });
 });

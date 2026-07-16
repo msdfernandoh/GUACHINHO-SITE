@@ -13,7 +13,11 @@ import {
 import { DEFAULT_LEADS, getConfigJson } from "@/server/config";
 import { parseBulkCreditLines } from "@/lib/utils/format";
 import { estimarCamposCotaBulk, calcularParcelasSeguroDaCota, type GrupoBulkEstimateInput } from "@/lib/grupos/calculos";
-import { calcularPrazoGrupo } from "@/lib/grupos/prazos";
+import {
+  calcularPrazoGrupo,
+  calcularPrazoGrupoFromRow,
+  milestoneReajusteMeses,
+} from "@/lib/grupos/prazos";
 import { parseSeguroInput } from "@/lib/grupos/seguro";
 import { GRUPOS_TESTE } from "@/lib/grupos/dados-teste";
 import {
@@ -440,6 +444,64 @@ export async function updateGrupoAction(grupoId: string, formData: FormData) {
   revalidatePath("/admin/grupos");
   revalidatePath("/grupos");
   redirect(`/admin/grupos/${grupoId}?saved=1`);
+}
+
+/** Marca o reajuste de crédito no marco atual (12/24/36…) e remove o destaque na lista. */
+export async function marcarReajusteCreditoGrupoAction(
+  grupoId: string,
+): Promise<{ ok: true; marco: number } | { ok: false; error: string }> {
+  try {
+    await assertCanManageGrupos();
+    const admin = createAdminClient();
+    const { data: grupo, error } = await admin
+      .from("grupos_consorcio")
+      .select(
+        "id, prazo_total, parcelas_realizadas, prazo_restante, parcelas_realizadas_base, data_base_parcelas, atualizacao_parcelas_automatica, credito_reajustado_ate_meses",
+      )
+      .eq("id", grupoId)
+      .maybeSingle();
+    if (error) {
+      if (/credito_reajustado_ate_meses/i.test(error.message)) {
+        return {
+          ok: false,
+          error:
+            "Aplique a migration supabase/migrations/032_grupos_credito_reajustado_ate_meses.sql no Supabase.",
+        };
+      }
+      return { ok: false, error: error.message };
+    }
+    if (!grupo) return { ok: false, error: "Grupo não encontrado." };
+
+    const prazo = calcularPrazoGrupoFromRow(grupo as GrupoConsorcio);
+    const marco = milestoneReajusteMeses(prazo.parcelasRealizadasAtuais);
+    if (marco < 12) {
+      return { ok: false, error: "Este grupo ainda não chegou a um marco de 12 meses." };
+    }
+
+    const { error: updErr } = await admin
+      .from("grupos_consorcio")
+      .update({
+        credito_reajustado_ate_meses: marco,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", grupoId);
+    if (updErr) {
+      if (/credito_reajustado_ate_meses/i.test(updErr.message)) {
+        return {
+          ok: false,
+          error:
+            "Aplique a migration supabase/migrations/032_grupos_credito_reajustado_ate_meses.sql no Supabase.",
+        };
+      }
+      return { ok: false, error: updErr.message };
+    }
+
+    revalidatePath("/admin/grupos");
+    revalidatePath(`/admin/grupos/${grupoId}`);
+    return { ok: true, marco };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Falha ao marcar reajuste." };
+  }
 }
 
 function cotaFromForm(formData: FormData) {
