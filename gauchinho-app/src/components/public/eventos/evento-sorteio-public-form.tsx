@@ -41,9 +41,10 @@ export function EventoSorteioPublicForm({ sorteio, qrCodeUnicoId }: Props) {
   // Fase 2
   const [npsRespostas, setNpsRespostas] = useState<Record<string, unknown>>({});
 
-  // Fase 3
+  // Fase 3 — indicação VIP
+  const [indPasso, setIndPasso] = useState<"pergunta" | "formulario">("pergunta");
   const [indNome, setIndNome] = useState("");
-  const [indTipo, setIndTipo] = useState<"amigo" | "familiar" | "">("");
+  const [indTipo, setIndTipo] = useState<"amigo" | "familiar">("amigo");
   const [indTelefone, setIndTelefone] = useState("");
 
   const encerrado = sorteio.status === "encerrado";
@@ -91,8 +92,20 @@ export function EventoSorteioPublicForm({ sorteio, qrCodeUnicoId }: Props) {
         setErro(res.error);
         return;
       }
+      setIndPasso("pergunta");
+      setAviso(null);
       setFase(3);
     });
+  };
+
+  const responderTemIndicacao = (sim: boolean) => {
+    setErro(null);
+    setAviso(null);
+    if (sim) {
+      setIndPasso("formulario");
+      return;
+    }
+    concluir();
   };
 
   const submitIndicacao = () => {
@@ -113,7 +126,6 @@ export function EventoSorteioPublicForm({ sorteio, qrCodeUnicoId }: Props) {
       if (res.aviso) setAviso(res.aviso);
       else if (res.codigoExtra) setAviso(`Cupom extra gerado: ${res.codigoExtra}`);
       setIndNome("");
-      setIndTipo("");
       setIndTelefone("");
     });
   };
@@ -131,6 +143,13 @@ export function EventoSorteioPublicForm({ sorteio, qrCodeUnicoId }: Props) {
       setTextoFinal(res.textoAgradecimento);
       setFase("done");
     });
+  };
+
+  const abrirListaVip = () => {
+    setErro(null);
+    setAviso(null);
+    setIndPasso("formulario");
+    setFase(3);
   };
 
   if (fase === "done") {
@@ -154,19 +173,24 @@ export function EventoSorteioPublicForm({ sorteio, qrCodeUnicoId }: Props) {
             : "Ele será usado no sorteio dos brindes."}
         </p>
         <p className="mt-2 text-sm text-slate-500">{textoFinal}</p>
-        <div className="mt-8 flex flex-col gap-2 sm:flex-row sm:justify-center">
-          <Link
-            href="/simulador"
-            className="inline-flex items-center justify-center rounded-lg border border-zinc-600 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800"
-          >
-            Falar com especialista
-          </Link>
-          <Link
-            href={`/eventos/${sorteio.eventoSlug}`}
-            className="inline-flex items-center justify-center rounded-lg border border-zinc-600 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800"
-          >
-            Voltar para o evento
-          </Link>
+        <div className="mt-8 flex flex-col gap-2">
+          <Button type="button" variant="gold" className="w-full" onClick={abrirListaVip}>
+            Incluir amigo na lista VIP
+          </Button>
+          <div className="flex flex-col gap-2 sm:flex-row sm:justify-center">
+            <Link
+              href="/simulador"
+              className="inline-flex items-center justify-center rounded-lg border border-zinc-600 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800"
+            >
+              Falar com especialista
+            </Link>
+            <Link
+              href={`/eventos/${sorteio.eventoSlug}`}
+              className="inline-flex items-center justify-center rounded-lg border border-zinc-600 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800"
+            >
+              Voltar para o evento
+            </Link>
+          </div>
         </div>
       </div>
     );
@@ -304,33 +328,74 @@ export function EventoSorteioPublicForm({ sorteio, qrCodeUnicoId }: Props) {
         </div>
       ) : null}
 
-      {!encerrado && fase === 3 ? (
-        <div className="mt-6 space-y-4">
-          <div className="rounded-xl border border-amber-500/25 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
-            <p className="font-semibold">Indique amigos e ganhe mais cupons</p>
-            <p className="mt-1 text-amber-100/85">
-              Dê a oportunidade a outras pessoas que você conhece de fazer network, apresentar o negócio e
-              conhecer investimentos e consórcio. Ajude amigos a terem acesso às oportunidades, conhecer
-              pessoas e fazer novos negócios.
+      {!encerrado && fase === 3 && indPasso === "pergunta" ? (
+        <div className="mt-6 space-y-5">
+          <div className="rounded-2xl border-2 border-amber-400/50 bg-gradient-to-b from-amber-500/20 to-slate-950/80 px-5 py-6 text-center shadow-lg shadow-amber-900/20">
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-amber-300">Pergunta importante</p>
+            <p className="mt-4 text-lg font-bold leading-snug text-white sm:text-xl">
+              Você tem amigos ou familiares que gostariam de participar de um evento como esses e fazer
+              novos amigos, conexões e conhecer as novas oportunidades?
             </p>
-            <p className="mt-2 font-medium text-amber-200">
-              Cada indicação válida = 1 cupom a mais para você. Quanto mais indicações, mais chances de
-              ganhar os prêmios.
+          </div>
+          {erro ? <p className="text-center text-sm text-red-400">{erro}</p> : null}
+          <div className="grid grid-cols-2 gap-3">
+            <Button
+              type="button"
+              variant="gold"
+              className="min-h-14 text-base font-bold"
+              disabled={pending}
+              onClick={() => responderTemIndicacao(true)}
+            >
+              Sim
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              className="min-h-14 border-slate-500 text-base font-bold text-white"
+              disabled={pending}
+              onClick={() => responderTemIndicacao(false)}
+            >
+              {pending ? "Finalizando…" : "Não"}
+            </Button>
+          </div>
+        </div>
+      ) : null}
+
+      {!encerrado && fase === 3 && indPasso === "formulario" ? (
+        <div className="mt-6 space-y-4">
+          <div className="rounded-xl border border-amber-500/35 bg-amber-500/10 px-4 py-4 text-center">
+            <p className="text-base font-bold text-amber-100">
+              Inclua seu amigo ou familiar na nossa lista VIP de amigos
+            </p>
+            <p className="mt-2 text-sm text-amber-100/80">
+              Cada indicação válida gera 1 cupom a mais para você. Quanto mais amigos, mais chances no
+              sorteio.
             </p>
           </div>
 
           {aviso ? <p className="text-sm text-amber-300">{aviso}</p> : null}
 
           <div>
-            <Label className="text-slate-200">Nome do indicado</Label>
+            <Label className="text-slate-200">Nome *</Label>
             <Input
               value={indNome}
               onChange={(e) => setIndNome(e.target.value)}
               className="mt-1 border-slate-600 bg-slate-950 text-white"
+              placeholder="Nome do amigo ou familiar"
             />
           </div>
           <div>
-            <Label className="text-slate-200">Tipo</Label>
+            <Label className="text-slate-200">Telefone / WhatsApp *</Label>
+            <Input
+              value={indTelefone}
+              onChange={(e) => setIndTelefone(formatWhatsappBrInput(e.target.value))}
+              className="mt-1 border-slate-600 bg-slate-950 text-white"
+              inputMode="tel"
+              placeholder="(00) 00000-0000"
+            />
+          </div>
+          <div>
+            <Label className="text-slate-200">É amigo ou familiar?</Label>
             <div className="mt-2 grid grid-cols-2 gap-2">
               {(["amigo", "familiar"] as const).map((t) => (
                 <button
@@ -348,23 +413,18 @@ export function EventoSorteioPublicForm({ sorteio, qrCodeUnicoId }: Props) {
               ))}
             </div>
           </div>
-          <div>
-            <Label className="text-slate-200">Telefone do indicado</Label>
-            <Input
-              value={indTelefone}
-              onChange={(e) => setIndTelefone(formatWhatsappBrInput(e.target.value))}
-              className="mt-1 border-slate-600 bg-slate-950 text-white"
-              inputMode="tel"
-            />
-          </div>
 
           {erro ? <p className="text-sm text-red-400">{erro}</p> : null}
 
-          <Button type="button" className="w-full" disabled={pending} onClick={submitIndicacao}>
-            {pending ? "Salvando…" : codigos.length > 1 ? "Adicionar indicação" : "Salvar indicação e ganhar cupom"}
+          <Button type="button" variant="gold" className="w-full" disabled={pending} onClick={submitIndicacao}>
+            {pending
+              ? "Salvando…"
+              : codigos.length > 1
+                ? "Adicionar mais um e ganhar cupom"
+                : "Salvar e ganhar cupom"}
           </Button>
           <Button type="button" variant="outline" className="w-full" disabled={pending} onClick={concluir}>
-            {codigos.length > 1 ? "Finalizar cadastro" : "Pular indicações e finalizar"}
+            {codigos.length > 1 ? "Finalizar e ver meus cupons" : "Finalizar sem mais indicações"}
           </Button>
         </div>
       ) : null}
