@@ -18,6 +18,7 @@ import {
   calcularPrazoGrupoFromRow,
   milestoneReajusteMeses,
 } from "@/lib/grupos/prazos";
+import { parcelaEfetivaCota } from "@/lib/grupos/reajuste-cotas";
 import { parseSeguroInput } from "@/lib/grupos/seguro";
 import { GRUPOS_TESTE } from "@/lib/grupos/dados-teste";
 import {
@@ -501,6 +502,227 @@ export async function marcarReajusteCreditoGrupoAction(
     return { ok: true, marco };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : "Falha ao marcar reajuste." };
+  }
+}
+
+export type CotaReajusteAdminRow = {
+  id: string;
+  ordem: number | null;
+  valor_credito: number;
+  valor_parcela: number;
+  parcela_integral: number | null;
+  parcela_reduzida: number | null;
+  saldo_devedor: number | null;
+};
+
+/** Cotas do grupo para a tela de reajuste (crédito + parcela). */
+export async function fetchCotasParaReajusteAction(grupoId: string): Promise<
+  | {
+      ok: true;
+      grupo: { id: string; codigo_grupo: string; modalidade: string };
+      cotas: CotaReajusteAdminRow[];
+      marco: number;
+      precisaMarcarReajuste: boolean;
+    }
+  | { ok: false; error: string }
+> {
+  try {
+    await assertCanManageGrupos();
+    const supabase = await createClient();
+    const { data: grupo, error } = await supabase
+      .from("grupos_consorcio")
+      .select(
+        "id, codigo_grupo, modalidade, prazo_total, parcelas_realizadas, prazo_restante, parcelas_realizadas_base, data_base_parcelas, atualizacao_parcelas_automatica, credito_reajustado_ate_meses, tem_parcela_reduzida",
+      )
+      .eq("id", grupoId)
+      .maybeSingle();
+    if (error || !grupo) return { ok: false, error: error?.message ?? "Grupo não encontrado." };
+
+    const { data: cotas, error: cErr } = await supabase
+      .from("grupos_cotas")
+      .select(
+        "id, ordem, valor_credito, valor_parcela, parcela_integral, parcela_reduzida, saldo_devedor, ativo",
+      )
+      .eq("grupo_id", grupoId)
+      .order("ordem", { ascending: true });
+    if (cErr) return { ok: false, error: cErr.message };
+
+    const prazo = calcularPrazoGrupoFromRow(grupo as GrupoConsorcio);
+    const marco = milestoneReajusteMeses(prazo.parcelasRealizadasAtuais);
+    const precisaMarcarReajuste =
+      marco >= 12 && marco > (Number(grupo.credito_reajustado_ate_meses) || 0);
+
+    return {
+      ok: true,
+      grupo: {
+        id: grupo.id as string,
+        codigo_grupo: grupo.codigo_grupo as string,
+        modalidade: grupo.modalidade as string,
+      },
+      cotas: (cotas ?? [])
+        .filter((c) => c.ativo !== false)
+        .map((c) => ({
+          id: c.id as string,
+          ordem: (c.ordem as number | null) ?? null,
+          valor_credito: Number(c.valor_credito) || 0,
+          valor_parcela: parcelaEfetivaCota({
+            valor_parcela: c.valor_parcela as number | null,
+            parcela_reduzida: c.parcela_reduzida as number | null,
+            parcela_integral: c.parcela_integral as number | null,
+          }),
+          parcela_integral: c.parcela_integral != null ? Number(c.parcela_integral) : null,
+          parcela_reduzida: c.parcela_reduzida != null ? Number(c.parcela_reduzida) : null,
+          saldo_devedor: c.saldo_devedor != null ? Number(c.saldo_devedor) : null,
+        })),
+      marco,
+      precisaMarcarReajuste,
+    };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Falha ao carregar cotas." };
+  }
+}
+
+export type ReajusteCotaInput = {
+  id: string;
+  valor_credito: number;
+  valor_parcela: number;
+};
+
+/**
+ * Aplica crédito e parcela em todas as cotas e, se estiver no marco 12/24/36…,
+ * marca o reajuste (remove destaque na lista).
+ */
+export async function reajustarCotasGrupoAction(
+  grupoId: string,
+  cotas: ReajusteCotaInput[],
+  opts?: { marcarReajuste?: boolean },
+): Promise<{ ok: true; marco: number | null } | { ok: false; error: string }> {
+  try {
+    await assertCanManageGrupos();
+    if (!cotas.length) return { ok: false, error: "Nenhuma cota para reajustar." };
+
+    const admin = createAdminClient();
+    const { data: grupo, error: gErr } = await admin
+      .from("grupos_consorcio")
+      .select("*")
+      .eq("id", grupoId)
+      .maybeSingle();
+    if (gErr || !grupo) return { ok: false, error: gErr?.message ?? "Grupo não encontrado." };
+
+    const { data: atuais, error: cErr } = await admin
+      .from("grupos_cotas")
+      .select(
+        "id, valor_credito, valor_parcela, parcela_integral, parcela_reduzida, saldo_devedor",
+      )
+      .eq("grupo_id", grupoId);
+    if (cErr) return { ok: false, error: cErr.message };
+
+    const byId = new Map((atuais ?? []).map((c) => [c.id as string, c]));
+    const seguroCfg = grupoConfigSeguroFromRow(grupo as Record<string, unknown>);
+    const temReduzida = !!(grupo as { tem_parcela_reduzida?: boolean }).tem_parcela_reduzida;
+
+    for (const item of cotas) {
+      const old = byId.get(item.id);
+      if (!old) continue;
+      const credito = Number(item.valor_credito);
+      const parcela = Number(item.valor_parcela);
+      if (!Number.isFinite(credito) || credito <= 0) {
+        return { ok: false, error: "Informe um crédito válido em todas as cotas." };
+      }
+      if (!Number.isFinite(parcela) || parcela < 0) {
+        return { ok: false, error: "Informe uma parcela válida em todas as cotas." };
+      }
+
+      const oldCredito = Number(old.valor_credito) || credito;
+      const fatorCredito = oldCredito > 0 ? credito / oldCredito : 1;
+      const oldSaldo =
+        old.saldo_devedor != null && Number(old.saldo_devedor) > 0
+          ? Number(old.saldo_devedor)
+          : null;
+      const saldo_devedor =
+        oldSaldo != null
+          ? Math.round(oldSaldo * fatorCredito * 100) / 100
+          : estimarCamposCotaBulk(credito, seguroCfg).saldo_devedor;
+
+      const oldIntegral =
+        old.parcela_integral != null && Number(old.parcela_integral) > 0
+          ? Number(old.parcela_integral)
+          : null;
+      const oldReduzida =
+        old.parcela_reduzida != null && Number(old.parcela_reduzida) > 0
+          ? Number(old.parcela_reduzida)
+          : null;
+      const oldParcelaEfetiva = parcelaEfetivaCota({
+        valor_parcela: old.valor_parcela as number | null,
+        parcela_reduzida: oldReduzida,
+        parcela_integral: oldIntegral,
+      });
+      const fatorParcela = oldParcelaEfetiva > 0 ? parcela / oldParcelaEfetiva : fatorCredito;
+
+      let parcela_integral: number;
+      let parcela_reduzida: number | null;
+      if (temReduzida && oldReduzida != null) {
+        parcela_reduzida = Math.round(parcela * 100) / 100;
+        parcela_integral =
+          oldIntegral != null
+            ? Math.round(oldIntegral * fatorParcela * 100) / 100
+            : Math.round(parcela * 100) / 100;
+      } else {
+        parcela_integral = Math.round(parcela * 100) / 100;
+        parcela_reduzida =
+          oldReduzida != null ? Math.round(oldReduzida * fatorParcela * 100) / 100 : null;
+      }
+
+      const parcelas = calcularParcelasSeguroDaCota(
+        {
+          saldoDevedor: saldo_devedor,
+          parcelaIntegral: parcela_integral,
+          parcelaReduzida: parcela_reduzida,
+        },
+        seguroCfg,
+      );
+
+      const { error: upErr } = await admin
+        .from("grupos_cotas")
+        .update({
+          valor_credito: Math.round(credito * 100) / 100,
+          valor_parcela: Math.round(parcela * 100) / 100,
+          saldo_devedor,
+          parcela_integral,
+          parcela_reduzida,
+          parcela_sem_seguro: parcelas.parcelaSemSeguro,
+          parcela_com_seguro: parcelas.parcelaComSeguroPersistida,
+        })
+        .eq("id", item.id)
+        .eq("grupo_id", grupoId);
+      if (upErr) return { ok: false, error: upErr.message };
+    }
+
+    let marco: number | null = null;
+    const marcar = opts?.marcarReajuste !== false;
+    if (marcar) {
+      const prazo = calcularPrazoGrupoFromRow(grupo as GrupoConsorcio);
+      marco = milestoneReajusteMeses(prazo.parcelasRealizadasAtuais);
+      if (marco >= 12) {
+        const { error: updErr } = await admin
+          .from("grupos_consorcio")
+          .update({
+            credito_reajustado_ate_meses: marco,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", grupoId);
+        if (updErr && !/credito_reajustado_ate_meses/i.test(updErr.message)) {
+          return { ok: false, error: updErr.message };
+        }
+      }
+    }
+
+    revalidatePath("/admin/grupos");
+    revalidatePath(`/admin/grupos/${grupoId}`);
+    revalidatePath("/grupos");
+    return { ok: true, marco };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Falha ao reajustar cotas." };
   }
 }
 
