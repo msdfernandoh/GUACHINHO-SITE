@@ -9,6 +9,8 @@ import { formatCepBrInput } from "@/lib/contratacoes-online/endereco";
 import { buildWhatsappLink, buildWhatsappPropostaMessage } from "@/lib/contratacoes-online/whatsapp-message";
 import type { ContratacaoDocumentoRow, ContratacaoOnlineRow } from "@/lib/contratacoes-online/types";
 import { ContratacaoDocumentosSection } from "./contratacao-documentos-section";
+import { ContratacaoGruposResumo } from "@/components/contratacao/contratacao-grupos-resumo";
+import type { LinhaGrupoPropostaResumo } from "@/lib/contratacoes-online/extract-fields";
 import {
   adminDdClass,
   adminDtClass,
@@ -35,6 +37,7 @@ export function ContratacaoDetalheClient({
   publicUrl,
   statusLabelText,
   resumoFinanceiro,
+  gruposLinhas = [],
   podeAcessarDocumentos,
   mensagemSemPermissaoDocumentos,
 }: {
@@ -43,6 +46,7 @@ export function ContratacaoDetalheClient({
   publicUrl: string;
   statusLabelText: string;
   resumoFinanceiro: Record<string, number | string | null>;
+  gruposLinhas?: LinhaGrupoPropostaResumo[];
   podeAcessarDocumentos: boolean;
   mensagemSemPermissaoDocumentos: string;
 }) {
@@ -163,7 +167,13 @@ export function ContratacaoDetalheClient({
               label="Parcela após contemplação"
               value={money(fin.parcelaPosContemplacao as number)}
             />
-            <Field label="Grupo" value={contratacao.grupo_nome} />
+            {gruposLinhas.length > 0 ? (
+              <div className="col-span-full">
+                <ContratacaoGruposResumo linhas={gruposLinhas} />
+              </div>
+            ) : (
+              <Field label="Grupo" value={contratacao.grupo_nome} />
+            )}
             <Field label="Administradora" value={contratacao.administradora} />
             <Field label="Gerado por" value={contratacao.gerado_por_nome ?? "Cliente no site"} />
             <div className="grid gap-0.5 sm:grid-cols-[140px_1fr] sm:gap-3">

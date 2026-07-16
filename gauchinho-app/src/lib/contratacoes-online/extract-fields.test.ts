@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { resumoFinanceiroFromDados } from "./extract-fields";
+import { resumoFinanceiroFromDados, linhasGrupoResumoFromDados } from "./extract-fields";
 
 describe("resumoFinanceiroFromDados — grupos", () => {
   it("preserva parcelaPosContemplacao da linha sem confundir com parcelas iniciais", () => {
@@ -61,5 +61,32 @@ describe("resumoFinanceiroFromDados — grupos", () => {
       totais: { parcelaPosContemplacaoTotal: 88.5 },
     });
     expect(fin.parcelaPosContemplacao).toBe(88.5);
+  });
+
+  it("lista vários grupos com código, cotas e meses decorridos", () => {
+    const linhas = linhasGrupoResumoFromDados("grupos", {
+      selecoes: [
+        {
+          config: { quantidadeCotas: 2 },
+          resultado: { quantidadeCotas: 2 },
+          grupo: {
+            codigo_grupo: "1463",
+            modalidade: "Imóvel",
+            parcelas_realizadas: 12,
+          },
+        },
+        {
+          config: { quantidadeCotas: 1 },
+          grupo: { codigo_grupo: "1273", modalidade: "Imóvel", parcelas_realizadas: 5 },
+        },
+      ],
+    });
+    expect(linhas).toHaveLength(2);
+    expect(linhas[0]).toMatchObject({
+      codigoGrupo: "1463",
+      quantidadeCotas: 2,
+      parcelasRealizadas: 12,
+    });
+    expect(linhas[1]?.codigoGrupo).toBe("1273");
   });
 });

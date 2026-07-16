@@ -1,4 +1,6 @@
 import type { ContratacaoOrigem } from "./types";
+import { calcularPrazoGrupoFromRow } from "@/lib/grupos/prazos";
+import type { GrupoConsorcio } from "@/lib/types";
 
 type FlatFields = {
   tipo_bem: string | null;
@@ -20,6 +22,64 @@ function str(v: unknown): string | null {
   if (v == null) return null;
   const s = String(v).trim();
   return s || null;
+}
+
+export type LinhaGrupoPropostaResumo = {
+  codigoGrupo: string;
+  modalidade: string | null;
+  quantidadeCotas: number;
+  parcelasRealizadas: number | null;
+};
+
+function parcelasRealizadasGrupoSnap(grupo: Record<string, unknown>): number | null {
+  const direct = num(grupo.parcelas_realizadas);
+  if (direct != null) return Math.round(direct);
+  if (
+    grupo.prazo_total != null ||
+    grupo.data_base_parcelas != null ||
+    grupo.parcelas_realizadas_base != null
+  ) {
+    try {
+      return calcularPrazoGrupoFromRow(grupo as GrupoConsorcio).parcelasRealizadasAtuais;
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
+/** Uma linha por grupo selecionado na simulação /grupos (suporta vários na mesma proposta). */
+export function linhasGrupoResumoFromDados(
+  origem: ContratacaoOrigem,
+  dados: Record<string, unknown>,
+): LinhaGrupoPropostaResumo[] {
+  if (origem !== "grupos") return [];
+  const selecoes = Array.isArray(dados.selecoes) ? dados.selecoes : [];
+  return selecoes.map((raw) => {
+    const sel = (raw ?? {}) as Record<string, unknown>;
+    const grupo = (sel.grupo ?? {}) as Record<string, unknown>;
+    const config = (sel.config ?? {}) as Record<string, unknown>;
+    const resultado = (sel.resultado ?? {}) as Record<string, unknown>;
+    const codigoGrupo =
+      str(grupo.codigo_grupo) ?? str(sel.codigoGrupo) ?? str(grupo.codigo) ?? "—";
+    const modalidade = str(grupo.modalidade);
+    const quantidadeCotas =
+      Math.max(
+        0,
+        Math.floor(
+          num(config.quantidadeCotas) ??
+            num(resultado.quantidadeCotas) ??
+            num(sel.quantidade_cotas) ??
+            0,
+        ),
+      ) || 0;
+    return {
+      codigoGrupo,
+      modalidade,
+      quantidadeCotas,
+      parcelasRealizadas: parcelasRealizadasGrupoSnap(grupo),
+    };
+  });
 }
 
 export function extrairCamposFlat(
@@ -54,6 +114,7 @@ export function extrairCamposFlat(
   }
 
   const selecoes = Array.isArray(dados.selecoes) ? dados.selecoes : [];
+  const linhasGrupo = linhasGrupoResumoFromDados("grupos", dados);
   const first = (selecoes[0] ?? {}) as Record<string, unknown>;
   const grupo = (first.grupo ?? {}) as Record<string, unknown>;
   const resultado = (first.resultado ?? {}) as Record<string, unknown>;
@@ -63,6 +124,10 @@ export function extrairCamposFlat(
     num(dados.creditoLiquidoTotal);
   const parcela = num(resultado.primeiraParcela) ?? num(dados.primeiraParcelaTotal);
   const prazo = num(grupo.prazo_meses) ?? num(grupo.prazo_total) ?? num(resultado.parcelasRestantesPosContemplacao);
+  const grupoNomeResumo =
+    linhasGrupo.length > 1
+      ? linhasGrupo.map((l) => l.codigoGrupo).join(", ")
+      : linhasGrupo[0]?.codigoGrupo ?? str(grupo.codigo_grupo) ?? str(first.grupoId);
 
   return {
     tipo_bem: str(grupo.modalidade) ?? str(dados.modalidadeResumo),
@@ -70,7 +135,7 @@ export function extrairCamposFlat(
     parcela_estimada: parcela,
     prazo: prazo != null ? Math.round(prazo) : null,
     grupo_id: str(grupo.id) ?? str(first.grupoId),
-    grupo_nome: str(grupo.codigo_grupo) ?? str(grupo.nome),
+    grupo_nome: grupoNomeResumo,
     administradora: str(grupo.administradora),
     cota_id: str(first.cotaId),
   };

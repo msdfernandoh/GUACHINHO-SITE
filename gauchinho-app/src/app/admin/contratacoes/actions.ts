@@ -14,7 +14,7 @@ import {
 } from "@/lib/contratacoes-online/documentos-admin";
 import { hydrateContratacaoEndereco } from "@/lib/contratacoes-online/endereco";
 import { statusLabel } from "@/lib/contratacoes-online/status";
-import { resumoFinanceiroFromDados } from "@/lib/contratacoes-online/extract-fields";
+import { resumoFinanceiroFromDados, linhasGrupoResumoFromDados } from "@/lib/contratacoes-online/extract-fields";
 import type { ContratacaoDocumentoRow, ContratacaoOnlineRow } from "@/lib/contratacoes-online/types";
 import { buildPropostaPublicUrl } from "@/lib/url/public-url";
 import { DEFAULT_SITE, getConfigJsonPublic } from "@/server/config";
@@ -60,11 +60,16 @@ export async function fetchContratacaoDetalhe(id: string) {
     contratacao.origem,
     (contratacao.dados_simulacao ?? {}) as Record<string, unknown>,
   );
+  const gruposLinhas = linhasGrupoResumoFromDados(
+    contratacao.origem,
+    (contratacao.dados_simulacao ?? {}) as Record<string, unknown>,
+  );
   return {
     contratacao,
     documentos,
     publicUrl,
     resumoFinanceiro,
+    gruposLinhas,
     statusLabel: statusLabel(contratacao.status),
     podeAcessarDocumentos,
     mensagemSemPermissaoDocumentos: MSG_SEM_PERMISSAO_DOCUMENTOS_CONTRATACAO,

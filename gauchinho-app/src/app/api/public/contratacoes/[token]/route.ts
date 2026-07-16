@@ -6,7 +6,7 @@ import {
   atualizarContratacaoPublica,
 } from "@/lib/contratacoes-online/service";
 import { isValidPublicToken } from "@/lib/contratacoes-online/public-token";
-import { resumoFinanceiroFromDados } from "@/lib/contratacoes-online/extract-fields";
+import { resumoFinanceiroFromDados, linhasGrupoResumoFromDados } from "@/lib/contratacoes-online/extract-fields";
 import { getConfigJsonPublic } from "@/server/config";
 import {
   DEFAULT_CONTRATACAO_ONLINE_CONFIG,
@@ -37,6 +37,7 @@ export async function GET(_req: Request, ctx: Ctx) {
       ok: true,
       contratacao: sanitizeContratacaoPublica(row),
       resumoFinanceiro: resumoFinanceiroFromDados(row.origem, dadosSim),
+      gruposLinhas: linhasGrupoResumoFromDados(row.origem, dadosSim),
       formasPagamento: formasPagamentoDisponiveis(cfg),
       pixConfig: cfg.pix_primeira_parcela_ativo
         ? {

@@ -27,7 +27,8 @@ import {
   type EnderecoFormState,
 } from "@/components/contratacao/contratacao-endereco-fields";
 import { formatCepBrInput } from "@/lib/contratacoes-online/endereco";
-import { cn } from "@/lib/utils/cn";
+import { ContratacaoGruposResumo } from "@/components/contratacao/contratacao-grupos-resumo";
+import type { LinhaGrupoPropostaResumo } from "@/lib/contratacoes-online/extract-fields";
 
 const ENDERECO_VAZIO: EnderecoFormState = {
   cep: "",
@@ -44,6 +45,7 @@ type ResumoFinanceiro = Record<string, number | string | null>;
 type ApiPayload = {
   contratacao: ContratacaoOnlineRow;
   resumoFinanceiro: ResumoFinanceiro;
+  gruposLinhas?: LinhaGrupoPropostaResumo[];
   formasPagamento: FormaPagamento[];
   pixConfig: {
     chave: string;
@@ -172,6 +174,7 @@ export function ContratacaoWizard({ publicToken }: { publicToken: string }) {
 
   const c = data?.contratacao;
   const fin = data?.resumoFinanceiro ?? {};
+  const gruposLinhas = data?.gruposLinhas ?? [];
 
   const docPorTipo = useMemo(() => {
     const map = new Map<string, DocumentoContratacaoPublico>();
@@ -406,7 +409,11 @@ export function ContratacaoWizard({ publicToken }: { publicToken: string }) {
               <Row label="Prazo" value={c.prazo ? `${c.prazo} meses` : null} />
               <Row label="Origem" value={origemLabel} />
               <Row label="Administradora" value={c.administradora} />
-              <Row label="Grupo" value={c.grupo_nome} />
+              {gruposLinhas.length > 0 ? (
+                <ContratacaoGruposResumo linhas={gruposLinhas} />
+              ) : (
+                <Row label="Grupo" value={c.grupo_nome} />
+              )}
             </div>
             <div className={sectionCardClass()}>
               <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-amber-400/90">

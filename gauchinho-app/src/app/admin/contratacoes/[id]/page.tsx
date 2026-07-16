@@ -18,6 +18,7 @@ export default async function ContratacaoDetalhePage({
       documentos={data.documentos}
       publicUrl={data.publicUrl}
       resumoFinanceiro={data.resumoFinanceiro}
+      gruposLinhas={data.gruposLinhas}
       statusLabelText={data.statusLabel}
       podeAcessarDocumentos={data.podeAcessarDocumentos}
       mensagemSemPermissaoDocumentos={data.mensagemSemPermissaoDocumentos}
