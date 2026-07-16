@@ -394,6 +394,14 @@ export async function fetchLeadDetail(leadId: string) {
     .eq("lead_id", leadId)
     .order("created_at", { ascending: false });
 
+  const { data: contratacaoOnline } = await supabase
+    .from("contratacoes_online")
+    .select("*")
+    .eq("lead_id", leadId)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
   let iaConversa: Record<string, unknown> | null = null;
   let iaMensagens: Array<Record<string, unknown>> = [];
   if (lead.origem === "ia_chat") {
@@ -418,6 +426,7 @@ export async function fetchLeadDetail(leadId: string) {
     lead,
     historico: historicoRows ?? [],
     propostas: propostas ?? [],
+    contratacaoOnline: contratacaoOnline ?? null,
     iaConversa,
     iaMensagens,
     atividades: atividadesSafe,

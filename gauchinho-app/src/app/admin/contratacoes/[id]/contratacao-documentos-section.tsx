@@ -3,7 +3,10 @@
 import { useState } from "react";
 import { ExternalLink, Download, Eye } from "lucide-react";
 import { Button } from "@/components/ui/form-primitives";
-import { getContratacaoDocumentoSignedUrlAction } from "../actions";
+import {
+  getContratacaoDocumentoSignedUrlAction,
+  getContratacaoDocumentosBulkDownloadAction,
+} from "../actions";
 import type { ContratacaoDocumentoRow } from "@/lib/contratacoes-online/types";
 import { cn } from "@/lib/utils/cn";
 import { formatTamanhoArquivo, labelTipoDocumento } from "@/lib/contratacoes-online/documentos-labels";
@@ -28,6 +31,7 @@ export function ContratacaoDocumentosSection({
   mensagemSemPermissao,
 }: Props) {
   const [loadingId, setLoadingId] = useState<string | null>(null);
+  const [baixandoTodos, setBaixandoTodos] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
 
   async function abrir(documentoId: string, mode: "view" | "download") {
@@ -53,6 +57,28 @@ export function ContratacaoDocumentosSection({
     }
   }
 
+  async function baixarTodos() {
+    setBaixandoTodos(true);
+    setErro(null);
+    try {
+      const res = await getContratacaoDocumentosBulkDownloadAction(contratacaoId);
+      if (!res.ok) {
+        setErro(res.error);
+        return;
+      }
+      for (const arq of res.arquivos) {
+        const a = document.createElement("a");
+        a.href = arq.url;
+        a.rel = "noopener noreferrer";
+        a.download = arq.nome;
+        a.click();
+        await new Promise((r) => setTimeout(r, 400));
+      }
+    } finally {
+      setBaixandoTodos(false);
+    }
+  }
+
   if (!podeAcessarDocumentos) {
     return (
       <section className={adminSectionClass}>
@@ -64,7 +90,21 @@ export function ContratacaoDocumentosSection({
 
   return (
     <section className={adminSectionClass}>
-      <h2 className={adminSectionTitleClass}>Documentos enviados</h2>
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+        <h2 className={adminSectionTitleClass}>Documentos enviados</h2>
+        {documentos.length > 0 ? (
+          <Button
+            type="button"
+            variant="gold"
+            className="h-9 text-xs"
+            disabled={Boolean(loadingId) || baixandoTodos}
+            onClick={() => void baixarTodos()}
+          >
+            <Download className="mr-1 h-4 w-4" />
+            {baixandoTodos ? "Baixando…" : "Baixar todos os documentos"}
+          </Button>
+        ) : null}
+      </div>
       <p className="mb-4 text-xs text-zinc-400">
         Links temporários (≈1 h). O bucket permanece privado; não há URL pública permanente.
       </p>

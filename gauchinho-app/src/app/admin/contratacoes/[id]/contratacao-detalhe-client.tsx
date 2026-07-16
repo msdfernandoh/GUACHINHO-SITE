@@ -17,6 +17,7 @@ import {
   adminSectionClass,
   adminSectionTitleClass,
 } from "@/components/admin/admin-contrast";
+import { ContratacaoCopyPanel } from "@/components/admin/contratacao-copy-panel";
 
 function Field({ label, value }: { label: string; value: string | null | undefined }) {
   return (
@@ -204,6 +205,12 @@ export function ContratacaoDetalheClient({
         documentos={documentos}
         podeAcessarDocumentos={podeAcessarDocumentos}
         mensagemSemPermissao={mensagemSemPermissaoDocumentos}
+      />
+
+      <ContratacaoCopyPanel
+        contratacao={contratacao}
+        resumoFinanceiro={fin}
+        gruposLinhas={gruposLinhas}
       />
 
       <section className={adminSectionClass}>

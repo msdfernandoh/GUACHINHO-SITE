@@ -76,6 +76,37 @@ export async function fetchContratacaoDetalhe(id: string) {
   };
 }
 
+export async function getContratacaoDocumentosBulkDownloadAction(
+  contratacaoId: string,
+): Promise<
+  | { ok: true; arquivos: Array<{ documentoId: string; url: string; nome: string }> }
+  | { ok: false; error: string }
+> {
+  try {
+    const usuario = await requireStaffAdmin();
+    assertAcessoDocumentosContratacao(usuario);
+    const supabase = await createClient();
+    const docs = await listarDocumentosContratacaoStaff(supabase, contratacaoId);
+    const arquivos: Array<{ documentoId: string; url: string; nome: string }> = [];
+    for (const d of docs) {
+      const url = await obterSignedUrlDocumentoContratacao(supabase, {
+        contratacaoId,
+        documentoId: d.id,
+        download: true,
+      });
+      arquivos.push({
+        documentoId: d.id,
+        url,
+        nome: d.arquivo_nome?.trim() || `${d.tipo_documento}-${d.id.slice(0, 8)}`,
+      });
+    }
+    return { ok: true, arquivos };
+  } catch (e) {
+    const message = e instanceof Error ? e.message : MSG_SEM_PERMISSAO_DOCUMENTOS_CONTRATACAO;
+    return { ok: false, error: message };
+  }
+}
+
 export async function getContratacaoDocumentoSignedUrlAction(
   contratacaoId: string,
   documentoId: string,

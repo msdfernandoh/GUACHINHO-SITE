@@ -27,6 +27,8 @@ import { LeadWhatsappButton } from "@/components/admin/crm/lead-whatsapp-button"
 import { LeadActivityTimeline } from "@/components/admin/crm/lead-activity-timeline";
 import { LeadActivityForm } from "@/components/admin/crm/lead-activity-form";
 import { fetchCompromissosLead } from "@/app/admin/agenda/actions";
+import { LeadContratacaoOnlineSection } from "@/components/admin/lead-contratacao-section";
+import type { ContratacaoOnlineRow } from "@/lib/contratacoes-online/types";
 
 export default async function LeadDetailPage({
   params,
@@ -41,7 +43,8 @@ export default async function LeadDetailPage({
   } catch {
     notFound();
   }
-  const { lead, historico, propostas, iaConversa, iaMensagens, atividades, timeline } = detail;
+  const { lead, historico, propostas, contratacaoOnline, iaConversa, iaMensagens, atividades, timeline } =
+    detail;
   const srds = await fetchSrdOptions();
   const agendaItens = await fetchCompromissosLead(id);
   const podeExcluir = canDeleteRecords(usuario?.perfil);
@@ -90,6 +93,11 @@ export default async function LeadDetailPage({
           ) : null}
         </div>
       </div>
+
+      <LeadContratacaoOnlineSection
+        lead={lead as Record<string, unknown>}
+        contratacao={(contratacaoOnline as ContratacaoOnlineRow | null) ?? null}
+      />
 
       {leadEvento.origem === "evento" || leadEvento.evento_nome ? (
         <section className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-4 text-sm text-zinc-200">

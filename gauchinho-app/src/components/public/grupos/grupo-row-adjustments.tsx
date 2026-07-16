@@ -95,12 +95,15 @@ export function GrupoRowAdjustments({ grupo, cotas, modalidades, config, onChang
         <div className="space-y-3 rounded-lg border border-zinc-800 bg-zinc-950/40 p-3">
           <div>
             <p className="mb-1 text-[10px] uppercase text-zinc-500">Tipo de parcela</p>
-            {parcelaFixaNaMod ? (
-              <span className="text-xs text-emerald-300/90">
-                {parcelaFixaNaMod === "reduzida" ? "Reduzida (estratégia)" : "Integral (estratégia)"}
-              </span>
-            ) : exibeTipoParcela ? (
+            {exibeTipoParcela ? (
               <div className="space-y-2">
+                {parcelaFixaNaMod ? (
+                  <p className="text-[10px] text-zinc-500">
+                    Estratégia sugere parcela{" "}
+                    {parcelaFixaNaMod === "reduzida" ? "reduzida" : "integral"} — você pode alterar
+                    abaixo.
+                  </p>
+                ) : null}
                 <CompactSelect
                   className="max-w-[160px]"
                   value={config.modalidadeParcela}

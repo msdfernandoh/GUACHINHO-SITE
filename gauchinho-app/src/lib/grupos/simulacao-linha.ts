@@ -17,6 +17,22 @@ import { parcelaTipoFromModalidade } from "./modalidades-admin";
 export type ModalidadeParcelaLinha = "reduzida" | "integral" | "personalizada";
 export type RecursoProprioModo = "percentual" | "valor";
 
+/** Respeita a escolha na linha; estratégia de lance só define o padrão ao selecionar a modalidade. */
+export function resolveParcelaTipoLinha(
+  config: Pick<ConfigLinhaSimulacaoGrupo, "modalidadeParcela">,
+  grupo: Pick<
+    GrupoConsorcio,
+    "tem_parcela_reduzida" | "permite_parcela_reduzida_personalizada"
+  >,
+): ModalidadeParcelaLinha {
+  let t = config.modalidadeParcela;
+  if (t === "personalizada" && !grupo.permite_parcela_reduzida_personalizada) {
+    t = grupo.tem_parcela_reduzida ? "reduzida" : "integral";
+  }
+  if (t === "reduzida" && !grupo.tem_parcela_reduzida) t = "integral";
+  return t;
+}
+
 export type ConfigLinhaSimulacaoGrupo = {
   cotaId: string | null;
   quantidadeCotas: number;
@@ -241,8 +257,7 @@ export function calcularLinhaSimulacaoGrupo(args: {
     modLance && config.usaLanceEmbutido
       ? normalizarPercentualGrupo(modLance.percentual_recurso_proprio_minimo)
       : 0;
-  const parcelaTipoLinha: ModalidadeParcelaLinha =
-    (modLance && parcelaTipoFromModalidade(modLance)) || config.modalidadeParcela;
+  const parcelaTipoLinha = resolveParcelaTipoLinha(config, grupo);
 
   const lanceEmbutido =
     pctEmbutido > 0 ? calcularLanceEmbutidoLinha(saldoDevedorInicial, pctEmbutido) : 0;
