@@ -181,6 +181,18 @@ export function EventoSorteioPublicForm({ sorteio, qrCodeUnicoId }: Props) {
             Cada novo amigo válido gera mais um cupom para você.
           </p>
           <Link
+            href="/simulador"
+            className="inline-flex min-h-11 items-center justify-center rounded-lg bg-amber-500 px-4 py-2 text-sm font-semibold text-zinc-950 hover:bg-amber-400"
+          >
+            Simular contratação
+          </Link>
+          <Link
+            href="/grupos"
+            className="inline-flex min-h-11 items-center justify-center rounded-lg border border-amber-500/50 bg-amber-500/10 px-4 py-2 text-sm font-semibold text-amber-200 hover:bg-amber-500/20"
+          >
+            Ver grupos disponíveis
+          </Link>
+          <Link
             href={`/eventos/${sorteio.eventoSlug}`}
             className="inline-flex items-center justify-center rounded-lg border border-zinc-600 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800"
           >
