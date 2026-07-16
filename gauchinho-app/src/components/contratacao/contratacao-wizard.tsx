@@ -27,6 +27,7 @@ import {
   type EnderecoFormState,
 } from "@/components/contratacao/contratacao-endereco-fields";
 import { formatCepBrInput } from "@/lib/contratacoes-online/endereco";
+import { cn } from "@/lib/utils/cn";
 import { ContratacaoGruposResumo } from "@/components/contratacao/contratacao-grupos-resumo";
 import type { LinhaGrupoPropostaResumo } from "@/lib/contratacoes-online/extract-fields";
 

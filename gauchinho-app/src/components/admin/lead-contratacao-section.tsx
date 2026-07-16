@@ -16,12 +16,12 @@ export function LeadContratacaoOnlineSection({
   contratacao: ContratacaoOnlineRow | null;
 }) {
   const origem = String(lead.origem ?? "");
+  const dsLead = (lead.dados_simulacao ?? {}) as Record<string, unknown>;
   const isContratacao =
     origem === "contratacao_online" || Boolean(contratacao) || Boolean(dsLead.contratacao_id);
 
   if (!isContratacao) return null;
 
-  const dsLead = (lead.dados_simulacao ?? {}) as Record<string, unknown>;
   const dadosGrupos = dadosSimulacaoGruposFromLead(lead.dados_simulacao);
   const origemFluxo =
     contratacao?.origem ??
