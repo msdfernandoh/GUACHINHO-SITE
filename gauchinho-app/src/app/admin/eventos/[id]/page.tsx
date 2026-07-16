@@ -39,8 +39,8 @@ export default async function EditarEventoPage({ params }: { params: Promise<{ i
       limite: evento.limite_participantes,
       restantes: evento.limite_participantes,
     })),
-    fetchUsuariosStaffAtivos(),
-    fetchEventoLeadsUsuariosIds(id),
+    fetchUsuariosStaffAtivos().catch(() => [] as { id: string; nome: string }[]),
+    fetchEventoLeadsUsuariosIds(id).catch(() => [] as string[]),
   ]);
 
   let qrDisponiveis: Awaited<ReturnType<typeof listQrCodesDisponiveisParaEvento>> = [];
@@ -56,7 +56,6 @@ export default async function EditarEventoPage({ params }: { params: Promise<{ i
 
   const inscricaoMigrationPending =
     evento.inscricao_tipo === undefined && evento.inscricao_url_externa === undefined;
-  const update = updateEventoAction.bind(null, id);
   const savePost = saveEventoPostAction.bind(null, id);
 
   return (
@@ -99,7 +98,7 @@ export default async function EditarEventoPage({ params }: { params: Promise<{ i
 
       <EventoAdminForm
         evento={evento}
-        action={update}
+        action={updateEventoAction}
         usuariosStaff={usuariosStaff}
         leadsUsuariosIds={leadsUsuariosIds}
         qrDisponiveis={qrDisponiveis}

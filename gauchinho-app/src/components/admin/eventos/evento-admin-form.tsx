@@ -2,6 +2,9 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { isRedirectError } from "next/dist/client/components/redirect-error";
+import { isNextRouterError } from "next/dist/client/components/is-next-router-error";
 import { Input, Label, Textarea } from "@/components/ui/form-primitives";
 import { AdminFormSubmitButton } from "@/components/admin/admin-form-submit-button";
 import type { EventoRow } from "@/lib/comercial-eventos/types";
@@ -16,9 +19,11 @@ function toDatetimeLocalValue(iso: string | null | undefined): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
+type ActionResult = { ok: true } | { ok: false; error: string } | void;
+
 type Props = {
   evento?: EventoRow;
-  action: (formData: FormData) => Promise<void>;
+  action: (formData: FormData) => Promise<ActionResult>;
   usuariosStaff?: { id: string; nome: string }[];
   leadsUsuariosIds?: string[];
   qrDisponiveis?: QrCodeUnicoRow[];
@@ -34,6 +39,14 @@ function FormSection({ title, children }: { title: string; children: React.React
   );
 }
 
+function shouldRethrowNavigation(error: unknown): boolean {
+  if (isRedirectError(error) || isNextRouterError(error)) return true;
+  if (typeof error === "object" && error && "digest" in error) {
+    const digest = String((error as { digest?: string }).digest ?? "");
+    if (digest.startsWith("NEXT_REDIRECT") || digest.startsWith("NEXT_HTTP_ERROR_FALLBACK")) return true;
+  }
+  return error instanceof Error && error.message === "NEXT_REDIRECT";
+}
 
 export function EventoAdminForm({
   evento,
@@ -43,6 +56,7 @@ export function EventoAdminForm({
   qrDisponiveis = [],
   qrVinculo = null,
 }: Props) {
+  const router = useRouter();
   const dataLocal = toDatetimeLocalValue(evento?.data_evento);
 
   const [nome, setNome] = useState(evento?.nome ?? "");
@@ -51,6 +65,7 @@ export function EventoAdminForm({
     evento?.inscricao_tipo === "externo" ? "externo" : "interno",
   );
   const [formError, setFormError] = useState<string | null>(null);
+  const [formOk, setFormOk] = useState(false);
   const [leadsAcessoTodos, setLeadsAcessoTodos] = useState(evento?.leads_acesso_todos !== false);
   const [usarQrUnico, setUsarQrUnico] = useState(Boolean(qrVinculo?.ativo));
 
@@ -59,21 +74,47 @@ export function EventoAdminForm({
 
   async function onSubmit(formData: FormData) {
     setFormError(null);
+    setFormOk(false);
     try {
-      await action(formData);
+      const result = await action(formData);
+      if (result && typeof result === "object" && "ok" in result) {
+        if (!result.ok) {
+          setFormError(result.error);
+          return;
+        }
+        setFormOk(true);
+        router.refresh();
+        return;
+      }
+      // create com redirect: se chegou aqui sem throw, também atualiza
+      setFormOk(true);
+      router.refresh();
     } catch (e) {
-      const digest = typeof e === "object" && e && "digest" in e ? String((e as { digest?: string }).digest) : "";
-      if (digest.startsWith("NEXT_REDIRECT")) throw e;
+      if (shouldRethrowNavigation(e)) throw e;
       const msg = e instanceof Error ? e.message : "Não foi possível salvar o evento.";
+      // Mensagem genérica de produção do Next — costuma mascarar falha de re-render após redirect
+      if (/Server Components render/i.test(msg)) {
+        setFormError(
+          "Falha ao atualizar a página após salvar. Recarregue e confira se o nome foi gravado. Se não gravou, tente de novo.",
+        );
+        return;
+      }
       setFormError(msg);
     }
   }
 
   return (
     <form action={onSubmit} className="max-w-2xl space-y-6">
+      {evento?.id ? <input type="hidden" name="evento_id" value={evento.id} /> : null}
+
       {formError ? (
         <div className="rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-700 dark:text-red-300">
           {formError}
+        </div>
+      ) : null}
+      {formOk ? (
+        <div className="rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-800 dark:text-emerald-200">
+          Evento salvo com sucesso.
         </div>
       ) : null}
 

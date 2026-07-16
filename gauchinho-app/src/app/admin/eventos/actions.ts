@@ -44,6 +44,17 @@ function inscricaoFromForm(formData: FormData) {
   return { inscricao_tipo: tipo as "interno" | "externo", inscricao_url_externa: tipo === "externo" ? url : null };
 }
 
+function datetimeLocalToIso(raw: string): string | null {
+  const t = raw.trim();
+  if (!t) return null;
+  // datetime-local: "YYYY-MM-DDTHH:mm" — interpreta no fuso local do servidor
+  const d = new Date(t);
+  if (Number.isNaN(d.getTime())) {
+    throw new Error("Data do evento inválida.");
+  }
+  return d.toISOString();
+}
+
 function eventoFromForm(formData: FormData, opts?: { preserveSlug?: string | null }) {
   const nome = String(formData.get("nome") ?? "").trim();
   if (!nome) throw new Error("Nome obrigatório");
@@ -58,7 +69,7 @@ function eventoFromForm(formData: FormData, opts?: { preserveSlug?: string | nul
     slug,
     descricao_curta: String(formData.get("descricao_curta") ?? "").trim() || null,
     descricao: String(formData.get("descricao") ?? "").trim() || null,
-    data_evento: String(formData.get("data_evento") ?? "").trim() || null,
+    data_evento: datetimeLocalToIso(String(formData.get("data_evento") ?? "")),
     local: String(formData.get("local") ?? "").trim() || null,
     endereco: String(formData.get("endereco") ?? "").trim() || null,
     cidade: String(formData.get("cidade") ?? "").trim() || null,
@@ -165,12 +176,39 @@ async function persistEventoInsert(admin: ReturnType<typeof createAdminClient>, 
 }
 
 async function persistEventoUpdate(admin: ReturnType<typeof createAdminClient>, id: string, payload: EventoPayload) {
-  let { error } = await admin.from("eventos").update(payload).eq("id", id);
-  if (error && isDbMissingColumnError(error)) {
-    const { inscricao_tipo: _t, inscricao_url_externa: _u, ...rest } = payload;
-    ({ error } = await admin.from("eventos").update(rest).eq("id", id));
+  let row: Record<string, unknown> = { ...payload };
+  for (let attempt = 0; attempt < 6; attempt++) {
+    const { error } = await admin.from("eventos").update(row).eq("id", id);
+    if (!error) return;
+    if (!isDbMissingColumnError(error)) throw new Error(error.message);
+    const msg = error.message;
+    const stripped = { ...row };
+    let removed = false;
+    for (const key of Object.keys(stripped)) {
+      if (new RegExp(`['"]${key}['"]|\\b${key}\\b`, "i").test(msg)) {
+        delete stripped[key];
+        removed = true;
+      }
+    }
+    // Fallback: remove optional columns that often lag behind migrations
+    if (!removed) {
+      for (const key of [
+        "inscricao_tipo",
+        "inscricao_url_externa",
+        "leads_acesso_todos",
+        "evento_destaque",
+        "endereco",
+      ]) {
+        if (key in stripped) {
+          delete stripped[key];
+          removed = true;
+        }
+      }
+    }
+    if (!removed) throw new Error(error.message);
+    row = stripped;
   }
-  if (error) throw new Error(error.message);
+  throw new Error("Não foi possível salvar o evento (colunas incompatíveis com o banco).");
 }
 
 export async function fetchEventosAdminList(): Promise<import("@/lib/comercial-eventos/types").EventoRow[]> {
@@ -248,29 +286,45 @@ export async function createEventoAction(formData: FormData) {
   redirect(`/admin/eventos/${data.id}`);
 }
 
-export async function updateEventoAction(id: string, formData: FormData) {
-  const u = await requireUsuario();
-  if (!canManageImobiliarias(u.perfil)) throw new Error("Sem permissão");
-  const existing = await fetchEventoAdmin(id);
-  const payload = eventoFromForm(formData, { preserveSlug: existing.slug });
-  const usuarioIds = formData.getAll("leads_usuario_id").map((v) => String(v).trim()).filter(Boolean);
-  const admin = createAdminClient();
-  await persistEventoUpdate(admin, id, payload);
-  await syncEventoDestaque(admin, id, payload.evento_destaque);
-  await syncEventoLeadsUsuarios(admin, id, payload.leads_acesso_todos, usuarioIds);
+export type UpdateEventoResult = { ok: true } | { ok: false; error: string };
+
+/** Atualiza evento. Não usa redirect — evita erro genérico de Server Components no form client. */
+export async function updateEventoAction(formData: FormData): Promise<UpdateEventoResult> {
   try {
-    await syncQrVinculoFromEventoForm(id, formData);
+    const u = await requireUsuario();
+    if (!canManageImobiliarias(u.perfil)) {
+      return { ok: false, error: "Sem permissão" };
+    }
+    const id = strForm(formData, "evento_id");
+    if (!id) return { ok: false, error: "Evento inválido." };
+
+    const existing = await fetchEventoAdmin(id);
+    const payload = eventoFromForm(formData, { preserveSlug: existing.slug });
+    const usuarioIds = formData.getAll("leads_usuario_id").map((v) => String(v).trim()).filter(Boolean);
+    const admin = createAdminClient();
+    await persistEventoUpdate(admin, id, payload);
+    await syncEventoDestaque(admin, id, payload.evento_destaque);
+    await syncEventoLeadsUsuarios(admin, id, payload.leads_acesso_todos, usuarioIds);
+    try {
+      await syncQrVinculoFromEventoForm(id, formData);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      if (!/qr_codes_unicos|does not exist|schema cache/i.test(msg)) {
+        return { ok: false, error: msg };
+      }
+    }
+    revalidatePath("/admin/eventos");
+    revalidatePath(`/admin/eventos/${id}`);
+    revalidatePath("/eventos");
+    revalidatePath(`/eventos/${payload.slug}`);
+    if (existing.slug !== payload.slug) revalidatePath(`/eventos/${existing.slug}`);
+    revalidatePath("/admin/configuracoes/qr-codes");
+    return { ok: true };
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
-    if (!/qr_codes_unicos|does not exist|schema cache/i.test(msg)) throw e;
+    console.error("[updateEventoAction]", msg);
+    return { ok: false, error: msg || "Não foi possível salvar o evento." };
   }
-  revalidatePath("/admin/eventos");
-  revalidatePath(`/admin/eventos/${id}`);
-  revalidatePath("/eventos");
-  revalidatePath(`/eventos/${payload.slug}`);
-  if (existing.slug !== payload.slug) revalidatePath(`/eventos/${existing.slug}`);
-  revalidatePath("/admin/configuracoes/qr-codes");
-  redirect(`/admin/eventos/${id}`);
 }
 
 export async function fetchParticipantesEvento(
