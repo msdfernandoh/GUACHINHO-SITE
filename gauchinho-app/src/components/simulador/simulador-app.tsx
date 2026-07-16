@@ -175,6 +175,9 @@ export function SimuladorApp({
   const [lanceEmbutidoModo, setLanceEmbutidoModo] = useState<ModoLanceInput>("percent");
   const [lanceProprioInput, setLanceProprioInput] = useState(0);
   const [lanceEmbutidoInput, setLanceEmbutidoInput] = useState(0);
+  const [aplicarParcelaReduzidaPersonalizada, setAplicarParcelaReduzidaPersonalizada] =
+    useState(false);
+  const [percentualParcelaPersonalizada, setPercentualParcelaPersonalizada] = useState(40);
 
   const [valorBem, setValorBem] = useState(bemCfg.valorPadraoInicial);
   const [entradaFin, setEntradaFin] = useState(() =>
@@ -188,7 +191,25 @@ export function SimuladorApp({
     () => opcoesParcela.find((o) => o.id === opcaoParcelaId) ?? opcoesParcela[0],
     [opcoesParcela, opcaoParcelaId],
   );
-  const percentualParcela = opcaoSelecionada?.percentual ?? 100;
+  const percentualParcelaBase = opcaoSelecionada?.percentual ?? 100;
+  const percentualParcelaPersonalizadaClamped = Math.min(
+    99,
+    Math.max(1, Math.round(percentualParcelaPersonalizada) || 40),
+  );
+  const percentualParcela =
+    aplicarParcelaReduzidaPersonalizada &&
+    percentualParcelaPersonalizadaClamped > 0 &&
+    percentualParcelaPersonalizadaClamped < 100 &&
+    percentualParcelaBase < 100
+      ? percentualParcelaPersonalizadaClamped
+      : percentualParcelaBase;
+
+  const percentualReduzidaOverride =
+    aplicarParcelaReduzidaPersonalizada &&
+    percentualParcelaPersonalizadaClamped > 0 &&
+    percentualParcelaPersonalizadaClamped < 100
+      ? percentualParcelaPersonalizadaClamped
+      : null;
 
   const saldoDevedorBaseLance = useMemo(() => {
     const taxa = calcularTaxaAdministrativaTotal(valorCredito, taxaAdm);
@@ -471,11 +492,28 @@ export function SimuladorApp({
   }
 
   function buildDadosSimulacaoPayload() {
+    const opcaoParcelaPayload =
+      aplicarParcelaReduzidaPersonalizada &&
+      percentualParcela < 100 &&
+      opcaoSelecionada &&
+      opcaoSelecionada.percentual < 100
+        ? {
+            ...opcaoSelecionada,
+            id: "personalizada",
+            nome: `${percentualParcela}% da parcela`,
+            percentual: percentualParcela,
+            descricao: "Parcela reduzida personalizada",
+          }
+        : opcaoSelecionada;
     const resultadoPayload =
       modo === "consorcio"
         ? {
             ...contemplacao,
-            opcaoParcela: opcaoSelecionada,
+            opcaoParcela: opcaoParcelaPayload,
+            parcelaReduzidaPersonalizada: aplicarParcelaReduzidaPersonalizada,
+            percentualParcelaPersonalizada: aplicarParcelaReduzidaPersonalizada
+              ? percentualParcela
+              : null,
             comparativo,
           }
         : { ...resultadoFin, comparativo };
@@ -489,7 +527,13 @@ export function SimuladorApp({
           : undefined,
       entrada:
         modo === "consorcio"
-          ? entradaConsorcio
+          ? {
+              ...entradaConsorcio,
+              parcelaReduzidaPersonalizada: aplicarParcelaReduzidaPersonalizada,
+              percentualParcelaPersonalizada: aplicarParcelaReduzidaPersonalizada
+                ? percentualParcela
+                : null,
+            }
           : {
               valorBem,
               entrada: entradaFin,
@@ -620,9 +664,14 @@ export function SimuladorApp({
       ? "Lance total superior ao saldo devedor estimado."
       : null;
 
-  const estrategiaLabel = opcaoSelecionada
-    ? `${opcaoSelecionada.nome} (${percentualParcela}% da parcela integral)`
-    : "Parcela integral";
+  const estrategiaLabel =
+    percentualParcela < 100
+      ? aplicarParcelaReduzidaPersonalizada
+        ? `Parcela reduzida personalizada (${percentualParcela}% da parcela integral)`
+        : opcaoSelecionada
+          ? `${opcaoSelecionada.nome} (${percentualParcela}% da parcela integral)`
+          : `${percentualParcela}% da parcela integral`
+      : "Parcela integral";
 
   const footerCta =
     resultoDestacado ? (
@@ -680,6 +729,7 @@ export function SimuladorApp({
                 onSelect={setOpcaoParcelaId}
                 parcelaAmortizacao={contemplacao.parcelaAmortizacao}
                 seguroMensal={contemplacao.seguroMensal}
+                percentualReduzidaOverride={percentualReduzidaOverride}
               />
             ) : null}
             <AdvancedStrategyAccordion
@@ -708,6 +758,16 @@ export function SimuladorApp({
               correcaoParcela={correcaoParcela}
               onCorrecaoParcela={setCorrecaoParcela}
               avisoLance={avisoLance}
+              aplicarParcelaReduzidaPersonalizada={aplicarParcelaReduzidaPersonalizada}
+              onAplicarParcelaReduzidaPersonalizada={(v) => {
+                setAplicarParcelaReduzidaPersonalizada(v);
+                if (v) {
+                  const reduzida = opcoesParcela.find((o) => o.percentual < 100);
+                  if (reduzida) setOpcaoParcelaId(reduzida.id);
+                }
+              }}
+              percentualParcelaPersonalizada={percentualParcelaPersonalizada}
+              onPercentualParcelaPersonalizada={setPercentualParcelaPersonalizada}
             />
           </>
         ) : (

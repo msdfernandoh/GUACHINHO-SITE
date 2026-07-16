@@ -66,6 +66,10 @@ type Props = {
   correcaoParcela: number;
   onCorrecaoParcela: (v: number) => void;
   avisoLance?: string | null;
+  aplicarParcelaReduzidaPersonalizada: boolean;
+  onAplicarParcelaReduzidaPersonalizada: (v: boolean) => void;
+  percentualParcelaPersonalizada: number;
+  onPercentualParcelaPersonalizada: (v: number) => void;
 };
 
 export function AdvancedStrategyAccordion({
@@ -94,6 +98,10 @@ export function AdvancedStrategyAccordion({
   correcaoParcela,
   onCorrecaoParcela,
   avisoLance,
+  aplicarParcelaReduzidaPersonalizada,
+  onAplicarParcelaReduzidaPersonalizada,
+  percentualParcelaPersonalizada,
+  onPercentualParcelaPersonalizada,
 }: Props) {
   return (
     <section className={sectionCardClass("overflow-hidden")}>
@@ -171,6 +179,46 @@ export function AdvancedStrategyAccordion({
                 <p className="text-xl font-bold text-amber-400">{formatCurrency(lanceTotal)}</p>
               </div>
               {avisoLance ? <p className="mt-2 text-xs text-red-300">{avisoLance}</p> : null}
+            </div>
+            <div>
+              <h3 className="text-sm font-bold uppercase tracking-wide text-slate-300">
+                Parcela reduzida personalizada
+              </h3>
+              <p className={fieldHelpClass()}>
+                Substitui o percentual da opção reduzida (ex.: 60%) pelo valor informado. Vale na
+                simulação e no Contratar agora.
+              </p>
+              <label className="mt-3 flex cursor-pointer items-start gap-3 rounded-xl border border-slate-700 bg-slate-900/60 px-4 py-3">
+                <input
+                  type="checkbox"
+                  className="mt-1 h-4 w-4 accent-amber-500"
+                  checked={aplicarParcelaReduzidaPersonalizada}
+                  onChange={(e) => onAplicarParcelaReduzidaPersonalizada(e.target.checked)}
+                />
+                <span>
+                  <span className="block text-sm font-semibold text-amber-200">
+                    Aplicar parcela reduzida personalizada
+                  </span>
+                  <span className="mt-0.5 block text-xs text-slate-400">
+                    Altera o quadro da parcela reduzida na opção de parcela inicial.
+                  </span>
+                </span>
+              </label>
+              {aplicarParcelaReduzidaPersonalizada ? (
+                <div className="mt-3 max-w-xs">
+                  <PercentInput
+                    label="Percentual da parcela reduzida (%)"
+                    value={percentualParcelaPersonalizada}
+                    onChange={onPercentualParcelaPersonalizada}
+                    min={1}
+                    max={99}
+                    step={1}
+                  />
+                  <p className="mt-1 text-xs text-amber-400/90">
+                    Ex.: 40 = parcela inicial de 40% da parcela integral.
+                  </p>
+                </div>
+              ) : null}
             </div>
             <div>
               <h3 className="text-sm font-bold uppercase tracking-wide text-slate-300">Taxas e índices</h3>
