@@ -22,13 +22,17 @@ import { buildPropostaPublicUrl } from "@/lib/url/public-url";
 import { DEFAULT_SITE, getConfigJsonPublic } from "@/server/config";
 
 export async function fetchContratacoesList(): Promise<ContratacaoOnlineRow[]> {
-  await requireStaffAdmin();
+  const usuario = await requireStaffAdmin();
   const supabase = await createClient();
-  const { data, error } = await supabase
+  let query = supabase
     .from("contratacoes_online")
     .select("*")
     .order("created_at", { ascending: false })
     .limit(300);
+  if (usuario.leads_apenas_proprios) {
+    query = query.eq("gerado_por_usuario_id", usuario.id);
+  }
+  const { data, error } = await query;
   if (error) throw new Error(error.message);
   return (data ?? []) as ContratacaoOnlineRow[];
 }
@@ -115,6 +119,12 @@ export async function fetchContratacaoDetalhe(id: string) {
   if (!data) return null;
 
   const contratacao = hydrateContratacaoEndereco(data as ContratacaoOnlineRow);
+  if (
+    usuario.leads_apenas_proprios &&
+    contratacao.gerado_por_usuario_id !== usuario.id
+  ) {
+    return null;
+  }
   const podeAcessarDocumentos = canAccessContratacaoDocumentos(usuario.perfil);
   let documentos: ContratacaoDocumentoRow[] = [];
   if (podeAcessarDocumentos) {

@@ -8,7 +8,11 @@ import { canDeleteRecords } from "@/lib/auth/permissions";
 import { DEFAULT_LEADS, getConfigJson } from "@/server/config";
 import { registrarEvento } from "@/lib/eventos/registrar";
 import { queryLeadsForKanban, queryLeadsList } from "@/lib/crm/leads-query";
-import { filterLeadsByScope, loadLeadAccessScope } from "@/lib/crm/lead-access";
+import {
+  filterLeadsByScope,
+  leadVisibleForScope,
+  loadLeadAccessScope,
+} from "@/lib/crm/lead-access";
 import type { LeadFilters } from "@/lib/crm/types";
 import { buildLeadTimeline } from "@/lib/crm/timeline";
 import { MOTIVOS_PERDA } from "@/lib/crm/constants";
@@ -236,7 +240,14 @@ export async function fetchLeadsList(filters: LeadFilters) {
 }
 
 export async function fetchLeadsKanban() {
-  return queryLeadsForKanban();
+  const usuario = await requireUsuario();
+  const rows = await queryLeadsForKanban();
+  const scope = await loadLeadAccessScope(
+    usuario.id,
+    usuario.perfil,
+    usuario.leads_apenas_proprios,
+  );
+  return filterLeadsByScope(rows, scope);
 }
 
 export async function updateLeadStatusAction(leadId: string, status: string) {
@@ -355,9 +366,27 @@ export async function cancelAtividadeAction(atividadeId: string, leadId: string)
 
 
 export async function fetchLeadDetail(leadId: string) {
+  const usuario = await requireUsuario();
   const supabase = await createClient();
   const { data: lead, error } = await supabase.from("leads").select("*").eq("id", leadId).single();
   if (error) throw new Error(error.message);
+
+  const scope = await loadLeadAccessScope(
+    usuario.id,
+    usuario.perfil,
+    usuario.leads_apenas_proprios,
+  );
+  if (
+    !leadVisibleForScope(
+      {
+        srd_responsavel_id: (lead.srd_responsavel_id as string | null) ?? null,
+        evento_id: (lead.evento_id as string | null) ?? null,
+      },
+      scope,
+    )
+  ) {
+    throw new Error("Sem permissão para ver este lead");
+  }
 
   const { data: historicoRows } = await supabase
     .from("leads_historico")

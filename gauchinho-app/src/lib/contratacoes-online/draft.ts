@@ -7,6 +7,8 @@ export type ContratacaoDraftPayload = {
   origem: ContratacaoOrigem;
   dados_simulacao: Record<string, unknown>;
   createdAt: string;
+  consultor_id?: string;
+  consultor_nome?: string;
 };
 
 export function isContratacaoDraftPayload(v: unknown): v is ContratacaoDraftPayload {

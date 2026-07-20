@@ -116,4 +116,7 @@ export type IniciarContratacaoBody = {
   cliente_pre_nome?: string;
   cliente_pre_telefone?: string;
   cliente_pre_email?: string;
+  /** Consultor responsável pela proposta/lead (obrigatório no fluxo público). */
+  consultor_id?: string;
+  consultor_nome?: string;
 };

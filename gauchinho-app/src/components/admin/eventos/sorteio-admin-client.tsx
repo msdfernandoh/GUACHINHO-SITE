@@ -144,6 +144,13 @@ export function SorteioAdminClient({
 
       <form action={saveConfig} className="max-w-2xl space-y-4 rounded-xl border p-4 dark:border-zinc-800">
         <h2 className="text-lg font-semibold">Configuração do sorteio</h2>
+        <p className="text-sm text-zinc-500">
+          Os consultores com acesso aos leads deste sorteio são os mesmos do evento. Configure em{" "}
+          <Link href={`/admin/eventos/${eventoId}`} className="font-medium text-amber-600 hover:underline">
+            editar evento → Consultores com acesso aos leads
+          </Link>
+          .
+        </p>
         <label className="flex items-center gap-2 text-sm">
           <input type="checkbox" name="ativo" defaultChecked={sorteio?.ativo ?? false} />
           Ativar sorteio neste evento

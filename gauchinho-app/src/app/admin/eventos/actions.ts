@@ -317,6 +317,9 @@ export async function createEventoAction(formData: FormData) {
   if (!canManageImobiliarias(u.perfil)) throw new Error("Sem permissão");
   const payload = eventoFromForm(formData);
   const usuarioIds = formData.getAll("leads_usuario_id").map((v) => String(v).trim()).filter(Boolean);
+  if (!payload.leads_acesso_todos && usuarioIds.length === 0) {
+    throw new Error("Selecione ao menos um consultor com acesso aos leads do evento.");
+  }
   const admin = createAdminClient();
   const data = await persistEventoInsert(admin, payload);
   await syncEventoDestaque(admin, data.id, payload.evento_destaque);
@@ -348,6 +351,9 @@ export async function updateEventoAction(formData: FormData): Promise<UpdateEven
     const existing = await fetchEventoAdmin(id);
     const payload = eventoFromForm(formData, { preserveSlug: existing.slug });
     const usuarioIds = formData.getAll("leads_usuario_id").map((v) => String(v).trim()).filter(Boolean);
+    if (!payload.leads_acesso_todos && usuarioIds.length === 0) {
+      return { ok: false, error: "Selecione ao menos um consultor com acesso aos leads do evento." };
+    }
     const admin = createAdminClient();
     await persistEventoUpdate(admin, id, payload);
     await syncEventoDestaque(admin, id, payload.evento_destaque);

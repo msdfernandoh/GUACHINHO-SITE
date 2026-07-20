@@ -73,7 +73,25 @@ export function GruposPublicClient({
     parcela: number | null;
     tipoBem: string | null;
   } | null>(null);
+  const [contratarOpen, setContratarOpen] = useState(false);
+  const [contratarModo, setContratarModo] = useState<"cliente_site" | "sdr_link">("cliente_site");
+  const [consultores, setConsultores] = useState<{ id: string; nome: string }[]>([]);
+  const [consultorId, setConsultorId] = useState("");
   const { iniciar: iniciarContratacao, loading: contratacaoLoading } = useIniciarContratacao();
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/public/consultores")
+      .then((r) => r.json())
+      .then((data) => {
+        if (cancelled || !data?.consultores) return;
+        setConsultores(data.consultores as { id: string; nome: string }[]);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const modalCancelClass =
     "border-zinc-500 bg-zinc-900 text-zinc-100 hover:border-zinc-400 hover:bg-zinc-800 hover:text-zinc-100";
@@ -146,9 +164,32 @@ export function GruposPublicClient({
     );
   }
 
+  function openContratar(modo: "cliente_site" | "sdr_link") {
+    if (!hasSelection) {
+      setToastMsg("Informe cota e quantidade (mín. 1) em ao menos um grupo.");
+      return;
+    }
+    setContratarModo(modo);
+    if (isConsultor && modo === "sdr_link") {
+      void iniciarContratacaoGrupos(modo);
+      return;
+    }
+    if (isConsultor && modo === "cliente_site") {
+      void iniciarContratacaoGrupos(modo);
+      return;
+    }
+    setContratarOpen(true);
+  }
+
   async function iniciarContratacaoGrupos(modo: "cliente_site" | "sdr_link") {
     if (!hasSelection) {
       setToastMsg("Informe cota e quantidade (mín. 1) em ao menos um grupo.");
+      return;
+    }
+    const consultor = consultores.find((c) => c.id === consultorId);
+    if (!isConsultor && !consultor) {
+      setToastMsg("Selecione o consultor responsável pela proposta.");
+      setContratarOpen(true);
       return;
     }
     setToastMsg(null);
@@ -160,7 +201,10 @@ export function GruposPublicClient({
         cliente_pre_nome: nome.trim() || undefined,
         cliente_pre_telefone: whatsapp ? digitsOnlyPhone(whatsapp) : undefined,
         redirectCliente: modo === "cliente_site",
+        consultor_id: consultor?.id,
+        consultor_nome: consultor?.nome,
       });
+      setContratarOpen(false);
       if (modo === "sdr_link" && result) {
         setLinkModal({
           protocolo: result.protocolo,
@@ -333,10 +377,54 @@ export function GruposPublicClient({
         resultMsg={resultMsg}
         pdfLink={pdfLink}
         onProposta={openPropostaModal}
-        onContratar={() => void iniciarContratacaoGrupos("cliente_site")}
-        onGerarLink={isConsultor ? () => void iniciarContratacaoGrupos("sdr_link") : undefined}
+        onContratar={() => openContratar("cliente_site")}
+        onGerarLink={isConsultor ? () => openContratar("sdr_link") : undefined}
         contratarLoading={contratacaoLoading}
       />
+      ) : null}
+
+      {contratarOpen ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+          <div className="w-full max-w-md space-y-4 rounded-2xl border border-zinc-700 bg-zinc-900 p-6">
+            <h2 className="text-lg font-semibold text-white">Contratar agora</h2>
+            <p className="text-sm text-zinc-400">Selecione o consultor responsável pela proposta.</p>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-zinc-300">
+                Consultor responsável *
+              </label>
+              <select
+                value={consultorId}
+                onChange={(e) => setConsultorId(e.target.value)}
+                className="w-full rounded-md border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-white"
+              >
+                <option value="">Selecione…</option>
+                {consultores.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.nome}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant="gold"
+                disabled={contratacaoLoading || !consultorId}
+                onClick={() => void iniciarContratacaoGrupos(contratarModo)}
+              >
+                {contratacaoLoading ? "Abrindo…" : "Continuar"}
+              </Button>
+              <Button
+                type="button"
+                variant="outlineGold"
+                className={modalCancelClass}
+                onClick={() => setContratarOpen(false)}
+              >
+                Cancelar
+              </Button>
+            </div>
+          </div>
+        </div>
       ) : null}
 
       {modalOpen ? (

@@ -35,6 +35,8 @@ export async function POST(request: Request) {
         cliente_pre_nome: nome,
         cliente_pre_telefone: body.telefone,
         cliente_pre_email: body.email,
+        consultor_id: body.draft.consultor_id,
+        consultor_nome: body.draft.consultor_nome,
       },
       usuario,
     );

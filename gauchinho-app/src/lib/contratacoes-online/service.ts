@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { DEFAULT_LEADS, getConfigJsonPublic } from "@/server/config";
 import type { UsuarioNegocio } from "@/lib/auth/permissions";
+import { resolverConsultorPorId } from "@/lib/admin/consultores";
 import { generatePublicToken } from "./public-token";
 import { formatProtocoloFromSequence, parseProtocoloNumber } from "./protocolo";
 import { extrairCamposFlat } from "./extract-fields";
@@ -68,6 +69,21 @@ export async function criarContratacaoOnline(
   const flat = extrairCamposFlat(body.origem, body.dados_simulacao);
   const statusInicial = body.modo === "sdr_link" ? "link_gerado" : "proposta_aberta";
 
+  let consultorId = gerador?.id ?? null;
+  let consultorNome = gerador?.nome ?? null;
+  let consultorEmail = gerador?.email ?? null;
+
+  const consultorBodyId = body.consultor_id?.trim() ?? "";
+  if (consultorBodyId) {
+    const consultor = await resolverConsultorPorId(admin, consultorBodyId);
+    if (!consultor) throw new Error("Consultor responsável inválido.");
+    consultorId = consultor.id;
+    consultorNome = body.consultor_nome?.trim() || consultor.nome;
+    consultorEmail = consultor.email ?? null;
+  } else if (!gerador) {
+    throw new Error("Selecione o consultor responsável pela proposta.");
+  }
+
   let row: ContratacaoOnlineRow | null = null;
   for (let attempt = 0; attempt < 5; attempt++) {
     const public_token = generatePublicToken();
@@ -79,9 +95,9 @@ export async function criarContratacaoOnline(
         protocolo,
         origem: body.origem,
         status: statusInicial,
-        gerado_por_usuario_id: gerador?.id ?? null,
-        gerado_por_nome: gerador?.nome ?? null,
-        gerado_por_email: gerador?.email ?? null,
+        gerado_por_usuario_id: consultorId,
+        gerado_por_nome: consultorNome,
+        gerado_por_email: consultorEmail,
         nome: body.cliente_pre_nome?.trim() || null,
         telefone: body.cliente_pre_telefone
           ? sanitizeTelefone(body.cliente_pre_telefone)
@@ -92,6 +108,8 @@ export async function criarContratacaoOnline(
           ...body.dados_simulacao,
           origem_fluxo: body.origem,
           modo: body.modo,
+          consultor_id: consultorId,
+          consultor_nome: consultorNome,
         },
       })
       .select("*")
@@ -483,6 +501,9 @@ async function upsertLeadContratacao(
     dados_simulacao: row.dados_simulacao,
   };
 
+  const srdId = row.gerado_por_usuario_id;
+  const srdNome = row.gerado_por_nome;
+
   if (row.lead_id) {
     await admin
       .from("leads")
@@ -496,6 +517,9 @@ async function upsertLeadContratacao(
         valor_simulado: row.credito_selecionado,
         prazo_simulado: row.prazo,
         dados_simulacao: dadosSim,
+        ...(srdId
+          ? { srd_responsavel_id: srdId, srd_responsavel_nome: srdNome }
+          : {}),
       })
       .eq("id", row.lead_id);
     return;
@@ -516,6 +540,8 @@ async function upsertLeadContratacao(
       dados_simulacao: dadosSim,
       status: leadsConfig.statusInicialPadrao,
       criado_manual: false,
+      srd_responsavel_id: srdId,
+      srd_responsavel_nome: srdNome,
     })
     .select("id")
     .single();

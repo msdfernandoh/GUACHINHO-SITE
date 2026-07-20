@@ -30,6 +30,13 @@ export async function POST(request: Request) {
     // Evita lixo de "Proposta aberta" quando a pessoa para na tela inicial.
     const nomePre = body.cliente_pre_nome?.trim() ?? "";
     if (body.modo === "cliente_site" && !nomePre) {
+      const consultorId = body.consultor_id?.trim() || usuario?.id || "";
+      if (!consultorId && body.modo === "cliente_site") {
+        return NextResponse.json(
+          { error: "Selecione o consultor responsável pela proposta." },
+          { status: 400 },
+        );
+      }
       return NextResponse.json({
         ok: true,
         draft: true,
@@ -39,6 +46,8 @@ export async function POST(request: Request) {
           origem: body.origem,
           dados_simulacao: body.dados_simulacao,
           createdAt: new Date().toISOString(),
+          consultor_id: body.consultor_id?.trim() || usuario?.id || undefined,
+          consultor_nome: body.consultor_nome?.trim() || usuario?.nome || undefined,
         },
       });
     }

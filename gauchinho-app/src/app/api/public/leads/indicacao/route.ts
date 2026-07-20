@@ -5,6 +5,7 @@ import { DEFAULT_LEADS, getConfigJsonPublic } from "@/server/config";
 import { TIPOS_CREDITO_PUBLICO, type TipoCreditoPublico } from "@/lib/leads/tipo-credito";
 import { digitsOnlyPhone } from "@/lib/utils/format";
 import { isDbMissingColumnError } from "@/lib/comercial-eventos/db-ready";
+import { resolverConsultorPorId } from "@/lib/admin/consultores";
 
 type Indicado = {
   nome: string;
@@ -19,6 +20,8 @@ type Body = {
   indicadorEmpresa?: string | null;
   indicadorTelefone?: string | null;
   origem?: string | null;
+  consultorId?: string | null;
+  consultorNome?: string | null;
   indicados: Indicado[];
 };
 
@@ -49,6 +52,18 @@ export async function POST(request: Request) {
       : "";
     const origemPagina = body.origem?.trim() || null;
 
+    let srdResponsavelId: string | null = null;
+    let srdResponsavelNome: string | null = null;
+    const consultorIdRaw = body.consultorId?.trim() ?? "";
+    if (consultorIdRaw) {
+      const consultor = await resolverConsultorPorId(admin, consultorIdRaw);
+      if (!consultor) {
+        return NextResponse.json({ error: "Consultor responsável inválido" }, { status: 400 });
+      }
+      srdResponsavelId = consultor.id;
+      srdResponsavelNome = body.consultorNome?.trim() || consultor.nome;
+    }
+
     for (const ind of body.indicados) {
       if (!ind.nome?.trim() || !ind.whatsapp?.trim()) {
         return NextResponse.json({ error: "Cada indicado precisa de nome e telefone" }, { status: 400 });
@@ -77,6 +92,8 @@ export async function POST(request: Request) {
         observacoes: obsIndicacao,
         status: leadsConfig.statusInicialPadrao ?? "Novo",
         criado_manual: false,
+        srd_responsavel_id: srdResponsavelId,
+        srd_responsavel_nome: srdResponsavelNome,
       };
 
       let row: Record<string, unknown> =

@@ -62,16 +62,32 @@ export async function createUsuarioAction(formData: FormData) {
     admin_menus: adminMenus,
   });
   if (error && /is_consultor|admin_menus|leads_apenas_proprios/.test(error.message)) {
-    const { error: err2 } = await admin.from("usuarios").insert({
+    const base = {
       auth_user_id: authUser.user.id,
       nome,
       email,
       telefone,
       perfil,
       ativo: true,
-      ...(menuKeys.length || leadsApenasProprios ? {} : { is_consultor: isConsultor }),
-    });
-    if (err2) throw new Error(err2.message);
+    };
+    // Tenta preservar a restrição de leads; só cai no insert mínimo se a coluna não existir.
+    const attempts: Record<string, unknown>[] = [
+      { ...base, is_consultor: isConsultor, leads_apenas_proprios: leadsApenasProprios },
+      { ...base, leads_apenas_proprios: leadsApenasProprios },
+      { ...base, is_consultor: isConsultor },
+      base,
+    ];
+    let saved = false;
+    let lastMessage = error.message;
+    for (const row of attempts) {
+      const { error: err2 } = await admin.from("usuarios").insert(row);
+      if (!err2) {
+        saved = true;
+        break;
+      }
+      lastMessage = err2.message;
+    }
+    if (!saved) throw new Error(lastMessage);
   } else if (error) {
     throw new Error(error.message);
   }

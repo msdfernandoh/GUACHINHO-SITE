@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import { Button, Input, Label, Textarea, surfaceInputDarkSlate } from "@/components/ui/form-primitives";
@@ -32,10 +32,26 @@ export function IndicacaoForm({ origem }: { origem?: string | null }) {
   const [indicadorNome, setIndicadorNome] = useState("");
   const [indicadorTelefone, setIndicadorTelefone] = useState("");
   const [indicadorEmpresa, setIndicadorEmpresa] = useState("");
+  const [consultores, setConsultores] = useState<{ id: string; nome: string }[]>([]);
+  const [consultorId, setConsultorId] = useState("");
   const [indicados, setIndicados] = useState<IndicadoForm[]>(() => [emptyIndicado()]);
   const [loading, setLoading] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [sucesso, setSucesso] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/public/consultores")
+      .then((r) => r.json())
+      .then((data) => {
+        if (cancelled || !data?.consultores) return;
+        setConsultores(data.consultores as { id: string; nome: string }[]);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   function updateIndicado(id: string, patch: Partial<IndicadoForm>) {
     setIndicados((list) => list.map((i) => (i.id === id ? { ...i, ...patch } : i)));
@@ -55,6 +71,8 @@ export function IndicacaoForm({ origem }: { origem?: string | null }) {
           indicadorTelefone: indicadorTelefone.trim() || undefined,
           indicadorEmpresa: indicadorEmpresa || undefined,
           origem: origem?.trim() || undefined,
+          consultorId: consultorId || undefined,
+          consultorNome: consultores.find((c) => c.id === consultorId)?.nome,
           indicados: indicados.map(({ nome, whatsapp, tipoCredito, valorCredito, observacao }) => ({
             nome,
             whatsapp,
@@ -112,6 +130,26 @@ export function IndicacaoForm({ origem }: { origem?: string | null }) {
             onChange={(e) => setIndicadorEmpresa(e.target.value)}
             className={cn("mt-1", surfaceInputDarkSlate)}
           />
+        </div>
+        <div>
+          <Label>Consultor responsável (opcional)</Label>
+          <select
+            value={consultorId}
+            onChange={(e) => setConsultorId(e.target.value)}
+            className={cn(
+              "mt-1 w-full rounded-md border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-white",
+            )}
+          >
+            <option value="">Nenhum — só usuários com visão completa verão</option>
+            {consultores.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.nome}
+              </option>
+            ))}
+          </select>
+          <p className="mt-1 text-xs text-zinc-500">
+            Se não selecionar, usuários com visão restrita não terão acesso a estes leads.
+          </p>
         </div>
       </section>
 

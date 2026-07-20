@@ -146,6 +146,8 @@ export function SimuladorApp({
   const [waLink, setWaLink] = useState<string | null>(null);
   const [pdfLink, setPdfLink] = useState<string | null>(null);
   const [contratarEscolhaOpen, setContratarEscolhaOpen] = useState(false);
+  const [consultores, setConsultores] = useState<{ id: string; nome: string }[]>([]);
+  const [consultorId, setConsultorId] = useState("");
   const [linkModal, setLinkModal] = useState<{
     protocolo: string;
     url: string;
@@ -154,6 +156,20 @@ export function SimuladorApp({
     tipoBem: string | null;
   } | null>(null);
   const { iniciar: iniciarContratacao, loading: contratacaoLoading } = useIniciarContratacao();
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/public/consultores")
+      .then((r) => r.json())
+      .then((data) => {
+        if (cancelled || !data?.consultores) return;
+        setConsultores(data.consultores as { id: string; nome: string }[]);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const bemCfg = useMemo(
     () => resolveBemConfigSimulador(tipoBem, configs),
@@ -546,12 +562,20 @@ export function SimuladorApp({
 
   async function executarContratacao(modoContrat: "cliente_site" | "sdr_link") {
     setMsg(null);
+    const consultor = consultores.find((c) => c.id === consultorId);
+    if (!isConsultor && !consultor) {
+      setMsg("Selecione o consultor responsável pela proposta.");
+      setContratarEscolhaOpen(true);
+      return;
+    }
     try {
       const result = await iniciarContratacao({
         modo: modoContrat,
         origem: "simulador",
         dados_simulacao: buildDadosSimulacaoPayload(),
         redirectCliente: modoContrat === "cliente_site",
+        consultor_id: consultor?.id,
+        consultor_nome: consultor?.nome,
       });
       if (modoContrat === "sdr_link" && result) {
         setLinkModal({
@@ -574,11 +598,7 @@ export function SimuladorApp({
       scrollToResult();
       return;
     }
-    if (isConsultor) {
-      setContratarEscolhaOpen(true);
-      return;
-    }
-    void executarContratacao("cliente_site");
+    setContratarEscolhaOpen(true);
   }
 
   function openCaptura(acao: AcaoCaptura) {
@@ -920,25 +940,51 @@ export function SimuladorApp({
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
           <div className="w-full max-w-md space-y-4 rounded-2xl border border-slate-700 bg-slate-900 p-6">
             <h2 className="text-lg font-semibold text-white">Contratar agora</h2>
-            <p className="text-sm text-slate-400">Escolha como deseja prosseguir com esta simulação.</p>
+            <p className="text-sm text-slate-400">
+              {isConsultor
+                ? "Escolha como deseja prosseguir com esta simulação."
+                : "Selecione o consultor responsável para continuar."}
+            </p>
+            {!isConsultor ? (
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-300">
+                  Consultor responsável *
+                </label>
+                <select
+                  value={consultorId}
+                  onChange={(e) => setConsultorId(e.target.value)}
+                  className="w-full rounded-md border border-slate-600 bg-slate-950 px-3 py-2 text-sm text-white"
+                  required
+                >
+                  <option value="">Selecione…</option>
+                  {consultores.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.nome}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            ) : null}
             <Button
               type="button"
               variant="gold"
               className="w-full"
-              disabled={contratacaoLoading}
+              disabled={contratacaoLoading || (!isConsultor && !consultorId)}
               onClick={() => void executarContratacao("cliente_site")}
             >
-              Continuar como cliente
+              {isConsultor ? "Continuar como cliente" : "Continuar"}
             </Button>
-            <Button
-              type="button"
-              variant="outlineGold"
-              className="w-full border-slate-600 bg-slate-950"
-              disabled={contratacaoLoading}
-              onClick={() => void executarContratacao("sdr_link")}
-            >
-              Gerar link para enviar ao cliente
-            </Button>
+            {isConsultor ? (
+              <Button
+                type="button"
+                variant="outlineGold"
+                className="w-full border-slate-600 bg-slate-950"
+                disabled={contratacaoLoading}
+                onClick={() => void executarContratacao("sdr_link")}
+              >
+                Gerar link para enviar ao cliente
+              </Button>
+            ) : null}
             <Button type="button" variant="outline" className="w-full" onClick={() => setContratarEscolhaOpen(false)}>
               Cancelar
             </Button>

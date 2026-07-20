@@ -66,7 +66,11 @@ export function EventoAdminForm({
   );
   const [formError, setFormError] = useState<string | null>(null);
   const [formOk, setFormOk] = useState(false);
-  const [leadsAcessoTodos, setLeadsAcessoTodos] = useState(evento?.leads_acesso_todos !== false);
+  // Novo evento: por padrão restringe aos consultores marcados.
+  // Edição: preserva o valor salvo no banco.
+  const [leadsAcessoTodos, setLeadsAcessoTodos] = useState(
+    evento ? evento.leads_acesso_todos !== false : false,
+  );
   const [usarQrUnico, setUsarQrUnico] = useState(Boolean(qrVinculo?.ativo));
 
   const slugHint = slug.trim() || nome.trim() || "evento";
@@ -343,7 +347,12 @@ export function EventoAdminForm({
         </div>
       </FormSection>
 
-      <FormSection title="Acesso aos leads do evento">
+      <FormSection title="Consultores com acesso aos leads">
+        <p className="text-sm text-zinc-500">
+          Selecione o(s) consultor(es) responsável(is) que poderão ver os leads deste evento e do
+          sorteio. Usuários com visão restrita só enxergam esses leads se estiverem marcados aqui
+          (ou forem o consultor responsável do lead).
+        </p>
         <label className="flex items-center gap-2 text-sm">
           <input
             type="checkbox"
@@ -351,12 +360,14 @@ export function EventoAdminForm({
             checked={leadsAcessoTodos}
             onChange={(e) => setLeadsAcessoTodos(e.target.checked)}
           />
-          Todos os usuários com menu Leads podem ver leads deste evento
+          Todos os usuários com visão completa podem ver leads deste evento
         </label>
         {!leadsAcessoTodos ? (
           <>
             <input type="hidden" name="leads_acesso_todos" value="off" />
-            <p className="text-xs text-zinc-500">Marque quem pode ver leads gerados por este evento:</p>
+            <p className="text-xs text-zinc-500">
+              Marque pelo menos um consultor responsável pelos leads do evento/sorteio:
+            </p>
             <div className="grid max-h-48 gap-2 overflow-y-auto sm:grid-cols-2">
               {usuariosStaff.map((u) => (
                 <label key={u.id} className="flex items-center gap-2 text-sm">
@@ -370,6 +381,11 @@ export function EventoAdminForm({
                 </label>
               ))}
             </div>
+            {usuariosStaff.length === 0 ? (
+              <p className="text-xs text-amber-700 dark:text-amber-400">
+                Nenhum usuário staff ativo. Cadastre consultores em Usuários.
+              </p>
+            ) : null}
           </>
         ) : null}
       </FormSection>

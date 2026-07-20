@@ -17,7 +17,9 @@ export async function loadLeadAccessScope(
   leadsApenasProprios: boolean,
 ): Promise<LeadAccessScope> {
   const eventosRestritos = new Map<string, Set<string>>();
-  if (!isMaster(perfil)) {
+  // Masters com visão completa não precisam da lista; demais perfis e
+  // quem tem leads_apenas_proprios precisam para liberar leads de evento.
+  if (!isMaster(perfil) || leadsApenasProprios) {
     const admin = createAdminClient();
     const { data: eventos } = await admin
       .from("eventos")
@@ -43,14 +45,27 @@ export function leadVisibleForScope(
   lead: Pick<LeadListRow, "srd_responsavel_id" | "evento_id"> & { evento_id?: string | null },
   scope: LeadAccessScope,
 ): boolean {
-  if (isMaster(scope.perfil)) return true;
-  if (scope.leadsApenasProprios && lead.srd_responsavel_id !== scope.usuarioId) {
+  const eventoId = lead.evento_id ?? null;
+  const isAssigned = lead.srd_responsavel_id === scope.usuarioId;
+  const inEventAllowList =
+    !!eventoId &&
+    scope.eventosRestritos.has(eventoId) &&
+    scope.eventosRestritos.get(eventoId)!.has(scope.usuarioId);
+
+  // Visão restrita: só leads em que é responsável OU leads de evento
+  // em que foi marcado como consultor com acesso.
+  if (scope.leadsApenasProprios) {
+    if (isAssigned) return true;
+    if (inEventAllowList) return true;
     return false;
   }
-  const eventoId = lead.evento_id ?? null;
+
+  // Visão completa: master vê tudo
+  if (isMaster(scope.perfil)) return true;
+
+  // Demais com visão completa: respeitam allow-list do evento
   if (eventoId && scope.eventosRestritos.has(eventoId)) {
-    const allowed = scope.eventosRestritos.get(eventoId)!;
-    if (!allowed.has(scope.usuarioId)) return false;
+    return inEventAllowList;
   }
   return true;
 }

@@ -29,6 +29,8 @@ export function useIniciarContratacao() {
       cliente_pre_nome?: string;
       cliente_pre_telefone?: string;
       cliente_pre_email?: string;
+      consultor_id?: string;
+      consultor_nome?: string;
       redirectCliente?: boolean;
     }): Promise<IniciarContratacaoResult | null> => {
       setLoading(true);
@@ -43,6 +45,8 @@ export function useIniciarContratacao() {
             cliente_pre_nome: opts.cliente_pre_nome,
             cliente_pre_telefone: opts.cliente_pre_telefone,
             cliente_pre_email: opts.cliente_pre_email,
+            consultor_id: opts.consultor_id,
+            consultor_nome: opts.consultor_nome,
           }),
         });
         const data = await res.json();
