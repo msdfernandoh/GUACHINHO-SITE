@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { isRedirectError } from "next/dist/client/components/redirect-error";
@@ -72,6 +72,15 @@ export function EventoAdminForm({
     evento ? evento.leads_acesso_todos !== false : false,
   );
   const [usarQrUnico, setUsarQrUnico] = useState(Boolean(qrVinculo?.ativo));
+
+  // Após salvar + router.refresh(), alinha o checkbox com o valor persistido no banco
+  useEffect(() => {
+    if (evento) setLeadsAcessoTodos(evento.leads_acesso_todos !== false);
+  }, [evento?.id, evento?.leads_acesso_todos]);
+
+  useEffect(() => {
+    setUsarQrUnico(Boolean(qrVinculo?.ativo));
+  }, [qrVinculo?.id, qrVinculo?.ativo]);
 
   const slugHint = slug.trim() || nome.trim() || "evento";
   const isEdit = Boolean(evento?.id);
@@ -350,13 +359,15 @@ export function EventoAdminForm({
       <FormSection title="Consultores com acesso aos leads">
         <p className="text-sm text-zinc-500">
           Selecione o(s) consultor(es) responsável(is) que poderão ver os leads deste evento e do
-          sorteio. Usuários com visão restrita só enxergam esses leads se estiverem marcados aqui
-          (ou forem o consultor responsável do lead).
+          sorteio. Com acesso restrito ao evento, usuários com visão completa só enxergam esses leads
+          se estiverem marcados aqui. Usuários com &quot;só leads próprios&quot; continuam vendo
+          apenas os leads em que forem o consultor responsável.
         </p>
+        {/* Valor explícito: checkbox controlado sem name evita FormData ambíguo */}
+        <input type="hidden" name="leads_acesso_todos" value={leadsAcessoTodos ? "on" : "off"} />
         <label className="flex items-center gap-2 text-sm">
           <input
             type="checkbox"
-            name="leads_acesso_todos"
             checked={leadsAcessoTodos}
             onChange={(e) => setLeadsAcessoTodos(e.target.checked)}
           />
@@ -364,7 +375,6 @@ export function EventoAdminForm({
         </label>
         {!leadsAcessoTodos ? (
           <>
-            <input type="hidden" name="leads_acesso_todos" value="off" />
             <p className="text-xs text-zinc-500">
               Marque pelo menos um consultor responsável pelos leads do evento/sorteio:
             </p>

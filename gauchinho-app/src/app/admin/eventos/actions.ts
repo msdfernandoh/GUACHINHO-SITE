@@ -86,7 +86,13 @@ function eventoFromForm(formData: FormData, opts?: { preserveSlug?: string | nul
     mostrar_vagas: boolForm(formData, "mostrar_vagas"),
     mensagem_confirmacao: String(formData.get("mensagem_confirmacao") ?? "").trim() || null,
     observacoes_internas: String(formData.get("observacoes_internas") ?? "").trim() || null,
-    leads_acesso_todos: formData.get("leads_acesso_todos") !== "off",
+    // Aceita "on"/"off" explícitos (hidden do form) — nunca defaultar true se o campo faltar.
+    leads_acesso_todos: (() => {
+      const raw = formData.get("leads_acesso_todos");
+      if (raw === "off" || raw === "false" || raw === "0") return false;
+      if (raw === "on" || raw === "true" || raw === "1") return true;
+      return false;
+    })(),
     ...inscricao,
   };
 }
@@ -120,6 +126,9 @@ async function syncEventoDestaque(admin: ReturnType<typeof createAdminClient>, e
   }
 }
 
+const LEADS_ACESSO_MIGRATION_HINT =
+  "Não foi possível salvar o acesso aos leads. Aplique a migration 027_usuarios_menus_leads_eventos.sql no Supabase.";
+
 async function syncEventoLeadsUsuarios(
   admin: ReturnType<typeof createAdminClient>,
   eventoId: string,
@@ -131,22 +140,19 @@ async function syncEventoLeadsUsuarios(
     .update({ leads_acesso_todos: leadsAcessoTodos })
     .eq("id", eventoId);
   if (updErr) {
-    // Migration 027 ainda não aplicada — nome/slug e demais campos já podem ter sido salvos
     if (
       isDbMissingColumnError(updErr) ||
       /leads_acesso_todos|schema cache/i.test(dbErrorMessage(updErr))
     ) {
-      return;
+      throw new Error(LEADS_ACESSO_MIGRATION_HINT);
     }
     throw new Error(dbErrorMessage(updErr));
   }
 
   const { error: delErr } = await admin.from("eventos_leads_usuarios").delete().eq("evento_id", eventoId);
   if (delErr) {
-    if (
-      /eventos_leads_usuarios|does not exist|schema cache/i.test(dbErrorMessage(delErr))
-    ) {
-      return;
+    if (/eventos_leads_usuarios|does not exist|schema cache/i.test(dbErrorMessage(delErr))) {
+      throw new Error(LEADS_ACESSO_MIGRATION_HINT);
     }
     throw new Error(dbErrorMessage(delErr));
   }
@@ -154,7 +160,10 @@ async function syncEventoLeadsUsuarios(
     const { error: insErr } = await admin.from("eventos_leads_usuarios").insert(
       usuarioIds.map((usuario_id) => ({ evento_id: eventoId, usuario_id })),
     );
-    if (insErr && !/eventos_leads_usuarios|does not exist|schema cache/i.test(dbErrorMessage(insErr))) {
+    if (insErr) {
+      if (/eventos_leads_usuarios|does not exist|schema cache/i.test(dbErrorMessage(insErr))) {
+        throw new Error(LEADS_ACESSO_MIGRATION_HINT);
+      }
       throw new Error(dbErrorMessage(insErr));
     }
   }

@@ -5,22 +5,26 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireUsuario } from "@/lib/auth/get-usuario";
-import { canManageUsers } from "@/lib/auth/permissions";
+import { canManageUsers, PERFIS } from "@/lib/auth/permissions";
 import type { AdminMenuKey } from "@/lib/admin/admin-menus";
 
 export async function fetchUsuarios() {
   const supabase = await createClient();
   let { data, error } = await supabase
     .from("usuarios")
-    .select("id, nome, email, telefone, perfil, ativo, is_consultor, created_at")
+    .select("id, nome, email, telefone, perfil, ativo, is_consultor, leads_apenas_proprios, created_at")
     .order("nome");
-  if (error && /is_consultor/.test(error.message)) {
+  if (error && /is_consultor|leads_apenas_proprios/.test(error.message)) {
     const legacy = await supabase
       .from("usuarios")
       .select("id, nome, email, telefone, perfil, ativo, created_at")
       .order("nome");
     if (legacy.error) throw new Error(legacy.error.message);
-    return (legacy.data ?? []).map((u) => ({ ...u, is_consultor: u.perfil === "srd" }));
+    return (legacy.data ?? []).map((u) => ({
+      ...u,
+      is_consultor: u.perfil === "srd",
+      leads_apenas_proprios: false,
+    }));
   }
   if (error) throw new Error(error.message);
   return data ?? [];
@@ -113,4 +117,44 @@ export async function toggleUsuarioConsultorAction(id: string, isConsultor: bool
   revalidatePath("/admin/usuarios");
   revalidatePath("/admin/agenda");
   revalidatePath("/admin/leads");
+}
+
+export async function updateUsuarioPerfilAction(formData: FormData) {
+  const current = await requireUsuario();
+  if (!canManageUsers(current.perfil)) throw new Error("Sem permissão");
+
+  const id = String(formData.get("usuario_id") ?? "").trim();
+  const perfil = String(formData.get("perfil") ?? "").trim();
+  if (!id) throw new Error("Usuário inválido");
+  if (!PERFIS.includes(perfil as (typeof PERFIS)[number])) {
+    throw new Error("Perfil inválido");
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase.from("usuarios").update({ perfil }).eq("id", id);
+  if (error) throw new Error(error.message);
+  revalidatePath("/admin/usuarios");
+  revalidatePath("/admin/leads");
+  revalidatePath("/admin");
+}
+
+export async function toggleUsuarioLeadsApenasPropriosAction(id: string, leadsApenasProprios: boolean) {
+  const usuario = await requireUsuario();
+  if (!canManageUsers(usuario.perfil)) throw new Error("Sem permissão");
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("usuarios")
+    .update({ leads_apenas_proprios: leadsApenasProprios })
+    .eq("id", id);
+  if (error) {
+    if (/leads_apenas_proprios|schema cache/i.test(error.message)) {
+      throw new Error(
+        "Coluna leads_apenas_proprios ausente. Aplique a migration 027_usuarios_menus_leads_eventos.sql.",
+      );
+    }
+    throw new Error(error.message);
+  }
+  revalidatePath("/admin/usuarios");
+  revalidatePath("/admin/leads");
+  revalidatePath("/admin");
 }

@@ -17,9 +17,9 @@ export async function loadLeadAccessScope(
   leadsApenasProprios: boolean,
 ): Promise<LeadAccessScope> {
   const eventosRestritos = new Map<string, Set<string>>();
-  // Masters com visão completa não precisam da lista; demais perfis e
-  // quem tem leads_apenas_proprios precisam para liberar leads de evento.
-  if (!isMaster(perfil) || leadsApenasProprios) {
+  // Allow-list do evento só importa para visão completa (não-master).
+  // Com leads_apenas_proprios, o filtro é só por consultor responsável.
+  if (!leadsApenasProprios && !isMaster(perfil)) {
     const admin = createAdminClient();
     const { data: eventos } = await admin
       .from("eventos")
@@ -34,11 +34,16 @@ export async function loadLeadAccessScope(
       for (const id of ids) eventosRestritos.set(id, new Set());
       for (const row of links ?? []) {
         const set = eventosRestritos.get(row.evento_id as string);
-        if (set) set.add(row.usuario_id as string);
+        if (set) set.add(String(row.usuario_id));
       }
     }
   }
   return { usuarioId, perfil, leadsApenasProprios, eventosRestritos };
+}
+
+function sameId(a: string | null | undefined, b: string | null | undefined): boolean {
+  if (!a || !b) return false;
+  return String(a) === String(b);
 }
 
 export function leadVisibleForScope(
@@ -46,18 +51,16 @@ export function leadVisibleForScope(
   scope: LeadAccessScope,
 ): boolean {
   const eventoId = lead.evento_id ?? null;
-  const isAssigned = lead.srd_responsavel_id === scope.usuarioId;
+  const isAssigned = sameId(lead.srd_responsavel_id, scope.usuarioId);
   const inEventAllowList =
     !!eventoId &&
     scope.eventosRestritos.has(eventoId) &&
     scope.eventosRestritos.get(eventoId)!.has(scope.usuarioId);
 
-  // Visão restrita: só leads em que é responsável OU leads de evento
-  // em que foi marcado como consultor com acesso.
+  // Visão restrita: SOMENTE leads em que o usuário é o consultor responsável.
+  // (Marcado no evento NÃO libera leads de outros consultores.)
   if (scope.leadsApenasProprios) {
-    if (isAssigned) return true;
-    if (inEventAllowList) return true;
-    return false;
+    return isAssigned;
   }
 
   // Visão completa: master vê tudo

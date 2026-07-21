@@ -1,7 +1,14 @@
 import { redirect } from "next/navigation";
 import { getUsuarioNegocio } from "@/lib/auth/get-usuario";
 import { canManageUsers } from "@/lib/auth/permissions";
-import { createUsuarioAction, fetchUsuarios, toggleUsuarioAtivoAction, toggleUsuarioConsultorAction } from "./actions";
+import {
+  createUsuarioAction,
+  fetchUsuarios,
+  toggleUsuarioAtivoAction,
+  toggleUsuarioConsultorAction,
+  toggleUsuarioLeadsApenasPropriosAction,
+  updateUsuarioPerfilAction,
+} from "./actions";
 import { AdminFormSubmitButton } from "@/components/admin/admin-form-submit-button";
 import { Button, Input, Label, Select } from "@/components/ui/form-primitives";
 import { PERFIS } from "@/lib/auth/permissions";
@@ -60,11 +67,18 @@ export default async function UsuariosPage() {
         </label>
         <div className="space-y-2 rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
           <p className="text-sm font-semibold">Menus do painel</p>
-          <p className="text-xs text-zinc-500">Marque o que este usuário pode acessar. Se nenhum for marcado, usa o padrão do perfil.</p>
+          <p className="text-xs text-zinc-500">
+            Marque o que este usuário pode acessar. Se nenhum for marcado, usa o padrão do perfil.
+          </p>
           <div className="grid gap-2 sm:grid-cols-2">
             {ADMIN_MENU_ITEMS.map((m) => (
               <label key={m.key} className="flex items-center gap-2 text-sm">
-                <input type="checkbox" name="admin_menu" value={m.key} defaultChecked={defaultMenus.includes(m.key)} />
+                <input
+                  type="checkbox"
+                  name="admin_menu"
+                  value={m.key}
+                  defaultChecked={defaultMenus.includes(m.key as AdminMenuKey)}
+                />
                 {m.label}
               </label>
             ))}
@@ -81,8 +95,9 @@ export default async function UsuariosPage() {
             <tr>
               <th className="px-3 py-2">Nome</th>
               <th className="px-3 py-2">E-mail</th>
-              <th className="px-3 py-2">Perfil</th>
+              <th className="px-3 py-2">Perfil / Função</th>
               <th className="px-3 py-2">Consultor</th>
+              <th className="px-3 py-2">Só leads próprios</th>
               <th className="px-3 py-2">Ativo</th>
               <th className="px-3 py-2">Desde</th>
               <th className="px-3 py-2" />
@@ -91,17 +106,51 @@ export default async function UsuariosPage() {
           <tbody>
             {usuarios.map((u) => {
               const toggle = toggleUsuarioAtivoAction.bind(null, u.id, !u.ativo);
-              const toggleConsultor = toggleUsuarioConsultorAction.bind(null, u.id, !(u as { is_consultor?: boolean }).is_consultor);
               const isConsultor = Boolean((u as { is_consultor?: boolean }).is_consultor);
+              const leadsApenasProprios = Boolean(
+                (u as { leads_apenas_proprios?: boolean }).leads_apenas_proprios,
+              );
+              const toggleConsultor = toggleUsuarioConsultorAction.bind(null, u.id, !isConsultor);
+              const toggleLeadsProprios = toggleUsuarioLeadsApenasPropriosAction.bind(
+                null,
+                u.id,
+                !leadsApenasProprios,
+              );
               return (
                 <tr key={u.id} className="border-b dark:border-zinc-800">
                   <td className="px-3 py-2">{u.nome}</td>
                   <td className="px-3 py-2">{u.email}</td>
-                  <td className="px-3 py-2">{u.perfil}</td>
+                  <td className="px-3 py-2">
+                    <form action={updateUsuarioPerfilAction} className="flex items-center gap-2">
+                      <input type="hidden" name="usuario_id" value={u.id} />
+                      <Select name="perfil" defaultValue={u.perfil} className="min-w-[8.5rem]">
+                        {PERFIS.map((p) => (
+                          <option key={p} value={p}>
+                            {p}
+                          </option>
+                        ))}
+                      </Select>
+                      <Button type="submit" size="sm" variant="outline">
+                        Salvar
+                      </Button>
+                    </form>
+                  </td>
                   <td className="px-3 py-2">
                     <form action={toggleConsultor}>
                       <Button type="submit" size="sm" variant={isConsultor ? "default" : "outline"}>
                         {isConsultor ? "Sim" : "Não"}
+                      </Button>
+                    </form>
+                  </td>
+                  <td className="px-3 py-2">
+                    <form action={toggleLeadsProprios}>
+                      <Button
+                        type="submit"
+                        size="sm"
+                        variant={leadsApenasProprios ? "default" : "outline"}
+                        title="Se ativo, o usuário só vê leads em que for o consultor responsável"
+                      >
+                        {leadsApenasProprios ? "Sim" : "Não"}
                       </Button>
                     </form>
                   </td>
