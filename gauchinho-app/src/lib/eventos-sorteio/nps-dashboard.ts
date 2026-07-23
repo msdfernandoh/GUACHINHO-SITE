@@ -1,5 +1,11 @@
 import { createAdminClient } from "@/lib/supabase/admin";
-import { NPS_PERGUNTAS_FIXAS, parseNpsConfig, type NpsConfigStored } from "./nps";
+import {
+  NPS_PERGUNTAS_FIXAS,
+  parseNpsConfig,
+  resolverPerguntasNpsPublicas,
+  type NpsConfigStored,
+  type NpsTipo,
+} from "./nps";
 
 export type NpsDashboardEventoOption = { id: string; nome: string; data_evento: string | null };
 
@@ -13,11 +19,18 @@ export type NpsDimensaoMedia = {
   distribuicao: NpsDistribuicao[];
 };
 
+export type NpsExportColumn = {
+  chave: string;
+  titulo: string;
+  tipo: NpsTipo;
+};
+
 export type NpsRespostaRow = {
   participanteId: string;
   nome: string;
   telefone: string;
   codigo: string;
+  valorMensalDisponivel: number | null;
   npsCompletoEm: string | null;
   recomendacao: number | null;
   contatoDiagnostico: boolean | null;
@@ -52,6 +65,7 @@ export type NpsDashboardData = {
   distribuicaoRecomendacao: NpsDistribuicao[];
   contatoSim: number;
   contatoNao: number;
+  perguntasColunas: NpsExportColumn[];
   respostas: NpsRespostaRow[];
   indicacoes: NpsIndicacaoRow[];
 };
@@ -123,6 +137,11 @@ export async function fetchNpsDashboard(eventoId: string): Promise<NpsDashboardD
     .maybeSingle();
 
   const config = parseNpsConfig(sorteio?.nps_config);
+  const perguntasColunas: NpsExportColumn[] = resolverPerguntasNpsPublicas(config).map((p) => ({
+    chave: p.chave,
+    titulo: p.titulo,
+    tipo: p.tipo,
+  }));
   const sorteioId = sorteio?.id as string | undefined;
 
   let participantes: Array<{
@@ -131,6 +150,7 @@ export async function fetchNpsDashboard(eventoId: string): Promise<NpsDashboardD
     telefone: string;
     codigo: string;
     origem_cupom: string | null;
+    valor_mensal_disponivel: number | null;
     nps_respostas: Record<string, unknown> | null;
     nps_completo_em: string | null;
   }> = [];
@@ -138,7 +158,9 @@ export async function fetchNpsDashboard(eventoId: string): Promise<NpsDashboardD
   if (sorteioId) {
     const { data, error } = await admin
       .from("eventos_sorteio_participantes")
-      .select("id, nome, telefone, codigo, origem_cupom, nps_respostas, nps_completo_em")
+      .select(
+        "id, nome, telefone, codigo, origem_cupom, valor_mensal_disponivel, nps_respostas, nps_completo_em",
+      )
       .eq("sorteio_id", sorteioId)
       .eq("status", "participando")
       .order("created_at", { ascending: false });
@@ -254,6 +276,8 @@ export async function fetchNpsDashboard(eventoId: string): Promise<NpsDashboardD
       nome: p.nome,
       telefone: p.telefone,
       codigo: p.codigo,
+      valorMensalDisponivel:
+        p.valor_mensal_disponivel != null ? Number(p.valor_mensal_disponivel) : null,
       npsCompletoEm: p.nps_completo_em,
       recomendacao: rec,
       contatoDiagnostico: contato,
@@ -295,6 +319,7 @@ export async function fetchNpsDashboard(eventoId: string): Promise<NpsDashboardD
     distribuicaoRecomendacao: distRec,
     contatoSim,
     contatoNao,
+    perguntasColunas,
     respostas,
     indicacoes,
   };

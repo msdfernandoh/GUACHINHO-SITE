@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import type { NpsDashboardData, NpsDashboardEventoOption, NpsDistribuicao } from "@/lib/eventos-sorteio/nps-dashboard";
 import { formatDateTime, formatWhatsappBrInput } from "@/lib/utils/format";
+import { Button } from "@/components/ui/form-primitives";
 
 type Props = {
   eventos: NpsDashboardEventoOption[];
@@ -73,6 +74,20 @@ export function NpsDashboardClient({ eventos, selectedEventoId, data }: Props) {
             Configurar perguntas NPS deste evento →
           </Link>
         ) : null}
+        {selectedEventoId && data ? (
+          <div className="flex flex-wrap gap-2">
+            <a href={`/api/admin/eventos/nps/export?evento_id=${selectedEventoId}&format=xls`}>
+              <Button type="button" size="sm" variant="outline">
+                Baixar XLS
+              </Button>
+            </a>
+            <a href={`/api/admin/eventos/nps/export?evento_id=${selectedEventoId}&format=pdf`}>
+              <Button type="button" size="sm" variant="outline">
+                Baixar PDF
+              </Button>
+            </a>
+          </div>
+        ) : null}
       </div>
 
       {!selectedEventoId ? (
@@ -140,7 +155,12 @@ export function NpsDashboardClient({ eventos, selectedEventoId, data }: Props) {
           </div>
 
           <section className="space-y-3">
-            <h2 className="font-semibold">Respostas individuais ({data.respostas.length})</h2>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h2 className="font-semibold">Respostas individuais ({data.respostas.length})</h2>
+              <p className="text-xs text-zinc-500">
+                Exportação inclui respostas NPS (nome, telefone, valor para investimento, perguntas) e indicações.
+              </p>
+            </div>
             <div className="overflow-x-auto rounded-xl border dark:border-zinc-800">
               <table className="min-w-full text-left text-sm">
                 <thead className="border-b bg-zinc-50 text-xs uppercase dark:border-zinc-800 dark:bg-zinc-900">
