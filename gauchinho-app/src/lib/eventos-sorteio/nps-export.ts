@@ -94,8 +94,7 @@ export function npsDashboardToSemicolonTable(data: NpsDashboardData): string {
   return lines.join("\n");
 }
 
-export function npsDashboardToXlsBytes(data: NpsDashboardData): Uint8Array {
+export function npsDashboardToXlsBody(data: NpsDashboardData): string {
   const bom = "\uFEFF";
-  const body = npsDashboardToSemicolonTable(data);
-  return new TextEncoder().encode(bom + body);
+  return bom + npsDashboardToSemicolonTable(data);
 }

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getUsuarioNegocio } from "@/lib/auth/get-usuario";
 import { canManageImobiliarias } from "@/lib/auth/permissions";
 import { fetchNpsDashboard } from "@/lib/eventos-sorteio/nps-dashboard";
-import { npsDashboardToXlsBytes } from "@/lib/eventos-sorteio/nps-export";
+import { npsDashboardToXlsBody } from "@/lib/eventos-sorteio/nps-export";
 import { renderNpsExportPdfBuffer } from "@/lib/eventos-sorteio/nps-pdf-document";
 import { slugify } from "@/lib/utils/slug";
 
@@ -46,7 +46,7 @@ export async function GET(request: Request) {
     });
   }
 
-  const xls = npsDashboardToXlsBytes(data);
+  const xls = npsDashboardToXlsBody(data);
   return new NextResponse(xls, {
     headers: {
       "Content-Type": "application/vnd.ms-excel; charset=utf-8",
