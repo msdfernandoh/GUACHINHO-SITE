@@ -30,7 +30,7 @@ export default async function AgendaAdminPage({
   ]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-24 sm:pb-0">
       <div>
         <h1 className={adminPageTitleClass}>Agenda comercial</h1>
         <p className={adminPageSubtitleClass}>Compromissos com leads — clique no dia para agendar</p>

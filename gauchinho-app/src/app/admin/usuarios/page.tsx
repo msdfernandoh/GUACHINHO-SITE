@@ -9,16 +9,22 @@ import {
 } from "./actions";
 import { AdminFormSubmitButton } from "@/components/admin/admin-form-submit-button";
 import { UsuarioEdicaoForm } from "@/components/admin/usuarios/usuario-edicao-form";
+import { UsuarioAdminFlashBanner } from "@/components/admin/usuarios/usuario-admin-flash-banner";
 import { Button, Input, Label, Select } from "@/components/ui/form-primitives";
 import { PERFIS } from "@/lib/auth/permissions";
 import { formatDate } from "@/lib/utils/format";
 import { ADMIN_MENU_ITEMS, resolveAdminMenus, type AdminMenuKey } from "@/lib/admin/admin-menus";
 
-export default async function UsuariosPage() {
+export default async function UsuariosPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ flash?: string }>;
+}) {
   const current = await getUsuarioNegocio();
   if (!canManageUsers(current?.perfil)) {
     redirect("/admin");
   }
+  const sp = await searchParams;
   const usuarios = await fetchUsuarios();
   const defaultMenus = resolveAdminMenus("srd", null);
 
@@ -28,6 +34,7 @@ export default async function UsuariosPage() {
         <h1 className="text-2xl font-bold">Usuários</h1>
         <p className="text-sm text-zinc-500">Master — Supabase Auth + perfil</p>
       </div>
+      <UsuarioAdminFlashBanner codigo={sp.flash} />
       <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-4 text-sm dark:border-zinc-800 dark:bg-zinc-900/50">
         <p className="font-semibold text-zinc-800 dark:text-zinc-100">Como funciona o Google Agenda</p>
         <ol className="mt-2 list-decimal space-y-1 pl-5 text-zinc-600 dark:text-zinc-400">
@@ -148,6 +155,8 @@ export default async function UsuariosPage() {
               const googleConnected = Boolean(
                 (u as { google_calendar_connected_at?: string | null }).google_calendar_connected_at,
               );
+              const adminMenusRaw = (u as { admin_menus?: AdminMenuKey[] | null }).admin_menus;
+              const menuKeysAtivos = resolveAdminMenus(u.perfil, adminMenusRaw);
               return (
                 <tr key={u.id} className="border-b dark:border-zinc-800">
                   <td className="px-3 py-2">{u.nome}</td>
@@ -159,11 +168,13 @@ export default async function UsuariosPage() {
                         usuarioId={u.id}
                         nome={u.nome}
                         email={u.email}
+                        telefone={u.telefone ?? null}
                         perfil={u.perfil}
                         isConsultor={isConsultor}
                         leadsApenasProprios={leadsApenasProprios}
                         googleAgendaSync={googleAgendaSync}
                         googleConnected={googleConnected}
+                        menuKeysAtivos={menuKeysAtivos}
                         updateAction={updateUsuarioEdicaoAction}
                       />
                     </div>
