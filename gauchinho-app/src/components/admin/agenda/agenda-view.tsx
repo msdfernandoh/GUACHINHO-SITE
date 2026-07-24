@@ -24,6 +24,7 @@ type Props = {
   srds: Srd[];
   initialDay?: string;
   initialLeadId?: string;
+  leadPreview?: { id: string; nome: string } | null;
 };
 
 function daysInMonth(y: number, m: number) {
@@ -34,7 +35,15 @@ function pad(n: number) {
   return String(n).padStart(2, "0");
 }
 
-export function AgendaView({ month, year, compromissos, srds, initialDay, initialLeadId }: Props) {
+export function AgendaView({
+  month,
+  year,
+  compromissos,
+  srds,
+  initialDay,
+  initialLeadId,
+  leadPreview,
+}: Props) {
   const [selected, setSelected] = useState(initialDay ?? `${year}-${pad(month)}-01`);
   const [showNew, setShowNew] = useState(!!initialLeadId);
   const [concluirId, setConcluirId] = useState<string | null>(null);
@@ -122,6 +131,9 @@ export function AgendaView({ month, year, compromissos, srds, initialDay, initia
             <form action={createCompromissoAction} className={`space-y-3 ${adminPanelClass}`}>
               <h3 className={adminSectionTitleClass}>Novo compromisso</h3>
               <input type="hidden" name="data" value={selected} />
+              <input type="hidden" name="mes" value={String(month)} />
+              <input type="hidden" name="ano" value={String(year)} />
+              {initialLeadId ? <input type="hidden" name="lead_id" value={initialLeadId} /> : null}
               <div>
                 <Label>Título</Label>
                 <Input name="titulo" required defaultValue="Atendimento" className={surfaceInputDark} />
@@ -149,9 +161,12 @@ export function AgendaView({ month, year, compromissos, srds, initialDay, initia
               <div>
                 <Label>Consultor</Label>
                 {srds.length === 0 ? (
-                  <p className="mt-1 text-sm text-amber-400/90">
-                    Nenhum consultor cadastrado. Marque usuários como consultores em Admin → Usuários.
-                  </p>
+                  <>
+                    <p className="mt-1 text-sm text-amber-400/90">
+                      Nenhum consultor cadastrado. O compromisso será atribuído a você.
+                    </p>
+                    <input type="hidden" name="consultor_id" value="" />
+                  </>
                 ) : (
                   <Select name="consultor_id" defaultValue={srds[0]?.id ?? ""} required className={surfaceSelectDark}>
                     {srds.map((s) => (
@@ -162,10 +177,17 @@ export function AgendaView({ month, year, compromissos, srds, initialDay, initia
                   </Select>
                 )}
               </div>
-              <div>
-                <Label>Lead (UUID — opcional)</Label>
-                <Input name="lead_id" defaultValue={initialLeadId ?? ""} placeholder="cole o id do lead" className={surfaceInputDark} />
-              </div>
+              {initialLeadId ? (
+                <div className="rounded-lg border border-zinc-700 bg-zinc-950/50 px-3 py-2 text-sm">
+                  <p className="text-xs text-zinc-500">Lead vinculado</p>
+                  <p className="font-medium text-zinc-100">{leadPreview?.nome ?? initialLeadId}</p>
+                </div>
+              ) : (
+                <div>
+                  <Label>Lead (UUID — opcional)</Label>
+                  <Input name="lead_id" placeholder="cole o id do lead" className={surfaceInputDark} />
+                </div>
+              )}
               <div>
                 <Label>Local</Label>
                 <Input name="local" className={surfaceInputDark} />

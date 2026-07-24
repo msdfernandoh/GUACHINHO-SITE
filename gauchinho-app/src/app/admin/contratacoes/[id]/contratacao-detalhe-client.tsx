@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { Button } from "@/components/ui/form-primitives";
-import { formatCurrency, formatWhatsappBrInput } from "@/lib/utils/format";
+import { formatCurrency, formatDate, formatWhatsappBrInput } from "@/lib/utils/format";
 import { formatCpfBrInput, formatCnpjBrInput } from "@/lib/utils/format";
 import { formatCepBrInput } from "@/lib/contratacoes-online/endereco";
 import { buildWhatsappLink, buildWhatsappPropostaMessage } from "@/lib/contratacoes-online/whatsapp-message";
@@ -150,7 +150,17 @@ export function ContratacaoDetalheClient({
                 <Field label="E-mail" value={contratacao.email} />
                 <Field label="Tipo pessoa" value={contratacao.tipo_pessoa?.toUpperCase()} />
                 {contratacao.tipo_pessoa === "cpf" ? (
-                  <Field label="CPF" value={cpfFmt} />
+                  <>
+                    <Field label="CPF" value={cpfFmt} />
+                    <Field
+                      label="Data de nascimento"
+                      value={
+                        contratacao.data_nascimento
+                          ? formatDate(contratacao.data_nascimento.slice(0, 10))
+                          : null
+                      }
+                    />
+                  </>
                 ) : (
                   <>
                     <Field label="Razão social" value={contratacao.razao_social} />

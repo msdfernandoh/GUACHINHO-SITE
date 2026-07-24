@@ -7,14 +7,17 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { requireUsuario } from "@/lib/auth/get-usuario";
 import { canManageUsers, PERFIS } from "@/lib/auth/permissions";
 import type { AdminMenuKey } from "@/lib/admin/admin-menus";
+import { isGmailAddress } from "@/lib/google-calendar/config";
 
 export async function fetchUsuarios() {
   const supabase = await createClient();
   let { data, error } = await supabase
     .from("usuarios")
-    .select("id, nome, email, telefone, perfil, ativo, is_consultor, leads_apenas_proprios, created_at")
+    .select(
+      "id, nome, email, telefone, perfil, ativo, is_consultor, leads_apenas_proprios, google_agenda_sync, google_calendar_connected_at, created_at",
+    )
     .order("nome");
-  if (error && /is_consultor|leads_apenas_proprios/.test(error.message)) {
+  if (error && /is_consultor|leads_apenas_proprios|google_agenda_sync|google_calendar_connected_at/.test(error.message)) {
     const legacy = await supabase
       .from("usuarios")
       .select("id, nome, email, telefone, perfil, ativo, created_at")
@@ -24,6 +27,8 @@ export async function fetchUsuarios() {
       ...u,
       is_consultor: u.perfil === "srd",
       leads_apenas_proprios: false,
+      google_agenda_sync: false,
+      google_calendar_connected_at: null,
     }));
   }
   if (error) throw new Error(error.message);
@@ -43,6 +48,7 @@ export async function createUsuarioAction(formData: FormData) {
   const telefone = String(formData.get("telefone") ?? "").trim() || null;
   const isConsultor = formData.get("is_consultor") === "on";
   const leadsApenasProprios = formData.get("leads_apenas_proprios") === "on";
+  const googleAgendaSync = formData.get("google_agenda_sync") === "on";
   const menuKeys = formData.getAll("admin_menu").map((v) => String(v).trim()) as AdminMenuKey[];
   const adminMenus = menuKeys.length ? menuKeys : null;
 
@@ -63,9 +69,13 @@ export async function createUsuarioAction(formData: FormData) {
     ativo: true,
     is_consultor: isConsultor,
     leads_apenas_proprios: leadsApenasProprios,
+    google_agenda_sync: googleAgendaSync && isGmailAddress(email),
     admin_menus: adminMenus,
   });
-  if (error && /is_consultor|admin_menus|leads_apenas_proprios/.test(error.message)) {
+  if (
+    error &&
+    /is_consultor|admin_menus|leads_apenas_proprios|google_agenda_sync/.test(error.message)
+  ) {
     const base = {
       auth_user_id: authUser.user.id,
       nome,
@@ -76,8 +86,8 @@ export async function createUsuarioAction(formData: FormData) {
     };
     // Tenta preservar a restrição de leads; só cai no insert mínimo se a coluna não existir.
     const attempts: Record<string, unknown>[] = [
-      { ...base, is_consultor: isConsultor, leads_apenas_proprios: leadsApenasProprios },
-      { ...base, leads_apenas_proprios: leadsApenasProprios },
+      { ...base, is_consultor: isConsultor, leads_apenas_proprios: leadsApenasProprios, google_agenda_sync: googleAgendaSync && isGmailAddress(email) },
+      { ...base, leads_apenas_proprios: leadsApenasProprios, google_agenda_sync: googleAgendaSync && isGmailAddress(email) },
       { ...base, is_consultor: isConsultor },
       base,
     ];
@@ -157,4 +167,32 @@ export async function toggleUsuarioLeadsApenasPropriosAction(id: string, leadsAp
   revalidatePath("/admin/usuarios");
   revalidatePath("/admin/leads");
   revalidatePath("/admin");
+}
+
+export async function toggleUsuarioGoogleAgendaSyncAction(id: string, enabled: boolean) {
+  const usuario = await requireUsuario();
+  if (!canManageUsers(usuario.perfil)) throw new Error("Sem permissão");
+  const supabase = await createClient();
+  const { data: alvo } = await supabase.from("usuarios").select("email").eq("id", id).maybeSingle();
+  if (!alvo) throw new Error("Usuário não encontrado");
+  if (enabled && !isGmailAddress(alvo.email as string)) {
+    throw new Error("Sincronização Google Agenda só está disponível para e-mails @gmail.com.");
+  }
+
+  const patch: Record<string, unknown> = { google_agenda_sync: enabled };
+  if (!enabled) {
+    patch.google_calendar_refresh_token = null;
+    patch.google_calendar_connected_at = null;
+  }
+
+  const admin = createAdminClient();
+  const { error } = await admin.from("usuarios").update(patch).eq("id", id);
+  if (error) {
+    if (/google_agenda_sync|google_calendar|schema cache/i.test(error.message)) {
+      throw new Error("Aplique a migration 033_google_calendar_sync.sql no Supabase.");
+    }
+    throw new Error(error.message);
+  }
+  revalidatePath("/admin/usuarios");
+  revalidatePath("/admin/agenda");
 }

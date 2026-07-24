@@ -6,6 +6,7 @@ import {
   fetchUsuarios,
   toggleUsuarioAtivoAction,
   toggleUsuarioConsultorAction,
+  toggleUsuarioGoogleAgendaSyncAction,
   toggleUsuarioLeadsApenasPropriosAction,
   updateUsuarioPerfilAction,
 } from "./actions";
@@ -65,6 +66,13 @@ export default async function UsuariosPage() {
           <input type="checkbox" name="leads_apenas_proprios" />
           Ver apenas leads em que for consultor responsável
         </label>
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" name="google_agenda_sync" />
+          Sincronizar agenda com Google Agenda (e-mail @gmail.com)
+        </label>
+        <p className="text-xs text-zinc-500">
+          Após criar, o usuário Gmail deve abrir Admin → Agenda e clicar em &quot;Conectar Google Agenda&quot;.
+        </p>
         <div className="space-y-2 rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
           <p className="text-sm font-semibold">Menus do painel</p>
           <p className="text-xs text-zinc-500">
@@ -98,6 +106,7 @@ export default async function UsuariosPage() {
               <th className="px-3 py-2">Perfil / Função</th>
               <th className="px-3 py-2">Consultor</th>
               <th className="px-3 py-2">Só leads próprios</th>
+              <th className="px-3 py-2">Google Agenda</th>
               <th className="px-3 py-2">Ativo</th>
               <th className="px-3 py-2">Desde</th>
               <th className="px-3 py-2" />
@@ -116,6 +125,13 @@ export default async function UsuariosPage() {
                 u.id,
                 !leadsApenasProprios,
               );
+              const googleAgendaSync = Boolean(
+                (u as { google_agenda_sync?: boolean }).google_agenda_sync,
+              );
+              const googleConnected = Boolean(
+                (u as { google_calendar_connected_at?: string | null }).google_calendar_connected_at,
+              );
+              const toggleGoogleAgenda = toggleUsuarioGoogleAgendaSyncAction.bind(null, u.id, !googleAgendaSync);
               return (
                 <tr key={u.id} className="border-b dark:border-zinc-800">
                   <td className="px-3 py-2">{u.nome}</td>
@@ -153,6 +169,18 @@ export default async function UsuariosPage() {
                         {leadsApenasProprios ? "Sim" : "Não"}
                       </Button>
                     </form>
+                  </td>
+                  <td className="px-3 py-2">
+                    <form action={toggleGoogleAgenda}>
+                      <Button type="submit" size="sm" variant={googleAgendaSync ? "default" : "outline"}>
+                        {googleAgendaSync ? "Habilitado" : "Desligado"}
+                      </Button>
+                    </form>
+                    {googleAgendaSync ? (
+                      <p className="mt-1 text-[10px] text-zinc-500">
+                        {googleConnected ? "Conectado ao Google" : "Aguardando conexão na Agenda"}
+                      </p>
+                    ) : null}
                   </td>
                   <td className="px-3 py-2">{u.ativo ? "Sim" : "Não"}</td>
                   <td className="px-3 py-2">{formatDate(u.created_at)}</td>

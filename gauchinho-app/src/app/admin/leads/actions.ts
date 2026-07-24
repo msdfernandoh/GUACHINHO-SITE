@@ -13,6 +13,7 @@ import {
   leadVisibleForScope,
   loadLeadAccessScope,
 } from "@/lib/crm/lead-access";
+import { enrichLeadsWithTipoSonho } from "@/lib/crm/lead-tipo-sonho";
 import type { LeadFilters } from "@/lib/crm/types";
 import { buildLeadTimeline } from "@/lib/crm/timeline";
 import { MOTIVOS_PERDA } from "@/lib/crm/constants";
@@ -236,7 +237,8 @@ export async function fetchLeadsList(filters: LeadFilters) {
     usuario.perfil,
     usuario.leads_apenas_proprios,
   );
-  return filterLeadsByScope(rows, scope);
+  const filtered = filterLeadsByScope(rows, scope);
+  return enrichLeadsWithTipoSonho(filtered);
 }
 
 export async function fetchLeadsKanban() {

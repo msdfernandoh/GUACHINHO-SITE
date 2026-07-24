@@ -5,7 +5,7 @@ import type { LeadListRow } from "@/lib/crm/types";
 import { labelOrigem, valorEstimadoLead } from "@/lib/crm/constants";
 import { formatCurrency, formatDate, formatDateTime } from "@/lib/utils/format";
 import { LeadStatusBadge } from "./lead-status-badge";
-import { LeadTemperatureBadge } from "./lead-temperature-badge";
+import { LeadTipoSonhoBadge } from "./lead-tipo-sonho-badge";
 import { LeadWhatsappButton } from "./lead-whatsapp-button";
 import {
   adminTableCellClass,
@@ -24,7 +24,7 @@ export function LeadTable({ leads }: { leads: LeadListRow[] }) {
             <th className="px-3 py-2">Produto</th>
             <th className="px-3 py-2">Valor</th>
             <th className="px-3 py-2">Cidade</th>
-            <th className="px-3 py-2">Temp.</th>
+            <th className="px-3 py-2">Tipo do sonho</th>
             <th className="px-3 py-2">Status</th>
             <th className="px-3 py-2">Consultor</th>
             <th className="px-3 py-2">Próxima ação</th>
@@ -51,7 +51,7 @@ export function LeadTable({ leads }: { leads: LeadListRow[] }) {
                 <td className="px-3 py-2">{valor > 0 ? formatCurrency(valor) : "—"}</td>
                 <td className="px-3 py-2">{l.cidade ?? "—"}</td>
                 <td className="px-3 py-2">
-                  <LeadTemperatureBadge value={l.temperatura} />
+                  <LeadTipoSonhoBadge value={l.tipo_sonho} />
                 </td>
                 <td className="px-3 py-2">
                   <LeadStatusBadge status={l.status} />
