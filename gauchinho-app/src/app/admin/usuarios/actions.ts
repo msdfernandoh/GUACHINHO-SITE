@@ -9,7 +9,7 @@ import { canManageUsers, PERFIS } from "@/lib/auth/permissions";
 import type { AdminMenuKey } from "@/lib/admin/admin-menus";
 import { isGmailAddress } from "@/lib/google-calendar/config";
 
-function redirectUsuarios(codigo: string) {
+function redirectUsuarios(codigo: string): never {
   redirect(`/admin/usuarios?flash=${encodeURIComponent(codigo)}`);
 }
 
