@@ -5,8 +5,13 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { requireUsuario } from "@/lib/auth/get-usuario";
 import { canManageLeads, isMaster } from "@/lib/auth/permissions";
-import type { AgendaCompromissoRow, AgendaResultado, AgendaStatus } from "@/lib/agenda/types";
+import type { AgendaCompromissoRow, AgendaStatus } from "@/lib/agenda/types";
 import { AGENDA_RESULTADOS } from "@/lib/agenda/types";
+import {
+  parsePercentualParcela,
+  parseValorMonetario,
+  type AgendaFechamentoTipoParcela,
+} from "@/lib/agenda/fechamento";
 import { isGmailAddress, isGoogleCalendarConfigured } from "@/lib/google-calendar/config";
 import { pushCompromissoToGoogleCalendar, removeCompromissoFromGoogleCalendar } from "@/lib/google-calendar/sync";
 
@@ -170,17 +175,154 @@ export async function createCompromissoAction(formData: FormData) {
   redirect(`/admin/agenda?${qs.toString()}`);
 }
 
+export async function reagendarCompromissoAction(compromissoId: string, formData: FormData) {
+  const u = await requireUsuario();
+  if (!canManageLeads(u.perfil)) throw new Error("Sem permissão");
+  const supabase = await createClient();
+
+  const date = String(formData.get("data") ?? "").trim();
+  const time = String(formData.get("hora") ?? "10:00").trim();
+  if (!date) throw new Error("Informe a nova data.");
+  const duracao = parseInt(String(formData.get("duracao_minutos") ?? "60"), 10) || 60;
+  const dataInicio = parseDateTimeLocal(date, time);
+  const dataFim = new Date(new Date(dataInicio).getTime() + duracao * 60_000).toISOString();
+
+  const { data: comp, error: fetchErr } = await supabase
+    .from("agenda_compromissos")
+    .select("id, status, lead_id")
+    .eq("id", compromissoId)
+    .single();
+  if (fetchErr) throw new Error(fetchErr.message);
+  if (comp.status !== "agendado") throw new Error("Só é possível reagendar compromissos agendados.");
+
+  await removeCompromissoFromGoogleCalendar(compromissoId).catch((e) => {
+    console.error("[agenda] google remove reagendar:", e);
+  });
+
+  const { error } = await supabase
+    .from("agenda_compromissos")
+    .update({
+      data_inicio: dataInicio,
+      data_fim: dataFim,
+      duracao_minutos: duracao,
+      status: "agendado",
+      google_calendar_event_id: null,
+    })
+    .eq("id", compromissoId);
+  if (error) throw new Error(error.message);
+
+  pushCompromissoToGoogleCalendar(compromissoId).catch((e) => {
+    console.error("[agenda] google sync reagendar:", e);
+  });
+
+  const leadId = comp.lead_id as string | null;
+  if (leadId) {
+    await supabase
+      .from("leads")
+      .update({
+        data_proxima_acao: dataInicio,
+        proximo_retorno_data: date,
+      })
+      .eq("id", leadId);
+    revalidatePath(`/admin/leads/${leadId}`);
+  }
+
+  revalidatePath("/admin/agenda");
+  const mes = String(formData.get("mes") ?? "").trim();
+  const ano = String(formData.get("ano") ?? "").trim();
+  const qs = new URLSearchParams();
+  if (mes) qs.set("mes", mes);
+  if (ano) qs.set("ano", ano);
+  qs.set("dia", date);
+  redirect(`/admin/agenda?${qs.toString()}`);
+}
+
+export async function retornarCompromissoAction(compromissoId: string, formData: FormData) {
+  const u = await requireUsuario();
+  if (!canManageLeads(u.perfil)) throw new Error("Sem permissão");
+  const supabase = await createClient();
+
+  const date = String(formData.get("data") ?? "").trim();
+  const time = String(formData.get("hora") ?? "10:00").trim();
+  if (!date) throw new Error("Informe a data do retorno.");
+  const duracao = parseInt(String(formData.get("duracao_minutos") ?? "30"), 10) || 30;
+  const dataInicio = parseDateTimeLocal(date, time);
+  const dataFim = new Date(new Date(dataInicio).getTime() + duracao * 60_000).toISOString();
+  const observacao = String(formData.get("descricao") ?? "").trim() || null;
+
+  const { data: comp, error: fetchErr } = await supabase
+    .from("agenda_compromissos")
+    .select("lead_id, consultor_id, titulo")
+    .eq("id", compromissoId)
+    .single();
+  if (fetchErr) throw new Error(fetchErr.message);
+
+  const { data: inserted, error } = await supabase
+    .from("agenda_compromissos")
+    .insert({
+      lead_id: comp.lead_id,
+      consultor_id: comp.consultor_id,
+      titulo: "Retorno — follow-up",
+      tipo: "Retorno",
+      data_inicio: dataInicio,
+      data_fim: dataFim,
+      duracao_minutos: duracao,
+      status: "agendado",
+      descricao: observacao ?? `Retorno após: ${comp.titulo}`,
+    })
+    .select("id")
+    .single();
+  if (error) throw new Error(error.message);
+
+  if (inserted?.id) {
+    pushCompromissoToGoogleCalendar(inserted.id as string).catch((e) => {
+      console.error("[agenda] google sync retorno:", e);
+    });
+  }
+
+  const leadId = comp.lead_id as string | null;
+  if (leadId) {
+    await supabase
+      .from("leads")
+      .update({
+        data_proxima_acao: dataInicio,
+        proxima_acao: "Retorno agenda",
+        proximo_retorno_data: date,
+        proximo_retorno_hora: time.length === 5 ? `${time}:00` : time,
+      })
+      .eq("id", leadId);
+    revalidatePath(`/admin/leads/${leadId}`);
+  }
+
+  revalidatePath("/admin/agenda");
+  const mes = String(formData.get("mes") ?? "").trim();
+  const ano = String(formData.get("ano") ?? "").trim();
+  const qs = new URLSearchParams();
+  if (mes) qs.set("mes", mes);
+  if (ano) qs.set("ano", ano);
+  qs.set("dia", date);
+  redirect(`/admin/agenda?${qs.toString()}`);
+}
+
 export async function concluirCompromissoAction(compromissoId: string, formData: FormData) {
   const u = await requireUsuario();
   if (!canManageLeads(u.perfil)) throw new Error("Sem permissão");
   const supabase = await createClient();
-  const resultado = String(formData.get("resultado") ?? "") as AgendaResultado;
-  if (!AGENDA_RESULTADOS.includes(resultado)) throw new Error("Resultado inválido");
+  const outcome = String(formData.get("outcome") ?? "").trim();
   const observacao = String(formData.get("observacao_resultado") ?? "").trim() || null;
-  const proximaDataRaw = String(formData.get("proxima_data") ?? "").trim();
-  const proximaHora = String(formData.get("proxima_hora") ?? "10:00").trim();
-  let proxima_data: string | null = null;
-  if (proximaDataRaw) proxima_data = parseDateTimeLocal(proximaDataRaw, proximaHora);
+
+  let resultado: (typeof AGENDA_RESULTADOS)[number];
+  if (outcome === "ganho") {
+    resultado = "Fechou";
+  } else if (outcome === "perda") {
+    const motivo = String(formData.get("motivo_perda") ?? "").trim();
+    if (motivo === "Em negociação") resultado = "Em negociação";
+    else if (motivo === "Sem resposta") resultado = "Sem resposta";
+    else if (motivo === "Sem interesse") resultado = "Sem interesse";
+    else resultado = "Sem interesse";
+  } else {
+    throw new Error("Informe se o atendimento foi ganho ou perda.");
+  }
 
   const { data: comp, error: fetchErr } = await supabase
     .from("agenda_compromissos")
@@ -195,47 +337,75 @@ export async function concluirCompromissoAction(compromissoId: string, formData:
       status: "concluido",
       resultado,
       observacao_resultado: observacao,
-      proxima_data,
+      proxima_data: null,
     })
     .eq("id", compromissoId);
   if (error) throw new Error(error.message);
 
   const leadId = comp.lead_id as string | null;
   if (leadId) {
-    if (resultado === "Fechou") {
-      await supabase.from("leads").update({ status: "Fechado", fechado: true, fechado_at: new Date().toISOString() }).eq("id", leadId);
-    } else if (resultado === "Sem interesse") {
-      await supabase.from("leads").update({ status: "Perdido", perdido_at: new Date().toISOString(), motivo_perda: "Sem interesse" }).eq("id", leadId);
-    } else if (resultado === "Em negociação") {
-      await supabase.from("leads").update({ status: "Negociação" }).eq("id", leadId);
-    } else if (resultado === "Voltar a falar em data futura" && proxima_data) {
-      await supabase
-        .from("leads")
-        .update({
-          data_proxima_acao: proxima_data,
-          proxima_acao: "Retorno agenda",
-          proximo_retorno_data: proxima_data.slice(0, 10),
-        })
-        .eq("id", leadId);
-      const { data: followUp } = await supabase
-        .from("agenda_compromissos")
-        .insert({
-          lead_id: leadId,
-          consultor_id: comp.consultor_id,
-          titulo: "Retorno — follow-up",
-          tipo: "Retorno",
-          data_inicio: proxima_data,
-          data_fim: new Date(new Date(proxima_data).getTime() + 30 * 60_000).toISOString(),
-          duracao_minutos: 30,
-          status: "agendado",
-          descricao: observacao,
-        })
-        .select("id")
-        .single();
-      if (followUp?.id) {
-        pushCompromissoToGoogleCalendar(followUp.id as string).catch((e) => {
-          console.error("[agenda] google sync follow-up:", e);
-        });
+    const now = new Date().toISOString();
+    if (outcome === "ganho") {
+      const produto = String(formData.get("produto_fechado") ?? "").trim();
+      const valorCredito = parseValorMonetario(String(formData.get("valor_credito") ?? ""));
+      if (!produto) throw new Error("Selecione o tipo do bem.");
+      if (valorCredito == null || valorCredito <= 0) throw new Error("Informe o valor do crédito vendido.");
+
+      const tipoParcela = String(formData.get("tipo_parcela") ?? "integral").trim() as AgendaFechamentoTipoParcela;
+      let percentual: number | null = null;
+      if (tipoParcela === "reduzida") {
+        percentual = parsePercentualParcela(String(formData.get("percentual_parcela") ?? ""));
+        if (percentual == null) throw new Error("Informe o percentual da parcela reduzida (1–100).");
+      }
+      const valorParcela = parseValorMonetario(String(formData.get("valor_parcela") ?? ""));
+
+      const leadPatch: Record<string, unknown> = {
+        status: "Fechado",
+        fechado: true,
+        fechado_at: now,
+        data_fechamento: now.slice(0, 10),
+        valor_fechado: valorCredito,
+        produto_fechado: produto,
+        observacao_fechamento: observacao,
+        motivo_perda: null,
+        observacao_perda: null,
+        perdido_at: null,
+        fechamento_tipo_parcela: tipoParcela,
+        fechamento_percentual_parcela: tipoParcela === "reduzida" ? percentual : null,
+        valor_parcela_fechamento: valorParcela,
+      };
+
+      let { error: leadErr } = await supabase.from("leads").update(leadPatch).eq("id", leadId);
+      if (leadErr && /fechamento_|valor_parcela_fechamento|schema cache/i.test(leadErr.message)) {
+        const { fechamento_tipo_parcela: _a, fechamento_percentual_parcela: _b, valor_parcela_fechamento: _c, ...fallback } =
+          leadPatch;
+        ({ error: leadErr } = await supabase.from("leads").update(fallback).eq("id", leadId));
+      }
+      if (leadErr) throw new Error(leadErr.message);
+    } else {
+      const motivo = String(formData.get("motivo_perda") ?? "").trim() || "Sem interesse";
+      if (motivo === "Em negociação") {
+        await supabase.from("leads").update({ status: "Negociação" }).eq("id", leadId);
+      } else if (motivo === "Sem resposta") {
+        await supabase
+          .from("leads")
+          .update({
+            status: "Perdido",
+            perdido_at: now,
+            motivo_perda: motivo,
+            observacao_perda: observacao,
+          })
+          .eq("id", leadId);
+      } else {
+        await supabase
+          .from("leads")
+          .update({
+            status: "Perdido",
+            perdido_at: now,
+            motivo_perda: motivo,
+            observacao_perda: observacao,
+          })
+          .eq("id", leadId);
       }
     }
     revalidatePath(`/admin/leads/${leadId}`);

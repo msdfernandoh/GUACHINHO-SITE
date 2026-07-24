@@ -130,6 +130,11 @@ export async function toggleUsuarioConsultorAction(id: string, isConsultor: bool
 }
 
 export async function updateUsuarioPerfilAction(formData: FormData) {
+  return updateUsuarioEdicaoAction(formData);
+}
+
+/** Master — perfil e opções comerciais (consultor, leads, Google Agenda). */
+export async function updateUsuarioEdicaoAction(formData: FormData) {
   const current = await requireUsuario();
   if (!canManageUsers(current.perfil)) throw new Error("Sem permissão");
 
@@ -140,11 +145,47 @@ export async function updateUsuarioPerfilAction(formData: FormData) {
     throw new Error("Perfil inválido");
   }
 
+  const isConsultor = formData.get("is_consultor") === "on";
+  const leadsApenasProprios = formData.get("leads_apenas_proprios") === "on";
+  const googleAgendaSyncRequested = formData.get("google_agenda_sync") === "on";
+
   const supabase = await createClient();
-  const { error } = await supabase.from("usuarios").update({ perfil }).eq("id", id);
+  const { data: alvo } = await supabase.from("usuarios").select("email").eq("id", id).maybeSingle();
+  if (!alvo) throw new Error("Usuário não encontrado");
+
+  const email = String(alvo.email ?? "").trim().toLowerCase();
+  const googleAgendaSync = googleAgendaSyncRequested && isGmailAddress(email);
+  if (googleAgendaSyncRequested && !googleAgendaSync) {
+    throw new Error("Sincronização Google Agenda só está disponível para e-mails @gmail.com.");
+  }
+
+  const patch: Record<string, unknown> = {
+    perfil,
+    is_consultor: isConsultor,
+    leads_apenas_proprios: leadsApenasProprios,
+    google_agenda_sync: googleAgendaSync,
+  };
+  if (!googleAgendaSync) {
+    patch.google_calendar_refresh_token = null;
+    patch.google_calendar_connected_at = null;
+  }
+
+  const admin = createAdminClient();
+  let { error } = await admin.from("usuarios").update(patch).eq("id", id);
+  if (error && /is_consultor|leads_apenas_proprios|google_agenda_sync|google_calendar/.test(error.message)) {
+    const minimal = { perfil };
+    ({ error } = await supabase.from("usuarios").update(minimal).eq("id", id));
+    if (!error) {
+      throw new Error(
+        "Algumas opções não foram salvas. Aplique as migrations 027 e 033 no Supabase.",
+      );
+    }
+  }
   if (error) throw new Error(error.message);
+
   revalidatePath("/admin/usuarios");
   revalidatePath("/admin/leads");
+  revalidatePath("/admin/agenda");
   revalidatePath("/admin");
 }
 

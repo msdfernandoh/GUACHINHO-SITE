@@ -5,12 +5,10 @@ import {
   createUsuarioAction,
   fetchUsuarios,
   toggleUsuarioAtivoAction,
-  toggleUsuarioConsultorAction,
-  toggleUsuarioGoogleAgendaSyncAction,
-  toggleUsuarioLeadsApenasPropriosAction,
-  updateUsuarioPerfilAction,
+  updateUsuarioEdicaoAction,
 } from "./actions";
 import { AdminFormSubmitButton } from "@/components/admin/admin-form-submit-button";
+import { UsuarioEdicaoForm } from "@/components/admin/usuarios/usuario-edicao-form";
 import { Button, Input, Label, Select } from "@/components/ui/form-primitives";
 import { PERFIS } from "@/lib/auth/permissions";
 import { formatDate } from "@/lib/utils/format";
@@ -29,6 +27,31 @@ export default async function UsuariosPage() {
       <div>
         <h1 className="text-2xl font-bold">Usuários</h1>
         <p className="text-sm text-zinc-500">Master — Supabase Auth + perfil</p>
+      </div>
+      <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-4 text-sm dark:border-zinc-800 dark:bg-zinc-900/50">
+        <p className="font-semibold text-zinc-800 dark:text-zinc-100">Como funciona o Google Agenda</p>
+        <ol className="mt-2 list-decimal space-y-1 pl-5 text-zinc-600 dark:text-zinc-400">
+          <li>
+            <strong className="font-medium text-zinc-700 dark:text-zinc-300">Master</strong> marca
+            &quot;Sincronizar agenda com Google Agenda&quot; ao criar ou em <em>Editar usuário</em> (só
+            contas @gmail.com).
+          </li>
+          <li>
+            O <strong className="font-medium text-zinc-700 dark:text-zinc-300">consultor</strong> entra
+            no painel com esse e-mail Gmail, abre <strong>Admin → Agenda</strong> e clica em{" "}
+            <strong>Conectar Google Agenda</strong> (login Google uma vez).
+          </li>
+          <li>
+            Depois disso, compromissos <strong>novos</strong> em que ele for o consultor responsável são
+            criados também no Google Calendar dele. Cancelamentos removem o evento correspondente.
+          </li>
+        </ol>
+        <p className="mt-2 text-xs text-zinc-500">
+          É necessário configurar no servidor{" "}
+          <code className="text-[11px]">GOOGLE_CALENDAR_CLIENT_ID</code> e{" "}
+          <code className="text-[11px]">GOOGLE_CALENDAR_CLIENT_SECRET</code> e rodar a migration{" "}
+          <code className="text-[11px]">033</code> no Supabase.
+        </p>
       </div>
       <form action={createUsuarioAction} className="grid max-w-xl gap-3 rounded-xl border bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
         <h2 className="font-semibold">Novo usuário</h2>
@@ -119,68 +142,45 @@ export default async function UsuariosPage() {
               const leadsApenasProprios = Boolean(
                 (u as { leads_apenas_proprios?: boolean }).leads_apenas_proprios,
               );
-              const toggleConsultor = toggleUsuarioConsultorAction.bind(null, u.id, !isConsultor);
-              const toggleLeadsProprios = toggleUsuarioLeadsApenasPropriosAction.bind(
-                null,
-                u.id,
-                !leadsApenasProprios,
-              );
               const googleAgendaSync = Boolean(
                 (u as { google_agenda_sync?: boolean }).google_agenda_sync,
               );
               const googleConnected = Boolean(
                 (u as { google_calendar_connected_at?: string | null }).google_calendar_connected_at,
               );
-              const toggleGoogleAgenda = toggleUsuarioGoogleAgendaSyncAction.bind(null, u.id, !googleAgendaSync);
               return (
                 <tr key={u.id} className="border-b dark:border-zinc-800">
                   <td className="px-3 py-2">{u.nome}</td>
                   <td className="px-3 py-2">{u.email}</td>
                   <td className="px-3 py-2">
-                    <form action={updateUsuarioPerfilAction} className="flex items-center gap-2">
-                      <input type="hidden" name="usuario_id" value={u.id} />
-                      <Select name="perfil" defaultValue={u.perfil} className="min-w-[8.5rem]">
-                        {PERFIS.map((p) => (
-                          <option key={p} value={p}>
-                            {p}
-                          </option>
-                        ))}
-                      </Select>
-                      <Button type="submit" size="sm" variant="outline">
-                        Salvar
-                      </Button>
-                    </form>
+                    <span className="font-medium">{u.perfil}</span>
+                    <div className="mt-1">
+                      <UsuarioEdicaoForm
+                        usuarioId={u.id}
+                        nome={u.nome}
+                        email={u.email}
+                        perfil={u.perfil}
+                        isConsultor={isConsultor}
+                        leadsApenasProprios={leadsApenasProprios}
+                        googleAgendaSync={googleAgendaSync}
+                        googleConnected={googleConnected}
+                        updateAction={updateUsuarioEdicaoAction}
+                      />
+                    </div>
                   </td>
+                  <td className="px-3 py-2">{isConsultor ? "Sim" : "Não"}</td>
+                  <td className="px-3 py-2">{leadsApenasProprios ? "Sim" : "Não"}</td>
                   <td className="px-3 py-2">
-                    <form action={toggleConsultor}>
-                      <Button type="submit" size="sm" variant={isConsultor ? "default" : "outline"}>
-                        {isConsultor ? "Sim" : "Não"}
-                      </Button>
-                    </form>
-                  </td>
-                  <td className="px-3 py-2">
-                    <form action={toggleLeadsProprios}>
-                      <Button
-                        type="submit"
-                        size="sm"
-                        variant={leadsApenasProprios ? "default" : "outline"}
-                        title="Se ativo, o usuário só vê leads em que for o consultor responsável"
-                      >
-                        {leadsApenasProprios ? "Sim" : "Não"}
-                      </Button>
-                    </form>
-                  </td>
-                  <td className="px-3 py-2">
-                    <form action={toggleGoogleAgenda}>
-                      <Button type="submit" size="sm" variant={googleAgendaSync ? "default" : "outline"}>
-                        {googleAgendaSync ? "Habilitado" : "Desligado"}
-                      </Button>
-                    </form>
                     {googleAgendaSync ? (
-                      <p className="mt-1 text-[10px] text-zinc-500">
-                        {googleConnected ? "Conectado ao Google" : "Aguardando conexão na Agenda"}
-                      </p>
-                    ) : null}
+                      <>
+                        <span className="text-emerald-600 dark:text-emerald-400">Habilitado</span>
+                        <p className="mt-0.5 text-[10px] text-zinc-500">
+                          {googleConnected ? "Conectado ao Google" : "Aguardando conexão na Agenda"}
+                        </p>
+                      </>
+                    ) : (
+                      <span className="text-zinc-500">Desligado</span>
+                    )}
                   </td>
                   <td className="px-3 py-2">{u.ativo ? "Sim" : "Não"}</td>
                   <td className="px-3 py-2">{formatDate(u.created_at)}</td>

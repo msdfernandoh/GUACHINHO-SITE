@@ -2,8 +2,15 @@
 
 import { useMemo, useState } from "react";
 import type { AgendaCompromissoRow } from "@/lib/agenda/types";
-import { AGENDA_TIPOS, AGENDA_RESULTADOS } from "@/lib/agenda/types";
-import { cancelCompromissoAction, concluirCompromissoAction, createCompromissoAction } from "@/app/admin/agenda/actions";
+import { AGENDA_TIPOS } from "@/lib/agenda/types";
+import {
+  cancelCompromissoAction,
+  concluirCompromissoAction,
+  createCompromissoAction,
+  reagendarCompromissoAction,
+  retornarCompromissoAction,
+} from "@/app/admin/agenda/actions";
+import { AgendaConcluirForm } from "@/components/admin/agenda/agenda-concluir-form";
 import { AdminFormSubmitButton } from "@/components/admin/admin-form-submit-button";
 import { Button, Input, Label, Select, Textarea } from "@/components/ui/form-primitives";
 import { formatDateTime } from "@/lib/utils/format";
@@ -35,6 +42,12 @@ function pad(n: number) {
   return String(n).padStart(2, "0");
 }
 
+function timeFromIso(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "10:00";
+  return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
 export function AgendaView({
   month,
   year,
@@ -47,6 +60,8 @@ export function AgendaView({
   const [selected, setSelected] = useState(initialDay ?? `${year}-${pad(month)}-01`);
   const [showNew, setShowNew] = useState(!!initialLeadId);
   const [concluirId, setConcluirId] = useState<string | null>(null);
+  const [reagendarId, setReagendarId] = useState<string | null>(null);
+  const [retornarId, setRetornarId] = useState<string | null>(null);
 
   const byDay = useMemo(() => {
     const map = new Map<string, AgendaCompromissoRow[]>();
@@ -225,39 +240,125 @@ export function AgendaView({
                       </div>
                       <div className="flex flex-wrap gap-1">
                         {c.status === "agendado" ? (
-                          <Button type="button" size="sm" variant="gold" onClick={() => setConcluirId(c.id)}>
-                            Concluir
-                          </Button>
-                        ) : null}
-                        {c.status === "agendado" ? (
-                          <form action={cancelCompromissoAction.bind(null, c.id)}>
-                            <AdminFormSubmitButton size="sm" variant="outline" label="Cancelar" pendingLabel="Cancelando…" />
-                          </form>
+                          <>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                setReagendarId(reagendarId === c.id ? null : c.id);
+                                setRetornarId(null);
+                                setConcluirId(null);
+                              }}
+                            >
+                              Reagendar
+                            </Button>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                setRetornarId(retornarId === c.id ? null : c.id);
+                                setReagendarId(null);
+                                setConcluirId(null);
+                              }}
+                            >
+                              Retornar
+                            </Button>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="gold"
+                              onClick={() => {
+                                setConcluirId(concluirId === c.id ? null : c.id);
+                                setReagendarId(null);
+                                setRetornarId(null);
+                              }}
+                            >
+                              Concluir
+                            </Button>
+                            <form action={cancelCompromissoAction.bind(null, c.id)}>
+                              <AdminFormSubmitButton
+                                size="sm"
+                                variant="outline"
+                                label="Cancelar"
+                                pendingLabel="Cancelando…"
+                              />
+                            </form>
+                          </>
                         ) : null}
                       </div>
                     </div>
-                    {concluirId === c.id ? (
-                      <form action={concluirCompromissoAction.bind(null, c.id)} className="mt-3 space-y-2 border-t border-zinc-800 pt-3">
-                        <Label>Resultado</Label>
-                        <Select name="resultado" required className={surfaceSelectDark}>
-                          {AGENDA_RESULTADOS.map((r) => (
-                            <option key={r} value={r}>
-                              {r}
-                            </option>
-                          ))}
-                        </Select>
-                        <Label>Nova data (se retorno)</Label>
+                    {reagendarId === c.id ? (
+                      <form
+                        action={reagendarCompromissoAction.bind(null, c.id)}
+                        className="mt-3 space-y-2 border-t border-zinc-800 pt-3"
+                      >
+                        <p className="text-xs font-medium text-zinc-400">Nova data e horário</p>
+                        <input type="hidden" name="mes" value={String(month)} />
+                        <input type="hidden" name="ano" value={String(year)} />
                         <div className="grid grid-cols-2 gap-2">
-                          <Input name="proxima_data" type="date" className={surfaceInputDark} />
-                          <Input name="proxima_hora" type="time" defaultValue="10:00" className={surfaceInputDark} />
+                          <div>
+                            <Label>Data</Label>
+                            <Input
+                              name="data"
+                              type="date"
+                              defaultValue={c.data_inicio.slice(0, 10)}
+                              required
+                              className={surfaceInputDark}
+                            />
+                          </div>
+                          <div>
+                            <Label>Hora</Label>
+                            <Input
+                              name="hora"
+                              type="time"
+                              defaultValue={timeFromIso(c.data_inicio)}
+                              required
+                              className={surfaceInputDark}
+                            />
+                          </div>
                         </div>
-                        <Textarea name="observacao_resultado" rows={2} placeholder="Observação" className={surfaceInputDark} />
-                        <AdminFormSubmitButton
-                          size="sm"
-                          label="Registrar conclusão"
-                          pendingLabel="Registrando…"
-                        />
+                        <div>
+                          <Label>Duração (min)</Label>
+                          <Input
+                            name="duracao_minutos"
+                            type="number"
+                            defaultValue={String(c.duracao_minutos ?? 60)}
+                            className={surfaceInputDark}
+                          />
+                        </div>
+                        <AdminFormSubmitButton size="sm" label="Salvar reagendamento" pendingLabel="Salvando…" />
                       </form>
+                    ) : null}
+                    {retornarId === c.id ? (
+                      <form
+                        action={retornarCompromissoAction.bind(null, c.id)}
+                        className="mt-3 space-y-2 border-t border-zinc-800 pt-3"
+                      >
+                        <p className="text-xs font-medium text-zinc-400">Agendar retorno (novo compromisso)</p>
+                        <input type="hidden" name="mes" value={String(month)} />
+                        <input type="hidden" name="ano" value={String(year)} />
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <Label>Data</Label>
+                            <Input name="data" type="date" required className={surfaceInputDark} />
+                          </div>
+                          <div>
+                            <Label>Hora</Label>
+                            <Input name="hora" type="time" defaultValue="10:00" required className={surfaceInputDark} />
+                          </div>
+                        </div>
+                        <div>
+                          <Label>Duração (min)</Label>
+                          <Input name="duracao_minutos" type="number" defaultValue="30" className={surfaceInputDark} />
+                        </div>
+                        <Textarea name="descricao" rows={2} placeholder="Observação do retorno" className={surfaceInputDark} />
+                        <AdminFormSubmitButton size="sm" label="Criar retorno" pendingLabel="Agendando…" />
+                      </form>
+                    ) : null}
+                    {concluirId === c.id ? (
+                      <AgendaConcluirForm action={concluirCompromissoAction.bind(null, c.id)} />
                     ) : null}
                   </li>
                 ))}
