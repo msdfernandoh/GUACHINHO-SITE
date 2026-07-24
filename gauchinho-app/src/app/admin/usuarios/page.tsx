@@ -57,7 +57,8 @@ export default async function UsuariosPage({
           É necessário configurar no servidor{" "}
           <code className="text-[11px]">GOOGLE_CALENDAR_CLIENT_ID</code> e{" "}
           <code className="text-[11px]">GOOGLE_CALENDAR_CLIENT_SECRET</code> e rodar a migration{" "}
-          <code className="text-[11px]">033</code> no Supabase.
+          <code className="text-[11px]">033</code> e{" "}
+          <code className="text-[11px]">035</code> no Supabase.
         </p>
       </div>
       <form action={createUsuarioAction} className="grid max-w-xl gap-3 rounded-xl border bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
@@ -155,6 +156,9 @@ export default async function UsuariosPage({
               const googleConnected = Boolean(
                 (u as { google_calendar_connected_at?: string | null }).google_calendar_connected_at,
               );
+              const googleAccountEmail = (u as { google_calendar_email?: string | null }).google_calendar_email;
+              const googleConnectedAt = (u as { google_calendar_connected_at?: string | null })
+                .google_calendar_connected_at;
               const adminMenusRaw = (u as { admin_menus?: AdminMenuKey[] | null }).admin_menus;
               const menuKeysAtivos = resolveAdminMenus(u.perfil, adminMenusRaw);
               return (
@@ -186,7 +190,11 @@ export default async function UsuariosPage({
                       <>
                         <span className="text-emerald-600 dark:text-emerald-400">Habilitado</span>
                         <p className="mt-0.5 text-[10px] text-zinc-500">
-                          {googleConnected ? "Conectado ao Google" : "Aguardando conexão na Agenda"}
+                          {googleConnected
+                            ? `Conectado${googleAccountEmail ? `: ${googleAccountEmail}` : ""}${
+                                googleConnectedAt ? ` (${formatDate(googleConnectedAt)})` : ""
+                              }`
+                            : "Aguardando conexão na Agenda"}
                         </p>
                       </>
                     ) : (

@@ -9,7 +9,7 @@ import { AgendaView } from "@/components/admin/agenda/agenda-view";
 export default async function AgendaAdminPage({
   searchParams,
 }: {
-  searchParams: Promise<{ mes?: string; ano?: string; lead?: string; dia?: string; google?: string }>;
+  searchParams: Promise<{ mes?: string; ano?: string; lead?: string; dia?: string; google?: string; sync_flash?: string; sync_nome?: string }>;
 }) {
   await requireStaffAdmin();
   const sp = await searchParams;
@@ -29,6 +29,9 @@ export default async function AgendaAdminPage({
         eligible: false,
         syncEnabled: false,
         connected: false,
+        googleEmail: null,
+        connectedAt: null,
+        requiresReconnect: false,
         oauthRedirectUri: setup.oauthRedirectUri,
         hasClientId: setup.hasClientId,
         hasClientSecret: setup.hasClientSecret,
@@ -42,7 +45,12 @@ export default async function AgendaAdminPage({
         <h1 className={adminPageTitleClass}>Agenda comercial</h1>
         <p className={adminPageSubtitleClass}>Compromissos com leads — clique no dia para agendar</p>
       </div>
-      <GoogleCalendarAgendaBanner status={googleStatus} flash={sp.google ?? null} />
+      <GoogleCalendarAgendaBanner
+        status={googleStatus}
+        flash={sp.google ?? null}
+        syncFlash={sp.sync_flash ?? null}
+        syncNome={sp.sync_nome ?? null}
+      />
       <AgendaView
         month={month}
         year={year}

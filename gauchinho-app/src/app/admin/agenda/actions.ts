@@ -13,7 +13,14 @@ import {
   type AgendaFechamentoTipoParcela,
 } from "@/lib/agenda/fechamento";
 import { isGmailAddress, getGoogleCalendarSetupInfo } from "@/lib/google-calendar/config";
-import { pushCompromissoToGoogleCalendar, removeCompromissoFromGoogleCalendar } from "@/lib/google-calendar/sync";
+import {
+  pushCompromissoToGoogleCalendar,
+  removeCompromissoFromGoogleCalendar,
+  updateCompromissoOnGoogleCalendar,
+} from "@/lib/google-calendar/sync";
+import { appendSyncResultToSearchParams } from "@/lib/google-calendar/sync-messages";
+import type { GoogleCalendarSyncResult } from "@/lib/google-calendar/types";
+import { getGoogleRefreshToken } from "@/lib/google-calendar/token-store";
 
 function parseDateTimeLocal(date: string, time: string): string {
   const normalized = time.length === 5 ? `${time}:00` : time;
@@ -111,31 +118,30 @@ export async function fetchGoogleCalendarStatusForCurrentUser() {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("usuarios")
-    .select("email, google_agenda_sync, google_calendar_connected_at")
+    .select("email, google_agenda_sync, google_calendar_connected_at, google_calendar_email")
     .eq("id", u.id)
     .maybeSingle();
-  if (error && /google_agenda_sync|google_calendar_connected_at|schema cache/i.test(error.message)) {
-    const setup = getGoogleCalendarSetupInfo();
-    return {
-      configured: setup.configured,
-      eligible: isGmailAddress(u.email),
-      syncEnabled: false,
-      connected: false,
-      oauthRedirectUri: setup.oauthRedirectUri,
-      hasClientId: setup.hasClientId,
-      hasClientSecret: setup.hasClientSecret,
-    };
-  }
   const setup = getGoogleCalendarSetupInfo();
-  return {
+  const base = {
     configured: setup.configured,
     eligible: isGmailAddress(data?.email ?? u.email),
     syncEnabled: Boolean(data?.google_agenda_sync),
     connected: Boolean(data?.google_calendar_connected_at),
+    googleEmail: (data?.google_calendar_email as string | null) ?? null,
+    connectedAt: (data?.google_calendar_connected_at as string | null) ?? null,
     oauthRedirectUri: setup.oauthRedirectUri,
     hasClientId: setup.hasClientId,
     hasClientSecret: setup.hasClientSecret,
+    requiresReconnect: false,
   };
+  if (error && /google_agenda_sync|google_calendar_connected_at|google_calendar_email|schema cache/i.test(error.message)) {
+    return { ...base, eligible: isGmailAddress(u.email), syncEnabled: false, connected: false };
+  }
+  if (base.syncEnabled && base.connected) {
+    const token = await getGoogleRefreshToken(u.id);
+    base.requiresReconnect = !token;
+  }
+  return base;
 }
 
 export async function createCompromissoAction(formData: FormData) {
@@ -164,22 +170,24 @@ export async function createCompromissoAction(formData: FormData) {
   };
   const { data: inserted, error } = await supabase.from("agenda_compromissos").insert(row).select("id").single();
   if (error) throw new Error(error.message);
-  if (inserted?.id) {
-    pushCompromissoToGoogleCalendar(inserted.id as string).catch((e) => {
-      console.error("[agenda] google sync:", e);
-    });
-  }
-  revalidatePath("/admin/agenda");
-  const leadId = row.lead_id;
-  if (leadId) revalidatePath(`/admin/leads/${leadId}`);
 
   const mes = String(formData.get("mes") ?? "").trim();
   const ano = String(formData.get("ano") ?? "").trim();
   const qs = new URLSearchParams();
   if (mes) qs.set("mes", mes);
   if (ano) qs.set("ano", ano);
-  if (leadId) qs.set("lead", leadId);
+  if (row.lead_id) qs.set("lead", row.lead_id);
   qs.set("dia", date);
+
+  if (inserted?.id) {
+    const syncResult = await pushCompromissoToGoogleCalendar(inserted.id as string);
+    appendSyncResultToSearchParams(qs, syncResult);
+  }
+
+  revalidatePath("/admin/agenda");
+  const leadId = row.lead_id;
+  if (leadId) revalidatePath(`/admin/leads/${leadId}`);
+
   redirect(`/admin/agenda?${qs.toString()}`);
 }
 
@@ -203,10 +211,6 @@ export async function reagendarCompromissoAction(compromissoId: string, formData
   if (fetchErr) throw new Error(fetchErr.message);
   if (comp.status !== "agendado") throw new Error("Só é possível reagendar compromissos agendados.");
 
-  await removeCompromissoFromGoogleCalendar(compromissoId).catch((e) => {
-    console.error("[agenda] google remove reagendar:", e);
-  });
-
   const { error } = await supabase
     .from("agenda_compromissos")
     .update({
@@ -214,14 +218,11 @@ export async function reagendarCompromissoAction(compromissoId: string, formData
       data_fim: dataFim,
       duracao_minutos: duracao,
       status: "agendado",
-      google_calendar_event_id: null,
     })
     .eq("id", compromissoId);
   if (error) throw new Error(error.message);
 
-  pushCompromissoToGoogleCalendar(compromissoId).catch((e) => {
-    console.error("[agenda] google sync reagendar:", e);
-  });
+  const syncResult = await updateCompromissoOnGoogleCalendar(compromissoId);
 
   const leadId = comp.lead_id as string | null;
   if (leadId) {
@@ -242,6 +243,7 @@ export async function reagendarCompromissoAction(compromissoId: string, formData
   if (mes) qs.set("mes", mes);
   if (ano) qs.set("ano", ano);
   qs.set("dia", date);
+  appendSyncResultToSearchParams(qs, syncResult);
   redirect(`/admin/agenda?${qs.toString()}`);
 }
 
@@ -282,10 +284,9 @@ export async function retornarCompromissoAction(compromissoId: string, formData:
     .single();
   if (error) throw new Error(error.message);
 
+  let syncResult: GoogleCalendarSyncResult = { synced: false, reason: "google_error" };
   if (inserted?.id) {
-    pushCompromissoToGoogleCalendar(inserted.id as string).catch((e) => {
-      console.error("[agenda] google sync retorno:", e);
-    });
+    syncResult = await pushCompromissoToGoogleCalendar(inserted.id as string);
   }
 
   const leadId = comp.lead_id as string | null;
@@ -309,6 +310,7 @@ export async function retornarCompromissoAction(compromissoId: string, formData:
   if (mes) qs.set("mes", mes);
   if (ano) qs.set("ano", ano);
   qs.set("dia", date);
+  appendSyncResultToSearchParams(qs, syncResult);
   redirect(`/admin/agenda?${qs.toString()}`);
 }
 
@@ -425,9 +427,7 @@ export async function cancelCompromissoAction(compromissoId: string) {
   const u = await requireUsuario();
   if (!canManageLeads(u.perfil)) throw new Error("Sem permissão");
   const supabase = await createClient();
-  await removeCompromissoFromGoogleCalendar(compromissoId).catch((e) => {
-    console.error("[agenda] google remove:", e);
-  });
+  await removeCompromissoFromGoogleCalendar(compromissoId);
   await supabase.from("agenda_compromissos").update({ status: "cancelado" }).eq("id", compromissoId);
   revalidatePath("/admin/agenda");
 }

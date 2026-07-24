@@ -1,8 +1,16 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { createAdminClient } from "@/lib/supabase/admin";
-import { exchangeGoogleAuthCode } from "@/lib/google-calendar/client";
+import { getUsuarioNegocio } from "@/lib/auth/get-usuario";
+import {
+  exchangeGoogleAuthCode,
+  fetchGoogleAccountEmail,
+} from "@/lib/google-calendar/client";
 import { isGoogleCalendarConfigured } from "@/lib/google-calendar/config";
+import {
+  markGoogleConnected,
+  saveGoogleRefreshToken,
+} from "@/lib/google-calendar/token-store";
+import { shouldBindGoogleOAuthToken } from "@/lib/google-calendar/oauth-guards";
 
 function siteUrl() {
   return (process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000").replace(/\/$/, "");
@@ -34,17 +42,16 @@ export async function GET(request: Request) {
     return NextResponse.redirect(`${redirectBase}?google=invalid_state`);
   }
 
+  const sessionUser = await getUsuarioNegocio();
+  if (!shouldBindGoogleOAuthToken(usuarioId, sessionUser)) {
+    return NextResponse.redirect(`${redirectBase}?google=session_mismatch`);
+  }
+
   try {
-    const { refreshToken } = await exchangeGoogleAuthCode(code);
-    const admin = createAdminClient();
-    const { error: updErr } = await admin
-      .from("usuarios")
-      .update({
-        google_calendar_refresh_token: refreshToken,
-        google_calendar_connected_at: new Date().toISOString(),
-      })
-      .eq("id", usuarioId);
-    if (updErr) throw new Error(updErr.message);
+    const { refreshToken, accessToken } = await exchangeGoogleAuthCode(code);
+    const googleEmail = await fetchGoogleAccountEmail(accessToken);
+    await saveGoogleRefreshToken(usuarioId, refreshToken);
+    await markGoogleConnected(usuarioId, googleEmail);
     return NextResponse.redirect(`${redirectBase}?google=connected`);
   } catch {
     return NextResponse.redirect(`${redirectBase}?google=error`);

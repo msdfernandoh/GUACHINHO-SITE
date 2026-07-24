@@ -8,6 +8,7 @@ import { requireUsuario } from "@/lib/auth/get-usuario";
 import { canManageUsers, PERFIS } from "@/lib/auth/permissions";
 import type { AdminMenuKey } from "@/lib/admin/admin-menus";
 import { isGmailAddress } from "@/lib/google-calendar/config";
+import { clearGoogleRefreshToken } from "@/lib/google-calendar/token-store";
 
 function redirectUsuarios(codigo: string): never {
   redirect(`/admin/usuarios?flash=${encodeURIComponent(codigo)}`);
@@ -18,10 +19,10 @@ export async function fetchUsuarios() {
   let { data, error } = await supabase
     .from("usuarios")
     .select(
-      "id, auth_user_id, nome, email, telefone, perfil, ativo, is_consultor, leads_apenas_proprios, google_agenda_sync, google_calendar_connected_at, admin_menus, created_at",
+      "id, auth_user_id, nome, email, telefone, perfil, ativo, is_consultor, leads_apenas_proprios, google_agenda_sync, google_calendar_connected_at, google_calendar_email, admin_menus, created_at",
     )
     .order("nome");
-  if (error && /is_consultor|leads_apenas_proprios|google_agenda_sync|google_calendar_connected_at/.test(error.message)) {
+  if (error && /is_consultor|leads_apenas_proprios|google_agenda_sync|google_calendar_connected_at|google_calendar_email/.test(error.message)) {
     const legacy = await supabase
       .from("usuarios")
       .select("id, nome, email, telefone, perfil, ativo, created_at")
@@ -33,6 +34,7 @@ export async function fetchUsuarios() {
       leads_apenas_proprios: false,
       google_agenda_sync: false,
       google_calendar_connected_at: null,
+      google_calendar_email: null,
     }));
   }
   if (error) throw new Error(error.message);
@@ -208,15 +210,16 @@ export async function updateUsuarioEdicaoAction(formData: FormData) {
 
   const googlePatch: Record<string, unknown> = { google_agenda_sync: googleAgendaSync };
   if (!googleAgendaSync || emailMudou) {
-    googlePatch.google_calendar_refresh_token = null;
     googlePatch.google_calendar_connected_at = null;
+    googlePatch.google_calendar_email = null;
+    await clearGoogleRefreshToken(id);
     if (!isGmailAddress(emailNovo)) {
       googlePatch.google_agenda_sync = false;
     }
   }
 
   let { error: googleErr } = await admin.from("usuarios").update(googlePatch).eq("id", id);
-  if (googleErr && /google_calendar_refresh_token|google_calendar_connected_at/.test(googleErr.message)) {
+  if (googleErr && /google_calendar_connected_at|google_calendar_email/.test(googleErr.message)) {
     ({ error: googleErr } = await admin
       .from("usuarios")
       .update({ google_agenda_sync: googlePatch.google_agenda_sync })
@@ -273,8 +276,9 @@ export async function toggleUsuarioGoogleAgendaSyncAction(id: string, enabled: b
 
   const patch: Record<string, unknown> = { google_agenda_sync: enabled };
   if (!enabled) {
-    patch.google_calendar_refresh_token = null;
     patch.google_calendar_connected_at = null;
+    patch.google_calendar_email = null;
+    await clearGoogleRefreshToken(id);
   }
 
   const admin = createAdminClient();
