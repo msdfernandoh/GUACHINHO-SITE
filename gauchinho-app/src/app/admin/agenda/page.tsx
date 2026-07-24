@@ -1,5 +1,6 @@
 import { requireStaffAdmin } from "@/lib/auth/require-staff-admin";
 import { fetchSrdOptions } from "@/app/admin/leads/actions";
+import { getGoogleCalendarSetupInfo } from "@/lib/google-calendar/config";
 import { fetchCompromissosRange, fetchGoogleCalendarStatusForCurrentUser, fetchLeadAgendaPreview } from "./actions";
 import { GoogleCalendarAgendaBanner } from "@/components/admin/agenda/google-calendar-banner";
 import { adminPageSubtitleClass, adminPageTitleClass } from "@/components/admin/admin-contrast";
@@ -21,12 +22,18 @@ export default async function AgendaAdminPage({
   const [compromissos, srds, googleStatus] = await Promise.all([
     fetchCompromissosRange(from, to),
     fetchSrdOptions(),
-    fetchGoogleCalendarStatusForCurrentUser().catch(() => ({
-      configured: false,
-      eligible: false,
-      syncEnabled: false,
-      connected: false,
-    })),
+    fetchGoogleCalendarStatusForCurrentUser().catch(() => {
+      const setup = getGoogleCalendarSetupInfo();
+      return {
+        configured: setup.configured,
+        eligible: false,
+        syncEnabled: false,
+        connected: false,
+        oauthRedirectUri: setup.oauthRedirectUri,
+        hasClientId: setup.hasClientId,
+        hasClientSecret: setup.hasClientSecret,
+      };
+    }),
   ]);
 
   return (

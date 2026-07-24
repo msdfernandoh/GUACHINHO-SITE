@@ -12,7 +12,7 @@ import {
   parseValorMonetario,
   type AgendaFechamentoTipoParcela,
 } from "@/lib/agenda/fechamento";
-import { isGmailAddress, isGoogleCalendarConfigured } from "@/lib/google-calendar/config";
+import { isGmailAddress, getGoogleCalendarSetupInfo } from "@/lib/google-calendar/config";
 import { pushCompromissoToGoogleCalendar, removeCompromissoFromGoogleCalendar } from "@/lib/google-calendar/sync";
 
 function parseDateTimeLocal(date: string, time: string): string {
@@ -115,18 +115,26 @@ export async function fetchGoogleCalendarStatusForCurrentUser() {
     .eq("id", u.id)
     .maybeSingle();
   if (error && /google_agenda_sync|google_calendar_connected_at|schema cache/i.test(error.message)) {
+    const setup = getGoogleCalendarSetupInfo();
     return {
-      configured: isGoogleCalendarConfigured(),
+      configured: setup.configured,
       eligible: isGmailAddress(u.email),
       syncEnabled: false,
       connected: false,
+      oauthRedirectUri: setup.oauthRedirectUri,
+      hasClientId: setup.hasClientId,
+      hasClientSecret: setup.hasClientSecret,
     };
   }
+  const setup = getGoogleCalendarSetupInfo();
   return {
-    configured: isGoogleCalendarConfigured(),
+    configured: setup.configured,
     eligible: isGmailAddress(data?.email ?? u.email),
     syncEnabled: Boolean(data?.google_agenda_sync),
     connected: Boolean(data?.google_calendar_connected_at),
+    oauthRedirectUri: setup.oauthRedirectUri,
+    hasClientId: setup.hasClientId,
+    hasClientSecret: setup.hasClientSecret,
   };
 }
 

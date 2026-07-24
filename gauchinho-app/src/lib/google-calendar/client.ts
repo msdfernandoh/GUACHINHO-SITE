@@ -1,5 +1,7 @@
 import "server-only";
 import {
+  getGoogleCalendarClientId,
+  getGoogleCalendarClientSecret,
   getGoogleCalendarRedirectUri,
   GOOGLE_CALENDAR_SCOPE,
   isGoogleCalendarConfigured,
@@ -18,7 +20,7 @@ export function buildGoogleCalendarAuthUrl(state: string): string {
     throw new Error("Google Calendar não configurado no servidor.");
   }
   const params = new URLSearchParams({
-    client_id: process.env.GOOGLE_CALENDAR_CLIENT_ID!.trim(),
+    client_id: getGoogleCalendarClientId(),
     redirect_uri: getGoogleCalendarRedirectUri(),
     response_type: "code",
     scope: GOOGLE_CALENDAR_SCOPE,
@@ -32,8 +34,8 @@ export function buildGoogleCalendarAuthUrl(state: string): string {
 export async function exchangeGoogleAuthCode(code: string): Promise<{ refreshToken: string }> {
   const body = new URLSearchParams({
     code,
-    client_id: process.env.GOOGLE_CALENDAR_CLIENT_ID!.trim(),
-    client_secret: process.env.GOOGLE_CALENDAR_CLIENT_SECRET!.trim(),
+    client_id: getGoogleCalendarClientId(),
+    client_secret: getGoogleCalendarClientSecret(),
     redirect_uri: getGoogleCalendarRedirectUri(),
     grant_type: "authorization_code",
   });
@@ -51,8 +53,8 @@ export async function exchangeGoogleAuthCode(code: string): Promise<{ refreshTok
 
 export async function refreshGoogleAccessToken(refreshToken: string): Promise<string> {
   const body = new URLSearchParams({
-    client_id: process.env.GOOGLE_CALENDAR_CLIENT_ID!.trim(),
-    client_secret: process.env.GOOGLE_CALENDAR_CLIENT_SECRET!.trim(),
+    client_id: getGoogleCalendarClientId(),
+    client_secret: getGoogleCalendarClientSecret(),
     refresh_token: refreshToken,
     grant_type: "refresh_token",
   });

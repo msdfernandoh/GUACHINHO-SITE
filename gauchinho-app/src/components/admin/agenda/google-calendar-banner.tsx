@@ -10,6 +10,9 @@ type Props = {
     eligible: boolean;
     syncEnabled: boolean;
     connected: boolean;
+    oauthRedirectUri?: string;
+    hasClientId?: boolean;
+    hasClientSecret?: boolean;
   };
   flash?: string | null;
 };
@@ -35,15 +38,72 @@ function ConnectGoogleButton({ fullWidth }: { fullWidth?: boolean }) {
   );
 }
 
+function GoogleCalendarSetupHelp({
+  oauthRedirectUri,
+  hasClientId,
+  hasClientSecret,
+}: {
+  oauthRedirectUri: string;
+  hasClientId?: boolean;
+  hasClientSecret?: boolean;
+}) {
+  return (
+    <div className="mt-3 space-y-2 rounded-lg border border-amber-500/30 bg-black/20 p-3 text-xs text-amber-100/90">
+      <p className="font-semibold text-amber-50">Como configurar (Master / hospedagem)</p>
+      <ol className="list-decimal space-y-1.5 pl-4">
+        <li>
+          No <strong>Google Cloud Console</strong>, crie credenciais OAuth tipo <strong>Aplicativo da Web</strong> e
+          ative a API Google Calendar.
+        </li>
+        <li>
+          Em <strong>URIs de redirecionamento autorizados</strong>, cadastre exatamente:
+          <code className="mt-1 block break-all rounded bg-black/40 px-2 py-1 text-[11px] text-amber-200">
+            {oauthRedirectUri}
+          </code>
+        </li>
+        <li>
+          Na <strong>Vercel</strong> (ou .env.local), adicione variáveis de <strong>servidor</strong> (não marque
+          &quot;Expose to Browser&quot;):
+          <ul className="mt-1 list-disc pl-4">
+            <li>
+              <code>GOOGLE_CALENDAR_CLIENT_ID</code>
+              {hasClientId === false ? " — ausente agora" : hasClientId ? " — detectada" : ""}
+            </li>
+            <li>
+              <code>GOOGLE_CALENDAR_CLIENT_SECRET</code>
+              {hasClientSecret === false ? " — ausente agora" : hasClientSecret ? " — detectada" : ""}
+            </li>
+          </ul>
+        </li>
+        <li>
+          Confirme <code>NEXT_PUBLIC_SITE_URL</code> igual ao domínio do site (ex.:{" "}
+          https://www.gauchinhoconsorcios.com.br).
+        </li>
+        <li>Faça um <strong>Redeploy</strong> na Vercel após salvar as variáveis.</li>
+      </ol>
+    </div>
+  );
+}
+
 export function GoogleCalendarAgendaBanner({ status, flash }: Props) {
   const flashMsg = flash ? FLASH[flash] : null;
+  const redirectUri = status.oauthRedirectUri ?? "https://SEU-DOMINIO/api/auth/google-calendar/callback";
 
   if (!status.syncEnabled && !flashMsg) return null;
 
   if (!status.configured) {
     return (
       <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
-        {flashMsg ?? "Google Agenda não está configurado no servidor (CLIENT_ID / CLIENT_SECRET)."}
+        <p className="font-medium text-amber-50">Google Agenda não está configurado no servidor</p>
+        <p className="mt-1">
+          {flashMsg ??
+            "Faltam GOOGLE_CALENDAR_CLIENT_ID e GOOGLE_CALENDAR_CLIENT_SECRET na hospedagem (Vercel → Settings → Environment Variables)."}
+        </p>
+        <GoogleCalendarSetupHelp
+          oauthRedirectUri={redirectUri}
+          hasClientId={status.hasClientId}
+          hasClientSecret={status.hasClientSecret}
+        />
       </div>
     );
   }
