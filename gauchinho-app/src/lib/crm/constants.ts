@@ -70,6 +70,8 @@ export const ORIGENS_LABEL: Record<string, string> = {
   manual: "Manual",
   whatsapp: "WhatsApp",
   evento: "Evento",
+  indicacao: "Indicação",
+  evento_sorteio: "Evento / sorteio",
 };
 
 export function labelOrigem(origem: string | null | undefined): string {

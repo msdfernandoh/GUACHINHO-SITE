@@ -2,15 +2,19 @@ import { createClient } from "@/lib/supabase/server";
 import { isDbMissingColumnError } from "@/lib/comercial-eventos/db-ready";
 import type { LeadFilters, LeadListRow } from "./types";
 
-/** Colunas mínimas — página de leads deve abrir mesmo com banco desatualizado. */
+/** Colunas mínimas — inclui quem indicou para a coluna Origem. */
 const LIST_SELECT_MINIMAL =
+  "id, created_at, nome, whatsapp, email, cidade, origem, tipo_interesse, produto_interesse, status, srd_responsavel_id, srd_responsavel_nome, parceiro_indicador_nome";
+
+/** Último recurso se a coluna parceiro_indicador_nome ainda não existir no banco. */
+const LIST_SELECT_ULTRA_MINIMAL =
   "id, created_at, nome, whatsapp, email, cidade, origem, tipo_interesse, produto_interesse, status, srd_responsavel_id, srd_responsavel_nome";
 
 const LIST_SELECT_BASE =
   `${LIST_SELECT_MINIMAL}, temperatura, proxima_acao, data_proxima_acao, proximo_retorno_data, ultima_interacao_at, valor_estimado, valor_simulado, fechado, evento_id, evento_nome`;
 
 const LIST_SELECT_INDICADOR_CORE =
-  `${LIST_SELECT_BASE}, parceiro_indicador_nome, parceiro_indicador_empresa, parceiro_indicador_telefone`;
+  `${LIST_SELECT_BASE}, parceiro_indicador_empresa, parceiro_indicador_telefone`;
 
 const LIST_SELECT_INDICADOR =
   `${LIST_SELECT_INDICADOR_CORE}, parentesco_indicacao, indicador_lead_id`;
@@ -92,7 +96,7 @@ async function selectLeads(
     { select: LIST_SELECT_INDICADOR_CORE, skipOptional: false },
     { select: LIST_SELECT_BASE, skipOptional: false },
     { select: LIST_SELECT_MINIMAL, skipOptional: true },
-    { select: LIST_SELECT_MINIMAL, skipOptional: false },
+    { select: LIST_SELECT_ULTRA_MINIMAL, skipOptional: true },
   ];
 
   let lastError: { message: string } | null = null;
