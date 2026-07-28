@@ -64,7 +64,10 @@ export type ResultadoLinhaSimulacaoGrupo = {
   lanceEmbutido: number;
   recursoProprio: number;
   lanceTotal: number;
+  /** Seguro pós-contemplação (planilha: sobre saldo − lance − 1ª com seguro). */
   seguroMensal: number;
+  /** Seguro da 1ª parcela sobre saldo cheio (planilha: saldo × 0,0004). */
+  seguroPrimeiraParcela: number;
   creditoLiquido: number;
   parcelasRestantesPosContemplacao: number;
   percentualLanceEmbutido: number;
@@ -233,6 +236,7 @@ export function calcularLinhaSimulacaoGrupo(args: {
     recursoProprio: 0,
     lanceTotal: 0,
     seguroMensal: 0,
+    seguroPrimeiraParcela: 0,
     creditoLiquido: 0,
     parcelasRestantesPosContemplacao: 0,
     percentualLanceEmbutido: 0,
@@ -304,19 +308,28 @@ export function calcularLinhaSimulacaoGrupo(args: {
   const fatorSeg = fatorSeguroGrupo(grupo.seguro_percentual);
   const temSeguroGrupo = params.seguroHabilitado && fatorSeg > 0;
 
-  // Parcela da modalidade sem seguro (planilha: reduz o saldo no 1º mês sem embutir o seguro).
+  // Planilha: parcelaSemSeguro = (saldo / prazoTotal) * fatorParcela
   const parcelaSemSeguroUnit = parcelasCalc.parcelaExibida;
   const parcelaSemSeguroTotal = Math.round(parcelaSemSeguroUnit * qty * 100) / 100;
 
-  // Seguro “cheio” sobre o saldo inicial (antes do lance) — usado só na 1ª parcela se toggle C.
+  // Planilha: seguro = saldoDevedor * 0,0004 (sobre o saldo cheio, antes do lance)
   const seguroInicialUnit =
     temSeguroGrupo && qty > 0
       ? Math.round((saldoDevedorInicial / qty) * fatorSeg * 100) / 100
       : 0;
+  const seguroInicialTotal = Math.round(seguroInicialUnit * qty * 100) / 100;
 
+  // Planilha: parcelaComSeguro = parcelaSemSeguro + seguro
+  const parcelaComSeguroUnit =
+    temSeguroGrupo && seguroInicialUnit > 0
+      ? Math.round((parcelaSemSeguroUnit + seguroInicialUnit) * 100) / 100
+      : parcelaSemSeguroUnit;
+  const parcelaComSeguroTotal = Math.round(parcelaComSeguroUnit * qty * 100) / 100;
+
+  // Toggle C/S: só a exibição da 1ª parcela; pós-contemplação sempre usa seguro.
   let parcelaBase = parcelaSemSeguroUnit;
   if (config.usaSeguro && seguroInicialUnit > 0) {
-    parcelaBase = Math.round((parcelaBase + seguroInicialUnit) * 100) / 100;
+    parcelaBase = parcelaComSeguroUnit;
   }
   const primeiraParcela = Math.round(parcelaBase * qty * 100) / 100;
 
@@ -325,20 +338,21 @@ export function calcularLinhaSimulacaoGrupo(args: {
     0,
     Math.round((saldoDevedorInicial - lanceEmbutido - recursoProprio) * 100) / 100,
   );
-  // Saldo se contemplar após o 1º mês (planilha): após lance e após 1ª parcela sem seguro.
+
+  // Planilha: saldo após 1º mês = saldo − lance − parcelaComSeguro (sempre com seguro).
+  // Ex.: 1.860.000 − 465.000 − 5.816,73 = 1.389.183,27
   const saldoDevedorFinal = Math.max(
     0,
-    Math.round((saldoPosLance - parcelaSemSeguroTotal) * 100) / 100,
+    Math.round((saldoPosLance - parcelaComSeguroTotal) * 100) / 100,
   );
 
   const prazoRestante = calcularParcelasRestantes(params);
-  // Planilha: saldo pós-lance ÷ (prazo restante + 1) — ex. 209 → 210.
+  // Planilha: (saldo − lance) / (parcelasARealizar − 1) ≡ prazoRestante + 1 (ex. 209 → 210)
   const parcelasAmortizacaoPos = Math.max(prazoRestante + 1, 1);
   const parcelaPosBase =
     Math.round((saldoPosLance / parcelasAmortizacaoPos) * 100) / 100;
 
-  // Seguro pós: só sobre o saldo que resta após lance + 1ª parcela (cai quando o embutido sobe).
-  // Não “acumula” meses anteriores; vale para as parcelas restantes pós-contemplação.
+  // Planilha: seguroPos = (saldo − lance − parcelaComSeguro) * 0,0004
   const seguroPosTotal = temSeguroGrupo
     ? Math.round(saldoDevedorFinal * fatorSeg * 100) / 100
     : 0;
@@ -362,8 +376,10 @@ export function calcularLinhaSimulacaoGrupo(args: {
     lanceEmbutido,
     recursoProprio,
     lanceTotal,
-    /** Seguro incluso na parcela pós (sobre saldo após lance e 1ª parcela). */
+    /** Seguro pós-contemplação (planilha col. N). */
     seguroMensal: seguroPosTotal,
+    /** Seguro da 1ª parcela sobre saldo cheio (planilha col. K), se grupo tiver seguro. */
+    seguroPrimeiraParcela: seguroInicialTotal,
     quantidadeCotas: qty,
     creditoLiquido,
     parcelasRestantesPosContemplacao,

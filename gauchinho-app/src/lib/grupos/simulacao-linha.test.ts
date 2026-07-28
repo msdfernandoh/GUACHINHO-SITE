@@ -186,49 +186,27 @@ describe("simulacao linha grupo", () => {
   });
 
   it("planilha 1533: lance 25% → seguro 555,67 e parcela+seg 7.198,53", () => {
-    const grupo1533: GrupoConsorcio = {
+    // Planilha: prazo 220, reduzida 60%, saldo 1.860.000, lance 25%
+    const g24: GrupoConsorcio = {
       ...grupoBase,
-      taxa_administrativa_percentual: 22,
-      fundo_reserva_percentual: 2,
-      prazo_total: 211,
-      parcelas_realizadas: 2,
+      taxa_administrativa_percentual: 24,
+      fundo_reserva_percentual: 0,
+      prazo_total: 220,
+      parcelas_realizadas: 11,
       prazo_restante: 209,
-      percentual_parcela_reduzida: 66,
+      percentual_parcela_reduzida: 60,
+      tem_parcela_reduzida: true,
+      seguro_percentual: 0.0004,
     };
-    // 1.500.000 × 1,24 = 1.860.000 com taxa 22% + fundo 2%? 20+2=22 → 1.22; Excel usa 1.860.000 = ×1.24
-    const grupoTx: GrupoConsorcio = {
-      ...grupo1533,
-      taxa_administrativa_percentual: 22,
-      fundo_reserva_percentual: 2,
-    };
-    // Forçar saldo via cota: usamos crédito que com taxas dê ~1.86M — ou ajustamos taxas.
-    // 1.500.000 * 1.24 = 1.860.000 → taxa+fundo = 24%
-    const g: GrupoConsorcio = {
-      ...grupoTx,
-      taxa_administrativa_percentual: 22,
-      fundo_reserva_percentual: 2,
-    };
-    // calcularSaldoDevedorSimulacao: credito * (1 + taxa/100 + fundo/100)
-    // Para 1.86M: 22+2=24 ✓ se normalizarPercentual trata 22 como 22%
     const cota15: GrupoCota = {
       ...cota,
       id: "c15",
       valor_credito: 1_500_000,
-      parcela_integral: 8815.17,
-      parcela_reduzida: 5816.73,
-      valor_parcela: 5816.73,
-      parcela_sem_seguro: 8815.17,
-      parcela_com_seguro: 9559.17,
       saldo_devedor: null as unknown as number,
-    };
-    const g24: GrupoConsorcio = {
-      ...g,
-      taxa_administrativa_percentual: 24,
-      fundo_reserva_percentual: 0,
     };
     const r = calcularLinhaSimulacaoGrupo({
       grupo: g24,
-      cota: { ...cota15, saldo_devedor: null as unknown as number },
+      cota: cota15,
       modalidades: [
         {
           id: "m25",
@@ -252,15 +230,21 @@ describe("simulacao linha grupo", () => {
         usaRecursoProprio: false,
         recursoProprioModo: "percentual",
         recursoProprioInput: 0,
-        usaSeguro: false,
+        usaSeguro: true,
         percentualParcelaPersonalizada: null,
       },
     });
     expect(r.saldoDevedorInicial).toBeCloseTo(1_860_000, 0);
     expect(r.lanceEmbutido).toBeCloseTo(465_000, 0);
     expect(r.saldoPosLance).toBeCloseTo(1_395_000, 0);
-    // parcela pós sem seguro = 1.395.000 / 210
+    // 1ª sem seguro 5.072,73; seguro 744; com seguro 5.816,73
+    expect(r.parcelaReduzida).toBeCloseTo(5072.73, 1);
+    expect(r.seguroPrimeiraParcela).toBeCloseTo(744, 1);
+    expect(r.primeiraParcela).toBeCloseTo(5816.73, 1);
+    // pós sem seguro = 1.395.000 / 210
     expect(r.saldoPosLance / 210).toBeCloseTo(6642.86, 1);
+    // seguro pós = (1.395.000 − 5.816,73) × 0,0004
+    expect(r.saldoDevedorFinal).toBeCloseTo(1_389_183.27, 0);
     expect(r.seguroMensal).toBeCloseTo(555.67, 1);
     expect(r.parcelaPosContemplacao).toBeCloseTo(7198.53, 1);
   });
@@ -270,18 +254,17 @@ describe("simulacao linha grupo", () => {
       ...grupoBase,
       taxa_administrativa_percentual: 24,
       fundo_reserva_percentual: 0,
-      prazo_total: 211,
+      prazo_total: 220,
+      parcelas_realizadas: 11,
       prazo_restante: 209,
-      percentual_parcela_reduzida: 66,
+      percentual_parcela_reduzida: 60,
+      tem_parcela_reduzida: true,
+      seguro_percentual: 0.0004,
     };
     const cota15: GrupoCota = {
       ...cota,
       id: "c15b",
       valor_credito: 1_500_000,
-      parcela_integral: 8815.17,
-      parcela_reduzida: 5816.73,
-      valor_parcela: 5816.73,
-      parcela_sem_seguro: 8815.17,
       saldo_devedor: null as unknown as number,
     };
     const r = calcularLinhaSimulacaoGrupo({
@@ -310,12 +293,14 @@ describe("simulacao linha grupo", () => {
         usaRecursoProprio: false,
         recursoProprioModo: "percentual",
         recursoProprioInput: 0,
-        usaSeguro: false,
+        usaSeguro: true,
         percentualParcelaPersonalizada: null,
       },
     });
     expect(r.lanceEmbutido).toBeCloseTo(744_000, 0);
     expect(r.saldoPosLance).toBeCloseTo(1_116_000, 0);
+    expect(r.seguroPrimeiraParcela).toBeCloseTo(744, 1);
+    // (1.116.000 − 5.816,73) × 0,0004
     expect(r.seguroMensal).toBeCloseTo(444.07, 1);
     expect(r.parcelaPosContemplacao).toBeCloseTo(5758.36, 1);
   });
