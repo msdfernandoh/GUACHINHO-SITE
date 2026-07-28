@@ -126,6 +126,142 @@ export async function createLeadManualAction(formData: FormData) {
   redirect(`/admin/leads/${data.id}`);
 }
 
+export type IndicacaoRapidaItem = {
+  nome: string;
+  whatsapp: string;
+  /** Casa, Carro, Moto… */
+  tipoSonho?: string | null;
+  /** amigo, familiar, etc. */
+  parentesco?: string | null;
+};
+
+/** Cria leads de indicação tendo o lead atual como quem indicou. */
+export async function createIndicacoesFromLeadAction(
+  indicadorLeadId: string,
+  indicados: IndicacaoRapidaItem[],
+): Promise<{ count: number; leadIds: string[] }> {
+  const usuario = await requireUsuario();
+  const leadsConfig = await getConfigJson("leads", DEFAULT_LEADS);
+  const supabase = await createClient();
+  const scope = await loadLeadAccessScope(
+    usuario.id,
+    usuario.perfil,
+    usuario.leads_apenas_proprios,
+  );
+
+  const { data: indicador, error: indErr } = await supabase
+    .from("leads")
+    .select("id, nome, whatsapp, srd_responsavel_id, srd_responsavel_nome, evento_id")
+    .eq("id", indicadorLeadId)
+    .single();
+  if (indErr || !indicador) throw new Error("Lead indicador não encontrado");
+  if (!leadVisibleForScope(indicador, scope)) {
+    throw new Error("Sem permissão para este lead");
+  }
+
+  const limpos = (indicados ?? [])
+    .map((i) => ({
+      nome: String(i.nome ?? "").trim(),
+      whatsapp: String(i.whatsapp ?? "").trim(),
+      tipoSonho: String(i.tipoSonho ?? "").trim() || null,
+      parentesco: String(i.parentesco ?? "").trim() || null,
+    }))
+    .filter((i) => i.nome && i.whatsapp);
+  if (limpos.length === 0) throw new Error("Inclua ao menos um indicado com nome e telefone");
+
+  const leadIds: string[] = [];
+  const indicadorNome = String(indicador.nome).trim();
+  const indicadorTel = indicador.whatsapp ? String(indicador.whatsapp).trim() : null;
+
+  for (const ind of limpos) {
+    const tipoSonho = ind.tipoSonho && isTipoSonhoSorteio(ind.tipoSonho) ? ind.tipoSonho : null;
+    const tipoCredito = tipoSonho ? tipoSonhoParaCreditoLead(tipoSonho) : null;
+    const obsParts = [
+      ind.parentesco ? `Parentesco: ${ind.parentesco}` : null,
+      tipoSonho ? `Tipo: ${tipoSonho}` : null,
+    ].filter(Boolean);
+    const observacao = obsParts.length ? obsParts.join(" · ") : null;
+
+    const payload: Record<string, unknown> = {
+      nome: ind.nome,
+      whatsapp: ind.whatsapp,
+      email: null,
+      origem: "indicacao",
+      parceiro_indicador_nome: indicadorNome,
+      parceiro_indicador_telefone: indicadorTel,
+      tipo_interesse: tipoCredito ?? "outro",
+      tipo_credito: tipoCredito,
+      produto_interesse: tipoCredito,
+      observacao_indicacao: observacao,
+      observacoes: observacao,
+      status: leadsConfig.statusInicialPadrao ?? "Novo",
+      criado_manual: true,
+      criado_por_usuario_id: usuario.id,
+      srd_responsavel_id: indicador.srd_responsavel_id ?? null,
+      srd_responsavel_nome: indicador.srd_responsavel_nome ?? null,
+      ...(tipoSonho
+        ? {
+            dados_simulacao: {
+              origem: "indicacao_admin",
+              tipo_sonho: tipoSonho,
+              parentesco: ind.parentesco,
+              indicador_lead_id: indicadorLeadId,
+            },
+          }
+        : ind.parentesco
+          ? {
+              dados_simulacao: {
+                origem: "indicacao_admin",
+                parentesco: ind.parentesco,
+                indicador_lead_id: indicadorLeadId,
+              },
+            }
+          : {
+              dados_simulacao: {
+                origem: "indicacao_admin",
+                indicador_lead_id: indicadorLeadId,
+              },
+            }),
+    };
+
+    const { data: leadRow, error } = await supabase.from("leads").insert(payload).select("id").single();
+    if (error || !leadRow) throw new Error(error?.message ?? "Falha ao salvar indicação");
+    leadIds.push(leadRow.id);
+
+    await historico(
+      leadRow.id,
+      usuario.id,
+      "lead_criado",
+      `Indicação rápida via admin — indicado por ${indicadorNome}`,
+    );
+    await registrarEvento({
+      tipo_evento: "lead_criado",
+      origem: "indicacao",
+      pagina: "/admin/leads",
+      lead_id: leadRow.id,
+      dados_evento: {
+        indicador: indicadorNome,
+        indicadorLeadId,
+        ...(ind.parentesco ? { parentesco: ind.parentesco } : {}),
+        ...(tipoSonho ? { tipoSonho } : {}),
+      },
+    });
+  }
+
+  await touchInteracao(supabase, indicadorLeadId);
+  await historico(
+    indicadorLeadId,
+    usuario.id,
+    "indicacao_registrada",
+    `${leadIds.length} indicação(ões) cadastrada(s) a partir deste lead`,
+    { dados_novos: { leadIds } },
+  );
+
+  revalidatePath("/admin/leads");
+  revalidatePath(`/admin/leads/${indicadorLeadId}`);
+  return { count: leadIds.length, leadIds };
+}
+
 export async function updateLeadAction(leadId: string, formData: FormData) {
   const usuario = await requireUsuario();
   const supabase = await createClient();

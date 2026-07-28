@@ -8,6 +8,7 @@ import { formatCurrency, formatDate, formatDateTime } from "@/lib/utils/format";
 import { LeadStatusBadge } from "./lead-status-badge";
 import { LeadTipoSonhoBadge } from "./lead-tipo-sonho-badge";
 import { LeadWhatsappButton } from "./lead-whatsapp-button";
+import { LeadQuickIndicacaoButton } from "./lead-quick-indicacao";
 import {
   adminTableCellClass,
   adminTableHeadClass,
@@ -42,12 +43,24 @@ export function LeadTable({ leads }: { leads: LeadListRow[] }) {
             return (
               <tr key={l.id} className="border-b border-zinc-800 hover:bg-zinc-900/70">
                 <td className={adminTableCellClass}>
-                  <Link href={`/admin/leads/${l.id}`} className="font-semibold text-amber-300 hover:underline">
-                    {l.nome}
-                  </Link>
-                  <p className="text-xs text-zinc-400">{l.whatsapp ?? "—"}</p>
+                  <div className="flex items-start gap-2">
+                    <LeadQuickIndicacaoButton leadId={l.id} leadNome={l.nome} className="mt-0.5" />
+                    <div className="min-w-0">
+                      <Link href={`/admin/leads/${l.id}`} className="font-semibold text-amber-300 hover:underline">
+                        {l.nome}
+                      </Link>
+                      <p className="text-xs text-zinc-400">{l.whatsapp ?? "—"}</p>
+                    </div>
+                  </div>
                 </td>
-                <td className={cn(adminTableCellClass, "text-zinc-300")}>{labelOrigem(l.origem)}</td>
+                <td className={cn(adminTableCellClass, "text-zinc-300")}>
+                  <div>{labelOrigem(l.origem)}</div>
+                  {l.origem === "indicacao" && l.parceiro_indicador_nome ? (
+                    <p className="mt-0.5 text-[11px] text-amber-200/80" title="Quem indicou">
+                      {l.parceiro_indicador_nome}
+                    </p>
+                  ) : null}
+                </td>
                 <td className="px-3 py-2">{labelEventoProduto(l)}</td>
                 <td className="px-3 py-2">{valor > 0 ? formatCurrency(valor) : "—"}</td>
                 <td className="px-3 py-2">{l.cidade ?? "—"}</td>

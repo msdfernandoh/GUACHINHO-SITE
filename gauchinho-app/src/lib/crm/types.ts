@@ -21,6 +21,9 @@ export type LeadListRow = {
   fechado: boolean;
   evento_id?: string | null;
   evento_nome?: string | null;
+  parceiro_indicador_nome?: string | null;
+  parceiro_indicador_empresa?: string | null;
+  parceiro_indicador_telefone?: string | null;
   /** Carro, Moto, Casa… — cadastro do sorteio/evento */
   tipo_sonho?: string | null;
 };

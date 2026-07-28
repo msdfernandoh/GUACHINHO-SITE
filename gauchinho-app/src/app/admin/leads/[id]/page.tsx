@@ -27,6 +27,7 @@ import { LeadTemperatureBadge } from "@/components/admin/crm/lead-temperature-ba
 import { LeadWhatsappButton } from "@/components/admin/crm/lead-whatsapp-button";
 import { LeadActivityTimeline } from "@/components/admin/crm/lead-activity-timeline";
 import { LeadActivityForm } from "@/components/admin/crm/lead-activity-form";
+import { LeadDetailTabs } from "@/components/admin/crm/lead-detail-tabs";
 import { fetchCompromissosLead } from "@/app/admin/agenda/actions";
 import { LeadContratacaoOnlineSection } from "@/components/admin/lead-contratacao-section";
 import type { ContratacaoOnlineRow } from "@/lib/contratacoes-online/types";
@@ -44,7 +45,7 @@ export default async function LeadDetailPage({
   } catch {
     notFound();
   }
-  const { lead, historico, propostas, contratacaoOnline, iaConversa, iaMensagens, atividades, timeline } =
+  const { lead, propostas, contratacaoOnline, iaConversa, iaMensagens, atividades, timeline } =
     detail;
   const srds = await fetchSrdOptions();
   const agendaItens = await fetchCompromissosLead(id);
@@ -56,6 +57,8 @@ export default async function LeadDetailPage({
     parceiro_indicador_empresa?: string | null;
     parceiro_indicador_telefone?: string | null;
   };
+  const ehIndicacao = leadEvento.origem === "indicacao";
+  const indicadorNome = leadEvento.parceiro_indicador_nome?.trim() || null;
 
   const updateWithId = updateLeadAction.bind(null, id);
   const retornoWithId = agendarRetornoAction.bind(null, id);
@@ -66,61 +69,144 @@ export default async function LeadDetailPage({
   const podeGerarPropostaCarta =
     !!lead.carta_contemplada_id || lead.tipo_interesse === "carta_contemplada";
 
-  return (
-    <div className="space-y-8">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <Link href="/admin/leads" className="text-sm text-amber-400 hover:underline">
-            ← Leads
-          </Link>
-          <h1 className="mt-2 text-2xl font-bold text-zinc-100">{lead.nome}</h1>
-          <div className="mt-2 flex flex-wrap items-center gap-2">
-            <LeadStatusBadge status={lead.status} />
-            <LeadTemperatureBadge value={lead.temperatura} />
-            <span className="text-sm text-zinc-500">{formatDate(lead.created_at)}</span>
-          </div>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <LeadWhatsappButton
-            nome={lead.nome}
-            whatsapp={lead.whatsapp}
-            produto={lead.produto_interesse ?? lead.tipo_interesse}
-            leadId={lead.id}
-          />
-          {podeExcluir ? (
-            <form action={deleteWithId}>
-              <AdminFormSubmitButton variant="danger" size="sm" label="Excluir (Master)" pendingLabel="Excluindo…" />
-            </form>
+  const panelCadastro = (
+    <form
+      action={updateWithId}
+      className="mx-auto max-w-3xl space-y-3 rounded-xl border border-zinc-800 bg-zinc-900/60 p-4"
+    >
+      <h2 className="font-semibold text-zinc-100">Dados comerciais</h2>
+      {ehIndicacao && indicadorNome ? (
+        <div className="rounded-lg border border-amber-500/25 bg-amber-500/10 px-3 py-2 text-sm text-zinc-200">
+          <span className="font-semibold text-amber-300">Indicado por:</span> {indicadorNome}
+          {leadEvento.parceiro_indicador_empresa ? ` (${leadEvento.parceiro_indicador_empresa})` : ""}
+          {leadEvento.parceiro_indicador_telefone ? (
+            <> · Tel. {leadEvento.parceiro_indicador_telefone}</>
           ) : null}
+        </div>
+      ) : null}
+      <div>
+        <Label>Nome</Label>
+        <Input name="nome" defaultValue={lead.nome} required />
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <Label>WhatsApp</Label>
+          <Input name="whatsapp" defaultValue={lead.whatsapp ?? ""} />
+        </div>
+        <div>
+          <Label>E-mail</Label>
+          <Input name="email" defaultValue={lead.email ?? ""} />
         </div>
       </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <Label>Cidade</Label>
+          <Input name="cidade" defaultValue={lead.cidade ?? ""} />
+        </div>
+        <div>
+          <Label>Valor estimado</Label>
+          <Input
+            name="valor_estimado"
+            type="number"
+            step="0.01"
+            defaultValue={lead.valor_estimado ?? lead.valor_simulado ?? ""}
+          />
+        </div>
+      </div>
+      <div>
+        <Label>Status (funil)</Label>
+        <Select name="status" defaultValue={lead.status}>
+          {FUNNEL_STATUSES.map((s) => (
+            <option key={s} value={s}>
+              {s}
+            </option>
+          ))}
+        </Select>
+      </div>
+      <div>
+        <Label>Temperatura</Label>
+        <Select name="temperatura" defaultValue={lead.temperatura ?? ""}>
+          <option value="">—</option>
+          {LEAD_TEMPERATURES.map((t) => (
+            <option key={t} value={t}>
+              {t}
+            </option>
+          ))}
+        </Select>
+      </div>
+      <div>
+        <Label>Consultor responsável</Label>
+        <Select name="srd_responsavel_id" defaultValue={lead.srd_responsavel_id ?? ""}>
+          <option value="">Sem responsável</option>
+          {srds.map((s) => (
+            <option key={s.id} value={s.id}>
+              {s.nome}
+            </option>
+          ))}
+        </Select>
+      </div>
+      <div>
+        <Label>Próxima ação</Label>
+        <Input name="proxima_acao" defaultValue={lead.proxima_acao ?? ""} />
+      </div>
+      <div>
+        <Label>Data próxima ação</Label>
+        <Input
+          name="data_proxima_acao"
+          type="datetime-local"
+          defaultValue={lead.data_proxima_acao?.slice(0, 16) ?? ""}
+        />
+      </div>
+      <div>
+        <Label>Produto interesse</Label>
+        <Input name="produto_interesse" defaultValue={lead.produto_interesse ?? ""} />
+      </div>
+      <div>
+        <Label>Evento</Label>
+        <Input name="evento_nome" defaultValue={leadEvento.evento_nome ?? ""} />
+        <input type="hidden" name="evento_id" value={leadEvento.evento_id ?? ""} />
+      </div>
+      <div>
+        <Label>Tipo do sonho</Label>
+        <Select
+          name="tipo_sonho"
+          defaultValue={
+            ((lead.dados_simulacao as { tipo_sonho?: string } | null)?.tipo_sonho as string) ?? ""
+          }
+        >
+          <option value="">—</option>
+          {TIPOS_SONHO_SORTEIO.map((t) => (
+            <option key={t} value={t}>
+              {t}
+            </option>
+          ))}
+        </Select>
+      </div>
+      <div>
+        <Label>Tipo interesse</Label>
+        <Select name="tipo_interesse" defaultValue={lead.tipo_interesse ?? ""}>
+          <option value="">—</option>
+          {TIPOS_INTERESSE.map((t) => (
+            <option key={t.value} value={t.value}>
+              {t.label}
+            </option>
+          ))}
+        </Select>
+      </div>
+      <div>
+        <Label>Observações</Label>
+        <Textarea name="observacoes" rows={3} defaultValue={lead.observacoes ?? ""} />
+      </div>
+      <input type="hidden" name="origem" value={lead.origem ?? ""} />
+      <AdminFormSubmitButton size="sm" label="Salvar alterações" />
+    </form>
+  );
 
-      <LeadContratacaoOnlineSection
-        lead={lead as Record<string, unknown>}
-        contratacao={(contratacaoOnline as ContratacaoOnlineRow | null) ?? null}
-      />
-
-      {leadEvento.origem === "evento" || leadEvento.evento_nome ? (
-        <section className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-4 text-sm text-zinc-200">
-          <p>
-            <span className="font-semibold text-amber-300">Evento de origem:</span>{" "}
-            {leadEvento.evento_nome ?? "—"}
-          </p>
-          {leadEvento.parceiro_indicador_nome ? (
-            <p className="mt-1">
-              <span className="font-semibold">Quem convidou:</span> {leadEvento.parceiro_indicador_nome}
-              {leadEvento.parceiro_indicador_empresa ? ` (${leadEvento.parceiro_indicador_empresa})` : ""}
-              {leadEvento.parceiro_indicador_telefone ? (
-                <> · Tel. {leadEvento.parceiro_indicador_telefone}</>
-              ) : null}
-            </p>
-          ) : null}
-        </section>
-      ) : null}
-
+  const panelAgenda = (
+    <div className="mx-auto max-w-3xl space-y-4">
       <section className="rounded-xl border border-zinc-800 bg-zinc-900/60 p-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 className="font-semibold text-zinc-100">Agenda</h2>
+          <h2 className="font-semibold text-zinc-100">Compromissos</h2>
           <Link href={`/admin/agenda?lead=${id}`} className="text-sm text-amber-400 hover:underline">
             Agendar compromisso →
           </Link>
@@ -140,229 +226,6 @@ export default async function LeadDetailPage({
           </ul>
         )}
       </section>
-
-      <div className="grid gap-6 lg:grid-cols-2">
-        <form
-          action={updateWithId}
-          className="space-y-3 rounded-xl border border-zinc-800 bg-zinc-900/60 p-4"
-        >
-          <h2 className="font-semibold text-zinc-100">Dados comerciais</h2>
-          <div>
-            <Label>Nome</Label>
-            <Input name="nome" defaultValue={lead.nome} required />
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <Label>WhatsApp</Label>
-              <Input name="whatsapp" defaultValue={lead.whatsapp ?? ""} />
-            </div>
-            <div>
-              <Label>E-mail</Label>
-              <Input name="email" defaultValue={lead.email ?? ""} />
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <Label>Cidade</Label>
-              <Input name="cidade" defaultValue={lead.cidade ?? ""} />
-            </div>
-            <div>
-              <Label>Valor estimado</Label>
-              <Input
-                name="valor_estimado"
-                type="number"
-                step="0.01"
-                defaultValue={lead.valor_estimado ?? lead.valor_simulado ?? ""}
-              />
-            </div>
-          </div>
-          <div>
-            <Label>Status (funil)</Label>
-            <Select name="status" defaultValue={lead.status}>
-              {FUNNEL_STATUSES.map((s) => (
-                <option key={s} value={s}>
-                  {s}
-                </option>
-              ))}
-            </Select>
-          </div>
-          <div>
-            <Label>Temperatura</Label>
-            <Select name="temperatura" defaultValue={lead.temperatura ?? ""}>
-              <option value="">—</option>
-              {LEAD_TEMPERATURES.map((t) => (
-                <option key={t} value={t}>
-                  {t}
-                </option>
-              ))}
-            </Select>
-          </div>
-          <div>
-            <Label>Consultor responsável</Label>
-            <Select name="srd_responsavel_id" defaultValue={lead.srd_responsavel_id ?? ""}>
-              <option value="">Sem responsável</option>
-              {srds.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.nome}
-                </option>
-              ))}
-            </Select>
-          </div>
-          <div>
-            <Label>Próxima ação</Label>
-            <Input name="proxima_acao" defaultValue={lead.proxima_acao ?? ""} />
-          </div>
-          <div>
-            <Label>Data próxima ação</Label>
-            <Input
-              name="data_proxima_acao"
-              type="datetime-local"
-              defaultValue={lead.data_proxima_acao?.slice(0, 16) ?? ""}
-            />
-          </div>
-          <div>
-            <Label>Produto interesse</Label>
-            <Input name="produto_interesse" defaultValue={lead.produto_interesse ?? ""} />
-          </div>
-          <div>
-            <Label>Evento</Label>
-            <Input name="evento_nome" defaultValue={(lead as { evento_nome?: string | null }).evento_nome ?? ""} />
-            <input type="hidden" name="evento_id" value={(lead as { evento_id?: string | null }).evento_id ?? ""} />
-          </div>
-          <div>
-            <Label>Tipo do sonho</Label>
-            <Select
-              name="tipo_sonho"
-              defaultValue={
-                ((lead.dados_simulacao as { tipo_sonho?: string } | null)?.tipo_sonho as string) ?? ""
-              }
-            >
-              <option value="">—</option>
-              {TIPOS_SONHO_SORTEIO.map((t) => (
-                <option key={t} value={t}>
-                  {t}
-                </option>
-              ))}
-            </Select>
-          </div>
-          <div>
-            <Label>Tipo interesse</Label>
-            <Select name="tipo_interesse" defaultValue={lead.tipo_interesse ?? ""}>
-              <option value="">—</option>
-              {TIPOS_INTERESSE.map((t) => (
-                <option key={t.value} value={t.value}>
-                  {t.label}
-                </option>
-              ))}
-            </Select>
-          </div>
-          <div>
-            <Label>Observações</Label>
-            <Textarea name="observacoes" rows={3} defaultValue={lead.observacoes ?? ""} />
-          </div>
-          <input type="hidden" name="origem" value={lead.origem ?? ""} />
-          <AdminFormSubmitButton size="sm" label="Salvar alterações" />
-        </form>
-
-        <div className="space-y-6">
-          <LeadActivityForm action={createAtividade} />
-
-          <form
-            action={retornoWithId}
-            className="space-y-3 rounded-xl border border-zinc-800 bg-zinc-900/60 p-4"
-          >
-            <h2 className="font-semibold text-zinc-100">Agendar retorno (legado)</h2>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label>Data</Label>
-                <Input
-                  name="proximo_retorno_data"
-                  type="date"
-                  defaultValue={lead.proximo_retorno_data ?? ""}
-                />
-              </div>
-              <div>
-                <Label>Hora</Label>
-                <Input
-                  name="proximo_retorno_hora"
-                  type="time"
-                  defaultValue={lead.proximo_retorno_hora?.slice(0, 5) ?? ""}
-                />
-              </div>
-            </div>
-            <Textarea name="retorno_observacao" rows={2} defaultValue={lead.retorno_observacao ?? ""} />
-            <AdminFormSubmitButton size="sm" label="Salvar retorno" />
-          </form>
-
-          <form
-            action={fecharWithId}
-            className="space-y-3 rounded-xl border border-zinc-800 bg-zinc-900/60 p-4"
-          >
-            <h2 className="font-semibold text-zinc-100">Fechamento</h2>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label>Data fechamento</Label>
-                <Input name="data_fechamento" type="date" />
-              </div>
-              <div>
-                <Label>Valor fechado</Label>
-                <Input name="valor_fechado" type="number" step="0.01" required />
-              </div>
-            </div>
-            <div>
-              <Label>Produto fechado</Label>
-              <Select name="produto_fechado" defaultValue="" required>
-                <option value="">—</option>
-                {PRODUTOS_FECHADOS.map((p) => (
-                  <option key={p} value={p}>
-                    {p}
-                  </option>
-                ))}
-              </Select>
-            </div>
-            <div>
-              <Label>Observação</Label>
-              <Textarea name="observacao_fechamento" rows={2} />
-            </div>
-            <input type="hidden" name="fechado" value="true" />
-            <AdminFormSubmitButton
-              variant="gold"
-              size="sm"
-              label="Marcar como fechado"
-              pendingLabel="Salvando…"
-            />
-          </form>
-
-          <form
-            action={fecharWithId}
-            className="space-y-3 rounded-xl border border-red-900/50 bg-zinc-900/60 p-4"
-          >
-            <h2 className="font-semibold text-red-400">Perda</h2>
-            <div>
-              <Label>Motivo</Label>
-              <Select name="motivo_perda" required defaultValue="">
-                <option value="" disabled>
-                  Selecione…
-                </option>
-                {MOTIVOS_PERDA.map((m) => (
-                  <option key={m} value={m}>
-                    {m}
-                  </option>
-                ))}
-              </Select>
-            </div>
-            <Textarea name="observacao_perda" rows={2} placeholder="Observação opcional" />
-            <input type="hidden" name="perdido" value="true" />
-            <AdminFormSubmitButton
-              variant="danger"
-              size="sm"
-              label="Marcar perdido"
-              pendingLabel="Salvando…"
-            />
-          </form>
-        </div>
-      </div>
-
       <section className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-4">
         <h2 className="mb-3 font-semibold text-zinc-100">Atividades</h2>
         <ul className="space-y-2 text-sm">
@@ -399,6 +262,201 @@ export default async function LeadDetailPage({
           {!atividades.length ? <p className="text-zinc-500">Nenhuma atividade</p> : null}
         </ul>
       </section>
+    </div>
+  );
+
+  const panelRetorno = (
+    <div className="mx-auto max-w-3xl space-y-6">
+      <LeadActivityForm action={createAtividade} />
+      <form
+        action={retornoWithId}
+        className="space-y-3 rounded-xl border border-zinc-800 bg-zinc-900/60 p-4"
+      >
+        <h2 className="font-semibold text-zinc-100">Agendar retorno</h2>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <Label>Data</Label>
+            <Input
+              name="proximo_retorno_data"
+              type="date"
+              defaultValue={lead.proximo_retorno_data ?? ""}
+            />
+          </div>
+          <div>
+            <Label>Hora</Label>
+            <Input
+              name="proximo_retorno_hora"
+              type="time"
+              defaultValue={lead.proximo_retorno_hora?.slice(0, 5) ?? ""}
+            />
+          </div>
+        </div>
+        <Textarea name="retorno_observacao" rows={2} defaultValue={lead.retorno_observacao ?? ""} />
+        <AdminFormSubmitButton size="sm" label="Salvar retorno" />
+      </form>
+    </div>
+  );
+
+  const panelFechamento = (
+    <form
+      action={fecharWithId}
+      className="mx-auto max-w-3xl space-y-3 rounded-xl border border-zinc-800 bg-zinc-900/60 p-4"
+    >
+      <h2 className="font-semibold text-zinc-100">Fechamento</h2>
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <Label>Data fechamento</Label>
+          <Input name="data_fechamento" type="date" />
+        </div>
+        <div>
+          <Label>Valor fechado</Label>
+          <Input name="valor_fechado" type="number" step="0.01" required />
+        </div>
+      </div>
+      <div>
+        <Label>Produto fechado</Label>
+        <Select name="produto_fechado" defaultValue="" required>
+          <option value="">—</option>
+          {PRODUTOS_FECHADOS.map((p) => (
+            <option key={p} value={p}>
+              {p}
+            </option>
+          ))}
+        </Select>
+      </div>
+      <div>
+        <Label>Observação</Label>
+        <Textarea name="observacao_fechamento" rows={2} />
+      </div>
+      <input type="hidden" name="fechado" value="true" />
+      <AdminFormSubmitButton
+        variant="gold"
+        size="sm"
+        label="Marcar como fechado"
+        pendingLabel="Salvando…"
+      />
+    </form>
+  );
+
+  const panelPerda = (
+    <form
+      action={fecharWithId}
+      className="mx-auto max-w-3xl space-y-3 rounded-xl border border-red-900/50 bg-zinc-900/60 p-4"
+    >
+      <h2 className="font-semibold text-red-400">Perda</h2>
+      <p className="text-sm text-zinc-500">Marque o lead como perdido apenas quando a negociação for encerrada sem fechamento.</p>
+      <div>
+        <Label>Motivo</Label>
+        <Select name="motivo_perda" required defaultValue="">
+          <option value="" disabled>
+            Selecione…
+          </option>
+          {MOTIVOS_PERDA.map((m) => (
+            <option key={m} value={m}>
+              {m}
+            </option>
+          ))}
+        </Select>
+      </div>
+      <Textarea name="observacao_perda" rows={2} placeholder="Observação opcional" />
+      <input type="hidden" name="perdido" value="true" />
+      <AdminFormSubmitButton
+        variant="danger"
+        size="sm"
+        label="Marcar perdido"
+        pendingLabel="Salvando…"
+      />
+    </form>
+  );
+
+  return (
+    <div className="space-y-8">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <Link href="/admin/leads" className="text-sm text-amber-400 hover:underline">
+            ← Leads
+          </Link>
+          <h1 className="mt-2 text-2xl font-bold text-zinc-100">{lead.nome}</h1>
+          {ehIndicacao && indicadorNome ? (
+            <p className="mt-1 text-sm text-amber-200/90">
+              Indicado por <span className="font-semibold text-amber-300">{indicadorNome}</span>
+              {leadEvento.parceiro_indicador_empresa ? (
+                <span className="text-zinc-400"> · {leadEvento.parceiro_indicador_empresa}</span>
+              ) : null}
+            </p>
+          ) : null}
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <LeadStatusBadge status={lead.status} />
+            <LeadTemperatureBadge value={lead.temperatura} />
+            <span className="text-sm text-zinc-500">{formatDate(lead.created_at)}</span>
+          </div>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <LeadWhatsappButton
+            nome={lead.nome}
+            whatsapp={lead.whatsapp}
+            produto={lead.produto_interesse ?? lead.tipo_interesse}
+            leadId={lead.id}
+          />
+          {podeExcluir ? (
+            <form action={deleteWithId}>
+              <AdminFormSubmitButton variant="danger" size="sm" label="Excluir (Master)" pendingLabel="Excluindo…" />
+            </form>
+          ) : null}
+        </div>
+      </div>
+
+      <LeadContratacaoOnlineSection
+        lead={lead as Record<string, unknown>}
+        contratacao={(contratacaoOnline as ContratacaoOnlineRow | null) ?? null}
+      />
+
+      {ehIndicacao ? (
+        <section className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-4 text-sm text-zinc-200">
+          <p>
+            <span className="font-semibold text-amber-300">Origem:</span> Indicação
+          </p>
+          {indicadorNome ? (
+            <p className="mt-1">
+              <span className="font-semibold">Quem indicou:</span> {indicadorNome}
+              {leadEvento.parceiro_indicador_empresa ? ` (${leadEvento.parceiro_indicador_empresa})` : ""}
+              {leadEvento.parceiro_indicador_telefone ? (
+                <> · Tel. {leadEvento.parceiro_indicador_telefone}</>
+              ) : null}
+            </p>
+          ) : (
+            <p className="mt-1 text-zinc-500">Nome de quem indicou não informado no cadastro.</p>
+          )}
+        </section>
+      ) : null}
+
+      {leadEvento.origem === "evento" || leadEvento.evento_nome ? (
+        <section className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-4 text-sm text-zinc-200">
+          <p>
+            <span className="font-semibold text-amber-300">Evento de origem:</span>{" "}
+            {leadEvento.evento_nome ?? "—"}
+          </p>
+          {leadEvento.parceiro_indicador_nome ? (
+            <p className="mt-1">
+              <span className="font-semibold">Quem convidou:</span> {leadEvento.parceiro_indicador_nome}
+              {leadEvento.parceiro_indicador_empresa ? ` (${leadEvento.parceiro_indicador_empresa})` : ""}
+              {leadEvento.parceiro_indicador_telefone ? (
+                <> · Tel. {leadEvento.parceiro_indicador_telefone}</>
+              ) : null}
+            </p>
+          ) : null}
+        </section>
+      ) : null}
+
+      <LeadDetailTabs
+        panels={{
+          cadastro: panelCadastro,
+          agenda: panelAgenda,
+          retorno: panelRetorno,
+          fechamento: panelFechamento,
+          perda: panelPerda,
+        }}
+      />
 
       <IaLeadSummarySection
         lead={lead as Record<string, unknown>}

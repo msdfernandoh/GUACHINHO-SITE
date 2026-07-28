@@ -48,6 +48,9 @@ export function LeadKanban({ leads }: { leads: LeadListRow[] }) {
                   {l.nome}
                 </Link>
                 <p className="mt-1 text-[11px] text-zinc-500">{labelOrigem(l.origem)}</p>
+                {l.origem === "indicacao" && l.parceiro_indicador_nome ? (
+                  <p className="mt-0.5 text-[11px] text-amber-200/80">{l.parceiro_indicador_nome}</p>
+                ) : null}
                 <p className="text-xs text-zinc-400">{labelEventoProduto(l)}</p>
                 {valorEstimadoLead(l) > 0 ? (
                   <p className="mt-1 text-xs font-medium text-amber-400">{formatCurrency(valorEstimadoLead(l))}</p>
