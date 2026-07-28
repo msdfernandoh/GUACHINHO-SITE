@@ -193,6 +193,7 @@ export function EventoAdminForm({
           <input
             type="checkbox"
             name="usar_qr_unico"
+            value="on"
             checked={usarQrUnico}
             onChange={(e) => setUsarQrUnico(e.target.checked)}
           />

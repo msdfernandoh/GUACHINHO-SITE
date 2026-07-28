@@ -4,6 +4,8 @@ import { EventoSorteioPublicForm } from "@/components/public/eventos/evento-sort
 import { QrUnicoSemEventoForm } from "@/components/public/eventos/qr-unico-sem-evento-form";
 import { resolveQrPublicBySlug } from "@/lib/eventos-sorteio/qr-unico";
 
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
@@ -23,6 +25,7 @@ export default async function QrUnicoPublicPage({ params }: { params: Promise<{ 
           qrSlug={resolved.qr.slug}
           qrCodeUnicoId={resolved.qr.id}
           motivo={resolved.motivo}
+          eventoNome={resolved.eventoNome}
         />
       )}
       <p className="mt-6 text-center text-xs text-slate-500">Gauchinho Consórcios — QR Code único</p>

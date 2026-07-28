@@ -28,6 +28,15 @@ export type LeadListRow = {
   tipo_sonho?: string | null;
 };
 
+export type IndicacaoRapidaItem = {
+  nome: string;
+  whatsapp: string;
+  /** Casa, Carro, Moto… */
+  tipoSonho?: string | null;
+  /** amigo, familiar, etc. */
+  parentesco?: string | null;
+};
+
 export type LeadAtividade = {
   id: string;
   lead_id: string;

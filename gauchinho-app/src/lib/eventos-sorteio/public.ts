@@ -43,10 +43,42 @@ export async function fetchPublicSorteioByEventoSlug(slug: string): Promise<Publ
   const { data: evento, error: evErr } = await admin
     .from("eventos")
     .select("id, nome, slug, data_evento")
-    .eq("slug", normalized)
+    .ilike("slug", normalized)
     .eq("ativo", true)
     .eq("publicado", true)
     .maybeSingle();
+  if (evErr) {
+    if (/eventos_sorteios|schema cache|does not exist|Could not find/i.test(evErr.message)) {
+      return null;
+    }
+    throw new Error(evErr.message);
+  }
+  if (!evento) return null;
+
+  return fetchPublicSorteioByEventoId(evento.id as string, { requirePublicado: true });
+}
+
+/**
+ * Carrega o formulário público do sorteio (com NPS) pelo id do evento.
+ * Usado pelo QR único para não depender de slug/publicado quando o vínculo já existe.
+ */
+export async function fetchPublicSorteioByEventoId(
+  eventoId: string,
+  options?: { requirePublicado?: boolean },
+): Promise<PublicSorteioView | null> {
+  const requirePublicado = options?.requirePublicado !== false;
+  if (!eventoId?.trim()) return null;
+
+  const admin = createAdminClient();
+  let evQuery = admin
+    .from("eventos")
+    .select("id, nome, slug, data_evento, ativo, publicado")
+    .eq("id", eventoId)
+    .eq("ativo", true);
+  if (requirePublicado) {
+    evQuery = evQuery.eq("publicado", true);
+  }
+  const { data: evento, error: evErr } = await evQuery.maybeSingle();
   if (evErr) {
     if (/eventos_sorteios|schema cache|does not exist|Could not find/i.test(evErr.message)) {
       return null;
@@ -70,7 +102,12 @@ export async function fetchPublicSorteioByEventoSlug(slug: string): Promise<Publ
   }
   if (!sorteio?.id) return null;
 
-  return mapPublicView(sorteio, evento);
+  return mapPublicView(sorteio, {
+    id: evento.id as string,
+    nome: evento.nome as string,
+    slug: evento.slug as string,
+    data_evento: evento.data_evento as string | null,
+  });
 }
 
 export async function fetchHomeSorteioDestaque(): Promise<HomeSorteioDestaque | null> {

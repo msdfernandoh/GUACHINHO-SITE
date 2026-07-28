@@ -14,10 +14,11 @@ import {
   loadLeadAccessScope,
 } from "@/lib/crm/lead-access";
 import { enrichLeadsWithTipoSonho } from "@/lib/crm/lead-tipo-sonho";
-import type { LeadFilters } from "@/lib/crm/types";
+import type { IndicacaoRapidaItem, LeadFilters } from "@/lib/crm/types";
 import { buildLeadTimeline } from "@/lib/crm/timeline";
 import { MOTIVOS_PERDA } from "@/lib/crm/constants";
 import { isTipoSonhoSorteio, tipoSonhoParaCreditoLead } from "@/lib/eventos-sorteio/lead-map";
+import { isDbMissingColumnError } from "@/lib/comercial-eventos/db-ready";
 
 async function touchInteracao(supabase: Awaited<ReturnType<typeof createClient>>, leadId: string) {
   await supabase
@@ -126,15 +127,6 @@ export async function createLeadManualAction(formData: FormData) {
   redirect(`/admin/leads/${data.id}`);
 }
 
-export type IndicacaoRapidaItem = {
-  nome: string;
-  whatsapp: string;
-  /** Casa, Carro, Moto… */
-  tipoSonho?: string | null;
-  /** amigo, familiar, etc. */
-  parentesco?: string | null;
-};
-
 /** Cria leads de indicação tendo o lead atual como quem indicou. */
 export async function createIndicacoesFromLeadAction(
   indicadorLeadId: string,
@@ -199,32 +191,30 @@ export async function createIndicacoesFromLeadAction(
       criado_por_usuario_id: usuario.id,
       srd_responsavel_id: indicador.srd_responsavel_id ?? null,
       srd_responsavel_nome: indicador.srd_responsavel_nome ?? null,
-      ...(tipoSonho
-        ? {
-            dados_simulacao: {
-              origem: "indicacao_admin",
-              tipo_sonho: tipoSonho,
-              parentesco: ind.parentesco,
-              indicador_lead_id: indicadorLeadId,
-            },
-          }
-        : ind.parentesco
-          ? {
-              dados_simulacao: {
-                origem: "indicacao_admin",
-                parentesco: ind.parentesco,
-                indicador_lead_id: indicadorLeadId,
-              },
-            }
-          : {
-              dados_simulacao: {
-                origem: "indicacao_admin",
-                indicador_lead_id: indicadorLeadId,
-              },
-            }),
+      dados_simulacao: {
+        origem: "indicacao_admin",
+        indicador_lead_id: indicadorLeadId,
+        ...(tipoSonho ? { tipo_sonho: tipoSonho } : {}),
+        ...(ind.parentesco ? { parentesco: ind.parentesco } : {}),
+      },
     };
 
-    const { data: leadRow, error } = await supabase.from("leads").insert(payload).select("id").single();
+    let { data: leadRow, error } = await supabase.from("leads").insert(payload).select("id").single();
+    if (error && isDbMissingColumnError(error)) {
+      const {
+        tipo_credito: _tc,
+        parceiro_indicador_telefone: _pt,
+        observacao_indicacao: _oi,
+        ...legacy
+      } = payload;
+      const telNote = indicadorTel ? `Tel. de quem indicou: ${indicadorTel}` : null;
+      const mergedObs = [telNote, observacao].filter(Boolean).join("\n") || null;
+      ({ data: leadRow, error } = await supabase
+        .from("leads")
+        .insert({ ...legacy, observacoes: mergedObs })
+        .select("id")
+        .single());
+    }
     if (error || !leadRow) throw new Error(error?.message ?? "Falha ao salvar indicação");
     leadIds.push(leadRow.id);
 

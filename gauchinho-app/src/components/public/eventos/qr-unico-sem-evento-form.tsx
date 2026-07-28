@@ -14,16 +14,23 @@ type Props = {
   qrSlug: string;
   qrCodeUnicoId: string;
   motivo: "inativo" | "sem_vinculo" | "fora_periodo" | "sorteio_indisponivel";
+  eventoNome?: string | null;
 };
 
 const MOTIVO_MSG: Record<Props["motivo"], string> = {
   inativo: "Este QR Code está temporariamente indisponível para campanhas.",
   sem_vinculo: "Não há evento ativo vinculado a este QR no momento.",
-  fora_periodo: "O período deste QR no evento atual já encerrou.",
-  sorteio_indisponivel: "O sorteio do evento vinculado não está disponível agora.",
+  fora_periodo: "O período deste QR no evento atual já encerrou ou ainda não começou.",
+  sorteio_indisponivel:
+    "O sorteio com NPS deste evento ainda não está ativo. Peça ao organizador para ativar o sorteio no admin do evento.",
 };
 
-export function QrUnicoSemEventoForm({ qrNome, qrSlug, qrCodeUnicoId, motivo }: Props) {
+/** Formulário legado só quando não há evento vinculado — evita cadastro sem NPS. */
+function permiteCadastroSimples(motivo: Props["motivo"]): boolean {
+  return motivo === "sem_vinculo" || motivo === "fora_periodo";
+}
+
+export function QrUnicoSemEventoForm({ qrNome, qrSlug, qrCodeUnicoId, motivo, eventoNome }: Props) {
   const [nome, setNome] = useState("");
   const [telefone, setTelefone] = useState("");
   const [valorDisplay, setValorDisplay] = useState("");
@@ -32,6 +39,8 @@ export function QrUnicoSemEventoForm({ qrNome, qrSlug, qrCodeUnicoId, motivo }: 
   const [erro, setErro] = useState<string | null>(null);
   const [sucesso, setSucesso] = useState(false);
   const [pending, startTransition] = useTransition();
+
+  const podeCadastrar = permiteCadastroSimples(motivo);
 
   const submit = () => {
     setErro(null);
@@ -71,17 +80,41 @@ export function QrUnicoSemEventoForm({ qrNome, qrSlug, qrCodeUnicoId, motivo }: 
     );
   }
 
+  if (!podeCadastrar) {
+    return (
+      <div className="rounded-2xl border border-amber-500/25 bg-slate-900/85 p-5 text-center shadow-xl sm:p-7">
+        <div className="flex justify-center">
+          <Image src="/media/gauchinho-sem-fundo.svg" alt="Gauchinho" width={120} height={80} className="h-14 w-auto" />
+        </div>
+        <p className="mt-4 text-xs uppercase tracking-wide text-amber-400/90">{qrNome}</p>
+        {eventoNome ? (
+          <p className="mt-2 text-sm font-medium text-white">Evento: {eventoNome}</p>
+        ) : null}
+        <p className="mt-4 text-sm text-slate-300">{MOTIVO_MSG[motivo]}</p>
+        <Link
+          href="/simulador"
+          className="mt-8 inline-flex items-center justify-center rounded-lg border border-zinc-600 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800"
+        >
+          Falar com especialista
+        </Link>
+      </div>
+    );
+  }
+
   return (
     <div className="rounded-2xl border border-amber-500/25 bg-slate-900/85 p-5 shadow-xl sm:p-7">
       <div className="flex justify-center">
         <Image src="/media/gauchinho-sem-fundo.svg" alt="Gauchinho" width={120} height={80} className="h-14 w-auto" />
       </div>
       <p className="mt-4 text-center text-xs uppercase tracking-wide text-amber-400/90">{qrNome}</p>
+      {eventoNome ? (
+        <p className="mt-1 text-center text-xs text-slate-500">Último vínculo: {eventoNome}</p>
+      ) : null}
       <h1 className="mt-4 text-center text-xl font-bold text-white">Deixe seus dados</h1>
       <p className="mt-2 text-center text-sm text-slate-400">{MOTIVO_MSG[motivo]}</p>
-      <p className="mt-2 text-center text-sm text-slate-300">
-        Você ainda pode se cadastrar — o lead será salvo sem vínculo a um evento até este QR ser
-        registrado novamente.
+      <p className="mt-2 text-center text-xs text-slate-500">
+        Cadastro rápido fora do formulário completo do evento (sem NPS). Com o QR vinculado e o sorteio
+        ativo no período, você verá o formulário completo automaticamente.
       </p>
 
       <div className="mt-6 space-y-4">
@@ -91,6 +124,7 @@ export function QrUnicoSemEventoForm({ qrNome, qrSlug, qrCodeUnicoId, motivo }: 
             value={nome}
             onChange={(e) => setNome(e.target.value)}
             className="mt-1 border-slate-600 bg-slate-950 text-white"
+            placeholder="Seu nome"
           />
         </div>
         <div>
@@ -130,7 +164,7 @@ export function QrUnicoSemEventoForm({ qrNome, qrSlug, qrCodeUnicoId, motivo }: 
                 className={`rounded-xl border px-3 py-3 text-sm font-semibold transition ${
                   tipoSonho === t
                     ? "border-amber-400 bg-amber-500/20 text-amber-100"
-                    : "border-slate-600 bg-slate-950 text-slate-200"
+                    : "border-slate-600 bg-slate-950 text-slate-200 hover:border-amber-500/40"
                 }`}
               >
                 {t}
@@ -140,7 +174,7 @@ export function QrUnicoSemEventoForm({ qrNome, qrSlug, qrCodeUnicoId, motivo }: 
         </div>
         {erro ? <p className="text-sm text-red-400">{erro}</p> : null}
         <Button type="button" className="w-full" disabled={pending} onClick={submit}>
-          {pending ? "Enviando…" : "Enviar cadastro"}
+          {pending ? "Enviando…" : "Enviar"}
         </Button>
       </div>
     </div>

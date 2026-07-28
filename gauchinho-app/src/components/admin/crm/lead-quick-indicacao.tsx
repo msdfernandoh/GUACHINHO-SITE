@@ -4,8 +4,8 @@ import { useState, useTransition } from "react";
 import { Plus, UserPlus, X } from "lucide-react";
 import {
   createIndicacoesFromLeadAction,
-  type IndicacaoRapidaItem,
 } from "@/app/admin/leads/actions";
+import type { IndicacaoRapidaItem } from "@/lib/crm/types";
 import { Button, Input, Label, Select } from "@/components/ui/form-primitives";
 import { TIPOS_SONHO_SORTEIO } from "@/lib/eventos-sorteio/types";
 import { digitsOnlyPhone, formatWhatsappBrInput } from "@/lib/utils/format";

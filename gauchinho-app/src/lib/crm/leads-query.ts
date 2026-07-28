@@ -1,13 +1,18 @@
 import { createClient } from "@/lib/supabase/server";
+import { isDbMissingColumnError } from "@/lib/comercial-eventos/db-ready";
 import type { LeadFilters, LeadListRow } from "./types";
 
-const LIST_SELECT =
-  "id, created_at, nome, whatsapp, email, cidade, origem, tipo_interesse, produto_interesse, status, temperatura, srd_responsavel_id, srd_responsavel_nome, proxima_acao, data_proxima_acao, proximo_retorno_data, ultima_interacao_at, valor_estimado, valor_simulado, fechado, evento_id, evento_nome, parceiro_indicador_nome, parceiro_indicador_empresa, parceiro_indicador_telefone";
+const LIST_SELECT_BASE =
+  "id, created_at, nome, whatsapp, email, cidade, origem, tipo_interesse, produto_interesse, status, temperatura, srd_responsavel_id, srd_responsavel_nome, proxima_acao, data_proxima_acao, proximo_retorno_data, ultima_interacao_at, valor_estimado, valor_simulado, fechado, evento_id, evento_nome";
 
-export async function queryLeadsList(filters: LeadFilters, limit = 200): Promise<LeadListRow[]> {
-  const supabase = await createClient();
-  let query = supabase.from("leads").select(LIST_SELECT).order("created_at", { ascending: false }).limit(limit);
+const LIST_SELECT_INDICADOR =
+  `${LIST_SELECT_BASE}, parceiro_indicador_nome, parceiro_indicador_empresa, parceiro_indicador_telefone`;
 
+function applyLeadFilters(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  query: any,
+  filters: LeadFilters,
+) {
   if (filters.origem) query = query.eq("origem", filters.origem);
   if (filters.evento) query = query.eq("evento_id", filters.evento);
   if (filters.status) query = query.eq("status", filters.status);
@@ -61,19 +66,43 @@ export async function queryLeadsList(filters: LeadFilters, limit = 200): Promise
     query = query.gte("created_at", d.toISOString());
   }
 
-  const { data, error } = await query;
-  if (error) throw new Error(error.message);
-  return (data ?? []) as LeadListRow[];
+  return query;
+}
+
+async function selectLeads(
+  build: (select: string) => Promise<{ data: LeadListRow[] | null; error: { message: string } | null }>,
+): Promise<LeadListRow[]> {
+  const first = await build(LIST_SELECT_INDICADOR);
+  if (!first.error) return (first.data ?? []) as LeadListRow[];
+
+  if (isDbMissingColumnError(first.error)) {
+    const fallback = await build(LIST_SELECT_BASE);
+    if (fallback.error) throw new Error(fallback.error.message);
+    return (fallback.data ?? []) as LeadListRow[];
+  }
+
+  throw new Error(first.error.message);
+}
+
+export async function queryLeadsList(filters: LeadFilters, limit = 200): Promise<LeadListRow[]> {
+  const supabase = await createClient();
+  return selectLeads(async (select) => {
+    const query = applyLeadFilters(
+      supabase.from("leads").select(select).order("created_at", { ascending: false }).limit(limit),
+      filters,
+    );
+    return query;
+  });
 }
 
 export async function queryLeadsForKanban(): Promise<LeadListRow[]> {
   const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("leads")
-    .select(LIST_SELECT)
-    .neq("status", "Arquivado")
-    .order("updated_at", { ascending: false })
-    .limit(500);
-  if (error) throw new Error(error.message);
-  return (data ?? []) as LeadListRow[];
+  return selectLeads(async (select) =>
+    supabase
+      .from("leads")
+      .select(select)
+      .neq("status", "Arquivado")
+      .order("updated_at", { ascending: false })
+      .limit(500),
+  );
 }

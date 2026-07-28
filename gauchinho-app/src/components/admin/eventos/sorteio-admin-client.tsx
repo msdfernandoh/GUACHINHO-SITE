@@ -309,12 +309,15 @@ export function SorteioAdminClient({
             <Link href="/admin/configuracoes/qr-codes" className="text-amber-600 hover:underline">
               Configurações → QR Codes únicos
             </Link>
-            . Enquanto ativo neste evento, não fica disponível para outro.
+            . Enquanto ativo neste evento e no período informado, o link /qr/… abre o{" "}
+            <strong className="font-semibold text-zinc-300">mesmo formulário do sorteio com NPS completo</strong>
+            . O sorteio precisa estar ativo.
           </p>
           <label className="flex items-center gap-2 text-sm">
             <input
               type="checkbox"
               name="usar_qr_unico"
+              value="on"
               checked={usarQrUnico}
               onChange={(e) => setUsarQrUnico(e.target.checked)}
             />

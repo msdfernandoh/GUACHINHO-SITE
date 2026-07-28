@@ -11,33 +11,37 @@ function tipoSonhoFromDadosSimulacao(raw: unknown): string | null {
 export async function enrichLeadsWithTipoSonho(rows: LeadListRow[]): Promise<LeadListRow[]> {
   if (!rows.length) return rows;
 
-  const supabase = await createClient();
-  const ids = rows.map((r) => r.id);
-  const map = new Map<string, string>();
+  try {
+    const supabase = await createClient();
+    const ids = rows.map((r) => r.id);
+    const map = new Map<string, string>();
 
-  const { data: participantes, error: partErr } = await supabase
-    .from("eventos_sorteio_participantes")
-    .select("lead_id, tipo_sonho, created_at")
-    .in("lead_id", ids)
-    .not("lead_id", "is", null)
-    .order("created_at", { ascending: false });
+    const { data: participantes, error: partErr } = await supabase
+      .from("eventos_sorteio_participantes")
+      .select("lead_id, tipo_sonho, created_at")
+      .in("lead_id", ids)
+      .not("lead_id", "is", null)
+      .order("created_at", { ascending: false });
 
-  if (!partErr) {
-    for (const row of participantes ?? []) {
-      const leadId = row.lead_id as string | null;
-      const tipo = row.tipo_sonho as string | null;
-      if (leadId && tipo?.trim() && !map.has(leadId)) map.set(leadId, tipo.trim());
+    if (!partErr) {
+      for (const row of participantes ?? []) {
+        const leadId = row.lead_id as string | null;
+        const tipo = row.tipo_sonho as string | null;
+        if (leadId && tipo?.trim() && !map.has(leadId)) map.set(leadId, tipo.trim());
+      }
     }
-  }
 
-  const missing = ids.filter((id) => !map.has(id));
-  if (missing.length) {
-    const { data: leadsExtra } = await supabase.from("leads").select("id, dados_simulacao").in("id", missing);
-    for (const row of leadsExtra ?? []) {
-      const tipo = tipoSonhoFromDadosSimulacao(row.dados_simulacao);
-      if (tipo) map.set(row.id as string, tipo);
+    const missing = ids.filter((id) => !map.has(id));
+    if (missing.length) {
+      const { data: leadsExtra } = await supabase.from("leads").select("id, dados_simulacao").in("id", missing);
+      for (const row of leadsExtra ?? []) {
+        const tipo = tipoSonhoFromDadosSimulacao(row.dados_simulacao);
+        if (tipo) map.set(row.id as string, tipo);
+      }
     }
-  }
 
-  return rows.map((r) => ({ ...r, tipo_sonho: map.get(r.id) ?? null }));
+    return rows.map((r) => ({ ...r, tipo_sonho: map.get(r.id) ?? null }));
+  } catch {
+    return rows.map((r) => ({ ...r, tipo_sonho: r.tipo_sonho ?? null }));
+  }
 }

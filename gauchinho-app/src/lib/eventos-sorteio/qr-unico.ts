@@ -1,6 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { slugify } from "@/lib/utils/slug";
-import { fetchPublicSorteioByEventoSlug } from "./public";
+import { fetchPublicSorteioByEventoId } from "./public";
 import type { PublicSorteioView } from "./types";
 import type { NpsPerguntaPublica } from "./nps";
 
@@ -40,10 +40,21 @@ export type ResolveQrPublicResult =
       mode: "sem_evento";
       qr: QrCodeUnicoRow;
       motivo: "inativo" | "sem_vinculo" | "fora_periodo" | "sorteio_indisponivel";
+      /** Quando havia vínculo, evita cair no formulário legado sem NPS. */
+      eventoNome?: string | null;
     };
 
 export function normalizeQrSlug(input: string): string {
   return slugify(input) || "qr";
+}
+
+/** Compara período com Date (não string), tolerante a formatos do Postgres. */
+export function periodoContemAgora(inicio: string, fim: string, agora = new Date()): boolean {
+  const start = new Date(inicio).getTime();
+  const end = new Date(fim).getTime();
+  const now = agora.getTime();
+  if (!Number.isFinite(start) || !Number.isFinite(end) || !Number.isFinite(now)) return false;
+  return now >= start && now <= end;
 }
 
 export async function listQrCodesUnicosAdmin(): Promise<QrCodeUnicoAdmin[]> {
@@ -131,10 +142,6 @@ function nowIso() {
   return new Date().toISOString();
 }
 
-function periodoContemAgora(inicio: string, fim: string, agora = nowIso()): boolean {
-  return agora >= inicio && agora <= fim;
-}
-
 export async function resolveQrPublicBySlug(slug: string): Promise<ResolveQrPublicResult | null> {
   const normalized = normalizeQrSlug(slug);
   const admin = createAdminClient();
@@ -165,23 +172,21 @@ export async function resolveQrPublicBySlug(slug: string): Promise<ResolveQrPubl
   }
 
   const v = vinculo as QrCodeVinculoRow;
-  if (!periodoContemAgora(v.periodo_inicio, v.periodo_fim)) {
-    return { mode: "sem_evento", qr: qrRow, motivo: "fora_periodo" };
-  }
-
-  const { data: evento, error: evErr } = await admin
+  const { data: eventoMeta } = await admin
     .from("eventos")
-    .select("id, slug, ativo, publicado")
+    .select("id, nome, ativo")
     .eq("id", v.evento_id)
     .maybeSingle();
-  if (evErr) throw new Error(evErr.message);
-  if (!evento?.slug || !evento.ativo || !evento.publicado) {
-    return { mode: "sem_evento", qr: qrRow, motivo: "sorteio_indisponivel" };
+  const eventoNome = (eventoMeta?.nome as string | undefined) ?? null;
+
+  if (!periodoContemAgora(v.periodo_inicio, v.periodo_fim)) {
+    return { mode: "sem_evento", qr: qrRow, motivo: "fora_periodo", eventoNome };
   }
 
-  const sorteio = await fetchPublicSorteioByEventoSlug(evento.slug as string);
+  // QR vinculado: mesmo formulário do sorteio (NPS completo), mesmo sem "publicado" na listagem.
+  const sorteio = await fetchPublicSorteioByEventoId(v.evento_id, { requirePublicado: false });
   if (!sorteio) {
-    return { mode: "sem_evento", qr: qrRow, motivo: "sorteio_indisponivel" };
+    return { mode: "sem_evento", qr: qrRow, motivo: "sorteio_indisponivel", eventoNome };
   }
 
   return {
@@ -262,7 +267,6 @@ export async function vincularQrAoEvento(params: {
     throw new Error("Este QR Code já está ativo em outro evento. Desative-o lá antes de usar aqui.");
   }
 
-  // Desativa vínculos ativos deste evento (troca de QR)
   await admin
     .from("qr_codes_unicos_vinculos")
     .update({ ativo: false, updated_at: nowIso() })
