@@ -53,7 +53,7 @@ export type ResultadoLinhaSimulacaoGrupo = {
   saldoDevedorInicial: number;
   /** Saldo devedor − lance total (base comercial dos lances). */
   saldoPosLance: number;
-  /** Saldo após 1ª parcela (base da parcela pós-contemplação). */
+  /** Saldo após lance e 1ª parcela sem seguro (base do seguro pós na planilha). */
   saldoDevedorFinal: number;
   primeiraParcela: number;
   parcelaBase: number;
@@ -301,41 +301,49 @@ export function calcularLinhaSimulacaoGrupo(args: {
     percentualParcelaPersonalizada: pctPersonalLinha,
   });
 
-  const saldoUnit = qty > 0 ? saldoDevedorInicial / qty : 0;
   const fatorSeg = fatorSeguroGrupo(grupo.seguro_percentual);
-  /** Seguro do grupo (quando configurado) — obrigatório na parcela pós-contemplação. */
-  const seguroUnitario =
-    params.seguroHabilitado && fatorSeg > 0
-      ? Math.round(saldoUnit * fatorSeg * 100) / 100
+  const temSeguroGrupo = params.seguroHabilitado && fatorSeg > 0;
+
+  // Parcela da modalidade sem seguro (planilha: reduz o saldo no 1º mês sem embutir o seguro).
+  const parcelaSemSeguroUnit = parcelasCalc.parcelaExibida;
+  const parcelaSemSeguroTotal = Math.round(parcelaSemSeguroUnit * qty * 100) / 100;
+
+  // Seguro “cheio” sobre o saldo inicial (antes do lance) — usado só na 1ª parcela se toggle C.
+  const seguroInicialUnit =
+    temSeguroGrupo && qty > 0
+      ? Math.round((saldoDevedorInicial / qty) * fatorSeg * 100) / 100
       : 0;
 
-  let parcelaBase = parcelasCalc.parcelaExibida;
-  // 1ª parcela: seguro opcional conforme toggle da linha
-  if (config.usaSeguro && seguroUnitario > 0) {
-    parcelaBase = Math.round((parcelaBase + seguroUnitario) * 100) / 100;
+  let parcelaBase = parcelaSemSeguroUnit;
+  if (config.usaSeguro && seguroInicialUnit > 0) {
+    parcelaBase = Math.round((parcelaBase + seguroInicialUnit) * 100) / 100;
   }
-
   const primeiraParcela = Math.round(parcelaBase * qty * 100) / 100;
-  // Exibe o seguro sempre que existir (entra na pós-contemplação).
-  const seguroMensalExibicao =
-    seguroUnitario > 0 ? Math.round(seguroUnitario * qty * 100) / 100 : 0;
 
   const lanceTotal = lanceEmbutido + recursoProprio;
   const saldoPosLance = Math.max(
     0,
     Math.round((saldoDevedorInicial - lanceEmbutido - recursoProprio) * 100) / 100,
   );
+  // Saldo se contemplar após o 1º mês (planilha): após lance e após 1ª parcela sem seguro.
   const saldoDevedorFinal = Math.max(
     0,
-    Math.round((saldoPosLance - primeiraParcela) * 100) / 100,
+    Math.round((saldoPosLance - parcelaSemSeguroTotal) * 100) / 100,
   );
 
   const prazoRestante = calcularParcelasRestantes(params);
-  const parcelasRestantesPosContemplacao = Math.max(prazoRestante - 1, 1);
+  // Planilha: saldo pós-lance ÷ (prazo restante + 1) — ex. 209 → 210.
+  const parcelasAmortizacaoPos = Math.max(prazoRestante + 1, 1);
   const parcelaPosBase =
-    Math.round((saldoDevedorFinal / parcelasRestantesPosContemplacao) * 100) / 100;
-  // Pós-contemplação: seguro sempre incluso quando o grupo tem seguro.
-  const parcelaPosContemplacao = parcelaPosBase + seguroUnitario;
+    Math.round((saldoPosLance / parcelasAmortizacaoPos) * 100) / 100;
+
+  // Seguro pós: só sobre o saldo que resta após lance + 1ª parcela (cai quando o embutido sobe).
+  // Não “acumula” meses anteriores; vale para as parcelas restantes pós-contemplação.
+  const seguroPosTotal = temSeguroGrupo
+    ? Math.round(saldoDevedorFinal * fatorSeg * 100) / 100
+    : 0;
+  const parcelaPosContemplacao = Math.round((parcelaPosBase + seguroPosTotal) * 100) / 100;
+  const parcelasRestantesPosContemplacao = Math.max(prazoRestante, 1);
 
   const creditoLiquido = calcularCreditoLiquidoPosContemplacao(somaCotas, lanceEmbutido);
 
@@ -350,11 +358,12 @@ export function calcularLinhaSimulacaoGrupo(args: {
     parcelaIntegral: parcelasCalc.parcelaIntegral,
     parcelaReduzida: parcelasCalc.parcelaReduzida,
     parcelaPersonalizada: parcelasCalc.parcelaPersonalizada,
-    parcelaPosContemplacao: Math.round(parcelaPosContemplacao * 100) / 100,
+    parcelaPosContemplacao,
     lanceEmbutido,
     recursoProprio,
     lanceTotal,
-    seguroMensal: Math.round(seguroMensalExibicao * 100) / 100,
+    /** Seguro incluso na parcela pós (sobre saldo após lance e 1ª parcela). */
+    seguroMensal: seguroPosTotal,
     quantidadeCotas: qty,
     creditoLiquido,
     parcelasRestantesPosContemplacao,

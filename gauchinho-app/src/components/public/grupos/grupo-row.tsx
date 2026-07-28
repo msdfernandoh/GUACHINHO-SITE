@@ -199,7 +199,7 @@ export function GrupoRow({
                 </button>
                 <button
                   type="button"
-                  title="Sem seguro na 1ª parcela (pós-contemplação mantém seguro)"
+                  title="Sem seguro na 1ª parcela (pós-contemplação mantém seguro sobre o saldo restante)"
                   className={cn(
                     "rounded px-1.5 py-0.5 text-[9px] font-medium",
                     !config.usaSeguro
