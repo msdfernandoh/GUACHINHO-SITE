@@ -303,21 +303,22 @@ export function calcularLinhaSimulacaoGrupo(args: {
 
   const saldoUnit = qty > 0 ? saldoDevedorInicial / qty : 0;
   const fatorSeg = fatorSeguroGrupo(grupo.seguro_percentual);
+  /** Seguro do grupo (quando configurado) — obrigatório na parcela pós-contemplação. */
   const seguroUnitario =
-    config.usaSeguro && params.seguroHabilitado && fatorSeg > 0
+    params.seguroHabilitado && fatorSeg > 0
       ? Math.round(saldoUnit * fatorSeg * 100) / 100
       : 0;
 
   let parcelaBase = parcelasCalc.parcelaExibida;
-  if (config.usaSeguro && params.seguroHabilitado && seguroUnitario > 0) {
+  // 1ª parcela: seguro opcional conforme toggle da linha
+  if (config.usaSeguro && seguroUnitario > 0) {
     parcelaBase = Math.round((parcelaBase + seguroUnitario) * 100) / 100;
   }
 
   const primeiraParcela = Math.round(parcelaBase * qty * 100) / 100;
+  // Exibe o seguro sempre que existir (entra na pós-contemplação).
   const seguroMensalExibicao =
-    config.usaSeguro && params.seguroHabilitado && fatorSeg > 0
-      ? Math.round(seguroUnitario * qty * 100) / 100
-      : 0;
+    seguroUnitario > 0 ? Math.round(seguroUnitario * qty * 100) / 100 : 0;
 
   const lanceTotal = lanceEmbutido + recursoProprio;
   const saldoPosLance = Math.max(
@@ -333,9 +334,8 @@ export function calcularLinhaSimulacaoGrupo(args: {
   const parcelasRestantesPosContemplacao = Math.max(prazoRestante - 1, 1);
   const parcelaPosBase =
     Math.round((saldoDevedorFinal / parcelasRestantesPosContemplacao) * 100) / 100;
-  const parcelaPosContemplacao =
-    parcelaPosBase +
-    (config.usaSeguro && params.seguroHabilitado ? seguroUnitario : 0);
+  // Pós-contemplação: seguro sempre incluso quando o grupo tem seguro.
+  const parcelaPosContemplacao = parcelaPosBase + seguroUnitario;
 
   const creditoLiquido = calcularCreditoLiquidoPosContemplacao(somaCotas, lanceEmbutido);
 

@@ -2,7 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import type { LeadFilters, LeadListRow } from "./types";
 
 const LIST_SELECT =
-  "id, created_at, nome, whatsapp, email, cidade, origem, tipo_interesse, produto_interesse, status, temperatura, srd_responsavel_id, srd_responsavel_nome, proxima_acao, data_proxima_acao, proximo_retorno_data, ultima_interacao_at, valor_estimado, valor_simulado, fechado, evento_id";
+  "id, created_at, nome, whatsapp, email, cidade, origem, tipo_interesse, produto_interesse, status, temperatura, srd_responsavel_id, srd_responsavel_nome, proxima_acao, data_proxima_acao, proximo_retorno_data, ultima_interacao_at, valor_estimado, valor_simulado, fechado, evento_id, evento_nome";
 
 export async function queryLeadsList(filters: LeadFilters, limit = 200): Promise<LeadListRow[]> {
   const supabase = await createClient();

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import type { LeadListRow } from "@/lib/crm/types";
 import { labelOrigem, valorEstimadoLead } from "@/lib/crm/constants";
+import { labelEventoProduto } from "@/lib/crm/label-evento-produto";
 import { formatCurrency, formatDate, formatDateTime } from "@/lib/utils/format";
 import { LeadStatusBadge } from "./lead-status-badge";
 import { LeadTipoSonhoBadge } from "./lead-tipo-sonho-badge";
@@ -21,7 +22,7 @@ export function LeadTable({ leads }: { leads: LeadListRow[] }) {
           <tr>
             <th className="px-3 py-2">Lead</th>
             <th className="px-3 py-2">Origem</th>
-            <th className="px-3 py-2">Produto</th>
+            <th className="px-3 py-2">Evento / Produto</th>
             <th className="px-3 py-2">Valor</th>
             <th className="px-3 py-2">Cidade</th>
             <th className="px-3 py-2">Tipo do sonho</th>
@@ -47,7 +48,7 @@ export function LeadTable({ leads }: { leads: LeadListRow[] }) {
                   <p className="text-xs text-zinc-400">{l.whatsapp ?? "—"}</p>
                 </td>
                 <td className={cn(adminTableCellClass, "text-zinc-300")}>{labelOrigem(l.origem)}</td>
-                <td className="px-3 py-2">{l.produto_interesse ?? l.tipo_interesse ?? "—"}</td>
+                <td className="px-3 py-2">{labelEventoProduto(l)}</td>
                 <td className="px-3 py-2">{valor > 0 ? formatCurrency(valor) : "—"}</td>
                 <td className="px-3 py-2">{l.cidade ?? "—"}</td>
                 <td className="px-3 py-2">

@@ -3,6 +3,8 @@ import { Suspense } from "react";
 import { fetchLeadsList, fetchSrdOptions } from "./actions";
 import { fetchEventosOptionsForFilter } from "@/app/admin/eventos/actions";
 import { requireStaffAdmin } from "@/lib/auth/require-staff-admin";
+import { getUsuarioNegocio } from "@/lib/auth/get-usuario";
+import { canDeleteRecords } from "@/lib/auth/permissions";
 import { Button } from "@/components/ui/form-primitives";
 import { LeadFilters } from "@/components/admin/crm/lead-filters";
 import { LeadListWithBulk } from "@/components/admin/crm/lead-list-with-bulk";
@@ -15,6 +17,7 @@ export default async function LeadsListPage({
   searchParams: Promise<Record<string, string | undefined>>;
 }) {
   await requireStaffAdmin();
+  const usuario = await getUsuarioNegocio();
   const sp = await searchParams;
   const filters: LF = {
     periodo: sp.periodo,
@@ -64,7 +67,11 @@ export default async function LeadsListPage({
         <LeadFilters srds={srds} eventos={eventos} />
       </Suspense>
 
-      <LeadListWithBulk leads={leads} consultores={srds} />
+      <LeadListWithBulk
+        leads={leads}
+        consultores={srds}
+        canDelete={canDeleteRecords(usuario?.perfil)}
+      />
     </div>
   );
 }

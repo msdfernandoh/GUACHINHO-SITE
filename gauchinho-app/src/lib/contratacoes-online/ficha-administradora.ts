@@ -62,6 +62,27 @@ export function buildFichaAdministradoraCampos(args: {
   pushCampo(out, "Parcela integral", money(fin.parcelaIntegral as number));
   pushCampo(out, "Parcela reduzida", money(fin.parcelaReduzida as number));
   pushCampo(out, "Parcela após contemplação", money(fin.parcelaPosContemplacao as number));
+  pushCampo(
+    out,
+    "Parcelas restantes",
+    fin.parcelasRestantes != null && Number.isFinite(Number(fin.parcelasRestantes))
+      ? `${Math.round(Number(fin.parcelasRestantes))} meses`
+      : null,
+  );
+  pushCampo(
+    out,
+    "Custo efetivo mensal",
+    fin.custoEfetivoMensal != null && Number.isFinite(Number(fin.custoEfetivoMensal))
+      ? `${Number(fin.custoEfetivoMensal).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}% a.m.`
+      : null,
+  );
+  pushCampo(
+    out,
+    "Custo efetivo anual",
+    fin.custoEfetivoAnual != null && Number.isFinite(Number(fin.custoEfetivoAnual))
+      ? `${Number(fin.custoEfetivoAnual).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}% a.a.`
+      : null,
+  );
   pushCampo(out, "Saldo devedor", money(fin.saldoDevedor as number));
   pushCampo(out, "Crédito líquido", money(fin.creditoLiquido as number));
   pushCampo(out, "Lance total", money(fin.lanceTotal as number));

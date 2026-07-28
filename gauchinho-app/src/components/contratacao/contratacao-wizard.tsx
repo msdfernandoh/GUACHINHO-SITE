@@ -13,6 +13,7 @@ import {
   formatCnpjBrInput,
   digitsOnlyPhone,
 } from "@/lib/utils/format";
+import { formatarPercentualSimulador } from "@/lib/simulador/consorcio";
 import type { ContratacaoOnlineRow, FormaPagamento, TipoPessoa } from "@/lib/contratacoes-online/types";
 import type { DocumentoContratacaoPublico } from "@/lib/contratacoes-online/sanitize-public";
 import { documentosObrigatoriosPendentes } from "@/lib/contratacoes-online/documentos-obrigatorios";
@@ -77,6 +78,14 @@ function Row({ label, value }: { label: string; value: string | null | undefined
 
 function money(v: number | null | undefined) {
   return v != null && Number.isFinite(v) ? formatCurrency(v) : null;
+}
+
+function percentAm(v: number | null | undefined) {
+  return v != null && Number.isFinite(v) ? `${formatarPercentualSimulador(v)} a.m.` : null;
+}
+
+function percentAa(v: number | null | undefined) {
+  return v != null && Number.isFinite(v) ? `${formatarPercentualSimulador(v)} a.a.` : null;
 }
 
 export function ContratacaoWizard({
@@ -545,6 +554,16 @@ export function ContratacaoWizard({
               <Row label="Crédito líquido" value={money(fin.creditoLiquido as number)} />
               <Row label="Saldo pós-lance" value={money(fin.saldoPosLance as number)} />
               <Row label="Seguro" value={money(fin.seguro as number)} />
+              <Row
+                label="Parcelas restantes"
+                value={
+                  fin.parcelasRestantes != null && Number.isFinite(Number(fin.parcelasRestantes))
+                    ? `${Math.round(Number(fin.parcelasRestantes))} meses`
+                    : null
+                }
+              />
+              <Row label="Custo efetivo mensal" value={percentAm(fin.custoEfetivoMensal as number)} />
+              <Row label="Custo efetivo anual" value={percentAa(fin.custoEfetivoAnual as number)} />
             </div>
             <p className="text-sm text-slate-400">
               Ao continuar, você confirma que deseja avançar com esta proposta para análise e emissão

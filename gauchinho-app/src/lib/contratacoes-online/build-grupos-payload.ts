@@ -31,6 +31,7 @@ export function buildDadosSimulacaoGrupos(
           prazo_total: l.grupo.prazo_total,
           parcelas_realizadas: prazo.parcelasRealizadasAtuais,
           prazo_restante: prazo.prazoRestanteAtual,
+          taxa_administrativa_percentual: l.grupo.taxa_administrativa_percentual,
         },
       };
     }),

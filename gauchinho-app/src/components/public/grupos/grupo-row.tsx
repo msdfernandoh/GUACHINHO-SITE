@@ -186,7 +186,7 @@ export function GrupoRow({
               <div className="flex gap-0.5">
                 <button
                   type="button"
-                  title="Com seguro"
+                  title="Com seguro na 1ª parcela"
                   className={cn(
                     "rounded px-1.5 py-0.5 text-[9px] font-medium",
                     config.usaSeguro
@@ -199,7 +199,7 @@ export function GrupoRow({
                 </button>
                 <button
                   type="button"
-                  title="Sem seguro"
+                  title="Sem seguro na 1ª parcela (pós-contemplação mantém seguro)"
                   className={cn(
                     "rounded px-1.5 py-0.5 text-[9px] font-medium",
                     !config.usaSeguro
@@ -211,10 +211,10 @@ export function GrupoRow({
                   S
                 </button>
               </div>
-              {config.usaSeguro && resultado.seguroMensal > 0 ? (
+              {resultado.seguroMensal > 0 ? (
                 <MoneyValue value={resultado.seguroMensal} compact className="text-zinc-400" />
               ) : (
-                <span className="text-[10px] text-zinc-600">Sem</span>
+                <span className="text-[10px] text-zinc-600">—</span>
               )}
             </div>
           ) : ativo ? (

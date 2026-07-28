@@ -111,6 +111,39 @@ describe("simulacao linha grupo", () => {
     expect(r.seguroMensal).toBeCloseTo(saldoEsperado * 0.0004, 1);
   });
 
+  it("parcela pós-contemplação inclui seguro mesmo com usaSeguro=false", () => {
+    const cfgBase = {
+      cotaId: cota.id,
+      quantidadeCotas: 1,
+      modalidadeParcela: "integral" as const,
+      usaLanceEmbutido: false,
+      modalidadeLanceId: null,
+      usaRecursoProprio: false,
+      recursoProprioModo: "percentual" as const,
+      recursoProprioInput: 0,
+      percentualParcelaPersonalizada: null,
+    };
+    const com = calcularLinhaSimulacaoGrupo({
+      grupo: grupoBase,
+      cota,
+      modalidades: [],
+      config: { ...cfgBase, usaSeguro: true },
+    });
+    const sem = calcularLinhaSimulacaoGrupo({
+      grupo: grupoBase,
+      cota,
+      modalidades: [],
+      config: { ...cfgBase, usaSeguro: false },
+    });
+    expect(sem.seguroMensal).toBeGreaterThan(0);
+    expect(sem.seguroMensal).toBeCloseTo(com.seguroMensal, 2);
+    const seguroUnit = Math.round(sem.saldoDevedorInicial * 0.0004 * 100) / 100;
+    const parcelasPos = Math.max((grupoBase.prazo_restante ?? 209) - 1, 1);
+    const posBase = Math.round((sem.saldoDevedorFinal / parcelasPos) * 100) / 100;
+    expect(sem.parcelaPosContemplacao).toBeCloseTo(posBase + seguroUnit, 1);
+    expect(sem.parcelaPosContemplacao).toBeGreaterThan(posBase);
+  });
+
   it("agrega múltiplos grupos", () => {
     const linha = calcularLinhaSimulacaoGrupo({
       grupo: grupoBase,

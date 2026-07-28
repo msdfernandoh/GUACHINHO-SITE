@@ -20,6 +20,7 @@ export type LeadListRow = {
   valor_simulado: number | null;
   fechado: boolean;
   evento_id?: string | null;
+  evento_nome?: string | null;
   /** Carro, Moto, Casa… — cadastro do sorteio/evento */
   tipo_sonho?: string | null;
 };

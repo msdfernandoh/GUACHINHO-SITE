@@ -260,34 +260,39 @@ export function GrupoRowAdjustments({ grupo, cotas, modalidades, config, onChang
           ) : null}
 
           <div className="border-t border-zinc-800 pt-3">
-            <p className="mb-1 text-[10px] uppercase text-zinc-500">Seguro na parcela</p>
+            <p className="mb-1 text-[10px] uppercase text-zinc-500">Seguro na 1ª parcela</p>
             {temSeguro ? (
-              <div className="flex gap-1.5">
-                <button
-                  type="button"
-                  className={cn(
-                    "rounded-md px-2.5 py-1 text-[11px] font-medium",
-                    config.usaSeguro
-                      ? "bg-amber-500 text-zinc-950"
-                      : "border border-zinc-600 text-zinc-300",
-                  )}
-                  onClick={() => handlers.patch({ usaSeguro: true })}
-                >
-                  Com
-                </button>
-                <button
-                  type="button"
-                  className={cn(
-                    "rounded-md px-2.5 py-1 text-[11px] font-medium",
-                    !config.usaSeguro
-                      ? "bg-zinc-600 text-zinc-100"
-                      : "border border-zinc-600 text-zinc-400",
-                  )}
-                  onClick={() => handlers.patch({ usaSeguro: false })}
-                >
-                  Sem
-                </button>
-              </div>
+              <>
+                <div className="flex gap-1.5">
+                  <button
+                    type="button"
+                    className={cn(
+                      "rounded-md px-2.5 py-1 text-[11px] font-medium",
+                      config.usaSeguro
+                        ? "bg-amber-500 text-zinc-950"
+                        : "border border-zinc-600 text-zinc-300",
+                    )}
+                    onClick={() => handlers.patch({ usaSeguro: true })}
+                  >
+                    Com
+                  </button>
+                  <button
+                    type="button"
+                    className={cn(
+                      "rounded-md px-2.5 py-1 text-[11px] font-medium",
+                      !config.usaSeguro
+                        ? "bg-zinc-600 text-zinc-100"
+                        : "border border-zinc-600 text-zinc-400",
+                    )}
+                    onClick={() => handlers.patch({ usaSeguro: false })}
+                  >
+                    Sem
+                  </button>
+                </div>
+                <p className="mt-1.5 text-[10px] leading-snug text-zinc-500">
+                  Após a contemplação o seguro é obrigatório e entra na parcela pós.
+                </p>
+              </>
             ) : (
               <span className="text-[11px] text-zinc-500">—</span>
             )}
@@ -328,6 +333,7 @@ export function GrupoRowAdjustments({ grupo, cotas, modalidades, config, onChang
           </div>
           <div className="rounded-md bg-zinc-950/60 p-2">
             <p className="text-[10px] text-zinc-500">Pós-contempl.</p>
+            <p className="text-[9px] text-zinc-600">Inclui seguro obrigatório</p>
             <MoneyValue
               value={resultado.parcelaPosContemplacao}
               compact

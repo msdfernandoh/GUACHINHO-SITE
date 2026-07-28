@@ -194,9 +194,11 @@ export function IaChatWidget({ config }: Props) {
 
   if (!config.ativo) return null;
 
+  const hideFloatingLauncher = pathname === "/grupos" || pathname?.startsWith("/grupos/");
+
   return (
     <>
-      {!open ? (
+      {!open && !hideFloatingLauncher ? (
         <button
           type="button"
           onClick={onOpen}

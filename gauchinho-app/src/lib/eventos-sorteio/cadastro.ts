@@ -141,7 +141,7 @@ export async function cadastrarParticipanteSorteioFase1(
       valor_credito: valor,
       valor_estimado: valor,
       valor_simulado: valor,
-      produto_interesse: view.eventoNome,
+      produto_interesse: tipoCredito,
       evento_id: view.eventoId,
       evento_nome: view.eventoNome,
       dados_simulacao: dadosSimulacao,
@@ -316,7 +316,7 @@ export async function cadastrarLeadQrSemEvento(
       valor_credito: valor,
       valor_estimado: valor,
       valor_simulado: valor,
-      produto_interesse: payload.qrNome,
+      produto_interesse: tipoCredito,
       evento_id: null,
       evento_nome: null,
       dados_simulacao: {

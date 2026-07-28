@@ -202,6 +202,36 @@ export function ContratacaoDetalheClient({
               label="Parcela após contemplação"
               value={money(fin.parcelaPosContemplacao as number)}
             />
+            <Field
+              label="Parcelas restantes"
+              value={
+                fin.parcelasRestantes != null && Number.isFinite(Number(fin.parcelasRestantes))
+                  ? `${Math.round(Number(fin.parcelasRestantes))} meses`
+                  : null
+              }
+            />
+            <Field
+              label="Custo efetivo mensal"
+              value={
+                fin.custoEfetivoMensal != null && Number.isFinite(Number(fin.custoEfetivoMensal))
+                  ? `${Number(fin.custoEfetivoMensal).toLocaleString("pt-BR", {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    })}% a.m.`
+                  : null
+              }
+            />
+            <Field
+              label="Custo efetivo anual"
+              value={
+                fin.custoEfetivoAnual != null && Number.isFinite(Number(fin.custoEfetivoAnual))
+                  ? `${Number(fin.custoEfetivoAnual).toLocaleString("pt-BR", {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    })}% a.a.`
+                  : null
+              }
+            />
             {gruposLinhas.length > 0 ? (
               <div className="col-span-full">
                 <ContratacaoGruposResumo linhas={gruposLinhas} />

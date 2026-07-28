@@ -1,6 +1,10 @@
 import type { ContratacaoOrigem } from "./types";
 import { calcularPrazoGrupoFromRow } from "@/lib/grupos/prazos";
 import type { GrupoConsorcio } from "@/lib/types";
+import {
+  calcularCustoEfetivoAnual,
+  calcularCustoEfetivoMensal,
+} from "@/lib/simulador/consorcio";
 
 type FlatFields = {
   tipo_bem: string | null;
@@ -22,6 +26,41 @@ function str(v: unknown): string | null {
   if (v == null) return null;
   const s = String(v).trim();
   return s || null;
+}
+
+function custoEfetivoFromGrupo(grupo: Record<string, unknown>): {
+  mensal: number | null;
+  anual: number | null;
+} {
+  const taxa = num(grupo.taxa_administrativa_percentual);
+  const prazo = num(grupo.prazo_total) ?? num(grupo.prazo_meses);
+  if (taxa == null || taxa <= 0 || prazo == null || prazo <= 0) {
+    return { mensal: null, anual: null };
+  }
+  const mensal = calcularCustoEfetivoMensal(taxa, prazo);
+  return { mensal, anual: calcularCustoEfetivoAnual(mensal) };
+}
+
+function parcelasRestantesFromGrupoDados(
+  grupo: Record<string, unknown>,
+  resultado: Record<string, unknown>,
+  totais: Record<string, unknown>,
+): number | null {
+  const fromGrupo = num(grupo.prazo_restante);
+  if (fromGrupo != null && fromGrupo >= 0) return Math.round(fromGrupo);
+
+  const fromResultado = num(resultado.parcelasRestantesPosContemplacao);
+  if (fromResultado != null && fromResultado >= 0) return Math.round(fromResultado);
+
+  const fromTotais = num(totais.parcelasRestantesMax);
+  if (fromTotais != null && fromTotais >= 0) return Math.round(fromTotais);
+
+  const total = num(grupo.prazo_total) ?? num(grupo.prazo_meses);
+  const realizadas = num(grupo.parcelas_realizadas);
+  if (total != null && realizadas != null) {
+    return Math.max(Math.round(total - realizadas), 0);
+  }
+  return null;
 }
 
 export type LinhaGrupoPropostaResumo = {
@@ -149,6 +188,7 @@ export function resumoFinanceiroFromDados(
     const resultado = (dados.resultado ?? {}) as Record<string, unknown>;
     const entrada = (dados.entrada ?? {}) as Record<string, unknown>;
     const opcao = (resultado.opcaoParcela ?? {}) as Record<string, unknown>;
+    const consorcio = (resultado.consorcio ?? resultado) as Record<string, unknown>;
     return {
       parcelaReduzida: num(resultado.parcelaReduzida) ?? num(opcao.parcelaReduzida),
       parcelaIntegral: num(resultado.parcelaAmortizacao) ?? num(resultado.parcelaIntegral),
@@ -159,6 +199,13 @@ export function resumoFinanceiroFromDados(
       saldoPosLance: num(resultado.saldoPosLance) ?? num(resultado.saldoDevedorEstimado),
       seguro: num(resultado.seguroMensal),
       parcelaPosContemplacao: num(resultado.parcelaPosContemplacao),
+      custoEfetivoMensal:
+        num(consorcio.custoAdmEfetivoMensalPercentual) ??
+        num(resultado.custoAdmEfetivoMensalPercentual),
+      custoEfetivoAnual:
+        num(consorcio.custoAdmEfetivoAnualPercentual) ??
+        num(resultado.custoAdmEfetivoAnualPercentual),
+      parcelasRestantes: num(consorcio.parcelasRestantes) ?? num(resultado.parcelasRestantes),
     };
   }
   const selecoes = Array.isArray(dados.selecoes) ? dados.selecoes : [];
@@ -166,6 +213,7 @@ export function resumoFinanceiroFromDados(
   const first = (selecoes[0] ?? {}) as Record<string, unknown>;
   const config = (first.config ?? {}) as Record<string, unknown>;
   const resultado = (first.resultado ?? {}) as Record<string, unknown>;
+  const grupo = (first.grupo ?? {}) as Record<string, unknown>;
   let parcelaReduzida = num(resultado.parcelaReduzida);
   if (str(config.modalidadeParcela) === "personalizada") {
     parcelaReduzida =
@@ -175,6 +223,7 @@ export function resumoFinanceiroFromDados(
   }
   const parcelaIntegral =
     num(resultado.parcelaIntegral) ?? num(resultado.parcelaBase) ?? num(totais.parcelaIntegral);
+  const custo = custoEfetivoFromGrupo(grupo);
   return {
     saldoDevedor:
       num(resultado.saldoDevedorInicial) ?? num(totais.saldoDevedorInicial),
@@ -190,5 +239,8 @@ export function resumoFinanceiroFromDados(
       num(resultado.parcelaPosContemplacao) ??
       num(totais.parcelaPosContemplacaoTotal) ??
       num(totais.parcelaPosContemplacao),
+    custoEfetivoMensal: custo.mensal,
+    custoEfetivoAnual: custo.anual,
+    parcelasRestantes: parcelasRestantesFromGrupoDados(grupo, resultado, totais),
   };
 }

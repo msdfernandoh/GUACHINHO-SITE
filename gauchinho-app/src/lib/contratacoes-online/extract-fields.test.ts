@@ -63,6 +63,29 @@ describe("resumoFinanceiroFromDados — grupos", () => {
     expect(fin.parcelaPosContemplacao).toBe(88.5);
   });
 
+  it("inclui custo efetivo e parcelas restantes a partir do grupo", () => {
+    const fin = resumoFinanceiroFromDados("grupos", {
+      selecoes: [
+        {
+          resultado: {
+            parcelaPosContemplacao: 1569.8,
+            parcelasRestantesPosContemplacao: 107,
+          },
+          grupo: {
+            codigo_grupo: "5488",
+            prazo_total: 120,
+            prazo_restante: 108,
+            taxa_administrativa_percentual: 18,
+          },
+        },
+      ],
+      totais: {},
+    });
+    expect(fin.parcelasRestantes).toBe(108);
+    expect(fin.custoEfetivoMensal).toBeCloseTo(18 / 120, 5);
+    expect(fin.custoEfetivoAnual).toBeCloseTo((18 / 120) * 12, 5);
+  });
+
   it("lista vários grupos com código, cotas e meses decorridos", () => {
     const linhas = linhasGrupoResumoFromDados("grupos", {
       selecoes: [

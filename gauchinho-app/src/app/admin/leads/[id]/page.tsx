@@ -18,6 +18,7 @@ import { canDeleteRecords } from "@/lib/auth/permissions";
 import { AdminFormSubmitButton } from "@/components/admin/admin-form-submit-button";
 import { Input, Label, Select, Textarea } from "@/components/ui/form-primitives";
 import { PRODUTOS_FECHADOS, TIPOS_INTERESSE } from "@/lib/types";
+import { TIPOS_SONHO_SORTEIO } from "@/lib/eventos-sorteio/types";
 import { formatCurrency, formatDate, formatDateTime } from "@/lib/utils/format";
 import { IaLeadSummarySection } from "../ia-lead-summary";
 import { FUNNEL_STATUSES, LEAD_TEMPERATURES } from "@/lib/crm/constants";
@@ -222,6 +223,27 @@ export default async function LeadDetailPage({
           <div>
             <Label>Produto interesse</Label>
             <Input name="produto_interesse" defaultValue={lead.produto_interesse ?? ""} />
+          </div>
+          <div>
+            <Label>Evento</Label>
+            <Input name="evento_nome" defaultValue={(lead as { evento_nome?: string | null }).evento_nome ?? ""} />
+            <input type="hidden" name="evento_id" value={(lead as { evento_id?: string | null }).evento_id ?? ""} />
+          </div>
+          <div>
+            <Label>Tipo do sonho</Label>
+            <Select
+              name="tipo_sonho"
+              defaultValue={
+                ((lead.dados_simulacao as { tipo_sonho?: string } | null)?.tipo_sonho as string) ?? ""
+              }
+            >
+              <option value="">—</option>
+              {TIPOS_SONHO_SORTEIO.map((t) => (
+                <option key={t} value={t}>
+                  {t}
+                </option>
+              ))}
+            </Select>
           </div>
           <div>
             <Label>Tipo interesse</Label>

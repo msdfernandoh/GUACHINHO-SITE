@@ -5,6 +5,7 @@ import { updateLeadStatusAction } from "@/app/admin/leads/actions";
 import type { LeadListRow } from "@/lib/crm/types";
 import { KANBAN_STATUSES } from "@/lib/crm/constants";
 import { labelOrigem, valorEstimadoLead } from "@/lib/crm/constants";
+import { labelEventoProduto } from "@/lib/crm/label-evento-produto";
 import { formatCurrency } from "@/lib/utils/format";
 import Link from "next/link";
 import { LeadTemperatureBadge } from "./lead-temperature-badge";
@@ -47,7 +48,7 @@ export function LeadKanban({ leads }: { leads: LeadListRow[] }) {
                   {l.nome}
                 </Link>
                 <p className="mt-1 text-[11px] text-zinc-500">{labelOrigem(l.origem)}</p>
-                <p className="text-xs text-zinc-400">{l.produto_interesse ?? l.tipo_interesse ?? "—"}</p>
+                <p className="text-xs text-zinc-400">{labelEventoProduto(l)}</p>
                 {valorEstimadoLead(l) > 0 ? (
                   <p className="mt-1 text-xs font-medium text-amber-400">{formatCurrency(valorEstimadoLead(l))}</p>
                 ) : null}

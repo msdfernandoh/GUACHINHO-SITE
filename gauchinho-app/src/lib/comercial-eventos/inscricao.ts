@@ -67,7 +67,7 @@ export async function inscreverParticipanteEvento(
       origem: "evento",
       origem_detalhe: evento.slug,
       tipo_interesse: "evento",
-      produto_interesse: evento.nome,
+      produto_interesse: null,
       evento_id: evento.id,
       evento_nome: evento.nome,
       parceiro_indicador_nome: nomeConvidou,

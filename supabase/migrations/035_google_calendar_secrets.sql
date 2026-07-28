@@ -1,5 +1,5 @@
 -- Tokens OAuth Google Calendar fora de public.usuarios (sem SELECT para authenticated)
--- Preserva tokens existentes em google_calendar_refresh_token antes de remover a coluna.
+-- Se existir google_calendar_refresh_token em usuarios, copia para secrets antes de remover.
 
 alter table public.usuarios
   add column if not exists google_calendar_email text;
@@ -18,16 +18,27 @@ alter table public.usuario_google_calendar_secrets enable row level security;
 
 -- Nenhuma policy: authenticated/anon não acessam; service role ignora RLS.
 
-insert into public.usuario_google_calendar_secrets (usuario_id, refresh_token, updated_at)
-select u.id, u.google_calendar_refresh_token, coalesce(u.google_calendar_connected_at, now())
-from public.usuarios u
-where u.google_calendar_refresh_token is not null
-  and length(trim(u.google_calendar_refresh_token)) > 0
-on conflict (usuario_id) do update
-  set refresh_token = excluded.refresh_token,
-      updated_at = excluded.updated_at;
+do $$
+begin
+  if exists (
+    select 1
+    from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'usuarios'
+      and column_name = 'google_calendar_refresh_token'
+  ) then
+    insert into public.usuario_google_calendar_secrets (usuario_id, refresh_token, updated_at)
+    select u.id, u.google_calendar_refresh_token, coalesce(u.google_calendar_connected_at, now())
+    from public.usuarios u
+    where u.google_calendar_refresh_token is not null
+      and length(trim(u.google_calendar_refresh_token)) > 0
+    on conflict (usuario_id) do update
+      set refresh_token = excluded.refresh_token,
+          updated_at = excluded.updated_at;
 
-alter table public.usuarios drop column if exists google_calendar_refresh_token;
+    alter table public.usuarios drop column google_calendar_refresh_token;
+  end if;
+end $$;
 
 revoke all on table public.usuario_google_calendar_secrets from anon, authenticated;
 grant all on table public.usuario_google_calendar_secrets to service_role;

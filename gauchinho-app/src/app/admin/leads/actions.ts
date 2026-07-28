@@ -17,6 +17,7 @@ import { enrichLeadsWithTipoSonho } from "@/lib/crm/lead-tipo-sonho";
 import type { LeadFilters } from "@/lib/crm/types";
 import { buildLeadTimeline } from "@/lib/crm/timeline";
 import { MOTIVOS_PERDA } from "@/lib/crm/constants";
+import { isTipoSonhoSorteio, tipoSonhoParaCreditoLead } from "@/lib/eventos-sorteio/lead-map";
 
 async function touchInteracao(supabase: Awaited<ReturnType<typeof createClient>>, leadId: string) {
   await supabase
@@ -58,15 +59,51 @@ export async function createLeadManualAction(formData: FormData) {
   }
 
   const supabase = await createClient();
+  const intent = String(formData.get("intent") ?? "view").trim();
+  const tipoSonhoRaw = String(formData.get("tipo_sonho") ?? "").trim();
+  const eventoId = String(formData.get("evento_id") ?? "").trim() || null;
+  let eventoNome = String(formData.get("evento_nome") ?? "").trim() || null;
+  let produtoInteresse = String(formData.get("produto_interesse") ?? "").trim() || null;
+  let tipoInteresse = String(formData.get("tipo_interesse") ?? "").trim() || null;
+
+  if (eventoId) {
+    const { data: ev } = await supabase.from("eventos").select("id, nome").eq("id", eventoId).maybeSingle();
+    if (ev?.nome) eventoNome = String(ev.nome);
+  }
+
+  if (tipoSonhoRaw && isTipoSonhoSorteio(tipoSonhoRaw)) {
+    const credito = tipoSonhoParaCreditoLead(tipoSonhoRaw);
+    if (!tipoInteresse) tipoInteresse = credito;
+    if (!produtoInteresse) produtoInteresse = credito;
+  }
+
+  // Evita gravar o nome do evento como produto.
+  if (eventoNome && produtoInteresse && produtoInteresse.toLowerCase() === eventoNome.toLowerCase()) {
+    produtoInteresse = tipoInteresse;
+  }
+
+  const origem = String(formData.get("origem") ?? "manual").trim() || "manual";
+  const dadosSimulacao =
+    tipoSonhoRaw || eventoId || eventoNome
+      ? {
+          origem: origem === "manual" ? "manual_admin" : origem,
+          tipo_sonho: tipoSonhoRaw || null,
+          evento_id: eventoId,
+          evento_nome: eventoNome,
+        }
+      : null;
+
   const payload = {
     nome: String(formData.get("nome") ?? "").trim(),
     whatsapp: String(formData.get("whatsapp") ?? "").trim() || null,
     email: String(formData.get("email") ?? "").trim() || null,
     cidade: String(formData.get("cidade") ?? "").trim() || null,
-    origem: String(formData.get("origem") ?? "manual").trim(),
+    origem,
     origem_detalhe: String(formData.get("origem_detalhe") ?? "").trim() || null,
-    tipo_interesse: String(formData.get("tipo_interesse") ?? "").trim() || null,
-    produto_interesse: String(formData.get("produto_interesse") ?? "").trim() || null,
+    tipo_interesse: tipoInteresse,
+    produto_interesse: produtoInteresse,
+    evento_id: eventoId,
+    evento_nome: eventoNome,
     observacoes: String(formData.get("observacoes") ?? "").trim() || null,
     status: leadsConfig.statusInicialPadrao,
     criado_manual: true,
@@ -75,6 +112,7 @@ export async function createLeadManualAction(formData: FormData) {
       ? String(formData.get("srd_responsavel_id"))
       : null,
     srd_responsavel_nome: String(formData.get("srd_responsavel_nome") ?? "").trim() || null,
+    ...(dadosSimulacao ? { dados_simulacao: dadosSimulacao } : {}),
   };
 
   const { data, error } = await supabase.from("leads").insert(payload).select("id").single();
@@ -82,6 +120,9 @@ export async function createLeadManualAction(formData: FormData) {
 
   await historico(data.id, usuario.id, "lead_criado", "Lead criado manualmente no admin");
   revalidatePath("/admin/leads");
+  if (intent === "stay") {
+    redirect("/admin/leads/novo?ok=1");
+  }
   redirect(`/admin/leads/${data.id}`);
 }
 
@@ -99,6 +140,8 @@ export async function updateLeadAction(leadId: string, formData: FormData) {
     origem: String(formData.get("origem") ?? "").trim() || null,
     tipo_interesse: String(formData.get("tipo_interesse") ?? "").trim() || null,
     produto_interesse: String(formData.get("produto_interesse") ?? "").trim() || null,
+    evento_id: String(formData.get("evento_id") ?? "").trim() || null,
+    evento_nome: String(formData.get("evento_nome") ?? "").trim() || null,
     status: String(formData.get("status") ?? before?.status ?? "Novo").trim(),
     temperatura: String(formData.get("temperatura") ?? "").trim() || null,
     valor_estimado: formData.get("valor_estimado")
@@ -110,6 +153,26 @@ export async function updateLeadAction(leadId: string, formData: FormData) {
     srd_responsavel_id: String(formData.get("srd_responsavel_id") ?? "").trim() || null,
     srd_responsavel_nome: String(formData.get("srd_responsavel_nome") ?? "").trim() || null,
   };
+
+  const eventoId = updates.evento_id;
+  if (eventoId) {
+    const { data: ev } = await supabase.from("eventos").select("nome").eq("id", eventoId).maybeSingle();
+    if (ev?.nome) updates.evento_nome = String(ev.nome);
+  }
+
+  const tipoSonhoRaw = String(formData.get("tipo_sonho") ?? "").trim();
+  if (tipoSonhoRaw) {
+    const prevDados =
+      before?.dados_simulacao && typeof before.dados_simulacao === "object"
+        ? (before.dados_simulacao as Record<string, unknown>)
+        : {};
+    (updates as Record<string, unknown>).dados_simulacao = {
+      ...prevDados,
+      tipo_sonho: tipoSonhoRaw,
+      evento_id: updates.evento_id,
+      evento_nome: updates.evento_nome,
+    };
+  }
 
   const { error } = await supabase.from("leads").update(updates).eq("id", leadId);
   if (error) throw new Error(error.message);
@@ -227,6 +290,26 @@ export async function deleteLeadAction(leadId: string) {
   if (error) throw new Error(error.message);
   revalidatePath("/admin/leads");
   redirect("/admin/leads");
+}
+
+export async function bulkDeleteLeadsAction(leadIds: string[], confirmacao: string) {
+  const usuario = await requireUsuario();
+  if (!canDeleteRecords(usuario.perfil)) {
+    throw new Error("Sem permissão para excluir leads");
+  }
+  if (confirmacao.trim().toUpperCase() !== "EXCLUIR") {
+    throw new Error('Digite EXCLUIR para confirmar a exclusão em massa.');
+  }
+  const ids = [...new Set(leadIds.map((id) => id.trim()).filter(Boolean))];
+  if (!ids.length) throw new Error("Nenhum lead selecionado.");
+
+  const supabase = await createClient();
+  const { error } = await supabase.from("leads").delete().in("id", ids);
+  if (error) throw new Error(error.message);
+
+  revalidatePath("/admin/leads");
+  revalidatePath("/admin");
+  return { deleted: ids.length };
 }
 
 export async function fetchLeadsList(filters: LeadFilters) {
