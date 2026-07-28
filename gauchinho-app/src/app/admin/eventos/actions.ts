@@ -1,7 +1,6 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireUsuario } from "@/lib/auth/get-usuario";
@@ -55,13 +54,17 @@ function datetimeLocalToIso(raw: string): string | null {
   return d.toISOString();
 }
 
-function eventoFromForm(formData: FormData, opts?: { preserveSlug?: string | null }) {
+function eventoFromForm(
+  formData: FormData,
+  opts?: { preserveSlug?: string | null; forceSlug?: string | null },
+) {
   const nome = String(formData.get("nome") ?? "").trim();
   if (!nome) throw new Error("Nome obrigatório");
   const slugRaw = String(formData.get("slug") ?? "").trim();
-  // Nome e slug são independentes: alterar o nome NÃO muda o link.
+  // Com QR único: o slug do evento segue o slug do QR.
+  // Senão: nome e slug são independentes — alterar o nome NÃO muda o link.
   // Em edição, se o slug vier vazio, preserva o atual.
-  const slug = slugify(slugRaw || opts?.preserveSlug || nome);
+  const slug = slugify(opts?.forceSlug || slugRaw || opts?.preserveSlug || nome);
   if (!slug) throw new Error("Slug (link) inválido");
   const inscricao = inscricaoFromForm(formData);
   return {
@@ -314,35 +317,79 @@ async function syncQrVinculoFromEventoForm(eventoId: string, formData: FormData)
   const qrCodeId = strForm(formData, "qr_code_unico_id");
   const periodoInicio = strForm(formData, "qr_periodo_inicio");
   const periodoFim = strForm(formData, "qr_periodo_fim");
-  if (usar && qrCodeId && periodoInicio && periodoFim) {
-    await vincularQrAoEvento({ qrCodeId, eventoId, periodoInicio, periodoFim });
-  } else if (!usar) {
+  if (!usar) {
     await desativarVinculoQrEvento(eventoId);
+    return;
   }
+  if (!qrCodeId) throw new Error("Selecione o QR Code único.");
+  if (!periodoInicio || !periodoFim) {
+    throw new Error("Informe o início e o fim do período de uso do QR Code.");
+  }
+  await vincularQrAoEvento({ qrCodeId, eventoId, periodoInicio, periodoFim });
 }
 
-export async function createEventoAction(formData: FormData) {
-  const u = await requireUsuario();
-  if (!canManageImobiliarias(u.perfil)) throw new Error("Sem permissão");
-  const payload = eventoFromForm(formData);
-  const usuarioIds = formData.getAll("leads_usuario_id").map((v) => String(v).trim()).filter(Boolean);
-  if (!payload.leads_acesso_todos && usuarioIds.length === 0) {
-    throw new Error("Selecione ao menos um consultor com acesso aos leads do evento.");
-  }
+/** Quando o evento usa QR único, o slug do evento = slug do QR. */
+async function resolveForceSlugFromQr(formData: FormData): Promise<string | null> {
+  if (formData.get("usar_qr_unico") !== "on") return null;
+  const qrCodeId = strForm(formData, "qr_code_unico_id");
+  if (!qrCodeId) return null;
   const admin = createAdminClient();
-  const data = await persistEventoInsert(admin, payload);
-  await syncEventoDestaque(admin, data.id, payload.evento_destaque);
-  await syncEventoLeadsUsuarios(admin, data.id, payload.leads_acesso_todos, usuarioIds);
+  const { data, error } = await admin
+    .from("qr_codes_unicos")
+    .select("slug")
+    .eq("id", qrCodeId)
+    .maybeSingle();
+  if (error) {
+    if (/qr_codes_unicos|does not exist|schema cache/i.test(error.message)) return null;
+    throw new Error(error.message);
+  }
+  return data?.slug ? String(data.slug) : null;
+}
+
+export type CreateEventoResult = { ok: true; id: string } | { ok: false; error: string };
+
+/** Cria evento sem redirect — o form client navega após sucesso (evita erro de Server Components). */
+export async function createEventoAction(formData: FormData): Promise<CreateEventoResult> {
   try {
-    await syncQrVinculoFromEventoForm(data.id, formData);
+    const u = await requireUsuario();
+    if (!canManageImobiliarias(u.perfil)) {
+      return { ok: false, error: "Sem permissão" };
+    }
+    const forceSlug = await resolveForceSlugFromQr(formData);
+    const payload = eventoFromForm(formData, { forceSlug });
+    const usuarioIds = formData.getAll("leads_usuario_id").map((v) => String(v).trim()).filter(Boolean);
+    if (!payload.leads_acesso_todos && usuarioIds.length === 0) {
+      return { ok: false, error: "Selecione ao menos um consultor com acesso aos leads do evento." };
+    }
+    const admin = createAdminClient();
+    const data = await persistEventoInsert(admin, payload);
+    await syncEventoDestaque(admin, data.id, payload.evento_destaque);
+    await syncEventoLeadsUsuarios(admin, data.id, payload.leads_acesso_todos, usuarioIds);
+    try {
+      await syncQrVinculoFromEventoForm(data.id, formData);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      if (!/qr_codes_unicos|does not exist|schema cache/i.test(msg)) {
+        return { ok: false, error: msg };
+      }
+    }
+    revalidatePath("/admin/eventos");
+    revalidatePath("/eventos");
+    revalidatePath(`/admin/eventos/${data.id}`);
+    revalidatePath(`/eventos/${payload.slug}`);
+    revalidatePath("/admin/configuracoes/qr-codes");
+    return { ok: true, id: data.id as string };
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
-    if (!/qr_codes_unicos|does not exist|schema cache/i.test(msg)) throw e;
+    console.error("[createEventoAction]", msg);
+    if (/duplicate|unique|slug/i.test(msg)) {
+      return {
+        ok: false,
+        error: "Já existe um evento com este slug (link). Escolha outro ou use o slug do QR único.",
+      };
+    }
+    return { ok: false, error: msg || "Não foi possível criar o evento." };
   }
-  revalidatePath("/admin/eventos");
-  revalidatePath("/eventos");
-  revalidatePath("/admin/configuracoes/qr-codes");
-  redirect(`/admin/eventos/${data.id}`);
 }
 
 export type UpdateEventoResult = { ok: true } | { ok: false; error: string };
@@ -358,7 +405,8 @@ export async function updateEventoAction(formData: FormData): Promise<UpdateEven
     if (!id) return { ok: false, error: "Evento inválido." };
 
     const existing = await fetchEventoAdmin(id);
-    const payload = eventoFromForm(formData, { preserveSlug: existing.slug });
+    const forceSlug = await resolveForceSlugFromQr(formData);
+    const payload = eventoFromForm(formData, { preserveSlug: existing.slug, forceSlug });
     const usuarioIds = formData.getAll("leads_usuario_id").map((v) => String(v).trim()).filter(Boolean);
     if (!payload.leads_acesso_todos && usuarioIds.length === 0) {
       return { ok: false, error: "Selecione ao menos um consultor com acesso aos leads do evento." };
@@ -385,6 +433,12 @@ export async function updateEventoAction(formData: FormData): Promise<UpdateEven
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     console.error("[updateEventoAction]", msg);
+    if (/duplicate|unique|slug/i.test(msg)) {
+      return {
+        ok: false,
+        error: "Já existe um evento com este slug (link). Escolha outro ou use o slug do QR único.",
+      };
+    }
     return { ok: false, error: msg || "Não foi possível salvar o evento." };
   }
 }

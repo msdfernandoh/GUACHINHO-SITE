@@ -3,8 +3,6 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { isRedirectError } from "next/dist/client/components/redirect-error";
-import { isNextRouterError } from "next/dist/client/components/is-next-router-error";
 import { Input, Label, Textarea } from "@/components/ui/form-primitives";
 import { AdminFormSubmitButton } from "@/components/admin/admin-form-submit-button";
 import type { EventoRow } from "@/lib/comercial-eventos/types";
@@ -19,7 +17,10 @@ function toDatetimeLocalValue(iso: string | null | undefined): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-type ActionResult = { ok: true } | { ok: false; error: string } | void;
+type ActionResult =
+  | { ok: true; id?: string }
+  | { ok: false; error: string }
+  | void;
 
 type Props = {
   evento?: EventoRow;
@@ -39,15 +40,6 @@ function FormSection({ title, children }: { title: string; children: React.React
   );
 }
 
-function shouldRethrowNavigation(error: unknown): boolean {
-  if (isRedirectError(error) || isNextRouterError(error)) return true;
-  if (typeof error === "object" && error && "digest" in error) {
-    const digest = String((error as { digest?: string }).digest ?? "");
-    if (digest.startsWith("NEXT_REDIRECT") || digest.startsWith("NEXT_HTTP_ERROR_FALLBACK")) return true;
-  }
-  return error instanceof Error && error.message === "NEXT_REDIRECT";
-}
-
 export function EventoAdminForm({
   evento,
   action,
@@ -61,6 +53,10 @@ export function EventoAdminForm({
 
   const [nome, setNome] = useState(evento?.nome ?? "");
   const [slug, setSlug] = useState(evento?.slug ?? "");
+  const [local, setLocal] = useState(evento?.local ?? "");
+  const [cidade, setCidade] = useState(evento?.cidade ?? "");
+  const [endereco, setEndereco] = useState(evento?.endereco ?? "");
+  const [estado, setEstado] = useState(evento?.estado ?? "");
   const [inscricaoTipo, setInscricaoTipo] = useState<"interno" | "externo">(
     evento?.inscricao_tipo === "externo" ? "externo" : "interno",
   );
@@ -72,6 +68,7 @@ export function EventoAdminForm({
     evento ? evento.leads_acesso_todos !== false : false,
   );
   const [usarQrUnico, setUsarQrUnico] = useState(Boolean(qrVinculo?.ativo));
+  const [qrCodeId, setQrCodeId] = useState(qrVinculo?.qr_code_id ?? "");
 
   // Após salvar + router.refresh(), alinha o checkbox com o valor persistido no banco
   useEffect(() => {
@@ -80,38 +77,64 @@ export function EventoAdminForm({
 
   useEffect(() => {
     setUsarQrUnico(Boolean(qrVinculo?.ativo));
-  }, [qrVinculo?.id, qrVinculo?.ativo]);
+    setQrCodeId(qrVinculo?.qr_code_id ?? "");
+  }, [qrVinculo?.id, qrVinculo?.ativo, qrVinculo?.qr_code_id]);
 
-  const slugHint = slug.trim() || nome.trim() || "evento";
+  const qrSelecionado = qrDisponiveis.find((q) => q.id === qrCodeId) ?? null;
+  const slugHint = (usarQrUnico && qrSelecionado?.slug ? qrSelecionado.slug : slug.trim() || nome.trim()) || "evento";
   const isEdit = Boolean(evento?.id);
+
+  function applyQrToEvento(qr: QrCodeUnicoRow) {
+    setSlug(qr.slug);
+    // Nome do QR = local/cidade do material impresso (ex.: Genova, Sinop)
+    setLocal(qr.nome);
+    setCidade(qr.nome);
+  }
+
+  function onToggleUsarQr(checked: boolean) {
+    setUsarQrUnico(checked);
+    if (!checked) return;
+    const qr = qrDisponiveis.find((q) => q.id === qrCodeId) ?? qrDisponiveis[0] ?? null;
+    if (qr) {
+      setQrCodeId(qr.id);
+      applyQrToEvento(qr);
+    }
+  }
+
+  function onSelectQr(id: string) {
+    setQrCodeId(id);
+    const qr = qrDisponiveis.find((q) => q.id === id);
+    if (qr) applyQrToEvento(qr);
+  }
 
   async function onSubmit(formData: FormData) {
     setFormError(null);
     setFormOk(false);
     try {
+      // Garante slug do QR no FormData mesmo se o input estiver readonly/desabilitado
+      if (usarQrUnico && qrSelecionado?.slug) {
+        formData.set("slug", qrSelecionado.slug);
+        formData.set("usar_qr_unico", "on");
+        formData.set("qr_code_unico_id", qrSelecionado.id);
+      }
       const result = await action(formData);
       if (result && typeof result === "object" && "ok" in result) {
         if (!result.ok) {
           setFormError(result.error);
           return;
         }
+        if ("id" in result && result.id) {
+          router.push(`/admin/eventos/${result.id}`);
+          return;
+        }
         setFormOk(true);
         router.refresh();
         return;
       }
-      // create com redirect: se chegou aqui sem throw, também atualiza
       setFormOk(true);
       router.refresh();
     } catch (e) {
-      if (shouldRethrowNavigation(e)) throw e;
       const msg = e instanceof Error ? e.message : "Não foi possível salvar o evento.";
-      // Mensagem genérica de produção do Next — costuma mascarar falha de re-render após redirect
-      if (/Server Components render/i.test(msg)) {
-        setFormError(
-          "Falha ao atualizar a página após salvar. Recarregue e confira se o nome foi gravado. Se não gravou, tente de novo.",
-        );
-        return;
-      }
       setFormError(msg);
     }
   }
@@ -141,20 +164,31 @@ export function EventoAdminForm({
             required
           />
           <p className="mt-1 text-xs text-zinc-500">
-            Pode alterar o nome quando quiser — isso não muda o link nem o QR Code.
+            Pode alterar o nome quando quiser — com QR único o link impresso (/qr/…) não muda.
           </p>
         </div>
         <div>
           <Label>Link permanente (slug)</Label>
           <Input
             name="slug"
-            value={slug}
+            value={usarQrUnico && qrSelecionado ? qrSelecionado.slug : slug}
             onChange={(e) => setSlug(e.target.value)}
             placeholder={isEdit ? "mantem-o-link-atual" : "ex-sinop"}
+            readOnly={usarQrUnico && Boolean(qrSelecionado)}
+            className={usarQrUnico && qrSelecionado ? "bg-zinc-100 dark:bg-zinc-900" : undefined}
           />
           <p className="mt-1 text-xs text-zinc-500">
-            URL pública: /eventos/{slugHint || "…"}. Independente do nome. Só altere se quiser mudar o
-            link do evento.
+            {usarQrUnico && qrSelecionado ? (
+              <>
+                Com QR único, o slug do evento é o do QR: <strong>/eventos/{qrSelecionado.slug}</strong> e{" "}
+                <strong>/qr/{qrSelecionado.slug}</strong>.
+              </>
+            ) : (
+              <>
+                URL pública: /eventos/{slugHint || "…"}. Independente do nome. Só altere se quiser mudar o
+                link do evento.
+              </>
+            )}
           </p>
         </div>
         <div>
@@ -164,20 +198,20 @@ export function EventoAdminForm({
         <div className="grid gap-3 sm:grid-cols-2">
           <div>
             <Label>Local</Label>
-            <Input name="local" defaultValue={evento?.local ?? ""} />
+            <Input name="local" value={local} onChange={(e) => setLocal(e.target.value)} />
           </div>
           <div>
             <Label>Cidade</Label>
-            <Input name="cidade" defaultValue={evento?.cidade ?? ""} />
+            <Input name="cidade" value={cidade} onChange={(e) => setCidade(e.target.value)} />
           </div>
         </div>
         <div>
           <Label>Endereço</Label>
-          <Input name="endereco" defaultValue={evento?.endereco ?? ""} />
+          <Input name="endereco" value={endereco} onChange={(e) => setEndereco(e.target.value)} />
         </div>
         <div>
           <Label>Estado (UF)</Label>
-          <Input name="estado" maxLength={2} defaultValue={evento?.estado ?? ""} />
+          <Input name="estado" maxLength={2} value={estado} onChange={(e) => setEstado(e.target.value)} />
         </div>
       </FormSection>
 
@@ -187,7 +221,8 @@ export function EventoAdminForm({
           <Link href="/admin/configuracoes/qr-codes" className="font-medium text-amber-600 hover:underline">
             Configurações → QR Codes únicos
           </Link>
-          . O link impresso (/qr/slug) continua o mesmo mesmo se você mudar o nome do evento.
+          . Ao selecionar um QR, o <strong>slug</strong> e o <strong>local/cidade</strong> do evento
+          passam a usar os dados desse QR. O link impresso (/qr/slug) continua o mesmo.
         </p>
         <label className="flex items-center gap-2 text-sm">
           <input
@@ -195,7 +230,7 @@ export function EventoAdminForm({
             name="usar_qr_unico"
             value="on"
             checked={usarQrUnico}
-            onChange={(e) => setUsarQrUnico(e.target.checked)}
+            onChange={(e) => onToggleUsarQr(e.target.checked)}
           />
           Usar QR Code único neste evento
         </label>
@@ -205,7 +240,8 @@ export function EventoAdminForm({
               <Label>Selecionar QR Code cadastrado</Label>
               <select
                 name="qr_code_unico_id"
-                defaultValue={qrVinculo?.qr_code_id ?? ""}
+                value={qrCodeId}
+                onChange={(e) => onSelectQr(e.target.value)}
                 required={usarQrUnico}
                 className="mt-1 w-full rounded-lg border px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-950"
               >
@@ -216,6 +252,12 @@ export function EventoAdminForm({
                   </option>
                 ))}
               </select>
+              {qrSelecionado ? (
+                <p className="mt-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
+                  QR selecionado: <strong>{qrSelecionado.nome}</strong> — link impresso{" "}
+                  <code className="font-mono">/qr/{qrSelecionado.slug}</code>
+                </p>
+              ) : null}
               {qrDisponiveis.length === 0 ? (
                 <p className="mt-1 text-xs text-amber-700 dark:text-amber-400">
                   Nenhum QR disponível.{" "}
