@@ -444,14 +444,19 @@ export async function bulkDeleteLeadsAction(leadIds: string[], confirmacao: stri
 
 export async function fetchLeadsList(filters: LeadFilters) {
   const usuario = await requireUsuario();
-  const rows = await queryLeadsList(filters);
-  const scope = await loadLeadAccessScope(
-    usuario.id,
-    usuario.perfil,
-    usuario.leads_apenas_proprios,
-  );
-  const filtered = filterLeadsByScope(rows, scope);
-  return enrichLeadsWithTipoSonho(filtered);
+  try {
+    const rows = await queryLeadsList(filters);
+    const scope = await loadLeadAccessScope(
+      usuario.id,
+      usuario.perfil,
+      usuario.leads_apenas_proprios,
+    );
+    const filtered = filterLeadsByScope(rows, scope);
+    return enrichLeadsWithTipoSonho(filtered);
+  } catch (e) {
+    console.error("[fetchLeadsList]", e instanceof Error ? e.message : e);
+    throw e instanceof Error ? e : new Error(String(e));
+  }
 }
 
 export async function fetchLeadsKanban() {

@@ -9,7 +9,10 @@ import { Button } from "@/components/ui/form-primitives";
 import { LeadFilters } from "@/components/admin/crm/lead-filters";
 import { LeadListWithBulk } from "@/components/admin/crm/lead-list-with-bulk";
 import { ExportLeadsButton } from "@/components/admin/crm/export-leads-button";
-import type { LeadFilters as LF } from "@/lib/crm/types";
+import type { LeadFilters as LF, LeadListRow } from "@/lib/crm/types";
+import type { ConsultorOption } from "@/lib/admin/consultores";
+
+export const dynamic = "force-dynamic";
 
 export default async function LeadsListPage({
   searchParams,
@@ -35,11 +38,25 @@ export default async function LeadsListPage({
     acao_vencida: sp.acao_vencida,
     evento: sp.evento,
   };
-  const [leads, srds, eventos] = await Promise.all([
-    fetchLeadsList(filters),
-    fetchSrdOptions(),
-    fetchEventosOptionsForFilter(),
-  ]);
+
+  let leads: LeadListRow[] = [];
+  let srds: ConsultorOption[] = [];
+  let eventos: { id: string; nome: string }[] = [];
+  let loadError: string | null = null;
+
+  try {
+    const [leadsRes, srdsRes, eventosRes] = await Promise.all([
+      fetchLeadsList(filters),
+      fetchSrdOptions().catch(() => [] as ConsultorOption[]),
+      fetchEventosOptionsForFilter().catch(() => [] as { id: string; nome: string }[]),
+    ]);
+    leads = leadsRes;
+    srds = srdsRes;
+    eventos = eventosRes;
+  } catch (e) {
+    loadError = e instanceof Error ? e.message : String(e);
+    console.error("[admin/leads] page load:", loadError);
+  }
 
   return (
     <div className="space-y-6">
@@ -62,6 +79,18 @@ export default async function LeadsListPage({
           </Suspense>
         </div>
       </div>
+
+      {loadError ? (
+        <div className="rounded-xl border border-red-500/40 bg-red-500/10 p-4 text-sm text-red-100">
+          <p className="font-semibold">Não foi possível carregar os leads.</p>
+          <p className="mt-1 text-red-200/90">{loadError}</p>
+          <p className="mt-2 text-xs text-red-200/70">
+            Se a mensagem citar coluna ausente, aplique no Supabase o SQL{" "}
+            <code className="rounded bg-black/30 px-1">038_leads_indicacao_colunas_seguro.sql</code> e
+            rode <code className="rounded bg-black/30 px-1">NOTIFY pgrst, &apos;reload schema&apos;;</code>
+          </p>
+        </div>
+      ) : null}
 
       <Suspense fallback={null}>
         <LeadFilters srds={srds} eventos={eventos} />

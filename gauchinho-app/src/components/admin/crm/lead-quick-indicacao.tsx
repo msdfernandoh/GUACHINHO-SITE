@@ -33,7 +33,7 @@ type Props = {
 
 export function LeadQuickIndicacaoButton({ leadId, leadNome, className }: Props) {
   const [open, setOpen] = useState(false);
-  const [rows, setRows] = useState<Row[]>(() => [emptyRow()]);
+  const [rows, setRows] = useState<Row[]>([]);
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();

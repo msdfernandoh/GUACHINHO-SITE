@@ -20,22 +20,28 @@ export async function loadLeadAccessScope(
   // Allow-list do evento só importa para visão completa (não-master).
   // Com leads_apenas_proprios, o filtro é só por consultor responsável.
   if (!leadsApenasProprios && !isMaster(perfil)) {
-    const admin = createAdminClient();
-    const { data: eventos } = await admin
-      .from("eventos")
-      .select("id")
-      .eq("leads_acesso_todos", false);
-    const ids = (eventos ?? []).map((e) => e.id as string);
-    if (ids.length) {
-      const { data: links } = await admin
-        .from("eventos_leads_usuarios")
-        .select("evento_id, usuario_id")
-        .in("evento_id", ids);
-      for (const id of ids) eventosRestritos.set(id, new Set());
-      for (const row of links ?? []) {
-        const set = eventosRestritos.get(row.evento_id as string);
-        if (set) set.add(String(row.usuario_id));
+    try {
+      const admin = createAdminClient();
+      const { data: eventos, error: evErr } = await admin
+        .from("eventos")
+        .select("id")
+        .eq("leads_acesso_todos", false);
+      if (!evErr) {
+        const ids = (eventos ?? []).map((e) => e.id as string);
+        if (ids.length) {
+          const { data: links } = await admin
+            .from("eventos_leads_usuarios")
+            .select("evento_id, usuario_id")
+            .in("evento_id", ids);
+          for (const id of ids) eventosRestritos.set(id, new Set());
+          for (const row of links ?? []) {
+            const set = eventosRestritos.get(row.evento_id as string);
+            if (set) set.add(String(row.usuario_id));
+          }
+        }
       }
+    } catch (e) {
+      console.error("[loadLeadAccessScope] ignore:", e instanceof Error ? e.message : e);
     }
   }
   return { usuarioId, perfil, leadsApenasProprios, eventosRestritos };
