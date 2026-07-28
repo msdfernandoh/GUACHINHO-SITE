@@ -192,20 +192,33 @@ export function AgendaView({
                     consultores={disponibilidades}
                     selectedId={consultorId || disponibilidades[0]!.usuarioId}
                     onSelect={setConsultorId}
+                    dataSelecionada={selected}
                   />
                 ) : (
-                  <Select
-                    name="consultor_id"
-                    defaultValue={srds[0]?.id ?? ""}
-                    required
-                    className={surfaceSelectDark}
-                  >
-                    {srds.map((s) => (
-                      <option key={s.id} value={s.id}>
-                        {s.nome}
-                      </option>
-                    ))}
-                  </Select>
+                  <>
+                    <Select
+                      name="consultor_id"
+                      defaultValue={srds[0]?.id ?? ""}
+                      required
+                      className={surfaceSelectDark}
+                    >
+                      {srds.map((s) => (
+                        <option key={s.id} value={s.id}>
+                          {s.nome}
+                        </option>
+                      ))}
+                    </Select>
+                    <div className="mt-2 flex gap-3 text-xs text-zinc-200">
+                      <label className="flex items-center gap-1.5">
+                        <input type="radio" name="modalidade_atendimento" value="presencial" defaultChecked />
+                        Presencial
+                      </label>
+                      <label className="flex items-center gap-1.5">
+                        <input type="radio" name="modalidade_atendimento" value="online" />
+                        Online
+                      </label>
+                    </div>
+                  </>
                 )}
               </div>
               {initialLeadId ? (
@@ -249,6 +262,9 @@ export function AgendaView({
                         <p className="font-medium text-zinc-50">{c.titulo}</p>
                         <p className="text-xs text-zinc-400">
                           {formatDateTime(c.data_inicio, null)} · {c.tipo} · {c.status}
+                          {(c as { modalidade_atendimento?: string | null }).modalidade_atendimento
+                            ? ` · ${(c as { modalidade_atendimento?: string }).modalidade_atendimento}`
+                            : ""}
                         </p>
                         <p className="text-xs text-zinc-400">
                           {c.leads?.nome ?? "Sem lead"} · {c.usuarios?.nome ?? "Consultor"}

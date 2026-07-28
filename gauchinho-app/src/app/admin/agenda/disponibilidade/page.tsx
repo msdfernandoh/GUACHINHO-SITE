@@ -6,7 +6,7 @@ import { adminPageSubtitleClass, adminPageTitleClass } from "@/components/admin/
 
 export default async function AgendaDisponibilidadePage() {
   await requireStaffAdmin();
-  const { slots, observacao } = await fetchMinhaDisponibilidade();
+  const { slots, bloqueios, observacao, modalidadePadrao } = await fetchMinhaDisponibilidade();
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
@@ -14,7 +14,7 @@ export default async function AgendaDisponibilidadePage() {
         <div>
           <h1 className={adminPageTitleClass}>Configurar disponibilidade</h1>
           <p className={adminPageSubtitleClass}>
-            Deixe claro para o SDR em quais dias e horários você está livre para agendamentos.
+            Datas específicas, recorrência semanal, bloqueios com motivo e tipo presencial/online.
           </p>
         </div>
         <Link href="/admin/agenda" className="text-sm text-amber-400 hover:underline">
@@ -22,7 +22,12 @@ export default async function AgendaDisponibilidadePage() {
         </Link>
       </div>
 
-      <DisponibilidadeForm initialSlots={slots} initialObservacao={observacao} />
+      <DisponibilidadeForm
+        initialSlots={slots}
+        initialBloqueios={bloqueios}
+        initialObservacao={observacao}
+        initialModalidade={modalidadePadrao}
+      />
     </div>
   );
 }

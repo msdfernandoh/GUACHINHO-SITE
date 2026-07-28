@@ -167,8 +167,16 @@ export async function createCompromissoAction(formData: FormData) {
     duracao_minutos: duracao,
     local: String(formData.get("local") ?? "").trim() || null,
     status: "agendado" as AgendaStatus,
+    modalidade_atendimento: (() => {
+      const m = String(formData.get("modalidade_atendimento") ?? "").trim();
+      return m === "presencial" || m === "online" ? m : null;
+    })(),
   };
-  const { data: inserted, error } = await supabase.from("agenda_compromissos").insert(row).select("id").single();
+  let { data: inserted, error } = await supabase.from("agenda_compromissos").insert(row).select("id").single();
+  if (error && /modalidade_atendimento|schema cache/i.test(error.message)) {
+    const { modalidade_atendimento: _m, ...fallback } = row;
+    ({ data: inserted, error } = await supabase.from("agenda_compromissos").insert(fallback).select("id").single());
+  }
   if (error) throw new Error(error.message);
 
   const mes = String(formData.get("mes") ?? "").trim();

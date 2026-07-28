@@ -58,7 +58,9 @@ export default async function AgendaAdminPage({
       usuarioId: s.id,
       nome: s.nome,
       observacao: found?.observacao ?? null,
+      modalidadePadrao: found?.modalidadePadrao ?? "ambos",
       slots: found?.slots ?? [],
+      bloqueios: found?.bloqueios ?? [],
     };
   });
 

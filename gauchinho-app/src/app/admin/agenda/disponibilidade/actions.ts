@@ -3,8 +3,13 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { requireUsuario } from "@/lib/auth/get-usuario";
-import { canManageLeads, isMaster } from "@/lib/auth/permissions";
-import type { DisponibilidadeConsultor, SlotDisponibilidade } from "@/lib/agenda/disponibilidade";
+import { canManageLeads } from "@/lib/auth/permissions";
+import type {
+  BloqueioAgenda,
+  DisponibilidadeConsultor,
+  ModalidadeAtendimento,
+  SlotDisponibilidade,
+} from "@/lib/agenda/disponibilidade";
 
 function normalizeTime(v: string): string {
   const t = v.trim();
@@ -13,27 +18,46 @@ function normalizeTime(v: string): string {
   throw new Error(`Horário inválido: ${v}`);
 }
 
+function parseModalidade(v: unknown): ModalidadeAtendimento {
+  const s = String(v ?? "ambos");
+  if (s === "presencial" || s === "online" || s === "ambos") return s;
+  return "ambos";
+}
+
 export async function fetchMinhaDisponibilidade(): Promise<{
   slots: SlotDisponibilidade[];
+  bloqueios: BloqueioAgenda[];
   observacao: string | null;
+  modalidadePadrao: ModalidadeAtendimento;
 }> {
   const u = await requireUsuario();
   if (!canManageLeads(u.perfil)) throw new Error("Sem permissão");
   const supabase = await createClient();
 
-  const [{ data: slots, error: sErr }, { data: meta }] = await Promise.all([
-    supabase
-      .from("agenda_disponibilidade")
-      .select("id, dia_semana, hora_inicio, hora_fim, ativo")
-      .eq("usuario_id", u.id)
-      .order("dia_semana")
-      .order("hora_inicio"),
-    supabase.from("agenda_disponibilidade_meta").select("observacao").eq("usuario_id", u.id).maybeSingle(),
-  ]);
+  const [{ data: slots, error: sErr }, { data: meta }, { data: bloqueios, error: bErr }] =
+    await Promise.all([
+      supabase
+        .from("agenda_disponibilidade")
+        .select("id, dia_semana, data_especifica, hora_inicio, hora_fim, ativo, modalidade_atendimento")
+        .eq("usuario_id", u.id)
+        .order("data_especifica", { ascending: true, nullsFirst: true })
+        .order("dia_semana")
+        .order("hora_inicio"),
+      supabase
+        .from("agenda_disponibilidade_meta")
+        .select("observacao, modalidade_padrao")
+        .eq("usuario_id", u.id)
+        .maybeSingle(),
+      supabase
+        .from("agenda_bloqueios")
+        .select("id, data_inicio, data_fim, hora_inicio, hora_fim, motivo")
+        .eq("usuario_id", u.id)
+        .order("data_inicio"),
+    ]);
 
   if (sErr) {
     if (/agenda_disponibilidade|schema cache|does not exist/i.test(sErr.message)) {
-      return { slots: [], observacao: null };
+      return { slots: [], bloqueios: [], observacao: null, modalidadePadrao: "ambos" };
     }
     throw new Error(sErr.message);
   }
@@ -41,12 +65,25 @@ export async function fetchMinhaDisponibilidade(): Promise<{
   return {
     slots: (slots ?? []).map((s) => ({
       id: s.id as string,
-      dia_semana: Number(s.dia_semana),
+      dia_semana: s.dia_semana == null ? null : Number(s.dia_semana),
+      data_especifica: (s.data_especifica as string | null) ?? null,
       hora_inicio: String(s.hora_inicio).slice(0, 5),
       hora_fim: String(s.hora_fim).slice(0, 5),
       ativo: Boolean(s.ativo),
+      modalidade_atendimento: parseModalidade(s.modalidade_atendimento),
     })),
+    bloqueios: bErr
+      ? []
+      : (bloqueios ?? []).map((b) => ({
+          id: b.id as string,
+          data_inicio: String(b.data_inicio).slice(0, 10),
+          data_fim: String(b.data_fim).slice(0, 10),
+          hora_inicio: b.hora_inicio ? String(b.hora_inicio).slice(0, 5) : null,
+          hora_fim: b.hora_fim ? String(b.hora_fim).slice(0, 5) : null,
+          motivo: String(b.motivo ?? ""),
+        })),
     observacao: (meta?.observacao as string | null) ?? null,
+    modalidadePadrao: parseModalidade(meta?.modalidade_padrao),
   };
 }
 
@@ -56,48 +93,113 @@ export async function saveMinhaDisponibilidadeAction(formData: FormData) {
   const supabase = await createClient();
 
   const observacao = String(formData.get("observacao") ?? "").trim() || null;
-  const rawSlots = String(formData.get("slots_json") ?? "[]");
-  let parsed: Array<{ dia_semana: number; hora_inicio: string; hora_fim: string; ativo?: boolean }>;
+  const modalidadePadrao = parseModalidade(formData.get("modalidade_padrao"));
+
+  let slotsParsed: Array<{
+    dia_semana?: number | null;
+    data_especifica?: string | null;
+    hora_inicio: string;
+    hora_fim: string;
+    ativo?: boolean;
+    modalidade_atendimento?: string;
+  }> = [];
+  let bloqueiosParsed: Array<{
+    data_inicio: string;
+    data_fim: string;
+    hora_inicio?: string | null;
+    hora_fim?: string | null;
+    motivo: string;
+  }> = [];
+
   try {
-    parsed = JSON.parse(rawSlots) as typeof parsed;
+    slotsParsed = JSON.parse(String(formData.get("slots_json") ?? "[]")) as typeof slotsParsed;
+    bloqueiosParsed = JSON.parse(String(formData.get("bloqueios_json") ?? "[]")) as typeof bloqueiosParsed;
   } catch {
-    throw new Error("Dados de horários inválidos.");
+    throw new Error("Dados de disponibilidade inválidos.");
   }
 
-  const slots = parsed
-    .filter((s) => s && Number.isFinite(s.dia_semana) && s.hora_inicio && s.hora_fim)
+  const slots = slotsParsed
+    .filter((s) => s && s.hora_inicio && s.hora_fim)
     .map((s) => {
       const inicio = normalizeTime(s.hora_inicio);
       const fim = normalizeTime(s.hora_fim);
       if (fim <= inicio) throw new Error("Horário final deve ser após o inicial.");
+      const dataEsp = s.data_especifica?.trim() || null;
+      const dia = dataEsp ? null : s.dia_semana != null ? Number(s.dia_semana) : null;
+      if (!dataEsp && (dia == null || Number.isNaN(dia))) {
+        throw new Error("Informe o dia da semana ou a data específica.");
+      }
       return {
         usuario_id: u.id,
-        dia_semana: Number(s.dia_semana),
+        dia_semana: dia,
+        data_especifica: dataEsp,
         hora_inicio: inicio,
         hora_fim: fim,
         ativo: s.ativo !== false,
+        modalidade_atendimento: parseModalidade(s.modalidade_atendimento ?? modalidadePadrao),
+      };
+    });
+
+  const bloqueios = bloqueiosParsed
+    .filter((b) => b?.data_inicio && b?.data_fim && b?.motivo?.trim())
+    .map((b) => {
+      if (b.data_fim < b.data_inicio) throw new Error("Data final do bloqueio deve ser ≥ inicial.");
+      return {
+        usuario_id: u.id,
+        data_inicio: b.data_inicio.slice(0, 10),
+        data_fim: b.data_fim.slice(0, 10),
+        hora_inicio: b.hora_inicio ? normalizeTime(b.hora_inicio) : null,
+        hora_fim: b.hora_fim ? normalizeTime(b.hora_fim) : null,
+        motivo: b.motivo.trim(),
       };
     });
 
   const { error: delErr } = await supabase.from("agenda_disponibilidade").delete().eq("usuario_id", u.id);
   if (delErr) {
     if (/agenda_disponibilidade|schema cache|does not exist/i.test(delErr.message)) {
-      throw new Error("Aplique a migration 036_agenda_disponibilidade.sql no Supabase.");
+      throw new Error("Aplique as migrations 036 e 037 de disponibilidade no Supabase.");
     }
     throw new Error(delErr.message);
   }
 
   if (slots.length) {
     const { error: insErr } = await supabase.from("agenda_disponibilidade").insert(slots);
-    if (insErr) throw new Error(insErr.message);
+    if (insErr) {
+      if (/data_especifica|modalidade_atendimento|schema cache/i.test(insErr.message)) {
+        throw new Error("Aplique a migration 037_agenda_disponibilidade_datas_bloqueios.sql no Supabase.");
+      }
+      throw new Error(insErr.message);
+    }
+  }
+
+  await supabase.from("agenda_bloqueios").delete().eq("usuario_id", u.id);
+  if (bloqueios.length) {
+    const { error: bErr } = await supabase.from("agenda_bloqueios").insert(bloqueios);
+    if (bErr && !/agenda_bloqueios|schema cache|does not exist/i.test(bErr.message)) {
+      throw new Error(bErr.message);
+    }
+    if (bErr && /agenda_bloqueios|does not exist/i.test(bErr.message)) {
+      throw new Error("Aplique a migration 037 (tabela agenda_bloqueios) no Supabase.");
+    }
   }
 
   const { error: metaErr } = await supabase.from("agenda_disponibilidade_meta").upsert(
-    { usuario_id: u.id, observacao, updated_at: new Date().toISOString() },
+    {
+      usuario_id: u.id,
+      observacao,
+      modalidade_padrao: modalidadePadrao,
+      updated_at: new Date().toISOString(),
+    },
     { onConflict: "usuario_id" },
   );
-  if (metaErr && !/agenda_disponibilidade_meta|schema cache|does not exist/i.test(metaErr.message)) {
+  if (metaErr && !/agenda_disponibilidade_meta|schema cache|does not exist|modalidade_padrao/i.test(metaErr.message)) {
     throw new Error(metaErr.message);
+  }
+  if (metaErr && /modalidade_padrao/i.test(metaErr.message)) {
+    await supabase.from("agenda_disponibilidade_meta").upsert(
+      { usuario_id: u.id, observacao, updated_at: new Date().toISOString() },
+      { onConflict: "usuario_id" },
+    );
   }
 
   revalidatePath("/admin/agenda");
@@ -111,11 +213,7 @@ export async function fetchDisponibilidadeConsultores(
   if (!canManageLeads(u.perfil)) throw new Error("Sem permissão");
   const supabase = await createClient();
 
-  let usuariosQ = supabase
-    .from("usuarios")
-    .select("id, nome")
-    .eq("ativo", true)
-    .order("nome");
+  let usuariosQ = supabase.from("usuarios").select("id, nome").eq("ativo", true).order("nome");
   if (consultorIds?.length) {
     usuariosQ = usuariosQ.in("id", consultorIds);
   } else {
@@ -127,15 +225,23 @@ export async function fetchDisponibilidadeConsultores(
   const ids = (usuarios ?? []).map((x) => x.id as string);
   if (!ids.length) return [];
 
-  const [{ data: slots, error: sErr }, { data: metas }] = await Promise.all([
+  const [{ data: slots, error: sErr }, { data: metas }, { data: bloqueios }] = await Promise.all([
     supabase
       .from("agenda_disponibilidade")
-      .select("usuario_id, dia_semana, hora_inicio, hora_fim, ativo")
+      .select("usuario_id, dia_semana, data_especifica, hora_inicio, hora_fim, ativo, modalidade_atendimento")
       .in("usuario_id", ids)
       .eq("ativo", true)
       .order("dia_semana")
       .order("hora_inicio"),
-    supabase.from("agenda_disponibilidade_meta").select("usuario_id, observacao").in("usuario_id", ids),
+    supabase
+      .from("agenda_disponibilidade_meta")
+      .select("usuario_id, observacao, modalidade_padrao")
+      .in("usuario_id", ids),
+    supabase
+      .from("agenda_bloqueios")
+      .select("usuario_id, data_inicio, data_fim, hora_inicio, hora_fim, motivo")
+      .in("usuario_id", ids)
+      .order("data_inicio"),
   ]);
 
   if (sErr) {
@@ -143,9 +249,12 @@ export async function fetchDisponibilidadeConsultores(
     throw new Error(sErr.message);
   }
 
-  const metaById = new Map<string, string | null>();
+  const metaById = new Map<string, { observacao: string | null; modalidade: ModalidadeAtendimento }>();
   for (const m of metas ?? []) {
-    metaById.set(m.usuario_id as string, (m.observacao as string | null) ?? null);
+    metaById.set(m.usuario_id as string, {
+      observacao: (m.observacao as string | null) ?? null,
+      modalidade: parseModalidade(m.modalidade_padrao),
+    });
   }
 
   const slotsById = new Map<string, SlotDisponibilidade[]>();
@@ -153,20 +262,41 @@ export async function fetchDisponibilidadeConsultores(
     const uid = s.usuario_id as string;
     const list = slotsById.get(uid) ?? [];
     list.push({
-      dia_semana: Number(s.dia_semana),
+      dia_semana: s.dia_semana == null ? null : Number(s.dia_semana),
+      data_especifica: (s.data_especifica as string | null) ?? null,
       hora_inicio: String(s.hora_inicio).slice(0, 5),
       hora_fim: String(s.hora_fim).slice(0, 5),
       ativo: Boolean(s.ativo),
+      modalidade_atendimento: parseModalidade(s.modalidade_atendimento),
     });
     slotsById.set(uid, list);
   }
 
-  return (usuarios ?? []).map((usr) => ({
-    usuarioId: usr.id as string,
-    nome: usr.nome as string,
-    observacao: metaById.get(usr.id as string) ?? null,
-    slots: slotsById.get(usr.id as string) ?? [],
-  }));
+  const bloqueiosById = new Map<string, BloqueioAgenda[]>();
+  for (const b of bloqueios ?? []) {
+    const uid = b.usuario_id as string;
+    const list = bloqueiosById.get(uid) ?? [];
+    list.push({
+      data_inicio: String(b.data_inicio).slice(0, 10),
+      data_fim: String(b.data_fim).slice(0, 10),
+      hora_inicio: b.hora_inicio ? String(b.hora_inicio).slice(0, 5) : null,
+      hora_fim: b.hora_fim ? String(b.hora_fim).slice(0, 5) : null,
+      motivo: String(b.motivo ?? ""),
+    });
+    bloqueiosById.set(uid, list);
+  }
+
+  return (usuarios ?? []).map((usr) => {
+    const meta = metaById.get(usr.id as string);
+    return {
+      usuarioId: usr.id as string,
+      nome: usr.nome as string,
+      observacao: meta?.observacao ?? null,
+      modalidadePadrao: meta?.modalidade ?? "ambos",
+      slots: slotsById.get(usr.id as string) ?? [],
+      bloqueios: bloqueiosById.get(usr.id as string) ?? [],
+    };
+  });
 }
 
 export async function fetchProximosCompromissosDoConsultor(limit = 5): Promise<
@@ -183,21 +313,15 @@ export async function fetchProximosCompromissosDoConsultor(limit = 5): Promise<
   const supabase = await createClient();
   const now = new Date().toISOString();
 
-  let q = supabase
+  const { data, error } = await supabase
     .from("agenda_compromissos")
     .select("id, titulo, data_inicio, tipo, lead_id, consultor_id")
     .eq("status", "agendado")
+    .eq("consultor_id", u.id)
     .gte("data_inicio", now)
     .order("data_inicio")
     .limit(limit);
 
-  if (!isMaster(u.perfil)) {
-    q = q.eq("consultor_id", u.id);
-  } else {
-    q = q.eq("consultor_id", u.id);
-  }
-
-  const { data, error } = await q;
   if (error) return [];
 
   const leadIds = [...new Set((data ?? []).map((r) => r.lead_id).filter(Boolean))] as string[];

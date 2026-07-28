@@ -43,6 +43,7 @@ export type AgendaCompromissoRow = {
   duracao_minutos: number | null;
   local: string | null;
   status: AgendaStatus;
+  modalidade_atendimento?: string | null;
   resultado: string | null;
   observacao_resultado: string | null;
   proxima_data: string | null;
