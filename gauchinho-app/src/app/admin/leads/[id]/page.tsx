@@ -56,9 +56,12 @@ export default async function LeadDetailPage({
     parceiro_indicador_nome?: string | null;
     parceiro_indicador_empresa?: string | null;
     parceiro_indicador_telefone?: string | null;
+    parentesco_indicacao?: string | null;
+    indicador_lead_id?: string | null;
   };
   const ehIndicacao = leadEvento.origem === "indicacao";
   const indicadorNome = leadEvento.parceiro_indicador_nome?.trim() || null;
+  const parentesco = leadEvento.parentesco_indicacao?.trim() || null;
 
   const updateWithId = updateLeadAction.bind(null, id);
   const retornoWithId = agendarRetornoAction.bind(null, id);
@@ -423,6 +426,7 @@ export default async function LeadDetailPage({
               {leadEvento.parceiro_indicador_telefone ? (
                 <> · Tel. {leadEvento.parceiro_indicador_telefone}</>
               ) : null}
+              {parentesco ? <> · Parentesco: {parentesco}</> : null}
             </p>
           ) : (
             <p className="mt-1 text-zinc-500">Nome de quem indicou não informado no cadastro.</p>

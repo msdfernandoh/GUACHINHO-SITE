@@ -5,8 +5,11 @@ import type { LeadFilters, LeadListRow } from "./types";
 const LIST_SELECT_BASE =
   "id, created_at, nome, whatsapp, email, cidade, origem, tipo_interesse, produto_interesse, status, temperatura, srd_responsavel_id, srd_responsavel_nome, proxima_acao, data_proxima_acao, proximo_retorno_data, ultima_interacao_at, valor_estimado, valor_simulado, fechado, evento_id, evento_nome";
 
-const LIST_SELECT_INDICADOR =
+const LIST_SELECT_INDICADOR_CORE =
   `${LIST_SELECT_BASE}, parceiro_indicador_nome, parceiro_indicador_empresa, parceiro_indicador_telefone`;
+
+const LIST_SELECT_INDICADOR =
+  `${LIST_SELECT_INDICADOR_CORE}, parentesco_indicacao, indicador_lead_id`;
 
 function applyLeadFilters(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -72,16 +75,19 @@ function applyLeadFilters(
 async function selectLeads(
   build: (select: string) => Promise<{ data: LeadListRow[] | null; error: { message: string } | null }>,
 ): Promise<LeadListRow[]> {
-  const first = await build(LIST_SELECT_INDICADOR);
-  if (!first.error) return (first.data ?? []) as LeadListRow[];
+  const attempts = [LIST_SELECT_INDICADOR, LIST_SELECT_INDICADOR_CORE, LIST_SELECT_BASE];
+  let lastError: { message: string } | null = null;
 
-  if (isDbMissingColumnError(first.error)) {
-    const fallback = await build(LIST_SELECT_BASE);
-    if (fallback.error) throw new Error(fallback.error.message);
-    return (fallback.data ?? []) as LeadListRow[];
+  for (const select of attempts) {
+    const result = await build(select);
+    if (!result.error) return (result.data ?? []) as LeadListRow[];
+    lastError = result.error;
+    if (!isDbMissingColumnError(result.error)) {
+      throw new Error(result.error.message);
+    }
   }
 
-  throw new Error(first.error.message);
+  throw new Error(lastError?.message ?? "Falha ao listar leads");
 }
 
 export async function queryLeadsList(filters: LeadFilters, limit = 200): Promise<LeadListRow[]> {

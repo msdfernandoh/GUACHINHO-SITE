@@ -181,6 +181,8 @@ export async function createIndicacoesFromLeadAction(
       origem: "indicacao",
       parceiro_indicador_nome: indicadorNome,
       parceiro_indicador_telefone: indicadorTel,
+      parentesco_indicacao: ind.parentesco,
+      indicador_lead_id: indicadorLeadId,
       tipo_interesse: tipoCredito ?? "outro",
       tipo_credito: tipoCredito,
       produto_interesse: tipoCredito,
@@ -205,6 +207,8 @@ export async function createIndicacoesFromLeadAction(
         tipo_credito: _tc,
         parceiro_indicador_telefone: _pt,
         observacao_indicacao: _oi,
+        parentesco_indicacao: _pi,
+        indicador_lead_id: _il,
         ...legacy
       } = payload;
       const telNote = indicadorTel ? `Tel. de quem indicou: ${indicadorTel}` : null;

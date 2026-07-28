@@ -24,6 +24,8 @@ export type LeadListRow = {
   parceiro_indicador_nome?: string | null;
   parceiro_indicador_empresa?: string | null;
   parceiro_indicador_telefone?: string | null;
+  parentesco_indicacao?: string | null;
+  indicador_lead_id?: string | null;
   /** Carro, Moto, Casa… — cadastro do sorteio/evento */
   tipo_sonho?: string | null;
 };
