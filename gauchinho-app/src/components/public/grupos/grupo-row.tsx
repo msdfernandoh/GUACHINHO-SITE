@@ -216,6 +216,13 @@ export function GrupoRow({
               ) : (
                 <span className="text-[10px] text-zinc-600">—</span>
               )}
+              {resultado.seguroMensal > 0 &&
+              resultado.saldoDevedorFinal > 0 &&
+              resultado.seguroMensal / resultado.saldoDevedorFinal >= 0.005 ? (
+                <p className="mt-0.5 text-[9px] leading-tight text-red-400" title="Cadastro do grupo">
+                  Seguro alto — confira o fator (planilha: 0,0004)
+                </p>
+              ) : null}
             </div>
           ) : ativo ? (
             <span className="text-[10px] text-zinc-600">—</span>

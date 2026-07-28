@@ -3,6 +3,7 @@ import {
   formatDisponibilidadeResumo,
   gerarDatasDiaSemana,
   isDataBloqueada,
+  statusDiaCalendario,
   toDateIso,
 } from "./disponibilidade";
 
@@ -98,5 +99,63 @@ describe("isDataBloqueada", () => {
 describe("toDateIso", () => {
   it("formata data local", () => {
     expect(toDateIso(new Date(2026, 0, 5))).toBe("2026-01-05");
+  });
+});
+
+describe("statusDiaCalendario", () => {
+  const slotSeg = {
+    dia_semana: 1,
+    data_especifica: null as string | null,
+    hora_inicio: "09:00",
+    hora_fim: "12:00",
+    ativo: true,
+    modalidade_atendimento: "ambos" as const,
+  };
+
+  it("prioriza bloqueio, depois compromisso, depois livre", () => {
+    // 2026-07-27 = segunda
+    expect(
+      statusDiaCalendario({
+        dataIso: "2026-07-27",
+        slots: [slotSeg],
+        bloqueios: [
+          {
+            data_inicio: "2026-07-27",
+            data_fim: "2026-07-27",
+            hora_inicio: null,
+            hora_fim: null,
+            motivo: "Folga",
+          },
+        ],
+        temCompromisso: true,
+      }),
+    ).toBe("bloqueado");
+
+    expect(
+      statusDiaCalendario({
+        dataIso: "2026-07-27",
+        slots: [slotSeg],
+        bloqueios: [],
+        temCompromisso: true,
+      }),
+    ).toBe("compromisso");
+
+    expect(
+      statusDiaCalendario({
+        dataIso: "2026-07-27",
+        slots: [slotSeg],
+        bloqueios: [],
+        temCompromisso: false,
+      }),
+    ).toBe("livre");
+
+    expect(
+      statusDiaCalendario({
+        dataIso: "2026-07-28",
+        slots: [slotSeg],
+        bloqueios: [],
+        temCompromisso: false,
+      }),
+    ).toBe("vazio");
   });
 });

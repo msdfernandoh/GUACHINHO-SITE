@@ -195,17 +195,22 @@ export function GrupoFormFields({
         </div>
         <div className="grid gap-3 sm:grid-cols-2">
           <div>
-            <Label>Seguro % (fator ou % — ex. 0,0004)</Label>
+            <Label>Seguro mensal (0,04% a.m. da planilha)</Label>
             <Input
               name="seguro_percentual"
               type="text"
               inputMode="decimal"
               placeholder="0,0004"
-              defaultValue={String(g.seguro_percentual ?? 0)}
+              defaultValue={
+                g.seguro_percentual != null && Number(g.seguro_percentual) > 0
+                  ? String(g.seguro_percentual)
+                  : "0,0004"
+              }
             />
             <p className="mt-1 text-xs text-zinc-500">
-              Mensal = saldo devedor × fator (ex. 0,0004). Soma à parcela integral ou à reduzida no
-              simulador e ao salvar grupo/cota.
+              Use o fator da planilha <strong>0,0004</strong> (0,04% ao mês sobre o saldo). Também aceita{" "}
+              <strong>0,04</strong> (= 0,04%). Não use <strong>1</strong> — isso vira 1% ao mês e infla o
+              seguro (~R$ 11 mil em vez de ~R$ 444).
             </p>
           </div>
           <div>

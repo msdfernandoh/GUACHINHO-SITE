@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { AgendaCompromissoRow } from "@/lib/agenda/types";
 import { AGENDA_TIPOS } from "@/lib/agenda/types";
 import {
@@ -11,6 +11,11 @@ import {
   retornarCompromissoAction,
 } from "@/app/admin/agenda/actions";
 import { AgendaConcluirForm } from "@/components/admin/agenda/agenda-concluir-form";
+import {
+  AgendaMonthCalendar,
+  agendaMonthHref,
+  shiftMonth,
+} from "@/components/admin/agenda/agenda-month-calendar";
 import { AdminFormSubmitButton } from "@/components/admin/admin-form-submit-button";
 import { Button, Input, Label, Select, Textarea } from "@/components/ui/form-primitives";
 import { formatDateTime } from "@/lib/utils/format";
@@ -21,7 +26,10 @@ import {
   adminStatCardClass,
 } from "@/components/admin/admin-contrast";
 import { surfaceInputDark, surfaceSelectDark } from "@/components/ui/form-primitives";
-import type { DisponibilidadeConsultor } from "@/lib/agenda/disponibilidade";
+import {
+  statusDiaCalendario,
+  type DisponibilidadeConsultor,
+} from "@/lib/agenda/disponibilidade";
 import { ConsultorDisponibilidadeSelect } from "@/components/admin/agenda/consultor-disponibilidade-select";
 
 type Srd = { id: string; nome: string };
@@ -36,10 +44,6 @@ type Props = {
   initialLeadId?: string;
   leadPreview?: { id: string; nome: string } | null;
 };
-
-function daysInMonth(y: number, m: number) {
-  return new Date(y, m, 0).getDate();
-}
 
 function pad(n: number) {
   return String(n).padStart(2, "0");
@@ -68,6 +72,13 @@ export function AgendaView({
   const [reagendarId, setReagendarId] = useState<string | null>(null);
   const [retornarId, setRetornarId] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (!selected.startsWith(`${year}-${pad(month)}`)) {
+      setSelected(`${year}-${pad(month)}-01`);
+      setShowNew(false);
+    }
+  }, [year, month, selected]);
+
   const byDay = useMemo(() => {
     const map = new Map<string, AgendaCompromissoRow[]>();
     for (const c of compromissos) {
@@ -79,18 +90,26 @@ export function AgendaView({
     return map;
   }, [compromissos]);
 
-  const totalDays = daysInMonth(year, month);
-  const firstDow = new Date(year, month - 1, 1).getDay();
-  const cells: (number | null)[] = [...Array(firstDow).fill(null), ...Array.from({ length: totalDays }, (_, i) => i + 1)];
+  const dispAtiva = useMemo(() => {
+    const id = consultorId || disponibilidades[0]?.usuarioId;
+    return disponibilidades.find((d) => d.usuarioId === id) ?? null;
+  }, [consultorId, disponibilidades]);
 
   const dayItems = byDay.get(selected) ?? [];
   const hoje = new Date().toISOString().slice(0, 10);
   const atrasados = compromissos.filter((c) => c.status === "agendado" && c.data_inicio.slice(0, 10) < hoje);
   const hojeItems = byDay.get(hoje) ?? [];
 
+  const prev = shiftMonth(year, month, -1);
+  const next = shiftMonth(year, month, 1);
+  const navExtra = {
+    lead: initialLeadId,
+    dia: selected.startsWith(`${year}-${pad(month)}`) ? undefined : selected,
+  };
+
   return (
-    <div className="space-y-6">
-      <div className="grid gap-4 sm:grid-cols-3">
+    <div className="space-y-5">
+      <div className="grid gap-3 sm:grid-cols-3">
         <div className={adminStatCardClass}>
           <p className={adminMutedLabelClass}>Hoje</p>
           <p className="text-2xl font-bold text-zinc-50">{hojeItems.length}</p>
@@ -105,43 +124,45 @@ export function AgendaView({
         </div>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,340px)_1fr]">
+      <div className="grid gap-5 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
         <div className={adminPanelClass}>
-          <p className="mb-3 text-sm font-semibold text-zinc-200">
-            {pad(month)}/{year}
-          </p>
-          <div className="grid grid-cols-7 gap-1 text-center text-[10px] font-medium text-zinc-400">
-            {["D", "S", "T", "Q", "Q", "S", "S"].map((d) => (
-              <span key={d}>{d}</span>
-            ))}
-          </div>
-          <div className="mt-1 grid grid-cols-7 gap-1">
-            {cells.map((day, i) => {
-              if (day == null) return <span key={`e-${i}`} />;
-              const key = `${year}-${pad(month)}-${pad(day)}`;
-              const count = byDay.get(key)?.length ?? 0;
-              const active = key === selected;
-              return (
-                <button
-                  key={key}
-                  type="button"
-                  onClick={() => {
-                    setSelected(key);
-                    setShowNew(false);
-                  }}
-                  className={`relative rounded-lg py-2 text-sm ${
-                    active ? "bg-amber-500 text-zinc-950 font-bold" : "text-zinc-100 hover:bg-zinc-800"
-                  }`}
-                >
-                  {day}
-                  {count > 0 ? (
-                    <span className="absolute bottom-0.5 left-1/2 h-1 w-1 -translate-x-1/2 rounded-full bg-emerald-400" />
-                  ) : null}
-                </button>
-              );
-            })}
-          </div>
-          <Button type="button" className="mt-4 w-full" variant="outline" onClick={() => setShowNew(true)}>
+          <AgendaMonthCalendar
+            year={year}
+            month={month}
+            selected={selected}
+            size="lg"
+            prevHref={agendaMonthHref(prev.year, prev.month, navExtra)}
+            nextHref={agendaMonthHref(next.year, next.month, navExtra)}
+            statusForDay={(iso) =>
+              statusDiaCalendario({
+                dataIso: iso,
+                slots: dispAtiva?.slots ?? [],
+                bloqueios: dispAtiva?.bloqueios ?? [],
+                temCompromisso: (byDay.get(iso)?.length ?? 0) > 0,
+              })
+            }
+            onSelectDay={(iso) => {
+              setSelected(iso);
+              setShowNew(false);
+            }}
+          />
+          {srds.length > 1 && disponibilidades.length > 0 ? (
+            <div className="mt-4 border-t border-zinc-800 pt-3">
+              <Label>Cores do calendário — consultor</Label>
+              <Select
+                value={consultorId || srds[0]?.id}
+                onChange={(e) => setConsultorId(e.target.value)}
+                className={`${surfaceSelectDark} mt-1`}
+              >
+                {srds.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.nome}
+                  </option>
+                ))}
+              </Select>
+            </div>
+          ) : null}
+          <Button type="button" className="mt-4 w-full" variant="gold" onClick={() => setShowNew(true)}>
             Novo compromisso — {selected}
           </Button>
         </div>

@@ -158,3 +158,43 @@ export function isDataBloqueada(
   }
   return null;
 }
+
+/** Retorna true se há slot ativo (semanal ou data específica) cobrindo o dia. */
+export function isDiaComDisponibilidade(
+  dataIso: string,
+  slots: Pick<SlotDisponibilidade, "dia_semana" | "data_especifica" | "ativo">[],
+): boolean {
+  const dow = new Date(`${dataIso}T12:00:00`).getDay();
+  return slots.some((s) => {
+    if (s.ativo === false) return false;
+    if (s.data_especifica) return s.data_especifica === dataIso;
+    return s.dia_semana != null && s.dia_semana === dow;
+  });
+}
+
+export type StatusDiaCalendario = "livre" | "compromisso" | "bloqueado" | "vazio";
+
+/** Prioridade: bloqueado > compromisso > livre > vazio. */
+export function statusDiaCalendario(opts: {
+  dataIso: string;
+  slots: Pick<SlotDisponibilidade, "dia_semana" | "data_especifica" | "ativo">[];
+  bloqueios: BloqueioAgenda[];
+  temCompromisso?: boolean;
+}): StatusDiaCalendario {
+  if (isDataBloqueada(opts.dataIso, opts.bloqueios)) return "bloqueado";
+  if (opts.temCompromisso) return "compromisso";
+  if (isDiaComDisponibilidade(opts.dataIso, opts.slots)) return "livre";
+  return "vazio";
+}
+
+export function slotsDoDia(
+  dataIso: string,
+  slots: SlotDisponibilidade[],
+): SlotDisponibilidade[] {
+  const dow = new Date(`${dataIso}T12:00:00`).getDay();
+  return slots.filter((s) => {
+    if (s.ativo === false) return false;
+    if (s.data_especifica) return s.data_especifica === dataIso;
+    return s.dia_semana != null && s.dia_semana === dow;
+  });
+}

@@ -60,6 +60,11 @@ describe("seguro grupos", () => {
     expect(parseSeguroInput("0,0004")).toBeCloseTo(0.0004);
   });
 
+  it("0,04 significa 0,04% a.m. (planilha)", () => {
+    expect(fatorSeguroGrupo(0.04)).toBeCloseTo(0.0004);
+    expect(fatorSeguroGrupo(0.038)).toBeCloseTo(0.00038);
+  });
+
   it("legado percentual >= 0.1", () => {
     expect(fatorSeguroGrupo(1)).toBeCloseTo(0.01);
   });

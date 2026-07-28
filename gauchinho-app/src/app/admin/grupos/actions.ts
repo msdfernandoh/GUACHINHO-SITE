@@ -19,7 +19,7 @@ import {
   milestoneReajusteMeses,
 } from "@/lib/grupos/prazos";
 import { parcelaEfetivaCota } from "@/lib/grupos/reajuste-cotas";
-import { parseSeguroInput } from "@/lib/grupos/seguro";
+import { canonicalSeguroFator, parseSeguroInput } from "@/lib/grupos/seguro";
 import { GRUPOS_TESTE } from "@/lib/grupos/dados-teste";
 import {
   deriveGrupoFlagsFromModalidades,
@@ -166,7 +166,7 @@ function grupoFromForm(formData: FormData) {
     taxa_administrativa_percentual: Number(formData.get("taxa_administrativa_percentual") ?? 0),
     fundo_reserva_percentual: Number(formData.get("fundo_reserva_percentual") ?? 0),
     seguro_habilitado: formData.get("seguro_habilitado") === "on",
-    seguro_percentual: parseSeguroInput(seguroRaw),
+    seguro_percentual: canonicalSeguroFator(parseSeguroInput(seguroRaw)),
     seguro_valor: Number(formData.get("seguro_valor") ?? 0) || null,
     prazo_total,
     parcelas_realizadas,
