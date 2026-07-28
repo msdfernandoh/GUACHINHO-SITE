@@ -21,6 +21,8 @@ import {
   adminStatCardClass,
 } from "@/components/admin/admin-contrast";
 import { surfaceInputDark, surfaceSelectDark } from "@/components/ui/form-primitives";
+import type { DisponibilidadeConsultor } from "@/lib/agenda/disponibilidade";
+import { ConsultorDisponibilidadeSelect } from "@/components/admin/agenda/consultor-disponibilidade-select";
 
 type Srd = { id: string; nome: string };
 
@@ -29,6 +31,7 @@ type Props = {
   year: number;
   compromissos: AgendaCompromissoRow[];
   srds: Srd[];
+  disponibilidades?: DisponibilidadeConsultor[];
   initialDay?: string;
   initialLeadId?: string;
   leadPreview?: { id: string; nome: string } | null;
@@ -53,11 +56,13 @@ export function AgendaView({
   year,
   compromissos,
   srds,
+  disponibilidades = [],
   initialDay,
   initialLeadId,
   leadPreview,
 }: Props) {
   const [selected, setSelected] = useState(initialDay ?? `${year}-${pad(month)}-01`);
+  const [consultorId, setConsultorId] = useState(srds[0]?.id ?? "");
   const [showNew, setShowNew] = useState(!!initialLeadId);
   const [concluirId, setConcluirId] = useState<string | null>(null);
   const [reagendarId, setReagendarId] = useState<string | null>(null);
@@ -182,8 +187,19 @@ export function AgendaView({
                     </p>
                     <input type="hidden" name="consultor_id" value="" />
                   </>
+                ) : disponibilidades.length > 0 ? (
+                  <ConsultorDisponibilidadeSelect
+                    consultores={disponibilidades}
+                    selectedId={consultorId || disponibilidades[0]!.usuarioId}
+                    onSelect={setConsultorId}
+                  />
                 ) : (
-                  <Select name="consultor_id" defaultValue={srds[0]?.id ?? ""} required className={surfaceSelectDark}>
+                  <Select
+                    name="consultor_id"
+                    defaultValue={srds[0]?.id ?? ""}
+                    required
+                    className={surfaceSelectDark}
+                  >
                     {srds.map((s) => (
                       <option key={s.id} value={s.id}>
                         {s.nome}

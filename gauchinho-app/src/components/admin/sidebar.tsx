@@ -19,6 +19,7 @@ import {
   ClipboardList,
   Shield,
   QrCode,
+  Clock,
 } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import type { AdminMenuKey } from "@/lib/admin/admin-menus";
@@ -35,6 +36,12 @@ const NAV: Array<{
   { key: "dashboard", href: "/admin", label: "Dashboard", icon: LayoutDashboard },
   { key: "leads", href: "/admin/leads", label: "Leads", icon: Users },
   { key: "agenda", href: "/admin/agenda", label: "Agenda", icon: CalendarDays },
+  {
+    key: "agenda_disponibilidade",
+    href: "/admin/agenda/disponibilidade",
+    label: "Disponibilidade",
+    icon: Clock,
+  },
   { key: "eventos", href: "/admin/eventos", label: "Eventos", icon: Calendar, masterOnly: true },
   { key: "eventos", href: "/admin/eventos/nps", label: "Dashboard NPS", icon: BarChart2, masterOnly: true },
   { key: "listas_convidados", href: "/admin/eventos/listas-convidados", label: "Listas convidados", icon: ClipboardList },
