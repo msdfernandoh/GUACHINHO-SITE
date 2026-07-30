@@ -117,6 +117,20 @@ describe("resumoFinanceiroFromDados — grupos", () => {
     expect(linhas[1]?.codigoGrupo).toBe("1273");
   });
 
+  it("calcula o valor unitário quando a linha possui mais de uma cota", () => {
+    const linhas = linhasGrupoResumoFromDados("grupos", {
+      selecoes: [
+        {
+          config: { quantidadeCotas: 3 },
+          resultado: { quantidadeCotas: 3, somaCotas: 327_818.1 },
+          grupo: { codigo_grupo: "5288", modalidade: "Auto" },
+        },
+      ],
+    });
+
+    expect(linhas[0]?.valorCota).toBeCloseTo(109_272.7, 2);
+  });
+
   it("soma os valores de todos os grupos na proposta", () => {
     const dados = {
       selecoes: [

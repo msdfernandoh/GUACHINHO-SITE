@@ -214,13 +214,15 @@ export function ContratacaoWizard({
       const json = (await res.json()) as Record<string, unknown>;
       if (!res.ok) throw new Error(String(json.error ?? "Erro ao carregar rascunho"));
       setData(json as ApiPayload);
+      const contratacaoPreview = json.contratacao as ContratacaoOnlineRow | undefined;
+      if (contratacaoPreview) hydrateFromContratacao(contratacaoPreview);
       setStep("confirm");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Erro");
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [hydrateFromContratacao]);
 
   const load = useCallback(async (opts?: { silent?: boolean; syncStep?: boolean }) => {
     if (!publicToken) return;
@@ -331,33 +333,10 @@ export function ContratacaoWizard({
     setError(null);
     try {
       if (isDraft) {
-        const draft = readContratacaoDraftFromStorage();
-        if (!draft) throw new Error("Rascunho expirado. Reinicie a contratação.");
-        const res = await fetch("/api/public/contratacoes/rascunho/materializar", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            draft,
-            nome,
-            telefone: digitsOnlyPhone(telefone),
-            email,
-          }),
-        });
-        const json = (await res.json()) as {
-          error?: string;
-          public_token?: string;
-          contratacao?: ContratacaoOnlineRow;
-        };
-        if (!res.ok || !json.public_token) {
-          throw new Error(json.error ?? "Falha ao gravar contratação");
+        if (!nome.trim() || digitsOnlyPhone(telefone).length < 10 || !email.trim()) {
+          throw new Error("Preencha nome, telefone/WhatsApp e e-mail.");
         }
-        clearContratacaoDraftStorage();
-        setPublicToken(json.public_token);
-        setIsDraft(false);
-        if (json.contratacao) {
-          setData((prev) => (prev ? { ...prev, contratacao: json.contratacao! } : prev));
-        }
-        router.replace(`/proposta/${json.public_token}`);
+        // Permanece somente no navegador até CPF/CNPJ e endereço estarem completos.
         setStep("pessoa");
         return;
       }
@@ -380,6 +359,51 @@ export function ContratacaoWizard({
     setSubmitting(true);
     setError(null);
     try {
+      if (isDraft) {
+        const draft = readContratacaoDraftFromStorage();
+        if (!draft) throw new Error("Rascunho expirado. Reinicie a contratação.");
+        const res = await fetch("/api/public/contratacoes/rascunho/materializar", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            draft,
+            nome,
+            telefone: digitsOnlyPhone(telefone),
+            email,
+            tipo_pessoa: tipoPessoa,
+            cpf: tipoPessoa === "cpf" ? cpf : undefined,
+            data_nascimento: dataNascimento || undefined,
+            razao_social: tipoPessoa === "cnpj" ? razaoSocial : undefined,
+            cnpj: tipoPessoa === "cnpj" ? cnpj : undefined,
+            responsavel_nome: tipoPessoa === "cnpj" ? respNome : undefined,
+            responsavel_cpf: tipoPessoa === "cnpj" ? respCpf : undefined,
+            cep: enderecoForm.cep,
+            endereco: enderecoForm.endereco,
+            numero: enderecoForm.numero,
+            complemento: enderecoForm.complemento || undefined,
+            bairro: enderecoForm.bairro,
+            cidade: enderecoForm.cidade,
+            uf: enderecoForm.uf,
+          }),
+        });
+        const json = (await res.json()) as {
+          error?: string;
+          public_token?: string;
+          contratacao?: ContratacaoOnlineRow;
+        };
+        if (!res.ok || !json.public_token) {
+          throw new Error(json.error ?? "Falha ao gravar contratação");
+        }
+        clearContratacaoDraftStorage();
+        setPublicToken(json.public_token);
+        setIsDraft(false);
+        if (json.contratacao) {
+          setData((prev) => (prev ? { ...prev, contratacao: json.contratacao! } : prev));
+        }
+        router.replace(`/proposta/${json.public_token}`);
+        setStep("docs");
+        return;
+      }
       await patch({
         etapa: "pessoa",
         tipo_pessoa: tipoPessoa,

@@ -18,6 +18,7 @@ const MIME_PERMITIDOS = new Set([
   "image/webp",
 ]);
 const MAX_BYTES = 5 * 1024 * 1024;
+const DOCUMENTOS_BUCKET = "contratacoes-documentos";
 
 export const TIPOS_DOCUMENTO_ADMIN: TipoDocumentoContratacao[] = [
   "documento_foto",
@@ -32,6 +33,81 @@ export const TIPOS_DOCUMENTO_ADMIN: TipoDocumentoContratacao[] = [
 
 function isTipoDocumento(v: string): v is TipoDocumentoContratacao {
   return (TIPOS_DOCUMENTO_ADMIN as string[]).includes(v);
+}
+
+function validarMetadadosUpload(tipoRaw: string, mimeType: string, tamanhoBytes: number) {
+  if (!isTipoDocumento(tipoRaw)) {
+    throw new Error("Tipo de documento inválido.");
+  }
+  if (!Number.isFinite(tamanhoBytes) || tamanhoBytes <= 0) {
+    throw new Error("Selecione um arquivo válido.");
+  }
+  if (!MIME_PERMITIDOS.has(mimeType)) {
+    throw new Error("Tipo de arquivo não permitido. Use PDF, JPG, PNG ou WEBP.");
+  }
+  if (tamanhoBytes > MAX_BYTES) {
+    throw new Error("Arquivo muito grande (máx. 5 MB).");
+  }
+}
+
+function extensaoPorMime(mimeType: string) {
+  return mimeType === "application/pdf"
+    ? "pdf"
+    : mimeType === "image/png"
+      ? "png"
+      : mimeType === "image/webp"
+        ? "webp"
+        : "jpg";
+}
+
+async function validarContratacaoExiste(contratacaoId: string) {
+  const admin = createAdminClient();
+  const { data: contratacao, error } = await admin
+    .from("contratacoes_online")
+    .select("id")
+    .eq("id", contratacaoId)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!contratacao) throw new Error("Contratação não encontrada.");
+  return admin;
+}
+
+async function registrarDocumentoContratacao(
+  admin: ReturnType<typeof createAdminClient>,
+  params: {
+    contratacaoId: string;
+    tipo: TipoDocumentoContratacao;
+    path: string;
+    arquivoNome: string;
+    mimeType: string;
+    tamanhoBytes: number;
+  },
+): Promise<ContratacaoDocumentoRow> {
+  const { data: inserted, error: insErr } = await admin
+    .from("contratacoes_documentos")
+    .insert({
+      contratacao_id: params.contratacaoId,
+      tipo_documento: params.tipo,
+      arquivo_url: params.path,
+      arquivo_nome: params.arquivoNome,
+      mime_type: params.mimeType,
+      tamanho_bytes: params.tamanhoBytes,
+    })
+    .select("*")
+    .single();
+  if (insErr || !inserted) {
+    await admin.storage.from(DOCUMENTOS_BUCKET).remove([params.path]);
+    throw new Error(insErr?.message ?? "Falha ao registrar documento.");
+  }
+
+  if (params.tipo === "comprovante_pix") {
+    await admin
+      .from("contratacoes_online")
+      .update({ pix_comprovante_url: params.path, pix_status: "enviado" })
+      .eq("id", params.contratacaoId);
+  }
+
+  return inserted as ContratacaoDocumentoRow;
 }
 
 export function assertAcessoDocumentosContratacao(usuario: UsuarioNegocio | null): void {
@@ -106,68 +182,57 @@ export async function obterSignedUrlDocumentoContratacao(
   return signedAdmin.signedUrl;
 }
 
-/** Upload de documento pelo painel admin (não depende do status público da proposta). */
-export async function uploadDocumentoContratacaoAdmin(
-  contratacaoId: string,
-  tipoRaw: string,
-  file: File,
-): Promise<ContratacaoDocumentoRow> {
-  if (!isTipoDocumento(tipoRaw)) {
-    throw new Error("Tipo de documento inválido.");
+/** Autoriza um único upload direto do navegador para o bucket privado. */
+export async function prepararUploadDocumentoContratacaoAdmin(params: {
+  contratacaoId: string;
+  tipo: string;
+  mimeType: string;
+  tamanhoBytes: number;
+}): Promise<{ path: string; token: string }> {
+  validarMetadadosUpload(params.tipo, params.mimeType, params.tamanhoBytes);
+  const admin = await validarContratacaoExiste(params.contratacaoId);
+  const ext = extensaoPorMime(params.mimeType);
+  const path = `${params.contratacaoId}/${params.tipo}_${crypto.randomUUID()}.${ext}`;
+  const { data, error } = await admin.storage
+    .from(DOCUMENTOS_BUCKET)
+    .createSignedUploadUrl(path);
+  if (error || !data?.token) {
+    throw new Error(error?.message ?? "Não foi possível preparar o envio do documento.");
   }
-  if (!(file instanceof File) || file.size === 0) {
-    throw new Error("Selecione um arquivo válido.");
-  }
-  if (!MIME_PERMITIDOS.has(file.type)) {
-    throw new Error("Tipo de arquivo não permitido. Use PDF, JPG, PNG ou WEBP.");
-  }
-  if (file.size > MAX_BYTES) throw new Error("Arquivo muito grande (máx. 5 MB).");
+  return { path, token: data.token };
+}
 
-  const admin = createAdminClient();
-  const { data: contratacao, error: ctrErr } = await admin
-    .from("contratacoes_online")
-    .select("id")
-    .eq("id", contratacaoId)
-    .maybeSingle();
-  if (ctrErr) throw new Error(ctrErr.message);
-  if (!contratacao) throw new Error("Contratação não encontrada.");
+/** Confirma no banco um arquivo que já foi enviado por URL assinada. */
+export async function concluirUploadDocumentoContratacaoAdmin(params: {
+  contratacaoId: string;
+  tipo: string;
+  path: string;
+  arquivoNome: string;
+  mimeType: string;
+  tamanhoBytes: number;
+}): Promise<ContratacaoDocumentoRow> {
+  validarMetadadosUpload(params.tipo, params.mimeType, params.tamanhoBytes);
+  const prefixoEsperado = `${params.contratacaoId}/${params.tipo}_`;
+  if (!params.path.startsWith(prefixoEsperado) || params.path.includes("..")) {
+    throw new Error("Caminho do documento inválido.");
+  }
 
-  const ext =
-    file.type === "application/pdf"
-      ? "pdf"
-      : file.type === "image/png"
-        ? "png"
-        : file.type === "image/webp"
-          ? "webp"
-          : "jpg";
-  const path = `${contratacaoId}/${tipoRaw}_${crypto.randomUUID()}.${ext}`;
-  const buf = Buffer.from(await file.arrayBuffer());
-  const { error: upErr } = await admin.storage.from("contratacoes-documentos").upload(path, buf, {
-    contentType: file.type,
-    upsert: false,
+  const admin = await validarContratacaoExiste(params.contratacaoId);
+  const nomeObjeto = params.path.slice(params.contratacaoId.length + 1);
+  const { data: objetos, error: listErr } = await admin.storage
+    .from(DOCUMENTOS_BUCKET)
+    .list(params.contratacaoId, { search: nomeObjeto, limit: 10 });
+  if (listErr) throw new Error(listErr.message);
+  if (!(objetos ?? []).some((objeto) => objeto.name === nomeObjeto)) {
+    throw new Error("O arquivo enviado não foi encontrado no armazenamento.");
+  }
+
+  return registrarDocumentoContratacao(admin, {
+    contratacaoId: params.contratacaoId,
+    tipo: params.tipo as TipoDocumentoContratacao,
+    path: params.path,
+    arquivoNome: params.arquivoNome,
+    mimeType: params.mimeType,
+    tamanhoBytes: params.tamanhoBytes,
   });
-  if (upErr) throw new Error(upErr.message);
-
-  const { data: inserted, error: insErr } = await admin
-    .from("contratacoes_documentos")
-    .insert({
-      contratacao_id: contratacaoId,
-      tipo_documento: tipoRaw,
-      arquivo_url: path,
-      arquivo_nome: file.name,
-      mime_type: file.type,
-      tamanho_bytes: file.size,
-    })
-    .select("*")
-    .single();
-  if (insErr || !inserted) throw new Error(insErr?.message ?? "Falha ao registrar documento.");
-
-  if (tipoRaw === "comprovante_pix") {
-    await admin
-      .from("contratacoes_online")
-      .update({ pix_comprovante_url: path, pix_status: "enviado" })
-      .eq("id", contratacaoId);
-  }
-
-  return inserted as ContratacaoDocumentoRow;
 }

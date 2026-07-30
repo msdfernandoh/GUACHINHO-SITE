@@ -20,6 +20,7 @@ import { resumoFinanceiroFromDados, linhasGrupoResumoFromDados } from "@/lib/con
 import type { ContratacaoDocumentoRow, ContratacaoOnlineRow } from "@/lib/contratacoes-online/types";
 import { buildPropostaPublicUrl } from "@/lib/url/public-url";
 import { DEFAULT_SITE, getConfigJsonPublic } from "@/server/config";
+import { isDbMissingColumnError } from "@/lib/comercial-eventos/db-ready";
 
 export async function fetchContratacoesList(): Promise<ContratacaoOnlineRow[]> {
   const usuario = await requireStaffAdmin();
@@ -210,23 +211,46 @@ export async function getContratacaoDocumentoSignedUrlAction(
   }
 }
 
-export async function uploadContratacaoDocumentoAdminAction(
-  formData: FormData,
-): Promise<{ ok: true } | { ok: false; error: string }> {
+export async function prepararUploadContratacaoDocumentoAdminAction(input: {
+  contratacaoId: string;
+  tipo: string;
+  mimeType: string;
+  tamanhoBytes: number;
+}): Promise<
+  { ok: true; path: string; token: string } | { ok: false; error: string }
+> {
   try {
     const usuario = await requireStaffAdmin();
     assertAcessoDocumentosContratacao(usuario);
-    const contratacaoId = String(formData.get("contratacao_id") ?? "").trim();
-    const tipo = String(formData.get("tipo_documento") ?? "").trim();
-    const file = formData.get("arquivo");
-    if (!contratacaoId) return { ok: false, error: "Contratação inválida." };
-    if (!(file instanceof File)) return { ok: false, error: "Selecione um arquivo." };
-
-    const { uploadDocumentoContratacaoAdmin } = await import(
+    const { prepararUploadDocumentoContratacaoAdmin } = await import(
       "@/lib/contratacoes-online/documentos-admin"
     );
-    await uploadDocumentoContratacaoAdmin(contratacaoId, tipo, file);
-    revalidatePath(`/admin/contratacoes/${contratacaoId}`);
+    const preparado = await prepararUploadDocumentoContratacaoAdmin(input);
+    return { ok: true, ...preparado };
+  } catch (e) {
+    return {
+      ok: false,
+      error: e instanceof Error ? e.message : MSG_SEM_PERMISSAO_DOCUMENTOS_CONTRATACAO,
+    };
+  }
+}
+
+export async function concluirUploadContratacaoDocumentoAdminAction(input: {
+  contratacaoId: string;
+  tipo: string;
+  path: string;
+  arquivoNome: string;
+  mimeType: string;
+  tamanhoBytes: number;
+}): Promise<{ ok: true } | { ok: false; error: string }> {
+  try {
+    const usuario = await requireStaffAdmin();
+    assertAcessoDocumentosContratacao(usuario);
+    const { concluirUploadDocumentoContratacaoAdmin } = await import(
+      "@/lib/contratacoes-online/documentos-admin"
+    );
+    await concluirUploadDocumentoContratacaoAdmin(input);
+    revalidatePath(`/admin/contratacoes/${input.contratacaoId}`);
     revalidatePath("/admin/contratacoes");
     return { ok: true };
   } catch (e) {
@@ -244,6 +268,47 @@ export async function updateContratacaoStatusAction(id: string, status: string) 
   if (error) throw new Error(error.message);
   revalidatePath(`/admin/contratacoes/${id}`);
   revalidatePath("/admin/contratacoes");
+}
+
+export async function updateContratoAssinadoAction(
+  id: string,
+  assinado: boolean,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  try {
+    const usuario = await requireStaffAdmin();
+    const supabase = await createClient();
+    let query = supabase
+      .from("contratacoes_online")
+      .update({
+        contrato_assinado: assinado,
+        contrato_assinado_em: assinado ? new Date().toISOString() : null,
+      })
+      .eq("id", id);
+    if (usuario.leads_apenas_proprios) {
+      query = query.eq("gerado_por_usuario_id", usuario.id);
+    }
+    const { data, error } = await query.select("id").maybeSingle();
+    if (error) {
+      if (isDbMissingColumnError(error)) {
+        return {
+          ok: false,
+          error:
+            "O controle de contrato assinado ainda não está configurado. Aplique a migration 041_contratacoes_contrato_assinado.sql.",
+        };
+      }
+      return { ok: false, error: error.message };
+    }
+    if (!data) return { ok: false, error: "Contratação não encontrada ou sem permissão." };
+
+    revalidatePath(`/admin/contratacoes/${id}`);
+    revalidatePath("/admin/contratacoes");
+    return { ok: true };
+  } catch (e) {
+    return {
+      ok: false,
+      error: e instanceof Error ? e.message : "Falha ao atualizar contrato assinado.",
+    };
+  }
 }
 
 export type UpdateContratacaoClienteInput = {

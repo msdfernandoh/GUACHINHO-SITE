@@ -5,12 +5,14 @@ import { useRouter } from "next/navigation";
 import { ExternalLink, Download, Eye, Upload } from "lucide-react";
 import { Button, Input, Label } from "@/components/ui/form-primitives";
 import {
+  concluirUploadContratacaoDocumentoAdminAction,
   getContratacaoDocumentoSignedUrlAction,
   getContratacaoDocumentosBulkDownloadAction,
-  uploadContratacaoDocumentoAdminAction,
+  prepararUploadContratacaoDocumentoAdminAction,
 } from "../actions";
 import type { ContratacaoDocumentoRow, TipoDocumentoContratacao } from "@/lib/contratacoes-online/types";
 import { cn } from "@/lib/utils/cn";
+import { createClient } from "@/lib/supabase/client";
 import { formatTamanhoArquivo, labelTipoDocumento } from "@/lib/contratacoes-online/documentos-labels";
 import {
   adminSectionClass,
@@ -29,6 +31,8 @@ const TIPOS_UPLOAD: TipoDocumentoContratacao[] = [
   "comprovante_pix",
   "outro",
 ];
+
+const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
 
 type Props = {
   contratacaoId: string;
@@ -103,22 +107,62 @@ export function ContratacaoDocumentosSection({
       setErro("Selecione um arquivo para anexar.");
       return;
     }
+    if (arquivo.size > MAX_UPLOAD_BYTES) {
+      setErro("Arquivo muito grande. O tamanho máximo permitido é 5 MB.");
+      return;
+    }
     setErro(null);
     setOkMsg(null);
-    const fd = new FormData();
-    fd.set("contratacao_id", contratacaoId);
-    fd.set("tipo_documento", tipoUpload);
-    fd.set("arquivo", arquivo);
+    const arquivoSelecionado = arquivo;
     startTransition(async () => {
-      const res = await uploadContratacaoDocumentoAdminAction(fd);
-      if (!res.ok) {
-        setErro(res.error);
-        return;
+      try {
+        const preparado = await prepararUploadContratacaoDocumentoAdminAction({
+          contratacaoId,
+          tipo: tipoUpload,
+          mimeType: arquivoSelecionado.type,
+          tamanhoBytes: arquivoSelecionado.size,
+        });
+        if (!preparado.ok) {
+          setErro(preparado.error);
+          return;
+        }
+
+        const supabase = createClient();
+        const { error: uploadError } = await supabase.storage
+          .from("contratacoes-documentos")
+          .uploadToSignedUrl(preparado.path, preparado.token, arquivoSelecionado, {
+            contentType: arquivoSelecionado.type,
+            upsert: false,
+          });
+        if (uploadError) {
+          setErro(`Não foi possível enviar o arquivo: ${uploadError.message}`);
+          return;
+        }
+
+        const concluido = await concluirUploadContratacaoDocumentoAdminAction({
+          contratacaoId,
+          tipo: tipoUpload,
+          path: preparado.path,
+          arquivoNome: arquivoSelecionado.name,
+          mimeType: arquivoSelecionado.type,
+          tamanhoBytes: arquivoSelecionado.size,
+        });
+        if (!concluido.ok) {
+          setErro(concluido.error);
+          return;
+        }
+
+        setArquivo(null);
+        setFileInputKey((k) => k + 1);
+        setOkMsg("Documento anexado com sucesso.");
+        router.refresh();
+      } catch (e) {
+        setErro(
+          e instanceof Error
+            ? `Não foi possível enviar o documento: ${e.message}`
+            : "Não foi possível enviar o documento. Tente novamente.",
+        );
       }
-      setArquivo(null);
-      setFileInputKey((k) => k + 1);
-      setOkMsg("Documento anexado com sucesso.");
-      router.refresh();
     });
   }
 

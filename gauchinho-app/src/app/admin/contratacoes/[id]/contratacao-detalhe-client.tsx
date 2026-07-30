@@ -234,7 +234,10 @@ export function ContratacaoDetalheClient({
             />
             {gruposLinhas.length > 0 ? (
               <div className="col-span-full">
-                <ContratacaoGruposResumo linhas={gruposLinhas} />
+                <ContratacaoGruposResumo
+                  linhas={gruposLinhas}
+                  exibirValorCota={gruposLinhas.some((linha) => linha.quantidadeCotas > 1)}
+                />
               </div>
             ) : (
               <Field label="Grupo" value={contratacao.grupo_nome} />

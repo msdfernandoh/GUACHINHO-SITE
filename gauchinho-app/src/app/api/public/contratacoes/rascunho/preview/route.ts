@@ -28,9 +28,9 @@ export async function POST(request: Request) {
         protocolo: "RASCUNHO",
         origem: body.origem,
         status: "proposta_aberta",
-        nome: null,
-        telefone: null,
-        email: null,
+        nome: body.cliente_pre_nome ?? null,
+        telefone: body.cliente_pre_telefone ?? null,
+        email: body.cliente_pre_email ?? null,
         ...flat,
         dados_simulacao: {
           ...body.dados_simulacao,

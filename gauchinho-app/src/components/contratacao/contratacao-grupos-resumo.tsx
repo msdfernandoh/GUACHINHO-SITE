@@ -1,6 +1,13 @@
 import type { LinhaGrupoPropostaResumo } from "@/lib/contratacoes-online/extract-fields";
+import { formatCurrency } from "@/lib/utils/format";
 
-export function ContratacaoGruposResumo({ linhas }: { linhas: LinhaGrupoPropostaResumo[] }) {
+export function ContratacaoGruposResumo({
+  linhas,
+  exibirValorCota = false,
+}: {
+  linhas: LinhaGrupoPropostaResumo[];
+  exibirValorCota?: boolean;
+}) {
   if (!linhas.length) return null;
   return (
     <div className="border-b border-slate-800 py-3 last:border-0">
@@ -14,6 +21,9 @@ export function ContratacaoGruposResumo({ linhas }: { linhas: LinhaGrupoProposta
               <th className="pb-1 pr-3 font-medium">Grupo</th>
               <th className="pb-1 pr-3 font-medium">Tipo</th>
               <th className="pb-1 pr-3 font-medium">Qtd. cotas</th>
+              {exibirValorCota ? (
+                <th className="pb-1 pr-3 font-medium">Valor da cota</th>
+              ) : null}
               <th className="pb-1 font-medium">Meses decorridos</th>
             </tr>
           </thead>
@@ -23,6 +33,11 @@ export function ContratacaoGruposResumo({ linhas }: { linhas: LinhaGrupoProposta
                 <td className="py-2 pr-3 font-semibold text-amber-200/90">{l.codigoGrupo}</td>
                 <td className="py-2 pr-3 text-slate-300">{l.modalidade ?? "—"}</td>
                 <td className="py-2 pr-3">{l.quantidadeCotas > 0 ? l.quantidadeCotas : "—"}</td>
+                {exibirValorCota ? (
+                  <td className="whitespace-nowrap py-2 pr-3">
+                    {l.valorCota != null ? formatCurrency(l.valorCota) : "—"}
+                  </td>
+                ) : null}
                 <td className="py-2">
                   {l.parcelasRealizadas != null ? `${l.parcelasRealizadas} meses` : "—"}
                 </td>

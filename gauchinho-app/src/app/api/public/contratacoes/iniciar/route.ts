@@ -26,12 +26,11 @@ export async function POST(request: Request) {
       }
     }
 
-    // Cliente no site sem nome: não grava no banco (rascunho só no browser).
-    // Evita lixo de "Proposta aberta" quando a pessoa para na tela inicial.
-    const nomePre = body.cliente_pre_nome?.trim() ?? "";
-    if (body.modo === "cliente_site" && !nomePre) {
+    // Cliente no site: mantém toda a proposta apenas no navegador até concluir
+    // nome, contato, CPF/CNPJ e endereço. Evita simulações incompletas no banco.
+    if (body.modo === "cliente_site") {
       const consultorId = body.consultor_id?.trim() || usuario?.id || "";
-      if (!consultorId && body.modo === "cliente_site") {
+      if (!consultorId) {
         return NextResponse.json(
           { error: "Selecione o consultor responsável pela proposta." },
           { status: 400 },
@@ -48,6 +47,9 @@ export async function POST(request: Request) {
           createdAt: new Date().toISOString(),
           consultor_id: body.consultor_id?.trim() || usuario?.id || undefined,
           consultor_nome: body.consultor_nome?.trim() || usuario?.nome || undefined,
+          cliente_pre_nome: body.cliente_pre_nome?.trim() || undefined,
+          cliente_pre_telefone: body.cliente_pre_telefone?.trim() || undefined,
+          cliente_pre_email: body.cliente_pre_email?.trim() || undefined,
         },
       });
     }

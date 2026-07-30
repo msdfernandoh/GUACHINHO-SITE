@@ -9,6 +9,9 @@ export type ContratacaoDraftPayload = {
   createdAt: string;
   consultor_id?: string;
   consultor_nome?: string;
+  cliente_pre_nome?: string;
+  cliente_pre_telefone?: string;
+  cliente_pre_email?: string;
 };
 
 export function isContratacaoDraftPayload(v: unknown): v is ContratacaoDraftPayload {

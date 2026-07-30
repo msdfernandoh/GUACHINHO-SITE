@@ -79,6 +79,9 @@ export type ContratacaoOnlineRow = {
   confirmado_em: string | null;
   finalizado_em: string | null;
   primeiro_acesso_em: string | null;
+  /** Controle interno do admin, independente da etapa pública da proposta. */
+  contrato_assinado?: boolean;
+  contrato_assinado_em?: string | null;
   created_at: string;
   updated_at: string;
 };

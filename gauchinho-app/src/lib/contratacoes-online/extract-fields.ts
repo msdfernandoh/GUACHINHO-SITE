@@ -102,6 +102,7 @@ export type LinhaGrupoPropostaResumo = {
   codigoGrupo: string;
   modalidade: string | null;
   quantidadeCotas: number;
+  valorCota: number | null;
   parcelasRealizadas: number | null;
 };
 
@@ -147,10 +148,16 @@ export function linhasGrupoResumoFromDados(
             0,
         ),
       ) || 0;
+    const somaCotas = num(resultado.somaCotas);
+    const valorCota =
+      num(resultado.valorCota) ??
+      num(resultado.valorCredito) ??
+      (somaCotas != null && quantidadeCotas > 0 ? somaCotas / quantidadeCotas : null);
     return {
       codigoGrupo,
       modalidade,
       quantidadeCotas,
+      valorCota,
       parcelasRealizadas: parcelasRealizadasGrupoSnap(grupo),
     };
   });
