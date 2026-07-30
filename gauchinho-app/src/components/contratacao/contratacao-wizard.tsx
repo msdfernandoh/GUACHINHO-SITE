@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import QRCode from "react-qr-code";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { ArrowLeft, Copy } from "lucide-react";
 import { Button, Input, Label, Textarea } from "@/components/ui/form-primitives";
 import { sectionCardClass, simuladorShell } from "@/components/simulador/simulador-ui";
 import {
@@ -36,6 +37,10 @@ import {
   clearContratacaoDraftStorage,
   readContratacaoDraftFromStorage,
 } from "@/lib/contratacoes-online/draft";
+import {
+  buildPropostaVisualizacaoUrl,
+  type VisualizacaoProposta,
+} from "@/lib/contratacoes-online/proposta-visualizacao";
 
 const ENDERECO_VAZIO: EnderecoFormState = {
   cep: "",
@@ -91,9 +96,13 @@ function percentAa(v: number | null | undefined) {
 export function ContratacaoWizard({
   publicToken: initialToken,
   draftMode = false,
+  visualizacao = "completa",
+  canGenerateLinks = false,
 }: {
   publicToken?: string;
   draftMode?: boolean;
+  visualizacao?: VisualizacaoProposta;
+  canGenerateLinks?: boolean;
 }) {
   const router = useRouter();
   const [publicToken, setPublicToken] = useState(initialToken ?? "");
@@ -119,6 +128,15 @@ export function ContratacaoWizard({
   const [docsAviso, setDocsAviso] = useState<string | null>(null);
   const [documentos, setDocumentos] = useState<DocumentoContratacaoPublico[]>([]);
   const [observacaoCliente, setObservacaoCliente] = useState("");
+  const [copiedLink, setCopiedLink] = useState<VisualizacaoProposta | null>(null);
+
+  async function copyProposalLink(mode: VisualizacaoProposta) {
+    await navigator.clipboard.writeText(
+      buildPropostaVisualizacaoUrl(window.location.href, mode),
+    );
+    setCopiedLink(mode);
+    window.setTimeout(() => setCopiedLink(null), 2000);
+  }
 
   const fetchDocumentos = useCallback(async () => {
     if (!publicToken) {
@@ -498,6 +516,37 @@ export function ContratacaoWizard({
   return (
     <div className={cn(simuladorShell, "min-h-screen px-4 py-10")}>
       <div className="mx-auto max-w-2xl space-y-6">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <Link
+            href="/grupos"
+            className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-slate-700 px-3 py-2 text-sm font-medium text-slate-200 transition hover:border-amber-500/60 hover:text-amber-300"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Voltar para grupos
+          </Link>
+          {canGenerateLinks && !isDraft && step === "confirm" ? (
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                size="sm"
+                variant="outlineGold"
+                onClick={() => void copyProposalLink("resumida")}
+              >
+                <Copy className="mr-2 h-4 w-4" />
+                {copiedLink === "resumida" ? "Link resumido copiado!" : "Link resumido"}
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="outlineGold"
+                onClick={() => void copyProposalLink("completa")}
+              >
+                <Copy className="mr-2 h-4 w-4" />
+                {copiedLink === "completa" ? "Link completo copiado!" : "Link completo"}
+              </Button>
+            </div>
+          ) : null}
+        </div>
         <header className="text-center">
           <p className="text-xs font-semibold uppercase tracking-widest text-amber-400/90">
             Gauchinho Consórcios
@@ -525,45 +574,78 @@ export function ContratacaoWizard({
               <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-amber-400/90">
                 Resumo da proposta
               </h2>
-              <Row label="Tipo do bem" value={c.tipo_bem} />
-              <Row label="Crédito selecionado" value={money(c.credito_selecionado)} />
+              {visualizacao === "completa" ? <Row label="Tipo do bem" value={c.tipo_bem} /> : null}
+              <Row
+                label={visualizacao === "resumida" ? "Crédito contratado" : "Crédito selecionado"}
+                value={money(c.credito_selecionado)}
+              />
               <Row label="Parcela inicial estimada" value={money(c.parcela_estimada)} />
               <Row label="Prazo" value={c.prazo ? `${c.prazo} meses` : null} />
-              <Row label="Origem" value={origemLabel} />
-              <Row label="Administradora" value={c.administradora} />
+              {visualizacao === "completa" ? (
+                <>
+                  <Row label="Origem" value={origemLabel} />
+                  <Row label="Administradora" value={c.administradora} />
+                </>
+              ) : null}
               {gruposLinhas.length > 0 ? (
                 <ContratacaoGruposResumo linhas={gruposLinhas} />
               ) : (
-                <Row label="Grupo" value={c.grupo_nome} />
+                <Row
+                  label={visualizacao === "resumida" ? "Grupos selecionados" : "Grupo"}
+                  value={c.grupo_nome}
+                />
               )}
             </div>
             <div className={sectionCardClass()}>
               <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-amber-400/90">
-                Detalhes financeiros
+                {visualizacao === "resumida" ? "Detalhes" : "Detalhes financeiros"}
               </h2>
-              <Row label="Saldo devedor" value={money(fin.saldoDevedor as number)} />
+              {visualizacao === "completa" ? (
+                <Row label="Saldo devedor" value={money(fin.saldoDevedor as number)} />
+              ) : null}
               <Row label="Parcela integral" value={money(fin.parcelaIntegral as number)} />
-              <Row label="Parcela reduzida" value={money(fin.parcelaReduzida as number)} />
-              <Row
-                label="Parcela após contemplação"
-                value={money(fin.parcelaPosContemplacao as number)}
-              />
-              <Row label="Lance embutido" value={money(fin.lanceEmbutido as number)} />
-              <Row label="Recurso próprio" value={money(fin.recursoProprio as number)} />
-              <Row label="Lance total" value={money(fin.lanceTotal as number)} />
+              {visualizacao === "completa" ? (
+                <>
+                  <Row label="Parcela reduzida" value={money(fin.parcelaReduzida as number)} />
+                  <Row
+                    label="Parcela após contemplação"
+                    value={money(fin.parcelaPosContemplacao as number)}
+                  />
+                  <Row label="Lance embutido" value={money(fin.lanceEmbutido as number)} />
+                  <Row label="Recurso próprio" value={money(fin.recursoProprio as number)} />
+                  <Row label="Lance total" value={money(fin.lanceTotal as number)} />
+                </>
+              ) : null}
               <Row label="Crédito líquido" value={money(fin.creditoLiquido as number)} />
-              <Row label="Saldo pós-lance" value={money(fin.saldoPosLance as number)} />
-              <Row label="Seguro" value={money(fin.seguro as number)} />
               <Row
-                label="Parcelas restantes"
+                label={
+                  visualizacao === "resumida"
+                    ? "Saldo devedor pós contemplação"
+                    : "Saldo pós-lance"
+                }
+                value={money(fin.saldoPosLance as number)}
+              />
+              {visualizacao === "completa" ? (
+                <Row label="Seguro" value={money(fin.seguro as number)} />
+              ) : null}
+              <Row
+                label={
+                  visualizacao === "resumida"
+                    ? "Prazo pós contemplação"
+                    : "Parcelas restantes"
+                }
                 value={
                   fin.parcelasRestantes != null && Number.isFinite(Number(fin.parcelasRestantes))
                     ? `${Math.round(Number(fin.parcelasRestantes))} meses`
                     : null
                 }
               />
-              <Row label="Custo efetivo mensal" value={percentAm(fin.custoEfetivoMensal as number)} />
-              <Row label="Custo efetivo anual" value={percentAa(fin.custoEfetivoAnual as number)} />
+              {visualizacao === "completa" ? (
+                <>
+                  <Row label="Custo efetivo mensal" value={percentAm(fin.custoEfetivoMensal as number)} />
+                  <Row label="Custo efetivo anual" value={percentAa(fin.custoEfetivoAnual as number)} />
+                </>
+              ) : null}
             </div>
             <p className="text-sm text-slate-400">
               Ao continuar, você confirma que deseja avançar com esta proposta para análise e emissão

@@ -267,7 +267,7 @@ export function GruposPublicClient({
     <div
       className={cn(
         simuladorShell,
-        "pb-[4.25rem] lg:pb-[5.5rem]",
+        "pb-[5rem] lg:pb-[6.5rem]",
         "max-lg:has-[button[aria-expanded=true]]:pb-[min(40vh,18rem)]",
       )}
     >

@@ -61,8 +61,8 @@ function TotalCard({
 function InlineStat({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
   return (
     <div className="min-w-[4.5rem] shrink-0">
-      <p className="text-[9px] font-medium uppercase tracking-wide text-zinc-500">{label}</p>
-      <p className={cn("text-sm font-bold tabular-nums", accent ? "text-amber-400" : "text-zinc-100")}>
+      <p className="text-[10px] font-medium uppercase tracking-wide text-zinc-500">{label}</p>
+      <p className={cn("text-base font-bold tabular-nums", accent ? "text-amber-400" : "text-zinc-100")}>
         {value}
       </p>
     </div>
@@ -178,7 +178,7 @@ function DesktopTotalsBar(props: Props) {
         <Button
           type="button"
           variant="gold"
-          className="min-h-9 whitespace-nowrap px-4 text-sm font-bold"
+          className="min-h-10 whitespace-nowrap px-4 text-sm font-bold"
           disabled={contratarLoading}
           onClick={onContratar}
         >
@@ -188,7 +188,7 @@ function DesktopTotalsBar(props: Props) {
           <Button
             type="button"
             variant="outlineGold"
-            className="min-h-9 border-zinc-600 bg-zinc-900 px-3 text-xs"
+            className="min-h-10 border-zinc-600 bg-zinc-900 px-3 text-xs"
             disabled={contratarLoading}
             onClick={onGerarLink}
           >
@@ -198,7 +198,7 @@ function DesktopTotalsBar(props: Props) {
         <Button
           type="button"
           variant="outlineGold"
-          className="min-h-9 border-zinc-600 bg-zinc-900 px-3 text-xs"
+          className="min-h-10 border-zinc-600 bg-zinc-900 px-3 text-xs"
           onClick={onProposta}
         >
           PDF
@@ -221,15 +221,15 @@ function DesktopTotalsBar(props: Props) {
 }
 
 export function GrupoTotalsBar(props: Props) {
-  const { totais, onContratar, contratarLoading } = props;
+  const { totais, onContratar, onGerarLink, contratarLoading } = props;
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const temSelecao = totais.gruposSelecionados > 0 || totais.totalCotas > 0;
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-20 border-t border-amber-500/20 bg-zinc-950/95 backdrop-blur-md">
+    <div className="fixed bottom-0 left-0 right-0 z-20 border-t border-amber-500/25 bg-zinc-950/95 shadow-[0_-8px_28px_rgba(0,0,0,0.28)] backdrop-blur-md">
       <div className="lg:hidden">
-        <div className="flex items-center gap-2 px-3 py-2">
+        <div className="flex items-center gap-2 px-3 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
           <button
             type="button"
             className="min-w-0 flex-1 text-left"
@@ -252,12 +252,24 @@ export function GrupoTotalsBar(props: Props) {
             type="button"
             variant="gold"
             size="sm"
-            className="shrink-0 px-3 text-xs font-bold"
+            className="min-h-10 shrink-0 px-3 text-xs font-bold"
             disabled={contratarLoading}
             onClick={onContratar}
           >
             Contratar
           </Button>
+          {onGerarLink ? (
+            <Button
+              type="button"
+              variant="outlineGold"
+              size="sm"
+              className="min-h-10 shrink-0 border-zinc-600 bg-zinc-900 px-3 text-xs"
+              disabled={contratarLoading}
+              onClick={onGerarLink}
+            >
+              Gerar link
+            </Button>
+          ) : null}
           <button
             type="button"
             className="shrink-0 rounded-lg p-2 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100"
@@ -274,7 +286,7 @@ export function GrupoTotalsBar(props: Props) {
         ) : null}
       </div>
 
-      <div className="mx-auto hidden max-w-[1600px] px-4 py-2 sm:px-6 lg:block">
+      <div className="mx-auto hidden max-w-[1600px] px-4 py-3 sm:px-6 lg:block">
         <DesktopTotalsBar {...props} />
       </div>
     </div>

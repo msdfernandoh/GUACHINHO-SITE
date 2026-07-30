@@ -5,6 +5,10 @@ import { useState } from "react";
 import { Button } from "@/components/ui/form-primitives";
 import { formatCurrency } from "@/lib/utils/format";
 import { buildWhatsappPropostaMessage } from "@/lib/contratacoes-online/whatsapp-message";
+import {
+  buildPropostaVisualizacaoUrl,
+  type VisualizacaoProposta,
+} from "@/lib/contratacoes-online/proposta-visualizacao";
 
 type Props = {
   open: boolean;
@@ -28,16 +32,18 @@ export function PropostaLinkModal({
   whatsappDestino,
 }: Props) {
   const [copied, setCopied] = useState(false);
+  const [visualizacao, setVisualizacao] = useState<VisualizacaoProposta>("completa");
   if (!open) return null;
 
-  const msg = buildWhatsappPropostaMessage(url);
+  const publicUrl = buildPropostaVisualizacaoUrl(url, visualizacao);
+  const msg = buildWhatsappPropostaMessage(publicUrl);
   const waPhone = whatsappDestino?.replace(/\D/g, "") ?? "";
   const waHref = waPhone
     ? `https://wa.me/${waPhone}?text=${encodeURIComponent(msg)}`
     : `https://wa.me/?text=${encodeURIComponent(msg)}`;
 
   async function copyLink() {
-    await navigator.clipboard.writeText(url);
+    await navigator.clipboard.writeText(publicUrl);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   }
@@ -79,10 +85,43 @@ export function PropostaLinkModal({
           ) : null}
         </dl>
         <div>
+          <p className="mb-2 block text-xs text-zinc-500">Formato do link</p>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              className={`rounded-lg border px-3 py-2 text-sm font-semibold transition ${
+                visualizacao === "resumida"
+                  ? "border-amber-400 bg-amber-400/10 text-amber-300"
+                  : "border-zinc-700 text-zinc-300 hover:border-zinc-500"
+              }`}
+              onClick={() => {
+                setVisualizacao("resumida");
+                setCopied(false);
+              }}
+            >
+              Link resumido
+            </button>
+            <button
+              type="button"
+              className={`rounded-lg border px-3 py-2 text-sm font-semibold transition ${
+                visualizacao === "completa"
+                  ? "border-amber-400 bg-amber-400/10 text-amber-300"
+                  : "border-zinc-700 text-zinc-300 hover:border-zinc-500"
+              }`}
+              onClick={() => {
+                setVisualizacao("completa");
+                setCopied(false);
+              }}
+            >
+              Link completo
+            </button>
+          </div>
+        </div>
+        <div>
           <label className="mb-1 block text-xs text-zinc-500">Link público</label>
           <input
             readOnly
-            value={url}
+            value={publicUrl}
             className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-200"
           />
         </div>
@@ -97,7 +136,7 @@ export function PropostaLinkModal({
               Enviar pelo WhatsApp
             </Button>
           </a>
-          <a href={url} target="_blank" rel="noreferrer">
+          <a href={publicUrl} target="_blank" rel="noreferrer">
             <Button type="button" variant="outlineGold" className="border-zinc-600 bg-zinc-900">
               <ExternalLink className="mr-2 h-4 w-4" />
               Abrir proposta

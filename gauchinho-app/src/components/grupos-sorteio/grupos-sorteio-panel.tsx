@@ -410,13 +410,14 @@ export function GruposSorteioPanel({
               Consulte sorteios de meses anteriores pela Loteria Federal.
             </p>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="grid w-full grid-cols-1 gap-2 min-[440px]:w-auto min-[440px]:grid-cols-2">
             {!showTopTrigger && canManage ? (
               <Button
                 type="button"
                 size="sm"
                 variant={isDark ? "outline" : "default"}
                 className={cn(
+                  "min-h-10 w-full whitespace-nowrap",
                   isDark &&
                     "border-amber-500/60 text-amber-400 hover:bg-amber-500/10 hover:text-amber-300",
                 )}
@@ -429,7 +430,13 @@ export function GruposSorteioPanel({
               </Button>
             ) : null}
             {ocultosCount > 0 ? (
-              <Button type="button" size="sm" variant="outline" onClick={restaurarOcultos}>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="min-h-10 w-full whitespace-nowrap"
+                onClick={restaurarOcultos}
+              >
                 Mostrar ocultos ({ocultosCount})
               </Button>
             ) : null}
@@ -440,6 +447,7 @@ export function GruposSorteioPanel({
                 variant="outline"
                 disabled={limparLoading}
                 className={cn(
+                  "min-h-10 w-full whitespace-nowrap",
                   isDark && "border-red-500/40 text-red-300 hover:bg-red-500/10",
                 )}
                 onClick={() => void limparSorteios()}
@@ -449,6 +457,12 @@ export function GruposSorteioPanel({
             ) : null}
           </div>
         </div>
+        {!canManage ? (
+          <p className="mt-2 text-xs text-zinc-500">
+            Consulta disponível. Registrar e limpar sorteios exige uma sessão master ou SRD
+            autorizada a editar grupos.
+          </p>
+        ) : null}
         {canManage && !showTopTrigger ? (
           <p className="mt-2 text-xs text-zinc-500">
             Staff: calcule e salve resultados pela Loteria Federal.
@@ -578,10 +592,10 @@ export function GruposSorteioPanel({
       </section>
 
       {modalOpen ? (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/75 p-4 sm:items-center">
+        <div className="fixed inset-0 z-50 flex items-end justify-center overflow-y-auto bg-black/75 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))] sm:items-center">
           <div
             className={cn(
-              "max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border p-6 shadow-2xl",
+              "max-h-[calc(100dvh-2rem)] w-full max-w-lg overflow-y-auto overscroll-contain rounded-2xl border p-4 shadow-2xl sm:p-6",
               isDark ? "border-zinc-700 bg-zinc-950" : "border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900",
             )}
           >
