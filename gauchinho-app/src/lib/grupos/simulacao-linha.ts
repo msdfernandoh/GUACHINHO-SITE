@@ -120,7 +120,7 @@ function parcelaMensalDaCota(
   const baseReduzida = reduzidaVal ?? (num(cota.valor_parcela) || integral);
   const baseIntegral = integral || baseReduzida;
 
-  let base =
+  const base =
     modalidade === "reduzida" && grupo.tem_parcela_reduzida ? baseReduzida : baseIntegral;
 
   if (usaSeguro && usaSeguroGrupo) {
@@ -396,6 +396,8 @@ export function agregarResultadosLinhas(
   totalCotas: number;
   somaCotas: number;
   primeiraParcela: number;
+  parcelaIntegralTotal: number;
+  parcelaReduzidaTotal: number;
   lanceEmbutido: number;
   recursoProprio: number;
   lanceTotal: number;
@@ -415,6 +417,11 @@ export function agregarResultadosLinhas(
     totalCotas,
     somaCotas: ativas.reduce((a, l) => a + l.somaCotas, 0),
     primeiraParcela: ativas.reduce((a, l) => a + l.primeiraParcela, 0),
+    parcelaIntegralTotal: ativas.reduce((a, l) => a + l.parcelaIntegral, 0),
+    parcelaReduzidaTotal: ativas.reduce(
+      (a, l) => a + (l.parcelaPersonalizada ?? l.parcelaReduzida ?? 0),
+      0,
+    ),
     lanceEmbutido: ativas.reduce((a, l) => a + l.lanceEmbutido, 0),
     recursoProprio: ativas.reduce((a, l) => a + l.recursoProprio, 0),
     lanceTotal: ativas.reduce((a, l) => a + l.lanceTotal, 0),

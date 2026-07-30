@@ -116,7 +116,10 @@ export function createGrupoLinhaHandlers(
     if (config.recursoProprioModo === "percentual" && pctMinRecurso > 0) {
       v = Math.max(v, pctMinRecurso);
     }
-    patch({ recursoProprioInput: v });
+    patch({
+      usaRecursoProprio: v > 0,
+      recursoProprioInput: v,
+    });
   }
 
   function clearSelection() {

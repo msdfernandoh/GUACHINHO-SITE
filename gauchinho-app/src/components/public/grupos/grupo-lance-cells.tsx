@@ -142,7 +142,6 @@ export function GrupoRecursoProprioCell({
               handlers.patch({ usaRecursoProprio: false, recursoProprioInput: 0 });
               return;
             }
-            handlers.patch({ usaRecursoProprio: true });
             handlers.onRecursoInputChange(raw);
           }}
         />

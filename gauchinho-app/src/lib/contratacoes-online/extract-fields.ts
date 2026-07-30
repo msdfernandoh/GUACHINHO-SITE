@@ -28,6 +28,41 @@ function str(v: unknown): string | null {
   return s || null;
 }
 
+function somarResultados(
+  selecoes: unknown[],
+  campo: string,
+): number | null {
+  let encontrou = false;
+  const total = selecoes.reduce<number>((acc, raw) => {
+    const selecao = (raw ?? {}) as Record<string, unknown>;
+    const resultado = (selecao.resultado ?? {}) as Record<string, unknown>;
+    const valor = num(resultado[campo]);
+    if (valor == null) return acc;
+    encontrou = true;
+    return acc + valor;
+  }, 0);
+  return encontrou ? total : null;
+}
+
+function somarParcelasReduzidas(selecoes: unknown[]): number | null {
+  let encontrou = false;
+  const total = selecoes.reduce<number>((acc, raw) => {
+    const selecao = (raw ?? {}) as Record<string, unknown>;
+    const config = (selecao.config ?? {}) as Record<string, unknown>;
+    const resultado = (selecao.resultado ?? {}) as Record<string, unknown>;
+    const valor =
+      str(config.modalidadeParcela) === "personalizada"
+        ? num(resultado.parcelaPersonalizada) ??
+          num(resultado.parcelaBase) ??
+          num(resultado.parcelaReduzida)
+        : num(resultado.parcelaReduzida);
+    if (valor == null) return acc;
+    encontrou = true;
+    return acc + valor;
+  }, 0);
+  return encontrou ? total : null;
+}
+
 function custoEfetivoFromGrupo(grupo: Record<string, unknown>): {
   mensal: number | null;
   anual: number | null;
@@ -157,11 +192,18 @@ export function extrairCamposFlat(
   const first = (selecoes[0] ?? {}) as Record<string, unknown>;
   const grupo = (first.grupo ?? {}) as Record<string, unknown>;
   const resultado = (first.resultado ?? {}) as Record<string, unknown>;
+  const totais = (dados.totais ?? {}) as Record<string, unknown>;
   const credito =
+    num(totais.somaCotas) ??
+    somarResultados(selecoes, "somaCotas") ??
     num(resultado.somaCotas) ??
     num(resultado.creditoLiquido) ??
     num(dados.creditoLiquidoTotal);
-  const parcela = num(resultado.primeiraParcela) ?? num(dados.primeiraParcelaTotal);
+  const parcela =
+    num(totais.primeiraParcela) ??
+    somarResultados(selecoes, "primeiraParcela") ??
+    num(resultado.primeiraParcela) ??
+    num(dados.primeiraParcelaTotal);
   const prazo = num(grupo.prazo_meses) ?? num(grupo.prazo_total) ?? num(resultado.parcelasRestantesPosContemplacao);
   const grupoNomeResumo =
     linhasGrupo.length > 1
@@ -222,25 +264,57 @@ export function resumoFinanceiroFromDados(
       parcelaReduzida;
   }
   const parcelaIntegral =
-    num(resultado.parcelaIntegral) ?? num(resultado.parcelaBase) ?? num(totais.parcelaIntegral);
+    num(totais.parcelaIntegralTotal) ??
+    somarResultados(selecoes, "parcelaIntegral") ??
+    num(resultado.parcelaIntegral) ??
+    num(resultado.parcelaBase) ??
+    num(totais.parcelaIntegral);
   const custo = custoEfetivoFromGrupo(grupo);
   return {
     saldoDevedor:
-      num(resultado.saldoDevedorInicial) ?? num(totais.saldoDevedorInicial),
-    parcelaReduzida,
+      num(totais.saldoDevedorInicial) ??
+      somarResultados(selecoes, "saldoDevedorInicial") ??
+      num(resultado.saldoDevedorInicial),
+    parcelaReduzida:
+      num(totais.parcelaReduzidaTotal) ??
+      somarParcelasReduzidas(selecoes) ??
+      parcelaReduzida,
     parcelaIntegral,
-    lanceEmbutido: num(resultado.lanceEmbutido) ?? num(totais.lanceEmbutido),
-    recursoProprio: num(resultado.recursoProprio) ?? num(totais.recursoProprio),
-    lanceTotal: num(resultado.lanceTotal) ?? num(totais.lanceTotal),
-    creditoLiquido: num(resultado.creditoLiquido) ?? num(totais.creditoLiquido),
-    saldoPosLance: num(resultado.saldoPosLance) ?? num(totais.saldoPosLance),
-    seguro: num(resultado.seguroMensal) ?? num(totais.seguroTotal),
+    lanceEmbutido:
+      num(totais.lanceEmbutido) ??
+      somarResultados(selecoes, "lanceEmbutido") ??
+      num(resultado.lanceEmbutido),
+    recursoProprio:
+      num(totais.recursoProprio) ??
+      somarResultados(selecoes, "recursoProprio") ??
+      num(resultado.recursoProprio),
+    lanceTotal:
+      num(totais.lanceTotal) ??
+      somarResultados(selecoes, "lanceTotal") ??
+      num(resultado.lanceTotal),
+    creditoLiquido:
+      num(totais.creditoLiquido) ??
+      somarResultados(selecoes, "creditoLiquido") ??
+      num(resultado.creditoLiquido),
+    saldoPosLance:
+      num(totais.saldoPosLance) ??
+      somarResultados(selecoes, "saldoPosLance") ??
+      num(resultado.saldoPosLance),
+    seguro:
+      num(totais.seguroTotal) ??
+      somarResultados(selecoes, "seguroMensal") ??
+      num(resultado.seguroMensal),
     parcelaPosContemplacao:
-      num(resultado.parcelaPosContemplacao) ??
       num(totais.parcelaPosContemplacaoTotal) ??
+      somarResultados(selecoes, "parcelaPosContemplacao") ??
+      num(resultado.parcelaPosContemplacao) ??
       num(totais.parcelaPosContemplacao),
     custoEfetivoMensal: custo.mensal,
     custoEfetivoAnual: custo.anual,
-    parcelasRestantes: parcelasRestantesFromGrupoDados(grupo, resultado, totais),
+    parcelasRestantes:
+      selecoes.length > 1
+        ? num(totais.parcelasRestantesMax) ??
+          parcelasRestantesFromGrupoDados(grupo, resultado, totais)
+        : parcelasRestantesFromGrupoDados(grupo, resultado, totais),
   };
 }

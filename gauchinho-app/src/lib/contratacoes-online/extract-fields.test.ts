@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { resumoFinanceiroFromDados, linhasGrupoResumoFromDados } from "./extract-fields";
+import {
+  extrairCamposFlat,
+  resumoFinanceiroFromDados,
+  linhasGrupoResumoFromDados,
+} from "./extract-fields";
 
 describe("resumoFinanceiroFromDados — grupos", () => {
   it("preserva parcelaPosContemplacao da linha sem confundir com parcelas iniciais", () => {
@@ -111,5 +115,82 @@ describe("resumoFinanceiroFromDados — grupos", () => {
       parcelasRealizadas: 12,
     });
     expect(linhas[1]?.codigoGrupo).toBe("1273");
+  });
+
+  it("soma os valores de todos os grupos na proposta", () => {
+    const dados = {
+      selecoes: [
+        {
+          grupoId: "g1",
+          cotaId: "c1",
+          grupo: { codigo_grupo: "1193", modalidade: "Imóvel", prazo_total: 180 },
+          resultado: {
+            somaCotas: 305_438.77,
+            primeiraParcela: 2_255.63,
+            saldoDevedorInicial: 378_744.07,
+            parcelaIntegral: 2_104.13,
+            parcelaReduzida: 0,
+            lanceEmbutido: 94_686.02,
+            recursoProprio: 0,
+            lanceTotal: 94_686.02,
+            creditoLiquido: 210_752.75,
+            saldoPosLance: 284_058.05,
+            seguroMensal: 112.72,
+            parcelaPosContemplacao: 6_156.51,
+          },
+        },
+        {
+          grupoId: "g2",
+          cotaId: "c2",
+          grupo: { codigo_grupo: "1453", modalidade: "Imóvel", prazo_total: 200 },
+          resultado: {
+            somaCotas: 254_400,
+            primeiraParcela: 1_130.8,
+            saldoDevedorInicial: 323_088,
+            parcelaIntegral: 1_884.67,
+            parcelaReduzida: 1_130.8,
+            lanceEmbutido: 0,
+            recursoProprio: 96_926.4,
+            lanceTotal: 96_926.4,
+            creditoLiquido: 254_400,
+            saldoPosLance: 226_161.6,
+            seguroMensal: 112.52,
+            parcelaPosContemplacao: 1_328.44,
+          },
+        },
+      ],
+      totais: {
+        somaCotas: 559_838.77,
+        primeiraParcela: 3_386.43,
+        saldoDevedorInicial: 701_832.07,
+        parcelaIntegralTotal: 3_988.8,
+        parcelaReduzidaTotal: 1_130.8,
+        lanceEmbutido: 94_686.02,
+        recursoProprio: 96_926.4,
+        lanceTotal: 191_612.42,
+        creditoLiquido: 465_152.75,
+        saldoPosLance: 510_219.65,
+        seguroTotal: 225.24,
+        parcelaPosContemplacaoTotal: 7_484.95,
+        parcelasRestantesMax: 185,
+      },
+    };
+
+    const flat = extrairCamposFlat("grupos", dados);
+    const financeiro = resumoFinanceiroFromDados("grupos", dados);
+
+    expect(flat.credito_selecionado).toBe(559_838.77);
+    expect(flat.parcela_estimada).toBe(3_386.43);
+    expect(financeiro).toMatchObject({
+      saldoDevedor: 701_832.07,
+      parcelaIntegral: 3_988.8,
+      parcelaReduzida: 1_130.8,
+      lanceTotal: 191_612.42,
+      creditoLiquido: 465_152.75,
+      saldoPosLance: 510_219.65,
+      seguro: 225.24,
+      parcelaPosContemplacao: 7_484.95,
+      parcelasRestantes: 185,
+    });
   });
 });

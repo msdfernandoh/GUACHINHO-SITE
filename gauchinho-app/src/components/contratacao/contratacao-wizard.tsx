@@ -576,7 +576,7 @@ export function ContratacaoWizard({
               </h2>
               {visualizacao === "completa" ? <Row label="Tipo do bem" value={c.tipo_bem} /> : null}
               <Row
-                label={visualizacao === "resumida" ? "Crédito contratado" : "Crédito selecionado"}
+                label="Crédito contratado"
                 value={money(c.credito_selecionado)}
               />
               <Row label="Parcela inicial estimada" value={money(c.parcela_estimada)} />
@@ -618,22 +618,14 @@ export function ContratacaoWizard({
               ) : null}
               <Row label="Crédito líquido" value={money(fin.creditoLiquido as number)} />
               <Row
-                label={
-                  visualizacao === "resumida"
-                    ? "Saldo devedor pós contemplação"
-                    : "Saldo pós-lance"
-                }
+                label="Saldo devedor pós contemplação"
                 value={money(fin.saldoPosLance as number)}
               />
               {visualizacao === "completa" ? (
                 <Row label="Seguro" value={money(fin.seguro as number)} />
               ) : null}
               <Row
-                label={
-                  visualizacao === "resumida"
-                    ? "Prazo pós contemplação"
-                    : "Parcelas restantes"
-                }
+                label="Prazo pós contemplação"
                 value={
                   fin.parcelasRestantes != null && Number.isFinite(Number(fin.parcelasRestantes))
                     ? `${Math.round(Number(fin.parcelasRestantes))} meses`

@@ -6,7 +6,11 @@ import {
   atualizarContratacaoPublica,
 } from "@/lib/contratacoes-online/service";
 import { isValidPublicToken } from "@/lib/contratacoes-online/public-token";
-import { resumoFinanceiroFromDados, linhasGrupoResumoFromDados } from "@/lib/contratacoes-online/extract-fields";
+import {
+  extrairCamposFlat,
+  resumoFinanceiroFromDados,
+  linhasGrupoResumoFromDados,
+} from "@/lib/contratacoes-online/extract-fields";
 import { getConfigJsonPublic } from "@/server/config";
 import {
   DEFAULT_CONTRATACAO_ONLINE_CONFIG,
@@ -33,9 +37,11 @@ export async function GET(_req: Request, ctx: Ctx) {
       DEFAULT_CONTRATACAO_ONLINE_CONFIG,
     );
     const dadosSim = (row.dados_simulacao ?? {}) as Record<string, unknown>;
+    const flatAtualizado = extrairCamposFlat(row.origem, dadosSim);
     return NextResponse.json({
       ok: true,
-      contratacao: sanitizeContratacaoPublica(row),
+      // Recalcula também links já gerados antes da correção dos totais multigrupo.
+      contratacao: sanitizeContratacaoPublica({ ...row, ...flatAtualizado }),
       resumoFinanceiro: resumoFinanceiroFromDados(row.origem, dadosSim),
       gruposLinhas: linhasGrupoResumoFromDados(row.origem, dadosSim),
       formasPagamento: formasPagamentoDisponiveis(cfg),

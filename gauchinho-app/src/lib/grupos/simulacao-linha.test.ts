@@ -537,6 +537,12 @@ describe("caso Excel — grupos 1513 e 1533", () => {
     });
     const tot = agregarResultadosLinhas([r1, r2]);
     expect(tot.somaCotas).toBe(2_050_000);
+    expect(tot.parcelaIntegralTotal).toBeCloseTo(r1.parcelaIntegral + r2.parcelaIntegral, 2);
+    expect(tot.parcelaReduzidaTotal).toBeCloseTo(
+      (r1.parcelaPersonalizada ?? r1.parcelaReduzida ?? 0) +
+        (r2.parcelaPersonalizada ?? r2.parcelaReduzida ?? 0),
+      2,
+    );
     expect(tot.lanceEmbutido).toBeCloseTo(1_016_800, 0);
     expect(tot.creditoLiquido).toBeCloseTo(1_033_200, 0);
   });
