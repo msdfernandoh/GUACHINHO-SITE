@@ -270,6 +270,10 @@ export function ContratacaoWizard({
   const c = data?.contratacao;
   const fin = data?.resumoFinanceiro ?? {};
   const gruposLinhas = data?.gruposLinhas ?? [];
+  const lanceEmbutido = Number(fin.lanceEmbutido);
+  const recursoProprio = Number(fin.recursoProprio);
+  const temLanceEmbutido = Number.isFinite(lanceEmbutido) && lanceEmbutido > 0;
+  const temRecursoProprio = Number.isFinite(recursoProprio) && recursoProprio > 0;
 
   const docsPorTipo = useMemo(() => {
     const map = new Map<string, DocumentoContratacaoPublico[]>();
@@ -615,6 +619,12 @@ export function ContratacaoWizard({
                   <Row label="Recurso próprio" value={money(fin.recursoProprio as number)} />
                   <Row label="Lance total" value={money(fin.lanceTotal as number)} />
                 </>
+              ) : null}
+              {visualizacao === "resumida" && temLanceEmbutido ? (
+                <Row label="Lance embutido" value={money(lanceEmbutido)} />
+              ) : null}
+              {visualizacao === "resumida" && temRecursoProprio ? (
+                <Row label="Recurso próprio" value={money(recursoProprio)} />
               ) : null}
               <Row label="Crédito líquido" value={money(fin.creditoLiquido as number)} />
               <Row
