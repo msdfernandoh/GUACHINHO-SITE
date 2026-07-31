@@ -16,6 +16,7 @@ type Props = {
   perfil: string;
   isConsultor: boolean;
   leadsApenasProprios: boolean;
+  agendaAcessoTodos: boolean;
   googleAgendaSync: boolean;
   googleConnected: boolean;
   menuKeysAtivos: AdminMenuKey[];
@@ -30,6 +31,7 @@ export function UsuarioEdicaoForm({
   perfil,
   isConsultor,
   leadsApenasProprios,
+  agendaAcessoTodos,
   googleAgendaSync,
   googleConnected,
   menuKeysAtivos,
@@ -123,6 +125,15 @@ export function UsuarioEdicaoForm({
             className="mt-0.5"
           />
           Ver apenas leads em que for consultor responsável
+        </label>
+        <label className="flex items-start gap-2 text-xs">
+          <input
+            type="checkbox"
+            name="agenda_acesso_todos"
+            defaultChecked={agendaAcessoTodos}
+            className="mt-0.5"
+          />
+          Ver e gerenciar a agenda de todos os consultores (agendar, editar e cancelar compromissos)
         </label>
         <div className="rounded-md border border-zinc-800 p-2">
           <label className="flex items-start gap-2 text-xs">

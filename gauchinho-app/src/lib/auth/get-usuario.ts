@@ -16,12 +16,12 @@ export async function getUsuarioNegocio(): Promise<UsuarioNegocio | null> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("usuarios")
-    .select("id, auth_user_id, nome, email, perfil, ativo, imobiliaria_id, admin_menus, leads_apenas_proprios")
+    .select("id, auth_user_id, nome, email, perfil, ativo, imobiliaria_id, admin_menus, leads_apenas_proprios, agenda_acesso_todos")
     .eq("auth_user_id", user.id)
     .maybeSingle();
 
   if (error || !data || !data.ativo) {
-    if (error && /admin_menus|leads_apenas_proprios/.test(error.message)) {
+    if (error && /admin_menus|leads_apenas_proprios|agenda_acesso_todos/.test(error.message)) {
       const legacy = await supabase
         .from("usuarios")
         .select("id, auth_user_id, nome, email, perfil, ativo, imobiliaria_id")
@@ -38,6 +38,7 @@ export async function getUsuarioNegocio(): Promise<UsuarioNegocio | null> {
         imobiliaria_id: legacy.data.imobiliaria_id ?? null,
         admin_menus: null,
         leads_apenas_proprios: false,
+        agenda_acesso_todos: false,
       };
     }
     return null;
@@ -53,6 +54,7 @@ export async function getUsuarioNegocio(): Promise<UsuarioNegocio | null> {
     imobiliaria_id: data.imobiliaria_id ?? null,
     admin_menus: (data.admin_menus as string[] | null) ?? null,
     leads_apenas_proprios: Boolean(data.leads_apenas_proprios),
+    agenda_acesso_todos: Boolean((data as { agenda_acesso_todos?: boolean }).agenda_acesso_todos),
   };
 }
 

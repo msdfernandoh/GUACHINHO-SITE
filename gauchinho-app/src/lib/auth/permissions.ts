@@ -22,7 +22,26 @@ export type UsuarioNegocio = {
   imobiliaria_id: string | null;
   admin_menus: string[] | null;
   leads_apenas_proprios: boolean;
+  /** Ver e gerenciar compromissos de todos os consultores na Agenda. */
+  agenda_acesso_todos: boolean;
 };
+
+/** Master, visualizador ou flag explícita — calendário mostra todos os consultores. */
+export function usuarioVeAgendaCompleta(
+  u: Pick<UsuarioNegocio, "perfil" | "agenda_acesso_todos">,
+): boolean {
+  if (isMaster(u.perfil)) return true;
+  if (u.agenda_acesso_todos) return true;
+  if (u.perfil === "visualizador") return true;
+  return false;
+}
+
+/** SRD sem flag — só compromissos em que é o consultor responsável. */
+export function usuarioAgendaFiltradaPorConsultor(
+  u: Pick<UsuarioNegocio, "perfil" | "agenda_acesso_todos">,
+): boolean {
+  return u.perfil === "srd" && !u.agenda_acesso_todos;
+}
 
 export function isMaster(perfil: Perfil | null | undefined): boolean {
   return perfil === "master";

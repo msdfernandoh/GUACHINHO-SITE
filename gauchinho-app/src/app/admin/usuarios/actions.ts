@@ -19,10 +19,10 @@ export async function fetchUsuarios() {
   let { data, error } = await supabase
     .from("usuarios")
     .select(
-      "id, auth_user_id, nome, email, telefone, perfil, ativo, is_consultor, leads_apenas_proprios, google_agenda_sync, google_calendar_connected_at, google_calendar_email, admin_menus, created_at",
+      "id, auth_user_id, nome, email, telefone, perfil, ativo, is_consultor, leads_apenas_proprios, agenda_acesso_todos, google_agenda_sync, google_calendar_connected_at, google_calendar_email, admin_menus, created_at",
     )
     .order("nome");
-  if (error && /is_consultor|leads_apenas_proprios|google_agenda_sync|google_calendar_connected_at|google_calendar_email/.test(error.message)) {
+  if (error && /is_consultor|leads_apenas_proprios|agenda_acesso_todos|google_agenda_sync|google_calendar_connected_at|google_calendar_email/.test(error.message)) {
     const legacy = await supabase
       .from("usuarios")
       .select("id, nome, email, telefone, perfil, ativo, created_at")
@@ -32,6 +32,7 @@ export async function fetchUsuarios() {
       ...u,
       is_consultor: u.perfil === "srd",
       leads_apenas_proprios: false,
+      agenda_acesso_todos: false,
       google_agenda_sync: false,
       google_calendar_connected_at: null,
       google_calendar_email: null,
@@ -54,6 +55,7 @@ export async function createUsuarioAction(formData: FormData) {
   const telefone = String(formData.get("telefone") ?? "").trim() || null;
   const isConsultor = formData.get("is_consultor") === "on";
   const leadsApenasProprios = formData.get("leads_apenas_proprios") === "on";
+  const agendaAcessoTodos = formData.get("agenda_acesso_todos") === "on";
   const googleAgendaSync = formData.get("google_agenda_sync") === "on";
   const menuKeys = formData.getAll("admin_menu").map((v) => String(v).trim()) as AdminMenuKey[];
   const adminMenus = menuKeys.length ? menuKeys : null;
@@ -75,12 +77,13 @@ export async function createUsuarioAction(formData: FormData) {
     ativo: true,
     is_consultor: isConsultor,
     leads_apenas_proprios: leadsApenasProprios,
+    agenda_acesso_todos: agendaAcessoTodos,
     google_agenda_sync: googleAgendaSync && isGmailAddress(email),
     admin_menus: adminMenus,
   });
   if (
     error &&
-    /is_consultor|admin_menus|leads_apenas_proprios|google_agenda_sync/.test(error.message)
+    /is_consultor|admin_menus|leads_apenas_proprios|agenda_acesso_todos|google_agenda_sync/.test(error.message)
   ) {
     const base = {
       auth_user_id: authUser.user.id,
@@ -92,8 +95,8 @@ export async function createUsuarioAction(formData: FormData) {
     };
     // Tenta preservar a restrição de leads; só cai no insert mínimo se a coluna não existir.
     const attempts: Record<string, unknown>[] = [
-      { ...base, is_consultor: isConsultor, leads_apenas_proprios: leadsApenasProprios, google_agenda_sync: googleAgendaSync && isGmailAddress(email) },
-      { ...base, leads_apenas_proprios: leadsApenasProprios, google_agenda_sync: googleAgendaSync && isGmailAddress(email) },
+      { ...base, is_consultor: isConsultor, leads_apenas_proprios: leadsApenasProprios, agenda_acesso_todos: agendaAcessoTodos, google_agenda_sync: googleAgendaSync && isGmailAddress(email) },
+      { ...base, leads_apenas_proprios: leadsApenasProprios, agenda_acesso_todos: agendaAcessoTodos, google_agenda_sync: googleAgendaSync && isGmailAddress(email) },
       { ...base, is_consultor: isConsultor },
       base,
     ];
@@ -157,6 +160,7 @@ export async function updateUsuarioEdicaoAction(formData: FormData) {
 
   const isConsultor = formData.get("is_consultor") === "on";
   const leadsApenasProprios = formData.get("leads_apenas_proprios") === "on";
+  const agendaAcessoTodos = formData.get("agenda_acesso_todos") === "on";
   const googleAgendaSyncRequested = formData.get("google_agenda_sync") === "on";
   const menuKeys = formData.getAll("admin_menu").map((v) => String(v).trim()) as AdminMenuKey[];
   const adminMenus = menuKeys.length ? menuKeys : null;
@@ -197,11 +201,12 @@ export async function updateUsuarioEdicaoAction(formData: FormData) {
   const extrasPatch: Record<string, unknown> = {
     is_consultor: isConsultor,
     leads_apenas_proprios: leadsApenasProprios,
+    agenda_acesso_todos: agendaAcessoTodos,
     admin_menus: adminMenus,
   };
   const { error: extrasErr } = await admin.from("usuarios").update(extrasPatch).eq("id", id);
   if (extrasErr) {
-    if (/admin_menus|is_consultor|leads_apenas_proprios|schema cache/i.test(extrasErr.message)) {
+    if (/admin_menus|is_consultor|leads_apenas_proprios|agenda_acesso_todos|schema cache/i.test(extrasErr.message)) {
       avisos.push("menus_parcial");
     } else {
       redirectUsuarios("generico");

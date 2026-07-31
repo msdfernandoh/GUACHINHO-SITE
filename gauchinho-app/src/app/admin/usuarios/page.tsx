@@ -98,6 +98,10 @@ export default async function UsuariosPage({
           Ver apenas leads em que for consultor responsável
         </label>
         <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" name="agenda_acesso_todos" />
+          Ver e gerenciar a agenda de todos os consultores
+        </label>
+        <label className="flex items-center gap-2 text-sm">
           <input type="checkbox" name="google_agenda_sync" />
           Sincronizar agenda com Google Agenda (e-mail @gmail.com)
         </label>
@@ -137,6 +141,7 @@ export default async function UsuariosPage({
               <th className="px-3 py-2">Perfil / Função</th>
               <th className="px-3 py-2">Consultor</th>
               <th className="px-3 py-2">Só leads próprios</th>
+              <th className="px-3 py-2">Agenda todos</th>
               <th className="px-3 py-2">Google Agenda</th>
               <th className="px-3 py-2">Ativo</th>
               <th className="px-3 py-2">Desde</th>
@@ -149,6 +154,9 @@ export default async function UsuariosPage({
               const isConsultor = Boolean((u as { is_consultor?: boolean }).is_consultor);
               const leadsApenasProprios = Boolean(
                 (u as { leads_apenas_proprios?: boolean }).leads_apenas_proprios,
+              );
+              const agendaAcessoTodos = Boolean(
+                (u as { agenda_acesso_todos?: boolean }).agenda_acesso_todos,
               );
               const googleAgendaSync = Boolean(
                 (u as { google_agenda_sync?: boolean }).google_agenda_sync,
@@ -176,6 +184,7 @@ export default async function UsuariosPage({
                         perfil={u.perfil}
                         isConsultor={isConsultor}
                         leadsApenasProprios={leadsApenasProprios}
+                        agendaAcessoTodos={agendaAcessoTodos}
                         googleAgendaSync={googleAgendaSync}
                         googleConnected={googleConnected}
                         menuKeysAtivos={menuKeysAtivos}
@@ -185,6 +194,7 @@ export default async function UsuariosPage({
                   </td>
                   <td className="px-3 py-2">{isConsultor ? "Sim" : "Não"}</td>
                   <td className="px-3 py-2">{leadsApenasProprios ? "Sim" : "Não"}</td>
+                  <td className="px-3 py-2">{agendaAcessoTodos ? "Sim" : "Não"}</td>
                   <td className="px-3 py-2">
                     {googleAgendaSync ? (
                       <>

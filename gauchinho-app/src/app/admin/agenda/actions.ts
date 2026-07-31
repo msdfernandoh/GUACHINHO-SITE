@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { requireUsuario } from "@/lib/auth/get-usuario";
-import { canManageLeads, isMaster } from "@/lib/auth/permissions";
+import { canManageLeads, usuarioAgendaFiltradaPorConsultor } from "@/lib/auth/permissions";
 import type { AgendaCompromissoRow, AgendaStatus } from "@/lib/agenda/types";
 import { AGENDA_RESULTADOS } from "@/lib/agenda/types";
 import {
@@ -77,7 +77,7 @@ export async function fetchCompromissosRange(fromIso: string, toIso: string, con
     .gte("data_inicio", fromIso)
     .lte("data_inicio", toIso)
     .order("data_inicio");
-  if (!isMaster(u.perfil) && u.perfil === "srd") {
+  if (usuarioAgendaFiltradaPorConsultor(u)) {
     q = q.eq("consultor_id", u.id);
   } else if (consultorId) {
     q = q.eq("consultor_id", consultorId);
