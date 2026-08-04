@@ -21,7 +21,18 @@ export const metadata: Metadata = {
     template: "%s | Gauchinho",
   },
   description:
-    "Consórcio, simulador, calculadoras e soluções financeiras no Rio Grande do Sul. Gauchinho Consórcios e Soluções Financeiras.",
+    "Consórcios, simuladores, calculadoras e soluções financeiras com atendimento online em todo o Brasil. Planeje imóveis, veículos, caminhões e máquinas.",
+  category: "finance",
+  keywords: [
+    "consórcio",
+    "simulador de consórcio",
+    "consórcio de imóvel",
+    "consórcio de veículos",
+    "consórcio de caminhão",
+    "consórcio de máquinas agrícolas",
+    "carta de crédito",
+    "lance embutido",
+  ],
   verification: {
     google: "JoZmaDBhXbcdFfJKHd4uXE-ogA6NuOzLdFCKoAKll84",
   },
@@ -34,6 +45,18 @@ export const metadata: Metadata = {
     type: "website",
     locale: "pt_BR",
     siteName: "Gauchinho Consórcios e Soluções Financeiras",
+    images: [
+      {
+        url: "/media/gauchinho-campanha.jpeg",
+        width: 1200,
+        height: 630,
+        alt: "Gauchinho Consórcios e Soluções Financeiras",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    images: ["/media/gauchinho-campanha.jpeg"],
   },
 };
 

@@ -11,9 +11,16 @@ import { DEFAULT_CONTATO, type ContatoConfig } from "@/lib/config/defaults";
 import { getConfigJsonPublic } from "@/server/config";
 
 export const metadata: Metadata = {
-  title: "Perguntas frequentes | Gauchinho",
+  title: "Dúvidas sobre Consórcio, Lance e Contemplação",
   description:
     "Respostas objetivas sobre consórcio, financiamento, cartas contempladas, grupos e atendimento — sempre como orientação, não promessa.",
+  keywords: [
+    "como funciona consórcio",
+    "como funciona lance embutido",
+    "contemplação por sorteio ou lance",
+    "dúvidas sobre consórcio",
+  ],
+  alternates: { canonical: "/perguntas-frequentes" },
 };
 
 function whatsappHref(contato: ContatoConfig) {

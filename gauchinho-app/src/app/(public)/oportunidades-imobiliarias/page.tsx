@@ -8,6 +8,13 @@ import type { ImovelPublic } from "@/lib/imoveis/types";
 import { safeFetch } from "@/lib/home/safe-fetch";
 import { DEFAULT_CONTATO, getConfigJsonPublic } from "@/server/config";
 
+export const metadata: Metadata = {
+  title: "Imóveis e Oportunidades para Comprar com Consórcio",
+  description: "Encontre imóveis e oportunidades imobiliárias e planeje a compra com carta de crédito, consórcio ou financiamento.",
+  keywords: ["imóveis para comprar com consórcio", "imóvel com carta de crédito", "oportunidades imobiliárias", "consórcio imobiliário"],
+  alternates: { canonical: "/oportunidades-imobiliarias" },
+};
+
 export const dynamic = "force-dynamic";
 
 export default async function OportunidadesImobiliariasPage() {
@@ -37,3 +44,4 @@ export default async function OportunidadesImobiliariasPage() {
     </>
   );
 }
+import type { Metadata } from "next";

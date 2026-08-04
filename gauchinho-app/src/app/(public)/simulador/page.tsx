@@ -5,6 +5,13 @@ import { parseTipoBemFromQuery } from "@/lib/simulador/tipos-credito";
 import { getUsuarioNegocio } from "@/lib/auth/get-usuario";
 import { canCreateProposta } from "@/lib/auth/permissions";
 
+export const metadata: Metadata = {
+  title: "Simulador de Consórcio e Financiamento Online",
+  description: "Simule consórcio e financiamento para imóvel, carro, moto, caminhão e máquinas. Compare parcela, prazo, lance livre e lance embutido.",
+  keywords: ["simulador de consórcio", "calcular parcela consórcio", "simulador lance embutido", "consórcio x financiamento"],
+  alternates: { canonical: "/simulador" },
+};
+
 function parseModo(raw: string | undefined): Modo | undefined {
   if (raw === "financiamento") return "financiamento";
   if (raw === "consorcio") return "consorcio";
@@ -40,3 +47,4 @@ export default async function SimuladorPage({
 
   return <SimuladorApp configs={configs} prefill={prefill} isConsultor={isConsultor} />;
 }
+import type { Metadata } from "next";

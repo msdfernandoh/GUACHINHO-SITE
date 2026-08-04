@@ -5,6 +5,13 @@ import { canCreateProposta, canManageGruposSorteios, isStaff } from "@/lib/auth/
 import { DEFAULT_LEADS, getConfigJson } from "@/server/config";
 import { createClient } from "@/lib/supabase/server";
 
+export const metadata: Metadata = {
+  title: "Grupos de Consórcio Disponíveis: Crédito e Parcelas",
+  description: "Consulte grupos de consórcio disponíveis, valores de crédito, parcelas, prazos e modalidades de lance para encontrar um plano compatível.",
+  keywords: ["grupos de consórcio disponíveis", "cotas de consórcio", "consórcio parcela reduzida", "grupo de consórcio imóvel"],
+  alternates: { canonical: "/grupos" },
+};
+
 export default async function GruposPublicPage() {
   const aggregates = await fetchPublicGruposAggregates();
   const usuario = await getUsuarioNegocio();
@@ -33,3 +40,4 @@ export default async function GruposPublicPage() {
     />
   );
 }
+import type { Metadata } from "next";

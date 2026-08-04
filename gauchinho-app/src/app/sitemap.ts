@@ -4,6 +4,7 @@ import { fetchPublicImoveis } from "@/app/admin/imoveis/actions";
 import { fetchPublicEventosList } from "@/lib/comercial-eventos/public";
 import { fetchPublicCasosSucesso, fetchPublicDicas } from "@/lib/conteudo/fetch-public";
 import { resolvePublicSiteUrl } from "@/lib/seo/site-url";
+import { CONSORCIO_SEO_SEGMENTS } from "@/lib/seo/consorcio-segments";
 
 const PUBLIC_PATHS = [
   "/",
@@ -20,6 +21,7 @@ const PUBLIC_PATHS = [
   "/perguntas-frequentes",
   "/seguradoras",
   "/indicar",
+  "/consorcio",
 ] as const;
 
 function toLastModified(iso?: string | null): Date {
@@ -53,6 +55,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   }));
 
   const dynamicEntries: MetadataRoute.Sitemap = [
+    ...CONSORCIO_SEO_SEGMENTS.map((item) => ({
+      url: `${base}/consorcio/${item.slug}`,
+      lastModified: new Date(),
+      changeFrequency: "monthly" as const,
+      priority: 0.8,
+    })),
     ...dicas.map((item) => ({
       url: `${base}/dicas-do-tche/${item.slug}`,
       lastModified: toLastModified(item.updated_at ?? item.created_at),

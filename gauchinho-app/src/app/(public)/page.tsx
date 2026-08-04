@@ -7,6 +7,29 @@ import { HomeV2Client } from "./home-v2-client";
 import { DEFAULT_HOME_MODULOS } from "@/lib/config/home-modulos";
 import { DEFAULT_HOME_OPORTUNIDADES } from "@/lib/config/defaults";
 
+export const metadata: Metadata = {
+  title: "Consórcios de Imóveis, Veículos, Caminhões e Máquinas",
+  description: "Simule consórcio para imóvel, carro, moto, caminhão e máquinas. Compare parcelas, lance embutido, grupos e financiamento com orientação consultiva.",
+  keywords: [
+    "consórcio de imóvel",
+    "consórcio de carro",
+    "consórcio de caminhão",
+    "consórcio de máquinas agrícolas",
+    "simulador de consórcio",
+    "lance embutido",
+    "carta contemplada",
+  ],
+  alternates: { canonical: "/" },
+  openGraph: {
+    title: "Gauchinho Consórcios e Soluções Financeiras",
+    description: "Planejamento para imóveis, veículos, caminhões e máquinas com simulador e consultoria.",
+    url: "/",
+    type: "website",
+    images: [{ url: "/media/gauchinho-campanha.jpeg", width: 1200, height: 630, alt: "Gauchinho Consórcios e Soluções Financeiras" }],
+  },
+  twitter: { card: "summary_large_image", title: "Gauchinho Consórcios", description: "Simule consórcios para imóveis, veículos, caminhões e máquinas.", images: ["/media/gauchinho-campanha.jpeg"] },
+};
+
 export default async function HomePage() {
   try {
     const [simuladorConfigs, conteudo, homeData, homeModulos, sorteioDestaque] = await Promise.all([
@@ -43,3 +66,4 @@ export default async function HomePage() {
     );
   }
 }
+import type { Metadata } from "next";

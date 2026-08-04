@@ -1,7 +1,21 @@
+import type { Metadata } from "next";
 import { CalculadorasPage } from "@/components/public/calculadoras/calculadoras-page";
 import { parseCalcId } from "@/lib/calculadoras/meta";
 import { getIndicesPublicos } from "@/lib/indices-financeiros";
 import { getCalculadorasConfigPublic } from "@/server/config";
+
+export const metadata: Metadata = {
+  title: "Calculadoras Financeiras Online Gratuitas",
+  description:
+    "Use calculadoras financeiras para comparar crédito, parcelas, aplicações e cenários de planejamento antes de tomar uma decisão.",
+  keywords: [
+    "calculadora financeira online",
+    "calculadora de parcelas",
+    "comparador financeiro",
+    "simulador de aplicação mensal",
+  ],
+  alternates: { canonical: "/calculadoras" },
+};
 
 export default async function CalculadorasPublicPage({
   searchParams,
