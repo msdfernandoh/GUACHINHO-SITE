@@ -1,11 +1,14 @@
 -- ============================================================================
 -- Migration 043: Fundação SaaS Multiempresa (Empresas, Usuários, Papéis e Permissões)
--- Versão 1.2.0 — Proteção contra atribuição de papéis de outra empresa,
--- RLS explícito com USING e WITH CHECK, isolamento de papéis customizados,
--- separação de permissões globais/locais e helper de permissões granulares.
+-- Versão 1.3.0 — Endurecimento de Segurança:
+-- 1. Proteção de papéis PLATFORM (atribuição exclusiva por SuperAdmin)
+-- 2. Trigger de validação de papéis por empresa (impede uso cruzado)
+-- 3. Endurecimento de funções SECURITY DEFINER com REVOKE/GRANT explícitos
+-- 4. RLS explícito com USING e WITH CHECK em todas as tabelas
+-- 5. Backfill estrito sem atribuição silenciosa para perfis inesperados
 -- ============================================================================
 
--- Função utilitária de timestamp (idempotente)
+-- Função utilitária de timestamp (compatível com a migration 001)
 create or replace function public.set_updated_at()
 returns trigger as $$
 begin
@@ -106,7 +109,98 @@ create trigger empresa_usuarios_updated_at before update on public.empresa_usuar
   for each row execute function public.set_updated_at();
 
 -- ============================================================================
--- TRIGGER DE VALIDAÇÃO DE ATRIBUIÇÃO DE PAPEL (Impede uso de papel de outra empresa)
+-- FUNÇÕES POSTGRESQL AUXILIARES DE RLS (SECURITY DEFINER SET search_path = public)
+-- ============================================================================
+
+create or replace function public.current_usuario_id()
+returns uuid as $$
+  select u.id
+  from public.usuarios u
+  where u.auth_user_id = auth.uid()
+    and u.ativo = true
+  limit 1;
+$$ language sql security definer set search_path = public;
+
+revoke all on function public.current_usuario_id() from public;
+grant execute on function public.current_usuario_id() to authenticated;
+
+create or replace function public.is_platform_superadmin()
+returns boolean as $$
+  select exists (
+    select 1
+    from public.empresa_usuarios eu
+    join public.papeis p on p.id = eu.papel_id
+    where eu.usuario_id = public.current_usuario_id()
+      and eu.ativo = true
+      and p.codigo = 'super_admin'
+      and p.escopo = 'PLATFORM'
+      and p.ativo = true
+  );
+$$ language sql security definer set search_path = public;
+
+revoke all on function public.is_platform_superadmin() from public;
+grant execute on function public.is_platform_superadmin() to authenticated;
+
+create or replace function public.is_company_member(p_empresa_id uuid)
+returns boolean as $$
+  select exists (
+    select 1
+    from public.empresa_usuarios eu
+    where eu.empresa_id = p_empresa_id
+      and eu.usuario_id = public.current_usuario_id()
+      and eu.ativo = true
+  ) or public.is_platform_superadmin();
+$$ language sql security definer set search_path = public;
+
+revoke all on function public.is_company_member(uuid) from public;
+grant execute on function public.is_company_member(uuid) to authenticated;
+
+create or replace function public.has_company_role(p_empresa_id uuid, p_role_code text)
+returns boolean as $$
+  select exists (
+    select 1
+    from public.empresa_usuarios eu
+    join public.papeis p on p.id = eu.papel_id
+    where eu.empresa_id = p_empresa_id
+      and eu.usuario_id = public.current_usuario_id()
+      and eu.ativo = true
+      and p.codigo = p_role_code
+      and p.ativo = true
+  ) or public.is_platform_superadmin();
+$$ language sql security definer set search_path = public;
+
+revoke all on function public.has_company_role(uuid, text) from public;
+grant execute on function public.has_company_role(uuid, text) to authenticated;
+
+-- Helper de verificação de permissão granular segura
+create or replace function public.has_company_permission(p_empresa_id uuid, p_permission_code text)
+returns boolean as $$
+begin
+  if public.is_platform_superadmin() then
+    return true;
+  end if;
+
+  return exists (
+    select 1
+    from public.empresa_usuarios eu
+    join public.papeis p on p.id = eu.papel_id
+    join public.papel_permissoes pp on pp.papel_id = p.id
+    join public.permissoes perm on perm.id = pp.permissao_id
+    where eu.empresa_id = p_empresa_id
+      and eu.usuario_id = public.current_usuario_id()
+      and eu.ativo = true
+      and p.ativo = true
+      and (p.empresa_id is null or p.empresa_id = p_empresa_id)
+      and perm.codigo = p_permission_code
+  );
+end;
+$$ language plpgsql security definer set search_path = public;
+
+revoke all on function public.has_company_permission(uuid, text) from public;
+grant execute on function public.has_company_permission(uuid, text) to authenticated;
+
+-- ============================================================================
+-- TRIGGER DE VALIDAÇÃO DE ESCOPO E ATRIBUIÇÃO DE PAPÉIS
 -- ============================================================================
 
 create or replace function public.validar_papel_empresa_usuario()
@@ -129,7 +223,14 @@ begin
     raise exception 'Papel informado (ID %) está inativo.', NEW.papel_id;
   end if;
 
-  -- Papel personalizado de empresa DEVE pertencer à mesma empresa do vínculo
+  -- 1. Proteção de Papel PLATFORM: Apenas SuperAdmin pode atribuir, alterar ou mover
+  if v_role_escopo = 'PLATFORM' then
+    if not public.is_platform_superadmin() then
+      raise exception 'Apenas SuperAdmins da Plataforma podem atribuir ou alterar papéis de escopo PLATFORM.';
+    end if;
+  end if;
+
+  -- 2. Papel personalizado de empresa DEVE pertencer à mesma empresa do vínculo
   if v_role_escopo = 'COMPANY' and v_role_empresa_id is not null then
     if v_role_empresa_id <> NEW.empresa_id then
       raise exception 'Papel personalizado da empresa % não pode ser atribuído a usuário da empresa %.',
@@ -140,6 +241,9 @@ begin
   return NEW;
 end;
 $$ language plpgsql security definer set search_path = public;
+
+revoke all on function public.validar_papel_empresa_usuario() from public;
+grant execute on function public.validar_papel_empresa_usuario() to authenticated;
 
 drop trigger if exists trg_validar_papel_empresa_usuario on public.empresa_usuarios;
 create trigger trg_validar_papel_empresa_usuario
@@ -163,7 +267,6 @@ on conflict (codigo) where empresa_id is null do update set
   descricao = excluded.descricao,
   escopo = excluded.escopo;
 
--- Permissões divididas entre plataforma e empresa
 insert into public.permissoes (codigo, nome, modulo, descricao)
 values
   ('gerenciar_empresas_plataforma', 'Gerenciar Empresas (Plataforma Global)', 'saas', 'Permite criar e alterar empresas na plataforma SaaS global'),
@@ -251,7 +354,7 @@ values (
 on conflict (slug) do nothing;
 
 -- ============================================================================
--- BACKFILL IDEMPOTENTE SEM HISTÓRICOS DUPLICADOS
+-- BACKFILL ESTRITO DE USUÁRIOS EXISTENTES
 -- ============================================================================
 
 do $$
@@ -262,6 +365,8 @@ declare
   v_role_consultor uuid;
   v_role_imobiliaria uuid;
   v_role_visualizador uuid;
+  v_u_rec record;
+  v_target_role uuid;
 begin
   select id into v_empresa_id from public.empresas where slug = 'gauchinho';
   select id into v_role_super_admin from public.papeis where codigo = 'super_admin' and empresa_id is null;
@@ -271,100 +376,29 @@ begin
   select id into v_role_visualizador from public.papeis where codigo = 'visualizador' and empresa_id is null;
 
   if v_empresa_id is not null then
-    insert into public.empresa_usuarios (empresa_id, usuario_id, papel_id, ativo)
-    select
-      v_empresa_id,
-      u.id,
-      case
-        when u.email = 'msdfernando@gmail.com' then v_role_super_admin
-        when u.perfil = 'master' then v_role_admin_empresa
-        when u.perfil = 'srd' then v_role_consultor
-        when u.perfil = 'imobiliaria' then v_role_imobiliaria
-        when u.perfil = 'visualizador' then v_role_visualizador
-        else v_role_consultor
-      end,
-      u.ativo
-    from public.usuarios u
-    on conflict (empresa_id, usuario_id) where ativo = true do update set
-      ativo = excluded.ativo,
-      papel_id = excluded.papel_id;
+    for v_u_rec in select id, email, perfil, ativo from public.usuarios loop
+      v_target_role := case
+        when v_u_rec.email = 'msdfernando@gmail.com' then v_role_super_admin
+        when v_u_rec.perfil = 'master' then v_role_admin_empresa
+        when v_u_rec.perfil = 'srd' then v_role_consultor
+        when v_u_rec.perfil = 'imobiliaria' then v_role_imobiliaria
+        when v_u_rec.perfil = 'visualizador' then v_role_visualizador
+        else null
+      end;
+
+      if v_target_role is null then
+        raise exception 'Perfil inesperado "%" para usuário % (email %). Interrompendo backfill.',
+          v_u_rec.perfil, v_u_rec.id, v_u_rec.email;
+      end if;
+
+      insert into public.empresa_usuarios (empresa_id, usuario_id, papel_id, ativo)
+      values (v_empresa_id, v_u_rec.id, v_target_role, v_u_rec.ativo)
+      on conflict (empresa_id, usuario_id) where ativo = true do update set
+        ativo = excluded.ativo,
+        papel_id = excluded.papel_id;
+    end loop;
   end if;
 end $$;
-
--- ============================================================================
--- FUNÇÕES POSTGRESQL AUXILIARES DE RLS (SECURITY DEFINER)
--- ============================================================================
-
-create or replace function public.current_usuario_id()
-returns uuid as $$
-  select u.id
-  from public.usuarios u
-  where u.auth_user_id = auth.uid()
-    and u.ativo = true
-  limit 1;
-$$ language sql security definer set search_path = public;
-
-create or replace function public.is_platform_superadmin()
-returns boolean as $$
-  select exists (
-    select 1
-    from public.empresa_usuarios eu
-    join public.papeis p on p.id = eu.papel_id
-    where eu.usuario_id = public.current_usuario_id()
-      and eu.ativo = true
-      and p.codigo = 'super_admin'
-      and p.ativo = true
-  );
-$$ language sql security definer set search_path = public;
-
-create or replace function public.is_company_member(p_empresa_id uuid)
-returns boolean as $$
-  select exists (
-    select 1
-    from public.empresa_usuarios eu
-    where eu.empresa_id = p_empresa_id
-      and eu.usuario_id = public.current_usuario_id()
-      and eu.ativo = true
-  ) or public.is_platform_superadmin();
-$$ language sql security definer set search_path = public;
-
-create or replace function public.has_company_role(p_empresa_id uuid, p_role_code text)
-returns boolean as $$
-  select exists (
-    select 1
-    from public.empresa_usuarios eu
-    join public.papeis p on p.id = eu.papel_id
-    where eu.empresa_id = p_empresa_id
-      and eu.usuario_id = public.current_usuario_id()
-      and eu.ativo = true
-      and p.codigo = p_role_code
-      and p.ativo = true
-  ) or public.is_platform_superadmin();
-$$ language sql security definer set search_path = public;
-
--- Helper de verificação de permissão granular segura
-create or replace function public.has_company_permission(p_empresa_id uuid, p_permission_code text)
-returns boolean as $$
-begin
-  if public.is_platform_superadmin() then
-    return true;
-  end if;
-
-  return exists (
-    select 1
-    from public.empresa_usuarios eu
-    join public.papeis p on p.id = eu.papel_id
-    join public.papel_permissoes pp on pp.papel_id = p.id
-    join public.permissoes perm on perm.id = pp.permissao_id
-    where eu.empresa_id = p_empresa_id
-      and eu.usuario_id = public.current_usuario_id()
-      and eu.ativo = true
-      and p.ativo = true
-      and (p.empresa_id is null or p.empresa_id = p_empresa_id)
-      and perm.codigo = p_permission_code
-  );
-end;
-$$ language plpgsql security definer set search_path = public;
 
 -- ============================================================================
 -- POLÍTICAS DE SEGURANÇA (RLS) EXPLÍCITAS (USING + WITH CHECK)
@@ -407,7 +441,7 @@ create policy empresas_delete_policy on public.empresas
   for delete to authenticated
   using (public.is_platform_superadmin());
 
--- PAPÉIS (Leitura restrita a globais ou pertencentes a empresas com vínculo ativo)
+-- PAPÉIS
 drop policy if exists papeis_select_policy on public.papeis;
 create policy papeis_select_policy on public.papeis
   for select to authenticated
@@ -429,7 +463,7 @@ create policy papeis_write_policy on public.papeis
     (empresa_id is not null and public.has_company_role(empresa_id, 'admin_empresa'))
   );
 
--- PERMISSÕES (Catálogo global legível para autenticados; escrita apenas SuperAdmin)
+-- PERMISSÕES
 drop policy if exists permissoes_select_policy on public.permissoes;
 create policy permissoes_select_policy on public.permissoes
   for select to authenticated using (true);
@@ -475,7 +509,7 @@ create policy papel_permissoes_write_policy on public.papel_permissoes
     )
   );
 
--- EMPRESA_USUARIOS (Visibilidade corrigida: SuperAdmin vê tudo, Admin vê sua empresa, Usuário comum vê Apenas a Si Mesmo)
+-- EMPRESA_USUARIOS (Visibilidade e Escrita Estritas)
 drop policy if exists empresa_usuarios_select_policy on public.empresa_usuarios;
 create policy empresa_usuarios_select_policy on public.empresa_usuarios
   for select to authenticated
