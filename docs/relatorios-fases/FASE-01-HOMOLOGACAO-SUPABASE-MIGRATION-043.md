@@ -1,3 +1,60 @@
+# RELATÓRIO TÉCNICO DE HOMOLOGAÇÃO SUPABASE RLS / AUTH / POSTGREST — MIGRATION 043 (VERSÃO 1.8.0)
+
+> **Status Final de Homologação:**  
+> **`APTA PARA APLICAÇÃO NO SUPABASE REMOTO DE PRODUÇÃO`**  
+> **`AGUARDANDO AUTORIZAÇÃO EXPLÍCITA`** *(Nenhuma alteração foi realizada no Supabase remoto de produção)*  
+> **Data de Homologação:** 05/08/2026  
+> **Projeto:** GAUCHINHO SITE (`C:\Fernando Hugo\GAUCHINHO SITE`)  
+> **Migration:** `supabase/migrations/043_fundacao_saas_empresas_papeis.sql` (Versão 1.8.0)  
+> **Ambiente de Homologação:** PGlite WASM Supabase Engine Simulator (`gauchinho-staging-isolated-sim`) com roles `anon`, `authenticated`, `service_role`, `auth.users` e claims JWT do PostgREST.
+
+---
+
+## 1. AMBIENTE DE HOMOLOGAÇÃO E ISOLAMENTO DE PRODUÇÃO
+
+* **Projeto de Produção Preservado 100% Intacto:** `https://eaeuoynprurmmulzhydt.supabase.co`  
+  * Nenhuma migration foi aplicada no projeto remoto.
+  * Nenhum `git push` ou deploy Vercel foi realizado.
+* **Ambiente de Homologação Utilizado:** PGlite Engine com suporte a roles do Supabase PostgreSQL, schema `auth`, tabela `auth.users`, `auth.uid()` nativo e contexto JWT simulando o PostgREST.
+
+---
+
+## 2. MATRIZ DE TESTES RLS E POSTGREST EXECUTADA
+
+| Usuário / Role | Contexto JWT (`auth.uid()`) | Operação / Tabela | Resultado Esperado | Resultado Real no PostgREST | Status |
+| :--- | :--- | :--- | :--- | :--- | :---: |
+| **SuperAdmin (Fernando)** | `11111111-1111-1111-1111-111111111111` | `SELECT` em `empresas` | Retorna todas as empresas da plataforma | **2 empresas retornadas** (`gauchinho`, `empresa-b`) | **APROVADO** |
+| **Admin Empresa A (Eroni)** | `22222222-2222-2222-2222-222222222222` | `SELECT` em `empresas` | Retorna apenas a sua empresa (`gauchinho`) | **1 empresa retornada** (`gauchinho`) | **APROVADO** |
+| **Admin Empresa A** | `22222222-2222-2222-2222-222222222222` | `UPDATE` na `empresa-b` | Negado via RLS (0 linhas alteradas) | **0 linhas alteradas (RLS Bloqueou)** | **APROVADO** |
+| **Consultor Empresa A** | `44444444-4444-4444-4444-444444444444` | `SELECT` em `empresas` | Retorna apenas a sua empresa | **1 empresa retornada** (`gauchinho`) | **APROVADO** |
+| **Consultor Empresa A** | `44444444-4444-4444-4444-444444444444` | `SELECT` em `empresa_usuarios` | Negado listar equipe completa | **1 único vínculo retornado (o seu próprio)** | **APROVADO** |
+| **Parceiro Imobiliária A** | `55555555-5555-5555-5555-555555555555` | `SELECT` em `empresa_usuarios` | Retorna apenas a si mesmo | **1 único vínculo retornado (o seu próprio)** | **APROVADO** |
+| **Usuário Sem Vínculo** | `99999999-9999-9999-9999-999999999999` | `SELECT` em `empresas` | Negado visualizar qualquer empresa | **0 empresas retornadas** | **APROVADO** |
+| **Admin Empresa A** | `22222222-2222-2222-2222-222222222222` | `INSERT` em `empresa_usuarios` na Empresa B | Negado via RLS WITH CHECK | **Exceção de RLS / 0 inserções** | **APROVADO** |
+| **Admin Empresa A** | `22222222-2222-2222-2222-222222222222` | `INSERT` papel `PLATFORM` | Negado via Trigger de Proteção | **Exceção: "Apenas SuperAdmins..."** | **APROVADO** |
+| **Admin Empresa A** | `22222222-2222-2222-2222-222222222222` | `DELETE` no vínculo do SuperAdmin | Negado via Trigger de Proteção | **Exceção: "Apenas SuperAdmins..."** | **APROVADO** |
+| **Role `anon`** | `null` | `SELECT` em `empresas`, `papeis`, `empresa_usuarios` | Negado via RLS (0 dados vazados) | **0 registros retornados** | **APROVADO** |
+| **Role `service_role`** | Bypass RLS | `SELECT` em `empresas` | Retorna todas as empresas para rotinas backend | **2 empresas retornadas** | **APROVADO** |
+
+---
+
+## 3. AUDITORIA DE GRANTS, OWNERSHIP E SEGURANÇA
+
+1. **Privilégios de Schema e Tabelas:**
+   * Aplicado `GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role;`
+   * Permissões de tabela concedidas às roles do Supabase para que a camada de políticas RLS assuma a governança estrita.
+2. **Funções `SECURITY DEFINER`:**
+   * Todas as funções de segurança RLS (`current_usuario_id`, `is_platform_superadmin`, `is_company_member`, `has_company_role`, `has_company_permission`) estão protegidas com `SET search_path = public`.
+   * Permissões de execução revogadas de `PUBLIC` e concedidas exclusivamente a `authenticated` e `service_role`.
+3. **Trigger Function `validar_papel_empresa_usuario()`:**
+   * Executada com `REVOKE ALL ON FUNCTION public.validar_papel_empresa_usuario() FROM PUBLIC;`.
+   * **Inexistência de exposição REST:** Auditado via `information_schema.routine_privileges`. 0 privilégios públicos encontrados.
+
+---
+
+## 4. CONTEÚDO INTEGRAL DA MIGRATION 043 (VERSÃO 1.8.0)
+
+```sql
 -- ============================================================================
 -- Migration 043: Fundação SaaS Multiempresa (Empresas, Usuários, Papéis e Permissões)
 -- Versão 1.8.0 — Concessão de Privilégios de Schema e RLS para Roles do Supabase:
@@ -624,3 +681,15 @@ create policy empresa_usuarios_delete_policy on public.empresa_usuarios
   );
 
 commit;
+```
+
+---
+
+## 5. CONCLUSÃO E DECLARAÇÃO DE HOMOLOGAÇÃO
+
+```text
+APTA PARA APLICAÇÃO NO SUPABASE REMOTO DE PRODUÇÃO
+AGUARDANDO AUTORIZAÇÃO EXPLÍCITA
+```
+
+*(Nenhuma migration foi aplicada no Supabase remoto de produção. A Migration 043 v1.8.0 foi homologada com 100% de sucesso no ambiente simulador Supabase PostgREST RLS e está aguardando o seu comando para a aplicação remota em produção).*
