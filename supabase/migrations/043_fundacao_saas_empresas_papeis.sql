@@ -1,13 +1,17 @@
 -- ============================================================================
 -- Migration 043: Fundação SaaS Multiempresa (Empresas, Usuários, Papéis e Permissões)
--- Versão 1.6.0 — Refatoração Cirúrgica de Segurança e Proteção Manual:
--- 1. Validação estrita da assinatura da função public.set_updated_at() (retorno trigger, 0 args)
--- 2. Constraint papeis_codigo_reservado (impede criação de papéis de empresa com códigos globais)
--- 3. DROP TRIGGER explícito ANTES do backfill para garantia de idempotência na 2ª execução
--- 4. Preservação estrita de vínculos com origem = 'MANUAL' (backfill sincroniza apenas 'MIGRATION_043_INITIAL_BACKFILL')
--- 5. Trigger estendido para BEFORE INSERT OR UPDATE OR DELETE protegendo OLD.papel_id e NEW.papel_id PLATFORM
--- 6. Uso primário de has_company_permission() e revogação total de privilégios públicos na trigger function
+-- Versão 1.7.0 — Transação Atômica e Unicidade Técnica de Backfill:
+-- 1. Transação atômica explícita (BEGIN ... COMMIT) englobando todo o script
+-- 2. Índice único parcial empresa_usuarios_backfill_inicial_unico_idx
+-- 3. Validação estrita da assinatura da função public.set_updated_at() (retorno trigger, 0 args)
+-- 4. Constraint papeis_codigo_reservado (impede criação de papéis de empresa com códigos globais)
+-- 5. DROP TRIGGER explícito ANTES do backfill para garantia de idempotência na 2ª execução
+-- 6. Preservação estrita de vínculos com origem = 'MANUAL' (backfill sincroniza apenas 'MIGRATION_043_INITIAL_BACKFILL')
+-- 7. Trigger estendido para BEFORE INSERT OR UPDATE OR DELETE protegendo OLD.papel_id e NEW.papel_id PLATFORM
+-- 8. Uso primário de has_company_permission() e revogação total de privilégios públicos na trigger function
 -- ============================================================================
+
+begin;
 
 -- 1. Validação de dependência prévia por assinatura completa
 do $$
@@ -109,6 +113,7 @@ create table if not exists public.empresa_usuarios (
 );
 
 create unique index if not exists empresa_usuarios_unica_ativa on public.empresa_usuarios (empresa_id, usuario_id) where ativo = true;
+create unique index if not exists empresa_usuarios_backfill_inicial_unico_idx on public.empresa_usuarios (empresa_id, usuario_id) where origem = 'MIGRATION_043_INITIAL_BACKFILL';
 
 create index if not exists empresa_usuarios_empresa_idx on public.empresa_usuarios (empresa_id);
 create index if not exists empresa_usuarios_usuario_idx on public.empresa_usuarios (usuario_id);
@@ -357,7 +362,6 @@ begin
           v_u_rec.perfil, v_u_rec.id, v_u_rec.email;
       end if;
 
-      -- 1. Verificar se existe um vínculo MANUAL ativo (NÃO TOCAR SE EXISTIR)
       select exists (
         select 1 from public.empresa_usuarios
         where empresa_id = v_empresa_id
@@ -367,7 +371,6 @@ begin
       ) into v_has_manual_active;
 
       if not v_has_manual_active then
-        -- 2. Localizar registro automático da migration se já existir
         select id into v_existing_backfill_id
         from public.empresa_usuarios
         where empresa_id = v_empresa_id
@@ -378,7 +381,6 @@ begin
         v_data_saida := case when v_u_rec.ativo then null else now() end;
 
         if v_existing_backfill_id is null then
-          -- Primeira Aplicação: Criar o vínculo inicial da migration
           insert into public.empresa_usuarios (
             empresa_id, usuario_id, papel_id, ativo,
             data_entrada, data_saida, origem
@@ -389,7 +391,6 @@ begin
             'MIGRATION_043_INITIAL_BACKFILL'
           );
         else
-          -- Re-execução: Atualizar apenas o vínculo automático
           update public.empresa_usuarios
           set papel_id = v_target_role,
               ativo = v_u_rec.ativo,
@@ -415,7 +416,6 @@ declare
   v_role_ativo boolean;
   v_old_role_escopo text;
 begin
-  -- 1. Validação em DELETE (Somente SuperAdmin pode excluir vínculo com papel PLATFORM)
   if TG_OP = 'DELETE' then
     select escopo into v_old_role_escopo from public.papeis where id = OLD.papel_id;
     if v_old_role_escopo = 'PLATFORM' and not public.is_platform_superadmin() then
@@ -424,7 +424,6 @@ begin
     return OLD;
   end if;
 
-  -- 2. Validação em INSERT e UPDATE (Novos dados em NEW)
   select escopo, empresa_id, ativo
   into v_role_escopo, v_role_empresa_id, v_role_ativo
   from public.papeis
@@ -438,20 +437,17 @@ begin
     raise exception 'Papel informado (ID %) está inativo.', NEW.papel_id;
   end if;
 
-  -- Em UPDATE, validar se o papel anterior era PLATFORM
   if TG_OP = 'UPDATE' then
     select escopo into v_old_role_escopo from public.papeis where id = OLD.papel_id;
     if (v_old_role_escopo = 'PLATFORM' or v_role_escopo = 'PLATFORM') and not public.is_platform_superadmin() then
       raise exception 'Apenas SuperAdmins da Plataforma podem alterar, desativar ou rebaixar papéis de escopo PLATFORM.';
     end if;
   else
-    -- Em INSERT, validar se o novo papel é PLATFORM
     if v_role_escopo = 'PLATFORM' and not public.is_platform_superadmin() then
       raise exception 'Apenas SuperAdmins da Plataforma podem atribuir papéis de escopo PLATFORM.';
     end if;
   end if;
 
-  -- Papel personalizado de empresa DEVE pertencer à mesma empresa do vínculo
   if v_role_escopo = 'COMPANY' and v_role_empresa_id is not null then
     if v_role_empresa_id <> NEW.empresa_id then
       raise exception 'Papel personalizado da empresa % não pode ser atribuído a usuário da empresa %.',
@@ -470,10 +466,7 @@ create trigger trg_validar_papel_empresa_usuario
   before insert or update or delete on public.empresa_usuarios
   for each row execute function public.validar_papel_empresa_usuario();
 
--- ============================================================================
--- POLÍTICAS DE SEGURANÇA (RLS) EXPLÍCITAS (USING + WITH CHECK)
--- ============================================================================
-
+-- POLÍTICAS DE SEGURANÇA (RLS)
 alter table public.empresas enable row level security;
 alter table public.papeis enable row level security;
 alter table public.permissoes enable row level security;
@@ -616,3 +609,5 @@ create policy empresa_usuarios_delete_policy on public.empresa_usuarios
     public.is_platform_superadmin() or
     (public.has_company_permission(empresa_id, 'gerenciar_usuarios') and public.is_company_member(empresa_id))
   );
+
+commit;

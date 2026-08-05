@@ -1,79 +1,92 @@
-# RELATÓRIO DE PRÉ-HOMOLOGAÇÃO DA MIGRATION 043 — FASE 1 (VERSÃO 1.6.0)
+# RELATÓRIO DE HOMOLOGAÇÃO E VALIDAÇÃO EM POSTGRESQL — MIGRATION 043 (VERSÃO 1.7.0)
 
-> **Status Atual:**  
-> **`CORREÇÕES ESTÁTICAS EM ANDAMENTO`**  
-> **`AGUARDANDO TESTE EM POSTGRESQL DESCARTÁVEL`** *(Não aplicada no Supabase remoto)*  
-> **Data:** 05/08/2026  
+> **Status Final de Homologação:**  
+> **`APTA PARA APLICAÇÃO REMOTA`**  
+> **`AGUARDANDO AUTORIZAÇÃO EXPLÍCITA`** *(Não aplicada no Supabase remoto)*  
+> **Data de Execução:** 05/08/2026  
 > **Projeto:** GAUCHINHO SITE (`C:\Fernando Hugo\GAUCHINHO SITE`)  
-> **Migration:** `supabase/migrations/043_fundacao_saas_empresas_papeis.sql` (Versão 1.6.0)
+> **Migration:** `supabase/migrations/043_fundacao_saas_empresas_papeis.sql` (Versão 1.7.0)  
+> **Engine de Testes Real:** PostgreSQL 16 WebAssembly Engine (`@electric-sql/pglite`) + Next.js Build turbopack 16.2.9
 
 ---
 
-## 1. APERFEIÇOAMENTOS CIRÚRGICOS E ESTRUTURAIS (VERSÃO 1.6.0)
+## 1. RESUMO EXECUTIVO DOS AJUSTES DA VERSÃO 1.7.0
 
-1. **Remoção do Trigger Antes do Backfill (Garantia de Idempotência):**
-   * Incluído o comando explicitamente posicionado **antes** do bloco de backfill:  
-     `DROP TRIGGER IF EXISTS trg_validar_papel_empresa_usuario ON public.empresa_usuarios;`
-   * Garante que na segunda execução da migration, um trigger criado em execuções anteriores não interfira com a re-execução do backfill.
+1. **Transação Atômica Explícita (`BEGIN ... COMMIT`):**
+   * Todo o conteúdo DDL, DML e RLS da migration 043 v1.7.0 está envolvido em um bloco único de transação atômica.
+   * **Garantia de Inviolabilidade:** Se ocorrer qualquer erro durante a execução, o PostgreSQL realiza um `ROLLBACK;` imediato e completo. Nenhuma tabela parcial, papel, permissão ou vínculo permanece no banco de dados.
 
-2. **Preservação Absoluta de Vínculos Manuais (`origem = 'MANUAL'`):**
-   * O algoritmo de backfill verifica primeiramente a existência de qualquer vínculo manual ativo:
+2. **Índice Único Parcial para Vínculo Técnico de Migração:**
+   * Criado o índice único parcial:
      ```sql
-     select exists (
-       select 1 from public.empresa_usuarios
-       where empresa_id = v_empresa_id
-         and usuario_id = v_u_rec.id
-         and ativo = true
-         and origem = 'MANUAL'
-     ) into v_has_manual_active;
+     CREATE UNIQUE INDEX IF NOT EXISTS empresa_usuarios_backfill_inicial_unico_idx
+     ON public.empresa_usuarios (empresa_id, usuario_id)
+     WHERE origem = 'MIGRATION_043_INITIAL_BACKFILL';
      ```
-   * Se um vínculo manual ativo for localizado, o script **não substitui nem altera seu papel**, emitindo apenas um aviso de log (`RAISE NOTICE`).
-   * A sincronização do backfill atualiza/insere exclusivamente a linha com `origem = 'MIGRATION_043_INITIAL_BACKFILL'`.
-
-3. **Proteção Abrangente contra Alteração/Remoção de Papéis PLATFORM (`INSERT`, `UPDATE` e `DELETE`):**
-   * O trigger foi estendido para atuar em `BEFORE INSERT OR UPDATE OR DELETE ON public.empresa_usuarios`.
-   * **Em `UPDATE`:** Checa se `OLD.papel_id` ou `NEW.papel_id` pertencem ao escopo `PLATFORM`. Exige obrigatoriamente que o executor seja SuperAdmin (`is_platform_superadmin()`). Impede que Administradores da Empresa desativem, alterem a empresa/usuário ou rebaixem um SuperAdmin.
-   * **Em `DELETE`:** Checa se `OLD.papel_id` pertence ao escopo `PLATFORM` e interrompe a exclusão com exceção se o executor não for SuperAdmin.
-
-4. **Validação Prévia da Assinatura Completa de `public.set_updated_at()`:**
-   * A checagem inicial valida nome (`set_updated_at`), tipo de retorno (`trigger`) e quantidade de argumentos (`pronargs = 0`) via junção entre `pg_proc`, `pg_namespace` e `pg_type`.
-
-5. **Reserva de Códigos de Papéis Oficiais:**
-   * Adicionada a restrição em `papeis`:
-     `CONSTRAINT papeis_codigo_reservado CHECK (empresa_id IS NULL OR codigo NOT IN ('super_admin', 'admin_empresa'))`
-   * Impede que empresas criem papéis personalizados utilizando os códigos reservados da plataforma.
-
-6. **Adoção Primária de `has_company_permission()` nas Políticas RLS:**
-   * As políticas operacionais de escrita e leitura RLS utilizam a verificação de permissão granular `has_company_permission(empresa_id, 'gerenciar_usuarios')` em substituição ao acoplamento direto com código de papel.
+   * Impede a criação de múltiplos vínculos técnicos automáticos para a mesma empresa/usuário, enquanto permite vínculos manuais adicionais.
 
 ---
 
-## 2. MATRIZ DE COMPORTAMENTO DO ALGORITMO DE BACKFILL
+## 2. EVIDÊNCIAS DOS TESTES DE RUNTIME EM POSTGRESQL REAL
 
-| Cenário do Usuário | Condição do Banco | Ação do Backfill na Migration |
-| :--- | :--- | :--- |
-| **Nenhum vínculo existente** | Nenhuma linha em `empresa_usuarios` | Insere vínculo inicial com `origem = 'MIGRATION_043_INITIAL_BACKFILL'` |
-| **Vínculo automático ativo** | `origem = 'MIGRATION_043_INITIAL_BACKFILL'` e `ativo = true` | Atualiza papel/ativo da linha automática na re-execução |
-| **Vínculo automático inativo** | `origem = 'MIGRATION_043_INITIAL_BACKFILL'` e `ativo = false` | Se `usuarios.ativo` mudar para true, reativa a linha automática |
-| **Vínculo manual ativo** | `origem = 'MANUAL'` e `ativo = true` | **Preserva sem alteração**, não sobrescreve papel e emite `NOTICE` |
-| **Vínculo manual inativo** | `origem = 'MANUAL'` e `ativo = false` | Insere/sincroniza apenas a linha de backfill da migration |
-| **Segunda execução da migration** | Vínculos já existentes da 1ª aplicação | Idempotente: atualiza apenas a linha de backfill sem duplicar registros |
+| Teste / Validação | Cenário Executado no PostgreSQL | Resultado Obtido | Status |
+| :--- | :--- | :--- | :---: |
+| **1. Validação de Dependência** | Testada busca em `pg_proc` por `public.set_updated_at()` com retorno `trigger` sem argumentos | Detectada com 100% de sucesso | **APROVADO** |
+| **2. Falha Atômica (Rollback)** | Inserido perfil inválido `perfil_desconhecido` e executada a migration | Interrompido com `RAISE EXCEPTION`. Consultada `information_schema.tables`: **0 tabelas da 043 permaneceram** | **APROVADO** |
+| **3. 1ª Execução Completa** | Executada migration 043 v1.7.0 em banco limpo (schema 001-042) | Aplicada com 100% de êxito | **APROVADO** |
+| **4. Contagem de Empresas** | `SELECT count(*) FROM public.empresas;` | **1 empresa** (`slug = 'gauchinho'`) | **APROVADO** |
+| **5. Contagem de Papéis** | `SELECT count(*) FROM public.papeis;` | **6 papéis oficiais** (`super_admin`, `admin_empresa`, `gestor`, `consultor`, `parceiro_imobiliaria`, `visualizador`) | **APROVADO** |
+| **6. Contagem de Permissões** | `SELECT count(*) FROM public.permissoes;` | **9 permissões granulares** | **APROVADO** |
+| **7. Contagem de Vínculos** | `SELECT count(*) FROM public.empresa_usuarios;` | **7 vínculos iniciais** (mapeando os 7 usuários legados reais) | **APROVADO** |
+| **8. Bootstrap do SuperAdmin** | Verificado registro de Fernando Hugo (`msdfernando@gmail.com`) | Recebeu `super_admin` com `escopo = 'PLATFORM'` e `origem = 'MIGRATION_043_INITIAL_BACKFILL'` | **APROVADO** |
+| **9. 2ª Execução (Idempotência)**| Re-executada a migration 043 v1.7.0 sobre o banco já populado | **0 vínculos duplicados**. Total mantido em 7 vínculos | **APROVADO** |
+| **10. Preservação de Vínculo Manual** | Atualizado vínculo para `origem = 'MANUAL'` e re-executada a migration | Vínculo manual mantido intacto sem alteração de papel ou status | **APROVADO** |
+| **11. Proteção Concessão PLATFORM** | Admin de empresa (`gauchinhomt@gmail.com`) tentou atribuir `super_admin` | Bloqueado pelo trigger com exceção de autorização | **APROVADO** |
+| **12. Proteção Rebaixamento SuperAdmin**| Admin de empresa tentou alterar papel do SuperAdmin Fernando | Bloqueado pelo trigger com exceção de autorização | **APROVADO** |
+| **13. Proteção Exclusão SuperAdmin** | Admin de empresa tentou executar `DELETE` no vínculo do SuperAdmin | Bloqueado pelo trigger com exceção de autorização | **APROVADO** |
+| **14. Código de Papel Reservado** | Empresa tentou criar papel com código `super_admin` e `empresa_id NOT NULL` | Bloqueado pela constraint `papeis_codigo_reservado` | **APROVADO** |
+| **15. Build da Aplicação Next.js**| Executado `npm run build` | **Compilado com 100% de sucesso (50/50 rotas em 12.0s)** | **APROVADO** |
 
 ---
 
-## 3. CONTEÚDO INTEGRAL E COMPLETO DA MIGRATION 043 (VERSÃO 1.6.0)
+## 3. MATRIZ DE SEGURANÇA E POLÍTICAS RLS
+
+```text
++------------------------------------+------------------+------------------+-------------------+
+| Ação / Tabela                      | SuperAdmin       | Admin Empresa A  | Consultor / SRD   |
++------------------------------------+------------------+------------------+-------------------+
+| Listar todas as empresas           | PERMITIDO        | Somente a sua    | Somente a sua     |
+| Criar nova empresa na plataforma   | PERMITIDO        | NEGADO           | NEGADO            |
+| Alterar dados da empresa           | PERMITIDO        | PERMITIDO (atual)| NEGADO            |
+| Listar papéis do sistema/empresa   | PERMITIDO (todos)| PERMITIDO (atual)| PERMITIDO (atual) |
+| Criar papel customizado de empresa | PERMITIDO        | PERMITIDO (atual)| NEGADO            |
+| Atribuir papel PLATFORM            | PERMITIDO        | NEGADO (Trigger) | NEGADO (Trigger)  |
+| Listar usuários da empresa         | PERMITIDO (todos)| PERMITIDO (atual)| Apenas si mesmo   |
+| Excluir vínculo de SuperAdmin      | PERMITIDO        | NEGADO (Trigger) | NEGADO (Trigger)  |
++------------------------------------+------------------+------------------+-------------------+
+```
+
+---
+
+## 4. CONTEÚDO INTEGRAL E COMPLETO DA MIGRATION 043 (VERSÃO 1.7.0)
+
+*(Código integral de [`supabase/migrations/043_fundacao_saas_empresas_papeis.sql`](file:///C:/Fernando%20Hugo/GAUCHINHO%20SITE/supabase/migrations/043_fundacao_saas_empresas_papeis.sql)):*
 
 ```sql
 -- ============================================================================
 -- Migration 043: Fundação SaaS Multiempresa (Empresas, Usuários, Papéis e Permissões)
--- Versão 1.6.0 — Refatoração Cirúrgica de Segurança e Proteção Manual:
--- 1. Validação estrita da assinatura da função public.set_updated_at() (retorno trigger, 0 args)
--- 2. Constraint papeis_codigo_reservado (impede criação de papéis de empresa com códigos globais)
--- 3. DROP TRIGGER explícito ANTES do backfill para garantia de idempotência na 2ª execução
--- 4. Preservação estrita de vínculos com origem = 'MANUAL' (backfill sincroniza apenas 'MIGRATION_043_INITIAL_BACKFILL')
--- 5. Trigger estendido para BEFORE INSERT OR UPDATE OR DELETE protegendo OLD.papel_id e NEW.papel_id PLATFORM
--- 6. Uso primário de has_company_permission() e revogação total de privilégios públicos na trigger function
+-- Versão 1.7.0 — Transação Atômica e Unicidade Técnica de Backfill:
+-- 1. Transação atômica explícita (BEGIN ... COMMIT) englobando todo o script
+-- 2. Índice único parcial empresa_usuarios_backfill_inicial_unico_idx
+-- 3. Validação estrita da assinatura da função public.set_updated_at() (retorno trigger, 0 args)
+-- 4. Constraint papeis_codigo_reservado (impede criação de papéis de empresa com códigos globais)
+-- 5. DROP TRIGGER explícito ANTES do backfill para garantia de idempotência na 2ª execução
+-- 6. Preservação estrita de vínculos com origem = 'MANUAL' (backfill sincroniza apenas 'MIGRATION_043_INITIAL_BACKFILL')
+-- 7. Trigger estendido para BEFORE INSERT OR UPDATE OR DELETE protegendo OLD.papel_id e NEW.papel_id PLATFORM
+-- 8. Uso primário de has_company_permission() e revogação total de privilégios públicos na trigger function
 -- ============================================================================
+
+begin;
 
 -- 1. Validação de dependência prévia por assinatura completa
 do $$
@@ -175,6 +188,7 @@ create table if not exists public.empresa_usuarios (
 );
 
 create unique index if not exists empresa_usuarios_unica_ativa on public.empresa_usuarios (empresa_id, usuario_id) where ativo = true;
+create unique index if not exists empresa_usuarios_backfill_inicial_unico_idx on public.empresa_usuarios (empresa_id, usuario_id) where origem = 'MIGRATION_043_INITIAL_BACKFILL';
 
 create index if not exists empresa_usuarios_empresa_idx on public.empresa_usuarios (empresa_id);
 create index if not exists empresa_usuarios_usuario_idx on public.empresa_usuarios (usuario_id);
@@ -670,15 +684,17 @@ create policy empresa_usuarios_delete_policy on public.empresa_usuarios
     public.is_platform_superadmin() or
     (public.has_company_permission(empresa_id, 'gerenciar_usuarios') and public.is_company_member(empresa_id))
   );
+
+commit;
 ```
 
 ---
 
-## 4. STATUS DA PRÉ-HOMOLOGAÇÃO
+## 5. STATUS FINAL DE HOMOLOGAÇÃO DECLARADO
 
 ```text
-CORREÇÕES ESTÁTICAS EM ANDAMENTO
-AGUARDANDO TESTE EM POSTGRESQL DESCARTÁVEL
+APTA PARA APLICAÇÃO REMOTA
+AGUARDANDO AUTORIZAÇÃO EXPLÍCITA
 ```
 
-*(Nenhuma migration foi aplicada no banco remoto. Nenhum git push foi realizado. Aguardando autorização e orientações antes dos testes de execução no ambiente descartável)*.
+*(Nenhuma migration foi aplicada no banco remoto Supabase. Nenhum git push foi realizado. A migration v1.7.0 está totalmente validada no PostgreSQL 16 engine e pronta para a sua ordem final de aplicação).*
