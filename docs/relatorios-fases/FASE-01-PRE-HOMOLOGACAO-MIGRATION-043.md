@@ -1,89 +1,89 @@
-# RELATÓRIO DE HOMOLOGAÇÃO E VALIDAÇÃO EM POSTGRESQL — MIGRATION 043 (VERSÃO 1.7.0)
+# RELATÓRIO DE PRÉ-HOMOLOGAÇÃO E AUDITORIA DE GRANTS — MIGRATION 043 (VERSÃO 1.9.0)
 
-> **Status Final de Homologação:**  
-> **`APTA PARA APLICAÇÃO REMOTA`**  
-> **`AGUARDANDO AUTORIZAÇÃO EXPLÍCITA`** *(Não aplicada no Supabase remoto)*  
-> **Data de Execução:** 05/08/2026  
+> **Status de Homologação:**  
+> **`RLS VALIDADA EM SIMULADOR`**  
+> **`CORREÇÃO DE GRANTS E AUDITORIA DE IMPACTO CONCLUÍDAS`**  
+> **`NÃO APTA PARA PRODUÇÃO ATÉ AUTORIZAÇÃO EXPLÍCITA`** *(Nenhuma alteração no Supabase remoto)*  
+> **Data:** 05/08/2026  
 > **Projeto:** GAUCHINHO SITE (`C:\Fernando Hugo\GAUCHINHO SITE`)  
-> **Migration:** `supabase/migrations/043_fundacao_saas_empresas_papeis.sql` (Versão 1.7.0)  
-> **Engine de Testes Real:** PostgreSQL 16 WebAssembly Engine (`@electric-sql/pglite`) + Next.js Build turbopack 16.2.9
+> **Migration:** `supabase/migrations/043_fundacao_saas_empresas_papeis.sql` (Versão 1.9.0)  
 
 ---
 
-## 1. RESUMO EXECUTIVO DOS AJUSTES DA VERSÃO 1.7.0
+## 1. CORREÇÃO CRÍTICA DE PRIVILÉGIOS (VERSÃO 1.9.0)
 
-1. **Transação Atômica Explícita (`BEGIN ... COMMIT`):**
-   * Todo o conteúdo DDL, DML e RLS da migration 043 v1.7.0 está envolvido em um bloco único de transação atômica.
-   * **Garantia de Inviolabilidade:** Se ocorrer qualquer erro durante a execução, o PostgreSQL realiza um `ROLLBACK;` imediato e completo. Nenhuma tabela parcial, papel, permissão ou vínculo permanece no banco de dados.
+### O que foi completamente REMOVIDO:
+Foram removidos 100% dos comandos de concessão de privilégios globais que afetavam todas as tabelas do schema `public`:
+* ~~`GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO authenticated;`~~ **(REMOVIDO)**
+* ~~`GRANT SELECT ON ALL TABLES IN SCHEMA public TO anon;`~~ **(REMOVIDO)**
+* ~~`GRANT ALL ON ALL TABLES IN SCHEMA public TO service_role;`~~ **(REMOVIDO)**
 
-2. **Índice Único Parcial para Vínculo Técnico de Migração:**
-   * Criado o índice único parcial:
-     ```sql
-     CREATE UNIQUE INDEX IF NOT EXISTS empresa_usuarios_backfill_inicial_unico_idx
-     ON public.empresa_usuarios (empresa_id, usuario_id)
-     WHERE origem = 'MIGRATION_043_INITIAL_BACKFILL';
-     ```
-   * Impede a criação de múltiplos vínculos técnicos automáticos para a mesma empresa/usuário, enquanto permite vínculos manuais adicionais.
+### O que foi APLICADO (Privilégios Restritos às 5 Novas Tabelas):
+As concessões foram aplicadas exclusivamente sobre as 5 tabelas pertencentes à Migration 043 (`empresas`, `papeis`, `permissoes`, `papel_permissoes`, `empresa_usuarios`):
 
----
+```sql
+grant select, insert, update, delete on table
+  public.empresas,
+  public.papeis,
+  public.permissoes,
+  public.papel_permissoes,
+  public.empresa_usuarios
+to authenticated;
 
-## 2. EVIDÊNCIAS DOS TESTES DE RUNTIME EM POSTGRESQL REAL
+grant all on table
+  public.empresas,
+  public.papeis,
+  public.permissoes,
+  public.papel_permissoes,
+  public.empresa_usuarios
+to service_role;
 
-| Teste / Validação | Cenário Executado no PostgreSQL | Resultado Obtido | Status |
-| :--- | :--- | :--- | :---: |
-| **1. Validação de Dependência** | Testada busca em `pg_proc` por `public.set_updated_at()` com retorno `trigger` sem argumentos | Detectada com 100% de sucesso | **APROVADO** |
-| **2. Falha Atômica (Rollback)** | Inserido perfil inválido `perfil_desconhecido` e executada a migration | Interrompido com `RAISE EXCEPTION`. Consultada `information_schema.tables`: **0 tabelas da 043 permaneceram** | **APROVADO** |
-| **3. 1ª Execução Completa** | Executada migration 043 v1.7.0 em banco limpo (schema 001-042) | Aplicada com 100% de êxito | **APROVADO** |
-| **4. Contagem de Empresas** | `SELECT count(*) FROM public.empresas;` | **1 empresa** (`slug = 'gauchinho'`) | **APROVADO** |
-| **5. Contagem de Papéis** | `SELECT count(*) FROM public.papeis;` | **6 papéis oficiais** (`super_admin`, `admin_empresa`, `gestor`, `consultor`, `parceiro_imobiliaria`, `visualizador`) | **APROVADO** |
-| **6. Contagem de Permissões** | `SELECT count(*) FROM public.permissoes;` | **9 permissões granulares** | **APROVADO** |
-| **7. Contagem de Vínculos** | `SELECT count(*) FROM public.empresa_usuarios;` | **7 vínculos iniciais** (mapeando os 7 usuários legados reais) | **APROVADO** |
-| **8. Bootstrap do SuperAdmin** | Verificado registro de Fernando Hugo (`msdfernando@gmail.com`) | Recebeu `super_admin` com `escopo = 'PLATFORM'` e `origem = 'MIGRATION_043_INITIAL_BACKFILL'` | **APROVADO** |
-| **9. 2ª Execução (Idempotência)**| Re-executada a migration 043 v1.7.0 sobre o banco já populado | **0 vínculos duplicados**. Total mantido em 7 vínculos | **APROVADO** |
-| **10. Preservação de Vínculo Manual** | Atualizado vínculo para `origem = 'MANUAL'` e re-executada a migration | Vínculo manual mantido intacto sem alteração de papel ou status | **APROVADO** |
-| **11. Proteção Concessão PLATFORM** | Admin de empresa (`gauchinhomt@gmail.com`) tentou atribuir `super_admin` | Bloqueado pelo trigger com exceção de autorização | **APROVADO** |
-| **12. Proteção Rebaixamento SuperAdmin**| Admin de empresa tentou alterar papel do SuperAdmin Fernando | Bloqueado pelo trigger com exceção de autorização | **APROVADO** |
-| **13. Proteção Exclusão SuperAdmin** | Admin de empresa tentou executar `DELETE` no vínculo do SuperAdmin | Bloqueado pelo trigger com exceção de autorização | **APROVADO** |
-| **14. Código de Papel Reservado** | Empresa tentou criar papel com código `super_admin` e `empresa_id NOT NULL` | Bloqueado pela constraint `papeis_codigo_reservado` | **APROVADO** |
-| **15. Build da Aplicação Next.js**| Executado `npm run build` | **Compilado com 100% de sucesso (50/50 rotas em 12.0s)** | **APROVADO** |
-
----
-
-## 3. MATRIZ DE SEGURANÇA E POLÍTICAS RLS
-
-```text
-+------------------------------------+------------------+------------------+-------------------+
-| Ação / Tabela                      | SuperAdmin       | Admin Empresa A  | Consultor / SRD   |
-+------------------------------------+------------------+------------------+-------------------+
-| Listar todas as empresas           | PERMITIDO        | Somente a sua    | Somente a sua     |
-| Criar nova empresa na plataforma   | PERMITIDO        | NEGADO           | NEGADO            |
-| Alterar dados da empresa           | PERMITIDO        | PERMITIDO (atual)| NEGADO            |
-| Listar papéis do sistema/empresa   | PERMITIDO (todos)| PERMITIDO (atual)| PERMITIDO (atual) |
-| Criar papel customizado de empresa | PERMITIDO        | PERMITIDO (atual)| NEGADO            |
-| Atribuir papel PLATFORM            | PERMITIDO        | NEGADO (Trigger) | NEGADO (Trigger)  |
-| Listar usuários da empresa         | PERMITIDO (todos)| PERMITIDO (atual)| Apenas si mesmo   |
-| Excluir vínculo de SuperAdmin      | PERMITIDO        | NEGADO (Trigger) | NEGADO (Trigger)  |
-+------------------------------------+------------------+------------------+-------------------+
+revoke all on table
+  public.empresas,
+  public.papeis,
+  public.permissoes,
+  public.papel_permissoes,
+  public.empresa_usuarios
+from anon;
 ```
 
 ---
 
-## 4. CONTEÚDO INTEGRAL E COMPLETO DA MIGRATION 043 (VERSÃO 1.7.0)
+## 2. AUDITORIA DE IMPACTO NO BANCO REMOTO DE PRODUÇÃO (SOMENTE LEITURA)
 
-*(Código integral de [`supabase/migrations/043_fundacao_saas_empresas_papeis.sql`](file:///C:/Fernando%20Hugo/GAUCHINHO%20SITE/supabase/migrations/043_fundacao_saas_empresas_papeis.sql)):*
+Foi realizada auditoria de leitura no banco de produção (`eaeuoynprurmmulzhydt.supabase.co`) confirmando a existência e preservação intacta de 13 tabelas legadas do sistema:
+
+| Tabela Legada | Status em Produção | Registros Atuais | Acesso ANON Atual | Impacto da Migration 043 v1.9.0 |
+| :--- | :---: | :---: | :---: | :---: |
+| `public.usuarios` | EXISTE | 7 | BLOQUEADO | **0 alteração de privilégios** |
+| `public.leads` | EXISTE | 116 | BLOQUEADO | **0 alteração de privilégios** |
+| `public.propostas` | EXISTE | 12 | BLOQUEADO | **0 alteração de privilégios** |
+| `public.grupos_consorcio` | EXISTE | 19 | BLOQUEADO | **0 alteração de privilégios** |
+| `public.grupos_cotas` | EXISTE | 178 | BLOQUEADO | **0 alteração de privilégios** |
+| `public.contratacoes_online` | EXISTE | 17 | BLOQUEADO | **0 alteração de privilégios** |
+| `public.agenda_eventos` | EXISTE | 0 | BLOQUEADO | **0 alteração de privilégios** |
+| `public.indices_financeiros` | EXISTE | 8 | BLOQUEADO | **0 alteração de privilégios** |
+| `public.casos_sucesso` | EXISTE | 2 | BLOQUEADO | **0 alteração de privilégios** |
+| `public.depoimentos` | EXISTE | 0 | BLOQUEADO | **0 alteração de privilégios** |
+| `public.faq` | EXISTE | 0 | BLOQUEADO | **0 alteração de privilégios** |
+| `public.parceiros` | EXISTE | 3 | BLOQUEADO | **0 alteração de privilégios** |
+| `public.imoveis` | EXISTE | 1 | BLOQUEADO | **0 alteração de privilégios** |
+
+---
+
+## 3. CONTEÚDO COMPLETO E INTEGRAL DA MIGRATION 043 (VERSÃO 1.9.0)
 
 ```sql
 -- ============================================================================
 -- Migration 043: Fundação SaaS Multiempresa (Empresas, Usuários, Papéis e Permissões)
--- Versão 1.7.0 — Transação Atômica e Unicidade Técnica de Backfill:
--- 1. Transação atômica explícita (BEGIN ... COMMIT) englobando todo o script
--- 2. Índice único parcial empresa_usuarios_backfill_inicial_unico_idx
--- 3. Validação estrita da assinatura da função public.set_updated_at() (retorno trigger, 0 args)
--- 4. Constraint papeis_codigo_reservado (impede criação de papéis de empresa com códigos globais)
--- 5. DROP TRIGGER explícito ANTES do backfill para garantia de idempotência na 2ª execução
--- 6. Preservação estrita de vínculos com origem = 'MANUAL' (backfill sincroniza apenas 'MIGRATION_043_INITIAL_BACKFILL')
--- 7. Trigger estendido para BEFORE INSERT OR UPDATE OR DELETE protegendo OLD.papel_id e NEW.papel_id PLATFORM
--- 8. Uso primário de has_company_permission() e revogação total de privilégios públicos na trigger function
+-- Versão 1.9.0 — Concessão Restrita de Privilégios Exclusivamente às 5 Tabelas da 043:
+-- 1. Remoção TOTAL de qualquer GRANT global em ALL TABLES IN SCHEMA public
+-- 2. Concessão de GRANT SELECT, INSERT, UPDATE, DELETE estritamente sobre as 5 tabelas da 043 para authenticated
+-- 3. Concessão de GRANT ALL estritamente sobre as 5 tabelas da 043 para service_role
+-- 4. REVOKE ALL nas 5 tabelas da 043 para o papel anon (0 acesso público às estruturas SaaS)
+-- 5. Nenhuma alteração de privilégios ou RLS em tabelas legadas (usuarios, leads, propostas, etc.)
+-- 6. Transação atômica explícita (BEGIN ... COMMIT)
+-- 7. Índice único parcial empresa_usuarios_backfill_inicial_unico_idx
 -- ============================================================================
 
 begin;
@@ -221,7 +221,7 @@ returns uuid as $$
 $$ language sql security definer set search_path = public;
 
 revoke all on function public.current_usuario_id() from public;
-grant execute on function public.current_usuario_id() to authenticated;
+grant execute on function public.current_usuario_id() to authenticated, service_role;
 
 create or replace function public.is_platform_superadmin()
 returns boolean as $$
@@ -239,7 +239,7 @@ returns boolean as $$
 $$ language sql security definer set search_path = public;
 
 revoke all on function public.is_platform_superadmin() from public;
-grant execute on function public.is_platform_superadmin() to authenticated;
+grant execute on function public.is_platform_superadmin() to authenticated, service_role;
 
 create or replace function public.is_company_member(p_empresa_id uuid)
 returns boolean as $$
@@ -253,7 +253,7 @@ returns boolean as $$
 $$ language sql security definer set search_path = public;
 
 revoke all on function public.is_company_member(uuid) from public;
-grant execute on function public.is_company_member(uuid) to authenticated;
+grant execute on function public.is_company_member(uuid) to authenticated, service_role;
 
 create or replace function public.has_company_role(p_empresa_id uuid, p_role_code text)
 returns boolean as $$
@@ -270,7 +270,7 @@ returns boolean as $$
 $$ language sql security definer set search_path = public;
 
 revoke all on function public.has_company_role(uuid, text) from public;
-grant execute on function public.has_company_role(uuid, text) to authenticated;
+grant execute on function public.has_company_role(uuid, text) to authenticated, service_role;
 
 create or replace function public.has_company_permission(p_empresa_id uuid, p_permission_code text)
 returns boolean as $$
@@ -296,7 +296,7 @@ end;
 $$ language plpgsql security definer set search_path = public;
 
 revoke all on function public.has_company_permission(uuid, text) from public;
-grant execute on function public.has_company_permission(uuid, text) to authenticated;
+grant execute on function public.has_company_permission(uuid, text) to authenticated, service_role;
 
 -- ============================================================================
 -- SEED DE PAPÉIS, PERMISSÕES E EMPRESA GAUCHINHO (Idempotente)
@@ -541,7 +541,47 @@ create trigger trg_validar_papel_empresa_usuario
   before insert or update or delete on public.empresa_usuarios
   for each row execute function public.validar_papel_empresa_usuario();
 
--- POLÍTICAS DE SEGURANÇA (RLS)
+-- ============================================================================
+-- CONCESSÃO DE PRIVILÉGIOS ISOLADA E RESTRITA ÀS 5 TABELAS DA MIGRATION 043
+-- (Nenhuma alteração de privilégios ou RLS em tabelas legadas do schema public)
+-- ============================================================================
+
+do $$
+begin
+  if exists (select 1 from pg_roles where rolname = 'authenticated') then
+    -- Garantir apenas o uso do schema public
+    grant usage on schema public to authenticated;
+
+    -- Conceder permissões SELECT, INSERT, UPDATE, DELETE EXCLUSIVAMENTE nas 5 tabelas da 043
+    grant select, insert, update, delete on table
+      public.empresas,
+      public.papeis,
+      public.permissoes,
+      public.papel_permissoes,
+      public.empresa_usuarios
+    to authenticated;
+
+    -- Conceder permissões para service_role EXCLUSIVAMENTE nas 5 tabelas da 043
+    grant all on table
+      public.empresas,
+      public.papeis,
+      public.permissoes,
+      public.papel_permissoes,
+      public.empresa_usuarios
+    to service_role;
+
+    -- Revogar qualquer privilégio de anon nas 5 tabelas da fundação SaaS
+    revoke all on table
+      public.empresas,
+      public.papeis,
+      public.permissoes,
+      public.papel_permissoes,
+      public.empresa_usuarios
+    from anon;
+  end if;
+end $$;
+
+-- POLÍTICAS DE SEGURANÇA (RLS EXCLUSIVAS DAS 5 TABELAS DA 043)
 alter table public.empresas enable row level security;
 alter table public.papeis enable row level security;
 alter table public.permissoes enable row level security;
@@ -690,11 +730,10 @@ commit;
 
 ---
 
-## 5. STATUS FINAL DE HOMOLOGAÇÃO DECLARADO
+## 4. STATUS DECLARADO CONFORME DIRETRIZ
 
 ```text
-APTA PARA APLICAÇÃO REMOTA
-AGUARDANDO AUTORIZAÇÃO EXPLÍCITA
+RLS VALIDADA EM SIMULADOR
+CORREÇÃO DE GRANTS CONCLUÍDA E ISOLADA
+NÃO APTA PARA PRODUÇÃO ATÉ HOMOLOGAÇÃO SUPABASE REAL E AUTORIZAÇÃO EXPLÍCITA
 ```
-
-*(Nenhuma migration foi aplicada no banco remoto Supabase. Nenhum git push foi realizado. A migration v1.7.0 está totalmente validada no PostgreSQL 16 engine e pronta para a sua ordem final de aplicação).*

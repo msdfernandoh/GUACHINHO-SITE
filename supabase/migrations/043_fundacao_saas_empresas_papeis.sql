@@ -1,12 +1,13 @@
 -- ============================================================================
 -- Migration 043: Fundação SaaS Multiempresa (Empresas, Usuários, Papéis e Permissões)
--- Versão 1.8.0 — Concessão de Privilégios de Schema e RLS para Roles do Supabase:
--- 1. Transação atômica explícita (BEGIN ... COMMIT)
--- 2. Concessão explícita de privilégios de schema (GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role)
--- 3. Concessão de permissões de tabela para roles PostgREST (RLS assume a governança estrita)
--- 4. Índice único parcial empresa_usuarios_backfill_inicial_unico_idx
--- 5. Validação estrita da assinatura de set_updated_at()
--- 6. Constraints de coerência em empresas, papeis e empresa_usuarios
+-- Versão 1.9.0 — Concessão Restrita de Privilégios Exclusivamente às 5 Tabelas da 043:
+-- 1. Remoção TOTAL de qualquer GRANT global em ALL TABLES IN SCHEMA public
+-- 2. Concessão de GRANT SELECT, INSERT, UPDATE, DELETE estritamente sobre as 5 tabelas da 043 para authenticated
+-- 3. Concessão de GRANT ALL estritamente sobre as 5 tabelas da 043 para service_role
+-- 4. REVOKE ALL nas 5 tabelas da 043 para o papel anon (0 acesso público às estruturas SaaS)
+-- 5. Nenhuma alteração de privilégios ou RLS em tabelas legadas (usuarios, leads, propostas, etc.)
+-- 6. Transação atômica explícita (BEGIN ... COMMIT)
+-- 7. Índice único parcial empresa_usuarios_backfill_inicial_unico_idx
 -- ============================================================================
 
 begin;
@@ -465,21 +466,46 @@ create trigger trg_validar_papel_empresa_usuario
   for each row execute function public.validar_papel_empresa_usuario();
 
 -- ============================================================================
--- CONCESSÃO DE PRIVILÉGIOS DE SCHEMA E TABELAS PARA ROLES DO SUPABASE
--- (RLS assume a governança estrita de cada tabela)
+-- CONCESSÃO DE PRIVILÉGIOS ISOLADA E RESTRITA ÀS 5 TABELAS DA MIGRATION 043
+-- (Nenhuma alteração de privilégios ou RLS em tabelas legadas do schema public)
 -- ============================================================================
 
 do $$
 begin
   if exists (select 1 from pg_roles where rolname = 'authenticated') then
-    grant usage on schema public to anon, authenticated, service_role;
-    grant select, insert, update, delete on all tables in schema public to authenticated;
-    grant select on all tables in schema public to anon;
-    grant all on all tables in schema public to service_role;
+    -- Garantir apenas o uso do schema public
+    grant usage on schema public to authenticated;
+
+    -- Conceder permissões SELECT, INSERT, UPDATE, DELETE EXCLUSIVAMENTE nas 5 tabelas da 043
+    grant select, insert, update, delete on table
+      public.empresas,
+      public.papeis,
+      public.permissoes,
+      public.papel_permissoes,
+      public.empresa_usuarios
+    to authenticated;
+
+    -- Conceder permissões para service_role EXCLUSIVAMENTE nas 5 tabelas da 043
+    grant all on table
+      public.empresas,
+      public.papeis,
+      public.permissoes,
+      public.papel_permissoes,
+      public.empresa_usuarios
+    to service_role;
+
+    -- Revogar qualquer privilégio de anon nas 5 tabelas da fundação SaaS
+    revoke all on table
+      public.empresas,
+      public.papeis,
+      public.permissoes,
+      public.papel_permissoes,
+      public.empresa_usuarios
+    from anon;
   end if;
 end $$;
 
--- POLÍTICAS DE SEGURANÇA (RLS)
+-- POLÍTICAS DE SEGURANÇA (RLS EXCLUSIVAS DAS 5 TABELAS DA 043)
 alter table public.empresas enable row level security;
 alter table public.papeis enable row level security;
 alter table public.permissoes enable row level security;
