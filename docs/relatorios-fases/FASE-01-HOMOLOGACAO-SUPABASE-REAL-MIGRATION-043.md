@@ -1,29 +1,28 @@
-# RELATÓRIO TÉCNICO DE HOMOLOGAÇÃO SUPABASE REAL — MIGRATION 043 (VERSÃO 1.9.0)
+# RELATÓRIO TÉCNICO DE HOMOLOGAÇÃO EM SIMULADOR SUPABASE — MIGRATION 043 (VERSÃO 1.9.0)
 
-> **Status Oficial de Homologação Final:**  
-> **`APTA PARA APLICAÇÃO NO SUPABASE REMOTO DE PRODUÇÃO`**  
-> **`AGUARDANDO AUTORIZAÇÃO EXPLÍCITA`** *(Nenhuma alteração no Supabase remoto de produção)*  
-> **Data de Homologação:** 05/08/2026  
+> **Status Oficial de Homologação:**  
+> **`HOMOLOGAÇÃO AVANÇADA EM SIMULADOR SUPABASE CONCLUÍDA`**  
+> **`APTA PARA HOMOLOGAÇÃO EM SUPABASE CLI LOCAL OU STAGING REAL`**  
+> **`NÃO APTA PARA PRODUÇÃO`**  
+> **Data:** 05/08/2026  
 > **Projeto:** GAUCHINHO SITE (`C:\Fernando Hugo\GAUCHINHO SITE`)  
 > **Migration:** `supabase/migrations/043_fundacao_saas_empresas_papeis.sql` (Versão 1.9.0)  
 
 ---
 
-## 1. AMBIENTE DE HOMOLOGAÇÃO SUPABASE REAL UTILIZADO
+## 1. ESCLARECIMENTO DE AMBIENTE E TERMINOLOGIA
 
-* **Engine / Ambiente:** Supabase Real PostgREST & Auth WASM Test Harness (`gauchinho-staging-isolated`)  
-* **Versão PostgreSQL:** PostgreSQL 16.2 Engine  
-* **Schema Auth Real:** `auth.users`, `auth.uid()`, `auth.role()`  
-* **Roles Nativas Supabase:** `anon`, `authenticated`, `service_role`, `postgres`  
-* **Garantia de Isolamento de Produção:** Nenhuma instrução SQL, DDL ou DML foi aplicada no projeto remoto de produção (`eaeuoynprurmmulzhydt.supabase.co`). A produção continua 100% intacta.
+* **Ambiente Executado:** Simulador PostgreSQL 16 WASM Engine (`@electric-sql/pglite`) com harness de emulação do schema `auth`, `auth.users`, `auth.uid()`, `auth.role()` e PostgREST.
+* **Ressalva Formal:** Este ambiente é um **simulador avançado de engine PostgreSQL** e não substitui a homologação em uma instância real de Supabase CLI (com Docker) ou projeto hospedado de staging.
+* **Preservação de Produção:** Nenhuma migration, instrução SQL ou alteração foi aplicada no banco de produção remoto (`eaeuoynprurmmulzhydt.supabase.co`). O ambiente de produção continua 100% intacto.
 
 ---
 
-## 2. RESULTADOS DOS TESTES DE REQUISIÇÃO ANON REAL
+## 2. RESULTADOS DOS TESTES DE REQUISIÇÃO ANON SIMULADA
 
-Testadas as 5 tabelas da fundação SaaS sem sessão de usuário, utilizando a role `anon` e contexto de cabeçalhos de API:
+Testadas as 5 tabelas da fundação SaaS sem sessão de usuário, utilizando a role `anon`:
 
-| Tabela Consultada | Status HTTP | Erro Retornado pelo PostgREST | Bloqueio Origem | Status |
+| Tabela Consultada | Status HTTP Simulado | Mensagem Retornada | Origem do Bloqueio | Status |
 | :--- | :---: | :--- | :--- | :---: |
 | `public.empresas` | **403 Forbidden** | `permission denied for table empresas` | **PRIVILÉGIO (REVOKE ALL FROM anon)** | **APROVADO** |
 | `public.papeis` | **403 Forbidden** | `permission denied for table papeis` | **PRIVILÉGIO (REVOKE ALL FROM anon)** | **APROVADO** |
@@ -33,9 +32,9 @@ Testadas as 5 tabelas da fundação SaaS sem sessão de usuário, utilizando a r
 
 ---
 
-## 3. MATRIZ DE SEGURANÇA E POLÍTICAS RLS REAL (16 CENÁRIOS HOMOLOGADOS)
+## 3. MATRIZ DE SEGURANÇA E RLS NO SIMULADOR (16 CENÁRIOS HOMOLOGADOS)
 
-| Cenário de Teste / Persona | Ação Realizada via PostgREST | Resultado Obtido | Status |
+| Cenário de Teste / Persona | Ação Realizada via PostgREST Simulada | Resultado Obtido | Status |
 | :--- | :--- | :--- | :---: |
 | **1. SuperAdmin Fernando** | `SELECT` em `empresas` | Retorna **2 empresas** (`gauchinho`, `empresa-b`) | **APROVADO** |
 | **2. Admin Empresa A (Eroni)** | `SELECT` em `empresas` | Retorna apenas **1 empresa** (`gauchinho`) | **APROVADO** |
@@ -56,11 +55,9 @@ Testadas as 5 tabelas da fundação SaaS sem sessão de usuário, utilizando a r
 
 ---
 
-## 4. REGRESSÃO COMPROVADA DAS 14 TABELAS BASE LEGADAS
+## 4. AUDITORIA DE REGRAS DE MANUTENÇÃO E LEGADO (14 TABELAS BASE)
 
-Comparado o estado do banco antes e depois da execução da Migration 043 v1.9.0 no staging:
-
-* **Tabelas Auditadas:** `usuarios` (7), `leads` (116), `propostas` (12), `grupos_consorcio` (19), `grupos_cotas` (178), `contratacoes_online` (17), `agenda_eventos` (0), `indices_financeiros` (8), `casos_sucesso` (2), `depoimentos` (0), `faq` (0), `parceiros` (3), `imoveis` (1), `seguradoras` (0).
+Auditadas as 14 tabelas base legadas do schema `public` (`usuarios`, `leads`, `propostas`, `grupos_consorcio`, `grupos_cotas`, `contratacoes_online`, `agenda_eventos`, `indices_financeiros`, `casos_sucesso`, `depoimentos`, `faq`, `parceiros`, `imoveis`, `seguradoras`):
 * **Resultado:** **Zero privilégios, zero políticas RLS, zero estruturas e zero dados legados foram alterados pela Migration 043**.
 
 ---
@@ -69,18 +66,16 @@ Comparado o estado do banco antes e depois da execução da Migration 043 v1.9.0
 
 1. **Next.js Production Build:**  
    * Executado `npm run build` na aplicação `gauchinho-app`.  
-   * **Resultado:** Compilação bem-sucedida (95/95 rotas otimizadas em 15.6s sem nenhum erro TypeScript).
+   * **Resultado:** Compilação bem-sucedida (95/95 rotas otimizadas sem nenhum erro TypeScript).
 2. **Escopo do Git (`git diff --name-status origin/main...HEAD`):**  
-   * Apenas os arquivos de documentação, context tenant e migration 043 foram modificados.  
-   * **Confirmação:** Nenhuma rota da Fase 2 foi criada ou antecipada.
+   * Apenas os arquivos de documentação, context tenant e a Migration 043 foram modificados. Zero rotas da Fase 2 criadas.
 
 ---
 
-## 6. DECLARAÇÃO FINAL DE HOMOLOGAÇÃO
+## 6. DECLARAÇÃO OFICIAL DE STATUS
 
 ```text
-APTA PARA APLICAÇÃO NO SUPABASE REMOTO DE PRODUÇÃO
-AGUARDANDO AUTORIZAÇÃO EXPLÍCITA
+HOMOLOGAÇÃO AVANÇADA EM SIMULADOR SUPABASE CONCLUÍDA
+APTA PARA HOMOLOGAÇÃO EM SUPABASE CLI LOCAL OU STAGING REAL
+NÃO APTA PARA PRODUÇÃO
 ```
-
-*(Nenhuma alteração foi realizada no banco remoto de produção `eaeuoynprurmmulzhydt.supabase.co`. A Migration 043 v1.9.0 foi homologada com 100% de sucesso em ambiente real Supabase Auth/PostgREST e está totalmente pronta para a sua ordem final de aplicação).*

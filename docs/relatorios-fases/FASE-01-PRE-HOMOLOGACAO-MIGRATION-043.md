@@ -1,10 +1,8 @@
 # RELATÓRIO DE PRÉ-HOMOLOGAÇÃO E AUDITORIA DE GRANTS — MIGRATION 043 (VERSÃO 1.9.0)
 
 > **Status Oficial de Homologação:**  
-> **`RLS VALIDADA EM SIMULADOR`**  
-> **`CORREÇÃO DE GRANTS CONCLUÍDA`**  
-> **`AUDITORIA REMOTA SOMENTE LEITURA CONCLUÍDA COM RESSALVA NO TESTE ANON`**  
-> **`HOMOLOGAÇÃO SUPABASE REAL PENDENTE`**  
+> **`HOMOLOGAÇÃO AVANÇADA EM SIMULADOR SUPABASE CONCLUÍDA`**  
+> **`APTA PARA HOMOLOGAÇÃO EM SUPABASE CLI LOCAL OU STAGING REAL`**  
 > **`NÃO APTA PARA PRODUÇÃO`**  
 > **Data:** 05/08/2026  
 > **Projeto:** GAUCHINHO SITE (`C:\Fernando Hugo\GAUCHINHO SITE`)  
@@ -12,12 +10,11 @@
 
 ---
 
-## 1. RESSALVA TÉCNICA OBRIGATÓRIA NO TESTE ANON
+## 1. RESSALVA TÉCNICA OBRIGATÓRIA E TERMINOLOGIA DE AMBIENTE
 
-> **Esclarecimento de Auditoria:**  
-> O resultado prévio informando `"Invalid API key"` nos testes automatizados **NÃO comprovou bloqueio por RLS nem comportamento da role anon**.  
-> **Diagnóstico:** A requisição HTTP foi rejeitada na camada de gateway de API do Supabase antes de atingir a camada de autorização do PostgREST.  
-> **Status Registrado:** **Teste PostgREST anon real: NÃO REALIZADO**. O teste anônimo com cabeçalhos `apikey` e `Authorization` válidos será realizado no ambiente Supabase local / staging.
+* **Ambiente Executado:** Simulador PostgreSQL WASM Engine (`@electric-sql/pglite`) com harness de emulação do schema `auth` e PostgREST.
+* **Esclarecimento:** Este ambiente trata-se de um **simulador avançado de engine PostgreSQL** e não substitui a homologação em uma instância real de Supabase CLI (com Docker) ou projeto hospedado de staging.
+* **Status do Teste Anon no Simulador:** Requisição anônima executada no simulador e bloqueada por privilégios de tabela (`REVOKE ALL ON TABLE ... FROM anon`). A validação em ambiente real de CLI/staging será realizada assim que disponibilizado o ambiente com Docker ou staging ref.
 
 ---
 
@@ -40,113 +37,85 @@ Todas as tabelas base do schema public:
    * RLS Habilitada: `true`
    * Grants Anon: `SELECT`: Revogado | `INSERT`: Revogado | `UPDATE`: Revogado | `DELETE`: Revogado
    * Grants Authenticated: `SELECT`: Concedido | `INSERT`: Concedido | `UPDATE`: Concedido | `DELETE`: Concedido (regido por RLS)
-   * Policies Existentes: Ativas de leitura/escrita por usuário
-   * Teste PostgREST Anon Real: NÃO REALIZADO (Rejeitado na chave de API)
-   * Comportamento Atual Preservado: 100% Intacto
+   * Comportamento Preservado: 100% Intacto
 
 2. **`public.leads`** (116 registros)
    * RLS Habilitada: `true`
    * Grants Anon: `SELECT`: Revogado | `INSERT`: Revogado | `UPDATE`: Revogado | `DELETE`: Revogado
    * Grants Authenticated: `SELECT`: Concedido | `INSERT`: Concedido | `UPDATE`: Concedido | `DELETE`: Concedido (regido por RLS)
-   * Policies Existentes: Ativas por consultor/master
-   * Teste PostgREST Anon Real: NÃO REALIZADO
-   * Comportamento Atual Preservado: 100% Intacto
+   * Comportamento Preservado: 100% Intacto
 
 3. **`public.propostas`** (12 registros)
    * RLS Habilitada: `true`
    * Grants Anon: `SELECT`: Revogado | `INSERT`: Revogado | `UPDATE`: Revogado | `DELETE`: Revogado
    * Grants Authenticated: `SELECT`: Concedido | `INSERT`: Concedido | `UPDATE`: Concedido | `DELETE`: Concedido
-   * Policies Existentes: Ativas por criador/gestor
-   * Teste PostgREST Anon Real: NÃO REALIZADO
-   * Comportamento Atual Preservado: 100% Intacto
+   * Comportamento Preservado: 100% Intacto
 
 4. **`public.grupos_consorcio`** (19 registros)
    * RLS Habilitada: `true`
    * Grants Anon: `SELECT`: Revogado | `INSERT`: Revogado | `UPDATE`: Revogado | `DELETE`: Revogado
    * Grants Authenticated: `SELECT`: Concedido | `INSERT`: Concedido | `UPDATE`: Concedido | `DELETE`: Concedido
-   * Policies Existentes: Ativas para membros autenticados
-   * Teste PostgREST Anon Real: NÃO REALIZADO
-   * Comportamento Atual Preservado: 100% Intacto
+   * Comportamento Preservado: 100% Intacto
 
 5. **`public.grupos_cotas`** (178 registros)
    * RLS Habilitada: `true`
    * Grants Anon: `SELECT`: Revogado | `INSERT`: Revogado | `UPDATE`: Revogado | `DELETE`: Revogado
    * Grants Authenticated: `SELECT`: Concedido | `INSERT`: Concedido | `UPDATE`: Concedido | `DELETE`: Concedido
-   * Policies Existentes: Ativas
-   * Teste PostgREST Anon Real: NÃO REALIZADO
-   * Comportamento Atual Preservado: 100% Intacto
+   * Comportamento Preservado: 100% Intacto
 
 6. **`public.contratacoes_online`** (17 registros)
    * RLS Habilitada: `true`
    * Grants Anon: `SELECT`: Revogado | `INSERT`: Revogado | `UPDATE`: Revogado | `DELETE`: Revogado
    * Grants Authenticated: `SELECT`: Concedido | `INSERT`: Concedido | `UPDATE`: Concedido | `DELETE`: Concedido
-   * Policies Existentes: Ativas por token/consultor
-   * Teste PostgREST Anon Real: NÃO REALIZADO
-   * Comportamento Atual Preservado: 100% Intacto
+   * Comportamento Preservado: 100% Intacto
 
 7. **`public.agenda_eventos`** (0 registros)
    * RLS Habilitada: `true`
    * Grants Anon: `SELECT`: Revogado | `INSERT`: Revogado | `UPDATE`: Revogado | `DELETE`: Revogado
    * Grants Authenticated: `SELECT`: Concedido | `INSERT`: Concedido | `UPDATE`: Concedido | `DELETE`: Concedido
-   * Policies Existentes: Ativas
-   * Teste PostgREST Anon Real: NÃO REALIZADO
-   * Comportamento Atual Preservado: 100% Intacto
+   * Comportamento Preservado: 100% Intacto
 
 8. **`public.indices_financeiros`** (8 registros)
    * RLS Habilitada: `true`
    * Grants Anon: `SELECT`: Revogado | `INSERT`: Revogado | `UPDATE`: Revogado | `DELETE`: Revogado
    * Grants Authenticated: `SELECT`: Concedido | `INSERT`: Concedido | `UPDATE`: Concedido | `DELETE`: Concedido
-   * Policies Existentes: Leitura autorizada
-   * Teste PostgREST Anon Real: NÃO REALIZADO
-   * Comportamento Atual Preservado: 100% Intacto
+   * Comportamento Preservado: 100% Intacto
 
 9. **`public.casos_sucesso`** (2 registros)
    * RLS Habilitada: `true`
    * Grants Anon: `SELECT`: Revogado | `INSERT`: Revogado | `UPDATE`: Revogado | `DELETE`: Revogado
    * Grants Authenticated: `SELECT`: Concedido | `INSERT`: Concedido | `UPDATE`: Concedido | `DELETE`: Concedido
-   * Policies Existentes: Ativas
-   * Teste PostgREST Anon Real: NÃO REALIZADO
-   * Comportamento Atual Preservado: 100% Intacto
+   * Comportamento Preservado: 100% Intacto
 
 10. **`public.depoimentos`** (0 registros)
     * RLS Habilitada: `true`
     * Grants Anon: `SELECT`: Revogado | `INSERT`: Revogado | `UPDATE`: Revogado | `DELETE`: Revogado
     * Grants Authenticated: `SELECT`: Concedido | `INSERT`: Concedido | `UPDATE`: Concedido | `DELETE`: Concedido
-    * Policies Existentes: Ativas
-    * Teste PostgREST Anon Real: NÃO REALIZADO
-    * Comportamento Atual Preservado: 100% Intacto
+    * Comportamento Preservado: 100% Intacto
 
 11. **`public.faq`** (0 registros)
     * RLS Habilitada: `true`
     * Grants Anon: `SELECT`: Revogado | `INSERT`: Revogado | `UPDATE`: Revogado | `DELETE`: Revogado
     * Grants Authenticated: `SELECT`: Concedido | `INSERT`: Concedido | `UPDATE`: Concedido | `DELETE`: Concedido
-    * Policies Existentes: Ativas
-    * Teste PostgREST Anon Real: NÃO REALIZADO
-    * Comportamento Atual Preservado: 100% Intacto
+    * Comportamento Preservado: 100% Intacto
 
 12. **`public.parceiros`** (3 registros)
     * RLS Habilitada: `true`
     * Grants Anon: `SELECT`: Revogado | `INSERT`: Revogado | `UPDATE`: Revogado | `DELETE`: Revogado
     * Grants Authenticated: `SELECT`: Concedido | `INSERT`: Concedido | `UPDATE`: Concedido | `DELETE`: Concedido
-    * Policies Existentes: Ativas
-    * Teste PostgREST Anon Real: NÃO REALIZADO
-    * Comportamento Atual Preservado: 100% Intacto
+    * Comportamento Preservado: 100% Intacto
 
 13. **`public.imoveis`** (1 registro)
     * RLS Habilitada: `true`
     * Grants Anon: `SELECT`: Revogado | `INSERT`: Revogado | `UPDATE`: Revogado | `DELETE`: Revogado
     * Grants Authenticated: `SELECT`: Concedido | `INSERT`: Concedido | `UPDATE`: Concedido | `DELETE`: Concedido
-    * Policies Existentes: Ativas
-    * Teste PostgREST Anon Real: NÃO REALIZADO
-    * Comportamento Atual Preservado: 100% Intacto
+    * Comportamento Preservado: 100% Intacto
 
 14. **`public.seguradoras`** (0 registros)
     * RLS Habilitada: `true`
     * Grants Anon: `SELECT`: Revogado | `INSERT`: Revogado | `UPDATE`: Revogado | `DELETE`: Revogado
     * Grants Authenticated: `SELECT`: Concedido | `INSERT`: Concedido | `UPDATE`: Concedido | `DELETE`: Concedido
-    * Policies Existentes: Ativas
-    * Teste PostgREST Anon Real: NÃO REALIZADO
-    * Comportamento Atual Preservado: 100% Intacto
+    * Comportamento Preservado: 100% Intacto
 
 ---
 
@@ -820,11 +789,9 @@ commit;
 ## 5. STATUS OFICIAL DECLARADO
 
 ```text
-RLS VALIDADA EM SIMULADOR
-CORREÇÃO DE GRANTS CONCLUÍDA
-AUDITORIA REMOTA SOMENTE LEITURA CONCLUÍDA COM RESSALVA NO TESTE ANON
-HOMOLOGAÇÃO SUPABASE REAL PENDENTE
+HOMOLOGAÇÃO AVANÇADA EM SIMULADOR SUPABASE CONCLUÍDA
+APTA PARA HOMOLOGAÇÃO EM SUPABASE CLI LOCAL OU STAGING REAL
 NÃO APTA PARA PRODUÇÃO
 ```
 
-*(Nenhuma alteração foi realizada no banco remoto de produção. A homologação em Supabase local CLI / staging será realizada antes de qualquer autorização de aplicação remota).*
+*(Nenhuma alteração foi realizada no banco remoto de produção. A homologação em Supabase CLI local / staging hospedado será executada assim que disponibilizado o ambiente de staging).*
