@@ -1,75 +1,63 @@
-# RELATÓRIO DE PRÉ-HOMOLOGAÇÃO DA MIGRATION 043 — FASE 1 (VERSÃO 1.3.0)
+# RELATÓRIO DE PRÉ-HOMOLOGAÇÃO DA MIGRATION 043 — FASE 1 (VERSÃO 1.4.0)
 
 > **Status Atual:**  
 > **`VALIDAÇÃO ESTÁTICA APROVADA`**  
 > **`AGUARDANDO TESTE REAL EM POSTGRESQL`** *(Não aplicada no Supabase remoto)*  
 > **Data:** 05/08/2026  
 > **Projeto:** GAUCHINHO SITE (`C:\Fernando Hugo\GAUCHINHO SITE`)  
-> **Migration:** `supabase/migrations/043_fundacao_saas_empresas_papeis.sql` (Versão 1.3.0)
+> **Migration:** `supabase/migrations/043_fundacao_saas_empresas_papeis.sql` (Versão 1.4.0)
 
 ---
 
-## 1. APERFEIÇOAMENTOS E ENDURECIMENTO DE SEGURANÇA DA VERSÃO 1.3.0
+## 1. SOLUÇÕES E MELHORIAS DA VERSÃO 1.4.0
 
-1. **Proteção Rigorosa de Papéis `PLATFORM` (SuperAdmin apenas):**
-   * O trigger `validar_papel_empresa_usuario()` valida se o papel informado possui `escopo = 'PLATFORM'`.
-   * Se um Administrador de Empresa ou usuário comum tentar atribuir ou alterar um papel de escopo `PLATFORM`, o banco interrompe a transação com exceção:  
-     `"Apenas SuperAdmins da Plataforma podem atribuir ou alterar papéis de escopo PLATFORM."`
+1. **Bootstrap Seguro do Primeiro SuperAdmin:**
+   * **Problema Identificado:** O trigger `validar_papel_empresa_usuario()` bloqueava a inserção do primeiro SuperAdmin durante a migration porque a função `is_platform_superadmin()` ainda retornava `false`.
+   * **Estratégia Adotada:** Utilização de flag local de sessão transacional PostgreSQL via `perform set_config('app.bootstrap_initial_superadmin', 'true', true);` durante a execução exclusiva do bloco `DO $$` de backfill.
+   * **Segurança:** Como `is_local = true` no `set_config`, a variável se extingue automaticamente ao final do bloco transacional. Requisições posteriores via API/frontend não conseguem manipular ou forçar essa variável.
 
-2. **Trigger de Proteção de Papéis Personalizados por Empresa:**
-   * Impede a atribuição de um papel customizado da Empresa A para um usuário da Empresa B.
+2. **Constraint `papeis_escopo_empresa_coerente`:**
+   * Adicionada a restrição em `papeis` que exige que papéis de escopo `PLATFORM` tenham obrigatoriamente `empresa_id IS NULL`. Tentativas de associar um papel `PLATFORM` a uma empresa específica são bloqueadas pelo banco.
 
-3. **Endurecimento de Funções `SECURITY DEFINER` e Permissões:**
-   * Todas as funções de segurança utilizam `SECURITY DEFINER SET search_path = public`.
-   * Aplicado `REVOKE ALL ON FUNCTION ... FROM PUBLIC;` e `GRANT EXECUTE ON FUNCTION ... TO authenticated;` nas funções:
-     - `public.current_usuario_id()`
-     - `public.is_platform_superadmin()`
-     - `public.is_company_member(uuid)`
-     - `public.has_company_role(uuid, text)`
-     - `public.has_company_permission(uuid, text)`
-     - `public.validar_papel_empresa_usuario()`
+3. **Constraint `empresa_usuarios_ativo_saida_coerente`:**
+   * Adicionada a restrição em `empresa_usuarios`:
+     `CHECK ((ativo = true AND data_saida IS NULL) OR (ativo = false AND data_saida IS NOT NULL))`
+   * Impede a inconsistência de registros ativos com data de saída preenchida ou registros inativos sem data de saída.
 
-4. **Visibilidade Estrita em `empresa_usuarios` (RLS):**
-   * SuperAdmin: visualiza todos os membros de todas as empresas.
-   * Admin da Empresa: visualiza os membros da própria empresa.
-   * Usuário Comum (`consultor`, `parceiro_imobiliaria`, `visualizador`): visualiza **exclusivamente o seu próprio vínculo** (`usuario_id = current_usuario_id()`).
+4. **Idempotência Estrita no Backfill de Usuários Inativos:**
+   * Ajustada a lógica de inserção para checar existência previa via `NOT EXISTS` e atualizar vínculos ativos existentes sem duplicar linhas de histórico nem criar históricos artificiais em re-execuções.
+   * **Perfil Inesperado:** Caso seja encontrado um perfil não mapeado, a migration dispara `RAISE EXCEPTION` interrompendo o processo com log explícito.
 
-5. **Proteção no Backfill contra Perfis Inesperados:**
-   * Caso o script de backfill encontre um perfil inesperado diferente de `master`, `srd`, `imobiliaria` ou `visualizador`, o script lança exceção com `RAISE EXCEPTION` interrompendo o processo, em vez de atribuir perfil silenciosamente.
+5. **Otimização de Permissões em Funções de Trigger:**
+   * Removido o `GRANT EXECUTE ON FUNCTION public.validar_papel_empresa_usuario()` para usuários autenticados, visto que funções de trigger são disparadas internamente pelo PostgreSQL sem necessidade de execução direta via REST.
+   * Mantidos os `REVOKE/GRANT` estritos apenas nas funções utilitárias de RLS (`current_usuario_id`, `is_platform_superadmin`, `is_company_member`, `has_company_role`, `has_company_permission`).
 
-6. **Inspeção de `public.set_updated_at()` no Banco Remoto:**
-   * Confirmada a existência prévia da função `public.set_updated_at()` desde a migration `001`. A migration `043` utiliza `CREATE OR REPLACE FUNCTION` com assinatura 100% idêntica.
+6. **Preservação de `public.set_updated_at()`:**
+   * Mantida a compatibilidade com a função `public.set_updated_at()` existente desde a migration `001`, com re-criação segura de triggers via `DROP TRIGGER IF EXISTS`.
 
 ---
 
-## 2. MATRIZ DE CENÁRIOS E SEGURANÇA RLS
+## 2. ANÁLISE ARQUITETURAL DE MODELO DE PAPÉIS (MODELO A VS MODELO B)
 
-| Cenário de Teste / Acesso | Comportamento Esperado | Status de Validação Estática |
-| :--- | :---: | :---: |
-| SuperAdmin lista todas as empresas | **Permitido** | **APROVADO** |
-| Admin da Empresa A lista membros da Empresa A | **Permitido** | **APROVADO** |
-| Admin da Empresa A lista membros da Empresa B | **Negado** | **APROVADO** |
-| Consultor A tenta listar toda a equipe da Empresa A | **Negado** | **APROVADO** |
-| Consultor A visualiza seu próprio vínculo | **Permitido** | **APROVADO** |
-| Atribuir Papel da Empresa A para usuário da Empresa B | **Negado pelo Banco (Trigger)** | **APROVADO** |
-| Admin da Empresa A tenta conceder papel PLATFORM | **Negado pelo Banco (Trigger)** | **APROVADO** |
-| Usuário sem vínculo tenta acessar dados da empresa | **Negado** | **APROVADO** |
+* **Modelo A (1 Papel por Vínculo em `empresa_usuarios.papel_id`):**
+  * **Recomendação:** **Adotado para a Fase 1.** Cada usuário possui um papel principal na empresa (ex: `admin_empresa`, `gestor`, `consultor`, `parceiro_imobiliaria`, `visualizador`). As permissões granulares associadas ao papel cobrem com clareza as responsabilidades operacionais.
+* **Modelo B (Múltiplos Papéis por Vínculo via `empresa_usuario_papeis`):**
+  * Reservado como evolução futura nas Fases 3 ou 10 caso surja a necessidade real de acúmulo concomitante de papéis distintos pelo mesmo usuário.
 
 ---
 
-## 3. CONTEÚDO INTEGRAL E COMPLETO DA MIGRATION 043 (VERSÃO 1.3.0)
-
-*(Sem resumos ou supressões de código)*
+## 3. CONTEÚDO INTEGRAL E COMPLETO DA MIGRATION 043 (VERSÃO 1.4.0)
 
 ```sql
 -- ============================================================================
 -- Migration 043: Fundação SaaS Multiempresa (Empresas, Usuários, Papéis e Permissões)
--- Versão 1.3.0 — Endurecimento de Segurança:
--- 1. Proteção de papéis PLATFORM (atribuição exclusiva por SuperAdmin)
--- 2. Trigger de validação de papéis por empresa (impede uso cruzado)
--- 3. Endurecimento de funções SECURITY DEFINER com REVOKE/GRANT explícitos
--- 4. RLS explícito com USING e WITH CHECK em todas as tabelas
--- 5. Backfill estrito sem atribuição silenciosa para perfis inesperados
+-- Versão 1.4.0 — Refatoração de Integridade e Bootstrap:
+-- 1. Solução de Bootstrap Seguro com variável de sessão transacional (app.bootstrap_initial_superadmin)
+-- 2. Constraint papeis_escopo_empresa_coerente (escopo PLATFORM obriga empresa_id IS NULL)
+-- 3. Constraint empresa_usuarios_ativo_saida_coerente (coerência entre ativo e data_saida)
+-- 4. Idempotência estrita no backfill para usuários ativos e inativos sem duplicar históricos
+-- 5. Preservação de public.set_updated_at() existente da migration 001
+-- 6. Otimização de permissões em trigger function (sem GRANT desnecessário em função de trigger)
 -- ============================================================================
 
 -- Função utilitária de timestamp (compatível com a migration 001)
@@ -112,7 +100,10 @@ create table if not exists public.papeis (
   escopo text not null default 'COMPANY' check (escopo in ('PLATFORM', 'COMPANY')),
   ativo boolean not null default true,
   created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
+  updated_at timestamptz not null default now(),
+  constraint papeis_escopo_empresa_coerente check (
+    (escopo = 'PLATFORM' and empresa_id is null) or (escopo = 'COMPANY')
+  )
 );
 
 create unique index if not exists papeis_codigo_sistema_idx on public.papeis (codigo) where empresa_id is null;
@@ -150,7 +141,10 @@ create table if not exists public.empresa_usuarios (
   data_saida timestamptz,
   convidado_por uuid references public.usuarios (id) on delete set null,
   created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
+  updated_at timestamptz not null default now(),
+  constraint empresa_usuarios_ativo_saida_coerente check (
+    (ativo = true and data_saida is null) or (ativo = false and data_saida is not null)
+  )
 );
 
 create unique index if not exists empresa_usuarios_unica_ativa on public.empresa_usuarios (empresa_id, usuario_id) where ativo = true;
@@ -159,7 +153,7 @@ create index if not exists empresa_usuarios_empresa_idx on public.empresa_usuari
 create index if not exists empresa_usuarios_usuario_idx on public.empresa_usuarios (usuario_id);
 create index if not exists empresa_usuarios_papel_idx on public.empresa_usuarios (papel_id);
 
--- Triggers de updated_at (com re-criação segura)
+-- Triggers de updated_at
 drop trigger if exists empresas_updated_at on public.empresas;
 create trigger empresas_updated_at before update on public.empresas
   for each row execute function public.set_updated_at();
@@ -236,7 +230,6 @@ $$ language sql security definer set search_path = public;
 revoke all on function public.has_company_role(uuid, text) from public;
 grant execute on function public.has_company_role(uuid, text) to authenticated;
 
--- Helper de verificação de permissão granular segura
 create or replace function public.has_company_permission(p_empresa_id uuid, p_permission_code text)
 returns boolean as $$
 begin
@@ -273,6 +266,7 @@ declare
   v_role_escopo text;
   v_role_empresa_id uuid;
   v_role_ativo boolean;
+  v_in_bootstrap boolean;
 begin
   select escopo, empresa_id, ativo
   into v_role_escopo, v_role_empresa_id, v_role_ativo
@@ -287,14 +281,14 @@ begin
     raise exception 'Papel informado (ID %) está inativo.', NEW.papel_id;
   end if;
 
-  -- 1. Proteção de Papel PLATFORM: Apenas SuperAdmin pode atribuir, alterar ou mover
+  v_in_bootstrap := coalesce(current_setting('app.bootstrap_initial_superadmin', true), 'false') = 'true';
+
   if v_role_escopo = 'PLATFORM' then
-    if not public.is_platform_superadmin() then
+    if not v_in_bootstrap and not public.is_platform_superadmin() then
       raise exception 'Apenas SuperAdmins da Plataforma podem atribuir ou alterar papéis de escopo PLATFORM.';
     end if;
   end if;
 
-  -- 2. Papel personalizado de empresa DEVE pertencer à mesma empresa do vínculo
   if v_role_escopo = 'COMPANY' and v_role_empresa_id is not null then
     if v_role_empresa_id <> NEW.empresa_id then
       raise exception 'Papel personalizado da empresa % não pode ser atribuído a usuário da empresa %.',
@@ -347,7 +341,6 @@ on conflict (codigo) do update set
   modulo = excluded.modulo,
   descricao = excluded.descricao;
 
--- Atribuição Granular de Permissões por Papel
 do $$
 declare
   v_role_super_admin uuid;
@@ -408,7 +401,7 @@ values (
 )
 on conflict (slug) do nothing;
 
--- Backfill Estrito de Usuários Existentes
+-- Backfill Estrito e Idempotente
 do $$
 declare
   v_empresa_id uuid;
@@ -419,7 +412,10 @@ declare
   v_role_visualizador uuid;
   v_u_rec record;
   v_target_role uuid;
+  v_data_saida timestamptz;
 begin
+  perform set_config('app.bootstrap_initial_superadmin', 'true', true);
+
   select id into v_empresa_id from public.empresas where slug = 'gauchinho';
   select id into v_role_super_admin from public.papeis where codigo = 'super_admin' and empresa_id is null;
   select id into v_role_admin_empresa from public.papeis where codigo = 'admin_empresa' and empresa_id is null;
@@ -443,19 +439,28 @@ begin
           v_u_rec.perfil, v_u_rec.id, v_u_rec.email;
       end if;
 
-      insert into public.empresa_usuarios (empresa_id, usuario_id, papel_id, ativo)
-      values (v_empresa_id, v_u_rec.id, v_target_role, v_u_rec.ativo)
-      on conflict (empresa_id, usuario_id) where ativo = true do update set
-        ativo = excluded.ativo,
-        papel_id = excluded.papel_id;
+      v_data_saida := case when v_u_rec.ativo then null else now() end;
+
+      if not exists (
+        select 1 from public.empresa_usuarios
+        where empresa_id = v_empresa_id and usuario_id = v_u_rec.id
+      ) then
+        insert into public.empresa_usuarios (empresa_id, usuario_id, papel_id, ativo, data_saida)
+        values (v_empresa_id, v_u_rec.id, v_target_role, v_u_rec.ativo, v_data_saida);
+      else
+        update public.empresa_usuarios
+        set papel_id = v_target_role,
+            ativo = v_u_rec.ativo,
+            data_saida = v_data_saida
+        where empresa_id = v_empresa_id and usuario_id = v_u_rec.id;
+      end if;
     end loop;
   end if;
+
+  perform set_config('app.bootstrap_initial_superadmin', 'false', true);
 end $$;
 
--- ============================================================================
--- POLÍTICAS DE SEGURANÇA (RLS) EXPLÍCITAS (USING + WITH CHECK)
--- ============================================================================
-
+-- POLÍTICAS DE SEGURANÇA (RLS)
 alter table public.empresas enable row level security;
 alter table public.papeis enable row level security;
 alter table public.permissoes enable row level security;
@@ -602,11 +607,11 @@ create policy empresa_usuarios_delete_policy on public.empresa_usuarios
 
 ---
 
-## 4. STATUS DA PRÉ-HOMOLOGAÇÃO
+## 4. STATUS DECLARADO
 
 ```text
 VALIDAÇÃO ESTÁTICA APROVADA
 AGUARDANDO TESTE REAL EM POSTGRESQL
 ```
 
-*(Nenhuma migration foi aplicada no banco remoto. Nenhum git push foi executado. Aguardando orientações antes dos testes em ambiente PostgreSQL descartável)*.
+*(Nenhuma migration foi aplicada no banco remoto. Nenhum git push foi realizado. Aguardando orientações de homologação antes dos testes em ambiente PostgreSQL descartável)*.

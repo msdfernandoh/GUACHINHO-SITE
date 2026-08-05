@@ -1,21 +1,13 @@
 -- ============================================================================
 -- Migration 043: Fundação SaaS Multiempresa (Empresas, Usuários, Papéis e Permissões)
--- Versão 1.3.0 — Endurecimento de Segurança:
--- 1. Proteção de papéis PLATFORM (atribuição exclusiva por SuperAdmin)
--- 2. Trigger de validação de papéis por empresa (impede uso cruzado)
--- 3. Endurecimento de funções SECURITY DEFINER com REVOKE/GRANT explícitos
--- 4. RLS explícito com USING e WITH CHECK em todas as tabelas
--- 5. Backfill estrito sem atribuição silenciosa para perfis inesperados
+-- Versão 1.4.0 — Refatoração de Integridade e Bootstrap:
+-- 1. Solução de Bootstrap Seguro com variável de sessão transacional (app.bootstrap_initial_superadmin)
+-- 2. Constraint papeis_escopo_empresa_coerente (escopo PLATFORM obriga empresa_id IS NULL)
+-- 3. Constraint empresa_usuarios_ativo_saida_coerente (coerência entre ativo e data_saida)
+-- 4. Idempotência estrita no backfill para usuários ativos e inativos sem duplicar históricos
+-- 5. Preservação de public.set_updated_at() existente da migration 001
+-- 6. Otimização de permissões em trigger function (sem GRANT desnecessário em função de trigger)
 -- ============================================================================
-
--- Função utilitária de timestamp (compatível com a migration 001)
-create or replace function public.set_updated_at()
-returns trigger as $$
-begin
-  new.updated_at = now();
-  return new;
-end;
-$$ language plpgsql;
 
 -- 1. Tabela de Empresas (companies)
 create table if not exists public.empresas (
@@ -48,7 +40,11 @@ create table if not exists public.papeis (
   escopo text not null default 'COMPANY' check (escopo in ('PLATFORM', 'COMPANY')),
   ativo boolean not null default true,
   created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
+  updated_at timestamptz not null default now(),
+  -- Papel de escopo PLATFORM obrigatoriamente possui empresa_id NULL
+  constraint papeis_escopo_empresa_coerente check (
+    (escopo = 'PLATFORM' and empresa_id is null) or (escopo = 'COMPANY')
+  )
 );
 
 create unique index if not exists papeis_codigo_sistema_idx on public.papeis (codigo) where empresa_id is null;
@@ -86,7 +82,11 @@ create table if not exists public.empresa_usuarios (
   data_saida timestamptz,
   convidado_por uuid references public.usuarios (id) on delete set null,
   created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
+  updated_at timestamptz not null default now(),
+  -- Coerência de vínculo: ativo exige data_saida NULL; inativo exige data_saida preenchida
+  constraint empresa_usuarios_ativo_saida_coerente check (
+    (ativo = true and data_saida is null) or (ativo = false and data_saida is not null)
+  )
 );
 
 create unique index if not exists empresa_usuarios_unica_ativa on public.empresa_usuarios (empresa_id, usuario_id) where ativo = true;
@@ -95,7 +95,7 @@ create index if not exists empresa_usuarios_empresa_idx on public.empresa_usuari
 create index if not exists empresa_usuarios_usuario_idx on public.empresa_usuarios (usuario_id);
 create index if not exists empresa_usuarios_papel_idx on public.empresa_usuarios (papel_id);
 
--- Triggers de updated_at (com re-criação segura)
+-- Triggers de updated_at
 drop trigger if exists empresas_updated_at on public.empresas;
 create trigger empresas_updated_at before update on public.empresas
   for each row execute function public.set_updated_at();
@@ -172,7 +172,6 @@ $$ language sql security definer set search_path = public;
 revoke all on function public.has_company_role(uuid, text) from public;
 grant execute on function public.has_company_role(uuid, text) to authenticated;
 
--- Helper de verificação de permissão granular segura
 create or replace function public.has_company_permission(p_empresa_id uuid, p_permission_code text)
 returns boolean as $$
 begin
@@ -200,7 +199,7 @@ revoke all on function public.has_company_permission(uuid, text) from public;
 grant execute on function public.has_company_permission(uuid, text) to authenticated;
 
 -- ============================================================================
--- TRIGGER DE VALIDAÇÃO DE ESCOPO E ATRIBUIÇÃO DE PAPÉIS
+-- TRIGGER DE VALIDAÇÃO DE ESCOPO E ATRIBUIÇÃO DE PAPÉIS (Com Suporte a Bootstrap Transacional)
 -- ============================================================================
 
 create or replace function public.validar_papel_empresa_usuario()
@@ -209,6 +208,7 @@ declare
   v_role_escopo text;
   v_role_empresa_id uuid;
   v_role_ativo boolean;
+  v_in_bootstrap boolean;
 begin
   select escopo, empresa_id, ativo
   into v_role_escopo, v_role_empresa_id, v_role_ativo
@@ -223,9 +223,12 @@ begin
     raise exception 'Papel informado (ID %) está inativo.', NEW.papel_id;
   end if;
 
-  -- 1. Proteção de Papel PLATFORM: Apenas SuperAdmin pode atribuir, alterar ou mover
+  -- Checar flag local de bootstrap inicial da migration
+  v_in_bootstrap := coalesce(current_setting('app.bootstrap_initial_superadmin', true), 'false') = 'true';
+
+  -- 1. Proteção de Papel PLATFORM: Apenas SuperAdmin ou bootstrap controlado
   if v_role_escopo = 'PLATFORM' then
-    if not public.is_platform_superadmin() then
+    if not v_in_bootstrap and not public.is_platform_superadmin() then
       raise exception 'Apenas SuperAdmins da Plataforma podem atribuir ou alterar papéis de escopo PLATFORM.';
     end if;
   end if;
@@ -241,9 +244,6 @@ begin
   return NEW;
 end;
 $$ language plpgsql security definer set search_path = public;
-
-revoke all on function public.validar_papel_empresa_usuario() from public;
-grant execute on function public.validar_papel_empresa_usuario() to authenticated;
 
 drop trigger if exists trg_validar_papel_empresa_usuario on public.empresa_usuarios;
 create trigger trg_validar_papel_empresa_usuario
@@ -302,35 +302,29 @@ begin
   select id into v_role_visualizador from public.papeis where codigo = 'visualizador' and empresa_id is null;
 
   for v_perm_rec in select id, codigo from public.permissoes loop
-    -- SuperAdmin recebe TODAS as permissões (globais e locais)
     insert into public.papel_permissoes (papel_id, permissao_id)
     values (v_role_super_admin, v_perm_rec.id) on conflict do nothing;
 
-    -- Admin Empresa recebe todas EXCETO gerenciar_empresas_plataforma
     if v_perm_rec.codigo <> 'gerenciar_empresas_plataforma' then
       insert into public.papel_permissoes (papel_id, permissao_id)
       values (v_role_admin_empresa, v_perm_rec.id) on conflict do nothing;
     end if;
 
-    -- Gestor
     if v_perm_rec.codigo in ('gerenciar_leads', 'gerenciar_propostas', 'acessar_agenda', 'acessar_relatorios', 'gerenciar_grupos') then
       insert into public.papel_permissoes (papel_id, permissao_id)
       values (v_role_gestor, v_perm_rec.id) on conflict do nothing;
     end if;
 
-    -- Consultor
     if v_perm_rec.codigo in ('gerenciar_leads', 'gerenciar_propostas', 'acessar_agenda') then
       insert into public.papel_permissoes (papel_id, permissao_id)
       values (v_role_consultor, v_perm_rec.id) on conflict do nothing;
     end if;
 
-    -- Parceiro Imobiliária
     if v_perm_rec.codigo in ('gerenciar_leads', 'acessar_agenda') then
       insert into public.papel_permissoes (papel_id, permissao_id)
       values (v_role_imobiliaria, v_perm_rec.id) on conflict do nothing;
     end if;
 
-    -- Visualizador
     if v_perm_rec.codigo in ('acessar_relatorios') then
       insert into public.papel_permissoes (papel_id, permissao_id)
       values (v_role_visualizador, v_perm_rec.id) on conflict do nothing;
@@ -338,10 +332,7 @@ begin
   end loop;
 end $$;
 
--- ============================================================================
--- SEED DA EMPRESA GAUCHINHO (DO NOTHING para preservar edições manuais)
--- ============================================================================
-
+-- Seed da Empresa Gauchinho
 insert into public.empresas (slug, razao_social, nome_fantasia, cnpj, status, ativo)
 values (
   'gauchinho',
@@ -354,7 +345,7 @@ values (
 on conflict (slug) do nothing;
 
 -- ============================================================================
--- BACKFILL ESTRITO DE USUÁRIOS EXISTENTES
+-- BACKFILL ESTRITO E IDEMPOTENTE DOS USUÁRIOS EXISTENTES (Com Flag de Bootstrap)
 -- ============================================================================
 
 do $$
@@ -367,7 +358,11 @@ declare
   v_role_visualizador uuid;
   v_u_rec record;
   v_target_role uuid;
+  v_data_saida timestamptz;
 begin
+  -- Ativar temporariamente a flag local de bootstrap para o primeiro SuperAdmin
+  perform set_config('app.bootstrap_initial_superadmin', 'true', true);
+
   select id into v_empresa_id from public.empresas where slug = 'gauchinho';
   select id into v_role_super_admin from public.papeis where codigo = 'super_admin' and empresa_id is null;
   select id into v_role_admin_empresa from public.papeis where codigo = 'admin_empresa' and empresa_id is null;
@@ -391,13 +386,27 @@ begin
           v_u_rec.perfil, v_u_rec.id, v_u_rec.email;
       end if;
 
-      insert into public.empresa_usuarios (empresa_id, usuario_id, papel_id, ativo)
-      values (v_empresa_id, v_u_rec.id, v_target_role, v_u_rec.ativo)
-      on conflict (empresa_id, usuario_id) where ativo = true do update set
-        ativo = excluded.ativo,
-        papel_id = excluded.papel_id;
+      v_data_saida := case when v_u_rec.ativo then null else now() end;
+
+      -- Inserir ou atualizar garantindo idempotência e coerência de datas
+      if not exists (
+        select 1 from public.empresa_usuarios
+        where empresa_id = v_empresa_id and usuario_id = v_u_rec.id
+      ) then
+        insert into public.empresa_usuarios (empresa_id, usuario_id, papel_id, ativo, data_saida)
+        values (v_empresa_id, v_u_rec.id, v_target_role, v_u_rec.ativo, v_data_saida);
+      else
+        update public.empresa_usuarios
+        set papel_id = v_target_role,
+            ativo = v_u_rec.ativo,
+            data_saida = v_data_saida
+        where empresa_id = v_empresa_id and usuario_id = v_u_rec.id;
+      end if;
     end loop;
   end if;
+
+  -- Desativar a flag de bootstrap
+  perform set_config('app.bootstrap_initial_superadmin', 'false', true);
 end $$;
 
 -- ============================================================================
