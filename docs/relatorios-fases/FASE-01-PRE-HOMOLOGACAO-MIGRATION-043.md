@@ -1,69 +1,98 @@
-# RELATÓRIO DE PRÉ-HOMOLOGAÇÃO DA MIGRATION 043 — FASE 1 (VERSÃO 1.5.0)
+# RELATÓRIO DE PRÉ-HOMOLOGAÇÃO DA MIGRATION 043 — FASE 1 (VERSÃO 1.6.0)
 
 > **Status Atual:**  
 > **`CORREÇÕES ESTÁTICAS EM ANDAMENTO`**  
 > **`AGUARDANDO TESTE EM POSTGRESQL DESCARTÁVEL`** *(Não aplicada no Supabase remoto)*  
 > **Data:** 05/08/2026  
 > **Projeto:** GAUCHINHO SITE (`C:\Fernando Hugo\GAUCHINHO SITE`)  
-> **Migration:** `supabase/migrations/043_fundacao_saas_empresas_papeis.sql` (Versão 1.5.0)
+> **Migration:** `supabase/migrations/043_fundacao_saas_empresas_papeis.sql` (Versão 1.6.0)
 
 ---
 
-## 1. REFATORAÇÃO DE INTEGRIDADE E BOOTSTRAP (VERSÃO 1.5.0)
+## 1. APERFEIÇOAMENTOS CIRÚRGICOS E ESTRUTURAIS (VERSÃO 1.6.0)
 
-1. **Bootstrap Estrutural Limpo sem Exceções de Sessão:**
-   * **Remoção de Variações de Sessão:** Removido qualquer uso de `set_config` ou `current_setting('app.bootstrap_initial_superadmin')` no trigger.
-   * **Ordenação de DDL/DML:** O DDL cria as tabelas, seeds e executa o **backfill inicial ANTES da criação do trigger `trg_validar_papel_empresa_usuario`**.
-   * **Mecânica:** O primeiro `super_admin` (Fernando) é inserido livremente pelo backfill da migration. Ao final do backfill, o trigger de validação é ativado. Em qualquer `INSERT` ou `UPDATE` subsequente na aplicação, a função `is_platform_superadmin()` já reconhece Fernando como SuperAdmin sem gambiarras.
+1. **Remoção do Trigger Antes do Backfill (Garantia de Idempotência):**
+   * Incluído o comando explicitamente posicionado **antes** do bloco de backfill:  
+     `DROP TRIGGER IF EXISTS trg_validar_papel_empresa_usuario ON public.empresa_usuarios;`
+   * Garante que na segunda execução da migration, um trigger criado em execuções anteriores não interfira com a re-execução do backfill.
 
-2. **Revogação de Privilégios na Trigger Function:**
-   * Removida a instrução `GRANT EXECUTE` da função `validar_papel_empresa_usuario()`.
-   * Aplicado `REVOKE ALL ON FUNCTION public.validar_papel_empresa_usuario() FROM PUBLIC;`. Funções de trigger são invocadas internamente pelo PostgreSQL sem necessidade de exposição direta por REST.
+2. **Preservação Absoluta de Vínculos Manuais (`origem = 'MANUAL'`):**
+   * O algoritmo de backfill verifica primeiramente a existência de qualquer vínculo manual ativo:
+     ```sql
+     select exists (
+       select 1 from public.empresa_usuarios
+       where empresa_id = v_empresa_id
+         and usuario_id = v_u_rec.id
+         and ativo = true
+         and origem = 'MANUAL'
+     ) into v_has_manual_active;
+     ```
+   * Se um vínculo manual ativo for localizado, o script **não substitui nem altera seu papel**, emitindo apenas um aviso de log (`RAISE NOTICE`).
+   * A sincronização do backfill atualiza/insere exclusivamente a linha com `origem = 'MIGRATION_043_INITIAL_BACKFILL'`.
 
-3. **Auditoria de Migração via Coluna `origem`:**
-   * Adicionada a coluna `origem text not null default 'MANUAL'` na tabela `empresa_usuarios`.
-   * Registros criados pelo script inicial recebem `origem = 'MIGRATION_043_INITIAL_BACKFILL'`.
-   * O algoritmo de backfill localiza especificamente a linha inicial para idempotência em re-execuções sem alterar históricos manuais reais futuros.
+3. **Proteção Abrangente contra Alteração/Remoção de Papéis PLATFORM (`INSERT`, `UPDATE` e `DELETE`):**
+   * O trigger foi estendido para atuar em `BEFORE INSERT OR UPDATE OR DELETE ON public.empresa_usuarios`.
+   * **Em `UPDATE`:** Checa se `OLD.papel_id` ou `NEW.papel_id` pertencem ao escopo `PLATFORM`. Exige obrigatoriamente que o executor seja SuperAdmin (`is_platform_superadmin()`). Impede que Administradores da Empresa desativem, alterem a empresa/usuário ou rebaixem um SuperAdmin.
+   * **Em `DELETE`:** Checa se `OLD.papel_id` pertence ao escopo `PLATFORM` e interrompe a exclusão com exceção se o executor não for SuperAdmin.
 
-4. **Validação de Dependência Prévia de `set_updated_at()`:**
-   * Removida a redefinição de `public.set_updated_at()`.
-   * Adicionado bloco inicial de checagem em `pg_proc` que valida a presença prévia da função existente desde a migration `001`, abortando com mensagem explícita caso as migrations `001-042` não tenham sido aplicadas.
+4. **Validação Prévia da Assinatura Completa de `public.set_updated_at()`:**
+   * A checagem inicial valida nome (`set_updated_at`), tipo de retorno (`trigger`) e quantidade de argumentos (`pronargs = 0`) via junção entre `pg_proc`, `pg_namespace` e `pg_type`.
 
-5. **Constraints Adicionadas:**
-   * `empresas_status_ativo_coerente`: `CHECK ((status = 'ativo' AND ativo = true) OR (status <> 'ativo' AND ativo = false))`.
-   * `papeis_escopo_empresa_coerente`: `CHECK ((escopo = 'PLATFORM' AND empresa_id IS NULL) OR (escopo = 'COMPANY'))`.
-   * `empresa_usuarios_ativo_saida_coerente`: `CHECK ((ativo = true AND data_saida IS NULL) OR (ativo = false))`.
+5. **Reserva de Códigos de Papéis Oficiais:**
+   * Adicionada a restrição em `papeis`:
+     `CONSTRAINT papeis_codigo_reservado CHECK (empresa_id IS NULL OR codigo NOT IN ('super_admin', 'admin_empresa'))`
+   * Impede que empresas criem papéis personalizados utilizando os códigos reservados da plataforma.
+
+6. **Adoção Primária de `has_company_permission()` nas Políticas RLS:**
+   * As políticas operacionais de escrita e leitura RLS utilizam a verificação de permissão granular `has_company_permission(empresa_id, 'gerenciar_usuarios')` em substituição ao acoplamento direto com código de papel.
 
 ---
 
-## 2. CONTEÚDO INTEGRAL E COMPLETO DA MIGRATION 043 (VERSÃO 1.5.0)
+## 2. MATRIZ DE COMPORTAMENTO DO ALGORITMO DE BACKFILL
+
+| Cenário do Usuário | Condição do Banco | Ação do Backfill na Migration |
+| :--- | :--- | :--- |
+| **Nenhum vínculo existente** | Nenhuma linha em `empresa_usuarios` | Insere vínculo inicial com `origem = 'MIGRATION_043_INITIAL_BACKFILL'` |
+| **Vínculo automático ativo** | `origem = 'MIGRATION_043_INITIAL_BACKFILL'` e `ativo = true` | Atualiza papel/ativo da linha automática na re-execução |
+| **Vínculo automático inativo** | `origem = 'MIGRATION_043_INITIAL_BACKFILL'` e `ativo = false` | Se `usuarios.ativo` mudar para true, reativa a linha automática |
+| **Vínculo manual ativo** | `origem = 'MANUAL'` e `ativo = true` | **Preserva sem alteração**, não sobrescreve papel e emite `NOTICE` |
+| **Vínculo manual inativo** | `origem = 'MANUAL'` e `ativo = false` | Insere/sincroniza apenas a linha de backfill da migration |
+| **Segunda execução da migration** | Vínculos já existentes da 1ª aplicação | Idempotente: atualiza apenas a linha de backfill sem duplicar registros |
+
+---
+
+## 3. CONTEÚDO INTEGRAL E COMPLETO DA MIGRATION 043 (VERSÃO 1.6.0)
 
 ```sql
 -- ============================================================================
 -- Migration 043: Fundação SaaS Multiempresa (Empresas, Usuários, Papéis e Permissões)
--- Versão 1.5.0 — Refatoração Arquitetural de Integridade:
--- 1. Bootstrap limpo e estrutural: Backfill é executado ANTES da criação do trigger de validação
--- 2. Remoção completa de variáveis de sessão temporárias ou exceções no trigger
--- 3. Remoção de GRANT desnecessário em função de trigger (sem exposição pública)
--- 4. Inclusão de coluna 'origem' em empresa_usuarios para identificar registros automáticos de migração
--- 5. Backfill não-destrutivo: Preserva históricos reais e trata re-execuções com idempotência estrita
--- 6. Validação prévia de existência da função public.set_updated_at() da migration 001
--- 7. Constraints de coerência em empresas, papeis e empresa_usuarios
+-- Versão 1.6.0 — Refatoração Cirúrgica de Segurança e Proteção Manual:
+-- 1. Validação estrita da assinatura da função public.set_updated_at() (retorno trigger, 0 args)
+-- 2. Constraint papeis_codigo_reservado (impede criação de papéis de empresa com códigos globais)
+-- 3. DROP TRIGGER explícito ANTES do backfill para garantia de idempotência na 2ª execução
+-- 4. Preservação estrita de vínculos com origem = 'MANUAL' (backfill sincroniza apenas 'MIGRATION_043_INITIAL_BACKFILL')
+-- 5. Trigger estendido para BEFORE INSERT OR UPDATE OR DELETE protegendo OLD.papel_id e NEW.papel_id PLATFORM
+-- 6. Uso primário de has_company_permission() e revogação total de privilégios públicos na trigger function
 -- ============================================================================
 
--- Validação de dependência prévia (exige a função set_updated_at da migration 001)
+-- 1. Validação de dependência prévia por assinatura completa
 do $$
 begin
   if not exists (
-    select 1 from pg_proc p
+    select 1
+    from pg_proc p
     join pg_namespace n on n.oid = p.pronamespace
-    where n.nspname = 'public' and p.proname = 'set_updated_at'
+    join pg_type t on t.oid = p.prorettype
+    where n.nspname = 'public'
+      and p.proname = 'set_updated_at'
+      and t.typname = 'trigger'
+      and p.pronargs = 0
   ) then
-    raise exception 'Função necessária public.set_updated_at() não encontrada no schema. Execute as migrations anteriores (001 a 042) antes da 043.';
+    raise exception 'Função necessária public.set_updated_at() com retorno trigger sem parâmetros não encontrada no schema. Execute as migrations 001 a 042 antes da 043.';
   end if;
 end $$;
 
--- 1. Tabela de Empresas (companies)
+-- 2. Tabela de Empresas (companies)
 create table if not exists public.empresas (
   id uuid primary key default gen_random_uuid(),
   slug text not null unique,
@@ -84,7 +113,7 @@ create table if not exists public.empresas (
 create index if not exists empresas_slug_idx on public.empresas (slug);
 create index if not exists empresas_ativo_idx on public.empresas (ativo);
 
--- 2. Tabela de Papéis/Funções (roles)
+-- 3. Tabela de Papéis/Funções (roles)
 create table if not exists public.papeis (
   id uuid primary key default gen_random_uuid(),
   empresa_id uuid references public.empresas (id) on delete cascade,
@@ -97,13 +126,16 @@ create table if not exists public.papeis (
   updated_at timestamptz not null default now(),
   constraint papeis_escopo_empresa_coerente check (
     (escopo = 'PLATFORM' and empresa_id is null) or (escopo = 'COMPANY')
+  ),
+  constraint papeis_codigo_reservado check (
+    empresa_id is null or codigo not in ('super_admin', 'admin_empresa')
   )
 );
 
 create unique index if not exists papeis_codigo_sistema_idx on public.papeis (codigo) where empresa_id is null;
 create unique index if not exists papeis_codigo_empresa_idx on public.papeis (empresa_id, codigo) where empresa_id is not null;
 
--- 3. Tabela de Permissões Granulares (permissions)
+-- 4. Tabela de Permissões Granulares (permissions)
 create table if not exists public.permissoes (
   id uuid primary key default gen_random_uuid(),
   codigo text not null unique,
@@ -116,7 +148,7 @@ create table if not exists public.permissoes (
 create index if not exists permissoes_codigo_idx on public.permissoes (codigo);
 create index if not exists permissoes_modulo_idx on public.permissoes (modulo);
 
--- 4. Tabela de Junção Papéis-Permissões (role_permissions)
+-- 5. Tabela de Junção Papéis-Permissões (role_permissions)
 create table if not exists public.papel_permissoes (
   papel_id uuid not null references public.papeis (id) on delete cascade,
   permissao_id uuid not null references public.permissoes (id) on delete cascade,
@@ -124,7 +156,7 @@ create table if not exists public.papel_permissoes (
   primary key (papel_id, permissao_id)
 );
 
--- 5. Tabela N:N Vínculo Empresa-Usuário (company_users)
+-- 6. Tabela N:N Vínculo Empresa-Usuário (company_users)
 create table if not exists public.empresa_usuarios (
   id uuid primary key default gen_random_uuid(),
   empresa_id uuid not null references public.empresas (id) on delete cascade,
@@ -187,6 +219,7 @@ returns boolean as $$
       and eu.ativo = true
       and p.codigo = 'super_admin'
       and p.escopo = 'PLATFORM'
+      and p.empresa_id is null
       and p.ativo = true
   );
 $$ language sql security definer set search_path = public;
@@ -344,7 +377,13 @@ values (
 on conflict (slug) do nothing;
 
 -- ============================================================================
--- BACKFILL ESTRITO E NÃO-DESTRUTIVO (Executado ANTES do Trigger de Validação)
+-- PASSO OBRIGATÓRIO: REMOVER O TRIGGER ANTES DO BACKFILL (Garantia de Idempotência)
+-- ============================================================================
+
+drop trigger if exists trg_validar_papel_empresa_usuario on public.empresa_usuarios;
+
+-- ============================================================================
+-- BACKFILL CONTROLADO E NÃO-DESTRUTIVO DOS USUÁRIOS EXISTENTES
 -- ============================================================================
 
 do $$
@@ -357,7 +396,7 @@ declare
   v_role_visualizador uuid;
   v_u_rec record;
   v_target_role uuid;
-  v_existing_active_id uuid;
+  v_has_manual_active boolean;
   v_existing_backfill_id uuid;
   v_data_saida timestamptz;
 begin
@@ -384,22 +423,23 @@ begin
           v_u_rec.perfil, v_u_rec.id, v_u_rec.email;
       end if;
 
-      v_data_saida := case when v_u_rec.ativo then null else now() end;
+      select exists (
+        select 1 from public.empresa_usuarios
+        where empresa_id = v_empresa_id
+          and usuario_id = v_u_rec.id
+          and ativo = true
+          and origem = 'MANUAL'
+      ) into v_has_manual_active;
 
-      select id into v_existing_active_id
-      from public.empresa_usuarios
-      where empresa_id = v_empresa_id
-        and usuario_id = v_u_rec.id
-        and ativo = true
-      limit 1;
-
-      if v_existing_active_id is null then
+      if not v_has_manual_active then
         select id into v_existing_backfill_id
         from public.empresa_usuarios
         where empresa_id = v_empresa_id
           and usuario_id = v_u_rec.id
           and origem = 'MIGRATION_043_INITIAL_BACKFILL'
         limit 1;
+
+        v_data_saida := case when v_u_rec.ativo then null else now() end;
 
         if v_existing_backfill_id is null then
           insert into public.empresa_usuarios (
@@ -419,16 +459,14 @@ begin
           where id = v_existing_backfill_id;
         end if;
       else
-        update public.empresa_usuarios
-        set papel_id = v_target_role
-        where id = v_existing_active_id;
+        raise notice 'Usuário % possui vínculo manual ativo. Vínculo manual mantido sem alteração de papel.', v_u_rec.email;
       end if;
     end loop;
   end if;
 end $$;
 
 -- ============================================================================
--- TRIGGER DE VALIDAÇÃO DE ATRIBUIÇÃO DE PAPÉIS (Criado APÓS o Backfill Inicial)
+-- TRIGGER DE VALIDAÇÃO COMPLETA (Protege INSERT, UPDATE e DELETE)
 -- ============================================================================
 
 create or replace function public.validar_papel_empresa_usuario()
@@ -437,7 +475,16 @@ declare
   v_role_escopo text;
   v_role_empresa_id uuid;
   v_role_ativo boolean;
+  v_old_role_escopo text;
 begin
+  if TG_OP = 'DELETE' then
+    select escopo into v_old_role_escopo from public.papeis where id = OLD.papel_id;
+    if v_old_role_escopo = 'PLATFORM' and not public.is_platform_superadmin() then
+      raise exception 'Apenas SuperAdmins da Plataforma podem excluir ou remover vínculos com papel PLATFORM.';
+    end if;
+    return OLD;
+  end if;
+
   select escopo, empresa_id, ativo
   into v_role_escopo, v_role_empresa_id, v_role_ativo
   from public.papeis
@@ -451,14 +498,17 @@ begin
     raise exception 'Papel informado (ID %) está inativo.', NEW.papel_id;
   end if;
 
-  -- 1. Proteção de Papel PLATFORM: Apenas SuperAdmin pode atribuir, alterar ou mover
-  if v_role_escopo = 'PLATFORM' then
-    if not public.is_platform_superadmin() then
-      raise exception 'Apenas SuperAdmins da Plataforma podem atribuir ou alterar papéis de escopo PLATFORM.';
+  if TG_OP = 'UPDATE' then
+    select escopo into v_old_role_escopo from public.papeis where id = OLD.papel_id;
+    if (v_old_role_escopo = 'PLATFORM' or v_role_escopo = 'PLATFORM') and not public.is_platform_superadmin() then
+      raise exception 'Apenas SuperAdmins da Plataforma podem alterar, desativar ou rebaixar papéis de escopo PLATFORM.';
+    end if;
+  else
+    if v_role_escopo = 'PLATFORM' and not public.is_platform_superadmin() then
+      raise exception 'Apenas SuperAdmins da Plataforma podem atribuir papéis de escopo PLATFORM.';
     end if;
   end if;
 
-  -- 2. Papel personalizado de empresa DEVE pertencer à mesma empresa do vínculo
   if v_role_escopo = 'COMPANY' and v_role_empresa_id is not null then
     if v_role_empresa_id <> NEW.empresa_id then
       raise exception 'Papel personalizado da empresa % não pode ser atribuído a usuário da empresa %.',
@@ -474,7 +524,7 @@ revoke all on function public.validar_papel_empresa_usuario() from public;
 
 drop trigger if exists trg_validar_papel_empresa_usuario on public.empresa_usuarios;
 create trigger trg_validar_papel_empresa_usuario
-  before insert or update on public.empresa_usuarios
+  before insert or update or delete on public.empresa_usuarios
   for each row execute function public.validar_papel_empresa_usuario();
 
 -- POLÍTICAS DE SEGURANÇA (RLS)
@@ -503,11 +553,11 @@ create policy empresas_update_policy on public.empresas
   for update to authenticated
   using (
     public.is_platform_superadmin() or
-    public.has_company_role(id, 'admin_empresa')
+    public.has_company_permission(id, 'gerenciar_empresa_atual')
   )
   with check (
     public.is_platform_superadmin() or
-    public.has_company_role(id, 'admin_empresa')
+    public.has_company_permission(id, 'gerenciar_empresa_atual')
   );
 
 drop policy if exists empresas_delete_policy on public.empresas;
@@ -530,11 +580,11 @@ create policy papeis_write_policy on public.papeis
   for all to authenticated
   using (
     public.is_platform_superadmin() or
-    (empresa_id is not null and public.has_company_role(empresa_id, 'admin_empresa'))
+    (empresa_id is not null and public.has_company_permission(empresa_id, 'gerenciar_usuarios'))
   )
   with check (
     public.is_platform_superadmin() or
-    (empresa_id is not null and public.has_company_role(empresa_id, 'admin_empresa'))
+    (empresa_id is not null and public.has_company_permission(empresa_id, 'gerenciar_usuarios'))
   );
 
 -- PERMISSÕES
@@ -570,7 +620,7 @@ create policy papel_permissoes_write_policy on public.papel_permissoes
       select 1 from public.papeis p
       where p.id = papel_id
         and p.empresa_id is not null
-        and public.has_company_role(p.empresa_id, 'admin_empresa')
+        and public.has_company_permission(p.empresa_id, 'gerenciar_usuarios')
     )
   )
   with check (
@@ -579,17 +629,17 @@ create policy papel_permissoes_write_policy on public.papel_permissoes
       select 1 from public.papeis p
       where p.id = papel_id
         and p.empresa_id is not null
-        and public.has_company_role(p.empresa_id, 'admin_empresa')
+        and public.has_company_permission(p.empresa_id, 'gerenciar_usuarios')
     )
   );
 
--- EMPRESA_USUARIOS
+-- EMPRESA_USUARIOS (Visibilidade e Escrita Estritas)
 drop policy if exists empresa_usuarios_select_policy on public.empresa_usuarios;
 create policy empresa_usuarios_select_policy on public.empresa_usuarios
   for select to authenticated
   using (
     public.is_platform_superadmin() or
-    (public.has_company_role(empresa_id, 'admin_empresa') and public.is_company_member(empresa_id)) or
+    (public.has_company_permission(empresa_id, 'gerenciar_usuarios') and public.is_company_member(empresa_id)) or
     usuario_id = public.current_usuario_id()
   );
 
@@ -598,7 +648,7 @@ create policy empresa_usuarios_insert_policy on public.empresa_usuarios
   for insert to authenticated
   with check (
     public.is_platform_superadmin() or
-    (public.has_company_role(empresa_id, 'admin_empresa') and public.is_company_member(empresa_id))
+    (public.has_company_permission(empresa_id, 'gerenciar_usuarios') and public.is_company_member(empresa_id))
   );
 
 drop policy if exists empresa_usuarios_update_policy on public.empresa_usuarios;
@@ -606,11 +656,11 @@ create policy empresa_usuarios_update_policy on public.empresa_usuarios
   for update to authenticated
   using (
     public.is_platform_superadmin() or
-    (public.has_company_role(empresa_id, 'admin_empresa') and public.is_company_member(empresa_id))
+    (public.has_company_permission(empresa_id, 'gerenciar_usuarios') and public.is_company_member(empresa_id))
   )
   with check (
     public.is_platform_superadmin() or
-    (public.has_company_role(empresa_id, 'admin_empresa') and public.is_company_member(empresa_id))
+    (public.has_company_permission(empresa_id, 'gerenciar_usuarios') and public.is_company_member(empresa_id))
   );
 
 drop policy if exists empresa_usuarios_delete_policy on public.empresa_usuarios;
@@ -618,17 +668,17 @@ create policy empresa_usuarios_delete_policy on public.empresa_usuarios
   for delete to authenticated
   using (
     public.is_platform_superadmin() or
-    (public.has_company_role(empresa_id, 'admin_empresa') and public.is_company_member(empresa_id))
+    (public.has_company_permission(empresa_id, 'gerenciar_usuarios') and public.is_company_member(empresa_id))
   );
 ```
 
 ---
 
-## 5. STATUS DA PRÉ-HOMOLOGAÇÃO
+## 4. STATUS DA PRÉ-HOMOLOGAÇÃO
 
 ```text
 CORREÇÕES ESTÁTICAS EM ANDAMENTO
 AGUARDANDO TESTE EM POSTGRESQL DESCARTÁVEL
 ```
 
-*(Nenhuma migration foi aplicada no banco remoto. Nenhum git push foi realizado. Aguardando orientações de homologação antes dos testes em ambiente PostgreSQL descartável)*.
+*(Nenhuma migration foi aplicada no banco remoto. Nenhum git push foi realizado. Aguardando autorização e orientações antes dos testes de execução no ambiente descartável)*.
