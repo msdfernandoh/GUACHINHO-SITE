@@ -1,3 +1,81 @@
+# RELATÓRIO DE PRÉ-HOMOLOGAÇÃO DA MIGRATION 043 — FASE 1
+
+> **Status Final:** **`APTA PARA APLICAÇÃO REMOTA`** *(Aguardando autorização explícita do usuário)*  
+> **Data:** 05/08/2026  
+> **Projeto:** GAUCHINHO SITE (`C:\Fernando Hugo\GAUCHINHO SITE`)  
+> **Migration:** `supabase/migrations/043_fundacao_saas_empresas_papeis.sql` (Versão 1.1.0)
+
+---
+
+## 1. RESUMO DAS MELHORIAS E CORREÇÕES APLICADAS (V1.1.0)
+
+Após a revisão técnica completa contra o banco de dados remoto e regras de negócio, a Migration 043 foi aprimorada com as seguintes correções estruturais:
+
+1. **Suporte a Papéis Customizados por Empresa (`papeis`):**
+   * Adicionada a coluna `empresa_id uuid references public.empresas(id) on delete cascade`.
+   * Papéis de sistema (`escopo = 'PLATFORM'`) usam `empresa_id IS NULL`.
+   * Papéis de empresa (`escopo = 'COMPANY'`) podem ser globais (`empresa_id IS NULL`) ou customizados (`empresa_id` preenchido).
+   * Criados dois índices únicos parciais: `papeis_codigo_sistema_idx` (para papéis de sistema) e `papeis_codigo_empresa_idx` (para papéis de empresa).
+
+2. **Diferenciação Mapeada de SuperAdmin vs Administrador da Empresa:**
+   * A inspeção no banco remoto revelou **7 usuários**, sendo **2 masters**:
+     - `FERNANDO` (`msdfernando@gmail.com`)
+     - `Eroni Bolfe` (`gauchinhomt@gmail.com`)
+   * **Correção no Backfill:** O papel `super_admin` da plataforma é atribuído **exclusivamente a FERNANDO (`msdfernando@gmail.com`)**.
+   * O usuário `Eroni Bolfe` e quaisquer outros usuários `master` atuais são mapeados com o papel `admin_empresa` (Administrador da Empresa Gauchinho Consórcios), garantindo que não recebam privilégios globais indevidos sobre outras empresas do SaaS.
+
+3. **Histórico de Vínculos com Índice Único Parcial (`empresa_usuarios`):**
+   * Removida a restrição rígida `UNIQUE (empresa_id, usuario_id)`.
+   * Adicionado o **índice único parcial**:
+     `CREATE UNIQUE INDEX empresa_usuarios_unica_ativa ON public.empresa_usuarios (empresa_id, usuario_id) WHERE ativo = true;`
+   * Permite múltiplos registros históricos do mesmo usuário com a mesma empresa (`data_entrada`, `data_saida`), garantindo ao mesmo tempo que só exista **1 vínculo ativo** simultâneo por empresa.
+
+4. **Coerência de Status da Empresa (`empresas`):**
+   * Adicionada a constraint `empresas_status_ativo_coerente`:
+     `CHECK ((status = 'ativo' AND ativo = true) OR (status <> 'ativo' AND ativo = false))`
+   * Evita combinações inconsistentes como `status = 'cancelado'` e `ativo = true`.
+
+5. **Proteção Contra Sobrescrevimento no Seed da Gauchinho:**
+   * Alterado de `ON CONFLICT (slug) DO UPDATE` para **`ON CONFLICT (slug) DO NOTHING`**.
+   * Impede que futuras re-execuções da migration restaurem silenciosamente a Razão Social ou Nome Fantasia editados via painel administrativo.
+
+---
+
+## 2. RESULTADO DA INSPEÇÃO SOMENTE LEITURA NO BANCO REMOTO
+
+* **Total de Usuários na Tabela `public.usuarios`:** 7
+* **Usuários Ativos:** 7 (0 inativos)
+* **Distribuição por Perfil Legado:**
+  * `master`: 2 (`msdfernando@gmail.com`, `gauchinhomt@gmail.com`)
+  * `srd`: 4
+  * `imobiliaria`: 1
+  * `visualizador`: 0
+* **Anomalias de Dados Encontradas:**
+  * Usuários sem `auth_user_id`: **0**
+  * Usuários sem e-mail: **0**
+  * E-mails duplicados: **0**
+  * Auth IDs duplicados: **0**
+  * Perfis inesperados: **0**
+* **Confirmação:** A tabela `empresas` **NÃO existe** no banco remoto. A migration 043 ainda não foi aplicada.
+
+---
+
+## 3. VALIDAÇÃO DE CONCILIAÇÃO PÓS-APLICAÇÃO (PREVISTA)
+
+| Métrica | Antes (Remoto) | Depois (Previsto) | Conciliação |
+| :--- | ---: | ---: | :--- |
+| **Total de Usuários (`public.usuarios`)** | 7 | 7 | 100% Preservados |
+| **Usuários Vinculados à Gauchinho** | 0 | 7 | 100% Mapeados |
+| **SuperAdmins da Plataforma** | 0 | 1 | `msdfernando@gmail.com` |
+| **Administradores da Gauchinho** | 0 | 1 | `gauchinhomt@gmail.com` |
+| **Consultores / SRD** | 0 | 4 | Mapeados para `consultor` |
+| **Parceiros Imobiliária** | 0 | 1 | Mapeado para `parceiro_imobiliaria` |
+
+---
+
+## 4. CONTEÚDO INTEGRAL DA MIGRATION 043 (REVISADA V1.1.0)
+
+```sql
 -- ============================================================================
 -- Migration 043: Fundação SaaS Multiempresa (Empresas, Usuários, Papéis e Permissões)
 -- Versão 1.1.0 — Revisão Técnica com Suporte a Papéis Customizados por Empresa,
@@ -17,7 +95,6 @@ create table if not exists public.empresas (
   created_by uuid references public.usuarios (id) on delete set null,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  -- Garantia de coerência entre status e flag ativo
   constraint empresas_status_ativo_coerente check (
     (status = 'ativo' and ativo = true) or (status <> 'ativo' and ativo = false)
   )
@@ -39,7 +116,6 @@ create table if not exists public.papeis (
   updated_at timestamptz not null default now()
 );
 
--- Garantir unicidade: papéis de sistema (empresa_id NULL) vs papéis customizados por empresa
 create unique index if not exists papeis_codigo_sistema_idx on public.papeis (codigo) where empresa_id is null;
 create unique index if not exists papeis_codigo_empresa_idx on public.papeis (empresa_id, codigo) where empresa_id is not null;
 
@@ -78,7 +154,6 @@ create table if not exists public.empresa_usuarios (
   updated_at timestamptz not null default now()
 );
 
--- Índice Único Parcial: Apenas 1 vínculo ATIVO por (empresa_id, usuario_id), permitindo múltiplos desligamentos históricos
 create unique index if not exists empresa_usuarios_unica_ativa on public.empresa_usuarios (empresa_id, usuario_id) where ativo = true;
 
 create index if not exists empresa_usuarios_empresa_idx on public.empresa_usuarios (empresa_id);
@@ -95,10 +170,7 @@ create trigger papeis_updated_at before update on public.papeis
 create trigger empresa_usuarios_updated_at before update on public.empresa_usuarios
   for each row execute function public.set_updated_at();
 
--- ============================================================================
--- SEED DE PAPÉIS E PERMISSÕES INICIAIS (Idempotente)
--- ============================================================================
-
+-- Seeds dos Papéis Iniciais
 insert into public.papeis (empresa_id, codigo, nome, descricao, escopo)
 values
   (null, 'super_admin', 'SuperAdmin Plataforma', 'Acesso global irrestrito a todas as empresas e configurações da plataforma', 'PLATFORM'),
@@ -112,6 +184,7 @@ on conflict (codigo) where empresa_id is null do update set
   descricao = excluded.descricao,
   escopo = excluded.escopo;
 
+-- Seeds das Permissões Granulares
 insert into public.permissoes (codigo, nome, modulo, descricao)
 values
   ('gerenciar_empresas', 'Gerenciar Empresas', 'saas', 'Permite criar e alterar empresas no SaaS'),
@@ -127,7 +200,7 @@ on conflict (codigo) do update set
   modulo = excluded.modulo,
   descricao = excluded.descricao;
 
--- Vincular Permissões aos Papéis Iniciais
+-- Vincular Permissões aos Papéis
 do $$
 declare
   v_role_super_admin uuid;
@@ -150,10 +223,7 @@ begin
   end if;
 end $$;
 
--- ============================================================================
--- CADASTRAR GAUCHINHO CONSÓRCIOS COMO EMPRESA INICIAL (DO NOTHING para não sobrescrever edições)
--- ============================================================================
-
+-- Seed da Empresa Gauchinho
 insert into public.empresas (slug, razao_social, nome_fantasia, cnpj, status, ativo)
 values (
   'gauchinho',
@@ -165,12 +235,7 @@ values (
 )
 on conflict (slug) do nothing;
 
--- ============================================================================
--- BACKFILL INTELIGENTE DOS USUÁRIOS EXISTENTES
--- Mapeia SuperAdmin apenas para Fernando (msdfernando@gmail.com).
--- Eroni Bolfe (gauchinhomt@gmail.com) e demais masters recebem 'admin_empresa'.
--- ============================================================================
-
+-- Backfill Inteligente
 do $$
 declare
   v_empresa_id uuid;
@@ -193,9 +258,7 @@ begin
       v_empresa_id,
       u.id,
       case
-        -- Regra explícita: Apenas Fernando é SuperAdmin da Plataforma no cadastro inicial
         when u.email = 'msdfernando@gmail.com' then v_role_super_admin
-        -- Demais masters legados (ex: Eroni Bolfe) tornam-se Administrador da Empresa Gauchinho
         when u.perfil = 'master' then v_role_admin_empresa
         when u.perfil = 'srd' then v_role_consultor
         when u.perfil = 'imobiliaria' then v_role_imobiliaria
@@ -210,10 +273,7 @@ begin
   end if;
 end $$;
 
--- ============================================================================
--- FUNÇÕES POSTGRESQL AUXILIARES DE RLS (SECURITY DEFINER)
--- ============================================================================
-
+-- Funções RLS
 create or replace function public.current_usuario_id()
 returns uuid as $$
   select u.id
@@ -261,10 +321,7 @@ returns boolean as $$
   ) or public.is_platform_superadmin();
 $$ language sql security definer set search_path = public;
 
--- ============================================================================
--- POLÍTICAS DE SEGURANÇA (RLS) PARA AS TABELAS DA FUNDAÇÃO
--- ============================================================================
-
+-- Políticas RLS
 alter table public.empresas enable row level security;
 alter table public.papeis enable row level security;
 alter table public.permissoes enable row level security;
@@ -319,3 +376,12 @@ create policy empresa_usuarios_write_policy on public.empresa_usuarios
     public.is_platform_superadmin() or
     public.has_company_role(empresa_id, 'admin_empresa')
   );
+```
+
+---
+
+## 5. CONCLUSÃO DA PRÉ-HOMOLOGAÇÃO
+
+A Migration `043_fundacao_saas_empresas_papeis.sql` atende rigorosamente a todos os quesitos de conciliação, preservação de dados existentes, suporte a papéis customizados e segurança RLS.
+
+**DECISÃO TÉCNICA:** **`APTA PARA APLICAÇÃO REMOTA`**
