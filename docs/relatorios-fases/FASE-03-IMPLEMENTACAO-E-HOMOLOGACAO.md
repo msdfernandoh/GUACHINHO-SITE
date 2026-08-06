@@ -23,7 +23,8 @@
 | E2 libs | **Feito** |
 | E3 admin participantes/orgs | **Feito** (flag off; fora do menu) |
 | E4–E10 | **Não iniciados** |
-| Banco remoto / Vercel / DNS / deploy / push | **Intocados** |
+| Push branch feature | **Feito** (ver §14) |
+| Banco remoto / Vercel / DNS / deploy / main | **Intocados** |
 
 ---
 
@@ -404,36 +405,140 @@ Detalhes de UX/copy/nomes de rota podem ser decididos na implementação sem rea
 | Admin chamar tabelas inexistentes | Flag + `isFase3ParticipantesSchemaReady` |
 | Confundir CMS/imobiliaria | Papel novo; legado preservado no SQL |
 
-### 13.8 Pendências (próxima autorização)
+### 13.8 Pendências (após auditoria/push)
 
-1. Aplicar migration 045 (ambiente isolado/homologação)  
-2. E4–E6 sites/domínios/Vercel  
-3. E7 área comercial + policies leads/propostas seguras  
-4. E8 site público  
-5. Push da branch / preview  
-
-### 13.9 Garantias
-
-- Nada aplicado no banco remoto  
-- Nada deployado / push  
-- Vercel/DNS intocados  
-- Empresa B intocada  
-- Fallback mantido  
+1. Aplicar migration 045 (somente com autorização explícita)
+2. E4–E6 sites/domínios/Vercel
+3. E7 área comercial + policies leads/propostas seguras
+4. E8 site público
+5. Preview / merge — autorização separada
 
 ---
 
-## 14. Próximo passo
+## 14. Auditoria + dry-run + push da branch (2026-08-06)
 
-Aguardar autorização explícita para **aplicar 045** (homologação) e/ou iniciar **E4+**.
+### 14.1 Commits auditados
+
+| Hash | Conteúdo |
+|---|---|
+| `c6304f0` | docs escopo final + registro E0–E3 |
+| `d7d951d` | Migration 045 |
+| `65e0013` | libs + admin inicial |
+| *(commit documental desta auditoria)* | §14 deste relatório |
+
+Branch: `feature/saas-fase-3-participantes-parceiros`
+
+Base inclui também `174108e` (encerra Fase 2 / abre plano Fase 3) ainda ausente de `origin/main`.
+
+Documentos Fase 3 na branch (vs `origin/main`):
+
+- `docs/relatorios-fases/FASE-03-IMPLEMENTACAO-E-HOMOLOGACAO.md` (novo)
+- `docs/SAAS-MASTER-ARCHITECTURE.md` (§5.1 Fase 3)
+- `docs/PLANO-EXECUCAO-FASES.md` (banner legado)
+- `docs/relatorios-fases/FASE-02-IMPLEMENTACAO-E-HOMOLOGACAO.md` (via `174108e`)
+
+Diff limpo: sem `.env`, tokens, credenciais, `.next`, configs Vercel de deploy.
+
+### 14.2 Auditoria remota (somente leitura)
+
+| Verificação | Resultado |
+|---|---|
+| Migrations remote 001–044 | Presentes e alinhadas ao local |
+| Migration 045 remote | **Ausente** |
+| Tabelas novas (participantes/orgs/sites) | **Inexistentes** remotamente |
+| Perms/papel novos | **Inexistentes**; `parceiro_imobiliaria` **existe** (legado) |
+| `leads.empresa_id` / colunas Fase 3 | **Ainda não existem** |
+| Policies leads/propostas | `leads_staff` (`is_staff()`), `propostas_staff` — **intactas** |
+| Funções 043/044 | `set_updated_at`, `normalize_empresa_dominio_valor`, helpers SaaS OK |
+| Índice `papeis_codigo_sistema_idx` | Compatível com ON CONFLICT da 045 |
+| Contagens legado | leads 116, propostas 12, imobiliarias 1, parceiros CMS 3 |
+
+### 14.3 Integridade da 045 (revisão do SQL)
+
+| Tema | Status |
+|---|---|
+| `usuario_id` → `usuarios.id` (não auth.uid) | OK |
+| Gestor mesma empresa (trigger) | OK |
+| Tipos N + catálogo | OK |
+| Login opcional + unique ATIVO (empresa, usuario) | OK |
+| CPF unique por empresa (não global) | OK |
+| Auditoria ON DELETE RESTRICT | OK |
+| CNPJ unique por tenant | OK |
+| Responsável principal único | OK |
+| ≤1 site ativo/org; slug único/empresa | OK |
+| Domínios separados + conflito cruzado | OK |
+| Sem chamada Vercel na migration | OK |
+| Leads/propostas nullable SET NULL; sem backfill | OK |
+| Policies leads não alteradas | OK (adiadas) |
+| SECURITY DEFINER + search_path=public | OK (5 helpers) |
+
+Não é homologação funcional de banco — 045 não foi aplicada.
+
+### 14.4 RLS / grants (novas tabelas — planejado na 045)
+
+SECURITY DEFINER (todas com `SET search_path = public`; EXECUTE a authenticated/service_role; revoke public):
+
+- `current_participante_id(uuid)`
+- `participante_organizacoes_ativas(uuid)`
+- `has_organizacao_acesso(uuid, uuid)`
+- `is_responsavel_principal_org(uuid, uuid)`
+- `assert_same_empresa_parceiro(uuid, uuid, uuid, uuid)`
+
+Grants tabelas novas: authenticated SELECT/INSERT/UPDATE/DELETE; service_role ALL; anon REVOKE ALL.
+
+Write sites/domínios: só super_admin ou `gerenciar_sites_parceiros` — `parceiro_comercial` não recebe essa permissão no seed.
+
+### 14.5 Teste em banco descartável
+
+**Não realizado.** Docker/Podman indisponível (`supabase status` → docker not found). Migration auditada estaticamente + dry-run remoto; não executada em sandbox.
+
+### 14.6 Dry-run remoto
+
+```
+supabase migration list --linked  → 001–044 local=remote; 045 local only
+supabase db push --linked --dry-run → Would push only:
+  045_participantes_organizacoes_parceiro_sites.sql
+```
+
+Nenhum repair; nenhuma migration desconhecida; somente 045 pendente.
+
+### 14.7 Push
+
+- `git push -u origin feature/saas-fase-3-participantes-parceiros`
+- Sem push de main
+- Sem aplicar 045
+
+### 14.8 Garantias pós-rodada
+
+| Item | Estado |
+|---|---|
+| E0–E3 | Concluídos (código + branch remota) |
+| Migration 045 | Criada; **não aplicada** |
+| Banco remoto | Intacto (dry-run only) |
+| Produção / Vercel / DNS | Intactos |
+| Flag admin | false; rotas fora do menu |
+| Empresa B / fallback | Intactos |
+| E4+ | Não iniciadas |
+| Homologação funcional DB | **Não declarada** |
+
+---
+
+## 15. Próximo passo
+
+Aguardar autorização explícita para aplicar 045 e/ou E4+.
+
+Recomendação objetiva: a 045 está pronta para aplicação em ambiente controlado após autorização; não aplicar ainda sem janela explícita. Preferir checklist de schema/smoke após apply — somente com nova autorização. Não declarar homologação funcional enquanto 045 não estiver aplicada.
 
 ---
 
 ## STATUS FINAL DESTA RODADA
 
 ```
-E0–E3 — CONCLUÍDOS LOCALMENTE
-MIGRATION 045 — CRIADA / NÃO APLICADA
-TESTES 400 PASS / BUILD OK
-PUSH / DEPLOY / BANCO REMOTO / VERCEL / DNS — NÃO
-AGUARDANDO NOVA AUTORIZAÇÃO
+E0–E3 — CONCLUÍDOS
+MIGRATION 045 — CRIADA / AUDITADA / DRY-RUN OK / NÃO APLICADA
+TESTE DESCARTÁVEL — NÃO (sem Docker)
+BRANCH — PUSH REALIZADO
+BANCO REMOTO / PRODUÇÃO / VERCEL / DNS — INTOCADOS
+E4+ / FLAG / MENU — NÃO
+AGUARDANDO AUTORIZAÇÃO PARA APLICAR 045
 ```
