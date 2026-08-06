@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { rejectIfTenantBlocksLegacyOperationalApi } from "@/lib/tenant/assert-legacy-operational-api";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { registrarEvento } from "@/lib/eventos/registrar";
 import { DEFAULT_LEADS, getConfigJsonPublic } from "@/server/config";
@@ -14,6 +15,8 @@ type Body = {
 };
 
 export async function POST(request: Request) {
+  const __tenantBlocked = await rejectIfTenantBlocksLegacyOperationalApi(request);
+  if (__tenantBlocked) return __tenantBlocked;
   try {
     const body = (await request.json()) as Body;
     if (!body.cartaId || !body.nome?.trim() || !body.whatsapp?.trim()) {

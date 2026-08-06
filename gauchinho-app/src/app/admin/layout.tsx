@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import type { Metadata } from "next";
 import { getUsuarioNegocio } from "@/lib/auth/get-usuario";
+import { isPlatformSuperadmin } from "@/lib/auth/is-superadmin";
 import { AdminSidebar } from "@/components/admin/sidebar";
 import { AdminHeader } from "@/components/admin/header";
 import { AgendaCompromissosAlert } from "@/components/admin/agenda-compromissos-alert";
@@ -20,11 +21,14 @@ export default async function AdminLayout({
     redirect("/login?next=/admin");
   }
 
+  const isSuperadmin = await isPlatformSuperadmin();
+
   return (
     <div className="dark flex min-h-screen bg-zinc-950 text-zinc-100">
       <AdminSidebar
         perfil={usuario.perfil}
         adminMenus={(usuario.admin_menus as AdminMenuKey[] | null) ?? null}
+        isPlatformSuperadmin={isSuperadmin}
       />
       <div className="flex min-w-0 flex-1 flex-col">
         <AdminHeader nome={usuario.nome} perfil={usuario.perfil} />

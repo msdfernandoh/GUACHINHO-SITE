@@ -1,6 +1,6 @@
 import { DEFAULT_SIMULADOR_IMOVEL } from "@/lib/config/defaults";
 import { percentualParcelaReduzidaPadrao } from "@/lib/config/simulador-parcela-opcoes";
-import { cdiAnualReferenciaPercentual, taxaMensalAplicacaoFromIndice } from "@/lib/indices-financeiros";
+import { cdiAnualReferenciaPercentual, taxaMensalAplicacaoFromIndice } from "@/lib/indices-financeiros/client-safe";
 import { taxaAnualParaMensalPercentual, taxaMensalParaAnualPercentual } from "@/lib/indices-financeiros/math";
 import type { IndicePublico } from "@/lib/indices-financeiros/types";
 import {

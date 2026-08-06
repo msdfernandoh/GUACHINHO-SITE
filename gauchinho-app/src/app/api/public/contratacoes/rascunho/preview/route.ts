@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { rejectIfTenantBlocksLegacyOperationalApi } from "@/lib/tenant/assert-legacy-operational-api";
 import { resumoFinanceiroFromDados, linhasGrupoResumoFromDados } from "@/lib/contratacoes-online/extract-fields";
 import { getConfigJsonPublic } from "@/server/config";
 import {
@@ -10,6 +11,8 @@ import { extrairCamposFlat } from "@/lib/contratacoes-online/extract-fields";
 
 /** Preview do rascunho sem gravar no banco. */
 export async function POST(request: Request) {
+  const __tenantBlocked = await rejectIfTenantBlocksLegacyOperationalApi(request);
+  if (__tenantBlocked) return __tenantBlocked;
   try {
     const body = (await request.json()) as unknown;
     if (!isContratacaoDraftPayload(body)) {

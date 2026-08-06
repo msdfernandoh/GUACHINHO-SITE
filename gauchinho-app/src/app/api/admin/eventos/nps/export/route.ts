@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { rejectIfTenantBlocksLegacyOperationalApi } from "@/lib/tenant/assert-legacy-operational-api";
 import { getUsuarioNegocio } from "@/lib/auth/get-usuario";
 import { canManageImobiliarias } from "@/lib/auth/permissions";
 import { fetchNpsDashboard } from "@/lib/eventos-sorteio/nps-dashboard";
@@ -7,6 +8,8 @@ import { renderNpsExportPdfBuffer } from "@/lib/eventos-sorteio/nps-pdf-document
 import { slugify } from "@/lib/utils/slug";
 
 export async function GET(request: Request) {
+  const __tenantBlocked = await rejectIfTenantBlocksLegacyOperationalApi(request);
+  if (__tenantBlocked) return __tenantBlocked;
   const usuario = await getUsuarioNegocio();
   if (!usuario || !canManageImobiliarias(usuario.perfil)) {
     return NextResponse.json({ error: "Sem permissão" }, { status: 403 });

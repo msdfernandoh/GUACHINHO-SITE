@@ -20,18 +20,25 @@ const PRIMARY_LINKS = [
   { href: "/indicar", label: "Indicação" },
 ] as const;
 
+const INSTITUTIONAL_LINKS = [{ href: "/", label: "Início" }] as const;
+
 function readPublicHeaderHeight(): number {
   if (typeof document === "undefined") return 64;
   const header = document.querySelector("header");
   return header?.getBoundingClientRect().height ?? 64;
 }
 
-export function PublicHeaderNav() {
+export function PublicHeaderNav({
+  institutionalOnly = false,
+}: {
+  institutionalOnly?: boolean;
+}) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [especialistaOpen, setEspecialistaOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [menuTopPx, setMenuTopPx] = useState(64);
+  const links = institutionalOnly ? INSTITUTIONAL_LINKS : PRIMARY_LINKS;
 
   useEffect(() => {
     setMounted(true);
@@ -54,7 +61,7 @@ export function PublicHeaderNav() {
   const linkClass = (href: string) =>
     cn("whitespace-nowrap transition hover:text-amber-400", pathname === href && "text-amber-400");
 
-  const allMobile = PRIMARY_LINKS;
+  const allMobile = links;
 
   const mobilePanel =
     open && mounted ? (
@@ -79,16 +86,18 @@ export function PublicHeaderNav() {
               {l.label}
             </Link>
           ))}
-          <button
-            type="button"
-            className="mt-2 rounded-full bg-amber-500 px-4 py-3 text-center text-sm font-bold uppercase tracking-wide text-zinc-950"
-            onClick={() => {
-              closeMobile();
-              setEspecialistaOpen(true);
-            }}
-          >
-            Especialista
-          </button>
+          {!institutionalOnly ? (
+            <button
+              type="button"
+              className="mt-2 rounded-full bg-amber-500 px-4 py-3 text-center text-sm font-bold uppercase tracking-wide text-zinc-950"
+              onClick={() => {
+                closeMobile();
+                setEspecialistaOpen(true);
+              }}
+            >
+              Especialista
+            </button>
+          ) : null}
           <Link
             href="/login"
             className="inline-flex items-center justify-center gap-2 rounded-full border border-zinc-600/60 px-4 py-3 text-sm font-bold uppercase tracking-wide text-zinc-200 hover:border-amber-500/40"
@@ -108,18 +117,20 @@ export function PublicHeaderNav() {
           className="hidden min-w-0 flex-1 items-center justify-end gap-x-3 text-sm font-medium text-zinc-400 lg:flex xl:gap-x-4"
           aria-label="Navegação principal"
         >
-          {PRIMARY_LINKS.map((l) => (
+          {links.map((l) => (
             <Link key={l.href} href={l.href} className={linkClass(l.href)}>
               {l.label}
             </Link>
           ))}
-          <button
-            type="button"
-            onClick={() => setEspecialistaOpen(true)}
-            className="shrink-0 rounded-full border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs font-bold uppercase tracking-wide text-amber-300 hover:bg-amber-500/20 xl:px-4"
-          >
-            Especialista
-          </button>
+          {!institutionalOnly ? (
+            <button
+              type="button"
+              onClick={() => setEspecialistaOpen(true)}
+              className="shrink-0 rounded-full border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs font-bold uppercase tracking-wide text-amber-300 hover:bg-amber-500/20 xl:px-4"
+            >
+              Especialista
+            </button>
+          ) : null}
           <Link
             href="/login"
             className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-zinc-600/60 px-3 py-2 text-xs font-bold uppercase tracking-wide text-zinc-300 hover:border-amber-500/40 xl:px-4"
@@ -140,7 +151,9 @@ export function PublicHeaderNav() {
         </button>
       </div>
       {mobilePanel && typeof document !== "undefined" ? createPortal(mobilePanel, document.body) : null}
-      <EspecialistaLeadModal open={especialistaOpen} onClose={() => setEspecialistaOpen(false)} />
+      {!institutionalOnly ? (
+        <EspecialistaLeadModal open={especialistaOpen} onClose={() => setEspecialistaOpen(false)} />
+      ) : null}
     </>
   );
 }

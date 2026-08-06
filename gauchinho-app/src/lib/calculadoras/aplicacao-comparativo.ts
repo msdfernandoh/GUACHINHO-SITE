@@ -1,5 +1,5 @@
 import { calcularAplicacaoMensal, type AplicacaoMensalResult } from "./aplicacao";
-import { taxaMensalAplicacaoFromIndice } from "@/lib/indices-financeiros";
+import { taxaMensalAplicacaoFromIndice } from "@/lib/indices-financeiros/client-safe";
 import type { IndicePublico, IndiceCodigo } from "@/lib/indices-financeiros/types";
 
 export type PerfilAplicacaoCodigo =

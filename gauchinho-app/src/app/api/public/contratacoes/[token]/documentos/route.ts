@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { rejectIfTenantBlocksLegacyOperationalApi } from "@/lib/tenant/assert-legacy-operational-api";
 import { uploadDocumentoContratacao, buscarContratacaoPorToken, listarDocumentos } from "@/lib/contratacoes-online/service";
 import { isValidPublicToken } from "@/lib/contratacoes-online/public-token";
 import type { TipoDocumentoContratacao } from "@/lib/contratacoes-online/types";
@@ -17,7 +18,9 @@ const TIPOS: TipoDocumentoContratacao[] = [
   "outro",
 ];
 
-export async function GET(_req: Request, ctx: Ctx) {
+export async function GET(request: Request, ctx: Ctx) {
+  const __tenantBlocked = await rejectIfTenantBlocksLegacyOperationalApi(request);
+  if (__tenantBlocked) return __tenantBlocked;
   try {
     const { token } = await ctx.params;
     if (!isValidPublicToken(token)) {
@@ -41,6 +44,8 @@ export async function GET(_req: Request, ctx: Ctx) {
 }
 
 export async function POST(request: Request, ctx: Ctx) {
+  const __tenantBlocked = await rejectIfTenantBlocksLegacyOperationalApi(request);
+  if (__tenantBlocked) return __tenantBlocked;
   try {
     const { token } = await ctx.params;
     if (!isValidPublicToken(token)) {

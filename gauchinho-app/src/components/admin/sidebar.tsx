@@ -60,6 +60,10 @@ const NAV: Array<{
   { key: "configuracoes", href: "/admin/configuracoes/qr-codes", label: "QR Codes únicos", icon: QrCode, masterOnly: true },
 ];
 
+const SUPERADMIN_NAV = [
+  { href: "/admin/empresas", label: "Empresas (SaaS)", icon: Building2 },
+] as const;
+
 const imobiliariaNav = [
   { href: "/admin/minha-imobiliaria", label: "Minha imobiliária", icon: Building2 },
   { href: "/admin/imoveis", label: "Meus imóveis", icon: Home },
@@ -68,9 +72,11 @@ const imobiliariaNav = [
 export function AdminSidebar({
   perfil,
   adminMenus,
+  isPlatformSuperadmin = false,
 }: {
   perfil: string;
   adminMenus: AdminMenuKey[] | null;
+  isPlatformSuperadmin?: boolean;
 }) {
   const pathname = usePathname();
   const isMaster = perfil === "master";
@@ -148,6 +154,28 @@ export function AdminSidebar({
                 </Link>
               );
             })}
+        {isPlatformSuperadmin
+          ? SUPERADMIN_NAV.map((item) => {
+              const active =
+                pathname === item.href || pathname.startsWith(`${item.href}/`);
+              const Icon = item.icon;
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={cn(
+                    "flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                    active
+                      ? "bg-zinc-900 text-white dark:bg-amber-500 dark:text-zinc-950"
+                      : "text-zinc-700 hover:bg-zinc-200/80 dark:text-zinc-300 dark:hover:bg-zinc-800",
+                  )}
+                >
+                  <Icon className="h-4 w-4 shrink-0" />
+                  {item.label}
+                </Link>
+              );
+            })
+          : null}
       </nav>
     </aside>
   );

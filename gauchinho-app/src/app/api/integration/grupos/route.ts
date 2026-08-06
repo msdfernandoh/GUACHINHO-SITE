@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { rejectIfTenantBlocksLegacyOperationalApi } from "@/lib/tenant/assert-legacy-operational-api";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { verifyIntegrationApiKey } from "@/lib/integration/verify-api-key";
 
@@ -7,6 +8,8 @@ import { verifyIntegrationApiKey } from "@/lib/integration/verify-api-key";
  * Autenticação: header X-Api-Key ou Authorization: Bearer <GAUCHINHO_INTEGRATION_API_KEY>
  */
 export async function GET(request: Request) {
+  const __tenantBlocked = await rejectIfTenantBlocksLegacyOperationalApi(request);
+  if (__tenantBlocked) return __tenantBlocked;
   const denied = verifyIntegrationApiKey(request);
   if (denied) return denied;
 

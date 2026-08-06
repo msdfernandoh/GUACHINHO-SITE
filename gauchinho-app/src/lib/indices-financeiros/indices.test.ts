@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { taxaAnualParaMensalPercentual, taxaMensalParaAnualPercentual } from "./math";
-import { cdiAnualReferenciaPercentual, taxaMensalAplicacaoFromIndice } from "./index";
+import { cdiAnualReferenciaPercentual, taxaMensalAplicacaoFromIndice } from "./client-safe";
 import { taxaCdiEfetivaAnual } from "@/lib/calculadoras/aplicacao-comparativo";
 import type { IndicePublico } from "./types";
 

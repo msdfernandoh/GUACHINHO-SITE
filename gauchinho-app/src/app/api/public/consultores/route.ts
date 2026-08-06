@@ -1,9 +1,12 @@
 import { NextResponse } from "next/server";
+import { rejectIfTenantBlocksLegacyOperationalApi } from "@/lib/tenant/assert-legacy-operational-api";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { listarConsultores } from "@/lib/admin/consultores";
 
 /** Lista pública de consultores (id + nome) para formulários de atribuição. */
-export async function GET() {
+export async function GET(request: Request) {
+  const __tenantBlocked = await rejectIfTenantBlocksLegacyOperationalApi(request);
+  if (__tenantBlocked) return __tenantBlocked;
   try {
     const admin = createAdminClient();
     const list = await listarConsultores(admin, { preferirMarcados: true });

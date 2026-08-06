@@ -13,7 +13,7 @@ import { creditoReajustadoAposMesesNaProjecao } from "@/lib/simulador/projecao-f
 import {
   cdiAnualReferenciaPercentual,
   taxaMensalAplicacaoFromIndice,
-} from "@/lib/indices-financeiros";
+} from "@/lib/indices-financeiros/client-safe";
 import { taxaAnualParaMensalPercentual } from "@/lib/indices-financeiros/math";
 import type { IndicePublico } from "@/lib/indices-financeiros/types";
 

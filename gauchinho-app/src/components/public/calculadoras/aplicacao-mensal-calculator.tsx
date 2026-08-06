@@ -20,7 +20,7 @@ import {
 } from "@/lib/calculadoras/aplicacao-comparativo";
 import { DEFAULT_SIMULADOR_IMOVEL } from "@/lib/config/defaults";
 import { percentualParcelaReduzidaPadrao } from "@/lib/config/simulador-parcela-opcoes";
-import { formatDataReferenciaBr } from "@/lib/indices-financeiros";
+import { formatDataReferenciaBr } from "@/lib/indices-financeiros/client-safe";
 import type { IndicePublico } from "@/lib/indices-financeiros/types";
 import { formatCurrency } from "@/lib/utils/format";
 import { CalculatorResultCard } from "./calculator-result-card";

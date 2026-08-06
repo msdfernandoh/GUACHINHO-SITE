@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { rejectIfTenantBlocksLegacyOperationalApi } from "@/lib/tenant/assert-legacy-operational-api";
 import { getUsuarioNegocio } from "@/lib/auth/get-usuario";
 import { canCreateProposta } from "@/lib/auth/permissions";
 import { criarContratacaoOnline } from "@/lib/contratacoes-online/service";
@@ -7,6 +8,8 @@ import { buildPropostaPublicUrl } from "@/lib/url/public-url";
 import { DEFAULT_SITE, getConfigJsonPublic } from "@/server/config";
 
 export async function POST(request: Request) {
+  const __tenantBlocked = await rejectIfTenantBlocksLegacyOperationalApi(request);
+  if (__tenantBlocked) return __tenantBlocked;
   try {
     const body = (await request.json()) as IniciarContratacaoBody;
     if (!body.origem || !body.modo || !body.dados_simulacao) {

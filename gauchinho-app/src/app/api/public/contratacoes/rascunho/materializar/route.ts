@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { rejectIfTenantBlocksLegacyOperationalApi } from "@/lib/tenant/assert-legacy-operational-api";
 import { getUsuarioNegocio } from "@/lib/auth/get-usuario";
 import { criarContratacaoOnline, atualizarContratacaoPublica } from "@/lib/contratacoes-online/service";
 import { isContratacaoDraftPayload } from "@/lib/contratacoes-online/draft";
@@ -22,6 +23,8 @@ import type { TipoPessoa } from "@/lib/contratacoes-online/types";
  * Simulações abandonadas antes de CPF/CNPJ e endereço permanecem apenas no navegador.
  */
 export async function POST(request: Request) {
+  const __tenantBlocked = await rejectIfTenantBlocksLegacyOperationalApi(request);
+  if (__tenantBlocked) return __tenantBlocked;
   let contratacaoCriadaId: string | null = null;
   try {
     const body = (await request.json()) as {

@@ -1,10 +1,13 @@
 import { NextResponse } from "next/server";
+import { rejectIfTenantBlocksLegacyOperationalApi } from "@/lib/tenant/assert-legacy-operational-api";
 import { finalizarContratacao } from "@/lib/contratacoes-online/service";
 import { isValidPublicToken } from "@/lib/contratacoes-online/public-token";
 
 type Ctx = { params: Promise<{ token: string }> };
 
-export async function POST(_req: Request, ctx: Ctx) {
+export async function POST(request: Request, ctx: Ctx) {
+  const __tenantBlocked = await rejectIfTenantBlocksLegacyOperationalApi(request);
+  if (__tenantBlocked) return __tenantBlocked;
   try {
     const { token } = await ctx.params;
     if (!isValidPublicToken(token)) {

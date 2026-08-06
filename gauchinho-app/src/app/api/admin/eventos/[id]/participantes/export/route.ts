@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { rejectIfTenantBlocksLegacyOperationalApi } from "@/lib/tenant/assert-legacy-operational-api";
 import { createClient } from "@/lib/supabase/server";
 import { getUsuarioNegocio } from "@/lib/auth/get-usuario";
 import { canManageLeads } from "@/lib/auth/permissions";
@@ -9,7 +10,9 @@ function csvEscape(v: string) {
   return v;
 }
 
-export async function GET(_request: Request, ctx: { params: Promise<{ id: string }> }) {
+export async function GET(request: Request, ctx: { params: Promise<{ id: string }> }) {
+  const __tenantBlocked = await rejectIfTenantBlocksLegacyOperationalApi(request);
+  if (__tenantBlocked) return __tenantBlocked;
   const u = await getUsuarioNegocio();
   if (!canManageLeads(u?.perfil)) {
     return NextResponse.json({ error: "Sem permissão" }, { status: 403 });

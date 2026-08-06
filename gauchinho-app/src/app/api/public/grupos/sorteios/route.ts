@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
+import { rejectIfTenantBlocksLegacyOperationalApi } from "@/lib/tenant/assert-legacy-operational-api";
 import { createClient } from "@/lib/supabase/server";
 
 export async function GET(request: Request) {
+  const __tenantBlocked = await rejectIfTenantBlocksLegacyOperationalApi(request);
+  if (__tenantBlocked) return __tenantBlocked;
   const sp = new URL(request.url).searchParams;
   const ano = sp.get("ano");
   const mes = sp.get("mes");

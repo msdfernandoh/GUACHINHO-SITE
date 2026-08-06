@@ -1,8 +1,11 @@
+import "server-only";
+
 import { createClient } from "@supabase/supabase-js";
 
 /**
- * Cliente admin (service role). Bypass RLS — usar só no servidor.
- * Ex.: seed interno, jobs, operações Master batch.
+ * Cliente admin (service role). Bypass RLS — usar só no servidor
+ * (Route Handlers, Server Actions, Server Components, jobs).
+ * Nunca importar em Client Components.
  */
 export function createAdminClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;

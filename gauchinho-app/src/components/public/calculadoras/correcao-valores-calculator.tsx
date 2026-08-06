@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { Button, Input, Label, Select, surfaceInputDarkSlate, surfaceSelectDark } from "@/components/ui/form-primitives";
 import { cn } from "@/lib/utils/cn";
 import { calcularCorrecaoAluguel, type IndiceAluguelCodigo } from "@/lib/calculadoras/aluguel";
-import { formatDataReferenciaBr, percentualReajusteAluguel12m } from "@/lib/indices-financeiros";
+import { formatDataReferenciaBr, percentualReajusteAluguel12m } from "@/lib/indices-financeiros/client-safe";
 import type { IndicePublico } from "@/lib/indices-financeiros/types";
 import { formatCurrency } from "@/lib/utils/format";
 import { CalculatorResultCard } from "./calculator-result-card";

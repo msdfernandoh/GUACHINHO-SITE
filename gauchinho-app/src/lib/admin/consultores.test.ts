@@ -8,6 +8,7 @@ function mockSupabase(responses: Array<{ data: unknown; error: { message: string
       select: () => {
         const chain = {
           eq: () => chain,
+          in: () => chain,
           order: async () => {
             const r = responses[i] ?? { data: [], error: null };
             i += 1;

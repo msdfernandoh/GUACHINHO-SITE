@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { rejectIfTenantBlocksLegacyOperationalApi } from "@/lib/tenant/assert-legacy-operational-api";
 import {
   buscarContratacaoPorToken,
   confirmarProposta,
@@ -23,7 +24,9 @@ import {
 
 type Ctx = { params: Promise<{ token: string }> };
 
-export async function GET(_req: Request, ctx: Ctx) {
+export async function GET(request: Request, ctx: Ctx) {
+  const __tenantBlocked = await rejectIfTenantBlocksLegacyOperationalApi(request);
+  if (__tenantBlocked) return __tenantBlocked;
   try {
     const { token } = await ctx.params;
     if (!isValidPublicToken(token)) {
@@ -61,6 +64,8 @@ export async function GET(_req: Request, ctx: Ctx) {
 }
 
 export async function PATCH(request: Request, ctx: Ctx) {
+  const __tenantBlocked = await rejectIfTenantBlocksLegacyOperationalApi(request);
+  if (__tenantBlocked) return __tenantBlocked;
   try {
     const { token } = await ctx.params;
     if (!isValidPublicToken(token)) {

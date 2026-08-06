@@ -1,3 +1,5 @@
+import "server-only";
+
 import { createClient } from "@/lib/supabase/server";
 import { getUsuarioNegocio } from "@/lib/auth/get-usuario";
 
