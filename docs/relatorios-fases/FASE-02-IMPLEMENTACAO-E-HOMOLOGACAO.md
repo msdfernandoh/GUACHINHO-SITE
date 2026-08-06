@@ -2,34 +2,33 @@
 
 **Projeto:** Gauchinho Site
 
-**Branch:** `feature/saas-foundation`
+**Branch tip:** `main` = `feature/saas-foundation` = `12a5e61`
 
 **Data desta execução / correção do relatório:** 2026-08-06
 
 **Homologação pós-Migration 044 (UTC):** 2026-08-06 15:44
 
-> Código da Fase 2 + fix de preview na branch remota `feature/saas-foundation` (`6512f78`). Migration 044 aplicada e inalterada. **Novo preview Ready** (`dpl_5UQW…` @ `6512f78`); **produção não alterada**. Homologação pública **aprovada**. Homologação autenticada SuperAdmin + perfis não autorizados **aprovada** no preview canônico (ver §21). Fallback mantido. Fase 3 não iniciada.
+**Produção implantada (UTC):** 2026-08-06 19:36 Ready
+
+> Fase 2 **implantada e homologada em produção**. Merge fast-forward `feature/saas-foundation` → `main` até `12a5e61`. Deploy Production Vercel `dpl_F1uWUw…` @ `12a5e61` (**Ready**). Homologação pública + autenticada em `gauchinhoconsorcios.com.br` / `www` **aprovadas**. Migration 044 aplicada. Empresa B não publicada. Fallback emergencial mantido. Fase 3 não iniciada.
 
 ---
 
 ## STATUS ATUAL
 
 ```
-FASE 2 — PREVIEW @ 6512f78 HOMOLOGADO (PÚBLICO + AUTENTICADO)
-COMMIT — 6512f78 (feature/saas-foundation, pushed)
-PREVIEW CANÔNICO — dpl_5UQW… / guachinho-site-51j7ozrgo-… READY @ 6512f78
-HOMOLOGAÇÃO PÚBLICA — APROVADA
-HOMOLOGAÇÃO SuperAdmin /admin/empresas — APROVADA
-PERFIS NÃO AUTORIZADOS — APROVADOS (sem sessão → login; master/consultor → /admin)
-PRODUÇÃO — INALTERADA (main / dpl_3XWLK… / 2026-08-04)
-MERGE EM MAIN — NÃO REALIZADO
-DEPLOY --prod / PROMOTE — NÃO REALIZADO
+FASE 2 — IMPLANTADA E HOMOLOGADA EM PRODUÇÃO
+MAIN — 12a5e61 (fast-forward a partir de feature/saas-foundation)
+PRODUÇÃO — dpl_F1uWUw… READY @ 12a5e61
+HOMOLOGAÇÃO PÚBLICA PRODUÇÃO — APROVADA
+HOMOLOGAÇÃO AUTENTICADA PRODUÇÃO — APROVADA
+MIGRATION 044 — APLICADA E HOMOLOGADA
+EMPRESA B — NÃO PUBLICADA
 FALLBACK EMERGENCIAL — MANTIDO
-MIGRATION 044 — APLICADA E INALTERADA
 FASE 3 — NÃO INICIADA
 ```
 
-**Produção (`gauchinhoconsorcios.com.br`) permanece no deploy antigo.** O preview antigo `dpl_6Ab1Wj…` continua evidenciando o bug (`Site não configurado`); a homologação da correção usa exclusivamente o novo deployment `dpl_5UQW…`.
+**Aliases oficiais** (`gauchinhoconsorcios.com.br`, `www`, `guachinho-site.vercel.app`) apontam para o novo deployment de produção. Preview canônico `dpl_5UQW…` permanece como evidência pré-produção.
 
 ---
 
@@ -175,7 +174,7 @@ Ordem no proxy para `/admin`:
 
 **Homologação:**
 - Homologação unitária de autorização: **APROVADA** (testes).
-- Homologação autenticada SuperAdmin no preview canônico @ `6512f78`: **APROVADA** (ver §21). Produção do site ainda no código antigo (`main`).
+- Homologação autenticada SuperAdmin no preview @ `6512f78`: **APROVADA** (ver §21). Homologação em produção @ `12a5e61`: **APROVADA** (ver §22).
 
 ---
 
@@ -253,11 +252,11 @@ Escopo: 79 files, +3436 / −260.
 | Produção Migration 044 | **APLICADA** (ver §17) |
 | Homologação em Supabase real (banco) | **REALIZADA** (ver §17) |
 | Homologação pública pós-migration (sem deploy) | **REALIZADA** (ver §17.9) |
-| Homologação autenticada SuperAdmin / `/admin/empresas` | **APROVADA no preview** (ver §21) |
-| Deploy preview do código Fase 2 | **REALIZADO** — `dpl_5UQW…` @ `6512f78` (sem `--prod`) |
-| Commit código + fix preview | **REALIZADO e pushed** — `6512f78` |
-| Push `feature/saas-foundation` | **REALIZADO** |
-| Produção do site (código) | **código antigo ainda ativo** (`main` / `dpl_3XWLK…`) |
+| Homologação autenticada SuperAdmin / `/admin/empresas` | **APROVADA** (preview §21 + produção §22) |
+| Deploy preview do código Fase 2 | **REALIZADO** — `dpl_5UQW…` @ `6512f78` |
+| Merge FF + deploy Production | **REALIZADO** — `main`/`12a5e61` → `dpl_F1uWUw…` Ready |
+| Push `feature/saas-foundation` + `main` | **REALIZADO** |
+| Produção do site (código) | **Fase 2 ativa** (`12a5e61` / `dpl_F1uWUw…`) |
 | Fallback emergencial | **MANTIDO** |
 | Fase 3 | **NÃO INICIADA** |
 
@@ -279,12 +278,10 @@ Não entraram em `cc2b26a` / commits posteriores de código:
 
 ## 16. Pendências (próximas autorizações)
 
-- promote / `deploy --prod` do código Fase 2 (somente com autorização explícita);
-- merge em `main` (somente com autorização explícita);
-- remoção futura do fallback emergencial (somente após decisão formal pós-produção);
-- Fase 3 — **não iniciar** sem autorização explícita.
+- remoção futura do fallback emergencial (somente após decisão formal pós-homologação de produção);
+- encerramento formal da Fase 2 / início da Fase 3 — **somente com autorização explícita**.
 
-Homologações de preview (pública + autenticada) e push de `6512f78` **já concluídos** — ver §19–§21.
+Merge em `main`, deploy de produção e homologações (preview + produção) **já concluídos** — ver §19–§22.
 
 ---
 
@@ -700,32 +697,135 @@ Cobertura: `fetchEmpresasList`, `createDominioAction`, `upsertBrandingAction` re
 | Segredo / JWT / `SERVICE_ROLE` na resposta | **ausentes** |
 | Vazamento Gauchinho ↔ Empresa B nos detalhes | **não observado** (domínio Gauchinho só na página Gauchinho; Empresa B sem domínio) |
 
-### 21.6 Restrições respeitadas
+### 21.6 Restrições respeitadas (na etapa de preview)
 
-- Sem promote / `--prod` / merge `main`
+- Sem promote / `--prod` / merge `main` **nessa etapa**
 - Sem alteração Supabase / domínio / publicação Empresa B
 - Fallback emergencial **mantido**
 - Fase 3 **não iniciada**
-- Produção **inalterada** (`dpl_3XWLK…`)
+
+---
+
+## 22. Produção — Opção B (merge FF + deploy Vercel)
+
+**Data:** 2026-08-06  
+**Autorização:** Opção B — merge `feature/saas-foundation` → `main` + deploy automático Production (sem `vercel --prod`, sem promote manual, sem DNS/env).
+
+### 22.1 Pré-checks Git
+
+| Check | Resultado |
+|---|---|
+| `origin/main` pré-merge | `f7ba538` (inalterado desde o diagnóstico) |
+| `origin/feature/saas-foundation` | `12a5e613c2c531bf88c748dc7dce26de681c57f1` |
+| `merge-base --is-ancestor origin/main origin/feature…` | exit **0** (FF possível) |
+| Diff | 89 files / Fases 1–2 homologadas; sem untracked de escopo |
+
+### 22.2 Merge e push
+
+| Passo | Resultado |
+|---|---|
+| `git switch main` + `pull --ff-only` | OK |
+| `git merge --ff-only origin/feature/saas-foundation` | **OK** `f7ba538..12a5e61` |
+| HEAD `main` | `12a5e61` |
+| `git push origin main` | **OK** (sem force) |
+| `origin/main` | `12a5e61` |
+
+### 22.3 Deployment Production
+
+| Item | Valor |
+|---|---|
+| Projeto | `hugo-8097s-projects/guachinho-site` |
+| Root Directory | `gauchinho-app` |
+| Deployment ID | `dpl_F1uWUwUV1go5adBnNqat4eZXcse9` |
+| URL | `https://guachinho-site-k00zz63b6-hugo-8097s-projects.vercel.app` |
+| Hash | `12a5e613c2c531bf88c748dc7dce26de681c57f1` |
+| Target | **production** |
+| Status | **Ready** |
+| Created / Ready (UTC) | 2026-08-06 19:35:47 / 19:36:40 |
+| Build | Next.js compilado com sucesso (~13.2s) |
+| Warning | `engines.node >=20` (aviso Vercel) |
+| Aliases | `gauchinhoconsorcios.com.br`, `www.gauchinhoconsorcios.com.br`, `guachinho-site.vercel.app`, `…-git-main-…` |
+| Método | deploy automático por push em `main` (**não** `--prod` / promote / alias manual) |
+| Deployment anterior | `dpl_3XWLK…` substituído nos aliases oficiais |
+
+### 22.4 Homologação pública em produção — **APROVADA**
+
+Hosts: `https://gauchinhoconsorcios.com.br` (308 → www) e `https://www.gauchinhoconsorcios.com.br`.
+
+| Rota | Status | Gauchinho | Empresa B | 500 / segredo |
+|---|---|---|---|---|
+| `/` (apex + www) | 200 (www) | sim | não | não |
+| `/simulador` … `/login` (lista autorizada) | 200 | sim | não | não |
+
+| Critério | Resultado |
+|---|---|
+| Domínio oficial em `empresa_dominios` | **sim** — `gauchinhoconsorcios.com.br` principal/ativo/verificado |
+| Source esperada | **`domain`** (hit em `empresa_dominios`; fallback **não** necessário nesta resolução) |
+| Source `vercel_preview_gauchinho` | **não** (só `VERCEL_ENV=preview`) |
+| Host de deployment Production (não oficial) | **404** `Site não configurado…` |
+| Visual / APIs públicas smoke | sem 500 observado nas rotas testadas |
+
+### 22.5 Segurança de tenant em produção — **APROVADA**
+
+| Teste | Resultado |
+|---|---|
+| `?__tenant=empresa-b` | ignorado — 200 Gauchinho |
+| `x-tenant-slug: empresa-b` | ignorado — 200 Gauchinho |
+| `x-tenant-empresa-id` externo | ignorado — 200 Gauchinho |
+| Empresa B domínio / branding publicado | **0 domínios** / `RASCUNHO` / `em_treinamento` / `ativo=false` |
+| Service role / JWT na resposta | **ausentes** |
+
+### 22.6 Homologação autenticada em produção — **APROVADA**
+
+Base: `https://www.gauchinhoconsorcios.com.br` (sessão via `generateLink`+`verifyOtp`; sem editar/salvar).
+
+| Critério | Resultado |
+|---|---|
+| SuperAdmin `/admin/empresas` | **200** — Gauchinho + Empresa B listadas |
+| Sessão preservada | **OK** |
+| Gauchinho detalhe | domínio principal/ativo/verificado; branding **PUBLICADO** |
+| Empresa B detalhe | `em_treinamento`; branding **RASCUNHO**; `Nenhum domínio cadastrado` |
+| Sem sessão | **307** → `/login?next=%2Fadmin%2Fempresas` |
+| Master legado sem SuperAdmin | **307** → `/admin` |
+| Consultor | **307** → `/admin` |
+
+### 22.7 Contagens legadas (somente leitura)
+
+| Tabela | Esperado | Observado |
+|---|---|---|
+| usuarios | 7 | **7** |
+| leads | 116 | **116** |
+| propostas | 12 | **12** |
+| grupos_consorcio | 19 | **19** |
+| grupos_cotas | 178 | **178** |
+| contratacoes_online | 17 | **17** |
+
+### 22.8 Fallback emergencial
+
+- **Mantido** no código.
+- Em produção nos hosts oficiais: resolução por **`empresa_dominios`** (`source=domain`); fallback **não utilizado** neste caminho.
+- Host de deployment Production sem domínio cadastrado: falha fechada (404), sem acionar fallback de hosts oficiais.
+
+### 22.9 Restrições respeitadas
+
+- Sem alteração DNS / env / publicação Empresa B
+- Sem nova migration
+- Sem remoção do fallback
+- Fase 3 **não iniciada**
 
 ---
 
 ## STATUS FINAL
 
 ```
-FASE 2 — PREVIEW @ 6512f78 HOMOLOGADO (PÚBLICO + AUTENTICADO)
-PREVIEW CANÔNICO — https://guachinho-site-51j7ozrgo-hugo-8097s-projects.vercel.app
-DEPLOYMENT ID — dpl_5UQWSkidZpty73bq592e6wPpKaR5
-HASH — 6512f78 (pushed em feature/saas-foundation)
+FASE 2 — IMPLANTADA E HOMOLOGADA EM PRODUÇÃO
+MIGRATION 044 — APLICADA E HOMOLOGADA
+MAIN — 12a5e61 (fast-forward)
+DEPLOY DE PRODUÇÃO — dpl_F1uWUwUV1go5adBnNqat4eZXcse9 READY @ 12a5e61
+ALIASES — gauchinhoconsorcios.com.br / www / guachinho-site.vercel.app
 HOMOLOGAÇÃO PÚBLICA — APROVADA
-HOMOLOGAÇÃO SuperAdmin — APROVADA
-PERFIS NÃO AUTORIZADOS — APROVADOS
-SERVER ACTIONS SEM AUTH — APROVADAS (unitários; sem persistir)
-PRODUÇÃO — INALTERADA (dpl_3XWLK…)
-MIGRATION 044 — APLICADA E INALTERADA
+HOMOLOGAÇÃO AUTENTICADA — APROVADA
 EMPRESA B — NÃO PUBLICADA
-FALLBACK EMERGENCIAL — MANTIDO
-MAIN — SEM MERGE
-PROMOTE / --prod — NÃO REALIZADOS
+FALLBACK EMERGENCIAL — MANTIDO (não usado nos hosts oficiais; domain hit)
 FASE 3 — NÃO INICIADA
 ```

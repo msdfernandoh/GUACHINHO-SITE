@@ -105,7 +105,7 @@ As funções PostgreSQL de segurança (`SECURITY DEFINER`) instaladas no banco:
 
 * **FASE 0:** Auditoria Técnica e Mapeamento do Projeto *(Concluída)*
 * **FASE 1:** Fundação SaaS Multiempresa (Empresas, Usuários, Papéis, Permissões, Tenant Context) *(Código Criado e Compilado)*
-* **FASE 2:** Sites Multiempresa, Branding e Empresa B *(Migration 044 aplicada; preview `dpl_5UQW…` @ `6512f78` com homologação pública + autenticada aprovadas; produção inalterada; sem promote/merge; Fase 3 não iniciada — ver `docs/relatorios-fases/FASE-02-IMPLEMENTACAO-E-HOMOLOGACAO.md`)*
+* **FASE 2:** Sites Multiempresa, Branding e Empresa B *(Implantada e homologada em produção: `main`/`12a5e61`, deploy `dpl_F1uWUw…`; Migration 044 aplicada; Empresa B não publicada; fallback mantido; Fase 3 não iniciada — ver `docs/relatorios-fases/FASE-02-IMPLEMENTACAO-E-HOMOLOGACAO.md`)*
 * **FASE 3:** Participantes Comerciais e Sites de Parceiros
 * **FASE 4:** Catálogo Global de Administradoras
 * **FASE 5:** Evolução de Grupos e Opções Comerciais
