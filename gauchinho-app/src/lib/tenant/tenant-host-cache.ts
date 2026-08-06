@@ -16,7 +16,11 @@ export type CachedTenantHit = {
   kind: "hit";
   empresaId: string;
   slug: string;
-  source: "domain" | "dev_override" | "emergency_gauchinho_fallback";
+  source:
+    | "domain"
+    | "dev_override"
+    | "emergency_gauchinho_fallback"
+    | "vercel_preview_gauchinho";
 };
 
 export type CachedTenantMiss = {

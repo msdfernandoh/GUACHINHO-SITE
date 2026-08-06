@@ -149,3 +149,222 @@ describe("resolveTenantForRequest — fallback de transição e overrides", () =
     expect(result.ok).toBe(false);
   });
 });
+
+describe("resolveTenantForRequest — preview Vercel seguro", () => {
+  const PREVIEW_HOST = "guachinho-site-d2g4rrpyv-hugo-8097s-projects.vercel.app";
+
+  afterEach(() => {
+    invalidateTenantHostCache();
+    vi.unstubAllEnvs();
+    globalThis.fetch = ORIGINAL_FETCH;
+  });
+
+  function mockDomainMissAndGauchinhoEmpresa() {
+    globalThis.fetch = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes("empresa_dominios")) {
+        return new Response(JSON.stringify(null), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        });
+      }
+      if (url.includes("empresas")) {
+        return new Response(
+          JSON.stringify({
+            id: "gauchinho-uuid-1",
+            slug: "gauchinho",
+            status: "ativo",
+            ativo: true,
+          }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        );
+      }
+      return new Response(JSON.stringify(null), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    }) as typeof fetch;
+  }
+
+  function stubPreviewRuntime() {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("VERCEL_ENV", "preview");
+    vi.stubEnv("VERCEL_URL", PREVIEW_HOST);
+    vi.stubEnv("VERCEL_BRANCH_URL", PREVIEW_HOST);
+    vi.stubEnv("VERCEL_PROJECT_PRODUCTION_URL", "guachinho-site.vercel.app");
+  }
+
+  it("preview oficial + VERCEL_ENV=preview → Gauchinho (source vercel_preview_gauchinho)", async () => {
+    stubPreviewRuntime();
+    mockDomainMissAndGauchinhoEmpresa();
+
+    const result = await resolveTenantForRequest({
+      hostHeader: PREVIEW_HOST,
+      supabaseUrl: "https://example.supabase.co",
+      serviceKey: "service-role-test-key",
+    });
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.tenant.slug).toBe("gauchinho");
+      expect(result.tenant.source).toBe("vercel_preview_gauchinho");
+      expect(result.tenant.empresaId).toBe("gauchinho-uuid-1");
+    }
+  });
+
+  it("mesmo host preview + VERCEL_ENV=production → bloqueado", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("VERCEL_ENV", "production");
+    vi.stubEnv("VERCEL_URL", PREVIEW_HOST);
+    mockDomainMissAndGauchinhoEmpresa();
+
+    const result = await resolveTenantForRequest({
+      hostHeader: PREVIEW_HOST,
+      supabaseUrl: "https://example.supabase.co",
+      serviceKey: "service-role-test-key",
+    });
+
+    expect(result.ok).toBe(false);
+  });
+
+  it("preview de outro projeto → bloqueado", async () => {
+    stubPreviewRuntime();
+    vi.stubEnv("VERCEL_URL", "outro-app-xyz-other-team.vercel.app");
+    vi.stubEnv("VERCEL_BRANCH_URL", "outro-app-xyz-other-team.vercel.app");
+    mockDomainMissAndGauchinhoEmpresa();
+
+    const result = await resolveTenantForRequest({
+      hostHeader: "outro-app-xyz-other-team.vercel.app",
+      supabaseUrl: "https://example.supabase.co",
+      serviceKey: "service-role-test-key",
+    });
+
+    expect(result.ok).toBe(false);
+  });
+
+  it("host aleatório *.vercel.app → bloqueado", async () => {
+    stubPreviewRuntime();
+    mockDomainMissAndGauchinhoEmpresa();
+
+    const result = await resolveTenantForRequest({
+      hostHeader: "qualquer-coisa.vercel.app",
+      supabaseUrl: "https://example.supabase.co",
+      serviceKey: "service-role-test-key",
+    });
+
+    expect(result.ok).toBe(false);
+  });
+
+  it("?__tenant=empresa-b em preview (NODE_ENV=production) → ignorado; segue Gauchinho pelo host", async () => {
+    stubPreviewRuntime();
+    mockDomainMissAndGauchinhoEmpresa();
+
+    const result = await resolveTenantForRequest({
+      hostHeader: PREVIEW_HOST,
+      searchParams: new URLSearchParams({ __tenant: "empresa-b" }),
+      supabaseUrl: "https://example.supabase.co",
+      serviceKey: "service-role-test-key",
+    });
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.tenant.slug).toBe("gauchinho");
+      expect(result.tenant.source).toBe("vercel_preview_gauchinho");
+    }
+  });
+
+  it("domínio oficial Gauchinho continua funcionando (não usa source de preview)", async () => {
+    stubPreviewRuntime();
+    globalThis.fetch = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes("empresa_dominios")) {
+        return new Response(
+          JSON.stringify({
+            ativo: true,
+            verificado: true,
+            empresa: {
+              id: "gauchinho-uuid-1",
+              slug: "gauchinho",
+              status: "ativo",
+              ativo: true,
+            },
+          }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        );
+      }
+      if (url.includes("empresa_branding")) {
+        return new Response(
+          JSON.stringify({ status_publicacao: "PUBLICADO" }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        );
+      }
+      return new Response(JSON.stringify(null), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    }) as typeof fetch;
+
+    const result = await resolveTenantForRequest({
+      hostHeader: "gauchinhoconsorcios.com.br",
+      supabaseUrl: "https://example.supabase.co",
+      serviceKey: "service-role-test-key",
+    });
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.tenant.slug).toBe("gauchinho");
+      expect(result.tenant.source).toBe("domain");
+    }
+  });
+
+  it("host desconhecido continua 404", async () => {
+    stubPreviewRuntime();
+    mockDomainMissAndGauchinhoEmpresa();
+
+    const result = await resolveTenantForRequest({
+      hostHeader: "desconhecido-total.com.br",
+      supabaseUrl: "https://example.supabase.co",
+      serviceKey: "service-role-test-key",
+    });
+
+    expect(result.ok).toBe(false);
+  });
+
+  it("cache não mistura preview e produção", async () => {
+    stubPreviewRuntime();
+    mockDomainMissAndGauchinhoEmpresa();
+
+    const preview = await resolveTenantForRequest({
+      hostHeader: PREVIEW_HOST,
+      supabaseUrl: "https://example.supabase.co",
+      serviceKey: "service-role-test-key",
+    });
+    expect(preview.ok).toBe(true);
+
+    // Host de produção do projeto Vercel permanece bloqueado (chave de cache distinta).
+    const prodProject = await resolveTenantForRequest({
+      hostHeader: "guachinho-site.vercel.app",
+      supabaseUrl: "https://example.supabase.co",
+      serviceKey: "service-role-test-key",
+    });
+    expect(prodProject.ok).toBe(false);
+
+    const unknown = await resolveTenantForRequest({
+      hostHeader: "outro.com.br",
+      supabaseUrl: "https://example.supabase.co",
+      serviceKey: "service-role-test-key",
+    });
+    expect(unknown.ok).toBe(false);
+
+    // Preview continua hit pelo cache próprio do host.
+    const previewAgain = await resolveTenantForRequest({
+      hostHeader: PREVIEW_HOST,
+      supabaseUrl: "https://example.supabase.co",
+      serviceKey: "service-role-test-key",
+    });
+    expect(previewAgain.ok).toBe(true);
+    if (previewAgain.ok) {
+      expect(previewAgain.tenant.source).toBe("vercel_preview_gauchinho");
+    }
+  });
+});

@@ -16,6 +16,10 @@ import {
   type CachedTenantEntry,
   type CachedTenantHit,
 } from "./tenant-host-cache";
+import {
+  isVercelPreviewGauchinhoHost,
+  VERCEL_PREVIEW_TENANT_SOURCE,
+} from "./vercel-preview-tenant";
 
 export type ResolvedTenantRef = {
   empresaId: string;
@@ -173,6 +177,40 @@ function emergencyGauchinhoFallback(rawHost: string): ResolveTenantResult | null
   };
 }
 
+async function resolveVercelPreviewGauchinho(
+  reader: SupabaseClient | null,
+  rawHost: string,
+  cacheKey: string,
+): Promise<ResolveTenantResult | null> {
+  if (!isVercelPreviewGauchinhoHost(rawHost)) return null;
+
+  let empresaId = "vercel-preview-gauchinho";
+  if (reader) {
+    const slugResult = await resolveEmpresaBySlug(reader, GAUCHINHO_SLUG);
+    if (slugResult.kind === "hit") {
+      empresaId = slugResult.empresa.id;
+    }
+  }
+
+  const hit: CachedTenantEntry = {
+    kind: "hit",
+    empresaId,
+    slug: GAUCHINHO_SLUG,
+    source: VERCEL_PREVIEW_TENANT_SOURCE,
+  };
+  if (cacheKey) {
+    setCachedTenantResolution(cacheKey, hit);
+  }
+  return {
+    ok: true,
+    tenant: {
+      empresaId,
+      slug: GAUCHINHO_SLUG,
+      source: VERCEL_PREVIEW_TENANT_SOURCE,
+    },
+  };
+}
+
 const recentLogs = new Map<string, number>();
 const LOG_COOLDOWN_MS = 60_000;
 
@@ -234,7 +272,10 @@ export async function resolveTenantForRequest(input: {
         const emergency = emergencyGauchinhoFallback(rawHost ?? "");
         if (emergency) return emergency;
       }
-      return { ok: false, reason: "not_configured" };
+      // Miss em cache: hosts reais param aqui; preview Vercel oficial reavalia.
+      if (!isVercelPreviewGauchinhoHost(rawHost)) {
+        return { ok: false, reason: "not_configured" };
+      }
     }
   }
 
@@ -244,6 +285,8 @@ export async function resolveTenantForRequest(input: {
       logTechnical("credenciais de leitura ausentes; fallback temporário Gauchinho para host oficial");
       return emergency;
     }
+    const previewWithoutKey = await resolveVercelPreviewGauchinho(null, rawHost ?? "", cacheKey);
+    if (previewWithoutKey) return previewWithoutKey;
     return { ok: false, reason: "missing_service_key" };
   }
 
@@ -384,7 +427,13 @@ export async function resolveTenantForRequest(input: {
     }
   }
 
-  // --- 5/6) Sem domínio cadastrado e sem override de development ---
+  // --- 5) Preview Vercel oficial deste projeto → Gauchinho (homologação) ---
+  // Não usa query/headers de tenant; só VERCEL_ENV=preview + host cruzado com
+  // VERCEL_URL/VERCEL_BRANCH_URL (ver vercel-preview-tenant.ts).
+  const preview = await resolveVercelPreviewGauchinho(reader, rawHost ?? "", cacheKey);
+  if (preview) return preview;
+
+  // --- 6) Sem domínio cadastrado e sem override de development ---
   // Fallback temporário Gauchinho NÃO se aplica em miss limpo (tabela existe,
   // linha ausente). Ele só ocorre acima quando a infra 044 está indisponível
   // ou há erro transitório — e apenas para hosts oficiais.
