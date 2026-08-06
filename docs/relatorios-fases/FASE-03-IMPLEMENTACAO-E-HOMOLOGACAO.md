@@ -31,11 +31,14 @@
 ## STATUS
 
 ```
-FASE 3 — E0–E3 CONCLUÍDOS; BRANCH PUSHED
-MIGRATION 045 — CRIADA / AUDITADA / DRY-RUN OK / NÃO APLICADA
-FLAG FASE3_ADMIN_PARTICIPANTES_ENABLED — false (padrão)
-BANCO REMOTO / VERCEL / DNS / DEPLOY / MAIN — INTOCADOS
-EMPRESA B / FALLBACK — INTOCADOS
+FASE 3 — MIGRATION 045 APLICADA E BANCO HOMOLOGADO
+E0–E3 — IMPLEMENTADOS
+TELAS — DESATIVADAS POR FLAG
+ÁREA COMERCIAL — NÃO ATIVADA
+SITES PÚBLICOS — NÃO IMPLEMENTADOS
+VERCEL/DNS — INTOCADOS
+PRODUÇÃO DO APP — INALTERADA
+E4+ — NÃO INICIADAS
 ```
 ---
 
@@ -523,22 +526,105 @@ Nenhum repair; nenhuma migration desconhecida; somente 045 pendente.
 
 ---
 
-## 15. Próximo passo
+## 16. Aplicação e homologação da Migration 045 (2026-08-06)
 
-Aguardar autorização explícita para aplicar 045 e/ou E4+.
+### 16.1 Comando e resultado
 
-Recomendação objetiva: a 045 está pronta para aplicação em ambiente controlado após autorização; não aplicar ainda sem janela explícita. Preferir checklist de schema/smoke após apply — somente com nova autorização. Não declarar homologação funcional enquanto 045 não estiver aplicada.
+| Item | Valor |
+|---|---|
+| Branch | `feature/saas-fase-3-participantes-parceiros` |
+| HEAD | `6c92a541595501066788f91f821c412b493535ea` |
+| Projeto Supabase | `eaeuoynprurmmulzhydt` (Gauchinho-Site) |
+| Comando | `supabase db push --linked --yes` |
+| Início | 2026-08-06T17:09:41-04:00 |
+| Fim | 2026-08-06T17:10:13-04:00 |
+| Resultado | Aplicada **exclusivamente** `045_participantes_organizacoes_parceiro_sites.sql` |
+| Exit | 0 |
+
+### 16.2 Histórico e dry-run pós-apply
+
+| Check | Resultado |
+|---|---|
+| `migration list --linked` | 001–045 local = remote |
+| `db push --linked --dry-run` | **Remote database is up to date** |
+| Migrations pendentes | Nenhuma |
+
+### 16.3 Contagens antes / depois
+
+| Entidade | Antes | Depois | Esperado |
+|---|---:|---:|---|
+| usuarios | 7 | 7 | 7 |
+| empresa_usuarios | 7 | 7 | 7 |
+| empresas | 2 | 2 | 2 |
+| papeis | 6 | 7 (+`parceiro_comercial`) | +1 |
+| permissoes | 10 | 20 (+10 Fase 3) | +10 |
+| leads | 116 | 116 | 116 |
+| propostas | 12 | 12 | 12 |
+| imobiliarias | 1 | 1 | 1 |
+| parceiros CMS | 3 | 3 | 3 |
+| empresa_dominios | 1 | 1 | 1 |
+| empresa_branding | 2 | 2 | 2 |
+
+Leads/propostas: 100% dos registros com novos campos `NULL` (116/116 e 12/12). `srd_responsavel_id` preenchido em 53 leads (inalterado).
+
+### 16.4 Estrutura criada
+
+Tabelas: `participantes_comerciais`, `participante_tipo_catalogo`, `participante_tipos`, `participante_organizacoes`, `participante_auditoria`, `organizacoes_parceiras`, `parceiro_sites`, `parceiro_site_dominios`, `parceiro_site_auditoria`.
+
+Colunas nullable em `leads` e `propostas`: `empresa_id`, `organizacao_parceira_id`, `parceiro_site_id`, `participant_id`, `host_origem`, `pagina_origem`, `utm_*`.
+
+RLS ativada nas tabelas novas (policies select/write conforme seed). CRM: `leads_staff` / `propostas_staff` (`is_staff()`) **intactas** — sem policies novas de área parceiro em leads/propostas.
+
+### 16.5 Testes transacionais com ROLLBACK
+
+Script em DO $$ … RAISE HOMOLOG_OK:…; $$ — todos OK, zero linhas persistidas:
+
+`OK_MULTI_TIPOS; OK_GESTOR_CROSS; OK_DUP_USER; OK_USER_OTHER_EMP; OK_DUP_CNPJ; OK_CNPJ_OTHER_TENANT; OK_CROSS_LINK; OK_SECOND_RESP; OK_SECOND_SITE; OK_DUP_SLUG; OK_TENANT_HOST; OK_SECOND_PRIMARY; OK_DUP_DOMAIN; OK_EMP_DOM_CONFLICT; OK_DELETE_AUDIT`
+
+Contagem pós-teste: participantes/orgs/sites/domínios = **0**.
+
+### 16.6 RLS e permissões
+
+SECURITY DEFINER (search_path=public): `current_participante_id`, `participante_organizacoes_ativas`, `has_organizacao_acesso`, `is_responsavel_principal_org`, `assert_same_empresa_parceiro`.
+
+`parceiro_comercial` permissões: somente área comercial (7). **0** permissões `gerenciar_*` / site / tenant.
+
+`parceiro_imobiliaria` preservado. `admin_empresa` recebe as 4 permissões de gestão/área Fase 3 verificadas.
+
+### 16.7 Código / ops
+
+| Item | Estado |
+|---|---|
+| `npm test` | 400 passed |
+| `npm run build` | exit 0 |
+| Flag | `FASE3_ADMIN_PARTICIPANTES_ENABLED` false |
+| Menu | rotas fora do sidebar |
+| Deploy / preview / Vercel / DNS | **Não** |
+| Merge main | **Não** |
+| Empresa B / fallback | Intactos |
+| E4+ | Não iniciadas |
+
+### 16.8 Riscos / divergências
+
+Nenhuma divergência de contagens legadas. Policies CRM de área parceiro **continuam adiadas** (etapa posterior). Fase 3 **não** está concluída.
+
+---
+
+## 17. Próximo passo
+
+Recomendação: autorizar E4 (admin sites) e/ou E7 (área comercial + policies leads/propostas) em rodadas separadas. Manter flag off e sem preview até nova autorização.
 
 ---
 
 ## STATUS FINAL DESTA RODADA
 
 ```
-E0–E3 — CONCLUÍDOS
-MIGRATION 045 — CRIADA / AUDITADA / DRY-RUN OK / NÃO APLICADA
-TESTE DESCARTÁVEL — NÃO (sem Docker)
-BRANCH — PUSH REALIZADO
-BANCO REMOTO / PRODUÇÃO / VERCEL / DNS — INTOCADOS
-E4+ / FLAG / MENU — NÃO
-AGUARDANDO AUTORIZAÇÃO PARA APLICAR 045
+FASE 3 — MIGRATION 045 APLICADA E BANCO HOMOLOGADO
+E0–E3 — IMPLEMENTADOS
+TELAS — DESATIVADAS POR FLAG
+ÁREA COMERCIAL — NÃO ATIVADA
+SITES PÚBLICOS — NÃO IMPLEMENTADOS
+VERCEL/DNS — INTOCADOS
+PRODUÇÃO DO APP — INALTERADA
+E4+ — NÃO INICIADAS
 ```
