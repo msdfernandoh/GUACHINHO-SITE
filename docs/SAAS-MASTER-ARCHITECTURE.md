@@ -1,8 +1,9 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
-> **Versão:** 1.1.0  
+> **Versão:** 1.2.0  
 > **Data de Atualização:** 06/08/2026  
-> **Status da Plataforma:** Fase 2 Concluída e Homologada em Produção; Fase 3 em planejamento (sem implementação)  
+> **Status da Plataforma:** Fase 2 Concluída e Homologada em Produção; Fase 3 com escopo oficial final (§5.1); implementação local E0–E3 (migration 045 **arquivo criado, não aplicada**; admin participantes/orgs sob flag); sem push/deploy/banco remoto nesta rodada  
+
 > **Projeto Físico:** `C:\Fernando Hugo\GAUCHINHO SITE`  
 > **Repositório Git:** `https://github.com/msdfernandoh/GUACHINHO-SITE.git`
 
@@ -106,10 +107,10 @@ As funções PostgreSQL de segurança (`SECURITY DEFINER`) instaladas no banco:
 * **FASE 0:** Auditoria Técnica e Mapeamento do Projeto *(Concluída)*
 * **FASE 1:** Fundação SaaS Multiempresa (Empresas, Usuários, Papéis, Permissões, Tenant Context) *(Concluída — Migration 043)*
 * **FASE 2:** Sites Multiempresa, Branding e Empresa B *(**CONCLUÍDA E HOMOLOGADA EM PRODUÇÃO** — código `12a5e61`, deploy `dpl_F1uWUw…`, docs `b3e6247`; Migration 044; Empresa B não publicada; fallback mantido temporariamente — ver `docs/relatorios-fases/FASE-02-IMPLEMENTACAO-E-HOMOLOGACAO.md`)*
-* **FASE 3:** Participantes Comerciais e Sites de Parceiros *(Planejamento — sem implementação; ver `docs/relatorios-fases/FASE-03-IMPLEMENTACAO-E-HOMOLOGACAO.md`)*
+* **FASE 3:** Participantes Comerciais e Sites de Parceiros *(Escopo oficial **final** documental — ver §5.1 e `docs/relatorios-fases/FASE-03-IMPLEMENTACAO-E-HOMOLOGACAO.md`; **implementação não iniciada**)*
 * **FASE 4:** Catálogo Global de Administradoras
 * **FASE 5:** Evolução de Grupos e Opções Comerciais
-* **FASE 6:** CRM, Leads, Agenda e Propostas Multiempresa
+* **FASE 6:** CRM, Leads, Agenda e Propostas Multiempresa *(funil, distribuição, agenda, automações, histórico avançado — fora da Fase 3)*
 * **FASE 7:** Contratação Online Multiempresa
 * **FASE 8:** Vendas e Cota Definitiva
 * **FASE 9:** Motor Configurável de Programas de Comissão
@@ -123,3 +124,42 @@ As funções PostgreSQL de segurança (`SECURITY DEFINER`) instaladas no banco:
 * **FASE 17:** Auditoria, Relatórios e Dashboards
 * **FASE 18:** Homologação Geral Integrada
 * **FASE 19:** Implantação e Onboarding
+
+---
+
+## 5.1 FASE 3 — Escopo oficial final (documental)
+
+> Detalhamento completo, plano E0–E10, proposta de migration 045 e critérios H1–H15:  
+> `docs/relatorios-fases/FASE-03-IMPLEMENTACAO-E-HOMOLOGACAO.md`  
+> **Estado:** escopo encerrado; Q1–Q5 aprovadas; sem migration/código/banco/Vercel.
+
+### Objetivo
+Entregar identidades comerciais (participantes e organizações parceiras), sites de parceiros com domínio próprio no MVP, e área comercial restrita do parceiro — sem transformar parceiro em tenant e sem redesenhar o CRM (Fase 6).
+
+### Entregas conceituais
+1. **Participantes comerciais** por `empresa_id`, tipos múltiplos, status, login opcional, auditoria.
+2. **Organizações parceiras** por tenant; responsáveis = participantes; status; geo simples.
+3. **Sites de parceiros** administrados **somente** pela empresa tenant (template, visual, textos, imagens, menus, domínio, DNS, publicação). Parceiro **não edita** o site.
+4. **Canais do mesmo site:** `/parceiro/[slug]`, `{slug}.gauchinhoconsorcios.com.br` (sem wildcard), domínio próprio (apex+www). MVP: **≤1 site ativo por organização**.
+5. **Papel** `parceiro_comercial` (novo; não reutilizar `parceiro_imobiliaria`) + permissões granulares de área comercial.
+6. **Área comercial** com leitura e mutações simples no escopo da org (leads/propostas); sem Kanban/agenda/automações.
+7. **Colunas nullable** em `leads`/`propostas`: `empresa_id`, `organizacao_parceira_id`, `parceiro_site_id`, `participant_id`, origem/UTMs. Legado permanece NULL; sem migrar CMS/`srd_responsavel_id` nesta fase.
+
+### Visibilidade na área comercial
+* `RESPONSAVEL_PARCEIRO`: todos os leads/propostas da própria organização.
+* Demais participantes autorizados: apenas vínculos próprios, salvo permissão de visão ampliada na org.
+* Regra por **vínculo + permissão**, não só nome de perfil.
+
+### Matriz resumida de permissões
+
+| Capacidade | SuperAdmin / Admin empresa | `parceiro_comercial` |
+|---|---|---|
+| Site, branding, menus, domínio, DNS, Vercel, publicar | Sim | **Não** |
+| Leads/propostas da própria org (conforme vínculo/perm) | Sim (tenant) | **Sim** |
+| Leads gerais / outros parceiros / config tenant / financeiro | Sim (conforme papel) | **Não** |
+
+### Limite explícito vs Fase 6
+Fase 3 prepara chaves, isolamento e tela comercial limitada. Fase 6 evolui CRM multiempresa completo (funil, distribuição, agenda, automações, histórico avançado, captura/atribuição completa).
+
+### Fora da Fase 3
+Comissões/repasses, wildcard DNS, editor do site pelo parceiro, backfill massivo sem autorização, remoção do fallback da Fase 2, operacionalização da Empresa B, início das Fases 4+.

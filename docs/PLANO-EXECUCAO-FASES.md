@@ -1,8 +1,13 @@
 # Plano de Execução por Fases
 
+> **CLASSIFICAÇÃO:** roadmap **legado do produto/site** (criação inicial do Gauchinho).  
+> A numeração deste arquivo (ex.: “Fase 3 — Proposta PDF premium”) **não** corresponde às fases da transformação SaaS multiempresa.  
+> **Fonte canônica das fases SaaS:** [`docs/SAAS-MASTER-ARCHITECTURE.md`](./SAAS-MASTER-ARCHITECTURE.md)  
+> (Fase 1 Fundação SaaS; Fase 2 Sites/Domínios/Branding/Empresa B; Fase 3 Participantes Comerciais e Sites de Parceiros; …).
+
 ## Projeto Gauchinho Escritório de Soluções Financeiras
 
-Documento de roadmap: ordem de implementação, entregas e resultados esperados por fase.
+Documento de roadmap legado: ordem de implementação histórica do site, entregas e resultados esperados por fase do produto.
 
 **Referência técnica:** [PROJETO-GAUCHINHO-FASE-1.md](./PROJETO-GAUCHINHO-FASE-1.md)
 
