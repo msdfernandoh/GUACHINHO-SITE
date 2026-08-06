@@ -1,8 +1,8 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
-> **Versão:** 1.0.0  
-> **Data de Atualização:** 05/08/2026  
-> **Status da Plataforma:** Fase 1 Concluída no Código (Fundação SaaS Criada)  
+> **Versão:** 1.1.0  
+> **Data de Atualização:** 06/08/2026  
+> **Status da Plataforma:** Fase 2 Concluída e Homologada em Produção; Fase 3 em planejamento (sem implementação)  
 > **Projeto Físico:** `C:\Fernando Hugo\GAUCHINHO SITE`  
 > **Repositório Git:** `https://github.com/msdfernandoh/GUACHINHO-SITE.git`
 
@@ -104,9 +104,9 @@ As funções PostgreSQL de segurança (`SECURITY DEFINER`) instaladas no banco:
 ## 5. Mapeamento das 19 Fases de Evolução
 
 * **FASE 0:** Auditoria Técnica e Mapeamento do Projeto *(Concluída)*
-* **FASE 1:** Fundação SaaS Multiempresa (Empresas, Usuários, Papéis, Permissões, Tenant Context) *(Código Criado e Compilado)*
-* **FASE 2:** Sites Multiempresa, Branding e Empresa B *(Implantada e homologada em produção: `main`/`12a5e61`, deploy `dpl_F1uWUw…`; Migration 044 aplicada; Empresa B não publicada; fallback mantido; Fase 3 não iniciada — ver `docs/relatorios-fases/FASE-02-IMPLEMENTACAO-E-HOMOLOGACAO.md`)*
-* **FASE 3:** Participantes Comerciais e Sites de Parceiros
+* **FASE 1:** Fundação SaaS Multiempresa (Empresas, Usuários, Papéis, Permissões, Tenant Context) *(Concluída — Migration 043)*
+* **FASE 2:** Sites Multiempresa, Branding e Empresa B *(**CONCLUÍDA E HOMOLOGADA EM PRODUÇÃO** — código `12a5e61`, deploy `dpl_F1uWUw…`, docs `b3e6247`; Migration 044; Empresa B não publicada; fallback mantido temporariamente — ver `docs/relatorios-fases/FASE-02-IMPLEMENTACAO-E-HOMOLOGACAO.md`)*
+* **FASE 3:** Participantes Comerciais e Sites de Parceiros *(Planejamento — sem implementação; ver `docs/relatorios-fases/FASE-03-IMPLEMENTACAO-E-HOMOLOGACAO.md`)*
 * **FASE 4:** Catálogo Global de Administradoras
 * **FASE 5:** Evolução de Grupos e Opções Comerciais
 * **FASE 6:** CRM, Leads, Agenda e Propostas Multiempresa

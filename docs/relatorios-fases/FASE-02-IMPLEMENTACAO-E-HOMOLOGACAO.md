@@ -10,25 +10,29 @@
 
 **Produção implantada (UTC):** 2026-08-06 19:36 Ready
 
-> Fase 2 **implantada e homologada em produção**. Merge fast-forward `feature/saas-foundation` → `main` até `12a5e61`. Deploy Production Vercel `dpl_F1uWUw…` @ `12a5e61` (**Ready**). Homologação pública + autenticada em `gauchinhoconsorcios.com.br` / `www` **aprovadas**. Migration 044 aplicada. Empresa B não publicada. Fallback emergencial mantido. Fase 3 não iniciada.
+> **FASE 2 — CONCLUÍDA E HOMOLOGADA EM PRODUÇÃO** (encerramento formal 2026-08-06). Código de produção `12a5e61`; commit documental final `b3e6247` (pushed). Deploy `dpl_F1uWUw…` Ready. Migration 044 aplicada. Domínio oficial resolve via `empresa_dominios` (`source=domain`); fallback emergencial mantido temporariamente (não usado nos hosts oficiais). Empresa B tenant de demonstração não publicada. Dados legados preservados. Fase 3 **não iniciada** (somente planejamento — ver `FASE-03-IMPLEMENTACAO-E-HOMOLOGACAO.md`).
 
 ---
 
 ## STATUS ATUAL
 
 ```
-FASE 2 — IMPLANTADA E HOMOLOGADA EM PRODUÇÃO
-MAIN — 12a5e61 (fast-forward a partir de feature/saas-foundation)
-PRODUÇÃO — dpl_F1uWUw… READY @ 12a5e61
-HOMOLOGAÇÃO PÚBLICA PRODUÇÃO — APROVADA
-HOMOLOGAÇÃO AUTENTICADA PRODUÇÃO — APROVADA
+FASE 2 — CONCLUÍDA E HOMOLOGADA EM PRODUÇÃO
 MIGRATION 044 — APLICADA E HOMOLOGADA
-EMPRESA B — NÃO PUBLICADA
-FALLBACK EMERGENCIAL — MANTIDO
-FASE 3 — NÃO INICIADA
+MAIN — ATUALIZADA (origin/main = b3e6247)
+CÓDIGO DE PRODUÇÃO — 12a5e61
+COMMIT DOCUMENTAL FINAL — b3e6247 (pushed)
+DEPLOYMENT — dpl_F1uWUwUV1go5adBnNqat4eZXcse9
+PRODUÇÃO — READY E OPERACIONAL
+HOMOLOGAÇÃO PÚBLICA — APROVADA
+HOMOLOGAÇÃO AUTENTICADA — APROVADA
+EMPRESA B — CRIADA COMO TENANT DE DEMONSTRAÇÃO, NÃO PUBLICADA
+FALLBACK EMERGENCIAL — MANTIDO TEMPORARIAMENTE
+DADOS LEGADOS — PRESERVADOS (7 / 116 / 12 / 19 / 178 / 17)
+FASE 3 — NÃO INICIADA (plano em análise)
 ```
 
-**Aliases oficiais** (`gauchinhoconsorcios.com.br`, `www`, `guachinho-site.vercel.app`) apontam para o novo deployment de produção. Preview canônico `dpl_5UQW…` permanece como evidência pré-produção.
+**Aliases oficiais** (`gauchinhoconsorcios.com.br`, `www`, `guachinho-site.vercel.app`) apontam para o deployment de produção da Fase 2.
 
 ---
 
@@ -276,12 +280,14 @@ Não entraram em `cc2b26a` / commits posteriores de código:
 
 ---
 
-## 16. Pendências (próximas autorizações)
+## 16. Pendências pós-Fase 2
 
-- remoção futura do fallback emergencial (somente após decisão formal pós-homologação de produção);
-- encerramento formal da Fase 2 / início da Fase 3 — **somente com autorização explícita**.
+| Pendência | Condição objetiva |
+|---|---|
+| Remoção do fallback emergencial de hosts oficiais | Somente após **período de estabilidade** em produção + **nova autorização explícita**. **Não remover nesta Fase 2.** |
+| Início da implementação da Fase 3 | Somente após aprovação explícita do plano em `FASE-03-IMPLEMENTACAO-E-HOMOLOGACAO.md` |
 
-Merge em `main`, deploy de produção e homologações (preview + produção) **já concluídos** — ver §19–§22.
+Encerramento formal da Fase 2: **concluído** (§23). Merge/`main`/deploy/homologações: **concluídos** (§19–§22).
 
 ---
 
@@ -815,17 +821,59 @@ Base: `https://www.gauchinhoconsorcios.com.br` (sessão via `generateLink`+`veri
 
 ---
 
+## 23. Encerramento formal da Fase 2
+
+**Data:** 2026-08-06  
+**Commit documental final (pushed):** `b3e62479f9e901a2298ada50b5e37417044741f6`
+
+### 23.1 Declaração
+
+A Fase 2 (Sites Multiempresa, Domínios, Branding e Empresa B) está **CONCLUÍDA E HOMOLOGADA EM PRODUÇÃO**.
+
+| Item | Status |
+|---|---|
+| Migration 044 | **APLICADA E HOMOLOGADA** |
+| Main | **ATUALIZADA** (`origin/main` = `b3e6247`) |
+| Código de produção (app) | **`12a5e61`** |
+| Commit documental final | **`b3e6247`** |
+| Deployment | **`dpl_F1uWUwUV1go5adBnNqat4eZXcse9`** |
+| Produção | **READY E OPERACIONAL** |
+| Homologação pública | **APROVADA** |
+| Homologação autenticada | **APROVADA** |
+| Empresa B | **CRIADA COMO TENANT DE DEMONSTRAÇÃO, NÃO PUBLICADA** |
+| Fallback emergencial | **MANTIDO TEMPORARIAMENTE** |
+| Dados legados | **PRESERVADOS** |
+| Fase 3 | **NÃO INICIADA** |
+
+### 23.2 Evidências operacionais do encerramento
+
+- Domínio oficial resolveu via **`empresa_dominios`** (`gauchinhoconsorcios.com.br` principal/ativo/verificado).
+- Source de resolução nos hosts oficiais: **`domain`**.
+- Fallback emergencial **não foi utilizado** nos hosts oficiais (mantido no código como rede de segurança).
+- Empresa B: **sem domínio**; branding **`RASCUNHO`**; status **`em_treinamento`**; `ativo=false`.
+- Nenhuma tabela operacional legada recebeu `empresa_id` nesta fase.
+- Contagens legadas permaneceram: **usuarios 7 / leads 116 / propostas 12 / grupos_consorcio 19 / grupos_cotas 178 / contratacoes_online 17**.
+
+### 23.3 Pendência explícita — fallback
+
+Não remover o fallback emergencial sem nova autorização. Critério sugerido: estabilidade pós-produção confirmada + decisão formal documentada.
+
+---
+
 ## STATUS FINAL
 
 ```
-FASE 2 — IMPLANTADA E HOMOLOGADA EM PRODUÇÃO
+FASE 2 — CONCLUÍDA E HOMOLOGADA EM PRODUÇÃO
 MIGRATION 044 — APLICADA E HOMOLOGADA
-MAIN — 12a5e61 (fast-forward)
-DEPLOY DE PRODUÇÃO — dpl_F1uWUwUV1go5adBnNqat4eZXcse9 READY @ 12a5e61
-ALIASES — gauchinhoconsorcios.com.br / www / guachinho-site.vercel.app
+MAIN — ATUALIZADA (b3e6247)
+CÓDIGO DE PRODUÇÃO — 12a5e61
+COMMIT DOCUMENTAL FINAL — b3e6247
+DEPLOYMENT — dpl_F1uWUwUV1go5adBnNqat4eZXcse9 READY E OPERACIONAL
 HOMOLOGAÇÃO PÚBLICA — APROVADA
 HOMOLOGAÇÃO AUTENTICADA — APROVADA
-EMPRESA B — NÃO PUBLICADA
-FALLBACK EMERGENCIAL — MANTIDO (não usado nos hosts oficiais; domain hit)
+EMPRESA B — TENANT DE DEMONSTRAÇÃO, NÃO PUBLICADA
+FALLBACK EMERGENCIAL — MANTIDO TEMPORARIAMENTE
+DADOS LEGADOS — PRESERVADOS (7 / 116 / 12 / 19 / 178 / 17)
+SOURCE OFICIAL — domain (fallback não usado nos hosts oficiais)
 FASE 3 — NÃO INICIADA
 ```
