@@ -6,26 +6,27 @@
 
 **Data desta execução / correção do relatório:** 2026-08-06
 
-> A implementação anterior foi criada localmente antes da aprovação formal do plano revisado e foi tratada como **rascunho não aprovado**. Esta execução realizou auditoria, correção dos bloqueios críticos, revalidação, **commit local** e validação por testes. **Não** houve push, aplicação da Migration 044 nem deploy.
+**Homologação pós-Migration 044 (UTC):** 2026-08-06 15:44
+
+> A implementação anterior foi criada localmente antes da aprovação formal do plano revisado e foi tratada como **rascunho não aprovado**. Código e relatório foram commitados localmente. A **Migration 044 foi aplicada em produção** e homologada em banco (somente leitura). **Não** houve git push, deploy de código, remoção do fallback emergencial nem início da Fase 3.
 
 ---
 
 ## STATUS ATUAL
 
 ```
-FASE 2 — IMPLEMENTAÇÃO LOCAL COMMITADA E VALIDADA POR TESTES
-COMMIT — REALIZADO
-Commit: cc2b26ae8030bad364e8fd31aa023598cfef928d
-PUSH — NÃO REALIZADO
-MIGRATION 044 — NÃO APLICADA
-HOMOLOGAÇÃO EM SUPABASE REAL — PENDENTE
-HOMOLOGAÇÃO AUTENTICADA — PENDENTE
+FASE 2 — MIGRATION 044 APLICADA E BANCO HOMOLOGADO
+CÓDIGO LOCAL — COMMITADO
+GIT PUSH — NÃO REALIZADO
 DEPLOY — NÃO REALIZADO
-PRODUÇÃO — INALTERADA
+HOMOLOGAÇÃO PÚBLICA PÓS-MIGRATION — REALIZADA
+HOMOLOGAÇÃO AUTENTICADA DO NOVO ADMIN — PENDENTE
+PRODUÇÃO DO SITE — CÓDIGO ANTIGO AINDA ATIVO
+FALLBACK EMERGENCIAL — MANTIDO
 FASE 3 — NÃO INICIADA
 ```
 
-**Não declarar pronta para produção.** A tela `/admin/empresas` **não** está homologada em produção (Migration 044 ausente + homologação autenticada SuperAdmin pendente).
+**Não declarar o novo admin multiempresa pronto em produção.** `/admin/empresas` permanece pendente de homologação autenticada SuperAdmin; o site público ainda roda o **código antigo** (sem deploy do código da Fase 2).
 
 ---
 
@@ -246,16 +247,17 @@ Escopo: 79 files, +3436 / −260.
 | Item | Status |
 |---|---|
 | Staging | não aplicado |
-| Produção Migration 044 | **NÃO APLICADA** |
-| Homologação em Supabase real | **PENDENTE** |
-| Homologação autenticada SuperAdmin | **PENDENTE** |
-| Deploy | **NÃO REALIZADO** |
-| Commit local | **REALIZADO** — `cc2b26ae8030bad364e8fd31aa023598cfef928d` |
+| Produção Migration 044 | **APLICADA** (ver §17) |
+| Homologação em Supabase real (banco) | **REALIZADA** (ver §17) |
+| Homologação pública pós-migration (sem deploy) | **REALIZADA** (ver §17.9) |
+| Homologação autenticada SuperAdmin / `/admin/empresas` | **PENDENTE** |
+| Deploy do código Fase 2 | **NÃO REALIZADO** |
+| Commit local código | **REALIZADO** — `cc2b26ae8030bad364e8fd31aa023598cfef928d` |
+| Commit local relatório | **REALIZADO** — `a2eb815` (este MD será atualizado novamente pós-homologação) |
 | Push | **NÃO REALIZADO** |
-| Produção | **INALTERADA** |
+| Produção do site (código) | **código antigo ainda ativo** |
+| Fallback emergencial | **MANTIDO** |
 | Fase 3 | **NÃO INICIADA** |
-
-> Este relatório foi corrigido no working tree **após** o commit `cc2b26a` para eliminar contradições de status. Aguarda autorização explícita para um commit documental de sincronização, se desejado.
 
 ---
 
@@ -271,32 +273,178 @@ Não entraram em `cc2b26a`:
 - binários / arquivos de IDE / logs / dumps / artefatos `.next` / scripts temporários
 - relatório FASE-01 (ainda untracked — fora desta autorização)
 
-`git status --short` após o commit (estado observado na correção do relatório): working tree com este MD modificado + untracked acima — **sem** staging de segredos.
-
 ---
 
 ## 16. Pendências (próximas autorizações)
 
-- revisão final do commit;
-- homologação da Migration 044 em ambiente real;
-- homologação autenticada SuperAdmin;
-- autorização para push;
-- autorização para aplicação em produção;
-- autorização para deploy;
-- remoção futura do fallback emergencial.
+- homologação autenticada SuperAdmin (`/admin/empresas`);
+- autorização para git push;
+- autorização para deploy do código Fase 2;
+- remoção futura do fallback emergencial (somente após 044 + código novos homologados juntos);
+- Fase 3 — **não iniciar** sem autorização explícita.
+
+---
+
+## 17. Homologação pós-Migration 044 (produção)
+
+**Projeto Supabase:** `eaeuoynprurmmulzhydt` (Gauchinho-Site)  
+**Branch:** `feature/saas-foundation`  
+**CLI:** nativa `2.111.0` (`%LOCALAPPDATA%\supabase-cli\supabase.exe`)  
+**Data/hora da validação:** 2026-08-06 15:44 UTC  
+**Escopo:** somente leitura / HTTP público. Sem SQL Editor, sem repair, sem nova migration, sem deploy, sem git push.
+
+### 17.1 Aplicação (evidência do operador) + dry-run posterior
+
+| Item | Resultado |
+|---|---|
+| Comando de aplicação | `supabase db push --linked --yes` |
+| Migration aplicada | `044_sites_multiempresa_dominios_branding.sql` |
+| Dry-run posterior | `supabase db push --linked --dry-run` → `{"upToDate":true,"migrations":[],"message":"Remote database is up to date."}` |
+
+Flags **não** usadas: `--include-all`, `--force`. Sem `migration repair`. Sem SQL Editor.
+
+### 17.2 Histórico de migrations (`supabase migration list --linked`)
+
+- **001 a 044** presentes em LOCAL e REMOTE (sincronizadas).
+- Nenhuma migration pendente.
+- Nenhuma migration desconhecida / divergente.
+- `supabase_migrations.schema_migrations`: versões `001`…`044` contínuas.
+
+### 17.3 Estrutura criada
+
+| Objeto | Resultado |
+|---|---|
+| `public.empresa_dominios` | existe; **RLS = true** |
+| `public.empresa_branding` | existe; **RLS = true** |
+
+**empresa_dominios — colunas:** `id` (uuid PK, `gen_random_uuid()`), `empresa_id` (uuid NOT NULL → `empresas.id`), `tipo` (text), `valor` (text), `principal` (bool default false), `ativo` (bool default true), `verificado` (bool default false), `created_at` / `updated_at` (timestamptz default now()).
+
+**empresa_branding — colunas:** `id`, `empresa_id` (UNIQUE FK), `nome_site`, `subtitulo`/`descricao_institucional` (default `''`), `logo_url`, `logo_claro_url`, `logo_escuro_url`, `favicon_url`, `cor_primaria`, `cor_secundaria`, `cor_destaque`, `telefone`/`whatsapp`/`email_contato` (default `''`), `redes_sociais` (jsonb default `{}`), `seo_titulo`, `seo_descricao`, `status_publicacao` (default `RASCUNHO`), `created_at`, `updated_at`.
+
+**Índices relevantes:** `empresa_dominios_valor_ativo_idx` (único onde `ativo`), `empresa_dominios_principal_unico_idx` (único principal ativo por empresa), `empresa_dominios_empresa_idx`, PKs e unique de branding.
+
+**Triggers:** `empresa_dominios_normalize` (BEFORE INSERT/UPDATE → `empresa_dominios_before_write`), `empresa_dominios_updated_at` / `empresa_branding_updated_at` (→ `set_updated_at`).
+
+### 17.4 Funções / normalização (inspeção de schema — sem testes destrutivos)
+
+| Regra | Evidência |
+|---|---|
+| Função `normalize_empresa_dominio_valor(text)` | presente (immutable) |
+| Trigger de normalização | ativo |
+| Trigger `updated_at` | ativo nas duas tabelas |
+| Bloqueio localhost / `*.localhost` / IPs locais | no corpo de `empresa_dominios_before_write` |
+| Bloqueio IP IPv4 literal | regex no trigger |
+| Bloqueio wildcard `*` / espaços | no trigger |
+| Strip de protocolo / path / query / fragment / `www.` / porta | na função de normalização |
+| Valor em minúsculas | função + CHECK `empresa_dominios_valor_normalizado` |
+| Unicidade domínio ativo | índice parcial único |
+| Um principal ativo por empresa | índice parcial único |
+
+### 17.5 Seed Gauchinho
+
+| Campo | Valor remoto | OK |
+|---|---|---|
+| slug | `gauchinho` (1 linha, sem duplicação) | sim |
+| domínio `valor` | `gauchinhoconsorcios.com.br` | sim |
+| `principal` / `ativo` / `verificado` | true / true / true | sim |
+| `empresa_id` | coincide com empresa gauchinho | sim |
+| `nome_site` | Gauchinho Escritório de Soluções Financeiras | sim |
+| subtitulo / descricao / telefone / whatsapp / email | vazios (`''`) | sim |
+| cores | `#0A1628` / `#0D1F3C` / `#C9A84C` | sim |
+| `logo_url` | null | sim |
+| `status_publicacao` | `PUBLICADO` | sim |
+
+Código novo **não** implantado → site público continua o comportamento legado (confirmado em §17.9).
+
+### 17.6 Seed Empresa B
+
+| Checagem | Resultado |
+|---|---|
+| slug / nome_fantasia | `empresa-b` / `Empresa B Consórcios` |
+| cnpj | null |
+| status / ativo | `em_treinamento` / `false` |
+| branding | 1 linha, `RASCUNHO`, nome_site `Empresa B Consórcios` |
+| domínio | **0** |
+| `empresa_usuarios` | **0** |
+| Tabelas com `empresa_id` no schema | só `empresa_dominios`, `empresa_branding`, `empresa_usuarios`, `papeis` — **sem** `empresa_id` em leads/propostas/grupos/contratações/agenda |
+
+Sem dados operacionais vinculados à Empresa B (estrutura multiempresa operacional ainda não espalhada nas tabelas legadas).
+
+### 17.7 Permissões, RLS, grants
+
+**Permissão:** `gerenciar_site_empresa` criada; vinculada ao papel sistema `admin_empresa`.  
+**SuperAdmin:** policies usam `is_platform_superadmin()` (funções da 043) → acesso global preservado nas policies.
+
+**Policies exatas:**
+
+| Tabela | Policy | cmd | roles | USING / WITH CHECK |
+|---|---|---|---|---|
+| empresa_dominios | empresa_dominios_select_policy | SELECT | authenticated | `is_platform_superadmin() OR is_company_member(empresa_id)` |
+| empresa_dominios | empresa_dominios_write_policy | ALL | authenticated | `is_platform_superadmin() OR has_company_permission(empresa_id, 'gerenciar_site_empresa')` |
+| empresa_branding | empresa_branding_select_policy | SELECT | authenticated | idem select |
+| empresa_branding | empresa_branding_write_policy | ALL | authenticated | idem write |
+
+**Grants / ACL observados:**
+
+- `anon`: **nenhum** grant de tabela em `empresa_dominios` / `empresa_branding` (revoke efetivo).
+- `authenticated` e `service_role`: ACL `arwdDxtm` (privilégios amplos de tabela).
+- A 044 **não** executou `ALTER DEFAULT PRIVILEGES` nem `GRANT` global genérico; porém o schema `public` já possui **DEFAULT PRIVILEGES de plataforma** pré-existentes (`postgres` / `supabase_admin`) que concedem ALL em tabelas novas a `anon`/`authenticated`/`service_role` no momento do `CREATE TABLE`. A migration **revogou anon** nas duas tabelas; o acesso efetivo de `authenticated` continua **filtrado por RLS** (sem policy = sem linhas; policies exigem membership/permissão/superadmin).
+- Função `normalize_empresa_dominio_valor`: EXECUTE também listado para `anon` (função pura de normalização; sem vazamento de dados). Mitigação principal permanece RLS nas tabelas.
+- Usuário comum **não** ganha acesso global: policies exigem `is_company_member` / `has_company_permission` / superadmin.
+
+### 17.8 Preservação de dados legados
+
+| Tabela | Esperado | Remoto | Status |
+|---|---|---|---|
+| usuarios | 7 | 7 | OK |
+| leads | 116 | 116 | OK |
+| propostas | 12 | 12 | OK |
+| grupos_consorcio | 19 | 19 | OK |
+| grupos_cotas | 178 | 178 | OK |
+| contratacoes_online | 17 | 17 | OK |
+
+044 não altera tabelas operacionais legadas (confirmado pelo SQL da migration e pelas contagens idênticas).
+
+### 17.9 Homologação pública sem deploy
+
+Base: `https://www.gauchinhoconsorcios.com.br` (apex `gauchinhoconsorcios.com.br` redireciona para www, HTTP 200).
+
+| Rota | HTTP | Gauchinho | Empresa B publicada | Erro 500 |
+|---|---|---|---|---|
+| `/` | 200 | sim | não | não |
+| `/simulador` | 200 | sim | não | não |
+| `/grupos` | 200 | sim | não | não |
+| `/eventos` | 200 | sim | não | não |
+| `/cartas-contempladas` | 200 | sim | não | não |
+| `/oportunidades-imobiliarias` | 200 | sim | não | não |
+| `/seguradoras` | 200 | sim | não | não |
+| `/indicar` | 200 | sim | não | não |
+| `/login` | 200 | sim | não | não |
+
+Sem envio de lead/proposta/contratação; sem autenticação real nesta rodada.
+
+### 17.10 O que NÃO foi feito nesta homologação
+
+- git push
+- deploy do código Fase 2
+- remoção do fallback emergencial
+- homologação autenticada SuperAdmin
+- Fase 3
+- alteração de código
+- nova migration / repair / SQL Editor
 
 ---
 
 ## STATUS FINAL
 
 ```
-FASE 2 — IMPLEMENTAÇÃO LOCAL COMMITADA E VALIDADA POR TESTES
-MIGRATION 044 — NÃO APLICADA
-HOMOLOGAÇÃO EM SUPABASE REAL — PENDENTE
-HOMOLOGAÇÃO AUTENTICADA — PENDENTE
-PUSH — NÃO REALIZADO
+FASE 2 — MIGRATION 044 APLICADA E BANCO HOMOLOGADO
+CÓDIGO LOCAL — COMMITADO
+GIT PUSH — NÃO REALIZADO
 DEPLOY — NÃO REALIZADO
-PRODUÇÃO — INALTERADA
+HOMOLOGAÇÃO PÚBLICA PÓS-MIGRATION — REALIZADA
+HOMOLOGAÇÃO AUTENTICADA DO NOVO ADMIN — PENDENTE
+PRODUÇÃO DO SITE — CÓDIGO ANTIGO AINDA ATIVO
+FALLBACK EMERGENCIAL — MANTIDO
 FASE 3 — NÃO INICIADA
 ```
-)
