@@ -8,26 +8,28 @@
 
 **Homologação pós-Migration 044 (UTC):** 2026-08-06 15:44
 
-> Código e relatório da Fase 2 estão na branch remota `feature/saas-foundation` (`f720cbf`). Migration 044 aplicada e homologada. **Preview Vercel criado** (`dpl_6Ab1Wj…`); **produção não alterada**. Homologação funcional do preview pendente por Deployment Protection (SSO). Fallback mantido. Fase 3 não iniciada.
+> Código da Fase 2 + fix de preview na branch remota `feature/saas-foundation` (`6512f78`). Migration 044 aplicada e inalterada. **Novo preview Ready** (`dpl_5UQW…` @ `6512f78`); **produção não alterada**. Homologação pública **aprovada**. Homologação autenticada SuperAdmin + perfis não autorizados **aprovada** no preview canônico (ver §21). Fallback mantido. Fase 3 não iniciada.
 
 ---
 
 ## STATUS ATUAL
 
 ```
-FASE 2 — PREVIEW DEPLOY CRIADO (PRODUÇÃO NÃO ALTERADA)
-PREVIEW — READY
-PRODUÇÃO — CÓDIGO ANTIGO (main / dpl_3XWLK…)
-GIT PUSH — REALIZADO (feature/saas-foundation @ f720cbf)
+FASE 2 — PREVIEW @ 6512f78 HOMOLOGADO (PÚBLICO + AUTENTICADO)
+COMMIT — 6512f78 (feature/saas-foundation, pushed)
+PREVIEW CANÔNICO — dpl_5UQW… / guachinho-site-51j7ozrgo-… READY @ 6512f78
+HOMOLOGAÇÃO PÚBLICA — APROVADA
+HOMOLOGAÇÃO SuperAdmin /admin/empresas — APROVADA
+PERFIS NÃO AUTORIZADOS — APROVADOS (sem sessão → login; master/consultor → /admin)
+PRODUÇÃO — INALTERADA (main / dpl_3XWLK… / 2026-08-04)
 MERGE EM MAIN — NÃO REALIZADO
-DEPLOY --prod — NÃO REALIZADO
-HOMOLOGAÇÃO PÚBLICA NO PREVIEW — BLOQUEADA POR DEPLOYMENT PROTECTION (SSO)
-HOMOLOGAÇÃO AUTENTICADA NO PREVIEW — PENDENTE (requer acesso SSO + SuperAdmin)
+DEPLOY --prod / PROMOTE — NÃO REALIZADO
 FALLBACK EMERGENCIAL — MANTIDO
+MIGRATION 044 — APLICADA E INALTERADA
 FASE 3 — NÃO INICIADA
 ```
 
-**Produção (`gauchinhoconsorcios.com.br`) permanece no deploy antigo.** O preview exige autenticação Vercel (SSO); homologação funcional completa no preview fica pendente de acesso autenticado.
+**Produção (`gauchinhoconsorcios.com.br`) permanece no deploy antigo.** O preview antigo `dpl_6Ab1Wj…` continua evidenciando o bug (`Site não configurado`); a homologação da correção usa exclusivamente o novo deployment `dpl_5UQW…`.
 
 ---
 
@@ -173,7 +175,7 @@ Ordem no proxy para `/admin`:
 
 **Homologação:**
 - Homologação unitária de autorização: **APROVADA** (testes).
-- Homologação autenticada manual com SuperAdmin: **PENDENTE** (Migration 044 ainda não aplicada; não há tela homologada em produção).
+- Homologação autenticada SuperAdmin no preview canônico @ `6512f78`: **APROVADA** (ver §21). Produção do site ainda no código antigo (`main`).
 
 ---
 
@@ -251,12 +253,11 @@ Escopo: 79 files, +3436 / −260.
 | Produção Migration 044 | **APLICADA** (ver §17) |
 | Homologação em Supabase real (banco) | **REALIZADA** (ver §17) |
 | Homologação pública pós-migration (sem deploy) | **REALIZADA** (ver §17.9) |
-| Homologação autenticada SuperAdmin / `/admin/empresas` | **PENDENTE** |
-| Deploy do código Fase 2 | **NÃO REALIZADO** |
-| Commit local código | **REALIZADO** — `cc2b26ae8030bad364e8fd31aa023598cfef928d` |
-| Commit local relatório | **REALIZADO** — `a2eb815` (este MD será atualizado novamente pós-homologação) |
-| Push | **NÃO REALIZADO** |
-| Produção do site (código) | **código antigo ainda ativo** |
+| Homologação autenticada SuperAdmin / `/admin/empresas` | **APROVADA no preview** (ver §21) |
+| Deploy preview do código Fase 2 | **REALIZADO** — `dpl_5UQW…` @ `6512f78` (sem `--prod`) |
+| Commit código + fix preview | **REALIZADO e pushed** — `6512f78` |
+| Push `feature/saas-foundation` | **REALIZADO** |
+| Produção do site (código) | **código antigo ainda ativo** (`main` / `dpl_3XWLK…`) |
 | Fallback emergencial | **MANTIDO** |
 | Fase 3 | **NÃO INICIADA** |
 
@@ -264,7 +265,7 @@ Escopo: 79 files, +3436 / −260.
 
 ## 15. Fora do escopo do commit (confirmado)
 
-Não entraram em `cc2b26a`:
+Não entraram em `cc2b26a` / commits posteriores de código:
 
 - `.claude/`
 - `Adesivos/`
@@ -278,11 +279,12 @@ Não entraram em `cc2b26a`:
 
 ## 16. Pendências (próximas autorizações)
 
-- homologação autenticada SuperAdmin (`/admin/empresas`);
-- autorização para git push;
-- autorização para deploy do código Fase 2;
-- remoção futura do fallback emergencial (somente após 044 + código novos homologados juntos);
+- promote / `deploy --prod` do código Fase 2 (somente com autorização explícita);
+- merge em `main` (somente com autorização explícita);
+- remoção futura do fallback emergencial (somente após decisão formal pós-produção);
 - Fase 3 — **não iniciar** sem autorização explícita.
+
+Homologações de preview (pública + autenticada) e push de `6512f78` **já concluídos** — ver §19–§21.
 
 ---
 
@@ -473,27 +475,24 @@ Sem envio de lead/proposta/contratação; sem autenticação real nesta rodada.
 | Merge em `main` | **não realizado** |
 | Promote / `--prod` | **não realizado** |
 
-### 18.4 Homologação no preview — resultado
+### 18.4 Homologação no preview — resultado (histórico @ `f720cbf`)
 
-**Bloqueio:** Deployment Protection / **Vercel SSO** no preview. Requisições HTTP anônimas recebem **302** para `vercel.com/sso-api` (página de autenticação ~488KB). `vercel curl` também redireciona para SSO nesta configuração.
+> Registro da tentativa no preview **pré-fix** (`dpl_6Ab1Wj…`). Superada pelo fix `6512f78` + novo preview `dpl_5UQW…` (§19–§21).
 
-| Área | Status |
-|---|---|
-| Build / rotas Fase 2 presentes no artefato | **OK** (evidência no log de build) |
-| Homologação pública funcional (HTML Gauchinho, rotas, tenant, APIs) | **PENDENTE** — requer login SSO Vercel no preview |
-| Homologação autenticada SuperAdmin `/admin/empresas` | **PENDENTE** — requer SSO + sessão SuperAdmin |
-| Perfis (master/consultor/sem sessão) | **PENDENTE** no preview |
-| Contagens legadas (banco) | **OK** — 7 / 116 / 12 / 19 / 178 / 17 (reconfirmadas 2026-08-06) |
-| Empresa B publicada / domínio real / DNS | **não** — sem alteração |
-| Fallback emergencial | **mantido** |
-| Fase 3 | **não iniciada** |
+| Área | Status na época (§18) | Status atual |
+|---|---|---|
+| Build / rotas Fase 2 no artefato | **OK** | **OK** |
+| Homologação pública funcional | bloqueada: host preview → `Site não configurado` + Deployment Protection | **APROVADA** no `dpl_5UQW…` (§20) |
+| Homologação autenticada SuperAdmin | pendente | **APROVADA** (§21) |
+| Perfis não autorizados | pendente | **APROVADOS** (§21) |
+| Contagens legadas (banco) | **OK** | **OK** |
+| Empresa B publicada / domínio / DNS | não | não |
+| Fallback emergencial | mantido | mantido |
+| Fase 3 | não iniciada | não iniciada |
 
-### 18.5 Pendências para autorização seguinte
+### 18.5 Encaminhamento (histórico)
 
-1. Homologar o preview **com sessão Vercel SSO** após redeploy do fix §19.
-2. Homologar `/admin/empresas` com SuperAdmin no preview.
-3. Só então autorizar promote/`--prod` ou merge em `main` (escolha explícita).
-4. Manter fallback emergencial de hosts oficiais até decisão formal pós-produção.
+Na época: corrigir tenant em preview (§19), redeploy, homologar, e só então considerar promote/merge. **Concluído até homologação autenticada** (§19–§21). Promote/`--prod`/merge em `main` seguem **não autorizados**.
 
 ---
 
@@ -508,7 +507,7 @@ Sem envio de lead/proposta/contratação; sem autenticação real nesta rodada.
 - Fallback emergencial só cobre `gauchinhoconsorcios.com.br` / `www`.
 - Preview Vercel roda com `NODE_ENV=production`, então overrides de development (`?__tenant=`, `*.localhost`) não aplicam.
 
-### 19.2 Correção (código local — aguarda push/redeploy)
+### 19.2 Correção (código — push autorizado e realizado)
 
 Arquivos:
 
@@ -531,33 +530,202 @@ Regras de segurança:
 | Empresa B | continua sem domínio; não é publicada |
 | Migration 044 / Supabase | **não alterados** |
 
-### 19.3 Testes e build
+### 19.3 Testes e build (pré-push)
 
 | Comando | Resultado |
 |---|---|
 | `npm test` | **85 files / 374 tests passed / 0 failed** |
 | `npm run build` | **exit 0** |
 
-### 19.4 Estado operacional
+### 19.4 Push (autorizado)
 
-- Produção: **inalterada** (código antigo em `main`).
-- Migration 044: **não alterada**.
-- Empresa B: **não publicada**.
-- Push / novo preview / promote: **não realizados** nesta etapa (aguardam autorização).
+| Item | Valor |
+|---|---|
+| Branch | `feature/saas-foundation` |
+| HEAD | `6512f788fa48ce8514a425e32d8a9cc1ac2be25a` |
+| Mensagem | `fix(saas): permite tenant Gauchinho em preview seguro da Vercel` |
+| Comando | `git push origin feature/saas-foundation` |
+| Remote sync | `origin/feature/saas-foundation` = `6512f78` |
+| Working tree | sem alterações rastreadas pendentes; untracked fora do escopo mantidos fora |
+| Merge em `main` | **não realizado** |
+
+---
+
+## 20. Novo preview deploy @ `6512f78` + homologação
+
+**Data:** 2026-08-06  
+**Autorização:** push + preview sem `--prod` (produção intocada).
+
+### 20.1 Pré-checks Vercel
+
+| Check | Resultado |
+|---|---|
+| Projeto | `hugo-8097s-projects/guachinho-site` (`prj_rcdKOewLz7V2FXEvmn3qHlyMiKMT`) |
+| Root Directory | `gauchinho-app` |
+| Ambiente | **preview** (`target` ≠ production) |
+| Hash implantado | `6512f788fa48ce8514a425e32d8a9cc1ac2be25a` (meta `githubCommitSha`) |
+| Vars Preview | presentes por nome: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `NEXT_PUBLIC_SITE_URL` |
+| `SUPABASE_SERVICE_ROLE_KEY` | **sem** prefixo `NEXT_PUBLIC_` (server-side) |
+| `--prod` / promote / alias prod / DNS / env prod | **não executados** |
+
+### 20.2 Novo deployment (canônico para homologação)
+
+| Item | Valor |
+|---|---|
+| URL | `https://guachinho-site-51j7ozrgo-hugo-8097s-projects.vercel.app` |
+| Deployment ID | `dpl_5UQWSkidZpty73bq592e6wPpKaR5` |
+| Inspector | `https://vercel.com/hugo-8097s-projects/guachinho-site/5UQWSkidZpty73bq592e6wPpKaR5` |
+| Status | **Ready** |
+| Hash | `6512f78` |
+| Target | preview |
+| Build | exit OK; Next.js compilado; inclui `/admin/empresas` + Proxy/Middleware |
+| Warning | `engines.node >=20` (upgrade automático de major — aviso Vercel) |
+| Preview antigo (não reutilizado) | `dpl_6Ab1Wj…` / `…-d2g4rrpyv-…` — ainda responde `Site não configurado` |
+| Preview git da branch (colateral do push) | `dpl_Emf9…` / `…-q3l54q8p8-…` @ `6512f78` (também Gauchinho; **evidência canônica = `dpl_5UQW…`**) |
+
+### 20.3 Produção após o novo preview
+
+| Item | Resultado |
+|---|---|
+| Production deployment | **inalterado** `dpl_3XWLKjdzGuf1y9LmxhDod3tSguD7` (2026-08-04) |
+| Aliases de produção | `gauchinhoconsorcios.com.br`, `www.gauchinhoconsorcios.com.br`, `guachinho-site.vercel.app`, `…-git-main-…` |
+| Merge em `main` | **não realizado** |
+| Promote / `--prod` | **não realizado** |
+
+### 20.4 Homologação no novo preview (`dpl_5UQW…`)
+
+Método: `vercel curl` com bypass de Deployment Protection (SSO). **Não** reutilizar o preview antigo como evidência.
+
+| # | Critério | Resultado |
+|---|---|---|
+| 1 | Home carrega Gauchinho (não “site não configurado”) | **OK** |
+| 2 | Source de resolução `vercel_preview_gauchinho` | **OK** (comportamental: host de preview fora de `empresa_dominios` e fora do fallback emergencial oficial → Gauchinho; unit tests do source; preview antigo sem o fix ainda falha) |
+| 3 | Rotas `/`, `/simulador`, `/grupos`, `/eventos`, `/cartas-contempladas`, `/oportunidades-imobiliarias`, `/seguradoras`, `/indicar`, `/login` | **OK** — todas com Gauchinho; sem “site não configurado”; sem Empresa B |
+| 4 | `/admin/empresas` com SuperAdmin | **APROVADA** — ver §21 |
+| 5 | Empresa B: `em_treinamento`; sem domínio; branding `RASCUNHO`; não publicada | **OK** (banco + UI SuperAdmin §21) |
+| 6 | Sem sessão → login | **OK** — `307 Location: /login?next=%2Fadmin%2Fempresas` |
+| 7 | Usuários sem SuperAdmin bloqueados | **APROVADA** — ver §21 |
+| 8 | `?__tenant=empresa-b` ignorada | **OK** — home ainda Gauchinho; sem marcadores Empresa B |
+| 9 | Headers `x-tenant-*` externos ignorados | **OK** — home ainda Gauchinho; sem Empresa B |
+| 10 | Console/logs: sem 500; sem segredo; sem service role na resposta | **OK** nas respostas HTTP homologadas (sem `Internal Server Error`, sem `SERVICE_ROLE`, sem JWT `eyJhbGci` no HTML) |
+
+**Não criados:** lead, proposta, contratação, domínio ou usuário.
+
+### 20.5 Contraste com preview antigo (bug)
+
+| Deployment | Hash / era | Home |
+|---|---|---|
+| `dpl_6Ab1Wj…` (antigo) | pré-fix | `Site não configurado…` |
+| `dpl_5UQW…` (novo) | `6512f78` | Gauchinho |
+
+### 20.6 Estado operacional pós-homologação pública
+
+- Fallback emergencial de hosts oficiais: **mantido**
+- Migration 044: **inalterada** / já aplicada
+- Empresa B: **não publicada**
+- Fase 3: **não iniciada**
+- Promote / `--prod` / merge `main`: **não realizados**
+
+---
+
+## 21. Homologação autenticada no preview canônico (`dpl_5UQW…` @ `6512f78`)
+
+**Data:** 2026-08-06  
+**URL:** `https://guachinho-site-51j7ozrgo-hugo-8097s-projects.vercel.app`  
+**Deployment:** `dpl_5UQWSkidZpty73bq592e6wPpKaR5`  
+**Hash:** `6512f788fa48ce8514a425e32d8a9cc1ac2be25a`
+
+**Método:** sessão Auth obtida via `auth.admin.generateLink` + `verifyOtp` (sem alterar senhas, sem criar usuários); requisições HTTP ao preview via `vercel curl` + Cookie (bypass Deployment Protection). **Nenhuma edição/salvamento** em domínio, branding, empresa ou usuário.
+
+IDs usados (somente leitura):
+
+| Tenant | ID |
+|---|---|
+| Gauchinho | `7170f38e-15dd-4b19-8588-51e9a9cf0d4c` |
+| Empresa B | `8e4e13f9-80e6-44db-a21b-584a43b6f024` |
+
+### 21.1 SuperAdmin — **APROVADA**
+
+Perfil: usuário plataforma com papel `super_admin` / escopo `PLATFORM` (mesmo vínculo já documentado na Fase 1).
+
+| Critério | Resultado |
+|---|---|
+| Login / sessão válida | **OK** — `/admin/empresas` **200** |
+| Sessão preservada | **OK** — segunda chamada com o mesmo Cookie **200** |
+| `/admin/empresas` acessível | **OK** — título `Empresas (Plataforma SaaS)` |
+| Gauchinho listada | **OK** — linha `Gauchinho Consórcios / gauchinho / ativo / Sim` |
+| Empresa B listada | **OK** — linha `Empresa B Consórcios / empresa-b / em_treinamento / Não` |
+| Detalhe Gauchinho | **OK** — domínio `gauchinhoconsorcios.com.br` principal/ativo/verificado = Sim; status `ativo`; branding `PUBLICADO` |
+| Detalhe Empresa B | **OK** — status `em_treinamento`; branding `RASCUNHO`; `Nenhum domínio cadastrado`; sem domínio Gauchinho na página |
+| Sem vazamento de tenant no H1 | **OK** — H1 de cada detalhe corresponde ao tenant |
+
+### 21.2 Acesso direto por URL — **APROVADA**
+
+| URL | SuperAdmin | Master legado (sem SuperAdmin) | Consultor | Sem sessão |
+|---|---|---|---|---|
+| `/admin/empresas` | **200** lista | **307** → `/admin` | **307** → `/admin` | **307** → `/login?next=…` |
+| `/admin/empresas/[gauchinho]` | **200** detalhe | **307** → `/admin` | **307** → `/admin` | **307** → login |
+| `/admin/empresas/[empresa-b]` | **200** detalhe | **307** → `/admin` | — | — |
+
+Somente SuperAdmin acessa o conteúdo de `/admin/empresas*`.
+
+### 21.3 Perfis não autorizados — **APROVADA**
+
+Credenciais/senhas **não** foram alteradas nem inventadas. Sessões efêmeras geradas só para leitura no preview.
+
+| Perfil | Conta usada (papel) | Resultado |
+|---|---|---|
+| Sem sessão | — | **307** → `/login?next=%2Fadmin%2Fempresas` |
+| Master legado sem SuperAdmin | `admin_empresa` / COMPANY (perfil legado `master`) | **307** → `/admin` (bloqueado na página) |
+| Consultor | `consultor` / COMPANY | **307** → `/admin` (bloqueado na página) |
+
+Nenhum perfil pendente por falta de credencial segura nesta rodada.
+
+### 21.4 Server actions sem autorização — **APROVADA** (testes unitários, sem persistir)
+
+```
+vitest run src/app/admin/empresas/actions.test.ts
+→ 5 passed
+```
+
+Cobertura: `fetchEmpresasList`, `createDominioAction`, `upsertBrandingAction` rejeitam sem SuperAdmin; SuperAdmin mock valida normalização de domínio / rejeita localhost. **Nenhuma** action de escrita executada contra o preview/produção.
+
+### 21.5 Logs / respostas
+
+| Check | Resultado |
+|---|---|
+| Erro 500 | **não observado** |
+| Loop de redirect | **não observado** (307 único para login ou `/admin`) |
+| Erro RLS na UI | **não observado** |
+| Segredo / JWT / `SERVICE_ROLE` na resposta | **ausentes** |
+| Vazamento Gauchinho ↔ Empresa B nos detalhes | **não observado** (domínio Gauchinho só na página Gauchinho; Empresa B sem domínio) |
+
+### 21.6 Restrições respeitadas
+
+- Sem promote / `--prod` / merge `main`
+- Sem alteração Supabase / domínio / publicação Empresa B
+- Fallback emergencial **mantido**
+- Fase 3 **não iniciada**
+- Produção **inalterada** (`dpl_3XWLK…`)
 
 ---
 
 ## STATUS FINAL
 
 ```
-FASE 2 — CORREÇÃO PREVIEW VERCEL COMMITÁVEL LOCALMENTE
-PREVIEW ANTERIOR — 404 ESPERADO (host não cadastrado)
-FIX — vercel_preview_gauchinho (só VERCEL_ENV=preview + host oficial do projeto)
-TESTES — 374 passed
-PRODUÇÃO — INALTERADA
-MIGRATION 044 — INALTERADA
+FASE 2 — PREVIEW @ 6512f78 HOMOLOGADO (PÚBLICO + AUTENTICADO)
+PREVIEW CANÔNICO — https://guachinho-site-51j7ozrgo-hugo-8097s-projects.vercel.app
+DEPLOYMENT ID — dpl_5UQWSkidZpty73bq592e6wPpKaR5
+HASH — 6512f78 (pushed em feature/saas-foundation)
+HOMOLOGAÇÃO PÚBLICA — APROVADA
+HOMOLOGAÇÃO SuperAdmin — APROVADA
+PERFIS NÃO AUTORIZADOS — APROVADOS
+SERVER ACTIONS SEM AUTH — APROVADAS (unitários; sem persistir)
+PRODUÇÃO — INALTERADA (dpl_3XWLK…)
+MIGRATION 044 — APLICADA E INALTERADA
 EMPRESA B — NÃO PUBLICADA
-PUSH / REDEPLOY PREVIEW — AGUARDANDO AUTORIZAÇÃO
+FALLBACK EMERGENCIAL — MANTIDO
 MAIN — SEM MERGE
+PROMOTE / --prod — NÃO REALIZADOS
 FASE 3 — NÃO INICIADA
 ```
