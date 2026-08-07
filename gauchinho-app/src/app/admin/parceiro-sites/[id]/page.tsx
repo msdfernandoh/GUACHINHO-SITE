@@ -11,6 +11,10 @@ import {
 import { SITE_TEMPLATES } from "@/lib/parceiros/templates";
 import type { DnsInstrucoesE5 } from "@/lib/parceiros/domain-e5";
 import {
+  buildAdminPreviewFacts,
+  previewPartnerChannels,
+} from "@/lib/parceiros/partner-admin-preview";
+import {
   addParceiroSiteDominioAction,
   canAccessParceiroSitesAdmin,
   fetchParceiroSiteDetalhe,
@@ -77,6 +81,21 @@ export default async function EditarParceiroSitePage({
       .filter(Boolean) as string[]
   );
 
+  const previewFacts = buildAdminPreviewFacts({
+    empresaId,
+    empresaSlug: "gauchinho",
+    tenantOfficialHost: "gauchinhoconsorcios.com.br",
+    site,
+    orgEmpresaId: empresaId,
+    orgStatus: organizacao?.status ?? "ATIVA",
+    dominios,
+  });
+  const channelPreview = previewPartnerChannels({
+    facts: previewFacts,
+    siteSlug: site.slug,
+    tenantHost: "gauchinhoconsorcios.com.br",
+  });
+
   return (
     <div className="space-y-8">
       <div>
@@ -91,6 +110,37 @@ export default async function EditarParceiroSitePage({
           Domínio → empresa tenant → site do parceiro. Domínios de parceiro não criam tenant.
         </p>
       </div>
+
+      <section className="rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm dark:border-zinc-700 dark:bg-zinc-950/40">
+        <h2 className="font-semibold">Preview de resolução (E6 — admin)</h2>
+        <p className="mt-1 text-xs text-zinc-500">
+          Autenticado · não publica · FASE3_PARCEIRO_PUBLIC_SITE_ENABLED=false. Não é URL pública.
+        </p>
+        <ul className="mt-2 space-y-1 text-xs">
+          <li>
+            Rota /parceiro/{site.slug}:{" "}
+            {channelPreview.path.ok
+              ? `OK (${channelPreview.path.partner.source}) · public_eligible=${channelPreview.path.partner.public_eligible}`
+              : `— ${channelPreview.path.reason}`}
+          </li>
+          <li>
+            Subdomínio:{" "}
+            {channelPreview.subdomain
+              ? channelPreview.subdomain.ok
+                ? `OK (${channelPreview.subdomain.partner.source})`
+                : channelPreview.subdomain.reason
+              : "sem domínio SUBDOMINIO_EMPRESA"}
+          </li>
+          <li>
+            Domínio próprio:{" "}
+            {channelPreview.customDomain
+              ? channelPreview.customDomain.ok
+                ? `OK (${channelPreview.customDomain.partner.source})`
+                : channelPreview.customDomain.reason
+              : "sem DOMINIO_PROPRIO/ALIAS"}
+          </li>
+        </ul>
+      </section>
 
       {!publicationGates.ok ? (
         <div className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-100">

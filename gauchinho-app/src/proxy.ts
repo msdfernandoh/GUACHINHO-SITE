@@ -1,5 +1,11 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { FASE3_PARCEIRO_PUBLIC_SITE_ENABLED } from "@/lib/parceiros/constants";
+import {
+  PARCEIRO_SITE_ID_HEADER,
+  PARCEIRO_SITE_SLUG_HEADER,
+  PARCEIRO_SOURCE_HEADER,
+} from "@/lib/parceiros/partner-site-types";
 import { TENANT_EMPRESA_ID_HEADER, TENANT_SLUG_HEADER } from "@/lib/tenant/constants";
 import {
   isLegacyOperationalApiPath,
@@ -57,10 +63,15 @@ export async function proxy(request: NextRequest) {
   const path = request.nextUrl.pathname;
 
   // Headers internos: sempre remover qualquer valor injetado pelo cliente
-  // antes de definir os confiáveis.
+  // antes de definir os confiáveis (tenant Fase 2 + parceiro E6).
   const requestHeaders = new Headers(request.headers);
   requestHeaders.delete(TENANT_EMPRESA_ID_HEADER);
   requestHeaders.delete(TENANT_SLUG_HEADER);
+  requestHeaders.delete(PARCEIRO_SITE_ID_HEADER);
+  requestHeaders.delete(PARCEIRO_SITE_SLUG_HEADER);
+  requestHeaders.delete(PARCEIRO_SOURCE_HEADER);
+  // E6/E8: site público de parceiro permanece off — não reescrever UX.
+  void FASE3_PARCEIRO_PUBLIC_SITE_ENABLED;
 
   if (!supabaseUrl || !anonKey) {
     return NextResponse.next({ request: { headers: requestHeaders } });

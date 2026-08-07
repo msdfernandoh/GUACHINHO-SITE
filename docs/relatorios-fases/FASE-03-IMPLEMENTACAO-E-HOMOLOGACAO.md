@@ -5,8 +5,8 @@
 **Roadmap legado (não numera SaaS):** `docs/PLANO-EXECUCAO-FASES.md`  
 **Data:** 2026-08-06  
 
-> **Autorização atual:** E0–E4 (045 homologada; admin participantes/orgs/sites sob flags).  
-> **Não autorizado nesta rodada:** Vercel/DNS real, site público, área comercial, preview/prod deploy, push do commit E4, merge main, fallback, Empresa B, Fase 4/6.
+> **Autorização atual:** E0–E6 (045 homologada; admin sites + Vercel module + resolver runtime sob flags).  
+> **Não autorizado nesta rodada:** domínio/DNS real, site público E8, área comercial E7, preview/prod deploy, push do commit E6, merge main, fallback, Empresa B, Fase 4.
 
 ---
 
@@ -24,8 +24,9 @@
 | E3 admin participantes/orgs | **Feito** (flag off; fora do menu) |
 | E4 admin parceiro-sites | **Feito** (flag off; fora do menu) |
 | E5 domínios + Vercel server-side + gates | **Feito** (flag Vercel off; sem domínio/DNS real) |
-| E6–E10 | **Não iniciados** (E6 parcial só o necessário às gates E5) |
-| Push branch feature | **Feito** até `9e2bc12` (E4); commit E5 **local, sem push** |
+| E6 resolver runtime (path/subdomínio/domínio) | **Feito** (flag pública off; sem servir site) |
+| E7–E10 | **Não iniciados** |
+| Push branch feature | **Feito** até `0e87dfa` (E5); commit E6 **local, sem push** |
 | Domínio real / DNS real / deploy / main | **Intocados** |
 
 ---
@@ -34,15 +35,13 @@
 
 ```
 FASE 3 — MIGRATION 045 APLICADA E BANCO HOMOLOGADO
-E0–E5 — IMPLEMENTADOS
-TELAS — DESATIVADAS POR FLAG
-INTEGRAÇÃO VERCEL — CRIADA E PROTEGIDA POR FLAG
-NENHUM DOMÍNIO REAL CRIADO
-NENHUM DNS ALTERADO
+E0–E6 — IMPLEMENTADOS
+TELAS / VERCEL / SITE PÚBLICO — FLAGS OFF
+RESOLVER PARCEIRO — CÓDIGO PRONTO (NÃO SERVE PÚBLICO)
+NENHUM DOMÍNIO REAL / DNS / DEPLOY
 ÁREA COMERCIAL — NÃO IMPLEMENTADA
-SITES PÚBLICOS — NÃO ATIVOS
 PRODUÇÃO DO APP — INALTERADA
-E6+ — NÃO INICIADAS
+E7+ — NÃO INICIADAS
 ```
 ---
 
@@ -762,17 +761,89 @@ Integração exige: flag Vercel + `VERCEL_API_TOKEN`/`VERCEL_TOKEN` + projeto (`
 
 ---
 
+
+## 20. Registro da rodada E6 — Resolver runtime (2026-08-07)
+
+### 20.1 Push E5
+
+| Item | Valor |
+|---|---|
+| Branch | `feature/saas-fase-3-participantes-parceiros` |
+| Commit | `0e87dfa` — feat(saas): integra dominios de parceiros com Vercel |
+| Local = remote pós-push | **Sim** |
+| Merge main | **Não** |
+
+### 20.2 Escopo E6 entregue
+
+| Item | Estado |
+|---|---|
+| `PartnerSiteResolution` + sources `parceiro_path` / `parceiro_subdomain` / `parceiro_domain` | **Feito** |
+| Ordem A–G documentada (`PARTNER_RESOLUTION_ORDER`) | **Feito** |
+| Resolver puro `resolvePartnerSiteFromFacts` (injetável / testável) | **Feito** |
+| Canonical helpers (sem redirect público) | **Feito** |
+| Preview admin autenticado na ficha do site | **Feito** |
+| Proxy: strip headers `x-parceiro-*` do cliente; sem servir público | **Feito** |
+| Isolamento multi-tenant + ignore query forçada | **Feito** |
+
+### 20.3 Ordem de resolução
+
+1. **A** normalizar Host  
+2. **B** lookup `empresa_dominios`  
+3. **C** host tenant + `/parceiro/[slug]` → site por `empresa_id+slug`  
+4. **D** host em `parceiro_site_dominios` (não REMOVIDO) → tenant=`empresa_id` do domínio  
+5. **E** host só institucional → sem parceiro  
+6. **F** fallbacks Fase 2 (módulo tenant intacto)  
+7. **G** desconhecido → sem parceiro  
+
+Nunca resolve parceiro antes de confirmar `empresa_id` (path exige tenant; domínio usa `empresa_id` persistido).  
+`vercel_preview_gauchinho` **nunca** é source de domínio próprio de parceiro.
+
+### 20.4 Flags / comportamento público
+
+| Flag | Default | Efeito E6 |
+|---|---|---|
+| `FASE3_PARCEIRO_PUBLIC_SITE_ENABLED` | `false` | Resolver identifica; **não serve** site público |
+| `FASE3_VERCEL_DOMAINS_ENABLED` | `false` | Zero chamadas Vercel |
+| Demais flags Fase 3 | `false` | Mantidas |
+
+Nenhuma rota pública `/parceiro/[slug]` criada. Nenhuma UX pública substituída.
+
+### 20.5 Regressão Fase 2
+
+Resolver de tenant (`resolveTenantForRequest`), cache, preview Vercel seguro, fallback oficial, `empresa_dominios` e proxy operacional **inalterados em comportamento**. E6 é aditiva.
+
+### 20.6 Testes e build
+
+| Check | Resultado |
+|---|---|
+| `npm test` | **464 passed** (93 files), exit 0 |
+| `npm run build` | **exit 0** |
+| Site publicado por E6 | **Não** |
+
+### 20.7 Git E6
+
+| Item | Estado |
+|---|---|
+| Commit local | `feat(saas): adiciona resolucao runtime de sites parceiros` |
+| Push E6 | **Não** (aguarda autorização) |
+
+### 20.8 Próximo passo sugerido
+
+**E8** (site público atrás da flag) após homologação do resolver, **ou E7** (área comercial) — rodadas separadas.
+
+---
+
 ## STATUS FINAL DESTA RODADA
 
 ```
 FASE 3 — MIGRATION 045 APLICADA E BANCO HOMOLOGADO
-E0–E5 — IMPLEMENTADOS
-PUSH E4 9e2bc12 — REMOTO SINCRONIZADO
-INTEGRAÇÃO VERCEL — CRIADA (FLAG OFF)
-NENHUM DOMÍNIO REAL / DNS / DEPLOY
-SITES PÚBLICOS — NÃO ATIVOS
+E0–E6 — IMPLEMENTADOS
+PUSH E5 0e87dfa — REMOTO SINCRONIZADO
+RESOLVER RUNTIME — IMPLEMENTADO (FLAG PÚBLICA OFF)
+NENHUM SITE PUBLICADO
+VERCEL/DNS REAIS — INTOCADOS
 ÁREA COMERCIAL — NÃO IMPLEMENTADA
-COMMIT E5 — LOCAL (SEM PUSH)
+COMMIT E6 — LOCAL (SEM PUSH)
 PRODUÇÃO DO APP — INALTERADA
-E6+ — AGUARDA AUTORIZAÇÃO
+E7+ — AGUARDA AUTORIZAÇÃO
 ```
