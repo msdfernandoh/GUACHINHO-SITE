@@ -5,8 +5,9 @@
 **Roadmap legado (não numera SaaS):** `docs/PLANO-EXECUCAO-FASES.md`  
 **Data:** 2026-08-06  
 
-> **Autorização atual:** E0–E8 em código; E8+E7 pushados; migrations **045 e 046 aplicadas/homologadas**; flags off.  
-> **Não autorizado nesta rodada:** ativar flags, preview/prod deploy, merge main, domínio/DNS real, fallback, Empresa B, Fase 4/6, E9.
+> **Status final (2026-08-07):** Fase 3 **CONCLUÍDA E HOMOLOGADA EM PRODUÇÃO** (E0–E10).  
+> **Flags finais Production:** `AREA=true`, `PUBLIC_SITE=true`, `VERCEL_DOMAINS=false`.  
+> **Não autorizado a seguir:** Fase 4 · DNS/domínio real de parceiro · remoção do fallback Fase 2.
 
 ---
 
@@ -18,31 +19,27 @@
 | Princípios P1–P15 | **Confirmados** |
 | Blocos A/B + sites/domínios + Q1–Q5 | **Confirmados** |
 | Escopo oficial | **FINAL** |
-| E0 branch | **Feito** `feature/saas-fase-3-participantes-parceiros` |
-| E1 migration 045 | **Aplicada e homologada** (ver §16) |
-| E2 libs | **Feito** |
-| E3 admin participantes/orgs | **Feito** (flag off; fora do menu) |
-| E4 admin parceiro-sites | **Feito** (flag off; fora do menu) |
-| E5 domínios + Vercel server-side + gates | **Feito** (flag Vercel off; sem domínio/DNS real) |
-| E6 resolver runtime (path/subdomínio/domínio) | **Feito** |
-| E7 área comercial | **Feito** (flag off; 046 **aplicada/homologada**) |
-| E8 site público | **Feito** (flag off; push `873d761`) |
-| E9 | **APROVADA** — preview Ready; checklist remoto **17/17 PASS**; commit homologado `044ed34`; deployment `FEhYj4uztEvQbTnMBvGYkgZziCyt` |
-| E10 | **Não iniciada** |
-| Push branch feature | Feature `feature/saas-fase-3-participantes-parceiros` (código homologado `044ed34` + fechamento documental E9) |
-| Domínio real / DNS real / produção / main | **Intocados** |
+| E0–E8 | **Concluídos** |
+| E1/E7 migrations 045/046 | **Aplicadas e homologadas** |
+| E9 | **APROVADA** (preview; 17/17 PASS; `044ed34` / `FEhYj4uztEvQbTnMBvGYkgZziCyt`) |
+| E10 | **APROVADA** — produção gradual; ver §25 |
+| main | `0b062b16440ff84046f0dad5cd70c43d24e48582` (FF da feature) |
+| Domínio real / DNS parceiro | **Não ativados** (`FASE3_VERCEL_DOMAINS_ENABLED=false`) |
 
 ---
 
 ## STATUS
 
 ```
-FASE 3 — MIGRATIONS 045 + 046 APLICADAS E HOMOLOGADAS
-E0–E8 — IMPLEMENTADOS
-E9 — APROVADA (PREVIEW VERCEL Ready)
-FLAGS PRODUCTION — FALSE (site/área on só na Preview da branch)
-NENHUM DOMÍNIO REAL / DNS / MERGE MAIN / PROD
-E10 — NÃO INICIADO
+FASE 3 — CONCLUÍDA E HOMOLOGADA EM PRODUÇÃO
+E0–E10 — CONCLUÍDOS
+MIGRATIONS 045 + 046 — APLICADAS/HOMOLOGADAS
+FASE3_PARCEIRO_AREA_ENABLED=true
+FASE3_PARCEIRO_PUBLIC_SITE_ENABLED=true
+FASE3_VERCEL_DOMAINS_ENABLED=false
+EMPRESA B — INTACTA
+DNS / FALLBACK FASE 2 — INALTERADOS
+FASE 4 — NÃO INICIADA
 ```
 ---
 
@@ -1188,30 +1185,113 @@ Evidência operacional local em `supabase/.temp/` (não versionar; sem senhas/to
 
 ### 24.8 Status E9
 
-**APROVADA** — checklist remoto **17/17 PASS**; preview Ready; logins `RESPONSAVEL_PARCEIRO` e consultor aprovados; RLS/PDF/regressão Gauchinho aprovados; Empresa B intacta; Production flags false; main/produção/DNS intocados; E10 não iniciada.
+**APROVADA** — checklist remoto **17/17 PASS**; preview Ready; logins `RESPONSAVEL_PARCEIRO` e consultor aprovados; RLS/PDF/regressão Gauchinho aprovados; Empresa B intacta.
 
-Próximo passo sob **nova autorização explícita**: E10 (homologação produção).
+### 24.9 Explicitamente NÃO feito na E9
 
-### 24.9 Explicitamente NÃO feito
-
-Merge main · deploy production · promover preview · mudar aliases · flags Production true · DNS/domínio real · Fase 4 · limpeza dados E9 · E10
+Merge main · deploy production · flags Production true · DNS/domínio real · Fase 4 · E10 (feita na §25)
 
 ---
 
-## STATUS FINAL DESTA RODADA
+## 25. Rodada E10 — Homologação e implantação em Produção (2026-08-07) — APROVADA
+
+### 25.1 Integração main
+
+| Item | Valor |
+|---|---|
+| Pré-check feature | `0b062b16440ff84046f0dad5cd70c43d24e48582` local=remote |
+| `origin/main` antes | `b3e62479f9e901a2298ada50b5e37417044741f6` (ancestral) |
+| Estratégia | **fast-forward only** |
+| `main` / `origin/main` após | `0b062b16440ff84046f0dad5cd70c43d24e48582` |
+| Migrations | 001–046 local=remote · dry-run up to date |
+| `npm test` / `build` pré e pós merge | **487 passed** / **exit 0** |
+
+### 25.2 Deployments Production (gradual)
+
+| Etapa | Flags | Deployment | URL |
+|---|---|---|---|
+| Zero — código off | AREA=false · SITE=false · DOMAINS=false | `dpl_5kiEjFeYaUqZswyL1bRFBPKicemN` | `guachinho-site-5evk5amrd-…` |
+| Área on | AREA=true · SITE=false · DOMAINS=false | `dpl_8hzSsENfhYojSC3k9Q4ajg6Ts73n` | `guachinho-site-kj2mh32lt-…` |
+| Site on (final) | AREA=true · SITE=true · DOMAINS=false | `dpl_FRwYh5gyYckM92RMyRvu736k27tE` | `guachinho-site-luqfq8l78-…` |
+
+Aliases Production no deploy final: `www.gauchinhoconsorcios.com.br`, `gauchinhoconsorcios.com.br`, `guachinho-site.vercel.app`. DNS não alterado.
+
+### 25.3 Smoke flags OFF
+
+Home/simulador/grupos/login/admin/apex · `/area-parceiro` indisponível · `/parceiro/homologacao-parceiro-alfa` não público · PDF parceiro 404 → **PASS**.
+
+### 25.4 Área parceiro Production — HOMOLOGADA
+
+Login `RESPONSAVEL_PARCEIRO` + consultor · área/leads/propostas · RLS matriz · mutações fictícias E10 · proposta lock · PDF UUID 404 · Empresa B intacta → **PASS**.
+
+### 25.5 Site público Production — HOMOLOGADO
+
+`/parceiro/homologacao-parceiro-alfa` PUBLICADO 200 · template/branding · estados RASCUNHO/AGUARDANDO/SUSPENSO/ARQUIVADO → 404 · regressão Gauchinho → **PASS**.
+
+Indexação: site de homologação **não permanece PUBLICADO** — estado final **SUSPENSO** (404 / sem indexação).
+
+### 25.6 PDF Production
+
+Parceiro por UUID → 404 · legado sem token/token inválido → 404 · legado token HMAC → 307 (OK) · área autenticada OK.
+
+### 25.7 Vercel Domains
+
+`FASE3_VERCEL_DOMAINS_ENABLED=false` — **implementada / testada automaticamente / NÃO ativada operacionalmente** (sem domínio real autorizado).
+
+### 25.8 Dados homologação após limpeza
+
+| Entidade | Estado |
+|---|---|
+| Site `homologacao-parceiro-alfa` | **SUSPENSO** |
+| Org HOMOLOGAÇÃO PARCEIRO ALFA | Mantida (marcador claro) |
+| Usuários E9 | Mantidos (não versionar credenciais) |
+| Leads origem `e10-homolog` | Marcados/arquivados (sem cascade delete) |
+| Empresa B | `em_treinamento` · 0 orgs/sites/leads E9 |
+
+### 25.9 Flags finais Production
 
 ```
-FASE 3 — MIGRATIONS 045 + 046 APLICADAS E HOMOLOGADAS
-E0–E8 — IMPLEMENTADOS
-PDF PÚBLICO — PROTEGIDO (cec89e1)
-DADOS HOMOLOGAÇÃO E9 — MANTIDOS (GAUCHINHO) p/ E10
-E9 PREVIEW — https://guachinho-site-c29hezoiu-hugo-8097s-projects.vercel.app
-E9 DEPLOY — FEhYj4uztEvQbTnMBvGYkgZziCyt (044ed34 / preview)
-E9 CHECKLIST — 17/17 PASS
-E9 STATUS — APROVADA
-PREVIEW FLAGS — true / true / false (domains)
-FLAGS PRODUCTION — FALSE
-MAIN / PROD / DNS — INTOCADOS
-EMPRESA B — em_treinamento / SEM DADOS E9
-E10 — NÃO INICIADA
+FASE3_PARCEIRO_AREA_ENABLED=true
+FASE3_PARCEIRO_PUBLIC_SITE_ENABLED=true
+FASE3_VERCEL_DOMAINS_ENABLED=false
+```
+
+### 25.10 Testes finais
+
+| Check | Resultado |
+|---|---|
+| `npm test` | **487 passed** |
+| `npm run build` | **exit 0** |
+
+### 25.11 Rollback disponível
+
+Reverter aliases ao deployment anterior e/ou setar flags `false` + redeploy. Migrations 045/046 já aplicadas (reversão SQL só sob autorização separada).
+
+### 25.12 Explicitamente NÃO feito
+
+Fase 4 · DNS/domínio real de parceiro · ativar Vercel Domains · remover fallback Fase 2 · operacionalizar Empresa B
+
+---
+
+## STATUS FINAL FASE 3
+
+```
+FASE 3 — CONCLUÍDA E HOMOLOGADA EM PRODUÇÃO
+E0–E10 — CONCLUÍDOS
+MAIN — 0b062b16440ff84046f0dad5cd70c43d24e48582
+PRODUCTION FINAL — dpl_FRwYh5gyYckM92RMyRvu736k27tE
+MIGRATION 045 — APLICADA/HOMOLOGADA
+MIGRATION 046 — APLICADA/HOMOLOGADA
+PARTICIPANTES / ORGS / ADMIN SITES / RESOLVER — HOMOLOGADOS
+SITE PÚBLICO — HOMOLOGADO (homologação SUSPENSA)
+ÁREA PARCEIRO — HOMOLOGADA
+RLS — HOMOLOGADA
+PDF — PROTEGIDO/HOMOLOGADO
+FASE3_PARCEIRO_AREA_ENABLED=true
+FASE3_PARCEIRO_PUBLIC_SITE_ENABLED=true
+FASE3_VERCEL_DOMAINS_ENABLED=false
+EMPRESA B — INTACTA
+FALLBACK FASE 2 — MANTIDO
+DNS — INALTERADO
+FASE 4 — NÃO INICIADA
 ```

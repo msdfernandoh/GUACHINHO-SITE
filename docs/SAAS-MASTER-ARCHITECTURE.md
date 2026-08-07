@@ -1,8 +1,8 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
-> **Versão:** 1.2.8  
+> **Versão:** 1.2.9  
 > **Data de Atualização:** 07/08/2026  
-> **Status da Plataforma:** Fase 2 Concluída e Homologada em Produção; Fase 3: migrations **045/046 homologadas**; E0–E8 ok; PDF público protegido (token HMAC + bloqueio escopo parceiro); **E9 APROVADA** (checklist remoto **17/17 PASS**; preview `https://guachinho-site-c29hezoiu-hugo-8097s-projects.vercel.app`; deployment `FEhYj4uztEvQbTnMBvGYkgZziCyt`; commit homologado `044ed34`; target `preview`; login `RESPONSAVEL_PARCEIRO` + consultor OK; RLS/PDF/regressão Gauchinho OK; Empresa B intacta; Preview flags `true`/`true`/`false`; Production flags `false`; main/produção/DNS intocados); dados HOMOLOGAÇÃO E9 mantidos no tenant Gauchinho; **E10 não iniciada**  
+> **Status da Plataforma:** Fase 2 Concluída e Homologada em Produção; **Fase 3 CONCLUÍDA E HOMOLOGADA EM PRODUÇÃO** (E0–E10; main `0b062b1`; Production final `dpl_FRwYh5gyYckM92RMyRvu736k27tE`; flags `AREA=true` / `PUBLIC_SITE=true` / `VERCEL_DOMAINS=false`; migrations 045/046 aplicadas; PDF protegido; site homologação `homologacao-parceiro-alfa` em **SUSPENSO**; Empresa B intacta; DNS/fallback Fase 2 inalterados); **Fase 4 não iniciada**  
 
 
 > **Projeto Físico:** `C:\Fernando Hugo\GAUCHINHO SITE`  
@@ -151,7 +151,7 @@ Entregar identidades comerciais (participantes e organizações parceiras), site
 * Demais participantes autorizados: apenas vínculos próprios, salvo permissão explícita `visao_ampliada_org_parceiro`.
 * Regra por **vínculo + permissão**, não só nome de perfil.
 * Implementação E7: rotas `/area-parceiro/*` atrás de `FASE3_PARCEIRO_AREA_ENABLED=false`; RLS aditiva em migration **046** (**aplicada e homologada** em 2026-08-07).
-* **E9 (2026-08-07) APROVADA em Preview:** deployment `FEhYj4uztEvQbTnMBvGYkgZziCyt`, commit `044ed34`, checklist **17/17 PASS**; Preview flags site+área `true`, domains `false`; Production flags `false`; main/produção/DNS intocados; **E10 não iniciada**. Detalhe em `docs/relatorios-fases/FASE-03-IMPLEMENTACAO-E-HOMOLOGACAO.md` §24.
+* **E9 APROVADA (Preview)** e **E10 APROVADA (Produção)** em 2026-08-07: main `0b062b1`; Production final `dpl_FRwYh5gyYckM92RMyRvu736k27tE`; flags finais `AREA=true` / `PUBLIC_SITE=true` / `VERCEL_DOMAINS=false`; site homologação suspenso. Detalhe: `docs/relatorios-fases/FASE-03-IMPLEMENTACAO-E-HOMOLOGACAO.md` §24–§25.
 * Status de proposta editável pelo parceiro no schema atual: `Gerada` / `PDF gerado` (equivalente conceitual a RASCUNHO; literal `RASCUNHO` não existe). Demais status (`Enviada`, `Em negociação`, `Aprovada`, `Perdida`, `Cancelada`, `Arquivada`) bloqueados por app + RLS.
 * Trigger `prevent_comercial_escopo_move` impede troca de `empresa_id`/`organizacao_parceira_id` fora de staff/superadmin.
 
