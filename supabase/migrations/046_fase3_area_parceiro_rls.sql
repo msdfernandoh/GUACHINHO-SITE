@@ -124,6 +124,45 @@ revoke all on function public.proposta_status_editavel_parceiro(text) from publi
 grant execute on function public.proposta_status_editavel_parceiro(text)
   to authenticated, service_role;
 
+-- Impede escape de escopo via UPDATE (empresa_id / organizacao_parceira_id).
+-- Staff (is_staff) e platform superadmin continuam podendo ajustar no CRM.
+create or replace function public.prevent_comercial_escopo_move()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if public.is_platform_superadmin() or public.is_staff() then
+    return new;
+  end if;
+
+  if new.empresa_id is distinct from old.empresa_id then
+    raise exception 'empresa_id não pode ser alterado fora do CRM staff';
+  end if;
+
+  if new.organizacao_parceira_id is distinct from old.organizacao_parceira_id then
+    raise exception 'organizacao_parceira_id não pode ser alterado fora do CRM staff';
+  end if;
+
+  return new;
+end;
+$$;
+
+revoke all on function public.prevent_comercial_escopo_move() from public;
+
+drop trigger if exists leads_prevent_escopo_move on public.leads;
+create trigger leads_prevent_escopo_move
+  before update on public.leads
+  for each row
+  execute function public.prevent_comercial_escopo_move();
+
+drop trigger if exists propostas_prevent_escopo_move on public.propostas;
+create trigger propostas_prevent_escopo_move
+  before update on public.propostas
+  for each row
+  execute function public.prevent_comercial_escopo_move();
+
 -- --------------------------------------------------------------------------
 -- 3. Policies ADITIVAS — leads
 --    leads_staff (is_staff) permanece intacta; policies são OR permissivas.

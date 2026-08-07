@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { requireUsuario } from "@/lib/auth/get-usuario";
+import { isStaff } from "@/lib/auth/permissions";
 import { registrarEvento } from "@/lib/eventos/registrar";
 import {
   enrichPropostaProjecaoFromSimulacao,
@@ -111,6 +112,9 @@ export async function savePropostaAction(formData: FormData) {
 
 export async function generatePropostaPdfAction(formData: FormData) {
   const usuario = await requireUsuario();
+  if (!isStaff(usuario.perfil)) {
+    throw new Error("Sem permissão para gerar PDF de proposta.");
+  }
   const propostaId = String(formData.get("proposta_id") ?? "").trim();
   if (!propostaId) throw new Error("Proposta inválida");
 
@@ -133,7 +137,10 @@ export async function generatePropostaPdfAction(formData: FormData) {
 }
 
 export async function getPropostaDownloadUrlAction(propostaId: string) {
-  await requireUsuario();
+  const usuario = await requireUsuario();
+  if (!isStaff(usuario.perfil)) {
+    throw new Error("Sem permissão para baixar PDF de proposta.");
+  }
   const url = await getPropostaPdfDownloadUrl(propostaId);
   await registrarEvento({
     tipo_evento: "proposta_pdf_baixada",

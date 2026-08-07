@@ -115,7 +115,11 @@ describe("E7 — área comercial parceiro", () => {
       expect(propostaStatusEditavelParceiro(s)).toBe(true);
     }
     expect(propostaStatusEditavelParceiro("Enviada")).toBe(false);
+    expect(propostaStatusEditavelParceiro("Em negociação")).toBe(false);
     expect(propostaStatusEditavelParceiro("Aprovada")).toBe(false);
+    expect(propostaStatusEditavelParceiro("Perdida")).toBe(false);
+    expect(propostaStatusEditavelParceiro("Cancelada")).toBe(false);
+    expect(propostaStatusEditavelParceiro("Arquivada")).toBe(false);
     expect(propostaStatusEditavelParceiro("RASCUNHO")).toBe(false);
   });
 
