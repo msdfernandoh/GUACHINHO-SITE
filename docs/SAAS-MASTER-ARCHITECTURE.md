@@ -1,8 +1,8 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
-> **Versão:** 1.2.4  
+> **Versão:** 1.2.5  
 > **Data de Atualização:** 07/08/2026  
-> **Status da Plataforma:** Fase 2 Concluída e Homologada em Produção; Fase 3 escopo oficial final (§5.1); migration 045 **aplicada e homologada**; E0–E6 + E8 implementados (site público de parceiros sob `FASE3_PARCEIRO_PUBLIC_SITE_ENABLED=false`); E7 pendente; sem domínio/DNS real, deploy ou merge main nesta rodada  
+> **Status da Plataforma:** Fase 2 Concluída e Homologada em Produção; Fase 3 escopo oficial final (§5.1); migration 045 **aplicada e homologada**; E0–E8 implementados em código (flags off); migration **046** (RLS área parceiro) **criada, não aplicada**; sem domínio/DNS real, deploy ou merge main nesta rodada  
 
 > **Projeto Físico:** `C:\Fernando Hugo\GAUCHINHO SITE`  
 > **Repositório Git:** `https://github.com/msdfernandoh/GUACHINHO-SITE.git`
@@ -146,9 +146,11 @@ Entregar identidades comerciais (participantes e organizações parceiras), site
 7. **Colunas nullable** em `leads`/`propostas`: `empresa_id`, `organizacao_parceira_id`, `parceiro_site_id`, `participant_id`, origem/UTMs. Legado permanece NULL; sem migrar CMS/`srd_responsavel_id` nesta fase.
 
 ### Visibilidade na área comercial
-* `RESPONSAVEL_PARCEIRO`: todos os leads/propostas da própria organização.
-* Demais participantes autorizados: apenas vínculos próprios, salvo permissão de visão ampliada na org.
+* `RESPONSAVEL_PARCEIRO` (tipo) **ou** `responsavel_principal` no vínculo: todos os leads/propostas da própria organização.
+* Demais participantes autorizados: apenas vínculos próprios, salvo permissão explícita `visao_ampliada_org_parceiro`.
 * Regra por **vínculo + permissão**, não só nome de perfil.
+* Implementação E7: rotas `/area-parceiro/*` atrás de `FASE3_PARCEIRO_AREA_ENABLED=false`; RLS aditiva em migration **046** (criada, **não** aplicada até autorização).
+* Status de proposta editável pelo parceiro no schema atual: `Gerada` / `PDF gerado` (equivalente conceitual a RASCUNHO; literal `RASCUNHO` não existe).
 
 ### Matriz resumida de permissões
 

@@ -132,7 +132,25 @@ export const FASE3_PERMISSOES = {
   visualizarPropostas: "visualizar_propostas_parceiro",
   criarPropostas: "criar_propostas_parceiro",
   editarPropostas: "editar_propostas_parceiro",
+  /** Explícita — não inferir por cargo/tipo sozinho no app (RLS também cobre RESPONSAVEL). */
+  visaoAmpliadaOrg: "visao_ampliada_org_parceiro",
 } as const;
+
+/**
+ * Status de proposta editáveis na área parceiro (equivalente conceitual a RASCUNHO).
+ * Schema atual não possui literal `RASCUNHO`.
+ */
+export const PROPOSTA_STATUS_EDITAVEL_PARCEIRO = ["Gerada", "PDF gerado"] as const;
+
+/** Status comerciais simples permitidos na área parceiro (Fase 6 amplia o funil). */
+export const LEAD_STATUS_SIMPLES_PARCEIRO = [
+  "Novo",
+  "Em contato",
+  "Qualificado",
+  "Negociação",
+  "Fechado",
+  "Perdido",
+] as const;
 
 /** Papel SaaS novo — não reutiliza parceiro_imobiliaria */
 export const PAPEL_PARCEIRO_COMERCIAL = "parceiro_comercial";
@@ -153,6 +171,7 @@ export const FASE3_PAPEL_PERMISSOES: Record<string, readonly string[]> = {
     FASE3_PERMISSOES.visualizarPropostas,
     FASE3_PERMISSOES.criarPropostas,
     FASE3_PERMISSOES.editarPropostas,
+    // visao_ampliada_org_parceiro NÃO é concedida por padrão ao papel
   ],
   parceiro_imobiliaria: [], // legado intacto — sem perms Fase 3 novas
 };

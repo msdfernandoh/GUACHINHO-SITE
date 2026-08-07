@@ -34,8 +34,10 @@ describe("fase 3 constants", () => {
     expect(parceiro).not.toContain(FASE3_PERMISSOES.gerenciarSites);
     expect(parceiro).not.toContain(FASE3_PERMISSOES.gerenciarOrganizacoes);
     expect(parceiro).not.toContain(FASE3_PERMISSOES.gerenciarParticipantes);
+    expect(parceiro).not.toContain(FASE3_PERMISSOES.visaoAmpliadaOrg);
 
     expect(FASE3_PAPEL_PERMISSOES.admin_empresa).toContain(FASE3_PERMISSOES.gerenciarSites);
+    expect(FASE3_PAPEL_PERMISSOES.admin_empresa).toContain(FASE3_PERMISSOES.visaoAmpliadaOrg);
     expect(FASE3_PAPEL_PERMISSOES.parceiro_imobiliaria).toEqual([]);
   });
 });

@@ -3,6 +3,7 @@ import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import {
   FASE3_ADMIN_PARTICIPANTES_ENABLED,
+  FASE3_PARCEIRO_AREA_ENABLED,
   FASE3_PARCEIRO_SITES_ADMIN_ENABLED,
   FASE3_VERCEL_DOMAINS_ENABLED,
 } from "./constants";
@@ -54,4 +55,20 @@ export function fase3SitesAdminDisabledMessage(): string {
 /** Flag E5 isolada — mutações Vercel só com flag + credencial (ver vercel-domains.server). */
 export function isFase3VercelDomainsFlagOn(): boolean {
   return FASE3_VERCEL_DOMAINS_ENABLED;
+}
+
+/**
+ * Área comercial E7: flag + schema participantes (045).
+ * RLS aditiva de leads/propostas depende da 046 (ainda não aplicada nesta rodada).
+ */
+export async function isFase3ParceiroAreaReady(): Promise<boolean> {
+  if (!FASE3_PARCEIRO_AREA_ENABLED) return false;
+  return tableExists("participantes_comerciais");
+}
+
+export function fase3ParceiroAreaDisabledMessage(): string {
+  if (!FASE3_PARCEIRO_AREA_ENABLED) {
+    return "Área comercial do parceiro desabilitada (FASE3_PARCEIRO_AREA_ENABLED≠true).";
+  }
+  return "Schema de participantes/organizações indisponível neste ambiente.";
 }

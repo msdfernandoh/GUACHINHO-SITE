@@ -1,10 +1,12 @@
 import {
   FASE3_PAPEL_PERMISSOES,
   FASE3_PERMISSOES,
+  LEAD_STATUS_SIMPLES_PARCEIRO,
   ORGANIZACAO_STATUS,
   ORGANIZACAO_TIPOS,
   PARTICIPANTE_STATUS,
   PARTICIPANTE_TIPOS,
+  PROPOSTA_STATUS_EDITAVEL_PARCEIRO,
   type OrganizacaoStatus,
   type OrganizacaoTipo,
   type ParticipanteStatus,
@@ -234,6 +236,8 @@ export function parceiroPodeEditarSite(papelCodigo: string): boolean {
 export function podeVerRegistroComercial(input: {
   isResponsavelPrincipal: boolean;
   temVisaoAmpliada: boolean;
+  /** Tipo RESPONSAVEL_PARCEIRO no participante (além de responsavel_principal no vínculo). */
+  isResponsavelParceiroTipo?: boolean;
   registroOrganizacaoId: string | null;
   registroParticipantId: string | null;
   orgsDoUsuario: string[];
@@ -241,9 +245,81 @@ export function podeVerRegistroComercial(input: {
 }): boolean {
   if (!input.registroOrganizacaoId) return false;
   if (!input.orgsDoUsuario.includes(input.registroOrganizacaoId)) return false;
-  if (input.isResponsavelPrincipal || input.temVisaoAmpliada) return true;
+  if (
+    input.isResponsavelPrincipal ||
+    input.isResponsavelParceiroTipo ||
+    input.temVisaoAmpliada
+  ) {
+    return true;
+  }
   if (!input.participantIdAtual || !input.registroParticipantId) return false;
   return input.registroParticipantId === input.participantIdAtual;
+}
+
+export function propostaStatusEditavelParceiro(status: string | null | undefined): boolean {
+  return (PROPOSTA_STATUS_EDITAVEL_PARCEIRO as readonly string[]).includes(status ?? "");
+}
+
+export function leadStatusSimplesParceiro(status: string): boolean {
+  return (LEAD_STATUS_SIMPLES_PARCEIRO as readonly string[]).includes(status);
+}
+
+/** Campos seguros de UPDATE na área parceiro — never trust client empresa/org. */
+export function sanitizeLeadUpdateParceiro(input: {
+  nome?: string | null;
+  whatsapp?: string | null;
+  email?: string | null;
+  observacoes?: string | null;
+  status?: string | null;
+  empresa_id?: string | null;
+  organizacao_parceira_id?: string | null;
+  participant_id?: string | null;
+}): { ok: true; data: Record<string, unknown> } | { ok: false; error: string } {
+  if (input.empresa_id !== undefined) {
+    return { ok: false, error: "empresa_id não pode ser alterado." };
+  }
+  if (input.organizacao_parceira_id !== undefined) {
+    return { ok: false, error: "organizacao_parceira_id não pode ser alterado." };
+  }
+  const data: Record<string, unknown> = {};
+  if (input.nome !== undefined) {
+    const nome = String(input.nome ?? "").trim();
+    if (!nome) return { ok: false, error: "Nome é obrigatório." };
+    data.nome = nome;
+  }
+  if (input.whatsapp !== undefined) {
+    data.whatsapp = String(input.whatsapp ?? "").trim() || null;
+  }
+  if (input.email !== undefined) {
+    const email = String(input.email ?? "").trim() || null;
+    if (email && !normalizeEmail(email)) return { ok: false, error: "E-mail inválido." };
+    data.email = email;
+  }
+  if (input.observacoes !== undefined) {
+    data.observacoes = String(input.observacoes ?? "").trim() || null;
+  }
+  if (input.status !== undefined) {
+    const status = String(input.status ?? "").trim();
+    if (!leadStatusSimplesParceiro(status)) {
+      return { ok: false, error: "Status comercial não permitido na área parceiro." };
+    }
+    data.status = status;
+  }
+  if (input.participant_id !== undefined) {
+    // Troca de responsável só via action dedicada com validação de org.
+    return { ok: false, error: "participant_id deve ser alterado por fluxo validado." };
+  }
+  return { ok: true, data };
+}
+
+export function assertOrgNoContextoArea(input: {
+  orgId: string;
+  orgsDoUsuario: string[];
+}): RuleResult {
+  if (!input.orgsDoUsuario.includes(input.orgId)) {
+    return { ok: false, error: "Organização fora do contexto." };
+  }
+  return { ok: true };
 }
 
 export function podePublicarSite(input: {

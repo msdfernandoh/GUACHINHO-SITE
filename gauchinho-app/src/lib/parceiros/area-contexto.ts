@@ -1,6 +1,7 @@
 import "server-only";
 
 import { createClient } from "@/lib/supabase/server";
+import { FASE3_PERMISSOES } from "./constants";
 import { podeVerRegistroComercial } from "./rules";
 
 export type AreaParceiroContexto = {
@@ -8,12 +9,14 @@ export type AreaParceiroContexto = {
   participantId: string | null;
   organizacaoIds: string[];
   isResponsavelPrincipalPorOrg: Record<string, boolean>;
+  isResponsavelParceiroTipo: boolean;
   temVisaoAmpliada: boolean;
 };
 
 /**
- * Fundação do contexto da área comercial (E7 usará plenamente).
- * Nesta rodada: apenas helpers tipados — sem rotas públicas da área.
+ * Contexto comercial do parceiro.
+ * Resolução: sessão → usuario → empresa_usuarios → participante → orgs ativas.
+ * Nunca confiar em empresa/org/participant vindos do cliente como autorização.
  */
 export async function loadAreaParceiroContexto(empresaId: string): Promise<AreaParceiroContexto | null> {
   const supabase = await createClient();
@@ -36,12 +39,27 @@ export async function loadAreaParceiroContexto(empresaId: string): Promise<AreaP
     isResponsavelPrincipalPorOrg[orgId] = Boolean(isResp);
   }
 
+  const { data: tipos } = await supabase
+    .from("participante_tipos")
+    .select("tipo_codigo")
+    .eq("empresa_id", empresaId)
+    .eq("participante_id", participantId);
+  const isResponsavelParceiroTipo = (tipos ?? []).some(
+    (t) => t.tipo_codigo === "RESPONSAVEL_PARCEIRO"
+  );
+
+  const { data: visao } = await supabase.rpc("has_company_permission", {
+    p_empresa_id: empresaId,
+    p_permission_code: FASE3_PERMISSOES.visaoAmpliadaOrg,
+  });
+
   return {
     empresaId,
     participantId: String(participantId),
     organizacaoIds,
     isResponsavelPrincipalPorOrg,
-    temVisaoAmpliada: false,
+    isResponsavelParceiroTipo,
+    temVisaoAmpliada: Boolean(visao),
   };
 }
 
@@ -53,11 +71,35 @@ export function filtrarRegistrosAreaParceiro<
     if (!orgId) return false;
     return podeVerRegistroComercial({
       isResponsavelPrincipal: Boolean(ctx.isResponsavelPrincipalPorOrg[orgId]),
+      isResponsavelParceiroTipo: ctx.isResponsavelParceiroTipo,
       temVisaoAmpliada: ctx.temVisaoAmpliada,
       registroOrganizacaoId: orgId,
       registroParticipantId: row.participant_id,
       orgsDoUsuario: ctx.organizacaoIds,
       participantIdAtual: ctx.participantId,
     });
+  });
+}
+
+export function podeVerRegistroNoContexto(
+  ctx: AreaParceiroContexto,
+  row: {
+    empresa_id?: string | null;
+    organizacao_parceira_id: string | null;
+    participant_id: string | null;
+  }
+): boolean {
+  if (row.empresa_id && row.empresa_id !== ctx.empresaId) return false;
+  if (!row.empresa_id && row.empresa_id !== undefined) return false;
+  return podeVerRegistroComercial({
+    isResponsavelPrincipal: Boolean(
+      row.organizacao_parceira_id && ctx.isResponsavelPrincipalPorOrg[row.organizacao_parceira_id]
+    ),
+    isResponsavelParceiroTipo: ctx.isResponsavelParceiroTipo,
+    temVisaoAmpliada: ctx.temVisaoAmpliada,
+    registroOrganizacaoId: row.organizacao_parceira_id,
+    registroParticipantId: row.participant_id,
+    orgsDoUsuario: ctx.organizacaoIds,
+    participantIdAtual: ctx.participantId,
   });
 }

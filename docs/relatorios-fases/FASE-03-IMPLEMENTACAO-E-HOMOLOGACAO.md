@@ -5,8 +5,8 @@
 **Roadmap legado (não numera SaaS):** `docs/PLANO-EXECUCAO-FASES.md`  
 **Data:** 2026-08-06  
 
-> **Autorização atual:** E0–E6 + E8 (site público implementado sob flag off; E7 pendente).  
-> **Não autorizado nesta rodada:** domínio/DNS real, ativar flag pública em produção, área comercial E7, preview/prod deploy, push do commit E8, merge main, fallback, Empresa B, Fase 4.
+> **Autorização atual:** E0–E8 em código (E8 pushado; E7 local sob flags off; migration 046 criada e **não** aplicada).  
+> **Não autorizado nesta rodada:** apply 046, ativar flags, preview/prod deploy, push dos commits E7, merge main, domínio/DNS real, fallback, Empresa B, Fase 4/6.
 
 ---
 
@@ -25,10 +25,10 @@
 | E4 admin parceiro-sites | **Feito** (flag off; fora do menu) |
 | E5 domínios + Vercel server-side + gates | **Feito** (flag Vercel off; sem domínio/DNS real) |
 | E6 resolver runtime (path/subdomínio/domínio) | **Feito** |
-| E7 área comercial | **Não iniciada** |
-| E8 site público | **Feito** (flag `FASE3_PARCEIRO_PUBLIC_SITE_ENABLED` off) |
+| E7 área comercial | **Feito local** (flag `FASE3_PARCEIRO_AREA_ENABLED` off; 046 não aplicada) |
+| E8 site público | **Feito** (flag off; push `873d761`) |
 | E9–E10 | **Não iniciados** |
-| Push branch feature | **Feito** até `26b7665` (E6); commit E8 **local, sem push** |
+| Push branch feature | **Feito** até `873d761` (E8); commits E7 **locais, sem push** |
 | Domínio real / DNS real / deploy / main | **Intocados** |
 
 ---
@@ -37,9 +37,10 @@
 
 ```
 FASE 3 — MIGRATION 045 APLICADA E BANCO HOMOLOGADO
-E0–E6 + E8 — IMPLEMENTADOS
-E7 ÁREA COMERCIAL — PENDENTE
-FLAGS OFF (SITE PÚBLICO NÃO ATIVO EM PRODUÇÃO)
+E0–E8 — IMPLEMENTADOS EM CÓDIGO
+E7 ÁREA COMERCIAL — LOCAL (FLAG OFF)
+MIGRATION 046 — CRIADA, NÃO APLICADA
+FLAGS OFF (SITE PÚBLICO + ÁREA PARCEIRO)
 NENHUM DOMÍNIO REAL / DNS / DEPLOY
 PRODUÇÃO DO APP — INALTERADA
 ```
@@ -907,15 +908,103 @@ Com flag off: nenhum redirect/site público.
 
 ---
 
+## 22. Registro da rodada E7 — Área comercial do parceiro (2026-08-07)
+
+### 22.1 Push E8
+
+| Item | Valor |
+|---|---|
+| Commit | `873d761` — feat(saas): adiciona site publico de parceiros |
+| Branch | `feature/saas-fase-3-participantes-parceiros` |
+| Local = remote pós-push | **Sim** (`873d761`) |
+| Merge main | **Não** |
+
+### 22.2 Escopo E7 entregue (local)
+
+| Item | Estado |
+|---|---|
+| Flag `FASE3_PARCEIRO_AREA_ENABLED` (default false) | **Feito** |
+| Rotas `/area-parceiro`, `/leads`, `/propostas` (+ detalhe) | **Feito** |
+| Contexto sessão → usuario → empresa_usuarios → participante → orgs | **Feito** |
+| Menu só comercial (sem admin/sites/DNS/financeiro) | **Feito** |
+| CRUD leads/propostas no escopo + histórico básico | **Feito** |
+| Proposta editável só `Gerada` / `PDF gerado` (equiv. RASCUNHO) | **Feito** |
+| PDF gerar/baixar reutilizando motor existente | **Feito** |
+| Legado NULL excluído da área | **Feito** (filtro + RLS futura) |
+
+### 22.3 Regras de visão
+
+| Perfil | Visão |
+|---|---|
+| `RESPONSAVEL_PARCEIRO` (tipo) ou `responsavel_principal` no vínculo | Toda a org vinculada ativa |
+| Permissão `visao_ampliada_org_parceiro` | Toda a org (explícita; **não** no seed de `parceiro_comercial`) |
+| Demais participantes | Somente `participant_id` próprio |
+| Múltiplas orgs | Alternância só entre vínculos ativos; `empresa_id` sempre do contexto |
+
+### 22.4 Migration 046
+
+| Item | Estado |
+|---|---|
+| Arquivo | `supabase/migrations/046_fase3_area_parceiro_rls.sql` |
+| Conteúdo | Permissão visão ampliada + helpers + policies **aditivas** leads/propostas/historico |
+| Policies legadas `leads_staff` / `propostas_staff` | **Preservadas** (OR permissivo) |
+| `migration list --linked` | 001–045 sync; **046 só local** |
+| `db push --linked --dry-run` | Would push only `046_fase3_area_parceiro_rls.sql` |
+| Apply remoto | **Não** (aguarda autorização) |
+
+### 22.5 Policies atuais (remoto) vs propostas (046)
+
+**Remoto (hoje):** `leads_staff` / `propostas_staff` / `leads_historico_staff` via `is_staff()` — parceiro_comercial **não** acessa CRM por RLS.
+
+**046 (proposta, não aplicada):**
+- `leads_parceiro_select|insert|update`
+- `propostas_parceiro_select|insert|update`
+- `leads_historico_parceiro_select|insert`
+- Sem DELETE parceiro
+
+### 22.6 Explicitamente NÃO feito
+
+- Apply 046  
+- Flag área/parceiro/site on  
+- Preview/prod deploy / merge main / push E7  
+- CRM Fase 6 / backfill / domínio-DNS / Empresa B  
+
+### 22.7 Testes e build
+
+| Check | Resultado |
+|---|---|
+| `npm test` | **485 passed** (95 files) |
+| `npm run build` | **exit 0** (rotas `/area-parceiro*` presentes) |
+| Testes negativos E7 (unit) | org cruzada, participant, legado NULL, escopo, status proposta |
+| Regressão CRM | policies staff intactas no código/migration; app admin não alterado |
+
+### 22.8 Git E7
+
+| Item | Estado |
+|---|---|
+| Commits locais | RLS 046 + área comercial (sem push) |
+| Push E7 | **Não** |
+
+### 22.9 Recomendação apply 046
+
+**Aplicar em rodada separada autorizada**, antes de ligar `FASE3_PARCEIRO_AREA_ENABLED` em qualquer ambiente com usuários reais. Sem 046, a UI existe mas o parceiro não passa RLS de leads/propostas (staff continua).
+
+### 22.10 Próximo passo sugerido
+
+Autorizar **apply 046** (dry-run já ok) → homologar RLS com ROLLBACK → só então considerar push E7 / preview / flag em não-prod. **Não iniciar E9** sem autorização.
+
+---
+
 ## STATUS FINAL DESTA RODADA
 
 ```
 FASE 3 — MIGRATION 045 APLICADA E BANCO HOMOLOGADO
-E0–E6 + E8 — IMPLEMENTADOS
-PUSH E6 26b7665 — REMOTO SINCRONIZADO
-SITE PÚBLICO — IMPLEMENTADO (FLAG OFF)
-E7 ÁREA COMERCIAL — AINDA PENDENTE
+E0–E8 — IMPLEMENTADOS EM CÓDIGO
+PUSH E8 873d761 — REMOTO SINCRONIZADO
+E7 ÁREA COMERCIAL — LOCAL (FLAG OFF)
+MIGRATION 046 — CRIADA / DRY-RUN OK / NÃO APLICADA
+SITE PÚBLICO — FLAG OFF
 VERCEL/DNS REAIS — INTOCADOS
-COMMIT E8 — LOCAL (SEM PUSH)
+COMMITS E7 — LOCAIS (SEM PUSH)
 PRODUÇÃO DO APP — INALTERADA
 ```
