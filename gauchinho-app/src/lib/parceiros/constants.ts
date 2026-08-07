@@ -9,6 +9,39 @@ export const FASE3_PARCEIRO_PUBLIC_SITE_ENABLED =
 /** Futura: área comercial do parceiro. */
 export const FASE3_PARCEIRO_AREA_ENABLED =
   process.env.FASE3_PARCEIRO_AREA_ENABLED === "true";
+/** E5: mutações reais na API Vercel Domains (server-side). Default false. */
+export const FASE3_VERCEL_DOMAINS_ENABLED =
+  process.env.FASE3_VERCEL_DOMAINS_ENABLED === "true";
+
+/** Projeto Vercel existente — não criar outro. Nome canônico (não secreto). */
+export const VERCEL_PARCEIRO_PROJECT_NAME = "guachinho-site";
+export const VERCEL_PARCEIRO_TEAM_SLUG = "hugo-8097s-projects";
+/** ID documentado do projeto (não secreto). Override via VERCEL_PROJECT_ID. */
+export const VERCEL_PARCEIRO_PROJECT_ID_DEFAULT = "prj_rcdKOewLz7V2FXEvmn3qHlyMiKMT";
+
+/** Base oficial para subdomínio de parceiro no MVP (sem wildcard). */
+export const PARCEIRO_SUBDOMAIN_BASE = "gauchinhoconsorcios.com.br";
+
+/** Labels reservados sob a base do tenant — não podem ser slug de parceiro. */
+export const PARCEIRO_SUBDOMAIN_LABELS_RESERVADOS = [
+  "www",
+  "admin",
+  "api",
+  "app",
+  "auth",
+  "login",
+  "mail",
+  "smtp",
+  "ftp",
+  "cdn",
+  "static",
+  "assets",
+  "dashboard",
+  "painel",
+  "suporte",
+  "status",
+  "preview",
+] as const;
 export const PARTICIPANTE_STATUS = [
   "RASCUNHO",
   "ATIVO",

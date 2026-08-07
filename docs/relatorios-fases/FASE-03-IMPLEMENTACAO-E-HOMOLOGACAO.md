@@ -22,10 +22,11 @@
 | E1 migration 045 | **Aplicada e homologada** (ver §16) |
 | E2 libs | **Feito** |
 | E3 admin participantes/orgs | **Feito** (flag off; fora do menu) |
-| E4 admin parceiro-sites | **Feito** (flag off; fora do menu; sem Vercel/DNS) |
-| E5–E10 | **Não iniciados** |
-| Push branch feature | **Feito** até `7aea490` (doc 045); commit E4 **local, sem push** |
-| Vercel / DNS / deploy / main | **Intocados** |
+| E4 admin parceiro-sites | **Feito** (flag off; fora do menu) |
+| E5 domínios + Vercel server-side + gates | **Feito** (flag Vercel off; sem domínio/DNS real) |
+| E6–E10 | **Não iniciados** (E6 parcial só o necessário às gates E5) |
+| Push branch feature | **Feito** até `9e2bc12` (E4); commit E5 **local, sem push** |
+| Domínio real / DNS real / deploy / main | **Intocados** |
 
 ---
 
@@ -33,13 +34,15 @@
 
 ```
 FASE 3 — MIGRATION 045 APLICADA E BANCO HOMOLOGADO
-E0–E4 — IMPLEMENTADOS
+E0–E5 — IMPLEMENTADOS
 TELAS — DESATIVADAS POR FLAG
-ÁREA COMERCIAL — NÃO ATIVADA
+INTEGRAÇÃO VERCEL — CRIADA E PROTEGIDA POR FLAG
+NENHUM DOMÍNIO REAL CRIADO
+NENHUM DNS ALTERADO
+ÁREA COMERCIAL — NÃO IMPLEMENTADA
 SITES PÚBLICOS — NÃO ATIVOS
-VERCEL/DNS — INTOCADOS
 PRODUÇÃO DO APP — INALTERADA
-E5+ — NÃO INICIADAS
+E6+ — NÃO INICIADAS
 ```
 ---
 
@@ -689,17 +692,87 @@ Constante de código: `VERCEL_INTEGRATION_ENABLED_IN_E4 = false` (nenhum request
 
 ---
 
+
+## 19. Registro da rodada E5 — Domínios + Vercel + gates (2026-08-07)
+
+### 19.1 Push E4
+
+| Item | Valor |
+|---|---|
+| Branch | `feature/saas-fase-3-participantes-parceiros` |
+| Commit | `9e2bc12` — feat(saas): adiciona administracao de sites de parceiros |
+| Push | `git push origin feature/saas-fase-3-participantes-parceiros` |
+| Local = remote | **Sim** (`HEAD` = `origin/...` = `9e2bc12`) |
+| Merge main | **Não** |
+
+### 19.2 Escopo E5 entregue
+
+| Item | Estado |
+|---|---|
+| Módulo `vercel-domains.server.ts` (`import "server-only"`) | **Feito** |
+| Projeto Vercel | `hugo-8097s-projects/guachinho-site` (mesmo projeto; sem criar outro) |
+| Add / get / config DNS / remove / reconcile | **Feito** (API oficial; idempotente; mockável) |
+| Deny-list `empresa_dominios` (inclui oficiais Gauchinho) | **Feito** (server-side) |
+| Apex + www como conjunto; principal apex/www | **Feito** (valor local = apex) |
+| Subdomínio `{slug}.gauchinhoconsorcios.com.br` + labels reservados | **Feito** |
+| Verificar / reconciliar / suspender / remover | **Feito** |
+| Gates de publicação (org/site/branding/menus/domínio/SSL) | **Feito** |
+| UI `/admin/parceiro-sites/[id]` seção DOMÍNIO DO PARCEIRO | **Feito** |
+| Auditoria de eventos de domínio/publicação | **Feito** |
+
+### 19.3 Explicitamente NÃO feito
+
+- Nenhum domínio real adicionado à Vercel
+- Nenhum DNS real alterado
+- Flag `FASE3_VERCEL_DOMAINS_ENABLED` permanece **false**
+- Site público E8 / resolver E6 completo / área comercial E7
+- Policies novas leads/propostas
+- Preview, deploy, merge main, Empresa B, remoção do fallback, Fase 4
+
+### 19.4 Flags
+
+| Flag | Default |
+|---|---|
+| `FASE3_PARCEIRO_SITES_ADMIN_ENABLED` | `false` |
+| `FASE3_VERCEL_DOMAINS_ENABLED` | `false` |
+| `FASE3_PARCEIRO_PUBLIC_SITE_ENABLED` | `false` |
+| `FASE3_PARCEIRO_AREA_ENABLED` | `false` |
+
+Integração exige: flag Vercel + `VERCEL_API_TOKEN`/`VERCEL_TOKEN` + projeto (`VERCEL_PROJECT_ID` ou default documentado). Token nunca `NEXT_PUBLIC_`, nunca client bundle, nunca log.
+
+### 19.5 Testes e build
+
+| Check | Resultado |
+|---|---|
+| `npm test` | **441 passed** (92 files), exit 0 |
+| `npm run build` | **exit 0** |
+| Token/Vercel module em `.next/static` | **Ausentes** |
+| Service role no client bundle (actions E5) | **Ausente** |
+
+### 19.6 Git E5
+
+| Item | Estado |
+|---|---|
+| Commit local | `feat(saas): integra dominios de parceiros com Vercel` |
+| Push E5 | **Não** (aguarda autorização) |
+
+### 19.7 Próximo passo sugerido
+
+**E6** — resolver runtime path/subdomínio/domínio próprio (sem publicar ainda), ou homologação controlada da integração Vercel em ambiente não-produtivo com domínio de teste — sob nova autorização.
+
+---
+
 ## STATUS FINAL DESTA RODADA
 
 ```
 FASE 3 — MIGRATION 045 APLICADA E BANCO HOMOLOGADO
-E0–E4 — IMPLEMENTADOS
-TELAS ADMIN SITES — DESATIVADAS POR FLAG
-ÁREA COMERCIAL — NÃO IMPLEMENTADA
+E0–E5 — IMPLEMENTADOS
+PUSH E4 9e2bc12 — REMOTO SINCRONIZADO
+INTEGRAÇÃO VERCEL — CRIADA (FLAG OFF)
+NENHUM DOMÍNIO REAL / DNS / DEPLOY
 SITES PÚBLICOS — NÃO ATIVOS
-VERCEL AINDA NÃO INTEGRADA
-DNS AINDA NÃO ALTERADO
+ÁREA COMERCIAL — NÃO IMPLEMENTADA
+COMMIT E5 — LOCAL (SEM PUSH)
 PRODUÇÃO DO APP — INALTERADA
-COMMIT E4 — LOCAL (SEM PUSH)
-E5+ — NÃO INICIADAS
+E6+ — AGUARDA AUTORIZAÇÃO
 ```

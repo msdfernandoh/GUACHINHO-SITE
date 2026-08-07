@@ -103,6 +103,9 @@ export type ParceiroSiteDominio = {
   dns_instrucoes: Record<string, unknown>;
   ultima_verificacao_em: string | null;
   ultima_mensagem_erro: string | null;
+  vercel_domain_id: string | null;
+  vercel_project_id: string | null;
+  canonical_redirect: boolean;
   created_at: string;
   updated_at: string;
 };

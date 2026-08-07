@@ -7,6 +7,7 @@ import {
   type ParceiroDominioTipo,
   type ParceiroSiteStatus,
 } from "./constants";
+import { evaluatePublicationGates } from "./domain-e5";
 import { validateMenusForTemplate, type MenuLiberado } from "./menus";
 import { normalizeSlug, validateParceiroHostForPersist } from "./normalize";
 import {
@@ -60,7 +61,15 @@ export function validateSiteCreateInput(input: {
   existingSlugs: Array<{ id: string; empresaId: string; slug: string }>;
   /** true = criação (exige org ATIVA); false = edição (ATIVA só se PUBLICADO) */
   exigirOrgAtiva?: boolean;
-}): RuleResult & { menus?: MenuLiberado[]; slug?: string } {
+  siteAtivo?: boolean;
+  dominioPrincipal?: {
+    valor: string;
+    verificado: boolean;
+    status: string;
+    ssl_status: string;
+  } | null;
+  empresaAutorizaPublicacao?: boolean;
+}): RuleResult & { menus?: MenuLiberado[]; slug?: string; publicationReasons?: string[] } {
   if (input.organizacaoEmpresaId !== input.empresaId) {
     return { ok: false, error: "Organização de outro tenant." };
   }
@@ -103,13 +112,24 @@ export function validateSiteCreateInput(input: {
   const menusOk = validateMenusForTemplate(input.templateCodigo, input.menus);
   if (!menusOk.ok) return menusOk;
 
-  // PUBLICADO nesta rodada NÃO ativa rota pública (flag E8). Apenas status administrativo.
+  // PUBLICADO: gates E5. NÃO ativa rota pública (flag E8).
   if (input.statusPublicacao === "PUBLICADO") {
-    if (!brandingMinimoOk(input.branding, input.nomeSite)) {
-      return { ok: false, error: "Branding mínimo incompleto para PUBLICADO." };
-    }
-    if (!menusOk.menus.some((m) => m.habilitado)) {
-      return { ok: false, error: "Habilite ao menos um menu para PUBLICADO." };
+    const gates = evaluatePublicationGates({
+      organizacaoStatus: input.organizacaoStatus,
+      siteAtivo: input.siteAtivo !== false,
+      nomeSite: input.nomeSite,
+      branding: input.branding,
+      menus: menusOk.menus,
+      canalPrincipal: input.canalPrincipal,
+      dominioPrincipal: input.dominioPrincipal ?? null,
+      empresaAutorizaPublicacao: input.empresaAutorizaPublicacao,
+    });
+    if (!gates.ok) {
+      return {
+        ok: false,
+        error: `Publicação bloqueada: ${gates.reasons.join(" ")}`,
+        publicationReasons: gates.reasons,
+      };
     }
   }
 
@@ -161,5 +181,8 @@ export function papelBloqueadoParaEditorSite(papelCodigo: string | null | undefi
   );
 }
 
-/** Garantia de que nenhum código E4 dispara integração Vercel. */
+/**
+ * Legado E4: constante histórica (sempre false).
+ * E5 usa FASE3_VERCEL_DOMAINS_ENABLED + isVercelDomainsIntegrationReady().
+ */
 export const VERCEL_INTEGRATION_ENABLED_IN_E4 = false as const;

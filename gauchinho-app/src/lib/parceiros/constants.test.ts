@@ -6,8 +6,10 @@ import {
   FASE3_PARCEIRO_PUBLIC_SITE_ENABLED,
   FASE3_PARCEIRO_SITES_ADMIN_ENABLED,
   FASE3_PERMISSOES,
+  FASE3_VERCEL_DOMAINS_ENABLED,
   PAPEL_PARCEIRO_COMERCIAL,
   PAPEL_PARCEIRO_IMOBILIARIA_LEGADO,
+  VERCEL_PARCEIRO_PROJECT_NAME,
 } from "./constants";
 
 describe("fase 3 constants", () => {
@@ -16,6 +18,8 @@ describe("fase 3 constants", () => {
     expect(FASE3_PARCEIRO_SITES_ADMIN_ENABLED).toBe(false);
     expect(FASE3_PARCEIRO_PUBLIC_SITE_ENABLED).toBe(false);
     expect(FASE3_PARCEIRO_AREA_ENABLED).toBe(false);
+    expect(FASE3_VERCEL_DOMAINS_ENABLED).toBe(false);
+    expect(VERCEL_PARCEIRO_PROJECT_NAME).toBe("guachinho-site");
   });
 
   it("papel novo distinto do legado", () => {

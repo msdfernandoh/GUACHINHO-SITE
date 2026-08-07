@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import {
   FASE3_ADMIN_PARTICIPANTES_ENABLED,
   FASE3_PARCEIRO_SITES_ADMIN_ENABLED,
+  FASE3_VERCEL_DOMAINS_ENABLED,
 } from "./constants";
 
 async function tableExists(table: string): Promise<boolean> {
@@ -45,7 +46,12 @@ export function fase3AdminDisabledMessage(): string {
 
 export function fase3SitesAdminDisabledMessage(): string {
   if (!FASE3_PARCEIRO_SITES_ADMIN_ENABLED) {
-    return "Admin de sites de parceiros desabilitado (FASE3_PARCEIRO_SITES_ADMIN_ENABLED≠true). Sem Vercel/DNS/rota pública nesta rodada.";
+    return "Admin de sites de parceiros desabilitado (FASE3_PARCEIRO_SITES_ADMIN_ENABLED≠true). Sem rota pública nesta rodada.";
   }
   return "Tabela parceiro_sites indisponível neste ambiente.";
+}
+
+/** Flag E5 isolada — mutações Vercel só com flag + credencial (ver vercel-domains.server). */
+export function isFase3VercelDomainsFlagOn(): boolean {
+  return FASE3_VERCEL_DOMAINS_ENABLED;
 }

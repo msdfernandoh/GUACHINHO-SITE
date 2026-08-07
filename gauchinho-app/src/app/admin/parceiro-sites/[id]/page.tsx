@@ -9,14 +9,36 @@ import {
   WHATSAPP_MODOS,
 } from "@/lib/parceiros/constants";
 import { SITE_TEMPLATES } from "@/lib/parceiros/templates";
+import type { DnsInstrucoesE5 } from "@/lib/parceiros/domain-e5";
 import {
   addParceiroSiteDominioAction,
   canAccessParceiroSitesAdmin,
   fetchParceiroSiteDetalhe,
+  reconciliarDominioAction,
   setDominioPrincipalAction,
   softRemoveDominioAction,
+  suspenderDominioAction,
   updateParceiroSiteAction,
+  verificarDominioAction,
 } from "../actions";
+
+function DnsCell({ dns }: { dns: Record<string, unknown> }) {
+  const d = dns as DnsInstrucoesE5;
+  const regs = d.registros ?? [];
+  if (!regs.length) {
+    return <span className="text-xs text-zinc-500">{d.nota ?? "—"}</span>;
+  }
+  return (
+    <ul className="space-y-1 text-xs">
+      {regs.slice(0, 4).map((r, i) => (
+        <li key={`${r.tipo}-${r.host}-${i}`}>
+          <span className="font-medium">{r.tipo}</span> {r.host} → {r.valor}
+        </li>
+      ))}
+      {regs.length > 4 ? <li>+{regs.length - 4} registro(s)</li> : null}
+    </ul>
+  );
+}
 
 export default async function EditarParceiroSitePage({
   params,
@@ -34,7 +56,17 @@ export default async function EditarParceiroSitePage({
     notFound();
   }
 
-  const { empresaId, site, organizacao, dominios, templates } = detalhe;
+  const {
+    empresaId,
+    site,
+    organizacao,
+    dominios,
+    templates,
+    vercelReady,
+    vercelDisabledReason,
+    vercelProject,
+    publicationGates,
+  } = detalhe;
   const branding = (site.branding ?? {}) as Record<string, string | null>;
   const seo = (site.seo ?? {}) as Record<string, string | null>;
   const menusAtivos = new Set(
@@ -56,9 +88,28 @@ export default async function EditarParceiroSitePage({
           Org: {organizacao?.nome_fantasia ?? "—"} · Status org: {organizacao?.status ?? "—"}
         </p>
         <p className="mt-1 text-xs text-zinc-500">
-          Domínios: cadastro local apenas (PENDENTE_DNS / SSL PENDING). Sem API Vercel nesta rodada.
+          Domínio → empresa tenant → site do parceiro. Domínios de parceiro não criam tenant.
         </p>
       </div>
+
+      {!publicationGates.ok ? (
+        <div className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-100">
+          <p className="font-medium">Gates de publicação (canal {site.canal_principal})</p>
+          <ul className="mt-1 list-disc pl-5">
+            {publicationGates.reasons.map((r) => (
+              <li key={r}>{r}</li>
+            ))}
+          </ul>
+          <p className="mt-2 text-xs">
+            Rota pública permanece atrás de FASE3_PARCEIRO_PUBLIC_SITE_ENABLED (E8) — não ativada nesta
+            rodada.
+          </p>
+        </div>
+      ) : (
+        <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900 dark:border-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-100">
+          Gates de publicação satisfeitos para status PUBLICADO (ainda sem site público E8).
+        </div>
+      )}
 
       <form
         action={updateParceiroSiteAction}
@@ -234,8 +285,32 @@ export default async function EditarParceiroSitePage({
         <Button type="submit">Salvar alterações</Button>
       </form>
 
-      <section className="space-y-4 rounded-xl border bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
-        <h2 className="text-lg font-semibold">Domínios (cadastro local)</h2>
+      <section className="space-y-4 rounded-xl border border-amber-200 bg-white p-4 dark:border-amber-900 dark:bg-zinc-900">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-semibold">DOMÍNIO DO PARCEIRO</h2>
+            <p className="text-xs text-zinc-500">
+              Separado de{" "}
+              <Link href="/admin/empresas" className="text-amber-600 hover:underline">
+                DOMÍNIOS DA EMPRESA
+              </Link>
+              . Deny-list absoluta sobre empresa_dominios.
+            </p>
+          </div>
+          <div className="rounded border px-3 py-2 text-xs dark:border-zinc-700">
+            <p>
+              Vercel:{" "}
+              <span className="font-medium">{vercelReady ? "integração pronta" : "desligada"}</span>
+            </p>
+            <p className="text-zinc-500">
+              Projeto: {vercelProject.projectName} ({vercelProject.projectId.slice(0, 12)}…)
+            </p>
+            {!vercelReady && vercelDisabledReason ? (
+              <p className="mt-1 text-amber-700 dark:text-amber-300">{vercelDisabledReason}</p>
+            ) : null}
+          </div>
+        </div>
+
         <div className="overflow-x-auto">
           <table className="min-w-full text-sm">
             <thead className="border-b text-left text-xs uppercase text-zinc-500">
@@ -246,64 +321,114 @@ export default async function EditarParceiroSitePage({
                 <th className="px-2 py-1">Status</th>
                 <th className="px-2 py-1">SSL</th>
                 <th className="px-2 py-1">DNS</th>
+                <th className="px-2 py-1">Última verif.</th>
+                <th className="px-2 py-1">Erro</th>
                 <th className="px-2 py-1" />
               </tr>
             </thead>
             <tbody>
               {dominios.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-2 py-4 text-zinc-500">
-                    Nenhum domínio cadastrado.
+                  <td colSpan={9} className="px-2 py-4 text-zinc-500">
+                    Nenhum domínio de parceiro cadastrado.
                   </td>
                 </tr>
               ) : (
-                dominios.map((d) => (
-                  <tr key={d.id} className="border-b dark:border-zinc-800">
-                    <td className="px-2 py-2 font-medium">{d.valor}</td>
-                    <td className="px-2 py-2 text-xs">{d.tipo}</td>
-                    <td className="px-2 py-2">{d.principal ? "Sim" : "Não"}</td>
-                    <td className="px-2 py-2">{d.status}</td>
-                    <td className="px-2 py-2">{d.ssl_status}</td>
-                    <td className="px-2 py-2 text-xs text-zinc-500">
-                      {typeof d.dns_instrucoes === "object" && d.dns_instrucoes && "nota" in d.dns_instrucoes
-                        ? String((d.dns_instrucoes as { nota?: string }).nota ?? "—")
-                        : "—"}
-                    </td>
-                    <td className="px-2 py-2">
-                      <div className="flex flex-wrap gap-2">
-                        {!d.principal ? (
-                          <form action={setDominioPrincipalAction}>
+                dominios.map((d) => {
+                  const instr = (d.dns_instrucoes ?? {}) as DnsInstrucoesE5;
+                  return (
+                    <tr key={d.id} className="border-b align-top dark:border-zinc-800">
+                      <td className="px-2 py-2 font-medium">
+                        {d.valor}
+                        {instr.principal_variant === "www" ? (
+                          <span className="ml-1 text-xs text-zinc-500">(www principal)</span>
+                        ) : null}
+                      </td>
+                      <td className="px-2 py-2 text-xs">{d.tipo}</td>
+                      <td className="px-2 py-2">{d.principal ? "Sim" : "Não"}</td>
+                      <td className="px-2 py-2">{d.status}</td>
+                      <td className="px-2 py-2">{d.ssl_status}</td>
+                      <td className="px-2 py-2">
+                        <DnsCell dns={d.dns_instrucoes ?? {}} />
+                      </td>
+                      <td className="px-2 py-2 text-xs text-zinc-500">
+                        {d.ultima_verificacao_em
+                          ? new Date(d.ultima_verificacao_em).toLocaleString("pt-BR")
+                          : "—"}
+                      </td>
+                      <td className="px-2 py-2 text-xs text-red-600">
+                        {d.ultima_mensagem_erro ?? "—"}
+                      </td>
+                      <td className="px-2 py-2">
+                        <div className="flex flex-wrap gap-2">
+                          {!d.principal && d.status !== "SUSPENSO" ? (
+                            <form action={setDominioPrincipalAction}>
+                              <input type="hidden" name="empresa_id" value={empresaId} />
+                              <input type="hidden" name="parceiro_site_id" value={site.id} />
+                              <input type="hidden" name="dominio_id" value={d.id} />
+                              <Button type="submit" size="sm" variant="outline">
+                                Principal
+                              </Button>
+                            </form>
+                          ) : null}
+                          <form action={verificarDominioAction}>
                             <input type="hidden" name="empresa_id" value={empresaId} />
                             <input type="hidden" name="parceiro_site_id" value={site.id} />
                             <input type="hidden" name="dominio_id" value={d.id} />
-                            <Button type="submit" size="sm" variant="outline">
-                              Principal
+                            <Button type="submit" size="sm" variant="outline" disabled={!vercelReady}>
+                              Verificar
                             </Button>
                           </form>
-                        ) : null}
-                        <form action={softRemoveDominioAction}>
-                          <input type="hidden" name="empresa_id" value={empresaId} />
-                          <input type="hidden" name="parceiro_site_id" value={site.id} />
-                          <input type="hidden" name="dominio_id" value={d.id} />
-                          <Button type="submit" size="sm" variant="danger">
-                            Remover
-                          </Button>
-                        </form>
-                      </div>
-                    </td>
-                  </tr>
-                ))
+                          <form action={reconciliarDominioAction}>
+                            <input type="hidden" name="empresa_id" value={empresaId} />
+                            <input type="hidden" name="parceiro_site_id" value={site.id} />
+                            <input type="hidden" name="dominio_id" value={d.id} />
+                            <Button type="submit" size="sm" variant="outline" disabled={!vercelReady}>
+                              Reconciliar
+                            </Button>
+                          </form>
+                          {d.status !== "SUSPENSO" ? (
+                            <form action={suspenderDominioAction}>
+                              <input type="hidden" name="empresa_id" value={empresaId} />
+                              <input type="hidden" name="parceiro_site_id" value={site.id} />
+                              <input type="hidden" name="dominio_id" value={d.id} />
+                              <Button type="submit" size="sm" variant="outline">
+                                Suspender
+                              </Button>
+                            </form>
+                          ) : null}
+                          <form action={softRemoveDominioAction}>
+                            <input type="hidden" name="empresa_id" value={empresaId} />
+                            <input type="hidden" name="parceiro_site_id" value={site.id} />
+                            <input type="hidden" name="dominio_id" value={d.id} />
+                            <Button type="submit" size="sm" variant="danger">
+                              Remover
+                            </Button>
+                          </form>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
         </div>
 
-        <form action={addParceiroSiteDominioAction} className="grid gap-3 border-t pt-4 md:grid-cols-4">
+        <form
+          action={addParceiroSiteDominioAction}
+          className="grid gap-3 border-t pt-4 md:grid-cols-6"
+        >
           <input type="hidden" name="empresa_id" value={empresaId} />
           <input type="hidden" name="parceiro_site_id" value={site.id} />
           <div className="md:col-span-2">
-            <Label htmlFor="valor">Host</Label>
-            <Input id="valor" name="valor" placeholder="parceiro.exemplo.com.br" required />
+            <Label htmlFor="valor">Host / label</Label>
+            <Input
+              id="valor"
+              name="valor"
+              placeholder="parceiro.exemplo.com.br ou label"
+              required
+            />
           </div>
           <div>
             <Label htmlFor="tipo">Tipo</Label>
@@ -315,6 +440,13 @@ export default async function EditarParceiroSitePage({
               ))}
             </Select>
           </div>
+          <div>
+            <Label htmlFor="principal_variant">Principal (apex/www)</Label>
+            <Select id="principal_variant" name="principal_variant" defaultValue="apex">
+              <option value="apex">apex</option>
+              <option value="www">www</option>
+            </Select>
+          </div>
           <div className="flex items-end gap-3">
             <label className="flex items-center gap-2 text-sm">
               <input type="checkbox" name="principal" />
@@ -324,8 +456,10 @@ export default async function EditarParceiroSitePage({
               Adicionar
             </Button>
           </div>
-          <p className="md:col-span-4 text-xs text-zinc-500">
-            Novos domínios nascem PENDENTE_DNS / SSL PENDING. Nenhuma chamada Vercel é executada.
+          <p className="md:col-span-6 text-xs text-zinc-500">
+            Domínio próprio: apex+www como conjunto (valor local = apex; www não é persistido).
+            Subdomínio: {"{slug}"}.gauchinhoconsorcios.com.br (sem wildcard). Com flag Vercel off,
+            permanece cadastro local PENDENTE_DNS.
           </p>
         </form>
       </section>

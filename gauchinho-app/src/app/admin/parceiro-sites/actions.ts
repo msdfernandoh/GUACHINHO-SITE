@@ -9,6 +9,17 @@ import {
   requireGerenciarSitesParceiros,
 } from "@/lib/parceiros/authorization";
 import { brandingFromForm, emptyBranding } from "@/lib/parceiros/branding";
+import {
+  buildDnsInstrucoesFromVercel,
+  evaluatePublicationGates,
+  isHostBlockedByEmpresaDominios,
+  mapVercelEvidenceToLocal,
+  parsePrincipalVariant,
+  reconcileLocalVsVercel,
+  validateDominioE5Create,
+  type DnsInstrucoesE5,
+  type DnsRegistro,
+} from "@/lib/parceiros/domain-e5";
 import { MENU_CODIGOS, parseMenusFromForm } from "@/lib/parceiros/menus";
 import {
   fase3SitesAdminDisabledMessage,
@@ -18,11 +29,29 @@ import {
   papelBloqueadoParaEditorSite,
   validateDominioLocalCreate,
   validateSiteCreateInput,
-  VERCEL_INTEGRATION_ENABLED_IN_E4,
 } from "@/lib/parceiros/site-rules";
 import type { ParceiroSite, ParceiroSiteDominio, ParceiroSiteListRow } from "@/lib/parceiros/types";
 import { TEMPLATE_CODIGOS } from "@/lib/parceiros/templates";
 import { PARCEIRO_CANAIS, PARCEIRO_SITE_STATUS } from "@/lib/parceiros/constants";
+import {
+  dnsRegistrosFromVercelConfig,
+  getConfiguredVercelProject,
+  getDefaultVercelDomainsClient,
+  isVercelDomainsIntegrationReady,
+  vercelDomainsDisabledReason,
+  type VercelDomainsClient,
+} from "@/lib/parceiros/vercel-domains.server";
+
+/** Injável em testes — produção usa cliente default. */
+let vercelClientOverride: VercelDomainsClient | null = null;
+
+export async function __setVercelDomainsClientForTests(client: VercelDomainsClient | null) {
+  vercelClientOverride = client;
+}
+
+function vercelClient(): VercelDomainsClient {
+  return vercelClientOverride ?? getDefaultVercelDomainsClient();
+}
 
 async function resolveEmpresaIdPadrao(): Promise<string> {
   const supabase = await createClient();
@@ -43,9 +72,6 @@ async function assertSitesAdmin(empresaId: string, papelCodigo?: string | null) 
     throw new Error("Papel sem permissão para editar sites de parceiros.");
   }
   await requireGerenciarSitesParceiros(empresaId);
-  if (VERCEL_INTEGRATION_ENABLED_IN_E4) {
-    throw new Error("Integração Vercel não autorizada na E4.");
-  }
 }
 
 async function audit(
@@ -56,13 +82,97 @@ async function audit(
   payload: Record<string, unknown>
 ) {
   const supabase = await createClient();
+  // Nunca registrar token ou Authorization.
+  const safe = { ...payload };
+  delete safe.token;
+  delete safe.authorization;
+  delete safe.Authorization;
   await supabase.from("parceiro_site_auditoria").insert({
     empresa_id: empresaId,
     parceiro_site_id: siteId,
     dominio_id: dominioId,
     acao,
-    payload,
+    payload: safe,
   });
+}
+
+async function loadEmpresaHosts(supabase: Awaited<ReturnType<typeof createClient>>) {
+  const { data } = await supabase.from("empresa_dominios").select("valor, ativo, verificado");
+  return data ?? [];
+}
+
+async function assertDominioOwnership(input: {
+  empresaId: string;
+  siteId: string;
+  dominioId: string;
+}) {
+  const supabase = await createClient();
+  const { data: site } = await supabase
+    .from("parceiro_sites")
+    .select("id, empresa_id")
+    .eq("id", input.siteId)
+    .eq("empresa_id", input.empresaId)
+    .maybeSingle();
+  if (!site) throw new Error("Site não encontrado neste tenant.");
+
+  const { data: dom } = await supabase
+    .from("parceiro_site_dominios")
+    .select("*")
+    .eq("id", input.dominioId)
+    .eq("parceiro_site_id", input.siteId)
+    .eq("empresa_id", input.empresaId)
+    .maybeSingle();
+  if (!dom) throw new Error("Domínio não pertence a este site/tenant.");
+
+  const empresaHosts = await loadEmpresaHosts(supabase);
+  if (isHostBlockedByEmpresaDominios(
+    dom.valor,
+    empresaHosts.map((h) => h.valor)
+  )) {
+    throw new Error("Operação bloqueada: host pertence a empresa_dominios (deny-list absoluta).");
+  }
+
+  return { supabase, site, dominio: dom as ParceiroSiteDominio, empresaHosts };
+}
+
+async function collectDnsFromVercel(
+  client: VercelDomainsClient,
+  apex: string,
+  www: string | null,
+  tipo: string
+): Promise<{ registros: DnsRegistro[]; vercelMeta: DnsInstrucoesE5["vercel"] }> {
+  const registros: DnsRegistro[] = [];
+  const vercelMeta: DnsInstrucoesE5["vercel"] = {};
+
+  const apexCfg = await client.getDomainConfig(apex);
+  if (apexCfg.ok) {
+    registros.push(...dnsRegistrosFromVercelConfig(apexCfg.data, "@"));
+  }
+  const apexInfo = await client.getDomain(apex);
+  if (apexInfo.ok && apexInfo.data) {
+    vercelMeta.apex = {
+      name: apexInfo.data.name,
+      verified: apexInfo.data.verified,
+      configured: !apexCfg.ok ? undefined : !apexCfg.data.misconfigured,
+    };
+  }
+
+  if (www && (tipo === "DOMINIO_PROPRIO" || tipo === "ALIAS")) {
+    const wwwCfg = await client.getDomainConfig(www);
+    if (wwwCfg.ok) {
+      registros.push(...dnsRegistrosFromVercelConfig(wwwCfg.data, "www"));
+    }
+    const wwwInfo = await client.getDomain(www);
+    if (wwwInfo.ok && wwwInfo.data) {
+      vercelMeta.www = {
+        name: wwwInfo.data.name,
+        verified: wwwInfo.data.verified,
+        configured: !wwwCfg.ok ? undefined : !wwwCfg.data.misconfigured,
+      };
+    }
+  }
+
+  return { registros, vercelMeta };
 }
 
 export async function canAccessParceiroSitesAdmin(): Promise<boolean> {
@@ -202,6 +312,24 @@ export async function fetchParceiroSiteDetalhe(id: string) {
       .order("principal", { ascending: false }),
   ]);
 
+  const principal = (dominios ?? []).find((d) => d.principal) ?? null;
+  const publicationGates = evaluatePublicationGates({
+    organizacaoStatus: org?.status ?? "",
+    siteAtivo: Boolean(site.ativo),
+    nomeSite: site.nome_site,
+    branding: (site.branding ?? {}) as Parameters<typeof evaluatePublicationGates>[0]["branding"],
+    menus: Array.isArray(site.menus) ? site.menus : [],
+    canalPrincipal: site.canal_principal,
+    dominioPrincipal: principal
+      ? {
+          valor: principal.valor,
+          verificado: principal.verificado,
+          status: principal.status,
+          ssl_status: principal.ssl_status,
+        }
+      : null,
+  });
+
   return {
     empresaId,
     site: site as ParceiroSite,
@@ -211,6 +339,12 @@ export async function fetchParceiroSiteDetalhe(id: string) {
     menusCatalogo: MENU_CODIGOS,
     statusOptions: PARCEIRO_SITE_STATUS,
     canais: PARCEIRO_CANAIS,
+    vercelReady: isVercelDomainsIntegrationReady(),
+    vercelDisabledReason: isVercelDomainsIntegrationReady()
+      ? null
+      : vercelDomainsDisabledReason(),
+    vercelProject: getConfiguredVercelProject(),
+    publicationGates,
   };
 }
 
@@ -273,8 +407,16 @@ export async function createParceiroSiteAction(formData: FormData) {
       empresaId: s.empresa_id,
       slug: s.slug,
     })),
+    dominioPrincipal: null,
   });
-  if (!validated.ok) throw new Error(validated.error);
+  if (!validated.ok) {
+    if (validated.publicationReasons) {
+      await audit(empresaId, null, null, "PUBLICACAO_BLOQUEADA", {
+        reasons: validated.publicationReasons,
+      });
+    }
+    throw new Error(validated.error);
+  }
 
   const { data: created, error } = await supabase
     .from("parceiro_sites")
@@ -331,7 +473,7 @@ export async function updateParceiroSiteAction(formData: FormData) {
     .eq("id", current.organizacao_parceira_id)
     .maybeSingle();
 
-  const [{ data: existingSites }, { data: allSlugs }] = await Promise.all([
+  const [{ data: existingSites }, { data: allSlugs }, { data: principalDom }] = await Promise.all([
     supabase
       .from("parceiro_sites")
       .select("id, organizacao_parceira_id")
@@ -339,10 +481,20 @@ export async function updateParceiroSiteAction(formData: FormData) {
       .eq("ativo", true)
       .neq("status_publicacao", "ARQUIVADO"),
     supabase.from("parceiro_sites").select("id, empresa_id, slug").eq("empresa_id", empresaId),
+    supabase
+      .from("parceiro_site_dominios")
+      .select("valor, verificado, status, ssl_status")
+      .eq("parceiro_site_id", id)
+      .eq("principal", true)
+      .neq("status", "REMOVIDO")
+      .maybeSingle(),
   ]);
 
   const menus = parseMenusFromForm(formData.getAll("menus"));
   const branding = { ...emptyBranding(), ...brandingFromForm(formData) };
+  const afterStatus = String(formData.get("status_publicacao") ?? current.status_publicacao);
+  const siteAtivo = formData.get("ativo") === "on";
+
   const validated = validateSiteCreateInput({
     empresaId,
     organizacaoId: current.organizacao_parceira_id,
@@ -352,7 +504,7 @@ export async function updateParceiroSiteAction(formData: FormData) {
     slug: String(formData.get("slug") ?? ""),
     templateCodigo: String(formData.get("template_codigo") ?? current.template_codigo),
     canalPrincipal: String(formData.get("canal_principal") ?? current.canal_principal),
-    statusPublicacao: String(formData.get("status_publicacao") ?? current.status_publicacao),
+    statusPublicacao: afterStatus,
     branding,
     menus,
     existingActiveSites: (existingSites ?? [])
@@ -362,8 +514,24 @@ export async function updateParceiroSiteAction(formData: FormData) {
       .filter((s) => s.id !== id)
       .map((s) => ({ id: s.id, empresaId: s.empresa_id, slug: s.slug })),
     exigirOrgAtiva: false,
+    siteAtivo,
+    dominioPrincipal: principalDom
+      ? {
+          valor: principalDom.valor,
+          verificado: principalDom.verificado,
+          status: principalDom.status,
+          ssl_status: principalDom.ssl_status,
+        }
+      : null,
   });
-  if (!validated.ok) throw new Error(validated.error);
+  if (!validated.ok) {
+    if (afterStatus === "PUBLICADO") {
+      await audit(empresaId, id, null, "PUBLICACAO_BLOQUEADA", {
+        reasons: validated.publicationReasons ?? [validated.error],
+      });
+    }
+    throw new Error(validated.error);
+  }
 
   const before = {
     template: current.template_codigo,
@@ -377,7 +545,7 @@ export async function updateParceiroSiteAction(formData: FormData) {
     .update({
       slug: validated.slug ?? current.slug,
       template_codigo: String(formData.get("template_codigo") ?? current.template_codigo),
-      status_publicacao: String(formData.get("status_publicacao") ?? current.status_publicacao),
+      status_publicacao: afterStatus,
       canal_principal: String(formData.get("canal_principal") ?? current.canal_principal),
       nome_site: String(formData.get("nome_site") ?? "").trim(),
       descricao: String(formData.get("descricao") ?? ""),
@@ -389,17 +557,16 @@ export async function updateParceiroSiteAction(formData: FormData) {
         titulo: String(formData.get("seo_titulo") ?? "") || null,
         descricao: String(formData.get("seo_descricao") ?? "") || null,
       },
-      ativo: formData.get("ativo") === "on",
+      ativo: siteAtivo,
     })
     .eq("id", id)
     .eq("empresa_id", empresaId);
   if (error) throw new Error(error.message);
 
-  const afterStatus = String(formData.get("status_publicacao") ?? current.status_publicacao);
   const acao =
     afterStatus !== current.status_publicacao
       ? afterStatus === "PUBLICADO"
-        ? "PUBLICAR"
+        ? "PUBLICACAO_APROVADA"
         : afterStatus === "SUSPENSO"
           ? "SUSPENDER"
           : afterStatus === "ARQUIVADO"
@@ -420,7 +587,7 @@ export async function updateParceiroSiteAction(formData: FormData) {
   revalidatePath(`/admin/parceiro-sites/${id}`);
 }
 
-/** Cadastro local apenas — sem Vercel/DNS/SSL real. */
+/** Cadastro de domínio: local sempre; Vercel somente se flag+credencial. */
 export async function addParceiroSiteDominioAction(formData: FormData) {
   const empresaId = String(formData.get("empresa_id") || (await resolveEmpresaIdPadrao()));
   await assertSitesAdmin(empresaId);
@@ -436,9 +603,9 @@ export async function addParceiroSiteDominioAction(formData: FormData) {
     .maybeSingle();
   if (!site) throw new Error("Site não encontrado.");
 
-  const [{ data: parceiroHosts }, { data: empresaHosts }, { data: primaries }] = await Promise.all([
+  const [{ data: parceiroHosts }, empresaHostsRows, { data: primaries }] = await Promise.all([
     supabase.from("parceiro_site_dominios").select("valor").neq("status", "REMOVIDO"),
-    supabase.from("empresa_dominios").select("valor").eq("ativo", true),
+    loadEmpresaHosts(supabase),
     supabase
       .from("parceiro_site_dominios")
       .select("id")
@@ -447,16 +614,42 @@ export async function addParceiroSiteDominioAction(formData: FormData) {
       .neq("status", "REMOVIDO"),
   ]);
 
+  const empresaHosts = empresaHostsRows.map((h) => h.valor);
+  const baseAtivos = empresaHostsRows
+    .filter((h) => h.ativo !== false)
+    .map((h) => h.valor);
+
+  const tipo = String(formData.get("tipo") ?? "DOMINIO_PROPRIO");
   const principal = formData.get("principal") === "on";
-  const validated = validateDominioLocalCreate({
+  const principalVariant = parsePrincipalVariant(String(formData.get("principal_variant") ?? "apex"));
+
+  const validated = validateDominioE5Create({
     valorRaw: String(formData.get("valor") ?? ""),
-    tipo: String(formData.get("tipo") ?? "DOMINIO_PROPRIO"),
+    tipo,
     principal,
+    principalVariant,
     existingParceiroHosts: (parceiroHosts ?? []).map((h) => h.valor),
-    existingEmpresaHosts: (empresaHosts ?? []).map((h) => h.valor),
+    existingEmpresaHosts: empresaHosts,
     hasPrimaryAlready: (primaries ?? []).length > 0,
+    baseEmpresaHostsAtivos: baseAtivos,
   });
   if (!validated.ok) throw new Error(validated.error);
+
+  // Deny-list absoluta pré-mutação
+  if (isHostBlockedByEmpresaDominios(validated.valor!, empresaHosts)) {
+    throw new Error("Domínio oficial/tenant bloqueado (empresa_dominios).");
+  }
+
+  const pair = validated.pair!;
+  const dnsLocal: DnsInstrucoesE5 = {
+    nota: isVercelDomainsIntegrationReady()
+      ? "Cadastro local; sincronizando com Vercel…"
+      : "Cadastro local. Integração Vercel desabilitada nesta rodada/ambiente.",
+    apex: pair.apex,
+    www: tipo === "SUBDOMINIO_EMPRESA" ? undefined : pair.www,
+    principal_variant: validated.principalVariant,
+    registros: [],
+  };
 
   const { data: created, error } = await supabase
     .from("parceiro_site_dominios")
@@ -464,31 +657,285 @@ export async function addParceiroSiteDominioAction(formData: FormData) {
       empresa_id: empresaId,
       parceiro_site_id: siteId,
       valor: validated.valor,
-      tipo: String(formData.get("tipo") ?? "DOMINIO_PROPRIO"),
+      tipo,
       principal,
       verificado: false,
       status: "PENDENTE_DNS",
       ssl_status: "PENDING",
-      dns_instrucoes: {
-        nota: "Cadastro local apenas. Verificação Vercel/DNS não habilitada nesta rodada (E4).",
-        registros_sugeridos: [
-          { tipo: "CNAME", host: "www", valor: "cname.vercel-dns.com" },
-          { tipo: "A", host: "@", valor: "(aguardar instrução Vercel — não integrar na E4)" },
-        ],
-      },
+      dns_instrucoes: dnsLocal,
       canonical_redirect: true,
     })
     .select("id")
     .single();
   if (error) throw new Error(error.message);
 
-  await audit(empresaId, siteId, created.id, "CRIAR_DOMINIO", {
+  await audit(empresaId, siteId, created.id, "DOMINIO_CRIADO", {
     valor: validated.valor,
+    tipo,
     status: "PENDENTE_DNS",
-    ssl: "PENDING",
-    vercel: false,
   });
 
+  if (!isVercelDomainsIntegrationReady()) {
+    // Compat E4: validação local pura também coberta por validateDominioLocalCreate nos testes.
+    void validateDominioLocalCreate;
+    revalidatePath(`/admin/parceiro-sites/${siteId}`);
+    return;
+  }
+
+  const client = vercelClient();
+  const project = getConfiguredVercelProject();
+  const hostsToAdd =
+    tipo === "DOMINIO_PROPRIO" || tipo === "ALIAS"
+      ? [pair.apex, pair.www]
+      : [pair.apex];
+
+  let lastError: string | null = null;
+  let vercelDomainId: string | null = null;
+
+  for (const host of hostsToAdd) {
+    const add = await client.addDomain(host);
+    if (!add.ok) {
+      lastError = add.error;
+      if (add.code === "domain_already_in_use") break;
+      continue;
+    }
+    if (host === pair.apex && add.data.id) vercelDomainId = add.data.id;
+    await audit(empresaId, siteId, created.id, "VERCEL_ADICIONADO", {
+      host,
+      alreadyExists: Boolean(add.alreadyExists),
+      projectId: project.projectId,
+      projectName: project.projectName,
+    });
+  }
+
+  const { registros, vercelMeta } = await collectDnsFromVercel(
+    client,
+    pair.apex,
+    tipo === "SUBDOMINIO_EMPRESA" ? null : pair.www,
+    tipo
+  );
+
+  const evidence = mapVercelEvidenceToLocal({
+    verified: Boolean(vercelMeta?.apex?.verified),
+    configured: vercelMeta?.apex?.configured,
+    sslReady: false,
+    errorMessage: lastError,
+  });
+
+  const dns = buildDnsInstrucoesFromVercel({
+    apex: pair.apex,
+    www: tipo === "SUBDOMINIO_EMPRESA" ? null : pair.www,
+    principalVariant: validated.principalVariant ?? "apex",
+    registros,
+    vercelMeta,
+    nota: lastError
+      ? `Erro ao adicionar na Vercel: ${lastError}`
+      : "Instruções retornadas/confirmadas pela Vercel.",
+  });
+
+  await supabase
+    .from("parceiro_site_dominios")
+    .update({
+      status: evidence.status,
+      ssl_status: evidence.ssl_status,
+      verificado: evidence.verificado,
+      dns_instrucoes: dns,
+      vercel_domain_id: vercelDomainId,
+      vercel_project_id: project.projectId,
+      ultima_mensagem_erro: lastError,
+      ultima_verificacao_em: new Date().toISOString(),
+    })
+    .eq("id", created.id);
+
+  if (registros.length) {
+    await audit(empresaId, siteId, created.id, "DNS_ATUALIZADO", {
+      count: registros.length,
+    });
+  }
+  if (evidence.status === "ATIVO") {
+    await audit(empresaId, siteId, created.id, "DOMINIO_ATIVADO", { valor: validated.valor });
+  }
+
+  revalidatePath(`/admin/parceiro-sites/${siteId}`);
+}
+
+export async function verificarDominioAction(formData: FormData) {
+  const empresaId = String(formData.get("empresa_id") || (await resolveEmpresaIdPadrao()));
+  await assertSitesAdmin(empresaId);
+  const siteId = String(formData.get("parceiro_site_id") ?? "");
+  const dominioId = String(formData.get("dominio_id") ?? "");
+
+  if (!isVercelDomainsIntegrationReady()) {
+    throw new Error(vercelDomainsDisabledReason());
+  }
+
+  const { supabase, dominio } = await assertDominioOwnership({ empresaId, siteId, dominioId });
+  if (dominio.status === "SUSPENSO" || dominio.status === "REMOVIDO") {
+    throw new Error("Domínio suspenso/removido não pode ser verificado.");
+  }
+
+  const client = vercelClient();
+  const instr = (dominio.dns_instrucoes ?? {}) as DnsInstrucoesE5;
+  const www =
+    dominio.tipo === "DOMINIO_PROPRIO" || dominio.tipo === "ALIAS"
+      ? instr.www ?? `www.${dominio.valor}`
+      : null;
+
+  const { registros, vercelMeta } = await collectDnsFromVercel(
+    client,
+    dominio.valor,
+    www,
+    dominio.tipo
+  );
+
+  // SSL READY só com evidência: verified + configured (sem misconfigured) — MVP sem endpoint SSL dedicado.
+  const sslReady = Boolean(
+    vercelMeta?.apex?.verified && vercelMeta?.apex?.configured === true
+  );
+
+  const evidence = mapVercelEvidenceToLocal({
+    verified: Boolean(vercelMeta?.apex?.verified),
+    configured: vercelMeta?.apex?.configured,
+    sslReady,
+    errorMessage: null,
+  });
+
+  const dns = buildDnsInstrucoesFromVercel({
+    apex: dominio.valor,
+    www,
+    principalVariant: parsePrincipalVariant(instr.principal_variant),
+    registros,
+    vercelMeta,
+  });
+
+  const { error } = await supabase
+    .from("parceiro_site_dominios")
+    .update({
+      status: evidence.status,
+      ssl_status: evidence.ssl_status,
+      verificado: evidence.verificado,
+      dns_instrucoes: dns,
+      ultima_verificacao_em: new Date().toISOString(),
+      ultima_mensagem_erro: null,
+    })
+    .eq("id", dominioId);
+  if (error) throw new Error(error.message);
+
+  await audit(empresaId, siteId, dominioId, "VERIFICACAO_EXECUTADA", {
+    status: evidence.status,
+    ssl: evidence.ssl_status,
+    verificado: evidence.verificado,
+  });
+  if (evidence.status === "ATIVO") {
+    await audit(empresaId, siteId, dominioId, "DOMINIO_ATIVADO", {});
+  }
+  if (registros.length) {
+    await audit(empresaId, siteId, dominioId, "DNS_ATUALIZADO", { count: registros.length });
+  }
+
+  revalidatePath(`/admin/parceiro-sites/${siteId}`);
+}
+
+export async function reconciliarDominioAction(formData: FormData) {
+  const empresaId = String(formData.get("empresa_id") || (await resolveEmpresaIdPadrao()));
+  await assertSitesAdmin(empresaId);
+  const siteId = String(formData.get("parceiro_site_id") ?? "");
+  const dominioId = String(formData.get("dominio_id") ?? "");
+
+  if (!isVercelDomainsIntegrationReady()) {
+    throw new Error(vercelDomainsDisabledReason());
+  }
+
+  const { supabase, dominio } = await assertDominioOwnership({ empresaId, siteId, dominioId });
+  const client = vercelClient();
+  const instr = (dominio.dns_instrucoes ?? {}) as DnsInstrucoesE5;
+  const www =
+    dominio.tipo === "DOMINIO_PROPRIO" || dominio.tipo === "ALIAS"
+      ? instr.www ?? `www.${dominio.valor}`
+      : null;
+
+  const apexGet = await client.getDomain(dominio.valor);
+  const wwwGet = www ? await client.getDomain(www) : null;
+
+  const rec = reconcileLocalVsVercel({
+    localValor: dominio.valor,
+    tipo: dominio.tipo,
+    vercelApexPresent: apexGet.ok ? apexGet.data != null : null,
+    vercelWwwPresent: wwwGet ? (wwwGet.ok ? wwwGet.data != null : null) : null,
+    vercelVerified: apexGet.ok && apexGet.data ? apexGet.data.verified : null,
+    localVerificado: dominio.verificado,
+  });
+
+  const { registros, vercelMeta } = await collectDnsFromVercel(
+    client,
+    dominio.valor,
+    www,
+    dominio.tipo
+  );
+
+  const sslReady = Boolean(
+    vercelMeta?.apex?.verified && vercelMeta?.apex?.configured === true
+  );
+  const evidence = mapVercelEvidenceToLocal({
+    verified: Boolean(vercelMeta?.apex?.verified),
+    configured: vercelMeta?.apex?.configured,
+    sslReady,
+  });
+
+  const dns: DnsInstrucoesE5 = {
+    ...buildDnsInstrucoesFromVercel({
+      apex: dominio.valor,
+      www,
+      principalVariant: parsePrincipalVariant(instr.principal_variant),
+      registros,
+      vercelMeta,
+    }),
+    reconciliacao: {
+      em: new Date().toISOString(),
+      local_existe: true,
+      vercel_apex: rec.vercel_apex,
+      vercel_www: rec.vercel_www,
+      divergencias: rec.divergencias,
+    },
+  };
+
+  await supabase
+    .from("parceiro_site_dominios")
+    .update({
+      status: evidence.status,
+      ssl_status: evidence.ssl_status,
+      verificado: evidence.verificado,
+      dns_instrucoes: dns,
+      ultima_verificacao_em: new Date().toISOString(),
+    })
+    .eq("id", dominioId);
+
+  await audit(empresaId, siteId, dominioId, "DOMINIO_RECONCILIADO", {
+    divergencias: rec.divergencias,
+    vercel_apex: rec.vercel_apex,
+    vercel_www: rec.vercel_www,
+  });
+
+  revalidatePath(`/admin/parceiro-sites/${siteId}`);
+}
+
+export async function suspenderDominioAction(formData: FormData) {
+  const empresaId = String(formData.get("empresa_id") || (await resolveEmpresaIdPadrao()));
+  await assertSitesAdmin(empresaId);
+  const siteId = String(formData.get("parceiro_site_id") ?? "");
+  const dominioId = String(formData.get("dominio_id") ?? "");
+  const { supabase, dominio } = await assertDominioOwnership({ empresaId, siteId, dominioId });
+
+  const { error } = await supabase
+    .from("parceiro_site_dominios")
+    .update({ status: "SUSPENSO", principal: false })
+    .eq("id", dominioId);
+  if (error) throw new Error(error.message);
+
+  await audit(empresaId, siteId, dominioId, "DOMINIO_SUSPENSO", {
+    before: { status: dominio.status, principal: dominio.principal },
+    vercel: false,
+  });
   revalidatePath(`/admin/parceiro-sites/${siteId}`);
 }
 
@@ -497,7 +944,18 @@ export async function setDominioPrincipalAction(formData: FormData) {
   await assertSitesAdmin(empresaId);
   const siteId = String(formData.get("parceiro_site_id") ?? "");
   const dominioId = String(formData.get("dominio_id") ?? "");
-  const supabase = await createClient();
+  const { supabase, dominio } = await assertDominioOwnership({ empresaId, siteId, dominioId });
+  if (dominio.status === "SUSPENSO" || dominio.status === "REMOVIDO") {
+    throw new Error("Domínio suspenso/removido não pode ser principal.");
+  }
+
+  const variant = parsePrincipalVariant(String(formData.get("principal_variant") ?? ""));
+  const instr = {
+    ...((dominio.dns_instrucoes ?? {}) as DnsInstrucoesE5),
+    principal_variant: variant || parsePrincipalVariant(
+      ((dominio.dns_instrucoes ?? {}) as DnsInstrucoesE5).principal_variant
+    ),
+  };
 
   await supabase
     .from("parceiro_site_dominios")
@@ -507,29 +965,95 @@ export async function setDominioPrincipalAction(formData: FormData) {
 
   const { error } = await supabase
     .from("parceiro_site_dominios")
-    .update({ principal: true })
+    .update({ principal: true, dns_instrucoes: instr, canonical_redirect: true })
     .eq("id", dominioId)
     .eq("parceiro_site_id", siteId)
     .eq("empresa_id", empresaId);
   if (error) throw new Error(error.message);
 
-  await audit(empresaId, siteId, dominioId, "SET_PRINCIPAL", {});
+  await audit(empresaId, siteId, dominioId, "PRINCIPAL_ALTERADO", {
+    valor: dominio.valor,
+    principal_variant: instr.principal_variant,
+  });
   revalidatePath(`/admin/parceiro-sites/${siteId}`);
 }
 
+/** Remoção explícita: DELETE Vercel (se integração) + REMOVIDO local. */
 export async function softRemoveDominioAction(formData: FormData) {
   const empresaId = String(formData.get("empresa_id") || (await resolveEmpresaIdPadrao()));
   await assertSitesAdmin(empresaId);
   const siteId = String(formData.get("parceiro_site_id") ?? "");
   const dominioId = String(formData.get("dominio_id") ?? "");
-  const supabase = await createClient();
+  const { supabase, dominio, empresaHosts } = await assertDominioOwnership({
+    empresaId,
+    siteId,
+    dominioId,
+  });
+
+  if (isHostBlockedByEmpresaDominios(dominio.valor, empresaHosts.map((h) => h.valor))) {
+    throw new Error("Não é permitido remover host de empresa_dominios via fluxo de parceiro.");
+  }
+
+  if (dominio.principal) {
+    const canalNeedsDomain = true; // UI deve escolher outro principal antes se necessário
+    const { data: others } = await supabase
+      .from("parceiro_site_dominios")
+      .select("id")
+      .eq("parceiro_site_id", siteId)
+      .neq("id", dominioId)
+      .neq("status", "REMOVIDO");
+    if (canalNeedsDomain && (others ?? []).length > 0) {
+      // Permite remoção do principal se houver outro — exige setar principal depois.
+    }
+  }
+
+  let vercelError: string | null = null;
+  if (isVercelDomainsIntegrationReady()) {
+    const client = vercelClient();
+    const instr = (dominio.dns_instrucoes ?? {}) as DnsInstrucoesE5;
+    const hosts =
+      dominio.tipo === "DOMINIO_PROPRIO" || dominio.tipo === "ALIAS"
+        ? [dominio.valor, instr.www ?? `www.${dominio.valor}`]
+        : [dominio.valor];
+
+    for (const host of hosts) {
+      const del = await client.removeDomain(host);
+      if (!del.ok) {
+        vercelError = del.error;
+        await supabase
+          .from("parceiro_site_dominios")
+          .update({
+            status: "ERRO",
+            ultima_mensagem_erro: `Falha ao remover na Vercel: ${del.error}`,
+          })
+          .eq("id", dominioId);
+        await audit(empresaId, siteId, dominioId, "DOMINIO_REMOVIDO", {
+          ok: false,
+          vercelError: del.error,
+          host,
+        });
+        revalidatePath(`/admin/parceiro-sites/${siteId}`);
+        throw new Error(`Remoção Vercel falhou: ${del.error}`);
+      }
+    }
+  }
+
   const { error } = await supabase
     .from("parceiro_site_dominios")
-    .update({ status: "REMOVIDO", principal: false })
+    .update({
+      status: "REMOVIDO",
+      principal: false,
+      ultima_mensagem_erro: vercelError,
+    })
     .eq("id", dominioId)
     .eq("empresa_id", empresaId);
   if (error) throw new Error(error.message);
-  await audit(empresaId, siteId, dominioId, "REMOVER_DOMINIO", { soft: true, vercel: false });
+
+  await audit(empresaId, siteId, dominioId, "DOMINIO_REMOVIDO", {
+    ok: true,
+    soft: true,
+    vercel: isVercelDomainsIntegrationReady(),
+  });
   revalidatePath(`/admin/parceiro-sites/${siteId}`);
 }
 
