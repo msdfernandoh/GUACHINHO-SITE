@@ -1,6 +1,7 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { FASE3_PARCEIRO_PUBLIC_SITE_ENABLED } from "@/lib/parceiros/constants";
+import { resolvePartnerPublicRequest } from "@/lib/parceiros/public-site-loader";
 import {
   PARCEIRO_SITE_ID_HEADER,
   PARCEIRO_SITE_SLUG_HEADER,
@@ -70,8 +71,6 @@ export async function proxy(request: NextRequest) {
   requestHeaders.delete(PARCEIRO_SITE_ID_HEADER);
   requestHeaders.delete(PARCEIRO_SITE_SLUG_HEADER);
   requestHeaders.delete(PARCEIRO_SOURCE_HEADER);
-  // E6/E8: site público de parceiro permanece off — não reescrever UX.
-  void FASE3_PARCEIRO_PUBLIC_SITE_ENABLED;
 
   if (!supabaseUrl || !anonKey) {
     return NextResponse.next({ request: { headers: requestHeaders } });
@@ -88,6 +87,53 @@ export async function proxy(request: NextRequest) {
     });
 
     if (!resolved.ok) {
+      // E8: host de domínio/subdomínio de parceiro (só com flag pública).
+      // Com flag=false, comportamento Fase 2 permanece (404 / dev local).
+      if (FASE3_PARCEIRO_PUBLIC_SITE_ENABLED) {
+        const partner = await resolvePartnerPublicRequest({
+          hostHeader: request.headers.get("host"),
+          pathname: path === "/" ? "/" : path,
+          searchParams: request.nextUrl.searchParams,
+          mode: "public",
+        });
+        if (partner.ok) {
+          if (partner.redirect) {
+            return NextResponse.redirect(partner.redirect.location, 308);
+          }
+          requestHeaders.set(TENANT_EMPRESA_ID_HEADER, partner.partner.empresa_id);
+          requestHeaders.set(TENANT_SLUG_HEADER, partner.partner.empresa_slug);
+          requestHeaders.set(PARCEIRO_SITE_ID_HEADER, partner.partner.parceiro_site_id);
+          requestHeaders.set(PARCEIRO_SITE_SLUG_HEADER, partner.partner.site_slug);
+          requestHeaders.set(PARCEIRO_SOURCE_HEADER, partner.partner.source);
+          tenantSlug = partner.partner.empresa_slug;
+
+          const rewriteUrl = request.nextUrl.clone();
+          rewriteUrl.pathname = `/parceiro/${partner.partner.site_slug}`;
+          let response = NextResponse.rewrite(rewriteUrl, {
+            request: { headers: requestHeaders },
+          });
+          // Auth cookie plumbing below expects `response` — fall through via early return after auth.
+          const supabase = createServerClient(supabaseUrl, anonKey, {
+            cookies: {
+              getAll() {
+                return request.cookies.getAll();
+              },
+              setAll(cookiesToSet: { name: string; value: string; options: CookieOptions }[]) {
+                cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
+                response = NextResponse.rewrite(rewriteUrl, {
+                  request: { headers: requestHeaders },
+                });
+                cookiesToSet.forEach(({ name, value, options }) =>
+                  response.cookies.set(name, value, options)
+                );
+              },
+            },
+          });
+          await supabase.auth.getUser();
+          return response;
+        }
+      }
+
       if (process.env.NODE_ENV === "development") {
         const host = (request.headers.get("host") ?? "").toLowerCase();
         const isLocal =

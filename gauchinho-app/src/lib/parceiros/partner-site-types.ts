@@ -21,6 +21,8 @@ export type PartnerSiteResolution = {
   dominio_id: string | null;
   dominio_tipo: string | null;
   dominio_status: string | null;
+  dominio_verificado: boolean;
+  dominio_ssl_status: string | null;
   dominio_principal: boolean;
   canonical_host: string | null;
   canonical_redirect: boolean;

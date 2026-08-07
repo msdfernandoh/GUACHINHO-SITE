@@ -99,9 +99,17 @@ export default async function EditarParceiroSitePage({
   return (
     <div className="space-y-8">
       <div>
-        <Link href="/admin/parceiro-sites" className="text-sm text-amber-600 hover:underline">
-          ← Voltar
-        </Link>
+        <div className="flex flex-wrap items-center gap-3">
+          <Link href="/admin/parceiro-sites" className="text-sm text-amber-600 hover:underline">
+            ← Voltar
+          </Link>
+          <Link
+            href={`/admin/parceiro-sites/${id}/preview`}
+            className="text-sm text-amber-600 hover:underline"
+          >
+            Preview autenticado
+          </Link>
+        </div>
         <h1 className="mt-2 text-2xl font-bold">Editar site</h1>
         <p className="text-sm text-zinc-500">
           Org: {organizacao?.nome_fantasia ?? "—"} · Status org: {organizacao?.status ?? "—"}

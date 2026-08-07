@@ -5,8 +5,8 @@
 **Roadmap legado (não numera SaaS):** `docs/PLANO-EXECUCAO-FASES.md`  
 **Data:** 2026-08-06  
 
-> **Autorização atual:** E0–E6 (045 homologada; admin sites + Vercel module + resolver runtime sob flags).  
-> **Não autorizado nesta rodada:** domínio/DNS real, site público E8, área comercial E7, preview/prod deploy, push do commit E6, merge main, fallback, Empresa B, Fase 4.
+> **Autorização atual:** E0–E6 + E8 (site público implementado sob flag off; E7 pendente).  
+> **Não autorizado nesta rodada:** domínio/DNS real, ativar flag pública em produção, área comercial E7, preview/prod deploy, push do commit E8, merge main, fallback, Empresa B, Fase 4.
 
 ---
 
@@ -24,9 +24,11 @@
 | E3 admin participantes/orgs | **Feito** (flag off; fora do menu) |
 | E4 admin parceiro-sites | **Feito** (flag off; fora do menu) |
 | E5 domínios + Vercel server-side + gates | **Feito** (flag Vercel off; sem domínio/DNS real) |
-| E6 resolver runtime (path/subdomínio/domínio) | **Feito** (flag pública off; sem servir site) |
-| E7–E10 | **Não iniciados** |
-| Push branch feature | **Feito** até `0e87dfa` (E5); commit E6 **local, sem push** |
+| E6 resolver runtime (path/subdomínio/domínio) | **Feito** |
+| E7 área comercial | **Não iniciada** |
+| E8 site público | **Feito** (flag `FASE3_PARCEIRO_PUBLIC_SITE_ENABLED` off) |
+| E9–E10 | **Não iniciados** |
+| Push branch feature | **Feito** até `26b7665` (E6); commit E8 **local, sem push** |
 | Domínio real / DNS real / deploy / main | **Intocados** |
 
 ---
@@ -35,13 +37,11 @@
 
 ```
 FASE 3 — MIGRATION 045 APLICADA E BANCO HOMOLOGADO
-E0–E6 — IMPLEMENTADOS
-TELAS / VERCEL / SITE PÚBLICO — FLAGS OFF
-RESOLVER PARCEIRO — CÓDIGO PRONTO (NÃO SERVE PÚBLICO)
+E0–E6 + E8 — IMPLEMENTADOS
+E7 ÁREA COMERCIAL — PENDENTE
+FLAGS OFF (SITE PÚBLICO NÃO ATIVO EM PRODUÇÃO)
 NENHUM DOMÍNIO REAL / DNS / DEPLOY
-ÁREA COMERCIAL — NÃO IMPLEMENTADA
 PRODUÇÃO DO APP — INALTERADA
-E7+ — NÃO INICIADAS
 ```
 ---
 
@@ -833,17 +833,89 @@ Resolver de tenant (`resolveTenantForRequest`), cache, preview Vercel seguro, fa
 
 ---
 
+
+## 21. Registro da rodada E8 — Site público de parceiros (2026-08-07)
+
+### 21.1 Push E6
+
+| Item | Valor |
+|---|---|
+| Commit | `26b7665` — feat(saas): adiciona resolucao runtime de sites parceiros |
+| Local = remote | **Sim** |
+| Merge main | **Não** |
+
+### 21.2 Escopo E8 entregue
+
+| Item | Estado |
+|---|---|
+| Flag `FASE3_PARCEIRO_PUBLIC_SITE_ENABLED` (default false) | **Feito** |
+| Rota `/parceiro/[slug]` (grupo isolado, sem header institucional) | **Feito** |
+| Template `institucional_v1` (header/hero/seções/CTA/footer/tenant) | **Feito** |
+| Gates públicos (org/site/status/domínio/SSL) | **Feito** |
+| Hierarquia site → org → empresa | **Feito** |
+| Menus allowlist (só seções implementadas; sem links quebrados) | **Feito** |
+| Canonical/redirect 308 (www↔principal; rota→domínio elegível) | **Feito** |
+| SEO title/description/canonical/OG/robots | **Feito** |
+| WhatsApp por `whatsapp_modo` | **Feito** |
+| Preview admin `/admin/parceiro-sites/[id]/preview` (noindex) | **Feito** |
+| Proxy: rewrite domínio/subdomínio → `/parceiro/[slug]` só com flag on | **Feito** |
+| Isolamento + strip headers/query forçados | **Feito** |
+
+### 21.3 Canais
+
+1. `/parceiro/[slug]` no host do tenant  
+2. `{slug}.gauchinhoconsorcios.com.br` via `parceiro_site_dominios` (SUBDOMINIO_EMPRESA)  
+3. Domínio próprio / www / alias via `parceiro_site_dominios`  
+
+Todos resolvem o mesmo `parceiro_site`; parceiro **não** vira tenant.
+
+### 21.4 Canonical (regra adotada)
+
+Com flag on + `canonical_redirect` + domínio elegível (ATIVO/verificado/SSL READY):
+
+- host alias/www ≠ principal → **308** para `https://{principal}/`  
+- `/parceiro/[slug]` com domínio principal elegível → **308** para o domínio  
+- Nunca entre tenants  
+
+Com flag off: nenhum redirect/site público.
+
+### 21.5 Explicitamente NÃO feito
+
+- Flag pública ativa em produção  
+- Domínio/DNS/Vercel reais  
+- E7 área comercial / policies leads-propostas  
+- Deploy preview/prod / merge main  
+
+### 21.6 Testes e build
+
+| Check | Resultado |
+|---|---|
+| `npm test` | **474 passed** (94 files) |
+| `npm run build` | **exit 0** |
+| Regressão Fase 2 | Tenant/resolver/preview/fallback intactos (flag off = path inerte) |
+
+### 21.7 Git E8
+
+| Item | Estado |
+|---|---|
+| Commit local | `feat(saas): adiciona site publico de parceiros` |
+| Push E8 | **Não** |
+
+### 21.8 Próximo passo
+
+**E7** (área comercial + policies) sob nova autorização — ou ativação controlada da flag pública em ambiente não-produtivo.
+
+---
+
 ## STATUS FINAL DESTA RODADA
 
 ```
 FASE 3 — MIGRATION 045 APLICADA E BANCO HOMOLOGADO
-E0–E6 — IMPLEMENTADOS
-PUSH E5 0e87dfa — REMOTO SINCRONIZADO
-RESOLVER RUNTIME — IMPLEMENTADO (FLAG PÚBLICA OFF)
-NENHUM SITE PUBLICADO
+E0–E6 + E8 — IMPLEMENTADOS
+PUSH E6 26b7665 — REMOTO SINCRONIZADO
+SITE PÚBLICO — IMPLEMENTADO (FLAG OFF)
+E7 ÁREA COMERCIAL — AINDA PENDENTE
 VERCEL/DNS REAIS — INTOCADOS
-ÁREA COMERCIAL — NÃO IMPLEMENTADA
-COMMIT E6 — LOCAL (SEM PUSH)
+COMMIT E8 — LOCAL (SEM PUSH)
 PRODUÇÃO DO APP — INALTERADA
-E7+ — AGUARDA AUTORIZAÇÃO
 ```

@@ -209,6 +209,8 @@ function buildResolution(input: {
     dominio_id: input.domain?.id ?? null,
     dominio_tipo: input.domain?.tipo ?? null,
     dominio_status: input.domain?.status ?? null,
+    dominio_verificado: Boolean(input.domain?.verificado),
+    dominio_ssl_status: input.domain?.ssl_status ?? null,
     dominio_principal: input.domain?.principal ?? false,
     canonical_host: canonical.host_principal,
     canonical_redirect: canonical.canonical_redirect,
@@ -281,13 +283,22 @@ export function resolvePartnerSiteFromFacts(input: {
       return { ok: false, reason: "site_arquivado" };
     }
 
+    // Domínio principal do site (se houver) — usado para canonical E8; path não exige domínio.
+    const principalDomain =
+      input.facts.domains.find(
+        (d) =>
+          d.parceiro_site_id === site.id &&
+          d.principal &&
+          d.status !== "REMOVIDO"
+      ) ?? null;
+
     return {
       ok: true,
       partner: buildResolution({
         source: "parceiro_path",
         site,
         empresa_slug: tenant.empresa_slug,
-        domain: null,
+        domain: principalDomain,
         requested_host: host || (input.hostHeader ?? ""),
         requested_path: path,
         mode,

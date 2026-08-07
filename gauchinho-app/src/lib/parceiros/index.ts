@@ -11,4 +11,6 @@ export * from "./partner-site-types";
 export * from "./partner-canonical";
 export * from "./resolve-partner-site";
 export * from "./partner-admin-preview";
-// vercel-domains.server NÃO é reexportado (server-only / token).
+export * from "./public-site-data";
+export * from "./public-site-gates";
+// public-site-loader e vercel-domains.server: uso explícito (env/service); não forçar barrel client.
