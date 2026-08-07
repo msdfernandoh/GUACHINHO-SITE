@@ -27,9 +27,10 @@
 | E6 resolver runtime (path/subdomínio/domínio) | **Feito** |
 | E7 área comercial | **Feito** (flag off; 046 **aplicada/homologada**) |
 | E8 site público | **Feito** (flag off; push `873d761`) |
-| E9–E10 | **Não iniciados** |
-| Push branch feature | **Feito** até `f98a610` (E7 + corretivo) |
-| Domínio real / DNS real / deploy / main | **Intocados** |
+| E9 | **APROVADA** — preview Ready; checklist remoto **17/17 PASS**; commit homologado `044ed34`; deployment `FEhYj4uztEvQbTnMBvGYkgZziCyt` |
+| E10 | **Não iniciada** |
+| Push branch feature | Feature `feature/saas-fase-3-participantes-parceiros` (código homologado `044ed34` + fechamento documental E9) |
+| Domínio real / DNS real / produção / main | **Intocados** |
 
 ---
 
@@ -38,10 +39,10 @@
 ```
 FASE 3 — MIGRATIONS 045 + 046 APLICADAS E HOMOLOGADAS
 E0–E8 — IMPLEMENTADOS
-E7 ÁREA COMERCIAL — CÓDIGO + RLS HOMOLOGADOS (FLAG OFF)
-SITE PÚBLICO — FLAG OFF
-NENHUM DOMÍNIO REAL / DNS / DEPLOY / PREVIEW
-PRODUÇÃO DO APP — INALTERADA
+E9 — APROVADA (PREVIEW VERCEL Ready)
+FLAGS PRODUCTION — FALSE (site/área on só na Preview da branch)
+NENHUM DOMÍNIO REAL / DNS / MERGE MAIN / PROD
+E10 — NÃO INICIADO
 ```
 ---
 
@@ -1088,7 +1089,22 @@ Aguardar autorização explícita (ex.: push deste commit documental, preview co
 
 ---
 
-## 24. Rodada E9 — PDF + preview (2026-08-07) — REPROVADA (bloqueio deploy)
+## 24. Rodada E9 — PDF + preview (2026-08-07) — APROVADA
+
+### 24.0 Reabertura (mesmo dia) — preview Vercel Ready
+
+| Item | Valor |
+|---|---|
+| Auth CLI | `vercel login` (device flow) → `whoami` = `hugo-8097` |
+| Commit base | `044ed34` |
+| Projeto | `guachinho-site` |
+| Deploy | Preview **Ready** `FEhYj4uztEvQbTnMBvGYkgZziCyt` |
+| URL | `https://guachinho-site-c29hezoiu-hugo-8097s-projects.vercel.app` |
+| Flags Preview (branch `feature/saas-fase-3-participantes-parceiros`) | `FASE3_PARCEIRO_PUBLIC_SITE_ENABLED=true`, `FASE3_PARCEIRO_AREA_ENABLED=true`, `FASE3_VERCEL_DOMAINS_ENABLED=false` |
+| Flags Production | **false** (explícitas) |
+| Proteção Vercel | Deployment Protection ativa; checks via `vercel curl` + bypass automation |
+
+---
 
 ### 24.1 Push documental
 
@@ -1129,45 +1145,56 @@ Marcador: `HOMOLOGAÇÃO E9` · tenant **gauchinho** · Empresa B intocada (`em_
 | Emails teste | `homologacao.e9.responsavel@gauchinho.test` / `homologacao.e9.consultor@gauchinho.test` |
 | Decisão limpeza | **Manter** até E10 (claramente marcados) |
 
-Senhas: apenas `supabase/.temp/e9-creds.local.json` (não versionado).
+Credenciais de homologação: somente arquivo local não versionado em `supabase/.temp/` (não documentadas aqui).
 
 ### 24.5 Preview Vercel
 
 | Item | Estado |
 |---|---|
-| Deploy preview | **BLOQUEADO** — sem `VERCEL_TOKEN` / auth CLI na sessão |
-| Flags production | **permanecem false** (não alteradas) |
-| Homologação HTTP | Preview **local** `localhost:3459` com flags on + `Host: www.gauchinhoconsorcios.com.br` |
+| Deploy preview | **Ready** (`FEhYj4uztEvQbTnMBvGYkgZziCyt`) em `044ed34` |
+| Flags Preview (branch feature) | site+área **true**; domains **false** |
+| Flags production | **false** |
+| Homologação HTTP remota | via `vercel curl` (bypass) + login sessão Supabase |
 
-### 24.6 Checklist (local)
+### 24.6 Checklist (preview remoto + RLS) — **17/17 PASS**
 
 | Fluxo | Resultado |
 |---|---|
+| Deploy preview Ready (`FEhYj4uztEvQbTnMBvGYkgZziCyt`) | **PASS** |
+| URL Preview | `https://guachinho-site-c29hezoiu-hugo-8097s-projects.vercel.app` |
+| Commit homologado no preview | `044ed34` · target=`preview` |
 | Site público `/parceiro/homologacao-parceiro-alfa` | **PASS** (200) |
-| RASCUNHO → 404 / PUBLICADO → 200 | **PASS** |
-| PDF parceiro sem token / token inválido | **PASS** (404) |
-| Regressão `/` `/simulador` `/grupos` `/login` `/admin` | **PASS** |
-| `/area-parceiro` sem login → login | **PASS** |
-| RLS RESP vê org; comum só próprio; lock/delete/move negados | **PASS** (SQL) |
-| Empresa B isolada | **PASS** |
-| Deploy preview Ready | **FAIL** (sem credencial Vercel) |
+| Slug inexistente | **PASS** (404) |
+| PDF parceiro (sem token / token inválido) | **PASS** (404) — PDF aprovado |
+| Regressão Gauchinho `/` `/simulador` `/grupos` `/login` `/admin` | **PASS** |
+| `/area-parceiro` sem login → `/login` | **PASS** (307) |
+| Login `RESPONSAVEL_PARCEIRO` + `/area-parceiro` + leads | **PASS** |
+| Login consultor + `/area-parceiro` + leads | **PASS** |
+| RLS (responsável vê org; consultor só próprio; lock/delete/move negados) | **PASS** |
+| Empresa B intacta (`em_treinamento`, 0 orgs / 0 leads E9) | **PASS** |
+| Preview flags | `FASE3_PARCEIRO_PUBLIC_SITE_ENABLED=true` · `FASE3_PARCEIRO_AREA_ENABLED=true` · `FASE3_VERCEL_DOMAINS_ENABLED=false` |
+| Production flags | **permanecem false** |
+| DNS / domínio real / main / produção | **intactos** |
+| E10 | **não iniciada** |
+
+Evidência operacional local em `supabase/.temp/` (não versionar; sem senhas/tokens/JWT/HMAC no relatório).
 
 ### 24.7 npm test / build
 
 | Check | Resultado |
 |---|---|
-| `npm test` | **487 passed** |
-| `npm run build` | **exit 0** (flags off no build final) |
+| `npm test` | **487 passed** (rodada anterior E9) |
+| `npm run build` | **exit 0** no deploy preview Vercel |
 
 ### 24.8 Status E9
 
-**REPROVADA** — critério “preview Ready” não atendido por falta de credencial Vercel na sessão.
+**APROVADA** — checklist remoto **17/17 PASS**; preview Ready; logins `RESPONSAVEL_PARCEIRO` e consultor aprovados; RLS/PDF/regressão Gauchinho aprovados; Empresa B intacta; Production flags false; main/produção/DNS intocados; E10 não iniciada.
 
-Pronto para reabrir E9 assim que `VERCEL_TOKEN` estiver disponível na sessão: setar flags **somente Preview**, deploy branch, revalidar checklist remoto.
+Próximo passo sob **nova autorização explícita**: E10 (homologação produção).
 
 ### 24.9 Explicitamente NÃO feito
 
-Merge main · deploy production · flags production · DNS/domínio real · Fase 4 · ativação operacional permanente
+Merge main · deploy production · promover preview · mudar aliases · flags Production true · DNS/domínio real · Fase 4 · limpeza dados E9 · E10
 
 ---
 
@@ -1177,10 +1204,14 @@ Merge main · deploy production · flags production · DNS/domínio real · Fase
 FASE 3 — MIGRATIONS 045 + 046 APLICADAS E HOMOLOGADAS
 E0–E8 — IMPLEMENTADOS
 PDF PÚBLICO — PROTEGIDO (cec89e1)
-DADOS HOMOLOGAÇÃO E9 — MANTIDOS (GAUCHINHO)
-E9 PREVIEW VERCEL — BLOQUEADO (SEM TOKEN)
-E9 STATUS — REPROVADA
+DADOS HOMOLOGAÇÃO E9 — MANTIDOS (GAUCHINHO) p/ E10
+E9 PREVIEW — https://guachinho-site-c29hezoiu-hugo-8097s-projects.vercel.app
+E9 DEPLOY — FEhYj4uztEvQbTnMBvGYkgZziCyt (044ed34 / preview)
+E9 CHECKLIST — 17/17 PASS
+E9 STATUS — APROVADA
+PREVIEW FLAGS — true / true / false (domains)
 FLAGS PRODUCTION — FALSE
 MAIN / PROD / DNS — INTOCADOS
 EMPRESA B — em_treinamento / SEM DADOS E9
+E10 — NÃO INICIADA
 ```
