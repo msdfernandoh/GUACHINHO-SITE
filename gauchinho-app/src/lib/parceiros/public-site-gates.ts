@@ -92,7 +92,10 @@ export function robotsForPartnerStatus(
   status: string,
   isPreview: boolean
 ): { index: boolean; follow: boolean } {
-  if (isPreview) return { index: false, follow: false };
+  // Deployments de preview Vercel nunca devem indexar, mesmo com site PUBLICADO.
+  if (isPreview || process.env.VERCEL_ENV === "preview") {
+    return { index: false, follow: false };
+  }
   if (status === "PUBLICADO" && FASE3_PARCEIRO_PUBLIC_SITE_ENABLED) {
     return { index: true, follow: true };
   }

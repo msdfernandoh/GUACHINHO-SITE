@@ -1088,18 +1088,99 @@ Aguardar autorização explícita (ex.: push deste commit documental, preview co
 
 ---
 
+## 24. Rodada E9 — PDF + preview (2026-08-07) — REPROVADA (bloqueio deploy)
+
+### 24.1 Push documental
+
+| Item | Valor |
+|---|---|
+| Commit | `b51bb65` — docs(saas): homologa area comercial e migration 046 |
+| Remoto pós-push | **`b51bb65`** (depois avançou com corretivos E9) |
+
+### 24.2 Auditoria `/api/propostas/[id]/pdf`
+
+| Achado | Detalhe |
+|---|---|
+| Auth | **Não** exigia autenticação |
+| Client | `getPropostaPdfDownloadUrl` → **service role** |
+| Tenant/ownership | **Não** validava |
+| Risco | Qualquer UUID conhecido baixava PDF (incl. potencial proposta parceiro) |
+| Uso legado | Simulador/grupos retornam `pdfPath` + `pdfDownloadUrl` (signed) |
+
+### 24.3 Correção PDF
+
+| Item | Estado |
+|---|---|
+| Commit | `cec89e1` — fix(saas): protege acesso ao pdf de propostas |
+| Regra | Escopo parceiro (`organizacao_parceira_id` / `participant_id`) → **404** na rota pública |
+| Legado público | exige token HMAC `?t=` (`PROPOSTA_PDF_PUBLIC_SECRET` ou service role server-side) |
+| Simulador/grupos | passam a emitir `pdfPath` com token |
+| Área parceiro | continua autenticada (não usa rota pública) |
+| Testes | unitários de token/escopo |
+
+### 24.4 Dados de homologação (mantidos p/ E10)
+
+Marcador: `HOMOLOGAÇÃO E9` · tenant **gauchinho** · Empresa B intocada (`em_treinamento`, 0 orgs).
+
+| Entidade | Identificador não sensível |
+|---|---|
+| Org | HOMOLOGAÇÃO PARCEIRO ALFA |
+| Site slug | `homologacao-parceiro-alfa` (PUBLICADO / canal ROTA) |
+| Emails teste | `homologacao.e9.responsavel@gauchinho.test` / `homologacao.e9.consultor@gauchinho.test` |
+| Decisão limpeza | **Manter** até E10 (claramente marcados) |
+
+Senhas: apenas `supabase/.temp/e9-creds.local.json` (não versionado).
+
+### 24.5 Preview Vercel
+
+| Item | Estado |
+|---|---|
+| Deploy preview | **BLOQUEADO** — sem `VERCEL_TOKEN` / auth CLI na sessão |
+| Flags production | **permanecem false** (não alteradas) |
+| Homologação HTTP | Preview **local** `localhost:3459` com flags on + `Host: www.gauchinhoconsorcios.com.br` |
+
+### 24.6 Checklist (local)
+
+| Fluxo | Resultado |
+|---|---|
+| Site público `/parceiro/homologacao-parceiro-alfa` | **PASS** (200) |
+| RASCUNHO → 404 / PUBLICADO → 200 | **PASS** |
+| PDF parceiro sem token / token inválido | **PASS** (404) |
+| Regressão `/` `/simulador` `/grupos` `/login` `/admin` | **PASS** |
+| `/area-parceiro` sem login → login | **PASS** |
+| RLS RESP vê org; comum só próprio; lock/delete/move negados | **PASS** (SQL) |
+| Empresa B isolada | **PASS** |
+| Deploy preview Ready | **FAIL** (sem credencial Vercel) |
+
+### 24.7 npm test / build
+
+| Check | Resultado |
+|---|---|
+| `npm test` | **487 passed** |
+| `npm run build` | **exit 0** (flags off no build final) |
+
+### 24.8 Status E9
+
+**REPROVADA** — critério “preview Ready” não atendido por falta de credencial Vercel na sessão.
+
+Pronto para reabrir E9 assim que `VERCEL_TOKEN` estiver disponível na sessão: setar flags **somente Preview**, deploy branch, revalidar checklist remoto.
+
+### 24.9 Explicitamente NÃO feito
+
+Merge main · deploy production · flags production · DNS/domínio real · Fase 4 · ativação operacional permanente
+
+---
+
 ## STATUS FINAL DESTA RODADA
 
 ```
 FASE 3 — MIGRATIONS 045 + 046 APLICADAS E HOMOLOGADAS
 E0–E8 — IMPLEMENTADOS
-PUSH E7 f98a610 — REMOTO SINCRONIZADO
-E7 ÁREA COMERCIAL — CÓDIGO + RLS HOMOLOGADOS
-SITE PÚBLICO — FLAG FALSE
-ÁREA PARCEIRO — FLAG FALSE
-PREVIEW / DEPLOY / MAIN — INTOCADOS
-VERCEL/DNS REAIS — INTOCADOS
-EMPRESA B OPERACIONAL — NÃO
-E9 — NÃO INICIADO
-PRODUÇÃO DO APP — INALTERADA
+PDF PÚBLICO — PROTEGIDO (cec89e1)
+DADOS HOMOLOGAÇÃO E9 — MANTIDOS (GAUCHINHO)
+E9 PREVIEW VERCEL — BLOQUEADO (SEM TOKEN)
+E9 STATUS — REPROVADA
+FLAGS PRODUCTION — FALSE
+MAIN / PROD / DNS — INTOCADOS
+EMPRESA B — em_treinamento / SEM DADOS E9
 ```

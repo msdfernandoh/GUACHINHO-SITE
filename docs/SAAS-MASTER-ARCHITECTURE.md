@@ -1,8 +1,8 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
-> **Versão:** 1.2.6  
+> **Versão:** 1.2.7  
 > **Data de Atualização:** 07/08/2026  
-> **Status da Plataforma:** Fase 2 Concluída e Homologada em Produção; Fase 3 escopo oficial final (§5.1); migrations **045 e 046 aplicadas e homologadas**; E0–E8 implementados (flags `FASE3_PARCEIRO_PUBLIC_SITE_ENABLED` e `FASE3_PARCEIRO_AREA_ENABLED` = false); sem preview/deploy/merge main; Vercel/DNS reais intocados  
+> **Status da Plataforma:** Fase 2 Concluída e Homologada em Produção; Fase 3: migrations **045/046 homologadas**; E0–E8 ok; PDF público protegido (token HMAC + bloqueio escopo parceiro); E9 **REPROVADA** (deploy preview Vercel bloqueado sem token na sessão); flags production false; dados HOMOLOGAÇÃO E9 mantidos no tenant Gauchinho  
 
 
 > **Projeto Físico:** `C:\Fernando Hugo\GAUCHINHO SITE`  

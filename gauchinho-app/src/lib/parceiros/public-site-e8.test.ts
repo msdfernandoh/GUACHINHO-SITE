@@ -350,10 +350,17 @@ describe("E8 — site público parceiros", () => {
   it("SEO robots: PUBLICADO indexável; preview/rascunho noindex", async () => {
     vi.resetModules();
     vi.stubEnv("FASE3_PARCEIRO_PUBLIC_SITE_ENABLED", "true");
+    vi.stubEnv("VERCEL_ENV", "production");
     const { robotsForPartnerStatus: robots } = await import("./public-site-gates");
     expect(robots("PUBLICADO", false).index).toBe(true);
     expect(robots("RASCUNHO", false).index).toBe(false);
     expect(robots("PUBLICADO", true).index).toBe(false);
+
+    vi.resetModules();
+    vi.stubEnv("FASE3_PARCEIRO_PUBLIC_SITE_ENABLED", "true");
+    vi.stubEnv("VERCEL_ENV", "preview");
+    const { robotsForPartnerStatus: robotsPreview } = await import("./public-site-gates");
+    expect(robotsPreview("PUBLICADO", false).index).toBe(false);
   });
 
   it("menus allowlist: só seções implementadas; HTML sanitizado", () => {
