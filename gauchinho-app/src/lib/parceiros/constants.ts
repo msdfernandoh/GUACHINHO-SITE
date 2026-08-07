@@ -1,7 +1,14 @@
-/** Feature flag: rotas admin de participantes/orgs só operam com migration 045 + flag. */
+/** Feature flags Fase 3 — todas false por padrão. */
 export const FASE3_ADMIN_PARTICIPANTES_ENABLED =
   process.env.FASE3_ADMIN_PARTICIPANTES_ENABLED === "true";
-
+export const FASE3_PARCEIRO_SITES_ADMIN_ENABLED =
+  process.env.FASE3_PARCEIRO_SITES_ADMIN_ENABLED === "true";
+/** Futura: rota pública /parceiro/[slug] e hosts. */
+export const FASE3_PARCEIRO_PUBLIC_SITE_ENABLED =
+  process.env.FASE3_PARCEIRO_PUBLIC_SITE_ENABLED === "true";
+/** Futura: área comercial do parceiro. */
+export const FASE3_PARCEIRO_AREA_ENABLED =
+  process.env.FASE3_PARCEIRO_AREA_ENABLED === "true";
 export const PARTICIPANTE_STATUS = [
   "RASCUNHO",
   "ATIVO",
@@ -54,11 +61,31 @@ export const PARCEIRO_SITE_STATUS = [
   "ARQUIVADO",
 ] as const;
 
+export type ParceiroSiteStatus = (typeof PARCEIRO_SITE_STATUS)[number];
+
+export const PARCEIRO_CANAIS = ["ROTA", "SUBDOMINIO", "DOMINIO"] as const;
+export type ParceiroCanalPrincipal = (typeof PARCEIRO_CANAIS)[number];
+
 export const PARCEIRO_DOMINIO_TIPOS = [
   "DOMINIO_PROPRIO",
   "SUBDOMINIO_EMPRESA",
   "ALIAS",
 ] as const;
+
+export type ParceiroDominioTipo = (typeof PARCEIRO_DOMINIO_TIPOS)[number];
+
+export const PARCEIRO_DOMINIO_STATUS = [
+  "PENDENTE_DNS",
+  "VERIFICANDO",
+  "ATIVO",
+  "ERRO",
+  "SUSPENSO",
+  "REMOVIDO",
+] as const;
+
+export const PARCEIRO_SSL_STATUS = ["PENDING", "READY", "ERROR"] as const;
+
+export const WHATSAPP_MODOS = ["PROPRIO", "EMPRESA", "CONFIG"] as const;
 
 /** Permissões conceituais da Fase 3 */
 export const FASE3_PERMISSOES = {

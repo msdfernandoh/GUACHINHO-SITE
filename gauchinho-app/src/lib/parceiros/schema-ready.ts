@@ -1,30 +1,20 @@
 import "server-only";
 
 import { createClient } from "@/lib/supabase/server";
-import { FASE3_ADMIN_PARTICIPANTES_ENABLED } from "./constants";
+import {
+  FASE3_ADMIN_PARTICIPANTES_ENABLED,
+  FASE3_PARCEIRO_SITES_ADMIN_ENABLED,
+} from "./constants";
 
-/**
- * Telas admin da Fase 3 só consultam o banco quando:
- * 1) feature flag explícita está ligada; e
- * 2) as tabelas da migration 045 existem.
- *
- * Evita apontar produção para tabelas inexistentes antes da aplicação da 045.
- */
-export async function isFase3ParticipantesSchemaReady(): Promise<boolean> {
-  if (!FASE3_ADMIN_PARTICIPANTES_ENABLED) return false;
+async function tableExists(table: string): Promise<boolean> {
   try {
     const supabase = await createClient();
-    const { error } = await supabase
-      .from("participantes_comerciais")
-      .select("id")
-      .limit(1);
+    const { error } = await supabase.from(table).select("id").limit(1);
     if (error) {
-      // 42P01 undefined_table / schema cache
       const msg = error.message?.toLowerCase() ?? "";
       if (msg.includes("does not exist") || msg.includes("schema cache") || error.code === "42P01") {
         return false;
       }
-      // Outros erros (RLS/auth) ainda indicam que a tabela existe
       return true;
     }
     return true;
@@ -33,9 +23,29 @@ export async function isFase3ParticipantesSchemaReady(): Promise<boolean> {
   }
 }
 
+/**
+ * Telas admin da Fase 3 só consultam o banco quando flag + schema 045.
+ */
+export async function isFase3ParticipantesSchemaReady(): Promise<boolean> {
+  if (!FASE3_ADMIN_PARTICIPANTES_ENABLED) return false;
+  return tableExists("participantes_comerciais");
+}
+
+export async function isFase3ParceiroSitesAdminReady(): Promise<boolean> {
+  if (!FASE3_PARCEIRO_SITES_ADMIN_ENABLED) return false;
+  return tableExists("parceiro_sites");
+}
+
 export function fase3AdminDisabledMessage(): string {
   if (!FASE3_ADMIN_PARTICIPANTES_ENABLED) {
-    return "Módulo de participantes/organizações desabilitado (FASE3_ADMIN_PARTICIPANTES_ENABLED≠true). Migration 045 ainda não deve ser usada em produção nesta rodada.";
+    return "Módulo de participantes/organizações desabilitado (FASE3_ADMIN_PARTICIPANTES_ENABLED≠true).";
   }
   return "Schema da Fase 3 (migration 045) ainda não está disponível neste ambiente.";
+}
+
+export function fase3SitesAdminDisabledMessage(): string {
+  if (!FASE3_PARCEIRO_SITES_ADMIN_ENABLED) {
+    return "Admin de sites de parceiros desabilitado (FASE3_PARCEIRO_SITES_ADMIN_ENABLED≠true). Sem Vercel/DNS/rota pública nesta rodada.";
+  }
+  return "Tabela parceiro_sites indisponível neste ambiente.";
 }

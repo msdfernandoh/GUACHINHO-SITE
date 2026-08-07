@@ -5,8 +5,8 @@
 **Roadmap legado (não numera SaaS):** `docs/PLANO-EXECUCAO-FASES.md`  
 **Data:** 2026-08-06  
 
-> **Autorização atual:** E0–E3 (branch, arquivo migration 045, libs, admin inicial).  
-> **Não autorizado nesta rodada:** aplicar 045 no Supabase, banco remoto, Vercel/DNS, site público, área comercial, preview/prod deploy, push, merge main, fallback, Empresa B, Fase 4/6.
+> **Autorização atual:** E0–E4 (045 homologada; admin participantes/orgs/sites sob flags).  
+> **Não autorizado nesta rodada:** Vercel/DNS real, site público, área comercial, preview/prod deploy, push do commit E4, merge main, fallback, Empresa B, Fase 4/6.
 
 ---
 
@@ -19,12 +19,13 @@
 | Blocos A/B + sites/domínios + Q1–Q5 | **Confirmados** |
 | Escopo oficial | **FINAL** |
 | E0 branch | **Feito** `feature/saas-fase-3-participantes-parceiros` |
-| E1 migration 045 (arquivo) | **Criada — NÃO aplicada** |
+| E1 migration 045 | **Aplicada e homologada** (ver §16) |
 | E2 libs | **Feito** |
 | E3 admin participantes/orgs | **Feito** (flag off; fora do menu) |
-| E4–E10 | **Não iniciados** |
-| Push branch feature | **Feito** (ver §14) |
-| Banco remoto / Vercel / DNS / deploy / main | **Intocados** |
+| E4 admin parceiro-sites | **Feito** (flag off; fora do menu; sem Vercel/DNS) |
+| E5–E10 | **Não iniciados** |
+| Push branch feature | **Feito** até `7aea490` (doc 045); commit E4 **local, sem push** |
+| Vercel / DNS / deploy / main | **Intocados** |
 
 ---
 
@@ -32,13 +33,13 @@
 
 ```
 FASE 3 — MIGRATION 045 APLICADA E BANCO HOMOLOGADO
-E0–E3 — IMPLEMENTADOS
+E0–E4 — IMPLEMENTADOS
 TELAS — DESATIVADAS POR FLAG
 ÁREA COMERCIAL — NÃO ATIVADA
-SITES PÚBLICOS — NÃO IMPLEMENTADOS
+SITES PÚBLICOS — NÃO ATIVOS
 VERCEL/DNS — INTOCADOS
 PRODUÇÃO DO APP — INALTERADA
-E4+ — NÃO INICIADAS
+E5+ — NÃO INICIADAS
 ```
 ---
 
@@ -521,8 +522,8 @@ Nenhum repair; nenhuma migration desconhecida; somente 045 pendente.
 | Produção / Vercel / DNS | Intactos |
 | Flag admin | false; rotas fora do menu |
 | Empresa B / fallback | Intactos |
-| E4+ | Não iniciadas |
-| Homologação funcional DB | **Não declarada** |
+| E4 | Concluída em rodada posterior (ver §18); à época ainda não iniciada |
+| Homologação funcional DB | **Não declarada** (à época; ver §16) |
 
 ---
 
@@ -602,7 +603,7 @@ SECURITY DEFINER (search_path=public): `current_participante_id`, `participante_
 | Deploy / preview / Vercel / DNS | **Não** |
 | Merge main | **Não** |
 | Empresa B / fallback | Intactos |
-| E4+ | Não iniciadas |
+| E4 admin sites | **Implementada nesta rodada** (ver §18) |
 
 ### 16.8 Riscos / divergências
 
@@ -610,9 +611,81 @@ Nenhuma divergência de contagens legadas. Policies CRM de área parceiro **cont
 
 ---
 
-## 17. Próximo passo
+## 17. Próximo passo (histórico pré-E4)
 
-Recomendação: autorizar E4 (admin sites) e/ou E7 (área comercial + policies leads/propostas) em rodadas separadas. Manter flag off e sem preview até nova autorização.
+Autorizada e executada: E4 (admin sites, cadastro local de domínios). Próximas rodadas: E5 (Vercel/DNS real) e/ou E7 (área comercial + policies leads/propostas), sob nova autorização. Manter flags off e sem preview até autorização.
+
+---
+
+## 18. Registro da rodada E4 — Admin de sites de parceiros (2026-08-07)
+
+### 18.1 Escopo entregue
+
+| Item | Estado |
+|---|---|
+| Rotas `/admin/parceiro-sites`, `/novo`, `/[id]` | **Feito** (flag off; fora do menu) |
+| Listagem + filtros (org, status, template, domínio, publicado, busca) | **Feito** |
+| Criação só org ATIVA do tenant; ≤1 site ativo; slug único no tenant | **Feito** |
+| Edição admin (template, branding, menus, SEO, status) | **Feito** |
+| Template controlado `institucional_v1` (sem page builder / HTML arbitrário) | **Feito** |
+| Catálogo de menus allowlist | **Feito** |
+| Domínios: cadastro local apenas → `PENDENTE_DNS` / SSL `PENDING` | **Feito** |
+| Auditoria `parceiro_site_auditoria` | **Feito** |
+| Permissões: `super_admin` / `admin_empresa` / `gerenciar_sites_parceiros`; deny `parceiro_comercial` | **Feito** (UI + Server Actions) |
+
+### 18.2 Explicitamente NÃO feito nesta rodada
+
+- API Vercel / verificação DNS / SSL real / marcar domínio ATIVO por simulação
+- Rota pública `/parceiro/[slug]` ou resolução por host
+- `FASE3_PARCEIRO_PUBLIC_SITE_ENABLED` / `FASE3_PARCEIRO_AREA_ENABLED`
+- Área comercial; policies novas em leads/propostas
+- Deploy, preview, merge main, alteração de produção
+- Empresa B operacional; remoção do fallback; Fase 4
+
+### 18.3 Flags
+
+| Flag | Default | Uso nesta rodada |
+|---|---|---|
+| `FASE3_ADMIN_PARTICIPANTES_ENABLED` | `false` | Mantida |
+| `FASE3_PARCEIRO_SITES_ADMIN_ENABLED` | `false` | Admin sites (E4) — off |
+| `FASE3_PARCEIRO_PUBLIC_SITE_ENABLED` | `false` | Futura (E8) — off |
+| `FASE3_PARCEIRO_AREA_ENABLED` | `false` | Futura (E7) — off |
+
+Constante de código: `VERCEL_INTEGRATION_ENABLED_IN_E4 = false` (nenhum request Vercel).
+
+### 18.4 Testes e build
+
+| Check | Resultado |
+|---|---|
+| `npm test` | **414 passed** (89 files), exit 0 |
+| `npm run build` | **exit 0** |
+| Cobertura E4 (libs + actions) | criação/org suspensa/outro tenant/2º site/slug/menus/branding/domínio oficial e duplicado/`PENDENTE_DNS`/sem Vercel/auditoria/`parceiro_comercial`/service role fora do client |
+
+### 18.5 Banco e produção
+
+| Item | Estado |
+|---|---|
+| Migration 045 | Já homologada (§16); **sem nova migration** |
+| 001–045 local = remote | Mantido |
+| Produção app | **Inalterada** |
+| Vercel / DNS | **Intactos** |
+| Empresa B / fallback | **Intactos** |
+
+### 18.6 Git
+
+| Item | Estado |
+|---|---|
+| Branch | `feature/saas-fase-3-participantes-parceiros` |
+| Base documental remota | `7aea490` (push autorizado) |
+| Commit E4 | Local — `feat(saas): adiciona administracao de sites de parceiros` |
+| Push E4 | **Não** (aguarda nova autorização) |
+| Merge main | **Não** |
+
+### 18.7 Arquivos principais
+
+- `gauchinho-app/src/lib/parceiros/{templates,menus,branding,site-rules}.ts` (+ testes)
+- `gauchinho-app/src/app/admin/parceiro-sites/**`
+- Flags/constants/`schema-ready`/`types`/`index`
 
 ---
 
@@ -620,11 +693,13 @@ Recomendação: autorizar E4 (admin sites) e/ou E7 (área comercial + policies l
 
 ```
 FASE 3 — MIGRATION 045 APLICADA E BANCO HOMOLOGADO
-E0–E3 — IMPLEMENTADOS
-TELAS — DESATIVADAS POR FLAG
-ÁREA COMERCIAL — NÃO ATIVADA
-SITES PÚBLICOS — NÃO IMPLEMENTADOS
-VERCEL/DNS — INTOCADOS
+E0–E4 — IMPLEMENTADOS
+TELAS ADMIN SITES — DESATIVADAS POR FLAG
+ÁREA COMERCIAL — NÃO IMPLEMENTADA
+SITES PÚBLICOS — NÃO ATIVOS
+VERCEL AINDA NÃO INTEGRADA
+DNS AINDA NÃO ALTERADO
 PRODUÇÃO DO APP — INALTERADA
-E4+ — NÃO INICIADAS
+COMMIT E4 — LOCAL (SEM PUSH)
+E5+ — NÃO INICIADAS
 ```

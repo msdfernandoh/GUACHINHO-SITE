@@ -2,14 +2,20 @@ import { describe, expect, it } from "vitest";
 import {
   FASE3_ADMIN_PARTICIPANTES_ENABLED,
   FASE3_PAPEL_PERMISSOES,
+  FASE3_PARCEIRO_AREA_ENABLED,
+  FASE3_PARCEIRO_PUBLIC_SITE_ENABLED,
+  FASE3_PARCEIRO_SITES_ADMIN_ENABLED,
   FASE3_PERMISSOES,
   PAPEL_PARCEIRO_COMERCIAL,
   PAPEL_PARCEIRO_IMOBILIARIA_LEGADO,
 } from "./constants";
 
 describe("fase 3 constants", () => {
-  it("feature flag desligada por padrão", () => {
+  it("feature flags desligadas por padrão", () => {
     expect(FASE3_ADMIN_PARTICIPANTES_ENABLED).toBe(false);
+    expect(FASE3_PARCEIRO_SITES_ADMIN_ENABLED).toBe(false);
+    expect(FASE3_PARCEIRO_PUBLIC_SITE_ENABLED).toBe(false);
+    expect(FASE3_PARCEIRO_AREA_ENABLED).toBe(false);
   });
 
   it("papel novo distinto do legado", () => {

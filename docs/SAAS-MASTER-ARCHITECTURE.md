@@ -1,8 +1,8 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
-> **Versão:** 1.2.0  
-> **Data de Atualização:** 06/08/2026  
-> **Status da Plataforma:** Fase 2 Concluída e Homologada em Produção; Fase 3 com escopo oficial final (§5.1); implementação local E0–E3 (migration 045 **arquivo criado, não aplicada**; admin participantes/orgs sob flag); sem push/deploy/banco remoto nesta rodada  
+> **Versão:** 1.2.1  
+> **Data de Atualização:** 07/08/2026  
+> **Status da Plataforma:** Fase 2 Concluída e Homologada em Produção; Fase 3 escopo oficial final (§5.1); migration 045 **aplicada e homologada**; E0–E4 implementados (admin participantes/orgs/sites sob flags off); sem Vercel/DNS/site público/área comercial/deploy/merge main nesta rodada  
 
 > **Projeto Físico:** `C:\Fernando Hugo\GAUCHINHO SITE`  
 > **Repositório Git:** `https://github.com/msdfernandoh/GUACHINHO-SITE.git`
