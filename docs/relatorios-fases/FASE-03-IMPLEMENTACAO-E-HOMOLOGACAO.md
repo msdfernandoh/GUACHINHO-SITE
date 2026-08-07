@@ -5,8 +5,8 @@
 **Roadmap legado (não numera SaaS):** `docs/PLANO-EXECUCAO-FASES.md`  
 **Data:** 2026-08-06  
 
-> **Autorização atual:** E0–E8 em código (E8 pushado; E7 local sob flags off; migration 046 criada e **não** aplicada).  
-> **Não autorizado nesta rodada:** apply 046, ativar flags, preview/prod deploy, push dos commits E7, merge main, domínio/DNS real, fallback, Empresa B, Fase 4/6.
+> **Autorização atual:** E0–E8 em código; E8+E7 pushados; migrations **045 e 046 aplicadas/homologadas**; flags off.  
+> **Não autorizado nesta rodada:** ativar flags, preview/prod deploy, merge main, domínio/DNS real, fallback, Empresa B, Fase 4/6, E9.
 
 ---
 
@@ -25,10 +25,10 @@
 | E4 admin parceiro-sites | **Feito** (flag off; fora do menu) |
 | E5 domínios + Vercel server-side + gates | **Feito** (flag Vercel off; sem domínio/DNS real) |
 | E6 resolver runtime (path/subdomínio/domínio) | **Feito** |
-| E7 área comercial | **Feito local** (flag `FASE3_PARCEIRO_AREA_ENABLED` off; 046 não aplicada) |
+| E7 área comercial | **Feito** (flag off; 046 **aplicada/homologada**) |
 | E8 site público | **Feito** (flag off; push `873d761`) |
 | E9–E10 | **Não iniciados** |
-| Push branch feature | **Feito** até `873d761` (E8); commits E7 **locais, sem push** |
+| Push branch feature | **Feito** até `f98a610` (E7 + corretivo) |
 | Domínio real / DNS real / deploy / main | **Intocados** |
 
 ---
@@ -36,12 +36,11 @@
 ## STATUS
 
 ```
-FASE 3 — MIGRATION 045 APLICADA E BANCO HOMOLOGADO
-E0–E8 — IMPLEMENTADOS EM CÓDIGO
-E7 ÁREA COMERCIAL — LOCAL (FLAG OFF)
-MIGRATION 046 — CRIADA, NÃO APLICADA
-FLAGS OFF (SITE PÚBLICO + ÁREA PARCEIRO)
-NENHUM DOMÍNIO REAL / DNS / DEPLOY
+FASE 3 — MIGRATIONS 045 + 046 APLICADAS E HOMOLOGADAS
+E0–E8 — IMPLEMENTADOS
+E7 ÁREA COMERCIAL — CÓDIGO + RLS HOMOLOGADOS (FLAG OFF)
+SITE PÚBLICO — FLAG OFF
+NENHUM DOMÍNIO REAL / DNS / DEPLOY / PREVIEW
 PRODUÇÃO DO APP — INALTERADA
 ```
 ---
@@ -995,16 +994,112 @@ Autorizar **apply 046** (dry-run já ok) → homologar RLS com ROLLBACK → só 
 
 ---
 
+## 23. Homologação apply Migration 046 + E7 RLS (2026-08-07)
+
+### 23.1 Push E7 (pré-apply)
+
+| Item | Valor |
+|---|---|
+| Commits | `2780085` RLS · `f7c4c29` área · `de7575c` docs · `f98a610` corretivo escopo/PDF |
+| Remoto final | **`f98a610`** |
+| Merge main | **Não** |
+
+### 23.2 Auditoria status de propostas
+
+| Item | Evidência |
+|---|---|
+| Valores em uso (código) | `Gerada`, `PDF gerado`, `Enviada`, `Em negociação`, `Aprovada`, `Perdida`, `Cancelada`, `Arquivada` |
+| Produção atual | **13/13** em `PDF gerado` |
+| Literal `RASCUNHO` | **Não existe** na coluna `propostas.status` |
+| Editável parceiro (decisão final) | **somente** `Gerada` e `PDF gerado` |
+| Bloqueados | `Enviada`+ |
+| Defesa | App (`propostaStatusEditavelParceiro`) + RLS `proposta_status_editavel_parceiro` em USING/WITH CHECK |
+
+### 23.3 Auditoria PDF / service role
+
+| Check | Resultado |
+|---|---|
+| `createAdminClient` / `generate-pdf` | `import "server-only"` |
+| Import em Client Component (.tsx) | **Não** |
+| Área parceiro gera/baixa PDF | Valida sessão, empresa, participante, org, proposta, permissão **antes** do admin client |
+| Admin PDF actions | Corretivo `f98a610`: exige `isStaff` (bloqueia parceiro via service role) |
+| Rota pública `/api/propostas/[id]/pdf` | Legado simulador (UUID); risco residual documentado — fora do escopo de ativação desta rodada |
+
+### 23.4 Corretivo pré-apply (`f98a610`)
+
+- Trigger `prevent_comercial_escopo_move` (leads/propostas): bloqueia mudança de `empresa_id` / `organizacao_parceira_id` fora de staff/superadmin
+- Staff guard em `generatePropostaPdfAction` / `getPropostaDownloadUrlAction`
+
+### 23.5 Apply 046
+
+| Item | Resultado |
+|---|---|
+| Comando | `supabase db push --linked --yes` |
+| Aplicada | **somente** `046_fase3_area_parceiro_rls.sql` |
+| `migration list` pós | **001–046 local=remote** |
+| `dry-run` pós | **Remote database is up to date** |
+
+### 23.6 Policies finais (aditivas)
+
+Staff intactas: `leads_staff`, `propostas_staff`, `leads_historico_staff` (`is_staff`).
+
+Parceiro: `leads_parceiro_{select,insert,update}`, `propostas_parceiro_{select,insert,update}`, `leads_historico_parceiro_{select,insert}`. Sem DELETE parceiro.
+
+Helpers SECURITY DEFINER: `participante_tem_tipo_codigo`, `parceiro_tem_visao_org`, `parceiro_pode_ver_registro_comercial`, `prevent_comercial_escopo_move`. Immutable: `proposta_status_editavel_parceiro`.
+
+Permissão `visao_ampliada_org_parceiro` (super_admin / admin_empresa; **não** default em `parceiro_comercial`).
+
+### 23.7 Testes RLS (ROLLBACK)
+
+Suite completa OK:  
+`E7_RLS_OK OK_STATUS;OK_RESP;OK_COMUM;OK_VISAO;OK_VISAO_EXPLICITA;OK_INSERT;OK_INSERT_ORG_DENY;OK_INSERT_TENANT_DENY;OK_MOVE_EMP_DENY;OK_MOVE_ORG_DENY;OK_PROP_MUT;OK_STAFF;`
+
+Fixtures persistidas: **0** (`e7_test`/`e7_mini` = 0).
+
+### 23.8 Contagens
+
+| Métrica | Pré | Pós |
+|---|---|---|
+| leads | 118 | 118 |
+| propostas | 13 | 13 |
+| leads empresa/org/participant NULL | 118/118/118 | 118/118/118 |
+| propostas NULL | 13/13/13 | 13/13/13 |
+| organizacoes_parceiras / parceiro_sites | 0 / 0 | 0 / 0 |
+| imobiliarias | 1 | 1 |
+| Empresa B | `em_treinamento` | `em_treinamento` |
+
+Sem backfill.
+
+### 23.9 App
+
+| Check | Resultado |
+|---|---|
+| `npm test` | **485 passed** |
+| `npm run build` | **exit 0** |
+| Flags | ambas **false** |
+
+### 23.10 Explicitamente NÃO feito
+
+Flag área/site on · preview · deploy · merge main · usuário parceiro real · E9 · domínio/DNS/Vercel real
+
+### 23.11 Próximo passo
+
+Aguardar autorização explícita (ex.: push deste commit documental, preview controlado, ou E9). **Não iniciar E9** agora.
+
+---
+
 ## STATUS FINAL DESTA RODADA
 
 ```
-FASE 3 — MIGRATION 045 APLICADA E BANCO HOMOLOGADO
-E0–E8 — IMPLEMENTADOS EM CÓDIGO
-PUSH E8 873d761 — REMOTO SINCRONIZADO
-E7 ÁREA COMERCIAL — LOCAL (FLAG OFF)
-MIGRATION 046 — CRIADA / DRY-RUN OK / NÃO APLICADA
-SITE PÚBLICO — FLAG OFF
+FASE 3 — MIGRATIONS 045 + 046 APLICADAS E HOMOLOGADAS
+E0–E8 — IMPLEMENTADOS
+PUSH E7 f98a610 — REMOTO SINCRONIZADO
+E7 ÁREA COMERCIAL — CÓDIGO + RLS HOMOLOGADOS
+SITE PÚBLICO — FLAG FALSE
+ÁREA PARCEIRO — FLAG FALSE
+PREVIEW / DEPLOY / MAIN — INTOCADOS
 VERCEL/DNS REAIS — INTOCADOS
-COMMITS E7 — LOCAIS (SEM PUSH)
+EMPRESA B OPERACIONAL — NÃO
+E9 — NÃO INICIADO
 PRODUÇÃO DO APP — INALTERADA
 ```

@@ -1,8 +1,9 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
-> **Versão:** 1.2.5  
+> **Versão:** 1.2.6  
 > **Data de Atualização:** 07/08/2026  
-> **Status da Plataforma:** Fase 2 Concluída e Homologada em Produção; Fase 3 escopo oficial final (§5.1); migration 045 **aplicada e homologada**; E0–E8 implementados em código (flags off); migration **046** (RLS área parceiro) **criada, não aplicada**; sem domínio/DNS real, deploy ou merge main nesta rodada  
+> **Status da Plataforma:** Fase 2 Concluída e Homologada em Produção; Fase 3 escopo oficial final (§5.1); migrations **045 e 046 aplicadas e homologadas**; E0–E8 implementados (flags `FASE3_PARCEIRO_PUBLIC_SITE_ENABLED` e `FASE3_PARCEIRO_AREA_ENABLED` = false); sem preview/deploy/merge main; Vercel/DNS reais intocados  
+
 
 > **Projeto Físico:** `C:\Fernando Hugo\GAUCHINHO SITE`  
 > **Repositório Git:** `https://github.com/msdfernandoh/GUACHINHO-SITE.git`
@@ -149,8 +150,9 @@ Entregar identidades comerciais (participantes e organizações parceiras), site
 * `RESPONSAVEL_PARCEIRO` (tipo) **ou** `responsavel_principal` no vínculo: todos os leads/propostas da própria organização.
 * Demais participantes autorizados: apenas vínculos próprios, salvo permissão explícita `visao_ampliada_org_parceiro`.
 * Regra por **vínculo + permissão**, não só nome de perfil.
-* Implementação E7: rotas `/area-parceiro/*` atrás de `FASE3_PARCEIRO_AREA_ENABLED=false`; RLS aditiva em migration **046** (criada, **não** aplicada até autorização).
-* Status de proposta editável pelo parceiro no schema atual: `Gerada` / `PDF gerado` (equivalente conceitual a RASCUNHO; literal `RASCUNHO` não existe).
+* Implementação E7: rotas `/area-parceiro/*` atrás de `FASE3_PARCEIRO_AREA_ENABLED=false`; RLS aditiva em migration **046** (**aplicada e homologada** em 2026-08-07).
+* Status de proposta editável pelo parceiro no schema atual: `Gerada` / `PDF gerado` (equivalente conceitual a RASCUNHO; literal `RASCUNHO` não existe). Demais status (`Enviada`, `Em negociação`, `Aprovada`, `Perdida`, `Cancelada`, `Arquivada`) bloqueados por app + RLS.
+* Trigger `prevent_comercial_escopo_move` impede troca de `empresa_id`/`organizacao_parceira_id` fora de staff/superadmin.
 
 ### Matriz resumida de permissões
 
