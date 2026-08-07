@@ -240,6 +240,7 @@ export async function POST(request: Request) {
           lead_id: leadId,
           entidade_id: propostaId,
         });
+        const { buildPropostaPdfPublicPath } = await import("@/lib/proposta/pdf-public-access");
         return NextResponse.json({
           ok: true,
           leadId,
@@ -247,7 +248,7 @@ export async function POST(request: Request) {
           propostaId,
           creditoLiquido: totais.creditoLiquido,
           pdfDownloadUrl: pdf.signedUrl,
-          pdfPath: `/api/propostas/${propostaId}/pdf`,
+          pdfPath: buildPropostaPdfPublicPath(propostaId),
         });
       }
     }

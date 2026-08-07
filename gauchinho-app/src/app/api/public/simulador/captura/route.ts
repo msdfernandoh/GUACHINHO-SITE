@@ -131,12 +131,13 @@ export async function POST(request: Request) {
           .eq("origem", "proposta")
           .eq("ativo", true)
           .maybeSingle();
+        const { buildPropostaPdfPublicPath } = await import("@/lib/proposta/pdf-public-access");
         return NextResponse.json({
           ok: true,
           leadId,
           propostaId,
           pdfDownloadUrl: pdf.signedUrl,
-          pdfPath: `/api/propostas/${propostaId}/pdf`,
+          pdfPath: buildPropostaPdfPublicPath(propostaId),
           whatsappOrigem: waOrigem,
         });
       }
