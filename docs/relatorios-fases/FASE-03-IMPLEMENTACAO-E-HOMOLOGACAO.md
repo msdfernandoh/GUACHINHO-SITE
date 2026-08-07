@@ -982,7 +982,7 @@ Com flag off: nenhum redirect/site público.
 
 | Item | Estado |
 |---|---|
-| Commits locais | RLS 046 + área comercial (sem push) |
+| Commits locais | `2780085` (RLS 046) + `f7c4c29` (área comercial) — **sem push** |
 | Push E7 | **Não** |
 
 ### 22.9 Recomendação apply 046
