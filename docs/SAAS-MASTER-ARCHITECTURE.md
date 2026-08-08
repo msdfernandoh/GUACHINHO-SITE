@@ -2,7 +2,7 @@
 
 > **Versão:** 1.3.8  
 > **Data de Atualização:** 08/08/2026  
-> **Status da Plataforma:** Fase 2 Concluída e Homologada em Produção; **Fase 3 CONCLUÍDA E HOMOLOGADA EM PRODUÇÃO**; **Fase 4 EM ANDAMENTO** (E0–E6 código local — E5 remoto `6ddbd0c`; migrations **047+048** aplicadas; **049 criada, NÃO aplicada**; runtime catálogo tenant-scoped por concessão; RLS pública legacy ainda ativa até apply 049) — **Racon = administradora global**; **Gauchinho = empresa/franqueada**; Empresa B sem concessão; Fase 5 **não** iniciada  
+> **Status da Plataforma:** Fase 2 Concluída e Homologada em Produção; **Fase 3 CONCLUÍDA E HOMOLOGADA EM PRODUÇÃO**; **Fase 4 EM ANDAMENTO** (E0–E6 com hardening pré-049 — E5 remoto `6ddbd0c`; migrations **047+048** aplicadas; **049 criada, NÃO aplicada**; runtime catálogo grupos tenant-scoped; sorteios público migrado; RLS pública grupos/cotas/modalidades legacy até apply 049; cartas ainda globais — ver proposta 050) — **Racon = administradora global**; **Gauchinho = empresa/franqueada**; Empresa B sem concessão; Fase 5 **não** iniciada  
 
 
 > **Projeto Físico:** `C:\Fernando Hugo\GAUCHINHO SITE`  
@@ -220,13 +220,14 @@ Comissões/repasses, wildcard DNS, editor do site pelo parceiro, backfill massiv
 * 19/19 grupos com `administradora_id` = Racon (`c5f8ecb4-…`); texto RACON×16 / Racon×3 **preservado**
 * 178 cotas / 16 propostas / 18 contratações / 10 simulações / 31 modalidades intactos
 * Adapters + dual-write `/admin/grupos`; Empresa B continua **0** concessões
-* **E6 (código local):** catálogo público via service role + Host→empresa→concessão; RLS legacy **ainda ativa** até apply **049**
-* **001–048** local=remote; dry-run pós-E6: **Would push only 049**
+* **E6 (hardening pré-049):** sorteios público tenant-scoped; testes mock pós-049; integração Gauchinho legado documentada; cartas = proposta **050**
+* **001–048** local=remote; dry-run: **Would push only 049**
 
 ### Status etapas
 E0–E6 CÓDIGO LOCAL · E7–E9 NÃO INICIADAS · Fase 4 EM ANDAMENTO · Fase 5 NÃO INICIADA
 
 ### Riscos atuais
-* ALTA: RLS pública grupos/cotas **legacy ainda ativa** — fechamento via migration **049** (criada, não aplicada) após deploy app E6
+* ALTA: RLS pública grupos/cotas/modalidades **legacy ainda ativa** — fechamento via **049** após preview app E6
+* MÉDIA: cartas contempladas públicas globais — **050** proposta (não bloqueia 049)
 * MÉDIA: cartas contempladas ainda sem FK `administradora_id` (filtro por concessão = etapa futura)
 * BAIXA: alteração de slug global permitida (auditada) — impacto futuro em URLs

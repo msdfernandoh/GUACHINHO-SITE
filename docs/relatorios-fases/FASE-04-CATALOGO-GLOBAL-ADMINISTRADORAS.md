@@ -13,7 +13,7 @@
 | E3 remoto | `3ecd168f26ff6c55fc8ef39b4257e5ca563a6a52` |
 | E4 remoto | `05803297631a5e58b34b88dac9fa22df814de20a` |
 | E5 remoto | `6ddbd0ccea0a9dc59cce06b60d5142745b249de9` (push documental pós-homologação grupos vinculados) |
-| E6 código | **local** (commits E6 abaixo — **NÃO pushed**) |
+| E6 remoto | *(preencher após push §17)* |
 | Migration 049 | **CRIADA LOCALMENTE · NÃO APLICADA** |
 | Migration 047 | **APLICADA** |
 | Migration 048 | **APLICADA E HOMOLOGADA** (`048_fase4_backfill_grupos_administradora_id.sql`) |
@@ -23,7 +23,7 @@
 
 > **Estado da Fase 4:** EM ANDAMENTO.  
 > **E0–E5:** CONCLUÍDAS (E5 remoto `6ddbd0c` · 048 aplicada/homologada).  
-> **E6:** CONCLUÍDA EM CÓDIGO (local, **sem push** · migration **049 criada, NÃO aplicada**).  
+> **E6:** CONCLUÍDA + hardening pré-049 (§17); **049 criada, NÃO aplicada**.  
 > **E7+:** NÃO INICIADAS · **Fase 5:** NÃO INICIADA.
 
 ---
@@ -515,3 +515,112 @@ Snapshots propostas/contratações intactos.
 ### 16.10 Git E6 (local — aguardar autorização para push)
 * Commits sugeridos: feat catálogo por concessão · docs E6 · (049 no commit feat ou separado)
 * **E7 não iniciada · deploy produção não executado · 049 não aplicada**
+
+---
+
+## 17. E6 — Rodada de hardening pré-049 (auditoria integral)
+
+**Agente:** assumiu com E5 remoto `6ddbd0ccea0a9dc59cce06b60d5142745b249de9`.  
+**Escopo:** auditar diff E6 (`7ea813f`, `682daf2` + commits corretivos desta rodada), fechar gaps, **não** aplicar 049, **não** E7, **não** deploy produção.
+
+### 17.1 Matriz de readers (`grupos_consorcio` / `grupos_cotas` / `grupos_modalidades_lance`)
+
+| Local | Classificação | Notas |
+|---|---|---|
+| `catalogo-autorizado-service.ts` | **A** | Service role pós `empresa_id` Host/proxy |
+| `fetchPublicGruposAggregates` → `/grupos`, home | **A** | Sem tenant → `[]` |
+| `/api/public/grupos/fluxo` | **A** | `assertSelecoesAutorizadasForEmpresa` |
+| `/api/public/grupos/sorteios` | **A** (pós-hardening) | Admin + filtro `grupo_id` autorizado; metadata grupo in-memory (sem join anon) |
+| `/api/integration/grupos`, `[id]` | **A** | OPÇÃO 1 legado: key → Gauchinho + concessão |
+| Integration cotas count | **A** | Só `grupo_id` já listados autorizados |
+| Contratações `iniciar` / `materializar` | **A** | Validação quando `origem=grupos` |
+| `/admin/grupos/*` actions | **B** | Staff sessão + RLS staff |
+| `/admin/grupos/sorteios` actions | **B** | Staff |
+| `server/dashboard.ts` | **B** | Área autenticada staff |
+| `administradora-repository.ts` | **B** | Gestão administradoras/grupos staff |
+| `fetchPublicCartas` / `/cartas-contempladas` | **C/D** | `cartas_public_read` global — **fora do escopo 049** |
+| `/api/public/cartas/interesse` | **D** | Service role lê qualquer carta ativa por UUID |
+| Client browser direto grupos/cotas | **C** (pré-049) | Policies anon até apply 049 |
+| `fetchPublicGruposRows` | **E** | Deprecated |
+
+**Conclusão 049:** nenhum reader **necessário** do catálogo comercial público permanece classificado **C** para grupos/cotas/modalidades após hardening do endpoint de sorteios.
+
+### 17.2 Superfícies auditadas
+
+| # | Superfície | Resultado |
+|---|---|---|
+| `/grupos` | Server-only `fetchPublicGruposAggregates`; sem Supabase anon no browser |
+| `/simulador` | Genérico (config/índices); zero SELECT em grupos; link para `/grupos` |
+| `/api/public/grupos/fluxo` | Host → tenant; headers/query `empresa_id` ignorados como autoridade |
+| `/api/integration/grupos` | **OPÇÃO 1 — legado controlado** (ver §17.3) |
+| Cartas | Listagem pública global via RLS `cartas_public_read`; sem FK `administradora_id` — **proposta 050** (§17.4) |
+| Contratações | `grupos`: validação tenant em SDR link + materializar rascunho |
+| Propostas | Criação com catálogo: `/grupos/fluxo` (pós-validação); admin/parceiro manual sem catálogo |
+| Site parceiro | `resolve-catalog-empresa` → `empresa_id` franquia → mesmas concessões |
+| Cache | Sem `unstable_cache` global de catálogo; integration `no-store` |
+
+### 17.3 API key integração — decisão
+
+**A. Existe tabela persistente key → empresa?** **NÃO.**
+
+**Decisão:** **OPÇÃO 1 — integração legada Gauchinho exclusiva.**
+
+* `GAUCHINHO_INTEGRATION_API_KEY` (env) → `resolveIntegrationEmpresa` → `GAUCHINHO_EMPRESA_ID`
+* Documentado em `verify-api-key.ts`; catálogo filtrado por concessão da empresa da key
+* **OPÇÃO 2** (credential multi-tenant) exigiria migration **050+** — **não criada** nesta rodada
+
+### 17.4 Cartas contempladas — decisão
+
+* Coluna `administradora` TEXT; sem FK; sem vínculo grupo/cota
+* Superfície pública: `/cartas-contempladas`, `/api/public/cartas/interesse`
+* **Empresa B hoje ainda vê cartas Racon** via RLS global — **não bloqueia apply 049** (escopo grupos)
+* **Bloqueante confidencialidade cartas multi-tenant:** migration futura proposta **050**:
+  * `cartas_contempladas.administradora_id uuid references administradoras(id)`
+  * backfill por texto canônico + runtime tenant-scoped espelhando E6
+  * revisar/dropar `cartas_public_read` após runtime migrado
+
+### 17.5 Migration 049 (auditada, NÃO aplicada)
+
+Remove exatamente (nomes confirmados em `001` + `004`/`008`):
+
+1. `grupos_public_read` on `grupos_consorcio`
+2. `cotas_public_read` on `grupos_cotas`
+3. `"grupos_modalidades_lance_select_public"` on `grupos_modalidades_lance`
+
+Sem grants substitutos; staff policies intactas; service role bypass para app E6.
+
+### 17.6 DB anon vs app
+
+| Camada | Estado |
+|---|---|
+| **App E6** | Catálogo grupos tenant-scoped |
+| **Postgres anon direto** | Ainda SELECT global grupos/cotas/modalidades **até 049** |
+| **Sorteios tabela** | `grupos_sorteios_loteria_public_read` ainda global (dados sorteio, não catálogo comercial) |
+
+### 17.7 Correções desta rodada
+
+* `/api/public/grupos/sorteios` — tenant-scoped admin (gap pós-049 + cross-tenant)
+* Contratações — `CotaNotFoundError` → 404 uniforme
+* Testes pós-049 mock + integração key legado
+* Fix import `Metadata` em `/cartas-contempladas`
+
+### 17.8 Testes / build / migrations (pós-hardening)
+
+* `npm test`: **585 passed** (104 files)
+* `npm run build`: exit 0
+* **001–048** local = remote; dry-run: **Would push only 049**
+* **049 NÃO aplicada · deploy NÃO realizado · E7 NÃO iniciada**
+
+### 17.9 Recomendação
+
+| Item | Veredicto |
+|---|---|
+| Preview app E6 | **(a) Pode ir para preview** — Gauchinho + fluxos migrados |
+| Antes de multi-tenant cartas | **(b)** migration/runtime **050** cartas |
+| Apply 049 | **(c) Após preview/homologação Gauchinho** com app E6 deployado |
+
+**Bloqueantes restantes para confidencialidade total da plataforma:** cartas públicas globais (050); sorteios DB anon direto (policy separada, baixa prioridade se só app expõe filtrado).
+
+### 17.10 Git E6 remoto
+
+* Ver hash final registrado após `git push` desta rodada (commits E6 + hardening).

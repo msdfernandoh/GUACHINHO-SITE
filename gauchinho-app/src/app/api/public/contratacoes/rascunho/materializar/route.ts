@@ -18,6 +18,7 @@ import { parseEnderecoContratacao } from "@/lib/contratacoes-online/endereco";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { TipoPessoa } from "@/lib/contratacoes-online/types";
 import {
+  CotaNotFoundError,
   GRUPO_NOT_FOUND_MESSAGE,
   isGrupoNotFoundError,
 } from "@/lib/grupos/catalogo-autorizado";
@@ -104,7 +105,7 @@ export async function POST(request: Request) {
           body.draft.dados_simulacao,
         );
       } catch (err) {
-        if (isGrupoNotFoundError(err)) {
+        if (isGrupoNotFoundError(err) || err instanceof CotaNotFoundError) {
           return NextResponse.json({ error: GRUPO_NOT_FOUND_MESSAGE }, { status: 404 });
         }
         throw err;

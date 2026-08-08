@@ -14,7 +14,7 @@ import {
   throwGrupoNotFound,
   GRUPO_NOT_FOUND_MESSAGE,
 } from "./catalogo-autorizado";
-import { listAdministradoraIdsAutorizadasForEmpresa, listGruposAutorizadosForEmpresa, getGrupoAutorizadoForEmpresa, assertDadosSimulacaoGruposAutorizadosForEmpresa } from "./catalogo-autorizado-service";
+import { listAdministradoraIdsAutorizadasForEmpresa, listGruposAutorizadosForEmpresa, getGrupoAutorizadoForEmpresa, assertDadosSimulacaoGruposAutorizadosForEmpresa, assertSelecoesAutorizadasForEmpresa, fetchPublicGruposAggregatesForEmpresa, listModalidadesAutorizadasForEmpresa } from "./catalogo-autorizado-service";
 
 describe("resolveEmpresaIdForCatalog", () => {
   it("aceita UUID real", () => {
@@ -324,5 +324,144 @@ describe("catalogo service — Empresa B / Gauchinho (mock)", () => {
     const ids = await listAdministradoraIdsAutorizadasForEmpresa(EMPRESA_B_ID, deps);
     expect(ids).toEqual([]);
     expect(ids).not.toContain(RACON_ADMINISTRADORA_ID);
+  });
+});
+
+/** Simula runtime pós-049: leituras via service role + concessão, sem policies anon. */
+describe("catalogo service — caminho pós-049 (mock admin)", () => {
+  const grupoRacon = {
+    id: "g-racon",
+    codigo_grupo: "G1",
+    modalidade: "Imóvel",
+    ativo: true,
+    status: "Disponível",
+    administradora_id: RACON_ADMINISTRADORA_ID,
+    taxa_administrativa_percentual: 0,
+    fundo_reserva_percentual: 0,
+    prazo_total: 120,
+    cet_percentual: null,
+    seguro_percentual: null,
+    created_at: "",
+    updated_at: "",
+  } as const;
+
+  const cotaRacon = {
+    id: "c1",
+    grupo_id: "g-racon",
+    valor_credito: 100000,
+    ordem: 1,
+    ativo: true,
+    status: "Disponível",
+  };
+
+  const concessoesGauchinho = async () => [
+    {
+      concessao: {
+        id: "v1",
+        empresa_id: GAUCHINHO_EMPRESA_ID,
+        administradora_id: RACON_ADMINISTRADORA_ID,
+        status: "ATIVA" as const,
+      },
+      administradora: {
+        id: RACON_ADMINISTRADORA_ID,
+        nome: "Racon",
+        nome_fantasia: "Racon",
+        razao_social: null,
+        cnpj: null,
+        slug: "racon",
+        logo_url: null,
+        site_url: null,
+        status: "ATIVA" as const,
+        recursos_integracao: {},
+        metadata: {},
+        created_at: "",
+        updated_at: "",
+      },
+    },
+  ];
+
+  function mockAdminForGrupoCatalog() {
+    const from = (table: string) => {
+      const api = {
+        select: () => api,
+        in: () => api,
+        eq: () => api,
+        neq: () => api,
+        not: () => api,
+        order: () => api,
+        maybeSingle: async () => ({ data: null, error: null }),
+        then(onFulfilled: (v: { data: unknown[]; error: null }) => unknown) {
+          if (table === "grupos_consorcio") {
+            return Promise.resolve(onFulfilled({ data: [grupoRacon], error: null }));
+          }
+          if (table === "grupos_cotas") {
+            return Promise.resolve(onFulfilled({ data: [cotaRacon], error: null }));
+          }
+          if (table === "grupos_modalidades_lance") {
+            return Promise.resolve(onFulfilled({ data: [], error: null }));
+          }
+          return Promise.resolve(onFulfilled({ data: [], error: null }));
+        },
+      };
+      return api;
+    };
+    return { from };
+  }
+
+  it("fetchPublicGruposAggregatesForEmpresa funciona só com admin (sem RLS anon)", async () => {
+    const deps = {
+      fetchConcessoes: concessoesGauchinho,
+      adminFrom: mockAdminForGrupoCatalog,
+    };
+    const agg = await fetchPublicGruposAggregatesForEmpresa(GAUCHINHO_EMPRESA_ID, deps);
+    expect(agg).toHaveLength(1);
+    expect(agg[0]?.grupo.id).toBe("g-racon");
+    expect(agg[0]?.cotas[0]?.id).toBe("c1");
+  });
+
+  it("Empresa B: assertSelecoesAutorizadas nega mesmo se admin retornaria grupo Racon", async () => {
+    const deps = {
+      fetchConcessoes: async () => [],
+      adminFrom: () => {
+        throw new Error("admin não deve ser chamado sem concessão");
+      },
+    };
+    await expect(
+      assertSelecoesAutorizadasForEmpresa(
+        EMPRESA_B_ID,
+        [{ grupoId: "g-racon", cotaId: "c1" }],
+        deps,
+      ),
+    ).rejects.toThrow(GRUPO_NOT_FOUND_MESSAGE);
+  });
+
+  it("modalidade Racon → NOT_FOUND para Empresa B", async () => {
+    const deps = {
+      fetchConcessoes: async () => [],
+      adminFrom: () => {
+        throw new Error("admin não deve ser chamado");
+      },
+    };
+    await expect(
+      listModalidadesAutorizadasForEmpresa(EMPRESA_B_ID, "g-racon", deps),
+    ).rejects.toThrow(GRUPO_NOT_FOUND_MESSAGE);
+  });
+});
+
+describe("resolveIntegrationEmpresa (legado Gauchinho)", () => {
+  it("key válida → GAUCHINHO_EMPRESA_ID", async () => {
+    const { resolveIntegrationEmpresa } = await import("@/lib/integration/verify-api-key");
+    const prev = process.env.GAUCHINHO_INTEGRATION_API_KEY;
+    process.env.GAUCHINHO_INTEGRATION_API_KEY = "test-key-e6-hardening";
+    try {
+      const req = new Request("https://example.com/api/integration/grupos", {
+        headers: { "x-api-key": "test-key-e6-hardening" },
+      });
+      const auth = resolveIntegrationEmpresa(req);
+      expect(auth).toEqual({ empresaId: GAUCHINHO_EMPRESA_ID, slug: "gauchinho" });
+    } finally {
+      if (prev === undefined) delete process.env.GAUCHINHO_INTEGRATION_API_KEY;
+      else process.env.GAUCHINHO_INTEGRATION_API_KEY = prev;
+    }
   });
 });

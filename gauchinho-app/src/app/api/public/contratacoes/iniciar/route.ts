@@ -7,6 +7,7 @@ import type { IniciarContratacaoBody } from "@/lib/contratacoes-online/types";
 import { buildPropostaPublicUrl } from "@/lib/url/public-url";
 import { DEFAULT_SITE, getConfigJsonPublic } from "@/server/config";
 import {
+  CotaNotFoundError,
   GRUPO_NOT_FOUND_MESSAGE,
   isGrupoNotFoundError,
 } from "@/lib/grupos/catalogo-autorizado";
@@ -48,7 +49,7 @@ export async function POST(request: Request) {
           body.dados_simulacao as Record<string, unknown>,
         );
       } catch (err) {
-        if (isGrupoNotFoundError(err)) {
+        if (isGrupoNotFoundError(err) || err instanceof CotaNotFoundError) {
           return NextResponse.json({ error: GRUPO_NOT_FOUND_MESSAGE }, { status: 404 });
         }
         throw err;
