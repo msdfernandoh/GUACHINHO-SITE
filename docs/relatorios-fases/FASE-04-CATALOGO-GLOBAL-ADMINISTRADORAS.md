@@ -3,11 +3,13 @@
 **Título:** Catálogo Global de Administradoras  
 **Fonte canônica:** `docs/SAAS-MASTER-ARCHITECTURE.md`  
 **Data E0:** 2026-08-08  
+**Data E1:** 2026-08-08  
 **Branch:** `feature/saas-fase-4-catalogo-administradoras`  
-**Base main:** `7eb7b4bb7c2bb4b69a9e13b66b92de2fc617e121`
+**Base main:** `7eb7b4bb7c2bb4b69a9e13b66b92de2fc617e121`  
+**E0 remoto:** `d6ec92792bc43d9e78e84de2858db457435f799c`
 
-> **Autorização atual:** E0 — auditoria READ-ONLY + desenho documental.  
-> **Proibido nesta rodada:** migration, apply SQL, RLS, deploy, preview, Fase 5, comissões, Empresa B operacional.
+> **Autorização E1:** fundação estrutural local (migration 047) + auditoria/dry-run/testes/docs/commits locais.  
+> **Proibido nesta rodada:** apply remoto da 047, push E1, E2, deploy, preview, Fase 5, concessão Empresa B, backfill de grupos.
 
 ---
 
@@ -285,33 +287,43 @@ Opção B (grupos no contexto `empresa_administradora`) exigiria copiar/duplicar
 
 ---
 
-## 15. Plano de implementação recomendado (pós-E0)
+## 15. Plano de implementação recomendado
 
-| Etapa | Conteúdo |
-|---|---|
-| **E0** | Auditoria + desenho ← **esta rodada** |
-| **E1** | Migration: `administradoras`, `empresa_administradoras`, `grupos_consorcio.administradora_id` nullable; seed Racon; vínculo Gauchinho; **sem** Empresa B |
-| **E2** | Libs/repositórios + helpers de autorização + auditoria |
-| **E3** | Admin Superadmin: CRUD catálogo global |
-| **E4** | UI `/admin/empresas/[id]`: gerenciar concessões |
-| **E5** | Backfill legado + adapters de leitura (manter texto) |
-| **E6** | Filtrar listagens/APIs por concessão; erros uniformes |
-| **E7** | Testes confidencialidade (Gauchinho vs Empresa B) |
-| **E8** | Preview/homologação |
-| **E9** | Produção (flags/gates se necessário) |
+| Etapa | Conteúdo | Status |
+|---|---|---|
+| **E0** | Auditoria + desenho | **FEITA** (push `d6ec927`) |
+| **E1** | Migration 047 fundação (local) | **FEITA localmente; NÃO aplicada** |
+| **E2** | Libs/repositórios + helpers de autorização + auditoria app | Não iniciada |
+| **E3** | Admin Superadmin: CRUD catálogo global | Não iniciada |
+| **E4** | UI `/admin/empresas/[id]`: gerenciar concessões | Não iniciada |
+| **E5** | Backfill legado + adapters de leitura (manter texto) | Não iniciada |
+| **E6** | Filtrar listagens/APIs por concessão; erros uniformes; redesign RLS grupos | Não iniciada |
+| **E7** | Testes confidencialidade (Gauchinho vs Empresa B) | Não iniciada |
+| **E8** | Preview/homologação | Não iniciada |
+| **E9** | Produção (flags/gates se necessário) | Não iniciada |
 
 Fase 5 (evolução grupos/opções) permanece **fora** deste escopo.
 
 ---
 
-## 16. Baseline técnico (E0)
+## 16. Baseline técnico
 
+### E0
 | Check | Resultado |
 |---|---|
 | `npm test` | **487 passed** (96 files) |
 | `npm run build` | **exit 0** |
-| `supabase migration list --linked` | **001–046** local=remote |
-| `supabase db push --linked --dry-run` | Remote database is up to date |
+| Migrations | **001–046** local=remote |
+
+### E1 (2026-08-08)
+| Check | Resultado |
+|---|---|
+| Push E0 | `origin/...` = `d6ec92792bc43d9e78e84de2858db457435f799c` |
+| `supabase migration list --linked` | **001–046** local=remote; **047 somente local** |
+| `supabase db push --linked --dry-run` | Would push **only** `047_fase4_catalogo_global_administradoras.sql` |
+| `npm test` | **487 passed** (96 files) |
+| `npm run build` | **exit 0** |
+| Apply remoto 047 | **NÃO executado** |
 
 ---
 
@@ -319,13 +331,117 @@ Fase 5 (evolução grupos/opções) permanece **fora** deste escopo.
 
 | Etapa | Status |
 |---|---|
-| E0 Auditoria e desenho | **FEITA (documental)** |
-| E1–E9 | **Não iniciadas** |
-| Migration | **Não criada** |
+| E0 Auditoria e desenho | **FEITA** (remoto `d6ec927`) |
+| E1 Fundação estrutural | **FEITA localmente** (migration + docs; **não aplicada**) |
+| E2–E9 | **Não iniciadas** |
+| Fase 4 completa | **Não** |
 | Fase 5 | **Não iniciada** |
 
 ---
 
 ## 18. Explicitamente NÃO feito na E0
 
-Migration · apply SQL · alteração RLS · deploy · preview · push · concessão Empresa B · migração de grupos/cotas · alteração simulador/propostas/contratação · APIs de administradora · motor de comissão · Fase 5.
+Apply SQL · alteração RLS operacional · deploy · preview · concessão Empresa B · migração de grupos/cotas · alteração simulador/propostas/contratação · APIs de administradora · motor de comissão · Fase 5.
+
+---
+
+## 19. E1 — Fundação estrutural (detalhe)
+
+### 19.1 Migration
+* Arquivo: `supabase/migrations/047_fase4_catalogo_global_administradoras.sql`
+* SHA256 (arquivo local): `BC6C39DB751CB235005AAE7BB32A1AFA5DABB2DCB1F9E2E0689DB3BECCBB078B`
+* Número confirmado via `ls` + `migration list` (não havia outra 047)
+
+### 19.2 Schema `administradoras`
+| Campo | Tipo / regra |
+|---|---|
+| `id` | `uuid` PK default `gen_random_uuid()` |
+| `nome` | `text not null` |
+| `nome_fantasia`, `razao_social`, `cnpj`, `logo_url`, `site_url` | `text` nullable |
+| `slug` | `text not null` unique (normalizado lowercase) |
+| `status` | `ATIVA` \| `INATIVA` |
+| `recursos_integracao`, `metadata` | `jsonb` default `{}` (sem secrets) |
+| timestamps + `created_by_usuario_id` / `updated_by_usuario_id` | sim |
+| CNPJ | normalizado (só dígitos); unique parcial quando preenchido |
+
+### 19.3 Schema `empresa_administradoras`
+| Campo | Tipo / regra |
+|---|---|
+| `id` | `uuid` PK |
+| `empresa_id` | FK `empresas` **ON DELETE RESTRICT** |
+| `administradora_id` | FK `administradoras` **ON DELETE RESTRICT** |
+| Unique | `(empresa_id, administradora_id)` |
+| `status` | `ATIVA` \| `INATIVA` \| `SUSPENSA` |
+| `codigo_franquia`, `codigo_comercial`, `contato_interno`, `observacoes` | nullable |
+| `configuracoes` | `jsonb` default `{}` (vazio; sem credenciais) |
+
+### 19.4 Seed Racon
+* UUID determinístico v5(DNS, `saas.gauchinho.administradora.racon`) = **`c5f8ecb4-cb5a-5014-b567-50484719b404`**
+* `nome`/`nome_fantasia` = `Racon`; `slug` = `racon`; `status` = `ATIVA`
+* Sem CNPJ / razão social / site / integrações inventados
+* Metadata registra aliases legados `RACON`/`Racon` (sem backfill)
+
+### 19.5 Vínculo Gauchinho
+* Identificação: `empresas.slug = 'gauchinho'` (**único**; UUID `7170f38e-15dd-4b19-8588-51e9a9cf0d4c`)
+* Migration aborta se slug ausente ou não único
+* Concessão `ATIVA` Gauchinho × Racon
+* Empresa B (`8e4e13f9-80e6-44db-a21b-584a43b6f024`, `em_treinamento`): assert **0** concessões
+
+### 19.6 `grupos_consorcio`
+* Adiciona `administradora_id uuid NULL` FK restrict + índice
+* **Não** remove/altera coluna texto `administradora`
+* **Não** executa backfill (assert pós-seed: 0 preenchidos)
+* Texto atual permanece `RACON`×16 + `Racon`×3
+
+### 19.7 RLS (decisão E1 — mais restritiva)
+| Tabela | SELECT | INSERT/UPDATE | DELETE |
+|---|---|---|---|
+| `administradoras` | só Superadmin | só Superadmin | sem policy (soft status) |
+| `empresa_administradoras` | só Superadmin | só Superadmin | sem policy (soft status) |
+
+Tenant / `admin_empresa` / consultor / parceiro: **sem** leitura direta nesta E1.  
+Helpers de leitura filtrada ficam para E2/E6.  
+Não há `authenticated SELECT true`.
+
+### 19.8 Permissões
+Criadas e concedidas **somente** a `super_admin`:
+* `gerenciar_catalogo_administradoras`
+* `gerenciar_administradoras_empresa`
+
+Explicitamente removidas de `admin_empresa` / `parceiro_comercial` se existirem vínculos.
+
+### 19.9 Helpers SECURITY DEFINER
+* Reutiliza `public.is_platform_superadmin()` (043) — sem duplicar
+* Cria normalizadores SQL: `normalize_administradora_slug`, `normalize_cnpj_digits` (`search_path=public`, revoke PUBLIC)
+* Triggers BEFORE WRITE (não SECURITY DEFINER de autorização): `administradoras_before_write`, `empresa_administradoras_before_write`
+* `set_updated_at` reutilizado
+
+### 19.10 Índices
+* `administradoras(slug)` unique; `administradoras(status)`; `administradoras(cnpj)` unique parcial
+* `empresa_administradoras(empresa_id)`, `(administradora_id)`, `(empresa_id, status)` + unique par
+* `grupos_consorcio(administradora_id)`
+
+### 19.11 Auditoria
+* `audit_logs` existe com: `user_id`, `company_id`, `action`, `details`, `ip_address`, `created_at`
+* E1 **não** cria sistema paralelo nem triggers de audit (escritas de negócio virão na camada app E2/E3)
+* Campos/tabelas da 047 são suficientes para registrar create/update/status/concessão/suspensão/reativação via `action` + `details`
+
+### 19.12 Checklist A–N (estático + asserts na migration)
+Validado estaticamente; asserts SQL embutidos na 047 para G/H/I/L em apply futuro.  
+Limitação: sem Postgres local descartável — runtime completo só após apply autorizado.
+
+### 19.13 Compatibilidade / não-escopo E1
+* APIs / simulador / propostas / contratações / cartas / PDF / admin grupos: **intactos**
+* RLS `grupos_public_read` / `cotas_public_read` / modalidades: **intactas** (risco conhecido → E6)
+* Site deve continuar igual após apply futuro da 047 sem código novo (coluna nullable + texto legado)
+
+### 19.14 Riscos E1
+| Risco | Severidade | Nota |
+|---|---|---|
+| RLS pública de grupos permanece | Alta | Consciente; E6 |
+| Seed exige `slug=gauchinho` | Média | Abort seguro se ausente |
+| Apply da 047 ainda não homologada em runtime remoto | Média | Dry-run ok; aguardar autorização |
+| Tenant sem SELECT em concessões | Baixa/Desejada | Pode exigir RPC E2 antes de UI tenant |
+
+### 19.15 Recomendação sobre aplicar 047
+**Aplicar somente após autorização explícita**, em janela controlada, com checklist pós-apply (contagens, Racon única, Gauchinho×Racon, Empresa B=0, 19 textos intactos, 0 backfill, smoke site). Não há bloqueio estrutural no dry-run; risco residual é operacional (primeira apply), não de conflito com 001–046.

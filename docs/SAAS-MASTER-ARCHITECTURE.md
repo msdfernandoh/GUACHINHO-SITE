@@ -1,8 +1,8 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
-> **Versão:** 1.3.0  
+> **Versão:** 1.3.1  
 > **Data de Atualização:** 08/08/2026  
-> **Status da Plataforma:** Fase 2 Concluída e Homologada em Produção; **Fase 3 CONCLUÍDA E HOMOLOGADA EM PRODUÇÃO**; **Fase 4 E0 (auditoria/desenho) iniciada** na branch `feature/saas-fase-4-catalogo-administradoras` (base main `7eb7b4b`) — ver `docs/relatorios-fases/FASE-04-CATALOGO-GLOBAL-ADMINISTRADORAS.md`; **sem migration/código/banco**; Empresa B intacta; Fase 5 não iniciada  
+> **Status da Plataforma:** Fase 2 Concluída e Homologada em Produção; **Fase 3 CONCLUÍDA E HOMOLOGADA EM PRODUÇÃO**; **Fase 4 E1 (fundação estrutural local)** na branch `feature/saas-fase-4-catalogo-administradoras` (base main `7eb7b4b`, E0 remoto `d6ec927`) — migration local `047_fase4_catalogo_global_administradoras.sql` **não aplicada** no Supabase remoto; Empresa B intacta; Fase 5 não iniciada  
 
 
 > **Projeto Físico:** `C:\Fernando Hugo\GAUCHINHO SITE`  
@@ -109,7 +109,7 @@ As funções PostgreSQL de segurança (`SECURITY DEFINER`) instaladas no banco:
 * **FASE 1:** Fundação SaaS Multiempresa (Empresas, Usuários, Papéis, Permissões, Tenant Context) *(Concluída — Migration 043)*
 * **FASE 2:** Sites Multiempresa, Branding e Empresa B *(**CONCLUÍDA E HOMOLOGADA EM PRODUÇÃO** — código `12a5e61`, deploy `dpl_F1uWUw…`, docs `b3e6247`; Migration 044; Empresa B não publicada; fallback mantido temporariamente — ver `docs/relatorios-fases/FASE-02-IMPLEMENTACAO-E-HOMOLOGACAO.md`)*
 * **FASE 3:** Participantes Comerciais e Sites de Parceiros *(**CONCLUÍDA E HOMOLOGADA EM PRODUÇÃO** — ver §5.1 e `docs/relatorios-fases/FASE-03-IMPLEMENTACAO-E-HOMOLOGACAO.md`)*
-* **FASE 4:** Catálogo Global de Administradoras *(E0 auditoria/desenho — ver §5.2 e `docs/relatorios-fases/FASE-04-CATALOGO-GLOBAL-ADMINISTRADORAS.md`; **sem migration**)*
+* **FASE 4:** Catálogo Global de Administradoras *(E0 documental remoto `d6ec927`; E1 fundação local migration **047** — **não aplicada**; ver §5.2 e `docs/relatorios-fases/FASE-04-CATALOGO-GLOBAL-ADMINISTRADORAS.md`)*
 * **FASE 5:** Evolução de Grupos e Opções Comerciais
 * **FASE 6:** CRM, Leads, Agenda e Propostas Multiempresa *(funil, distribuição, agenda, automações, histórico avançado — fora da Fase 3)*
 * **FASE 7:** Contratação Online Multiempresa
@@ -171,10 +171,10 @@ Comissões/repasses, wildcard DNS, editor do site pelo parceiro, backfill massiv
 
 ---
 
-## 5.2 FASE 4 — Catálogo Global de Administradoras (E0)
+## 5.2 FASE 4 — Catálogo Global de Administradoras (E0 + E1 local)
 
 > Relatório completo: `docs/relatorios-fases/FASE-04-CATALOGO-GLOBAL-ADMINISTRADORAS.md`  
-> Branch: `feature/saas-fase-4-catalogo-administradoras` · base `7eb7b4b`
+> Branch: `feature/saas-fase-4-catalogo-administradoras` · base `7eb7b4b` · E0 push `d6ec927`
 
 ### Decisões centrais
 * Administradora = entidade **global** da plataforma (ex.: Racon).
@@ -183,17 +183,23 @@ Comissões/repasses, wildcard DNS, editor do site pelo parceiro, backfill massiv
 * Comissões/repasses **não** pertencem ao catálogo global.
 
 ### Achado legado (E0)
-* **Não existe** tabela `administradoras`.
-* Hoje: `grupos_consorcio.administradora`, `cartas_contempladas.administradora`, `contratacoes_online.administradora` são **texto**.
+* Antes da 047: **não existia** tabela `administradoras`.
+* Hoje (remoto ainda sem 047): `grupos_consorcio.administradora`, `cartas_contempladas.administradora`, `contratacoes_online.administradora` são **texto**.
 * Dados atuais: variantes `RACON` / `Racon` (mesma marca); 19 grupos / 178 opções (`grupos_cotas`).
-* Grupos são **globais** (sem `empresa_id`); RLS pública lê catálogo ativo — incompatível com confidencialidade multi-tenant futura.
-* `/admin/empresas` (Superadmin): status/branding/domínios; **sem** gestão de administradoras autorizadas.
+* Grupos são **globais** (sem `empresa_id`); RLS pública lê catálogo ativo — redesign permanece em **E6**.
+* `/admin/empresas` (Superadmin): status/branding/domínios; **sem** gestão de administradoras autorizadas (UI = E3/E4).
 
-### Modelo proposto (ainda sem migration)
-* `administradoras` (global, soft status ATIVA/INATIVA).
-* `empresa_administradoras` (concessão, status ATIVA/INATIVA/SUSPENSA).
-* `grupos_consorcio.administradora_id` (FK nullable) + manter texto como snapshot na transição.
-* Recomendação de disponibilidade: **grupos globais da administradora**, filtrados pela concessão da empresa (Opção A); evolução fina na Fase 5.
+### E1 — Fundação estrutural (local, não aplicada)
+* Migration: `supabase/migrations/047_fase4_catalogo_global_administradoras.sql`
+* Tabelas: `administradoras`, `empresa_administradoras`
+* Coluna aditiva: `grupos_consorcio.administradora_id uuid NULL` (sem backfill; texto legado intacto)
+* Seed: Racon UUID estável `c5f8ecb4-cb5a-5014-b567-50484719b404` (`slug=racon`)
+* Concessão: somente Gauchinho (`slug=gauchinho` → `7170f38e-15dd-4b19-8588-51e9a9cf0d4c`) × Racon `ATIVA`
+* Empresa B (`empresa-b`, `em_treinamento`): **0** concessões
+* RLS: SELECT/INSERT/UPDATE somente `is_platform_superadmin()` (tenant sem leitura direta na E1)
+* Permissões: `gerenciar_catalogo_administradoras`, `gerenciar_administradoras_empresa` → só `super_admin`
+* Dry-run: would push **apenas** 047; remoto 001–046 sincronizado
+* **Não** altera APIs, simulador, RLS de grupos/cotas, nem inicia E2/Fase 5
 
-### Fora da Fase 4 E0
-Migration, apply SQL, RLS, deploy, preview, Fase 5, motor de comissão, concessão real à Empresa B.
+### Fora da E1 (ainda bloqueado)
+Apply remoto da 047, push dos commits E1, helpers/UI E2–E4, backfill E5, redesign RLS grupos E6, concessão Empresa B, motor de comissão, Fase 5.
