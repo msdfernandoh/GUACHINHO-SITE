@@ -876,56 +876,21 @@ export async function deleteGrupoAction(grupoId: string) {
   redirect("/admin/grupos");
 }
 
+/**
+ * Catálogo público tenant-scoped (Fase 4 E6).
+ * Resolve empresa pelo Host/proxy — nunca por empresa_id do client.
+ * Sem tenant resolvido → lista vazia (não vaza catálogo global).
+ */
 export async function fetchPublicGruposAggregates(): Promise<PublicGrupoAggregate[]> {
-  const supabase = await createClient();
-  const { data: grupos } = await supabase
-    .from("grupos_consorcio")
-    .select("*")
-    .eq("ativo", true)
-    .neq("status", "Inativo")
-    .order("codigo_grupo");
-
-  const { data: cotas } = await supabase
-    .from("grupos_cotas")
-    .select("*")
-    .eq("ativo", true)
-    .neq("status", "Inativo")
-    .neq("status", "Esgotado")
-    .order("ordem", { ascending: true });
-
-  const { data: modalidades } = await supabase
-    .from("grupos_modalidades_lance")
-    .select("*")
-    .eq("ativo", true)
-    .order("ordem", { ascending: true });
-
-  const cotasByGrupo = new Map<string, NonNullable<typeof cotas>>();
-  (cotas ?? []).forEach((c) => {
-    const list = cotasByGrupo.get(c.grupo_id) ?? [];
-    list.push(c);
-    cotasByGrupo.set(c.grupo_id, list);
-  });
-
-  const modsByGrupo = new Map<string, GrupoModalidadeLance[]>();
-  (modalidades ?? []).forEach((m) => {
-    const list = modsByGrupo.get(m.grupo_id) ?? [];
-    list.push(m as GrupoModalidadeLance);
-    modsByGrupo.set(m.grupo_id, list);
-  });
-
-  const aggregates: PublicGrupoAggregate[] = [];
-  (grupos ?? []).forEach((g) => {
-    const list = cotasByGrupo.get(g.id) ?? [];
-    if (!list.length) return;
-    list.sort((a, b) => Number(b.valor_credito) - Number(a.valor_credito));
-    aggregates.push({
-      grupo: g,
-      cotas: list,
-      modalidades: modsByGrupo.get(g.id) ?? [],
-    });
-  });
-
-  return aggregates;
+  const { getCatalogEmpresaIdFromHeaders } = await import(
+    "@/lib/grupos/resolve-catalog-empresa"
+  );
+  const { fetchPublicGruposAggregatesForEmpresa } = await import(
+    "@/lib/grupos/catalogo-autorizado-service"
+  );
+  const empresaId = await getCatalogEmpresaIdFromHeaders();
+  if (!empresaId) return [];
+  return fetchPublicGruposAggregatesForEmpresa(empresaId);
 }
 
 /** @deprecated use fetchPublicGruposAggregates */

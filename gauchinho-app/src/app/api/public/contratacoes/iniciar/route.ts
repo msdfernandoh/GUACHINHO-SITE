@@ -6,6 +6,12 @@ import { criarContratacaoOnline } from "@/lib/contratacoes-online/service";
 import type { IniciarContratacaoBody } from "@/lib/contratacoes-online/types";
 import { buildPropostaPublicUrl } from "@/lib/url/public-url";
 import { DEFAULT_SITE, getConfigJsonPublic } from "@/server/config";
+import {
+  GRUPO_NOT_FOUND_MESSAGE,
+  isGrupoNotFoundError,
+} from "@/lib/grupos/catalogo-autorizado";
+import { assertDadosSimulacaoGruposAutorizadosForEmpresa } from "@/lib/grupos/catalogo-autorizado-service";
+import { getCatalogEmpresaIdFromRequest } from "@/lib/grupos/resolve-catalog-empresa";
 
 export async function POST(request: Request) {
   const __tenantBlocked = await rejectIfTenantBlocksLegacyOperationalApi(request);
@@ -31,6 +37,24 @@ export async function POST(request: Request) {
 
     // Cliente no site: mantém toda a proposta apenas no navegador até concluir
     // nome, contato, CPF/CNPJ e endereço. Evita simulações incompletas no banco.
+    if (body.origem === "grupos" && body.modo === "sdr_link") {
+      const empresaId = await getCatalogEmpresaIdFromRequest(request);
+      if (!empresaId) {
+        return NextResponse.json({ error: GRUPO_NOT_FOUND_MESSAGE }, { status: 404 });
+      }
+      try {
+        await assertDadosSimulacaoGruposAutorizadosForEmpresa(
+          empresaId,
+          body.dados_simulacao as Record<string, unknown>,
+        );
+      } catch (err) {
+        if (isGrupoNotFoundError(err)) {
+          return NextResponse.json({ error: GRUPO_NOT_FOUND_MESSAGE }, { status: 404 });
+        }
+        throw err;
+      }
+    }
+
     if (body.modo === "cliente_site") {
       const consultorId = body.consultor_id?.trim() || usuario?.id || "";
       if (!consultorId) {

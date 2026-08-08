@@ -17,6 +17,12 @@ import {
 import { parseEnderecoContratacao } from "@/lib/contratacoes-online/endereco";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { TipoPessoa } from "@/lib/contratacoes-online/types";
+import {
+  GRUPO_NOT_FOUND_MESSAGE,
+  isGrupoNotFoundError,
+} from "@/lib/grupos/catalogo-autorizado";
+import { assertDadosSimulacaoGruposAutorizadosForEmpresa } from "@/lib/grupos/catalogo-autorizado-service";
+import { getCatalogEmpresaIdFromRequest } from "@/lib/grupos/resolve-catalog-empresa";
 
 /**
  * Materializa o rascunho somente após os dados cadastrais completos.
@@ -86,6 +92,24 @@ export async function POST(request: Request) {
 
     // Valida todos os campos obrigatórios antes do primeiro INSERT.
     parseEnderecoContratacao(body);
+
+    if (body.draft.origem === "grupos") {
+      const empresaId = await getCatalogEmpresaIdFromRequest(request);
+      if (!empresaId) {
+        return NextResponse.json({ error: GRUPO_NOT_FOUND_MESSAGE }, { status: 404 });
+      }
+      try {
+        await assertDadosSimulacaoGruposAutorizadosForEmpresa(
+          empresaId,
+          body.draft.dados_simulacao,
+        );
+      } catch (err) {
+        if (isGrupoNotFoundError(err)) {
+          return NextResponse.json({ error: GRUPO_NOT_FOUND_MESSAGE }, { status: 404 });
+        }
+        throw err;
+      }
+    }
 
     const usuario = await getUsuarioNegocio();
     const { row, publicPath } = await criarContratacaoOnline(

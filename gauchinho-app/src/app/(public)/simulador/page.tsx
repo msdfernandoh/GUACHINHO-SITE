@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { SimuladorApp, type SimuladorPrefill } from "@/components/simulador/simulador-app";
 import { getSimuladorConfigsPublic } from "@/server/config";
 import type { Modo } from "@/components/simulador/simulador-types";
@@ -47,4 +48,3 @@ export default async function SimuladorPage({
 
   return <SimuladorApp configs={configs} prefill={prefill} isConsultor={isConsultor} />;
 }
-import type { Metadata } from "next";

@@ -1,13 +1,17 @@
 import { NextResponse } from "next/server";
 import { rejectIfTenantBlocksLegacyOperationalApi } from "@/lib/tenant/assert-legacy-operational-api";
-import { createAdminClient } from "@/lib/supabase/admin";
-import { verifyIntegrationApiKey } from "@/lib/integration/verify-api-key";
+import { resolveIntegrationEmpresa } from "@/lib/integration/verify-api-key";
+import { isGrupoNotFoundError, GRUPO_NOT_FOUND_MESSAGE } from "@/lib/grupos/catalogo-autorizado";
+import {
+  getGrupoAutorizadoForEmpresa,
+  listCotasAutorizadasForEmpresa,
+} from "@/lib/grupos/catalogo-autorizado-service";
 
 export async function GET(request: Request, context: { params: Promise<{ id: string }> }) {
   const __tenantBlocked = await rejectIfTenantBlocksLegacyOperationalApi(request);
   if (__tenantBlocked) return __tenantBlocked;
-  const denied = verifyIntegrationApiKey(request);
-  if (denied) return denied;
+  const auth = resolveIntegrationEmpresa(request);
+  if (auth instanceof NextResponse) return auth;
 
   const { id } = await context.params;
   if (!id) {
@@ -15,30 +19,8 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
   }
 
   try {
-    const admin = createAdminClient();
-    const { data: grupo, error: gErr } = await admin
-      .from("grupos_consorcio")
-      .select("*")
-      .eq("id", id)
-      .single();
-
-    if (gErr || !grupo) {
-      return NextResponse.json({ error: "Grupo não encontrado" }, { status: 404 });
-    }
-
-    const { data: cotas, error: cErr } = await admin
-      .from("grupos_cotas")
-      .select(
-        "id, grupo_id, valor_credito, saldo_devedor, valor_parcela, parcela_integral, parcela_reduzida, parcela_sem_seguro, parcela_com_seguro, status, ativo, ordem, updated_at",
-      )
-      .eq("grupo_id", id)
-      .order("ordem", { ascending: true });
-
-    if (cErr) {
-      return NextResponse.json({ error: cErr.message }, { status: 500 });
-    }
-
-    const cotasAtivas = (cotas ?? []).filter((c) => c.ativo !== false);
+    const grupo = await getGrupoAutorizadoForEmpresa(auth.empresaId, id);
+    const cotasAtivas = await listCotasAutorizadasForEmpresa(auth.empresaId, id);
 
     return NextResponse.json(
       {
@@ -46,13 +28,16 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
         api_version: "1",
         grupo,
         cotas: cotasAtivas,
-        cotas_total: cotas?.length ?? 0,
+        cotas_total: cotasAtivas.length,
         cotas_ativas: cotasAtivas.length,
         synced_at: new Date().toISOString(),
       },
       { headers: { "Cache-Control": "private, no-store" } },
     );
   } catch (err) {
+    if (isGrupoNotFoundError(err)) {
+      return NextResponse.json({ error: GRUPO_NOT_FOUND_MESSAGE }, { status: 404 });
+    }
     return NextResponse.json(
       { error: err instanceof Error ? err.message : "Erro ao buscar grupo" },
       { status: 500 },

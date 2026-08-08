@@ -12,7 +12,13 @@ import {
 } from "@/lib/grupos/simulacao-linha";
 import { fatorSeguroGrupo } from "@/lib/grupos/seguro";
 import { calcularPrazoGrupoFromRow } from "@/lib/grupos/prazos";
-import type { GrupoConsorcio, GrupoCota, GrupoModalidadeLance } from "@/lib/types";
+import {
+  CotaNotFoundError,
+  isGrupoNotFoundError,
+  GRUPO_NOT_FOUND_MESSAGE,
+} from "@/lib/grupos/catalogo-autorizado";
+import { assertSelecoesAutorizadasForEmpresa } from "@/lib/grupos/catalogo-autorizado-service";
+import { getCatalogEmpresaIdFromRequest } from "@/lib/grupos/resolve-catalog-empresa";
 import { DEFAULT_LEADS, getConfigJsonPublic } from "@/server/config";
 
 type SelecaoPayload = {
@@ -61,23 +67,28 @@ export async function POST(request: Request) {
 
     const leadId = leadRow.id;
 
-    const grupoIds = [...new Set(body.selecoes.map((s) => s.grupoId))];
-    const cotaIds = body.selecoes.map((s) => s.cotaId);
+    const empresaId = await getCatalogEmpresaIdFromRequest(request);
+    if (!empresaId) {
+      return NextResponse.json({ error: GRUPO_NOT_FOUND_MESSAGE }, { status: 404 });
+    }
 
-    const [{ data: grupos }, { data: cotas }, { data: modalidades }] = await Promise.all([
-      admin.from("grupos_consorcio").select("*").in("id", grupoIds),
-      admin.from("grupos_cotas").select("*").in("id", cotaIds),
-      admin.from("grupos_modalidades_lance").select("*").in("grupo_id", grupoIds),
-    ]);
+    let authorized;
+    try {
+      authorized = await assertSelecoesAutorizadasForEmpresa(
+        empresaId,
+        body.selecoes.map((s) => ({ grupoId: s.grupoId, cotaId: s.cotaId })),
+      );
+    } catch (err) {
+      if (isGrupoNotFoundError(err) || err instanceof CotaNotFoundError) {
+        return NextResponse.json({ error: GRUPO_NOT_FOUND_MESSAGE }, { status: 404 });
+      }
+      throw err;
+    }
 
-    const grupoMap = new Map((grupos ?? []).map((g) => [g.id, g as GrupoConsorcio]));
-    const cotaMap = new Map((cotas ?? []).map((c) => [c.id, c as GrupoCota]));
-    const modsByGrupo = new Map<string, GrupoModalidadeLance[]>();
-    (modalidades ?? []).forEach((m) => {
-      const list = modsByGrupo.get(m.grupo_id) ?? [];
-      list.push(m as GrupoModalidadeLance);
-      modsByGrupo.set(m.grupo_id, list);
-    });
+    const grupoMap = authorized.grupos;
+    const cotaMap = authorized.cotas;
+    const modsByGrupo = authorized.modalidades;
+    const grupoIds = [...grupoMap.keys()];
 
     const selecoesCalc = body.selecoes.map((s) => {
       const grupo = grupoMap.get(s.grupoId)!;
