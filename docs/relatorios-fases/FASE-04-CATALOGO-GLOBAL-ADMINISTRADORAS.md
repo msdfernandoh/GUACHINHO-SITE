@@ -10,13 +10,14 @@
 | E0 remoto | `d6ec92792bc43d9e78e84de2858db457435f799c` |
 | E1 código remoto | `0a1df2e5467ff410cc894c58aacb80c236bd0063` |
 | E2 remoto | `5fb3b07a35f9c01e6686a85e00fb1df7d5192b75` |
+| E3 remoto | `3ecd168f26ff6c55fc8ef39b4257e5ca563a6a52` |
 | Migration 047 | **APLICADA** no Supabase remoto |
 | Migrations | **001–047** local = remote (sem 048) |
 | Dry-run | Remote database is up to date |
 
 > **Estado da Fase 4:** EM ANDAMENTO.  
-> **E0:** CONCLUÍDA · **E1:** APLICADA E HOMOLOGADA · **E2:** CONCLUÍDA (push `5fb3b07`) · **E3:** IMPLEMENTADA (local; sem push).  
-> **E4+:** NÃO INICIADAS · **Fase 5:** NÃO INICIADA.
+> **E0:** CONCLUÍDA · **E1:** APLICADA E HOMOLOGADA · **E2:** CONCLUÍDA (push `5fb3b07`) · **E3:** CONCLUÍDA (push `3ecd168`) · **E4:** IMPLEMENTADA (local; sem push).  
+> **E5+:** NÃO INICIADAS · **Fase 5:** NÃO INICIADA.
 
 ---
 
@@ -136,8 +137,8 @@ Opção B (grupos por franquia) descartada nesta fase (alto risco de duplicaçã
 | **E0** | **CONCLUÍDA** |
 | **E1** | **APLICADA E HOMOLOGADA** |
 | **E2** | **CONCLUÍDA** (remoto `5fb3b07`) |
-| **E3** | **IMPLEMENTADA** (local; sem push) |
-| **E4** | **NÃO INICIADA** |
+| **E3** | **CONCLUÍDA** (remoto `3ecd168`) |
+| **E4** | **IMPLEMENTADA** (local; sem push) |
 | **E5** | **NÃO INICIADA** |
 | **E6** | **NÃO INICIADA** |
 | **E7** | **NÃO INICIADA** |
@@ -264,7 +265,7 @@ Sem migration, sem backfill, sem alteração de RLS/APIs/UI de grupos.
 * Empresa B → `[]`; UUID/slug Racon → `NOT_FOUND`
 
 ### 12.7 Call sites
-E3 CRUD global ← **implementado** · E4 concessões UI · E5 backfill/adapters · E6 grupos/APIs/RLS
+E3 CRUD global ← **remoto `3ecd168`** · E4 concessões UI ← **local** · E5 backfill/adapters · E6 grupos/APIs/RLS
 
 ### 12.8 Banco nesta E2
 Nenhuma migration 048. **001–047** local=remote. Dry-run up to date.
@@ -323,3 +324,54 @@ Não aparece para admin_empresa/gestor/consultor/parceiro/visualizador.
 ### 13.9 Testes / build E3
 * Suite: **533 passed** (100 files)
 * Sem migration 048; **001–047** sync; dry-run up to date
+* Push E3: `3ecd168` (local = remote)
+
+---
+
+## 14. E4 — Concessões Empresa/Franquia × Administradora
+
+### 14.1 Escopo
+Gestão exclusiva pelo `PLATFORM_SUPERADMIN` das concessões `empresa_administradoras` no detalhe da empresa:
+
+`/admin/empresas/[id]` → seção **Administradoras autorizadas**
+
+**Não** é catálogo global (continua em `/admin/administradoras`).  
+Sem migration 048 · sem backfill · sem alteração de grupos/cotas/RLS pública · sem APIs públicas · sem E5 · sem deploy.
+
+### 14.2 Princípio de confidencialidade
+* COMPANY_ADMIN / gestor / consultor / parceiro: sem acesso à seção, sem listagem global candidata, sem mutations de concessão.
+* Sem endpoint tenant `/api/administradoras-disponiveis`.
+* Mensagens uniformes de negação — sem revelar existência de administradoras não autorizadas.
+
+### 14.3 Serviços (`lib/administradoras/concessoes.ts`)
+* `getEmpresaAdministradorasForSuperadmin`
+* `listAdministradorasCandidatasParaEmpresa` (globais ATIVAS ainda não vinculadas)
+* `grantAdministradoraToEmpresa` (status inicial ATIVA; exige global ATIVA)
+* `updateEmpresaAdministradora` (codigo_franquia, codigo_comercial, contato_interno, observacoes)
+* `setEmpresaAdministradoraStatus` (ATIVA / INATIVA / SUSPENSA; sem DELETE)
+* Server Actions: `admin/empresas/administradoras-actions.ts` com `requireGerenciarAdministradorasEmpresa`
+
+### 14.4 Regras
+* Unique `(empresa_id, administradora_id)` → mensagem amigável
+* Global INATIVA: bloqueia nova concessão e reativação operacional do vínculo
+* `configuracoes` JSONB **não** exposto na UI E4
+* Sem secrets (API key/token/password/webhook)
+
+### 14.5 Auditoria (`audit_logs`)
+* `EMPRESA_ADMINISTRADORA_CONCEDIDA`
+* `EMPRESA_ADMINISTRADORA_ATUALIZADA`
+* `EMPRESA_ADMINISTRADORA_STATUS_ALTERADO`
+
+### 14.6 Estado dos tenants nesta rodada
+* Gauchinho → Racon → ATIVA (carregado; não recriado; não alterado automaticamente)
+* Empresa B → **0** concessões (`em_treinamento`); UI pronta; sem grant real nesta E4
+
+### 14.7 Efeito runtime
+E4 gerencia apenas a concessão estrutural. Grupos/simulador/APIs públicas ainda **não** filtram por concessão (E5/E6). UI alerta isso sem prometer efeito inexistente.
+
+### 14.8 Testes / build E4
+* Cobertura auth (Superadmin PASS; demais DENY), confidencialidade, Gauchinho/Racon, Empresa B vazia, duplicate, global INATIVA, status ATIVA↔SUSPENSA/INATIVA (mocks)
+* Suite: **551 passed** (102 files)
+* `npm run build`: exit 0
+* Sem migration 048; **001–047** sync
+* Push E4: **não** realizado (aguarda autorização)
