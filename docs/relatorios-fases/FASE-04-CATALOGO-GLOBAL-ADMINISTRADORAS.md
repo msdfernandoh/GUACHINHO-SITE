@@ -8,8 +8,8 @@
 **Base main:** `7eb7b4bb7c2bb4b69a9e13b66b92de2fc617e121`  
 **E0 remoto:** `d6ec92792bc43d9e78e84de2858db457435f799c`
 
-> **Autorização E1:** fundação estrutural local (migration 047) + auditoria/dry-run/testes/docs/commits locais.  
-> **Proibido nesta rodada:** apply remoto da 047, push E1, E2, deploy, preview, Fase 5, concessão Empresa B, backfill de grupos.
+> **Estado E1:** **APLICADA E HOMOLOGADA** (2026-08-08). Código E1 remoto `0a1df2e`. Migration **047** no Supabase.  
+> **Proibido até nova autorização:** E2, backfill, alteração RLS grupos/cotas, APIs/runtime, deploy app, Fase 5, push do commit documental pós-homologação.
 
 ---
 
@@ -292,7 +292,7 @@ Opção B (grupos no contexto `empresa_administradora`) exigiria copiar/duplicar
 | Etapa | Conteúdo | Status |
 |---|---|---|
 | **E0** | Auditoria + desenho | **FEITA** (push `d6ec927`) |
-| **E1** | Migration 047 fundação (local) | **FEITA localmente; NÃO aplicada** |
+| **E1** | Migration 047 fundação + apply + homologação | **APLICADA E HOMOLOGADA** |
 | **E2** | Libs/repositórios + helpers de autorização + auditoria app | Não iniciada |
 | **E3** | Admin Superadmin: CRUD catálogo global | Não iniciada |
 | **E4** | UI `/admin/empresas/[id]`: gerenciar concessões | Não iniciada |
@@ -315,15 +315,33 @@ Fase 5 (evolução grupos/opções) permanece **fora** deste escopo.
 | `npm run build` | **exit 0** |
 | Migrations | **001–046** local=remote |
 
-### E1 (2026-08-08)
+### E1 criação (pré-apply)
 | Check | Resultado |
 |---|---|
-| Push E0 | `origin/...` = `d6ec92792bc43d9e78e84de2858db457435f799c` |
-| `supabase migration list --linked` | **001–046** local=remote; **047 somente local** |
-| `supabase db push --linked --dry-run` | Would push **only** `047_fase4_catalogo_global_administradoras.sql` |
-| `npm test` | **487 passed** (96 files) |
+| Push E0 | `d6ec927` |
+| Commits E1 | `ac135ef` (feat) + `0a1df2e` (docs) |
+| SHA256 047 | `BC6C39DB751CB235005AAE7BB32A1AFA5DABB2DCB1F9E2E0689DB3BECCBB078B` |
+
+### E1 apply + homologação (2026-08-08)
+| Check | Resultado |
+|---|---|
+| Push E1 | `origin/...` = `0a1df2e5467ff410cc894c58aacb80c236bd0063` |
+| Pré: Gauchinho slug | count=1 → `7170f38e-15dd-4b19-8588-51e9a9cf0d4c` |
+| Pré: Empresa B | `em_treinamento`; tabelas admin inexistentes |
+| Pré contagens | empresas=2; grupos=19; cotas=178; propostas=16; contratações=18; texto RACON=16/Racon=3 |
+| Dry-run pré | Would push **only** 047 |
+| Apply | `supabase db push --linked --yes` → **047 aplicada** |
+| Pós migration list | **001–047** local=remote |
+| Pós dry-run | **Remote database is up to date** |
+| Racon | 1 registro; id/slug/status corretos |
+| Concessão | Gauchinho×Racon ATIVA = 1; Empresa B = 0 |
+| Backfill | **0** grupos com `administradora_id` |
+| Contagens pós | idênticas ao pré (grupos/cotas/propostas/contratações/texto) |
+| Constraints+RLS | **21/21 passed** (ROLLBACK) |
+| Regressão SQL anon | grupos=19; cotas públicas=170 (filtro legado intacto) |
+| Smoke HTTP | `www.gauchinhoconsorcios.com.br/grupos` + `/simulador` → **200** |
+| `npm test` | **487 passed** |
 | `npm run build` | **exit 0** |
-| Apply remoto 047 | **NÃO executado** |
 
 ---
 
@@ -331,8 +349,8 @@ Fase 5 (evolução grupos/opções) permanece **fora** deste escopo.
 
 | Etapa | Status |
 |---|---|
-| E0 Auditoria e desenho | **FEITA** (remoto `d6ec927`) |
-| E1 Fundação estrutural | **FEITA localmente** (migration + docs; **não aplicada**) |
+| E0 Auditoria e desenho | **CONCLUÍDA** (`d6ec927`) |
+| E1 Fundação estrutural | **APLICADA E HOMOLOGADA** (código `0a1df2e`; migration 047) |
 | E2–E9 | **Não iniciadas** |
 | Fase 4 completa | **Não** |
 | Fase 5 | **Não iniciada** |
@@ -410,10 +428,11 @@ Criadas e concedidas **somente** a `super_admin`:
 
 Explicitamente removidas de `admin_empresa` / `parceiro_comercial` se existirem vínculos.
 
-### 19.9 Helpers SECURITY DEFINER
+### 19.9 Helpers
 * Reutiliza `public.is_platform_superadmin()` (043) — sem duplicar
-* Cria normalizadores SQL: `normalize_administradora_slug`, `normalize_cnpj_digits` (`search_path=public`, revoke PUBLIC)
-* Triggers BEFORE WRITE (não SECURITY DEFINER de autorização): `administradoras_before_write`, `empresa_administradoras_before_write`
+* **Nenhum** novo SECURITY DEFINER de autorização na 047
+* Normalizadores SQL (não SECURITY DEFINER): `normalize_administradora_slug`, `normalize_cnpj_digits` (`search_path=public`, revoke PUBLIC)
+* Triggers BEFORE WRITE: `administradoras_before_write`, `empresa_administradoras_before_write` (`search_path=public`)
 * `set_updated_at` reutilizado
 
 ### 19.10 Índices
@@ -426,22 +445,22 @@ Explicitamente removidas de `admin_empresa` / `parceiro_comercial` se existirem 
 * E1 **não** cria sistema paralelo nem triggers de audit (escritas de negócio virão na camada app E2/E3)
 * Campos/tabelas da 047 são suficientes para registrar create/update/status/concessão/suspensão/reativação via `action` + `details`
 
-### 19.12 Checklist A–N (estático + asserts na migration)
-Validado estaticamente; asserts SQL embutidos na 047 para G/H/I/L em apply futuro.  
-Limitação: sem Postgres local descartável — runtime completo só após apply autorizado.
+### 19.12 Checklist A–N (pós-apply)
+Validado em runtime remoto: tabelas/constraints/seed/concessão/coluna nullable/sem backfill/sem alteração cotas.  
+Testes constraints+RLS+regressão: **21/21** com `ROLLBACK` (sem fixtures persistidas).
 
 ### 19.13 Compatibilidade / não-escopo E1
-* APIs / simulador / propostas / contratações / cartas / PDF / admin grupos: **intactos**
+* APIs / simulador / propostas / contratações / cartas / PDF / admin grupos: **intactos** (sem mudança de código)
 * RLS `grupos_public_read` / `cotas_public_read` / modalidades: **intactas** (risco conhecido → E6)
-* Site deve continuar igual após apply futuro da 047 sem código novo (coluna nullable + texto legado)
+* Smoke produção: `/grupos` e `/simulador` HTTP 200 após apply
 
-### 19.14 Riscos E1
+### 19.14 Riscos remanescentes
 | Risco | Severidade | Nota |
 |---|---|---|
 | RLS pública de grupos permanece | Alta | Consciente; E6 |
-| Seed exige `slug=gauchinho` | Média | Abort seguro se ausente |
-| Apply da 047 ainda não homologada em runtime remoto | Média | Dry-run ok; aguardar autorização |
-| Tenant sem SELECT em concessões | Baixa/Desejada | Pode exigir RPC E2 antes de UI tenant |
+| Tenant sem SELECT em concessões | Baixa/Desejada | Helpers E2 antes de UI tenant |
+| Runtime app ainda não usa FK | Média | Dual-read/dual-write em E2/E5 |
+| Confidencialidade multi-tenant incompleta | Alta | Até E6 filtrar listagens |
 
-### 19.15 Recomendação sobre aplicar 047
-**Aplicar somente após autorização explícita**, em janela controlada, com checklist pós-apply (contagens, Racon única, Gauchinho×Racon, Empresa B=0, 19 textos intactos, 0 backfill, smoke site). Não há bloqueio estrutural no dry-run; risco residual é operacional (primeira apply), não de conflito com 001–046.
+### 19.15 Recomendação E2
+E1 está segura para seguir. Próxima etapa: helpers/repos de autorização + auditoria app (`listAdministradorasAutorizadas`, asserts), **sem** backfill e **sem** redesign RLS de grupos.
