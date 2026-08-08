@@ -9,13 +9,14 @@
 |---|---|
 | E0 remoto | `d6ec92792bc43d9e78e84de2858db457435f799c` |
 | E1 código remoto | `0a1df2e5467ff410cc894c58aacb80c236bd0063` |
+| E2 remoto | `5fb3b07a35f9c01e6686a85e00fb1df7d5192b75` |
 | Migration 047 | **APLICADA** no Supabase remoto |
-| Migrations | **001–047** local = remote |
+| Migrations | **001–047** local = remote (sem 048) |
 | Dry-run | Remote database is up to date |
 
 > **Estado da Fase 4:** EM ANDAMENTO.  
-> **E0:** CONCLUÍDA · **E1:** APLICADA E HOMOLOGADA · **E2:** IMPLEMENTADA (commits locais; sem push).  
-> **E3+:** NÃO INICIADAS · **Fase 5:** NÃO INICIADA.
+> **E0:** CONCLUÍDA · **E1:** APLICADA E HOMOLOGADA · **E2:** CONCLUÍDA (push `5fb3b07`) · **E3:** IMPLEMENTADA (local; sem push).  
+> **E4+:** NÃO INICIADAS · **Fase 5:** NÃO INICIADA.
 
 ---
 
@@ -134,8 +135,8 @@ Opção B (grupos por franquia) descartada nesta fase (alto risco de duplicaçã
 |---|---|
 | **E0** | **CONCLUÍDA** |
 | **E1** | **APLICADA E HOMOLOGADA** |
-| **E2** | **IMPLEMENTADA** (local; sem push) |
-| **E3** | **NÃO INICIADA** |
+| **E2** | **CONCLUÍDA** (remoto `5fb3b07`) |
+| **E3** | **IMPLEMENTADA** (local; sem push) |
 | **E4** | **NÃO INICIADA** |
 | **E5** | **NÃO INICIADA** |
 | **E6** | **NÃO INICIADA** |
@@ -262,8 +263,8 @@ Sem migration, sem backfill, sem alteração de RLS/APIs/UI de grupos.
 * Gauchinho → `[Racon]`
 * Empresa B → `[]`; UUID/slug Racon → `NOT_FOUND`
 
-### 12.7 Call sites futuros (ainda não alterados)
-E3 CRUD global · E4 concessões UI · E5 backfill/adapters · E6 grupos/APIs/RLS
+### 12.7 Call sites
+E3 CRUD global ← **implementado** · E4 concessões UI · E5 backfill/adapters · E6 grupos/APIs/RLS
 
 ### 12.8 Banco nesta E2
 Nenhuma migration 048. **001–047** local=remote. Dry-run up to date.
@@ -272,4 +273,53 @@ Nenhuma migration 048. **001–047** local=remote. Dry-run up to date.
 * Novos testes administradoras: **29**
 * Suite total: **516 passed** (98 files)
 * `npm run build`: exit 0
-* Docs E1 corrigidas e pushadas: `b2ed7f6` (glossário terminológico + estado canônico)
+* Push E2: `5fb3b07`
+
+---
+
+## 13. E3 — Administração global (PLATFORM_SUPERADMIN)
+
+### 13.1 Escopo
+UI + Server Actions para CRUD do **catálogo global** `administradoras`.  
+**Não** gerencia `empresa_administradoras` (E4). Sem backfill, sem alteração de grupos/RLS/APIs públicas. Sem migration 048.
+
+### 13.2 Rotas
+* `/admin/administradoras` — listagem (busca + filtro status)
+* `/admin/administradoras/nova` — criação
+* `/admin/administradoras/[id]` — edição + status + empresas/franqueadas vinculadas (somente leitura informativa)
+
+### 13.3 Menu
+`SUPERADMIN_NAV`: **Catálogo de Administradoras** (somente `isPlatformSuperadmin`).  
+Não aparece para admin_empresa/gestor/consultor/parceiro/visualizador.
+
+### 13.4 Mutations (service)
+* `createAdministradoraGlobal`
+* `updateAdministradoraGlobal`
+* `setAdministradoraGlobalStatus`
+* Reutiliza `listAdministradorasGlobaisForSuperadmin` + `requireGerenciarCatalogoAdministradoras`
+
+### 13.5 Segurança
+* Gate de página + revalidação em toda Server Action
+* Escritas via sessão/`createClient` (RLS Superadmin)
+* Contagem/lista de vínculos usa service role **após** assert Superadmin
+* Sem endpoint público; sem DELETE físico
+* JSON de integração rejeita chaves de secret/token/password
+
+### 13.6 Auditoria (`audit_logs`)
+* `ADMINISTRADORA_GLOBAL_CRIADA`
+* `ADMINISTRADORA_GLOBAL_ATUALIZADA`
+* `ADMINISTRADORA_GLOBAL_STATUS_ALTERADO`
+* Inclui `administradora_id`, campos alterados, antes/depois
+
+### 13.7 Slug / CNPJ
+* Slug normalizado + unique global; edição de slug permitida e **auditada** (impacto futuro em URLs documentado na UI)
+* CNPJ opcional, normalizado + validação checksum; unique parcial
+
+### 13.8 Racon / Gauchinho / Empresa B
+* Racon aparece como administradora global única seedada
+* Gauchinho aparece apenas como **empresa/franqueada vinculada** no detalhe da Racon
+* Empresa B continua com **0** concessões; E3 não cria vínculos
+
+### 13.9 Testes / build E3
+* Suite: **533 passed** (100 files)
+* Sem migration 048; **001–047** sync; dry-run up to date
