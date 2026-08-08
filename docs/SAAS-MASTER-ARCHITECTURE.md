@@ -1,8 +1,8 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
-> **Versão:** 1.2.9  
-> **Data de Atualização:** 07/08/2026  
-> **Status da Plataforma:** Fase 2 Concluída e Homologada em Produção; **Fase 3 CONCLUÍDA E HOMOLOGADA EM PRODUÇÃO** (E0–E10; main `0b062b1`; Production final `dpl_FRwYh5gyYckM92RMyRvu736k27tE`; flags `AREA=true` / `PUBLIC_SITE=true` / `VERCEL_DOMAINS=false`; migrations 045/046 aplicadas; PDF protegido; site homologação `homologacao-parceiro-alfa` em **SUSPENSO**; Empresa B intacta; DNS/fallback Fase 2 inalterados); **Fase 4 não iniciada**  
+> **Versão:** 1.3.0  
+> **Data de Atualização:** 08/08/2026  
+> **Status da Plataforma:** Fase 2 Concluída e Homologada em Produção; **Fase 3 CONCLUÍDA E HOMOLOGADA EM PRODUÇÃO**; **Fase 4 E0 (auditoria/desenho) iniciada** na branch `feature/saas-fase-4-catalogo-administradoras` (base main `7eb7b4b`) — ver `docs/relatorios-fases/FASE-04-CATALOGO-GLOBAL-ADMINISTRADORAS.md`; **sem migration/código/banco**; Empresa B intacta; Fase 5 não iniciada  
 
 
 > **Projeto Físico:** `C:\Fernando Hugo\GAUCHINHO SITE`  
@@ -108,8 +108,8 @@ As funções PostgreSQL de segurança (`SECURITY DEFINER`) instaladas no banco:
 * **FASE 0:** Auditoria Técnica e Mapeamento do Projeto *(Concluída)*
 * **FASE 1:** Fundação SaaS Multiempresa (Empresas, Usuários, Papéis, Permissões, Tenant Context) *(Concluída — Migration 043)*
 * **FASE 2:** Sites Multiempresa, Branding e Empresa B *(**CONCLUÍDA E HOMOLOGADA EM PRODUÇÃO** — código `12a5e61`, deploy `dpl_F1uWUw…`, docs `b3e6247`; Migration 044; Empresa B não publicada; fallback mantido temporariamente — ver `docs/relatorios-fases/FASE-02-IMPLEMENTACAO-E-HOMOLOGACAO.md`)*
-* **FASE 3:** Participantes Comerciais e Sites de Parceiros *(Escopo oficial **final** documental — ver §5.1 e `docs/relatorios-fases/FASE-03-IMPLEMENTACAO-E-HOMOLOGACAO.md`; **implementação não iniciada**)*
-* **FASE 4:** Catálogo Global de Administradoras
+* **FASE 3:** Participantes Comerciais e Sites de Parceiros *(**CONCLUÍDA E HOMOLOGADA EM PRODUÇÃO** — ver §5.1 e `docs/relatorios-fases/FASE-03-IMPLEMENTACAO-E-HOMOLOGACAO.md`)*
+* **FASE 4:** Catálogo Global de Administradoras *(E0 auditoria/desenho — ver §5.2 e `docs/relatorios-fases/FASE-04-CATALOGO-GLOBAL-ADMINISTRADORAS.md`; **sem migration**)*
 * **FASE 5:** Evolução de Grupos e Opções Comerciais
 * **FASE 6:** CRM, Leads, Agenda e Propostas Multiempresa *(funil, distribuição, agenda, automações, histórico avançado — fora da Fase 3)*
 * **FASE 7:** Contratação Online Multiempresa
@@ -168,3 +168,32 @@ Fase 3 prepara chaves, isolamento e tela comercial limitada. Fase 6 evolui CRM m
 
 ### Fora da Fase 3
 Comissões/repasses, wildcard DNS, editor do site pelo parceiro, backfill massivo sem autorização, remoção do fallback da Fase 2, operacionalização da Empresa B, início das Fases 4+.
+
+---
+
+## 5.2 FASE 4 — Catálogo Global de Administradoras (E0)
+
+> Relatório completo: `docs/relatorios-fases/FASE-04-CATALOGO-GLOBAL-ADMINISTRADORAS.md`  
+> Branch: `feature/saas-fase-4-catalogo-administradoras` · base `7eb7b4b`
+
+### Decisões centrais
+* Administradora = entidade **global** da plataforma (ex.: Racon).
+* Concessão `empresa × administradora` **somente** por `PLATFORM_SUPERADMIN`.
+* Tenant **não** escolhe, lista nem descobre administradoras não autorizadas (confidencialidade comercial).
+* Comissões/repasses **não** pertencem ao catálogo global.
+
+### Achado legado (E0)
+* **Não existe** tabela `administradoras`.
+* Hoje: `grupos_consorcio.administradora`, `cartas_contempladas.administradora`, `contratacoes_online.administradora` são **texto**.
+* Dados atuais: variantes `RACON` / `Racon` (mesma marca); 19 grupos / 178 opções (`grupos_cotas`).
+* Grupos são **globais** (sem `empresa_id`); RLS pública lê catálogo ativo — incompatível com confidencialidade multi-tenant futura.
+* `/admin/empresas` (Superadmin): status/branding/domínios; **sem** gestão de administradoras autorizadas.
+
+### Modelo proposto (ainda sem migration)
+* `administradoras` (global, soft status ATIVA/INATIVA).
+* `empresa_administradoras` (concessão, status ATIVA/INATIVA/SUSPENSA).
+* `grupos_consorcio.administradora_id` (FK nullable) + manter texto como snapshot na transição.
+* Recomendação de disponibilidade: **grupos globais da administradora**, filtrados pela concessão da empresa (Opção A); evolução fina na Fase 5.
+
+### Fora da Fase 4 E0
+Migration, apply SQL, RLS, deploy, preview, Fase 5, motor de comissão, concessão real à Empresa B.
