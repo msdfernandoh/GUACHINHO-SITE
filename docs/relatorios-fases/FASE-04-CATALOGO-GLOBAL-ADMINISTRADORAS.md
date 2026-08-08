@@ -14,8 +14,8 @@
 | Dry-run | Remote database is up to date |
 
 > **Estado da Fase 4:** EM ANDAMENTO.  
-> **E0:** CONCLUÍDA · **E1:** APLICADA E HOMOLOGADA · **E2+:** conforme seções abaixo.  
-> **Fase 5:** NÃO INICIADA.
+> **E0:** CONCLUÍDA · **E1:** APLICADA E HOMOLOGADA · **E2:** IMPLEMENTADA (commits locais; sem push).  
+> **E3+:** NÃO INICIADAS · **Fase 5:** NÃO INICIADA.
 
 ---
 
@@ -130,18 +130,18 @@ Opção B (grupos por franquia) descartada nesta fase (alto risco de duplicaçã
 
 ## 8. Plano de etapas
 
-| Etapa | Conteúdo | Status |
-|---|---|---|
-| **E0** | Auditoria + desenho | **CONCLUÍDA** |
-| **E1** | Migration 047 + apply + homologação | **APLICADA E HOMOLOGADA** |
-| **E2** | Libs/repos/helpers de autorização + auditoria app | Conforme rodada atual |
-| **E3** | Admin Superadmin: CRUD catálogo global | **NÃO INICIADA** |
-| **E4** | UI `/admin/empresas/[id]`: gerenciar concessões | **NÃO INICIADA** |
-| **E5** | Backfill legado + adapters de leitura | **NÃO INICIADA** |
-| **E6** | Filtrar listagens/APIs; redesign RLS grupos | **NÃO INICIADA** |
-| **E7** | Testes confidencialidade (Gauchinho vs Empresa B) | **NÃO INICIADA** |
-| **E8** | Preview/homologação | **NÃO INICIADA** |
-| **E9** | Produção (flags/gates se necessário) | **NÃO INICIADA** |
+| Etapa | Status |
+|---|---|
+| **E0** | **CONCLUÍDA** |
+| **E1** | **APLICADA E HOMOLOGADA** |
+| **E2** | **IMPLEMENTADA** (local; sem push) |
+| **E3** | **NÃO INICIADA** |
+| **E4** | **NÃO INICIADA** |
+| **E5** | **NÃO INICIADA** |
+| **E6** | **NÃO INICIADA** |
+| **E7** | **NÃO INICIADA** |
+| **E8** | **NÃO INICIADA** |
+| **E9** | **NÃO INICIADA** |
 
 **Fase 4:** EM ANDAMENTO · **Fase 5:** NÃO INICIADA
 
@@ -217,6 +217,59 @@ E2 **não** altera esses call sites.
 
 ---
 
-## 12. E2 — Libs / helpers (preenchido na rodada E2)
+## 12. E2 — Libs / helpers de autorização
 
-Ver atualização nesta seção após implementação E2.
+### 12.1 Escopo
+Camada de aplicação: **empresa/franqueada → concessão → administradora global**.  
+Sem migration, sem backfill, sem alteração de RLS/APIs/UI de grupos.
+
+### 12.2 Arquivos (`gauchinho-app/src/lib/administradoras/`)
+| Arquivo | Função |
+|---|---|
+| `types.ts` | Tipos Administradora / EmpresaAdministradora / Autorizada |
+| `constants.ts` | Permissões, status, UUIDs Racon/Gauchinho/Empresa B, audit actions |
+| `errors.ts` | `AdministradoraNotFoundError` (`code: NOT_FOUND`) |
+| `rules.ts` | Regras puras (status, filtro, slug, matriz papéis) |
+| `authorization.ts` | Guards Superadmin + `assertCallerCanAccessEmpresa` |
+| `repository.ts` | Fetch global (sessão) / concessões (service role pós-auth) |
+| `service.ts` | API pública das funções E2 |
+| `audit.ts` | Helper `writeAdministradorasAuditLog` → `audit_logs` |
+| `index.ts` | Barrel server-only |
+| `*.test.ts` | Testes unitários |
+
+### 12.3 Funções
+| Função | Escopo |
+|---|---|
+| `listAdministradorasGlobaisForSuperadmin` | GLOBAL / Superadmin |
+| `listAdministradorasAutorizadasForEmpresa(empresaId)` | AUTORIZADO / tenant |
+| `getAdministradoraAutorizadaById` | AUTORIZADO |
+| `getAdministradoraAutorizadaBySlug` | AUTORIZADO |
+| `assertEmpresaPodeUsarAdministradora` | AUTORIZADO |
+| `assertAdministradoraGlobalAtiva` | GLOBAL / Superadmin |
+
+### 12.4 Segurança
+* Catálogo global: só `isPlatformSuperadmin()` — `admin_empresa`/consultor/parceiro negados.
+* Tenant: `assertCallerCanAccessEmpresa` via sessão (`getUserCompanies`); **não** confia em query/body.
+* Listagem autorizada exige **global ATIVA + vínculo ATIVA**.
+* UUID/slug sem autorização → `NOT_FOUND` uniforme (sem revelar existência).
+* Service role só em repository de concessões, **após** assert de sessão; nunca no client.
+* Sem cache nesta E2.
+
+### 12.5 Permissions
+* `gerenciar_catalogo_administradoras` / `gerenciar_administradoras_empresa` — só Superadmin (espelha 047).
+
+### 12.6 Resultados esperados
+* Gauchinho → `[Racon]`
+* Empresa B → `[]`; UUID/slug Racon → `NOT_FOUND`
+
+### 12.7 Call sites futuros (ainda não alterados)
+E3 CRUD global · E4 concessões UI · E5 backfill/adapters · E6 grupos/APIs/RLS
+
+### 12.8 Banco nesta E2
+Nenhuma migration 048. **001–047** local=remote. Dry-run up to date.
+
+### 12.9 Testes / build E2
+* Novos testes administradoras: **29**
+* Suite total: **516 passed** (98 files)
+* `npm run build`: exit 0
+* Docs E1 corrigidas e pushadas: `b2ed7f6` (glossário terminológico + estado canônico)

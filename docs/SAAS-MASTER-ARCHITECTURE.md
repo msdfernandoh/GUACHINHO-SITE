@@ -1,8 +1,8 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
-> **Versão:** 1.3.3  
+> **Versão:** 1.3.4  
 > **Data de Atualização:** 08/08/2026  
-> **Status da Plataforma:** Fase 2 Concluída e Homologada em Produção; **Fase 3 CONCLUÍDA E HOMOLOGADA EM PRODUÇÃO**; **Fase 4 EM ANDAMENTO** (E0 CONCLUÍDA; **E1 APLICADA E HOMOLOGADA** — código `0a1df2e`, Migration **047** no remoto; E2+ conforme relatório) — **Racon = administradora global**; **Gauchinho = empresa/franqueada** com concessão Racon ATIVA; Empresa B em treinamento sem concessão; Fase 5 **não** iniciada  
+> **Status da Plataforma:** Fase 2 Concluída e Homologada em Produção; **Fase 3 CONCLUÍDA E HOMOLOGADA EM PRODUÇÃO**; **Fase 4 EM ANDAMENTO** (E0 CONCLUÍDA; **E1 APLICADA E HOMOLOGADA** — Migration **047**; **E2 libs locais** em `src/lib/administradoras`; E3+ não iniciada) — **Racon = administradora global**; **Gauchinho = empresa/franqueada**; Empresa B sem concessão; Fase 5 **não** iniciada  
 
 
 > **Projeto Físico:** `C:\Fernando Hugo\GAUCHINHO SITE`  
@@ -109,7 +109,7 @@ As funções PostgreSQL de segurança (`SECURITY DEFINER`) instaladas no banco:
 * **FASE 1:** Fundação SaaS Multiempresa (Empresas, Usuários, Papéis, Permissões, Tenant Context) *(Concluída — Migration 043)*
 * **FASE 2:** Sites Multiempresa, Branding e Empresa B *(**CONCLUÍDA E HOMOLOGADA EM PRODUÇÃO** — código `12a5e61`, deploy `dpl_F1uWUw…`, docs `b3e6247`; Migration 044; Empresa B não publicada; fallback mantido temporariamente — ver `docs/relatorios-fases/FASE-02-IMPLEMENTACAO-E-HOMOLOGACAO.md`)*
 * **FASE 3:** Participantes Comerciais e Sites de Parceiros *(**CONCLUÍDA E HOMOLOGADA EM PRODUÇÃO** — ver §5.1 e `docs/relatorios-fases/FASE-03-IMPLEMENTACAO-E-HOMOLOGACAO.md`)*
-* **FASE 4:** Catálogo Global de Administradoras *(E0 `d6ec927`; E1 código `0a1df2e`; Migration **047 aplicada e homologada**; E2+ não iniciada — ver §5.2 e `docs/relatorios-fases/FASE-04-CATALOGO-GLOBAL-ADMINISTRADORAS.md`)*
+* **FASE 4:** Catálogo Global de Administradoras *(E0/E1 homologadas — Migration **047**; E2 libs em `gauchinho-app/src/lib/administradoras` (local); E3+ não iniciada — ver §5.2 e `docs/relatorios-fases/FASE-04-CATALOGO-GLOBAL-ADMINISTRADORAS.md`)*
 * **FASE 5:** Evolução de Grupos e Opções Comerciais
 * **FASE 6:** CRM, Leads, Agenda e Propostas Multiempresa *(funil, distribuição, agenda, automações, histórico avançado — fora da Fase 3)*
 * **FASE 7:** Contratação Online Multiempresa
@@ -197,10 +197,17 @@ Comissões/repasses, wildcard DNS, editor do site pelo parceiro, backfill massiv
 * Concessão: empresa Gauchinho `7170f38e-…` → Racon `ATIVA`; Empresa B → 0
 * Homologação: 21/21 RLS/constraints; npm 487; build 0; smoke `/grupos`+`/simulador` 200
 
+### E2 — Libs de autorização (implementada localmente)
+* Módulo: `gauchinho-app/src/lib/administradoras/`
+* Global Superadmin vs autorizada por empresa/franqueada; erro `NOT_FOUND` uniforme
+* Service role só após `assertCallerCanAccessEmpresa`; sem cache; sem migration 048
+* Gauchinho → Racon; Empresa B → []; permissões só `super_admin`
+* Call sites E3–E6 ainda não alterados
+
 ### Status etapas
-E0 CONCLUÍDA · E1 APLICADA E HOMOLOGADA · E2–E9 conforme relatório · Fase 4 EM ANDAMENTO · Fase 5 NÃO INICIADA
+E0 CONCLUÍDA · E1 APLICADA E HOMOLOGADA · E2 IMPLEMENTADA (local) · E3–E9 NÃO INICIADAS · Fase 4 EM ANDAMENTO · Fase 5 NÃO INICIADA
 
 ### Riscos atuais
 * ALTA: RLS pública grupos/cotas (E6); confidencialidade multi-tenant incompleta (E6)
 * MÉDIA: runtime ainda não usa `administradora_id` (E5/E6)
-* BAIXA/DESEJADA: tenant sem SELECT direto em concessões (E2)
+* BAIXA/DESEJADA: tenant sem SELECT direto em concessões — mitigado na E2 via service role pós-auth
