@@ -12,7 +12,9 @@
 | E2 remoto | `5fb3b07a35f9c01e6686a85e00fb1df7d5192b75` |
 | E3 remoto | `3ecd168f26ff6c55fc8ef39b4257e5ca563a6a52` |
 | E4 remoto | `05803297631a5e58b34b88dac9fa22df814de20a` |
-| E5 remoto | `33b6b2d8e2eb94cfaf04806556c978f947938db0` |
+| E5 remoto | `6ddbd0ccea0a9dc59cce06b60d5142745b249de9` (push documental pós-homologação grupos vinculados) |
+| E6 código | **local** (commits E6 abaixo — **NÃO pushed**) |
+| Migration 049 | **CRIADA LOCALMENTE · NÃO APLICADA** |
 | Migration 047 | **APLICADA** |
 | Migration 048 | **APLICADA E HOMOLOGADA** (`048_fase4_backfill_grupos_administradora_id.sql`) |
 | SHA256 048 | `FA9574A0E53066858B4EC99D519E203CB79E04F5F8FB00A975EA0F4B3301DABA` |
@@ -20,8 +22,9 @@
 | Dry-run pós | Remote database is up to date |
 
 > **Estado da Fase 4:** EM ANDAMENTO.  
-> **E0–E5:** CONCLUÍDAS (E5 push `33b6b2d` · 048 aplicada/homologada).  
-> **E6+:** NÃO INICIADAS · **Fase 5:** NÃO INICIADA.
+> **E0–E5:** CONCLUÍDAS (E5 remoto `6ddbd0c` · 048 aplicada/homologada).  
+> **E6:** CONCLUÍDA EM CÓDIGO (local, **sem push** · migration **049 criada, NÃO aplicada**).  
+> **E7+:** NÃO INICIADAS · **Fase 5:** NÃO INICIADA.
 
 ---
 
@@ -451,3 +454,64 @@ Snapshots propostas/contratações intactos.
 * CLI: `%LOCALAPPDATA%\supabase-cli\supabase.exe` **2.111.0**
 * Push E5: `33b6b2d` (local = remote)
 * Pós-apply: **001–048** sync · dry-run **up to date**
+
+---
+
+## 16. E6 — Confidencialidade do catálogo comercial (concessão empresa × administradora)
+
+**Objetivo:** runtime e APIs públicas leem grupos/cotas/modalidades **somente** via concessão ATIVA + administradora global ATIVA, resolvendo **empresa pelo Host** (Fase 2/3), sem `?empresa_id=` / header arbitrário como autoridade.
+
+### 16.1 Push documental E5
+* Branch: `feature/saas-fase-4-catalogo-administradoras`
+* `git push origin feature/saas-fase-4-catalogo-administradoras` → **Everything up-to-date**
+* **local = remote = `6ddbd0c`**
+
+### 16.2 Service layer tenant-scoped (server-only + service role)
+* `gauchinho-app/src/lib/grupos/catalogo-autorizado.ts` — regras puras, erros uniformes `NOT_FOUND`, `resolveEmpresaIdForCatalog`, `parseSelecoesGrupoFromDadosSimulacao`
+* `gauchinho-app/src/lib/grupos/catalogo-autorizado-service.ts` — `listGruposAutorizadosForEmpresa`, `getGrupoAutorizadoForEmpresa`, `listCotasAutorizadasForEmpresa`, `listModalidadesAutorizadasForEmpresa`, `fetchPublicGruposAggregatesForEmpresa`, `assertSelecoesAutorizadasForEmpresa`, `assertDadosSimulacaoGruposAutorizadosForEmpresa`
+* `gauchinho-app/src/lib/grupos/resolve-catalog-empresa.ts` — Host/proxy → `empresa_id`; parceiro Fase 3 → empresa franqueada; **ignora** `x-tenant-*` do Request como autoridade
+
+### 16.3 Call sites migrados
+| Superfície | Comportamento |
+|---|---|
+| `/grupos` | `fetchPublicGruposAggregates()` → tenant-scoped; sorteios usam `listGruposAutorizadosForEmpresa` |
+| Home (`load-home-data`) | Herda `fetchPublicGruposAggregates` tenant-scoped |
+| `/api/public/grupos/fluxo` | `getCatalogEmpresaIdFromRequest` + `assertSelecoesAutorizadasForEmpresa` |
+| `/api/integration/grupos` (+ `[id]`) | API key → **Gauchinho** (`resolveIntegrationEmpresa`); lista/detalhe filtrados por concessão |
+| Contratações | `iniciar` (SDR+grupos) e `rascunho/materializar` validam `assertDadosSimulacaoGruposAutorizadosForEmpresa` |
+| `/admin/grupos` | Staff continua listagem global via sessão/RLS staff (não reutiliza filtro público) |
+| `/simulador` | Simulador genérico (índices/config); catálogo real de grupos permanece em `/grupos` + APIs acima |
+
+### 16.4 Empresa B vs Gauchinho (testes)
+* **Empresa B** (`0 concessões`): listas `[]`; UUID grupo/cota Racon → mesma mensagem `Grupo não encontrado.` / cota equivalente; sem vazamento de metadata
+* **Gauchinho** (Racon ATIVA): mesma regra de elegibilidade (`ativo`, status); catálogo Racon via `administradora_id`
+* **Concessão SUSPENSA/INATIVA** e **admin global INATIVA**: testes unitários mock (sem alterar dados reais)
+
+### 16.5 Integração API key
+* Lacuna estrutural documentada: única key `GAUCHINHO_INTEGRATION_API_KEY` → `GAUCHINHO_EMPRESA_ID`; multi-tenant de keys = migration futura
+* Não lista catálogo global sem empresa vinculada
+
+### 16.6 Cartas contempladas
+* `cartas_contempladas.administradora` permanece **texto**; sem FK estrutural nesta E6
+* **Risco documentado:** filtro por concessão exige migration futura (`administradora_id` ou tenant-scoped rows); não bloqueia E6
+
+### 16.7 Cache
+* Sem cache global de catálogo; `fetchPublicGruposAggregatesForEmpresa` documenta chave futura com `empresaId`
+* Integration routes: `Cache-Control: private, no-store`
+
+### 16.8 RLS — estado vs proposta (049)
+**Ainda ativas em produção (até apply 049):**
+* `grupos_public_read`, `cotas_public_read`, `grupos_modalidades_lance_select_public`
+
+**Migration 049 (local, NÃO aplicada):** remove as três policies acima; runtime já não depende delas para `/grupos` e fluxos migrados.
+
+**Ordem de apply recomendada:** deploy app E6 → homologar Gauchinho → então `supabase db push` só 049.
+
+### 16.9 Testes / build
+* `npm test`: **581 passed** (104 files)
+* `npm run build`: exit 0
+* Migrations: **001–048** sync remoto; **049** somente local
+
+### 16.10 Git E6 (local — aguardar autorização para push)
+* Commits sugeridos: feat catálogo por concessão · docs E6 · (049 no commit feat ou separado)
+* **E7 não iniciada · deploy produção não executado · 049 não aplicada**
