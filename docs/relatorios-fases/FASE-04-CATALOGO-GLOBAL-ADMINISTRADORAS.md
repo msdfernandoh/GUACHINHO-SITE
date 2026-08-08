@@ -11,13 +11,15 @@
 | E1 código remoto | `0a1df2e5467ff410cc894c58aacb80c236bd0063` |
 | E2 remoto | `5fb3b07a35f9c01e6686a85e00fb1df7d5192b75` |
 | E3 remoto | `3ecd168f26ff6c55fc8ef39b4257e5ca563a6a52` |
+| E4 remoto | `05803297631a5e58b34b88dac9fa22df814de20a` |
 | Migration 047 | **APLICADA** no Supabase remoto |
-| Migrations | **001–047** local = remote (sem 048) |
-| Dry-run | Remote database is up to date |
+| Migration 048 | **CRIADA, NÃO APLICADA** (`048_fase4_backfill_grupos_administradora_id.sql`) |
+| Migrations sync | **001–047** local = remote · 048 só local |
+| Dry-run E5 | Would push only `048_fase4_backfill_grupos_administradora_id.sql` |
 
 > **Estado da Fase 4:** EM ANDAMENTO.  
-> **E0:** CONCLUÍDA · **E1:** APLICADA E HOMOLOGADA · **E2:** CONCLUÍDA (push `5fb3b07`) · **E3:** CONCLUÍDA (push `3ecd168`) · **E4:** IMPLEMENTADA (local; sem push).  
-> **E5+:** NÃO INICIADAS · **Fase 5:** NÃO INICIADA.
+> **E0–E4:** CONCLUÍDAS (E4 push `0580329`) · **E5:** IMPLEMENTADA LOCALMENTE (048 não aplicada).  
+> **E6+:** NÃO INICIADAS · **Fase 5:** NÃO INICIADA.
 
 ---
 
@@ -138,8 +140,8 @@ Opção B (grupos por franquia) descartada nesta fase (alto risco de duplicaçã
 | **E1** | **APLICADA E HOMOLOGADA** |
 | **E2** | **CONCLUÍDA** (remoto `5fb3b07`) |
 | **E3** | **CONCLUÍDA** (remoto `3ecd168`) |
-| **E4** | **IMPLEMENTADA** (local; sem push) |
-| **E5** | **NÃO INICIADA** |
+| **E4** | **CONCLUÍDA** (remoto `0580329`) |
+| **E5** | **IMPLEMENTADA** (local; 048 não aplicada; sem push) |
 | **E6** | **NÃO INICIADA** |
 | **E7** | **NÃO INICIADA** |
 | **E8** | **NÃO INICIADA** |
@@ -265,7 +267,7 @@ Sem migration, sem backfill, sem alteração de RLS/APIs/UI de grupos.
 * Empresa B → `[]`; UUID/slug Racon → `NOT_FOUND`
 
 ### 12.7 Call sites
-E3 CRUD global ← **remoto `3ecd168`** · E4 concessões UI ← **local** · E5 backfill/adapters · E6 grupos/APIs/RLS
+E3 CRUD global ← **remoto `3ecd168`** · E4 concessões ← **remoto `0580329`** · E5 backfill/adapters ← **local** · E6 grupos/APIs/RLS
 
 ### 12.8 Banco nesta E2
 Nenhuma migration 048. **001–047** local=remote. Dry-run up to date.
@@ -373,5 +375,57 @@ E4 gerencia apenas a concessão estrutural. Grupos/simulador/APIs públicas aind
 * Cobertura auth (Superadmin PASS; demais DENY), confidencialidade, Gauchinho/Racon, Empresa B vazia, duplicate, global INATIVA, status ATIVA↔SUSPENSA/INATIVA (mocks)
 * Suite: **551 passed** (102 files)
 * `npm run build`: exit 0
-* Sem migration 048; **001–047** sync
-* Push E4: **não** realizado (aguarda autorização)
+* Push E4: `0580329` (local = remote)
+
+---
+
+## 15. E5 — Backfill grupos + adapters de transição
+
+### 15.1 Escopo
+Transição estrutural `grupos_consorcio.administradora` (TEXT) → `administradora_id` (UUID/FK), **sem** remover texto legado, **sem** alterar RLS pública, **sem** filtrar APIs/simulador (E6).
+
+### 15.2 Pré-auditoria remota (READ-ONLY)
+| Item | Resultado |
+|---|---|
+| Total grupos | **19** |
+| Texto | RACON ×16 · Racon ×3 |
+| `administradora_id` preenchidos | **0** |
+| Texto desconhecido / sem texto | **0** |
+| `grupos_cotas` | **178** |
+| Refs `contratacoes_online.grupo_id` | 18 |
+| Refs `simulacoes_grupos` | 10 |
+| Refs `grupos_modalidades_lance` | 31 |
+| Racon global | 1 × `c5f8ecb4-…` slug=`racon` status=`ATIVA` |
+| Gauchinho→Racon | ATIVA |
+| Empresa B concessões | **0** |
+
+### 15.3 Migration
+* Arquivo: `supabase/migrations/048_fase4_backfill_grupos_administradora_id.sql`
+* SHA256: `FA9574A0E53066858B4EC99D519E203CB79E04F5F8FB00A975EA0F4B3301DABA`
+* Backfill: `administradora_id = Racon` onde `lower(trim(administradora)) = 'racon'`
+* Texto legado **intocado** (não normaliza RACON→Racon)
+* Asserts pré/pós (19 grupos, 16/3 texto, 178 cotas, Racon única)
+* Coluna permanece **nullable** (sem NOT NULL)
+* **NÃO APLICADA** nesta rodada
+
+### 15.4 Adapters
+* `resolveGrupoAdministradora` — UUID estrutural; texto = snapshot/fallback legado
+* `getGrupoWithAdministradora` / `listGruposWithAdministradora`
+* `buildGrupoAdministradoraDualWrite` + `resolveGrupoAdministradoraDualWriteFromForm`
+* Dual-write em `/admin/grupos` (create/update/popular teste): UUID + snapshot; staff master/srd; sem marketplace tenant
+* Service role só para lookup pontual de administradora **após** `assertCanManageGrupos`
+* Texto arbitrário rejeitado; alias legado Racon resolvido para UUID canônico
+
+### 15.5 Explicitamente fora do escopo
+* RLS `grupos_public_read` / `cotas_public_read` / modalidades public
+* Filtro por concessão em APIs/simulador (E6)
+* Alteração `grupos_cotas`, propostas JSON, `contratacoes_online.administradora` snapshot, cartas
+* Concessão Empresa B · deploy · push E5 · apply 048
+
+### 15.6 Testes / build E5
+* Suite: **562 passed** (103 files)
+* `npm run build`: exit 0
+* CLI: `%LOCALAPPDATA%\supabase-cli\supabase.exe` **2.111.0**
+* `migration list`: 001–047 sync; 048 só local
+* `db push --dry-run`: Would push only **048**
+* Push E5: **não** realizado

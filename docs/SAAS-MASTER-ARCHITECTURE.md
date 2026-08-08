@@ -1,8 +1,8 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
-> **Versão:** 1.3.6  
+> **Versão:** 1.3.7  
 > **Data de Atualização:** 08/08/2026  
-> **Status da Plataforma:** Fase 2 Concluída e Homologada em Produção; **Fase 3 CONCLUÍDA E HOMOLOGADA EM PRODUÇÃO**; **Fase 4 EM ANDAMENTO** (E0–E3 concluídas — E3 remoto `3ecd168`; **E4 concessões local** em `/admin/empresas/[id]`; E5+ não iniciada; Migration **047**; sem 048) — **Racon = administradora global**; **Gauchinho = empresa/franqueada**; Empresa B sem concessão; Fase 5 **não** iniciada  
+> **Status da Plataforma:** Fase 2 Concluída e Homologada em Produção; **Fase 3 CONCLUÍDA E HOMOLOGADA EM PRODUÇÃO**; **Fase 4 EM ANDAMENTO** (E0–E4 concluídas — E4 remoto `0580329`; **E5 local** migration **048** criada/não aplicada + adapters grupos; E6+ não iniciada; **047** aplicada) — **Racon = administradora global**; **Gauchinho = empresa/franqueada**; Empresa B sem concessão; Fase 5 **não** iniciada  
 
 
 > **Projeto Físico:** `C:\Fernando Hugo\GAUCHINHO SITE`  
@@ -109,7 +109,7 @@ As funções PostgreSQL de segurança (`SECURITY DEFINER`) instaladas no banco:
 * **FASE 1:** Fundação SaaS Multiempresa (Empresas, Usuários, Papéis, Permissões, Tenant Context) *(Concluída — Migration 043)*
 * **FASE 2:** Sites Multiempresa, Branding e Empresa B *(**CONCLUÍDA E HOMOLOGADA EM PRODUÇÃO** — código `12a5e61`, deploy `dpl_F1uWUw…`, docs `b3e6247`; Migration 044; Empresa B não publicada; fallback mantido temporariamente — ver `docs/relatorios-fases/FASE-02-IMPLEMENTACAO-E-HOMOLOGACAO.md`)*
 * **FASE 3:** Participantes Comerciais e Sites de Parceiros *(**CONCLUÍDA E HOMOLOGADA EM PRODUÇÃO** — ver §5.1 e `docs/relatorios-fases/FASE-03-IMPLEMENTACAO-E-HOMOLOGACAO.md`)*
-* **FASE 4:** Catálogo Global de Administradoras *(E0–E3 concluídas — Migration **047**, E3 `3ecd168`; E4 concessões Superadmin em `/admin/empresas/[id]` local; E5+ não iniciada — ver §5.2 e `docs/relatorios-fases/FASE-04-CATALOGO-GLOBAL-ADMINISTRADORAS.md`)*
+* **FASE 4:** Catálogo Global de Administradoras *(E0–E4 concluídas — Migration **047**, E4 `0580329`; E5 local migration **048** não aplicada + adapters; E6+ não iniciada — ver §5.2 e `docs/relatorios-fases/FASE-04-CATALOGO-GLOBAL-ADMINISTRADORAS.md`)*
 * **FASE 5:** Evolução de Grupos e Opções Comerciais
 * **FASE 6:** CRM, Leads, Agenda e Propostas Multiempresa *(funil, distribuição, agenda, automações, histórico avançado — fora da Fase 3)*
 * **FASE 7:** Contratação Online Multiempresa
@@ -208,18 +208,24 @@ Comissões/repasses, wildcard DNS, editor do site pelo parceiro, backfill massiv
 * Mutations + `audit_logs` (`ADMINISTRADORA_GLOBAL_*`); soft status ATIVA/INATIVA; sem DELETE
 * Gauchinho listado só como empresa/franqueada vinculada; Empresa B sem concessão nova
 
-### E4 — Concessões por empresa (local; sem push)
+### E4 — Concessões por empresa (remoto `0580329`)
 * Seção **Administradoras autorizadas** em `/admin/empresas/[id]` (somente PLATFORM_SUPERADMIN)
 * Serviços: `grantAdministradoraToEmpresa` / `updateEmpresaAdministradora` / `setEmpresaAdministradoraStatus` / `getEmpresaAdministradorasForSuperadmin`
 * Status vínculo ATIVA/INATIVA/SUSPENSA; campos locais (códigos/contato/observações); sem DELETE; sem secrets UI
 * Audit: `EMPRESA_ADMINISTRADORA_CONCEDIDA|ATUALIZADA|STATUS_ALTERADO`
 * Gauchinho→Racon ATIVA preservada; Empresa B continua **0** concessões
-* Sem migration 048; sem backfill; RLS grupos/cotas intacta; runtime comercial ainda não consome concessão (E5/E6)
+
+### E5 — Backfill/adapters grupos (local; 048 **não** aplicada)
+* Migration `048_fase4_backfill_grupos_administradora_id.sql` (SHA256 `FA9574A0…DABA`) — backfill 19 grupos → Racon UUID; texto RACON/Racon preservado; cotas intactas; sem NOT NULL
+* Adapters: `resolveGrupoAdministradora`, `get/listGrupo(s)WithAdministradora`, dual-write em `/admin/grupos`
+* Pré-auditoria: 19 grupos · 0 `administradora_id` · 178 cotas · Empresa B 0 concessões
+* Dry-run: would push **somente 048**; RLS pública / APIs / simulador **não** alterados
+* Apply 048 e E6 (filtro por concessão + RLS) **aguardam autorização**
 
 ### Status etapas
-E0–E3 CONCLUÍDAS · E4 IMPLEMENTADA (local) · E5–E9 NÃO INICIADAS · Fase 4 EM ANDAMENTO · Fase 5 NÃO INICIADA
+E0–E4 CONCLUÍDAS · E5 IMPLEMENTADA (local) · E6–E9 NÃO INICIADAS · Fase 4 EM ANDAMENTO · Fase 5 NÃO INICIADA
 
 ### Riscos atuais
 * ALTA: RLS pública grupos/cotas (E6); confidencialidade multi-tenant incompleta (E6)
-* MÉDIA: runtime ainda não usa concessão/`administradora_id` (E5/E6)
+* MÉDIA: runtime ainda não filtra por concessão; `administradora_id` só após apply 048
 * BAIXA: alteração de slug global permitida (auditada) — impacto futuro em URLs
