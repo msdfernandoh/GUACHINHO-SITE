@@ -1,8 +1,8 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
-> **Versão:** 1.3.2  
+> **Versão:** 1.3.3  
 > **Data de Atualização:** 08/08/2026  
-> **Status da Plataforma:** Fase 2 Concluída e Homologada em Produção; **Fase 3 CONCLUÍDA E HOMOLOGADA EM PRODUÇÃO**; **Fase 4 E1 APLICADA E HOMOLOGADA** (branch `feature/saas-fase-4-catalogo-administradoras`, código E1 remoto `0a1df2e`) — Migration **047** aplicada no Supabase; Racon global + concessão Gauchinho ATIVA; Empresa B 0 concessões; backfill/E2/Fase 5 **não** iniciados  
+> **Status da Plataforma:** Fase 2 Concluída e Homologada em Produção; **Fase 3 CONCLUÍDA E HOMOLOGADA EM PRODUÇÃO**; **Fase 4 EM ANDAMENTO** (E0 CONCLUÍDA; **E1 APLICADA E HOMOLOGADA** — código `0a1df2e`, Migration **047** no remoto; E2+ conforme relatório) — **Racon = administradora global**; **Gauchinho = empresa/franqueada** com concessão Racon ATIVA; Empresa B em treinamento sem concessão; Fase 5 **não** iniciada  
 
 
 > **Projeto Físico:** `C:\Fernando Hugo\GAUCHINHO SITE`  
@@ -171,34 +171,36 @@ Comissões/repasses, wildcard DNS, editor do site pelo parceiro, backfill massiv
 
 ---
 
-## 5.2 FASE 4 — Catálogo Global de Administradoras (E0 + E1 homologada)
+## 5.2 FASE 4 — Catálogo Global de Administradoras
 
-> Relatório completo: `docs/relatorios-fases/FASE-04-CATALOGO-GLOBAL-ADMINISTRADORAS.md`  
-> Branch: `feature/saas-fase-4-catalogo-administradoras` · base `7eb7b4b` · E1 push `0a1df2e`
+> Relatório: `docs/relatorios-fases/FASE-04-CATALOGO-GLOBAL-ADMINISTRADORAS.md`  
+> Branch: `feature/saas-fase-4-catalogo-administradoras` · E1 código `0a1df2e` · Migration **047 aplicada**
+
+### Terminologia (obrigatória)
+* **Racon** = **administradora global** (não é tenant).
+* **Gauchinho Consórcios** = **empresa / franqueada / tenant** credenciada da Racon.
+* **Empresa B** = outro tenant SaaS (`em_treinamento`).
+* **`empresa_administradoras`** = concessão Superadmin empresa×administradora — **não** transforma a empresa em administradora.
+* Parceiros/consultores/leads/propostas pertencem ao **tenant** (ex.: Gauchinho), não à administradora.
 
 ### Decisões centrais
-* Administradora = entidade **global** da plataforma (ex.: Racon).
+* Administradora = entidade **global** da plataforma.
 * Concessão `empresa × administradora` **somente** por `PLATFORM_SUPERADMIN`.
-* Tenant **não** escolhe, lista nem descobre administradoras não autorizadas (confidencialidade comercial).
+* Tenant **não** escolhe nem descobre administradoras não autorizadas.
 * Comissões/repasses **não** pertencem ao catálogo global.
 
-### Achado legado (E0)
-* Antes da 047: **não existia** tabela `administradoras`.
-* Textos legados ainda presentes: `grupos_consorcio.administradora`, `cartas_contempladas.administradora`, `contratacoes_online.administradora`.
-* Dados atuais: variantes `RACON` / `Racon` (mesma marca); 19 grupos / 178 opções (`grupos_cotas`); **0** backfill em `administradora_id`.
-* Grupos são **globais** (sem `empresa_id`); RLS pública lê catálogo ativo — redesign permanece em **E6**.
-* `/admin/empresas` (Superadmin): status/branding/domínios; **sem** gestão de administradoras autorizadas (UI = E3/E4).
+### E1 — Fundação (**APLICADA E HOMOLOGADA**)
+* Migration `047_fase4_catalogo_global_administradoras.sql` — **001–047** local=remote; dry-run up to date
+* `administradoras` + `empresa_administradoras` (RLS só Superadmin na E1)
+* `grupos_consorcio.administradora_id` nullable; **0** backfill; texto legado intacto
+* Racon global `c5f8ecb4-cb5a-5014-b567-50484719b404` (`racon`/`ATIVA`)
+* Concessão: empresa Gauchinho `7170f38e-…` → Racon `ATIVA`; Empresa B → 0
+* Homologação: 21/21 RLS/constraints; npm 487; build 0; smoke `/grupos`+`/simulador` 200
 
-### E1 — Fundação estrutural (**aplicada e homologada** em 2026-08-08)
-* Migration: `047_fase4_catalogo_global_administradoras.sql` (SHA256 `BC6C39DB…BB078B`) — **001–047 local=remote**; dry-run pós: up to date
-* Tabelas: `administradoras`, `empresa_administradoras` (RLS+FORCE; policies só Superadmin; sem DELETE)
-* Coluna aditiva: `grupos_consorcio.administradora_id uuid NULL` (sem backfill; texto `RACON`×16/`Racon`×3 intacto)
-* Seed: Racon `c5f8ecb4-cb5a-5014-b567-50484719b404` (`slug=racon`, `ATIVA`) — exatamente 1
-* Concessão: Gauchinho `7170f38e-15dd-4b19-8588-51e9a9cf0d4c` × Racon `ATIVA` — exatamente 1
-* Empresa B (`em_treinamento`): **0** concessões
-* Permissões: `gerenciar_catalogo_administradoras`, `gerenciar_administradoras_empresa` → só `super_admin`
-* Homologação: constraints+RLS **21/21** com ROLLBACK; anon `/grupos`+`/simulador` HTTP 200; `npm test` 487; build exit 0
-* **Não** altera APIs/runtime app, simulador, RLS de grupos/cotas; E2 **não** iniciada
+### Status etapas
+E0 CONCLUÍDA · E1 APLICADA E HOMOLOGADA · E2–E9 conforme relatório · Fase 4 EM ANDAMENTO · Fase 5 NÃO INICIADA
 
-### Fora da E1 / próximos
-Helpers/UI E2–E4, backfill E5, redesign RLS grupos E6, concessão Empresa B, motor de comissão, Fase 5, merge main/deploy app.
+### Riscos atuais
+* ALTA: RLS pública grupos/cotas (E6); confidencialidade multi-tenant incompleta (E6)
+* MÉDIA: runtime ainda não usa `administradora_id` (E5/E6)
+* BAIXA/DESEJADA: tenant sem SELECT direto em concessões (E2)
