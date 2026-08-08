@@ -20,6 +20,7 @@ import {
   Shield,
   QrCode,
   Clock,
+  Landmark,
 } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import type { AdminMenuKey } from "@/lib/admin/admin-menus";
@@ -62,6 +63,7 @@ const NAV: Array<{
 
 const SUPERADMIN_NAV = [
   { href: "/admin/empresas", label: "Empresas (SaaS)", icon: Building2 },
+  { href: "/admin/administradoras", label: "Catálogo de Administradoras", icon: Landmark },
 ] as const;
 
 const imobiliariaNav = [

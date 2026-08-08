@@ -65,7 +65,15 @@ export function isLegacyOperationalApiPath(pathname: string): boolean {
 
 export const INSTITUTIONAL_PUBLIC_LINKS = [{ href: "/", label: "Início" }] as const;
 
-/** /admin/empresas é a única área admin multiempresa nesta fase (SuperAdmin). */
+/**
+ * Áreas admin exclusivas PLATFORM_SUPERADMIN acessíveis em hosts de outros tenants.
+ * Inclui empresas (SaaS) e catálogo global de administradoras (Fase 4 E3).
+ */
 export function isPlatformEmpresasAdminPath(pathname: string): boolean {
-  return pathname === "/admin/empresas" || pathname.startsWith("/admin/empresas/");
+  return (
+    pathname === "/admin/empresas" ||
+    pathname.startsWith("/admin/empresas/") ||
+    pathname === "/admin/administradoras" ||
+    pathname.startsWith("/admin/administradoras/")
+  );
 }

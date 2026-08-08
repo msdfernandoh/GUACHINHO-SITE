@@ -56,4 +56,19 @@ export {
   listAdministradorasGlobaisForSuperadmin,
 } from "./service";
 
+export {
+  countEmpresasVinculadasForAdministradora,
+  createAdministradoraGlobal,
+  getAdministradoraGlobalByIdForSuperadmin,
+  listEmpresasFranqueadasVinculadas,
+  setAdministradoraGlobalStatus,
+  updateAdministradoraGlobal,
+} from "./mutations";
+
+export {
+  diffAdministradoraFields,
+  mapAdministradoraDbUniqueError,
+  validateAdministradoraWriteInput,
+} from "./rules";
+
 export { writeAdministradorasAuditLog } from "./audit";

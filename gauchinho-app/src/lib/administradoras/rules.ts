@@ -1,4 +1,7 @@
+import { normalizeCnpj } from "@/lib/parceiros/normalize";
+import { validarCnpj } from "@/lib/contratacoes-online/validacao";
 import {
+  ADMINISTRADORA_JSON_FORBIDDEN_KEY_RE,
   ADMINISTRADORA_STATUS,
   EMPRESA_ADMINISTRADORA_STATUS,
   FASE4_PERMISSOES,
@@ -10,6 +13,32 @@ import type {
   EmpresaAdministradora,
   EmpresaAdministradoraStatus,
 } from "./types";
+
+export type AdministradoraWriteInput = {
+  nome: string;
+  nome_fantasia?: string | null;
+  razao_social?: string | null;
+  cnpj?: string | null;
+  slug?: string | null;
+  logo_url?: string | null;
+  site_url?: string | null;
+  status?: string | null;
+  recursos_integracao?: Record<string, unknown> | null;
+  metadata?: Record<string, unknown> | null;
+};
+
+export type AdministradoraValidatedWrite = {
+  nome: string;
+  nome_fantasia: string | null;
+  razao_social: string | null;
+  cnpj: string | null;
+  slug: string;
+  logo_url: string | null;
+  site_url: string | null;
+  status: AdministradoraStatus;
+  recursos_integracao: Record<string, unknown>;
+  metadata: Record<string, unknown>;
+};
 
 /** Ambos ATIVA: único estado que autoriza operação nova. */
 export function concessaoPermiteUso(
@@ -139,4 +168,126 @@ export function papelTemPermissaoFase4(
 
 export function papelPodeListarCatalogoGlobal(papelCodigo: string): boolean {
   return papelCodigo === "super_admin";
+}
+
+function trimOrNull(value: string | null | undefined): string | null {
+  const t = (value ?? "").trim();
+  return t.length ? t : null;
+}
+
+function assertJsonSemSegredos(
+  obj: Record<string, unknown>,
+  label: string,
+): { ok: true } | { ok: false; error: string } {
+  for (const key of Object.keys(obj)) {
+    if (ADMINISTRADORA_JSON_FORBIDDEN_KEY_RE.test(key)) {
+      return {
+        ok: false,
+        error: `${label}: chave "${key}" não permitida. Credenciais não ficam no catálogo global.`,
+      };
+    }
+  }
+  return { ok: true };
+}
+
+/** Validação de escrita do catálogo GLOBAL (E3). */
+export function validateAdministradoraWriteInput(
+  input: AdministradoraWriteInput,
+  options?: { requireSlugFromNomeFallback?: boolean },
+): { ok: true; value: AdministradoraValidatedWrite } | { ok: false; error: string } {
+  const nome = (input.nome ?? "").trim();
+  if (!nome) return { ok: false, error: "Nome é obrigatório." };
+
+  const slugSource = (input.slug ?? "").trim() || (options?.requireSlugFromNomeFallback === false ? "" : nome);
+  const slug = normalizeAdministradoraSlug(slugSource);
+  if (!slug) return { ok: false, error: "Slug inválido ou vazio." };
+
+  const cnpjRaw = trimOrNull(input.cnpj);
+  let cnpj: string | null = null;
+  if (cnpjRaw) {
+    cnpj = normalizeCnpj(cnpjRaw);
+    if (!cnpj || !validarCnpj(cnpj)) {
+      return { ok: false, error: "CNPJ inválido." };
+    }
+  }
+
+  const statusRaw = (input.status ?? ADMINISTRADORA_STATUS.ATIVA).toString().trim().toUpperCase();
+  if (statusRaw !== ADMINISTRADORA_STATUS.ATIVA && statusRaw !== ADMINISTRADORA_STATUS.INATIVA) {
+    return { ok: false, error: "Status inválido. Use ATIVA ou INATIVA." };
+  }
+
+  const recursos = input.recursos_integracao ?? {};
+  const metadata = input.metadata ?? {};
+  if (typeof recursos !== "object" || Array.isArray(recursos) || recursos === null) {
+    return { ok: false, error: "recursos_integracao inválido." };
+  }
+  if (typeof metadata !== "object" || Array.isArray(metadata) || metadata === null) {
+    return { ok: false, error: "metadata inválido." };
+  }
+  const secR = assertJsonSemSegredos(recursos, "recursos_integracao");
+  if (!secR.ok) return secR;
+  const secM = assertJsonSemSegredos(metadata, "metadata");
+  if (!secM.ok) return secM;
+
+  return {
+    ok: true,
+    value: {
+      nome,
+      nome_fantasia: trimOrNull(input.nome_fantasia),
+      razao_social: trimOrNull(input.razao_social),
+      cnpj,
+      slug,
+      logo_url: trimOrNull(input.logo_url),
+      site_url: trimOrNull(input.site_url),
+      status: statusRaw as AdministradoraStatus,
+      recursos_integracao: recursos,
+      metadata,
+    },
+  };
+}
+
+export function mapAdministradoraDbUniqueError(message: string): string | null {
+  const m = message.toLowerCase();
+  if (m.includes("administradoras_slug") || (m.includes("slug") && m.includes("unique"))) {
+    return "Já existe uma administradora com este slug.";
+  }
+  if (m.includes("administradoras_cnpj") || (m.includes("cnpj") && m.includes("unique"))) {
+    return "Já existe uma administradora com este CNPJ.";
+  }
+  if (m.includes("duplicate key") || m.includes("unique")) {
+    return "Registro duplicado (slug ou CNPJ).";
+  }
+  return null;
+}
+
+export function diffAdministradoraFields(
+  before: Partial<AdministradoraValidatedWrite & { status: string }>,
+  after: Partial<AdministradoraValidatedWrite & { status: string }>,
+): { campos: string[]; antes: Record<string, unknown>; depois: Record<string, unknown> } {
+  const keys = [
+    "nome",
+    "nome_fantasia",
+    "razao_social",
+    "cnpj",
+    "slug",
+    "logo_url",
+    "site_url",
+    "status",
+    "recursos_integracao",
+    "metadata",
+  ] as const;
+  const campos: string[] = [];
+  const antes: Record<string, unknown> = {};
+  const depois: Record<string, unknown> = {};
+  for (const k of keys) {
+    const b = before[k] ?? null;
+    const a = after[k] ?? null;
+    const same = JSON.stringify(b) === JSON.stringify(a);
+    if (!same) {
+      campos.push(k);
+      antes[k] = b;
+      depois[k] = a;
+    }
+  }
+  return { campos, antes, depois };
 }
