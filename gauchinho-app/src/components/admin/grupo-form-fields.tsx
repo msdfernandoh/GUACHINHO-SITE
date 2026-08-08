@@ -40,7 +40,20 @@ export function GrupoFormFields({
           </div>
           <div className="sm:col-span-2">
             <Label>Administradora</Label>
-            <Input name="administradora" defaultValue={String(g.administradora ?? "")} />
+            <input
+              type="hidden"
+              name="administradora_id"
+              defaultValue={String(g.administradora_id ?? "")}
+            />
+            <Input
+              name="administradora"
+              defaultValue={String(g.administradora ?? "Racon")}
+              placeholder="Racon"
+            />
+            <p className="mt-1 text-xs text-zinc-500">
+              Snapshot/exibição. A identidade estrutural usa administradora global (UUID) via
+              dual-write no servidor — não é seleção de catálogo pelo tenant.
+            </p>
           </div>
           <div>
             <Label>Status</Label>

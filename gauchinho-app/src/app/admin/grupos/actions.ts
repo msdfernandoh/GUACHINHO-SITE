@@ -25,6 +25,8 @@ import {
   deriveGrupoFlagsFromModalidades,
   parseModalidadesJson,
 } from "@/lib/grupos/modalidades-admin";
+import { resolveGrupoAdministradoraDualWriteFromForm } from "@/lib/grupos/administradora-repository";
+import { RACON_ADMINISTRADORA_ID } from "@/lib/administradoras/constants";
 import type { GrupoModalidadeLance, GrupoConsorcio, PublicGrupoAggregate } from "@/lib/types";
 
 const GRUPO_AUTO_PARCEL_COLS = [
@@ -40,7 +42,27 @@ const GRUPO_PARCELA_PERSONALIZADA_COLS = [
 
 const GRUPO_OPTIONAL_COLS = [...GRUPO_AUTO_PARCEL_COLS, ...GRUPO_PARCELA_PERSONALIZADA_COLS] as const;
 
-type GrupoRow = ReturnType<typeof grupoFromForm> & ReturnType<typeof deriveGrupoFlagsFromModalidades>;
+type GrupoRow = ReturnType<typeof grupoFromForm> &
+  ReturnType<typeof deriveGrupoFlagsFromModalidades> & {
+    administradora_id?: string | null;
+  };
+
+async function withAdministradoraDualWrite(
+  formData: FormData,
+  base: GrupoRow,
+  opts?: { existingText?: string | null; administradoraIdOverride?: string | null },
+): Promise<GrupoRow> {
+  const dual = await resolveGrupoAdministradoraDualWriteFromForm({
+    formData,
+    existingText: opts?.existingText,
+    administradoraIdOverride: opts?.administradoraIdOverride,
+  });
+  return {
+    ...base,
+    administradora_id: dual.administradora_id,
+    administradora: dual.administradora,
+  };
+}
 
 function stripAutoParcelCols<T extends Record<string, unknown>>(row: T): T {
   const next = { ...row };
@@ -395,7 +417,10 @@ export async function fetchGrupoWithCotas(id: string) {
 export async function createGrupoAction(formData: FormData) {
   await assertCanManageGrupos();
   const supabase = await createClient();
-  const grupo = buildGrupoPayloadFromForm(formData);
+  const grupo = await withAdministradoraDualWrite(
+    formData,
+    buildGrupoPayloadFromForm(formData),
+  );
   const bulk = String(formData.get("cotas_bulk") ?? "");
 
   const data = await insertGrupoConsorcio(supabase, grupo);
@@ -411,7 +436,19 @@ export async function createGrupoAction(formData: FormData) {
 export async function updateGrupoAction(grupoId: string, formData: FormData) {
   await assertCanManageGrupos();
   const supabase = await createClient();
-  const grupo = buildGrupoPayloadFromForm(formData);
+  const { data: existingGrupo } = await supabase
+    .from("grupos_consorcio")
+    .select("administradora, administradora_id")
+    .eq("id", grupoId)
+    .maybeSingle();
+  const grupo = await withAdministradoraDualWrite(
+    formData,
+    buildGrupoPayloadFromForm(formData),
+    {
+      existingText: existingGrupo?.administradora ?? null,
+      administradoraIdOverride: existingGrupo?.administradora_id ?? null,
+    },
+  );
   try {
     await updateGrupoConsorcio(supabase, grupoId, grupo);
 
@@ -926,6 +963,7 @@ export async function popularGruposTesteAction(): Promise<{
     const { creditos, ...grupoFields } = def;
     const grupoRow = {
       ...grupoFields,
+      administradora_id: RACON_ADMINISTRADORA_ID,
       administradora: "Racon",
       observacoes: "Dados de teste",
       ativo: true,

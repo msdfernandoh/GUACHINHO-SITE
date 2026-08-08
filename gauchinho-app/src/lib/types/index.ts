@@ -54,7 +54,10 @@ export type GrupoConsorcio = {
   id: string;
   codigo_grupo: string;
   modalidade: string;
+  /** Snapshot/display legado (RACON/Racon). Não usar para autorização quando UUID existir. */
   administradora: string | null;
+  /** FK estrutural → administradoras (preenchida a partir da E5). */
+  administradora_id?: string | null;
   taxa_administrativa_percentual: number | null;
   fundo_reserva_percentual: number | null;
   seguro_habilitado: boolean;
