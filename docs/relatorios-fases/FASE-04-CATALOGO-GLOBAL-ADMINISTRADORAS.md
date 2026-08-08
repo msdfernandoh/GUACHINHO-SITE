@@ -13,7 +13,7 @@
 | E3 remoto | `3ecd168f26ff6c55fc8ef39b4257e5ca563a6a52` |
 | E4 remoto | `05803297631a5e58b34b88dac9fa22df814de20a` |
 | E5 remoto | `6ddbd0ccea0a9dc59cce06b60d5142745b249de9` (push documental pós-homologação grupos vinculados) |
-| E6 remoto | *(preencher após push §17)* |
+| E6 remoto | `5c05c30` (feat `7ea813f` + docs `682daf2` + hardening pré-049 `5c05c30`) |
 | Migration 049 | **CRIADA LOCALMENTE · NÃO APLICADA** |
 | Migration 047 | **APLICADA** |
 | Migration 048 | **APLICADA E HOMOLOGADA** (`048_fase4_backfill_grupos_administradora_id.sql`) |
@@ -623,4 +623,4 @@ Sem grants substitutos; staff policies intactas; service role bypass para app E6
 
 ### 17.10 Git E6 remoto
 
-* Ver hash final registrado após `git push` desta rodada (commits E6 + hardening).
+* Branch `feature/saas-fase-4-catalogo-administradoras` pushed: **`5c05c30`**
