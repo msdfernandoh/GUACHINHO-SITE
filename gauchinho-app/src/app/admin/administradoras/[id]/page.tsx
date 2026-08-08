@@ -70,7 +70,7 @@ export default async function AdministradoraDetailPage({
         <p className="text-sm text-zinc-500">
           Estas são empresas SaaS autorizadas a operar esta administradora —{" "}
           <strong className="font-medium">não</strong> são administradoras. Gestão de concessões:
-          E4.
+          detalhe da empresa em <code className="text-xs">/admin/empresas/[id]</code>.
         </p>
         <div className="overflow-x-auto rounded-xl border bg-white dark:border-zinc-800 dark:bg-zinc-900">
           <table className="min-w-full text-sm">

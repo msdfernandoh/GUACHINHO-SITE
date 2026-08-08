@@ -65,6 +65,19 @@ export {
   updateAdministradoraGlobal,
 } from "./mutations";
 
+export type {
+  EmpresaAdministradoraConcessaoRow,
+  EmpresaAdministradoraLocalFields,
+} from "./concessoes";
+
+export {
+  getEmpresaAdministradorasForSuperadmin,
+  grantAdministradoraToEmpresa,
+  listAdministradorasCandidatasParaEmpresa,
+  setEmpresaAdministradoraStatus,
+  updateEmpresaAdministradora,
+} from "./concessoes";
+
 export {
   diffAdministradoraFields,
   mapAdministradoraDbUniqueError,

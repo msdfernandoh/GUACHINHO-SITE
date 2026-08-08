@@ -27,10 +27,9 @@ export const AUDIT_ACTIONS_ADMINISTRADORAS = {
   criada: "ADMINISTRADORA_GLOBAL_CRIADA",
   editada: "ADMINISTRADORA_GLOBAL_ATUALIZADA",
   statusAlterado: "ADMINISTRADORA_GLOBAL_STATUS_ALTERADO",
-  concessaoCriada: "empresa_administradora.concessao_criada",
-  concessaoSuspensa: "empresa_administradora.concessao_suspensa",
-  concessaoReativada: "empresa_administradora.concessao_reativada",
-  concessaoConfigAlterada: "empresa_administradora.configuracao_alterada",
+  concessaoCriada: "EMPRESA_ADMINISTRADORA_CONCEDIDA",
+  concessaoAtualizada: "EMPRESA_ADMINISTRADORA_ATUALIZADA",
+  concessaoStatusAlterado: "EMPRESA_ADMINISTRADORA_STATUS_ALTERADO",
 } as const;
 
 /** Chaves proibidas em JSON de integração/metadata (credenciais ficam para vínculo empresa). */

@@ -1,5 +1,6 @@
 import { redirect, notFound } from "next/navigation";
 import { isPlatformSuperadmin } from "@/lib/auth/is-superadmin";
+import { EmpresaAdministradorasSection } from "@/components/admin/empresa-administradoras-section";
 import {
   fetchEmpresaComDetalhes,
   updateEmpresaStatusAction,
@@ -8,6 +9,13 @@ import {
   deleteDominioAction,
   verifyDominioAction,
 } from "../actions";
+import {
+  fetchAdministradorasCandidatasAction,
+  fetchEmpresaAdministradorasAction,
+  grantAdministradoraAction,
+  setEmpresaAdministradoraStatusAction,
+  updateEmpresaAdministradoraAction,
+} from "../administradoras-actions";
 import { Button, Card, Input, Label, Select, Textarea } from "@/components/ui/form-primitives";
 
 export default async function EditarEmpresaPage({ params }: { params: Promise<{ id: string }> }) {
@@ -19,9 +27,21 @@ export default async function EditarEmpresaPage({ params }: { params: Promise<{ 
   if (!detalhes) notFound();
   const { empresa, branding, dominios } = detalhes;
 
+  const [concessoes, candidatas] = await Promise.all([
+    fetchEmpresaAdministradorasAction(id),
+    fetchAdministradorasCandidatasAction(id),
+  ]);
+
   const updateStatus = updateEmpresaStatusAction.bind(null, id);
   const upsertBranding = upsertBrandingAction.bind(null, id);
   const createDominio = createDominioAction.bind(null, id);
+  const grantAdmin = grantAdministradoraAction.bind(null, id);
+  const updateVinculo = (vinculoId: string, formData: FormData) =>
+    updateEmpresaAdministradoraAction(vinculoId, id, formData);
+  const setVinculoStatus = (
+    vinculoId: string,
+    status: "ATIVA" | "INATIVA" | "SUSPENSA",
+  ) => setEmpresaAdministradoraStatusAction(vinculoId, id, status);
 
   return (
     <div className="space-y-6">
@@ -31,6 +51,16 @@ export default async function EditarEmpresaPage({ params }: { params: Promise<{ 
           Slug: {empresa.slug} · {empresa.razao_social}
         </p>
       </div>
+
+      <EmpresaAdministradorasSection
+        empresaId={id}
+        empresaNome={empresa.nome_fantasia}
+        concessoes={concessoes}
+        candidatas={candidatas}
+        grantAction={grantAdmin}
+        updateAction={updateVinculo}
+        setStatusAction={setVinculoStatus}
+      />
 
       <Card>
         <h2 className="mb-3 text-lg font-semibold">Status da empresa</h2>
