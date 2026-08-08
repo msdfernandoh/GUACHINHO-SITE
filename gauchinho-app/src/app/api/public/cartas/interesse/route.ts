@@ -23,20 +23,24 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Carta, nome e WhatsApp obrigatórios" }, { status: 400 });
     }
 
-    const admin = createAdminClient();
-    const { data: carta, error: cartaErr } = await admin
-      .from("cartas_contempladas")
-      .select("*")
-      .eq("id", body.cartaId)
-      .eq("ativo", true)
-      .in("status", ["disponivel", "consultar_disponibilidade"])
-      .maybeSingle();
+    const { getCatalogEmpresaIdFromRequest } = await import("@/lib/grupos/resolve-catalog-empresa");
+    const { getCartaAutorizadaForEmpresa } = await import("@/lib/cartas/catalogo-autorizado-cartas");
+    const empresaId = await getCatalogEmpresaIdFromRequest(request);
 
-    if (cartaErr || !carta) {
+    if (!empresaId) {
       return NextResponse.json({ error: "Carta indisponível" }, { status: 404 });
     }
 
+    const carta = await getCartaAutorizadaForEmpresa(empresaId, body.cartaId);
+    if (!carta) {
+
+      return NextResponse.json({ error: "Carta indisponível" }, { status: 404 });
+    }
+
+
+    const admin = createAdminClient();
     const leadsConfig = await getConfigJsonPublic("leads", DEFAULT_LEADS);
+
     const tipoLabel = CARTA_TIPOS.find((t) => t.value === carta.tipo_carta)?.label ?? "Carta";
 
     const cartaSnapshot = {

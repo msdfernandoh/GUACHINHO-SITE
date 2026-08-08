@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
-import { fetchPublicCartas } from "@/app/admin/cartas-contempladas/actions";
 import { CartasPublicClient } from "@/components/public/cartas-public-client";
 import type { CartaContemplada } from "@/lib/cartas/types";
+import { getCatalogEmpresaIdFromHeaders } from "@/lib/grupos/resolve-catalog-empresa";
+import { fetchPublicCartasAutorizadasForEmpresa } from "@/lib/cartas/catalogo-autorizado-cartas";
 
 export const metadata: Metadata = {
   title: "Cartas de Crédito Contempladas Disponíveis",
@@ -11,6 +12,11 @@ export const metadata: Metadata = {
 };
 
 export default async function CartasContempladasPublicPage() {
-  const cartas = (await fetchPublicCartas()) as CartaContemplada[];
+  const empresaId = await getCatalogEmpresaIdFromHeaders();
+
+  const cartas = empresaId
+    ? await fetchPublicCartasAutorizadasForEmpresa(empresaId)
+    : [];
+
   return <CartasPublicClient cartas={cartas} />;
 }

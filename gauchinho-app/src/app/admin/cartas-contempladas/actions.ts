@@ -28,14 +28,39 @@ function intForm(formData: FormData, name: string): number | null {
   return Number.isFinite(n) && n > 0 ? n : null;
 }
 
-function cartaFromForm(formData: FormData) {
+async function cartaFromForm(formData: FormData) {
   const tipo = String(formData.get("tipo_carta") ?? "imovel").trim() as CartaTipo;
   const status = String(formData.get("status") ?? "consultar_disponibilidade").trim() as CartaStatus;
   if (!CARTA_STATUS.includes(status)) throw new Error("Status inválido");
 
+  const administradoraRaw = String(formData.get("administradora") ?? "").trim() || null;
+  const administradoraIdRaw = String(formData.get("administradora_id") ?? "").trim() || null;
+
+  let administradoraId = administradoraIdRaw;
+  let administradoraText = administradoraRaw;
+
+  if (administradoraId && !administradoraText) {
+    const { fetchAdministradorasGlobais } = await import("@/lib/administradoras/repository");
+    const allAdms = await fetchAdministradorasGlobais();
+    const adm = allAdms.find((a) => a.id === administradoraId);
+    if (adm) administradoraText = adm.nome;
+  } else if (!administradoraId && administradoraText) {
+    const { fetchAdministradorasGlobais } = await import("@/lib/administradoras/repository");
+    const allAdms = await fetchAdministradorasGlobais();
+    const match = allAdms.find(
+      (a) =>
+        a.nome.trim().toLowerCase() === administradoraText!.toLowerCase() ||
+        (a.razao_social && a.razao_social.trim().toLowerCase() === administradoraText!.toLowerCase())
+    );
+
+    if (match) administradoraId = match.id;
+  }
+
+
   return {
     tipo_carta: tipo === "automovel" ? "automovel" : "imovel",
-    administradora: String(formData.get("administradora") ?? "").trim() || null,
+    administradora: administradoraText,
+    administradora_id: administradoraId,
     credito: numForm(formData, "credito"),
     entrada: numForm(formData, "entrada"),
     prazo_quantidade: intForm(formData, "prazo_quantidade"),
@@ -50,6 +75,7 @@ function cartaFromForm(formData: FormData) {
     observacoes: String(formData.get("observacoes") ?? "").trim() || null,
   };
 }
+
 
 export async function fetchCartasList(filters: {
   tipo?: string;
@@ -124,7 +150,7 @@ export async function fetchPublicCartas(filters: PublicCartasFilters = {}) {
 export async function createCartaAction(formData: FormData) {
   await requireUsuario();
   const supabase = await createClient();
-  const payload = cartaFromForm(formData);
+  const payload = await cartaFromForm(formData);
   const { data, error } = await supabase.from("cartas_contempladas").insert(payload).select("id").single();
   if (error) throw new Error(error.message);
   revalidatePath("/admin/cartas-contempladas");
@@ -135,13 +161,14 @@ export async function createCartaAction(formData: FormData) {
 export async function updateCartaAction(cartaId: string, formData: FormData) {
   await requireUsuario();
   const supabase = await createClient();
-  const payload = cartaFromForm(formData);
+  const payload = await cartaFromForm(formData);
   const { error } = await supabase.from("cartas_contempladas").update(payload).eq("id", cartaId);
   if (error) throw new Error(error.message);
   revalidatePath(`/admin/cartas-contempladas/${cartaId}`);
   revalidatePath("/admin/cartas-contempladas");
   revalidatePath("/cartas-contempladas");
 }
+
 
 export async function deleteCartaAction(cartaId: string) {
   const usuario = await requireUsuario();

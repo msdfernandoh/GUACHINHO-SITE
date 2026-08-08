@@ -1,8 +1,8 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
-> **Versão:** 1.4.0  
+> **Versão:** 1.4.1  
 > **Data de Atualização:** 08/08/2026  
-> **Status da Plataforma:** Fase 2 Concluída e Homologada em Produção; **Fase 3 CONCLUÍDA E HOMOLOGADA EM PRODUÇÃO**; **Fase 4 EM ANDAMENTO** (Etapa E6 CONCLUÍDA E HOMOLOGADA — commit `4832ec9`; migrations **047+048+049 APLICADAS E HOMOLOGADAS**; RLS de confidencialidade do catálogo comercial ativada no banco; leitura anon direta de grupos/cotas/modalidades fechada; sorteios público migrado; cartas ainda globais — pendência da proposta 050) — **Racon = administradora global**; **Gauchinho = empresa/franqueada**; Empresa B sem concessão; Fase 5 **não** iniciada  
+> **Status da Plataforma:** Fase 2 Concluída e Homologada em Produção; **Fase 3 CONCLUÍDA E HOMOLOGADA EM PRODUÇÃO**; **Fase 4 EM ANDAMENTO** (Etapa E6 CONCLUÍDA E HOMOLOGADA em Produção; **Etapa 050 IMPLEMENTADA LOCALMENTE** com runtime tenant-scoped para `cartas_contempladas` + Migration local 050 criada, **NÃO aplicada**; RLS de confidencialidade comercial de grupos/cotas/modalidades 100% ativa em produção; policy de sorteios auditada com severidade BAIXA) — **Racon = administradora global**; **Gauchinho = empresa/franqueada**; Empresa B sem concessão; Fase 5 **não** iniciada  
 
 
 > **Projeto Físico:** `C:\Fernando Hugo\GAUCHINHO SITE`  

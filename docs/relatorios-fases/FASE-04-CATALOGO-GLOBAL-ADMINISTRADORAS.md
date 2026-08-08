@@ -1,79 +1,79 @@
-# RELATÓRIO DE HOMOLOGAÇÃO E FECHAMENTO RLS DA MIGRATION 049
-## FASE 4 — Catálogo Global de Administradoras | ETAPA E6 — Confidencialidade do Catálogo Comercial
+# RELATÓRIO DE IMPLANTAÇÃO DA ETAPA 050 E AUDITORIA DE CONFIDENCIALIDADE
+## FASE 4 — Catálogo Global de Administradoras | ETAPA 050 — Confidencialidade de Cartas Contempladas por Concessão
 
 > **Status Oficial:**  
-> **`MIGRATION 049 APLICADA E HOMOLOGADA EM PRODUÇÃO E PREVIEW`**  
-> **`ETAPA E6 CONCLUÍDA E HOMOLOGADA`**  
+> **`ETAPA 050 IMPLEMENTADA LOCALMENTE (CÓDIGO + SERVIÇOS + TESTES + MIGRATION LOCAL)`**  
+> **`MIGRATION 050 CRIADA LOCALMENTE (NÃO APLICADA CONFORME DIRETRIZ)`**  
+> **`CONFIDENCIALIDADE DE GRUPOS/COTAS/MODALIDADES CONCLUÍDA PELA E6`**  
 > **Data:** 08/08/2026  
 > **Projeto:** GAUCHINHO SITE (`C:\Fernando Hugo\GAUCHINHO SITE`)  
-> **Branch `main` Local/Origin:** `main` (Commit `4832ec91b852e8bce543982009b3c8aad4bfe5c9`)  
+> **Commit Local:** `feat(saas): restringe cartas contempladas por concessao`  
+> **Remote Push / Deploy:** **NÃO EXECUTADO**  
 
 ---
 
-## 1. REGISTRO DE APLICAÇÃO DA MIGRATION 049
+## 1. AUDITORIA DE `cartas_contempladas` NO BANCO REMOTO
 
-* **Arquivo Aplicado:** `supabase/migrations/049_fase4_confidencialidade_catalogo_grupos.sql`
-* **SHA-256 Hash Auditado:** `ADCAB9189F0D228D99C9CBBB1E75AEF2B9B86509E9E62B05D4B663A62D32A4C1`
-* **Comando de Aplicação:** `supabase db push --linked --yes` (Exit Code 0)
-* **Estado Pós-Apply (`supabase migration list --linked`):**  
-  `001` a `049` registrados como `local` e `remote`.
-* **Dry-Run Pós-Apply (`supabase db push --linked --dry-run`):**  
-  `Remote database is up to date` (`migrations: []`).
-
----
-
-## 2. AUDITORIA DE POLICIES REMOVIDAS E ACESSO DIRETO ANON (ITENS 8 E 9)
-
-### Policies Removidas do Banco Remoto:
-1. `grupos_public_read` em `public.grupos_consorcio` $\rightarrow$ **REMOVIDA**
-2. `cotas_public_read` em `public.grupos_cotas` $\rightarrow$ **REMOVIDA**
-3. `grupos_modalidades_lance_select_public` em `public.grupos_modalidades_lance` $\rightarrow$ **REMOVIDA**
-
-### Teste de Acesso Direto com Papel `anon` Real (Sem Service Role):
-* **`grupos_consorcio` (ANON SELECT):** **BLOQUEADO (0 registros retornados)**
-* **`grupos_cotas` (ANON SELECT):** **BLOQUEADO (0 registros retornados)**
-* **`grupos_modalidades_lance` (ANON SELECT):** **BLOQUEADO (0 registros retornados)**
+* **Total de Registros:** 4 cartas contempladas ativas.
+* **Distinct Administradora:** `['RACON']` (100% das cartas pertencem à administradora global Racon).
+* **Valores e Casing:** `'RACON'`.
+* **PK:** `id` (UUID).
+* **FKs Atuais:** Nenhuma (coluna `administradora` era apenas texto livre).
+* **Status:** `consultar_disponibilidade`.
+* **Policies RLS Remotas:** `cartas_public_read` (permissão pública SELECT).
 
 ---
 
-## 3. RESUMO DOS 30 PONTOS EXIGIDOS PÓS-APPLY (ITEM 29)
+## 2. MAPEAMENTO DE TODOS OS READERS NO CÓDIGO
 
-1. **SHA256 049:** `ADCAB9189F0D228D99C9CBBB1E75AEF2B9B86509E9E62B05D4B663A62D32A4C1` (Auditado e Confirmado).
-2. **Pré Migration List:** `001-048 local=remote` \| `049 local` apenas.
-3. **Pré Dry-Run:** `Would push only: 049_fase4_confidencialidade_catalogo_grupos.sql`.
-4. **Apply 049:** Executado com sucesso via CLI oficial.
-5. **Pós Migration List:** `001-049 local=remote`.
-6. **Pós Dry-Run:** `Remote database is up to date`.
-7. **Policies Removidas:** `grupos_public_read`, `cotas_public_read`, `grupos_modalidades_lance_select_public` removidas.
-8. **Anon `grupos_consorcio`:** **BLOQUEADO**.
-9. **Anon `grupos_cotas`:** **BLOQUEADO**.
-10. **Anon `grupos_modalidades_lance`:** **BLOQUEADO**.
-11. **Produção Home (`/`):** HTTP 200 (Operacional).
-12. **Produção `/grupos`:** HTTP 200 (Catálogo autorizado via Host).
-13. **Produção `/simulador`:** HTTP 200 (Operacional).
-14. **Gauchinho Produção:** Host $\rightarrow$ empresa $\rightarrow$ concessão Racon ativa $\rightarrow$ catálogo autorizado.
-15. **Empresa B Produção:** 0 concessões $\rightarrow$ 0 grupos, 0 cotas, 0 modalidades.
-16. **Cross-Tenant Produção:** Alternância de requisições sem vazamento de cache.
-17. **API Fluxo:** Tenant-scoped funcional (`POST /api/public/grupos/fluxo`).
-18. **API Sorteios:** Endpoint da app tenant-scoped funcional (`GET /api/public/grupos/sorteios`).
-19. **Contratações:** Fluxos de Iniciar e Materializar isolados.
-20. **Propostas:** Validação de snapshot autorizada por tenant.
-21. **Parceiro:** Site parceiro herda concessão Racon da franqueada Gauchinho.
-22. **Integration API Key:** `GAUCHINHO_INTEGRATION_API_KEY` exclusiva e restrita à Gauchinho.
-23. **Sorteios Policy Direta (Risco):** Severidade **BAIXA**. Expõe apenas IDs de concurso e números sorteados, sem metadados comerciais.
-24. **Cartas Contempladas (Pendência):** Risco mapeado. Tabela legada com `administradora TEXT` a migrar na Etapa 050.
-25. **Contagens de Banco:** `usuarios`: 9, `leads`: 122, `propostas`: 16, `grupos_consorcio`: 19, `grupos_cotas`: 178, `contratacoes_online`: 18, `indices_financeiros`: 8, `parceiros`: 3, `imoveis`: 1.
-26. **npm test Final:** 585/585 testes aprovados em 104 arquivos (0 falhas).
-27. **npm run build Final:** Exit 0 (105/105 páginas compiladas).
-28. **Preview Pós-049:** `https://guachinho-site-qnefg541w-hugo-8097s-projects.vercel.app` (100% PASS).
-29. **Commit Docs:** Commit documental realizado no Git.
-30. **Status Final E6:** **ETAPA E6 HOMOLOGADA COM SUCESSO**.
+1. **Página Pública `/cartas-contempladas`:** Migrada para o serviço tenant-scoped `fetchPublicCartasAutorizadasForEmpresa(empresaId)`.
+2. **API Pública `/api/public/cartas/interesse`:** Atualizada com validação tenant-scoped via `getCartaAutorizadaForEmpresa(empresaId, cartaId)`. Retorna HTTP 404 uniforme em solicitações não autorizadas.
+3. **Painel Admin `/admin/cartas-contempladas`:** Suporte a dual-write de `administradora_id` (UUID global) e snapshot textual em `createCartaAction` e `updateCartaAction`.
 
 ---
 
-## 4. STATUS FINAL DA PLATAFORMA
+## 3. MIGRATION 050 LOCAL E ESTRUTURA
 
-* **Migration 049:** **`APLICADA E HOMOLOGADA EM PRODUÇÃO`**
-* **Confidencialidade do Catálogo Comercial:** **`ATIVADA NO BANCO DE DADOS`**
-* **Site Oficial (`www.gauchinhoconsorcios.com.br`):** **`100% OPERACIONAL`**
+* **Arquivo Criado:** `supabase/migrations/050_fase4_cartas_administradora_confidencialidade.sql`
+* **SHA-256 Hash:** `B41F0DA7F4F7743BBEBCE5DBCEE0A9CA913F4B112BD7DF4A3375AD26DD568540`
+* **Mudanças na Migration:**
+  - Adiciona `administradora_id UUID NULL REFERENCES public.administradoras(id) ON DELETE SET NULL`.
+  - Criado índice relacional `idx_cartas_contempladas_administradora_id`.
+  - Backfill seguro: vincula cartas com texto `'RACON'` ao UUID canônico da Racon (`c5f8ecb4-cb5a-5014-b567-50484719b404`).
+  - Asserts de validação no SQL para garantir zero perda de cartas e zero cadastros orfãos.
+* **Status da CLI (`supabase migration list --linked`):**  
+  `001-049` local=remote \| `050` local apenas.
+* **Dry-Run CLI (`supabase db push --linked --dry-run`):**  
+  `Would push these migrations: • 050_fase4_cartas_administradora_confidencialidade.sql`.
+* **Apply Remoto:** **NÃO EXECUTADO** (Aguardando autorização explícita).
+
+---
+
+## 4. AUDITORIA DA POLICY DE SORTEIOS (`grupos_sorteios_loteria_public_read`)
+
+* **Tabela:** `public.grupos_sorteios_loteria`.
+* **Colunas Expostas:** `id`, `grupo_id`, `periodo_ref`, `ano`, `mes`, `primeiro_premio`, `quantidade_cotas`, `palavra_chave`, `data_sorteio`, `fonte_resultado`.
+* **Exposição de Metadados Comerciais:** **NENHUMA**. Armazena exclusivamente o resultado numérico da Loteria Federal.
+* **Cruzamento de Tabelas:** Bloqueado via RLS da Migration 049 (direct SELECT anônimo em `grupos_consorcio` é 100% bloqueado).
+* **Classificação de Risco:** **BAIXA (LOW)**.
+* **Recomendação:** Manter a policy atual ou tratar em ciclo futuro de hardening fino.
+
+---
+
+## 5. RESULTADOS DAS VERIFICAÇÕES DE CÓDIGO
+
+* **npm test:** 591/591 testes aprovados em 105 arquivos (0 falhas).
+* **npm run build:** Exit code 0 (105/105 páginas compiladas).
+* **Comportamento Tenant-Scoped:**
+  - **Gauchinho Consórcios:** Visualiza cartas Racon autorizadas pela concessão ativa.
+  - **Empresa B (0 concessões):** Recebe 0 cartas contempladas. Tentativas de requisitar cartas Racon por UUID retornam `404 Not Found` uniforme.
+  - **Dual-write:** Grava UUID estrutural e snapshot textual canônico sem apagar histórico.
+
+---
+
+## 6. STATUS E DIRETRIZES DE BLOQUEIO
+
+* **Migration 050:** **`LOCALMENTE CRIADA, NÃO APLICADA NO BANCO REMOTO`**
+* **Git Commit:** **`REALIZADO LOCALMENTE (PUSH NÃO EXECUTADO)`**
+* **Deploy de Produção:** **`NÃO REALIZADO`**
 * **Etapa E7 / Fase 5:** **`NÃO INICIADAS`**
