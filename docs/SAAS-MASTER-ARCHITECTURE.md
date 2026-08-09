@@ -1,8 +1,8 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
-> **Versão:** 1.4.3  
-> **Data de Atualização:** 08/08/2026  
-> **Status da Plataforma:** Fase 2 Concluída e Homologada em Produção; **Fase 3 CONCLUÍDA E HOMOLOGADA EM PRODUÇÃO**; **Fase 4 EM ANDAMENTO** (Etapa E6 concluída em Produção; **Migration 050 APLICADA E HOMOLOGADA COMO EXPAND**; runtime 050 `a416e85` aprovado em Preview com schema 050, ainda não deployado em Produção; `cartas_public_read` preservada até contract posterior; **Racon = administradora global**; **Gauchinho = empresa/franqueada**; Empresa B sem concessão; Fase 5 não iniciada)  
+> **Versão:** 1.4.4  
+> **Data de Atualização:** 09/08/2026  
+> **Status da Plataforma:** Fase 2 Concluída e Homologada em Produção; **Fase 3 CONCLUÍDA E HOMOLOGADA EM PRODUÇÃO**; **Fase 4 EM ANDAMENTO** (Etapa E6 e Runtime 050 CONCLUÍDOS E HOMOLOGADOS EM PRODUÇÃO; **Migration 050 APLICADA E HOMOLOGADA COMO EXPAND**; runtime tenant-scoped para `cartas_contempladas` em Produção — commit `b253498`; `cartas_public_read` preservada temporariamente até contract 051; sorteios inalterados; **Racon = administradora global**; **Gauchinho = empresa/franqueada**; Empresa B sem concessão; Fase 5 não iniciada)  
 
 
 > **Projeto Físico:** `C:\Fernando Hugo\GAUCHINHO SITE`  

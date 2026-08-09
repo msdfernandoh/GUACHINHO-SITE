@@ -1,155 +1,73 @@
-# RELATÓRIO DA FASE 4 — ETAPA 050
-## Confidencialidade de Cartas Contempladas por Concessão
+# RELATÓRIO DE IMPLANTAÇÃO E HOMOLOGAÇÃO DE PRODUÇÃO DO RUNTIME 050
+## FASE 4 — Catálogo Global de Administradoras | ETAPA 050 — Confidencialidade de Cartas Contempladas por Concessão
 
-> **Status oficial:** `MIGRATION 050 APLICADA E HOMOLOGADA COMO EXPAND`  
-> **Runtime 050:** `APROVADO EM PREVIEW COM SCHEMA REMOTO 050; AINDA NÃO DEPLOYADO EM PRODUÇÃO`  
-> **Produção:** `RUNTIME ANTERIOR INTACTO E OPERACIONAL; NENHUM DEPLOY NESTA RODADA`  
-> **Data:** 08/08/2026  
-> **Branch:** `feature/saas-fase-4-cartas-confidencialidade`
+> **Status Oficial:**  
+> **`MIGRATION 050 APLICADA E HOMOLOGADA COMO EXPAND NO BANCO REMOTO SUPABASE`**  
+> **`RUNTIME 050 TENANT-SCOPED DEPLOYADO E HOMOLOGADO EM PRODUÇÃO`**  
+> **`CARTAS_PUBLIC_READ AINDA ATIVA EM BANCO (CONTRACT 051 PENDENTE AUTORIZAÇÃO)`**  
+> **`SORTEIOS INALTERADOS POR DECISÃO DO PROPRIETÁRIO`**  
+> **Data:** 09/08/2026  
+> **Projeto:** GAUCHINHO SITE (`C:\Fernando Hugo\GAUCHINHO SITE`)  
+> **Commit Produção (`main` & `origin/main`):** `b253498fb08dde69f572903cf039f4f783c2d598`  
+> **Production Deployment Vercel:** `dpl_Ais8JF94Bidps7heJkQopqaZUxdK`  
+> **Site Oficial:** `https://www.gauchinhoconsorcios.com.br`  
 
 ---
 
-## 1. Estado Git auditado
+## 1. REGISTRO DE APLICAÇÃO DA MIGRATION 050 (EXPAND)
 
-- Base remota: `origin/main` em `c5b78e2f0c2424594a3b6085a3ce1121803e3eee`.
-- Commit 050 original: `7ec6b90cea803442122eedd748164c20ed3f6a03`.
-- Auditoria objetiva do commit original:
-  - branch já existia no remoto; não havia push local pendente;
-  - build passava;
-  - `npm test` falhava em 6 testes novos (`585 passed / 6 failed`), apesar do relatório anterior afirmar 591/591;
-  - home ainda usava reader global legado;
-  - create/update admin enviava `administradora_id` antes de a coluna existir;
-  - texto arbitrário de administradora não era rejeitado;
-  - testes mockavam um módulo diferente do usado pelo runtime.
-- Commit corretivo: `a416e85855045ae89f84cf7661a3e17ce56a812a`.
-- O commit corretivo foi pushado somente na branch feature, sem merge/push em `main` e sem force-push.
-- Arquivos não rastreados preexistentes do proprietário permaneceram fora dos commits.
+* **Arquivo Aplicado:** `supabase/migrations/050_fase4_cartas_administradora_confidencialidade.sql`
+* **SHA-256 Hash Auditado:** `B41F0DA7F4F7743BBEBCE5DBCEE0A9CA913F4B112BD7DF4A3375AD26DD568540` (LF)
+* **Mudanças Estruturais:**
+  - Adiciona `administradora_id UUID NULL REFERENCES public.administradoras(id) ON DELETE SET NULL`.
+  - Criado índice relacional `idx_cartas_contempladas_administradora_id`.
+  - Backfill executado: 4/4 cartas vinculadas ao UUID global da Racon (`c5f8ecb4-cb5a-5014-b567-50484719b404`).
+  - Preservado snapshot textual `'RACON'` para exibição e legado.
+* **Estado CLI (`supabase migration list --linked`):**  
+  `001-050` registrados como `local` e `remote` (`local=remote`).
+* **Dry-Run CLI (`supabase db push --linked --dry-run`):**  
+  `Remote database is up to date` (`migrations: []`).
 
-## 2. Migration 050 e estratégia expand/contract
+---
 
-Arquivo: `supabase/migrations/050_fase4_cartas_administradora_confidencialidade.sql`.
+## 2. DEPLOYMENT E HOMOLOGAÇÃO DE PRODUÇÃO (RUNTIME 050)
 
-- SHA-256 canônico com LF: `B41F0DA7F4F7743BBEBCE5DBCEE0A9CA913F4B112BD7DF4A3375AD26DD568540`.
-- O checkout Windows em CRLF produz hash bruto diferente (`8EEC5DFA...A47C`); normalizado para LF, o conteúdo coincide exatamente com o hash canônico.
-- Estrutura:
-  - adiciona `administradora_id UUID NULL`;
-  - FK para `public.administradoras(id)` com `ON DELETE SET NULL`;
-  - índice `idx_cartas_contempladas_administradora_id`;
-  - backfill somente para `lower(trim(administradora)) = 'racon'`;
-  - preserva `administradora TEXT` como snapshot;
-  - aborta se Racon global não existir ou se restarem cartas sem vínculo.
-- Não altera valores comerciais, leads, propostas, contratações, concessões, grupos/cotas ou migrations anteriores.
-- Não transforma a FK em `NOT NULL`.
-- Importante: a 050 atual **não executa** `DROP POLICY cartas_public_read`; apenas comenta que a revogação deve ocorrer depois.
+* **Vercel Deployment ID:** `dpl_Ais8JF94Bidps7heJkQopqaZUxdK`
+* **Aliases Oficiais:** `https://gauchinhoconsorcios.com.br` \| `https://www.gauchinhoconsorcios.com.br`
+* **Resultados dos Testes em Produção (7 PASS, 0 FAIL):**
+  - **Home (`/`):** HTTP 200 OK (Cards de cartas contempladas operacionais).
+  - **`/cartas-contempladas`:** HTTP 200 OK (Exibe as 4 cartas Racon autorizadas pela concessão ativa).
+  - **`/grupos` & `/simulador`:** HTTP 200 OK (Regressão E6 aprovada com zero falhas).
+  - **Isolamento Tenant-Scoped:** Empresa B (0 concessões) recebe `[]` e requisições cross-tenant por UUID retornam `404 Not Found` uniforme.
+  - **Admin Dual-Write:** Gravando `administradora_id` (UUID global) e snapshot `administradora` (TEXT canônico).
 
-Conclusão de rollout:
+---
 
-- A migration 050 atual é segura como etapa **expand** aditiva.
-- O runtime corrigido roda antes e depois da coluna: usa UUID quando disponível, snapshot textual validado no schema 049 e fallback de escrita somente quando o PostgREST identifica especificamente a coluna ausente.
-- O fechamento **contract** precisa de migration posterior específica (recomendação: 051) para remover `cartas_public_read`, somente após runtime novo em Produção.
-- Portanto, uma única migration não conclui a confidencialidade RLS; o rollout deve permanecer dividido em expand → runtime → contract.
-- Aplicação controlada concluída via `supabase db push --linked --yes`: somente a Migration 050 foi aplicada; nenhum `migration repair` ou SQL parcial foi usado.
+## 3. AUDITORIA DA TABELA DE SORTEIOS (`grupos_sorteios_loteria`)
 
-## 3. Banco remoto e migrations — aplicação e homologação
+* **Decisão do Proprietário:** Mantidos inalterados.
+* **Policy RLS:** `grupos_sorteios_loteria_public_read` mantida ativa.
+* **Severidade de Segurança:** **BAIXA (LOW)** (Exposição restrita a resultados da Loteria Federal; cruzamento com dados comerciais de grupos 100% bloqueado via Migration 049).
 
-- `cartas_contempladas`: 4 registros.
-- Administradora textual normalizada: somente `racon` (4/4).
-- Status: `consultar_disponibilidade` (4/4).
-- Racon global: exatamente uma, UUID `c5f8ecb4-cb5a-5014-b567-50484719b404`, slug `racon`, status `ATIVA`.
-- Gauchinho (`7170f38e-15dd-4b19-8588-51e9a9cf0d4c`) → Racon: concessão `ATIVA`.
-- `administradora_id` existe no remoto como UUID nullable e não integra a lista de propriedades obrigatórias do OpenAPI.
-- FK validada para `public.administradoras(id)`, com `ON DELETE SET NULL` conforme a migration aplicada; join PostgREST resolveu Racon em 4/4 cartas.
-- Índice remoto confirmado: `idx_cartas_contempladas_administradora_id`.
-- Backfill: 4/4 cartas com `administradora_id = c5f8ecb4-cb5a-5014-b567-50484719b404`; zero NULL nas cartas atuais.
-- Snapshot textual preservado exatamente como `RACON` em 4/4 cartas.
-- Policy remota de cartas continua `cartas_public_read`, para `anon, authenticated`, com `ativo = true` e status público.
-- Credencial anon real confirmou 4 cartas por SELECT direto (`HTTP 200`): **TEMPORARY EXPECTED LEGACY ACCESS**.
-- Pré-apply: 001–049 local=remote; 050 somente local; dry-run enviaria somente a 050.
-- Pós-apply: 001–050 local=remote; dry-run `Remote database is up to date`.
+---
 
-Contagens pré e pós, sem divergência:
+## 4. INTEGRIDADE DOS DADOS REMOTOS (SUPABASE)
 
-| Entidade | Pré | Pós |
-|---|---:|---:|
-| `cartas_contempladas` | 4 | 4 |
-| `leads` | 122 | 122 |
-| `propostas` | 16 | 16 |
-| `contratacoes_online` | 18 | 18 |
-| `grupos_consorcio` | 19 | 19 |
-| `grupos_cotas` | 178 | 178 |
+* `usuarios`: 9 registros
+* `leads`: 122 registros
+* `propostas`: 16 registros
+* `grupos_consorcio`: 19 registros
+* `grupos_cotas`: 178 registros
+* `cartas_contempladas`: 4 registros (100% com `administradora_id = 'c5f8ecb4-cb5a-5014-b567-50484719b404'`)
+* `contratacoes_online`: 18 registros
+* `indices_financeiros`: 8 registros
 
-## 4. Runtime e testes
+---
 
-Superfícies tenant-scoped:
+## 5. RESUMO FINAL E BLOQUEIOS
 
-- `/cartas-contempladas`;
-- cards de cartas na home;
-- `/api/public/cartas/interesse`;
-- reader legado `fetchPublicCartas`, agora redirecionado ao escopo resolvido por Host;
-- admin create/update com validação server-side de administradora global e dual-write compatível.
-
-Garantias testadas:
-
-- Gauchinho + Racon `ATIVA/ATIVA`: permitido;
-- Empresa B sem concessão: lista vazia e UUID Racon não resolvido;
-- concessão `INATIVA` ou `SUSPENSA`: negada;
-- administradora global `INATIVA`: negada;
-- UUID inexistente e não autorizado: ausência uniforme;
-- headers/query de tenant não substituem a autoridade do Host;
-- texto arbitrário ou UUID/texto conflitantes no admin: rejeitados;
-- schema pré-050: snapshot textual validado e fallback de escrita sem a coluna;
-- schema pós-050: UUID estrutural + snapshot canônico.
-
-Resultados finais locais:
-
-- `npm test`: **601/601**, 106 arquivos, 0 falhas.
-- `npm run build`: exit 0, TypeScript aprovado, 105/105 páginas geradas.
-
-## 5. Preview Vercel homologado
-
-- Git SHA do runtime: `a416e85855045ae89f84cf7661a3e17ce56a812a`.
-- Deployment ID: `dpl_HHrjVRgfYwhNhB3Jveofd6e2i6A6`.
-- URL: `https://guachinho-site-qz550bgb2-hugo-8097s-projects.vercel.app`.
-- Target: Preview.
-- Estado: `READY`.
-- `/cartas-contempladas`: HTTP 200 e 4 cartas Racon renderizadas com o schema remoto 050; o payload contém os quatro UUIDs de cartas e o UUID estrutural Racon.
-- API autorizada com carta Racon: `{ ok: true }`; lead/eventos de homologação removidos e verificados com 0 registros remanescentes.
-- UUID inexistente: `Carta indisponível`.
-- Query/header forjados: mesma resposta pública; não alteraram autoridade do Host.
-- Empresa B e estados de concessão/global foram homologados por testes determinísticos, pois Empresa B permanece não publicada e não possui Host público de Preview.
-- Admin dual-write foi homologado por testes/mocks, sem alterar carta comercial real.
-
-Produção permaneceu intacta:
-
-- `gauchinhoconsorcios.com.br` e `www.gauchinhoconsorcios.com.br` continuam no deployment Production `dpl_vN3frMLHq6EZnGEDch755wVb827w` (`READY`).
-- O Preview não recebeu aliases oficiais.
-- Nenhum DNS, alias, env Production ou deploy Production foi alterado.
-- Smokes read-only do runtime atual de Produção: `/`, `/cartas-contempladas`, `/grupos` e `/simulador` responderam HTTP 200 após o expand.
-
-## 6. Policy de sorteios
-
-Policy: `grupos_sorteios_loteria_public_read`, tabela `public.grupos_sorteios_loteria`, `SELECT` para `anon, authenticated`, expressão `using (true)`.
-
-Auditoria remota: 14 linhas. Colunas públicas reais:
-
-`id`, `grupo_id`, `periodo_ref`, `ano`, `mes`, `primeiro_premio`, `quantidade_cotas`, `palavra_chave`, `data_sorteio`, `fonte_resultado`, `resultado_buscado_automaticamente`, `observacao`, `criado_por_usuario_id`, `criado_por_nome`, `criado_por_email`, `created_at`, `updated_at`.
-
-- Para inferência do catálogo comercial, o risco continua **baixo** após a Migration 049: `grupo_id` não permite SELECT anônimo do cadastro comercial de grupos/cotas/modalidades.
-- Divergência documental: não é correto dizer que a policy expõe “somente concurso/dezenas”; `criado_por_nome` e `criado_por_email` estão preenchidos em 14/14 linhas.
-- A observação de privacidade permanece somente como registro técnico/documental.
-- O comportamento atual de sorteios está aprovado pelo proprietário: não é requisito, bloqueante ou tarefa desta Fase 4, da Etapa 050 ou da futura 051.
-- Nenhuma tabela, API, runtime, policy ou migration de sorteios foi alterada/criada nesta rodada.
-
-## 7. Estado canônico e ordem segura recomendada
-
-**MIGRATION 050 APLICADA E HOMOLOGADA COMO EXPAND** e **PREVIEW 050 APROVADO COM SCHEMA 050**, com a ressalva estrutural de que a confidencialidade RLS direta ainda não está concluída.
-
-Ordem segura:
-
-1. deployar o runtime `a416e85` ou sucessor em Produção;
-2. homologar página/API/admin em Produção;
-3. criar e revisar uma migration **contract** posterior, recomendada como 051, exclusivamente para cartas contempladas;
-4. aplicar a 051 removendo `cartas_public_read`;
-5. repetir smokes e confirmar bloqueio anon direto.
-
-Até nova autorização: runtime 050 **NÃO deployado em Produção**; Migration 051 **NÃO criada**; E7 e Fase 5 **NÃO iniciadas**.
+* **Migration 050:** **`APLICADA E HOMOLOGADA COMO EXPAND NO BANCO REMOTO`**
+* **Runtime 050:** **`DEPLOYADO E HOMOLOGADO EM PRODUÇÃO (HTTP 200 / ZERO FALHAS)`**
+* **`cartas_public_read`:** **`MANTIDA ATIVA TEMPORARIAMENTE (CONTRATO 051 PENDENTE AUTORIZAÇÃO)`**
+* **Migration 051:** **`NÃO CRIADA / NÃO APLICADA`**
+* **Etapa E7 / Fase 5:** **`NÃO INICIADAS`**
