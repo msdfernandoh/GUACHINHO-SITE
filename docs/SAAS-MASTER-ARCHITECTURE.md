@@ -1,8 +1,8 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
-> **Versão:** 1.4.6  
+> **Versão:** 1.4.7  
 > **Data de Atualização:** 09/08/2026  
-> **Status da Plataforma:** Fase 2 Concluída e Homologada em Produção; **Fase 3 CONCLUÍDA E HOMOLOGADA EM PRODUÇÃO**; **Fase 4 EM ANDAMENTO** (Etapa E6 e Runtime 050 CONCLUÍDOS E HOMOLOGADOS EM PRODUÇÃO; **Migration 050 APLICADA E HOMOLOGADA COMO EXPAND**; **Runtime 050 UUID-First Corrigido e Homologado em Produção — commit `4b27374`**; **Migration 051 Contract PREPARADA LOCALMENTE (aguardando autorização para apply em banco)**; sorteios 100% inalterados; **Racon = administradora global**; **Gauchinho = empresa/franqueada**; Empresa B sem concessão; Fase 5 não iniciada)  
+> **Status da Plataforma:** Fase 2 Concluída e Homologada em Produção; **Fase 3 CONCLUÍDA E HOMOLOGADA EM PRODUÇÃO**; **Fase 4 EM ANDAMENTO** (Etapa E6, Runtime 050 UUID-First, Migration 050 Expand e **Migration 051 Contract CONCLUÍDOS E HOMOLOGADOS**; policy `cartas_public_read` revogada do banco remoto; anon direct SELECT em `cartas_contempladas` 100% bloqueado; sorteios 100% inalterados; **Racon = administradora global**; **Gauchinho = empresa/franqueada**; Empresa B sem concessão; Fase 5 não iniciada)  
 
 
 > **Projeto Físico:** `C:\Fernando Hugo\GAUCHINHO SITE`  

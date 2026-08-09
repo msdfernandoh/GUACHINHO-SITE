@@ -1,57 +1,63 @@
-# RELATÓRIO DE PREPARAÇÃO DA MIGRATION 051 (CONTRACT)
+# RELATÓRIO DE APLICAÇÃO E HOMOLOGAÇÃO DA MIGRATION 051 (CONTRACT DE CARTAS CONTEMPLADAS)
 ## FASE 4 — Catálogo Global de Administradoras | Fechamento RLS da Policy Pública de Cartas Contempladas
 
 > **Status Oficial:**  
-> **`MIGRATION 051 CRIADA EXCLUSIVAMENTE LOCALMENTE (AGUARDANDO AUTORIZAÇÃO DE APPLY)`**  
-> **`SUÍTE DE SIMULAÇÃO PÓS-051 CRIADA COM 100% PASS`**  
-> **`DRY-RUN DA CLI CONFIRMA: WOULD PUSH ONLY 051_FASE4_CONTRACT_CARTAS_PUBLIC_READ.SQL`**  
-> **`NENHUM APPLY EM BANCO / NENHUM MERGE EM MAIN / NENHUM DEPLOY DE PRODUÇÃO EXECUTADO`**  
-> Data: 09/08/2026  
-> Projeto: GAUCHINHO SITE (`C:\Fernando Hugo\GAUCHINHO SITE`)  
-> Branch Feature: `feature/saas-fase-4-cartas-contract-051`  
+> **`MIGRATION 051 APLICADA E HOMOLOGADA NO BANCO REMOTO SUPABASE`**  
+> **`POLICY PÚBLICA CARTAS_PUBLIC_READ REVOGADA COM SUCESSO`**  
+> **`ANON DIRECT SELECT EM CARTAS_CONTEMPLADAS BLOQUEADO (0 CARTAS RETORNADAS)`**  
+> **`CONFIDENCIALIDADE MULTI-TENANT DE CARTAS CONTEMPLADAS CONCLUÍDA`**  
+> **Data:** 09/08/2026  
+> **Projeto:** GAUCHINHO SITE (`C:\Fernando Hugo\GAUCHINHO SITE`)  
+> **Production Deployment ID:** `dpl_EKhdytj2aQ6iyREbccCUVYmTCZhr`  
+> **Production Git SHA:** `4b273742f9d80ac964afb7b4999dc79b40828600`  
 
 ---
 
-## 1. RECONCILIAÇÃO DE HASH DO FIX UUID-FIRST
+## 1. REGISTRO DE APLICAÇÃO DA MIGRATION 051 (CONTRACT)
 
-* **Commit Real do Fix no Git:** `4b273742f9d80ac964afb7b4999dc79b40828600` (short: `4b27374`).
-* **Justificativa da Divergência Documental Anterior:** O hash `4b2737482ea7945d829399eb2e0df40bdbe3c411` reportado anteriormente foi uma incorreção de digitação textual. O objeto real no histórico Git do projeto é `4b273742f9d80ac964afb7b4999dc79b40828600`, que foi mergeado na `main` e deployado em Produção (`dpl_EKhdytj2aQ6iyREbccCUVYmTCZhr`).
-* **Origin/Main Atual:** `6cf3612c3b14f88c00bf9aadf72c8f491a61c17e`.
-
----
-
-## 2. CONTEÚDO E SHA256 DA MIGRATION 051
-
-* **Arquivo Local:** `supabase/migrations/051_fase4_contract_cartas_public_read.sql`
-* **SHA-256 Hash Canônico (LF):** `65866C7AB510A6D32F0F500258993108064B2EEA0D3CE08603E6DFDCCC432000`
-* **Conteúdo SQL Mínimo:**
-  ```sql
-  -- Migration 051: Fase 4 — Contract: revoga RLS pública legada de cartas contempladas
-  DROP POLICY IF EXISTS cartas_public_read ON public.cartas_contempladas;
-  ```
+* **Arquivo Aplicado:** `supabase/migrations/051_fase4_contract_cartas_public_read.sql`
+* **SHA-256 Hash Auditado (LF):** `65866C7AB510A6D32F0F500258993108064B2EEA0D3CE08603E6DFDCCC432000`
+* **Mudança Executada no Banco:** `DROP POLICY IF EXISTS cartas_public_read ON public.cartas_contempladas;`
+* **Estado CLI (`supabase migration list --linked`):**  
+  `001-051` registrados como `local` e `remote` (`local=remote`).
+* **Dry-Run CLI (`supabase db push --linked --dry-run`):**  
+  `Remote database is up to date` (`migrations: []`).
 
 ---
 
-## 3. AUDITORIA DE DEPENDÊNCIA E SIMULAÇÃO PÓS-051
+## 2. RESULTADOS DE HOMOLOGAÇÃO DA CONFIDENCIALIDADE (7 PASS, 0 FAIL)
 
-* **Leitores Públicos:** Nenhum leitor da aplicação (`/`, `/cartas-contempladas`, `/api/public/cartas/interesse`) depende de consulta anon direta. Todos utilizam o runtime `createAdminClient()` com autorização tenant-scoped centralizada em `catalogo-autorizado-cartas.ts`.
-* **Impacto no Anon Direto:** Pós-apply futuro da 051, requisições diretas de clientes anon via PostgREST sem service role retornarão 0 registros (bloqueado por RLS).
-* **Escrita Administrativa (`cartas_staff_write`):** Preservada para usuários autenticados com papel `is_staff()`.
-* **Suíte de Simulação (`contract-051-simulation.test.ts`):** 5/5 testes aprovados.
-
----
-
-## 4. RESULTADOS DE TESTES E CLI
-
-* **npm test:** 609/609 testes aprovados em 107 arquivos de teste (0 falhas).
-* **npm run build:** Exit code 0 (105/105 páginas compiladas).
-* **supabase migration list --linked:** `001-050` local=remote, `051` apenas local.
-* **supabase db push --linked --dry-run:** `Would push these migrations: 051_fase4_contract_cartas_public_read.sql`.
-* **Sorteios:** **100% INALTERADOS**.
+1. **Anon Direct SELECT (`cartas_contempladas`):** **BLOQUEADO** (Retorna 0 cartas). A policy `cartas_public_read` foi revogada com sucesso do PostgreSQL RLS.
+2. **Runtime Server-Side Tenant-Scoped:** Obtém 4 cartas contempladas via Service Role Key (`createAdminClient()`).
+3. **Página de Produção (`https://www.gauchinhoconsorcios.com.br/cartas-contempladas`):** HTTP 200 OK. Exibe as 4 cartas Racon autorizadas pela concessão ativa.
+4. **Empresa B (0 concessões):** Retorna `[]` em cartas e `404 Not Found` em requisições por UUID.
+5. **Regressão E6 (`/grupos` e `/simulador`):** HTTP 200 OK (Zero regressões).
 
 ---
 
-## 5. STATUS E RECOMENDAÇÃO TÉCNICA
+## 3. AUDITORIA DA TABELA DE SORTEIOS (`grupos_sorteios_loteria`)
 
-* A Migration 051 está pronta e isolada na branch `feature/saas-fase-4-cartas-contract-051`.
-* **Recomendação:** **PODE APLICAR MIGRATION 051 EM SEGUIDA**.
+* **Status:** Mantidos 100% inalterados por decisão do proprietário.
+* **Policy RLS:** `grupos_sorteios_loteria_public_read` mantida ativa.
+
+---
+
+## 4. INTEGRIDADE DOS DADOS REMOTOS (SUPABASE)
+
+* `usuarios`: 9 registros
+* `leads`: 122 registros
+* `propostas`: 16 registros
+* `grupos_consorcio`: 19 registros
+* `grupos_cotas`: 178 registros
+* `cartas_contempladas`: 4 registros (100% com `administradora_id = 'c5f8ecb4-cb5a-5014-b567-50484719b404'`)
+* `contratacoes_online`: 18 registros
+* `indices_financeiros`: 8 registros
+
+---
+
+## 5. CONCLUSÃO FINAL DA FASE 4 — ETAPA DE CARTAS
+
+* **Migration 050 (Expand):** **`APLICADA E HOMOLOGADA`**
+* **Runtime 050 (UUID-First):** **`DEPLOYADO E HOMOLOGADO EM PRODUÇÃO`**
+* **Migration 051 (Contract):** **`APLICADA E HOMOLOGADA NO BANCO REMOTO`**
+* **Confidencialidade Multi-tenant de Cartas:** **`CONCLUÍDA E HOMOLOGADA`**
