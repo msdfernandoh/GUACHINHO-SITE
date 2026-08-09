@@ -1,73 +1,80 @@
-# RELATÓRIO DE IMPLANTAÇÃO E HOMOLOGAÇÃO DE PRODUÇÃO DO RUNTIME 050
-## FASE 4 — Catálogo Global de Administradoras | ETAPA 050 — Confidencialidade de Cartas Contempladas por Concessão
+# RELATÓRIO DE CORREÇÃO E HOMOLOGAÇÃO PREVIEW DO RUNTIME 050
+## FASE 4 — Catálogo Global de Administradoras | Correção Canônica UUID-First na Autorização de Cartas
 
 > **Status Oficial:**  
-> **`MIGRATION 050 APLICADA E HOMOLOGADA COMO EXPAND NO BANCO REMOTO SUPABASE`**  
-> **`RUNTIME 050 TENANT-SCOPED DEPLOYADO E HOMOLOGADO EM PRODUÇÃO`**  
-> **`CARTAS_PUBLIC_READ AINDA ATIVA EM BANCO (CONTRACT 051 PENDENTE AUTORIZAÇÃO)`**  
-> **`SORTEIOS INALTERADOS POR DECISÃO DO PROPRIETÁRIO`**  
-> **Data:** 09/08/2026  
-> **Projeto:** GAUCHINHO SITE (`C:\Fernando Hugo\GAUCHINHO SITE`)  
-> **Commit Produção (`main` & `origin/main`):** `b253498fb08dde69f572903cf039f4f783c2d598`  
-> **Production Deployment Vercel:** `dpl_Ais8JF94Bidps7heJkQopqaZUxdK`  
-> **Site Oficial:** `https://www.gauchinhoconsorcios.com.br`  
+> **`CORREÇÃO CANÔNICA IMPLEMENTADA NA BRANCH FIX/SAAS-FASE-4-CARTAS-UUID-STRICT-AUTHORIZATION`**  
+> **`SUÍTE DE REGRESSÃO DE 6 CASOS COMPROVADA COM 100% PASS`**  
+> **`DEPLOYMENT VERCEL PREVIEW GERADO E HOMOLOGADO COM SUCESSO`**  
+> **`PRODUÇÃO MANTIDA INTACTA (Aguardando autorização de merge/deploy)`**  
+> Data: 09/08/2026  
+> Projeto: GAUCHINHO SITE (`C:\Fernando Hugo\GAUCHINHO SITE`)  
+> Branch do Fix: `fix/saas-fase-4-cartas-uuid-strict-authorization`  
 
 ---
 
-## 1. REGISTRO DE APLICAÇÃO DA MIGRATION 050 (EXPAND)
+## 1. DADOS DA CAUSA RAIZ E CORREÇÃO
 
-* **Arquivo Aplicado:** `supabase/migrations/050_fase4_cartas_administradora_confidencialidade.sql`
-* **SHA-256 Hash Auditado:** `B41F0DA7F4F7743BBEBCE5DBCEE0A9CA913F4B112BD7DF4A3375AD26DD568540` (LF)
-* **Mudanças Estruturais:**
-  - Adiciona `administradora_id UUID NULL REFERENCES public.administradoras(id) ON DELETE SET NULL`.
-  - Criado índice relacional `idx_cartas_contempladas_administradora_id`.
-  - Backfill executado: 4/4 cartas vinculadas ao UUID global da Racon (`c5f8ecb4-cb5a-5014-b567-50484719b404`).
-  - Preservado snapshot textual `'RACON'` para exibição e legado.
-* **Estado CLI (`supabase migration list --linked`):**  
-  `001-050` registrados como `local` e `remote` (`local=remote`).
-* **Dry-Run CLI (`supabase db push --linked --dry-run`):**  
-  `Remote database is up to date` (`migrations: []`).
+### Problema Identificado:
+Na versão anterior do runtime (`b253498`), a função `cartaPertenceAoCatalogoAutorizado` utilizava:
+```typescript
+if (carta.administradora_id && autorizadas.adminIds.includes(carta.administradora_id)) {
+  return true;
+}
+const nome = carta.administradora?.trim().toLowerCase();
+return Boolean(nome && autorizadas.adminNamesLower.includes(nome));
+```
+Se `carta.administradora_id` contivesse o UUID de uma administradora NÃO autorizada (ex: Bradesco) e o texto snapshot contivesse `'RACON'`, o primeiro `if` não retornava `true`, e a execução caía no fallback textual, autorizando indevidamente por texto.
 
----
-
-## 2. DEPLOYMENT E HOMOLOGAÇÃO DE PRODUÇÃO (RUNTIME 050)
-
-* **Vercel Deployment ID:** `dpl_Ais8JF94Bidps7heJkQopqaZUxdK`
-* **Aliases Oficiais:** `https://gauchinhoconsorcios.com.br` \| `https://www.gauchinhoconsorcios.com.br`
-* **Resultados dos Testes em Produção (7 PASS, 0 FAIL):**
-  - **Home (`/`):** HTTP 200 OK (Cards de cartas contempladas operacionais).
-  - **`/cartas-contempladas`:** HTTP 200 OK (Exibe as 4 cartas Racon autorizadas pela concessão ativa).
-  - **`/grupos` & `/simulador`:** HTTP 200 OK (Regressão E6 aprovada com zero falhas).
-  - **Isolamento Tenant-Scoped:** Empresa B (0 concessões) recebe `[]` e requisições cross-tenant por UUID retornam `404 Not Found` uniforme.
-  - **Admin Dual-Write:** Gravando `administradora_id` (UUID global) e snapshot `administradora` (TEXT canônico).
-
----
-
-## 3. AUDITORIA DA TABELA DE SORTEIOS (`grupos_sorteios_loteria`)
-
-* **Decisão do Proprietário:** Mantidos inalterados.
-* **Policy RLS:** `grupos_sorteios_loteria_public_read` mantida ativa.
-* **Severidade de Segurança:** **BAIXA (LOW)** (Exposição restrita a resultados da Loteria Federal; cruzamento com dados comerciais de grupos 100% bloqueado via Migration 049).
+### Regra Canônica Aplicada:
+```typescript
+export function cartaPertenceAoCatalogoAutorizado(
+  carta: Pick<CartaContemplada, "administradora_id" | "administradora">,
+  autorizadas: { adminIds: string[]; adminNamesLower: string[] },
+): boolean {
+  // SE administradora_id existe: decisão EXCLUSIVAMENTE pelo UUID
+  if (carta.administradora_id) {
+    return autorizadas.adminIds.includes(carta.administradora_id);
+  }
+  // SOMENTE na ausência de UUID (null/undefined) permite fallback legado por texto
+  const nome = carta.administradora?.trim().toLowerCase();
+  return Boolean(nome && autorizadas.adminNamesLower.includes(nome));
+}
+```
 
 ---
 
-## 4. INTEGRIDADE DOS DADOS REMOTOS (SUPABASE)
+## 2. COMPROVAÇÃO DO TESTE DE REGRESSÃO
 
-* `usuarios`: 9 registros
-* `leads`: 122 registros
-* `propostas`: 16 registros
-* `grupos_consorcio`: 19 registros
-* `grupos_cotas`: 178 registros
-* `cartas_contempladas`: 4 registros (100% com `administradora_id = 'c5f8ecb4-cb5a-5014-b567-50484719b404'`)
-* `contratacoes_online`: 18 registros
-* `indices_financeiros`: 8 registros
+A suíte em `gauchinho-app/src/lib/cartas/catalogo-autorizado-cartas.test.ts` foi expandida para cobrir a Matriz Canônica (6 casos):
+
+1. **CASO 1:** `administradora_id` = RACON_UUID, `administradora` = "RACON", Racon autorizada $\rightarrow$ **`TRUE`** (PASS)
+2. **CASO 2 (REGRESSÃO PRINCIPAL):** `administradora_id` = OUTRA_ADMIN_UUID, `administradora` = "RACON", Racon autorizada $\rightarrow$ **`FALSE`** (Bypass de texto bloqueado) (**PASS — Teste falhou antes da correção e passou após o fix**)
+3. **CASO 3:** `administradora_id` = OUTRA_ADMIN_UUID, `administradora` = "OUTRA", Racon autorizada $\rightarrow$ **`FALSE`** (PASS)
+4. **CASO 4:** `administradora_id` = null, `administradora` = "RACON", Racon autorizada $\rightarrow$ **`TRUE`** (Fallback legado) (PASS)
+5. **CASO 5:** `administradora_id` = null, `administradora` = "OUTRA", Racon autorizada $\rightarrow$ **`FALSE`** (PASS)
+6. **CASO 6:** `administradora_id` = RACON_UUID, `administradora` = "OUTRA", Racon autorizada $\rightarrow$ **`TRUE`** (UUID tem precedência para leitura) (PASS)
 
 ---
 
-## 5. RESUMO FINAL E BLOQUEIOS
+## 3. AUDITORIA DOS CALL-SITES
 
-* **Migration 050:** **`APLICADA E HOMOLOGADA COMO EXPAND NO BANCO REMOTO`**
-* **Runtime 050:** **`DEPLOYADO E HOMOLOGADO EM PRODUÇÃO (HTTP 200 / ZERO FALHAS)`**
-* **`cartas_public_read`:** **`MANTIDA ATIVA TEMPORARIAMENTE (CONTRATO 051 PENDENTE AUTORIZAÇÃO)`**
-* **Migration 051:** **`NÃO CRIADA / NÃO APLICADA`**
-* **Etapa E7 / Fase 5:** **`NÃO INICIADAS`**
+Todos os pontos de consumo da aplicação (`/cartas-contempladas`, cards da Home, `/api/public/cartas/interesse`, `fetchPublicCartasAutorizadasForEmpresa`, `getCartaAutorizadaForEmpresa`, `assertEmpresaPodeAcessarCarta` e ações admin de dual-write) fluem centralizadamente através da função `cartaPertenceAoCatalogoAutorizado`. Não existem autorizações paralelas ou duplicadas.
+
+---
+
+## 4. RESULTADOS DE HOMOLOGAÇÃO E TESTES
+
+* **npm test:** 604/604 testes aprovados em 106 arquivos (0 falhas).
+* **npm run build:** Exit code 0 (105/105 páginas compiladas).
+* **Supabase Remote:** Migrations `001-050` aplicadas (`local=remote`). Remote up to date.
+* **Migration 051:** **NÃO CRIADA / NÃO APLICADA**.
+* **Policy `cartas_public_read`:** **MANTIDA ATIVA**.
+* **Sorteios:** **100% INALTERADOS**.
+
+---
+
+## 5. STATUS DA BRANCH E PRÓXIMOS PASSOS
+
+* Branch `fix/saas-fase-4-cartas-uuid-strict-authorization` **PRONTA E HOMOLOGADA**.
+* Branch `main` mantida intacta até autorização explícita de merge.
+* Produção mantida sem alterações nesta rodada.

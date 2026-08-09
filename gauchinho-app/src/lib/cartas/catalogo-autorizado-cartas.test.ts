@@ -9,6 +9,7 @@ import {
 } from "./catalogo-autorizado-cartas";
 
 const RACON_UUID = "c5f8ecb4-cb5a-5014-b567-50484719b404";
+const OUTRA_ADMIN_UUID = "00000000-0000-0000-0000-000000000099";
 const GAUCHINHO_ID = "7170f38e-15dd-4b19-8588-51e9a9cf0d4c";
 const EMPRESA_B_ID = "e2000000-0000-0000-0000-000000000002";
 
@@ -92,31 +93,62 @@ describe("catálogo tenant-scoped de cartas contempladas", () => {
     expect(result.adminIds).toEqual([]);
   });
 
-  it("aceita UUID estrutural autorizado após a 050", () => {
-    expect(
-      cartaPertenceAoCatalogoAutorizado(
-        { administradora_id: RACON_UUID, administradora: "snapshot antigo" },
-        { adminIds: [RACON_UUID], adminNamesLower: ["racon"] },
-      ),
-    ).toBe(true);
-  });
+  describe("Matriz Canônica da Função cartaPertenceAoCatalogoAutorizado (UUID-First)", () => {
+    const autorizadas = { adminIds: [RACON_UUID], adminNamesLower: ["racon"] };
 
-  it("aceita snapshot Racon antes da 050", () => {
-    expect(
-      cartaPertenceAoCatalogoAutorizado(
-        { administradora_id: undefined, administradora: " RACON " },
-        { adminIds: [RACON_UUID], adminNamesLower: ["racon"] },
-      ),
-    ).toBe(true);
-  });
+    it("CASO 1: administradora_id = RACON_UUID, administradora = 'RACON' (Racon autorizada) -> TRUE", () => {
+      expect(
+        cartaPertenceAoCatalogoAutorizado(
+          { administradora_id: RACON_UUID, administradora: "RACON" },
+          autorizadas,
+        ),
+      ).toBe(true);
+    });
 
-  it("rejeita UUID e snapshot de administradora não concedida", () => {
-    expect(
-      cartaPertenceAoCatalogoAutorizado(
-        { administradora_id: "00000000-0000-0000-0000-000000000099", administradora: "Outra" },
-        { adminIds: [RACON_UUID], adminNamesLower: ["racon"] },
-      ),
-    ).toBe(false);
+    it("CASO 2 (REGRESSÃO PRINCIPAL): administradora_id = OUTRA_ADMIN_UUID, administradora = 'RACON' (Racon autorizada) -> FALSE (Bypass de texto bloqueado)", () => {
+      expect(
+        cartaPertenceAoCatalogoAutorizado(
+          { administradora_id: OUTRA_ADMIN_UUID, administradora: "RACON" },
+          autorizadas,
+        ),
+      ).toBe(false);
+    });
+
+    it("CASO 3: administradora_id = OUTRA_ADMIN_UUID, administradora = 'OUTRA' (Racon autorizada) -> FALSE", () => {
+      expect(
+        cartaPertenceAoCatalogoAutorizado(
+          { administradora_id: OUTRA_ADMIN_UUID, administradora: "OUTRA" },
+          autorizadas,
+        ),
+      ).toBe(false);
+    });
+
+    it("CASO 4: administradora_id = null, administradora = 'RACON' (Racon autorizada) -> TRUE (Fallback legado)", () => {
+      expect(
+        cartaPertenceAoCatalogoAutorizado(
+          { administradora_id: null, administradora: "RACON" },
+          autorizadas,
+        ),
+      ).toBe(true);
+    });
+
+    it("CASO 5: administradora_id = null, administradora = 'OUTRA' (Racon autorizada) -> FALSE", () => {
+      expect(
+        cartaPertenceAoCatalogoAutorizado(
+          { administradora_id: null, administradora: "OUTRA" },
+          autorizadas,
+        ),
+      ).toBe(false);
+    });
+
+    it("CASO 6: administradora_id = RACON_UUID, administradora = 'OUTRA' (Racon autorizada) -> TRUE (UUID tem precedência sobre snapshot textual para leitura)", () => {
+      expect(
+        cartaPertenceAoCatalogoAutorizado(
+          { administradora_id: RACON_UUID, administradora: "OUTRA" },
+          autorizadas,
+        ),
+      ).toBe(true);
+    });
   });
 
   it("UUID inexistente e UUID cross-tenant retornam a mesma ausência para Empresa B", async () => {

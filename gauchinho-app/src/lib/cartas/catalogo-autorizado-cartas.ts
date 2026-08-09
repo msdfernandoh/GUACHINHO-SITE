@@ -23,12 +23,13 @@ export function cartaPertenceAoCatalogoAutorizado(
   carta: Pick<CartaContemplada, "administradora_id" | "administradora">,
   autorizadas: { adminIds: string[]; adminNamesLower: string[] },
 ): boolean {
-  if (carta.administradora_id && autorizadas.adminIds.includes(carta.administradora_id)) {
-    return true;
+  if (carta.administradora_id) {
+    return autorizadas.adminIds.includes(carta.administradora_id);
   }
   const nome = carta.administradora?.trim().toLowerCase();
   return Boolean(nome && autorizadas.adminNamesLower.includes(nome));
 }
+
 
 /** IDs e nomes somente de concessões ATIVA ligadas a administradoras globais ATIVA. */
 export async function fetchAuthorizedAdministradoraIdsForEmpresa(
