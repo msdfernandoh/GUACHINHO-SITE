@@ -1,9 +1,9 @@
 # RELATÓRIO DA FASE 4 — ETAPA 050
 ## Confidencialidade de Cartas Contempladas por Concessão
 
-> **Status oficial:** `RUNTIME 050 APROVADO EM PREVIEW COM SCHEMA REMOTO 049`  
-> **Migration 050:** `LOCAL, NÃO APLICADA`  
-> **Produção:** `INTACTA; NENHUM DEPLOY DE PRODUÇÃO NESTA RODADA`  
+> **Status oficial:** `MIGRATION 050 APLICADA E HOMOLOGADA COMO EXPAND`  
+> **Runtime 050:** `APROVADO EM PREVIEW COM SCHEMA REMOTO 050; AINDA NÃO DEPLOYADO EM PRODUÇÃO`  
+> **Produção:** `RUNTIME ANTERIOR INTACTO E OPERACIONAL; NENHUM DEPLOY NESTA RODADA`  
 > **Data:** 08/08/2026  
 > **Branch:** `feature/saas-fase-4-cartas-confidencialidade`
 
@@ -48,19 +48,35 @@ Conclusão de rollout:
 - O runtime corrigido roda antes e depois da coluna: usa UUID quando disponível, snapshot textual validado no schema 049 e fallback de escrita somente quando o PostgREST identifica especificamente a coluna ausente.
 - O fechamento **contract** precisa de migration posterior específica (recomendação: 051) para remover `cartas_public_read`, somente após runtime novo em Produção.
 - Portanto, uma única migration não conclui a confidencialidade RLS; o rollout deve permanecer dividido em expand → runtime → contract.
+- Aplicação controlada concluída via `supabase db push --linked --yes`: somente a Migration 050 foi aplicada; nenhum `migration repair` ou SQL parcial foi usado.
 
-## 3. Banco remoto e migrations — somente leitura
+## 3. Banco remoto e migrations — aplicação e homologação
 
 - `cartas_contempladas`: 4 registros.
 - Administradora textual normalizada: somente `racon` (4/4).
 - Status: `consultar_disponibilidade` (4/4).
 - Racon global: exatamente uma, UUID `c5f8ecb4-cb5a-5014-b567-50484719b404`, slug `racon`, status `ATIVA`.
 - Gauchinho (`7170f38e-15dd-4b19-8588-51e9a9cf0d4c`) → Racon: concessão `ATIVA`.
-- `administradora_id` continua ausente no remoto, coerente com a 050 não aplicada.
+- `administradora_id` existe no remoto como UUID nullable e não integra a lista de propriedades obrigatórias do OpenAPI.
+- FK validada para `public.administradoras(id)`, com `ON DELETE SET NULL` conforme a migration aplicada; join PostgREST resolveu Racon em 4/4 cartas.
+- Índice remoto confirmado: `idx_cartas_contempladas_administradora_id`.
+- Backfill: 4/4 cartas com `administradora_id = c5f8ecb4-cb5a-5014-b567-50484719b404`; zero NULL nas cartas atuais.
+- Snapshot textual preservado exatamente como `RACON` em 4/4 cartas.
 - Policy remota de cartas continua `cartas_public_read`, para `anon, authenticated`, com `ativo = true` e status público.
-- `supabase migration list --linked`: 001–049 local=remote; 050 somente local.
-- `supabase db push --linked --dry-run`: enviaria somente `050_fase4_cartas_administradora_confidencialidade.sql`.
-- Nenhum `db push`, `migration repair` ou alteração remota foi executado.
+- Credencial anon real confirmou 4 cartas por SELECT direto (`HTTP 200`): **TEMPORARY EXPECTED LEGACY ACCESS**.
+- Pré-apply: 001–049 local=remote; 050 somente local; dry-run enviaria somente a 050.
+- Pós-apply: 001–050 local=remote; dry-run `Remote database is up to date`.
+
+Contagens pré e pós, sem divergência:
+
+| Entidade | Pré | Pós |
+|---|---:|---:|
+| `cartas_contempladas` | 4 | 4 |
+| `leads` | 122 | 122 |
+| `propostas` | 16 | 16 |
+| `contratacoes_online` | 18 | 18 |
+| `grupos_consorcio` | 19 | 19 |
+| `grupos_cotas` | 178 | 178 |
 
 ## 4. Runtime e testes
 
@@ -96,7 +112,7 @@ Resultados finais locais:
 - URL: `https://guachinho-site-qz550bgb2-hugo-8097s-projects.vercel.app`.
 - Target: Preview.
 - Estado: `READY`.
-- `/cartas-contempladas`: HTTP 200 e 4 cartas Racon renderizadas com o schema remoto 049.
+- `/cartas-contempladas`: HTTP 200 e 4 cartas Racon renderizadas com o schema remoto 050; o payload contém os quatro UUIDs de cartas e o UUID estrutural Racon.
 - API autorizada com carta Racon: `{ ok: true }`; lead/eventos de homologação removidos e verificados com 0 registros remanescentes.
 - UUID inexistente: `Carta indisponível`.
 - Query/header forjados: mesma resposta pública; não alteraram autoridade do Host.
@@ -108,6 +124,7 @@ Produção permaneceu intacta:
 - `gauchinhoconsorcios.com.br` e `www.gauchinhoconsorcios.com.br` continuam no deployment Production `dpl_vN3frMLHq6EZnGEDch755wVb827w` (`READY`).
 - O Preview não recebeu aliases oficiais.
 - Nenhum DNS, alias, env Production ou deploy Production foi alterado.
+- Smokes read-only do runtime atual de Produção: `/`, `/cartas-contempladas`, `/grupos` e `/simulador` responderam HTTP 200 após o expand.
 
 ## 6. Policy de sorteios
 
@@ -119,20 +136,20 @@ Auditoria remota: 14 linhas. Colunas públicas reais:
 
 - Para inferência do catálogo comercial, o risco continua **baixo** após a Migration 049: `grupo_id` não permite SELECT anônimo do cadastro comercial de grupos/cotas/modalidades.
 - Divergência documental: não é correto dizer que a policy expõe “somente concurso/dezenas”; `criado_por_nome` e `criado_por_email` estão preenchidos em 14/14 linhas.
-- Isso constitui risco separado de privacidade/metadados autorais e deve ser saneado em hardening futuro com projeção pública mínima ou policy/RPC dedicada.
-- A policy não foi alterada nesta rodada.
+- A observação de privacidade permanece somente como registro técnico/documental.
+- O comportamento atual de sorteios está aprovado pelo proprietário: não é requisito, bloqueante ou tarefa desta Fase 4, da Etapa 050 ou da futura 051.
+- Nenhuma tabela, API, runtime, policy ou migration de sorteios foi alterada/criada nesta rodada.
 
 ## 7. Estado canônico e ordem segura recomendada
 
-**PREVIEW 050 APROVADO para o runtime**, com a ressalva estrutural de que a confidencialidade RLS direta ainda não está concluída.
+**MIGRATION 050 APLICADA E HOMOLOGADA COMO EXPAND** e **PREVIEW 050 APROVADO COM SCHEMA 050**, com a ressalva estrutural de que a confidencialidade RLS direta ainda não está concluída.
 
 Ordem segura:
 
-1. autorizar e aplicar a Migration 050 apenas como **expand** (FK nullable + índice + backfill/asserts), mantendo `cartas_public_read`;
-2. validar banco pós-050 sem perda e manter Produção atual operacional;
-3. deployar o runtime `a416e85` ou sucessor em Produção;
-4. homologar página/API/admin em Produção;
-5. criar, revisar e aplicar uma migration **contract** posterior (recomendação: 051) removendo `cartas_public_read`;
-6. repetir smokes e confirmar bloqueio anon direto.
+1. deployar o runtime `a416e85` ou sucessor em Produção;
+2. homologar página/API/admin em Produção;
+3. criar e revisar uma migration **contract** posterior, recomendada como 051, exclusivamente para cartas contempladas;
+4. aplicar a 051 removendo `cartas_public_read`;
+5. repetir smokes e confirmar bloqueio anon direto.
 
-Até nova autorização: Migration 050 **NÃO aplicada**; E7 e Fase 5 **NÃO iniciadas**.
+Até nova autorização: runtime 050 **NÃO deployado em Produção**; Migration 051 **NÃO criada**; E7 e Fase 5 **NÃO iniciadas**.
