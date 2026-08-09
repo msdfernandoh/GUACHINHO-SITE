@@ -43,7 +43,8 @@ export function CartaFormFields({
         </div>
         <div>
           <Label>Administradora</Label>
-          <Input name="administradora" defaultValue={str(g.administradora)} />
+          <Input name="administradora" defaultValue={str(g.administradora)} required />
+          <input type="hidden" name="administradora_id" value={str(g.administradora_id)} />
         </div>
       </div>
       <div className="grid gap-3 sm:grid-cols-2">

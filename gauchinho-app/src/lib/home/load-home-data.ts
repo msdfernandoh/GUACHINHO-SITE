@@ -1,4 +1,3 @@
-import { fetchPublicCartas } from "@/app/admin/cartas-contempladas/actions";
 import { fetchPublicGruposAggregates } from "@/app/admin/grupos/actions";
 import { fetchPublicImobiliariasParceiras } from "@/app/admin/imobiliarias/actions";
 import { fetchPublicImoveis } from "@/app/admin/imoveis/actions";
@@ -23,6 +22,8 @@ import {
   fetchPublicParceiros,
 } from "@/lib/conteudo/fetch-public";
 import type { CasoSucesso, DicaTche, ParceiroInstitucional } from "@/lib/conteudo/types";
+import { getCatalogEmpresaIdFromHeaders } from "@/lib/grupos/resolve-catalog-empresa";
+import { fetchPublicCartasAutorizadasForEmpresa } from "@/lib/cartas/catalogo-autorizado-cartas";
 
 export type HomeGrupoDestaque = {
   grupo: PublicGrupoAggregate["grupo"];
@@ -68,17 +69,23 @@ export async function loadHomePageData(): Promise<HomePageData> {
 
   let cartasDestaque: CartaContemplada[] = [];
   if (homeCartas.exibirNaHome !== false) {
+    const empresaId = await getCatalogEmpresaIdFromHeaders();
     const limit = Math.max(1, homeCartas.quantidade || 3);
     const cartas = await safeFetch(
       () =>
-        fetchPublicCartas({
-          apenasDestaque: homeCartas.mostrarApenasDestaque,
-        }),
+        empresaId
+          ? fetchPublicCartasAutorizadasForEmpresa(empresaId, {
+              apenasDestaque: homeCartas.mostrarApenasDestaque,
+            })
+          : Promise.resolve([]),
       [] as CartaContemplada[],
     );
     cartasDestaque = cartas.slice(0, limit);
-    if (!cartasDestaque.length && homeCartas.mostrarApenasDestaque) {
-      const all = await safeFetch(() => fetchPublicCartas({}), [] as CartaContemplada[]);
+    if (empresaId && !cartasDestaque.length && homeCartas.mostrarApenasDestaque) {
+      const all = await safeFetch(
+        () => fetchPublicCartasAutorizadasForEmpresa(empresaId),
+        [] as CartaContemplada[],
+      );
       cartasDestaque = all.slice(0, limit);
     }
   }

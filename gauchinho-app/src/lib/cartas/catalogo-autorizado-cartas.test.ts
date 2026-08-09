@@ -1,81 +1,133 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
+  assertEmpresaPodeAcessarCarta,
+  cartaPertenceAoCatalogoAutorizado,
+  fetchAuthorizedAdministradoraIdsForEmpresa,
   fetchPublicCartasAutorizadasForEmpresa,
   getCartaAutorizadaForEmpresa,
-  assertEmpresaPodeAcessarCarta,
-  fetchAuthorizedAdministradoraIdsForEmpresa,
+  type CatalogoCartasDeps,
 } from "./catalogo-autorizado-cartas";
-import * as concessoesModule from "@/lib/administradoras/concessoes";
-
-vi.mock("@/lib/administradoras/concessoes", () => ({
-  fetchConcessoesAtivasDaEmpresa: vi.fn(),
-}));
 
 const RACON_UUID = "c5f8ecb4-cb5a-5014-b567-50484719b404";
-const GAUCHINHO_EMPRESA_ID = "e1000000-0000-0000-0000-000000000001";
+const GAUCHINHO_ID = "7170f38e-15dd-4b19-8588-51e9a9cf0d4c";
 const EMPRESA_B_ID = "e2000000-0000-0000-0000-000000000002";
-const CARTA_RACON_ID = "a55a2915-9b30-43f0-8ecc-e723a616b61b";
 
-describe("Confidencialidade de Cartas Contempladas por Concessão (Etapa 050)", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
-  it("Gauchinho com concessão Racon ativa autoriza administradora Racon", async () => {
-    vi.mocked(concessoesModule.fetchConcessoesAtivasDaEmpresa).mockResolvedValueOnce([
-      {
+function concessaoRows(
+  empresaId: string,
+  vinculoStatus: "ATIVA" | "INATIVA" | "SUSPENSA" = "ATIVA",
+  administradoraStatus: "ATIVA" | "INATIVA" = "ATIVA",
+) {
+  return [
+    {
+      concessao: {
         id: "conc-1",
-        empresa_id: GAUCHINHO_EMPRESA_ID,
+        empresa_id: empresaId,
         administradora_id: RACON_UUID,
-        status: "ativa",
-        administradora: {
-          id: RACON_UUID,
-          nome: "Racon",
-          razao_social: "Racon Consórcios",
-          ativo: true,
-        },
-      } as any,
-    ]);
+        status: vinculoStatus,
+      },
+      administradora: {
+        id: RACON_UUID,
+        nome: "Racon",
+        nome_fantasia: "Racon Consórcios",
+        razao_social: "Racon Administradora de Consórcios Ltda.",
+        cnpj: null,
+        slug: "racon",
+        logo_url: null,
+        site_url: null,
+        status: administradoraStatus,
+        recursos_integracao: {},
+        metadata: {},
+        created_at: "2026-08-08T00:00:00Z",
+        updated_at: "2026-08-08T00:00:00Z",
+      },
+    },
+  ];
+}
 
-    const res = await fetchAuthorizedAdministradoraIdsForEmpresa(GAUCHINHO_EMPRESA_ID);
-    expect(res.adminIds).toContain(RACON_UUID);
-    expect(res.adminNamesLower).toContain("racon");
-  });
+function depsWithRows(rows: ReturnType<typeof concessaoRows> | []): CatalogoCartasDeps {
+  return {
+    fetchConcessoes: vi.fn().mockResolvedValue(rows),
+    adminFrom: vi.fn(() => {
+      throw new Error("adminFrom não deveria ser chamado sem concessão ativa");
+    }),
+  };
+}
 
-  it("Empresa B com 0 concessões não autoriza nenhuma administradora", async () => {
-    vi.mocked(concessoesModule.fetchConcessoesAtivasDaEmpresa).mockResolvedValueOnce([]);
-
-    const res = await fetchAuthorizedAdministradoraIdsForEmpresa(EMPRESA_B_ID);
-    expect(res.adminIds).toHaveLength(0);
-    expect(res.adminNamesLower).toHaveLength(0);
-  });
-
-  it("fetchPublicCartasAutorizadasForEmpresa retorna lista vazia imediatamente para Empresa B", async () => {
-    vi.mocked(concessoesModule.fetchConcessoesAtivasDaEmpresa).mockResolvedValueOnce([]);
-
-    const cartas = await fetchPublicCartasAutorizadasForEmpresa(EMPRESA_B_ID);
-    expect(cartas).toEqual([]);
-  });
-
-  it("getCartaAutorizadaForEmpresa retorna null (404 uniforme) para Empresa B tentando acessar carta Racon por UUID", async () => {
-    vi.mocked(concessoesModule.fetchConcessoesAtivasDaEmpresa).mockResolvedValueOnce([]);
-
-    const carta = await getCartaAutorizadaForEmpresa(EMPRESA_B_ID, CARTA_RACON_ID);
-    expect(carta).toBeNull();
-  });
-
-  it("assertEmpresaPodeAcessarCarta lança erro 'Carta contemplada não encontrada' se não autorizada", async () => {
-    vi.mocked(concessoesModule.fetchConcessoesAtivasDaEmpresa).mockResolvedValueOnce([]);
-
-    await expect(assertEmpresaPodeAcessarCarta(EMPRESA_B_ID, CARTA_RACON_ID)).rejects.toThrow(
-      "Carta contemplada não encontrada"
+describe("catálogo tenant-scoped de cartas contempladas", () => {
+  it("autoriza somente a Racon para a Gauchinho com concessão ATIVA + global ATIVA", async () => {
+    const result = await fetchAuthorizedAdministradoraIdsForEmpresa(
+      GAUCHINHO_ID,
+      depsWithRows(concessaoRows(GAUCHINHO_ID)),
     );
+    expect(result.adminIds).toEqual([RACON_UUID]);
+    expect(result.adminNamesLower).toContain("racon");
   });
 
-  it("concessão SUSPENSA ou INATIVA não libera cartas contempladas", async () => {
-    vi.mocked(concessoesModule.fetchConcessoesAtivasDaEmpresa).mockResolvedValueOnce([]);
+  it("Empresa B sem concessões não recebe administradoras nem consulta cartas", async () => {
+    const deps = depsWithRows([]);
+    await expect(fetchAuthorizedAdministradoraIdsForEmpresa(EMPRESA_B_ID, deps)).resolves.toEqual({
+      adminIds: [],
+      adminNamesLower: [],
+    });
+    await expect(fetchPublicCartasAutorizadasForEmpresa(EMPRESA_B_ID, {}, deps)).resolves.toEqual([]);
+    expect(deps.adminFrom).not.toHaveBeenCalled();
+  });
 
-    const cartas = await fetchPublicCartasAutorizadasForEmpresa(GAUCHINHO_EMPRESA_ID);
-    expect(cartas).toEqual([]);
+  it.each(["INATIVA", "SUSPENSA"] as const)(
+    "concessão %s não autoriza cartas",
+    async (status) => {
+      const result = await fetchAuthorizedAdministradoraIdsForEmpresa(
+        GAUCHINHO_ID,
+        depsWithRows(concessaoRows(GAUCHINHO_ID, status)),
+      );
+      expect(result.adminIds).toEqual([]);
+    },
+  );
+
+  it("administradora global INATIVA não autoriza cartas", async () => {
+    const result = await fetchAuthorizedAdministradoraIdsForEmpresa(
+      GAUCHINHO_ID,
+      depsWithRows(concessaoRows(GAUCHINHO_ID, "ATIVA", "INATIVA")),
+    );
+    expect(result.adminIds).toEqual([]);
+  });
+
+  it("aceita UUID estrutural autorizado após a 050", () => {
+    expect(
+      cartaPertenceAoCatalogoAutorizado(
+        { administradora_id: RACON_UUID, administradora: "snapshot antigo" },
+        { adminIds: [RACON_UUID], adminNamesLower: ["racon"] },
+      ),
+    ).toBe(true);
+  });
+
+  it("aceita snapshot Racon antes da 050", () => {
+    expect(
+      cartaPertenceAoCatalogoAutorizado(
+        { administradora_id: undefined, administradora: " RACON " },
+        { adminIds: [RACON_UUID], adminNamesLower: ["racon"] },
+      ),
+    ).toBe(true);
+  });
+
+  it("rejeita UUID e snapshot de administradora não concedida", () => {
+    expect(
+      cartaPertenceAoCatalogoAutorizado(
+        { administradora_id: "00000000-0000-0000-0000-000000000099", administradora: "Outra" },
+        { adminIds: [RACON_UUID], adminNamesLower: ["racon"] },
+      ),
+    ).toBe(false);
+  });
+
+  it("UUID inexistente e UUID cross-tenant retornam a mesma ausência para Empresa B", async () => {
+    const deps = depsWithRows([]);
+    await expect(getCartaAutorizadaForEmpresa(EMPRESA_B_ID, "carta-racon", deps)).resolves.toBeNull();
+    await expect(getCartaAutorizadaForEmpresa(EMPRESA_B_ID, "carta-inexistente", deps)).resolves.toBeNull();
+  });
+
+  it("assert público usa erro NOT_FOUND uniforme", async () => {
+    await expect(
+      assertEmpresaPodeAcessarCarta(EMPRESA_B_ID, "carta-racon", depsWithRows([])),
+    ).rejects.toThrow("Carta contemplada não encontrada");
   });
 });

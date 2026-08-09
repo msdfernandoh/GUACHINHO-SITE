@@ -1,136 +1,132 @@
+import "server-only";
+
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { listAdministradoraIdsAutorizadasForEmpresa } from "@/lib/grupos/catalogo-autorizado-service";
-import { PublicCartasFilters } from "@/app/admin/cartas-contempladas/actions";
+import { fetchConcessoesComAdministradoraByEmpresa } from "@/lib/administradoras/repository";
+import { filterAdministradorasAutorizadasForEmpresa } from "@/lib/administradoras/rules";
+import type { PublicCartasFilters } from "@/app/admin/cartas-contempladas/actions";
 import type { CartaContemplada } from "@/lib/cartas/types";
 
-/**
- * Retorna as IDs e nomes de administradoras ativas concedidas para a empresa.
- */
-export async function fetchAuthorizedAdministradoraIdsForEmpresa(empresaId: string): Promise<{
-  adminIds: string[];
-  adminNamesLower: string[];
-}> {
-  const adminIds = await listAdministradoraIdsAutorizadasForEmpresa(empresaId);
+type ConcessoesRows = Awaited<ReturnType<typeof fetchConcessoesComAdministradoraByEmpresa>>;
 
-  // Também buscar nomes das administradoras para suporte a fallback de snapshot textual 'Racon'
-  const supabase = createAdminClient();
-  const adminNamesLower: string[] = [];
+export type CatalogoCartasDeps = {
+  fetchConcessoes: (empresaId: string) => Promise<ConcessoesRows>;
+  adminFrom: () => SupabaseClient;
+};
 
-  if (adminIds.length > 0) {
-    const { data: adms } = await supabase.from("administradoras").select("nome, razao_social").in("id", adminIds);
-    if (adms) {
-      for (const a of adms) {
-        if (a.nome) adminNamesLower.push(a.nome.trim().toLowerCase());
-        if (a.razao_social) adminNamesLower.push(a.razao_social.trim().toLowerCase());
-      }
-    }
+const defaultDeps: CatalogoCartasDeps = {
+  fetchConcessoes: fetchConcessoesComAdministradoraByEmpresa,
+  adminFrom: createAdminClient,
+};
+
+export function cartaPertenceAoCatalogoAutorizado(
+  carta: Pick<CartaContemplada, "administradora_id" | "administradora">,
+  autorizadas: { adminIds: string[]; adminNamesLower: string[] },
+): boolean {
+  if (carta.administradora_id && autorizadas.adminIds.includes(carta.administradora_id)) {
+    return true;
   }
+  const nome = carta.administradora?.trim().toLowerCase();
+  return Boolean(nome && autorizadas.adminNamesLower.includes(nome));
+}
+
+/** IDs e nomes somente de concessões ATIVA ligadas a administradoras globais ATIVA. */
+export async function fetchAuthorizedAdministradoraIdsForEmpresa(
+  empresaId: string,
+  deps: CatalogoCartasDeps = defaultDeps,
+): Promise<{ adminIds: string[]; adminNamesLower: string[] }> {
+  if (!empresaId) return { adminIds: [], adminNamesLower: [] };
+
+  const rows = await deps.fetchConcessoes(empresaId);
+  const autorizadas = filterAdministradorasAutorizadasForEmpresa(empresaId, rows);
+  const names = autorizadas.flatMap((administradora) => [
+    administradora.nome,
+    administradora.nome_fantasia,
+  ]);
 
   return {
-    adminIds,
-    adminNamesLower: [...new Set(adminNamesLower)],
+    adminIds: autorizadas.map((administradora) => administradora.id),
+    adminNamesLower: [
+      ...new Set(
+        names
+          .filter((nome): nome is string => Boolean(nome?.trim()))
+          .map((nome) => nome.trim().toLowerCase()),
+      ),
+    ],
   };
 }
 
-/**
- * Busca cartas contempladas autorizadas para a empresa informada por tenant/host.
- */
+/** Catálogo público tenant-scoped, compatível antes e depois da coluna da Migration 050. */
 export async function fetchPublicCartasAutorizadasForEmpresa(
   empresaId: string,
-  filters: PublicCartasFilters = {}
+  filters: PublicCartasFilters = {},
+  deps: CatalogoCartasDeps = defaultDeps,
 ): Promise<CartaContemplada[]> {
-  const { adminIds, adminNamesLower } = await fetchAuthorizedAdministradoraIdsForEmpresa(empresaId);
+  const autorizadas = await fetchAuthorizedAdministradoraIdsForEmpresa(empresaId, deps);
+  if (autorizadas.adminIds.length === 0) return [];
 
-  // Se a empresa não tiver concessões ativas com NENHUMA administradora (ex: Empresa B),
-  // retorna lista vazia imediatamente sem vazamento.
-  if (adminIds.length === 0 && adminNamesLower.length === 0) {
-    return [];
-  }
-
-  const supabase = createAdminClient();
-  let q = supabase
+  let query = deps
+    .adminFrom()
     .from("cartas_contempladas")
     .select("*")
     .eq("ativo", true)
     .in("status", ["disponivel", "consultar_disponibilidade"]);
 
-  if (filters.tipo) q = q.eq("tipo_carta", filters.tipo);
-  if (filters.status) q = q.eq("status", filters.status);
-  if (filters.creditoMin != null) q = q.gte("credito", filters.creditoMin);
-  if (filters.creditoMax != null) q = q.lte("credito", filters.creditoMax);
-  if (filters.entradaMin != null) q = q.gte("entrada", filters.entradaMin);
-  if (filters.entradaMax != null) q = q.lte("entrada", filters.entradaMax);
-  if (filters.apenasDestaque) q = q.eq("destaque", true);
+  if (filters.tipo) query = query.eq("tipo_carta", filters.tipo);
+  if (filters.status) query = query.eq("status", filters.status);
+  if (filters.creditoMin != null) query = query.gte("credito", filters.creditoMin);
+  if (filters.creditoMax != null) query = query.lte("credito", filters.creditoMax);
+  if (filters.entradaMin != null) query = query.gte("entrada", filters.entradaMin);
+  if (filters.entradaMax != null) query = query.lte("entrada", filters.entradaMax);
+  if (filters.apenasDestaque) query = query.eq("destaque", true);
 
   const sort = filters.sort ?? "recentes";
   if (sort === "menor_entrada") {
-    q = q.order("entrada", { ascending: true, nullsFirst: false });
+    query = query.order("entrada", { ascending: true, nullsFirst: false });
   } else if (sort === "maior_credito") {
-    q = q.order("credito", { ascending: false, nullsFirst: false });
+    query = query.order("credito", { ascending: false, nullsFirst: false });
   } else {
-    q = q.order("created_at", { ascending: false });
+    query = query.order("created_at", { ascending: false });
   }
 
-  const { data, error } = await q;
+  const { data, error } = await query;
   if (error || !data) return [];
-
-  // Filtragem tenant-scoped hermética:
-  // Carta autorizada se administradora_id for da concessão OU se texto da administradora bater
-  const cartasAutorizadas = data.filter((carta) => {
-    if (carta.administradora_id && adminIds.includes(carta.administradora_id)) {
-      return true;
-    }
-    if (carta.administradora) {
-      const nameLower = carta.administradora.trim().toLowerCase();
-      if (adminNamesLower.includes(nameLower)) {
-        return true;
-      }
-    }
-    return false;
-  });
-
-  return cartasAutorizadas as CartaContemplada[];
+  return (data as CartaContemplada[]).filter((carta) =>
+    cartaPertenceAoCatalogoAutorizado(carta, autorizadas),
+  );
 }
 
-/**
- * Busca uma carta contemplada específica autorizada para a empresa por UUID.
- * Retorna null se inexistente ou se pertencente a administradora não concedida (404 uniforme).
- */
+/** Carta inexistente e carta não autorizada são indistinguíveis publicamente. */
 export async function getCartaAutorizadaForEmpresa(
   empresaId: string,
-  cartaId: string
+  cartaId: string,
+  deps: CatalogoCartasDeps = defaultDeps,
 ): Promise<CartaContemplada | null> {
   if (!cartaId || !empresaId) return null;
 
-  const { adminIds, adminNamesLower } = await fetchAuthorizedAdministradoraIdsForEmpresa(empresaId);
-  if (adminIds.length === 0 && adminNamesLower.length === 0) return null;
+  const autorizadas = await fetchAuthorizedAdministradoraIdsForEmpresa(empresaId, deps);
+  if (autorizadas.adminIds.length === 0) return null;
 
-  const supabase = createAdminClient();
-  const { data: carta, error } = await supabase
+  const { data, error } = await deps
+    .adminFrom()
     .from("cartas_contempladas")
     .select("*")
     .eq("id", cartaId)
     .eq("ativo", true)
-    .single();
+    .in("status", ["disponivel", "consultar_disponibilidade"])
+    .maybeSingle();
 
-  if (error || !carta) return null;
-
-  const isAuthorized =
-    (carta.administradora_id && adminIds.includes(carta.administradora_id)) ||
-    (carta.administradora && adminNamesLower.includes(carta.administradora.trim().toLowerCase()));
-
-  if (!isAuthorized) return null;
-
-  return carta as CartaContemplada;
+  if (error || !data) return null;
+  const carta = data as CartaContemplada;
+  return cartaPertenceAoCatalogoAutorizado(carta, autorizadas) ? carta : null;
 }
 
-/**
- * Assegura permissão de acesso da empresa a uma carta. Lança erro uniforme de NOT_FOUND.
- */
-export async function assertEmpresaPodeAcessarCarta(empresaId: string, cartaId: string): Promise<CartaContemplada> {
-  const carta = await getCartaAutorizadaForEmpresa(empresaId, cartaId);
-  if (!carta) {
-    throw new Error("Carta contemplada não encontrada");
-  }
+export async function assertEmpresaPodeAcessarCarta(
+  empresaId: string,
+  cartaId: string,
+  deps: CatalogoCartasDeps = defaultDeps,
+): Promise<CartaContemplada> {
+  const carta = await getCartaAutorizadaForEmpresa(empresaId, cartaId, deps);
+  if (!carta) throw new Error("Carta contemplada não encontrada");
   return carta;
 }

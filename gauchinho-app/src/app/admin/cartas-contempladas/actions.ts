@@ -3,11 +3,17 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { requireUsuario } from "@/lib/auth/get-usuario";
 import { canDeleteRecords } from "@/lib/auth/permissions";
 import { parseBrazilianNumber } from "@/lib/utils/format";
 import type { CartaStatus, CartaTipo } from "@/lib/cartas/types";
 import { CARTA_STATUS } from "@/lib/cartas/types";
+import {
+  isMissingCartaAdministradoraIdColumn,
+  resolveCartaAdministradora,
+  withoutCartaAdministradoraId,
+} from "@/lib/cartas/administradora";
 import { registrarEvento } from "@/lib/eventos/registrar";
 import {
   enrichPropostaProjecaoFromSimulacao,
@@ -33,34 +39,22 @@ async function cartaFromForm(formData: FormData) {
   const status = String(formData.get("status") ?? "consultar_disponibilidade").trim() as CartaStatus;
   if (!CARTA_STATUS.includes(status)) throw new Error("Status inválido");
 
-  const administradoraRaw = String(formData.get("administradora") ?? "").trim() || null;
-  const administradoraIdRaw = String(formData.get("administradora_id") ?? "").trim() || null;
-
-  let administradoraId = administradoraIdRaw;
-  let administradoraText = administradoraRaw;
-
-  if (administradoraId && !administradoraText) {
-    const { fetchAdministradorasGlobais } = await import("@/lib/administradoras/repository");
-    const allAdms = await fetchAdministradorasGlobais();
-    const adm = allAdms.find((a) => a.id === administradoraId);
-    if (adm) administradoraText = adm.nome;
-  } else if (!administradoraId && administradoraText) {
-    const { fetchAdministradorasGlobais } = await import("@/lib/administradoras/repository");
-    const allAdms = await fetchAdministradorasGlobais();
-    const match = allAdms.find(
-      (a) =>
-        a.nome.trim().toLowerCase() === administradoraText!.toLowerCase() ||
-        (a.razao_social && a.razao_social.trim().toLowerCase() === administradoraText!.toLowerCase())
-    );
-
-    if (match) administradoraId = match.id;
-  }
-
+  const admin = createAdminClient();
+  const { data: administradoras, error: administradorasError } = await admin
+    .from("administradoras")
+    .select("id, nome, nome_fantasia, razao_social, status");
+  if (administradorasError) throw new Error("Não foi possível validar a administradora.");
+  const administradora = resolveCartaAdministradora(
+    {
+      administradoraId: String(formData.get("administradora_id") ?? ""),
+      administradora: String(formData.get("administradora") ?? ""),
+    },
+    administradoras ?? [],
+  );
 
   return {
     tipo_carta: tipo === "automovel" ? "automovel" : "imovel",
-    administradora: administradoraText,
-    administradora_id: administradoraId,
+    ...administradora,
     credito: numForm(formData, "credito"),
     entrada: numForm(formData, "entrada"),
     prazo_quantidade: intForm(formData, "prazo_quantidade"),
@@ -117,41 +111,28 @@ export type PublicCartasFilters = {
 };
 
 export async function fetchPublicCartas(filters: PublicCartasFilters = {}) {
-  const supabase = await createClient();
-  let q = supabase
-    .from("cartas_contempladas")
-    .select("*")
-    .eq("ativo", true)
-    .in("status", ["disponivel", "consultar_disponibilidade"]);
-
-  if (filters.tipo) q = q.eq("tipo_carta", filters.tipo);
-  if (filters.administradora) q = q.ilike("administradora", `%${filters.administradora}%`);
-  if (filters.status) q = q.eq("status", filters.status);
-  if (filters.creditoMin != null) q = q.gte("credito", filters.creditoMin);
-  if (filters.creditoMax != null) q = q.lte("credito", filters.creditoMax);
-  if (filters.entradaMin != null) q = q.gte("entrada", filters.entradaMin);
-  if (filters.entradaMax != null) q = q.lte("entrada", filters.entradaMax);
-  if (filters.apenasDestaque) q = q.eq("destaque", true);
-
-  const sort = filters.sort ?? "recentes";
-  if (sort === "menor_entrada") {
-    q = q.order("entrada", { ascending: true, nullsFirst: false });
-  } else if (sort === "maior_credito") {
-    q = q.order("credito", { ascending: false, nullsFirst: false });
-  } else {
-    q = q.order("created_at", { ascending: false });
-  }
-
-  const { data, error } = await q;
-  if (error) throw new Error(error.message);
-  return data ?? [];
+  const { getCatalogEmpresaIdFromHeaders } = await import("@/lib/grupos/resolve-catalog-empresa");
+  const { fetchPublicCartasAutorizadasForEmpresa } = await import(
+    "@/lib/cartas/catalogo-autorizado-cartas"
+  );
+  const empresaId = await getCatalogEmpresaIdFromHeaders();
+  if (!empresaId) return [];
+  return fetchPublicCartasAutorizadasForEmpresa(empresaId, filters);
 }
 
 export async function createCartaAction(formData: FormData) {
   await requireUsuario();
   const supabase = await createClient();
   const payload = await cartaFromForm(formData);
-  const { data, error } = await supabase.from("cartas_contempladas").insert(payload).select("id").single();
+  let result = await supabase.from("cartas_contempladas").insert(payload).select("id").single();
+  if (isMissingCartaAdministradoraIdColumn(result.error?.message)) {
+    result = await supabase
+      .from("cartas_contempladas")
+      .insert(withoutCartaAdministradoraId(payload))
+      .select("id")
+      .single();
+  }
+  const { data, error } = result;
   if (error) throw new Error(error.message);
   revalidatePath("/admin/cartas-contempladas");
   revalidatePath("/cartas-contempladas");
@@ -162,7 +143,14 @@ export async function updateCartaAction(cartaId: string, formData: FormData) {
   await requireUsuario();
   const supabase = await createClient();
   const payload = await cartaFromForm(formData);
-  const { error } = await supabase.from("cartas_contempladas").update(payload).eq("id", cartaId);
+  let result = await supabase.from("cartas_contempladas").update(payload).eq("id", cartaId);
+  if (isMissingCartaAdministradoraIdColumn(result.error?.message)) {
+    result = await supabase
+      .from("cartas_contempladas")
+      .update(withoutCartaAdministradoraId(payload))
+      .eq("id", cartaId);
+  }
+  const { error } = result;
   if (error) throw new Error(error.message);
   revalidatePath(`/admin/cartas-contempladas/${cartaId}`);
   revalidatePath("/admin/cartas-contempladas");

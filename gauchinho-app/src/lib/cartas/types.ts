@@ -30,6 +30,7 @@ export const CARTA_STATUS_LABELS: Record<CartaStatus, string> = {
 export type CartaContemplada = {
   id: string;
   tipo_carta: CartaTipo;
+  administradora_id?: string | null;
   administradora: string | null;
   credito: number | null;
   entrada: number | null;
