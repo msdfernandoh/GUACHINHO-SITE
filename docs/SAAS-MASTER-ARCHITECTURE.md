@@ -1,8 +1,8 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
-> **Versão:** 1.4.1  
+> **Versão:** 1.4.2  
 > **Data de Atualização:** 08/08/2026  
-> **Status da Plataforma:** Fase 2 Concluída e Homologada em Produção; **Fase 3 CONCLUÍDA E HOMOLOGADA EM PRODUÇÃO**; **Fase 4 EM ANDAMENTO** (Etapa E6 CONCLUÍDA E HOMOLOGADA em Produção; **Etapa 050 IMPLEMENTADA LOCALMENTE** com runtime tenant-scoped para `cartas_contempladas` + Migration local 050 criada, **NÃO aplicada**; RLS de confidencialidade comercial de grupos/cotas/modalidades 100% ativa em produção; policy de sorteios auditada com severidade BAIXA) — **Racon = administradora global**; **Gauchinho = empresa/franqueada**; Empresa B sem concessão; Fase 5 **não** iniciada  
+> **Status da Plataforma:** Fase 2 Concluída e Homologada em Produção; **Fase 3 CONCLUÍDA E HOMOLOGADA EM PRODUÇÃO**; **Fase 4 EM ANDAMENTO** (Etapa E6 concluída em Produção; runtime da **Etapa 050 APROVADO EM PREVIEW** no SHA `a416e85`; Migration 050 local aditiva, **NÃO aplicada**; remoção de `cartas_public_read` requer contract posterior; **Racon = administradora global**; **Gauchinho = empresa/franqueada**; Empresa B sem concessão; Fase 5 não iniciada)  
 
 
 > **Projeto Físico:** `C:\Fernando Hugo\GAUCHINHO SITE`  
@@ -109,7 +109,7 @@ As funções PostgreSQL de segurança (`SECURITY DEFINER`) instaladas no banco:
 * **FASE 1:** Fundação SaaS Multiempresa (Empresas, Usuários, Papéis, Permissões, Tenant Context) *(Concluída — Migration 043)*
 * **FASE 2:** Sites Multiempresa, Branding e Empresa B *(**CONCLUÍDA E HOMOLOGADA EM PRODUÇÃO** — código `12a5e61`, deploy `dpl_F1uWUw…`, docs `b3e6247`; Migration 044; Empresa B não publicada; fallback mantido temporariamente — ver `docs/relatorios-fases/FASE-02-IMPLEMENTACAO-E-HOMOLOGACAO.md`)*
 * **FASE 3:** Participantes Comerciais e Sites de Parceiros *(**CONCLUÍDA E HOMOLOGADA EM PRODUÇÃO** — ver §5.1 e `docs/relatorios-fases/FASE-03-IMPLEMENTACAO-E-HOMOLOGACAO.md`)*
-* **FASE 4:** Catálogo Global de Administradoras *(E0–E6 código local — Migrations **047+048** aplicadas; **049** local não aplicada; E5 remoto `6ddbd0c`; filtro concessão + leitura pública server-side — ver §5.2 e `docs/relatorios-fases/FASE-04-CATALOGO-GLOBAL-ADMINISTRADORAS.md` §16)*
+* **FASE 4:** Catálogo Global de Administradoras *(E0–E6 homologadas em Produção; Migrations 047–049 aplicadas; runtime 050 aprovado em Preview; Migration 050 local não aplicada — ver §5.2 e `docs/relatorios-fases/FASE-04-CATALOGO-GLOBAL-ADMINISTRADORAS.md`)*
 * **FASE 5:** Evolução de Grupos e Opções Comerciais
 * **FASE 6:** CRM, Leads, Agenda e Propostas Multiempresa *(funil, distribuição, agenda, automações, histórico avançado — fora da Fase 3)*
 * **FASE 7:** Contratação Online Multiempresa
@@ -223,11 +223,17 @@ Comissões/repasses, wildcard DNS, editor do site pelo parceiro, backfill massiv
 * **E6 (hardening pré-049):** sorteios público tenant-scoped; testes mock pós-049; integração Gauchinho legado documentada; cartas = proposta **050**
 * **001–048** local=remote; dry-run: **Would push only 049**
 
+### Etapa 050 — cartas contempladas
+* Branch: `feature/saas-fase-4-cartas-confidencialidade`; runtime corrigido `a416e85`.
+* Preview `dpl_HHrjVRgfYwhNhB3Jveofd6e2i6A6` READY; schema remoto permanece 049.
+* Runtime compatível pré/pós-050: Host resolve tenant; concessão + administradora global devem estar ATIVA; UUID e snapshot textual suportam transição segura.
+* Migration 050 é expand aditiva (FK nullable + índice + backfill/asserts) e **não remove** `cartas_public_read`.
+* Contract RLS deve ocorrer em migration posterior somente após runtime novo em Produção.
+
 ### Status etapas
-E0–E6 CÓDIGO LOCAL · E7–E9 NÃO INICIADAS · Fase 4 EM ANDAMENTO · Fase 5 NÃO INICIADA
+E0–E6 HOMOLOGADAS EM PRODUÇÃO · RUNTIME 050 APROVADO EM PREVIEW · MIGRATION 050 NÃO APLICADA · E7–E9 NÃO INICIADAS · Fase 4 EM ANDAMENTO · Fase 5 NÃO INICIADA
 
 ### Riscos atuais
-* ALTA: RLS pública grupos/cotas/modalidades **legacy ainda ativa** — fechamento via **049** após preview app E6
-* MÉDIA: cartas contempladas públicas globais — **050** proposta (não bloqueia 049)
-* MÉDIA: cartas contempladas ainda sem FK `administradora_id` (filtro por concessão = etapa futura)
-* BAIXA: alteração de slug global permitida (auditada) — impacto futuro em URLs
+* MÉDIA: `cartas_public_read` ainda permite leitura anon direta até o contract pós-runtime.
+* MÉDIA: `grupos_sorteios_loteria_public_read` expõe nome/e-mail autoral; risco de inferência comercial é baixo, mas há risco separado de privacidade.
+* BAIXA: alteração de slug global permitida (auditada) — impacto futuro em URLs.
