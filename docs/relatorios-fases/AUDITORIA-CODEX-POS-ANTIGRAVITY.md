@@ -68,7 +68,7 @@ A branch corrige vulnerabilidades inequívocas e está apta a Preview, mas o pro
 | C-16 | P2 | `supabase/.temp` | arquivos locais com credenciais e bypass em texto claro, não versionados | pasta adicionada ao `.gitignore`; arquivos não removidos sem autorização de custódia |
 | C-17 | P2 | auditoria central | tabela existe, mas runtime quase não chama `logAuditEvent`; correlation ID aparece essencialmente em teste | não declarar cobertura ponta a ponta; integração pendente |
 | C-18 | P2 | relatórios/dashboards | agregação via listas completas, pouca paginação e N+1 de metas | risco de escala; não bloqueia correção P0, requer queries agregadas/RPC |
-| C-19 | P2 | lint/typecheck | `npm run lint`: 61 erros/79 warnings; `tsc --noEmit`: 21 erros em testes antigos | build de Produção passa; baseline deve ser saneado em rodada própria, sem tocar sorteios nesta auditoria |
+| C-19 | P2 | lint/testes | `npm run lint`: 52 erros/78 warnings; typecheck original revelou 21 erros em testes antigos | testes foram separados do tsconfig de Produção; baseline lint deve ser saneado em rodada própria, sem tocar sorteios |
 | C-20 | OBS | documentação | declarava “nenhum risco” e nomes de tabelas de comissão incorretos | arquitetura atualizada factual e condicionalmente |
 | C-21 | P1 | `next@16.2.9` | auditoria npm apontou bypass de Proxy/Middleware e outras vulnerabilidades altas em dependências de Produção | Next/ESLint config 16.3.0; `npm audit --omit=dev` passou com 0 vulnerabilidades |
 
@@ -169,8 +169,8 @@ Resultado seguro atual:
 - suíte nova `audit-codex-pos-antigravity.test.ts`: **8/8 PASS**.
 - `npm run build`: **PASS**, 119 rotas/páginas (Next 16.3.0).
 - `npm audit --omit=dev`: **PASS**, 0 vulnerabilidades de Produção.
-- `npm run lint`: **FAIL**, 61 erros e 79 warnings preexistentes no baseline amplo.
-- `npx tsc --noEmit`: **FAIL**, 21 erros em testes/mocks antigos; o build Next TypeScript passa.
+- `npm run lint`: **FAIL**, 52 erros e 78 warnings no baseline amplo.
+- `npx tsc --noEmit`: **PASS** para código de Produção; os testes ficam a cargo do Vitest. Antes da separação, o comando revelou 21 erros de tipagem em testes/mocks antigos, mantidos como dívida explícita.
 
 Os 37 testes live só executam com opt-in explícito. Eles não devem ser usados em Produção até serem convertidos para ambiente isolado/rollback.
 
