@@ -1,8 +1,8 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
-> **Versão:** 1.5.1  
+> **Versão:** 1.5.2  
 > **Data de Atualização:** 09/08/2026  
-> **Status da Plataforma:** Fase 2 Concluída e Homologada em Produção; **Fase 3 CONCLUÍDA E HOMOLOGADA EM PRODUÇÃO**; **Fase 4 CONCLUÍDA E HOMOLOGADA EM PRODUÇÃO**; **Fase 5 EM ANDAMENTO** (Etapa E0/E0.1 de Auditoria e **ETAPA E1 CONCLUÍDA E HOMOLOGADA EM VERCEL PREVIEW**; Migration 052 criada localmente; mutação de catálogo global restrita a SuperAdmin; servico de apresentacao local `empresa_grupos_config` implementado; Produção intacta; sorteios 100% inalterados)  
+> **Status da Plataforma:** Fase 2 Concluída e Homologada em Produção; **Fase 3 CONCLUÍDA E HOMOLOGADA EM PRODUÇÃO**; **Fase 4 CONCLUÍDA E HOMOLOGADA EM PRODUÇÃO**; **Fase 5 EM ANDAMENTO** (Etapa E0/E0.1 de Auditoria e **ETAPAS E1 E E1.1 HARDENED CONCLUÍDAS E HOMOLOGADAS EM VERCEL PREVIEW**; Migration 052 com RLS PostgreSQL `grupo_concedido_para_empresa()` criada localmente; mutação de catálogo global restrita a SuperAdmin; servico de apresentacao local `empresa_grupos_config` blindado contra ataques diretos; Produção intacta; sorteios 100% inalterados)  
 
 
 > **Projeto Físico:** `C:\Fernando Hugo\GAUCHINHO SITE`  
