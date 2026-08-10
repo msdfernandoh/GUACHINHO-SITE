@@ -2,7 +2,7 @@
 
 > **Versão Final do Projeto:** 5.0.0  
 > **Data de Atualização:** 10/08/2026  
-> **Status Geral do Projeto:** **PRODUÇÃO EM CORREÇÃO PÓS-AUDITORIA INDEPENDENTE**  
+> **Status Geral do Projeto:** **HOTFIX DE SEGURANÇA EM PRODUÇÃO; HOMOLOGAÇÃO INTEGRAL AINDA ABERTA**  
 > **Macroblocos A–F:** implantados, porém a homologação integral foi reaberta após achado material nas APIs de gestão e pendências RLS/financeiras documentadas.  
 > **Infraestrutura em Produção:**  
 > - **Vercel Production:** `https://gauchinhoconsorcios.com.br` (Status READY, Aliased)  
@@ -79,6 +79,6 @@ A plataforma suporta:
 
 ## 5. Declaração Final de Segurança e Riscos
 
-* O P0 das seis APIs de gestão foi corrigido na branch `hotfix/codex-security-pos-antigravity` e validado em Preview independente.
-* A homologação integral permanece aberta até o deploy corretivo e a futura separação das migrations de RLS/integridade e das decisões financeiras/comerciais.
+* O P0 das seis APIs de gestão foi corrigido, validado em Preview independente e implantado em Produção no deploy `dpl_HG9SDAFfZyNrb9nxAw5PahRKNVGj`.
+* A homologação integral permanece aberta até a futura separação das migrations de RLS/integridade e das decisões financeiras/comerciais.
 * Relatório técnico: `docs/relatorios-fases/HOTFIX-CODEX-POS-AUDITORIA.md`.

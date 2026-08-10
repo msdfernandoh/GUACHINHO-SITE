@@ -8,10 +8,10 @@
 
 ## 1. Estados separados
 
-- `PRODUCTION_ATUAL_ANTIGRAVITY`: versão implantada antes deste hotfix, auditada como vulnerável nas seis APIs de gestão.
+- `PRODUCTION_ATUAL_ANTIGRAVITY`: versão substituída de forma controlada; era vulnerável nas seis APIs de gestão.
 - `AUDIT_BRANCH_CODEX`: `hotfix/codex-security-pos-antigravity`, criada limpa a partir da `origin/main`.
 - `CODEX_PREVIEW`: deploy `dpl_6jAAvsFzbKTs8Mo2YBQxKftyd9zz`, READY, em `https://guachinho-site-8zhjv6qsf-hugo-8097s-projects.vercel.app`.
-- `PRODUCTION_CORRIGIDA_CODEX`: pendente do merge/deploy controlado registrado na seção 8.
+- `PRODUCTION_CORRIGIDA_CODEX`: `main` em `7d54a65`, deploy `dpl_HG9SDAFfZyNrb9nxAw5PahRKNVGj`, READY e associado ao domínio canônico.
 
 ## 2. Achado material e correção
 
@@ -150,7 +150,17 @@ Há `CASCADE` em programa→regras, venda→previsões, participante→regra e r
 
 ## 8. Merge, deploy e smoke de Produção
 
-Pendente de execução controlada após este relatório. Preencher com SHA de `main`, deployment ID/URL, resultados das dez rotas e inspeção de logs.
+- merge commit em `main`: `7d54a65` (`merge: aplica hotfix Codex pos-auditoria`);
+- `origin/main` atualizado com sucesso;
+- deployment automático único: `dpl_HG9SDAFfZyNrb9nxAw5PahRKNVGj`;
+- URL imutável: `https://guachinho-site-he8rk218i-hugo-8097s-projects.vercel.app`;
+- target `production`, estado READY;
+- `https://gauchinhoconsorcios.com.br` redireciona 308 para o canônico `https://www.gauchinhoconsorcios.com.br`;
+- no domínio canônico, as seis APIs administrativas retornaram 401 anônimo;
+- `/`, `/grupos`, `/simulador` e `/api/public/grupos/sorteios` retornaram 200;
+- logs de erro e warning do deployment: nenhum registro encontrado após o smoke.
+
+O hotfix de código está em Produção. Isso não encerra as pendências RLS e financeiras listadas na seção 9.
 
 ## 9. Riscos residuais
 
