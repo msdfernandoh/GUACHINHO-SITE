@@ -1,4 +1,4 @@
--- Migration 052: Tabela de Configuração Local Empresa x Grupo (Fase 5 - Etapa E1.1 Hardened)
+-- Migration 052: Tabela de Configuração Local Empresa x Grupo (Fase 5 - Etapa E1.2 Hardened & Reconciled)
 -- Permite que empresas personalizem visibilidade, destaque, ordem e títulos de apresentação local
 -- sem duplicar ou mutar atributos oficiais do catálogo global da administradora.
 
@@ -34,7 +34,7 @@ CREATE TRIGGER trg_empresa_grupos_config_updated_at
 -- Habilita RLS
 ALTER TABLE public.empresa_grupos_config ENABLE ROW LEVEL SECURITY;
 
--- Helper SQL function para verificar se o grupo possui concessão ATIVA para a empresa
+-- 1. Helper SQL function para verificar se o grupo possui concessão ATIVA para a empresa
 CREATE OR REPLACE FUNCTION public.grupo_concedido_para_empresa(p_empresa_id UUID, p_grupo_id UUID)
 RETURNS BOOLEAN AS $$
 BEGIN
@@ -49,7 +49,34 @@ BEGIN
           AND a.status = 'ATIVA'
     );
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+
+REVOKE ALL ON FUNCTION public.grupo_concedido_para_empresa(UUID, UUID) FROM public;
+GRANT EXECUTE ON FUNCTION public.grupo_concedido_para_empresa(UUID, UUID) TO authenticated, service_role;
+
+-- 2. Helper SQL function para verificar se o usuário possui permissão de GESTÃO COMERCIAL/ADMINISTRATIVA da empresa (master ou srd)
+CREATE OR REPLACE FUNCTION public.can_manage_empresa_grupos_config(p_empresa_id UUID)
+RETURNS BOOLEAN AS $$
+BEGIN
+    IF public.is_platform_superadmin() THEN
+        RETURN true;
+    END IF;
+
+    RETURN EXISTS (
+        SELECT 1
+        FROM public.usuarios u
+        JOIN public.empresa_usuarios eu ON eu.usuario_id = u.id
+        WHERE eu.empresa_id = p_empresa_id
+          AND u.auth_user_id = auth.uid()
+          AND u.ativo = true
+          AND eu.ativo = true
+          AND u.perfil IN ('master', 'srd')
+    );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+
+REVOKE ALL ON FUNCTION public.can_manage_empresa_grupos_config(UUID) FROM public;
+GRANT EXECUTE ON FUNCTION public.can_manage_empresa_grupos_config(UUID) TO authenticated, service_role;
 
 -- Policy 1: PLATFORM_SUPERADMIN tem controle total (SELECT, INSERT, UPDATE, DELETE)
 DROP POLICY IF EXISTS empresa_grupos_config_superadmin_all ON public.empresa_grupos_config;
@@ -60,7 +87,7 @@ TO authenticated
 USING (public.is_platform_superadmin())
 WITH CHECK (public.is_platform_superadmin());
 
--- Policy 2: Usuários staff da empresa leem a configuração local da própria empresa (SOMENTE PARA GRUPOS COM CONCESSÃO ATIVA)
+-- Policy 2: Leitura (SELECT) — permitida para staff (master, srd, visualizador) da própria empresa com concessão ativa
 DROP POLICY IF EXISTS empresa_grupos_config_staff_read ON public.empresa_grupos_config;
 CREATE POLICY empresa_grupos_config_staff_read
 ON public.empresa_grupos_config
@@ -76,59 +103,41 @@ USING (
     ) AND public.grupo_concedido_para_empresa(empresa_id, grupo_id)
 );
 
--- Policy 3: Mutações (INSERT/UPDATE/DELETE) exigem pertencimento da empresa e concessão ativa no banco
+-- Policy 3: Inserção (INSERT) — exige perfil de gestão (master/srd) e concessão ativa (visualizador estritamente BLOQUEADO)
 DROP POLICY IF EXISTS empresa_grupos_config_staff_insert ON public.empresa_grupos_config;
 CREATE POLICY empresa_grupos_config_staff_insert
 ON public.empresa_grupos_config
 FOR INSERT
 TO authenticated
 WITH CHECK (
-    public.is_staff() AND (
-        empresa_id IN (
-            SELECT eu.empresa_id
-            FROM public.empresa_usuarios eu
-            WHERE eu.usuario_id = auth.uid()
-        )
-    ) AND public.grupo_concedido_para_empresa(empresa_id, grupo_id)
+    public.can_manage_empresa_grupos_config(empresa_id)
+    AND public.grupo_concedido_para_empresa(empresa_id, grupo_id)
 );
 
+-- Policy 4: Atualização (UPDATE) — exige perfil de gestão (master/srd) e concessão ativa (visualizador estritamente BLOQUEADO)
 DROP POLICY IF EXISTS empresa_grupos_config_staff_update ON public.empresa_grupos_config;
 CREATE POLICY empresa_grupos_config_staff_update
 ON public.empresa_grupos_config
 FOR UPDATE
 TO authenticated
 USING (
-    public.is_staff() AND (
-        empresa_id IN (
-            SELECT eu.empresa_id
-            FROM public.empresa_usuarios eu
-            WHERE eu.usuario_id = auth.uid()
-        )
-    ) AND public.grupo_concedido_para_empresa(empresa_id, grupo_id)
+    public.can_manage_empresa_grupos_config(empresa_id)
+    AND public.grupo_concedido_para_empresa(empresa_id, grupo_id)
 )
 WITH CHECK (
-    public.is_staff() AND (
-        empresa_id IN (
-            SELECT eu.empresa_id
-            FROM public.empresa_usuarios eu
-            WHERE eu.usuario_id = auth.uid()
-        )
-    ) AND public.grupo_concedido_para_empresa(empresa_id, grupo_id)
+    public.can_manage_empresa_grupos_config(empresa_id)
+    AND public.grupo_concedido_para_empresa(empresa_id, grupo_id)
 );
 
+-- Policy 5: Exclusão (DELETE) — exige perfil de gestão (master/srd) e concessão ativa (visualizador estritamente BLOQUEADO)
 DROP POLICY IF EXISTS empresa_grupos_config_staff_delete ON public.empresa_grupos_config;
 CREATE POLICY empresa_grupos_config_staff_delete
 ON public.empresa_grupos_config
 FOR DELETE
 TO authenticated
 USING (
-    public.is_staff() AND (
-        empresa_id IN (
-            SELECT eu.empresa_id
-            FROM public.empresa_usuarios eu
-            WHERE eu.usuario_id = auth.uid()
-        )
-    ) AND public.grupo_concedido_para_empresa(empresa_id, grupo_id)
+    public.can_manage_empresa_grupos_config(empresa_id)
+    AND public.grupo_concedido_para_empresa(empresa_id, grupo_id)
 );
 
 -- Índices de alta performance
