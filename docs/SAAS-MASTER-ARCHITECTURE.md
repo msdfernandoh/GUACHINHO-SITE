@@ -1,8 +1,8 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
-> **Versão:** 1.5.6  
+> **Versão:** 1.6.0  
 > **Data de Atualização:** 09/08/2026  
-> **Status da Plataforma:** Fase 2 Concluída e Homologada em Produção; **Fase 3 CONCLUÍDA E HOMOLOGADA EM PRODUÇÃO**; **Fase 4 CONCLUÍDA E HOMOLOGADA EM PRODUÇÃO**; **Fase 5 CONCLUÍDA E AUDITADA EM PREVIEW (AGUARDANDO DEPLOY DE PRODUÇÃO)** (Migration 052 aplicada no banco remoto Supabase; `001-052` local=remote; catálogo global gerido exclusivamente por SuperAdmin; Meu Catálogo empresa_grupos_config ativo no Admin e integrado ao runtime público /, /grupos, /simulador, parceiro sites; Empresa B com 0 concessões e 0 catálogo; snapshots de propostas/contratações e sorteios 100% inalterados; Produção intacta)  
+> **Status da Plataforma:** Fase 2 Concluída e Homologada em Produção; **Fase 3 CONCLUÍDA E HOMOLOGADA EM PRODUÇÃO**; **Fase 4 CONCLUÍDA E HOMOLOGADA EM PRODUÇÃO**; **Fase 5 CONCLUÍDA E HOMOLOGADA EM PRODUÇÃO** (Migration 052 aplicada no banco remoto Supabase; `001-052` local=remote; código deployado em Produção Vercel `dpl_Dqv7Y8U6hHq4Rt4Nf8eLBCdSnJXd` no Git SHA `f9337a72d3f7495fae4caeefb598bbfbf50b1fb0`; catálogo global gerido exclusivamente por SuperAdmin; Meu Catálogo empresa_grupos_config ativo no Admin e integrado ao runtime público /, /grupos, /simulador, parceiro sites em Produção; Empresa B com 0 concessões e 0 catálogo; snapshots de propostas/contratações e sorteios 100% inalterados)  
 
 
 > **Projeto Físico:** `C:\Fernando Hugo\GAUCHINHO SITE`  
