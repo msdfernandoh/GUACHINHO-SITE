@@ -1,8 +1,8 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
-> **Versão:** 1.6.0  
+> **Versão:** 2.0.0  
 > **Data de Atualização:** 09/08/2026  
-> **Status da Plataforma:** Fase 2 Concluída e Homologada em Produção; **Fase 3 CONCLUÍDA E HOMOLOGADA EM PRODUÇÃO**; **Fase 4 CONCLUÍDA E HOMOLOGADA EM PRODUÇÃO**; **Fase 5 CONCLUÍDA E HOMOLOGADA EM PRODUÇÃO** (Migration 052 aplicada no banco remoto Supabase; `001-052` local=remote; código deployado em Produção Vercel `dpl_Dqv7Y8U6hHq4Rt4Nf8eLBCdSnJXd` no Git SHA `f9337a72d3f7495fae4caeefb598bbfbf50b1fb0`; catálogo global gerido exclusivamente por SuperAdmin; Meu Catálogo empresa_grupos_config ativo no Admin e integrado ao runtime público /, /grupos, /simulador, parceiro sites em Produção; Empresa B com 0 concessões e 0 catálogo; snapshots de propostas/contratações e sorteios 100% inalterados)  
+> **Status da Plataforma:** Fase 2 Concluída e Homologada em Produção; **Fase 3 CONCLUÍDA E HOMOLOGADA EM PRODUÇÃO**; **Fase 4 CONCLUÍDA E HOMOLOGADA EM PRODUÇÃO**; **Fase 5 CONCLUÍDA E HOMOLOGADA EM PRODUÇÃO**; **MACROBLOCO B (COMERCIAL E VENDAS) COMPLETO E AUDITADO EM PREVIEW (PRONTO PARA PRODUÇÃO)** (Migration 053 aplicada no banco remoto Supabase; `001-053` local=remote; tabela vendas e cotas_definitivas com RLS e idempotência ativas; scoping multi-tenant em leads, propostas e contratações; preview Vercel READY `dpl_21sfNiY7F1SKnowGJ26rpXgk7D2N`; Produção intacta)  
 
 
 > **Projeto Físico:** `C:\Fernando Hugo\GAUCHINHO SITE`  
