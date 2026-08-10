@@ -6,6 +6,9 @@
 **Escopo:** todo o delta entre o handoff da Fase 4/E6 e o estado de `main` em 10/08/2026.  
 **Regra especial:** sorteios foram somente inventariados/smoke; tabela, API, runtime, RLS e policy `grupos_sorteios_loteria_public_read` não foram alterados.
 
+**SHA de implementação auditado/Preview:** `fb56ca9`  
+**Preview:** `dpl_CbZcMAXTqtGffSLeRXP2bA13LFDE` — READY — `https://guachinho-site-qy6z2isq8-hugo-8097s-projects.vercel.app`
+
 ## 1. Sumário executivo e ponto exato de handoff
 
 O último estado identificado antes de o Antigravity iniciar a Fase 4/E6 é:
@@ -183,9 +186,9 @@ Os 37 testes live só executam com opt-in explícito. Eles não devem ser usados
 | Corrigido no código | auth/tenant/RBAC/CSRF/input, XSS, dashboard, idempotência tenant, validações de gestão, defaults fictícios |
 | Migration criada | 057 |
 | Migration aplicada | não |
-| Pushed | pendente ao fechamento desta branch |
-| Preview deployado | pendente ao fechamento desta branch |
-| Homologado em Preview | pendente; requer smoke 401 das APIs e build do deployment |
+| Pushed | sim, branch `origin/codex/audit-pos-antigravity` |
+| Preview deployado | sim; `dpl_CbZcMAXTqtGffSLeRXP2bA13LFDE`, READY |
+| Homologado em Preview | parcial: build PASS e seis APIs retornaram `Não autenticado` sem sessão; fluxos C/D não homologados |
 | Produção | não alterada; continua vulnerável até merge/deploy/migration autorizados |
 
 ## 17. Próximas decisões obrigatórias
