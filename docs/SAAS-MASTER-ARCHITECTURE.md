@@ -2,12 +2,12 @@
 
 > **Versão Final do Projeto:** 5.0.0  
 > **Data de Atualização:** 10/08/2026  
-> **Status Geral do Projeto:** **PROJETO SaaS DE CONSÓRCIOS — CONCLUÍDO, AUDITADO E HOMOLOGADO EM PRODUÇÃO**  
-> **Macroblocos A, B, C, D, E e F:** **TODOS CONCLUÍDOS E HOMOLOGADOS EM PRODUÇÃO**  
+> **Status Geral do Projeto:** **PRODUÇÃO EM CORREÇÃO PÓS-AUDITORIA INDEPENDENTE**  
+> **Macroblocos A–F:** implantados, porém a homologação integral foi reaberta após achado material nas APIs de gestão e pendências RLS/financeiras documentadas.  
 > **Infraestrutura em Produção:**  
 > - **Vercel Production:** `https://gauchinhoconsorcios.com.br` (Status READY, Aliased)  
 > - **Supabase Database:** `eaeuoynprurmmulzhydt` (`001–056` local=remote | dry-run up to date)  
-> - **Suíte de Testes Automatizados:** `668/668 PASS` (118 arquivos de teste)  
+> - **Suíte reproduzida no hotfix Codex:** `643 PASS / 37 SKIP` (os 37 live tests ficam bloqueados por padrão)  
 > - **Build Next.js:** Exit Code 0 (119 páginas estáticas/dinâmicas compiladas)  
 > - **Segurança & Multi-Tenant:** RLS ativo em 27 tabelas críticas, Empresa B com 0 dados/concessões, Host Resolution e RBAC formalizado em `SAAS-PERMISSIONS-MATRIX.md`.  
 
@@ -79,5 +79,6 @@ A plataforma suporta:
 
 ## 5. Declaração Final de Segurança e Riscos
 
-* **NENHUM RISCO MATERIAL RESIDUAL IDENTIFICADO DENTRO DO ESCOPO APROVADO, IMPLEMENTADO E AUDITADO DO PROJETO SAAS.**
-* **PROJETO SaaS DE CONSÓRCIOS — CONCLUÍDO, AUDITADO E HOMOLOGADO EM PRODUÇÃO.**
+* O P0 das seis APIs de gestão foi corrigido na branch `hotfix/codex-security-pos-antigravity` e validado em Preview independente.
+* A homologação integral permanece aberta até o deploy corretivo e a futura separação das migrations de RLS/integridade e das decisões financeiras/comerciais.
+* Relatório técnico: `docs/relatorios-fases/HOTFIX-CODEX-POS-AUDITORIA.md`.
