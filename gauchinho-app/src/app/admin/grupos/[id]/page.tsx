@@ -11,9 +11,9 @@ import {
 import { GrupoFormFields } from "@/components/admin/grupo-form-fields";
 import { GrupoCotasAdmin } from "@/components/admin/grupo-cotas-admin";
 import { GrupoEmpresaConfigSection } from "@/components/admin/grupo-empresa-config-section";
-import { getUsuarioNegocio } from "@/lib/auth/get-usuario";
 import { isPlatformSuperadmin } from "@/lib/auth/is-superadmin";
 import { canDeleteRecords } from "@/lib/auth/permissions";
+import { getCurrentTenantContext } from "@/lib/tenant/context";
 import { getEmpresaGrupoConfig } from "@/lib/grupos/empresa-grupos-config";
 import type { GrupoConsorcio } from "@/lib/types";
 import { Button } from "@/components/ui/form-primitives";
@@ -27,7 +27,7 @@ export default async function GrupoEditPage({
 }) {
   const { id } = await params;
   const sp = await searchParams;
-  const usuario = await getUsuarioNegocio();
+  const { usuario, empresaAtiva } = await getCurrentTenantContext();
   const isSuper = await isPlatformSuperadmin();
 
   let data;
@@ -38,8 +38,9 @@ export default async function GrupoEditPage({
   }
 
   const modalidades = await fetchModalidadesByGrupoId(id);
-  const empresaConfig = usuario?.empresa_id
-    ? await getEmpresaGrupoConfig(usuario.empresa_id, id)
+  const empresaId = empresaAtiva?.id;
+  const empresaConfig = empresaId
+    ? await getEmpresaGrupoConfig(empresaId, id)
     : null;
 
   const update = updateGrupoAction.bind(null, id);
@@ -96,9 +97,9 @@ export default async function GrupoEditPage({
 
       <h1 className="text-2xl font-bold">Grupo {data.grupo.codigo_grupo}</h1>
 
-      {usuario?.empresa_id ? (
+      {empresaId ? (
         <GrupoEmpresaConfigSection
-          empresaId={usuario.empresa_id}
+          empresaId={empresaId}
           grupoId={id}
           codigoGrupo={data.grupo.codigo_grupo}
           config={empresaConfig}
