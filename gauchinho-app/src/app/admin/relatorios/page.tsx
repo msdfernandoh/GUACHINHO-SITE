@@ -1,71 +1,152 @@
-import Link from "next/link";
-import { requireStaffAdmin } from "@/lib/auth/require-staff-admin";
-import {
-  fetchConsultorReport,
-  fetchCrmDashboardMetrics,
-  fetchFunnelReport,
-  fetchOrigemReport,
-} from "@/lib/crm/reports";
-import { formatCurrency } from "@/lib/utils/format";
-import { LeadSummaryCards } from "@/components/admin/crm/lead-summary-cards";
-import { LeadOriginReport } from "@/components/admin/crm/lead-origin-report";
-import { LeadFunnelReport } from "@/components/admin/crm/lead-funnel-report";
-import { LeadConsultorReport } from "@/components/admin/crm/lead-consultor-report";
-import {
-  adminPageSubtitleClass,
-  adminPageTitleClass,
-  adminSectionHeadingClass,
-} from "@/components/admin/admin-contrast";
+"use client";
 
-export default async function RelatoriosPage() {
-  await requireStaffAdmin();
-  const [metrics, origem, funil, consultores] = await Promise.all([
-    fetchCrmDashboardMetrics(),
-    fetchOrigemReport(),
-    fetchFunnelReport(),
-    fetchConsultorReport(),
-  ]);
+import { useEffect, useState } from "react";
+import { ResumoComercialDTO, ResumoFinanceiroDashDTO } from "@/lib/gestao/dashboards-service";
+
+export default function AdminRelatoriosPage() {
+  const [comercial, setComercial] = useState<ResumoComercialDTO | null>(null);
+  const [financeiro, setFinanceiro] = useState<ResumoFinanceiroDashDTO | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadData() {
+      try {
+        const res = await fetch("/api/admin/gestao/relatorios");
+        if (res.ok) {
+          const data = await res.json();
+          setComercial(data.comercial);
+          setFinanceiro(data.financeiro);
+        }
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadData();
+  }, []);
+
+  function handleExportCSV(tipo: string) {
+    let rows: string[][] = [];
+    let filename = `relatorio-${tipo}-${new Date().toISOString().split("T")[0]}.csv`;
+
+    if (tipo === "vendas") {
+      rows = [
+        ["Indicador", "Valor"],
+        ["Vendas Totais", String(comercial?.vendas_totais || 0)],
+        ["Credito Total Vendido", String(comercial?.credito_total_vendido || 0)],
+        ["Taxa Conversao (%)", String(comercial?.taxa_conversao_lead_venda || 0)],
+      ];
+    } else if (tipo === "financeiro") {
+      rows = [
+        ["Indicador", "Valor (R$)"],
+        ["Receita Prevista Franquia", String(financeiro?.receita_prevista_franquia || 0)],
+        ["Receita Recebida Efetiva", String(financeiro?.receita_recebida_franquia || 0)],
+        ["Saldo a Receber Franquia", String(financeiro?.saldo_a_receber_franquia || 0)],
+        ["Repasses Previstos Participantes", String(financeiro?.repasses_previstos_participantes || 0)],
+        ["Repasses Pagos Participantes", String(financeiro?.repasses_pagos_participantes || 0)],
+        ["Saldo a Repassar Participantes", String(financeiro?.saldo_a_repassar_participantes || 0)],
+        ["Saldos a Compensar", String(financeiro?.saldos_a_compensar || 0)],
+        ["Saldo de Caixa Efetivo", String(financeiro?.saldo_caixa || 0)],
+      ];
+    } else {
+      rows = [
+        ["Indicador", "Valor"],
+        ["Leads Totais", String(comercial?.leads_totais || 0)],
+        ["Leads em Andamento", String(comercial?.leads_em_andamento || 0)],
+        ["Propostas Totais", String(comercial?.propostas_totais || 0)],
+      ];
+    }
+
+    const csvContent = "data:text/csv;charset=utf-8," + rows.map((e) => e.join(",")).join("\n");
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", filename);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+
+  const formatCurrency = (val: number) =>
+    new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(val);
+
+  if (loading) {
+    return (
+      <div className="p-8 max-w-7xl mx-auto text-slate-400">
+        Carregando relatorios consolidados...
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-8">
+    <div className="p-8 max-w-7xl mx-auto space-y-8">
       <div>
-        <Link href="/admin/leads" className="text-sm text-amber-400 hover:underline">
-          ← Leads
-        </Link>
-        <h1 className={`mt-2 ${adminPageTitleClass}`}>Relatórios comerciais</h1>
-        <p className={adminPageSubtitleClass}>Origem, funil, consultores e alertas operacionais</p>
+        <h1 className="text-3xl font-bold text-slate-900">Relatórios Consolidados</h1>
+        <p className="text-slate-500 mt-1">Visões gerenciais e exportação de dados comerciais, financeiros e operacionais.</p>
       </div>
 
-      <LeadSummaryCards metrics={metrics} />
-
-      {(metrics.semResponsavel > 0 || metrics.followupsVencidos > 0) && (
-        <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-4 text-sm text-amber-100">
-          {metrics.semResponsavel > 0 ? (
-            <p>Existem {metrics.semResponsavel} lead(s) novos sem consultor responsável.</p>
-          ) : null}
-          {metrics.followupsVencidos > 0 ? (
-            <p className="mt-1">{metrics.followupsVencidos} follow-up(s) vencido(s).</p>
-          ) : null}
+      {/* SEÇÃO VENDAS E CRM */}
+      <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-4">
+        <div className="flex justify-between items-center">
+          <h2 className="text-xl font-bold text-slate-900">Relatório de Produção Comercial</h2>
+          <button
+            onClick={() => handleExportCSV("vendas")}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded text-sm font-medium transition-colors"
+          >
+            Exportar CSV Vendas
+          </button>
         </div>
-      )}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="p-4 bg-slate-50 rounded-lg">
+            <p className="text-xs font-medium text-slate-500">Crédito Vendido</p>
+            <p className="text-lg font-bold text-slate-900 mt-1">{formatCurrency(comercial?.credito_total_vendido || 0)}</p>
+          </div>
+          <div className="p-4 bg-slate-50 rounded-lg">
+            <p className="text-xs font-medium text-slate-500">Total de Vendas</p>
+            <p className="text-lg font-bold text-slate-900 mt-1">{comercial?.vendas_totais || 0}</p>
+          </div>
+          <div className="p-4 bg-slate-50 rounded-lg">
+            <p className="text-xs font-medium text-slate-500">Total de Leads</p>
+            <p className="text-lg font-bold text-slate-900 mt-1">{comercial?.leads_totais || 0}</p>
+          </div>
+          <div className="p-4 bg-slate-50 rounded-lg">
+            <p className="text-xs font-medium text-slate-500">Taxa de Conversão</p>
+            <p className="text-lg font-bold text-emerald-600 mt-1">{comercial?.taxa_conversao_lead_venda}%</p>
+          </div>
+        </div>
+      </div>
 
-      <section>
-        <h2 className={adminSectionHeadingClass}>Origem dos leads</h2>
-        <LeadOriginReport rows={origem} />
-      </section>
-
-      <section>
-        <h2 className={adminSectionHeadingClass}>Funil</h2>
-        <LeadFunnelReport rows={funil} />
-        <p className="mt-2 text-xs text-zinc-400">
-          Valor potencial total em aberto: {formatCurrency(metrics.valorPotencial)}
-        </p>
-      </section>
-
-      <section>
-        <h2 className={adminSectionHeadingClass}>Por consultor</h2>
-        <LeadConsultorReport rows={consultores} />
-      </section>
+      {/* SEÇÃO FINANCEIRO E COMISSÕES */}
+      <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-4">
+        <div className="flex justify-between items-center">
+          <h2 className="text-xl font-bold text-slate-900">Relatório Financeiro e Comissões</h2>
+          <button
+            onClick={() => handleExportCSV("financeiro")}
+            className="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded text-sm font-medium transition-colors"
+          >
+            Exportar CSV Financeiro
+          </button>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="p-4 bg-slate-50 rounded-lg">
+            <p className="text-xs font-medium text-slate-500">Receita Efetiva Franquia</p>
+            <p className="text-lg font-bold text-emerald-600 mt-1">{formatCurrency(financeiro?.receita_recebida_franquia || 0)}</p>
+          </div>
+          <div className="p-4 bg-slate-50 rounded-lg">
+            <p className="text-xs font-medium text-slate-500">Repasses Pagos</p>
+            <p className="text-lg font-bold text-blue-600 mt-1">{formatCurrency(financeiro?.repasses_pagos_participantes || 0)}</p>
+          </div>
+          <div className="p-4 bg-slate-50 rounded-lg">
+            <p className="text-xs font-medium text-slate-500">Saldos a Compensar</p>
+            <p className="text-lg font-bold text-amber-600 mt-1">{formatCurrency(financeiro?.saldos_a_compensar || 0)}</p>
+          </div>
+          <div className="p-4 bg-slate-50 rounded-lg">
+            <p className="text-xs font-medium text-slate-500">Saldo Atual do Caixa</p>
+            <p className="text-lg font-bold text-slate-900 mt-1">{formatCurrency(financeiro?.saldo_caixa || 0)}</p>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
