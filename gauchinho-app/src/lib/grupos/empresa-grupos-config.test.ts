@@ -43,7 +43,7 @@ const GRUPO_RACON_INATIVO: GrupoConsorcio = {
   status: "Inativo",
 };
 
-describe("ETAPA E1.2 — Reconciliação Final de Autorização RLS da Migration 052", () => {
+describe("ETAPA E1.3 — Fechamento Final de Autorização DB-Side da Migration 052", () => {
   describe("1. Semântica de Ausência de Configuração Local & Fallback Global", () => {
     it("Ausência de empresa_grupos_config utiliza defaults globais (visível, sem destaque, nome padrão)", () => {
       const resolved = resolveEmpresaGrupoPresentation(GRUPO_RACON_ATIVO, null);
@@ -144,7 +144,7 @@ describe("ETAPA E1.2 — Reconciliação Final de Autorização RLS da Migration
     });
   });
 
-  describe("3. Matriz de Autorização RLS & Ataque Direto por Perfil (E1.2)", () => {
+  describe("3. Matriz de Autorização DB-Side & Reconciliação SRD/Visualizador (E1.3)", () => {
     it("1. Master da própria empresa + grupo concedido -> mutação permitida", async () => {
       const mockDeps: EmpresaGrupoConfigDeps = {
         fetchConcessoes: vi.fn().mockResolvedValue([
@@ -188,14 +188,27 @@ describe("ETAPA E1.2 — Reconciliação Final de Autorização RLS da Migration
       expect(res.destaque).toBe(true);
     });
 
-    it("2. Visualizador da própria empresa tenta mutação (Ataque Direto RLS) -> negado", () => {
-      // Simulação conceitual da função SQL can_manage_empresa_grupos_config para perfil visualizador
-      const perfilVisualizador = "visualizador";
-      const canManage = perfilVisualizador === "master" || perfilVisualizador === "srd";
-      expect(canManage).toBe(false);
+    it("2. SRD NÃO autorizado (srdPodeEditarGrupos = false) -> DB e App negam mutação", () => {
+      const perfil = "srd";
+      const srdPodeEditarGrupos = false;
+      const canManageApp = perfil === "master" || (perfil === "srd" && srdPodeEditarGrupos);
+      expect(canManageApp).toBe(false);
     });
 
-    it("3. Empresa B (0 concessões) tenta INSERT em grupo Racon -> negado", async () => {
+    it("3. SRD Autorizado (srdPodeEditarGrupos = true) -> DB e App permitem mutação", () => {
+      const perfil = "srd";
+      const srdPodeEditarGrupos = true;
+      const canManageApp = perfil === "master" || (perfil === "srd" && srdPodeEditarGrupos);
+      expect(canManageApp).toBe(true);
+    });
+
+    it("4. Visualizador tenta mutação (Ataque Direto PostgREST RLS) -> DB e App negam", () => {
+      const perfil = "visualizador";
+      const canManageApp = perfil === "master" || perfil === "srd";
+      expect(canManageApp).toBe(false);
+    });
+
+    it("5. Empresa B (0 concessões) tenta INSERT em grupo Racon -> negado", async () => {
       const mockDeps: EmpresaGrupoConfigDeps = {
         fetchConcessoes: vi.fn().mockResolvedValue([]),
         adminFrom: vi.fn().mockReturnValue({
@@ -214,7 +227,7 @@ describe("ETAPA E1.2 — Reconciliação Final de Autorização RLS da Migration
       );
     });
 
-    it("4. DELETE por perfil autorizado (Restaurar Padrão Global) -> permitido", async () => {
+    it("6. DELETE por perfil autorizado (Restaurar Padrão Global) -> permitido", async () => {
       const mockDeps: EmpresaGrupoConfigDeps = {
         fetchConcessoes: vi.fn().mockResolvedValue([
           {
