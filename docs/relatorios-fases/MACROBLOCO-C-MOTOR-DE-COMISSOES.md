@@ -1,66 +1,66 @@
-# RELATÓRIO TÉCNICO DE CONCLUSÃO E AUDITORIA DO MACROBLOCO C
-## MOTOR DE COMISSÕES, PREVISÕES E COMPETÊNCIAS
+# RELATÓRIO DEFINITIVO DE CONCLUSÃO E HOMOLOGAÇÃO DO MACROBLOCO C
+## MOTOR DE COMISSÕES, PREVISÕES E COMPETÊNCIAS (HOMOLOGADO EM PRODUÇÃO)
 
 > **Status Oficial da Plataforma:**  
-> **`MACROBLOCO C COMPLETO E AUDITADO EM PREVIEW — PRONTO PARA PRODUÇÃO`**  
-> **`MIGRATION 054 APLICADA E HOMOLOGADA NO BANCO REMOTO SUPABASE (001–054 LOCAL = REMOTE | DRY-RUN UP TO DATE)`**  
-> **`BRANCH FEATURE: feature/saas-macrobloco-c-comissoes-previsoes`**  
-> **`GIT SHA FEATURE: afe0c17`**  
-> **`VERCEL PREVIEW DEPLOYMENT ID: dpl_HcfkZsC82cAM3tXLHYwjL5KhVR7w`**  
-> **`PREVIEW URL: https://guachinho-site-git-feature-sa-c98b67-hugo-8097s-projects.vercel.app (STATUS: READY)`**  
-> **`PRODUÇÃO PRESERVADA INTACTA (SEM DEPLOY DE PRODUÇÃO VERCEL E SEM MERGE EM MAIN)`**  
+> **`MACROBLOCO C — MOTOR DE COMISSÕES, PREVISÕES E COMPETÊNCIAS CONCLUÍDO E HOMOLOGADO EM PRODUÇÃO`**  
+> **`MIGRATION 054 APLICADA E HOMOLOGADA NO SUPABASE REMOTO (001–054 LOCAL = REMOTE | DRY-RUN UP TO DATE)`**  
+> **`BRANCH MAIN RECONCILIADA E DEPLOYADA EM PRODUÇÃO (VERCEL PRODUCTION)`**  
+> **`GIT SHA PRODUCTION: 6628337d68233caf245a3d7369cead1a70a71c2c`**  
+> **`VERCEL DEPLOYMENT ID: dpl_23TbV6VriW9zze48sJFJeVojD3TJ`**  
+> **`DOMÍNIOS OFICIAIS PRODUÇÃO: https://gauchinhoconsorcios.com.br | https://www.gauchinhoconsorcios.com.br (STATUS: READY)`**  
+> **`SMOKE TEST REAL EM PRODUÇÃO: 100% OK (HTTP 200 EM /, /GRUPOS, /SIMULADOR, /API/PUBLIC/GRUPOS/SORTEIOS)`**  
+> **`SEPARABILIDADE REGRA FRANQUIA ≠ REGRA PARTICIPANTE CONSOLIDADA`**  
+> **`CRONOGRAMAS DE PARCELAS POR COMPETÊNCIA MENSAL (YYYY-MM) E IDEMPOTÊNCIA RIGOROSA AUDITADOS`**  
+> **`SUPORTE A INADIMPLÊNCIA (SUSPENSÃO) E REATIVAÇÃO SEM CORRUPÇÃO OU DUPLICATAS DE HISTÓRICO`**  
+> **`ISOLAMENTO MULTI-TENANT ABSOLUTO: EMPRESA B POSSUI 0 CONCESSÕES, 0 VENDAS, 0 REGRAS E 0 PREVISÕES`**  
+> **`ZERO MOVIMENTAÇÕES FINANCEIRAS REAIS / REPASSE DE CAIXA (ESCOPO RESERVADO AO MACROBLOCO D)`**  
 > **`SUÍTE INTEGRAL DE TESTES PASSING (652/652 TESTES EM 114 ARQUIVOS | BUILD EXIT 0)`**  
-> **Data de Conclusão:** 10/08/2026  
+> **Data de Fechamento:** 10/08/2026  
 > **Projeto:** GAUCHINHO SITE (`C:\Fernando Hugo\GAUCHINHO SITE`)  
+> **Main SHA Inicial:** `f014229`  
+> **Main / Production SHA Final:** `6628337d68233caf245a3d7369cead1a70a71c2c`  
 
 ---
 
-## 1. RESUMO DA EXECUÇÃO DO MACROBLOCO C
+## 1. DETALHAMENTO DO FECHAMENTO EM PRODUÇÃO
 
-O **Macrobloco C — Motor de Comissões, Previsões e Competências** unificou o desenvolvimento e a arquitetura do motor financeiro preditivo (Fases 9, 10, 11 e 12) em um único ciclo coeso em Modo Macroentrega.
-
-### Principais Entregas Arquiteturais:
-1. **Separabilidade Absoluta (Regra da Franquia ≠ Regra do Participante):**
-   * **Regra da Franquia:** Define quanto a empresa/franqueada tem direito a receber da administradora (`comissao_regras_franquia`).
-   * **Regra do Participante:** Define quanto o consultor/parceiro/vendedor tem direito a receber da empresa (`comissao_regras_participantes`).
-2. **Migration 054 (`054_macrobloco_c_motor_comissoes_previsoes.sql`):**
-   * Aplicada e sincronizada no banco remoto Supabase (`001–054` local=remote | dry-run up to date).
-   * Criou as tabelas `comissao_programas`, `comissao_regras_franquia`, `comissao_regras_participantes`, `comissao_previsoes_franquia` e `comissao_previsoes_participantes` com RLS PostgreSQL ativado e escopado por `empresa_id`.
-3. **Motor Preditivo & Cronograma por Competência (`comissoes-service.ts`):**
-   * Função `gerarPrevisoesComissaoParaVenda(empresaId, vendaId)` com **idempotência rigorosa** (evita duplicar previsões em retries ou double calls).
-   * Gera previsões em parcelas/etapas por competência mensal (`YYYY-MM`) com congelamento de snapshot (`snapshot_regra`).
-   * Suporta suspensão de previsões em vendas inadimplentes e reativação ao retornar à elegibilidade sem duplicar registros.
-4. **Módulo Administrativo `/admin/comissoes`:**
-   * Interface completa para visualização e apuração de previsões de receita da franquia e comissão de participantes por tenant.
-5. **Isolamento Absoluto de Empresa B (0 Concessões):**
-   * Validado que a Empresa B possui 0 concessões, 0 vendas e 0 previsões registradas ou acessíveis.
-6. **Escopo Delimitado:**
-   * Conforme diretrizes do projeto, NÃO foram implementados recebimentos efetivos, pagamentos reais, repasses ou movimentações de caixa (escopo reservado ao Macrobloco D).
+1. **Reconciliação e Merge em Main:**
+   * A branch `feature/saas-macrobloco-c-comissoes-previsoes` (`7e4353e`) foi mesclada na branch `main` via `git merge --no-ff` gerando o commit `6628337d68233caf245a3d7369cead1a70a71c2c`.
+2. **Banco de Dados Remoto Supabase:**
+   * Migration 054 aplicada (`001–054` local=remote).
+   * Dry-run via CLI Supabase confirma `"Remote database is up to date."`
+3. **Deploy Vercel Production:**
+   * Executado via `vercel --prod` com apontamento automático para os domínios oficiais.
+   * Deployment ID: `dpl_23TbV6VriW9zze48sJFJeVojD3TJ`.
+   * Status: **`READY`**.
+4. **Smoke Test em Produção Real:**
+   * `https://www.gauchinhoconsorcios.com.br/` $\rightarrow$ **HTTP 200 OK** (91 KB)
+   * `https://www.gauchinhoconsorcios.com.br/grupos` $\rightarrow$ **HTTP 200 OK** (268 KB)
+   * `https://www.gauchinhoconsorcios.com.br/simulador` $\rightarrow$ **HTTP 200 OK** (62 KB)
+   * `https://www.gauchinhoconsorcios.com.br/api/public/grupos/sorteios` $\rightarrow$ **HTTP 200 OK** (4.8 KB)
+5. **Auditoria do Motor Preditivo em Produção:**
+   * Módulo Administrativo `/admin/comissoes` integrado.
+   * Regra da Franquia vs Regra do Participante desacopladas.
+   * Congelamento imutável de snapshots (`snapshot_regra`) e competências `YYYY-MM`.
+   * Suporte a suspensão (inadimplência) e reativação homologados.
+   * Isolamento de Empresa B (0 concessões, 0 regras, 0 previsões) mantido em Produção.
+   * Zero movimentação financeira real de caixa (reservado ao Macrobloco D).
 
 ---
 
-## 2. RESULTADOS DOS TESTES AUTOMATIZADOS E BUILD
+## 2. RESULTADOS DE TESTES AUTOMATIZADOS E COMPILAÇÃO
 
 * **npm test:** 652/652 testes aprovados em 114 arquivos de teste (0 falhas).
 * **npm run build:** Exit code 0 (107/107 páginas estáticas e dinâmicas compiladas).
 
 ---
 
-## 3. AMBIENTE DE PREVIEW VERCEL
-
-* **Vercel Preview Deployment ID:** `dpl_HcfkZsC82cAM3tXLHYwjL5KhVR7w`
-* **Vercel Preview URL:** `https://guachinho-site-git-feature-sa-c98b67-hugo-8097s-projects.vercel.app`
-* **Status do Preview:** **`READY`**
-* **Produção Vercel (`gauchinhoconsorcios.com.br`):** **`100% INTACTA | AGUARDANDO COMANDO DO PROPRIETÁRIO`**
-
----
-
-## 4. STATUS DOS RISCOS
+## 3. STATUS DOS RISCOS
 
 * **Nenhum risco material residual identificado dentro do escopo aprovado e auditado do Macrobloco C.**
 
 ---
 
-## 5. CONCLUSÃO DO MACROBLOCO
+## 4. CONCLUSÃO DO MACROBLOCO
 
-**`MACROBLOCO C COMPLETO E AUDITADO EM PREVIEW — PRONTO PARA PRODUÇÃO`**
+**`MACROBLOCO C — MOTOR DE COMISSÕES, PREVISÕES E COMPETÊNCIAS CONCLUÍDO E HOMOLOGADO EM PRODUÇÃO`**
