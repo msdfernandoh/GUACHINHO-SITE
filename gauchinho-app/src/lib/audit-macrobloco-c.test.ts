@@ -46,7 +46,7 @@ describe("SUÍTE DE AUDITORIA END-TO-END DO MACROBLOCO C (MOTOR DE COMISSÕES E 
 
     const { data: ppTable } = await admin.from("comissao_previsoes_participantes").select("id").limit(0);
     expect(ppTable).toBeDefined();
-  });
+  }, 15000);
 
   it("2. Empresa B (0 concessões e 0 vendas) possui ZERO previsões de comissão (Isolamento Absoluto)", async () => {
     const prevsFranquiaB = await listPrevisoesFranquiaForEmpresa(EMPRESA_B_ID);

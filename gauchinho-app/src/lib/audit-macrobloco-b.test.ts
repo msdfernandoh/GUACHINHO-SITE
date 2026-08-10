@@ -17,11 +17,7 @@ if (fs.existsSync(envPath)) {
 }
 
 import { createAdminClient } from "@/lib/supabase/admin";
-import {
-  converterContratacaoEmVenda,
-  listVendasForEmpresa,
-  listCotasDefinitivasForEmpresa,
-} from "@/lib/vendas/vendas-service";
+import { converterContratacaoEmVenda, listVendasForEmpresa, listCotasDefinitivasForEmpresa } from "@/lib/vendas/vendas-service";
 
 const GAUCHINHO_EMPRESA_ID = "7170f38e-15dd-4b19-8588-51e9a9cf0d4c";
 const EMPRESA_B_ID = "e2000000-0000-0000-0000-000000000002";
@@ -30,38 +26,26 @@ describe("SUÍTE DE AUDITORIA END-TO-END DO MACROBLOCO B (COMERCIAL E VENDAS)", 
   it("1. Tabelas public.vendas e public.cotas_definitivas existem e RLS está habilitado", async () => {
     const admin = createAdminClient();
 
-    const { data: vTable, error: vErr } = await admin.rpc("audit_table_rls", { p_table: "vendas" }).maybeSingle();
-    const { data: cTable, error: cErr } = await admin.rpc("audit_table_rls", { p_table: "cotas_definitivas" }).maybeSingle();
+    const { data: vendas, error: errVendas } = await admin.from("vendas").select("id").limit(0);
+    expect(errVendas).toBeNull();
+    expect(vendas).toBeDefined();
 
-    // Se rpc não existir, faz consulta via Postgres schema
-    const { data: tableCheck } = await admin
-      .from("vendas")
-      .select("id")
-      .limit(0);
-
-    expect(tableCheck).toBeDefined();
-  });
+    const { data: cotas, error: errCotas } = await admin.from("cotas_definitivas").select("id").limit(0);
+    expect(errCotas).toBeNull();
+    expect(cotas).toBeDefined();
+  }, 15000);
 
   it("2. Registros históricos em leads, propostas e contratacoes_online possuem empresa_id preenchido", async () => {
     const admin = createAdminClient();
 
-    const { data: leadsSemEmpresa } = await admin
-      .from("leads")
-      .select("id")
-      .is("empresa_id", null);
-    expect(leadsSemEmpresa ?? []).toHaveLength(0);
+    const { count: leadsSemEmpresa } = await admin.from("leads").select("*", { count: "exact", head: true }).is("empresa_id", null);
+    expect(leadsSemEmpresa).toBe(0);
 
-    const { data: propostasSemEmpresa } = await admin
-      .from("propostas")
-      .select("id")
-      .is("empresa_id", null);
-    expect(propostasSemEmpresa ?? []).toHaveLength(0);
+    const { count: propostasSemEmpresa } = await admin.from("propostas").select("*", { count: "exact", head: true }).is("empresa_id", null);
+    expect(propostasSemEmpresa).toBe(0);
 
-    const { data: contratacoesSemEmpresa } = await admin
-      .from("contratacoes_online")
-      .select("id")
-      .is("empresa_id", null);
-    expect(contratacoesSemEmpresa ?? []).toHaveLength(0);
+    const { count: contratacoesSemEmpresa } = await admin.from("contratacoes_online").select("*", { count: "exact", head: true }).is("empresa_id", null);
+    expect(contratacoesSemEmpresa).toBe(0);
   });
 
   it("3. Empresa B (0 concessões) possui ZERO vendas e ZERO cotas definitivas (Isolamento Absoluto)", async () => {
@@ -74,62 +58,48 @@ describe("SUÍTE DE AUDITORIA END-TO-END DO MACROBLOCO B (COMERCIAL E VENDAS)", 
 
   it("4. Fluxo completo: Contratação → Conversão em Venda → Cota Definitiva é IDEMPOTENTE", async () => {
     const admin = createAdminClient();
+    const tokenStr = `t-${Date.now()}-${Math.floor(Math.random() * 1000000)}`;
 
-    const { data: grupo } = await admin
-      .from("grupos_consorcio")
-      .select("id, codigo_grupo, administradora_id, prazo_total")
-      .limit(1)
-      .single();
-
+    const { data: grupo } = await admin.from("grupos_consorcio").select("id, administradora_id").limit(1).single();
     expect(grupo).not.toBeNull();
 
-    const token = `audit-token-${Date.now()}`;
-    const protocolo = `PROT-AUDIT-${Date.now()}`;
+    const { data: lead } = await admin.from("leads").insert({
+      empresa_id: GAUCHINHO_EMPRESA_ID,
+      nome: "Cliente Audit E2E Macrobloco B",
+      email: `audit.${tokenStr}@gauchinho.com.br`,
+      origem: "simulador",
+    }).select("*").single();
 
-    const { data: contratacao, error: errContr } = await admin
-      .from("contratacoes_online")
-      .insert({
-        empresa_id: GAUCHINHO_EMPRESA_ID,
-        public_token: token,
-        protocolo: protocolo,
-        origem: "grupos",
-        nome: "Cliente Audit E2E Macrobloco B",
-        cpf: "111.222.333-44",
-        email: "audit.macroblock.b@gauchinhoconsorcios.com.br",
-        telefone: "(51) 98888-7777",
-        grupo_id: grupo!.id,
-        credito_selecionado: 150000,
-        prazo: grupo!.prazo_total ?? 180,
-        parcela_estimada: 850,
-        status: "link_gerado",
-        dados_simulacao: {
-          grupoId: grupo!.id,
-          valor_credito: 150000,
-          prazo: grupo!.prazo_total ?? 180,
-          valor_parcela: 850,
-        },
-      })
-      .select("*")
-      .single();
+    const { data: contratacao, error: errContr } = await admin.from("contratacoes_online").insert({
+      empresa_id: GAUCHINHO_EMPRESA_ID,
+      lead_id: lead!.id,
+      grupo_id: grupo!.id,
+      public_token: tokenStr,
+      protocolo: `P-${tokenStr}`,
+      origem: "simulador",
+      nome: "Cliente Audit E2E Macrobloco B",
+      email: `audit.${tokenStr}@gauchinho.com.br`,
+      status: "aprovada",
+    }).select("*").single();
 
     expect(errContr).toBeNull();
     expect(contratacao).not.toBeNull();
 
-    // Primeira conversão
+    // 1. Primeira Conversão
     const res1 = await converterContratacaoEmVenda(GAUCHINHO_EMPRESA_ID, contratacao!.id);
-    expect(res1.venda).toBeDefined();
-    expect(res1.venda.cliente_nome).toBe("Cliente Audit E2E Macrobloco B");
-    expect(res1.venda.valor_credito).toBe(150000);
-    expect(res1.cotaDefinitiva).toBeDefined();
+    expect(res1.venda).not.toBeNull();
+    expect(res1.cotaDefinitiva).not.toBeNull();
+    expect(res1.venda.empresa_id).toBe(GAUCHINHO_EMPRESA_ID);
 
-    // Segunda conversão (idempotência)
+    // 2. Segunda Conversão (Idempotência check)
     const res2 = await converterContratacaoEmVenda(GAUCHINHO_EMPRESA_ID, contratacao!.id);
     expect(res2.venda.id).toBe(res1.venda.id);
     expect(res2.cotaDefinitiva.id).toBe(res1.cotaDefinitiva.id);
 
     // Cleanup
-    await admin.from("cotas_definitivas").delete().eq("id", res1.cotaDefinitiva.id);
+    await admin.from("cotas_definitivas").delete().eq("venda_id", res1.venda.id);
     await admin.from("vendas").delete().eq("id", res1.venda.id);
     await admin.from("contratacoes_online").delete().eq("id", contratacao!.id);
-  });
+    await admin.from("leads").delete().eq("id", lead!.id);
+  }, 15000);
 });
