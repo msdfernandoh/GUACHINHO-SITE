@@ -6,8 +6,8 @@
 **Escopo:** todo o delta entre o handoff da Fase 4/E6 e o estado de `main` em 10/08/2026.  
 **Regra especial:** sorteios foram somente inventariados/smoke; tabela, API, runtime, RLS e policy `grupos_sorteios_loteria_public_read` não foram alterados.
 
-**SHA de implementação auditado/Preview:** `fb56ca9`  
-**Preview:** `dpl_CbZcMAXTqtGffSLeRXP2bA13LFDE` — READY — `https://guachinho-site-qy6z2isq8-hugo-8097s-projects.vercel.app`
+**SHA de implementação auditado/Preview:** `d13618c`  
+**Preview:** `dpl_BTknMJ8xLuk1FNCKuP8wYqK1PSHF` — READY — `https://guachinho-site-rdvz79l2t-hugo-8097s-projects.vercel.app`
 
 ## 1. Sumário executivo e ponto exato de handoff
 
@@ -190,7 +190,7 @@ Os 37 testes live só executam com opt-in explícito. Eles não devem ser usados
 | Migration criada | 057 |
 | Migration aplicada | não |
 | Pushed | sim, branch `origin/codex/audit-pos-antigravity` |
-| Preview deployado | sim; `dpl_CbZcMAXTqtGffSLeRXP2bA13LFDE`, READY |
+| Preview deployado | sim; `dpl_BTknMJ8xLuk1FNCKuP8wYqK1PSHF`, READY |
 | Homologado em Preview | parcial: build PASS e seis APIs retornaram `Não autenticado` sem sessão; fluxos C/D não homologados |
 | Produção | não alterada; continua vulnerável até merge/deploy/migration autorizados |
 
