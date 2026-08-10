@@ -1,16 +1,16 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { MetaCommercialRow } from "@/lib/gestao/metas-service";
+import type { MetaCommercialRow } from "@/lib/gestao/metas-service";
 
 export default function AdminMetasPage() {
   const [metas, setMetas] = useState<MetaCommercialRow[]>([]);
   const [loading, setLoading] = useState(true);
 
   const [titulo, setTitulo] = useState("");
-  const [indicador, setIndicador] = useState<any>("valor_credito_vendido");
-  const [alvoTipo, setAlvoTipo] = useState<any>("empresa");
-  const [periodoTipo, setPeriodoTipo] = useState<any>("mensal");
+  const [indicador, setIndicador] = useState<MetaCommercialRow["indicador"]>("valor_credito_vendido");
+  const [alvoTipo, setAlvoTipo] = useState<MetaCommercialRow["alvo_tipo"]>("empresa");
+  const [periodoTipo] = useState<MetaCommercialRow["periodo_tipo"]>("mensal");
   const [dataInicio, setDataInicio] = useState("");
   const [dataFim, setDataFim] = useState("");
   const [valorMeta, setValorMeta] = useState<number>(100000);
@@ -57,8 +57,8 @@ export default function AdminMetasPage() {
       }
       setTitulo("");
       await loadData();
-    } catch (err: any) {
-      alert(err.message);
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : "Erro ao criar meta");
     }
   }
 
@@ -91,7 +91,7 @@ export default function AdminMetasPage() {
             <label className="block text-sm font-medium text-slate-700">Indicador</label>
             <select
               value={indicador}
-              onChange={(e) => setIndicador(e.target.value)}
+              onChange={(e) => setIndicador(e.target.value as MetaCommercialRow["indicador"])}
               className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="valor_credito_vendido">Crédito Vendido (R$)</option>
@@ -135,7 +135,7 @@ export default function AdminMetasPage() {
             <label className="block text-sm font-medium text-slate-700">Âmbito / Alvo</label>
             <select
               value={alvoTipo}
-              onChange={(e) => setAlvoTipo(e.target.value)}
+              onChange={(e) => setAlvoTipo(e.target.value as MetaCommercialRow["alvo_tipo"])}
               className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="empresa">Toda a Empresa (Tenant)</option>

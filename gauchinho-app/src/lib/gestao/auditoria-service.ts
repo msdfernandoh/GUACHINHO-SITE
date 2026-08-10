@@ -1,3 +1,5 @@
+import "server-only";
+
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export type AuditLogCentralRow = {
@@ -97,3 +99,4 @@ export async function listAuditLogsForEmpresa(
     count: count || 0,
   };
 }
+import "server-only";

@@ -1,15 +1,16 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
-> **Versão Final do Projeto:** 5.0.0  
+> **Versão de Auditoria:** 5.1.0-rc.1
 > **Data de Atualização:** 10/08/2026  
-> **Status Geral do Projeto:** **PROJETO SaaS DE CONSÓRCIOS — CONCLUÍDO, AUDITADO E HOMOLOGADO EM PRODUÇÃO**  
-> **Macroblocos A, B, C, D, E e F:** **TODOS CONCLUÍDOS E HOMOLOGADOS EM PRODUÇÃO**  
+> **Status Geral do Projeto:** **AUDITORIA INDEPENDENTE CODEX EM BRANCH/PREVIEW; PRODUÇÃO AINDA CONTÉM RISCOS MATERIAIS**
+> **Macroblocos A–F:** a implementação existe, porém B–F têm ressalvas e C/D exigem decisões de negócio antes de homologação final.
 > **Infraestrutura em Produção:**  
 > - **Vercel Production:** `https://gauchinhoconsorcios.com.br` (Status READY, Aliased)  
-> - **Supabase Database:** `eaeuoynprurmmulzhydt` (`001–056` local=remote | dry-run up to date)  
-> - **Suíte de Testes Automatizados:** `668/668 PASS` (118 arquivos de teste)  
+> - **Supabase Database:** `eaeuoynprurmmulzhydt` (Produção observada com estruturas até 056; migration corretiva 057 criada localmente e **não aplicada**)
+> - **Supabase CLI:** comparação `migration list --linked` / `db push --linked --dry-run` não comprovada nesta auditoria por credencial de pooler local inválida; não foi executado `repair`.
+> - **Suíte segura padrão:** `639 PASS`, `37 SKIP` (9 suítes live antigas agora opt-in; 8 testes independentes Codex incluídos)
 > - **Build Next.js:** Exit Code 0 (119 páginas estáticas/dinâmicas compiladas)  
-> - **Segurança & Multi-Tenant:** RLS ativo em 27 tabelas críticas, Empresa B com 0 dados/concessões, Host Resolution e RBAC formalizado em `SAAS-PERMISSIONS-MATRIX.md`.  
+> - **Segurança & Multi-Tenant:** hardening de APIs/RLS preparado na branch `codex/audit-pos-antigravity`; detalhes em `docs/relatorios-fases/AUDITORIA-CODEX-POS-ANTIGRAVITY.md`.
 
 > **Projeto Físico:** `C:\Fernando Hugo\GAUCHINHO SITE`  
 > **Repositório Git:** `https://github.com/msdfernandoh/GUACHINHO-SITE.git`
@@ -54,7 +55,7 @@ A plataforma suporta:
 - `vendas`, `cotas_definitivas`.
 
 ### Tabelas do Motor de Comissões e Competências (Macrobloco C - Migration 054)
-- `comissao_programas_franquia`, `comissao_regras_franquia`, `comissao_participantes_regras`, `previsoes_comissao_franquia`, `previsoes_comissao_participante`.
+- `comissao_programas`, `comissao_regras_franquia`, `comissao_regras_participantes`, `comissao_previsoes_franquia`, `comissao_previsoes_participantes`.
 
 ### Tabelas Financeiras e Caixa (Macrobloco D - Migration 055)
 - `financeiro_recebimentos`, `financeiro_recebimento_itens`, `financeiro_pagamentos`, `financeiro_pagamento_itens`, `financeiro_compensacoes`, `caixa_movimentos`.
@@ -68,16 +69,18 @@ A plataforma suporta:
 
 | Macrobloco | Branch | Migrations | Status | URL / Deploy |
 |---|---|---|---|---|
-| Macrobloco A (Fundação SaaS & Catálogo) | `main` | 001–052 | HOMOLOGADO | Produção (`gauchinhoconsorcios.com.br`) |
-| Macrobloco B (Comercial, CRM & Vendas) | `main` | 053 | HOMOLOGADO | Produção (`gauchinhoconsorcios.com.br`) |
-| Macrobloco C (Motor de Comissões) | `main` | 054 | HOMOLOGADO | Produção (`gauchinhoconsorcios.com.br`) |
-| Macrobloco D (Financeiro, Estornos & Caixa) | `main` | 055 | HOMOLOGADO | Produção (`gauchinhoconsorcios.com.br`) |
-| Macrobloco E (Gestão, Metas & Auditoria) | `main` | 056 | HOMOLOGADO | Produção (`gauchinhoconsorcios.com.br`) |
-| Macrobloco F (Homologação Geral & Onboarding) | `main` | 001–056 | HOMOLOGADO | Produção (`gauchinhoconsorcios.com.br`) |
+| Macrobloco A (Fundação SaaS & Catálogo) | `main` | 001–052 | CORRETO COM RESSALVAS | Produção existente; drift CLI não reconfirmado |
+| Macrobloco B (Comercial, CRM & Vendas) | auditoria Codex | 053 + 057 | CORRIGIDO PARCIALMENTE | Preview; atomicidade ainda pendente |
+| Macrobloco C (Motor de Comissões) | auditoria Codex | 054 + 057 | PROBLEMA MATERIAL | Percentuais/base/default automático exigem decisão |
+| Macrobloco D (Financeiro, Estornos & Caixa) | auditoria Codex | 055 + 057 | PROBLEMA MATERIAL | Fluxos não atômicos e elegibilidade incorreta |
+| Macrobloco E (Gestão, Metas & Auditoria) | auditoria Codex | 056 + 057 | CORRIGIDO NO CÓDIGO | APIs, RLS, IDOR e dashboard endurecidos |
+| Macrobloco F (Homologação Geral & Onboarding) | auditoria Codex | 001–057 | NÃO COMPROVADO | Claims anteriores excediam a evidência técnica |
 
 ---
 
 ## 5. Declaração Final de Segurança e Riscos
 
-* **NENHUM RISCO MATERIAL RESIDUAL IDENTIFICADO DENTRO DO ESCOPO APROVADO, IMPLEMENTADO E AUDITADO DO PROJETO SAAS.**
-* **PROJETO SaaS DE CONSÓRCIOS — CONCLUÍDO, AUDITADO E HOMOLOGADO EM PRODUÇÃO.**
+* A Produção respondia sem autenticação nas seis APIs `/api/admin/gestao/*` auditadas; a correção existe apenas na branch/Preview até nova autorização.
+* A migration 057 corrige escrita indevida de `visualizador`, identidade RLS da 056, integridade cross-tenant de gestão e imutabilidade de caixa/auditoria; ainda não foi aplicada remotamente.
+* Comissões e financeiro não podem ser declarados homologados: faltam decisão formal de regras e transações atômicas no banco.
+* Sorteios permanecem fora deste escopo corretivo e não foram alterados.

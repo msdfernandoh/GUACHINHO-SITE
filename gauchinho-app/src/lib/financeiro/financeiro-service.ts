@@ -1,3 +1,5 @@
+import "server-only";
+
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export type RecebimentoInput = {
@@ -319,3 +321,4 @@ export async function getResumoCaixaEmpresa(empresaId: string): Promise<ResumoCa
     totalSaldosACompensar: Number(totalSaldosACompensar.toFixed(2)),
   };
 }
+import "server-only";

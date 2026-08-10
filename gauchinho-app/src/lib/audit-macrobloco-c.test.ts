@@ -26,9 +26,10 @@ import {
 } from "@/lib/comissoes/comissoes-service";
 
 const GAUCHINHO_EMPRESA_ID = "7170f38e-15dd-4b19-8588-51e9a9cf0d4c";
-const EMPRESA_B_ID = "e2000000-0000-0000-0000-000000000002";
+const EMPRESA_B_ID = "8e4e13f9-80e6-44db-a21b-584a43b6f024";
+const describeLive = process.env.RUN_LIVE_PRODUCTION_AUDIT === "true" ? describe : describe.skip;
 
-describe("SUÍTE DE AUDITORIA END-TO-END DO MACROBLOCO C (MOTOR DE COMISSÕES E PREVISÕES)", () => {
+describeLive("SUÍTE DE AUDITORIA END-TO-END DO MACROBLOCO C (MOTOR DE COMISSÕES E PREVISÕES)", () => {
   it("1. Tabelas da Migration 054 existem no Supabase remoto e possuem RLS habilitado", async () => {
     const admin = createAdminClient();
 

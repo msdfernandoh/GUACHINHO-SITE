@@ -1,3 +1,5 @@
+import "server-only";
+
 import { createAdminClient } from "@/lib/supabase/admin";
 import { assertEmpresaPodeAcessarGrupo } from "@/lib/grupos/catalogo-autorizado-service";
 import type { GrupoConsorcio } from "@/lib/types";
@@ -56,11 +58,12 @@ export async function converterContratacaoEmVenda(
 ): Promise<{ venda: VendaRow; cotaDefinitiva: CotaDefinitivaRow }> {
   const admin = createAdminClient();
 
-  // 1. Checagem de Idempotência: verifica se a venda já existe para esta contratação
+  // 1. Idempotência sempre escopada ao tenant: nunca devolve dados de outra empresa.
   const { data: vendaExistente } = await admin
     .from("vendas")
     .select("*")
     .eq("contratacao_id", contratacaoId)
+    .eq("empresa_id", empresaId)
     .maybeSingle();
 
   if (vendaExistente) {
@@ -69,6 +72,10 @@ export async function converterContratacaoEmVenda(
       .select("*")
       .eq("venda_id", vendaExistente.id)
       .maybeSingle();
+
+    if (!cotaExistente || cotaExistente.empresa_id !== empresaId) {
+      throw new Error("Venda existente sem cota definitiva íntegra para este tenant.");
+    }
 
     return {
       venda: vendaExistente as VendaRow,
@@ -108,9 +115,18 @@ export async function converterContratacaoEmVenda(
   const clienteEmail = String(contratacao.email ?? dados.cliente_email ?? "");
   const clienteTelefone = String(contratacao.telefone ?? dados.cliente_telefone ?? "");
 
-  const valorCredito = Number(contratacao.credito_selecionado ?? dados.valor_credito ?? 100000);
-  const prazo = Number(contratacao.prazo ?? dados.prazo ?? grupo.prazo_total ?? 180);
-  const parcela = Number(contratacao.parcela_estimada ?? dados.valor_parcela ?? 650);
+  const valorCredito = Number(contratacao.credito_selecionado ?? dados.valor_credito);
+  const prazo = Number(contratacao.prazo ?? dados.prazo ?? grupo.prazo_total);
+  const parcela = Number(contratacao.parcela_estimada ?? dados.valor_parcela);
+  if (!Number.isFinite(valorCredito) || valorCredito <= 0) {
+    throw new Error("Contratação sem valor de crédito válido.");
+  }
+  if (!Number.isInteger(prazo) || prazo <= 0) {
+    throw new Error("Contratação sem prazo válido.");
+  }
+  if (!Number.isFinite(parcela) || parcela <= 0) {
+    throw new Error("Contratação sem parcela válida.");
+  }
 
   const snapshotVenda = {
     dados_simulacao: dados,

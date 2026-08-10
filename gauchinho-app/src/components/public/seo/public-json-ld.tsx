@@ -1,4 +1,5 @@
 import { getPublicSiteUrl } from "@/lib/seo/site-url";
+import { serializeJsonLd } from "@/lib/seo/json-ld";
 import {
   getConfigJsonPublic,
   DEFAULT_CONTATO,
@@ -59,7 +60,7 @@ export async function PublicJsonLd() {
   return (
     <script
       type="application/ld+json"
-      dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      dangerouslySetInnerHTML={{ __html: serializeJsonLd(jsonLd) }}
     />
   );
 }

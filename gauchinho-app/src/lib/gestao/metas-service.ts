@@ -1,4 +1,7 @@
+import "server-only";
+
 import { createAdminClient } from "@/lib/supabase/admin";
+import { assertGestaoResourceTenant } from "@/lib/gestao/resource-validation";
 
 export type MetaCommercialRow = {
   id: string;
@@ -70,6 +73,15 @@ export async function createMeta(
 ): Promise<MetaCommercialRow> {
   const admin = createAdminClient();
 
+  if (data.alvo_tipo === "empresa") {
+    if (data.alvo_id && data.alvo_id !== empresaId) {
+      throw new Error("Alvo empresa não pertence ao tenant.");
+    }
+  } else {
+    if (!data.alvo_id) throw new Error("alvo_id é obrigatório para este tipo de meta.");
+    await assertGestaoResourceTenant(empresaId, data.alvo_tipo, data.alvo_id);
+  }
+
   const { data: meta, error } = await admin
     .from("metas_comerciais")
     .insert({
@@ -121,7 +133,7 @@ export async function calcularApuracaoMeta(
         .from("vendas")
         .select("valor_credito")
         .eq("empresa_id", empresaId)
-        .eq("status", "efetivada")
+        .eq("status", "confirmada")
         .gte("created_at", startIso)
         .lte("created_at", endIso);
 
@@ -141,7 +153,7 @@ export async function calcularApuracaoMeta(
         .from("vendas")
         .select("*", { count: "exact", head: true })
         .eq("empresa_id", empresaId)
-        .eq("status", "efetivada")
+        .eq("status", "confirmada")
         .gte("created_at", startIso)
         .lte("created_at", endIso);
 
@@ -176,12 +188,12 @@ export async function calcularApuracaoMeta(
     case "receita_prevista_franquia": {
       const { data: previsoes } = await admin
         .from("comissao_previsoes_franquia")
-        .select("valor_previso")
+        .select("valor_previsto")
         .eq("empresa_id", empresaId)
         .gte("created_at", startIso)
         .lte("created_at", endIso);
 
-      realizado = (previsoes || []).reduce((acc: number, p: any) => acc + Number(p.valor_previso || 0), 0);
+      realizado = (previsoes || []).reduce((acc: number, p: any) => acc + Number(p.valor_previsto || 0), 0);
       break;
     }
 

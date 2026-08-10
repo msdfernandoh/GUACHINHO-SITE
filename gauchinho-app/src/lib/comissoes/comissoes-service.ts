@@ -1,3 +1,5 @@
+import "server-only";
+
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export type EtapaCronograma = {
@@ -93,60 +95,42 @@ export async function gerarPrevisoesComissaoParaVenda(
   const cotaId = cotaDefinitiva?.id ?? null;
 
   // 4. Busca programa e regra vigente da franquia para a empresa
-  let { data: programa } = await admin
+  const { data: programa, error: programaError } = await admin
     .from("comissao_programas")
     .select("*")
     .eq("empresa_id", empresaId)
     .eq("ativo", true)
     .maybeSingle();
 
-  if (!programa) {
-    // Cria programa padrão para a empresa se não existir
-    const { data: novoProg } = await admin
-      .from("comissao_programas")
-      .insert({
-        empresa_id: empresaId,
-        nome: "Programa Padrão de Comissão",
-        descricao: "Regra padrão da franquia",
-        ativo: true,
-      })
-      .select("*")
-      .single();
-    programa = novoProg;
+  if (programaError || !programa) {
+    throw new Error("Programa de comissão ativo não configurado para este tenant.");
   }
 
-  let { data: regraFranquia } = await admin
+  const { data: regraFranquia, error: regraFranquiaError } = await admin
     .from("comissao_regras_franquia")
     .select("*")
     .eq("empresa_id", empresaId)
-    .eq("programa_id", programa!.id)
+    .eq("programa_id", programa.id)
     .eq("ativa", true)
     .maybeSingle();
 
-  if (!regraFranquia) {
-    // Regra padrão: 4.0% sobre o crédito em parcela única
-    const { data: novaRegra } = await admin
-      .from("comissao_regras_franquia")
-      .insert({
-        empresa_id: empresaId,
-        programa_id: programa!.id,
-        versao: 1,
-        percentual_total_comissao: 4.0,
-        base_calculo: "credito",
-        ativa: true,
-        etapas_cronograma: [
-          { ordem: 1, mes_relativo: 1, percentual_etapa: 100, nome: "Parcela Única" },
-        ],
-      })
-      .select("*")
-      .single();
-    regraFranquia = novaRegra;
+  if (regraFranquiaError || !regraFranquia) {
+    throw new Error("Regra de comissão da franquia não configurada para este tenant.");
   }
 
   // 5. Cálculo das Etapas da Franquia
-  const etapas = (regraFranquia!.etapas_cronograma ?? []) as EtapaCronograma[];
+  const etapas = (regraFranquia.etapas_cronograma ?? []) as EtapaCronograma[];
+  if (etapas.length === 0) {
+    throw new Error("Regra de comissão da franquia sem cronograma configurado.");
+  }
   const valorCredito = Number(venda.valor_credito ?? 0);
-  const pctTotalFranquia = Number(regraFranquia!.percentual_total_comissao ?? 4.0);
+  if (regraFranquia.base_calculo !== "credito") {
+    throw new Error("Base valor_fixo da franquia ainda não possui semântica homologada.");
+  }
+  const pctTotalFranquia = Number(regraFranquia.percentual_total_comissao);
+  if (!Number.isFinite(pctTotalFranquia) || pctTotalFranquia < 0) {
+    throw new Error("Percentual de comissão da franquia inválido.");
+  }
   const valorComissaoFranquiaTotal = (valorCredito * pctTotalFranquia) / 100;
 
   const previsoesFranquiaNovas: Partial<PrevisaoFranquiaRow>[] = [];
@@ -160,7 +144,7 @@ export async function gerarPrevisoesComissaoParaVenda(
       venda_id: vendaId,
       cota_definitiva_id: cotaId,
       administradora_id: venda.administradora_id,
-      regra_franquia_id: regraFranquia!.id,
+      regra_franquia_id: regraFranquia.id,
       ordem_etapa: et.ordem,
       nome_etapa: et.nome ?? `Etapa ${et.ordem}`,
       competencia: comp,
@@ -169,8 +153,8 @@ export async function gerarPrevisoesComissaoParaVenda(
       valor_previsto: Number(valEtapa.toFixed(2)),
       status: "prevista",
       snapshot_regra: {
-        programa_nome: programa!.nome,
-        versao_regra: regraFranquia!.versao,
+        programa_nome: programa.nome,
+        versao_regra: regraFranquia.versao,
         percentual_total: pctTotalFranquia,
         etapa: et,
       },
@@ -203,33 +187,26 @@ export async function gerarPrevisoesComissaoParaVenda(
   const previsoesParticipantesResult: PrevisaoParticipanteRow[] = [];
 
   if (venda.participante_comercial_id || venda.organizacao_parceira_id) {
-    let { data: regraPart } = await admin
+    const { data: regraPart, error: regraPartError } = await admin
       .from("comissao_regras_participantes")
       .select("*")
       .eq("empresa_id", empresaId)
-      .eq("programa_id", programa!.id)
+      .eq("programa_id", programa.id)
       .eq("ativa", true)
       .maybeSingle();
 
-    if (!regraPart) {
-      const { data: novaRegraPart } = await admin
-        .from("comissao_regras_participantes")
-        .insert({
-          empresa_id: empresaId,
-          programa_id: programa!.id,
-          participante_comercial_id: venda.participante_comercial_id ?? null,
-          organizacao_parceira_id: venda.organizacao_parceira_id ?? null,
-          percentual_comissao: 1.5,
-          base_calculo: "credito",
-          ativa: true,
-        })
-        .select("*")
-        .single();
-      regraPart = novaRegraPart;
+    if (regraPartError || !regraPart) {
+      throw new Error("Regra de comissão do participante/parceiro não configurada.");
     }
 
-    const pctPart = Number(regraPart!.percentual_comissao ?? 1.5);
-    const basePart = regraPart!.base_calculo ?? "credito";
+    const pctPart = Number(regraPart.percentual_comissao);
+    const basePart = regraPart.base_calculo;
+    if (basePart === "valor_fixo") {
+      throw new Error("Base valor_fixo do participante ainda não possui semântica homologada.");
+    }
+    if (!Number.isFinite(pctPart) || pctPart < 0) {
+      throw new Error("Percentual de comissão do participante/parceiro inválido.");
+    }
     let valorBasePart = valorCredito;
     if (basePart === "comissao_franquia") {
       valorBasePart = valorComissaoFranquiaTotal;
@@ -259,7 +236,7 @@ export async function gerarPrevisoesComissaoParaVenda(
             cota_definitiva_id: cotaId,
             participante_comercial_id: venda.participante_comercial_id ?? null,
             organizacao_parceira_id: venda.organizacao_parceira_id ?? null,
-            regra_participante_id: regraPart!.id,
+          regra_participante_id: regraPart.id,
             ordem_etapa: et.ordem,
             nome_etapa: et.nome ?? `Etapa ${et.ordem}`,
             competencia: comp,
@@ -268,7 +245,7 @@ export async function gerarPrevisoesComissaoParaVenda(
             valor_previsto: Number(valPartEtapa.toFixed(2)),
             status: "prevista",
             snapshot_regra: {
-              programa_nome: programa!.nome,
+              programa_nome: programa.nome,
               percentual_participante: pctPart,
               base_calculo: basePart,
             },
@@ -376,3 +353,4 @@ export async function listPrevisoesParticipantesForEmpresa(
   if (error || !data) return [];
   return data as PrevisaoParticipanteRow[];
 }
+import "server-only";
