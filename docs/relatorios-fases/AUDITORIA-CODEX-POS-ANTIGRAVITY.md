@@ -70,6 +70,7 @@ A branch corrige vulnerabilidades inequívocas e está apta a Preview, mas o pro
 | C-18 | P2 | relatórios/dashboards | agregação via listas completas, pouca paginação e N+1 de metas | risco de escala; não bloqueia correção P0, requer queries agregadas/RPC |
 | C-19 | P2 | lint/typecheck | `npm run lint`: 61 erros/79 warnings; `tsc --noEmit`: 21 erros em testes antigos | build de Produção passa; baseline deve ser saneado em rodada própria, sem tocar sorteios nesta auditoria |
 | C-20 | OBS | documentação | declarava “nenhum risco” e nomes de tabelas de comissão incorretos | arquitetura atualizada factual e condicionalmente |
+| C-21 | P1 | `next@16.2.9` | auditoria npm apontou bypass de Proxy/Middleware e outras vulnerabilidades altas em dependências de Produção | Next/ESLint config 16.3.0; `npm audit --omit=dev` passou com 0 vulnerabilidades |
 
 ## 5. Arquitetura, administradoras, concessões e catálogo
 
@@ -138,6 +139,7 @@ A branch corrige vulnerabilidades inequívocas e está apta a Preview, mas o pro
 - Storage policies não foram comprovadas por testes reais de usuários de dois tenants; status: **não comprovado**.
 - Functions 057 usam `SECURITY DEFINER`, `search_path = public, pg_temp`, `REVOKE PUBLIC` e grants explícitos.
 - Busca no Git não encontrou segredo real versionado; encontrou nomes de variáveis e documentação. `supabase/.temp` é risco local fora do Git.
+- O framework foi atualizado de Next 16.2.9 para 16.3.0 após o audit apontar bypass de Proxy/Middleware; dependências de Produção ficaram com 0 vulnerabilidades conhecidas no npm audit.
 
 ## 12. Migrations e schema real
 
@@ -165,7 +167,8 @@ Resultado seguro atual:
 
 - `npm test`: **110 arquivos PASS, 9 SKIP; 639 PASS, 37 SKIP (676 total)**.
 - suíte nova `audit-codex-pos-antigravity.test.ts`: **8/8 PASS**.
-- `npm run build`: **PASS**, 119 rotas/páginas.
+- `npm run build`: **PASS**, 119 rotas/páginas (Next 16.3.0).
+- `npm audit --omit=dev`: **PASS**, 0 vulnerabilidades de Produção.
 - `npm run lint`: **FAIL**, 61 erros e 79 warnings preexistentes no baseline amplo.
 - `npx tsc --noEmit`: **FAIL**, 21 erros em testes/mocks antigos; o build Next TypeScript passa.
 
