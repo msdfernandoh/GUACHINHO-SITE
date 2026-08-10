@@ -1,8 +1,5 @@
-import "server-only";
-
 import { createAdminClient } from "@/lib/supabase/admin";
 import { fetchConcessoesComAdministradoraByEmpresa } from "@/lib/administradoras/repository";
-import type { GrupoConsorcio, GrupoCota, GrupoModalidadeLance, PublicGrupoAggregate } from "@/lib/types";
 import {
   assertCotaDoGrupo,
   assertGrupoAutorizadoPorIds,
@@ -11,8 +8,17 @@ import {
   parseSelecoesGrupoFromDadosSimulacao,
   throwCotaNotFound,
   throwGrupoNotFound,
-  type ConcessaoAuthRow,
 } from "./catalogo-autorizado";
+import {
+  fetchEmpresaGruposConfigMap,
+  resolveEmpresaGrupoPresentation,
+} from "./empresa-grupos-config";
+import type {
+  GrupoConsorcio,
+  GrupoCota,
+  GrupoModalidadeLance,
+  PublicGrupoAggregate,
+} from "@/lib/types";
 
 export type CatalogoAutorizadoDeps = {
   fetchConcessoes: typeof fetchConcessoesComAdministradoraByEmpresa;
@@ -24,18 +30,12 @@ const defaultDeps: CatalogoAutorizadoDeps = {
   adminFrom: createAdminClient,
 };
 
-/**
- * Lista IDs de administradoras autorizadas para a empresa.
- * Caller DEVE ter resolvido empresa_id pelo Host/proxy (nunca do client).
- * Usa service role — sem checagem de sessão (contexto público).
- */
 export async function listAdministradoraIdsAutorizadasForEmpresa(
   empresaId: string,
   deps: CatalogoAutorizadoDeps = defaultDeps,
 ): Promise<string[]> {
-  if (!empresaId) return [];
-  const rows = await deps.fetchConcessoes(empresaId);
-  const mapped: ConcessaoAuthRow[] = rows.map((r) => ({
+  const concessoes = await deps.fetchConcessoes(empresaId);
+  const mapped = concessoes.map((r) => ({
     administradora_id: r.concessao.administradora_id,
     status: r.concessao.status,
     administradora_status: r.administradora?.status ?? null,
@@ -65,9 +65,27 @@ export async function listGruposAutorizadosForEmpresa(
 
   const { data, error } = await q;
   if (error) throw new Error(error.message);
-  return ((data ?? []) as GrupoConsorcio[]).filter((g) =>
-    opts?.incluirInativos ? Boolean(g.administradora_id) : grupoElegivelCatalogo(g),
-  );
+  const rawGrupos = (data ?? []) as GrupoConsorcio[];
+
+  if (opts?.incluirInativos) {
+    return rawGrupos.filter((g) => Boolean(g.administradora_id));
+  }
+
+  // Aplica a reconciliação com a configuração de apresentação local (empresa_grupos_config)
+  const configMap = await fetchEmpresaGruposConfigMap(empresaId, deps);
+  const result: GrupoConsorcio[] = [];
+
+  for (const g of rawGrupos) {
+    if (!grupoElegivelCatalogo(g)) continue;
+    const config = configMap.get(g.id);
+    const presentation = resolveEmpresaGrupoPresentation(g, config);
+
+    if (presentation.exibirAoPublico) {
+      result.push(g);
+    }
+  }
+
+  return result;
 }
 
 export async function getGrupoAutorizadoForEmpresa(
@@ -155,8 +173,7 @@ export async function listModalidadesAutorizadasForEmpresa(
 }
 
 /**
- * Agregados públicos tenant-scoped (substitui leitura anon global).
- * Cache: incluir sempre empresaId na chave se houver cache futuro.
+ * Agregados públicos tenant-scoped com reconciliação de apresentacao local (empresa_grupos_config).
  */
 export async function fetchPublicGruposAggregatesForEmpresa(
   empresaId: string,
@@ -165,6 +182,7 @@ export async function fetchPublicGruposAggregatesForEmpresa(
   const grupos = await listGruposAutorizadosForEmpresa(empresaId, undefined, deps);
   if (grupos.length === 0) return [];
 
+  const configMap = await fetchEmpresaGruposConfigMap(empresaId, deps);
   const grupoIds = grupos.map((g) => g.id);
   const admin = deps.adminFrom();
   const [{ data: cotas, error: cErr }, { data: modalidades, error: mErr }] = await Promise.all([
@@ -204,12 +222,31 @@ export async function fetchPublicGruposAggregatesForEmpresa(
     const list = cotasByGrupo.get(g.id) ?? [];
     if (!list.length) continue;
     list.sort((a, b) => Number(b.valor_credito) - Number(a.valor_credito));
+
+    // Reconcilia overrides locais de titulo e visibilidade
+    const config = configMap.get(g.id);
+    const presentation = resolveEmpresaGrupoPresentation(g, config);
+
     aggregates.push({
-      grupo: g,
+      grupo: {
+        ...g,
+        ...(presentation.tituloComercial ? { titulo_comercial: presentation.tituloComercial } : {}),
+      },
       cotas: list,
       modalidades: modsByGrupo.get(g.id) ?? [],
     });
   }
+
+  // Ordenação final: respeita ordemLocal se informada
+  aggregates.sort((a, b) => {
+    const cfgA = configMap.get(a.grupo.id);
+    const cfgB = configMap.get(b.grupo.id);
+    const ordemA = cfgA?.ordem ?? 999;
+    const ordemB = cfgB?.ordem ?? 999;
+    if (ordemA !== ordemB) return ordemA - ordemB;
+    return a.grupo.codigo_grupo.localeCompare(b.grupo.codigo_grupo);
+  });
+
   return aggregates;
 }
 
