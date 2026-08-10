@@ -27,6 +27,7 @@ import {
   parseModalidadesJson,
 } from "@/lib/grupos/modalidades-admin";
 import { resolveGrupoAdministradoraDualWriteFromForm } from "@/lib/grupos/administradora-repository";
+import { RACON_ADMINISTRADORA_ID } from "@/lib/administradoras/constants";
 import {
   upsertEmpresaGrupoConfig,
   deleteEmpresaGrupoConfig,
