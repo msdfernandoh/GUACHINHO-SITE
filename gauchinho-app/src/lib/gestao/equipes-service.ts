@@ -1,4 +1,7 @@
+import "server-only";
+
 import { createAdminClient } from "@/lib/supabase/admin";
+import { assertGestaoResourceTenant } from "@/lib/gestao/resource-validation";
 
 export type EquipeRow = {
   id: string;
@@ -61,6 +64,10 @@ export async function createEquipe(
 ): Promise<EquipeRow> {
   const admin = createAdminClient();
 
+  if (data.gestor_id) {
+    await assertGestaoResourceTenant(empresaId, "participante", data.gestor_id);
+  }
+
   const { data: equipe, error } = await admin
     .from("equipes")
     .insert({
@@ -79,11 +86,15 @@ export async function createEquipe(
 
   // Se houver gestor_id, insere automaticamente como membro com papel gestor
   if (data.gestor_id) {
-    await admin.from("equipe_membros").insert({
+    const { error: membroError } = await admin.from("equipe_membros").insert({
       equipe_id: equipe.id,
       participante_id: data.gestor_id,
       papel_equipe: "gestor",
     });
+    if (membroError) {
+      await admin.from("equipes").delete().eq("id", equipe.id).eq("empresa_id", empresaId);
+      throw new Error(`Erro ao vincular gestor à equipe: ${membroError.message}`);
+    }
   }
 
   return equipe as EquipeRow;
@@ -108,6 +119,8 @@ export async function addMembroEquipe(
   if (!equipe) {
     throw new Error("Acesso negado ou equipe não encontrada.");
   }
+
+  await assertGestaoResourceTenant(empresaId, "participante", participanteId);
 
   const { data: membro, error } = await admin
     .from("equipe_membros")

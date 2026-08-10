@@ -27,9 +27,10 @@ import {
 } from "./comissoes-service";
 
 const GAUCHINHO_EMPRESA_ID = "7170f38e-15dd-4b19-8588-51e9a9cf0d4c";
-const EMPRESA_B_ID = "e2000000-0000-0000-0000-000000000002";
+const EMPRESA_B_ID = "8e4e13f9-80e6-44db-a21b-584a43b6f024";
+const describeLive = process.env.RUN_LIVE_PRODUCTION_AUDIT === "true" ? describe : describe.skip;
 
-describe("SUÍTE DE TESTES MACROBLOCO C — MOTOR DE COMISSÕES, PREVISÕES E COMPETÊNCIAS", () => {
+describeLive("SUÍTE DE TESTES MACROBLOCO C — MOTOR DE COMISSÕES, PREVISÕES E COMPETÊNCIAS", () => {
   it("1. Função auxiliar calcularCompetencia calcula corretamente o formato YYYY-MM", () => {
     expect(calcularCompetencia("2026-08-10T10:00:00Z", 0)).toBe("2026-08");
     expect(calcularCompetencia("2026-08-10T10:00:00Z", 1)).toBe("2026-09");

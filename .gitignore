@@ -17,3 +17,6 @@ GUACHINHO-SITE/
 .DS_Store
 Thumbs.db
 .vercel
+
+# Supabase CLI/runtime scratch data (may contain local credentials and bypass tokens)
+supabase/.temp/

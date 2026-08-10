@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { EquipeRow } from "@/lib/gestao/equipes-service";
+import type { EquipeRow } from "@/lib/gestao/equipes-service";
 
 export default function AdminEquipesPage() {
   const [equipes, setEquipes] = useState<EquipeRow[]>([]);
@@ -44,8 +44,8 @@ export default function AdminEquipesPage() {
       setNome("");
       setDescricao("");
       await loadData();
-    } catch (err: any) {
-      alert(err.message);
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : "Erro ao criar equipe");
     }
   }
 

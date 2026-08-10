@@ -1,5 +1,8 @@
+import "server-only";
+
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getResumoCaixaEmpresa } from "@/lib/financeiro/financeiro-service";
+import { calcularApuracaoMeta } from "@/lib/gestao/metas-service";
 
 export type ResumoExecutivoDTO = {
   total_credito_vendido: number;
@@ -48,7 +51,7 @@ export async function getResumoExecutivo(empresaId: string): Promise<ResumoExecu
     .from("vendas")
     .select("valor_credito")
     .eq("empresa_id", empresaId)
-    .eq("status", "efetivada");
+    .eq("status", "confirmada");
 
   const totalCredito = (vendas || []).reduce((acc: number, v: any) => acc + Number(v.valor_credito || 0), 0);
   const vendasCount = (vendas || []).length;
@@ -57,15 +60,15 @@ export async function getResumoExecutivo(empresaId: string): Promise<ResumoExecu
   // 2. Previsões Franquia & Participantes
   const { data: prevFranquia } = await admin
     .from("comissao_previsoes_franquia")
-    .select("valor_previso")
+    .select("valor_previsto")
     .eq("empresa_id", empresaId);
-  const recPrevFranquia = (prevFranquia || []).reduce((acc: number, p: any) => acc + Number(p.valor_previso || 0), 0);
+  const recPrevFranquia = (prevFranquia || []).reduce((acc: number, p: any) => acc + Number(p.valor_previsto || 0), 0);
 
   const { data: prevPart } = await admin
     .from("comissao_previsoes_participantes")
-    .select("valor_previso")
+    .select("valor_previsto")
     .eq("empresa_id", empresaId);
-  const repPrevPart = (prevPart || []).reduce((acc: number, p: any) => acc + Number(p.valor_previso || 0), 0);
+  const repPrevPart = (prevPart || []).reduce((acc: number, p: any) => acc + Number(p.valor_previsto || 0), 0);
 
   // 3. Recebimentos & Pagamentos Reais & Caixa
   const caixaResumo = await getResumoCaixaEmpresa(empresaId);
@@ -87,12 +90,13 @@ export async function getResumoExecutivo(empresaId: string): Promise<ResumoExecu
     .select("id, valor_meta")
     .eq("empresa_id", empresaId);
 
-  let atingimentoSoma = 0;
-  if (metas && metas.length > 0) {
-    for (const m of metas) {
-      atingimentoSoma += 50; // Mock base para fallback seguro
-    }
-  }
+  const apuracoes = await Promise.all(
+    (metas || []).map((meta) => calcularApuracaoMeta(empresaId, meta.id)),
+  );
+  const atingimentoSoma = apuracoes.reduce(
+    (total, apuracao) => total + apuracao.percentual_atingimento,
+    0,
+  );
 
   // 6. Tarefas
   const { count: tarefasPendentes } = await admin
@@ -149,7 +153,7 @@ export async function getResumoComercial(empresaId: string): Promise<ResumoComer
     .from("vendas")
     .select("valor_credito, snapshot_venda")
     .eq("empresa_id", empresaId)
-    .eq("status", "efetivada");
+    .eq("status", "confirmada");
 
   const vendasTotais = (vendas || []).length;
   const creditoTotal = (vendas || []).reduce((acc: number, v: any) => acc + Number(v.valor_credito || 0), 0);
@@ -180,15 +184,15 @@ export async function getResumoFinanceiroDash(empresaId: string): Promise<Resumo
 
   const { data: prevFranquia } = await admin
     .from("comissao_previsoes_franquia")
-    .select("valor_previso")
+    .select("valor_previsto")
     .eq("empresa_id", empresaId);
-  const recPrevFranquia = (prevFranquia || []).reduce((acc: number, p: any) => acc + Number(p.valor_previso || 0), 0);
+  const recPrevFranquia = (prevFranquia || []).reduce((acc: number, p: any) => acc + Number(p.valor_previsto || 0), 0);
 
   const { data: prevPart } = await admin
     .from("comissao_previsoes_participantes")
-    .select("valor_previso")
+    .select("valor_previsto")
     .eq("empresa_id", empresaId);
-  const repPrevPart = (prevPart || []).reduce((acc: number, p: any) => acc + Number(p.valor_previso || 0), 0);
+  const repPrevPart = (prevPart || []).reduce((acc: number, p: any) => acc + Number(p.valor_previsto || 0), 0);
 
   return {
     receita_prevista_franquia: Number(recPrevFranquia.toFixed(2)),

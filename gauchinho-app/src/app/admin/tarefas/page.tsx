@@ -1,14 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { TarefaGestaoRow } from "@/lib/gestao/tarefas-service";
+import type { TarefaGestaoRow } from "@/lib/gestao/tarefas-service";
 
 export default function AdminTarefasPage() {
   const [tarefas, setTarefas] = useState<TarefaGestaoRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [titulo, setTitulo] = useState("");
   const [descricao, setDescricao] = useState("");
-  const [prioridade, setPrioridade] = useState<any>("media");
+  const [prioridade, setPrioridade] = useState<TarefaGestaoRow["prioridade"]>("media");
   const [dataLimite, setDataLimite] = useState("");
 
   useEffect(() => {
@@ -51,12 +51,12 @@ export default function AdminTarefasPage() {
       setTitulo("");
       setDescricao("");
       await loadData();
-    } catch (err: any) {
-      alert(err.message);
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : "Erro ao criar tarefa");
     }
   }
 
-  async function handleStatusChange(id: string, status: any) {
+  async function handleStatusChange(id: string, status: TarefaGestaoRow["status"]) {
     try {
       const res = await fetch("/api/admin/gestao/tarefas", {
         method: "PATCH",
@@ -68,8 +68,8 @@ export default function AdminTarefasPage() {
         throw new Error(err.error || "Erro ao atualizar status");
       }
       await loadData();
-    } catch (err: any) {
-      alert(err.message);
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : "Erro ao atualizar status");
     }
   }
 
@@ -99,7 +99,7 @@ export default function AdminTarefasPage() {
             <label className="block text-sm font-medium text-slate-700">Prioridade</label>
             <select
               value={prioridade}
-              onChange={(e) => setPrioridade(e.target.value)}
+              onChange={(e) => setPrioridade(e.target.value as TarefaGestaoRow["prioridade"])}
               className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="baixa">Baixa</option>
@@ -163,7 +163,7 @@ export default function AdminTarefasPage() {
                   <td className="py-3 px-4">
                     <select
                       value={t.status}
-                      onChange={(e) => handleStatusChange(t.id, e.target.value)}
+                      onChange={(e) => handleStatusChange(t.id, e.target.value as TarefaGestaoRow["status"])}
                       className="rounded border border-slate-300 px-2 py-1 text-xs focus:outline-none"
                     >
                       <option value="pendente">Pendente</option>

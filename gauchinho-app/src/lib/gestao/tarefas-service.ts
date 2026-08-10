@@ -1,4 +1,7 @@
+import "server-only";
+
 import { createAdminClient } from "@/lib/supabase/admin";
+import { assertGestaoResourceTenant, type GestaoResourceType } from "@/lib/gestao/resource-validation";
 
 export type TarefaGestaoRow = {
   id: string;
@@ -85,6 +88,24 @@ export async function createTarefa(
   },
 ): Promise<TarefaGestaoRow> {
   const admin = createAdminClient();
+
+  if (data.responsavel_id) {
+    await assertGestaoResourceTenant(empresaId, "participante", data.responsavel_id);
+  }
+  if (data.equipe_id) {
+    await assertGestaoResourceTenant(empresaId, "equipe", data.equipe_id);
+  }
+  if (data.origem_tipo === "interna" && data.origem_id) {
+    throw new Error("Tarefa interna não aceita origem_id.");
+  }
+  if (data.origem_tipo && data.origem_tipo !== "interna") {
+    if (!data.origem_id) throw new Error("origem_id é obrigatório para esta origem.");
+    await assertGestaoResourceTenant(
+      empresaId,
+      data.origem_tipo as GestaoResourceType,
+      data.origem_id,
+    );
+  }
 
   const { data: tarefa, error } = await admin
     .from("tarefas_gestao")
