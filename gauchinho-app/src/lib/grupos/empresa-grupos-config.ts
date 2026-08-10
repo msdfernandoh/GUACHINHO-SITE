@@ -97,6 +97,28 @@ export async function getEmpresaGrupoConfig(
 }
 
 /**
+ * Busca o mapa completo de configurações de apresentação local de uma empresa indexado por grupo_id.
+ */
+export async function fetchEmpresaGruposConfigMap(
+  empresaId: string,
+  deps: EmpresaGrupoConfigDeps = defaultDeps,
+): Promise<Map<string, EmpresaGrupoConfig>> {
+  const admin = deps.adminFrom();
+  const { data, error } = await admin
+    .from("empresa_grupos_config")
+    .select("*")
+    .eq("empresa_id", empresaId);
+
+  const map = new Map<string, EmpresaGrupoConfig>();
+  if (error || !data) return map;
+
+  for (const row of data as EmpresaGrupoConfig[]) {
+    map.set(row.grupo_id, row);
+  }
+  return map;
+}
+
+/**
  * Reconcilia o grupo global oficial com a configuração local da empresa.
  * A configuração local NUNCA pode ampliar permissões se o grupo global ou concessão estiverem inativos.
  */

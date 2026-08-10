@@ -17,7 +17,13 @@ type GrupoListRow = GrupoConsorcio & {
   grupos_cotas?: { count: number }[] | { count: number } | null;
 };
 
-export function GruposListClient({ grupos }: { grupos: GrupoListRow[] }) {
+export function GruposListClient({
+  grupos,
+  isSuperadmin = false,
+}: {
+  grupos: GrupoListRow[];
+  isSuperadmin?: boolean;
+}) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [reajusteGrupo, setReajusteGrupo] = useState<{ id: string; codigo: string } | null>(
@@ -126,34 +132,45 @@ export function GruposListClient({ grupos }: { grupos: GrupoListRow[] }) {
                   <td className="px-3 py-2">{g.ativo ? "Sim" : "Não"}</td>
                   <td className="px-3 py-2">
                     <div className="flex flex-col gap-1 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">
-                      <button
-                        type="button"
-                        onClick={() => setReajusteGrupo({ id: g.id, codigo: g.codigo_grupo })}
-                        className={cn(
-                          "text-left text-sm font-semibold hover:underline",
-                          precisaReajuste
-                            ? "text-amber-800 dark:text-amber-200"
-                            : "text-amber-600 dark:text-amber-400",
-                        )}
-                      >
-                        Ajustar
-                      </button>
-                      <Link
-                        href={`/admin/grupos/${g.id}`}
-                        className="text-zinc-600 hover:underline dark:text-zinc-300"
-                      >
-                        Editar
-                      </Link>
-                      {precisaReajuste ? (
-                        <button
-                          type="button"
-                          disabled={pending}
-                          onClick={() => marcarReajuste(g.id, g.codigo_grupo, marco)}
-                          className="text-left text-xs text-zinc-500 underline decoration-zinc-500/40 hover:text-zinc-800 disabled:opacity-50 dark:text-zinc-400"
+                      {isSuperadmin ? (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => setReajusteGrupo({ id: g.id, codigo: g.codigo_grupo })}
+                            className={cn(
+                              "text-left text-sm font-semibold hover:underline",
+                              precisaReajuste
+                                ? "text-amber-800 dark:text-amber-200"
+                                : "text-amber-600 dark:text-amber-400",
+                            )}
+                          >
+                            Ajustar
+                          </button>
+                          <Link
+                            href={`/admin/grupos/${g.id}`}
+                            className="text-zinc-600 hover:underline dark:text-zinc-300"
+                          >
+                            Editar
+                          </Link>
+                          {precisaReajuste ? (
+                            <button
+                              type="button"
+                              disabled={pending}
+                              onClick={() => marcarReajuste(g.id, g.codigo_grupo, marco)}
+                              className="text-left text-xs text-zinc-500 underline decoration-zinc-500/40 hover:text-zinc-800 disabled:opacity-50 dark:text-zinc-400"
+                            >
+                              Só remover destaque
+                            </button>
+                          ) : null}
+                        </>
+                      ) : (
+                        <Link
+                          href={`/admin/grupos/${g.id}`}
+                          className="text-amber-600 hover:underline dark:text-amber-400"
                         >
-                          Só remover destaque
-                        </button>
-                      ) : null}
+                          Ver detalhes
+                        </Link>
+                      )}
                     </div>
                   </td>
                 </tr>

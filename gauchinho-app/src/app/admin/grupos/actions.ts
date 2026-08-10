@@ -27,7 +27,10 @@ import {
   parseModalidadesJson,
 } from "@/lib/grupos/modalidades-admin";
 import { resolveGrupoAdministradoraDualWriteFromForm } from "@/lib/grupos/administradora-repository";
-import { RACON_ADMINISTRADORA_ID } from "@/lib/administradoras/constants";
+import {
+  upsertEmpresaGrupoConfig,
+  deleteEmpresaGrupoConfig,
+} from "@/lib/grupos/empresa-grupos-config";
 import type { GrupoModalidadeLance, GrupoConsorcio, PublicGrupoAggregate } from "@/lib/types";
 
 const GRUPO_AUTO_PARCEL_COLS = [
@@ -955,4 +958,63 @@ export async function popularGruposTesteAction(): Promise<{
   revalidatePath("/admin/grupos");
   revalidatePath("/grupos");
   return { created, skipped };
+}
+
+export async function updateEmpresaGrupoConfigAction(formData: FormData) {
+  const usuario = await requireUsuario();
+  const leadsConfig = await getConfigJson("leads", DEFAULT_LEADS);
+
+  if (!canManageGrupos(usuario.perfil, leadsConfig.srdPodeEditarGrupos)) {
+    throw new Error("Sem permissão para alterar a configuração comercial local de grupos.");
+  }
+
+  const empresaId = (formData.get("empresa_id") as string)?.trim();
+  const grupoId = (formData.get("grupo_id") as string)?.trim();
+
+  if (!empresaId || !grupoId) {
+    throw new Error("Identificadores de empresa e grupo são obrigatórios.");
+  }
+
+  const visivel = formData.get("visivel") === "true";
+  const destaque = formData.get("destaque") === "true";
+  const ordemRaw = (formData.get("ordem") as string)?.trim();
+  const ordem = ordemRaw ? parseInt(ordemRaw, 10) : null;
+  const tituloComercial = (formData.get("titulo_comercial") as string)?.trim() || null;
+  const descricaoComercial = (formData.get("descricao_comercial") as string)?.trim() || null;
+
+  await upsertEmpresaGrupoConfig(empresaId, grupoId, {
+    visivel,
+    destaque,
+    ordem: isNaN(ordem as number) ? null : ordem,
+    titulo_comercial: tituloComercial,
+    descricao_comercial: descricaoComercial,
+  });
+
+  revalidatePath("/admin/grupos");
+  revalidatePath("/grupos");
+  revalidatePath("/simulador");
+  revalidatePath("/");
+}
+
+export async function resetEmpresaGrupoConfigAction(formData: FormData) {
+  const usuario = await requireUsuario();
+  const leadsConfig = await getConfigJson("leads", DEFAULT_LEADS);
+
+  if (!canManageGrupos(usuario.perfil, leadsConfig.srdPodeEditarGrupos)) {
+    throw new Error("Sem permissão para restaurar a configuração padrão comercial de grupos.");
+  }
+
+  const empresaId = (formData.get("empresa_id") as string)?.trim();
+  const grupoId = (formData.get("grupo_id") as string)?.trim();
+
+  if (!empresaId || !grupoId) {
+    throw new Error("Identificadores de empresa e grupo são obrigatórios.");
+  }
+
+  await deleteEmpresaGrupoConfig(empresaId, grupoId);
+
+  revalidatePath("/admin/grupos");
+  revalidatePath("/grupos");
+  revalidatePath("/simulador");
+  revalidatePath("/");
 }
