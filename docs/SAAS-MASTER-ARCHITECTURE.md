@@ -1,8 +1,8 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
-> **Versão:** 1.5.3  
+> **Versão:** 1.5.4  
 > **Data de Atualização:** 09/08/2026  
-> **Status da Plataforma:** Fase 2 Concluída e Homologada em Produção; **Fase 3 CONCLUÍDA E HOMOLOGADA EM PRODUÇÃO**; **Fase 4 CONCLUÍDA E HOMOLOGADA EM PRODUÇÃO**; **Fase 5 EM ANDAMENTO** (Etapa E0/E0.1 de Auditoria e **ETAPAS E1, E1.1 E E1.2 RECONCILIADAS CONCLUÍDAS E HOMOLOGADAS EM VERCEL PREVIEW**; Migration 052 com RLS PostgreSQL `grupo_concedido_para_empresa()` e `can_manage_empresa_grupos_config()` criada localmente; mutação de catálogo global restrita a SuperAdmin; servico de apresentacao local `empresa_grupos_config` blindado e alinhado entre DB RLS e app; Produção intacta; sorteios 100% inalterados)  
+> **Status da Plataforma:** Fase 2 Concluída e Homologada em Produção; **Fase 3 CONCLUÍDA E HOMOLOGADA EM PRODUÇÃO**; **Fase 4 CONCLUÍDA E HOMOLOGADA EM PRODUÇÃO**; **Fase 5 EM ANDAMENTO** (Etapa E0/E0.1 de Auditoria e **ETAPAS E1, E1.1, E1.2 E E1.3 FECHADAS E HOMOLOGADAS EM VERCEL PREVIEW**; Migration 052 com RLS PostgreSQL `grupo_concedido_para_empresa()`, `can_manage_empresa_grupos_config()` validando `srdPodeEditarGrupos` no DB e `current_usuario_id()` no SELECT criada localmente; Produção intacta; sorteios 100% inalterados)  
 
 
 > **Projeto Físico:** `C:\Fernando Hugo\GAUCHINHO SITE`  
