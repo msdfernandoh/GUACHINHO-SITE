@@ -1,13 +1,13 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
-> **Versão Final do Projeto:** 5.0.0  
+> **Versão da Arquitetura:** 5.1.0
 > **Data de Atualização:** 10/08/2026  
-> **Status Geral do Projeto:** **HOTFIX DE SEGURANÇA EM PRODUÇÃO; HOMOLOGAÇÃO INTEGRAL AINDA ABERTA**  
-> **Macroblocos A–F:** implantados, porém a homologação integral foi reaberta após achado material nas APIs de gestão e pendências RLS/financeiras documentadas.  
+> **Status Geral do Projeto:** **HARDENING RLS/IDENTIDADE/APPEND-ONLY APLICADO E HOMOLOGADO; HOMOLOGAÇÃO INTEGRAL AINDA ABERTA**
+> **Macroblocos A–F:** implantados; o P0 de APIs e o hardening A/B de banco estão fechados. Comissões, financeiro transacional, FKs/retenção, integração da auditoria, storage e performance/lint seguem em etapas próprias.
 > **Infraestrutura em Produção:**  
 > - **Vercel Production:** `https://gauchinhoconsorcios.com.br` (Status READY, Aliased)  
-> - **Supabase Database:** `eaeuoynprurmmulzhydt` (`001–056` local=remote | dry-run up to date)  
-> - **Suíte reproduzida no hotfix Codex:** `643 PASS / 37 SKIP` (os 37 live tests ficam bloqueados por padrão)  
+> - **Supabase Database:** `eaeuoynprurmmulzhydt` (`001–059` local=remote | dry-run up to date)
+> - **Suíte reproduzida no hardening Codex:** `652 PASS / 37 SKIP` (os 37 live tests ficam bloqueados por padrão)
 > - **Build Next.js:** Exit Code 0 (119 páginas estáticas/dinâmicas compiladas)  
 > - **Segurança & Multi-Tenant:** RLS ativo em 27 tabelas críticas, Empresa B com 0 dados/concessões, Host Resolution e RBAC formalizado em `SAAS-PERMISSIONS-MATRIX.md`.  
 
@@ -62,6 +62,14 @@ A plataforma suporta:
 ### Tabelas de Gestão, Metas e Auditoria (Macrobloco E - Migration 056)
 - `equipes`, `equipe_membros`, `metas_comerciais`, `tarefas_gestao`, `audit_logs_central`.
 
+### Hardening transversal (Migrations 057–059)
+- identidade canônica `auth.uid()` → `usuarios.auth_user_id` → `empresa_usuarios`;
+- leitura tenant para `admin_empresa`, `gestor`, `consultor` e `visualizador`;
+- escrita tenant somente para `admin_empresa` ou Platform Superadmin;
+- 68 policies explícitas nas 18 tabelas internas, sem `FOR ALL`;
+- integridade lógica cross-tenant por triggers;
+- `caixa_movimentos` e `audit_logs_central` protegidos como append-only.
+
 ---
 
 ## 4. Status de Homologação de Todos os Macroblocos
@@ -73,12 +81,13 @@ A plataforma suporta:
 | Macrobloco C (Motor de Comissões) | `main` | 054 | HOMOLOGADO | Produção (`gauchinhoconsorcios.com.br`) |
 | Macrobloco D (Financeiro, Estornos & Caixa) | `main` | 055 | HOMOLOGADO | Produção (`gauchinhoconsorcios.com.br`) |
 | Macrobloco E (Gestão, Metas & Auditoria) | `main` | 056 | HOMOLOGADO | Produção (`gauchinhoconsorcios.com.br`) |
-| Macrobloco F (Homologação Geral & Onboarding) | `main` | 001–056 | HOMOLOGADO | Produção (`gauchinhoconsorcios.com.br`) |
+| Macrobloco F (Homologação Geral & Onboarding) | `main` | 001–059 | IMPLANTADO; HOMOLOGAÇÃO INTEGRAL ABERTA | Produção (`gauchinhoconsorcios.com.br`) |
 
 ---
 
 ## 5. Declaração Final de Segurança e Riscos
 
 * O P0 das seis APIs de gestão foi corrigido, validado em Preview independente e implantado em Produção no deploy `dpl_HG9SDAFfZyNrb9nxAw5PahRKNVGj`.
-* A homologação integral permanece aberta até a futura separação das migrations de RLS/integridade e das decisões financeiras/comerciais.
-* Relatório técnico: `docs/relatorios-fases/HOTFIX-CODEX-POS-AUDITORIA.md`.
+* O hardening A/B foi separado nas migrations forward-only `057–059`, homologado em branch Supabase descartável e aplicado no banco principal.
+* A homologação integral permanece aberta para decisões e implementações financeiras/comerciais, FKs/retenção, integração da auditoria, storage e performance/lint.
+* Relatórios técnicos: `docs/relatorios-fases/HOTFIX-CODEX-POS-AUDITORIA.md` e `docs/relatorios-fases/HARDENING-RLS-CODEX-POS-HOTFIX.md`.
