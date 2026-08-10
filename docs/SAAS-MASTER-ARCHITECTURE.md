@@ -1,8 +1,8 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
-> **Versão:** 2.1.0  
-> **Data de Atualização:** 09/08/2026  
-> **Status da Plataforma:** Fase 2 Concluída e Homologada em Produção; **Fase 3 CONCLUÍDA E HOMOLOGADA EM PRODUÇÃO**; **Fase 4 CONCLUÍDA E HOMOLOGADA EM PRODUÇÃO**; **Fase 5 CONCLUÍDA E HOMOLOGADA EM PRODUÇÃO**; **MACROBLOCO B (COMERCIAL E VENDAS) CONCLUÍDO E HOMOLOGADO EM PRODUÇÃO** (Migration 053 aplicada no banco remoto Supabase; `001-053` local=remote; código deployado em Produção Vercel `dpl_BpFdeNaYe91qPt6GTWAt4jREoWpJ` no Git SHA `00decefeefbb66c4c0175b060f6ac3fd2e35a11c`; tabela vendas e cotas_definitivas com RLS e idempotência ativas; scoping multi-tenant em leads, propostas e contratações em Produção; Empresa B com 0 concessões e 0 vendas; snapshots de propostas/contratações e sorteios 100% inalterados)  
+> **Versão:** 3.0.0  
+> **Data de Atualização:** 10/08/2026  
+> **Status da Plataforma:** Fase 2 Concluída e Homologada em Produção; **Fase 3 CONCLUÍDA E HOMOLOGADA EM PRODUÇÃO**; **Fase 4 CONCLUÍDA E HOMOLOGADA EM PRODUÇÃO**; **Fase 5 CONCLUÍDA E HOMOLOGADA EM PRODUÇÃO**; **MACROBLOCO B CONCLUÍDO E HOMOLOGADO EM PRODUÇÃO**; **MACROBLOCO C (MOTOR DE COMISSÕES, PREVISÕES E COMPETÊNCIAS) COMPLETO E AUDITADO EM PREVIEW (PRONTO PARA PRODUÇÃO)** (Migration 054 aplicada no banco remoto Supabase; `001-054` local=remote; tabelas de regras e previsões com RLS e idempotência ativas; cronogramas por competência YYYY-MM; preview Vercel READY `dpl_HcfkZsC82cAM3tXLHYwjL5KhVR7w`; Produção intacta)  
 
 
 > **Projeto Físico:** `C:\Fernando Hugo\GAUCHINHO SITE`  
