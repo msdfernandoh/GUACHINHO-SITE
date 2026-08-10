@@ -1,8 +1,8 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
-> **Versão:** 1.5.0  
+> **Versão:** 1.5.1  
 > **Data de Atualização:** 09/08/2026  
-> **Status da Plataforma:** Fase 2 Concluída e Homologada em Produção; **Fase 3 CONCLUÍDA E HOMOLOGADA EM PRODUÇÃO**; **Fase 4 CONCLUÍDA E HOMOLOGADA EM PRODUÇÃO**; **Fase 5 EM AUDITORIA / PLANEJAMENTO (Etapa E0 de Auditoria de Schema e Modelo Canônico concluída; zero código alterado; zero migration criada; Racon = administradora global; Gauchinho = empresa/franqueada; Empresa B sem concessão)**  
+> **Status da Plataforma:** Fase 2 Concluída e Homologada em Produção; **Fase 3 CONCLUÍDA E HOMOLOGADA EM PRODUÇÃO**; **Fase 4 CONCLUÍDA E HOMOLOGADA EM PRODUÇÃO**; **Fase 5 EM ANDAMENTO** (Etapa E0/E0.1 de Auditoria e **ETAPA E1 CONCLUÍDA E HOMOLOGADA EM VERCEL PREVIEW**; Migration 052 criada localmente; mutação de catálogo global restrita a SuperAdmin; servico de apresentacao local `empresa_grupos_config` implementado; Produção intacta; sorteios 100% inalterados)  
 
 
 > **Projeto Físico:** `C:\Fernando Hugo\GAUCHINHO SITE`  
