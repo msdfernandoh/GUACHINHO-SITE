@@ -1,9 +1,8 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
-> **Versão:** 4.0.0  
+> **Versão:** 5.0.0  
 > **Data de Atualização:** 10/08/2026  
-> **Status da Plataforma:** Fases 1, 2, 3, 4 e 5 CONCLUÍDAS E HOMOLOGADAS EM PRODUÇÃO; MACROBLOCO B CONCLUÍDO E HOMOLOGADO EM PRODUÇÃO; MACROBLOCO C CONCLUÍDO E HOMOLOGADO EM PRODUÇÃO; **MACROBLOCO D (RECEBIMENTOS, PAGAMENTOS, REPASSES, ESTORNOS, COMPENSAÇÕES E CAIXA) IMPLEMENTADO E HOMOLOGADO EM PREVIEW (AGUARDANDO MERGE E DEPLOY PRODUÇÃO)** (Migration 055 aplicada no banco remoto Supabase; `001-055` local=remote; código compilado e testado 658/658 PASS; Preview Vercel `https://guachinho-site-ld834076b-hugo-8097s-projects.vercel.app`; Livro Razão de Caixa `caixa_movimentos` imutável por `empresa_id`; abatimento automático de saldos a compensar; Empresa B com 0 concessões, 0 vendas, 0 recebimentos, 0 pagamentos e 0 caixa)  
-
+> **Status da Plataforma:** Fases 1, 2, 3, 4 e 5 CONCLUÍDAS E HOMOLOGADAS EM PRODUÇÃO; MACROBLOCO B CONCLUÍDO E HOMOLOGADO EM PRODUÇÃO; MACROBLOCO C CONCLUÍDO E HOMOLOGADO EM PRODUÇÃO; MACROBLOCO D CONCLUÍDO E HOMOLOGADO EM PRODUÇÃO; **MACROBLOCO E (GESTÃO, METAS, EQUIPES, AUDITORIA, RELATÓRIOS E DASHBOARDS) IMPLEMENTADO E HOMOLOGADO EM PREVIEW (AGUARDANDO MERGE E DEPLOY PRODUÇÃO)** (Migration 056 aplicada no banco remoto Supabase; `001-056` local=remote; código compilado e testado 663/663 PASS; Preview Vercel `https://guachinho-site-rikql46ev-hugo-8097s-projects.vercel.app`; Motor de Metas Comerciais com Apuração Dinâmica; Gestão de Equipes e Tarefas; Auditoria Central com Correlation ID; Dashboards Executivo/Comercial/Financeiro; Empresa B com 0 concessões, 0 vendas, 0 equipes, 0 metas, 0 tarefas e 0 audit logs)  
 
 > **Projeto Físico:** `C:\Fernando Hugo\GAUCHINHO SITE`  
 > **Repositório Git:** `https://github.com/msdfernandoh/GUACHINHO-SITE.git`
@@ -22,25 +21,25 @@ A plataforma suportará:
 * **Participantes Comerciais:** Vendedores, atendentes, consultores, gestores, indicadores, imobiliárias e parceiros.
 * **Motor Configurável de Comissões e Repasses:** Programas de comissão da franquia por administradora, modalidade, plano e vigência.
 * **Financeiro Completo e Caixa:** Separação entre parcela do cliente (paga à administradora), comissão da empresa e repasse ao participante.
-* **Controle de Inadimplência, Estornos e Compensações:** Políticas graduadas de estorno, livro razão de caixa append-only e abatimento automático de compensações em repasses futuros.
+* **Gestão, Metas, Tarefas e Auditoria Central:** Equipes comerciais, motor de apuração de metas por indicador canônico, acompanhamento de tarefas operacionais e trilha de auditoria com correlation ID.
 
 ---
 
 ## 2. Princípios de Preservação e Negócio
 
 1. **Gauchinho Consórcios como Empresa 1:** A empresa Gauchinho Consórcios é a tenant número 1 da plataforma. Todos os dados existentes (`usuarios`, `leads`, `propostas`, `grupos_consorcio`, `grupos_cotas`, `contratacoes_online`, `agenda_eventos`, `indices_financeiros`) são preservados integralmente.
-2. **Padrão de Nomenclatura do Banco:** **Português snake_case** (`empresas`, `empresa_usuarios`, `papeis`, `permissoes`, `papel_permissoes`, `grupos_consorcio`, `grupos_cotas`, `financeiro_recebimentos`, `financeiro_pagamentos`, `financeiro_compensacoes`, `caixa_movimentos`).
+2. **Padrão de Nomenclatura do Banco:** **Português snake_case** (`empresas`, `empresa_usuarios`, `papeis`, `permissoes`, `papel_permissoes`, `equipes`, `equipe_membros`, `metas_comerciais`, `tarefas_gestao`, `audit_logs_central`).
 3. **Identidade N:N de Usuários:** Um usuário (`public.usuarios`) pode ter vínculo ativo com uma ou mais empresas através de `public.empresa_usuarios`.
 4. **Desvinculação Técnica do Consultor:** A identidade de autenticação (`auth.uid()`) se conecta a `public.usuarios.auth_user_id`. Vendas e comissões apontam para perfis operacionais de participantes/consultores (`consultant_id` / `participant_id`), nunca para `auth.uid()` diretamente.
 5. **Cota Definitiva:** O número definitivo da cota nasce `NULL` e é preenchido e auditado posteriormente ao processamento da adesão pela administradora.
-6. **Vagas Comerciais:** `vagas_percentual` e `vagas_texto` são parâmetros informativos da administradora, não estoque numérico decrementável.
-7. **Imutabilidade do Caixa:** Lançamentos de caixa (`caixa_movimentos`) são estritamente append-only. Correções e estornos ocorrem por lançamentos de compensação ou ajustes negativos explícitos.
+6. **Imutabilidade do Caixa:** Lançamentos de caixa (`caixa_movimentos`) são estritamente append-only.
+7. **Metas Não Gravam Realizado Fixo:** O realizado das metas é apurado dinamicamente a partir dos dados reais das vendas, propostas, comissões e recebimentos.
 
 ---
 
 ## 3. Modelo Relacional e Tabelas da Fundação SaaS
 
-### Tabelas do Core SaaS (Fase 1 a 5)
+### Tabelas do Core SaaS (Fases 1 a 5)
 - `empresas`, `empresa_dominios`, `empresa_branding`, `papeis`, `permissoes`, `papel_permissoes`, `empresa_usuarios`, `empresa_grupos_config`.
 
 ### Tabelas Comerciais e Vendas (Macrobloco B - Migration 053)
@@ -49,13 +48,15 @@ A plataforma suportará:
 ### Tabelas do Motor de Comissões e Competências (Macrobloco C - Migration 054)
 - `comissao_programas_franquia`, `comissao_regras_franquia`, `comissao_participantes_regras`, `previsoes_comissao_franquia`, `previsoes_comissao_participante`.
 
-### Tabelas Financeiras e Livro Razão de Caixa (Macrobloco D - Migration 055)
-- `financeiro_recebimentos`: Recebimentos efetuados das Administradoras por competência (`YYYY-MM`).
-- `financeiro_recebimento_itens`: Itens do recebimento vinculando e liquidando previsões da franquia.
-- `financeiro_pagamentos`: Pagamentos efetuados aos Participantes Comerciais ou Organizações Parceiras.
-- `financeiro_pagamento_itens`: Itens do pagamento vinculando e liquidando previsões do participante.
-- `financeiro_compensacoes`: Controle de saldos a compensar decorrentes de cancelamentos/estornos pós-liquidação.
-- `caixa_movimentos`: Livro razão append-only de entradas e saídas de caixa por `empresa_id`.
+### Tabelas Financeiras e Caixa (Macrobloco D - Migration 055)
+- `financeiro_recebimentos`, `financeiro_recebimento_itens`, `financeiro_pagamentos`, `financeiro_pagamento_itens`, `financeiro_compensacoes`, `caixa_movimentos`.
+
+### Tabelas de Gestão, Metas e Auditoria (Macrobloco E - Migration 056)
+- `equipes`: Equipes comerciais da empresa com gestor responsável.
+- `equipe_membros`: Junção N:N de participantes comerciais em equipes.
+- `metas_comerciais`: Motor de metas por empresa, equipe, participante ou parceiro.
+- `tarefas_gestao`: Gestão operacional de tarefas e alertas de atraso.
+- `audit_logs_central`: Trilha de auditoria central com suporte a correlation_id.
 
 ---
 
@@ -66,12 +67,13 @@ A plataforma suportará:
 | Fases 1 a 5 | `main` | 001–052 | HOMOLOGADO | Produção (`gauchinhoconsorcios.com.br`) |
 | Macrobloco B (Comercial e Vendas) | `main` | 053 | HOMOLOGADO | Produção (`gauchinhoconsorcios.com.br`) |
 | Macrobloco C (Comissões e Competências) | `main` | 054 | HOMOLOGADO | Produção (`gauchinhoconsorcios.com.br`) |
-| Macrobloco D (Financeiro, Estornos e Caixa) | `feature/saas-macrobloco-d-financeiro-caixa` | 055 | HOMOLOGADO EM PREVIEW | Preview Vercel (`https://guachinho-site-ld834076b-hugo-8097s-projects.vercel.app`) |
+| Macrobloco D (Financeiro, Estornos e Caixa) | `main` | 055 | HOMOLOGADO | Produção (`gauchinhoconsorcios.com.br`) |
+| Macrobloco E (Gestão, Metas e Auditoria) | `feature/saas-macrobloco-e-gestao-dashboards` | 056 | HOMOLOGADO EM PREVIEW | Preview Vercel (`https://guachinho-site-rikql46ev-hugo-8097s-projects.vercel.app`) |
 
 ---
 
 ## 5. Riscos e Mitigações Atuais
 
-* **BAIXO:** Operação do motor de caixa e conciliação validada com 658/658 testes automatizados em ambiente isolado.
-* **ISOLAMENTO MULTI-TENANT:** Validado de ponta a ponta com Empresa B (0 concessões $\rightarrow$ 0 vendas $\rightarrow$ 0 previsões $\rightarrow$ 0 movimentações de caixa).
-* **PRÓXIMO PASSO:** Aguardar autorização formal do usuário para merge em `main` e deploy em Produção (`vercel --prod`).
+* **BAIXO:** Operação do motor de gestão e auditoria validada com 663/663 testes automatizados.
+* **ISOLAMENTO MULTI-TENANT:** Validado com Empresa B (0 equipes $\rightarrow$ 0 metas $\rightarrow$ 0 tarefas $\rightarrow$ 0 audit logs $\rightarrow$ 0 métricas).
+* **PRÓXIMO PASSO:** Aguardar instrução formal do usuário para merge em `main` e deploy em Produção (`vercel --prod`).
