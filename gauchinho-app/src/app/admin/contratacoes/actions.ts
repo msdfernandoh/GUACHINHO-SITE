@@ -350,3 +350,24 @@ export async function updateContratacaoClienteAction(
     return { ok: false, error: e instanceof Error ? e.message : "Falha ao salvar dados do cliente." };
   }
 }
+
+export async function converterContratacaoEmVendaAction(
+  contratacaoId: string,
+): Promise<{ ok: true; vendaId: string } | { ok: false; error: string }> {
+  try {
+    await requireStaffAdmin();
+    const { getCurrentTenantContext } = await import("@/lib/tenant/context");
+    const { empresaAtiva } = await getCurrentTenantContext();
+    const empresaId = empresaAtiva?.id ?? "7170f38e-15dd-4b19-8588-51e9a9cf0d4c";
+    const { converterContratacaoEmVenda } = await import("@/lib/vendas/vendas-service");
+
+    const result = await converterContratacaoEmVenda(empresaId, contratacaoId);
+    revalidatePath(`/admin/contratacoes/${contratacaoId}`);
+    revalidatePath("/admin/contratacoes");
+    revalidatePath("/admin/vendas");
+    revalidatePath("/admin/leads");
+    return { ok: true, vendaId: result.venda.id };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Falha ao converter contratação em venda." };
+  }
+}
