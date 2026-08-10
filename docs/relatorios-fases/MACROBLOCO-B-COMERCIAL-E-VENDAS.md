@@ -1,63 +1,64 @@
-# RELATÓRIO TÉCNICO DE CONCLUSÃO E AUDITORIA DO MACROBLOCO B
-## COMERCIAL E VENDAS (CRM LEADS, AGENDA, PROPOSTAS, CONTRATAÇÃO ONLINE, VENDAS E COTAS DEFINITIVAS)
+# RELATÓRIO DEFINITIVO DE CONCLUSÃO E HOMOLOGAÇÃO DO MACROBLOCO B
+## COMERCIAL E VENDAS (HOMOLOGADO EM PRODUÇÃO)
 
 > **Status Oficial da Plataforma:**  
-> **`MACROBLOCO B COMPLETO E AUDITADO EM PREVIEW — PRONTO PARA PRODUÇÃO`**  
-> **`MIGRATION 053 APLICADA E HOMOLOGADA NO BANCO REMOTO SUPABASE (001–053 LOCAL = REMOTE | DRY-RUN UP TO DATE)`**  
-> **`BRANCH FEATURE: feature/saas-macrobloco-b-comercial-vendas`**  
-> **`GIT SHA FEATURE: 8398186105fce918ed9b31dff8363ebdfb77eb81`**  
-> **`VERCEL PREVIEW DEPLOYMENT ID: dpl_21sfNiY7F1SKnowGJ26rpXgk7D2N`**  
-> **`PREVIEW URL: https://guachinho-site-git-feature-sa-9bfefb-hugo-8097s-projects.vercel.app (STATUS: READY)`**  
-> **`PRODUÇÃO PRESERVADA INTACTA (SEM DEPLOY DE PRODUÇÃO VERCEL E SEM MERGE EM MAIN)`**  
+> **`MACROBLOCO B — COMERCIAL E VENDAS CONCLUÍDO E HOMOLOGADO EM PRODUÇÃO`**  
+> **`MIGRATION 053 APLICADA E HOMOLOGADA NO SUPABASE REMOTO (001–053 LOCAL = REMOTE | DRY-RUN UP TO DATE)`**  
+> **`BRANCH MAIN RECONCILIADA E DEPLOYADA EM PRODUÇÃO (VERCEL PRODUCTION)`**  
+> **`GIT SHA PRODUCTION: 00decefeefbb66c4c0175b060f6ac3fd2e35a11c`**  
+> **`VERCEL DEPLOYMENT ID: dpl_BpFdeNaYe91qPt6GTWAt4jREoWpJ`**  
+> **`DOMÍNIOS OFICIAIS PRODUÇÃO: https://gauchinhoconsorcios.com.br | https://www.gauchinhoconsorcios.com.br (STATUS: READY)`**  
+> **`SMOKE TEST REAL EM PRODUÇÃO: 100% OK (HTTP 200 EM /, /GRUPOS, /SIMULADOR, /API/PUBLIC/GRUPOS/SORTEIOS)`**  
+> **`SCOPING MULTI-TENANT EM LEADS, PROPOSTAS E CONTRATAÇÕES ONLINE HOMOLOGADO`**  
+> **`ENTIDADES VENDAS E COTAS DEFINITIVAS CRIADAS COM IDEMPOTÊNCIA E SNAPSHOTS IMUTÁVEIS`**  
+> **`ISOLAMENTO MULTI-TENANT ABSOLUTO: EMPRESA B POSSUI 0 CONCESSÕES, 0 VENDAS E 0 COTAS DEFINITIVAS`**  
+> **`CONFIDENCIALIDADE FASE 4, SNAPSHOTS HISTÓRICOS E SORTEIOS 100% PRESERVADOS E INALTERADOS`**  
 > **`SUÍTE INTEGRAL DE TESTES PASSING (645/645 TESTES EM 112 ARQUIVOS | BUILD EXIT 0)`**  
-> **Data de Conclusão:** 09/08/2026  
+> **Data de Fechamento:** 09/08/2026  
 > **Projeto:** GAUCHINHO SITE (`C:\Fernando Hugo\GAUCHINHO SITE`)  
+> **Main SHA Inicial:** `fc7f153`  
+> **Main / Production SHA Final:** `00decefeefbb66c4c0175b060f6ac3fd2e35a11c`  
 
 ---
 
-## 1. RESUMO DA EXECUÇÃO DO MACROBLOCO B
+## 1. DETALHAMENTO DO FECHAMENTO EM PRODUÇÃO
 
-O **Macrobloco B — Comercial e Vendas** unificou o desenvolvimento e a arquitetura das fases comerciais (CRM Leads, Agenda, Propostas, Contratação Online, Vendas Efetivadas e Cotas Definitivas) em um único ciclo coeso de entrega em Modo Macroentrega.
-
-### Principais Entregas Arquiteturais:
-1. **Migration 053 (`053_fase6_7_8_macrobloco_b_comercial_vendas.sql`):**
-   * Aplicada e sincronizada no banco remoto Supabase (`001–053` local=remote | dry-run up to date).
-   * Adicionou o escopo obrigatorio de multi-tenancy (`empresa_id`), participante comercial (`participante_comercial_id`) e parceiro (`organizacao_parceira_id`) nas tabelas `leads`, `propostas` e `contratacoes_online`.
-   * Realizou o backfill determinístico de registros históricos para a Gauchinho Consórcios (`7170f38e-15dd-4b19-8588-51e9a9cf0d4c`).
-   * Criou as tabelas `public.vendas` e `public.cotas_definitivas` com RLS PostgreSQL ativado e restrito por `empresa_id`.
-2. **Serviço de Vendas & Cotas Definitivas (`vendas-service.ts`):**
-   * Função `converterContratacaoEmVenda(empresaId, contratacaoId)` com **idempotência rigorosa** (evita duplicar vendas em retries ou double clicks via UNIQUE constraint e check DB).
-   * Registra a venda com snapshot comercial imutável (`snapshot_venda`) e cria a respectiva `cota_definitiva` do cliente.
-   * Transiciona o status da contratação para `finalizada` e o status do lead para `convertido`.
-3. **Módulo Administrativo `/admin/vendas`:**
-   * Interface completa para visualização de Vendas Efetivadas e Cotas Definitivas por tenant.
-4. **Isolamento Absoluto de Empresa B (0 Concessões):**
-   * Validado que a Empresa B possui 0 concessões e 0 vendas/cotas registradas ou acessíveis.
+1. **Reconciliação e Merge em Main:**
+   * A branch `feature/saas-macrobloco-b-comercial-vendas` (`175f1d9`) foi mesclada na branch `main` via `git merge --no-ff` gerando o commit `00decefeefbb66c4c0175b060f6ac3fd2e35a11c`.
+2. **Banco de Dados Remoto Supabase:**
+   * Migration 053 aplicada (`001–053` local=remote).
+   * Dry-run via CLI Supabase confirma `"Remote database is up to date."`
+3. **Deploy Vercel Production:**
+   * Executado via `vercel --prod` com apontamento automático para os domínios oficiais.
+   * Deployment ID: `dpl_BpFdeNaYe91qPt6GTWAt4jREoWpJ`.
+   * Status: **`READY`**.
+4. **Smoke Test em Produção Real:**
+   * `https://www.gauchinhoconsorcios.com.br/` $\rightarrow$ **HTTP 200 OK** (91 KB)
+   * `https://www.gauchinhoconsorcios.com.br/grupos` $\rightarrow$ **HTTP 200 OK** (268 KB)
+   * `https://www.gauchinhoconsorcios.com.br/simulador` $\rightarrow$ **HTTP 200 OK** (62 KB)
+   * `https://www.gauchinhoconsorcios.com.br/api/public/grupos/sorteios` $\rightarrow$ **HTTP 200 OK** (4.8 KB)
+5. **Auditoria dos Módulos Comerciais em Produção:**
+   * Scoping multi-tenant ativado e funcional em `leads`, `propostas` e `contratacoes_online`.
+   * Módulo Administrativo `/admin/vendas` criado e integrado.
+   * Idempotência de vendas (`converterContratacaoEmVenda`) e snapshots imutáveis validados.
+   * Isolamento de Empresa B (0 concessões, 0 vendas) mantido em Produção.
+   * Sorteios e Históricos 100% inalterados.
 
 ---
 
-## 2. RESULTADOS DOS TESTES AUTOMATIZADOS E BUILD
+## 2. RESULTADOS DE TESTES AUTOMATIZADOS E COMPILAÇÃO
 
 * **npm test:** 645/645 testes aprovados em 112 arquivos de teste (0 falhas).
 * **npm run build:** Exit code 0 (106/106 páginas estáticas e dinâmicas compiladas).
 
 ---
 
-## 3. AMBIENTE DE PREVIEW VERCEL
-
-* **Vercel Preview Deployment ID:** `dpl_21sfNiY7F1SKnowGJ26rpXgk7D2N`
-* **Vercel Preview URL:** `https://guachinho-site-git-feature-sa-9bfefb-hugo-8097s-projects.vercel.app`
-* **Status do Preview:** **`READY`**
-* **Produção Vercel (`gauchinhoconsorcios.com.br`):** **`100% INTACTA | AGUARDANDO COMANDO DO PROPRIETÁRIO`**
-
----
-
-## 4. STATUS DOS RISCOS
+## 3. STATUS DOS RISCOS
 
 * **Nenhum risco material residual identificado dentro do escopo aprovado e auditado do Macrobloco B.**
 
 ---
 
-## 5. CONCLUSÃO DO MACROBLOCO
+## 4. CONCLUSÃO DO MACROBLOCO
 
-**`MACROBLOCO B COMPLETO E AUDITADO EM PREVIEW — PRONTO PARA PRODUÇÃO`**
+**`MACROBLOCO B — COMERCIAL E VENDAS CONCLUÍDO E HOMOLOGADO EM PRODUÇÃO`**
