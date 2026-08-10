@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   assertEmpresaTemConcessaoParaGrupo,
+  deleteEmpresaGrupoConfig,
   getEmpresaGrupoConfig,
   resolveEmpresaGrupoPresentation,
   upsertEmpresaGrupoConfig,
@@ -42,7 +43,7 @@ const GRUPO_RACON_INATIVO: GrupoConsorcio = {
   status: "Inativo",
 };
 
-describe("ETAPA E1 — Fundação da Configuração Local Empresa x Grupo e Proteção do Catálogo Global", () => {
+describe("ETAPA E1.1 — Hardening de RLS e Security da Configuração Local Empresa x Grupo", () => {
   describe("1. Semântica de Ausência de Configuração Local & Fallback Global", () => {
     it("Ausência de empresa_grupos_config utiliza defaults globais (visível, sem destaque, nome padrão)", () => {
       const resolved = resolveEmpresaGrupoPresentation(GRUPO_RACON_ATIVO, null);
@@ -73,8 +74,8 @@ describe("ETAPA E1 — Fundação da Configuração Local Empresa x Grupo e Prot
     });
   });
 
-  describe("2. Testes de Não Escalada de Autorização (Proteção Estrita)", () => {
-    it("Cenário de Escalada: grupo.ativo = false + visivel = true local -> continuar NÃO exibindo ao público", () => {
+  describe("2. Testes de Não Escalada de Autorização (Proteção Tríplice)", () => {
+    it("10. Local true NÃO reativa grupo global inativo (grupo.ativo = false)", () => {
       const resolved = resolveEmpresaGrupoPresentation(GRUPO_RACON_INATIVO, {
         id: "cfg-2",
         empresa_id: GAUCHINHO_ID,
@@ -89,16 +90,14 @@ describe("ETAPA E1 — Fundação da Configuração Local Empresa x Grupo e Prot
       expect(resolved.visivelLocal).toBe(true);
       expect(resolved.exibirAoPublico).toBe(false);
     });
-  });
 
-  describe("3. Regra de Validação de Concessão Server-Side (empresa_administradoras)", () => {
-    it("Gauchinho com concessão Racon ATIVA tem permissão para configurar grupo Racon", async () => {
+    it("11. Local true NÃO reativa concessão SUSPENSA", async () => {
       const mockDeps: EmpresaGrupoConfigDeps = {
         fetchConcessoes: vi.fn().mockResolvedValue([
           {
             empresa_id: GAUCHINHO_ID,
             administradora_id: RACON_UUID,
-            concessao: { status: "ATIVA", administradora_id: RACON_UUID },
+            concessao: { status: "SUSPENSA", administradora_id: RACON_UUID },
             administradora: { status: "ATIVA" },
           },
         ]),
@@ -113,12 +112,83 @@ describe("ETAPA E1 — Fundação da Configuração Local Empresa x Grupo e Prot
         }),
       };
 
-      const result = await assertEmpresaTemConcessaoParaGrupo(GAUCHINHO_ID, "grupo-racon-1", mockDeps);
-      expect(result.grupo.id).toBe("grupo-racon-1");
-      expect(result.administradoraId).toBe(RACON_UUID);
+      await expect(assertEmpresaTemConcessaoParaGrupo(GAUCHINHO_ID, "grupo-racon-1", mockDeps)).rejects.toThrow(
+        /não possui concessão ativa/i,
+      );
     });
 
-    it("Gauchinho tentando configurar grupo de administradora NÃO concedida -> lança erro (negado)", async () => {
+    it("12. Local true NÃO reativa administradora global INATIVA", async () => {
+      const mockDeps: EmpresaGrupoConfigDeps = {
+        fetchConcessoes: vi.fn().mockResolvedValue([
+          {
+            empresa_id: GAUCHINHO_ID,
+            administradora_id: RACON_UUID,
+            concessao: { status: "ATIVA", administradora_id: RACON_UUID },
+            administradora: { status: "INATIVA" },
+          },
+        ]),
+        adminFrom: vi.fn().mockReturnValue({
+          from: () => ({
+            select: () => ({
+              eq: () => ({
+                maybeSingle: vi.fn().mockResolvedValue({ data: GRUPO_RACON_ATIVO, error: null }),
+              }),
+            }),
+          }),
+        }),
+      };
+
+      await expect(assertEmpresaTemConcessaoParaGrupo(GAUCHINHO_ID, "grupo-racon-1", mockDeps)).rejects.toThrow(
+        /não possui concessão ativa/i,
+      );
+    });
+  });
+
+  describe("3. Testes de Ataque Direto & Proteção Defense-in-Depth", () => {
+    it("1. Tenant own empresa + grupo concedido -> permitido", async () => {
+      const mockDeps: EmpresaGrupoConfigDeps = {
+        fetchConcessoes: vi.fn().mockResolvedValue([
+          {
+            empresa_id: GAUCHINHO_ID,
+            administradora_id: RACON_UUID,
+            concessao: { status: "ATIVA", administradora_id: RACON_UUID },
+            administradora: { status: "ATIVA" },
+          },
+        ]),
+        adminFrom: vi.fn().mockReturnValue({
+          from: () => ({
+            select: () => ({
+              eq: () => ({
+                eq: () => ({
+                  maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+                }),
+                maybeSingle: vi.fn().mockResolvedValue({ data: GRUPO_RACON_ATIVO, error: null }),
+              }),
+            }),
+            upsert: () => ({
+              select: () => ({
+                single: vi.fn().mockResolvedValue({
+                  data: {
+                    id: "cfg-1",
+                    empresa_id: GAUCHINHO_ID,
+                    grupo_id: "grupo-racon-1",
+                    visivel: true,
+                    destaque: true,
+                  },
+                  error: null,
+                }),
+              }),
+            }),
+          }),
+        }),
+      };
+
+      const res = await upsertEmpresaGrupoConfig(GAUCHINHO_ID, "grupo-racon-1", { destaque: true }, mockDeps);
+      expect(res.empresa_id).toBe(GAUCHINHO_ID);
+      expect(res.destaque).toBe(true);
+    });
+
+    it("2. Tenant own empresa + grupo NÃO concedido -> negado", async () => {
       const grupoOutraAdmin: GrupoConsorcio = {
         ...GRUPO_RACON_ATIVO,
         id: "grupo-outra-1",
@@ -145,12 +215,12 @@ describe("ETAPA E1 — Fundação da Configuração Local Empresa x Grupo e Prot
         }),
       };
 
-      await expect(assertEmpresaTemConcessaoParaGrupo(GAUCHINHO_ID, "grupo-outra-1", mockDeps)).rejects.toThrow(
+      await expect(upsertEmpresaGrupoConfig(GAUCHINHO_ID, "grupo-outra-1", { visivel: false }, mockDeps)).rejects.toThrow(
         /não possui concessão ativa/i,
       );
     });
 
-    it("Empresa B (0 concessões) tentando configurar grupo Racon -> lança erro (negado)", async () => {
+    it("3. Ataque Direto: Empresa B (0 concessões) tenta INSERT em grupo Racon -> negado", async () => {
       const mockDeps: EmpresaGrupoConfigDeps = {
         fetchConcessoes: vi.fn().mockResolvedValue([]),
         adminFrom: vi.fn().mockReturnValue({
@@ -164,9 +234,39 @@ describe("ETAPA E1 — Fundação da Configuração Local Empresa x Grupo e Prot
         }),
       };
 
-      await expect(assertEmpresaTemConcessaoParaGrupo(EMPRESA_B_ID, "grupo-racon-1", mockDeps)).rejects.toThrow(
+      await expect(upsertEmpresaGrupoConfig(EMPRESA_B_ID, "grupo-racon-1", { destaque: true }, mockDeps)).rejects.toThrow(
         /não possui concessão ativa/i,
       );
+    });
+
+    it("9. DELETE protegido (Restaurar Padrão Global)", async () => {
+      const mockDeps: EmpresaGrupoConfigDeps = {
+        fetchConcessoes: vi.fn().mockResolvedValue([
+          {
+            empresa_id: GAUCHINHO_ID,
+            administradora_id: RACON_UUID,
+            concessao: { status: "ATIVA", administradora_id: RACON_UUID },
+            administradora: { status: "ATIVA" },
+          },
+        ]),
+        adminFrom: vi.fn().mockReturnValue({
+          from: () => ({
+            select: () => ({
+              eq: () => ({
+                maybeSingle: vi.fn().mockResolvedValue({ data: GRUPO_RACON_ATIVO, error: null }),
+              }),
+            }),
+            delete: () => ({
+              eq: () => ({
+                eq: vi.fn().mockResolvedValue({ error: null }),
+              }),
+            }),
+          }),
+        }),
+      };
+
+      const res = await deleteEmpresaGrupoConfig(GAUCHINHO_ID, "grupo-racon-1", mockDeps);
+      expect(res.ok).toBe(true);
     });
   });
 });

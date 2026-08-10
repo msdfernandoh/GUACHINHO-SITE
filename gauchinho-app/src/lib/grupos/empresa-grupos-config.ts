@@ -162,3 +162,25 @@ export async function upsertEmpresaGrupoConfig(
   if (error) throw new Error(error.message);
   return data as EmpresaGrupoConfig;
 }
+
+/**
+ * Remove a configuração de apresentação local da empresa (Restaurar Padrão Global).
+ */
+export async function deleteEmpresaGrupoConfig(
+  empresaId: string,
+  grupoId: string,
+  deps: EmpresaGrupoConfigDeps = defaultDeps,
+): Promise<{ ok: true }> {
+  // Valida obrigatoriamente a concessão antes de remover
+  await assertEmpresaTemConcessaoParaGrupo(empresaId, grupoId, deps);
+
+  const admin = deps.adminFrom();
+  const { error } = await admin
+    .from("empresa_grupos_config")
+    .delete()
+    .eq("empresa_id", empresaId)
+    .eq("grupo_id", grupoId);
+
+  if (error) throw new Error(error.message);
+  return { ok: true };
+}
