@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireUsuario } from "@/lib/auth/get-usuario";
+import { isPlatformSuperadmin } from "@/lib/auth/is-superadmin";
 import {
   canDeleteRecords,
   canEditSettings,
@@ -332,9 +333,9 @@ export async function fetchModalidadesByGrupoId(grupoId: string): Promise<GrupoM
 
 async function assertCanManageGrupos() {
   const usuario = await requireUsuario();
-  const leadsConfig = await getConfigJson("leads", DEFAULT_LEADS);
-  if (!canManageGrupos(usuario.perfil, leadsConfig.srdPodeEditarGrupos)) {
-    throw new Error("Sem permissão para gerenciar grupos");
+  const isSuper = await isPlatformSuperadmin();
+  if (!isSuper) {
+    throw new Error("Apenas SuperAdmins da plataforma podem alterar ou gerenciar a estrutura do catálogo global de grupos.");
   }
   return usuario;
 }
