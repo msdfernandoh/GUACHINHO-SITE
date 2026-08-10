@@ -34,6 +34,30 @@ A branch corrige vulnerabilidades inequívocas e está apta a Preview, mas o pro
 4. comparação CLI local/remoto não comprovada por credencial de pooler inválida;
 5. baseline de lint/typecheck com falhas anteriores à auditoria.
 
+## 2.1. Separação formal dos três estados
+
+### PRODUCTION_ATUAL_ANTIGRAVITY
+
+- Alias: `https://gauchinhoconsorcios.com.br` / `https://www.gauchinhoconsorcios.com.br`.
+- Deployment efetivo: `dpl_7QFzcKuGNkPUd4hvBp3awDuipYtp`, target `production`, READY.
+- URL gerada: `https://guachinho-site-3n1czvsxk-hugo-8097s-projects.vercel.app`.
+- `origin/main`: `4c35ba8660927325d676095548870b6b1d8beb0d`.
+- SHA efetivamente associado ao deployment: **não comprovado**, pois o metadata retornado pela Vercel não contém Git SHA.
+- O SHA reportado `4c35ba800f40cf9fefeafe30c000f074d284a2ee` não existe; somente o prefixo curto `4c35ba8` coincide com a main real.
+- O ID reportado `dpl_3n1czvsxk` não é um Deployment ID; `3n1czvsxk` é parte da URL. Nenhum rollback foi realizado.
+
+### AUDIT_BRANCH_CODEX
+
+- Branch: `codex/audit-pos-antigravity`, criada a partir da main real `4c35ba866...`.
+- Correções permanecem isoladas; não houve merge em main, migration remota ou deploy Production.
+- SHA de implementação auditado: `d13618cc4c173965e89303365fc57fe0e1d55060`.
+
+### CODEX_PREVIEW
+
+- Deployment: `dpl_BTknMJ8xLuk1FNCKuP8wYqK1PSHF`, target `preview`, READY.
+- URL: `https://guachinho-site-rdvz79l2t-hugo-8097s-projects.vercel.app`.
+- As seis APIs de gestão retornaram `Não autenticado` sem sessão do aplicativo; a Produção Antigravity retornava dados.
+
 ## 3. Matriz comparativa por fase/macrobloco
 
 | Bloco | Declarado antes | Evidência real | Veredito Codex |
