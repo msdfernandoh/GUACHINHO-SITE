@@ -12,6 +12,13 @@ Foram implementadas quatro migrations forward-only (`060–063`) e substituídos
 
 Produção permaneceu inalterada. A verificação final no projeto principal `eaeuoynprurmmulzhydt` retornou migration máxima `059` e ausência de `public.operacoes_idempotentes`, marcador introduzido pela `060`.
 
+Estados reconciliados na parada:
+
+- `PRODUCTION_ATUAL`: Vercel `dpl_A7nvWWm78gpT1CfKrCa52TKeb4JM`, target `production`, `READY`; Supabase principal em `059`;
+- `MAIN_ATUAL`: `e3bf8ac9a2884689aafde731bc3eac82f85c170d`;
+- `AUDIT_BRANCH_CODEX`: `8d3c2168c702f6ca5ad510d077d5486b13f4c2ce`;
+- `CODEX_PREVIEW`: `dpl_5MGJBEUkrCBXqDnJkL619x82dNqR`, target `preview`, `READY`.
+
 ## 2. Decisões canônicas implementadas
 
 - nenhuma regra é selecionada por percentual/default implícito;
