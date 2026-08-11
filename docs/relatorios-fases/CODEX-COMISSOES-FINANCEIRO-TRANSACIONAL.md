@@ -121,6 +121,7 @@ Isso comprova que advisory locks + tabela idempotente impediram duplicação sob
 - `npx tsc --noEmit`: PASS;
 - ESLint somente nos sete arquivos TypeScript alterados/adicionados: PASS;
 - `npm run build`: PASS, Next.js 16.3.0, 119 páginas;
+- `npm audit --omit=dev --registry=https://registry.npmjs.org`: 0 vulnerabilidades de produção (os 4 alertas do `npm install` da Vercel pertencem ao conjunto completo, incluindo desenvolvimento);
 - lint global: baseline preexistente em **52 erros / 77 warnings**; erros fora do escopo desta rodada;
 - teste SQL transacional: PASS/ROLLBACK;
 - teste concorrente em duas sessões: PASS;
