@@ -80,7 +80,7 @@ function extrairRecurso(text: string): number | undefined {
     /(?:lance|entrada|recurso|tenho|disponho)[^\d]{0,20}(?:r\$?\s*)?([\d.]{1,3}(?:\.\d{3})*(?:,\d{2})?|\d+)\s*(?:mil)?/i,
   );
   if (!m?.[1]) return undefined;
-  let s = m[1].replace(/\./g, "").replace(",", ".");
+  const s = m[1].replace(/\./g, "").replace(",", ".");
   let n = Number(s);
   if (/mil/i.test(m[0])) n *= 1000;
   if (Number.isFinite(n) && n > 0) return Math.round(n);

@@ -1,8 +1,8 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
-> **Versão da Arquitetura:** 5.4.0
+> **Versão da Arquitetura:** 5.5.0 (branch de fechamento técnico em homologação)
 > **Data de Atualização:** 11/08/2026
-> **Status Geral do Projeto:** **MOTOR CANÔNICO DE COMISSÕES E FINANCEIRO TRANSACIONAL AUDITADO E IMPLANTADO EM PRODUÇÃO (001–063)**
+> **Status Geral do Projeto:** **MOTOR CANÔNICO DE COMISSÕES E FINANCEIRO TRANSACIONAL AUDITADO E IMPLANTADO EM PRODUÇÃO; migrations técnicas 064–066 presentes em Produção, com homologação final de performance/lint pendente**
 > **Macroblocos A–F:** implantados em Produção. As migrations `060–063` foram auditadas, autorizadas e aplicadas. FKs/retenção, integração da auditoria, storage e performance/lint seguem em etapas próprias.
 > **Infraestrutura em Produção:**  
 > - **Vercel Production:** `https://gauchinhoconsorcios.com.br` (deployment `dpl_J5VA7NBXqTW7KbmiMUtzsGmrBJm3`, READY, Aliased)
@@ -87,6 +87,12 @@ A plataforma suporta:
 - compensações, consumos, cancelamentos de crédito e estornos registrados como eventos append-only; nenhum pagamento líquido negativo;
 - `operacoes_idempotentes`, `financeiro_compensacao_movimentos`, `financeiro_estornos` e view `financeiro_compensacoes_saldos`;
 - estado: aplicado ao projeto principal em 11/08/2026 após auditoria final e autorização explícita.
+
+### Fechamento técnico da base (Migrations 064–066 — aplicadas em Produção; homologação final pendente)
+- `064_retencao_historico_comercial_financeiro`: FKs de fatos comerciais, financeiros, caixa, auditoria e gestão trocadas de `CASCADE` para `RESTRICT`; relações configuráveis ambíguas permanecem inalteradas.
+- `065_storage_privado_tenant_aware`: os buckets privados `propostas-pdf` e `contratacoes-documentos` passam a autorizar pelo registro de negócio e pelas funções canônicas `can_read_tenant_internal`/`can_write_tenant_internal`, preservando os caminhos legados sem migração destrutiva de objetos.
+- `066_auditoria_runtime_transacional`: eventos de fatos críticos são append-only na mesma transação por trigger de banco; metadata contém somente campos alterados, sem valores sensíveis. `correlation_id` preserva `x-correlation-id`/`x-request-id` quando presente.
+- A branch Supabase descartável `codex-fechamento-tecnico-064` aplicou e testou 064–066 com `ROLLBACK`. Em seguida, uma aplicação pelo CLI atingiu o projeto principal (`eaeuoynprurmmulzhydt`) porque o comando usa `supabase/.temp/project-ref`; não houve rollback para evitar risco adicional. A homologação final de Performance/Lint e Preview permanece pendente.
 
 ---
 

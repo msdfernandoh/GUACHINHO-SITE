@@ -28,7 +28,7 @@ export default function AdminRelatoriosPage() {
 
   function handleExportCSV(tipo: string) {
     let rows: string[][] = [];
-    let filename = `relatorio-${tipo}-${new Date().toISOString().split("T")[0]}.csv`;
+    const filename = `relatorio-${tipo}-${new Date().toISOString().split("T")[0]}.csv`;
 
     if (tipo === "vendas") {
       rows = [

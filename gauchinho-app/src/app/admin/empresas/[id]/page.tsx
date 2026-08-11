@@ -8,7 +8,9 @@ import {
   createDominioAction,
   deleteDominioAction,
   verifyDominioAction,
+  updateErpSistemaAction,
 } from "../actions";
+import { ERP_MODULES, getErpSistemaConfig } from "@/lib/erp/erp-modulos";
 import {
   fetchAdministradorasCandidatasAction,
   fetchEmpresaAdministradorasAction,
@@ -42,6 +44,8 @@ export default async function EditarEmpresaPage({ params }: { params: Promise<{ 
     vinculoId: string,
     status: "ATIVA" | "INATIVA" | "SUSPENSA",
   ) => setEmpresaAdministradoraStatusAction(vinculoId, id, status);
+  const updateErp = updateErpSistemaAction.bind(null, id);
+  const erpConfig = getErpSistemaConfig(empresa.configuracoes);
 
   return (
     <div className="space-y-6">
@@ -61,6 +65,18 @@ export default async function EditarEmpresaPage({ params }: { params: Promise<{ 
         updateAction={updateVinculo}
         setStatusAction={setVinculoStatus}
       />
+
+      <Card>
+        <h2 className="mb-1 text-lg font-semibold">ERP Sistema</h2>
+        <p className="mb-4 text-sm text-zinc-500">Disponibilidade definida exclusivamente pela plataforma para esta empresa.</p>
+        <form action={updateErp} className="space-y-3">
+          <label className="flex items-center gap-2 text-sm font-medium"><input type="checkbox" name="erp_habilitado" defaultChecked={erpConfig.habilitado} /> ERP habilitado</label>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {ERP_MODULES.map((module) => <label key={module.id} className="flex items-center gap-2 text-sm"><input type="checkbox" name={`erp_${module.id}`} defaultChecked={erpConfig.modulos.includes(module.id)} />{module.label}</label>)}
+          </div>
+          <Button type="submit">Salvar ERP Sistema</Button>
+        </form>
+      </Card>
 
       <Card>
         <h2 className="mb-3 text-lg font-semibold">Status da empresa</h2>

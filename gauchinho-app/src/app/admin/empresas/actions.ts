@@ -11,6 +11,7 @@ import {
 import { invalidateTenantHostCache } from "@/lib/tenant/tenant-host-cache";
 import type { Empresa } from "@/lib/tenant/context";
 import type { EmpresaBranding } from "@/lib/tenant/branding";
+import { ERP_MODULES, normalizeErpSistemaConfig } from "@/lib/erp/erp-modulos";
 
 export type EmpresaDominioRow = {
   id: string;
@@ -75,6 +76,26 @@ export async function updateEmpresaStatusAction(id: string, formData: FormData) 
   invalidateTenantHostCache();
   revalidatePath("/admin/empresas");
   revalidatePath(`/admin/empresas/${id}`);
+}
+
+export async function updateErpSistemaAction(id: string, formData: FormData) {
+  await requireSuperadmin();
+  const supabase = await createClient();
+  const { data: empresa, error: readError } = await supabase
+    .from("empresas")
+    .select("configuracoes")
+    .eq("id", id)
+    .single();
+  if (readError || !empresa) throw new Error(readError?.message ?? "Empresa não encontrada.");
+
+  const habilitado = formData.get("erp_habilitado") === "on";
+  const modulos = ERP_MODULES.map((module) => module.id).filter((id) => formData.get(`erp_${id}`) === "on");
+  const configuracoes = { ...((empresa.configuracoes ?? {}) as Record<string, unknown>), erp_sistema: normalizeErpSistemaConfig({ habilitado, modulos }) };
+  const { error } = await supabase.from("empresas").update({ configuracoes }).eq("id", id);
+  if (error) throw new Error(error.message);
+  revalidatePath(`/admin/empresas/${id}`);
+  revalidatePath("/admin");
+  revalidatePath("/erp");
 }
 
 export async function upsertBrandingAction(id: string, formData: FormData) {

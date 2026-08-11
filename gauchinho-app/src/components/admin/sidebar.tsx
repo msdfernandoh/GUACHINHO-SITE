@@ -21,6 +21,7 @@ import {
   QrCode,
   Clock,
   Landmark,
+  MonitorCog,
 } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import type { AdminMenuKey } from "@/lib/admin/admin-menus";
@@ -75,10 +76,12 @@ export function AdminSidebar({
   perfil,
   adminMenus,
   isPlatformSuperadmin = false,
+  erpEnabled = false,
 }: {
   perfil: string;
   adminMenus: AdminMenuKey[] | null;
   isPlatformSuperadmin?: boolean;
+  erpEnabled?: boolean;
 }) {
   const pathname = usePathname();
   const isMaster = perfil === "master";
@@ -102,6 +105,11 @@ export function AdminSidebar({
         >
           Ver site →
         </Link>
+        {erpEnabled ? (
+          <Link href="/erp" className="mt-3 flex items-center gap-2 rounded-lg bg-blue-700 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-800">
+            <MonitorCog className="h-4 w-4" />ERP Sistema
+          </Link>
+        ) : null}
       </div>
       <nav className="flex-1 space-y-1 p-3">
         {isImob

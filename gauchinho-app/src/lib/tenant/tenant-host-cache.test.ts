@@ -15,7 +15,7 @@ describe("tenant-host-cache", () => {
   });
 
   it("cache positivo por host", () => {
-    let now = 1_000;
+    const now = 1_000;
     setTenantCacheNow(() => now);
     setCachedTenantResolution("a.com", {
       kind: "hit",
@@ -27,7 +27,7 @@ describe("tenant-host-cache", () => {
   });
 
   it("cache negativo curto e separado por host", () => {
-    let now = 1_000;
+    const now = 1_000;
     setTenantCacheNow(() => now);
     setCachedTenantResolution("a.com", { kind: "miss", reason: "not_found" });
     setCachedTenantResolution("b.com", {

@@ -12,6 +12,8 @@ export type AuditLogCentralRow = {
   entidade_id: string | null;
   detalhes: Record<string, unknown>;
   correlation_id: string | null;
+  origem: string;
+  resultado: string;
   created_at: string;
   usuario?: {
     id: string;
@@ -19,6 +21,20 @@ export type AuditLogCentralRow = {
     email: string;
   } | null;
 };
+
+const AUDIT_SENSITIVE_KEY = /password|senha|secret|token|cookie|authorization|bearer/i;
+
+/** Remove credenciais e tokens antes que metadata chegue ao log append-only. */
+export function sanitizeAuditMetadata(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(sanitizeAuditMetadata);
+  if (!value || typeof value !== "object") return value;
+
+  return Object.fromEntries(
+    Object.entries(value as Record<string, unknown>)
+      .filter(([key]) => !AUDIT_SENSITIVE_KEY.test(key))
+      .map(([key, item]) => [key, sanitizeAuditMetadata(item)]),
+  );
+}
 
 export async function logAuditEvent(
   empresaId: string,
@@ -29,6 +45,8 @@ export async function logAuditEvent(
   entidadeId?: string | null,
   detalhes: Record<string, unknown> = {},
   correlationId?: string | null,
+  origem = "runtime_service",
+  resultado = "SUCESSO",
 ): Promise<AuditLogCentralRow> {
   const admin = createAdminClient();
 
@@ -41,15 +59,15 @@ export async function logAuditEvent(
       acao,
       entidade_tipo: entidadeTipo,
       entidade_id: entidadeId || null,
-      detalhes,
+      detalhes: sanitizeAuditMetadata(detalhes) as Record<string, unknown>,
       correlation_id: correlationId || null,
+      origem,
+      resultado,
     })
     .select("*")
     .single();
 
-  if (error) {
-    console.error("Erro ao registrar audit_log:", error.message);
-  }
+  if (error || !log) throw new Error(`Erro ao registrar audit_log: ${error?.message ?? "registro ausente"}`);
 
   return log as AuditLogCentralRow;
 }

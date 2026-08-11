@@ -16,7 +16,7 @@ function redirectUsuarios(codigo: string): never {
 
 export async function fetchUsuarios() {
   const supabase = await createClient();
-  let { data, error } = await supabase
+  const { data, error } = await supabase
     .from("usuarios")
     .select(
       "id, auth_user_id, nome, email, telefone, perfil, ativo, is_consultor, leads_apenas_proprios, agenda_acesso_todos, google_agenda_sync, google_calendar_connected_at, google_calendar_email, admin_menus, created_at",
