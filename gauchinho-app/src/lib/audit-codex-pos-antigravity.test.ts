@@ -54,12 +54,14 @@ describe("Hotfix de segurança Codex pós-Antigravity", () => {
     expect(dashboard).not.toContain("Mock base");
   });
 
-  it("idempotência de vendas é escopada ao tenant antes do retorno", () => {
+  it("conversão de vendas delega idempotência e isolamento ao RPC transacional", () => {
     const source = read("gauchinho-app/src/lib/vendas/vendas-service.ts");
-    const existingSaleQuery = source.indexOf('.eq("empresa_id", empresaId)');
-    const existingSaleReturn = source.indexOf("if (vendaExistente)");
-    expect(existingSaleQuery).toBeGreaterThan(-1);
-    expect(existingSaleQuery).toBeLessThan(existingSaleReturn);
+    const migration = read("supabase/migrations/061_motor_comissoes_rpc_comercial.sql");
+    expect(source).toContain('admin.rpc("rpc_converter_contratacao_venda"');
+    expect(source).not.toContain('.from("vendas").insert');
+    expect(migration).toContain("v_contratacao.empresa_id<>p_empresa_id");
+    expect(migration).toContain("pg_advisory_xact_lock");
+    expect(migration).toContain("operacoes_idempotentes");
     expect(source).not.toContain("?? 100000");
     expect(source).not.toContain("?? 650");
   });

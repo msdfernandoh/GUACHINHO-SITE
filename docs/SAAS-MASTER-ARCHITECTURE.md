@@ -1,13 +1,13 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
-> **Versão da Arquitetura:** 5.1.0
-> **Data de Atualização:** 10/08/2026  
-> **Status Geral do Projeto:** **HARDENING RLS/IDENTIDADE/APPEND-ONLY APLICADO E HOMOLOGADO; HOMOLOGAÇÃO INTEGRAL AINDA ABERTA**
-> **Macroblocos A–F:** implantados; o P0 de APIs e o hardening A/B de banco estão fechados. Comissões, financeiro transacional, FKs/retenção, integração da auditoria, storage e performance/lint seguem em etapas próprias.
+> **Versão da Arquitetura:** 5.2.0
+> **Data de Atualização:** 11/08/2026
+> **Status Geral do Projeto:** **MOTOR CANÔNICO DE COMISSÕES E FINANCEIRO TRANSACIONAL IMPLEMENTADO EM BRANCH ISOLADA; PRODUÇÃO PRESERVADA EM 001–059**
+> **Macroblocos A–F:** implantados em Produção. O endurecimento canônico de comissões/financeiro está nas migrations propostas `060–063`, validado em Supabase isolado e ainda sujeito à auditoria/autorização antes de merge ou aplicação em Produção. FKs/retenção, integração da auditoria, storage e performance/lint seguem em etapas próprias.
 > **Infraestrutura em Produção:**  
 > - **Vercel Production:** `https://gauchinhoconsorcios.com.br` (Status READY, Aliased)  
 > - **Supabase Database:** `eaeuoynprurmmulzhydt` (`001–059` local=remote | dry-run up to date)
-> - **Suíte reproduzida no hardening Codex:** `652 PASS / 37 SKIP` (os 37 live tests ficam bloqueados por padrão)
+> - **Suíte reproduzida na branch 060–063:** `660 PASS / 37 SKIP` (os 37 live tests ficam bloqueados por padrão)
 > - **Build Next.js:** Exit Code 0 (119 páginas estáticas/dinâmicas compiladas)  
 > - **Segurança & Multi-Tenant:** RLS ativo em 27 tabelas críticas, Empresa B com 0 dados/concessões, Host Resolution e RBAC formalizado em `SAAS-PERMISSIONS-MATRIX.md`.  
 
@@ -54,7 +54,7 @@ A plataforma suporta:
 - `vendas`, `cotas_definitivas`.
 
 ### Tabelas do Motor de Comissões e Competências (Macrobloco C - Migration 054)
-- `comissao_programas_franquia`, `comissao_regras_franquia`, `comissao_participantes_regras`, `previsoes_comissao_franquia`, `previsoes_comissao_participante`.
+- `comissao_programas`, `comissao_regras_franquia`, `comissao_regras_participantes`, `comissao_previsoes_franquia`, `comissao_previsoes_participantes`.
 
 ### Tabelas Financeiras e Caixa (Macrobloco D - Migration 055)
 - `financeiro_recebimentos`, `financeiro_recebimento_itens`, `financeiro_pagamentos`, `financeiro_pagamento_itens`, `financeiro_compensacoes`, `caixa_movimentos`.
@@ -70,6 +70,17 @@ A plataforma suporta:
 - integridade lógica cross-tenant por triggers;
 - `caixa_movimentos` e `audit_logs_central` protegidos como append-only.
 
+### Motor canônico e financeiro transacional propostos (Migrations 060–063)
+- regras de franquia e de participante independentes, sem percentual/default comercial implícito;
+- seleção determinística por tenant, administradora explícita, vigência da venda, modalidade, opção de cota e plano/condição;
+- precedência do beneficiário: participante específico, organização específica e regra genérica, com falha obrigatória em ambiguidade;
+- bases permitidas: percentual sobre crédito ou valor fixo, com cronograma configurável e snapshot imutável da regra/versão;
+- conversão contratação→venda→cota→previsões em RPC PostgreSQL atômico;
+- recebimento e pagamento em RPCs com locks, idempotência, aritmética `numeric` e elegibilidade proporcional ao caixa da franquia efetivamente liquidado;
+- compensações, consumos, cancelamentos de crédito e estornos registrados como eventos append-only; nenhum pagamento líquido negativo;
+- `operacoes_idempotentes`, `financeiro_compensacao_movimentos`, `financeiro_estornos` e view `financeiro_compensacoes_saldos`;
+- estado: somente branch `codex/comissoes-financeiro-transacional` e Supabase temporário; não aplicado ao projeto principal.
+
 ---
 
 ## 4. Status de Homologação de Todos os Macroblocos
@@ -78,8 +89,8 @@ A plataforma suporta:
 |---|---|---|---|---|
 | Macrobloco A (Fundação SaaS & Catálogo) | `main` | 001–052 | HOMOLOGADO | Produção (`gauchinhoconsorcios.com.br`) |
 | Macrobloco B (Comercial, CRM & Vendas) | `main` | 053 | HOMOLOGADO | Produção (`gauchinhoconsorcios.com.br`) |
-| Macrobloco C (Motor de Comissões) | `main` | 054 | HOMOLOGADO | Produção (`gauchinhoconsorcios.com.br`) |
-| Macrobloco D (Financeiro, Estornos & Caixa) | `main` | 055 | HOMOLOGADO | Produção (`gauchinhoconsorcios.com.br`) |
+| Macrobloco C (Motor de Comissões) | `main` + `codex/comissoes-financeiro-transacional` | 054 em Produção; 060–061 propostas | IMPLEMENTAÇÃO CANÔNICA ISOLADA; AUDITORIA FINAL PENDENTE | Produção preservada + Preview Codex |
+| Macrobloco D (Financeiro, Estornos & Caixa) | `main` + `codex/comissoes-financeiro-transacional` | 055 em Produção; 062–063 propostas | IMPLEMENTAÇÃO TRANSACIONAL ISOLADA; AUDITORIA FINAL PENDENTE | Produção preservada + Preview Codex |
 | Macrobloco E (Gestão, Metas & Auditoria) | `main` | 056 | HOMOLOGADO | Produção (`gauchinhoconsorcios.com.br`) |
 | Macrobloco F (Homologação Geral & Onboarding) | `main` | 001–059 | IMPLANTADO; HOMOLOGAÇÃO INTEGRAL ABERTA | Produção (`gauchinhoconsorcios.com.br`) |
 
@@ -89,5 +100,6 @@ A plataforma suporta:
 
 * O P0 das seis APIs de gestão foi corrigido, validado em Preview independente e implantado em Produção no deploy `dpl_HG9SDAFfZyNrb9nxAw5PahRKNVGj`.
 * O hardening A/B foi separado nas migrations forward-only `057–059`, homologado em branch Supabase descartável e aplicado no banco principal.
-* A homologação integral permanece aberta para decisões e implementações financeiras/comerciais, FKs/retenção, integração da auditoria, storage e performance/lint.
-* Relatórios técnicos: `docs/relatorios-fases/HOTFIX-CODEX-POS-AUDITORIA.md` e `docs/relatorios-fases/HARDENING-RLS-CODEX-POS-HOTFIX.md`.
+* As migrations `060–063` foram implementadas e testadas somente em branch efêmera com clone de dados. Produção foi confirmada em `059`, sem o marcador estrutural da `060`.
+* A homologação integral permanece aberta para auditoria final/autorização das migrations `060–063`, FKs/retenção, integração da auditoria, storage e performance/lint.
+* Relatórios técnicos: `docs/relatorios-fases/HOTFIX-CODEX-POS-AUDITORIA.md`, `docs/relatorios-fases/HARDENING-RLS-CODEX-POS-HOTFIX.md` e `docs/relatorios-fases/CODEX-COMISSOES-FINANCEIRO-TRANSACIONAL.md`.

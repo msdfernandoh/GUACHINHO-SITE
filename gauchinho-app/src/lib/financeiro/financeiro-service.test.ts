@@ -68,9 +68,10 @@ describeLive("SUÍTE DE TESTES MACROBLOCO D — MOTOR FINANCEIRO, LIQUIDAÇÃO E
       empresaId: GAUCHINHO_EMPRESA_ID,
       administradoraId: grupo!.administradora_id,
       competencia: "2026-08",
-      valorTotal: 4000,
-      referencia_documento: "PIX-12345",
-      itens: [{ previsaoFranquiaId: prevFranqId, valorLiquidado: 4000 }],
+      idempotencyKey: `teste-recebimento-${venda!.id}`,
+      valorTotal: "4000.00",
+      referenciaDocumento: "PIX-12345",
+      itens: [{ previsaoFranquiaId: prevFranqId, valorLiquidado: "4000.00" }],
     });
 
     expect(rec).toBeDefined();
@@ -118,8 +119,11 @@ describeLive("SUÍTE DE TESTES MACROBLOCO D — MOTOR FINANCEIRO, LIQUIDAÇÃO E
     const comp = await gerarCompensacaoParticipante(
       GAUCHINHO_EMPRESA_ID,
       "Estorno por cancelamento prévio",
-      500,
+      "500.00",
       partId,
+      null,
+      null,
+      `teste-compensacao-${partId}`,
     );
 
     expect(comp).toBeDefined();
@@ -150,8 +154,9 @@ describeLive("SUÍTE DE TESTES MACROBLOCO D — MOTOR FINANCEIRO, LIQUIDAÇÃO E
       empresaId: GAUCHINHO_EMPRESA_ID,
       participanteComercialId: partId,
       competencia: "2026-08",
-      valorBruto: 1500,
-      itens: [{ previsaoParticipanteId: prevPartId, valorLiquidado: 1500 }],
+      idempotencyKey: `teste-pagamento-${venda!.id}`,
+      valorBruto: "1500.00",
+      itens: [{ previsaoParticipanteId: prevPartId, valorLiquidado: "1500.00" }],
     });
 
     // 5. Verifica se abateu R$ 500 de compensação e pagou líquido R$ 1.000

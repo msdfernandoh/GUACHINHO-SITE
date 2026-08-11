@@ -95,9 +95,10 @@ describeLive("SUÍTE DE AUDITORIA END-TO-END DO MACROBLOCO D (RECEBIMENTOS, PAGA
       empresaId: GAUCHINHO_EMPRESA_ID,
       administradoraId: grupo!.administradora_id,
       competencia: "2026-08",
-      valorTotal: 10000,
+      idempotencyKey: `audit-recebimento-${venda!.id}`,
+      valorTotal: "10000.00",
       referenciaDocumento: "TED-REC-E2E",
-      itens: [{ previsaoFranquiaId: prevs.franquia[0].id, valorLiquidado: 10000 }],
+      itens: [{ previsaoFranquiaId: prevs.franquia[0].id, valorLiquidado: "10000.00" }],
     });
 
     expect(rec.status).toBe("confirmado");
