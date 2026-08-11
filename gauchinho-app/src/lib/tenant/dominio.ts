@@ -1,6 +1,7 @@
 import {
   GAUCHINHO_OFFICIAL_HOSTS,
   MAX_DOMAIN_LENGTH,
+  PLATFORM_HOST,
 } from "./constants";
 
 /**
@@ -72,6 +73,17 @@ export function isOfficialGauchinhoHost(rawHost: string | null | undefined): boo
   if ((GAUCHINHO_OFFICIAL_HOSTS as readonly string[]).includes(raw)) return true;
   const normalized = normalizeHost(rawHost);
   return normalized === "gauchinhoconsorcios.com.br";
+}
+
+/**
+ * Identifica o host administrativo global antes da resolução por tenant.
+ * O prefixo www não é aceito: a plataforma possui um único host canônico.
+ */
+export function isPlatformHost(rawHost: string | null | undefined): boolean {
+  const raw = (rawHost ?? "").trim().toLowerCase().split(":")[0] ?? "";
+  if (!raw || raw.startsWith("www.")) return false;
+  const configured = normalizeHost(process.env.PLATFORM_HOST || PLATFORM_HOST);
+  return raw === configured;
 }
 
 /** Override por host *.localhost — apenas desenvolvimento. */
