@@ -8,6 +8,7 @@ import {
   devSlugFromHost,
   isDevelopmentNodeEnv,
   isOfficialGauchinhoHost,
+  isPlatformHost,
   normalizeHost,
 } from "./dominio";
 import {
@@ -38,6 +39,12 @@ export type ResolveTenantResult =
         | "inactive_or_unpublished";
       technicalError?: string;
     };
+
+/** Contexto de host: PLATFORM não representa empresa e é decidido antes do banco. */
+export type ResolveHostContextResult =
+  | { ok: true; context: "platform" }
+  | { ok: true; context: "tenant"; tenant: ResolvedTenantRef }
+  | Exclude<ResolveTenantResult, { ok: true }>;
 
 type EmpresaRow = {
   id: string;
@@ -441,4 +448,24 @@ export async function resolveTenantForRequest(input: {
     setCachedTenantResolution(cacheKey, { kind: "miss", reason: "not_found" });
   }
   return { ok: false, reason: "not_configured" };
+}
+
+/**
+ * Resolve o contexto de uma requisição. O PLATFORM_HOST é deliberadamente
+ * avaliado antes de empresa_dominios, impedindo que ele seja associado a uma
+ * tenant por acidente ou por uma linha indevida no banco.
+ */
+export async function resolveHostContextForRequest(input: {
+  hostHeader: string | null;
+  searchParams?: URLSearchParams;
+  supabaseUrl?: string;
+  serviceKey?: string;
+}): Promise<ResolveHostContextResult> {
+  if (isPlatformHost(input.hostHeader)) {
+    return { ok: true, context: "platform" };
+  }
+
+  const tenantResult = await resolveTenantForRequest(input);
+  if (!tenantResult.ok) return tenantResult;
+  return { ok: true, context: "tenant", tenant: tenantResult.tenant };
 }

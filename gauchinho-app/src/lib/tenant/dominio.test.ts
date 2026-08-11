@@ -3,6 +3,7 @@ import {
   normalizeHost,
   validateHostForPersist,
   isOfficialGauchinhoHost,
+  isPlatformHost,
   devSlugFromHost,
   isDevelopmentNodeEnv,
 } from "./dominio";
@@ -58,6 +59,24 @@ describe("isOfficialGauchinhoHost", () => {
     expect(isOfficialGauchinhoHost("www.gauchinhoconsorcios.com.br")).toBe(true);
     expect(isOfficialGauchinhoHost("outro.com.br")).toBe(false);
     expect(isOfficialGauchinhoHost("empresa-b.localhost")).toBe(false);
+  });
+});
+
+describe("isPlatformHost", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it("reconhece somente o host canônico da plataforma", () => {
+    expect(isPlatformHost("admin.gauchinhoconsorcios.com.br")).toBe(true);
+    expect(isPlatformHost("www.admin.gauchinhoconsorcios.com.br")).toBe(false);
+    expect(isPlatformHost("gauchinhoconsorcios.com.br")).toBe(false);
+  });
+
+  it("aceita override explícito de ambiente", () => {
+    vi.stubEnv("PLATFORM_HOST", "admin.plataforma.teste");
+    expect(isPlatformHost("admin.plataforma.teste")).toBe(true);
+    expect(isPlatformHost("admin.gauchinhoconsorcios.com.br")).toBe(false);
   });
 });
 

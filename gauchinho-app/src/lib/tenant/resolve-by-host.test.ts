@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { resolveTenantForRequest } from "./resolve-by-host";
+import { resolveHostContextForRequest, resolveTenantForRequest } from "./resolve-by-host";
 import { invalidateTenantHostCache } from "./tenant-host-cache";
 
 const ORIGINAL_FETCH = globalThis.fetch;
@@ -147,6 +147,29 @@ describe("resolveTenantForRequest — fallback de transição e overrides", () =
       serviceKey: "service-role-test-key",
     });
     expect(result.ok).toBe(false);
+  });
+});
+
+describe("resolveHostContextForRequest — PLATFORM antes de tenant", () => {
+  afterEach(() => {
+    invalidateTenantHostCache();
+    vi.unstubAllEnvs();
+    globalThis.fetch = ORIGINAL_FETCH;
+  });
+
+  it("admin canônico retorna PLATFORM sem consultar empresa_dominios", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    const fetchSpy = vi.fn();
+    globalThis.fetch = fetchSpy as typeof fetch;
+
+    const result = await resolveHostContextForRequest({
+      hostHeader: "admin.gauchinhoconsorcios.com.br",
+      supabaseUrl: "https://example.supabase.co",
+      serviceKey: "service-role-test-key",
+    });
+
+    expect(result).toEqual({ ok: true, context: "platform" });
+    expect(fetchSpy).not.toHaveBeenCalled();
   });
 });
 

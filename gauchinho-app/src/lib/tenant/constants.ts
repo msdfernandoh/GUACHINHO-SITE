@@ -18,6 +18,12 @@ export const GAUCHINHO_OFFICIAL_HOSTS = [
   "www.gauchinhoconsorcios.com.br",
 ] as const;
 
+/**
+ * Host canônico da plataforma. Não é domínio de empresa e não deve constar em
+ * empresa_dominios. Pode ser sobrescrito por PLATFORM_HOST no ambiente.
+ */
+export const PLATFORM_HOST = "admin.gauchinhoconsorcios.com.br";
+
 /** Query string de override — só funciona com NODE_ENV === "development". */
 export const DEV_TENANT_QUERY_PARAM = "__tenant";
 

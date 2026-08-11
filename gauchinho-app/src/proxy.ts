@@ -14,7 +14,9 @@ import {
   isPlatformEmpresasAdminPath,
   tenantAllowsLegacyOperationalData,
 } from "@/lib/tenant/operational-access";
-import { resolveTenantForRequest } from "@/lib/tenant/resolve-by-host";
+import { isPlatformHost } from "@/lib/tenant/dominio";
+import { decidePlatformHostAccess } from "@/lib/tenant/platform-host";
+import { resolveHostContextForRequest } from "@/lib/tenant/resolve-by-host";
 
 /**
  * Rotas que não exigem resolução de tenant publicada
@@ -44,6 +46,20 @@ function moduleUnavailableApiResponse(): NextResponse {
 function adminUnavailableOnTenantResponse(): NextResponse {
   return new NextResponse("Painel administrativo não disponível neste site.", {
     status: 403,
+    headers: { "content-type": "text/plain; charset=utf-8" },
+  });
+}
+
+function platformAccessDeniedResponse(): NextResponse {
+  return new NextResponse("Acesso restrito ao PLATFORM_SUPERADMIN.", {
+    status: 403,
+    headers: { "content-type": "text/plain; charset=utf-8" },
+  });
+}
+
+function platformRouteUnavailableResponse(): NextResponse {
+  return new NextResponse("Rota indisponível no host da plataforma.", {
+    status: 404,
     headers: { "content-type": "text/plain; charset=utf-8" },
   });
 }
@@ -78,10 +94,11 @@ export async function proxy(request: NextRequest) {
 
   const skipTenant = skipsTenantGate(path);
   let tenantSlug: string | null = null;
+  let platformHost = isPlatformHost(request.headers.get("host"));
 
   if (!skipTenant) {
     // Resolução lê credenciais de env internamente — proxy não passa service role.
-    const resolved = await resolveTenantForRequest({
+    const resolved = await resolveHostContextForRequest({
       hostHeader: request.headers.get("host"),
       searchParams: request.nextUrl.searchParams,
     });
@@ -150,6 +167,9 @@ export async function proxy(request: NextRequest) {
       } else {
         return siteNotConfiguredResponse();
       }
+    } else if (resolved.context === "platform") {
+      // Contexto global: não envia empresa/slug em headers e não consulta tenant.
+      platformHost = true;
     } else {
       requestHeaders.set(TENANT_EMPRESA_ID_HEADER, resolved.tenant.empresaId);
       requestHeaders.set(TENANT_SLUG_HEADER, resolved.tenant.slug);
@@ -193,6 +213,35 @@ export async function proxy(request: NextRequest) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
+
+  // O host da plataforma é uma fronteira de autorização própria. Não representa
+  // a Gauchinho nem qualquer outra empresa: somente PLATFORM_SUPERADMIN entra.
+  if (platformHost) {
+    const { data: platformSuperadmin, error: platformRoleError } = user
+      ? await supabase.rpc("is_platform_superadmin")
+      : { data: false, error: null };
+    const platformDecision = decidePlatformHostAccess({
+      pathname: path,
+      authenticated: Boolean(user),
+      platformSuperadmin: !platformRoleError && Boolean(platformSuperadmin),
+    });
+
+    if (platformDecision === "allow_login" || platformDecision === "allow_master") {
+      return response;
+    }
+    if (platformDecision === "redirect_login") {
+      const login = new URL("/login", request.url);
+      login.searchParams.set("next", "/admin/empresas");
+      return NextResponse.redirect(login);
+    }
+    if (platformDecision === "deny") {
+      return platformAccessDeniedResponse();
+    }
+    if (platformDecision === "redirect_master") {
+      return NextResponse.redirect(new URL("/admin/empresas", request.url));
+    }
+    return platformRouteUnavailableResponse();
+  }
 
   if (path.startsWith("/admin")) {
     // 1) Autenticação
