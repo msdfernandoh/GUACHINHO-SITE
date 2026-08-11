@@ -1,18 +1,18 @@
 # CODEX — COMISSÕES E FINANCEIRO TRANSACIONAL
 
 **Data:** 11/08/2026  
-**Branch:** `codex/comissoes-financeiro-transacional`  
+**Branch de implementação:** `codex/comissoes-financeiro-transacional`
 **Base:** `e3bf8ac` (`main`)  
 **Escopo:** motor canônico de comissão, conversão comercial atômica, recebimentos, pagamentos, compensações, cancelamentos e estornos.  
-**Estado:** implementação isolada pronta para auditoria final; sem merge e sem aplicação `060+` em Produção.
+**Estado:** auditado, aprovado, mesclado em `main` e aplicado em Produção.
 
 ## 1. Resultado
 
 Foram implementadas quatro migrations forward-only (`060–063`) e substituídos os fluxos críticos de runtime por RPCs PostgreSQL atômicos. O conjunto foi validado com PostgreSQL real em branch Supabase efêmera clonada de Produção, teste transacional com `ROLLBACK`, duas sessões concorrentes, suíte local, TypeScript, ESLint do escopo e build Next.js.
 
-Produção permaneceu inalterada. A verificação final no projeto principal `eaeuoynprurmmulzhydt` retornou migration máxima `059` e ausência de `public.operacoes_idempotentes`, marcador introduzido pela `060`.
+O pacote foi posteriormente auditado de forma independente, autorizado pelo proprietário e aplicado no projeto principal `eaeuoynprurmmulzhydt`.
 
-Estados reconciliados na parada:
+Estados da parada anterior (histórico):
 
 - `PRODUCTION_ATUAL`: Vercel `dpl_A7nvWWm78gpT1CfKrCa52TKeb4JM`, target `production`, `READY`; Supabase principal em `059`;
 - `MAIN_ATUAL`: `e3bf8ac9a2884689aafde731bc3eac82f85c170d`;
@@ -149,4 +149,14 @@ Preview Codex:
 - acesso externo: protegido pelo SSO da Vercel;
 - smoke interno: `robots.txt` servido, `/api/public/indices-financeiros` retornou `ok=true` e `/api/admin/gestao/dashboard` anônima retornou `Não autenticado`.
 
-Não executar merge, não aplicar `060–063` no projeto Supabase principal e não promover Preview para Produção sem autorização expressa do proprietário. O próximo passo permitido é apenas a auditoria final desta branch/Preview.
+## 10. Fechamento autorizado em Produção
+
+Em 11/08/2026, após o gate final explícito do proprietário:
+
+- `060_comissoes_modelo_canonico.sql`, `061_motor_comissoes_rpc_comercial.sql`, `062_rpc_financeiro_transacional.sql` e `063_estornos_constraints_append_only.sql` foram aplicadas com sucesso ao Supabase principal;
+- a conferência posterior retornou migrations `001–063` em igualdade local/remota e `supabase db push --linked --dry-run` sem pendências;
+- a branch aprovada foi mesclada em `main` pelo commit `788195102a319a7dcd154d65a4f4fbd4437ba71f` e enviada a `origin/main`;
+- o deployment Production `dpl_J5VA7NBXqTW7KbmiMUtzsGmrBJm3` ficou `READY`;
+- smoke em `https://www.gauchinhoconsorcios.com.br/` e `/api/public/indices-financeiros` retornou 200; `/api/admin/gestao/dashboard` anônimo retornou 401, sem exposição administrativa.
+
+Após o deploy, foi tentada a configuração autorizada de `admin.gauchinhoconsorcios.com.br`. O DNS do host já resolve, mas o Vercel informou que o domínio pertence a outra conta/equipe e recusou a associação. Para não publicar um host sem certificado nem marcar uma verificação inexistente, nenhum registro parcial foi criado em `empresa_dominios`. A conclusão depende de a conta Vercel proprietária delegar o domínio ao projeto/equipe `hugo-8097s-projects` (ou executar a associação ao deployment acima); depois disso, o registro de domínio pode ser criado e verificado para a tenant Gauchinho sem alterar RBAC.
