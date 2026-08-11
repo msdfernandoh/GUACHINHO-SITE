@@ -1,6 +1,6 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
-> **Versão da Arquitetura:** 5.3.0
+> **Versão da Arquitetura:** 5.4.0
 > **Data de Atualização:** 11/08/2026
 > **Status Geral do Projeto:** **MOTOR CANÔNICO DE COMISSÕES E FINANCEIRO TRANSACIONAL AUDITADO E IMPLANTADO EM PRODUÇÃO (001–063)**
 > **Macroblocos A–F:** implantados em Produção. As migrations `060–063` foram auditadas, autorizadas e aplicadas. FKs/retenção, integração da auditoria, storage e performance/lint seguem em etapas próprias.
@@ -10,6 +10,7 @@
 > - **Suíte reproduzida na branch 060–063:** `660 PASS / 37 SKIP` (os 37 live tests ficam bloqueados por padrão)
 > - **Build Next.js:** Exit Code 0 (119 páginas estáticas/dinâmicas compiladas)  
 > - **Segurança & Multi-Tenant:** RLS ativo em 27 tabelas críticas, Empresa B com 0 dados/concessões, Host Resolution e RBAC formalizado em `SAAS-PERMISSIONS-MATRIX.md`.  
+> - **Platform Host:** `admin.gauchinhoconsorcios.com.br` é domínio Production verificado do projeto Vercel e resolve contexto `PLATFORM` antes de qualquer tenant; sua entrada exige `is_platform_superadmin()`.
 
 > **Projeto Físico:** `C:\Fernando Hugo\GAUCHINHO SITE`  
 > **Repositório Git:** `https://github.com/msdfernandoh/GUACHINHO-SITE.git`
@@ -69,6 +70,12 @@ A plataforma suporta:
 - 68 policies explícitas nas 18 tabelas internas, sem `FOR ALL`;
 - integridade lógica cross-tenant por triggers;
 - `caixa_movimentos` e `audit_logs_central` protegidos como append-only.
+
+### Platform Host (sem migration)
+- `admin.gauchinhoconsorcios.com.br` é um contexto global `PLATFORM`, não uma linha de `empresa_dominios` e nunca aponta para a tenant Gauchinho;
+- o proxy decide o host antes de consultar tenant, não injeta `x-tenant-empresa-id`/`x-tenant-slug` e não permite fallback de empresa;
+- anônimo é direcionado a `/login`; após autenticação, somente o RPC canônico `is_platform_superadmin()` autoriza o painel master existente (`/admin/empresas` e `/admin/administradoras`);
+- `admin_empresa`, `gestor`, `consultor` e `visualizador` recebem 403; rotas operacionais ficam indisponíveis nesse host.
 
 ### Motor canônico e financeiro transacional (Migrations 060–063)
 - regras de franquia e de participante independentes, sem percentual/default comercial implícito;
