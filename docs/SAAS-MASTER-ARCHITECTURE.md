@@ -94,6 +94,12 @@ A plataforma suporta:
 - `066_auditoria_runtime_transacional`: eventos de fatos críticos são append-only na mesma transação por trigger de banco; metadata contém somente campos alterados, sem valores sensíveis. `correlation_id` preserva `x-correlation-id`/`x-request-id` quando presente.
 - A branch Supabase descartável `codex-fechamento-tecnico-064` aplicou e testou 064–066 com `ROLLBACK`. Em seguida, uma aplicação pelo CLI atingiu o projeto principal (`eaeuoynprurmmulzhydt`) porque o comando usa `supabase/.temp/project-ref`; não houve rollback para evitar risco adicional. A homologação final de Performance/Lint e Preview permanece pendente.
 
+### ERP Sistema (Migration 067)
+- `/erp` é um shell visual de gestão separado do Portal, sem banco, autenticação, RBAC, RLS, serviços ou módulos paralelos; as telas existentes de `/admin` são reutilizadas.
+- O catálogo ERP é controlado e exclui explicitamente Administradoras e sorteios. A governança por tenant usa `empresas.configuracoes.erp_sistema`, editável somente por `PLATFORM_SUPERADMIN`.
+- `067_erp_sistema_gauchinho_config` ativou o ERP exclusivamente para Gauchinho Consórcios, preservando as demais chaves JSON; Empresa B não recebeu configuração ERP.
+- Produção: `001–067` local=remote, deployment `dpl_FkuFYLNuZ9jwULjg21qgdUkfneLg` READY, `main` `55f7715cea0bec077a3592eb16a9dd81d93c9bb6`.
+
 ---
 
 ## 4. Status de Homologação de Todos os Macroblocos

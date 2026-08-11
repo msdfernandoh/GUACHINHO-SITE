@@ -1,6 +1,6 @@
 # ERP Sistema — shell e menu configurável por empresa
 
-Status: homologação técnica e Supabase isolado aprovados; homologação visual do Preview bloqueada por Vercel Authentication.
+Status: implantado em Produção; smoke anônimo aprovado. A navegação autenticada permanece coberta por guards, configuração e testes técnicos, sem sessão de usuário usada nesta rodada.
 
 ## Rotas ERP encontradas e reutilizadas
 
@@ -27,6 +27,8 @@ Status: homologação técnica e Supabase isolado aprovados; homologação visua
 ## Preview / Production
 
 - Preview READY: `https://guachinho-site-fvx9mhzn4-hugo-8097s-projects.vercel.app`.
-- Homologação visual: bloqueada por Vercel Authentication no Preview; nenhuma sessão Vercel foi usada ou solicitada.
-- Migration 067: não aplicada.
-- Merge/deploy Production: não executados.
+- Migration 067: aplicada em Produção em 11/08/2026; conferência posterior retornou `001–067` local=remote e dry-run sem pendências.
+- `main` antes: `cef2c8c4082f44e7afcbb28e9dc2fb6b78c683bd`; após merge/push: `55f7715cea0bec077a3592eb16a9dd81d93c9bb6`.
+- Deployment Production: `dpl_FkuFYLNuZ9jwULjg21qgdUkfneLg`, READY. Os aliases canônicos foram promovidos explicitamente para este deployment.
+- Smoke: `/`, `/grupos`, `/simulador` e `/login` retornaram 200; raiz sem `www` retorna 308; `/admin`, `/erp` e Platform Host anônimos retornam 307 para autenticação; `/api/public/grupos/sorteios` retorna 200.
+- Gauchinho: ERP ativo com `painel`, `leads`, `propostas`, `contratacoes`, `vendas`, `grupos`, `comissoes`, `financeiro`, `relatorios`, `metas`, `tarefas` e `usuarios`. Administradoras e sorteios não pertencem ao catálogo ERP; Empresa B permanece sem `erp_sistema`.
