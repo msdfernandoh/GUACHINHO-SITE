@@ -10,7 +10,7 @@
 > - **Suíte reproduzida na branch 060–063:** `660 PASS / 37 SKIP` (os 37 live tests ficam bloqueados por padrão)
 > - **Build Next.js:** Exit Code 0 (119 páginas estáticas/dinâmicas compiladas)  
 > - **Segurança & Multi-Tenant:** RLS ativo em 27 tabelas críticas, Empresa B com 0 dados/concessões, Host Resolution e RBAC formalizado em `SAAS-PERMISSIONS-MATRIX.md`.  
-> - **Platform Host:** `admin.gauchinhoconsorcios.com.br` é domínio Production verificado do projeto Vercel e resolve contexto `PLATFORM` antes de qualquer tenant; sua entrada exige `is_platform_superadmin()`.
+> - **Platform Host:** `admin.gauchinhoconsorcios.com.br` é domínio Production verificado do projeto Vercel, ativo no deployment `dpl_FbDjRArcVB4Nvm1woko5L7JJyRkp`; resolve contexto `PLATFORM` antes de qualquer tenant e exige `is_platform_superadmin()`.
 
 > **Projeto Físico:** `C:\Fernando Hugo\GAUCHINHO SITE`  
 > **Repositório Git:** `https://github.com/msdfernandoh/GUACHINHO-SITE.git`

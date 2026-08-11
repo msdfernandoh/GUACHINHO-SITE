@@ -1,7 +1,8 @@
 # PLATFORM HOST — ADMIN.GAUCHINHOCONSORCIOS.COM.BR
 
 **Data:** 11/08/2026  
-**Escopo:** entrada canônica do `PLATFORM_SUPERADMIN`; sem alteração nas migrations 060–063, tenant Gauchinho ou sorteios.
+**Escopo:** entrada canônica do `PLATFORM_SUPERADMIN`; sem alteração nas migrations 060–063, tenant Gauchinho ou sorteios.  
+**Status:** **ATIVA E VALIDADA EM PRODUÇÃO.**
 
 ## Arquitetura
 
@@ -29,4 +30,14 @@ O proxy usa o RPC existente `is_platform_superadmin()`; não usa `usuarios.perfi
 - anônimo → login; `PLATFORM_SUPERADMIN` → painel master; quatro papéis comuns → bloqueio, todos cobertos por teste de política;
 - `www.gauchinhoconsorcios.com.br` permaneceu HTTP 200 durante a configuração Vercel.
 
-O estado anterior do host administrativo era 404 após ele ser registrado como domínio Production, o que é esperado até a promoção deste proxy. O smoke final após a promoção deve comprovar TLS, redirect anônimo ao login e preservação do host Gauchinho.
+## Validação final em Produção
+
+O commit `7fad6c1ee55bbed7cb3b9e325c8e017554ae52a6` foi implantado no deployment Production `dpl_FbDjRArcVB4Nvm1woko5L7JJyRkp`, estado `READY`.
+
+- TLS/DNS: ativo pela edge Vercel;
+- `https://admin.gauchinhoconsorcios.com.br/` anônimo → **307** para `/login?next=/admin/empresas`;
+- `https://www.gauchinhoconsorcios.com.br/` → **200** e continua no tenant Gauchinho;
+- `https://gauchinhoconsorcios.com.br/` → **308** canônico para `www`, preservando o tenant Gauchinho;
+- reconhecimento de `PLATFORM` antes de `empresa_dominios`, autorização por `is_platform_superadmin()` e bloqueio dos quatro papéis comuns foram validados pelos testes de política e do resolver.
+
+**ADMIN.GAUCHINHOCONSORCIOS.COM.BR — ENTRADA CANÔNICA DO PLATFORM SUPERADMIN ATIVA E VALIDADA EM PRODUÇÃO.**
