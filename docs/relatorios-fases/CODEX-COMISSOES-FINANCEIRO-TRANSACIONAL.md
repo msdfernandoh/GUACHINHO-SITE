@@ -16,7 +16,7 @@ Estados reconciliados na parada:
 
 - `PRODUCTION_ATUAL`: Vercel `dpl_A7nvWWm78gpT1CfKrCa52TKeb4JM`, target `production`, `READY`; Supabase principal em `059`;
 - `MAIN_ATUAL`: `e3bf8ac9a2884689aafde731bc3eac82f85c170d`;
-- `AUDIT_BRANCH_CODEX`: `8d3c2168c702f6ca5ad510d077d5486b13f4c2ce`;
+- `AUDIT_BRANCH_CODEX`: commit funcional/Preview `e29fc00`; o HEAD documental é `origin/codex/comissoes-financeiro-transacional` no momento do handoff;
 - `CODEX_PREVIEW`: `dpl_5MGJBEUkrCBXqDnJkL619x82dNqR`, target `preview`, `READY`.
 
 ## 2. Decisões canônicas implementadas
