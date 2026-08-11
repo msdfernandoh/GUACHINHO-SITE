@@ -131,6 +131,14 @@ Não foram alterados sorteios, `grupos_sorteios_loteria_public_read`, APIs/runti
 
 ## 9. Preview e parada
 
-Preview Codex: **PENDENTE DE PREENCHIMENTO APÓS DEPLOY**.
+Preview Codex:
+
+- URL: `https://guachinho-site-ef3vbdo9v-hugo-8097s-projects.vercel.app`;
+- Deployment ID: `dpl_5MGJBEUkrCBXqDnJkL619x82dNqR`;
+- estado: `READY`;
+- target: Preview, sem promoção/alias de Produção;
+- banco do build/runtime: branch Supabase efêmera `tbyuietwzedrkydtjzhd`;
+- acesso externo: protegido pelo SSO da Vercel;
+- smoke interno: `robots.txt` servido, `/api/public/indices-financeiros` retornou `ok=true` e `/api/admin/gestao/dashboard` anônima retornou `Não autenticado`.
 
 Não executar merge, não aplicar `060–063` no projeto Supabase principal e não promover Preview para Produção sem autorização expressa do proprietário. O próximo passo permitido é apenas a auditoria final desta branch/Preview.
