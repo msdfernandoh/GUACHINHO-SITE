@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { loginAction } from "./actions";
 import { Button, Input, Label } from "@/components/ui/form-primitives";
+import { headers } from "next/headers";
+import { isPlatformHost } from "@/lib/tenant/dominio";
 
 export default async function LoginPage({
   searchParams,
@@ -8,6 +10,7 @@ export default async function LoginPage({
   searchParams: Promise<{ error?: string; next?: string }>;
 }) {
   const sp = await searchParams;
+  const platform = isPlatformHost((await headers()).get("host"));
   const error = sp.error;
   const next = sp.next ?? "/admin";
 
@@ -15,9 +18,9 @@ export default async function LoginPage({
     <div className="flex min-h-[calc(100vh-8rem)] flex-1 items-center justify-center px-4 pb-8">
       <div className="w-full max-w-md rounded-2xl border border-zinc-200 bg-white p-8 shadow-lg dark:border-zinc-800 dark:bg-zinc-900">
         <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">
-          Gauchinho Admin
+          {platform ? "Plataforma SaaS" : "Gauchinho Admin"}
         </h1>
-        <p className="mt-1 text-sm text-zinc-500">Entre com e-mail e senha</p>
+        <p className="mt-1 text-sm text-zinc-500">{platform ? "Acesso exclusivo Platform Superadmin" : "Entre com e-mail e senha"}</p>
         {error ? (
           <p className="mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
             {error}

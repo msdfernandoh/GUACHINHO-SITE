@@ -11,20 +11,20 @@ describe("Platform Host — autenticação e RBAC", () => {
     ).toBe("allow_login");
   });
 
-  it("PLATFORM_SUPERADMIN entra no painel master existente", () => {
+  it("PLATFORM_SUPERADMIN entra no shell próprio da plataforma", () => {
     expect(
       decidePlatformHostAccess({ pathname: "/", authenticated: true, platformSuperadmin: true }),
     ).toBe("redirect_master");
     expect(
       decidePlatformHostAccess({
-        pathname: "/admin/empresas",
+        pathname: "/platform/empresas",
         authenticated: true,
         platformSuperadmin: true,
       }),
     ).toBe("allow_master");
     expect(
       decidePlatformHostAccess({
-        pathname: "/admin/administradoras",
+        pathname: "/platform/administradoras",
         authenticated: true,
         platformSuperadmin: true,
       }),
@@ -36,7 +36,7 @@ describe("Platform Host — autenticação e RBAC", () => {
     () => {
       expect(
         decidePlatformHostAccess({
-          pathname: "/admin/empresas",
+          pathname: "/platform/empresas",
           authenticated: true,
           platformSuperadmin: false,
         }),

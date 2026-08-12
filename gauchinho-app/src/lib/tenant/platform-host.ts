@@ -1,5 +1,3 @@
-import { isPlatformEmpresasAdminPath } from "./operational-access";
-
 export type PlatformHostAccessDecision =
   | "allow_login"
   | "redirect_login"
@@ -25,5 +23,7 @@ export function decidePlatformHostAccess(input: {
   if (input.pathname === "/login" || input.pathname === "/" || input.pathname === "/admin") {
     return "redirect_master";
   }
-  return isPlatformEmpresasAdminPath(input.pathname) ? "allow_master" : "unavailable";
+  return input.pathname === "/platform" || input.pathname.startsWith("/platform/")
+    ? "allow_master"
+    : "unavailable";
 }

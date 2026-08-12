@@ -132,6 +132,16 @@ A plataforma suporta:
   `cbb2aadd264e0ce706a8a8c2b6e6fb8cdf9bb9c5` e deployment
   `dpl_5zbq3oGeJ8MrMagteqkZAgZGADuW` READY; smoke sem criação de fixtures.
 
+### Plataforma SaaS Master (Migration 070 — Preview)
+- o contexto global passa a usar shell próprio em `/platform`, sem herdar menu,
+  identidade ou operação tenant da Gauchinho;
+- o host Platform autoriza somente login e `/platform`, sempre pelo RPC
+  `is_platform_superadmin()`;
+- a migration 070 modela templates, catálogo ERP, planos, assinaturas,
+  entitlements/overrides, configurações e auditoria Platform, sem preços
+  presumidos, billing real ou integração com o runtime tenant;
+- detalhes e homologação: `docs/relatorios-fases/PLATAFORMA-SAAS-MASTER-UX-GOVERNANCA.md`.
+
 ---
 
 ## 4. Status de Homologação de Todos os Macroblocos
