@@ -243,6 +243,12 @@ export async function proxy(request: NextRequest) {
     return platformRouteUnavailableResponse();
   }
 
+  // O shell global não existe em host tenant. Mesmo um Superadmin deve entrar
+  // pela fronteira explícita PLATFORM_HOST para evitar contexto ambíguo.
+  if (path === "/platform" || path.startsWith("/platform/")) {
+    return platformRouteUnavailableResponse();
+  }
+
   if (path.startsWith("/admin")) {
     // 1) Autenticação
     if (!user) {
