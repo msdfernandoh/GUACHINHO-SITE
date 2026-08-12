@@ -80,6 +80,9 @@ O legado possuia maior profundidade de navegacao, mas tambem continha defaults c
 ## Incremento — cadastro de multiplas regras
 
 - branch mantida: `codex/erp-operacional-legado-superado`;
+- commit funcional: `9c59a85233e2cd9a3e7e294e004e3e7f9f65ca06`;
+- Preview: `dpl_4Ghgc3srBKgcqDXjLBv3xTj2PAeB` (`READY`);
+- URL: `https://guachinho-site-i90rsuptf-hugo-8097s-projects.vercel.app`;
 - banco e migrations: nenhuma alteracao; reutiliza integralmente as tabelas e validacoes 060–063;
 - Production: nao alterada;
 - arquivos principais: `commission-rule-manager.tsx`, `commission-rule-input.ts` e `app/erp/regras-comissao/actions.ts`;
