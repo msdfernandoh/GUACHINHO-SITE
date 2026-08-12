@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { getCurrentTenantContext } from "@/lib/tenant/context";
 import { erpModuleEnabled, getErpSistemaConfig } from "@/lib/erp/erp-modulos";
+import { erpOperationalRouteEnabled } from "@/lib/erp/erp-operational";
 import Leads from "@/app/admin/leads/page";
 import Propostas from "@/app/admin/propostas/page";
 import Contratacoes from "@/app/admin/contratacoes/page";
@@ -12,15 +13,21 @@ import Relatorios from "@/app/admin/relatorios/page";
 import Metas from "@/app/admin/metas/page";
 import Tarefas from "@/app/admin/tarefas/page";
 import Usuarios from "@/app/admin/usuarios/page";
+import Participantes from "@/app/admin/participantes/page";
+import Sorteios from "@/app/admin/grupos/sorteios/page";
+import { ErpClientesPage, ErpLancesPage, ErpRegrasComissaoPage, ErpRepasseFranquiaPage } from "@/components/erp/erp-operational-pages";
 
 const PAGES = { leads: Leads, propostas: Propostas, contratacoes: Contratacoes, vendas: Vendas, grupos: Grupos, comissoes: Comissoes, financeiro: Financeiro, relatorios: Relatorios, metas: Metas, tarefas: Tarefas, usuarios: Usuarios } as const;
+const OPERATIONAL_PAGES = { clientes: ErpClientesPage, consultores: Participantes, lances: ErpLancesPage, sorteios: Sorteios, "regras-comissao": ErpRegrasComissaoPage, "repasse-franquia": ErpRepasseFranquiaPage } as const;
 
 export default async function ErpModuloPage({ params }: { params: Promise<{ modulo: string }> }) {
   const { modulo } = await params;
   const { empresaAtiva } = await getCurrentTenantContext();
   const config = getErpSistemaConfig(empresaAtiva?.configuracoes);
-  if (!erpModuleEnabled(config, modulo) || !(modulo in PAGES)) notFound();
-  const Page = PAGES[modulo as keyof typeof PAGES] as unknown as React.ComponentType<{
+  const isBase = modulo in PAGES && erpModuleEnabled(config, modulo);
+  const isOperational = modulo in OPERATIONAL_PAGES && erpOperationalRouteEnabled(config, modulo);
+  if (!isBase && !isOperational) notFound();
+  const Page = (isBase ? PAGES[modulo as keyof typeof PAGES] : OPERATIONAL_PAGES[modulo as keyof typeof OPERATIONAL_PAGES]) as unknown as React.ComponentType<{
     searchParams: Promise<Record<string, string | undefined>>;
   }>;
   return <Page searchParams={Promise.resolve({})} />;

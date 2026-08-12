@@ -100,6 +100,14 @@ A plataforma suporta:
 - `067_erp_sistema_gauchinho_config` ativou o ERP exclusivamente para Gauchinho Consórcios, preservando as demais chaves JSON; Empresa B não recebeu configuração ERP.
 - Produção: `001–067` local=remote, deployment `dpl_FkuFYLNuZ9jwULjg21qgdUkfneLg` READY, `main` `55f7715cea0bec077a3592eb16a9dd81d93c9bb6`.
 
+### Evolucao operacional do ERP (branch de homologacao)
+- O sistema legado `CONSORCIO SISTEMA` foi auditado somente como referencia funcional, sem acesso de escrita, execucao de servicos ou integracao de codigo/banco.
+- A profundidade de navegacao de Clientes, Consultores, Lances, Sorteios, Regras de Comissao e Repasse da Franquia foi reinterpretada sobre os modelos canonicos atuais.
+- Os atalhos operacionais sao derivados dos modulos-base ja autorizados em `empresas.configuracoes.erp_sistema`; nenhuma permissao nova e concedida implicitamente.
+- Regras de comissao continuam sob o motor 060–063: versao, vigencia, escopo, homologacao explicita, snapshots, idempotencia e falha em ambiguidade.
+- Sorteios apenas reutilizam a pagina protegida existente. Nenhuma tabela, API, policy ou runtime de sorteios foi alterado.
+- Relatorio: `docs/relatorios-fases/ERP-EVOLUCAO-REFERENCIA-LEGADO.md`.
+
 ---
 
 ## 4. Status de Homologação de Todos os Macroblocos
