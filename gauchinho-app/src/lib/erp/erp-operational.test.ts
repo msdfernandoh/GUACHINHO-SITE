@@ -9,8 +9,8 @@ describe("ERP operational navigation", () => {
     expect(erpOperationalRouteEnabled(config, "lances")).toBe(false);
   });
 
-  it("sorteios e lances dependem do modulo grupos", () => {
+  it("assembleias e lances dependem do modulo grupos", () => {
     const config = { habilitado: true, modulos: ["grupos"] as const };
-    expect(listEnabledOperationalRoutes(config).map((item) => item.id)).toEqual(["lances", "sorteios"]);
+    expect(listEnabledOperationalRoutes(config).map((item) => item.id)).toEqual(["lances", "assembleias"]);
   });
 });

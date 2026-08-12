@@ -14,13 +14,13 @@ import Metas from "@/app/admin/metas/page";
 import Tarefas from "@/app/admin/tarefas/page";
 import Usuarios from "@/app/admin/usuarios/page";
 import Participantes from "@/app/admin/participantes/page";
-import Sorteios from "@/app/admin/grupos/sorteios/page";
 import { ErpClientesPage, ErpLancesPage, ErpRegrasComissaoPage, ErpRepasseFranquiaPage } from "@/components/erp/erp-operational-pages";
+import { ErpAssembleiasPage } from "@/components/erp/erp-assembleias-page";
 
 const PAGES = { leads: Leads, propostas: Propostas, contratacoes: Contratacoes, vendas: Vendas, grupos: Grupos, comissoes: Comissoes, financeiro: Financeiro, relatorios: Relatorios, metas: Metas, tarefas: Tarefas, usuarios: Usuarios } as const;
-const OPERATIONAL_PAGES = { clientes: ErpClientesPage, consultores: Participantes, lances: ErpLancesPage, sorteios: Sorteios, "regras-comissao": ErpRegrasComissaoPage, "repasse-franquia": ErpRepasseFranquiaPage } as const;
+const OPERATIONAL_PAGES = { clientes: ErpClientesPage, consultores: Participantes, lances: ErpLancesPage, assembleias: ErpAssembleiasPage, "regras-comissao": ErpRegrasComissaoPage, "repasse-franquia": ErpRepasseFranquiaPage } as const;
 
-export default async function ErpModuloPage({ params }: { params: Promise<{ modulo: string }> }) {
+export default async function ErpModuloPage({ params, searchParams }: { params: Promise<{ modulo: string }>; searchParams: Promise<Record<string, string | undefined>> }) {
   const { modulo } = await params;
   const { empresaAtiva } = await getCurrentTenantContext();
   const config = getErpSistemaConfig(empresaAtiva?.configuracoes);
@@ -30,5 +30,5 @@ export default async function ErpModuloPage({ params }: { params: Promise<{ modu
   const Page = (isBase ? PAGES[modulo as keyof typeof PAGES] : OPERATIONAL_PAGES[modulo as keyof typeof OPERATIONAL_PAGES]) as unknown as React.ComponentType<{
     searchParams: Promise<Record<string, string | undefined>>;
   }>;
-  return <Page searchParams={Promise.resolve({})} />;
+  return <Page searchParams={searchParams} />;
 }

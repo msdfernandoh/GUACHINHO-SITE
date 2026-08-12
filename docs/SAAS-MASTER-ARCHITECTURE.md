@@ -112,6 +112,11 @@ A plataforma suporta:
 - Antes da homologacao, a aplicacao recusa outra regra homologada da mesma administradora com igual escopo/precedencia e vigencia sobreposta. O RPC 061 continua falhando obrigatoriamente se qualquer ambiguidade persistir.
 - Sorteios apenas reutilizam a pagina protegida existente. Nenhuma tabela, API, policy ou runtime de sorteios foi alterado.
 - Relatorio: `docs/relatorios-fases/ERP-EVOLUCAO-REFERENCIA-LEGADO.md`.
+- A migration 069 acrescenta Assembleias/Pedras como operação tenant-aware e
+  independente: histórico append-only, ranking somente sobre `cotas_definitivas`
+  do mesmo grupo e marcação de atenção sem mutar contemplação. O antigo atalho
+  ERP para sorteios do Portal foi removido; sorteios promocionais permanecem intactos.
+- Relatório consolidado: `docs/relatorios-fases/ERP-OPERACIONAL-LEGADO-SUPERADO.md`.
 
 ### Fluxo canônico Proposta → Contratação (Migration 068, branch de correção)
 - a proposta passa a existir quando nome e telefone forem válidos e pode permanecer `Gerada` durante o preenchimento;

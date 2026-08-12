@@ -12,7 +12,7 @@ export const ERP_OPERATIONAL_ROUTES: ErpOperationalRoute[] = [
   { id: "clientes", label: "Clientes e carteira", href: "/erp/clientes", section: "Comercial", requiresAny: ["leads", "propostas", "contratacoes", "vendas"] },
   { id: "consultores", label: "Consultores", href: "/erp/consultores", section: "Comercial", requiresAny: ["usuarios", "comissoes"] },
   { id: "lances", label: "Lances e estrategias", href: "/erp/lances", section: "Consorcio", requiresAny: ["grupos"] },
-  { id: "sorteios", label: "Sorteios de grupos", href: "/erp/sorteios", section: "Consorcio", requiresAny: ["grupos"] },
+  { id: "assembleias", label: "Assembleias / Pedras", href: "/erp/assembleias", section: "Consorcio", requiresAny: ["grupos"] },
   { id: "regras-comissao", label: "Regras de comissao", href: "/erp/regras-comissao", section: "Comissoes e financeiro", requiresAny: ["comissoes"] },
   { id: "repasse-franquia", label: "Repasse da franquia", href: "/erp/repasse-franquia", section: "Comissoes e financeiro", requiresAny: ["comissoes", "financeiro"] },
 ];

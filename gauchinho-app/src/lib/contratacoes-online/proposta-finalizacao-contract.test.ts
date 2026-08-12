@@ -41,7 +41,7 @@ describe("contrato proposta → contratação", () => {
   it("G: lock e vínculo único tornam retry/double-click idempotente", () => {
     expect(migration).toContain("FOR UPDATE");
     expect(migration).toContain("contratacoes_online_proposta_uidx");
-    expect(migration).toContain("IF FOUND THEN\n    RETURN v_existente");
+    expect(migration).toMatch(/IF FOUND THEN\s+RETURN v_existente;/);
   });
 
   it("I: tenant participa de todas as buscas e da finalização", () => {

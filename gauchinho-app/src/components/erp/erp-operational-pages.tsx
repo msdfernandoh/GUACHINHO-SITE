@@ -19,7 +19,7 @@ export async function ErpClientesPage() {
 }
 
 export async function ErpLancesPage() {
-  return <div className="space-y-6"><header><p className="text-xs font-bold uppercase tracking-widest text-blue-700">Consorcio</p><h1 className="text-3xl font-bold">Lances e estrategias</h1><p className="mt-1 text-slate-500">Use os grupos e cotas atuais. Cada grupo concentra lance embutido, recurso proprio, parcela reduzida e parametros de contemplacao.</p></header><HubLinks links={[{ href: "/erp/grupos", title: "Catalogo de grupos", description: "Abra um grupo para editar estrategias de lance e parcela." }, { href: "/erp/sorteios", title: "Sorteios mensais", description: "Acesse o modulo existente de Loteria Federal." }]} /><div className="border-t border-slate-200 pt-6"><Grupos searchParams={Promise.resolve({})} /></div></div>;
+  return <div className="space-y-6"><header><p className="text-xs font-bold uppercase tracking-widest text-blue-700">Consorcio</p><h1 className="text-3xl font-bold">Lances e estrategias</h1><p className="mt-1 text-slate-500">Use os grupos e cotas atuais. Cada grupo concentra lance embutido, recurso proprio, parcela reduzida e parametros de contemplacao.</p></header><HubLinks links={[{ href: "/erp/grupos", title: "Catalogo de grupos", description: "Abra um grupo para editar estrategias de lance e parcela." }, { href: "/erp/assembleias", title: "Assembleias / Pedras", description: "Registre a pedra e acompanhe cotas reais próximas, sem alterar contemplação." }]} /><div className="border-t border-slate-200 pt-6"><Grupos searchParams={Promise.resolve({})} /></div></div>;
 }
 
 type ProgramaRow = { id: string; nome: string; ativo: boolean; administradora_id: string | null };
