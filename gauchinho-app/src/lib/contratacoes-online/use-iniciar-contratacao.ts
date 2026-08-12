@@ -60,8 +60,8 @@ export function useIniciarContratacao() {
           return {
             public_token: "",
             protocolo: "RASCUNHO",
-            path: "/proposta/rascunho",
-            url: "",
+            path: data.path || "/proposta/rascunho",
+            url: data.url || "",
             draft: true,
           };
         }

@@ -2,10 +2,7 @@ import { NextResponse } from "next/server";
 import { rejectIfTenantBlocksLegacyOperationalApi } from "@/lib/tenant/assert-legacy-operational-api";
 import { getUsuarioNegocio } from "@/lib/auth/get-usuario";
 import { canCreateProposta } from "@/lib/auth/permissions";
-import { criarPropostaDoFluxo } from "@/lib/contratacoes-online/proposta-flow";
 import type { IniciarContratacaoBody } from "@/lib/contratacoes-online/types";
-import { buildPropostaPublicUrl } from "@/lib/url/public-url";
-import { DEFAULT_SITE, getConfigJsonPublic } from "@/server/config";
 import {
   CotaNotFoundError,
   GRUPO_NOT_FOUND_MESSAGE,
@@ -13,6 +10,7 @@ import {
 } from "@/lib/grupos/catalogo-autorizado";
 import { assertDadosSimulacaoGruposAutorizadosForEmpresa } from "@/lib/grupos/catalogo-autorizado-service";
 import { getCatalogEmpresaIdFromRequest } from "@/lib/grupos/resolve-catalog-empresa";
+import { criarContratacaoDraftLink } from "@/lib/contratacoes-online/draft-link";
 
 export async function POST(request: Request) {
   const __tenantBlocked = await rejectIfTenantBlocksLegacyOperationalApi(request);
@@ -56,7 +54,7 @@ export async function POST(request: Request) {
       }
     }
 
-    if (body.modo === "cliente_site") {
+    if (body.modo === "cliente_site" || body.modo === "sdr_link") {
       const consultorId = body.consultor_id?.trim() || usuario?.id || "";
       if (!consultorId) {
         return NextResponse.json(
@@ -64,54 +62,26 @@ export async function POST(request: Request) {
           { status: 400 },
         );
       }
+      const draftPayload = {
+        modo: body.modo,
+        origem: body.origem,
+        dados_simulacao: body.dados_simulacao,
+        createdAt: new Date().toISOString(),
+        consultor_id: body.consultor_id?.trim() || usuario?.id || undefined,
+        consultor_nome: body.consultor_nome?.trim() || usuario?.nome || undefined,
+        cliente_pre_nome: body.cliente_pre_nome?.trim() || undefined,
+        cliente_pre_telefone: body.cliente_pre_telefone?.trim() || undefined,
+        cliente_pre_email: body.cliente_pre_email?.trim() || undefined,
+      };
       return NextResponse.json({
         ok: true,
         draft: true,
         path: "/proposta/rascunho",
-        draftPayload: {
-          modo: body.modo,
-          origem: body.origem,
-          dados_simulacao: body.dados_simulacao,
-          createdAt: new Date().toISOString(),
-          consultor_id: body.consultor_id?.trim() || usuario?.id || undefined,
-          consultor_nome: body.consultor_nome?.trim() || usuario?.nome || undefined,
-          cliente_pre_nome: body.cliente_pre_nome?.trim() || undefined,
-          cliente_pre_telefone: body.cliente_pre_telefone?.trim() || undefined,
-          cliente_pre_email: body.cliente_pre_email?.trim() || undefined,
-        },
+        url: body.modo === "sdr_link" ? criarContratacaoDraftLink(draftPayload, new URL(request.url).origin) : undefined,
+        draftPayload,
       });
     }
-
-    const empresaId = await getCatalogEmpresaIdFromRequest(request);
-    if (!empresaId) return NextResponse.json({ error: "Tenant não identificado." }, { status: 404 });
-    const draft = {
-      modo: body.modo,
-      origem: body.origem,
-      dados_simulacao: body.dados_simulacao,
-      createdAt: new Date().toISOString(),
-      consultor_id: body.consultor_id,
-      consultor_nome: body.consultor_nome,
-    } as const;
-    const row = await criarPropostaDoFluxo({
-      draft,
-      empresaId,
-      nome: body.cliente_pre_nome ?? "",
-      telefone: body.cliente_pre_telefone ?? "",
-      email: body.cliente_pre_email,
-      gerador: usuario,
-    });
-    const publicPath = `/proposta/${row.public_token}`;
-    const site = await getConfigJsonPublic("site", DEFAULT_SITE);
-    const url = buildPropostaPublicUrl(row.public_token, site.siteUrl || undefined);
-
-    return NextResponse.json({
-      ok: true,
-      draft: false,
-      public_token: row.public_token,
-      protocolo: row.protocolo,
-      url,
-      path: publicPath,
-    });
+    return NextResponse.json({ error: "Modo inválido" }, { status: 400 });
   } catch (e) {
     const message = e instanceof Error ? e.message : "Erro interno";
     return NextResponse.json({ error: message }, { status: 500 });

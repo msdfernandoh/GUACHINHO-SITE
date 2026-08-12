@@ -36,6 +36,7 @@ import type { LinhaGrupoPropostaResumo } from "@/lib/contratacoes-online/extract
 import {
   clearContratacaoDraftStorage,
   readContratacaoDraftFromStorage,
+  writeContratacaoDraftToStorage,
 } from "@/lib/contratacoes-online/draft";
 import {
   buildPropostaVisualizacaoUrl,
@@ -98,11 +99,13 @@ export function ContratacaoWizard({
   draftMode = false,
   visualizacao = "completa",
   canGenerateLinks = false,
+  draftLink,
 }: {
   publicToken?: string;
   draftMode?: boolean;
   visualizacao?: VisualizacaoProposta;
   canGenerateLinks?: boolean;
+  draftLink?: { d: string; s: string };
 }) {
   const router = useRouter();
   const [publicToken, setPublicToken] = useState(initialToken ?? "");
@@ -202,7 +205,18 @@ export function ContratacaoWizard({
     setLoading(true);
     setError(null);
     try {
-      const draft = readContratacaoDraftFromStorage();
+      let draft = readContratacaoDraftFromStorage();
+      if (!draft && draftLink) {
+        const linkResponse = await fetch("/api/public/contratacoes/rascunho/link", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(draftLink),
+        });
+        const linkJson = (await linkResponse.json()) as { draft?: unknown; error?: string };
+        if (!linkResponse.ok || !linkJson.draft) throw new Error(linkJson.error ?? "Link de simulação inválido.");
+        draft = linkJson.draft as import("@/lib/contratacoes-online/draft").ContratacaoDraftPayload;
+        writeContratacaoDraftToStorage(draft);
+      }
       if (!draft) {
         throw new Error("Rascunho não encontrado. Volte ao simulador e clique em Contratar novamente.");
       }
@@ -222,7 +236,7 @@ export function ContratacaoWizard({
     } finally {
       setLoading(false);
     }
-  }, [hydrateFromContratacao]);
+  }, [draftLink, hydrateFromContratacao]);
 
   const load = useCallback(async (opts?: { silent?: boolean; syncStep?: boolean }) => {
     if (!publicToken) return;
