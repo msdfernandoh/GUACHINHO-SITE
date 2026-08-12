@@ -82,9 +82,18 @@ resultado oficial da cota.
 - teste SQL transacional: histórico, proximidade, append-only, cross-tenant,
   cross-group, RLS/grants e preservação do status real: PASS;
 - `ROLLBACK`: zero vendas, assembleias e marcações residuais;
-- Preview consolidado: pendente;
-- homologação autenticada: somente será declarada se houver sessão legítima;
-- Production: não alterada neste ponto do relatório.
+- Preview consolidado: `dpl_9UwvxSqxKxuf6xHGeHRioi2Qct7v`, READY, usando o
+  Supabase isolado `dtgzujsktggllybnpbpj`;
+- smoke anônimo do Preview: `/erp` redirecionou para `/login`;
+- homologação visual autenticada: pendente por proteção Vercel e ausência de
+  sessão legítima disponível; nenhum PASS foi presumido;
+- migration 069 em Produção: aplicada e confirmada como versão máxima, com
+  `UPDATE/DELETE` negados a `authenticated` no histórico;
+- merge em `main`: `7e80215`;
+- deployment Production: `dpl_4BQa4mziSLGfnJDBEhKfRq3A6Jnb`, READY;
+- smoke Production: `www.gauchinhoconsorcios.com.br/erp` redireciona o anônimo
+  para `/login?next=/erp`; domínio raiz mantém redirect canônico para `www`;
+  Platform Host permanece redirecionando ao login Platform.
 
 Durante o teste isolado, os default privileges do projeto concederam inicialmente
 `UPDATE/DELETE` ao papel `authenticated`. A migration foi corrigida antes do
