@@ -76,11 +76,18 @@ Nenhum desses registros foi apagado ou modificado.
 - suíte: 680 PASS / 37 SKIP;
 - TypeScript: PASS;
 - build: PASS, 120 páginas;
-- Supabase isolado: `codex-fluxo-proposta-068-data` (`with_data=true`), `ACTIVE_HEALTHY`;
-- migration transacional isolada: pendente;
+- Supabase isolado: `codex-fluxo-proposta-068-data-v2` (`with_data=true`), `ACTIVE_HEALTHY`;
+- migration 068 isolada: aplicada e registrada na branch `codex-fluxo-proposta-068-data-v2`;
+- teste SQL transacional: PASS; sem documento bloqueado, uma contratação em retry,
+  cross-tenant bloqueado, documento copiado e zero fixtures após `ROLLBACK`;
+- teste runtime no Preview: PASS; abertura vazia não persistiu, nome+telefone criaram
+  somente proposta, finalização sem documento retornou erro, upload foi baixado novamente
+  pelo backend e duas confirmações concorrentes retornaram a mesma contratação;
+- limpeza do teste runtime isolado: zero propostas, contratações e documentos residuais;
 - npm audit (registro oficial): PASS, 0 vulnerabilidades; lockfile atualizado somente com correções transitivas;
 - branch: `codex/correcao-proposta-contratacao`;
-- Preview/deployment: pendente;
+- commit auditado: `43aa4ab`;
+- Preview isolado: `dpl_DreFe5fBDYVtqTFHhA9bAPbXFEjL`, READY;
 - Production: não alterada;
 - smoke Production: pendente.
 
