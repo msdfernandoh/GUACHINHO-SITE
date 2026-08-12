@@ -63,4 +63,10 @@ O legado possuia maior profundidade de navegacao, mas tambem continha defaults c
 
 ## Estado de entrega
 
-Implementado na branch `codex/erp-operacional-legado-superado`. Preview e homologacao autenticada ainda devem ser registrados antes de qualquer promocao para Producao.
+- branch: `codex/erp-operacional-legado-superado`;
+- commit funcional: `c792d86a813f333519206ab32ff3c3d098fd0ad8`;
+- Preview: `dpl_HPwCKg382eBVseWQFVPYeqz15CeH`;
+- URL: `https://guachinho-site-9bezrkon6-hugo-8097s-projects.vercel.app`;
+- estado: READY;
+- Production: nao alterada;
+- homologacao autenticada: pendente antes de qualquer promocao.
