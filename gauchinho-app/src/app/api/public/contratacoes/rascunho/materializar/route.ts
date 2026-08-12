@@ -1,182 +1,42 @@
 import { NextResponse } from "next/server";
 import { rejectIfTenantBlocksLegacyOperationalApi } from "@/lib/tenant/assert-legacy-operational-api";
 import { getUsuarioNegocio } from "@/lib/auth/get-usuario";
-import { criarContratacaoOnline, atualizarContratacaoPublica } from "@/lib/contratacoes-online/service";
 import { isContratacaoDraftPayload } from "@/lib/contratacoes-online/draft";
+import { criarPropostaDoFluxo, atualizarFluxoProposta } from "@/lib/contratacoes-online/proposta-flow";
 import { sanitizeContratacaoPublica } from "@/lib/contratacoes-online/sanitize-public";
-import { buildPropostaPublicUrl } from "@/lib/url/public-url";
-import { DEFAULT_SITE, getConfigJsonPublic } from "@/server/config";
-import {
-  sanitizeCnpj,
-  sanitizeCpf,
-  sanitizeTelefone,
-  validarCnpj,
-  validarCpf,
-  validarEmail,
-} from "@/lib/contratacoes-online/validacao";
-import { parseEnderecoContratacao } from "@/lib/contratacoes-online/endereco";
-import { createAdminClient } from "@/lib/supabase/admin";
-import type { TipoPessoa } from "@/lib/contratacoes-online/types";
-import {
-  CotaNotFoundError,
-  GRUPO_NOT_FOUND_MESSAGE,
-  isGrupoNotFoundError,
-} from "@/lib/grupos/catalogo-autorizado";
-import { assertDadosSimulacaoGruposAutorizadosForEmpresa } from "@/lib/grupos/catalogo-autorizado-service";
 import { getCatalogEmpresaIdFromRequest } from "@/lib/grupos/resolve-catalog-empresa";
 
-/**
- * Materializa o rascunho somente após os dados cadastrais completos.
- * Simulações abandonadas antes de CPF/CNPJ e endereço permanecem apenas no navegador.
- */
+/** Persiste somente a proposta após nome + telefone. Nunca cria contratação. */
 export async function POST(request: Request) {
-  const __tenantBlocked = await rejectIfTenantBlocksLegacyOperationalApi(request);
-  if (__tenantBlocked) return __tenantBlocked;
-  let contratacaoCriadaId: string | null = null;
+  const tenantBlocked = await rejectIfTenantBlocksLegacyOperationalApi(request);
+  if (tenantBlocked) return tenantBlocked;
   try {
-    const body = (await request.json()) as {
-      draft?: unknown;
-      nome?: string;
-      telefone?: string;
-      email?: string;
-      tipo_pessoa?: TipoPessoa;
-      cpf?: string;
-      data_nascimento?: string;
-      razao_social?: string;
-      cnpj?: string;
-      responsavel_nome?: string;
-      responsavel_cpf?: string;
-      cep?: string;
-      endereco?: string;
-      numero?: string;
-      complemento?: string;
-      bairro?: string;
-      cidade?: string;
-      uf?: string;
-    };
-    if (!isContratacaoDraftPayload(body.draft)) {
-      return NextResponse.json({ error: "Rascunho inválido" }, { status: 400 });
-    }
-    const nome = body.nome?.trim() ?? "";
-    const telefone = sanitizeTelefone(body.telefone ?? "");
-    const email = body.email?.trim() ?? "";
-    if (!nome || telefone.length < 10) {
-      return NextResponse.json(
-        { error: "Nome e telefone/WhatsApp são obrigatórios." },
-        { status: 400 },
-      );
-    }
-    if (!validarEmail(email)) {
-      return NextResponse.json({ error: "E-mail inválido." }, { status: 400 });
-    }
-
-    if (body.tipo_pessoa === "cpf") {
-      if (!validarCpf(sanitizeCpf(body.cpf ?? ""))) {
-        return NextResponse.json({ error: "CPF inválido." }, { status: 400 });
-      }
-    } else if (body.tipo_pessoa === "cnpj") {
-      if (!validarCnpj(sanitizeCnpj(body.cnpj ?? ""))) {
-        return NextResponse.json({ error: "CNPJ inválido." }, { status: 400 });
-      }
-      if (!validarCpf(sanitizeCpf(body.responsavel_cpf ?? ""))) {
-        return NextResponse.json({ error: "CPF do responsável inválido." }, { status: 400 });
-      }
-      if (!body.razao_social?.trim() || !body.responsavel_nome?.trim()) {
-        return NextResponse.json(
-          { error: "Razão social e responsável são obrigatórios." },
-          { status: 400 },
-        );
-      }
-    } else {
-      return NextResponse.json({ error: "Tipo de pessoa inválido." }, { status: 400 });
-    }
-
-    // Valida todos os campos obrigatórios antes do primeiro INSERT.
-    parseEnderecoContratacao(body);
-
-    if (body.draft.origem === "grupos") {
-      const empresaId = await getCatalogEmpresaIdFromRequest(request);
-      if (!empresaId) {
-        return NextResponse.json({ error: GRUPO_NOT_FOUND_MESSAGE }, { status: 404 });
-      }
-      try {
-        await assertDadosSimulacaoGruposAutorizadosForEmpresa(
-          empresaId,
-          body.draft.dados_simulacao,
-        );
-      } catch (err) {
-        if (isGrupoNotFoundError(err) || err instanceof CotaNotFoundError) {
-          return NextResponse.json({ error: GRUPO_NOT_FOUND_MESSAGE }, { status: 404 });
-        }
-        throw err;
-      }
-    }
-
+    const body = await request.json() as Record<string, unknown>;
+    if (!isContratacaoDraftPayload(body.draft)) return NextResponse.json({ error: "Rascunho inválido" }, { status: 400 });
+    const empresaId = await getCatalogEmpresaIdFromRequest(request);
+    if (!empresaId) return NextResponse.json({ error: "Tenant não identificado." }, { status: 404 });
     const usuario = await getUsuarioNegocio();
-    const { row, publicPath } = await criarContratacaoOnline(
-      {
-        modo: body.draft.modo,
-        origem: body.draft.origem,
-        dados_simulacao: body.draft.dados_simulacao,
-        cliente_pre_nome: nome,
-        cliente_pre_telefone: telefone,
-        cliente_pre_email: email,
-        consultor_id: body.draft.consultor_id,
-        consultor_nome: body.draft.consultor_nome,
-      },
-      usuario,
-    );
-    contratacaoCriadaId = row.id;
-
-    await atualizarContratacaoPublica(row.public_token, {
-      etapa: "dados",
-      nome,
-      telefone,
-      email,
+    let proposal = await criarPropostaDoFluxo({
+      draft: body.draft,
+      empresaId,
+      nome: String(body.nome ?? ""),
+      telefone: String(body.telefone ?? ""),
+      email: String(body.email ?? ""),
+      gerador: usuario,
     });
-    const updated = await atualizarContratacaoPublica(row.public_token, {
-      etapa: "pessoa",
-      tipo_pessoa: body.tipo_pessoa,
-      cpf: body.cpf,
-      data_nascimento: body.data_nascimento,
-      razao_social: body.razao_social,
-      cnpj: body.cnpj,
-      responsavel_nome: body.responsavel_nome,
-      responsavel_cpf: body.responsavel_cpf,
-      cep: body.cep,
-      endereco: body.endereco,
-      numero: body.numero,
-      complemento: body.complemento,
-      bairro: body.bairro,
-      cidade: body.cidade,
-      uf: body.uf,
-    });
-
-    const site = await getConfigJsonPublic("site", DEFAULT_SITE);
-    const url = buildPropostaPublicUrl(updated.public_token, site.siteUrl || undefined);
-
-    return NextResponse.json({
-      ok: true,
-      public_token: updated.public_token,
-      protocolo: updated.protocolo,
-      path: publicPath,
-      url,
-      contratacao: sanitizeContratacaoPublica(updated),
-    });
-  } catch (e) {
-    if (contratacaoCriadaId) {
-      const admin = createAdminClient();
-      const { data: criada } = await admin
-        .from("contratacoes_online")
-        .select("lead_id")
-        .eq("id", contratacaoCriadaId)
-        .maybeSingle();
-      await admin.from("contratacoes_online").delete().eq("id", contratacaoCriadaId);
-      if (criada?.lead_id) {
-        await admin.from("leads").delete().eq("id", criada.lead_id);
-      }
+    if (body.tipo_pessoa) {
+      proposal = await atualizarFluxoProposta(proposal.public_token, empresaId, {
+        etapa: "pessoa",
+        tipo_pessoa: body.tipo_pessoa as "cpf" | "cnpj",
+        cpf: String(body.cpf ?? ""), data_nascimento: String(body.data_nascimento ?? ""),
+        razao_social: String(body.razao_social ?? ""), cnpj: String(body.cnpj ?? ""),
+        responsavel_nome: String(body.responsavel_nome ?? ""), responsavel_cpf: String(body.responsavel_cpf ?? ""),
+        cep: String(body.cep ?? ""), endereco: String(body.endereco ?? ""), numero: String(body.numero ?? ""),
+        complemento: String(body.complemento ?? ""), bairro: String(body.bairro ?? ""), cidade: String(body.cidade ?? ""), uf: String(body.uf ?? ""),
+      });
     }
-    const message = e instanceof Error ? e.message : "Erro interno";
-    return NextResponse.json({ error: message }, { status: 400 });
+    return NextResponse.json({ ok: true, public_token: proposal.public_token, path: `/proposta/${proposal.public_token}`, proposta: sanitizeContratacaoPublica(proposal) });
+  } catch (error) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Erro interno" }, { status: 400 });
   }
 }

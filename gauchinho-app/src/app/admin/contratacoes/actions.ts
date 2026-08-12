@@ -28,6 +28,8 @@ export async function fetchContratacoesList(): Promise<ContratacaoOnlineRow[]> {
   let query = supabase
     .from("contratacoes_online")
     .select("*")
+    .not("finalizado_em", "is", null)
+    .in("status", ["aguardando_consultor", "em_emissao_manual", "finalizado", "finalizada"])
     .order("created_at", { ascending: false })
     .limit(300);
   if (usuario.leads_apenas_proprios) {

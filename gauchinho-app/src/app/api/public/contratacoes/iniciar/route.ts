@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { rejectIfTenantBlocksLegacyOperationalApi } from "@/lib/tenant/assert-legacy-operational-api";
 import { getUsuarioNegocio } from "@/lib/auth/get-usuario";
 import { canCreateProposta } from "@/lib/auth/permissions";
-import { criarContratacaoOnline } from "@/lib/contratacoes-online/service";
+import { criarPropostaDoFluxo } from "@/lib/contratacoes-online/proposta-flow";
 import type { IniciarContratacaoBody } from "@/lib/contratacoes-online/types";
 import { buildPropostaPublicUrl } from "@/lib/url/public-url";
 import { DEFAULT_SITE, getConfigJsonPublic } from "@/server/config";
@@ -36,8 +36,8 @@ export async function POST(request: Request) {
       }
     }
 
-    // Cliente no site: mantém toda a proposta apenas no navegador até concluir
-    // nome, contato, CPF/CNPJ e endereço. Evita simulações incompletas no banco.
+    // Cliente no site: mantém o início vazio no navegador. A proposta só nasce
+    // quando nome + telefone válidos forem enviados pelo wizard.
     if (body.origem === "grupos" && body.modo === "sdr_link") {
       const empresaId = await getCatalogEmpresaIdFromRequest(request);
       if (!empresaId) {
@@ -82,7 +82,25 @@ export async function POST(request: Request) {
       });
     }
 
-    const { row, publicPath } = await criarContratacaoOnline(body, usuario);
+    const empresaId = await getCatalogEmpresaIdFromRequest(request);
+    if (!empresaId) return NextResponse.json({ error: "Tenant não identificado." }, { status: 404 });
+    const draft = {
+      modo: body.modo,
+      origem: body.origem,
+      dados_simulacao: body.dados_simulacao,
+      createdAt: new Date().toISOString(),
+      consultor_id: body.consultor_id,
+      consultor_nome: body.consultor_nome,
+    } as const;
+    const row = await criarPropostaDoFluxo({
+      draft,
+      empresaId,
+      nome: body.cliente_pre_nome ?? "",
+      telefone: body.cliente_pre_telefone ?? "",
+      email: body.cliente_pre_email,
+      gerador: usuario,
+    });
+    const publicPath = `/proposta/${row.public_token}`;
     const site = await getConfigJsonPublic("site", DEFAULT_SITE);
     const url = buildPropostaPublicUrl(row.public_token, site.siteUrl || undefined);
 

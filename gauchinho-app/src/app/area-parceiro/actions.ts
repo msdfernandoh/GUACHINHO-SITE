@@ -15,6 +15,7 @@ import {
   generateAndStorePropostaPdf,
   getPropostaPdfDownloadUrl,
 } from "@/lib/proposta/generate-pdf";
+import { assertPropostaMinimum } from "@/lib/proposta/minimum";
 
 const LEAD_SELECT =
   "id, created_at, nome, whatsapp, email, status, observacoes, empresa_id, organizacao_parceira_id, participant_id, origem, criado_por_usuario_id";
@@ -270,7 +271,7 @@ export async function createPropostaAreaParceiroAction(formData: FormData) {
     organizacao_parceira_id: orgId,
     participant_id: session.ctx.participantId,
   };
-  if (!payload.nome_cliente) throw new Error("Nome do cliente é obrigatório.");
+  assertPropostaMinimum({ nome: payload.nome_cliente, telefone: payload.whatsapp_cliente });
 
   const supabase = await createClient();
   const { data, error } = await supabase.from("propostas").insert(payload).select("id").single();
@@ -323,7 +324,7 @@ export async function updatePropostaAreaParceiroAction(formData: FormData) {
     observacoes: String(formData.get("observacoes") ?? before.observacoes ?? "").trim() || null,
     status: nextStatus,
   };
-  if (!updates.nome_cliente) throw new Error("Nome do cliente é obrigatório.");
+  assertPropostaMinimum({ nome: updates.nome_cliente, telefone: updates.whatsapp_cliente });
 
   const { error } = await supabase.from("propostas").update(updates).eq("id", propostaId);
   if (error) throw new Error("Não foi possível atualizar a proposta.");
