@@ -373,3 +373,30 @@ export async function converterContratacaoEmVendaAction(
     return { ok: false, error: e instanceof Error ? e.message : "Falha ao converter contratação em venda." };
   }
 }
+
+export async function configurarParticipantesDaVendaAction(input: {
+  contratacaoId: string;
+  microfranquiaId: string;
+  secundarioId?: string;
+  fracaoPercentual?: number;
+}): Promise<{ ok: true } | { ok: false; error: string }> {
+  try {
+    await requireStaffAdmin();
+    const { getCurrentTenantContext } = await import("@/lib/tenant/context");
+    const { empresaAtiva } = await getCurrentTenantContext();
+    if (!empresaAtiva?.id) return { ok: false, error: "Tenant não identificado." };
+    if (!input.microfranquiaId) return { ok: false, error: "Selecione a Microfranquia principal." };
+    if (input.secundarioId && (!input.fracaoPercentual || input.fracaoPercentual <= 0 || input.fracaoPercentual >= 100)) {
+      return { ok: false, error: "Informe a fração do participante secundário entre 0 e 100%." };
+    }
+    const supabase = await createClient();
+    const { error } = await supabase.from("contratacoes_online").update({
+      participante_comercial_id: input.microfranquiaId,
+      participante_secundario_id: input.secundarioId || null,
+      participante_secundario_fracao_percentual: input.secundarioId ? input.fracaoPercentual : null,
+    }).eq("id", input.contratacaoId).eq("empresa_id", empresaAtiva.id);
+    if (error) return { ok: false, error: error.message };
+    revalidatePath(`/admin/contratacoes/${input.contratacaoId}`);
+    return { ok: true };
+  } catch (e) { return { ok: false, error: e instanceof Error ? e.message : "Falha ao configurar participantes." }; }
+}

@@ -176,6 +176,12 @@ A plataforma suporta:
 - `071_erp_clientes_operacional.sql` é forward-only, tem RLS explícita e não executa backfill automático. Em 12/08/2026, após auditoria e autorização expressa, foram vinculadas somente as 7 contratações assinadas da Gauchinho, sem documento ausente ou duplicidade de CPF/CNPJ.
 - relatório: `docs/relatorios-fases/ERP-CLIENTES-OPERACIONAL.md`.
 
+### Participantes de venda e simulação compartilhável (Migrations 072–073 — versionadas)
+- a contratação pode definir Microfranquia principal e um participante secundário opcional (`SDR`, `PARCEIRO` ou `CONSULTOR`), sempre no mesmo tenant;
+- a fração configurada reduz a previsão da Microfranquia e transfere exatamente essa parcela ao secundário nas vendas novas, preservando previsões e pagamentos históricos;
+- o link SDR carrega uma simulação assinada sem persistir proposta/contratação antes dos dados mínimos do cliente;
+- migrations 072–073 permanecem pendentes de aplicação no Supabase; relatório: `docs/relatorios-fases/VENDAS-PARTICIPANTES-COMISSAO.md`.
+
 ## 5. Declaração Final de Segurança e Riscos
 
 * O P0 das APIs, o hardening `057–059`, o motor canônico `060–063` e o fechamento técnico `064–066` estão implantados no Supabase principal.
