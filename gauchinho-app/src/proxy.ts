@@ -231,15 +231,21 @@ export async function proxy(request: NextRequest) {
     }
     if (platformDecision === "redirect_login") {
       const login = new URL("/login", request.url);
-      login.searchParams.set("next", "/admin/empresas");
+      login.searchParams.set("next", "/platform");
       return NextResponse.redirect(login);
     }
     if (platformDecision === "deny") {
       return platformAccessDeniedResponse();
     }
     if (platformDecision === "redirect_master") {
-      return NextResponse.redirect(new URL("/admin/empresas", request.url));
+      return NextResponse.redirect(new URL("/platform", request.url));
     }
+    return platformRouteUnavailableResponse();
+  }
+
+  // O shell global não existe em host tenant. Mesmo um Superadmin deve entrar
+  // pela fronteira explícita PLATFORM_HOST para evitar contexto ambíguo.
+  if (path === "/platform" || path.startsWith("/platform/")) {
     return platformRouteUnavailableResponse();
   }
 
