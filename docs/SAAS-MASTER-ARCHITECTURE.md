@@ -1,6 +1,6 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
-> **Versão da Arquitetura:** 5.7.0 (ERP Clientes em Preview)
+> **Versão da Arquitetura:** 5.7.1 (ERP Clientes aplicado e backfill Gauchinho auditado)
 > **Data de Atualização:** 11/08/2026
 > **Status Geral do Projeto:** **PRODUÇÃO RECONCILIADA ATÉ A MIGRATION 069; PLATFORM HOST, ERP OPERACIONAL, FLUXO PROPOSTA → CONTRATAÇÃO E ASSEMBLEIAS/PEDRAS ATIVOS. A MIGRATION 070 EXISTE SOMENTE NO SUPABASE ISOLADO E NO PREVIEW DA BRANCH PLATFORM.**
 > **Macroblocos A–F e evoluções 057–069:** implantados em Produção. As migrations `060–063` preservam o motor canônico financeiro; `064–066` concluíram retenção, storage e auditoria; `067–069` entregaram ERP configurável, fluxo final de contratação e Assembleias/Pedras.
@@ -168,12 +168,12 @@ A plataforma suporta:
 
 ---
 
-### ERP Clientes operacional (Migration 071 — Preview)
+### ERP Clientes operacional (Migration 071 — Produção)
 - `clientes` é a identidade cadastral atual, tenant-aware e distinta de lead, proposta, contratação, venda e cota;
 - a criação automática ocorre somente quando `contratacoes_online.contrato_assinado = true`; CPF/CNPJ normalizado é a identidade idempotente por empresa, sem deduplicar pessoas por nome ou telefone;
 - documentos permanecem em `contratacoes_documentos` e no bucket privado existente; as cotas reais são sempre lidas de `cotas_definitivas` por meio de venda;
 - o botão Nova Cota apenas inicia o fluxo comercial canônico, sem criar venda ou cota diretamente e sem alterar 060–063;
-- `071_erp_clientes_operacional.sql` é forward-only, tem RLS explícita e não executa backfill histórico. O backfill dependerá de relatório e autorização expressa.
+- `071_erp_clientes_operacional.sql` é forward-only, tem RLS explícita e não executa backfill automático. Em 12/08/2026, após auditoria e autorização expressa, foram vinculadas somente as 7 contratações assinadas da Gauchinho, sem documento ausente ou duplicidade de CPF/CNPJ.
 - relatório: `docs/relatorios-fases/ERP-CLIENTES-OPERACIONAL.md`.
 
 ## 5. Declaração Final de Segurança e Riscos

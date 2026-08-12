@@ -26,7 +26,9 @@ RLS usa policies explícitas de SELECT/INSERT/UPDATE para `clientes`, SELECT/INS
 
 ## Backfill histórico
 
-Nenhum backfill foi executado. Antes de qualquer backfill real será necessário produzir, no ambiente autorizado, a contagem de contratações assinadas, documentos ausentes, CPF/CNPJ duplicados/conflitantes e contratos sem documento. A migration não varre nem altera registros históricos.
+Em 12/08/2026, após autorização expressa, o backfill foi executado somente para Gauchinho Consórcios no Supabase principal. A auditoria anterior encontrou 7 contratações com `contrato_assinado = true`, 7 documentos CPF/CNPJ presentes, 0 vínculos existentes e 0 duplicidades por documento. O trigger canônico da migration vinculou as 7 contratações aos 7 clientes criados/reutilizados e registrou 7 eventos `contrato_assinado` em `clientes_historico`.
+
+Não foram incluídos leads, propostas não assinadas, contratos de outros tenants ou registros sem documento. A migration em si continua sem backfill automático: qualquer nova carga histórica exige a mesma auditoria e autorização explícita.
 
 ## Testes e Preview
 
@@ -34,7 +36,6 @@ O teste de contrato `src/lib/erp/clientes-contract.test.ts` cobre assinatura, id
 
 ## Pendências para homologação
 
-- aplicar 071 somente no ambiente Preview/isolado autorizado;
 - executar testes integrados com duas empresas e o fluxo real de assinatura;
 - homologar sessão autenticada, documentos privados e a nova proposta pré-preenchida;
 - apresentar auditoria de backfill antes de qualquer escrita histórica.
