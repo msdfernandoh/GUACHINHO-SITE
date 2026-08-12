@@ -105,6 +105,11 @@ A plataforma suporta:
 - A profundidade de navegacao de Clientes, Consultores, Lances, Sorteios, Regras de Comissao e Repasse da Franquia foi reinterpretada sobre os modelos canonicos atuais.
 - Os atalhos operacionais sao derivados dos modulos-base ja autorizados em `empresas.configuracoes.erp_sistema`; nenhuma permissao nova e concedida implicitamente.
 - Regras de comissao continuam sob o motor 060–063: versao, vigencia, escopo, homologacao explicita, snapshots, idempotencia e falha em ambiguidade.
+- O ERP agora permite cadastrar multiplos programas por administradora e multiplas regras/versionamentos de comissao da franquia por programa, sem migration nova e sem duplicar o motor financeiro.
+- Cada regra informa explicitamente percentual sobre credito ou valor fixo, vigencia, modalidade, opcao de cota, plano/condicao e cronograma. O servidor valida que o cronograma fecha em 100% ou no valor fixo total.
+- Toda regra criada pelo ERP nasce com `configuracao_homologada=false` e `origem_configuracao=ERP_MANUAL_NAO_HOMOLOGADO`; nenhum percentual comercial e presumido.
+- `admin_empresa` pode preparar regras dentro do proprio tenant via `can_write_tenant_internal`; somente `PLATFORM_SUPERADMIN`, confirmado por `is_platform_superadmin()`, recebe a acao de homologacao.
+- Antes da homologacao, a aplicacao recusa outra regra homologada da mesma administradora com igual escopo/precedencia e vigencia sobreposta. O RPC 061 continua falhando obrigatoriamente se qualquer ambiguidade persistir.
 - Sorteios apenas reutilizam a pagina protegida existente. Nenhuma tabela, API, policy ou runtime de sorteios foi alterado.
 - Relatorio: `docs/relatorios-fases/ERP-EVOLUCAO-REFERENCIA-LEGADO.md`.
 

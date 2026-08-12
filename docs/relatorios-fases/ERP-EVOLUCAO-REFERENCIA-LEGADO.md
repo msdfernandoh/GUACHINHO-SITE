@@ -16,7 +16,7 @@
 | Lances | Tela de lances por cota e atualizacao em massa | Estrategias por grupo/cota, lance embutido e recurso proprio | Hub de lances abre os grupos e estrategias atuais; nao importa tabela legada |
 | Sorteios | Ordem de contemplacao com sorteio e tipos de lance | Sorteios de grupos pela Loteria Federal ja aprovados | Apenas acesso ERP ao modulo existente; runtime e regras preservados |
 | Comissao do consultor | Percentuais e parcelas por regra | Regras versionadas, snapshot e elegibilidade por caixa recebido | Nova leitura ERP das regras e cronogramas canonicos |
-| Comissao da franquia | Regra por administradora, apuracao e NF | Motor 060–063, recebimentos parciais, estornos e compensacoes | Hub Repasse da franquia integra regras, previsoes e financeiro |
+| Comissao da franquia | Regra por administradora, apuracao e NF | Motor 060–063, recebimentos parciais, estornos e compensacoes | Cadastro de programas e multiplas regras versionadas, mais o hub de repasse |
 
 ## Decisoes de arquitetura
 
@@ -48,13 +48,19 @@ O legado possuia maior profundidade de navegacao, mas tambem continha defaults c
 - Lances e estrategias;
 - acesso aos Sorteios de grupos existentes;
 - Regras de comissao com programas, versao, escopo, valor, vigencia, cronograma e estado de homologacao;
+- criacao de varios programas por administradora e de varias regras/versionamentos dentro de cada programa;
+- cadastro explicito por percentual sobre credito ou valor fixo, sem restaurar defaults 4%/1,5%;
+- escopo opcional por modalidade, opcao de cota e plano/condicao;
+- cronograma com uma ou mais etapas e validacao de fechamento em 100% ou no valor fixo total;
+- novas regras sempre nascem nao homologadas e nao participam do calculo;
+- homologacao visivel apenas ao Platform Superadmin, com bloqueio preventivo de escopo/vigencia ambiguos; o motor 061 permanece como barreira definitiva;
 - Repasse da franquia conectado a regras, previsoes e financeiro;
 - submodulos derivados somente quando o modulo-base estiver liberado para a empresa.
 
 ## Validacao
 
-- testes ERP: 4 PASS;
-- suite total: 673 PASS / 37 SKIP;
+- testes ERP/cadastro: 10 PASS;
+- suite total: 681 PASS / 37 SKIP;
 - TypeScript: PASS;
 - build Next.js: PASS, 120 paginas;
 - npm audit de producao: 0 vulnerabilidades;
@@ -70,3 +76,12 @@ O legado possuia maior profundidade de navegacao, mas tambem continha defaults c
 - estado: READY;
 - Production: nao alterada;
 - homologacao autenticada: pendente antes de qualquer promocao.
+
+## Incremento — cadastro de multiplas regras
+
+- branch mantida: `codex/erp-operacional-legado-superado`;
+- banco e migrations: nenhuma alteracao; reutiliza integralmente as tabelas e validacoes 060–063;
+- Production: nao alterada;
+- arquivos principais: `commission-rule-manager.tsx`, `commission-rule-input.ts` e `app/erp/regras-comissao/actions.ts`;
+- autorizacao de escrita: `can_write_tenant_internal(empresa_id)` e RLS da sessao, sem `service_role`;
+- proximo gate: Preview autenticado antes de qualquer merge ou promocao.
