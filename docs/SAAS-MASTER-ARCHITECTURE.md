@@ -110,6 +110,9 @@ A plataforma suporta:
 - status existentes foram preservados: `Gerada` em andamento e `Enviada` após confirmação final;
 - registros históricos incompletos permanecem preservados e documentados, sem limpeza automática;
 - relatório: `docs/relatorios-fases/CORRECAO-FLUXO-PROPOSTA-CONTRATACAO.md`.
+- Produção: migration `068` aplicada, `001–068` local=remote, merge funcional
+  `cbb2aadd264e0ce706a8a8c2b6e6fb8cdf9bb9c5` e deployment
+  `dpl_5zbq3oGeJ8MrMagteqkZAgZGADuW` READY; smoke sem criação de fixtures.
 
 ---
 

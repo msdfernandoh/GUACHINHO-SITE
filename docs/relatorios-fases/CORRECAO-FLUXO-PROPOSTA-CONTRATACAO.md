@@ -88,11 +88,18 @@ Nenhum desses registros foi apagado ou modificado.
 - branch: `codex/correcao-proposta-contratacao`;
 - commit auditado: `43aa4ab`;
 - Preview isolado: `dpl_DreFe5fBDYVtqTFHhA9bAPbXFEjL`, READY;
-- Production: não alterada;
-- smoke Production: pendente.
+- migration principal: `001–068` local=remote; dry-run sem pendências;
+- merge em `main`: `cbb2aadd264e0ce706a8a8c2b6e6fb8cdf9bb9c5`;
+- deployment funcional Production: `dpl_5zbq3oGeJ8MrMagteqkZAgZGADuW`, READY;
+- aliases confirmados: `gauchinhoconsorcios.com.br`, `www.gauchinhoconsorcios.com.br`
+  e `admin.gauchinhoconsorcios.com.br`;
+- smoke Production: site 200, simulador 200, Platform Host 200, início do fluxo
+  retornou apenas draft, token inexistente 404 e schema 068 disponível;
+- integridade após smoke: 25 propostas e 11 contratações, exatamente as mesmas
+  contagens anteriores ao smoke; nenhuma fixture criada em Produção.
 
 ## Estado
 
-Implementação local validada por testes e build. A declaração final de Produção
-permanece bloqueada até migration isolada, Preview, aplicação autorizada já
-condicionada aos gates, merge/deploy e smoke final.
+Correção aplicada e validada em Produção após homologação isolada e autorização
+condicionada do proprietário. Registros históricos incompletos permaneceram
+preservados, sem limpeza automática.
