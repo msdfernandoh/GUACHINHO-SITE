@@ -100,6 +100,24 @@ A plataforma suporta:
 - `067_erp_sistema_gauchinho_config` ativou o ERP exclusivamente para Gauchinho Consórcios, preservando as demais chaves JSON; Empresa B não recebeu configuração ERP.
 - Produção: `001–067` local=remote, deployment `dpl_FkuFYLNuZ9jwULjg21qgdUkfneLg` READY, `main` `55f7715cea0bec077a3592eb16a9dd81d93c9bb6`.
 
+### Evolucao operacional do ERP (branch de homologacao)
+- O sistema legado `CONSORCIO SISTEMA` foi auditado somente como referencia funcional, sem acesso de escrita, execucao de servicos ou integracao de codigo/banco.
+- A profundidade de navegacao de Clientes, Consultores, Lances, Sorteios, Regras de Comissao e Repasse da Franquia foi reinterpretada sobre os modelos canonicos atuais.
+- Os atalhos operacionais sao derivados dos modulos-base ja autorizados em `empresas.configuracoes.erp_sistema`; nenhuma permissao nova e concedida implicitamente.
+- Regras de comissao continuam sob o motor 060–063: versao, vigencia, escopo, homologacao explicita, snapshots, idempotencia e falha em ambiguidade.
+- O ERP agora permite cadastrar multiplos programas por administradora e multiplas regras/versionamentos de comissao da franquia por programa, sem migration nova e sem duplicar o motor financeiro.
+- Cada regra informa explicitamente percentual sobre credito ou valor fixo, vigencia, modalidade, opcao de cota, plano/condicao e cronograma. O servidor valida que o cronograma fecha em 100% ou no valor fixo total.
+- Toda regra criada pelo ERP nasce com `configuracao_homologada=false` e `origem_configuracao=ERP_MANUAL_NAO_HOMOLOGADO`; nenhum percentual comercial e presumido.
+- `admin_empresa` pode preparar regras dentro do proprio tenant via `can_write_tenant_internal`; somente `PLATFORM_SUPERADMIN`, confirmado por `is_platform_superadmin()`, recebe a acao de homologacao.
+- Antes da homologacao, a aplicacao recusa outra regra homologada da mesma administradora com igual escopo/precedencia e vigencia sobreposta. O RPC 061 continua falhando obrigatoriamente se qualquer ambiguidade persistir.
+- Sorteios apenas reutilizam a pagina protegida existente. Nenhuma tabela, API, policy ou runtime de sorteios foi alterado.
+- Relatorio: `docs/relatorios-fases/ERP-EVOLUCAO-REFERENCIA-LEGADO.md`.
+- A migration 069 acrescenta Assembleias/Pedras como operação tenant-aware e
+  independente: histórico append-only, ranking somente sobre `cotas_definitivas`
+  do mesmo grupo e marcação de atenção sem mutar contemplação. O antigo atalho
+  ERP para sorteios do Portal foi removido; sorteios promocionais permanecem intactos.
+- Relatório consolidado: `docs/relatorios-fases/ERP-OPERACIONAL-LEGADO-SUPERADO.md`.
+
 ### Fluxo canônico Proposta → Contratação (Migration 068, branch de correção)
 - a proposta passa a existir quando nome e telefone forem válidos e pode permanecer `Gerada` durante o preenchimento;
 - CPF/CNPJ, endereço, pagamento e documentos pertencem ao estado da proposta, sem criar `contratacoes_online` antecipadamente;
