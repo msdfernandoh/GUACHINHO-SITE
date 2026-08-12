@@ -20,6 +20,7 @@ import {
 import { assertSelecoesAutorizadasForEmpresa } from "@/lib/grupos/catalogo-autorizado-service";
 import { getCatalogEmpresaIdFromRequest } from "@/lib/grupos/resolve-catalog-empresa";
 import { DEFAULT_LEADS, getConfigJsonPublic } from "@/server/config";
+import { propostaMinimumValid } from "@/lib/proposta/minimum";
 
 type SelecaoPayload = {
   grupoId: string;
@@ -39,7 +40,7 @@ export async function POST(request: Request) {
   if (__tenantBlocked) return __tenantBlocked;
   try {
     const body = (await request.json()) as Body;
-    if (!body.nome?.trim() || !body.whatsapp?.trim() || !body.selecoes?.length) {
+    if (!propostaMinimumValid({ nome: body.nome, telefone: body.whatsapp }) || !body.selecoes?.length) {
       return NextResponse.json({ error: "Dados incompletos" }, { status: 400 });
     }
 

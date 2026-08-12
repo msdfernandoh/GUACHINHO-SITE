@@ -30,6 +30,8 @@ export type TipoDocumentoContratacao =
 
 export type ContratacaoOnlineRow = {
   id: string;
+  empresa_id?: string | null;
+  proposta_id?: string | null;
   public_token: string;
   protocolo: string;
   origem: ContratacaoOrigem;

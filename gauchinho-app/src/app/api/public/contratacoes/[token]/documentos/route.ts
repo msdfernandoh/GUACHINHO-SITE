@@ -4,6 +4,8 @@ import { uploadDocumentoContratacao, buscarContratacaoPorToken, listarDocumentos
 import { isValidPublicToken } from "@/lib/contratacoes-online/public-token";
 import type { TipoDocumentoContratacao } from "@/lib/contratacoes-online/types";
 import { sanitizeDocumentosPublicos } from "@/lib/contratacoes-online/sanitize-public";
+import { buscarFluxoProposta, listarDocumentosProposta, uploadDocumentoProposta } from "@/lib/contratacoes-online/proposta-flow";
+import { getCatalogEmpresaIdFromRequest } from "@/lib/grupos/resolve-catalog-empresa";
 
 type Ctx = { params: Promise<{ token: string }> };
 
@@ -26,10 +28,15 @@ export async function GET(request: Request, ctx: Ctx) {
     if (!isValidPublicToken(token)) {
       return NextResponse.json({ error: "Token inválido" }, { status: 400 });
     }
-    const row = await buscarContratacaoPorToken(token);
+    const empresaId = await getCatalogEmpresaIdFromRequest(request);
+    if (!empresaId) return NextResponse.json({ error: "Tenant não identificado." }, { status: 404 });
+    const proposal = await buscarFluxoProposta(token, empresaId);
+    const row = proposal ?? await buscarContratacaoPorToken(token);
     if (!row) return NextResponse.json({ error: "Não encontrada" }, { status: 404 });
+    if (!proposal && row.empresa_id !== empresaId) return NextResponse.json({ error: "Não encontrada" }, { status: 404 });
     try {
-      const documentosRaw = await listarDocumentos(row.id);
+      const proposalDocs = proposal ? await listarDocumentosProposta(token, empresaId) : null;
+      const documentosRaw = proposalDocs ?? await listarDocumentos(row.id);
       return NextResponse.json({
         ok: true,
         documentos: sanitizeDocumentosPublicos(documentosRaw),
@@ -51,6 +58,8 @@ export async function POST(request: Request, ctx: Ctx) {
     if (!isValidPublicToken(token)) {
       return NextResponse.json({ error: "Token inválido" }, { status: 400 });
     }
+    const empresaId = await getCatalogEmpresaIdFromRequest(request);
+    if (!empresaId) return NextResponse.json({ error: "Tenant não identificado." }, { status: 404 });
     const form = await request.formData();
     const tipo = String(form.get("tipo_documento") ?? "") as TipoDocumentoContratacao;
     const file = form.get("arquivo");
@@ -60,7 +69,14 @@ export async function POST(request: Request, ctx: Ctx) {
     if (!(file instanceof File)) {
       return NextResponse.json({ error: "Arquivo obrigatório" }, { status: 400 });
     }
-    const result = await uploadDocumentoContratacao(token, tipo, file);
+    const proposal = await buscarFluxoProposta(token, empresaId);
+    if (!proposal) {
+      const legacy = await buscarContratacaoPorToken(token);
+      if (!legacy || legacy.empresa_id !== empresaId) return NextResponse.json({ error: "Não encontrada" }, { status: 404 });
+    }
+    const result = proposal
+      ? await uploadDocumentoProposta(token, empresaId, tipo, file)
+      : await uploadDocumentoContratacao(token, tipo, file);
     return NextResponse.json(result);
   } catch (e) {
     const message = e instanceof Error ? e.message : "Erro interno";

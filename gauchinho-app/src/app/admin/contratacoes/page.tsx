@@ -11,7 +11,7 @@ export default async function ContratacoesAdminPage() {
       <div>
         <h1 className="text-2xl font-bold text-white">Contratações online</h1>
         <p className="text-sm font-medium text-zinc-400">
-          Fechamento de proposta — simulador e grupos. Use Excluir para limpar registros sem cliente.
+          Somente confirmações finais formalizadas pelo cliente, após documento persistido.
         </p>
       </div>
       <ContratacoesListClient rows={rows} />

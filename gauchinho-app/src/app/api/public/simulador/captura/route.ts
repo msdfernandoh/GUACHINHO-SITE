@@ -3,6 +3,7 @@ import { rejectIfTenantBlocksLegacyOperationalApi } from "@/lib/tenant/assert-le
 import { createAdminClient } from "@/lib/supabase/admin";
 import { registrarEvento } from "@/lib/eventos/registrar";
 import { DEFAULT_LEADS, getConfigJsonPublic } from "@/server/config";
+import { propostaMinimumValid } from "@/lib/proposta/minimum";
 
 type Body = {
   nome: string;
@@ -21,7 +22,7 @@ export async function POST(request: Request) {
   if (__tenantBlocked) return __tenantBlocked;
   try {
     const body = (await request.json()) as Body;
-    if (!body.nome?.trim() || !body.whatsapp?.trim()) {
+    if (!propostaMinimumValid({ nome: body.nome, telefone: body.whatsapp })) {
       return NextResponse.json({ error: "Nome e WhatsApp obrigatórios" }, { status: 400 });
     }
 

@@ -11,6 +11,7 @@ import {
   generateAndStorePropostaPdf,
   getPropostaPdfDownloadUrl,
 } from "@/lib/proposta/generate-pdf";
+import { assertPropostaMinimum } from "@/lib/proposta/minimum";
 
 export async function fetchPropostasList(status?: string) {
   const supabase = await createClient();
@@ -86,6 +87,7 @@ export async function savePropostaAction(formData: FormData) {
   }
 
   const payload = readPropostaPayload(formData, existingPdf);
+  assertPropostaMinimum({ nome: payload.nome_cliente, telefone: payload.whatsapp_cliente });
 
   if (id) {
     const { error } = await supabase.from("propostas").update(payload).eq("id", id);

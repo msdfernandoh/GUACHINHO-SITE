@@ -100,6 +100,17 @@ A plataforma suporta:
 - `067_erp_sistema_gauchinho_config` ativou o ERP exclusivamente para Gauchinho Consórcios, preservando as demais chaves JSON; Empresa B não recebeu configuração ERP.
 - Produção: `001–067` local=remote, deployment `dpl_FkuFYLNuZ9jwULjg21qgdUkfneLg` READY, `main` `55f7715cea0bec077a3592eb16a9dd81d93c9bb6`.
 
+### Fluxo canônico Proposta → Contratação (Migration 068, branch de correção)
+- a proposta passa a existir quando nome e telefone forem válidos e pode permanecer `Gerada` durante o preenchimento;
+- CPF/CNPJ, endereço, pagamento e documentos pertencem ao estado da proposta, sem criar `contratacoes_online` antecipadamente;
+- `propostas_documentos` registra somente uploads cujo objeto e metadata foram persistidos, com `empresa_id`, path não vazio e tamanho positivo;
+- `rpc_finalizar_contratacao_proposta` é a única criação do novo fluxo: revalida mínimos no banco, exige documento, bloqueia cross-tenant e executa sob lock;
+- `contratacoes_online.proposta_id` é único; retry e double-click retornam a contratação existente;
+- a API revalida ainda e-mail, CPF/CNPJ, endereço, pagamento e catálogo de grupo/cota antes do RPC;
+- status existentes foram preservados: `Gerada` em andamento e `Enviada` após confirmação final;
+- registros históricos incompletos permanecem preservados e documentados, sem limpeza automática;
+- relatório: `docs/relatorios-fases/CORRECAO-FLUXO-PROPOSTA-CONTRATACAO.md`.
+
 ---
 
 ## 4. Status de Homologação de Todos os Macroblocos
