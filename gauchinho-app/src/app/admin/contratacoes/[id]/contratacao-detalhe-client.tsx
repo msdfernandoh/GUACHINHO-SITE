@@ -19,6 +19,7 @@ import {
 } from "@/components/admin/admin-contrast";
 import { ContratacaoCopyPanel } from "@/components/admin/contratacao-copy-panel";
 import { ContratacaoClienteEditForm } from "./contratacao-cliente-edit-form";
+import { configurarParticipantesDaVendaAction } from "../actions";
 
 function Field({ label, value }: { label: string; value: string | null | undefined }) {
   return (
@@ -42,6 +43,7 @@ export function ContratacaoDetalheClient({
   gruposLinhas = [],
   podeAcessarDocumentos,
   mensagemSemPermissaoDocumentos,
+  participantes,
 }: {
   contratacao: ContratacaoOnlineRow;
   documentos: ContratacaoDocumentoRow[];
@@ -51,6 +53,7 @@ export function ContratacaoDetalheClient({
   gruposLinhas?: LinhaGrupoPropostaResumo[];
   podeAcessarDocumentos: boolean;
   mensagemSemPermissaoDocumentos: string;
+  participantes: Array<{ id: string; nome: string; tipos: string[] }>;
 }) {
   const [copied, setCopied] = useState(false);
   const [jsonCopied, setJsonCopied] = useState(false);
@@ -58,6 +61,12 @@ export function ContratacaoDetalheClient({
   const waMsg = buildWhatsappPropostaMessage(publicUrl);
   const waCliente = buildWhatsappLink(contratacao.telefone ?? "", waMsg);
   const fin = resumoFinanceiro;
+  const [microfranquiaId, setMicrofranquiaId] = useState(contratacao.participante_comercial_id ?? "");
+  const [secundarioId, setSecundarioId] = useState(contratacao.participante_secundario_id ?? "");
+  const [fracao, setFracao] = useState(String(contratacao.participante_secundario_fracao_percentual ?? ""));
+  const [participantesMsg, setParticipantesMsg] = useState<string | null>(null);
+  const microfranquias = participantes.filter((p) => p.tipos.includes("MICROFRANQUIA"));
+  const secundarios = participantes.filter((p) => p.tipos.some((t) => ["SDR", "PARCEIRO", "CONSULTOR"].includes(t)));
 
   async function copyLink() {
     await navigator.clipboard.writeText(publicUrl);
@@ -265,6 +274,31 @@ export function ContratacaoDetalheClient({
             />
           ) : null}
         </dl>
+      </section>
+
+      <section className={adminSectionClass}>
+        <h2 className={adminSectionTitleClass}>Participantes e divisão de comissão</h2>
+        <p className="mt-1 text-sm text-zinc-500">A Microfranquia é a responsável principal. O secundário é opcional e recebe a fração configurada para esta venda.</p>
+        <div className="mt-4 grid gap-3 md:grid-cols-3">
+          <label className="text-sm font-medium">Microfranquia principal
+            <select className="mt-1 w-full rounded border p-2" value={microfranquiaId} onChange={(e) => setMicrofranquiaId(e.target.value)}>
+              <option value="">Selecione</option>{microfranquias.map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}
+            </select>
+          </label>
+          <label className="text-sm font-medium">Secundário (opcional)
+            <select className="mt-1 w-full rounded border p-2" value={secundarioId} onChange={(e) => setSecundarioId(e.target.value)}>
+              <option value="">Sem secundário</option>{secundarios.map((p) => <option key={p.id} value={p.id}>{p.nome} · {p.tipos.filter((t) => ["SDR", "PARCEIRO", "CONSULTOR"].includes(t)).join("/")}</option>)}
+            </select>
+          </label>
+          <label className="text-sm font-medium">Fração do secundário (%)
+            <input className="mt-1 w-full rounded border p-2" type="number" min="0.01" max="99.99" step="0.01" disabled={!secundarioId} value={fracao} onChange={(e) => setFracao(e.target.value)} />
+          </label>
+        </div>
+        <Button className="mt-4" type="button" onClick={async () => {
+          const result = await configurarParticipantesDaVendaAction({ contratacaoId: contratacao.id, microfranquiaId, secundarioId: secundarioId || undefined, fracaoPercentual: secundarioId ? Number(fracao) : undefined });
+          setParticipantesMsg(result.ok ? "Participantes salvos. A divisão será aplicada ao converter em venda." : result.error);
+        }}>Salvar participantes</Button>
+        {participantesMsg ? <p className="mt-2 text-sm text-amber-500">{participantesMsg}</p> : null}
       </section>
 
       <ContratacaoDocumentosSection

@@ -84,6 +84,9 @@ export type ContratacaoOnlineRow = {
   /** Controle interno do admin, independente da etapa pública da proposta. */
   contrato_assinado?: boolean;
   contrato_assinado_em?: string | null;
+  participante_comercial_id?: string | null;
+  participante_secundario_id?: string | null;
+  participante_secundario_fracao_percentual?: number | null;
   created_at: string;
   updated_at: string;
 };
