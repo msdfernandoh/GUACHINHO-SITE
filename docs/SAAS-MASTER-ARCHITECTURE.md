@@ -1,16 +1,16 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
-> **Versão da Arquitetura:** 5.5.0 (branch de fechamento técnico em homologação)
+> **Versão da Arquitetura:** 5.6.0 (reconciliação operacional da Plataforma SaaS Master)
 > **Data de Atualização:** 11/08/2026
-> **Status Geral do Projeto:** **MOTOR CANÔNICO DE COMISSÕES E FINANCEIRO TRANSACIONAL AUDITADO E IMPLANTADO EM PRODUÇÃO; migrations técnicas 064–066 presentes em Produção, com homologação final de performance/lint pendente**
-> **Macroblocos A–F:** implantados em Produção. As migrations `060–063` foram auditadas, autorizadas e aplicadas. FKs/retenção, integração da auditoria, storage e performance/lint seguem em etapas próprias.
+> **Status Geral do Projeto:** **PRODUÇÃO RECONCILIADA ATÉ A MIGRATION 069; PLATFORM HOST, ERP OPERACIONAL, FLUXO PROPOSTA → CONTRATAÇÃO E ASSEMBLEIAS/PEDRAS ATIVOS. A MIGRATION 070 EXISTE SOMENTE NO SUPABASE ISOLADO E NO PREVIEW DA BRANCH PLATFORM.**
+> **Macroblocos A–F e evoluções 057–069:** implantados em Produção. As migrations `060–063` preservam o motor canônico financeiro; `064–066` concluíram retenção, storage e auditoria; `067–069` entregaram ERP configurável, fluxo final de contratação e Assembleias/Pedras.
 > **Infraestrutura em Produção:**  
-> - **Vercel Production:** `https://gauchinhoconsorcios.com.br` (deployment `dpl_J5VA7NBXqTW7KbmiMUtzsGmrBJm3`, READY, Aliased)
-> - **Supabase Database:** `eaeuoynprurmmulzhydt` (`001–063` local=remote | dry-run up to date)
-> - **Suíte reproduzida na branch 060–063:** `660 PASS / 37 SKIP` (os 37 live tests ficam bloqueados por padrão)
-> - **Build Next.js:** Exit Code 0 (119 páginas estáticas/dinâmicas compiladas)  
+> - **Vercel Production atual:** deployment `dpl_9rwcRpVjKyhg7K4Si1FBRrcGHSvM`, estado `READY`, associado a `gauchinhoconsorcios.com.br`, `www.gauchinhoconsorcios.com.br` e `admin.gauchinhoconsorcios.com.br` na reconciliação de 11/08/2026.
+> - **Supabase principal:** projeto `eaeuoynprurmmulzhydt`, com estado de Produção documentado até `069`. A reconciliação runtime confirmou as estruturas de `068` e `069` e confirmou que a tabela inicial de `070` não existe no banco principal. O `migration list --linked` e o `db push --linked --dry-run` foram tentados novamente, mas a senha de banco vinculada nesta estação foi rejeitada pelo pooler; nenhuma migration foi aplicada.
+> - **Branch Platform:** `codex/plataforma-saas-master-ux-governanca` em `88764f5`, quatro commits à frente de `origin/main` (`52e0655`). A migration `070` permanece somente no Supabase isolado associado ao Preview.
+> - **Suíte reproduzida na branch Platform:** `701 PASS / 37 SKIP`; TypeScript, build de 122 rotas, lint Platform e `npm audit --omit=dev` aprovados.
 > - **Segurança & Multi-Tenant:** RLS ativo em 27 tabelas críticas, Empresa B com 0 dados/concessões, Host Resolution e RBAC formalizado em `SAAS-PERMISSIONS-MATRIX.md`.  
-> - **Platform Host:** `admin.gauchinhoconsorcios.com.br` é domínio Production verificado do projeto Vercel, ativo no deployment `dpl_FbDjRArcVB4Nvm1woko5L7JJyRkp`; resolve contexto `PLATFORM` antes de qualquer tenant e exige `is_platform_superadmin()`.
+> - **Platform Host:** `admin.gauchinhoconsorcios.com.br` está ativo no deployment Production atual, resolve contexto `PLATFORM` antes de qualquer tenant e exige `is_platform_superadmin()`. O smoke anônimo retornou `307` para o login Platform e `/login` retornou `200`.
 
 > **Projeto Físico:** `C:\Fernando Hugo\GAUCHINHO SITE`  
 > **Repositório Git:** `https://github.com/msdfernandoh/GUACHINHO-SITE.git`
@@ -88,17 +88,17 @@ A plataforma suporta:
 - `operacoes_idempotentes`, `financeiro_compensacao_movimentos`, `financeiro_estornos` e view `financeiro_compensacoes_saldos`;
 - estado: aplicado ao projeto principal em 11/08/2026 após auditoria final e autorização explícita.
 
-### Fechamento técnico da base (Migrations 064–066 — aplicadas em Produção; homologação final pendente)
+### Fechamento técnico da base (Migrations 064–066 — aplicadas em Produção)
 - `064_retencao_historico_comercial_financeiro`: FKs de fatos comerciais, financeiros, caixa, auditoria e gestão trocadas de `CASCADE` para `RESTRICT`; relações configuráveis ambíguas permanecem inalteradas.
 - `065_storage_privado_tenant_aware`: os buckets privados `propostas-pdf` e `contratacoes-documentos` passam a autorizar pelo registro de negócio e pelas funções canônicas `can_read_tenant_internal`/`can_write_tenant_internal`, preservando os caminhos legados sem migração destrutiva de objetos.
 - `066_auditoria_runtime_transacional`: eventos de fatos críticos são append-only na mesma transação por trigger de banco; metadata contém somente campos alterados, sem valores sensíveis. `correlation_id` preserva `x-correlation-id`/`x-request-id` quando presente.
-- A branch Supabase descartável `codex-fechamento-tecnico-064` aplicou e testou 064–066 com `ROLLBACK`. Em seguida, uma aplicação pelo CLI atingiu o projeto principal (`eaeuoynprurmmulzhydt`) porque o comando usa `supabase/.temp/project-ref`; não houve rollback para evitar risco adicional. A homologação final de Performance/Lint e Preview permanece pendente.
+- A branch Supabase descartável `codex-fechamento-tecnico-064` aplicou e testou 064–066 com `ROLLBACK`. As três migrations foram posteriormente aplicadas no projeto principal (`eaeuoynprurmmulzhydt`) e permanecem como parte do estado canônico de Produção; não devem ser refeitas nem revertidas por trechos históricos deste documento.
 
 ### ERP Sistema (Migration 067)
 - `/erp` é um shell visual de gestão separado do Portal, sem banco, autenticação, RBAC, RLS, serviços ou módulos paralelos; as telas existentes de `/admin` são reutilizadas.
 - O catálogo ERP é controlado e exclui explicitamente Administradoras e sorteios. A governança por tenant usa `empresas.configuracoes.erp_sistema`, editável somente por `PLATFORM_SUPERADMIN`.
 - `067_erp_sistema_gauchinho_config` ativou o ERP exclusivamente para Gauchinho Consórcios, preservando as demais chaves JSON; Empresa B não recebeu configuração ERP.
-- Produção: `001–067` local=remote, deployment `dpl_FkuFYLNuZ9jwULjg21qgdUkfneLg` READY, `main` `55f7715cea0bec077a3592eb16a9dd81d93c9bb6`.
+- Produção da fase: `001–067` foi conferido como local=remote quando aplicado; o deployment `dpl_FkuFYLNuZ9jwULjg21qgdUkfneLg` e o commit `55f7715cea0bec077a3592eb16a9dd81d93c9bb6` são referências históricas da promoção, não o deployment Production atual.
 
 ### Evolucao operacional do ERP (branch de homologacao)
 - O sistema legado `CONSORCIO SISTEMA` foi auditado somente como referencia funcional, sem acesso de escrita, execucao de servicos ou integracao de codigo/banco.
@@ -117,6 +117,9 @@ A plataforma suporta:
   do mesmo grupo e marcação de atenção sem mutar contemplação. O antigo atalho
   ERP para sorteios do Portal foi removido; sorteios promocionais permanecem intactos.
 - Relatório consolidado: `docs/relatorios-fases/ERP-OPERACIONAL-LEGADO-SUPERADO.md`.
+- Produção: a migration `069` e o ERP operacional foram promovidos; `origin/main`
+  reconciliado está em `52e0655`. A estrutura `erp_assembleias_grupo` respondeu
+  no Supabase principal durante a reconciliação, sem escrita de fixtures.
 
 ### Fluxo canônico Proposta → Contratação (Migration 068, branch de correção)
 - a proposta passa a existir quando nome e telefone forem válidos e pode permanecer `Gerada` durante o preenchimento;
@@ -141,6 +144,10 @@ A plataforma suporta:
   entitlements/overrides, configurações e auditoria Platform, sem preços
   presumidos, billing real ou integração com o runtime tenant;
 - detalhes e homologação: `docs/relatorios-fases/PLATAFORMA-SAAS-MASTER-UX-GOVERNANCA.md`.
+- estado operacional: aplicada somente no Supabase isolado do Preview
+  `dpl_E9ZJZQW5a6SzzGPA8QbmCQYc6SnA`; não aplicada em Produção e não mesclada
+  em `main`. A homologação visual autenticada permanece pendente porque o
+  navegador disponível não possuía sessão legítima da Vercel/Plataforma.
 
 ---
 
@@ -153,16 +160,20 @@ A plataforma suporta:
 | Macrobloco C (Motor de Comissões) | `main` | 054, 060–061 | AUDITADO E IMPLANTADO | Produção (`gauchinhoconsorcios.com.br`) |
 | Macrobloco D (Financeiro, Estornos & Caixa) | `main` | 055, 062–063 | AUDITADO E IMPLANTADO | Produção (`gauchinhoconsorcios.com.br`) |
 | Macrobloco E (Gestão, Metas & Auditoria) | `main` | 056 | HOMOLOGADO | Produção (`gauchinhoconsorcios.com.br`) |
-| Macrobloco F (Homologação Geral & Onboarding) | `main` | 001–063 | IMPLANTADO; HOMOLOGAÇÃO INTEGRAL ABERTA | Produção (`gauchinhoconsorcios.com.br`) |
+| Macrobloco F (Homologação Geral & Onboarding) | `main` | 001–063 | IMPLANTADO | Produção (`gauchinhoconsorcios.com.br`) |
+| Fechamento técnico e hardening | `main` | 057–066 | IMPLANTADO | Supabase principal |
+| ERP configurável e operacional | `main` | 067, 069 | IMPLANTADO | Production atual |
+| Proposta → Contratação | `main` | 068 | IMPLANTADO | Production atual |
+| Plataforma SaaS Master | `codex/plataforma-saas-master-ux-governanca` | 070 | PREVIEW; VISUAL AUTENTICADO PENDENTE | Supabase isolado + `dpl_E9ZJZQW5a6SzzGPA8QbmCQYc6SnA` |
 
 ---
 
 ## 5. Declaração Final de Segurança e Riscos
 
-* O P0 das seis APIs de gestão foi corrigido, validado em Preview independente e implantado em Produção no deploy `dpl_HG9SDAFfZyNrb9nxAw5PahRKNVGj`.
-* O hardening A/B foi separado nas migrations forward-only `057–059`, homologado em branch Supabase descartável e aplicado no banco principal.
-* As migrations `060–063` foram auditadas em ambiente efêmero e aplicadas no banco principal em 11/08/2026; a conferência posterior retornou `001–063` local=remote e dry-run sem pendências.
-* A branch aprovada foi mesclada em `main` no commit `788195102a319a7dcd154d65a4f4fbd4437ba71f` e implantada no deployment `dpl_J5VA7NBXqTW7KbmiMUtzsGmrBJm3`; smoke anônimo público e de rota administrativa passaram conforme esperado.
-* `admin.gauchinhoconsorcios.com.br` continua pendente de delegação/associação pela conta Vercel proprietária do domínio. Não há registro ativo/verificado parcial em `empresa_dominios` até que essa associação e o TLS possam ser confirmados.
-* A homologação integral permanece aberta para FKs/retenção, integração da auditoria, storage e performance/lint.
-* Relatórios técnicos: `docs/relatorios-fases/HOTFIX-CODEX-POS-AUDITORIA.md`, `docs/relatorios-fases/HARDENING-RLS-CODEX-POS-HOTFIX.md` e `docs/relatorios-fases/CODEX-COMISSOES-FINANCEIRO-TRANSACIONAL.md`.
+* O P0 das APIs, o hardening `057–059`, o motor canônico `060–063` e o fechamento técnico `064–066` estão implantados no Supabase principal.
+* O estado funcional de Produção inclui ERP configurável (`067`), fluxo Proposta → Contratação (`068`) e ERP operacional com Assembleias/Pedras (`069`). Sorteios promocionais continuam independentes e preservados.
+* `admin.gauchinhoconsorcios.com.br` está ativo, verificado e associado ao deployment Production atual `dpl_9rwcRpVjKyhg7K4Si1FBRrcGHSvM`; ele não é tenant e não possui fallback para Gauchinho.
+* A migration `070` não está em Produção. O endpoint REST da tabela inicial `site_modelos` retornou `404` no Supabase principal, enquanto as estruturas de `068` e `069` responderam `200`.
+* A Gauchinho permanece com ERP habilitado e a Empresa B permanece sem concessão de administradora. Nenhum tenant Sorriso foi criado.
+* A única homologação aberta nesta rodada é a revisão visual autenticada da Plataforma SaaS Master no Preview. Sem sessão legítima disponível, nenhum PASS visual foi presumido.
+* Evidências consolidadas: `docs/relatorios-fases/HOTFIX-CODEX-POS-AUDITORIA.md`, `docs/relatorios-fases/HARDENING-RLS-CODEX-POS-HOTFIX.md`, `docs/relatorios-fases/CODEX-COMISSOES-FINANCEIRO-TRANSACIONAL.md`, `docs/relatorios-fases/ERP-OPERACIONAL-LEGADO-SUPERADO.md`, `docs/relatorios-fases/CORRECAO-FLUXO-PROPOSTA-CONTRATACAO.md` e `docs/relatorios-fases/PLATAFORMA-SAAS-MASTER-UX-GOVERNANCA.md`.
