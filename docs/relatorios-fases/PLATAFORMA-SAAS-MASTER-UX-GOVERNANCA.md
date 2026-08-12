@@ -54,5 +54,27 @@ publicação permanecem gates explícitos e auditáveis.
 
 ## Validação
 
-Resultados de testes, branch Supabase e Preview serão registrados ao final da
-homologação desta rodada.
+- testes: 700 PASS / 37 SKIP;
+- TypeScript: PASS;
+- build: PASS, 122 rotas;
+- npm audit `--omit=dev`: zero vulnerabilidades;
+- lint do escopo Platform: PASS, zero warnings;
+- migration 070: aplicada somente no Supabase isolado
+  `dtgzujsktggllybnpbpj`;
+- teste SQL transacional: planos sem preços, Empresa B sem concessões, nenhum
+  template Racon, catálogo ERP sem Administradoras, RLS e auditoria: PASS;
+- ROLLBACK: zero fixture residual;
+- Preview: `dpl_E9ZJZQW5a6SzzGPA8QbmCQYc6SnA`, READY;
+- alias Preview: `guachinho-site-git-codex-plataforma-6b8dae-hugo-8097s-projects.vercel.app`;
+- anônimo em `/platform`: redirecionado ao login Platform;
+- login Platform neutro: confirmado;
+- `/admin/empresas` no host Platform: não expõe o painel tenant e exige a
+  fronteira de autenticação;
+- homologação visual interna autenticada: pendente porque a proteção Vercel
+  exige sessão da equipe e não havia sessão legítima disponível. Nenhum PASS
+  autenticado foi presumido.
+
+## Estado de promoção
+
+Branch publicada em `origin/codex/plataforma-saas-master-ux-governanca`.
+`main`, Supabase principal e Vercel Production permaneceram inalterados.
