@@ -333,10 +333,23 @@ export function ContratacaoWizard({
     setError(null);
     try {
       if (isDraft) {
-        if (!nome.trim() || digitsOnlyPhone(telefone).length < 10 || !email.trim()) {
-          throw new Error("Preencha nome, telefone/WhatsApp e e-mail.");
+        if (!nome.trim() || digitsOnlyPhone(telefone).length < 10) {
+          throw new Error("Preencha nome e telefone/WhatsApp.");
         }
-        // Permanece somente no navegador até CPF/CNPJ e endereço estarem completos.
+        const draft = readContratacaoDraftFromStorage();
+        if (!draft) throw new Error("Rascunho expirado. Reinicie a proposta.");
+        const res = await fetch("/api/public/contratacoes/rascunho/materializar", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ draft, nome, telefone: digitsOnlyPhone(telefone), email }),
+        });
+        const json = await res.json() as { error?: string; public_token?: string; proposta?: ContratacaoOnlineRow };
+        if (!res.ok || !json.public_token) throw new Error(json.error ?? "Falha ao criar proposta.");
+        clearContratacaoDraftStorage();
+        setPublicToken(json.public_token);
+        setIsDraft(false);
+        if (json.proposta) setData((prev) => prev ? { ...prev, contratacao: json.proposta! } : prev);
+        router.replace(`/proposta/${json.public_token}`);
         setStep("pessoa");
         return;
       }
@@ -389,16 +402,16 @@ export function ContratacaoWizard({
         const json = (await res.json()) as {
           error?: string;
           public_token?: string;
-          contratacao?: ContratacaoOnlineRow;
+          proposta?: ContratacaoOnlineRow;
         };
         if (!res.ok || !json.public_token) {
-          throw new Error(json.error ?? "Falha ao gravar contratação");
+          throw new Error(json.error ?? "Falha ao gravar proposta");
         }
         clearContratacaoDraftStorage();
         setPublicToken(json.public_token);
         setIsDraft(false);
-        if (json.contratacao) {
-          setData((prev) => (prev ? { ...prev, contratacao: json.contratacao! } : prev));
+        if (json.proposta) {
+          setData((prev) => (prev ? { ...prev, contratacao: json.proposta! } : prev));
         }
         router.replace(`/proposta/${json.public_token}`);
         setStep("docs");

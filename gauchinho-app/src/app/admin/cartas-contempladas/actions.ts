@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { assertPropostaMinimum } from "@/lib/proposta/minimum";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireUsuario } from "@/lib/auth/get-usuario";
 import { canDeleteRecords } from "@/lib/auth/permissions";
@@ -220,6 +221,7 @@ export async function gerarPropostaFromCartaLeadAction(leadId: string) {
 
   const dados = (lead.dados_simulacao ?? {}) as Record<string, unknown>;
   const carta = (dados.carta ?? dados) as Record<string, unknown>;
+  assertPropostaMinimum({ nome: lead.nome, telefone: lead.whatsapp });
   const tipoCarta = String(carta.tipo_carta ?? lead.produto_interesse ?? "imovel");
   const tipoBem = tipoCarta === "automovel" ? "Automóvel" : "Imóvel";
 
