@@ -182,6 +182,12 @@ A plataforma suporta:
 - o link SDR carrega uma simulação assinada sem persistir proposta/contratação antes dos dados mínimos do cliente;
 - migrations 072–073 permanecem pendentes de aplicação no Supabase; relatório: `docs/relatorios-fases/VENDAS-PARTICIPANTES-COMISSAO.md`.
 
+### Usuários do site no ERP (Migration 074 — versionada)
+- usuários ativos já vinculados por `empresa_usuarios` são espelhados idempotentemente como participantes comerciais ativos do mesmo tenant, sem criar login novo nem alterar credenciais;
+- o tipo inicial respeita o perfil operacional: SDR/SRD → `SDR`, consultor → `CONSULTOR`, imobiliária/parceiro → `PARCEIRO`, master/admin → `GESTOR`;
+- novos vínculos ativos de empresa também são sincronizados pelo trigger; participantes vinculados a usuário podem não possuir telefone/WhatsApp, pois o login canônico já é sua identidade;
+- o ERP deixa de depender da flag histórica `FASE3_ADMIN_PARTICIPANTES_ENABLED` quando o schema está disponível.
+
 ## 5. Declaração Final de Segurança e Riscos
 
 * O P0 das APIs, o hardening `057–059`, o motor canônico `060–063` e o fechamento técnico `064–066` estão implantados no Supabase principal.

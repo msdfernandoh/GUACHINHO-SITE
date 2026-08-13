@@ -2,7 +2,6 @@ import "server-only";
 
 import { createClient } from "@/lib/supabase/server";
 import {
-  FASE3_ADMIN_PARTICIPANTES_ENABLED,
   FASE3_PARCEIRO_AREA_ENABLED,
   FASE3_PARCEIRO_SITES_ADMIN_ENABLED,
   FASE3_VERCEL_DOMAINS_ENABLED,
@@ -29,7 +28,6 @@ async function tableExists(table: string): Promise<boolean> {
  * Telas admin da Fase 3 só consultam o banco quando flag + schema 045.
  */
 export async function isFase3ParticipantesSchemaReady(): Promise<boolean> {
-  if (!FASE3_ADMIN_PARTICIPANTES_ENABLED) return false;
   return tableExists("participantes_comerciais");
 }
 
@@ -39,10 +37,7 @@ export async function isFase3ParceiroSitesAdminReady(): Promise<boolean> {
 }
 
 export function fase3AdminDisabledMessage(): string {
-  if (!FASE3_ADMIN_PARTICIPANTES_ENABLED) {
-    return "Módulo de participantes/organizações desabilitado (FASE3_ADMIN_PARTICIPANTES_ENABLED≠true).";
-  }
-  return "Schema da Fase 3 (migration 045) ainda não está disponível neste ambiente.";
+  return "Cadastro de participantes ainda não está disponível neste ambiente.";
 }
 
 export function fase3SitesAdminDisabledMessage(): string {

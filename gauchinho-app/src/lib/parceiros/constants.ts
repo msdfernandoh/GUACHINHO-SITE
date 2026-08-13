@@ -59,6 +59,9 @@ export const PARTICIPANTE_TIPOS = [
   "ATENDENTE",
   "INDICADOR",
   "RESPONSAVEL_PARCEIRO",
+  "SDR",
+  "MICROFRANQUIA",
+  "PARCEIRO",
 ] as const;
 
 export type ParticipanteTipoCodigo = (typeof PARTICIPANTE_TIPOS)[number];
