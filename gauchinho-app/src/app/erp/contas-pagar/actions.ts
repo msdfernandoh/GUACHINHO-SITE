@@ -1,0 +1,11 @@
+"use server";
+
+import { revalidatePath } from "next/cache";
+import { createClient } from "@/lib/supabase/server";
+import { getCurrentTenantContext } from "@/lib/tenant/context";
+
+async function empresaId() { const { empresaAtiva } = await getCurrentTenantContext(); if (!empresaAtiva) throw new Error("Empresa não identificada."); return empresaAtiva.id; }
+export async function criarBanco(form: FormData) { const e=await empresaId(); const db=await createClient(); const {error}=await db.from("financeiro_contas_bancarias").insert({empresa_id:e,nome:String(form.get("nome")||""),banco:String(form.get("banco")||"")||null,agencia:String(form.get("agencia")||"")||null,conta_mascarada:String(form.get("conta")||"")||null}); if(error) throw new Error(error.message); revalidatePath("/erp/contas-pagar"); }
+export async function criarCentro(form: FormData) { const e=await empresaId(); const db=await createClient(); const {error}=await db.from("financeiro_centros_custo").insert({empresa_id:e,nome:String(form.get("nome")||""),codigo:String(form.get("codigo")||"")||null}); if(error) throw new Error(error.message); revalidatePath("/erp/contas-pagar"); }
+export async function criarConta(form: FormData) { const e=await empresaId(); const db=await createClient(); const pessoal=form.get("pessoal")==="on"; const valor=Number(form.get("valor")); const vencimento=String(form.get("vencimento")); const {error}=await db.from("financeiro_contas_pagar").insert({empresa_id:e,descricao:String(form.get("descricao")||""),fornecedor:String(form.get("fornecedor")||"")||null,centro_custo_id:String(form.get("centro")||"")||null,conta_bancaria_id:String(form.get("banco")||"")||null,vencimento,competencia:vencimento.slice(0,7),valor,pago_pessoalmente:pessoal,socio_pagador_usuario_id:pessoal?(String(form.get("socio")||"")||null):null,observacao:String(form.get("obs")||"")||null}); if(error) throw new Error(error.message); revalidatePath("/erp/contas-pagar"); }
+export async function baixarConta(id:string) { const e=await empresaId(); const db=await createClient(); const {error}=await db.rpc("rpc_baixar_conta_pagar",{p_empresa_id:e,p_conta_id:id,p_data:new Date().toISOString().slice(0,10)}); if(error) throw new Error(error.message); revalidatePath("/erp/contas-pagar"); }

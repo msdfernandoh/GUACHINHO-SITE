@@ -16,9 +16,10 @@ import Usuarios from "@/app/admin/usuarios/page";
 import Participantes from "@/app/admin/participantes/page";
 import { ErpClientesPage, ErpLancesPage, ErpRegrasComissaoPage, ErpRepasseFranquiaPage } from "@/components/erp/erp-operational-pages";
 import { ErpAssembleiasPage } from "@/components/erp/erp-assembleias-page";
+import ContasPagar from "@/app/erp/contas-pagar/page";
 
 const PAGES = { leads: Leads, propostas: Propostas, contratacoes: Contratacoes, vendas: Vendas, grupos: Grupos, comissoes: Comissoes, financeiro: Financeiro, relatorios: Relatorios, metas: Metas, tarefas: Tarefas, usuarios: Usuarios } as const;
-const OPERATIONAL_PAGES = { clientes: ErpClientesPage, consultores: Participantes, lances: ErpLancesPage, assembleias: ErpAssembleiasPage, "regras-comissao": ErpRegrasComissaoPage, "repasse-franquia": ErpRepasseFranquiaPage } as const;
+const OPERATIONAL_PAGES = { clientes: ErpClientesPage, consultores: Participantes, lances: ErpLancesPage, assembleias: ErpAssembleiasPage, "regras-comissao": ErpRegrasComissaoPage, "repasse-franquia": ErpRepasseFranquiaPage, "contas-pagar": ContasPagar } as const;
 
 export default async function ErpModuloPage({ params, searchParams }: { params: Promise<{ modulo: string }>; searchParams: Promise<Record<string, string | undefined>> }) {
   const { modulo } = await params;

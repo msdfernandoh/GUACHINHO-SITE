@@ -188,6 +188,12 @@ A plataforma suporta:
 - novos vínculos ativos de empresa também são sincronizados pelo trigger; participantes vinculados a usuário podem não possuir telefone/WhatsApp, pois o login canônico já é sua identidade;
 - o ERP deixa de depender da flag histórica `FASE3_ADMIN_PARTICIPANTES_ENABLED` quando o schema está disponível.
 
+### Financeiro operacional ERP (Migration 075 — versionada)
+- contas a pagar, bancos e centros de custo são entidades tenant-aware próprias;
+- a baixa empresarial gera saída append-only em `caixa_movimentos`; pagamento pessoal de sócio não movimenta caixa empresarial;
+- o fechamento mensal calcula valores adiantados por sócio e o ajuste igualitário entre os pagadores;
+- relatório: `docs/relatorios-fases/ERP-FINANCEIRO-CONTAS-PAGAR.md`.
+
 ## 5. Declaração Final de Segurança e Riscos
 
 * O P0 das APIs, o hardening `057–059`, o motor canônico `060–063` e o fechamento técnico `064–066` estão implantados no Supabase principal.
