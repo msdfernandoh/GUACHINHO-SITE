@@ -58,4 +58,10 @@ A migration 077 foi aplicada somente no projeto efêmero `bfpgyralphzjozrcwjsn`.
 
 ## Evidência de Preview
 
-A URL e as evidências visuais serão registradas neste relatório após o deployment da branch e a inspeção autenticada.
+- Vercel Preview: `https://guachinho-site-2gxriobc4-hugo-8097s-projects.vercel.app`;
+- deployment: `dpl_4pXxfCH6NdKQ1DUEm6Jx5AkYME3m`, estado `READY`;
+- o domínio técnico do Preview exige autenticação Vercel SSO e não foi tornado público;
+- a inspeção autenticada equivalente foi executada no build local da mesma branch, conectado exclusivamente ao Supabase isolado;
+- detalhe Racon/Programas: `docs/evidencias/fix-076/platform-racon-programas.png`;
+- operação ERP/Lances: `docs/evidencias/fix-076/erp-lances.png`;
+- erros de console nas duas rotas inspecionadas: zero.
