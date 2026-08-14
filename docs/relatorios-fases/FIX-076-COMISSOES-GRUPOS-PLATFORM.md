@@ -65,3 +65,12 @@ A migration, originalmente homologada como 077 e renumerada para 078 após a int
 - detalhe Racon/Programas: `docs/evidencias/fix-076/platform-racon-programas.png`;
 - operação ERP/Lances: `docs/evidencias/fix-076/erp-lances.png`;
 - erros de console nas duas rotas inspecionadas: zero.
+
+## Promoção Production
+
+- migrations 077 e 078 aplicadas e confirmadas no histórico remoto `001–078`;
+- testes SQL matemáticos e transacionais repetidos em Production sob `BEGIN/ROLLBACK`: PASS;
+- `main` promovida por fast-forward atômico após a validação dos ambientes isolados;
+- primeiro deployment funcional da promoção: `dpl_42gtHBW6USVHCX5fLfxAj7MRNZhb`, estado `READY`;
+- aliases `www.gauchinhoconsorcios.com.br`, `gauchinhoconsorcios.com.br` e `admin.gauchinhoconsorcios.com.br` associados ao deployment;
+- smoke HTTP: página pública `200`; Platform e ERP sem sessão `307` para os respectivos logins, conforme esperado.

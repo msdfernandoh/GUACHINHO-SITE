@@ -236,7 +236,7 @@ A plataforma suporta:
 
 * O P0 das APIs, o hardening `057–059`, o motor canônico `060–063` e o fechamento técnico `064–066` estão implantados no Supabase principal.
 * O estado funcional do Supabase Production inclui migrations `001–078`, verificadas no histórico remoto após a aplicação.
-* `admin.gauchinhoconsorcios.com.br` está ativo, verificado e associado ao deployment Production atual `dpl_9rwcRpVjKyhg7K4Si1FBRrcGHSvM`; ele não é tenant e não possui fallback para Gauchinho.
+* `admin.gauchinhoconsorcios.com.br` está ativo, verificado e associado ao deployment Production da `main`; ele não é tenant e não possui fallback para Gauchinho.
 * As migrations `070–078` estão versionadas e aplicadas em Produção; correções futuras permanecem obrigatoriamente forward-only.
 * A Gauchinho permanece com ERP habilitado e a Empresa B permanece sem concessão de administradora. Nenhum tenant Sorriso foi criado.
 * A única homologação aberta nesta rodada é a revisão visual autenticada da Plataforma SaaS Master no Preview. Sem sessão legítima disponível, nenhum PASS visual foi presumido.
