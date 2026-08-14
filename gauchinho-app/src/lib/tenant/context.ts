@@ -2,6 +2,7 @@ import "server-only";
 
 import { createClient } from "@/lib/supabase/server";
 import { getUsuarioNegocio } from "@/lib/auth/get-usuario";
+import { isMissingErpUserLinkColumns } from "@/lib/erp/migration-077-compat";
 
 export type Empresa = {
   id: string;
@@ -61,7 +62,7 @@ export async function getDefaultCompany(): Promise<Empresa | null> {
  */
 export async function getUserCompanies(usuarioId: string): Promise<EmpresaUsuarioVinculo[]> {
   const supabase = await createClient();
-  const { data, error } = await supabase
+  const extended = await supabase
     .from("empresa_usuarios")
     .select(`
       id,
@@ -77,11 +78,31 @@ export async function getUserCompanies(usuarioId: string): Promise<EmpresaUsuari
     .eq("usuario_id", usuarioId)
     .eq("ativo", true);
 
-  if (error || !data) {
-    return [];
+  if (!extended.error) {
+    return (extended.data ?? []) as unknown as EmpresaUsuarioVinculo[];
   }
 
-  return data as unknown as EmpresaUsuarioVinculo[];
+  if (!isMissingErpUserLinkColumns(extended.error)) return [];
+
+  const legacy = await supabase
+    .from("empresa_usuarios")
+    .select(`
+      id,
+      empresa_id,
+      usuario_id,
+      papel_id,
+      ativo,
+      empresa:empresas(*),
+      papel:papeis(*)
+    `)
+    .eq("usuario_id", usuarioId)
+    .eq("ativo", true);
+  if (legacy.error || !legacy.data) return [];
+  return legacy.data.map((vinculo) => ({
+    ...(vinculo as unknown as EmpresaUsuarioVinculo),
+    socio_pagador: false,
+    erp_modulos_visiveis: null,
+  }));
 }
 
 /**

@@ -10,6 +10,8 @@ export const USUARIO_ADMIN_FLASH: Record<string, string> = {
     "Usuário salvo, mas Google Agenda não foi gravado. Aplique a migration 033 no Supabase.",
   menus_parcial:
     "Usuário salvo, mas menus personalizados não foram gravados. Aplique a migration 027 no Supabase.",
+  erp_permissoes_pendentes:
+    "Usuário salvo, mas sócio pagador e menus individuais do ERP aguardam a migration 077 no Supabase.",
   generico: "Não foi possível salvar. Tente novamente.",
 };
 

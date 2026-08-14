@@ -11,6 +11,7 @@ import { isGmailAddress } from "@/lib/google-calendar/config";
 import { clearGoogleRefreshToken } from "@/lib/google-calendar/token-store";
 import { getCurrentTenantContext } from "@/lib/tenant/context";
 import { normalizeErpAccessIds } from "@/lib/erp/erp-acesso";
+import { isMissingErpUserLinkColumns } from "@/lib/erp/migration-077-compat";
 
 function redirectUsuarios(codigo: string): never {
   redirect(`/admin/usuarios?flash=${encodeURIComponent(codigo)}`);
@@ -20,15 +21,29 @@ export async function fetchUsuarios() {
   const { empresaAtiva } = await getCurrentTenantContext();
   if (!empresaAtiva) return [];
   const admin = createAdminClient();
-  const { data, error } = await admin
+  const usuarioSelect = "usuario:usuarios(id,auth_user_id,nome,email,telefone,perfil,ativo,is_consultor,leads_apenas_proprios,agenda_acesso_todos,google_agenda_sync,google_calendar_connected_at,google_calendar_email,admin_menus,created_at)";
+  const extended = await admin
     .from("empresa_usuarios")
-    .select("socio_pagador,erp_modulos_visiveis,usuario:usuarios(id,auth_user_id,nome,email,telefone,perfil,ativo,is_consultor,leads_apenas_proprios,agenda_acesso_todos,google_agenda_sync,google_calendar_connected_at,google_calendar_email,admin_menus,created_at)")
+    .select(`socio_pagador,erp_modulos_visiveis,${usuarioSelect}`)
     .eq("empresa_id", empresaAtiva.id)
     .eq("ativo", true);
-  if (error) throw new Error(error.message);
-  return (data ?? []).flatMap((link) => {
+  if (!extended.error) {
+    return (extended.data ?? []).flatMap((link) => {
+      const usuario = Array.isArray(link.usuario) ? link.usuario[0] : link.usuario;
+      return usuario ? [{ ...usuario, socio_pagador: Boolean(link.socio_pagador), erp_modulos_visiveis: link.erp_modulos_visiveis }] : [];
+    }).sort((a, b) => String(a.nome).localeCompare(String(b.nome), "pt-BR"));
+  }
+  if (!isMissingErpUserLinkColumns(extended.error)) throw new Error(extended.error.message);
+
+  const legacy = await admin
+    .from("empresa_usuarios")
+    .select(usuarioSelect)
+    .eq("empresa_id", empresaAtiva.id)
+    .eq("ativo", true);
+  if (legacy.error) throw new Error(legacy.error.message);
+  return (legacy.data ?? []).flatMap((link) => {
     const usuario = Array.isArray(link.usuario) ? link.usuario[0] : link.usuario;
-    return usuario ? [{ ...usuario, socio_pagador: Boolean(link.socio_pagador), erp_modulos_visiveis: link.erp_modulos_visiveis }] : [];
+    return usuario ? [{ ...usuario, socio_pagador: false, erp_modulos_visiveis: null }] : [];
   }).sort((a, b) => String(a.nome).localeCompare(String(b.nome), "pt-BR"));
 }
 
@@ -124,17 +139,26 @@ export async function createUsuarioAction(formData: FormData) {
         : "consultor";
   const { data: papel, error: papelErr } = await admin.from("papeis").select("id").eq("codigo", roleCode).is("empresa_id", null).single();
   if (papelErr || !papel) throw new Error(papelErr?.message ?? "Papel do usuário não encontrado");
-  const { error: vinculoErr } = await admin.from("empresa_usuarios").insert({
+  const vinculoBase = {
     empresa_id: empresaAtiva.id,
     usuario_id: usuarioCriado.id,
     papel_id: papel.id,
     ativo: true,
     convidado_por: usuario.id,
     origem: "ERP_USUARIOS",
+  };
+  const { error: vinculoErr } = await admin.from("empresa_usuarios").insert({
+    ...vinculoBase,
     socio_pagador: socioPagador,
     erp_modulos_visiveis: erpMenus,
   });
-  if (vinculoErr) throw new Error(vinculoErr.message);
+  if (vinculoErr) {
+    if (!isMissingErpUserLinkColumns(vinculoErr)) throw new Error(vinculoErr.message);
+    const { error: legacyVinculoErr } = await admin.from("empresa_usuarios").insert(vinculoBase);
+    if (legacyVinculoErr) throw new Error(legacyVinculoErr.message);
+    revalidatePath("/admin/usuarios");
+    redirectUsuarios("erp_permissoes_pendentes");
+  }
 
   revalidatePath("/admin/usuarios");
   redirect("/admin/usuarios");
@@ -269,7 +293,13 @@ export async function updateUsuarioEdicaoAction(formData: FormData) {
     .eq("empresa_id", empresaAtiva.id)
     .eq("usuario_id", id)
     .eq("ativo", true);
-  if (vinculoErr) redirectUsuarios("generico");
+  if (vinculoErr) {
+    if (isMissingErpUserLinkColumns(vinculoErr)) {
+      avisos.push("erp_permissoes_pendentes");
+    } else {
+      redirectUsuarios("generico");
+    }
+  }
 
   revalidatePath("/admin/usuarios");
   revalidatePath("/admin/leads");
@@ -278,6 +308,7 @@ export async function updateUsuarioEdicaoAction(formData: FormData) {
 
   if (avisos.includes("google_parcial")) redirectUsuarios("google_parcial");
   if (avisos.includes("menus_parcial")) redirectUsuarios("menus_parcial");
+  if (avisos.includes("erp_permissoes_pendentes")) redirectUsuarios("erp_permissoes_pendentes");
   redirectUsuarios("salvo");
 }
 

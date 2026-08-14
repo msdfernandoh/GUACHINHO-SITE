@@ -213,6 +213,10 @@ A plataforma suporta:
 - bancos e centros de custo passam a devolver resultado controlado na própria interface;
 - relatório: `docs/relatorios-fases/ERP-IMPORTACAO-SOCIOS-PERMISSOES-CAIXA.md`;
 - estado: código e migration versionados e validados localmente; Supabase e homologação autenticada pendentes.
+- compatibilidade pré-migration: o runtime volta ao contrato legado somente
+  quando `socio_pagador`/`erp_modulos_visiveis` estão ausentes, preservando o
+  acesso do vínculo ativo a Usuários e ERP sem liberar módulos fora do tenant;
+  relatório: `docs/relatorios-fases/HOTFIX-ERP-USUARIOS-SEM-MIGRATION-077.md`.
 
 ## 5. Declaração Final de Segurança e Riscos
 
