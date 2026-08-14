@@ -21,7 +21,7 @@ export async function fetchUsuarios() {
   const { empresaAtiva } = await getCurrentTenantContext();
   if (!empresaAtiva) return [];
   const admin = createAdminClient();
-  const usuarioSelect = "usuario:usuarios(id,auth_user_id,nome,email,telefone,perfil,ativo,is_consultor,leads_apenas_proprios,agenda_acesso_todos,google_agenda_sync,google_calendar_connected_at,google_calendar_email,admin_menus,created_at)";
+  const usuarioSelect = "usuario:usuarios!empresa_usuarios_usuario_id_fkey(id,auth_user_id,nome,email,telefone,perfil,ativo,is_consultor,leads_apenas_proprios,agenda_acesso_todos,google_agenda_sync,google_calendar_connected_at,google_calendar_email,admin_menus,created_at)";
   const extended = await admin
     .from("empresa_usuarios")
     .select(`socio_pagador,erp_modulos_visiveis,${usuarioSelect}`)

@@ -26,7 +26,7 @@ const config: Record<string, SectionConfig> = {
       "Identidades e vínculos N:N. Papel tenant nunca promove para Platform.",
     table: "empresa_usuarios",
     select:
-      "id,ativo,created_at,empresa:empresas(nome_fantasia),usuario:usuarios(nome)",
+      "id,ativo,created_at,empresa:empresas(nome_fantasia),usuario:usuarios!empresa_usuarios_usuario_id_fkey(nome)",
   },
   dominios: {
     title: "Domínios",

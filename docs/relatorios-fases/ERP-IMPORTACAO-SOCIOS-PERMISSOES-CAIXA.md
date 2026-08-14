@@ -64,3 +64,8 @@ O download está disponível em `/modelos/modelo_importacao_contas.csv`. As linh
   importação, a view `financeiro_fechamento_socios` e os vínculos de FERNANDO e
   Eroni Bolfe como sócios pagadores somente na tenant `gauchinho`.
 - A verificação não criou contas, movimentos de caixa ou dados de homologação.
+- Após a aplicação, o PostgREST passou a identificar duas relações entre
+  `empresa_usuarios` e `usuarios` (`usuario_id` e `convidado_por`). As consultas
+  de Usuários, Contas a pagar e Platform agora indicam explicitamente
+  `empresa_usuarios_usuario_id_fkey`, eliminando o erro `PGRST201` e carregando
+  corretamente os sócios pagadores.

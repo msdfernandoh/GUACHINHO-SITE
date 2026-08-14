@@ -18,11 +18,12 @@ export default async function ContasPagarPage() {
     db.from("financeiro_centros_custo").select("*").eq("empresa_id", empresaId).eq("ativo", true),
     db
       .from("empresa_usuarios")
-      .select("socio_pagador,usuario:usuarios(id,nome,email)")
+      .select("socio_pagador,usuario:usuarios!empresa_usuarios_usuario_id_fkey(id,nome,email)")
       .eq("empresa_id", empresaId)
       .eq("ativo", true),
     db.from("caixa_movimentos").select("tipo_movimento,valor").eq("empresa_id", empresaId),
   ]);
+  if (vinculos.error) throw new Error(vinculos.error.message);
   const usuarios = (vinculos.data ?? []).flatMap((vinculo) => {
     const usuario = vinculo.usuario as unknown as { id: string; nome: string; email: string } | null;
     return usuario ? [{ ...usuario, socioPagador: Boolean(vinculo.socio_pagador) }] : [];
