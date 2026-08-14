@@ -20,6 +20,13 @@ type Props = {
   contratarLoading?: boolean;
 };
 
+function formatPrazo(value: number): string {
+  return value.toLocaleString("pt-BR", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+}
+
 function TotalCard({
   label,
   value,
@@ -102,6 +109,18 @@ function TotalsBarContent({
         </div>
       </div>
 
+      <div className="mt-2 grid grid-cols-2 gap-2">
+        <TotalCard
+          label="Parcela pós-contemplação"
+          value={formatCurrency(totais.parcelaPosContemplacaoTotal)}
+          accent="green"
+        />
+        <TotalCard
+          label="Prazo restante pós-contemplação"
+          value={formatPrazo(totais.prazoRestanteAposContemplacaoMax)}
+        />
+      </div>
+
       <div
         className={cn(
           "mt-2 flex flex-col gap-2",
@@ -169,6 +188,14 @@ function DesktopTotalsBar(props: Props) {
         <InlineStat label="Lance" value={formatCurrency(totais.lanceTotal)} accent />
         <InlineStat label="Créd. líquido" value={formatCurrency(totais.creditoLiquido)} accent />
         <InlineStat label="Saldo pós-lance" value={formatCurrency(totais.saldoPosLance)} />
+        <InlineStat
+          label="Parcela pós-cont."
+          value={formatCurrency(totais.parcelaPosContemplacaoTotal)}
+        />
+        <InlineStat
+          label="Prazo pós-cont."
+          value={formatPrazo(totais.prazoRestanteAposContemplacaoMax)}
+        />
         <p className="w-full text-[10px] text-zinc-500 xl:w-auto xl:max-w-[220px]">
           Lance: emb. {formatCurrency(totais.lanceEmbutido)} · próp. {formatCurrency(totais.recursoProprio)}
         </p>

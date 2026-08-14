@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { fatorSeguroGrupo, parseSeguroInput } from "./seguro";
 import {
   agregarResultadosLinhas,
+  calcularPosContemplacaoPorTipo,
   calcularLinhaSimulacaoGrupo,
   formatPrazoGrupo,
 } from "./simulacao-linha";
@@ -71,6 +72,38 @@ describe("seguro grupos", () => {
 });
 
 describe("simulacao linha grupo", () => {
+  it("reproduz o prazo restante de imóvel sem descontar a 1ª parcela na nova parcela", () => {
+    const resultado = calcularPosContemplacaoPorTipo({
+      tipo: "imovel",
+      saldoDevedor: 562_500,
+      lanceTotal: 281_250,
+      primeiraParcela: 1_759.09,
+      parcelasARealizar: 210,
+    });
+
+    expect(resultado.parcelaPosContemplacao).toBeCloseTo(281_250 / 209, 10);
+    expect(resultado.prazoRestanteAposContemplacao).toBeCloseTo(
+      (562_500 - 281_250 - 1_759.09) / (281_250 / 209),
+      10,
+    );
+  });
+
+  it("reproduz o piso de 0,7% e o prazo restante de veículo", () => {
+    const resultado = calcularPosContemplacaoPorTipo({
+      tipo: "veiculo",
+      saldoDevedor: 116_000,
+      lanceTotal: 82_360,
+      primeiraParcela: 626.4,
+      parcelasARealizar: 114,
+    });
+
+    expect(resultado.parcelaPosContemplacao).toBe(812);
+    expect(resultado.prazoRestanteAposContemplacao).toBeCloseTo(
+      (116_000 - 82_360 - 626.4) / 812,
+      10,
+    );
+  });
+
   it("soma cotas = crédito × qtd", () => {
     const r = calcularLinhaSimulacaoGrupo({
       grupo: grupoBase,
@@ -179,13 +212,14 @@ describe("simulacao linha grupo", () => {
     expect(semLance.seguroMensal).toBeGreaterThan(0);
     expect(com25.seguroMensal).toBeGreaterThan(0);
     expect(com25.seguroMensal).toBeLessThan(semLance.seguroMensal);
+    const saldoFormula = cota.valor_credito! * 1.2;
     expect(com25.parcelaPosContemplacao).toBeCloseTo(
-      com25.saldoPosLance / Math.max((grupoBase.prazo_restante ?? 209) + 1, 1) + com25.seguroMensal,
-      1,
+      (saldoFormula - com25.lanceTotal) / ((grupoBase.prazo_restante ?? 209) - 1),
+      10,
     );
   });
 
-  it("planilha 1533: lance 25% → seguro 555,67 e parcela+seg 7.198,53", () => {
+  it("imóvel 1533: lance 25% → parcela pós sem descontar a 1ª parcela", () => {
     // Planilha: prazo 220, reduzida 60%, saldo 1.860.000, lance 25%
     const g24: GrupoConsorcio = {
       ...grupoBase,
@@ -246,10 +280,10 @@ describe("simulacao linha grupo", () => {
     // seguro pós = (1.395.000 − 5.816,73) × 0,0004
     expect(r.saldoDevedorFinal).toBeCloseTo(1_389_183.27, 0);
     expect(r.seguroMensal).toBeCloseTo(555.67, 1);
-    expect(r.parcelaPosContemplacao).toBeCloseTo(7198.53, 1);
+    expect(r.parcelaPosContemplacao).toBeCloseTo((1_860_000 - 465_000) / 208, 10);
   });
 
-  it("planilha 1533: lance 40% → seguro ~444 e parcela+seg ~5.758", () => {
+  it("imóvel 1533: lance 40% → parcela pós sem descontar a 1ª parcela", () => {
     const g24: GrupoConsorcio = {
       ...grupoBase,
       taxa_administrativa_percentual: 24,
@@ -302,7 +336,7 @@ describe("simulacao linha grupo", () => {
     expect(r.seguroPrimeiraParcela).toBeCloseTo(744, 1);
     // (1.116.000 − 5.816,73) × 0,0004
     expect(r.seguroMensal).toBeCloseTo(444.07, 1);
-    expect(r.parcelaPosContemplacao).toBeCloseTo(5758.36, 1);
+    expect(r.parcelaPosContemplacao).toBeCloseTo((1_860_000 - 744_000) / 208, 10);
   });
   it("agrega múltiplos grupos", () => {
     const linha = calcularLinhaSimulacaoGrupo({

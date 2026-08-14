@@ -16,6 +16,42 @@ import { parcelaTipoFromModalidade } from "./modalidades-admin";
 
 export type ModalidadeParcelaLinha = "reduzida" | "integral" | "personalizada";
 export type RecursoProprioModo = "percentual" | "valor";
+export type TipoBemPrazoPosContemplacao = "imovel" | "veiculo";
+
+export function calcularPosContemplacaoPorTipo(args: {
+  tipo: TipoBemPrazoPosContemplacao;
+  saldoDevedor: number;
+  lanceTotal: number;
+  primeiraParcela: number;
+  parcelasARealizar: number;
+}): { parcelaPosContemplacao: number; prazoRestanteAposContemplacao: number } {
+  const { tipo, saldoDevedor, lanceTotal, primeiraParcela, parcelasARealizar } = args;
+  const divisor = parcelasARealizar - 1;
+
+  if (divisor <= 0) {
+    return { parcelaPosContemplacao: 0, prazoRestanteAposContemplacao: 0 };
+  }
+
+  const taxaMinima = tipo === "veiculo" ? 0.007 : 0;
+  const baseParcela =
+    saldoDevedor - lanceTotal - (tipo === "veiculo" ? primeiraParcela : 0);
+  const parcelaMinima = saldoDevedor * taxaMinima;
+  const parcelaCalculada = baseParcela / divisor;
+  const parcelaPosContemplacao = Math.max(parcelaMinima, parcelaCalculada);
+  const prazoRestanteAposContemplacao =
+    parcelaPosContemplacao > 0
+      ? (saldoDevedor - lanceTotal - primeiraParcela) / parcelaPosContemplacao
+      : 0;
+
+  return { parcelaPosContemplacao, prazoRestanteAposContemplacao };
+}
+
+function tipoBemPrazoPosContemplacao(modalidade: string): TipoBemPrazoPosContemplacao {
+  return modalidade.trim().toLocaleLowerCase("pt-BR") === "imóvel" ||
+    modalidade.trim().toLocaleLowerCase("pt-BR") === "imovel"
+    ? "imovel"
+    : "veiculo";
+}
 
 /** Respeita a escolha na linha; estratégia de lance só define o padrão ao selecionar a modalidade. */
 export function resolveParcelaTipoLinha(
@@ -61,6 +97,7 @@ export type ResultadoLinhaSimulacaoGrupo = {
   parcelaReduzida: number | null;
   parcelaPersonalizada: number | null;
   parcelaPosContemplacao: number;
+  prazoRestanteAposContemplacao: number;
   lanceEmbutido: number;
   recursoProprio: number;
   lanceTotal: number;
@@ -232,6 +269,7 @@ export function calcularLinhaSimulacaoGrupo(args: {
     parcelaReduzida: null,
     parcelaPersonalizada: null,
     parcelaPosContemplacao: 0,
+    prazoRestanteAposContemplacao: 0,
     lanceEmbutido: 0,
     recursoProprio: 0,
     lanceTotal: 0,
@@ -346,18 +384,27 @@ export function calcularLinhaSimulacaoGrupo(args: {
     Math.round((saldoPosLance - parcelaComSeguroTotal) * 100) / 100,
   );
 
-  const prazoRestante = calcularParcelasRestantes(params);
-  // Planilha: (saldo − lance) / (parcelasARealizar − 1) ≡ prazoRestante + 1 (ex. 209 → 210)
-  const parcelasAmortizacaoPos = Math.max(prazoRestante + 1, 1);
-  const parcelaPosBase =
-    Math.round((saldoPosLance / parcelasAmortizacaoPos) * 100) / 100;
+  const parcelasARealizar = calcularParcelasRestantes(params);
 
-  // Planilha: seguroPos = (saldo − lance − parcelaComSeguro) * 0,0004
+  // Fórmula comercial pós-contemplação: imóvel não desconta a 1ª parcela na
+  // base da nova parcela; veículo desconta e aplica piso de 0,7% do saldo.
+  const saldoDevedorPrazo =
+    somaCotas * (1 + params.taxaAdministrativaPercentual / 100);
+  const posContemplacao = calcularPosContemplacaoPorTipo({
+    tipo: tipoBemPrazoPosContemplacao(grupo.modalidade),
+    saldoDevedor: saldoDevedorPrazo,
+    lanceTotal,
+    primeiraParcela: parcelaComSeguroTotal,
+    parcelasARealizar,
+  });
+
+  // Seguro pós permanece disponível separadamente para os demais demonstrativos.
   const seguroPosTotal = temSeguroGrupo
     ? Math.round(saldoDevedorFinal * fatorSeg * 100) / 100
     : 0;
-  const parcelaPosContemplacao = Math.round((parcelaPosBase + seguroPosTotal) * 100) / 100;
-  const parcelasRestantesPosContemplacao = Math.max(prazoRestante, 1);
+  const parcelaPosContemplacao = posContemplacao.parcelaPosContemplacao;
+  const prazoRestanteAposContemplacao = posContemplacao.prazoRestanteAposContemplacao;
+  const parcelasRestantesPosContemplacao = prazoRestanteAposContemplacao;
 
   const creditoLiquido = calcularCreditoLiquidoPosContemplacao(somaCotas, lanceEmbutido);
 
@@ -373,6 +420,7 @@ export function calcularLinhaSimulacaoGrupo(args: {
     parcelaReduzida: parcelasCalc.parcelaReduzida,
     parcelaPersonalizada: parcelasCalc.parcelaPersonalizada,
     parcelaPosContemplacao,
+    prazoRestanteAposContemplacao,
     lanceEmbutido,
     recursoProprio,
     lanceTotal,
@@ -408,6 +456,7 @@ export function agregarResultadosLinhas(
   creditoLiquido: number;
   parcelaPosContemplacaoTotal: number;
   parcelasRestantesMax: number;
+  prazoRestanteAposContemplacaoMax: number;
   parcelaPosContemplacaoMedia: number;
 } {
   const ativas = linhas.filter((l) => l.ativo);
@@ -434,6 +483,10 @@ export function agregarResultadosLinhas(
     parcelasRestantesMax:
       ativas.length > 0
         ? Math.max(...ativas.map((l) => l.parcelasRestantesPosContemplacao))
+        : 0,
+    prazoRestanteAposContemplacaoMax:
+      ativas.length > 0
+        ? Math.max(...ativas.map((l) => l.prazoRestanteAposContemplacao))
         : 0,
     parcelaPosContemplacaoMedia:
       ativas.length > 0

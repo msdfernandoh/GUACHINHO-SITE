@@ -122,8 +122,11 @@ describe("calcularLinhaSimulacaoGrupo — saldo e parcelas", () => {
     expect(r.lanceTotal).toBe(325_500);
     expect(r.creditoLiquido).toBe(724_500);
     expect(r.saldoPosLance).toBe(976_500);
-    // Planilha: (saldo pós-lance / (restante+1)) + seguro sobre (saldo pós-lance − 1ª sem seguro)
-    expect(r.parcelaPosContemplacao).toBeCloseTo(4418.55, 1);
+    // Imóvel: (crédito × (1 + taxa adm.) − lance total) / (prazo restante − 1).
+    expect(r.parcelaPosContemplacao).toBeCloseTo(
+      (1_050_000 * 1.22 - 325_500) / 219,
+      10,
+    );
   });
 
   it("caso 3 — embutido 25% + próprio 10%", () => {
