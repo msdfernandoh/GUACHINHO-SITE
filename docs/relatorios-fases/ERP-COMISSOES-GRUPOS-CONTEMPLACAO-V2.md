@@ -3,7 +3,7 @@
 Data: 14/08/2026
 Branch: `codex/erp-comissoes-grupos-contemplacao-v2`
 Migration: `076_erp_comissoes_grupos_contemplacao_v2.sql`
-Estado: implementação e homologação somente em branch/Preview; não aplicada em Production e não mesclada em `main`.
+Estado: concluída, mesclada em `main` e promovida a Production em 14/08/2026.
 
 ## Arquitetura
 
@@ -80,7 +80,7 @@ Grupos legados ficam `CONFIGURACAO_PENDENTE`; nova venda é bloqueada sem Tipo e
 
 - parser PostgreSQL da 076: PASS;
 - TypeScript: PASS;
-- Vitest: 125 arquivos PASS, 9 skipped; 711 testes PASS, 37 skipped;
+- Vitest: 125 arquivos PASS, 9 skipped; 714 testes PASS, 37 skipped;
 - build Next.js: PASS (127 páginas);
 - lint do escopo: PASS;
 - `npm audit --omit=dev --registry=https://registry.npmjs.org`: PASS, 0 vulnerabilidades;
@@ -93,10 +93,14 @@ Testes funcionais no Supabase isolado confirmaram: seis somas; modalidade Integr
 
 Auditoria read-only em 14/08/2026 encontrou `0` cotas com `status='contemplada'` no Supabase principal: 0 com venda, 0 com data e 0 com crédito original associado. Portanto não há comissão histórica calculável por esse marcador no estado atual. Nenhum backfill foi executado.
 
-## Preview e pendências
+## Preview e promoção Production
 
 Branch Supabase efêmera final: `codex-erp-comissoes-grupos-076-v2` (`wzhpkvqdwgggmxfdzqre`). Preview ERP final: `https://codex-erp-comissoes-grupos-076-erp.vercel.app`. Preview Platform com fronteira de host própria: `https://codex-erp-comissoes-grupos-076.vercel.app` (deployment `GrdLc3f9UukGTev5YS6ztjHriQqU`).
 
 A homologação visual autenticada passou em Programas/Regras/Imposto, regra automática e manual de participantes, Comissões da Franqueadora com seleção em lote e rótulo CONTEMPLAÇÃO, Minhas Comissões, Grupos, Clientes/Cota com formulário explícito e Platform Administradoras/Tipos/Modalidades/Curva. A fila Platform foi exercitada com um Grupo Local isolado: exibiu as duas decisões e `MANTER_LOCAL` removeu a pendência sem apagar o grupo.
 
-Nenhuma migration, fixture, backfill ou deploy desta fase foi enviado a Production. Fixtures e identidade de teste existem somente na branch Supabase descartável.
+A implementação foi publicada no commit `8efcd76` e integrada por fast-forward em `main`. No Supabase principal, uma auditoria read-only confirmou que as estruturas 070–075 já existiam; o histórico foi alinhado sem reaplicar DDL e o dry-run passou a indicar somente a 076. A migration 076 foi então aplicada e o histórico remoto ficou alinhado de 001 a 076.
+
+A verificação pós-migration no banco principal confirmou as seis regras Racon: Imóvel total 4,00% e Automóveis total 3,50%; Integral e Reduzida 60–99 com zero etapa `CONTEMPLACAO`; Reduzida abaixo de 59 com exatamente uma etapa de 1,25%. Nenhum backfill foi executado.
+
+Deploy Production Vercel `dpl_GSCAu7pAprzH8Z7ad6m51b9RESBS`, estado `Ready`, promovido para `https://www.gauchinhoconsorcios.com.br` e `https://admin.gauchinhoconsorcios.com.br`. Smoke público retornou 200 e as rotas protegidas de Comissões, Minhas Comissões, Clientes e Platform redirecionaram corretamente para login. Fixtures e identidade de teste permanecem somente na branch Supabase descartável.
