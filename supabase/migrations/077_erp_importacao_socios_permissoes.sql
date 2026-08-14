@@ -19,6 +19,68 @@ alter table public.empresa_usuarios
     ]::text[]
   );
 
+-- A validação criada na 043 protegia corretamente papéis PLATFORM, mas tratava
+-- qualquer UPDATE no vínculo como alteração do papel. A 077 acrescenta apenas
+-- metadados tenant-aware ao vínculo; por isso, mantém a proteção quando
+-- papel/empresa/ativo mudam e permite atualizar campos auxiliares.
+create or replace function public.validar_papel_empresa_usuario()
+returns trigger as $$
+declare
+  v_role_escopo text;
+  v_role_empresa_id uuid;
+  v_role_ativo boolean;
+  v_old_role_escopo text;
+  v_protected_fields_changed boolean := false;
+begin
+  if TG_OP = 'DELETE' then
+    select escopo into v_old_role_escopo from public.papeis where id = OLD.papel_id;
+    if v_old_role_escopo = 'PLATFORM' and not public.is_platform_superadmin() then
+      raise exception 'Apenas SuperAdmins da Plataforma podem excluir ou remover vínculos com papel PLATFORM.';
+    end if;
+    return OLD;
+  end if;
+
+  select escopo, empresa_id, ativo
+  into v_role_escopo, v_role_empresa_id, v_role_ativo
+  from public.papeis
+  where id = NEW.papel_id;
+
+  if not found then
+    raise exception 'Papel informado (ID %) não existe.', NEW.papel_id;
+  end if;
+  if not v_role_ativo then
+    raise exception 'Papel informado (ID %) está inativo.', NEW.papel_id;
+  end if;
+
+  if TG_OP = 'UPDATE' then
+    select escopo into v_old_role_escopo from public.papeis where id = OLD.papel_id;
+    v_protected_fields_changed :=
+      OLD.papel_id is distinct from NEW.papel_id
+      or OLD.empresa_id is distinct from NEW.empresa_id
+      or OLD.ativo is distinct from NEW.ativo;
+    if v_protected_fields_changed
+      and (v_old_role_escopo = 'PLATFORM' or v_role_escopo = 'PLATFORM')
+      and not public.is_platform_superadmin()
+    then
+      raise exception 'Apenas SuperAdmins da Plataforma podem alterar, desativar ou rebaixar papéis de escopo PLATFORM.';
+    end if;
+  elsif v_role_escopo = 'PLATFORM' and not public.is_platform_superadmin() then
+    raise exception 'Apenas SuperAdmins da Plataforma podem atribuir papéis de escopo PLATFORM.';
+  end if;
+
+  if v_role_escopo = 'COMPANY' and v_role_empresa_id is not null
+    and v_role_empresa_id <> NEW.empresa_id
+  then
+    raise exception 'Papel personalizado da empresa % não pode ser atribuído a usuário da empresa %.',
+      v_role_empresa_id, NEW.empresa_id;
+  end if;
+
+  return NEW;
+end;
+$$ language plpgsql security definer set search_path = public;
+
+revoke all on function public.validar_papel_empresa_usuario() from public;
+
 alter table public.financeiro_contas_pagar
   add column if not exists importacao_origem text,
   add column if not exists importacao_chave text,

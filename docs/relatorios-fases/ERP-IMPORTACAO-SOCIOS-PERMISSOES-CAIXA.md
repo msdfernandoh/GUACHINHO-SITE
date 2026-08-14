@@ -48,3 +48,14 @@ O download está disponível em `/modelos/modelo_importacao_contas.csv`. As linh
 1. Aplicar a migration `077` no Supabase do ambiente escolhido antes de publicar a interface.
 2. Homologar com sessão real: importação do arquivo completo, associação em lote a Fernando/Eroni, bloqueio por URL e lançamento de entrada/saída.
 3. Não promover para Produção sem backup e autorização operacional correspondente.
+
+## Correção de execução da migration 077
+
+- A primeira tentativa no SQL Editor foi revertida pelo trigger
+  `validar_papel_empresa_usuario`, pois a regra da migration 043 tratava qualquer
+  `UPDATE` de vínculo PLATFORM como alteração de papel.
+- A migration 077 agora substitui essa função mantendo a exigência de
+  SuperAdmin quando `papel_id`, `empresa_id` ou `ativo` mudarem, mas permitindo
+  alterações em campos auxiliares como `socio_pagador`.
+- O trigger não foi desativado e a proteção de atribuição, remoção, rebaixamento
+  ou desativação de papéis PLATFORM permanece ativa.
