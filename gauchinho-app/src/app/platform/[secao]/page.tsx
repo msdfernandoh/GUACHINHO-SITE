@@ -3,11 +3,6 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { isPlatformSection } from "@/lib/platform/catalog";
 import { decidirGovernancaGrupoAction } from "../grupos-actions";
-import {
-  criarCurvaEstornoAction,
-  salvarModalidadeAdministradoraAction,
-  salvarTipoAdministradoraAction,
-} from "../administradoras-actions";
 
 type Row = Record<string, unknown>;
 type SectionConfig = {
@@ -53,7 +48,7 @@ const config: Record<string, SectionConfig> = {
       "Grupos locais pendentes podem ser promovidos para Global ou mantidos somente no tenant de origem.",
     table: "grupos_consorcio",
     select:
-      "id,codigo_grupo,modalidade,status,ativo,origem_governanca,status_governanca,empresa_origem_id,updated_at,administradora:administradoras(nome)",
+      "id,codigo_grupo,modalidade,status,ativo,origem_governanca,status_governanca,empresa_origem_id,updated_at,administradora:administradoras(nome),tipo:administradora_tipos(nome),modalidade_comissao:administradora_modalidades_comissao(nome)",
   },
   produtos: {
     title: "Produtos comerciais",
@@ -188,40 +183,28 @@ function display(value: unknown, key: string): string {
 
 export default async function PlatformSectionPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ secao: string }>;
+  searchParams: Promise<Record<string, string | undefined>>;
 }) {
   const { secao } = await params;
+  const filters = await searchParams;
   if (!isPlatformSection(secao)) notFound();
   const section = config[secao];
   const db = await createClient();
   let rows: Row[] = [];
   let error = "";
   if (section.table) {
-    const result = await db
-      .from(section.table)
-      .select(section.select ?? "*")
-      .limit(100);
+    let query = db.from(section.table).select(section.select ?? "*");
+    if (secao === "grupos" && filters.status)
+      query = query.eq("status_governanca", filters.status);
+    if (secao === "grupos" && filters.busca)
+      query = query.ilike("codigo_grupo", `%${filters.busca}%`);
+    const result = await query.limit(100);
     rows = (result.data ?? []) as unknown as Row[];
     error = result.error?.message ?? "";
   }
-  const catalogos =
-    secao === "administradoras"
-      ? await Promise.all([
-          db
-            .from("administradora_tipos")
-            .select("id,nome,codigo,administradora_id")
-            .order("nome"),
-          db
-            .from("administradora_modalidades_comissao")
-            .select("id,nome,codigo,administradora_id")
-            .order("nome"),
-          db
-            .from("administradora_curvas_estorno")
-            .select("id,nome,versao,vigencia_inicio,ativa,administradora_id")
-            .order("vigencia_inicio", { ascending: false }),
-        ])
-      : null;
   const columns = rows.length
     ? Object.keys(rows[0]).filter((key) => !technical.has(key))
     : [];
@@ -242,6 +225,13 @@ export default async function PlatformSectionPage({
           >
             Nova Master Franquia
           </Link>
+        ) : secao === "grupos" ? (
+          <Link
+            href="/platform/grupos/novo"
+            className="rounded-lg bg-cyan-600 px-4 py-2 font-semibold text-white"
+          >
+            Novo Grupo Global
+          </Link>
         ) : null}
       </div>
       {error ? (
@@ -249,136 +239,29 @@ export default async function PlatformSectionPage({
           Estrutura disponível após migration 070 no ambiente isolado.
         </div>
       ) : null}
-      {catalogos ? (
-        <section className="grid gap-4 xl:grid-cols-3">
-          <form
-            action={salvarTipoAdministradoraAction}
-            className="space-y-3 rounded-2xl border bg-white p-4"
+      {secao === "grupos" ? (
+        <form className="flex flex-wrap gap-2 rounded-xl border bg-white p-3">
+          <input
+            name="busca"
+            defaultValue={filters.busca}
+            placeholder="Buscar número do grupo"
+            className="rounded-lg border px-3 py-2"
+          />
+          <select
+            name="status"
+            defaultValue={filters.status ?? ""}
+            className="rounded-lg border px-3 py-2"
           >
-            <h2 className="font-bold">Tipos por Administradora</h2>
-            <select
-              name="administradora_id"
-              required
-              className="w-full rounded border p-2"
-            >
-              <option value="">Administradora</option>
-              {rows.map((row) => (
-                <option key={String(row.id)} value={String(row.id)}>
-                  {display(row.nome_fantasia ?? row.nome, "nome")}
-                </option>
-              ))}
-            </select>
-            <input
-              name="codigo"
-              required
-              placeholder="Código"
-              className="w-full rounded border p-2"
-            />
-            <input
-              name="nome"
-              required
-              placeholder="Nome editável"
-              className="w-full rounded border p-2"
-            />
-            <button className="rounded bg-cyan-700 px-3 py-2 text-sm font-bold text-white">
-              Salvar tipo
-            </button>
-            <p className="text-xs text-slate-500">
-              {catalogos[0].data?.map((item) => item.nome).join(" · ") ||
-                "Sem tipos"}
-            </p>
-          </form>
-          <form
-            action={salvarModalidadeAdministradoraAction}
-            className="space-y-3 rounded-2xl border bg-white p-4"
-          >
-            <h2 className="font-bold">Modalidades / Tabelas</h2>
-            <select
-              name="administradora_id"
-              required
-              className="w-full rounded border p-2"
-            >
-              <option value="">Administradora</option>
-              {rows.map((row) => (
-                <option key={String(row.id)} value={String(row.id)}>
-                  {display(row.nome_fantasia ?? row.nome, "nome")}
-                </option>
-              ))}
-            </select>
-            <input
-              name="codigo"
-              required
-              placeholder="Código"
-              className="w-full rounded border p-2"
-            />
-            <input
-              name="nome"
-              required
-              placeholder="Nome editável"
-              className="w-full rounded border p-2"
-            />
-            <button className="rounded bg-cyan-700 px-3 py-2 text-sm font-bold text-white">
-              Salvar modalidade
-            </button>
-            <p className="text-xs text-slate-500">
-              {catalogos[1].data?.map((item) => item.nome).join(" · ") ||
-                "Sem modalidades"}
-            </p>
-          </form>
-          <form
-            action={criarCurvaEstornoAction}
-            className="space-y-3 rounded-2xl border bg-white p-4"
-          >
-            <h2 className="font-bold">Curva de estorno versionada</h2>
-            <select
-              name="administradora_id"
-              required
-              className="w-full rounded border p-2"
-            >
-              <option value="">Administradora</option>
-              {rows.map((row) => (
-                <option key={String(row.id)} value={String(row.id)}>
-                  {display(row.nome_fantasia ?? row.nome, "nome")}
-                </option>
-              ))}
-            </select>
-            <input
-              name="nome"
-              required
-              placeholder="Nome"
-              className="w-full rounded border p-2"
-            />
-            <div className="grid grid-cols-2 gap-2">
-              <input
-                name="versao"
-                type="number"
-                min="1"
-                required
-                placeholder="Versão"
-                className="rounded border p-2"
-              />
-              <input
-                name="vigencia_inicio"
-                type="date"
-                required
-                className="rounded border p-2"
-              />
-            </div>
-            <input
-              name="faixas"
-              required
-              placeholder="1:80,2:70,3:70"
-              className="w-full rounded border p-2"
-            />
-            <button className="rounded bg-cyan-700 px-3 py-2 text-sm font-bold text-white">
-              Criar curva
-            </button>
-            <p className="text-xs text-slate-500">
-              Contemplação encerra a exposição. {catalogos[2].data?.length ?? 0}{" "}
-              curva(s).
-            </p>
-          </form>
-        </section>
+            <option value="">Todos os status</option>
+            <option>CONFIGURACAO_PENDENTE</option>
+            <option>PENDENTE_PLATFORM</option>
+            <option>LOCAL</option>
+            <option>GLOBAL</option>
+          </select>
+          <button className="rounded-lg bg-slate-900 px-4 py-2 font-semibold text-white">
+            Filtrar
+          </button>
+        </form>
       ) : null}
       <div className="rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
         <div className="overflow-x-auto">
@@ -390,7 +273,9 @@ export default async function PlatformSectionPage({
                     {labels[key] ?? key.replaceAll("_", " ")}
                   </th>
                 ))}
-                {secao === "empresas" || secao === "grupos" ? (
+                {secao === "empresas" ||
+                secao === "grupos" ||
+                secao === "administradoras" ? (
                   <th className="px-4 py-3">Ação</th>
                 ) : null}
               </tr>
@@ -428,8 +313,33 @@ export default async function PlatformSectionPage({
                           Gerenciar
                         </Link>
                       </td>
+                    ) : secao === "administradoras" ? (
+                      <td className="px-4 py-3">
+                        <Link
+                          className="font-semibold text-cyan-700"
+                          href={`/platform/administradoras/${row.id}`}
+                        >
+                          Gerenciar
+                        </Link>
+                      </td>
                     ) : secao === "grupos" ? (
                       <td className="px-4 py-3">
+                        <div className="mb-2 flex gap-3">
+                          <Link
+                            className="font-semibold text-cyan-700"
+                            href={`/platform/grupos/${row.id}`}
+                          >
+                            {row.status_governanca === "CONFIGURACAO_PENDENTE"
+                              ? "Editar configuração"
+                              : "Editar"}
+                          </Link>
+                          <Link
+                            className="text-slate-600"
+                            href={`/platform/grupos/${row.id}?modo=visualizar`}
+                          >
+                            Visualizar
+                          </Link>
+                        </div>
                         {row.status_governanca === "PENDENTE_PLATFORM" ? (
                           <div className="flex gap-2">
                             <form action={decidirGovernancaGrupoAction}>

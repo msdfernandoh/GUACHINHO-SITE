@@ -4,109 +4,143 @@ import { revalidatePath } from "next/cache";
 import { isPlatformSuperadmin } from "@/lib/auth/is-superadmin";
 import { createClient } from "@/lib/supabase/server";
 
+export type PlatformFormState = {
+  status: "IDLE" | "SUCCESS" | "VALIDATION_ERROR" | "CONFLICT" | "SERVER_ERROR";
+  message: string;
+};
+
 async function platformDb() {
   if (!(await isPlatformSuperadmin()))
     throw new Error("Somente Platform Superadmin.");
   return createClient();
 }
 
-export async function salvarTipoAdministradoraAction(formData: FormData) {
-  const db = await platformDb();
-  const id = String(formData.get("id") ?? "") || undefined;
-  const payload = {
-    administradora_id: String(formData.get("administradora_id") ?? ""),
-    codigo: String(formData.get("codigo") ?? "")
-      .trim()
-      .toUpperCase(),
-    nome: String(formData.get("nome") ?? "").trim(),
-    ativo: true,
+function stateFrom(error: unknown): PlatformFormState {
+  const message =
+    error instanceof Error ? error.message : "Erro interno ao salvar.";
+  return {
+    status: /existe|duplicad|sobrepost|versão/i.test(message)
+      ? "CONFLICT"
+      : /obrigat|inválid|informe|adicione/i.test(message)
+        ? "VALIDATION_ERROR"
+        : "SERVER_ERROR",
+    message,
   };
-  if (!payload.administradora_id || !payload.codigo || !payload.nome)
-    throw new Error("Administradora, código e nome são obrigatórios.");
-  const query = id
-    ? db.from("administradora_tipos").update(payload).eq("id", id)
-    : db.from("administradora_tipos").insert(payload);
-  const { error } = await query;
-  if (error) throw new Error(error.message);
-  revalidatePath("/platform/administradoras");
 }
 
-export async function salvarModalidadeAdministradoraAction(formData: FormData) {
-  const db = await platformDb();
-  const id = String(formData.get("id") ?? "") || undefined;
-  const payload = {
-    administradora_id: String(formData.get("administradora_id") ?? ""),
-    codigo: String(formData.get("codigo") ?? "")
-      .trim()
-      .toUpperCase(),
-    nome: String(formData.get("nome") ?? "").trim(),
-    ativo: true,
-  };
-  if (!payload.administradora_id || !payload.codigo || !payload.nome)
-    throw new Error("Administradora, código e nome são obrigatórios.");
-  const query = id
-    ? db
-        .from("administradora_modalidades_comissao")
-        .update(payload)
-        .eq("id", id)
-    : db.from("administradora_modalidades_comissao").insert(payload);
-  const { error } = await query;
-  if (error) throw new Error(error.message);
-  revalidatePath("/platform/administradoras");
-}
-
-export async function criarCurvaEstornoAction(formData: FormData) {
-  const db = await platformDb();
-  const administradoraId = String(formData.get("administradora_id") ?? "");
-  const nome = String(formData.get("nome") ?? "").trim();
-  const versao = Number(formData.get("versao"));
-  const vigenciaInicio = String(formData.get("vigencia_inicio") ?? "");
-  const faixas = String(formData.get("faixas") ?? "")
-    .split(",")
-    .map((item) => item.trim())
-    .filter(Boolean)
-    .map((item) => {
-      const [mes, percentual] = item.split(":").map(Number);
-      return { mes, percentual };
+export async function salvarTipoAdministradoraAction(
+  _previous: PlatformFormState,
+  formData: FormData,
+): Promise<PlatformFormState> {
+  try {
+    const administradoraId = String(formData.get("administradora_id") ?? "");
+    const nome = String(formData.get("nome") ?? "").trim();
+    if (!administradoraId || nome.length < 2)
+      return { status: "VALIDATION_ERROR", message: "Informe o nome do Tipo." };
+    const db = await platformDb();
+    const { error } = await db.rpc("rpc_salvar_tipo_administradora", {
+      p_administradora_id: administradoraId,
+      p_nome: nome,
+      p_ativo: formData.get("ativo") !== "false",
+      p_id: String(formData.get("id") ?? "") || null,
     });
-  if (
-    !administradoraId ||
-    !nome ||
-    !vigenciaInicio ||
-    !Number.isInteger(versao) ||
-    versao < 1 ||
-    !faixas.length ||
-    faixas.some(
-      (f) =>
-        !Number.isInteger(f.mes) ||
-        f.mes < 1 ||
-        f.percentual < 0 ||
-        f.percentual > 100,
-    )
-  )
-    throw new Error("Dados da curva inválidos. Use faixas como 1:80,2:70.");
-  const { data: curva, error } = await db
-    .from("administradora_curvas_estorno")
-    .insert({
-      administradora_id: administradoraId,
-      nome,
-      versao,
-      vigencia_inicio: vigenciaInicio,
-      ativa: true,
-      encerra_na_contemplacao: true,
-    })
-    .select("id")
-    .single();
-  if (error) throw new Error(error.message);
-  const { error: faixaError } = await db
-    .from("administradora_curva_estorno_faixas")
-    .insert(
-      faixas.map((f) => ({
-        curva_id: curva.id,
-        mes_relativo: f.mes,
-        percentual_estorno: f.percentual,
-      })),
-    );
-  if (faixaError) throw new Error(faixaError.message);
-  revalidatePath("/platform/administradoras");
+    if (error) throw new Error(error.message);
+    revalidatePath(`/platform/administradoras/${administradoraId}`);
+    return { status: "SUCCESS", message: "Tipo salvo com sucesso." };
+  } catch (error) {
+    return stateFrom(error);
+  }
+}
+
+export async function salvarModalidadeAdministradoraAction(
+  _previous: PlatformFormState,
+  formData: FormData,
+): Promise<PlatformFormState> {
+  try {
+    const administradoraId = String(formData.get("administradora_id") ?? "");
+    const nome = String(formData.get("nome") ?? "").trim();
+    if (!administradoraId || nome.length < 2)
+      return {
+        status: "VALIDATION_ERROR",
+        message: "Informe o nome da Modalidade.",
+      };
+    const db = await platformDb();
+    const { error } = await db.rpc("rpc_salvar_modalidade_administradora", {
+      p_administradora_id: administradoraId,
+      p_nome: nome,
+      p_descricao: String(formData.get("descricao") ?? "") || null,
+      p_ativo: formData.get("ativo") !== "false",
+      p_id: String(formData.get("id") ?? "") || null,
+    });
+    if (error) throw new Error(error.message);
+    revalidatePath(`/platform/administradoras/${administradoraId}`);
+    return { status: "SUCCESS", message: "Modalidade salva com sucesso." };
+  } catch (error) {
+    return stateFrom(error);
+  }
+}
+
+export async function criarCurvaEstornoAction(
+  _previous: PlatformFormState,
+  formData: FormData,
+): Promise<PlatformFormState> {
+  try {
+    const administradoraId = String(formData.get("administradora_id") ?? "");
+    const raw = String(formData.get("faixas") ?? "[]");
+    let faixas: unknown;
+    try {
+      faixas = JSON.parse(raw);
+    } catch {
+      return {
+        status: "VALIDATION_ERROR",
+        message: "As faixas da curva são inválidas.",
+      };
+    }
+    const db = await platformDb();
+    const { error } = await db.rpc("rpc_salvar_curva_estorno", {
+      p_administradora_id: administradoraId,
+      p_nome: String(formData.get("nome") ?? "").trim(),
+      p_vigencia_inicio: String(formData.get("vigencia_inicio") ?? ""),
+      p_faixas: faixas,
+      p_curva_id: String(formData.get("curva_id") ?? "") || null,
+      p_nova_versao: formData.get("nova_versao") === "true",
+    });
+    if (error) throw new Error(error.message);
+    revalidatePath(`/platform/administradoras/${administradoraId}`);
+    return {
+      status: "SUCCESS",
+      message:
+        formData.get("nova_versao") === "true"
+          ? "Nova versão da curva criada."
+          : "Curva salva com sucesso.",
+    };
+  } catch (error) {
+    return stateFrom(error);
+  }
+}
+
+export async function salvarDadosAdministradoraAction(
+  _previous: PlatformFormState,
+  formData: FormData,
+): Promise<PlatformFormState> {
+  try {
+    const id = String(formData.get("administradora_id") ?? "");
+    const nome = String(formData.get("nome") ?? "").trim();
+    if (!id || !nome)
+      return { status: "VALIDATION_ERROR", message: "Nome obrigatório." };
+    const db = await platformDb();
+    const { error } = await db
+      .from("administradoras")
+      .update({
+        nome,
+        nome_fantasia: String(formData.get("nome_fantasia") ?? "") || null,
+        status: String(formData.get("status") ?? "ATIVA"),
+      })
+      .eq("id", id);
+    if (error) throw new Error(error.message);
+    revalidatePath(`/platform/administradoras/${id}`);
+    return { status: "SUCCESS", message: "Dados gerais salvos." };
+  } catch (error) {
+    return stateFrom(error);
+  }
 }
