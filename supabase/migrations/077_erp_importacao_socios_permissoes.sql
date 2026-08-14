@@ -120,11 +120,6 @@ for each row execute function public.validar_socio_pagador_conta();
 
 -- Solicitação operacional: Fernando e Eroni iniciam habilitados como sócios
 -- somente na tenant Gauchinho. Nenhum outro vínculo ou tenant é alterado.
--- O trigger legado protege qualquer UPDATE de vínculo PLATFORM, mesmo quando o
--- papel e o escopo não mudam. Suspendê-lo apenas ao redor deste backfill evita
--- falsos positivos sem enfraquecer a proteção durante a operação normal.
-alter table public.empresa_usuarios disable trigger trg_validar_papel_empresa_usuario;
-
 update public.empresa_usuarios eu
 set socio_pagador = true,
     updated_at = now()
@@ -137,8 +132,6 @@ where eu.empresa_id = e.id
     lower(trim(u.nome)) like '%fernando%'
     or lower(trim(u.nome)) like '%eroni%'
   );
-
-alter table public.empresa_usuarios enable trigger trg_validar_papel_empresa_usuario;
 
 -- O fechamento considera também sócios que não pagaram nada no período.
 -- Assim, se Fernando adiantou tudo e Eroni nada, o saldo devido continua visível.
