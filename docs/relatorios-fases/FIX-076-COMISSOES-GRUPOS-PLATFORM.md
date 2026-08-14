@@ -45,16 +45,16 @@ O ambiente isolado terminou com dois Tipos ativos da Racon: `IMOVEL`/Imóvel e `
 
 - `npx tsc --noEmit`: PASS;
 - lint somente dos arquivos desta entrega: PASS, zero erro/aviso;
-- `npm test`: PASS — 720 testes, 37 skips, 126 arquivos aprovados e 9 ignorados;
+- `npm test`: PASS — 732 testes, 37 skips, 130 arquivos aprovados e 9 ignorados;
 - `npm run build`: PASS — 131 páginas geradas/validadas;
 - teste SQL estrutural/matemático 076 no Supabase isolado: PASS;
-- teste SQL transacional 077, incluindo contemplação com/sem etapa e idempotência: PASS;
+- teste SQL transacional 078, incluindo contemplação com/sem etapa e idempotência: PASS no ambiente isolado e em Production sob `BEGIN/ROLLBACK`;
 - `supabase db lint --linked --level error`: nenhuma falha da migration 078. Permanece um erro legado em `convert_ad_offer_order_to_campaign`, anterior e fora deste escopo;
-- lint global do frontend: permanece vermelho por 68 erros preexistentes fora dos arquivos desta entrega; o recorte novo está limpo.
+- lint global do frontend: permanece vermelho por 53 erros e 77 avisos preexistentes fora dos arquivos desta entrega; o recorte novo está limpo.
 
 ## Segurança e promoção
 
-A migration, originalmente homologada como 077 e renumerada para 078 após a integração da migration `077_erp_importacao_socios_permissoes.sql`, foi aplicada somente no projeto efêmero `bfpgyralphzjozrcwjsn`. Até esta homologação, nenhuma migration havia sido executada no Supabase principal e nenhum merge em `main` havia sido realizado.
+A migration, originalmente homologada como 077 e renumerada para 078 após a integração da migration `077_erp_importacao_socios_permissoes.sql`, foi validada em dois branches efêmeros derivados de Production. As migrations 077 e 078 foram aplicadas no Supabase principal em 14/08/2026; o histórico remoto `001–078` e os testes transacionais com rollback foram verificados após a aplicação.
 
 ## Evidência de Preview
 
