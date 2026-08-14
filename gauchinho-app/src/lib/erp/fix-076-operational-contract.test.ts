@@ -3,12 +3,12 @@ import fs from "node:fs";
 import path from "node:path";
 const root = path.resolve(process.cwd(), "..");
 const read = (file: string) => fs.readFileSync(path.join(root, file), "utf8");
-describe("correção operacional 077", () => {
+describe("correção operacional 078", () => {
   const migration = read(
-    "supabase/migrations/077_fix_076_fluxo_administradora_operacional.sql",
+    "supabase/migrations/078_fix_076_fluxo_administradora_operacional.sql",
   );
   it("mantém 076 imutável e implementa a correção na migration seguinte", () => {
-    expect(migration).toContain("077: correções forward-only");
+    expect(migration).toContain("078: correções forward-only");
     expect(migration).toContain("administradora_tipo_aliases");
     expect(migration).toContain("AUTOMOVEIS");
   });

@@ -4,7 +4,7 @@ Data da homologação técnica: 14/08/2026
 
 Branch: `codex/fix-076-comissoes-grupos-platform`
 
-Migration: `077_fix_076_fluxo_administradora_operacional.sql`
+Migration: `078_fix_076_fluxo_administradora_operacional.sql`
 
 Supabase isolado: `codex-fix-076-operacional-v2` (`bfpgyralphzjozrcwjsn`)
 
@@ -49,12 +49,12 @@ O ambiente isolado terminou com dois Tipos ativos da Racon: `IMOVEL`/Imóvel e `
 - `npm run build`: PASS — 131 páginas geradas/validadas;
 - teste SQL estrutural/matemático 076 no Supabase isolado: PASS;
 - teste SQL transacional 077, incluindo contemplação com/sem etapa e idempotência: PASS;
-- `supabase db lint --linked --level error`: nenhuma falha da migration 077. Permanece um erro legado em `convert_ad_offer_order_to_campaign`, anterior e fora deste escopo;
+- `supabase db lint --linked --level error`: nenhuma falha da migration 078. Permanece um erro legado em `convert_ad_offer_order_to_campaign`, anterior e fora deste escopo;
 - lint global do frontend: permanece vermelho por 68 erros preexistentes fora dos arquivos desta entrega; o recorte novo está limpo.
 
 ## Segurança e promoção
 
-A migration 077 foi aplicada somente no projeto efêmero `bfpgyralphzjozrcwjsn`. Nenhuma migration foi executada no Supabase principal, nenhum deployment Production foi criado e nenhum merge em `main` foi realizado. A promoção exige autorização expressa após a homologação do Preview.
+A migration, originalmente homologada como 077 e renumerada para 078 após a integração da migration `077_erp_importacao_socios_permissoes.sql`, foi aplicada somente no projeto efêmero `bfpgyralphzjozrcwjsn`. Até esta homologação, nenhuma migration havia sido executada no Supabase principal e nenhum merge em `main` havia sido realizado.
 
 ## Evidência de Preview
 

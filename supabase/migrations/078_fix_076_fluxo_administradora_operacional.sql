@@ -1,4 +1,4 @@
--- 077: correções forward-only da fase 076.
+-- 078: correções forward-only da fase 076.
 -- Catálogo nasce na Administradora, cronograma automático é herdado,
 -- recebimento real é separado da conciliação e lance pertence à cota.
 
@@ -176,7 +176,7 @@ BEGIN
   ) THEN RAISE EXCEPTION 'Opção de cota não pertence à administradora do programa'; END IF;
   RETURN NEW;
 END $$;
--- Regras automáticas anteriores à 077 podiam persistir um cronograma que o
+-- Regras automáticas anteriores à 078 podiam persistir um cronograma que o
 -- motor nunca deveria tratar como fonte própria. A partir desta correção elas
 -- herdam exclusivamente o cronograma da Franqueadora.
 UPDATE public.comissao_regras_participantes
