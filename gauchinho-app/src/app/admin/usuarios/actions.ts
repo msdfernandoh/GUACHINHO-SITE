@@ -9,37 +9,27 @@ import { canManageUsers, PERFIS } from "@/lib/auth/permissions";
 import type { AdminMenuKey } from "@/lib/admin/admin-menus";
 import { isGmailAddress } from "@/lib/google-calendar/config";
 import { clearGoogleRefreshToken } from "@/lib/google-calendar/token-store";
+import { getCurrentTenantContext } from "@/lib/tenant/context";
+import { normalizeErpAccessIds } from "@/lib/erp/erp-acesso";
 
 function redirectUsuarios(codigo: string): never {
   redirect(`/admin/usuarios?flash=${encodeURIComponent(codigo)}`);
 }
 
 export async function fetchUsuarios() {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("usuarios")
-    .select(
-      "id, auth_user_id, nome, email, telefone, perfil, ativo, is_consultor, leads_apenas_proprios, agenda_acesso_todos, google_agenda_sync, google_calendar_connected_at, google_calendar_email, admin_menus, created_at",
-    )
-    .order("nome");
-  if (error && /is_consultor|leads_apenas_proprios|agenda_acesso_todos|google_agenda_sync|google_calendar_connected_at|google_calendar_email/.test(error.message)) {
-    const legacy = await supabase
-      .from("usuarios")
-      .select("id, nome, email, telefone, perfil, ativo, created_at")
-      .order("nome");
-    if (legacy.error) throw new Error(legacy.error.message);
-    return (legacy.data ?? []).map((u) => ({
-      ...u,
-      is_consultor: u.perfil === "srd",
-      leads_apenas_proprios: false,
-      agenda_acesso_todos: false,
-      google_agenda_sync: false,
-      google_calendar_connected_at: null,
-      google_calendar_email: null,
-    }));
-  }
+  const { empresaAtiva } = await getCurrentTenantContext();
+  if (!empresaAtiva) return [];
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from("empresa_usuarios")
+    .select("socio_pagador,erp_modulos_visiveis,usuario:usuarios(id,auth_user_id,nome,email,telefone,perfil,ativo,is_consultor,leads_apenas_proprios,agenda_acesso_todos,google_agenda_sync,google_calendar_connected_at,google_calendar_email,admin_menus,created_at)")
+    .eq("empresa_id", empresaAtiva.id)
+    .eq("ativo", true);
   if (error) throw new Error(error.message);
-  return data ?? [];
+  return (data ?? []).flatMap((link) => {
+    const usuario = Array.isArray(link.usuario) ? link.usuario[0] : link.usuario;
+    return usuario ? [{ ...usuario, socio_pagador: Boolean(link.socio_pagador), erp_modulos_visiveis: link.erp_modulos_visiveis }] : [];
+  }).sort((a, b) => String(a.nome).localeCompare(String(b.nome), "pt-BR"));
 }
 
 export async function createUsuarioAction(formData: FormData) {
@@ -59,6 +49,10 @@ export async function createUsuarioAction(formData: FormData) {
   const googleAgendaSync = formData.get("google_agenda_sync") === "on";
   const menuKeys = formData.getAll("admin_menu").map((v) => String(v).trim()) as AdminMenuKey[];
   const adminMenus = menuKeys.length ? menuKeys : null;
+  const socioPagador = formData.get("socio_pagador") === "on";
+  const erpMenus = normalizeErpAccessIds(formData.getAll("erp_menu").map(String)) ?? [];
+  const { empresaAtiva } = await getCurrentTenantContext();
+  if (!empresaAtiva) throw new Error("Empresa ativa não encontrada");
 
   const admin = createAdminClient();
   const { data: authUser, error: authError } = await admin.auth.admin.createUser({
@@ -115,6 +109,33 @@ export async function createUsuarioAction(formData: FormData) {
     throw new Error(error.message);
   }
 
+  const { data: usuarioCriado, error: usuarioErr } = await admin
+    .from("usuarios")
+    .select("id")
+    .eq("auth_user_id", authUser.user.id)
+    .single();
+  if (usuarioErr || !usuarioCriado) throw new Error(usuarioErr?.message ?? "Usuário não encontrado após criação");
+  const roleCode = perfil === "master"
+    ? "admin_empresa"
+    : perfil === "visualizador"
+      ? "visualizador"
+      : perfil === "imobiliaria"
+        ? "parceiro_imobiliaria"
+        : "consultor";
+  const { data: papel, error: papelErr } = await admin.from("papeis").select("id").eq("codigo", roleCode).is("empresa_id", null).single();
+  if (papelErr || !papel) throw new Error(papelErr?.message ?? "Papel do usuário não encontrado");
+  const { error: vinculoErr } = await admin.from("empresa_usuarios").insert({
+    empresa_id: empresaAtiva.id,
+    usuario_id: usuarioCriado.id,
+    papel_id: papel.id,
+    ativo: true,
+    convidado_por: usuario.id,
+    origem: "ERP_USUARIOS",
+    socio_pagador: socioPagador,
+    erp_modulos_visiveis: erpMenus,
+  });
+  if (vinculoErr) throw new Error(vinculoErr.message);
+
   revalidatePath("/admin/usuarios");
   redirect("/admin/usuarios");
 }
@@ -164,6 +185,8 @@ export async function updateUsuarioEdicaoAction(formData: FormData) {
   const googleAgendaSyncRequested = formData.get("google_agenda_sync") === "on";
   const menuKeys = formData.getAll("admin_menu").map((v) => String(v).trim()) as AdminMenuKey[];
   const adminMenus = menuKeys.length ? menuKeys : null;
+  const socioPagador = formData.get("socio_pagador") === "on";
+  const erpMenus = normalizeErpAccessIds(formData.getAll("erp_menu").map(String)) ?? [];
 
   const admin = createAdminClient();
   const { data: alvo, error: loadErr } = await admin
@@ -237,6 +260,16 @@ export async function updateUsuarioEdicaoAction(formData: FormData) {
       redirectUsuarios("generico");
     }
   }
+
+  const { empresaAtiva } = await getCurrentTenantContext();
+  if (!empresaAtiva) redirectUsuarios("generico");
+  const { error: vinculoErr } = await admin
+    .from("empresa_usuarios")
+    .update({ socio_pagador: socioPagador, erp_modulos_visiveis: erpMenus })
+    .eq("empresa_id", empresaAtiva.id)
+    .eq("usuario_id", id)
+    .eq("ativo", true);
+  if (vinculoErr) redirectUsuarios("generico");
 
   revalidatePath("/admin/usuarios");
   revalidatePath("/admin/leads");

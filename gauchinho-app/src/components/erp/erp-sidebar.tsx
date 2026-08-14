@@ -6,10 +6,11 @@ import { ArrowLeft, BadgeDollarSign, BriefcaseBusiness, Building2, CircleDollarS
 import { ERP_MODULES, type ErpSistemaConfig } from "@/lib/erp/erp-modulos";
 import { listEnabledOperationalRoutes } from "@/lib/erp/erp-operational";
 import { cn } from "@/lib/utils/cn";
+import type { ErpAccessId } from "@/lib/erp/erp-acesso";
 
-export function ErpSidebar({ config, empresaNome }: { config: ErpSistemaConfig; empresaNome: string }) {
+export function ErpSidebar({ config, empresaNome, allowedAccess }: { config: ErpSistemaConfig; empresaNome: string; allowedAccess: ErpAccessId[] }) {
   const pathname = usePathname();
-  const operational = listEnabledOperationalRoutes(config);
+  const operational = listEnabledOperationalRoutes(config).filter((module) => allowedAccess.includes(module.id as ErpAccessId));
   const icons = { clientes: Users, consultores: BriefcaseBusiness, lances: TicketCheck, assembleias: Building2, "regras-comissao": Settings2, "repasse-franquia": BadgeDollarSign, "minhas-comissoes": CircleDollarSign, "contas-pagar": WalletCards } as const;
   return (
     <aside className="flex w-64 shrink-0 flex-col border-r border-slate-200 bg-white text-slate-900">
@@ -28,7 +29,7 @@ export function ErpSidebar({ config, empresaNome }: { config: ErpSistemaConfig; 
         </div>
         <div className="space-y-1">
           <p className="px-3 pb-1 text-[10px] font-bold uppercase tracking-widest text-slate-400">Modulos base</p>
-        {ERP_MODULES.filter((module) => config.modulos.includes(module.id)).map((module) => {
+        {ERP_MODULES.filter((module) => config.modulos.includes(module.id) && allowedAccess.includes(module.id)).map((module) => {
           const active = module.href === "/erp" ? pathname === "/erp" : pathname === module.href || pathname.startsWith(`${module.href}/`);
           return <Link key={module.id} href={module.href} className={cn("flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium", active ? "bg-blue-700 text-white" : "text-slate-700 hover:bg-slate-100")}><LayoutDashboard className="h-4 w-4" />{module.label}</Link>;
         })}

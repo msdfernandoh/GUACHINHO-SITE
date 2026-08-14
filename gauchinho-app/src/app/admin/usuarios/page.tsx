@@ -14,6 +14,9 @@ import { Button, Input, Label, Select } from "@/components/ui/form-primitives";
 import { PERFIS } from "@/lib/auth/permissions";
 import { formatDate } from "@/lib/utils/format";
 import { ADMIN_MENU_ITEMS, resolveAdminMenus, type AdminMenuKey } from "@/lib/admin/admin-menus";
+import { getCurrentTenantContext } from "@/lib/tenant/context";
+import { getErpSistemaConfig } from "@/lib/erp/erp-modulos";
+import { ERP_ACCESS_ITEMS, listTenantErpAccessIds, resolveErpUserAccess, type ErpAccessId } from "@/lib/erp/erp-acesso";
 
 export default async function UsuariosPage({
   searchParams,
@@ -27,6 +30,10 @@ export default async function UsuariosPage({
   const sp = await searchParams;
   const usuarios = await fetchUsuarios();
   const defaultMenus = resolveAdminMenus("srd", null);
+  const { empresaAtiva } = await getCurrentTenantContext();
+  const erpConfig = getErpSistemaConfig(empresaAtiva?.configuracoes);
+  const erpDefaultMenus = listTenantErpAccessIds(erpConfig);
+  const erpMenuOptions = ERP_ACCESS_ITEMS.filter((item) => erpDefaultMenus.includes(item.id));
 
   return (
     <div className="space-y-8">
@@ -105,6 +112,10 @@ export default async function UsuariosPage({
           <input type="checkbox" name="google_agenda_sync" />
           Sincronizar agenda com Google Agenda (e-mail @gmail.com)
         </label>
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" name="socio_pagador" />
+          Sócio pagador (pode ser indicado em contas pagas pessoalmente)
+        </label>
         <p className="text-xs text-zinc-500">
           Após criar, o usuário Gmail deve abrir Admin → Agenda e clicar em &quot;Conectar Google Agenda&quot;.
         </p>
@@ -127,6 +138,18 @@ export default async function UsuariosPage({
             ))}
           </div>
         </div>
+        <div className="space-y-2 rounded-lg border border-blue-200 p-3 dark:border-blue-900">
+          <p className="text-sm font-semibold">Menus do ERP</p>
+          <p className="text-xs text-zinc-500">Menus desmarcados ficam ocultos e a URL também é bloqueada.</p>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {erpMenuOptions.map((m) => (
+              <label key={m.id} className="flex items-center gap-2 text-sm">
+                <input type="checkbox" name="erp_menu" value={m.id} defaultChecked />
+                {m.label}
+              </label>
+            ))}
+          </div>
+        </div>
         <p className="text-xs text-zinc-500">
           Usuários marcados como consultores aparecem nas agendas e nos compromissos com leads.
         </p>
@@ -143,6 +166,7 @@ export default async function UsuariosPage({
               <th className="px-3 py-2">Só leads próprios</th>
               <th className="px-3 py-2">Agenda todos</th>
               <th className="px-3 py-2">Google Agenda</th>
+              <th className="px-3 py-2">Sócio pagador</th>
               <th className="px-3 py-2">Ativo</th>
               <th className="px-3 py-2">Desde</th>
               <th className="px-3 py-2" />
@@ -169,6 +193,9 @@ export default async function UsuariosPage({
                 .google_calendar_connected_at;
               const adminMenusRaw = (u as { admin_menus?: AdminMenuKey[] | null }).admin_menus;
               const menuKeysAtivos = resolveAdminMenus(u.perfil, adminMenusRaw);
+              const socioPagador = Boolean((u as { socio_pagador?: boolean }).socio_pagador);
+              const erpMenusRaw = (u as { erp_modulos_visiveis?: ErpAccessId[] | null }).erp_modulos_visiveis;
+              const erpMenuIdsAtivos = resolveErpUserAccess(erpConfig, erpMenusRaw);
               return (
                 <tr key={u.id} className="border-b dark:border-zinc-800">
                   <td className="px-3 py-2">{u.nome}</td>
@@ -188,6 +215,9 @@ export default async function UsuariosPage({
                         googleAgendaSync={googleAgendaSync}
                         googleConnected={googleConnected}
                         menuKeysAtivos={menuKeysAtivos}
+                        socioPagador={socioPagador}
+                        erpMenuIdsAtivos={erpMenuIdsAtivos}
+                        erpMenuOptions={erpMenuOptions}
                         updateAction={updateUsuarioEdicaoAction}
                       />
                     </div>
@@ -211,6 +241,7 @@ export default async function UsuariosPage({
                       <span className="text-zinc-500">Desligado</span>
                     )}
                   </td>
+                  <td className="px-3 py-2">{socioPagador ? "Sim" : "Não"}</td>
                   <td className="px-3 py-2">{u.ativo ? "Sim" : "Não"}</td>
                   <td className="px-3 py-2">{formatDate(u.created_at)}</td>
                   <td className="px-3 py-2">

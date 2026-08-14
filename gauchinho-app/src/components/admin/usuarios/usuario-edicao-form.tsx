@@ -7,6 +7,7 @@ import { surfaceInputDark } from "@/components/ui/form-primitives";
 import { ADMIN_MENU_ITEMS, type AdminMenuKey } from "@/lib/admin/admin-menus";
 import { PERFIS } from "@/lib/auth/permissions";
 import { isGmailAddress } from "@/lib/google-calendar/email";
+import type { ErpAccessId } from "@/lib/erp/erp-acesso";
 
 type Props = {
   usuarioId: string;
@@ -20,6 +21,9 @@ type Props = {
   googleAgendaSync: boolean;
   googleConnected: boolean;
   menuKeysAtivos: AdminMenuKey[];
+  socioPagador: boolean;
+  erpMenuIdsAtivos: ErpAccessId[];
+  erpMenuOptions: Array<{ id: ErpAccessId; label: string }>;
   updateAction: (formData: FormData) => Promise<void>;
 };
 
@@ -35,6 +39,9 @@ export function UsuarioEdicaoForm({
   googleAgendaSync,
   googleConnected,
   menuKeysAtivos,
+  socioPagador,
+  erpMenuIdsAtivos,
+  erpMenuOptions,
   updateAction,
 }: Props) {
   const [emailEdit, setEmailEdit] = useState(email);
@@ -54,6 +61,22 @@ export function UsuarioEdicaoForm({
           <Label className="text-xs">Nome</Label>
           <Input name="nome" defaultValue={nome} required className={`mt-1 ${surfaceInputDark}`} />
         </div>
+        <div className="space-y-2 rounded-md border border-blue-900 p-2">
+          <p className="text-xs font-semibold text-zinc-300">Menus do ERP</p>
+          <p className="text-[10px] text-zinc-500">Desmarcado = oculto e bloqueado pela URL.</p>
+          <div className="grid max-h-48 gap-1.5 overflow-y-auto sm:grid-cols-2">
+            {erpMenuOptions.map((m) => (
+              <label key={m.id} className="flex items-center gap-2 text-[11px]">
+                <input type="checkbox" name="erp_menu" value={m.id} defaultChecked={erpMenuIdsAtivos.includes(m.id)} />
+                {m.label}
+              </label>
+            ))}
+          </div>
+        </div>
+        <label className="flex items-start gap-2 text-xs">
+          <input type="checkbox" name="socio_pagador" defaultChecked={socioPagador} className="mt-0.5" />
+          Sócio pagador (aparece na seleção de contas pagas pessoalmente)
+        </label>
         <div>
           <Label className="text-xs">E-mail (login)</Label>
           <Input

@@ -1,11 +1,293 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentTenantContext } from "@/lib/tenant/context";
+import { parseContasPagarCsv } from "@/lib/financeiro/contas-pagar-csv";
+import { getErpSistemaConfig } from "@/lib/erp/erp-modulos";
+import { canAccessErpRoute } from "@/lib/erp/erp-acesso";
 
-async function empresaId() { const { empresaAtiva } = await getCurrentTenantContext(); if (!empresaAtiva) throw new Error("Empresa não identificada."); return empresaAtiva.id; }
-export async function criarBanco(form: FormData) { const e=await empresaId(); const db=await createClient(); const {error}=await db.from("financeiro_contas_bancarias").insert({empresa_id:e,nome:String(form.get("nome")||""),banco:String(form.get("banco")||"")||null,agencia:String(form.get("agencia")||"")||null,conta_mascarada:String(form.get("conta")||"")||null}); if(error) throw new Error(error.message); revalidatePath("/erp/contas-pagar"); }
-export async function criarCentro(form: FormData) { const e=await empresaId(); const db=await createClient(); const {error}=await db.from("financeiro_centros_custo").insert({empresa_id:e,nome:String(form.get("nome")||""),codigo:String(form.get("codigo")||"")||null}); if(error) throw new Error(error.message); revalidatePath("/erp/contas-pagar"); }
-export async function criarConta(form: FormData) { const e=await empresaId(); const db=await createClient(); const pessoal=form.get("pessoal")==="on"; const valor=Number(form.get("valor")); const vencimento=String(form.get("vencimento")); const {error}=await db.from("financeiro_contas_pagar").insert({empresa_id:e,descricao:String(form.get("descricao")||""),fornecedor:String(form.get("fornecedor")||"")||null,centro_custo_id:String(form.get("centro")||"")||null,conta_bancaria_id:String(form.get("banco")||"")||null,vencimento,competencia:vencimento.slice(0,7),valor,pago_pessoalmente:pessoal,socio_pagador_usuario_id:pessoal?(String(form.get("socio")||"")||null):null,observacao:String(form.get("obs")||"")||null}); if(error) throw new Error(error.message); revalidatePath("/erp/contas-pagar"); }
-export async function baixarConta(id:string) { const e=await empresaId(); const db=await createClient(); const {error}=await db.rpc("rpc_baixar_conta_pagar",{p_empresa_id:e,p_conta_id:id,p_data:new Date().toISOString().slice(0,10)}); if(error) throw new Error(error.message); revalidatePath("/erp/contas-pagar"); }
+export type ContasActionResult = {
+  ok: boolean;
+  message: string;
+  importacao?: { importadas: number; duplicadas: number; invalidas: number; erros: string[] };
+};
+
+function failure(error: unknown): ContasActionResult {
+  return { ok: false, message: error instanceof Error ? error.message : "Não foi possível concluir a operação." };
+}
+
+async function requireFinanceWrite() {
+  const { usuario, empresaAtiva, vinculos } = await getCurrentTenantContext();
+  if (!usuario || !empresaAtiva || !vinculos.some((v) => v.empresa_id === empresaAtiva.id)) {
+    throw new Error("Empresa ou usuário não identificado.");
+  }
+  const vinculo = vinculos.find((item) => item.empresa_id === empresaAtiva.id);
+  const config = getErpSistemaConfig(empresaAtiva.configuracoes);
+  if (!canAccessErpRoute(config, vinculo?.erp_modulos_visiveis, "contas-pagar")) {
+    throw new Error("Este usuário não possui acesso ao menu Contas a pagar e caixa.");
+  }
+  const session = await createClient();
+  const { data: canWrite, error } = await session.rpc("can_write_tenant_internal", {
+    p_empresa_id: empresaAtiva.id,
+  });
+  if (error || !canWrite) throw new Error("Você não tem permissão para alterar o financeiro desta empresa.");
+  return { empresaId: empresaAtiva.id, session, admin: createAdminClient() };
+}
+
+function value(form: FormData, name: string) {
+  return String(form.get(name) ?? "").trim();
+}
+
+function normalizeName(name: string) {
+  return name
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .toLowerCase();
+}
+
+export async function criarBanco(form: FormData): Promise<ContasActionResult> {
+  try {
+    const { empresaId, admin } = await requireFinanceWrite();
+    const nome = value(form, "nome");
+    if (!nome) throw new Error("Informe o nome do banco para exibição.");
+    const { error } = await admin.from("financeiro_contas_bancarias").insert({
+      empresa_id: empresaId,
+      nome,
+      banco: value(form, "banco") || null,
+      agencia: value(form, "agencia") || null,
+      conta_mascarada: value(form, "conta") || null,
+    });
+    if (error) {
+      if (/duplicate|unique/i.test(error.message)) throw new Error("Já existe um banco com esse nome.");
+      throw new Error(error.message);
+    }
+    revalidatePath("/erp/contas-pagar");
+    return { ok: true, message: "Banco salvo com sucesso." };
+  } catch (error) {
+    return failure(error);
+  }
+}
+
+export async function criarCentro(form: FormData): Promise<ContasActionResult> {
+  try {
+    const { empresaId, admin } = await requireFinanceWrite();
+    const nome = value(form, "nome");
+    if (!nome) throw new Error("Informe o nome do centro de custo.");
+    const { error } = await admin.from("financeiro_centros_custo").insert({
+      empresa_id: empresaId,
+      nome,
+      codigo: value(form, "codigo") || null,
+    });
+    if (error) {
+      if (/duplicate|unique/i.test(error.message)) throw new Error("Já existe um centro de custo com esse nome.");
+      throw new Error(error.message);
+    }
+    revalidatePath("/erp/contas-pagar");
+    return { ok: true, message: "Centro de custo salvo com sucesso." };
+  } catch (error) {
+    return failure(error);
+  }
+}
+
+async function assertSocio(admin: ReturnType<typeof createAdminClient>, empresaId: string, socioId: string) {
+  const { data, error } = await admin
+    .from("empresa_usuarios")
+    .select("id")
+    .eq("empresa_id", empresaId)
+    .eq("usuario_id", socioId)
+    .eq("ativo", true)
+    .eq("socio_pagador", true)
+    .maybeSingle();
+  if (error || !data) throw new Error("O usuário selecionado não está habilitado como sócio pagador.");
+}
+
+export async function criarConta(form: FormData): Promise<ContasActionResult> {
+  try {
+    const { empresaId, admin } = await requireFinanceWrite();
+    const pessoal = form.get("pessoal") === "on";
+    const socioId = value(form, "socio");
+    const valor = Number(value(form, "valor"));
+    const vencimento = value(form, "vencimento");
+    const descricao = value(form, "descricao");
+    if (!descricao || !vencimento || !Number.isFinite(valor) || valor <= 0) {
+      throw new Error("Preencha descrição, vencimento e um valor maior que zero.");
+    }
+    if (pessoal && !socioId) throw new Error("Selecione quem pagou pessoalmente.");
+    if (pessoal) await assertSocio(admin, empresaId, socioId);
+    const { error } = await admin.from("financeiro_contas_pagar").insert({
+      empresa_id: empresaId,
+      descricao,
+      fornecedor: value(form, "fornecedor") || null,
+      centro_custo_id: value(form, "centro") || null,
+      conta_bancaria_id: value(form, "banco") || null,
+      vencimento,
+      competencia: vencimento.slice(0, 7),
+      valor,
+      pago_pessoalmente: pessoal,
+      socio_pagador_usuario_id: pessoal ? socioId : null,
+      observacao: value(form, "obs") || null,
+    });
+    if (error) throw new Error(error.message);
+    revalidatePath("/erp/contas-pagar");
+    return { ok: true, message: "Conta adicionada com sucesso." };
+  } catch (error) {
+    return failure(error);
+  }
+}
+
+export async function baixarConta(id: string): Promise<ContasActionResult> {
+  try {
+    const { empresaId, session } = await requireFinanceWrite();
+    const { error } = await session.rpc("rpc_baixar_conta_pagar", {
+      p_empresa_id: empresaId,
+      p_conta_id: id,
+      p_data: new Date().toISOString().slice(0, 10),
+    });
+    if (error) throw new Error(error.message);
+    revalidatePath("/erp/contas-pagar");
+    return { ok: true, message: "Conta marcada como paga." };
+  } catch (error) {
+    return failure(error);
+  }
+}
+
+export async function atualizarSocioPagadorContas(
+  contaIds: string[],
+  socioId: string | null,
+): Promise<ContasActionResult> {
+  try {
+    const ids = [...new Set(contaIds.map((id) => id.trim()).filter(Boolean))];
+    if (!ids.length) throw new Error("Selecione pelo menos uma conta.");
+    if (ids.length > 500) throw new Error("Selecione no máximo 500 contas por vez.");
+    const { empresaId, admin } = await requireFinanceWrite();
+    if (socioId) await assertSocio(admin, empresaId, socioId);
+    const { data, error } = await admin
+      .from("financeiro_contas_pagar")
+      .update({
+        pago_pessoalmente: Boolean(socioId),
+        socio_pagador_usuario_id: socioId,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("empresa_id", empresaId)
+      .in("id", ids)
+      .select("id");
+    if (error) throw new Error(error.message);
+    if ((data ?? []).length !== ids.length) throw new Error("Uma ou mais contas não pertencem à empresa ativa.");
+    revalidatePath("/erp/contas-pagar");
+    return {
+      ok: true,
+      message: socioId
+        ? `Sócio pagador aplicado a ${(data ?? []).length} conta(s).`
+        : `Pagamento pessoal removido de ${(data ?? []).length} conta(s).`,
+    };
+  } catch (error) {
+    return failure(error);
+  }
+}
+
+async function ensureCatalog(
+  admin: ReturnType<typeof createAdminClient>,
+  table: "financeiro_centros_custo" | "financeiro_contas_bancarias",
+  empresaId: string,
+  names: Array<string | null>,
+) {
+  const useful = [...new Set(names.filter((name): name is string => {
+    if (!name) return false;
+    return !["nao informado", "a_definir", "a preencher"].includes(normalizeName(name));
+  }))];
+  if (useful.length) {
+    const { error } = await admin.from(table).upsert(
+      useful.map((nome) => ({ empresa_id: empresaId, nome })),
+      { onConflict: "empresa_id,nome", ignoreDuplicates: true },
+    );
+    if (error) throw new Error(error.message);
+  }
+  const { data, error } = await admin.from(table).select("id,nome").eq("empresa_id", empresaId);
+  if (error) throw new Error(error.message);
+  return new Map((data ?? []).map((row) => [normalizeName(row.nome), row.id]));
+}
+
+export async function importarContasCsv(form: FormData): Promise<ContasActionResult> {
+  try {
+    const file = form.get("arquivo");
+    if (!(file instanceof File) || file.size === 0) throw new Error("Selecione um arquivo CSV.");
+    if (file.size > 5 * 1024 * 1024) throw new Error("O CSV deve ter no máximo 5 MB.");
+    const parsed = parseContasPagarCsv(await file.text());
+    if (!parsed.contas.length && parsed.erros.length) {
+      throw new Error(parsed.erros.slice(0, 3).map((item) => `Linha ${item.linha}: ${item.mensagem}`).join(" · "));
+    }
+    if (parsed.contas.length > 2_000) throw new Error("O CSV deve conter no máximo 2.000 contas.");
+    const contasPorChave = new Map(parsed.contas.map((conta) => [conta.importacaoChave, conta]));
+    const contasImportacao = [...contasPorChave.values()];
+    const duplicadasNoArquivo = parsed.contas.length - contasImportacao.length;
+    const { empresaId, admin } = await requireFinanceWrite();
+    const centroIds = await ensureCatalog(
+      admin,
+      "financeiro_centros_custo",
+      empresaId,
+      contasImportacao.map((conta) => conta.centroCusto),
+    );
+    const bancoIds = await ensureCatalog(
+      admin,
+      "financeiro_contas_bancarias",
+      empresaId,
+      contasImportacao.map((conta) => conta.bancoPagamento),
+    );
+    const keys = contasImportacao.map((conta) => conta.importacaoChave);
+    const { data: existing, error: existingError } = await admin
+      .from("financeiro_contas_pagar")
+      .select("importacao_chave")
+      .eq("empresa_id", empresaId)
+      .eq("importacao_origem", "CSV_CONTAS_PAGAR_V1")
+      .in("importacao_chave", keys);
+    if (existingError) throw new Error(existingError.message);
+    const existingKeys = new Set((existing ?? []).map((row) => row.importacao_chave));
+    const novas = contasImportacao.filter((conta) => !existingKeys.has(conta.importacaoChave));
+    const rows = novas.map((conta) => ({
+      empresa_id: empresaId,
+      importacao_origem: "CSV_CONTAS_PAGAR_V1",
+      importacao_chave: conta.importacaoChave,
+      fornecedor: conta.fornecedor,
+      descricao: conta.descricao,
+      centro_custo_id: conta.centroCusto ? centroIds.get(normalizeName(conta.centroCusto)) ?? null : null,
+      conta_bancaria_id: conta.bancoPagamento ? bancoIds.get(normalizeName(conta.bancoPagamento)) ?? null : null,
+      vencimento: conta.vencimento,
+      competencia: conta.vencimento.slice(0, 7),
+      valor: conta.valor,
+      status: conta.status,
+      pago_em: conta.dataPagamento,
+      pago_pessoalmente: false,
+      socio_pagador_usuario_id: null,
+      observacao: conta.observacao,
+      data_lancamento: conta.dataLancamento,
+      forma_pagamento: conta.formaPagamento,
+      comprovante_nome: conta.comprovanteNome,
+      comprovante_url: conta.comprovanteUrl,
+      responsavel_importado: conta.responsavelImportado,
+      lancado_por_importado: conta.lancadoPorImportado,
+      necessita_revisao: conta.necessitaRevisao,
+    }));
+    if (rows.length) {
+      const { error } = await admin.from("financeiro_contas_pagar").insert(rows);
+      if (error) throw new Error(error.message);
+    }
+    revalidatePath("/erp/contas-pagar");
+    const errors = parsed.erros.slice(0, 10).map((item) => `Linha ${item.linha}: ${item.mensagem}`);
+    const duplicadas = existingKeys.size + duplicadasNoArquivo;
+    return {
+      ok: true,
+      message: `${rows.length} conta(s) importada(s); ${duplicadas} duplicada(s); ${parsed.erros.length} inválida(s).`,
+      importacao: {
+        importadas: rows.length,
+        duplicadas,
+        invalidas: parsed.erros.length,
+        erros: errors,
+      },
+    };
+  } catch (error) {
+    return failure(error);
+  }
+}

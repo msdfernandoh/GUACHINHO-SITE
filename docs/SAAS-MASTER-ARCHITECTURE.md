@@ -204,6 +204,16 @@ A plataforma suporta:
 - relatório: `docs/relatorios-fases/ERP-COMISSOES-GRUPOS-CONTEMPLACAO-V2.md`;
 - estado: somente branch Git, Supabase efêmero e Preview; não aplicar em Production ou mesclar em `main` sem autorização expressa.
 
+### Importação financeira, sócios e acesso individual ao ERP (Migration 077 — versionada)
+- importações CSV de contas pagas e abertas são idempotentes por tenant/origem/chave e preservam os dados operacionais do arquivo legado;
+- sócio pagador e menus visíveis do ERP pertencem ao vínculo N:N `empresa_usuarios`, nunca à identidade global em `usuarios`;
+- atribuir sócio a uma conta histórica altera somente o fechamento visual entre sócios, sem estorno ou mutação do livro razão;
+- menus não concedidos são ocultados e bloqueados também em acesso por URL, incluindo subrotas explícitas;
+- entradas e saídas manuais são registradas por RPC como fatos append-only em `caixa_movimentos`;
+- bancos e centros de custo passam a devolver resultado controlado na própria interface;
+- relatório: `docs/relatorios-fases/ERP-IMPORTACAO-SOCIOS-PERMISSOES-CAIXA.md`;
+- estado: código e migration versionados e validados localmente; Supabase e homologação autenticada pendentes.
+
 ## 5. Declaração Final de Segurança e Riscos
 
 * O P0 das APIs, o hardening `057–059`, o motor canônico `060–063` e o fechamento técnico `064–066` estão implantados no Supabase principal.

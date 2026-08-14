@@ -29,6 +29,8 @@ export type EmpresaUsuarioVinculo = {
   usuario_id: string;
   papel_id: string;
   ativo: boolean;
+  socio_pagador?: boolean;
+  erp_modulos_visiveis?: string[] | null;
   empresa?: Empresa;
   papel?: Papel;
 };
@@ -67,6 +69,8 @@ export async function getUserCompanies(usuarioId: string): Promise<EmpresaUsuari
       usuario_id,
       papel_id,
       ativo,
+      socio_pagador,
+      erp_modulos_visiveis,
       empresa:empresas(*),
       papel:papeis(*)
     `)

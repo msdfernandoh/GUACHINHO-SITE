@@ -3,14 +3,38 @@ import { getCurrentTenantContext } from "@/lib/tenant/context";
 import { ContasPagarClient } from "./ui";
 
 export default async function ContasPagarPage() {
-  const { empresaAtiva }=await getCurrentTenantContext(); if(!empresaAtiva) return null;
-  const db=createAdminClient(); const e=empresaAtiva.id;
-  const [contas,bancos,centros,vinculos,caixa]=await Promise.all([
-    db.from("financeiro_contas_pagar").select("*").eq("empresa_id",e).order("vencimento").limit(100),
-    db.from("financeiro_contas_bancarias").select("*").eq("empresa_id",e).eq("ativo",true),
-    db.from("financeiro_centros_custo").select("*").eq("empresa_id",e).eq("ativo",true),
-    db.from("empresa_usuarios").select("usuario:usuarios(id,nome,email)").eq("empresa_id",e).eq("ativo",true),
-    db.from("caixa_movimentos").select("tipo_movimento,valor").eq("empresa_id",e),
+  const { empresaAtiva } = await getCurrentTenantContext();
+  if (!empresaAtiva) return null;
+  const db = createAdminClient();
+  const empresaId = empresaAtiva.id;
+  const [contas, bancos, centros, vinculos, caixa] = await Promise.all([
+    db
+      .from("financeiro_contas_pagar")
+      .select("*")
+      .eq("empresa_id", empresaId)
+      .order("vencimento", { ascending: false })
+      .limit(500),
+    db.from("financeiro_contas_bancarias").select("*").eq("empresa_id", empresaId).eq("ativo", true),
+    db.from("financeiro_centros_custo").select("*").eq("empresa_id", empresaId).eq("ativo", true),
+    db
+      .from("empresa_usuarios")
+      .select("socio_pagador,usuario:usuarios(id,nome,email)")
+      .eq("empresa_id", empresaId)
+      .eq("ativo", true),
+    db.from("caixa_movimentos").select("tipo_movimento,valor").eq("empresa_id", empresaId),
   ]);
-  return <ContasPagarClient contas={(contas.data??[]) as never[]} bancos={(bancos.data??[]) as never[]} centros={(centros.data??[]) as never[]} socios={(vinculos.data??[]).flatMap((v)=>v.usuario?[v.usuario]:[]) as never[]} caixa={(caixa.data??[]) as never[]} />;
+  const usuarios = (vinculos.data ?? []).flatMap((vinculo) => {
+    const usuario = vinculo.usuario as unknown as { id: string; nome: string; email: string } | null;
+    return usuario ? [{ ...usuario, socioPagador: Boolean(vinculo.socio_pagador) }] : [];
+  });
+  return (
+    <ContasPagarClient
+      contas={(contas.data ?? []) as never[]}
+      bancos={(bancos.data ?? []) as never[]}
+      centros={(centros.data ?? []) as never[]}
+      socios={usuarios.filter((usuario) => usuario.socioPagador)}
+      usuarios={usuarios}
+      caixa={(caixa.data ?? []) as never[]}
+    />
+  );
 }

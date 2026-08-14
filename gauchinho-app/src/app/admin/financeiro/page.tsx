@@ -1,6 +1,7 @@
 import { getCurrentTenantContext } from "@/lib/tenant/context";
 import { getResumoCaixaEmpresa } from "@/lib/financeiro/financeiro-service";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { MovimentoCaixaForm } from "@/components/erp/movimento-caixa-form";
 
 export default async function AdminFinanceiroPage() {
   const { empresaAtiva } = await getCurrentTenantContext();
@@ -29,6 +30,7 @@ export default async function AdminFinanceiroPage() {
             Empresa: <strong className="text-slate-700">{empresaNome}</strong>
           </p>
         </div>
+        <MovimentoCaixaForm />
       </div>
 
       {/* Cards de Resumo Financeiro */}
