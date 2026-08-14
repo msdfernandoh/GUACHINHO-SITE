@@ -1,36 +1,20 @@
 "use server";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { isPlatformSuperadmin } from "@/lib/auth/is-superadmin";
-export type GroupActionState = {
-  status: "IDLE" | "SUCCESS" | "VALIDATION_ERROR" | "CONFLICT" | "SERVER_ERROR";
-  message: string;
-};
-export async function decidirGovernancaGrupoAction(formData: FormData) {
-  if (!(await isPlatformSuperadmin()))
-    throw new Error("Somente Platform Superadmin.");
-  const grupoId = String(formData.get("grupo_id") ?? "");
-  const decisao = String(formData.get("decisao") ?? "");
-  const observacao = String(formData.get("observacao") ?? "") || null;
-  const db = await createClient();
-  const { error } = await db.rpc("rpc_decidir_governanca_grupo", {
-    p_grupo_id: grupoId,
-    p_decisao: decisao,
-    p_observacao: observacao,
-  });
-  if (error) throw new Error(error.message);
-  revalidatePath("/platform/grupos");
-}
+import { getCurrentTenantContext } from "@/lib/tenant/context";
+import type { GroupActionState } from "@/app/platform/grupos-actions";
 
-export async function salvarGrupoGlobalAction(
+export async function salvarGrupoLocalAction(
   _previous: GroupActionState,
   formData: FormData,
 ): Promise<GroupActionState> {
   try {
-    if (!(await isPlatformSuperadmin()))
+    const { empresaAtiva } = await getCurrentTenantContext();
+    const empresaId = empresaAtiva?.id;
+    if (!empresaId)
       return {
         status: "SERVER_ERROR",
-        message: "Somente Platform Superadmin.",
+        message: "Empresa ativa não encontrada.",
       };
     const id = String(formData.get("id") ?? "") || null;
     const administradoraId = String(formData.get("administradora_id") ?? "");
@@ -43,7 +27,22 @@ export async function salvarGrupoGlobalAction(
         message: "Administradora, número, Tipo e Modalidade são obrigatórios.",
       };
     const db = await createClient();
-    const [admin, tipo, modalidade] = await Promise.all([
+    const { data: canWrite } = await db.rpc("can_write_tenant_internal", {
+      p_empresa_id: empresaId,
+    });
+    if (!canWrite)
+      return {
+        status: "SERVER_ERROR",
+        message: "Sem permissão para editar Grupos desta empresa.",
+      };
+    const [grant, admin, tipo, modalidade] = await Promise.all([
+      db
+        .from("empresa_administradoras")
+        .select("id")
+        .eq("empresa_id", empresaId)
+        .eq("administradora_id", administradoraId)
+        .eq("status", "ATIVA")
+        .maybeSingle(),
       db
         .from("administradoras")
         .select("nome")
@@ -64,12 +63,13 @@ export async function salvarGrupoGlobalAction(
         .eq("ativo", true)
         .maybeSingle(),
     ]);
-    if (!admin.data || !tipo.data || !modalidade.data)
+    if (!grant.data || !admin.data || !tipo.data || !modalidade.data)
       return {
         status: "VALIDATION_ERROR",
-        message: "Tipo ou Modalidade não pertence à Administradora.",
+        message:
+          "Selecione itens ativos do catálogo oficial concedido à empresa.",
       };
-    const payload: Record<string, unknown> = {
+    const payload = {
       codigo_grupo: codigo,
       administradora_id: administradoraId,
       administradora: admin.data.nome,
@@ -96,44 +96,32 @@ export async function salvarGrupoGlobalAction(
         ) || null,
       updated_at: new Date().toISOString(),
     };
-    if (!id)
-      Object.assign(payload, {
-        origem_governanca: "GLOBAL",
-        status_governanca: "GLOBAL",
-        empresa_origem_id: null,
-      });
+    let error;
     if (id) {
-      const { data: current } = await db
+      const result = await db
         .from("grupos_consorcio")
-        .select("origem_governanca")
+        .update(payload)
         .eq("id", id)
-        .maybeSingle();
-      if (!current) throw new Error("Grupo não encontrado.");
-      if (current.origem_governanca === "LEGADO")
-        Object.assign(payload, {
-          origem_governanca: "GLOBAL",
-          status_governanca: "GLOBAL",
-          empresa_origem_id: null,
-        });
+        .eq("origem_governanca", "LOCAL")
+        .eq("empresa_origem_id", empresaId);
+      error = result.error;
+    } else {
+      const result = await db.from("grupos_consorcio").insert({
+        ...payload,
+        origem_governanca: "LOCAL",
+        status_governanca: "PENDENTE_PLATFORM",
+        empresa_origem_id: empresaId,
+      });
+      error = result.error;
     }
-    const query = id
-      ? db
-          .from("grupos_consorcio")
-          .update(payload)
-          .eq("id", id)
-          .select("id")
-          .maybeSingle()
-      : db.from("grupos_consorcio").insert(payload).select("id").maybeSingle();
-    const { error, data: saved } = await query;
     if (error) throw new Error(error.message);
-    if (!saved) throw new Error("Grupo não foi atualizado.");
-    revalidatePath("/platform/grupos");
-    if (id) revalidatePath(`/platform/grupos/${id}`);
+    revalidatePath("/erp/grupos");
+    if (id) revalidatePath(`/erp/grupos/${id}`);
     return {
       status: "SUCCESS",
       message: id
-        ? "Configuração do Grupo atualizada."
-        : "Grupo Global criado com sucesso.",
+        ? "Grupo local atualizado."
+        : "Grupo local criado e enviado à fila da Platform.",
     };
   } catch (error) {
     const message =

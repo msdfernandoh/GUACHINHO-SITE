@@ -2,7 +2,7 @@
 
 > **Versão da Arquitetura:** 5.7.1 (ERP Clientes aplicado e backfill Gauchinho auditado)
 > **Data de Atualização:** 11/08/2026
-> **Status Geral do Projeto:** **PRODUÇÃO RECONCILIADA ATÉ A MIGRATION 069; PLATFORM HOST, ERP OPERACIONAL, FLUXO PROPOSTA → CONTRATAÇÃO E ASSEMBLEIAS/PEDRAS ATIVOS. A MIGRATION 070 EXISTE SOMENTE NO SUPABASE ISOLADO E NO PREVIEW DA BRANCH PLATFORM.**
+> **Status Geral do Projeto:** **PRODUÇÃO COM MIGRATIONS 001–076; A CORREÇÃO OPERACIONAL DA FASE 076 ESTÁ VERSIONADA NA MIGRATION 077 E HOMOLOGADA SOMENTE EM SUPABASE ISOLADO/PREVIEW, SEM APLICAÇÃO EM PRODUCTION.**
 > **Macroblocos A–F e evoluções 057–069:** implantados em Produção. As migrations `060–063` preservam o motor canônico financeiro; `064–066` concluíram retenção, storage e auditoria; `067–069` entregaram ERP configurável, fluxo final de contratação e Assembleias/Pedras.
 > **Infraestrutura em Produção:**  
 > - **Vercel Production atual:** deployment `dpl_9rwcRpVjKyhg7K4Si1FBRrcGHSvM`, estado `READY`, associado a `gauchinhoconsorcios.com.br`, `www.gauchinhoconsorcios.com.br` e `admin.gauchinhoconsorcios.com.br` na reconciliação de 11/08/2026.
@@ -165,6 +165,7 @@ A plataforma suporta:
 | ERP configurável e operacional | `main` | 067, 069 | IMPLANTADO | Production atual |
 | Proposta → Contratação | `main` | 068 | IMPLANTADO | Production atual |
 | Plataforma SaaS Master | `codex/plataforma-saas-master-ux-governanca` | 070 | PREVIEW; VISUAL AUTENTICADO PENDENTE | Supabase isolado + `dpl_E9ZJZQW5a6SzzGPA8QbmCQYc6SnA` |
+| Correção operacional da fase 076 | `codex/fix-076-comissoes-grupos-platform` | 077 | HOMOLOGAÇÃO EM PREVIEW | Supabase isolado `bfpgyralphzjozrcwjsn`; Production intacta |
 
 ---
 
@@ -202,7 +203,18 @@ A plataforma suporta:
 - recebimentos, pagamentos, divergências, pendências, compensações e estornos estendem 060–063, mantendo caixa, locks, idempotência e fatos append-only;
 - contemplação manual registra crédito atualizado apenas para histórico e encerra novos estornos de curva, sem integração automática com Assembleias/Pedras;
 - relatório: `docs/relatorios-fases/ERP-COMISSOES-GRUPOS-CONTEMPLACAO-V2.md`;
-- estado: somente branch Git, Supabase efêmero e Preview; não aplicar em Production ou mesclar em `main` sem autorização expressa.
+- estado: a migration 076 integra Production; correções posteriores não reescrevem 060–076.
+
+### Correção operacional da Fase 076 (Migration 077 — Preview isolado)
+- a Administradora passa a ser a raiz única do catálogo de Tipos, Modalidades, curvas, programas e regras oficiais; o ERP apenas consome esse catálogo;
+- `Automóvel`/`Automóveis` da Racon são consolidados no Tipo canônico `AUTOMOVEIS`, preservando referências vivas, aliases e snapshots históricos;
+- regras automáticas de participante não mantêm cronograma próprio: acompanham as etapas e a elegibilidade da Franqueadora; regras manuais continuam exigindo cronograma próprio válido;
+- Integral e Reduzida 60–99 permanecem sem contemplação adicional; Reduzida abaixo de 59 completa 4,00%/3,50% com a etapa opcional de 1,25%, calculada sobre a base original da venda;
+- recebimento real gera uma única entrada de Caixa; conciliação posterior apenas distribui o valor entre previsões e classificações, sem duplicar movimento;
+- estratégia de lance pertence à cota, respeita os limites do Grupo e registra histórico anterior/novo append-only;
+- aplicada e testada somente no Supabase efêmero `bfpgyralphzjozrcwjsn`; Production e `main` permanecem sem a 077;
+- manual: `docs/manuais/MANUAL-CONFIGURACAO-COMISSOES.md`;
+- relatório: `docs/relatorios-fases/FIX-076-COMISSOES-GRUPOS-PLATFORM.md`.
 
 ### Importação financeira, sócios e acesso individual ao ERP (Migration 077 — versionada)
 - importações CSV de contas pagas e abertas são idempotentes por tenant/origem/chave e preservam os dados operacionais do arquivo legado;
@@ -223,7 +235,7 @@ A plataforma suporta:
 ## 5. Declaração Final de Segurança e Riscos
 
 * O P0 das APIs, o hardening `057–059`, o motor canônico `060–063` e o fechamento técnico `064–066` estão implantados no Supabase principal.
-* O estado funcional de Produção inclui ERP configurável (`067`), fluxo Proposta → Contratação (`068`) e ERP operacional com Assembleias/Pedras (`069`). Sorteios promocionais continuam independentes e preservados.
+* O estado funcional de Produção inclui migrations `001–076`; a migration `077` permanece exclusivamente no ambiente isolado desta correção.
 * `admin.gauchinhoconsorcios.com.br` está ativo, verificado e associado ao deployment Production atual `dpl_9rwcRpVjKyhg7K4Si1FBRrcGHSvM`; ele não é tenant e não possui fallback para Gauchinho.
 * A migration `070` não está em Produção. O endpoint REST da tabela inicial `site_modelos` retornou `404` no Supabase principal, enquanto as estruturas de `068` e `069` responderam `200`.
 * A Gauchinho permanece com ERP habilitado e a Empresa B permanece sem concessão de administradora. Nenhum tenant Sorriso foi criado.

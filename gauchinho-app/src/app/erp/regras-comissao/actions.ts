@@ -38,14 +38,16 @@ export async function createCommissionProgramAction(
 
     const supabase = await assertCanWrite(empresaId);
     const { data: administradoraValida } = await supabase
-      .from("grupos_consorcio")
+      .from("empresa_administradoras")
       .select("id")
+      .eq("empresa_id", empresaId)
       .eq("administradora_id", administradoraId)
+      .eq("status", "ATIVA")
       .limit(1)
       .maybeSingle();
     if (!administradoraValida)
       throw new Error(
-        "A administradora precisa estar vinculada ao catálogo de grupos disponível.",
+        "A Administradora precisa possuir concessão ativa para esta empresa.",
       );
 
     const { error } = await supabase.from("comissao_programas").insert({
@@ -326,92 +328,194 @@ export async function homologateFranchiseRuleAction(
 }
 
 export async function createParticipantRuleAction(
+  _previous: CommissionActionState,
   formData: FormData,
-): Promise<void> {
-  const empresaId = String(formData.get("empresa_id") ?? "").trim();
-  const programaId = String(formData.get("programa_id") ?? "").trim();
-  const participanteId =
-    String(formData.get("participante_comercial_id") ?? "").trim() || null;
-  const modo = String(formData.get("modo_regra") ?? "MANUAL").toUpperCase();
-  const baseV2 = String(
-    formData.get("base_v2") ?? "COMISSAO_FRANQUEADORA_LIQUIDA",
-  );
-  const fonte = String(formData.get("fonte_comissao") ?? "FRANQUEADORA");
-  const tipo = String(formData.get("tipo_participante") ?? "").trim() || null;
-  const percentual = Number(
-    String(formData.get("percentual_comissao") ?? "").replace(",", "."),
-  );
-  const vigenciaInicio = String(formData.get("vigencia_inicio") ?? "");
-  const rawStages = String(formData.get("etapas_cronograma") ?? "");
-  if (
-    !empresaId ||
-    !programaId ||
-    !vigenciaInicio ||
-    !Number.isFinite(percentual) ||
-    percentual <= 0
-  )
-    throw new Error("Programa, percentual e vigência são obrigatórios.");
-  if (!["AUTOMATICA", "MANUAL"].includes(modo))
-    throw new Error("Modo de regra inválido.");
-  let etapas: Array<{
-    ordem: number;
-    nome: string;
-    mes_relativo: number;
-    percentual_etapa: number;
-  }>;
+): Promise<CommissionActionState> {
   try {
-    etapas = JSON.parse(rawStages);
-  } catch {
-    throw new Error("Cronograma inválido.");
-  }
-  if (
-    !Array.isArray(etapas) ||
-    !etapas.length ||
-    etapas.some(
-      (e) => !e.ordem || !e.nome || !e.mes_relativo || e.percentual_etapa <= 0,
+    const empresaId = String(formData.get("empresa_id") ?? "").trim();
+    const programaId = String(formData.get("programa_id") ?? "").trim();
+    const participanteId =
+      String(formData.get("participante_comercial_id") ?? "").trim() || null;
+    const modo = String(formData.get("modo_regra") ?? "MANUAL").toUpperCase();
+    const baseV2 = String(
+      formData.get("base_v2") ?? "COMISSAO_FRANQUEADORA_LIQUIDA",
+    );
+    const fonte = String(formData.get("fonte_comissao") ?? "FRANQUEADORA");
+    const tipo = String(formData.get("tipo_participante") ?? "").trim() || null;
+    const percentual = Number(
+      String(formData.get("percentual_comissao") ?? "").replace(",", "."),
+    );
+    const vigenciaInicio = String(formData.get("vigencia_inicio") ?? "");
+    const rawStages = String(formData.get("etapas_cronograma") ?? "");
+    if (
+      !empresaId ||
+      !programaId ||
+      !vigenciaInicio ||
+      !Number.isFinite(percentual) ||
+      percentual <= 0
     )
-  )
-    throw new Error("Informe etapas mensais válidas.");
-  const soma = etapas.reduce(
-    (total, etapa) => total + Number(etapa.percentual_etapa),
-    0,
-  );
-  if (Math.abs(soma - 100) > 0.0001)
-    throw new Error("O cronograma do participante deve somar 100%.");
-  const supabase = await assertCanWrite(empresaId);
-  const { data: latest } = await supabase
-    .from("comissao_regras_participantes")
-    .select("versao")
-    .eq("empresa_id", empresaId)
-    .eq("programa_id", programaId)
-    .order("versao", { ascending: false })
-    .limit(1);
-  const { error } = await supabase
-    .from("comissao_regras_participantes")
-    .insert({
-      empresa_id: empresaId,
-      programa_id: programaId,
-      participante_comercial_id: participanteId,
-      tipo_participante: tipo,
-      percentual_comissao: percentual,
-      base_calculo: "credito",
-      versao: Number(latest?.[0]?.versao ?? 0) + 1,
-      vigencia_inicio: vigenciaInicio,
-      vigencia_fim: String(formData.get("vigencia_fim") ?? "") || null,
-      etapas_cronograma: etapas,
-      ativa: true,
-      configuracao_homologada: false,
-      origem_configuracao: "ERP_PARTICIPANTE_V2_NAO_HOMOLOGADO",
-      modo_regra: modo,
-      base_v2: baseV2,
-      fonte_comissao: fonte,
-      tipo_administradora_id:
-        String(formData.get("tipo_administradora_id") ?? "") || null,
-      modalidade_comissao_id:
-        String(formData.get("modalidade_comissao_id") ?? "") || null,
-    });
-  if (error) throw new Error(error.message);
-  revalidatePath("/erp/regras-comissao");
+      throw new Error("Programa, percentual e vigência são obrigatórios.");
+    if (!["AUTOMATICA", "MANUAL"].includes(modo))
+      throw new Error("Modo de regra inválido.");
+    let etapas: Array<{
+      ordem: number;
+      nome: string;
+      mes_relativo: number;
+      percentual_etapa: number;
+    }>;
+    if (modo === "AUTOMATICA") {
+      etapas = [];
+      if (
+        baseV2 !== "COMISSAO_FRANQUEADORA_LIQUIDA" ||
+        fonte !== "FRANQUEADORA"
+      )
+        throw new Error(
+          "Regra automática deve usar a comissão líquida da Franqueadora como fonte.",
+        );
+    } else {
+      try {
+        etapas = JSON.parse(rawStages);
+      } catch {
+        throw new Error("Cronograma inválido.");
+      }
+      if (
+        !Array.isArray(etapas) ||
+        !etapas.length ||
+        etapas.some(
+          (e) =>
+            !e.ordem || !e.nome || !e.mes_relativo || e.percentual_etapa <= 0,
+        )
+      )
+        throw new Error("Informe etapas mensais válidas.");
+      const soma = etapas.reduce(
+        (total, etapa) => total + Number(etapa.percentual_etapa),
+        0,
+      );
+      if (Math.abs(soma - 100) > 0.0001)
+        throw new Error("O cronograma do participante deve somar 100%.");
+    }
+    if (!participanteId && !tipo)
+      throw new Error(
+        "Escolha um participante específico ou um papel para a regra geral.",
+      );
+    const supabase = await assertCanWrite(empresaId);
+    const tipoAdministradoraId =
+      String(formData.get("tipo_administradora_id") ?? "") || null;
+    const modalidadeComissaoId =
+      String(formData.get("modalidade_comissao_id") ?? "") || null;
+    const { data: programa } = await supabase
+      .from("comissao_programas")
+      .select("administradora_id")
+      .eq("id", programaId)
+      .eq("empresa_id", empresaId)
+      .maybeSingle();
+    if (!programa?.administradora_id)
+      throw new Error("Programa inválido para o tenant.");
+    if (tipoAdministradoraId) {
+      const { data: item } = await supabase
+        .from("administradora_tipos")
+        .select("id")
+        .eq("id", tipoAdministradoraId)
+        .eq("administradora_id", programa.administradora_id)
+        .eq("ativo", true)
+        .maybeSingle();
+      if (!item)
+        throw new Error("Tipo não pertence à Administradora do Programa.");
+    }
+    if (modalidadeComissaoId) {
+      const { data: item } = await supabase
+        .from("administradora_modalidades_comissao")
+        .select("id")
+        .eq("id", modalidadeComissaoId)
+        .eq("administradora_id", programa.administradora_id)
+        .eq("ativo", true)
+        .maybeSingle();
+      if (!item)
+        throw new Error(
+          "Modalidade não pertence à Administradora do Programa.",
+        );
+    }
+    let conflictQuery = supabase
+      .from("comissao_regras_participantes")
+      .select("id,vigencia_inicio,vigencia_fim")
+      .eq("empresa_id", empresaId)
+      .eq("programa_id", programaId)
+      .eq("ativa", true)
+      .eq("modo_regra", modo)
+      .eq("fonte_comissao", fonte);
+    conflictQuery = participanteId
+      ? conflictQuery.eq("participante_comercial_id", participanteId)
+      : conflictQuery.is("participante_comercial_id", null);
+    conflictQuery = tipo
+      ? conflictQuery.eq("tipo_participante", tipo)
+      : conflictQuery.is("tipo_participante", null);
+    conflictQuery = tipoAdministradoraId
+      ? conflictQuery.eq("tipo_administradora_id", tipoAdministradoraId)
+      : conflictQuery.is("tipo_administradora_id", null);
+    conflictQuery = modalidadeComissaoId
+      ? conflictQuery.eq("modalidade_comissao_id", modalidadeComissaoId)
+      : conflictQuery.is("modalidade_comissao_id", null);
+    const { data: conflicts, error: conflictError } = await conflictQuery;
+    if (conflictError) throw new Error(conflictError.message);
+    const end = (v: string | null) => v ?? "9999-12-31";
+    const vigenciaFim = String(formData.get("vigencia_fim") ?? "") || null;
+    if (
+      (conflicts ?? []).some(
+        (r) =>
+          vigenciaInicio <= end(r.vigencia_fim) &&
+          r.vigencia_inicio <= end(vigenciaFim),
+      )
+    )
+      throw new Error(
+        "Já existe regra com o mesmo participante/papel, escopo e vigência.",
+      );
+    const { data: latest } = await supabase
+      .from("comissao_regras_participantes")
+      .select("versao")
+      .eq("empresa_id", empresaId)
+      .eq("programa_id", programaId)
+      .order("versao", { ascending: false })
+      .limit(1);
+    const { error } = await supabase
+      .from("comissao_regras_participantes")
+      .insert({
+        empresa_id: empresaId,
+        programa_id: programaId,
+        participante_comercial_id: participanteId,
+        tipo_participante: tipo,
+        percentual_comissao: percentual,
+        base_calculo: "credito",
+        versao: Number(latest?.[0]?.versao ?? 0) + 1,
+        vigencia_inicio: vigenciaInicio,
+        vigencia_fim: String(formData.get("vigencia_fim") ?? "") || null,
+        etapas_cronograma: etapas,
+        ativa: true,
+        configuracao_homologada: false,
+        origem_configuracao: "ERP_PARTICIPANTE_V2_NAO_HOMOLOGADO",
+        modo_regra: modo,
+        base_v2: baseV2,
+        fonte_comissao: fonte,
+        tipo_administradora_id: tipoAdministradoraId,
+        modalidade_comissao_id: modalidadeComissaoId,
+      });
+    if (error) throw new Error(error.message);
+    revalidatePath("/erp/regras-comissao");
+    return {
+      ok: true,
+      message:
+        modo === "AUTOMATICA"
+          ? "Regra automática salva. O cronograma será herdado da Franqueadora."
+          : "Regra manual salva com cronograma próprio.",
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      message:
+        error instanceof Error
+          ? error.message
+          : "Não foi possível salvar a regra do participante.",
+    };
+  }
 }
 
 export async function homologateParticipantRuleAction(
@@ -515,49 +619,263 @@ export async function newCommissionProgramVersionAction(
   revalidatePath("/erp/regras-comissao");
 }
 
-export async function saveFiscalCommissionConfigAction(formData: FormData) {
-  const empresaId = String(formData.get("empresa_id") ?? "");
-  const percentual = Number(
-    String(formData.get("percentual_imposto") ?? "").replace(",", "."),
-  );
-  const inicio = String(formData.get("vigencia_inicio") ?? "");
-  const fim = String(formData.get("vigencia_fim") ?? "") || null;
-  if (
-    !empresaId ||
-    !inicio ||
-    !Number.isFinite(percentual) ||
-    percentual < 0 ||
-    percentual >= 100
-  )
-    throw new Error("Configuração fiscal inválida.");
-  const supabase = await assertCanWrite(empresaId);
-  const { data: overlaps, error: overlapError } = await supabase
-    .from("empresa_configuracoes_fiscais")
-    .select("id,vigencia_inicio,vigencia_fim")
-    .eq("empresa_id", empresaId)
-    .eq("ativo", true);
-  if (overlapError) throw new Error(overlapError.message);
-  const end = (value: string | null) => value ?? "9999-12-31";
-  if (
-    (overlaps ?? []).some(
-      (row) =>
-        inicio <= end(row.vigencia_fim) && row.vigencia_inicio <= end(fim),
-    )
-  )
-    throw new Error(
-      "Já existe configuração fiscal ativa sobreposta nesta vigência.",
+export async function saveFiscalCommissionConfigAction(
+  _previous: CommissionActionState,
+  formData: FormData,
+): Promise<CommissionActionState> {
+  try {
+    const empresaId = String(formData.get("empresa_id") ?? "");
+    const percentual = Number(
+      String(formData.get("percentual_imposto") ?? "").replace(",", "."),
     );
-  const { error } = await supabase
-    .from("empresa_configuracoes_fiscais")
-    .insert({
-      empresa_id: empresaId,
-      vigencia_inicio: inicio,
-      vigencia_fim: fim,
-      percentual_imposto: percentual,
-      participante_exibe_detalhes_fiscais:
+    const inicio = String(formData.get("vigencia_inicio") ?? "");
+    const fim = String(formData.get("vigencia_fim") ?? "") || null;
+    if (
+      !empresaId ||
+      !inicio ||
+      !Number.isFinite(percentual) ||
+      percentual < 0 ||
+      percentual >= 100
+    )
+      throw new Error("Configuração fiscal inválida.");
+    const supabase = await assertCanWrite(empresaId);
+    const { error } = await supabase.rpc("rpc_salvar_configuracao_fiscal", {
+      p_empresa_id: empresaId,
+      p_percentual: percentual,
+      p_vigencia_inicio: inicio,
+      p_vigencia_fim: fim,
+      p_exibe_detalhes:
         formData.get("participante_exibe_detalhes_fiscais") === "on",
-      ativo: true,
     });
+    if (error) throw new Error(error.message);
+    revalidatePath("/erp/regras-comissao");
+    return {
+      ok: true,
+      message:
+        "Configuração fiscal salva e vigente conforme as datas informadas.",
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      message:
+        error instanceof Error
+          ? error.message
+          : "Não foi possível salvar a configuração fiscal.",
+    };
+  }
+}
+
+export async function deleteCommissionProgramAction(
+  formData: FormData,
+): Promise<void> {
+  const empresaId = String(formData.get("empresa_id") ?? "");
+  const id = String(formData.get("programa_id") ?? "");
+  const db = await assertCanWrite(empresaId);
+  const [{ count: rules }, { count: franchise }, { count: participants }] =
+    await Promise.all([
+      db
+        .from("comissao_regras_franquia")
+        .select("id", { count: "exact", head: true })
+        .eq("programa_id", id),
+      db
+        .from("comissao_previsoes_franquia")
+        .select("id,regra:comissao_regras_franquia!inner(programa_id)", {
+          count: "exact",
+          head: true,
+        })
+        .eq("regra.programa_id", id),
+      db
+        .from("comissao_previsoes_participantes")
+        .select("id,regra:comissao_regras_participantes!inner(programa_id)", {
+          count: "exact",
+          head: true,
+        })
+        .eq("regra.programa_id", id),
+    ]);
+  if ((rules ?? 0) > 0 || (franchise ?? 0) > 0 || (participants ?? 0) > 0)
+    throw new Error(
+      "Programa possui regras ou uso histórico. Inative em vez de excluir.",
+    );
+  const { error } = await db
+    .from("comissao_programas")
+    .delete()
+    .eq("id", id)
+    .eq("empresa_id", empresaId);
   if (error) throw new Error(error.message);
+  revalidatePath("/erp/regras-comissao");
+}
+
+export async function deleteCommissionRuleAction(
+  formData: FormData,
+): Promise<void> {
+  const empresaId = String(formData.get("empresa_id") ?? "");
+  const id = String(formData.get("regra_id") ?? "");
+  const kind = String(formData.get("tipo_regra") ?? "");
+  const db = await assertCanWrite(empresaId);
+  if (kind === "PARTICIPANTE") {
+    const { data: rule } = await db
+      .from("comissao_regras_participantes")
+      .select("configuracao_homologada")
+      .eq("id", id)
+      .eq("empresa_id", empresaId)
+      .maybeSingle();
+    if (!rule) throw new Error("Regra não encontrada.");
+    const { count } = await db
+      .from("comissao_previsoes_participantes")
+      .select("id", { count: "exact", head: true })
+      .eq("regra_participante_id", id);
+    if (rule.configuracao_homologada || (count ?? 0) > 0)
+      throw new Error(
+        "Regra homologada/usada não pode ser excluída. Inative ou crie nova versão.",
+      );
+    const { error } = await db
+      .from("comissao_regras_participantes")
+      .delete()
+      .eq("id", id)
+      .eq("empresa_id", empresaId);
+    if (error) throw new Error(error.message);
+  } else {
+    const { data: rule } = await db
+      .from("comissao_regras_franquia")
+      .select("configuracao_homologada")
+      .eq("id", id)
+      .eq("empresa_id", empresaId)
+      .maybeSingle();
+    if (!rule) throw new Error("Regra não encontrada.");
+    const [{ count }, { count: steps }] = await Promise.all([
+      db
+        .from("comissao_previsoes_franquia")
+        .select("id", { count: "exact", head: true })
+        .eq("regra_franquia_id", id),
+      db
+        .from("comissao_regra_etapas")
+        .select("id", { count: "exact", head: true })
+        .eq("regra_franquia_id", id),
+    ]);
+    if (rule.configuracao_homologada || (count ?? 0) > 0)
+      throw new Error(
+        "Regra homologada/usada não pode ser excluída. Inative ou crie nova versão.",
+      );
+    if ((steps ?? 0) > 0) {
+      const { error: e } = await db
+        .from("comissao_regra_etapas")
+        .delete()
+        .eq("regra_franquia_id", id);
+      if (e) throw new Error(e.message);
+    }
+    const { error } = await db
+      .from("comissao_regras_franquia")
+      .delete()
+      .eq("id", id)
+      .eq("empresa_id", empresaId);
+    if (error) throw new Error(error.message);
+  }
+  revalidatePath("/erp/regras-comissao");
+}
+
+export async function toggleCommissionRuleAction(
+  formData: FormData,
+): Promise<void> {
+  const empresaId = String(formData.get("empresa_id") ?? "");
+  const id = String(formData.get("regra_id") ?? "");
+  const kind = String(formData.get("tipo_regra") ?? "");
+  const ativo = formData.get("ativo") === "true";
+  const db = await assertCanWrite(empresaId);
+  const table =
+    kind === "PARTICIPANTE"
+      ? "comissao_regras_participantes"
+      : "comissao_regras_franquia";
+  const { error } = await db
+    .from(table)
+    .update({ ativa: ativo })
+    .eq("id", id)
+    .eq("empresa_id", empresaId);
+  if (error) throw new Error(error.message);
+  revalidatePath("/erp/regras-comissao");
+}
+
+export async function newCommissionRuleVersionAction(
+  formData: FormData,
+): Promise<void> {
+  const empresaId = String(formData.get("empresa_id") ?? "");
+  const id = String(formData.get("regra_id") ?? "");
+  const kind = String(formData.get("tipo_regra") ?? "");
+  const db = await assertCanWrite(empresaId);
+  if (kind === "PARTICIPANTE") {
+    const { data: source, error } = await db
+      .from("comissao_regras_participantes")
+      .select("*")
+      .eq("id", id)
+      .eq("empresa_id", empresaId)
+      .maybeSingle();
+    if (error || !source) throw new Error("Regra não encontrada.");
+    const { data: latest } = await db
+      .from("comissao_regras_participantes")
+      .select("versao")
+      .eq("empresa_id", empresaId)
+      .eq("programa_id", source.programa_id)
+      .order("versao", { ascending: false })
+      .limit(1);
+    const copy: Record<string, unknown> = { ...source };
+    delete copy.id;
+    delete copy.created_at;
+    delete copy.updated_at;
+    const { error: insertError } = await db
+      .from("comissao_regras_participantes")
+      .insert({
+        ...copy,
+        versao: Number(latest?.[0]?.versao ?? source.versao) + 1,
+        configuracao_homologada: false,
+        origem_configuracao: "NOVA_VERSAO_ERP_NAO_HOMOLOGADA",
+        ativa: true,
+      });
+    if (insertError) throw new Error(insertError.message);
+  } else {
+    const { data: source, error } = await db
+      .from("comissao_regras_franquia")
+      .select("*")
+      .eq("id", id)
+      .eq("empresa_id", empresaId)
+      .maybeSingle();
+    if (error || !source) throw new Error("Regra não encontrada.");
+    const [{ data: latest }, { data: steps }] = await Promise.all([
+      db
+        .from("comissao_regras_franquia")
+        .select("versao")
+        .eq("empresa_id", empresaId)
+        .eq("programa_id", source.programa_id)
+        .order("versao", { ascending: false })
+        .limit(1),
+      db
+        .from("comissao_regra_etapas")
+        .select("ordem,tipo_gatilho,mes_relativo,nome,percentual_venda")
+        .eq("regra_franquia_id", id)
+        .order("ordem"),
+    ]);
+    const copy: Record<string, unknown> = { ...source };
+    delete copy.id;
+    delete copy.created_at;
+    delete copy.updated_at;
+    const { data: created, error: insertError } = await db
+      .from("comissao_regras_franquia")
+      .insert({
+        ...copy,
+        versao: Number(latest?.[0]?.versao ?? source.versao) + 1,
+        configuracao_homologada: false,
+        origem_configuracao: "NOVA_VERSAO_PLATFORM_NAO_HOMOLOGADA",
+        ativa: true,
+      })
+      .select("id")
+      .single();
+    if (insertError) throw new Error(insertError.message);
+    if (steps?.length) {
+      const { error: stepError } = await db
+        .from("comissao_regra_etapas")
+        .insert(
+          steps.map((step) => ({ ...step, regra_franquia_id: created.id })),
+        );
+      if (stepError) throw new Error(stepError.message);
+    }
+  }
   revalidatePath("/erp/regras-comissao");
 }

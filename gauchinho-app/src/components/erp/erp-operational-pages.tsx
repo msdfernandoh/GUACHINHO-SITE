@@ -1,18 +1,27 @@
 import Link from "next/link";
 import Leads from "@/app/admin/leads/page";
-import Grupos from "@/app/admin/grupos/page";
 import Comissoes from "@/app/admin/comissoes/page";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentTenantContext } from "@/lib/tenant/context";
 import { CommissionRuleManager } from "@/components/erp/commission-rule-manager";
 import { isPlatformSuperadmin } from "@/lib/auth/is-superadmin";
 import {
+  deleteCommissionProgramAction,
+  deleteCommissionRuleAction,
   homologateFranchiseRuleAction,
   homologateParticipantRuleAction,
   newCommissionProgramVersionAction,
-  saveFiscalCommissionConfigAction,
+  newCommissionRuleVersionAction,
   toggleCommissionProgramAction,
+  toggleCommissionRuleAction,
 } from "@/app/erp/regras-comissao/actions";
+import { FiscalCommissionConfig } from "@/components/erp/fiscal-commission-config";
+import { ConfirmSubmitButton } from "@/components/erp/confirm-submit-button";
+import { ReceiptManager } from "@/components/erp/receipt-manager";
+import {
+  BidStrategyTable,
+  type BidRow,
+} from "@/components/erp/bid-strategy-table";
 
 const cardClass =
   "rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-blue-300 hover:shadow";
@@ -77,7 +86,103 @@ export async function ErpClientesPage() {
   );
 }
 
-export async function ErpLancesPage() {
+export async function ErpLancesPage({
+  searchParams = Promise.resolve({}),
+}: {
+  searchParams?: Promise<Record<string, string | undefined>>;
+}) {
+  const filters = await searchParams;
+  const { empresaAtiva } = await getCurrentTenantContext();
+  const db = await createClient();
+  let query = db
+    .from("cotas_definitivas")
+    .select(
+      "id,numero_grupo,numero_cota,valor_credito,status,contemplada,administradora:administradoras(nome),grupo:grupos_consorcio(codigo_grupo,percentual_lance_embutido,tipo:administradora_tipos(nome)),venda:vendas(cliente_nome,cliente_cpf_cnpj,cliente:clientes(nome,cpf_cnpj)),estrategia:cota_estrategias_lance(lance_fixo_ativo,lance_fixo_percentual,lance_fixo_valor,lance_fixo_inicio,lance_fixo_fim,lance_livre_ativo,lance_livre_valor,lance_livre_percentual,lance_livre_inicio,lance_livre_fim,recurso_proprio_valor,lance_embutido_percentual,parcela_reduzida_ativa,observacoes,ativa),historico:cota_estrategias_lance_historico(created_at,motivo)",
+    )
+    .eq("empresa_id", empresaAtiva?.id ?? "")
+    .order("updated_at", { ascending: false });
+  if (filters.status) query = query.eq("status", filters.status);
+  const { data, error } = await query;
+  let rows = (data ?? []).map((c) => {
+    const venda = c.venda as unknown as {
+      cliente_nome: string;
+      cliente_cpf_cnpj: string | null;
+      cliente: { nome: string; cpf_cnpj: string | null } | null;
+    };
+    const grupo = c.grupo as unknown as {
+      codigo_grupo: string;
+      percentual_lance_embutido: number | null;
+      tipo: { nome: string } | null;
+    };
+    const admin = c.administradora as unknown as { nome: string } | null;
+    const strategy = Array.isArray(c.estrategia)
+      ? (c.estrategia[0] ?? null)
+      : c.estrategia;
+    return {
+      id: c.id,
+      numero_grupo: c.numero_grupo,
+      numero_cota: c.numero_cota,
+      valor_credito: Number(c.valor_credito),
+      status: c.status,
+      contemplada: c.contemplada,
+      clienteNome: venda?.cliente?.nome || venda?.cliente_nome || "Cliente",
+      clienteDocumento:
+        venda?.cliente?.cpf_cnpj || venda?.cliente_cpf_cnpj || null,
+      administradoraNome: admin?.nome || "—",
+      tipoNome: grupo?.tipo?.nome || "Pendente",
+      grupoCodigo: grupo?.codigo_grupo || c.numero_grupo,
+      grupoLimite: grupo?.percentual_lance_embutido ?? null,
+      estrategia: strategy,
+      historico: (c.historico ?? []) as {
+        created_at: string;
+        motivo: string | null;
+      }[],
+    } as BidRow;
+  });
+  if (filters.busca) {
+    const term = filters.busca.toLowerCase();
+    rows = rows.filter((r) =>
+      [r.clienteNome, r.clienteDocumento, r.grupoCodigo, r.numero_cota].some(
+        (x) => x?.toLowerCase().includes(term),
+      ),
+    );
+  }
+  if (filters.administradora)
+    rows = rows.filter((r) => r.administradoraNome === filters.administradora);
+  if (filters.tipo) rows = rows.filter((r) => r.tipoNome === filters.tipo);
+  if (filters.grupo) rows = rows.filter((r) => r.grupoCodigo === filters.grupo);
+  if (filters.estrategia === "ATIVA")
+    rows = rows.filter((r) => r.estrategia?.ativa);
+  else if (filters.estrategia === "INATIVA")
+    rows = rows.filter((r) => r.estrategia && !r.estrategia.ativa);
+  else if (filters.estrategia === "SEM")
+    rows = rows.filter((r) => !r.estrategia);
+  if (filters.periodo) {
+    const currentDate = new Date();
+    const today = currentDate.toISOString().slice(0, 10);
+    const limitDate = new Date(currentDate);
+    limitDate.setUTCDate(
+      limitDate.getUTCDate() + Number(filters.periodo.split("_")[1] ?? 0),
+    );
+    const limit = filters.periodo.startsWith("PROXIMOS_")
+      ? limitDate.toISOString().slice(0, 10)
+      : null;
+    rows = rows.filter((r) => {
+      const dates = [
+        r.estrategia?.lance_fixo_fim,
+        r.estrategia?.lance_livre_fim,
+      ].filter(Boolean) as string[];
+      if (filters.periodo === "HOJE") return dates.includes(today);
+      if (filters.periodo === "VENCIDOS") return dates.some((d) => d < today);
+      if (filters.periodo === "INTERVALO")
+        return dates.some(
+          (d) =>
+            (!filters.inicio || d >= filters.inicio) &&
+            (!filters.fim || d <= filters.fim),
+        );
+      return limit ? dates.some((d) => d >= today && d <= limit) : true;
+    });
+  }
   return (
     <div className="space-y-6">
       <header>
@@ -86,29 +191,130 @@ export async function ErpLancesPage() {
         </p>
         <h1 className="text-3xl font-bold">Lances e estrategias</h1>
         <p className="mt-1 text-slate-500">
-          Use os grupos e cotas atuais. Cada grupo concentra lance embutido,
-          recurso proprio, parcela reduzida e parametros de contemplacao.
+          Controle operacional por cliente e cota definitiva. O Grupo fornece
+          somente contexto e limites.
         </p>
       </header>
-      <HubLinks
-        links={[
-          {
-            href: "/erp/grupos",
-            title: "Catalogo de grupos",
-            description:
-              "Abra um grupo para editar estrategias de lance e parcela.",
-          },
-          {
-            href: "/erp/assembleias",
-            title: "Assembleias / Pedras",
-            description:
-              "Registre a pedra e acompanhe cotas reais próximas, sem alterar contemplação.",
-          },
-        ]}
-      />
-      <div className="border-t border-slate-200 pt-6">
-        <Grupos searchParams={Promise.resolve({})} />
+      <div className="grid gap-3 sm:grid-cols-4">
+        <div className={cardClass}>
+          <p className="text-sm text-slate-500">Cotas com lance ativo</p>
+          <p className="text-2xl font-bold">
+            {rows.filter((r) => r.estrategia?.ativa).length}
+          </p>
+        </div>
+        <div className={cardClass}>
+          <p className="text-sm text-slate-500">Sem estratégia</p>
+          <p className="text-2xl font-bold">
+            {rows.filter((r) => !r.estrategia).length}
+          </p>
+        </div>
+        <div className={cardClass}>
+          <p className="text-sm text-slate-500">Contempladas</p>
+          <p className="text-2xl font-bold">
+            {rows.filter((r) => r.contemplada).length}
+          </p>
+        </div>
+        <Link className={cardClass} href="/erp/assembleias">
+          <p className="font-semibold">Assembleias / Pedras →</p>
+          <p className="text-sm text-slate-500">
+            Apoio operacional sem automação de lance.
+          </p>
+        </Link>
       </div>
+      <form className="grid gap-2 rounded-xl border bg-white p-3 md:grid-cols-3 xl:grid-cols-4">
+        <input
+          name="busca"
+          defaultValue={filters.busca}
+          placeholder="Cliente, CPF/CNPJ, grupo ou cota"
+          className="min-w-72 rounded-lg border px-3 py-2"
+        />
+        <select
+          name="status"
+          defaultValue={filters.status ?? ""}
+          className="rounded-lg border px-3 py-2"
+        >
+          <option value="">Todos os status</option>
+          <option>ativa</option>
+          <option>contemplada</option>
+          <option>cancelada</option>
+          <option>quitada</option>
+        </select>
+        <select
+          name="administradora"
+          defaultValue={filters.administradora ?? ""}
+          className="rounded-lg border px-3 py-2"
+        >
+          <option value="">Todas as Administradoras</option>
+          {Array.from(new Set(rows.map((r) => r.administradoraNome))).map(
+            (x) => (
+              <option key={x}>{x}</option>
+            ),
+          )}
+        </select>
+        <select
+          name="tipo"
+          defaultValue={filters.tipo ?? ""}
+          className="rounded-lg border px-3 py-2"
+        >
+          <option value="">Todos os Tipos</option>
+          {Array.from(new Set(rows.map((r) => r.tipoNome))).map((x) => (
+            <option key={x}>{x}</option>
+          ))}
+        </select>
+        <select
+          name="grupo"
+          defaultValue={filters.grupo ?? ""}
+          className="rounded-lg border px-3 py-2"
+        >
+          <option value="">Todos os Grupos</option>
+          {Array.from(new Set(rows.map((r) => r.grupoCodigo))).map((x) => (
+            <option key={x}>{x}</option>
+          ))}
+        </select>
+        <select
+          name="estrategia"
+          defaultValue={filters.estrategia ?? ""}
+          className="rounded-lg border px-3 py-2"
+        >
+          <option value="">Estratégias ativas e inativas</option>
+          <option value="ATIVA">Ativa</option>
+          <option value="INATIVA">Inativa</option>
+          <option value="SEM">Sem estratégia</option>
+        </select>
+        <select
+          name="periodo"
+          defaultValue={filters.periodo ?? ""}
+          className="rounded-lg border px-3 py-2"
+        >
+          <option value="">Todos os vencimentos</option>
+          <option value="HOJE">Vencendo hoje</option>
+          <option value="PROXIMOS_7">Próximos 7 dias</option>
+          <option value="PROXIMOS_15">Próximos 15 dias</option>
+          <option value="PROXIMOS_30">Próximos 30 dias</option>
+          <option value="VENCIDOS">Vencidos</option>
+          <option value="INTERVALO">Intervalo personalizado</option>
+        </select>
+        <input
+          type="date"
+          name="inicio"
+          defaultValue={filters.inicio}
+          className="rounded-lg border px-3 py-2"
+        />
+        <input
+          type="date"
+          name="fim"
+          defaultValue={filters.fim}
+          className="rounded-lg border px-3 py-2"
+        />
+        <button className="rounded-lg bg-slate-900 px-4 py-2 text-white">
+          Filtrar
+        </button>
+      </form>
+      {error ? (
+        <p className="rounded-lg bg-red-50 p-3 text-red-800">{error.message}</p>
+      ) : (
+        <BidStrategyTable rows={rows} />
+      )}
     </div>
   );
 }
@@ -153,6 +359,10 @@ type RegraParticipanteRow = {
   base_v2: string | null;
   tipo_administradora_id: string | null;
   modalidade_comissao_id: string | null;
+  participante_comercial_id: string | null;
+  modo_regra: string;
+  fonte_comissao: string;
+  participante: { nome: string; nome_exibicao: string | null }[] | null;
 };
 type GrupoRegraRow = {
   id: string;
@@ -198,6 +408,7 @@ export async function ErpRegrasComissaoPage() {
     tiposResult,
     modalidadesResult,
     participantesCatalogoResult,
+    fiscaisResult,
     canWriteResult,
     platformSuperadmin,
   ] = await Promise.all([
@@ -216,7 +427,7 @@ export async function ErpRegrasComissaoPage() {
     supabase
       .from("comissao_regras_participantes")
       .select(
-        "id,programa_id,versao,base_calculo,percentual_comissao,valor_fixo_total,vigencia_inicio,vigencia_fim,tipo_participante,ativa,configuracao_homologada,etapas_cronograma,base_v2,tipo_administradora_id,modalidade_comissao_id",
+        "id,programa_id,versao,base_calculo,percentual_comissao,valor_fixo_total,vigencia_inicio,vigencia_fim,tipo_participante,ativa,configuracao_homologada,etapas_cronograma,base_v2,tipo_administradora_id,modalidade_comissao_id,participante_comercial_id,modo_regra,fonte_comissao,participante:participantes_comerciais(nome,nome_exibicao)",
       )
       .eq("empresa_id", empresaId)
       .order("vigencia_inicio", { ascending: false }),
@@ -247,6 +458,13 @@ export async function ErpRegrasComissaoPage() {
       .eq("empresa_id", empresaId)
       .ilike("status", "ativo")
       .order("nome"),
+    supabase
+      .from("empresa_configuracoes_fiscais")
+      .select(
+        "id,percentual_imposto,vigencia_inicio,vigencia_fim,participante_exibe_detalhes_fiscais,ativo",
+      )
+      .eq("empresa_id", empresaId)
+      .order("vigencia_inicio", { ascending: false }),
     supabase.rpc("can_write_tenant_internal", { p_empresa_id: empresaId }),
     isPlatformSuperadmin(),
   ]);
@@ -257,6 +475,12 @@ export async function ErpRegrasComissaoPage() {
   const grupos = (gruposResult.data ?? []) as GrupoRegraRow[];
   const cotas = (cotasResult.data ?? []) as CotaRegraRow[];
   const nomes = new Map(programas.map((item) => [item.id, item.nome]));
+  const tiposNomes = new Map(
+    (tiposResult.data ?? []).map((item) => [item.id, item.nome]),
+  );
+  const modalidadesNomes = new Map(
+    (modalidadesResult.data ?? []).map((item) => [item.id, item.nome]),
+  );
   const franquiaPercentuais = new Map(
     franquia
       .filter((row) => row.percentual_total_comissao)
@@ -306,48 +530,10 @@ export async function ErpRegrasComissaoPage() {
       </header>
       {canWriteResult.data ? (
         <>
-          <form
-            action={saveFiscalCommissionConfigAction}
-            className="grid gap-3 rounded-xl border border-emerald-200 bg-white p-4 md:grid-cols-5"
-          >
-            <input type="hidden" name="empresa_id" value={empresaId} />
-            <label className="text-sm font-medium">
-              Imposto sobre comissão (%)
-              <input
-                name="percentual_imposto"
-                inputMode="decimal"
-                required
-                className="mt-1 w-full rounded border p-2"
-              />
-            </label>
-            <label className="text-sm font-medium">
-              Início da vigência
-              <input
-                type="date"
-                name="vigencia_inicio"
-                required
-                className="mt-1 w-full rounded border p-2"
-              />
-            </label>
-            <label className="text-sm font-medium">
-              Fim da vigência
-              <input
-                type="date"
-                name="vigencia_fim"
-                className="mt-1 w-full rounded border p-2"
-              />
-            </label>
-            <label className="flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                name="participante_exibe_detalhes_fiscais"
-              />{" "}
-              Participante vê bruto + imposto + líquido
-            </label>
-            <button className="self-end rounded bg-emerald-700 px-3 py-2 text-sm font-bold text-white">
-              Salvar configuração fiscal
-            </button>
-          </form>
+          <FiscalCommissionConfig
+            empresaId={empresaId}
+            configs={fiscaisResult.data ?? []}
+          />
           <CommissionRuleManager
             empresaId={empresaId}
             programas={programas.map(({ id, nome, administradora_id }) => ({
@@ -373,6 +559,7 @@ export async function ErpRegrasComissaoPage() {
                 nome: item.nome_exibicao || item.nome,
               }),
             )}
+            officialSetup={false}
           />
         </>
       ) : (
@@ -436,6 +623,16 @@ export async function ErpRegrasComissaoPage() {
                     {programa.ativo ? "Inativar" : "Ativar"}
                   </button>
                 </form>
+                <form action={deleteCommissionProgramAction}>
+                  <input type="hidden" name="empresa_id" value={empresaId} />
+                  <input type="hidden" name="programa_id" value={programa.id} />
+                  <ConfirmSubmitButton
+                    message={`Excluir definitivamente o programa ${programa.nome}? Esta ação só será aceita se nunca houve uso.`}
+                    className="rounded-lg border border-red-200 px-3 py-1.5 text-xs font-bold text-red-700"
+                  >
+                    Excluir
+                  </ConfirmSubmitButton>
+                </form>
               </div>
             </div>
           ))}
@@ -459,6 +656,11 @@ export async function ErpRegrasComissaoPage() {
           etapas: stages(row.etapas_cronograma),
           homologada: row.configuracao_homologada,
           ativa: row.ativa,
+          tipo: tiposNomes.get(row.tipo_administradora_id ?? "") ?? "Todos",
+          modalidade:
+            modalidadesNomes.get(row.modalidade_comissao_id ?? "") ?? "Todas",
+          modo: "Oficial",
+          fonte: "Franqueadora",
         }))}
       />
       <RuleTable
@@ -470,7 +672,9 @@ export async function ErpRegrasComissaoPage() {
           id: row.id,
           programa: nomes.get(row.programa_id) ?? "Programa",
           versao: row.versao,
-          escopo: row.tipo_participante ?? "Regra geral",
+          escopo: row.participante_comercial_id
+            ? `${row.participante?.[0]?.nome_exibicao || row.participante?.[0]?.nome || "Participante"} — ${row.tipo_participante || "Participante"}`
+            : `REGRA GERAL — ${row.tipo_participante || "QUALQUER PAPEL"}`,
           valor: (() => {
             const valor = ruleValue(
               row.base_calculo,
@@ -490,6 +694,11 @@ export async function ErpRegrasComissaoPage() {
           etapas: stages(row.etapas_cronograma),
           homologada: row.configuracao_homologada,
           ativa: row.ativa,
+          tipo: tiposNomes.get(row.tipo_administradora_id ?? "") ?? "Todos",
+          modalidade:
+            modalidadesNomes.get(row.modalidade_comissao_id ?? "") ?? "Todas",
+          modo: row.modo_regra,
+          fonte: row.fonte_comissao,
         }))}
       />
     </div>
@@ -506,6 +715,10 @@ type RuleView = {
   etapas: number;
   homologada: boolean;
   ativa: boolean;
+  tipo: string;
+  modalidade: string;
+  modo: string;
+  fonte: string;
 };
 function RuleTable({
   title,
@@ -520,7 +733,7 @@ function RuleTable({
   canHomologate?: boolean;
   participantRules?: boolean;
 }) {
-  const showAction = Boolean(canHomologate && empresaId);
+  const showAction = Boolean(empresaId);
   return (
     <section className="overflow-hidden rounded-xl border border-slate-200 bg-white">
       <div className="border-b border-slate-200 px-4 py-3">
@@ -533,17 +746,19 @@ function RuleTable({
               <th className="px-4 py-3">Programa</th>
               <th className="px-4 py-3">Escopo</th>
               <th className="px-4 py-3">Valor</th>
+              <th className="px-4 py-3">Modo / Fonte</th>
+              <th className="px-4 py-3">Tipo / Modalidade</th>
               <th className="px-4 py-3">Vigencia</th>
               <th className="px-4 py-3">Cronograma</th>
               <th className="px-4 py-3">Estado</th>
-              {showAction && <th className="px-4 py-3">Ação Platform</th>}
+              {showAction && <th className="px-4 py-3">Ações</th>}
             </tr>
           </thead>
           <tbody>
             {rows.length === 0 ? (
               <tr>
                 <td
-                  colSpan={showAction ? 7 : 6}
+                  colSpan={showAction ? 9 : 8}
                   className="px-4 py-8 text-center text-slate-500"
                 >
                   Nenhuma regra cadastrada.
@@ -560,6 +775,18 @@ function RuleTable({
                   </td>
                   <td className="px-4 py-3">{row.escopo}</td>
                   <td className="px-4 py-3 font-semibold">{row.valor}</td>
+                  <td className="px-4 py-3">
+                    {row.modo}
+                    <br />
+                    <span className="text-xs text-slate-500">{row.fonte}</span>
+                  </td>
+                  <td className="px-4 py-3">
+                    {row.tipo}
+                    <br />
+                    <span className="text-xs text-slate-500">
+                      {row.modalidade}
+                    </span>
+                  </td>
                   <td className="px-4 py-3 text-slate-500">{row.vigencia}</td>
                   <td className="px-4 py-3">{row.etapas} etapa(s)</td>
                   <td className="px-4 py-3">
@@ -575,27 +802,93 @@ function RuleTable({
                   </td>
                   {showAction && (
                     <td className="px-4 py-3">
-                      {row.ativa && !row.homologada ? (
-                        <form
-                          action={
-                            participantRules
-                              ? homologateParticipantRuleAction
-                              : homologateFranchiseRuleAction
-                          }
-                        >
+                      <div className="flex flex-wrap gap-2">
+                        {canHomologate && row.ativa && !row.homologada ? (
+                          <form
+                            action={
+                              participantRules
+                                ? homologateParticipantRuleAction
+                                : homologateFranchiseRuleAction
+                            }
+                          >
+                            <input
+                              type="hidden"
+                              name="empresa_id"
+                              value={empresaId}
+                            />
+                            <input
+                              type="hidden"
+                              name="regra_id"
+                              value={row.id}
+                            />
+                            <button className="rounded-lg border border-emerald-300 px-3 py-1.5 text-xs font-semibold text-emerald-700">
+                              Homologar
+                            </button>
+                          </form>
+                        ) : null}
+                        <form action={newCommissionRuleVersionAction}>
                           <input
                             type="hidden"
                             name="empresa_id"
                             value={empresaId}
                           />
                           <input type="hidden" name="regra_id" value={row.id} />
-                          <button className="rounded-lg border border-emerald-300 px-3 py-1.5 text-xs font-semibold text-emerald-700">
-                            Homologar
+                          <input
+                            type="hidden"
+                            name="tipo_regra"
+                            value={
+                              participantRules ? "PARTICIPANTE" : "FRANQUEADORA"
+                            }
+                          />
+                          <button className="rounded-lg border px-2 py-1 text-xs">
+                            Nova versão
                           </button>
                         </form>
-                      ) : (
-                        <span className="text-xs text-slate-400">—</span>
-                      )}
+                        <form action={toggleCommissionRuleAction}>
+                          <input
+                            type="hidden"
+                            name="empresa_id"
+                            value={empresaId}
+                          />
+                          <input type="hidden" name="regra_id" value={row.id} />
+                          <input
+                            type="hidden"
+                            name="tipo_regra"
+                            value={
+                              participantRules ? "PARTICIPANTE" : "FRANQUEADORA"
+                            }
+                          />
+                          <input
+                            type="hidden"
+                            name="ativo"
+                            value={row.ativa ? "false" : "true"}
+                          />
+                          <button className="rounded-lg border px-2 py-1 text-xs">
+                            {row.ativa ? "Inativar" : "Ativar"}
+                          </button>
+                        </form>
+                        <form action={deleteCommissionRuleAction}>
+                          <input
+                            type="hidden"
+                            name="empresa_id"
+                            value={empresaId}
+                          />
+                          <input type="hidden" name="regra_id" value={row.id} />
+                          <input
+                            type="hidden"
+                            name="tipo_regra"
+                            value={
+                              participantRules ? "PARTICIPANTE" : "FRANQUEADORA"
+                            }
+                          />
+                          <ConfirmSubmitButton
+                            message={`Excluir definitivamente ${row.programa}, ${row.tipo}/${row.modalidade}, vigência ${row.vigencia}? O servidor bloqueará se houver homologação ou uso.`}
+                            className="rounded-lg border border-red-200 px-2 py-1 text-xs text-red-700"
+                          >
+                            Excluir
+                          </ConfirmSubmitButton>
+                        </form>
+                      </div>
                     </td>
                   )}
                 </tr>
@@ -609,6 +902,45 @@ function RuleTable({
 }
 
 export async function ErpRepasseFranquiaPage() {
+  const { empresaAtiva } = await getCurrentTenantContext();
+  const empresaId = empresaAtiva?.id ?? "";
+  const db = await createClient();
+  const [grants, contas, recebimentos, previsoes] = await Promise.all([
+    db
+      .from("empresa_administradoras")
+      .select("administradora:administradoras(id,nome)")
+      .eq("empresa_id", empresaId)
+      .eq("status", "ATIVA"),
+    db
+      .from("financeiro_contas_bancarias")
+      .select("id,nome")
+      .eq("empresa_id", empresaId)
+      .eq("ativo", true)
+      .order("nome"),
+    db
+      .from("financeiro_recebimentos")
+      .select(
+        "id,data_recebimento,competencia,valor_total,valor_classificado,conciliacao_status,numero_nota_fiscal,administradora:administradoras(nome)",
+      )
+      .eq("empresa_id", empresaId)
+      .order("data_recebimento", { ascending: false })
+      .limit(100),
+    db
+      .from("comissao_previsoes_franquia")
+      .select(
+        "id,administradora_id,competencia,valor_previsto,valor_liquidado,administradora:administradoras(nome)",
+      )
+      .eq("empresa_id", empresaId)
+      .in("status", ["prevista", "parcialmente_liquidada"])
+      .order("competencia"),
+  ]);
+  const administradoras = (grants.data ?? []).flatMap((x) => {
+    const a = x.administradora as unknown as {
+      id: string;
+      nome: string;
+    } | null;
+    return a ? [a] : [];
+  });
   return (
     <div className="space-y-6">
       <header>
@@ -639,6 +971,68 @@ export async function ErpRepasseFranquiaPage() {
             description: "Participantes comerciais vinculados ao tenant.",
           },
         ]}
+      />
+      <div className="grid gap-3 sm:grid-cols-4">
+        <div className={cardClass}>
+          <p className="text-sm text-slate-500">Previsto</p>
+          <p className="text-xl font-bold">
+            {money(
+              (previsoes.data ?? []).reduce(
+                (s, p) =>
+                  s + Number(p.valor_previsto) - Number(p.valor_liquidado),
+                0,
+              ),
+            )}
+          </p>
+        </div>
+        <div className={cardClass}>
+          <p className="text-sm text-slate-500">Recebido</p>
+          <p className="text-xl font-bold">
+            {money(
+              (recebimentos.data ?? []).reduce(
+                (s, r) => s + Number(r.valor_total),
+                0,
+              ),
+            )}
+          </p>
+        </div>
+        <div className={cardClass}>
+          <p className="text-sm text-slate-500">Classificado</p>
+          <p className="text-xl font-bold">
+            {money(
+              (recebimentos.data ?? []).reduce(
+                (s, r) => s + Number(r.valor_classificado),
+                0,
+              ),
+            )}
+          </p>
+        </div>
+        <div className={cardClass}>
+          <p className="text-sm text-slate-500">Não classificado</p>
+          <p className="text-xl font-bold">
+            {money(
+              (recebimentos.data ?? []).reduce(
+                (s, r) =>
+                  s + Number(r.valor_total) - Number(r.valor_classificado),
+                0,
+              ),
+            )}
+          </p>
+        </div>
+      </div>
+      <ReceiptManager
+        administradoras={administradoras}
+        contas={contas.data ?? []}
+        recebimentos={
+          (recebimentos.data ?? []) as unknown as Parameters<
+            typeof ReceiptManager
+          >[0]["recebimentos"]
+        }
+        previsoes={
+          (previsoes.data ?? []) as unknown as Parameters<
+            typeof ReceiptManager
+          >[0]["previsoes"]
+        }
       />
       <div className="border-t border-slate-200 pt-6">
         <Comissoes />
