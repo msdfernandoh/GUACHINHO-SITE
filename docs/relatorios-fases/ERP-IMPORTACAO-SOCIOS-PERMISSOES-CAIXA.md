@@ -2,7 +2,7 @@
 
 Data: 14/08/2026  
 Migration: `077_erp_importacao_socios_permissoes.sql`  
-Estado: implementado e validado localmente; aplicação no Supabase e homologação autenticada ainda pendentes.
+Estado: aplicada no Supabase principal em 14/08/2026; homologação funcional autenticada ainda pendente.
 
 ## Escopo entregue
 
@@ -59,3 +59,8 @@ O download está disponível em `/modelos/modelo_importacao_contas.csv`. As linh
   alterações em campos auxiliares como `socio_pagador`.
 - O trigger não foi desativado e a proteção de atribuição, remoção, rebaixamento
   ou desativação de papéis PLATFORM permanece ativa.
+- Após a correção, a migration foi executada no Supabase principal. Consultas de
+  leitura confirmaram as novas colunas de `empresa_usuarios`, os campos de
+  importação, a view `financeiro_fechamento_socios` e os vínculos de FERNANDO e
+  Eroni Bolfe como sócios pagadores somente na tenant `gauchinho`.
+- A verificação não criou contas, movimentos de caixa ou dados de homologação.

@@ -212,7 +212,9 @@ A plataforma suporta:
 - entradas e saídas manuais são registradas por RPC como fatos append-only em `caixa_movimentos`;
 - bancos e centros de custo passam a devolver resultado controlado na própria interface;
 - relatório: `docs/relatorios-fases/ERP-IMPORTACAO-SOCIOS-PERMISSOES-CAIXA.md`;
-- estado: código e migration versionados e validados localmente; Supabase e homologação autenticada pendentes.
+- estado: migration 077 aplicada no Supabase principal em 14/08/2026, com
+  colunas, view e sócios iniciais verificados por leitura; homologação funcional
+  autenticada permanece pendente.
 - compatibilidade pré-migration: o runtime volta ao contrato legado somente
   quando `socio_pagador`/`erp_modulos_visiveis` estão ausentes, preservando o
   acesso do vínculo ativo a Usuários e ERP sem liberar módulos fora do tenant;
