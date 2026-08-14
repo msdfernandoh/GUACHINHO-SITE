@@ -17,6 +17,7 @@ import { getCurrentTenantContext } from "@/lib/tenant/context";
 import { getEmpresaGrupoConfig } from "@/lib/grupos/empresa-grupos-config";
 import type { GrupoConsorcio } from "@/lib/types";
 import { Button } from "@/components/ui/form-primitives";
+import { createClient } from "@/lib/supabase/server";
 
 export default async function GrupoEditPage({
   params,
@@ -38,6 +39,11 @@ export default async function GrupoEditPage({
   }
 
   const modalidades = await fetchModalidadesByGrupoId(id);
+  const supabase = await createClient();
+  const [{ data: tiposAdministradora }, { data: modalidadesComissao }] = await Promise.all([
+    supabase.from("administradora_tipos").select("id,nome").eq("administradora_id", data.grupo.administradora_id).eq("ativo", true).order("nome"),
+    supabase.from("administradora_modalidades_comissao").select("id,nome").eq("administradora_id", data.grupo.administradora_id).eq("ativo", true).order("nome"),
+  ]);
   const empresaId = empresaAtiva?.id;
   const empresaConfig = empresaId
     ? await getEmpresaGrupoConfig(empresaId, id)
@@ -116,6 +122,8 @@ export default async function GrupoEditPage({
               formId="grupo-form"
               initial={data.grupo as Record<string, unknown>}
               modalidadesInitial={modalidades}
+              tiposAdministradora={tiposAdministradora ?? []}
+              modalidadesComissao={modalidadesComissao ?? []}
             />
           </div>
         </form>

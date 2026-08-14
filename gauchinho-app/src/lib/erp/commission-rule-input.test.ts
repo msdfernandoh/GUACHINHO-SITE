@@ -11,9 +11,11 @@ function form(overrides: Record<string, string> = {}) {
     modalidade: "Imóvel",
     opcao_cota_id: "",
     plano_condicao: "Plano A",
+    tipo_administradora_id: "tipo-1",
+    modalidade_comissao_id: "modalidade-1",
     etapas_cronograma: JSON.stringify([
-      { nome: "Adesão", mes_relativo: 1, percentual_etapa: "40" },
-      { nome: "Parcela 2", mes_relativo: 2, percentual_etapa: "60" },
+      { nome: "Adesão", tipo_gatilho: "MES_RELATIVO", mes_relativo: 1, percentual_venda: "1,25" },
+      { nome: "Parcela 2", tipo_gatilho: "MES_RELATIVO", mes_relativo: 2, percentual_venda: "1,50" },
     ]),
     ...overrides,
   };
@@ -31,8 +33,8 @@ describe("parseFranchiseRuleForm", () => {
     expect(parsed.etapas).toHaveLength(2);
   });
 
-  it("recusa cronograma percentual que não fecha em 100%", () => {
-    expect(() => parseFranchiseRuleForm(form({ etapas_cronograma: JSON.stringify([{ nome: "Única", mes_relativo: 1, percentual_etapa: 99 }]) }))).toThrow("100%");
+  it("recusa cronograma percentual que não fecha o total sobre a venda", () => {
+    expect(() => parseFranchiseRuleForm(form({ etapas_cronograma: JSON.stringify([{ nome: "Única", tipo_gatilho: "MES_RELATIVO", mes_relativo: 1, percentual_venda: 2.5 }]) }))).toThrow("percentual total");
   });
 
   it("não fornece percentual implícito", () => {
@@ -40,7 +42,15 @@ describe("parseFranchiseRuleForm", () => {
   });
 
   it("exige que etapas de valor fixo fechem no total", () => {
-    expect(() => parseFranchiseRuleForm(form({ base_calculo: "valor_fixo", valor_comissao: "1000", etapas_cronograma: JSON.stringify([{ nome: "Única", mes_relativo: 1, valor_etapa: 900 }]) }))).toThrow("valor fixo total");
+    expect(() => parseFranchiseRuleForm(form({ base_calculo: "valor_fixo", valor_comissao: "1000", etapas_cronograma: JSON.stringify([{ nome: "Única", tipo_gatilho: "MES_RELATIVO", mes_relativo: 1, valor_etapa: 900 }]) }))).toThrow("valor fixo total");
+  });
+
+  it("aceita contemplação opcional sem mês fictício", () => {
+    const parsed = parseFranchiseRuleForm(form({ etapas_cronograma: JSON.stringify([
+      { nome: "1ª", tipo_gatilho: "MES_RELATIVO", mes_relativo: 1, percentual_venda: 1.5 },
+      { nome: "CONTEMPLAÇÃO", tipo_gatilho: "CONTEMPLACAO", mes_relativo: null, percentual_venda: 1.25 },
+    ]) }));
+    expect(parsed.etapas[1]).toMatchObject({ tipo_gatilho: "CONTEMPLACAO", mes_relativo: null, percentual_venda: 1.25 });
   });
 
   it("identifica ambiguidade apenas no mesmo escopo e em vigências sobrepostas", () => {

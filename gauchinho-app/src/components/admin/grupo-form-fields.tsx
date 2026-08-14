@@ -11,10 +11,14 @@ export function GrupoFormFields({
   formId = "grupo-form",
   initial,
   modalidadesInitial,
+  tiposAdministradora = [],
+  modalidadesComissao = [],
 }: {
   formId?: string;
   initial?: GrupoInitial;
   modalidadesInitial?: GrupoModalidadeLance[];
+  tiposAdministradora?: Array<{ id: string; nome: string }>;
+  modalidadesComissao?: Array<{ id: string; nome: string }>;
 }) {
   const g = initial ?? {};
   const dataBase =
@@ -36,6 +40,21 @@ export function GrupoFormFields({
                   {m}
                 </option>
               ))}
+            </Select>
+          </div>
+          <div>
+            <Label>Tipo da Administradora</Label>
+            <Select name="tipo_administradora_id" required defaultValue={String(g.tipo_administradora_id ?? "")}>
+              <option value="" disabled>Selecione o tipo</option>
+              {tiposAdministradora.map((item) => <option key={item.id} value={item.id}>{item.nome}</option>)}
+            </Select>
+            {!g.tipo_administradora_id && <p className="mt-1 text-xs font-semibold text-amber-700">CONFIGURAÇÃO PENDENTE — novas vendas ficam bloqueadas.</p>}
+          </div>
+          <div>
+            <Label>Modalidade / tabela de comissão</Label>
+            <Select name="modalidade_comissao_id" required defaultValue={String(g.modalidade_comissao_id ?? "")}>
+              <option value="" disabled>Selecione a modalidade</option>
+              {modalidadesComissao.map((item) => <option key={item.id} value={item.id}>{item.nome}</option>)}
             </Select>
           </div>
           <div className="sm:col-span-2">
@@ -92,6 +111,19 @@ export function GrupoFormFields({
         <div>
           <Label>Observações</Label>
           <Textarea name="observacoes" rows={2} defaultValue={String(g.observacoes ?? "")} />
+        </div>
+      </section>
+
+      <section className="space-y-3 rounded-xl border border-blue-200 bg-blue-50/50 p-4">
+        <h2 className="font-semibold text-slate-900">Configuração avançada da comissão</h2>
+        <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
+          <input type="checkbox" name="usar_regra_personalizada" value="on" defaultChecked={!!g.usar_regra_personalizada}/>
+          Usar regra personalizada deste grupo (promoção ou exceção)
+        </label>
+        <div className="grid gap-3 sm:grid-cols-3">
+          <div><Label>Início da vigência</Label><Input type="date" name="regra_personalizada_vigencia_inicio" defaultValue={String(g.regra_personalizada_vigencia_inicio ?? "").slice(0,10)}/></div>
+          <div><Label>Fim da vigência</Label><Input type="date" name="regra_personalizada_vigencia_fim" defaultValue={String(g.regra_personalizada_vigencia_fim ?? "").slice(0,10)}/></div>
+          <div><Label>Versão</Label><Input type="number" min={1} name="regra_personalizada_versao" defaultValue={String(g.regra_personalizada_versao ?? "")}/></div>
         </div>
       </section>
 

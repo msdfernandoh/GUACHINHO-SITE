@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils/cn";
 export function ErpSidebar({ config, empresaNome }: { config: ErpSistemaConfig; empresaNome: string }) {
   const pathname = usePathname();
   const operational = listEnabledOperationalRoutes(config);
-  const icons = { clientes: Users, consultores: BriefcaseBusiness, lances: TicketCheck, assembleias: Building2, "regras-comissao": Settings2, "repasse-franquia": BadgeDollarSign, "contas-pagar": WalletCards } as const;
+  const icons = { clientes: Users, consultores: BriefcaseBusiness, lances: TicketCheck, assembleias: Building2, "regras-comissao": Settings2, "repasse-franquia": BadgeDollarSign, "minhas-comissoes": CircleDollarSign, "contas-pagar": WalletCards } as const;
   return (
     <aside className="flex w-64 shrink-0 flex-col border-r border-slate-200 bg-white text-slate-900">
       <div className="border-b border-slate-200 px-5 py-5">

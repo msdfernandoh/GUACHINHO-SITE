@@ -33,6 +33,7 @@ import {
   deleteEmpresaGrupoConfig,
 } from "@/lib/grupos/empresa-grupos-config";
 import type { GrupoModalidadeLance, GrupoConsorcio, PublicGrupoAggregate } from "@/lib/types";
+import { getCurrentTenantContext } from "@/lib/tenant/context";
 
 const GRUPO_AUTO_PARCEL_COLS = [
   "parcelas_realizadas_base",
@@ -189,6 +190,12 @@ function grupoFromForm(formData: FormData) {
   return {
     codigo_grupo: String(formData.get("codigo_grupo") ?? "").trim(),
     modalidade: String(formData.get("modalidade") ?? "Imóvel").trim(),
+    tipo_administradora_id: String(formData.get("tipo_administradora_id") ?? "").trim() || null,
+    modalidade_comissao_id: String(formData.get("modalidade_comissao_id") ?? "").trim() || null,
+    usar_regra_personalizada: formData.get("usar_regra_personalizada") === "on",
+    regra_personalizada_vigencia_inicio: String(formData.get("regra_personalizada_vigencia_inicio") ?? "").trim() || null,
+    regra_personalizada_vigencia_fim: String(formData.get("regra_personalizada_vigencia_fim") ?? "").trim() || null,
+    regra_personalizada_versao: Number(formData.get("regra_personalizada_versao") ?? 0) || null,
     administradora: String(formData.get("administradora") ?? "").trim() || null,
     taxa_administrativa_percentual: Number(formData.get("taxa_administrativa_percentual") ?? 0),
     fundo_reserva_percentual: Number(formData.get("fundo_reserva_percentual") ?? 0),
@@ -422,10 +429,19 @@ export async function fetchGrupoWithCotas(id: string) {
 export async function createGrupoAction(formData: FormData) {
   await assertCanManageGrupos();
   const supabase = await createClient();
-  const grupo = await withAdministradoraDualWrite(
+  const isPlatform = await isPlatformSuperadmin();
+  const { empresaAtiva } = await getCurrentTenantContext();
+  if (!isPlatform && !empresaAtiva) throw new Error("Selecione uma empresa para criar o grupo local.");
+  const grupoBase = await withAdministradoraDualWrite(
     formData,
     buildGrupoPayloadFromForm(formData),
   );
+  const grupo = {
+    ...grupoBase,
+    origem_governanca: isPlatform ? "GLOBAL" : "LOCAL",
+    status_governanca: isPlatform ? "GLOBAL" : "PENDENTE_PLATFORM",
+    empresa_origem_id: isPlatform ? null : empresaAtiva!.id,
+  };
   const bulk = String(formData.get("cotas_bulk") ?? "");
 
   const data = await insertGrupoConsorcio(supabase, grupo);
@@ -433,6 +449,7 @@ export async function createGrupoAction(formData: FormData) {
   await insertCotasFromBulk(supabase, data.id, bulk, grupo);
 
   await syncModalidadesLance(data.id, formData);
+  if (!isPlatform) await supabase.from("grupos_governanca_historico").insert({ grupo_id: data.id, empresa_origem_id: empresaAtiva!.id, evento: "CRIADO_LOCAL" });
 
   revalidatePath("/admin/grupos");
   redirect(`/admin/grupos/${data.id}`);

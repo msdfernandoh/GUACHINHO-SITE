@@ -24,6 +24,11 @@ export type PrevisaoFranquiaRow = {
   valor_fixo_aplicado: number | null;
   valor_previsto: number;
   valor_liquidado: number;
+  tipo_gatilho?: "MES_RELATIVO" | "CONTEMPLACAO";
+  valor_bruto?: number | null;
+  percentual_imposto?: number | null;
+  valor_imposto?: number | null;
+  valor_liquido?: number | null;
   status: "prevista" | "parcialmente_liquidada" | "liquidada" | "suspensa" | "cancelada";
   snapshot_regra: Record<string, unknown>;
   created_at: string;
@@ -47,6 +52,8 @@ export type PrevisaoParticipanteRow = {
   valor_previsto: number;
   valor_elegivel: number;
   valor_pago: number;
+  tipo_gatilho?: "MES_RELATIVO" | "CONTEMPLACAO";
+  conferido_por_participante?: boolean;
   status: "prevista" | "parcialmente_elegivel" | "elegivel" | "parcialmente_paga" | "paga" | "suspensa" | "cancelada";
   snapshot_regra: Record<string, unknown>;
   created_at: string;

@@ -15,6 +15,8 @@ export type RecebimentoInput = {
   formaPagamento?: "pix" | "ted" | "boleto" | "outros";
   referenciaDocumento?: string;
   observacoes?: string;
+  motivoDivergencia?: string;
+  pendenciaId?: string;
   itens: { previsaoFranquiaId: string; valorLiquidado: ValorMonetario }[];
 };
 
@@ -45,8 +47,37 @@ function hojeIso(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
-export async function registrarRecebimentoAdministradora(input: RecebimentoInput) {
+export async function registrarRecebimentoAdministradora(
+  input: RecebimentoInput,
+) {
   const admin = createAdminClient();
+  if (input.motivoDivergencia) {
+    if (input.itens.length !== 1) {
+      throw new Error(
+        "Recebimento com divergência positiva exige uma única previsão.",
+      );
+    }
+    const item = input.itens[0];
+    const { data, error } = await admin.rpc(
+      "rpc_registrar_recebimento_com_divergencia",
+      {
+        p_empresa_id: input.empresaId,
+        p_administradora_id: input.administradoraId,
+        p_competencia: input.competencia,
+        p_valor_total: input.valorTotal,
+        p_previsao_franquia_id: item.previsaoFranquiaId,
+        p_motivo: input.motivoDivergencia,
+        p_observacao: input.observacoes ?? "Divergência confirmada no ERP",
+        p_idempotency_key: input.idempotencyKey,
+        p_pendencia_id: input.pendenciaId ?? null,
+        p_data_recebimento: input.dataRecebimento ?? hojeIso(),
+        p_forma_pagamento: input.formaPagamento ?? "pix",
+        p_referencia_documento: input.referenciaDocumento ?? null,
+      },
+    );
+    if (error) throw new Error(error.message);
+    return data;
+  }
   const { data, error } = await admin.rpc("rpc_registrar_recebimento", {
     p_empresa_id: input.empresaId,
     p_administradora_id: input.administradoraId,
@@ -64,6 +95,28 @@ export async function registrarRecebimentoAdministradora(input: RecebimentoInput
   });
   if (error) throw new Error(error.message);
   return (data as { recebimento?: unknown } | null)?.recebimento ?? data;
+}
+
+export async function transferirPendenciaRecebimento(input: {
+  empresaId: string;
+  previsaoFranquiaId: string;
+  competenciaDestino: string;
+  motivo: string;
+  idempotencyKey: string;
+}) {
+  const admin = createAdminClient();
+  const { data, error } = await admin.rpc(
+    "rpc_transferir_pendencia_recebimento",
+    {
+      p_empresa_id: input.empresaId,
+      p_previsao_franquia_id: input.previsaoFranquiaId,
+      p_competencia_destino: input.competenciaDestino,
+      p_motivo: input.motivo,
+      p_idempotency_key: input.idempotencyKey,
+    },
+  );
+  if (error) throw new Error(error.message);
+  return data;
 }
 
 export async function registrarPagamentoParticipante(input: PagamentoInput) {
@@ -160,20 +213,56 @@ export async function estornarPagamento(
   return data;
 }
 
-export async function getResumoCaixaEmpresa(empresaId: string): Promise<ResumoCaixa> {
+export async function getResumoCaixaEmpresa(
+  empresaId: string,
+): Promise<ResumoCaixa> {
   const admin = createAdminClient();
-  const [movimentos, franquia, participantes, compensacoes] = await Promise.all([
-    admin.from("caixa_movimentos").select("tipo_movimento, valor").eq("empresa_id", empresaId),
-    admin.from("comissao_previsoes_franquia").select("valor_previsto, valor_liquidado").eq("empresa_id", empresaId).in("status", ["prevista", "parcialmente_liquidada"]),
-    admin.from("comissao_previsoes_participantes").select("valor_elegivel, valor_pago").eq("empresa_id", empresaId).in("status", ["parcialmente_elegivel", "elegivel", "parcialmente_paga"]),
-    admin.from("financeiro_compensacoes_saldos").select("saldo_calculado").eq("empresa_id", empresaId).gt("saldo_calculado", 0),
-  ]);
+  const [movimentos, franquia, participantes, compensacoes] = await Promise.all(
+    [
+      admin
+        .from("caixa_movimentos")
+        .select("tipo_movimento, valor")
+        .eq("empresa_id", empresaId),
+      admin
+        .from("comissao_previsoes_franquia")
+        .select("valor_previsto, valor_liquidado")
+        .eq("empresa_id", empresaId)
+        .in("status", ["prevista", "parcialmente_liquidada"]),
+      admin
+        .from("comissao_previsoes_participantes")
+        .select("valor_elegivel, valor_pago")
+        .eq("empresa_id", empresaId)
+        .in("status", [
+          "parcialmente_elegivel",
+          "elegivel",
+          "parcialmente_paga",
+        ]),
+      admin
+        .from("financeiro_compensacoes_saldos")
+        .select("saldo_calculado")
+        .eq("empresa_id", empresaId)
+        .gt("saldo_calculado", 0),
+    ],
+  );
 
-  const entradas = (movimentos.data ?? []).filter((m) => m.tipo_movimento === "entrada").reduce((s, m) => s + Number(m.valor), 0);
-  const saidas = (movimentos.data ?? []).filter((m) => m.tipo_movimento === "saida").reduce((s, m) => s + Number(m.valor), 0);
-  const receber = (franquia.data ?? []).reduce((s, p) => s + Number(p.valor_previsto) - Number(p.valor_liquidado), 0);
-  const pagar = (participantes.data ?? []).reduce((s, p) => s + Number(p.valor_elegivel) - Number(p.valor_pago), 0);
-  const compensar = (compensacoes.data ?? []).reduce((s, c) => s + Number(c.saldo_calculado), 0);
+  const entradas = (movimentos.data ?? [])
+    .filter((m) => m.tipo_movimento === "entrada")
+    .reduce((s, m) => s + Number(m.valor), 0);
+  const saidas = (movimentos.data ?? [])
+    .filter((m) => m.tipo_movimento === "saida")
+    .reduce((s, m) => s + Number(m.valor), 0);
+  const receber = (franquia.data ?? []).reduce(
+    (s, p) => s + Number(p.valor_previsto) - Number(p.valor_liquidado),
+    0,
+  );
+  const pagar = (participantes.data ?? []).reduce(
+    (s, p) => s + Number(p.valor_elegivel) - Number(p.valor_pago),
+    0,
+  );
+  const compensar = (compensacoes.data ?? []).reduce(
+    (s, c) => s + Number(c.saldo_calculado),
+    0,
+  );
   const centavos = (valor: number) => Number(valor.toFixed(2));
 
   return {

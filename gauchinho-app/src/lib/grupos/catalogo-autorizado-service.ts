@@ -65,7 +65,9 @@ export async function listGruposAutorizadosForEmpresa(
 
   const { data, error } = await q;
   if (error) throw new Error(error.message);
-  const rawGrupos = (data ?? []) as GrupoConsorcio[];
+  const rawGrupos = ((data ?? []) as GrupoConsorcio[]).filter((grupo) =>
+    grupo.origem_governanca !== "LOCAL" || grupo.empresa_origem_id === empresaId
+  );
 
   if (opts?.incluirInativos) {
     return rawGrupos.filter((g) => Boolean(g.administradora_id));
@@ -106,6 +108,7 @@ export async function getGrupoAutorizadoForEmpresa(
   if (error) throw new Error(error.message);
 
   assertGrupoAutorizadoPorIds(data as GrupoConsorcio | null, new Set(adminIds));
+  if (data && data.origem_governanca === "LOCAL" && data.empresa_origem_id !== empresaId) throwGrupoNotFound();
   return data as GrupoConsorcio;
 }
 

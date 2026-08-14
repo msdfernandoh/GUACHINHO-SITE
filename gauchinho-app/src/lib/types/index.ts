@@ -58,6 +58,11 @@ export type GrupoConsorcio = {
   administradora: string | null;
   /** FK estrutural → administradoras (preenchida a partir da E5). */
   administradora_id?: string | null;
+  empresa_origem_id?: string | null;
+  origem_governanca?: "LEGADO" | "LOCAL" | "GLOBAL";
+  status_governanca?: "CONFIGURACAO_PENDENTE" | "PENDENTE_PLATFORM" | "LOCAL" | "GLOBAL";
+  tipo_administradora_id?: string | null;
+  modalidade_comissao_id?: string | null;
   taxa_administrativa_percentual: number | null;
   fundo_reserva_percentual: number | null;
   seguro_habilitado: boolean;

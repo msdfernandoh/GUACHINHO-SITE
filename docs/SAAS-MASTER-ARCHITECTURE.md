@@ -194,6 +194,16 @@ A plataforma suporta:
 - o fechamento mensal calcula valores adiantados por sócio e o ajuste igualitário entre os pagadores;
 - relatório: `docs/relatorios-fases/ERP-FINANCEIRO-CONTAS-PAGAR.md`.
 
+### Comissões, Grupos e Contemplação V2 (Migration 076 — Preview isolado)
+- Tipos e Modalidades pertencem à Administradora; o Grupo exige ambos para vendas novas e pode seguir governança Local → Platform → Global;
+- regras são selecionadas por Administradora + Tipo + Modalidade + vigência + versão, com snapshot histórico e evento opcional `CONTEMPLACAO` sem mês fictício;
+- tabelas Racon fecham em 4,00% (Imóvel) e 3,50% (Automóveis); somente Reduzida abaixo de 59 contém 1,25% de contemplação;
+- imposto empresarial por vigência precede a divisão; participantes automáticos ou manuais podem ter cronograma e fonte próprios, com elegibilidade acumulada;
+- recebimentos, pagamentos, divergências, pendências, compensações e estornos estendem 060–063, mantendo caixa, locks, idempotência e fatos append-only;
+- contemplação manual registra crédito atualizado apenas para histórico e encerra novos estornos de curva, sem integração automática com Assembleias/Pedras;
+- relatório: `docs/relatorios-fases/ERP-COMISSOES-GRUPOS-CONTEMPLACAO-V2.md`;
+- estado: somente branch Git, Supabase efêmero e Preview; não aplicar em Production ou mesclar em `main` sem autorização expressa.
+
 ## 5. Declaração Final de Segurança e Riscos
 
 * O P0 das APIs, o hardening `057–059`, o motor canônico `060–063` e o fechamento técnico `064–066` estão implantados no Supabase principal.
