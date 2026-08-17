@@ -240,6 +240,7 @@ A plataforma suporta:
 - a migration 079, ainda restrita ao Supabase isolado, acrescenta status operacional, pendências e histórico tenant-aware;
 - Cliente é reutilizado pela identidade canônica empresa + documento da 071; documentos permanecem no Storage privado;
 - promoção para Production, merge em `main` e backfill histórico permanecem proibidos até autorização expressa.
+- o primeiro provisionamento isolado autorizado (`llvkybltnrmznvrntxng`) terminou em `MIGRATIONS_FAILED` na reconstrução histórica; 079 não foi aplicada e o Vercel Preview foi corretamente retido para não herdar Production;
 - manual: `docs/manuais/MANUAL-ERP-CONTRATACOES.md`; relatório: `docs/relatorios-fases/ERP-CONTRATACOES-FORMALIZACAO-V1.md`.
 
 * O P0 das APIs, o hardening `057–059`, o motor canônico `060–063` e o fechamento técnico `064–066` estão implantados no Supabase principal.

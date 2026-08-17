@@ -25,12 +25,26 @@ O serviço chama `converterContratacaoEmVenda` com chave estável `erp-formaliza
 ## Testes e homologação
 
 - Contrato estático garante ausência de INSERT paralelo em `vendas`/`cotas_definitivas`.
-- TypeScript: aprovado durante implementação.
-- Testes SQL isolados, suíte completa, build, screenshots e URL do Preview serão registrados após implantação no Supabase isolado.
+- TypeScript: aprovado pelo build de produção local.
+- Teste direcionado: 4/4 PASS.
+- Suíte completa: 737 PASS / 37 SKIP em 132 arquivos aprovados e 9 ignorados.
+- Lint das novas rotas/serviços: aprovado.
+- Build Next.js: aprovado, 132 páginas estáticas geradas e rotas `/erp/contratacoes` e `/erp/contratacoes/[id]` reconhecidas.
+
+## Supabase isolado — bloqueio de infraestrutura
+
+- Branch solicitada: `codex-erp-contratacoes-079`, branch id `811d5907-e58a-458d-8e35-38418749f1ae`, project ref `llvkybltnrmznvrntxng`.
+- A criação foi explicitamente autorizada com cópia de Production, exclusivamente para homologação.
+- O provisionamento terminou em `MIGRATIONS_FAILED` antes de disponibilizar as tabelas via REST. O mecanismo de branches tentou reconstruir a cadeia histórica antes de tornar a cópia utilizável; migrations antigas dependentes de dados impedem esse replay limpo.
+- A branch Preview saudável `bfpgyralphzjozrcwjsn` foi auditada como alternativa, mas possui 076 e não possui 077. Ela foi rejeitada porque exigiria migrations inesperadas, contrariando a regra de aplicar somente 079 após alinhamento até 078.
+- Uma consulta somente de schema confirmou que `status_operacional_erp` continua ausente em Production; portanto 079 não foi aplicada no principal.
+- Nenhuma fixture foi criada, nenhum contrato real foi modificado e nenhuma integração externa foi disparada.
+- O Vercel Preview não foi criado, pois não seria seguro permitir herança das credenciais de Production e a branch Supabase autorizada não ficou operacional.
 
 ## Pendências antes de produção
 
-- Aplicar 079 somente no Supabase isolado.
+- Corrigir o provisionamento da branch Supabase (ou obter snapshot isolado comprovadamente alinhado até 078) sem reexecutar migrations históricas inesperadas.
+- Aplicar 079 somente após `migration list` e dry-run mostrarem exclusivamente 079.
 - Executar fixtures transacionais isoladas (novo cliente, cliente existente, retry, grupo pendente, comissão, venda compartilhada, documentos e cross-tenant).
 - Homologar visualmente o Preview autenticado.
 - Não aplicar migration em Produção, não mesclar `main` e não executar backfill sem autorização do proprietário.
