@@ -8,17 +8,24 @@ import {
   FileUp,
   Landmark,
   Plus,
+  History,
+  Pencil,
   ReceiptText,
+  RotateCcw,
+  Trash2,
   WalletCards,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { Button, Input, Select, Textarea } from "@/components/ui/form-primitives";
 import {
+  alterarConta,
   atualizarSocioPagadorContas,
   baixarConta,
   criarBanco,
   criarCentro,
   criarConta,
+  estornarConta,
+  excluirConta,
   importarContasCsv,
   type ContasActionResult,
 } from "./actions";
@@ -36,6 +43,9 @@ type Conta = {
   socio_pagador_usuario_id: string | null;
   responsavel_importado?: string | null;
   necessita_revisao?: boolean;
+  centro_custo_id: string | null;
+  conta_bancaria_id: string | null;
+  observacao: string | null;
 };
 type Banco = { id: string; nome: string };
 type Centro = { id: string; nome: string };
@@ -43,6 +53,7 @@ type Usuario = { id: string; nome: string; email: string; socioPagador?: boolean
 type Movimento = { tipo_movimento: "entrada" | "saida"; valor: number };
 type Tab = "conta" | "banco" | "centro" | "importar";
 type Filtro = "todas" | "abertas" | "pagas";
+type Log = { id:string; acao:string; descricao:string; fornecedor:string|null; valor:number; motivo:string|null; detalhes:Record<string,unknown>; created_at:string; usuario:{nome?:string;email?:string}|null };
 
 const brl = (value: number) =>
   value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -56,6 +67,8 @@ export function ContasPagarClient({
   socios,
   usuarios,
   caixa,
+  logs,
+  master,
 }: {
   contas: Conta[];
   bancos: Banco[];
@@ -63,6 +76,8 @@ export function ContasPagarClient({
   socios: Usuario[];
   usuarios: Usuario[];
   caixa: Movimento[];
+  logs: Log[];
+  master: boolean;
 }) {
   const router = useRouter();
   const [tab, setTab] = useState<Tab>("conta");
@@ -72,6 +87,14 @@ export function ContasPagarClient({
   const [socioLote, setSocioLote] = useState("");
   const [feedback, setFeedback] = useState<ContasActionResult | null>(null);
   const [pending, startTransition] = useTransition();
+  const [visao, setVisao] = useState<"despesas" | "logs">("despesas");
+  const [dataTipo, setDataTipo] = useState<"vencimento" | "pagamento">("vencimento");
+  const [inicio, setInicio] = useState("");
+  const [fim, setFim] = useState("");
+  const [bancoFiltro, setBancoFiltro] = useState("");
+  const [centroFiltro, setCentroFiltro] = useState("");
+  const [socioFiltro, setSocioFiltro] = useState("");
+  const [editando, setEditando] = useState<Conta | null>(null);
 
   const usuariosById = useMemo(() => new Map(usuarios.map((usuario) => [usuario.id, usuario])), [usuarios]);
   const resumo = useMemo(() => {
@@ -100,9 +123,13 @@ export function ContasPagarClient({
     0,
   );
   const contasFiltradas = contas.filter((conta) => {
-    if (filtro === "abertas") return conta.status === "aberta";
-    if (filtro === "pagas") return conta.status === "paga";
-    return conta.status !== "cancelada";
+    const data = dataTipo === "pagamento" ? conta.pago_em : conta.vencimento;
+    return (filtro === "todas" ? conta.status !== "cancelada" : filtro === "abertas" ? conta.status === "aberta" : conta.status === "paga")
+      && (!inicio || Boolean(data && data >= inicio))
+      && (!fim || Boolean(data && data <= fim))
+      && (!bancoFiltro || conta.conta_bancaria_id === bancoFiltro)
+      && (!centroFiltro || conta.centro_custo_id === centroFiltro)
+      && (!socioFiltro || conta.socio_pagador_usuario_id === socioFiltro);
   });
   const cards: Array<{ label: string; value: number; color: string; Icon: LucideIcon }> = [
     { label: "A pagar", value: resumo.abertas, color: "bg-rose-600", Icon: ReceiptText },
@@ -142,6 +169,12 @@ export function ContasPagarClient({
       else next.add(id);
       return next;
     });
+  }
+
+  function pedirMotivo(conta: Conta, tipo: "estorno" | "exclusao") {
+    const motivo = window.prompt(`Informe o motivo ${tipo === "estorno" ? "do estorno" : "da exclusão"} de “${conta.descricao}”:`)?.trim();
+    if (!motivo) return;
+    execute(() => tipo === "estorno" ? estornarConta(conta.id, motivo) : excluirConta(conta.id, motivo));
   }
 
   const tabs: Array<[Tab, string, typeof Plus]> = [
@@ -242,7 +275,22 @@ export function ContasPagarClient({
         )}
       </section>
 
-      <div className="grid gap-6 xl:grid-cols-[1.8fr_1fr]">
+      <div className="flex border-b">
+        <button type="button" onClick={() => setVisao("despesas")} className={`px-5 py-3 font-bold ${visao === "despesas" ? "border-b-2 border-blue-700 text-blue-700" : "text-slate-500"}`}>Despesas</button>
+        {master ? <button type="button" onClick={() => setVisao("logs")} className={`flex items-center gap-2 px-5 py-3 font-bold ${visao === "logs" ? "border-b-2 border-blue-700 text-blue-700" : "text-slate-500"}`}><History className="h-4 w-4" />Log de utilização</button> : null}
+      </div>
+
+      <section className={`${visao === "despesas" ? "grid" : "hidden"} gap-3 rounded-2xl border bg-white p-4 shadow-sm md:grid-cols-3 xl:grid-cols-6`}>
+        <Select value={dataTipo} onChange={(event) => setDataTipo(event.target.value as typeof dataTipo)}><option value="vencimento">Por vencimento</option><option value="pagamento">Por pagamento</option></Select>
+        <Input type="date" aria-label="Data inicial" value={inicio} onChange={(event) => setInicio(event.target.value)} />
+        <Input type="date" aria-label="Data final" value={fim} onChange={(event) => setFim(event.target.value)} />
+        <Select value={bancoFiltro} onChange={(event) => setBancoFiltro(event.target.value)}><option value="">Todos os bancos</option>{bancos.map((banco) => <option key={banco.id} value={banco.id}>{banco.nome}</option>)}</Select>
+        <Select value={centroFiltro} onChange={(event) => setCentroFiltro(event.target.value)}><option value="">Todos os centros</option>{centros.map((centro) => <option key={centro.id} value={centro.id}>{centro.nome}</option>)}</Select>
+        <Select value={socioFiltro} onChange={(event) => setSocioFiltro(event.target.value)}><option value="">Todos os sócios</option>{socios.map((socio) => <option key={socio.id} value={socio.id}>{socio.nome}</option>)}</Select>
+        <button type="button" className="text-left text-sm font-bold text-blue-700 xl:col-span-6" onClick={() => { setInicio(""); setFim(""); setBancoFiltro(""); setCentroFiltro(""); setSocioFiltro(""); }}>Limpar filtros</button>
+      </section>
+
+      <div className={`${visao === "despesas" ? "grid" : "hidden"} gap-6 xl:grid-cols-[1.8fr_1fr]`}>
         <section className="overflow-hidden rounded-2xl border bg-white shadow-sm">
           <div className="space-y-3 border-b p-5">
             <div className="flex flex-wrap items-center justify-between gap-3">
@@ -304,6 +352,11 @@ export function ContasPagarClient({
                   {conta.status === "aberta" ? (
                     <Button type="button" size="sm" disabled={pending} onClick={() => execute(() => baixarConta(conta.id))} className="bg-emerald-600 hover:bg-emerald-700">Dar baixa</Button>
                   ) : null}
+                  {master ? <>
+                    <Button type="button" variant="outline" size="sm" disabled={pending} onClick={() => setEditando(conta)}><Pencil className="mr-1 h-4 w-4" />Alterar</Button>
+                    {conta.status === "paga" ? <Button type="button" variant="outline" size="sm" disabled={pending} onClick={() => pedirMotivo(conta, "estorno")}><RotateCcw className="mr-1 h-4 w-4" />Estornar</Button> : null}
+                    <Button type="button" variant="danger" size="sm" disabled={pending} onClick={() => pedirMotivo(conta, "exclusao")}><Trash2 className="mr-1 h-4 w-4" />Excluir</Button>
+                  </> : null}
                 </div>
               </div>
             ))}
@@ -327,6 +380,34 @@ export function ContasPagarClient({
           </div>
         </section>
       </div>
+
+      {master && visao === "logs" ? (
+        <section className="overflow-x-auto rounded-2xl border bg-white shadow-sm">
+          <table className="min-w-full text-left text-sm">
+            <thead className="bg-slate-50 text-slate-600"><tr>{["Data", "Ação", "Usuário", "Fornecedor / despesa", "Valor", "Motivo / detalhes"].map((label) => <th key={label} className="px-4 py-3 font-bold">{label}</th>)}</tr></thead>
+            <tbody className="divide-y">{logs.map((log) => <tr key={log.id}><td className="whitespace-nowrap px-4 py-3">{new Date(log.created_at).toLocaleString("pt-BR")}</td><td className="px-4 py-3 font-bold">{log.acao}</td><td className="px-4 py-3">{log.usuario?.nome || log.usuario?.email || "Sistema"}</td><td className="px-4 py-3">{log.fornecedor || "Sem fornecedor"}<br /><span className="text-slate-500">{log.descricao}</span></td><td className="whitespace-nowrap px-4 py-3 font-bold">{brl(Number(log.valor))}</td><td className="max-w-sm px-4 py-3">{log.motivo || ("campos_alterados" in log.detalhes ? `Campos: ${JSON.stringify(log.detalhes.campos_alterados)}` : "—")}</td></tr>)}</tbody>
+          </table>
+          {logs.length === 0 ? <p className="p-8 text-center text-slate-500">Nenhum evento registrado.</p> : null}
+        </section>
+      ) : null}
+
+      {editando ? (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/60 p-4">
+          <form onSubmit={(event) => { event.preventDefault(); const form = new FormData(event.currentTarget); execute(() => alterarConta(editando.id, form), () => setEditando(null)); }} className="grid w-full max-w-2xl gap-3 rounded-2xl bg-white p-6 shadow-2xl md:grid-cols-2">
+            <h2 className="text-xl font-black md:col-span-2">Alterar despesa</h2>
+            <Input name="descricao" required defaultValue={editando.descricao} />
+            <Input name="fornecedor" defaultValue={editando.fornecedor || ""} />
+            <Input name="valor" type="number" step="0.01" min="0.01" required defaultValue={Number(editando.valor)} readOnly={editando.status === "paga"} />
+            <Input name="vencimento" type="date" required defaultValue={editando.vencimento} />
+            <Select name="centro" defaultValue={editando.centro_custo_id || ""}><option value="">Sem centro</option>{centros.map((centro) => <option key={centro.id} value={centro.id}>{centro.nome}</option>)}</Select>
+            <Select name="banco" defaultValue={editando.conta_bancaria_id || ""}><option value="">Sem banco</option>{bancos.map((banco) => <option key={banco.id} value={banco.id}>{banco.nome}</option>)}</Select>
+            <label className="flex items-center gap-2 rounded-xl bg-amber-50 p-3"><input name="pessoal" type="checkbox" defaultChecked={editando.pago_pessoalmente} disabled={editando.status === "paga"} />Pago pessoalmente</label>
+            <Select name="socio" defaultValue={editando.socio_pagador_usuario_id || ""} disabled={editando.status === "paga"}><option value="">Sócio pagador</option>{socios.map((socio) => <option key={socio.id} value={socio.id}>{socio.nome}</option>)}</Select>
+            <Textarea name="obs" className="md:col-span-2" defaultValue={editando.observacao || ""} />
+            <div className="flex justify-end gap-2 md:col-span-2"><Button type="button" variant="outline" onClick={() => setEditando(null)}>Cancelar</Button><Button disabled={pending}>Salvar alterações</Button></div>
+          </form>
+        </div>
+      ) : null}
     </div>
   );
 }

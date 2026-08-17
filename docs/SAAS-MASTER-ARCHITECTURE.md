@@ -1,12 +1,12 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
-> **Versão da Arquitetura:** 5.7.1 (ERP Clientes aplicado e backfill Gauchinho auditado)
+> **Versão da Arquitetura:** 5.9.0 (Governança de contas pagas e a pagar)
 > **Data de Atualização:** 11/08/2026
-> **Status Geral do Projeto:** **PRODUÇÃO COM MIGRATIONS 001–076; A CORREÇÃO OPERACIONAL DA FASE 076 ESTÁ VERSIONADA NA MIGRATION 077 E HOMOLOGADA SOMENTE EM SUPABASE ISOLADO/PREVIEW, SEM APLICAÇÃO EM PRODUCTION.**
+> **Status Geral do Projeto:** **PRODUÇÃO RECONCILIADA COM MIGRATIONS 001–079; GOVERNANÇA MASTER DE CONTAS PAGAS E A PAGAR ATIVA.**
 > **Macroblocos A–F e evoluções 057–069:** implantados em Produção. As migrations `060–063` preservam o motor canônico financeiro; `064–066` concluíram retenção, storage e auditoria; `067–069` entregaram ERP configurável, fluxo final de contratação e Assembleias/Pedras.
 > **Infraestrutura em Produção:**  
 > - **Vercel Production atual:** deployment `dpl_9rwcRpVjKyhg7K4Si1FBRrcGHSvM`, estado `READY`, associado a `gauchinhoconsorcios.com.br`, `www.gauchinhoconsorcios.com.br` e `admin.gauchinhoconsorcios.com.br` na reconciliação de 11/08/2026.
-> - **Supabase principal:** projeto `eaeuoynprurmmulzhydt`, com estado de Produção documentado até `069`. A reconciliação runtime confirmou as estruturas de `068` e `069` e confirmou que a tabela inicial de `070` não existe no banco principal. O `migration list --linked` e o `db push --linked --dry-run` foram tentados novamente, mas a senha de banco vinculada nesta estação foi rejeitada pelo pooler; nenhuma migration foi aplicada.
+> - **Supabase principal:** projeto `eaeuoynprurmmulzhydt`, com migrations `001–079` sincronizadas no histórico remoto em 17/08/2026.
 > - **Branch Platform:** `codex/plataforma-saas-master-ux-governanca` em `88764f5`, quatro commits à frente de `origin/main` (`52e0655`). A migration `070` permanece somente no Supabase isolado associado ao Preview.
 > - **Suíte reproduzida na branch Platform:** `701 PASS / 37 SKIP`; TypeScript, build de 122 rotas, lint Platform e `npm audit --omit=dev` aprovados.
 > - **Segurança & Multi-Tenant:** RLS ativo em 27 tabelas críticas, Empresa B com 0 dados/concessões, Host Resolution e RBAC formalizado em `SAAS-PERMISSIONS-MATRIX.md`.  
@@ -232,12 +232,19 @@ A plataforma suporta:
   acesso do vínculo ativo a Usuários e ERP sem liberar módulos fora do tenant;
   relatório: `docs/relatorios-fases/HOTFIX-ERP-USUARIOS-SEM-MIGRATION-077.md`.
 
+### Governança de contas pagas e a pagar (Migration 079)
+- período por vencimento ou pagamento e filtros tenant-aware por banco, centro de custo e sócio;
+- alteração, estorno, exclusão lógica e leitura do log exigem perfil `master` com vínculo N:N ativo `admin_empresa` no tenant;
+- exclusão exige motivo; contas pagas pela empresa geram movimento inverso append-only antes do cancelamento;
+- relatório: `docs/relatorios-fases/ERP-FINANCEIRO-GOVERNANCA-CONTAS.md`.
+- estado: aplicada no Supabase principal em 17/08/2026; histórico remoto confirmado de 001 a 079.
+
 ## 5. Declaração Final de Segurança e Riscos
 
 * O P0 das APIs, o hardening `057–059`, o motor canônico `060–063` e o fechamento técnico `064–066` estão implantados no Supabase principal.
-* O estado funcional do Supabase Production inclui migrations `001–078`, verificadas no histórico remoto após a aplicação.
+* O estado funcional do Supabase Production inclui migrations `001–079`, verificadas no histórico remoto após a aplicação.
 * `admin.gauchinhoconsorcios.com.br` está ativo, verificado e associado ao deployment Production da `main`; ele não é tenant e não possui fallback para Gauchinho.
-* As migrations `070–078` estão versionadas e aplicadas em Produção; correções futuras permanecem obrigatoriamente forward-only.
+* As migrations `070–079` estão versionadas e aplicadas em Produção; correções futuras permanecem obrigatoriamente forward-only.
 * A Gauchinho permanece com ERP habilitado e a Empresa B permanece sem concessão de administradora. Nenhum tenant Sorriso foi criado.
 * A única homologação aberta nesta rodada é a revisão visual autenticada da Plataforma SaaS Master no Preview. Sem sessão legítima disponível, nenhum PASS visual foi presumido.
 * Evidências consolidadas: `docs/relatorios-fases/HOTFIX-CODEX-POS-AUDITORIA.md`, `docs/relatorios-fases/HARDENING-RLS-CODEX-POS-HOTFIX.md`, `docs/relatorios-fases/CODEX-COMISSOES-FINANCEIRO-TRANSACIONAL.md`, `docs/relatorios-fases/ERP-OPERACIONAL-LEGADO-SUPERADO.md`, `docs/relatorios-fases/CORRECAO-FLUXO-PROPOSTA-CONTRATACAO.md` e `docs/relatorios-fases/PLATAFORMA-SAAS-MASTER-UX-GOVERNANCA.md`.
