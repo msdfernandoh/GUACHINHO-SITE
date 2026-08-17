@@ -234,6 +234,14 @@ A plataforma suporta:
 
 ## 5. Declaração Final de Segurança e Riscos
 
+### ERP Contratações — Formalização V1 (branch de homologação)
+- `/erp/contratacoes` deixa de espelhar a tela do site e passa a ser uma fila operacional própria;
+- a formalização continua exclusivamente no RPC canônico `rpc_converter_contratacao_venda`, sem segundo motor de Venda/Cota;
+- a migration 079, ainda restrita ao Supabase isolado, acrescenta status operacional, pendências e histórico tenant-aware;
+- Cliente é reutilizado pela identidade canônica empresa + documento da 071; documentos permanecem no Storage privado;
+- promoção para Production, merge em `main` e backfill histórico permanecem proibidos até autorização expressa.
+- manual: `docs/manuais/MANUAL-ERP-CONTRATACOES.md`; relatório: `docs/relatorios-fases/ERP-CONTRATACOES-FORMALIZACAO-V1.md`.
+
 * O P0 das APIs, o hardening `057–059`, o motor canônico `060–063` e o fechamento técnico `064–066` estão implantados no Supabase principal.
 * O estado funcional do Supabase Production inclui migrations `001–078`, verificadas no histórico remoto após a aplicação.
 * `admin.gauchinhoconsorcios.com.br` está ativo, verificado e associado ao deployment Production da `main`; ele não é tenant e não possui fallback para Gauchinho.
