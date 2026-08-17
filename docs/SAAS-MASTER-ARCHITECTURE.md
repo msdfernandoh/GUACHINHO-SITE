@@ -237,10 +237,11 @@ A plataforma suporta:
 ### ERP Contratações — Formalização V1 (branch de homologação)
 - `/erp/contratacoes` deixa de espelhar a tela do site e passa a ser uma fila operacional própria;
 - a formalização continua exclusivamente no RPC canônico `rpc_converter_contratacao_venda`, sem segundo motor de Venda/Cota;
-- a migration 079, ainda restrita ao Supabase isolado, acrescenta status operacional, pendências e histórico tenant-aware;
+- a migration 079 foi aplicada e registrada somente no Supabase Preview `bfpgyralphzjozrcwjsn`, após repair estritamente de metadata e alinhamento comprovado de 001–078;
 - Cliente é reutilizado pela identidade canônica empresa + documento da 071; documentos permanecem no Storage privado;
 - promoção para Production, merge em `main` e backfill histórico permanecem proibidos até autorização expressa.
-- o primeiro provisionamento isolado autorizado (`llvkybltnrmznvrntxng`) terminou em `MIGRATIONS_FAILED` na reconstrução histórica; 079 não foi aplicada e o Vercel Preview foi corretamente retido para não herdar Production;
+- o primeiro provisionamento (`llvkybltnrmznvrntxng`) falhou; a branch saudável `bfpgyralphzjozrcwjsn` recebeu o repair direcionado 077→078, a 077 atual e, após dry-run exclusivo, a 079;
+- a homologação transacional revelou que o trigger 071 `sync_cliente_from_contratacao()` tenta gravar histórico antes da contratação existir no `BEFORE INSERT`; a transação foi revertida e a promoção permanece bloqueada até correção forward-only autorizada;
 - manual: `docs/manuais/MANUAL-ERP-CONTRATACOES.md`; relatório: `docs/relatorios-fases/ERP-CONTRATACOES-FORMALIZACAO-V1.md`.
 
 * O P0 das APIs, o hardening `057–059`, o motor canônico `060–063` e o fechamento técnico `064–066` estão implantados no Supabase principal.
