@@ -48,7 +48,39 @@ O serviço chama `converterContratacaoEmVenda` com chave estável `erp-formaliza
 
 ## Pendências antes de produção
 
-- Criar uma migration forward-only para corrigir a ordem do trigger `sync_cliente_from_contratacao()` sem reescrever a 071; exige autorização antes de qualquer alteração.
-- Reexecutar fixtures transacionais isoladas (novo cliente, cliente existente, retry, grupo pendente, produto ausente, consultor inválido, comissão ausente/ambígua, documentos e cross-tenant).
 - Homologar visualmente o Preview autenticado.
 - Não aplicar migration em Produção, não mesclar `main` e não executar backfill sem autorização do proprietário.
+
+## Migration 080 — correção forward-only do trigger 071
+
+### Auditoria anterior
+
+- Trigger: `trg_contratacoes_sync_cliente`.
+- Timing/eventos: `BEFORE INSERT OR UPDATE OF contrato_assinado`.
+- Função: `sync_cliente_from_contratacao()`.
+- Tabelas tocadas: `clientes`, `clientes_historico` e `contratacoes_online` por `NEW.cliente_id`.
+- FK envolvida: `clientes_historico_contratacao_empresa_fkey (contratacao_id, empresa_id) → contratacoes_online(id, empresa_id)`.
+- Causa: no `BEFORE INSERT`, a função criava/reutilizava o Cliente, preenchia `NEW.cliente_id` e tentava inserir o histórico antes da contratação existir fisicamente.
+
+### Correção aplicada no Preview
+
+- `080_fix_sync_cliente_contratacao_historico.sql` preserva o `BEFORE` apenas para identidade, deduplicação por empresa/documento e atribuição de `NEW.cliente_id`.
+- O novo `trg_contratacoes_sync_cliente_historico` executa `AFTER INSERT OR UPDATE OF contrato_assinado, cliente_id`.
+- `registrar_historico_cliente_contratacao()` grava o histórico somente após a persistência da contratação e usa `NOT EXISTS` por empresa, cliente, contratação e evento.
+- INSERT já assinado e UPDATE `false → true` foram aprovados. Retry mantém o mesmo cliente e exatamente um histórico.
+- A atomicidade permanece na mesma instrução/transação PostgreSQL; falha do AFTER reverte contratação e cliente.
+
+### Aplicação e testes
+
+- Dry-run da branch `bfpgyralphzjozrcwjsn`: exclusivamente `080_fix_sync_cliente_contratacao_historico`.
+- Migration 080 aplicada e registrada somente no Preview; Production não foi alterada.
+- Cenário que falhava: PASS após a 080 — contratação assinada cria exatamente um Cliente e um histórico válido.
+- Matriz transacional com `ROLLBACK`: cliente novo, cliente existente, INSERT assinado, UPDATE de assinatura, documento ausente, cross-tenant, grupo pendente, produto ausente, consultor inválido, comissão ausente, comissão ambígua, Venda, Cota, previsões, rastreabilidade e retry/idempotência — PASS.
+- Resíduos após rollback: 0 contratações, 0 clientes, 0 documentos e 0 operações idempotentes de fixture.
+- Testes direcionados: 6 PASS. Suíte completa: 739 PASS / 37 SKIP em 133 arquivos aprovados e 9 ignorados.
+- TypeScript: PASS. Build: PASS, 132 páginas. Lint do arquivo novo: PASS.
+- O lint ampliado encontrou 9 usos históricos de `any` em `/erp/contratacoes/[id]`; não são introduzidos pela 080 e permanecem como dívida de lint da implementação 079.
+
+### Risco de numeração
+
+Na branch de Contratações, 079 é `erp_contratacoes_formalizacao_v1` e a correção é 080. A arquitetura corrente de outra linha de desenvolvimento reserva 079 para Catálogo Grupo N:N Modalidades. Nenhuma promoção ou merge deve ocorrer antes de reconciliar essa colisão de numeração.
