@@ -92,6 +92,12 @@ Na branch de Contratações, 079 é `erp_contratacoes_formalizacao_v1` e a corre
 - As variáveis `NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` e `SUPABASE_SERVICE_ROLE_KEY` foram configuradas com escopo exclusivo `Preview (codex/erp-contratacoes-formalizacao-v1)`.
 - `project_ref` validado programaticamente antes da configuração: `bfpgyralphzjozrcwjsn`. Nenhum valor de chave foi registrado.
 - A service role permaneceu server-side, sem prefixo público e sem inclusão em arquivo ou commit.
-- Deploys manuais preliminares confirmaram build remoto aprovado e alvo `preview`, mas não herdaram o filtro Git da branch. Por segurança, as variáveis não foram ampliadas para o Preview global; a homologação seguirá por deployment acionado pela integração Git desta branch.
-- Foi criado um usuário técnico descartável somente na branch Supabase Preview para a homologação visual. Ele será removido, junto com qualquer fixture visual, ao final da validação.
+- Deploys manuais preliminares confirmaram build remoto aprovado e alvo `preview`, mas não herdaram o filtro Git da branch. Por segurança, as variáveis não foram ampliadas para o Preview global.
+- O deployment definitivo foi acionado pela integração Git da branch no commit `8b27e97`, ficou `Ready` com alvo `preview` e recebeu o alias branch-specific `guachinho-site-git-codex-erp-contrat-5ec28f-hugo-8097s-projects.vercel.app`.
+- URL imutável homologada: `https://guachinho-site-9hgy9byfo-hugo-8097s-projects.vercel.app`.
+- O login do usuário técnico criado apenas em `bfpgyralphzjozrcwjsn` foi aceito nesse deployment. A mesma credencial havia sido recusada nos deploys manuais sem contexto Git, comprovando que o Preview definitivo consumiu o override branch-specific e não a configuração global/Production.
+- Homologação visual aprovada em `/erp/contratacoes`: navegação e cards da fila, busca/filtros, contratos assinados aguardando formalização e ação `Conferir e formalizar` renderizaram sem erro.
+- Uma contratação sintética assinada `FIXTURE-PREVIEW-080` foi criada somente no Preview. O detalhe exibiu Cliente canônico reutilizado, documento privado sem cópia, documento ausente como pendência operacional, campos de Grupo/Produto/Consultor e botão de formalização bloqueado enquanto os requisitos estavam incompletos; não houve erro 500.
+- Evidência visual: `docs/relatorios-fases/evidencia-erp-contratacoes-preview-080.png`.
+- A contratação, Cliente, histórico, participante, vínculo, usuário Auth e demais registros técnicos foram removidos. Verificação final: zero resíduos de fixture.
 - Production permanece sem alteração; nenhum domínio ou deployment de Production foi promovido.
