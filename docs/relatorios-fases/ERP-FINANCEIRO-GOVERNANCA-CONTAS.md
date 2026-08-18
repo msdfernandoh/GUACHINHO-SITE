@@ -12,6 +12,14 @@
 
 O caixa permanece append-only. Estorno e exclusão de despesa paga pela empresa criam uma entrada inversa com origem `estorno_conta_pagar`. A exclusão altera a despesa para `cancelada`, preservando registro, autor e motivo. Em despesas pagas, valor e forma de pagamento permanecem imutáveis até o estorno.
 
+## Balanço entre Fernando e Eroni
+
+- os cards exibem quanto cada sócio pagou, o débito total da empresa e a cota individual de 50%;
+- o acerto em dinheiro equivale à metade da diferença entre os pagamentos, pois a transferência reduz um saldo e aumenta o outro simultaneamente;
+- como alternativa, o sócio que pagou menos pode assumir novas despesas no valor integral da diferença;
+- os cards de despesas e do balanço entre sócios acompanham período, tipo de data, situação, banco, centro de custo e sócio selecionados;
+- os quatro cards superiores respeitam integralmente os filtros; o saldo contábil geral permanece exibido separadamente como informação auxiliar.
+
 ## Validação e estado
 
 - migration 079 aplicada no Supabase principal em 17/08/2026; histórico local/remoto sincronizado de 001 a 079;

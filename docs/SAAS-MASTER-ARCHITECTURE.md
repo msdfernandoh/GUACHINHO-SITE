@@ -237,6 +237,7 @@ A plataforma suporta:
 - exclusão exige motivo; contas pagas pela empresa geram movimento inverso append-only antes do cancelamento;
 - relatório: `docs/relatorios-fases/ERP-FINANCEIRO-GOVERNANCA-CONTAS.md`.
 - estado: aplicada no Supabase principal em 17/08/2026; histórico remoto confirmado de 001 a 079.
+- o balanço de dois sócios trata o total pago pessoalmente como débito da empresa, divide a responsabilidade em 50% para cada um e distingue dois acertos equivalentes: transferência de metade da diferença ou novas despesas pelo valor integral da diferença.
 
 ## 5. Declaração Final de Segurança e Riscos
 

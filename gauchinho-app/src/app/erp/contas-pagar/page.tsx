@@ -45,7 +45,6 @@ export default async function ContasPagarPage() {
       bancos={(bancos.data ?? []) as never[]}
       centros={(centros.data ?? []) as never[]}
       socios={usuarios.filter((usuario) => usuario.socioPagador)}
-      usuarios={usuarios}
       caixa={(caixa.data ?? []) as never[]}
       logs={(logs.data ?? []) as never[]}
       master={Boolean(master)}
