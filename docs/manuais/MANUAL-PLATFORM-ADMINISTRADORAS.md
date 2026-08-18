@@ -45,4 +45,3 @@ Uma Administradora nunca deve aparecer como completa enquanto houver Grupo pende
 - Não execute backfill para corrigir catálogo futuro.
 - Seguro permanece dimensão separada de Tipo, Modalidade, Produto e comissão.
 - O Preview de homologação deve apontar exclusivamente para o Supabase isolado da fase.
-
