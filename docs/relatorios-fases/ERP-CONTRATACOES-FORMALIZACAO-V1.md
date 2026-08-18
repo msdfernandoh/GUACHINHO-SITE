@@ -104,4 +104,12 @@ Antes do merge autorizado, `origin/main` foi reconsultado e já continha `079_fi
 - Uma contratação sintética assinada `FIXTURE-PREVIEW-080` foi criada somente no Preview. O detalhe exibiu Cliente canônico reutilizado, documento privado sem cópia, documento ausente como pendência operacional, campos de Grupo/Produto/Consultor e botão de formalização bloqueado enquanto os requisitos estavam incompletos; não houve erro 500.
 - Evidência visual: `docs/relatorios-fases/evidencia-erp-contratacoes-preview-080.png`.
 - A contratação, Cliente, histórico, participante, vínculo, usuário Auth e demais registros técnicos foram removidos. Verificação final: zero resíduos de fixture.
-- Production permanece sem alteração; nenhum domínio ou deployment de Production foi promovido.
+- Durante a homologação Preview, Production permaneceu sem alteração e nenhum domínio ou deployment de Production foi promovido.
+
+## Promoção autorizada para Production
+
+- `origin/main` foi atualizado antes da promoção e confirmou 079 Financeiro e 080 Catálogo; Contratações foi reconciliada para 081/082.
+- Gates após integração com `main`: 748 testes PASS, 37 SKIP, TypeScript PASS e build Next.js PASS com 132 páginas.
+- Dry-run do Supabase Production apresentou exclusivamente `081_erp_contratacoes_formalizacao_v1.sql` e `082_fix_sync_cliente_contratacao_historico.sql`.
+- As migrations 081 e 082 foram aplicadas em Production; o histórico remoto final ficou alinhado de 001 a 082.
+- Nenhum backfill, fixture, UPDATE/DELETE de dados reais ou formalização automática de contrato foi executado em Production.
