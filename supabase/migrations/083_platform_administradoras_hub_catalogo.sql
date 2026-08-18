@@ -196,7 +196,7 @@ BEGIN
   IF NOT public.is_platform_superadmin() THEN RAISE EXCEPTION 'Somente Platform Superadmin'; END IF;
   SELECT administradora_id INTO v_admin FROM public.administradora_modalidades_comissao WHERE id=p_id FOR UPDATE;
   IF v_admin IS NULL THEN RAISE EXCEPTION 'Modalidade não encontrada'; END IF;
-  IF EXISTS(SELECT 1 FROM public.grupo_modalidades_disponiveis WHERE administradora_modalidade_id=p_id)
+  IF EXISTS(SELECT 1 FROM public.grupos_modalidades_disponiveis WHERE administradora_modalidade_id=p_id)
     OR EXISTS(SELECT 1 FROM public.grupo_cota_modalidade_valores WHERE administradora_modalidade_id=p_id)
     OR EXISTS(SELECT 1 FROM public.vendas WHERE modalidade_comissao_id=p_id)
     OR EXISTS(SELECT 1 FROM public.comissao_regras_franquia WHERE modalidade_comissao_id=p_id)
@@ -275,6 +275,9 @@ BEGIN
   IF EXISTS(SELECT 1 FROM public.comissao_regras_franquia WHERE curva_estorno_id=p_id)
   THEN RAISE EXCEPTION 'Curva possui dependências; inative ou versione'; END IF;
   PERFORM public.platform_catalogo_auditar('excluir','administradora_curvas_estorno',p_id,'[]');
+  DELETE FROM public.administradora_curva_tipos WHERE curva_id=p_id;
+  DELETE FROM public.administradora_curva_modalidades WHERE curva_id=p_id;
+  DELETE FROM public.administradora_curva_estorno_faixas WHERE curva_id=p_id;
   DELETE FROM public.administradora_curvas_estorno WHERE id=p_id;
   RETURN jsonb_build_object('id',p_id,'excluida',true);
 END $$;
@@ -344,7 +347,7 @@ BEGIN
   IF v_programa.id IS NULL THEN RAISE EXCEPTION 'Programa da Administradora não encontrado';END IF;
   IF v_status='ATIVO' THEN
     IF NOT EXISTS(SELECT 1 FROM public.comissao_regras_franquia WHERE programa_id=p_programa_id) THEN RAISE EXCEPTION 'Programa sem regras não pode ser homologado';END IF;
-    IF EXISTS(SELECT 1 FROM public.comissao_regras_franquia r WHERE r.programa_id=p_programa_id AND (r.tipo_administradora_id IS NULL OR r.modalidade_comissao_id IS NULL OR NOT EXISTS(SELECT 1 FROM public.comissao_regra_etapas e WHERE e.regra_franquia_id=r.id) OR abs((SELECT coalesce(sum(e.percentual_venda),0) FROM public.comissao_regra_etapas e WHERE e.regra_franquia_id=r.id)-100)>0.0001)) THEN RAISE EXCEPTION 'Todas as regras exigem Tipo, Modalidade e cronograma fechado em 100%';END IF;
+    IF EXISTS(SELECT 1 FROM public.comissao_regras_franquia r WHERE r.programa_id=p_programa_id AND (r.tipo_administradora_id IS NULL OR r.modalidade_comissao_id IS NULL OR NOT EXISTS(SELECT 1 FROM public.comissao_regra_etapas e WHERE e.regra_franquia_id=r.id) OR abs((SELECT coalesce(sum(e.percentual_venda),0) FROM public.comissao_regra_etapas e WHERE e.regra_franquia_id=r.id)-100)>0.0001)) THEN RAISE EXCEPTION 'Todas as regras exigem Tipo, Modalidade e cronograma fechado em 100%%';END IF;
     IF EXISTS(
       SELECT 1 FROM public.comissao_regras_franquia alvo JOIN public.comissao_regras_franquia outra ON outra.id<>alvo.id AND outra.empresa_id=alvo.empresa_id AND outra.ativa AND outra.configuracao_homologada
       JOIN public.comissao_programas po ON po.id=outra.programa_id AND po.administradora_id=v_programa.administradora_id AND po.ativo

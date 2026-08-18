@@ -3,7 +3,7 @@
 > **Versão da Arquitetura:** 5.8.0
 > **Data de Atualização:** 17/08/2026
 > **Production:** `origin/main@2b9d1c65e1abf255135fb236f5f33942b1fa12bd`; Supabase principal `eaeuoynprurmmulzhydt` com migrations oficiais `001–082` promovidas.
-> **Preview/isolado desta fase:** a migration `083_platform_administradoras_hub_catalogo.sql` pertence à branch `codex/platform-administradoras-v2` e está em homologação exclusivamente no Supabase isolado `npcdbkgnibootdixbpwq`.
+> **Preview/isolado desta fase:** a migration `083_platform_administradoras_hub_catalogo.sql` pertence à branch `codex/platform-administradoras-v2` e está em homologação exclusivamente no Supabase isolado `bwwgbmiwtrglbtxsdooi`.
 > **Fase atual:** a 083 transforma `/platform/administradoras` no hub canônico de Tipos, Modalidades, Curvas, Modelos Master, Programas e Grupos. Não foi aplicada em Production e não autoriza promoção automática.
 > **Vercel Production:** permanece no deployment corrente da `main`; nenhum Preview da fase 083 representa ou altera Production.
 > **Segurança:** o Platform Host continua global, sem fallback de tenant, e exige `is_platform_superadmin()`.
@@ -239,7 +239,7 @@ A plataforma suporta:
 - cada regra canônica escolhe opcionalmente sua Curva; Programas mantêm rascunho, homologação/ativação, inativação e nova versão;
 - exclusões consultam vínculos, previsões e snapshots históricos; itens utilizados devem ser inativados ou versionados;
 - relatório: `docs/relatorios-fases/PLATFORM-ADMINISTRADORAS-V2.md`; manual: `docs/manuais/MANUAL-PLATFORM-ADMINISTRADORAS.md`;
-- estado: homologação restrita ao Supabase isolado `npcdbkgnibootdixbpwq`; Production permanece em `001–082`.
+- estado: homologação restrita ao Supabase isolado `bwwgbmiwtrglbtxsdooi`; Production permanece em `001–082`.
 
 ### Governança de contas pagas e a pagar (Migration 079)
 - período por vencimento ou pagamento e filtros tenant-aware por banco, centro de custo e sócio;

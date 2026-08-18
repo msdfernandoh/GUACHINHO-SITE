@@ -14,6 +14,10 @@ const actions = readFileSync(
   resolve(process.cwd(), "src/app/platform/administradoras-actions.ts"),
   "utf8",
 );
+const e2e = readFileSync(
+  resolve(process.cwd(), "../supabase/tests/platform_administradoras_v2_083_e2e.sql"),
+  "utf8",
+);
 
 describe("Platform Administradoras V2", () => {
   it("preserva o motor canônico e acrescenta governança Master por referência", () => {
@@ -73,5 +77,13 @@ describe("Platform Administradoras V2", () => {
     expect(workspace).toContain('"COMPLETA"');
     expect(workspace).toContain('"COM PENDÊNCIAS"');
     expect(workspace).toContain("gruposPendentes === 0");
+  });
+
+  it("mantém E2E isolado com persistência, Racon e deleções seguras", () => {
+    expect(e2e).toContain("Administradora E2E 083");
+    expect(e2e).toContain("jsonb_build_array");
+    expect(e2e).toContain("Curva opcional por Regra");
+    expect(e2e).toContain("Tipo usado excluído");
+    expect(e2e).toContain("Racon não possui as três Modalidades canônicas esperadas");
   });
 });

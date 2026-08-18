@@ -7,7 +7,8 @@
 - Commit inicial da implementação: `271c5af`.
 - Migration: `083_platform_administradoras_hub_catalogo.sql`.
 - Production: migrations `001–082`; nenhuma aplicação da 083.
-- Supabase isolado: `npcdbkgnibootdixbpwq`, branch `codex-platform-administradoras-v2-083`, associada à branch Git da fase.
+- Supabase isolado vigente: `bwwgbmiwtrglbtxsdooi`, branch `codex-platform-administradoras-v2-083-r2`, associada à branch Git da fase.
+- Provisionamento anterior descartado: `npcdbkgnibootdixbpwq` falhou antes de executar migrations (`Pulling migrations from database`, conexão IPv6 recusada) e foi removido sem evidência ou dados de homologação.
 - Backfill: não executado.
 
 ## Implementação
@@ -40,8 +41,8 @@ O Modelo Master não calcula comissão. A matemática permanece em `comissao_pro
 | Gate | Resultado |
 |---|---|
 | TypeScript (`npx tsc --noEmit`) | PASSOU |
-| Testes focados | 12/12 PASSARAM |
-| Suíte completa | 756 passaram; 37 skipped; 0 falhas |
+| Testes focados | 9/9 PASSARAM |
+| Suíte completa | 757 passaram; 37 skipped; 0 falhas |
 | Lint do escopo | PASSOU |
 | Build Next.js | PASSOU; 134 páginas geradas |
 | `npm audit --omit=dev` | 0 vulnerabilidades |
@@ -49,19 +50,23 @@ O Modelo Master não calcula comissão. A matemática permanece em `comissao_pro
 
 ## Homologação Supabase e E2E
 
-O primeiro provisionamento isolado foi criado com clone de dados. O estado final da aplicação, do histórico remoto 001–083 e dos cenários E2E será registrado nesta seção após o pipeline oficial concluir.
+O provisionamento isolado vigente foi criado com clone de dados e reconciliado em `001–082` antes da aplicação. O dry-run apresentou somente a `083`, a aplicação terminou com sucesso e o histórico remoto do isolado passou a `001–083`. O Supabase principal não foi vinculado nem alterado.
 
-Casos obrigatórios:
+O script autenticado [`supabase/tests/platform_administradoras_v2_083_e2e.sql`](../../supabase/tests/platform_administradoras_v2_083_e2e.sql) criou no isolado uma Administradora sintética completa e comprovou:
 
-- Administradora teste: criar, recarregar, editar, inativar e excluir sem dependências;
-- Tipo e Modalidade: persistência, N:N e deleção permitida/bloqueada conforme uso;
-- Curva: escopos N:N, múltiplas versões, exclusão sem uso e bloqueio após vínculo;
-- Programa: detalhe Platform-native, Curva opcional, homologação, nova versão e exclusão segura;
-- Racon: somente Imóvel e Automóveis ativos; modalidades Integral, Reduzida 60% a 99% e Reduzida abaixo de 59%; Modelos Master 4% e 3,5%; Programas e Curvas existentes visíveis.
+- persistência de Administradora, Tipo, três Modalidades ligadas N:N ao mesmo Tipo, Curva, Modelo Master homologado, Programa ativo, três Regras canônicas e Grupo/Produto com valores por Modalidade;
+- exclusão definitiva permitida para Tipo, Modalidade e Curva livres e bloqueada para entidades utilizadas;
+- Curva opcional por Regra: Integral e abaixo de 59 com Curva; Reduzida 60–99 sem Curva;
+- recusa real de RPC de mutação para identidade sem papel Platform Superadmin;
+- após reload, três resultados independentes: Integral = `2500`, uma etapa e Curva; Reduzida 60–99 = `1750`, duas etapas e sem Curva; abaixo de 59 = `1250`, duas etapas, Curva e etapa de contemplação;
+- Modelo Master `HOMOLOGADO` e Programa `ATIVO` preservados após reload;
+- Racon preservada com os Tipos canônicos `IMOVEL` e `AUTOMOVEIS`, as três Modalidades canônicas, três Programas existentes, uma Curva e seis Regras. O clone já continha ainda o Tipo ativo `TESTE`; ele é dado preexistente, não duplicado dos dois Tipos canônicos, e não foi removido nem alterado porque esta fase proíbe backfill/limpeza histórica.
+
+Durante o E2E foram encontrados e corrigidos antes da consolidação dois defeitos da própria `083`: o nome singular incorreto de `grupos_modalidades_disponiveis` e a ordem de exclusão das faixas/associações de uma Curva livre. As execuções que revelaram os defeitos sofreram rollback; a persistência registrada acima ocorreu somente após as RPCs corrigidas no isolado.
 
 ## Preview e evidências visuais
 
-O Preview deverá usar exclusivamente as variáveis do Supabase isolado `npcdbkgnibootdixbpwq`. Nenhuma URL de Preview será promovida para Production nesta fase.
+O Preview deverá usar exclusivamente as variáveis do Supabase isolado `bwwgbmiwtrglbtxsdooi`. Nenhuma URL de Preview será promovida para Production nesta fase.
 
 ## Parada
 
