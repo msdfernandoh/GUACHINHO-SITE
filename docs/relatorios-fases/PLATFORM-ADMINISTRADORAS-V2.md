@@ -66,7 +66,23 @@ Durante o E2E foram encontrados e corrigidos antes da consolidação dois defeit
 
 ## Preview e evidências visuais
 
-O Preview deverá usar exclusivamente as variáveis do Supabase isolado `bwwgbmiwtrglbtxsdooi`. Nenhuma URL de Preview será promovida para Production nesta fase.
+O Preview final está `READY` no deployment `JC2KegPe3rpPtQ55Udxc4J7NoTsc`, SHA `8998c49`, com alias canônico [guachinho-site-git-codex-platform-ad-5eeb84-hugo-8097s-projects.vercel.app](https://guachinho-site-git-codex-platform-ad-5eeb84-hugo-8097s-projects.vercel.app). Foram configurados cinco overrides restritos a `Preview` + branch `codex/platform-administradoras-v2`: `NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` e `PLATFORM_HOST`. Os quatro valores Supabase pertencem exclusivamente ao isolado `bwwgbmiwtrglbtxsdooi`; nenhum valor de Production foi alterado.
+
+Smokes read-only:
+
+- `/login`: HTTP `200`;
+- `/platform/administradoras` sem sessão: HTTP `307` para `/login?next=/platform`, comprovando o host Platform correto sem liberar acesso anônimo;
+- build Vercel: `READY`, 134 rotas e zero vulnerabilidades na instalação.
+
+Evidências capturadas:
+
+- [`supabase-isolado-e2e-persistencia.png`](../evidencias/platform-administradoras-v2/supabase-isolado-e2e-persistencia.png): consulta autenticada após reload com as três Modalidades, valores, Modelo, Programa, Curva e etapas;
+- [`vercel-preview-ready.png`](../evidencias/platform-administradoras-v2/vercel-preview-ready.png): deployment final `READY`;
+- [`vercel-preview-login-platform.png`](../evidencias/platform-administradoras-v2/vercel-preview-login-platform.png): gate Platform do Preview isolado.
+
+A homologação visual interna autenticada continua bloqueada somente pela ausência de uma sessão/credencial Platform de homologação no domínio Preview. Nenhuma senha real foi alterada e nenhuma conta administrativa temporária foi criada de forma improvisada. Após o responsável autenticar a sessão já aberta no Preview, faltam capturar as telas internas de lista/detalhe/abas e fechar este gate.
+
+Nenhuma URL de Preview foi promovida para Production nesta fase.
 
 ## Parada
 
