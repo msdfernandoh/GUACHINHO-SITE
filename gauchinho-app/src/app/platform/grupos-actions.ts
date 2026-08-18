@@ -1,11 +1,15 @@
 "use server";
+
 import { revalidatePath } from "next/cache";
-import { createClient } from "@/lib/supabase/server";
 import { isPlatformSuperadmin } from "@/lib/auth/is-superadmin";
+import { createClient } from "@/lib/supabase/server";
+import { parseBRLNumber } from "@/lib/platform/grupos-prontidao";
+
 export type GroupActionState = {
   status: "IDLE" | "SUCCESS" | "VALIDATION_ERROR" | "CONFLICT" | "SERVER_ERROR";
   message: string;
 };
+
 export async function decidirGovernancaGrupoAction(formData: FormData) {
   if (!(await isPlatformSuperadmin()))
     throw new Error("Somente Platform Superadmin.");
@@ -20,9 +24,10 @@ export async function decidirGovernancaGrupoAction(formData: FormData) {
   });
   if (error) throw new Error(error.message);
   revalidatePath("/platform/grupos");
+  revalidatePath(`/platform/grupos/${grupoId}`);
 }
 
-export async function salvarGrupoGlobalAction(
+export async function salvarGrupoPlatformAction(
   _previous: GroupActionState,
   formData: FormData,
 ): Promise<GroupActionState> {
@@ -32,117 +37,141 @@ export async function salvarGrupoGlobalAction(
         status: "SERVER_ERROR",
         message: "Somente Platform Superadmin.",
       };
-    const id = String(formData.get("id") ?? "") || null;
-    const administradoraId = String(formData.get("administradora_id") ?? "");
-    const tipoId = String(formData.get("tipo_administradora_id") ?? "");
-    const modalidadeId = String(formData.get("modalidade_comissao_id") ?? "");
+
+    const id = String(formData.get("id") ?? "").trim() || null;
+    const administradoraId = String(formData.get("administradora_id") ?? "").trim();
+    const tipoId = String(formData.get("tipo_administradora_id") ?? "").trim();
     const codigo = String(formData.get("codigo_grupo") ?? "").trim();
-    if (!administradoraId || !tipoId || !modalidadeId || !codigo)
+
+    if (!administradoraId || !tipoId || !codigo) {
       return {
         status: "VALIDATION_ERROR",
-        message: "Administradora, número, Tipo e Modalidade são obrigatórios.",
+        message: "Administradora, Tipo oficial e Código do Grupo são obrigatórios.",
       };
-    const db = await createClient();
-    const [admin, tipo, modalidade] = await Promise.all([
-      db
-        .from("administradoras")
-        .select("nome")
-        .eq("id", administradoraId)
-        .maybeSingle(),
-      db
-        .from("administradora_tipos")
-        .select("nome")
-        .eq("id", tipoId)
-        .eq("administradora_id", administradoraId)
-        .eq("ativo", true)
-        .maybeSingle(),
-      db
-        .from("administradora_modalidades_comissao")
-        .select("nome")
-        .eq("id", modalidadeId)
-        .eq("administradora_id", administradoraId)
-        .eq("ativo", true)
-        .maybeSingle(),
-    ]);
-    if (!admin.data || !tipo.data || !modalidade.data)
-      return {
-        status: "VALIDATION_ERROR",
-        message: "Tipo ou Modalidade não pertence à Administradora.",
-      };
-    const payload: Record<string, unknown> = {
-      codigo_grupo: codigo,
-      administradora_id: administradoraId,
-      administradora: admin.data.nome,
-      modalidade: tipo.data.nome,
-      tipo_administradora_id: tipoId,
-      modalidade_comissao_id: modalidadeId,
-      status: String(formData.get("status") ?? "Disponível"),
-      ativo: formData.get("ativo") !== "false",
-      prazo_total: Number(formData.get("prazo_total")) || null,
-      taxa_administrativa_percentual:
-        Number(
-          String(formData.get("taxa_administrativa_percentual") ?? "").replace(
-            ",",
-            ".",
-          ),
-        ) || null,
-      permite_lance_embutido: formData.get("permite_lance_embutido") === "on",
-      percentual_lance_embutido:
-        Number(
-          String(formData.get("percentual_lance_embutido") ?? "").replace(
-            ",",
-            ".",
-          ),
-        ) || null,
-      updated_at: new Date().toISOString(),
-    };
-    if (!id)
-      Object.assign(payload, {
-        origem_governanca: "GLOBAL",
-        status_governanca: "GLOBAL",
-        empresa_origem_id: null,
-      });
-    if (id) {
-      const { data: current } = await db
-        .from("grupos_consorcio")
-        .select("origem_governanca")
-        .eq("id", id)
-        .maybeSingle();
-      if (!current) throw new Error("Grupo não encontrado.");
-      if (current.origem_governanca === "LEGADO")
-        Object.assign(payload, {
-          origem_governanca: "GLOBAL",
-          status_governanca: "GLOBAL",
-          empresa_origem_id: null,
-        });
     }
-    const query = id
-      ? db
-          .from("grupos_consorcio")
-          .update(payload)
-          .eq("id", id)
-          .select("id")
-          .maybeSingle()
-      : db.from("grupos_consorcio").insert(payload).select("id").maybeSingle();
-    const { error, data: saved } = await query;
+
+    const prazoTotal = Number(formData.get("prazo_total")) || null;
+    const taxaAdm = parseBRLNumber(formData.get("taxa_administrativa_percentual") as string);
+    const fundoReserva = parseBRLNumber(formData.get("fundo_reserva_percentual") as string);
+    const seguroPercentual = parseBRLNumber(formData.get("seguro_percentual") as string);
+    const capacidadeTotal = Number(formData.get("capacidade_total")) || 0;
+    const vagasDisponiveis = Number(formData.get("vagas_disponiveis")) || 0;
+    const permiteLanceEmbutido = formData.get("permite_lance_embutido") === "on";
+    const percentualLanceEmbutido = parseBRLNumber(formData.get("percentual_lance_embutido") as string);
+    const status = String(formData.get("status") ?? "Disponível").trim();
+    const ativo = formData.get("ativo") !== "false";
+    const observacoes = String(formData.get("observacoes") ?? "").trim() || null;
+
+    const db = await createClient();
+    const { data: saved, error } = await db.rpc("rpc_platform_salvar_grupo", {
+      p_id: id,
+      p_administradora_id: administradoraId,
+      p_tipo_administradora_id: tipoId,
+      p_codigo_grupo: codigo,
+      p_status: status,
+      p_ativo: ativo,
+      p_prazo_total: prazoTotal,
+      p_taxa_administrativa: taxaAdm,
+      p_fundo_reserva: fundoReserva,
+      p_seguro_percentual: seguroPercentual,
+      p_capacidade_total: capacidadeTotal,
+      p_vagas_disponiveis: vagasDisponiveis,
+      p_permite_lance_embutido: permiteLanceEmbutido,
+      p_percentual_lance_embutido: percentualLanceEmbutido,
+      p_observacoes: observacoes,
+    });
+
     if (error) throw new Error(error.message);
-    if (!saved) throw new Error("Grupo não foi atualizado.");
+
+    const savedId = (saved as { id?: string })?.id || id;
     revalidatePath("/platform/grupos");
-    if (id) revalidatePath(`/platform/grupos/${id}`);
+    revalidatePath("/platform/administradoras");
+    if (savedId) {
+      revalidatePath(`/platform/grupos/${savedId}`);
+      revalidatePath(`/platform/administradoras/${administradoraId}`);
+    }
+
     return {
       status: "SUCCESS",
       message: id
-        ? "Configuração do Grupo atualizada."
-        : "Grupo Global criado com sucesso.",
+        ? "Dados do Grupo atualizados com sucesso."
+        : "Novo Grupo Global cadastrado com sucesso.",
     };
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Erro ao salvar Grupo.";
+    const message = error instanceof Error ? error.message : "Erro ao salvar Grupo.";
     return {
-      status: /duplicate|unique|existe/i.test(message)
-        ? "CONFLICT"
-        : "SERVER_ERROR",
+      status: /duplicate|unique|existe/i.test(message) ? "CONFLICT" : "SERVER_ERROR",
       message,
     };
   }
 }
+
+export async function salvarEstatisticasGrupoAction(
+  _previous: GroupActionState,
+  formData: FormData,
+): Promise<GroupActionState> {
+  try {
+    const grupoId = String(formData.get("grupo_id") ?? "").trim();
+    const empresaId = String(formData.get("empresa_id") ?? "").trim() || null;
+    const fonte = String(formData.get("fonte") ?? "GLOBAL").toUpperCase();
+
+    if (!grupoId) {
+      return { status: "VALIDATION_ERROR", message: "Grupo não identificado." };
+    }
+
+    const contemplacoesSorteio = Number(formData.get("contemplacoes_sorteio_qtd")) || null;
+    const lanceEmbutido25 = formData.get("lance_embutido_25_permitido") === "on";
+    const lanceEmbutido50 = formData.get("lance_embutido_50_permitido") === "on";
+    const lanceFidelidade = formData.get("lance_fidelidade_permitido") === "on";
+    const lanceFidelidadePct = parseBRLNumber(formData.get("lance_fidelidade_percentual") as string);
+    const lanceLivreMin = parseBRLNumber(formData.get("lance_livre_minimo") as string);
+    const lanceLivreMedio = parseBRLNumber(formData.get("lance_livre_medio") as string);
+    const lanceLivreMax = parseBRLNumber(formData.get("lance_livre_maximo") as string);
+    const contempladosMesAnterior = Number(formData.get("contemplados_mes_anterior_qtd")) || null;
+    const origemInfo = String(formData.get("origem_informacao") ?? "").trim() || null;
+    const responsavel = String(formData.get("responsavel_nome") ?? "").trim() || null;
+    const observacao = String(formData.get("observacao") ?? "").trim() || null;
+    const vagasDisponiveis = Number(formData.get("vagas_disponiveis")) || 0;
+    const usarDadosGlobais = formData.get("usar_dados_globais") !== "false";
+
+    const dadosEstatisticos = {
+      contemplacoes_sorteio_qtd: contemplacoesSorteio,
+      lance_embutido_25_permitido: lanceEmbutido25,
+      lance_embutido_50_permitido: lanceEmbutido50,
+      lance_fidelidade_permitido: lanceFidelidade,
+      lance_fidelidade_percentual: lanceFidelidadePct,
+      lance_livre_minimo: lanceLivreMin,
+      lance_livre_medio: lanceLivreMedio,
+      lance_livre_maximo: lanceLivreMax,
+      contemplados_mes_anterior_qtd: contempladosMesAnterior,
+      origem_informacao: origemInfo,
+      responsavel_nome: responsavel,
+      observacao,
+    };
+
+    const db = await createClient();
+    const { error } = await db.rpc("rpc_platform_salvar_estatisticas_grupo", {
+      p_grupo_id: grupoId,
+      p_empresa_id: empresaId,
+      p_fonte: fonte,
+      p_dados_estatisticos: dadosEstatisticos,
+      p_vagas_disponiveis: vagasDisponiveis,
+      p_usar_dados_globais: usarDadosGlobais,
+    });
+
+    if (error) throw new Error(error.message);
+
+    revalidatePath("/platform/grupos");
+    revalidatePath(`/platform/grupos/${grupoId}`);
+
+    return {
+      status: "SUCCESS",
+      message: "Dados estatísticos e lances informativos atualizados com sucesso.",
+    };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Erro ao salvar estatísticas.";
+    return { status: "SERVER_ERROR", message };
+  }
+}
+
+export const salvarGrupoGlobalAction = salvarGrupoPlatformAction;

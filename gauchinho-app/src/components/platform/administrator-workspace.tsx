@@ -51,10 +51,17 @@ import {
   type ProgramRule,
   validateProgramRule,
 } from "@/lib/platform/homologacao";
+import {
+  type GrupoRecord,
+  formatBRL,
+  formatPercent,
+  computeGrupoMetrics,
+  validateGrupoProntidao,
+} from "@/lib/platform/grupos-prontidao";
 
 type Model = { id:string;nome:string;descricao:string|null;versao:number;percentual_total_referencia:number;status:string;tipo_id:string;tipo?:{nome?:string}|null;modalidades?:Array<{modalidade_id:string;regra_franquia_origem_id:string|null;modalidade?:{nome?:string}|null}> };
 type Program = { id:string; nome:string; versao:number; status:string; ativo:boolean; empresa_id?:string; administradora_id?:string; programa_origem_id?:string|null; empresa?: {nome_fantasia?:string}|null; regras?: ProgramRule[] };
-type Group = { id:string; codigo_grupo:string; status_governanca:string; origem_governanca:string; ativo:boolean; tipo?:{nome?:string}|null; modalidades?:Array<{ativo:boolean;modalidade?:{nome?:string}|null}>; produtos?:Array<{id:string;ativo:boolean}> };
+type Group = GrupoRecord;
 type Audit = { id:string; acao:string; entidade_tipo:string; campos_alterados:unknown; created_at:string };
 
 function Feedback({ state }: { state: PlatformFormState }) {
@@ -876,9 +883,91 @@ export function AdministratorWorkspace({
         </div>
       )}
       {tab === "grupos" && (
-        <div className="rounded-xl border bg-white p-5">
-          <h2 className="font-bold">Grupos da Administradora</h2>
-          <div className="mt-4 overflow-x-auto"><table className="min-w-[850px] w-full text-sm"><thead><tr className="border-b text-left">{["Grupo","Tipo","Modalidades disponíveis","Produtos","Status","Configuração","Origem","Ação"].map(x=><th key={x} className="p-3">{x}</th>)}</tr></thead><tbody>{grupos.map(g=>{const mods=g.modalidades?.filter(x=>x.ativo).map(x=>x.modalidade?.nome).filter(Boolean)??[];const ready=Boolean(g.tipo?.nome&&mods.length&&(g.produtos?.some(x=>x.ativo)));return <tr key={g.id} className="border-b"><td className="p-3 font-bold">{g.codigo_grupo}</td><td>{g.tipo?.nome??"Sem Tipo"}</td><td>{mods.join(", ")||"Sem Modalidade"}</td><td>{g.produtos?.length??0}</td><td>{g.ativo?"ATIVO":"INATIVO"}</td><td><span className={ready?"text-emerald-700":"text-amber-700"}>{ready?"PRONTO":"CONFIGURAÇÃO PENDENTE"}</span></td><td>{g.origem_governanca}</td><td><Link href={`/platform/grupos/${g.id}`} className="font-bold text-cyan-700">Ver Grupo</Link></td></tr>})}</tbody></table></div>
+        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-bold text-slate-900 dark:text-white">Grupos Oficiais da Administradora</h2>
+              <p className="text-xs text-slate-500">
+                Catálogo operacional de grupos com cotas, modalidades, capacidade e taxas oficiais.
+              </p>
+            </div>
+            <Link
+              href="/platform/grupos/novo"
+              className="rounded-lg bg-cyan-700 px-3 py-1.5 text-xs font-bold text-white hover:bg-cyan-800"
+            >
+              + Novo Grupo
+            </Link>
+          </div>
+          <div className="mt-4 overflow-x-auto">
+            <table className="min-w-[850px] w-full text-sm">
+              <thead className="border-b bg-slate-50 text-left text-xs uppercase tracking-wider text-slate-500 dark:bg-slate-800">
+                <tr>
+                  <th className="p-3">Grupo</th>
+                  <th className="p-3">Tipo</th>
+                  <th className="p-3 text-right">Taxa Adm</th>
+                  <th className="p-3 text-right">FR</th>
+                  <th className="p-3 text-right">Taxa Total</th>
+                  <th className="p-3 text-right">Cota Mín.</th>
+                  <th className="p-3 text-right">Cota Máx.</th>
+                  <th className="p-3 text-center">Capacidade</th>
+                  <th className="p-3 text-center">Vagas</th>
+                  <th className="p-3 text-center">Prontidão</th>
+                  <th className="p-3 text-center">Ações</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                {grupos.length === 0 ? (
+                  <tr>
+                    <td colSpan={11} className="p-6 text-center text-sm text-slate-400">
+                      Nenhum grupo cadastrado para esta administradora.
+                    </td>
+                  </tr>
+                ) : (
+                  grupos.map((g) => {
+                    const metrics = computeGrupoMetrics(g);
+                    const prontidao = validateGrupoProntidao(g);
+
+                    return (
+                      <tr key={g.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40">
+                        <td className="p-3 font-bold text-slate-900 dark:text-white">
+                          <Link href={`/platform/grupos/${g.id}`} className="text-cyan-700 hover:underline">
+                            {g.codigo_grupo}
+                          </Link>
+                        </td>
+                        <td className="p-3 text-slate-700 dark:text-slate-300">{g.tipo?.nome || "Sem Tipo"}</td>
+                        <td className="p-3 text-right font-medium">{formatPercent(g.taxa_administrativa_percentual)}</td>
+                        <td className="p-3 text-right text-slate-500">{formatPercent(g.fundo_reserva_percentual)}</td>
+                        <td className="p-3 text-right font-bold text-slate-900 dark:text-white">{formatPercent(metrics.taxaTotal)}</td>
+                        <td className="p-3 text-right text-xs font-semibold text-slate-700 dark:text-slate-300">{formatBRL(metrics.cotaMinima)}</td>
+                        <td className="p-3 text-right text-xs font-semibold text-slate-700 dark:text-slate-300">{formatBRL(metrics.cotaMaxima)}</td>
+                        <td className="p-3 text-center text-xs text-slate-600 dark:text-slate-400">{g.capacidade_total ?? 0}</td>
+                        <td className="p-3 text-center text-xs font-bold text-slate-900 dark:text-white">{g.vagas_disponiveis ?? 0}</td>
+                        <td className="p-3 text-center">
+                          <span
+                            className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-bold ${
+                              prontidao.ready
+                                ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300"
+                                : "bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300"
+                            }`}
+                          >
+                            {prontidao.ready ? "✓ Pronto" : `⚠ ${prontidao.issues.length}`}
+                          </span>
+                        </td>
+                        <td className="p-3 text-center">
+                          <Link
+                            href={`/platform/grupos/${g.id}`}
+                            className="rounded bg-cyan-50 px-2.5 py-1 text-xs font-bold text-cyan-700 hover:bg-cyan-100 dark:bg-cyan-950 dark:text-cyan-300"
+                          >
+                            Abrir
+                          </Link>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
       {tab === "historico" && (

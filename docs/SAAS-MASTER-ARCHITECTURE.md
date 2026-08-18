@@ -249,6 +249,18 @@ A plataforma suporta:
 - UX unificada: visualização agrupada por Programa → Versão → Regras Internas; ação única de homologação com feedback explícito; confirmação de nova versão apenas para programas homologados/históricos;
 - Relatório: `docs/relatorios-fases/PLATFORM-PROGRAMAS-HOMOLOGACAO-084.md`.
 
+### Catálogo Operacional de Grupos, Cotas e Modalidades (Migration 085 Forward-Only)
+- Transforma Grupo no catálogo operacional oficial da Franqueadora/Administradora com hierarquia canônica `ADMINISTRADORA → GRUPO → PRODUTOS/COTAS DE CRÉDITO → MODALIDADES DISPONÍVEIS`;
+- Resolução da inconsistência da aba Grupos na Administradora através do join canônico com `grupos_modalidades_disponiveis`;
+- Cota Mínima e Máxima calculadas dinamicamente a partir dos produtos ativos do grupo;
+- Taxa Total calculada somando Taxa de Administração + Fundo de Reserva + Seguro Prestamista;
+- Entrada em lote de cotas comerciais com normalização automática de texto monetário BRL e desduplicação;
+- Suporte a overrides por cota (habilitação e parcelas por modalidade) e modalidade reduzida fixa vs personalizada com percentual padrão;
+- Painel estatístico e de lances informativos para suporte à venda com gravação de histórico auditado em `grupo_estatisticas_historico`;
+- Isolamento multi-tenant entre SaaS Global e ERP Local através de `empresa_grupos_config`;
+- Relatório: `docs/relatorios-fases/PLATFORM-GRUPOS-CATALOGO-085.md`.
+
+
 ### Governança de contas pagas e a pagar (Migration 079)
 - período por vencimento ou pagamento e filtros tenant-aware por banco, centro de custo e sócio;
 - alteração, estorno, exclusão lógica e leitura do log exigem perfil `master` com vínculo N:N ativo `admin_empresa` no tenant;

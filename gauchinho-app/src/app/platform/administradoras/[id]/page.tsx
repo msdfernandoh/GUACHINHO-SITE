@@ -52,9 +52,10 @@ export default async function PlatformAdministradoraPage({
       db
         .from("grupos_consorcio")
         .select(
-          "id,codigo_grupo,status_governanca,origem_governanca,ativo,tipo_administradora_id,tipo:administradora_tipos(nome),modalidades:grupo_modalidades_disponiveis(ativo,modalidade:administradora_modalidades_comissao(nome)),produtos:grupos_cotas(id,ativo)",
+          "id,codigo_grupo,status_governanca,origem_governanca,status,ativo,prazo_total,taxa_administrativa_percentual,fundo_reserva_percentual,seguro_percentual,capacidade_total,vagas_disponiveis,vagas_atualizado_em,updated_at,tipo_administradora_id,tipo:administradora_tipos(id,nome,codigo),modalidades:grupos_modalidades_disponiveis(id,administradora_modalidade_id,ativo,modalidade:administradora_modalidades_comissao(id,nome,codigo)),produtos:grupos_cotas(id,valor_credito,ativo,grupo_cota_modalidade_valores(id,administradora_modalidade_id,valor_parcela,habilitado,ativo))",
         )
-        .eq("administradora_id", id),
+        .eq("administradora_id", id)
+        .order("codigo_grupo"),
       db
         .from("empresa_administradoras")
         .select("empresa_id,empresa:empresas(nome_fantasia)")
