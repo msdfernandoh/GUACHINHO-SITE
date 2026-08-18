@@ -20,4 +20,8 @@ describe("catálogo Grupo N:N modalidades", () => {
   it("mantém escrita global exclusiva da Platform", () => {
     expect(migration.match(/public\.is_platform_superadmin\(\)/g)?.length).toBeGreaterThanOrEqual(4);
   });
+  it("protege produto usado sem consultar coluna inexistente em propostas", () => {
+    expect(migration).toContain("public.simulacoes_grupos_itens WHERE grupo_cota_id=OLD.id");
+    expect(migration).not.toContain("public.propostas WHERE grupo_cota_id=OLD.id");
+  });
 });

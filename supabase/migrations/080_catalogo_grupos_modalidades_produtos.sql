@@ -1,4 +1,4 @@
--- 079: catalogo canonico Grupo N:N Modalidades e valores de produto por modalidade.
+-- 080: catalogo canonico Grupo N:N Modalidades e valores de produto por modalidade.
 -- Forward-only: preserva colunas legadas, vendas, snapshots e previsoes existentes.
 
 BEGIN;
@@ -67,7 +67,7 @@ CREATE OR REPLACE FUNCTION public.proteger_produto_comercial_utilizado()
 RETURNS trigger LANGUAGE plpgsql SECURITY INVOKER SET search_path=pg_catalog AS $$
 BEGIN
   IF EXISTS(SELECT 1 FROM public.vendas WHERE opcao_cota_id=OLD.id)
-    OR EXISTS(SELECT 1 FROM public.propostas WHERE grupo_cota_id=OLD.id) THEN
+    OR EXISTS(SELECT 1 FROM public.simulacoes_grupos_itens WHERE grupo_cota_id=OLD.id) THEN
     RAISE EXCEPTION 'Produto comercial utilizado nao pode ser excluido; inative-o';
   END IF;
   RETURN OLD;

@@ -54,7 +54,7 @@ O ambiente isolado terminou com dois Tipos ativos da Racon: `IMOVEL`/Imóvel e `
 
 ## Segurança e promoção
 
-A migration, originalmente homologada como 077 e renumerada para 078 após a integração da migration `077_erp_importacao_socios_permissoes.sql`, foi validada em dois branches efêmeros derivados de Production. As migrations 077 e 078 foram aplicadas no Supabase principal em 14/08/2026; o histórico remoto `001–078` e os testes transacionais com rollback foram verificados após a aplicação.
+A migration, originalmente homologada como 077 e renumerada para 078 após a integração da migration `077_erp_importacao_socios_permissoes.sql`, foi validada em dois branches efêmeros derivados de Production. As migrations 077 e 078 foram aplicadas no Supabase principal em 14/08/2026; os testes transacionais com rollback foram verificados após a aplicação. O estado canônico atual de Production é `001–079`.
 
 ## Evidência de Preview
 
@@ -68,7 +68,7 @@ A migration, originalmente homologada como 077 e renumerada para 078 após a int
 
 ## Promoção Production
 
-- migrations 077 e 078 aplicadas e confirmadas no histórico remoto `001–078`;
+- migrations 077 e 078 aplicadas e confirmadas; o histórico remoto canônico atual de Production é `001–079`;
 - testes SQL matemáticos e transacionais repetidos em Production sob `BEGIN/ROLLBACK`: PASS;
 - `main` promovida por fast-forward atômico após a validação dos ambientes isolados;
 - primeiro deployment funcional da promoção: `dpl_42gtHBW6USVHCX5fLfxAj7MRNZhb`, estado `READY`;

@@ -3,8 +3,8 @@
 > **Versão da Arquitetura:** 5.8.0
 > **Data de Atualização:** 17/08/2026
 > **Production:** `origin/main` auditada em `323147c`; Supabase principal `eaeuoynprurmmulzhydt` com migrations `001–079` promovidas. `077` é `077_erp_importacao_socios_permissoes.sql`, `078` é `078_fix_076_fluxo_administradora_operacional.sql` e `079` é `079_financeiro_contas_pagar_governanca.sql`.
-> **Preview/isolado:** ambientes efêmeros e deployments Preview citados nos relatórios são evidências históricas de homologação. Não representam o estado corrente de Production e não autorizam promoção automática.
-> **Correção de catálogo atual:** a migration `080_catalogo_grupos_modalidades_produtos.sql` é a próxima migration livre após a 079 oficial; permanece somente na branch isolada/Preview e não foi promovida em Production.
+> **Preview/isolado:** a migration `080_catalogo_grupos_modalidades_produtos.sql` foi aplicada somente no Supabase isolado `valcreavxhpuqmmbwaqo`; o E2E decisivo foi aprovado. Faltam apenas commit/push, Vercel Preview e screenshots autenticados.
+> **Correção de catálogo atual:** a 080 é a próxima migration após a 079 oficial. Não foi aplicada em Production e não autoriza promoção automática.
 > **Vercel Production:** permanece no deployment corrente registrado pela `main`; nenhum Preview da correção 080 representa ou altera Production.
 > **Segurança:** o Platform Host continua global, sem fallback de tenant, e exige `is_platform_superadmin()`.
 
@@ -140,9 +140,9 @@ A plataforma suporta:
   entitlements/overrides, configurações e auditoria Platform, sem preços
   presumidos, billing real ou integração com o runtime tenant;
 - detalhes e homologação: `docs/relatorios-fases/PLATAFORMA-SAAS-MASTER-UX-GOVERNANCA.md`.
-- estado reconciliado: a migration 070 integra `origin/main` e o histórico
-  `001–078` do Supabase principal. O Preview `dpl_E9ZJZQW5a6SzzGPA8QbmCQYc6SnA`
-  permanece somente como evidência histórica da homologação inicial.
+- estado reconciliado: a migration 070 integra `origin/main` e o estado atual
+  `001–079` do Supabase principal. O deployment Preview inicial permanece apenas
+  como evidência histórica; a 070 está implantada em Production.
 
 ---
 
@@ -182,7 +182,7 @@ A plataforma suporta:
 - a contratação pode definir Microfranquia principal e um participante secundário opcional (`SDR`, `PARCEIRO` ou `CONSULTOR`), sempre no mesmo tenant;
 - a fração configurada reduz a previsão da Microfranquia e transfere exatamente essa parcela ao secundário nas vendas novas, preservando previsões e pagamentos históricos;
 - o link SDR carrega uma simulação assinada sem persistir proposta/contratação antes dos dados mínimos do cliente;
-- migrations 072–073 integram o histórico `001–078` do Supabase principal; relatório: `docs/relatorios-fases/VENDAS-PARTICIPANTES-COMISSAO.md`.
+- migrations 072–073 integram o estado atual `001–079` do Supabase principal; relatório: `docs/relatorios-fases/VENDAS-PARTICIPANTES-COMISSAO.md`.
 
 ### Usuários do site no ERP (Migration 074 — Produção)
 - usuários ativos já vinculados por `empresa_usuarios` são espelhados idempotentemente como participantes comerciais ativos do mesmo tenant, sem criar login novo nem alterar credenciais;
@@ -197,16 +197,6 @@ A plataforma suporta:
 - o fechamento mensal calcula valores adiantados por sócio e o ajuste igualitário entre os pagadores;
 - relatório: `docs/relatorios-fases/ERP-FINANCEIRO-CONTAS-PAGAR.md`.
 - estado reconciliado: migration 075 aplicada no Supabase principal.
-
-### Governança de contas pagas e a pagar (candidata local sem numeração válida)
-- consultas permitem período por vencimento ou pagamento e filtros tenant-aware por banco, centro de custo e sócio;
-- alteração, estorno, exclusão lógica e leitura do log detalhado exigem usuário legado `master` com vínculo N:N ativo `admin_empresa` no tenant;
-- exclusão exige motivo e preserva integralmente a despesa; contas pagas pela empresa geram movimento inverso append-only antes de serem canceladas;
-- contas pagas podem ter dados descritivos e classificatórios corrigidos, mas valor e forma de pagamento permanecem imutáveis até eventual estorno;
-- relatório: `docs/relatorios-fases/ERP-FINANCEIRO-GOVERNANCA-CONTAS.md`;
-- estado: o arquivo local atualmente usa `078`, mas esse número já pertence em
-  `origin/main` a `078_fix_076_fluxo_administradora_operacional.sql`. Esta
-  candidata não integra Production e deve ser renumerada após sincronização.
 
 ### Comissões, Grupos e Contemplação V2 (Migration 076 — Produção)
 - Tipos e Modalidades pertencem à Administradora; o Grupo exige ambos para vendas novas e pode seguir governança Local → Platform → Global;
@@ -238,8 +228,8 @@ A plataforma suporta:
 - vendas novas escolhem explicitamente Produto + Modalidade e congelam o valor correspondente; a regra continua resolvida por Administradora + Tipo + Modalidade + vigência;
 - colunas singulares e parcelas antigas permanecem somente para compatibilidade histórica, sem recálculo de fatos;
 - relatório: `docs/relatorios-fases/AUDITORIA-CORRECAO-CATALOGO-GRUPOS-COTAS.md`;
-- estado: `080_catalogo_grupos_modalidades_produtos.sql` está somente na branch
-  isolada/Preview, sujeita ao gate E2E e ainda não promovida para Production.
+- estado: aplicada somente no Supabase isolado `valcreavxhpuqmmbwaqo`; E2E de
+  três modalidades/vendas aprovado; não promovida para Production.
 
 ### Governança de contas pagas e a pagar (Migration 079)
 - período por vencimento ou pagamento e filtros tenant-aware por banco, centro de custo e sócio;
@@ -256,6 +246,7 @@ A plataforma suporta:
 * As migrations `070–079` estão versionadas e aplicadas em Produção; correções futuras permanecem obrigatoriamente forward-only.
 * Os ambientes Preview/isolados registrados nos relatórios são descartáveis e não substituem a evidência de promoção do Supabase principal.
 * A migration 080 de Grupo N:N Modalidades não foi aplicada em Production.
+* Nenhum backfill ou recálculo histórico foi executado em Production nesta rodada.
 * A Gauchinho permanece com ERP habilitado e a Empresa B permanece sem concessão de administradora. Nenhum tenant Sorriso foi criado.
-* O gate aberto desta rodada é a correção Grupo N:N Modalidades: renumeração, aplicação isolada, E2E de três modalidades/vendas, Preview e screenshots antes de qualquer pedido de promoção.
+* A aplicação isolada e o E2E de três modalidades/vendas foram concluídos. Restam somente commit/push, Vercel Preview e screenshots autenticados antes de qualquer pedido de promoção.
 * Evidências consolidadas: `docs/relatorios-fases/HOTFIX-CODEX-POS-AUDITORIA.md`, `docs/relatorios-fases/HARDENING-RLS-CODEX-POS-HOTFIX.md`, `docs/relatorios-fases/CODEX-COMISSOES-FINANCEIRO-TRANSACIONAL.md`, `docs/relatorios-fases/ERP-OPERACIONAL-LEGADO-SUPERADO.md`, `docs/relatorios-fases/CORRECAO-FLUXO-PROPOSTA-CONTRATACAO.md` e `docs/relatorios-fases/PLATAFORMA-SAAS-MASTER-UX-GOVERNANCA.md`.

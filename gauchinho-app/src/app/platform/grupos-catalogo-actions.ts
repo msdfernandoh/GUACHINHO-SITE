@@ -61,13 +61,13 @@ export async function salvarProdutoAction(grupoId: string, produtoId: string | n
     }, { onConflict: "grupo_cota_id,administradora_modalidade_id" });
     if (error) throw new Error(error.message);
   }
-  revalidatePath(path(grupoId)); revalidatePath("/platform/produtos");
+  revalidatePath(path(grupoId)); revalidatePath("/platform/produtos"); revalidatePath("/platform/produtos-comerciais");
 }
 
 export async function inativarProdutoAction(grupoId: string, produtoId: string) {
   const db = await platformDb();
   const { error } = await db.from("grupos_cotas").update({ ativo: false, status: "Inativo" }).eq("id", produtoId).eq("grupo_id", grupoId);
   if (error) throw new Error(error.message);
-  revalidatePath(path(grupoId)); revalidatePath("/platform/produtos");
+  revalidatePath(path(grupoId)); revalidatePath("/platform/produtos"); revalidatePath("/platform/produtos-comerciais");
 }
 
