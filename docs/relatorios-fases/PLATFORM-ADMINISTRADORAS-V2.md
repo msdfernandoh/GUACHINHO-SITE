@@ -4,9 +4,10 @@
 
 - Base: `origin/main@2b9d1c65e1abf255135fb236f5f33942b1fa12bd`.
 - Branch: `codex/platform-administradoras-v2`.
+- Commit inicial da implementação: `271c5af`.
 - Migration: `083_platform_administradoras_hub_catalogo.sql`.
 - Production: migrations `001–082`; nenhuma aplicação da 083.
-- Supabase isolado: `npcdbkgnibootdixbpwq`, branch `codex-platform-administradoras-v2-083`.
+- Supabase isolado: `npcdbkgnibootdixbpwq`, branch `codex-platform-administradoras-v2-083`, associada à branch Git da fase.
 - Backfill: não executado.
 
 ## Implementação
@@ -65,4 +66,3 @@ O Preview deverá usar exclusivamente as variáveis do Supabase isolado `npcdbkg
 ## Parada
 
 Esta entrega deve parar após Preview, screenshots e consolidação das evidências. Não estão autorizados merge em `main`, migration 083 no Supabase principal, deploy Vercel Production, backfill ou exclusão de dados reais.
-
