@@ -2,11 +2,11 @@
 
 ## Estado canônico
 
-- Base: `origin/main@2b9d1c65e1abf255135fb236f5f33942b1fa12bd`.
-- Branch: `codex/platform-administradoras-v2`.
+- Main promovida: `origin/main@ad297e62232618d609fb579caba7656dd848e6e7`.
+- Branch de implementação: `codex/platform-administradoras-v2`.
 - Commit inicial da implementação: `271c5af`.
 - Migration: `083_platform_administradoras_hub_catalogo.sql`.
-- Production: migrations `001–082`; nenhuma aplicação da 083.
+- Production: migrations `001–083`; a 083 foi aplicada por dry-run exclusivo seguido de `db push` oficial.
 - Supabase isolado vigente: `bwwgbmiwtrglbtxsdooi`, branch `codex-platform-administradoras-v2-083-r2`, associada à branch Git da fase.
 - Provisionamento anterior descartado: `npcdbkgnibootdixbpwq` falhou antes de executar migrations (`Pulling migrations from database`, conexão IPv6 recusada) e foi removido sem evidência ou dados de homologação.
 - Backfill: não executado.
@@ -82,8 +82,18 @@ Evidências capturadas:
 
 A homologação visual interna autenticada continua bloqueada somente pela ausência de uma sessão/credencial Platform de homologação no domínio Preview. Nenhuma senha real foi alterada e nenhuma conta administrativa temporária foi criada de forma improvisada. Após o responsável autenticar a sessão já aberta no Preview, faltam capturar as telas internas de lista/detalhe/abas e fechar este gate.
 
-Nenhuma URL de Preview foi promovida para Production nesta fase.
+## Produção
 
-## Parada
+A promoção foi autorizada e concluída em `18/08/2026`.
 
-Esta entrega deve parar após Preview, screenshots e consolidação das evidências. Não estão autorizados merge em `main`, migration 083 no Supabase principal, deploy Vercel Production, backfill ou exclusão de dados reais.
+- Supabase Production `eaeuoynprurmmulzhydt`: histórico remoto `001–083`, com a migration `083_platform_administradoras_hub_catalogo.sql` aplicada isoladamente.
+- Não houve fixture, backfill, limpeza de dado legado, exclusão de dados reais, alteração de migrations `001–082` ou recálculo/regeneração de Venda, Cota, comissão, previsão ou snapshot histórico.
+- Vercel Production: deployment `dpl_9GhcpmEEgo4HCHACcJYcT4EWW6rc`, estado `READY`, URL [guachinho-site-6bwk0k76n-hugo-8097s-projects.vercel.app](https://guachinho-site-6bwk0k76n-hugo-8097s-projects.vercel.app).
+- Domínios confirmados no deployment: `gauchinhoconsorcios.com.br`, `www.gauchinhoconsorcios.com.br` e `admin.gauchinhoconsorcios.com.br`.
+- Smoke HTTP read-only: `/login` do host Platform retornou `200`; `/platform/administradoras` sem sessão retornou `307` para `/login?next=/platform`, sem 500.
+
+A auditoria focal de dados e o smoke visual autenticado continuam dependentes de uma sessão Platform disponível no navegador conectado. Eles não foram simulados nem substituídos por criação de conta, fixture ou alteração de senha.
+
+## Estado final
+
+A branch Supabase isolada `bwwgbmiwtrglbtxsdooi` foi mantida e está segura para exclusão somente após autorização explícita. Não será removida automaticamente.

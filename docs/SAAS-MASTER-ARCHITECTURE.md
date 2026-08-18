@@ -2,10 +2,10 @@
 
 > **Versão da Arquitetura:** 5.8.0
 > **Data de Atualização:** 17/08/2026
-> **Production:** `origin/main@2b9d1c65e1abf255135fb236f5f33942b1fa12bd`; Supabase principal `eaeuoynprurmmulzhydt` com migrations oficiais `001–082` promovidas.
-> **Preview/isolado desta fase:** a migration `083_platform_administradoras_hub_catalogo.sql` pertence à branch `codex/platform-administradoras-v2` e está em homologação exclusivamente no Supabase isolado `bwwgbmiwtrglbtxsdooi`.
-> **Fase atual:** a 083 transforma `/platform/administradoras` no hub canônico de Tipos, Modalidades, Curvas, Modelos Master, Programas e Grupos. Não foi aplicada em Production e não autoriza promoção automática.
-> **Vercel Production:** permanece no deployment corrente da `main`; nenhum Preview da fase 083 representa ou altera Production.
+> **Production code:** `main@ad297e62232618d609fb579caba7656dd848e6e7`; Supabase principal `eaeuoynprurmmulzhydt` com migrations oficiais `001–083` promovidas.
+> **Preview/isolado desta fase:** a branch `bwwgbmiwtrglbtxsdooi` permanece preservada como evidência de homologação da 083 até autorização separada de exclusão.
+> **Fase atual:** a 083 transforma `/platform/administradoras` no hub canônico de Tipos, Modalidades, Curvas, Modelos Master, Programas e Grupos e foi promovida sem backfill ou recálculo histórico.
+> **Vercel Production:** deployment `dpl_9GhcpmEEgo4HCHACcJYcT4EWW6rc` está `READY`, associado aos domínios oficiais.
 > **Segurança:** o Platform Host continua global, sem fallback de tenant, e exige `is_platform_superadmin()`.
 
 > **Projeto Físico:** `C:\Fernando Hugo\GAUCHINHO SITE`  
@@ -168,7 +168,7 @@ A plataforma suporta:
 | Governança de contas pagas e a pagar | `main` | 079 | IMPLANTADO | Supabase principal |
 | Catálogo Grupo N:N Modalidades | `main` | 080 | IMPLANTADO | Supabase principal + Production Vercel |
 | Formalização de Contratações | `main` | 081–082 | IMPLANTADO | Supabase principal + Production Vercel |
-| Platform Administradoras V2 | `codex/platform-administradoras-v2` | 083 | EM HOMOLOGAÇÃO | Supabase isolado/Preview |
+| Platform Administradoras V2 | `main` | 083 | IMPLANTADO | Supabase principal + Production Vercel |
 
 ---
 
@@ -232,14 +232,14 @@ A plataforma suporta:
 - relatório: `docs/relatorios-fases/AUDITORIA-CORRECAO-CATALOGO-GRUPOS-COTAS.md`;
 - estado: E2E de três modalidades/vendas aprovado no isolado e migration posteriormente promovida para Production mediante autorização expressa; fatos históricos permaneceram intactos.
 
-### Platform Administradoras V2 (Migration 083 — em homologação)
+### Platform Administradoras V2 (Migration 083 — Produção)
 - `/platform/administradoras` passa a ser o editor canônico global, sem redirecionamento para `/erp/regras-comissao`;
 - Modalidades podem atender todos os Tipos ou Tipos selecionados; Curvas podem atender todos ou subconjuntos de Tipos e Modalidades;
 - Modelos Master são governança/referência sobre `comissao_regras_franquia`, sem motor de cálculo paralelo;
 - cada regra canônica escolhe opcionalmente sua Curva; Programas mantêm rascunho, homologação/ativação, inativação e nova versão;
 - exclusões consultam vínculos, previsões e snapshots históricos; itens utilizados devem ser inativados ou versionados;
 - relatório: `docs/relatorios-fases/PLATFORM-ADMINISTRADORAS-V2.md`; manual: `docs/manuais/MANUAL-PLATFORM-ADMINISTRADORAS.md`;
-- estado: homologação restrita ao Supabase isolado `bwwgbmiwtrglbtxsdooi`; Production permanece em `001–082`.
+- estado: promovida em Production após dry-run exclusivo, histórico remoto confirmado em `001–083` e deployment `dpl_9GhcpmEEgo4HCHACcJYcT4EWW6rc` `READY`; não houve fixture, backfill, limpeza de legado ou recálculo histórico. O isolado `bwwgbmiwtrglbtxsdooi` permanece preservado.
 
 ### Governança de contas pagas e a pagar (Migration 079)
 - período por vencimento ou pagamento e filtros tenant-aware por banco, centro de custo e sócio;
@@ -265,12 +265,12 @@ A plataforma suporta:
 - manual: `docs/manuais/MANUAL-ERP-CONTRATACOES.md`; relatório: `docs/relatorios-fases/ERP-CONTRATACOES-FORMALIZACAO-V1.md`.
 
 * O P0 das APIs, o hardening `057–059`, o motor canônico `060–063` e o fechamento técnico `064–066` estão implantados no Supabase principal.
-* O estado funcional do Supabase Production inclui migrations `001–082`.
+* O estado funcional do Supabase Production inclui migrations `001–083`.
 * `admin.gauchinhoconsorcios.com.br` está ativo, verificado e associado ao deployment Production da `main`; ele não é tenant e não possui fallback para Gauchinho.
-* As migrations `070–082` estão versionadas e aplicadas em Produção; correções futuras permanecem obrigatoriamente forward-only.
+* As migrations `070–083` estão versionadas e aplicadas em Produção; correções futuras permanecem obrigatoriamente forward-only.
 * Os ambientes Preview/isolados registrados nos relatórios são descartáveis e não substituem a evidência de promoção do Supabase principal.
-* A migration 083 de Platform Administradoras V2 não foi aplicada em Production.
+* A migration 083 de Platform Administradoras V2 foi aplicada em Production após conferência de `001–082`, com somente a própria 083 pendente no dry-run.
 * Nenhum backfill ou recálculo histórico foi executado em Production nesta rodada.
 * A Gauchinho permanece com ERP habilitado e a Empresa B permanece sem concessão de administradora. Nenhum tenant Sorriso foi criado.
-* A homologação da 083 exige aplicação isolada, E2E real, Preview e screenshots autenticados antes de qualquer pedido de promoção.
+* A 083 foi homologada no isolado com E2E real antes da promoção; o smoke público Production confirmou o host Platform e o redirecionamento autenticado sem erro 500.
 * Evidências consolidadas: `docs/relatorios-fases/HOTFIX-CODEX-POS-AUDITORIA.md`, `docs/relatorios-fases/HARDENING-RLS-CODEX-POS-HOTFIX.md`, `docs/relatorios-fases/CODEX-COMISSOES-FINANCEIRO-TRANSACIONAL.md`, `docs/relatorios-fases/ERP-OPERACIONAL-LEGADO-SUPERADO.md`, `docs/relatorios-fases/CORRECAO-FLUXO-PROPOSTA-CONTRATACAO.md` e `docs/relatorios-fases/PLATAFORMA-SAAS-MASTER-UX-GOVERNANCA.md`.
