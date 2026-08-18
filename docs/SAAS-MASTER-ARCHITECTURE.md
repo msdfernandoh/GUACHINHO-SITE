@@ -293,4 +293,10 @@ A plataforma suporta:
 * Nenhum backfill ou recálculo histórico foi executado em Production nesta rodada.
 * A Gauchinho permanece com ERP habilitado e a Empresa B permanece sem concessão de administradora. Nenhum tenant Sorriso foi criado.
 * A 083 foi homologada no isolado com E2E real antes da promoção; o smoke público Production confirmou o host Platform e o redirecionamento autenticado sem erro 500.
-* Evidências consolidadas: `docs/relatorios-fases/HOTFIX-CODEX-POS-AUDITORIA.md`, `docs/relatorios-fases/HARDENING-RLS-CODEX-POS-HOTFIX.md`, `docs/relatorios-fases/CODEX-COMISSOES-FINANCEIRO-TRANSACIONAL.md`, `docs/relatorios-fases/ERP-OPERACIONAL-LEGADO-SUPERADO.md`, `docs/relatorios-fases/CORRECAO-FLUXO-PROPOSTA-CONTRATACAO.md` e `docs/relatorios-fases/PLATAFORMA-SAAS-MASTER-UX-GOVERNANCA.md`.
+* Platform Grupos Catálogo Operacional (Migration 085) e Assembleias Temporais & Herança de Modalidades (Migration 086):
+  - Inconsistência de visualização na Administradora corrigida com join canônico em `grupos_modalidades_disponiveis`.
+  - Herança de configurações padrão das modalidades da Administradora com suporte a override pontual por Grupo (`GRUPO_OVERRIDE` vs `ADMINISTRADORA_PADRAO`).
+  - Cálculo temporal de assembleias (`calcularAssembleiasTemporal`) considerando dia/mês exato da 1ª assembleia, prazo total e data de referência no formato `realizadas / total / restantes` (ex: `7 / 100 / 93`), sem impactar o módulo de Assembleias/Pedras.
+  - Exibição consistente em listagens (`/platform/grupos`, Administradora → Grupos) e no detalhe com cartões executivos de Prazo, 1ª Assembleia e Próxima Assembleia.
+* Evidências consolidadas: `docs/relatorios-fases/PLATFORM-GRUPOS-CATALOGO-085.md` e `docs/relatorios-fases/PLATFORM-GRUPOS-TEMPORAL-HERANCA-086.md`.
+

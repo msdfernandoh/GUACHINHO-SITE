@@ -25,26 +25,32 @@ export async function salvarModalidadesGrupoPlatformAction(
 
     const { data: todasModalidades } = await db
       .from("administradora_modalidades_comissao")
-      .select("id,nome,codigo")
+      .select("id,nome,codigo,modo_reduzido_padrao,percentual_padrao,percentual_minimo,percentual_maximo")
       .eq("administradora_id", grupo.administradora_id)
       .eq("ativo", true);
 
     const modalidadesConfig = (todasModalidades ?? []).map((m) => {
       const ativo = formData.get(`mod_ativa_${m.id}`) === "on";
-      const modo = String(formData.get(`mod_modo_${m.id}`) ?? "fixo");
+      const usarPadrao = formData.get(`mod_usar_padrao_${m.id}`) === "on";
+      const modo = String(formData.get(`mod_modo_${m.id}`) ?? m.modo_reduzido_padrao ?? "fixo");
       const pctPadrao = parseBRLNumber(formData.get(`mod_pct_padrao_${m.id}`) as string);
       const pctMin = parseBRLNumber(formData.get(`mod_pct_min_${m.id}`) as string);
       const pctMax = parseBRLNumber(formData.get(`mod_pct_max_${m.id}`) as string);
+
+      const isOverride = !usarPadrao && pctPadrao > 0 && (
+        pctPadrao !== Number(m.percentual_padrao) ||
+        modo !== (m.modo_reduzido_padrao || "fixo")
+      );
 
       return {
         modalidade_id: m.id,
         ativo,
         configuracao: {
-          modo_reduzido: modo,
-          percentual_padrao: pctPadrao || null,
-          percentual_minimo: pctMin || null,
-          percentual_maximo: pctMax || null,
-          origem: "PLATFORM_OPERACIONAL",
+          modo_reduzido: isOverride ? modo : (m.modo_reduzido_padrao || "fixo"),
+          percentual_padrao: isOverride ? pctPadrao : m.percentual_padrao,
+          percentual_minimo: isOverride ? (pctMin || null) : m.percentual_minimo,
+          percentual_maximo: isOverride ? (pctMax || null) : m.percentual_maximo,
+          origem: isOverride ? "GRUPO_OVERRIDE" : "ADMINISTRADORA_PADRAO",
         },
       };
     });

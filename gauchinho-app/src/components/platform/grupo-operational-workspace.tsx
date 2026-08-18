@@ -15,10 +15,13 @@ import {
 } from "@/app/platform/grupos-catalogo-actions";
 import {
   type GrupoRecord,
+  type AdministradoraModalidadeItem,
   type GrupoProntidaoResult,
   formatBRL,
   formatPercent,
+  formatDateBR,
   validateGrupoProntidao,
+  resolveModalidadeConfig,
 } from "@/lib/platform/grupos-prontidao";
 
 const initial: GroupActionState = { status: "IDLE", message: "" };
@@ -52,7 +55,7 @@ export function GrupoOperationalWorkspace({
   grupo: GrupoRecord;
   administradoras: Array<{ id: string; nome: string }>;
   tiposAdministradora: Array<{ id: string; nome: string; codigo: string }>;
-  modalidadesAdministradora: Array<{ id: string; nome: string; codigo: string }>;
+  modalidadesAdministradora: AdministradoraModalidadeItem[];
   historico: Array<{
     id: string;
     fonte: string;
@@ -118,7 +121,7 @@ export function GrupoOperationalWorkspace({
             Grupo {grupo.codigo_grupo}
           </h1>
           <p className="text-sm text-slate-500">
-            {adminNome} · {tipoNome} · {grupo.prazo_total ? `${grupo.prazo_total} meses` : "Prazo não definido"}
+            {adminNome} · {tipoNome} · Prazo {prontidao.temporal.resumoPrazo} ({prontidao.temporal.legenda})
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
@@ -133,12 +136,16 @@ export function GrupoOperationalWorkspace({
           </span>
           <span
             className={`inline-flex rounded-full px-3 py-1 text-xs font-bold ${
-              grupo.ativo
+              prontidao.temporal.encerrado
+                ? "bg-slate-200 text-slate-800 dark:bg-slate-700 dark:text-slate-200"
+                : grupo.ativo
                 ? "bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300"
                 : "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300"
             }`}
           >
-            {grupo.status || (grupo.ativo ? "Disponível" : "Inativo")}
+            {prontidao.temporal.encerrado
+              ? "Encerrado (Prazo finalizado)"
+              : grupo.status || (grupo.ativo ? "Disponível" : "Inativo")}
           </span>
         </div>
       </div>
@@ -159,16 +166,22 @@ export function GrupoOperationalWorkspace({
           <p className="text-xs text-slate-400">{cotas.length} cota(s) ativa(s)</p>
         </div>
         <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-          <p className="text-xs font-bold uppercase tracking-wider text-slate-500">Capacidade / Vagas</p>
-          <p className="mt-1 text-lg font-bold text-slate-900 dark:text-white">
-            {grupo.vagas_disponiveis ?? 0}{" "}
-            <span className="text-xs font-normal text-slate-500">de {grupo.capacidade_total ?? 0}</span>
+          <p className="text-xs font-bold uppercase tracking-wider text-slate-500">Assembleias / Prazo</p>
+          <p className="mt-1 text-lg font-bold text-slate-900 dark:text-white" title={prontidao.temporal.legenda}>
+            {prontidao.temporal.resumoPrazo}
           </p>
-          {grupo.vagas_atualizado_em ? (
-            <p className="text-xs text-slate-400">
-              Atualizado {new Date(grupo.vagas_atualizado_em).toLocaleDateString("pt-BR")}
-            </p>
-          ) : null}
+          <p className="text-xs text-slate-400">
+            {grupo.data_primeira_assembleia ? `1ª: ${formatDateBR(grupo.data_primeira_assembleia)}` : "1ª Ass. não informada"}
+          </p>
+        </div>
+        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+          <p className="text-xs font-bold uppercase tracking-wider text-slate-500">Próxima Assembleia</p>
+          <p className="mt-1 text-sm font-bold text-slate-900 dark:text-white">
+            {prontidao.temporal.proximaAssembleiaFormatada}
+          </p>
+          <p className="text-xs text-slate-400">
+            {prontidao.temporal.encerrado ? "Prazo esgotado" : `${prontidao.temporal.restantes} restante(s)`}
+          </p>
         </div>
         <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
           <p className="text-xs font-bold uppercase tracking-wider text-slate-500">Taxa Total</p>
@@ -178,11 +191,6 @@ export function GrupoOperationalWorkspace({
           <p className="text-xs text-slate-400">
             Adm: {formatPercent(grupo.taxa_administrativa_percentual)} | FR: {formatPercent(grupo.fundo_reserva_percentual)}
           </p>
-        </div>
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-          <p className="text-xs font-bold uppercase tracking-wider text-slate-500">Modalidades</p>
-          <p className="mt-1 text-lg font-bold text-slate-900 dark:text-white">{modsAtivas.length} ativas</p>
-          <p className="text-xs text-slate-400">de {modalidadesDisponiveis.length} cadastradas</p>
         </div>
       </div>
 
@@ -300,9 +308,37 @@ export function GrupoOperationalWorkspace({
 
             <div>
               <label className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
+                Data da 1ª Assembleia *
+              </label>
+              <input
+                name="data_primeira_assembleia"
+                type="date"
+                defaultValue={grupo.data_primeira_assembleia ? grupo.data_primeira_assembleia.split("T")[0] : ""}
+                className={inputStyle}
+                required
+              />
+              <p className="mt-1 text-[11px] text-slate-500">
+                Define o aniversário mensal para o cálculo automático de assembleias realizadas.
+              </p>
+            </div>
+
+            <div>
+              <label className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
                 Prazo Total (Meses) *
               </label>
-              <input name="prazo_total" type="number" defaultValue={grupo.prazo_total || ""} placeholder="Ex: 200" className={inputStyle} required />
+              <input name="prazo_total" type="number" defaultValue={grupo.prazo_total || ""} placeholder="Ex: 100" className={inputStyle} required />
+            </div>
+
+            <div>
+              <label className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
+                Status Operacional
+              </label>
+              <select name="status" defaultValue={grupo.status || "Disponível"} className={inputStyle}>
+                <option value="Disponível">Disponível</option>
+                <option value="Em Andamento">Em Andamento</option>
+                <option value="Encerrado">Encerrado</option>
+                <option value="Inativo">Inativo</option>
+              </select>
             </div>
 
             <div>
@@ -378,7 +414,7 @@ export function GrupoOperationalWorkspace({
               <div>
                 <h2 className="text-lg font-bold text-slate-900 dark:text-white">1. Modalidades Disponíveis no Grupo</h2>
                 <p className="text-xs text-slate-500">
-                  Desabilitar uma modalidade aqui desabilita para todas as cotas do grupo.
+                  Carrega automaticamente os valores padrão da Administradora. Personalize apenas se este Grupo possuir regra de exceção.
                 </p>
               </div>
               <button type="submit" disabled={isPendingMods} className="rounded-lg bg-cyan-700 px-4 py-2 text-sm font-bold text-white hover:bg-cyan-800 disabled:opacity-50">
@@ -390,19 +426,37 @@ export function GrupoOperationalWorkspace({
             <div className="grid gap-4 md:grid-cols-3">
               {modalidadesAdministradora.map((mod) => {
                 const gm = modalidadesDisponiveis.find((x) => x.administradora_modalidade_id === mod.id);
-                const isAtivo = gm?.ativo ?? false;
-                const cfg = (gm?.configuracao ?? {}) as { modo_reduzido?: string; percentual_padrao?: number; percentual_minimo?: number; percentual_maximo?: number };
+                const resolved = resolveModalidadeConfig(gm, mod);
 
                 return (
-                  <div key={mod.id} className={`rounded-xl border p-4 transition-colors ${isAtivo ? "border-cyan-300 bg-cyan-50/40 dark:border-cyan-800 dark:bg-cyan-950/20" : "border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-900"}`}>
-                    <label className="flex items-center gap-2 font-bold text-slate-900 dark:text-white">
-                      <input type="checkbox" name={`mod_ativa_${mod.id}`} defaultChecked={isAtivo} className="h-4 w-4 rounded text-cyan-600" />
-                      <span>{mod.nome}</span>
-                    </label>
+                  <div
+                    key={mod.id}
+                    className={`rounded-xl border p-4 transition-colors ${
+                      resolved.ativo
+                        ? "border-cyan-300 bg-cyan-50/40 dark:border-cyan-800 dark:bg-cyan-950/20"
+                        : "border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-900"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <label className="flex items-center gap-2 font-bold text-slate-900 dark:text-white">
+                        <input type="checkbox" name={`mod_ativa_${mod.id}`} defaultChecked={resolved.ativo} className="h-4 w-4 rounded text-cyan-600" />
+                        <span>{mod.nome}</span>
+                      </label>
+                      <span
+                        className={`rounded-full px-2 py-0.5 text-[10px] font-extrabold ${
+                          resolved.isOverride
+                            ? "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300"
+                            : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400"
+                        }`}
+                      >
+                        {resolved.labelOrigem}
+                      </span>
+                    </div>
+
                     <div className="mt-3 space-y-2 text-xs">
                       <div>
                         <label className="text-slate-500">Comportamento da parcela:</label>
-                        <select name={`mod_modo_${mod.id}`} defaultValue={cfg.modo_reduzido || "fixo"} className="mt-1 w-full rounded border p-1.5 text-xs">
+                        <select name={`mod_modo_${mod.id}`} defaultValue={resolved.modo_reduzido} className="mt-1 w-full rounded border p-1.5 text-xs">
                           <option value="fixo">Percentual Fixo</option>
                           <option value="personalizado">Personalizável / Faixa</option>
                         </select>
@@ -410,16 +464,42 @@ export function GrupoOperationalWorkspace({
                       <div className="flex gap-2">
                         <div className="flex-1">
                           <label className="text-slate-500">Padrão (%):</label>
-                          <input name={`mod_pct_padrao_${mod.id}`} defaultValue={cfg.percentual_padrao ?? ""} placeholder="Ex: 70" className="mt-1 w-full rounded border p-1.5 text-xs" />
+                          <input
+                            name={`mod_pct_padrao_${mod.id}`}
+                            defaultValue={resolved.percentual_padrao ?? ""}
+                            placeholder="Ex: 60"
+                            className="mt-1 w-full rounded border p-1.5 text-xs font-semibold"
+                          />
                         </div>
                         <div className="flex-1">
                           <label className="text-slate-500">Mín (%):</label>
-                          <input name={`mod_pct_min_${mod.id}`} defaultValue={cfg.percentual_minimo ?? ""} placeholder="Ex: 60" className="mt-1 w-full rounded border p-1.5 text-xs" />
+                          <input
+                            name={`mod_pct_min_${mod.id}`}
+                            defaultValue={resolved.percentual_minimo ?? ""}
+                            placeholder="Ex: 60"
+                            className="mt-1 w-full rounded border p-1.5 text-xs"
+                          />
                         </div>
                         <div className="flex-1">
                           <label className="text-slate-500">Máx (%):</label>
-                          <input name={`mod_pct_max_${mod.id}`} defaultValue={cfg.percentual_maximo ?? ""} placeholder="Ex: 99" className="mt-1 w-full rounded border p-1.5 text-xs" />
+                          <input
+                            name={`mod_pct_max_${mod.id}`}
+                            defaultValue={resolved.percentual_maximo ?? ""}
+                            placeholder="Ex: 99"
+                            className="mt-1 w-full rounded border p-1.5 text-xs"
+                          />
                         </div>
+                      </div>
+                      <div className="pt-2">
+                        <label className="flex items-center gap-1.5 text-[11px] text-slate-500 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            name={`mod_usar_padrao_${mod.id}`}
+                            defaultChecked={!resolved.isOverride}
+                            className="rounded"
+                          />
+                          <span>Usar padrão da Administradora (sem override)</span>
+                        </label>
                       </div>
                     </div>
                   </div>

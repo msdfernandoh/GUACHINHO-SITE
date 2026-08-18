@@ -58,6 +58,7 @@ export async function salvarGrupoPlatformAction(
     const vagasDisponiveis = Number(formData.get("vagas_disponiveis")) || 0;
     const permiteLanceEmbutido = formData.get("permite_lance_embutido") === "on";
     const percentualLanceEmbutido = parseBRLNumber(formData.get("percentual_lance_embutido") as string);
+    const dataPrimeiraAssembleia = String(formData.get("data_primeira_assembleia") ?? "").trim() || null;
     const status = String(formData.get("status") ?? "Disponível").trim();
     const ativo = formData.get("ativo") !== "false";
     const observacoes = String(formData.get("observacoes") ?? "").trim() || null;
@@ -79,6 +80,7 @@ export async function salvarGrupoPlatformAction(
       p_permite_lance_embutido: permiteLanceEmbutido,
       p_percentual_lance_embutido: percentualLanceEmbutido,
       p_observacoes: observacoes,
+      p_data_primeira_assembleia: dataPrimeiraAssembleia,
     });
 
     if (error) throw new Error(error.message);
