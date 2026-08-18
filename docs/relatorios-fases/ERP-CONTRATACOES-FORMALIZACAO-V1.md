@@ -84,3 +84,14 @@ O serviço chama `converterContratacaoEmVenda` com chave estável `erp-formaliza
 ### Risco de numeração
 
 Na branch de Contratações, 079 é `erp_contratacoes_formalizacao_v1` e a correção é 080. A arquitetura corrente de outra linha de desenvolvimento reserva 079 para Catálogo Grupo N:N Modalidades. Nenhuma promoção ou merge deve ocorrer antes de reconciliar essa colisão de numeração.
+
+## Vercel Preview isolado
+
+- Projeto Vercel: `hugo-8097s-projects/guachinho-site`.
+- Branch Git: `codex/erp-contratacoes-formalizacao-v1`.
+- As variáveis `NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` e `SUPABASE_SERVICE_ROLE_KEY` foram configuradas com escopo exclusivo `Preview (codex/erp-contratacoes-formalizacao-v1)`.
+- `project_ref` validado programaticamente antes da configuração: `bfpgyralphzjozrcwjsn`. Nenhum valor de chave foi registrado.
+- A service role permaneceu server-side, sem prefixo público e sem inclusão em arquivo ou commit.
+- Deploys manuais preliminares confirmaram build remoto aprovado e alvo `preview`, mas não herdaram o filtro Git da branch. Por segurança, as variáveis não foram ampliadas para o Preview global; a homologação seguirá por deployment acionado pela integração Git desta branch.
+- Foi criado um usuário técnico descartável somente na branch Supabase Preview para a homologação visual. Ele será removido, junto com qualquer fixture visual, ao final da validação.
+- Production permanece sem alteração; nenhum domínio ou deployment de Production foi promovido.
