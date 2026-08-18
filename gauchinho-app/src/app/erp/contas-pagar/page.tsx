@@ -15,7 +15,7 @@ export default async function ContasPagarPage() {
       .select("*")
       .eq("empresa_id", empresaId)
       .neq("status", "cancelada")
-      .order("vencimento", { ascending: false })
+      .order("vencimento", { ascending: true })
       .limit(500),
     db.from("financeiro_contas_bancarias").select("*").eq("empresa_id", empresaId).eq("ativo", true),
     db.from("financeiro_centros_custo").select("*").eq("empresa_id", empresaId).eq("ativo", true),
@@ -24,7 +24,7 @@ export default async function ContasPagarPage() {
       .select("socio_pagador,usuario:usuarios!empresa_usuarios_usuario_id_fkey(id,nome,email)")
       .eq("empresa_id", empresaId)
       .eq("ativo", true),
-    db.from("caixa_movimentos").select("tipo_movimento,valor").eq("empresa_id", empresaId),
+    db.from("caixa_movimentos").select("id,tipo_movimento,valor,data_movimento,descricao").eq("empresa_id", empresaId),
     master
       ? db
           .from("financeiro_contas_pagar_logs")

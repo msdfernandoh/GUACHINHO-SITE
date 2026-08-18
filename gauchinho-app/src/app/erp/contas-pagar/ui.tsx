@@ -51,9 +51,10 @@ type Conta = {
 type Banco = { id: string; nome: string };
 type Centro = { id: string; nome: string };
 type Usuario = { id: string; nome: string; email: string; socioPagador?: boolean };
-type Movimento = { tipo_movimento: "entrada" | "saida"; valor: number };
+type Movimento = { id: string; tipo_movimento: "entrada" | "saida"; valor: number; data_movimento: string; descricao: string };
 type Tab = "conta" | "banco" | "centro" | "importar";
 type Filtro = "todas" | "abertas" | "pagas";
+type CardFiltro = "pagas_mes" | "a_pagar_mes" | "futuras" | "entradas_mes";
 type Log = { id:string; acao:string; descricao:string; fornecedor:string|null; valor:number; motivo:string|null; detalhes:Record<string,unknown>; created_at:string; usuario:{nome?:string;email?:string}|null };
 
 const brl = (value: number) =>
@@ -94,33 +95,8 @@ export function ContasPagarClient({
   const [centroFiltro, setCentroFiltro] = useState("");
   const [socioFiltro, setSocioFiltro] = useState("");
   const [editando, setEditando] = useState<Conta | null>(null);
+  const [cardFiltro, setCardFiltro] = useState<CardFiltro | null>(null);
 
-  const resumo = useMemo(() => {
-    const base = contas.filter((conta) => {
-      const data = dataTipo === "pagamento" ? conta.pago_em : conta.vencimento;
-      return (filtro === "todas" ? conta.status !== "cancelada" : filtro === "abertas" ? conta.status === "aberta" : conta.status === "paga")
-        && (!inicio || Boolean(data && data >= inicio))
-        && (!fim || Boolean(data && data <= fim))
-        && (!bancoFiltro || conta.conta_bancaria_id === bancoFiltro)
-        && (!centroFiltro || conta.centro_custo_id === centroFiltro)
-        && (!socioFiltro || conta.socio_pagador_usuario_id === socioFiltro);
-    });
-    const abertas = base.filter((conta) => conta.status === "aberta");
-    const pagas = base.filter((conta) => conta.status === "paga");
-    const pessoais = pagas.filter((conta) => conta.pago_pessoalmente);
-    const porSocio = new Map<string, number>(socios.map((socio) => [socio.id, 0]));
-    pessoais.forEach((conta) => {
-      const socioId = conta.socio_pagador_usuario_id;
-      if (socioId) porSocio.set(socioId, (porSocio.get(socioId) ?? 0) + Number(conta.valor));
-    });
-    const total = [...porSocio.values()].reduce((acc, value) => acc + value, 0);
-    return {
-      abertas: abertas.reduce((acc, conta) => acc + Number(conta.valor), 0),
-      pagas: pagas.reduce((acc, conta) => acc + Number(conta.valor), 0),
-      pessoal: total,
-      empresarial: pagas.filter((conta) => !conta.pago_pessoalmente).reduce((acc, conta) => acc + Number(conta.valor), 0),
-    };
-  }, [bancoFiltro, centroFiltro, contas, dataTipo, fim, filtro, inicio, socioFiltro, socios]);
   const saldo = caixa.reduce(
     (acc, movimento) => acc + (movimento.tipo_movimento === "entrada" ? Number(movimento.valor) : -Number(movimento.valor)),
     0,
@@ -158,11 +134,41 @@ export function ContasPagarClient({
       ...calcularAcertoSocios(pagoFernando, pagoEroni),
     };
   }, [bancoFiltro, centroFiltro, contas, dataTipo, fim, inicio, socioFiltro, socios]);
-  const cards: Array<{ label: string; value: number; color: string; Icon: LucideIcon }> = [
-    { label: "A pagar", value: resumo.abertas, color: "bg-rose-600", Icon: ReceiptText },
-    { label: "Pagas no filtro", value: resumo.pagas, color: "bg-emerald-600", Icon: CheckCircle2 },
-    { label: "Pago pessoalmente", value: resumo.pessoal, color: "bg-amber-500", Icon: WalletCards },
-    { label: "Pago pela empresa no filtro", value: resumo.empresarial, color: "bg-blue-700", Icon: Banknote },
+  const resumoMensal = useMemo(() => {
+    const hoje = new Date();
+    const inicioMes = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, "0")}-01`;
+    const proximo = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 1);
+    const inicioProximoMes = `${proximo.getFullYear()}-${String(proximo.getMonth() + 1).padStart(2, "0")}-01`;
+    const base = contas.filter((conta) =>
+      (!bancoFiltro || conta.conta_bancaria_id === bancoFiltro)
+      && (!centroFiltro || conta.centro_custo_id === centroFiltro)
+      && (!socioFiltro || conta.socio_pagador_usuario_id === socioFiltro),
+    );
+    const somar = (itens: Conta[]) => itens.reduce((total, conta) => total + Number(conta.valor), 0);
+    const pagasContas = base.filter((conta) => conta.status === "paga" && Boolean(conta.pago_em && conta.pago_em >= inicioMes && conta.pago_em < inicioProximoMes));
+    const aPagarContas = base.filter((conta) => conta.status === "aberta" && conta.vencimento >= inicioMes && conta.vencimento < inicioProximoMes);
+    const futurasContas = base.filter((conta) => conta.status === "aberta" && conta.vencimento >= inicioProximoMes);
+    const entradasMovimentos = caixa.filter((movimento) => movimento.tipo_movimento === "entrada" && movimento.data_movimento >= inicioMes && movimento.data_movimento < inicioProximoMes).sort((a, b) => b.data_movimento.localeCompare(a.data_movimento));
+    return {
+      pagasContas,
+      aPagarContas,
+      futurasContas,
+      entradasMovimentos,
+      pagasMes: somar(pagasContas),
+      aPagarMes: somar(aPagarContas),
+      futuras: somar(futurasContas),
+      entradasMes: entradasMovimentos.reduce((total, movimento) => total + Number(movimento.valor), 0),
+    };
+  }, [bancoFiltro, caixa, centroFiltro, contas, socioFiltro]);
+  const contasExibidas = cardFiltro === "pagas_mes" ? resumoMensal.pagasContas
+    : cardFiltro === "a_pagar_mes" ? resumoMensal.aPagarContas
+    : cardFiltro === "futuras" ? resumoMensal.futurasContas
+    : contasFiltradas;
+  const cards: Array<{ id: CardFiltro; label: string; value: number; color: string; Icon: LucideIcon }> = [
+    { id: "pagas_mes", label: "Pagas no mês atual", value: resumoMensal.pagasMes, color: "bg-emerald-600", Icon: CheckCircle2 },
+    { id: "a_pagar_mes", label: "A pagar no mês atual", value: resumoMensal.aPagarMes, color: "bg-rose-600", Icon: ReceiptText },
+    { id: "futuras", label: "Contas futuras a pagar", value: resumoMensal.futuras, color: "bg-amber-500", Icon: WalletCards },
+    { id: "entradas_mes", label: "Entradas no mês atual", value: resumoMensal.entradasMes, color: "bg-blue-700", Icon: Banknote },
   ];
 
   function execute(action: () => Promise<ContasActionResult>, onSuccess?: () => void) {
@@ -220,12 +226,13 @@ export function ContasPagarClient({
       </header>
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        {cards.map(({ label, value, color, Icon }) => (
-          <div key={label} className={`${color} rounded-2xl p-5 text-white shadow-lg`}>
+        {cards.map(({ id, label, value, color, Icon }) => (
+          <button type="button" key={id} aria-pressed={cardFiltro === id} onClick={() => { setCardFiltro((atual) => atual === id ? null : id); setSelecionadas(new Set()); }} className={`${color} rounded-2xl p-5 text-left text-white shadow-lg transition hover:-translate-y-0.5 hover:shadow-xl focus:outline-none focus:ring-4 focus:ring-blue-300 ${cardFiltro === id ? "ring-4 ring-slate-900 ring-offset-2" : ""}`}>
             <Icon className="h-7 w-7 opacity-80" />
             <p className="mt-5 text-sm font-semibold opacity-90">{label}</p>
             <p className="mt-1 text-3xl font-black">{brl(value)}</p>
-          </div>
+            <p className="mt-2 text-[11px] font-semibold opacity-80">{cardFiltro === id ? "Clique para limpar o filtro" : "Clique para filtrar a lista"}</p>
+          </button>
         ))}
       </div>
       <p className="-mt-3 text-right text-xs font-semibold text-slate-500">Saldo contábil geral de caixa: {brl(saldo)}</p>
@@ -342,16 +349,16 @@ export function ContasPagarClient({
         <section className="overflow-hidden rounded-2xl border bg-white shadow-sm">
           <div className="space-y-3 border-b p-5">
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <h2 className="font-bold text-slate-900">Despesas</h2>
-              <div className="flex gap-2">
+              <h2 className="font-bold text-slate-900">{cardFiltro === "entradas_mes" ? "Entradas do mês atual" : cardFiltro ? cards.find((card) => card.id === cardFiltro)?.label : "Despesas"}</h2>
+              {cardFiltro ? <button type="button" onClick={() => setCardFiltro(null)} className="rounded-lg bg-blue-50 px-3 py-1.5 text-xs font-bold text-blue-700">Limpar filtro do card</button> : <div className="flex gap-2">
                 {(["todas", "abertas", "pagas"] as Filtro[]).map((item) => (
                   <button key={item} type="button" onClick={() => setFiltro(item)} className={`rounded-lg px-3 py-1.5 text-xs font-bold ${filtro === item ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-600"}`}>
                     {item === "todas" ? "Todas" : item === "abertas" ? "A pagar" : "Pagas"}
                   </button>
                 ))}
-              </div>
+              </div>}
             </div>
-            <div className="flex flex-wrap items-center gap-2 rounded-xl bg-slate-50 p-3">
+            {cardFiltro !== "entradas_mes" ? <div className="flex flex-wrap items-center gap-2 rounded-xl bg-slate-50 p-3">
               <span className="text-xs font-bold text-slate-600">{selecionadas.size} selecionada(s)</span>
               <Select value={socioLote} onChange={(event) => setSocioLote(event.target.value)} className="max-w-xs">
                 <option value="">Remover pagamento pessoal</option>
@@ -368,12 +375,19 @@ export function ContasPagarClient({
               >
                 Aplicar às selecionadas
               </Button>
-            </div>
+            </div> : null}
           </div>
           <div className="divide-y">
-            {contasFiltradas.length === 0 ? (
+            {cardFiltro === "entradas_mes" ? (
+              resumoMensal.entradasMovimentos.length === 0 ? <p className="p-8 text-center text-slate-500">Nenhuma entrada de caixa no mês atual.</p> : resumoMensal.entradasMovimentos.map((movimento) => (
+                <div key={movimento.id} className="flex flex-wrap items-center justify-between gap-3 p-4">
+                  <div><p className="font-bold text-slate-900">{movimento.descricao}</p><p className="text-sm text-slate-500">Entrada em {dataBr(movimento.data_movimento)}</p></div>
+                  <b className="text-emerald-700">+ {brl(Number(movimento.valor))}</b>
+                </div>
+              ))
+            ) : contasExibidas.length === 0 ? (
               <p className="p-8 text-center text-slate-500">Nenhuma despesa neste filtro.</p>
-            ) : contasFiltradas.map((conta) => (
+            ) : contasExibidas.map((conta) => (
               <div key={conta.id} className="grid gap-3 p-4 md:grid-cols-[auto_1fr_auto] md:items-center">
                 <input type="checkbox" checked={selecionadas.has(conta.id)} onChange={() => toggleConta(conta.id)} aria-label={`Selecionar ${conta.descricao}`} />
                 <div>

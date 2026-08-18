@@ -18,7 +18,10 @@ O caixa permanece append-only. Estorno e exclusão de despesa paga pela empresa 
 - o acerto em dinheiro equivale à metade da diferença entre os pagamentos, pois a transferência reduz um saldo e aumenta o outro simultaneamente;
 - como alternativa, o sócio que pagou menos pode assumir novas despesas no valor integral da diferença;
 - os cards de despesas e do balanço entre sócios acompanham período, tipo de data, situação, banco, centro de custo e sócio selecionados;
-- os quatro cards superiores respeitam integralmente os filtros; o saldo contábil geral permanece exibido separadamente como informação auxiliar.
+- o balanço entre sócios respeita integralmente os filtros; o saldo contábil geral permanece exibido separadamente como informação auxiliar.
+- a listagem é ordenada por vencimento crescente;
+- os cards operacionais mostram pagas no mês atual, a pagar no mês atual, contas futuras a pagar e entradas de caixa no mês atual; banco, centro de custo e sócio continuam aplicados aos três cards de despesas.
+- cada card é clicável e filtra a listagem correspondente; o card de entradas troca a lista de despesas pelos movimentos de entrada do mês e um segundo clique remove o atalho.
 
 ## Validação e estado
 
