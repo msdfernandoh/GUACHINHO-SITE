@@ -45,7 +45,7 @@ export default async function PlatformAdministradoraPage({
       db
         .from("comissao_programas")
         .select(
-          "id,nome,versao,status,ativo,empresa_id,administradora_id,empresa:empresas(nome_fantasia),regras:comissao_regras_franquia(id,versao,percentual_total_comissao,vigencia_inicio,vigencia_fim,configuracao_homologada,tipo_administradora_id,modalidade_comissao_id,curva_estorno_id,tipo:administradora_tipos(nome),modalidade:administradora_modalidades_comissao(nome),curva:administradora_curvas_estorno(nome,versao),etapas:comissao_regra_etapas(id))",
+          "id,nome,versao,status,ativo,empresa_id,administradora_id,programa_origem_id,empresa:empresas(nome_fantasia),regras:comissao_regras_franquia(id,versao,base_calculo,percentual_total_comissao,valor_fixo_total,vigencia_inicio,vigencia_fim,configuracao_homologada,tipo_administradora_id,modalidade_comissao_id,curva_estorno_id,tipo:administradora_tipos(nome),modalidade:administradora_modalidades_comissao(nome),curva:administradora_curvas_estorno(nome,versao),etapas:comissao_regra_etapas(id,ordem,tipo_gatilho,mes_relativo,nome,percentual_venda))",
         )
         .eq("administradora_id", id)
         .order("nome"),

@@ -241,6 +241,14 @@ A plataforma suporta:
 - relatório: `docs/relatorios-fases/PLATFORM-ADMINISTRADORAS-V2.md`; manual: `docs/manuais/MANUAL-PLATFORM-ADMINISTRADORAS.md`;
 - estado: promovida em Production após dry-run exclusivo, histórico remoto confirmado em `001–083` e deployment `dpl_9GhcpmEEgo4HCHACcJYcT4EWW6rc` `READY`; não houve fixture, backfill, limpeza de legado ou recálculo histórico. O isolado `bwwgbmiwtrglbtxsdooi` permanece preservado.
 
+### Homologação e Versionamento de Programas Platform (Migration 084 Forward-Only)
+- Correção forward-only da função `rpc_platform_status_programa`: a validação do cronograma compara a soma das etapas com o percentual/valor total de comissão configurado na própria regra (`r.percentual_total_comissao` / `r.valor_fixo_total`), nunca em 100% fixo;
+- Suporte canônico a etapas de parcelas mensais somadas a etapas de `CONTEMPLACAO`;
+- Validação com mensagens descritivas por tipo de pendência (Tipo, Modalidade, Comissão, Cronograma);
+- Salvaguardas de versionamento na RPC `rpc_platform_nova_versao_programa`: rascunhos são editáveis diretamente e não geram duplicatas; versões homologadas geram cópia em rascunho e passam a `SUBSTITUIDO`;
+- UX unificada: visualização agrupada por Programa → Versão → Regras Internas; ação única de homologação com feedback explícito; confirmação de nova versão apenas para programas homologados/históricos;
+- Relatório: `docs/relatorios-fases/PLATFORM-PROGRAMAS-HOMOLOGACAO-084.md`.
+
 ### Governança de contas pagas e a pagar (Migration 079)
 - período por vencimento ou pagamento e filtros tenant-aware por banco, centro de custo e sócio;
 - alteração, estorno, exclusão lógica e leitura do log exigem perfil `master` com vínculo N:N ativo `admin_empresa` no tenant;

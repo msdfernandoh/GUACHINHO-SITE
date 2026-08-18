@@ -222,10 +222,20 @@ export async function configurarCurvaRegraAction(_previous: PlatformFormState, f
 }
 
 export async function statusProgramaAction(_previous: PlatformFormState, formData: FormData) {
-  return rpcState("rpc_platform_status_programa", {
-    p_programa_id: String(formData.get("programa_id") ?? ""),
-    p_status: String(formData.get("status") ?? "INATIVO"),
-  }, "Status do Programa atualizado.", String(formData.get("administradora_id") ?? ""));
+  const status = String(formData.get("status") ?? "INATIVO");
+  const successMsg =
+    status === "ATIVO"
+      ? "Versão homologada com sucesso."
+      : "Status do Programa atualizado.";
+  return rpcState(
+    "rpc_platform_status_programa",
+    {
+      p_programa_id: String(formData.get("programa_id") ?? ""),
+      p_status: status,
+    },
+    successMsg,
+    String(formData.get("administradora_id") ?? ""),
+  );
 }
 
 export async function novaVersaoProgramaAction(_previous: PlatformFormState, formData: FormData) {

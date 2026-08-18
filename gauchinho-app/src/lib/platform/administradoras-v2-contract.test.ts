@@ -61,7 +61,7 @@ describe("Platform Administradoras V2", () => {
   it("expõe ciclo Platform-native de Programas sem redirecionar ao ERP", () => {
     expect(migration).toContain("rpc_platform_status_programa");
     expect(migration).toContain("rpc_platform_nova_versao_programa");
-    expect(workspace).toContain("/platform/administradoras/${administradora.id}/programas/${p.id}");
+    expect(workspace).toMatch(/\/platform\/administradoras\/\$\{administradora\.id\}\/programas\/\$\{[^}]+\}/);
     expect(workspace).not.toContain("/erp/regras-comissao");
   });
 

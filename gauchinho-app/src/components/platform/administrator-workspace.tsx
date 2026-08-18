@@ -47,8 +47,13 @@ type Curve = {
   tipos?: { tipo_id: string }[];
   modalidades?: { modalidade_id: string }[];
 };
+import {
+  type ProgramRule,
+  validateProgramRule,
+} from "@/lib/platform/homologacao";
+
 type Model = { id:string;nome:string;descricao:string|null;versao:number;percentual_total_referencia:number;status:string;tipo_id:string;tipo?:{nome?:string}|null;modalidades?:Array<{modalidade_id:string;regra_franquia_origem_id:string|null;modalidade?:{nome?:string}|null}> };
-type Program = { id:string; nome:string; versao:number; status:string; ativo:boolean; empresa?: {nome_fantasia?:string}|null; regras?: Array<{id:string;versao:number;percentual_total_comissao:number|null;vigencia_inicio:string;vigencia_fim:string|null;configuracao_homologada:boolean;tipo_administradora_id:string|null;modalidade_comissao_id:string|null;curva_estorno_id:string|null;tipo?:{nome?:string}|null;modalidade?:{nome?:string}|null;curva?:{nome?:string;versao?:number}|null;etapas?:{id:string}[]}> };
+type Program = { id:string; nome:string; versao:number; status:string; ativo:boolean; empresa_id?:string; administradora_id?:string; programa_origem_id?:string|null; empresa?: {nome_fantasia?:string}|null; regras?: ProgramRule[] };
 type Group = { id:string; codigo_grupo:string; status_governanca:string; origem_governanca:string; ativo:boolean; tipo?:{nome?:string}|null; modalidades?:Array<{ativo:boolean;modalidade?:{nome?:string}|null}>; produtos?:Array<{id:string;ativo:boolean}> };
 type Audit = { id:string; acao:string; entidade_tipo:string; campos_alterados:unknown; created_at:string };
 
@@ -587,11 +592,287 @@ export function AdministratorWorkspace({
         </div>
       )}
       {tab === "programas" && (
-        <div id="programas-da-franqueadora" className="rounded-xl border bg-white p-5">
-          <h2 className="font-bold">Programas da Franqueadora</h2>
-          <p className="mt-2 text-sm text-slate-600">RASCUNHO ainda não participa do motor de novas vendas. Programas homologados/usados exigem nova versão.</p>
-          <Feedback state={ruleCurveState}/><Feedback state={programStatusState}/><Feedback state={programVersionState}/><Feedback state={programDeleteState}/>
-          <div className="mt-4 overflow-x-auto"><table className="min-w-[1250px] w-full text-sm"><thead><tr className="border-b text-left">{["Nome","Tipo","Modalidade","Comissão","Vigência","Curva opcional","Versão","Status","Ações"].map(x=><th key={x} className="p-3">{x}</th>)}</tr></thead><tbody>{programas.flatMap(p=>(p.regras?.length?p.regras:[null]).map(r=><tr key={`${p.id}-${r?.id??"sem-regra"}`} className="border-b align-top"><td className="p-3 font-semibold">{p.nome}<small className="block font-normal text-slate-500">{p.empresa?.nome_fantasia??"—"}</small></td><td>{r?.tipo?.nome??"—"}</td><td>{r?.modalidade?.nome??"—"}</td><td>{r?.percentual_total_comissao!=null?`${r.percentual_total_comissao}%`:"—"}</td><td>{r?`${r.vigencia_inicio} → ${r.vigencia_fim??"aberta"}`:"—"}</td><td>{r?<form action={ruleCurveAction} className="flex min-w-[220px] gap-2"><input type="hidden" name="administradora_id" value={administradora.id}/><input type="hidden" name="regra_id" value={r.id}/><select className={field} name="curva_id" defaultValue={r.curva_estorno_id??""} disabled={r.configuracao_homologada}><option value="">Nenhuma curva</option>{curvas.filter(c=>c.status==="HOMOLOGADA"&&c.ativa!==false).map(c=><option key={c.id} value={c.id}>{c.nome} · v{c.versao}</option>)}</select>{!r.configuracao_homologada&&<button className="font-bold text-cyan-700">Salvar</button>}</form>:"—"}</td><td>v{r?.versao??p.versao}</td><td><span className="rounded-full bg-slate-100 px-2 py-1 text-xs font-bold">{r?.configuracao_homologada?"HOMOLOGADO / ATIVO":p.status}</span></td><td><div className="flex min-w-[250px] flex-wrap gap-3"><Link href={`/platform/administradoras/${administradora.id}/programas/${p.id}`} className="font-bold text-cyan-700">Abrir</Link>{p.status==="RASCUNHO"&&<form action={programStatusAction}><input type="hidden" name="administradora_id" value={administradora.id}/><input type="hidden" name="programa_id" value={p.id}/><input type="hidden" name="status" value="ATIVO"/><button className="text-emerald-700">Homologar</button></form>}{p.status==="ATIVO"&&<form action={programStatusAction}><input type="hidden" name="administradora_id" value={administradora.id}/><input type="hidden" name="programa_id" value={p.id}/><input type="hidden" name="status" value="INATIVO"/><button className="text-slate-600">Inativar</button></form>}<form action={programVersionAction}><input type="hidden" name="administradora_id" value={administradora.id}/><input type="hidden" name="programa_id" value={p.id}/><button className="text-cyan-700">Nova versão</button></form>{p.status==="RASCUNHO"&&<form action={programDeleteAction} onSubmit={(e)=>{if(!confirm("Excluir Programa sem uso?"))e.preventDefault();}}><input type="hidden" name="administradora_id" value={administradora.id}/><input type="hidden" name="programa_id" value={p.id}/><button className="text-red-700">Excluir</button></form>}</div></td></tr>))}{!programas.length&&<tr><td colSpan={9} className="p-6 text-center text-slate-500">Nenhum Programa vinculado.</td></tr>}</tbody></table></div>
+        <div id="programas-da-franqueadora" className="space-y-6">
+          <section className="rounded-xl border border-cyan-200 bg-cyan-50 p-5">
+            <h2 className="text-lg font-bold text-slate-900">Programas da Franqueadora</h2>
+            <p className="mt-1 text-sm text-slate-700">
+              Cada versão reúne as regras estruturadas por Tipo e Modalidade. Rascunhos são editáveis e não entram em novas vendas; versões homologadas alimentam o motor canônico de novas vendas; versões substituídas permanecem intactas como histórico.
+            </p>
+          </section>
+          <Feedback state={ruleCurveState} />
+          <Feedback state={programStatusState} />
+          <Feedback state={programVersionState} />
+          <Feedback state={programDeleteState} />
+          {programas.map((program) => {
+            const rules = program.regras ?? [];
+            const readiness = rules.map(validateProgramRule);
+            const allIssues: string[] = [];
+            if (rules.length === 0) {
+              allIssues.push("Nenhuma regra de comissão cadastrada nesta versão");
+            } else {
+              rules.forEach((rule, idx) => {
+                const r = readiness[idx];
+                const modLabel = rule.modalidade?.nome || rule.tipo?.nome || `Regra ${idx + 1}`;
+                r.issues.forEach((issue) => {
+                  allIssues.push(`${modLabel}: ${issue}`);
+                });
+              });
+            }
+            const mayHomologate = program.status === "RASCUNHO" && rules.length > 0 && allIssues.length === 0;
+            const isHistorical = program.status === "SUBSTITUIDO";
+            const isHomologado = program.status === "ATIVO";
+            const isRascunho = program.status === "RASCUNHO";
+            const successor = programas.find((p) => p.programa_origem_id === program.id);
+            const totalModalidades = new Set(rules.map((r) => r.modalidade?.nome || r.modalidade_comissao_id).filter(Boolean)).size;
+            const commissionValues = Array.from(
+              new Set(
+                rules.map((r) =>
+                  r.base_calculo === "valor_fixo"
+                    ? `R$ ${r.valor_fixo_total ?? "—"}`
+                    : `${r.percentual_total_comissao ?? "—"}%`
+                )
+              )
+            ).join(", ");
+            const vigenciaInicios = rules.map((r) => r.vigencia_inicio).filter(Boolean).sort();
+            const vigenciaFins = rules.map((r) => r.vigencia_fim).filter(Boolean).sort();
+            const vigenciaSummary = vigenciaInicios.length > 0
+              ? `${vigenciaInicios[0]} → ${vigenciaFins[vigenciaFins.length - 1] || "Aberta"}`
+              : "Vigência aberta";
+
+            return (
+              <article
+                key={program.id}
+                className={`rounded-2xl border bg-white p-6 shadow-sm transition-all ${
+                  isHistorical ? "border-slate-200 bg-slate-50/70 opacity-80" : "border-slate-200"
+                }`}
+              >
+                <div className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-100 pb-4">
+                  <div className="space-y-1.5">
+                    <div className="flex flex-wrap items-center gap-2.5">
+                      <h3 className="text-xl font-bold text-slate-900">{program.nome}</h3>
+                      <span className="rounded-md bg-cyan-100 px-2.5 py-0.5 text-xs font-bold text-cyan-800">
+                        v{program.versao}
+                      </span>
+                      <span
+                        className={`rounded-full px-3 py-1 text-xs font-bold ${
+                          isHomologado
+                            ? "bg-emerald-100 text-emerald-800"
+                            : isHistorical
+                              ? "bg-slate-200 text-slate-700"
+                              : "bg-amber-100 text-amber-900"
+                        }`}
+                      >
+                        {isHistorical
+                          ? successor
+                            ? `SUBSTITUÍDA POR v${successor.versao}`
+                            : "SUBSTITUÍDA · HISTÓRICO"
+                          : isHomologado
+                            ? "HOMOLOGADO"
+                            : "RASCUNHO"}
+                      </span>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-600">
+                      <span><strong>Franqueadora:</strong> {program.empresa?.nome_fantasia || "Não informada"}</span>
+                      <span><strong>Comissão:</strong> {commissionValues || "—"}</span>
+                      <span><strong>Regras:</strong> {totalModalidades} modalidade{totalModalidades === 1 ? "" : "s"}</span>
+                      <span><strong>Vigência:</strong> {vigenciaSummary}</span>
+                      <span><strong>Pendências:</strong> {allIssues.length === 0 ? "0 / Pronto" : `${allIssues.length} pendência${allIssues.length === 1 ? "" : "s"}`}</span>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Link
+                      href={`/platform/administradoras/${administradora.id}/programas/${program.id}`}
+                      className="inline-flex cursor-pointer items-center rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-cyan-800 shadow-sm hover:bg-cyan-50"
+                    >
+                      {isRascunho ? "Editar regras e cronograma" : "Ver regras e cronograma"}
+                    </Link>
+
+                    {isRascunho && (
+                      <form action={programStatusAction}>
+                        <input type="hidden" name="administradora_id" value={administradora.id} />
+                        <input type="hidden" name="programa_id" value={program.id} />
+                        <input type="hidden" name="status" value="ATIVO" />
+                        <button
+                          disabled={!mayHomologate}
+                          title={
+                            mayHomologate
+                              ? "Homologar esta versão para o motor de novas vendas"
+                              : `Não pode homologar:\n${allIssues.join("\n")}`
+                          }
+                          className={`inline-flex items-center rounded-lg px-4 py-2 text-sm font-bold shadow-sm transition-colors ${
+                            mayHomologate
+                              ? "cursor-pointer bg-emerald-700 text-white hover:bg-emerald-800"
+                              : "cursor-not-allowed bg-slate-200 text-slate-400"
+                          }`}
+                        >
+                          Homologar versão {program.versao}
+                        </button>
+                      </form>
+                    )}
+
+                    {isHomologado && (
+                      <>
+                        <form action={programStatusAction}>
+                          <input type="hidden" name="administradora_id" value={administradora.id} />
+                          <input type="hidden" name="programa_id" value={program.id} />
+                          <input type="hidden" name="status" value="INATIVO" />
+                          <button className="inline-flex cursor-pointer items-center rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50">
+                            Inativar
+                          </button>
+                        </form>
+
+                        <form
+                          action={programVersionAction}
+                          onSubmit={(event) => {
+                            if (
+                              !confirm(
+                                "Será criada uma nova versão em Rascunho. A versão atual será preservada no histórico.\n\nDeseja continuar?",
+                              )
+                            ) {
+                              event.preventDefault();
+                            }
+                          }}
+                        >
+                          <input type="hidden" name="administradora_id" value={administradora.id} />
+                          <input type="hidden" name="programa_id" value={program.id} />
+                          <button className="inline-flex cursor-pointer items-center rounded-lg border border-cyan-700 bg-white px-3 py-2 text-sm font-semibold text-cyan-800 shadow-sm hover:bg-cyan-50">
+                            Criar nova versão
+                          </button>
+                        </form>
+                      </>
+                    )}
+
+                    {isRascunho && (
+                      <form
+                        action={programDeleteAction}
+                        onSubmit={(event) => {
+                          if (!confirm("Excluir este rascunho sem uso definitivamente?")) {
+                            event.preventDefault();
+                          }
+                        }}
+                      >
+                        <input type="hidden" name="administradora_id" value={administradora.id} />
+                        <input type="hidden" name="programa_id" value={program.id} />
+                        <button className="inline-flex cursor-pointer items-center rounded-lg px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-50">
+                          Excluir rascunho
+                        </button>
+                      </form>
+                    )}
+                  </div>
+                </div>
+
+                {isRascunho && (
+                  <div
+                    className={`mt-4 rounded-xl p-4 text-sm border ${
+                      mayHomologate
+                        ? "border-emerald-200 bg-emerald-50 text-emerald-900"
+                        : "border-amber-200 bg-amber-50 text-amber-950"
+                    }`}
+                  >
+                    <div className="font-bold flex items-center gap-2">
+                      {mayHomologate ? "✓ Pronto para homologar" : "⚠ Não pode homologar no momento"}
+                    </div>
+                    {mayHomologate ? (
+                      <p className="mt-1 text-emerald-800">
+                        Todas as regras têm Tipo definido, Modalidade definida, comissão total válida e cronograma fechado exatamente no total da própria comissão.
+                      </p>
+                    ) : (
+                      <ul className="mt-2 list-disc pl-5 space-y-1 text-amber-900">
+                        {allIssues.map((issue, idx) => (
+                          <li key={idx}>{issue}</li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                )}
+
+                <div className="mt-5 overflow-x-auto">
+                  <table className="min-w-[850px] w-full text-sm">
+                    <thead>
+                      <tr className="border-b text-left text-xs font-bold uppercase tracking-wider text-slate-500">
+                        <th className="p-2.5">Tipo</th>
+                        <th className="p-2.5">Modalidade</th>
+                        <th className="p-2.5">Comissão Total</th>
+                        <th className="p-2.5">Cronograma</th>
+                        <th className="p-2.5">Curva de Estorno</th>
+                        <th className="p-2.5">Estado da Validação</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {rules.map((rule, index) => {
+                        const check = readiness[index];
+                        return (
+                          <tr key={rule.id} className="align-top hover:bg-slate-50/50">
+                            <td className="p-2.5 font-medium text-slate-900">
+                              {rule.tipo?.nome ?? <span className="text-amber-700 font-normal">Tipo pendente</span>}
+                            </td>
+                            <td className="p-2.5 font-medium text-slate-900">
+                              {rule.modalidade?.nome ?? <span className="text-amber-700 font-normal">Modalidade pendente</span>}
+                            </td>
+                            <td className="p-2.5 font-semibold text-slate-800">
+                              {rule.base_calculo === "valor_fixo"
+                                ? `R$ ${rule.valor_fixo_total ?? "—"}`
+                                : `${rule.percentual_total_comissao ?? "—"}%`}
+                            </td>
+                            <td className="p-2.5">
+                              <span className={check.ready ? "font-medium text-slate-700" : "font-medium text-amber-800"}>
+                                {check.cronogramaSummary}
+                              </span>
+                            </td>
+                            <td className="p-2.5">
+                              {rule.configuracao_homologada || isHistorical ? (
+                                <span className="text-slate-700">
+                                  {rule.curva ? `${rule.curva.nome} · v${rule.curva.versao}` : "Sem curva de estorno"}
+                                </span>
+                              ) : (
+                                <form action={ruleCurveAction} className="flex min-w-[240px] items-center gap-2">
+                                  <input type="hidden" name="administradora_id" value={administradora.id} />
+                                  <input type="hidden" name="regra_id" value={rule.id} />
+                                  <select
+                                    className={field}
+                                    name="curva_id"
+                                    defaultValue={rule.curva_estorno_id ?? ""}
+                                  >
+                                    <option value="">Nenhuma curva</option>
+                                    {curvas
+                                      .filter((c) => c.status === "HOMOLOGADA" && c.ativa !== false)
+                                      .map((c) => (
+                                        <option key={c.id} value={c.id}>
+                                          {c.nome} · v{c.versao}
+                                        </option>
+                                      ))}
+                                  </select>
+                                  <button className="cursor-pointer text-xs font-bold text-cyan-700 hover:underline">
+                                    Salvar
+                                  </button>
+                                </form>
+                              )}
+                            </td>
+                            <td className="p-2.5">
+                              {check.ready ? (
+                                <span className="inline-flex items-center gap-1 font-semibold text-emerald-700">
+                                  ✓ OK
+                                </span>
+                              ) : (
+                                <span
+                                  className="inline-flex items-center gap-1 font-medium text-amber-800"
+                                  title={check.issues.join("; ")}
+                                >
+                                  ⚠ {check.issues[0]}
+                                </span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </article>
+            );
+          })}
+          {!programas.length && <p className="rounded-xl border bg-white p-6 text-center text-sm text-slate-500">Nenhum Programa vinculado.</p>}
         </div>
       )}
       {tab === "grupos" && (
