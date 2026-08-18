@@ -32,7 +32,7 @@ describe("Platform Administradoras Homologação 084", () => {
       expect(migration).toContain("Regra % possui Tipo não definido");
       expect(migration).toContain("Regra % possui Modalidade não definida");
       expect(migration).toContain("sem etapas de cronograma cadastradas");
-      expect(migration).toContain("cronograma soma %%, mas comissão total é %%");
+      expect(migration).toContain("cronograma soma %, mas comissão total é %");
       expect(migration).toContain("Homologação bloqueada por regra canônica sobreposta");
     });
 

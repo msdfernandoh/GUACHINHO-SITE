@@ -68,7 +68,7 @@ BEGIN
       END IF;
 
       IF abs(v_invalida.soma_etapas - v_esperado) > 0.0001 THEN
-        RAISE EXCEPTION 'Regra (% - %): cronograma soma %%, mas comissão total é %%',
+        RAISE EXCEPTION 'Regra (% - %): cronograma soma %, mas comissão total é %',
           v_invalida.tipo_nome, v_invalida.mod_nome, v_invalida.soma_etapas, v_esperado;
       END IF;
     END LOOP;
