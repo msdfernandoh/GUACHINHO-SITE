@@ -1,4 +1,4 @@
--- 080 — corrige a ordem contratação → cliente → histórico sem reescrever a 071.
+-- 082 — corrige a ordem contratação → cliente → histórico sem reescrever a 071.
 -- O BEFORE preserva a identidade canônica e NEW.cliente_id. O histórico que
 -- possui FK para contratacoes_online passa a ser escrito somente no AFTER.
 BEGIN;

@@ -237,13 +237,13 @@ A plataforma suporta:
 ### ERP Contratações — Formalização V1 (branch de homologação)
 - `/erp/contratacoes` deixa de espelhar a tela do site e passa a ser uma fila operacional própria;
 - a formalização continua exclusivamente no RPC canônico `rpc_converter_contratacao_venda`, sem segundo motor de Venda/Cota;
-- a migration 079 foi aplicada e registrada somente no Supabase Preview `bfpgyralphzjozrcwjsn`, após repair estritamente de metadata e alinhamento comprovado de 001–078;
+- a migration de Formalização foi homologada como 079 somente no Supabase Preview `bfpgyralphzjozrcwjsn`, após repair estritamente de metadata e alinhamento comprovado de 001–078; para Production, foi reconciliada como 081 porque `main` já contém 079 Financeiro e 080 Catálogo;
 - Cliente é reutilizado pela identidade canônica empresa + documento da 071; documentos permanecem no Storage privado;
 - promoção para Production, merge em `main` e backfill histórico permanecem proibidos até autorização expressa.
 - o primeiro provisionamento (`llvkybltnrmznvrntxng`) falhou; a branch saudável `bfpgyralphzjozrcwjsn` recebeu o repair direcionado 077→078, a 077 atual e, após dry-run exclusivo, a 079;
 - a homologação transacional revelou que o trigger 071 `sync_cliente_from_contratacao()` tenta gravar histórico antes da contratação existir no `BEFORE INSERT`; a transação foi revertida e a promoção permanece bloqueada até correção forward-only autorizada;
-- a migration forward-only 080 dividiu a sincronização: identidade e `NEW.cliente_id` permanecem no BEFORE, enquanto o histórico idempotente passou para AFTER INSERT/UPDATE; a matriz transacional 079/080 passou integralmente no Preview e deixou zero fixtures;
-- a promoção ainda está bloqueada pela colisão de numeração entre a 079 de Formalização desta branch e a 079 de Catálogo Grupo N:N Modalidades existente em outra linha de desenvolvimento;
+- a correção forward-only foi homologada como 080 no Preview e reconciliada como 082 para Production; ela mantém identidade e `NEW.cliente_id` no BEFORE e move o histórico idempotente para AFTER INSERT/UPDATE; a matriz transacional passou integralmente e deixou zero fixtures;
+- a colisão foi resolvida antes da promoção: `081_erp_contratacoes_formalizacao_v1` e `082_fix_sync_cliente_contratacao_historico` são os números finais desta entrega em Production;
 - manual: `docs/manuais/MANUAL-ERP-CONTRATACOES.md`; relatório: `docs/relatorios-fases/ERP-CONTRATACOES-FORMALIZACAO-V1.md`.
 
 * O P0 das APIs, o hardening `057–059`, o motor canônico `060–063` e o fechamento técnico `064–066` estão implantados no Supabase principal.

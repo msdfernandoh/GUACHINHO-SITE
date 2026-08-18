@@ -3,11 +3,11 @@ import fs from "node:fs";
 import path from "node:path";
 
 const migration = fs.readFileSync(
-  path.resolve(process.cwd(), "../supabase/migrations/080_fix_sync_cliente_contratacao_historico.sql"),
+  path.resolve(process.cwd(), "../supabase/migrations/082_fix_sync_cliente_contratacao_historico.sql"),
   "utf8",
 );
 
-describe("migration 080 — ordem contratação, cliente e histórico", () => {
+describe("migration 082 — ordem contratação, cliente e histórico", () => {
   it("mantém a sincronização da identidade no BEFORE e move o histórico para AFTER", () => {
     const beforeFunction = migration.match(
       /CREATE OR REPLACE FUNCTION public\.sync_cliente_from_contratacao\(\)[\s\S]*?END \$\$;/,

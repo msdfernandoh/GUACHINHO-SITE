@@ -85,6 +85,10 @@ O serviço chama `converterContratacaoEmVenda` com chave estável `erp-formaliza
 
 Na branch de Contratações, 079 é `erp_contratacoes_formalizacao_v1` e a correção é 080. A arquitetura corrente de outra linha de desenvolvimento reserva 079 para Catálogo Grupo N:N Modalidades. Nenhuma promoção ou merge deve ocorrer antes de reconciliar essa colisão de numeração.
 
+### Reconciliação para Production
+
+Antes do merge autorizado, `origin/main` foi reconsultado e já continha `079_financeiro_contas_pagar_governanca` e `080_catalogo_grupos_modalidades_produtos`. Sem alterar o SQL homologado, os arquivos desta entrega foram renumerados para `081_erp_contratacoes_formalizacao_v1` e `082_fix_sync_cliente_contratacao_historico`. Assim, 079/080 identificam apenas o histórico do ambiente Preview desta branch, enquanto 081/082 são os números finais destinados a Production.
+
 ## Vercel Preview isolado
 
 - Projeto Vercel: `hugo-8097s-projects/guachinho-site`.

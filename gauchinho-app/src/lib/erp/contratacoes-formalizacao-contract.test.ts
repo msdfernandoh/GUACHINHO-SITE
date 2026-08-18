@@ -6,7 +6,7 @@ const root = resolve(process.cwd(), "..");
 const read = (path: string) => readFileSync(resolve(root, path), "utf8");
 
 describe("ERP Contratações — formalização V1", () => {
-  const migration = read("supabase/migrations/079_erp_contratacoes_formalizacao_v1.sql");
+  const migration = read("supabase/migrations/081_erp_contratacoes_formalizacao_v1.sql");
   const action = read("gauchinho-app/src/app/erp/contratacoes/actions.ts");
   const list = read("gauchinho-app/src/app/erp/contratacoes/page.tsx");
   const detail = read("gauchinho-app/src/app/erp/contratacoes/[id]/page.tsx");
