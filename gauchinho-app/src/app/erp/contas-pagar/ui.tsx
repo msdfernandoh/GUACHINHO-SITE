@@ -8,17 +8,25 @@ import {
   FileUp,
   Landmark,
   Plus,
+  History,
+  Pencil,
   ReceiptText,
+  RotateCcw,
+  Trash2,
   WalletCards,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { Button, Input, Select, Textarea } from "@/components/ui/form-primitives";
+import { calcularAcertoSocios } from "@/lib/financeiro/acerto-socios";
 import {
+  alterarConta,
   atualizarSocioPagadorContas,
   baixarConta,
   criarBanco,
   criarCentro,
   criarConta,
+  estornarConta,
+  excluirConta,
   importarContasCsv,
   type ContasActionResult,
 } from "./actions";
@@ -36,6 +44,9 @@ type Conta = {
   socio_pagador_usuario_id: string | null;
   responsavel_importado?: string | null;
   necessita_revisao?: boolean;
+  centro_custo_id: string | null;
+  conta_bancaria_id: string | null;
+  observacao: string | null;
 };
 type Banco = { id: string; nome: string };
 type Centro = { id: string; nome: string };
@@ -43,6 +54,7 @@ type Usuario = { id: string; nome: string; email: string; socioPagador?: boolean
 type Movimento = { tipo_movimento: "entrada" | "saida"; valor: number };
 type Tab = "conta" | "banco" | "centro" | "importar";
 type Filtro = "todas" | "abertas" | "pagas";
+type Log = { id:string; acao:string; descricao:string; fornecedor:string|null; valor:number; motivo:string|null; detalhes:Record<string,unknown>; created_at:string; usuario:{nome?:string;email?:string}|null };
 
 const brl = (value: number) =>
   value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -54,15 +66,17 @@ export function ContasPagarClient({
   bancos,
   centros,
   socios,
-  usuarios,
   caixa,
+  logs,
+  master,
 }: {
   contas: Conta[];
   bancos: Banco[];
   centros: Centro[];
   socios: Usuario[];
-  usuarios: Usuario[];
   caixa: Movimento[];
+  logs: Log[];
+  master: boolean;
 }) {
   const router = useRouter();
   const [tab, setTab] = useState<Tab>("conta");
@@ -72,15 +86,30 @@ export function ContasPagarClient({
   const [socioLote, setSocioLote] = useState("");
   const [feedback, setFeedback] = useState<ContasActionResult | null>(null);
   const [pending, startTransition] = useTransition();
+  const [visao, setVisao] = useState<"despesas" | "logs">("despesas");
+  const [dataTipo, setDataTipo] = useState<"vencimento" | "pagamento">("vencimento");
+  const [inicio, setInicio] = useState("");
+  const [fim, setFim] = useState("");
+  const [bancoFiltro, setBancoFiltro] = useState("");
+  const [centroFiltro, setCentroFiltro] = useState("");
+  const [socioFiltro, setSocioFiltro] = useState("");
+  const [editando, setEditando] = useState<Conta | null>(null);
 
-  const usuariosById = useMemo(() => new Map(usuarios.map((usuario) => [usuario.id, usuario])), [usuarios]);
   const resumo = useMemo(() => {
-    const abertas = contas.filter((conta) => conta.status === "aberta");
-    const mes = new Date().toISOString().slice(0, 7);
-    const pagas = contas.filter((conta) => conta.status === "paga" && conta.competencia === mes);
-    const pessoalMes = pagas.filter((conta) => conta.pago_pessoalmente);
+    const base = contas.filter((conta) => {
+      const data = dataTipo === "pagamento" ? conta.pago_em : conta.vencimento;
+      return (filtro === "todas" ? conta.status !== "cancelada" : filtro === "abertas" ? conta.status === "aberta" : conta.status === "paga")
+        && (!inicio || Boolean(data && data >= inicio))
+        && (!fim || Boolean(data && data <= fim))
+        && (!bancoFiltro || conta.conta_bancaria_id === bancoFiltro)
+        && (!centroFiltro || conta.centro_custo_id === centroFiltro)
+        && (!socioFiltro || conta.socio_pagador_usuario_id === socioFiltro);
+    });
+    const abertas = base.filter((conta) => conta.status === "aberta");
+    const pagas = base.filter((conta) => conta.status === "paga");
+    const pessoais = pagas.filter((conta) => conta.pago_pessoalmente);
     const porSocio = new Map<string, number>(socios.map((socio) => [socio.id, 0]));
-    pessoalMes.forEach((conta) => {
+    pessoais.forEach((conta) => {
       const socioId = conta.socio_pagador_usuario_id;
       if (socioId) porSocio.set(socioId, (porSocio.get(socioId) ?? 0) + Number(conta.valor));
     });
@@ -89,26 +118,51 @@ export function ContasPagarClient({
       abertas: abertas.reduce((acc, conta) => acc + Number(conta.valor), 0),
       pagas: pagas.reduce((acc, conta) => acc + Number(conta.valor), 0),
       pessoal: total,
-      ajustes: [...porSocio.entries()].map(([id, value]) => ({
-        nome: usuariosById.get(id)?.nome ?? "Sócio",
-        saldo: value - total / Math.max(socios.length, 1),
-      })),
+      empresarial: pagas.filter((conta) => !conta.pago_pessoalmente).reduce((acc, conta) => acc + Number(conta.valor), 0),
     };
-  }, [contas, socios, usuariosById]);
+  }, [bancoFiltro, centroFiltro, contas, dataTipo, fim, filtro, inicio, socioFiltro, socios]);
   const saldo = caixa.reduce(
     (acc, movimento) => acc + (movimento.tipo_movimento === "entrada" ? Number(movimento.valor) : -Number(movimento.valor)),
     0,
   );
   const contasFiltradas = contas.filter((conta) => {
-    if (filtro === "abertas") return conta.status === "aberta";
-    if (filtro === "pagas") return conta.status === "paga";
-    return conta.status !== "cancelada";
+    const data = dataTipo === "pagamento" ? conta.pago_em : conta.vencimento;
+    return (filtro === "todas" ? conta.status !== "cancelada" : filtro === "abertas" ? conta.status === "aberta" : conta.status === "paga")
+      && (!inicio || Boolean(data && data >= inicio))
+      && (!fim || Boolean(data && data <= fim))
+      && (!bancoFiltro || conta.conta_bancaria_id === bancoFiltro)
+      && (!centroFiltro || conta.centro_custo_id === centroFiltro)
+      && (!socioFiltro || conta.socio_pagador_usuario_id === socioFiltro);
   });
+  const balancoSocios = useMemo(() => {
+    const nomeNormalizado = (nome: string) => nome.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+    const fernando = socios.find((socio) => nomeNormalizado(socio.nome).includes("fernando"));
+    const eroni = socios.find((socio) => nomeNormalizado(socio.nome).includes("eroni"));
+    const contasDoPeriodo = contas.filter((conta) => {
+      const data = dataTipo === "pagamento" ? conta.pago_em : conta.vencimento;
+      return conta.status === "paga"
+        && conta.pago_pessoalmente
+        && (!inicio || Boolean(data && data >= inicio))
+        && (!fim || Boolean(data && data <= fim))
+        && (!bancoFiltro || conta.conta_bancaria_id === bancoFiltro)
+        && (!centroFiltro || conta.centro_custo_id === centroFiltro)
+        && (!socioFiltro || conta.socio_pagador_usuario_id === socioFiltro);
+    });
+    const pagoFernando = contasDoPeriodo.filter((conta) => conta.socio_pagador_usuario_id === fernando?.id).reduce((total, conta) => total + Number(conta.valor), 0);
+    const pagoEroni = contasDoPeriodo.filter((conta) => conta.socio_pagador_usuario_id === eroni?.id).reduce((total, conta) => total + Number(conta.valor), 0);
+    return {
+      fernandoNome: fernando?.nome ?? "Fernando",
+      eroniNome: eroni?.nome ?? "Eroni",
+      pagoFernando,
+      pagoEroni,
+      ...calcularAcertoSocios(pagoFernando, pagoEroni),
+    };
+  }, [bancoFiltro, centroFiltro, contas, dataTipo, fim, inicio, socioFiltro, socios]);
   const cards: Array<{ label: string; value: number; color: string; Icon: LucideIcon }> = [
     { label: "A pagar", value: resumo.abertas, color: "bg-rose-600", Icon: ReceiptText },
-    { label: "Pagas no mês", value: resumo.pagas, color: "bg-emerald-600", Icon: CheckCircle2 },
+    { label: "Pagas no filtro", value: resumo.pagas, color: "bg-emerald-600", Icon: CheckCircle2 },
     { label: "Pago pessoalmente", value: resumo.pessoal, color: "bg-amber-500", Icon: WalletCards },
-    { label: "Saldo de caixa", value: saldo, color: "bg-blue-700", Icon: Banknote },
+    { label: "Pago pela empresa no filtro", value: resumo.empresarial, color: "bg-blue-700", Icon: Banknote },
   ];
 
   function execute(action: () => Promise<ContasActionResult>, onSuccess?: () => void) {
@@ -144,6 +198,12 @@ export function ContasPagarClient({
     });
   }
 
+  function pedirMotivo(conta: Conta, tipo: "estorno" | "exclusao") {
+    const motivo = window.prompt(`Informe o motivo ${tipo === "estorno" ? "do estorno" : "da exclusão"} de “${conta.descricao}”:`)?.trim();
+    if (!motivo) return;
+    execute(() => tipo === "estorno" ? estornarConta(conta.id, motivo) : excluirConta(conta.id, motivo));
+  }
+
   const tabs: Array<[Tab, string, typeof Plus]> = [
     ["conta", "Nova despesa", Plus],
     ["importar", "Importar CSV", FileUp],
@@ -168,6 +228,27 @@ export function ContasPagarClient({
           </div>
         ))}
       </div>
+      <p className="-mt-3 text-right text-xs font-semibold text-slate-500">Saldo contábil geral de caixa: {brl(saldo)}</p>
+
+      <section aria-label="Balanço das despesas pagas pelos sócios" className="space-y-3">
+        <div>
+          <h2 className="font-bold text-slate-900">Balanço entre Fernando e Eroni</h2>
+          <p className="text-sm text-slate-500">A dívida é da empresa e a responsabilidade de cada sócio corresponde a 50% do total pago pessoalmente no período.</p>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {[
+            [`Pago por ${balancoSocios.fernandoNome}`, balancoSocios.pagoFernando, "border-blue-200 bg-blue-50 text-blue-950"],
+            [`Pago por ${balancoSocios.eroniNome}`, balancoSocios.pagoEroni, "border-violet-200 bg-violet-50 text-violet-950"],
+            ["Débito da empresa", balancoSocios.debitoEmpresa, "border-rose-200 bg-rose-50 text-rose-950"],
+            ["Cota de cada sócio (50%)", balancoSocios.cotaIndividual, "border-amber-200 bg-amber-50 text-amber-950"],
+          ].map(([label, value, color]) => (
+            <div key={String(label)} className={`rounded-2xl border p-4 shadow-sm ${color}`}>
+              <p className="text-xs font-bold uppercase tracking-wide opacity-75">{label}</p>
+              <p className="mt-2 text-2xl font-black">{brl(Number(value))}</p>
+            </div>
+          ))}
+        </div>
+      </section>
 
       <div className="flex gap-2 overflow-x-auto pb-1">
         {tabs.map(([id, label, Icon]) => (
@@ -242,7 +323,22 @@ export function ContasPagarClient({
         )}
       </section>
 
-      <div className="grid gap-6 xl:grid-cols-[1.8fr_1fr]">
+      <div className="flex border-b">
+        <button type="button" onClick={() => setVisao("despesas")} className={`px-5 py-3 font-bold ${visao === "despesas" ? "border-b-2 border-blue-700 text-blue-700" : "text-slate-500"}`}>Despesas</button>
+        {master ? <button type="button" onClick={() => setVisao("logs")} className={`flex items-center gap-2 px-5 py-3 font-bold ${visao === "logs" ? "border-b-2 border-blue-700 text-blue-700" : "text-slate-500"}`}><History className="h-4 w-4" />Log de utilização</button> : null}
+      </div>
+
+      <section className={`${visao === "despesas" ? "grid" : "hidden"} gap-3 rounded-2xl border bg-white p-4 shadow-sm md:grid-cols-3 xl:grid-cols-6`}>
+        <Select value={dataTipo} onChange={(event) => setDataTipo(event.target.value as typeof dataTipo)}><option value="vencimento">Por vencimento</option><option value="pagamento">Por pagamento</option></Select>
+        <Input type="date" aria-label="Data inicial" value={inicio} onChange={(event) => setInicio(event.target.value)} />
+        <Input type="date" aria-label="Data final" value={fim} onChange={(event) => setFim(event.target.value)} />
+        <Select value={bancoFiltro} onChange={(event) => setBancoFiltro(event.target.value)}><option value="">Todos os bancos</option>{bancos.map((banco) => <option key={banco.id} value={banco.id}>{banco.nome}</option>)}</Select>
+        <Select value={centroFiltro} onChange={(event) => setCentroFiltro(event.target.value)}><option value="">Todos os centros</option>{centros.map((centro) => <option key={centro.id} value={centro.id}>{centro.nome}</option>)}</Select>
+        <Select value={socioFiltro} onChange={(event) => setSocioFiltro(event.target.value)}><option value="">Todos os sócios</option>{socios.map((socio) => <option key={socio.id} value={socio.id}>{socio.nome}</option>)}</Select>
+        <button type="button" className="text-left text-sm font-bold text-blue-700 xl:col-span-6" onClick={() => { setInicio(""); setFim(""); setBancoFiltro(""); setCentroFiltro(""); setSocioFiltro(""); }}>Limpar filtros</button>
+      </section>
+
+      <div className={`${visao === "despesas" ? "grid" : "hidden"} gap-6 xl:grid-cols-[1.8fr_1fr]`}>
         <section className="overflow-hidden rounded-2xl border bg-white shadow-sm">
           <div className="space-y-3 border-b p-5">
             <div className="flex flex-wrap items-center justify-between gap-3">
@@ -304,6 +400,11 @@ export function ContasPagarClient({
                   {conta.status === "aberta" ? (
                     <Button type="button" size="sm" disabled={pending} onClick={() => execute(() => baixarConta(conta.id))} className="bg-emerald-600 hover:bg-emerald-700">Dar baixa</Button>
                   ) : null}
+                  {master ? <>
+                    <Button type="button" variant="outline" size="sm" disabled={pending} onClick={() => setEditando(conta)}><Pencil className="mr-1 h-4 w-4" />Alterar</Button>
+                    {conta.status === "paga" ? <Button type="button" variant="outline" size="sm" disabled={pending} onClick={() => pedirMotivo(conta, "estorno")}><RotateCcw className="mr-1 h-4 w-4" />Estornar</Button> : null}
+                    <Button type="button" variant="danger" size="sm" disabled={pending} onClick={() => pedirMotivo(conta, "exclusao")}><Trash2 className="mr-1 h-4 w-4" />Excluir</Button>
+                  </> : null}
                 </div>
               </div>
             ))}
@@ -312,21 +413,63 @@ export function ContasPagarClient({
 
         <section className="rounded-2xl bg-slate-950 p-5 text-white shadow-lg">
           <h2 className="font-bold">Fechamento entre sócios</h2>
-          <p className="mt-1 text-sm text-slate-400">Somente contas pagas pessoalmente no mês atual.</p>
+          <p className="mt-1 text-sm text-slate-400">Contas pagas pessoalmente no período selecionado. A empresa assume o total e cada sócio entra com metade.</p>
           <div className="mt-5 space-y-3">
-            {resumo.ajustes.length === 0 ? (
-              <p className="rounded-xl bg-white/10 p-4 text-sm text-slate-300">Marque uma conta como paga pessoalmente para ver a compensação.</p>
-            ) : resumo.ajustes.map((ajuste) => (
-              <div key={ajuste.nome} className="rounded-xl bg-white/10 p-4">
-                <p className="font-semibold">{ajuste.nome}</p>
-                <p className="mt-1 text-sm text-slate-300">
-                  {ajuste.saldo > 0 ? `Deve receber ${brl(ajuste.saldo)} dos demais / empresa.` : ajuste.saldo < 0 ? `Deve repassar ${brl(-ajuste.saldo)} para equalizar.` : "Está equilibrado."}
+            <div className="rounded-xl bg-white/10 p-4">
+              <p className="font-semibold">{balancoSocios.fernandoNome}</p>
+              <p className="mt-1 text-sm text-slate-300">Pagou {brl(balancoSocios.pagoFernando)} · sua parte é {brl(balancoSocios.cotaIndividual)}.</p>
+            </div>
+            <div className="rounded-xl bg-white/10 p-4">
+              <p className="font-semibold">{balancoSocios.eroniNome}</p>
+              <p className="mt-1 text-sm text-slate-300">Pagou {brl(balancoSocios.pagoEroni)} · sua parte é {brl(balancoSocios.cotaIndividual)}.</p>
+            </div>
+            {balancoSocios.debitoEmpresa === 0 ? (
+              <p className="rounded-xl bg-white/10 p-4 text-sm text-slate-300">Nenhuma despesa pessoal paga no período.</p>
+            ) : balancoSocios.socioCredor === null ? (
+              <p className="rounded-xl bg-emerald-500/20 p-4 text-sm text-emerald-100">Os dois pagaram o mesmo valor. O balanço está equilibrado.</p>
+            ) : (
+              <div className="space-y-3 rounded-xl border border-amber-400/30 bg-amber-400/10 p-4">
+                <p className="font-semibold text-amber-200">Como equalizar</p>
+                <p className="text-sm text-slate-200">
+                  {balancoSocios.socioCredor === "A" ? balancoSocios.eroniNome : balancoSocios.fernandoNome} transfere <b>{brl(balancoSocios.transferenciaParaEqualizar)}</b> para {balancoSocios.socioCredor === "A" ? balancoSocios.fernandoNome : balancoSocios.eroniNome}.
                 </p>
+                <p className="text-xs text-slate-400">A transferência corrige os dois lados, portanto seu efeito no balanço é o dobro: {brl(balancoSocios.transferenciaParaEqualizar)} × 2 = {brl(balancoSocios.diferencaPagamentos)}.</p>
+                <div className="border-t border-white/10 pt-3 text-sm text-slate-200">
+                  Alternativa: o sócio que pagou menos assume <b>{brl(balancoSocios.despesaAdicionalParaEqualizar)}</b> em novas despesas da empresa.
+                </div>
               </div>
-            ))}
+            )}
           </div>
         </section>
       </div>
+
+      {master && visao === "logs" ? (
+        <section className="overflow-x-auto rounded-2xl border bg-white shadow-sm">
+          <table className="min-w-full text-left text-sm">
+            <thead className="bg-slate-50 text-slate-600"><tr>{["Data", "Ação", "Usuário", "Fornecedor / despesa", "Valor", "Motivo / detalhes"].map((label) => <th key={label} className="px-4 py-3 font-bold">{label}</th>)}</tr></thead>
+            <tbody className="divide-y">{logs.map((log) => <tr key={log.id}><td className="whitespace-nowrap px-4 py-3">{new Date(log.created_at).toLocaleString("pt-BR")}</td><td className="px-4 py-3 font-bold">{log.acao}</td><td className="px-4 py-3">{log.usuario?.nome || log.usuario?.email || "Sistema"}</td><td className="px-4 py-3">{log.fornecedor || "Sem fornecedor"}<br /><span className="text-slate-500">{log.descricao}</span></td><td className="whitespace-nowrap px-4 py-3 font-bold">{brl(Number(log.valor))}</td><td className="max-w-sm px-4 py-3">{log.motivo || ("campos_alterados" in log.detalhes ? `Campos: ${JSON.stringify(log.detalhes.campos_alterados)}` : "—")}</td></tr>)}</tbody>
+          </table>
+          {logs.length === 0 ? <p className="p-8 text-center text-slate-500">Nenhum evento registrado.</p> : null}
+        </section>
+      ) : null}
+
+      {editando ? (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/60 p-4">
+          <form onSubmit={(event) => { event.preventDefault(); const form = new FormData(event.currentTarget); execute(() => alterarConta(editando.id, form), () => setEditando(null)); }} className="grid w-full max-w-2xl gap-3 rounded-2xl bg-white p-6 shadow-2xl md:grid-cols-2">
+            <h2 className="text-xl font-black md:col-span-2">Alterar despesa</h2>
+            <Input name="descricao" required defaultValue={editando.descricao} />
+            <Input name="fornecedor" defaultValue={editando.fornecedor || ""} />
+            <Input name="valor" type="number" step="0.01" min="0.01" required defaultValue={Number(editando.valor)} readOnly={editando.status === "paga"} />
+            <Input name="vencimento" type="date" required defaultValue={editando.vencimento} />
+            <Select name="centro" defaultValue={editando.centro_custo_id || ""}><option value="">Sem centro</option>{centros.map((centro) => <option key={centro.id} value={centro.id}>{centro.nome}</option>)}</Select>
+            <Select name="banco" defaultValue={editando.conta_bancaria_id || ""}><option value="">Sem banco</option>{bancos.map((banco) => <option key={banco.id} value={banco.id}>{banco.nome}</option>)}</Select>
+            <label className="flex items-center gap-2 rounded-xl bg-amber-50 p-3"><input name="pessoal" type="checkbox" defaultChecked={editando.pago_pessoalmente} disabled={editando.status === "paga"} />Pago pessoalmente</label>
+            <Select name="socio" defaultValue={editando.socio_pagador_usuario_id || ""} disabled={editando.status === "paga"}><option value="">Sócio pagador</option>{socios.map((socio) => <option key={socio.id} value={socio.id}>{socio.nome}</option>)}</Select>
+            <Textarea name="obs" className="md:col-span-2" defaultValue={editando.observacao || ""} />
+            <div className="flex justify-end gap-2 md:col-span-2"><Button type="button" variant="outline" onClick={() => setEditando(null)}>Cancelar</Button><Button disabled={pending}>Salvar alterações</Button></div>
+          </form>
+        </div>
+      ) : null}
     </div>
   );
 }

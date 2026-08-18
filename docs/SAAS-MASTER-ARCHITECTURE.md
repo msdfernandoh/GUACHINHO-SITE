@@ -1,16 +1,12 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
-> **Versão da Arquitetura:** 5.7.1 (ERP Clientes aplicado e backfill Gauchinho auditado)
-> **Data de Atualização:** 11/08/2026
-> **Status Geral do Projeto:** **PRODUÇÃO COM MIGRATIONS 001–076; A CORREÇÃO OPERACIONAL DA FASE 076 ESTÁ VERSIONADA NA MIGRATION 077 E HOMOLOGADA SOMENTE EM SUPABASE ISOLADO/PREVIEW, SEM APLICAÇÃO EM PRODUCTION.**
-> **Macroblocos A–F e evoluções 057–069:** implantados em Produção. As migrations `060–063` preservam o motor canônico financeiro; `064–066` concluíram retenção, storage e auditoria; `067–069` entregaram ERP configurável, fluxo final de contratação e Assembleias/Pedras.
-> **Infraestrutura em Produção:**  
-> - **Vercel Production atual:** deployment `dpl_9rwcRpVjKyhg7K4Si1FBRrcGHSvM`, estado `READY`, associado a `gauchinhoconsorcios.com.br`, `www.gauchinhoconsorcios.com.br` e `admin.gauchinhoconsorcios.com.br` na reconciliação de 11/08/2026.
-> - **Supabase principal:** projeto `eaeuoynprurmmulzhydt`, com estado de Produção documentado até `069`. A reconciliação runtime confirmou as estruturas de `068` e `069` e confirmou que a tabela inicial de `070` não existe no banco principal. O `migration list --linked` e o `db push --linked --dry-run` foram tentados novamente, mas a senha de banco vinculada nesta estação foi rejeitada pelo pooler; nenhuma migration foi aplicada.
-> - **Branch Platform:** `codex/plataforma-saas-master-ux-governanca` em `88764f5`, quatro commits à frente de `origin/main` (`52e0655`). A migration `070` permanece somente no Supabase isolado associado ao Preview.
-> - **Suíte reproduzida na branch Platform:** `701 PASS / 37 SKIP`; TypeScript, build de 122 rotas, lint Platform e `npm audit --omit=dev` aprovados.
-> - **Segurança & Multi-Tenant:** RLS ativo em 27 tabelas críticas, Empresa B com 0 dados/concessões, Host Resolution e RBAC formalizado em `SAAS-PERMISSIONS-MATRIX.md`.  
-> - **Platform Host:** `admin.gauchinhoconsorcios.com.br` está ativo no deployment Production atual, resolve contexto `PLATFORM` antes de qualquer tenant e exige `is_platform_superadmin()`. O smoke anônimo retornou `307` para o login Platform e `/login` retornou `200`.
+> **Versão da Arquitetura:** 5.8.0
+> **Data de Atualização:** 17/08/2026
+> **Production:** `origin/main` auditada em `323147c`; Supabase principal `eaeuoynprurmmulzhydt` com migrations `001–079` promovidas. `077` é `077_erp_importacao_socios_permissoes.sql`, `078` é `078_fix_076_fluxo_administradora_operacional.sql` e `079` é `079_financeiro_contas_pagar_governanca.sql`.
+> **Preview/isolado:** a migration `080_catalogo_grupos_modalidades_produtos.sql` foi aplicada somente no Supabase isolado `valcreavxhpuqmmbwaqo`; o E2E decisivo foi aprovado. Faltam apenas commit/push, Vercel Preview e screenshots autenticados.
+> **Correção de catálogo atual:** a 080 é a próxima migration após a 079 oficial. Não foi aplicada em Production e não autoriza promoção automática.
+> **Vercel Production:** permanece no deployment corrente registrado pela `main`; nenhum Preview da correção 080 representa ou altera Production.
+> **Segurança:** o Platform Host continua global, sem fallback de tenant, e exige `is_platform_superadmin()`.
 
 > **Projeto Físico:** `C:\Fernando Hugo\GAUCHINHO SITE`  
 > **Repositório Git:** `https://github.com/msdfernandoh/GUACHINHO-SITE.git`
@@ -135,7 +131,7 @@ A plataforma suporta:
   `cbb2aadd264e0ce706a8a8c2b6e6fb8cdf9bb9c5` e deployment
   `dpl_5zbq3oGeJ8MrMagteqkZAgZGADuW` READY; smoke sem criação de fixtures.
 
-### Plataforma SaaS Master (Migration 070 — Preview)
+### Plataforma SaaS Master (Migration 070 — Produção)
 - o contexto global passa a usar shell próprio em `/platform`, sem herdar menu,
   identidade ou operação tenant da Gauchinho;
 - o host Platform autoriza somente login e `/platform`, sempre pelo RPC
@@ -144,10 +140,9 @@ A plataforma suporta:
   entitlements/overrides, configurações e auditoria Platform, sem preços
   presumidos, billing real ou integração com o runtime tenant;
 - detalhes e homologação: `docs/relatorios-fases/PLATAFORMA-SAAS-MASTER-UX-GOVERNANCA.md`.
-- estado operacional: aplicada somente no Supabase isolado do Preview
-  `dpl_E9ZJZQW5a6SzzGPA8QbmCQYc6SnA`; não aplicada em Produção e não mesclada
-  em `main`. A homologação visual autenticada permanece pendente porque o
-  navegador disponível não possuía sessão legítima da Vercel/Plataforma.
+- estado reconciliado: a migration 070 integra `origin/main` e o estado atual
+  `001–079` do Supabase principal. O deployment Preview inicial permanece apenas
+  como evidência histórica; a 070 está implantada em Production.
 
 ---
 
@@ -164,8 +159,14 @@ A plataforma suporta:
 | Fechamento técnico e hardening | `main` | 057–066 | IMPLANTADO | Supabase principal |
 | ERP configurável e operacional | `main` | 067, 069 | IMPLANTADO | Production atual |
 | Proposta → Contratação | `main` | 068 | IMPLANTADO | Production atual |
-| Plataforma SaaS Master | `codex/plataforma-saas-master-ux-governanca` | 070 | PREVIEW; VISUAL AUTENTICADO PENDENTE | Supabase isolado + `dpl_E9ZJZQW5a6SzzGPA8QbmCQYc6SnA` |
-| Correção operacional da fase 076 | `codex/fix-076-comissoes-grupos-platform` | 077 | HOMOLOGAÇÃO EM PREVIEW | Supabase isolado `bfpgyralphzjozrcwjsn`; Production intacta |
+| Plataforma SaaS Master | `main` | 070 | IMPLANTADO | Supabase principal |
+| ERP Clientes e participantes | `main` | 071–074 | IMPLANTADO | Supabase principal |
+| Financeiro operacional | `main` | 075 | IMPLANTADO | Supabase principal |
+| Comissões, Grupos e Contemplação V2 | `main` | 076 | IMPLANTADO | Supabase principal + Production Vercel |
+| Importação, sócios e permissões | `main` | 077 | IMPLANTADO | Supabase principal |
+| Correção operacional da fase 076 | `main` | 078 | IMPLANTADO | Supabase principal |
+| Governança de contas pagas e a pagar | `main` | 079 | IMPLANTADO | Supabase principal |
+| Catálogo Grupo N:N Modalidades | `codex/catalogo-grupos-modalidades-080` | 080 | NÃO PROMOVIDO | branch isolada/Preview |
 
 ---
 
@@ -177,25 +178,27 @@ A plataforma suporta:
 - `071_erp_clientes_operacional.sql` é forward-only, tem RLS explícita e não executa backfill automático. Em 12/08/2026, após auditoria e autorização expressa, foram vinculadas somente as 7 contratações assinadas da Gauchinho, sem documento ausente ou duplicidade de CPF/CNPJ.
 - relatório: `docs/relatorios-fases/ERP-CLIENTES-OPERACIONAL.md`.
 
-### Participantes de venda e simulação compartilhável (Migrations 072–073 — versionadas)
+### Participantes de venda e simulação compartilhável (Migrations 072–073 — Produção)
 - a contratação pode definir Microfranquia principal e um participante secundário opcional (`SDR`, `PARCEIRO` ou `CONSULTOR`), sempre no mesmo tenant;
 - a fração configurada reduz a previsão da Microfranquia e transfere exatamente essa parcela ao secundário nas vendas novas, preservando previsões e pagamentos históricos;
 - o link SDR carrega uma simulação assinada sem persistir proposta/contratação antes dos dados mínimos do cliente;
-- migrations 072–073 permanecem pendentes de aplicação no Supabase; relatório: `docs/relatorios-fases/VENDAS-PARTICIPANTES-COMISSAO.md`.
+- migrations 072–073 integram o estado atual `001–079` do Supabase principal; relatório: `docs/relatorios-fases/VENDAS-PARTICIPANTES-COMISSAO.md`.
 
-### Usuários do site no ERP (Migration 074 — versionada)
+### Usuários do site no ERP (Migration 074 — Produção)
 - usuários ativos já vinculados por `empresa_usuarios` são espelhados idempotentemente como participantes comerciais ativos do mesmo tenant, sem criar login novo nem alterar credenciais;
 - o tipo inicial respeita o perfil operacional: SDR/SRD → `SDR`, consultor → `CONSULTOR`, imobiliária/parceiro → `PARCEIRO`, master/admin → `GESTOR`;
 - novos vínculos ativos de empresa também são sincronizados pelo trigger; participantes vinculados a usuário podem não possuir telefone/WhatsApp, pois o login canônico já é sua identidade;
 - o ERP deixa de depender da flag histórica `FASE3_ADMIN_PARTICIPANTES_ENABLED` quando o schema está disponível.
+- estado reconciliado: migration 074 aplicada no Supabase principal.
 
-### Financeiro operacional ERP (Migration 075 — versionada)
+### Financeiro operacional ERP (Migration 075 — Produção)
 - contas a pagar, bancos e centros de custo são entidades tenant-aware próprias;
 - a baixa empresarial gera saída append-only em `caixa_movimentos`; pagamento pessoal de sócio não movimenta caixa empresarial;
 - o fechamento mensal calcula valores adiantados por sócio e o ajuste igualitário entre os pagadores;
 - relatório: `docs/relatorios-fases/ERP-FINANCEIRO-CONTAS-PAGAR.md`.
+- estado reconciliado: migration 075 aplicada no Supabase principal.
 
-### Comissões, Grupos e Contemplação V2 (Migration 076 — Preview isolado)
+### Comissões, Grupos e Contemplação V2 (Migration 076 — Produção)
 - Tipos e Modalidades pertencem à Administradora; o Grupo exige ambos para vendas novas e pode seguir governança Local → Platform → Global;
 - regras são selecionadas por Administradora + Tipo + Modalidade + vigência + versão, com snapshot histórico e evento opcional `CONTEMPLACAO` sem mês fictício;
 - tabelas Racon fecham em 4,00% (Imóvel) e 3,50% (Automóveis); somente Reduzida abaixo de 59 contém 1,25% de contemplação;
@@ -203,34 +206,38 @@ A plataforma suporta:
 - recebimentos, pagamentos, divergências, pendências, compensações e estornos estendem 060–063, mantendo caixa, locks, idempotência e fatos append-only;
 - contemplação manual registra crédito atualizado apenas para histórico e encerra novos estornos de curva, sem integração automática com Assembleias/Pedras;
 - relatório: `docs/relatorios-fases/ERP-COMISSOES-GRUPOS-CONTEMPLACAO-V2.md`;
-- estado: a migration 076 integra Production; correções posteriores não reescrevem 060–076.
+- estado: concluída, mesclada em `main` e promovida em 14/08/2026. A validação
+  pós-migration confirmou as seis regras Racon e preservou os dados históricos.
 
-### Correção operacional da Fase 076 (Migration 078 — Production)
-- a Administradora passa a ser a raiz única do catálogo de Tipos, Modalidades, curvas, programas e regras oficiais; o ERP apenas consome esse catálogo;
-- `Automóvel`/`Automóveis` da Racon são consolidados no Tipo canônico `AUTOMOVEIS`, preservando referências vivas, aliases e snapshots históricos;
-- regras automáticas de participante não mantêm cronograma próprio: acompanham as etapas e a elegibilidade da Franqueadora; regras manuais continuam exigindo cronograma próprio válido;
-- Integral e Reduzida 60–99 permanecem sem contemplação adicional; Reduzida abaixo de 59 completa 4,00%/3,50% com a etapa opcional de 1,25%, calculada sobre a base original da venda;
-- recebimento real gera uma única entrada de Caixa; conciliação posterior apenas distribui o valor entre previsões e classificações, sem duplicar movimento;
-- estratégia de lance pertence à cota, respeita os limites do Grupo e registra histórico anterior/novo append-only;
-- validada nos Supabase efêmeros `bfpgyralphzjozrcwjsn`, `yvwzdbivejvucwhxbnwp` e `wjkkujhwxjuxvzrajvsu`, e aplicada no Supabase principal em 14/08/2026 como migration 078;
-- manual: `docs/manuais/MANUAL-CONFIGURACAO-COMISSOES.md`;
+### Importação financeira, sócios e acesso individual ao ERP (Migration 077 — Produção)
+- o número 077 oficial pertence a `077_erp_importacao_socios_permissoes.sql`;
+- foi aplicado no Supabase principal em 14/08/2026 e integra `origin/main`;
+- relatório: `docs/relatorios-fases/ERP-IMPORTACAO-SOCIOS-PERMISSOES-CAIXA.md`.
+
+### Correção operacional da Fase 076 (Migration 078 — Produção)
+- o número 078 oficial pertence a `078_fix_076_fluxo_administradora_operacional.sql`;
+- consolidou Administradora como raiz do catálogo, tipos Racon e fluxos de
+  comissão/caixa sem reescrever as migrations anteriores;
+- foi validada em ambientes efêmeros e aplicada no Supabase principal em
+  14/08/2026;
 - relatório: `docs/relatorios-fases/FIX-076-COMISSOES-GRUPOS-PLATFORM.md`.
 
-### Importação financeira, sócios e acesso individual ao ERP (Migration 077 — versionada)
-- importações CSV de contas pagas e abertas são idempotentes por tenant/origem/chave e preservam os dados operacionais do arquivo legado;
-- sócio pagador e menus visíveis do ERP pertencem ao vínculo N:N `empresa_usuarios`, nunca à identidade global em `usuarios`;
-- atribuir sócio a uma conta histórica altera somente o fechamento visual entre sócios, sem estorno ou mutação do livro razão;
-- menus não concedidos são ocultados e bloqueados também em acesso por URL, incluindo subrotas explícitas;
-- entradas e saídas manuais são registradas por RPC como fatos append-only em `caixa_movimentos`;
-- bancos e centros de custo passam a devolver resultado controlado na própria interface;
-- relatório: `docs/relatorios-fases/ERP-IMPORTACAO-SOCIOS-PERMISSOES-CAIXA.md`;
-- estado: migration 077 aplicada no Supabase principal em 14/08/2026, com
-  colunas, view e sócios iniciais verificados por leitura; homologação funcional
-  autenticada permanece pendente.
-- compatibilidade pré-migration: o runtime volta ao contrato legado somente
-  quando `socio_pagador`/`erp_modulos_visiveis` estão ausentes, preservando o
-  acesso do vínculo ativo a Usuários e ERP sem liberar módulos fora do tenant;
-  relatório: `docs/relatorios-fases/HOTFIX-ERP-USUARIOS-SEM-MIGRATION-077.md`.
+### Catálogo canônico Grupo N:N Modalidades (Migration 080 — não promovida)
+- corrige o conceito singular introduzido na 076: um Grupo possui N modalidades de pagamento da sua Administradora;
+- `grupos_cotas` continua produto comercial e recebe valores dinâmicos por modalidade; `cotas_definitivas` continua cota real do cliente;
+- vendas novas escolhem explicitamente Produto + Modalidade e congelam o valor correspondente; a regra continua resolvida por Administradora + Tipo + Modalidade + vigência;
+- colunas singulares e parcelas antigas permanecem somente para compatibilidade histórica, sem recálculo de fatos;
+- relatório: `docs/relatorios-fases/AUDITORIA-CORRECAO-CATALOGO-GRUPOS-COTAS.md`;
+- estado: aplicada somente no Supabase isolado `valcreavxhpuqmmbwaqo`; E2E de
+  três modalidades/vendas aprovado; não promovida para Production.
+
+### Governança de contas pagas e a pagar (Migration 079)
+- período por vencimento ou pagamento e filtros tenant-aware por banco, centro de custo e sócio;
+- alteração, estorno, exclusão lógica e leitura do log exigem perfil `master` com vínculo N:N ativo `admin_empresa` no tenant;
+- exclusão exige motivo; contas pagas pela empresa geram movimento inverso append-only antes do cancelamento;
+- relatório: `docs/relatorios-fases/ERP-FINANCEIRO-GOVERNANCA-CONTAS.md`.
+- estado: aplicada no Supabase principal em 17/08/2026; histórico remoto confirmado de 001 a 079.
+- o balanço de dois sócios trata o total pago pessoalmente como débito da empresa, divide a responsabilidade em 50% para cada um e distingue dois acertos equivalentes: transferência de metade da diferença ou novas despesas pelo valor integral da diferença.
 
 ## 5. Declaração Final de Segurança e Riscos
 
@@ -247,9 +254,12 @@ A plataforma suporta:
 - manual: `docs/manuais/MANUAL-ERP-CONTRATACOES.md`; relatório: `docs/relatorios-fases/ERP-CONTRATACOES-FORMALIZACAO-V1.md`.
 
 * O P0 das APIs, o hardening `057–059`, o motor canônico `060–063` e o fechamento técnico `064–066` estão implantados no Supabase principal.
-* O estado funcional do Supabase Production inclui migrations `001–078`, verificadas no histórico remoto após a aplicação.
+* O estado funcional do Supabase Production inclui migrations `001–079`, verificadas no histórico remoto após a aplicação.
 * `admin.gauchinhoconsorcios.com.br` está ativo, verificado e associado ao deployment Production da `main`; ele não é tenant e não possui fallback para Gauchinho.
-* As migrations `070–078` estão versionadas e aplicadas em Produção; correções futuras permanecem obrigatoriamente forward-only.
+* As migrations `070–079` estão versionadas e aplicadas em Produção; correções futuras permanecem obrigatoriamente forward-only.
+* Os ambientes Preview/isolados registrados nos relatórios são descartáveis e não substituem a evidência de promoção do Supabase principal.
+* A migration 080 de Grupo N:N Modalidades não foi aplicada em Production.
+* Nenhum backfill ou recálculo histórico foi executado em Production nesta rodada.
 * A Gauchinho permanece com ERP habilitado e a Empresa B permanece sem concessão de administradora. Nenhum tenant Sorriso foi criado.
-* A única homologação aberta nesta rodada é a revisão visual autenticada da Plataforma SaaS Master no Preview. Sem sessão legítima disponível, nenhum PASS visual foi presumido.
+* A aplicação isolada e o E2E de três modalidades/vendas foram concluídos. Restam somente commit/push, Vercel Preview e screenshots autenticados antes de qualquer pedido de promoção.
 * Evidências consolidadas: `docs/relatorios-fases/HOTFIX-CODEX-POS-AUDITORIA.md`, `docs/relatorios-fases/HARDENING-RLS-CODEX-POS-HOTFIX.md`, `docs/relatorios-fases/CODEX-COMISSOES-FINANCEIRO-TRANSACIONAL.md`, `docs/relatorios-fases/ERP-OPERACIONAL-LEGADO-SUPERADO.md`, `docs/relatorios-fases/CORRECAO-FLUXO-PROPOSTA-CONTRATACAO.md` e `docs/relatorios-fases/PLATAFORMA-SAAS-MASTER-UX-GOVERNANCA.md`.

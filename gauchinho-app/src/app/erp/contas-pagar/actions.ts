@@ -154,6 +154,63 @@ export async function baixarConta(id: string): Promise<ContasActionResult> {
   }
 }
 
+export async function alterarConta(id: string, form: FormData): Promise<ContasActionResult> {
+  try {
+    const { empresaId, session } = await requireFinanceWrite();
+    const pessoal = form.get("pessoal") === "on";
+    const { error } = await session.rpc("rpc_alterar_conta_pagar", {
+      p_empresa_id: empresaId,
+      p_conta_id: id,
+      p_descricao: value(form, "descricao"),
+      p_fornecedor: value(form, "fornecedor"),
+      p_vencimento: value(form, "vencimento"),
+      p_valor: Number(value(form, "valor")),
+      p_centro_custo_id: value(form, "centro") || null,
+      p_conta_bancaria_id: value(form, "banco") || null,
+      p_observacao: value(form, "obs"),
+      p_pago_pessoalmente: pessoal,
+      p_socio_pagador_usuario_id: pessoal ? value(form, "socio") || null : null,
+    });
+    if (error) throw new Error(error.message);
+    revalidatePath("/erp/contas-pagar");
+    return { ok: true, message: "Despesa alterada com sucesso." };
+  } catch (error) {
+    return failure(error);
+  }
+}
+
+export async function estornarConta(id: string, motivo: string): Promise<ContasActionResult> {
+  try {
+    const { empresaId, session } = await requireFinanceWrite();
+    const { error } = await session.rpc("rpc_estornar_conta_pagar", {
+      p_empresa_id: empresaId,
+      p_conta_id: id,
+      p_motivo: motivo,
+    });
+    if (error) throw new Error(error.message);
+    revalidatePath("/erp/contas-pagar");
+    return { ok: true, message: "Pagamento estornado e despesa reaberta." };
+  } catch (error) {
+    return failure(error);
+  }
+}
+
+export async function excluirConta(id: string, motivo: string): Promise<ContasActionResult> {
+  try {
+    const { empresaId, session } = await requireFinanceWrite();
+    const { error } = await session.rpc("rpc_excluir_conta_pagar", {
+      p_empresa_id: empresaId,
+      p_conta_id: id,
+      p_motivo: motivo,
+    });
+    if (error) throw new Error(error.message);
+    revalidatePath("/erp/contas-pagar");
+    return { ok: true, message: "Despesa excluída com histórico preservado." };
+  } catch (error) {
+    return failure(error);
+  }
+}
+
 export async function atualizarSocioPagadorContas(
   contaIds: string[],
   socioId: string | null,

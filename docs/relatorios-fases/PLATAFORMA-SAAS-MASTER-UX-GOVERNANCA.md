@@ -59,8 +59,8 @@ publicação permanecem gates explícitos e auditáveis.
 - build: PASS, 122 rotas;
 - npm audit `--omit=dev`: zero vulnerabilidades;
 - lint do escopo Platform: PASS, zero warnings;
-- migration 070: aplicada somente no Supabase isolado
-  `dtgzujsktggllybnpbpj`;
+- migration 070: nesta etapa foi homologada no Supabase isolado
+  `dtgzujsktggllybnpbpj`; atualmente integra o histórico de Production `001–079`;
 - teste SQL transacional: planos sem preços, Empresa B sem concessões, nenhum
   template Racon, catálogo ERP sem Administradoras, RLS e auditoria: PASS;
 - ROLLBACK: zero fixture residual;
@@ -107,7 +107,8 @@ pendentes para revisão do proprietário: Dashboard, claro/escuro e persistênci
 sidebar Platform, todas as seções de governança e a visão central da Gauchinho.
 
 Esta tentativa não alterou `main`, Supabase principal, aliases ou deployment
-Production. A migration `070` permanece somente no ambiente isolado do Preview.
+Production naquele momento. Atualmente, a migration `070` integra o histórico
+canônico de Production `001–079`.
 
 ## Homologação visual autenticada — 12/08/2026
 

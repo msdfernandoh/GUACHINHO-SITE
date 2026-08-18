@@ -56,7 +56,14 @@ const config: Record<string, SectionConfig> = {
       "Opções comerciais de grupos_cotas; não são cotas definitivas do cliente.",
     table: "grupos_cotas",
     select:
-      "id,valor_credito,valor_parcela,parcela_integral,parcela_com_seguro,status,ativo,grupo:grupos_consorcio(codigo_grupo,administradora:administradoras(nome))",
+      "id,valor_credito,valor_parcela,parcela_integral,parcela_com_seguro,status,ativo,grupo:grupos_consorcio(id,codigo_grupo,administradora:administradoras(nome))",
+  },
+  "produtos-comerciais": {
+    title: "Produtos comerciais",
+    description: "Visão global; a edição canônica ocorre dentro do Grupo.",
+    table: "grupos_cotas",
+    select:
+      "id,valor_credito,status,ativo,grupo:grupos_consorcio(id,codigo_grupo,modalidade,administradora:administradoras(nome))",
   },
   sites: {
     title: "Sites / Portais",
@@ -275,7 +282,9 @@ export default async function PlatformSectionPage({
                 ))}
                 {secao === "empresas" ||
                 secao === "grupos" ||
-                secao === "administradoras" ? (
+                secao === "administradoras" ||
+                secao === "produtos" ||
+                secao === "produtos-comerciais" ? (
                   <th className="px-4 py-3">Ação</th>
                 ) : null}
               </tr>
@@ -378,6 +387,16 @@ export default async function PlatformSectionPage({
                             Decidido
                           </span>
                         )}
+                      </td>
+                    ) : secao === "produtos" ||
+                      secao === "produtos-comerciais" ? (
+                      <td className="px-4 py-3">
+                        <Link
+                          className="font-semibold text-cyan-700"
+                          href={`/platform/grupos/${(row.grupo as Row)?.id}`}
+                        >
+                          Editar no Grupo
+                        </Link>
                       </td>
                     ) : null}
                   </tr>
