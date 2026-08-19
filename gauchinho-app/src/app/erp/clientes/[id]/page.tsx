@@ -35,19 +35,48 @@ export default async function ClienteDetalhePage({
   const supabase = await createClient();
   if (!empresaAtiva) return null;
 
+  // 1. Busca dados do cliente no tenant
+  const { data: cliente, error: clienteError } = await supabase
+    .from("clientes")
+    .select("*")
+    .eq("id", id)
+    .eq("empresa_id", empresaAtiva.id)
+    .maybeSingle();
+
+  if (clienteError || !cliente) {
+    return (
+      <div className="space-y-4">
+        <Link
+          href="/erp/clientes"
+          className="inline-flex items-center gap-2 text-sm font-bold text-slate-600 hover:text-blue-700 dark:text-slate-400 dark:hover:text-blue-400"
+        >
+          <ArrowLeft size={17} /> Voltar para clientes
+        </Link>
+        <div className="rounded-2xl bg-amber-50 border border-amber-200 p-6 text-amber-900 dark:bg-amber-950/50 dark:border-amber-800 dark:text-amber-200">
+          <p className="font-bold">Cliente não encontrado neste tenant.</p>
+          <p className="text-xs text-amber-700 dark:text-amber-400 mt-1">
+            Verifique se o cliente pertence à empresa selecionada.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // 2. Busca em paralelo das entidades relacionadas com queries simples e diretas
   const [
-    clienteResult,
-    propostasResult,
-    contratacoesResult,
-    vendasResult,
-    historicoResult,
+    participanteRes,
+    propostasRes,
+    contratacoesRes,
+    vendasRes,
+    historicoRes,
   ] = await Promise.all([
-    supabase
-      .from("clientes")
-      .select("*, participante:participantes_comerciais(id,nome,nome_exibicao)")
-      .eq("id", id)
-      .eq("empresa_id", empresaAtiva.id)
-      .maybeSingle(),
+    cliente.participante_comercial_id
+      ? supabase
+          .from("participantes_comerciais")
+          .select("id,nome,nome_exibicao")
+          .eq("id", cliente.participante_comercial_id)
+          .maybeSingle()
+      : Promise.resolve({ data: null }),
     supabase
       .from("propostas")
       .select("id,status,nome_cliente,created_at,valor_credito,valor_parcela,prazo,tipo_bem")
@@ -56,55 +85,95 @@ export default async function ClienteDetalhePage({
       .order("created_at", { ascending: false }),
     supabase
       .from("contratacoes_online")
-      .select(`
-        id, protocolo, status, contrato_assinado, contrato_assinado_em, created_at,
-        credito_selecionado, parcela_estimada, prazo, tipo_bem, origem, grupo_nome,
-        administradora, grupo_id, dados_simulacao, status_operacional_erp,
-        documentos:contratacoes_documentos(id, tipo_documento, arquivo_url, arquivo_nome, mime_type, created_at),
-        vendas(id, status, data_venda, cotas_definitivas(id, numero_cota, status, contemplada, data_contemplacao, valor_credito_contemplacao, tipo_contemplacao))
-      `)
-      .eq("cliente_id", id)
+      .select("id,protocolo,status,contrato_assinado,contrato_assinado_em,created_at,credito_selecionado,parcela_estimada,prazo,tipo_bem,origem,grupo_nome,administradora,grupo_id,dados_simulacao,status_operacional_erp,cliente_id")
+      .or(`cliente_id.eq.${id}${cliente.criado_por_contratacao_id ? `,id.eq.${cliente.criado_por_contratacao_id}` : ""}`)
       .eq("empresa_id", empresaAtiva.id)
       .order("created_at", { ascending: false }),
     supabase
       .from("vendas")
-      .select(`
-        id, data_venda, status, valor_credito, parcela, prazo,
-        administradoras(nome), grupos_consorcio(codigo_grupo),
-        cotas_definitivas(id, numero_cota, status, parcela, contemplada, data_contemplacao, valor_credito_contemplacao, tipo_contemplacao)
-      `)
+      .select("id,data_venda,status,valor_credito,parcela,prazo,contratacao_id,administradoras(nome),grupos_consorcio(codigo_grupo)")
       .eq("cliente_id", id)
       .eq("empresa_id", empresaAtiva.id)
       .order("data_venda", { ascending: false }),
     supabase
       .from("clientes_historico")
-      .select("id, tipo_evento, descricao, created_at")
+      .select("id,tipo_evento,descricao,created_at")
       .eq("cliente_id", id)
       .eq("empresa_id", empresaAtiva.id)
       .order("created_at", { ascending: false }),
   ]);
 
-  const cliente = clienteResult.data as Record<string, any> | null;
-  if (!cliente) {
-    return (
-      <div className="rounded-2xl bg-amber-50 p-6 text-amber-900 dark:bg-amber-950/50 dark:text-amber-200">
-        Cliente não encontrado neste tenant.
-      </div>
-    );
+  const participante = participanteRes.data;
+  const propostas = propostasRes.data ?? [];
+  const rawContratacoes = (contratacoesRes.data ?? []) as any[];
+  const rawVendas = (vendasRes.data ?? []) as any[];
+  const historico = historicoRes.data ?? [];
+
+  // 3. Busca documentos anexos se houver contratações
+  const contratacaoIds = rawContratacoes.map((c) => c.id);
+  const { data: rawDocumentos } = contratacaoIds.length
+    ? await supabase
+        .from("contratacoes_documentos")
+        .select("id,contratacao_id,tipo_documento,arquivo_url,arquivo_nome,mime_type,created_at")
+        .in("contratacao_id", contratacaoIds)
+        .order("created_at", { ascending: false })
+    : { data: [] };
+
+  const documentos = (rawDocumentos ?? []) as any[];
+
+  // 4. Busca cotas definitivas se houver vendas
+  const vendaIds = rawVendas.map((v) => v.id);
+  const { data: rawCotas } = vendaIds.length
+    ? await supabase
+        .from("cotas_definitivas")
+        .select("id,venda_id,numero_cota,status,parcela,contemplada,data_contemplacao,valor_credito_contemplacao,tipo_contemplacao")
+        .in("venda_id", vendaIds)
+    : { data: [] };
+
+  const cotas = (rawCotas ?? []) as any[];
+
+  // Mapeia cotas por venda
+  const cotasPorVenda = new Map<string, any>();
+  for (const c of cotas) {
+    cotasPorVenda.set(c.venda_id, c);
   }
 
-  const propostas = propostasResult.data ?? [];
-  const contratacoes = (contratacoesResult.data ?? []) as any[];
-  const vendas = (vendasResult.data ?? []) as any[];
-  const historico = historicoResult.data ?? [];
+  // Mapeia vendas por contratacao
+  const vendasPorContratacao = new Map<string, any>();
+  for (const v of rawVendas) {
+    if (v.contratacao_id) {
+      vendasPorContratacao.set(v.contratacao_id, {
+        ...v,
+        cotaDefinitiva: cotasPorVenda.get(v.id),
+      });
+    }
+  }
 
-  // Coleta todos os documentos vinculados às contratações
-  const todosDocumentos = contratacoes.flatMap((c) => {
-    const docs = (c.documentos ?? []).map((d: any) => ({
+  // Enriquece as contratações
+  const contratacoes = rawContratacoes.map((c) => {
+    const venda = vendasPorContratacao.get(c.id);
+    const docs = documentos.filter((d) => d.contratacao_id === c.id);
+    return {
+      ...c,
+      venda,
+      cotaDefinitiva: venda?.cotaDefinitiva,
+      documentos: docs,
+    };
+  });
+
+  // Enriquece as vendas
+  const vendas = rawVendas.map((v) => ({
+    ...v,
+    cotas_definitivas: cotasPorVenda.get(v.id) ? [cotasPorVenda.get(v.id)] : [],
+  }));
+
+  // Lista consolidada de documentos
+  const todosDocumentos = documentos.map((d) => {
+    const parentContratacao = rawContratacoes.find((c) => c.id === d.contratacao_id);
+    return {
       ...d,
-      protocoloContratacao: c.protocolo,
-    }));
-    return docs;
+      protocoloContratacao: parentContratacao?.protocolo || "Contratação",
+    };
   });
 
   const enderecoFormatado = [
@@ -189,11 +258,11 @@ export default async function ClienteDetalhePage({
                 <span>
                   <strong>E-mail:</strong> {cliente.email || "Não informado"}
                 </span>
-                {cliente.participante && (
+                {participante && (
                   <>
                     <span>·</span>
                     <span>
-                      <strong>Responsável:</strong> {cliente.participante.nome_exibicao || cliente.participante.nome}
+                      <strong>Responsável:</strong> {participante.nome_exibicao || participante.nome}
                     </span>
                   </>
                 )}
@@ -306,11 +375,7 @@ export default async function ClienteDetalhePage({
                     c.dados_simulacao?.plano ||
                     c.tipo_bem ||
                     "Padrão";
-                  const venda = Array.isArray(c.vendas) ? c.vendas[0] : c.vendas;
-                  const cotaReal = Array.isArray(venda?.cotas_definitivas)
-                    ? venda.cotas_definitivas[0]
-                    : venda?.cotas_definitivas;
-                  const isEfetivada = Boolean(venda?.id && cotaReal?.id);
+                  const isEfetivada = Boolean(c.cotaDefinitiva?.id);
 
                   return (
                     <tr key={c.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40">
@@ -354,7 +419,7 @@ export default async function ClienteDetalhePage({
                       <td className="p-3 text-center whitespace-nowrap">
                         {isEfetivada ? (
                           <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 dark:text-emerald-400">
-                            <ShieldCheck size={14} /> Cota #{cotaReal.numero_cota || "Definida"}
+                            <ShieldCheck size={14} /> Cota #{c.cotaDefinitiva?.numero_cota || "Definida"}
                           </span>
                         ) : (
                           <div className="flex items-center justify-center gap-1.5">
