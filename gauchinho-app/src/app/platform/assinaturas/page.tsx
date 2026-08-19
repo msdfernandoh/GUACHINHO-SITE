@@ -9,7 +9,7 @@ export default async function PlatformAssinaturasPage({
   const filters = await searchParams;
   const db = await createClient();
 
-  const [assinaturasRes, planosRes, overridesRes, quotasRes] = await Promise.all([
+  const [assinaturasRes, planosRes, overridesRes, quotasRes, empresasRes] = await Promise.all([
     db
       .from("saas_assinaturas")
       .select(
@@ -27,6 +27,10 @@ export default async function PlatformAssinaturasPage({
     db
       .from("empresa_quotas")
       .select("empresa_id, limite_usuarios, limite_sites_parceiros, limite_dominios_proprios"),
+    db
+      .from("empresas")
+      .select("id, nome_fantasia, razao_social, slug, cnpj, status, ativo")
+      .order("nome_fantasia", { ascending: true }),
   ]);
 
   let assinaturasRaw = assinaturasRes.data ?? [];
@@ -94,10 +98,21 @@ export default async function PlatformAssinaturasPage({
     modulos_habilitados: p.modulos_habilitados || [],
   }));
 
+  const empresasOptions = (empresasRes.data ?? []).map((e) => ({
+    id: e.id,
+    nome_fantasia: e.nome_fantasia,
+    razao_social: e.razao_social,
+    slug: e.slug,
+    cnpj: e.cnpj,
+    status: e.status,
+    ativo: e.ativo,
+  }));
+
   return (
     <AssinaturasListingClient
       assinaturas={assinaturasEnriched}
       planosDisponiveis={planosOptions}
+      empresasDisponiveis={empresasOptions}
     />
   );
 }

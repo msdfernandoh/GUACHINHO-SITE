@@ -5,8 +5,19 @@ import Link from "next/link";
 import {
   salvarAssinaturaPlatformAction,
   alterarStatusAssinaturaPlatformAction,
+  criarAssinaturaPlatformAction,
   type PlatformFormState,
 } from "@/app/platform/assinaturas-actions";
+
+export type EmpresaOption = {
+  id: string;
+  nome_fantasia: string;
+  razao_social?: string;
+  slug: string;
+  cnpj?: string;
+  status?: string;
+  ativo?: boolean;
+};
 
 export type AssinaturaItem = {
   id: string;
@@ -68,24 +79,68 @@ const initial: PlatformFormState = { status: "IDLE", message: "" };
 export function AssinaturasListingClient({
   assinaturas,
   planosDisponiveis,
+  empresasDisponiveis = [],
 }: {
   assinaturas: AssinaturaItem[];
   planosDisponiveis: PlanoOption[];
+  empresasDisponiveis?: EmpresaOption[];
 }) {
   const [busca, setBusca] = useState("");
   const [filtroStatus, setFiltroStatus] = useState("TODOS");
   const [filtroPlano, setFiltroPlano] = useState("TODOS");
 
-  const [editItem, setEditItem] = useState<AssinaturaItem | null>(null);
+  // Modal Novo
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [createEmpresaId, setCreateEmpresaId] = useState("");
+  const [createPlanoId, setCreatePlanoId] = useState("");
+  const [createUsuarios, setCreateUsuarios] = useState(10);
+  const [createSites, setCreateSites] = useState(0);
+  const [createDominios, setCreateDominios] = useState(0);
+  const [createValorMensal, setCreateValorMensal] = useState<number | string>("");
+  const [createTaxaImplantacao, setCreateTaxaImplantacao] = useState<number | string>("");
+  const [createDataInicio, setCreateDataInicio] = useState(new Date().toISOString().slice(0, 10));
+  const [createStatus, setCreateStatus] = useState("ATIVA");
 
-  // Form State Troca de Plano / Quotas
+  // Modal Editar
+  const [editItem, setEditItem] = useState<AssinaturaItem | null>(null);
   const [novoPlanoId, setNovoPlanoId] = useState("");
   const [usuariosContratados, setUsuariosContratados] = useState(10);
   const [sitesContratados, setSitesContratados] = useState(0);
   const [dominiosContratados, setDominiosContratados] = useState(0);
 
+  const [stateCreate, actionCreate, isPendingCreate] = useActionState(criarAssinaturaPlatformAction, initial);
   const [stateSave, actionSave, isPendingSave] = useActionState(salvarAssinaturaPlatformAction, initial);
   const [stateStatus, actionStatus, isPendingStatus] = useActionState(alterarStatusAssinaturaPlatformAction, initial);
+
+  const handleOpenCreate = () => {
+    const defaultPlano = planosDisponiveis[0];
+    const defaultEmpresa = empresasDisponiveis[0];
+    setCreateEmpresaId(defaultEmpresa?.id || "");
+    setCreatePlanoId(defaultPlano?.id || "");
+    if (defaultPlano) {
+      setCreateUsuarios(defaultPlano.limite_usuarios || 10);
+      setCreateSites(defaultPlano.max_sites_parceiros || 0);
+      setCreateDominios(defaultPlano.max_sites_dominio_proprio || 0);
+      setCreateValorMensal(defaultPlano.valor_mensal || 0);
+    }
+    setCreateTaxaImplantacao(0);
+    setCreateDataInicio(new Date().toISOString().slice(0, 10));
+    setCreateStatus("ATIVA");
+    setIsCreateOpen(true);
+  };
+
+  const handlePlanoChangeInCreate = (planoId: string) => {
+    setCreatePlanoId(planoId);
+    const sel = planosDisponiveis.find((p) => p.id === planoId);
+    if (sel) {
+      setCreateUsuarios(sel.limite_usuarios || 10);
+      setCreateSites(sel.max_sites_parceiros || 0);
+      setCreateDominios(sel.max_sites_dominio_proprio || 0);
+      setCreateValorMensal(sel.valor_mensal || 0);
+    }
+  };
+
+  const createPlanoSelecionado = planosDisponiveis.find((p) => p.id === createPlanoId);
 
   const filtradas = assinaturas.filter((a) => {
     const matchBusca =
@@ -109,7 +164,7 @@ export function AssinaturasListingClient({
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-wrap items-end justify-between gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <p className="text-xs font-bold uppercase tracking-widest text-cyan-600">Plataforma SaaS</p>
           <h1 className="mt-1 text-3xl font-extrabold text-slate-900 dark:text-white">Assinaturas SaaS</h1>
@@ -117,10 +172,19 @@ export function AssinaturasListingClient({
             Contratos operacionais das Master Franquias, com plano vinculado, quotas contratadas e vigência.
           </p>
         </div>
+
+        <button
+          type="button"
+          onClick={handleOpenCreate}
+          className="inline-flex items-center gap-2 rounded-xl bg-cyan-600 px-4 py-2.5 text-xs font-bold text-white shadow-sm hover:bg-cyan-700 transition"
+        >
+          <span>+</span>
+          <span>Nova Assinatura</span>
+        </button>
       </div>
 
       {/* Feedbacks */}
-      {[stateSave, stateStatus].map((st, i) =>
+      {[stateCreate, stateSave, stateStatus].map((st, i) =>
         st.message ? (
           <p
             key={i}
@@ -223,8 +287,23 @@ export function AssinaturasListingClient({
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
               {filtradas.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="p-8 text-center text-slate-400 font-medium">
-                    Nenhuma assinatura encontrada com os filtros informados.
+                  <td colSpan={9} className="p-12 text-center text-slate-500">
+                    <div className="mx-auto max-w-sm space-y-3">
+                      <p className="font-semibold text-slate-700 dark:text-slate-300">
+                        Nenhuma assinatura encontrada com os filtros informados.
+                      </p>
+                      <p className="text-xs text-slate-400">
+                        Vincule uma Master Franquia cadastrada a um Plano SaaS para ativar seus recursos e quotas operacionais.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={handleOpenCreate}
+                        className="inline-flex items-center gap-2 rounded-xl bg-cyan-600 px-4 py-2 text-xs font-bold text-white shadow-sm hover:bg-cyan-700 transition"
+                      >
+                        <span>+</span>
+                        <span>Nova Assinatura</span>
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ) : (
@@ -331,11 +410,285 @@ export function AssinaturasListingClient({
       </div>
 
       {/* ───────────────────────────────────────────────────────────
+          MODAL: NOVA ASSINATURA SAAS
+      ─────────────────────────────────────────────────────────── */}
+      {isCreateOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-xs">
+          <div className="w-full max-w-2xl rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl space-y-4 dark:border-slate-800 dark:bg-slate-900 text-xs max-h-[92vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3 dark:border-slate-800">
+              <div>
+                <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                  Nova Assinatura SaaS
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Vincule um plano contratual e defina as quotas operacionais da Master Franquia.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsCreateOpen(false)}
+                className="text-slate-400 hover:text-slate-600 text-base font-bold"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form
+              action={async (formData) => {
+                await actionCreate(formData);
+                setIsCreateOpen(false);
+              }}
+              className="space-y-4"
+            >
+              {/* Seleção de Empresa e Plano */}
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div>
+                  <label className="font-bold text-slate-700 dark:text-slate-300">
+                    Master Franquia / Empresa *
+                  </label>
+                  <select
+                    name="empresa_id"
+                    value={createEmpresaId}
+                    onChange={(e) => setCreateEmpresaId(e.target.value)}
+                    required
+                    className="mt-1 w-full rounded-lg border border-slate-300 p-2.5 font-bold dark:border-slate-700 dark:bg-slate-800"
+                  >
+                    <option value="">Selecione uma empresa...</option>
+                    {empresasDisponiveis.map((emp) => (
+                      <option key={emp.id} value={emp.id}>
+                        {emp.nome_fantasia} ({emp.slug})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="font-bold text-slate-700 dark:text-slate-300">
+                    Plano SaaS *
+                  </label>
+                  <select
+                    name="plano_id"
+                    value={createPlanoId}
+                    onChange={(e) => handlePlanoChangeInCreate(e.target.value)}
+                    required
+                    className="mt-1 w-full rounded-lg border border-slate-300 p-2.5 font-bold dark:border-slate-700 dark:bg-slate-800"
+                  >
+                    <option value="">Selecione um plano...</option>
+                    {planosDisponiveis.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.nome} — R$ {Number(p.valor_mensal).toFixed(2)}/mês
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Card de Detalhes do Plano Selecionado */}
+              {createPlanoSelecionado && (
+                <div className="rounded-xl border border-cyan-200 bg-cyan-50/50 p-3.5 dark:border-cyan-900/50 dark:bg-cyan-950/20 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-cyan-900 dark:text-cyan-300 uppercase tracking-wide text-[11px]">
+                      Configuração Padrão do {createPlanoSelecionado.nome}:
+                    </span>
+                    <span className="font-bold font-mono text-cyan-800 dark:text-cyan-200">
+                      R$ {Number(createPlanoSelecionado.valor_mensal).toFixed(2)}/mês
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 font-mono text-[11px]">
+                    <div className="p-2 rounded bg-white dark:bg-slate-800">
+                      <span className="text-slate-500 block text-[10px]">Usuários Inclusos:</span>
+                      <strong>{createPlanoSelecionado.limite_usuarios}</strong>
+                    </div>
+                    <div className="p-2 rounded bg-white dark:bg-slate-800">
+                      <span className="text-slate-500 block text-[10px]">Sites Parceiros:</span>
+                      <strong>Até {createPlanoSelecionado.max_sites_parceiros}</strong>
+                    </div>
+                    <div className="p-2 rounded bg-white dark:bg-slate-800">
+                      <span className="text-slate-500 block text-[10px]">Domínios Próprios:</span>
+                      <strong>Até {createPlanoSelecionado.max_sites_dominio_proprio}</strong>
+                    </div>
+                    <div className="p-2 rounded bg-white dark:bg-slate-800">
+                      <span className="text-slate-500 block text-[10px]">Módulos Liberados:</span>
+                      <strong>{createPlanoSelecionado.modulos_habilitados.length}</strong>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Quotas Contratadas */}
+              <div className="grid gap-3 sm:grid-cols-3">
+                <div>
+                  <label className="font-bold text-slate-700 dark:text-slate-300">
+                    Usuários Contratados:
+                  </label>
+                  <input
+                    name="usuarios_contratados"
+                    type="number"
+                    min={1}
+                    value={createUsuarios}
+                    onChange={(e) => setCreateUsuarios(Number(e.target.value))}
+                    required
+                    className="mt-1 w-full rounded-lg border border-slate-300 p-2.5 font-bold dark:border-slate-700 dark:bg-slate-800"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-bold text-slate-700 dark:text-slate-300">
+                    Sites Parceiros Contratados:
+                  </label>
+                  <input
+                    name="sites_parceiros_contratados"
+                    type="number"
+                    min={0}
+                    value={createSites}
+                    onChange={(e) => setCreateSites(Number(e.target.value))}
+                    required
+                    className="mt-1 w-full rounded-lg border border-slate-300 p-2.5 font-bold dark:border-slate-700 dark:bg-slate-800"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-bold text-slate-700 dark:text-slate-300">
+                    Domínios Próprios Contratados:
+                  </label>
+                  <input
+                    name="sites_dominio_proprio_contratados"
+                    type="number"
+                    min={0}
+                    value={createDominios}
+                    onChange={(e) => setCreateDominios(Number(e.target.value))}
+                    required
+                    className="mt-1 w-full rounded-lg border border-slate-300 p-2.5 font-bold dark:border-slate-700 dark:bg-slate-800"
+                  />
+                </div>
+              </div>
+
+              {/* Valores e Vigência */}
+              <div className="grid gap-3 sm:grid-cols-3">
+                <div>
+                  <label className="font-bold text-slate-700 dark:text-slate-300">
+                    Valor Mensal Base (R$):
+                  </label>
+                  <input
+                    name="valor_mensal"
+                    type="number"
+                    step="0.01"
+                    min={0}
+                    value={createValorMensal}
+                    onChange={(e) => setCreateValorMensal(e.target.value)}
+                    placeholder="Deixe em branco para usar o plano"
+                    className="mt-1 w-full rounded-lg border border-slate-300 p-2.5 font-bold dark:border-slate-700 dark:bg-slate-800"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-bold text-slate-700 dark:text-slate-300">
+                    Taxa de Implantação (R$):
+                  </label>
+                  <input
+                    name="taxa_implantacao"
+                    type="number"
+                    step="0.01"
+                    min={0}
+                    value={createTaxaImplantacao}
+                    onChange={(e) => setCreateTaxaImplantacao(e.target.value)}
+                    placeholder="0.00"
+                    className="mt-1 w-full rounded-lg border border-slate-300 p-2.5 font-bold dark:border-slate-700 dark:bg-slate-800"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-bold text-slate-700 dark:text-slate-300">
+                    Status Inicial:
+                  </label>
+                  <select
+                    name="status"
+                    value={createStatus}
+                    onChange={(e) => setCreateStatus(e.target.value)}
+                    className="mt-1 w-full rounded-lg border border-slate-300 p-2.5 font-bold dark:border-slate-700 dark:bg-slate-800"
+                  >
+                    <option value="ATIVA">Ativa</option>
+                    <option value="TREINAMENTO">Em Treinamento</option>
+                    <option value="PENDENTE">Pendente</option>
+                    <option value="SUSPENSA">Suspensa</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div>
+                  <label className="font-bold text-slate-700 dark:text-slate-300">
+                    Data de Início / Vigência:
+                  </label>
+                  <input
+                    name="data_inicio"
+                    type="date"
+                    value={createDataInicio}
+                    onChange={(e) => setCreateDataInicio(e.target.value)}
+                    className="mt-1 w-full rounded-lg border border-slate-300 p-2.5 font-bold dark:border-slate-700 dark:bg-slate-800"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-bold text-slate-700 dark:text-slate-300">
+                    Observações Contratuais:
+                  </label>
+                  <input
+                    name="observacao"
+                    placeholder="Ex: Contrato assinado via plataforma digital"
+                    className="mt-1 w-full rounded-lg border border-slate-300 p-2.5 dark:border-slate-700 dark:bg-slate-800"
+                  />
+                </div>
+              </div>
+
+              {/* Total Estimado */}
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-800/60 flex items-center justify-between">
+                <div>
+                  <span className="font-bold text-slate-700 dark:text-slate-300 block">
+                    Mensalidade Contratada Estimada:
+                  </span>
+                  <span className="text-[10px] text-slate-500">
+                    Base do plano + adicionais contratados
+                  </span>
+                </div>
+                <div className="text-right font-mono font-extrabold text-sm text-cyan-700 dark:text-cyan-400">
+                  R$ {
+                    (
+                      Number(createValorMensal || createPlanoSelecionado?.valor_mensal || 0) +
+                      createSites * Number(createPlanoSelecionado?.valor_site_parceiro || 0) +
+                      createDominios * Number(createPlanoSelecionado?.valor_site_dominio_proprio || 0)
+                    ).toFixed(2)
+                  }/mês
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setIsCreateOpen(false)}
+                  className="rounded-xl border px-4 py-2 font-bold text-slate-600 hover:bg-slate-100"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={isPendingCreate}
+                  className="rounded-xl bg-cyan-600 px-5 py-2 font-bold text-white hover:bg-cyan-700 disabled:opacity-50"
+                >
+                  {isPendingCreate ? "Criando Assinatura..." : "Criar Assinatura"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ───────────────────────────────────────────────────────────
           MODAL: EDITAR ASSINATURA & TROCA ASSISTIDA DE PLANO
       ─────────────────────────────────────────────────────────── */}
       {editItem && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-2xl rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl space-y-4 dark:border-slate-800 dark:bg-slate-900 text-xs">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-xs">
+          <div className="w-full max-w-2xl rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl space-y-4 dark:border-slate-800 dark:bg-slate-900 text-xs max-h-[92vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3 dark:border-slate-800">
               <div>
                 <h3 className="text-base font-bold text-slate-900 dark:text-white">
@@ -346,7 +699,7 @@ export function AssinaturasListingClient({
               <button
                 type="button"
                 onClick={() => setEditItem(null)}
-                className="text-slate-400 hover:text-slate-600"
+                className="text-slate-400 hover:text-slate-600 text-base font-bold"
               >
                 ✕
               </button>
@@ -482,12 +835,12 @@ export function AssinaturasListingClient({
                   <div className="p-2 rounded bg-cyan-100 dark:bg-cyan-900 text-cyan-950 dark:text-white">
                     <span className="text-cyan-800 dark:text-cyan-200 block text-[10px] font-bold">TOTAL EFETIVO:</span>
                     <strong>
-                      R${" "}
-                      {(
-                        Number(planoSelecionado?.valor_mensal || 0) +
-                        sitesContratados * Number(planoSelecionado?.valor_site_parceiro || 0)
-                      ).toFixed(2)}
-                      /mês
+                      R$ {
+                        (
+                          Number(planoSelecionado?.valor_mensal || 0) +
+                          sitesContratados * Number(planoSelecionado?.valor_site_parceiro || 0)
+                        ).toFixed(2)
+                      }/mês
                     </strong>
                   </div>
                 </div>
