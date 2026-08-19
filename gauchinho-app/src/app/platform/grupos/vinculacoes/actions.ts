@@ -3,6 +3,27 @@
 import { revalidatePath } from "next/cache";
 import { vincularGrupoLegado, type ProdutoMapeado } from "@/lib/platform/vinculacoes-legadas-service";
 
+export async function sincronizarCatalogoSiteErpAction() {
+  try {
+    revalidatePath("/grupos");
+    revalidatePath("/simulador");
+    revalidatePath("/");
+    revalidatePath("/erp/grupos");
+    revalidatePath("/erp/contratacoes");
+    revalidatePath("/erp/clientes");
+    revalidatePath("/platform/grupos");
+    revalidatePath("/platform/grupos/vinculacoes");
+
+    return {
+      ok: true,
+      mensagem: "Catálogo SaaS sincronizado com sucesso com o Site e com o ERP!",
+      timestamp: new Date().toISOString(),
+    };
+  } catch (err: any) {
+    return { ok: false, error: err?.message || "Erro ao sincronizar catálogo." };
+  }
+}
+
 export async function vincularGrupoLegadoAction(formData: FormData) {
   const origem = String(formData.get("origem") || "site_grupos").trim();
   const identificador_legado = String(formData.get("identificador_legado") || "").trim();
@@ -31,11 +52,14 @@ export async function vincularGrupoLegadoAction(formData: FormData) {
       grupo_consorcio_id,
       produtos_mapeamento,
       atualizar_contratacoes: true,
-      observacoes: observacoes || undefined
+      observacoes: observacoes || undefined,
     });
 
     revalidatePath("/platform/grupos/vinculacoes");
     revalidatePath("/platform/grupos");
+    revalidatePath("/grupos");
+    revalidatePath("/simulador");
+    revalidatePath("/");
     revalidatePath("/erp/grupos");
     revalidatePath("/erp/contratacoes");
     revalidatePath("/erp/clientes");

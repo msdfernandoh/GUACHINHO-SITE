@@ -11,7 +11,7 @@ export default async function VinculacoesLegadasPage() {
   const { data: gruposSaas } = await db
     .from("grupos_consorcio")
     .select(
-      "id,codigo_grupo,status,ativo,administradora:administradoras(nome),tipo:administradora_tipos(nome),modalidade_comissao:administradora_modalidades_comissao(nome),cotas:grupos_cotas(id,valor_credito,valor_parcela,prazo,ativo,status)"
+      "id,codigo_grupo,status,ativo,prazo_total,administradora:administradoras(nome),tipo:administradora_tipos(nome),modalidade_comissao:administradora_modalidades_comissao(nome),cotas:grupos_cotas(id,valor_credito,valor_parcela,prazo,ativo,status)"
     )
     .order("codigo_grupo");
 
@@ -21,6 +21,9 @@ export default async function VinculacoesLegadasPage() {
     administradora_nome: g.administradora?.nome || "Administradora",
     tipo_nome: g.tipo?.nome || null,
     modalidade_nome: g.modalidade_comissao?.nome || null,
+    prazo_total: g.prazo_total ?? null,
+    status: g.status ?? (g.ativo ? "Disponível" : "Inativo"),
+    ativo: Boolean(g.ativo),
     cotas: ((g.cotas ?? []) as any[])
       .filter((c) => c.ativo && !["Inativo", "Esgotado"].includes(c.status))
       .map((c) => ({
