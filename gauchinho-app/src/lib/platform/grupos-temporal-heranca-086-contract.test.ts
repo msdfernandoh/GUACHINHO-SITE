@@ -4,8 +4,10 @@ import { describe, expect, it } from "vitest";
 import {
   calcularAssembleiasTemporal,
   resolveModalidadeConfig,
+  calcularResumoContemplacoes,
   type GrupoModalidadeItem,
   type AdministradoraModalidadeItem,
+  type CaracteristicaContemplacaoItem,
 } from "./grupos-prontidao";
 
 const migration086 = readFileSync(
@@ -167,6 +169,65 @@ describe("Fase 086: Herança e Override de Padrões de Modalidades da Administra
     expect(resolved.percentual_padrao).toBe(100);
     expect(resolved.modo_reduzido).toBe("fixo");
     expect(resolved.origem).toBe("ADMINISTRADORA_PADRAO");
+  });
+});
+
+describe("Fase 086: Características de Contemplação e Resumo Automático", () => {
+  it("cenário real: 9 modalidades ativas -> potencial 9/mês (3 Sorteios • 3 Lances Livres • 3 Lances Fixos)", () => {
+    const configuracaoReal: CaracteristicaContemplacaoItem[] = [
+      { id: "1", ordem: 1, tipo: "SORTEIO", condicao_percentual: "Ativas", observacao: "1º sorteio ativas", ativa: true },
+      { id: "2", ordem: 2, tipo: "SORTEIO_CANCELADAS", condicao_percentual: "Canceladas", observacao: "2º sorteio canceladas", ativa: true },
+      { id: "3", ordem: 3, tipo: "LANCE_LIVRE", condicao_percentual: "", observacao: "Lance livre", ativa: true },
+      { id: "4", ordem: 4, tipo: "LANCE_FIXO", condicao_percentual: "25%", percentual: 25, observacao: "Fixo 25%", ativa: true },
+      { id: "5", ordem: 5, tipo: "LANCE_FIXO", condicao_percentual: "50%", percentual: 50, observacao: "Fixo 50%", ativa: true },
+      { id: "6", ordem: 6, tipo: "LANCE_LIVRE", condicao_percentual: "", observacao: "Lance livre", ativa: true },
+      { id: "7", ordem: 7, tipo: "LANCE_FIXO", condicao_percentual: "50%", percentual: 50, observacao: "Fixo 50%", ativa: true },
+      { id: "8", ordem: 8, tipo: "LANCE_LIVRE", condicao_percentual: "", observacao: "Lance livre", ativa: true },
+      { id: "9", ordem: 9, tipo: "SORTEIO", condicao_percentual: "Ativas", observacao: "Sorteio final", ativa: true },
+    ];
+
+    const resumo = calcularResumoContemplacoes(configuracaoReal);
+    expect(resumo.totalPotencial).toBe(9);
+    expect(resumo.textoPotencial).toBe("Até 9/mês");
+    expect(resumo.sorteios).toBe(3);
+    expect(resumo.livres).toBe(3);
+    expect(resumo.fixos).toBe(3);
+    expect(resumo.resumoCurto).toBe("3 Sorteios • 3 Livres • 3 Fixos");
+    expect(resumo.resumoModalidades).toContain("3 Sorteios");
+    expect(resumo.resumoModalidades).toContain("3 Lances Livres");
+    expect(resumo.resumoModalidades).toContain("3 Lances Fixos");
+  });
+
+  it("ao inativar 1 modalidade -> potencial reduz para 8/mês", () => {
+    const configuracaoComInativa: CaracteristicaContemplacaoItem[] = [
+      { id: "1", ordem: 1, tipo: "SORTEIO", condicao_percentual: "Ativas", ativa: true },
+      { id: "2", ordem: 2, tipo: "SORTEIO_CANCELADAS", condicao_percentual: "Canceladas", ativa: false }, // Inativada
+      { id: "3", ordem: 3, tipo: "LANCE_LIVRE", condicao_percentual: "", ativa: true },
+      { id: "4", ordem: 4, tipo: "LANCE_FIXO", condicao_percentual: "25%", ativa: true },
+      { id: "5", ordem: 5, tipo: "LANCE_FIXO", condicao_percentual: "50%", ativa: true },
+      { id: "6", ordem: 6, tipo: "LANCE_LIVRE", condicao_percentual: "", ativa: true },
+      { id: "7", ordem: 7, tipo: "LANCE_FIXO", condicao_percentual: "50%", ativa: true },
+      { id: "8", ordem: 8, tipo: "LANCE_LIVRE", condicao_percentual: "", ativa: true },
+      { id: "9", ordem: 9, tipo: "SORTEIO", condicao_percentual: "Ativas", ativa: true },
+    ];
+
+    const resumo = calcularResumoContemplacoes(configuracaoComInativa);
+    expect(resumo.totalPotencial).toBe(8);
+    expect(resumo.textoPotencial).toBe("Até 8/mês");
+    expect(resumo.sorteios).toBe(2);
+    expect(resumo.livres).toBe(3);
+    expect(resumo.fixos).toBe(3);
+    expect(resumo.resumoCurto).toBe("2 Sorteios • 3 Livres • 3 Fixos");
+  });
+
+  it("configuração vazia ou nula -> 0 e 'Não definido'", () => {
+    const resumoVazio = calcularResumoContemplacoes([]);
+    expect(resumoVazio.totalPotencial).toBe(0);
+    expect(resumoVazio.textoPotencial).toBe("Não definido");
+
+    const resumoNulo = calcularResumoContemplacoes(null);
+    expect(resumoNulo.totalPotencial).toBe(0);
+    expect(resumoNulo.textoPotencial).toBe("Não definido");
   });
 });
 

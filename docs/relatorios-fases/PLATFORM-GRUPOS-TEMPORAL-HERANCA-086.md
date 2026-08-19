@@ -31,20 +31,33 @@
   - Próxima Assembleia calculada dinamicamente com base no próximo aniversário mensal ou `Encerrado`.
   - Não confunde com nem cria registros no módulo Assembleias/Pedras.
 
-### 1.4 Integração Visual nas Telas
+### 1.4 Características de Contemplação & Indicadores Recentes (Aba Estatísticas & Lances)
+- **Estrutura Real de Contemplações Mensais:**
+  - Tabela interativa com `Ordem`, `Modalidade de Contemplação` (Sorteio, Sorteio de cotas canceladas, Lance Livre, Lance Fixo, Lance Embutido, Lance Fidelidade, Outro), `Condição / Percentual`, `Observação`, toggle de ativação e reordenação (▲ ▼).
+  - Cálculo e resumo automático em tempo real: **Até 9 contemplações/mês** (ex: `3 Sorteios • 3 Lances Livres • 3 Lances Fixos`).
+- **Organização em 3 Blocos:**
+  - **Bloco 1:** Características de Contemplação (Tabela ordenada e configurável).
+  - **Bloco 2:** Indicadores Recentes & Lances (Média do Lance Livre %, Mínimo/Máximo %, Contemplados no Mês Anterior real, Limite de Lance Embutido %, Vagas Disponíveis, Data de Referência).
+  - **Bloco 3:** Informações & Auditoria (Origem da informação, Responsável pela atualização, Data de atualização, Observação de análise).
+- **Card Executivo de Contemplações:**
+  - Adicionado no cabeçalho do Grupo com resumo do potencial (`Até 9/mês`, `3 Sorteios • 3 Livres • 3 Fixos`) e link direto para a aba de Estatísticas.
+- **Isolamento Total:**
+  - Dados estritamente informativos e comerciais. Não executam contemplações automáticas, não alteram cotas definitivas e não criam pedras de sorteio.
+
+### 1.5 Integração Visual nas Telas
 - **Lista de Grupos (`/platform/grupos` e aba Grupos da Administradora):**
   - Coluna **Prazo**: `7 / 100 / 93` com tooltip `7 realizadas • 100 total • 93 restantes`.
   - Coluna **1ª Assembleia**: `15/02/2026`.
 - **Detalhe do Grupo (`/platform/grupos/[id]`):**
-  - Cards executivos no cabeçalho exibindo Prazo (`7 / 100 / 93`), 1ª Assembleia e Próxima Assembleia (`15/09/2026`).
+  - Cards executivos no cabeçalho: **Tipo Oficial**, **Faixa de Crédito**, **Assembleias / Prazo**, **Próxima Assembleia**, **Contemplações** e **Taxa Total**.
 
 ---
 
 ## 2. Testes e Validação de Qualidade
 
-- **Contrato e Regras Temporais / Herança:** 14/14 testes aprovados (`src/lib/platform/grupos-temporal-heranca-086-contract.test.ts`).
-- **Platform Suite:** 62/62 testes aprovados.
-- **Suíte Completa:** 800/800 testes ativos aprovados em 140 arquivos.
+- **Contrato, Regras Temporais, Herança & Contemplações:** 17/17 testes aprovados (`src/lib/platform/grupos-temporal-heranca-086-contract.test.ts`).
+- **Platform Suite:** 65/65 testes aprovados (6 arquivos de teste).
+- **Suíte Completa:** 803/803 testes ativos aprovados em 140 arquivos.
 - **TypeScript:** 0 erros com `npx tsc --noEmit`.
 - **Build Next.js:** 135 rotas compiladas com sucesso.
 - **Auditoria de Segurança:** 0 vulnerabilidades.

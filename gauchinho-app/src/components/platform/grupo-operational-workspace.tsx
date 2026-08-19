@@ -17,11 +17,15 @@ import {
   type GrupoRecord,
   type AdministradoraModalidadeItem,
   type GrupoProntidaoResult,
+  type CaracteristicaContemplacaoItem,
+  type TipoContemplacao,
   formatBRL,
   formatPercent,
   formatDateBR,
   validateGrupoProntidao,
   resolveModalidadeConfig,
+  calcularResumoContemplacoes,
+  DEFAULT_TIPOS_CONTEMPLACAO,
 } from "@/lib/platform/grupos-prontidao";
 
 const initial: GroupActionState = { status: "IDLE", message: "" };
@@ -75,6 +79,65 @@ export function GrupoOperationalWorkspace({
 }) {
   const [tab, setTab] = useState<"gerais" | "cotas" | "estatisticas" | "historico">("gerais");
   const [modoEstatisticas, setModoEstatisticas] = useState<"GLOBAL" | "LOCAL">("GLOBAL");
+
+  const [caracteristicas, setCaracteristicas] = useState<CaracteristicaContemplacaoItem[]>(() => {
+    const existing = (grupo.dados_estatisticos as Record<string, unknown> | null)?.caracteristicas_contemplacao;
+    if (Array.isArray(existing) && existing.length > 0) {
+      return existing.map((item: Partial<CaracteristicaContemplacaoItem>, index: number) => ({
+        id: item.id || `c-${index}-${Date.now()}`,
+        ordem: Number(item.ordem) || index + 1,
+        tipo: (item.tipo as TipoContemplacao) || "SORTEIO",
+        condicao_percentual: item.condicao_percentual ?? "",
+        observacao: item.observacao ?? "",
+        ativa: item.ativa !== false,
+      }));
+    }
+    return [];
+  });
+
+  const resumoContemplacoes = calcularResumoContemplacoes(caracteristicas);
+
+  function adicionarLinhaContemplacao() {
+    setCaracteristicas((prev) => {
+      const nextOrdem = prev.length > 0 ? Math.max(...prev.map((p) => p.ordem)) + 1 : 1;
+      return [
+        ...prev,
+        {
+          id: `c-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+          ordem: nextOrdem,
+          tipo: "LANCE_LIVRE",
+          condicao_percentual: "",
+          observacao: "",
+          ativa: true,
+        },
+      ];
+    });
+  }
+
+  function removerLinhaContemplacao(id: string) {
+    setCaracteristicas((prev) => {
+      const updated = prev.filter((item) => item.id !== id);
+      return updated.map((item, idx) => ({ ...item, ordem: idx + 1 }));
+    });
+  }
+
+  function atualizarLinhaContemplacao(id: string, updates: Partial<CaracteristicaContemplacaoItem>) {
+    setCaracteristicas((prev) =>
+      prev.map((item) => (item.id === id ? { ...item, ...updates } : item))
+    );
+  }
+
+  function moverLinhaContemplacao(index: number, direcao: "up" | "down") {
+    setCaracteristicas((prev) => {
+      const targetIndex = direcao === "up" ? index - 1 : index + 1;
+      if (targetIndex < 0 || targetIndex >= prev.length) return prev;
+      const items = [...prev];
+      const temp = items[index];
+      items[index] = items[targetIndex];
+      items[targetIndex] = temp;
+      return items.map((item, idx) => ({ ...item, ordem: idx + 1 }));
+    });
+  }
 
   const [formStateGrupo, formActionGrupo, isPendingGrupo] = useActionState(
     salvarGrupoPlatformAction,
@@ -151,7 +214,7 @@ export function GrupoOperationalWorkspace({
       </div>
 
       {/* Cards Resumo Operacional */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
         <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
           <p className="text-xs font-bold uppercase tracking-wider text-slate-500">Tipo Oficial</p>
           <p className="mt-1 text-lg font-bold text-slate-900 dark:text-white">{tipoNome}</p>
@@ -181,6 +244,24 @@ export function GrupoOperationalWorkspace({
           </p>
           <p className="text-xs text-slate-400">
             {prontidao.temporal.encerrado ? "Prazo esgotado" : `${prontidao.temporal.restantes} restante(s)`}
+          </p>
+        </div>
+        <div
+          onClick={() => setTab("estatisticas")}
+          className="group cursor-pointer rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-all hover:border-cyan-500 hover:shadow-md dark:border-slate-800 dark:bg-slate-900"
+          title="Clique para editar Características de Contemplação e Lances"
+        >
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-bold uppercase tracking-wider text-slate-500 group-hover:text-cyan-700 dark:group-hover:text-cyan-400">
+              Contemplações
+            </p>
+            <span className="text-[10px] font-bold text-cyan-600 group-hover:underline">Ver →</span>
+          </div>
+          <p className="mt-1 text-lg font-bold text-slate-900 dark:text-white">
+            {resumoContemplacoes.textoPotencial}
+          </p>
+          <p className="text-xs text-slate-400 truncate" title={resumoContemplacoes.resumoCurto}>
+            {resumoContemplacoes.resumoCurto}
           </p>
         </div>
         <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
@@ -650,10 +731,10 @@ export function GrupoOperationalWorkspace({
           <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 pb-4 dark:border-slate-800">
             <div>
               <h2 className="text-lg font-bold text-slate-900 dark:text-white">
-                Informações Estatísticas e de Lances do Grupo
+                Estatísticas & Lances do Grupo
               </h2>
               <p className="text-xs text-slate-500">
-                Dados informativos para suporte aos consultores durante a venda. Não executam contemplações automáticas.
+                Informações comerciais e estatísticas para consultores. Não geram contemplações nem alteram cotas definitivas.
               </p>
             </div>
             <div className="flex items-center gap-2 rounded-lg border bg-slate-50 p-1 text-xs font-bold dark:bg-slate-800">
@@ -688,154 +769,349 @@ export function GrupoOperationalWorkspace({
             </div>
           ) : null}
 
-          {/* Campos Estatísticos */}
+          {/* BLOCO 1: CARACTERÍSTICAS DE CONTEMPLAÇÃO */}
+          <div className="space-y-4 rounded-xl border border-slate-200 bg-slate-50/50 p-5 dark:border-slate-800 dark:bg-slate-800/30">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                  1. Características de Contemplação
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Estrutura e possibilidades normais de contemplação por assembleia mensal.
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="rounded-full bg-cyan-100 px-3 py-1 text-xs font-bold text-cyan-800 dark:bg-cyan-950 dark:text-cyan-200">
+                  {resumoContemplacoes.textoPotencial}
+                </span>
+                <span className="text-xs text-slate-600 dark:text-slate-400">
+                  {resumoContemplacoes.resumoModalidades}
+                </span>
+              </div>
+            </div>
+
+            <input
+              type="hidden"
+              name="caracteristicas_contemplacao_json"
+              value={JSON.stringify(caracteristicas)}
+            />
+
+            <div className="overflow-x-auto">
+              <table className="min-w-[760px] w-full text-xs">
+                <thead className="border-b bg-white text-left uppercase text-slate-500 dark:bg-slate-800">
+                  <tr>
+                    <th className="w-16 px-3 py-2 text-center">Ordem</th>
+                    <th className="px-3 py-2">Modalidade de Contemplação</th>
+                    <th className="px-3 py-2">Condição / Percentual</th>
+                    <th className="px-3 py-2">Observação</th>
+                    <th className="w-20 px-3 py-2 text-center">Ativa</th>
+                    <th className="w-24 px-3 py-2 text-right">Ações</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-200 dark:divide-slate-700 bg-white dark:bg-slate-900">
+                  {caracteristicas.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="p-4 text-center text-slate-400">
+                        Nenhuma característica de contemplação cadastrada. Clique no botão abaixo para adicionar.
+                      </td>
+                    </tr>
+                  ) : (
+                    caracteristicas.map((item, idx) => (
+                      <tr key={item.id} className={!item.ativa ? "opacity-40" : ""}>
+                        <td className="px-3 py-2 text-center">
+                          <div className="flex items-center justify-center gap-1 font-bold">
+                            <span>{item.ordem}º</span>
+                            <div className="flex flex-col">
+                              <button
+                                type="button"
+                                disabled={idx === 0}
+                                onClick={() => moverLinhaContemplacao(idx, "up")}
+                                className="text-[10px] text-slate-400 hover:text-cyan-700 disabled:opacity-20"
+                                title="Subir ordem"
+                              >
+                                ▲
+                              </button>
+                              <button
+                                type="button"
+                                disabled={idx === caracteristicas.length - 1}
+                                onClick={() => moverLinhaContemplacao(idx, "down")}
+                                className="text-[10px] text-slate-400 hover:text-cyan-700 disabled:opacity-20"
+                                title="Descer ordem"
+                              >
+                                ▼
+                              </button>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-3 py-2">
+                          <select
+                            value={item.tipo}
+                            onChange={(e) =>
+                              atualizarLinhaContemplacao(item.id!, {
+                                tipo: e.target.value as TipoContemplacao,
+                              })
+                            }
+                            className="w-full rounded border border-slate-300 bg-white px-2 py-1 text-xs dark:border-slate-700 dark:bg-slate-800"
+                          >
+                            {DEFAULT_TIPOS_CONTEMPLACAO.map((t) => (
+                              <option key={t.value} value={t.value}>
+                                {t.label}
+                              </option>
+                            ))}
+                          </select>
+                        </td>
+                        <td className="px-3 py-2">
+                          <input
+                            type="text"
+                            value={item.condicao_percentual ?? ""}
+                            onChange={(e) =>
+                              atualizarLinhaContemplacao(item.id!, {
+                                condicao_percentual: e.target.value,
+                              })
+                            }
+                            placeholder={
+                              item.tipo === "LANCE_FIXO"
+                                ? "Ex: 25% ou 50%"
+                                : item.tipo === "SORTEIO"
+                                ? "Ex: Ativas"
+                                : item.tipo === "SORTEIO_CANCELADAS"
+                                ? "Ex: Canceladas"
+                                : "Ex: Condição específica"
+                            }
+                            className="w-full rounded border border-slate-300 bg-white px-2 py-1 text-xs dark:border-slate-700 dark:bg-slate-800"
+                          />
+                        </td>
+                        <td className="px-3 py-2">
+                          <input
+                            type="text"
+                            value={item.observacao ?? ""}
+                            onChange={(e) =>
+                              atualizarLinhaContemplacao(item.id!, {
+                                observacao: e.target.value,
+                              })
+                            }
+                            placeholder="Observação da modalidade"
+                            className="w-full rounded border border-slate-300 bg-white px-2 py-1 text-xs dark:border-slate-700 dark:bg-slate-800"
+                          />
+                        </td>
+                        <td className="px-3 py-2 text-center">
+                          <input
+                            type="checkbox"
+                            checked={item.ativa}
+                            onChange={(e) =>
+                              atualizarLinhaContemplacao(item.id!, {
+                                ativa: e.target.checked,
+                              })
+                            }
+                            className="h-4 w-4 rounded text-cyan-600 focus:ring-cyan-500"
+                          />
+                        </td>
+                        <td className="px-3 py-2 text-right">
+                          <button
+                            type="button"
+                            onClick={() => removerLinhaContemplacao(item.id!)}
+                            className="text-xs font-semibold text-red-600 hover:underline"
+                          >
+                            Remover
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="flex justify-start">
+              <button
+                type="button"
+                onClick={adicionarLinhaContemplacao}
+                className="rounded-lg border border-dashed border-cyan-400 bg-cyan-50/50 px-3 py-1.5 text-xs font-bold text-cyan-800 hover:bg-cyan-100 dark:border-cyan-700 dark:bg-cyan-950/40 dark:text-cyan-300"
+              >
+                + Adicionar Linha de Contemplação
+              </button>
+            </div>
+          </div>
+
+          {/* BLOCO 2: INDICADORES RECENTES */}
           {(() => {
             const stats = (grupo.dados_estatisticos ?? {}) as Record<string, unknown>;
             return (
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="space-y-4 rounded-xl border border-slate-200 bg-slate-50/50 p-5 dark:border-slate-800 dark:bg-slate-800/30">
                 <div>
-                  <label className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
-                    Contemplações por Sorteio (Qtd)
-                  </label>
-                  <input
-                    name="contemplacoes_sorteio_qtd"
-                    type="number"
-                    defaultValue={Number(stats.contemplacoes_sorteio_qtd) || ""}
-                    placeholder="Ex: 2"
-                    className={inputStyle}
-                  />
-                </div>
-
-                <div>
-                  <label className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
-                    Contemplados no Mês Anterior (Qtd)
-                  </label>
-                  <input
-                    name="contemplados_mes_anterior_qtd"
-                    type="number"
-                    defaultValue={Number(stats.contemplados_mes_anterior_qtd) || ""}
-                    placeholder="Ex: 8"
-                    className={inputStyle}
-                  />
-                </div>
-
-                <div>
-                  <label className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
-                    Média de Lance Livre (%)
-                  </label>
-                  <input
-                    name="lance_livre_medio"
-                    defaultValue={stats.lance_livre_medio != null ? String(stats.lance_livre_medio) : ""}
-                    placeholder="Ex: 48.50"
-                    className={inputStyle}
-                  />
-                </div>
-
-                <div>
-                  <label className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
-                    Lance Livre Mínimo (%)
-                  </label>
-                  <input
-                    name="lance_livre_minimo"
-                    defaultValue={stats.lance_livre_minimo != null ? String(stats.lance_livre_minimo) : ""}
-                    placeholder="Ex: 35.00"
-                    className={inputStyle}
-                  />
-                </div>
-
-                <div>
-                  <label className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
-                    Lance Livre Máximo (%)
-                  </label>
-                  <input
-                    name="lance_livre_maximo"
-                    defaultValue={stats.lance_livre_maximo != null ? String(stats.lance_livre_maximo) : ""}
-                    placeholder="Ex: 65.00"
-                    className={inputStyle}
-                  />
-                </div>
-
-                <div>
-                  <label className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
-                    Vagas Disponíveis Atualizadas
-                  </label>
-                  <input
-                    name="vagas_disponiveis"
-                    type="number"
-                    defaultValue={grupo.vagas_disponiveis ?? 0}
-                    className={inputStyle}
-                  />
-                </div>
-
-                <div className="sm:col-span-2 lg:col-span-3 rounded-xl border border-slate-100 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-800/40">
-                  <p className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 mb-3">
-                    Regras de Lance Permitidas
+                  <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                    2. Indicadores Recentes & Lances
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Estatísticas de apuração e limites operacionais de lance.
                   </p>
-                  <div className="flex flex-wrap gap-6 text-sm">
-                    <label className="flex items-center gap-2 font-medium">
-                      <input
-                        type="checkbox"
-                        name="lance_embutido_25_permitido"
-                        defaultChecked={Boolean(stats.lance_embutido_25_permitido)}
-                        className="rounded text-cyan-600"
-                      />
-                      Lance Embutido 25%
+                </div>
+
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  <div>
+                    <label className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
+                      Média de Lance Livre (%)
                     </label>
-                    <label className="flex items-center gap-2 font-medium">
-                      <input
-                        type="checkbox"
-                        name="lance_embutido_50_permitido"
-                        defaultChecked={Boolean(stats.lance_embutido_50_permitido)}
-                        className="rounded text-cyan-600"
-                      />
-                      Lance Embutido 50%
+                    <input
+                      name="lance_livre_medio"
+                      defaultValue={stats.lance_livre_medio != null ? String(stats.lance_livre_medio) : ""}
+                      placeholder="Ex: 67.80"
+                      className={inputStyle}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
+                      Lance Livre Mínimo (%)
                     </label>
-                    <label className="flex items-center gap-2 font-medium">
-                      <input
-                        type="checkbox"
-                        name="lance_fidelidade_permitido"
-                        defaultChecked={Boolean(stats.lance_fidelidade_permitido)}
-                        className="rounded text-cyan-600"
-                      />
-                      Lance Fidelidade
+                    <input
+                      name="lance_livre_minimo"
+                      defaultValue={stats.lance_livre_minimo != null ? String(stats.lance_livre_minimo) : ""}
+                      placeholder="Ex: 35.00"
+                      className={inputStyle}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
+                      Lance Livre Máximo (%)
                     </label>
+                    <input
+                      name="lance_livre_maximo"
+                      defaultValue={stats.lance_livre_maximo != null ? String(stats.lance_livre_maximo) : ""}
+                      placeholder="Ex: 85.00"
+                      className={inputStyle}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
+                      Contemplados no Mês Anterior (Qtd Real)
+                    </label>
+                    <input
+                      name="contemplados_mes_anterior_qtd"
+                      type="number"
+                      defaultValue={Number(stats.contemplados_mes_anterior_qtd) || ""}
+                      placeholder="Ex: 7"
+                      className={inputStyle}
+                    />
+                    <span className="text-[11px] text-slate-400">Dado real apurado da última assembleia</span>
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
+                      Limite de Lance Embutido (%)
+                    </label>
+                    <input
+                      name="limite_lance_embutido_percentual"
+                      defaultValue={
+                        stats.limite_lance_embutido_percentual != null
+                          ? String(stats.limite_lance_embutido_percentual)
+                          : stats.percentual_lance_embutido != null
+                          ? String(stats.percentual_lance_embutido)
+                          : ""
+                      }
+                      placeholder="Ex: 40.00"
+                      className={inputStyle}
+                    />
+                    <span className="text-[11px] text-slate-400">Limite de lance embutido (% do crédito)</span>
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
+                      Vagas Disponíveis Atualizadas
+                    </label>
+                    <input
+                      name="vagas_disponiveis"
+                      type="number"
+                      defaultValue={grupo.vagas_disponiveis ?? 0}
+                      className={inputStyle}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
+                      Data de Referência da Análise
+                    </label>
+                    <input
+                      type="date"
+                      name="data_referencia"
+                      defaultValue={stats.data_referencia ? String(stats.data_referencia) : ""}
+                      className={inputStyle}
+                    />
                   </div>
                 </div>
+              </div>
+            );
+          })()}
 
+          {/* BLOCO 3: INFORMAÇÕES & AUDITORIA */}
+          {(() => {
+            const stats = (grupo.dados_estatisticos ?? {}) as Record<string, unknown>;
+            return (
+              <div className="space-y-4 rounded-xl border border-slate-200 bg-slate-50/50 p-5 dark:border-slate-800 dark:bg-slate-800/30">
                 <div>
-                  <label className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
-                    Origem da Informação
-                  </label>
-                  <input
-                    name="origem_informacao"
-                    defaultValue={stats.origem_informacao ? String(stats.origem_informacao) : ""}
-                    placeholder="Ex: Assembleia Racon 08/2026"
-                    className={inputStyle}
-                  />
+                  <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                    3. Informações & Auditoria
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Rastreabilidade de origem, analista e data de atualização.
+                  </p>
                 </div>
 
-                <div>
-                  <label className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
-                    Responsável pela Atualização
-                  </label>
-                  <input
-                    name="responsavel_nome"
-                    defaultValue={stats.responsavel_nome ? String(stats.responsavel_nome) : ""}
-                    placeholder="Nome do analista"
-                    className={inputStyle}
-                  />
-                </div>
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  <div>
+                    <label className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
+                      Origem da Informação
+                    </label>
+                    <input
+                      name="origem_informacao"
+                      defaultValue={stats.origem_informacao ? String(stats.origem_informacao) : ""}
+                      placeholder="Ex: Assembleia Racon 08/2026"
+                      className={inputStyle}
+                    />
+                  </div>
 
-                <div>
-                  <label className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
-                    Observação de Análise
-                  </label>
-                  <input
-                    name="observacao"
-                    defaultValue={stats.observacao ? String(stats.observacao) : ""}
-                    placeholder="Ex: Alta probabilidade de contemplação com 45%"
-                    className={inputStyle}
-                  />
+                  <div>
+                    <label className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
+                      Responsável pela Atualização
+                    </label>
+                    <input
+                      name="responsavel_nome"
+                      defaultValue={stats.responsavel_nome ? String(stats.responsavel_nome) : ""}
+                      placeholder="Nome do analista / consultor"
+                      className={inputStyle}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
+                      Última Atualização
+                    </label>
+                    <input
+                      type="text"
+                      disabled
+                      value={
+                        grupo.dados_estatisticos_atualizado_em
+                          ? new Date(grupo.dados_estatisticos_atualizado_em).toLocaleString("pt-BR")
+                          : "Ainda não atualizado"
+                      }
+                      className={`${inputStyle} bg-slate-100 dark:bg-slate-800 cursor-not-allowed`}
+                    />
+                  </div>
+
+                  <div className="sm:col-span-2 lg:col-span-3">
+                    <label className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
+                      Observação de Análise
+                    </label>
+                    <textarea
+                      name="observacao"
+                      defaultValue={stats.observacao ? String(stats.observacao) : ""}
+                      placeholder="Observações complementares sobre lances, contemplações e histórico do grupo..."
+                      rows={2}
+                      className={inputStyle}
+                    />
+                  </div>
                 </div>
               </div>
             );

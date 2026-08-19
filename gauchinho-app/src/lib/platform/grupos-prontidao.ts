@@ -52,19 +52,69 @@ export type GrupoCotaItem = {
   grupo_cota_modalidade_valores?: GrupoCotaModalidadeValor[];
 };
 
+export type TipoContemplacao =
+  | "SORTEIO"
+  | "SORTEIO_CANCELADAS"
+  | "LANCE_LIVRE"
+  | "LANCE_FIXO"
+  | "LANCE_EMBUTIDO"
+  | "LANCE_FIDELIDADE"
+  | "OUTRO"
+  | string;
+
+export const DEFAULT_TIPOS_CONTEMPLACAO: Array<{ value: string; label: string }> = [
+  { value: "SORTEIO", label: "Sorteio" },
+  { value: "SORTEIO_CANCELADAS", label: "Sorteio de cotas canceladas" },
+  { value: "LANCE_LIVRE", label: "Lance Livre" },
+  { value: "LANCE_FIXO", label: "Lance Fixo" },
+  { value: "LANCE_EMBUTIDO", label: "Lance Embutido" },
+  { value: "LANCE_FIDELIDADE", label: "Lance Fidelidade" },
+  { value: "OUTRO", label: "Outro" },
+];
+
+export type CaracteristicaContemplacaoItem = {
+  id?: string;
+  ordem: number;
+  tipo: TipoContemplacao;
+  tipo_label?: string;
+  condicao_percentual?: string | null;
+  percentual?: number | null;
+  observacao?: string | null;
+  ativa: boolean;
+};
+
+export type ResumoContemplacoesPotencial = {
+  totalPotencial: number;
+  textoPotencial: string;
+  resumoModalidades: string;
+  resumoCurto: string;
+  sorteios: number;
+  livres: number;
+  fixos: number;
+  embutidos: number;
+  fidelidade: number;
+  outros: number;
+};
+
 export type GrupoEstatisticas = {
-  contemplacoes_sorteio_qtd?: number | null;
-  lance_embutido_25_permitido?: boolean;
-  lance_embutido_50_permitido?: boolean;
-  lance_fidelidade_permitido?: boolean;
-  lance_fidelidade_percentual?: number | null;
+  caracteristicas_contemplacao?: CaracteristicaContemplacaoItem[];
   lance_livre_minimo?: number | null;
   lance_livre_medio?: number | null;
   lance_livre_maximo?: number | null;
+  data_referencia?: string | null;
   contemplados_mes_anterior_qtd?: number | null;
+  limite_lance_embutido_percentual?: number | null;
+  lance_embutido_permitido?: boolean;
+  lance_fidelidade_permitido?: boolean;
   origem_informacao?: string | null;
   responsavel_nome?: string | null;
   observacao?: string | null;
+  updated_at?: string | null;
+  // Campos legados mantidos para compatibilidade
+  contemplacoes_sorteio_qtd?: number | null;
+  lance_embutido_25_permitido?: boolean;
+  lance_embutido_50_permitido?: boolean;
+  lance_fidelidade_percentual?: number | null;
 };
 
 export type GrupoRecord = {
@@ -122,7 +172,75 @@ export type GrupoProntidaoResult = {
   totalCotasAtivas: number;
   totalModalidadesAtivas: number;
   temporal: AssembleiasTemporalResult;
+  contemplacoes: ResumoContemplacoesPotencial;
 };
+
+export function calcularResumoContemplacoes(
+  itens: CaracteristicaContemplacaoItem[] | undefined | null,
+): ResumoContemplacoesPotencial {
+  const list = Array.isArray(itens) ? itens : [];
+  const ativas = list.filter((i) => i.ativa !== false);
+
+  let sorteios = 0;
+  let livres = 0;
+  let fixos = 0;
+  let embutidos = 0;
+  let fidelidade = 0;
+  let outros = 0;
+
+  for (const item of ativas) {
+    const t = (item.tipo || "").toUpperCase();
+    if (t === "SORTEIO" || t === "SORTEIO_CANCELADAS") {
+      sorteios++;
+    } else if (t === "LANCE_LIVRE") {
+      livres++;
+    } else if (t === "LANCE_FIXO") {
+      fixos++;
+    } else if (t === "LANCE_EMBUTIDO") {
+      embutidos++;
+    } else if (t === "LANCE_FIDELIDADE") {
+      fidelidade++;
+    } else {
+      outros++;
+    }
+  }
+
+  const total = ativas.length;
+  const textoPotencial = total > 0 ? `Até ${total}/mês` : "Não definido";
+
+  const partsModalidades: string[] = [];
+  if (sorteios > 0) partsModalidades.push(`${sorteios} ${sorteios === 1 ? "Sorteio" : "Sorteios"}`);
+  if (livres > 0) partsModalidades.push(`${livres} ${livres === 1 ? "Lance Livre" : "Lances Livres"}`);
+  if (fixos > 0) partsModalidades.push(`${fixos} ${fixos === 1 ? "Lance Fixo" : "Lances Fixos"}`);
+  if (embutidos > 0) partsModalidades.push(`${embutidos} ${embutidos === 1 ? "Lance Embutido" : "Lances Embutidos"}`);
+  if (fidelidade > 0) partsModalidades.push(`${fidelidade} ${fidelidade === 1 ? "Lance Fidelidade" : "Lances Fidelidade"}`);
+  if (outros > 0) partsModalidades.push(`${outros} Outros`);
+
+  const resumoModalidades = partsModalidades.join(" • ") || "Nenhuma modalidade ativa";
+
+  const partsCurto: string[] = [];
+  if (sorteios > 0) partsCurto.push(`${sorteios} Sorteios`);
+  if (livres > 0) partsCurto.push(`${livres} Livres`);
+  if (fixos > 0) partsCurto.push(`${fixos} Fixos`);
+  if (embutidos > 0) partsCurto.push(`${embutidos} Embutidos`);
+  if (fidelidade > 0) partsCurto.push(`${fidelidade} Fidelidade`);
+  if (outros > 0) partsCurto.push(`${outros} Outros`);
+
+  const resumoCurto = partsCurto.join(" • ") || "—";
+
+  return {
+    totalPotencial: total,
+    textoPotencial,
+    resumoModalidades,
+    resumoCurto,
+    sorteios,
+    livres,
+    fixos,
+    embutidos,
+    fidelidade,
+    outros,
+  };
+}
 
 export function parseBRLNumber(value: string | number | null | undefined): number {
   if (value == null) return 0;
@@ -333,6 +451,7 @@ export function computeGrupoMetrics(grupo: Partial<GrupoRecord>): {
   activeCotas: GrupoCotaItem[];
   activeModalidades: GrupoModalidadeItem[];
   temporal: AssembleiasTemporalResult;
+  contemplacoes: ResumoContemplacoesPotencial;
 } {
   const cotas = (grupo.produtos ?? []).filter((p) => p.ativo && p.valor_credito > 0);
   const credits = cotas.map((c) => Number(c.valor_credito));
@@ -346,6 +465,7 @@ export function computeGrupoMetrics(grupo: Partial<GrupoRecord>): {
 
   const activeModalidades = (grupo.modalidades ?? []).filter((m) => m.ativo);
   const temporal = calcularAssembleiasTemporal(grupo.data_primeira_assembleia, grupo.prazo_total);
+  const contemplacoes = calcularResumoContemplacoes(grupo.dados_estatisticos?.caracteristicas_contemplacao);
 
   return {
     cotaMinima,
@@ -354,12 +474,13 @@ export function computeGrupoMetrics(grupo: Partial<GrupoRecord>): {
     activeCotas: cotas,
     activeModalidades,
     temporal,
+    contemplacoes,
   };
 }
 
 export function validateGrupoProntidao(grupo: Partial<GrupoRecord>): GrupoProntidaoResult {
   const issues: string[] = [];
-  const { cotaMinima, cotaMaxima, taxaTotal, activeCotas, activeModalidades, temporal } = computeGrupoMetrics(grupo);
+  const { cotaMinima, cotaMaxima, taxaTotal, activeCotas, activeModalidades, temporal, contemplacoes } = computeGrupoMetrics(grupo);
 
   if (!grupo.administradora_id && !grupo.administradora) {
     issues.push("Administradora não definida");
@@ -395,5 +516,6 @@ export function validateGrupoProntidao(grupo: Partial<GrupoRecord>): GrupoPronti
     totalCotasAtivas: activeCotas.length,
     totalModalidadesAtivas: activeModalidades.length,
     temporal,
+    contemplacoes,
   };
 }
