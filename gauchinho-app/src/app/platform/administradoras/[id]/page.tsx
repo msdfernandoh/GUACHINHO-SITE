@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { AdministratorWorkspace } from "@/components/platform/administrator-workspace";
+import { validateGrupoProntidao, type GrupoRecord } from "@/lib/platform/grupos-prontidao";
 
 export default async function PlatformAdministradoraPage({
   params,
@@ -52,7 +53,7 @@ export default async function PlatformAdministradoraPage({
       db
         .from("grupos_consorcio")
         .select(
-          "id,codigo_grupo,status_governanca,origem_governanca,status,ativo,prazo_total,data_primeira_assembleia,taxa_administrativa_percentual,fundo_reserva_percentual,seguro_percentual,capacidade_total,vagas_disponiveis,vagas_atualizado_em,dados_estatisticos,updated_at,tipo_administradora_id,tipo:administradora_tipos(id,nome,codigo),modalidades:grupos_modalidades_disponiveis(id,administradora_modalidade_id,ativo,modalidade:administradora_modalidades_comissao(id,nome,codigo)),produtos:grupos_cotas(id,valor_credito,ativo,grupo_cota_modalidade_valores(id,administradora_modalidade_id,valor_parcela,percentual_reducao,habilitado,modo_reduzido,modo_override,percentual_override,percentual_minimo,percentual_maximo,ativo))",
+          "id,codigo_grupo,administradora_id,tipo_administradora_id,modalidade,status,ativo,prazo_total,data_primeira_assembleia,parcelas_realizadas,prazo_restante,taxa_administrativa_percentual,fundo_reserva_percentual,seguro_percentual,capacidade_total,vagas_disponiveis,vagas_atualizado_em,dados_estatisticos,origem_governanca,status_governanca,updated_at,administradora:administradoras(id,nome),tipo:administradora_tipos(id,nome,codigo),modalidades:grupos_modalidades_disponiveis(id,administradora_modalidade_id,ativo,modalidade:administradora_modalidades_comissao(id,nome,codigo)),produtos:grupos_cotas(id,valor_credito,ativo,grupo_cota_modalidade_valores(id,administradora_modalidade_id,valor_parcela,percentual_reducao,habilitado,modo_reduzido,modo_override,percentual_override,percentual_minimo,percentual_maximo,ativo))",
         )
         .eq("administradora_id", id)
         .order("codigo_grupo"),
@@ -65,12 +66,8 @@ export default async function PlatformAdministradoraPage({
       db.from("plataforma_auditoria").select("id,acao,entidade_tipo,entidade_id,campos_alterados,created_at").in("entidade_tipo",["administradoras","administradora_tipos","administradora_modalidades_comissao","administradora_curvas_estorno","administradora_modelos_comissao","comissao_programas","comissao_regras_franquia"]).order("created_at",{ascending:false}).limit(500),
     ]);
   if (!admin.data) notFound();
-  const pending = (grupos.data ?? []).filter(
-    (g) =>
-      !g.tipo_administradora_id ||
-      !g.modalidades?.some((item) => item.ativo) ||
-      !g.produtos?.some((item) => item.ativo),
-  ).length;
+  const gruposList = (grupos.data ?? []) as unknown as GrupoRecord[];
+  const pending = gruposList.filter((g) => !validateGrupoProntidao(g).ready).length;
   const auditEntityIds = new Set([
     id,
     ...(tipos.data ?? []).map((item) => item.id),
