@@ -95,298 +95,293 @@ export async function fetchParticipantesList(filters?: {
   }
 }
 
-export async function createParticipanteAction(formData: FormData) {
-  const empresaId = String(formData.get("empresa_id") || (await resolveEmpresaIdPadrao()));
-  await assertAdminAccess(empresaId);
+export async function createParticipanteAction(formData: FormData): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const empresaId = String(formData.get("empresa_id") || (await resolveEmpresaIdPadrao()));
+    await assertAdminAccess(empresaId);
 
-  const tipos = formData.getAll("tipos").map(String);
-  const modulosArray = formData.getAll("modulos_permitidos").map(String);
-  const modulosRaw = formData.get("modulos_permitidos");
-  let modulosPermitidos: string[] = modulosArray.length > 0 ? modulosArray : [];
-  if (modulosPermitidos.length === 0 && typeof modulosRaw === "string" && modulosRaw.trim().startsWith("[")) {
-    try {
-      modulosPermitidos = JSON.parse(modulosRaw);
-    } catch {
-      modulosPermitidos = [];
+    const tipos = formData.getAll("tipos").map(String);
+    const modulosArray = formData.getAll("modulos_permitidos").map(String);
+    const modulosRaw = formData.get("modulos_permitidos");
+    let modulosPermitidos: string[] = modulosArray.length > 0 ? modulosArray : [];
+    if (modulosPermitidos.length === 0 && typeof modulosRaw === "string" && modulosRaw.trim().startsWith("[")) {
+      try {
+        modulosPermitidos = JSON.parse(modulosRaw);
+      } catch {
+        modulosPermitidos = [];
+      }
     }
-  }
 
-  const input = {
-    empresaId,
-    nome: String(formData.get("nome") ?? ""),
-    tipos,
-    status: String(formData.get("status") ?? "RASCUNHO"),
-    telefone: String(formData.get("telefone") ?? "") || null,
-    whatsapp: String(formData.get("whatsapp") ?? "") || null,
-    cpf: String(formData.get("cpf") ?? "") || null,
-    email: String(formData.get("email") ?? "") || null,
-    usuarioId: String(formData.get("usuario_id") ?? "") || null,
-  };
-
-  const validated = validateParticipanteCreateInput(input);
-  if (!validated.ok) throw new Error(validated.error);
-
-  const supabase = await createClient();
-
-  if (input.usuarioId && input.status === "ATIVO") {
-    const { data: existing } = await supabase
-      .from("participantes_comerciais")
-      .select("id, empresa_id, usuario_id")
-      .eq("empresa_id", empresaId)
-      .eq("usuario_id", input.usuarioId)
-      .eq("status", "ATIVO");
-    const linkCheck = canLinkUsuarioToParticipante({
-      usuarioId: input.usuarioId,
+    const input = {
       empresaId,
-      existingActiveLinks: (existing ?? []).map((e) => ({
-        participanteId: e.id,
-        empresaId: e.empresa_id,
-        usuarioId: e.usuario_id!,
-      })),
-    });
-    if (!linkCheck.ok) throw new Error(linkCheck.error);
-  }
+      nome: String(formData.get("nome") ?? ""),
+      tipos,
+      status: String(formData.get("status") ?? "RASCUNHO"),
+      telefone: String(formData.get("telefone") ?? "") || null,
+      whatsapp: String(formData.get("whatsapp") ?? "") || null,
+      cpf: String(formData.get("cpf") ?? "") || null,
+      email: String(formData.get("email") ?? "") || null,
+      usuarioId: String(formData.get("usuario_id") ?? "") || null,
+    };
 
-  const gestorId = String(formData.get("gestor_participante_id") ?? "") || null;
-  if (gestorId) {
-    const { data: gestor } = await supabase
-      .from("participantes_comerciais")
-      .select("empresa_id")
-      .eq("id", gestorId)
-      .maybeSingle();
-    const gCheck = validateGestorMesmaEmpresa({
-      participanteEmpresaId: empresaId,
-      gestorEmpresaId: gestor?.empresa_id,
-    });
-    if (!gCheck.ok) throw new Error(gCheck.error);
-  }
+    const validated = validateParticipanteCreateInput(input);
+    if (!validated.ok) return { ok: false, error: validated.error };
 
-  let createdId: string | null = null;
-  try {
-    const { data: created, error } = await supabase
-      .from("participantes_comerciais")
-      .insert({
-        empresa_id: empresaId,
-        nome: input.nome.trim(),
-        nome_exibicao: String(formData.get("nome_exibicao") ?? "") || null,
-        cpf: normalizeCpf(input.cpf),
-        email: normalizeEmail(input.email),
-        telefone: input.telefone,
-        whatsapp: input.whatsapp,
-        cargo: String(formData.get("cargo") ?? "") || null,
-        status: input.status,
-        usuario_id: input.usuarioId,
-        gestor_participante_id: gestorId,
-        observacoes: String(formData.get("observacoes") ?? "") || null,
-        data_entrada: String(formData.get("data_entrada") ?? "") || null,
-        escopo_visualizacao: String(formData.get("escopo_visualizacao") ?? "TODOS"),
-        modulos_permitidos: modulosPermitidos,
-      })
-      .select("id")
-      .single();
+    const supabase = await createClient();
 
-    if (error) throw error;
-    createdId = created.id;
-  } catch {
-    // Fallback sem colunas estendidas caso schema esteja em transição
-    const { data: createdFallback, error: fallbackError } = await supabase
-      .from("participantes_comerciais")
-      .insert({
-        empresa_id: empresaId,
-        nome: input.nome.trim(),
-        cpf: normalizeCpf(input.cpf),
-        email: normalizeEmail(input.email),
-        telefone: input.telefone,
-        whatsapp: input.whatsapp,
-        status: input.status,
-        usuario_id: input.usuarioId,
-        gestor_participante_id: gestorId,
-        data_entrada: String(formData.get("data_entrada") ?? "") || null,
-      })
-      .select("id")
-      .single();
-
-    if (fallbackError) throw new Error(fallbackError.message);
-    createdId = createdFallback.id;
-  }
-
-  if (createdId && tipos.length) {
-    await supabase.from("participante_tipos").insert(
-      tipos.map((tipo_codigo) => ({
-        participante_id: createdId,
-        empresa_id: empresaId,
-        tipo_codigo,
-      }))
-    );
-  }
-
-  // Sincronizar módulos visíveis do ERP no vínculo de empresa_usuarios
-  if (input.usuarioId && modulosPermitidos.length > 0) {
-    try {
-      await supabase
-        .from("empresa_usuarios")
-        .update({ erp_modulos_visiveis: modulosPermitidos })
+    if (input.usuarioId && input.status === "ATIVO") {
+      const { data: existing } = await supabase
+        .from("participantes_comerciais")
+        .select("id, empresa_id, usuario_id")
         .eq("empresa_id", empresaId)
-        .eq("usuario_id", input.usuarioId);
-    } catch {
-      // Tolerar caso coluna não exista
+        .eq("usuario_id", input.usuarioId)
+        .eq("status", "ATIVO");
+      const linkCheck = canLinkUsuarioToParticipante({
+        usuarioId: input.usuarioId,
+        empresaId,
+        existingActiveLinks: (existing ?? []).map((e) => ({
+          participanteId: e.id,
+          empresaId: e.empresa_id,
+          usuarioId: e.usuario_id!,
+        })),
+      });
+      if (!linkCheck.ok) return { ok: false, error: linkCheck.error };
     }
-  }
 
+    const gestorId = String(formData.get("gestor_participante_id") ?? "") || null;
+    if (gestorId) {
+      const { data: gestor } = await supabase
+        .from("participantes_comerciais")
+        .select("empresa_id")
+        .eq("id", gestorId)
+        .maybeSingle();
+      const gCheck = validateGestorMesmaEmpresa({
+        participanteEmpresaId: empresaId,
+        gestorEmpresaId: gestor?.empresa_id,
+      });
+      if (!gCheck.ok) return { ok: false, error: gCheck.error };
+    }
+
+    let createdId: string | null = null;
+    try {
+      const { data: created, error } = await supabase
+        .from("participantes_comerciais")
+        .insert({
+          empresa_id: empresaId,
+          nome: input.nome.trim(),
+          nome_exibicao: String(formData.get("nome_exibicao") ?? "") || null,
+          cpf: normalizeCpf(input.cpf),
+          email: normalizeEmail(input.email),
+          telefone: input.telefone,
+          whatsapp: input.whatsapp,
+          cargo: String(formData.get("cargo") ?? "") || null,
+          status: input.status,
+          usuario_id: input.usuarioId,
+          gestor_participante_id: gestorId,
+          observacoes: String(formData.get("observacoes") ?? "") || null,
+          data_entrada: String(formData.get("data_entrada") ?? "") || null,
+          escopo_visualizacao: String(formData.get("escopo_visualizacao") ?? "TODOS"),
+          modulos_permitidos: modulosPermitidos,
+        })
+        .select("id")
+        .single();
+
+      if (error) throw error;
+      createdId = created.id;
+    } catch {
+      const { data: createdFallback, error: fallbackError } = await supabase
+        .from("participantes_comerciais")
+        .insert({
+          empresa_id: empresaId,
+          nome: input.nome.trim(),
+          cpf: normalizeCpf(input.cpf),
+          email: normalizeEmail(input.email),
+          telefone: input.telefone,
+          whatsapp: input.whatsapp,
+          status: input.status,
+          usuario_id: input.usuarioId,
+          gestor_participante_id: gestorId,
+          data_entrada: String(formData.get("data_entrada") ?? "") || null,
+        })
+        .select("id")
+        .single();
+
+      if (fallbackError) return { ok: false, error: fallbackError.message };
+      createdId = createdFallback.id;
+    }
+
+    if (createdId && tipos.length) {
+      try {
+        await supabase.from("participante_tipos").insert(
+          tipos.map((tipo_codigo) => ({
+            participante_id: createdId,
+            empresa_id: empresaId,
+            tipo_codigo,
+          }))
+        );
+      } catch {
+        // Tolerar
+      }
+    }
+
+    if (input.usuarioId && modulosPermitidos.length > 0) {
+      try {
+        await supabase
+          .from("empresa_usuarios")
+          .update({ erp_modulos_visiveis: modulosPermitidos })
+          .eq("empresa_id", empresaId)
+          .eq("usuario_id", input.usuarioId);
+      } catch {
+        // Tolerar
+      }
+    }
+
+    try {
+      if (createdId) {
+        await supabase.from("participante_auditoria").insert({
+          participante_id: createdId,
+          empresa_id: empresaId,
+          acao: "CRIAR",
+          payload: { status: input.status, tipos, modulos_permitidos: modulosPermitidos },
+        });
+      }
+    } catch {
+      // Tolerar
+    }
+
+    revalidatePath("/admin/participantes");
+    revalidatePath("/erp/consultores");
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : "Erro ao criar participante." };
+  }
+}
+
+export async function updateParticipanteAction(formData: FormData): Promise<{ ok: boolean; error?: string }> {
   try {
-    if (createdId) {
+    const empresaId = String(formData.get("empresa_id") || (await resolveEmpresaIdPadrao()));
+    await assertAdminAccess(empresaId);
+
+    const id = String(formData.get("id") ?? "");
+    if (!id) return { ok: false, error: "ID do participante obrigatório." };
+
+    const tipos = formData.getAll("tipos").map(String);
+    const modulosArray = formData.getAll("modulos_permitidos").map(String);
+    const modulosRaw = formData.get("modulos_permitidos");
+    let modulosPermitidos: string[] = modulosArray.length > 0 ? modulosArray : [];
+    if (modulosPermitidos.length === 0 && typeof modulosRaw === "string" && modulosRaw.trim().startsWith("[")) {
+      try {
+        modulosPermitidos = JSON.parse(modulosRaw);
+      } catch {
+        modulosPermitidos = [];
+      }
+    }
+
+    const input = {
+      empresaId,
+      nome: String(formData.get("nome") ?? ""),
+      tipos,
+      status: String(formData.get("status") ?? "ATIVO"),
+      telefone: String(formData.get("telefone") ?? "") || null,
+      whatsapp: String(formData.get("whatsapp") ?? "") || null,
+      cpf: String(formData.get("cpf") ?? "") || null,
+      email: String(formData.get("email") ?? "") || null,
+      usuarioId: String(formData.get("usuario_id") ?? "") || null,
+    };
+
+    const validated = validateParticipanteCreateInput(input);
+    if (!validated.ok) return { ok: false, error: validated.error };
+
+    const supabase = await createClient();
+    const gestorId = String(formData.get("gestor_participante_id") ?? "") || null;
+
+    try {
+      const { error } = await supabase
+        .from("participantes_comerciais")
+        .update({
+          nome: input.nome.trim(),
+          nome_exibicao: String(formData.get("nome_exibicao") ?? "") || null,
+          cpf: normalizeCpf(input.cpf),
+          email: normalizeEmail(input.email),
+          telefone: input.telefone,
+          whatsapp: input.whatsapp,
+          cargo: String(formData.get("cargo") ?? "") || null,
+          status: input.status,
+          usuario_id: input.usuarioId,
+          gestor_participante_id: gestorId,
+          observacoes: String(formData.get("observacoes") ?? "") || null,
+          modulos_permitidos: modulosPermitidos,
+          escopo_visualizacao: String(formData.get("escopo_visualizacao") ?? "TODOS"),
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", id)
+        .eq("empresa_id", empresaId);
+
+      if (error) throw error;
+    } catch {
+      const { error: fallbackErr } = await supabase
+        .from("participantes_comerciais")
+        .update({
+          nome: input.nome.trim(),
+          cpf: normalizeCpf(input.cpf),
+          email: normalizeEmail(input.email),
+          telefone: input.telefone,
+          whatsapp: input.whatsapp,
+          status: input.status,
+          usuario_id: input.usuarioId,
+          gestor_participante_id: gestorId,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", id)
+        .eq("empresa_id", empresaId);
+
+      if (fallbackErr) return { ok: false, error: fallbackErr.message };
+    }
+
+    if (tipos.length) {
+      try {
+        await supabase.from("participante_tipos").delete().eq("participante_id", id).eq("empresa_id", empresaId);
+        await supabase.from("participante_tipos").insert(
+          tipos.map((tipo_codigo) => ({
+            participante_id: id,
+            empresa_id: empresaId,
+            tipo_codigo,
+          }))
+        );
+      } catch {
+        // Tolerar
+      }
+    }
+
+    if (input.usuarioId && modulosPermitidos.length > 0) {
+      try {
+        await supabase
+          .from("empresa_usuarios")
+          .update({ erp_modulos_visiveis: modulosPermitidos })
+          .eq("empresa_id", empresaId)
+          .eq("usuario_id", input.usuarioId);
+      } catch {
+        // Tolerar
+      }
+    }
+
+    try {
       await supabase.from("participante_auditoria").insert({
-        participante_id: createdId,
+        participante_id: id,
         empresa_id: empresaId,
-        acao: "CRIAR",
+        acao: "EDITAR",
         payload: { status: input.status, tipos, modulos_permitidos: modulosPermitidos },
       });
-    }
-  } catch {
-    // Auditoria opcional
-  }
-
-  revalidatePath("/admin/participantes");
-  revalidatePath("/erp/consultores");
-}
-
-export async function updateParticipanteAction(formData: FormData) {
-  const empresaId = String(formData.get("empresa_id") || (await resolveEmpresaIdPadrao()));
-  await assertAdminAccess(empresaId);
-
-  const id = String(formData.get("id") ?? "");
-  if (!id) throw new Error("ID do participante obrigatório.");
-
-  const tipos = formData.getAll("tipos").map(String);
-  const modulosArray = formData.getAll("modulos_permitidos").map(String);
-  const modulosRaw = formData.get("modulos_permitidos");
-  let modulosPermitidos: string[] = modulosArray.length > 0 ? modulosArray : [];
-  if (modulosPermitidos.length === 0 && typeof modulosRaw === "string" && modulosRaw.trim().startsWith("[")) {
-    try {
-      modulosPermitidos = JSON.parse(modulosRaw);
     } catch {
-      modulosPermitidos = [];
+      // Tolerar
     }
+
+    revalidatePath("/admin/participantes");
+    revalidatePath("/erp/consultores");
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : "Erro ao atualizar participante." };
   }
-
-  const input = {
-    empresaId,
-    nome: String(formData.get("nome") ?? ""),
-    tipos,
-    status: String(formData.get("status") ?? "ATIVO"),
-    telefone: String(formData.get("telefone") ?? "") || null,
-    whatsapp: String(formData.get("whatsapp") ?? "") || null,
-    cpf: String(formData.get("cpf") ?? "") || null,
-    email: String(formData.get("email") ?? "") || null,
-    usuarioId: String(formData.get("usuario_id") ?? "") || null,
-  };
-
-  const validated = validateParticipanteCreateInput(input);
-  if (!validated.ok) throw new Error(validated.error);
-
-  const supabase = await createClient();
-  const gestorId = String(formData.get("gestor_participante_id") ?? "") || null;
-
-  try {
-    const { error } = await supabase
-      .from("participantes_comerciais")
-      .update({
-        nome: input.nome.trim(),
-        nome_exibicao: String(formData.get("nome_exibicao") ?? "") || null,
-        cpf: normalizeCpf(input.cpf),
-        email: normalizeEmail(input.email),
-        telefone: input.telefone,
-        whatsapp: input.whatsapp,
-        cargo: String(formData.get("cargo") ?? "") || null,
-        status: input.status,
-        usuario_id: input.usuarioId,
-        gestor_participante_id: gestorId,
-        observacoes: String(formData.get("observacoes") ?? "") || null,
-        modulos_permitidos: modulosPermitidos,
-        escopo_visualizacao: String(formData.get("escopo_visualizacao") ?? "TODOS"),
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", id)
-      .eq("empresa_id", empresaId);
-
-    if (error) throw error;
-  } catch {
-    // Fallback defensivo com campos canônicos caso alguma coluna estendida falhe
-    const { error: fallbackErr } = await supabase
-      .from("participantes_comerciais")
-      .update({
-        nome: input.nome.trim(),
-        cpf: normalizeCpf(input.cpf),
-        email: normalizeEmail(input.email),
-        telefone: input.telefone,
-        whatsapp: input.whatsapp,
-        status: input.status,
-        usuario_id: input.usuarioId,
-        gestor_participante_id: gestorId,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", id)
-      .eq("empresa_id", empresaId);
-
-    if (fallbackErr) throw new Error(fallbackErr.message);
-  }
-
-  // Atualizar tipos
-  try {
-    await supabase.from("participante_tipos").delete().eq("participante_id", id).eq("empresa_id", empresaId);
-    if (tipos.length) {
-      await supabase.from("participante_tipos").insert(
-        tipos.map((tipo_codigo) => ({
-          participante_id: id,
-          empresa_id: empresaId,
-          tipo_codigo,
-        }))
-      );
-    }
-  } catch {
-    // Tolerar erro de tipo se tabela estiver bloqueada
-  }
-
-  // Sincronizar módulos visíveis do ERP no vínculo de empresa_usuarios
-  if (input.usuarioId && modulosPermitidos.length > 0) {
-    try {
-      await supabase
-        .from("empresa_usuarios")
-        .update({ erp_modulos_visiveis: modulosPermitidos })
-        .eq("empresa_id", empresaId)
-        .eq("usuario_id", input.usuarioId);
-    } catch {
-      // Tolerar caso coluna não exista
-    }
-  }
-
-  try {
-    await supabase.from("participante_auditoria").insert({
-      participante_id: id,
-      empresa_id: empresaId,
-      acao: "EDITAR",
-      payload: { status: input.status, tipos, modulos_permitidos: modulosPermitidos },
-    });
-  } catch {
-    // Auditoria opcional
-  }
-
-  revalidatePath("/admin/participantes");
-  revalidatePath("/erp/consultores");
-}
-
-export async function verificarDependenciasParticipanteAction(participanteId: string) {
-  const empresaId = await resolveEmpresaIdPadrao();
-  await assertAdminAccess(empresaId);
-  const supabase = await createClient();
-
-  const { data, error } = await supabase.rpc("rpc_verificar_dependencias_participante", {
-    p_empresa_id: empresaId,
-    p_participante_id: participanteId,
-  });
-
-  if (error) throw new Error(error.message);
-  return data as { pode_excluir: boolean; total_vinculos: number; motivos: string[] };
 }
 
 export async function deleteParticipanteAction(formData: FormData) {
@@ -527,3 +522,51 @@ export async function canAccessParticipantesAdmin(): Promise<boolean> {
   }
 }
 
+
+export async function verificarDependenciasParticipanteAction(participanteId: string): Promise<{
+  pode_excluir: boolean;
+  total_vinculos: number;
+  motivos: string[];
+}> {
+  try {
+    const supabase = await createClient();
+    const motivos: string[] = [];
+    let total = 0;
+
+    const [vendas, propostas, clientes, leads] = await Promise.all([
+      supabase.from("vendas").select("id", { count: "exact", head: true }).eq("participante_id", participanteId),
+      supabase.from("propostas").select("id", { count: "exact", head: true }).eq("participante_comercial_id", participanteId),
+      supabase.from("clientes").select("id", { count: "exact", head: true }).eq("participante_comercial_id", participanteId),
+      supabase.from("leads").select("id", { count: "exact", head: true }).eq("consultor_id", participanteId),
+    ]);
+
+    if (vendas.count) {
+      total += vendas.count;
+      motivos.push(`${vendas.count} venda(s)`);
+    }
+    if (propostas.count) {
+      total += propostas.count;
+      motivos.push(`${propostas.count} proposta(s)`);
+    }
+    if (clientes.count) {
+      total += clientes.count;
+      motivos.push(`${clientes.count} cliente(s)`);
+    }
+    if (leads.count) {
+      total += leads.count;
+      motivos.push(`${leads.count} lead(s)`);
+    }
+
+    return {
+      pode_excluir: total === 0,
+      total_vinculos: total,
+      motivos,
+    };
+  } catch {
+    return {
+      pode_excluir: false,
+      total_vinculos: 1,
+      motivos: ["Erro ao verificar dependências"],
+    };
+  }
+}

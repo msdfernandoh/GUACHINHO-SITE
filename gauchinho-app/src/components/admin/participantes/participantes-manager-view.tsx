@@ -379,7 +379,11 @@ export function ParticipantesManagerView({
                 setEditError(null);
                 try {
                   const fd = new FormData(e.currentTarget);
-                  await updateParticipanteAction(fd);
+                  const res = await updateParticipanteAction(fd);
+                  if (res && !res.ok) {
+                    setEditError(res.error || "Erro ao salvar alterações.");
+                    return;
+                  }
                   setEditingPart(null);
                   window.location.reload();
                 } catch (err) {
@@ -637,7 +641,11 @@ export function ParticipantesManagerView({
                 setPermError(null);
                 try {
                   const fd = new FormData(e.currentTarget);
-                  await updateParticipanteAction(fd);
+                  const res = await updateParticipanteAction(fd);
+                  if (res && !res.ok) {
+                    setPermError(res.error || "Erro ao salvar permissões.");
+                    return;
+                  }
                   setPermPart(null);
                   window.location.reload();
                 } catch (err) {
@@ -887,7 +895,11 @@ export function ParticipantesManagerView({
                 setCreateError(null);
                 try {
                   const fd = new FormData(e.currentTarget);
-                  await createParticipanteAction(fd);
+                  const res = await createParticipanteAction(fd);
+                  if (res && !res.ok) {
+                    setCreateError(res.error || "Erro ao criar participante.");
+                    return;
+                  }
                   setIsCreateOpen(false);
                   window.location.reload();
                 } catch (err) {
