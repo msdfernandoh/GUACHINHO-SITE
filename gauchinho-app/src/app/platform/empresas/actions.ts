@@ -135,4 +135,283 @@ export async function onboardingMasterFranquiaAction(
   redirect(`/platform/empresas/${data}`);
 }
 
+export async function atualizarDadosEmpresaPlatformAction(
+  _prev: PlatformFormState,
+  formData: FormData,
+): Promise<PlatformFormState> {
+  if (!(await isPlatformSuperadmin())) {
+    return { status: "ERROR", message: "Acesso restrito ao Platform Superadmin." };
+  }
+
+  const id = String(formData.get("id") ?? "").trim();
+  const nomeFantasia = String(formData.get("nome_fantasia") ?? "").trim();
+  const razaoSocial = String(formData.get("razao_social") ?? "").trim();
+  const cnpj = String(formData.get("cnpj") ?? "").trim() || null;
+  const telefone = String(formData.get("telefone") ?? "").trim() || null;
+  const whatsapp = String(formData.get("whatsapp") ?? "").trim() || null;
+  const email = String(formData.get("email") ?? "").trim() || null;
+  const cidade = String(formData.get("cidade") ?? "").trim() || null;
+  const estado = String(formData.get("estado") ?? "").trim() || null;
+
+  if (!id || !nomeFantasia || !razaoSocial) {
+    return { status: "ERROR", message: "ID, Nome fantasia e Razão social são obrigatórios." };
+  }
+
+  const db = await createClient();
+  const { error } = await db.rpc("rpc_platform_atualizar_dados_empresa", {
+    p_empresa_id: id,
+    p_nome_fantasia: nomeFantasia,
+    p_razao_social: razaoSocial,
+    p_cnpj: cnpj,
+    p_telefone: telefone,
+    p_whatsapp: whatsapp,
+    p_email: email,
+    p_cidade: cidade,
+    p_estado: estado,
+  });
+
+  if (error) {
+    return { status: "ERROR", message: error.message };
+  }
+
+  return { status: "SUCCESS", message: "Dados cadastrais da franquia atualizados com sucesso." };
+}
+
+export async function ativarEmpresaPlatformAction(
+  _prev: PlatformFormState,
+  formData: FormData,
+): Promise<PlatformFormState> {
+  if (!(await isPlatformSuperadmin())) {
+    return { status: "ERROR", message: "Acesso restrito ao Platform Superadmin." };
+  }
+
+  const id = String(formData.get("id") ?? "").trim();
+  if (!id) {
+    return { status: "ERROR", message: "ID da empresa é obrigatório." };
+  }
+
+  const db = await createClient();
+  const { error } = await db.rpc("rpc_platform_ativar_empresa", {
+    p_empresa_id: id,
+  });
+
+  if (error) {
+    return { status: "ERROR", message: error.message };
+  }
+
+  return { status: "SUCCESS", message: "Master Franquia ativada com sucesso em Produção." };
+}
+
+export async function suspenderEmpresaPlatformAction(
+  _prev: PlatformFormState,
+  formData: FormData,
+): Promise<PlatformFormState> {
+  if (!(await isPlatformSuperadmin())) {
+    return { status: "ERROR", message: "Acesso restrito ao Platform Superadmin." };
+  }
+
+  const id = String(formData.get("id") ?? "").trim();
+  const motivo = String(formData.get("motivo") ?? "").trim();
+  const observacao = String(formData.get("observacao") ?? "").trim() || null;
+
+  if (!id || !motivo) {
+    return { status: "ERROR", message: "ID da empresa e motivo da suspensão são obrigatórios." };
+  }
+
+  const db = await createClient();
+  const { error } = await db.rpc("rpc_platform_suspender_empresa", {
+    p_empresa_id: id,
+    p_motivo: motivo,
+    p_observacao: observacao,
+  });
+
+  if (error) {
+    return { status: "ERROR", message: error.message };
+  }
+
+  return { status: "SUCCESS", message: "Master Franquia suspensa. Todos os dados foram preservados." };
+}
+
+export async function reativarEmpresaPlatformAction(
+  _prev: PlatformFormState,
+  formData: FormData,
+): Promise<PlatformFormState> {
+  if (!(await isPlatformSuperadmin())) {
+    return { status: "ERROR", message: "Acesso restrito ao Platform Superadmin." };
+  }
+
+  const id = String(formData.get("id") ?? "").trim();
+  if (!id) {
+    return { status: "ERROR", message: "ID da empresa é obrigatório." };
+  }
+
+  const db = await createClient();
+  const { error } = await db.rpc("rpc_platform_reativar_empresa", {
+    p_empresa_id: id,
+  });
+
+  if (error) {
+    return { status: "ERROR", message: error.message };
+  }
+
+  return { status: "SUCCESS", message: "Master Franquia reativada com sucesso." };
+}
+
+export async function alterarPlanoEmpresaPlatformAction(
+  _prev: PlatformFormState,
+  formData: FormData,
+): Promise<PlatformFormState> {
+  if (!(await isPlatformSuperadmin())) {
+    return { status: "ERROR", message: "Acesso restrito ao Platform Superadmin." };
+  }
+
+  const empresaId = String(formData.get("empresa_id") ?? "").trim();
+  const novoPlanoId = String(formData.get("novo_plano_id") ?? "").trim();
+  const usuarios = formData.get("usuarios_contratados") ? Number(formData.get("usuarios_contratados")) : null;
+  const sites = formData.get("sites_parceiros_contratados") ? Number(formData.get("sites_parceiros_contratados")) : null;
+  const dominios = formData.get("sites_dominio_proprio_contratados") ? Number(formData.get("sites_dominio_proprio_contratados")) : null;
+
+  if (!empresaId || !novoPlanoId) {
+    return { status: "ERROR", message: "Empresa e Novo Plano são obrigatórios." };
+  }
+
+  const db = await createClient();
+  const { error } = await db.rpc("rpc_platform_alterar_plano_empresa", {
+    p_empresa_id: empresaId,
+    p_novo_plano_id: novoPlanoId,
+    p_usuarios_contratados: usuarios,
+    p_sites_parceiros_contratados: sites,
+    p_sites_dominio_proprio_contratados: dominios,
+  });
+
+  if (error) {
+    return { status: "ERROR", message: error.message };
+  }
+
+  return { status: "SUCCESS", message: "Plano SaaS e quotas da empresa alterados com sucesso." };
+}
+
+export async function alterarModeloEmpresaPlatformAction(
+  _prev: PlatformFormState,
+  formData: FormData,
+): Promise<PlatformFormState> {
+  if (!(await isPlatformSuperadmin())) {
+    return { status: "ERROR", message: "Acesso restrito ao Platform Superadmin." };
+  }
+
+  const empresaId = String(formData.get("empresa_id") ?? "").trim();
+  const novoModeloId = String(formData.get("novo_modelo_id") ?? "").trim();
+
+  if (!empresaId || !novoModeloId) {
+    return { status: "ERROR", message: "Empresa e Novo Modelo de Site são obrigatórios." };
+  }
+
+  const db = await createClient();
+  const { error } = await db.rpc("rpc_platform_alterar_modelo_empresa", {
+    p_empresa_id: empresaId,
+    p_novo_modelo_id: novoModeloId,
+  });
+
+  if (error) {
+    return { status: "ERROR", message: error.message };
+  }
+
+  return { status: "SUCCESS", message: "Modelo de site da franquia alterado com sucesso." };
+}
+
+export async function concederAdministradoraEmpresaPlatformAction(
+  _prev: PlatformFormState,
+  formData: FormData,
+): Promise<PlatformFormState> {
+  if (!(await isPlatformSuperadmin())) {
+    return { status: "ERROR", message: "Acesso restrito ao Platform Superadmin." };
+  }
+
+  const empresaId = String(formData.get("empresa_id") ?? "").trim();
+  const administradoraId = String(formData.get("administradora_id") ?? "").trim();
+
+  if (!empresaId || !administradoraId) {
+    return { status: "ERROR", message: "Empresa e Administradora são obrigatórias." };
+  }
+
+  const db = await createClient();
+  const { error } = await db.rpc("rpc_platform_conceder_administradora_empresa", {
+    p_empresa_id: empresaId,
+    p_administradora_id: administradoraId,
+  });
+
+  if (error) {
+    return { status: "ERROR", message: error.message };
+  }
+
+  return { status: "SUCCESS", message: "Administradora concedida com sucesso à Master Franquia." };
+}
+
+export async function revogarAdministradoraEmpresaPlatformAction(
+  _prev: PlatformFormState,
+  formData: FormData,
+): Promise<PlatformFormState> {
+  if (!(await isPlatformSuperadmin())) {
+    return { status: "ERROR", message: "Acesso restrito ao Platform Superadmin." };
+  }
+
+  const empresaId = String(formData.get("empresa_id") ?? "").trim();
+  const administradoraId = String(formData.get("administradora_id") ?? "").trim();
+  const status = String(formData.get("status") ?? "INATIVA").trim();
+
+  if (!empresaId || !administradoraId) {
+    return { status: "ERROR", message: "Empresa e Administradora são obrigatórias." };
+  }
+
+  const db = await createClient();
+  const { error } = await db.rpc("rpc_platform_revogar_administradora_empresa", {
+    p_empresa_id: empresaId,
+    p_administradora_id: administradoraId,
+    p_status: status,
+  });
+
+  if (error) {
+    return { status: "ERROR", message: error.message };
+  }
+
+  return { status: "SUCCESS", message: `Concessão da administradora alterada para ${status}.` };
+}
+
+export async function criarSiteParceiroEmpresaPlatformAction(
+  _prev: PlatformFormState,
+  formData: FormData,
+): Promise<PlatformFormState> {
+  if (!(await isPlatformSuperadmin())) {
+    return { status: "ERROR", message: "Acesso restrito ao Platform Superadmin." };
+  }
+
+  const empresaId = String(formData.get("empresa_id") ?? "").trim();
+  const orgId = String(formData.get("organizacao_parceira_id") ?? "").trim();
+  const slug = String(formData.get("slug") ?? "").trim();
+  const nomeSite = String(formData.get("nome_site") ?? "").trim();
+  const whatsapp = String(formData.get("whatsapp") ?? "").trim() || null;
+  const canal = String(formData.get("canal") ?? "SUBDOMINIO").trim();
+
+  if (!empresaId || !orgId || !slug || !nomeSite) {
+    return { status: "ERROR", message: "Empresa, Organização, Slug e Nome do Site são obrigatórios." };
+  }
+
+  const db = await createClient();
+  const { data, error } = await db.rpc("rpc_platform_criar_site_parceiro", {
+    p_empresa_id: empresaId,
+    p_organizacao_parceira_id: orgId,
+    p_slug: slug,
+    p_nome_site: nomeSite,
+    p_whatsapp: whatsapp,
+    p_canal: canal,
+  });
+
+  if (error) {
+    return { status: "ERROR", message: error.message };
+  }
+
+  return { status: "SUCCESS", message: "Site de parceiro criado com sucesso.", data };
+}
+
+
 
