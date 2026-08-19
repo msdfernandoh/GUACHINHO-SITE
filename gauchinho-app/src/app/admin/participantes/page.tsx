@@ -2,7 +2,6 @@ import { redirect } from "next/navigation";
 import { canAccessParticipantesAdmin, fetchParticipantesList } from "./actions";
 import { ParticipantesManagerView } from "@/components/admin/participantes/participantes-manager-view";
 import { getCurrentTenantContext } from "@/lib/tenant/context";
-import { getErpSistemaConfig, erpModuleEnabled } from "@/lib/erp/erp-modulos";
 
 export default async function ParticipantesAdminPage({
   searchParams,
@@ -19,17 +18,6 @@ export default async function ParticipantesAdminPage({
   });
 
   const { empresaAtiva } = await getCurrentTenantContext();
-  const config = getErpSistemaConfig(empresaAtiva?.configuracoes);
-  const modulosDisponiveis = [
-    "clientes",
-    "leads",
-    "propostas",
-    "contratacoes",
-    "lances",
-    "assembleias",
-    "minhas-comissoes",
-    "grupos",
-  ].filter((m) => erpModuleEnabled(config, m));
 
   return (
     <div className="space-y-6">
@@ -42,7 +30,6 @@ export default async function ParticipantesAdminPage({
         <ParticipantesManagerView
           empresaId={empresaId || empresaAtiva?.id || ""}
           initialRows={rows}
-          modulosDisponiveis={modulosDisponiveis}
         />
       )}
     </div>
