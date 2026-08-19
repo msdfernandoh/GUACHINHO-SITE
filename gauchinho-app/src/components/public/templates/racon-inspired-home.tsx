@@ -27,6 +27,15 @@ import {
   Layers,
 } from "lucide-react";
 
+export type ImagensBanners = {
+  hero_banner_url?: string;
+  card_veiculos_url?: string;
+  card_imoveis_url?: string;
+  card_patrimonio_url?: string;
+  banner_filiais_url?: string;
+  embaixador_stats_url?: string;
+};
+
 export type RaconTemplateIdentidade = {
   cor_primaria?: string;
   cor_secundaria?: string;
@@ -37,6 +46,7 @@ export type RaconTemplateIdentidade = {
   border_radius?: string;
   estilo_botoes?: string;
   estilo_cards?: string;
+  imagens_banners?: ImagensBanners;
 };
 
 export type RaconTemplateMenu = {
@@ -85,6 +95,16 @@ export function RaconInspiredHome({
   const bg = identidade.cor_fundo || "#ffffff";
   const text = identidade.cor_texto || "#0f172a";
   const borderRadius = identidade.border_radius || "16px";
+
+  // Imagens dinâmicas de banners e propaganda
+  const banners = identidade.imagens_banners || {};
+  const heroBannerImg = banners.hero_banner_url || "/racon/racon-rubinho-hero.png";
+  const cardVeiculoImg = banners.card_veiculos_url || "/racon/racon-card-veiculo.png";
+  const cardImovelImg = banners.card_imoveis_url || "/racon/racon-card-imovel.png";
+  const cardPatrimonioImg = banners.card_patrimonio_url || "/racon/racon-card-patrimonio.png";
+  const bannerFiliaisImg = banners.banner_filiais_url || "/racon/racon-rubinho-conquiste.png";
+  const embaixadorStatsImg = banners.embaixador_stats_url || "/racon/racon-rubinho-apontando.png";
+
 
   // Estado do Simulador Racon no Hero
   const [tipoObjetivo, setTipoObjetivo] = useState<"veiculo" | "casa" | "patrimonio">("casa");
@@ -240,8 +260,8 @@ export function RaconInspiredHome({
               {/* Imagem Real do Rubinho / Banner Racon */}
               <div className="absolute inset-0 bg-[#008fd5]">
                 <Image
-                  src="/racon/racon-rubinho-hero.png"
-                  alt="Rubinho Barrichello — Racon Consórcios"
+                  src={heroBannerImg}
+                  alt="Banner Principal — Embaixador / Garoto Propaganda"
                   fill
                   priority
                   className="object-cover object-left-top"
@@ -254,7 +274,7 @@ export function RaconInspiredHome({
               {/* Tipografia de Destaque no Rodapé do Banner */}
               <div className="relative p-6 sm:p-8 space-y-2 z-10">
                 <span className="inline-block rounded-full bg-white/20 px-3 py-1 text-[11px] font-black uppercase tracking-wider text-white backdrop-blur-md">
-                  Embaixador Oficial • Rubinho Barrichello
+                  Campanha Oficial • Realize suas Conquistas
                 </span>
                 <h1 className="text-4xl sm:text-6xl font-black italic tracking-tighter text-white drop-shadow-md">
                   CONQUISTE
@@ -264,6 +284,7 @@ export function RaconInspiredHome({
                 </p>
               </div>
             </div>
+
 
             {/* Lado Direito: SIMULADOR FLUTUANTE RACON */}
             <div className="lg:col-span-5">
@@ -402,7 +423,7 @@ export function RaconInspiredHome({
             {/* Card 1: Veículos */}
             <div className="group relative rounded-3xl overflow-hidden shadow-lg border border-slate-200 bg-slate-900 text-white min-h-[300px] flex flex-col justify-between p-6">
               <Image
-                src="/racon/racon-card-veiculo.png"
+                src={cardVeiculoImg}
                 alt="Dirija rumo à sua independência"
                 fill
                 className="object-cover group-hover:scale-105 transition-transform duration-500 opacity-80"
@@ -430,7 +451,7 @@ export function RaconInspiredHome({
             {/* Card 2: Imóveis */}
             <div className="group relative rounded-3xl overflow-hidden shadow-lg border border-slate-200 bg-slate-900 text-white min-h-[300px] flex flex-col justify-between p-6">
               <Image
-                src="/racon/racon-card-imovel.png"
+                src={cardImovelImg}
                 alt="Conquiste a casa própria"
                 fill
                 className="object-cover group-hover:scale-105 transition-transform duration-500 opacity-80"
@@ -458,7 +479,7 @@ export function RaconInspiredHome({
             {/* Card 3: Patrimônio */}
             <div className="group relative rounded-3xl overflow-hidden shadow-lg border border-slate-200 bg-slate-900 text-white min-h-[300px] flex flex-col justify-between p-6">
               <Image
-                src="/racon/racon-card-patrimonio.png"
+                src={cardPatrimonioImg}
                 alt="Amplie seu patrimônio"
                 fill
                 className="object-cover group-hover:scale-105 transition-transform duration-500 opacity-80"
@@ -598,8 +619,8 @@ export function RaconInspiredHome({
             {/* Banner Quadrado Rubinho Conquiste */}
             <div className="sm:col-span-5 relative h-56 w-full rounded-2xl overflow-hidden shadow-md">
               <Image
-                src="/racon/racon-rubinho-conquiste.png"
-                alt="Encontre a Racon Consórcios"
+                src={bannerFiliaisImg}
+                alt="Encontre as Unidades e Filiais"
                 fill
                 className="object-cover"
               />
@@ -678,13 +699,14 @@ export function RaconInspiredHome({
             <div className="lg:col-span-5 flex justify-center">
               <div className="relative h-72 w-72 sm:h-80 sm:w-80 rounded-full overflow-hidden border-4 border-[#00a3e0]/40 shadow-2xl bg-[#008fd5]">
                 <Image
-                  src="/racon/racon-rubinho-apontando.png"
-                  alt="Rubinho Barrichello aponta para você"
+                  src={embaixadorStatsImg}
+                  alt="Garoto Propaganda / Embaixador Oficial"
                   fill
                   className="object-cover object-top"
                 />
               </div>
             </div>
+
 
           </div>
         </div>

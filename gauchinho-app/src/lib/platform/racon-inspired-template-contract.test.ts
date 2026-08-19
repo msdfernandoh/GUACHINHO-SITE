@@ -59,4 +59,33 @@ describe("Template Racon Inspired — Estrutura e Governança Visual", () => {
     expect(autoIntegral).toBe(885.0);
     expect(autoReduzida).toBe(531.0);
   });
+
+  it("deve suportar personalização dinâmica de banners, embaixadores e logomarcas em modelos duplicados", () => {
+
+    const modeloDuplicado = {
+      nome: "Modelo Personalizado Franquia",
+      logo_padrao_url: "/media/gauchinho-logo.png",
+      identidade_visual: {
+        cor_primaria: "#0284c7",
+        cor_secundaria: "#0f172a",
+        cor_destaque: "#f59e0b",
+        cor_fundo: "#f8fafc",
+        cor_texto: "#1e293b",
+        imagens_banners: {
+          hero_banner_url: "/racon/racon-rubinho-hero.png",
+          card_veiculos_url: "/foto/Carros.png",
+          card_imoveis_url: "/foto/Casa.png",
+          card_patrimonio_url: "/foto/Caminhoes-e-Frota.png",
+          banner_filiais_url: "/racon/racon-rubinho-conquiste.png",
+          embaixador_stats_url: "/racon/racon-rubinho-apontando.png",
+        },
+      },
+    };
+
+    expect(modeloDuplicado.logo_padrao_url).toBe("/media/gauchinho-logo.png");
+    expect(modeloDuplicado.identidade_visual.imagens_banners.hero_banner_url).toBe("/racon/racon-rubinho-hero.png");
+    expect(modeloDuplicado.identidade_visual.imagens_banners.card_imoveis_url).toBe("/foto/Casa.png");
+    expect(modeloDuplicado.identidade_visual.imagens_banners.embaixador_stats_url).toBe("/racon/racon-rubinho-apontando.png");
+  });
 });
+

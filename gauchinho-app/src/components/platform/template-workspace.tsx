@@ -27,6 +27,15 @@ export type SecaoHomeItem = {
   habilitada: boolean;
 };
 
+export type ImagensBanners = {
+  hero_banner_url?: string;
+  card_veiculos_url?: string;
+  card_imoveis_url?: string;
+  card_patrimonio_url?: string;
+  banner_filiais_url?: string;
+  embaixador_stats_url?: string;
+};
+
 export type IdentidadeVisual = {
   cor_primaria: string;
   cor_secundaria: string;
@@ -37,6 +46,7 @@ export type IdentidadeVisual = {
   border_radius: string;
   estilo_botoes: string;
   estilo_cards: string;
+  imagens_banners?: ImagensBanners;
 };
 
 export type TemplateDetail = {
@@ -68,7 +78,7 @@ export type TemplateDetail = {
 const initial: PlatformFormState = { status: "IDLE", message: "" };
 
 const RACON_PRESET_IDENTIDADE: IdentidadeVisual = {
-  cor_primaria: "#0066cc",
+  cor_primaria: "#0099dd",
   cor_secundaria: "#0c2340",
   cor_destaque: "#ffb800",
   cor_fundo: "#ffffff",
@@ -77,8 +87,35 @@ const RACON_PRESET_IDENTIDADE: IdentidadeVisual = {
   border_radius: "16px",
   estilo_botoes: "rounded-full",
   estilo_cards: "rounded-2xl shadow-lg border border-slate-100",
+  imagens_banners: {
+    hero_banner_url: "/racon/racon-rubinho-hero.png",
+    card_veiculos_url: "/racon/racon-card-veiculo.png",
+    card_imoveis_url: "/racon/racon-card-imovel.png",
+    card_patrimonio_url: "/racon/racon-card-patrimonio.png",
+    banner_filiais_url: "/racon/racon-rubinho-conquiste.png",
+    embaixador_stats_url: "/racon/racon-rubinho-apontando.png",
+  },
 };
 
+const GAUCHINHO_PRESET_IDENTIDADE: IdentidadeVisual = {
+  cor_primaria: "#0284c7",
+  cor_secundaria: "#0f172a",
+  cor_destaque: "#f59e0b",
+  cor_fundo: "#f8fafc",
+  cor_texto: "#1e293b",
+  fonte_familia: "Inter, system-ui, sans-serif",
+  border_radius: "16px",
+  estilo_botoes: "rounded-full",
+  estilo_cards: "rounded-2xl shadow-md border border-slate-100",
+  imagens_banners: {
+    hero_banner_url: "/media/gauchinho-campanha.jpeg",
+    card_veiculos_url: "/foto/Carros.png",
+    card_imoveis_url: "/foto/Casa.png",
+    card_patrimonio_url: "/foto/Caminhoes-e-Frota.png",
+    banner_filiais_url: "/media/gauchinho-logo.png",
+    embaixador_stats_url: "/media/gauchinho-logo.png",
+  },
+};
 
 export function TemplateWorkspace({
   template,
@@ -90,8 +127,9 @@ export function TemplateWorkspace({
   historico?: { id: string; acao: string; created_at: string; campos_alterados: unknown }[];
 }) {
   const [tab, setTab] = useState<
-    "geral" | "identidade" | "menus" | "secoes" | "footer" | "codigo" | "preview" | "historico"
+    "geral" | "identidade" | "banners" | "menus" | "secoes" | "footer" | "codigo" | "preview" | "historico"
   >("geral");
+
 
   const [stateSave, actionSave, isPendingSave] = useActionState(salvarModeloSitePlatformAction, initial);
   const [stateStatus, actionStatus, isPendingStatus] = useActionState(statusModeloSitePlatformAction, initial);
@@ -286,14 +324,15 @@ export function TemplateWorkspace({
       {/* Navegação de Abas */}
       <div className="flex flex-wrap gap-2 border-b border-slate-200 pb-2 dark:border-slate-800">
         {[
-          ["geral", "1. Geral"],
-          ["identidade", "2. Identidade Visual"],
-          ["menus", "3. Header & Menus"],
-          ["secoes", "4. Home & Seções"],
-          ["footer", "5. Footer"],
-          ["codigo", "6. HTML Avançado (Seguro)"],
-          ["preview", "7. Preview Dinâmico"],
-          ["historico", "8. Histórico"],
+          ["geral", "1. Geral & Logomarca"],
+          ["identidade", "2. Cores & Tipografia"],
+          ["banners", "3. Banners & Propaganda"],
+          ["menus", "4. Header & Menus"],
+          ["secoes", "5. Home & Seções"],
+          ["footer", "6. Footer"],
+          ["codigo", "7. HTML Avançado (Seguro)"],
+          ["preview", "8. Preview Dinâmico"],
+          ["historico", "9. Histórico"],
         ].map(([key, label]) => (
           <button
             key={key}
@@ -331,10 +370,10 @@ export function TemplateWorkspace({
         <input type="hidden" name="html_customizado" value={htmlCustom} />
         <input type="hidden" name="css_customizado" value={cssCustom} />
 
-        {/* ABA 1: GERAL */}
+        {/* ABA 1: GERAL & LOGOMARCA */}
         {tab === "geral" && (
           <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900 space-y-4">
-            <h2 className="text-base font-bold text-slate-900 dark:text-white">Dados Gerais do Modelo</h2>
+            <h2 className="text-base font-bold text-slate-900 dark:text-white">Dados Gerais e Logomarca do Modelo</h2>
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
                 <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Nome do Modelo:</label>
@@ -377,14 +416,52 @@ export function TemplateWorkspace({
                 </select>
               </div>
 
-              <div>
+              <div className="space-y-2">
                 <label className="text-xs font-bold text-slate-700 dark:text-slate-300">URL do Logo Padrão do Modelo:</label>
                 <input
                   value={logoPadraoUrl}
                   onChange={(e) => setLogoPadraoUrl(e.target.value)}
-                  placeholder="https://exemplo.com/logo.svg"
-                  className="mt-1 w-full rounded-lg border border-slate-300 p-2.5 text-xs dark:border-slate-700 dark:bg-slate-800"
+                  placeholder="Ex: /media/gauchinho-logo.png ou URL externa"
+                  className="w-full rounded-lg border border-slate-300 p-2.5 text-xs dark:border-slate-700 dark:bg-slate-800"
                 />
+                <div className="flex flex-wrap gap-1.5 pt-1">
+                  <span className="text-[10px] font-bold text-slate-500">Presets:</span>
+                  <button
+                    type="button"
+                    onClick={() => setLogoPadraoUrl("/media/gauchinho-logo.png")}
+                    className="rounded bg-slate-100 px-2 py-0.5 text-[10px] font-bold hover:bg-slate-200 dark:bg-slate-800"
+                  >
+                    Gauchinho Logo
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setLogoPadraoUrl("/media/gauchinho-sem-fundo.svg")}
+                    className="rounded bg-slate-100 px-2 py-0.5 text-[10px] font-bold hover:bg-slate-200 dark:bg-slate-800"
+                  >
+                    Sem Fundo SVG
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setLogoPadraoUrl("")}
+                    className="rounded bg-slate-100 px-2 py-0.5 text-[10px] font-bold hover:bg-slate-200 dark:bg-slate-800"
+                  >
+                    Logo Racon (Tipográfico)
+                  </button>
+                </div>
+              </div>
+
+              {/* Preview do Logo */}
+              <div className="sm:col-span-2 rounded-xl border border-slate-100 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950 flex items-center gap-4">
+                <span className="text-xs font-bold text-slate-600 dark:text-slate-400">Pré-visualização do Logo:</span>
+                {logoPadraoUrl ? (
+                  <div className="relative h-12 w-48 rounded bg-white p-1 border shadow-xs">
+                    <img src={logoPadraoUrl} alt="Preview Logo" className="h-full w-full object-contain" />
+                  </div>
+                ) : (
+                  <span className="text-xs font-semibold text-slate-400 italic">
+                    Nenhum arquivo de imagem informado (será renderizado o logotipo tipográfico dinâmico com o nome da empresa).
+                  </span>
+                )}
               </div>
             </div>
           </section>
@@ -395,21 +472,30 @@ export function TemplateWorkspace({
           <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900 space-y-6">
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-4 dark:border-slate-800">
               <div>
-                <h2 className="text-base font-bold text-slate-900 dark:text-white">Tema, Cores e Tipografia</h2>
-                <p className="text-xs text-slate-500">Defina os tokens visuais que estruturam o design deste Modelo.</p>
+                <h2 className="text-base font-bold text-slate-900 dark:text-white">Cores Padrão e Tipografia</h2>
+                <p className="text-xs text-slate-500">Altere as cores padrão deste modelo ou carregue presets prontos.</p>
               </div>
-              <button
-                type="button"
-                onClick={() => setIdentidade(RACON_PRESET_IDENTIDADE)}
-                className="rounded-lg border border-cyan-300 bg-cyan-50 px-3 py-1.5 text-xs font-bold text-cyan-800 hover:bg-cyan-100 dark:border-cyan-800 dark:bg-cyan-950 dark:text-cyan-300"
-              >
-                ⚡ Carregar Preset "Racon Inspired"
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIdentidade({ ...identidade, ...RACON_PRESET_IDENTIDADE })}
+                  className="rounded-lg border border-sky-300 bg-sky-50 px-3 py-1.5 text-xs font-bold text-sky-800 hover:bg-sky-100 dark:border-sky-800 dark:bg-sky-950 dark:text-sky-300"
+                >
+                  ⚡ Preset "Racon Inspired"
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIdentidade({ ...identidade, ...GAUCHINHO_PRESET_IDENTIDADE })}
+                  className="rounded-lg border border-cyan-300 bg-cyan-50 px-3 py-1.5 text-xs font-bold text-cyan-800 hover:bg-cyan-100 dark:border-cyan-800 dark:bg-cyan-950 dark:text-cyan-300"
+                >
+                  ⚡ Preset "Gauchinho Default"
+                </button>
+              </div>
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               <div>
-                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Cor Primária (Azul Principal):</label>
+                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Cor Primária (Principal):</label>
                 <div className="mt-1 flex items-center gap-2">
                   <input
                     type="color"
@@ -426,7 +512,7 @@ export function TemplateWorkspace({
               </div>
 
               <div>
-                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Cor Secundária (Azul Escuro):</label>
+                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Cor Secundária (Navy/Escuro):</label>
                 <div className="mt-1 flex items-center gap-2">
                   <input
                     type="color"
@@ -532,8 +618,433 @@ export function TemplateWorkspace({
           </section>
         )}
 
-        {/* ABA 3: HEADER & MENUS */}
+        {/* ABA 3: BANNERS & PROPAGANDA */}
+        {tab === "banners" && (
+          <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900 space-y-6">
+            <div className="border-b border-slate-100 pb-4 dark:border-slate-800">
+              <h2 className="text-base font-bold text-slate-900 dark:text-white">Banners e Imagens Publicitárias</h2>
+              <p className="text-xs text-slate-500">
+                Personalize ou troque as imagens dos banners, garoto-propaganda/embaixador e cards comerciais.
+              </p>
+            </div>
+
+            <div className="grid gap-6 sm:grid-cols-2">
+              {/* 1. Hero Principal */}
+              <div className="rounded-xl border border-slate-200 p-4 space-y-3 bg-slate-50/50 dark:border-slate-800 dark:bg-slate-800/40">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-bold text-slate-900 dark:text-white">1. Banner Hero Principal (Com Garoto Propaganda)</h4>
+                </div>
+                <input
+                  value={identidade.imagens_banners?.hero_banner_url || ""}
+                  placeholder="/racon/racon-rubinho-hero.png"
+                  onChange={(e) =>
+                    setIdentidade({
+                      ...identidade,
+                      imagens_banners: {
+                        ...identidade.imagens_banners,
+                        hero_banner_url: e.target.value,
+                      },
+                    })
+                  }
+                  className="w-full rounded-lg border border-slate-300 p-2 text-xs dark:border-slate-700 dark:bg-slate-800"
+                />
+                <div className="flex flex-wrap gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setIdentidade({
+                        ...identidade,
+                        imagens_banners: {
+                          ...identidade.imagens_banners,
+                          hero_banner_url: "/racon/racon-rubinho-hero.png",
+                        },
+                      })
+                    }
+                    className="rounded bg-white px-2 py-0.5 text-[10px] font-bold border shadow-2xs hover:bg-slate-50 dark:bg-slate-900"
+                  >
+                    Rubinho Conquiste
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setIdentidade({
+                        ...identidade,
+                        imagens_banners: {
+                          ...identidade.imagens_banners,
+                          hero_banner_url: "/media/gauchinho-campanha.jpeg",
+                        },
+                      })
+                    }
+                    className="rounded bg-white px-2 py-0.5 text-[10px] font-bold border shadow-2xs hover:bg-slate-50 dark:bg-slate-900"
+                  >
+                    Gauchinho Campanha
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setIdentidade({
+                        ...identidade,
+                        imagens_banners: {
+                          ...identidade.imagens_banners,
+                          hero_banner_url: "/foto/Casa.png",
+                        },
+                      })
+                    }
+                    className="rounded bg-white px-2 py-0.5 text-[10px] font-bold border shadow-2xs hover:bg-slate-50 dark:bg-slate-900"
+                  >
+                    Casa de Luxo
+                  </button>
+                </div>
+                <div className="relative h-24 w-full rounded-lg overflow-hidden border bg-slate-200 dark:bg-slate-900">
+                  <img
+                    src={identidade.imagens_banners?.hero_banner_url || "/racon/racon-rubinho-hero.png"}
+                    alt="Preview Hero"
+                    className="h-full w-full object-cover"
+                  />
+                </div>
+              </div>
+
+              {/* 2. Card Veículos */}
+              <div className="rounded-xl border border-slate-200 p-4 space-y-3 bg-slate-50/50 dark:border-slate-800 dark:bg-slate-800/40">
+                <h4 className="text-xs font-bold text-slate-900 dark:text-white">2. Card de Veículos</h4>
+                <input
+                  value={identidade.imagens_banners?.card_veiculos_url || ""}
+                  placeholder="/racon/racon-card-veiculo.png"
+                  onChange={(e) =>
+                    setIdentidade({
+                      ...identidade,
+                      imagens_banners: {
+                        ...identidade.imagens_banners,
+                        card_veiculos_url: e.target.value,
+                      },
+                    })
+                  }
+                  className="w-full rounded-lg border border-slate-300 p-2 text-xs dark:border-slate-700 dark:bg-slate-800"
+                />
+                <div className="flex flex-wrap gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setIdentidade({
+                        ...identidade,
+                        imagens_banners: {
+                          ...identidade.imagens_banners,
+                          card_veiculos_url: "/racon/racon-card-veiculo.png",
+                        },
+                      })
+                    }
+                    className="rounded bg-white px-2 py-0.5 text-[10px] font-bold border shadow-2xs hover:bg-slate-50 dark:bg-slate-900"
+                  >
+                    Racon Motorista
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setIdentidade({
+                        ...identidade,
+                        imagens_banners: {
+                          ...identidade.imagens_banners,
+                          card_veiculos_url: "/foto/Carros.png",
+                        },
+                      })
+                    }
+                    className="rounded bg-white px-2 py-0.5 text-[10px] font-bold border shadow-2xs hover:bg-slate-50 dark:bg-slate-900"
+                  >
+                    Foto Carros Novos
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setIdentidade({
+                        ...identidade,
+                        imagens_banners: {
+                          ...identidade.imagens_banners,
+                          card_veiculos_url: "/foto/caminhonetes.png",
+                        },
+                      })
+                    }
+                    className="rounded bg-white px-2 py-0.5 text-[10px] font-bold border shadow-2xs hover:bg-slate-50 dark:bg-slate-900"
+                  >
+                    Caminhonetes
+                  </button>
+                </div>
+                <div className="relative h-24 w-full rounded-lg overflow-hidden border bg-slate-200 dark:bg-slate-900">
+                  <img
+                    src={identidade.imagens_banners?.card_veiculos_url || "/racon/racon-card-veiculo.png"}
+                    alt="Preview Veículo"
+                    className="h-full w-full object-cover"
+                  />
+                </div>
+              </div>
+
+              {/* 3. Card Imóveis */}
+              <div className="rounded-xl border border-slate-200 p-4 space-y-3 bg-slate-50/50 dark:border-slate-800 dark:bg-slate-800/40">
+                <h4 className="text-xs font-bold text-slate-900 dark:text-white">3. Card de Imóveis (Casa Própria)</h4>
+                <input
+                  value={identidade.imagens_banners?.card_imoveis_url || ""}
+                  placeholder="/racon/racon-card-imovel.png"
+                  onChange={(e) =>
+                    setIdentidade({
+                      ...identidade,
+                      imagens_banners: {
+                        ...identidade.imagens_banners,
+                        card_imoveis_url: e.target.value,
+                      },
+                    })
+                  }
+                  className="w-full rounded-lg border border-slate-300 p-2 text-xs dark:border-slate-700 dark:bg-slate-800"
+                />
+                <div className="flex flex-wrap gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setIdentidade({
+                        ...identidade,
+                        imagens_banners: {
+                          ...identidade.imagens_banners,
+                          card_imoveis_url: "/racon/racon-card-imovel.png",
+                        },
+                      })
+                    }
+                    className="rounded bg-white px-2 py-0.5 text-[10px] font-bold border shadow-2xs hover:bg-slate-50 dark:bg-slate-900"
+                  >
+                    Racon Família
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setIdentidade({
+                        ...identidade,
+                        imagens_banners: {
+                          ...identidade.imagens_banners,
+                          card_imoveis_url: "/foto/Casa.png",
+                        },
+                      })
+                    }
+                    className="rounded bg-white px-2 py-0.5 text-[10px] font-bold border shadow-2xs hover:bg-slate-50 dark:bg-slate-900"
+                  >
+                    Foto Casa
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setIdentidade({
+                        ...identidade,
+                        imagens_banners: {
+                          ...identidade.imagens_banners,
+                          card_imoveis_url: "/foto/apartamento.jpg",
+                        },
+                      })
+                    }
+                    className="rounded bg-white px-2 py-0.5 text-[10px] font-bold border shadow-2xs hover:bg-slate-50 dark:bg-slate-900"
+                  >
+                    Apartamento
+                  </button>
+                </div>
+                <div className="relative h-24 w-full rounded-lg overflow-hidden border bg-slate-200 dark:bg-slate-900">
+                  <img
+                    src={identidade.imagens_banners?.card_imoveis_url || "/racon/racon-card-imovel.png"}
+                    alt="Preview Imóveis"
+                    className="h-full w-full object-cover"
+                  />
+                </div>
+              </div>
+
+              {/* 4. Card Patrimônio / Pesados */}
+              <div className="rounded-xl border border-slate-200 p-4 space-y-3 bg-slate-50/50 dark:border-slate-800 dark:bg-slate-800/40">
+                <h4 className="text-xs font-bold text-slate-900 dark:text-white">4. Card Patrimônio / Pesados / Agro</h4>
+                <input
+                  value={identidade.imagens_banners?.card_patrimonio_url || ""}
+                  placeholder="/racon/racon-card-patrimonio.png"
+                  onChange={(e) =>
+                    setIdentidade({
+                      ...identidade,
+                      imagens_banners: {
+                        ...identidade.imagens_banners,
+                        card_patrimonio_url: e.target.value,
+                      },
+                    })
+                  }
+                  className="w-full rounded-lg border border-slate-300 p-2 text-xs dark:border-slate-700 dark:bg-slate-800"
+                />
+                <div className="flex flex-wrap gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setIdentidade({
+                        ...identidade,
+                        imagens_banners: {
+                          ...identidade.imagens_banners,
+                          card_patrimonio_url: "/racon/racon-card-patrimonio.png",
+                        },
+                      })
+                    }
+                    className="rounded bg-white px-2 py-0.5 text-[10px] font-bold border shadow-2xs hover:bg-slate-50 dark:bg-slate-900"
+                  >
+                    Racon Investimento
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setIdentidade({
+                        ...identidade,
+                        imagens_banners: {
+                          ...identidade.imagens_banners,
+                          card_patrimonio_url: "/foto/Caminhoes-e-Frota.png",
+                        },
+                      })
+                    }
+                    className="rounded bg-white px-2 py-0.5 text-[10px] font-bold border shadow-2xs hover:bg-slate-50 dark:bg-slate-900"
+                  >
+                    Caminhões & Frotas
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setIdentidade({
+                        ...identidade,
+                        imagens_banners: {
+                          ...identidade.imagens_banners,
+                          card_patrimonio_url: "/foto/Maquinas-Agricolas.png",
+                        },
+                      })
+                    }
+                    className="rounded bg-white px-2 py-0.5 text-[10px] font-bold border shadow-2xs hover:bg-slate-50 dark:bg-slate-900"
+                  >
+                    Máquinas Agro
+                  </button>
+                </div>
+                <div className="relative h-24 w-full rounded-lg overflow-hidden border bg-slate-200 dark:bg-slate-900">
+                  <img
+                    src={identidade.imagens_banners?.card_patrimonio_url || "/racon/racon-card-patrimonio.png"}
+                    alt="Preview Patrimônio"
+                    className="h-full w-full object-cover"
+                  />
+                </div>
+              </div>
+
+              {/* 5. Banner Filiais / Unidades */}
+              <div className="rounded-xl border border-slate-200 p-4 space-y-3 bg-slate-50/50 dark:border-slate-800 dark:bg-slate-800/40">
+                <h4 className="text-xs font-bold text-slate-900 dark:text-white">5. Banner de Filiais / Unidades</h4>
+                <input
+                  value={identidade.imagens_banners?.banner_filiais_url || ""}
+                  placeholder="/racon/racon-rubinho-conquiste.png"
+                  onChange={(e) =>
+                    setIdentidade({
+                      ...identidade,
+                      imagens_banners: {
+                        ...identidade.imagens_banners,
+                        banner_filiais_url: e.target.value,
+                      },
+                    })
+                  }
+                  className="w-full rounded-lg border border-slate-300 p-2 text-xs dark:border-slate-700 dark:bg-slate-800"
+                />
+                <div className="flex flex-wrap gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setIdentidade({
+                        ...identidade,
+                        imagens_banners: {
+                          ...identidade.imagens_banners,
+                          banner_filiais_url: "/racon/racon-rubinho-conquiste.png",
+                        },
+                      })
+                    }
+                    className="rounded bg-white px-2 py-0.5 text-[10px] font-bold border shadow-2xs hover:bg-slate-50 dark:bg-slate-900"
+                  >
+                    Rubinho Fachada Racon
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setIdentidade({
+                        ...identidade,
+                        imagens_banners: {
+                          ...identidade.imagens_banners,
+                          banner_filiais_url: "/media/gauchinho-logo.png",
+                        },
+                      })
+                    }
+                    className="rounded bg-white px-2 py-0.5 text-[10px] font-bold border shadow-2xs hover:bg-slate-50 dark:bg-slate-900"
+                  >
+                    Logo Institucional
+                  </button>
+                </div>
+                <div className="relative h-24 w-full rounded-lg overflow-hidden border bg-slate-200 dark:bg-slate-900">
+                  <img
+                    src={identidade.imagens_banners?.banner_filiais_url || "/racon/racon-rubinho-conquiste.png"}
+                    alt="Preview Filiais"
+                    className="h-full w-full object-cover"
+                  />
+                </div>
+              </div>
+
+              {/* 6. Embaixador na Seção de Credibilidade */}
+              <div className="rounded-xl border border-slate-200 p-4 space-y-3 bg-slate-50/50 dark:border-slate-800 dark:bg-slate-800/40">
+                <h4 className="text-xs font-bold text-slate-900 dark:text-white">6. Foto do Garoto Propaganda (Estatísticas)</h4>
+                <input
+                  value={identidade.imagens_banners?.embaixador_stats_url || ""}
+                  placeholder="/racon/racon-rubinho-apontando.png"
+                  onChange={(e) =>
+                    setIdentidade({
+                      ...identidade,
+                      imagens_banners: {
+                        ...identidade.imagens_banners,
+                        embaixador_stats_url: e.target.value,
+                      },
+                    })
+                  }
+                  className="w-full rounded-lg border border-slate-300 p-2 text-xs dark:border-slate-700 dark:bg-slate-800"
+                />
+                <div className="flex flex-wrap gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setIdentidade({
+                        ...identidade,
+                        imagens_banners: {
+                          ...identidade.imagens_banners,
+                          embaixador_stats_url: "/racon/racon-rubinho-apontando.png",
+                        },
+                      })
+                    }
+                    className="rounded bg-white px-2 py-0.5 text-[10px] font-bold border shadow-2xs hover:bg-slate-50 dark:bg-slate-900"
+                  >
+                    Rubinho Apontando
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setIdentidade({
+                        ...identidade,
+                        imagens_banners: {
+                          ...identidade.imagens_banners,
+                          embaixador_stats_url: "/media/gauchinho-logo.png",
+                        },
+                      })
+                    }
+                    className="rounded bg-white px-2 py-0.5 text-[10px] font-bold border shadow-2xs hover:bg-slate-50 dark:bg-slate-900"
+                  >
+                    Mascote Gaúchinho
+                  </button>
+                </div>
+                <div className="relative h-24 w-full rounded-lg overflow-hidden border bg-slate-200 dark:bg-slate-900 flex justify-center">
+                  <img
+                    src={identidade.imagens_banners?.embaixador_stats_url || "/racon/racon-rubinho-apontando.png"}
+                    alt="Preview Embaixador"
+                    className="h-full object-contain"
+                  />
+                </div>
+              </div>
+            </div>
+          </section>
+        )}
+
+        {/* ABA 4: HEADER & MENUS */}
         {tab === "menus" && (
+
           <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900 space-y-4">
             <div>
               <h2 className="text-base font-bold text-slate-900 dark:text-white">Catálogo de Áreas e Menus Disponíveis</h2>
