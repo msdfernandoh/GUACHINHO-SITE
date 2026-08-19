@@ -52,6 +52,7 @@ function readPropostaPayload(formData: FormData, existingPdfUrl?: string | null)
 
   return {
     lead_id: String(formData.get("lead_id") ?? "").trim() || null,
+    cliente_id: String(formData.get("cliente_id") ?? "").trim() || null,
     nome_cliente: String(formData.get("nome_cliente") ?? "").trim(),
     whatsapp_cliente: String(formData.get("whatsapp_cliente") ?? "").trim() || null,
     email_cliente: String(formData.get("email_cliente") ?? "").trim() || null,

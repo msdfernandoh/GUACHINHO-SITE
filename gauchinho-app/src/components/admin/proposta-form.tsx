@@ -8,6 +8,7 @@ export function PropostaForm({ initial }: { initial?: Record<string, unknown> })
   return (
     <form action={savePropostaAction} className="space-y-4 rounded-xl border bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900">
       {initial?.id ? <input type="hidden" name="id" value={String(initial.id)} /> : null}
+      {initial?.cliente_id ? <input type="hidden" name="cliente_id" value={String(initial.cliente_id)} /> : null}
       <div>
         <Label>Lead ID (opcional)</Label>
         <Input name="lead_id" defaultValue={String(initial?.lead_id ?? "")} />
