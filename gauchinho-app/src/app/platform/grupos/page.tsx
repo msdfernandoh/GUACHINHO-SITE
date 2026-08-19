@@ -53,12 +53,20 @@ export default async function PlatformGruposListingPage({
             Grupos oficiais das Administradoras com produtos de crédito, modalidades de pagamento, assembleias e vagas.
           </p>
         </div>
-        <Link
-          href="/platform/grupos/novo"
-          className="rounded-lg bg-cyan-700 px-4 py-2 text-sm font-bold text-white shadow hover:bg-cyan-800"
-        >
-          + Novo Grupo Global
-        </Link>
+        <div className="flex items-center gap-3">
+          <Link
+            href="/platform/grupos/vinculacoes"
+            className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-bold text-slate-700 shadow-sm hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+          >
+            🔗 Vinculações Legadas
+          </Link>
+          <Link
+            href="/platform/grupos/novo"
+            className="rounded-lg bg-cyan-700 px-4 py-2 text-sm font-bold text-white shadow hover:bg-cyan-800"
+          >
+            + Novo Grupo Global
+          </Link>
+        </div>
       </div>
 
       {/* Filtros */}
