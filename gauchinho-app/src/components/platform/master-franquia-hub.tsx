@@ -644,6 +644,42 @@ export function MasterFranquiaHub({
               </div>
             </div>
           </div>
+
+          {/* Card Overrides & Exceções Ativas */}
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900 space-y-3 text-xs md:col-span-2">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                  Overrides & Exceções Ativas ({overrides.length})
+                </h3>
+                <p className="text-slate-500">Concessões comerciais e limites específicos aplicados a esta Master Franquia.</p>
+              </div>
+              <Link
+                href="/platform/overrides"
+                className="rounded-lg bg-cyan-700 px-3.5 py-1.5 font-bold text-white shadow hover:bg-cyan-800 transition-colors"
+              >
+                Gerenciar Overrides →
+              </Link>
+            </div>
+            {overrides.length === 0 ? (
+              <p className="text-slate-400 font-medium">Nenhum override de exceção ativo para esta empresa (seguindo padrão do plano).</p>
+            ) : (
+              <div className="flex flex-wrap gap-2 pt-1">
+                {overrides.map((o) => (
+                  <span
+                    key={o.id}
+                    className={`rounded-lg px-2.5 py-1 text-xs font-mono font-bold ${
+                      o.efeito === "LIBERAR"
+                        ? "bg-emerald-50 text-emerald-800 border border-emerald-200 dark:bg-emerald-950 dark:text-emerald-300"
+                        : "bg-rose-50 text-rose-800 border border-rose-200 dark:bg-rose-950 dark:text-rose-300"
+                    }`}
+                  >
+                    {o.efeito === "LIBERAR" ? "✓" : "✕"} {o.recurso_codigo} ({o.motivo})
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       )}
 
