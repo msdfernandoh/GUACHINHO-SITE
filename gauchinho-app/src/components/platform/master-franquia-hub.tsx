@@ -106,6 +106,10 @@ export type UsuarioHubItem = {
   id: string;
   usuario_id: string;
   ativo: boolean;
+  is_responsavel_principal?: boolean;
+  status?: string;
+  erp_modulos_visiveis?: string[];
+  convite_enviado_em?: string | null;
   created_at: string;
   usuario: {
     id: string;
@@ -873,6 +877,12 @@ export function MasterFranquiaHub({
               </h3>
               <p className="text-slate-500">Equipe autorizada a acessar o painel operacional e ERP desta empresa.</p>
             </div>
+            <Link
+              href="/platform/usuarios"
+              className="rounded-lg bg-cyan-700 px-3.5 py-1.5 font-bold text-white shadow hover:bg-cyan-800 transition-colors"
+            >
+              + Gerenciar em Usuários Globais
+            </Link>
           </div>
 
           <div className="overflow-x-auto">
@@ -883,6 +893,8 @@ export function MasterFranquiaHub({
                   <th className="p-3">E-mail</th>
                   <th className="p-3">Papel</th>
                   <th className="p-3 text-center">Status</th>
+                  <th className="p-3 text-center">Responsável</th>
+                  <th className="p-3">Módulos Efetivos</th>
                   <th className="p-3">Último Acesso</th>
                 </tr>
               </thead>
@@ -894,14 +906,41 @@ export function MasterFranquiaHub({
                     <td className="p-3 font-semibold text-cyan-700 dark:text-cyan-400">{u.papel?.nome || "Consultor"}</td>
                     <td className="p-3 text-center">
                       <span
-                        className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
-                          u.ativo
+                        className={`rounded-full px-2.5 py-0.5 text-[10px] font-extrabold uppercase ${
+                          (u.status || (u.ativo ? "ATIVO" : "INATIVO")) === "ATIVO"
                             ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
-                            : "bg-slate-200 text-slate-600 dark:bg-slate-700"
+                            : (u.status || "") === "CONVIDADO"
+                            ? "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300"
+                            : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400"
                         }`}
                       >
-                        {u.ativo ? "ATIVO" : "INATIVO"}
+                        {u.status || (u.ativo ? "ATIVO" : "INATIVO")}
                       </span>
+                    </td>
+                    <td className="p-3 text-center">
+                      {u.is_responsavel_principal ? (
+                        <span className="rounded-full bg-cyan-100 px-2 py-0.5 text-[10px] font-black text-cyan-800 dark:bg-cyan-950 dark:text-cyan-300">
+                          ⭐ Principal
+                        </span>
+                      ) : (
+                        <span className="text-slate-400">—</span>
+                      )}
+                    </td>
+                    <td className="p-3">
+                      {u.erp_modulos_visiveis && u.erp_modulos_visiveis.length > 0 ? (
+                        <div className="flex flex-wrap gap-1 max-w-xs">
+                          {u.erp_modulos_visiveis.map((m) => (
+                            <span
+                              key={m}
+                              className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-mono text-slate-700 dark:bg-slate-800 dark:text-slate-300"
+                            >
+                              {m}
+                            </span>
+                          ))}
+                        </div>
+                      ) : (
+                        <span className="text-slate-400">Todos do Plano</span>
+                      )}
                     </td>
                     <td className="p-3 text-slate-400">
                       {u.usuario?.ultimo_acesso ? new Date(u.usuario.ultimo_acesso).toLocaleDateString("pt-BR") : "Nunca"}

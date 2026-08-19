@@ -63,7 +63,7 @@ export default async function MasterFranquiaDetailPage({
       .eq("empresa_id", id),
     db
       .from("empresa_usuarios")
-      .select("id, usuario_id, ativo, created_at, usuario:usuarios(id, nome, email, status, ultimo_acesso), papel:papeis(id, nome)")
+      .select("id, usuario_id, ativo, is_responsavel_principal, status, erp_modulos_visiveis, convite_enviado_em, created_at, usuario:usuarios(id, nome, email, status, ultimo_acesso), papel:papeis(id, nome)")
       .eq("empresa_id", id),
     db
       .from("organizacoes_parceiras")
@@ -173,6 +173,10 @@ export default async function MasterFranquiaDetailPage({
     id: u.id,
     usuario_id: u.usuario_id,
     ativo: u.ativo,
+    is_responsavel_principal: Boolean(u.is_responsavel_principal),
+    status: u.status || (u.ativo ? "ATIVO" : "INATIVO"),
+    erp_modulos_visiveis: Array.isArray(u.erp_modulos_visiveis) ? (u.erp_modulos_visiveis as string[]) : [],
+    convite_enviado_em: u.convite_enviado_em,
     created_at: u.created_at,
     usuario: (Array.isArray(u.usuario) ? u.usuario[0] : u.usuario) as unknown as UsuarioHubItem["usuario"],
     papel: (Array.isArray(u.papel) ? u.papel[0] : u.papel) as unknown as UsuarioHubItem["papel"],

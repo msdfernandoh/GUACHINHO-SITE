@@ -343,10 +343,19 @@ A plataforma suporta:
   - Concessão/revogação de administradoras e criação de sites de parceiros respeitando quotas da franquia.
   - Relatório: `docs/relatorios-fases/fase-093-platform-master-franquias-hub.md`.
 
-* O estado funcional do Supabase Production inclui migrations `001–093`.
+* Platform Governança Global de Usuários e Responsáveis (Migration 094):
+  - Central de governança em `/platform/usuarios` com filtros por status, papel, franquia e convite pendente.
+  - Fluxo de convite seguro (`+ Novo Usuário / Convidar`) com validação estrita de quotas no backend e bloqueio por limite atingido (`rpc_platform_convidar_usuario`).
+  - Resolução hierárquica estrita de módulos (`Catálogo Global → Plano → Overrides → Vínculo → Efetivo`), impedindo concessão de módulos bloqueados para a Master Franquia.
+  - Marcação de Responsável Principal único por Master Franquia com índice parcial único e transferência auditada (`rpc_platform_definir_responsavel_empresa`).
+  - Reenvio de convite seguro sem criação de senha manual e integração total com a aba de usuários do HUB de franquias.
+  - Relatório: `docs/relatorios-fases/fase-094-platform-usuarios-governanca.md`.
+
+* O estado funcional do Supabase Production inclui migrations `001–094`.
 * `admin.gauchinhoconsorcios.com.br` está ativo, verificado e associado ao deployment Production da `main`; ele não é tenant e não possui fallback para Gauchinho.
-* As migrations `070–093` estão versionadas e aplicadas em Produção; correções futuras permanecem obrigatoriamente forward-only.
-* Evidências consolidadas: `docs/relatorios-fases/PLATFORM-GRUPOS-CATALOGO-085.md`, `docs/relatorios-fases/PLATFORM-GRUPOS-TEMPORAL-HERANCA-086.md`, `docs/relatorios-fases/PLATFORM-PROGRAMAS-REGRAS-EDITOR-087.md`, `docs/relatorios-fases/fase-088-platform-templates-dominios-onboarding.md`, `docs/relatorios-fases/fase-089-platform-planos-assinaturas-limits.md`, `docs/relatorios-fases/fase-091-platform-template-racon-inspired-v2.md`, `docs/relatorios-fases/fase-092-platform-planos-quotas-overrides.md` e `docs/relatorios-fases/fase-093-platform-master-franquias-hub.md`.
+* As migrations `070–094` estão versionadas e aplicadas em Produção; correções futuras permanecem obrigatoriamente forward-only.
+* Evidências consolidadas: `docs/relatorios-fases/PLATFORM-GRUPOS-CATALOGO-085.md`, `docs/relatorios-fases/PLATFORM-GRUPOS-TEMPORAL-HERANCA-086.md`, `docs/relatorios-fases/PLATFORM-PROGRAMAS-REGRAS-EDITOR-087.md`, `docs/relatorios-fases/fase-088-platform-templates-dominios-onboarding.md`, `docs/relatorios-fases/fase-089-platform-planos-assinaturas-limits.md`, `docs/relatorios-fases/fase-091-platform-template-racon-inspired-v2.md`, `docs/relatorios-fases/fase-092-platform-planos-quotas-overrides.md`, `docs/relatorios-fases/fase-093-platform-master-franquias-hub.md` e `docs/relatorios-fases/fase-094-platform-usuarios-governanca.md`.
+
 
 
 

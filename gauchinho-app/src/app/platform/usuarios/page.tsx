@@ -1,0 +1,144 @@
+import { createClient } from "@/lib/supabase/server";
+import {
+  PlatformUsuariosClient,
+  type PlatformUsuarioItem,
+  type MasterFranquiaOption,
+  type PapelOption,
+  type ModuloOption,
+} from "./client";
+
+export default async function PlatformUsuariosPage() {
+  const db = await createClient();
+
+  const [
+    empresaUsuariosRes,
+    empresasRes,
+    papeisRes,
+    modulosRes,
+    assinaturasRes,
+    quotasRes,
+    overridesRes,
+  ] = await Promise.all([
+    db
+      .from("empresa_usuarios")
+      .select(
+        "id, usuario_id, empresa_id, papel_id, ativo, is_responsavel_principal, status, convite_enviado_em, erp_modulos_visiveis, created_at, usuario:usuarios(id, nome, email, ultimo_acesso), empresa:empresas(id, nome_fantasia, slug, configuracoes), papel:papeis(id, nome, codigo)",
+      )
+      .order("created_at", { ascending: false }),
+    db
+      .from("empresas")
+      .select("id, nome_fantasia, slug, configuracoes")
+      .order("nome_fantasia", { ascending: true }),
+    db
+      .from("papeis")
+      .select("id, codigo, nome, descricao")
+      .order("nome", { ascending: true }),
+    db
+      .from("erp_modulos_catalogo")
+      .select("id, codigo, nome, categoria")
+      .order("ordem_padrao", { ascending: true }),
+    db
+      .from("saas_assinaturas")
+      .select("empresa_id, status, plano:saas_planos(id, codigo, nome, modulos_habilitados, limite_usuarios)"),
+    db
+      .from("empresa_quotas")
+      .select("empresa_id, limite_usuarios"),
+    db
+      .from("saas_empresa_overrides")
+      .select("empresa_id, recurso_codigo, efeito"),
+  ]);
+
+  const rawRows = empresaUsuariosRes.data ?? [];
+  const empresasRows = empresasRes.data ?? [];
+  const assinaturasRows = assinaturasRes.data ?? [];
+  const quotasRows = quotasRes.data ?? [];
+  const overridesRows = overridesRes.data ?? [];
+
+  const items: PlatformUsuarioItem[] = rawRows.map((r) => {
+    const usr = (Array.isArray(r.usuario) ? r.usuario[0] : r.usuario) as {
+      id?: string;
+      nome?: string;
+      email?: string;
+      ultimo_acesso?: string | null;
+    } | null;
+    const emp = (Array.isArray(r.empresa) ? r.empresa[0] : r.empresa) as {
+      id?: string;
+      nome_fantasia?: string;
+      slug?: string;
+    } | null;
+    const pap = (Array.isArray(r.papel) ? r.papel[0] : r.papel) as {
+      id?: string;
+      nome?: string;
+      codigo?: string;
+    } | null;
+
+    return {
+      id: r.id,
+      usuario_id: r.usuario_id,
+      nome: usr?.nome || "Usuário Sem Nome",
+      email: usr?.email || "sem-email@sistema",
+      empresa_id: r.empresa_id,
+      empresa_nome: emp?.nome_fantasia || "Franquia Desconhecida",
+      empresa_slug: emp?.slug || "franquia",
+      papel_id: r.papel_id,
+      papel_nome: pap?.nome || "Papel Indefinido",
+      papel_codigo: pap?.codigo || "consultor",
+      status: r.status || (r.ativo ? "ATIVO" : "INATIVO"),
+      ativo: r.ativo,
+      is_responsavel_principal: Boolean(r.is_responsavel_principal),
+      erp_modulos_visiveis: Array.isArray(r.erp_modulos_visiveis) ? (r.erp_modulos_visiveis as string[]) : [],
+      convite_enviado_em: r.convite_enviado_em,
+      ultimo_acesso: usr?.ultimo_acesso || null,
+      created_at: r.created_at,
+    };
+  });
+
+  const franquiasOptions: MasterFranquiaOption[] = empresasRows.map((e) => {
+    const totalAtivos = rawRows.filter((u) => u.empresa_id === e.id && u.ativo).length;
+    const quota = quotasRows.find((q) => q.empresa_id === e.id);
+    const ass = assinaturasRows.find((a) => a.empresa_id === e.id);
+    const plano = ass?.plano as { modulos_habilitados?: string[]; limite_usuarios?: number } | null;
+
+    const modulosBase = plano?.modulos_habilitados || [];
+    const modulosOverrides = overridesRows
+      .filter((o) => o.empresa_id === e.id && o.efeito === "LIBERAR")
+      .map((o) => o.recurso_codigo);
+    const modulosPermitidos = Array.from(new Set([...modulosBase, ...modulosOverrides]));
+
+    const config = (e.configuracoes as Record<string, unknown> | null) ?? {};
+    const erpConfig = config.erp_sistema as { habilitado?: boolean } | undefined;
+
+    return {
+      id: e.id,
+      nome_fantasia: e.nome_fantasia,
+      slug: e.slug,
+      usuarios_ativos: totalAtivos,
+      limite_usuarios: Number(quota?.limite_usuarios || plano?.limite_usuarios || 10),
+      modulos_permitidos: modulosPermitidos,
+      erp_habilitado: Boolean(erpConfig?.habilitado),
+    };
+  });
+
+  const papeisOptions: PapelOption[] = (papeisRes.data ?? []).map((p) => ({
+    id: p.id,
+    codigo: p.codigo,
+    nome: p.nome,
+    descricao: p.descricao,
+  }));
+
+  const modulosOptions: ModuloOption[] = (modulosRes.data ?? []).map((m) => ({
+    id: m.id,
+    codigo: m.codigo,
+    nome: m.nome,
+    categoria: m.categoria,
+  }));
+
+  return (
+    <PlatformUsuariosClient
+      usuarios={items}
+      franquias={franquiasOptions}
+      papeis={papeisOptions}
+      modulosCatalogo={modulosOptions}
+    />
+  );
+}
