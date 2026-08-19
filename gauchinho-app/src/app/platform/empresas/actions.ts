@@ -391,6 +391,11 @@ export async function criarSiteParceiroEmpresaPlatformAction(
   const nomeSite = String(formData.get("nome_site") ?? "").trim();
   const whatsapp = String(formData.get("whatsapp") ?? "").trim() || null;
   const canal = String(formData.get("canal") ?? "SUBDOMINIO").trim();
+  const modoIdentidade = String(formData.get("identidade_visual_modo") ?? "HERDAR_MASTER").trim();
+  const corPrimaria = String(formData.get("cor_primaria") ?? "").trim() || null;
+  const corSecundaria = String(formData.get("cor_secundaria") ?? "").trim() || null;
+  const corDestaque = String(formData.get("cor_destaque") ?? "").trim() || null;
+  const logoUrl = String(formData.get("logo_url") ?? "").trim() || null;
 
   if (!empresaId || !orgId || !slug || !nomeSite) {
     return { status: "ERROR", message: "Empresa, Organização, Slug e Nome do Site são obrigatórios." };
@@ -404,6 +409,11 @@ export async function criarSiteParceiroEmpresaPlatformAction(
     p_nome_site: nomeSite,
     p_whatsapp: whatsapp,
     p_canal: canal,
+    p_identidade_visual_modo: modoIdentidade,
+    p_cor_primaria: corPrimaria,
+    p_cor_secundaria: corSecundaria,
+    p_cor_destaque: corDestaque,
+    p_logo_url: logoUrl,
   });
 
   if (error) {
@@ -411,6 +421,65 @@ export async function criarSiteParceiroEmpresaPlatformAction(
   }
 
   return { status: "SUCCESS", message: "Site de parceiro criado com sucesso.", data };
+}
+
+export async function salvarIdentidadeSiteParceiroPlatformAction(
+  _prev: PlatformFormState,
+  formData: FormData,
+): Promise<PlatformFormState> {
+  if (!(await isPlatformSuperadmin())) {
+    return { status: "ERROR", message: "Acesso restrito ao Platform Superadmin." };
+  }
+
+  const siteId = String(formData.get("site_id") ?? "").trim();
+  const empresaId = String(formData.get("empresa_id") ?? "").trim();
+  const modo = String(formData.get("identidade_visual_modo") ?? "HERDAR_MASTER").trim();
+
+  const logoUrl = String(formData.get("logo_url") ?? "").trim() || null;
+  const corPrimaria = String(formData.get("cor_primaria") ?? "").trim() || null;
+  const corSecundaria = String(formData.get("cor_secundaria") ?? "").trim() || null;
+  const corDestaque = String(formData.get("cor_destaque") ?? "").trim() || null;
+  const fotoPerfilUrl = String(formData.get("foto_perfil_url") ?? "").trim() || null;
+  const bannerUrl = String(formData.get("banner_url") ?? "").trim() || null;
+  const telefone = String(formData.get("telefone") ?? "").trim() || null;
+  const whatsapp = String(formData.get("whatsapp") ?? "").trim() || null;
+  const instagram = String(formData.get("instagram") ?? "").trim() || null;
+  const textoHero = String(formData.get("texto_hero") ?? "").trim() || null;
+  const textoSobre = String(formData.get("texto_sobre") ?? "").trim() || null;
+
+  if (!siteId || !empresaId) {
+    return { status: "ERROR", message: "Site ID e Empresa ID são obrigatórios." };
+  }
+
+  const db = await createClient();
+  const { error } = await db.rpc("rpc_platform_salvar_identidade_site_parceiro", {
+    p_site_id: siteId,
+    p_empresa_id: empresaId,
+    p_identidade_visual_modo: modo,
+    p_logo_url: logoUrl,
+    p_cor_primaria: corPrimaria,
+    p_cor_secundaria: corSecundaria,
+    p_cor_destaque: corDestaque,
+    p_foto_perfil_url: fotoPerfilUrl,
+    p_banner_url: bannerUrl,
+    p_telefone: telefone,
+    p_whatsapp: whatsapp,
+    p_instagram: instagram,
+    p_texto_hero: textoHero,
+    p_texto_sobre: textoSobre,
+  });
+
+  if (error) {
+    return { status: "ERROR", message: error.message };
+  }
+
+  return {
+    status: "SUCCESS",
+    message:
+      modo === "HERDAR_MASTER"
+        ? "Identidade visual revertida para a herança da Master Franquia com sucesso."
+        : "Overrides de identidade visual do parceiro salvos com sucesso.",
+  };
 }
 
 

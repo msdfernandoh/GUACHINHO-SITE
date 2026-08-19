@@ -12,6 +12,7 @@ import {
   concederAdministradoraEmpresaPlatformAction,
   revogarAdministradoraEmpresaPlatformAction,
   criarSiteParceiroEmpresaPlatformAction,
+  salvarIdentidadeSiteParceiroPlatformAction,
   type PlatformFormState,
 } from "@/app/platform/empresas/actions";
 
@@ -124,18 +125,36 @@ export type UsuarioHubItem = {
   } | null;
 };
 
+export type ParceiroSiteDetail = {
+  id: string;
+  slug: string;
+  nome_site: string;
+  canal_principal: string;
+  status_publicacao: string;
+  ativo: boolean;
+  template_codigo?: string;
+  whatsapp?: string | null;
+  branding?: {
+    identidade_visual_modo?: "HERDAR_MASTER" | "PERSONALIZADA";
+    logo_url?: string | null;
+    cor_primaria?: string | null;
+    cor_secundaria?: string | null;
+    cor_destaque?: string | null;
+    foto_perfil_url?: string | null;
+    banner_url?: string | null;
+    telefone?: string | null;
+    whatsapp?: string | null;
+    instagram?: string | null;
+    texto_hero?: string | null;
+    texto_sobre?: string | null;
+  } | Record<string, unknown>;
+};
+
 export type ParceiroHubItem = {
   id: string;
   nome: string;
   status: string;
-  sites: {
-    id: string;
-    slug: string;
-    nome_site: string;
-    canal_principal: string;
-    status_publicacao: string;
-    ativo: boolean;
-  }[];
+  sites: ParceiroSiteDetail[];
 };
 
 export type ModuloCatalogoHub = {
@@ -240,6 +259,10 @@ export function MasterFranquiaHub({
   const [modalConcederAdmin, setModalConcederAdmin] = useState(false);
   const [modalNovoSiteParceiro, setModalNovoSiteParceiro] = useState(false);
 
+  // Modais de Parceiro
+  const [siteParaEditar, setSiteParaEditar] = useState<{ parceiroNome: string; site: ParceiroSiteDetail } | null>(null);
+  const [siteParaPreview, setSiteParaPreview] = useState<{ parceiroNome: string; site: ParceiroSiteDetail } | null>(null);
+
   // States do formulário de dados da empresa
   const [nomeFantasia, setNomeFantasia] = useState(empresa.nome_fantasia);
   const [razaoSocial, setRazaoSocial] = useState(empresa.razao_social);
@@ -262,6 +285,9 @@ export function MasterFranquiaHub({
   // State para concessão de administradora
   const [novaAdminId, setNovaAdminId] = useState(adminsDisponiveis[0]?.id || "");
 
+  // State para novo site de parceiro
+  const [novoSiteModoIdentidade, setNovoSiteModoIdentidade] = useState<"HERDAR_MASTER" | "PERSONALIZADA">("HERDAR_MASTER");
+
   // Actions
   const [stateDados, actionDados, isPendingDados] = useActionState(atualizarDadosEmpresaPlatformAction, initial);
   const [stateAtivar, actionAtivar, isPendingAtivar] = useActionState(ativarEmpresaPlatformAction, initial);
@@ -272,6 +298,7 @@ export function MasterFranquiaHub({
   const [stateConcederAdmin, actionConcederAdmin, isPendingConcederAdmin] = useActionState(concederAdministradoraEmpresaPlatformAction, initial);
   const [stateRevogarAdmin, actionRevogarAdmin, isPendingRevogarAdmin] = useActionState(revogarAdministradoraEmpresaPlatformAction, initial);
   const [stateSiteParceiro, actionSiteParceiro, isPendingSiteParceiro] = useActionState(criarSiteParceiroEmpresaPlatformAction, initial);
+  const [stateIdentidadeSite, actionIdentidadeSite, isPendingIdentidadeSite] = useActionState(salvarIdentidadeSiteParceiroPlatformAction, initial);
 
   // Cálculos de Entitlements & Limites
   const planoAtual = assinatura?.plano;
@@ -1172,45 +1199,96 @@ export function MasterFranquiaHub({
             )}
           </div>
 
+          {stateIdentidadeSite.message && (
+            <p
+              role="status"
+              className={`rounded-lg p-3 text-xs font-bold ${
+                stateIdentidadeSite.status === "SUCCESS"
+                  ? "bg-emerald-50 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
+                  : "bg-rose-50 text-rose-800 dark:bg-rose-950 dark:text-rose-300"
+              }`}
+            >
+              {stateIdentidadeSite.message}
+            </p>
+          )}
+
           <div className="overflow-x-auto">
             <table className="w-full text-xs">
               <thead className="border-b bg-slate-50 text-left uppercase text-slate-500 dark:bg-slate-800">
                 <tr>
                   <th className="p-3">Parceiro</th>
-                  <th className="p-3">Site / Nome</th>
-                  <th className="p-3">Canal / Endereço</th>
+                  <th className="p-3">Modelo de Site</th>
+                  <th className="p-3 text-center">Identidade Visual</th>
+                  <th className="p-3">Domínio / Canal</th>
                   <th className="p-3 text-center">Status</th>
+                  <th className="p-3 text-center">Ações</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                 {parceiros.length === 0 ? (
                   <tr>
-                    <td colSpan={4} className="p-6 text-center text-slate-400">
+                    <td colSpan={6} className="p-6 text-center text-slate-400 font-medium">
                       Nenhum parceiro cadastrado para esta franquia.
                     </td>
                   </tr>
                 ) : (
                   parceiros.map((p) =>
-                    p.sites.map((s) => (
-                      <tr key={s.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40">
-                        <td className="p-3 font-bold text-slate-900 dark:text-white">{p.nome}</td>
-                        <td className="p-3">{s.nome_site}</td>
-                        <td className="p-3 font-mono text-slate-500">
-                          {s.canal_principal === "DOMINIO" ? "Domínio Próprio" : `/${s.slug}`}
-                        </td>
-                        <td className="p-3 text-center">
-                          <span
-                            className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
-                              s.status_publicacao === "PUBLICADO"
-                                ? "bg-emerald-100 text-emerald-800"
-                                : "bg-slate-100 text-slate-600"
-                            }`}
-                          >
-                            {s.status_publicacao}
-                          </span>
-                        </td>
-                      </tr>
-                    )),
+                    p.sites.map((s) => {
+                      const brandingModo = (s.branding as Record<string, unknown> | undefined)?.identidade_visual_modo;
+                      const isPersonalizada = brandingModo === "PERSONALIZADA";
+
+                      return (
+                        <tr key={s.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40">
+                          <td className="p-3 font-bold text-slate-900 dark:text-white">{p.nome}</td>
+                          <td className="p-3 font-semibold text-slate-700 dark:text-slate-300">
+                            {branding?.modelo?.nome || "Racon Inspired"}
+                          </td>
+                          <td className="p-3 text-center">
+                            <span
+                              className={`inline-block rounded-full px-2.5 py-0.5 text-[10px] font-extrabold uppercase ${
+                                isPersonalizada
+                                  ? "bg-cyan-100 text-cyan-800 dark:bg-cyan-950 dark:text-cyan-300"
+                                  : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400"
+                              }`}
+                            >
+                              {isPersonalizada ? "Personalizada" : "Herdada da Master"}
+                            </span>
+                          </td>
+                          <td className="p-3 font-mono text-slate-500">
+                            {s.canal_principal === "DOMINIO" ? "Domínio Próprio" : `/${s.slug}`}
+                          </td>
+                          <td className="p-3 text-center">
+                            <span
+                              className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold ${
+                                s.status_publicacao === "PUBLICADO"
+                                  ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
+                                  : "bg-slate-100 text-slate-600 dark:bg-slate-800"
+                              }`}
+                            >
+                              {s.status_publicacao}
+                            </span>
+                          </td>
+                          <td className="p-3 text-center">
+                            <div className="flex items-center justify-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => setSiteParaPreview({ parceiroNome: p.nome, site: s })}
+                                className="rounded bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300"
+                              >
+                                👁️ Visualizar Site
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setSiteParaEditar({ parceiroNome: p.nome, site: s })}
+                                className="rounded bg-cyan-700 px-2.5 py-1 text-xs font-bold text-white shadow hover:bg-cyan-800"
+                              >
+                                🎨 Identidade Visual
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    }),
                   )
                 )}
               </tbody>
@@ -1507,7 +1585,7 @@ export function MasterFranquiaHub({
       {/* Modal: Novo Site de Parceiro */}
       {modalNovoSiteParceiro && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl space-y-4 dark:border-slate-800 dark:bg-slate-900 text-xs">
+          <div className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl space-y-4 dark:border-slate-800 dark:bg-slate-900 text-xs">
             <h3 className="text-base font-bold text-slate-900 dark:text-white">+ Novo Site de Parceiro</h3>
             <form
               action={async (formData) => {
@@ -1564,6 +1642,56 @@ export function MasterFranquiaHub({
                 </select>
               </div>
 
+              {/* Modo de Identidade Visual */}
+              <div className="rounded-xl border border-slate-200 p-3 bg-slate-50 dark:border-slate-800 dark:bg-slate-950/40 space-y-2">
+                <label className="font-bold text-slate-800 dark:text-slate-200 block">Identidade Visual:</label>
+                <div className="flex gap-4">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="identidade_visual_modo"
+                      value="HERDAR_MASTER"
+                      checked={novoSiteModoIdentidade === "HERDAR_MASTER"}
+                      onChange={() => setNovoSiteModoIdentidade("HERDAR_MASTER")}
+                      className="text-cyan-600"
+                    />
+                    <span>Herdar da Master Franquia</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="identidade_visual_modo"
+                      value="PERSONALIZADA"
+                      checked={novoSiteModoIdentidade === "PERSONALIZADA"}
+                      onChange={() => setNovoSiteModoIdentidade("PERSONALIZADA")}
+                      className="text-cyan-600"
+                    />
+                    <span>Personalizar este site</span>
+                  </label>
+                </div>
+
+                {novoSiteModoIdentidade === "PERSONALIZADA" && (
+                  <div className="pt-2 grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-[11px] font-bold text-slate-600 dark:text-slate-400">Logo Própria (URL):</label>
+                      <input
+                        name="logo_url"
+                        placeholder="https://..."
+                        className="mt-1 w-full rounded border border-slate-300 p-2 text-xs dark:border-slate-700 dark:bg-slate-800"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[11px] font-bold text-slate-600 dark:text-slate-400">Cor Primária:</label>
+                      <input
+                        name="cor_primaria"
+                        placeholder="#0A1628"
+                        className="mt-1 w-full rounded border border-slate-300 p-2 text-xs font-mono dark:border-slate-700 dark:bg-slate-800"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+
               <div className="flex justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
                 <button
                   type="button"
@@ -1581,6 +1709,257 @@ export function MasterFranquiaHub({
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ───────────────────────────────────────────────────────────
+          MODAL: EDITAR IDENTIDADE VISUAL DO SITE DE PARCEIRO
+      ─────────────────────────────────────────────────────────── */}
+      {siteParaEditar && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-2xl rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl space-y-4 dark:border-slate-800 dark:bg-slate-900 text-xs">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3 dark:border-slate-800">
+              <div>
+                <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                  Identidade Visual — {siteParaEditar.site.nome_site}
+                </h3>
+                <p className="text-xs text-slate-500 font-semibold">Parceiro: {siteParaEditar.parceiroNome}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSiteParaEditar(null)}
+                className="text-slate-400 hover:text-slate-600"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form
+              action={async (formData) => {
+                await actionIdentidadeSite(formData);
+                setSiteParaEditar(null);
+              }}
+              className="space-y-4"
+            >
+              <input type="hidden" name="site_id" value={siteParaEditar.site.id} />
+              <input type="hidden" name="empresa_id" value={empresa.id} />
+
+              <div className="rounded-xl border border-slate-200 p-3.5 bg-slate-50 dark:border-slate-800 dark:bg-slate-950/40 space-y-2">
+                <label className="font-bold text-slate-800 dark:text-slate-200 block text-xs">
+                  Modo de Identidade Visual:
+                </label>
+                <div className="flex gap-4">
+                  <label className="flex items-center gap-2 cursor-pointer font-semibold">
+                    <input
+                      type="radio"
+                      name="identidade_visual_modo"
+                      value="HERDAR_MASTER"
+                      defaultChecked={
+                        ((siteParaEditar.site.branding as Record<string, unknown> | undefined)?.identidade_visual_modo ?? "HERDAR_MASTER") === "HERDAR_MASTER"
+                      }
+                      className="text-cyan-600"
+                    />
+                    <span>Herdar da Master Franquia (Usa logo e paleta de cores da Master)</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer font-semibold">
+                    <input
+                      type="radio"
+                      name="identidade_visual_modo"
+                      value="PERSONALIZADA"
+                      defaultChecked={
+                        (siteParaEditar.site.branding as Record<string, unknown> | undefined)?.identidade_visual_modo === "PERSONALIZADA"
+                      }
+                      className="text-cyan-600"
+                    />
+                    <span>Personalizar este site (Overrides exclusivos para este parceiro)</span>
+                  </label>
+                </div>
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div>
+                  <label className="font-bold text-slate-700 dark:text-slate-300">Logo do Parceiro (URL):</label>
+                  <input
+                    name="logo_url"
+                    defaultValue={String((siteParaEditar.site.branding as Record<string, unknown> | undefined)?.logo_url ?? "")}
+                    placeholder="https://..."
+                    className="mt-1 w-full rounded border border-slate-300 p-2 dark:border-slate-700 dark:bg-slate-800"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-bold text-slate-700 dark:text-slate-300">Foto / Banner Hero (URL):</label>
+                  <input
+                    name="banner_url"
+                    defaultValue={String((siteParaEditar.site.branding as Record<string, unknown> | undefined)?.banner_url ?? "")}
+                    placeholder="https://..."
+                    className="mt-1 w-full rounded border border-slate-300 p-2 dark:border-slate-700 dark:bg-slate-800"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-bold text-slate-700 dark:text-slate-300">Cor Primária (#HEX):</label>
+                  <input
+                    name="cor_primaria"
+                    defaultValue={String((siteParaEditar.site.branding as Record<string, unknown> | undefined)?.cor_primaria ?? "")}
+                    placeholder="#0A1628"
+                    className="mt-1 w-full rounded border border-slate-300 p-2 font-mono dark:border-slate-700 dark:bg-slate-800"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-bold text-slate-700 dark:text-slate-300">Cor Secundária (#HEX):</label>
+                  <input
+                    name="cor_secundaria"
+                    defaultValue={String((siteParaEditar.site.branding as Record<string, unknown> | undefined)?.cor_secundaria ?? "")}
+                    placeholder="#0D1F3C"
+                    className="mt-1 w-full rounded border border-slate-300 p-2 font-mono dark:border-slate-700 dark:bg-slate-800"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-bold text-slate-700 dark:text-slate-300">Cor de Destaque (#HEX):</label>
+                  <input
+                    name="cor_destaque"
+                    defaultValue={String((siteParaEditar.site.branding as Record<string, unknown> | undefined)?.cor_destaque ?? "")}
+                    placeholder="#C9A84C"
+                    className="mt-1 w-full rounded border border-slate-300 p-2 font-mono dark:border-slate-700 dark:bg-slate-800"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-bold text-slate-700 dark:text-slate-300">WhatsApp de Contato:</label>
+                  <input
+                    name="whatsapp"
+                    defaultValue={String((siteParaEditar.site.branding as Record<string, unknown> | undefined)?.whatsapp ?? siteParaEditar.site.whatsapp ?? "")}
+                    placeholder="Ex: 51999999999"
+                    className="mt-1 w-full rounded border border-slate-300 p-2 dark:border-slate-700 dark:bg-slate-800"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700 dark:text-slate-300">Texto de Apresentação / Hero:</label>
+                <input
+                  name="texto_hero"
+                  defaultValue={String((siteParaEditar.site.branding as Record<string, unknown> | undefined)?.texto_hero ?? "")}
+                  placeholder="Ex: Consultor Especialista em Consórcios Imobiliários"
+                  className="mt-1 w-full rounded border border-slate-300 p-2 dark:border-slate-700 dark:bg-slate-800"
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setSiteParaEditar(null)}
+                  className="rounded-lg border px-4 py-2 font-bold text-slate-600 hover:bg-slate-100"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={isPendingIdentidadeSite}
+                  className="rounded-lg bg-cyan-700 px-4 py-2 font-bold text-white hover:bg-cyan-800"
+                >
+                  {isPendingIdentidadeSite ? "Salvando..." : "Salvar Identidade Visual"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ───────────────────────────────────────────────────────────
+          MODAL: PREVIEW DO SITE DE PARCEIRO
+      ─────────────────────────────────────────────────────────── */}
+      {siteParaPreview && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-2xl rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl space-y-4 dark:border-slate-800 dark:bg-slate-900 text-xs">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3 dark:border-slate-800">
+              <div>
+                <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                  Preview — {siteParaPreview.site.nome_site}
+                </h3>
+                <p className="text-xs text-slate-500 font-semibold">
+                  Modelo: {branding?.modelo?.nome || "Racon Inspired"} | Franquia: {empresa.nome_fantasia}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSiteParaPreview(null)}
+                className="text-slate-400 hover:text-slate-600"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Resumo da Herança Efetiva */}
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950/40 space-y-3">
+              <div className="flex justify-between items-center">
+                <span className="font-bold text-slate-700 dark:text-slate-300">Modo de Identidade:</span>
+                <span
+                  className={`rounded-full px-2.5 py-0.5 text-[10px] font-extrabold uppercase ${
+                    (siteParaPreview.site.branding as Record<string, unknown> | undefined)?.identidade_visual_modo === "PERSONALIZADA"
+                      ? "bg-cyan-100 text-cyan-800 dark:bg-cyan-950 dark:text-cyan-300"
+                      : "bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-300"
+                  }`}
+                >
+                  {(siteParaPreview.site.branding as Record<string, unknown> | undefined)?.identidade_visual_modo === "PERSONALIZADA"
+                    ? "Personalizada (Overrides Ativos)"
+                    : "Herdada da Master Franquia"}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-3 gap-2 font-mono text-[11px]">
+                <div className="p-2 rounded bg-white dark:bg-slate-800">
+                  <span className="text-slate-500 block text-[10px]">Cor Primária:</span>
+                  <strong>
+                    {String(
+                      (siteParaPreview.site.branding as Record<string, unknown> | undefined)?.cor_primaria ||
+                        "Herdada (#0A1628)",
+                    )}
+                  </strong>
+                </div>
+                <div className="p-2 rounded bg-white dark:bg-slate-800">
+                  <span className="text-slate-500 block text-[10px]">Cor Secundária:</span>
+                  <strong>
+                    {String(
+                      (siteParaPreview.site.branding as Record<string, unknown> | undefined)?.cor_secundaria ||
+                        "Herdada (#0D1F3C)",
+                    )}
+                  </strong>
+                </div>
+                <div className="p-2 rounded bg-white dark:bg-slate-800">
+                  <span className="text-slate-500 block text-[10px]">Cor de Destaque:</span>
+                  <strong>
+                    {String(
+                      (siteParaPreview.site.branding as Record<string, unknown> | undefined)?.cor_destaque ||
+                        "Herdada (#C9A84C)",
+                    )}
+                  </strong>
+                </div>
+              </div>
+
+              <div className="p-3 rounded-lg border border-dashed border-slate-300 bg-white dark:border-slate-700 dark:bg-slate-900 text-center space-y-1">
+                <p className="font-bold text-slate-800 dark:text-slate-200">
+                  Estrutura Visual: {branding?.modelo?.nome || "Racon Inspired"}
+                </p>
+                <p className="text-slate-500 text-[11px]">
+                  O layout estrutural permanece íntegro do template global da Master Franquia, aplicando apenas os tokens de marca deste parceiro.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setSiteParaPreview(null)}
+                className="rounded-lg bg-cyan-700 px-4 py-2 font-bold text-white hover:bg-cyan-800"
+              >
+                Fechar Preview
+              </button>
+            </div>
           </div>
         </div>
       )}

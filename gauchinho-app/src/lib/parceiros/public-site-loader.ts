@@ -164,7 +164,7 @@ export async function loadPartnerSiteViewModel(input: {
       .maybeSingle(),
     reader
       .from("empresa_branding")
-      .select("logo_url, telefone, whatsapp, email_contato")
+      .select("logo_url, cor_primaria, cor_secundaria, cor_destaque, banner_url, telefone, whatsapp, email_contato")
       .eq("empresa_id", input.empresaId)
       .maybeSingle(),
   ]);
@@ -203,6 +203,10 @@ export async function loadPartnerSiteViewModel(input: {
       slug: empresa.slug,
       nome: empresa.nome_fantasia,
       logo_url: branding?.logo_url ?? null,
+      cor_primaria: branding?.cor_primaria ?? null,
+      cor_secundaria: branding?.cor_secundaria ?? null,
+      cor_destaque: branding?.cor_destaque ?? null,
+      banner_url: branding?.banner_url ?? null,
       telefone: branding?.telefone ?? null,
       whatsapp: branding?.whatsapp ?? null,
       email: branding?.email_contato ?? null,

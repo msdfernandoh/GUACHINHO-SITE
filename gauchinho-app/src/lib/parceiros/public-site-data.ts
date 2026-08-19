@@ -159,6 +159,10 @@ export function buildPartnerPublicViewModel(input: {
     slug: string;
     nome: string;
     logo_url: string | null;
+    cor_primaria?: string | null;
+    cor_secundaria?: string | null;
+    cor_destaque?: string | null;
+    banner_url?: string | null;
     telefone: string | null;
     whatsapp: string | null;
     email: string | null;
@@ -168,7 +172,31 @@ export function buildPartnerPublicViewModel(input: {
   const b = (input.site.branding ?? {}) as SiteBranding;
   const seo = input.site.seo ?? {};
 
-  const logo_url = firstNonEmpty(b.logo_url, input.org.logo_url, input.empresa.logo_url);
+  const modo = b.identidade_visual_modo;
+  const isHerdarMaster = modo === "HERDAR_MASTER";
+
+  // Se HERDAR_MASTER, herda estritamente da Master Franquia.
+  // Se PERSONALIZADA ou indefinido (compatibilidade legada), usa fallback site → org → empresa.
+  const logo_url = isHerdarMaster
+    ? input.empresa.logo_url
+    : firstNonEmpty(b.logo_url, input.org.logo_url, input.empresa.logo_url);
+
+  const cor_primaria = isHerdarMaster
+    ? input.empresa.cor_primaria || "#0A1628"
+    : firstNonEmpty(b.cor_primaria) || input.empresa.cor_primaria || "#0A1628";
+
+  const cor_secundaria = isHerdarMaster
+    ? input.empresa.cor_secundaria || "#0D1F3C"
+    : firstNonEmpty(b.cor_secundaria) || input.empresa.cor_secundaria || "#0D1F3C";
+
+  const cor_destaque = isHerdarMaster
+    ? input.empresa.cor_destaque || "#C9A84C"
+    : firstNonEmpty(b.cor_destaque) || input.empresa.cor_destaque || "#C9A84C";
+
+  const banner_url = isHerdarMaster
+    ? input.empresa.banner_url || null
+    : firstNonEmpty(b.banner_url, input.empresa.banner_url);
+
   const contato: PartnerPublicContact = {
     telefone: firstNonEmpty(b.telefone, input.org.telefone, input.empresa.telefone),
     whatsapp: null,
@@ -209,13 +237,13 @@ export function buildPartnerPublicViewModel(input: {
     canal_principal: input.site.canal_principal,
     whatsapp_modo: input.site.whatsapp_modo,
     logo_url,
-    logo_claro_url: firstNonEmpty(b.logo_claro_url, logo_url),
-    logo_escuro_url: firstNonEmpty(b.logo_escuro_url, logo_url),
+    logo_claro_url: !isHerdarMaster ? firstNonEmpty(b.logo_claro_url, logo_url) : logo_url,
+    logo_escuro_url: !isHerdarMaster ? firstNonEmpty(b.logo_escuro_url, logo_url) : logo_url,
     favicon_url: firstNonEmpty(b.favicon_url),
-    banner_url: firstNonEmpty(b.banner_url),
-    cor_primaria: firstNonEmpty(b.cor_primaria) || "#0A1628",
-    cor_secundaria: firstNonEmpty(b.cor_secundaria) || "#0D1F3C",
-    cor_destaque: firstNonEmpty(b.cor_destaque) || "#C9A84C",
+    banner_url,
+    cor_primaria,
+    cor_secundaria,
+    cor_destaque,
     texto_hero: sanitizePublicText(b.texto_hero, 500) || nome_site,
     texto_sobre: sanitizePublicText(b.texto_sobre, 4000) || sanitizePublicText(input.site.descricao, 4000),
     contato,
@@ -231,3 +259,4 @@ export function buildPartnerPublicViewModel(input: {
     is_preview: Boolean(input.isPreview),
   };
 }
+

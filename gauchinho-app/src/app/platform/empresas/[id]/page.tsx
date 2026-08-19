@@ -67,7 +67,7 @@ export default async function MasterFranquiaDetailPage({
       .eq("empresa_id", id),
     db
       .from("organizacoes_parceiras")
-      .select("id, nome, status, sites:parceiro_sites(id, slug, nome_site, canal_principal, status_publicacao, ativo)")
+      .select("id, nome, status, sites:parceiro_sites(id, slug, nome_site, canal_principal, status_publicacao, ativo, branding, template_codigo)")
       .eq("empresa_id", id),
     db
       .from("erp_modulos_catalogo")

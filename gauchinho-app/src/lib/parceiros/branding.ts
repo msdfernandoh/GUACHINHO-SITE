@@ -1,4 +1,7 @@
+export type IdentidadeVisualModo = "HERDAR_MASTER" | "PERSONALIZADA";
+
 export type SiteBranding = {
+  identidade_visual_modo?: IdentidadeVisualModo;
   logo_url?: string | null;
   logo_claro_url?: string | null;
   logo_escuro_url?: string | null;
@@ -6,6 +9,7 @@ export type SiteBranding = {
   cor_primaria?: string | null;
   cor_secundaria?: string | null;
   cor_destaque?: string | null;
+  foto_perfil_url?: string | null;
   banner_url?: string | null;
   texto_hero?: string | null;
   texto_sobre?: string | null;
