@@ -1,4 +1,4 @@
-﻿# Environment (keep example templates)
+# Environment (keep example templates)
 .env
 .env.*
 !.env.example
@@ -20,3 +20,5 @@ Thumbs.db
 
 # Supabase CLI/runtime scratch data (may contain local credentials and bypass tokens)
 supabase/.temp/
+.npm-cache/
+

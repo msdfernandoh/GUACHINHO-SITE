@@ -94,6 +94,8 @@ export async function onboardingMasterFranquiaAction(
   }
 
   const planoId = String(formData.get("plano_id") ?? "").trim() || null;
+  const sitesParceirosContratados = Number(formData.get("sites_parceiros_contratados") ?? 0);
+  const sitesDominioProprioContratados = Number(formData.get("sites_dominio_proprio_contratados") ?? 0);
 
   if (!nomeFantasia || !razaoSocial) {
     return { status: "ERROR", message: "Nome fantasia e Razão social são obrigatórios." };
@@ -122,6 +124,8 @@ export async function onboardingMasterFranquiaAction(
     p_responsavel_telefone: responsavelTelefone,
     p_administradoras_ids: administradorasIds,
     p_plano_id: planoId,
+    p_sites_parceiros_contratados: sitesParceirosContratados,
+    p_sites_dominio_proprio_contratados: sitesDominioProprioContratados,
   });
 
   if (error) {
@@ -130,4 +134,5 @@ export async function onboardingMasterFranquiaAction(
 
   redirect(`/platform/empresas/${data}`);
 }
+
 

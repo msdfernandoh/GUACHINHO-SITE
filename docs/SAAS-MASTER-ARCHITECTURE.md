@@ -312,9 +312,18 @@ A plataforma suporta:
   - Onboarding guiado em 8 etapas para Master Franquias com criação atômica no status seguro `em_treinamento` (inativo até ativação explícita).
   - Relatório: `docs/relatorios-fases/fase-088-platform-templates-dominios-onboarding.md`.
 
-* O estado funcional do Supabase Production inclui migrations `001–088`.
+* Platform Catálogo ERP, Planos SaaS, Assinaturas, Sites de Parceiros e Overrides (Migrations 089 & 090):
+  - Catálogo global de módulos ERP gerenciável com categorias e resolução automática de dependências em cascata.
+  - Planos SaaS operacionais com workspace de 8 abas, entitlements de ERP, Site principal, limites de sites/domínios de parceiros e precificação.
+  - Gestão de Assinaturas de Master Franquias vinculando plano, quantidades contratadas e vigência.
+  - Onboarding em 8 etapas sincronizado com herança do plano e estimativa financeira em tempo real.
+  - Mecanismo de liberações e overrides com resolução hierárquica (`Catálogo Global → Plano → Assinatura → Override → Usuário`).
+  - Relatório: `docs/relatorios-fases/fase-089-platform-planos-assinaturas-limits.md`.
+
+* O estado funcional do Supabase Production inclui migrations `001–090`.
 * `admin.gauchinhoconsorcios.com.br` está ativo, verificado e associado ao deployment Production da `main`; ele não é tenant e não possui fallback para Gauchinho.
-* As migrations `070–088` estão versionadas e aplicadas em Produção; correções futuras permanecem obrigatoriamente forward-only.
-* Evidências consolidadas: `docs/relatorios-fases/PLATFORM-GRUPOS-CATALOGO-085.md`, `docs/relatorios-fases/PLATFORM-GRUPOS-TEMPORAL-HERANCA-086.md`, `docs/relatorios-fases/PLATFORM-PROGRAMAS-REGRAS-EDITOR-087.md` e `docs/relatorios-fases/fase-088-platform-templates-dominios-onboarding.md`.
+* As migrations `070–090` estão versionadas e aplicadas em Produção; correções futuras permanecem obrigatoriamente forward-only.
+* Evidências consolidadas: `docs/relatorios-fases/PLATFORM-GRUPOS-CATALOGO-085.md`, `docs/relatorios-fases/PLATFORM-GRUPOS-TEMPORAL-HERANCA-086.md`, `docs/relatorios-fases/PLATFORM-PROGRAMAS-REGRAS-EDITOR-087.md`, `docs/relatorios-fases/fase-088-platform-templates-dominios-onboarding.md` e `docs/relatorios-fases/fase-089-platform-planos-assinaturas-limits.md`.
+
 
 
