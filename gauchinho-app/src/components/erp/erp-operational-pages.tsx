@@ -18,6 +18,7 @@ import {
 import { FiscalCommissionConfig } from "@/components/erp/fiscal-commission-config";
 import { ConfirmSubmitButton } from "@/components/erp/confirm-submit-button";
 import { ReceiptManager } from "@/components/erp/receipt-manager";
+import { RepasseFranquiaView, type SolicitacaoRepasseItem } from "@/components/erp/repasse-franquia-view";
 import {
   BidStrategyTable,
   type BidRow,
@@ -730,7 +731,7 @@ export async function ErpRepasseFranquiaPage() {
   const { empresaAtiva } = await getCurrentTenantContext();
   const empresaId = empresaAtiva?.id ?? "";
   const db = await createClient();
-  const [grants, contas, recebimentos, previsoes] = await Promise.all([
+  const [grants, contas, recebimentos, previsoes, solicitacoesRes] = await Promise.all([
     db
       .from("empresa_administradoras")
       .select("administradora:administradoras(id,nome)")
@@ -758,7 +759,16 @@ export async function ErpRepasseFranquiaPage() {
       .eq("empresa_id", empresaId)
       .in("status", ["prevista", "parcialmente_liquidada"])
       .order("competencia"),
+    db
+      .from("erp_solicitacoes_repasse")
+      .select(
+        "id,empresa_id,codigo_solicitacao,administradora_id,mes_referencia,data_solicitacao,valor_solicitado,numero_nota_fiscal,data_nota_fiscal,valor_nota_fiscal,arquivo_nf_url,arquivo_nf_nome,arquivo_pedidos_url,arquivo_pedidos_nome,observacao,status,recebimento_id,created_at,administradora:administradoras(id,nome),pedidos:erp_solicitacao_repasse_pedidos(id,numero_pedido,arquivo_url,arquivo_nome),historico:erp_solicitacao_repasse_historico(id,acao,estado_anterior,estado_novo,motivo,created_at),recebimento:financeiro_recebimentos(id,data_recebimento,valor_total,conta_entrada,numero_nota_fiscal)",
+      )
+      .eq("empresa_id", empresaId)
+      .order("created_at", { ascending: false })
+      .limit(200),
   ]);
+
   const administradoras = (grants.data ?? []).flatMap((x) => {
     const a = x.administradora as unknown as {
       id: string;
@@ -766,6 +776,9 @@ export async function ErpRepasseFranquiaPage() {
     } | null;
     return a ? [a] : [];
   });
+
+  const solicitacoes = (solicitacoesRes.data ?? []) as unknown as SolicitacaoRepasseItem[];
+
   return (
     <div className="space-y-6">
       <header>
@@ -774,8 +787,7 @@ export async function ErpRepasseFranquiaPage() {
         </p>
         <h1 className="text-3xl font-bold">Repasse da franquia</h1>
         <p className="mt-1 text-slate-500">
-          Cronograma previsto, liquidacao recebida e elegibilidade dos
-          participantes no motor transacional atual.
+          Solicitações formais de repasse às administradoras, recebimentos diretos e liquidações financeiras.
         </p>
       </header>
       <HubLinks
@@ -845,9 +857,11 @@ export async function ErpRepasseFranquiaPage() {
           </p>
         </div>
       </div>
-      <ReceiptManager
+
+      <RepasseFranquiaView
         administradoras={administradoras}
         contas={contas.data ?? []}
+        solicitacoes={solicitacoes}
         recebimentos={
           (recebimentos.data ?? []) as unknown as Parameters<
             typeof ReceiptManager
@@ -859,9 +873,11 @@ export async function ErpRepasseFranquiaPage() {
           >[0]["previsoes"]
         }
       />
+
       <div className="border-t border-slate-200 pt-6">
         <Comissoes />
       </div>
     </div>
   );
 }
+
