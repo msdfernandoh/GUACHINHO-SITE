@@ -1,4 +1,5 @@
 import type { EmpresaBranding } from "@/lib/tenant/branding";
+import { RaconInspiredHome } from "@/components/public/templates/racon-inspired-home";
 
 type Props = {
   branding: EmpresaBranding;
@@ -6,41 +7,31 @@ type Props = {
 };
 
 /**
- * Home institucional controlada para tenants sem dados operacionais legados
- * (ex.: Empresa B na Fase 2). Não consulta grupos, leads, simulador real, etc.
+ * Home institucional de alta conversão para tenants e franquias
+ * utilizando a experiência visual Racon Inspired.
  */
 export function InstitutionalTenantHome({ branding, showModuloIndisponivel }: Props) {
   return (
-    <main className="mx-auto max-w-3xl px-4 py-16 sm:py-24">
-      {showModuloIndisponivel ? (
-        <p className="mb-6 rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
-          Este módulo ainda não está disponível neste site.
-        </p>
-      ) : null}
-      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-amber-400/90">
-        Site institucional
-      </p>
-      <h1 className="mt-3 text-3xl font-semibold tracking-tight text-white sm:text-4xl">
-        {branding.nome_site}
-      </h1>
-      {branding.subtitulo ? (
-        <p className="mt-3 text-lg text-zinc-300">{branding.subtitulo}</p>
-      ) : null}
-      {branding.descricao_institucional ? (
-        <p className="mt-6 text-base leading-relaxed text-zinc-400">
-          {branding.descricao_institucional}
-        </p>
-      ) : (
-        <p className="mt-6 text-base leading-relaxed text-zinc-400">
-          Conteúdo institucional de demonstração. Módulos comerciais e operacionais
-          ainda não estão habilitados para este tenant.
-        </p>
+    <div>
+      {showModuloIndisponivel && (
+        <div className="bg-amber-50 border-b border-amber-200 px-4 py-2.5 text-center text-xs font-bold text-amber-900">
+          Este módulo ainda não está disponível neste site institucional.
+        </div>
       )}
-      <ul className="mt-10 space-y-2 text-sm text-zinc-500">
-        <li>Sem catálogo de grupos ou cotas nesta fase.</li>
-        <li>Sem simulador baseado em dados reais.</li>
-        <li>Sem leads, propostas, eventos ou contratação online.</li>
-      </ul>
-    </main>
+      <RaconInspiredHome
+        empresaNome={branding.nome_site}
+        logoUrl={branding.logo_url}
+        identidade={{
+          cor_primaria: branding.cor_primaria || "#0066cc",
+          cor_secundaria: branding.cor_secundaria || "#0c2340",
+          cor_destaque: branding.cor_destaque || "#ffb800",
+          cor_fundo: "#ffffff",
+          cor_texto: "#0f172a",
+        }}
+        telefoneContato={branding.telefone || "(41) 3000-0000"}
+        whatsappContato={branding.whatsapp || "(41) 99999-9999"}
+      />
+    </div>
   );
 }
+

@@ -320,10 +320,18 @@ A plataforma suporta:
   - Mecanismo de liberações e overrides com resolução hierárquica (`Catálogo Global → Plano → Assinatura → Override → Usuário`).
   - Relatório: `docs/relatorios-fases/fase-089-platform-planos-assinaturas-limits.md`.
 
-* O estado funcional do Supabase Production inclui migrations `001–090`.
+* Platform Template Racon Inspired V2 & Preview de Alta Fidelidade (Migration 091):
+  - Refatoração estrutural da experiência do template Racon Inspired com topbar utilitária discreta, header clean em branco, hero com gradiente navy e simulador interativo integrado.
+  - Seções comerciais de alta conversão: cards de segmentos com acervo de imagens do projeto, 4 pilares do consórcio, 3 passos da contemplação, barra de estatísticas/credibilidade e rodapé regulatório com autorização do Banco Central.
+  - Componente canônico `RaconInspiredHome` integrado ao preview do workspace de templates e à renderização de novos tenants.
+  - Publicação oficial do template (`status = 'PUBLICADO'`, versão 2) selecionável no onboarding de novas franquias.
+  - Relatório: `docs/relatorios-fases/fase-091-platform-template-racon-inspired-v2.md`.
+
+* O estado funcional do Supabase Production inclui migrations `001–091`.
 * `admin.gauchinhoconsorcios.com.br` está ativo, verificado e associado ao deployment Production da `main`; ele não é tenant e não possui fallback para Gauchinho.
-* As migrations `070–090` estão versionadas e aplicadas em Produção; correções futuras permanecem obrigatoriamente forward-only.
-* Evidências consolidadas: `docs/relatorios-fases/PLATFORM-GRUPOS-CATALOGO-085.md`, `docs/relatorios-fases/PLATFORM-GRUPOS-TEMPORAL-HERANCA-086.md`, `docs/relatorios-fases/PLATFORM-PROGRAMAS-REGRAS-EDITOR-087.md`, `docs/relatorios-fases/fase-088-platform-templates-dominios-onboarding.md` e `docs/relatorios-fases/fase-089-platform-planos-assinaturas-limits.md`.
+* As migrations `070–091` estão versionadas e aplicadas em Produção; correções futuras permanecem obrigatoriamente forward-only.
+* Evidências consolidadas: `docs/relatorios-fases/PLATFORM-GRUPOS-CATALOGO-085.md`, `docs/relatorios-fases/PLATFORM-GRUPOS-TEMPORAL-HERANCA-086.md`, `docs/relatorios-fases/PLATFORM-PROGRAMAS-REGRAS-EDITOR-087.md`, `docs/relatorios-fases/fase-088-platform-templates-dominios-onboarding.md`, `docs/relatorios-fases/fase-089-platform-planos-assinaturas-limits.md` e `docs/relatorios-fases/fase-091-platform-template-racon-inspired-v2.md`.
+
 
 
 

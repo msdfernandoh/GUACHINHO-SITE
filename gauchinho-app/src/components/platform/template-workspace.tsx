@@ -9,6 +9,7 @@ import {
   type PlatformFormState,
 } from "@/app/platform/templates-actions";
 import { sanitizeTemplateCode } from "@/lib/platform/html-sanitizer";
+import { RaconInspiredHome } from "@/components/public/templates/racon-inspired-home";
 
 export type MenuItem = {
   id: string;
@@ -67,16 +68,17 @@ export type TemplateDetail = {
 const initial: PlatformFormState = { status: "IDLE", message: "" };
 
 const RACON_PRESET_IDENTIDADE: IdentidadeVisual = {
-  cor_primaria: "#0284c7",
-  cor_secundaria: "#0f172a",
-  cor_destaque: "#f59e0b",
-  cor_fundo: "#f8fafc",
-  cor_texto: "#1e293b",
+  cor_primaria: "#0066cc",
+  cor_secundaria: "#0c2340",
+  cor_destaque: "#ffb800",
+  cor_fundo: "#ffffff",
+  cor_texto: "#0f172a",
   fonte_familia: "Inter, system-ui, sans-serif",
   border_radius: "16px",
   estilo_botoes: "rounded-full",
   estilo_cards: "rounded-2xl shadow-lg border border-slate-100",
 };
+
 
 export function TemplateWorkspace({
   template,
@@ -768,143 +770,24 @@ export function TemplateWorkspace({
               <div
                 style={{
                   width: previewViewport === "desktop" ? "100%" : previewViewport === "tablet" ? "768px" : "375px",
-                  maxWidth: "1100px",
-                  backgroundColor: identidade.cor_fundo,
-                  color: identidade.cor_texto,
-                  fontFamily: identidade.fonte_familia,
-                  borderRadius: identidade.border_radius,
+                  maxWidth: "1280px",
                 }}
-                className="overflow-hidden shadow-2xl transition-all border border-slate-200 dark:border-slate-800 text-left"
+                className="overflow-hidden shadow-2xl transition-all border border-slate-200 dark:border-slate-800 rounded-2xl bg-white"
               >
-                {/* 1. Header Branco com Navegação Limpa */}
-                <div className="flex items-center justify-between border-b border-slate-100 bg-white px-6 py-4 shadow-sm">
-                  <div className="flex items-center gap-3">
-                    <div
-                      style={{ backgroundColor: identidade.cor_primaria }}
-                      className="flex h-10 w-10 items-center justify-center rounded-xl font-extrabold text-white"
-                    >
-                      {previewEmpresaNome.slice(0, 2).toUpperCase()}
-                    </div>
-                    <div>
-                      <h3 className="font-extrabold text-slate-900">{previewEmpresaNome}</h3>
-                      <p className="text-[10px] text-slate-400">Consórcios e Investimentos</p>
-                    </div>
-                  </div>
-
-                  <nav className="hidden md:flex items-center gap-4 text-xs font-bold text-slate-700">
-                    {menus.filter((m) => m.ativo_padrao).slice(0, 5).map((m) => (
-                      <span key={m.id} className="hover:text-cyan-600 cursor-pointer">
-                        {m.label}
-                      </span>
-                    ))}
-                  </nav>
-
-                  <button
-                    type="button"
-                    style={{ backgroundColor: identidade.cor_destaque, borderRadius: identidade.border_radius }}
-                    className="px-4 py-2 text-xs font-bold text-slate-950 shadow-sm"
-                  >
-                    Simular Agora
-                  </button>
-                </div>
-
-                {/* 2. Hero em Destaque */}
-                <div
-                  style={{
-                    backgroundColor: identidade.cor_secundaria,
-                  }}
-                  className="p-8 text-white text-center md:p-12 space-y-4"
-                >
-                  <span
-                    style={{ backgroundColor: identidade.cor_primaria }}
-                    className="inline-block rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-white"
-                  >
-                    Planejamento Financeiro Sem Juros
-                  </span>
-                  <h2 className="text-2xl font-extrabold md:text-4xl">
-                    Conquiste seu Imóvel ou Veículo com Taxas Exclusivas
-                  </h2>
-                  <p className="mx-auto max-w-xl text-xs text-slate-300 md:text-sm">
-                    Grupos oficiais com contemplações mensais por sorteio e lances livres ou fixos.
-                  </p>
-
-                  {/* 3. Simulador em Card Arredondado */}
-                  <div
-                    style={{
-                      borderRadius: identidade.border_radius,
-                    }}
-                    className="mx-auto max-w-xl bg-white p-6 text-slate-900 shadow-2xl text-left space-y-4 border border-slate-100"
-                  >
-                    <h4 className="text-sm font-bold text-slate-900">Simule seu Plano</h4>
-                    <div className="grid grid-cols-2 gap-3 text-xs">
-                      <div>
-                        <label className="font-semibold text-slate-500">Segmento:</label>
-                        <select className="mt-1 w-full rounded-lg border border-slate-200 p-2 font-bold">
-                          <option>Imóveis (R$ 150k a 1.5M)</option>
-                          <option>Veículos (R$ 40k a 400k)</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label className="font-semibold text-slate-500">Valor do Crédito:</label>
-                        <input
-                          defaultValue="R$ 200.000,00"
-                          className="mt-1 w-full rounded-lg border border-slate-200 p-2 font-bold text-cyan-700"
-                        />
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      style={{ backgroundColor: identidade.cor_primaria, borderRadius: identidade.border_radius }}
-                      className="w-full py-3 text-xs font-bold text-white shadow hover:opacity-90"
-                    >
-                      Calcular Parcelas e Modalidades
-                    </button>
-                  </div>
-                </div>
-
-                {/* 4. Cards Comerciais */}
-                <div className="p-8 space-y-6">
-                  <div className="text-center">
-                    <h3 className="text-lg font-bold text-slate-900">Segmentos Disponíveis</h3>
-                    <p className="text-xs text-slate-500">Escolha a categoria de crédito para ver grupos e cotas.</p>
-                  </div>
-
-                  <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3">
-                    {[
-                      ["🏠 Consórcio Imobiliário", "Casas, apartamentos, terrenos e construção.", "A partir de R$ 680/mês"],
-                      ["🚗 Consórcio de Veículos", "Carros novos e seminovos com parcelas acessíveis.", "A partir de R$ 390/mês"],
-                      ["⚡ Modalidade Reduzida", "Pague até 50% da parcela até a contemplação.", "Economia no fluxo de caixa"],
-                    ].map(([title, desc, badge], idx) => (
-                      <div
-                        key={idx}
-                        style={{ borderRadius: identidade.border_radius }}
-                        className="bg-white p-5 shadow-sm border border-slate-100 space-y-2"
-                      >
-                        <h4 className="font-bold text-slate-900 text-xs">{title}</h4>
-                        <p className="text-[11px] text-slate-500">{desc}</p>
-                        <span
-                          style={{ color: identidade.cor_primaria }}
-                          className="inline-block text-[11px] font-bold"
-                        >
-                          {badge}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* 5. Footer Estruturado */}
-                <div
-                  style={{ backgroundColor: identidade.cor_secundaria }}
-                  className="p-6 text-white text-center text-xs space-y-2 border-t border-slate-800"
-                >
-                  <p className="font-semibold text-slate-400">{copyright}</p>
-                  <p className="text-[10px] text-slate-500">Plataforma SaaS Gauchinho Consórcios Multi-Tenant</p>
-                </div>
+                <RaconInspiredHome
+                  empresaNome={previewEmpresaNome}
+                  logoUrl={template.permite_logo_propria ? logoPadraoUrl : null}
+                  identidade={identidade}
+                  menus={menus}
+                  secoes={secoes}
+                  footerCopyright={copyright}
+                  isInteractive={false}
+                />
               </div>
             </div>
           </section>
         )}
+
 
         {/* ABA 8: HISTÓRICO */}
         {tab === "historico" && (
