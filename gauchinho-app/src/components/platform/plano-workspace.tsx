@@ -371,7 +371,7 @@ export function PlanoWorkspace({
 
         {/* ABA 2: ERP & MÓDULOS */}
         {tab === "erp" && (
-          <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900 space-y-4">
+          <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900 space-y-6">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3 dark:border-slate-800">
               <div>
                 <h2 className="text-base font-bold text-slate-900 dark:text-white">ERP & Módulos Inclusos no Plano</h2>
@@ -392,41 +392,98 @@ export function PlanoWorkspace({
             </div>
 
             {erpIncluido ? (
-              <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3">
-                {modulosCatalogo.map((mod) => {
-                  const isChecked = modulosSelecionados.includes(mod.codigo);
-                  return (
-                    <label
-                      key={mod.id}
-                      className={`flex items-start gap-3 rounded-xl border p-3.5 cursor-pointer transition-colors ${
-                        isChecked
-                          ? "border-cyan-300 bg-cyan-50/50 dark:border-cyan-800 dark:bg-cyan-950/30"
-                          : "border-slate-200 bg-white opacity-60 dark:border-slate-800 dark:bg-slate-900"
-                      }`}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={isChecked}
-                        onChange={() => toggleModulo(mod.codigo)}
-                        className="mt-0.5 h-4 w-4 rounded text-cyan-600"
-                      />
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <h4 className="text-xs font-bold text-slate-900 dark:text-white">{mod.nome}</h4>
-                          <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[9px] font-bold uppercase text-slate-500 dark:bg-slate-800">
-                            {mod.categoria}
-                          </span>
+              <div className="space-y-6">
+                <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3">
+                  {modulosCatalogo.map((mod) => {
+                    const isChecked = modulosSelecionados.includes(mod.codigo);
+                    return (
+                      <label
+                        key={mod.id}
+                        className={`flex items-start gap-3 rounded-xl border p-3.5 cursor-pointer transition-colors ${
+                          isChecked
+                            ? "border-cyan-300 bg-cyan-50/50 dark:border-cyan-800 dark:bg-cyan-950/30"
+                            : "border-slate-200 bg-white opacity-60 dark:border-slate-800 dark:bg-slate-900"
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={() => toggleModulo(mod.codigo)}
+                          className="mt-0.5 h-4 w-4 rounded text-cyan-600"
+                        />
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <h4 className="text-xs font-bold text-slate-900 dark:text-white">{mod.nome}</h4>
+                            <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[9px] font-bold uppercase text-slate-500 dark:bg-slate-800">
+                              {mod.categoria}
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-slate-500 line-clamp-2 mt-1">{mod.descricao || mod.codigo}</p>
+                          {mod.dependencias?.length > 0 && (
+                            <p className="text-[10px] text-cyan-700 dark:text-cyan-400 mt-1">
+                              Depende de: {mod.dependencias.join(", ")}
+                            </p>
+                          )}
                         </div>
-                        <p className="text-[11px] text-slate-500 line-clamp-2 mt-1">{mod.descricao || mod.codigo}</p>
-                        {mod.dependencias?.length > 0 && (
-                          <p className="text-[10px] text-cyan-700 dark:text-cyan-400 mt-1">
-                            Depende de: {mod.dependencias.join(", ")}
-                          </p>
-                        )}
-                      </div>
-                    </label>
-                  );
-                })}
+                      </label>
+                    );
+                  })}
+                </div>
+
+                {/* Tabela Resumo: Matriz de Módulos */}
+                <div className="overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
+                  <div className="p-3 bg-slate-50 border-b border-slate-200 dark:bg-slate-800 dark:border-slate-700">
+                    <h3 className="text-xs font-bold uppercase text-slate-600 dark:text-slate-300">
+                      Matriz de Entitlements de Módulos ERP
+                    </h3>
+                  </div>
+                  <table className="w-full text-xs">
+                    <thead className="border-b bg-slate-50/50 text-left uppercase text-[10px] text-slate-400 dark:bg-slate-800/50">
+                      <tr>
+                        <th className="p-2.5">Módulo ERP</th>
+                        <th className="p-2.5 text-center">Categoria</th>
+                        <th className="p-2.5 text-center">Incluído no Plano</th>
+                        <th className="p-2.5">Dependência</th>
+                        <th className="p-2.5 text-center">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                      {modulosCatalogo.map((m) => {
+                        const incluso = modulosSelecionados.includes(m.codigo);
+                        return (
+                          <tr key={m.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50">
+                            <td className="p-2.5 font-bold text-slate-900 dark:text-white">
+                              {m.nome}
+                              <span className="font-mono text-[10px] text-slate-400 ml-1">({m.codigo})</span>
+                            </td>
+                            <td className="p-2.5 text-center">
+                              <span className="rounded bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-600 dark:bg-slate-800 dark:text-slate-400">
+                                {m.categoria}
+                              </span>
+                            </td>
+                            <td className="p-2.5 text-center">
+                              <span
+                                className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold ${
+                                  incluso
+                                    ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
+                                    : "bg-slate-100 text-slate-400 dark:bg-slate-800"
+                                }`}
+                              >
+                                {incluso ? "✓ Sim" : "✕ Não"}
+                              </span>
+                            </td>
+                            <td className="p-2.5 font-mono text-[11px] text-slate-500">
+                              {m.dependencias && m.dependencias.length > 0 ? m.dependencias.join(", ") : "Nenhuma"}
+                            </td>
+                            <td className="p-2.5 text-center font-bold">
+                              <span className="text-emerald-600 dark:text-emerald-400">{m.status}</span>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             ) : (
               <div className="rounded-xl border border-slate-200 bg-slate-50 p-6 text-center text-xs text-slate-500">
@@ -440,7 +497,7 @@ export function PlanoWorkspace({
         {tab === "usuarios" && (
           <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900 space-y-4">
             <h2 className="text-base font-bold text-slate-900 dark:text-white">Limite Base de Usuários</h2>
-            <p className="text-xs text-slate-500">
+            <p className="text-xs font-bold text-slate-500">
               Quantidade de acessos de usuários concedidos por padrão à Master Franquia.
             </p>
             <div className="max-w-xs">
@@ -459,19 +516,19 @@ export function PlanoWorkspace({
         {/* ABA 4: SITE PRINCIPAL */}
         {tab === "site_principal" && (
           <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900 space-y-4">
-            <h2 className="text-base font-bold text-slate-900 dark:text-white">Site Institucional Principal</h2>
-            <label className="flex items-center gap-3 text-xs font-bold cursor-pointer">
+            <h2 className="text-base font-bold text-slate-900 dark:text-white">Site Principal da Master Franquia</h2>
+            <p className="text-xs text-slate-500">
+              Concessão do portal público oficial com simulação de consórcios, captação de leads e domínio próprio.
+            </p>
+            <label className="flex items-center gap-2 text-xs font-bold cursor-pointer">
               <input
                 type="checkbox"
                 checked={sitePrincipalIncluido}
                 onChange={(e) => setSitePrincipalIncluido(e.target.checked)}
                 className="h-4 w-4 rounded text-cyan-600"
               />
-              <span>Site Principal da Master Franquia Incluído no Plano</span>
+              <span>Site Principal Incluso no Plano</span>
             </label>
-            <p className="text-xs text-slate-500">
-              Permite à franquia utilizar um Modelo de Site publicado (ex: Racon Inspired ou Gauchinho Default) com domínio próprio ou subdomínio.
-            </p>
           </section>
         )}
 
@@ -480,9 +537,9 @@ export function PlanoWorkspace({
           <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900 space-y-4">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3 dark:border-slate-800">
               <div>
-                <h2 className="text-base font-bold text-slate-900 dark:text-white">Sites de Parceiros Comerciais</h2>
+                <h2 className="text-base font-bold text-slate-900 dark:text-white">Sites de Parceiros & Domínios</h2>
                 <p className="text-xs text-slate-500">
-                  Permita à Master Franquia criar e gerenciar landing pages/sites para seus parceiros comerciais (imobiliárias, consultores, etc.).
+                  Entitlements para criação de mini-sites afiliados e concessão de domínios próprios por parceiro.
                 </p>
               </div>
 
@@ -539,10 +596,10 @@ export function PlanoWorkspace({
         {/* ABA 6: VALORES & PRECIFICAÇÃO */}
         {tab === "valores" && (
           <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900 space-y-4">
-            <h2 className="text-base font-bold text-slate-900 dark:text-white">Precificação do Plano SaaS</h2>
-            <div className="grid gap-4 sm:grid-cols-2">
+            <h2 className="text-base font-bold text-slate-900 dark:text-white">Precificação Estruturada do Plano SaaS</h2>
+            <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3">
               <div>
-                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Valor Mensal Base (R$):</label>
+                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Mensalidade Base (R$):</label>
                 <input
                   type="number"
                   step="0.01"
@@ -554,7 +611,7 @@ export function PlanoWorkspace({
               </div>
 
               <div>
-                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Taxa de Implantação Opcional (R$):</label>
+                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Taxa de Implantação / Setup (R$):</label>
                 <input
                   type="number"
                   step="0.01"
@@ -566,7 +623,7 @@ export function PlanoWorkspace({
               </div>
 
               <div>
-                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Mensalidade por Site de Parceiro (Sem Domínio Próprio):</label>
+                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Site Parceiro Sem Domínio (R$/mês):</label>
                 <input
                   type="number"
                   step="0.01"
@@ -578,13 +635,37 @@ export function PlanoWorkspace({
               </div>
 
               <div>
-                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Mensalidade por Site de Parceiro (Com Domínio Próprio):</label>
+                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Site Parceiro Com Domínio (R$/mês):</label>
                 <input
                   type="number"
                   step="0.01"
                   min={0}
                   value={valorSiteDominioProprio}
                   onChange={(e) => setValorSiteDominioProprio(Number(e.target.value))}
+                  className="mt-1 w-full rounded-lg border border-slate-300 p-2.5 text-xs font-bold dark:border-slate-700 dark:bg-slate-800"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Taxa Setup Site Parceiro (R$):</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min={0}
+                  value={taxaImplantacaoSiteParceiro}
+                  onChange={(e) => setTaxaImplantacaoSiteParceiro(Number(e.target.value))}
+                  className="mt-1 w-full rounded-lg border border-slate-300 p-2.5 text-xs font-bold dark:border-slate-700 dark:bg-slate-800"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Configuração de Domínio Próprio (R$):</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min={0}
+                  value={taxaImplantacaoDominioProprio}
+                  onChange={(e) => setTaxaImplantacaoDominioProprio(Number(e.target.value))}
                   className="mt-1 w-full rounded-lg border border-slate-300 p-2.5 text-xs font-bold dark:border-slate-700 dark:bg-slate-800"
                 />
               </div>
