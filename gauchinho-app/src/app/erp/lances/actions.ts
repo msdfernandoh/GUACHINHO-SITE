@@ -111,278 +111,291 @@ export async function fetchCotasComLancesOperacional(filters?: {
   rows: CotaLanceOperacionalDTO[];
   empresaId: string;
 }> {
-  const { empresaAtiva, usuario } = await getCurrentTenantContext();
-  if (!empresaAtiva?.id) {
-    return {
-      stats: { totalCotas: 0, comLanceAtivo: 0, semEstrategia: 0, vencendoTrintaDias: 0, vencidos: 0, contempladas: 0 },
-      rows: [],
-      empresaId: "",
-    };
-  }
+  const emptyStats: LancesDashboardStats = {
+    totalCotas: 0,
+    comLanceAtivo: 0,
+    semEstrategia: 0,
+    vencendoTrintaDias: 0,
+    vencidos: 0,
+    contempladas: 0,
+  };
 
-  const supabase = await createClient();
-
-  // Verificar escopo do usuário logado se for participante
-  let escopoFiltroParticipanteId: string | null = null;
-  if (usuario?.id) {
-    const { data: part } = await supabase
-      .from("participantes_comerciais")
-      .select("id, escopo_visualizacao")
-      .eq("empresa_id", empresaAtiva.id)
-      .eq("usuario_id", usuario.id)
-      .maybeSingle();
-
-    if (part && (part.escopo_visualizacao === "VINCULADOS" || part.escopo_visualizacao === "CRIADOS" || part.escopo_visualizacao === "VINCULADOS_OU_CRIADOS")) {
-      escopoFiltroParticipanteId = part.id;
+  try {
+    const { empresaAtiva, usuario } = await getCurrentTenantContext();
+    if (!empresaAtiva?.id) {
+      return { stats: emptyStats, rows: [], empresaId: "" };
     }
-  }
 
-  let query = supabase
-    .from("cotas_definitivas")
-    .select(`
-      id,
-      numero_grupo,
-      numero_cota,
-      valor_credito,
-      prazo,
-      parcela,
-      status,
-      participante_comercial_id,
-      created_at,
-      venda:vendas(
-        id,
-        cliente_nome,
-        cliente_cpf_cnpj,
-        cliente_telefone,
-        cliente_email,
-        participante_comercial_id,
-        cliente:clientes(id, nome, cpf_cnpj, telefone, email)
-      ),
-      administradora:administradoras(id, nome),
-      grupo:grupos_consorcio(
-        id,
-        codigo_grupo,
-        permite_lance_embutido,
-        percentual_lance_embutido,
-        tipo:administradora_tipos(nome)
-      ),
-      consultor:participantes_comerciais(id, nome),
-      estrategia:cota_estrategias_lance(
-        id,
-        data_lance,
-        data_vencimento,
-        lance_fixo_ativo,
-        lance_fixo_percentual,
-        lance_fixo_valor,
-        segundo_lance_fixo_ativo,
-        segundo_lance_fixo_percentual,
-        segundo_lance_fixo_valor,
-        lance_fidelidade_ativo,
-        lance_fidelidade_percentual,
-        lance_fidelidade_valor,
-        lance_fidelidade_observacao,
-        lance_livre_ativo,
-        lance_livre_valor,
-        lance_livre_percentual,
-        recurso_proprio_valor,
-        lance_embutido_percentual,
-        lance_embutido_valor,
-        parcela_reduzida_ativa,
-        observacoes,
-        ativa,
-        comprovante_url,
-        comprovante_storage_path,
-        comprovante_nome,
-        confirmado,
-        confirmado_em,
-        confirmado_por_nome,
-        confirmado_observacao,
-        revogado_em,
-        revogado_motivo,
-        consultor_responsavel_id
-      ),
-      historico:cota_estrategias_lance_historico(
-        id,
-        created_at,
-        motivo,
-        estado_novo
-      )
-    `)
-    .eq("empresa_id", empresaAtiva.id)
-    .order("created_at", { ascending: false });
+    const supabase = await createClient();
 
-  if (escopoFiltroParticipanteId) {
-    query = query.eq("participante_comercial_id", escopoFiltroParticipanteId);
-  }
+    // 1. Verificar escopo do usuário logado se for participante
+    let escopoFiltroParticipanteId: string | null = null;
+    if (usuario?.id) {
+      try {
+        const { data: part } = await supabase
+          .from("participantes_comerciais")
+          .select("id, escopo_visualizacao")
+          .eq("empresa_id", empresaAtiva.id)
+          .eq("usuario_id", usuario.id)
+          .maybeSingle();
 
-  const { data, error } = await query;
-  if (error) throw new Error(error.message);
+        if (
+          part &&
+          (part.escopo_visualizacao === "VINCULADOS" ||
+            part.escopo_visualizacao === "CRIADOS" ||
+            part.escopo_visualizacao === "VINCULADOS_OU_CRIADOS")
+        ) {
+          escopoFiltroParticipanteId = part.id;
+        }
+      } catch {
+        // Se escopo_visualizacao ainda não existir na tabela, continua normalmente
+      }
+    }
 
-  const hoje = new Date();
-  hoje.setHours(0, 0, 0, 0);
+    // 2. Buscar cotas_definitivas do tenant
+    let cotasQuery = supabase
+      .from("cotas_definitivas")
+      .select("id, empresa_id, numero_grupo, numero_cota, valor_credito, prazo, parcela, status, participante_comercial_id, venda_id, administradora_id, grupo_id, created_at")
+      .eq("empresa_id", empresaAtiva.id)
+      .order("created_at", { ascending: false });
 
-  let allRows: CotaLanceOperacionalDTO[] = (data ?? []).map((row: any) => {
-    const venda = row.venda;
-    const admin = row.administradora;
-    const grupo = row.grupo;
-    const consultor = row.consultor;
-    const est = Array.isArray(row.estrategia) ? (row.estrategia[0] ?? null) : row.estrategia;
+    if (escopoFiltroParticipanteId) {
+      cotasQuery = cotasQuery.eq("participante_comercial_id", escopoFiltroParticipanteId);
+    }
 
-    let situacao: CotaLanceOperacionalDTO["situacaoOperacional"] = "SEM_ESTRATEGIA";
-    let diasParaVencimento: number | null = null;
+    const { data: cotasData, error: cotasError } = await cotasQuery;
+    if (cotasError || !cotasData || cotasData.length === 0) {
+      return { stats: emptyStats, rows: [], empresaId: empresaAtiva.id };
+    }
 
-    if (est && est.ativa) {
-      if (est.confirmado) {
-        situacao = "CONFIRMADO";
-      } else if (est.data_vencimento) {
-        const [y, m, d] = est.data_vencimento.split("-").map(Number);
-        const dataVenc = new Date(y, m - 1, d);
-        const diffTime = dataVenc.getTime() - hoje.getTime();
-        diasParaVencimento = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    const cotaIds = cotasData.map((c) => c.id);
+    const vendaIds = Array.from(new Set(cotasData.map((c) => c.venda_id).filter(Boolean)));
+    const adminIds = Array.from(new Set(cotasData.map((c) => c.administradora_id).filter(Boolean)));
+    const grupoIds = Array.from(new Set(cotasData.map((c) => c.grupo_id).filter(Boolean)));
+    const participanteIds = Array.from(new Set(cotasData.map((c) => c.participante_comercial_id).filter(Boolean)));
 
-        if (diasParaVencimento < 0) {
-          situacao = "VENCIDO";
-        } else if (diasParaVencimento <= 30) {
-          situacao = "VENCENDO";
+    // 3. Consultas paralelas auxiliares
+    const [
+      vendasRes,
+      adminsRes,
+      gruposRes,
+      tiposRes,
+      partRes,
+      estrategiasRes,
+      historicoRes,
+    ] = await Promise.all([
+      vendaIds.length > 0
+        ? supabase.from("vendas").select("id, cliente_nome, cliente_cpf_cnpj, cliente_telefone, cliente_email, participante_comercial_id, cliente_id").in("id", vendaIds)
+        : Promise.resolve({ data: [] }),
+      adminIds.length > 0
+        ? supabase.from("administradoras").select("id, nome").in("id", adminIds)
+        : Promise.resolve({ data: [] }),
+      grupoIds.length > 0
+        ? supabase.from("grupos_consorcio").select("id, codigo_grupo, permite_lance_embutido, percentual_lance_embutido, tipo_administradora_id").in("id", grupoIds)
+        : Promise.resolve({ data: [] }),
+      supabase.from("administradora_tipos").select("id, nome"),
+      participanteIds.length > 0
+        ? supabase.from("participantes_comerciais").select("id, nome").in("id", participanteIds)
+        : Promise.resolve({ data: [] }),
+      cotaIds.length > 0
+        ? supabase.from("cota_estrategias_lance").select("*").in("cota_definitiva_id", cotaIds)
+        : Promise.resolve({ data: [] }),
+      cotaIds.length > 0
+        ? supabase.from("cota_estrategias_lance_historico").select("*").in("cota_definitiva_id", cotaIds).order("created_at", { ascending: false })
+        : Promise.resolve({ data: [] }),
+    ]);
+
+    // Mapas para lookup O(1)
+    const vendasMap = new Map((vendasRes.data ?? []).map((v) => [v.id, v]));
+    const adminsMap = new Map((adminsRes.data ?? []).map((a) => [a.id, a]));
+    const gruposMap = new Map((gruposRes.data ?? []).map((g) => [g.id, g]));
+    const tiposMap = new Map((tiposRes.data ?? []).map((t) => [t.id, t]));
+    const partMap = new Map((partRes.data ?? []).map((p) => [p.id, p]));
+    const estMap = new Map((estrategiasRes.data ?? []).map((e: any) => [e.cota_definitiva_id, e]));
+
+    // Agrupar histórico por cota
+    const histByCota = new Map<string, any[]>();
+    for (const h of (historicoRes.data ?? []) as any[]) {
+      if (!histByCota.has(h.cota_definitiva_id)) {
+        histByCota.set(h.cota_definitiva_id, []);
+      }
+      histByCota.get(h.cota_definitiva_id)!.push(h);
+    }
+
+    const hoje = new Date();
+    hoje.setHours(0, 0, 0, 0);
+
+    let allRows: CotaLanceOperacionalDTO[] = cotasData.map((c) => {
+      const venda = c.venda_id ? vendasMap.get(c.venda_id) : null;
+      const admin = c.administradora_id ? adminsMap.get(c.administradora_id) : null;
+      const grupo = c.grupo_id ? gruposMap.get(c.grupo_id) : null;
+      const tipo = grupo?.tipo_administradora_id ? tiposMap.get(grupo.tipo_administradora_id) : null;
+      const consultorId = c.participante_comercial_id || venda?.participante_comercial_id;
+      const consultor = consultorId ? partMap.get(consultorId) : null;
+      const est = estMap.get(c.id);
+      const hist = histByCota.get(c.id) ?? [];
+
+      let situacao: CotaLanceOperacionalDTO["situacaoOperacional"] = "SEM_ESTRATEGIA";
+      let diasParaVencimento: number | null = null;
+
+      if (est && est.ativa !== false) {
+        if (est.confirmado) {
+          situacao = "CONFIRMADO";
+        } else if (est.data_vencimento) {
+          try {
+            const [y, m, d] = String(est.data_vencimento).split("-").map(Number);
+            const dataVenc = new Date(y, m - 1, d);
+            const diffTime = dataVenc.getTime() - hoje.getTime();
+            diasParaVencimento = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+            if (diasParaVencimento < 0) {
+              situacao = "VENCIDO";
+            } else if (diasParaVencimento <= 30) {
+              situacao = "VENCENDO";
+            } else {
+              situacao = "ATIVO";
+            }
+          } catch {
+            situacao = "ATIVO";
+          }
         } else {
           situacao = "ATIVO";
         }
-      } else {
-        situacao = "ATIVO";
+      } else if (est && est.ativa === false) {
+        situacao = "INATIVO";
       }
-    } else if (est && !est.ativa) {
-      situacao = "INATIVO";
+
+      return {
+        id: c.id,
+        numeroGrupo: c.numero_grupo || "—",
+        numeroCota: c.numero_cota || null,
+        valorCredito: Number(c.valor_credito || 0),
+        prazo: Number(c.prazo || 0),
+        parcela: Number(c.parcela || 0),
+        statusCota: c.status || "ativa",
+        contemplada: c.status === "contemplada",
+        cliente: {
+          id: venda?.cliente_id || null,
+          nome: venda?.cliente_nome || "Cliente",
+          cpfCnpj: venda?.cliente_cpf_cnpj || null,
+          telefone: venda?.cliente_telefone || null,
+          email: venda?.cliente_email || null,
+        },
+        administradora: {
+          id: admin?.id || null,
+          nome: admin?.nome || "—",
+        },
+        grupo: {
+          id: grupo?.id || null,
+          codigoGrupo: grupo?.codigo_grupo || c.numero_grupo || "—",
+          lanceFixoPercentual: null,
+          segundoLanceFixoPercentual: null,
+          lanceEmbutidoPermitido: Boolean(grupo?.permite_lance_embutido),
+          lanceEmbutidoPercentual: grupo?.percentual_lance_embutido ? Number(grupo.percentual_lance_embutido) : null,
+          lanceFidelidadePermitido: true,
+          mediaLanceLivre: null,
+          proximaAssembleiaData: null,
+          tipoNome: tipo?.nome || "Consórcio",
+        },
+        consultor: {
+          id: consultor?.id || null,
+          nome: consultor?.nome || "—",
+        },
+        estrategia: est
+          ? {
+              id: est.id,
+              dataLance: est.data_lance || null,
+              dataVencimento: est.data_vencimento || null,
+              lanceFixoAtivo: Boolean(est.lance_fixo_ativo),
+              lanceFixoPercentual: est.lance_fixo_percentual ? Number(est.lance_fixo_percentual) : null,
+              lanceFixoValor: est.lance_fixo_valor ? Number(est.lance_fixo_valor) : null,
+              segundoLanceFixoAtivo: Boolean(est.segundo_lance_fixo_ativo),
+              segundoLanceFixoPercentual: est.segundo_lance_fixo_percentual ? Number(est.segundo_lance_fixo_percentual) : null,
+              segundoLanceFixoValor: est.segundo_lance_fixo_valor ? Number(est.segundo_lance_fixo_valor) : null,
+              lanceFidelidadeAtivo: Boolean(est.lance_fidelidade_ativo),
+              lanceFidelidadePercentual: est.lance_fidelidade_percentual ? Number(est.lance_fidelidade_percentual) : null,
+              lanceFidelidadeValor: est.lance_fidelidade_valor ? Number(est.lance_fidelidade_valor) : null,
+              lanceFidelidadeObservacao: est.lance_fidelidade_observacao || null,
+              lanceLivreAtivo: Boolean(est.lance_livre_ativo),
+              lanceLivreValor: est.lance_livre_valor ? Number(est.lance_livre_valor) : null,
+              lanceLivrePercentual: est.lance_livre_percentual ? Number(est.lance_livre_percentual) : null,
+              recursoProprioValor: est.recurso_proprio_valor ? Number(est.recurso_proprio_valor) : null,
+              lanceEmbutidoPercentual: est.lance_embutido_percentual ? Number(est.lance_embutido_percentual) : null,
+              lanceEmbutidoValor: est.lance_embutido_valor ? Number(est.lance_embutido_valor) : null,
+              parcelaReduzidaAtiva: Boolean(est.parcela_reduzida_ativa),
+              observacoes: est.observacoes || null,
+              ativa: est.ativa !== false,
+              comprovanteUrl: est.comprovante_url || null,
+              comprovanteStoragePath: est.comprovante_storage_path || null,
+              comprovanteNome: est.comprovante_nome || null,
+              confirmado: Boolean(est.confirmado),
+              confirmadoEm: est.confirmado_em || null,
+              confirmadoPorNome: est.confirmado_por_nome || null,
+              confirmadoObservacao: est.confirmado_observacao || null,
+              revogadoEm: est.revogado_em || null,
+              revogadoMotivo: est.revogado_motivo || null,
+            }
+          : null,
+        situacaoOperacional: situacao,
+        diasParaVencimento,
+        historico: hist.map((h: any) => ({
+          id: h.id,
+          createdAt: h.created_at,
+          motivo: h.motivo,
+          estadoNovo: h.estado_novo || {},
+        })),
+      };
+    });
+
+    const stats: LancesDashboardStats = {
+      totalCotas: allRows.length,
+      comLanceAtivo: allRows.filter((r) => r.estrategia?.ativa && r.situacaoOperacional !== "SEM_ESTRATEGIA").length,
+      semEstrategia: allRows.filter((r) => r.situacaoOperacional === "SEM_ESTRATEGIA").length,
+      vencendoTrintaDias: allRows.filter((r) => r.situacaoOperacional === "VENCENDO").length,
+      vencidos: allRows.filter((r) => r.situacaoOperacional === "VENCIDO").length,
+      contempladas: allRows.filter((r) => r.contemplada).length,
+    };
+
+    if (filters?.busca?.trim()) {
+      const term = filters.busca.trim().toLowerCase();
+      allRows = allRows.filter((r) =>
+        [
+          r.cliente.nome,
+          r.cliente.cpfCnpj,
+          r.numeroGrupo,
+          r.numeroCota,
+          r.administradora.nome,
+          r.consultor.nome,
+        ].some((x) => x?.toLowerCase().includes(term))
+      );
     }
 
-    return {
-      id: row.id,
-      numeroGrupo: row.numero_grupo,
-      numeroCota: row.numero_cota,
-      valorCredito: Number(row.valor_credito || 0),
-      prazo: Number(row.prazo || 0),
-      parcela: Number(row.parcela || 0),
-      statusCota: row.status,
-      contemplada: row.status === "contemplada",
-      cliente: {
-        id: venda?.cliente?.id || null,
-        nome: venda?.cliente?.nome || venda?.cliente_nome || "Cliente",
-        cpfCnpj: venda?.cliente?.cpf_cnpj || venda?.cliente_cpf_cnpj || null,
-        telefone: venda?.cliente?.telefone || venda?.cliente_telefone || null,
-        email: venda?.cliente?.email || venda?.cliente_email || null,
-      },
-      administradora: {
-        id: admin?.id || null,
-        nome: admin?.nome || "—",
-      },
-      grupo: {
-        id: grupo?.id || null,
-        codigoGrupo: grupo?.codigo_grupo || row.numero_grupo,
-        lanceFixoPercentual: null,
-        segundoLanceFixoPercentual: null,
-        lanceEmbutidoPermitido: Boolean(grupo?.permite_lance_embutido),
-        lanceEmbutidoPercentual: grupo?.percentual_lance_embutido ? Number(grupo.percentual_lance_embutido) : null,
-        lanceFidelidadePermitido: true,
-        mediaLanceLivre: null,
-        proximaAssembleiaData: null,
-        tipoNome: grupo?.tipo?.nome || "Consórcio",
-      },
-      consultor: {
-        id: consultor?.id || null,
-        nome: consultor?.nome || "—",
-      },
-      estrategia: est
-        ? {
-            id: est.id,
-            dataLance: est.data_lance || null,
-            dataVencimento: est.data_vencimento || null,
-            lanceFixoAtivo: Boolean(est.lance_fixo_ativo),
-            lanceFixoPercentual: est.lance_fixo_percentual ? Number(est.lance_fixo_percentual) : null,
-            lanceFixoValor: est.lance_fixo_valor ? Number(est.lance_fixo_valor) : null,
-            segundoLanceFixoAtivo: Boolean(est.segundo_lance_fixo_ativo),
-            segundoLanceFixoPercentual: est.segundo_lance_fixo_percentual ? Number(est.segundo_lance_fixo_percentual) : null,
-            segundoLanceFixoValor: est.segundo_lance_fixo_valor ? Number(est.segundo_lance_fixo_valor) : null,
-            lanceFidelidadeAtivo: Boolean(est.lance_fidelidade_ativo),
-            lanceFidelidadePercentual: est.lance_fidelidade_percentual ? Number(est.lance_fidelidade_percentual) : null,
-            lanceFidelidadeValor: est.lance_fidelidade_valor ? Number(est.lance_fidelidade_valor) : null,
-            lanceFidelidadeObservacao: est.lance_fidelidade_observacao || null,
-            lanceLivreAtivo: Boolean(est.lance_livre_ativo),
-            lanceLivreValor: est.lance_livre_valor ? Number(est.lance_livre_valor) : null,
-            lanceLivrePercentual: est.lance_livre_percentual ? Number(est.lance_livre_percentual) : null,
-            recursoProprioValor: est.recurso_proprio_valor ? Number(est.recurso_proprio_valor) : null,
-            lanceEmbutidoPercentual: est.lance_embutido_percentual ? Number(est.lance_embutido_percentual) : null,
-            lanceEmbutidoValor: est.lance_embutido_valor ? Number(est.lance_embutido_valor) : null,
-            parcelaReduzidaAtiva: Boolean(est.parcela_reduzida_ativa),
-            observacoes: est.observacoes || null,
-            ativa: Boolean(est.ativa),
-            comprovanteUrl: est.comprovante_url || null,
-            comprovanteStoragePath: est.comprovante_storage_path || null,
-            comprovanteNome: est.comprovante_nome || null,
-            confirmado: Boolean(est.confirmado),
-            confirmadoEm: est.confirmado_em || null,
-            confirmadoPorNome: est.confirmado_por_nome || null,
-            confirmadoObservacao: est.confirmado_observacao || null,
-            revogadoEm: est.revogado_em || null,
-            revogadoMotivo: est.revogado_motivo || null,
-          }
-        : null,
-      situacaoOperacional: situacao,
-      diasParaVencimento,
-      historico: (row.historico ?? []).map((h: any) => ({
-        id: h.id,
-        createdAt: h.created_at,
-        motivo: h.motivo,
-        estadoNovo: h.estado_novo || {},
-      })),
-    };
-  });
+    if (filters?.administradora) {
+      allRows = allRows.filter((r) => r.administradora.nome === filters.administradora);
+    }
 
-  // Estatísticas globais do conjunto de cotas da empresa
-  const stats: LancesDashboardStats = {
-    totalCotas: allRows.length,
-    comLanceAtivo: allRows.filter((r) => r.estrategia?.ativa && r.situacaoOperacional !== "SEM_ESTRATEGIA").length,
-    semEstrategia: allRows.filter((r) => r.situacaoOperacional === "SEM_ESTRATEGIA").length,
-    vencendoTrintaDias: allRows.filter((r) => r.situacaoOperacional === "VENCENDO").length,
-    vencidos: allRows.filter((r) => r.situacaoOperacional === "VENCIDO").length,
-    contempladas: allRows.filter((r) => r.contemplada).length,
-  };
+    if (filters?.tipo) {
+      allRows = allRows.filter((r) => r.grupo.tipoNome === filters.tipo);
+    }
 
-  // Filtros em memória
-  if (filters?.busca?.trim()) {
-    const term = filters.busca.trim().toLowerCase();
-    allRows = allRows.filter((r) =>
-      [
-        r.cliente.nome,
-        r.cliente.cpfCnpj,
-        r.numeroGrupo,
-        r.numeroCota,
-        r.administradora.nome,
-        r.consultor.nome,
-      ].some((x) => x?.toLowerCase().includes(term))
-    );
+    if (filters?.statusCota) {
+      allRows = allRows.filter((r) => r.statusCota === filters.statusCota);
+    }
+
+    if (filters?.situacaoLance) {
+      allRows = allRows.filter((r) => r.situacaoOperacional === filters.situacaoLance);
+    }
+
+    if (filters?.consultorId) {
+      allRows = allRows.filter((r) => r.consultor.id === filters.consultorId);
+    }
+
+    return { stats, rows: allRows, empresaId: empresaAtiva.id };
+  } catch {
+    return { stats: emptyStats, rows: [], empresaId: "" };
   }
-
-  if (filters?.administradora) {
-    allRows = allRows.filter((r) => r.administradora.nome === filters.administradora);
-  }
-
-  if (filters?.tipo) {
-    allRows = allRows.filter((r) => r.grupo.tipoNome === filters.tipo);
-  }
-
-  if (filters?.statusCota) {
-    allRows = allRows.filter((r) => r.statusCota === filters.statusCota);
-  }
-
-  if (filters?.situacaoLance) {
-    allRows = allRows.filter((r) => r.situacaoOperacional === filters.situacaoLance);
-  }
-
-  if (filters?.consultorId) {
-    allRows = allRows.filter((r) => r.consultor.id === filters.consultorId);
-  }
-
-  return { stats, rows: allRows, empresaId: empresaAtiva.id };
 }
+
 
 export async function salvarEstrategiaLanceCompletaAction(formData: FormData) {
   const { empresaAtiva, usuario } = await getCurrentTenantContext();

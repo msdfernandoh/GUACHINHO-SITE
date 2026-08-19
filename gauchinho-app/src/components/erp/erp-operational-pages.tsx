@@ -96,14 +96,33 @@ export async function ErpLancesPage({
 }: {
   searchParams?: Promise<Record<string, string | undefined>>;
 }) {
-  const filters = await searchParams;
-  const { stats, rows, empresaId } = await fetchCotasComLancesOperacional({
-    busca: filters.busca,
-    administradora: filters.administradora,
-    tipo: filters.tipo,
-    statusCota: filters.status,
-    situacaoLance: filters.estrategia,
-  });
+  let stats = {
+    totalCotas: 0,
+    comLanceAtivo: 0,
+    semEstrategia: 0,
+    vencendoTrintaDias: 0,
+    vencidos: 0,
+    contempladas: 0,
+  };
+  let rows: any[] = [];
+  let empresaId = "";
+
+  try {
+    const filters = await searchParams;
+    const res = await fetchCotasComLancesOperacional({
+      busca: filters.busca,
+      administradora: filters.administradora,
+      tipo: filters.tipo,
+      statusCota: filters.status,
+      situacaoLance: filters.estrategia,
+    });
+    stats = res.stats;
+    rows = res.rows;
+    empresaId = res.empresaId;
+  } catch (error) {
+    console.error("Erro ao carregar lances no ERP:", error);
+  }
+
   return (
     <div className="space-y-6">
       <header>
