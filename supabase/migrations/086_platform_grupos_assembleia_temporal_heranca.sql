@@ -182,3 +182,64 @@ BEGIN
 
   RETURN to_jsonb(v_grupo);
 END $$;
+
+-- 5. Suporte a Override por Cota em grupo_cota_modalidade_valores
+ALTER TABLE public.grupo_cota_modalidade_valores
+  ADD COLUMN IF NOT EXISTS modo_override text DEFAULT 'HERDAR',
+  ADD COLUMN IF NOT EXISTS percentual_override numeric DEFAULT NULL,
+  ADD COLUMN IF NOT EXISTS percentual_minimo numeric DEFAULT NULL,
+  ADD COLUMN IF NOT EXISTS percentual_maximo numeric DEFAULT NULL;
+
+-- 6. Atualizar RPC rpc_platform_salvar_cota_modalidade_valor para suportar override de percentuais
+CREATE OR REPLACE FUNCTION public.rpc_platform_salvar_cota_modalidade_valor(
+  p_grupo_cota_id uuid,
+  p_modalidade_id uuid,
+  p_valor_parcela numeric DEFAULT NULL,
+  p_habilitado boolean DEFAULT NULL,
+  p_modo_override text DEFAULT 'HERDAR',
+  p_percentual_override numeric DEFAULT NULL,
+  p_percentual_minimo numeric DEFAULT NULL,
+  p_percentual_maximo numeric DEFAULT NULL
+)
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog AS $$
+DECLARE
+  v_cota record;
+  v_saved record;
+BEGIN
+  IF NOT public.is_platform_superadmin() THEN
+    RAISE EXCEPTION 'Somente Platform Superadmin';
+  END IF;
+
+  SELECT * INTO v_cota FROM public.grupos_cotas WHERE id = p_grupo_cota_id;
+  IF v_cota.id IS NULL THEN
+    RAISE EXCEPTION 'Cota não encontrada';
+  END IF;
+
+  INSERT INTO public.grupo_cota_modalidade_valores(
+    grupo_cota_id, administradora_modalidade_id, valor_parcela,
+    habilitado, modo_reduzido, modo_override, percentual_override,
+    percentual_minimo, percentual_maximo, ativo, updated_at
+  ) VALUES (
+    p_grupo_cota_id, p_modalidade_id, coalesce(p_valor_parcela, 0),
+    coalesce(p_habilitado, true),
+    CASE WHEN p_modo_override = 'PERSONALIZADO' THEN 'personalizado' ELSE 'padrao' END,
+    coalesce(p_modo_override, 'HERDAR'),
+    CASE WHEN p_modo_override = 'PERSONALIZADO' THEN p_percentual_override ELSE NULL END,
+    p_percentual_minimo, p_percentual_maximo, true, now()
+  )
+  ON CONFLICT (grupo_cota_id, administradora_modalidade_id)
+  DO UPDATE SET
+    valor_parcela = coalesce(p_valor_parcela, grupo_cota_modalidade_valores.valor_parcela),
+    habilitado = coalesce(p_habilitado, grupo_cota_modalidade_valores.habilitado),
+    modo_reduzido = CASE WHEN p_modo_override = 'PERSONALIZADO' THEN 'personalizado' ELSE 'padrao' END,
+    modo_override = coalesce(p_modo_override, grupo_cota_modalidade_valores.modo_override),
+    percentual_override = CASE WHEN p_modo_override = 'PERSONALIZADO' THEN p_percentual_override ELSE NULL END,
+    percentual_minimo = p_percentual_minimo,
+    percentual_maximo = p_percentual_maximo,
+    ativo = true,
+    updated_at = now()
+  RETURNING * INTO v_saved;
+
+  RETURN to_jsonb(v_saved);
+END $$;
+

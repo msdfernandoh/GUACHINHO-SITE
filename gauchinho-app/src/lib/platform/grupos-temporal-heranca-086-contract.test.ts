@@ -4,8 +4,10 @@ import { describe, expect, it } from "vitest";
 import {
   calcularAssembleiasTemporal,
   resolveModalidadeConfig,
+  resolveCotaModalidadeEfetiva,
   calcularResumoContemplacoes,
   type GrupoModalidadeItem,
+  type GrupoCotaModalidadeValor,
   type AdministradoraModalidadeItem,
   type CaracteristicaContemplacaoItem,
 } from "./grupos-prontidao";
@@ -231,6 +233,120 @@ describe("Fase 086: Características de Contemplação e Resumo Automático", ()
   });
 });
 
+describe("Fase 086: Herança e Override no Nível da Cota/Produto", () => {
+  const adminModReduzida59: AdministradoraModalidadeItem = {
+    id: "mod-3",
+    codigo: "REDUZIDA_ABAIXO_59",
+    nome: "Reduzida abaixo de 59%",
+    ativo: true,
+    modo_reduzido_padrao: "fixo",
+    percentual_padrao: 50,
+    percentual_minimo: 30,
+    percentual_maximo: 59,
+  };
+
+  const grupoModReduzida59: GrupoModalidadeItem = {
+    administradora_modalidade_id: "mod-3",
+    ativo: true,
+    configuracao: {
+      origem: "ADMINISTRADORA_PADRAO",
+      percentual_padrao: 50,
+    },
+  };
+
+  it("cota sem override herda dinamicamente o valor do Grupo (50%)", () => {
+    const cota170k: GrupoCotaModalidadeValor = {
+      administradora_modalidade_id: "mod-3",
+      valor_parcela: 1000,
+      habilitado: true,
+      modo_override: "HERDAR",
+    };
+
+    const res = resolveCotaModalidadeEfetiva(cota170k, grupoModReduzida59, adminModReduzida59);
+    expect(res.status).toBe("HERDADO");
+    expect(res.habilitado).toBe(true);
+    expect(res.percentualEfetivo).toBe(50);
+    expect(res.labelBadge).toBe("Grupo 50%");
+    expect(res.isOverride).toBe(false);
+  });
+
+  it("cota com override personalizado (40%) prevalece apenas sobre ela mesma", () => {
+    const cota180k: GrupoCotaModalidadeValor = {
+      administradora_modalidade_id: "mod-3",
+      valor_parcela: 1200,
+      habilitado: true,
+      modo_override: "PERSONALIZADO",
+      percentual_override: 40,
+    };
+
+    const res = resolveCotaModalidadeEfetiva(cota180k, grupoModReduzida59, adminModReduzida59);
+    expect(res.status).toBe("PERSONALIZADO");
+    expect(res.habilitado).toBe(true);
+    expect(res.percentualEfetivo).toBe(40);
+    expect(res.labelBadge).toBe("Cota 40%");
+    expect(res.isOverride).toBe(true);
+  });
+
+  it("cota desabilitada nesta modalidade fica desabilitada e rotulada corretamente", () => {
+    const cota160k: GrupoCotaModalidadeValor = {
+      administradora_modalidade_id: "mod-3",
+      valor_parcela: 0,
+      habilitado: false,
+      modo_override: "DESABILITADO",
+    };
+
+    const res = resolveCotaModalidadeEfetiva(cota160k, grupoModReduzida59, adminModReduzida59);
+    expect(res.status).toBe("DESABILITADO_COTA");
+    expect(res.habilitado).toBe(false);
+    expect(res.percentualEfetivo).toBeNull();
+    expect(res.labelBadge).toBe("Desabilitada");
+    expect(res.isOverride).toBe(true);
+  });
+
+  it("se modalidade estiver desabilitada no Grupo, fica bloqueada em todas as cotas (cota não pode ligar)", () => {
+    const grupoModInativo: GrupoModalidadeItem = {
+      administradora_modalidade_id: "mod-3",
+      ativo: false,
+    };
+
+    const cotaTentandoLigar: GrupoCotaModalidadeValor = {
+      administradora_modalidade_id: "mod-3",
+      valor_parcela: 1200,
+      habilitado: true,
+      modo_override: "PERSONALIZADO",
+      percentual_override: 40,
+    };
+
+    const res = resolveCotaModalidadeEfetiva(cotaTentandoLigar, grupoModInativo, adminModReduzida59);
+    expect(res.status).toBe("DESABILITADO_GRUPO");
+    expect(res.habilitado).toBe(false);
+    expect(res.labelBadge).toBe("Desab. no Grupo");
+  });
+
+  it("ao alterar o Grupo para 45%, cota sem override atualiza dinamicamente para 45%", () => {
+    const grupoModAlteradoPara45: GrupoModalidadeItem = {
+      administradora_modalidade_id: "mod-3",
+      ativo: true,
+      configuracao: {
+        origem: "GRUPO_OVERRIDE",
+        percentual_padrao: 45,
+      },
+    };
+
+    const cota170k: GrupoCotaModalidadeValor = {
+      administradora_modalidade_id: "mod-3",
+      valor_parcela: 900,
+      habilitado: true,
+      modo_override: "HERDAR",
+    };
+
+    const res = resolveCotaModalidadeEfetiva(cota170k, grupoModAlteradoPara45, adminModReduzida59);
+    expect(res.status).toBe("HERDADO");
+    expect(res.percentualEfetivo).toBe(45);
+    expect(res.labelBadge).toBe("Grupo 45%");
+  });
+});
+
 describe("Fase 086: Migration 086 e Contrato de Banco de Dados", () => {
   it("adiciona data_primeira_assembleia em grupos_consorcio", () => {
     expect(migration086).toContain("ADD COLUMN IF NOT EXISTS data_primeira_assembleia date");
@@ -241,6 +357,16 @@ describe("Fase 086: Migration 086 e Contrato de Banco de Dados", () => {
     expect(migration086).toContain("percentual_padrao numeric");
     expect(migration086).toContain("percentual_minimo numeric");
     expect(migration086).toContain("percentual_maximo numeric");
+  });
+
+  it("adiciona colunas de override em grupo_cota_modalidade_valores", () => {
+    expect(migration086).toContain("modo_override text DEFAULT 'HERDAR'");
+    expect(migration086).toContain("percentual_override numeric DEFAULT NULL");
+  });
+
+  it("atualiza rpc_platform_salvar_cota_modalidade_valor com suporte a override", () => {
+    expect(migration086).toContain("p_modo_override text DEFAULT 'HERDAR'");
+    expect(migration086).toContain("p_percentual_override numeric DEFAULT NULL");
   });
 
   it("atualiza rpc_platform_salvar_grupo para receber p_data_primeira_assembleia", () => {

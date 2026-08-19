@@ -35,6 +35,10 @@ export type GrupoCotaModalidadeValor = {
   percentual_reducao?: number | null;
   habilitado?: boolean;
   modo_reduzido?: string;
+  modo_override?: "HERDAR" | "PERSONALIZADO" | "DESABILITADO" | string;
+  percentual_override?: number | null;
+  percentual_minimo?: number | null;
+  percentual_maximo?: number | null;
   ativo?: boolean;
   modalidade?: {
     id?: string;
@@ -441,6 +445,92 @@ export function resolveModalidadeConfig(
     origem: "ADMINISTRADORA_PADRAO",
     labelOrigem: "Padrão da Administradora",
     isOverride: false,
+  };
+}
+
+export type CotaModalidadeEfetivaResult = {
+  status: "HERDADO" | "PERSONALIZADO" | "DESABILITADO_COTA" | "DESABILITADO_GRUPO";
+  habilitado: boolean;
+  percentualEfetivo: number | null;
+  modoReduzido: string;
+  percentualMinimo: number | null;
+  percentualMaximo: number | null;
+  valorParcela: number | null;
+  isOverride: boolean;
+  labelBadge: string;
+  corBadge: "grupo" | "cota" | "desabilitada" | "grupo_desabilitado";
+};
+
+export function resolveCotaModalidadeEfetiva(
+  cotaValor: GrupoCotaModalidadeValor | undefined,
+  grupoMod: GrupoModalidadeItem | undefined,
+  adminMod: AdministradoraModalidadeItem,
+): CotaModalidadeEfetivaResult {
+  const grupoConfig = resolveModalidadeConfig(grupoMod, adminMod);
+  const grupoHabilitado = grupoConfig.ativo;
+
+  if (!grupoHabilitado) {
+    return {
+      status: "DESABILITADO_GRUPO",
+      habilitado: false,
+      percentualEfetivo: null,
+      modoReduzido: grupoConfig.modo_reduzido,
+      percentualMinimo: null,
+      percentualMaximo: null,
+      valorParcela: cotaValor?.valor_parcela ?? null,
+      isOverride: false,
+      labelBadge: "Desab. no Grupo",
+      corBadge: "grupo_desabilitado",
+    };
+  }
+
+  const cotaHabilitada = cotaValor?.habilitado ?? true;
+  if (!cotaHabilitada || cotaValor?.modo_override === "DESABILITADO") {
+    return {
+      status: "DESABILITADO_COTA",
+      habilitado: false,
+      percentualEfetivo: null,
+      modoReduzido: grupoConfig.modo_reduzido,
+      percentualMinimo: null,
+      percentualMaximo: null,
+      valorParcela: cotaValor?.valor_parcela ?? null,
+      isOverride: true,
+      labelBadge: "Desabilitada",
+      corBadge: "desabilitada",
+    };
+  }
+
+  const isPersonalizado =
+    cotaValor?.modo_override === "PERSONALIZADO" ||
+    (cotaValor?.percentual_override != null && cotaValor.percentual_override !== grupoConfig.percentual_padrao);
+
+  if (isPersonalizado && cotaValor?.percentual_override != null) {
+    return {
+      status: "PERSONALIZADO",
+      habilitado: true,
+      percentualEfetivo: Number(cotaValor.percentual_override),
+      modoReduzido: cotaValor.modo_reduzido || grupoConfig.modo_reduzido,
+      percentualMinimo: cotaValor.percentual_minimo ?? grupoConfig.percentual_minimo,
+      percentualMaximo: cotaValor.percentual_maximo ?? grupoConfig.percentual_maximo,
+      valorParcela: cotaValor.valor_parcela ?? null,
+      isOverride: true,
+      labelBadge: `Cota ${cotaValor.percentual_override}%`,
+      corBadge: "cota",
+    };
+  }
+
+  // Herda do Grupo
+  return {
+    status: "HERDADO",
+    habilitado: true,
+    percentualEfetivo: grupoConfig.percentual_padrao,
+    modoReduzido: grupoConfig.modo_reduzido,
+    percentualMinimo: grupoConfig.percentual_minimo,
+    percentualMaximo: grupoConfig.percentual_maximo,
+    valorParcela: cotaValor?.valor_parcela ?? null,
+    isOverride: false,
+    labelBadge: grupoConfig.percentual_padrao != null ? `Grupo ${grupoConfig.percentual_padrao}%` : "Grupo Padrão",
+    corBadge: "grupo",
   };
 }
 

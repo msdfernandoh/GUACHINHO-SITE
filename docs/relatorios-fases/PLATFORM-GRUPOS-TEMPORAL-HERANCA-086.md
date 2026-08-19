@@ -44,7 +44,20 @@
 - **Isolamento Total:**
   - Dados estritamente informativos e comerciais. Não executam contemplações automáticas, não alteram cotas definitivas e não criam pedras de sorteio.
 
-### 1.5 Integração Visual nas Telas
+### 1.5 Override de Modalidades por Cota Individual & Ações em Massa
+- **Herança Dinâmica Cota -> Grupo -> Administradora:**
+  - Cada cota pode resolver dinamicamente entre **Herdar do Grupo** (ex: `Grupo 50%`), **Personalizar nesta Cota** (ex: `Cota 40%`) ou **Desabilitar nesta Cota** (`Desabilitada`).
+  - Se a modalidade estiver desabilitada no Grupo, fica bloqueada em todas as cotas com indicação visual `— (Desab. no Grupo)`.
+  - Ao alterar o padrão do Grupo (ex: de 50% para 45%), todas as cotas que herdam são atualizadas dinamicamente sem necessidade de migração ou replicação de dados.
+- **UI Compacta e Modal de Edição Rápida:**
+  - Células da tabela de cotas com botões de status visuais compactos.
+  - Ao clicar na célula, abre modal popover para configurar o modo (Herdar / Personalizar / Desabilitar), percentual de exceção e valor estimado de parcela.
+- **Ações em Massa:**
+  - Seleção múltipla ou total de cotas com barra de ação superior para aplicar regras a dezenas de cotas simultaneamente com um único clique.
+- **Isolamento e Integridade:**
+  - Não duplica produtos nem altera tabelas de comissão ou participantes.
+
+### 1.6 Integração Visual nas Telas
 - **Lista de Grupos (`/platform/grupos` e aba Grupos da Administradora):**
   - Coluna **Prazo**: `7 / 100 / 93` com tooltip `7 realizadas • 100 total • 93 restantes`.
   - Coluna **1ª Assembleia**: `15/02/2026`.
@@ -55,9 +68,9 @@
 
 ## 2. Testes e Validação de Qualidade
 
-- **Contrato, Regras Temporais, Herança & Contemplações:** 17/17 testes aprovados (`src/lib/platform/grupos-temporal-heranca-086-contract.test.ts`).
-- **Platform Suite:** 65/65 testes aprovados (6 arquivos de teste).
-- **Suíte Completa:** 803/803 testes ativos aprovados em 140 arquivos.
+- **Contrato, Regras Temporais, Herança, Contemplações & Override por Cota:** 24/24 testes aprovados (`src/lib/platform/grupos-temporal-heranca-086-contract.test.ts`).
+- **Platform Suite:** 72/72 testes aprovados (6 arquivos de teste).
+- **Suíte Completa:** 810/810 testes ativos aprovados em 140 arquivos.
 - **TypeScript:** 0 erros com `npx tsc --noEmit`.
 - **Build Next.js:** 135 rotas compiladas com sucesso.
 - **Auditoria de Segurança:** 0 vulnerabilidades.

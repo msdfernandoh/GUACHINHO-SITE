@@ -11,11 +11,14 @@ import {
   salvarModalidadesGrupoPlatformAction,
   salvarCotasEmLoteAction,
   salvarCotaModalidadeAction,
+  salvarCotaModalidadeEmMassaAction,
   excluirCotaProdutoAction,
 } from "@/app/platform/grupos-catalogo-actions";
 import {
   type GrupoRecord,
   type AdministradoraModalidadeItem,
+  type GrupoModalidadeItem,
+  type GrupoCotaModalidadeValor,
   type GrupoProntidaoResult,
   type CaracteristicaContemplacaoItem,
   type TipoContemplacao,
@@ -24,6 +27,7 @@ import {
   formatDateBR,
   validateGrupoProntidao,
   resolveModalidadeConfig,
+  resolveCotaModalidadeEfetiva,
   calcularResumoContemplacoes,
   DEFAULT_TIPOS_CONTEMPLACAO,
 } from "@/lib/platform/grupos-prontidao";
@@ -139,6 +143,20 @@ export function GrupoOperationalWorkspace({
     });
   }
 
+  const [editingCotaModalidade, setEditingCotaModalidade] = useState<{
+    cotaId: string;
+    cotaCredito: number;
+    modalidade: AdministradoraModalidadeItem;
+    cotaValor?: GrupoCotaModalidadeValor;
+    grupoMod?: GrupoModalidadeItem;
+  } | null>(null);
+
+  const [selectedCotas, setSelectedCotas] = useState<Set<string>>(new Set());
+  const [batchModalidadeId, setBatchModalidadeId] = useState<string>("");
+  const [batchModo, setBatchModo] = useState<"HERDAR" | "PERSONALIZADO" | "DESABILITADO">("HERDAR");
+  const [batchPercentual, setBatchPercentual] = useState<string>("");
+  const [isPendingBatch, setIsPendingBatch] = useState(false);
+
   const [formStateGrupo, formActionGrupo, isPendingGrupo] = useActionState(
     salvarGrupoPlatformAction,
     initial,
@@ -161,6 +179,41 @@ export function GrupoOperationalWorkspace({
   const modalidadesDisponiveis = grupo.modalidades ?? [];
   const modsAtivas = modalidadesDisponiveis.filter((m) => m.ativo);
   const cotas = (grupo.produtos ?? []).filter((p) => p.ativo).sort((a, b) => b.valor_credito - a.valor_credito);
+
+  function handleToggleSelectCota(cotaId: string) {
+    setSelectedCotas((prev) => {
+      const next = new Set(prev);
+      if (next.has(cotaId)) next.delete(cotaId);
+      else next.add(cotaId);
+      return next;
+    });
+  }
+
+  function handleToggleSelectAll() {
+    if (selectedCotas.size === cotas.length) {
+      setSelectedCotas(new Set());
+    } else {
+      setSelectedCotas(new Set(cotas.map((c) => c.id)));
+    }
+  }
+
+  async function handleApplyBatchAction() {
+    if (!batchModalidadeId || selectedCotas.size === 0) return;
+    setIsPendingBatch(true);
+    try {
+      const pct = batchModo === "PERSONALIZADO" ? Number(batchPercentual.replace(",", ".")) : null;
+      await salvarCotaModalidadeEmMassaAction(
+        grupo.id,
+        Array.from(selectedCotas),
+        batchModalidadeId,
+        batchModo,
+        pct,
+      );
+      setSelectedCotas(new Set());
+    } finally {
+      setIsPendingBatch(false);
+    }
+  }
 
   const adminNome = typeof grupo.administradora === "object" ? grupo.administradora?.nome : grupo.administradora || "—";
   const tipoNome = grupo.tipo?.nome || grupo.modalidade || "—";
@@ -616,12 +669,82 @@ export function GrupoOperationalWorkspace({
 
           {/* Tabela Compacta de Cotas com Overrides */}
           <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900 space-y-4">
-            <div>
-              <h2 className="text-lg font-bold text-slate-900 dark:text-white">3. Tabela de Cotas do Grupo ({cotas.length})</h2>
-              <p className="text-xs text-slate-500">
-                Crédito, modalidades habilitadas e parcelas oficiais. O desmarque individual aplica override por cota.
-              </p>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h2 className="text-lg font-bold text-slate-900 dark:text-white">3. Tabela de Cotas do Grupo ({cotas.length})</h2>
+                <p className="text-xs text-slate-500">
+                  Crédito e modalidades configuradas. Clique no percentual de qualquer cota para personalizar ou desabilitar.
+                </p>
+              </div>
+              <div className="flex items-center gap-2 text-xs">
+                <span className="inline-flex items-center gap-1 rounded bg-slate-100 px-2 py-0.5 font-semibold text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                  Grupo X% = Herdando
+                </span>
+                <span className="inline-flex items-center gap-1 rounded border border-indigo-200 bg-indigo-50 px-2 py-0.5 font-bold text-indigo-700 dark:border-indigo-800 dark:bg-indigo-950/60 dark:text-indigo-300">
+                  Cota X% = Personalizado
+                </span>
+                <span className="inline-flex items-center gap-1 rounded border border-red-200 bg-red-50 px-2 py-0.5 font-semibold text-red-600 dark:border-red-900 dark:bg-red-950/60 dark:text-red-300">
+                  Desabilitada
+                </span>
+              </div>
             </div>
+
+            {/* Barra de Ações em Massa */}
+            {selectedCotas.size > 0 ? (
+              <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-cyan-300 bg-cyan-50/80 p-3 dark:border-cyan-800 dark:bg-cyan-950/50">
+                <div className="flex items-center gap-2 text-xs font-bold text-cyan-900 dark:text-cyan-200">
+                  <span>{selectedCotas.size} cota(s) selecionada(s).</span>
+                  <span>Aplicar para a modalidade:</span>
+                  <select
+                    value={batchModalidadeId}
+                    onChange={(e) => setBatchModalidadeId(e.target.value)}
+                    className="rounded border border-cyan-300 bg-white px-2 py-1 text-xs dark:border-cyan-700 dark:bg-slate-800 dark:text-white"
+                  >
+                    <option value="">Selecione uma modalidade</option>
+                    {modalidadesAdministradora.map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {m.nome}
+                      </option>
+                    ))}
+                  </select>
+                  <select
+                    value={batchModo}
+                    onChange={(e) => setBatchModo(e.target.value as "HERDAR" | "PERSONALIZADO" | "DESABILITADO")}
+                    className="rounded border border-cyan-300 bg-white px-2 py-1 text-xs dark:border-cyan-700 dark:bg-slate-800 dark:text-white"
+                  >
+                    <option value="HERDAR">Herdar Padrão do Grupo</option>
+                    <option value="PERSONALIZADO">Personalizar Percentual</option>
+                    <option value="DESABILITADO">Desabilitar nesta Cota</option>
+                  </select>
+                  {batchModo === "PERSONALIZADO" ? (
+                    <input
+                      type="text"
+                      value={batchPercentual}
+                      onChange={(e) => setBatchPercentual(e.target.value)}
+                      placeholder="Ex: 40"
+                      className="w-20 rounded border border-cyan-300 bg-white px-2 py-1 text-xs dark:border-cyan-700 dark:bg-slate-800 dark:text-white"
+                    />
+                  ) : null}
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    disabled={!batchModalidadeId || isPendingBatch}
+                    onClick={handleApplyBatchAction}
+                    className="rounded bg-cyan-700 px-3 py-1 text-xs font-bold text-white hover:bg-cyan-800 disabled:opacity-50"
+                  >
+                    {isPendingBatch ? "Aplicando..." : "Aplicar em Massa"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedCotas(new Set())}
+                    className="text-xs text-slate-500 hover:underline"
+                  >
+                    Limpar
+                  </button>
+                </div>
+              </div>
+            ) : null}
 
             {cotas.length === 0 ? (
               <p className="py-8 text-center text-sm text-slate-400">Nenhuma cota cadastrada neste grupo.</p>
@@ -630,6 +753,15 @@ export function GrupoOperationalWorkspace({
                 <table className="min-w-full text-sm">
                   <thead className="border-b bg-slate-50 text-left text-xs uppercase text-slate-500 dark:bg-slate-800">
                     <tr>
+                      <th className="w-10 px-3 py-3 text-center">
+                        <input
+                          type="checkbox"
+                          checked={selectedCotas.size === cotas.length && cotas.length > 0}
+                          onChange={handleToggleSelectAll}
+                          title="Selecionar todas as cotas"
+                          className="rounded text-cyan-600"
+                        />
+                      </th>
                       <th className="px-4 py-3">Crédito</th>
                       {modalidadesAdministradora.map((mod) => (
                         <th key={mod.id} className="px-4 py-3">
@@ -645,21 +777,29 @@ export function GrupoOperationalWorkspace({
                       const valoresMap = new Map(
                         (cota.grupo_cota_modalidade_valores ?? []).map((v) => [v.administradora_modalidade_id, v])
                       );
+                      const isSelected = selectedCotas.has(cota.id);
 
                       return (
-                        <tr key={cota.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40">
+                        <tr key={cota.id} className={`hover:bg-slate-50/60 dark:hover:bg-slate-800/40 ${isSelected ? "bg-cyan-50/30 dark:bg-cyan-950/20" : ""}`}>
+                          <td className="px-3 py-3 text-center">
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={() => handleToggleSelectCota(cota.id)}
+                              className="rounded text-cyan-600"
+                            />
+                          </td>
                           <td className="px-4 py-3 font-bold text-slate-900 dark:text-white">
                             {formatBRL(cota.valor_credito)}
                           </td>
                           {modalidadesAdministradora.map((mod) => {
                             const gm = modalidadesDisponiveis.find((x) => x.administradora_modalidade_id === mod.id);
-                            const grupoHabilitou = gm?.ativo ?? false;
                             const mv = valoresMap.get(mod.id);
-                            const cotaHabilitou = mv?.habilitado ?? true;
+                            const efetivo = resolveCotaModalidadeEfetiva(mv, gm, mod);
 
-                            if (!grupoHabilitou) {
+                            if (efetivo.status === "DESABILITADO_GRUPO") {
                               return (
-                                <td key={mod.id} className="px-4 py-3 text-xs text-slate-400">
+                                <td key={mod.id} className="px-4 py-3 text-xs text-slate-400 dark:text-slate-500">
                                   — (Desab. no Grupo)
                                 </td>
                               );
@@ -667,41 +807,48 @@ export function GrupoOperationalWorkspace({
 
                             return (
                               <td key={mod.id} className="px-4 py-3">
-                                <form
-                                  action={salvarCotaModalidadeAction.bind(null, grupo.id, cota.id, mod.id)}
-                                  className="flex items-center gap-2"
-                                >
-                                  <input
-                                    type="checkbox"
-                                    name="habilitado"
-                                    defaultChecked={cotaHabilitou}
-                                    onChange={(e) => e.target.form?.requestSubmit()}
-                                    title="Habilitar/Desabilitar modalidade para esta cota"
-                                    className="rounded"
-                                  />
-                                  <input
-                                    type="text"
-                                    name="valor_parcela"
-                                    defaultValue={mv?.valor_parcela ? String(mv.valor_parcela) : ""}
-                                    placeholder="R$ Parcela"
-                                    onBlur={(e) => e.target.form?.requestSubmit()}
-                                    className={`w-24 rounded border px-2 py-1 text-xs ${
-                                      !cotaHabilitou ? "opacity-40" : ""
+                                <div className="space-y-1">
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      setEditingCotaModalidade({
+                                        cotaId: cota.id,
+                                        cotaCredito: cota.valor_credito,
+                                        modalidade: mod,
+                                        cotaValor: mv,
+                                        grupoMod: gm,
+                                      })
+                                    }
+                                    className={`inline-flex items-center gap-1 rounded px-2 py-0.5 text-xs transition-all ${
+                                      efetivo.status === "PERSONALIZADO"
+                                        ? "border border-indigo-300 bg-indigo-50 font-bold text-indigo-700 hover:bg-indigo-100 dark:border-indigo-800 dark:bg-indigo-950/60 dark:text-indigo-300"
+                                        : efetivo.status === "DESABILITADO_COTA"
+                                        ? "border border-red-200 bg-red-50 font-semibold text-red-600 hover:bg-red-100 dark:border-red-900 dark:bg-red-950/60 dark:text-red-300"
+                                        : "bg-slate-100 font-semibold text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
                                     }`}
-                                  />
-                                </form>
+                                    title="Clique para configurar override desta cota"
+                                  >
+                                    <span>{efetivo.labelBadge}</span>
+                                    <span className="text-[10px] opacity-60">✎</span>
+                                  </button>
+                                  {mv?.valor_parcela ? (
+                                    <div className="text-[11px] text-slate-500 dark:text-slate-400">
+                                      {formatBRL(mv.valor_parcela)}
+                                    </div>
+                                  ) : null}
+                                </div>
                               </td>
                             );
                           })}
                           <td className="px-4 py-3">
-                            <span className="inline-flex rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700">
+                            <span className="inline-flex rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
                               {cota.status || "Ativa"}
                             </span>
                           </td>
                           <td className="px-4 py-3 text-right">
                             <button
                               onClick={async () => {
-                                if (confirm(`Deseja excluir ou inativar a cota de ${formatBRL(cota.valor_credito)}?`)) {
+                                if (confirm(`Deseja excluir a cota de ${formatBRL(cota.valor_credito)}?`)) {
                                   await excluirCotaProdutoAction(grupo.id, cota.id);
                                 }
                               }}
@@ -717,6 +864,152 @@ export function GrupoOperationalWorkspace({
                 </table>
               </div>
             )}
+          </div>
+        </div>
+      ) : null}
+
+      {/* MODAL / POPOVER DE OVERRIDE POR COTA */}
+      {editingCotaModalidade ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-slate-800 dark:bg-slate-900 space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3 dark:border-slate-800">
+              <div>
+                <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                  Modalidade: {editingCotaModalidade.modalidade.nome}
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Cota {formatBRL(editingCotaModalidade.cotaCredito)}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditingCotaModalidade(null)}
+                className="text-slate-400 hover:text-slate-600"
+              >
+                ✕
+              </button>
+            </div>
+
+            {(() => {
+              const gm = editingCotaModalidade.grupoMod;
+              const mod = editingCotaModalidade.modalidade;
+              const mv = editingCotaModalidade.cotaValor;
+              const grupoResolved = resolveModalidadeConfig(gm, mod);
+              const cotaResolved = resolveCotaModalidadeEfetiva(mv, gm, mod);
+
+              return (
+                <form
+                  action={async (formData) => {
+                    await salvarCotaModalidadeAction(
+                      grupo.id,
+                      editingCotaModalidade.cotaId,
+                      editingCotaModalidade.modalidade.id,
+                      formData,
+                    );
+                    setEditingCotaModalidade(null);
+                  }}
+                  className="space-y-4 text-xs"
+                >
+                  <div className="space-y-2">
+                    <p className="font-bold text-slate-700 dark:text-slate-300">Modo de Configuração:</p>
+
+                    <label className="flex items-start gap-2.5 rounded-lg border border-slate-200 p-2.5 cursor-pointer dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/40">
+                      <input
+                        type="radio"
+                        name="modo_override"
+                        value="HERDAR"
+                        defaultChecked={cotaResolved.status === "HERDADO"}
+                        className="mt-0.5 text-cyan-600"
+                      />
+                      <div>
+                        <span className="font-bold text-slate-900 dark:text-white">
+                          Herdar do Grupo ({grupoResolved.percentual_padrao != null ? `${grupoResolved.percentual_padrao}%` : "Padrão"})
+                        </span>
+                        <p className="text-slate-500">
+                          Utiliza dinamicamente a configuração do Grupo ({grupoResolved.labelOrigem}).
+                        </p>
+                      </div>
+                    </label>
+
+                    <label className="flex items-start gap-2.5 rounded-lg border border-slate-200 p-2.5 cursor-pointer dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/40">
+                      <input
+                        type="radio"
+                        name="modo_override"
+                        value="PERSONALIZADO"
+                        defaultChecked={cotaResolved.status === "PERSONALIZADO"}
+                        className="mt-0.5 text-cyan-600"
+                      />
+                      <div>
+                        <span className="font-bold text-slate-900 dark:text-white">
+                          Personalizar nesta Cota
+                        </span>
+                        <p className="text-slate-500">
+                          Define um percentual exclusivo para esta cota de {formatBRL(editingCotaModalidade.cotaCredito)}.
+                        </p>
+                      </div>
+                    </label>
+
+                    <label className="flex items-start gap-2.5 rounded-lg border border-slate-200 p-2.5 cursor-pointer dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/40">
+                      <input
+                        type="radio"
+                        name="modo_override"
+                        value="DESABILITADO"
+                        defaultChecked={cotaResolved.status === "DESABILITADO_COTA"}
+                        className="mt-0.5 text-cyan-600"
+                      />
+                      <div>
+                        <span className="font-bold text-slate-900 dark:text-white">
+                          Desabilitar nesta Cota
+                        </span>
+                        <p className="text-slate-500">
+                          A modalidade não estará disponível para venda nesta cota específica.
+                        </p>
+                      </div>
+                    </label>
+                  </div>
+
+                  <div className="space-y-3 rounded-lg border border-slate-100 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-800/40">
+                    <p className="font-bold text-slate-700 dark:text-slate-300">Valores de Exceção (Se Personalizado):</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="text-slate-500">Percentual Cota (%):</label>
+                        <input
+                          name="percentual_override"
+                          defaultValue={mv?.percentual_override != null ? String(mv.percentual_override) : String(grupoResolved.percentual_padrao ?? "")}
+                          placeholder="Ex: 40"
+                          className="mt-1 w-full rounded border p-2 text-xs font-semibold"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-slate-500">R$ Parcela (Opcional):</label>
+                        <input
+                          name="valor_parcela"
+                          defaultValue={mv?.valor_parcela ? String(mv.valor_parcela) : ""}
+                          placeholder="Ex: 1250.00"
+                          className="mt-1 w-full rounded border p-2 text-xs"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
+                    <button
+                      type="button"
+                      onClick={() => setEditingCotaModalidade(null)}
+                      className="rounded-lg border px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="submit"
+                      className="rounded-lg bg-cyan-700 px-4 py-2 text-xs font-bold text-white hover:bg-cyan-800"
+                    >
+                      Salvar Configuração
+                    </button>
+                  </div>
+                </form>
+              );
+            })()}
           </div>
         </div>
       ) : null}
