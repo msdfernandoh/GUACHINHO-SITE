@@ -285,9 +285,9 @@ A plataforma suporta:
 - manual: `docs/manuais/MANUAL-ERP-CONTRATACOES.md`; relatório: `docs/relatorios-fases/ERP-CONTRATACOES-FORMALIZACAO-V1.md`.
 
 * O P0 das APIs, o hardening `057–059`, o motor canônico `060–063` e o fechamento técnico `064–066` estão implantados no Supabase principal.
-* O estado funcional do Supabase Production inclui migrations `001–083`.
+* O estado funcional do Supabase Production inclui migrations `001–086`.
 * `admin.gauchinhoconsorcios.com.br` está ativo, verificado e associado ao deployment Production da `main`; ele não é tenant e não possui fallback para Gauchinho.
-* As migrations `070–083` estão versionadas e aplicadas em Produção; correções futuras permanecem obrigatoriamente forward-only.
+* As migrations `070–086` estão versionadas e aplicadas em Produção; correções futuras permanecem obrigatoriamente forward-only.
 * Os ambientes Preview/isolados registrados nos relatórios são descartáveis e não substituem a evidência de promoção do Supabase principal.
 * A migration 083 de Platform Administradoras V2 foi aplicada em Production após conferência de `001–082`, com somente a própria 083 pendente no dry-run.
 * Nenhum backfill ou recálculo histórico foi executado em Production nesta rodada.
