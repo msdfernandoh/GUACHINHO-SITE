@@ -4,6 +4,7 @@ import {
   type GrupoRecord,
   formatBRL,
   formatPercent,
+  formatDateBR,
   computeGrupoMetrics,
   validateGrupoProntidao,
 } from "@/lib/platform/grupos-prontidao";
@@ -19,7 +20,7 @@ export default async function PlatformGruposListingPage({
   let query = db
     .from("grupos_consorcio")
     .select(
-      "id,codigo_grupo,administradora_id,tipo_administradora_id,modalidade,status,ativo,prazo_total,parcelas_realizadas,prazo_restante,taxa_administrativa_percentual,fundo_reserva_percentual,seguro_percentual,capacidade_total,vagas_disponiveis,vagas_atualizado_em,dados_estatisticos,origem_governanca,status_governanca,updated_at,administradora:administradoras(id,nome),tipo:administradora_tipos(id,nome,codigo),modalidades:grupos_modalidades_disponiveis(id,administradora_modalidade_id,ativo,modalidade:administradora_modalidades_comissao(id,nome,codigo)),produtos:grupos_cotas(id,valor_credito,ativo,grupo_cota_modalidade_valores(id,administradora_modalidade_id,valor_parcela,habilitado,ativo))",
+      "id,codigo_grupo,administradora_id,tipo_administradora_id,modalidade,status,ativo,prazo_total,data_primeira_assembleia,parcelas_realizadas,prazo_restante,taxa_administrativa_percentual,fundo_reserva_percentual,seguro_percentual,capacidade_total,vagas_disponiveis,vagas_atualizado_em,dados_estatisticos,origem_governanca,status_governanca,updated_at,administradora:administradoras(id,nome),tipo:administradora_tipos(id,nome,codigo),modalidades:grupos_modalidades_disponiveis(id,administradora_modalidade_id,ativo,modalidade:administradora_modalidades_comissao(id,nome,codigo)),produtos:grupos_cotas(id,valor_credito,ativo,grupo_cota_modalidade_valores(id,administradora_modalidade_id,valor_parcela,habilitado,ativo))",
     )
     .order("codigo_grupo");
 
@@ -49,7 +50,7 @@ export default async function PlatformGruposListingPage({
             Catálogo Operacional de Grupos
           </h1>
           <p className="mt-1 text-sm text-slate-500">
-            Grupos oficiais das Administradoras com produtos de crédito, modalidades de pagamento e vagas.
+            Grupos oficiais das Administradoras com produtos de crédito, modalidades de pagamento, assembleias e vagas.
           </p>
         </div>
         <Link
@@ -60,13 +61,13 @@ export default async function PlatformGruposListingPage({
         </Link>
       </div>
 
-      {/* Barra de Filtros */}
-      <form className="flex flex-wrap gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+      {/* Filtros */}
+      <form className="flex flex-wrap items-center gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
         <input
           name="busca"
           defaultValue={filters.busca || ""}
           placeholder="Buscar por número do grupo..."
-          className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-cyan-600 focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+          className="flex-1 min-w-[200px] rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-cyan-600 focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white"
         />
         <select
           name="administradora_id"
@@ -108,16 +109,16 @@ export default async function PlatformGruposListingPage({
                 <th className="px-4 py-3">Grupo</th>
                 <th className="px-4 py-3">Administradora</th>
                 <th className="px-4 py-3">Tipo</th>
+                <th className="px-4 py-3 text-center">Prazo</th>
+                <th className="px-4 py-3 text-center">1ª Assembleia</th>
                 <th className="px-4 py-3 text-right">Taxa Adm</th>
                 <th className="px-4 py-3 text-right">FR</th>
                 <th className="px-4 py-3 text-right">Taxa Total</th>
-                <th className="px-4 py-3 text-right">Seguro</th>
                 <th className="px-4 py-3 text-right">Cota Mín.</th>
                 <th className="px-4 py-3 text-right">Cota Máx.</th>
                 <th className="px-4 py-3 text-center">Capacidade</th>
                 <th className="px-4 py-3 text-center">Vagas</th>
                 <th className="px-4 py-3 text-center">Prontidão</th>
-                <th className="px-4 py-3 text-right">Atualização</th>
                 <th className="px-4 py-3 text-center">Ações</th>
               </tr>
             </thead>
@@ -152,6 +153,14 @@ export default async function PlatformGruposListingPage({
                         {adminNome}
                       </td>
                       <td className="px-4 py-3 text-slate-600 dark:text-slate-400">{tipoNome}</td>
+                      <td className="px-4 py-3 text-center font-semibold text-slate-900 dark:text-white">
+                        <span title={metrics.temporal.legenda} className="cursor-help">
+                          {metrics.temporal.resumoPrazo}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-center text-xs text-slate-600 dark:text-slate-400">
+                        {formatDateBR(grupo.data_primeira_assembleia)}
+                      </td>
                       <td className="px-4 py-3 text-right font-medium">
                         {formatPercent(grupo.taxa_administrativa_percentual)}
                       </td>
@@ -160,9 +169,6 @@ export default async function PlatformGruposListingPage({
                       </td>
                       <td className="px-4 py-3 text-right font-bold text-slate-900 dark:text-white">
                         {formatPercent(metrics.taxaTotal)}
-                      </td>
-                      <td className="px-4 py-3 text-right text-slate-500">
-                        {formatPercent(grupo.seguro_percentual)}
                       </td>
                       <td className="px-4 py-3 text-right text-xs font-semibold text-slate-700 dark:text-slate-300">
                         {formatBRL(metrics.cotaMinima)}
@@ -187,11 +193,6 @@ export default async function PlatformGruposListingPage({
                           {prontidao.ready ? "✓ Pronto" : `⚠ ${prontidao.issues.length}`}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-right text-xs text-slate-400">
-                        {grupo.updated_at
-                          ? new Date(grupo.updated_at).toLocaleDateString("pt-BR")
-                          : "—"}
-                      </td>
                       <td className="px-4 py-3 text-center">
                         <Link
                           href={`/platform/grupos/${grupo.id}`}
@@ -211,4 +212,3 @@ export default async function PlatformGruposListingPage({
     </div>
   );
 }
-

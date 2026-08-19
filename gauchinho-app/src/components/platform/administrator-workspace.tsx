@@ -55,6 +55,7 @@ import {
   type GrupoRecord,
   formatBRL,
   formatPercent,
+  formatDateBR,
   computeGrupoMetrics,
   validateGrupoProntidao,
 } from "@/lib/platform/grupos-prontidao";
@@ -899,11 +900,13 @@ export function AdministratorWorkspace({
             </Link>
           </div>
           <div className="mt-4 overflow-x-auto">
-            <table className="min-w-[850px] w-full text-sm">
+            <table className="min-w-[950px] w-full text-sm">
               <thead className="border-b bg-slate-50 text-left text-xs uppercase tracking-wider text-slate-500 dark:bg-slate-800">
                 <tr>
                   <th className="p-3">Grupo</th>
                   <th className="p-3">Tipo</th>
+                  <th className="p-3 text-center">Prazo</th>
+                  <th className="p-3 text-center">1ª Assembleia</th>
                   <th className="p-3 text-right">Taxa Adm</th>
                   <th className="p-3 text-right">FR</th>
                   <th className="p-3 text-right">Taxa Total</th>
@@ -918,7 +921,7 @@ export function AdministratorWorkspace({
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                 {grupos.length === 0 ? (
                   <tr>
-                    <td colSpan={11} className="p-6 text-center text-sm text-slate-400">
+                    <td colSpan={13} className="p-6 text-center text-sm text-slate-400">
                       Nenhum grupo cadastrado para esta administradora.
                     </td>
                   </tr>
@@ -935,6 +938,14 @@ export function AdministratorWorkspace({
                           </Link>
                         </td>
                         <td className="p-3 text-slate-700 dark:text-slate-300">{g.tipo?.nome || "Sem Tipo"}</td>
+                        <td className="p-3 text-center font-semibold text-slate-900 dark:text-white">
+                          <span title={metrics.temporal.legenda} className="cursor-help">
+                            {metrics.temporal.resumoPrazo}
+                          </span>
+                        </td>
+                        <td className="p-3 text-center text-xs text-slate-600 dark:text-slate-400">
+                          {formatDateBR(g.data_primeira_assembleia)}
+                        </td>
                         <td className="p-3 text-right font-medium">{formatPercent(g.taxa_administrativa_percentual)}</td>
                         <td className="p-3 text-right text-slate-500">{formatPercent(g.fundo_reserva_percentual)}</td>
                         <td className="p-3 text-right font-bold text-slate-900 dark:text-white">{formatPercent(metrics.taxaTotal)}</td>

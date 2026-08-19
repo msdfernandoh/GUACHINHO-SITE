@@ -58,6 +58,7 @@ export async function salvarGrupoPlatformAction(
     const vagasDisponiveis = Number(formData.get("vagas_disponiveis")) || 0;
     const permiteLanceEmbutido = formData.get("permite_lance_embutido") === "on";
     const percentualLanceEmbutido = parseBRLNumber(formData.get("percentual_lance_embutido") as string);
+    const dataPrimeiraAssembleia = String(formData.get("data_primeira_assembleia") ?? "").trim() || null;
     const status = String(formData.get("status") ?? "Disponível").trim();
     const ativo = formData.get("ativo") !== "false";
     const observacoes = String(formData.get("observacoes") ?? "").trim() || null;
@@ -79,6 +80,7 @@ export async function salvarGrupoPlatformAction(
       p_permite_lance_embutido: permiteLanceEmbutido,
       p_percentual_lance_embutido: percentualLanceEmbutido,
       p_observacoes: observacoes,
+      p_data_primeira_assembleia: dataPrimeiraAssembleia,
     });
 
     if (error) throw new Error(error.message);
@@ -119,15 +121,24 @@ export async function salvarEstatisticasGrupoAction(
       return { status: "VALIDATION_ERROR", message: "Grupo não identificado." };
     }
 
-    const contemplacoesSorteio = Number(formData.get("contemplacoes_sorteio_qtd")) || null;
-    const lanceEmbutido25 = formData.get("lance_embutido_25_permitido") === "on";
-    const lanceEmbutido50 = formData.get("lance_embutido_50_permitido") === "on";
-    const lanceFidelidade = formData.get("lance_fidelidade_permitido") === "on";
-    const lanceFidelidadePct = parseBRLNumber(formData.get("lance_fidelidade_percentual") as string);
+    let caracteristicasContemplacao = [];
+    const caracteristicasRaw = String(formData.get("caracteristicas_contemplacao_json") ?? "").trim();
+    if (caracteristicasRaw) {
+      try {
+        caracteristicasContemplacao = JSON.parse(caracteristicasRaw);
+      } catch {
+        caracteristicasContemplacao = [];
+      }
+    }
+
     const lanceLivreMin = parseBRLNumber(formData.get("lance_livre_minimo") as string);
     const lanceLivreMedio = parseBRLNumber(formData.get("lance_livre_medio") as string);
     const lanceLivreMax = parseBRLNumber(formData.get("lance_livre_maximo") as string);
+    const dataReferencia = String(formData.get("data_referencia") ?? "").trim() || null;
     const contempladosMesAnterior = Number(formData.get("contemplados_mes_anterior_qtd")) || null;
+    const limiteLanceEmbutido = parseBRLNumber(formData.get("limite_lance_embutido_percentual") as string);
+    const lanceEmbutidoPermitido = formData.get("lance_embutido_permitido") === "on";
+    const lanceFidelidadePermitido = formData.get("lance_fidelidade_permitido") === "on";
     const origemInfo = String(formData.get("origem_informacao") ?? "").trim() || null;
     const responsavel = String(formData.get("responsavel_nome") ?? "").trim() || null;
     const observacao = String(formData.get("observacao") ?? "").trim() || null;
@@ -135,15 +146,15 @@ export async function salvarEstatisticasGrupoAction(
     const usarDadosGlobais = formData.get("usar_dados_globais") !== "false";
 
     const dadosEstatisticos = {
-      contemplacoes_sorteio_qtd: contemplacoesSorteio,
-      lance_embutido_25_permitido: lanceEmbutido25,
-      lance_embutido_50_permitido: lanceEmbutido50,
-      lance_fidelidade_permitido: lanceFidelidade,
-      lance_fidelidade_percentual: lanceFidelidadePct,
+      caracteristicas_contemplacao: caracteristicasContemplacao,
       lance_livre_minimo: lanceLivreMin,
       lance_livre_medio: lanceLivreMedio,
       lance_livre_maximo: lanceLivreMax,
+      data_referencia: dataReferencia,
       contemplados_mes_anterior_qtd: contempladosMesAnterior,
+      limite_lance_embutido_percentual: limiteLanceEmbutido,
+      lance_embutido_permitido: lanceEmbutidoPermitido,
+      lance_fidelidade_permitido: lanceFidelidadePermitido,
       origem_informacao: origemInfo,
       responsavel_nome: responsavel,
       observacao,

@@ -11,14 +11,25 @@ import {
   salvarModalidadesGrupoPlatformAction,
   salvarCotasEmLoteAction,
   salvarCotaModalidadeAction,
+  salvarCotaModalidadeEmMassaAction,
   excluirCotaProdutoAction,
 } from "@/app/platform/grupos-catalogo-actions";
 import {
   type GrupoRecord,
+  type AdministradoraModalidadeItem,
+  type GrupoModalidadeItem,
+  type GrupoCotaModalidadeValor,
   type GrupoProntidaoResult,
+  type CaracteristicaContemplacaoItem,
+  type TipoContemplacao,
   formatBRL,
   formatPercent,
+  formatDateBR,
   validateGrupoProntidao,
+  resolveModalidadeConfig,
+  resolveCotaModalidadeEfetiva,
+  calcularResumoContemplacoes,
+  DEFAULT_TIPOS_CONTEMPLACAO,
 } from "@/lib/platform/grupos-prontidao";
 
 const initial: GroupActionState = { status: "IDLE", message: "" };
@@ -52,7 +63,7 @@ export function GrupoOperationalWorkspace({
   grupo: GrupoRecord;
   administradoras: Array<{ id: string; nome: string }>;
   tiposAdministradora: Array<{ id: string; nome: string; codigo: string }>;
-  modalidadesAdministradora: Array<{ id: string; nome: string; codigo: string }>;
+  modalidadesAdministradora: AdministradoraModalidadeItem[];
   historico: Array<{
     id: string;
     fonte: string;
@@ -72,6 +83,79 @@ export function GrupoOperationalWorkspace({
 }) {
   const [tab, setTab] = useState<"gerais" | "cotas" | "estatisticas" | "historico">("gerais");
   const [modoEstatisticas, setModoEstatisticas] = useState<"GLOBAL" | "LOCAL">("GLOBAL");
+
+  const [caracteristicas, setCaracteristicas] = useState<CaracteristicaContemplacaoItem[]>(() => {
+    const existing = (grupo.dados_estatisticos as Record<string, unknown> | null)?.caracteristicas_contemplacao;
+    if (Array.isArray(existing) && existing.length > 0) {
+      return existing.map((item: Partial<CaracteristicaContemplacaoItem>, index: number) => ({
+        id: item.id || `c-${index}-${Date.now()}`,
+        ordem: Number(item.ordem) || index + 1,
+        tipo: (item.tipo as TipoContemplacao) || "SORTEIO",
+        condicao_percentual: item.condicao_percentual ?? "",
+        observacao: item.observacao ?? "",
+        ativa: item.ativa !== false,
+      }));
+    }
+    return [];
+  });
+
+  const resumoContemplacoes = calcularResumoContemplacoes(caracteristicas);
+
+  function adicionarLinhaContemplacao() {
+    setCaracteristicas((prev) => {
+      const nextOrdem = prev.length > 0 ? Math.max(...prev.map((p) => p.ordem)) + 1 : 1;
+      return [
+        ...prev,
+        {
+          id: `c-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+          ordem: nextOrdem,
+          tipo: "LANCE_LIVRE",
+          condicao_percentual: "",
+          observacao: "",
+          ativa: true,
+        },
+      ];
+    });
+  }
+
+  function removerLinhaContemplacao(id: string) {
+    setCaracteristicas((prev) => {
+      const updated = prev.filter((item) => item.id !== id);
+      return updated.map((item, idx) => ({ ...item, ordem: idx + 1 }));
+    });
+  }
+
+  function atualizarLinhaContemplacao(id: string, updates: Partial<CaracteristicaContemplacaoItem>) {
+    setCaracteristicas((prev) =>
+      prev.map((item) => (item.id === id ? { ...item, ...updates } : item))
+    );
+  }
+
+  function moverLinhaContemplacao(index: number, direcao: "up" | "down") {
+    setCaracteristicas((prev) => {
+      const targetIndex = direcao === "up" ? index - 1 : index + 1;
+      if (targetIndex < 0 || targetIndex >= prev.length) return prev;
+      const items = [...prev];
+      const temp = items[index];
+      items[index] = items[targetIndex];
+      items[targetIndex] = temp;
+      return items.map((item, idx) => ({ ...item, ordem: idx + 1 }));
+    });
+  }
+
+  const [editingCotaModalidade, setEditingCotaModalidade] = useState<{
+    cotaId: string;
+    cotaCredito: number;
+    modalidade: AdministradoraModalidadeItem;
+    cotaValor?: GrupoCotaModalidadeValor;
+    grupoMod?: GrupoModalidadeItem;
+  } | null>(null);
+
+  const [selectedCotas, setSelectedCotas] = useState<Set<string>>(new Set());
+  const [batchModalidadeId, setBatchModalidadeId] = useState<string>("");
+  const [batchModo, setBatchModo] = useState<"HERDAR" | "PERSONALIZADO" | "DESABILITADO">("HERDAR");
+  const [batchPercentual, setBatchPercentual] = useState<string>("");
+  const [isPendingBatch, setIsPendingBatch] = useState(false);
 
   const [formStateGrupo, formActionGrupo, isPendingGrupo] = useActionState(
     salvarGrupoPlatformAction,
@@ -96,6 +180,41 @@ export function GrupoOperationalWorkspace({
   const modsAtivas = modalidadesDisponiveis.filter((m) => m.ativo);
   const cotas = (grupo.produtos ?? []).filter((p) => p.ativo).sort((a, b) => b.valor_credito - a.valor_credito);
 
+  function handleToggleSelectCota(cotaId: string) {
+    setSelectedCotas((prev) => {
+      const next = new Set(prev);
+      if (next.has(cotaId)) next.delete(cotaId);
+      else next.add(cotaId);
+      return next;
+    });
+  }
+
+  function handleToggleSelectAll() {
+    if (selectedCotas.size === cotas.length) {
+      setSelectedCotas(new Set());
+    } else {
+      setSelectedCotas(new Set(cotas.map((c) => c.id)));
+    }
+  }
+
+  async function handleApplyBatchAction() {
+    if (!batchModalidadeId || selectedCotas.size === 0) return;
+    setIsPendingBatch(true);
+    try {
+      const pct = batchModo === "PERSONALIZADO" ? Number(batchPercentual.replace(",", ".")) : null;
+      await salvarCotaModalidadeEmMassaAction(
+        grupo.id,
+        Array.from(selectedCotas),
+        batchModalidadeId,
+        batchModo,
+        pct,
+      );
+      setSelectedCotas(new Set());
+    } finally {
+      setIsPendingBatch(false);
+    }
+  }
+
   const adminNome = typeof grupo.administradora === "object" ? grupo.administradora?.nome : grupo.administradora || "—";
   const tipoNome = grupo.tipo?.nome || grupo.modalidade || "—";
 
@@ -118,7 +237,7 @@ export function GrupoOperationalWorkspace({
             Grupo {grupo.codigo_grupo}
           </h1>
           <p className="text-sm text-slate-500">
-            {adminNome} · {tipoNome} · {grupo.prazo_total ? `${grupo.prazo_total} meses` : "Prazo não definido"}
+            {adminNome} · {tipoNome} · Prazo {prontidao.temporal.resumoPrazo} ({prontidao.temporal.legenda})
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
@@ -133,18 +252,22 @@ export function GrupoOperationalWorkspace({
           </span>
           <span
             className={`inline-flex rounded-full px-3 py-1 text-xs font-bold ${
-              grupo.ativo
+              prontidao.temporal.encerrado
+                ? "bg-slate-200 text-slate-800 dark:bg-slate-700 dark:text-slate-200"
+                : grupo.ativo
                 ? "bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300"
                 : "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300"
             }`}
           >
-            {grupo.status || (grupo.ativo ? "Disponível" : "Inativo")}
+            {prontidao.temporal.encerrado
+              ? "Encerrado (Prazo finalizado)"
+              : grupo.status || (grupo.ativo ? "Disponível" : "Inativo")}
           </span>
         </div>
       </div>
 
       {/* Cards Resumo Operacional */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
         <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
           <p className="text-xs font-bold uppercase tracking-wider text-slate-500">Tipo Oficial</p>
           <p className="mt-1 text-lg font-bold text-slate-900 dark:text-white">{tipoNome}</p>
@@ -159,16 +282,40 @@ export function GrupoOperationalWorkspace({
           <p className="text-xs text-slate-400">{cotas.length} cota(s) ativa(s)</p>
         </div>
         <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-          <p className="text-xs font-bold uppercase tracking-wider text-slate-500">Capacidade / Vagas</p>
-          <p className="mt-1 text-lg font-bold text-slate-900 dark:text-white">
-            {grupo.vagas_disponiveis ?? 0}{" "}
-            <span className="text-xs font-normal text-slate-500">de {grupo.capacidade_total ?? 0}</span>
+          <p className="text-xs font-bold uppercase tracking-wider text-slate-500">Assembleias / Prazo</p>
+          <p className="mt-1 text-lg font-bold text-slate-900 dark:text-white" title={prontidao.temporal.legenda}>
+            {prontidao.temporal.resumoPrazo}
           </p>
-          {grupo.vagas_atualizado_em ? (
-            <p className="text-xs text-slate-400">
-              Atualizado {new Date(grupo.vagas_atualizado_em).toLocaleDateString("pt-BR")}
+          <p className="text-xs text-slate-400">
+            {grupo.data_primeira_assembleia ? `1ª: ${formatDateBR(grupo.data_primeira_assembleia)}` : "1ª Ass. não informada"}
+          </p>
+        </div>
+        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+          <p className="text-xs font-bold uppercase tracking-wider text-slate-500">Próxima Assembleia</p>
+          <p className="mt-1 text-sm font-bold text-slate-900 dark:text-white">
+            {prontidao.temporal.proximaAssembleiaFormatada}
+          </p>
+          <p className="text-xs text-slate-400">
+            {prontidao.temporal.encerrado ? "Prazo esgotado" : `${prontidao.temporal.restantes} restante(s)`}
+          </p>
+        </div>
+        <div
+          onClick={() => setTab("estatisticas")}
+          className="group cursor-pointer rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-all hover:border-cyan-500 hover:shadow-md dark:border-slate-800 dark:bg-slate-900"
+          title="Clique para editar Características de Contemplação e Lances"
+        >
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-bold uppercase tracking-wider text-slate-500 group-hover:text-cyan-700 dark:group-hover:text-cyan-400">
+              Contemplações
             </p>
-          ) : null}
+            <span className="text-[10px] font-bold text-cyan-600 group-hover:underline">Ver →</span>
+          </div>
+          <p className="mt-1 text-lg font-bold text-slate-900 dark:text-white">
+            {resumoContemplacoes.textoPotencial}
+          </p>
+          <p className="text-xs text-slate-400 truncate" title={resumoContemplacoes.resumoCurto}>
+            {resumoContemplacoes.resumoCurto}
+          </p>
         </div>
         <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
           <p className="text-xs font-bold uppercase tracking-wider text-slate-500">Taxa Total</p>
@@ -178,11 +325,6 @@ export function GrupoOperationalWorkspace({
           <p className="text-xs text-slate-400">
             Adm: {formatPercent(grupo.taxa_administrativa_percentual)} | FR: {formatPercent(grupo.fundo_reserva_percentual)}
           </p>
-        </div>
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-          <p className="text-xs font-bold uppercase tracking-wider text-slate-500">Modalidades</p>
-          <p className="mt-1 text-lg font-bold text-slate-900 dark:text-white">{modsAtivas.length} ativas</p>
-          <p className="text-xs text-slate-400">de {modalidadesDisponiveis.length} cadastradas</p>
         </div>
       </div>
 
@@ -300,9 +442,37 @@ export function GrupoOperationalWorkspace({
 
             <div>
               <label className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
+                Data da 1ª Assembleia *
+              </label>
+              <input
+                name="data_primeira_assembleia"
+                type="date"
+                defaultValue={grupo.data_primeira_assembleia ? grupo.data_primeira_assembleia.split("T")[0] : ""}
+                className={inputStyle}
+                required
+              />
+              <p className="mt-1 text-[11px] text-slate-500">
+                Define o aniversário mensal para o cálculo automático de assembleias realizadas.
+              </p>
+            </div>
+
+            <div>
+              <label className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
                 Prazo Total (Meses) *
               </label>
-              <input name="prazo_total" type="number" defaultValue={grupo.prazo_total || ""} placeholder="Ex: 200" className={inputStyle} required />
+              <input name="prazo_total" type="number" defaultValue={grupo.prazo_total || ""} placeholder="Ex: 100" className={inputStyle} required />
+            </div>
+
+            <div>
+              <label className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
+                Status Operacional
+              </label>
+              <select name="status" defaultValue={grupo.status || "Disponível"} className={inputStyle}>
+                <option value="Disponível">Disponível</option>
+                <option value="Em Andamento">Em Andamento</option>
+                <option value="Encerrado">Encerrado</option>
+                <option value="Inativo">Inativo</option>
+              </select>
             </div>
 
             <div>
@@ -378,7 +548,7 @@ export function GrupoOperationalWorkspace({
               <div>
                 <h2 className="text-lg font-bold text-slate-900 dark:text-white">1. Modalidades Disponíveis no Grupo</h2>
                 <p className="text-xs text-slate-500">
-                  Desabilitar uma modalidade aqui desabilita para todas as cotas do grupo.
+                  Carrega automaticamente os valores padrão da Administradora. Personalize apenas se este Grupo possuir regra de exceção.
                 </p>
               </div>
               <button type="submit" disabled={isPendingMods} className="rounded-lg bg-cyan-700 px-4 py-2 text-sm font-bold text-white hover:bg-cyan-800 disabled:opacity-50">
@@ -390,19 +560,37 @@ export function GrupoOperationalWorkspace({
             <div className="grid gap-4 md:grid-cols-3">
               {modalidadesAdministradora.map((mod) => {
                 const gm = modalidadesDisponiveis.find((x) => x.administradora_modalidade_id === mod.id);
-                const isAtivo = gm?.ativo ?? false;
-                const cfg = (gm?.configuracao ?? {}) as { modo_reduzido?: string; percentual_padrao?: number; percentual_minimo?: number; percentual_maximo?: number };
+                const resolved = resolveModalidadeConfig(gm, mod);
 
                 return (
-                  <div key={mod.id} className={`rounded-xl border p-4 transition-colors ${isAtivo ? "border-cyan-300 bg-cyan-50/40 dark:border-cyan-800 dark:bg-cyan-950/20" : "border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-900"}`}>
-                    <label className="flex items-center gap-2 font-bold text-slate-900 dark:text-white">
-                      <input type="checkbox" name={`mod_ativa_${mod.id}`} defaultChecked={isAtivo} className="h-4 w-4 rounded text-cyan-600" />
-                      <span>{mod.nome}</span>
-                    </label>
+                  <div
+                    key={mod.id}
+                    className={`rounded-xl border p-4 transition-colors ${
+                      resolved.ativo
+                        ? "border-cyan-300 bg-cyan-50/40 dark:border-cyan-800 dark:bg-cyan-950/20"
+                        : "border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-900"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <label className="flex items-center gap-2 font-bold text-slate-900 dark:text-white">
+                        <input type="checkbox" name={`mod_ativa_${mod.id}`} defaultChecked={resolved.ativo} className="h-4 w-4 rounded text-cyan-600" />
+                        <span>{mod.nome}</span>
+                      </label>
+                      <span
+                        className={`rounded-full px-2 py-0.5 text-[10px] font-extrabold ${
+                          resolved.isOverride
+                            ? "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300"
+                            : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400"
+                        }`}
+                      >
+                        {resolved.labelOrigem}
+                      </span>
+                    </div>
+
                     <div className="mt-3 space-y-2 text-xs">
                       <div>
                         <label className="text-slate-500">Comportamento da parcela:</label>
-                        <select name={`mod_modo_${mod.id}`} defaultValue={cfg.modo_reduzido || "fixo"} className="mt-1 w-full rounded border p-1.5 text-xs">
+                        <select name={`mod_modo_${mod.id}`} defaultValue={resolved.modo_reduzido} className="mt-1 w-full rounded border p-1.5 text-xs">
                           <option value="fixo">Percentual Fixo</option>
                           <option value="personalizado">Personalizável / Faixa</option>
                         </select>
@@ -410,16 +598,42 @@ export function GrupoOperationalWorkspace({
                       <div className="flex gap-2">
                         <div className="flex-1">
                           <label className="text-slate-500">Padrão (%):</label>
-                          <input name={`mod_pct_padrao_${mod.id}`} defaultValue={cfg.percentual_padrao ?? ""} placeholder="Ex: 70" className="mt-1 w-full rounded border p-1.5 text-xs" />
+                          <input
+                            name={`mod_pct_padrao_${mod.id}`}
+                            defaultValue={resolved.percentual_padrao ?? ""}
+                            placeholder="Ex: 60"
+                            className="mt-1 w-full rounded border p-1.5 text-xs font-semibold"
+                          />
                         </div>
                         <div className="flex-1">
                           <label className="text-slate-500">Mín (%):</label>
-                          <input name={`mod_pct_min_${mod.id}`} defaultValue={cfg.percentual_minimo ?? ""} placeholder="Ex: 60" className="mt-1 w-full rounded border p-1.5 text-xs" />
+                          <input
+                            name={`mod_pct_min_${mod.id}`}
+                            defaultValue={resolved.percentual_minimo ?? ""}
+                            placeholder="Ex: 60"
+                            className="mt-1 w-full rounded border p-1.5 text-xs"
+                          />
                         </div>
                         <div className="flex-1">
                           <label className="text-slate-500">Máx (%):</label>
-                          <input name={`mod_pct_max_${mod.id}`} defaultValue={cfg.percentual_maximo ?? ""} placeholder="Ex: 99" className="mt-1 w-full rounded border p-1.5 text-xs" />
+                          <input
+                            name={`mod_pct_max_${mod.id}`}
+                            defaultValue={resolved.percentual_maximo ?? ""}
+                            placeholder="Ex: 99"
+                            className="mt-1 w-full rounded border p-1.5 text-xs"
+                          />
                         </div>
+                      </div>
+                      <div className="pt-2">
+                        <label className="flex items-center gap-1.5 text-[11px] text-slate-500 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            name={`mod_usar_padrao_${mod.id}`}
+                            defaultChecked={!resolved.isOverride}
+                            className="rounded"
+                          />
+                          <span>Usar padrão da Administradora (sem override)</span>
+                        </label>
                       </div>
                     </div>
                   </div>
@@ -455,12 +669,82 @@ export function GrupoOperationalWorkspace({
 
           {/* Tabela Compacta de Cotas com Overrides */}
           <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900 space-y-4">
-            <div>
-              <h2 className="text-lg font-bold text-slate-900 dark:text-white">3. Tabela de Cotas do Grupo ({cotas.length})</h2>
-              <p className="text-xs text-slate-500">
-                Crédito, modalidades habilitadas e parcelas oficiais. O desmarque individual aplica override por cota.
-              </p>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h2 className="text-lg font-bold text-slate-900 dark:text-white">3. Tabela de Cotas do Grupo ({cotas.length})</h2>
+                <p className="text-xs text-slate-500">
+                  Crédito e modalidades configuradas. Clique no percentual de qualquer cota para personalizar ou desabilitar.
+                </p>
+              </div>
+              <div className="flex items-center gap-2 text-xs">
+                <span className="inline-flex items-center gap-1 rounded bg-slate-100 px-2 py-0.5 font-semibold text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                  Grupo X% = Herdando
+                </span>
+                <span className="inline-flex items-center gap-1 rounded border border-indigo-200 bg-indigo-50 px-2 py-0.5 font-bold text-indigo-700 dark:border-indigo-800 dark:bg-indigo-950/60 dark:text-indigo-300">
+                  Cota X% = Personalizado
+                </span>
+                <span className="inline-flex items-center gap-1 rounded border border-red-200 bg-red-50 px-2 py-0.5 font-semibold text-red-600 dark:border-red-900 dark:bg-red-950/60 dark:text-red-300">
+                  Desabilitada
+                </span>
+              </div>
             </div>
+
+            {/* Barra de Ações em Massa */}
+            {selectedCotas.size > 0 ? (
+              <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-cyan-300 bg-cyan-50/80 p-3 dark:border-cyan-800 dark:bg-cyan-950/50">
+                <div className="flex items-center gap-2 text-xs font-bold text-cyan-900 dark:text-cyan-200">
+                  <span>{selectedCotas.size} cota(s) selecionada(s).</span>
+                  <span>Aplicar para a modalidade:</span>
+                  <select
+                    value={batchModalidadeId}
+                    onChange={(e) => setBatchModalidadeId(e.target.value)}
+                    className="rounded border border-cyan-300 bg-white px-2 py-1 text-xs dark:border-cyan-700 dark:bg-slate-800 dark:text-white"
+                  >
+                    <option value="">Selecione uma modalidade</option>
+                    {modalidadesAdministradora.map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {m.nome}
+                      </option>
+                    ))}
+                  </select>
+                  <select
+                    value={batchModo}
+                    onChange={(e) => setBatchModo(e.target.value as "HERDAR" | "PERSONALIZADO" | "DESABILITADO")}
+                    className="rounded border border-cyan-300 bg-white px-2 py-1 text-xs dark:border-cyan-700 dark:bg-slate-800 dark:text-white"
+                  >
+                    <option value="HERDAR">Herdar Padrão do Grupo</option>
+                    <option value="PERSONALIZADO">Personalizar Percentual</option>
+                    <option value="DESABILITADO">Desabilitar nesta Cota</option>
+                  </select>
+                  {batchModo === "PERSONALIZADO" ? (
+                    <input
+                      type="text"
+                      value={batchPercentual}
+                      onChange={(e) => setBatchPercentual(e.target.value)}
+                      placeholder="Ex: 40"
+                      className="w-20 rounded border border-cyan-300 bg-white px-2 py-1 text-xs dark:border-cyan-700 dark:bg-slate-800 dark:text-white"
+                    />
+                  ) : null}
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    disabled={!batchModalidadeId || isPendingBatch}
+                    onClick={handleApplyBatchAction}
+                    className="rounded bg-cyan-700 px-3 py-1 text-xs font-bold text-white hover:bg-cyan-800 disabled:opacity-50"
+                  >
+                    {isPendingBatch ? "Aplicando..." : "Aplicar em Massa"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedCotas(new Set())}
+                    className="text-xs text-slate-500 hover:underline"
+                  >
+                    Limpar
+                  </button>
+                </div>
+              </div>
+            ) : null}
 
             {cotas.length === 0 ? (
               <p className="py-8 text-center text-sm text-slate-400">Nenhuma cota cadastrada neste grupo.</p>
@@ -469,6 +753,15 @@ export function GrupoOperationalWorkspace({
                 <table className="min-w-full text-sm">
                   <thead className="border-b bg-slate-50 text-left text-xs uppercase text-slate-500 dark:bg-slate-800">
                     <tr>
+                      <th className="w-10 px-3 py-3 text-center">
+                        <input
+                          type="checkbox"
+                          checked={selectedCotas.size === cotas.length && cotas.length > 0}
+                          onChange={handleToggleSelectAll}
+                          title="Selecionar todas as cotas"
+                          className="rounded text-cyan-600"
+                        />
+                      </th>
                       <th className="px-4 py-3">Crédito</th>
                       {modalidadesAdministradora.map((mod) => (
                         <th key={mod.id} className="px-4 py-3">
@@ -484,21 +777,29 @@ export function GrupoOperationalWorkspace({
                       const valoresMap = new Map(
                         (cota.grupo_cota_modalidade_valores ?? []).map((v) => [v.administradora_modalidade_id, v])
                       );
+                      const isSelected = selectedCotas.has(cota.id);
 
                       return (
-                        <tr key={cota.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40">
+                        <tr key={cota.id} className={`hover:bg-slate-50/60 dark:hover:bg-slate-800/40 ${isSelected ? "bg-cyan-50/30 dark:bg-cyan-950/20" : ""}`}>
+                          <td className="px-3 py-3 text-center">
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={() => handleToggleSelectCota(cota.id)}
+                              className="rounded text-cyan-600"
+                            />
+                          </td>
                           <td className="px-4 py-3 font-bold text-slate-900 dark:text-white">
                             {formatBRL(cota.valor_credito)}
                           </td>
                           {modalidadesAdministradora.map((mod) => {
                             const gm = modalidadesDisponiveis.find((x) => x.administradora_modalidade_id === mod.id);
-                            const grupoHabilitou = gm?.ativo ?? false;
                             const mv = valoresMap.get(mod.id);
-                            const cotaHabilitou = mv?.habilitado ?? true;
+                            const efetivo = resolveCotaModalidadeEfetiva(mv, gm, mod);
 
-                            if (!grupoHabilitou) {
+                            if (efetivo.status === "DESABILITADO_GRUPO") {
                               return (
-                                <td key={mod.id} className="px-4 py-3 text-xs text-slate-400">
+                                <td key={mod.id} className="px-4 py-3 text-xs text-slate-400 dark:text-slate-500">
                                   — (Desab. no Grupo)
                                 </td>
                               );
@@ -506,41 +807,48 @@ export function GrupoOperationalWorkspace({
 
                             return (
                               <td key={mod.id} className="px-4 py-3">
-                                <form
-                                  action={salvarCotaModalidadeAction.bind(null, grupo.id, cota.id, mod.id)}
-                                  className="flex items-center gap-2"
-                                >
-                                  <input
-                                    type="checkbox"
-                                    name="habilitado"
-                                    defaultChecked={cotaHabilitou}
-                                    onChange={(e) => e.target.form?.requestSubmit()}
-                                    title="Habilitar/Desabilitar modalidade para esta cota"
-                                    className="rounded"
-                                  />
-                                  <input
-                                    type="text"
-                                    name="valor_parcela"
-                                    defaultValue={mv?.valor_parcela ? String(mv.valor_parcela) : ""}
-                                    placeholder="R$ Parcela"
-                                    onBlur={(e) => e.target.form?.requestSubmit()}
-                                    className={`w-24 rounded border px-2 py-1 text-xs ${
-                                      !cotaHabilitou ? "opacity-40" : ""
+                                <div className="space-y-1">
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      setEditingCotaModalidade({
+                                        cotaId: cota.id,
+                                        cotaCredito: cota.valor_credito,
+                                        modalidade: mod,
+                                        cotaValor: mv,
+                                        grupoMod: gm,
+                                      })
+                                    }
+                                    className={`inline-flex items-center gap-1 rounded px-2 py-0.5 text-xs transition-all ${
+                                      efetivo.status === "PERSONALIZADO"
+                                        ? "border border-indigo-300 bg-indigo-50 font-bold text-indigo-700 hover:bg-indigo-100 dark:border-indigo-800 dark:bg-indigo-950/60 dark:text-indigo-300"
+                                        : efetivo.status === "DESABILITADO_COTA"
+                                        ? "border border-red-200 bg-red-50 font-semibold text-red-600 hover:bg-red-100 dark:border-red-900 dark:bg-red-950/60 dark:text-red-300"
+                                        : "bg-slate-100 font-semibold text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
                                     }`}
-                                  />
-                                </form>
+                                    title="Clique para configurar override desta cota"
+                                  >
+                                    <span>{efetivo.labelBadge}</span>
+                                    <span className="text-[10px] opacity-60">✎</span>
+                                  </button>
+                                  {mv?.valor_parcela ? (
+                                    <div className="text-[11px] text-slate-500 dark:text-slate-400">
+                                      {formatBRL(mv.valor_parcela)}
+                                    </div>
+                                  ) : null}
+                                </div>
                               </td>
                             );
                           })}
                           <td className="px-4 py-3">
-                            <span className="inline-flex rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700">
+                            <span className="inline-flex rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
                               {cota.status || "Ativa"}
                             </span>
                           </td>
                           <td className="px-4 py-3 text-right">
                             <button
                               onClick={async () => {
-                                if (confirm(`Deseja excluir ou inativar a cota de ${formatBRL(cota.valor_credito)}?`)) {
+                                if (confirm(`Deseja excluir a cota de ${formatBRL(cota.valor_credito)}?`)) {
                                   await excluirCotaProdutoAction(grupo.id, cota.id);
                                 }
                               }}
@@ -560,6 +868,152 @@ export function GrupoOperationalWorkspace({
         </div>
       ) : null}
 
+      {/* MODAL / POPOVER DE OVERRIDE POR COTA */}
+      {editingCotaModalidade ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-slate-800 dark:bg-slate-900 space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3 dark:border-slate-800">
+              <div>
+                <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                  Modalidade: {editingCotaModalidade.modalidade.nome}
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Cota {formatBRL(editingCotaModalidade.cotaCredito)}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditingCotaModalidade(null)}
+                className="text-slate-400 hover:text-slate-600"
+              >
+                ✕
+              </button>
+            </div>
+
+            {(() => {
+              const gm = editingCotaModalidade.grupoMod;
+              const mod = editingCotaModalidade.modalidade;
+              const mv = editingCotaModalidade.cotaValor;
+              const grupoResolved = resolveModalidadeConfig(gm, mod);
+              const cotaResolved = resolveCotaModalidadeEfetiva(mv, gm, mod);
+
+              return (
+                <form
+                  action={async (formData) => {
+                    await salvarCotaModalidadeAction(
+                      grupo.id,
+                      editingCotaModalidade.cotaId,
+                      editingCotaModalidade.modalidade.id,
+                      formData,
+                    );
+                    setEditingCotaModalidade(null);
+                  }}
+                  className="space-y-4 text-xs"
+                >
+                  <div className="space-y-2">
+                    <p className="font-bold text-slate-700 dark:text-slate-300">Modo de Configuração:</p>
+
+                    <label className="flex items-start gap-2.5 rounded-lg border border-slate-200 p-2.5 cursor-pointer dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/40">
+                      <input
+                        type="radio"
+                        name="modo_override"
+                        value="HERDAR"
+                        defaultChecked={cotaResolved.status === "HERDADO"}
+                        className="mt-0.5 text-cyan-600"
+                      />
+                      <div>
+                        <span className="font-bold text-slate-900 dark:text-white">
+                          Herdar do Grupo ({grupoResolved.percentual_padrao != null ? `${grupoResolved.percentual_padrao}%` : "Padrão"})
+                        </span>
+                        <p className="text-slate-500">
+                          Utiliza dinamicamente a configuração do Grupo ({grupoResolved.labelOrigem}).
+                        </p>
+                      </div>
+                    </label>
+
+                    <label className="flex items-start gap-2.5 rounded-lg border border-slate-200 p-2.5 cursor-pointer dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/40">
+                      <input
+                        type="radio"
+                        name="modo_override"
+                        value="PERSONALIZADO"
+                        defaultChecked={cotaResolved.status === "PERSONALIZADO"}
+                        className="mt-0.5 text-cyan-600"
+                      />
+                      <div>
+                        <span className="font-bold text-slate-900 dark:text-white">
+                          Personalizar nesta Cota
+                        </span>
+                        <p className="text-slate-500">
+                          Define um percentual exclusivo para esta cota de {formatBRL(editingCotaModalidade.cotaCredito)}.
+                        </p>
+                      </div>
+                    </label>
+
+                    <label className="flex items-start gap-2.5 rounded-lg border border-slate-200 p-2.5 cursor-pointer dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/40">
+                      <input
+                        type="radio"
+                        name="modo_override"
+                        value="DESABILITADO"
+                        defaultChecked={cotaResolved.status === "DESABILITADO_COTA"}
+                        className="mt-0.5 text-cyan-600"
+                      />
+                      <div>
+                        <span className="font-bold text-slate-900 dark:text-white">
+                          Desabilitar nesta Cota
+                        </span>
+                        <p className="text-slate-500">
+                          A modalidade não estará disponível para venda nesta cota específica.
+                        </p>
+                      </div>
+                    </label>
+                  </div>
+
+                  <div className="space-y-3 rounded-lg border border-slate-100 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-800/40">
+                    <p className="font-bold text-slate-700 dark:text-slate-300">Valores de Exceção (Se Personalizado):</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="text-slate-500">Percentual Cota (%):</label>
+                        <input
+                          name="percentual_override"
+                          defaultValue={mv?.percentual_override != null ? String(mv.percentual_override) : String(grupoResolved.percentual_padrao ?? "")}
+                          placeholder="Ex: 40"
+                          className="mt-1 w-full rounded border p-2 text-xs font-semibold"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-slate-500">R$ Parcela (Opcional):</label>
+                        <input
+                          name="valor_parcela"
+                          defaultValue={mv?.valor_parcela ? String(mv.valor_parcela) : ""}
+                          placeholder="Ex: 1250.00"
+                          className="mt-1 w-full rounded border p-2 text-xs"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
+                    <button
+                      type="button"
+                      onClick={() => setEditingCotaModalidade(null)}
+                      className="rounded-lg border px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="submit"
+                      className="rounded-lg bg-cyan-700 px-4 py-2 text-xs font-bold text-white hover:bg-cyan-800"
+                    >
+                      Salvar Configuração
+                    </button>
+                  </div>
+                </form>
+              );
+            })()}
+          </div>
+        </div>
+      ) : null}
+
       {/* TAB 3: ESTATÍSTICAS E LANCES */}
       {tab === "estatisticas" ? (
         <form action={formActionStats} className="space-y-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
@@ -570,10 +1024,10 @@ export function GrupoOperationalWorkspace({
           <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 pb-4 dark:border-slate-800">
             <div>
               <h2 className="text-lg font-bold text-slate-900 dark:text-white">
-                Informações Estatísticas e de Lances do Grupo
+                Estatísticas & Lances do Grupo
               </h2>
               <p className="text-xs text-slate-500">
-                Dados informativos para suporte aos consultores durante a venda. Não executam contemplações automáticas.
+                Informações comerciais e estatísticas para consultores. Não geram contemplações nem alteram cotas definitivas.
               </p>
             </div>
             <div className="flex items-center gap-2 rounded-lg border bg-slate-50 p-1 text-xs font-bold dark:bg-slate-800">
@@ -608,154 +1062,349 @@ export function GrupoOperationalWorkspace({
             </div>
           ) : null}
 
-          {/* Campos Estatísticos */}
+          {/* BLOCO 1: CARACTERÍSTICAS DE CONTEMPLAÇÃO */}
+          <div className="space-y-4 rounded-xl border border-slate-200 bg-slate-50/50 p-5 dark:border-slate-800 dark:bg-slate-800/30">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                  1. Características de Contemplação
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Estrutura e possibilidades normais de contemplação por assembleia mensal.
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="rounded-full bg-cyan-100 px-3 py-1 text-xs font-bold text-cyan-800 dark:bg-cyan-950 dark:text-cyan-200">
+                  {resumoContemplacoes.textoPotencial}
+                </span>
+                <span className="text-xs text-slate-600 dark:text-slate-400">
+                  {resumoContemplacoes.resumoModalidades}
+                </span>
+              </div>
+            </div>
+
+            <input
+              type="hidden"
+              name="caracteristicas_contemplacao_json"
+              value={JSON.stringify(caracteristicas)}
+            />
+
+            <div className="overflow-x-auto">
+              <table className="min-w-[760px] w-full text-xs">
+                <thead className="border-b bg-white text-left uppercase text-slate-500 dark:bg-slate-800">
+                  <tr>
+                    <th className="w-16 px-3 py-2 text-center">Ordem</th>
+                    <th className="px-3 py-2">Modalidade de Contemplação</th>
+                    <th className="px-3 py-2">Condição / Percentual</th>
+                    <th className="px-3 py-2">Observação</th>
+                    <th className="w-20 px-3 py-2 text-center">Ativa</th>
+                    <th className="w-24 px-3 py-2 text-right">Ações</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-200 dark:divide-slate-700 bg-white dark:bg-slate-900">
+                  {caracteristicas.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="p-4 text-center text-slate-400">
+                        Nenhuma característica de contemplação cadastrada. Clique no botão abaixo para adicionar.
+                      </td>
+                    </tr>
+                  ) : (
+                    caracteristicas.map((item, idx) => (
+                      <tr key={item.id} className={!item.ativa ? "opacity-40" : ""}>
+                        <td className="px-3 py-2 text-center">
+                          <div className="flex items-center justify-center gap-1 font-bold">
+                            <span>{item.ordem}º</span>
+                            <div className="flex flex-col">
+                              <button
+                                type="button"
+                                disabled={idx === 0}
+                                onClick={() => moverLinhaContemplacao(idx, "up")}
+                                className="text-[10px] text-slate-400 hover:text-cyan-700 disabled:opacity-20"
+                                title="Subir ordem"
+                              >
+                                ▲
+                              </button>
+                              <button
+                                type="button"
+                                disabled={idx === caracteristicas.length - 1}
+                                onClick={() => moverLinhaContemplacao(idx, "down")}
+                                className="text-[10px] text-slate-400 hover:text-cyan-700 disabled:opacity-20"
+                                title="Descer ordem"
+                              >
+                                ▼
+                              </button>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-3 py-2">
+                          <select
+                            value={item.tipo}
+                            onChange={(e) =>
+                              atualizarLinhaContemplacao(item.id!, {
+                                tipo: e.target.value as TipoContemplacao,
+                              })
+                            }
+                            className="w-full rounded border border-slate-300 bg-white px-2 py-1 text-xs dark:border-slate-700 dark:bg-slate-800"
+                          >
+                            {DEFAULT_TIPOS_CONTEMPLACAO.map((t) => (
+                              <option key={t.value} value={t.value}>
+                                {t.label}
+                              </option>
+                            ))}
+                          </select>
+                        </td>
+                        <td className="px-3 py-2">
+                          <input
+                            type="text"
+                            value={item.condicao_percentual ?? ""}
+                            onChange={(e) =>
+                              atualizarLinhaContemplacao(item.id!, {
+                                condicao_percentual: e.target.value,
+                              })
+                            }
+                            placeholder={
+                              item.tipo === "LANCE_FIXO"
+                                ? "Ex: 25% ou 50%"
+                                : item.tipo === "SORTEIO"
+                                ? "Ex: Ativas"
+                                : item.tipo === "SORTEIO_CANCELADAS"
+                                ? "Ex: Canceladas"
+                                : "Ex: Condição específica"
+                            }
+                            className="w-full rounded border border-slate-300 bg-white px-2 py-1 text-xs dark:border-slate-700 dark:bg-slate-800"
+                          />
+                        </td>
+                        <td className="px-3 py-2">
+                          <input
+                            type="text"
+                            value={item.observacao ?? ""}
+                            onChange={(e) =>
+                              atualizarLinhaContemplacao(item.id!, {
+                                observacao: e.target.value,
+                              })
+                            }
+                            placeholder="Observação da modalidade"
+                            className="w-full rounded border border-slate-300 bg-white px-2 py-1 text-xs dark:border-slate-700 dark:bg-slate-800"
+                          />
+                        </td>
+                        <td className="px-3 py-2 text-center">
+                          <input
+                            type="checkbox"
+                            checked={item.ativa}
+                            onChange={(e) =>
+                              atualizarLinhaContemplacao(item.id!, {
+                                ativa: e.target.checked,
+                              })
+                            }
+                            className="h-4 w-4 rounded text-cyan-600 focus:ring-cyan-500"
+                          />
+                        </td>
+                        <td className="px-3 py-2 text-right">
+                          <button
+                            type="button"
+                            onClick={() => removerLinhaContemplacao(item.id!)}
+                            className="text-xs font-semibold text-red-600 hover:underline"
+                          >
+                            Remover
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="flex justify-start">
+              <button
+                type="button"
+                onClick={adicionarLinhaContemplacao}
+                className="rounded-lg border border-dashed border-cyan-400 bg-cyan-50/50 px-3 py-1.5 text-xs font-bold text-cyan-800 hover:bg-cyan-100 dark:border-cyan-700 dark:bg-cyan-950/40 dark:text-cyan-300"
+              >
+                + Adicionar Linha de Contemplação
+              </button>
+            </div>
+          </div>
+
+          {/* BLOCO 2: INDICADORES RECENTES */}
           {(() => {
             const stats = (grupo.dados_estatisticos ?? {}) as Record<string, unknown>;
             return (
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="space-y-4 rounded-xl border border-slate-200 bg-slate-50/50 p-5 dark:border-slate-800 dark:bg-slate-800/30">
                 <div>
-                  <label className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
-                    Contemplações por Sorteio (Qtd)
-                  </label>
-                  <input
-                    name="contemplacoes_sorteio_qtd"
-                    type="number"
-                    defaultValue={Number(stats.contemplacoes_sorteio_qtd) || ""}
-                    placeholder="Ex: 2"
-                    className={inputStyle}
-                  />
-                </div>
-
-                <div>
-                  <label className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
-                    Contemplados no Mês Anterior (Qtd)
-                  </label>
-                  <input
-                    name="contemplados_mes_anterior_qtd"
-                    type="number"
-                    defaultValue={Number(stats.contemplados_mes_anterior_qtd) || ""}
-                    placeholder="Ex: 8"
-                    className={inputStyle}
-                  />
-                </div>
-
-                <div>
-                  <label className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
-                    Média de Lance Livre (%)
-                  </label>
-                  <input
-                    name="lance_livre_medio"
-                    defaultValue={stats.lance_livre_medio != null ? String(stats.lance_livre_medio) : ""}
-                    placeholder="Ex: 48.50"
-                    className={inputStyle}
-                  />
-                </div>
-
-                <div>
-                  <label className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
-                    Lance Livre Mínimo (%)
-                  </label>
-                  <input
-                    name="lance_livre_minimo"
-                    defaultValue={stats.lance_livre_minimo != null ? String(stats.lance_livre_minimo) : ""}
-                    placeholder="Ex: 35.00"
-                    className={inputStyle}
-                  />
-                </div>
-
-                <div>
-                  <label className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
-                    Lance Livre Máximo (%)
-                  </label>
-                  <input
-                    name="lance_livre_maximo"
-                    defaultValue={stats.lance_livre_maximo != null ? String(stats.lance_livre_maximo) : ""}
-                    placeholder="Ex: 65.00"
-                    className={inputStyle}
-                  />
-                </div>
-
-                <div>
-                  <label className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
-                    Vagas Disponíveis Atualizadas
-                  </label>
-                  <input
-                    name="vagas_disponiveis"
-                    type="number"
-                    defaultValue={grupo.vagas_disponiveis ?? 0}
-                    className={inputStyle}
-                  />
-                </div>
-
-                <div className="sm:col-span-2 lg:col-span-3 rounded-xl border border-slate-100 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-800/40">
-                  <p className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 mb-3">
-                    Regras de Lance Permitidas
+                  <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                    2. Indicadores Recentes & Lances
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Estatísticas de apuração e limites operacionais de lance.
                   </p>
-                  <div className="flex flex-wrap gap-6 text-sm">
-                    <label className="flex items-center gap-2 font-medium">
-                      <input
-                        type="checkbox"
-                        name="lance_embutido_25_permitido"
-                        defaultChecked={Boolean(stats.lance_embutido_25_permitido)}
-                        className="rounded text-cyan-600"
-                      />
-                      Lance Embutido 25%
+                </div>
+
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  <div>
+                    <label className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
+                      Média de Lance Livre (%)
                     </label>
-                    <label className="flex items-center gap-2 font-medium">
-                      <input
-                        type="checkbox"
-                        name="lance_embutido_50_permitido"
-                        defaultChecked={Boolean(stats.lance_embutido_50_permitido)}
-                        className="rounded text-cyan-600"
-                      />
-                      Lance Embutido 50%
+                    <input
+                      name="lance_livre_medio"
+                      defaultValue={stats.lance_livre_medio != null ? String(stats.lance_livre_medio) : ""}
+                      placeholder="Ex: 67.80"
+                      className={inputStyle}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
+                      Lance Livre Mínimo (%)
                     </label>
-                    <label className="flex items-center gap-2 font-medium">
-                      <input
-                        type="checkbox"
-                        name="lance_fidelidade_permitido"
-                        defaultChecked={Boolean(stats.lance_fidelidade_permitido)}
-                        className="rounded text-cyan-600"
-                      />
-                      Lance Fidelidade
+                    <input
+                      name="lance_livre_minimo"
+                      defaultValue={stats.lance_livre_minimo != null ? String(stats.lance_livre_minimo) : ""}
+                      placeholder="Ex: 35.00"
+                      className={inputStyle}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
+                      Lance Livre Máximo (%)
                     </label>
+                    <input
+                      name="lance_livre_maximo"
+                      defaultValue={stats.lance_livre_maximo != null ? String(stats.lance_livre_maximo) : ""}
+                      placeholder="Ex: 85.00"
+                      className={inputStyle}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
+                      Contemplados no Mês Anterior (Qtd Real)
+                    </label>
+                    <input
+                      name="contemplados_mes_anterior_qtd"
+                      type="number"
+                      defaultValue={Number(stats.contemplados_mes_anterior_qtd) || ""}
+                      placeholder="Ex: 7"
+                      className={inputStyle}
+                    />
+                    <span className="text-[11px] text-slate-400">Dado real apurado da última assembleia</span>
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
+                      Limite de Lance Embutido (%)
+                    </label>
+                    <input
+                      name="limite_lance_embutido_percentual"
+                      defaultValue={
+                        stats.limite_lance_embutido_percentual != null
+                          ? String(stats.limite_lance_embutido_percentual)
+                          : stats.percentual_lance_embutido != null
+                          ? String(stats.percentual_lance_embutido)
+                          : ""
+                      }
+                      placeholder="Ex: 40.00"
+                      className={inputStyle}
+                    />
+                    <span className="text-[11px] text-slate-400">Limite de lance embutido (% do crédito)</span>
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
+                      Vagas Disponíveis Atualizadas
+                    </label>
+                    <input
+                      name="vagas_disponiveis"
+                      type="number"
+                      defaultValue={grupo.vagas_disponiveis ?? 0}
+                      className={inputStyle}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
+                      Data de Referência da Análise
+                    </label>
+                    <input
+                      type="date"
+                      name="data_referencia"
+                      defaultValue={stats.data_referencia ? String(stats.data_referencia) : ""}
+                      className={inputStyle}
+                    />
                   </div>
                 </div>
+              </div>
+            );
+          })()}
 
+          {/* BLOCO 3: INFORMAÇÕES & AUDITORIA */}
+          {(() => {
+            const stats = (grupo.dados_estatisticos ?? {}) as Record<string, unknown>;
+            return (
+              <div className="space-y-4 rounded-xl border border-slate-200 bg-slate-50/50 p-5 dark:border-slate-800 dark:bg-slate-800/30">
                 <div>
-                  <label className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
-                    Origem da Informação
-                  </label>
-                  <input
-                    name="origem_informacao"
-                    defaultValue={stats.origem_informacao ? String(stats.origem_informacao) : ""}
-                    placeholder="Ex: Assembleia Racon 08/2026"
-                    className={inputStyle}
-                  />
+                  <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                    3. Informações & Auditoria
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Rastreabilidade de origem, analista e data de atualização.
+                  </p>
                 </div>
 
-                <div>
-                  <label className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
-                    Responsável pela Atualização
-                  </label>
-                  <input
-                    name="responsavel_nome"
-                    defaultValue={stats.responsavel_nome ? String(stats.responsavel_nome) : ""}
-                    placeholder="Nome do analista"
-                    className={inputStyle}
-                  />
-                </div>
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  <div>
+                    <label className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
+                      Origem da Informação
+                    </label>
+                    <input
+                      name="origem_informacao"
+                      defaultValue={stats.origem_informacao ? String(stats.origem_informacao) : ""}
+                      placeholder="Ex: Assembleia Racon 08/2026"
+                      className={inputStyle}
+                    />
+                  </div>
 
-                <div>
-                  <label className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
-                    Observação de Análise
-                  </label>
-                  <input
-                    name="observacao"
-                    defaultValue={stats.observacao ? String(stats.observacao) : ""}
-                    placeholder="Ex: Alta probabilidade de contemplação com 45%"
-                    className={inputStyle}
-                  />
+                  <div>
+                    <label className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
+                      Responsável pela Atualização
+                    </label>
+                    <input
+                      name="responsavel_nome"
+                      defaultValue={stats.responsavel_nome ? String(stats.responsavel_nome) : ""}
+                      placeholder="Nome do analista / consultor"
+                      className={inputStyle}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
+                      Última Atualização
+                    </label>
+                    <input
+                      type="text"
+                      disabled
+                      value={
+                        grupo.dados_estatisticos_atualizado_em
+                          ? new Date(grupo.dados_estatisticos_atualizado_em).toLocaleString("pt-BR")
+                          : "Ainda não atualizado"
+                      }
+                      className={`${inputStyle} bg-slate-100 dark:bg-slate-800 cursor-not-allowed`}
+                    />
+                  </div>
+
+                  <div className="sm:col-span-2 lg:col-span-3">
+                    <label className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
+                      Observação de Análise
+                    </label>
+                    <textarea
+                      name="observacao"
+                      defaultValue={stats.observacao ? String(stats.observacao) : ""}
+                      placeholder="Observações complementares sobre lances, contemplações e histórico do grupo..."
+                      rows={2}
+                      className={inputStyle}
+                    />
+                  </div>
                 </div>
               </div>
             );
