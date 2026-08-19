@@ -86,3 +86,52 @@ export async function toggleStatusModuloPlatformAction(
   revalidatePath("/platform/erp-modulos");
   return { status: "SUCCESS", message: `Módulo ${status === "ATIVO" ? "ativado" : "inativado"} com sucesso.` };
 }
+
+
+export async function criarModuloCatalogoPlatformAction(
+
+  _prev: PlatformFormState,
+  formData: FormData,
+): Promise<PlatformFormState> {
+  if (!(await isPlatformSuperadmin())) {
+    return { status: "ERROR", message: "Acesso restrito ao Platform Superadmin." };
+  }
+
+  const nome = String(formData.get("nome") ?? "").trim();
+  const codigo = String(formData.get("codigo") ?? "").trim() || null;
+  const descricao = String(formData.get("descricao") ?? "").trim() || null;
+  const categoria = String(formData.get("categoria") ?? "OPERACIONAL").trim();
+  const ordemPadrao = Number(formData.get("ordem_padrao") ?? 0);
+
+  let dependencias: string[] = [];
+  const rawDep = formData.get("dependencias_json");
+  if (rawDep) {
+    try {
+      dependencias = JSON.parse(String(rawDep));
+    } catch {
+      dependencias = [];
+    }
+  }
+
+  if (!nome) {
+    return { status: "ERROR", message: "Nome do módulo é obrigatório." };
+  }
+
+  const db = await createClient();
+  const { data, error } = await db.rpc("rpc_platform_criar_modulo_catalogo", {
+    p_nome: nome,
+    p_codigo: codigo,
+    p_descricao: descricao,
+    p_categoria: categoria,
+    p_ordem_padrao: ordemPadrao,
+    p_dependencias: dependencias,
+  });
+
+  if (error) {
+    return { status: "ERROR", message: error.message };
+  }
+
+  revalidatePath("/platform/erp-modulos");
+  return { status: "SUCCESS", message: "Módulo criado com sucesso no catálogo.", data };
+}
+

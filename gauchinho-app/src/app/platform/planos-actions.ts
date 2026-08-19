@@ -208,3 +208,30 @@ export async function duplicarPlanoPlatformAction(
   revalidatePath("/platform/planos");
   redirect(`/platform/planos/${data}`);
 }
+
+export async function excluirPlanoPlatformAction(
+  _prev: PlatformFormState,
+  formData: FormData,
+): Promise<PlatformFormState> {
+  if (!(await isPlatformSuperadmin())) {
+    return { status: "ERROR", message: "Acesso restrito ao Platform Superadmin." };
+  }
+
+  const planoId = String(formData.get("plano_id") ?? "").trim();
+  if (!planoId) {
+    return { status: "ERROR", message: "ID do plano é obrigatório." };
+  }
+
+  const db = await createClient();
+  const { error } = await db.rpc("rpc_platform_excluir_plano", {
+    p_plano_id: planoId,
+  });
+
+  if (error) {
+    return { status: "ERROR", message: error.message };
+  }
+
+  revalidatePath("/platform/planos");
+  return { status: "SUCCESS", message: "Plano excluído com sucesso." };
+}
+

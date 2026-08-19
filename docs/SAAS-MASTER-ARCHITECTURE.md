@@ -327,10 +327,18 @@ A plataforma suporta:
   - Publicação oficial do template (`status = 'PUBLICADO'`, versão 2) selecionável no onboarding de novas franquias.
   - Relatório: `docs/relatorios-fases/fase-091-platform-template-racon-inspired-v2.md`.
 
-* O estado funcional do Supabase Production inclui migrations `001–091`.
+* Platform Motor Comercial de Planos SaaS, Assinaturas, Quotas e Overrides (Migration 092):
+  - Catálogo global ERP com governança completa e criação de novos módulos operacionais (`rpc_platform_criar_modulo_catalogo`).
+  - Planos SaaS operacionais com workspace de 8 abas, entitlements, precificação e exclusão segura (`rpc_platform_excluir_plano`).
+  - Assinaturas de Master Franquias com validação de limites máximos contratados vs limites do Plano no backend.
+  - Integração do Plano no Onboarding da Master Franquia com estimativa financeira detalhada.
+  - Relatório: `docs/relatorios-fases/fase-092-platform-planos-quotas-overrides.md`.
+
+* O estado funcional do Supabase Production inclui migrations `001–092`.
 * `admin.gauchinhoconsorcios.com.br` está ativo, verificado e associado ao deployment Production da `main`; ele não é tenant e não possui fallback para Gauchinho.
-* As migrations `070–091` estão versionadas e aplicadas em Produção; correções futuras permanecem obrigatoriamente forward-only.
-* Evidências consolidadas: `docs/relatorios-fases/PLATFORM-GRUPOS-CATALOGO-085.md`, `docs/relatorios-fases/PLATFORM-GRUPOS-TEMPORAL-HERANCA-086.md`, `docs/relatorios-fases/PLATFORM-PROGRAMAS-REGRAS-EDITOR-087.md`, `docs/relatorios-fases/fase-088-platform-templates-dominios-onboarding.md`, `docs/relatorios-fases/fase-089-platform-planos-assinaturas-limits.md` e `docs/relatorios-fases/fase-091-platform-template-racon-inspired-v2.md`.
+* As migrations `070–092` estão versionadas e aplicadas em Produção; correções futuras permanecem obrigatoriamente forward-only.
+* Evidências consolidadas: `docs/relatorios-fases/PLATFORM-GRUPOS-CATALOGO-085.md`, `docs/relatorios-fases/PLATFORM-GRUPOS-TEMPORAL-HERANCA-086.md`, `docs/relatorios-fases/PLATFORM-PROGRAMAS-REGRAS-EDITOR-087.md`, `docs/relatorios-fases/fase-088-platform-templates-dominios-onboarding.md`, `docs/relatorios-fases/fase-089-platform-planos-assinaturas-limits.md`, `docs/relatorios-fases/fase-091-platform-template-racon-inspired-v2.md` e `docs/relatorios-fases/fase-092-platform-planos-quotas-overrides.md`.
+
 
 
 

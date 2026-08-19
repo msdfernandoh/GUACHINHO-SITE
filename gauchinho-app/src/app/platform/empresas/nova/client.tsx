@@ -663,16 +663,35 @@ export function OnboardingFranquiaClient({
               </div>
             </div>
             <div className="rounded-2xl border border-cyan-200 bg-cyan-50/60 p-5 dark:border-cyan-900 dark:bg-cyan-950/40 space-y-3">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-cyan-900 dark:text-cyan-200">Resumo Financeiro Estimado</h4>
+              <h4 className="text-xs font-bold uppercase tracking-wider text-cyan-900 dark:text-cyan-200">Resumo Financeiro & Entitlements Estimados</h4>
               <div className="divide-y divide-cyan-200/60 text-xs dark:divide-cyan-800/60">
-                <div className="flex justify-between py-1.5"><span className="text-slate-700 dark:text-slate-300">Plano SaaS:</span><strong>R$ {valorPlanoBase.toFixed(2)}/mês</strong></div>
-                <div className="flex justify-between py-1.5"><span className="text-slate-700 dark:text-slate-300">Sites Parceiros:</span><strong>R$ {valorSitesParceiros.toFixed(2)}/mês</strong></div>
+                <div className="flex justify-between py-1.5">
+                  <span className="text-slate-700 dark:text-slate-300">Plano SaaS ({selectedPlano?.nome || "Padrão"}):</span>
+                  <strong>R$ {valorPlanoBase.toFixed(2)}/mês</strong>
+                </div>
+                <div className="flex justify-between py-1.5">
+                  <span className="text-slate-700 dark:text-slate-300">Limite de Usuários:</span>
+                  <strong>{limiteUsuarios} usuários</strong>
+                </div>
+                <div className="flex justify-between py-1.5">
+                  <span className="text-slate-700 dark:text-slate-300">Site Principal:</span>
+                  <strong>{selectedPlano?.site_principal_incluido !== false ? "Incluído no Plano" : "Não Incluso"}</strong>
+                </div>
+                <div className="flex justify-between py-1.5">
+                  <span className="text-slate-700 dark:text-slate-300">Sites de Parceiros ({sitesParceirosContratados} un × R$ {(selectedPlano?.valor_site_parceiro || 0).toFixed(2)}):</span>
+                  <strong>R$ {valorSitesParceiros.toFixed(2)}/mês</strong>
+                </div>
+                <div className="flex justify-between py-1.5">
+                  <span className="text-slate-700 dark:text-slate-300">Domínios Próprios ({sitesDominioProprioContratados} un × R$ {(selectedPlano?.valor_site_dominio_proprio || 0).toFixed(2)}):</span>
+                  <strong>R$ {valorDominiosProprios.toFixed(2)}/mês</strong>
+                </div>
                 <div className="flex justify-between pt-2.5 text-sm font-extrabold text-cyan-950 dark:text-cyan-100">
-                  <span>TOTAL ESTIMADO:</span>
+                  <span>TOTAL MENSAL ESTIMADO:</span>
                   <span className="font-mono text-base text-cyan-700 dark:text-cyan-400">R$ {totalMensalEstimado.toFixed(2)}/mês</span>
                 </div>
               </div>
             </div>
+
           </div>
         )}
 

@@ -4,6 +4,7 @@ import { useActionState, useState } from "react";
 import {
   salvarModuloCatalogoPlatformAction,
   toggleStatusModuloPlatformAction,
+  criarModuloCatalogoPlatformAction,
   type PlatformFormState,
 } from "@/app/platform/erp-modulos-actions";
 
@@ -24,9 +25,11 @@ const initial: PlatformFormState = { status: "IDLE", message: "" };
 
 export function ErpModulosListingClient({ modulos }: { modulos: ModuloItem[] }) {
   const [editItem, setEditItem] = useState<ModuloItem | null>(null);
+  const [modalNovo, setModalNovo] = useState(false);
 
   const [stateSave, actionSave, isPendingSave] = useActionState(salvarModuloCatalogoPlatformAction, initial);
   const [stateToggle, actionToggle, isPendingToggle] = useActionState(toggleStatusModuloPlatformAction, initial);
+  const [stateNovo, actionNovo, isPendingNovo] = useActionState(criarModuloCatalogoPlatformAction, initial);
 
   const totalAtivos = modulos.filter((m) => m.status === "ATIVO").length;
 
@@ -41,7 +44,27 @@ export function ErpModulosListingClient({ modulos }: { modulos: ModuloItem[] }) 
             Catálogo mestre de módulos operacionais consumidos pelos Planos SaaS e Master Franquias.
           </p>
         </div>
+        <button
+          type="button"
+          onClick={() => setModalNovo(true)}
+          className="rounded-lg bg-cyan-700 px-4 py-2.5 text-xs font-bold text-white shadow hover:bg-cyan-800"
+        >
+          + Novo Módulo
+        </button>
       </div>
+
+      {/* Feedbacks */}
+      {stateNovo.message && (
+        <p
+          role="status"
+          className={`rounded-lg p-3 text-xs font-bold ${
+            stateNovo.status === "SUCCESS" ? "bg-emerald-50 text-emerald-800" : "bg-red-50 text-red-800"
+          }`}
+        >
+          {stateNovo.message}
+        </p>
+      )}
+
 
       {/* Feedbacks */}
       {stateSave.message && (
@@ -260,6 +283,106 @@ export function ErpModulosListingClient({ modulos }: { modulos: ModuloItem[] }) 
           </div>
         </div>
       )}
+
+      {/* Modal: Novo Módulo */}
+      {modalNovo && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl space-y-4 dark:border-slate-800 dark:bg-slate-900">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3 dark:border-slate-800">
+              <h3 className="text-base font-bold text-slate-900 dark:text-white">+ Novo Módulo no Catálogo</h3>
+              <button
+                type="button"
+                onClick={() => setModalNovo(false)}
+                className="text-slate-400 hover:text-slate-600"
+              >
+                ✕
+              </button>
+            </div>
+            <form
+              action={async (formData) => {
+                await actionNovo(formData);
+                setModalNovo(false);
+              }}
+              className="space-y-4 text-xs"
+            >
+              <div>
+                <label className="font-bold text-slate-700 dark:text-slate-300">Nome do Módulo:</label>
+                <input
+                  name="nome"
+                  required
+                  placeholder="Ex: Auditoria Operacional"
+                  className="mt-1 w-full rounded-lg border border-slate-200 p-2.5 text-xs font-semibold dark:border-slate-700 dark:bg-slate-800"
+                />
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700 dark:text-slate-300">Código Técnico (Opcional - gerado automático):</label>
+                <input
+                  name="codigo"
+                  placeholder="Ex: auditoria_operacional"
+                  className="mt-1 w-full rounded-lg border border-slate-200 p-2.5 text-xs font-mono dark:border-slate-700 dark:bg-slate-800"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="font-bold text-slate-700 dark:text-slate-300">Categoria:</label>
+                  <select
+                    name="categoria"
+                    defaultValue="OPERACIONAL"
+                    className="mt-1 w-full rounded-lg border border-slate-200 p-2.5 text-xs font-semibold dark:border-slate-700 dark:bg-slate-800"
+                  >
+                    <option value="OPERACIONAL">Operacional</option>
+                    <option value="CRM">CRM</option>
+                    <option value="COMERCIAL">Comercial</option>
+                    <option value="FINANCEIRO">Financeiro</option>
+                    <option value="GESTAO">Gestão</option>
+                    <option value="SISTEMA">Sistema</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="font-bold text-slate-700 dark:text-slate-300">Ordem de Exibição:</label>
+                  <input
+                    name="ordem_padrao"
+                    type="number"
+                    defaultValue={modulos.length + 1}
+                    className="mt-1 w-full rounded-lg border border-slate-200 p-2.5 text-xs font-bold dark:border-slate-700 dark:bg-slate-800"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700 dark:text-slate-300">Descrição:</label>
+                <textarea
+                  name="descricao"
+                  rows={3}
+                  placeholder="Finalidade e governança deste módulo no ERP."
+                  className="mt-1 w-full rounded-lg border border-slate-200 p-2.5 text-xs dark:border-slate-700 dark:bg-slate-800"
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setModalNovo(false)}
+                  className="rounded-lg border px-4 py-2 font-bold text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={isPendingNovo}
+                  className="rounded-lg bg-cyan-700 px-4 py-2 font-bold text-white hover:bg-cyan-800"
+                >
+                  {isPendingNovo ? "Cadastrando..." : "Cadastrar Módulo"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+
