@@ -359,23 +359,33 @@ export default async function ClienteDetalhePage({
                   <th className="p-3">Protocolo</th>
                   <th className="p-3">Administradora</th>
                   <th className="p-3">Grupo</th>
+                  <th className="p-3">Tipo / Bem</th>
                   <th className="p-3 text-right">Crédito</th>
                   <th className="p-3 text-right">Parcela</th>
                   <th className="p-3">Modalidade</th>
                   <th className="p-3 text-center">Prazo</th>
+                  <th className="p-3 text-center">Vínculo SaaS</th>
                   <th className="p-3 text-center">Status</th>
-                  <th className="p-3 text-center">Origem</th>
                   <th className="p-3 text-center">Ação</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                 {contratacoes.map((c) => {
+                  const tipoBem =
+                    c.dados_simulacao?.tipoBem ||
+                    c.dados_simulacao?.tipo ||
+                    c.tipo_bem ||
+                    "Imóvel";
                   const modalidade =
                     c.dados_simulacao?.modalidade ||
+                    c.dados_simulacao?.modalidade_parcela ||
+                    c.dados_simulacao?.selecoes?.[0]?.config?.modalidadeParcela ||
                     c.dados_simulacao?.plano ||
-                    c.tipo_bem ||
-                    "Padrão";
+                    c.dados_simulacao?.plano_condicao ||
+                    "Integral";
                   const isEfetivada = Boolean(c.cotaDefinitiva?.id);
+                  const hasCanonicalGroup = Boolean(c.grupo_id);
+                  const hasCanonicalCota = Boolean(c.cota_id || c.dados_simulacao?.cotaId || c.dados_simulacao?.selecoes?.[0]?.cotaId);
 
                   return (
                     <tr key={c.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40">
@@ -383,18 +393,36 @@ export default async function ClienteDetalhePage({
                         {c.protocolo}
                       </td>
                       <td className="p-3 font-semibold">{c.administradora || "—"}</td>
-                      <td className="p-3 font-mono">{c.grupo_nome || "—"}</td>
-                      <td className="p-3 text-right font-mono font-bold">
-                        {money(c.credito_selecionado || c.dados_simulacao?.valor_credito)}
-                      </td>
-                      <td className="p-3 text-right font-mono">
-                        {money(c.parcela_estimada || c.dados_simulacao?.valor_parcela)}
+                      <td className="p-3 font-mono font-bold text-slate-900 dark:text-white">
+                        {c.grupo_nome || "—"}
                       </td>
                       <td className="p-3 font-medium text-slate-700 dark:text-slate-300">
+                        <span className="rounded bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-800 dark:bg-slate-800 dark:text-slate-200">
+                          {tipoBem}
+                        </span>
+                      </td>
+                      <td className="p-3 text-right font-mono font-bold text-slate-950 dark:text-white">
+                        {money(c.credito_selecionado || c.dados_simulacao?.valor_credito || c.dados_simulacao?.somaCotas)}
+                      </td>
+                      <td className="p-3 text-right font-mono font-semibold text-blue-700 dark:text-blue-400">
+                        {money(c.parcela_estimada || c.dados_simulacao?.valor_parcela || c.dados_simulacao?.primeiraParcela)}
+                      </td>
+                      <td className="p-3 font-semibold text-slate-800 dark:text-slate-200">
                         {modalidade}
                       </td>
                       <td className="p-3 text-center font-mono">
                         {c.prazo || c.dados_simulacao?.prazo || "—"}m
+                      </td>
+                      <td className="p-3 text-center">
+                        {hasCanonicalGroup && hasCanonicalCota ? (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
+                            <CheckCircle2 size={11} /> Catálogo SaaS
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-700 dark:bg-amber-950/40 dark:text-amber-300" title="Vínculo será resolvido automaticamente ao gerar cota real">
+                            Vínculo assistido
+                          </span>
+                        )}
                       </td>
                       <td className="p-3 text-center">
                         <span
@@ -412,9 +440,6 @@ export default async function ClienteDetalhePage({
                             ? "Contratada (Assinada)"
                             : c.status}
                         </span>
-                      </td>
-                      <td className="p-3 text-center text-slate-500">
-                        {c.origem === "grupos" ? "Site (Grupos)" : "Site (Simulador)"}
                       </td>
                       <td className="p-3 text-center whitespace-nowrap">
                         {isEfetivada ? (
