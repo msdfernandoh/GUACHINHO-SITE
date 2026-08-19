@@ -86,235 +86,41 @@ export async function ErpClientesPage() {
   );
 }
 
+import {
+  fetchCotasComLancesOperacional,
+} from "@/app/erp/lances/actions";
+import { ErpLancesView } from "@/components/erp/erp-lances-view";
+
 export async function ErpLancesPage({
   searchParams = Promise.resolve({}),
 }: {
   searchParams?: Promise<Record<string, string | undefined>>;
 }) {
   const filters = await searchParams;
-  const { empresaAtiva } = await getCurrentTenantContext();
-  const db = await createClient();
-  let query = db
-    .from("cotas_definitivas")
-    .select(
-      "id,numero_grupo,numero_cota,valor_credito,status,contemplada,administradora:administradoras(nome),grupo:grupos_consorcio(codigo_grupo,percentual_lance_embutido,tipo:administradora_tipos(nome)),venda:vendas(cliente_nome,cliente_cpf_cnpj,cliente:clientes(nome,cpf_cnpj)),estrategia:cota_estrategias_lance(lance_fixo_ativo,lance_fixo_percentual,lance_fixo_valor,lance_fixo_inicio,lance_fixo_fim,lance_livre_ativo,lance_livre_valor,lance_livre_percentual,lance_livre_inicio,lance_livre_fim,recurso_proprio_valor,lance_embutido_percentual,parcela_reduzida_ativa,observacoes,ativa),historico:cota_estrategias_lance_historico(created_at,motivo)",
-    )
-    .eq("empresa_id", empresaAtiva?.id ?? "")
-    .order("updated_at", { ascending: false });
-  if (filters.status) query = query.eq("status", filters.status);
-  const { data, error } = await query;
-  let rows = (data ?? []).map((c) => {
-    const venda = c.venda as unknown as {
-      cliente_nome: string;
-      cliente_cpf_cnpj: string | null;
-      cliente: { nome: string; cpf_cnpj: string | null } | null;
-    };
-    const grupo = c.grupo as unknown as {
-      codigo_grupo: string;
-      percentual_lance_embutido: number | null;
-      tipo: { nome: string } | null;
-    };
-    const admin = c.administradora as unknown as { nome: string } | null;
-    const strategy = Array.isArray(c.estrategia)
-      ? (c.estrategia[0] ?? null)
-      : c.estrategia;
-    return {
-      id: c.id,
-      numero_grupo: c.numero_grupo,
-      numero_cota: c.numero_cota,
-      valor_credito: Number(c.valor_credito),
-      status: c.status,
-      contemplada: c.contemplada,
-      clienteNome: venda?.cliente?.nome || venda?.cliente_nome || "Cliente",
-      clienteDocumento:
-        venda?.cliente?.cpf_cnpj || venda?.cliente_cpf_cnpj || null,
-      administradoraNome: admin?.nome || "—",
-      tipoNome: grupo?.tipo?.nome || "Pendente",
-      grupoCodigo: grupo?.codigo_grupo || c.numero_grupo,
-      grupoLimite: grupo?.percentual_lance_embutido ?? null,
-      estrategia: strategy,
-      historico: (c.historico ?? []) as {
-        created_at: string;
-        motivo: string | null;
-      }[],
-    } as BidRow;
+  const { stats, rows, empresaId } = await fetchCotasComLancesOperacional({
+    busca: filters.busca,
+    administradora: filters.administradora,
+    tipo: filters.tipo,
+    statusCota: filters.status,
+    situacaoLance: filters.estrategia,
   });
-  if (filters.busca) {
-    const term = filters.busca.toLowerCase();
-    rows = rows.filter((r) =>
-      [r.clienteNome, r.clienteDocumento, r.grupoCodigo, r.numero_cota].some(
-        (x) => x?.toLowerCase().includes(term),
-      ),
-    );
-  }
-  if (filters.administradora)
-    rows = rows.filter((r) => r.administradoraNome === filters.administradora);
-  if (filters.tipo) rows = rows.filter((r) => r.tipoNome === filters.tipo);
-  if (filters.grupo) rows = rows.filter((r) => r.grupoCodigo === filters.grupo);
-  if (filters.estrategia === "ATIVA")
-    rows = rows.filter((r) => r.estrategia?.ativa);
-  else if (filters.estrategia === "INATIVA")
-    rows = rows.filter((r) => r.estrategia && !r.estrategia.ativa);
-  else if (filters.estrategia === "SEM")
-    rows = rows.filter((r) => !r.estrategia);
-  if (filters.periodo) {
-    const currentDate = new Date();
-    const today = currentDate.toISOString().slice(0, 10);
-    const limitDate = new Date(currentDate);
-    limitDate.setUTCDate(
-      limitDate.getUTCDate() + Number(filters.periodo.split("_")[1] ?? 0),
-    );
-    const limit = filters.periodo.startsWith("PROXIMOS_")
-      ? limitDate.toISOString().slice(0, 10)
-      : null;
-    rows = rows.filter((r) => {
-      const dates = [
-        r.estrategia?.lance_fixo_fim,
-        r.estrategia?.lance_livre_fim,
-      ].filter(Boolean) as string[];
-      if (filters.periodo === "HOJE") return dates.includes(today);
-      if (filters.periodo === "VENCIDOS") return dates.some((d) => d < today);
-      if (filters.periodo === "INTERVALO")
-        return dates.some(
-          (d) =>
-            (!filters.inicio || d >= filters.inicio) &&
-            (!filters.fim || d <= filters.fim),
-        );
-      return limit ? dates.some((d) => d >= today && d <= limit) : true;
-    });
-  }
   return (
     <div className="space-y-6">
       <header>
         <p className="text-xs font-bold uppercase tracking-widest text-blue-700">
-          Consorcio
+          Consórcio &amp; Operação
         </p>
-        <h1 className="text-3xl font-bold">Lances e estrategias</h1>
+        <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Lances e Estratégias</h1>
         <p className="mt-1 text-slate-500">
-          Controle operacional por cliente e cota definitiva. O Grupo fornece
-          somente contexto e limites.
+          Controle operacional de todas as cotas definitivas vendidas da Master Franquia.
         </p>
       </header>
-      <div className="grid gap-3 sm:grid-cols-4">
-        <div className={cardClass}>
-          <p className="text-sm text-slate-500">Cotas com lance ativo</p>
-          <p className="text-2xl font-bold">
-            {rows.filter((r) => r.estrategia?.ativa).length}
-          </p>
-        </div>
-        <div className={cardClass}>
-          <p className="text-sm text-slate-500">Sem estratégia</p>
-          <p className="text-2xl font-bold">
-            {rows.filter((r) => !r.estrategia).length}
-          </p>
-        </div>
-        <div className={cardClass}>
-          <p className="text-sm text-slate-500">Contempladas</p>
-          <p className="text-2xl font-bold">
-            {rows.filter((r) => r.contemplada).length}
-          </p>
-        </div>
-        <Link className={cardClass} href="/erp/assembleias">
-          <p className="font-semibold">Assembleias / Pedras →</p>
-          <p className="text-sm text-slate-500">
-            Apoio operacional sem automação de lance.
-          </p>
-        </Link>
-      </div>
-      <form className="grid gap-2 rounded-xl border bg-white p-3 md:grid-cols-3 xl:grid-cols-4">
-        <input
-          name="busca"
-          defaultValue={filters.busca}
-          placeholder="Cliente, CPF/CNPJ, grupo ou cota"
-          className="min-w-72 rounded-lg border px-3 py-2"
-        />
-        <select
-          name="status"
-          defaultValue={filters.status ?? ""}
-          className="rounded-lg border px-3 py-2"
-        >
-          <option value="">Todos os status</option>
-          <option>ativa</option>
-          <option>contemplada</option>
-          <option>cancelada</option>
-          <option>quitada</option>
-        </select>
-        <select
-          name="administradora"
-          defaultValue={filters.administradora ?? ""}
-          className="rounded-lg border px-3 py-2"
-        >
-          <option value="">Todas as Administradoras</option>
-          {Array.from(new Set(rows.map((r) => r.administradoraNome))).map(
-            (x) => (
-              <option key={x}>{x}</option>
-            ),
-          )}
-        </select>
-        <select
-          name="tipo"
-          defaultValue={filters.tipo ?? ""}
-          className="rounded-lg border px-3 py-2"
-        >
-          <option value="">Todos os Tipos</option>
-          {Array.from(new Set(rows.map((r) => r.tipoNome))).map((x) => (
-            <option key={x}>{x}</option>
-          ))}
-        </select>
-        <select
-          name="grupo"
-          defaultValue={filters.grupo ?? ""}
-          className="rounded-lg border px-3 py-2"
-        >
-          <option value="">Todos os Grupos</option>
-          {Array.from(new Set(rows.map((r) => r.grupoCodigo))).map((x) => (
-            <option key={x}>{x}</option>
-          ))}
-        </select>
-        <select
-          name="estrategia"
-          defaultValue={filters.estrategia ?? ""}
-          className="rounded-lg border px-3 py-2"
-        >
-          <option value="">Estratégias ativas e inativas</option>
-          <option value="ATIVA">Ativa</option>
-          <option value="INATIVA">Inativa</option>
-          <option value="SEM">Sem estratégia</option>
-        </select>
-        <select
-          name="periodo"
-          defaultValue={filters.periodo ?? ""}
-          className="rounded-lg border px-3 py-2"
-        >
-          <option value="">Todos os vencimentos</option>
-          <option value="HOJE">Vencendo hoje</option>
-          <option value="PROXIMOS_7">Próximos 7 dias</option>
-          <option value="PROXIMOS_15">Próximos 15 dias</option>
-          <option value="PROXIMOS_30">Próximos 30 dias</option>
-          <option value="VENCIDOS">Vencidos</option>
-          <option value="INTERVALO">Intervalo personalizado</option>
-        </select>
-        <input
-          type="date"
-          name="inicio"
-          defaultValue={filters.inicio}
-          className="rounded-lg border px-3 py-2"
-        />
-        <input
-          type="date"
-          name="fim"
-          defaultValue={filters.fim}
-          className="rounded-lg border px-3 py-2"
-        />
-        <button className="rounded-lg bg-slate-900 px-4 py-2 text-white">
-          Filtrar
-        </button>
-      </form>
-      {error ? (
-        <p className="rounded-lg bg-red-50 p-3 text-red-800">{error.message}</p>
-      ) : (
-        <BidStrategyTable rows={rows} />
-      )}
+
+      <ErpLancesView
+        empresaId={empresaId}
+        initialStats={stats}
+        initialRows={rows}
+      />
     </div>
   );
 }

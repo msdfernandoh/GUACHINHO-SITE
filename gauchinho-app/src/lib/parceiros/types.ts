@@ -21,6 +21,8 @@ export type ParticipanteComercial = {
   data_entrada: string | null;
   data_saida: string | null;
   observacoes: string | null;
+  modulos_permitidos?: string[] | null;
+  escopo_visualizacao?: "TODOS" | "VINCULADOS" | "CRIADOS" | "VINCULADOS_OU_CRIADOS" | null;
   created_at: string;
   updated_at: string;
   created_by_usuario_id: string | null;
