@@ -284,10 +284,9 @@ A plataforma suporta:
 - a colisão foi resolvida antes da promoção: `081_erp_contratacoes_formalizacao_v1` e `082_fix_sync_cliente_contratacao_historico` são os números finais desta entrega em Production;
 - manual: `docs/manuais/MANUAL-ERP-CONTRATACOES.md`; relatório: `docs/relatorios-fases/ERP-CONTRATACOES-FORMALIZACAO-V1.md`.
 
-* O P0 das APIs, o hardening `057–059`, o motor canônico `060–063` e o fechamento técnico `064–066` estão implantados no Supabase principal.
-* O estado funcional do Supabase Production inclui migrations `001–086`.
+* O estado funcional do Supabase Production inclui migrations `001–087`.
 * `admin.gauchinhoconsorcios.com.br` está ativo, verificado e associado ao deployment Production da `main`; ele não é tenant e não possui fallback para Gauchinho.
-* As migrations `070–086` estão versionadas e aplicadas em Produção; correções futuras permanecem obrigatoriamente forward-only.
+* As migrations `070–087` estão versionadas e aplicadas em Produção; correções futuras permanecem obrigatoriamente forward-only.
 * Os ambientes Preview/isolados registrados nos relatórios são descartáveis e não substituem a evidência de promoção do Supabase principal.
 * A migration 083 de Platform Administradoras V2 foi aplicada em Production após conferência de `001–082`, com somente a própria 083 pendente no dry-run.
 * Nenhum backfill ou recálculo histórico foi executado em Production nesta rodada.
@@ -298,5 +297,12 @@ A plataforma suporta:
   - Herança de configurações padrão das modalidades da Administradora com suporte a override pontual por Grupo (`GRUPO_OVERRIDE` vs `ADMINISTRADORA_PADRAO`).
   - Cálculo temporal de assembleias (`calcularAssembleiasTemporal`) considerando dia/mês exato da 1ª assembleia, prazo total e data de referência no formato `realizadas / total / restantes` (ex: `7 / 100 / 93`), sem impactar o módulo de Assembleias/Pedras.
   - Exibição consistente em listagens (`/platform/grupos`, Administradora → Grupos) e no detalhe com cartões executivos de Prazo, 1ª Assembleia e Próxima Assembleia.
+* Platform Programas da Franqueadora & Editor de Regras (Migration 087):
+  - Edição completa e interativa de Programas em rascunho (ex: `SOCIOS`, novos programas, etc.).
+  - Geração automática de regras padrão para todos os Tipos e Modalidades ativos da Administradora (`rpc_platform_gerar_regras_padrao_programa`).
+  - Criação, edição e exclusão de Regras de Comissão e Cronogramas de Repasse com validação ao vivo da soma das etapas em relação à comissão total (`rpc_platform_salvar_regra_programa`, `rpc_platform_excluir_regra_programa`).
+  - Suporte a criação de novos Programas em rascunho a partir da aba Programas da Franqueadora (`rpc_platform_criar_programa`).
+  - Relatório: `docs/relatorios-fases/PLATFORM-PROGRAMAS-REGRAS-EDITOR-087.md`.
+
 * Evidências consolidadas: `docs/relatorios-fases/PLATFORM-GRUPOS-CATALOGO-085.md` e `docs/relatorios-fases/PLATFORM-GRUPOS-TEMPORAL-HERANCA-086.md`.
 

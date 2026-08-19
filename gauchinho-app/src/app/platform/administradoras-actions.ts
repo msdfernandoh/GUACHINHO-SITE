@@ -250,6 +250,149 @@ export async function excluirProgramaAction(_previous: PlatformFormState, formDa
   }, "Programa sem uso excluído.", String(formData.get("administradora_id") ?? ""));
 }
 
+export async function criarNovoProgramaPlatformAction(
+  _previous: PlatformFormState,
+  formData: FormData,
+): Promise<PlatformFormState> {
+  const administradoraId = String(formData.get("administradora_id") ?? "");
+  const nome = String(formData.get("nome") ?? "").trim();
+  const descricao = String(formData.get("descricao") ?? "") || null;
+  const empresaId = String(formData.get("empresa_id") ?? "") || null;
+
+  if (!administradoraId || !nome) {
+    return { status: "VALIDATION_ERROR", message: "Nome do Programa é obrigatório." };
+  }
+
+  return rpcState(
+    "rpc_platform_criar_programa",
+    {
+      p_administradora_id: administradoraId,
+      p_empresa_id: empresaId,
+      p_nome: nome,
+      p_descricao: descricao,
+    },
+    "Programa criado em Rascunho com sucesso.",
+    administradoraId,
+  );
+}
+
+export async function salvarDadosProgramaPlatformAction(
+  _previous: PlatformFormState,
+  formData: FormData,
+): Promise<PlatformFormState> {
+  const programaId = String(formData.get("programa_id") ?? "");
+  const administradoraId = String(formData.get("administradora_id") ?? "");
+  const nome = String(formData.get("nome") ?? "").trim();
+  const descricao = String(formData.get("descricao") ?? "") || null;
+
+  if (!programaId || !nome) {
+    return { status: "VALIDATION_ERROR", message: "Nome do Programa é obrigatório." };
+  }
+
+  return rpcState(
+    "rpc_platform_salvar_dados_programa",
+    {
+      p_programa_id: programaId,
+      p_nome: nome,
+      p_descricao: descricao,
+    },
+    "Dados do Programa atualizados com sucesso.",
+    administradoraId,
+  );
+}
+
+export async function salvarRegraProgramaPlatformAction(
+  _previous: PlatformFormState,
+  formData: FormData,
+): Promise<PlatformFormState> {
+  const programaId = String(formData.get("programa_id") ?? "");
+  const administradoraId = String(formData.get("administradora_id") ?? "");
+  const regraId = String(formData.get("regra_id") ?? "") || null;
+  const tipoId = String(formData.get("tipo_id") ?? "") || null;
+  const modalidadeId = String(formData.get("modalidade_id") ?? "") || null;
+  const pctStr = String(formData.get("percentual_comissao") ?? "4").replace(",", ".");
+  const percentualComissao = Number(pctStr);
+  const baseCalculo = String(formData.get("base_calculo") ?? "credito");
+  const curvaEstornoId = String(formData.get("curva_estorno_id") ?? "") || null;
+  const vigenciaInicio = String(formData.get("vigencia_inicio") ?? "") || new Date().toISOString().slice(0, 10);
+  const vigenciaFim = String(formData.get("vigencia_fim") ?? "") || null;
+
+  let etapas: unknown = [];
+  try {
+    const rawEtapas = String(formData.get("etapas_json") ?? "[]");
+    etapas = JSON.parse(rawEtapas);
+  } catch {
+    etapas = [];
+  }
+
+  if (!programaId || !tipoId || !modalidadeId) {
+    return { status: "VALIDATION_ERROR", message: "Tipo e Modalidade são obrigatórios." };
+  }
+
+  if (isNaN(percentualComissao) || percentualComissao <= 0) {
+    return { status: "VALIDATION_ERROR", message: "Percentual de comissão total deve ser maior que 0." };
+  }
+
+  return rpcState(
+    "rpc_platform_salvar_regra_programa",
+    {
+      p_programa_id: programaId,
+      p_regra_id: regraId,
+      p_tipo_id: tipoId,
+      p_modalidade_id: modalidadeId,
+      p_percentual_comissao: percentualComissao,
+      p_base_calculo: baseCalculo,
+      p_curva_estorno_id: curvaEstornoId,
+      p_vigencia_inicio: vigenciaInicio,
+      p_vigencia_fim: vigenciaFim,
+      p_etapas: etapas,
+    },
+    regraId ? "Regra atualizada com sucesso." : "Nova regra adicionada ao Programa.",
+    administradoraId,
+  );
+}
+
+export async function gerarRegrasPadraoProgramaPlatformAction(
+  _previous: PlatformFormState,
+  formData: FormData,
+): Promise<PlatformFormState> {
+  const programaId = String(formData.get("programa_id") ?? "");
+  const administradoraId = String(formData.get("administradora_id") ?? "");
+  const pctStr = String(formData.get("percentual_padrao") ?? "4").replace(",", ".");
+  const percentualPadrao = Number(pctStr) || 4.00;
+
+  return rpcState(
+    "rpc_platform_gerar_regras_padrao_programa",
+    {
+      p_programa_id: programaId,
+      p_percentual_padrao: percentualPadrao,
+    },
+    "Regras padrão geradas com sucesso para todos os Tipos e Modalidades ativos.",
+    administradoraId,
+  );
+}
+
+export async function excluirRegraProgramaPlatformAction(
+  _previous: PlatformFormState,
+  formData: FormData,
+): Promise<PlatformFormState> {
+  const regraId = String(formData.get("regra_id") ?? "");
+  const administradoraId = String(formData.get("administradora_id") ?? "");
+
+  if (!regraId) {
+    return { status: "VALIDATION_ERROR", message: "Regra não informada." };
+  }
+
+  return rpcState(
+    "rpc_platform_excluir_regra_programa",
+    {
+      p_regra_id: regraId,
+    },
+    "Regra excluída com sucesso.",
+    administradoraId,
+  );
+}
+
 export async function alternarAdministradoraAction(formData: FormData): Promise<void> {
   const db = await platformDb();
   const id = String(formData.get("id") ?? "");
@@ -264,3 +407,4 @@ export async function alternarAdministradoraAction(formData: FormData): Promise<
   revalidatePath("/platform/administradoras");
   revalidatePath(`/platform/administradoras/${id}`);
 }
+

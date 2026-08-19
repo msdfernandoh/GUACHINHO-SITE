@@ -17,6 +17,7 @@ import {
   statusModeloMasterAction,
   statusProgramaAction,
   novaVersaoProgramaAction,
+  criarNovoProgramaPlatformAction,
   type PlatformFormState,
 } from "@/app/platform/administradoras-actions";
 
@@ -136,6 +137,8 @@ export function AdministratorWorkspace({
   const [programStatusState, programStatusAction] = useActionState(statusProgramaAction, initial);
   const [programVersionState, programVersionAction] = useActionState(novaVersaoProgramaAction, initial);
   const [programDeleteState, programDeleteAction] = useActionState(excluirProgramaAction, initial);
+  const [novoProgramaState, novoProgramaAction, isPendingNovoProg] = useActionState(criarNovoProgramaPlatformAction, initial);
+  const [novoProgramaModal, setNovoProgramaModal] = useState(false);
   const [tipoEdit, setTipoEdit] = useState<Item | null>(null);
   const [tipoNome, setTipoNome] = useState("");
   const [modalEdit, setModalEdit] = useState<Item | null>(null);
@@ -601,12 +604,83 @@ export function AdministratorWorkspace({
       )}
       {tab === "programas" && (
         <div id="programas-da-franqueadora" className="space-y-6">
-          <section className="rounded-xl border border-cyan-200 bg-cyan-50 p-5">
-            <h2 className="text-lg font-bold text-slate-900">Programas da Franqueadora</h2>
-            <p className="mt-1 text-sm text-slate-700">
-              Cada versão reúne as regras estruturadas por Tipo e Modalidade. Rascunhos são editáveis e não entram em novas vendas; versões homologadas alimentam o motor canônico de novas vendas; versões substituídas permanecem intactas como histórico.
-            </p>
+          <section className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-cyan-200 bg-cyan-50 p-5">
+            <div>
+              <h2 className="text-lg font-bold text-slate-900">Programas da Franqueadora</h2>
+              <p className="mt-1 text-sm text-slate-700">
+                Cada versão reúne as regras estruturadas por Tipo e Modalidade. Rascunhos são editáveis e não entram em novas vendas; versões homologadas alimentam o motor canônico de novas vendas; versões substituídas permanecem intactas como histórico.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setNovoProgramaModal(true)}
+              className="rounded-lg bg-cyan-700 px-4 py-2 text-xs font-bold text-white shadow hover:bg-cyan-800"
+            >
+              + Novo Programa da Franqueadora
+            </button>
           </section>
+
+          {novoProgramaModal && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm">
+              <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl space-y-4">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                  <h3 className="text-base font-bold text-slate-900">Novo Programa de Comissão</h3>
+                  <button
+                    type="button"
+                    onClick={() => setNovoProgramaModal(false)}
+                    className="text-slate-400 hover:text-slate-600"
+                  >
+                    ✕
+                  </button>
+                </div>
+                <form
+                  action={async (formData) => {
+                    await novoProgramaAction(formData);
+                    setNovoProgramaModal(false);
+                  }}
+                  className="space-y-4 text-xs"
+                >
+                  <input type="hidden" name="administradora_id" value={administradora.id} />
+                  <div>
+                    <label className="font-bold text-slate-700">Nome do Programa:</label>
+                    <input
+                      name="nome"
+                      placeholder="Ex: SOCIOS, Racon Imóvel - Comissão V3"
+                      required
+                      className="mt-1 w-full rounded-lg border border-slate-200 p-2.5 text-xs font-semibold"
+                    />
+                  </div>
+                  <div>
+                    <label className="font-bold text-slate-700">Descrição (Opcional):</label>
+                    <textarea
+                      name="descricao"
+                      rows={3}
+                      placeholder="Descrição sobre a aplicabilidade deste programa..."
+                      className="mt-1 w-full rounded-lg border border-slate-200 p-2.5 text-xs"
+                    />
+                  </div>
+                  <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
+                    <button
+                      type="button"
+                      onClick={() => setNovoProgramaModal(false)}
+                      className="rounded-lg border px-4 py-2 font-bold text-slate-600 hover:bg-slate-100"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={isPendingNovoProg}
+                      className="rounded-lg bg-cyan-700 px-4 py-2 font-bold text-white hover:bg-cyan-800"
+                    >
+                      {isPendingNovoProg ? "Criando..." : "Criar Programa em Rascunho"}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+
+          <Feedback state={novoProgramaState} />
           <Feedback state={ruleCurveState} />
           <Feedback state={programStatusState} />
           <Feedback state={programVersionState} />

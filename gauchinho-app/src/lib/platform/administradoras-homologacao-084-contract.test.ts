@@ -244,10 +244,16 @@ describe("Platform Administradoras Homologação 084", () => {
     });
 
     it("Página de detalhe Platform-native apresenta metadados completos e tabela detalhada", () => {
-      expect(detailPage).toContain("Platform · Programa oficial");
-      expect(detailPage).toContain("Cronograma de Repasse");
-      expect(detailPage).toContain("validateProgramRule");
+      const workspaceSource = readFileSync(
+        resolve(process.cwd(), "src/components/platform/programa-workspace.tsx"),
+        "utf8",
+      );
+      expect(detailPage).toContain("ProgramaWorkspace");
+      expect(workspaceSource).toContain("Platform · Catálogo Oficial de Comissões");
+      expect(workspaceSource).toContain("Cronograma de Repasse");
+      expect(workspaceSource).toContain("validateProgramRule");
     });
   });
 });
+
 
