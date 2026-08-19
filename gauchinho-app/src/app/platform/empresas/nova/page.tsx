@@ -1,2 +1,39 @@
-import { createMasterFranquiaAction } from "../actions";
-export default function NovaFranquia(){return <div className="mx-auto max-w-3xl space-y-6"><div><p className="text-xs font-bold uppercase tracking-widest text-cyan-600">Onboarding controlado</p><h1 className="text-3xl font-bold">Nova Master Franquia</h1><p className="mt-2 text-slate-500">Cria somente a empresa em treinamento. Domínio, usuários, plano, administradoras, template, recursos e publicação permanecem etapas explícitas posteriores.</p></div><form action={createMasterFranquiaAction} className="grid gap-4 rounded-2xl border bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:grid-cols-2">{[["nome_fantasia","Nome fantasia"],["razao_social","Razão social"],["slug","Slug"],["cnpj","CNPJ (opcional)"]].map(([name,label])=><label key={name} className="text-sm font-medium">{label}<input name={name} required={name!=="cnpj"} className="mt-1 w-full rounded-lg border border-slate-300 bg-transparent px-3 py-2 dark:border-slate-700"/></label>)}<div className="sm:col-span-2"><button className="rounded-lg bg-cyan-600 px-4 py-2 font-semibold text-white">Criar em treinamento</button></div></form></div>}
+import { createClient } from "@/lib/supabase/server";
+import { OnboardingFranquiaClient } from "./client";
+
+export default async function NovaFranquiaPage() {
+  const db = await createClient();
+
+  const [modelosRes, modulosRes, adminsRes, planosRes] = await Promise.all([
+    db
+      .from("site_modelos")
+      .select("id,codigo,nome,status,identidade_visual,catalogo_menus,permite_logo_propria")
+      .neq("status", "INATIVO")
+      .order("versao", { ascending: false }),
+    db
+      .from("erp_modulos_catalogo")
+      .select("id,codigo,nome,descricao,ordem_padrao")
+      .eq("status", "ATIVO")
+      .order("ordem_padrao"),
+    db
+      .from("administradoras")
+      .select("id,nome,nome_fantasia,status")
+      .eq("status", "ATIVA")
+      .order("nome"),
+    db
+      .from("saas_planos")
+      .select("id,codigo,nome,descricao,valor_mensal,taxa_implantacao,limite_usuarios")
+      .neq("status", "INATIVO")
+      .order("nome"),
+  ]);
+
+  return (
+    <OnboardingFranquiaClient
+      modelos={modelosRes.data ?? []}
+      modulos={modulosRes.data ?? []}
+      administradoras={adminsRes.data ?? []}
+      planos={planosRes.data ?? []}
+    />
+  );
+}
+

@@ -304,5 +304,17 @@ A plataforma suporta:
   - Suporte a criação de novos Programas em rascunho a partir da aba Programas da Franqueadora (`rpc_platform_criar_programa`).
   - Relatório: `docs/relatorios-fases/PLATFORM-PROGRAMAS-REGRAS-EDITOR-087.md`.
 
-* Evidências consolidadas: `docs/relatorios-fases/PLATFORM-GRUPOS-CATALOGO-085.md` e `docs/relatorios-fases/PLATFORM-GRUPOS-TEMPORAL-HERANCA-086.md`.
+* Platform Modelos de Site, Domínios & Onboarding de Franquias (Migration 088):
+  - Catálogo global de templates de site (`site_modelos`) com criação, duplicação, edição detalhada em 8 abas, versionamento e preview visual responsivo.
+  - Preset canônico "Racon Inspired" criado em rascunho e modelo padrão "Gauchinho Default" preservado.
+  - Motor estrito de sanitização de HTML/CSS (`html-sanitizer.ts`) bloqueando `<script>`, `<iframe>`, handlers `on*`, protocolos executáveis e injeções CSS perigosas.
+  - Gestão de domínios com status de DNS e bloqueio estrito de `admin.gauchinhoconsorcios.com.br` para tenants.
+  - Onboarding guiado em 8 etapas para Master Franquias com criação atômica no status seguro `em_treinamento` (inativo até ativação explícita).
+  - Relatório: `docs/relatorios-fases/fase-088-platform-templates-dominios-onboarding.md`.
+
+* O estado funcional do Supabase Production inclui migrations `001–088`.
+* `admin.gauchinhoconsorcios.com.br` está ativo, verificado e associado ao deployment Production da `main`; ele não é tenant e não possui fallback para Gauchinho.
+* As migrations `070–088` estão versionadas e aplicadas em Produção; correções futuras permanecem obrigatoriamente forward-only.
+* Evidências consolidadas: `docs/relatorios-fases/PLATFORM-GRUPOS-CATALOGO-085.md`, `docs/relatorios-fases/PLATFORM-GRUPOS-TEMPORAL-HERANCA-086.md`, `docs/relatorios-fases/PLATFORM-PROGRAMAS-REGRAS-EDITOR-087.md` e `docs/relatorios-fases/fase-088-platform-templates-dominios-onboarding.md`.
+
 
