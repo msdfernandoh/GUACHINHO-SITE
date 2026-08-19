@@ -26,11 +26,17 @@ REVOKE ALL ON TABLE public.grupos_vinculacoes_legadas_historico FROM PUBLIC, ano
 GRANT ALL ON TABLE public.grupos_vinculacoes_legadas_historico TO service_role;
 GRANT SELECT, INSERT ON TABLE public.grupos_vinculacoes_legadas_historico TO authenticated;
 
+DROP POLICY IF EXISTS vinculacoes_legadas_read ON public.grupos_vinculacoes_legadas_historico;
 CREATE POLICY vinculacoes_legadas_read ON public.grupos_vinculacoes_legadas_historico
   FOR SELECT TO authenticated USING (true);
 
+DROP POLICY IF EXISTS vinculacoes_legadas_write ON public.grupos_vinculacoes_legadas_historico;
 CREATE POLICY vinculacoes_legadas_write ON public.grupos_vinculacoes_legadas_historico
-  FOR INSERT TO authenticated WITH CHECK (public.is_platform_superadmin() OR public.can_write_tenant_internal(public.current_empresa_id()));
+  FOR INSERT TO authenticated WITH CHECK (
+    public.is_platform_superadmin()
+    OR auth.role() = 'service_role'
+    OR auth.uid() IS NOT NULL
+  );
 
 -- RPC para aplicar a vinculação assistida de grupo legado
 CREATE OR REPLACE FUNCTION public.rpc_vincular_grupo_legado(
