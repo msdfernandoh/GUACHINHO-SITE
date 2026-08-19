@@ -27,13 +27,68 @@ import {
   Layers,
 } from "lucide-react";
 
+export type ImageObjectFit = "cover" | "contain";
+export type ImageObjectPosition =
+  | "center"
+  | "top"
+  | "bottom"
+  | "left"
+  | "right"
+  | "top-left"
+  | "top-right"
+  | "left-top";
+
 export type ImagensBanners = {
   hero_banner_url?: string;
+  hero_banner_mobile_url?: string;
+  hero_object_fit?: ImageObjectFit;
+  hero_object_position?: ImageObjectPosition;
+  hero_badge?: string;
+  hero_titulo?: string;
+  hero_subtitulo?: string;
+  hero_cta_label?: string;
+  hero_cta_url?: string;
+
   card_veiculos_url?: string;
+  card_veiculos_titulo?: string;
+  card_veiculos_subtitulo?: string;
+  card_veiculos_cta_label?: string;
+  card_veiculos_cta_url?: string;
+  card_veiculos_object_fit?: ImageObjectFit;
+  card_veiculos_object_position?: ImageObjectPosition;
+  card_veiculos_ativo?: boolean;
+
   card_imoveis_url?: string;
+  card_imoveis_titulo?: string;
+  card_imoveis_subtitulo?: string;
+  card_imoveis_cta_label?: string;
+  card_imoveis_cta_url?: string;
+  card_imoveis_object_fit?: ImageObjectFit;
+  card_imoveis_object_position?: ImageObjectPosition;
+  card_imoveis_ativo?: boolean;
+
   card_patrimonio_url?: string;
+  card_patrimonio_titulo?: string;
+  card_patrimonio_subtitulo?: string;
+  card_patrimonio_cta_label?: string;
+  card_patrimonio_cta_url?: string;
+  card_patrimonio_object_fit?: ImageObjectFit;
+  card_patrimonio_object_position?: ImageObjectPosition;
+  card_patrimonio_ativo?: boolean;
+
   banner_filiais_url?: string;
+  banner_filiais_titulo?: string;
+  banner_filiais_subtitulo?: string;
+  banner_filiais_cta_label?: string;
+  banner_filiais_cta_url?: string;
+  banner_filiais_object_fit?: ImageObjectFit;
+  banner_filiais_object_position?: ImageObjectPosition;
+
   embaixador_stats_url?: string;
+  embaixador_stats_titulo?: string;
+  embaixador_stats_subtitulo?: string;
+  embaixador_stats_object_fit?: ImageObjectFit;
+  embaixador_stats_object_position?: ImageObjectPosition;
 };
 
 export type RaconTemplateIdentidade = {
@@ -264,7 +319,10 @@ export function RaconInspiredHome({
                   alt="Banner Principal — Embaixador / Garoto Propaganda"
                   fill
                   priority
-                  className="object-cover object-left-top"
+                  style={{
+                    objectFit: banners.hero_object_fit || "cover",
+                    objectPosition: banners.hero_object_position || "left top",
+                  }}
                 />
               </div>
 
@@ -274,13 +332,14 @@ export function RaconInspiredHome({
               {/* Tipografia de Destaque no Rodapé do Banner */}
               <div className="relative p-6 sm:p-8 space-y-2 z-10">
                 <span className="inline-block rounded-full bg-white/20 px-3 py-1 text-[11px] font-black uppercase tracking-wider text-white backdrop-blur-md">
-                  Campanha Oficial • Realize suas Conquistas
+                  {banners.hero_badge || "Campanha Oficial • Realize suas Conquistas"}
                 </span>
                 <h1 className="text-4xl sm:text-6xl font-black italic tracking-tighter text-white drop-shadow-md">
-                  CONQUISTE
+                  {banners.hero_titulo || "CONQUISTE"}
                 </h1>
                 <p className="text-xs sm:text-sm font-semibold text-white/95 max-w-md drop-shadow">
-                  Acelere suas metas com planos sob medida, contemplações por sorteio e lances livres ou fixos.
+                  {banners.hero_subtitulo ||
+                    "Acelere suas metas com planos sob medida, contemplações por sorteio e lances livres ou fixos."}
                 </p>
               </div>
             </div>
@@ -421,88 +480,115 @@ export function RaconInspiredHome({
 
           <div className="mt-10 grid gap-6 sm:grid-cols-3">
             {/* Card 1: Veículos */}
-            <div className="group relative rounded-3xl overflow-hidden shadow-lg border border-slate-200 bg-slate-900 text-white min-h-[300px] flex flex-col justify-between p-6">
-              <Image
-                src={cardVeiculoImg}
-                alt="Dirija rumo à sua independência"
-                fill
-                className="object-cover group-hover:scale-105 transition-transform duration-500 opacity-80"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
+            {banners.card_veiculos_ativo !== false && (
+              <div className="group relative rounded-3xl overflow-hidden shadow-lg border border-slate-200 bg-slate-900 text-white min-h-[300px] flex flex-col justify-between p-6">
+                <Image
+                  src={cardVeiculoImg}
+                  alt={banners.card_veiculos_titulo || "Dirija rumo à sua independência"}
+                  fill
+                  style={{
+                    objectFit: banners.card_veiculos_object_fit || "cover",
+                    objectPosition: banners.card_veiculos_object_position || "center",
+                  }}
+                  className="group-hover:scale-105 transition-transform duration-500 opacity-80"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
 
-              <div className="relative z-10 space-y-1">
-                <h3 className="text-lg font-black text-white">Dirija rumo à sua independência</h3>
-                <p className="text-xs text-slate-200">
-                  Conte com um consórcio de veículos seguro e até <strong>120 meses</strong> para pagar.
-                </p>
-              </div>
+                <div className="relative z-10 space-y-1">
+                  <h3 className="text-lg font-black text-white">
+                    {banners.card_veiculos_titulo || "Dirija rumo à sua independência"}
+                  </h3>
+                  <p className="text-xs text-slate-200">
+                    {banners.card_veiculos_subtitulo ||
+                      "Conte com um consórcio de veículos seguro e até 120 meses para pagar."}
+                  </p>
+                </div>
 
-              <div className="relative z-10 pt-6">
-                <Link
-                  href="/consorcio/veiculos"
-                  className="inline-flex items-center gap-2 rounded-full bg-[#00a3e0] px-5 py-2.5 text-xs font-black text-white shadow-md hover:bg-[#008fd5] transition-colors"
-                >
-                  <span>Conquiste agora</span>
-                  <ArrowRight className="h-3.5 w-3.5" />
-                </Link>
+                <div className="relative z-10 pt-6">
+                  <Link
+                    href={banners.card_veiculos_cta_url || "/consorcio/veiculos"}
+                    className="inline-flex items-center gap-2 rounded-full bg-[#00a3e0] px-5 py-2.5 text-xs font-black text-white shadow-md hover:bg-[#008fd5] transition-colors"
+                  >
+                    <span>{banners.card_veiculos_cta_label || "Conquiste agora"}</span>
+                    <ArrowRight className="h-3.5 w-3.5" />
+                  </Link>
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Card 2: Imóveis */}
-            <div className="group relative rounded-3xl overflow-hidden shadow-lg border border-slate-200 bg-slate-900 text-white min-h-[300px] flex flex-col justify-between p-6">
-              <Image
-                src={cardImovelImg}
-                alt="Conquiste a casa própria"
-                fill
-                className="object-cover group-hover:scale-105 transition-transform duration-500 opacity-80"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
+            {banners.card_imoveis_ativo !== false && (
+              <div className="group relative rounded-3xl overflow-hidden shadow-lg border border-slate-200 bg-slate-900 text-white min-h-[300px] flex flex-col justify-between p-6">
+                <Image
+                  src={cardImovelImg}
+                  alt={banners.card_imoveis_titulo || "Conquiste a casa própria"}
+                  fill
+                  style={{
+                    objectFit: banners.card_imoveis_object_fit || "cover",
+                    objectPosition: banners.card_imoveis_object_position || "center",
+                  }}
+                  className="group-hover:scale-105 transition-transform duration-500 opacity-80"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
 
-              <div className="relative z-10 space-y-1">
-                <h3 className="text-lg font-black text-white">Conquiste a casa própria</h3>
-                <p className="text-xs text-slate-200">
-                  Invista no seu futuro com um consórcio de imóveis que cabe perfeitamente no seu bolso.
-                </p>
-              </div>
+                <div className="relative z-10 space-y-1">
+                  <h3 className="text-lg font-black text-white">
+                    {banners.card_imoveis_titulo || "Conquiste a casa própria"}
+                  </h3>
+                  <p className="text-xs text-slate-200">
+                    {banners.card_imoveis_subtitulo ||
+                      "Invista no seu futuro com um consórcio de imóveis que cabe perfeitamente no seu bolso."}
+                  </p>
+                </div>
 
-              <div className="relative z-10 pt-6">
-                <Link
-                  href="/consorcio/imoveis"
-                  className="inline-flex items-center gap-2 rounded-full bg-[#00a3e0] px-5 py-2.5 text-xs font-black text-white shadow-md hover:bg-[#008fd5] transition-colors"
-                >
-                  <span>Conquiste agora</span>
-                  <ArrowRight className="h-3.5 w-3.5" />
-                </Link>
+                <div className="relative z-10 pt-6">
+                  <Link
+                    href={banners.card_imoveis_cta_url || "/consorcio/imoveis"}
+                    className="inline-flex items-center gap-2 rounded-full bg-[#00a3e0] px-5 py-2.5 text-xs font-black text-white shadow-md hover:bg-[#008fd5] transition-colors"
+                  >
+                    <span>{banners.card_imoveis_cta_label || "Conquiste agora"}</span>
+                    <ArrowRight className="h-3.5 w-3.5" />
+                  </Link>
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Card 3: Patrimônio */}
-            <div className="group relative rounded-3xl overflow-hidden shadow-lg border border-slate-200 bg-slate-900 text-white min-h-[300px] flex flex-col justify-between p-6">
-              <Image
-                src={cardPatrimonioImg}
-                alt="Amplie seu patrimônio"
-                fill
-                className="object-cover group-hover:scale-105 transition-transform duration-500 opacity-80"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
+            {banners.card_patrimonio_ativo !== false && (
+              <div className="group relative rounded-3xl overflow-hidden shadow-lg border border-slate-200 bg-slate-900 text-white min-h-[300px] flex flex-col justify-between p-6">
+                <Image
+                  src={cardPatrimonioImg}
+                  alt={banners.card_patrimonio_titulo || "Amplie seu patrimônio"}
+                  fill
+                  style={{
+                    objectFit: banners.card_patrimonio_object_fit || "cover",
+                    objectPosition: banners.card_patrimonio_object_position || "center",
+                  }}
+                  className="group-hover:scale-105 transition-transform duration-500 opacity-80"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
 
-              <div className="relative z-10 space-y-1">
-                <h3 className="text-lg font-black text-white">Amplie seu patrimônio</h3>
-                <p className="text-xs text-slate-200">
-                  Faça um investimento financeiro inteligente de forma planejada, rentável e sem juros bancários.
-                </p>
-              </div>
+                <div className="relative z-10 space-y-1">
+                  <h3 className="text-lg font-black text-white">
+                    {banners.card_patrimonio_titulo || "Amplie seu patrimônio"}
+                  </h3>
+                  <p className="text-xs text-slate-200">
+                    {banners.card_patrimonio_subtitulo ||
+                      "Faça um investimento financeiro inteligente de forma planejada, rentável e sem juros bancários."}
+                  </p>
+                </div>
 
-              <div className="relative z-10 pt-6">
-                <Link
-                  href="/simulador"
-                  className="inline-flex items-center gap-2 rounded-full bg-[#00a3e0] px-5 py-2.5 text-xs font-black text-white shadow-md hover:bg-[#008fd5] transition-colors"
-                >
-                  <span>Conquiste agora</span>
-                  <ArrowRight className="h-3.5 w-3.5" />
-                </Link>
+                <div className="relative z-10 pt-6">
+                  <Link
+                    href={banners.card_patrimonio_cta_url || "/simulador"}
+                    className="inline-flex items-center gap-2 rounded-full bg-[#00a3e0] px-5 py-2.5 text-xs font-black text-white shadow-md hover:bg-[#008fd5] transition-colors"
+                  >
+                    <span>{banners.card_patrimonio_cta_label || "Conquiste agora"}</span>
+                    <ArrowRight className="h-3.5 w-3.5" />
+                  </Link>
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
       </section>
@@ -620,26 +706,34 @@ export function RaconInspiredHome({
             <div className="sm:col-span-5 relative h-56 w-full rounded-2xl overflow-hidden shadow-md">
               <Image
                 src={bannerFiliaisImg}
-                alt="Encontre as Unidades e Filiais"
+                alt={banners.banner_filiais_titulo || "Encontre as Unidades e Filiais"}
                 fill
-                className="object-cover"
+                style={{
+                  objectFit: banners.banner_filiais_object_fit || "cover",
+                  objectPosition: banners.banner_filiais_object_position || "center",
+                }}
               />
             </div>
 
             {/* Texto e CTA */}
             <div className="sm:col-span-7 space-y-4">
               <h3 className="text-2xl font-black text-slate-900 leading-tight">
-                Encontre a <span className="text-[#008fd5]">Racon Consórcios</span> mais próxima de você
+                {banners.banner_filiais_titulo || (
+                  <>
+                    Encontre a <span className="text-[#008fd5]">Racon Consórcios</span> mais próxima de você
+                  </>
+                )}
               </h3>
               <p className="text-xs text-slate-600 leading-relaxed">
-                A Racon está presente em diversas regiões do país com atendimento especializado para você planejar seu investimento com segurança e transparência.
+                {banners.banner_filiais_subtitulo ||
+                  "A Racon está presente em diversas regiões do país com atendimento especializado para você planejar seu investimento com segurança e transparência."}
               </p>
               <div className="pt-2">
                 <Link
-                  href="/#unidades"
+                  href={banners.banner_filiais_cta_url || "/#unidades"}
                   className="inline-flex items-center gap-2 rounded-full bg-[#008fd5] px-6 py-3 text-xs font-black text-white shadow-sm hover:bg-[#007cb8] transition-colors"
                 >
-                  <span>Acesse as filiais</span>
+                  <span>{banners.banner_filiais_cta_label || "Acesse as filiais"}</span>
                   <ArrowRight className="h-3.5 w-3.5" />
                 </Link>
               </div>
@@ -658,10 +752,15 @@ export function RaconInspiredHome({
             {/* Estatísticas */}
             <div className="lg:col-span-7 space-y-6">
               <h2 className="text-2xl sm:text-3xl font-black text-white">
-                Conquiste com a <span className="text-[#00a3e0]">Racon Consórcios</span>
+                {banners.embaixador_stats_titulo || (
+                  <>
+                    Conquiste com a <span className="text-[#00a3e0]">Racon Consórcios</span>
+                  </>
+                )}
               </h2>
               <p className="text-xs text-slate-300 max-w-lg leading-relaxed">
-                Mais de três décadas de solidez, realizando sonhos e construindo patrimônios sólidos em todo o Brasil.
+                {banners.embaixador_stats_subtitulo ||
+                  "Mais de três décadas de solidez, realizando sonhos e construindo patrimônios sólidos em todo o Brasil."}
               </p>
 
               {/* Grid 4 KPIs */}
@@ -702,11 +801,13 @@ export function RaconInspiredHome({
                   src={embaixadorStatsImg}
                   alt="Garoto Propaganda / Embaixador Oficial"
                   fill
-                  className="object-cover object-top"
+                  style={{
+                    objectFit: banners.embaixador_stats_object_fit || "cover",
+                    objectPosition: banners.embaixador_stats_object_position || "top",
+                  }}
                 />
               </div>
             </div>
-
 
           </div>
         </div>

@@ -10,6 +10,14 @@ import {
 } from "@/app/platform/templates-actions";
 import { sanitizeTemplateCode } from "@/lib/platform/html-sanitizer";
 import { RaconInspiredHome } from "@/components/public/templates/racon-inspired-home";
+import {
+  MediaFieldControl,
+  type ImageObjectFit,
+  type ImageObjectPosition,
+  type MediaLibraryItem,
+  type MediaSlotSpec,
+  SYSTEM_MEDIA_PRESETS,
+} from "./media-field-control";
 
 export type MenuItem = {
   id: string;
@@ -29,11 +37,55 @@ export type SecaoHomeItem = {
 
 export type ImagensBanners = {
   hero_banner_url?: string;
+  hero_banner_mobile_url?: string;
+  hero_object_fit?: ImageObjectFit;
+  hero_object_position?: ImageObjectPosition;
+  hero_badge?: string;
+  hero_titulo?: string;
+  hero_subtitulo?: string;
+  hero_cta_label?: string;
+  hero_cta_url?: string;
+
   card_veiculos_url?: string;
+  card_veiculos_titulo?: string;
+  card_veiculos_subtitulo?: string;
+  card_veiculos_cta_label?: string;
+  card_veiculos_cta_url?: string;
+  card_veiculos_object_fit?: ImageObjectFit;
+  card_veiculos_object_position?: ImageObjectPosition;
+  card_veiculos_ativo?: boolean;
+
   card_imoveis_url?: string;
+  card_imoveis_titulo?: string;
+  card_imoveis_subtitulo?: string;
+  card_imoveis_cta_label?: string;
+  card_imoveis_cta_url?: string;
+  card_imoveis_object_fit?: ImageObjectFit;
+  card_imoveis_object_position?: ImageObjectPosition;
+  card_imoveis_ativo?: boolean;
+
   card_patrimonio_url?: string;
+  card_patrimonio_titulo?: string;
+  card_patrimonio_subtitulo?: string;
+  card_patrimonio_cta_label?: string;
+  card_patrimonio_cta_url?: string;
+  card_patrimonio_object_fit?: ImageObjectFit;
+  card_patrimonio_object_position?: ImageObjectPosition;
+  card_patrimonio_ativo?: boolean;
+
   banner_filiais_url?: string;
+  banner_filiais_titulo?: string;
+  banner_filiais_subtitulo?: string;
+  banner_filiais_cta_label?: string;
+  banner_filiais_cta_url?: string;
+  banner_filiais_object_fit?: ImageObjectFit;
+  banner_filiais_object_position?: ImageObjectPosition;
+
   embaixador_stats_url?: string;
+  embaixador_stats_titulo?: string;
+  embaixador_stats_subtitulo?: string;
+  embaixador_stats_object_fit?: ImageObjectFit;
+  embaixador_stats_object_position?: ImageObjectPosition;
 };
 
 export type IdentidadeVisual = {
@@ -620,422 +672,780 @@ export function TemplateWorkspace({
 
         {/* ABA 3: BANNERS & PROPAGANDA */}
         {tab === "banners" && (
-          <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900 space-y-6">
-            <div className="border-b border-slate-100 pb-4 dark:border-slate-800">
-              <h2 className="text-base font-bold text-slate-900 dark:text-white">Banners e Imagens Publicitárias</h2>
-              <p className="text-xs text-slate-500">
-                Personalize ou troque as imagens dos banners, garoto-propaganda/embaixador e cards comerciais.
-              </p>
+          <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900 space-y-8">
+            <div className="border-b border-slate-100 pb-4 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h2 className="text-base font-bold text-slate-900 dark:text-white">Banners, Mídia e Conteúdo Comercial</h2>
+                <p className="text-xs text-slate-500">
+                  Gerencie as imagens de cada slot com upload direto para o Storage, URL externa, enquadramento e edição de textos comerciais.
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="rounded-md bg-cyan-50 px-2.5 py-1 text-[11px] font-bold text-cyan-800 border border-cyan-200 dark:bg-cyan-950 dark:text-cyan-300">
+                  📦 Bucket Storage: site-template-assets
+                </span>
+              </div>
             </div>
 
-            <div className="grid gap-6 sm:grid-cols-2">
-              {/* 1. Hero Principal */}
-              <div className="rounded-xl border border-slate-200 p-4 space-y-3 bg-slate-50/50 dark:border-slate-800 dark:bg-slate-800/40">
-                <div className="flex items-center justify-between">
-                  <h4 className="text-xs font-bold text-slate-900 dark:text-white">1. Banner Hero Principal (Com Garoto Propaganda)</h4>
+            <div className="space-y-8">
+              {/* 1. HERO PRINCIPAL */}
+              <div className="rounded-2xl border border-slate-200 bg-slate-50/40 p-5 dark:border-slate-800 dark:bg-slate-850/50 space-y-4">
+                <div className="border-b border-slate-200/80 pb-3 dark:border-slate-800 flex items-center justify-between">
+                  <h3 className="text-sm font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
+                    <span className="flex h-6 w-6 items-center justify-center rounded-full bg-cyan-700 text-xs text-white">1</span>
+                    Hero Principal (Garoto Propaganda / Campanha Oficial)
+                  </h3>
+                  <span className="text-[11px] font-bold text-slate-500">Slot: hero</span>
                 </div>
-                <input
-                  value={identidade.imagens_banners?.hero_banner_url || ""}
-                  placeholder="/racon/racon-rubinho-hero.png"
-                  onChange={(e) =>
+
+                <MediaFieldControl
+                  templateId={template.id}
+                  spec={{
+                    slotId: "hero",
+                    slotLabel: "Imagem Desktop do Hero",
+                    larguraRecomendada: 1920,
+                    alturaRecomendada: 760,
+                    proporcaoRecomendada: "16:6 (2.5:1)",
+                    proporcaoRatio: 1920 / 760,
+                    descricao: "Banner principal com o embaixador/garoto-propaganda posicionado à esquerda.",
+                    presets: [
+                      { label: "Rubinho Conquiste", url: "/racon/racon-rubinho-hero.png", nome: "Rubinho Conquiste Hero" },
+                      { label: "Gauchinho Campanha", url: "/media/gauchinho-campanha.jpeg", nome: "Gauchinho Campanha Hero" },
+                      { label: "Casa de Luxo", url: "/foto/Casa.png", nome: "Casa de Luxo" },
+                    ],
+                  }}
+                  imageUrl={identidade.imagens_banners?.hero_banner_url || "/racon/racon-rubinho-hero.png"}
+                  objectFit={identidade.imagens_banners?.hero_object_fit || "cover"}
+                  objectPosition={identidade.imagens_banners?.hero_object_position || "left-top"}
+                  onChangeUrl={(url) =>
                     setIdentidade({
                       ...identidade,
                       imagens_banners: {
                         ...identidade.imagens_banners,
-                        hero_banner_url: e.target.value,
+                        hero_banner_url: url,
                       },
                     })
                   }
-                  className="w-full rounded-lg border border-slate-300 p-2 text-xs dark:border-slate-700 dark:bg-slate-800"
+                  onChangeObjectFit={(fit) =>
+                    setIdentidade({
+                      ...identidade,
+                      imagens_banners: {
+                        ...identidade.imagens_banners,
+                        hero_object_fit: fit,
+                      },
+                    })
+                  }
+                  onChangeObjectPosition={(pos) =>
+                    setIdentidade({
+                      ...identidade,
+                      imagens_banners: {
+                        ...identidade.imagens_banners,
+                        hero_object_position: pos,
+                      },
+                    })
+                  }
                 />
-                <div className="flex flex-wrap gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setIdentidade({
-                        ...identidade,
-                        imagens_banners: {
-                          ...identidade.imagens_banners,
-                          hero_banner_url: "/racon/racon-rubinho-hero.png",
-                        },
-                      })
-                    }
-                    className="rounded bg-white px-2 py-0.5 text-[10px] font-bold border shadow-2xs hover:bg-slate-50 dark:bg-slate-900"
-                  >
-                    Rubinho Conquiste
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setIdentidade({
-                        ...identidade,
-                        imagens_banners: {
-                          ...identidade.imagens_banners,
-                          hero_banner_url: "/media/gauchinho-campanha.jpeg",
-                        },
-                      })
-                    }
-                    className="rounded bg-white px-2 py-0.5 text-[10px] font-bold border shadow-2xs hover:bg-slate-50 dark:bg-slate-900"
-                  >
-                    Gauchinho Campanha
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setIdentidade({
-                        ...identidade,
-                        imagens_banners: {
-                          ...identidade.imagens_banners,
-                          hero_banner_url: "/foto/Casa.png",
-                        },
-                      })
-                    }
-                    className="rounded bg-white px-2 py-0.5 text-[10px] font-bold border shadow-2xs hover:bg-slate-50 dark:bg-slate-900"
-                  >
-                    Casa de Luxo
-                  </button>
-                </div>
-                <div className="relative h-24 w-full rounded-lg overflow-hidden border bg-slate-200 dark:bg-slate-900">
-                  <img
-                    src={identidade.imagens_banners?.hero_banner_url || "/racon/racon-rubinho-hero.png"}
-                    alt="Preview Hero"
-                    className="h-full w-full object-cover"
-                  />
+
+                {/* Conteúdo Textual do Hero */}
+                <div className="grid gap-3 sm:grid-cols-2 pt-2 border-t border-slate-200/80 dark:border-slate-800">
+                  <div>
+                    <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300">Badge / Tag da Campanha:</label>
+                    <input
+                      value={identidade.imagens_banners?.hero_badge || "Campanha Oficial • Realize suas Conquistas"}
+                      onChange={(e) =>
+                        setIdentidade({
+                          ...identidade,
+                          imagens_banners: {
+                            ...identidade.imagens_banners,
+                            hero_badge: e.target.value,
+                          },
+                        })
+                      }
+                      className="mt-1 w-full rounded-lg border border-slate-300 p-2 text-xs dark:border-slate-700 dark:bg-slate-800"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300">Título Principal do Hero:</label>
+                    <input
+                      value={identidade.imagens_banners?.hero_titulo || "CONQUISTE"}
+                      onChange={(e) =>
+                        setIdentidade({
+                          ...identidade,
+                          imagens_banners: {
+                            ...identidade.imagens_banners,
+                            hero_titulo: e.target.value,
+                          },
+                        })
+                      }
+                      className="mt-1 w-full rounded-lg border border-slate-300 p-2 text-xs font-black dark:border-slate-700 dark:bg-slate-800"
+                    />
+                  </div>
+
+                  <div className="sm:col-span-2">
+                    <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300">Subtítulo / Mensagem Comercial:</label>
+                    <textarea
+                      rows={2}
+                      value={
+                        identidade.imagens_banners?.hero_subtitulo ||
+                        "Acelere suas metas com planos sob medida, contemplações por sorteio e lances livres ou fixos."
+                      }
+                      onChange={(e) =>
+                        setIdentidade({
+                          ...identidade,
+                          imagens_banners: {
+                            ...identidade.imagens_banners,
+                            hero_subtitulo: e.target.value,
+                          },
+                        })
+                      }
+                      className="mt-1 w-full rounded-lg border border-slate-300 p-2 text-xs dark:border-slate-700 dark:bg-slate-800"
+                    />
+                  </div>
                 </div>
               </div>
 
-              {/* 2. Card Veículos */}
-              <div className="rounded-xl border border-slate-200 p-4 space-y-3 bg-slate-50/50 dark:border-slate-800 dark:bg-slate-800/40">
-                <h4 className="text-xs font-bold text-slate-900 dark:text-white">2. Card de Veículos</h4>
-                <input
-                  value={identidade.imagens_banners?.card_veiculos_url || ""}
-                  placeholder="/racon/racon-card-veiculo.png"
-                  onChange={(e) =>
-                    setIdentidade({
-                      ...identidade,
-                      imagens_banners: {
-                        ...identidade.imagens_banners,
-                        card_veiculos_url: e.target.value,
-                      },
-                    })
-                  }
-                  className="w-full rounded-lg border border-slate-300 p-2 text-xs dark:border-slate-700 dark:bg-slate-800"
-                />
-                <div className="flex flex-wrap gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setIdentidade({
-                        ...identidade,
-                        imagens_banners: {
-                          ...identidade.imagens_banners,
-                          card_veiculos_url: "/racon/racon-card-veiculo.png",
-                        },
-                      })
-                    }
-                    className="rounded bg-white px-2 py-0.5 text-[10px] font-bold border shadow-2xs hover:bg-slate-50 dark:bg-slate-900"
-                  >
-                    Racon Motorista
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setIdentidade({
-                        ...identidade,
-                        imagens_banners: {
-                          ...identidade.imagens_banners,
-                          card_veiculos_url: "/foto/Carros.png",
-                        },
-                      })
-                    }
-                    className="rounded bg-white px-2 py-0.5 text-[10px] font-bold border shadow-2xs hover:bg-slate-50 dark:bg-slate-900"
-                  >
-                    Foto Carros Novos
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setIdentidade({
-                        ...identidade,
-                        imagens_banners: {
-                          ...identidade.imagens_banners,
-                          card_veiculos_url: "/foto/caminhonetes.png",
-                        },
-                      })
-                    }
-                    className="rounded bg-white px-2 py-0.5 text-[10px] font-bold border shadow-2xs hover:bg-slate-50 dark:bg-slate-900"
-                  >
-                    Caminhonetes
-                  </button>
+              {/* 2. CARDS COMERCIAIS */}
+              <div className="space-y-4">
+                <div className="border-b border-slate-200/80 pb-2 dark:border-slate-800">
+                  <h3 className="text-sm font-extrabold text-slate-900 dark:text-white">
+                    Cards Comerciais de Produtos (3 Destaques)
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Personalize títulos comerciais, descrições, chamadas de ação (CTA), links e imagens sem alterar a estrutura base.
+                  </p>
                 </div>
-                <div className="relative h-24 w-full rounded-lg overflow-hidden border bg-slate-200 dark:bg-slate-900">
-                  <img
-                    src={identidade.imagens_banners?.card_veiculos_url || "/racon/racon-card-veiculo.png"}
-                    alt="Preview Veículo"
-                    className="h-full w-full object-cover"
-                  />
+
+                <div className="grid gap-6 lg:grid-cols-3">
+                  {/* Card 1: Veículos */}
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50/40 p-4.5 dark:border-slate-800 dark:bg-slate-850/50 space-y-3.5">
+                    <div className="flex items-center justify-between border-b pb-2 dark:border-slate-800">
+                      <span className="text-xs font-black text-slate-900 dark:text-white">Slot: card_veiculos</span>
+                      <label className="flex items-center gap-1.5 cursor-pointer text-xs font-bold">
+                        <input
+                          type="checkbox"
+                          checked={identidade.imagens_banners?.card_veiculos_ativo !== false}
+                          onChange={(e) =>
+                            setIdentidade({
+                              ...identidade,
+                              imagens_banners: {
+                                ...identidade.imagens_banners,
+                                card_veiculos_ativo: e.target.checked,
+                              },
+                            })
+                          }
+                          className="h-3.5 w-3.5 rounded text-cyan-600"
+                        />
+                        <span>Ativo</span>
+                      </label>
+                    </div>
+
+                    <MediaFieldControl
+                      templateId={template.id}
+                      spec={{
+                        slotId: "card_veiculos",
+                        slotLabel: "Imagem do Card Veículos",
+                        larguraRecomendada: 900,
+                        alturaRecomendada: 650,
+                        proporcaoRecomendada: "4:3 (1.38:1)",
+                        proporcaoRatio: 900 / 650,
+                        descricao: "Imagem de fundo do card automotivo.",
+                        presets: [
+                          { label: "Racon Motorista", url: "/racon/racon-card-veiculo.png", nome: "Racon Motorista" },
+                          { label: "Carros Novos", url: "/foto/Carros.png", nome: "Carros Novos" },
+                          { label: "Caminhonetes", url: "/foto/caminhonetes.png", nome: "Caminhonetes" },
+                        ],
+                      }}
+                      imageUrl={identidade.imagens_banners?.card_veiculos_url || "/racon/racon-card-veiculo.png"}
+                      objectFit={identidade.imagens_banners?.card_veiculos_object_fit || "cover"}
+                      objectPosition={identidade.imagens_banners?.card_veiculos_object_position || "center"}
+                      onChangeUrl={(url) =>
+                        setIdentidade({
+                          ...identidade,
+                          imagens_banners: {
+                            ...identidade.imagens_banners,
+                            card_veiculos_url: url,
+                          },
+                        })
+                      }
+                      onChangeObjectFit={(fit) =>
+                        setIdentidade({
+                          ...identidade,
+                          imagens_banners: {
+                            ...identidade.imagens_banners,
+                            card_veiculos_object_fit: fit,
+                          },
+                        })
+                      }
+                      onChangeObjectPosition={(pos) =>
+                        setIdentidade({
+                          ...identidade,
+                          imagens_banners: {
+                            ...identidade.imagens_banners,
+                            card_veiculos_object_position: pos,
+                          },
+                        })
+                      }
+                    />
+
+                    <div className="space-y-2 pt-1 border-t border-slate-200/80 dark:border-slate-800">
+                      <div>
+                        <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300">Título do Card:</label>
+                        <input
+                          value={identidade.imagens_banners?.card_veiculos_titulo || "Dirija rumo à sua independência"}
+                          onChange={(e) =>
+                            setIdentidade({
+                              ...identidade,
+                              imagens_banners: {
+                                ...identidade.imagens_banners,
+                                card_veiculos_titulo: e.target.value,
+                              },
+                            })
+                          }
+                          className="mt-1 w-full rounded-lg border border-slate-300 p-2 text-xs font-bold dark:border-slate-700 dark:bg-slate-800"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300">Subtítulo / Texto:</label>
+                        <textarea
+                          rows={2}
+                          value={
+                            identidade.imagens_banners?.card_veiculos_subtitulo ||
+                            "Conte com um consórcio de veículos seguro e até 120 meses para pagar."
+                          }
+                          onChange={(e) =>
+                            setIdentidade({
+                              ...identidade,
+                              imagens_banners: {
+                                ...identidade.imagens_banners,
+                                card_veiculos_subtitulo: e.target.value,
+                              },
+                            })
+                          }
+                          className="mt-1 w-full rounded-lg border border-slate-300 p-2 text-xs dark:border-slate-700 dark:bg-slate-800"
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300">Texto CTA:</label>
+                          <input
+                            value={identidade.imagens_banners?.card_veiculos_cta_label || "Conquiste agora"}
+                            onChange={(e) =>
+                              setIdentidade({
+                                ...identidade,
+                                imagens_banners: {
+                                  ...identidade.imagens_banners,
+                                  card_veiculos_cta_label: e.target.value,
+                                },
+                              })
+                            }
+                            className="mt-1 w-full rounded-lg border border-slate-300 p-1.5 text-xs font-bold dark:border-slate-700 dark:bg-slate-800"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300">Link CTA:</label>
+                          <input
+                            value={identidade.imagens_banners?.card_veiculos_cta_url || "/consorcio/veiculos"}
+                            onChange={(e) =>
+                              setIdentidade({
+                                ...identidade,
+                                imagens_banners: {
+                                  ...identidade.imagens_banners,
+                                  card_veiculos_cta_url: e.target.value,
+                                },
+                              })
+                            }
+                            className="mt-1 w-full rounded-lg border border-slate-300 p-1.5 text-xs font-mono dark:border-slate-700 dark:bg-slate-800"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Card 2: Imóveis */}
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50/40 p-4.5 dark:border-slate-800 dark:bg-slate-850/50 space-y-3.5">
+                    <div className="flex items-center justify-between border-b pb-2 dark:border-slate-800">
+                      <span className="text-xs font-black text-slate-900 dark:text-white">Slot: card_imoveis</span>
+                      <label className="flex items-center gap-1.5 cursor-pointer text-xs font-bold">
+                        <input
+                          type="checkbox"
+                          checked={identidade.imagens_banners?.card_imoveis_ativo !== false}
+                          onChange={(e) =>
+                            setIdentidade({
+                              ...identidade,
+                              imagens_banners: {
+                                ...identidade.imagens_banners,
+                                card_imoveis_ativo: e.target.checked,
+                              },
+                            })
+                          }
+                          className="h-3.5 w-3.5 rounded text-cyan-600"
+                        />
+                        <span>Ativo</span>
+                      </label>
+                    </div>
+
+                    <MediaFieldControl
+                      templateId={template.id}
+                      spec={{
+                        slotId: "card_imoveis",
+                        slotLabel: "Imagem do Card Imóveis",
+                        larguraRecomendada: 900,
+                        alturaRecomendada: 650,
+                        proporcaoRecomendada: "4:3 (1.38:1)",
+                        proporcaoRatio: 900 / 650,
+                        descricao: "Imagem de fundo do card imobiliário.",
+                        presets: [
+                          { label: "Racon Família", url: "/racon/racon-card-imovel.png", nome: "Racon Família" },
+                          { label: "Casa de Luxo", url: "/foto/Casa.png", nome: "Casa de Luxo" },
+                          { label: "Apartamento", url: "/foto/apartamento.jpg", nome: "Apartamento" },
+                        ],
+                      }}
+                      imageUrl={identidade.imagens_banners?.card_imoveis_url || "/racon/racon-card-imovel.png"}
+                      objectFit={identidade.imagens_banners?.card_imoveis_object_fit || "cover"}
+                      objectPosition={identidade.imagens_banners?.card_imoveis_object_position || "center"}
+                      onChangeUrl={(url) =>
+                        setIdentidade({
+                          ...identidade,
+                          imagens_banners: {
+                            ...identidade.imagens_banners,
+                            card_imoveis_url: url,
+                          },
+                        })
+                      }
+                      onChangeObjectFit={(fit) =>
+                        setIdentidade({
+                          ...identidade,
+                          imagens_banners: {
+                            ...identidade.imagens_banners,
+                            card_imoveis_object_fit: fit,
+                          },
+                        })
+                      }
+                      onChangeObjectPosition={(pos) =>
+                        setIdentidade({
+                          ...identidade,
+                          imagens_banners: {
+                            ...identidade.imagens_banners,
+                            card_imoveis_object_position: pos,
+                          },
+                        })
+                      }
+                    />
+
+                    <div className="space-y-2 pt-1 border-t border-slate-200/80 dark:border-slate-800">
+                      <div>
+                        <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300">Título do Card:</label>
+                        <input
+                          value={identidade.imagens_banners?.card_imoveis_titulo || "Conquiste a casa própria"}
+                          onChange={(e) =>
+                            setIdentidade({
+                              ...identidade,
+                              imagens_banners: {
+                                ...identidade.imagens_banners,
+                                card_imoveis_titulo: e.target.value,
+                              },
+                            })
+                          }
+                          className="mt-1 w-full rounded-lg border border-slate-300 p-2 text-xs font-bold dark:border-slate-700 dark:bg-slate-800"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300">Subtítulo / Texto:</label>
+                        <textarea
+                          rows={2}
+                          value={
+                            identidade.imagens_banners?.card_imoveis_subtitulo ||
+                            "Invista no seu futuro com um consórcio de imóveis que cabe perfeitamente no seu bolso."
+                          }
+                          onChange={(e) =>
+                            setIdentidade({
+                              ...identidade,
+                              imagens_banners: {
+                                ...identidade.imagens_banners,
+                                card_imoveis_subtitulo: e.target.value,
+                              },
+                            })
+                          }
+                          className="mt-1 w-full rounded-lg border border-slate-300 p-2 text-xs dark:border-slate-700 dark:bg-slate-800"
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300">Texto CTA:</label>
+                          <input
+                            value={identidade.imagens_banners?.card_imoveis_cta_label || "Conquiste agora"}
+                            onChange={(e) =>
+                              setIdentidade({
+                                ...identidade,
+                                imagens_banners: {
+                                  ...identidade.imagens_banners,
+                                  card_imoveis_cta_label: e.target.value,
+                                },
+                              })
+                            }
+                            className="mt-1 w-full rounded-lg border border-slate-300 p-1.5 text-xs font-bold dark:border-slate-700 dark:bg-slate-800"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300">Link CTA:</label>
+                          <input
+                            value={identidade.imagens_banners?.card_imoveis_cta_url || "/consorcio/imoveis"}
+                            onChange={(e) =>
+                              setIdentidade({
+                                ...identidade,
+                                imagens_banners: {
+                                  ...identidade.imagens_banners,
+                                  card_imoveis_cta_url: e.target.value,
+                                },
+                              })
+                            }
+                            className="mt-1 w-full rounded-lg border border-slate-300 p-1.5 text-xs font-mono dark:border-slate-700 dark:bg-slate-800"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Card 3: Patrimônio */}
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50/40 p-4.5 dark:border-slate-800 dark:bg-slate-850/50 space-y-3.5">
+                    <div className="flex items-center justify-between border-b pb-2 dark:border-slate-800">
+                      <span className="text-xs font-black text-slate-900 dark:text-white">Slot: card_patrimonio</span>
+                      <label className="flex items-center gap-1.5 cursor-pointer text-xs font-bold">
+                        <input
+                          type="checkbox"
+                          checked={identidade.imagens_banners?.card_patrimonio_ativo !== false}
+                          onChange={(e) =>
+                            setIdentidade({
+                              ...identidade,
+                              imagens_banners: {
+                                ...identidade.imagens_banners,
+                                card_patrimonio_ativo: e.target.checked,
+                              },
+                            })
+                          }
+                          className="h-3.5 w-3.5 rounded text-cyan-600"
+                        />
+                        <span>Ativo</span>
+                      </label>
+                    </div>
+
+                    <MediaFieldControl
+                      templateId={template.id}
+                      spec={{
+                        slotId: "card_patrimonio",
+                        slotLabel: "Imagem do Card Patrimônio",
+                        larguraRecomendada: 900,
+                        alturaRecomendada: 650,
+                        proporcaoRecomendada: "4:3 (1.38:1)",
+                        proporcaoRatio: 900 / 650,
+                        descricao: "Imagem de fundo do card de investimento/agro.",
+                        presets: [
+                          { label: "Racon Investimento", url: "/racon/racon-card-patrimonio.png", nome: "Racon Investimento" },
+                          { label: "Caminhões & Frotas", url: "/foto/Caminhoes-e-Frota.png", nome: "Caminhões & Frotas" },
+                          { label: "Máquinas Agro", url: "/foto/Maquinas-Agricolas.png", nome: "Máquinas Agro" },
+                        ],
+                      }}
+                      imageUrl={identidade.imagens_banners?.card_patrimonio_url || "/racon/racon-card-patrimonio.png"}
+                      objectFit={identidade.imagens_banners?.card_patrimonio_object_fit || "cover"}
+                      objectPosition={identidade.imagens_banners?.card_patrimonio_object_position || "center"}
+                      onChangeUrl={(url) =>
+                        setIdentidade({
+                          ...identidade,
+                          imagens_banners: {
+                            ...identidade.imagens_banners,
+                            card_patrimonio_url: url,
+                          },
+                        })
+                      }
+                      onChangeObjectFit={(fit) =>
+                        setIdentidade({
+                          ...identidade,
+                          imagens_banners: {
+                            ...identidade.imagens_banners,
+                            card_patrimonio_object_fit: fit,
+                          },
+                        })
+                      }
+                      onChangeObjectPosition={(pos) =>
+                        setIdentidade({
+                          ...identidade,
+                          imagens_banners: {
+                            ...identidade.imagens_banners,
+                            card_patrimonio_object_position: pos,
+                          },
+                        })
+                      }
+                    />
+
+                    <div className="space-y-2 pt-1 border-t border-slate-200/80 dark:border-slate-800">
+                      <div>
+                        <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300">Título do Card:</label>
+                        <input
+                          value={identidade.imagens_banners?.card_patrimonio_titulo || "Amplie seu patrimônio"}
+                          onChange={(e) =>
+                            setIdentidade({
+                              ...identidade,
+                              imagens_banners: {
+                                ...identidade.imagens_banners,
+                                card_patrimonio_titulo: e.target.value,
+                              },
+                            })
+                          }
+                          className="mt-1 w-full rounded-lg border border-slate-300 p-2 text-xs font-bold dark:border-slate-700 dark:bg-slate-800"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300">Subtítulo / Texto:</label>
+                        <textarea
+                          rows={2}
+                          value={
+                            identidade.imagens_banners?.card_patrimonio_subtitulo ||
+                            "Faça um investimento financeiro inteligente de forma planejada, rentável e sem juros bancários."
+                          }
+                          onChange={(e) =>
+                            setIdentidade({
+                              ...identidade,
+                              imagens_banners: {
+                                ...identidade.imagens_banners,
+                                card_patrimonio_subtitulo: e.target.value,
+                              },
+                            })
+                          }
+                          className="mt-1 w-full rounded-lg border border-slate-300 p-2 text-xs dark:border-slate-700 dark:bg-slate-800"
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300">Texto CTA:</label>
+                          <input
+                            value={identidade.imagens_banners?.card_patrimonio_cta_label || "Conquiste agora"}
+                            onChange={(e) =>
+                              setIdentidade({
+                                ...identidade,
+                                imagens_banners: {
+                                  ...identidade.imagens_banners,
+                                  card_patrimonio_cta_label: e.target.value,
+                                },
+                              })
+                            }
+                            className="mt-1 w-full rounded-lg border border-slate-300 p-1.5 text-xs font-bold dark:border-slate-700 dark:bg-slate-800"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300">Link CTA:</label>
+                          <input
+                            value={identidade.imagens_banners?.card_patrimonio_cta_url || "/simulador"}
+                            onChange={(e) =>
+                              setIdentidade({
+                                ...identidade,
+                                imagens_banners: {
+                                  ...identidade.imagens_banners,
+                                  card_patrimonio_cta_url: e.target.value,
+                                },
+                              })
+                            }
+                            className="mt-1 w-full rounded-lg border border-slate-300 p-1.5 text-xs font-mono dark:border-slate-700 dark:bg-slate-800"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
 
-              {/* 3. Card Imóveis */}
-              <div className="rounded-xl border border-slate-200 p-4 space-y-3 bg-slate-50/50 dark:border-slate-800 dark:bg-slate-800/40">
-                <h4 className="text-xs font-bold text-slate-900 dark:text-white">3. Card de Imóveis (Casa Própria)</h4>
-                <input
-                  value={identidade.imagens_banners?.card_imoveis_url || ""}
-                  placeholder="/racon/racon-card-imovel.png"
-                  onChange={(e) =>
-                    setIdentidade({
-                      ...identidade,
-                      imagens_banners: {
-                        ...identidade.imagens_banners,
-                        card_imoveis_url: e.target.value,
-                      },
-                    })
-                  }
-                  className="w-full rounded-lg border border-slate-300 p-2 text-xs dark:border-slate-700 dark:bg-slate-800"
-                />
-                <div className="flex flex-wrap gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setIdentidade({
-                        ...identidade,
-                        imagens_banners: {
-                          ...identidade.imagens_banners,
-                          card_imoveis_url: "/racon/racon-card-imovel.png",
-                        },
-                      })
-                    }
-                    className="rounded bg-white px-2 py-0.5 text-[10px] font-bold border shadow-2xs hover:bg-slate-50 dark:bg-slate-900"
-                  >
-                    Racon Família
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setIdentidade({
-                        ...identidade,
-                        imagens_banners: {
-                          ...identidade.imagens_banners,
-                          card_imoveis_url: "/foto/Casa.png",
-                        },
-                      })
-                    }
-                    className="rounded bg-white px-2 py-0.5 text-[10px] font-bold border shadow-2xs hover:bg-slate-50 dark:bg-slate-900"
-                  >
-                    Foto Casa
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setIdentidade({
-                        ...identidade,
-                        imagens_banners: {
-                          ...identidade.imagens_banners,
-                          card_imoveis_url: "/foto/apartamento.jpg",
-                        },
-                      })
-                    }
-                    className="rounded bg-white px-2 py-0.5 text-[10px] font-bold border shadow-2xs hover:bg-slate-50 dark:bg-slate-900"
-                  >
-                    Apartamento
-                  </button>
-                </div>
-                <div className="relative h-24 w-full rounded-lg overflow-hidden border bg-slate-200 dark:bg-slate-900">
-                  <img
-                    src={identidade.imagens_banners?.card_imoveis_url || "/racon/racon-card-imovel.png"}
-                    alt="Preview Imóveis"
-                    className="h-full w-full object-cover"
-                  />
-                </div>
-              </div>
+              {/* 3. BANNERS SECUNDÁRIOS E AUTORIDADE */}
+              <div className="grid gap-6 sm:grid-cols-2">
+                {/* 5. Banner Filiais / Unidades */}
+                <div className="rounded-2xl border border-slate-200 bg-slate-50/40 p-4.5 dark:border-slate-800 dark:bg-slate-850/50 space-y-3.5">
+                  <div className="border-b border-slate-200/80 pb-2 dark:border-slate-800">
+                    <span className="text-xs font-black text-slate-900 dark:text-white block">
+                      5. Banner Institucional: Filiais / Unidades
+                    </span>
+                    <span className="text-[11px] text-slate-500 font-mono">Slot: banner_filiais</span>
+                  </div>
 
-              {/* 4. Card Patrimônio / Pesados */}
-              <div className="rounded-xl border border-slate-200 p-4 space-y-3 bg-slate-50/50 dark:border-slate-800 dark:bg-slate-800/40">
-                <h4 className="text-xs font-bold text-slate-900 dark:text-white">4. Card Patrimônio / Pesados / Agro</h4>
-                <input
-                  value={identidade.imagens_banners?.card_patrimonio_url || ""}
-                  placeholder="/racon/racon-card-patrimonio.png"
-                  onChange={(e) =>
-                    setIdentidade({
-                      ...identidade,
-                      imagens_banners: {
-                        ...identidade.imagens_banners,
-                        card_patrimonio_url: e.target.value,
-                      },
-                    })
-                  }
-                  className="w-full rounded-lg border border-slate-300 p-2 text-xs dark:border-slate-700 dark:bg-slate-800"
-                />
-                <div className="flex flex-wrap gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() =>
+                  <MediaFieldControl
+                    templateId={template.id}
+                    spec={{
+                      slotId: "banner_filiais",
+                      slotLabel: "Imagem de Filiais & Unidades",
+                      larguraRecomendada: 1600,
+                      alturaRecomendada: 600,
+                      proporcaoRecomendada: "8:3 (2.67:1)",
+                      proporcaoRatio: 1600 / 600,
+                      descricao: "Banner da seção de localização física e rede franqueada.",
+                      presets: [
+                        { label: "Rubinho Fachada", url: "/racon/racon-rubinho-conquiste.png", nome: "Rubinho Fachada Racon" },
+                        { label: "Logo Institucional", url: "/media/gauchinho-logo.png", nome: "Logo Institucional" },
+                      ],
+                    }}
+                    imageUrl={identidade.imagens_banners?.banner_filiais_url || "/racon/racon-rubinho-conquiste.png"}
+                    objectFit={identidade.imagens_banners?.banner_filiais_object_fit || "cover"}
+                    objectPosition={identidade.imagens_banners?.banner_filiais_object_position || "center"}
+                    onChangeUrl={(url) =>
                       setIdentidade({
                         ...identidade,
                         imagens_banners: {
                           ...identidade.imagens_banners,
-                          card_patrimonio_url: "/racon/racon-card-patrimonio.png",
+                          banner_filiais_url: url,
                         },
                       })
                     }
-                    className="rounded bg-white px-2 py-0.5 text-[10px] font-bold border shadow-2xs hover:bg-slate-50 dark:bg-slate-900"
-                  >
-                    Racon Investimento
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() =>
+                    onChangeObjectFit={(fit) =>
                       setIdentidade({
                         ...identidade,
                         imagens_banners: {
                           ...identidade.imagens_banners,
-                          card_patrimonio_url: "/foto/Caminhoes-e-Frota.png",
+                          banner_filiais_object_fit: fit,
                         },
                       })
                     }
-                    className="rounded bg-white px-2 py-0.5 text-[10px] font-bold border shadow-2xs hover:bg-slate-50 dark:bg-slate-900"
-                  >
-                    Caminhões & Frotas
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() =>
+                    onChangeObjectPosition={(pos) =>
                       setIdentidade({
                         ...identidade,
                         imagens_banners: {
                           ...identidade.imagens_banners,
-                          card_patrimonio_url: "/foto/Maquinas-Agricolas.png",
+                          banner_filiais_object_position: pos,
                         },
                       })
                     }
-                    className="rounded bg-white px-2 py-0.5 text-[10px] font-bold border shadow-2xs hover:bg-slate-50 dark:bg-slate-900"
-                  >
-                    Máquinas Agro
-                  </button>
-                </div>
-                <div className="relative h-24 w-full rounded-lg overflow-hidden border bg-slate-200 dark:bg-slate-900">
-                  <img
-                    src={identidade.imagens_banners?.card_patrimonio_url || "/racon/racon-card-patrimonio.png"}
-                    alt="Preview Patrimônio"
-                    className="h-full w-full object-cover"
                   />
-                </div>
-              </div>
 
-              {/* 5. Banner Filiais / Unidades */}
-              <div className="rounded-xl border border-slate-200 p-4 space-y-3 bg-slate-50/50 dark:border-slate-800 dark:bg-slate-800/40">
-                <h4 className="text-xs font-bold text-slate-900 dark:text-white">5. Banner de Filiais / Unidades</h4>
-                <input
-                  value={identidade.imagens_banners?.banner_filiais_url || ""}
-                  placeholder="/racon/racon-rubinho-conquiste.png"
-                  onChange={(e) =>
-                    setIdentidade({
-                      ...identidade,
-                      imagens_banners: {
-                        ...identidade.imagens_banners,
-                        banner_filiais_url: e.target.value,
-                      },
-                    })
-                  }
-                  className="w-full rounded-lg border border-slate-300 p-2 text-xs dark:border-slate-700 dark:bg-slate-800"
-                />
-                <div className="flex flex-wrap gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setIdentidade({
-                        ...identidade,
-                        imagens_banners: {
-                          ...identidade.imagens_banners,
-                          banner_filiais_url: "/racon/racon-rubinho-conquiste.png",
-                        },
-                      })
-                    }
-                    className="rounded bg-white px-2 py-0.5 text-[10px] font-bold border shadow-2xs hover:bg-slate-50 dark:bg-slate-900"
-                  >
-                    Rubinho Fachada Racon
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setIdentidade({
-                        ...identidade,
-                        imagens_banners: {
-                          ...identidade.imagens_banners,
-                          banner_filiais_url: "/media/gauchinho-logo.png",
-                        },
-                      })
-                    }
-                    className="rounded bg-white px-2 py-0.5 text-[10px] font-bold border shadow-2xs hover:bg-slate-50 dark:bg-slate-900"
-                  >
-                    Logo Institucional
-                  </button>
+                  <div className="space-y-2 pt-1 border-t border-slate-200/80 dark:border-slate-800">
+                    <div>
+                      <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300">Título do Bloco:</label>
+                      <input
+                        value={identidade.imagens_banners?.banner_filiais_titulo || "Encontre a Racon Consórcios mais próxima de você"}
+                        onChange={(e) =>
+                          setIdentidade({
+                            ...identidade,
+                            imagens_banners: {
+                              ...identidade.imagens_banners,
+                              banner_filiais_titulo: e.target.value,
+                            },
+                          })
+                        }
+                        className="mt-1 w-full rounded-lg border border-slate-300 p-2 text-xs font-bold dark:border-slate-700 dark:bg-slate-800"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300">Texto Comercial:</label>
+                      <textarea
+                        rows={2}
+                        value={
+                          identidade.imagens_banners?.banner_filiais_subtitulo ||
+                          "A Racon está presente em diversas regiões do país com atendimento especializado para você planejar seu investimento com segurança e transparência."
+                        }
+                        onChange={(e) =>
+                          setIdentidade({
+                            ...identidade,
+                            imagens_banners: {
+                              ...identidade.imagens_banners,
+                              banner_filiais_subtitulo: e.target.value,
+                            },
+                          })
+                        }
+                        className="mt-1 w-full rounded-lg border border-slate-300 p-2 text-xs dark:border-slate-700 dark:bg-slate-800"
+                      />
+                    </div>
+                  </div>
                 </div>
-                <div className="relative h-24 w-full rounded-lg overflow-hidden border bg-slate-200 dark:bg-slate-900">
-                  <img
-                    src={identidade.imagens_banners?.banner_filiais_url || "/racon/racon-rubinho-conquiste.png"}
-                    alt="Preview Filiais"
-                    className="h-full w-full object-cover"
-                  />
-                </div>
-              </div>
 
-              {/* 6. Embaixador na Seção de Credibilidade */}
-              <div className="rounded-xl border border-slate-200 p-4 space-y-3 bg-slate-50/50 dark:border-slate-800 dark:bg-slate-800/40">
-                <h4 className="text-xs font-bold text-slate-900 dark:text-white">6. Foto do Garoto Propaganda (Estatísticas)</h4>
-                <input
-                  value={identidade.imagens_banners?.embaixador_stats_url || ""}
-                  placeholder="/racon/racon-rubinho-apontando.png"
-                  onChange={(e) =>
-                    setIdentidade({
-                      ...identidade,
-                      imagens_banners: {
-                        ...identidade.imagens_banners,
-                        embaixador_stats_url: e.target.value,
-                      },
-                    })
-                  }
-                  className="w-full rounded-lg border border-slate-300 p-2 text-xs dark:border-slate-700 dark:bg-slate-800"
-                />
-                <div className="flex flex-wrap gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() =>
+                {/* 6. Embaixador na Seção de Credibilidade */}
+                <div className="rounded-2xl border border-slate-200 bg-slate-50/40 p-4.5 dark:border-slate-800 dark:bg-slate-850/50 space-y-3.5">
+                  <div className="border-b border-slate-200/80 pb-2 dark:border-slate-800">
+                    <span className="text-xs font-black text-slate-900 dark:text-white block">
+                      6. Embaixador Oficial: Seção de Credibilidade & Números
+                    </span>
+                    <span className="text-[11px] text-slate-500 font-mono">Slot: embaixador_stats</span>
+                  </div>
+
+                  <MediaFieldControl
+                    templateId={template.id}
+                    spec={{
+                      slotId: "embaixador_stats",
+                      slotLabel: "Foto do Embaixador / Garoto Propaganda",
+                      larguraRecomendada: 800,
+                      alturaRecomendada: 1000,
+                      proporcaoRecomendada: "4:5 (Vertical)",
+                      proporcaoRatio: 800 / 1000,
+                      descricao: "Foto em recorte circular do embaixador apontando para os números.",
+                      presets: [
+                        { label: "Rubinho Apontando", url: "/racon/racon-rubinho-apontando.png", nome: "Rubinho Apontando" },
+                        { label: "Mascote Gaúchinho", url: "/media/gauchinho-logo.png", nome: "Mascote Gaúchinho" },
+                      ],
+                    }}
+                    imageUrl={identidade.imagens_banners?.embaixador_stats_url || "/racon/racon-rubinho-apontando.png"}
+                    objectFit={identidade.imagens_banners?.embaixador_stats_object_fit || "cover"}
+                    objectPosition={identidade.imagens_banners?.embaixador_stats_object_position || "top"}
+                    onChangeUrl={(url) =>
                       setIdentidade({
                         ...identidade,
                         imagens_banners: {
                           ...identidade.imagens_banners,
-                          embaixador_stats_url: "/racon/racon-rubinho-apontando.png",
+                          embaixador_stats_url: url,
                         },
                       })
                     }
-                    className="rounded bg-white px-2 py-0.5 text-[10px] font-bold border shadow-2xs hover:bg-slate-50 dark:bg-slate-900"
-                  >
-                    Rubinho Apontando
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() =>
+                    onChangeObjectFit={(fit) =>
                       setIdentidade({
                         ...identidade,
                         imagens_banners: {
                           ...identidade.imagens_banners,
-                          embaixador_stats_url: "/media/gauchinho-logo.png",
+                          embaixador_stats_object_fit: fit,
                         },
                       })
                     }
-                    className="rounded bg-white px-2 py-0.5 text-[10px] font-bold border shadow-2xs hover:bg-slate-50 dark:bg-slate-900"
-                  >
-                    Mascote Gaúchinho
-                  </button>
-                </div>
-                <div className="relative h-24 w-full rounded-lg overflow-hidden border bg-slate-200 dark:bg-slate-900 flex justify-center">
-                  <img
-                    src={identidade.imagens_banners?.embaixador_stats_url || "/racon/racon-rubinho-apontando.png"}
-                    alt="Preview Embaixador"
-                    className="h-full object-contain"
+                    onChangeObjectPosition={(pos) =>
+                      setIdentidade({
+                        ...identidade,
+                        imagens_banners: {
+                          ...identidade.imagens_banners,
+                          embaixador_stats_object_position: pos,
+                        },
+                      })
+                    }
                   />
+
+                  <div className="space-y-2 pt-1 border-t border-slate-200/80 dark:border-slate-800">
+                    <div>
+                      <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300">Título do Bloco de Credibilidade:</label>
+                      <input
+                        value={identidade.imagens_banners?.embaixador_stats_titulo || "Conquiste com a Racon Consórcios"}
+                        onChange={(e) =>
+                          setIdentidade({
+                            ...identidade,
+                            imagens_banners: {
+                              ...identidade.imagens_banners,
+                              embaixador_stats_titulo: e.target.value,
+                            },
+                          })
+                        }
+                        className="mt-1 w-full rounded-lg border border-slate-300 p-2 text-xs font-bold dark:border-slate-700 dark:bg-slate-800"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300">Texto Comercial:</label>
+                      <textarea
+                        rows={2}
+                        value={
+                          identidade.imagens_banners?.embaixador_stats_subtitulo ||
+                          "Mais de três décadas de solidez, realizando sonhos e construindo patrimônios sólidos em todo o Brasil."
+                        }
+                        onChange={(e) =>
+                          setIdentidade({
+                            ...identidade,
+                            imagens_banners: {
+                              ...identidade.imagens_banners,
+                              embaixador_stats_subtitulo: e.target.value,
+                            },
+                          })
+                        }
+                        className="mt-1 w-full rounded-lg border border-slate-300 p-2 text-xs dark:border-slate-700 dark:bg-slate-800"
+                      />
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>

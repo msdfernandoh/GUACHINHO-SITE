@@ -40,6 +40,11 @@ const BUCKET_META: Record<
     fileSizeLimit: 5_242_880,
     allowedMimeTypes: ["image/jpeg", "image/png", "image/webp"],
   },
+  "site-template-assets": {
+    public: true,
+    fileSizeLimit: 10_485_760,
+    allowedMimeTypes: ["image/jpeg", "image/png", "image/webp", "image/gif", "image/svg+xml"],
+  },
 };
 
 /** Garante bucket público antes do upload (útil se a migration ainda não rodou). */

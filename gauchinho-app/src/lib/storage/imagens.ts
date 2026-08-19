@@ -10,7 +10,8 @@ export type StorageBucketPublico =
   | "depoimentos"
   | "parceiros"
   | "seguradoras"
-  | "eventos";
+  | "eventos"
+  | "site-template-assets";
 
 const ALLOWED_EXT = new Set(["jpeg", "jpg", "png", "webp", "gif", "svg"]);
 

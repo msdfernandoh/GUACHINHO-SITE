@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { isPlatformSuperadmin } from "@/lib/auth/is-superadmin";
 import { createClient } from "@/lib/supabase/server";
 import { sanitizeTemplateCode } from "@/lib/platform/html-sanitizer";
+import { uploadImagemPublica } from "@/lib/storage/imagens";
 
 export type PlatformFormState = {
   status: "IDLE" | "SUCCESS" | "ERROR";
@@ -198,3 +199,64 @@ export async function statusModeloSitePlatformAction(
   revalidatePath("/platform/templates");
   return { status: "SUCCESS", message: `Status alterado para ${status} com sucesso.` };
 }
+
+export async function uploadTemplateMediaPlatformAction(
+  _prev: PlatformFormState,
+  formData: FormData,
+): Promise<PlatformFormState> {
+  if (!(await isPlatformSuperadmin())) {
+    return { status: "ERROR", message: "Acesso restrito ao Platform Superadmin." };
+  }
+
+  const templateId = String(formData.get("template_id") ?? "").trim() || "global";
+  const slot = String(formData.get("slot") ?? "cards").trim();
+  const file = formData.get("file") as File | null;
+
+  if (!file || !(file instanceof File) || file.size === 0) {
+    return { status: "ERROR", message: "Nenhum arquivo de imagem válido foi enviado." };
+  }
+
+  // Validação de tipo de arquivo
+  const allowedMime = ["image/jpeg", "image/png", "image/webp", "image/gif", "image/svg+xml"];
+  if (!allowedMime.includes(file.type)) {
+    return {
+      status: "ERROR",
+      message: `Formato de arquivo não suportado (${file.type}). Use JPG, PNG, WEBP, GIF ou SVG.`,
+    };
+  }
+
+  // Limite de 10MB
+  const maxBytes = 10_485_760;
+  if (file.size > maxBytes) {
+    return {
+      status: "ERROR",
+      message: `O arquivo excede o limite máximo permitido de 10 MB (tamanho: ${(file.size / (1024 * 1024)).toFixed(1)} MB).`,
+    };
+  }
+
+  try {
+    const timestamp = Date.now();
+    const sanitizedName = file.name
+      .toLowerCase()
+      .replace(/[^a-z0-9._-]/g, "-")
+      .replace(/-+/g, "-");
+    const storagePath = `templates/${templateId}/${slot}/${timestamp}-${sanitizedName}`;
+
+    const publicUrl = await uploadImagemPublica("site-template-assets", storagePath, file);
+
+    return {
+      status: "SUCCESS",
+      message: "Imagem enviada para o Storage com sucesso.",
+      data: {
+        url: publicUrl,
+        fileName: file.name,
+        sizeBytes: file.size,
+        path: storagePath,
+      },
+    };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Falha no upload para o Supabase Storage.";
+    return { status: "ERROR", message: msg };
+  }
+}
+
