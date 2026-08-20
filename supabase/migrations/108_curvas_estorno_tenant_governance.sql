@@ -17,7 +17,7 @@ DECLARE
   v_admin_id uuid;
   v_curva_id uuid;
 BEGIN
-  FOR v_admin_id IN SELECT id FROM public.administradoras WHERE ativo = true LOOP
+  FOR v_admin_id IN SELECT id FROM public.administradoras LOOP
     IF NOT EXISTS (
       SELECT 1 FROM public.administradora_curvas_estorno WHERE administradora_id = v_admin_id AND nome = 'Curva Padrão de Estorno'
     ) THEN
