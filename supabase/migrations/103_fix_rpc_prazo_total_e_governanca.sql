@@ -1,11 +1,12 @@
--- 101 — Vínculo Canônico Platform/SaaS -> Site -> Contratação -> ERP -> Venda/Cota
--- Forward-only: Harmoniza a resolução de grupos_consorcio e grupos_cotas na conversão
--- transacional de contratações em vendas e cotas definitivas, eliminando falhas de
--- correspondência de IDs legados e garantindo idempotência total.
-
+-- 103 — Correção do campo prazo_total na RPC rpc_converter_contratacao_venda e consolidação de governança dos grupos
 BEGIN;
 
--- 1. Atualizar a RPC de conversão transacional com resolução canônica resiliente
+-- 1. Consolidar grupos sem governança explícita como GLOBAL
+UPDATE public.grupos_consorcio
+SET origem_governanca = 'GLOBAL'
+WHERE origem_governanca IS NULL;
+
+-- 2. Atualizar a RPC de conversão transacional corrigindo prazo_total (sem prazo_meses)
 CREATE OR REPLACE FUNCTION public.rpc_converter_contratacao_venda(
   p_empresa_id uuid,
   p_contratacao_id uuid,
@@ -95,7 +96,6 @@ BEGIN
   END IF;
 
   IF v_grupo.id IS NULL THEN
-    -- Tenta extrair grupo de dados_simulacao
     IF v_dados->>'grupoId' IS NOT NULL AND v_dados->>'grupoId' ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$' THEN
       SELECT * INTO v_grupo FROM public.grupos_consorcio WHERE id = (v_dados->>'grupoId')::uuid;
     ELSIF v_dados#>>'{selecoes,0,grupoId}' IS NOT NULL AND v_dados#>>'{selecoes,0,grupoId}' ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$' THEN
@@ -135,7 +135,7 @@ BEGIN
     v_contratacao.prazo,
     NULLIF(v_dados->>'prazo', '')::integer,
     v_grupo.prazo_total,
-        180
+    180
   );
 
   -- 7. Resolução Canônica do Produto/Cota (grupos_cotas)
@@ -179,7 +179,6 @@ BEGIN
     RAISE EXCEPTION 'Opção de cota não encontrada para o grupo ou indisponível';
   END IF;
 
-  -- Reafirma valores
   v_credito := COALESCE(v_credito, v_opcao.valor_credito);
   v_parcela := COALESCE(v_parcela, v_opcao.valor_parcela);
   v_prazo := COALESCE(v_prazo, v_opcao.prazo, v_grupo.prazo_total, 180);
@@ -205,7 +204,6 @@ BEGIN
     ORDER BY created_at ASC LIMIT 1;
   END IF;
 
-  -- Garante que grupo_cota_modalidade_valores e grupos_modalidades_disponiveis estejam íntegros para o trigger V2
   IF v_modalidade_id IS NOT NULL AND v_opcao_id IS NOT NULL THEN
     INSERT INTO public.grupos_modalidades_disponiveis (grupo_id, administradora_modalidade_id, ativo, ordem)
     VALUES (v_grupo.id, v_modalidade_id, true, 0)

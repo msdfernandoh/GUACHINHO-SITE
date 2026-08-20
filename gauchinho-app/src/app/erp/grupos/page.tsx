@@ -17,13 +17,18 @@ export default async function ErpGruposPage({
     .select(
       "id,codigo_grupo,status,ativo,prazo_total,vagas_disponiveis,data_primeira_assembleia,origem_governanca,status_governanca,empresa_origem_id,administradora:administradoras(nome),tipo:administradora_tipos(nome),modalidade_comissao:administradora_modalidades_comissao(nome),cotas:grupos_cotas(id,valor_credito,ativo,status)"
     )
-    .or(`origem_governanca.eq.GLOBAL,empresa_origem_id.eq.${empresaAtiva?.id}`)
     .order("codigo_grupo");
 
   if (f.busca) q = q.ilike("codigo_grupo", `%${f.busca}%`);
   if (f.status) q = q.eq("status_governanca", f.status);
 
-  const { data, error } = await q;
+  const { data: rawData, error } = await q;
+  const data = (rawData ?? []).filter(
+    (g: any) =>
+      g.origem_governanca !== "LOCAL" ||
+      g.empresa_origem_id === empresaAtiva?.id ||
+      !g.empresa_origem_id
+  );
 
   return (
     <div className="space-y-6">
