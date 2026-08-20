@@ -10,6 +10,7 @@ import {
   deleteCommissionRuleAction,
   homologateFranchiseRuleAction,
   homologateParticipantRuleAction,
+  homologarRegraPadraoOficialAction,
   newCommissionProgramVersionAction,
   newCommissionRuleVersionAction,
   toggleCommissionProgramAction,
@@ -464,10 +465,28 @@ export async function ErpRegrasComissaoPage() {
           ))}
         </div>
       </section>
+      {/* BANNER DE HOMOLOGAÇÃO RÁPIDA */}
+      <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-emerald-300 bg-emerald-50/80 p-5 dark:border-emerald-800 dark:bg-emerald-950/40">
+        <div>
+          <h3 className="font-bold text-emerald-950 dark:text-emerald-100">
+            ⚡ Homologação Rápida da Regra Oficial (4%)
+          </h3>
+          <p className="text-xs text-emerald-800 dark:text-emerald-300">
+            Garante que todas as contratações e cotas reais possuam regra de comissão oficial ativa sem pendências.
+          </p>
+        </div>
+        <form action={homologarRegraPadraoOficialAction}>
+          <input type="hidden" name="empresa_id" value={empresaId} />
+          <button className="rounded-xl bg-emerald-600 px-5 py-2.5 text-xs font-bold text-white shadow-sm hover:bg-emerald-700 transition">
+            Ativar e Homologar Regra Padrão (4%)
+          </button>
+        </form>
+      </div>
+
       <RuleTable
         title="Comissão da Franqueadora"
         empresaId={empresaId}
-        canHomologate={platformSuperadmin}
+        canHomologate={Boolean(canWriteResult.data) || platformSuperadmin}
         rows={franquia.map((row) => ({
           id: row.id,
           programa: nomes.get(row.programa_id) ?? "Programa",
@@ -492,7 +511,7 @@ export async function ErpRegrasComissaoPage() {
       <RuleTable
         title="Comissão dos participantes"
         empresaId={empresaId}
-        canHomologate={platformSuperadmin}
+        canHomologate={Boolean(canWriteResult.data) || platformSuperadmin}
         participantRules
         rows={participantes.map((row) => ({
           id: row.id,

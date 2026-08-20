@@ -879,3 +879,70 @@ export async function newCommissionRuleVersionAction(
   }
   revalidatePath("/erp/regras-comissao");
 }
+
+export async function homologarRegraPadraoOficialAction(formData: FormData): Promise<void> {
+  const empresaId = String(formData.get("empresa_id") ?? "").trim();
+  const administradoraId = String(formData.get("administradora_id") ?? "").trim();
+  if (!empresaId) throw new Error("Empresa obrigatória.");
+  const supabase = await assertCanWrite(empresaId);
+
+  // 1. Busca ou cria programa oficial
+  let { data: programa } = await supabase
+    .from("comissao_programas")
+    .select("id")
+    .eq("empresa_id", empresaId)
+    .eq("status", "ATIVO")
+    .limit(1)
+    .maybeSingle();
+
+  if (!programa) {
+    const { data: createdProg } = await supabase
+      .from("comissao_programas")
+      .insert({
+        empresa_id: empresaId,
+        nome: "Programa Padrão de Comissão (Oficial)",
+        administradora_id: administradoraId || null,
+        status: "ATIVO",
+        ativo: true,
+        versao: 1,
+      })
+      .select("id")
+      .single();
+    programa = createdProg;
+  }
+
+  if (programa?.id) {
+    // 2. Insere ou ativa regra da Franqueadora (4% padrão)
+    const { data: regra } = await supabase
+      .from("comissao_regras_franquia")
+      .insert({
+        empresa_id: empresaId,
+        programa_id: programa.id,
+        versao: 1,
+        base_calculo: "credito",
+        percentual_total_comissao: 4.0,
+        vigencia_inicio: "2020-01-01",
+        configuracao_homologada: true,
+        ativa: true,
+        etapas_cronograma: [
+          { ordem: 1, nome: "1ª Parcela", percentual_venda: 4.0, tipo_gatilho: "MES_RELATIVO", mes_relativo: 1 }
+        ]
+      })
+      .select("id")
+      .single();
+
+    if (regra?.id) {
+      await supabase.from("comissao_regra_etapas").insert({
+        regra_franquia_id: regra.id,
+        ordem: 1,
+        nome: "1ª Parcela",
+        percentual_venda: 4.0,
+        tipo_gatilho: "MES_RELATIVO",
+        mes_relativo: 1
+      });
+    }
+  }
+
+  revalidatePath("/erp/regras-comissao");
+  revalidatePath("/erp/contratacoes");
+}
