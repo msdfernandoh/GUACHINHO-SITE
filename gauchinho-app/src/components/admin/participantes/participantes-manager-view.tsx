@@ -396,6 +396,7 @@ export function ParticipantesManagerView({
             >
               <input type="hidden" name="empresa_id" value={empresaId} />
               <input type="hidden" name="id" value={editingPart.id} />
+              <input type="hidden" name="usuario_id" value={editingPart.usuario_id || ""} />
 
               <div className="grid gap-3 sm:grid-cols-2">
                 <div>

@@ -293,6 +293,21 @@ export async function updateParticipanteAction(formData: FormData): Promise<{ ok
     if (!validated.ok) return { ok: false, success: false, error: validated.error };
 
     const supabase = await createClient();
+
+    // Preserva usuario_id se já estava associado
+    let finalUsuarioId = input.usuarioId;
+    if (!finalUsuarioId) {
+      const { data: existingPart } = await supabase
+        .from("participantes_comerciais")
+        .select("usuario_id")
+        .eq("id", id)
+        .eq("empresa_id", empresaId)
+        .maybeSingle();
+      if (existingPart?.usuario_id) {
+        finalUsuarioId = existingPart.usuario_id;
+      }
+    }
+
     const gestorId = String(formData.get("gestor_participante_id") ?? "") || null;
 
     try {
@@ -307,7 +322,7 @@ export async function updateParticipanteAction(formData: FormData): Promise<{ ok
           whatsapp: input.whatsapp,
           cargo: String(formData.get("cargo") ?? "") || null,
           status: input.status,
-          usuario_id: input.usuarioId,
+          usuario_id: finalUsuarioId,
           gestor_participante_id: gestorId,
           observacoes: String(formData.get("observacoes") ?? "") || null,
           modulos_permitidos: modulosPermitidos,
@@ -328,7 +343,7 @@ export async function updateParticipanteAction(formData: FormData): Promise<{ ok
           telefone: input.telefone,
           whatsapp: input.whatsapp,
           status: input.status,
-          usuario_id: input.usuarioId,
+          usuario_id: finalUsuarioId,
           gestor_participante_id: gestorId,
           updated_at: new Date().toISOString(),
         })
