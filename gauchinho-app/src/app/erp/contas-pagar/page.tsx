@@ -8,7 +8,14 @@ export default async function ContasPagarPage() {
   const db = createAdminClient();
   const empresaId = empresaAtiva.id;
   const vinculoAtivo = vinculosContexto?.find((vinculo) => vinculo.empresa_id === empresaId);
-  const master = usuario?.perfil === "master" && vinculoAtivo?.papel?.codigo === "admin_empresa";
+  const isMaster = Boolean(
+    usuario?.perfil === "master" ||
+      vinculoAtivo?.papel?.codigo === "admin_empresa"
+  );
+  const podeEstornar = Boolean(
+    isMaster || (vinculoAtivo as { pode_estornar_contas?: boolean })?.pode_estornar_contas
+  );
+
   const [contas, bancos, centros, vinculos, caixa, logs] = await Promise.all([
     db
       .from("financeiro_contas_pagar")
@@ -16,23 +23,21 @@ export default async function ContasPagarPage() {
       .eq("empresa_id", empresaId)
       .neq("status", "cancelada")
       .order("vencimento", { ascending: true })
-      .limit(500),
+      .limit(1000),
     db.from("financeiro_contas_bancarias").select("*").eq("empresa_id", empresaId).eq("ativo", true),
     db.from("financeiro_centros_custo").select("*").eq("empresa_id", empresaId).eq("ativo", true),
     db
       .from("empresa_usuarios")
-      .select("socio_pagador,usuario:usuarios!empresa_usuarios_usuario_id_fkey(id,nome,email)")
+      .select("socio_pagador,pode_estornar_contas,usuario:usuarios!empresa_usuarios_usuario_id_fkey(id,nome,email)")
       .eq("empresa_id", empresaId)
       .eq("ativo", true),
     db.from("caixa_movimentos").select("id,tipo_movimento,valor,data_movimento,descricao").eq("empresa_id", empresaId),
-    master
-      ? db
-          .from("financeiro_contas_pagar_logs")
-          .select("*,usuario:usuarios!financeiro_contas_pagar_logs_usuario_id_fkey(nome,email)")
-          .eq("empresa_id", empresaId)
-          .order("created_at", { ascending: false })
-          .limit(300)
-      : Promise.resolve({ data: [] }),
+    db
+      .from("financeiro_contas_pagar_logs")
+      .select("*,usuario:usuarios!financeiro_contas_pagar_logs_usuario_id_fkey(nome,email)")
+      .eq("empresa_id", empresaId)
+      .order("created_at", { ascending: false })
+      .limit(500),
   ]);
   if (vinculos.error) throw new Error(vinculos.error.message);
   const usuarios = (vinculos.data ?? []).flatMap((vinculo) => {
@@ -47,7 +52,8 @@ export default async function ContasPagarPage() {
       socios={usuarios.filter((usuario) => usuario.socioPagador)}
       caixa={(caixa.data ?? []) as never[]}
       logs={(logs.data ?? []) as never[]}
-      master={Boolean(master)}
+      master={isMaster}
+      podeEstornar={podeEstornar}
     />
   );
 }

@@ -359,10 +359,18 @@ A plataforma suporta:
   - Encerramento auditado com preservação de dados e histórico (`rpc_platform_encerrar_override`).
   - Relatório: `docs/relatorios-fases/fase-095-platform-overrides-gestao-operacional.md`.
 
-* O estado funcional do Supabase Production inclui migrations `001–095`.
+* ERP Contas a Pagar — Governança, Autorização de Estorno, Exclusão Master e Log de Utilização (Migration 101):
+  - Edição de contas a pagar abertas e dados cadastrais de contas pagas preservando fatos contábeis.
+  - Exclusão de contas a pagar em aberto com motivo obrigatório (mín. 3 caracteres) por operadores; exclusão de contas pagas restrita exclusivamente a usuários Master com reversão contábil do caixa.
+  - Estorno de contas pagas para usuários Master e consultores/usuários autorizados via flag `pode_estornar_contas` na tabela `empresa_usuarios`, configurável na tela de gestão de Usuários/Consultores.
+  - Aba e painel de "Log de utilização (Auditoria)" para todos os operadores da empresa, com busca textual, filtros por ação (`CRIACAO`, `ALTERACAO`, `BAIXA`, `ESTORNO`, `EXCLUSAO`), datas e detalhamento de motivos e campos alterados.
+  - Relatório: `docs/relatorios-fases/ERP-FINANCEIRO-GOVERNANCA-CONTAS.md`.
+
+* O estado funcional do Supabase Production inclui migrations `001–101`.
 * `admin.gauchinhoconsorcios.com.br` está ativo, verificado e associado ao deployment Production da `main`; ele não é tenant e não possui fallback para Gauchinho.
-* As migrations `070–095` estão versionadas e aplicadas em Produção; correções futuras permanecem obrigatoriamente forward-only.
-* Evidências consolidadas: `docs/relatorios-fases/PLATFORM-GRUPOS-CATALOGO-085.md`, `docs/relatorios-fases/PLATFORM-GRUPOS-TEMPORAL-HERANCA-086.md`, `docs/relatorios-fases/PLATFORM-PROGRAMAS-REGRAS-EDITOR-087.md`, `docs/relatorios-fases/fase-088-platform-templates-dominios-onboarding.md`, `docs/relatorios-fases/fase-089-platform-planos-assinaturas-limits.md`, `docs/relatorios-fases/fase-091-platform-template-racon-inspired-v2.md`, `docs/relatorios-fases/fase-092-platform-planos-quotas-overrides.md`, `docs/relatorios-fases/fase-093-platform-master-franquias-hub.md`, `docs/relatorios-fases/fase-094-platform-usuarios-governanca.md` e `docs/relatorios-fases/fase-095-platform-overrides-gestao-operacional.md`.
+* As migrations `070–101` estão versionadas e aplicadas em Produção; correções futuras permanecem obrigatoriamente forward-only.
+* Evidências consolidadas: `docs/relatorios-fases/PLATFORM-GRUPOS-CATALOGO-085.md`, `docs/relatorios-fases/PLATFORM-GRUPOS-TEMPORAL-HERANCA-086.md`, `docs/relatorios-fases/PLATFORM-PROGRAMAS-REGRAS-EDITOR-087.md`, `docs/relatorios-fases/fase-088-platform-templates-dominios-onboarding.md`, `docs/relatorios-fases/fase-089-platform-planos-assinaturas-limits.md`, `docs/relatorios-fases/fase-091-platform-template-racon-inspired-v2.md`, `docs/relatorios-fases/fase-092-platform-planos-quotas-overrides.md`, `docs/relatorios-fases/fase-093-platform-master-franquias-hub.md`, `docs/relatorios-fases/fase-094-platform-usuarios-governanca.md`, `docs/relatorios-fases/fase-095-platform-overrides-gestao-operacional.md` e `docs/relatorios-fases/ERP-FINANCEIRO-GOVERNANCA-CONTAS.md`.
+
 
 
 

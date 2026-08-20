@@ -95,7 +95,7 @@ export async function fetchParticipantesList(filters?: {
   }
 }
 
-export async function createParticipanteAction(formData: FormData): Promise<{ ok: boolean; error?: string }> {
+export async function createParticipanteAction(formData: FormData): Promise<{ ok: boolean; success: boolean; error?: string }> {
   try {
     const empresaId = String(formData.get("empresa_id") || (await resolveEmpresaIdPadrao()));
     await assertAdminAccess(empresaId);
@@ -125,7 +125,7 @@ export async function createParticipanteAction(formData: FormData): Promise<{ ok
     };
 
     const validated = validateParticipanteCreateInput(input);
-    if (!validated.ok) return { ok: false, error: validated.error };
+    if (!validated.ok) return { ok: false, success: false, error: validated.error };
 
     const supabase = await createClient();
 
@@ -145,7 +145,7 @@ export async function createParticipanteAction(formData: FormData): Promise<{ ok
           usuarioId: e.usuario_id!,
         })),
       });
-      if (!linkCheck.ok) return { ok: false, error: linkCheck.error };
+      if (!linkCheck.ok) return { ok: false, success: false, error: linkCheck.error };
     }
 
     const gestorId = String(formData.get("gestor_participante_id") ?? "") || null;
@@ -159,7 +159,7 @@ export async function createParticipanteAction(formData: FormData): Promise<{ ok
         participanteEmpresaId: empresaId,
         gestorEmpresaId: gestor?.empresa_id,
       });
-      if (!gCheck.ok) return { ok: false, error: gCheck.error };
+      if (!gCheck.ok) return { ok: false, success: false, error: gCheck.error };
     }
 
     let createdId: string | null = null;
@@ -206,7 +206,7 @@ export async function createParticipanteAction(formData: FormData): Promise<{ ok
         .select("id")
         .single();
 
-      if (fallbackError) return { ok: false, error: fallbackError.message };
+      if (fallbackError) return { ok: false, success: false, error: fallbackError.message };
       createdId = createdFallback.id;
     }
 
@@ -251,19 +251,19 @@ export async function createParticipanteAction(formData: FormData): Promise<{ ok
 
     revalidatePath("/admin/participantes");
     revalidatePath("/erp/consultores");
-    return { ok: true };
+    return { ok: true, success: true };
   } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message : "Erro ao criar participante." };
+    return { ok: false, success: false, error: err instanceof Error ? err.message : "Erro ao criar participante." };
   }
 }
 
-export async function updateParticipanteAction(formData: FormData): Promise<{ ok: boolean; error?: string }> {
+export async function updateParticipanteAction(formData: FormData): Promise<{ ok: boolean; success: boolean; error?: string }> {
   try {
     const empresaId = String(formData.get("empresa_id") || (await resolveEmpresaIdPadrao()));
     await assertAdminAccess(empresaId);
 
     const id = String(formData.get("id") ?? "");
-    if (!id) return { ok: false, error: "ID do participante obrigatório." };
+    if (!id) return { ok: false, success: false, error: "ID do participante obrigatório." };
 
     const tipos = formData.getAll("tipos").map(String);
     const modulosArray = formData.getAll("modulos_permitidos").map(String);
@@ -290,7 +290,7 @@ export async function updateParticipanteAction(formData: FormData): Promise<{ ok
     };
 
     const validated = validateParticipanteCreateInput(input);
-    if (!validated.ok) return { ok: false, error: validated.error };
+    if (!validated.ok) return { ok: false, success: false, error: validated.error };
 
     const supabase = await createClient();
     const gestorId = String(formData.get("gestor_participante_id") ?? "") || null;
@@ -335,7 +335,7 @@ export async function updateParticipanteAction(formData: FormData): Promise<{ ok
         .eq("id", id)
         .eq("empresa_id", empresaId);
 
-      if (fallbackErr) return { ok: false, error: fallbackErr.message };
+      if (fallbackErr) return { ok: false, success: false, error: fallbackErr.message };
     }
 
     if (tipos.length) {
@@ -378,137 +378,154 @@ export async function updateParticipanteAction(formData: FormData): Promise<{ ok
 
     revalidatePath("/admin/participantes");
     revalidatePath("/erp/consultores");
-    return { ok: true };
+    return { ok: true, success: true };
   } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message : "Erro ao atualizar participante." };
+    return { ok: false, success: false, error: err instanceof Error ? err.message : "Erro ao atualizar participante." };
   }
 }
 
-export async function deleteParticipanteAction(formData: FormData) {
-  const empresaId = String(formData.get("empresa_id") || (await resolveEmpresaIdPadrao()));
-  await assertAdminAccess(empresaId);
-  const id = String(formData.get("id") ?? "");
-  if (!id) throw new Error("ID obrigatório para exclusão.");
 
-  const deps = await verificarDependenciasParticipanteAction(id);
-  if (!deps.pode_excluir) {
-    throw new Error(
-      `Não é possível excluir o participante: possui histórico vinculado (${deps.motivos.join(", ")}). Recomenda-se inativar o cadastro.`
-    );
+export async function deleteParticipanteAction(formData: FormData): Promise<{ success: boolean; error?: string }> {
+  try {
+    const empresaId = String(formData.get("empresa_id") || (await resolveEmpresaIdPadrao()));
+    await assertAdminAccess(empresaId);
+    const id = String(formData.get("id") ?? "");
+    if (!id) return { success: false, error: "ID obrigatório para exclusão." };
+
+    const deps = await verificarDependenciasParticipanteAction(id);
+    if (!deps.pode_excluir) {
+      return {
+        success: false,
+        error: `Não é possível excluir o participante: possui histórico vinculado (${deps.motivos.join(", ")}). Recomenda-se inativar o cadastro.`,
+      };
+    }
+
+    const supabase = await createClient();
+    await supabase.from("participante_tipos").delete().eq("participante_id", id).eq("empresa_id", empresaId);
+    await supabase.from("participante_organizacoes").delete().eq("participante_id", id).eq("empresa_id", empresaId);
+    const { error } = await supabase
+      .from("participantes_comerciais")
+      .delete()
+      .eq("id", id)
+      .eq("empresa_id", empresaId);
+
+    if (error) return { success: false, error: error.message };
+
+    revalidatePath("/admin/participantes");
+    revalidatePath("/erp/consultores");
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : "Erro ao excluir participante." };
   }
-
-  const supabase = await createClient();
-  await supabase.from("participante_tipos").delete().eq("participante_id", id).eq("empresa_id", empresaId);
-  await supabase.from("participante_organizacoes").delete().eq("participante_id", id).eq("empresa_id", empresaId);
-  const { error } = await supabase
-    .from("participantes_comerciais")
-    .delete()
-    .eq("id", id)
-    .eq("empresa_id", empresaId);
-
-  if (error) throw new Error(error.message);
-
-  revalidatePath("/admin/participantes");
-  revalidatePath("/erp/consultores");
 }
 
-export async function updateParticipanteStatusAction(formData: FormData) {
-  const empresaId = String(formData.get("empresa_id") || (await resolveEmpresaIdPadrao()));
-  await assertAdminAccess(empresaId);
-  const id = String(formData.get("id") ?? "");
-  const status = String(formData.get("status") ?? "");
-  if (!id) throw new Error("ID obrigatório.");
+export async function updateParticipanteStatusAction(formData: FormData): Promise<{ success: boolean; error?: string }> {
+  try {
+    const empresaId = String(formData.get("empresa_id") || (await resolveEmpresaIdPadrao()));
+    await assertAdminAccess(empresaId);
+    const id = String(formData.get("id") ?? "");
+    const status = String(formData.get("status") ?? "");
+    if (!id) return { success: false, error: "ID obrigatório." };
 
-  const supabase = await createClient();
-  const { error } = await supabase
-    .from("participantes_comerciais")
-    .update({ status, updated_at: new Date().toISOString() })
-    .eq("id", id)
-    .eq("empresa_id", empresaId);
-  if (error) throw new Error(error.message);
+    const supabase = await createClient();
+    const { error } = await supabase
+      .from("participantes_comerciais")
+      .update({ status, updated_at: new Date().toISOString() })
+      .eq("id", id)
+      .eq("empresa_id", empresaId);
+    if (error) return { success: false, error: error.message };
 
-  const acaoMap: Record<string, string> = {
-    ATIVO: "ATIVAR",
-    INATIVO: "INATIVAR",
-    SUSPENSO: "SUSPENDER",
-    DESLIGADO: "DESLIGAR",
-  };
-  await supabase.from("participante_auditoria").insert({
-    participante_id: id,
-    empresa_id: empresaId,
-    acao: acaoMap[status] ?? "ATUALIZAR",
-    motivo: String(formData.get("motivo") ?? "") || null,
-  });
-
-  revalidatePath("/admin/participantes");
-  revalidatePath("/erp/consultores");
-}
-
-export async function vincularParticipanteOrganizacaoAction(formData: FormData) {
-  const empresaId = String(formData.get("empresa_id") || (await resolveEmpresaIdPadrao()));
-  await assertAdminAccess(empresaId);
-
-  const participanteId = String(formData.get("participante_id") ?? "");
-  const organizacaoId = String(formData.get("organizacao_parceira_id") ?? "");
-  const responsavelPrincipal = formData.get("responsavel_principal") === "on";
-  const principal = formData.get("principal") === "on";
-
-  const supabase = await createClient();
-  const [{ data: part }, { data: org }] = await Promise.all([
-    supabase.from("participantes_comerciais").select("empresa_id").eq("id", participanteId).maybeSingle(),
-    supabase.from("organizacoes_parceiras").select("empresa_id").eq("id", organizacaoId).maybeSingle(),
-  ]);
-
-  const same = validateVinculoParticipanteOrganizacao({
-    participanteEmpresaId: part?.empresa_id ?? "",
-    organizacaoEmpresaId: org?.empresa_id ?? "",
-  });
-  if (!same.ok) throw new Error(same.error);
-
-  if (responsavelPrincipal) {
-    const { data: existing } = await supabase
-      .from("participante_organizacoes")
-      .select("id, organizacao_parceira_id, ativo")
-      .eq("organizacao_parceira_id", organizacaoId)
-      .eq("responsavel_principal", true)
-      .eq("ativo", true);
-    const check = validateResponsavelPrincipalUnico({
-      organizacaoId,
-      settingPrincipal: true,
-      ativo: true,
-      existingPrincipals: (existing ?? []).map((e) => ({
-        id: e.id,
-        organizacaoId: e.organizacao_parceira_id,
-        ativo: e.ativo,
-      })),
-    });
-    if (!check.ok) throw new Error(check.error);
-  }
-
-  const { error } = await supabase.from("participante_organizacoes").upsert(
-    {
+    const acaoMap: Record<string, string> = {
+      ATIVO: "ATIVAR",
+      INATIVO: "INATIVAR",
+      SUSPENSO: "SUSPENDER",
+      DESLIGADO: "DESLIGAR",
+    };
+    await supabase.from("participante_auditoria").insert({
+      participante_id: id,
       empresa_id: empresaId,
+      acao: acaoMap[status] ?? "ATUALIZAR",
+      motivo: String(formData.get("motivo") ?? "") || null,
+    });
+
+    revalidatePath("/admin/participantes");
+    revalidatePath("/erp/consultores");
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : "Erro ao atualizar status do participante." };
+  }
+}
+
+export async function vincularParticipanteOrganizacaoAction(formData: FormData): Promise<{ success: boolean; error?: string }> {
+  try {
+    const empresaId = String(formData.get("empresa_id") || (await resolveEmpresaIdPadrao()));
+    await assertAdminAccess(empresaId);
+
+    const participanteId = String(formData.get("participante_id") ?? "");
+    const organizacaoId = String(formData.get("organizacao_parceira_id") ?? "");
+    const responsavelPrincipal = formData.get("responsavel_principal") === "on";
+    const principal = formData.get("principal") === "on";
+
+    const supabase = await createClient();
+    const [{ data: part }, { data: org }] = await Promise.all([
+      supabase.from("participantes_comerciais").select("empresa_id").eq("id", participanteId).maybeSingle(),
+      supabase.from("organizacoes_parceiras").select("empresa_id").eq("id", organizacaoId).maybeSingle(),
+    ]);
+
+    const same = validateVinculoParticipanteOrganizacao({
+      participanteEmpresaId: part?.empresa_id ?? "",
+      organizacaoEmpresaId: org?.empresa_id ?? "",
+    });
+    if (!same.ok) return { success: false, error: same.error };
+
+    if (responsavelPrincipal) {
+      const { data: existing } = await supabase
+        .from("participante_organizacoes")
+        .select("id, organizacao_parceira_id, ativo")
+        .eq("organizacao_parceira_id", organizacaoId)
+        .eq("responsavel_principal", true)
+        .eq("ativo", true);
+      const check = validateResponsavelPrincipalUnico({
+        organizacaoId,
+        settingPrincipal: true,
+        ativo: true,
+        existingPrincipals: (existing ?? []).map((e) => ({
+          id: e.id,
+          organizacaoId: e.organizacao_parceira_id,
+          ativo: e.ativo,
+        })),
+      });
+      if (!check.ok) return { success: false, error: check.error };
+    }
+
+    const { error } = await supabase.from("participante_organizacoes").upsert(
+      {
+        empresa_id: empresaId,
+        participante_id: participanteId,
+        organizacao_parceira_id: organizacaoId,
+        funcao: String(formData.get("funcao") ?? "") || null,
+        principal,
+        responsavel_principal: responsavelPrincipal,
+        ativo: true,
+      },
+      { onConflict: "participante_id,organizacao_parceira_id" }
+    );
+    if (error) return { success: false, error: error.message };
+
+    await supabase.from("participante_auditoria").insert({
       participante_id: participanteId,
-      organizacao_parceira_id: organizacaoId,
-      funcao: String(formData.get("funcao") ?? "") || null,
-      principal,
-      responsavel_principal: responsavelPrincipal,
-      ativo: true,
-    },
-    { onConflict: "participante_id,organizacao_parceira_id" }
-  );
-  if (error) throw new Error(error.message);
+      empresa_id: empresaId,
+      acao: "VINCULAR_ORGANIZACAO",
+      payload: { organizacao_parceira_id: organizacaoId },
+    });
 
-  await supabase.from("participante_auditoria").insert({
-    participante_id: participanteId,
-    empresa_id: empresaId,
-    acao: "VINCULAR_ORGANIZACAO",
-    payload: { organizacao_parceira_id: organizacaoId },
-  });
-
-  revalidatePath("/admin/participantes");
-  revalidatePath("/admin/organizacoes-parceiras");
-  revalidatePath("/erp/consultores");
+    revalidatePath("/admin/participantes");
+    revalidatePath("/admin/organizacoes-parceiras");
+    revalidatePath("/erp/consultores");
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : "Erro ao vincular organização." };
+  }
 }
 
 export async function canAccessParticipantesAdmin(): Promise<boolean> {

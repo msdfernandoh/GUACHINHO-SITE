@@ -380,7 +380,7 @@ export function ParticipantesManagerView({
                 try {
                   const fd = new FormData(e.currentTarget);
                   const res = await updateParticipanteAction(fd);
-                  if (res && !res.ok) {
+                  if (res && !((res as { ok?: boolean; success?: boolean }).ok ?? (res as { ok?: boolean; success?: boolean }).success)) {
                     setEditError(res.error || "Erro ao salvar alterações.");
                     return;
                   }

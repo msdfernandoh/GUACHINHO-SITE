@@ -22,6 +22,7 @@ type Props = {
   googleConnected: boolean;
   menuKeysAtivos: AdminMenuKey[];
   socioPagador: boolean;
+  podeEstornarContas?: boolean;
   erpMenuIdsAtivos: ErpAccessId[];
   erpMenuOptions: Array<{ id: ErpAccessId; label: string }>;
   updateAction: (formData: FormData) => Promise<void>;
@@ -40,6 +41,7 @@ export function UsuarioEdicaoForm({
   googleConnected,
   menuKeysAtivos,
   socioPagador,
+  podeEstornarContas = false,
   erpMenuIdsAtivos,
   erpMenuOptions,
   updateAction,
@@ -76,6 +78,10 @@ export function UsuarioEdicaoForm({
         <label className="flex items-start gap-2 text-xs">
           <input type="checkbox" name="socio_pagador" defaultChecked={socioPagador} className="mt-0.5" />
           Sócio pagador (aparece na seleção de contas pagas pessoalmente)
+        </label>
+        <label className="flex items-start gap-2 text-xs">
+          <input type="checkbox" name="pode_estornar_contas" defaultChecked={podeEstornarContas} className="mt-0.5" />
+          Autorizado a estornar contas pagas no ERP
         </label>
         <div>
           <Label className="text-xs">E-mail (login)</Label>

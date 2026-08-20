@@ -53,7 +53,10 @@ export function validateParticipanteCreateInput(input: {
   }
   const tel = input.telefone?.trim();
   const wa = input.whatsapp?.trim();
-  if (!tel && !wa) return { ok: false, error: "Informe telefone ou WhatsApp." };
+  const email = input.email?.trim();
+  if (!tel && !wa && !email && !input.usuarioId) {
+    return { ok: false, error: "Informe ao menos um meio de contato (WhatsApp, telefone ou e-mail)." };
+  }
   if (input.cpf) {
     if (!normalizeCpf(input.cpf)) return { ok: false, error: "CPF inválido." };
   }

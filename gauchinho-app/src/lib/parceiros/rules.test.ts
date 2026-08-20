@@ -30,6 +30,38 @@ describe("participantes — regras", () => {
     expect(r.ok).toBe(true);
   });
 
+  it("aceita participante apenas com email", () => {
+    const r = validateParticipanteCreateInput({
+      empresaId: "e1",
+      nome: "Tayna Pires",
+      tipos: ["SDR"],
+      status: "ATIVO",
+      email: "tayna@msdeducacao.com.br",
+    });
+    expect(r.ok).toBe(true);
+  });
+
+  it("aceita participante apenas com usuarioId vinculado", () => {
+    const r = validateParticipanteCreateInput({
+      empresaId: "e1",
+      nome: "Carlos",
+      tipos: ["CONSULTOR"],
+      status: "ATIVO",
+      usuarioId: "u-123",
+    });
+    expect(r.ok).toBe(true);
+  });
+
+  it("rejeita participante sem nenhum meio de contato e sem usuarioId", () => {
+    const r = validateParticipanteCreateInput({
+      empresaId: "e1",
+      nome: "Sem Contato",
+      tipos: ["CONSULTOR"],
+      status: "ATIVO",
+    });
+    expect(r.ok).toBe(false);
+  });
+
   it("aceita múltiplos tipos", () => {
     const r = validateParticipanteCreateInput({
       empresaId: "e1",

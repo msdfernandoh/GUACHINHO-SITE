@@ -116,6 +116,10 @@ export default async function UsuariosPage({
           <input type="checkbox" name="socio_pagador" />
           Sócio pagador (pode ser indicado em contas pagas pessoalmente)
         </label>
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" name="pode_estornar_contas" />
+          Autorizado a estornar contas pagas no ERP
+        </label>
         <p className="text-xs text-zinc-500">
           Após criar, o usuário Gmail deve abrir Admin → Agenda e clicar em &quot;Conectar Google Agenda&quot;.
         </p>
@@ -194,6 +198,7 @@ export default async function UsuariosPage({
               const adminMenusRaw = (u as { admin_menus?: AdminMenuKey[] | null }).admin_menus;
               const menuKeysAtivos = resolveAdminMenus(u.perfil, adminMenusRaw);
               const socioPagador = Boolean((u as { socio_pagador?: boolean }).socio_pagador);
+              const podeEstornarContas = Boolean((u as { pode_estornar_contas?: boolean }).pode_estornar_contas);
               const erpMenusRaw = (u as { erp_modulos_visiveis?: ErpAccessId[] | null }).erp_modulos_visiveis;
               const erpMenuIdsAtivos = resolveErpUserAccess(erpConfig, erpMenusRaw);
               return (
@@ -216,6 +221,7 @@ export default async function UsuariosPage({
                         googleConnected={googleConnected}
                         menuKeysAtivos={menuKeysAtivos}
                         socioPagador={socioPagador}
+                        podeEstornarContas={podeEstornarContas}
                         erpMenuIdsAtivos={erpMenuIdsAtivos}
                         erpMenuOptions={erpMenuOptions}
                         updateAction={updateUsuarioEdicaoAction}

@@ -21,4 +21,5 @@ Thumbs.db
 # Supabase CLI/runtime scratch data (may contain local credentials and bypass tokens)
 supabase/.temp/
 .npm-cache/
+.codex-worktrees/
 

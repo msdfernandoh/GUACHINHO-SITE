@@ -24,13 +24,22 @@ export async function fetchUsuarios() {
   const usuarioSelect = "usuario:usuarios!empresa_usuarios_usuario_id_fkey(id,auth_user_id,nome,email,telefone,perfil,ativo,is_consultor,leads_apenas_proprios,agenda_acesso_todos,google_agenda_sync,google_calendar_connected_at,google_calendar_email,admin_menus,created_at)";
   const extended = await admin
     .from("empresa_usuarios")
-    .select(`socio_pagador,erp_modulos_visiveis,${usuarioSelect}`)
+    .select(`socio_pagador,pode_estornar_contas,erp_modulos_visiveis,${usuarioSelect}`)
     .eq("empresa_id", empresaAtiva.id)
     .eq("ativo", true);
   if (!extended.error) {
     return (extended.data ?? []).flatMap((link) => {
       const usuario = Array.isArray(link.usuario) ? link.usuario[0] : link.usuario;
-      return usuario ? [{ ...usuario, socio_pagador: Boolean(link.socio_pagador), erp_modulos_visiveis: link.erp_modulos_visiveis }] : [];
+      return usuario
+        ? [
+            {
+              ...usuario,
+              socio_pagador: Boolean(link.socio_pagador),
+              pode_estornar_contas: Boolean((link as { pode_estornar_contas?: boolean }).pode_estornar_contas),
+              erp_modulos_visiveis: link.erp_modulos_visiveis,
+            },
+          ]
+        : [];
     }).sort((a, b) => String(a.nome).localeCompare(String(b.nome), "pt-BR"));
   }
   if (!isMissingErpUserLinkColumns(extended.error)) throw new Error(extended.error.message);
@@ -43,7 +52,7 @@ export async function fetchUsuarios() {
   if (legacy.error) throw new Error(legacy.error.message);
   return (legacy.data ?? []).flatMap((link) => {
     const usuario = Array.isArray(link.usuario) ? link.usuario[0] : link.usuario;
-    return usuario ? [{ ...usuario, socio_pagador: false, erp_modulos_visiveis: null }] : [];
+    return usuario ? [{ ...usuario, socio_pagador: false, pode_estornar_contas: false, erp_modulos_visiveis: null }] : [];
   }).sort((a, b) => String(a.nome).localeCompare(String(b.nome), "pt-BR"));
 }
 
@@ -65,6 +74,7 @@ export async function createUsuarioAction(formData: FormData) {
   const menuKeys = formData.getAll("admin_menu").map((v) => String(v).trim()) as AdminMenuKey[];
   const adminMenus = menuKeys.length ? menuKeys : null;
   const socioPagador = formData.get("socio_pagador") === "on";
+  const podeEstornarContas = formData.get("pode_estornar_contas") === "on";
   const erpMenus = normalizeErpAccessIds(formData.getAll("erp_menu").map(String)) ?? [];
   const { empresaAtiva } = await getCurrentTenantContext();
   if (!empresaAtiva) throw new Error("Empresa ativa não encontrada");
@@ -150,6 +160,7 @@ export async function createUsuarioAction(formData: FormData) {
   const { error: vinculoErr } = await admin.from("empresa_usuarios").insert({
     ...vinculoBase,
     socio_pagador: socioPagador,
+    pode_estornar_contas: podeEstornarContas,
     erp_modulos_visiveis: erpMenus,
   });
   if (vinculoErr) {
@@ -210,6 +221,7 @@ export async function updateUsuarioEdicaoAction(formData: FormData) {
   const menuKeys = formData.getAll("admin_menu").map((v) => String(v).trim()) as AdminMenuKey[];
   const adminMenus = menuKeys.length ? menuKeys : null;
   const socioPagador = formData.get("socio_pagador") === "on";
+  const podeEstornarContas = formData.get("pode_estornar_contas") === "on";
   const erpMenus = normalizeErpAccessIds(formData.getAll("erp_menu").map(String)) ?? [];
 
   const admin = createAdminClient();
@@ -289,7 +301,7 @@ export async function updateUsuarioEdicaoAction(formData: FormData) {
   if (!empresaAtiva) redirectUsuarios("generico");
   const { error: vinculoErr } = await admin
     .from("empresa_usuarios")
-    .update({ socio_pagador: socioPagador, erp_modulos_visiveis: erpMenus })
+    .update({ socio_pagador: socioPagador, pode_estornar_contas: podeEstornarContas, erp_modulos_visiveis: erpMenus })
     .eq("empresa_id", empresaAtiva.id)
     .eq("usuario_id", id)
     .eq("ativo", true);
