@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { getCurrentTenantContext } from "@/lib/tenant/context";
 import { erpModuleEnabled, getErpSistemaConfig } from "@/lib/erp/erp-modulos";
 import { erpOperationalRouteEnabled } from "@/lib/erp/erp-operational";
-import Leads from "@/app/admin/leads/page";
+import Leads from "@/app/erp/leads/page";
 import Propostas from "@/app/admin/propostas/page";
 import Contratacoes from "@/app/admin/contratacoes/page";
 import Vendas from "@/app/admin/vendas/page";
