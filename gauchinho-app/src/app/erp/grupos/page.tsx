@@ -102,7 +102,7 @@ export default async function ErpGruposPage({
               const cotasAtivas = ((g.cotas ?? []) as any[]).filter(
                 (c) => c.ativo && !["Inativo", "Esgotado"].includes(c.status)
               );
-              const isPronto = g.tipo && g.modalidade_comissao && cotasAtivas.length > 0;
+              const isPronto = cotasAtivas.length > 0 && g.ativo !== false && g.status !== "Inativo";
 
               return (
                 <tr key={g.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40">
@@ -118,7 +118,7 @@ export default async function ErpGruposPage({
                     </span>
                   </td>
                   <td className="p-3 text-slate-600 dark:text-slate-400 font-medium">
-                    {(g.modalidade_comissao as unknown as { nome?: string })?.nome ?? "Padrão"}
+                    {(g.modalidade_comissao as unknown as { nome?: string })?.nome ?? "Todas Habilitadas (Integral / Reduzida)"}
                   </td>
                   <td className="p-3 text-center font-mono font-semibold">
                     {g.prazo_total ? `${g.prazo_total}m` : "—"}
@@ -150,7 +150,7 @@ export default async function ErpGruposPage({
                           : "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300"
                       }`}
                     >
-                      {isPronto ? "Disponível para Venda" : "Configuração Pendente"}
+                      {isPronto ? "Disponível para Venda" : "Aguardando Cotas"}
                     </span>
                   </td>
                   <td className="p-3 text-center whitespace-nowrap">
