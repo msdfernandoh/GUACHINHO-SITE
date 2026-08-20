@@ -21,10 +21,12 @@ export default async function GrupoErpPage({
     .maybeSingle();
   if (!g) notFound();
   if (
-    g.origem_governanca !== "GLOBAL" &&
+    g.origem_governanca === "LOCAL" &&
+    g.empresa_origem_id &&
     g.empresa_origem_id !== empresaAtiva?.id
-  )
+  ) {
     notFound();
+  }
   const { data: grants } = await db
     .from("empresa_administradoras")
     .select("administradora:administradoras(id,nome)")
@@ -55,14 +57,22 @@ export default async function GrupoErpPage({
       <Link href="/erp/grupos" className="font-semibold text-blue-700">
         ← Grupos
       </Link>
-      <header>
-        <h1 className="text-3xl font-bold">Grupo {g.codigo_grupo}</h1>
-        <p className="text-slate-500">
-          {g.origem_governanca === "GLOBAL"
-            ? "Catálogo oficial da Platform"
-            : "Configuração local da empresa"}
-        </p>
-      </header>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="text-3xl font-bold">Grupo {g.codigo_grupo}</h1>
+          <p className="text-slate-500">
+            {g.origem_governanca === "GLOBAL" || !g.origem_governanca
+              ? "Catálogo oficial da Platform (SaaS)"
+              : "Configuração local da empresa"}
+          </p>
+        </div>
+        <Link
+          href={`/platform/grupos/${g.id}`}
+          className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-xs font-bold text-slate-700 shadow-sm hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+        >
+          ⚙️ Abrir no Editor da Platform
+        </Link>
+      </div>
       <GroupCatalogForm
         action={salvarGrupoLocalAction}
         administradoras={admins}

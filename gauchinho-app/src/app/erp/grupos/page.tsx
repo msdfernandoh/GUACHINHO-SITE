@@ -134,12 +134,12 @@ export default async function ErpGruposPage({
                   <td className="p-3 text-center">
                     <span
                       className={`inline-block rounded px-2 py-0.5 text-[10px] font-extrabold uppercase ${
-                        g.origem_governanca === "GLOBAL"
-                          ? "bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300"
-                          : "bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-300"
+                        g.origem_governanca === "LOCAL"
+                          ? "bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-300"
+                          : "bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300"
                       }`}
                     >
-                      {g.origem_governanca || "GLOBAL"}
+                      {g.origem_governanca === "LOCAL" ? "LOCAL" : "GLOBAL (SaaS)"}
                     </span>
                   </td>
                   <td className="p-3 text-center">
@@ -158,7 +158,7 @@ export default async function ErpGruposPage({
                       className="rounded-lg bg-slate-900 px-3 py-1 text-xs font-bold text-white hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-900"
                       href={`/erp/grupos/${g.id}`}
                     >
-                      {g.origem_governanca === "GLOBAL" ? "Visualizar" : "Editar"}
+                      {g.origem_governanca === "LOCAL" ? "Editar" : "Ver Detalhes"}
                     </Link>
                   </td>
                 </tr>
