@@ -1,7 +1,85 @@
 -- 109: Autonomia total para edição e exclusão de Programas e Regras de Comissão da Administradora no SaaS
 BEGIN;
 
--- 1. RPC para salvar dados básicos de um programa em qualquer status
+-- 1. CORREÇÃO DO TRIGGER DE INTEGRIDADE DE COMISSÃO (Permitir programa_id IS NULL e suportar programas SaaS)
+CREATE OR REPLACE FUNCTION public.validate_comissao_tenant_integrity()
+RETURNS trigger
+LANGUAGE plpgsql
+SET search_path = pg_catalog
+AS $$
+BEGIN
+  IF TG_TABLE_NAME = 'comissao_regras_franquia' THEN
+    IF NEW.programa_id IS NOT NULL AND NOT EXISTS (
+      SELECT 1 FROM public.comissao_programas x
+      WHERE x.id = NEW.programa_id AND (x.empresa_id = NEW.empresa_id OR x.administradora_id IS NOT NULL)
+    ) THEN
+      RAISE EXCEPTION 'programa não pertence ao tenant da regra de franquia';
+    END IF;
+  ELSIF TG_TABLE_NAME = 'comissao_regras_participantes' THEN
+    IF NEW.programa_id IS NOT NULL AND NOT EXISTS (
+      SELECT 1 FROM public.comissao_programas x
+      WHERE x.id = NEW.programa_id AND (x.empresa_id = NEW.empresa_id OR x.administradora_id IS NOT NULL)
+    ) THEN
+      RAISE EXCEPTION 'programa não pertence ao tenant da regra de participante';
+    END IF;
+    IF NEW.participante_comercial_id IS NOT NULL AND NOT EXISTS (
+      SELECT 1 FROM public.participantes_comerciais x WHERE x.id = NEW.participante_comercial_id AND x.empresa_id = NEW.empresa_id
+    ) THEN
+      RAISE EXCEPTION 'participante não pertence ao tenant da regra';
+    END IF;
+    IF NEW.organizacao_parceira_id IS NOT NULL AND NOT EXISTS (
+      SELECT 1 FROM public.organizacoes_parceiras x WHERE x.id = NEW.organizacao_parceira_id AND x.empresa_id = NEW.empresa_id
+    ) THEN
+      RAISE EXCEPTION 'organização parceira não pertence ao tenant da regra';
+    END IF;
+  ELSIF TG_TABLE_NAME = 'comissao_previsoes_franquia' THEN
+    IF NOT EXISTS (
+      SELECT 1 FROM public.vendas x WHERE x.id = NEW.venda_id AND x.empresa_id = NEW.empresa_id
+    ) THEN
+      RAISE EXCEPTION 'venda não pertence ao tenant da previsão de franquia';
+    END IF;
+    IF NEW.cota_definitiva_id IS NOT NULL AND NOT EXISTS (
+      SELECT 1 FROM public.cotas_definitivas x WHERE x.id = NEW.cota_definitiva_id AND x.empresa_id = NEW.empresa_id
+    ) THEN
+      RAISE EXCEPTION 'cota não pertence ao tenant da previsão de franquia';
+    END IF;
+    IF NEW.regra_franquia_id IS NOT NULL AND NOT EXISTS (
+      SELECT 1 FROM public.comissao_regras_franquia x WHERE x.id = NEW.regra_franquia_id AND x.empresa_id = NEW.empresa_id
+    ) THEN
+      RAISE EXCEPTION 'regra não pertence ao tenant da previsão de franquia';
+    END IF;
+  ELSIF TG_TABLE_NAME = 'comissao_previsoes_participantes' THEN
+    IF NOT EXISTS (
+      SELECT 1 FROM public.vendas x WHERE x.id = NEW.venda_id AND x.empresa_id = NEW.empresa_id
+    ) THEN
+      RAISE EXCEPTION 'venda não pertence ao tenant da previsão de participante';
+    END IF;
+    IF NEW.cota_definitiva_id IS NOT NULL AND NOT EXISTS (
+      SELECT 1 FROM public.cotas_definitivas x WHERE x.id = NEW.cota_definitiva_id AND x.empresa_id = NEW.empresa_id
+    ) THEN
+      RAISE EXCEPTION 'cota não pertence ao tenant da previsão de participante';
+    END IF;
+    IF NEW.participante_comercial_id IS NOT NULL AND NOT EXISTS (
+      SELECT 1 FROM public.participantes_comerciais x WHERE x.id = NEW.participante_comercial_id AND x.empresa_id = NEW.empresa_id
+    ) THEN
+      RAISE EXCEPTION 'participante não pertence ao tenant da previsão';
+    END IF;
+    IF NEW.organizacao_parceira_id IS NOT NULL AND NOT EXISTS (
+      SELECT 1 FROM public.organizacoes_parceiras x WHERE x.id = NEW.organizacao_parceira_id AND x.empresa_id = NEW.empresa_id
+    ) THEN
+      RAISE EXCEPTION 'organização parceira não pertence ao tenant da previsão';
+    END IF;
+    IF NEW.regra_participante_id IS NOT NULL AND NOT EXISTS (
+      SELECT 1 FROM public.comissao_regras_participantes x WHERE x.id = NEW.regra_participante_id AND x.empresa_id = NEW.empresa_id
+    ) THEN
+      RAISE EXCEPTION 'regra não pertence ao tenant da previsão de participante';
+    END IF;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+-- 2. RPC para salvar dados básicos de um programa em qualquer status
 CREATE OR REPLACE FUNCTION public.rpc_platform_salvar_dados_programa(
   p_programa_id uuid,
   p_nome text,
@@ -32,7 +110,7 @@ BEGIN
   RETURN to_jsonb(v_prog);
 END $$;
 
--- 2. RPC para salvar/editar regras e etapas em qualquer status
+-- 3. RPC para salvar/editar regras e etapas em qualquer status
 CREATE OR REPLACE FUNCTION public.rpc_platform_salvar_regra_programa(
   p_programa_id uuid,
   p_regra_id uuid DEFAULT NULL,
@@ -68,7 +146,6 @@ BEGIN
     RAISE EXCEPTION 'Programa não encontrado';
   END IF;
 
-  -- Monta legacy etapas_cronograma para atender compatibilidade
   IF jsonb_array_length(p_etapas) > 0 THEN
     FOR v_etapa IN SELECT * FROM jsonb_array_elements(p_etapas)
     LOOP
@@ -142,7 +219,6 @@ BEGIN
     ) RETURNING * INTO v_regra;
   END IF;
 
-  -- Gravar as etapas na tabela comissao_regra_etapas
   v_ordem := 1;
   IF jsonb_array_length(p_etapas) > 0 THEN
     FOR v_etapa IN SELECT * FROM jsonb_array_elements(p_etapas)
@@ -192,7 +268,7 @@ BEGIN
   RETURN to_jsonb(v_regra);
 END $$;
 
--- 3. RPC para exclusão de programa com autonomia total do Superadmin
+-- 4. RPC para exclusão de programa com autonomia total do Superadmin
 CREATE OR REPLACE FUNCTION public.rpc_platform_excluir_programa(p_programa_id uuid)
 RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog AS $$
 DECLARE
@@ -208,7 +284,6 @@ BEGIN
     RAISE EXCEPTION 'Programa não encontrado (id: %)', p_programa_id;
   END IF;
 
-  -- Verifica se existem previsões financeiras reais vinculadas
   SELECT EXISTS(
     SELECT 1 FROM public.comissao_previsoes_franquia pf
     JOIN public.comissao_regras_franquia rf ON rf.id = pf.regra_franquia_id
@@ -244,7 +319,7 @@ BEGIN
   RETURN jsonb_build_object('id', p_programa_id, 'excluido', true);
 END $$;
 
--- 4. RPC para excluir regra de programa em qualquer status
+-- 5. RPC para excluir regra de programa em qualquer status
 CREATE OR REPLACE FUNCTION public.rpc_platform_excluir_regra_programa(p_regra_id uuid)
 RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog AS $$
 DECLARE
