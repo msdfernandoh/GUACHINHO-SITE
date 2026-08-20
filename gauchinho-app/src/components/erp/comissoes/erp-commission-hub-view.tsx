@@ -16,6 +16,10 @@ import {
   unlinkParticipantePerfilAction,
   saveFiscalConfigAction,
   homologarRegraPadraoOficialAction,
+  updateFranchiseRuleAction,
+  deleteFranchiseRuleAction,
+  cleanupDuplicateFranchiseRulesAction,
+  createFranchiseRuleAction,
 } from "@/app/erp/regras-comissao/actions";
 
 const money = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
@@ -34,7 +38,9 @@ export type RegraFranquiaRow = {
   programa_nome?: string;
   administradora_nome?: string;
   versao: number;
+  tipo_administradora_id?: string | null;
   tipo_nome?: string;
+  modalidade_comissao_id?: string | null;
   modalidade_nome?: string;
   percentual_total_comissao: number | null;
   valor_fixo_total: number | null;
@@ -141,6 +147,12 @@ export function ErpCommissionHubView({
   const [editingRegra, setEditingRegra] = useState<RegraPerfilRow | null>(null);
   const [isSavingRegra, setIsSavingRegra] = useState(false);
   const [regraError, setRegraError] = useState<string | null>(null);
+
+  // Modal: Editar / Nova Regra da Franqueadora
+  const [franchiseModalOpen, setFranchiseModalOpen] = useState(false);
+  const [editingFranchiseRule, setEditingFranchiseRule] = useState<RegraFranquiaRow | null>(null);
+  const [isSavingFranchiseRule, setIsSavingFranchiseRule] = useState(false);
+  const [franchiseError, setFranchiseError] = useState<string | null>(null);
 
   // Modal: Vincular / Editar Participante ao Perfil
   const [vinculoModalOpen, setVinculoModalOpen] = useState(false);
@@ -664,11 +676,43 @@ export function ErpCommissionHubView({
       {/* ABA 4: COMISSÃO DA FRANQUEADORA */}
       {activeTab === "franquia" && (
         <section className="space-y-4">
-          <div>
-            <h2 className="text-xl font-bold text-slate-900 dark:text-white">Contratos Oficiais da Franqueadora</h2>
-            <p className="text-xs text-slate-500">
-              Comissões oficiais acordadas com as Administradoras (Racon Consórcios). Exibição operacional para consulta.
-            </p>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="text-xl font-bold text-slate-900 dark:text-white">Contratos Oficiais da Franqueadora</h2>
+              <p className="text-xs text-slate-500">
+                Comissões oficiais acordadas com as Administradoras (Racon Consórcios).
+              </p>
+            </div>
+
+            {canWrite && (
+              <div className="flex items-center gap-2">
+                {regrasFranquia.length > 1 && (
+                  <form action={cleanupDuplicateFranchiseRulesAction}>
+                    <input type="hidden" name="empresa_id" value={empresaId} />
+                    <button
+                      onClick={(e) => {
+                        if (!confirm("Deseja remover regras duplicadas mantendo apenas uma regra única para cada Tipo/Modalidade?")) {
+                          e.preventDefault();
+                        }
+                      }}
+                      className="rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-xs font-bold text-amber-800 shadow-sm hover:bg-amber-100 transition dark:border-amber-800 dark:bg-amber-950 dark:text-amber-300"
+                    >
+                      🧹 Limpar Duplicadas
+                    </button>
+                  </form>
+                )}
+
+                <button
+                  onClick={() => {
+                    setEditingFranchiseRule(null);
+                    setFranchiseModalOpen(true);
+                  }}
+                  className="rounded-xl bg-blue-600 px-4 py-2 text-xs font-bold text-white shadow-sm hover:bg-blue-700 transition"
+                >
+                  + Nova Regra da Franqueadora
+                </button>
+              </div>
+            )}
           </div>
 
           <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
@@ -682,12 +726,13 @@ export function ErpCommissionHubView({
                     <th className="p-3.5">Cronograma / Etapas</th>
                     <th className="p-3.5">Vigência</th>
                     <th className="p-3.5 text-center">Status</th>
+                    <th className="p-3.5 text-right">Ações</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                   {regrasFranquia.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="p-12 text-center text-slate-500">
+                      <td colSpan={7} className="p-12 text-center text-slate-500">
                         Nenhuma regra oficial da franqueadora carregada.
                       </td>
                     </tr>
@@ -698,7 +743,13 @@ export function ErpCommissionHubView({
                           {rf.administradora_nome || "Racon Consórcios"}
                         </td>
                         <td className="p-3.5">
-                          {rf.tipo_nome || "Todos os Tipos"} · {rf.modalidade_nome || "Todas as Modalidades"}
+                          <span className="font-semibold text-slate-800 dark:text-slate-200">
+                            {rf.tipo_nome || "Todos os Tipos"}
+                          </span>
+                          <span className="text-slate-400"> · </span>
+                          <span className="text-slate-600 dark:text-slate-400">
+                            {rf.modalidade_nome || "Todas as Modalidades"}
+                          </span>
                         </td>
                         <td className="p-3.5 font-mono font-extrabold text-emerald-700 dark:text-emerald-400">
                           {rf.percentual_total_comissao ? `${rf.percentual_total_comissao}%` : money.format(rf.valor_fixo_total || 0)}
@@ -710,9 +761,45 @@ export function ErpCommissionHubView({
                           {rf.vigencia_inicio} → {rf.vigencia_fim || "aberta"}
                         </td>
                         <td className="p-3.5 text-center">
-                          <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-[10px] font-extrabold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
-                            HOMOLOGADA
+                          <span
+                            className={`rounded-full px-2.5 py-0.5 text-[10px] font-extrabold ${
+                              rf.ativa
+                                ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
+                                : "bg-slate-100 text-slate-600"
+                            }`}
+                          >
+                            {rf.ativa ? "HOMOLOGADA" : "INATIVA"}
                           </span>
+                        </td>
+                        <td className="p-3.5 text-right">
+                          <div className="flex items-center justify-end gap-1.5">
+                            {canWrite && (
+                              <>
+                                <button
+                                  onClick={() => {
+                                    setEditingFranchiseRule(rf);
+                                    setFranchiseModalOpen(true);
+                                  }}
+                                  className="rounded-lg border border-slate-300 px-2.5 py-1 text-xs font-bold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300"
+                                >
+                                  Editar
+                                </button>
+                                <form action={deleteFranchiseRuleAction}>
+                                  <input type="hidden" name="empresa_id" value={empresaId} />
+                                  <input type="hidden" name="regra_id" value={rf.id} />
+                                  <button
+                                    onClick={(e) => {
+                                      if (!confirm("Deseja excluir esta regra de comissão da Franqueadora?")) e.preventDefault();
+                                    }}
+                                    title="Excluir regra"
+                                    className="rounded-lg border border-rose-200 p-1 text-rose-600 hover:bg-rose-50 dark:border-rose-900"
+                                  >
+                                    🗑️
+                                  </button>
+                                </form>
+                              </>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     ))
@@ -790,6 +877,159 @@ export function ErpCommissionHubView({
       )}
 
       {/* 4. MODAIS DE CRIAÇÃO E EDIÇÃO */}
+
+      {/* MODAL 0: EDITAR / NOVA REGRA DA FRANQUEADORA */}
+      {franchiseModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm animate-in fade-in">
+          <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-4">
+            <div className="flex items-center justify-between border-b pb-3 dark:border-slate-800">
+              <h2 className="text-xl font-bold text-slate-900 dark:text-white">
+                {editingFranchiseRule ? "Editar Regra da Franqueadora" : "+ Nova Regra da Franqueadora"}
+              </h2>
+              <button onClick={() => setFranchiseModalOpen(false)} className="text-slate-400 hover:text-slate-700">
+                ✕
+              </button>
+            </div>
+
+            {franchiseError && (
+              <div className="rounded-xl bg-red-50 p-3 text-xs text-red-800 dark:bg-red-950/40 dark:text-red-300">
+                {franchiseError}
+              </div>
+            )}
+
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault();
+                setIsSavingFranchiseRule(true);
+                setFranchiseError(null);
+                try {
+                  const fd = new FormData(e.currentTarget);
+                  fd.set("empresa_id", empresaId);
+                  if (editingFranchiseRule) {
+                    fd.set("id", editingFranchiseRule.id);
+                    const res = await updateFranchiseRuleAction({ ok: false, message: "" }, fd);
+                    if (!res.ok) throw new Error(res.message);
+                  } else {
+                    const res = await createFranchiseRuleAction({ ok: false, message: "" }, fd);
+                    if (!res.ok) throw new Error(res.message);
+                  }
+                  setFranchiseModalOpen(false);
+                  router.refresh();
+                } catch (err) {
+                  setFranchiseError(err instanceof Error ? err.message : "Erro ao salvar regra da franqueadora");
+                } finally {
+                  setIsSavingFranchiseRule(false);
+                }
+              }}
+              className="space-y-3 text-xs"
+            >
+              {!editingFranchiseRule && (
+                <div>
+                  <label className="font-bold text-slate-700 dark:text-slate-300">Programa da Franqueadora *</label>
+                  <select
+                    name="programa_id"
+                    required
+                    defaultValue={programas[0]?.id || ""}
+                    className="mt-1 w-full rounded-xl border border-slate-300 bg-white p-2.5 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                  >
+                    {programas.map((prog) => (
+                      <option key={prog.id} value={prog.id}>
+                        {prog.nome}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="font-bold text-slate-700 dark:text-slate-300">Tipo de Bem</label>
+                  <select
+                    name="tipo_administradora_id"
+                    defaultValue={editingFranchiseRule?.tipo_administradora_id || ""}
+                    className="mt-1 w-full rounded-xl border border-slate-300 bg-white p-2.5 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                  >
+                    <option value="">Todos os Tipos</option>
+                    {tipos.map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.nome}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="font-bold text-slate-700 dark:text-slate-300">Modalidade de Comissão</label>
+                  <select
+                    name="modalidade_comissao_id"
+                    defaultValue={editingFranchiseRule?.modalidade_comissao_id || ""}
+                    className="mt-1 w-full rounded-xl border border-slate-300 bg-white p-2.5 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                  >
+                    <option value="">Todas as Modalidades</option>
+                    {modalidades.map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {m.nome}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700 dark:text-slate-300">Percentual da Franquia (%) *</label>
+                <input
+                  name="percentual_total_comissao"
+                  type="number"
+                  step="0.01"
+                  required
+                  defaultValue={editingFranchiseRule?.percentual_total_comissao ?? 4.0}
+                  placeholder="4.00"
+                  className="mt-1 w-full rounded-xl border border-slate-300 bg-white p-2.5 dark:border-slate-700 dark:bg-slate-800 dark:text-white font-mono"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="font-bold text-slate-700 dark:text-slate-300">Início da Vigência *</label>
+                  <input
+                    name="vigencia_inicio"
+                    type="date"
+                    required
+                    defaultValue={editingFranchiseRule?.vigencia_inicio || "2020-01-01"}
+                    className="mt-1 w-full rounded-xl border border-slate-300 bg-white p-2.5 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                  />
+                </div>
+                <div>
+                  <label className="font-bold text-slate-700 dark:text-slate-300">Fim da Vigência</label>
+                  <input
+                    name="vigencia_fim"
+                    type="date"
+                    defaultValue={editingFranchiseRule?.vigencia_fim || ""}
+                    className="mt-1 w-full rounded-xl border border-slate-300 bg-white p-2.5 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-3 border-t dark:border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setFranchiseModalOpen(false)}
+                  className="rounded-xl border px-4 py-2 font-bold text-slate-700 dark:text-slate-300"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSavingFranchiseRule}
+                  className="rounded-xl bg-blue-600 px-5 py-2 font-bold text-white shadow-sm hover:bg-blue-700 transition disabled:opacity-50"
+                >
+                  {isSavingFranchiseRule ? "Salvando..." : "Salvar Regra"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* MODAL 1: PERFIL DE COMISSÃO */}
       {perfilModalOpen && (

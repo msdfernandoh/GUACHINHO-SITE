@@ -693,3 +693,112 @@ export async function homologarRegraPadraoOficialAction(formData: FormData): Pro
   revalidatePath("/erp/regras-comissao");
   revalidatePath("/erp/contratacoes");
 }
+
+export async function updateFranchiseRuleAction(
+  _previous: CommissionActionState,
+  formData: FormData
+): Promise<CommissionActionState> {
+  try {
+    const id = String(formData.get("id") ?? "").trim();
+    const empresaId = String(formData.get("empresa_id") ?? "").trim();
+    const percentual = Number(formData.get("percentual_total_comissao") ?? 0);
+    const tipoAdministradoraId = String(formData.get("tipo_administradora_id") ?? "").trim() || null;
+    const modalidadeComissaoId = String(formData.get("modalidade_comissao_id") ?? "").trim() || null;
+    const vigenciaInicio = String(formData.get("vigencia_inicio") ?? "").trim() || "2020-01-01";
+    const vigenciaFim = String(formData.get("vigencia_fim") ?? "").trim() || null;
+    const ativa = formData.get("ativa") !== "false";
+
+    if (!id || !empresaId) throw new Error("ID e empresa são obrigatórios.");
+
+    const supabase = await assertCanWrite(empresaId);
+
+    const { error } = await supabase
+      .from("comissao_regras_franquia")
+      .update({
+        percentual_total_comissao: percentual > 0 ? percentual : null,
+        tipo_administradora_id: tipoAdministradoraId,
+        modalidade_comissao_id: modalidadeComissaoId,
+        vigencia_inicio: vigenciaInicio,
+        vigencia_fim: vigenciaFim,
+        ativa: ativa,
+        configuracao_homologada: true,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", id)
+      .eq("empresa_id", empresaId);
+
+    if (error) throw new Error(error.message);
+
+    revalidatePath("/erp/regras-comissao");
+    return { ok: true, message: "Regra da Franqueadora atualizada com sucesso." };
+  } catch (error) {
+    return { ok: false, message: error instanceof Error ? error.message : "Erro ao atualizar regra." };
+  }
+}
+
+export async function deleteFranchiseRuleAction(formData: FormData): Promise<void> {
+  const id = String(formData.get("regra_id") ?? "").trim();
+  const empresaId = String(formData.get("empresa_id") ?? "").trim();
+  if (!id || !empresaId) return;
+
+  const supabase = await assertCanWrite(empresaId);
+
+  // Check if has predictions
+  const { count } = await supabase
+    .from("comissao_previsoes_franquia")
+    .select("*", { count: "exact", head: true })
+    .eq("regra_franquia_id", id);
+
+  if (count && count > 0) {
+    // If has forecasts, inactivate safely instead of hard delete
+    await supabase
+      .from("comissao_regras_franquia")
+      .update({ ativa: false, configuracao_homologada: false, updated_at: new Date().toISOString() })
+      .eq("id", id)
+      .eq("empresa_id", empresaId);
+  } else {
+    // Safe hard delete if duplicate or unused
+    await supabase.from("comissao_regra_etapas").delete().eq("regra_franquia_id", id);
+    await supabase
+      .from("comissao_regras_franquia")
+      .delete()
+      .eq("id", id)
+      .eq("empresa_id", empresaId);
+  }
+
+  revalidatePath("/erp/regras-comissao");
+}
+
+export async function cleanupDuplicateFranchiseRulesAction(formData: FormData): Promise<void> {
+  const empresaId = String(formData.get("empresa_id") ?? "").trim();
+  if (!empresaId) return;
+
+  const supabase = await assertCanWrite(empresaId);
+
+  const { data: rules } = await supabase
+    .from("comissao_regras_franquia")
+    .select("id, tipo_administradora_id, modalidade_comissao_id, percentual_total_comissao, created_at")
+    .eq("empresa_id", empresaId)
+    .order("created_at", { ascending: true });
+
+  if (!rules || rules.length <= 1) return;
+
+  const seen = new Set<string>();
+  const toDelete: string[] = [];
+
+  for (const r of rules) {
+    const key = `${r.tipo_administradora_id || "null"}_${r.modalidade_comissao_id || "null"}_${r.percentual_total_comissao}`;
+    if (seen.has(key)) {
+      toDelete.push(r.id);
+    } else {
+      seen.add(key);
+    }
+  }
+
+  if (toDelete.length > 0) {
+    await supabase.from("comissao_regra_etapas").delete().in("regra_franquia_id", toDelete);
+    await supabase.from("comissao_regras_franquia").delete().in("id", toDelete);
+  }
+
+  revalidatePath("/erp/regras-comissao");
+}
