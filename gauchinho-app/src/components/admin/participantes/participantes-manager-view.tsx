@@ -100,7 +100,7 @@ export function ParticipantesManagerView({
   const handleOpenEdit = (part: ParticipanteComTipos) => {
     setEditingPart(part);
     setEditSelectedModulos(
-      Array.isArray(part.modulos_permitidos) && part.modulos_permitidos.length > 0
+      Array.isArray(part.modulos_permitidos)
         ? part.modulos_permitidos
         : MODULOS_ERP_CATALOGO.map((m) => m.id)
     );
@@ -110,7 +110,7 @@ export function ParticipantesManagerView({
   const handleOpenPerm = (part: ParticipanteComTipos) => {
     setPermPart(part);
     setPermSelectedModulos(
-      Array.isArray(part.modulos_permitidos) && part.modulos_permitidos.length > 0
+      Array.isArray(part.modulos_permitidos)
         ? part.modulos_permitidos
         : MODULOS_ERP_CATALOGO.map((m) => m.id)
     );
