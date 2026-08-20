@@ -20,6 +20,9 @@ import {
   deleteFranchiseRuleAction,
   cleanupDuplicateFranchiseRulesAction,
   createFranchiseRuleAction,
+  saveCurvaEstornoAction,
+  deleteCurvaEstornoAction,
+  toggleCurvaEstornoAction,
 } from "@/app/erp/regras-comissao/actions";
 
 const money = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
@@ -96,6 +99,20 @@ export type ParticipanteVinculoRow = {
   observacoes: string | null;
 };
 
+export type CurvaEstornoRow = {
+  id: string;
+  nome: string;
+  descricao: string | null;
+  administradora_id: string;
+  administradora_nome?: string;
+  versao: number;
+  vigencia_inicio: string;
+  vigencia_fim: string | null;
+  ativa: boolean;
+  encerra_na_contemplacao: boolean;
+  faixas: Array<{ mes_relativo: number; percentual_estorno: number }>;
+};
+
 export type ParticipanteOption = {
   id: string;
   nome: string;
@@ -127,14 +144,14 @@ export function ErpCommissionHubView({
   programas: Array<{ id: string; nome: string; administradora_id: string | null }>;
   tipos: Array<{ id: string; nome: string; administradora_id: string }>;
   modalidades: Array<{ id: string; nome: string; administradora_id: string }>;
-  curvasEstorno: Array<{ id: string; nome: string; administradora_id: string }>;
+  curvasEstorno: CurvaEstornoRow[];
   fiscais: any[];
   canWrite: boolean;
 }) {
   const router = useRouter();
 
   // Active Tab
-  const [activeTab, setActiveTab] = useState<"franquia" | "perfis" | "regras" | "participantes" | "fiscal">("regras");
+  const [activeTab, setActiveTab] = useState<"franquia" | "perfis" | "regras" | "participantes" | "curvas" | "fiscal">("regras");
 
   // Modal: Novo / Editar Perfil
   const [perfilModalOpen, setPerfilModalOpen] = useState(false);
@@ -160,6 +177,24 @@ export function ErpCommissionHubView({
   const [isSavingVinculo, setIsSavingVinculo] = useState(false);
   const [vinculoError, setVinculoError] = useState<string | null>(null);
 
+  // Modal: Nova / Editar Curva de Estorno
+  const [curvaModalOpen, setCurvaModalOpen] = useState(false);
+  const [editingCurva, setEditingCurva] = useState<CurvaEstornoRow | null>(null);
+  const [isSavingCurva, setIsSavingCurva] = useState(false);
+  const [curvaError, setCurvaError] = useState<string | null>(null);
+  const [curvaFaixas, setCurvaFaixas] = useState<Array<{ mes: number; percentual: number }>>([
+    { mes: 1, percentual: 100 },
+    { mes: 2, percentual: 100 },
+    { mes: 3, percentual: 100 },
+    { mes: 4, percentual: 100 },
+    { mes: 5, percentual: 100 },
+    { mes: 6, percentual: 100 },
+    { mes: 7, percentual: 80 },
+    { mes: 12, percentual: 80 },
+    { mes: 18, percentual: 50 },
+    { mes: 24, percentual: 30 },
+  ]);
+
   // Modal: Alíquota Fiscal
   const [fiscalModalOpen, setFiscalModalOpen] = useState(false);
   const [isSavingFiscal, setIsSavingFiscal] = useState(false);
@@ -171,6 +206,40 @@ export function ErpCommissionHubView({
   const filteredRegrasPerfis = selectedPerfilFilter
     ? regrasPerfis.filter((r) => r.perfil_id === selectedPerfilFilter)
     : regrasPerfis;
+
+  const handleOpenNewCurva = () => {
+    setEditingCurva(null);
+    setCurvaFaixas([
+      { mes: 1, percentual: 100 },
+      { mes: 2, percentual: 100 },
+      { mes: 3, percentual: 100 },
+      { mes: 6, percentual: 100 },
+      { mes: 12, percentual: 80 },
+      { mes: 24, percentual: 50 },
+    ]);
+    setCurvaError(null);
+    setCurvaModalOpen(true);
+  };
+
+  const handleOpenEditCurva = (c: CurvaEstornoRow) => {
+    setEditingCurva(c);
+    setCurvaFaixas(
+      c.faixas && c.faixas.length > 0
+        ? c.faixas.map((f) => ({ mes: f.mes_relativo, percentual: f.percentual_estorno }))
+        : [{ mes: 1, percentual: 100 }]
+    );
+    setCurvaError(null);
+    setCurvaModalOpen(true);
+  };
+
+  const handleAddFaixa = () => {
+    const nextMes = curvaFaixas.length > 0 ? Math.max(...curvaFaixas.map((f) => f.mes)) + 1 : 1;
+    setCurvaFaixas([...curvaFaixas, { mes: nextMes, percentual: 50 }]);
+  };
+
+  const handleRemoveFaixa = (idx: number) => {
+    setCurvaFaixas(curvaFaixas.filter((_, i) => i !== idx));
+  };
 
   return (
     <div className="space-y-6">
@@ -232,6 +301,17 @@ export function ErpCommissionHubView({
           }`}
         >
           <span>🤝</span> Participantes & Perfis ({vinculos.length})
+        </button>
+
+        <button
+          onClick={() => setActiveTab("curvas")}
+          className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold transition ${
+            activeTab === "curvas"
+              ? "bg-blue-600 text-white shadow-sm"
+              : "bg-white text-slate-700 hover:bg-slate-50 dark:bg-slate-900 dark:text-slate-300"
+          }`}
+        >
+          <span>🛡️</span> Curvas de Estorno ({curvasEstorno.length})
         </button>
 
         <button
@@ -373,7 +453,9 @@ export function ErpCommissionHubView({
                               {regra.seguir_cronograma_franquia ? "⚡ Segue Franqueadora" : "📅 Cronograma Próprio"}
                             </div>
                             <div>
-                              {regra.aplicar_curva_estorno ? "🛡️ Curva Ativa" : "Sem Curva"}
+                              {regra.aplicar_curva_estorno
+                                ? `🛡️ ${regra.curva_nome || "Curva Padrão"}`
+                                : "Sem Curva"}
                             </div>
                           </td>
 
@@ -673,7 +755,122 @@ export function ErpCommissionHubView({
         </section>
       )}
 
-      {/* ABA 4: COMISSÃO DA FRANQUEADORA */}
+      {/* ABA 4: CURVAS DE ESTORNO */}
+      {activeTab === "curvas" && (
+        <section className="space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="text-xl font-bold text-slate-900 dark:text-white">Curvas de Estorno / Cancelamento</h2>
+              <p className="text-xs text-slate-500">
+                Configure múltiplas curvas de estorno com percentuais regressivos e habilite por perfil conforme a política comercial.
+              </p>
+            </div>
+
+            {canWrite && (
+              <button
+                onClick={handleOpenNewCurva}
+                className="rounded-xl bg-blue-600 px-4 py-2 text-xs font-bold text-white shadow-sm hover:bg-blue-700 transition"
+              >
+                + Nova Curva de Estorno
+              </button>
+            )}
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {curvasEstorno.map((curva) => {
+              const regrasUsando = regrasPerfis.filter(
+                (r) => r.aplicar_curva_estorno && r.curva_estorno_id === curva.id
+              ).length;
+
+              return (
+                <div
+                  key={curva.id}
+                  className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900 space-y-3"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <span className="rounded-full bg-purple-50 px-2.5 py-0.5 text-[10px] font-bold text-purple-700 dark:bg-purple-950 dark:text-purple-300">
+                        {curva.administradora_nome || "Racon Consórcios"}
+                      </span>
+                      <h3 className="mt-1 font-bold text-base text-slate-900 dark:text-white">{curva.nome}</h3>
+                    </div>
+                    <span
+                      className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                        curva.ativa
+                          ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
+                          : "bg-slate-100 text-slate-600"
+                      }`}
+                    >
+                      {curva.ativa ? "ATIVA" : "INATIVA"}
+                    </span>
+                  </div>
+
+                  <p className="text-xs text-slate-500 dark:text-slate-400 min-h-[32px]">
+                    {curva.descricao || "Sem descrição informada."}
+                  </p>
+
+                  <div className="rounded-xl border border-slate-100 bg-slate-50/70 p-3 dark:border-slate-800 dark:bg-slate-800/40 text-xs space-y-1.5">
+                    <div className="flex items-center justify-between text-[11px] font-bold text-slate-600 dark:text-slate-400">
+                      <span>Mês Relativo</span>
+                      <span>Estorno (%)</span>
+                    </div>
+                    <div className="divide-y divide-slate-200/50 dark:divide-slate-700/50 max-h-[140px] overflow-y-auto">
+                      {curva.faixas.map((f) => (
+                        <div key={f.mes_relativo} className="flex items-center justify-between py-1 text-[11px]">
+                          <span className="text-slate-700 dark:text-slate-300">Até o mês {f.mes_relativo}</span>
+                          <span className="font-mono font-bold text-rose-600 dark:text-rose-400">
+                            {f.percentual_estorno}%
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between border-t pt-3 text-[11px] text-slate-500 dark:border-slate-800">
+                    <span>
+                      {curva.encerra_na_contemplacao ? "✅ Encerra na contemplação" : "Não encerra na contemplação"}
+                    </span>
+                    <span className="font-bold text-blue-600 dark:text-blue-400">{regrasUsando} regra(s) ativa(s)</span>
+                  </div>
+
+                  {canWrite && (
+                    <div className="flex items-center justify-end gap-2 border-t pt-3 dark:border-slate-800">
+                      <button
+                        onClick={() => handleOpenEditCurva(curva)}
+                        className="rounded-lg border px-3 py-1 text-xs font-bold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300"
+                      >
+                        Editar
+                      </button>
+                      <form action={toggleCurvaEstornoAction}>
+                        <input type="hidden" name="empresa_id" value={empresaId} />
+                        <input type="hidden" name="curva_id" value={curva.id} />
+                        <input type="hidden" name="ativo" value={curva.ativa ? "false" : "true"} />
+                        <button className="rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-400">
+                          {curva.ativa ? "Inativar" : "Ativar"}
+                        </button>
+                      </form>
+                      <form action={deleteCurvaEstornoAction}>
+                        <input type="hidden" name="empresa_id" value={empresaId} />
+                        <input type="hidden" name="curva_id" value={curva.id} />
+                        <button
+                          onClick={(e) => {
+                            if (!confirm("Excluir permanentemente esta curva de estorno?")) e.preventDefault();
+                          }}
+                          className="rounded-lg border border-rose-200 p-1 text-rose-600 hover:bg-rose-50 dark:border-rose-900"
+                        >
+                          🗑️
+                        </button>
+                      </form>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
+      {/* ABA 5: COMISSÃO DA FRANQUEADORA */}
       {activeTab === "franquia" && (
         <section className="space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -811,7 +1008,7 @@ export function ErpCommissionHubView({
         </section>
       )}
 
-      {/* ABA 5: FISCAL & IMPOSTOS */}
+      {/* ABA 6: FISCAL & IMPOSTOS */}
       {activeTab === "fiscal" && (
         <section className="space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -878,7 +1075,177 @@ export function ErpCommissionHubView({
 
       {/* 4. MODAIS DE CRIAÇÃO E EDIÇÃO */}
 
-      {/* MODAL 0: EDITAR / NOVA REGRA DA FRANQUEADORA */}
+      {/* MODAL: CURVA DE ESTORNO */}
+      {curvaModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm animate-in fade-in">
+          <div className="w-full max-w-xl rounded-2xl bg-white p-6 shadow-2xl dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b pb-3 dark:border-slate-800">
+              <h2 className="text-xl font-bold text-slate-900 dark:text-white">
+                {editingCurva ? "Editar Curva de Estorno" : "+ Nova Curva de Estorno"}
+              </h2>
+              <button onClick={() => setCurvaModalOpen(false)} className="text-slate-400 hover:text-slate-700">
+                ✕
+              </button>
+            </div>
+
+            {curvaError && (
+              <div className="rounded-xl bg-red-50 p-3 text-xs text-red-800 dark:bg-red-950/40 dark:text-red-300">
+                {curvaError}
+              </div>
+            )}
+
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault();
+                setIsSavingCurva(true);
+                setCurvaError(null);
+                try {
+                  const fd = new FormData(e.currentTarget);
+                  fd.set("empresa_id", empresaId);
+                  fd.set("faixas_json", JSON.stringify(curvaFaixas));
+                  if (editingCurva) fd.set("id", editingCurva.id);
+                  const res = await saveCurvaEstornoAction({ ok: false, message: "" }, fd);
+                  if (!res.ok) throw new Error(res.message);
+                  setCurvaModalOpen(false);
+                  router.refresh();
+                } catch (err) {
+                  setCurvaError(err instanceof Error ? err.message : "Erro ao salvar curva");
+                } finally {
+                  setIsSavingCurva(false);
+                }
+              }}
+              className="space-y-3 text-xs"
+            >
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="font-bold text-slate-700 dark:text-slate-300">Nome da Curva *</label>
+                  <input
+                    name="nome"
+                    required
+                    defaultValue={editingCurva?.nome || ""}
+                    placeholder="Ex: Curva Padrão Racon, Curva Consultor..."
+                    className="mt-1 w-full rounded-xl border border-slate-300 bg-white p-2.5 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-bold text-slate-700 dark:text-slate-300">Administradora *</label>
+                  <select
+                    name="administradora_id"
+                    required
+                    defaultValue={editingCurva?.administradora_id || administradoras[0]?.id || ""}
+                    className="mt-1 w-full rounded-xl border border-slate-300 bg-white p-2.5 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                  >
+                    {administradoras.map((a) => (
+                      <option key={a.id} value={a.id}>
+                        {a.nome}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700 dark:text-slate-300">Descrição</label>
+                <textarea
+                  name="descricao"
+                  rows={2}
+                  defaultValue={editingCurva?.descricao || ""}
+                  placeholder="Critérios de estorno e cancelamento..."
+                  className="mt-1 w-full rounded-xl border border-slate-300 bg-white p-2.5 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                />
+              </div>
+
+              <div className="flex items-center gap-2 pt-1">
+                <input
+                  type="checkbox"
+                  id="encerra_contemp"
+                  name="encerra_na_contemplacao"
+                  value="true"
+                  defaultChecked={editingCurva ? editingCurva.encerra_na_contemplacao : true}
+                  className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                />
+                <label htmlFor="encerra_contemp" className="font-semibold text-slate-700 dark:text-slate-300">
+                  Encerrar obrigação de estorno imediatamente na contemplação da cota
+                </label>
+              </div>
+
+              {/* Tabela de Faixas Mês a Mês */}
+              <div className="rounded-xl border border-slate-200 p-3 space-y-2 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-slate-800 dark:text-slate-200">Faixas Regressivas de Estorno</span>
+                  <button
+                    type="button"
+                    onClick={handleAddFaixa}
+                    className="rounded-lg bg-white border border-slate-300 px-2 py-1 text-[11px] font-bold text-blue-600 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-blue-400"
+                  >
+                    + Adicionar Mês
+                  </button>
+                </div>
+
+                <div className="space-y-1.5 max-h-[160px] overflow-y-auto">
+                  {curvaFaixas.map((faixa, idx) => (
+                    <div key={idx} className="flex items-center gap-2">
+                      <span className="text-slate-500 text-[11px] w-20">Até Mês:</span>
+                      <input
+                        type="number"
+                        min="1"
+                        max="240"
+                        value={faixa.mes}
+                        onChange={(e) => {
+                          const val = Number(e.target.value);
+                          setCurvaFaixas(curvaFaixas.map((f, i) => (i === idx ? { ...f, mes: val } : f)));
+                        }}
+                        className="w-20 rounded-lg border border-slate-300 bg-white p-1 text-center font-mono text-xs dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                      />
+                      <span className="text-slate-500 text-[11px] ml-2">Estorno:</span>
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        step="0.1"
+                        value={faixa.percentual}
+                        onChange={(e) => {
+                          const val = Number(e.target.value);
+                          setCurvaFaixas(curvaFaixas.map((f, i) => (i === idx ? { ...f, percentual: val } : f)));
+                        }}
+                        className="w-20 rounded-lg border border-slate-300 bg-white p-1 text-center font-mono text-xs text-rose-600 font-bold dark:border-slate-700 dark:bg-slate-800 dark:text-rose-400"
+                      />
+                      <span className="text-slate-400 text-xs">%</span>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveFaixa(idx)}
+                        className="ml-auto text-slate-400 hover:text-rose-600 p-1"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-3 border-t dark:border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setCurvaModalOpen(false)}
+                  className="rounded-xl border px-4 py-2 font-bold text-slate-700 dark:text-slate-300"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSavingCurva}
+                  className="rounded-xl bg-blue-600 px-5 py-2 font-bold text-white shadow-sm hover:bg-blue-700 transition disabled:opacity-50"
+                >
+                  {isSavingCurva ? "Salvando..." : "Salvar Curva"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: EDITAR / NOVA REGRA DA FRANQUEADORA */}
       {franchiseModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm animate-in fade-in">
           <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-4">
@@ -1031,7 +1398,7 @@ export function ErpCommissionHubView({
         </div>
       )}
 
-      {/* MODAL 1: PERFIL DE COMISSÃO */}
+      {/* MODAL: PERFIL DE COMISSÃO */}
       {perfilModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm animate-in fade-in">
           <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-4">
@@ -1136,7 +1503,7 @@ export function ErpCommissionHubView({
         </div>
       )}
 
-      {/* MODAL 2: REGRA DO PERFIL */}
+      {/* MODAL: REGRA DO PERFIL */}
       {regraModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm animate-in fade-in">
           <div className="w-full max-w-xl rounded-2xl bg-white p-6 shadow-2xl dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-4">
@@ -1302,6 +1669,22 @@ export function ErpCommissionHubView({
                 </div>
               </div>
 
+              <div>
+                <label className="font-bold text-slate-700 dark:text-slate-300">Selecionar Curva de Estorno</label>
+                <select
+                  name="curva_estorno_id"
+                  defaultValue={editingRegra?.curva_estorno_id || curvasEstorno[0]?.id || ""}
+                  className="mt-1 w-full rounded-xl border border-slate-300 bg-white p-2.5 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                >
+                  <option value="">Selecione uma Curva de Estorno...</option>
+                  {curvasEstorno.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.nome} ({c.administradora_nome || "Racon"})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="font-bold text-slate-700 dark:text-slate-300">Vigência Início *</label>
@@ -1345,7 +1728,7 @@ export function ErpCommissionHubView({
         </div>
       )}
 
-      {/* MODAL 3: VINCULAR PARTICIPANTE AO PERFIL */}
+      {/* MODAL: VINCULAR PARTICIPANTE AO PERFIL */}
       {vinculoModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm animate-in fade-in">
           <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-4">
@@ -1487,7 +1870,7 @@ export function ErpCommissionHubView({
         </div>
       )}
 
-      {/* MODAL 4: ALÍQUOTA FISCAL */}
+      {/* MODAL: ALÍQUOTA FISCAL */}
       {fiscalModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm animate-in fade-in">
           <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-4">

@@ -50,7 +50,10 @@ export default async function ErpRegrasComissaoPage() {
     supabase.from("comissao_programas").select("id, nome, administradora_id").eq("empresa_id", empresaId).order("nome"),
     supabase.from("administradora_tipos").select("id, nome, administradora_id").eq("ativo", true).order("nome"),
     supabase.from("administradora_modalidades_comissao").select("id, nome, administradora_id").eq("ativo", true).order("nome"),
-    supabase.from("administradora_curvas_estorno").select("id, nome, administradora_id").eq("ativa", true).order("nome"),
+    supabase
+      .from("administradora_curvas_estorno")
+      .select("*, administradora:administradoras(nome), faixas:administradora_curva_estorno_faixas(mes_relativo, percentual_estorno)")
+      .order("nome"),
     supabase.from("empresa_configuracoes_fiscais").select("*").eq("empresa_id", empresaId).order("vigencia_inicio", { ascending: false }),
   ]);
 
@@ -63,7 +66,9 @@ export default async function ErpRegrasComissaoPage() {
     programa_nome: rf.programa?.nome,
     administradora_nome: rf.programa?.administradora?.nome,
     versao: rf.versao,
+    tipo_administradora_id: rf.tipo_administradora_id,
     tipo_nome: rf.tipo?.nome,
+    modalidade_comissao_id: rf.modalidade_comissao_id,
     modalidade_nome: rf.modalidade_obj?.nome || rf.modalidade,
     percentual_total_comissao: rf.percentual_total_comissao,
     valor_fixo_total: rf.valor_fixo_total,
@@ -125,6 +130,20 @@ export default async function ErpRegrasComissaoPage() {
     tipos: (p.participante_tipos ?? []).map((t: any) => t.tipo_codigo),
   }));
 
+  const curvasEstorno = (curvasRes.data ?? []).map((c: any) => ({
+    id: c.id,
+    nome: c.nome,
+    descricao: c.descricao,
+    administradora_id: c.administradora_id,
+    administradora_nome: c.administradora?.nome,
+    versao: c.versao,
+    vigencia_inicio: c.vigencia_inicio,
+    vigencia_fim: c.vigencia_fim,
+    ativa: c.ativa,
+    encerra_na_contemplacao: c.encerra_na_contemplacao,
+    faixas: (c.faixas ?? []).sort((a: any, b: any) => a.mes_relativo - b.mes_relativo),
+  }));
+
   return (
     <Suspense fallback={<div className="p-8 text-center text-slate-500 font-semibold">Carregando Regras de Comissão...</div>}>
       <ErpCommissionHubView
@@ -138,7 +157,7 @@ export default async function ErpRegrasComissaoPage() {
         programas={programasRes.data ?? []}
         tipos={tiposRes.data ?? []}
         modalidades={modalidadesRes.data ?? []}
-        curvasEstorno={curvasRes.data ?? []}
+        curvasEstorno={curvasEstorno}
         fiscais={fiscaisRes.data ?? []}
         canWrite={canWrite}
       />

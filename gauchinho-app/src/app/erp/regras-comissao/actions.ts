@@ -802,3 +802,119 @@ export async function cleanupDuplicateFranchiseRulesAction(formData: FormData): 
 
   revalidatePath("/erp/regras-comissao");
 }
+
+// --------------------------------------------------------------------------
+// 6. CURVAS DE ESTORNO
+// --------------------------------------------------------------------------
+
+export async function saveCurvaEstornoAction(
+  _previous: CommissionActionState,
+  formData: FormData
+): Promise<CommissionActionState> {
+  try {
+    const id = String(formData.get("id") ?? "").trim();
+    const empresaId = String(formData.get("empresa_id") ?? "").trim();
+    const administradoraId = String(formData.get("administradora_id") ?? "").trim();
+    const nome = String(formData.get("nome") ?? "").trim();
+    const descricao = String(formData.get("descricao") ?? "").trim() || null;
+    const vigenciaInicio = String(formData.get("vigencia_inicio") ?? "").trim() || new Date().toISOString().slice(0, 10);
+    const vigenciaFim = String(formData.get("vigencia_fim") ?? "").trim() || null;
+    const encerraNaContemplacao = formData.get("encerra_na_contemplacao") !== "false";
+    const faixasJson = String(formData.get("faixas_json") ?? "[]").trim();
+
+    if (!empresaId || !nome || !administradoraId) {
+      throw new Error("Empresa, nome da curva e administradora são obrigatórios.");
+    }
+
+    let faixas: Array<{ mes: number; percentual: number }> = [];
+    try {
+      faixas = JSON.parse(faixasJson);
+    } catch {
+      faixas = [];
+    }
+
+    const supabase = await assertCanWrite(empresaId);
+
+    let curvaId = id;
+    if (id) {
+      const { error } = await supabase
+        .from("administradora_curvas_estorno")
+        .update({
+          nome,
+          descricao,
+          administradora_id: administradoraId,
+          vigencia_inicio: vigenciaInicio,
+          vigencia_fim: vigenciaFim,
+          encerra_na_contemplacao: encerraNaContemplacao,
+        })
+        .eq("id", id);
+      if (error) throw new Error(error.message);
+    } else {
+      const { data: created, error } = await supabase
+        .from("administradora_curvas_estorno")
+        .insert({
+          empresa_id: empresaId,
+          administradora_id: administradoraId,
+          nome,
+          descricao,
+          versao: 1,
+          vigencia_inicio: vigenciaInicio,
+          vigencia_fim: vigenciaFim,
+          encerra_na_contemplacao: encerraNaContemplacao,
+          ativa: true,
+        })
+        .select("id")
+        .single();
+      if (error || !created) throw new Error(error?.message || "Erro ao criar curva.");
+      curvaId = created.id;
+    }
+
+    // Atualiza as faixas
+    if (curvaId && faixas.length > 0) {
+      await supabase.from("administradora_curva_estorno_faixas").delete().eq("curva_id", curvaId);
+      const faixasPayload = faixas
+        .filter((f) => f.mes > 0 && f.percentual >= 0)
+        .map((f) => ({
+          curva_id: curvaId,
+          mes_relativo: f.mes,
+          percentual_estorno: f.percentual,
+        }));
+      if (faixasPayload.length > 0) {
+        await supabase.from("administradora_curva_estorno_faixas").insert(faixasPayload);
+      }
+    }
+
+    revalidatePath("/erp/regras-comissao");
+    return { ok: true, message: "Curva de estorno salva com sucesso." };
+  } catch (error) {
+    return { ok: false, message: error instanceof Error ? error.message : "Erro ao salvar curva de estorno." };
+  }
+}
+
+export async function deleteCurvaEstornoAction(formData: FormData): Promise<void> {
+  const id = String(formData.get("curva_id") ?? "").trim();
+  const empresaId = String(formData.get("empresa_id") ?? "").trim();
+  if (!id || !empresaId) return;
+
+  const supabase = await assertCanWrite(empresaId);
+
+  await supabase.from("administradora_curva_estorno_faixas").delete().eq("curva_id", id);
+  await supabase.from("administradora_curvas_estorno").delete().eq("id", id);
+
+  revalidatePath("/erp/regras-comissao");
+}
+
+export async function toggleCurvaEstornoAction(formData: FormData): Promise<void> {
+  const id = String(formData.get("curva_id") ?? "").trim();
+  const empresaId = String(formData.get("empresa_id") ?? "").trim();
+  const ativa = formData.get("ativo") === "true";
+  if (!id || !empresaId) return;
+
+  const supabase = await assertCanWrite(empresaId);
+  await supabase
+    .from("administradora_curvas_estorno")
+    .update({ ativa })
+    .eq("id", id);
+
+  revalidatePath("/erp/regras-comissao");
+}
