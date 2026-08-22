@@ -200,6 +200,98 @@ export function ErpCommissionHubView({
   const [isSavingFiscal, setIsSavingFiscal] = useState(false);
   const [fiscalError, setFiscalError] = useState<string | null>(null);
 
+  // Feedback global toast / banner
+  const [globalFeedback, setGlobalFeedback] = useState<{ type: "success" | "error"; message: string } | null>(null);
+
+  // Handlers seguros para ações de regras
+  const [isProcessingRuleAction, setIsProcessingRuleAction] = useState(false);
+
+  const handleHomologateRule = async (regraId: string) => {
+    try {
+      setIsProcessingRuleAction(true);
+      setGlobalFeedback(null);
+      const fd = new FormData();
+      fd.set("empresa_id", empresaId);
+      fd.set("regra_id", regraId);
+      const res = await homologateParticipantProfileRuleAction(fd);
+      if (!res.ok) {
+        setGlobalFeedback({ type: "error", message: res.message });
+      } else {
+        setGlobalFeedback({ type: "success", message: res.message });
+        router.refresh();
+      }
+    } catch (err) {
+      setGlobalFeedback({ type: "error", message: err instanceof Error ? err.message : "Erro ao homologar regra." });
+    } finally {
+      setIsProcessingRuleAction(false);
+    }
+  };
+
+  const handleNewVersionRule = async (regraId: string) => {
+    try {
+      setIsProcessingRuleAction(true);
+      setGlobalFeedback(null);
+      const fd = new FormData();
+      fd.set("empresa_id", empresaId);
+      fd.set("regra_id", regraId);
+      const res = await newVersionParticipantProfileRuleAction(fd);
+      if (!res.ok) {
+        setGlobalFeedback({ type: "error", message: res.message });
+      } else {
+        setGlobalFeedback({ type: "success", message: res.message });
+        router.refresh();
+      }
+    } catch (err) {
+      setGlobalFeedback({ type: "error", message: err instanceof Error ? err.message : "Erro ao criar nova versão." });
+    } finally {
+      setIsProcessingRuleAction(false);
+    }
+  };
+
+  const handleToggleRule = async (regraId: string, ativo: boolean) => {
+    try {
+      setIsProcessingRuleAction(true);
+      setGlobalFeedback(null);
+      const fd = new FormData();
+      fd.set("empresa_id", empresaId);
+      fd.set("regra_id", regraId);
+      fd.set("ativo", String(ativo));
+      const res = await toggleParticipantProfileRuleAction(fd);
+      if (!res.ok) {
+        setGlobalFeedback({ type: "error", message: res.message });
+      } else {
+        setGlobalFeedback({ type: "success", message: res.message });
+        router.refresh();
+      }
+    } catch (err) {
+      setGlobalFeedback({ type: "error", message: err instanceof Error ? err.message : "Erro ao alterar status da regra." });
+    } finally {
+      setIsProcessingRuleAction(false);
+    }
+  };
+
+  const handleDeleteRule = async (regraId: string) => {
+    if (!confirm("Excluir este rascunho de regra?")) return;
+    try {
+      setIsProcessingRuleAction(true);
+      setGlobalFeedback(null);
+      const fd = new FormData();
+      fd.set("empresa_id", empresaId);
+      fd.set("regra_id", regraId);
+      const res = await deleteParticipantProfileRuleAction(fd);
+      if (!res.ok) {
+        setGlobalFeedback({ type: "error", message: res.message });
+      } else {
+        setGlobalFeedback({ type: "success", message: res.message });
+        router.refresh();
+      }
+    } catch (err) {
+      setGlobalFeedback({ type: "error", message: err instanceof Error ? err.message : "Erro ao excluir regra." });
+    } finally {
+      setIsProcessingRuleAction(false);
+    }
+  };
+
   // Filter in Regras tab
   const [selectedPerfilFilter, setSelectedPerfilFilter] = useState<string>("");
 
@@ -267,6 +359,21 @@ export function ErpCommissionHubView({
           </form>
         )}
       </div>
+
+{globalFeedback && (
+        <div
+          className={`flex items-center justify-between rounded-xl p-4 text-xs font-bold ${
+            globalFeedback.type === "error"
+              ? "border border-red-200 bg-red-50 text-red-800 dark:border-red-900 dark:bg-red-950 dark:text-red-200"
+              : "border border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950 dark:text-emerald-200"
+          }`}
+        >
+          <span>{globalFeedback.message}</span>
+          <button onClick={() => setGlobalFeedback(null)} className="ml-4 text-slate-400 hover:text-slate-600">
+            ✕
+          </button>
+        </div>
+      )}
 
       {/* 2. ABAS DE NAVEGAÇÃO PRINCIPAL */}
       <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 pb-2 dark:border-slate-800">
@@ -494,46 +601,40 @@ export function ErpCommissionHubView({
                                   >
                                     Editar
                                   </button>
-                                  <form action={homologateParticipantProfileRuleAction}>
-                                    <input type="hidden" name="empresa_id" value={empresaId} />
-                                    <input type="hidden" name="regra_id" value={regra.id} />
-                                    <button className="rounded-lg bg-emerald-600 px-3 py-1 text-xs font-bold text-white shadow-sm hover:bg-emerald-700 transition">
-                                      Homologar
-                                    </button>
-                                  </form>
-                                  <form action={deleteParticipantProfileRuleAction}>
-                                    <input type="hidden" name="empresa_id" value={empresaId} />
-                                    <input type="hidden" name="regra_id" value={regra.id} />
-                                    <button
-                                      onClick={(e) => {
-                                        if (!confirm("Excluir este rascunho de regra?")) e.preventDefault();
-                                      }}
-                                      className="rounded-lg border border-rose-200 p-1 text-rose-600 hover:bg-rose-50 dark:border-rose-900"
-                                    >
-                                      🗑️
-                                    </button>
-                                  </form>
+                                  <button
+                                    onClick={() => handleHomologateRule(regra.id)}
+                                    disabled={isProcessingRuleAction}
+                                    className="rounded-lg bg-emerald-600 px-3 py-1 text-xs font-bold text-white shadow-sm hover:bg-emerald-700 transition disabled:opacity-50"
+                                  >
+                                    {isProcessingRuleAction ? "..." : "Homologar"}
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeleteRule(regra.id)}
+                                    disabled={isProcessingRuleAction}
+                                    className="rounded-lg border border-rose-200 p-1 text-rose-600 hover:bg-rose-50 dark:border-rose-900 disabled:opacity-50"
+                                  >
+                                    🗑️
+                                  </button>
                                 </>
                               )}
 
                               {/* HOMOLOGADA: Nova Versão e Inativar */}
                               {isHomologada && canWrite && (
                                 <>
-                                  <form action={newVersionParticipantProfileRuleAction}>
-                                    <input type="hidden" name="empresa_id" value={empresaId} />
-                                    <input type="hidden" name="regra_id" value={regra.id} />
-                                    <button className="rounded-lg border border-blue-300 bg-blue-50 px-2.5 py-1 text-xs font-bold text-blue-700 hover:bg-blue-100 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-300">
-                                      Nova Versão
-                                    </button>
-                                  </form>
-                                  <form action={toggleParticipantProfileRuleAction}>
-                                    <input type="hidden" name="empresa_id" value={empresaId} />
-                                    <input type="hidden" name="regra_id" value={regra.id} />
-                                    <input type="hidden" name="ativo" value="false" />
-                                    <button className="rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-400">
-                                      Inativar
-                                    </button>
-                                  </form>
+                                  <button
+                                    onClick={() => handleNewVersionRule(regra.id)}
+                                    disabled={isProcessingRuleAction}
+                                    className="rounded-lg border border-blue-300 bg-blue-50 px-2.5 py-1 text-xs font-bold text-blue-700 hover:bg-blue-100 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-300 disabled:opacity-50"
+                                  >
+                                    Nova Versão
+                                  </button>
+                                  <button
+                                    onClick={() => handleToggleRule(regra.id, false)}
+                                    disabled={isProcessingRuleAction}
+                                    className="rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-400 disabled:opacity-50"
+                                  >
+                                    Inativar
+                                  </button>
                                 </>
                               )}
                             </div>
