@@ -206,156 +206,120 @@ export async function saveParticipantProfileRuleAction(
   }
 }
 
-export async function homologateParticipantProfileRuleAction(
-  _previous: CommissionActionState | FormData,
-  formData?: FormData
-): Promise<CommissionActionState> {
-  try {
-    const fd = formData || (_previous instanceof FormData ? _previous : new FormData());
-    const id = String(fd.get("regra_id") ?? "").trim();
-    const empresaId = String(fd.get("empresa_id") ?? "").trim();
-    if (!id || !empresaId) throw new Error("ID e empresa são obrigatórios.");
+export async function homologateParticipantProfileRuleAction(formData: FormData): Promise<void> {
+  const id = String(formData.get("regra_id") ?? "").trim();
+  const empresaId = String(formData.get("empresa_id") ?? "").trim();
+  if (!id || !empresaId) throw new Error("ID e empresa são obrigatórios.");
 
-    const supabase = await assertCanWrite(empresaId);
+  const supabase = await assertCanWrite(empresaId);
 
-    const { data: regra, error } = await supabase
-      .from("comissao_regras_participantes")
-      .select("*")
-      .eq("id", id)
-      .eq("empresa_id", empresaId)
-      .single();
+  const { data: regra, error } = await supabase
+    .from("comissao_regras_participantes")
+    .select("*")
+    .eq("id", id)
+    .eq("empresa_id", empresaId)
+    .single();
 
-    if (error || !regra) throw new Error("Regra não encontrada.");
+  if (error || !regra) throw new Error("Regra não encontrada.");
 
-    if (!regra.programa_id) throw new Error("A regra precisa estar vinculada a um programa de Administradora.");
-    if (regra.base_v2 !== "VALOR_FIXO" && (!regra.percentual_comissao || Number(regra.percentual_comissao) <= 0)) {
-      throw new Error("Percentual de comissão inválido.");
-    }
-
-    const { error: updateErr } = await supabase
-      .from("comissao_regras_participantes")
-      .update({
-        status: "HOMOLOGADA",
-        configuracao_homologada: true,
-        ativa: true,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", id)
-      .eq("empresa_id", empresaId);
-
-    if (updateErr) throw new Error(updateErr.message);
-
-    revalidatePath("/erp/regras-comissao");
-    return { ok: true, message: "Regra homologada com sucesso." };
-  } catch (error) {
-    return { ok: false, message: error instanceof Error ? error.message : "Erro ao homologar regra." };
+  if (!regra.programa_id) throw new Error("A regra precisa estar vinculada a um programa de Administradora.");
+  if (regra.base_v2 !== "VALOR_FIXO" && (!regra.percentual_comissao || Number(regra.percentual_comissao) <= 0)) {
+    throw new Error("Percentual de comissão inválido.");
   }
-}
 
-export async function newVersionParticipantProfileRuleAction(
-  _previous: CommissionActionState | FormData,
-  formData?: FormData
-): Promise<CommissionActionState> {
-  try {
-    const fd = formData || (_previous instanceof FormData ? _previous : new FormData());
-    const id = String(fd.get("regra_id") ?? "").trim();
-    const empresaId = String(fd.get("empresa_id") ?? "").trim();
-    if (!id || !empresaId) throw new Error("ID e empresa são obrigatórios.");
-
-    const supabase = await assertCanWrite(empresaId);
-
-    const { data: current } = await supabase
-      .from("comissao_regras_participantes")
-      .select("*")
-      .eq("id", id)
-      .eq("empresa_id", empresaId)
-      .single();
-
-    if (!current) throw new Error("Regra atual não encontrada.");
-
-    await supabase
-      .from("comissao_regras_participantes")
-      .update({ status: "SUBSTITUIDA", updated_at: new Date().toISOString() })
-      .eq("id", id);
-
-    const { id: _oldId, created_at: _c, updated_at: _u, ...rest } = current;
-    await supabase.from("comissao_regras_participantes").insert({
-      ...rest,
-      versao: (current.versao || 1) + 1,
-      status: "RASCUNHO",
-      configuracao_homologada: false,
-      origem_configuracao: "ERP_MANUAL_NAO_HOMOLOGADO",
+  const { error: updateErr } = await supabase
+    .from("comissao_regras_participantes")
+    .update({
+      status: "HOMOLOGADA",
+      configuracao_homologada: true,
       ativa: true,
-    });
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", id)
+    .eq("empresa_id", empresaId);
 
-    revalidatePath("/erp/regras-comissao");
-    return { ok: true, message: "Nova versão criada em Rascunho." };
-  } catch (error) {
-    return { ok: false, message: error instanceof Error ? error.message : "Erro ao criar nova versão." };
-  }
+  if (updateErr) throw new Error(updateErr.message);
+
+  revalidatePath("/erp/regras-comissao");
 }
 
-export async function toggleParticipantProfileRuleAction(
-  _previous: CommissionActionState | FormData,
-  formData?: FormData
-): Promise<CommissionActionState> {
-  try {
-    const fd = formData || (_previous instanceof FormData ? _previous : new FormData());
-    const id = String(fd.get("regra_id") ?? "").trim();
-    const empresaId = String(fd.get("empresa_id") ?? "").trim();
-    const ativa = fd.get("ativo") === "true";
-    if (!id || !empresaId) throw new Error("ID e empresa são obrigatórios.");
+export async function newVersionParticipantProfileRuleAction(formData: FormData): Promise<void> {
+  const id = String(formData.get("regra_id") ?? "").trim();
+  const empresaId = String(formData.get("empresa_id") ?? "").trim();
+  if (!id || !empresaId) return;
 
-    const supabase = await assertCanWrite(empresaId);
-    await supabase
-      .from("comissao_regras_participantes")
-      .update({
-        ativa,
-        status: ativa ? "HOMOLOGADA" : "INATIVA",
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", id)
-      .eq("empresa_id", empresaId);
+  const supabase = await assertCanWrite(empresaId);
 
-    revalidatePath("/erp/regras-comissao");
-    return { ok: true, message: `Regra ${ativa ? "ativada" : "inativada"} com sucesso.` };
-  } catch (error) {
-    return { ok: false, message: error instanceof Error ? error.message : "Erro ao alterar status da regra." };
-  }
+  const { data: current } = await supabase
+    .from("comissao_regras_participantes")
+    .select("*")
+    .eq("id", id)
+    .eq("empresa_id", empresaId)
+    .single();
+
+  if (!current) return;
+
+  await supabase
+    .from("comissao_regras_participantes")
+    .update({ status: "SUBSTITUIDA", updated_at: new Date().toISOString() })
+    .eq("id", id);
+
+  const { id: _oldId, created_at: _c, updated_at: _u, ...rest } = current;
+  await supabase.from("comissao_regras_participantes").insert({
+    ...rest,
+    versao: (current.versao || 1) + 1,
+    status: "RASCUNHO",
+    configuracao_homologada: false,
+    origem_configuracao: "ERP_MANUAL_NAO_HOMOLOGADO",
+    ativa: true,
+  });
+
+  revalidatePath("/erp/regras-comissao");
 }
 
-export async function deleteParticipantProfileRuleAction(
-  _previous: CommissionActionState | FormData,
-  formData?: FormData
-): Promise<CommissionActionState> {
-  try {
-    const fd = formData || (_previous instanceof FormData ? _previous : new FormData());
-    const id = String(fd.get("regra_id") ?? "").trim();
-    const empresaId = String(fd.get("empresa_id") ?? "").trim();
-    if (!id || !empresaId) throw new Error("ID e empresa são obrigatórios.");
+export async function toggleParticipantProfileRuleAction(formData: FormData): Promise<void> {
+  const id = String(formData.get("regra_id") ?? "").trim();
+  const empresaId = String(formData.get("empresa_id") ?? "").trim();
+  const ativa = formData.get("ativo") === "true";
+  if (!id || !empresaId) return;
 
-    const supabase = await assertCanWrite(empresaId);
+  const supabase = await assertCanWrite(empresaId);
+  await supabase
+    .from("comissao_regras_participantes")
+    .update({
+      ativa,
+      status: ativa ? "HOMOLOGADA" : "INATIVA",
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", id)
+    .eq("empresa_id", empresaId);
 
-    const { count } = await supabase
-      .from("comissao_previsoes_participantes")
-      .select("*", { count: "exact", head: true })
-      .eq("regra_participante_id", id);
+  revalidatePath("/erp/regras-comissao");
+}
 
-    if (count && count > 0) {
-      throw new Error("Esta regra não pode ser excluída pois já possui vendas e previsões financeiras geradas.");
-    }
+export async function deleteParticipantProfileRuleAction(formData: FormData): Promise<void> {
+  const id = String(formData.get("regra_id") ?? "").trim();
+  const empresaId = String(formData.get("empresa_id") ?? "").trim();
+  if (!id || !empresaId) return;
 
-    await supabase
-      .from("comissao_regras_participantes")
-      .delete()
-      .eq("id", id)
-      .eq("empresa_id", empresaId);
+  const supabase = await assertCanWrite(empresaId);
 
-    revalidatePath("/erp/regras-comissao");
-    return { ok: true, message: "Regra excluída com sucesso." };
-  } catch (error) {
-    return { ok: false, message: error instanceof Error ? error.message : "Erro ao excluir regra." };
+  const { count } = await supabase
+    .from("comissao_previsoes_participantes")
+    .select("*", { count: "exact", head: true })
+    .eq("regra_participante_id", id);
+
+  if (count && count > 0) {
+    throw new Error("Esta regra não pode ser excluída pois já possui vendas e previsões financeiras geradas.");
   }
+
+  await supabase
+    .from("comissao_regras_participantes")
+    .delete()
+    .eq("id", id)
+    .eq("empresa_id", empresaId);
+
+  revalidatePath("/erp/regras-comissao");
 }
 
 // --------------------------------------------------------------------------

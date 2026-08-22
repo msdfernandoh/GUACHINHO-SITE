@@ -213,13 +213,9 @@ export function ErpCommissionHubView({
       const fd = new FormData();
       fd.set("empresa_id", empresaId);
       fd.set("regra_id", regraId);
-      const res = await homologateParticipantProfileRuleAction(fd);
-      if (!res.ok) {
-        setGlobalFeedback({ type: "error", message: res.message });
-      } else {
-        setGlobalFeedback({ type: "success", message: res.message });
-        router.refresh();
-      }
+      await homologateParticipantProfileRuleAction(fd);
+      setGlobalFeedback({ type: "success", message: "Regra homologada com sucesso." });
+      router.refresh();
     } catch (err) {
       setGlobalFeedback({ type: "error", message: err instanceof Error ? err.message : "Erro ao homologar regra." });
     } finally {
@@ -234,13 +230,9 @@ export function ErpCommissionHubView({
       const fd = new FormData();
       fd.set("empresa_id", empresaId);
       fd.set("regra_id", regraId);
-      const res = await newVersionParticipantProfileRuleAction(fd);
-      if (!res.ok) {
-        setGlobalFeedback({ type: "error", message: res.message });
-      } else {
-        setGlobalFeedback({ type: "success", message: res.message });
-        router.refresh();
-      }
+      await newVersionParticipantProfileRuleAction(fd);
+      setGlobalFeedback({ type: "success", message: "Nova versão criada em Rascunho." });
+      router.refresh();
     } catch (err) {
       setGlobalFeedback({ type: "error", message: err instanceof Error ? err.message : "Erro ao criar nova versão." });
     } finally {
@@ -256,13 +248,9 @@ export function ErpCommissionHubView({
       fd.set("empresa_id", empresaId);
       fd.set("regra_id", regraId);
       fd.set("ativo", String(ativo));
-      const res = await toggleParticipantProfileRuleAction(fd);
-      if (!res.ok) {
-        setGlobalFeedback({ type: "error", message: res.message });
-      } else {
-        setGlobalFeedback({ type: "success", message: res.message });
-        router.refresh();
-      }
+      await toggleParticipantProfileRuleAction(fd);
+      setGlobalFeedback({ type: "success", message: `Regra ${ativo ? "ativada" : "inativada"} com sucesso.` });
+      router.refresh();
     } catch (err) {
       setGlobalFeedback({ type: "error", message: err instanceof Error ? err.message : "Erro ao alterar status da regra." });
     } finally {
@@ -278,13 +266,9 @@ export function ErpCommissionHubView({
       const fd = new FormData();
       fd.set("empresa_id", empresaId);
       fd.set("regra_id", regraId);
-      const res = await deleteParticipantProfileRuleAction(fd);
-      if (!res.ok) {
-        setGlobalFeedback({ type: "error", message: res.message });
-      } else {
-        setGlobalFeedback({ type: "success", message: res.message });
-        router.refresh();
-      }
+      await deleteParticipantProfileRuleAction(fd);
+      setGlobalFeedback({ type: "success", message: "Regra excluída com sucesso." });
+      router.refresh();
     } catch (err) {
       setGlobalFeedback({ type: "error", message: err instanceof Error ? err.message : "Erro ao excluir regra." });
     } finally {
