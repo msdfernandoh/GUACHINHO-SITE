@@ -1,28 +1,12 @@
 -- 110: Correção definitiva de triggers de homologação e constraint de cronograma
 BEGIN;
 
--- 1. Sanitizar dados legados que violavam o check de cronograma
-UPDATE public.comissao_regras_participantes
-SET etapas_cronograma = '[]'::jsonb,
-    modo_regra = 'AUTOMATICA',
-    seguir_cronograma_franquia = true,
-    updated_at = now()
-WHERE modo_regra = 'AUTOMATICA' OR seguir_cronograma_franquia = true OR etapas_cronograma IS NULL;
-
--- 2. Atualizar constraint de cronograma tolerante
+-- 1. Desativar temporariamente o trigger e a constraint para permitir a sanitização
+DROP TRIGGER IF EXISTS trg_comissao_regra_participante_validate ON public.comissao_regras_participantes;
+DROP TRIGGER IF EXISTS trg_comissao_regra_franquia_validate ON public.comissao_regras_franquia;
 ALTER TABLE public.comissao_regras_participantes DROP CONSTRAINT IF EXISTS comissao_regra_participante_cronograma_array_check;
-ALTER TABLE public.comissao_regras_participantes ADD CONSTRAINT comissao_regra_participante_cronograma_array_check CHECK (
-  jsonb_typeof(etapas_cronograma) = 'array' AND
-  (
-    ((modo_regra = 'AUTOMATICA' OR seguir_cronograma_franquia = true) AND jsonb_array_length(etapas_cronograma) = 0)
-    OR
-    ((modo_regra = 'MANUAL' OR (seguir_cronograma_franquia = false AND modo_regra IS NOT NULL)) AND jsonb_array_length(etapas_cronograma) > 0)
-    OR
-    (modo_regra IS NULL)
-  )
-);
 
--- 3. Atualizar comissao_regra_participante_before_write
+-- 2. Atualizar a função comissao_regra_participante_before_write
 CREATE OR REPLACE FUNCTION public.comissao_regra_participante_before_write()
 RETURNS trigger
 LANGUAGE plpgsql
@@ -85,7 +69,7 @@ BEGIN
 END;
 $$;
 
--- 4. Atualizar comissao_regra_before_write da franqueadora
+-- 3. Atualizar a função comissao_regra_before_write da franqueadora
 CREATE OR REPLACE FUNCTION public.comissao_regra_before_write()
 RETURNS trigger
 LANGUAGE plpgsql
@@ -123,6 +107,34 @@ BEGIN
   RETURN NEW;
 END;
 $$;
+
+-- 4. Sanitizar os dados existentes
+UPDATE public.comissao_regras_participantes
+SET etapas_cronograma = '[]'::jsonb,
+    modo_regra = 'AUTOMATICA',
+    seguir_cronograma_franquia = true,
+    updated_at = now()
+WHERE modo_regra = 'AUTOMATICA' OR seguir_cronograma_franquia = true OR etapas_cronograma IS NULL;
+
+-- 5. Reativar os triggers e a constraint
+CREATE TRIGGER trg_comissao_regra_participante_validate
+BEFORE INSERT OR UPDATE ON public.comissao_regras_participantes
+FOR EACH ROW EXECUTE FUNCTION public.comissao_regra_participante_before_write();
+
+CREATE TRIGGER trg_comissao_regra_franquia_validate
+BEFORE INSERT OR UPDATE ON public.comissao_regras_franquia
+FOR EACH ROW EXECUTE FUNCTION public.comissao_regra_before_write();
+
+ALTER TABLE public.comissao_regras_participantes ADD CONSTRAINT comissao_regra_participante_cronograma_array_check CHECK (
+  jsonb_typeof(etapas_cronograma) = 'array' AND
+  (
+    ((modo_regra = 'AUTOMATICA' OR seguir_cronograma_franquia = true) AND jsonb_array_length(etapas_cronograma) = 0)
+    OR
+    ((modo_regra = 'MANUAL' OR (seguir_cronograma_franquia = false AND modo_regra IS NOT NULL)) AND jsonb_array_length(etapas_cronograma) > 0)
+    OR
+    (modo_regra IS NULL)
+  )
+);
 
 COMMIT;
 
