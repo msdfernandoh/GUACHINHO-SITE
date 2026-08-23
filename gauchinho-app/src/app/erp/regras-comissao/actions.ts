@@ -181,6 +181,19 @@ export async function saveParticipantProfileRuleAction(
     };
 
     if (id) {
+      const { data: currentRule } = await supabase
+        .from("comissao_regras_participantes")
+        .select("status, configuracao_homologada")
+        .eq("id", id)
+        .eq("empresa_id", empresaId)
+        .single();
+
+      if (currentRule && currentRule.status === "HOMOLOGADA") {
+        payload.status = "HOMOLOGADA";
+        payload.configuracao_homologada = true;
+        payload.origem_configuracao = "ERP";
+      }
+
       const { error } = await supabase
         .from("comissao_regras_participantes")
         .update(payload)

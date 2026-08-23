@@ -490,8 +490,8 @@ export function ErpCommissionHubView({
                     </tr>
                   ) : (
                     filteredRegrasPerfis.map((regra) => {
-                      const isHomologada = regra.status === "HOMOLOGADA" || (regra.configuracao_homologada && regra.ativa);
-                      const isRascunho = regra.status === "RASCUNHO" || !regra.configuracao_homologada;
+                      const isHomologada = (regra.status === "HOMOLOGADA" || regra.configuracao_homologada) && regra.status !== "RASCUNHO";
+                      const isRascunho = regra.status === "RASCUNHO" || (!regra.configuracao_homologada && regra.status !== "HOMOLOGADA");
 
                       return (
                         <tr key={regra.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition">
@@ -602,9 +602,18 @@ export function ErpCommissionHubView({
                                 </>
                               )}
 
-                              {/* HOMOLOGADA: Nova Versão e Inativar */}
+                              {/* HOMOLOGADA: Editar, Nova Versão e Inativar */}
                               {isHomologada && canWrite && (
                                 <>
+                                  <button
+                                    onClick={() => {
+                                      setEditingRegra(regra);
+                                      setRegraModalOpen(true);
+                                    }}
+                                    className="rounded-lg border border-slate-300 px-2.5 py-1 text-xs font-bold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300"
+                                  >
+                                    Editar
+                                  </button>
                                   <button
                                     onClick={() => handleNewVersionRule(regra.id)}
                                     disabled={isProcessingRuleAction}
