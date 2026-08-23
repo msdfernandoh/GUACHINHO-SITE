@@ -1,7 +1,28 @@
--- 110: Correção definitiva de triggers de homologação de regras de comissão
+-- 110: Correção definitiva de triggers de homologação e constraint de cronograma
 BEGIN;
 
--- 1. Atualizar comissao_regra_participante_before_write para suportar programas SaaS e Perfis Comerciais
+-- 1. Sanitizar dados legados que violavam o check de cronograma
+UPDATE public.comissao_regras_participantes
+SET etapas_cronograma = '[]'::jsonb,
+    modo_regra = 'AUTOMATICA',
+    seguir_cronograma_franquia = true,
+    updated_at = now()
+WHERE modo_regra = 'AUTOMATICA' OR seguir_cronograma_franquia = true OR etapas_cronograma IS NULL;
+
+-- 2. Atualizar constraint de cronograma tolerante
+ALTER TABLE public.comissao_regras_participantes DROP CONSTRAINT IF EXISTS comissao_regra_participante_cronograma_array_check;
+ALTER TABLE public.comissao_regras_participantes ADD CONSTRAINT comissao_regra_participante_cronograma_array_check CHECK (
+  jsonb_typeof(etapas_cronograma) = 'array' AND
+  (
+    ((modo_regra = 'AUTOMATICA' OR seguir_cronograma_franquia = true) AND jsonb_array_length(etapas_cronograma) = 0)
+    OR
+    ((modo_regra = 'MANUAL' OR (seguir_cronograma_franquia = false AND modo_regra IS NOT NULL)) AND jsonb_array_length(etapas_cronograma) > 0)
+    OR
+    (modo_regra IS NULL)
+  )
+);
+
+-- 3. Atualizar comissao_regra_participante_before_write
 CREATE OR REPLACE FUNCTION public.comissao_regra_participante_before_write()
 RETURNS trigger
 LANGUAGE plpgsql
@@ -16,18 +37,26 @@ BEGIN
   NEW.plano_condicao := NULLIF(lower(trim(COALESCE(NEW.plano_condicao,''))), '');
   NEW.origem_configuracao := upper(trim(COALESCE(NEW.origem_configuracao, 'ERP')));
 
-  -- Garante cronograma válido se não informado
-  IF NEW.etapas_cronograma IS NULL OR jsonb_typeof(NEW.etapas_cronograma) <> 'array' OR jsonb_array_length(NEW.etapas_cronograma) = 0 THEN
-    NEW.etapas_cronograma := '[{"ordem": 1, "mes_relativo": 1, "percentual_etapa": 100, "nome": "Parcela Única"}]'::jsonb;
-  END IF;
-
   IF NEW.base_calculo IS NULL THEN
     NEW.base_calculo := CASE WHEN NEW.base_v2 = 'VALOR_FIXO' THEN 'valor_fixo' ELSE 'credito' END;
   END IF;
 
+  -- Ajuste estrito do cronograma conforme modo_regra / seguir_cronograma_franquia
+  IF NEW.modo_regra = 'AUTOMATICA' OR NEW.seguir_cronograma_franquia = true THEN
+    NEW.etapas_cronograma := '[]'::jsonb;
+    NEW.modo_regra := 'AUTOMATICA';
+    NEW.seguir_cronograma_franquia := true;
+  ELSE
+    NEW.modo_regra := 'MANUAL';
+    NEW.seguir_cronograma_franquia := false;
+    IF NEW.etapas_cronograma IS NULL OR jsonb_typeof(NEW.etapas_cronograma) <> 'array' OR jsonb_array_length(NEW.etapas_cronograma) = 0 THEN
+      NEW.etapas_cronograma := '[{"ordem": 1, "mes_relativo": 1, "percentual_etapa": 100, "nome": "Parcela Única"}]'::jsonb;
+    END IF;
+  END IF;
+
   v_total := CASE WHEN NEW.base_calculo = 'credito' THEN COALESCE(NEW.percentual_comissao, 50.0) ELSE COALESCE(NEW.valor_fixo_total, 0) END;
 
-  -- Busca administradora do programa com suporte a programas SaaS globais e locais
+  -- Busca administradora do programa aceitando catálogo SaaS global e local
   IF NEW.programa_id IS NOT NULL THEN
     SELECT p.administradora_id INTO v_admin_id
     FROM public.comissao_programas AS p
@@ -56,7 +85,7 @@ BEGIN
 END;
 $$;
 
--- 2. Atualizar comissao_regra_before_write da franqueadora
+-- 4. Atualizar comissao_regra_before_write da franqueadora
 CREATE OR REPLACE FUNCTION public.comissao_regra_before_write()
 RETURNS trigger
 LANGUAGE plpgsql

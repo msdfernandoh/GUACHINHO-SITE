@@ -174,9 +174,9 @@ export async function saveParticipantProfileRuleAction(
       configuracao_homologada: false,
       origem_configuracao: "ERP_MANUAL_NAO_HOMOLOGADO",
       ativa: true,
-      etapas_cronograma: [
-        { ordem: 1, mes_relativo: 1, percentual_etapa: 100, nome: "Parcela Única" }
-      ],
+      etapas_cronograma: seguirCronograma
+        ? []
+        : [{ ordem: 1, mes_relativo: 1, percentual_etapa: 100, nome: "Parcela Única" }],
       updated_at: new Date().toISOString(),
     };
 
