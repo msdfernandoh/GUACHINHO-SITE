@@ -1698,14 +1698,16 @@ export function ErpCommissionHubView({
                   <select
                     name="programa_id"
                     required
-                    defaultValue={editingRegra?.programa_id || programas[0]?.id || ""}
+                    defaultValue={editingRegra?.programa_id || programas.find(p => p.status === "ATIVO" || p.status === "HOMOLOGADO")?.id || programas[0]?.id || ""}
                     className="mt-1 w-full rounded-xl border border-slate-300 bg-white p-2.5 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
                   >
-                    {programas.map((prog) => (
-                      <option key={prog.id} value={prog.id}>
-                        {prog.nome}
-                      </option>
-                    ))}
+                    {programas
+                      .filter((prog) => prog.id === editingRegra?.programa_id || (prog.ativo && prog.status !== "INATIVO" && !prog.status?.startsWith("SUBSTITUIDA")))
+                      .map((prog) => (
+                        <option key={prog.id} value={prog.id}>
+                          {prog.display_nome || `${prog.nome} (v${prog.versao || 1})`}
+                        </option>
+                      ))}
                   </select>
                 </div>
               </div>

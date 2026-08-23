@@ -47,7 +47,7 @@ export default async function ErpRegrasComissaoPage() {
       .eq("empresa_id", empresaId)
       .order("nome"),
     supabase.from("administradoras").select("id, nome").order("nome"),
-    supabase.from("comissao_programas").select("id, nome, administradora_id").eq("empresa_id", empresaId).order("nome"),
+    supabase.from("comissao_programas").select("id, nome, administradora_id, versao, status, ativo, administradora:administradoras(nome)").eq("empresa_id", empresaId).order("nome"),
     supabase.from("administradora_tipos").select("id, nome, administradora_id").eq("ativo", true).order("nome"),
     supabase.from("administradora_modalidades_comissao").select("id, nome, administradora_id").eq("ativo", true).order("nome"),
     supabase
