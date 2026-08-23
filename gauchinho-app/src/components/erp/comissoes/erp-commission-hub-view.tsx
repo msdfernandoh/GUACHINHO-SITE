@@ -726,6 +726,45 @@ export function ErpCommissionHubView({
               );
             })}
           </div>
+
+          {/* GUIA OPERACIONAL E EXPLICAÇÃO DA ABA */}
+          <div className="rounded-2xl border border-blue-100 bg-gradient-to-br from-blue-50/70 to-indigo-50/40 p-6 text-slate-800 shadow-sm dark:border-blue-900/50 dark:from-slate-900 dark:to-blue-950/30 dark:text-slate-200">
+            <div className="flex items-center gap-2.5 font-bold text-sm text-blue-900 dark:text-blue-300">
+              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-600 text-xs text-white">💡</span>
+              <span>Como funcionam os Perfis de Comissão e como configurar:</span>
+            </div>
+
+            <div className="mt-4 grid gap-4 md:grid-cols-3">
+              <div className="rounded-xl border border-blue-200/60 bg-white/80 p-4 dark:border-slate-800 dark:bg-slate-900/80">
+                <span className="font-extrabold text-blue-600 dark:text-blue-400 text-xs">PASSO 1</span>
+                <h4 className="mt-1 font-bold text-xs text-slate-900 dark:text-white">Criar o Perfil Comercial</h4>
+                <p className="mt-1 text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed">
+                  Aqui você define os <strong>padrões da empresa</strong> por função (ex: <em>Consultor Padrão</em>, <em>Microfranquia 70%</em>, <em>SDR</em>, <em>Parceiro Imobiliário</em>).
+                </p>
+              </div>
+
+              <div className="rounded-xl border border-blue-200/60 bg-white/80 p-4 dark:border-slate-800 dark:bg-slate-900/80">
+                <span className="font-extrabold text-blue-600 dark:text-blue-400 text-xs">PASSO 2</span>
+                <h4 className="mt-1 font-bold text-xs text-slate-900 dark:text-white">Configurar a Regra (Aba 1)</h4>
+                <p className="mt-1 text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed">
+                  Na aba <strong>"Regras dos Perfis"</strong>, cadastre quanto o perfil ganha (ex: <em>25% da Comissão Líquida da Franqueadora</em>), o cronograma e a curva de estorno.
+                </p>
+              </div>
+
+              <div className="rounded-xl border border-blue-200/60 bg-white/80 p-4 dark:border-slate-800 dark:bg-slate-900/80">
+                <span className="font-extrabold text-blue-600 dark:text-blue-400 text-xs">PASSO 3</span>
+                <h4 className="mt-1 font-bold text-xs text-slate-900 dark:text-white">Vincular a Equipe (Aba 3)</h4>
+                <p className="mt-1 text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed">
+                  Na aba <strong>"Participantes & Perfis"</strong>, associe cada vendedor/consultor ao seu perfil. Automaticamente, todas as novas vendas calcularão os repasses dele!
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-4 flex items-center gap-2 rounded-xl bg-blue-100/60 px-4 py-2.5 text-[11px] font-medium text-blue-900 dark:bg-blue-950/60 dark:text-blue-300">
+              <span>⚡</span>
+              <span><strong>Dica:</strong> Perfis que estão com <em>0 regra(s)</em> precisam de ao menos 1 regra cadastrada na aba <strong>"Regras dos Perfis"</strong> para poderem gerar comissões automáticas nas vendas.</span>
+            </div>
+          </div>
         </section>
       )}
 
