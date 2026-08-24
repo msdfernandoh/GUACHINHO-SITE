@@ -62,6 +62,7 @@ export type RegraPerfilRow = {
   papel_base?: string;
   programa_id: string;
   programa_nome?: string;
+  administradora_id?: string | null;
   administradora_nome?: string;
   tipo_administradora_id: string | null;
   tipo_nome?: string;
@@ -1694,20 +1695,22 @@ export function ErpCommissionHubView({
                 </div>
 
                 <div>
-                  <label className="font-bold text-slate-700 dark:text-slate-300">Programa da Administradora *</label>
+                  <label className="font-bold text-slate-700 dark:text-slate-300">Administradora *</label>
                   <select
-                    name="programa_id"
+                    name="administradora_id"
                     required
-                    defaultValue={editingRegra?.programa_id || programas.find(p => p.status === "ATIVO" || p.status === "HOMOLOGADO")?.id || programas[0]?.id || ""}
+                    defaultValue={
+                      editingRegra?.administradora_id ||
+                      administradoras[0]?.id ||
+                      ""
+                    }
                     className="mt-1 w-full rounded-xl border border-slate-300 bg-white p-2.5 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
                   >
-                    {programas
-                      .filter((prog) => prog.id === editingRegra?.programa_id || (prog.ativo && prog.status !== "INATIVO" && !prog.status?.startsWith("SUBSTITUIDA")))
-                      .map((prog) => (
-                        <option key={prog.id} value={prog.id}>
-                          {prog.display_nome || `${prog.nome} (v${prog.versao || 1})`}
-                        </option>
-                      ))}
+                    {administradoras.map((admin) => (
+                      <option key={admin.id} value={admin.id}>
+                        {admin.nome}
+                      </option>
+                    ))}
                   </select>
                 </div>
               </div>

@@ -128,7 +128,8 @@ export async function saveParticipantProfileRuleAction(
     const id = String(formData.get("id") ?? "").trim();
     const empresaId = String(formData.get("empresa_id") ?? "").trim();
     const perfilId = String(formData.get("perfil_id") ?? "").trim();
-    const programaId = String(formData.get("programa_id") ?? "").trim();
+    let programaId = String(formData.get("programa_id") ?? "").trim();
+    const administradoraId = String(formData.get("administradora_id") ?? "").trim();
     const tipoAdministradoraId = String(formData.get("tipo_administradora_id") ?? "").trim() || null;
     const modalidadeComissaoId = String(formData.get("modalidade_comissao_id") ?? "").trim() || null;
     const baseV2 = String(formData.get("base_v2") ?? "COMISSAO_FRANQUEADORA_LIQUIDA").trim();
@@ -142,15 +143,36 @@ export async function saveParticipantProfileRuleAction(
     const nomeRegra = String(formData.get("nome_regra") ?? "").trim() || null;
     const observacoes = String(formData.get("observacoes") ?? "").trim() || null;
 
+    const supabase = await assertCanWrite(empresaId);
+
+    if (!programaId && administradoraId) {
+      const { data: prog } = await supabase
+        .from("comissao_programas")
+        .select("id")
+        .eq("administradora_id", administradoraId)
+        .order("versao", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (prog) programaId = prog.id;
+    }
+
+    if (!programaId) {
+      const { data: prog } = await supabase
+        .from("comissao_programas")
+        .select("id")
+        .order("versao", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (prog) programaId = prog.id;
+    }
+
     if (!empresaId || !perfilId || !programaId) {
-      throw new Error("Empresa, Perfil e Programa de Administradora são obrigatórios.");
+      throw new Error("Empresa, Perfil e Administradora são obrigatórios.");
     }
 
     if (baseV2 !== "VALOR_FIXO" && (percentualComissao <= 0 || percentualComissao > 100)) {
       throw new Error("O percentual de comissão deve estar entre 0,01% e 100%.");
     }
-
-    const supabase = await assertCanWrite(empresaId);
 
     const payload: Record<string, unknown> = {
       empresa_id: empresaId,

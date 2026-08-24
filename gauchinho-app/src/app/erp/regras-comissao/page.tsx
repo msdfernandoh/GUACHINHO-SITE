@@ -33,7 +33,7 @@ export default async function ErpRegrasComissaoPage() {
       .order("created_at", { ascending: false }),
     supabase
       .from("comissao_regras_participantes")
-      .select("*, perfil:comissao_perfis(nome, papel_base), programa:comissao_programas(nome, administradora:administradoras(nome)), tipo:administradora_tipos(nome), modalidade_obj:administradora_modalidades_comissao(nome), curva:administradora_curvas_estorno(nome)")
+      .select("*, perfil:comissao_perfis(nome, papel_base), programa:comissao_programas(id, nome, administradora_id, administradora:administradoras(id, nome)), tipo:administradora_tipos(nome), modalidade_obj:administradora_modalidades_comissao(nome), curva:administradora_curvas_estorno(nome)")
       .eq("empresa_id", empresaId)
       .order("created_at", { ascending: false }),
     supabase
@@ -87,7 +87,8 @@ export default async function ErpRegrasComissaoPage() {
     papel_base: rp.perfil?.papel_base || rp.tipo_participante,
     programa_id: rp.programa_id,
     programa_nome: rp.programa?.nome,
-    administradora_nome: rp.programa?.administradora?.nome,
+    administradora_id: rp.programa?.administradora_id || rp.programa?.administradora?.id || null,
+    administradora_nome: rp.programa?.administradora?.nome || "Racon Consórcios",
     tipo_administradora_id: rp.tipo_administradora_id,
     tipo_nome: rp.tipo?.nome,
     modalidade_comissao_id: rp.modalidade_comissao_id,
