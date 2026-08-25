@@ -438,10 +438,15 @@ export function AdministratorWorkspace({
               type="hidden"
               name="faixas"
               value={JSON.stringify(
-                ranges.map((x) => ({
-                  mes: Number(x.mes),
-                  percentual: Number(x.percentual.replace(",", ".")),
-                })),
+                ranges.map((x) => {
+                  const mesNum = parseInt(String(x.mes || "").replace(/\D/g, ""), 10) || 1;
+                  const pctClean = String(x.percentual || "").replace("%", "").replace(",", ".").trim();
+                  const pctNum = parseFloat(pctClean);
+                  return {
+                    mes: String(mesNum),
+                    percentual: String(isNaN(pctNum) ? 0 : pctNum),
+                  };
+                }),
               )}
             />
             <div className="grid gap-3 md:grid-cols-2">

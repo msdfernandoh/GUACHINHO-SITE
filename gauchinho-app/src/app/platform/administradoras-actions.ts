@@ -87,15 +87,24 @@ export async function criarCurvaEstornoAction(
   try {
     const administradoraId = String(formData.get("administradora_id") ?? "");
     const raw = String(formData.get("faixas") ?? "[]");
-    let faixas: unknown;
+    let rawFaixas: any[];
     try {
-      faixas = JSON.parse(raw);
+      rawFaixas = JSON.parse(raw);
     } catch {
       return {
         status: "VALIDATION_ERROR",
         message: "As faixas da curva são inválidas.",
       };
     }
+    const faixas = (Array.isArray(rawFaixas) ? rawFaixas : []).map((f: any) => {
+      const mes = typeof f.mes === "number" ? f.mes : parseInt(String(f.mes || "").replace(/\D/g, ""), 10) || 1;
+      const pctStr = String(f.percentual ?? "").replace("%", "").replace(",", ".").trim();
+      const pctNum = parseFloat(pctStr);
+      return {
+        mes: String(mes),
+        percentual: String(isNaN(pctNum) ? 0 : pctNum),
+      };
+    });
     const db = await platformDb();
     const { error } = await db.rpc("rpc_platform_salvar_curva_estorno", {
       p_administradora_id: administradoraId,
