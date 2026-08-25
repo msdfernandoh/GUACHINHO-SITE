@@ -233,14 +233,15 @@ export function ErpVendasHubView({
   }, [regraEditPrincipal]);
 
   const percentualFranqueadoraEditAtivo = useMemo(() => {
-    if (programaEditId) {
-      const matchMod = modalidades.find((m) => m.codigo.toUpperCase() === editTipoVenda);
-      const r = regrasFranquia.find(
-        (rf) => rf.programa_id === programaEditId && (rf.modalidade_comissao_id === matchMod?.id || !rf.modalidade_comissao_id)
-      ) || regrasFranquia.find((rf) => rf.programa_id === programaEditId);
-      if (r?.percentual_total_comissao) return Number(r.percentual_total_comissao);
+    const matchMod = modalidades.find((m) => m.codigo.toUpperCase() === editTipoVenda);
+    const r = regrasFranquia.find(
+      (rf) => (programaEditId ? rf.programa_id === programaEditId : true) && (rf.modalidade_comissao_id === matchMod?.id || !rf.modalidade_comissao_id)
+    ) || (programaEditId ? regrasFranquia.find((rf) => rf.programa_id === programaEditId) : null)
+      || regrasFranquia[0];
+    if (r?.percentual_total_comissao !== undefined && r?.percentual_total_comissao !== null) {
+      return Number(r.percentual_total_comissao);
     }
-    return editTipoVenda === "REDUZIDA_60_99" ? 3.5 : editTipoVenda === "REDUZIDA_ABAIXO_59" ? 3.0 : 4.0;
+    return programaEditId ? 2.0 : 4.0;
   }, [programaEditId, modalidades, regrasFranquia, editTipoVenda]);
 
   // Filtragem de vendas
@@ -842,13 +843,14 @@ export function ErpVendasHubView({
                     const matchMod = modalidades.find((m) => m.codigo.toUpperCase() === op.codigo);
                     const isSelected = editTipoVenda === op.codigo;
                     const refPct = (() => {
-                      if (programaEditId) {
-                        const r = regrasFranquia.find(
-                          (rf) => rf.programa_id === programaEditId && (rf.modalidade_comissao_id === matchMod?.id || !rf.modalidade_comissao_id)
-                        ) || regrasFranquia.find((rf) => rf.programa_id === programaEditId);
-                        if (r?.percentual_total_comissao) return Number(r.percentual_total_comissao);
+                      const r = regrasFranquia.find(
+                        (rf) => (programaEditId ? rf.programa_id === programaEditId : true) && (rf.modalidade_comissao_id === matchMod?.id || !rf.modalidade_comissao_id)
+                      ) || (programaEditId ? regrasFranquia.find((rf) => rf.programa_id === programaEditId) : null)
+                        || regrasFranquia[0];
+                      if (r?.percentual_total_comissao !== undefined && r?.percentual_total_comissao !== null) {
+                        return Number(r.percentual_total_comissao);
                       }
-                      return op.codigo === "REDUZIDA_60_99" ? 3.5 : op.codigo === "REDUZIDA_ABAIXO_59" ? 3.0 : 4.0;
+                      return programaEditId ? 2.0 : 4.0;
                     })();
 
                     return (

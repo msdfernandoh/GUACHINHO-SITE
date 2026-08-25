@@ -126,7 +126,7 @@ export default async function ConferirContratacaoPage({
       .order("nome"),
     admin
       .from("comissao_regras_franquia")
-      .select("id,programa_id,percentual_total_comissao,tipo_administradora_id,modalidade_comissao_id,ativa,configuracao_homologada")
+      .select("id,programa_id,percentual_total_comissao,tipo_administradora_id,modalidade_comissao_id,ativa,configuracao_homologada,etapas_cronograma,comissao_regra_etapas(id,ordem,percentual_venda,nome,tipo_gatilho)")
       .or(`empresa_id.eq.${empresaAtiva.id},empresa_id.is.null`)
       .eq("ativa", true),
   ]);

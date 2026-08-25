@@ -76,6 +76,8 @@ export type RegraFranquia = {
   modalidade_comissao_id: string | null;
   ativa: boolean;
   configuracao_homologada?: boolean;
+  etapas_cronograma?: unknown;
+  comissao_regra_etapas?: unknown;
 };
 
 interface FormalizacaoVendaFormProps {
@@ -208,7 +210,7 @@ export function FormalizacaoVendaForm({
     return 50;
   }, [perfilPrincipalAtivo, regraPrincipalAtiva]);
 
-  // 3. Modalidades / Tipos de Venda (Integral, Reduzida 60%, Abaixo 59%) com base no Programa do Perfil
+  // 3. Modalidades / Tipos de Venda (Integral, Reduzida 60%, Abaixo 59%) com base no Contrato Oficial da Franqueadora
   const modalidadesOpcoes = useMemo(() => {
     const cadastradas = modalidades.filter(
       (m) =>
@@ -219,77 +221,84 @@ export function FormalizacaoVendaForm({
     const padroes = [
       {
         codigo: "INTEGRAL",
-        nome: "Integral (100%)",
-        descricao: "Parcela cheia / integral (100% da parcela)",
-        percentualBase: 4.0,
-        badge: "Comissão Cheia",
+        nome: "Integral",
+        descricaoPadrao: "Parcela cheia (100%)",
+        badge: "Integral",
         badgeColor: "bg-emerald-100 text-emerald-800",
       },
       {
         codigo: "REDUZIDA_60_99",
-        nome: "Reduzida 60%",
-        descricao: "Parcela reduzida de 60% a 99% (ex: 60% a 75%)",
-        percentualBase: 3.5,
+        nome: "Reduzida 60% a 99%",
+        descricaoPadrao: "Parcela reduzida (60% a 99%)",
         badge: "Reduzida 60%",
         badgeColor: "bg-blue-100 text-blue-800",
       },
       {
         codigo: "REDUZIDA_ABAIXO_59",
-        nome: "Abaixo de 59%",
-        descricao: "Super reduzida (abaixo de 59% / meia parcela)",
-        percentualBase: 3.0,
+        nome: "Reduzida abaixo de 59%",
+        descricaoPadrao: "Super reduzida (< 59%)",
         badge: "Abaixo 59%",
         badgeColor: "bg-amber-100 text-amber-800",
       },
     ];
 
     return padroes.map((p) => {
-      const match = cadastradas.find(
-        (c) =>
-          c.codigo.toUpperCase() === p.codigo ||
-          c.nome.toLowerCase().includes(p.codigo === "INTEGRAL" ? "integral" : p.codigo === "REDUZIDA_60_99" ? "60" : "59")
-      );
+      const matchMod = cadastradas.find((c) => {
+        const cod = (c.codigo || "").toUpperCase();
+        const nom = (c.nome || "").toLowerCase();
+        if (p.codigo === "INTEGRAL") return cod === "INTEGRAL" || nom.includes("integral");
+        if (p.codigo === "REDUZIDA_60_99") return cod.includes("60") || nom.includes("60");
+        if (p.codigo === "REDUZIDA_ABAIXO_59") return cod.includes("59") || cod.includes("ABAIXO") || nom.includes("59") || nom.includes("abaixo");
+        return false;
+      });
 
-      const modId = match?.id || p.codigo;
+      const modId = matchMod?.id || p.codigo;
 
-      // 1. Busca regra específica do PROGRAMA DO PERFIL SELECIONADO (ex: Franquia Antiga v1 -> 2%)
-      let regra = programaPrincipalId
-        ? regrasFranquia.find(
-            (r) =>
-              r.programa_id === programaPrincipalId &&
-              (r.modalidade_comissao_id === match?.id || !r.modalidade_comissao_id) &&
-              (!r.tipo_administradora_id || r.tipo_administradora_id === grupoAtual?.tipo_administradora_id)
-          )
-        : null;
+      // Busca regra correspondente da franqueadora no banco
+      let regra = regrasFranquia.find((r) => {
+        const matchProg = programaPrincipalId ? r.programa_id === programaPrincipalId : true;
+        const matchTipo = grupoAtual?.tipo_administradora_id ? r.tipo_administradora_id === grupoAtual.tipo_administradora_id : true;
+        const matchM = matchMod?.id ? r.modalidade_comissao_id === matchMod.id : false;
+        return matchProg && matchTipo && matchM;
+      }) || regrasFranquia.find((r) => {
+        const matchProg = programaPrincipalId ? r.programa_id === programaPrincipalId : true;
+        const matchM = matchMod?.id ? r.modalidade_comissao_id === matchMod.id : false;
+        return matchProg && matchM;
+      }) || regrasFranquia.find((r) => {
+        const matchTipo = grupoAtual?.tipo_administradora_id ? r.tipo_administradora_id === grupoAtual.tipo_administradora_id : true;
+        const matchM = matchMod?.id ? r.modalidade_comissao_id === matchMod.id : false;
+        return matchTipo && matchM;
+      }) || regrasFranquia.find((r) => {
+        const matchTipo = grupoAtual?.tipo_administradora_id ? r.tipo_administradora_id === grupoAtual.tipo_administradora_id : true;
+        return matchTipo;
+      }) || (programaPrincipalId ? regrasFranquia.find((r) => r.programa_id === programaPrincipalId) : null)
+        || regrasFranquia[0];
 
-      // 2. Se não encontrou por modalidade exata no programa, busca qualquer regra do programa
-      if (!regra && programaPrincipalId) {
-        regra = regrasFranquia.find((r) => r.programa_id === programaPrincipalId);
-      }
-
-      // 3. Se não tem programa no perfil, busca regra geral para o tipo de administradora e modalidade
-      if (!regra) {
-        regra = regrasFranquia.find(
-          (r) =>
-            r.modalidade_comissao_id === match?.id &&
-            (!r.tipo_administradora_id || r.tipo_administradora_id === grupoAtual?.tipo_administradora_id)
-        );
-      }
-
+      // O percentual vem da regra oficial do banco (ex: 4.0% para Imóvel, 2.0% para Franquia Antiga, 3.5% para Auto)
       const percentualRef =
         regra?.percentual_total_comissao !== undefined && regra?.percentual_total_comissao !== null
           ? Number(regra.percentual_total_comissao)
-          : p.percentualBase;
+          : (programaPrincipalId ? 2.0 : 4.0);
+
+      // Quantidade de etapas do cronograma de recebimento
+      const etapasCount = Array.isArray(regra?.etapas_cronograma) && regra.etapas_cronograma.length > 0
+        ? regra.etapas_cronograma.length
+        : Array.isArray((regra as any)?.comissao_regra_etapas) && (regra as any).comissao_regra_etapas.length > 0
+        ? (regra as any).comissao_regra_etapas.length
+        : p.codigo === "INTEGRAL" ? 9 : p.codigo === "REDUZIDA_60_99" ? 10 : 8;
+
+      const descCronograma = `${p.descricaoPadrao} · ${etapasCount} etapas de recebimento`;
 
       return {
         id: modId,
         codigo: p.codigo,
-        nome: match?.nome || p.nome,
-        descricao: p.descricao,
+        nome: matchMod?.nome || p.nome,
+        descricao: descCronograma,
         percentualReferencia: percentualRef,
+        etapasCount,
         badge: p.badge,
         badgeColor: p.badgeColor,
-        isCadastradaNoBanco: Boolean(match?.id),
+        isCadastradaNoBanco: Boolean(matchMod?.id),
       };
     });
   }, [modalidades, regrasFranquia, grupoAtual, programaPrincipalId]);
