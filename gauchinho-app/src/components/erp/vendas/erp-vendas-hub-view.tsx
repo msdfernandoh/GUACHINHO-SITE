@@ -23,6 +23,14 @@ import {
   registrarContemplacaoAction,
 } from "@/app/erp/vendas/actions";
 
+export type ModalidadeSimples = {
+  id: string;
+  administradora_id?: string;
+  codigo: string;
+  nome: string;
+  ativo?: boolean;
+};
+
 export type VendaItem = {
   id: string;
   cliente_nome: string;
@@ -38,6 +46,7 @@ export type VendaItem = {
   created_at: string;
   data_primeira_parcela: string | null;
   data_segunda_parcela: string | null;
+  modalidade_comissao_id?: string | null;
   participante_comercial_id: string | null;
   participante_secundario_id: string | null;
   participante_secundario_fracao_percentual: number | null;
@@ -89,6 +98,7 @@ interface ErpVendasHubViewProps {
   cotas: CotaItem[];
   participantes: ParticipanteSimples[];
   vinculosPerfis: VinculoPerfilSimples[];
+  modalidades?: ModalidadeSimples[];
   empresaNome: string;
   isMaster: boolean;
 }
@@ -133,6 +143,7 @@ export function ErpVendasHubView({
   cotas,
   participantes,
   vinculosPerfis,
+  modalidades = [],
   empresaNome,
   isMaster,
 }: ErpVendasHubViewProps) {
@@ -162,6 +173,8 @@ export function ErpVendasHubView({
   const [editNumCota, setEditNumCota] = useState("");
   const [editPrincipalId, setEditPrincipalId] = useState("");
   const [editPerfilPrincipalId, setEditPerfilPrincipalId] = useState("");
+  const [editModalidadeId, setEditModalidadeId] = useState<string>("");
+  const [editTipoVenda, setEditTipoVenda] = useState<string>("INTEGRAL");
   const [editSecundarioId, setEditSecundarioId] = useState("");
   const [editPerfilSecundarioId, setEditPerfilSecundarioId] = useState("");
   const [editFracaoSec, setEditFracaoSec] = useState<number>(20);
@@ -203,6 +216,12 @@ export function ErpVendasHubView({
     setEditNumCota(v.cota_numero || "");
     setEditPrincipalId(v.participante_comercial_id || "");
     setEditPerfilPrincipalId(v.perfil_principal_id || (v.snapshot_venda as any)?.perfil_principal_id || "");
+
+    const modId = v.modalidade_comissao_id || (v.snapshot_venda as any)?.modalidade_comissao_id || "";
+    const tipo = (v.snapshot_venda as any)?.tipo_venda || (v.tipo_negociacao?.toLowerCase().includes("60") ? "REDUZIDA_60_99" : v.tipo_negociacao?.toLowerCase().includes("59") ? "REDUZIDA_ABAIXO_59" : "INTEGRAL");
+    setEditModalidadeId(modId);
+    setEditTipoVenda(tipo);
+
     setEditSecundarioId(v.participante_secundario_id || "");
     setEditPerfilSecundarioId(v.perfil_secundario_id || (v.snapshot_venda as any)?.perfil_secundario_id || "");
     setEditFracaoSec(v.participante_secundario_fracao_percentual ? Number(v.participante_secundario_fracao_percentual) : 20);
@@ -706,6 +725,59 @@ export function ErpVendasHubView({
                     ))}
                   </select>
                 </div>
+              </div>
+
+              {/* TIPO DE VENDA / MODALIDADE DA PARCELA */}
+              <div className="rounded-xl border border-indigo-200 bg-indigo-50/50 p-3.5 dark:border-indigo-900/40 dark:bg-indigo-950/20 space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="font-bold text-indigo-950 dark:text-indigo-200 text-xs">
+                    Tipo de Venda &amp; Modalidade da Parcela:
+                  </label>
+                  <span className="text-[11px] font-bold text-indigo-800 dark:text-indigo-300">
+                    {editTipoVenda === "REDUZIDA_60_99" ? "Ref. 3,50%" : editTipoVenda === "REDUZIDA_ABAIXO_59" ? "Ref. 3,00%" : "Ref. 4,00%"}
+                  </span>
+                </div>
+
+                <div className="grid gap-2 sm:grid-cols-3">
+                  {[
+                    { codigo: "INTEGRAL", nome: "Integral (100%)", desc: "Comissão Cheia (4%)", badge: "bg-emerald-100 text-emerald-800" },
+                    { codigo: "REDUZIDA_60_99", nome: "Reduzida 60%", desc: "60% a 99% (3,5%)", badge: "bg-blue-100 text-blue-800" },
+                    { codigo: "REDUZIDA_ABAIXO_59", nome: "Abaixo de 59%", desc: "Super Reduzida (3%)", badge: "bg-amber-100 text-amber-800" },
+                  ].map((op) => {
+                    const matchMod = modalidades.find((m) => m.codigo.toUpperCase() === op.codigo);
+                    const isSelected = editTipoVenda === op.codigo;
+                    return (
+                      <label
+                        key={op.codigo}
+                        className={`flex flex-col justify-between rounded-xl border p-2.5 cursor-pointer transition text-xs ${
+                          isSelected
+                            ? "border-indigo-600 bg-white shadow-sm ring-2 ring-indigo-600/30 text-indigo-950 dark:bg-slate-800 dark:text-white font-bold"
+                            : "border-slate-200 bg-white/70 hover:bg-white text-slate-700 dark:border-slate-800 dark:bg-slate-800/60 dark:text-slate-300"
+                        }`}
+                      >
+                        <div className="flex items-start gap-2">
+                          <input
+                            type="radio"
+                            name="tipo_venda_radio_edit"
+                            checked={isSelected}
+                            onChange={() => {
+                              setEditTipoVenda(op.codigo);
+                              if (matchMod?.id) setEditModalidadeId(matchMod.id);
+                            }}
+                            className="mt-0.5 text-indigo-600"
+                          />
+                          <div>
+                            <p className="font-extrabold">{op.nome}</p>
+                            <p className="text-[10px] text-slate-500 font-normal leading-tight mt-0.5">{op.desc}</p>
+                          </div>
+                        </div>
+                      </label>
+                    );
+                  })}
+                </div>
+
+                <input type="hidden" name="modalidade_comissao_id" value={editModalidadeId} />
+                <input type="hidden" name="tipo_venda" value={editTipoVenda} />
               </div>
 
               {/* SELEÇÃO DO MODELO DE COMISSÃO DO PRINCIPAL */}

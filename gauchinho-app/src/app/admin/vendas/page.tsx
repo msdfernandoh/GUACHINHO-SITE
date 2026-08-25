@@ -19,7 +19,7 @@ export default async function AdminVendasPage() {
 
   const admin = createAdminClient();
 
-  const [vendasRes, cotasRes, participantesRes, vinculosRes] = await Promise.all([
+  const [vendasRes, cotasRes, participantesRes, vinculosRes, modalidadesRes] = await Promise.all([
     admin
       .from("vendas")
       .select(`
@@ -47,6 +47,11 @@ export default async function AdminVendasPage() {
       .select("id,participante_id,papel_tipo,perfil_id,override_percentual,perfil:comissao_perfis(id,nome,papel_base)")
       .eq("empresa_id", empresaId)
       .eq("ativo", true),
+    admin
+      .from("administradora_modalidades_comissao")
+      .select("id,administradora_id,codigo,nome,ativo")
+      .eq("ativo", true)
+      .order("nome"),
   ]);
 
   const participantes = (participantesRes.data ?? []) as ParticipanteSimples[];
@@ -81,6 +86,7 @@ export default async function AdminVendasPage() {
       created_at: v.created_at,
       data_primeira_parcela: v.data_primeira_parcela || null,
       data_segunda_parcela: v.data_segunda_parcela || null,
+      modalidade_comissao_id: v.modalidade_comissao_id || (v.snapshot_venda as any)?.modalidade_comissao_id || null,
       participante_comercial_id: v.participante_comercial_id || null,
       participante_secundario_id: v.participante_secundario_id || null,
       participante_secundario_fracao_percentual: v.participante_secundario_fracao_percentual ? Number(v.participante_secundario_fracao_percentual) : null,
@@ -120,6 +126,7 @@ export default async function AdminVendasPage() {
         cotas={cotas}
         participantes={participantes}
         vinculosPerfis={vinculosPerfis}
+        modalidades={((modalidadesRes.data ?? []) as any)}
         empresaNome={empresaNome}
         isMaster={isMaster}
       />

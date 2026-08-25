@@ -26,28 +26,64 @@ export async function masterAtualizarVendaAction(formData: FormData) {
   const fracao = val(formData, "fracao_secundario");
   const perfilPrincipalId = val(formData, "perfil_principal_id") || null;
   const perfilSecundarioId = val(formData, "perfil_secundario_id") || null;
+  const modalidadeComissaoId = val(formData, "modalidade_comissao_id") || null;
+  const tipoVenda = val(formData, "tipo_venda") || "INTEGRAL";
   const dataPrimeira = val(formData, "data_primeira_parcela") || null;
   const dataSegunda = val(formData, "data_segunda_parcela") || null;
-  const recalcular = formData.get("recalcular_futuras") === "on";
+  const recalcular = formData.get("recalcular_futuras") === "on" || formData.get("recalcular_futuras") === "true";
 
   const admin = createAdminClient();
-  const { error } = await admin.rpc("rpc_master_atualizar_dados_venda", {
-    p_empresa_id: empresaAtiva.id,
-    p_venda_id: vendaId,
-    p_numero_cota: numeroCota,
-    p_participante_principal_id: principalId,
-    p_participante_secundario_id: secundarioId,
-    p_fracao_secundario: secundarioId && fracao ? Number(fracao) : null,
-    p_data_primeira_parcela: dataPrimeira,
-    p_data_segunda_parcela: dataSegunda,
-    p_recalcular_comissoes_futuras: recalcular,
-    p_perfil_principal_id: perfilPrincipalId,
-    p_perfil_secundario_id: perfilSecundarioId,
-  });
 
-  if (error) throw new Error(error.message);
+  // 1. Atualiza dados da venda (incluindo modalidade de venda e snapshot)
+  const vendaUpdatePayload: Record<string, unknown> = {
+    participante_comercial_id: principalId,
+    participante_secundario_id: secundarioId,
+    participante_secundario_fracao_percentual: secundarioId && fracao ? Number(fracao) : null,
+    perfil_principal_id: perfilPrincipalId,
+    perfil_secundario_id: perfilSecundarioId,
+    data_primeira_parcela: dataPrimeira,
+    data_segunda_parcela: dataSegunda,
+    updated_at: new Date().toISOString(),
+  };
+
+  if (modalidadeComissaoId && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(modalidadeComissaoId)) {
+    vendaUpdatePayload.modalidade_comissao_id = modalidadeComissaoId;
+  }
+
+  const { data: currentVenda } = await admin.from("vendas").select("snapshot_venda").eq("id", vendaId).maybeSingle();
+  if (currentVenda) {
+    vendaUpdatePayload.snapshot_venda = {
+      ...(currentVenda.snapshot_venda || {}),
+      modalidade_comissao_id: modalidadeComissaoId,
+      tipo_venda: tipoVenda,
+      tipo_negociacao: tipoVenda === "REDUZIDA_60_99" ? "Reduzida 60%" : tipoVenda === "REDUZIDA_ABAIXO_59" ? "Abaixo de 59%" : "Integral",
+    };
+  }
+
+  await admin.from("vendas").update(vendaUpdatePayload).eq("id", vendaId).eq("empresa_id", empresaAtiva.id);
+
+  // 2. Atualiza número da cota se fornecido
+  if (numeroCota !== undefined) {
+    await admin.from("cotas_definitivas").update({
+      numero_cota: numeroCota ? numeroCota.trim() : null,
+      participante_comercial_id: principalId,
+      updated_at: new Date().toISOString(),
+    }).eq("venda_id", vendaId).eq("empresa_id", empresaAtiva.id);
+  }
+
+  // 3. Se recalcular comissões futuras
+  if (recalcular) {
+    await admin.from("comissao_previsoes_participantes").delete().eq("venda_id", vendaId).in("status", ["prevista", "elegivel"]);
+    await admin.from("comissao_previsoes_franquia").delete().eq("venda_id", vendaId).eq("status", "prevista");
+    await admin.rpc("rpc_gerar_previsoes_comissao_v2", {
+      p_empresa_id: empresaAtiva.id,
+      p_venda_id: vendaId,
+      p_idempotency_key: `recalculo_master:${vendaId}:${Date.now()}`
+    });
+  }
 
   revalidatePath("/erp/vendas");
+  revalidatePath("/admin/vendas");
   revalidatePath("/erp/minhas-comissoes");
   revalidatePath("/erp/comissoes");
   return { ok: true };
