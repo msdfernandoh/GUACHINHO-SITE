@@ -331,11 +331,14 @@ export function ContasPagarClient({
       nome.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
     const fernando = socios.find((socio) => nomeNormalizado(socio.nome).includes("fernando"));
     const eroni = socios.find((socio) => nomeNormalizado(socio.nome).includes("eroni"));
-    const contasDoPeriodo = contas.filter((conta) => {
-      const data = dataTipo === "pagamento" ? conta.pago_em : conta.vencimento;
+
+    // O fechamento entre sócios calcula ESTRITAMENTE em cima de contas PAGAS
+    const contasPagasDoPeriodo = contas.filter((conta) => {
+      if (conta.status !== "paga") return false;
+      if (!conta.pago_pessoalmente && !conta.socio_pagador_usuario_id) return false;
+
+      const data = dataTipo === "pagamento" ? (conta.pago_em || conta.vencimento) : conta.vencimento;
       return (
-        conta.status === "paga" &&
-        conta.pago_pessoalmente &&
         (!inicio || Boolean(data && data >= inicio)) &&
         (!fim || Boolean(data && data <= fim)) &&
         (!bancoFiltro || conta.conta_bancaria_id === bancoFiltro) &&
@@ -343,17 +346,20 @@ export function ContasPagarClient({
         (!socioFiltro || conta.socio_pagador_usuario_id === socioFiltro)
       );
     });
-    const pagoFernando = contasDoPeriodo
+
+    const pagoFernando = contasPagasDoPeriodo
       .filter((conta) => conta.socio_pagador_usuario_id === fernando?.id)
       .reduce((total, conta) => total + Number(conta.valor), 0);
-    const pagoEroni = contasDoPeriodo
+    const pagoEroni = contasPagasDoPeriodo
       .filter((conta) => conta.socio_pagador_usuario_id === eroni?.id)
       .reduce((total, conta) => total + Number(conta.valor), 0);
+
     return {
       fernandoNome: fernando?.nome ?? "Fernando",
       eroniNome: eroni?.nome ?? "Eroni",
       pagoFernando,
       pagoEroni,
+      totalContasPagas: contasPagasDoPeriodo.length,
       ...calcularAcertoSocios(pagoFernando, pagoEroni),
     };
   }, [bancoFiltro, centroFiltro, contas, dataTipo, fim, inicio, socioFiltro, socios]);

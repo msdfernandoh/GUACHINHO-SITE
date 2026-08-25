@@ -149,18 +149,41 @@ export async function criarConta(form: FormData): Promise<ContasActionResult> {
     }
     if (pessoal && !socioId) throw new Error("Selecione quem pagou pessoalmente.");
     if (pessoal) await assertSocio(admin, empresaId, socioId);
+    const fornecedorTexto = value(form, "fornecedor");
+    let fornecedorId: string | null = null;
+    if (fornecedorTexto) {
+      try {
+        const { data: fornData } = await admin.rpc("rpc_obter_ou_criar_fornecedor", {
+          p_empresa_id: empresaId,
+          p_nome: fornecedorTexto,
+        });
+        if (fornData) fornecedorId = fornData;
+      } catch (e) {
+        console.error("Erro ao obter/criar fornecedor:", e);
+      }
+    }
+
+    const arquivoNf = form.get("arquivo_nf") as File | null;
+    const uploadNf = await uploadNotaFiscal(admin, empresaId, arquivoNf);
+
     const { error } = await admin.from("financeiro_contas_pagar").insert({
       empresa_id: empresaId,
       descricao,
-      fornecedor: value(form, "fornecedor") || null,
+      fornecedor: fornecedorTexto || null,
+      fornecedor_id: fornecedorId,
       centro_custo_id: value(form, "centro") || null,
       conta_bancaria_id: value(form, "banco") || null,
       vencimento,
       competencia: vencimento.slice(0, 7),
       valor,
+      status: pessoal ? "paga" : "aberta",
+      pago_em: pessoal ? (vencimento || new Date().toISOString().slice(0, 10)) : null,
       pago_pessoalmente: pessoal,
       socio_pagador_usuario_id: pessoal ? socioId : null,
       observacao: value(form, "obs") || null,
+      comprovante_url: uploadNf?.url || null,
+      nota_fiscal_nome: uploadNf?.nome || null,
+      nota_fiscal_uploaded_at: uploadNf ? new Date().toISOString() : null,
     });
     if (error) throw new Error(error.message);
     revalidatePath("/erp/contas-pagar");
