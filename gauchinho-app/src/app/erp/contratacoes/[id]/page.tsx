@@ -2,10 +2,15 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentTenantContext } from "@/lib/tenant/context";
-import { formalizarContratacaoAction } from "../actions";
 import { DocumentoLink } from "./documento-link";
+import {
+  FormalizacaoVendaForm,
+  type GrupoConsorcio,
+  type ParticipanteComercial,
+  type VinculoPerfil,
+  type RegraParticipante,
+} from "@/components/erp/contratacoes/formalizacao-venda-form";
 
-const money = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 function relation<T>(value: unknown): T | null { return (Array.isArray(value) ? value[0] : value) as T | null; }
 
 type ContratacaoDetalhe = {
@@ -39,50 +44,6 @@ type ContratacaoDetalhe = {
   vendas: unknown;
 };
 
-type GrupoCota = {
-  id: string;
-  valor_credito: number;
-  valor_parcela: number;
-  ativo: boolean;
-  status: string;
-};
-
-type GrupoConsorcio = {
-  id: string;
-  codigo_grupo: string;
-  administradora_id: string;
-  status_governanca: string | null;
-  tipo_administradora_id: string | null;
-  modalidade_comissao_id: string | null;
-  prazo_total: number | null;
-  administradora: unknown;
-  tipo: unknown;
-  modalidade: unknown;
-  grupos_cotas: GrupoCota[] | null;
-};
-
-type ParticipanteComercial = {
-  id: string;
-  nome: string;
-  nome_exibicao: string | null;
-};
-
-type RegraFranquia = {
-  id: string;
-  versao: number;
-  configuracao_homologada: boolean;
-  vigencia_inicio: string;
-  vigencia_fim: string | null;
-  tipo_administradora_id: string | null;
-  modalidade_comissao_id: string | null;
-};
-
-type ProgramaComissao = {
-  id: string;
-  nome: string;
-  comissao_regras_franquia: RegraFranquia[] | null;
-};
-
 type DocumentoContratacao = {
   id: string;
   tipo_documento: string;
@@ -98,7 +59,7 @@ type HistoricoFormalizacao = {
 
 export default async function ConferirContratacaoPage({
   params,
-  searchParams
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
   searchParams: Promise<Record<string, string | undefined>>;
@@ -109,7 +70,15 @@ export default async function ConferirContratacaoPage({
   if (!empresaAtiva) notFound();
   const admin = createAdminClient();
 
-  const [contratacaoResult, gruposResult, participantesResult, documentosResult, historicoResult] = await Promise.all([
+  const [
+    contratacaoResult,
+    gruposResult,
+    participantesResult,
+    vinculosResult,
+    regrasParticipantesResult,
+    documentosResult,
+    historicoResult,
+  ] = await Promise.all([
     admin
       .from("contratacoes_online")
       .select("*,cliente:clientes(id,nome,cpf_cnpj,email,telefone),vendas(id,status,cotas_definitivas(id,numero_cota,status))")
@@ -127,6 +96,16 @@ export default async function ConferirContratacaoPage({
       .eq("empresa_id", empresaAtiva.id)
       .ilike("status", "ativo")
       .order("nome"),
+    admin
+      .from("participante_comissao_perfis")
+      .select("id,participante_id,papel_tipo,perfil_id,override_percentual,perfil:comissao_perfis(id,nome,papel_base)")
+      .eq("empresa_id", empresaAtiva.id)
+      .eq("ativo", true),
+    admin
+      .from("comissao_regras_participantes")
+      .select("id,perfil_id,percentual_comissao,seguir_cronograma_franquia,etapas_cronograma,base_v2,status")
+      .eq("empresa_id", empresaAtiva.id)
+      .eq("ativa", true),
     admin
       .from("contratacoes_documentos")
       .select("id,tipo_documento,arquivo_nome,mime_type,created_at")
@@ -148,6 +127,9 @@ export default async function ConferirContratacaoPage({
   const formalizada = Boolean(venda?.id && cota?.id);
 
   const grupos = (gruposResult.data ?? []) as GrupoConsorcio[];
+  const participantes = (participantesResult.data ?? []) as ParticipanteComercial[];
+  const vinculosPerfis = (vinculosResult.data ?? []) as VinculoPerfil[];
+  const regrasParticipantes = (regrasParticipantesResult.data ?? []) as RegraParticipante[];
 
   // Auto-resolução inteligente do Grupo
   const grupoMatch =
@@ -158,94 +140,65 @@ export default async function ConferirContratacaoPage({
     grupos[0];
 
   const grupoSelecionadoId = grupoMatch?.id || "";
-  const grupoAtual = grupos.find((g) => g.id === grupoSelecionadoId);
 
-  const opcoes: Array<{
-    id: string;
-    grupo_id: string;
-    grupo_codigo: string;
-    valor_credito: number;
-    valor_parcela: number;
-    prazo: number;
-  }> = grupos.flatMap((g) =>
+  const opcoes = grupos.flatMap((g) =>
     (g.grupos_cotas ?? [])
-      .filter((o) => o.ativo && !["Inativo", "Esgotado"].includes(o.status))
+      .filter((o) => o.ativo !== false)
       .map((o) => ({
-        id: String(o.id),
-        grupo_id: String(g.id),
-        grupo_codigo: String(g.codigo_grupo),
+        id: o.id,
+        grupo_id: g.id,
+        grupo_codigo: g.codigo_grupo,
         valor_credito: Number(o.valor_credito),
         valor_parcela: Number(o.valor_parcela),
-        prazo: Number(g.prazo_total || (c.dados_simulacao as any)?.prazo || 180),
+        prazo: g.prazo_total || 180,
       }))
   );
 
-  const creditoBuscado = Number(c.credito_selecionado || (c.dados_simulacao as any)?.valor_credito || (c.dados_simulacao as any)?.somaCotas || 0);
+  const creditoBuscado = Number(
+    c.credito_selecionado ||
+    (c.dados_simulacao as any)?.valor_credito ||
+    (c.dados_simulacao as any)?.somaCotas ||
+    (c.dados_simulacao as any)?.selecoes?.[0]?.credito ||
+    500000
+  );
 
-  // Auto-resolução da Cota
   const cotaMatch =
     (c.cota_id && opcoes.find((o) => o.id === c.cota_id)) ||
+    ((c.dados_simulacao as any)?.cotaId && opcoes.find((o) => o.id === (c.dados_simulacao as any)?.cotaId)) ||
     opcoes.find((o) => o.grupo_id === grupoSelecionadoId && Math.abs(o.valor_credito - creditoBuscado) < 0.01) ||
     opcoes.find((o) => o.grupo_id === grupoSelecionadoId) ||
     opcoes[0];
 
   const cotaSelecionadaId = cotaMatch?.id || "";
 
-  const participantes = (participantesResult.data ?? []) as ParticipanteComercial[];
-  const consultorSelecionadoId = c.participante_comercial_id || participantes[0]?.id || "";
-
-  const dataVenda = new Date().toISOString().slice(0, 10);
-  const tipoId = grupoAtual?.tipo_administradora_id;
-  const modalidadeId = grupoAtual?.modalidade_comissao_id;
-
-  const { data: programas } = grupoAtual?.administradora_id
-    ? await admin
-        .from("comissao_programas")
-        .select(
-          "id,nome,status,comissao_regras_franquia(id,versao,configuracao_homologada,vigencia_inicio,vigencia_fim,tipo_administradora_id,modalidade_comissao_id,percentual_total_comissao,valor_fixo_total),comissao_regras_participantes(id,configuracao_homologada,tipo_administradora_id,modalidade_comissao_id)"
-        )
-        .eq("empresa_id", empresaAtiva.id)
-        .eq("administradora_id", grupoAtual.administradora_id)
-        .eq("status", "ATIVO")
-    : { data: [] };
-
-  const regras = ((programas ?? []) as ProgramaComissao[]).flatMap((p) =>
-    (p.comissao_regras_franquia ?? [])
-      .filter(
-        (r) =>
-          r.configuracao_homologada &&
-          r.vigencia_inicio <= dataVenda &&
-          (!r.vigencia_fim || r.vigencia_fim >= dataVenda) &&
-          (!r.tipo_administradora_id || !tipoId || r.tipo_administradora_id === tipoId) &&
-          (!r.modalidade_comissao_id || !modalidadeId || r.modalidade_comissao_id === modalidadeId)
-      )
-      .map((r) => ({ programa: p, regra: r }))
-  );
+  const consultorSelecionadoId =
+    c.participante_comercial_id ||
+    participantes[0]?.id ||
+    "";
 
   return (
-    <div className="mx-auto max-w-7xl space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-4">
+    <div className="mx-auto max-w-7xl space-y-6 pb-12">
+      <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <Link href="/erp/contratacoes" className="text-sm font-semibold text-blue-700">
-            ← Voltar à fila de contratações
+          <Link href="/erp/contratacoes" className="text-xs font-semibold text-blue-700 hover:underline">
+            ← Voltar para contratações
           </Link>
-          <p className="mt-4 text-xs font-bold uppercase tracking-[.2em] text-blue-700">
-            Conferência operacional
-          </p>
-          <h1 className="text-3xl font-bold">Contrato {c.protocolo}</h1>
-          <p className="mt-1 text-slate-600">Revise os dados antes de acionar o motor canônico de venda.</p>
+          <h1 className="mt-1 text-2xl font-black text-slate-900 dark:text-white">
+            Conferência e Formalização da Contratação
+          </h1>
+          <p className="text-xs text-slate-500">Conferência operacional · Regra de comissão resolvida · Protocolo {c.protocolo}</p>
         </div>
         <span
-          className={`rounded-full px-3 py-1 text-sm font-semibold ${
+          className={`rounded-full px-3 py-1 text-xs font-black uppercase ${
             formalizada
-              ? "bg-emerald-100 text-emerald-800"
+              ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
               : c.contrato_assinado
-              ? "bg-blue-100 text-blue-800"
-              : "bg-amber-100 text-amber-900"
+              ? "bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300"
+              : "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300"
           }`}
         >
           {formalizada
-            ? "FORMALIZADO"
+            ? "VENDA FORMALIZADA"
             : c.contrato_assinado
             ? "PRONTO PARA CONFERÊNCIA"
             : "AGUARDANDO ASSINATURA"}
@@ -263,14 +216,14 @@ export default async function ConferirContratacaoPage({
           <h2 className="font-bold">Venda formalizada com sucesso</h2>
           <div className="mt-3 flex gap-2">
             {cliente?.id && (
-              <Link className="rounded-lg bg-white px-3 py-2 font-semibold shadow-sm hover:bg-slate-50" href={`/erp/clientes/${cliente.id}`}>
+              <Link className="rounded-lg bg-white px-3 py-2 font-semibold shadow-xs hover:bg-slate-50" href={`/erp/clientes/${cliente.id}`}>
                 Abrir cliente
               </Link>
             )}
-            <Link className="rounded-lg bg-white px-3 py-2 font-semibold shadow-sm hover:bg-slate-50" href={`/erp/vendas?venda=${feedback.venda}`}>
+            <Link className="rounded-lg bg-white px-3 py-2 font-semibold shadow-xs hover:bg-slate-50" href={`/erp/vendas?venda=${feedback.venda}`}>
               Abrir venda
             </Link>
-            <Link className="rounded-lg bg-white px-3 py-2 font-semibold shadow-sm hover:bg-slate-50" href={`/erp/vendas?cota=${feedback.cota}`}>
+            <Link className="rounded-lg bg-white px-3 py-2 font-semibold shadow-xs hover:bg-slate-50" href={`/erp/vendas?cota=${feedback.cota}`}>
               Abrir cota
             </Link>
           </div>
@@ -278,7 +231,7 @@ export default async function ConferirContratacaoPage({
       )}
 
       <section className="grid gap-5 xl:grid-cols-2">
-        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs dark:border-slate-800 dark:bg-slate-900">
           <h2 className="text-lg font-bold">1. Cliente</h2>
           <dl className="mt-4 grid gap-3 sm:grid-cols-2">
             {[
@@ -306,7 +259,7 @@ export default async function ConferirContratacaoPage({
           </div>
         </div>
 
-        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs dark:border-slate-800 dark:bg-slate-900">
           <h2 className="text-lg font-bold">Documentos</h2>
           <p className="mt-1 text-sm text-slate-500">Arquivos privados da contratação; nenhuma cópia será criada.</p>
           <div className="mt-4 space-y-3">
@@ -325,112 +278,24 @@ export default async function ConferirContratacaoPage({
         </div>
       </section>
 
-      <form action={formalizarContratacaoAction} className="space-y-5 rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-        <input type="hidden" name="contratacao_id" value={id} />
-        <h2 className="text-lg font-bold">2. Dados comerciais e participantes</h2>
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <label className="text-sm font-semibold">
-            Grupo canônico
-            <select required name="grupo_id" defaultValue={grupoSelecionadoId} className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800 dark:text-white">
-              <option value="">Selecione</option>
-              {grupos.map((g) => (
-                <option key={g.id} value={g.id}>
-                  {relation<{ nome: string }>(g.administradora)?.nome} · Grupo {g.codigo_grupo} · {relation<{ nome: string }>(g.tipo)?.nome || "Tipo"} · {relation<{ nome: string }>(g.modalidade)?.nome || "Modalidade"}
-                </option>
-              ))}
-            </select>
-          </label>
+      {/* Formulário Interativo de Formalização com Divisão Dinâmica */}
+      <FormalizacaoVendaForm
+        contratacaoId={id}
+        clienteNome={cliente?.nome || c.nome}
+        formaPagamento={c.forma_pagamento || "Boleto"}
+        formalizada={formalizada}
+        grupos={grupos}
+        participantes={participantes}
+        vinculosPerfis={vinculosPerfis}
+        regrasParticipantes={regrasParticipantes}
+        initialGrupoId={grupoSelecionadoId}
+        initialCotaId={cotaSelecionadaId}
+        initialPrincipalId={consultorSelecionadoId}
+        initialSecundarioId={c.participante_secundario_id}
+        initialFracaoSecundario={c.participante_secundario_fracao_percentual}
+      />
 
-          <label className="text-sm font-semibold">
-            Produto / cota comercial
-            <select required name="opcao_cota_id" defaultValue={cotaSelecionadaId} className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800 dark:text-white">
-              <option value="">Selecione</option>
-              {opcoes.map((o) => (
-                <option key={o.id} value={o.id}>
-                  Grupo {o.grupo_codigo} · {money.format(Number(o.valor_credito))} · {o.prazo}x de {money.format(Number(o.valor_parcela))}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className="text-sm font-semibold">
-            Consultor principal
-            <select required name="participante_principal_id" defaultValue={consultorSelecionadoId} className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800 dark:text-white">
-              <option value="">Selecione</option>
-              {participantes.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.nome_exibicao || p.nome}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className="text-sm font-semibold">
-            Participante secundário
-            <select name="participante_secundario_id" defaultValue={c.participante_secundario_id ?? ""} className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800 dark:text-white">
-              <option value="">Sem secundário</option>
-              {participantes.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.nome_exibicao || p.nome}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className="text-sm font-semibold">
-            Fração do secundário (%)
-            <input
-              name="fracao_secundario"
-              type="number"
-              min="0.0001"
-              max="99.9999"
-              step="0.0001"
-              defaultValue={c.participante_secundario_fracao_percentual ?? ""}
-              className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-            />
-          </label>
-        </div>
-
-        {grupoAtual && (
-          <div className="rounded-lg bg-slate-50 p-4 dark:bg-slate-800/50">
-            <h3 className="font-bold text-slate-900 dark:text-white">Configuração do Grupo SaaS</h3>
-            <p className="text-sm text-slate-600 dark:text-slate-400">
-              Administradora: {relation<{ nome: string }>(grupoAtual.administradora)?.nome || "Racon"} · Tipo: {relation<{ nome: string }>(grupoAtual.tipo)?.nome || "Imóvel"} · Modalidade: {relation<{ nome: string }>(grupoAtual.modalidade)?.nome || "Padrão"} · Prazo: {grupoAtual.prazo_total || 180}m
-            </p>
-          </div>
-        )}
-
-        <div className={`rounded-lg p-4 ${regras.length >= 1 ? "bg-emerald-50 text-emerald-950 dark:bg-emerald-950/40 dark:text-emerald-200" : "bg-blue-50 text-blue-950 dark:bg-blue-950/40 dark:text-blue-200"}`}>
-          <h3 className="font-bold">Regra de comissão resolvida</h3>
-          {regras.length >= 1 ? (
-            <p className="text-sm">
-              Programa {regras[0].programa.nome} (regra v{regras[0].regra.versao}). As previsões de comissão serão geradas pelo motor canônico.
-            </p>
-          ) : (
-            <p className="text-sm">
-              Regra padrão da Administradora homologada. As previsões serão computadas na conversão da venda.
-            </p>
-          )}
-        </div>
-
-        <div className="rounded-lg border border-slate-200 p-4 dark:border-slate-800">
-          <h3 className="font-bold text-slate-900 dark:text-white">3. Resumo da Venda</h3>
-          <p className="mt-2 text-sm text-slate-700 dark:text-slate-300">
-            Cliente: <strong>{cliente?.nome || c.nome}</strong> · Grupo: <strong>Grupo {grupoAtual?.codigo_grupo || "1463"}</strong> · Crédito: <strong>{money.format(creditoBuscado || 500000)}</strong> · Forma de pagamento: <strong>{c.forma_pagamento || "Boleto"}</strong>
-          </p>
-        </div>
-
-        {!formalizada && (
-          <button
-            type="submit"
-            className="rounded-xl bg-blue-700 px-6 py-3 font-bold text-white shadow-md hover:bg-blue-800"
-          >
-            Confirmar e formalizar venda
-          </button>
-        )}
-      </form>
-
-      <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+      <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs dark:border-slate-800 dark:bg-slate-900">
         <h2 className="text-lg font-bold">Histórico Operacional</h2>
         <div className="mt-4 space-y-3">
           {((historicoResult.data ?? []) as HistoricoFormalizacao[]).map((h) => (

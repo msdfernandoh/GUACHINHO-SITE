@@ -33,11 +33,14 @@ export async function formalizarContratacaoAction(formData: FormData) {
   const principalId = value(formData, "participante_principal_id");
   const secundarioId = value(formData, "participante_secundario_id") || null;
   const fracao = value(formData, "fracao_secundario");
+  const perfilPrincipalId = value(formData, "perfil_principal_id") || null;
+  const perfilSecundarioId = value(formData, "perfil_secundario_id") || null;
+  const cronogramaSecundario = value(formData, "cronograma_secundario") || "SEGUIR_PRINCIPAL";
   const admin = createAdminClient();
   try {
     const { data: contratacao, error: contratacaoError } = await admin
       .from("contratacoes_online")
-      .select("id,nome,cpf,cnpj,email,telefone,cliente_id,contrato_assinado")
+      .select("id,nome,cpf,cnpj,email,telefone,cliente_id,contrato_assinado,dados_simulacao")
       .eq("id", contratacaoId).eq("empresa_id", empresaAtiva.id).maybeSingle();
     if (contratacaoError || !contratacao) throw new Error(contratacaoError?.message || "Contratação não encontrada.");
     if (!contratacao.contrato_assinado) throw new Error("Contrato ainda não foi assinado.");
@@ -45,10 +48,24 @@ export async function formalizarContratacaoAction(formData: FormData) {
     const { count: documentos, error: documentosError } = await admin.from("contratacoes_documentos").select("id", { count: "exact", head: true }).eq("contratacao_id", contratacaoId);
     if (documentosError) throw new Error(documentosError.message);
     if (!documentos) throw new Error("Documento obrigatório ausente.");
-    if (!contratacao.cliente_id) {
-      const { error: syncError } = await admin.from("contratacoes_online").update({ contrato_assinado: true }).eq("id", contratacaoId).eq("empresa_id", empresaAtiva.id);
-      if (syncError) throw new Error(syncError.message);
-    }
+
+    const existingDados = (contratacao.dados_simulacao as Record<string, unknown>) || {};
+    const updatedDados = {
+      ...existingDados,
+      perfil_principal_id: perfilPrincipalId,
+      perfil_secundario_id: perfilSecundarioId,
+      cronograma_secundario: cronogramaSecundario,
+      fracao_secundario: secundarioId && fracao ? Number(fracao) : null,
+    };
+
+    await admin.from("contratacoes_online").update({
+      contrato_assinado: true,
+      dados_simulacao: updatedDados,
+      participante_comercial_id: principalId || null,
+      participante_secundario_id: secundarioId || null,
+      participante_secundario_fracao_percentual: secundarioId && fracao ? Number(fracao) : null,
+    }).eq("id", contratacaoId).eq("empresa_id", empresaAtiva.id);
+
     const { error: prepararError } = await admin.rpc("rpc_preparar_formalizacao_contratacao", {
       p_empresa_id: empresaAtiva.id,
       p_contratacao_id: contratacaoId,
@@ -56,7 +73,7 @@ export async function formalizarContratacaoAction(formData: FormData) {
       p_opcao_cota_id: opcaoCotaId,
       p_participante_principal_id: principalId,
       p_participante_secundario_id: secundarioId,
-      p_fracao_secundario: secundarioId ? Number(fracao) : null,
+      p_fracao_secundario: secundarioId && fracao ? Number(fracao) : null,
     });
     if (prepararError) throw new Error(prepararError.message);
     const result = await converterContratacaoEmVenda(empresaAtiva.id, contratacaoId, `erp-formalizacao:${contratacaoId}`);
