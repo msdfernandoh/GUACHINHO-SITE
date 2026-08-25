@@ -142,7 +142,7 @@ export function ErpCommissionHubView({
   vinculos: ParticipanteVinculoRow[];
   participantes: ParticipanteOption[];
   administradoras: Array<{ id: string; nome: string }>;
-  programas: Array<{ id: string; nome: string; administradora_id: string | null }>;
+  programas: Array<{ id: string; nome: string; administradora_id: string | null; versao?: number; status?: string }>;
   tipos: Array<{ id: string; nome: string; administradora_id: string }>;
   modalidades: Array<{ id: string; nome: string; administradora_id: string }>;
   curvasEstorno: CurvaEstornoRow[];
@@ -165,6 +165,8 @@ export function ErpCommissionHubView({
   const [editingRegra, setEditingRegra] = useState<RegraPerfilRow | null>(null);
   const [isSavingRegra, setIsSavingRegra] = useState(false);
   const [regraError, setRegraError] = useState<string | null>(null);
+  const [modalAdminId, setModalAdminId] = useState<string>("");
+  const [modalProgramaId, setModalProgramaId] = useState<string>("");
 
   // Modal: Editar / Nova Regra da Franqueadora
   const [franchiseModalOpen, setFranchiseModalOpen] = useState(false);
@@ -1699,12 +1701,12 @@ export function ErpCommissionHubView({
                   <select
                     name="administradora_id"
                     required
-                    defaultValue={
-                      editingRegra?.administradora_id ||
-                      administradoras[0]?.id ||
-                      ""
-                    }
-                    className="mt-1 w-full rounded-xl border border-slate-300 bg-white p-2.5 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                    value={modalAdminId || editingRegra?.administradora_id || administradoras[0]?.id || ""}
+                    onChange={(e) => {
+                      setModalAdminId(e.target.value);
+                      setModalProgramaId("");
+                    }}
+                    className="mt-1 w-full rounded-xl border border-slate-300 bg-white p-2.5 dark:border-slate-700 dark:bg-slate-800 dark:text-white font-semibold"
                   >
                     {administradoras.map((admin) => (
                       <option key={admin.id} value={admin.id}>
@@ -1777,33 +1779,64 @@ export function ErpCommissionHubView({
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div className="flex items-center gap-2 pt-2">
-                  <input
-                    type="checkbox"
-                    id="seguir_cronograma"
-                    name="seguir_cronograma_franquia"
-                    value="true"
-                    defaultChecked={editingRegra ? editingRegra.seguir_cronograma_franquia : true}
-                    className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                  />
-                  <label htmlFor="seguir_cronograma" className="font-semibold text-slate-700 dark:text-slate-300">
-                    Seguir cronograma da Franqueadora
-                  </label>
+              <div className="space-y-3 rounded-xl border border-blue-200 bg-blue-50/50 p-3.5 dark:border-blue-900/40 dark:bg-blue-950/20">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      id="seguir_cronograma"
+                      name="seguir_cronograma_franquia"
+                      value="true"
+                      defaultChecked={editingRegra ? editingRegra.seguir_cronograma_franquia : true}
+                      className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 h-4 w-4"
+                    />
+                    <label htmlFor="seguir_cronograma" className="font-bold text-slate-800 dark:text-slate-200 text-xs">
+                      Seguir cronograma da Franqueadora
+                    </label>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      id="aplicar_curva"
+                      name="aplicar_curva_estorno"
+                      value="true"
+                      defaultChecked={editingRegra ? editingRegra.aplicar_curva_estorno : false}
+                      className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 h-4 w-4"
+                    />
+                    <label htmlFor="aplicar_curva" className="font-bold text-slate-800 dark:text-slate-200 text-xs">
+                      Aplicar curva de estorno
+                    </label>
+                  </div>
                 </div>
 
-                <div className="flex items-center gap-2 pt-2">
-                  <input
-                    type="checkbox"
-                    id="aplicar_curva"
-                    name="aplicar_curva_estorno"
-                    value="true"
-                    defaultChecked={editingRegra ? editingRegra.aplicar_curva_estorno : false}
-                    className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                  />
-                  <label htmlFor="aplicar_curva" className="font-semibold text-slate-700 dark:text-slate-300">
-                    Aplicar curva de estorno
+                <div>
+                  <label className="font-bold text-slate-800 dark:text-slate-200 text-xs flex items-center justify-between">
+                    <span>Modelo / Programa da Franqueadora a Seguir:</span>
+                    <span className="text-[10px] text-blue-700 font-normal">
+                      {programas.filter((p) => !modalAdminId || p.administradora_id === modalAdminId || !p.administradora_id).length} modelo(s) disponível(is)
+                    </span>
                   </label>
+                  <select
+                    name="programa_id"
+                    value={
+                      modalProgramaId ||
+                      (programas.filter((p) => !modalAdminId || p.administradora_id === modalAdminId || !p.administradora_id)[0]?.id ?? "")
+                    }
+                    onChange={(e) => setModalProgramaId(e.target.value)}
+                    className="mt-1 w-full rounded-lg border border-blue-300 bg-white p-2 text-xs font-bold text-slate-900 shadow-2xs dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                  >
+                    {programas
+                      .filter((p) => !modalAdminId || p.administradora_id === modalAdminId || !p.administradora_id)
+                      .map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.nome} {p.versao ? `(v${p.versao})` : ""} {p.status ? `· ${p.status}` : ""}
+                        </option>
+                      ))}
+                  </select>
+                  <p className="text-[10px] text-slate-500 mt-1">
+                    Permite definir exatamente qual programa da administradora (ex: Veículo, Imóvel V2, Franquia Antiga) esta regra irá herdar.
+                  </p>
                 </div>
               </div>
 
