@@ -63,6 +63,7 @@ type Conta = {
   pago_em: string | null;
   pago_pessoalmente: boolean;
   socio_pagador_usuario_id: string | null;
+  descontado_comissao?: boolean;
   responsavel_importado?: string | null;
   necessita_revisao?: boolean;
   centro_custo_id: string | null;
@@ -104,6 +105,7 @@ export type Centro = {
   codigo?: string | null;
   departamento?: string | null;
   descricao?: string | null;
+  descontado_comissao?: boolean;
   ativo: boolean;
 };
 
@@ -332,11 +334,13 @@ export function ContasPagarClient({
     const fernando = socios.find((socio) => nomeNormalizado(socio.nome).includes("fernando"));
     const eroni = socios.find((socio) => nomeNormalizado(socio.nome).includes("eroni"));
 
-    // O fechamento entre sócios calcula ESTRITAMENTE em cima de contas PAGAS
+    const centrosDescontadosSet = new Set(
+      centros.filter((c) => c.descontado_comissao).map((c) => c.id)
+    );
+
+    // Contas pagas no período selecionado
     const contasPagasDoPeriodo = contas.filter((conta) => {
       if (conta.status !== "paga") return false;
-      if (!conta.pago_pessoalmente && !conta.socio_pagador_usuario_id) return false;
-
       const data = dataTipo === "pagamento" ? (conta.pago_em || conta.vencimento) : conta.vencimento;
       return (
         (!inicio || Boolean(data && data >= inicio)) &&
@@ -347,22 +351,53 @@ export function ContasPagarClient({
       );
     });
 
-    const pagoFernando = contasPagasDoPeriodo
+    // 1. Impostos e deduções que já foram descontados na comissão (não duplicam no balanço)
+    const contasDescontadas = contasPagasDoPeriodo.filter(
+      (c) => Boolean(c.descontado_comissao) || (c.centro_custo_id && centrosDescontadosSet.has(c.centro_custo_id))
+    );
+    const totalImpostosDescontados = contasDescontadas.reduce((sum, c) => sum + Number(c.valor), 0);
+
+    // 2. Contas pagas com recursos da Empresa (Caixa Geral / Comissões - Dinheiro dos dois sócios)
+    const contasPagasEmpresa = contasPagasDoPeriodo.filter((c) => {
+      const isDesc = Boolean(c.descontado_comissao) || (c.centro_custo_id && centrosDescontadosSet.has(c.centro_custo_id));
+      if (isDesc) return false;
+      return !c.pago_pessoalmente && !c.socio_pagador_usuario_id;
+    });
+    const totalPagoEmpresa = contasPagasEmpresa.reduce((sum, c) => sum + Number(c.valor), 0);
+
+    // 3. Contas pagas pessoalmente pelos Sócios (entram no acerto 50/50)
+    const contasPagasSocios = contasPagasDoPeriodo.filter((c) => {
+      const isDesc = Boolean(c.descontado_comissao) || (c.centro_custo_id && centrosDescontadosSet.has(c.centro_custo_id));
+      if (isDesc) return false;
+      return c.pago_pessoalmente || Boolean(c.socio_pagador_usuario_id);
+    });
+
+    const pagoFernando = contasPagasSocios
       .filter((conta) => conta.socio_pagador_usuario_id === fernando?.id)
       .reduce((total, conta) => total + Number(conta.valor), 0);
-    const pagoEroni = contasPagasDoPeriodo
+    const pagoEroni = contasPagasSocios
       .filter((conta) => conta.socio_pagador_usuario_id === eroni?.id)
       .reduce((total, conta) => total + Number(conta.valor), 0);
+
+    const totalGastoSocios = pagoFernando + pagoEroni;
+    const cotaIndividual = totalGastoSocios / 2;
+    const totalGeralPagoOperacional = totalPagoEmpresa + totalGastoSocios;
 
     return {
       fernandoNome: fernando?.nome ?? "Fernando",
       eroniNome: eroni?.nome ?? "Eroni",
       pagoFernando,
       pagoEroni,
-      totalContasPagas: contasPagasDoPeriodo.length,
+      totalGastoSocios,
+      totalPagoEmpresa,
+      totalContasPagasEmpresa: contasPagasEmpresa.length,
+      totalGeralPagoOperacional,
+      totalImpostosDescontados,
+      totalContasDescontadas: contasDescontadas.length,
+      totalContasPagas: contasPagasSocios.length,
       ...calcularAcertoSocios(pagoFernando, pagoEroni),
     };
-  }, [bancoFiltro, centroFiltro, contas, dataTipo, fim, inicio, socioFiltro, socios]);
+  }, [bancoFiltro, centroFiltro, centros, contas, dataTipo, fim, inicio, socioFiltro, socios]);
 
   const contasAbertasSocios = useMemo(() => {
     const nomeNormalizado = (nome: string) =>
@@ -619,40 +654,50 @@ export function ContasPagarClient({
           </p>
         </div>
 
-        {/* 1. CARDS DE CONTAS PAGAS (ACERTO) */}
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-          <div className="rounded-2xl border border-indigo-200 bg-indigo-50/80 p-4 shadow-sm text-indigo-950">
-            <p className="text-xs font-bold uppercase tracking-wide opacity-75">1. Total Gasto (Pagas)</p>
-            <p className="mt-2 text-2xl font-black">{brl(balancoSocios.debitoEmpresa)}</p>
-            <p className="mt-1 text-[10px] text-indigo-700 font-medium">Soma de {balancoSocios.fernandoNome} + {balancoSocios.eroniNome}</p>
+        {/* 1. CARDS DE CONTAS PAGAS (EMPRESA + SÓCIOS) */}
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+          <div className="rounded-2xl border border-teal-200 bg-teal-50/90 p-4 shadow-sm text-teal-950">
+            <p className="text-xs font-bold uppercase tracking-wide opacity-80">🏢 Pago pela Empresa</p>
+            <p className="mt-2 text-2xl font-black">{brl(balancoSocios.totalPagoEmpresa)}</p>
+            <p className="mt-1 text-[10px] text-teal-800 font-medium">
+              {balancoSocios.totalContasPagasEmpresa} conta(s) · Caixa geral / Comissões
+            </p>
           </div>
 
-          <div className="rounded-2xl border border-blue-200 bg-blue-50/80 p-4 shadow-sm text-blue-950">
-            <p className="text-xs font-bold uppercase tracking-wide opacity-75">Pago por {balancoSocios.fernandoNome}</p>
+          <div className="rounded-2xl border border-blue-200 bg-blue-50/90 p-4 shadow-sm text-blue-950">
+            <p className="text-xs font-bold uppercase tracking-wide opacity-80">Pago por {balancoSocios.fernandoNome}</p>
             <p className="mt-2 text-2xl font-black">{brl(balancoSocios.pagoFernando)}</p>
-            <p className="mt-1 text-[10px] text-blue-700 font-medium">({balancoSocios.totalContasPagas} contas pagas)</p>
+            <p className="mt-1 text-[10px] text-blue-800 font-medium">Pessoalmente no período</p>
           </div>
 
-          <div className="rounded-2xl border border-violet-200 bg-violet-50/80 p-4 shadow-sm text-violet-950">
-            <p className="text-xs font-bold uppercase tracking-wide opacity-75">Pago por {balancoSocios.eroniNome}</p>
+          <div className="rounded-2xl border border-violet-200 bg-violet-50/90 p-4 shadow-sm text-violet-950">
+            <p className="text-xs font-bold uppercase tracking-wide opacity-80">Pago por {balancoSocios.eroniNome}</p>
             <p className="mt-2 text-2xl font-black">{brl(balancoSocios.pagoEroni)}</p>
-            <p className="mt-1 text-[10px] text-violet-700 font-medium">({balancoSocios.totalContasPagas} contas pagas)</p>
+            <p className="mt-1 text-[10px] text-violet-800 font-medium">Pessoalmente no período</p>
           </div>
 
-          <div className="rounded-2xl border border-amber-200 bg-amber-50/80 p-4 shadow-sm text-amber-950">
-            <p className="text-xs font-bold uppercase tracking-wide opacity-75">Parte de cada sócio (50%)</p>
-            <p className="mt-2 text-2xl font-black">{brl(balancoSocios.cotaIndividual)}</p>
-            <p className="mt-1 text-[10px] text-amber-700 font-medium">Cota individual do total</p>
+          <div className="rounded-2xl border border-indigo-200 bg-indigo-50/90 p-4 shadow-sm text-indigo-950">
+            <p className="text-xs font-bold uppercase tracking-wide opacity-80">👥 Total Sócios (50/50)</p>
+            <p className="mt-2 text-2xl font-black">{brl(balancoSocios.totalGastoSocios)}</p>
+            <p className="mt-1 text-[10px] text-indigo-800 font-medium">
+              Cota 50%: {brl(balancoSocios.cotaIndividual)}
+            </p>
           </div>
 
-          <div className="rounded-2xl border border-emerald-200 bg-emerald-50/90 p-4 shadow-sm text-emerald-950">
-            <p className="text-xs font-bold uppercase tracking-wide opacity-75">Acerto / Transferência</p>
-            <p className="mt-2 text-xl font-black leading-tight text-emerald-900">
-              {balancoSocios.debitoEmpresa === 0
-                ? "Sem despesas pagas"
+          <div className="rounded-2xl border border-slate-300 bg-slate-100 p-4 shadow-sm text-slate-900">
+            <p className="text-xs font-bold uppercase tracking-wide opacity-80">🌐 Total Geral Pago</p>
+            <p className="mt-2 text-2xl font-black">{brl(balancoSocios.totalGeralPagoOperacional)}</p>
+            <p className="mt-1 text-[10px] text-slate-600 font-medium">Empresa + Sócios</p>
+          </div>
+
+          <div className="rounded-2xl border border-emerald-300 bg-emerald-50 p-4 shadow-sm text-emerald-950">
+            <p className="text-xs font-bold uppercase tracking-wide opacity-80">Acerto entre Sócios</p>
+            <p className="mt-2 text-lg font-black leading-tight text-emerald-900">
+              {balancoSocios.totalGastoSocios === 0
+                ? "Sem despesas"
                 : balancoSocios.socioCredor === null
-                  ? "Contas Quites (0,00)"
-                  : `${balancoSocios.socioCredor === "A" ? balancoSocios.eroniNome.split(" ")[0] : balancoSocios.fernandoNome.split(" ")[0]} transfere ${brl(balancoSocios.transferenciaParaEqualizar)}`}
+                  ? "Quites (0,00)"
+                  : `${balancoSocios.socioCredor === "A" ? balancoSocios.eroniNome.split(" ")[0] : balancoSocios.fernandoNome.split(" ")[0]} paga ${brl(balancoSocios.transferenciaParaEqualizar)}`}
             </p>
             <p className="mt-1 text-[10px] text-emerald-700 font-medium">
               {balancoSocios.socioCredor !== null
@@ -661,6 +706,20 @@ export function ContasPagarClient({
             </p>
           </div>
         </div>
+
+        {/* Badge de Impostos descontados na comissão */}
+        {balancoSocios.totalImpostosDescontados > 0 && (
+          <div className="flex items-center justify-between rounded-xl border border-amber-200 bg-amber-50/70 px-4 py-2.5 text-xs text-amber-900">
+            <div className="flex items-center gap-2">
+              <span className="font-bold">🏷️ Impostos / Deduções Descontadas na Comissão:</span>
+              <strong className="text-sm font-black">{brl(balancoSocios.totalImpostosDescontados)}</strong>
+              <span className="text-[11px] text-amber-700 font-medium">({balancoSocios.totalContasDescontadas} lançamentos)</span>
+            </div>
+            <span className="text-[11px] font-semibold text-amber-800 bg-amber-200/60 px-2.5 py-0.5 rounded-full">
+              Isolados do balanço para evitar duplicidade com o desconto das comissões
+            </span>
+          </div>
+        )}
 
         {/* 2. CARD DE CONTAS EM ABERTO DOS SÓCIOS */}
         {contasAbertasSocios.totalContasAbertas > 0 && (
@@ -947,6 +1006,12 @@ export function ContasPagarClient({
                 <Input name="codigo" placeholder="Código identificador (ex: CC-001)" />
                 <Input name="departamento" placeholder="Departamento (ex: Vendas, Adm, TI)" />
                 <Textarea name="descricao" className="md:col-span-3" placeholder="Descrição / finalidade..." />
+                <div className="md:col-span-3">
+                  <label className="flex items-center gap-2 rounded-xl bg-amber-50 border border-amber-200 p-2.5 text-xs font-bold text-amber-900 cursor-pointer">
+                    <input name="descontado_comissao" type="checkbox" className="rounded text-amber-600 h-4 w-4" />
+                    <span>Descontado na comissão (Impostos e deduções que já são abatidos nas comissões — não duplicar no balanço dos sócios)</span>
+                  </label>
+                </div>
               </div>
               <div className="flex justify-end">
                 <Button disabled={pending} className="bg-blue-700 text-xs font-bold hover:bg-blue-800">
@@ -972,7 +1037,16 @@ export function ContasPagarClient({
                     {centros.map((c) => (
                       <tr key={c.id} className="hover:bg-slate-50/80">
                         <td className="p-3 font-mono font-bold text-slate-600">{c.codigo || "—"}</td>
-                        <td className="p-3 font-semibold text-slate-900">{c.nome}</td>
+                        <td className="p-3 font-semibold text-slate-900">
+                          <div className="flex items-center gap-2">
+                            <span>{c.nome}</span>
+                            {c.descontado_comissao && (
+                              <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-800">
+                                Descontado na comissão
+                              </span>
+                            )}
+                          </div>
+                        </td>
                         <td className="p-3 text-slate-600">{c.departamento || "—"}</td>
                         <td className="p-3">
                           <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${c.ativo !== false ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-600"}`}>
@@ -1236,6 +1310,11 @@ export function ContasPagarClient({
                           >
                             {conta.status === "paga" ? "Paga" : "A pagar"}
                           </span>
+                          {conta.descontado_comissao && (
+                            <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-800" title="Imposto/Dedução já descontada na comissão — não duplica no balanço">
+                              Descontado na comissão
+                            </span>
+                          )}
                         </div>
                         <p className="text-sm text-slate-500">
                           Vence em {dataBr(conta.vencimento)}
@@ -1749,15 +1828,25 @@ export function ContasPagarClient({
                   ))}
                 </Select>
               </div>
-              <div className="md:col-span-2">
-                <label className="flex items-center gap-2 rounded-xl bg-amber-50 p-2.5 font-bold text-amber-900">
+              <div className="md:col-span-2 grid gap-2 sm:grid-cols-2">
+                <label className="flex items-center gap-2 rounded-xl bg-blue-50 border border-blue-200 p-2.5 font-bold text-blue-950">
                   <input
                     name="pessoal"
                     type="checkbox"
                     defaultChecked={editando.pago_pessoalmente}
                     disabled={editando.status === "paga" && !master}
+                    className="h-4 w-4 text-blue-600 rounded"
                   />
                   Pago pessoalmente como sócio
+                </label>
+                <label className="flex items-center gap-2 rounded-xl bg-amber-50 border border-amber-200 p-2.5 font-bold text-amber-950">
+                  <input
+                    name="descontado_comissao"
+                    type="checkbox"
+                    defaultChecked={Boolean(editando.descontado_comissao)}
+                    className="h-4 w-4 text-amber-600 rounded"
+                  />
+                  Já descontado na comissão (Não duplicar)
                 </label>
               </div>
               <div className="md:col-span-2">
@@ -1874,6 +1963,227 @@ export function ContasPagarClient({
                 {pending ? "Estornando…" : "Confirmar Estorno"}
               </Button>
             </div>
+          </div>
+        </div>
+      )}
+
+
+      {/* ─────────────────────────────────────────────────────────────
+          MODAL: EDITAR CENTRO DE CUSTO
+      ───────────────────────────────────────────────────────────── */}
+      {editandoCentro && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-xs">
+          <div className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b pb-3">
+              <h3 className="text-base font-bold text-slate-900">Editar Centro de Custo</h3>
+              <button
+                type="button"
+                onClick={() => setEditandoCentro(null)}
+                className="text-slate-400 hover:text-slate-600 cursor-pointer"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <form
+              onSubmit={(event) => {
+                event.preventDefault();
+                const form = new FormData(event.currentTarget);
+                execute(
+                  () => alterarCentro(editandoCentro.id, form),
+                  () => setEditandoCentro(null)
+                );
+              }}
+              className="space-y-3 text-xs"
+            >
+              <div>
+                <label className="font-bold text-slate-700">Nome do centro de custo *</label>
+                <Input name="nome" required defaultValue={editandoCentro.nome} className="mt-1" />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="font-bold text-slate-700">Código</label>
+                  <Input name="codigo" defaultValue={editandoCentro.codigo || ""} className="mt-1" />
+                </div>
+                <div>
+                  <label className="font-bold text-slate-700">Departamento</label>
+                  <Input name="departamento" defaultValue={editandoCentro.departamento || ""} className="mt-1" />
+                </div>
+              </div>
+              <div>
+                <label className="font-bold text-slate-700">Descrição / Finalidade</label>
+                <Textarea name="descricao" defaultValue={editandoCentro.descricao || ""} className="mt-1" />
+              </div>
+              <div>
+                <label className="flex items-center gap-2 rounded-xl bg-amber-50 border border-amber-200 p-2.5 font-bold text-amber-900 cursor-pointer">
+                  <input
+                    name="descontado_comissao"
+                    type="checkbox"
+                    defaultChecked={Boolean(editandoCentro.descontado_comissao)}
+                    className="h-4 w-4 text-amber-600 rounded"
+                  />
+                  <span>Descontado na comissão (Impostos e deduções já abatidos — não duplicar no balanço)</span>
+                </label>
+              </div>
+
+              <div className="flex justify-end gap-2 border-t pt-3">
+                <Button type="button" variant="outline" onClick={() => setEditandoCentro(null)}>
+                  Cancelar
+                </Button>
+                <Button disabled={pending} className="bg-blue-700 hover:bg-blue-800 font-bold">
+                  {pending ? "Salvando…" : "Salvar Alterações"}
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ─────────────────────────────────────────────────────────────
+          MODAL: EDITAR BANCO / CONTA BANCÁRIA
+      ───────────────────────────────────────────────────────────── */}
+      {editandoBanco && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-xs">
+          <div className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b pb-3">
+              <h3 className="text-base font-bold text-slate-900">Editar Conta Bancária</h3>
+              <button
+                type="button"
+                onClick={() => setEditandoBanco(null)}
+                className="text-slate-400 hover:text-slate-600 cursor-pointer"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <form
+              onSubmit={(event) => {
+                event.preventDefault();
+                const form = new FormData(event.currentTarget);
+                execute(
+                  () => alterarBanco(editandoBanco.id, form),
+                  () => setEditandoBanco(null)
+                );
+              }}
+              className="space-y-3 text-xs"
+            >
+              <div>
+                <label className="font-bold text-slate-700">Nome para exibição *</label>
+                <Input name="nome" required defaultValue={editandoBanco.nome} className="mt-1" />
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                <div>
+                  <label className="font-bold text-slate-700">Instituição</label>
+                  <Input name="banco" defaultValue={editandoBanco.banco || ""} className="mt-1" />
+                </div>
+                <div>
+                  <label className="font-bold text-slate-700">Agência</label>
+                  <Input name="agencia" defaultValue={editandoBanco.agencia || ""} className="mt-1" />
+                </div>
+                <div>
+                  <label className="font-bold text-slate-700">Conta</label>
+                  <Input name="conta" defaultValue={editandoBanco.conta_mascarada || ""} className="mt-1" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="font-bold text-slate-700">Tipo de Conta</label>
+                  <Select name="tipo_conta" defaultValue={editandoBanco.tipo_conta || "CORRENTE"} className="mt-1">
+                    <option value="CORRENTE">Conta Corrente</option>
+                    <option value="POUPANCA">Poupança</option>
+                    <option value="PAGAMENTO">Conta Pagamento</option>
+                    <option value="INVESTIMENTO">Investimento</option>
+                  </Select>
+                </div>
+                <div>
+                  <label className="font-bold text-slate-700">Chave PIX</label>
+                  <Input name="chave_pix" defaultValue={editandoBanco.chave_pix || ""} className="mt-1" />
+                </div>
+              </div>
+              <div>
+                <label className="font-bold text-slate-700">Observações</label>
+                <Textarea name="observacao" defaultValue={editandoBanco.observacao || ""} className="mt-1" />
+              </div>
+
+              <div className="flex justify-end gap-2 border-t pt-3">
+                <Button type="button" variant="outline" onClick={() => setEditandoBanco(null)}>
+                  Cancelar
+                </Button>
+                <Button disabled={pending} className="bg-blue-700 hover:bg-blue-800 font-bold">
+                  {pending ? "Salvando…" : "Salvar Alterações"}
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ─────────────────────────────────────────────────────────────
+          MODAL: EDITAR FORNECEDOR
+      ───────────────────────────────────────────────────────────── */}
+      {editandoFornecedor && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-xs">
+          <div className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b pb-3">
+              <h3 className="text-base font-bold text-slate-900">Editar Fornecedor</h3>
+              <button
+                type="button"
+                onClick={() => setEditandoFornecedor(null)}
+                className="text-slate-400 hover:text-slate-600 cursor-pointer"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <form
+              onSubmit={(event) => {
+                event.preventDefault();
+                const form = new FormData(event.currentTarget);
+                execute(
+                  () => alterarFornecedor(editandoFornecedor.id, form),
+                  () => setEditandoFornecedor(null)
+                );
+              }}
+              className="space-y-3 text-xs"
+            >
+              <div>
+                <label className="font-bold text-slate-700">Nome / Razão Social *</label>
+                <Input name="nome" required defaultValue={editandoFornecedor.nome} className="mt-1" />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="font-bold text-slate-700">CNPJ ou CPF</label>
+                  <Input name="cnpj_cpf" defaultValue={editandoFornecedor.cnpj_cpf || ""} className="mt-1" />
+                </div>
+                <div>
+                  <label className="font-bold text-slate-700">Telefone / WhatsApp</label>
+                  <Input name="telefone" defaultValue={editandoFornecedor.telefone || ""} className="mt-1" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="font-bold text-slate-700">E-mail</label>
+                  <Input name="email" type="email" defaultValue={editandoFornecedor.email || ""} className="mt-1" />
+                </div>
+                <div>
+                  <label className="font-bold text-slate-700">Chave PIX</label>
+                  <Input name="chave_pix" defaultValue={editandoFornecedor.chave_pix || ""} className="mt-1" />
+                </div>
+              </div>
+              <div>
+                <label className="font-bold text-slate-700">Observações / Dados Bancários</label>
+                <Textarea name="observacao" defaultValue={editandoFornecedor.observacao || ""} className="mt-1" />
+              </div>
+
+              <div className="flex justify-end gap-2 border-t pt-3">
+                <Button type="button" variant="outline" onClick={() => setEditandoFornecedor(null)}>
+                  Cancelar
+                </Button>
+                <Button disabled={pending} className="bg-blue-700 hover:bg-blue-800 font-bold">
+                  {pending ? "Salvando…" : "Salvar Alterações"}
+                </Button>
+              </div>
+            </form>
           </div>
         </div>
       )}

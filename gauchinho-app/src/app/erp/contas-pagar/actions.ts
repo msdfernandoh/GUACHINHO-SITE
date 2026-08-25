@@ -124,10 +124,14 @@ export async function criarCentro(form: FormData): Promise<ContasActionResult> {
     const { empresaId, admin } = await requireFinanceWrite();
     const nome = value(form, "nome");
     if (!nome) throw new Error("Informe o nome do centro de custo.");
+    const descontadoComissao = form.get("descontado_comissao") === "on";
     const { error } = await admin.from("financeiro_centros_custo").insert({
       empresa_id: empresaId,
       nome,
       codigo: value(form, "codigo") || null,
+      departamento: value(form, "departamento") || null,
+      descricao: value(form, "descricao") || null,
+      descontado_comissao: descontadoComissao,
     });
     if (error) {
       if (/duplicate|unique/i.test(error.message)) throw new Error("Já existe um centro de custo com esse nome.");
@@ -182,12 +186,23 @@ export async function criarConta(form: FormData): Promise<ContasActionResult> {
     const arquivoNf = form.get("arquivo_nf") as File | null;
     const uploadNf = await uploadNotaFiscal(admin, empresaId, arquivoNf);
 
+    const centroId = value(form, "centro") || null;
+    let descontadoComissao = form.get("descontado_comissao") === "on";
+    if (!descontadoComissao && centroId) {
+      const { data: cData } = await admin
+        .from("financeiro_centros_custo")
+        .select("descontado_comissao")
+        .eq("id", centroId)
+        .maybeSingle();
+      if (cData?.descontado_comissao) descontadoComissao = true;
+    }
+
     const { error } = await admin.from("financeiro_contas_pagar").insert({
       empresa_id: empresaId,
       descricao,
       fornecedor: fornecedorTexto || null,
       fornecedor_id: fornecedorId,
-      centro_custo_id: value(form, "centro") || null,
+      centro_custo_id: centroId,
       conta_bancaria_id: value(form, "banco") || null,
       vencimento,
       competencia: vencimento.slice(0, 7),
@@ -196,6 +211,7 @@ export async function criarConta(form: FormData): Promise<ContasActionResult> {
       pago_em: null,
       pago_pessoalmente: pessoal,
       socio_pagador_usuario_id: pessoal ? socioId : null,
+      descontado_comissao: descontadoComissao,
       observacao: value(form, "obs") || null,
       comprovante_url: uploadNf?.url || null,
       nota_fiscal_nome: uploadNf?.nome || null,
@@ -247,32 +263,40 @@ export async function alterarConta(id: string, form: FormData): Promise<ContasAc
     const removerNf = form.get("remover_nf") === "true";
     const arquivoNf = form.get("arquivo_nf") as File | null;
 
+    const centroId = value(form, "centro") || null;
+    let descontadoComissao = form.get("descontado_comissao") === "on";
+    if (!descontadoComissao && centroId) {
+      const { data: cData } = await admin
+        .from("financeiro_centros_custo")
+        .select("descontado_comissao")
+        .eq("id", centroId)
+        .maybeSingle();
+      if (cData?.descontado_comissao) descontadoComissao = true;
+    }
+
+    const updates: Record<string, any> = {
+      descontado_comissao: descontadoComissao,
+      updated_at: new Date().toISOString(),
+    };
+
     if (removerNf) {
-      await admin
-        .from("financeiro_contas_pagar")
-        .update({
-          comprovante_url: null,
-          nota_fiscal_nome: null,
-          nota_fiscal_uploaded_at: null,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", id)
-        .eq("empresa_id", empresaId);
+      updates.comprovante_url = null;
+      updates.nota_fiscal_nome = null;
+      updates.nota_fiscal_uploaded_at = null;
     } else if (arquivoNf && arquivoNf instanceof File && arquivoNf.size > 0) {
       const uploadNf = await uploadNotaFiscal(admin, empresaId, arquivoNf);
       if (uploadNf) {
-        await admin
-          .from("financeiro_contas_pagar")
-          .update({
-            comprovante_url: uploadNf.url,
-            nota_fiscal_nome: uploadNf.nome,
-            nota_fiscal_uploaded_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          })
-          .eq("id", id)
-          .eq("empresa_id", empresaId);
+        updates.comprovante_url = uploadNf.url;
+        updates.nota_fiscal_nome = uploadNf.nome;
+        updates.nota_fiscal_uploaded_at = new Date().toISOString();
       }
     }
+
+    await admin
+      .from("financeiro_contas_pagar")
+      .update(updates)
+      .eq("id", id)
+      .eq("empresa_id", empresaId);
 
     revalidatePath("/erp/contas-pagar");
     return { ok: true, message: "Despesa alterada com sucesso." };
@@ -499,6 +523,7 @@ export async function alterarCentro(id: string, form: FormData): Promise<ContasA
     const { empresaId, admin } = await requireFinanceWrite();
     const nome = value(form, "nome");
     if (!nome) throw new Error("Informe o nome do centro de custo.");
+    const descontadoComissao = form.get("descontado_comissao") === "on";
     const { error } = await admin
       .from("financeiro_centros_custo")
       .update({
@@ -506,6 +531,7 @@ export async function alterarCentro(id: string, form: FormData): Promise<ContasA
         codigo: value(form, "codigo") || null,
         departamento: value(form, "departamento") || null,
         descricao: value(form, "descricao") || null,
+        descontado_comissao: descontadoComissao,
       })
       .eq("id", id)
       .eq("empresa_id", empresaId);
