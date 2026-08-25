@@ -40,6 +40,7 @@ export type VendaItem = {
   valor_credito: number;
   prazo: number;
   parcela: number;
+  quantidade_cotas?: number;
   tipo_negociacao?: string;
   status: string;
   data_venda: string;
@@ -190,7 +191,9 @@ export function ErpVendasHubView({
   const [motivoCancelamento, setMotivoCancelamento] = useState("Cancelamento formal solicitado pelo cliente.");
 
   // Estados para Modal de Edição de Venda
+  const [editNumGrupo, setEditNumGrupo] = useState("");
   const [editNumCota, setEditNumCota] = useState("");
+  const [editQtdCotas, setEditQtdCotas] = useState<number>(1);
   const [editPrincipalId, setEditPrincipalId] = useState("");
   const [editPerfilPrincipalId, setEditPerfilPrincipalId] = useState("");
   const [editModalidadeId, setEditModalidadeId] = useState<string>("");
@@ -254,7 +257,9 @@ export function ErpVendasHubView({
 
   function abrirEditarVenda(v: VendaItem) {
     setEditandoVenda(v);
+    setEditNumGrupo(v.grupo_codigo || "");
     setEditNumCota(v.cota_numero || "");
+    setEditQtdCotas(v.quantidade_cotas || 1);
     setEditPrincipalId(v.participante_comercial_id || "");
     setEditPerfilPrincipalId(v.perfil_principal_id || (v.snapshot_venda as any)?.perfil_principal_id || "");
 
@@ -352,6 +357,8 @@ export function ErpVendasHubView({
               <thead className="bg-slate-50 text-[11px] font-bold uppercase text-slate-500 dark:bg-slate-800 dark:text-slate-400">
                 <tr>
                   <th className="p-3">Cliente</th>
+                  <th className="p-3">Grupo &amp; Cota</th>
+                  <th className="p-3 text-center">Qtd.</th>
                   <th className="p-3">Crédito</th>
                   <th className="p-3">Parcela / Negociação</th>
                   <th className="p-3">Consultor / SDR</th>
@@ -366,8 +373,31 @@ export function ErpVendasHubView({
                   return (
                     <tr key={v.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition">
                       <td className="p-3 font-semibold text-slate-900 dark:text-white">
-                        <div>{v.cliente_nome}</div>
-                        {v.cliente_cpf_cnpj && <div className="text-[10px] text-slate-400">{v.cliente_cpf_cnpj}</div>}
+                        <div className="font-bold">{v.cliente_nome}</div>
+                        {v.cliente_cpf_cnpj && <div className="text-[10px] text-slate-400 font-mono">{v.cliente_cpf_cnpj}</div>}
+                      </td>
+                      <td className="p-3">
+                        <div className="flex items-center gap-1.5">
+                          <span className="rounded-md bg-blue-50 px-2 py-0.5 text-[11px] font-extrabold text-blue-900 dark:bg-blue-950/60 dark:text-blue-200 border border-blue-200 dark:border-blue-800 font-mono">
+                            Grupo {v.grupo_codigo || "1463"}
+                          </span>
+                        </div>
+                        <div className="mt-1">
+                          {v.cota_numero ? (
+                            <span className="font-mono font-bold text-emerald-700 dark:text-emerald-400 text-xs">
+                              🎯 Cota #{v.cota_numero}
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center rounded-md bg-amber-50 px-1.5 py-0.5 text-[10px] font-bold text-amber-800 dark:bg-amber-950/50 dark:text-amber-200 border border-amber-200 dark:border-amber-800">
+                              ⏳ Cota SIF (Pendente)
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="p-3 text-center">
+                        <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-black text-slate-800 dark:bg-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700">
+                          {v.quantidade_cotas || 1} {v.quantidade_cotas && v.quantidade_cotas > 1 ? "cotas" : "cota"}
+                        </span>
                       </td>
                       <td className="p-3 font-mono font-bold text-slate-950 dark:text-white">{brl(v.valor_credito)}</td>
                       <td className="p-3">
@@ -738,9 +768,20 @@ export function ErpVendasHubView({
             >
               <input type="hidden" name="venda_id" value={editandoVenda.id} />
 
-              <div className="grid gap-3 sm:grid-cols-2">
+              <div className="grid gap-3 sm:grid-cols-3">
                 <div>
-                  <label className="font-bold text-slate-700 dark:text-slate-300">Número Oficial da Cota:</label>
+                  <label className="font-bold text-slate-700 dark:text-slate-300">Grupo:</label>
+                  <input
+                    name="numero_grupo"
+                    type="text"
+                    placeholder="Ex: 1463"
+                    value={editNumGrupo}
+                    onChange={(e) => setEditNumGrupo(e.target.value)}
+                    className="mt-1 w-full rounded-xl border border-slate-300 p-2 font-bold dark:border-slate-700 dark:bg-slate-800"
+                  />
+                </div>
+                <div>
+                  <label className="font-bold text-slate-700 dark:text-slate-300">Número da Cota:</label>
                   <input
                     name="numero_cota"
                     type="text"
@@ -751,21 +792,34 @@ export function ErpVendasHubView({
                   />
                 </div>
                 <div>
-                  <label className="font-bold text-slate-700 dark:text-slate-300">Consultor Principal:</label>
-                  <select
-                    name="participante_principal_id"
-                    value={editPrincipalId}
-                    onChange={(e) => {
-                      setEditPrincipalId(e.target.value);
-                      setEditPerfilPrincipalId("");
-                    }}
-                    className="mt-1 w-full rounded-xl border border-slate-300 p-2 font-semibold dark:border-slate-700 dark:bg-slate-800"
-                  >
-                    {participantes.map((p) => (
-                      <option key={p.id} value={p.id}>{p.nome_exibicao || p.nome}</option>
-                    ))}
-                  </select>
+                  <label className="font-bold text-slate-700 dark:text-slate-300">Qtd. de Cotas:</label>
+                  <input
+                    name="quantidade_cotas"
+                    type="number"
+                    min="1"
+                    max="100"
+                    value={editQtdCotas}
+                    onChange={(e) => setEditQtdCotas(parseInt(e.target.value) || 1)}
+                    className="mt-1 w-full rounded-xl border border-slate-300 p-2 font-bold dark:border-slate-700 dark:bg-slate-800"
+                  />
                 </div>
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700 dark:text-slate-300">Consultor Principal:</label>
+                <select
+                  name="participante_principal_id"
+                  value={editPrincipalId}
+                  onChange={(e) => {
+                    setEditPrincipalId(e.target.value);
+                    setEditPerfilPrincipalId("");
+                  }}
+                  className="mt-1 w-full rounded-xl border border-slate-300 p-2 font-semibold dark:border-slate-700 dark:bg-slate-800"
+                >
+                  {participantes.map((p) => (
+                    <option key={p.id} value={p.id}>{p.nome_exibicao || p.nome}</option>
+                  ))}
+                </select>
               </div>
 
               {/* TIPO DE VENDA / MODALIDADE DA PARCELA */}

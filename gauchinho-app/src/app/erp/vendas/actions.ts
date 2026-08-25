@@ -20,7 +20,9 @@ export async function masterAtualizarVendaAction(formData: FormData) {
   if (!isMaster) throw new Error("Apenas o usuário Master tem autorização para editar vendas e comissões.");
 
   const vendaId = val(formData, "venda_id");
+  const numeroGrupo = val(formData, "numero_grupo");
   const numeroCota = val(formData, "numero_cota");
+  const quantidadeCotas = val(formData, "quantidade_cotas");
   const principalId = val(formData, "participante_principal_id") || null;
   const secundarioId = val(formData, "participante_secundario_id") || null;
   const fracao = val(formData, "fracao_secundario");
@@ -54,6 +56,9 @@ export async function masterAtualizarVendaAction(formData: FormData) {
   if (currentVenda) {
     vendaUpdatePayload.snapshot_venda = {
       ...(currentVenda.snapshot_venda || {}),
+      numero_grupo: numeroGrupo || currentVenda.snapshot_venda?.numero_grupo,
+      numero_cota: numeroCota || currentVenda.snapshot_venda?.numero_cota,
+      quantidade_cotas: quantidadeCotas ? Number(quantidadeCotas) : currentVenda.snapshot_venda?.quantidade_cotas || 1,
       modalidade_comissao_id: modalidadeComissaoId,
       tipo_venda: tipoVenda,
       tipo_negociacao: tipoVenda === "REDUZIDA_60_99" ? "Reduzida 60%" : tipoVenda === "REDUZIDA_ABAIXO_59" ? "Abaixo de 59%" : "Integral",
@@ -62,14 +67,18 @@ export async function masterAtualizarVendaAction(formData: FormData) {
 
   await admin.from("vendas").update(vendaUpdatePayload).eq("id", vendaId).eq("empresa_id", empresaAtiva.id);
 
-  // 2. Atualiza número da cota se fornecido
+  // 2. Atualiza número da cota e grupo se fornecido
+  const cotaPayload: Record<string, unknown> = {
+    participante_comercial_id: principalId,
+    updated_at: new Date().toISOString(),
+  };
   if (numeroCota !== undefined) {
-    await admin.from("cotas_definitivas").update({
-      numero_cota: numeroCota ? numeroCota.trim() : null,
-      participante_comercial_id: principalId,
-      updated_at: new Date().toISOString(),
-    }).eq("venda_id", vendaId).eq("empresa_id", empresaAtiva.id);
+    cotaPayload.numero_cota = numeroCota ? numeroCota.trim() : null;
   }
+  if (numeroGrupo) {
+    cotaPayload.numero_grupo = numeroGrupo.trim();
+  }
+  await admin.from("cotas_definitivas").update(cotaPayload).eq("venda_id", vendaId).eq("empresa_id", empresaAtiva.id);
 
   // 3. Se recalcular comissões futuras
   if (recalcular) {

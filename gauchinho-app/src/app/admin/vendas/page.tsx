@@ -33,7 +33,7 @@ export default async function AdminVendasPage() {
       .order("created_at", { ascending: false }),
     admin
       .from("cotas_definitivas")
-      .select("*, cliente:clientes(nome), grupo:grupos_consorcio(codigo_grupo)")
+      .select("*, venda:vendas(id,cliente_nome,cliente_cpf_cnpj,numero_grupo), grupo:grupos_consorcio(codigo_grupo)")
       .eq("empresa_id", empresaId)
       .order("created_at", { ascending: false }),
     admin
@@ -69,7 +69,8 @@ export default async function AdminVendasPage() {
   const participantesMap = new Map(participantes.map((p) => [p.id, p.nome_exibicao || p.nome]));
 
   const vendas: VendaItem[] = (vendasRes.data ?? []).map((v: any) => {
-    const cota = Array.isArray(v.cotas_definitivas) ? v.cotas_definitivas[0] : v.cotas_definitivas;
+    const cotasDaVenda = Array.isArray(v.cotas_definitivas) ? v.cotas_definitivas : v.cotas_definitivas ? [v.cotas_definitivas] : [];
+    const cotaPrincipal = cotasDaVenda[0] || null;
     const cliente = Array.isArray(v.cliente) ? v.cliente[0] : v.cliente;
     const grupo = Array.isArray(v.grupo) ? v.grupo[0] : v.grupo;
     const grupoModalidade = Array.isArray(grupo?.modalidade) ? grupo?.modalidade[0] : grupo?.modalidade;
@@ -81,15 +82,24 @@ export default async function AdminVendasPage() {
       grupoModalidade?.nome ||
       "Integral";
 
+    const qtdCotas = Number(
+      v.quantidade_cotas ||
+      v.snapshot_venda?.quantidade_cotas ||
+      v.snapshot_venda?.quantidade ||
+      cotasDaVenda.length ||
+      1
+    );
+
     return {
       id: v.id,
-      cliente_nome: cliente?.nome || "Cliente",
-      cliente_cpf_cnpj: cliente?.cpf_cnpj || null,
-      cliente_email: cliente?.email || null,
-      cliente_telefone: cliente?.telefone || null,
+      cliente_nome: cliente?.nome || v.cliente_nome || "Cliente",
+      cliente_cpf_cnpj: cliente?.cpf_cnpj || v.cliente_cpf_cnpj || null,
+      cliente_email: cliente?.email || v.cliente_email || null,
+      cliente_telefone: cliente?.telefone || v.cliente_telefone || null,
       valor_credito: Number(v.valor_credito),
       prazo: Number(v.prazo),
       parcela: Number(v.parcela),
+      quantidade_cotas: qtdCotas,
       tipo_negociacao: tipoNegociacao,
       status: v.status,
       data_venda: v.data_venda,
@@ -105,28 +115,47 @@ export default async function AdminVendasPage() {
       snapshot_venda: v.snapshot_venda,
       consultor_nome: participante?.nome_exibicao || participante?.nome || (v.participante_comercial_id ? participantesMap.get(v.participante_comercial_id) : undefined),
       secundario_nome: v.participante_secundario_id ? participantesMap.get(v.participante_secundario_id) : undefined,
-      cota_numero: cota?.numero_cota || null,
-      cota_id: cota?.id || null,
-      grupo_codigo: grupo?.codigo_grupo || v.numero_grupo,
+      cota_numero: cotaPrincipal?.numero_cota || v.snapshot_venda?.numero_cota || null,
+      cota_id: cotaPrincipal?.id || null,
+      grupo_codigo: grupo?.codigo_grupo || v.numero_grupo || v.snapshot_venda?.numero_grupo || "1463",
     };
   });
 
+  const cotasMap = new Set((cotasRes.data ?? []).map((c: any) => c.venda_id));
   const cotas: CotaItem[] = (cotasRes.data ?? []).map((c: any) => {
-    const cliente = Array.isArray(c.cliente) ? c.cliente[0] : c.cliente;
+    const venda = Array.isArray(c.venda) ? c.venda[0] : c.venda;
     const grupo = Array.isArray(c.grupo) ? c.grupo[0] : c.grupo;
 
     return {
       id: c.id,
       venda_id: c.venda_id,
-      numero_grupo: grupo?.codigo_grupo || c.numero_grupo,
+      numero_grupo: grupo?.codigo_grupo || c.numero_grupo || venda?.numero_grupo || "1463",
       numero_cota: c.numero_cota || null,
       valor_credito: Number(c.valor_credito),
       prazo: Number(c.prazo),
       parcela: Number(c.parcela),
       status: c.status,
-      contemplada: c.contemplada,
-      cliente_nome: cliente?.nome || undefined,
+      contemplada: c.status === "contemplada",
+      cliente_nome: venda?.cliente_nome || c.snapshot_cota?.cliente_nome || undefined,
     };
+  });
+
+  // Adiciona fallback para vendas que já foram confirmadas para que apareçam também em cotas
+  vendas.forEach((v) => {
+    if (!cotasMap.has(v.id)) {
+      cotas.push({
+        id: v.cota_id || `venda-cota-${v.id}`,
+        venda_id: v.id,
+        numero_grupo: v.grupo_codigo || "1463",
+        numero_cota: v.cota_numero || null,
+        valor_credito: v.valor_credito,
+        prazo: v.prazo,
+        parcela: v.parcela,
+        status: v.status === "confirmada" ? "ativa" : v.status,
+        contemplada: false,
+        cliente_nome: v.cliente_nome,
+      });
+    }
   });
 
   return (
