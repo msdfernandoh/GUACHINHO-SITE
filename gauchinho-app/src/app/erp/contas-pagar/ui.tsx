@@ -560,28 +560,47 @@ export function ContasPagarClient({
   const contasOrdenadas = useMemo(() => {
     const lista = [...contasBaseFiltro];
     lista.sort((a, b) => {
-      const effectiveOrdenacao =
-        ordenacao === "vencimento_asc" && (filtro === "pagas" || cardFiltro === "pagas_mes")
-          ? "pagamento_desc"
-          : ordenacao;
-
-      switch (effectiveOrdenacao) {
-        case "pagamento_desc":
-          return (b.pago_em || b.vencimento || "").localeCompare(a.pago_em || a.vencimento || "");
-        case "pagamento_asc":
-          return (a.pago_em || a.vencimento || "").localeCompare(b.pago_em || b.vencimento || "");
-        case "vencimento_asc":
-          return (a.vencimento || "").localeCompare(b.vencimento || "");
-        case "vencimento_desc":
-          return (b.vencimento || "").localeCompare(a.vencimento || "");
-        case "nome_asc":
-          return a.descricao.localeCompare(b.descricao, "pt-BR", { sensitivity: "base" });
-        case "nome_desc":
-          return b.descricao.localeCompare(a.descricao, "pt-BR", { sensitivity: "base" });
-        case "fornecedor_asc":
-          return (a.fornecedor || "").localeCompare(b.fornecedor || "", "pt-BR", { sensitivity: "base" });
-        case "fornecedor_desc":
-          return (b.fornecedor || "").localeCompare(a.fornecedor || "", "pt-BR", { sensitivity: "base" });
+      switch (ordenacao) {
+        case "pagamento_desc": {
+          const dtA = a.pago_em || a.vencimento || "";
+          const dtB = b.pago_em || b.vencimento || "";
+          return dtB.localeCompare(dtA);
+        }
+        case "pagamento_asc": {
+          const dtA = a.pago_em || a.vencimento || "";
+          const dtB = b.pago_em || b.vencimento || "";
+          return dtA.localeCompare(dtB);
+        }
+        case "vencimento_desc": {
+          const dtA = a.vencimento || "";
+          const dtB = b.vencimento || "";
+          return dtB.localeCompare(dtA);
+        }
+        case "vencimento_asc": {
+          const dtA = a.vencimento || "";
+          const dtB = b.vencimento || "";
+          return dtA.localeCompare(dtB);
+        }
+        case "nome_asc": {
+          const nomeA = a.fornecedor || a.descricao || "";
+          const nomeB = b.fornecedor || b.descricao || "";
+          return nomeA.localeCompare(nomeB, "pt-BR", { sensitivity: "base" });
+        }
+        case "nome_desc": {
+          const nomeA = a.fornecedor || a.descricao || "";
+          const nomeB = b.fornecedor || b.descricao || "";
+          return nomeB.localeCompare(nomeA, "pt-BR", { sensitivity: "base" });
+        }
+        case "fornecedor_asc": {
+          const fA = a.fornecedor || a.descricao || "";
+          const fB = b.fornecedor || b.descricao || "";
+          return fA.localeCompare(fB, "pt-BR", { sensitivity: "base" });
+        }
+        case "fornecedor_desc": {
+          const fA = a.fornecedor || a.descricao || "";
+          const fB = b.fornecedor || b.descricao || "";
+          return fB.localeCompare(fA, "pt-BR", { sensitivity: "base" });
+        }
         case "valor_desc":
           return Number(b.valor) - Number(a.valor);
         case "valor_asc":
@@ -591,7 +610,7 @@ export function ContasPagarClient({
       }
     });
     return lista;
-  }, [contasBaseFiltro, ordenacao, filtro, cardFiltro]);
+  }, [contasBaseFiltro, ordenacao]);
 
   const totalItens = contasOrdenadas.length;
   const totalPaginas = itensPorPagina === 0 ? 1 : Math.max(1, Math.ceil(totalItens / itensPorPagina));
@@ -1445,9 +1464,20 @@ export function ContasPagarClient({
         <>
           <section className="space-y-3 rounded-2xl border bg-white p-4 shadow-sm">
             <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-6">
-              <Select value={dataTipo} onChange={(event) => setDataTipo(event.target.value as typeof dataTipo)}>
-                <option value="vencimento">Por vencimento</option>
-                <option value="pagamento">Por pagamento</option>
+              <Select
+                value={dataTipo}
+                onChange={(event) => {
+                  const val = event.target.value as typeof dataTipo;
+                  setDataTipo(val);
+                  if (filtro === "pagas" || cardFiltro === "pagas_mes") {
+                    setOrdenacao(val === "vencimento" ? "vencimento_desc" : "pagamento_desc");
+                  } else {
+                    setOrdenacao(val === "vencimento" ? "vencimento_asc" : "pagamento_asc");
+                  }
+                }}
+              >
+                <option value="vencimento">Data: Por vencimento</option>
+                <option value="pagamento">Data: Por pagamento</option>
               </Select>
               <Input type="date" aria-label="Data inicial" value={inicio} onChange={(event) => setInicio(event.target.value)} />
               <Input type="date" aria-label="Data final" value={fim} onChange={(event) => setFim(event.target.value)} />
@@ -1530,35 +1560,65 @@ export function ContasPagarClient({
                         ? cards.find((card) => card.id === cardFiltro)?.label
                         : "Despesas"}
                   </h2>
-                  {cardFiltro ? (
-                    <button
-                      type="button"
-                      onClick={() => setCardFiltro(null)}
-                      className="rounded-lg bg-blue-50 px-3 py-1.5 text-xs font-bold text-blue-700"
-                    >
-                      Limpar filtro do card
-                    </button>
-                  ) : (
-                    <div className="flex gap-2">
-                      {(["todas", "abertas", "pagas"] as Filtro[]).map((item) => (
-                        <button
-                          key={item}
-                          type="button"
-                          onClick={() => {
-                            setFiltro(item);
-                            setPagina(1);
-                            if (item === "pagas") setOrdenacao("pagamento_desc");
-                            else if (item === "abertas") setOrdenacao("vencimento_asc");
-                          }}
-                          className={`rounded-lg px-3 py-1.5 text-xs font-bold ${
-                            filtro === item ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                          }`}
-                        >
-                          {item === "todas" ? "Todas" : item === "abertas" ? "A pagar" : "Pagas"}
-                        </button>
-                      ))}
+                  <div className="flex flex-wrap items-center gap-3">
+                    {/* Seletor Rápido de Ordenação */}
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[11px] font-bold text-slate-500">Ordenar:</span>
+                      <select
+                        aria-label="Ordem das contas"
+                        value={ordenacao}
+                        onChange={(e) => {
+                          setOrdenacao(e.target.value);
+                          setPagina(1);
+                        }}
+                        className="rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-bold text-slate-800 shadow-2xs focus:border-blue-600 focus:outline-hidden cursor-pointer"
+                      >
+                        <option value="vencimento_asc">📅 Vencimento: Próximos primeiro (1º a vencer)</option>
+                        <option value="vencimento_desc">📅 Vencimento: Últimos primeiro (Mais recentes)</option>
+                        <option value="pagamento_desc">💳 Pagamento: Últimos pagos primeiro (Recentes)</option>
+                        <option value="pagamento_asc">💳 Pagamento: Mais antigos pagos primeiro</option>
+                        <option value="fornecedor_asc">🔤 Fornecedor / Nome (A → Z)</option>
+                        <option value="fornecedor_desc">🔤 Fornecedor / Nome (Z → A)</option>
+                        <option value="valor_desc">💰 Maior valor</option>
+                        <option value="valor_asc">💰 Menor valor</option>
+                      </select>
                     </div>
-                  )}
+
+                    {cardFiltro ? (
+                      <button
+                        type="button"
+                        onClick={() => setCardFiltro(null)}
+                        className="rounded-lg bg-blue-50 px-3 py-1.5 text-xs font-bold text-blue-700 hover:bg-blue-100 transition"
+                      >
+                        Limpar filtro do card
+                      </button>
+                    ) : (
+                      <div className="flex gap-1.5 border-l pl-3">
+                        {(["todas", "abertas", "pagas"] as Filtro[]).map((item) => (
+                          <button
+                            key={item}
+                            type="button"
+                            onClick={() => {
+                              setFiltro(item);
+                              setPagina(1);
+                              if (item === "pagas") {
+                                setOrdenacao(dataTipo === "vencimento" ? "vencimento_desc" : "pagamento_desc");
+                              } else if (item === "abertas") {
+                                setOrdenacao("vencimento_asc");
+                              } else {
+                                setOrdenacao("vencimento_asc");
+                              }
+                            }}
+                            className={`rounded-lg px-3 py-1.5 text-xs font-bold cursor-pointer transition ${
+                              filtro === item ? "bg-slate-900 text-white shadow-xs" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                            }`}
+                          >
+                            {item === "todas" ? "Todas" : item === "abertas" ? "A pagar" : "Pagas"}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
                 {cardFiltro !== "entradas_mes" ? (
                   <div className="flex flex-wrap items-center gap-2 rounded-xl bg-slate-50 p-3">
