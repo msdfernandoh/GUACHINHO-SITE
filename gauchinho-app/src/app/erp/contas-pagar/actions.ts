@@ -40,6 +40,38 @@ function value(form: FormData, name: string) {
   return String(form.get(name) ?? "").trim();
 }
 
+
+async function uploadNotaFiscal(
+  admin: ReturnType<typeof createAdminClient>,
+  empresaId: string,
+  file: File | null
+): Promise<{ url: string; nome: string } | null> {
+  if (!file || !(file instanceof File) || file.size === 0) return null;
+  const ext = file.name.split(".").pop() || "pdf";
+  const cleanName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+  const filePath = `${empresaId}/${Date.now()}_${cleanName}`;
+  const arrayBuffer = await file.arrayBuffer();
+  const buffer = Buffer.from(arrayBuffer);
+
+  const { error } = await admin.storage
+    .from("contas-pagar-documentos")
+    .upload(filePath, buffer, {
+      contentType: file.type || "application/pdf",
+      upsert: true,
+    });
+
+  if (error) throw new Error(`Falha no upload da Nota Fiscal: ${error.message}`);
+
+  const { data } = admin.storage
+    .from("contas-pagar-documentos")
+    .getPublicUrl(filePath);
+
+  return {
+    url: data.publicUrl,
+    nome: file.name,
+  };
+}
+
 function normalizeName(name: string) {
   return name
     .normalize("NFD")
@@ -504,6 +536,57 @@ export async function alternarStatusFornecedor(id: string, ativo: boolean): Prom
     if (error) throw new Error(error.message);
     revalidatePath("/erp/contas-pagar");
     return { ok: true, message: ativo ? "Fornecedor ativado." : "Fornecedor inativado." };
+  } catch (error) {
+    return failure(error);
+  }
+}
+
+export async function anexarNotaFiscalConta(id: string, form: FormData): Promise<ContasActionResult> {
+  try {
+    const { empresaId, admin } = await requireFinanceWrite();
+    const arquivoNf = form.get("arquivo_nf") as File | null;
+    if (!arquivoNf || arquivoNf.size === 0) {
+      throw new Error("Selecione um arquivo de Nota Fiscal ou comprovante.");
+    }
+    const uploadNf = await uploadNotaFiscal(admin, empresaId, arquivoNf);
+    if (!uploadNf) throw new Error("Não foi possível processar o arquivo.");
+
+    const { error } = await admin
+      .from("financeiro_contas_pagar")
+      .update({
+        comprovante_url: uploadNf.url,
+        nota_fiscal_nome: uploadNf.nome,
+        nota_fiscal_uploaded_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", id)
+      .eq("empresa_id", empresaId);
+
+    if (error) throw new Error(error.message);
+    revalidatePath("/erp/contas-pagar");
+    return { ok: true, message: "Nota Fiscal anexada com sucesso." };
+  } catch (error) {
+    return failure(error);
+  }
+}
+
+export async function removerNotaFiscalConta(id: string): Promise<ContasActionResult> {
+  try {
+    const { empresaId, admin } = await requireFinanceWrite();
+    const { error } = await admin
+      .from("financeiro_contas_pagar")
+      .update({
+        comprovante_url: null,
+        nota_fiscal_nome: null,
+        nota_fiscal_uploaded_at: null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", id)
+      .eq("empresa_id", empresaId);
+
+    if (error) throw new Error(error.message);
+    revalidatePath("/erp/contas-pagar");
+    return { ok: true, message: "Nota Fiscal removida da conta." };
   } catch (error) {
     return failure(error);
   }

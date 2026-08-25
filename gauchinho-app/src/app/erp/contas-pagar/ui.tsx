@@ -18,6 +18,8 @@ import {
   Search,
   Trash2,
   Building2,
+  FileText,
+  Paperclip,
   WalletCards,
   X,
 } from "lucide-react";
@@ -32,6 +34,7 @@ import {
   alternarStatusBanco,
   alternarStatusCentro,
   alternarStatusFornecedor,
+  anexarNotaFiscalConta,
   atualizarSocioPagadorContas,
   baixarConta,
   criarBanco,
@@ -41,6 +44,7 @@ import {
   estornarConta,
   excluirConta,
   importarContasCsv,
+  removerNotaFiscalConta,
   type ContasActionResult,
 } from "./actions";
 
@@ -48,6 +52,10 @@ type Conta = {
   id: string;
   descricao: string;
   fornecedor: string | null;
+  fornecedor_id?: string | null;
+  comprovante_url?: string | null;
+  nota_fiscal_nome?: string | null;
+  nota_fiscal_uploaded_at?: string | null;
   valor: number;
   vencimento: string;
   competencia: string;
@@ -269,6 +277,8 @@ export function ContasPagarClient({
   const [centroFiltro, setCentroFiltro] = useState("");
   const [socioFiltro, setSocioFiltro] = useState("");
   const [cardFiltro, setCardFiltro] = useState<CardFiltro | null>(null);
+  const [buscaLivre, setBuscaLivre] = useState("");
+  const [anexandoNfConta, setAnexandoNfConta] = useState<Conta | null>(null);
 
   // Modais de Controle
   const [editando, setEditando] = useState<Conta | null>(null);
@@ -294,7 +304,15 @@ export function ContasPagarClient({
 
   const contasFiltradas = contas.filter((conta) => {
     const data = dataTipo === "pagamento" ? conta.pago_em : conta.vencimento;
+    const buscaNorm = buscaLivre.trim().toLowerCase();
+    const matchBusca =
+      !buscaNorm ||
+      conta.descricao.toLowerCase().includes(buscaNorm) ||
+      (conta.fornecedor && conta.fornecedor.toLowerCase().includes(buscaNorm)) ||
+      (conta.observacao && conta.observacao.toLowerCase().includes(buscaNorm));
+
     return (
+      matchBusca &&
       (filtro === "todas"
         ? conta.status !== "cancelada"
         : filtro === "abertas"
@@ -635,7 +653,11 @@ export function ContasPagarClient({
               </Select>
             ) : null}
             <Textarea name="obs" className="md:col-span-2" placeholder="Observação (opcional)" />
-            <Button disabled={pending} className="min-h-12 bg-blue-700 text-base hover:bg-blue-800">
+            <div className="space-y-1 md:col-span-2">
+              <label className="text-xs font-bold text-slate-700">Anexar Nota Fiscal / Comprovante (PDF ou Imagem)</label>
+              <Input name="arquivo_nf" type="file" accept=".pdf,image/*,.png,.jpg,.jpeg,.xml" className="text-xs file:mr-2 file:rounded-lg file:border-0 file:bg-blue-50 file:px-2.5 file:py-1 file:text-xs file:font-semibold file:text-blue-700 hover:file:bg-blue-100" />
+            </div>
+            <Button disabled={pending} className="min-h-12 bg-blue-700 text-base hover:bg-blue-800 md:col-span-3">
               {pending ? "Salvando…" : "Adicionar conta"}
             </Button>
           </form>
@@ -1546,6 +1568,34 @@ export function ContasPagarClient({
               <div className="md:col-span-2">
                 <label className="font-bold text-slate-700">Observações Operacionais</label>
                 <Textarea name="obs" className="mt-1" defaultValue={editando.observacao || ""} />
+              </div>
+              <div className="space-y-2 rounded-xl border border-slate-200 bg-slate-50/50 p-3 md:col-span-2">
+                <label className="font-bold text-slate-700 block">Nota Fiscal / Comprovante</label>
+                {editando.comprovante_url ? (
+                  <div className="flex items-center justify-between rounded-lg border border-blue-200 bg-blue-50 p-2 text-xs">
+                    <a
+                      href={editando.comprovante_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-1.5 font-bold text-blue-700 hover:underline"
+                    >
+                      <FileText className="h-4 w-4" />
+                      <span>{editando.nota_fiscal_nome || "Visualizar Nota Fiscal Anexada"}</span>
+                    </a>
+                    <label className="flex items-center gap-1 text-[11px] font-bold text-rose-700 cursor-pointer">
+                      <input type="checkbox" name="remover_nf" value="true" className="rounded text-rose-600" />
+                      Remover arquivo
+                    </label>
+                  </div>
+                ) : (
+                  <p className="text-[11px] text-slate-500">Nenhum documento anexado a esta despesa.</p>
+                )}
+                <div className="pt-1">
+                  <label className="text-[11px] font-semibold text-slate-600 block mb-0.5">
+                    {editando.comprovante_url ? "Substituir por novo arquivo:" : "Anexar arquivo:"}
+                  </label>
+                  <Input name="arquivo_nf" type="file" accept=".pdf,image/*,.png,.jpg,.jpeg,.xml" className="text-xs file:mr-2 file:rounded-lg file:border-0 file:bg-blue-50 file:px-2.5 file:py-1 file:text-xs file:font-semibold file:text-blue-700 hover:file:bg-blue-100" />
+                </div>
               </div>
               <div className="flex justify-end gap-2 border-t pt-3 md:col-span-2">
                 <Button type="button" variant="outline" onClick={() => setEditando(null)}>
