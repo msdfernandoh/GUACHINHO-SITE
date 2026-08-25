@@ -197,7 +197,7 @@ export async function criarConta(form: FormData): Promise<ContasActionResult> {
       if (cData?.descontado_comissao) descontadoComissao = true;
     }
 
-    const { error } = await admin.from("financeiro_contas_pagar").insert({
+    const payload: Record<string, any> = {
       empresa_id: empresaId,
       descricao,
       fornecedor: fornecedorTexto || null,
@@ -216,7 +216,19 @@ export async function criarConta(form: FormData): Promise<ContasActionResult> {
       comprovante_url: uploadNf?.url || null,
       nota_fiscal_nome: uploadNf?.nome || null,
       nota_fiscal_uploaded_at: uploadNf ? new Date().toISOString() : null,
-    });
+    };
+
+    let { error } = await admin.from("financeiro_contas_pagar").insert(payload);
+    if (error && /fornecedor_id|descontado_comissao|comprovante_url|nota_fiscal/i.test(error.message)) {
+      console.warn("Schema cache warning in insert, stripping optional columns:", error.message);
+      delete payload.fornecedor_id;
+      delete payload.descontado_comissao;
+      delete payload.comprovante_url;
+      delete payload.nota_fiscal_nome;
+      delete payload.nota_fiscal_uploaded_at;
+      const retry = await admin.from("financeiro_contas_pagar").insert(payload);
+      error = retry.error;
+    }
     if (error) throw new Error(error.message);
     revalidatePath("/erp/contas-pagar");
     return { ok: true, message: "Conta adicionada com sucesso." };
@@ -292,11 +304,23 @@ export async function alterarConta(id: string, form: FormData): Promise<ContasAc
       }
     }
 
-    await admin
+    let { error: updateError } = await admin
       .from("financeiro_contas_pagar")
       .update(updates)
       .eq("id", id)
       .eq("empresa_id", empresaId);
+
+    if (updateError && /fornecedor_id|descontado_comissao|comprovante_url|nota_fiscal/i.test(updateError.message)) {
+      delete updates.descontado_comissao;
+      delete updates.comprovante_url;
+      delete updates.nota_fiscal_nome;
+      delete updates.nota_fiscal_uploaded_at;
+      await admin
+        .from("financeiro_contas_pagar")
+        .update(updates)
+        .eq("id", id)
+        .eq("empresa_id", empresaId);
+    }
 
     revalidatePath("/erp/contas-pagar");
     return { ok: true, message: "Despesa alterada com sucesso." };

@@ -23,7 +23,7 @@ export default async function ContasPagarPage() {
       .eq("empresa_id", empresaId)
       .neq("status", "cancelada")
       .order("vencimento", { ascending: true })
-      .limit(1000),
+      .limit(10000),
     db.from("financeiro_contas_bancarias").select("*").eq("empresa_id", empresaId).order("nome"),
     db.from("financeiro_centros_custo").select("*").eq("empresa_id", empresaId).order("nome"),
     db.from("financeiro_fornecedores").select("*").eq("empresa_id", empresaId).order("nome"),

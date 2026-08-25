@@ -280,6 +280,9 @@ export function ContasPagarClient({
   const [socioFiltro, setSocioFiltro] = useState("");
   const [cardFiltro, setCardFiltro] = useState<CardFiltro | null>(null);
   const [buscaLivre, setBuscaLivre] = useState("");
+  const [ordenacao, setOrdenacao] = useState<string>("vencimento_asc");
+  const [pagina, setPagina] = useState<number>(1);
+  const [itensPorPagina, setItensPorPagina] = useState<number>(25);
   const [anexandoNfConta, setAnexandoNfConta] = useState<Conta | null>(null);
 
   // Modais de Controle
@@ -485,7 +488,34 @@ export function ContasPagarClient({
     };
   }, [bancoFiltro, caixa, centroFiltro, contas, socioFiltro]);
 
-  const contasExibidas =
+  function filtrarMesAtual() {
+    const hoje = new Date();
+    const ano = hoje.getFullYear();
+    const mes = String(hoje.getMonth() + 1).padStart(2, "0");
+    const ultimoDia = new Date(ano, hoje.getMonth() + 1, 0).getDate();
+    setInicio(`${ano}-${mes}-01`);
+    setFim(`${ano}-${mes}-${String(ultimoDia).padStart(2, "0")}`);
+    setPagina(1);
+  }
+
+  function filtrarProximoMes() {
+    const hoje = new Date();
+    const proximo = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 1);
+    const ano = proximo.getFullYear();
+    const mes = String(proximo.getMonth() + 1).padStart(2, "0");
+    const ultimoDia = new Date(ano, proximo.getMonth() + 1, 0).getDate();
+    setInicio(`${ano}-${mes}-01`);
+    setFim(`${ano}-${mes}-${String(ultimoDia).padStart(2, "0")}`);
+    setPagina(1);
+  }
+
+  function limparDatas() {
+    setInicio("");
+    setFim("");
+    setPagina(1);
+  }
+
+  const contasBaseFiltro =
     cardFiltro === "pagas_mes"
       ? resumoMensal.pagasContas
       : cardFiltro === "a_pagar_mes"
@@ -493,6 +523,47 @@ export function ContasPagarClient({
         : cardFiltro === "futuras"
           ? resumoMensal.futurasContas
           : contasFiltradas;
+
+  const contasOrdenadas = useMemo(() => {
+    const lista = [...contasBaseFiltro];
+    lista.sort((a, b) => {
+      switch (ordenacao) {
+        case "vencimento_asc":
+          return (a.vencimento || "").localeCompare(b.vencimento || "");
+        case "vencimento_desc":
+          return (b.vencimento || "").localeCompare(a.vencimento || "");
+        case "pagamento_desc":
+          return (b.pago_em || b.vencimento || "").localeCompare(a.pago_em || a.vencimento || "");
+        case "pagamento_asc":
+          return (a.pago_em || a.vencimento || "").localeCompare(b.pago_em || b.vencimento || "");
+        case "nome_asc":
+          return a.descricao.localeCompare(b.descricao, "pt-BR", { sensitivity: "base" });
+        case "nome_desc":
+          return b.descricao.localeCompare(a.descricao, "pt-BR", { sensitivity: "base" });
+        case "fornecedor_asc":
+          return (a.fornecedor || "").localeCompare(b.fornecedor || "", "pt-BR", { sensitivity: "base" });
+        case "fornecedor_desc":
+          return (b.fornecedor || "").localeCompare(a.fornecedor || "", "pt-BR", { sensitivity: "base" });
+        case "valor_desc":
+          return Number(b.valor) - Number(a.valor);
+        case "valor_asc":
+          return Number(a.valor) - Number(b.valor);
+        default:
+          return (a.vencimento || "").localeCompare(b.vencimento || "");
+      }
+    });
+    return lista;
+  }, [contasBaseFiltro, ordenacao]);
+
+  const totalItens = contasOrdenadas.length;
+  const totalPaginas = itensPorPagina === 0 ? 1 : Math.max(1, Math.ceil(totalItens / itensPorPagina));
+  const paginaAtual = Math.min(Math.max(1, pagina), totalPaginas);
+
+  const contasExibidas = useMemo(() => {
+    if (itensPorPagina === 0) return contasOrdenadas;
+    const start = (paginaAtual - 1) * itensPorPagina;
+    return contasOrdenadas.slice(start, start + itensPorPagina);
+  }, [contasOrdenadas, itensPorPagina, paginaAtual]);
 
   const logsFiltrados = useMemo(() => {
     return logs.filter((log) => {
@@ -737,6 +808,104 @@ export function ContasPagarClient({
             </div>
           </div>
         )}
+      </section>
+
+      {/* ─────────────────────────────────────────────────────────────
+          DEMONSTRATIVO HORIZONTAL: FECHAMENTO E ACERTO ENTRE SÓCIOS
+      ───────────────────────────────────────────────────────────── */}
+      <section className="rounded-2xl bg-slate-950 p-5 text-white shadow-xl space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/10 pb-3">
+          <div className="flex items-center gap-2.5">
+            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-600 text-sm font-bold">⚖️</span>
+            <div>
+              <h3 className="text-base font-bold text-white">Fechamento & Equalização entre Sócios</h3>
+              <p className="text-xs text-slate-400">
+                Cálculo baseado nas despesas pagas no período selecionado (cada sócio assume 50% das despesas pessoais).
+              </p>
+            </div>
+          </div>
+          <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-slate-300">
+            {balancoSocios.totalContasPagas} conta(s) pessoalmente paga(s)
+          </span>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-3">
+          {/* Coluna 1: Total e Divisão */}
+          <div className="rounded-xl bg-white/5 p-3.5 space-y-2 border border-white/5">
+            <p className="text-xs font-bold uppercase tracking-wider text-slate-400">1. Total e Divisão 50%</p>
+            <div className="flex justify-between items-center text-xs">
+              <span className="text-slate-300">Total Gasto Sócios:</span>
+              <strong className="text-white text-sm">{brl(balancoSocios.totalGastoSocios)}</strong>
+            </div>
+            <div className="flex justify-between items-center text-xs border-t border-white/10 pt-1.5">
+              <span className="text-slate-300">Cota 50% de Cada Sócio:</span>
+              <strong className="text-amber-300 text-sm">{brl(balancoSocios.cotaIndividual)}</strong>
+            </div>
+            {balancoSocios.totalPagoEmpresa > 0 && (
+              <div className="flex justify-between items-center text-[11px] text-teal-300 border-t border-white/10 pt-1.5">
+                <span>Pago pela Empresa:</span>
+                <span className="font-bold">{brl(balancoSocios.totalPagoEmpresa)}</span>
+              </div>
+            )}
+          </div>
+
+          {/* Coluna 2: Demonstrativo Individual */}
+          <div className="rounded-xl bg-white/5 p-3.5 space-y-2 border border-white/5 text-xs">
+            <p className="text-xs font-bold uppercase tracking-wider text-slate-400">2. Demonstrativo por Sócio</p>
+            <div className="rounded-lg bg-black/30 p-2 space-y-0.5">
+              <div className="flex justify-between font-semibold text-blue-300">
+                <span>{balancoSocios.fernandoNome}</span>
+                <span>Pagou {brl(balancoSocios.pagoFernando)}</span>
+              </div>
+              <p className="text-[11px] text-slate-300">
+                Cota: {brl(balancoSocios.cotaIndividual)} − Pagou: {brl(balancoSocios.pagoFernando)} ={" "}
+                {balancoSocios.pagoFernando >= balancoSocios.cotaIndividual ? (
+                  <strong className="text-emerald-400">Recebe {brl(balancoSocios.pagoFernando - balancoSocios.cotaIndividual)}</strong>
+                ) : (
+                  <strong className="text-rose-300">Falta {brl(balancoSocios.cotaIndividual - balancoSocios.pagoFernando)}</strong>
+                )}
+              </p>
+            </div>
+
+            <div className="rounded-lg bg-black/30 p-2 space-y-0.5">
+              <div className="flex justify-between font-semibold text-violet-300">
+                <span>{balancoSocios.eroniNome}</span>
+                <span>Pagou {brl(balancoSocios.pagoEroni)}</span>
+              </div>
+              <p className="text-[11px] text-slate-300">
+                Cota: {brl(balancoSocios.cotaIndividual)} − Pagou: {brl(balancoSocios.pagoEroni)} ={" "}
+                {balancoSocios.pagoEroni >= balancoSocios.cotaIndividual ? (
+                  <strong className="text-emerald-400">Recebe {brl(balancoSocios.pagoEroni - balancoSocios.cotaIndividual)}</strong>
+                ) : (
+                  <strong className="text-rose-300">Falta {brl(balancoSocios.cotaIndividual - balancoSocios.pagoEroni)}</strong>
+                )}
+              </p>
+            </div>
+          </div>
+
+          {/* Coluna 3: Conclusão do Acerto */}
+          <div className="rounded-xl border border-amber-400/40 bg-amber-400/15 p-3.5 space-y-2 flex flex-col justify-center">
+            <p className="text-xs font-bold uppercase tracking-wider text-amber-300">3. Como Equalizar</p>
+            {balancoSocios.totalGastoSocios === 0 ? (
+              <p className="text-xs text-slate-300">Nenhuma despesa pessoal paga no período selecionado.</p>
+            ) : balancoSocios.socioCredor === null ? (
+              <p className="text-xs font-bold text-emerald-200">
+                Os dois sócios pagaram exatamente o mesmo valor. Contas 100% equilibradas.
+              </p>
+            ) : (
+              <div className="space-y-1">
+                <p className="text-sm text-white font-medium">
+                  👉 <strong>{balancoSocios.socioCredor === "A" ? balancoSocios.eroniNome : balancoSocios.fernandoNome}</strong> deve transferir{" "}
+                  <strong className="text-amber-200 text-base">{brl(balancoSocios.transferenciaParaEqualizar)}</strong> diretamente para{" "}
+                  <strong>{balancoSocios.socioCredor === "A" ? balancoSocios.fernandoNome : balancoSocios.eroniNome}</strong>.
+                </p>
+                <p className="text-[10px] text-slate-300 border-t border-amber-400/20 pt-1">
+                  Ambos ficam com exatamente {brl(balancoSocios.cotaIndividual)} desembolsados (50%).
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
       </section>
 
       <div className="flex gap-2 overflow-x-auto pb-1">
@@ -1203,7 +1372,7 @@ export function ContasPagarClient({
             </div>
           </section>
 
-          <div className="grid gap-6 xl:grid-cols-[1.8fr_1fr]">
+          <div className="w-full">
             <section className="overflow-hidden rounded-2xl border bg-white shadow-sm">
               <div className="space-y-3 border-b p-5">
                 <div className="flex flex-wrap items-center justify-between gap-3">
@@ -1455,85 +1624,81 @@ export function ContasPagarClient({
                   ))
                 )}
               </div>
-            </section>
 
-            <section className="rounded-2xl bg-slate-950 p-5 text-white shadow-lg space-y-4">
-              <div>
-                <h2 className="font-bold text-base text-white">Fechamento entre Sócios</h2>
-                <p className="mt-1 text-xs text-slate-400">
-                  Cálculo passo a passo das contas pagas pelos sócios no período selecionado:
-                </p>
-              </div>
+              {/* PAGINAÇÃO DE CONTAS */}
+              {totalItens > 0 && (
+                <div className="flex flex-wrap items-center justify-between gap-3 border-t bg-slate-50/90 px-4 py-3 text-xs">
+                  <div className="flex flex-wrap items-center gap-3 text-slate-600 font-medium">
+                    <span>
+                      Mostrando <strong>{itensPorPagina === 0 ? 1 : (paginaAtual - 1) * itensPorPagina + 1}</strong> a{" "}
+                      <strong>{itensPorPagina === 0 ? totalItens : Math.min(paginaAtual * itensPorPagina, totalItens)}</strong> de{" "}
+                      <strong>{totalItens}</strong> despesa(s)
+                    </span>
 
-              <div className="space-y-3">
-                {/* 1. Total e Divisão */}
-                <div className="rounded-xl bg-white/10 p-3.5 space-y-2">
-                  <div className="flex justify-between items-center text-xs">
-                    <span className="text-slate-300">1. Total Gasto pelos Sócios:</span>
-                    <strong className="text-white text-sm">{brl(balancoSocios.debitoEmpresa)}</strong>
-                  </div>
-                  <div className="flex justify-between items-center text-xs border-t border-white/10 pt-2">
-                    <span className="text-slate-300">2. Cota de cada um (50%):</span>
-                    <strong className="text-amber-300 text-sm">{brl(balancoSocios.cotaIndividual)}</strong>
-                  </div>
-                </div>
-
-                {/* 2. Demonstrativo Individual */}
-                <div className="rounded-xl bg-white/10 p-3.5 space-y-2 text-xs">
-                  <p className="font-bold text-slate-200 mb-1">3. Demonstrativo por Sócio:</p>
-
-                  <div className="rounded-lg bg-black/25 p-2.5 space-y-1">
-                    <div className="flex justify-between font-semibold text-blue-300">
-                      <span>{balancoSocios.fernandoNome}</span>
-                      <span>Pagou {brl(balancoSocios.pagoFernando)}</span>
+                    <div className="flex items-center gap-1.5 border-l pl-3">
+                      <span>Por página:</span>
+                      <select
+                        aria-label="Itens por página"
+                        value={itensPorPagina}
+                        onChange={(e) => {
+                          setItensPorPagina(Number(e.target.value));
+                          setPagina(1);
+                        }}
+                        className="rounded-lg border border-slate-300 bg-white px-2 py-1 text-xs font-semibold text-slate-700 cursor-pointer"
+                      >
+                        <option value={25}>25</option>
+                        <option value={50}>50</option>
+                        <option value={100}>100</option>
+                        <option value={0}>Todas ({totalItens})</option>
+                      </select>
                     </div>
-                    <p className="text-[11px] text-slate-300">
-                      Cota 50%: {brl(balancoSocios.cotaIndividual)} − Pagou {brl(balancoSocios.pagoFernando)} ={" "}
-                      {balancoSocios.pagoFernando >= balancoSocios.cotaIndividual ? (
-                        <span className="text-emerald-400 font-bold">Tem a receber {brl(balancoSocios.pagoFernando - balancoSocios.cotaIndividual)}</span>
-                      ) : (
-                        <span className="text-rose-300 font-bold">Falta pagar {brl(balancoSocios.cotaIndividual - balancoSocios.pagoFernando)}</span>
-                      )}
-                    </p>
                   </div>
 
-                  <div className="rounded-lg bg-black/25 p-2.5 space-y-1">
-                    <div className="flex justify-between font-semibold text-violet-300">
-                      <span>{balancoSocios.eroniNome}</span>
-                      <span>Pagou {brl(balancoSocios.pagoEroni)}</span>
+                  {itensPorPagina > 0 && totalPaginas > 1 && (
+                    <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        disabled={paginaAtual === 1}
+                        onClick={() => setPagina(1)}
+                        className="rounded-lg border border-slate-200 bg-white px-2 py-1 font-semibold text-slate-700 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                        title="Primeira página"
+                      >
+                        ⏮️
+                      </button>
+                      <button
+                        type="button"
+                        disabled={paginaAtual === 1}
+                        onClick={() => setPagina((p) => Math.max(1, p - 1))}
+                        className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 font-bold text-slate-700 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                      >
+                        ◀ Anterior
+                      </button>
+
+                      <span className="px-2 font-bold text-slate-800">
+                        Página {paginaAtual} de {totalPaginas}
+                      </span>
+
+                      <button
+                        type="button"
+                        disabled={paginaAtual >= totalPaginas}
+                        onClick={() => setPagina((p) => Math.min(totalPaginas, p + 1))}
+                        className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 font-bold text-slate-700 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                      >
+                        Próxima ▶
+                      </button>
+                      <button
+                        type="button"
+                        disabled={paginaAtual >= totalPaginas}
+                        onClick={() => setPagina(totalPaginas)}
+                        className="rounded-lg border border-slate-200 bg-white px-2 py-1 font-semibold text-slate-700 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                        title="Última página"
+                      >
+                        ⏭️
+                      </button>
                     </div>
-                    <p className="text-[11px] text-slate-300">
-                      Cota 50%: {brl(balancoSocios.cotaIndividual)} − Pagou {brl(balancoSocios.pagoEroni)} ={" "}
-                      {balancoSocios.pagoEroni >= balancoSocios.cotaIndividual ? (
-                        <span className="text-emerald-400 font-bold">Tem a receber {brl(balancoSocios.pagoEroni - balancoSocios.cotaIndividual)}</span>
-                      ) : (
-                        <span className="text-rose-300 font-bold">Falta pagar {brl(balancoSocios.cotaIndividual - balancoSocios.pagoEroni)}</span>
-                      )}
-                    </p>
-                  </div>
+                  )}
                 </div>
-
-                {/* 3. Conclusão do Acerto */}
-                {balancoSocios.debitoEmpresa === 0 ? (
-                  <p className="rounded-xl bg-white/10 p-3.5 text-xs text-slate-300">Nenhuma despesa pessoal paga no período selecionado.</p>
-                ) : balancoSocios.socioCredor === null ? (
-                  <p className="rounded-xl bg-emerald-500/20 p-3.5 text-xs font-bold text-emerald-200">
-                    Os dois sócios pagaram o mesmo valor. Contas 100% equilibradas.
-                  </p>
-                ) : (
-                  <div className="rounded-xl border border-amber-400/40 bg-amber-400/15 p-4 space-y-2">
-                    <p className="text-xs font-bold uppercase tracking-wider text-amber-300">Como Equalizar o Pagamento</p>
-                    <p className="text-sm text-slate-100 leading-snug">
-                      👉 <strong>{balancoSocios.socioCredor === "A" ? balancoSocios.eroniNome : balancoSocios.fernandoNome}</strong> deve transferir{" "}
-                      <strong className="text-amber-200 text-base">{brl(balancoSocios.transferenciaParaEqualizar)}</strong> diretamente para{" "}
-                      <strong>{balancoSocios.socioCredor === "A" ? balancoSocios.fernandoNome : balancoSocios.eroniNome}</strong>.
-                    </p>
-                    <p className="text-[11px] text-slate-300 pt-1 border-t border-amber-400/20">
-                      Após essa transferência de <strong>{brl(balancoSocios.transferenciaParaEqualizar)}</strong>, ambos os sócios terão desembolsado exatamente <strong>{brl(balancoSocios.cotaIndividual)}</strong> (50% do total gasto).
-                    </p>
-                  </div>
-                )}
-              </div>
+              )}
             </section>
           </div>
         </>
