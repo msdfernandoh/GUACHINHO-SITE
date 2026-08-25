@@ -348,3 +348,163 @@ export async function importarContasCsv(form: FormData): Promise<ContasActionRes
     return failure(error);
   }
 }
+
+export async function alterarBanco(id: string, form: FormData): Promise<ContasActionResult> {
+  try {
+    const { empresaId, admin } = await requireFinanceWrite();
+    const nome = value(form, "nome");
+    if (!nome) throw new Error("Informe o nome do banco para exibição.");
+    const { error } = await admin
+      .from("financeiro_contas_bancarias")
+      .update({
+        nome,
+        banco: value(form, "banco") || null,
+        agencia: value(form, "agencia") || null,
+        conta_mascarada: value(form, "conta") || null,
+        tipo_conta: value(form, "tipo_conta") || "CORRENTE",
+        chave_pix: value(form, "chave_pix") || null,
+        observacao: value(form, "observacao") || null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", id)
+      .eq("empresa_id", empresaId);
+    if (error) throw new Error(error.message);
+    revalidatePath("/erp/contas-pagar");
+    return { ok: true, message: "Banco atualizado com sucesso." };
+  } catch (error) {
+    return failure(error);
+  }
+}
+
+export async function alternarStatusBanco(id: string, ativo: boolean): Promise<ContasActionResult> {
+  try {
+    const { empresaId, admin } = await requireFinanceWrite();
+    const { error } = await admin
+      .from("financeiro_contas_bancarias")
+      .update({ ativo, updated_at: new Date().toISOString() })
+      .eq("id", id)
+      .eq("empresa_id", empresaId);
+    if (error) throw new Error(error.message);
+    revalidatePath("/erp/contas-pagar");
+    return { ok: true, message: ativo ? "Banco ativado." : "Banco inativado." };
+  } catch (error) {
+    return failure(error);
+  }
+}
+
+export async function alterarCentro(id: string, form: FormData): Promise<ContasActionResult> {
+  try {
+    const { empresaId, admin } = await requireFinanceWrite();
+    const nome = value(form, "nome");
+    if (!nome) throw new Error("Informe o nome do centro de custo.");
+    const { error } = await admin
+      .from("financeiro_centros_custo")
+      .update({
+        nome,
+        codigo: value(form, "codigo") || null,
+        departamento: value(form, "departamento") || null,
+        descricao: value(form, "descricao") || null,
+      })
+      .eq("id", id)
+      .eq("empresa_id", empresaId);
+    if (error) throw new Error(error.message);
+    revalidatePath("/erp/contas-pagar");
+    return { ok: true, message: "Centro de custo atualizado." };
+  } catch (error) {
+    return failure(error);
+  }
+}
+
+export async function alternarStatusCentro(id: string, ativo: boolean): Promise<ContasActionResult> {
+  try {
+    const { empresaId, admin } = await requireFinanceWrite();
+    const { error } = await admin
+      .from("financeiro_centros_custo")
+      .update({ ativo })
+      .eq("id", id)
+      .eq("empresa_id", empresaId);
+    if (error) throw new Error(error.message);
+    revalidatePath("/erp/contas-pagar");
+    return { ok: true, message: ativo ? "Centro de custo ativado." : "Centro de custo inativado." };
+  } catch (error) {
+    return failure(error);
+  }
+}
+
+export async function criarFornecedor(form: FormData): Promise<ContasActionResult> {
+  try {
+    const { empresaId, admin } = await requireFinanceWrite();
+    const nome = value(form, "nome");
+    if (!nome) throw new Error("Informe o nome do fornecedor.");
+    const { error } = await admin.from("financeiro_fornecedores").insert({
+      empresa_id: empresaId,
+      nome,
+      razao_social: value(form, "razao_social") || null,
+      cnpj_cpf: value(form, "cnpj_cpf") || null,
+      email: value(form, "email") || null,
+      telefone: value(form, "telefone") || null,
+      chave_pix: value(form, "chave_pix") || null,
+      tipo_chave_pix: value(form, "tipo_chave_pix") || null,
+      banco: value(form, "banco") || null,
+      agencia: value(form, "agencia") || null,
+      conta: value(form, "conta") || null,
+      observacao: value(form, "observacao") || null,
+      ativo: true,
+    });
+    if (error) {
+      if (/duplicate|unique/i.test(error.message)) throw new Error("Já existe um fornecedor com esse nome.");
+      throw new Error(error.message);
+    }
+    revalidatePath("/erp/contas-pagar");
+    return { ok: true, message: "Fornecedor cadastrado com sucesso." };
+  } catch (error) {
+    return failure(error);
+  }
+}
+
+export async function alterarFornecedor(id: string, form: FormData): Promise<ContasActionResult> {
+  try {
+    const { empresaId, admin } = await requireFinanceWrite();
+    const nome = value(form, "nome");
+    if (!nome) throw new Error("Informe o nome do fornecedor.");
+    const { error } = await admin
+      .from("financeiro_fornecedores")
+      .update({
+        nome,
+        razao_social: value(form, "razao_social") || null,
+        cnpj_cpf: value(form, "cnpj_cpf") || null,
+        email: value(form, "email") || null,
+        telefone: value(form, "telefone") || null,
+        chave_pix: value(form, "chave_pix") || null,
+        tipo_chave_pix: value(form, "tipo_chave_pix") || null,
+        banco: value(form, "banco") || null,
+        agencia: value(form, "agencia") || null,
+        conta: value(form, "conta") || null,
+        observacao: value(form, "observacao") || null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", id)
+      .eq("empresa_id", empresaId);
+    if (error) throw new Error(error.message);
+    revalidatePath("/erp/contas-pagar");
+    return { ok: true, message: "Fornecedor atualizado com sucesso." };
+  } catch (error) {
+    return failure(error);
+  }
+}
+
+export async function alternarStatusFornecedor(id: string, ativo: boolean): Promise<ContasActionResult> {
+  try {
+    const { empresaId, admin } = await requireFinanceWrite();
+    const { error } = await admin
+      .from("financeiro_fornecedores")
+      .update({ ativo, updated_at: new Date().toISOString() })
+      .eq("id", id)
+      .eq("empresa_id", empresaId);
+    if (error) throw new Error(error.message);
+    revalidatePath("/erp/contas-pagar");
+    return { ok: true, message: ativo ? "Fornecedor ativado." : "Fornecedor inativado." };
+  } catch (error) {
+    return failure(error);
+  }
+}

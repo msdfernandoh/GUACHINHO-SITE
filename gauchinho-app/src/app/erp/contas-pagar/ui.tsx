@@ -17,6 +17,7 @@ import {
   RotateCcw,
   Search,
   Trash2,
+  Building2,
   WalletCards,
   X,
 } from "lucide-react";
@@ -24,12 +25,19 @@ import type { LucideIcon } from "lucide-react";
 import { Button, Input, Select, Textarea } from "@/components/ui/form-primitives";
 import { calcularAcertoSocios } from "@/lib/financeiro/acerto-socios";
 import {
+  alterarBanco,
+  alterarCentro,
   alterarConta,
+  alterarFornecedor,
+  alternarStatusBanco,
+  alternarStatusCentro,
+  alternarStatusFornecedor,
   atualizarSocioPagadorContas,
   baixarConta,
   criarBanco,
   criarCentro,
   criarConta,
+  criarFornecedor,
   estornarConta,
   excluirConta,
   importarContasCsv,
@@ -54,11 +62,46 @@ type Conta = {
   observacao: string | null;
 };
 
-type Banco = { id: string; nome: string };
-type Centro = { id: string; nome: string };
+export type Fornecedor = {
+  id: string;
+  nome: string;
+  razao_social?: string | null;
+  cnpj_cpf?: string | null;
+  email?: string | null;
+  telefone?: string | null;
+  chave_pix?: string | null;
+  tipo_chave_pix?: string | null;
+  banco?: string | null;
+  agencia?: string | null;
+  conta?: string | null;
+  observacao?: string | null;
+  ativo: boolean;
+};
+
+export type Banco = {
+  id: string;
+  nome: string;
+  banco?: string | null;
+  agencia?: string | null;
+  conta_mascarada?: string | null;
+  tipo_conta?: string | null;
+  chave_pix?: string | null;
+  observacao?: string | null;
+  ativo: boolean;
+};
+
+export type Centro = {
+  id: string;
+  nome: string;
+  codigo?: string | null;
+  departamento?: string | null;
+  descricao?: string | null;
+  ativo: boolean;
+};
+
 type Usuario = { id: string; nome: string; email: string; socioPagador?: boolean };
 type Movimento = { id: string; tipo_movimento: "entrada" | "saida"; valor: number; data_movimento: string; descricao: string };
-type Tab = "conta" | "banco" | "centro" | "importar";
+type Tab = "conta" | "fornecedor" | "banco" | "centro" | "importar";
 type Filtro = "todas" | "abertas" | "pagas";
 type CardFiltro = "pagas_mes" | "a_pagar_mes" | "futuras" | "entradas_mes";
 type Log = {
@@ -78,10 +121,122 @@ const brl = (value: number) =>
 const dataBr = (value: string) =>
   new Date(`${value}T12:00:00`).toLocaleDateString("pt-BR");
 
+
+function FornecedorAutocomplete({
+  fornecedores,
+  defaultValue = "",
+  name = "fornecedor",
+  placeholder = "Buscar ou digitar fornecedor...",
+  className = "",
+}: {
+  fornecedores: Fornecedor[];
+  defaultValue?: string;
+  name?: string;
+  placeholder?: string;
+  className?: string;
+}) {
+  const [query, setQuery] = useState(defaultValue);
+  const [isOpen, setIsOpen] = useState(false);
+
+  const filtrados = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return fornecedores.filter((f) => f.ativo).slice(0, 8);
+    return fornecedores
+      .filter((f) => f.ativo && (f.nome.toLowerCase().includes(q) || (f.cnpj_cpf && f.cnpj_cpf.includes(q))))
+      .slice(0, 8);
+  }, [fornecedores, query]);
+
+  const matchExato = fornecedores.some(
+    (f) => f.nome.trim().toLowerCase() === query.trim().toLowerCase()
+  );
+
+  return (
+    <div className="relative w-full">
+      <input
+        type="hidden"
+        name={name}
+        value={query}
+      />
+      <div className="relative">
+        <input
+          type="text"
+          value={query}
+          onChange={(e) => {
+            setQuery(e.target.value);
+            setIsOpen(true);
+          }}
+          onFocus={() => setIsOpen(true)}
+          onBlur={() => setTimeout(() => setIsOpen(false), 250)}
+          placeholder={placeholder}
+          className={`w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-2xs placeholder:text-slate-400 focus:border-blue-600 focus:outline-hidden focus:ring-1 focus:ring-blue-600 ${className}`}
+        />
+        {query && (
+          <button
+            type="button"
+            onClick={() => {
+              setQuery("");
+              setIsOpen(true);
+            }}
+            className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        )}
+      </div>
+
+      {isOpen && (
+        <div className="absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-xl border border-slate-200 bg-white p-1 shadow-xl">
+          {filtrados.length > 0 ? (
+            filtrados.map((f) => (
+              <button
+                key={f.id}
+                type="button"
+                onMouseDown={() => {
+                  setQuery(f.nome);
+                  setIsOpen(false);
+                }}
+                className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-xs hover:bg-blue-50"
+              >
+                <div>
+                  <p className="font-bold text-slate-900">{f.nome}</p>
+                  {f.cnpj_cpf && <p className="text-[10px] text-slate-500">{f.cnpj_cpf}</p>}
+                </div>
+                {f.chave_pix && <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold text-emerald-800">PIX</span>}
+              </button>
+            ))
+          ) : query.trim().length > 0 ? (
+            <div className="p-2 text-center text-xs text-slate-500">
+              Nenhum fornecedor pré-cadastrado encontrado.
+            </div>
+          ) : (
+            <div className="p-2 text-center text-xs text-slate-400">
+              Digite para buscar ou incluir fornecedor...
+            </div>
+          )}
+
+          {query.trim().length > 0 && !matchExato && (
+            <button
+              type="button"
+              onMouseDown={() => {
+                setIsOpen(false);
+              }}
+              className="mt-1 flex w-full items-center gap-2 rounded-lg border-t border-slate-100 bg-blue-50/80 px-3 py-2 text-left text-xs font-bold text-blue-700 hover:bg-blue-100"
+            >
+              <Plus className="h-4 w-4" />
+              <span>Usar &quot;{query.trim()}&quot; (auto-cadastrar fornecedor)</span>
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function ContasPagarClient({
   contas,
   bancos,
   centros,
+  fornecedores = [],
   socios,
   caixa,
   logs,
@@ -91,6 +246,7 @@ export function ContasPagarClient({
   contas: Conta[];
   bancos: Banco[];
   centros: Centro[];
+  fornecedores?: Fornecedor[];
   socios: Usuario[];
   caixa: Movimento[];
   logs: Log[];
@@ -116,6 +272,10 @@ export function ContasPagarClient({
 
   // Modais de Controle
   const [editando, setEditando] = useState<Conta | null>(null);
+  const [editandoFornecedor, setEditandoFornecedor] = useState<Fornecedor | null>(null);
+  const [editandoBanco, setEditandoBanco] = useState<Banco | null>(null);
+  const [editandoCentro, setEditandoCentro] = useState<Centro | null>(null);
+  const [buscaFornecedor, setBuscaFornecedor] = useState("");
   const [estornando, setEstornando] = useState<Conta | null>(null);
   const [excluindo, setExcluindo] = useState<Conta | null>(null);
   const [motivoInput, setMotivoInput] = useState("");
@@ -336,9 +496,10 @@ export function ContasPagarClient({
 
   const tabs: Array<[Tab, string, typeof Plus]> = [
     ["conta", "Nova despesa", Plus],
+    ["fornecedor", "Fornecedores", Building2],
+    ["banco", "Bancos & Contas", Landmark],
+    ["centro", "Centros de custo", ReceiptText],
     ["importar", "Importar CSV", FileUp],
-    ["banco", "Cadastrar banco", Landmark],
-    ["centro", "Centro de custo", ReceiptText],
   ];
 
   return (
@@ -440,12 +601,12 @@ export function ContasPagarClient({
         {tab === "conta" ? (
           <form onSubmit={(event) => submitForm(event, criarConta)} className="grid gap-3 md:grid-cols-3">
             <Input name="descricao" required placeholder="O que precisa ser pago? *" />
-            <Input name="fornecedor" placeholder="Fornecedor" />
+            <FornecedorAutocomplete fornecedores={fornecedores} placeholder="Fornecedor (busca ou digita)" />
             <Input name="valor" required type="number" step="0.01" min="0.01" placeholder="Valor (R$) *" />
             <Input name="vencimento" required type="date" />
             <Select name="centro">
               <option value="">Centro de custo</option>
-              {centros.map((centro) => (
+              {centros.filter((c) => c.ativo !== false).map((centro) => (
                 <option key={centro.id} value={centro.id}>
                   {centro.nome}
                 </option>
@@ -453,7 +614,7 @@ export function ContasPagarClient({
             </Select>
             <Select name="banco">
               <option value="">Conta bancária</option>
-              {bancos.map((banco) => (
+              {bancos.filter((b) => b.ativo !== false).map((banco) => (
                 <option key={banco.id} value={banco.id}>
                   {banco.nome}
                 </option>
@@ -478,24 +639,247 @@ export function ContasPagarClient({
               {pending ? "Salvando…" : "Adicionar conta"}
             </Button>
           </form>
+        ) : tab === "fornecedor" ? (
+          <div className="space-y-6">
+            <form onSubmit={(event) => submitForm(event, criarFornecedor)} className="space-y-3 rounded-xl border border-slate-200 bg-slate-50/50 p-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-bold text-slate-900">Novo Fornecedor</h3>
+                <span className="text-xs text-slate-500">* Apenas o nome é obrigatório</span>
+              </div>
+              <div className="grid gap-3 md:grid-cols-3">
+                <Input name="nome" required placeholder="Nome do Fornecedor *" />
+                <Input name="razao_social" placeholder="Razão Social (opcional)" />
+                <Input name="cnpj_cpf" placeholder="CNPJ / CPF" />
+                <Input name="telefone" placeholder="Telefone / WhatsApp" />
+                <Input name="email" type="email" placeholder="E-mail" />
+                <div className="flex gap-2">
+                  <Select name="tipo_chave_pix" className="w-1/3 text-xs">
+                    <option value="CNPJ">CNPJ</option>
+                    <option value="CPF">CPF</option>
+                    <option value="EMAIL">E-mail</option>
+                    <option value="TELEFONE">Telefone</option>
+                    <option value="ALEATORIA">Aleatória</option>
+                  </Select>
+                  <Input name="chave_pix" placeholder="Chave PIX" className="w-2/3" />
+                </div>
+                <Input name="banco" placeholder="Banco" />
+                <Input name="agencia" placeholder="Agência" />
+                <Input name="conta" placeholder="Conta corrente" />
+                <Textarea name="observacao" className="md:col-span-3" placeholder="Observações do fornecedor (opcional)" />
+              </div>
+              <div className="flex justify-end">
+                <Button disabled={pending} className="bg-blue-700 text-xs font-bold hover:bg-blue-800">
+                  {pending ? "Cadastrando…" : "Cadastrar Fornecedor"}
+                </Button>
+              </div>
+            </form>
+
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h4 className="text-sm font-bold text-slate-900">Fornecedores Cadastrados ({fornecedores.length})</h4>
+                <div className="relative w-64">
+                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" />
+                  <Input
+                    placeholder="Buscar fornecedor..."
+                    value={buscaFornecedor}
+                    onChange={(e) => setBuscaFornecedor(e.target.value)}
+                    className="pl-8 text-xs"
+                  />
+                </div>
+              </div>
+
+              <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
+                <table className="w-full text-left text-xs">
+                  <thead className="border-b bg-slate-50 font-bold text-slate-600">
+                    <tr>
+                      <th className="p-3">Nome / Razão</th>
+                      <th className="p-3">Documento</th>
+                      <th className="p-3">Contato</th>
+                      <th className="p-3">PIX / Banco</th>
+                      <th className="p-3">Status</th>
+                      <th className="p-3 text-right">Ações</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {fornecedores
+                      .filter((f) => !buscaFornecedor || f.nome.toLowerCase().includes(buscaFornecedor.toLowerCase()) || (f.cnpj_cpf && f.cnpj_cpf.includes(buscaFornecedor)))
+                      .map((f) => (
+                        <tr key={f.id} className="hover:bg-slate-50/80">
+                          <td className="p-3 font-semibold text-slate-900">
+                            {f.nome}
+                            {f.razao_social && <p className="text-[10px] text-slate-500 font-normal">{f.razao_social}</p>}
+                          </td>
+                          <td className="p-3 text-slate-600">{f.cnpj_cpf || "—"}</td>
+                          <td className="p-3 text-slate-600">
+                            {f.telefone && <p>{f.telefone}</p>}
+                            {f.email && <p className="text-[10px] text-slate-500">{f.email}</p>}
+                            {!f.telefone && !f.email && "—"}
+                          </td>
+                          <td className="p-3 text-slate-600">
+                            {f.chave_pix && <p className="font-mono text-emerald-700">PIX: {f.chave_pix}</p>}
+                            {f.banco && <p className="text-[10px] text-slate-500">{f.banco} Ag:{f.agencia} Cc:{f.conta}</p>}
+                            {!f.chave_pix && !f.banco && "—"}
+                          </td>
+                          <td className="p-3">
+                            <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${f.ativo ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-600"}`}>
+                              {f.ativo ? "Ativo" : "Inativo"}
+                            </span>
+                          </td>
+                          <td className="p-3 text-right space-x-2">
+                            <button
+                              onClick={() => setEditandoFornecedor(f)}
+                              className="font-semibold text-blue-700 hover:underline"
+                            >
+                              Editar
+                            </button>
+                            <button
+                              onClick={() => execute(() => alternarStatusFornecedor(f.id, !f.ativo))}
+                              className="text-slate-500 hover:text-slate-700 font-medium"
+                            >
+                              {f.ativo ? "Inativar" : "Ativar"}
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
         ) : tab === "banco" ? (
-          <form onSubmit={(event) => submitForm(event, criarBanco)} className="grid gap-3 md:grid-cols-4">
-            <Input name="nome" required placeholder="Nome para exibir *" />
-            <Input name="banco" placeholder="Banco" />
-            <Input name="agencia" placeholder="Agência" />
-            <Input name="conta" placeholder="Conta (ex.: **** 1234)" />
-            <Button disabled={pending} className="min-h-12 md:col-span-4">
-              {pending ? "Salvando…" : "Salvar banco"}
-            </Button>
-          </form>
+          <div className="space-y-6">
+            <form onSubmit={(event) => submitForm(event, criarBanco)} className="space-y-3 rounded-xl border border-slate-200 bg-slate-50/50 p-4">
+              <h3 className="text-sm font-bold text-slate-900">Cadastrar Conta Bancária</h3>
+              <div className="grid gap-3 md:grid-cols-4">
+                <Input name="nome" required placeholder="Nome para exibição (ex: Itaú Principal) *" />
+                <Input name="banco" placeholder="Instituição (ex: Itaú, Bradesco, Nubank)" />
+                <Input name="agencia" placeholder="Agência" />
+                <Input name="conta" placeholder="Número da Conta" />
+                <Select name="tipo_conta">
+                  <option value="CORRENTE">Conta Corrente</option>
+                  <option value="POUPANCA">Poupança</option>
+                  <option value="PAGAMENTO">Conta Pagamento</option>
+                  <option value="INVESTIMENTO">Investimento</option>
+                </Select>
+                <Input name="chave_pix" placeholder="Chave PIX vinculada" />
+                <Textarea name="observacao" className="md:col-span-2" placeholder="Observações..." />
+              </div>
+              <div className="flex justify-end">
+                <Button disabled={pending} className="bg-blue-700 text-xs font-bold hover:bg-blue-800">
+                  {pending ? "Salvando…" : "Salvar Banco / Conta"}
+                </Button>
+              </div>
+            </form>
+
+            <div className="space-y-3">
+              <h4 className="text-sm font-bold text-slate-900">Contas Bancárias ({bancos.length})</h4>
+              <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
+                <table className="w-full text-left text-xs">
+                  <thead className="border-b bg-slate-50 font-bold text-slate-600">
+                    <tr>
+                      <th className="p-3">Nome de Exibição</th>
+                      <th className="p-3">Banco / Agência / Conta</th>
+                      <th className="p-3">PIX</th>
+                      <th className="p-3">Status</th>
+                      <th className="p-3 text-right">Ações</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {bancos.map((b) => (
+                      <tr key={b.id} className="hover:bg-slate-50/80">
+                        <td className="p-3 font-semibold text-slate-900">{b.nome}</td>
+                        <td className="p-3 text-slate-600">
+                          {b.banco || "—"} {b.agencia ? `Ag: ${b.agencia}` : ""} {b.conta_mascarada ? `Cc: ${b.conta_mascarada}` : ""}
+                        </td>
+                        <td className="p-3 font-mono text-slate-600">{b.chave_pix || "—"}</td>
+                        <td className="p-3">
+                          <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${b.ativo !== false ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-600"}`}>
+                            {b.ativo !== false ? "Ativo" : "Inativo"}
+                          </span>
+                        </td>
+                        <td className="p-3 text-right space-x-2">
+                          <button
+                            onClick={() => setEditandoBanco(b)}
+                            className="font-semibold text-blue-700 hover:underline"
+                          >
+                            Editar
+                          </button>
+                          <button
+                            onClick={() => execute(() => alternarStatusBanco(b.id, b.ativo === false))}
+                            className="text-slate-500 hover:text-slate-700 font-medium"
+                          >
+                            {b.ativo !== false ? "Inativar" : "Ativar"}
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
         ) : tab === "centro" ? (
-          <form onSubmit={(event) => submitForm(event, criarCentro)} className="grid gap-3 md:grid-cols-3">
-            <Input name="nome" required placeholder="Nome do centro *" />
-            <Input name="codigo" placeholder="Código" />
-            <Button disabled={pending} className="min-h-12">
-              {pending ? "Salvando…" : "Salvar centro"}
-            </Button>
-          </form>
+          <div className="space-y-6">
+            <form onSubmit={(event) => submitForm(event, criarCentro)} className="space-y-3 rounded-xl border border-slate-200 bg-slate-50/50 p-4">
+              <h3 className="text-sm font-bold text-slate-900">Cadastrar Centro de Custo</h3>
+              <div className="grid gap-3 md:grid-cols-3">
+                <Input name="nome" required placeholder="Nome do centro de custo *" />
+                <Input name="codigo" placeholder="Código identificador (ex: CC-001)" />
+                <Input name="departamento" placeholder="Departamento (ex: Vendas, Adm, TI)" />
+                <Textarea name="descricao" className="md:col-span-3" placeholder="Descrição / finalidade..." />
+              </div>
+              <div className="flex justify-end">
+                <Button disabled={pending} className="bg-blue-700 text-xs font-bold hover:bg-blue-800">
+                  {pending ? "Salvando…" : "Salvar Centro de Custo"}
+                </Button>
+              </div>
+            </form>
+
+            <div className="space-y-3">
+              <h4 className="text-sm font-bold text-slate-900">Centros de Custo ({centros.length})</h4>
+              <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
+                <table className="w-full text-left text-xs">
+                  <thead className="border-b bg-slate-50 font-bold text-slate-600">
+                    <tr>
+                      <th className="p-3">Código</th>
+                      <th className="p-3">Nome</th>
+                      <th className="p-3">Departamento</th>
+                      <th className="p-3">Status</th>
+                      <th className="p-3 text-right">Ações</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {centros.map((c) => (
+                      <tr key={c.id} className="hover:bg-slate-50/80">
+                        <td className="p-3 font-mono font-bold text-slate-600">{c.codigo || "—"}</td>
+                        <td className="p-3 font-semibold text-slate-900">{c.nome}</td>
+                        <td className="p-3 text-slate-600">{c.departamento || "—"}</td>
+                        <td className="p-3">
+                          <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${c.ativo !== false ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-600"}`}>
+                            {c.ativo !== false ? "Ativo" : "Inativo"}
+                          </span>
+                        </td>
+                        <td className="p-3 text-right space-x-2">
+                          <button
+                            onClick={() => setEditandoCentro(c)}
+                            className="font-semibold text-blue-700 hover:underline"
+                          >
+                            Editar
+                          </button>
+                          <button
+                            onClick={() => execute(() => alternarStatusCentro(c.id, c.ativo === false))}
+                            className="text-slate-500 hover:text-slate-700 font-medium"
+                          >
+                            {c.ativo !== false ? "Inativar" : "Ativar"}
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
         ) : (
           <form onSubmit={(event) => submitForm(event, importarContasCsv)} className="space-y-4">
             <div>
@@ -1082,7 +1466,11 @@ export function ContasPagarClient({
               </div>
               <div>
                 <label className="font-bold text-slate-700">Fornecedor</label>
-                <Input name="fornecedor" defaultValue={editando.fornecedor || ""} className="mt-1" />
+                <FornecedorAutocomplete
+                  fornecedores={fornecedores}
+                  defaultValue={editando.fornecedor || ""}
+                  className="mt-1"
+                />
               </div>
               <div>
                 <label className="font-bold text-slate-700">Valor (R$) *</label>

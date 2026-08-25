@@ -16,7 +16,7 @@ export default async function ContasPagarPage() {
     isMaster || (vinculoAtivo as { pode_estornar_contas?: boolean })?.pode_estornar_contas
   );
 
-  const [contas, bancos, centros, vinculos, caixa, logs] = await Promise.all([
+  const [contas, bancos, centros, fornecedores, vinculos, caixa, logs] = await Promise.all([
     db
       .from("financeiro_contas_pagar")
       .select("*")
@@ -24,8 +24,9 @@ export default async function ContasPagarPage() {
       .neq("status", "cancelada")
       .order("vencimento", { ascending: true })
       .limit(1000),
-    db.from("financeiro_contas_bancarias").select("*").eq("empresa_id", empresaId).eq("ativo", true),
-    db.from("financeiro_centros_custo").select("*").eq("empresa_id", empresaId).eq("ativo", true),
+    db.from("financeiro_contas_bancarias").select("*").eq("empresa_id", empresaId).order("nome"),
+    db.from("financeiro_centros_custo").select("*").eq("empresa_id", empresaId).order("nome"),
+    db.from("financeiro_fornecedores").select("*").eq("empresa_id", empresaId).order("nome"),
     db
       .from("empresa_usuarios")
       .select("socio_pagador,pode_estornar_contas,usuario:usuarios!empresa_usuarios_usuario_id_fkey(id,nome,email)")
@@ -46,12 +47,13 @@ export default async function ContasPagarPage() {
   });
   return (
     <ContasPagarClient
-      contas={(contas.data ?? []) as never[]}
-      bancos={(bancos.data ?? []) as never[]}
-      centros={(centros.data ?? []) as never[]}
+      contas={(contas.data ?? []) as any[]}
+      bancos={(bancos.data ?? []) as any[]}
+      centros={(centros.data ?? []) as any[]}
+      fornecedores={(fornecedores.data ?? []) as any[]}
       socios={usuarios.filter((usuario) => usuario.socioPagador)}
-      caixa={(caixa.data ?? []) as never[]}
-      logs={(logs.data ?? []) as never[]}
+      caixa={(caixa.data ?? []) as any[]}
+      logs={(logs.data ?? []) as any[]}
       master={isMaster}
       podeEstornar={podeEstornar}
     />
