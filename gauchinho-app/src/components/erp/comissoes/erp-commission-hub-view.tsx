@@ -1601,7 +1601,7 @@ export function ErpCommissionHubView({
                   <option value="INDICADOR">Indicador</option>
                   <option value="PARCEIRO">Parceiro Imobiliário</option>
                   <option value="VENDEDOR">Vendedor</option>
-                  <option value="GESTOR">Gestor</option>
+                  <option value="GESTOR">Gestor / Sócio</option>
                 </select>
               </div>
 
@@ -1930,11 +1930,13 @@ export function ErpCommissionHubView({
                   defaultValue={editingVinculo?.papel_tipo || "CONSULTOR"}
                   className="mt-1 w-full rounded-xl border border-slate-300 bg-white p-2.5 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
                 >
-                  <option value="MICROFRANQUIA">Microfranquia</option>
+                  <option value="GESTOR">Gestor / Sócio</option>
                   <option value="CONSULTOR">Consultor</option>
                   <option value="SDR">SDR / Pré-vendedor</option>
+                  <option value="MICROFRANQUIA">Microfranquia</option>
                   <option value="INDICADOR">Indicador</option>
                   <option value="PARCEIRO">Parceiro</option>
+                  <option value="VENDEDOR">Vendedor</option>
                 </select>
               </div>
 
