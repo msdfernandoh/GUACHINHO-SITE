@@ -746,3 +746,116 @@ export async function removerNotaFiscalConta(id: string): Promise<ContasActionRe
     return failure(error);
   }
 }
+
+export async function unificarFornecedores({
+  fornecedorPrincipalNome,
+  fornecedorPrincipalId,
+  fornecedoresAntigosNomes,
+  fornecedoresAntigosIds,
+}: {
+  fornecedorPrincipalNome: string;
+  fornecedorPrincipalId?: string | null;
+  fornecedoresAntigosNomes: string[];
+  fornecedoresAntigosIds?: string[];
+}): Promise<ContasActionResult> {
+  try {
+    const { empresaId, admin } = await requireFinanceWrite();
+    const nomePrincipal = (fornecedorPrincipalNome || "").trim();
+    if (!nomePrincipal) {
+      throw new Error("Informe o nome do fornecedor principal.");
+    }
+
+    // 1. Garante que o fornecedor principal existe em financeiro_fornecedores se a tabela existir
+    let targetFornecedorId = fornecedorPrincipalId;
+    if (!targetFornecedorId || targetFornecedorId.startsWith("temp-")) {
+      try {
+        const { data: fornExistente } = await admin
+          .from("financeiro_fornecedores")
+          .select("id")
+          .eq("empresa_id", empresaId)
+          .ilike("nome", nomePrincipal)
+          .maybeSingle();
+
+        if (fornExistente) {
+          targetFornecedorId = fornExistente.id;
+        } else {
+          const { data: fornNovo } = await admin
+            .from("financeiro_fornecedores")
+            .insert({
+              empresa_id: empresaId,
+              nome: nomePrincipal,
+            })
+            .select("id")
+            .maybeSingle();
+          if (fornNovo) targetFornecedorId = fornNovo.id;
+        }
+      } catch (e) {
+        console.warn("Tabela financeiro_fornecedores pode nao existir ainda:", e);
+      }
+    }
+
+    // 2. Coleta todos os nomes e IDs antigos a serem substituídos
+    const nomesSubstituir = (fornecedoresAntigosNomes || [])
+      .map((n) => (n || "").trim())
+      .filter((n) => n.length > 0 && n.toLowerCase() !== nomePrincipal.toLowerCase());
+
+    const idsSubstituir = (fornecedoresAntigosIds || []).filter(
+      (id) => id && !id.startsWith("temp-") && id !== targetFornecedorId
+    );
+
+    let totalAfetadas = 0;
+
+    // 3. Atualiza financeiro_contas_pagar
+    for (const nomeAntigo of nomesSubstituir) {
+      const updates: Record<string, any> = {
+        fornecedor: nomePrincipal,
+        updated_at: new Date().toISOString(),
+      };
+      if (targetFornecedorId && !targetFornecedorId.startsWith("temp-")) {
+        updates.fornecedor_id = targetFornecedorId;
+      }
+      const { data: resContas } = await admin
+        .from("financeiro_contas_pagar")
+        .update(updates)
+        .eq("empresa_id", empresaId)
+        .ilike("fornecedor", nomeAntigo)
+        .select("id");
+      totalAfetadas += (resContas || []).length;
+    }
+
+    for (const idAntigo of idsSubstituir) {
+      const updates: Record<string, any> = {
+        fornecedor: nomePrincipal,
+        updated_at: new Date().toISOString(),
+      };
+      if (targetFornecedorId && !targetFornecedorId.startsWith("temp-")) {
+        updates.fornecedor_id = targetFornecedorId;
+      }
+      const { data: resContas } = await admin
+        .from("financeiro_contas_pagar")
+        .update(updates)
+        .eq("empresa_id", empresaId)
+        .eq("fornecedor_id", idAntigo)
+        .select("id");
+      totalAfetadas += (resContas || []).length;
+
+      try {
+        await admin
+          .from("financeiro_fornecedores")
+          .delete()
+          .eq("id", idAntigo)
+          .eq("empresa_id", empresaId);
+      } catch (e) {
+        console.warn("Erro ao remover fornecedor duplicado antigo:", e);
+      }
+    }
+
+    revalidatePath("/erp/contas-pagar");
+    return {
+      ok: true,
+      message: `Fornecedores unificados com sucesso para "${nomePrincipal}" (${totalAfetadas} conta(s) atualizada(s)).`,
+    };
+  } catch (error) {
+    return failure(error);
+  }
+}

@@ -45,6 +45,7 @@ import {
   excluirConta,
   importarContasCsv,
   removerNotaFiscalConta,
+  unificarFornecedores,
   type ContasActionResult,
 } from "./actions";
 
@@ -85,6 +86,8 @@ export type Fornecedor = {
   conta?: string | null;
   observacao?: string | null;
   ativo: boolean;
+  totalContas?: number;
+  isFromContas?: boolean;
 };
 
 export type Banco = {
@@ -132,6 +135,14 @@ const dataBr = (value: string) =>
   new Date(`${value}T12:00:00`).toLocaleDateString("pt-BR");
 
 
+function normStr(str: string) {
+  return (str || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .toLowerCase();
+}
+
 function FornecedorAutocomplete({
   fornecedores,
   defaultValue = "",
@@ -149,15 +160,21 @@ function FornecedorAutocomplete({
   const [isOpen, setIsOpen] = useState(false);
 
   const filtrados = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return fornecedores.filter((f) => f.ativo).slice(0, 8);
+    const q = normStr(query);
+    if (!q) return fornecedores.filter((f) => f.ativo !== false).slice(0, 10);
     return fornecedores
-      .filter((f) => f.ativo && (f.nome.toLowerCase().includes(q) || (f.cnpj_cpf && f.cnpj_cpf.includes(q))))
-      .slice(0, 8);
+      .filter(
+        (f) =>
+          f.ativo !== false &&
+          (normStr(f.nome).includes(q) ||
+            (f.razao_social && normStr(f.razao_social).includes(q)) ||
+            (f.cnpj_cpf && f.cnpj_cpf.includes(q)))
+      )
+      .slice(0, 10);
   }, [fornecedores, query]);
 
   const matchExato = fornecedores.some(
-    (f) => f.nome.trim().toLowerCase() === query.trim().toLowerCase()
+    (f) => normStr(f.nome) === normStr(query)
   );
 
   return (
@@ -187,7 +204,7 @@ function FornecedorAutocomplete({
               setQuery("");
               setIsOpen(true);
             }}
-            className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600"
+            className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600 cursor-pointer"
           >
             <X className="h-4 w-4" />
           </button>
@@ -195,28 +212,38 @@ function FornecedorAutocomplete({
       </div>
 
       {isOpen && (
-        <div className="absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-xl border border-slate-200 bg-white p-1 shadow-xl">
+        <div className="absolute z-50 mt-1 max-h-64 w-full overflow-auto rounded-xl border border-slate-200 bg-white p-1 shadow-xl">
           {filtrados.length > 0 ? (
             filtrados.map((f) => (
               <button
-                key={f.id}
+                key={f.id || f.nome}
                 type="button"
                 onMouseDown={() => {
                   setQuery(f.nome);
                   setIsOpen(false);
                 }}
-                className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-xs hover:bg-blue-50"
+                className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-xs hover:bg-blue-50 cursor-pointer"
               >
                 <div>
-                  <p className="font-bold text-slate-900">{f.nome}</p>
-                  {f.cnpj_cpf && <p className="text-[10px] text-slate-500">{f.cnpj_cpf}</p>}
+                  <div className="flex items-center gap-1.5">
+                    <p className="font-bold text-slate-900">{f.nome}</p>
+                    {Boolean(f.totalContas) && (
+                      <span className="rounded-full bg-slate-100 px-1.5 py-0.2 text-[10px] text-slate-600 font-medium">
+                        {f.totalContas} conta(s)
+                      </span>
+                    )}
+                  </div>
+                  {f.razao_social && f.razao_social !== f.nome && (
+                    <p className="text-[10px] text-slate-500">{f.razao_social}</p>
+                  )}
+                  {f.cnpj_cpf && <p className="text-[10px] text-slate-400">{f.cnpj_cpf}</p>}
                 </div>
                 {f.chave_pix && <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold text-emerald-800">PIX</span>}
               </button>
             ))
           ) : query.trim().length > 0 ? (
             <div className="p-2 text-center text-xs text-slate-500">
-              Nenhum fornecedor pré-cadastrado encontrado.
+              Nenhum fornecedor encontrado com esse termo.
             </div>
           ) : (
             <div className="p-2 text-center text-xs text-slate-400">
@@ -230,10 +257,10 @@ function FornecedorAutocomplete({
               onMouseDown={() => {
                 setIsOpen(false);
               }}
-              className="mt-1 flex w-full items-center gap-2 rounded-lg border-t border-slate-100 bg-blue-50/80 px-3 py-2 text-left text-xs font-bold text-blue-700 hover:bg-blue-100"
+              className="mt-1 flex w-full items-center gap-2 rounded-lg border-t border-slate-100 bg-blue-50/80 px-3 py-2 text-left text-xs font-bold text-blue-700 hover:bg-blue-100 cursor-pointer"
             >
               <Plus className="h-4 w-4" />
-              <span>Usar &quot;{query.trim()}&quot; (auto-cadastrar fornecedor)</span>
+              <span>Usar &quot;{query.trim()}&quot; (vincular como fornecedor)</span>
             </button>
           )}
         </div>
@@ -291,6 +318,9 @@ export function ContasPagarClient({
   const [editandoBanco, setEditandoBanco] = useState<Banco | null>(null);
   const [editandoCentro, setEditandoCentro] = useState<Centro | null>(null);
   const [buscaFornecedor, setBuscaFornecedor] = useState("");
+  const [fornecedoresSelecionados, setFornecedoresSelecionados] = useState<Set<string>>(new Set());
+  const [modalUnificar, setModalUnificar] = useState(false);
+  const [fornecedorDestinoNome, setFornecedorDestinoNome] = useState("");
   const [estornando, setEstornando] = useState<Conta | null>(null);
   const [excluindo, setExcluindo] = useState<Conta | null>(null);
   const [motivoInput, setMotivoInput] = useState("");
@@ -1023,8 +1053,15 @@ export function ContasPagarClient({
             </form>
 
             <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <h4 className="text-sm font-bold text-slate-900">Fornecedores Cadastrados ({fornecedores.length})</h4>
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h4 className="text-sm font-bold text-slate-900">
+                    Fornecedores Cadastrados e Vinculados ({fornecedores.length})
+                  </h4>
+                  <p className="text-xs text-slate-500">
+                    Inclui fornecedores da tabela e nomes registrados nas despesas. Selecione para unificar duplicados.
+                  </p>
+                </div>
                 <div className="relative w-64">
                   <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" />
                   <Input
@@ -1036,11 +1073,71 @@ export function ContasPagarClient({
                 </div>
               </div>
 
+              {/* Barra de Ação de Unificação */}
+              {fornecedoresSelecionados.size >= 2 && (
+                <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-blue-200 bg-blue-50 p-3 text-xs animate-in fade-in">
+                  <div className="flex items-center gap-2">
+                    <span className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-600 text-xs font-bold text-white">
+                      {fornecedoresSelecionados.size}
+                    </span>
+                    <span className="font-bold text-blue-950">
+                      fornecedores selecionados para unificação
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={() => {
+                        const listaSelecionados = fornecedores.filter((f) =>
+                          fornecedoresSelecionados.has(f.id || f.nome)
+                        );
+                        if (listaSelecionados.length > 0) {
+                          setFornecedorDestinoNome(listaSelecionados[0].nome);
+                        }
+                        setModalUnificar(true);
+                      }}
+                      className="bg-blue-700 text-xs font-bold hover:bg-blue-800 cursor-pointer"
+                    >
+                      🔗 Unificar Fornecedores Selecionados
+                    </Button>
+                    <button
+                      type="button"
+                      onClick={() => setFornecedoresSelecionados(new Set())}
+                      className="text-slate-500 hover:text-slate-800 font-semibold underline cursor-pointer ml-1"
+                    >
+                      Desmarcar todos
+                    </button>
+                  </div>
+                </div>
+              )}
+
               <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
                 <table className="w-full text-left text-xs">
                   <thead className="border-b bg-slate-50 font-bold text-slate-600">
                     <tr>
+                      <th className="p-3 w-10">
+                        <input
+                          type="checkbox"
+                          aria-label="Selecionar todos os fornecedores"
+                          className="h-4 w-4 rounded text-blue-600 cursor-pointer"
+                          checked={
+                            fornecedores.length > 0 &&
+                            fornecedores.every((f) => fornecedoresSelecionados.has(f.id || f.nome))
+                          }
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setFornecedoresSelecionados(
+                                new Set(fornecedores.map((f) => f.id || f.nome))
+                              );
+                            } else {
+                              setFornecedoresSelecionados(new Set());
+                            }
+                          }}
+                        />
+                      </th>
                       <th className="p-3">Nome / Razão</th>
+                      <th className="p-3">Contas Vinculadas</th>
                       <th className="p-3">Documento</th>
                       <th className="p-3">Contato</th>
                       <th className="p-3">PIX / Banco</th>
@@ -1050,45 +1147,87 @@ export function ContasPagarClient({
                   </thead>
                   <tbody className="divide-y divide-slate-100">
                     {fornecedores
-                      .filter((f) => !buscaFornecedor || f.nome.toLowerCase().includes(buscaFornecedor.toLowerCase()) || (f.cnpj_cpf && f.cnpj_cpf.includes(buscaFornecedor)))
-                      .map((f) => (
-                        <tr key={f.id} className="hover:bg-slate-50/80">
-                          <td className="p-3 font-semibold text-slate-900">
-                            {f.nome}
-                            {f.razao_social && <p className="text-[10px] text-slate-500 font-normal">{f.razao_social}</p>}
-                          </td>
-                          <td className="p-3 text-slate-600">{f.cnpj_cpf || "—"}</td>
-                          <td className="p-3 text-slate-600">
-                            {f.telefone && <p>{f.telefone}</p>}
-                            {f.email && <p className="text-[10px] text-slate-500">{f.email}</p>}
-                            {!f.telefone && !f.email && "—"}
-                          </td>
-                          <td className="p-3 text-slate-600">
-                            {f.chave_pix && <p className="font-mono text-emerald-700">PIX: {f.chave_pix}</p>}
-                            {f.banco && <p className="text-[10px] text-slate-500">{f.banco} Ag:{f.agencia} Cc:{f.conta}</p>}
-                            {!f.chave_pix && !f.banco && "—"}
-                          </td>
-                          <td className="p-3">
-                            <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${f.ativo ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-600"}`}>
-                              {f.ativo ? "Ativo" : "Inativo"}
-                            </span>
-                          </td>
-                          <td className="p-3 text-right space-x-2">
-                            <button
-                              onClick={() => setEditandoFornecedor(f)}
-                              className="font-semibold text-blue-700 hover:underline"
-                            >
-                              Editar
-                            </button>
-                            <button
-                              onClick={() => execute(() => alternarStatusFornecedor(f.id, !f.ativo))}
-                              className="text-slate-500 hover:text-slate-700 font-medium"
-                            >
-                              {f.ativo ? "Inativar" : "Ativar"}
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
+                      .filter((f) => {
+                        const q = normStr(buscaFornecedor);
+                        return (
+                          !q ||
+                          normStr(f.nome).includes(q) ||
+                          (f.razao_social && normStr(f.razao_social).includes(q)) ||
+                          (f.cnpj_cpf && f.cnpj_cpf.includes(q))
+                        );
+                      })
+                      .map((f) => {
+                        const key = f.id || f.nome;
+                        const isSelected = fornecedoresSelecionados.has(key);
+                        return (
+                          <tr key={key} className={`hover:bg-slate-50/80 ${isSelected ? "bg-blue-50/40" : ""}`}>
+                            <td className="p-3">
+                              <input
+                                type="checkbox"
+                                aria-label={`Selecionar ${f.nome}`}
+                                checked={isSelected}
+                                onChange={() => {
+                                  const next = new Set(fornecedoresSelecionados);
+                                  if (next.has(key)) next.delete(key);
+                                  else next.add(key);
+                                  setFornecedoresSelecionados(next);
+                                }}
+                                className="h-4 w-4 rounded text-blue-600 cursor-pointer"
+                              />
+                            </td>
+                            <td className="p-3 font-semibold text-slate-900">
+                              <div className="flex items-center gap-1.5">
+                                <span>{f.nome}</span>
+                                {f.isFromContas && (
+                                  <span className="rounded-full bg-slate-100 px-1.5 py-0.5 text-[9px] font-normal text-slate-500">
+                                    via despesas
+                                  </span>
+                                )}
+                              </div>
+                              {f.razao_social && f.razao_social !== f.nome && (
+                                <p className="text-[10px] text-slate-500 font-normal">{f.razao_social}</p>
+                              )}
+                            </td>
+                            <td className="p-3">
+                              <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-bold text-slate-700">
+                                {f.totalContas || 0} conta(s)
+                              </span>
+                            </td>
+                            <td className="p-3 text-slate-600">{f.cnpj_cpf || "—"}</td>
+                            <td className="p-3 text-slate-600">
+                              {f.telefone && <p>{f.telefone}</p>}
+                              {f.email && <p className="text-[10px] text-slate-500">{f.email}</p>}
+                              {!f.telefone && !f.email && "—"}
+                            </td>
+                            <td className="p-3 text-slate-600">
+                              {f.chave_pix && <p className="font-mono text-emerald-700 font-bold">PIX: {f.chave_pix}</p>}
+                              {f.banco && <p className="text-[10px] text-slate-500">{f.banco} Ag:{f.agencia} Cc:{f.conta}</p>}
+                              {!f.chave_pix && !f.banco && "—"}
+                            </td>
+                            <td className="p-3">
+                              <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${f.ativo !== false ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-600"}`}>
+                                {f.ativo !== false ? "Ativo" : "Inativo"}
+                              </span>
+                            </td>
+                            <td className="p-3 text-right space-x-2">
+                              <button
+                                onClick={() => setEditandoFornecedor(f)}
+                                className="font-semibold text-blue-700 hover:underline cursor-pointer"
+                              >
+                                Editar
+                              </button>
+                              {f.id && !f.id.startsWith("temp-") && (
+                                <button
+                                  onClick={() => execute(() => alternarStatusFornecedor(f.id, f.ativo === false))}
+                                  className="text-slate-500 hover:text-slate-700 font-medium cursor-pointer"
+                                >
+                                  {f.ativo !== false ? "Inativar" : "Ativar"}
+                                </button>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
                   </tbody>
                 </table>
               </div>

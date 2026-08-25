@@ -45,12 +45,52 @@ export default async function ContasPagarPage() {
     const usuario = vinculo.usuario as unknown as { id: string; nome: string; email: string } | null;
     return usuario ? [{ ...usuario, socioPagador: Boolean(vinculo.socio_pagador) }] : [];
   });
+
+  const contasData = (contas.data ?? []) as any[];
+  const fornecedoresDb = (fornecedores.data ?? []) as any[];
+
+  // Monta lista unificada de fornecedores (tabela + despesas já cadastradas)
+  const fornecedoresMap = new Map<string, any>();
+
+  fornecedoresDb.forEach((f) => {
+    if (f && f.nome) {
+      fornecedoresMap.set(f.nome.trim().toLowerCase(), {
+        ...f,
+        totalContas: 0,
+      });
+    }
+  });
+
+  contasData.forEach((c) => {
+    const nome = (c.fornecedor ?? "").trim();
+    if (nome) {
+      const key = nome.toLowerCase();
+      if (fornecedoresMap.has(key)) {
+        const item = fornecedoresMap.get(key);
+        item.totalContas = (item.totalContas || 0) + 1;
+        if (!item.id && c.fornecedor_id) item.id = c.fornecedor_id;
+      } else {
+        fornecedoresMap.set(key, {
+          id: c.fornecedor_id || `temp-${encodeURIComponent(nome)}`,
+          nome: nome,
+          ativo: true,
+          totalContas: 1,
+          isFromContas: true,
+        });
+      }
+    }
+  });
+
+  const todosFornecedores = Array.from(fornecedoresMap.values()).sort((a, b) =>
+    a.nome.localeCompare(b.nome, "pt-BR", { sensitivity: "base" })
+  );
+
   return (
     <ContasPagarClient
-      contas={(contas.data ?? []) as any[]}
+      contas={contasData}
       bancos={(bancos.data ?? []) as any[]}
       centros={(centros.data ?? []) as any[]}
-      fornecedores={(fornecedores.data ?? []) as any[]}
+      fornecedores={todosFornecedores}
       socios={usuarios.filter((usuario) => usuario.socioPagador)}
       caixa={(caixa.data ?? []) as any[]}
       logs={(logs.data ?? []) as any[]}
