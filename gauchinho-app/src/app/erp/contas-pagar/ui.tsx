@@ -364,6 +364,46 @@ export function ContasPagarClient({
     };
   }, [bancoFiltro, centroFiltro, contas, dataTipo, fim, inicio, socioFiltro, socios]);
 
+  const contasAbertasSocios = useMemo(() => {
+    const nomeNormalizado = (nome: string) =>
+      nome.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+    const fernando = socios.find((socio) => nomeNormalizado(socio.nome).includes("fernando"));
+    const eroni = socios.find((socio) => nomeNormalizado(socio.nome).includes("eroni"));
+
+    const abertas = contas.filter((conta) => {
+      if (conta.status !== "aberta") return false;
+      if (!conta.pago_pessoalmente && !conta.socio_pagador_usuario_id) return false;
+
+      const data = conta.vencimento;
+      return (
+        (!inicio || Boolean(data && data >= inicio)) &&
+        (!fim || Boolean(data && data <= fim)) &&
+        (!bancoFiltro || conta.conta_bancaria_id === bancoFiltro) &&
+        (!centroFiltro || conta.centro_custo_id === centroFiltro) &&
+        (!socioFiltro || conta.socio_pagador_usuario_id === socioFiltro)
+      );
+    });
+
+    const abertaFernando = abertas
+      .filter((conta) => conta.socio_pagador_usuario_id === fernando?.id)
+      .reduce((total, conta) => total + Number(conta.valor), 0);
+
+    const abertaEroni = abertas
+      .filter((conta) => conta.socio_pagador_usuario_id === eroni?.id)
+      .reduce((total, conta) => total + Number(conta.valor), 0);
+
+    const totalAberto = abertaFernando + abertaEroni;
+
+    return {
+      fernandoNome: fernando?.nome ?? "Fernando",
+      eroniNome: eroni?.nome ?? "Eroni",
+      abertaFernando,
+      abertaEroni,
+      totalAberto,
+      totalContasAbertas: abertas.length,
+    };
+  }, [bancoFiltro, centroFiltro, contas, fim, inicio, socioFiltro, socios]);
+
   const resumoMensal = useMemo(() => {
     const hoje = new Date();
     const inicioMes = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, "0")}-01`;
@@ -566,16 +606,23 @@ export function ContasPagarClient({
       </div>
       <p className="-mt-3 text-right text-xs font-semibold text-slate-500">Saldo contábil geral de caixa: {brl(saldo)}</p>
 
-      <section aria-label="Balanço das despesas pagas pelos sócios" className="space-y-3">
+      <section aria-label="Balanço das despesas pagas pelos sócios" className="space-y-4">
         <div>
-          <h2 className="font-bold text-slate-900">Balanço das Despesas Pagas pelos Sócios</h2>
-          <p className="text-sm text-slate-500">
-            Total gasto pelos sócios pessoalmente, divisão igualitária (50%) e cálculo direto de acerto entre eles.
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 className="font-bold text-slate-900 text-base">Balanço e Fechamento entre Sócios</h2>
+            <span className="rounded-full bg-emerald-100 px-3 py-0.5 text-xs font-bold text-emerald-800">
+              Cálculo baseado exclusivamente em contas liquidadas/pagas
+            </span>
+          </div>
+          <p className="text-xs text-slate-500 mt-0.5">
+            Total gasto pelos sócios pessoalmente, divisão de 50% para cada e transferência direta de equalização.
           </p>
         </div>
+
+        {/* 1. CARDS DE CONTAS PAGAS (ACERTO) */}
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
           <div className="rounded-2xl border border-indigo-200 bg-indigo-50/80 p-4 shadow-sm text-indigo-950">
-            <p className="text-xs font-bold uppercase tracking-wide opacity-75">Total Gasto (Soma Sócios)</p>
+            <p className="text-xs font-bold uppercase tracking-wide opacity-75">1. Total Gasto (Pagas)</p>
             <p className="mt-2 text-2xl font-black">{brl(balancoSocios.debitoEmpresa)}</p>
             <p className="mt-1 text-[10px] text-indigo-700 font-medium">Soma de {balancoSocios.fernandoNome} + {balancoSocios.eroniNome}</p>
           </div>
@@ -583,37 +630,54 @@ export function ContasPagarClient({
           <div className="rounded-2xl border border-blue-200 bg-blue-50/80 p-4 shadow-sm text-blue-950">
             <p className="text-xs font-bold uppercase tracking-wide opacity-75">Pago por {balancoSocios.fernandoNome}</p>
             <p className="mt-2 text-2xl font-black">{brl(balancoSocios.pagoFernando)}</p>
-            <p className="mt-1 text-[10px] text-blue-700 font-medium">Em contas pagas no período</p>
+            <p className="mt-1 text-[10px] text-blue-700 font-medium">({balancoSocios.totalContasPagas} contas pagas)</p>
           </div>
 
           <div className="rounded-2xl border border-violet-200 bg-violet-50/80 p-4 shadow-sm text-violet-950">
             <p className="text-xs font-bold uppercase tracking-wide opacity-75">Pago por {balancoSocios.eroniNome}</p>
             <p className="mt-2 text-2xl font-black">{brl(balancoSocios.pagoEroni)}</p>
-            <p className="mt-1 text-[10px] text-violet-700 font-medium">Em contas pagas no período</p>
+            <p className="mt-1 text-[10px] text-violet-700 font-medium">({balancoSocios.totalContasPagas} contas pagas)</p>
           </div>
 
           <div className="rounded-2xl border border-amber-200 bg-amber-50/80 p-4 shadow-sm text-amber-950">
             <p className="text-xs font-bold uppercase tracking-wide opacity-75">Parte de cada sócio (50%)</p>
             <p className="mt-2 text-2xl font-black">{brl(balancoSocios.cotaIndividual)}</p>
-            <p className="mt-1 text-[10px] text-amber-700 font-medium">Metade do total gasto</p>
+            <p className="mt-1 text-[10px] text-amber-700 font-medium">Cota individual do total</p>
           </div>
 
           <div className="rounded-2xl border border-emerald-200 bg-emerald-50/90 p-4 shadow-sm text-emerald-950">
-            <p className="text-xs font-bold uppercase tracking-wide opacity-75">Acerto de Contas</p>
+            <p className="text-xs font-bold uppercase tracking-wide opacity-75">Acerto / Transferência</p>
             <p className="mt-2 text-xl font-black leading-tight text-emerald-900">
               {balancoSocios.debitoEmpresa === 0
-                ? "Sem despesas"
+                ? "Sem despesas pagas"
                 : balancoSocios.socioCredor === null
-                  ? "Quites (0,00)"
-                  : `${balancoSocios.socioCredor === "A" ? balancoSocios.eroniNome.split(" ")[0] : balancoSocios.fernandoNome.split(" ")[0]} paga ${brl(balancoSocios.transferenciaParaEqualizar)}`}
+                  ? "Contas Quites (0,00)"
+                  : `${balancoSocios.socioCredor === "A" ? balancoSocios.eroniNome.split(" ")[0] : balancoSocios.fernandoNome.split(" ")[0]} transfere ${brl(balancoSocios.transferenciaParaEqualizar)}`}
             </p>
             <p className="mt-1 text-[10px] text-emerald-700 font-medium">
               {balancoSocios.socioCredor !== null
                 ? `Para ${balancoSocios.socioCredor === "A" ? balancoSocios.fernandoNome.split(" ")[0] : balancoSocios.eroniNome.split(" ")[0]}`
-                : "Balanço equilibrado"}
+                : "Balanço 100% equilibrado"}
             </p>
           </div>
         </div>
+
+        {/* 2. CARD DE CONTAS EM ABERTO DOS SÓCIOS */}
+        {contasAbertasSocios.totalContasAbertas > 0 && (
+          <div className="rounded-2xl border border-rose-200 bg-rose-50/50 p-3.5 text-xs flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2 text-rose-950 font-bold">
+              <span className="rounded-full bg-rose-200 px-2 py-0.5 text-[10px] text-rose-900">
+                {contasAbertasSocios.totalContasAbertas} em aberto
+              </span>
+              <span>Contas a Pagar Atribuídas aos Sócios (Ainda não entram no acerto):</span>
+            </div>
+            <div className="flex flex-wrap items-center gap-4 font-semibold text-slate-800">
+              <span>{contasAbertasSocios.fernandoNome}: <strong className="text-rose-700">{brl(contasAbertasSocios.abertaFernando)}</strong></span>
+              <span>{contasAbertasSocios.eroniNome}: <strong className="text-rose-700">{brl(contasAbertasSocios.abertaEroni)}</strong></span>
+              <span className="border-l border-rose-200 pl-4">Total a Pagar: <strong className="text-slate-950">{brl(contasAbertasSocios.totalAberto)}</strong></span>
+            </div>
+          </div>
+        )}
       </section>
 
       <div className="flex gap-2 overflow-x-auto pb-1">
