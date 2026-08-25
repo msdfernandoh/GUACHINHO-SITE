@@ -125,14 +125,23 @@ export async function criarCentro(form: FormData): Promise<ContasActionResult> {
     const nome = value(form, "nome");
     if (!nome) throw new Error("Informe o nome do centro de custo.");
     const descontadoComissao = form.get("descontado_comissao") === "on";
-    const { error } = await admin.from("financeiro_centros_custo").insert({
+    const payload: Record<string, any> = {
       empresa_id: empresaId,
       nome,
       codigo: value(form, "codigo") || null,
       departamento: value(form, "departamento") || null,
       descricao: value(form, "descricao") || null,
       descontado_comissao: descontadoComissao,
-    });
+    };
+    let { error } = await admin.from("financeiro_centros_custo").insert(payload);
+    if (error && /departamento|descricao|descontado_comissao/i.test(error.message)) {
+      console.warn("Schema cache fallback for centros_custo:", error.message);
+      delete payload.departamento;
+      delete payload.descricao;
+      delete payload.descontado_comissao;
+      const retry = await admin.from("financeiro_centros_custo").insert(payload);
+      error = retry.error;
+    }
     if (error) {
       if (/duplicate|unique/i.test(error.message)) throw new Error("Já existe um centro de custo com esse nome.");
       throw new Error(error.message);
@@ -504,20 +513,33 @@ export async function alterarBanco(id: string, form: FormData): Promise<ContasAc
     const { empresaId, admin } = await requireFinanceWrite();
     const nome = value(form, "nome");
     if (!nome) throw new Error("Informe o nome do banco para exibição.");
-    const { error } = await admin
+    const updates: Record<string, any> = {
+      nome,
+      banco: value(form, "banco") || null,
+      agencia: value(form, "agencia") || null,
+      conta_mascarada: value(form, "conta") || null,
+      tipo_conta: value(form, "tipo_conta") || "CORRENTE",
+      chave_pix: value(form, "chave_pix") || null,
+      observacao: value(form, "observacao") || null,
+      updated_at: new Date().toISOString(),
+    };
+    let { error } = await admin
       .from("financeiro_contas_bancarias")
-      .update({
-        nome,
-        banco: value(form, "banco") || null,
-        agencia: value(form, "agencia") || null,
-        conta_mascarada: value(form, "conta") || null,
-        tipo_conta: value(form, "tipo_conta") || "CORRENTE",
-        chave_pix: value(form, "chave_pix") || null,
-        observacao: value(form, "observacao") || null,
-        updated_at: new Date().toISOString(),
-      })
+      .update(updates)
       .eq("id", id)
       .eq("empresa_id", empresaId);
+    if (error && /tipo_conta|chave_pix|observacao/i.test(error.message)) {
+      console.warn("Schema cache fallback for contas_bancarias update:", error.message);
+      delete updates.tipo_conta;
+      delete updates.chave_pix;
+      delete updates.observacao;
+      const retry = await admin
+        .from("financeiro_contas_bancarias")
+        .update(updates)
+        .eq("id", id)
+        .eq("empresa_id", empresaId);
+      error = retry.error;
+    }
     if (error) throw new Error(error.message);
     revalidatePath("/erp/contas-pagar");
     return { ok: true, message: "Banco atualizado com sucesso." };
@@ -548,17 +570,30 @@ export async function alterarCentro(id: string, form: FormData): Promise<ContasA
     const nome = value(form, "nome");
     if (!nome) throw new Error("Informe o nome do centro de custo.");
     const descontadoComissao = form.get("descontado_comissao") === "on";
-    const { error } = await admin
+    const updates: Record<string, any> = {
+      nome,
+      codigo: value(form, "codigo") || null,
+      departamento: value(form, "departamento") || null,
+      descricao: value(form, "descricao") || null,
+      descontado_comissao: descontadoComissao,
+    };
+    let { error } = await admin
       .from("financeiro_centros_custo")
-      .update({
-        nome,
-        codigo: value(form, "codigo") || null,
-        departamento: value(form, "departamento") || null,
-        descricao: value(form, "descricao") || null,
-        descontado_comissao: descontadoComissao,
-      })
+      .update(updates)
       .eq("id", id)
       .eq("empresa_id", empresaId);
+    if (error && /departamento|descricao|descontado_comissao/i.test(error.message)) {
+      console.warn("Schema cache fallback for centros_custo update:", error.message);
+      delete updates.departamento;
+      delete updates.descricao;
+      delete updates.descontado_comissao;
+      const retry = await admin
+        .from("financeiro_centros_custo")
+        .update(updates)
+        .eq("id", id)
+        .eq("empresa_id", empresaId);
+      error = retry.error;
+    }
     if (error) throw new Error(error.message);
     revalidatePath("/erp/contas-pagar");
     return { ok: true, message: "Centro de custo atualizado." };
