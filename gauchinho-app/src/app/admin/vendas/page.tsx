@@ -22,7 +22,13 @@ export default async function AdminVendasPage() {
   const [vendasRes, cotasRes, participantesRes, vinculosRes] = await Promise.all([
     admin
       .from("vendas")
-      .select("*, cliente:clientes(nome,cpf_cnpj,email,telefone), grupo:grupos_consorcio(codigo_grupo), cotas_definitivas(id,numero_cota,status), participante:participantes_comerciais!vendas_participante_comercial_id_fkey(id,nome,nome_exibicao)")
+      .select(`
+        *,
+        cliente:clientes(nome,cpf_cnpj,email,telefone),
+        grupo:grupos_consorcio(codigo_grupo,modalidade:administradora_modalidades_comissao(codigo,nome)),
+        cotas_definitivas(id,numero_cota,status),
+        participante:participantes_comerciais!vendas_participante_comercial_id_fkey(id,nome,nome_exibicao)
+      `)
       .eq("empresa_id", empresaId)
       .order("created_at", { ascending: false }),
     admin
@@ -51,7 +57,14 @@ export default async function AdminVendasPage() {
     const cota = Array.isArray(v.cotas_definitivas) ? v.cotas_definitivas[0] : v.cotas_definitivas;
     const cliente = Array.isArray(v.cliente) ? v.cliente[0] : v.cliente;
     const grupo = Array.isArray(v.grupo) ? v.grupo[0] : v.grupo;
+    const grupoModalidade = Array.isArray(grupo?.modalidade) ? grupo?.modalidade[0] : grupo?.modalidade;
     const participante = Array.isArray(v.participante) ? v.participante[0] : v.participante;
+
+    const tipoNegociacao =
+      v.snapshot_venda?.tipo_negociacao ||
+      v.snapshot_venda?.modalidade_nome ||
+      grupoModalidade?.nome ||
+      "Integral";
 
     return {
       id: v.id,
@@ -62,6 +75,7 @@ export default async function AdminVendasPage() {
       valor_credito: Number(v.valor_credito),
       prazo: Number(v.prazo),
       parcela: Number(v.parcela),
+      tipo_negociacao: tipoNegociacao,
       status: v.status,
       data_venda: v.data_venda,
       created_at: v.created_at,

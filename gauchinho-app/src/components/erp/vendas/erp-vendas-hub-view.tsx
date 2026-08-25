@@ -12,6 +12,8 @@ import {
   Hash,
   Search,
   Calendar,
+  UserCheck,
+  Tag,
 } from "lucide-react";
 import {
   masterAtualizarVendaAction,
@@ -30,6 +32,7 @@ export type VendaItem = {
   valor_credito: number;
   prazo: number;
   parcela: number;
+  tipo_negociacao?: string;
   status: string;
   data_venda: string;
   created_at: string;
@@ -62,6 +65,12 @@ export type CotaItem = {
   cliente_nome?: string;
 };
 
+export type ParticipanteSimples = {
+  id: string;
+  nome: string;
+  nome_exibicao: string | null;
+};
+
 export type VinculoPerfilSimples = {
   id: string;
   participante_id: string;
@@ -73,12 +82,6 @@ export type VinculoPerfilSimples = {
     nome: string;
     papel_base: string;
   } | null;
-};
-
-export type ParticipanteSimples = {
-  id: string;
-  nome: string;
-  nome_exibicao: string | null;
 };
 
 interface ErpVendasHubViewProps {
@@ -93,6 +96,38 @@ interface ErpVendasHubViewProps {
 const brl = (v: number) =>
   v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
+function formatarDataBR(dataStr?: string | null) {
+  if (!dataStr) return "—";
+  const clean = dataStr.trim();
+  if (/^\d{4}-\d{2}$/.test(clean)) {
+    const [ano, mes] = clean.split("-");
+    return `${mes}/${ano}`;
+  }
+  if (/^\d{4}-\d{2}-\d{2}/.test(clean)) {
+    const [ano, mes, dia] = clean.slice(0, 10).split("-");
+    return `${dia}/${mes}/${ano}`;
+  }
+  return clean;
+}
+
+function obterInfoPerfilPrincipal(v: VendaItem, vinculosPerfis: VinculoPerfilSimples[]) {
+  if (v.perfil_principal_id) {
+    const vinc = vinculosPerfis.find((vp) => vp.perfil_id === v.perfil_principal_id);
+    if (vinc) {
+      const pct = vinc.override_percentual !== null ? `${vinc.override_percentual}%` : (vinc.papel_tipo === "SOCIO" || vinc.papel_tipo === "GESTOR" ? "100%" : "50%");
+      return `${vinc.perfil?.nome || vinc.papel_tipo} (${pct})`;
+    }
+  }
+  if (v.participante_comercial_id) {
+    const vinc = vinculosPerfis.find((vp) => vp.participante_id === v.participante_comercial_id);
+    if (vinc) {
+      const pct = vinc.override_percentual !== null ? `${vinc.override_percentual}%` : (vinc.papel_tipo === "SOCIO" || vinc.papel_tipo === "GESTOR" ? "100%" : "50%");
+      return `${vinc.perfil?.nome || vinc.papel_tipo} (${pct})`;
+    }
+  }
+  return "Consultor (50%)";
+}
+
 export function ErpVendasHubView({
   vendas,
   cotas,
@@ -100,7 +135,7 @@ export function ErpVendasHubView({
   vinculosPerfis,
   empresaNome,
   isMaster,
-} : ErpVendasHubViewProps) {
+}: ErpVendasHubViewProps) {
   const [isPending, startTransition] = useTransition();
   const [termoBusca, setTermoBusca] = useState("");
 
@@ -127,8 +162,8 @@ export function ErpVendasHubView({
   const [editNumCota, setEditNumCota] = useState("");
   const [editPrincipalId, setEditPrincipalId] = useState("");
   const [editPerfilPrincipalId, setEditPerfilPrincipalId] = useState("");
-  const [editPerfilSecundarioId, setEditPerfilSecundarioId] = useState("");
   const [editSecundarioId, setEditSecundarioId] = useState("");
+  const [editPerfilSecundarioId, setEditPerfilSecundarioId] = useState("");
   const [editFracaoSec, setEditFracaoSec] = useState<number>(20);
   const [editData1, setEditData1] = useState("");
   const [editData2, setEditData2] = useState("");
@@ -140,6 +175,7 @@ export function ErpVendasHubView({
   const [anteciparComissoes, setAnteciparComissoes] = useState(true);
   const [competenciaAntecipada, setCompetenciaAntecipada] = useState(new Date().toISOString().slice(0, 7));
 
+  // Perfis do consultor selecionado no modal de edição
   const perfisDoPrincipal = useMemo(() => {
     if (!editPrincipalId) return [];
     return (vinculosPerfis ?? []).filter((v) => v.participante_id === editPrincipalId && v.perfil);
@@ -167,8 +203,8 @@ export function ErpVendasHubView({
     setEditNumCota(v.cota_numero || "");
     setEditPrincipalId(v.participante_comercial_id || "");
     setEditPerfilPrincipalId(v.perfil_principal_id || (v.snapshot_venda as any)?.perfil_principal_id || "");
-    setEditPerfilSecundarioId(v.perfil_secundario_id || (v.snapshot_venda as any)?.perfil_secundario_id || "");
     setEditSecundarioId(v.participante_secundario_id || "");
+    setEditPerfilSecundarioId(v.perfil_secundario_id || (v.snapshot_venda as any)?.perfil_secundario_id || "");
     setEditFracaoSec(v.participante_secundario_fracao_percentual ? Number(v.participante_secundario_fracao_percentual) : 20);
     setEditData1(v.data_primeira_parcela || v.data_venda.slice(0, 10));
     setEditData2(v.data_segunda_parcela || "");
@@ -257,7 +293,7 @@ export function ErpVendasHubView({
                 <tr>
                   <th className="p-3">Cliente</th>
                   <th className="p-3">Crédito</th>
-                  <th className="p-3">Parcela</th>
+                  <th className="p-3">Parcela / Negociação</th>
                   <th className="p-3">Consultor / SDR</th>
                   <th className="p-3">1ª Parcela</th>
                   <th className="p-3">Status</th>
@@ -274,21 +310,31 @@ export function ErpVendasHubView({
                         {v.cliente_cpf_cnpj && <div className="text-[10px] text-slate-400">{v.cliente_cpf_cnpj}</div>}
                       </td>
                       <td className="p-3 font-mono font-bold text-slate-950 dark:text-white">{brl(v.valor_credito)}</td>
-                      <td className="p-3 font-mono font-semibold text-blue-700 dark:text-blue-400">
-                        {brl(v.parcela)} ({v.prazo}m)
+                      <td className="p-3">
+                        <div className="font-mono font-semibold text-blue-700 dark:text-blue-400">
+                          {brl(v.parcela)} <span className="text-[10px] text-slate-500">({v.prazo}m)</span>
+                        </div>
+                        <div className="mt-1">
+                          <span className="inline-flex items-center rounded-md bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold text-slate-700 dark:bg-slate-800 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                            {v.tipo_negociacao || "Integral"}
+                          </span>
+                        </div>
                       </td>
                       <td className="p-3">
-                        <div className="font-bold text-slate-800 dark:text-slate-200">
+                        <div className="font-bold text-slate-900 dark:text-white">
                           {v.consultor_nome || "Consultor Principal"}
                         </div>
+                        <div className="text-[10px] font-bold text-blue-700 dark:text-blue-400">
+                          {obterInfoPerfilPrincipal(v, vinculosPerfis)}
+                        </div>
                         {v.secundario_nome && (
-                          <div className="text-[10px] text-amber-600 font-semibold">
-                            SDR: {v.secundario_nome} ({v.participante_secundario_fracao_percentual || 20}%)
+                          <div className="text-[10px] text-amber-600 font-semibold mt-0.5">
+                            🤝 SDR: {v.secundario_nome} ({v.participante_secundario_fracao_percentual || 20}%)
                           </div>
                         )}
                       </td>
-                      <td className="p-3 font-mono text-slate-600 dark:text-slate-300">
-                        {v.data_primeira_parcela ? v.data_primeira_parcela.slice(0, 7) : v.data_venda.slice(0, 7)}
+                      <td className="p-3 font-mono font-bold text-slate-700 dark:text-slate-300">
+                        {formatarDataBR(v.data_primeira_parcela || v.data_venda)}
                       </td>
                       <td className="p-3">
                         <span
@@ -304,13 +350,13 @@ export function ErpVendasHubView({
                         </span>
                       </td>
                       <td className="p-3 text-right">
-                        <div className="flex items-center justify-end gap-1.5">
+                        <div className="flex flex-col items-end gap-1 min-w-[125px]">
                           {cotaCorrespondente && cotaCorrespondente.status !== "contemplada" && (
                             <button
                               type="button"
                               onClick={() => abrirContemplarCota(cotaCorrespondente)}
                               title="Registrar Contemplação e Antecipar Comissões"
-                              className="rounded-lg bg-indigo-50 px-2.5 py-1 text-[11px] font-bold text-indigo-700 hover:bg-indigo-100 dark:bg-indigo-950/40 dark:text-indigo-300 transition cursor-pointer"
+                              className="w-full text-left rounded-lg bg-indigo-50 px-2 py-1 text-[10px] font-bold text-indigo-700 hover:bg-indigo-100 dark:bg-indigo-950/40 dark:text-indigo-300 transition cursor-pointer"
                             >
                               <Trophy className="inline h-3 w-3 mr-1" />
                               Contemplar
@@ -321,10 +367,10 @@ export function ErpVendasHubView({
                               type="button"
                               onClick={() => abrirEditarVenda(v)}
                               title="Editar venda e comissões (Master)"
-                              className="rounded-lg bg-blue-50 px-2.5 py-1 text-[11px] font-bold text-blue-700 hover:bg-blue-100 dark:bg-blue-950/40 dark:text-blue-300 transition cursor-pointer"
+                              className="w-full text-left rounded-lg bg-blue-50 px-2 py-1 text-[10px] font-bold text-blue-700 hover:bg-blue-100 dark:bg-blue-950/40 dark:text-blue-300 transition cursor-pointer"
                             >
                               <Pencil className="inline h-3 w-3 mr-1" />
-                              Editar
+                              Editar Venda
                             </button>
                           )}
                           <button
@@ -334,7 +380,7 @@ export function ErpVendasHubView({
                               setModalErro(null);
                             }}
                             title="Cancelar cota com aplicação de curva de estorno"
-                            className="rounded-lg bg-amber-50 px-2.5 py-1 text-[11px] font-bold text-amber-800 hover:bg-amber-100 dark:bg-amber-950/40 dark:text-amber-300 transition cursor-pointer"
+                            className="w-full text-left rounded-lg bg-amber-50 px-2 py-1 text-[10px] font-bold text-amber-800 hover:bg-amber-100 dark:bg-amber-950/40 dark:text-amber-300 transition cursor-pointer"
                           >
                             <Ban className="inline h-3 w-3 mr-1" />
                             Cancelar (Estorno)
@@ -344,7 +390,7 @@ export function ErpVendasHubView({
                               type="button"
                               onClick={() => abrirExcluirVenda(v)}
                               title="Excluir ou Estornar Venda (Master)"
-                              className="rounded-lg bg-rose-50 px-2.5 py-1 text-[11px] font-bold text-rose-700 hover:bg-rose-100 dark:bg-rose-950/40 dark:text-rose-300 transition cursor-pointer"
+                              className="w-full text-left rounded-lg bg-rose-50 px-2 py-1 text-[10px] font-bold text-rose-700 hover:bg-rose-100 dark:bg-rose-950/40 dark:text-rose-300 transition cursor-pointer"
                             >
                               <Trash2 className="inline h-3 w-3 mr-1" />
                               Estornar/Excluir
@@ -415,12 +461,12 @@ export function ErpVendasHubView({
                       </span>
                     </td>
                     <td className="p-3 text-right">
-                      <div className="flex items-center justify-end gap-1.5">
+                      <div className="flex flex-col items-end gap-1 min-w-[125px]">
                         {c.status !== "contemplada" && (
                           <button
                             type="button"
                             onClick={() => abrirContemplarCota(c)}
-                            className="rounded-lg bg-indigo-50 px-2.5 py-1 text-[11px] font-bold text-indigo-700 hover:bg-indigo-100 dark:bg-indigo-950/40 dark:text-indigo-300 transition cursor-pointer"
+                            className="w-full text-left rounded-lg bg-indigo-50 px-2 py-1 text-[10px] font-bold text-indigo-700 hover:bg-indigo-100 dark:bg-indigo-950/40 dark:text-indigo-300 transition cursor-pointer"
                           >
                             <Trophy className="inline h-3 w-3 mr-1" />
                             Contemplar
@@ -433,7 +479,7 @@ export function ErpVendasHubView({
                             setEditNumCota(c.numero_cota || "");
                             setModalErro(null);
                           }}
-                          className="rounded-lg bg-slate-100 px-2.5 py-1 text-[11px] font-bold text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 transition cursor-pointer"
+                          className="w-full text-left rounded-lg bg-slate-100 px-2 py-1 text-[10px] font-bold text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 transition cursor-pointer"
                         >
                           <Hash className="inline h-3 w-3 mr-1" />
                           {c.numero_cota ? "Alterar cota" : "Definir cota oficial"}
@@ -622,7 +668,7 @@ export function ErpVendasHubView({
                   try {
                     await masterAtualizarVendaAction(formData);
                     setEditandoVenda(null);
-                    setModalSucesso("Venda e comissões atualizadas com sucesso!");
+                    setModalSucesso("Venda e modelo de comissão atualizados com sucesso!");
                   } catch (err: any) {
                     setModalErro(err.message || "Erro ao atualizar.");
                   }
@@ -693,7 +739,10 @@ export function ErpVendasHubView({
                   <select
                     name="participante_secundario_id"
                     value={editSecundarioId}
-                    onChange={(e) => setEditSecundarioId(e.target.value)}
+                    onChange={(e) => {
+                      setEditSecundarioId(e.target.value);
+                      setEditPerfilSecundarioId("");
+                    }}
                     className="mt-1 w-full rounded-xl border border-slate-300 p-2 font-semibold dark:border-slate-700 dark:bg-slate-800"
                   >
                     <option value="">Sem secundário</option>
@@ -716,6 +765,24 @@ export function ErpVendasHubView({
                   />
                 </div>
               </div>
+
+              {editSecundarioId && perfisDoSecundario.length > 0 && (
+                <div className="rounded-xl border border-amber-200 bg-amber-50/50 p-2.5 dark:border-amber-900/40 dark:bg-amber-950/20">
+                  <label className="font-bold text-[11px] text-amber-900 dark:text-amber-300">Modelo do Secundário / SDR:</label>
+                  <select
+                    name="perfil_secundario_id"
+                    value={editPerfilSecundarioId || perfisDoSecundario[0]?.perfil_id}
+                    onChange={(e) => setEditPerfilSecundarioId(e.target.value)}
+                    className="mt-1 w-full rounded-lg border border-amber-300 bg-white p-1.5 font-semibold dark:border-slate-700 dark:bg-slate-800"
+                  >
+                    {perfisDoSecundario.map((p: any) => (
+                      <option key={p.id} value={p.perfil_id}>
+                        {p.perfil?.nome} ({p.papel_tipo})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
 
               <div className="grid gap-3 sm:grid-cols-2">
                 <div>
