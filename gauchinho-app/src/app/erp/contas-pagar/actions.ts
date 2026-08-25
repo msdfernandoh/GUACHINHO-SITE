@@ -41,12 +41,25 @@ function value(form: FormData, name: string) {
 }
 
 
+async function ensureContasBucket(admin: ReturnType<typeof createAdminClient>) {
+  try {
+    await admin.storage.createBucket("contas-pagar-documentos", {
+      public: true,
+      fileSizeLimit: 20971520,
+      allowedMimeTypes: ["application/pdf", "image/jpeg", "image/png", "image/webp", "text/xml", "application/xml"],
+    });
+  } catch {
+    // bucket may already exist
+  }
+}
+
 async function uploadNotaFiscal(
   admin: ReturnType<typeof createAdminClient>,
   empresaId: string,
   file: File | null
 ): Promise<{ url: string; nome: string } | null> {
   if (!file || !(file instanceof File) || file.size === 0) return null;
+  await ensureContasBucket(admin);
   const ext = file.name.split(".").pop() || "pdf";
   const cleanName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
   const filePath = `${empresaId}/${Date.now()}_${cleanName}`;
@@ -56,11 +69,14 @@ async function uploadNotaFiscal(
   const { error } = await admin.storage
     .from("contas-pagar-documentos")
     .upload(filePath, buffer, {
-      contentType: file.type || "application/pdf",
+      contentType: file.type || "application/octet-stream",
       upsert: true,
     });
 
-  if (error) throw new Error(`Falha no upload da Nota Fiscal: ${error.message}`);
+  if (error) {
+    console.error("Erro storage contas-pagar-documentos:", error);
+    throw new Error(`Falha no upload da Nota Fiscal: ${error.message}`);
+  }
 
   const { data } = admin.storage
     .from("contas-pagar-documentos")
@@ -211,7 +227,7 @@ export async function baixarConta(id: string): Promise<ContasActionResult> {
 
 export async function alterarConta(id: string, form: FormData): Promise<ContasActionResult> {
   try {
-    const { empresaId, session } = await requireFinanceWrite();
+    const { empresaId, session, admin } = await requireFinanceWrite();
     const pessoal = form.get("pessoal") === "on";
     const { error } = await session.rpc("rpc_alterar_conta_pagar", {
       p_empresa_id: empresaId,
@@ -227,6 +243,37 @@ export async function alterarConta(id: string, form: FormData): Promise<ContasAc
       p_socio_pagador_usuario_id: pessoal ? value(form, "socio") || null : null,
     });
     if (error) throw new Error(error.message);
+
+    const removerNf = form.get("remover_nf") === "true";
+    const arquivoNf = form.get("arquivo_nf") as File | null;
+
+    if (removerNf) {
+      await admin
+        .from("financeiro_contas_pagar")
+        .update({
+          comprovante_url: null,
+          nota_fiscal_nome: null,
+          nota_fiscal_uploaded_at: null,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", id)
+        .eq("empresa_id", empresaId);
+    } else if (arquivoNf && arquivoNf instanceof File && arquivoNf.size > 0) {
+      const uploadNf = await uploadNotaFiscal(admin, empresaId, arquivoNf);
+      if (uploadNf) {
+        await admin
+          .from("financeiro_contas_pagar")
+          .update({
+            comprovante_url: uploadNf.url,
+            nota_fiscal_nome: uploadNf.nome,
+            nota_fiscal_uploaded_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", id)
+          .eq("empresa_id", empresaId);
+      }
+    }
+
     revalidatePath("/erp/contas-pagar");
     return { ok: true, message: "Despesa alterada com sucesso." };
   } catch (error) {

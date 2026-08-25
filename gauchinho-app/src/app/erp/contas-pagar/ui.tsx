@@ -1753,6 +1753,73 @@ export function ContasPagarClient({
       )}
 
       {/* ─────────────────────────────────────────────────────────────
+          MODAL: ANEXAR NOTA FISCAL / COMPROVANTE
+      ───────────────────────────────────────────────────────────── */}
+      {anexandoNfConta && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-xs">
+          <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b pb-3">
+              <div className="flex items-center gap-2 text-blue-700 font-bold">
+                <FileText className="h-5 w-5" />
+                <h3 className="text-base text-slate-900">Anexar Nota Fiscal / Comprovante</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setAnexandoNfConta(null)}
+                className="text-slate-400 hover:text-slate-600 cursor-pointer"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs space-y-1 text-slate-800">
+              <p><strong>Despesa:</strong> {anexandoNfConta.descricao}</p>
+              {anexandoNfConta.fornecedor && <p><strong>Fornecedor:</strong> {anexandoNfConta.fornecedor}</p>}
+              <p><strong>Valor:</strong> {brl(Number(anexandoNfConta.valor))}</p>
+            </div>
+
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                const form = new FormData(e.currentTarget);
+                execute(
+                  () => anexarNotaFiscalConta(anexandoNfConta.id, form),
+                  () => setAnexandoNfConta(null)
+                );
+              }}
+              className="space-y-4 text-xs"
+            >
+              <div>
+                <label className="font-bold text-slate-700 block mb-1.5">
+                  Selecione o arquivo da NF ou Comprovante (PDF, PNG, JPG, XML) *
+                </label>
+                <Input
+                  name="arquivo_nf"
+                  type="file"
+                  required
+                  accept=".pdf,image/*,.png,.jpg,.jpeg,.xml"
+                  className="file:mr-2 file:rounded-lg file:border-0 file:bg-blue-50 file:px-2.5 file:py-1.5 file:text-xs file:font-semibold file:text-blue-700 hover:file:bg-blue-100"
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 border-t pt-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setAnexandoNfConta(null)}
+                >
+                  Cancelar
+                </Button>
+                <Button disabled={pending} className="bg-blue-700 hover:bg-blue-800 font-bold">
+                  {pending ? "Enviando arquivo…" : "Salvar Nota Fiscal"}
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ─────────────────────────────────────────────────────────────
           MODAL: EXCLUIR CONTA A PAGAR / PAGA
       ───────────────────────────────────────────────────────────── */}
       {excluindo && (
