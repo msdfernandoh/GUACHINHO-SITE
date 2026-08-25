@@ -35,6 +35,9 @@ export async function formalizarContratacaoAction(formData: FormData) {
   const fracao = value(formData, "fracao_secundario");
   const perfilPrincipalId = value(formData, "perfil_principal_id") || null;
   const perfilSecundarioId = value(formData, "perfil_secundario_id") || null;
+  const modalidadeComissaoId = value(formData, "modalidade_comissao_id") || null;
+  const tipoVenda = value(formData, "tipo_venda") || "INTEGRAL";
+  const percentualFranqueadora = value(formData, "percentual_franqueadora") || null;
   const cronogramaSecundario = value(formData, "cronograma_secundario") || "SEGUIR_PRINCIPAL";
   const dataPrimeiraParcela = value(formData, "data_primeira_parcela") || null;
   const dataSegundaParcela = value(formData, "data_segunda_parcela") || null;
@@ -56,6 +59,9 @@ export async function formalizarContratacaoAction(formData: FormData) {
       ...existingDados,
       perfil_principal_id: perfilPrincipalId,
       perfil_secundario_id: perfilSecundarioId,
+      modalidade_comissao_id: modalidadeComissaoId,
+      tipo_venda: tipoVenda,
+      percentual_franqueadora: percentualFranqueadora ? Number(percentualFranqueadora) : null,
       cronograma_secundario: cronogramaSecundario,
       data_primeira_parcela: dataPrimeiraParcela,
       data_segunda_parcela: dataSegundaParcela,
@@ -83,14 +89,25 @@ export async function formalizarContratacaoAction(formData: FormData) {
     const result = await converterContratacaoEmVenda(empresaAtiva.id, contratacaoId, `erp-formalizacao:${contratacaoId}`);
 
     if (result?.venda?.id) {
-      await admin.from("vendas").update({
+      // Prepara payload de atualização da venda com modalidade de comissão
+      const vendaUpdatePayload: Record<string, unknown> = {
         data_primeira_parcela: dataPrimeiraParcela || null,
         data_segunda_parcela: dataSegundaParcela || null,
         participante_secundario_id: secundarioId || null,
         participante_secundario_fracao_percentual: secundarioId && fracao ? Number(fracao) : null,
         perfil_principal_id: perfilPrincipalId || null,
         perfil_secundario_id: perfilSecundarioId || null,
-      }).eq("id", result.venda.id).eq("empresa_id", empresaAtiva.id);
+        snapshot_venda: {
+          ...(result.venda.snapshot_venda || {}),
+          modalidade_comissao_id: modalidadeComissaoId,
+          tipo_venda: tipoVenda,
+          percentual_franqueadora: percentualFranqueadora ? Number(percentualFranqueadora) : null,
+        },
+      };
+      if (modalidadeComissaoId && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(modalidadeComissaoId)) {
+        vendaUpdatePayload.modalidade_comissao_id = modalidadeComissaoId;
+      }
+      await admin.from("vendas").update(vendaUpdatePayload).eq("id", result.venda.id).eq("empresa_id", empresaAtiva.id);
 
       // Recalcula previsões para garantir competências com datas exatas
       await admin.rpc("rpc_gerar_previsoes_comissao_v2", {

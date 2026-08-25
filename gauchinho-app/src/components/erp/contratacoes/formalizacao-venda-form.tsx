@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useTransition } from "react";
 import { formalizarContratacaoAction } from "@/app/erp/contratacoes/actions";
-import { Users, Calculator, UserCheck, Split, Calendar, Info } from "lucide-react";
+import { Users, Calculator, UserCheck, Calendar, Info, Sparkles, SlidersHorizontal } from "lucide-react";
 
 export type GrupoCota = {
   id: string;
@@ -59,6 +59,24 @@ export type RegraParticipante = {
   status: string;
 };
 
+export type ModalidadeComissao = {
+  id: string;
+  administradora_id?: string;
+  codigo: string;
+  nome: string;
+  ativo?: boolean;
+};
+
+export type RegraFranquia = {
+  id: string;
+  programa_id: string;
+  percentual_total_comissao: number;
+  tipo_administradora_id: string | null;
+  modalidade_comissao_id: string | null;
+  ativa: boolean;
+  configuracao_homologada?: boolean;
+};
+
 interface FormalizacaoVendaFormProps {
   contratacaoId: string;
   clienteNome: string;
@@ -68,8 +86,11 @@ interface FormalizacaoVendaFormProps {
   participantes: ParticipanteComercial[];
   vinculosPerfis: VinculoPerfil[];
   regrasParticipantes: RegraParticipante[];
+  modalidades?: ModalidadeComissao[];
+  regrasFranquia?: RegraFranquia[];
   initialGrupoId: string;
   initialCotaId: string;
+  initialModalidadeId?: string | null;
   initialPrincipalId: string;
   initialSecundarioId: string | null;
   initialFracaoSecundario: number | null;
@@ -87,8 +108,11 @@ export function FormalizacaoVendaForm({
   participantes,
   vinculosPerfis,
   regrasParticipantes,
+  modalidades = [],
+  regrasFranquia = [],
   initialGrupoId,
   initialCotaId,
+  initialModalidadeId,
   initialPrincipalId,
   initialSecundarioId,
   initialFracaoSecundario,
@@ -97,6 +121,10 @@ export function FormalizacaoVendaForm({
 
   const [selectedGrupoId, setSelectedGrupoId] = useState(initialGrupoId || grupos[0]?.id || "");
   const [selectedCotaId, setSelectedCotaId] = useState(initialCotaId || "");
+  const [selectedModalidadeId, setSelectedModalidadeId] = useState<string>(initialModalidadeId || "");
+  const [customPercentualFranqueadora, setCustomPercentualFranqueadora] = useState<string>("");
+  const [ajustarPercentualManual, setAjustarPercentualManual] = useState(false);
+
   const [selectedPrincipalId, setSelectedPrincipalId] = useState(initialPrincipalId || participantes[0]?.id || "");
   const [selectedPerfilPrincipalId, setSelectedPerfilPrincipalId] = useState("");
 
@@ -111,7 +139,7 @@ export function FormalizacaoVendaForm({
   // Datas de pagamento personalizadas (Adesão vs 2ª Parcela em diante)
   const todayStr = new Date().toISOString().slice(0, 10);
   const nextMonthDate = new Date();
-  nextMonthDate.setMonth(nextMonthDate.getMonth() + 2); // Ex: Se aderiu em Agosto pós-assembleia, 2ª parcela em Outubro
+  nextMonthDate.setMonth(nextMonthDate.getMonth() + 2);
   nextMonthDate.setDate(10);
   const defaultSegundaData = nextMonthDate.toISOString().slice(0, 10);
 
@@ -130,7 +158,90 @@ export function FormalizacaoVendaForm({
   const valorParcela = cotaAtual?.valor_parcela || 0;
   const prazoTotal = grupoAtual?.prazo_total || 180;
 
-  // 2. Perfis do Consultor Principal
+  // 2. Modalidades / Tipos de Venda (Integral, Reduzida 60%, Abaixo 59%)
+  const modalidadesOpcoes = useMemo(() => {
+    const cadastradas = modalidades.filter(
+      (m) =>
+        m.ativo !== false &&
+        (!grupoAtual?.administradora_id || !m.administradora_id || m.administradora_id === grupoAtual.administradora_id)
+    );
+
+    const padroes = [
+      {
+        codigo: "INTEGRAL",
+        nome: "Integral (100%)",
+        descricao: "Parcela cheia / integral (100% da parcela)",
+        percentualBase: 4.0,
+        badge: "Comissão Cheia",
+        badgeColor: "bg-emerald-100 text-emerald-800",
+      },
+      {
+        codigo: "REDUZIDA_60_99",
+        nome: "Reduzida 60%",
+        descricao: "Parcela reduzida de 60% a 99% (ex: 60% a 75%)",
+        percentualBase: 3.5,
+        badge: "Reduzida 60%",
+        badgeColor: "bg-blue-100 text-blue-800",
+      },
+      {
+        codigo: "REDUZIDA_ABAIXO_59",
+        nome: "Abaixo de 59%",
+        descricao: "Super reduzida (abaixo de 59% / meia parcela)",
+        percentualBase: 3.0,
+        badge: "Abaixo 59%",
+        badgeColor: "bg-amber-100 text-amber-800",
+      },
+    ];
+
+    return padroes.map((p) => {
+      const match = cadastradas.find(
+        (c) =>
+          c.codigo.toUpperCase() === p.codigo ||
+          c.nome.toLowerCase().includes(p.codigo === "INTEGRAL" ? "integral" : p.codigo === "REDUZIDA_60_99" ? "60" : "59")
+      );
+
+      const modId = match?.id || p.codigo;
+
+      const regra = regrasFranquia.find(
+        (r) =>
+          r.modalidade_comissao_id === match?.id &&
+          (!r.tipo_administradora_id || r.tipo_administradora_id === grupoAtual?.tipo_administradora_id)
+      );
+
+      const percentualRef = regra?.percentual_total_comissao ? Number(regra.percentual_total_comissao) : p.percentualBase;
+
+      return {
+        id: modId,
+        codigo: p.codigo,
+        nome: match?.nome || p.nome,
+        descricao: p.descricao,
+        percentualReferencia: percentualRef,
+        badge: p.badge,
+        badgeColor: p.badgeColor,
+        isCadastradaNoBanco: Boolean(match?.id),
+      };
+    });
+  }, [modalidades, regrasFranquia, grupoAtual]);
+
+  const modalidadeAtiva = useMemo(() => {
+    if (selectedModalidadeId) {
+      return (
+        modalidadesOpcoes.find((m) => m.id === selectedModalidadeId || m.codigo === selectedModalidadeId) ||
+        modalidadesOpcoes[0]
+      );
+    }
+    const matchGrupo = modalidadesOpcoes.find((m) => m.id === grupoAtual?.modalidade_comissao_id);
+    return matchGrupo || modalidadesOpcoes[0];
+  }, [modalidadesOpcoes, selectedModalidadeId, grupoAtual]);
+
+  const percentualFranqueadoraEfetivo = useMemo(() => {
+    if (ajustarPercentualManual && customPercentualFranqueadora && !isNaN(Number(customPercentualFranqueadora))) {
+      return Number(customPercentualFranqueadora);
+    }
+    return modalidadeAtiva?.percentualReferencia ?? 4.0;
+  }, [ajustarPercentualManual, customPercentualFranqueadora, modalidadeAtiva]);
+
+  // 3. Perfis do Consultor Principal
   const perfisPrincipal = useMemo(() => {
     if (!selectedPrincipalId) return [];
     return vinculosPerfis.filter((v) => v.participante_id === selectedPrincipalId && v.perfil);
@@ -156,7 +267,7 @@ export function FormalizacaoVendaForm({
     return 50;
   }, [perfilPrincipalAtivo, regrasParticipantes]);
 
-  // 3. Perfis do Secundário
+  // 4. Perfis do Secundário
   const perfisSecundario = useMemo(() => {
     if (!selectedSecundarioId) return [];
     return vinculosPerfis.filter((v) => v.participante_id === selectedSecundarioId && v.perfil);
@@ -181,9 +292,9 @@ export function FormalizacaoVendaForm({
     return Number(fracaoManualSecundario) || 0;
   }, [selectedSecundarioId, modoSecundario, perfilSecundarioAtivo, regrasParticipantes, fracaoManualSecundario]);
 
-  // 4. Memória de Cálculo
+  // 5. Memória de Cálculo
   const calculo = useMemo(() => {
-    const percentualFranqueadora = 4.0;
+    const percentualFranqueadora = percentualFranqueadoraEfetivo;
     const valorFranqueadora = (valorCredito * percentualFranqueadora) / 100;
     const valorPrincipalBruto = (valorFranqueadora * percentualPrincipal) / 100;
     const valorSecundario = selectedSecundarioId
@@ -206,7 +317,7 @@ export function FormalizacaoVendaForm({
       percentualPrincipalSobreCredito,
       percentualSecundarioSobreCredito,
     };
-  }, [valorCredito, percentualPrincipal, selectedSecundarioId, fracaoEfetivaSecundario]);
+  }, [valorCredito, percentualFranqueadoraEfetivo, percentualPrincipal, selectedSecundarioId, fracaoEfetivaSecundario]);
 
   return (
     <form
@@ -220,17 +331,20 @@ export function FormalizacaoVendaForm({
       <input type="hidden" name="contratacao_id" value={contratacaoId} />
       <input type="hidden" name="perfil_principal_id" value={perfilPrincipalAtivo?.perfil_id || ""} />
       <input type="hidden" name="perfil_secundario_id" value={perfilSecundarioAtivo?.perfil_id || ""} />
+      <input type="hidden" name="modalidade_comissao_id" value={modalidadeAtiva?.id || ""} />
+      <input type="hidden" name="tipo_venda" value={modalidadeAtiva?.codigo || "INTEGRAL"} />
+      <input type="hidden" name="percentual_franqueadora" value={percentualFranqueadoraEfetivo} />
 
       <div>
         <h2 className="text-xl font-black tracking-tight text-slate-950 dark:text-white">
           2. Dados comerciais e comissionamento da venda
         </h2>
         <p className="text-xs text-slate-500">
-          Defina o consultor principal, divisão de comissão com SDR / parceiro, regra de recebimento e datas das parcelas.
+          Defina o grupo, produto, tipo de venda (integral/reduzida), consultor principal, divisão com SDR e datas das parcelas.
         </p>
       </div>
 
-      {/* Grid de Seleção Principal */}
+      {/* Grid de Seleção de Grupo, Cota e Consultores */}
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <label className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
           Grupo Canônico
@@ -311,7 +425,103 @@ export function FormalizacaoVendaForm({
         </label>
       </div>
 
-      {/* NOVO BLOCO: Datas das Parcelas de Comissão (Adesão vs 2ª Parcela em diante) */}
+      {/* BLOCO EXCLUSIVO: TIPO DE VENDA / MODALIDADE DA PARCELA */}
+      <div className="rounded-2xl border border-indigo-200 bg-indigo-50/40 p-4.5 dark:border-indigo-900/40 dark:bg-indigo-950/20 space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <Sparkles className="h-4 w-4 text-indigo-700 dark:text-indigo-400" />
+            <h3 className="text-xs font-extrabold uppercase tracking-wider text-indigo-950 dark:text-indigo-200">
+              Tipo de Venda & Modalidade da Parcela (Define o Percentual de Comissão)
+            </h3>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="rounded-full bg-indigo-100 px-3 py-1 text-xs font-bold text-indigo-900 dark:bg-indigo-900 dark:text-indigo-200">
+              Comissão Franqueadora: <strong>{percentualFranqueadoraEfetivo.toFixed(2)}%</strong>
+            </span>
+            <button
+              type="button"
+              onClick={() => setAjustarPercentualManual(!ajustarPercentualManual)}
+              className="flex items-center gap-1 text-[11px] font-semibold text-indigo-700 hover:underline cursor-pointer dark:text-indigo-300"
+            >
+              <SlidersHorizontal className="h-3 w-3" />
+              {ajustarPercentualManual ? "Usar Tabela Padrão" : "Ajustar % Franqueadora"}
+            </button>
+          </div>
+        </div>
+
+        {/* 3 Opções Claras em Cards de Alta Visibilidade */}
+        <div className="grid gap-3 sm:grid-cols-3">
+          {modalidadesOpcoes.map((m) => {
+            const isSelected = modalidadeAtiva?.id === m.id || modalidadeAtiva?.codigo === m.codigo;
+            return (
+              <label
+                key={m.id || m.codigo}
+                className={`flex flex-col justify-between rounded-xl border p-3.5 cursor-pointer transition relative ${
+                  isSelected
+                    ? "border-indigo-600 bg-white shadow-md ring-2 ring-indigo-600/30 text-indigo-950 dark:bg-slate-800 dark:text-white"
+                    : "border-slate-200 bg-white/70 hover:bg-white hover:border-slate-300 text-slate-700 dark:border-slate-800 dark:bg-slate-800/60 dark:text-slate-300"
+                }`}
+              >
+                <div className="flex items-start gap-2.5">
+                  <input
+                    type="radio"
+                    name="tipo_venda_radio_option"
+                    checked={isSelected}
+                    onChange={() => {
+                      setSelectedModalidadeId(m.id);
+                      if (!ajustarPercentualManual) {
+                        setCustomPercentualFranqueadora(String(m.percentualReferencia));
+                      }
+                    }}
+                    className="mt-0.5 text-indigo-600 focus:ring-indigo-500"
+                  />
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <p className="text-xs font-black">{m.nome}</p>
+                      <span className={`rounded-full px-2 py-0.2 text-[10px] font-extrabold ${m.badgeColor}`}>
+                        {m.badge}
+                      </span>
+                    </div>
+                    <p className="mt-1 text-[11px] text-slate-500 leading-snug dark:text-slate-400">
+                      {m.descricao}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-3 flex items-center justify-between border-t border-slate-100 dark:border-slate-700/60 pt-2 text-[11px]">
+                  <span className="text-slate-500 dark:text-slate-400">Comissão Franquia:</span>
+                  <strong className="text-indigo-700 dark:text-indigo-300 font-extrabold text-xs">
+                    {m.percentualReferencia.toFixed(2)}%
+                  </strong>
+                </div>
+              </label>
+            );
+          })}
+        </div>
+
+        {ajustarPercentualManual && (
+          <div className="mt-2 flex items-center gap-3 rounded-xl bg-white p-3 border border-indigo-100 shadow-2xs dark:bg-slate-800 dark:border-slate-700 animate-in fade-in">
+            <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+              Percentual Total Franqueadora (%):
+            </label>
+            <input
+              type="number"
+              step="0.01"
+              min="0"
+              max="20"
+              value={customPercentualFranqueadora || String(percentualFranqueadoraEfetivo)}
+              onChange={(e) => setCustomPercentualFranqueadora(e.target.value)}
+              placeholder="Ex: 4.00"
+              className="w-28 rounded-lg border border-slate-300 bg-white px-2.5 py-1 text-xs font-bold text-slate-900 dark:border-slate-600 dark:bg-slate-700 dark:text-white"
+            />
+            <span className="text-[11px] text-slate-500">
+              (Ajuste especial ou negociação direta para esta venda)
+            </span>
+          </div>
+        )}
+      </div>
+
+      {/* BLOCO: Datas das Parcelas de Comissão (Adesão vs 2ª Parcela em diante) */}
       <div className="rounded-xl border border-blue-200 bg-blue-50/50 p-4 dark:border-blue-900/40 dark:bg-blue-950/20">
         <div className="flex items-center gap-2 mb-3">
           <Calendar className="h-4 w-4 text-blue-700 dark:text-blue-400" />
@@ -378,23 +588,24 @@ export function FormalizacaoVendaForm({
               <p className="font-bold text-blue-900 dark:text-blue-300">
                 {perfisPrincipal[0]?.perfil?.nome || "Consultor Padrão (50% da Franqueadora)"}
               </p>
-              <p className="mt-0.5 text-blue-700/80 dark:text-blue-400/80">
-                {percentualPrincipal}% da comissão líquida da franqueadora ({((4.0 * percentualPrincipal) / 100).toFixed(2)}% do crédito).
+              <p className="mt-1 text-slate-600 dark:text-slate-400">
+                Percentual a pagar ao consultor nesta venda:{" "}
+                <strong className="text-blue-700 dark:text-blue-400">{percentualPrincipal}% da Franqueadora</strong>
               </p>
             </div>
           ) : (
-            <div className="mt-3 space-y-1.5">
-              <label className="text-[11px] font-semibold text-slate-600 dark:text-slate-400">
-                Selecione o papel do consultor nesta venda:
+            <div className="mt-3 space-y-2">
+              <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                Selecione o Perfil / Regra do Consultor:
               </label>
               <select
-                value={selectedPerfilPrincipalId || perfisPrincipal[0]?.perfil_id}
+                value={selectedPerfilPrincipalId || perfisPrincipal[0]?.perfil_id || ""}
                 onChange={(e) => setSelectedPerfilPrincipalId(e.target.value)}
-                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                className="w-full rounded-xl border border-blue-300 bg-white px-3.5 py-2 text-xs font-bold text-slate-900 shadow-2xs dark:border-slate-700 dark:bg-slate-800 dark:text-white"
               >
                 {perfisPrincipal.map((p) => (
-                  <option key={p.id} value={p.perfil_id}>
-                    {p.perfil?.nome} ({p.papel_tipo})
+                  <option key={p.perfil_id} value={p.perfil_id}>
+                    {p.perfil?.nome} ({p.override_percentual !== null ? `${p.override_percentual}%` : "Padrão da Regra"})
                   </option>
                 ))}
               </select>
@@ -402,61 +613,65 @@ export function FormalizacaoVendaForm({
           )}
         </div>
 
-        {/* Bloco Modelo do Secundário */}
+        {/* Bloco Secundário (SDR / Parceiro) */}
         {selectedSecundarioId ? (
-          <div className="rounded-xl border border-amber-200 bg-amber-50/40 p-4 dark:border-amber-900/50 dark:bg-amber-950/20">
+          <div className="rounded-xl border border-amber-200 bg-amber-50/50 p-4 dark:border-amber-900/40 dark:bg-amber-950/20">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Split className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-                <h3 className="text-xs font-bold uppercase tracking-wider text-amber-900 dark:text-amber-300">
-                  Divisão & Recebimento do Secundário
+                <Users className="h-4 w-4 text-amber-700 dark:text-amber-400" />
+                <h3 className="text-xs font-bold uppercase tracking-wider text-amber-950 dark:text-amber-200">
+                  Divisão de Comissão (SDR / Parceiro)
                 </h3>
               </div>
-              <div className="flex rounded-lg bg-white p-0.5 shadow-2xs border border-amber-200 text-[10px] font-bold dark:bg-slate-800 dark:border-slate-700">
+              <div className="flex rounded-lg bg-amber-200/60 p-0.5 text-[10px] font-bold text-amber-900">
                 <button
                   type="button"
                   onClick={() => setModoSecundario("MANUAL")}
-                  className={`rounded px-2 py-0.5 transition ${modoSecundario === "MANUAL" ? "bg-amber-600 text-white" : "text-slate-600 hover:text-slate-900 dark:text-slate-300"}`}
+                  className={`rounded px-2 py-0.5 cursor-pointer ${modoSecundario === "MANUAL" ? "bg-white shadow-2xs font-black text-slate-900" : "text-amber-800"}`}
                 >
                   % Manual
                 </button>
-                {perfisSecundario.length > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => setModoSecundario("PERFIL")}
-                    className={`rounded px-2 py-0.5 transition ${modoSecundario === "PERFIL" ? "bg-amber-600 text-white" : "text-slate-600 hover:text-slate-900 dark:text-slate-300"}`}
-                  >
-                    Usar Perfil
-                  </button>
-                )}
+                <button
+                  type="button"
+                  onClick={() => setModoSecundario("PERFIL")}
+                  className={`rounded px-2 py-0.5 cursor-pointer ${modoSecundario === "PERFIL" ? "bg-white shadow-2xs font-black text-slate-900" : "text-amber-800"}`}
+                >
+                  Usar Perfil
+                </button>
               </div>
             </div>
 
-            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            <div className="mt-3 space-y-3">
               <div>
                 <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300">
-                  Fração sobre o Principal (%):
+                  {modoSecundario === "MANUAL"
+                    ? "% da comissão do consultor principal a repassar:"
+                    : "Perfil de Comissão do Secundário:"}
                 </label>
                 {modoSecundario === "MANUAL" ? (
-                  <input
-                    name="fracao_secundario"
-                    type="number"
-                    min="0.1"
-                    max="99.9"
-                    step="0.1"
-                    value={fracaoManualSecundario}
-                    onChange={(e) => setFracaoManualSecundario(parseFloat(e.target.value) || 0)}
-                    className="mt-1 w-full rounded-lg border border-amber-300 bg-white px-3 py-1.5 text-xs font-bold text-slate-900 shadow-2xs dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-                  />
+                  <div className="mt-1 flex items-center gap-2">
+                    <input
+                      type="number"
+                      min={0}
+                      max={100}
+                      value={fracaoManualSecundario}
+                      onChange={(e) => setFracaoManualSecundario(Number(e.target.value))}
+                      className="w-24 rounded-lg border border-amber-300 bg-white px-3 py-1.5 text-xs font-bold dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                    />
+                    <span className="text-xs font-bold text-slate-600 dark:text-slate-400">%</span>
+                    <span className="text-[11px] text-slate-500">
+                      (Equivale a {fracaoEfetivaSecundario}% sobre os ganhos do Consultor Principal)
+                    </span>
+                  </div>
                 ) : (
                   <select
-                    value={selectedPerfilSecundarioId || perfisSecundario[0]?.perfil_id}
+                    value={selectedPerfilSecundarioId || perfisSecundario[0]?.perfil_id || ""}
                     onChange={(e) => setSelectedPerfilSecundarioId(e.target.value)}
                     className="mt-1 w-full rounded-lg border border-amber-300 bg-white px-3 py-1.5 text-xs font-semibold dark:border-slate-700 dark:bg-slate-800 dark:text-white"
                   >
                     {perfisSecundario.map((p) => (
-                      <option key={p.id} value={p.perfil_id}>
-                        {p.perfil?.nome} ({p.papel_tipo})
+                      <option key={p.perfil_id} value={p.perfil_id}>
+                        {p.perfil?.nome} ({p.override_percentual !== null ? `${p.override_percentual}%` : "Padrão"})
                       </option>
                     ))}
                   </select>
@@ -514,9 +729,11 @@ export function FormalizacaoVendaForm({
           </div>
 
           <div className="rounded-xl bg-white p-3 shadow-2xs dark:bg-slate-800">
-            <p className="text-[11px] font-semibold text-slate-500">Franqueadora (4%)</p>
+            <p className="text-[11px] font-semibold text-slate-500">
+              Franqueadora ({calculo.percentualFranqueadora.toFixed(2)}%)
+            </p>
             <p className="text-base font-black text-blue-700 dark:text-blue-400">{brl(calculo.valorFranqueadora)}</p>
-            <p className="text-[10px] text-slate-400">Recebimento da Racon</p>
+            <p className="text-[10px] text-slate-400">Tipo: {modalidadeAtiva?.nome || "Integral"}</p>
           </div>
 
           <div className="rounded-xl bg-white p-3 shadow-2xs dark:bg-slate-800">
@@ -553,7 +770,7 @@ export function FormalizacaoVendaForm({
           3. Resumo da Venda
         </h3>
         <p className="mt-2 text-xs text-slate-700 dark:text-slate-300">
-          Cliente: <strong>{clienteNome}</strong> · Grupo: <strong>Grupo {grupoAtual?.codigo_grupo || "1463"}</strong> · Crédito: <strong>{brl(valorCredito)}</strong> · Forma de pagamento: <strong>{formaPagamento || "Boleto"}</strong>
+          Cliente: <strong>{clienteNome}</strong> · Grupo: <strong>Grupo {grupoAtual?.codigo_grupo || "1463"}</strong> · Tipo: <strong>{modalidadeAtiva?.nome || "Integral"}</strong> · Crédito: <strong>{brl(valorCredito)}</strong> · Forma de pagamento: <strong>{formaPagamento || "Boleto"}</strong>
         </p>
       </div>
 

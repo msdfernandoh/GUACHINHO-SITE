@@ -78,6 +78,8 @@ export default async function ConferirContratacaoPage({
     regrasParticipantesResult,
     documentosResult,
     historicoResult,
+    modalidadesResult,
+    regrasFranquiaResult,
   ] = await Promise.all([
     admin
       .from("contratacoes_online")
@@ -117,6 +119,16 @@ export default async function ConferirContratacaoPage({
       .eq("empresa_id", empresaAtiva.id)
       .eq("contratacao_id", id)
       .order("created_at", { ascending: false }),
+    admin
+      .from("administradora_modalidades_comissao")
+      .select("id,administradora_id,codigo,nome,ativo")
+      .eq("ativo", true)
+      .order("nome"),
+    admin
+      .from("comissao_regras_franquia")
+      .select("id,programa_id,percentual_total_comissao,tipo_administradora_id,modalidade_comissao_id,ativa,configuracao_homologada")
+      .eq("empresa_id", empresaAtiva.id)
+      .eq("ativa", true),
   ]);
 
   if (contratacaoResult.error || !contratacaoResult.data) notFound();
@@ -288,8 +300,11 @@ export default async function ConferirContratacaoPage({
         participantes={participantes}
         vinculosPerfis={vinculosPerfis}
         regrasParticipantes={regrasParticipantes}
+        modalidades={((modalidadesResult.data ?? []) as any)}
+        regrasFranquia={((regrasFranquiaResult.data ?? []) as any)}
         initialGrupoId={grupoSelecionadoId}
         initialCotaId={cotaSelecionadaId}
+        initialModalidadeId={(c.dados_simulacao as any)?.modalidade_comissao_id || grupoMatch?.modalidade_comissao_id || null}
         initialPrincipalId={consultorSelecionadoId}
         initialSecundarioId={c.participante_secundario_id}
         initialFracaoSecundario={c.participante_secundario_fracao_percentual}
