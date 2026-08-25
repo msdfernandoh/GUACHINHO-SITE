@@ -955,50 +955,80 @@ export function ContasPagarClient({
       ───────────────────────────────────────────────────────────── */}
       {visao === "despesas" && (
         <>
-          <section className="grid gap-3 rounded-2xl border bg-white p-4 shadow-sm md:grid-cols-3 xl:grid-cols-6">
-            <Select value={dataTipo} onChange={(event) => setDataTipo(event.target.value as typeof dataTipo)}>
-              <option value="vencimento">Por vencimento</option>
-              <option value="pagamento">Por pagamento</option>
-            </Select>
-            <Input type="date" aria-label="Data inicial" value={inicio} onChange={(event) => setInicio(event.target.value)} />
-            <Input type="date" aria-label="Data final" value={fim} onChange={(event) => setFim(event.target.value)} />
-            <Select value={bancoFiltro} onChange={(event) => setBancoFiltro(event.target.value)}>
-              <option value="">Todos os bancos</option>
-              {bancos.map((banco) => (
-                <option key={banco.id} value={banco.id}>
-                  {banco.nome}
-                </option>
-              ))}
-            </Select>
-            <Select value={centroFiltro} onChange={(event) => setCentroFiltro(event.target.value)}>
-              <option value="">Todos os centros</option>
-              {centros.map((centro) => (
-                <option key={centro.id} value={centro.id}>
-                  {centro.nome}
-                </option>
-              ))}
-            </Select>
-            <Select value={socioFiltro} onChange={(event) => setSocioFiltro(event.target.value)}>
-              <option value="">Todos os sócios</option>
-              {socios.map((socio) => (
-                <option key={socio.id} value={socio.id}>
-                  {socio.nome}
-                </option>
-              ))}
-            </Select>
-            <button
-              type="button"
-              className="text-left text-sm font-bold text-blue-700 xl:col-span-6 hover:underline"
-              onClick={() => {
-                setInicio("");
-                setFim("");
-                setBancoFiltro("");
-                setCentroFiltro("");
-                setSocioFiltro("");
-              }}
-            >
-              Limpar filtros
-            </button>
+          <section className="space-y-3 rounded-2xl border bg-white p-4 shadow-sm">
+            <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-6">
+              <Select value={dataTipo} onChange={(event) => setDataTipo(event.target.value as typeof dataTipo)}>
+                <option value="vencimento">Por vencimento</option>
+                <option value="pagamento">Por pagamento</option>
+              </Select>
+              <Input type="date" aria-label="Data inicial" value={inicio} onChange={(event) => setInicio(event.target.value)} />
+              <Input type="date" aria-label="Data final" value={fim} onChange={(event) => setFim(event.target.value)} />
+              <Select value={bancoFiltro} onChange={(event) => setBancoFiltro(event.target.value)}>
+                <option value="">Todos os bancos</option>
+                {bancos.map((banco) => (
+                  <option key={banco.id} value={banco.id}>
+                    {banco.nome}
+                  </option>
+                ))}
+              </Select>
+              <Select value={centroFiltro} onChange={(event) => setCentroFiltro(event.target.value)}>
+                <option value="">Todos os centros</option>
+                {centros.map((centro) => (
+                  <option key={centro.id} value={centro.id}>
+                    {centro.nome}
+                  </option>
+                ))}
+              </Select>
+              <Select value={socioFiltro} onChange={(event) => setSocioFiltro(event.target.value)}>
+                <option value="">Todos os sócios</option>
+                {socios.map((socio) => (
+                  <option key={socio.id} value={socio.id}>
+                    {socio.nome}
+                  </option>
+                ))}
+              </Select>
+            </div>
+
+            {/* Campo de Busca por Nome (Descrição ou Fornecedor) embaixo dos filtros */}
+            <div className="flex flex-wrap items-center gap-3 border-t border-slate-100 pt-3">
+              <div className="relative flex-1 min-w-[280px]">
+                <Search className="absolute left-3.5 top-3 h-4 w-4 text-slate-400" />
+                <input
+                  type="text"
+                  value={buscaLivre}
+                  onChange={(e) => setBuscaLivre(e.target.value)}
+                  placeholder="🔍 Buscar por descrição ou nome do fornecedor..."
+                  className="w-full rounded-xl border border-slate-300 bg-slate-50/70 py-2.5 pl-10 pr-9 text-xs text-slate-900 shadow-2xs placeholder:text-slate-400 focus:border-blue-600 focus:bg-white focus:outline-hidden focus:ring-1 focus:ring-blue-600 font-medium"
+                />
+                {buscaLivre && (
+                  <button
+                    type="button"
+                    onClick={() => setBuscaLivre("")}
+                    className="absolute right-3 top-3 text-slate-400 hover:text-slate-600"
+                    title="Limpar busca"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
+
+              {(inicio || fim || bancoFiltro || centroFiltro || socioFiltro || buscaLivre) && (
+                <button
+                  type="button"
+                  className="text-xs font-bold text-rose-600 hover:underline"
+                  onClick={() => {
+                    setInicio("");
+                    setFim("");
+                    setBancoFiltro("");
+                    setCentroFiltro("");
+                    setSocioFiltro("");
+                    setBuscaLivre("");
+                  }}
+                >
+                  Limpar todos os filtros
+                </button>
+              )}
+            </div>
           </section>
 
           <div className="grid gap-6 xl:grid-cols-[1.8fr_1fr]">
@@ -1118,6 +1148,39 @@ export function ContasPagarClient({
                         ) : null}
                       </div>
                       <div className="flex flex-wrap items-center justify-end gap-2">
+                        {/* Nota Fiscal / Comprovante */}
+                        {conta.comprovante_url ? (
+                          <div className="inline-flex items-center gap-1 rounded-lg border border-blue-200 bg-blue-50/80 px-2 py-1 text-xs">
+                            <a
+                              href={conta.comprovante_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-1 font-bold text-blue-700 hover:underline"
+                              title={conta.nota_fiscal_nome || "Ver arquivo"}
+                            >
+                              <FileText className="h-3.5 w-3.5" />
+                              <span>Ver NF</span>
+                            </a>
+                            <button
+                              type="button"
+                              onClick={() => execute(() => removerNotaFiscalConta(conta.id))}
+                              title="Remover anexo"
+                              className="text-slate-400 hover:text-rose-600 ml-0.5"
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => setAnexandoNfConta(conta)}
+                            className="inline-flex items-center gap-1 rounded-lg border border-dashed border-slate-300 px-2 py-1 text-[11px] font-semibold text-slate-600 hover:border-blue-400 hover:bg-blue-50/50 hover:text-blue-700 transition-colors"
+                            title="Anexar Nota Fiscal ou comprovante"
+                          >
+                            <Paperclip className="h-3 w-3" />
+                            <span>Anexar NF</span>
+                          </button>
+                        )}
                         <b className="min-w-28 text-right text-slate-900">{brl(Number(conta.valor))}</b>
                         <Select
                           aria-label={`Sócio pagador de ${conta.descricao}`}
