@@ -36,6 +36,8 @@ export async function formalizarContratacaoAction(formData: FormData) {
   const perfilPrincipalId = value(formData, "perfil_principal_id") || null;
   const perfilSecundarioId = value(formData, "perfil_secundario_id") || null;
   const cronogramaSecundario = value(formData, "cronograma_secundario") || "SEGUIR_PRINCIPAL";
+  const dataPrimeiraParcela = value(formData, "data_primeira_parcela") || null;
+  const dataSegundaParcela = value(formData, "data_segunda_parcela") || null;
   const admin = createAdminClient();
   try {
     const { data: contratacao, error: contratacaoError } = await admin
@@ -55,6 +57,8 @@ export async function formalizarContratacaoAction(formData: FormData) {
       perfil_principal_id: perfilPrincipalId,
       perfil_secundario_id: perfilSecundarioId,
       cronograma_secundario: cronogramaSecundario,
+      data_primeira_parcela: dataPrimeiraParcela,
+      data_segunda_parcela: dataSegundaParcela,
       fracao_secundario: secundarioId && fracao ? Number(fracao) : null,
     };
 
@@ -77,10 +81,30 @@ export async function formalizarContratacaoAction(formData: FormData) {
     });
     if (prepararError) throw new Error(prepararError.message);
     const result = await converterContratacaoEmVenda(empresaAtiva.id, contratacaoId, `erp-formalizacao:${contratacaoId}`);
+
+    if (result?.venda?.id) {
+      await admin.from("vendas").update({
+        data_primeira_parcela: dataPrimeiraParcela || null,
+        data_segunda_parcela: dataSegundaParcela || null,
+        participante_secundario_id: secundarioId || null,
+        participante_secundario_fracao_percentual: secundarioId && fracao ? Number(fracao) : null,
+        perfil_principal_id: perfilPrincipalId || null,
+        perfil_secundario_id: perfilSecundarioId || null,
+      }).eq("id", result.venda.id).eq("empresa_id", empresaAtiva.id);
+
+      // Recalcula previsões para garantir competências com datas exatas
+      await admin.rpc("rpc_gerar_previsoes_comissao_v2", {
+        p_empresa_id: empresaAtiva.id,
+        p_venda_id: result.venda.id,
+        p_idempotency_key: `formalizacao_recalc:${result.venda.id}`
+      });
+    }
+
     revalidatePath("/erp/contratacoes");
     revalidatePath(`/erp/contratacoes/${contratacaoId}`);
     revalidatePath("/erp/clientes");
     revalidatePath("/erp/vendas");
+    revalidatePath("/erp/minhas-comissoes");
     redirect(`/erp/contratacoes/${contratacaoId}?sucesso=1&venda=${result.venda.id}&cota=${result.cotaDefinitiva.id}`);
   } catch (error) {
     if (error && typeof error === "object" && "digest" in error && String((error as { digest?: string }).digest).startsWith("NEXT_REDIRECT")) throw error;

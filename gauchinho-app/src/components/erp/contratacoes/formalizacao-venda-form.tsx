@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useTransition } from "react";
 import { formalizarContratacaoAction } from "@/app/erp/contratacoes/actions";
-import { Users, Calculator, UserCheck, Split } from "lucide-react";
+import { Users, Calculator, UserCheck, Split, Calendar, Info } from "lucide-react";
 
 export type GrupoCota = {
   id: string;
@@ -107,6 +107,16 @@ export function FormalizacaoVendaForm({
     initialFracaoSecundario ? Number(initialFracaoSecundario) : 20
   );
   const [cronogramaSecundario, setCronogramaSecundario] = useState("SEGUIR_PRINCIPAL");
+
+  // Datas de pagamento personalizadas (Adesão vs 2ª Parcela em diante)
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const nextMonthDate = new Date();
+  nextMonthDate.setMonth(nextMonthDate.getMonth() + 2); // Ex: Se aderiu em Agosto pós-assembleia, 2ª parcela em Outubro
+  nextMonthDate.setDate(10);
+  const defaultSegundaData = nextMonthDate.toISOString().slice(0, 10);
+
+  const [dataPrimeiraParcela, setDataPrimeiraParcela] = useState(todayStr);
+  const [dataSegundaParcela, setDataSegundaParcela] = useState(defaultSegundaData);
 
   // 1. Grupo e Cotas disponíveis
   const grupoAtual = useMemo(() => grupos.find((g) => g.id === selectedGrupoId) || grupos[0], [grupos, selectedGrupoId]);
@@ -216,10 +226,11 @@ export function FormalizacaoVendaForm({
           2. Dados comerciais e comissionamento da venda
         </h2>
         <p className="text-xs text-slate-500">
-          Defina o consultor principal, divisão de comissão com SDR / parceiro e regra de recebimento.
+          Defina o consultor principal, divisão de comissão com SDR / parceiro, regra de recebimento e datas das parcelas.
         </p>
       </div>
 
+      {/* Grid de Seleção Principal */}
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <label className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
           Grupo Canônico
@@ -300,7 +311,60 @@ export function FormalizacaoVendaForm({
         </label>
       </div>
 
+      {/* NOVO BLOCO: Datas das Parcelas de Comissão (Adesão vs 2ª Parcela em diante) */}
+      <div className="rounded-xl border border-blue-200 bg-blue-50/50 p-4 dark:border-blue-900/40 dark:bg-blue-950/20">
+        <div className="flex items-center gap-2 mb-3">
+          <Calendar className="h-4 w-4 text-blue-700 dark:text-blue-400" />
+          <h3 className="text-xs font-bold uppercase tracking-wider text-blue-950 dark:text-blue-200">
+            Cronograma & Datas de Recebimento das Comissões
+          </h3>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div>
+            <label className="text-xs font-bold text-slate-800 dark:text-slate-200">
+              Data do Pagamento da 1ª Parcela (Adesão / 1ª Comissão):
+            </label>
+            <input
+              type="date"
+              name="data_primeira_parcela"
+              value={dataPrimeiraParcela}
+              onChange={(e) => setDataPrimeiraParcela(e.target.value)}
+              className="mt-1.5 w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-xs font-bold text-slate-900 shadow-2xs dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+            />
+            <p className="mt-1 text-[11px] text-slate-500">
+              Competência calculada: <strong>{dataPrimeiraParcela ? dataPrimeiraParcela.slice(0, 7) : "—"}</strong>
+            </p>
+          </div>
+
+          <div>
+            <label className="text-xs font-bold text-slate-800 dark:text-slate-200">
+              Data de Vencimento da 2ª Parcela (Demais parcelas em diante):
+            </label>
+            <input
+              type="date"
+              name="data_segunda_parcela"
+              value={dataSegundaParcela}
+              onChange={(e) => setDataSegundaParcela(e.target.value)}
+              className="mt-1.5 w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-xs font-bold text-slate-900 shadow-2xs dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+            />
+            <p className="mt-1 text-[11px] text-slate-500">
+              2ª parcela: <strong>{dataSegundaParcela ? dataSegundaParcela.slice(0, 7) : "—"}</strong> (e subsequentes mês a mês)
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-3 flex items-start gap-2 rounded-lg bg-blue-100/60 p-2.5 text-[11px] text-blue-900 dark:bg-blue-900/30 dark:text-blue-200">
+          <Info className="h-4 w-4 shrink-0 mt-0.5" />
+          <span>
+            Se o cliente pagou a adesão no ato (ex: 11/08), a 1ª parcela de comissão entra em Agosto/2026. Se a assembleia da administradora já passou, a 2ª parcela iniciará na data configurada acima (ex: 10/10/2026).
+          </span>
+        </div>
+      </div>
+
+      {/* BLOCO: Configuração de Modelo do Principal e Secundário */}
       <div className="grid gap-4 lg:grid-cols-2">
+        {/* Bloco Modelo do Principal */}
         <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-4 dark:border-slate-800 dark:bg-slate-800/40">
           <div className="flex items-center gap-2">
             <UserCheck className="h-4 w-4 text-blue-600 dark:text-blue-400" />
@@ -338,6 +402,7 @@ export function FormalizacaoVendaForm({
           )}
         </div>
 
+        {/* Bloco Modelo do Secundário */}
         {selectedSecundarioId ? (
           <div className="rounded-xl border border-amber-200 bg-amber-50/40 p-4 dark:border-amber-900/50 dark:bg-amber-950/20">
             <div className="flex items-center justify-between">
@@ -432,6 +497,7 @@ export function FormalizacaoVendaForm({
         )}
       </div>
 
+      {/* BLOCO: Memória de Cálculo em Tempo Real (Live Split) */}
       <div className="rounded-2xl border border-blue-100 bg-linear-to-br from-blue-50/50 to-indigo-50/30 p-4 dark:border-blue-900/40 dark:from-blue-950/20 dark:to-indigo-950/20">
         <div className="flex items-center gap-2 mb-3">
           <Calculator className="h-4 w-4 text-blue-700 dark:text-blue-400" />

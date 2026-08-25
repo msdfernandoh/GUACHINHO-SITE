@@ -128,8 +128,8 @@ export default async function ConferirContratacaoPage({
 
   const grupos = (gruposResult.data ?? []) as GrupoConsorcio[];
   const participantes = (participantesResult.data ?? []) as ParticipanteComercial[];
-  const vinculosPerfis = (vinculosResult.data ?? []) as VinculoPerfil[];
-  const regrasParticipantes = (regrasParticipantesResult.data ?? []) as RegraParticipante[];
+  const vinculosPerfis = ((vinculosResult.data ?? []) as unknown) as VinculoPerfil[];
+  const regrasParticipantes = ((regrasParticipantesResult.data ?? []) as unknown) as RegraParticipante[];
 
   // Auto-resolução inteligente do Grupo
   const grupoMatch =
