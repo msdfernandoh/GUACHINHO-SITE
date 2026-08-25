@@ -321,6 +321,9 @@ export function ContasPagarClient({
   const [fornecedoresSelecionados, setFornecedoresSelecionados] = useState<Set<string>>(new Set());
   const [modalUnificar, setModalUnificar] = useState(false);
   const [fornecedorDestinoNome, setFornecedorDestinoNome] = useState("");
+  const [baixandoConta, setBaixandoConta] = useState<Conta | null>(null);
+  const [dataBaixaCustom, setDataBaixaCustom] = useState<string>(new Date().toISOString().slice(0, 10));
+  const [usarDataHojeBaixa, setUsarDataHojeBaixa] = useState<boolean>(true);
   const [estornando, setEstornando] = useState<Conta | null>(null);
   const [excluindo, setExcluindo] = useState<Conta | null>(null);
   const [motivoInput, setMotivoInput] = useState("");
@@ -557,15 +560,20 @@ export function ContasPagarClient({
   const contasOrdenadas = useMemo(() => {
     const lista = [...contasBaseFiltro];
     lista.sort((a, b) => {
-      switch (ordenacao) {
-        case "vencimento_asc":
-          return (a.vencimento || "").localeCompare(b.vencimento || "");
-        case "vencimento_desc":
-          return (b.vencimento || "").localeCompare(a.vencimento || "");
+      const effectiveOrdenacao =
+        ordenacao === "vencimento_asc" && (filtro === "pagas" || cardFiltro === "pagas_mes")
+          ? "pagamento_desc"
+          : ordenacao;
+
+      switch (effectiveOrdenacao) {
         case "pagamento_desc":
           return (b.pago_em || b.vencimento || "").localeCompare(a.pago_em || a.vencimento || "");
         case "pagamento_asc":
           return (a.pago_em || a.vencimento || "").localeCompare(b.pago_em || b.vencimento || "");
+        case "vencimento_asc":
+          return (a.vencimento || "").localeCompare(b.vencimento || "");
+        case "vencimento_desc":
+          return (b.vencimento || "").localeCompare(a.vencimento || "");
         case "nome_asc":
           return a.descricao.localeCompare(b.descricao, "pt-BR", { sensitivity: "base" });
         case "nome_desc":
@@ -583,7 +591,7 @@ export function ContasPagarClient({
       }
     });
     return lista;
-  }, [contasBaseFiltro, ordenacao]);
+  }, [contasBaseFiltro, ordenacao, filtro, cardFiltro]);
 
   const totalItens = contasOrdenadas.length;
   const totalPaginas = itensPorPagina === 0 ? 1 : Math.max(1, Math.ceil(totalItens / itensPorPagina));
@@ -1536,7 +1544,12 @@ export function ContasPagarClient({
                         <button
                           key={item}
                           type="button"
-                          onClick={() => setFiltro(item)}
+                          onClick={() => {
+                            setFiltro(item);
+                            setPagina(1);
+                            if (item === "pagas") setOrdenacao("pagamento_desc");
+                            else if (item === "abertas") setOrdenacao("vencimento_asc");
+                          }}
                           className={`rounded-lg px-3 py-1.5 text-xs font-bold ${
                             filtro === item ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
                           }`}
@@ -1592,14 +1605,17 @@ export function ContasPagarClient({
                 ) : contasExibidas.length === 0 ? (
                   <p className="p-8 text-center text-slate-500">Nenhuma despesa neste filtro.</p>
                 ) : (
-                  contasExibidas.map((conta) => (
+                  contasExibidas.map((conta) => {
+                    const centro = centros.find((c) => c.id === conta.centro_custo_id);
+                    const banco = bancos.find((b) => b.id === conta.conta_bancaria_id);
+                    return (
                     <div key={conta.id} className="grid gap-3 p-4 md:grid-cols-[auto_1fr_auto] md:items-center hover:bg-slate-50/60 transition">
                       <input
                         type="checkbox"
                         checked={selecionadas.has(conta.id)}
                         onChange={() => toggleConta(conta.id)}
                         aria-label={`Selecionar ${conta.descricao}`}
-                        className="h-4 w-4 rounded text-blue-600"
+                        className="h-4 w-4 rounded text-blue-600 cursor-pointer"
                       />
                       <div>
                         <div className="flex flex-wrap items-center gap-2">
@@ -1624,12 +1640,36 @@ export function ContasPagarClient({
                             </span>
                           )}
                         </div>
-                        <p className="text-sm text-slate-500">
-                          Vence em {dataBr(conta.vencimento)}
-                          {conta.fornecedor ? ` · ${conta.fornecedor}` : ""}
-                        </p>
+
+                        {/* Metadados completos: Fornecedor, Vencimento, Pagamento, Centro de Custo, Banco */}
+                        <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-600">
+                          {conta.fornecedor && (
+                            <span className="font-semibold text-slate-900">
+                              🏢 {conta.fornecedor}
+                            </span>
+                          )}
+                          <span>
+                            📅 <strong>Vencimento:</strong> {dataBr(conta.vencimento)}
+                          </span>
+                          {conta.status === "paga" && (
+                            <span className="font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+                              ✅ <strong>Pago em:</strong> {conta.pago_em ? dataBr(conta.pago_em) : dataBr(conta.vencimento)}
+                            </span>
+                          )}
+                          {centro && (
+                            <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-700">
+                              🏛️ {centro.nome}
+                            </span>
+                          )}
+                          {banco && (
+                            <span className="rounded-md bg-blue-50 px-2 py-0.5 text-[11px] font-medium text-blue-800">
+                              💳 {banco.nome}
+                            </span>
+                          )}
+                        </div>
+
                         {conta.responsavel_importado ? (
-                          <p className="text-xs text-slate-400">Responsável no CSV: {conta.responsavel_importado}</p>
+                          <p className="mt-0.5 text-[11px] text-slate-400">Responsável no CSV: {conta.responsavel_importado}</p>
                         ) : null}
                       </div>
                       <div className="flex flex-wrap items-center justify-end gap-2">
@@ -1688,8 +1728,12 @@ export function ContasPagarClient({
                             type="button"
                             size="sm"
                             disabled={pending}
-                            onClick={() => execute(() => baixarConta(conta.id))}
-                            className="bg-emerald-600 hover:bg-emerald-700 text-xs"
+                            onClick={() => {
+                              setBaixandoConta(conta);
+                              setDataBaixaCustom(new Date().toISOString().slice(0, 10));
+                              setUsarDataHojeBaixa(true);
+                            }}
+                            className="bg-emerald-600 hover:bg-emerald-700 text-xs font-bold cursor-pointer"
                           >
                             Dar baixa
                           </Button>
@@ -1760,7 +1804,8 @@ export function ContasPagarClient({
                         </Button>
                       </div>
                     </div>
-                  ))
+                  );
+                  })
                 )}
               </div>
 
@@ -2657,6 +2702,231 @@ export function ContasPagarClient({
                 </div>
               </>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* ─────────────────────────────────────────────────────────────
+          MODAL: DAR BAIXA EM CONTA A PAGAR COM DATA FLEXÍVEL
+      ───────────────────────────────────────────────────────────── */}
+      {baixandoConta && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in-95">
+            <div className="flex items-center justify-between border-b pb-3">
+              <div className="flex items-center gap-2">
+                <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700 font-bold">✅</span>
+                <h3 className="text-base font-bold text-slate-900">Dar Baixa na Despesa</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setBaixandoConta(null)}
+                className="text-slate-400 hover:text-slate-600 cursor-pointer"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 space-y-1">
+              <p className="font-bold text-slate-900 text-sm">{baixandoConta.descricao}</p>
+              <div className="flex justify-between text-xs text-slate-600">
+                <span>Valor: <strong className="text-slate-900">{brl(Number(baixandoConta.valor))}</strong></span>
+                <span>Vencimento: <strong>{dataBr(baixandoConta.vencimento)}</strong></span>
+              </div>
+              {baixandoConta.fornecedor && (
+                <p className="text-xs text-slate-500">Fornecedor: {baixandoConta.fornecedor}</p>
+              )}
+            </div>
+
+            <div className="space-y-3">
+              <label className="text-xs font-bold text-slate-700 block">Quando foi feito o pagamento?</label>
+
+              <div className="space-y-2">
+                <label className={`flex items-center gap-2.5 rounded-xl border p-3 text-xs cursor-pointer transition ${
+                  usarDataHojeBaixa
+                    ? "border-emerald-500 bg-emerald-50 font-bold text-emerald-950"
+                    : "border-slate-200 bg-white hover:bg-slate-50 text-slate-700"
+                }`}>
+                  <input
+                    type="radio"
+                    name="tipo_data_baixa"
+                    checked={usarDataHojeBaixa}
+                    onChange={() => setUsarDataHojeBaixa(true)}
+                    className="text-emerald-600"
+                  />
+                  <span>Dar baixa com data de <strong>HOJE ({dataBr(new Date().toISOString().slice(0, 10))})</strong></span>
+                </label>
+
+                <label className={`flex flex-col gap-2 rounded-xl border p-3 text-xs cursor-pointer transition ${
+                  !usarDataHojeBaixa
+                    ? "border-emerald-500 bg-emerald-50 text-emerald-950"
+                    : "border-slate-200 bg-white hover:bg-slate-50 text-slate-700"
+                }`}>
+                  <div className="flex items-center gap-2.5">
+                    <input
+                      type="radio"
+                      name="tipo_data_baixa"
+                      checked={!usarDataHojeBaixa}
+                      onChange={() => setUsarDataHojeBaixa(false)}
+                      className="text-emerald-600"
+                    />
+                    <span className="font-bold">Informar outra data de pagamento</span>
+                  </div>
+                  {!usarDataHojeBaixa && (
+                    <div className="mt-1 pl-6 animate-in fade-in">
+                      <Input
+                        type="date"
+                        value={dataBaixaCustom}
+                        onChange={(e) => setDataBaixaCustom(e.target.value)}
+                        className="text-xs"
+                        required
+                      />
+                    </div>
+                  )}
+                </label>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 border-t pt-3">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setBaixandoConta(null)}
+                disabled={pending}
+              >
+                Cancelar
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                disabled={pending || (!usarDataHojeBaixa && !dataBaixaCustom)}
+                onClick={() => {
+                  const dataPagamento = usarDataHojeBaixa
+                    ? new Date().toISOString().slice(0, 10)
+                    : dataBaixaCustom;
+                  execute(
+                    () => baixarConta(baixandoConta.id, dataPagamento),
+                    () => setBaixandoConta(null)
+                  );
+                }}
+                className="bg-emerald-600 font-bold hover:bg-emerald-700 text-xs cursor-pointer"
+              >
+                {pending ? "Baixando…" : "Confirmar Pagamento"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─────────────────────────────────────────────────────────────
+          MODAL: UNIFICAR FORNECEDORES
+      ───────────────────────────────────────────────────────────── */}
+      {modalUnificar && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+          <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in-95">
+            <div className="flex items-center justify-between border-b pb-3">
+              <div className="flex items-center gap-2">
+                <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-100 text-blue-700 font-bold">🔗</span>
+                <h3 className="text-base font-bold text-slate-900">Unificar Fornecedores Selecionados</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setModalUnificar(false)}
+                className="text-slate-400 hover:text-slate-600 cursor-pointer"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-600 leading-relaxed">
+              Você selecionou <strong>{fornecedoresSelecionados.size} fornecedores</strong>. Escolha qual deles será o <strong>cadastro principal definitivo</strong>. Todas as contas a pagar associadas aos outros nomes serão automaticamente transferidas para o fornecedor principal.
+            </p>
+
+            <div className="space-y-2 rounded-xl border border-slate-200 bg-slate-50 p-3 max-h-48 overflow-y-auto">
+              <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Fornecedores a unificar:</p>
+              {fornecedores
+                .filter((f) => fornecedoresSelecionados.has(f.id || f.nome))
+                .map((f) => (
+                  <label
+                    key={f.id || f.nome}
+                    className={`flex items-center justify-between rounded-lg p-2 text-xs cursor-pointer transition ${
+                      fornecedorDestinoNome === f.nome
+                        ? "bg-blue-100 border border-blue-300 font-bold text-blue-950"
+                        : "bg-white border border-slate-200 hover:bg-slate-100 text-slate-800"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="radio"
+                        name="fornecedor_destino"
+                        value={f.nome}
+                        checked={fornecedorDestinoNome === f.nome}
+                        onChange={() => setFornecedorDestinoNome(f.nome)}
+                        className="text-blue-600"
+                      />
+                      <span>{f.nome}</span>
+                      {f.cnpj_cpf && <span className="text-[10px] text-slate-400 font-normal">({f.cnpj_cpf})</span>}
+                    </div>
+                    <span className="text-[10px] font-semibold text-slate-500">
+                      {f.totalContas || 0} conta(s)
+                    </span>
+                  </label>
+                ))}
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs font-bold text-slate-700">Ou digite um novo nome padronizado:</label>
+              <Input
+                value={fornecedorDestinoNome}
+                onChange={(e) => setFornecedorDestinoNome(e.target.value)}
+                placeholder="Nome definitivo do fornecedor..."
+                className="text-xs"
+              />
+            </div>
+
+            <div className="flex justify-end gap-2 border-t pt-3">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setModalUnificar(false)}
+                disabled={pending}
+              >
+                Cancelar
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                disabled={pending || !fornecedorDestinoNome.trim()}
+                onClick={() => {
+                  const selecionados = fornecedores.filter((f) =>
+                    fornecedoresSelecionados.has(f.id || f.nome)
+                  );
+                  const nomesAntigos = selecionados.map((f) => f.nome);
+                  const idsAntigos = selecionados.map((f) => f.id).filter(Boolean);
+                  const targetForn = fornecedores.find(
+                    (f) => f.nome.toLowerCase() === fornecedorDestinoNome.trim().toLowerCase()
+                  );
+
+                  execute(
+                    () =>
+                      unificarFornecedores({
+                        fornecedorPrincipalNome: fornecedorDestinoNome.trim(),
+                        fornecedorPrincipalId: targetForn?.id || null,
+                        fornecedoresAntigosNomes: nomesAntigos,
+                        fornecedoresAntigosIds: idsAntigos,
+                      }),
+                    () => {
+                      setModalUnificar(false);
+                      setFornecedoresSelecionados(new Set());
+                    }
+                  );
+                }}
+                className="bg-blue-700 font-bold hover:bg-blue-800 text-xs cursor-pointer"
+              >
+                {pending ? "Unificando..." : "Confirmar e Unificar"}
+              </Button>
+            </div>
           </div>
         </div>
       )}

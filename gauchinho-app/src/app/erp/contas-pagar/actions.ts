@@ -246,13 +246,18 @@ export async function criarConta(form: FormData): Promise<ContasActionResult> {
   }
 }
 
-export async function baixarConta(id: string): Promise<ContasActionResult> {
+export async function baixarConta(id: string, dataPagamento?: string | null): Promise<ContasActionResult> {
   try {
     const { empresaId, session } = await requireFinanceWrite();
+    const dataEfetiva =
+      dataPagamento && /^\d{4}-\d{2}-\d{2}$/.test(dataPagamento)
+        ? dataPagamento
+        : new Date().toISOString().slice(0, 10);
+
     const { error } = await session.rpc("rpc_baixar_conta_pagar", {
       p_empresa_id: empresaId,
       p_conta_id: id,
-      p_data: new Date().toISOString().slice(0, 10),
+      p_data: dataEfetiva,
     });
     if (error) throw new Error(error.message);
     revalidatePath("/erp/contas-pagar");
