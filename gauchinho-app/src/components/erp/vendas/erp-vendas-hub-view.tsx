@@ -4,22 +4,21 @@ import { useState, useTransition } from "react";
 import {
   Pencil,
   Trash2,
-  RotateCcw,
   Ban,
   ShieldAlert,
   CheckCircle2,
-  AlertTriangle,
-  X,
-  UserCheck,
-  Calendar,
+  Trophy,
+  Zap,
   Hash,
   Search,
+  Calendar,
 } from "lucide-react";
 import {
   masterAtualizarVendaAction,
   cancelarCotaEstornoAction,
   masterExcluirOuEstornarVendaAction,
   atualizarNumeroCotaAction,
+  registrarContemplacaoAction,
 } from "@/app/erp/vendas/actions";
 
 export type VendaItem = {
@@ -45,6 +44,7 @@ export type VendaItem = {
   cota_numero?: string | null;
   cota_id?: string | null;
   grupo_codigo?: string;
+  cota_status?: string;
 };
 
 export type CotaItem = {
@@ -92,6 +92,7 @@ export function ErpVendasHubView({
   const [cancelandoCota, setCancelandoCota] = useState<CotaItem | null>(null);
   const [excluindoVenda, setExcluindoVenda] = useState<VendaItem | null>(null);
   const [editandoCotaNum, setEditandoCotaNum] = useState<CotaItem | null>(null);
+  const [contemplandoCota, setContemplandoCota] = useState<CotaItem | null>(null);
 
   const [modalErro, setModalErro] = useState<string | null>(null);
   const [modalSucesso, setModalSucesso] = useState<string | null>(null);
@@ -113,6 +114,12 @@ export function ErpVendasHubView({
   const [editData1, setEditData1] = useState("");
   const [editData2, setEditData2] = useState("");
   const [editRecalcular, setEditRecalcular] = useState(true);
+
+  // Estados para Modal de Contemplação
+  const [tipoContemplacao, setTipoContemplacao] = useState("SORTEIO");
+  const [dataContemplacao, setDataContemplacao] = useState(new Date().toISOString().slice(0, 10));
+  const [anteciparComissoes, setAnteciparComissoes] = useState(true);
+  const [competenciaAntecipada, setCompetenciaAntecipada] = useState(new Date().toISOString().slice(0, 7));
 
   // Filtragem de vendas
   const vendasFiltradas = vendas.filter((v) => {
@@ -144,6 +151,16 @@ export function ErpVendasHubView({
     setAcaoMaster("ESTORNAR");
     setCancelarPagas(false);
     setMotivoMaster("");
+    setModalErro(null);
+  }
+
+  function abrirContemplarCota(c: CotaItem) {
+    setContemplandoCota(c);
+    setTipoContemplacao("SORTEIO");
+    const hj = new Date().toISOString().slice(0, 10);
+    setDataContemplacao(hj);
+    setCompetenciaAntecipada(hj.slice(0, 7));
+    setAnteciparComissoes(true);
     setModalErro(null);
   }
 
@@ -187,6 +204,8 @@ export function ErpVendasHubView({
           <span>Total de Vendas: <strong>{vendas.length}</strong></span>
           <span>·</span>
           <span>Cotas Ativas: <strong>{cotas.filter((c) => c.status === "ativa").length}</strong></span>
+          <span>·</span>
+          <span>Contempladas: <strong className="text-blue-600">{cotas.filter((c) => c.status === "contemplada").length}</strong></span>
         </div>
       </div>
 
@@ -215,81 +234,96 @@ export function ErpVendasHubView({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                {vendasFiltradas.map((v) => (
-                  <tr key={v.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition">
-                    <td className="p-3 font-semibold text-slate-900 dark:text-white">
-                      <div>{v.cliente_nome}</div>
-                      {v.cliente_cpf_cnpj && <div className="text-[10px] text-slate-400">{v.cliente_cpf_cnpj}</div>}
-                    </td>
-                    <td className="p-3 font-mono font-bold text-slate-950 dark:text-white">{brl(v.valor_credito)}</td>
-                    <td className="p-3 font-mono font-semibold text-blue-700 dark:text-blue-400">
-                      {brl(v.parcela)} ({v.prazo}m)
-                    </td>
-                    <td className="p-3">
-                      <div className="font-bold text-slate-800 dark:text-slate-200">
-                        {v.consultor_nome || "Consultor Principal"}
-                      </div>
-                      {v.secundario_nome && (
-                        <div className="text-[10px] text-amber-600 font-semibold">
-                          SDR: {v.secundario_nome} ({v.participante_secundario_fracao_percentual || 20}%)
+                {vendasFiltradas.map((v) => {
+                  const cotaCorrespondente = cotas.find((c) => c.venda_id === v.id) || null;
+                  return (
+                    <tr key={v.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition">
+                      <td className="p-3 font-semibold text-slate-900 dark:text-white">
+                        <div>{v.cliente_nome}</div>
+                        {v.cliente_cpf_cnpj && <div className="text-[10px] text-slate-400">{v.cliente_cpf_cnpj}</div>}
+                      </td>
+                      <td className="p-3 font-mono font-bold text-slate-950 dark:text-white">{brl(v.valor_credito)}</td>
+                      <td className="p-3 font-mono font-semibold text-blue-700 dark:text-blue-400">
+                        {brl(v.parcela)} ({v.prazo}m)
+                      </td>
+                      <td className="p-3">
+                        <div className="font-bold text-slate-800 dark:text-slate-200">
+                          {v.consultor_nome || "Consultor Principal"}
                         </div>
-                      )}
-                    </td>
-                    <td className="p-3 font-mono text-slate-600 dark:text-slate-300">
-                      {v.data_primeira_parcela ? v.data_primeira_parcela.slice(0, 7) : v.data_venda.slice(0, 7)}
-                    </td>
-                    <td className="p-3">
-                      <span
-                        className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black uppercase ${
-                          v.status === "confirmada"
-                            ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
-                            : "bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300"
-                        }`}
-                      >
-                        {v.status}
-                      </span>
-                    </td>
-                    <td className="p-3 text-right">
-                      <div className="flex items-center justify-end gap-1.5">
-                        {isMaster && (
-                          <button
-                            type="button"
-                            onClick={() => abrirEditarVenda(v)}
-                            title="Editar venda e comissões (Master)"
-                            className="rounded-lg bg-blue-50 px-2.5 py-1 text-[11px] font-bold text-blue-700 hover:bg-blue-100 dark:bg-blue-950/40 dark:text-blue-300 transition"
-                          >
-                            <Pencil className="inline h-3 w-3 mr-1" />
-                            Editar
-                          </button>
+                        {v.secundario_nome && (
+                          <div className="text-[10px] text-amber-600 font-semibold">
+                            SDR: {v.secundario_nome} ({v.participante_secundario_fracao_percentual || 20}%)
+                          </div>
                         )}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const cotaCorrespondente = cotas.find((c) => c.venda_id === v.id) || null;
-                            setCancelandoCota(cotaCorrespondente);
-                            setModalErro(null);
-                          }}
-                          title="Cancelar cota com aplicação de curva de estorno"
-                          className="rounded-lg bg-amber-50 px-2.5 py-1 text-[11px] font-bold text-amber-800 hover:bg-amber-100 dark:bg-amber-950/40 dark:text-amber-300 transition"
+                      </td>
+                      <td className="p-3 font-mono text-slate-600 dark:text-slate-300">
+                        {v.data_primeira_parcela ? v.data_primeira_parcela.slice(0, 7) : v.data_venda.slice(0, 7)}
+                      </td>
+                      <td className="p-3">
+                        <span
+                          className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black uppercase ${
+                            cotaCorrespondente?.status === "contemplada"
+                              ? "bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300"
+                              : v.status === "confirmada"
+                              ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
+                              : "bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300"
+                          }`}
                         >
-                          <Ban className="inline h-3 w-3 mr-1" />
-                          Cancelar (Estorno)
-                        </button>
-                        {isMaster && (
+                          {cotaCorrespondente?.status === "contemplada" ? "🏆 CONTEMPLADA" : v.status}
+                        </span>
+                      </td>
+                      <td className="p-3 text-right">
+                        <div className="flex items-center justify-end gap-1.5">
+                          {cotaCorrespondente && cotaCorrespondente.status !== "contemplada" && (
+                            <button
+                              type="button"
+                              onClick={() => abrirContemplarCota(cotaCorrespondente)}
+                              title="Registrar Contemplação e Antecipar Comissões"
+                              className="rounded-lg bg-indigo-50 px-2.5 py-1 text-[11px] font-bold text-indigo-700 hover:bg-indigo-100 dark:bg-indigo-950/40 dark:text-indigo-300 transition cursor-pointer"
+                            >
+                              <Trophy className="inline h-3 w-3 mr-1" />
+                              Contemplar
+                            </button>
+                          )}
+                          {isMaster && (
+                            <button
+                              type="button"
+                              onClick={() => abrirEditarVenda(v)}
+                              title="Editar venda e comissões (Master)"
+                              className="rounded-lg bg-blue-50 px-2.5 py-1 text-[11px] font-bold text-blue-700 hover:bg-blue-100 dark:bg-blue-950/40 dark:text-blue-300 transition cursor-pointer"
+                            >
+                              <Pencil className="inline h-3 w-3 mr-1" />
+                              Editar
+                            </button>
+                          )}
                           <button
                             type="button"
-                            onClick={() => abrirExcluirVenda(v)}
-                            title="Excluir ou Estornar Venda (Master)"
-                            className="rounded-lg bg-rose-50 px-2.5 py-1 text-[11px] font-bold text-rose-700 hover:bg-rose-100 dark:bg-rose-950/40 dark:text-rose-300 transition"
+                            onClick={() => {
+                              setCancelandoCota(cotaCorrespondente);
+                              setModalErro(null);
+                            }}
+                            title="Cancelar cota com aplicação de curva de estorno"
+                            className="rounded-lg bg-amber-50 px-2.5 py-1 text-[11px] font-bold text-amber-800 hover:bg-amber-100 dark:bg-amber-950/40 dark:text-amber-300 transition cursor-pointer"
                           >
-                            <Trash2 className="inline h-3 w-3 mr-1" />
-                            Estornar/Excluir
+                            <Ban className="inline h-3 w-3 mr-1" />
+                            Cancelar (Estorno)
                           </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                          {isMaster && (
+                            <button
+                              type="button"
+                              onClick={() => abrirExcluirVenda(v)}
+                              title="Excluir ou Estornar Venda (Master)"
+                              className="rounded-lg bg-rose-50 px-2.5 py-1 text-[11px] font-bold text-rose-700 hover:bg-rose-100 dark:bg-rose-950/40 dark:text-rose-300 transition cursor-pointer"
+                            >
+                              <Trash2 className="inline h-3 w-3 mr-1" />
+                              Estornar/Excluir
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -339,29 +373,41 @@ export function ErpVendasHubView({
                     <td className="p-3">
                       <span
                         className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black uppercase ${
-                          c.status === "ativa"
-                            ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
-                            : c.status === "contemplada"
+                          c.status === "contemplada"
                             ? "bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300"
+                            : c.status === "ativa"
+                            ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
                             : "bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300"
                         }`}
                       >
-                        {c.status}
+                        {c.status === "contemplada" ? "🏆 Contemplada" : c.status}
                       </span>
                     </td>
                     <td className="p-3 text-right">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setEditandoCotaNum(c);
-                          setEditNumCota(c.numero_cota || "");
-                          setModalErro(null);
-                        }}
-                        className="rounded-lg bg-slate-100 px-2.5 py-1 text-[11px] font-bold text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 transition"
-                      >
-                        <Hash className="inline h-3 w-3 mr-1" />
-                        {c.numero_cota ? "Alterar cota" : "Definir cota oficial"}
-                      </button>
+                      <div className="flex items-center justify-end gap-1.5">
+                        {c.status !== "contemplada" && (
+                          <button
+                            type="button"
+                            onClick={() => abrirContemplarCota(c)}
+                            className="rounded-lg bg-indigo-50 px-2.5 py-1 text-[11px] font-bold text-indigo-700 hover:bg-indigo-100 dark:bg-indigo-950/40 dark:text-indigo-300 transition cursor-pointer"
+                          >
+                            <Trophy className="inline h-3 w-3 mr-1" />
+                            Contemplar
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditandoCotaNum(c);
+                            setEditNumCota(c.numero_cota || "");
+                            setModalErro(null);
+                          }}
+                          className="rounded-lg bg-slate-100 px-2.5 py-1 text-[11px] font-bold text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 transition cursor-pointer"
+                        >
+                          <Hash className="inline h-3 w-3 mr-1" />
+                          {c.numero_cota ? "Alterar cota" : "Definir cota oficial"}
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -370,6 +416,160 @@ export function ErpVendasHubView({
           </div>
         )}
       </section>
+
+      {/* MODAL 0: REGISTRAR CONTEMPLAÇÃO & ANTECIPAÇÃO DE COMISSÕES */}
+      {contemplandoCota && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-xs">
+          <div className="w-full max-w-xl rounded-2xl border border-indigo-200 bg-white p-6 shadow-2xl dark:border-indigo-900 dark:bg-slate-900 space-y-4">
+            <div className="flex items-center justify-between border-b pb-3">
+              <div className="flex items-center gap-2 text-indigo-700 dark:text-indigo-400">
+                <Trophy className="h-6 w-6" />
+                <h3 className="font-black text-slate-900 dark:text-white text-base">
+                  Registrar Contemplação da Cota #{contemplandoCota.numero_cota || "Pendente"}
+                </h3>
+              </div>
+              <button type="button" onClick={() => setContemplandoCota(null)} className="text-slate-400 hover:text-slate-600">✕</button>
+            </div>
+
+            {modalErro && <p className="rounded-lg bg-rose-50 p-3 text-xs font-bold text-rose-700">{modalErro}</p>}
+
+            <form
+              action={(formData) => {
+                startTransition(async () => {
+                  try {
+                    await registrarContemplacaoAction(formData);
+                    setContemplandoCota(null);
+                    setModalSucesso("Contemplação registrada e comissões liberadas com sucesso!");
+                  } catch (err: any) {
+                    setModalErro(err.message || "Erro ao registrar contemplação.");
+                  }
+                });
+              }}
+              className="space-y-4 text-xs"
+            >
+              <input type="hidden" name="cota_id" value={contemplandoCota.id} />
+
+              <div className="rounded-xl bg-indigo-50/70 p-3 text-indigo-950 dark:bg-indigo-950/40 dark:text-indigo-200">
+                <p className="font-bold">
+                  Grupo {contemplandoCota.numero_grupo} · Cota {contemplandoCota.numero_cota || "SIF"} · Crédito: {brl(contemplandoCota.valor_credito)}
+                </p>
+                <p className="text-[11px] mt-0.5 text-indigo-700 dark:text-indigo-300">
+                  Na contemplação, a Administradora (Racon) libera o saldo integral da comissão de venda.
+                </p>
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div>
+                  <label className="font-bold text-slate-700 dark:text-slate-300">Tipo de Contemplação:</label>
+                  <select
+                    name="tipo_contemplacao"
+                    value={tipoContemplacao}
+                    onChange={(e) => setTipoContemplacao(e.target.value)}
+                    className="mt-1 w-full rounded-xl border border-slate-300 p-2.5 font-bold dark:border-slate-700 dark:bg-slate-800"
+                  >
+                    <option value="SORTEIO">Sorteio (Loteria Federal)</option>
+                    <option value="LANCE">Lance Livre</option>
+                    <option value="LANCE_FIXO">Lance Fixo</option>
+                    <option value="LANCE_EMBUTIDO">Lance Embutido</option>
+                    <option value="OUTRO">Outro</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="font-bold text-slate-700 dark:text-slate-300">Data da Contemplação:</label>
+                  <input
+                    name="data_contemplacao"
+                    type="date"
+                    value={dataContemplacao}
+                    onChange={(e) => {
+                      setDataContemplacao(e.target.value);
+                      setCompetenciaAntecipada(e.target.value.slice(0, 7));
+                    }}
+                    className="mt-1 w-full rounded-xl border border-slate-300 p-2.5 font-bold dark:border-slate-700 dark:bg-slate-800"
+                  />
+                </div>
+              </div>
+
+              {/* Regra de Antecipação de Comissões */}
+              <div className="space-y-2 rounded-xl border border-indigo-200 bg-linear-to-br from-indigo-50/50 to-blue-50/30 p-4 dark:border-indigo-900/50 dark:from-indigo-950/20 dark:to-blue-950/20">
+                <div className="flex items-center gap-1.5 font-bold text-indigo-950 dark:text-indigo-200">
+                  <Zap className="h-4 w-4 text-amber-500" />
+                  <span>Liberação &amp; Antecipação de Comissões:</span>
+                </div>
+
+                <div className="space-y-2 mt-2">
+                  <label className="flex items-start gap-2.5 rounded-xl border border-indigo-300 bg-white p-3 cursor-pointer shadow-2xs dark:border-indigo-800 dark:bg-slate-800">
+                    <input
+                      type="radio"
+                      name="antecipar_comissoes"
+                      value="true"
+                      checked={anteciparComissoes}
+                      onChange={() => setAnteciparComissoes(true)}
+                      className="mt-1"
+                    />
+                    <div>
+                      <span className="font-black text-indigo-950 dark:text-indigo-200">
+                        ⚡ Antecipar todas as parcelas restantes para o próximo pagamento (Recomendado)
+                      </span>
+                      <p className="text-[11px] text-slate-500 mt-0.5">
+                        Todas as parcelas futuras da Franqueadora, do Consultor e do SDR serão unificadas e liberadas para recebimento na competência <strong>{competenciaAntecipada}</strong>.
+                      </p>
+                    </div>
+                  </label>
+
+                  <label className="flex items-start gap-2.5 rounded-xl border border-slate-200 bg-white p-3 cursor-pointer dark:border-slate-700 dark:bg-slate-800">
+                    <input
+                      type="radio"
+                      name="antecipar_comissoes"
+                      value="false"
+                      checked={!anteciparComissoes}
+                      onChange={() => setAnteciparComissoes(false)}
+                      className="mt-1"
+                    />
+                    <div>
+                      <span className="font-bold text-slate-800 dark:text-slate-200">
+                        📅 Manter cronograma original mês a mês
+                      </span>
+                      <p className="text-[11px] text-slate-500 mt-0.5">
+                        Mantém as parcelas distribuídas nas datas originais sem antecipação de competência.
+                      </p>
+                    </div>
+                  </label>
+                </div>
+
+                {anteciparComissoes && (
+                  <div className="mt-3 pt-2 border-t border-indigo-100 dark:border-indigo-900 flex items-center justify-between">
+                    <label className="font-bold text-indigo-900 dark:text-indigo-300">Competência de Liberação:</label>
+                    <input
+                      type="month"
+                      name="competencia_antecipada"
+                      value={competenciaAntecipada}
+                      onChange={(e) => setCompetenciaAntecipada(e.target.value)}
+                      className="rounded-lg border border-indigo-300 bg-white px-3 py-1 font-bold text-indigo-950 dark:border-indigo-800 dark:bg-slate-800 dark:text-white"
+                    />
+                  </div>
+                )}
+              </div>
+
+              <div className="flex justify-end gap-2 border-t pt-3">
+                <button
+                  type="button"
+                  onClick={() => setContemplandoCota(null)}
+                  className="rounded-xl bg-slate-100 px-4 py-2 font-bold text-slate-700 hover:bg-slate-200 cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={isPending}
+                  className="rounded-xl bg-indigo-700 px-6 py-2.5 font-bold text-white shadow-md hover:bg-indigo-800 disabled:opacity-50 cursor-pointer"
+                >
+                  {isPending ? "Processando Contemplação…" : "Confirmar Contemplação"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* MODAL 1: EDITAR VENDA (MASTER) */}
       {editandoVenda && (
@@ -501,14 +701,14 @@ export function ErpVendasHubView({
                 <button
                   type="button"
                   onClick={() => setEditandoVenda(null)}
-                  className="rounded-xl bg-slate-100 px-4 py-2 font-bold text-slate-700 hover:bg-slate-200"
+                  className="rounded-xl bg-slate-100 px-4 py-2 font-bold text-slate-700 hover:bg-slate-200 cursor-pointer"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
                   disabled={isPending}
-                  className="rounded-xl bg-blue-700 px-5 py-2 font-bold text-white shadow-md hover:bg-blue-800 disabled:opacity-50"
+                  className="rounded-xl bg-blue-700 px-5 py-2 font-bold text-white shadow-md hover:bg-blue-800 disabled:opacity-50 cursor-pointer"
                 >
                   {isPending ? "Salvando…" : "Salvar Alterações"}
                 </button>
@@ -576,14 +776,14 @@ export function ErpVendasHubView({
                 <button
                   type="button"
                   onClick={() => setCancelandoCota(null)}
-                  className="rounded-xl bg-slate-100 px-4 py-2 font-bold text-slate-700 hover:bg-slate-200"
+                  className="rounded-xl bg-slate-100 px-4 py-2 font-bold text-slate-700 hover:bg-slate-200 cursor-pointer"
                 >
                   Voltar
                 </button>
                 <button
                   type="submit"
                   disabled={isPending}
-                  className="rounded-xl bg-amber-600 px-5 py-2 font-bold text-white shadow-md hover:bg-amber-700 disabled:opacity-50"
+                  className="rounded-xl bg-amber-600 px-5 py-2 font-bold text-white shadow-md hover:bg-amber-700 disabled:opacity-50 cursor-pointer"
                 >
                   {isPending ? "Processando…" : "Confirmar Cancelamento &amp; Estorno"}
                 </button>
@@ -709,14 +909,14 @@ export function ErpVendasHubView({
                 <button
                   type="button"
                   onClick={() => setExcluindoVenda(null)}
-                  className="rounded-xl bg-slate-100 px-4 py-2 font-bold text-slate-700 hover:bg-slate-200"
+                  className="rounded-xl bg-slate-100 px-4 py-2 font-bold text-slate-700 hover:bg-slate-200 cursor-pointer"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
                   disabled={isPending || (acaoMaster === "EXCLUIR" && textoConfirmacao !== "EXCLUIR")}
-                  className="rounded-xl bg-rose-700 px-5 py-2 font-bold text-white shadow-md hover:bg-rose-800 disabled:opacity-50"
+                  className="rounded-xl bg-rose-700 px-5 py-2 font-bold text-white shadow-md hover:bg-rose-800 disabled:opacity-50 cursor-pointer"
                 >
                   {isPending ? "Processando…" : acaoMaster === "EXCLUIR" ? "Excluir Definitivamente" : "Confirmar Estorno"}
                 </button>
@@ -771,14 +971,14 @@ export function ErpVendasHubView({
                 <button
                   type="button"
                   onClick={() => setEditandoCotaNum(null)}
-                  className="rounded-xl bg-slate-100 px-4 py-2 font-bold text-slate-700 hover:bg-slate-200"
+                  className="rounded-xl bg-slate-100 px-4 py-2 font-bold text-slate-700 hover:bg-slate-200 cursor-pointer"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
                   disabled={isPending}
-                  className="rounded-xl bg-blue-700 px-5 py-2 font-bold text-white shadow-md hover:bg-blue-800 disabled:opacity-50"
+                  className="rounded-xl bg-blue-700 px-5 py-2 font-bold text-white shadow-md hover:bg-blue-800 disabled:opacity-50 cursor-pointer"
                 >
                   {isPending ? "Salvando…" : "Salvar Cota Oficial"}
                 </button>

@@ -18,7 +18,6 @@ export async function masterAtualizarVendaAction(formData: FormData) {
   const papelNome = vinculo?.papel?.nome?.toLowerCase() ?? "";
   const isMaster = papelNome.includes("master") || papelNome.includes("admin") || papelNome.includes("gestor") || Boolean((user as any)?.is_master);
   if (!isMaster) throw new Error("Apenas o usuário Master tem autorização para editar vendas e comissões.");
-  if (!empresaAtiva) throw new Error("Tenant não identificado.");
 
   const vendaId = val(formData, "venda_id");
   const numeroCota = val(formData, "numero_cota");
@@ -82,7 +81,6 @@ export async function masterExcluirOuEstornarVendaAction(formData: FormData) {
   const papelNome = vinculo?.papel?.nome?.toLowerCase() ?? "";
   const isMaster = papelNome.includes("master") || papelNome.includes("admin") || papelNome.includes("gestor") || Boolean((user as any)?.is_master);
   if (!isMaster) throw new Error("Apenas o usuário Master tem autorização para excluir ou estornar vendas.");
-  if (!empresaAtiva) throw new Error("Tenant não identificado.");
 
   const vendaId = val(formData, "venda_id");
   const acao = val(formData, "acao"); // "EXCLUIR" ou "ESTORNAR"
@@ -131,6 +129,37 @@ export async function atualizarNumeroCotaAction(formData: FormData) {
 
   revalidatePath("/erp/vendas");
   return { ok: true };
+}
+
+export async function registrarContemplacaoAction(formData: FormData) {
+  await requireStaffAdmin();
+  const { empresaAtiva } = await getCurrentTenantContext();
+  if (!empresaAtiva) throw new Error("Tenant não identificado.");
+
+  const cotaId = val(formData, "cota_id");
+  const tipoContemplacao = val(formData, "tipo_contemplacao") || "SORTEIO";
+  const dataContemplacao = val(formData, "data_contemplacao") || new Date().toISOString().slice(0, 10);
+  const antecipar = formData.get("antecipar_comissoes") === "true";
+  const competencia = val(formData, "competencia_antecipada") || dataContemplacao.slice(0, 7);
+  const observacao = val(formData, "observacao") || null;
+
+  const admin = createAdminClient();
+  const { data, error } = await admin.rpc("rpc_registrar_contemplacao_comissoes", {
+    p_empresa_id: empresaAtiva.id,
+    p_cota_id: cotaId,
+    p_tipo_contemplacao: tipoContemplacao,
+    p_data_contemplacao: dataContemplacao,
+    p_antecipar_comissoes: antecipar,
+    p_competencia_antecipada: competencia,
+    p_observacao: observacao,
+  });
+
+  if (error) throw new Error(error.message);
+
+  revalidatePath("/erp/vendas");
+  revalidatePath("/erp/minhas-comissoes");
+  revalidatePath("/erp/comissoes");
+  return { ok: true, data };
 }
 
 function NULLIF_OR_VAL(v: string) {
