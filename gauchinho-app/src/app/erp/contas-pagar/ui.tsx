@@ -568,23 +568,51 @@ export function ContasPagarClient({
 
       <section aria-label="Balanço das despesas pagas pelos sócios" className="space-y-3">
         <div>
-          <h2 className="font-bold text-slate-900">Balanço entre Fernando e Eroni</h2>
+          <h2 className="font-bold text-slate-900">Balanço das Despesas Pagas pelos Sócios</h2>
           <p className="text-sm text-slate-500">
-            A dívida é da empresa e a responsabilidade de cada sócio corresponde a 50% do total pago pessoalmente no período.
+            Total gasto pelos sócios pessoalmente, divisão igualitária (50%) e cálculo direto de acerto entre eles.
           </p>
         </div>
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          {[
-            [`Pago por ${balancoSocios.fernandoNome}`, balancoSocios.pagoFernando, "border-blue-200 bg-blue-50 text-blue-950"],
-            [`Pago por ${balancoSocios.eroniNome}`, balancoSocios.pagoEroni, "border-violet-200 bg-violet-50 text-violet-950"],
-            ["Débito da empresa", balancoSocios.debitoEmpresa, "border-rose-200 bg-rose-50 text-rose-950"],
-            ["Cota de cada sócio (50%)", balancoSocios.cotaIndividual, "border-amber-200 bg-amber-50 text-amber-950"],
-          ].map(([label, value, color]) => (
-            <div key={String(label)} className={`rounded-2xl border p-4 shadow-sm ${color}`}>
-              <p className="text-xs font-bold uppercase tracking-wide opacity-75">{label}</p>
-              <p className="mt-2 text-2xl font-black">{brl(Number(value))}</p>
-            </div>
-          ))}
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+          <div className="rounded-2xl border border-indigo-200 bg-indigo-50/80 p-4 shadow-sm text-indigo-950">
+            <p className="text-xs font-bold uppercase tracking-wide opacity-75">Total Gasto (Soma Sócios)</p>
+            <p className="mt-2 text-2xl font-black">{brl(balancoSocios.debitoEmpresa)}</p>
+            <p className="mt-1 text-[10px] text-indigo-700 font-medium">Soma de {balancoSocios.fernandoNome} + {balancoSocios.eroniNome}</p>
+          </div>
+
+          <div className="rounded-2xl border border-blue-200 bg-blue-50/80 p-4 shadow-sm text-blue-950">
+            <p className="text-xs font-bold uppercase tracking-wide opacity-75">Pago por {balancoSocios.fernandoNome}</p>
+            <p className="mt-2 text-2xl font-black">{brl(balancoSocios.pagoFernando)}</p>
+            <p className="mt-1 text-[10px] text-blue-700 font-medium">Em contas pagas no período</p>
+          </div>
+
+          <div className="rounded-2xl border border-violet-200 bg-violet-50/80 p-4 shadow-sm text-violet-950">
+            <p className="text-xs font-bold uppercase tracking-wide opacity-75">Pago por {balancoSocios.eroniNome}</p>
+            <p className="mt-2 text-2xl font-black">{brl(balancoSocios.pagoEroni)}</p>
+            <p className="mt-1 text-[10px] text-violet-700 font-medium">Em contas pagas no período</p>
+          </div>
+
+          <div className="rounded-2xl border border-amber-200 bg-amber-50/80 p-4 shadow-sm text-amber-950">
+            <p className="text-xs font-bold uppercase tracking-wide opacity-75">Parte de cada sócio (50%)</p>
+            <p className="mt-2 text-2xl font-black">{brl(balancoSocios.cotaIndividual)}</p>
+            <p className="mt-1 text-[10px] text-amber-700 font-medium">Metade do total gasto</p>
+          </div>
+
+          <div className="rounded-2xl border border-emerald-200 bg-emerald-50/90 p-4 shadow-sm text-emerald-950">
+            <p className="text-xs font-bold uppercase tracking-wide opacity-75">Acerto de Contas</p>
+            <p className="mt-2 text-xl font-black leading-tight text-emerald-900">
+              {balancoSocios.debitoEmpresa === 0
+                ? "Sem despesas"
+                : balancoSocios.socioCredor === null
+                  ? "Quites (0,00)"
+                  : `${balancoSocios.socioCredor === "A" ? balancoSocios.eroniNome.split(" ")[0] : balancoSocios.fernandoNome.split(" ")[0]} paga ${brl(balancoSocios.transferenciaParaEqualizar)}`}
+            </p>
+            <p className="mt-1 text-[10px] text-emerald-700 font-medium">
+              {balancoSocios.socioCredor !== null
+                ? `Para ${balancoSocios.socioCredor === "A" ? balancoSocios.fernandoNome.split(" ")[0] : balancoSocios.eroniNome.split(" ")[0]}`
+                : "Balanço equilibrado"}
+            </p>
+          </div>
         </div>
       </section>
 
@@ -1286,46 +1314,80 @@ export function ContasPagarClient({
               </div>
             </section>
 
-            <section className="rounded-2xl bg-slate-950 p-5 text-white shadow-lg">
-              <h2 className="font-bold">Fechamento entre sócios</h2>
-              <p className="mt-1 text-sm text-slate-400">
-                Contas pagas pessoalmente no período selecionado. A empresa assume o total e cada sócio entra com metade.
-              </p>
-              <div className="mt-5 space-y-3">
-                <div className="rounded-xl bg-white/10 p-4">
-                  <p className="font-semibold">{balancoSocios.fernandoNome}</p>
-                  <p className="mt-1 text-sm text-slate-300">
-                    Pagou {brl(balancoSocios.pagoFernando)} · sua parte é {brl(balancoSocios.cotaIndividual)}.
-                  </p>
+            <section className="rounded-2xl bg-slate-950 p-5 text-white shadow-lg space-y-4">
+              <div>
+                <h2 className="font-bold text-base text-white">Fechamento entre Sócios</h2>
+                <p className="mt-1 text-xs text-slate-400">
+                  Cálculo passo a passo das contas pagas pelos sócios no período selecionado:
+                </p>
+              </div>
+
+              <div className="space-y-3">
+                {/* 1. Total e Divisão */}
+                <div className="rounded-xl bg-white/10 p-3.5 space-y-2">
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-slate-300">1. Total Gasto pelos Sócios:</span>
+                    <strong className="text-white text-sm">{brl(balancoSocios.debitoEmpresa)}</strong>
+                  </div>
+                  <div className="flex justify-between items-center text-xs border-t border-white/10 pt-2">
+                    <span className="text-slate-300">2. Cota de cada um (50%):</span>
+                    <strong className="text-amber-300 text-sm">{brl(balancoSocios.cotaIndividual)}</strong>
+                  </div>
                 </div>
-                <div className="rounded-xl bg-white/10 p-4">
-                  <p className="font-semibold">{balancoSocios.eroniNome}</p>
-                  <p className="mt-1 text-sm text-slate-300">
-                    Pagou {brl(balancoSocios.pagoEroni)} · sua parte é {brl(balancoSocios.cotaIndividual)}.
-                  </p>
+
+                {/* 2. Demonstrativo Individual */}
+                <div className="rounded-xl bg-white/10 p-3.5 space-y-2 text-xs">
+                  <p className="font-bold text-slate-200 mb-1">3. Demonstrativo por Sócio:</p>
+
+                  <div className="rounded-lg bg-black/25 p-2.5 space-y-1">
+                    <div className="flex justify-between font-semibold text-blue-300">
+                      <span>{balancoSocios.fernandoNome}</span>
+                      <span>Pagou {brl(balancoSocios.pagoFernando)}</span>
+                    </div>
+                    <p className="text-[11px] text-slate-300">
+                      Cota 50%: {brl(balancoSocios.cotaIndividual)} − Pagou {brl(balancoSocios.pagoFernando)} ={" "}
+                      {balancoSocios.pagoFernando >= balancoSocios.cotaIndividual ? (
+                        <span className="text-emerald-400 font-bold">Tem a receber {brl(balancoSocios.pagoFernando - balancoSocios.cotaIndividual)}</span>
+                      ) : (
+                        <span className="text-rose-300 font-bold">Falta pagar {brl(balancoSocios.cotaIndividual - balancoSocios.pagoFernando)}</span>
+                      )}
+                    </p>
+                  </div>
+
+                  <div className="rounded-lg bg-black/25 p-2.5 space-y-1">
+                    <div className="flex justify-between font-semibold text-violet-300">
+                      <span>{balancoSocios.eroniNome}</span>
+                      <span>Pagou {brl(balancoSocios.pagoEroni)}</span>
+                    </div>
+                    <p className="text-[11px] text-slate-300">
+                      Cota 50%: {brl(balancoSocios.cotaIndividual)} − Pagou {brl(balancoSocios.pagoEroni)} ={" "}
+                      {balancoSocios.pagoEroni >= balancoSocios.cotaIndividual ? (
+                        <span className="text-emerald-400 font-bold">Tem a receber {brl(balancoSocios.pagoEroni - balancoSocios.cotaIndividual)}</span>
+                      ) : (
+                        <span className="text-rose-300 font-bold">Falta pagar {brl(balancoSocios.cotaIndividual - balancoSocios.pagoEroni)}</span>
+                      )}
+                    </p>
+                  </div>
                 </div>
+
+                {/* 3. Conclusão do Acerto */}
                 {balancoSocios.debitoEmpresa === 0 ? (
-                  <p className="rounded-xl bg-white/10 p-4 text-sm text-slate-300">Nenhuma despesa pessoal paga no período.</p>
+                  <p className="rounded-xl bg-white/10 p-3.5 text-xs text-slate-300">Nenhuma despesa pessoal paga no período selecionado.</p>
                 ) : balancoSocios.socioCredor === null ? (
-                  <p className="rounded-xl bg-emerald-500/20 p-4 text-sm text-emerald-100">
-                    Os dois pagaram o mesmo valor. O balanço está equilibrado.
+                  <p className="rounded-xl bg-emerald-500/20 p-3.5 text-xs font-bold text-emerald-200">
+                    Os dois sócios pagaram o mesmo valor. Contas 100% equilibradas.
                   </p>
                 ) : (
-                  <div className="space-y-3 rounded-xl border border-amber-400/30 bg-amber-400/10 p-4">
-                    <p className="font-semibold text-amber-200">Como equalizar</p>
-                    <p className="text-sm text-slate-200">
-                      {balancoSocios.socioCredor === "A" ? balancoSocios.eroniNome : balancoSocios.fernandoNome} transfere{" "}
-                      <b>{brl(balancoSocios.transferenciaParaEqualizar)}</b> para{" "}
-                      {balancoSocios.socioCredor === "A" ? balancoSocios.fernandoNome : balancoSocios.eroniNome}.
+                  <div className="rounded-xl border border-amber-400/40 bg-amber-400/15 p-4 space-y-2">
+                    <p className="text-xs font-bold uppercase tracking-wider text-amber-300">Como Equalizar o Pagamento</p>
+                    <p className="text-sm text-slate-100 leading-snug">
+                      👉 <strong>{balancoSocios.socioCredor === "A" ? balancoSocios.eroniNome : balancoSocios.fernandoNome}</strong> deve transferir{" "}
+                      <strong className="text-amber-200 text-base">{brl(balancoSocios.transferenciaParaEqualizar)}</strong> diretamente para{" "}
+                      <strong>{balancoSocios.socioCredor === "A" ? balancoSocios.fernandoNome : balancoSocios.eroniNome}</strong>.
                     </p>
-                    <p className="text-xs text-slate-400">
-                      A transferência corrige os dois lados, portanto seu efeito no balanço é o dobro:{" "}
-                      {brl(balancoSocios.transferenciaParaEqualizar)} × 2 = {brl(balancoSocios.diferencaPagamentos)}.
+                    <p className="text-[11px] text-slate-300 pt-1 border-t border-amber-400/20">
+                      Após essa transferência de <strong>{brl(balancoSocios.transferenciaParaEqualizar)}</strong>, ambos os sócios terão desembolsado exatamente <strong>{brl(balancoSocios.cotaIndividual)}</strong> (50% do total gasto).
                     </p>
-                    <div className="border-t border-white/10 pt-3 text-sm text-slate-200">
-                      Alternativa: o sócio que pagou menos assume{" "}
-                      <b>{brl(balancoSocios.despesaAdicionalParaEqualizar)}</b> em novas despesas da empresa.
-                    </div>
                   </div>
                 )}
               </div>
