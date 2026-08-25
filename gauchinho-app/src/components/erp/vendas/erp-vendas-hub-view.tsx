@@ -93,12 +93,30 @@ export type VinculoPerfilSimples = {
   } | null;
 };
 
+export type RegraParticipanteSimples = {
+  id: string;
+  perfil_id: string | null;
+  programa_id?: string | null;
+  percentual_comissao: number;
+};
+
+export type RegraFranquiaSimples = {
+  id: string;
+  programa_id: string;
+  percentual_total_comissao: number;
+  tipo_administradora_id: string | null;
+  modalidade_comissao_id: string | null;
+  ativa: boolean;
+};
+
 interface ErpVendasHubViewProps {
   vendas: VendaItem[];
   cotas: CotaItem[];
   participantes: ParticipanteSimples[];
   vinculosPerfis: VinculoPerfilSimples[];
   modalidades?: ModalidadeSimples[];
+  regrasParticipantes?: RegraParticipanteSimples[];
+  regrasFranquia?: RegraFranquiaSimples[];
   empresaNome: string;
   isMaster: boolean;
 }
@@ -144,6 +162,8 @@ export function ErpVendasHubView({
   participantes,
   vinculosPerfis,
   modalidades = [],
+  regrasParticipantes = [],
+  regrasFranquia = [],
   empresaNome,
   isMaster,
 }: ErpVendasHubViewProps) {
@@ -198,6 +218,27 @@ export function ErpVendasHubView({
     if (!editSecundarioId) return [];
     return (vinculosPerfis ?? []).filter((v) => v.participante_id === editSecundarioId && v.perfil);
   }, [vinculosPerfis, editSecundarioId]);
+
+  const regraEditPrincipal = useMemo(() => {
+    const perfilId = editPerfilPrincipalId || perfisDoPrincipal[0]?.perfil_id;
+    if (!perfilId) return null;
+    return regrasParticipantes.find((r) => r.perfil_id === perfilId) || null;
+  }, [regrasParticipantes, editPerfilPrincipalId, perfisDoPrincipal]);
+
+  const programaEditId = useMemo(() => {
+    return regraEditPrincipal?.programa_id || null;
+  }, [regraEditPrincipal]);
+
+  const percentualFranqueadoraEditAtivo = useMemo(() => {
+    if (programaEditId) {
+      const matchMod = modalidades.find((m) => m.codigo.toUpperCase() === editTipoVenda);
+      const r = regrasFranquia.find(
+        (rf) => rf.programa_id === programaEditId && (rf.modalidade_comissao_id === matchMod?.id || !rf.modalidade_comissao_id)
+      ) || regrasFranquia.find((rf) => rf.programa_id === programaEditId);
+      if (r?.percentual_total_comissao) return Number(r.percentual_total_comissao);
+    }
+    return editTipoVenda === "REDUZIDA_60_99" ? 3.5 : editTipoVenda === "REDUZIDA_ABAIXO_59" ? 3.0 : 4.0;
+  }, [programaEditId, modalidades, regrasFranquia, editTipoVenda]);
 
   // Filtragem de vendas
   const vendasFiltradas = vendas.filter((v) => {
@@ -734,18 +775,28 @@ export function ErpVendasHubView({
                     Tipo de Venda &amp; Modalidade da Parcela:
                   </label>
                   <span className="text-[11px] font-bold text-indigo-800 dark:text-indigo-300">
-                    {editTipoVenda === "REDUZIDA_60_99" ? "Ref. 3,50%" : editTipoVenda === "REDUZIDA_ABAIXO_59" ? "Ref. 3,00%" : "Ref. 4,00%"}
+                    Comissão Franqueadora: {percentualFranqueadoraEditAtivo.toFixed(2)}%
                   </span>
                 </div>
 
                 <div className="grid gap-2 sm:grid-cols-3">
                   {[
-                    { codigo: "INTEGRAL", nome: "Integral (100%)", desc: "Comissão Cheia (4%)", badge: "bg-emerald-100 text-emerald-800" },
-                    { codigo: "REDUZIDA_60_99", nome: "Reduzida 60%", desc: "60% a 99% (3,5%)", badge: "bg-blue-100 text-blue-800" },
-                    { codigo: "REDUZIDA_ABAIXO_59", nome: "Abaixo de 59%", desc: "Super Reduzida (3%)", badge: "bg-amber-100 text-amber-800" },
+                    { codigo: "INTEGRAL", nome: "Integral (100%)", desc: "Comissão Cheia" },
+                    { codigo: "REDUZIDA_60_99", nome: "Reduzida 60%", desc: "60% a 99%" },
+                    { codigo: "REDUZIDA_ABAIXO_59", nome: "Abaixo de 59%", desc: "Super Reduzida" },
                   ].map((op) => {
                     const matchMod = modalidades.find((m) => m.codigo.toUpperCase() === op.codigo);
                     const isSelected = editTipoVenda === op.codigo;
+                    const refPct = (() => {
+                      if (programaEditId) {
+                        const r = regrasFranquia.find(
+                          (rf) => rf.programa_id === programaEditId && (rf.modalidade_comissao_id === matchMod?.id || !rf.modalidade_comissao_id)
+                        ) || regrasFranquia.find((rf) => rf.programa_id === programaEditId);
+                        if (r?.percentual_total_comissao) return Number(r.percentual_total_comissao);
+                      }
+                      return op.codigo === "REDUZIDA_60_99" ? 3.5 : op.codigo === "REDUZIDA_ABAIXO_59" ? 3.0 : 4.0;
+                    })();
+
                     return (
                       <label
                         key={op.codigo}
@@ -771,6 +822,10 @@ export function ErpVendasHubView({
                             <p className="text-[10px] text-slate-500 font-normal leading-tight mt-0.5">{op.desc}</p>
                           </div>
                         </div>
+                        <div className="mt-2 flex items-center justify-between border-t border-slate-100 pt-1.5 text-[10px] text-slate-500">
+                          <span>Ref:</span>
+                          <strong className="text-indigo-700 font-bold">{refPct.toFixed(2)}%</strong>
+                        </div>
                       </label>
                     );
                   })}
@@ -778,6 +833,7 @@ export function ErpVendasHubView({
 
                 <input type="hidden" name="modalidade_comissao_id" value={editModalidadeId} />
                 <input type="hidden" name="tipo_venda" value={editTipoVenda} />
+                <input type="hidden" name="percentual_franqueadora" value={percentualFranqueadoraEditAtivo} />
               </div>
 
               {/* SELEÇÃO DO MODELO DE COMISSÃO DO PRINCIPAL */}

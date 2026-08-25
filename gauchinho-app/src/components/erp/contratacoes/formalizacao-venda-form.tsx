@@ -52,6 +52,7 @@ export type VinculoPerfil = {
 export type RegraParticipante = {
   id: string;
   perfil_id: string | null;
+  programa_id?: string | null;
   percentual_comissao: number;
   seguir_cronograma_franquia: boolean;
   etapas_cronograma: unknown;
@@ -158,7 +159,56 @@ export function FormalizacaoVendaForm({
   const valorParcela = cotaAtual?.valor_parcela || 0;
   const prazoTotal = grupoAtual?.prazo_total || 180;
 
-  // 2. Modalidades / Tipos de Venda (Integral, Reduzida 60%, Abaixo 59%)
+  // 2. Perfis do Consultor Principal
+  const perfisPrincipal = useMemo(() => {
+    if (!selectedPrincipalId) return [];
+    return vinculosPerfis.filter((v) => v.participante_id === selectedPrincipalId && v.perfil);
+  }, [vinculosPerfis, selectedPrincipalId]);
+
+  const perfilPrincipalAtivo = useMemo(() => {
+    if (selectedPerfilPrincipalId) {
+      return perfisPrincipal.find((p) => p.perfil_id === selectedPerfilPrincipalId) || perfisPrincipal[0];
+    }
+    return perfisPrincipal[0] || null;
+  }, [perfisPrincipal, selectedPerfilPrincipalId]);
+
+  // Regra do perfil comercial selecionado (contém o programa_id da franqueadora, ex: Franquia Antiga)
+  const regraPrincipalAtiva = useMemo(() => {
+    if (!perfilPrincipalAtivo) return null;
+    return (
+      regrasParticipantes.find((r) => r.perfil_id === perfilPrincipalAtivo.perfil_id) ||
+      regrasParticipantes[0] ||
+      null
+    );
+  }, [regrasParticipantes, perfilPrincipalAtivo]);
+
+  const programaPrincipalId = useMemo(() => {
+    return regraPrincipalAtiva?.programa_id || null;
+  }, [regraPrincipalAtiva]);
+
+  // Percentual de repasse ao Consultor Principal (% sobre a comissão da Franqueadora)
+  const percentualPrincipal = useMemo(() => {
+    if (!perfilPrincipalAtivo) return 50;
+    if (perfilPrincipalAtivo.override_percentual !== null && perfilPrincipalAtivo.override_percentual !== undefined) {
+      return Number(perfilPrincipalAtivo.override_percentual);
+    }
+    if (regraPrincipalAtiva?.percentual_comissao !== undefined && regraPrincipalAtiva.percentual_comissao !== null) {
+      return Number(regraPrincipalAtiva.percentual_comissao);
+    }
+    const nomePerfil = (perfilPrincipalAtivo.perfil?.nome || "").toLowerCase();
+    if (
+      nomePerfil.includes("sócio") ||
+      nomePerfil.includes("socio") ||
+      nomePerfil.includes("gestor") ||
+      perfilPrincipalAtivo.papel_tipo === "GESTOR" ||
+      perfilPrincipalAtivo.papel_tipo === "SOCIO"
+    ) {
+      return 100;
+    }
+    return 50;
+  }, [perfilPrincipalAtivo, regraPrincipalAtiva]);
+
+  // 3. Modalidades / Tipos de Venda (Integral, Reduzida 60%, Abaixo 59%) com base no Programa do Perfil
   const modalidadesOpcoes = useMemo(() => {
     const cadastradas = modalidades.filter(
       (m) =>
@@ -202,13 +252,34 @@ export function FormalizacaoVendaForm({
 
       const modId = match?.id || p.codigo;
 
-      const regra = regrasFranquia.find(
-        (r) =>
-          r.modalidade_comissao_id === match?.id &&
-          (!r.tipo_administradora_id || r.tipo_administradora_id === grupoAtual?.tipo_administradora_id)
-      );
+      // 1. Busca regra específica do PROGRAMA DO PERFIL SELECIONADO (ex: Franquia Antiga v1 -> 2%)
+      let regra = programaPrincipalId
+        ? regrasFranquia.find(
+            (r) =>
+              r.programa_id === programaPrincipalId &&
+              (r.modalidade_comissao_id === match?.id || !r.modalidade_comissao_id) &&
+              (!r.tipo_administradora_id || r.tipo_administradora_id === grupoAtual?.tipo_administradora_id)
+          )
+        : null;
 
-      const percentualRef = regra?.percentual_total_comissao ? Number(regra.percentual_total_comissao) : p.percentualBase;
+      // 2. Se não encontrou por modalidade exata no programa, busca qualquer regra do programa
+      if (!regra && programaPrincipalId) {
+        regra = regrasFranquia.find((r) => r.programa_id === programaPrincipalId);
+      }
+
+      // 3. Se não tem programa no perfil, busca regra geral para o tipo de administradora e modalidade
+      if (!regra) {
+        regra = regrasFranquia.find(
+          (r) =>
+            r.modalidade_comissao_id === match?.id &&
+            (!r.tipo_administradora_id || r.tipo_administradora_id === grupoAtual?.tipo_administradora_id)
+        );
+      }
+
+      const percentualRef =
+        regra?.percentual_total_comissao !== undefined && regra?.percentual_total_comissao !== null
+          ? Number(regra.percentual_total_comissao)
+          : p.percentualBase;
 
       return {
         id: modId,
@@ -221,7 +292,7 @@ export function FormalizacaoVendaForm({
         isCadastradaNoBanco: Boolean(match?.id),
       };
     });
-  }, [modalidades, regrasFranquia, grupoAtual]);
+  }, [modalidades, regrasFranquia, grupoAtual, programaPrincipalId]);
 
   const modalidadeAtiva = useMemo(() => {
     if (selectedModalidadeId) {
@@ -240,32 +311,6 @@ export function FormalizacaoVendaForm({
     }
     return modalidadeAtiva?.percentualReferencia ?? 4.0;
   }, [ajustarPercentualManual, customPercentualFranqueadora, modalidadeAtiva]);
-
-  // 3. Perfis do Consultor Principal
-  const perfisPrincipal = useMemo(() => {
-    if (!selectedPrincipalId) return [];
-    return vinculosPerfis.filter((v) => v.participante_id === selectedPrincipalId && v.perfil);
-  }, [vinculosPerfis, selectedPrincipalId]);
-
-  const perfilPrincipalAtivo = useMemo(() => {
-    if (selectedPerfilPrincipalId) {
-      return perfisPrincipal.find((p) => p.perfil_id === selectedPerfilPrincipalId) || perfisPrincipal[0];
-    }
-    return perfisPrincipal[0] || null;
-  }, [perfisPrincipal, selectedPerfilPrincipalId]);
-
-  const percentualPrincipal = useMemo(() => {
-    if (!perfilPrincipalAtivo) return 50;
-    if (perfilPrincipalAtivo.override_percentual !== null && perfilPrincipalAtivo.override_percentual !== undefined) {
-      return Number(perfilPrincipalAtivo.override_percentual);
-    }
-    const regra = regrasParticipantes.find((r) => r.perfil_id === perfilPrincipalAtivo.perfil_id);
-    if (regra?.percentual_comissao) return Number(regra.percentual_comissao);
-    if (perfilPrincipalAtivo.perfil?.nome.toLowerCase().includes("sócio") || perfilPrincipalAtivo.papel_tipo === "GESTOR") {
-      return 100;
-    }
-    return 50;
-  }, [perfilPrincipalAtivo, regrasParticipantes]);
 
   // 4. Perfis do Secundário
   const perfisSecundario = useMemo(() => {

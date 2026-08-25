@@ -105,7 +105,7 @@ export default async function ConferirContratacaoPage({
       .eq("ativo", true),
     admin
       .from("comissao_regras_participantes")
-      .select("id,perfil_id,percentual_comissao,seguir_cronograma_franquia,etapas_cronograma,base_v2,status")
+      .select("id,perfil_id,programa_id,percentual_comissao,seguir_cronograma_franquia,etapas_cronograma,base_v2,status")
       .eq("empresa_id", empresaAtiva.id)
       .eq("ativa", true),
     admin
@@ -127,7 +127,7 @@ export default async function ConferirContratacaoPage({
     admin
       .from("comissao_regras_franquia")
       .select("id,programa_id,percentual_total_comissao,tipo_administradora_id,modalidade_comissao_id,ativa,configuracao_homologada")
-      .eq("empresa_id", empresaAtiva.id)
+      .or(`empresa_id.eq.${empresaAtiva.id},empresa_id.is.null`)
       .eq("ativa", true),
   ]);
 

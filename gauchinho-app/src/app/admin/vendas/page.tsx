@@ -19,7 +19,7 @@ export default async function AdminVendasPage() {
 
   const admin = createAdminClient();
 
-  const [vendasRes, cotasRes, participantesRes, vinculosRes, modalidadesRes] = await Promise.all([
+  const [vendasRes, cotasRes, participantesRes, vinculosRes, modalidadesRes, regrasPartRes, regrasFranqRes] = await Promise.all([
     admin
       .from("vendas")
       .select(`
@@ -52,6 +52,16 @@ export default async function AdminVendasPage() {
       .select("id,administradora_id,codigo,nome,ativo")
       .eq("ativo", true)
       .order("nome"),
+    admin
+      .from("comissao_regras_participantes")
+      .select("id,perfil_id,programa_id,percentual_comissao,seguir_cronograma_franquia,etapas_cronograma,base_v2,status")
+      .eq("empresa_id", empresaId)
+      .eq("ativa", true),
+    admin
+      .from("comissao_regras_franquia")
+      .select("id,programa_id,percentual_total_comissao,tipo_administradora_id,modalidade_comissao_id,ativa,configuracao_homologada")
+      .or(`empresa_id.eq.${empresaId},empresa_id.is.null`)
+      .eq("ativa", true),
   ]);
 
   const participantes = (participantesRes.data ?? []) as ParticipanteSimples[];
@@ -127,6 +137,8 @@ export default async function AdminVendasPage() {
         participantes={participantes}
         vinculosPerfis={vinculosPerfis}
         modalidades={((modalidadesRes.data ?? []) as any)}
+        regrasParticipantes={((regrasPartRes.data ?? []) as any)}
+        regrasFranquia={((regrasFranqRes.data ?? []) as any)}
         empresaNome={empresaNome}
         isMaster={isMaster}
       />
