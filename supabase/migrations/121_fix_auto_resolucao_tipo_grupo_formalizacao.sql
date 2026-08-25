@@ -173,7 +173,7 @@ BEGIN
     RAISE EXCEPTION 'Acesso negado ao tenant';
   END IF;
 
-  v_hash := encode(digest(p_contratacao_id::text, 'sha256'), 'hex');
+  v_hash := md5(p_contratacao_id::text);
 
   -- 1. Idempotência por Hash e Lock Transacional
   PERFORM pg_advisory_xact_lock(hashtextextended(p_empresa_id::text || ':CONVERSAO_VENDA:' || p_idempotency_key, 0));
