@@ -24,6 +24,8 @@ export async function masterAtualizarVendaAction(formData: FormData) {
   const principalId = val(formData, "participante_principal_id") || null;
   const secundarioId = val(formData, "participante_secundario_id") || null;
   const fracao = val(formData, "fracao_secundario");
+  const perfilPrincipalId = val(formData, "perfil_principal_id") || null;
+  const perfilSecundarioId = val(formData, "perfil_secundario_id") || null;
   const dataPrimeira = val(formData, "data_primeira_parcela") || null;
   const dataSegunda = val(formData, "data_segunda_parcela") || null;
   const recalcular = formData.get("recalcular_futuras") === "on";
@@ -39,6 +41,8 @@ export async function masterAtualizarVendaAction(formData: FormData) {
     p_data_primeira_parcela: dataPrimeira,
     p_data_segunda_parcela: dataSegunda,
     p_recalcular_comissoes_futuras: recalcular,
+    p_perfil_principal_id: perfilPrincipalId,
+    p_perfil_secundario_id: perfilSecundarioId,
   });
 
   if (error) throw new Error(error.message);

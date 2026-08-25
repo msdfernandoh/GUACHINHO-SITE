@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useMemo } from "react";
 import {
   Pencil,
   Trash2,
@@ -38,6 +38,8 @@ export type VendaItem = {
   participante_comercial_id: string | null;
   participante_secundario_id: string | null;
   participante_secundario_fracao_percentual: number | null;
+  perfil_principal_id?: string | null;
+  perfil_secundario_id?: string | null;
   snapshot_venda: any;
   consultor_nome?: string;
   secundario_nome?: string;
@@ -60,6 +62,19 @@ export type CotaItem = {
   cliente_nome?: string;
 };
 
+export type VinculoPerfilSimples = {
+  id: string;
+  participante_id: string;
+  papel_tipo: string;
+  perfil_id: string;
+  override_percentual: number | null;
+  perfil: {
+    id: string;
+    nome: string;
+    papel_base: string;
+  } | null;
+};
+
 export type ParticipanteSimples = {
   id: string;
   nome: string;
@@ -70,6 +85,7 @@ interface ErpVendasHubViewProps {
   vendas: VendaItem[];
   cotas: CotaItem[];
   participantes: ParticipanteSimples[];
+  vinculosPerfis: VinculoPerfilSimples[];
   empresaNome: string;
   isMaster: boolean;
 }
@@ -81,6 +97,7 @@ export function ErpVendasHubView({
   vendas,
   cotas,
   participantes,
+  vinculosPerfis,
   empresaNome,
   isMaster,
 } : ErpVendasHubViewProps) {
@@ -109,6 +126,8 @@ export function ErpVendasHubView({
   // Estados para Modal de Edição de Venda
   const [editNumCota, setEditNumCota] = useState("");
   const [editPrincipalId, setEditPrincipalId] = useState("");
+  const [editPerfilPrincipalId, setEditPerfilPrincipalId] = useState("");
+  const [editPerfilSecundarioId, setEditPerfilSecundarioId] = useState("");
   const [editSecundarioId, setEditSecundarioId] = useState("");
   const [editFracaoSec, setEditFracaoSec] = useState<number>(20);
   const [editData1, setEditData1] = useState("");
@@ -120,6 +139,16 @@ export function ErpVendasHubView({
   const [dataContemplacao, setDataContemplacao] = useState(new Date().toISOString().slice(0, 10));
   const [anteciparComissoes, setAnteciparComissoes] = useState(true);
   const [competenciaAntecipada, setCompetenciaAntecipada] = useState(new Date().toISOString().slice(0, 7));
+
+  const perfisDoPrincipal = useMemo(() => {
+    if (!editPrincipalId) return [];
+    return (vinculosPerfis ?? []).filter((v) => v.participante_id === editPrincipalId && v.perfil);
+  }, [vinculosPerfis, editPrincipalId]);
+
+  const perfisDoSecundario = useMemo(() => {
+    if (!editSecundarioId) return [];
+    return (vinculosPerfis ?? []).filter((v) => v.participante_id === editSecundarioId && v.perfil);
+  }, [vinculosPerfis, editSecundarioId]);
 
   // Filtragem de vendas
   const vendasFiltradas = vendas.filter((v) => {
@@ -137,6 +166,8 @@ export function ErpVendasHubView({
     setEditandoVenda(v);
     setEditNumCota(v.cota_numero || "");
     setEditPrincipalId(v.participante_comercial_id || "");
+    setEditPerfilPrincipalId(v.perfil_principal_id || (v.snapshot_venda as any)?.perfil_principal_id || "");
+    setEditPerfilSecundarioId(v.perfil_secundario_id || (v.snapshot_venda as any)?.perfil_secundario_id || "");
     setEditSecundarioId(v.participante_secundario_id || "");
     setEditFracaoSec(v.participante_secundario_fracao_percentual ? Number(v.participante_secundario_fracao_percentual) : 20);
     setEditData1(v.data_primeira_parcela || v.data_venda.slice(0, 10));
@@ -618,7 +649,10 @@ export function ErpVendasHubView({
                   <select
                     name="participante_principal_id"
                     value={editPrincipalId}
-                    onChange={(e) => setEditPrincipalId(e.target.value)}
+                    onChange={(e) => {
+                      setEditPrincipalId(e.target.value);
+                      setEditPerfilPrincipalId("");
+                    }}
                     className="mt-1 w-full rounded-xl border border-slate-300 p-2 font-semibold dark:border-slate-700 dark:bg-slate-800"
                   >
                     {participantes.map((p) => (
@@ -626,6 +660,31 @@ export function ErpVendasHubView({
                     ))}
                   </select>
                 </div>
+              </div>
+
+              {/* SELEÇÃO DO MODELO DE COMISSÃO DO PRINCIPAL */}
+              <div className="rounded-xl border border-blue-200 bg-blue-50/60 p-3 dark:border-blue-900/40 dark:bg-blue-950/20 space-y-1.5">
+                <label className="font-bold text-blue-950 dark:text-blue-200 text-xs">
+                  Modelo de Comissão do Consultor Principal:
+                </label>
+                {perfisDoPrincipal.length > 0 ? (
+                  <select
+                    name="perfil_principal_id"
+                    value={editPerfilPrincipalId || perfisDoPrincipal[0]?.perfil_id}
+                    onChange={(e) => setEditPerfilPrincipalId(e.target.value)}
+                    className="w-full rounded-lg border border-blue-300 bg-white p-2 font-bold text-slate-900 shadow-2xs dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                  >
+                    {perfisDoPrincipal.map((p: any) => (
+                      <option key={p.id} value={p.perfil_id}>
+                        {p.perfil?.nome} ({p.papel_tipo}) {p.override_percentual !== null ? "— " + p.override_percentual + "%" : ""}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <p className="text-[11px] text-blue-800/80">
+                    Consultor Padrão (50% da Franqueadora)
+                  </p>
+                )}
               </div>
 
               <div className="grid gap-3 sm:grid-cols-2">

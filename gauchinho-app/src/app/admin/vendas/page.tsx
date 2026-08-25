@@ -1,6 +1,12 @@
 import { getCurrentTenantContext } from "@/lib/tenant/context";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { ErpVendasHubView, type VendaItem, type CotaItem, type ParticipanteSimples } from "@/components/erp/vendas/erp-vendas-hub-view";
+import {
+  ErpVendasHubView,
+  type VendaItem,
+  type CotaItem,
+  type ParticipanteSimples,
+  type VinculoPerfilSimples,
+} from "@/components/erp/vendas/erp-vendas-hub-view";
 
 export default async function AdminVendasPage() {
   const { empresaAtiva, vinculos } = await getCurrentTenantContext();
@@ -13,7 +19,7 @@ export default async function AdminVendasPage() {
 
   const admin = createAdminClient();
 
-  const [vendasRes, cotasRes, participantesRes] = await Promise.all([
+  const [vendasRes, cotasRes, participantesRes, vinculosRes] = await Promise.all([
     admin
       .from("vendas")
       .select("*, cliente:clientes(nome,cpf_cnpj,email,telefone), grupo:grupos_consorcio(codigo_grupo), cotas_definitivas(id,numero_cota,status), participante:participantes_comerciais!vendas_participante_comercial_id_fkey(id,nome,nome_exibicao)")
@@ -30,9 +36,15 @@ export default async function AdminVendasPage() {
       .eq("empresa_id", empresaId)
       .eq("status", "ATIVO")
       .order("nome"),
+    admin
+      .from("participante_comissao_perfis")
+      .select("id,participante_id,papel_tipo,perfil_id,override_percentual,perfil:comissao_perfis(id,nome,papel_base)")
+      .eq("empresa_id", empresaId)
+      .eq("ativo", true),
   ]);
 
   const participantes = (participantesRes.data ?? []) as ParticipanteSimples[];
+  const vinculosPerfis = ((vinculosRes.data ?? []) as unknown) as VinculoPerfilSimples[];
   const participantesMap = new Map(participantes.map((p) => [p.id, p.nome_exibicao || p.nome]));
 
   const vendas: VendaItem[] = (vendasRes.data ?? []).map((v: any) => {
@@ -58,6 +70,8 @@ export default async function AdminVendasPage() {
       participante_comercial_id: v.participante_comercial_id || null,
       participante_secundario_id: v.participante_secundario_id || null,
       participante_secundario_fracao_percentual: v.participante_secundario_fracao_percentual ? Number(v.participante_secundario_fracao_percentual) : null,
+      perfil_principal_id: v.perfil_principal_id || (v.snapshot_venda as any)?.perfil_principal_id || null,
+      perfil_secundario_id: v.perfil_secundario_id || (v.snapshot_venda as any)?.perfil_secundario_id || null,
       snapshot_venda: v.snapshot_venda,
       consultor_nome: participante?.nome_exibicao || participante?.nome || (v.participante_comercial_id ? participantesMap.get(v.participante_comercial_id) : undefined),
       secundario_nome: v.participante_secundario_id ? participantesMap.get(v.participante_secundario_id) : undefined,
@@ -91,6 +105,7 @@ export default async function AdminVendasPage() {
         vendas={vendas}
         cotas={cotas}
         participantes={participantes}
+        vinculosPerfis={vinculosPerfis}
         empresaNome={empresaNome}
         isMaster={isMaster}
       />
