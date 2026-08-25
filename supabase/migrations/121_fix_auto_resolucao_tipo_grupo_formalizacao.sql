@@ -7,11 +7,14 @@ SET tipo_administradora_id = (
   SELECT t.id FROM public.administradora_tipos t
   WHERE t.administradora_id = g.administradora_id
     AND (
-      lower(t.nome) = lower(g.segmento)
-      OR lower(t.codigo) = lower(g.segmento)
-      OR (lower(g.segmento) LIKE '%imov%' AND lower(t.nome) LIKE '%imov%')
-      OR (lower(g.segmento) LIKE '%veic%' AND lower(t.nome) LIKE '%veic%')
-      OR (lower(g.segmento) LIKE '%auto%' AND lower(t.nome) LIKE '%auto%')
+      lower(t.nome) = lower(COALESCE(g.modalidade, ''))
+      OR lower(t.codigo) = lower(COALESCE(g.modalidade, ''))
+      OR (lower(COALESCE(g.modalidade, '')) LIKE '%imov%' AND lower(t.nome) LIKE '%imov%')
+      OR (lower(COALESCE(g.modalidade, '')) LIKE '%veic%' AND lower(t.nome) LIKE '%veic%')
+      OR (lower(COALESCE(g.modalidade, '')) LIKE '%auto%' AND lower(t.nome) LIKE '%auto%')
+      OR (lower(COALESCE(g.codigo_grupo, '')) LIKE '%imov%' AND lower(t.nome) LIKE '%imov%')
+      OR (lower(COALESCE(g.codigo_grupo, '')) LIKE '%veic%' AND lower(t.nome) LIKE '%veic%')
+      OR (lower(COALESCE(g.codigo_grupo, '')) LIKE '%auto%' AND lower(t.nome) LIKE '%auto%')
     )
     AND t.ativo
   LIMIT 1
@@ -38,7 +41,6 @@ DECLARE
   v_grupo record;
   v_tipo record;
   v_modalidade record;
-  v_valor record;
   v_modalidade_texto text;
   v_tipo_id uuid;
   v_modalidade_id uuid;
@@ -50,11 +52,14 @@ BEGIN
     SELECT id INTO v_tipo_id FROM public.administradora_tipos
     WHERE administradora_id = NEW.administradora_id
       AND (
-        lower(nome) = lower(v_grupo.segmento)
-        OR lower(codigo) = lower(v_grupo.segmento)
-        OR (lower(v_grupo.segmento) LIKE '%imov%' AND lower(nome) LIKE '%imov%')
-        OR (lower(v_grupo.segmento) LIKE '%veic%' AND lower(nome) LIKE '%veic%')
-        OR (lower(v_grupo.segmento) LIKE '%auto%' AND lower(nome) LIKE '%auto%')
+        lower(nome) = lower(COALESCE(v_grupo.modalidade, ''))
+        OR lower(codigo) = lower(COALESCE(v_grupo.modalidade, ''))
+        OR (lower(COALESCE(v_grupo.modalidade, '')) LIKE '%imov%' AND lower(nome) LIKE '%imov%')
+        OR (lower(COALESCE(v_grupo.modalidade, '')) LIKE '%veic%' AND lower(nome) LIKE '%veic%')
+        OR (lower(COALESCE(v_grupo.modalidade, '')) LIKE '%auto%' AND lower(nome) LIKE '%auto%')
+        OR (lower(COALESCE(v_grupo.codigo_grupo, '')) LIKE '%imov%' AND lower(nome) LIKE '%imov%')
+        OR (lower(COALESCE(v_grupo.codigo_grupo, '')) LIKE '%veic%' AND lower(nome) LIKE '%veic%')
+        OR (lower(COALESCE(v_grupo.codigo_grupo, '')) LIKE '%auto%' AND lower(nome) LIKE '%auto%')
       )
       AND ativo
     LIMIT 1;
@@ -240,11 +245,14 @@ BEGIN
     SELECT id INTO v_tipo_id FROM public.administradora_tipos
     WHERE administradora_id = v_grupo.administradora_id
       AND (
-        lower(nome) = lower(v_grupo.segmento)
-        OR lower(codigo) = lower(v_grupo.segmento)
-        OR (lower(v_grupo.segmento) LIKE '%imov%' AND lower(nome) LIKE '%imov%')
-        OR (lower(v_grupo.segmento) LIKE '%veic%' AND lower(nome) LIKE '%veic%')
-        OR (lower(v_grupo.segmento) LIKE '%auto%' AND lower(nome) LIKE '%auto%')
+        lower(nome) = lower(COALESCE(v_grupo.modalidade, ''))
+        OR lower(codigo) = lower(COALESCE(v_grupo.modalidade, ''))
+        OR (lower(COALESCE(v_grupo.modalidade, '')) LIKE '%imov%' AND lower(nome) LIKE '%imov%')
+        OR (lower(COALESCE(v_grupo.modalidade, '')) LIKE '%veic%' AND lower(nome) LIKE '%veic%')
+        OR (lower(COALESCE(v_grupo.modalidade, '')) LIKE '%auto%' AND lower(nome) LIKE '%auto%')
+        OR (lower(COALESCE(v_grupo.codigo_grupo, '')) LIKE '%imov%' AND lower(nome) LIKE '%imov%')
+        OR (lower(COALESCE(v_grupo.codigo_grupo, '')) LIKE '%veic%' AND lower(nome) LIKE '%veic%')
+        OR (lower(COALESCE(v_grupo.codigo_grupo, '')) LIKE '%auto%' AND lower(nome) LIKE '%auto%')
       )
       AND ativo
     LIMIT 1;
