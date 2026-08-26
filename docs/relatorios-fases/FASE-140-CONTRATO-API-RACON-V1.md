@@ -5,6 +5,8 @@
 | Data | 26/08/2026 |
 | Migration | Não aplicável |
 | Status | Documentação concluída; integração externa permanece desativada |
+| Commit publicado | `main@77ce0d8` |
+| Deployment verificado | `dpl_HkF4FVmGHxBbXz4RY83ApJwB5sqx` (`READY`) |
 
 ## Entrega
 

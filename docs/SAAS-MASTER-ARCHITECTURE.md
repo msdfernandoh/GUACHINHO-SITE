@@ -9,7 +9,7 @@
 > **Production code:** Fase 139 publicada em `main@23eaa3e`; Supabase principal `eaeuoynprurmmulzhydt` alinhado de `001–137`.
 > **Preview/isolado desta fase:** a branch `bwwgbmiwtrglbtxsdooi` permanece preservada como evidência de homologação da 083 até autorização separada de exclusão.
 > **Fase atual:** contrato candidato da API Racon v1 documentado para aprovação da matriz; integração externa permanece desativada e o baseline local/remoto continua em `001–137`.
-> **Vercel Production:** deployment da Fase 139 `dpl_2n4Kx86cNvKVrSeinJLHDGsMZZuk` está `READY` e atende os domínios público, `www` e Platform.
+> **Vercel Production:** deployment da Fase 140 `dpl_HkF4FVmGHxBbXz4RY83ApJwB5sqx` está `READY` e atende os domínios público, `www` e Platform.
 > **Segurança:** o Platform Host continua global, sem fallback de tenant, e exige `is_platform_superadmin()`.
 
 > **Projeto Físico:** `C:\Fernando Hugo\GAUCHINHO SITE`  
