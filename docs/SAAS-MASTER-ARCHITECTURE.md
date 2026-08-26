@@ -4,11 +4,11 @@
 > **ESTADO-ALVO E CORREÇÕES OBRIGATÓRIAS**
 > Antes de alterar tenancy, usuários, catálogo, sites, comissões, financeiro, Storage, RPCs ou migrations, leia também integralmente [`SAAS-ARQUITETURA-ALVO-E-PLANO-DE-CORRECAO.md`](./SAAS-ARQUITETURA-ALVO-E-PLANO-DE-CORRECAO.md). O documento descreve o estado-alvo e o plano de remediação; seus itens não devem ser interpretados como já implantados sem evidência no banco e no código.
 
-> **Versão da Arquitetura:** 6.4.0
+> **Versão da Arquitetura:** 6.5.0
 > **Data de Atualização:** 26/08/2026
-> **Production code:** `main@34aeb3c` para a entrega funcional da Fase 138; Supabase principal `eaeuoynprurmmulzhydt` alinhado de `001–135`.
+> **Production code:** Fase 139 preparada para publicação; Supabase principal `eaeuoynprurmmulzhydt` alinhado de `001–137`.
 > **Preview/isolado desta fase:** a branch `bwwgbmiwtrglbtxsdooi` permanece preservada como evidência de homologação da 083 até autorização separada de exclusão.
-> **Fase atual:** barreira de qualidade consolidada com lint sem erros bloqueantes, 1.028 testes aprovados e build de 146 rotas; baseline local/remoto contínuo de `001–135`.
+> **Fase atual:** importação auditável da carteira legada Racon, sem efeito no faturamento, com 1.033 testes aprovados e build de 147 rotas; baseline local/remoto contínuo de `001–137`.
 > **Vercel Production:** deployment verificado da Fase 138 `dpl_BfrDtiZAoq9ap4SFzRtfXQhRJVA7` está `READY` e atende os domínios público, `www` e Platform.
 > **Segurança:** o Platform Host continua global, sem fallback de tenant, e exige `is_platform_superadmin()`.
 
@@ -588,10 +588,34 @@ serão idempotentes para que uma repetição após queda de conexão não dupliq
 grupo, estatística ou contemplação.
 
 Conciliação bancária e projeção de caixa foram adiadas por decisão do produto.
-Próximas entregas: documento do contrato da API Racon e, após a planilha real,
-modelo de importação da carteira legada.
+Próxima entrega externa: documento do contrato da API Racon. A importação da
+carteira legada foi implementada na Fase 139 após validação da planilha real.
 
 Relatório: `docs/relatorios-fases/FASE-138-QUALIDADE-REGRESSIVA-E-DECISOES-FUTURAS.md`.
+
+## 17. Importação auditável da carteira legada Racon — Fase 139
+
+A rota autenticada `/erp/clientes/importar` lê planilhas `.xlsx`, exige prévia
+e permite selecionar regra histórica Racon e beneficiário direto, ou importar
+explicitamente sem comissão. Documento e telefone ausentes geram tags de
+pendência. Erros estruturais, duplicidade ou grupo sem correspondência canônica
+bloqueiam a linha.
+
+As migrations 136–137 criam lotes e itens tenant-aware, idempotência por arquivo
+e configuração e resolução do código numérico da planilha contra o catálogo.
+A venda/cota histórica continua disponível para lances e contemplações, com o
+valor contratado congelado. `afeta_faturamento=false` a exclui de faturamento,
+metas e indicadores. Não é criada receita da franqueadora: apenas previsões
+futuras diretas ao participante/sócio, líquidas do imposto vigente na data.
+
+O contrato é a parcela 1. Até o dia 10, a parcela 2 vence no dia 10 do mês
+seguinte; após o dia 10, no segundo mês seguinte. Etapas vencidas não são
+recriadas. A planilha validada possui 157 linhas e nenhum dado foi importado
+automaticamente. Quatorze dos 27 grupos distintos estão prontos; os demais
+devem ser cadastrados/concedidos antes da confirmação.
+
+Relatório:
+`docs/relatorios-fases/FASE-139-IMPORTACAO-CARTEIRA-LEGADA-RACON.md`.
 
 
 

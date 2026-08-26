@@ -134,6 +134,7 @@ export async function calcularApuracaoMeta(
         .select("valor_credito")
         .eq("empresa_id", empresaId)
         .eq("status", "confirmada")
+        .eq("afeta_faturamento", true)
         .gte("created_at", startIso)
         .lte("created_at", endIso);
 
@@ -154,6 +155,7 @@ export async function calcularApuracaoMeta(
         .select("*", { count: "exact", head: true })
         .eq("empresa_id", empresaId)
         .eq("status", "confirmada")
+        .eq("afeta_faturamento", true)
         .gte("created_at", startIso)
         .lte("created_at", endIso);
 

@@ -51,7 +51,8 @@ export async function getResumoExecutivo(empresaId: string): Promise<ResumoExecu
     .from("vendas")
     .select("valor_credito")
     .eq("empresa_id", empresaId)
-    .eq("status", "confirmada");
+    .eq("status", "confirmada")
+    .eq("afeta_faturamento", true);
 
   const totalCredito = (vendas || []).reduce((acc: number, v: any) => acc + Number(v.valor_credito || 0), 0);
   const vendasCount = (vendas || []).length;
@@ -153,7 +154,8 @@ export async function getResumoComercial(empresaId: string): Promise<ResumoComer
     .from("vendas")
     .select("valor_credito, snapshot_venda")
     .eq("empresa_id", empresaId)
-    .eq("status", "confirmada");
+    .eq("status", "confirmada")
+    .eq("afeta_faturamento", true);
 
   const vendasTotais = (vendas || []).length;
   const creditoTotal = (vendas || []).reduce((acc: number, v: any) => acc + Number(v.valor_credito || 0), 0);
@@ -429,7 +431,8 @@ export async function getErpDashboardCompleto(
     .from("vendas")
     .select("id, valor_credito, created_at, mes_competencia, administradora_id, status")
     .eq("empresa_id", empresaId)
-    .eq("status", "confirmada");
+    .eq("status", "confirmada")
+    .eq("afeta_faturamento", true);
 
   if (filtros.administradoraId) {
     vendasQuery = vendasQuery.eq("administradora_id", filtros.administradoraId);

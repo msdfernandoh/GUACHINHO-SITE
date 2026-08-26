@@ -246,6 +246,16 @@ export default async function ClienteDetalhePage({
                 {cliente.nome}
               </h1>
 
+              {Array.isArray(cliente.pendencias_cadastro) && cliente.pendencias_cadastro.length > 0 && (
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {cliente.pendencias_cadastro.map((pendencia: string) => (
+                    <span key={pendencia} className="rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-bold text-amber-800">
+                      {pendencia.replace("PENDENTE_", "Pendente: ").replace("_", "/")}
+                    </span>
+                  ))}
+                </div>
+              )}
+
               <p className="mt-1 text-xs text-slate-600 dark:text-slate-300 flex flex-wrap gap-x-3 gap-y-1">
                 <span>
                   <strong>CPF/CNPJ:</strong> {cliente.cpf_cnpj || "Não informado"}
