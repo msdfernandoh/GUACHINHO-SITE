@@ -1,0 +1,336 @@
+openapi: 3.1.0
+info:
+  title: API de Integração Racon - SaaS Gauchinho
+  version: 1.0.0-candidato
+  description: Contrato proposto para ingestão global do catálogo Racon. Endpoints ainda não ativados.
+  license:
+    name: Uso restrito às partes
+    identifier: LicenseRef-Private-Contract
+servers:
+  - url: https://gauchinhoconsorcios.com.br/api/integracoes/racon/v1
+    description: Produção proposta
+tags:
+  - name: Catalogo
+    description: Recepção do catálogo global de grupos e produtos comerciais Racon.
+  - name: Contemplacoes
+    description: Recepção opcional de eventos individuais sem dados pessoais.
+  - name: Lotes
+    description: Consulta do processamento auditável dos lotes recebidos.
+paths:
+  /lotes/catalogo:
+    post:
+      tags: [Catalogo]
+      summary: Enviar lote de catálogo Racon
+      operationId: enviarCatalogoRacon
+      security: [{ raconHmac: [] }]
+      parameters:
+        - $ref: '#/components/parameters/Timestamp'
+        - $ref: '#/components/parameters/Nonce'
+        - $ref: '#/components/parameters/Signature'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CorrelationId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/LoteCatalogo'}
+      responses:
+        '202': {$ref: '#/components/responses/LoteAceito'}
+        '400': {$ref: '#/components/responses/Problema'}
+        '401': {$ref: '#/components/responses/Problema'}
+        '409': {$ref: '#/components/responses/Problema'}
+        '413': {$ref: '#/components/responses/Problema'}
+        '422': {$ref: '#/components/responses/Problema'}
+        '429': {$ref: '#/components/responses/Problema'}
+        '500': {$ref: '#/components/responses/Problema'}
+        '503': {$ref: '#/components/responses/Problema'}
+  /lotes/contemplacoes:
+    post:
+      tags: [Contemplacoes]
+      summary: Enviar lote de contemplações Racon
+      operationId: enviarContemplacoesRacon
+      security: [{ raconHmac: [] }]
+      parameters:
+        - $ref: '#/components/parameters/Timestamp'
+        - $ref: '#/components/parameters/Nonce'
+        - $ref: '#/components/parameters/Signature'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CorrelationId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/LoteContemplacoes'}
+      responses:
+        '202': {$ref: '#/components/responses/LoteAceito'}
+        '400': {$ref: '#/components/responses/Problema'}
+        '401': {$ref: '#/components/responses/Problema'}
+        '409': {$ref: '#/components/responses/Problema'}
+        '413': {$ref: '#/components/responses/Problema'}
+        '422': {$ref: '#/components/responses/Problema'}
+        '429': {$ref: '#/components/responses/Problema'}
+        '500': {$ref: '#/components/responses/Problema'}
+        '503': {$ref: '#/components/responses/Problema'}
+  /lotes/{lote_id}:
+    get:
+      tags: [Lotes]
+      summary: Consultar processamento de um lote
+      operationId: consultarLoteRacon
+      security: [{ raconHmac: [] }]
+      parameters:
+        - name: lote_id
+          in: path
+          required: true
+          schema: {type: string, format: uuid}
+        - $ref: '#/components/parameters/Timestamp'
+        - $ref: '#/components/parameters/Nonce'
+        - $ref: '#/components/parameters/Signature'
+        - $ref: '#/components/parameters/CorrelationId'
+        - name: cursor
+          in: query
+          schema: {type: string}
+        - name: limite
+          in: query
+          schema: {type: integer, minimum: 1, maximum: 500, default: 100}
+      responses:
+        '200':
+          description: Estado atual do lote
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/StatusLote'}
+        '401': {$ref: '#/components/responses/Problema'}
+        '404': {$ref: '#/components/responses/Problema'}
+components:
+  securitySchemes:
+    raconHmac:
+      type: apiKey
+      in: header
+      name: X-Racon-Key-Id
+      description: Requer também timestamp, nonce e assinatura HMAC-SHA256.
+  parameters:
+    Timestamp:
+      name: X-Racon-Timestamp
+      in: header
+      required: true
+      schema: {type: integer, format: int64}
+    Nonce:
+      name: X-Racon-Nonce
+      in: header
+      required: true
+      schema: {type: string, format: uuid}
+    Signature:
+      name: X-Racon-Signature
+      in: header
+      required: true
+      schema: {type: string, pattern: '^sha256=[a-f0-9]{64}$'}
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      schema: {type: string, format: uuid}
+    CorrelationId:
+      name: X-Correlation-Id
+      in: header
+      required: true
+      schema: {type: string, format: uuid}
+  responses:
+    LoteAceito:
+      description: Lote autenticado e enfileirado
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/AceiteLote'}
+    Problema:
+      description: Erro compatível com RFC 9457
+      content:
+        application/problem+json:
+          schema: {$ref: '#/components/schemas/Problema'}
+  schemas:
+    LoteCatalogo:
+      type: object
+      additionalProperties: false
+      required: [schema_version, lote_id, modo_envio, gerado_em, sequencia, grupos]
+      properties:
+        schema_version: {type: string, const: '1.0'}
+        lote_id: {type: string, format: uuid}
+        modo_envio: {type: string, enum: [COMPLETO, INCREMENTAL]}
+        gerado_em: {type: string, format: date-time}
+        sequencia: {type: integer, minimum: 1}
+        grupos:
+          type: array
+          minItems: 1
+          maxItems: 500
+          items: {$ref: '#/components/schemas/Grupo'}
+    Grupo:
+      type: object
+      additionalProperties: false
+      required: [codigo_grupo, tipo_bem, status, ativo, prazo_total, assembleias_realizadas, data_primeira_assembleia, capacidade_total, vagas_disponiveis, taxa_administrativa_percentual, fundo_reserva_percentual, seguro_prestamista, modalidades_parcela, tipos_lance, estatisticas_mes, produtos, origem_atualizado_em, versao_registro]
+      properties:
+        codigo_grupo: {type: string, minLength: 1, maxLength: 50}
+        tipo_bem: {type: string, enum: [IMOVEL, AUTOMOVEIS]}
+        status: {type: string, enum: [ATIVO, SUSPENSO, ENCERRADO]}
+        ativo: {type: boolean}
+        prazo_total: {type: integer, minimum: 1, maximum: 600}
+        assembleias_realizadas: {type: integer, minimum: 0}
+        data_primeira_assembleia: {type: [string, 'null'], format: date}
+        capacidade_total: {type: integer, minimum: 0}
+        vagas_disponiveis: {type: integer, minimum: 0}
+        taxa_administrativa_percentual: {$ref: '#/components/schemas/Percentual'}
+        fundo_reserva_percentual: {$ref: '#/components/schemas/Percentual'}
+        seguro_prestamista: {$ref: '#/components/schemas/Seguro'}
+        modalidades_parcela:
+          type: array
+          items: {$ref: '#/components/schemas/ModalidadeGrupo'}
+        tipos_lance:
+          type: array
+          items: {$ref: '#/components/schemas/TipoLance'}
+        estatisticas_mes:
+          anyOf: [{$ref: '#/components/schemas/EstatisticasMes'}, {type: 'null'}]
+        produtos:
+          type: array
+          maxItems: 5000
+          items: {$ref: '#/components/schemas/Produto'}
+        origem_atualizado_em: {type: string, format: date-time}
+        versao_registro: {type: integer, minimum: 1}
+    Seguro:
+      type: object
+      additionalProperties: false
+      required: [habilitado, tipo_calculo, taxa_mensal_percentual, valor_fixo_mensal, incide_pos_contemplacao]
+      properties:
+        habilitado: {type: boolean}
+        tipo_calculo: {type: string, enum: [PERCENTUAL_SALDO_DEVEDOR_MENSAL, VALOR_FIXO_MENSAL, NAO_APLICAVEL]}
+        taxa_mensal_percentual: {type: [number, 'null'], minimum: 0, maximum: 100}
+        valor_fixo_mensal: {type: [number, 'null'], minimum: 0}
+        incide_pos_contemplacao: {type: boolean}
+    ModalidadeGrupo:
+      type: object
+      additionalProperties: false
+      required: [codigo, ativo, percentual_padrao, percentual_minimo, percentual_maximo]
+      properties:
+        codigo: {type: string, enum: [INTEGRAL, REDUZIDA_60_99, REDUZIDA_ABAIXO_59]}
+        ativo: {type: boolean}
+        percentual_padrao: {$ref: '#/components/schemas/Percentual'}
+        percentual_minimo: {$ref: '#/components/schemas/Percentual'}
+        percentual_maximo: {$ref: '#/components/schemas/Percentual'}
+    TipoLance:
+      type: object
+      additionalProperties: false
+      required: [codigo, nome, ativo, percentual]
+      properties:
+        codigo: {type: string, minLength: 1, maxLength: 50}
+        nome: {type: string, minLength: 1, maxLength: 100}
+        ativo: {type: boolean}
+        percentual: {type: [number, 'null'], minimum: 0, maximum: 100}
+    EstatisticasMes:
+      type: object
+      additionalProperties: false
+      required: [competencia, media_lance_livre_percentual, contemplados_total, contemplados_por_tipo, observacoes]
+      properties:
+        competencia: {type: string, pattern: '^\\d{4}-(0[1-9]|1[0-2])$'}
+        media_lance_livre_percentual: {type: [number, 'null'], minimum: 0, maximum: 100}
+        contemplados_total: {type: integer, minimum: 0}
+        contemplados_por_tipo:
+          type: object
+          additionalProperties: {type: integer, minimum: 0}
+        observacoes: {type: [string, 'null'], maxLength: 1000}
+    Produto:
+      type: object
+      additionalProperties: false
+      required: [codigo_produto, valor_credito, ativo, parcelas_restantes, modalidades, origem_atualizado_em, versao_registro]
+      properties:
+        codigo_produto: {type: string, minLength: 1, maxLength: 100}
+        valor_credito: {type: number, exclusiveMinimum: 0, multipleOf: 0.01}
+        ativo: {type: boolean}
+        vagas_disponiveis: {type: [integer, 'null'], minimum: 0}
+        parcelas_restantes: {type: integer, minimum: 0, maximum: 600}
+        modalidades:
+          type: array
+          minItems: 1
+          items: {$ref: '#/components/schemas/ModalidadeProduto'}
+        origem_atualizado_em: {type: string, format: date-time}
+        versao_registro: {type: integer, minimum: 1}
+    ModalidadeProduto:
+      type: object
+      additionalProperties: false
+      required: [codigo, ativo, valor_parcela, percentual_parcela]
+      properties:
+        codigo: {type: string, enum: [INTEGRAL, REDUZIDA_60_99, REDUZIDA_ABAIXO_59]}
+        ativo: {type: boolean}
+        valor_parcela: {type: number, exclusiveMinimum: 0, multipleOf: 0.01}
+        percentual_parcela: {$ref: '#/components/schemas/Percentual'}
+    LoteContemplacoes:
+      type: object
+      additionalProperties: false
+      required: [schema_version, lote_id, competencia, gerado_em, sequencia, eventos]
+      properties:
+        schema_version: {type: string, const: '1.0'}
+        lote_id: {type: string, format: uuid}
+        competencia: {type: string, pattern: '^\\d{4}-(0[1-9]|1[0-2])$'}
+        gerado_em: {type: string, format: date-time}
+        sequencia: {type: integer, minimum: 1}
+        eventos:
+          type: array
+          minItems: 1
+          maxItems: 5000
+          items: {$ref: '#/components/schemas/EventoContemplacao'}
+    EventoContemplacao:
+      type: object
+      additionalProperties: false
+      required: [evento_id, codigo_grupo, numero_cota, data_assembleia, tipo_contemplacao, status, origem_atualizado_em, versao_registro]
+      properties:
+        evento_id: {type: string, minLength: 1, maxLength: 150}
+        codigo_grupo: {type: string, minLength: 1, maxLength: 50}
+        numero_cota: {type: string, minLength: 1, maxLength: 50}
+        data_assembleia: {type: string, format: date}
+        tipo_contemplacao: {type: string, minLength: 1, maxLength: 50}
+        percentual_lance: {type: [number, 'null'], minimum: 0, maximum: 100}
+        valor_lance: {type: [number, 'null'], minimum: 0, multipleOf: 0.01}
+        status: {type: string, enum: [CONFIRMADA, CANCELADA]}
+        origem_atualizado_em: {type: string, format: date-time}
+        versao_registro: {type: integer, minimum: 1}
+    AceiteLote:
+      type: object
+      required: [lote_id, status, recebido_em, correlation_id, status_url]
+      properties:
+        lote_id: {type: string, format: uuid}
+        status: {type: string, const: RECEBIDO}
+        recebido_em: {type: string, format: date-time}
+        correlation_id: {type: string, format: uuid}
+        status_url: {type: string}
+    StatusLote:
+      type: object
+      required: [lote_id, tipo, status, recebidos, aplicados, ignorados_por_versao, pendentes, erros, correlation_id]
+      properties:
+        lote_id: {type: string, format: uuid}
+        tipo: {type: string, enum: [CATALOGO, CONTEMPLACOES]}
+        status: {type: string, enum: [RECEBIDO, VALIDANDO, PROCESSANDO, CONCLUIDO, CONCLUIDO_COM_PENDENCIAS, FALHOU]}
+        recebidos: {type: integer, minimum: 0}
+        aplicados: {type: integer, minimum: 0}
+        ignorados_por_versao: {type: integer, minimum: 0}
+        pendentes: {type: integer, minimum: 0}
+        erros: {type: integer, minimum: 0}
+        iniciado_em: {type: [string, 'null'], format: date-time}
+        finalizado_em: {type: [string, 'null'], format: date-time}
+        correlation_id: {type: string, format: uuid}
+        itens:
+          type: array
+          items:
+            type: object
+            properties:
+              referencia: {type: string}
+              status: {type: string, enum: [APLICADO, IGNORADO, PENDENTE, ERRO]}
+              codigo: {type: [string, 'null']}
+              mensagem: {type: [string, 'null']}
+    Problema:
+      type: object
+      required: [type, title, status, code, detail, correlation_id]
+      properties:
+        type: {type: string, format: uri}
+        title: {type: string}
+        status: {type: integer}
+        code: {type: string}
+        detail: {type: string}
+        correlation_id: {type: string, format: uuid}
+    Percentual:
+      type: number
+      minimum: 0
+      maximum: 100

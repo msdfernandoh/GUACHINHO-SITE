@@ -4,12 +4,12 @@
 > **ESTADO-ALVO E CORREÇÕES OBRIGATÓRIAS**
 > Antes de alterar tenancy, usuários, catálogo, sites, comissões, financeiro, Storage, RPCs ou migrations, leia também integralmente [`SAAS-ARQUITETURA-ALVO-E-PLANO-DE-CORRECAO.md`](./SAAS-ARQUITETURA-ALVO-E-PLANO-DE-CORRECAO.md). O documento descreve o estado-alvo e o plano de remediação; seus itens não devem ser interpretados como já implantados sem evidência no banco e no código.
 
-> **Versão da Arquitetura:** 6.5.0
+> **Versão da Arquitetura:** 6.6.0
 > **Data de Atualização:** 26/08/2026
-> **Production code:** Fase 139 preparada para publicação; Supabase principal `eaeuoynprurmmulzhydt` alinhado de `001–137`.
+> **Production code:** Fase 139 publicada em `main@23eaa3e`; Supabase principal `eaeuoynprurmmulzhydt` alinhado de `001–137`.
 > **Preview/isolado desta fase:** a branch `bwwgbmiwtrglbtxsdooi` permanece preservada como evidência de homologação da 083 até autorização separada de exclusão.
-> **Fase atual:** importação auditável da carteira legada Racon, sem efeito no faturamento, com 1.033 testes aprovados e build de 147 rotas; baseline local/remoto contínuo de `001–137`.
-> **Vercel Production:** deployment verificado da Fase 138 `dpl_BfrDtiZAoq9ap4SFzRtfXQhRJVA7` está `READY` e atende os domínios público, `www` e Platform.
+> **Fase atual:** contrato candidato da API Racon v1 documentado para aprovação da matriz; integração externa permanece desativada e o baseline local/remoto continua em `001–137`.
+> **Vercel Production:** deployment da Fase 139 `dpl_2n4Kx86cNvKVrSeinJLHDGsMZZuk` está `READY` e atende os domínios público, `www` e Platform.
 > **Segurança:** o Platform Host continua global, sem fallback de tenant, e exige `is_platform_superadmin()`.
 
 > **Projeto Físico:** `C:\Fernando Hugo\GAUCHINHO SITE`  
@@ -616,6 +616,29 @@ devem ser cadastrados/concedidos antes da confirmação.
 
 Relatório:
 `docs/relatorios-fases/FASE-139-IMPORTACAO-CARTEIRA-LEGADA-RACON.md`.
+
+## 18. Contrato da API Racon v1 — Fase 140
+
+O contrato candidato `1.0.0` define uma entrada exclusiva da Racon, sem UUID,
+administradora, empresa ou franquia no payload. Credencial e endpoint resolvem a
+origem global; todas as franquias com concessão Racon ativa e seus sites
+autorizados herdam o catálogo, enquanto overrides locais permanecem separados.
+
+O contrato cobre grupos, produtos/cotas comerciais, modalidades e parcelas
+independentes, vagas, taxas, seguro, prazos, assembleias, lances, estatísticas
+mensais e contemplações individuais opcionais sem dados pessoais. HMAC-SHA256,
+proteção contra replay, idempotência, ordenação por versão, retry, consulta de
+lote e auditoria/reprocessamento foram especificados. Nenhuma mensagem pode
+alterar vendas, contratos, faturamento, caixa ou comissões.
+
+Esta fase é exclusivamente documental: endpoints, filas, credenciais e tela de
+auditoria continuam desativados até aprovação técnica da matriz e congelamento
+do contrato. Artefatos:
+
+- `docs/integracoes/racon/CONTRATO-API-RACON-V1.md`;
+- `docs/integracoes/racon/openapi-racon-v1.yaml`;
+- `docs/integracoes/racon/MENSAGEM-ENVIO-MATRIZ.md`;
+- `docs/relatorios-fases/FASE-140-CONTRATO-API-RACON-V1.md`.
 
 
 
