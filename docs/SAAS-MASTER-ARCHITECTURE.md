@@ -409,6 +409,14 @@ O extrato `Minhas comissões` passa a chamar o valor do participante de líquido
 
 Build e testes específicos aprovados localmente. A migration 130 ainda não foi aplicada ao Supabase Production. Relatório: `docs/relatorios-fases/FASE-130-COMISSOES-TRANSPARENCIA-FISCAL.md`.
 
+## 10. Governança da atualização do catálogo — Fase 131
+
+A ação visual anteriormente apresentada como “sincronização” apenas invalidava o cache das páginas. A Fase 131 corrige o contrato operacional: o comando agora se chama “Atualizar visualização”, declara que recarrega somente registros já persistidos no catálogo SaaS e informa explicitamente que nenhuma API de administradora foi consultada.
+
+A atualização pode ser executada por superadmin da plataforma ou por usuário do tenant com `gerenciar_grupos`; a vinculação de grupos legados fica restrita ao superadmin da plataforma. A autoridade permanece baseada em `is_platform_superadmin()` e no vínculo N:N canônico, sem `usuarios.perfil` como fonte de autorização.
+
+Integrações futuras com administradoras deverão usar pipeline separado, auditável, idempotente e com histórico de execução. Relatório: `docs/relatorios-fases/FASE-131-GOVERNANCA-ATUALIZACAO-CATALOGO.md`.
+
 
 
 

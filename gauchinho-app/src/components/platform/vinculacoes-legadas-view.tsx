@@ -20,7 +20,7 @@ import {
 } from "lucide-react";
 import {
   vincularGrupoLegadoAction,
-  sincronizarCatalogoSiteErpAction
+  atualizarVisualizacaoCatalogoAction
 } from "@/app/platform/grupos/vinculacoes/actions";
 import type {
   GrupoLegadoItem,
@@ -110,18 +110,18 @@ export function VinculacoesLegadasView({
 
   const temProdutoPendente = mapeamentoAtual.some((m) => m.status_produto !== "ENCONTRADO");
 
-  function handleSincronizarCatalogo() {
+  function handleAtualizarVisualizacao() {
     startSyncTransition(async () => {
-      const res = await sincronizarCatalogoSiteErpAction();
+      const res = await atualizarVisualizacaoCatalogoAction();
       if (res.ok) {
         setSyncFeedback({
           tipo: "sucesso",
-          msg: "Catálogo SaaS sincronizado com sucesso! Todos os grupos e cotas estão publicados em tempo real no Site (/grupos) e no ERP (/erp/grupos)."
+          msg: res.mensagem || "Visualização atualizada com os dados do catálogo SaaS."
         });
       } else {
         setSyncFeedback({
           tipo: "erro",
-          msg: res.error || "Erro ao sincronizar catálogo."
+          msg: res.error || "Erro ao atualizar a visualização do catálogo."
         });
       }
       setTimeout(() => setSyncFeedback(null), 5000);
@@ -176,18 +176,19 @@ export function VinculacoesLegadasView({
             Publicação e Vinculação de Grupos (Site & ERP)
           </h1>
           <p className="mt-1 text-sm text-slate-500">
-            Todos os grupos cadastrados no SaaS são refletidos automaticamente no Site público e no ERP. Use esta tela para conferir o status e sincronizar informações em tempo real.
+            O Site e o ERP leem o catálogo canônico do SaaS. Use esta tela para conferir vínculos e recarregar os dados já cadastrados; integrações externas serão identificadas separadamente quando estiverem disponíveis.
           </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
           <button
-            onClick={handleSincronizarCatalogo}
+            onClick={handleAtualizarVisualizacao}
             disabled={isSyncing}
+            title="Recarrega os dados já cadastrados no catálogo SaaS. Não consulta API externa."
             className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-700 px-4 py-2.5 text-sm font-bold text-white shadow-md hover:from-emerald-700 hover:to-teal-800 disabled:opacity-50"
           >
             <RefreshCw size={16} className={isSyncing ? "animate-spin" : ""} />
-            {isSyncing ? "Sincronizando..." : "⚡ Sincronizar Catálogo no Site e ERP"}
+            {isSyncing ? "Atualizando..." : "Atualizar visualização"}
           </button>
           <Link
             href="/grupos"
@@ -199,7 +200,7 @@ export function VinculacoesLegadasView({
         </div>
       </div>
 
-      {/* FEEDBACK DE SINCRONIZAÇÃO */}
+      {/* FEEDBACK DE ATUALIZAÇÃO DE CACHE/VISUALIZAÇÃO */}
       {syncFeedback && (
         <div
           className={`rounded-2xl p-4 text-xs font-bold flex items-center gap-3 shadow-sm ${

@@ -1,10 +1,19 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { isPlatformSuperadmin } from "@/lib/auth/is-superadmin";
 import { vincularGrupoLegado, type ProdutoMapeado } from "@/lib/platform/vinculacoes-legadas-service";
+import { requireTenantPermission } from "@/lib/tenant/context";
 
-export async function sincronizarCatalogoSiteErpAction() {
+async function exigirPermissaoAtualizacaoCatalogo() {
+  if (await isPlatformSuperadmin()) return;
+  await requireTenantPermission("gerenciar_grupos");
+}
+
+export async function atualizarVisualizacaoCatalogoAction() {
   try {
+    await exigirPermissaoAtualizacaoCatalogo();
+
     revalidatePath("/grupos");
     revalidatePath("/simulador");
     revalidatePath("/");
@@ -16,12 +25,18 @@ export async function sincronizarCatalogoSiteErpAction() {
 
     return {
       ok: true,
-      mensagem: "Catálogo SaaS sincronizado com sucesso com o Site e com o ERP!",
+      mensagem:
+        "Visualização atualizada com os dados já cadastrados no catálogo SaaS. Nenhuma administradora externa foi consultada.",
       timestamp: new Date().toISOString(),
     };
   } catch (err: any) {
-    return { ok: false, error: err?.message || "Erro ao sincronizar catálogo." };
+    return { ok: false, error: err?.message || "Erro ao atualizar a visualização do catálogo." };
   }
+}
+
+/** Compatibilidade temporária para consumidores antigos. Esta ação não executa integração externa. */
+export async function sincronizarCatalogoSiteErpAction() {
+  return atualizarVisualizacaoCatalogoAction();
 }
 
 export async function vincularGrupoLegadoAction(formData: FormData) {
@@ -50,6 +65,10 @@ export async function vincularGrupoLegadoAction(formData: FormData) {
   }
 
   try {
+    if (!(await isPlatformSuperadmin())) {
+      return { ok: false, error: "Apenas administradores da plataforma podem vincular grupos legados." };
+    }
+
     const res = await vincularGrupoLegado({
       empresa_id,
       origem,

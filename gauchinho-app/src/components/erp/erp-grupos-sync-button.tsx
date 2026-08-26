@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { RefreshCw, CheckCircle2, AlertCircle } from "lucide-react";
-import { sincronizarCatalogoSiteErpAction } from "@/app/platform/grupos/vinculacoes/actions";
+import { atualizarVisualizacaoCatalogoAction } from "@/app/platform/grupos/vinculacoes/actions";
 
 export function ErpGruposSyncButton() {
   const [isPending, startTransition] = useTransition();
@@ -10,11 +10,11 @@ export function ErpGruposSyncButton() {
 
   function handleSync() {
     startTransition(async () => {
-      const res = await sincronizarCatalogoSiteErpAction();
+      const res = await atualizarVisualizacaoCatalogoAction();
       if (res.ok) {
-        setFeedback({ tipo: "sucesso", msg: "Catálogo SaaS sincronizado com sucesso!" });
+        setFeedback({ tipo: "sucesso", msg: res.mensagem || "Visualização atualizada." });
       } else {
-        setFeedback({ tipo: "erro", msg: res.error || "Erro ao sincronizar." });
+        setFeedback({ tipo: "erro", msg: res.error || "Erro ao atualizar a visualização." });
       }
       setTimeout(() => setFeedback(null), 4000);
     });
@@ -38,11 +38,11 @@ export function ErpGruposSyncButton() {
       <button
         onClick={handleSync}
         disabled={isPending}
-        title="Atualiza e sincroniza os grupos oficiais do SaaS com o ERP e com o Site"
+        title="Recarrega os dados já cadastrados no catálogo SaaS. Não consulta API externa."
         className="flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-bold text-slate-700 shadow-sm hover:bg-slate-50 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
       >
         <RefreshCw size={14} className={isPending ? "animate-spin text-blue-600" : "text-slate-500"} />
-        {isPending ? "Sincronizando..." : "⚡ Atualizar Catálogo SaaS"}
+        {isPending ? "Atualizando..." : "Atualizar visualização"}
       </button>
     </div>
   );
