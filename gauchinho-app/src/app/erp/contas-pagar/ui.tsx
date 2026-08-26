@@ -7,6 +7,7 @@ import {
   AlertTriangle,
   Banknote,
   CheckCircle2,
+  Copy,
   FileUp,
   History,
   Info,
@@ -41,6 +42,7 @@ import {
   criarCentro,
   criarConta,
   criarFornecedor,
+  duplicarContaMeses,
   estornarConta,
   excluirConta,
   importarContasCsv,
@@ -58,6 +60,9 @@ type Conta = {
   comprovante_url?: string | null;
   nota_fiscal_nome?: string | null;
   nota_fiscal_uploaded_at?: string | null;
+  serie_recorrencia_id?: string | null;
+  recorrencia_indice?: number | null;
+  recorrencia_total?: number | null;
   valor: number;
   vencimento: string;
   competencia: string;
@@ -295,6 +300,8 @@ export function ContasPagarClient({
   const [tab, setTab] = useState<Tab>("conta");
   const [filtro, setFiltro] = useState<Filtro>("todas");
   const [pessoal, setPessoal] = useState(false);
+  const [recorrente, setRecorrente] = useState(false);
+  const [repeticoes, setRepeticoes] = useState(6);
   const [selecionadas, setSelecionadas] = useState<Set<string>>(new Set());
   const [socioLote, setSocioLote] = useState("");
   const [feedback, setFeedback] = useState<ContasActionResult | null>(null);
@@ -312,6 +319,8 @@ export function ContasPagarClient({
   const [pagina, setPagina] = useState<number>(1);
   const [itensPorPagina, setItensPorPagina] = useState<number>(25);
   const [anexandoNfConta, setAnexandoNfConta] = useState<Conta | null>(null);
+  const [duplicandoConta, setDuplicandoConta] = useState<Conta | null>(null);
+  const [duplicarMeses, setDuplicarMeses] = useState(6);
 
   // Modais de Controle
   const [editando, setEditando] = useState<Conta | null>(null);
@@ -529,6 +538,8 @@ export function ContasPagarClient({
     const ultimoDia = new Date(ano, hoje.getMonth() + 1, 0).getDate();
     setInicio(`${ano}-${mes}-01`);
     setFim(`${ano}-${mes}-${String(ultimoDia).padStart(2, "0")}`);
+    setDataTipo("vencimento");
+    setCardFiltro(null);
     setPagina(1);
   }
 
@@ -540,6 +551,10 @@ export function ContasPagarClient({
     const ultimoDia = new Date(ano, proximo.getMonth() + 1, 0).getDate();
     setInicio(`${ano}-${mes}-01`);
     setFim(`${ano}-${mes}-${String(ultimoDia).padStart(2, "0")}`);
+    setDataTipo("vencimento");
+    setFiltro("abertas");
+    setCardFiltro(null);
+    setOrdenacao("vencimento_asc");
     setPagina(1);
   }
 
@@ -661,6 +676,20 @@ export function ContasPagarClient({
     });
   }
 
+  function filtrarProximosMeses(quantidade: number) {
+    const hoje = new Date();
+    const inicioIso = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, "0")}-${String(hoje.getDate()).padStart(2, "0")}`;
+    const fimPeriodo = new Date(hoje.getFullYear(), hoje.getMonth() + quantidade + 1, 0);
+    const fimIso = `${fimPeriodo.getFullYear()}-${String(fimPeriodo.getMonth() + 1).padStart(2, "0")}-${String(fimPeriodo.getDate()).padStart(2, "0")}`;
+    setDataTipo("vencimento");
+    setInicio(inicioIso);
+    setFim(fimIso);
+    setFiltro("abertas");
+    setCardFiltro(null);
+    setOrdenacao("vencimento_asc");
+    setPagina(1);
+  }
+
   function abrirDocumentoFinanceiro(contaId: string) {
     const popup = window.open("about:blank", "_blank");
     if (popup) popup.opener = null;
@@ -687,7 +716,11 @@ export function ContasPagarClient({
       () => action(data),
       () => {
         form.reset();
-        if (action === criarConta) setPessoal(false);
+        if (action === criarConta) {
+          setPessoal(false);
+          setRecorrente(false);
+          setRepeticoes(6);
+        }
       },
     );
   }
@@ -759,6 +792,31 @@ export function ContasPagarClient({
           </div>
         )}
       </header>
+
+      <section className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-blue-200 bg-blue-50/60 px-4 py-3 shadow-sm">
+        <div>
+          <p className="text-xs font-black uppercase tracking-wide text-blue-900">Visão de compromissos futuros</p>
+          <p className="text-[11px] text-blue-800">Filtre rapidamente as contas abertas já lançadas para os próximos meses.</p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <button type="button" onClick={filtrarMesAtual} className="rounded-lg border border-blue-200 bg-white px-3 py-1.5 text-xs font-bold text-blue-800 hover:bg-blue-100">
+            Mês atual
+          </button>
+          <button type="button" onClick={filtrarProximoMes} className="rounded-lg border border-blue-200 bg-white px-3 py-1.5 text-xs font-bold text-blue-800 hover:bg-blue-100">
+            Próximo mês
+          </button>
+          {[3, 6, 12].map((meses) => (
+            <button key={meses} type="button" onClick={() => filtrarProximosMeses(meses)} className="rounded-lg border border-blue-200 bg-white px-3 py-1.5 text-xs font-bold text-blue-800 hover:bg-blue-100">
+              Próximos {meses} meses
+            </button>
+          ))}
+          {(inicio || fim) ? (
+            <button type="button" onClick={limparDatas} className="rounded-lg px-3 py-1.5 text-xs font-bold text-rose-700 hover:bg-rose-50">
+              Limpar período
+            </button>
+          ) : null}
+        </div>
+      </section>
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {cards.map(({ id, label, value, color, Icon }) => (
@@ -1052,6 +1110,38 @@ export function ContasPagarClient({
               </Select>
             ) : null}
             <Textarea name="obs" className="md:col-span-2" placeholder="Observação (opcional)" />
+            <div className="rounded-xl border border-blue-200 bg-blue-50/60 p-3 md:col-span-3">
+              <label className="flex items-center gap-2 text-sm font-bold text-blue-950">
+                <input
+                  name="recorrente"
+                  type="checkbox"
+                  checked={recorrente}
+                  onChange={(event) => setRecorrente(event.target.checked)}
+                  className="h-4 w-4 rounded text-blue-700"
+                />
+                Repetir mensalmente como conta fixa
+              </label>
+              {recorrente ? (
+                <div className="mt-3 flex flex-wrap items-end gap-3">
+                  <label className="text-xs font-bold text-slate-700">
+                    Quantidade total de meses
+                    <Input
+                      name="repeticoes"
+                      type="number"
+                      min={2}
+                      max={120}
+                      value={repeticoes}
+                      onChange={(event) => setRepeticoes(Number(event.target.value))}
+                      className="mt-1 w-36 bg-white"
+                      required
+                    />
+                  </label>
+                  <p className="pb-2 text-xs text-slate-600">
+                    Serão criadas {Math.max(0, repeticoes)} competências, começando no vencimento informado. Cada mês poderá ser editado e receber seu próprio comprovante.
+                  </p>
+                </div>
+              ) : null}
+            </div>
             <div className="space-y-1 md:col-span-2">
               <label className="text-xs font-bold text-slate-700">Anexar Nota Fiscal / Comprovante (PDF ou Imagem)</label>
               <Input name="arquivo_nf" type="file" accept=".pdf,image/*,.png,.jpg,.jpeg,.xml" className="text-xs file:mr-2 file:rounded-lg file:border-0 file:bg-blue-50 file:px-2.5 file:py-1 file:text-xs file:font-semibold file:text-blue-700 hover:file:bg-blue-100" />
@@ -1742,6 +1832,11 @@ export function ContasPagarClient({
                               💳 {banco.nome}
                             </span>
                           )}
+                          {conta.serie_recorrencia_id && conta.recorrencia_indice && conta.recorrencia_total ? (
+                            <span className="rounded-md bg-violet-50 px-2 py-0.5 text-[11px] font-bold text-violet-800">
+                              ↻ Série {conta.recorrencia_indice}/{conta.recorrencia_total}
+                            </span>
+                          ) : null}
                         </div>
 
                         {conta.responsavel_importado ? (
@@ -1815,6 +1910,22 @@ export function ContasPagarClient({
                         ) : null}
 
                         {/* Botão de Edição / Alteração — Sempre acessível */}
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          disabled={pending}
+                          onClick={() => {
+                            setDuplicarMeses(6);
+                            setDuplicandoConta(conta);
+                          }}
+                          className="text-xs"
+                          title="Criar cópias nos próximos meses sem copiar o comprovante"
+                        >
+                          <Copy className="mr-1 h-3.5 w-3.5" />
+                          Duplicar
+                        </Button>
+
                         <Button
                           type="button"
                           variant="outline"
@@ -2607,6 +2718,71 @@ export function ContasPagarClient({
                 </Button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ─────────────────────────────────────────────────────────────
+          MODAL: DUPLICAR CONTA PARA MESES FUTUROS
+      ───────────────────────────────────────────────────────────── */}
+      {duplicandoConta && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-xs">
+          <div className="w-full max-w-md space-y-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl">
+            <div className="flex items-center justify-between border-b pb-3">
+              <div className="flex items-center gap-2 font-bold text-blue-700">
+                <Copy className="h-5 w-5" />
+                <h3 className="text-base text-slate-900">Duplicar para meses futuros</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setDuplicandoConta(null)}
+                className="cursor-pointer text-slate-400 hover:text-slate-600"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="space-y-1 rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-800">
+              <p><strong>Despesa:</strong> {duplicandoConta.descricao}</p>
+              <p><strong>Valor por mês:</strong> {brl(Number(duplicandoConta.valor))}</p>
+              <p><strong>Vencimento original:</strong> {dataBr(duplicandoConta.vencimento)}</p>
+            </div>
+
+            <label className="block text-xs font-bold text-slate-700">
+              Quantos meses futuros deseja criar?
+              <Input
+                type="number"
+                min={1}
+                max={120}
+                value={duplicarMeses}
+                onChange={(event) => setDuplicarMeses(Number(event.target.value))}
+                className="mt-1"
+              />
+            </label>
+
+            <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-950">
+              Serão criadas <strong>{Math.max(0, duplicarMeses)} novas contas</strong>, uma por mês após o vencimento original.
+              O comprovante não será copiado e nenhuma conta já existente será alterada.
+            </div>
+
+            <div className="flex justify-end gap-2 border-t pt-3">
+              <Button type="button" variant="outline" onClick={() => setDuplicandoConta(null)}>
+                Cancelar
+              </Button>
+              <Button
+                type="button"
+                disabled={pending || !Number.isInteger(duplicarMeses) || duplicarMeses < 1 || duplicarMeses > 120}
+                onClick={() =>
+                  execute(
+                    () => duplicarContaMeses(duplicandoConta.id, duplicarMeses),
+                    () => setDuplicandoConta(null),
+                  )
+                }
+                className="bg-blue-700 font-bold hover:bg-blue-800"
+              >
+                {pending ? "Criando…" : `Criar ${Math.max(0, duplicarMeses)} conta(s)`}
+              </Button>
+            </div>
           </div>
         </div>
       )}

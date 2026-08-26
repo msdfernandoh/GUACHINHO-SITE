@@ -241,14 +241,20 @@ async function assertSocio(admin: ReturnType<typeof createAdminClient>, empresaI
 
 export async function criarConta(form: FormData): Promise<ContasActionResult> {
   try {
-    const { empresaId, admin } = await requireFinanceWrite();
+    const { empresaId, admin, session } = await requireFinanceWrite();
     const pessoal = form.get("pessoal") === "on";
     const socioId = value(form, "socio");
     const valor = Number(value(form, "valor"));
     const vencimento = value(form, "vencimento");
     const descricao = value(form, "descricao");
+    const recorrente = form.get("recorrente") === "on";
+    const repeticoes = recorrente ? Number(value(form, "repeticoes") || "6") : 1;
+    const idempotencyKey = value(form, "idempotency_key") || randomUUID();
     if (!descricao || !vencimento || !Number.isFinite(valor) || valor <= 0) {
       throw new Error("Preencha descrição, vencimento e um valor maior que zero.");
+    }
+    if (!Number.isInteger(repeticoes) || repeticoes < 1 || repeticoes > 120) {
+      throw new Error("A quantidade de meses deve estar entre 1 e 120.");
     }
     if (pessoal && !socioId) throw new Error("Selecione quem pagou pessoalmente.");
     if (pessoal) await assertSocio(admin, empresaId, socioId);
@@ -304,28 +310,84 @@ export async function criarConta(form: FormData): Promise<ContasActionResult> {
       socio_pagador_usuario_id: pessoal ? socioId : null,
       descontado_comissao: descontadoComissao,
       observacao: value(form, "obs") || null,
-      comprovante_url: uploadNf?.url || null,
-      nota_fiscal_nome: uploadNf?.nome || null,
-      nota_fiscal_uploaded_at: uploadNf ? new Date().toISOString() : null,
     };
 
-    let { error } = await admin.from("financeiro_contas_pagar").insert(payload);
-    if (error && /fornecedor_id|descontado_comissao|comprovante_url|nota_fiscal/i.test(error.message)) {
-      console.warn("Schema cache warning in insert, stripping optional columns:", error.message);
-      delete payload.fornecedor_id;
-      delete payload.descontado_comissao;
-      delete payload.comprovante_url;
-      delete payload.nota_fiscal_nome;
-      delete payload.nota_fiscal_uploaded_at;
-      const retry = await admin.from("financeiro_contas_pagar").insert(payload);
-      error = retry.error;
+    const rpcResult = await session.rpc("rpc_criar_contas_pagar_recorrentes", {
+      p_empresa_id: empresaId,
+      p_descricao: descricao,
+      p_fornecedor: fornecedorTexto || null,
+      p_fornecedor_id: fornecedorId,
+      p_centro_custo_id: centroId,
+      p_conta_bancaria_id: bancoId,
+      p_primeiro_vencimento: vencimento,
+      p_valor: valor,
+      p_repeticoes: repeticoes,
+      p_observacao: value(form, "obs") || null,
+      p_pago_pessoalmente: pessoal,
+      p_socio_pagador_usuario_id: pessoal ? socioId : null,
+      p_descontado_comissao: descontadoComissao,
+      p_idempotency_key: idempotencyKey,
+    });
+
+    let contasIds: string[] = [];
+    if (rpcResult.error) {
+      const migrationPendente = /rpc_criar_contas_pagar_recorrentes|schema cache|could not find/i.test(
+        rpcResult.error.message,
+      );
+      if (!migrationPendente || repeticoes > 1) {
+        if (uploadNf) await removeStoredDocument(admin, empresaId, uploadNf.url);
+        throw new Error(
+          migrationPendente
+            ? "A migration 129 precisa ser aplicada antes de criar contas recorrentes."
+            : rpcResult.error.message,
+        );
+      }
+      const fallback = await admin
+        .from("financeiro_contas_pagar")
+        .insert({
+          ...payload,
+          comprovante_url: uploadNf?.url || null,
+          nota_fiscal_nome: uploadNf?.nome || null,
+          nota_fiscal_uploaded_at: uploadNf ? new Date().toISOString() : null,
+        })
+        .select("id")
+        .single();
+      if (fallback.error) {
+        if (uploadNf) await removeStoredDocument(admin, empresaId, uploadNf.url);
+        throw new Error(fallback.error.message);
+      }
+      contasIds = [fallback.data.id];
+    } else {
+      const data = rpcResult.data as { contas_ids?: unknown } | null;
+      contasIds = Array.isArray(data?.contas_ids)
+        ? data.contas_ids.filter((id): id is string => typeof id === "string")
+        : [];
     }
-    if (error) {
-      if (uploadNf) await removeStoredDocument(admin, empresaId, uploadNf.url);
-      throw new Error(error.message);
+
+    if (uploadNf && contasIds[0]) {
+      const { error: documentError } = await admin
+        .from("financeiro_contas_pagar")
+        .update({
+          comprovante_url: uploadNf.url,
+          nota_fiscal_nome: uploadNf.nome,
+          nota_fiscal_uploaded_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", contasIds[0])
+        .eq("empresa_id", empresaId);
+      if (documentError) {
+        await removeStoredDocument(admin, empresaId, uploadNf.url);
+        throw new Error(`Contas criadas, mas o documento não pôde ser vinculado: ${documentError.message}`);
+      }
     }
     revalidatePath("/erp/contas-pagar");
-    return { ok: true, message: "Conta adicionada com sucesso." };
+    return {
+      ok: true,
+      message:
+        repeticoes > 1
+          ? `${repeticoes} contas mensais criadas com sucesso. O comprovante, quando enviado, ficou apenas na primeira competência.`
+          : "Conta adicionada com sucesso.",
+    };
   } catch (error) {
     return failure(error);
   }
@@ -862,6 +924,41 @@ export async function removerNotaFiscalConta(id: string): Promise<ContasActionRe
     await removeStoredDocument(admin, empresaId, contaAtual.comprovante_url);
     revalidatePath("/erp/contas-pagar");
     return { ok: true, message: "Nota Fiscal removida da conta." };
+  } catch (error) {
+    return failure(error);
+  }
+}
+
+export async function duplicarContaMeses(
+  id: string,
+  quantidadeMeses: number,
+  idempotencyKey?: string,
+): Promise<ContasActionResult> {
+  try {
+    if (!Number.isInteger(quantidadeMeses) || quantidadeMeses < 1 || quantidadeMeses > 120) {
+      throw new Error("A quantidade deve estar entre 1 e 120 meses.");
+    }
+    const { empresaId, session } = await requireFinanceWrite();
+    const { data, error } = await session.rpc("rpc_duplicar_conta_pagar_meses", {
+      p_empresa_id: empresaId,
+      p_conta_id: id,
+      p_quantidade_meses: quantidadeMeses,
+      p_idempotency_key: idempotencyKey || randomUUID(),
+    });
+    if (error) {
+      if (/rpc_duplicar_conta_pagar_meses|schema cache|could not find/i.test(error.message)) {
+        throw new Error("A migration 129 precisa ser aplicada antes de duplicar contas.");
+      }
+      throw new Error(error.message);
+    }
+    const reused = Boolean((data as { reused?: boolean } | null)?.reused);
+    revalidatePath("/erp/contas-pagar");
+    return {
+      ok: true,
+      message: reused
+        ? "Esta duplicação já havia sido processada; nenhuma conta foi repetida."
+        : `${quantidadeMeses} conta(s) futura(s) criada(s), sem copiar o comprovante.`,
+    };
   } catch (error) {
     return failure(error);
   }

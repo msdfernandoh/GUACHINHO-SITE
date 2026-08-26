@@ -393,6 +393,14 @@ Novos anexos usam caminho `empresa_id/competencia/uuid_nome`, não sobrescrevem 
 
 O build de produção e os seis testes contratuais da subfase foram aprovados localmente. A migration 128 ainda não foi aplicada ao Supabase Production neste marco; o procedimento e os pós-checks estão em `docs/relatorios-fases/FASE-128-HARDENING-CONTAS-PAGAR-PRIVACIDADE-TENANT.md`.
 
+## 8. Contas recorrentes e duplicação — Migration 129
+
+A migration `129_financeiro_contas_recorrentes_duplicacao.sql` introduz séries financeiras tenant-aware e idempotentes. Uma série possui UUID, empresa, tipo, primeiro vencimento, total de ocorrências e usuário responsável. As ocorrências permanecem fatos independentes em `financeiro_contas_pagar`, identificadas por série, índice e total.
+
+A criação recorrente e a duplicação usam RPCs transacionais com permissão `gerenciar_financeiro` e validação de todas as referências contra a empresa ativa. Duplicações geram somente competências futuras abertas; comprovantes, pagamentos e movimentos de caixa não são copiados. A interface permite repetir inicialmente por 6 meses, alterar até 120, duplicar uma despesa existente e filtrar compromissos dos próximos 3, 6 ou 12 meses.
+
+O build, o TypeScript e seis testes contratuais específicos foram aprovados localmente. A migration 129 ainda não foi aplicada ao Supabase Production. Relatório: `docs/relatorios-fases/FASE-129-CONTAS-RECORRENTES-DUPLICACAO-FUTURO.md`.
+
 
 
 
