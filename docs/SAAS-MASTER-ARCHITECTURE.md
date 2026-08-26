@@ -6,10 +6,10 @@
 
 > **Versão da Arquitetura:** 6.2.0
 > **Data de Atualização:** 26/08/2026
-> **Production code:** branch `main`, com a Fase 135 promovida; Supabase principal `eaeuoynprurmmulzhydt` alinhado de `001–135`, incluindo o quadro societário e fechamento imutável da Fase 136.
+> **Production code:** `main@11eea1e` para a entrega funcional da Fase 136; Supabase principal `eaeuoynprurmmulzhydt` alinhado de `001–135`.
 > **Preview/isolado desta fase:** a branch `bwwgbmiwtrglbtxsdooi` permanece preservada como evidência de homologação da 083 até autorização separada de exclusão.
 > **Fase atual:** quadro societário tenant-scoped e fechamento financeiro imutável implantados pelas migrations `134–135`; baseline local/remoto contínuo de `001–135`.
-> **Vercel Production:** publicação automática vinculada à branch `main`; a promoção de cada fase só é encerrada após build `READY`.
+> **Vercel Production:** deployment funcional `dpl_GAjoJdNAET3jYAwo5JKuk2XS7TXw` está `READY`; site, ERP protegido e Platform protegida aprovados em smoke.
 > **Segurança:** o Platform Host continua global, sem fallback de tenant, e exige `is_platform_superadmin()`.
 
 > **Projeto Físico:** `C:\Fernando Hugo\GAUCHINHO SITE`  

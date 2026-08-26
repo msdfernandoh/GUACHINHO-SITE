@@ -5,6 +5,9 @@
 **Supabase:** `eaeuoynprurmmulzhydt` (`Gauchinho-Site`, Production)  
 **Status:** banco aplicado, pós-check e validação automatizada aprovados; promoção para `main` registrada no fechamento desta fase.
 
+**Código funcional:** `main@11eea1e`  
+**Deployment validado:** `dpl_GAjoJdNAET3jYAwo5JKuk2XS7TXw` (`READY`)
+
 ## 1. Problema corrigido
 
 O ERP já permitia marcar usuários como `socio_pagador`, mas essa marca não era
@@ -102,6 +105,12 @@ execução para `anon`/`service_role` e nenhum fechamento preexistente afetado.
 - `supabase migration list --linked`: histórico local/remoto contínuo
   `001–135`;
 - pós-check permanente: `supabase/tests/fase_136_socios_fechamento_imutavel.sql`.
+
+Smokes após a promoção:
+
+- site público: `200` no host canônico `www`;
+- ERP sem sessão: redirecionamento seguro para `/login?next=/erp` e resposta `200`;
+- Platform sem sessão: redirecionamento seguro para `/login?next=%2Fplatform` e resposta `200`.
 
 ## 8. Próximas fases
 
