@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useId, useState } from "react";
 import QRCode from "react-qr-code";
 import { Button } from "@/components/ui/form-primitives";
 
@@ -11,7 +11,7 @@ type Props = {
 
 export function SorteioQrPanel({ url, eventoNome }: Props) {
   const [fullscreen, setFullscreen] = useState(false);
-  const svgId = useMemo(() => `sorteio-qr-${Math.random().toString(36).slice(2)}`, []);
+  const svgId = `sorteio-qr-${useId().replace(/:/g, "")}`;
 
   const copyLink = async () => {
     try {

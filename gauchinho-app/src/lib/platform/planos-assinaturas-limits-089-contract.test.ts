@@ -64,7 +64,7 @@ function resolverLimitesEfetivos(params: {
 
   let usuariosEfetivos = params.assinatura.usuariosContratados || params.plano.limiteUsuarios;
   let sitesEfetivos = params.assinatura.sitesParceirosContratados;
-  let dominiosEfetivos = params.assinatura.sitesDominioProprioContratados;
+  const dominiosEfetivos = params.assinatura.sitesDominioProprioContratados;
   const modulosEfetivos = new Set<string>(params.plano.erpIncluido ? params.plano.modulos : []);
 
   // 2. Aplicar overrides

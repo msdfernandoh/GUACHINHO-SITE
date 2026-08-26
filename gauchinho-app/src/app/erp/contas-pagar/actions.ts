@@ -587,7 +587,7 @@ export async function alterarConta(id: string, form: FormData): Promise<ContasAc
       }
     }
 
-    let { error: updateError } = await admin
+    const { error: updateError } = await admin
       .from("financeiro_contas_pagar")
       .update(updates)
       .eq("id", id)

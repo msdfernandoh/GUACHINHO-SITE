@@ -10,27 +10,32 @@ export default function AdminAuditoriaPage() {
   const [moduloFilter, setModuloFilter] = useState("");
 
   useEffect(() => {
-    loadData();
-  }, [moduloFilter]);
+    let active = true;
 
-  async function loadData() {
-    try {
-      setLoading(true);
-      const url = moduloFilter
-        ? `/api/admin/gestao/auditoria?modulo=${encodeURIComponent(moduloFilter)}`
-        : "/api/admin/gestao/auditoria";
-      const res = await fetch(url);
-      if (res.ok) {
-        const data = await res.json();
-        setLogs(data.logs || []);
-        setTotal(data.count || 0);
+    async function loadData() {
+      try {
+        setLoading(true);
+        const url = moduloFilter
+          ? `/api/admin/gestao/auditoria?modulo=${encodeURIComponent(moduloFilter)}`
+          : "/api/admin/gestao/auditoria";
+        const res = await fetch(url);
+        if (res.ok && active) {
+          const data = await res.json();
+          setLogs(data.logs || []);
+          setTotal(data.count || 0);
+        }
+      } catch (err) {
+        console.error(err);
+      } finally {
+        if (active) setLoading(false);
       }
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
     }
-  }
+
+    void loadData();
+    return () => {
+      active = false;
+    };
+  }, [moduloFilter]);
 
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-8">

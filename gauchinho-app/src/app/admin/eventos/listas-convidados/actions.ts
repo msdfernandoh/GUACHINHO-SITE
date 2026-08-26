@@ -234,7 +234,7 @@ export async function updateListaPublicaAction(
   const evNome = (Array.isArray(evRaw) ? evRaw[0]?.nome : evRaw?.nome) ?? "evento";
 
   let slug: string | null = row.slug;
-  let publica = input.publica;
+  const publica = input.publica;
 
   if (publica) {
     const raw = input.slug?.trim() || slug || `${row.consultor_nome}-${evNome}`;

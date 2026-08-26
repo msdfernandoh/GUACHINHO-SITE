@@ -157,24 +157,17 @@ export function SimuladorBemConfigForm({
   );
 }
 
-export function FinanciamentoConfigForm({
-  action,
-  stored,
+function FinanciamentoTipoFields({
+  prefix,
+  title,
+  cfg,
 }: {
-  action: (formData: FormData) => Promise<void>;
-  stored: import("@/lib/config/financiamento-por-tipo").FinanciamentoConfigStored;
+  prefix: "imovel" | "veiculo";
+  title: string;
+  cfg: import("@/lib/config/financiamento-por-tipo").FinanciamentoTipoConfig;
 }) {
-  function TipoFields({
-    prefix,
-    title,
-    cfg,
-  }: {
-    prefix: "imovel" | "veiculo";
-    title: string;
-    cfg: import("@/lib/config/financiamento-por-tipo").FinanciamentoTipoConfig;
-  }) {
-    const prazos = (cfg.prazosDisponiveis ?? []).join(", ");
-    return (
+  const prazos = (cfg.prazosDisponiveis ?? []).join(", ");
+  return (
       <fieldset className="space-y-3 rounded-xl border p-4 dark:border-zinc-700">
         <legend className="px-1 text-sm font-bold">{title}</legend>
         <div>
@@ -210,15 +203,23 @@ export function FinanciamentoConfigForm({
           Mostrar comparação com consórcio
         </label>
       </fieldset>
-    );
-  }
+  );
+}
+
+export function FinanciamentoConfigForm({
+  action,
+  stored,
+}: {
+  action: (formData: FormData) => Promise<void>;
+  stored: import("@/lib/config/financiamento-por-tipo").FinanciamentoConfigStored;
+}) {
 
   return (
     <form action={action} className="max-w-2xl space-y-6">
       <h3 className="font-semibold">Financiamento por tipo de bem</h3>
       <p className="text-sm text-zinc-500">Imóvel e veículo usam listas de prazo e taxas independentes no simulador e na Home.</p>
-      <TipoFields prefix="imovel" title="Imóvel" cfg={stored.imovel} />
-      <TipoFields prefix="veiculo" title="Veículo" cfg={stored.veiculo} />
+      <FinanciamentoTipoFields prefix="imovel" title="Imóvel" cfg={stored.imovel} />
+      <FinanciamentoTipoFields prefix="veiculo" title="Veículo" cfg={stored.veiculo} />
       <AdminFormSubmitButton label="Salvar Financiamento" />
     </form>
   );

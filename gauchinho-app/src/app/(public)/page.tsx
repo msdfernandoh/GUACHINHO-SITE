@@ -67,8 +67,13 @@ export default async function HomePage({
     );
   }
 
+  let simuladorConfigs;
+  let conteudo;
+  let homeData;
+  let homeModulos;
+  let sorteioDestaque;
   try {
-    const [simuladorConfigs, conteudo, homeData, homeModulos, sorteioDestaque] =
+    [simuladorConfigs, conteudo, homeData, homeModulos, sorteioDestaque] =
       await Promise.all([
         getSimuladorConfigsPublic(),
         loadHomeConteudoDestaques(),
@@ -76,30 +81,24 @@ export default async function HomePage({
         getHomeModulosConfigPublic(),
         safeFetch(() => fetchHomeSorteioDestaque(), null),
       ]);
-    return (
-      <HomeV2Client
-        simuladorConfigs={simuladorConfigs}
-        conteudoDestaques={conteudo}
-        homeModulos={homeModulos}
-        cartasDestaque={homeData.cartasDestaque}
-        imoveisDestaque={homeData.imoveisDestaque}
-        homeOportunidades={homeData.homeOportunidades}
-        sorteioDestaque={sorteioDestaque}
-      />
-    );
   } catch (err) {
     console.error("[HomePage] falha ao carregar dados:", err);
-    const simuladorConfigs = await getSimuladorConfigsPublic();
-    return (
-      <HomeV2Client
-        simuladorConfigs={simuladorConfigs}
-        conteudoDestaques={{ casosDestaque: [], dicasDestaque: [], parceirosDestaque: [] }}
-        homeModulos={DEFAULT_HOME_MODULOS}
-        cartasDestaque={[]}
-        imoveisDestaque={[]}
-        homeOportunidades={DEFAULT_HOME_OPORTUNIDADES}
-        sorteioDestaque={null}
-      />
-    );
+    simuladorConfigs = await getSimuladorConfigsPublic();
+    conteudo = { casosDestaque: [], dicasDestaque: [], parceirosDestaque: [] };
+    homeData = { cartasDestaque: [], imoveisDestaque: [], homeOportunidades: DEFAULT_HOME_OPORTUNIDADES };
+    homeModulos = DEFAULT_HOME_MODULOS;
+    sorteioDestaque = null;
   }
+
+  return (
+    <HomeV2Client
+      simuladorConfigs={simuladorConfigs}
+      conteudoDestaques={conteudo}
+      homeModulos={homeModulos}
+      cartasDestaque={homeData.cartasDestaque}
+      imoveisDestaque={homeData.imoveisDestaque}
+      homeOportunidades={homeData.homeOportunidades}
+      sorteioDestaque={sorteioDestaque}
+    />
+  );
 }

@@ -9,8 +9,11 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint",
-    "test": "vitest run"
+    "lint": "eslint --max-warnings 353",
+    "lint:errors": "eslint --quiet",
+    "test": "vitest run",
+    "test:regression": "vitest run --reporter=verbose",
+    "check": "npm run lint && npm run test:regression && npm run build"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.4.0",

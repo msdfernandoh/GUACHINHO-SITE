@@ -235,7 +235,7 @@ function runCreditFlow(
   state: GuidedFlowState | null,
   lastUser: string,
 ): GuidedAssistantResult {
-  let flow = state?.flow === "credit" ? { ...state } : ({ flow: "credit" as const, step: "start" } satisfies GuidedFlowState);
+  const flow = state?.flow === "credit" ? { ...state } : ({ flow: "credit" as const, step: "start" } satisfies GuidedFlowState);
 
   const intent = detectGuidedIntent(lastUser);
   const parcelaFromText = parseParcelaDesejadaFromText(lastUser);
