@@ -2,7 +2,7 @@
 
 Data de implementação local: 26/08/2026  
 Migration: `128_financeiro_contas_pagar_hardening_privacidade_tenant.sql`  
-Estado: implementada e validada localmente; aplicação no Supabase Production ainda pendente.
+Estado: **aplicada e verificada no Supabase Production em 26/08/2026**.
 
 ## Objetivo
 
@@ -54,14 +54,17 @@ O trigger é forward-only: fatos históricos foram preservados, mas qualquer nov
 - teste contratual `financeiro-contas-pagar-hardening-128-contract.test.ts`: 6 testes aprovados;
 - TypeScript e geração das 146 páginas: aprovados.
 
-## Aplicação segura em Production
+## Aplicação em Production
 
-1. Fazer backup/verificação do bucket e das tabelas financeiras.
-2. Executar a migration 128 completa, sem recortar blocos.
-3. Confirmar `storage.buckets.public = false` para `contas-pagar-documentos`.
-4. Testar abertura de um documento legado e upload de um documento novo.
-5. Testar que usuário sem `gerenciar_financeiro` não grava nem abre documento.
-6. Testar que um UUID de centro/banco/fornecedor de outra empresa é rejeitado.
+A migration foi executada integralmente no projeto canônico `eaeuoynprurmmulzhydt`, por conexão direta e dentro da transação definida no arquivo. O pós-check confirmou:
+
+- bucket `contas-pagar-documentos` privado e limitado a 20 MB;
+- quatro políticas tenant-aware em `storage.objects`;
+- trigger `trg_validar_referencias_conta_pagar_tenant` ativo;
+- índices financeiros criados;
+- migration `128` registrada como aplicada no histórico remoto.
+
+Nenhum arquivo ou lançamento financeiro existente foi removido.
 
 ## Fora do escopo desta subfase
 

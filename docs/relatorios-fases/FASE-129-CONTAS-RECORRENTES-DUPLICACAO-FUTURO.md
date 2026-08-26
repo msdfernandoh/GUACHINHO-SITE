@@ -2,7 +2,7 @@
 
 Data de implementação local: 26/08/2026  
 Migration: `129_financeiro_contas_recorrentes_duplicacao.sql`  
-Estado: implementada e validada localmente; aplicação no Supabase Production pendente.
+Estado: **aplicada e verificada no Supabase Production em 26/08/2026**.
 
 ## Objetivo
 
@@ -65,14 +65,16 @@ As duas operações usam chave única por empresa. Repetir a mesma requisição 
 
 ## Compatibilidade de implantação
 
-Enquanto a migration 129 não estiver aplicada, contas avulsas continuam usando o fluxo compatível anterior. Operações recorrentes e duplicações retornam uma mensagem explícita solicitando a migration, sem executar inserts parciais.
+A migration 129 está aplicada em Production. O fallback compatível continua existindo somente como proteção para ambientes de desenvolvimento ou Preview ainda não migrados; em Production, recorrências e duplicações usam obrigatoriamente as RPCs transacionais.
 
 ## Validação
 
 - build Next.js e TypeScript: aprovado;
 - geração das 146 páginas: aprovada;
 - 6 testes contratuais específicos: aprovados;
-- suíte completa deverá ser executada antes do commit/promoção desta fase.
+- suíte completa: 181 arquivos aprovados, 9 ignorados; 1007 testes aprovados e 37 ignorados;
+- pós-check remoto: tabela de séries com RLS ativa, três colunas de recorrência e as duas RPCs presentes;
+- migration `129` registrada como aplicada no histórico remoto.
 
 ## Próximas subfases
 

@@ -2,7 +2,7 @@
 
 Data de implementação local: 26/08/2026  
 Migration: `130_comissoes_transparencia_fiscal_vinculo_previsoes.sql`  
-Estado: implementada e validada localmente; Production pendente.
+Estado: **aplicada e verificada no Supabase Production em 26/08/2026**.
 
 ## Objetivo
 
@@ -57,4 +57,6 @@ Alterar o percentual fiscal hoje não altera previsões históricas. A tela usa 
 - build e TypeScript: aprovados;
 - 146 páginas geradas;
 - 6 testes contratuais específicos adicionados;
-- suíte completa obrigatória antes do commit.
+- suíte completa: 181 arquivos aprovados, 9 ignorados; 1007 testes aprovados e 37 ignorados;
+- pós-check remoto: FK e trigger tenant-aware presentes, com zero vínculos de previsão entre empresa ou venda divergentes;
+- migration `130` registrada como aplicada no histórico remoto.

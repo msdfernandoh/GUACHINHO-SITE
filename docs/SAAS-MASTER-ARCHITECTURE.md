@@ -370,7 +370,7 @@ A plataforma suporta:
   - Aba e painel de "Log de utilização (Auditoria)" para todos os operadores da empresa, com busca textual, filtros por ação (`CRIACAO`, `ALTERACAO`, `BAIXA`, `ESTORNO`, `EXCLUSAO`), datas e detalhamento de motivos e campos alterados.
   - Relatório: `docs/relatorios-fases/ERP-FINANCEIRO-GOVERNANCA-CONTAS.md`.
 
-* O estado funcional do Supabase Production inclui migrations `001–101`.
+* O estado funcional do Supabase Production inclui as evoluções até a migration `130`. O metadata remoto possui uma lacuna histórica entre `092–127`, causada por aplicações manuais anteriores; as versões `128–130` foram registradas após execução e pós-check. Essa lacuna de metadata não autoriza reaplicação automática das migrations antigas.
 * `admin.gauchinhoconsorcios.com.br` está ativo, verificado e associado ao deployment Production da `main`; ele não é tenant e não possui fallback para Gauchinho.
 * As migrations `070–101` estão versionadas e aplicadas em Produção; correções futuras permanecem obrigatoriamente forward-only.
 * Evidências consolidadas: `docs/relatorios-fases/PLATFORM-GRUPOS-CATALOGO-085.md`, `docs/relatorios-fases/PLATFORM-GRUPOS-TEMPORAL-HERANCA-086.md`, `docs/relatorios-fases/PLATFORM-PROGRAMAS-REGRAS-EDITOR-087.md`, `docs/relatorios-fases/fase-088-platform-templates-dominios-onboarding.md`, `docs/relatorios-fases/fase-089-platform-planos-assinaturas-limits.md`, `docs/relatorios-fases/fase-091-platform-template-racon-inspired-v2.md`, `docs/relatorios-fases/fase-092-platform-planos-quotas-overrides.md`, `docs/relatorios-fases/fase-093-platform-master-franquias-hub.md`, `docs/relatorios-fases/fase-094-platform-usuarios-governanca.md`, `docs/relatorios-fases/fase-095-platform-overrides-gestao-operacional.md` e `docs/relatorios-fases/ERP-FINANCEIRO-GOVERNANCA-CONTAS.md`.
@@ -391,7 +391,7 @@ Em 26/08/2026 foi implementada localmente a primeira subfase financeira posterio
 
 Novos anexos usam caminho `empresa_id/competencia/uuid_nome`, não sobrescrevem objetos e só são abertos por URL assinada após autorização financeira. URLs públicas históricas continuam reconhecidas como referência legada para permitir a transição sem perda dos arquivos. A aplicação deixou de usar `usuarios.perfil` como autoridade no módulo e passou a exigir a permissão canônica `gerenciar_financeiro` do vínculo N:N ativo.
 
-O build de produção e os seis testes contratuais da subfase foram aprovados localmente. A migration 128 ainda não foi aplicada ao Supabase Production neste marco; o procedimento e os pós-checks estão em `docs/relatorios-fases/FASE-128-HARDENING-CONTAS-PAGAR-PRIVACIDADE-TENANT.md`.
+O build de produção e os seis testes contratuais da subfase foram aprovados. Em 26/08/2026, a migration 128 foi aplicada no Supabase Production canônico. O pós-check confirmou bucket privado com limite de 20 MB, quatro políticas tenant-aware e trigger de integridade ativo. Evidências e procedimento estão em `docs/relatorios-fases/FASE-128-HARDENING-CONTAS-PAGAR-PRIVACIDADE-TENANT.md`.
 
 ## 8. Contas recorrentes e duplicação — Migration 129
 
@@ -399,7 +399,7 @@ A migration `129_financeiro_contas_recorrentes_duplicacao.sql` introduz séries 
 
 A criação recorrente e a duplicação usam RPCs transacionais com permissão `gerenciar_financeiro` e validação de todas as referências contra a empresa ativa. Duplicações geram somente competências futuras abertas; comprovantes, pagamentos e movimentos de caixa não são copiados. A interface permite repetir inicialmente por 6 meses, alterar até 120, duplicar uma despesa existente e filtrar compromissos dos próximos 3, 6 ou 12 meses.
 
-O build, o TypeScript e seis testes contratuais específicos foram aprovados localmente. A migration 129 ainda não foi aplicada ao Supabase Production. Relatório: `docs/relatorios-fases/FASE-129-CONTAS-RECORRENTES-DUPLICACAO-FUTURO.md`.
+O build, o TypeScript e seis testes contratuais específicos foram aprovados. Em 26/08/2026, a migration 129 foi aplicada no Supabase Production; tabela de séries com RLS, três colunas de recorrência e ambas as RPCs foram confirmadas no pós-check. Relatório: `docs/relatorios-fases/FASE-129-CONTAS-RECORRENTES-DUPLICACAO-FUTURO.md`.
 
 ## 9. Transparência fiscal das comissões — Migration 130
 
@@ -407,7 +407,7 @@ A migration `130_comissoes_transparencia_fiscal_vinculo_previsoes.sql` formaliza
 
 O extrato `Minhas comissões` passa a chamar o valor do participante de líquido e, quando `participante_exibe_detalhes_fiscais` estiver habilitado, mostra bruto proporcional, imposto abatido e líquido dentro do mesmo card e no detalhamento mensal. Todos os valores vêm dos snapshots gravados em `comissao_previsoes_franquia`; nenhuma alteração fiscal atual recalcula fatos históricos.
 
-Build e testes específicos aprovados localmente. A migration 130 ainda não foi aplicada ao Supabase Production. Relatório: `docs/relatorios-fases/FASE-130-COMISSOES-TRANSPARENCIA-FISCAL.md`.
+Build e testes específicos aprovados. Em 26/08/2026, a migration 130 foi aplicada no Supabase Production; FK, trigger tenant-aware e zero vínculos divergentes foram confirmados no pós-check. Relatório: `docs/relatorios-fases/FASE-130-COMISSOES-TRANSPARENCIA-FISCAL.md`.
 
 ## 10. Governança da atualização do catálogo — Fase 131
 
