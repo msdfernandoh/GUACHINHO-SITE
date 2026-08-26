@@ -80,6 +80,25 @@ describe("matriz canônica de papel e permissões do ERP", () => {
     expect(canAuthorizedAccessErpRoute(config, null, "usuarios", authorization)).toBe(false);
   });
 
+  it("não exibe a gestão de consultores sem a permissão de participantes", () => {
+    const teamConfig = {
+      habilitado: true,
+      modulos: ["usuarios", "comissoes"] as const,
+    };
+    expect(
+      canAuthorizedAccessErpRoute(teamConfig, null, "consultores", {
+        papelCodigo: "gestor",
+        permissoes: ["gerenciar_comissoes"],
+      }),
+    ).toBe(false);
+    expect(
+      canAuthorizedAccessErpRoute(teamConfig, null, "consultores", {
+        papelCodigo: "gestor",
+        permissoes: ["gerenciar_participantes"],
+      }),
+    ).toBe(true);
+  });
+
   it("visualizador fica somente nas áreas cobertas pela permissão de leitura", () => {
     const readConfig = {
       habilitado: true,
