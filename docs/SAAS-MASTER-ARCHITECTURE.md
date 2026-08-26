@@ -433,6 +433,8 @@ A empresa nunca vem do formulário: é resolvida pelo contexto ativo e revalidad
 
 Em 26/08/2026, a migration 131 foi compilada sob rollback, exercitada com uma sessão tenant real e aplicada no Supabase Production. O pós-check confirmou quatro índices, função registrada, acesso exclusivo de `authenticated` e retorno paginado com agregados completos. Nenhum fato financeiro foi modificado.
 
+A implementação foi promovida pela `main` em `ef49086`; o deployment Production `dpl_91iYrPAuZhUgYfD28nNTwHD64Qqj` ficou `Ready`. Os smokes do domínio público, ERP protegido e Platform protegida foram aprovados.
+
 
 
 

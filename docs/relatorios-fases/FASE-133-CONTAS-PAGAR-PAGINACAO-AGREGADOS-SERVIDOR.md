@@ -46,5 +46,8 @@ Foram adicionados índices forward-only por empresa/status/vencimento, empresa/s
 - migration `131` aplicada e registrada no histórico remoto;
 - pós-check: quatro índices e RPC presentes, execução concedida a `authenticated` e negada a `anon` e `service_role`;
 - lint focal da UI: zero erros; lint global permanece com 175 erros históricos fora do escopo, sem impedir build ou testes.
+- `main`: `ef49086ff3c7de93484fca1e3c8474365f01599f`;
+- deployment Production: `dpl_91iYrPAuZhUgYfD28nNTwHD64Qqj`, estado `Ready`;
+- smoke: domínio principal `200`; ERP e Platform anônimos redirecionados corretamente ao login.
 
 Nenhum lançamento, movimento, log ou documento foi alterado pela migration.
