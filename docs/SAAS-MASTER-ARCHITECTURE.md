@@ -4,11 +4,11 @@
 > **ESTADO-ALVO E CORREÇÕES OBRIGATÓRIAS**
 > Antes de alterar tenancy, usuários, catálogo, sites, comissões, financeiro, Storage, RPCs ou migrations, leia também integralmente [`SAAS-ARQUITETURA-ALVO-E-PLANO-DE-CORRECAO.md`](./SAAS-ARQUITETURA-ALVO-E-PLANO-DE-CORRECAO.md). O documento descreve o estado-alvo e o plano de remediação; seus itens não devem ser interpretados como já implantados sem evidência no banco e no código.
 
-> **Versão da Arquitetura:** 6.6.0
+> **Versão da Arquitetura:** 6.7.0
 > **Data de Atualização:** 26/08/2026
 > **Production code:** Fase 139 publicada em `main@23eaa3e`; Supabase principal `eaeuoynprurmmulzhydt` alinhado de `001–137`.
 > **Preview/isolado desta fase:** a branch `bwwgbmiwtrglbtxsdooi` permanece preservada como evidência de homologação da 083 até autorização separada de exclusão.
-> **Fase atual:** contrato candidato da API Racon v1 documentado para aprovação da matriz; integração externa permanece desativada e o baseline local/remoto continua em `001–137`.
+> **Fase atual:** auditoria do catálogo entre SaaS, ERP e sites concluída; proposta de staging e homologação definida, ainda sem alteração de schema/runtime; baseline local/remoto continua em `001–137`.
 > **Vercel Production:** deployment da Fase 140 `dpl_HkF4FVmGHxBbXz4RY83ApJwB5sqx` está `READY` e atende os domínios público, `www` e Platform.
 > **Segurança:** o Platform Host continua global, sem fallback de tenant, e exige `is_platform_superadmin()`.
 
@@ -639,6 +639,31 @@ do contrato. Artefatos:
 - `docs/integracoes/racon/openapi-racon-v1.yaml`;
 - `docs/integracoes/racon/MENSAGEM-ENVIO-MATRIZ.md`;
 - `docs/relatorios-fases/FASE-140-CONTRATO-API-RACON-V1.md`.
+
+## 19. Auditoria do catálogo SaaS, ERP e sites — Fase 141
+
+A auditoria confirmou uma única base física, mas editores divergentes e uma
+governança incompleta. O ERP grava grupo `LOCAL/PENDENTE_PLATFORM` diretamente
+na tabela canônica, o painel antigo do site possui outro conjunto de campos e a
+Platform promove a mesma linha sem merge/deduplicação. A leitura pública não
+exige status global, permitindo que legado ou proposta local do próprio tenant
+seja elegível antes da homologação.
+
+Em Produção há 19 grupos Racon e 176 produtos ativos: somente um grupo está
+`GLOBAL/GLOBAL`; 18 estão `LEGADO/CONFIGURACAO_PENDENTE`, mas os 19 são
+publicáveis pela regra atual. Dezessete ainda não possuem valores relevantes na
+estrutura N:N de parcelas por modalidade. O número 5388 colide entre os tipos
+Veículo e Moto, exigindo identidade composta até confirmação da matriz.
+
+O estado-alvo aprovado para implementação futura separa propostas de catálogo
+do catálogo global. ERP e painel do site reutilizarão formulário, validação e
+server action únicos; a Platform poderá criar, fundir ou vincular a um grupo
+existente. Somente catálogo homologado será consumido por sites, ERP, propostas
+e contratações. A reconciliação dos grupos Gauchinho preservará UUIDs e operação
+antes do corte do filtro público.
+
+Relatório:
+`docs/relatorios-fases/FASE-141-AUDITORIA-CATALOGO-GRUPOS-SAAS-ERP-SITES.md`.
 
 
 
