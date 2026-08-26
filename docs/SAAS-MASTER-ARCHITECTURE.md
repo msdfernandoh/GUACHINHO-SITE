@@ -4,11 +4,11 @@
 > **ESTADO-ALVO E CORREÇÕES OBRIGATÓRIAS**
 > Antes de alterar tenancy, usuários, catálogo, sites, comissões, financeiro, Storage, RPCs ou migrations, leia também integralmente [`SAAS-ARQUITETURA-ALVO-E-PLANO-DE-CORRECAO.md`](./SAAS-ARQUITETURA-ALVO-E-PLANO-DE-CORRECAO.md). O documento descreve o estado-alvo e o plano de remediação; seus itens não devem ser interpretados como já implantados sem evidência no banco e no código.
 
-> **Versão da Arquitetura:** 6.7.0
+> **Versão da Arquitetura:** 6.8.0
 > **Data de Atualização:** 26/08/2026
 > **Production code:** Fase 139 publicada em `main@23eaa3e`; Supabase principal `eaeuoynprurmmulzhydt` alinhado de `001–137`.
 > **Preview/isolado desta fase:** a branch `bwwgbmiwtrglbtxsdooi` permanece preservada como evidência de homologação da 083 até autorização separada de exclusão.
-> **Fase atual:** auditoria do catálogo entre SaaS, ERP e sites concluída; proposta de staging e homologação definida, ainda sem alteração de schema/runtime; baseline local/remoto continua em `001–137`.
+> **Fase atual:** comparação dos dados reais do site com SaaS/ERP concluída; modelo de autonomia local versionada e homologação global definido, ainda sem alteração de schema/runtime; baseline local/remoto continua em `001–137`.
 > **Vercel Production:** deployment da Fase 140 `dpl_HkF4FVmGHxBbXz4RY83ApJwB5sqx` está `READY` e atende os domínios público, `www` e Platform.
 > **Segurança:** o Platform Host continua global, sem fallback de tenant, e exige `is_platform_superadmin()`.
 
@@ -670,6 +670,27 @@ somente uma invalidação segura de cache (`revalidatePath`): ele atualiza a
 leitura dos dados já cadastrados, mas não sincroniza, homologa nem publica novos
 grupos. O catálogo público permaneceu operacional e os 38 testes direcionados
 continuaram aprovados.
+
+## 20. Comparação dos dados reais do site com SaaS/ERP — Fase 142
+
+A página pública usa os mesmos UUIDs de `grupos_consorcio` e `grupos_cotas` do
+SaaS/ERP. Os 19 grupos Racon do catálogo aparecem em Produção e a taxa/fundo do
+grupo são usados diretamente nos cálculos. Não há uma tabela financeira paralela
+do site.
+
+A convergência ainda é incompleta nas modalidades: o site usa campos legados de
+cota e `grupos_modalidades_lance`, enquanto a Platform edita a estrutura N:N
+`grupo_cota_modalidade_valores`. Também foram encontrados um produto sem parcela
+base no 1463, produtos de mesmo crédito duplicados no 5488, seis grupos com zero
+vagas ainda publicados e uma inconsistência manual de prazo no 5388 Moto.
+
+O modelo-alvo mantém uma versão global homologada e permite à franquia criar uma
+versão candidata. Alterações operacionais de baixo risco podem ser provisórias e
+locais, com expiração e alerta; dados financeiros/estruturais exigem homologação
+antes da publicação global. A transição deve preservar UUIDs e operação atual.
+
+Relatório:
+`docs/relatorios-fases/FASE-142-AUDITORIA-GRUPOS-SITE-SAAS-ERP.md`.
 
 
 
