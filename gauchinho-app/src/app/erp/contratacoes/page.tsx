@@ -1,14 +1,11 @@
 import Link from "next/link";
-import { getCurrentTenantContext } from "@/lib/tenant/context";
-import { canAccessErpRoute } from "@/lib/erp/erp-acesso";
-import { getErpSistemaConfig } from "@/lib/erp/erp-modulos";
+import { requireErpRouteAccess } from "@/lib/erp/erp-acesso-server";
 import {
   listarContratacoesOperacionais,
   ordenarFilaContratacoes,
   tempoAguardando,
   type StatusOperacionalContratacao,
 } from "@/lib/erp/contratacoes-operacionais";
-import { notFound } from "next/navigation";
 
 const moeda = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 const statusNome: Record<StatusOperacionalContratacao, string> = {
@@ -36,11 +33,7 @@ export default async function ErpContratacoesPage({
   searchParams: Promise<Record<string, string | undefined>>;
 }) {
   const filtros = await searchParams;
-  const { empresaAtiva, vinculos } = await getCurrentTenantContext();
-  if (!empresaAtiva) notFound();
-  const config = getErpSistemaConfig(empresaAtiva.configuracoes);
-  const vinculo = (vinculos ?? []).find((v) => v.empresa_id === empresaAtiva.id);
-  if (!canAccessErpRoute(config, vinculo?.erp_modulos_visiveis, "contratacoes")) notFound();
+  const { empresaAtiva } = await requireErpRouteAccess("contratacoes");
   let rows = ordenarFilaContratacoes(await listarContratacoesOperacionais(empresaAtiva.id));
   if (filtros.busca) {
     const busca = filtros.busca.toLowerCase().replace(/\D/g, "") || filtros.busca.toLowerCase();

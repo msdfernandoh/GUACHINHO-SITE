@@ -40,7 +40,7 @@ describe("Fase 133 / migration 131 — consulta escalável de contas a pagar", (
     expect(migration).toContain("c.empresa_id = p_empresa_id");
     expect(migration).toMatch(/REVOKE ALL ON FUNCTION[\s\S]*FROM PUBLIC, anon, service_role/);
     expect(migration).toMatch(/GRANT EXECUTE ON FUNCTION[\s\S]*TO authenticated/);
-    expect(actions).toContain('canAccessErpRoute(getErpSistemaConfig(empresaAtiva.configuracoes)');
+    expect(actions).toContain('requireErpRouteAccess("contas-pagar")');
   });
 
   it("consulta com sessão do usuário e não com cliente administrativo", () => {

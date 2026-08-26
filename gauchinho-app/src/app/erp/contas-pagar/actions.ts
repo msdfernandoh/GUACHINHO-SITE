@@ -4,10 +4,9 @@ import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
-import { getCurrentTenantContext, requireTenantPermission } from "@/lib/tenant/context";
+import { requireTenantPermission } from "@/lib/tenant/context";
 import { parseContasPagarCsv } from "@/lib/financeiro/contas-pagar-csv";
-import { getErpSistemaConfig } from "@/lib/erp/erp-modulos";
-import { canAccessErpRoute } from "@/lib/erp/erp-acesso";
+import { requireErpRouteAccess } from "@/lib/erp/erp-acesso-server";
 
 export type ContasActionResult = {
   ok: boolean;
@@ -69,12 +68,7 @@ export type ConsultaContasPagarResult = {
 export async function consultarContasPagar(
   input: ConsultaContasPagarInput = {},
 ): Promise<ConsultaContasPagarResult> {
-  const { empresaAtiva, vinculos } = await getCurrentTenantContext();
-  if (!empresaAtiva) throw new Error("Empresa ativa não encontrada.");
-  const vinculo = vinculos.find((item) => item.empresa_id === empresaAtiva.id);
-  if (!canAccessErpRoute(getErpSistemaConfig(empresaAtiva.configuracoes), vinculo?.erp_modulos_visiveis, "contas-pagar")) {
-    throw new Error("Este usuário não possui acesso ao menu Contas a pagar e caixa.");
-  }
+  const { empresaAtiva } = await requireErpRouteAccess("contas-pagar");
   const session = await createClient();
   const { data, error } = await session.rpc("rpc_consultar_contas_pagar", {
     p_empresa_id: empresaAtiva.id,
@@ -121,12 +115,8 @@ function failure(error: unknown): ContasActionResult {
 }
 
 async function requireFinanceWrite() {
-  const { empresaAtiva, vinculos, vinculoAtivo } = await requireTenantPermission("gerenciar_financeiro");
-  const vinculo = vinculoAtivo ?? vinculos.find((item) => item.empresa_id === empresaAtiva.id);
-  const config = getErpSistemaConfig(empresaAtiva.configuracoes);
-  if (!canAccessErpRoute(config, vinculo?.erp_modulos_visiveis, "contas-pagar")) {
-    throw new Error("Este usuário não possui acesso ao menu Contas a pagar e caixa.");
-  }
+  await requireErpRouteAccess("contas-pagar");
+  const { empresaAtiva } = await requireTenantPermission("gerenciar_financeiro");
   const session = await createClient();
   const { data: canWrite, error } = await session.rpc("can_write_tenant_internal", {
     p_empresa_id: empresaAtiva.id,
