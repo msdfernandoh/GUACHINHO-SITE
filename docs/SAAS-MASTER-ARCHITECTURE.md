@@ -4,11 +4,11 @@
 > **ESTADO-ALVO E CORREÇÕES OBRIGATÓRIAS**
 > Antes de alterar tenancy, usuários, catálogo, sites, comissões, financeiro, Storage, RPCs ou migrations, leia também integralmente [`SAAS-ARQUITETURA-ALVO-E-PLANO-DE-CORRECAO.md`](./SAAS-ARQUITETURA-ALVO-E-PLANO-DE-CORRECAO.md). O documento descreve o estado-alvo e o plano de remediação; seus itens não devem ser interpretados como já implantados sem evidência no banco e no código.
 
-> **Versão da Arquitetura:** 6.8.0
+> **Versão da Arquitetura:** 6.9.0
 > **Data de Atualização:** 26/08/2026
 > **Production code:** Fase 139 publicada em `main@23eaa3e`; Supabase principal `eaeuoynprurmmulzhydt` alinhado de `001–137`.
 > **Preview/isolado desta fase:** a branch `bwwgbmiwtrglbtxsdooi` permanece preservada como evidência de homologação da 083 até autorização separada de exclusão.
-> **Fase atual:** comparação dos dados reais do site com SaaS/ERP concluída; modelo de autonomia local versionada e homologação global definido, ainda sem alteração de schema/runtime; baseline local/remoto continua em `001–137`.
+> **Fase atual:** fluxo site→contratação→ERP e matriz de autorizações auditados; decisão de restringir o Admin do site à apresentação local definida, ainda sem alteração de schema/runtime; baseline local/remoto continua em `001–137`.
 > **Vercel Production:** deployment da Fase 140 `dpl_HkF4FVmGHxBbXz4RY83ApJwB5sqx` está `READY` e atende os domínios público, `www` e Platform.
 > **Segurança:** o Platform Host continua global, sem fallback de tenant, e exige `is_platform_superadmin()`.
 
@@ -699,6 +699,30 @@ seletor de empresa não filtra o catálogo exibido nem o contador de publicaçã
 uma empresa sem concessão ainda aparece com 19 grupos “publicados”. Em escala,
 o catálogo deve ser editado uma única vez por administradora e propagado por
 versão/tag de cache a todas as concessões ativas, sem atualização individual.
+
+## 21. Fluxo da contratação e permissões — Fase 143
+
+O requisito confirmado estabelece que o site calcula e gera a contratação; o
+ERP confere a integridade, associa a cota real e participantes, formaliza a venda
+e gera comissões. A auditoria encontrou que o site preserva seu cálculo no
+snapshot, mas o servidor ainda não recalcula integralmente o payload na criação
+da proposta e a RPC de formalização substitui a parcela por um valor de
+`grupo_cota_modalidade_valores`. Esse comportamento será corrigido para um
+snapshot servidor imutável, versionado e com hash.
+
+O Admin do site da franquia ficará restrito à apresentação local: visibilidade,
+destaque, ordem, textos e subconjunto das modalidades oficiais. Taxas, fórmula,
+créditos e regras globais permanecem na Platform; correções locais geram pedido
+de homologação. O editor de cotas hoje visível para não-Superadmin, embora
+bloqueado pelas actions, deve ser removido da interface.
+
+As permissões serão separadas por capacidade para catálogo, apresentação,
+solicitação, homologação, proposta, conferência, cota real, participantes e
+formalização. Menu, rota, server action, RPC e RLS devem aplicar a mesma decisão
+tenant-aware e negar por padrão.
+
+Relatório:
+`docs/relatorios-fases/FASE-143-FLUXO-CONTRATACAO-CATALOGO-E-PERMISSOES.md`.
 
 
 
