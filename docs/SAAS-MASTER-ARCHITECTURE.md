@@ -9,7 +9,7 @@
 > **Production code:** `main@34aeb3c` para a entrega funcional da Fase 138; Supabase principal `eaeuoynprurmmulzhydt` alinhado de `001–135`.
 > **Preview/isolado desta fase:** a branch `bwwgbmiwtrglbtxsdooi` permanece preservada como evidência de homologação da 083 até autorização separada de exclusão.
 > **Fase atual:** barreira de qualidade consolidada com lint sem erros bloqueantes, 1.028 testes aprovados e build de 146 rotas; baseline local/remoto contínuo de `001–135`.
-> **Vercel Production:** deployment `dpl_3jzKGMWXjXYmJvuLk2JkfamfQL9T` está `READY` e atende os domínios público, `www` e Platform.
+> **Vercel Production:** deployment verificado da Fase 138 `dpl_BfrDtiZAoq9ap4SFzRtfXQhRJVA7` está `READY` e atende os domínios público, `www` e Platform.
 > **Segurança:** o Platform Host continua global, sem fallback de tenant, e exige `is_platform_superadmin()`.
 
 > **Projeto Físico:** `C:\Fernando Hugo\GAUCHINHO SITE`  
