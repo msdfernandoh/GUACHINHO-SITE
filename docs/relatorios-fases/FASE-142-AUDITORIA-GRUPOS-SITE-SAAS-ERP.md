@@ -23,10 +23,12 @@ o grupo 1453 com crédito de R$ 254.400 usou taxa de 25% mais fundo de 2%,
 resultando em saldo devedor de R$ 323.088, exatamente conforme o catálogo.
 
 Entretanto, a integração ainda não é integralmente canônica. O site lê taxa,
-fundo, seguro e produtos do catálogo compartilhado, mas monta modalidades e
-parcelas com campos legados de `grupos_cotas` e `grupos_modalidades_lance`; ele
-não consome plenamente `grupos_modalidades_disponiveis` e
-`grupo_cota_modalidade_valores`, que são as estruturas editadas pela Platform.
+fundo, seguro e produtos do catálogo compartilhado, mas a nomenclatura atual
+mistura modalidade da parcela com modalidade de comissão/lance. O requisito de
+negócio confirmado é que Integral, Reduzida e Personalizada sejam opções do
+mesmo conceito **modalidade da parcela**. O SaaS deve liberar modalidades e seus
+parâmetros; o valor final deve continuar sendo calculado, não distribuído como
+um valor pronto por franquia.
 
 ## 2. Origem efetiva dos dados do site
 
@@ -50,8 +52,8 @@ domínio da empresa
 | Seguro | campos de seguro em `grupos_consorcio` | Mesmo SaaS/ERP; usado no cálculo |
 | Vagas | `grupos_consorcio.vagas_disponiveis` | Mesmo cadastro, mas não exibido nem usado para elegibilidade |
 | Créditos/produtos | `grupos_cotas` | Mesmo SaaS/ERP |
-| Integral/reduzida | campos legados da cota | Ainda não canônico |
-| Modalidades por produto | deveria vir de `grupo_cota_modalidade_valores` | Site ainda não usa plenamente |
+| Integral/reduzida/personalizada | cálculo do site com parâmetros do grupo | Resultado calculado; não deve ser replicado por franquia |
+| Modalidades permitidas | configuração do grupo/administradora | Precisa de conceito próprio, separado de comissão e lance |
 | Estratégias de lance | `grupos_modalidades_lance` | Estrutura operacional legada |
 | Prazo restante | calculado por `data_base_parcelas` quando automático | Pode diferir do valor bruto sem ser erro |
 
@@ -65,13 +67,18 @@ domínio da empresa
 - o filtro público não exige homologação global, portanto os 18 legados são
   publicados antes de uma homologação formal.
 
-### 3.2 Modalidades e parcelas
+### 3.2 Modalidades e parcelas — regra de negócio confirmada
 
-- a Platform possui a estrutura N:N por produto/modalidade;
-- o site ainda usa principalmente `parcela_integral`, `parcela_reduzida`,
-  `valor_parcela` e modalidades de lance legadas;
-- mudanças em Integral, 60–99% ou abaixo de 59% podem não chegar ao site com a
-  mesma semântica configurada na Platform;
+- Integral, Reduzida e Personalizada são modalidades da parcela liberadas para
+  escolha no site, e não modalidades de comissão;
+- o SaaS não precisa armazenar/distribuir o valor final da parcela: precisa
+  armazenar crédito, taxas, prazo, seguro, modalidades permitidas e parâmetros;
+- o cálculo deve permanecer centralizado em um único motor compartilhado por
+  site, ERP, proposta e contratação, com versão da fórmula auditável;
+- a nomenclatura `administradora_modalidades_comissao` usada no contexto de
+  grupos é ambígua e deve ser separada da modalidade de parcela;
+- os campos de valor por modalidade podem permanecer apenas como legado ou
+  override excepcional durante a migração, sem serem a fonte principal;
 - o produto de R$ 475.000 do grupo 1463 não possui parcela-base válida;
 - somente os grupos 1453 e 1463 têm alguma cobertura na estrutura canônica N:N,
   e a cobertura ainda é incompleta.
@@ -164,8 +171,10 @@ concessão da administradora. Rejeição ou expiração restaura a versão ofici
 
 1. Site, ERP, proposta e contratação devem chamar o mesmo serviço de catálogo.
 2. Todos devem usar somente UUIDs canônicos; não copiar grupos por franquia.
-3. Parcelas devem ser resolvidas por
-   `grupo_cota_modalidade_valores`, com fallback legado apenas durante migração.
+3. O site deve receber as modalidades de parcela permitidas e seus parâmetros,
+   e calcular a parcela no motor compartilhado; `grupo_cota_modalidade_valores`
+   fica reservado a override excepcional/fallback de migração, não ao valor
+   obrigatório de cada franquia.
 4. A resposta do serviço deve informar versão, origem, homologação, validade e
    data da última atualização.
 5. Vagas devem usar estado explícito (`DISPONIVEL`, `ULTIMAS_VAGAS`,
@@ -175,6 +184,34 @@ concessão da administradora. Rejeição ou expiração restaura a versão ofici
 7. Grupo pendente não deve chegar a outra franquia. Override provisório só pode
    atingir a franquia autora e deve aparecer identificado.
 8. A publicação global deve ocorrer em transação única e ser idempotente.
+
+## 5.1 Escala e as telas atuais da Platform
+
+A tela principal `/platform/grupos` já representa o catálogo global correto:
+editar um grupo altera um único registro compartilhado. Não é necessário abrir
+cada franquia. Todas as empresas com concessão ativa da administradora devem
+receber a mesma versão automaticamente.
+
+A tela `/platform/grupos/vinculacoes` é específica para correção de origens e
+contratações legadas. O seletor de empresa atua nos legados, mas a lista e o
+contador “Publicados no Site” usam atualmente todos os grupos ativos com cotas,
+sem filtrar a concessão da empresa selecionada. Isso ficou comprovado porque
+“Empresa B Consórcios” não possui concessão de administradora e a tela ainda
+mostra 19 publicados. O texto/contador é enganoso e não deve ser usado como
+evidência de publicação por franquia.
+
+Para rede grande, a Platform deve separar claramente:
+
+- **Catálogo global:** edição única por administradora;
+- **Distribuição da rede:** quantidade de franquias alcançadas, concessões e
+  exceções locais, sem cópia de grupos;
+- **Homologações pendentes:** propostas recebidas dos ERPs/sites;
+- **Vinculações legadas:** somente correção histórica por empresa.
+
+Ao aprovar uma versão global, o sistema deve aumentar a versão do catálogo da
+administradora e invalidar uma tag compartilhada (por exemplo,
+`catalogo:administradora:<uuid>`). Todos os sites e ERPs passam a ler a nova
+versão; não existe botão de atualização por franquia.
 
 ## 6. Ordem segura de correção
 

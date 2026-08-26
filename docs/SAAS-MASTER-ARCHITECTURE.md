@@ -678,11 +678,13 @@ SaaS/ERP. Os 19 grupos Racon do catálogo aparecem em Produção e a taxa/fundo 
 grupo são usados diretamente nos cálculos. Não há uma tabela financeira paralela
 do site.
 
-A convergência ainda é incompleta nas modalidades: o site usa campos legados de
-cota e `grupos_modalidades_lance`, enquanto a Platform edita a estrutura N:N
-`grupo_cota_modalidade_valores`. Também foram encontrados um produto sem parcela
-base no 1463, produtos de mesmo crédito duplicados no 5488, seis grupos com zero
-vagas ainda publicados e uma inconsistência manual de prazo no 5388 Moto.
+A regra de negócio foi refinada: Integral, Reduzida e Personalizada são opções
+do mesmo conceito “modalidade da parcela”. O SaaS distribui disponibilidade e
+parâmetros, enquanto um motor único calcula o valor final para site, ERP,
+proposta e contratação. A nomenclatura de comissão/lance não deve representar
+modalidade da parcela. Também foram encontrados um produto sem parcela-base no
+1463, produtos de mesmo crédito duplicados no 5488, seis grupos com zero vagas
+ainda publicados e uma inconsistência manual de prazo no 5388 Moto.
 
 O modelo-alvo mantém uma versão global homologada e permite à franquia criar uma
 versão candidata. Alterações operacionais de baixo risco podem ser provisórias e
@@ -691,6 +693,12 @@ antes da publicação global. A transição deve preservar UUIDs e operação at
 
 Relatório:
 `docs/relatorios-fases/FASE-142-AUDITORIA-GRUPOS-SITE-SAAS-ERP.md`.
+
+A tela de vinculações foi confirmada como exclusiva para correção histórica. O
+seletor de empresa não filtra o catálogo exibido nem o contador de publicação:
+uma empresa sem concessão ainda aparece com 19 grupos “publicados”. Em escala,
+o catálogo deve ser editado uma única vez por administradora e propagado por
+versão/tag de cache a todas as concessões ativas, sem atualização individual.
 
 
 
