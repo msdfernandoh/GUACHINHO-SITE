@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { Calendar, Filter, DollarSign, Clock, CheckCircle2, AlertCircle } from "lucide-react";
+import { Calendar, DollarSign, Clock, CheckCircle2, Search, User, X } from "lucide-react";
 import { conferirPagamentoAction } from "@/app/erp/minhas-comissoes/actions";
 
 export type PrevisaoParticipanteItem = {
@@ -39,6 +39,14 @@ export function MinhasComissoesClient({
 
   const [filtroPeriodo, setFiltroPeriodo] = useState<string>("TODOS");
   const [mesEspecifico, setMesEspecifico] = useState<string>("");
+  const [buscaCliente, setBuscaCliente] = useState<string>("");
+  const [clienteSelecionado, setClienteSelecionado] = useState<string>("");
+
+  // Clientes únicos disponíveis
+  const clientesDisponiveis = useMemo(() => {
+    const list = previsoes.map((p) => p.cliente_nome).filter(Boolean) as string[];
+    return Array.from(new Set(list)).sort();
+  }, [previsoes]);
 
   // Competências únicas disponíveis
   const competenciasDisponiveis = useMemo(() => {
@@ -46,9 +54,19 @@ export function MinhasComissoesClient({
     return Array.from(set).sort();
   }, [previsoes]);
 
-  // Filtragem
+  // Filtragem completa
   const previsoesFiltradas = useMemo(() => {
     return previsoes.filter((p) => {
+      if (clienteSelecionado && p.cliente_nome !== clienteSelecionado) {
+        return false;
+      }
+      if (buscaCliente.trim()) {
+        const query = buscaCliente.trim().toLowerCase();
+        const matchNome = p.cliente_nome?.toLowerCase().includes(query);
+        const matchGrupo = p.grupo_codigo?.toLowerCase().includes(query);
+        const matchCota = p.cota_numero?.toLowerCase().includes(query);
+        if (!matchNome && !matchGrupo && !matchCota) return false;
+      }
       if (mesEspecifico) {
         return p.competencia === mesEspecifico;
       }
@@ -73,7 +91,7 @@ export function MinhasComissoesClient({
       }
       return true;
     });
-  }, [previsoes, filtroPeriodo, mesEspecifico, currentMonth, nextMonth, now]);
+  }, [previsoes, clienteSelecionado, buscaCliente, filtroPeriodo, mesEspecifico, currentMonth, nextMonth, now]);
 
   // Métricas do período filtrado
   const metricas = useMemo(() => {
@@ -82,12 +100,23 @@ export function MinhasComissoesClient({
     const totalPago = previsoesFiltradas.reduce((s, p) => s + Number(p.valor_pago || 0), 0);
     const totalAReceber = totalGerado - totalPago;
 
-    // Métricas globais
-    const ganhoMesAtual = previsoes
+    // Métricas para o subconjunto de cliente (se filtrado) ou global
+    const baseParaMeses = clienteSelecionado || buscaCliente.trim()
+      ? previsoes.filter((p) => {
+          if (clienteSelecionado && p.cliente_nome !== clienteSelecionado) return false;
+          if (buscaCliente.trim()) {
+            const query = buscaCliente.trim().toLowerCase();
+            return p.cliente_nome?.toLowerCase().includes(query) || p.grupo_codigo?.toLowerCase().includes(query) || p.cota_numero?.toLowerCase().includes(query);
+          }
+          return true;
+        })
+      : previsoes;
+
+    const ganhoMesAtual = baseParaMeses
       .filter((p) => p.competencia === currentMonth)
       .reduce((s, p) => s + Number(p.valor_previsto || 0), 0);
 
-    const ganhoProximoMes = previsoes
+    const ganhoProximoMes = baseParaMeses
       .filter((p) => p.competencia === nextMonth)
       .reduce((s, p) => s + Number(p.valor_previsto || 0), 0);
 
@@ -99,7 +128,9 @@ export function MinhasComissoesClient({
       ganhoMesAtual,
       ganhoProximoMes,
     };
-  }, [previsoesFiltradas, previsoes, currentMonth, nextMonth]);
+  }, [previsoesFiltradas, previsoes, clienteSelecionado, buscaCliente, currentMonth, nextMonth]);
+
+  const temFiltroAtivo = Boolean(clienteSelecionado || buscaCliente || mesEspecifico || filtroPeriodo !== "TODOS");
 
   return (
     <div className="space-y-6">
@@ -108,69 +139,143 @@ export function MinhasComissoesClient({
         <p className="text-xs font-bold uppercase tracking-widest text-cyan-300">Extrato &amp; Projeção de Comissões</p>
         <h1 className="mt-2 text-3xl font-black">{participanteNome}</h1>
         <p className="mt-2 text-xs text-slate-300">
-          Acompanhe suas previsões mês a mês, valores elegíveis e repasses liberados.
+          Acompanhe suas previsões mês a mês, valores elegíveis e repasses liberados por cliente e competência.
         </p>
       </header>
 
-      {/* Barra de Filtros de Competência */}
-      <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-2xs dark:border-slate-800 dark:bg-slate-900 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <Calendar className="h-4 w-4 text-blue-700 dark:text-blue-400" />
-          <span className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider">
-            Filtro de Recebimento:
-          </span>
+      {/* Barra de Filtros: Cliente + Competência */}
+      <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-2xs dark:border-slate-800 dark:bg-slate-900 space-y-3">
+        {/* Linha 1: Filtro por Cliente */}
+        <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
+          <div className="flex items-center gap-2">
+            <User className="h-4 w-4 text-blue-700 dark:text-blue-400" />
+            <span className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider">
+              Filtrar por Cliente:
+            </span>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2 flex-1 max-w-xl justify-end">
+            <div className="relative flex-1 min-w-[200px]">
+              <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Buscar cliente, grupo ou cota..."
+                value={buscaCliente}
+                onChange={(e) => {
+                  setBuscaCliente(e.target.value);
+                  if (e.target.value) setClienteSelecionado("");
+                }}
+                className="w-full rounded-xl border border-slate-300 bg-slate-50/50 pl-8 pr-3 py-1.5 text-xs font-semibold text-slate-900 focus:border-blue-600 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+              />
+              {buscaCliente && (
+                <button
+                  type="button"
+                  onClick={() => setBuscaCliente("")}
+                  className="absolute right-2.5 top-2 text-slate-400 hover:text-slate-600"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              )}
+            </div>
+
+            {clientesDisponiveis.length > 0 && (
+              <select
+                value={clienteSelecionado}
+                onChange={(e) => {
+                  setClienteSelecionado(e.target.value);
+                  if (e.target.value) setBuscaCliente("");
+                }}
+                className="rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-xs font-bold text-slate-800 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+              >
+                <option value="">Todos os clientes ({clientesDisponiveis.length})</option>
+                {clientesDisponiveis.map((cli) => (
+                  <option key={cli} value={cli}>
+                    {cli}
+                  </option>
+                ))}
+              </select>
+            )}
+
+            {temFiltroAtivo && (
+              <button
+                type="button"
+                onClick={() => {
+                  setFiltroPeriodo("TODOS");
+                  setMesEspecifico("");
+                  setBuscaCliente("");
+                  setClienteSelecionado("");
+                }}
+                className="flex items-center gap-1 rounded-xl bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 cursor-pointer"
+              >
+                <X className="h-3 w-3" />
+                Limpar
+              </button>
+            )}
+          </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          {[
-            ["TODOS", "Todos os Meses"],
-            ["MES_ATUAL", `Mês Atual (${currentMonth})`],
-            ["PROXIMO_MES", `Próximo Mês (${nextMonth})`],
-            ["PROXIMOS_3_MESES", "Próximos 3 Meses"],
-            ["PROXIMOS_6_MESES", "Próximos 6 Meses"],
-            ["FUTUROS", "Meses Futuros"],
-          ].map(([key, label]) => (
-            <button
-              key={key}
-              type="button"
-              onClick={() => {
-                setFiltroPeriodo(key);
-                setMesEspecifico("");
-              }}
-              className={`rounded-xl px-3 py-1.5 text-xs font-bold transition cursor-pointer ${
-                filtroPeriodo === key && !mesEspecifico
-                  ? "bg-blue-700 text-white shadow-xs"
-                  : "bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300"
-              }`}
-            >
-              {label}
-            </button>
-          ))}
+        {/* Linha 2: Filtro por Período / Competência */}
+        <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
+          <div className="flex items-center gap-2">
+            <Calendar className="h-4 w-4 text-blue-700 dark:text-blue-400" />
+            <span className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider">
+              Filtro de Recebimento:
+            </span>
+          </div>
 
-          {competenciasDisponiveis.length > 0 && (
-            <select
-              value={mesEspecifico}
-              onChange={(e) => {
-                setMesEspecifico(e.target.value);
-                if (e.target.value) setFiltroPeriodo("");
-              }}
-              className="rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-xs font-bold text-slate-800 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-            >
-              <option value="">Selecione mês específico</option>
-              {competenciasDisponiveis.map((comp) => (
-                <option key={comp} value={comp}>
-                  {comp}
-                </option>
-              ))}
-            </select>
-          )}
+          <div className="flex flex-wrap items-center gap-2">
+            {[
+              ["TODOS", "Todos os Meses"],
+              ["MES_ATUAL", `Mês Atual (${currentMonth})`],
+              ["PROXIMO_MES", `Próximo Mês (${nextMonth})`],
+              ["PROXIMOS_3_MESES", "Próximos 3 Meses"],
+              ["PROXIMOS_6_MESES", "Próximos 6 Meses"],
+              ["FUTUROS", "Meses Futuros"],
+            ].map(([key, label]) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => {
+                  setFiltroPeriodo(key);
+                  setMesEspecifico("");
+                }}
+                className={`rounded-xl px-3 py-1.5 text-xs font-bold transition cursor-pointer ${
+                  filtroPeriodo === key && !mesEspecifico
+                    ? "bg-blue-700 text-white shadow-xs"
+                    : "bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+
+            {competenciasDisponiveis.length > 0 && (
+              <select
+                value={mesEspecifico}
+                onChange={(e) => {
+                  setMesEspecifico(e.target.value);
+                  if (e.target.value) setFiltroPeriodo("");
+                }}
+                className="rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-xs font-bold text-slate-800 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+              >
+                <option value="">Selecione mês específico</option>
+                {competenciasDisponiveis.map((comp) => (
+                  <option key={comp} value={comp}>
+                    {comp}
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
         </div>
       </div>
 
       {/* Cards de Métricas */}
       <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-2xs dark:border-slate-800 dark:bg-slate-900">
-          <p className="text-xs font-semibold text-slate-500">Total Previsto no Período</p>
+          <p className="text-xs font-semibold text-slate-500">
+            Total Previsto {clienteSelecionado ? `(${clienteSelecionado})` : "no Período"}
+          </p>
           <p className="mt-2 text-2xl font-black text-slate-950 dark:text-white">{brl(metricas.totalGerado)}</p>
           <p className="mt-1 text-[11px] text-slate-400">{previsoesFiltradas.length} parcelas</p>
         </div>
@@ -199,14 +304,15 @@ export function MinhasComissoesClient({
         <div className="flex items-center justify-between border-b p-4">
           <h2 className="text-sm font-black text-slate-900 dark:text-white">
             Detalhamento das Parcelas de Comissão ({previsoesFiltradas.length})
+            {clienteSelecionado && <span className="ml-2 text-blue-700 font-bold">— Cliente: {clienteSelecionado}</span>}
           </h2>
         </div>
 
         {previsoesFiltradas.length === 0 ? (
           <div className="p-10 text-center text-xs text-slate-500 space-y-2">
             <Clock className="mx-auto h-8 w-8 text-slate-300" />
-            <p className="font-bold text-slate-700 dark:text-slate-300">Nenhuma parcela prevista para o período selecionado.</p>
-            <p>Se você acabou de formalizar uma venda, ela aparecerá automaticamente conforme as datas das parcelas.</p>
+            <p className="font-bold text-slate-700 dark:text-slate-300">Nenhuma parcela prevista para o filtro selecionado.</p>
+            <p>Tente ajustar o filtro de cliente ou período.</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -234,6 +340,7 @@ export function MinhasComissoesClient({
                       </div>
                       <div className="text-[10px] text-slate-500">
                         {row.grupo_codigo ? `Grupo ${row.grupo_codigo}` : ""} · {row.cota_numero ? `Cota #${row.cota_numero}` : "Pendente SIF"}
+                        {row.valor_credito ? ` · Crédito: ${brl(row.valor_credito)}` : ""}
                       </div>
                     </td>
                     <td className="p-3 font-bold text-slate-800 dark:text-slate-200">

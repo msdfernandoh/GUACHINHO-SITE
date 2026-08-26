@@ -194,6 +194,9 @@ export function ErpVendasHubView({
   const [editNumGrupo, setEditNumGrupo] = useState("");
   const [editNumCota, setEditNumCota] = useState("");
   const [editQtdCotas, setEditQtdCotas] = useState<number>(1);
+  const [editValorCredito, setEditValorCredito] = useState<number>(0);
+  const [editValorParcela, setEditValorParcela] = useState<number>(0);
+  const [editPrazo, setEditPrazo] = useState<number>(0);
   const [editPrincipalId, setEditPrincipalId] = useState("");
   const [editPerfilPrincipalId, setEditPerfilPrincipalId] = useState("");
   const [editModalidadeId, setEditModalidadeId] = useState<string>("");
@@ -261,6 +264,9 @@ export function ErpVendasHubView({
     setEditNumGrupo(v.grupo_codigo || "");
     setEditNumCota(v.cota_numero || "");
     setEditQtdCotas(v.quantidade_cotas || 1);
+    setEditValorCredito(v.valor_credito || 0);
+    setEditValorParcela(v.parcela || 0);
+    setEditPrazo(v.prazo || 0);
     setEditPrincipalId(v.participante_comercial_id || "");
     setEditPerfilPrincipalId(v.perfil_principal_id || (v.snapshot_venda as any)?.perfil_principal_id || "");
 
@@ -775,7 +781,7 @@ export function ErpVendasHubView({
                   <input
                     name="numero_grupo"
                     type="text"
-                    placeholder="Ex: 1463"
+                    placeholder="Ex: 1453"
                     value={editNumGrupo}
                     onChange={(e) => setEditNumGrupo(e.target.value)}
                     className="mt-1 w-full rounded-xl border border-slate-300 p-2 font-bold dark:border-slate-700 dark:bg-slate-800"
@@ -801,6 +807,45 @@ export function ErpVendasHubView({
                     max="100"
                     value={editQtdCotas}
                     onChange={(e) => setEditQtdCotas(parseInt(e.target.value) || 1)}
+                    className="mt-1 w-full rounded-xl border border-slate-300 p-2 font-bold dark:border-slate-700 dark:bg-slate-800"
+                  />
+                </div>
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-3">
+                <div>
+                  <label className="font-bold text-slate-700 dark:text-slate-300">Crédito Total (R$):</label>
+                  <input
+                    name="valor_credito"
+                    type="number"
+                    step="0.01"
+                    min="1"
+                    value={editValorCredito}
+                    onChange={(e) => setEditValorCredito(parseFloat(e.target.value) || 0)}
+                    className="mt-1 w-full rounded-xl border border-slate-300 p-2 font-bold text-blue-700 dark:border-slate-700 dark:bg-slate-800 dark:text-blue-400"
+                  />
+                </div>
+                <div>
+                  <label className="font-bold text-slate-700 dark:text-slate-300">Valor da Parcela (R$):</label>
+                  <input
+                    name="valor_parcela"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={editValorParcela}
+                    onChange={(e) => setEditValorParcela(parseFloat(e.target.value) || 0)}
+                    className="mt-1 w-full rounded-xl border border-slate-300 p-2 font-bold dark:border-slate-700 dark:bg-slate-800"
+                  />
+                </div>
+                <div>
+                  <label className="font-bold text-slate-700 dark:text-slate-300">Prazo (meses):</label>
+                  <input
+                    name="prazo"
+                    type="number"
+                    min="1"
+                    max="600"
+                    value={editPrazo}
+                    onChange={(e) => setEditPrazo(parseInt(e.target.value) || 0)}
                     className="mt-1 w-full rounded-xl border border-slate-300 p-2 font-bold dark:border-slate-700 dark:bg-slate-800"
                   />
                 </div>

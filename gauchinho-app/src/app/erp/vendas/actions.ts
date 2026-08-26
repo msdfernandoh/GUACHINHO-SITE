@@ -23,6 +23,9 @@ export async function masterAtualizarVendaAction(formData: FormData) {
   const numeroGrupo = val(formData, "numero_grupo");
   const numeroCota = val(formData, "numero_cota");
   const quantidadeCotas = val(formData, "quantidade_cotas");
+  const valorCredito = val(formData, "valor_credito");
+  const valorParcela = val(formData, "valor_parcela");
+  const prazo = val(formData, "prazo");
   const principalId = val(formData, "participante_principal_id") || null;
   const secundarioId = val(formData, "participante_secundario_id") || null;
   const fracao = val(formData, "fracao_secundario");
@@ -47,6 +50,10 @@ export async function masterAtualizarVendaAction(formData: FormData) {
     data_segunda_parcela: dataSegunda,
     updated_at: new Date().toISOString(),
   };
+
+  if (valorCredito) vendaUpdatePayload.valor_credito = Number(valorCredito);
+  if (valorParcela) vendaUpdatePayload.parcela = Number(valorParcela);
+  if (prazo) vendaUpdatePayload.prazo = Number(prazo);
 
   if (modalidadeComissaoId && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(modalidadeComissaoId)) {
     vendaUpdatePayload.modalidade_comissao_id = modalidadeComissaoId;
@@ -78,6 +85,10 @@ export async function masterAtualizarVendaAction(formData: FormData) {
   if (numeroGrupo) {
     cotaPayload.numero_grupo = numeroGrupo.trim();
   }
+  if (valorCredito) cotaPayload.valor_credito = Number(valorCredito);
+  if (valorParcela) cotaPayload.parcela = Number(valorParcela);
+  if (prazo) cotaPayload.prazo = Number(prazo);
+
   await admin.from("cotas_definitivas").update(cotaPayload).eq("venda_id", vendaId).eq("empresa_id", empresaAtiva.id);
 
   // 3. Se recalcular comissões futuras
