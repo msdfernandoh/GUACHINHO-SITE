@@ -3,7 +3,7 @@
 **Data:** 26/08/2026  
 **Migration:** não aplicável  
 **Código:** `main@34aeb3c`  
-**Deployment verificado:** `dpl_BfrDtiZAoq9ap4SFzRtfXQhRJVA7` (`READY`)  
+**Deployment verificado:** `dpl_BfrDtiZAoq9ap4SFzRtfXQhRJVA7` (`READY`)
 **Status:** saneamento executável concluído; decisões de legado/API registradas, sem implementação antecipada.
 
 ## Entrega realizada
