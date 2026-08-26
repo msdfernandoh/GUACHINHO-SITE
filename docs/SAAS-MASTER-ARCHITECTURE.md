@@ -4,12 +4,12 @@
 > **ESTADO-ALVO E CORREÇÕES OBRIGATÓRIAS**
 > Antes de alterar tenancy, usuários, catálogo, sites, comissões, financeiro, Storage, RPCs ou migrations, leia também integralmente [`SAAS-ARQUITETURA-ALVO-E-PLANO-DE-CORRECAO.md`](./SAAS-ARQUITETURA-ALVO-E-PLANO-DE-CORRECAO.md). O documento descreve o estado-alvo e o plano de remediação; seus itens não devem ser interpretados como já implantados sem evidência no banco e no código.
 
-> **Versão da Arquitetura:** 6.2.0
+> **Versão da Arquitetura:** 6.3.0
 > **Data de Atualização:** 26/08/2026
-> **Production code:** `main@11eea1e` para a entrega funcional da Fase 136; Supabase principal `eaeuoynprurmmulzhydt` alinhado de `001–135`.
+> **Production code:** `main@6fe2a46` para a entrega funcional da Fase 137; Supabase principal `eaeuoynprurmmulzhydt` alinhado de `001–135`.
 > **Preview/isolado desta fase:** a branch `bwwgbmiwtrglbtxsdooi` permanece preservada como evidência de homologação da 083 até autorização separada de exclusão.
-> **Fase atual:** quadro societário tenant-scoped e fechamento financeiro imutável implantados pelas migrations `134–135`; baseline local/remoto contínuo de `001–135`.
-> **Vercel Production:** deployment funcional `dpl_GAjoJdNAET3jYAwo5JKuk2XS7TXw` está `READY`; site, ERP protegido e Platform protegida aprovados em smoke.
+> **Fase atual:** homologação autenticada dos 20 menus do ERP e da matriz canônica de papéis/permissões concluída; baseline local/remoto contínuo de `001–135`.
+> **Vercel Production:** deployment `dpl_3jzKGMWXjXYmJvuLk2JkfamfQL9T` está `READY` e atende os domínios público, `www` e Platform.
 > **Segurança:** o Platform Host continua global, sem fallback de tenant, e exige `is_platform_superadmin()`.
 
 > **Projeto Físico:** `C:\Fernando Hugo\GAUCHINHO SITE`  
@@ -497,6 +497,54 @@ dois sócios ativos, nenhum quadro inválido, nenhum fechamento automático e RP
 sem execução para `anon`/`service_role`. Histórico contínuo `001–135`.
 
 Relatório: `docs/relatorios-fases/FASE-136-QUADRO-SOCIETARIO-FECHAMENTO-IMUTAVEL.md`.
+
+## 15. Homologação autenticada do ERP e matriz de papéis — Fase 137
+
+O acesso ao ERP é a interseção de três limites, nunca a união: módulos
+contratados na empresa, módulos selecionados no vínculo e autoridade canônica
+do papel/permissões. `erp_modulos_visiveis = null` continua significando herdar
+o catálogo da empresa somente para papéis próprios do ERP; não transforma
+parceiros em usuários internos.
+
+Papéis `parceiro_comercial` e `parceiro_imobiliaria` ficam fora do ERP, mesmo
+quando um vínculo legado possui a lista de módulos nula. `super_admin` e
+`admin_empresa` acessam os módulos atribuídos. `gestor`, `consultor` e
+`visualizador` passam ainda pela permissão exigida por cada rota. Menus
+financeiros, comissões globais, usuários e regras não podem ser liberados apenas
+marcando um checkbox incompatível com o papel.
+
+Os mesmos critérios são usados pela barra lateral, pelo layout, por URL direta
+e por Server Actions sensíveis. Em especial, Contas a Pagar revalida
+`gerenciar_financeiro` e o guard do menu antes de consultar ou alterar dados. A
+gestão de Consultores exige `gerenciar_participantes`, exatamente como a tela
+reutilizada, evitando menu que termina em redirecionamento inesperado.
+
+A matriz autenticada foi executada no domínio Production com sessões reais:
+
+- `admin_empresa`: 20/20 rotas aprovadas;
+- `super_admin`: 20/20 rotas aprovadas;
+- `consultor`: 11 rotas operacionais aprovadas e 9 rotas gerenciais bloqueadas
+  com 404;
+- `gestor`: 18 rotas aprovadas; Consultores e Usuários bloqueados com 404;
+- `visualizador`: somente Painel, Relatórios e Metas;
+- papéis de parceiro: redirecionados para a área autorizada, sem entrada no ERP.
+
+A simulação de gestor e visualizador reutilizou uma identidade técnica de
+homologação; o vínculo original foi armazenado e restaurado no bloco `finally`,
+com pós-check positivo. Nenhuma senha, token ou dado pessoal foi incluído no
+repositório ou nos relatórios. Não houve migration nesta fase.
+
+Código final `main@6fe2a46`; deployment Production
+`dpl_3jzKGMWXjXYmJvuLk2JkfamfQL9T` em estado `READY`. Suíte: 185 arquivos e
+1.028 testes aprovados, 9 arquivos e 37 testes ignorados; build de 146 rotas
+aprovado. Relatório:
+`docs/relatorios-fases/FASE-137-HOMOLOGACAO-AUTENTICADA-ERP-PAPEIS-PERMISSOES.md`.
+
+Próxima fase da ordem aprovada: importação de clientes/comissões legadas,
+bloqueada até o recebimento de uma amostra real do relatório da administradora.
+Enquanto essa entrada não existe, nenhum parser ou regra contábil deve ser
+inventado; a fase seguinte executável é conciliação bancária e projeção de
+caixa, desde que o bloqueio seja formalmente registrado.
 
 
 
