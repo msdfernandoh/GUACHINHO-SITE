@@ -4,11 +4,11 @@
 > **ESTADO-ALVO E CORREÇÕES OBRIGATÓRIAS**
 > Antes de alterar tenancy, usuários, catálogo, sites, comissões, financeiro, Storage, RPCs ou migrations, leia também integralmente [`SAAS-ARQUITETURA-ALVO-E-PLANO-DE-CORRECAO.md`](./SAAS-ARQUITETURA-ALVO-E-PLANO-DE-CORRECAO.md). O documento descreve o estado-alvo e o plano de remediação; seus itens não devem ser interpretados como já implantados sem evidência no banco e no código.
 
-> **Versão da Arquitetura:** 6.3.0
+> **Versão da Arquitetura:** 6.4.0
 > **Data de Atualização:** 26/08/2026
-> **Production code:** `main@6fe2a46` para a entrega funcional da Fase 137; Supabase principal `eaeuoynprurmmulzhydt` alinhado de `001–135`.
+> **Production code:** `main@34aeb3c` para a entrega funcional da Fase 138; Supabase principal `eaeuoynprurmmulzhydt` alinhado de `001–135`.
 > **Preview/isolado desta fase:** a branch `bwwgbmiwtrglbtxsdooi` permanece preservada como evidência de homologação da 083 até autorização separada de exclusão.
-> **Fase atual:** homologação autenticada dos 20 menus do ERP e da matriz canônica de papéis/permissões concluída; baseline local/remoto contínuo de `001–135`.
+> **Fase atual:** barreira de qualidade consolidada com lint sem erros bloqueantes, 1.028 testes aprovados e build de 146 rotas; baseline local/remoto contínuo de `001–135`.
 > **Vercel Production:** deployment `dpl_3jzKGMWXjXYmJvuLk2JkfamfQL9T` está `READY` e atende os domínios público, `www` e Platform.
 > **Segurança:** o Platform Host continua global, sem fallback de tenant, e exige `is_platform_superadmin()`.
 
@@ -540,11 +540,58 @@ Código final `main@6fe2a46`; deployment Production
 aprovado. Relatório:
 `docs/relatorios-fases/FASE-137-HOMOLOGACAO-AUTENTICADA-ERP-PAPEIS-PERMISSOES.md`.
 
-Próxima fase da ordem aprovada: importação de clientes/comissões legadas,
-bloqueada até o recebimento de uma amostra real do relatório da administradora.
-Enquanto essa entrada não existe, nenhum parser ou regra contábil deve ser
-inventado; a fase seguinte executável é conciliação bancária e projeção de
-caixa, desde que o bloqueio seja formalmente registrado.
+## 16. Qualidade regressiva e decisões de integrações futuras — Fase 138
+
+O lint foi convertido em barreira operacional: os 173 erros encontrados foram
+eliminados ou reclassificados como dívida histórica explícita quando a correção
+exige refatoração funcional. O baseline atual é de zero erros e 353 avisos, com
+teto fixado no script `npm run lint`; qualquer aviso adicional passa a falhar o
+comando. `npm run lint:errors` fornece uma verificação silenciosa de erros e
+`npm run test:regression` executa a suíte completa com relatório detalhado.
+
+Foram corrigidos problemas reais de renderização/qualidade na Home, carregamento
+da Auditoria, componentes do formulário de financiamento e geração determinística
+do identificador do QR. A configuração Vitest passou a ESM nativo, eliminando o
+aviso de compatibilidade futura do Vite. Resultado: 185 arquivos e 1.028 testes
+aprovados, 9 arquivos/37 testes live intencionalmente desativados e build de 146
+rotas aprovado. Não houve migration; o banco permanece em `001–135`.
+
+### Decisão aprovada para carteira legada
+
+A importação será orientada por lote. Na tela, o operador selecionará um modelo
+de comissão já cadastrado para a Racon e informará a data histórica da
+contratação. O cronograma do modelo será projetado a partir dessa data: uma
+venda com doze meses transcorridos e comissão prevista na parcela 18 produzirá
+somente a etapa restante, seis meses à frente. Etapas vencidas não serão
+recriadas nem recalculadas. O valor contratado será preservado em snapshot,
+mesmo quando o grupo/cota atual já possuir valores diferentes.
+
+O importador deverá comparar a parcela temporal calculada com eventual número
+de parcela informado na planilha. Divergência bloqueia a linha para conferência,
+em vez de inventar competência. Clientes contemplados usarão um fluxo/lote
+separado com bloqueio explícito de geração de comissão. A implementação continua
+aguardando uma amostra real da planilha para fechar cabeçalhos e validações.
+
+### Decisão aprovada para API Racon
+
+O primeiro contrato será exclusivo da Racon. O payload não receberá campo de
+identificação da administradora: credencial e endpoint já definem a integração.
+Cada futura administradora terá contrato/conector independente. A recepção Racon
+deverá suportar grupo, cotas, vagas disponíveis e totais, taxas, seguro, fundo de
+reserva, prazo, assembleias realizadas, primeira assembleia, características de
+contemplação, média de lance livre e contemplados do mês.
+
+A tela de auditoria da integração nascerá desativada, mas pronta para
+homologação. Ela deverá mostrar lote, estado, possíveis erros por registro,
+última tentativa, perda de conexão e ação clara de reprocessar. Recebimentos
+serão idempotentes para que uma repetição após queda de conexão não duplique
+grupo, estatística ou contemplação.
+
+Conciliação bancária e projeção de caixa foram adiadas por decisão do produto.
+Próximas entregas: documento do contrato da API Racon e, após a planilha real,
+modelo de importação da carteira legada.
+
+Relatório: `docs/relatorios-fases/FASE-138-QUALIDADE-REGRESSIVA-E-DECISOES-FUTURAS.md`.
 
 
 
