@@ -268,3 +268,21 @@ usa hoje seus 176 produtos. A transição recomendada é:
 - revisão das migrations 076, 085 e 086;
 - testes direcionados: 3 arquivos e 38 testes aprovados;
 - nenhuma migration, dado ou runtime alterado nesta auditoria.
+
+## 9. Verificação após “Atualizar visualização” no ERP
+
+Após o acionamento pelo usuário, o catálogo público foi conferido em Produção e
+continuou exibindo os grupos e produtos Racon cadastrados. Os 38 testes
+direcionados de autorização, configuração local e cálculo de linhas também
+permaneceram aprovados.
+
+O botão atual não realiza sincronização nem homologação: a action somente executa
+`revalidatePath` nas páginas de grupos, simulador, ERP e Platform. Portanto, ele
+é seguro como **recarregamento de visualização**, mas não atende ao futuro fluxo
+“franquia envia proposta → SaaS homologa → rede recebe”. Esse fluxo continua
+dependente das Fases A–E descritas neste relatório.
+
+A tela autenticada do ERP não pôde ser inspecionada diretamente na sessão
+isolada, que redirecionou corretamente para o login. A validação desta subetapa
+foi feita pelo código da página/action, pelo catálogo público atualizado e pelos
+testes automatizados, sem inserir credenciais nem modificar dados.

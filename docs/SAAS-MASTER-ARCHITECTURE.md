@@ -665,6 +665,12 @@ antes do corte do filtro público.
 Relatório:
 `docs/relatorios-fases/FASE-141-AUDITORIA-CATALOGO-GRUPOS-SAAS-ERP-SITES.md`.
 
+Verificação posterior confirmou que o botão atual “Atualizar visualização” é
+somente uma invalidação segura de cache (`revalidatePath`): ele atualiza a
+leitura dos dados já cadastrados, mas não sincroniza, homologa nem publica novos
+grupos. O catálogo público permaneceu operacional e os 38 testes direcionados
+continuaram aprovados.
+
 
 
 
