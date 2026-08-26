@@ -76,8 +76,19 @@ export default async function AdminVendasPage() {
     const grupoModalidade = Array.isArray(grupo?.modalidade) ? grupo?.modalidade[0] : grupo?.modalidade;
     const participante = Array.isArray(v.participante) ? v.participante[0] : v.participante;
 
+    const modalidadeMatch = modalidades.find(
+      (m) => m.id === v.modalidade_comissao_id || m.id === v.snapshot_venda?.modalidade_comissao_id
+    );
+
+    const tipoVendaCodigo =
+      v.snapshot_venda?.tipo_venda ||
+      v.snapshot_venda?.dados_simulacao?.tipo_venda ||
+      modalidadeMatch?.codigo;
+
     const tipoNegociacao =
       v.snapshot_venda?.tipo_negociacao ||
+      (tipoVendaCodigo === "REDUZIDA_60_99" ? "Reduzida 60%" : tipoVendaCodigo === "REDUZIDA_ABAIXO_59" ? "Abaixo de 59%" : tipoVendaCodigo === "INTEGRAL" ? "Integral" : null) ||
+      modalidadeMatch?.nome ||
       v.snapshot_venda?.modalidade_nome ||
       grupoModalidade?.nome ||
       "Integral";

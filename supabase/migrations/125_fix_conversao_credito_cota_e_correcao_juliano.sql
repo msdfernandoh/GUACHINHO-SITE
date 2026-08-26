@@ -161,7 +161,6 @@ BEGIN
     v_parcela := v_opcao.valor_parcela;
     v_prazo := COALESCE(v_grupo.prazo_total, v_contratacao.prazo, 180);
   ELSE
-    -- Se não encontrou cota por ID, busca por crédito aproximado
     v_credito := COALESCE(
       v_contratacao.credito_selecionado,
       NULLIF(v_dados->>'valor_credito', '')::numeric,
@@ -225,7 +224,7 @@ BEGIN
     SELECT administradora_modalidade_id INTO v_modalidade_id
     FROM public.grupos_modalidades_disponiveis
     WHERE grupo_id = v_grupo.id AND ativo = true
-    ORDER BY ordem ASC LIMIT 1;
+    ORDER BY (codigo = 'REDUZIDA_60_99') DESC, ordem ASC LIMIT 1;
   END IF;
 
   IF v_modalidade_id IS NULL THEN
@@ -236,7 +235,7 @@ BEGIN
     SELECT id INTO v_modalidade_id
     FROM public.administradora_modalidades_comissao
     WHERE administradora_id = v_grupo.administradora_id AND ativo = true
-    ORDER BY (codigo = 'INTEGRAL') DESC, created_at ASC LIMIT 1;
+    ORDER BY (codigo = 'REDUZIDA_60_99') DESC, created_at ASC LIMIT 1;
   END IF;
 
   -- Auto-resolução ou Criação do Cliente no ERP
@@ -283,7 +282,17 @@ BEGIN
     'data_primeira_parcela', v_data_1,
     'data_segunda_parcela', v_data_2,
     'tipo_bem', COALESCE(v_contratacao.tipo_bem, v_dados->>'tipoBem', 'Consórcio'),
-    'modalidade', COALESCE(v_dados->>'modalidade', v_dados->>'plano', 'Integral'),
+    'tipo_venda', COALESCE(v_dados->>'tipo_venda', 'REDUZIDA_60_99'),
+    'tipo_negociacao', CASE 
+      WHEN (v_dados->>'tipo_venda') = 'REDUZIDA_ABAIXO_59' THEN 'Abaixo de 59%'
+      WHEN (v_dados->>'tipo_venda') = 'INTEGRAL' THEN 'Integral'
+      ELSE 'Reduzida 60%'
+    END,
+    'modalidade', CASE 
+      WHEN (v_dados->>'tipo_venda') = 'REDUZIDA_ABAIXO_59' THEN 'Abaixo de 59%'
+      WHEN (v_dados->>'tipo_venda') = 'INTEGRAL' THEN 'Integral'
+      ELSE 'Reduzida 60%'
+    END,
     'valor_credito', v_credito,
     'valor_parcela', v_parcela,
     'prazo', v_prazo,
@@ -362,12 +371,13 @@ BEGIN
 END;
 $$;
 
--- 2. Recálculo e Correção Direta da Venda do Juliano Fernandes de Avila (Cota 212.000 no Grupo 1453)
+-- 2. Recálculo e Correção Direta da Venda do Juliano Fernandes de Avila (Cota 212.000 no Grupo 1453 com Reduzida 60%)
 DO $$
 DECLARE
   v_venda_juliano record;
   v_grupo_1453 record;
   v_cota_212k record;
+  v_mod_reduzida record;
 BEGIN
   -- Busca venda do Juliano
   SELECT v.* INTO v_venda_juliano
@@ -382,6 +392,12 @@ BEGIN
     WHERE codigo_grupo = '1453' OR codigo_grupo ILIKE '%1453%'
     ORDER BY ativo DESC LIMIT 1;
 
+    -- Busca modalidade reduzida
+    SELECT * INTO v_mod_reduzida
+    FROM public.administradora_modalidades_comissao
+    WHERE codigo = 'REDUZIDA_60_99' OR nome ILIKE '%reduzida 60%'
+    LIMIT 1;
+
     -- Busca cota de 212k
     IF v_grupo_1453.id IS NOT NULL THEN
       SELECT * INTO v_cota_212k
@@ -394,6 +410,7 @@ BEGIN
       SET
         grupo_id = v_grupo_1453.id,
         opcao_cota_id = COALESCE(v_cota_212k.id, opcao_cota_id),
+        modalidade_comissao_id = COALESCE(v_mod_reduzida.id, modalidade_comissao_id),
         valor_credito = 212000.00,
         parcela = COALESCE(v_cota_212k.valor_parcela, 807.72),
         prazo = COALESCE(v_grupo_1453.prazo_total, 200),
@@ -401,7 +418,10 @@ BEGIN
           'grupo_codigo', '1453',
           'valor_credito', 212000.00,
           'valor_parcela', COALESCE(v_cota_212k.valor_parcela, 807.72),
-          'prazo', COALESCE(v_grupo_1453.prazo_total, 200)
+          'prazo', COALESCE(v_grupo_1453.prazo_total, 200),
+          'tipo_venda', 'REDUZIDA_60_99',
+          'tipo_negociacao', 'Reduzida 60%',
+          'modalidade', 'Reduzida 60%'
         )
       WHERE id = v_venda_juliano.id;
 
@@ -416,7 +436,9 @@ BEGIN
         snapshot_cota = snapshot_cota || jsonb_build_object(
           'numero_grupo', '1453',
           'valor_credito', 212000.00,
-          'valor_parcela', COALESCE(v_cota_212k.valor_parcela, 807.72)
+          'valor_parcela', COALESCE(v_cota_212k.valor_parcela, 807.72),
+          'tipo_venda', 'REDUZIDA_60_99',
+          'tipo_negociacao', 'Reduzida 60%'
         )
       WHERE venda_id = v_venda_juliano.id;
 
