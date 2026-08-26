@@ -68,6 +68,7 @@ export type BrandingHubDetail = {
   id: string;
   nome_site: string;
   status_publicacao: string;
+  modelo_status: string | null;
   modelo_id: string | null;
   template_codigo: string | null;
   logo_url: string | null;
@@ -76,6 +77,7 @@ export type BrandingHubDetail = {
     id: string;
     codigo: string;
     nome: string;
+    descricao: string | null;
     status: string;
     versao: number;
     identidade_visual: Record<string, unknown>;
@@ -193,6 +195,8 @@ export type ModeloOptionHub = {
   nome: string;
   status: string;
   versao: number;
+  descricao: string | null;
+  identidade_visual: Record<string, unknown>;
 };
 
 export type AdminOptionHub = {
@@ -305,6 +309,8 @@ export function MasterFranquiaHub({
   const configJson = (empresa.configuracoes as Record<string, unknown> | null) ?? {};
   const erpConfig = configJson.erp_sistema as { habilitado?: boolean } | undefined;
   const erpHabilitado = Boolean(erpConfig?.habilitado);
+  const sitePublicoConfig = configJson.site_publico as { operacional_habilitado?: boolean } | undefined;
+  const siteOperacionalHabilitado = Boolean(sitePublicoConfig?.operacional_habilitado);
 
   const totalUsuariosUsados = usuarios.filter((u) => u.ativo).length;
   const limiteUsuariosContratados = assinatura?.usuarios_contratados || 10;
@@ -354,8 +360,8 @@ export function MasterFranquiaHub({
     },
     {
       titulo: "6. Modelo de Site",
-      ok: Boolean(branding?.modelo || branding?.template_codigo),
-      desc: branding?.modelo?.nome || "Modelo padrão configurado",
+      ok: Boolean(branding?.modelo),
+      desc: branding?.modelo?.nome || "Nenhum modelo vinculado",
     },
     {
       titulo: "7. Domínio / Endereço",
@@ -651,7 +657,7 @@ export function MasterFranquiaHub({
             <div className="divide-y divide-slate-100 dark:divide-slate-800">
               <div className="flex justify-between py-2">
                 <span className="text-slate-500">Modelo de Site:</span>
-                <strong>{branding?.modelo?.nome || "Gauchinho Default"}</strong>
+                <strong>{branding?.modelo?.nome || "Não configurado"}</strong>
               </div>
               <div className="flex justify-between py-2">
                 <span className="text-slate-500">Publicação do Site:</span>
@@ -1079,10 +1085,10 @@ export function MasterFranquiaHub({
       ─────────────────────────────────────────────────────────── */}
       {tab === "site" && (
         <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900 space-y-4 text-xs">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-3 dark:border-slate-800">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-3 dark:border-slate-800">
             <div>
               <h3 className="text-base font-bold text-slate-900 dark:text-white">Template de Site & Identidade</h3>
-              <p className="text-slate-500">Modelo visual aplicado no portal público desta Master Franquia.</p>
+              <p className="text-slate-500">Escolha explícita e isolada por empresa; não altera os sites das demais franquias.</p>
             </div>
             <button
               type="button"
@@ -1093,23 +1099,40 @@ export function MasterFranquiaHub({
             </button>
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="rounded-xl border p-4 bg-slate-50 dark:border-slate-800 dark:bg-slate-800/40 space-y-2">
-              <span className="text-slate-500">Modelo Selecionado:</span>
+          <div className="grid gap-4 lg:grid-cols-3">
+            <div className={`rounded-xl border p-4 space-y-2 ${branding?.modelo ? "border-emerald-200 bg-emerald-50/40 dark:border-emerald-900 dark:bg-emerald-950/20" : "border-rose-200 bg-rose-50/40 dark:border-rose-900 dark:bg-rose-950/20"}`}>
+              <span className="font-bold uppercase tracking-wide text-slate-500">Modelo em uso</span>
               <p className="text-lg font-black text-slate-900 dark:text-white">
-                {branding?.modelo?.nome || "Gauchinho Default"}
+                {branding?.modelo?.nome || "Não configurado"}
               </p>
-              <p className="text-slate-500">Código Técnico: {branding?.template_codigo || "gauchinho_default"}</p>
+              <p className="font-mono text-[11px] text-slate-500">{branding?.template_codigo || "sem-vinculo"}</p>
+              {branding?.modelo?.descricao ? <p className="text-slate-600 dark:text-slate-300">{branding.modelo.descricao}</p> : null}
             </div>
 
             <div className="rounded-xl border p-4 bg-slate-50 dark:border-slate-800 dark:bg-slate-800/40 space-y-2">
-              <span className="text-slate-500">Status de Publicação:</span>
-              <p className="text-lg font-black text-emerald-700 dark:text-emerald-400">
-                {branding?.status_publicacao || "PUBLICADO"}
+              <span className="font-bold uppercase tracking-wide text-slate-500">Publicação</span>
+              <p className="text-lg font-black text-slate-900 dark:text-white">Site: {branding?.status_publicacao || "NÃO CONFIGURADO"}</p>
+              <p className="text-slate-500">Vínculo do modelo: {branding?.modelo_status || "AUSENTE"}</p>
+              <p className="text-slate-500">Versão: {branding?.modelo?.versao ? `v${branding.modelo.versao}` : "—"}</p>
+            </div>
+
+            <div className="rounded-xl border p-4 bg-slate-50 dark:border-slate-800 dark:bg-slate-800/40 space-y-2">
+              <span className="font-bold uppercase tracking-wide text-slate-500">Runtime e domínio</span>
+              <p className="text-lg font-black text-slate-900 dark:text-white">
+                {siteOperacionalHabilitado ? "Site operacional" : "Site institucional"}
               </p>
-              <p className="text-slate-500">Menus Habilitados: {branding?.menus?.length || 7} áreas</p>
+              <p className="font-mono text-[11px] text-slate-500">{dominioPrincipal || "Domínio não configurado"}</p>
+              {dominioPrincipal ? (
+                <a href={`https://${dominioPrincipal}`} target="_blank" rel="noreferrer" className="inline-flex font-bold text-cyan-700 hover:underline">
+                  Abrir site público ↗
+                </a>
+              ) : null}
             </div>
           </div>
+
+          <p className="rounded-lg bg-sky-50 p-3 text-sky-900 dark:bg-sky-950/40 dark:text-sky-200">
+            A troca afeta somente esta empresa. O modelo define o layout; cores, logotipo e textos continuam no cadastro de identidade da franquia.
+          </p>
         </div>
       )}
 
@@ -1487,8 +1510,11 @@ export function MasterFranquiaHub({
       {/* Modal: Trocar Modelo de Site */}
       {modalTrocarModelo && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl space-y-4 dark:border-slate-800 dark:bg-slate-900 text-xs">
-            <h3 className="text-base font-bold text-slate-900 dark:text-white">Trocar Modelo de Site</h3>
+          <div className="w-full max-w-2xl rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl space-y-4 dark:border-slate-800 dark:bg-slate-900 text-xs">
+            <div>
+              <h3 className="text-base font-bold text-slate-900 dark:text-white">Modelo do site de {empresa.nome_fantasia}</h3>
+              <p className="mt-1 text-slate-500">Selecione um modelo publicado. Nenhuma outra franquia será alterada.</p>
+            </div>
             <form
               action={async (formData) => {
                 await actionModelo(formData);
@@ -1497,20 +1523,28 @@ export function MasterFranquiaHub({
               className="space-y-4"
             >
               <input type="hidden" name="empresa_id" value={empresa.id} />
-              <div>
-                <label className="font-bold text-slate-700 dark:text-slate-300">Selecione o Modelo Publicado:</label>
-                <select
-                  name="novo_modelo_id"
-                  value={novoModeloId}
-                  onChange={(e) => setNovoModeloId(e.target.value)}
-                  className="mt-1 w-full rounded-lg border border-slate-300 p-2.5 font-bold dark:border-slate-700 dark:bg-slate-800"
-                >
-                  {modelosDisponiveis.map((m) => (
-                    <option key={m.id} value={m.id}>
-                      {m.nome} (v{m.versao})
-                    </option>
-                  ))}
-                </select>
+              <input type="hidden" name="novo_modelo_id" value={novoModeloId} />
+              <div className="grid gap-3 sm:grid-cols-2">
+                {modelosDisponiveis.map((m) => {
+                  const selecionado = novoModeloId === m.id;
+                  const cores = m.identidade_visual;
+                  return (
+                    <button key={m.id} type="button" onClick={() => setNovoModeloId(m.id)} className={`rounded-xl border p-4 text-left transition ${selecionado ? "border-cyan-600 bg-cyan-50 ring-2 ring-cyan-200 dark:bg-cyan-950/30" : "border-slate-200 hover:border-cyan-300 dark:border-slate-700"}`}>
+                      <div className="mb-3 flex gap-1.5">
+                        {[cores.cor_primaria, cores.cor_secundaria, cores.cor_destaque].map((cor, idx) => (
+                          <span key={idx} className="h-5 w-5 rounded-full border border-black/10" style={{ backgroundColor: typeof cor === "string" ? cor : "#e2e8f0" }} />
+                        ))}
+                      </div>
+                      <div className="flex items-center justify-between gap-2">
+                        <strong className="text-sm text-slate-900 dark:text-white">{m.nome}</strong>
+                        <span className="rounded-full bg-slate-100 px-2 py-0.5 font-mono text-[10px] dark:bg-slate-800">v{m.versao}</span>
+                      </div>
+                      <p className="mt-1 line-clamp-3 text-slate-500">{m.descricao || "Modelo publicado disponível para a franquia."}</p>
+                      <p className="mt-2 font-mono text-[10px] text-slate-400">{m.codigo}</p>
+                      {selecionado ? <p className="mt-2 font-bold text-cyan-700">✓ Selecionado</p> : null}
+                    </button>
+                  );
+                })}
               </div>
               <div className="flex justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
                 <button
@@ -1522,10 +1556,14 @@ export function MasterFranquiaHub({
                 </button>
                 <button
                   type="submit"
-                  disabled={isPendingModelo}
-                  className="rounded-lg bg-cyan-700 px-4 py-2 font-bold text-white hover:bg-cyan-800"
+                  disabled={isPendingModelo || !novoModeloId || novoModeloId === branding?.modelo_id}
+                  className="rounded-lg bg-cyan-700 px-4 py-2 font-bold text-white hover:bg-cyan-800 disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  {isPendingModelo ? "Trocando..." : "Confirmar Troca de Modelo"}
+                  {isPendingModelo
+                    ? "Trocando..."
+                    : novoModeloId === branding?.modelo_id
+                      ? "Modelo já está em uso"
+                      : "Aplicar somente nesta empresa"}
                 </button>
               </div>
             </form>

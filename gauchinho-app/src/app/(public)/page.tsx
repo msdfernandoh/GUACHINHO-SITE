@@ -55,8 +55,10 @@ export default async function HomePage({
   const tenant = await getResolvedTenant();
   const params = searchParams ? await searchParams : {};
 
-  // Tenant institucional (Empresa B etc.): nunca carrega dados operacionais da Gauchinho.
-  if (tenant && !tenant.allowsLegacyOperationalData) {
+  // Somente o modelo próprio da Gauchinho, com entitlement operacional explícito,
+  // pode carregar o runtime legado. Demais modelos/tenants ficam institucionais.
+  const usaModeloGauchinho = tenant?.siteModel?.codigo === "gauchinho_default";
+  if (tenant && (!tenant.allowsLegacyOperationalData || !usaModeloGauchinho)) {
     return (
       <InstitutionalTenantHome
         branding={tenant.branding}

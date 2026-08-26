@@ -29,6 +29,7 @@ export default async function MasterFranquiaDetailPage({
     empresaRes,
     assinaturaRes,
     brandingRes,
+    modeloEmpresaRes,
     dominiosRes,
     adminsRes,
     usuariosRes,
@@ -49,7 +50,12 @@ export default async function MasterFranquiaDetailPage({
       .maybeSingle(),
     db
       .from("empresa_branding")
-      .select("id, nome_site, status_publicacao, modelo_id, template_codigo, logo_url, menus, modelo:site_modelos(*)")
+      .select("id, nome_site, status_publicacao, logo_url")
+      .eq("empresa_id", id)
+      .maybeSingle(),
+    db
+      .from("empresa_site_modelos")
+      .select("modelo_id, status, menus_habilitados, modelo:site_modelos(id, codigo, nome, descricao, status, versao, identidade_visual)")
       .eq("empresa_id", id)
       .maybeSingle(),
     db
@@ -84,7 +90,7 @@ export default async function MasterFranquiaDetailPage({
       .order("valor_mensal", { ascending: true }),
     db
       .from("site_modelos")
-      .select("id, codigo, nome, status, versao")
+      .select("id, codigo, nome, descricao, status, versao, identidade_visual")
       .eq("status", "PUBLICADO")
       .order("created_at", { ascending: true }),
     db
@@ -140,16 +146,23 @@ export default async function MasterFranquiaDetailPage({
     : null;
 
   const rawBranding = brandingRes.data;
+  const rawModeloEmpresa = modeloEmpresaRes.data;
+  const modeloEmpresa = rawModeloEmpresa
+    ? (Array.isArray(rawModeloEmpresa.modelo) ? rawModeloEmpresa.modelo[0] : rawModeloEmpresa.modelo)
+    : null;
   const brandingData: BrandingHubDetail | null = rawBranding
     ? {
         id: rawBranding.id,
         nome_site: rawBranding.nome_site,
         status_publicacao: rawBranding.status_publicacao,
-        modelo_id: rawBranding.modelo_id,
-        template_codigo: rawBranding.template_codigo,
+        modelo_id: rawModeloEmpresa?.modelo_id ?? null,
+        template_codigo: modeloEmpresa?.codigo ?? null,
         logo_url: rawBranding.logo_url,
-        menus: Array.isArray(rawBranding.menus) ? (rawBranding.menus as BrandingHubDetail["menus"]) : [],
-        modelo: (Array.isArray(rawBranding.modelo) ? rawBranding.modelo[0] : rawBranding.modelo) as unknown as BrandingHubDetail["modelo"],
+        menus: Array.isArray(rawModeloEmpresa?.menus_habilitados)
+          ? (rawModeloEmpresa.menus_habilitados as BrandingHubDetail["menus"])
+          : [],
+        modelo_status: rawModeloEmpresa?.status ?? null,
+        modelo: modeloEmpresa as unknown as BrandingHubDetail["modelo"],
       }
     : null;
 
@@ -225,6 +238,8 @@ export default async function MasterFranquiaDetailPage({
     nome: m.nome,
     status: m.status,
     versao: Number(m.versao || 1),
+    descricao: m.descricao,
+    identidade_visual: (m.identidade_visual as Record<string, unknown> | null) ?? {},
   }));
 
   const adminsOptions: AdminOptionHub[] = (adminsDisponiveisRes.data ?? []).map((a) => ({

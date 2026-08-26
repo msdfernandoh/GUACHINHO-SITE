@@ -1,5 +1,6 @@
 "use server";
 import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
 import { isPlatformSuperadmin } from "@/lib/auth/is-superadmin";
 import { createClient } from "@/lib/supabase/server";
 
@@ -316,6 +317,8 @@ export async function alterarModeloEmpresaPlatformAction(
     return { status: "ERROR", message: error.message };
   }
 
+  revalidatePath(`/platform/empresas/${empresaId}`);
+  revalidatePath("/platform/empresas");
   return { status: "SUCCESS", message: "Modelo de site da franquia alterado com sucesso." };
 }
 

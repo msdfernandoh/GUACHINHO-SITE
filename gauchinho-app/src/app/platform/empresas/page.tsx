@@ -7,7 +7,7 @@ export default async function MasterFranquiasPage() {
   const [
     empresasRes,
     assinaturasRes,
-    brandingRes,
+    modelosEmpresaRes,
     dominiosRes,
     adminsRes,
     usuariosRes,
@@ -23,8 +23,8 @@ export default async function MasterFranquiasPage() {
       .from("saas_assinaturas")
       .select("empresa_id, status, valor_mensal, valor_total_estimado, usuarios_contratados, sites_parceiros_contratados, plano:saas_planos(id, nome, codigo)"),
     db
-      .from("empresa_branding")
-      .select("empresa_id, nome_site, status_publicacao, modelo:site_modelos(id, nome)"),
+      .from("empresa_site_modelos")
+      .select("empresa_id, status, modelo:site_modelos(id, nome)"),
     db
       .from("empresa_dominios")
       .select("empresa_id, valor, principal, ativo, verificado"),
@@ -51,7 +51,7 @@ export default async function MasterFranquiasPage() {
 
   const empresasRows = empresasRes.data ?? [];
   const assinaturasMap = new Map((assinaturasRes.data ?? []).map((a) => [a.empresa_id, a]));
-  const brandingMap = new Map((brandingRes.data ?? []).map((b) => [b.empresa_id, b]));
+  const modelosEmpresaMap = new Map((modelosEmpresaRes.data ?? []).map((b) => [b.empresa_id, b]));
   const dominiosRows = dominiosRes.data ?? [];
   const adminsRows = adminsRes.data ?? [];
   const usuariosRows = usuariosRes.data ?? [];
@@ -61,7 +61,7 @@ export default async function MasterFranquiasPage() {
 
   const items: MasterFranquiaItem[] = empresasRows.map((emp) => {
     const ass = assinaturasMap.get(emp.id);
-    const branding = brandingMap.get(emp.id);
+    const modeloEmpresa = modelosEmpresaMap.get(emp.id);
     const quota = quotasMap.get(emp.id);
 
     const domPrincipal = dominiosRows.find((d) => d.empresa_id === emp.id && d.principal);
@@ -91,7 +91,7 @@ export default async function MasterFranquiasPage() {
       plano_nome: planoData?.nome || "Sem Plano Vinculado",
       assinatura_status: ass?.status || "PENDENTE",
       valor_mensal_estimado: Number(ass?.valor_total_estimado || ass?.valor_mensal || 0),
-      modelo_site_nome: (branding?.modelo as { nome?: string } | null)?.nome || "Gauchinho Default",
+      modelo_site_nome: (modeloEmpresa?.modelo as { nome?: string } | null)?.nome || "Não configurado",
       dominio_principal: domPrincipal?.valor || null,
       administradoras_nomes: adminsDaEmpresa,
       total_usuarios: totalUsuarios,

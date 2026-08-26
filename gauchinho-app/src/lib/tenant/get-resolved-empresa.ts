@@ -9,11 +9,13 @@ import {
   GAUCHINHO_SLUG,
 } from "./constants";
 import { tenantAllowsLegacyOperationalData } from "./operational-access";
+import { getEmpresaSiteModelPublic, type EmpresaSiteModel } from "./site-model";
 
 export type ResolvedTenant = {
   empresaId: string;
   slug: string;
   branding: EmpresaBranding;
+  siteModel: EmpresaSiteModel | null;
   allowsLegacyOperationalData: boolean;
 };
 
@@ -30,13 +32,17 @@ export async function getResolvedTenant(): Promise<ResolvedTenant | null> {
 
   if (!empresaId || !slug) return null;
 
-  const branding = await getEmpresaBrandingPublic({ empresaId, slug });
+  const [branding, siteModel] = await Promise.all([
+    getEmpresaBrandingPublic({ empresaId, slug }),
+    getEmpresaSiteModelPublic(empresaId),
+  ]);
   if (!branding) return null;
 
   return {
     empresaId,
     slug,
     branding,
+    siteModel,
     allowsLegacyOperationalData: tenantAllowsLegacyOperationalData(operationalEnabled),
   };
 }
