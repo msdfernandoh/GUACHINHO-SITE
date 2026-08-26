@@ -4,12 +4,12 @@
 > **ESTADO-ALVO E CORREÇÕES OBRIGATÓRIAS**
 > Antes de alterar tenancy, usuários, catálogo, sites, comissões, financeiro, Storage, RPCs ou migrations, leia também integralmente [`SAAS-ARQUITETURA-ALVO-E-PLANO-DE-CORRECAO.md`](./SAAS-ARQUITETURA-ALVO-E-PLANO-DE-CORRECAO.md). O documento descreve o estado-alvo e o plano de remediação; seus itens não devem ser interpretados como já implantados sem evidência no banco e no código.
 
-> **Versão da Arquitetura:** 6.0.0
+> **Versão da Arquitetura:** 6.1.0
 > **Data de Atualização:** 26/08/2026
-> **Production code:** `main@c3ba7ae53d86ba30fa5d547e94595aeac9409d6b`; Supabase principal `eaeuoynprurmmulzhydt` com as migrations `126–127` de hardening e formalização canônica promovidas.
+> **Production code:** branch `main`, incluindo a Fase 135 de reconciliação; Supabase principal `eaeuoynprurmmulzhydt` alinhado de `001–133`.
 > **Preview/isolado desta fase:** a branch `bwwgbmiwtrglbtxsdooi` permanece preservada como evidência de homologação da 083 até autorização separada de exclusão.
-> **Fase atual:** consolidação multi-tenant e formalização canônica de vendas/comissões concluída pelas migrations `126–127`, sem perda nem recálculo dos registros financeiros existentes.
-> **Vercel Production:** deployment `7zVp4KAh1MNtCDqd81QktSWzBxF4` está `READY`, associado à `main` e aos domínios oficiais.
+> **Fase atual:** baseline de migrations reconciliado de `001–133`; a migration forward-only `133` restaurou somente contratos ausentes das fases `092–127`, preservando fatos financeiros e as implementações canônicas posteriores.
+> **Vercel Production:** publicação automática vinculada à branch `main`; a promoção de cada fase só é encerrada após build `READY`.
 > **Segurança:** o Platform Host continua global, sem fallback de tenant, e exige `is_platform_superadmin()`.
 
 > **Projeto Físico:** `C:\Fernando Hugo\GAUCHINHO SITE`  
@@ -441,6 +441,40 @@ A empresa nunca vem do formulário: é resolvida pelo contexto ativo e revalidad
 Em 26/08/2026, a migration 131 foi compilada sob rollback, exercitada com uma sessão tenant real e aplicada no Supabase Production. O pós-check confirmou quatro índices, função registrada, acesso exclusivo de `authenticated` e retorno paginado com agregados completos. Nenhum fato financeiro foi modificado.
 
 A implementação foi promovida pela `main` em `ef49086`; o deployment Production `dpl_91iYrPAuZhUgYfD28nNTwHD64Qqj` ficou `Ready`. Os smokes do domínio público, ERP protegido e Platform protegida foram aprovados.
+
+## 13. Reconciliação do baseline 092–127 — Fase 135 / Migration 133
+
+O metadata do Supabase Production possuía uma lacuna histórica entre `092–127`,
+embora parte relevante do schema tivesse sido aplicada manualmente. A fase 135
+substituiu suposições por uma auditoria read-only e reproduzível de tabelas,
+colunas, constraints, triggers, buckets, funções e privilégios.
+
+A migration `133_reconciliacao_historico_092_127_objetos_ausentes.sql` restaurou
+somente os contratos comprovadamente ausentes das fases `092–096`, `098/106` e
+`117`. Objetos já presentes não foram reaplicados. A função canônica de troca de
+modelo da fase 134 permaneceu vinculada a `empresa_site_modelos`, sem regressão
+para o legado em `empresa_branding`.
+
+As RPCs restauradas exigem JWT e checagem interna, não concedem execução a
+`PUBLIC`, `anon` ou `service_role` e usam `search_path=pg_catalog`. O bucket de
+comprovantes de lances passou a validar tenant no path e permissão
+`gerenciar_lances`.
+
+O dry-run transacional, o pós-check e a sentinela de segurança 133 foram
+aprovados. O histórico local/remoto passou a estar contínuo de `001` a `133`. A
+colisão dos dois arquivos `101` foi resolvida mantendo Contas a Pagar como versão
+ativa; o conversor antigo permanece no histórico Git e foi supersedido pelas
+migrations `126–127`.
+
+Relatório: `docs/relatorios-fases/FASE-135-RECONCILIACAO-MIGRATIONS-092-127.md`.
+
+### Próxima fase: cadastro societário e fechamento imutável
+
+O cadastro de sócios será configuração tenant-scoped da empresa no SaaS, com
+percentuais e dados financeiros vigentes. O fechamento do ERP consumirá essa
+configuração, congelará um snapshot do quadro societário por período e registrará
+transferências/compensações em conta-corrente auditável. Nenhum nome, UUID ou
+percentual da Gauchinho será convertido em default global.
 
 
 

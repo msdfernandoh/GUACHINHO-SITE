@@ -2,26 +2,28 @@ import { describe, it, expect } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
 
-const migration101 = fs.readFileSync(
-  path.resolve(process.cwd(), "../supabase/migrations/101_vinculo_canonico_saas_grupos_cotas_vendas.sql"),
+const migrationCanonica = fs.readFileSync(
+  path.resolve(process.cwd(), "../supabase/migrations/127_formalizacao_canonica_e_comissoes_estritas.sql"),
   "utf8"
 );
 
-describe("Fase 101 — Vínculo Canônico SaaS Grupos, Cotas e Vendas", () => {
+describe("Contrato vigente — Vínculo Canônico SaaS Grupos, Cotas e Vendas", () => {
   it("atualiza a RPC rpc_converter_contratacao_venda com resolução canônica resiliente", () => {
-    expect(migration101).toContain("CREATE OR REPLACE FUNCTION public.rpc_converter_contratacao_venda");
-    expect(migration101).toContain("SELECT * INTO v_grupo FROM public.grupos_consorcio");
-    expect(migration101).toContain("SELECT * INTO v_opcao FROM public.grupos_cotas");
+    expect(migrationCanonica).toContain("CREATE OR REPLACE FUNCTION public.rpc_converter_contratacao_venda");
+    expect(migrationCanonica).toContain("SELECT * INTO v_grupo FROM public.grupos_consorcio");
+    expect(migrationCanonica).toContain("SELECT * INTO v_opcao FROM public.grupos_cotas");
   });
 
-  it("garante resolução por valor_credito em grupos_cotas caso cota_id seja legado ou divergente", () => {
-    expect(migration101).toContain("abs(valor_credito - v_credito) < 0.01");
-    expect(migration101).toContain("ORDER BY ordem ASC, created_at DESC LIMIT 1");
+  it("resolve grupo e cota no catálogo canônico da administradora", () => {
+    expect(migrationCanonica).toContain("v_grupo.administradora_id IS NULL");
+    expect(migrationCanonica).toContain("grupo_id = v_grupo.id");
+    expect(migrationCanonica).toContain("public.grupo_concedido_para_empresa(p_empresa_id, v_grupo.id)");
   });
 
   it("garante suporte e compatibilidade com modalidades V2 (grupos_modalidades_disponiveis e grupo_cota_modalidade_valores)", () => {
-    expect(migration101).toContain("INSERT INTO public.grupos_modalidades_disponiveis");
-    expect(migration101).toContain("INSERT INTO public.grupo_cota_modalidade_valores");
+    expect(migrationCanonica).toContain("public.grupos_modalidades_disponiveis");
+    expect(migrationCanonica).toContain("public.grupo_cota_modalidade_valores");
+    expect(migrationCanonica).toContain("v_modalidade_id");
   });
 
   it("distingue claramente tipo de bem de modalidade de consórcio", () => {
