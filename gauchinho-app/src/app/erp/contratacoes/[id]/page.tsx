@@ -306,6 +306,12 @@ export default async function ConferirContratacaoPage({
         initialCotaId={cotaSelecionadaId}
         initialModalidadeId={(c.dados_simulacao as any)?.modalidade_comissao_id || grupoMatch?.modalidade_comissao_id || null}
         initialPrincipalId={consultorSelecionadoId}
+        initialPerfilPrincipalId={(c.dados_simulacao as any)?.perfil_principal_id || null}
+        initialPerfilSecundarioId={(c.dados_simulacao as any)?.perfil_secundario_id || null}
+        initialPercentualFranqueadora={(c.dados_simulacao as any)?.percentual_franqueadora ? Number((c.dados_simulacao as any).percentual_franqueadora) : null}
+        initialDataPrimeiraParcela={(c.dados_simulacao as any)?.data_primeira_parcela || null}
+        initialDataSegundaParcela={(c.dados_simulacao as any)?.data_segunda_parcela || null}
+        initialCronogramaSecundario={(c.dados_simulacao as any)?.cronograma_secundario || "SEGUIR_PRINCIPAL"}
         initialSecundarioId={c.participante_secundario_id}
         initialFracaoSecundario={c.participante_secundario_fracao_percentual}
       />

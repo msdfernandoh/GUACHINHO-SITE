@@ -95,6 +95,12 @@ interface FormalizacaoVendaFormProps {
   initialCotaId: string;
   initialModalidadeId?: string | null;
   initialPrincipalId: string;
+  initialPerfilPrincipalId?: string | null;
+  initialPerfilSecundarioId?: string | null;
+  initialPercentualFranqueadora?: number | null;
+  initialDataPrimeiraParcela?: string | null;
+  initialDataSegundaParcela?: string | null;
+  initialCronogramaSecundario?: string | null;
   initialSecundarioId: string | null;
   initialFracaoSecundario: number | null;
 }
@@ -117,6 +123,12 @@ export function FormalizacaoVendaForm({
   initialCotaId,
   initialModalidadeId,
   initialPrincipalId,
+  initialPerfilPrincipalId,
+  initialPerfilSecundarioId,
+  initialPercentualFranqueadora,
+  initialDataPrimeiraParcela,
+  initialDataSegundaParcela,
+  initialCronogramaSecundario,
   initialSecundarioId,
   initialFracaoSecundario,
 }: FormalizacaoVendaFormProps) {
@@ -128,17 +140,6 @@ export function FormalizacaoVendaForm({
   const [customPercentualFranqueadora, setCustomPercentualFranqueadora] = useState<string>("");
   const [ajustarPercentualManual, setAjustarPercentualManual] = useState(false);
 
-  const [selectedPrincipalId, setSelectedPrincipalId] = useState(initialPrincipalId || participantes[0]?.id || "");
-  const [selectedPerfilPrincipalId, setSelectedPerfilPrincipalId] = useState("");
-
-  const [selectedSecundarioId, setSelectedSecundarioId] = useState(initialSecundarioId || "");
-  const [modoSecundario, setModoSecundario] = useState<"PERFIL" | "MANUAL">("MANUAL");
-  const [selectedPerfilSecundarioId, setSelectedPerfilSecundarioId] = useState("");
-  const [fracaoManualSecundario, setFracaoManualSecundario] = useState<number>(
-    initialFracaoSecundario ? Number(initialFracaoSecundario) : 20
-  );
-  const [cronogramaSecundario, setCronogramaSecundario] = useState("SEGUIR_PRINCIPAL");
-
   // Datas de pagamento personalizadas (Adesão vs 2ª Parcela em diante)
   const todayStr = new Date().toISOString().slice(0, 10);
   const nextMonthDate = new Date();
@@ -146,8 +147,19 @@ export function FormalizacaoVendaForm({
   nextMonthDate.setDate(10);
   const defaultSegundaData = nextMonthDate.toISOString().slice(0, 10);
 
-  const [dataPrimeiraParcela, setDataPrimeiraParcela] = useState(todayStr);
-  const [dataSegundaParcela, setDataSegundaParcela] = useState(defaultSegundaData);
+  const [selectedPrincipalId, setSelectedPrincipalId] = useState(initialPrincipalId || participantes[0]?.id || "");
+  const [selectedPerfilPrincipalId, setSelectedPerfilPrincipalId] = useState(initialPerfilPrincipalId || "");
+
+  const [selectedSecundarioId, setSelectedSecundarioId] = useState(initialSecundarioId || "");
+  const [modoSecundario, setModoSecundario] = useState<"PERFIL" | "MANUAL">(initialPerfilSecundarioId ? "PERFIL" : "MANUAL");
+  const [selectedPerfilSecundarioId, setSelectedPerfilSecundarioId] = useState(initialPerfilSecundarioId || "");
+  const [fracaoManualSecundario, setFracaoManualSecundario] = useState<number>(
+    initialFracaoSecundario ? Number(initialFracaoSecundario) : 20
+  );
+  const [cronogramaSecundario, setCronogramaSecundario] = useState(initialCronogramaSecundario || "SEGUIR_PRINCIPAL");
+
+  const [dataPrimeiraParcela, setDataPrimeiraParcela] = useState(initialDataPrimeiraParcela || todayStr);
+  const [dataSegundaParcela, setDataSegundaParcela] = useState(initialDataSegundaParcela || defaultSegundaData);
 
   // 1. Grupo e Cotas disponíveis
   const grupoAtual = useMemo(() => grupos.find((g) => g.id === selectedGrupoId) || grupos[0], [grupos, selectedGrupoId]);
