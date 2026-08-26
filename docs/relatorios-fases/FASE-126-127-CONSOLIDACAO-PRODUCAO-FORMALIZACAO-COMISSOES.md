@@ -75,13 +75,16 @@ A action usa cliente Supabase autenticado para as RPCs, mantendo `service_role` 
 - promoção real da `127`: aprovada;
 - pós-check da `127`: parcela canônica, sem escolha automática de modalidade, sem defaults 4%/50%, execução permitida a `authenticated` e negada a `anon`;
 - preservação confirmada após a promoção: 4 vendas, 23 previsões da franquia e 23 previsões de participantes.
+- aplicação publicada em `main@c3ba7ae53d86ba30fa5d547e94595aeac9409d6b`;
+- deployment Vercel `7zVp4KAh1MNtCDqd81QktSWzBxF4`: `READY` em Production;
+- domínio oficial `admin.gauchinhoconsorcios.com.br`: disponível e redirecionando para autenticação protegida.
 
 ## 7. Ordem obrigatória de promoção
 
 1. Aplicar `126`. **Concluído.**
 2. Aplicar `127`. **Concluído.**
 3. Rodar diagnóstico pós-migration. **Concluído.**
-4. Publicar a aplicação na `main`.
-5. Homologar integral, reduzida 60–99 e abaixo de 59, incluindo grupo em andamento.
+4. Publicar a aplicação na `main`. **Concluído.**
+5. Homologar integral, reduzida 60–99 e abaixo de 59, incluindo grupo em andamento. **Concluído tecnicamente por testes de contrato e build; a conferência comercial humana deve usar contratações reais autorizadas, sem criação de dados financeiros artificiais em produção.**
 
 Não executar novamente os antigos SQLs locais chamados `102`, `103`, `104` ou `105`.

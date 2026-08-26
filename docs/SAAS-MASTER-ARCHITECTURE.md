@@ -4,12 +4,12 @@
 > **ESTADO-ALVO E CORREÇÕES OBRIGATÓRIAS**
 > Antes de alterar tenancy, usuários, catálogo, sites, comissões, financeiro, Storage, RPCs ou migrations, leia também integralmente [`SAAS-ARQUITETURA-ALVO-E-PLANO-DE-CORRECAO.md`](./SAAS-ARQUITETURA-ALVO-E-PLANO-DE-CORRECAO.md). O documento descreve o estado-alvo e o plano de remediação; seus itens não devem ser interpretados como já implantados sem evidência no banco e no código.
 
-> **Versão da Arquitetura:** 5.8.0
-> **Data de Atualização:** 17/08/2026
-> **Production code:** `main@ad297e62232618d609fb579caba7656dd848e6e7`; Supabase principal `eaeuoynprurmmulzhydt` com migrations oficiais `001–083` promovidas.
+> **Versão da Arquitetura:** 6.0.0
+> **Data de Atualização:** 26/08/2026
+> **Production code:** `main@c3ba7ae53d86ba30fa5d547e94595aeac9409d6b`; Supabase principal `eaeuoynprurmmulzhydt` com as migrations `126–127` de hardening e formalização canônica promovidas.
 > **Preview/isolado desta fase:** a branch `bwwgbmiwtrglbtxsdooi` permanece preservada como evidência de homologação da 083 até autorização separada de exclusão.
-> **Fase atual:** a 083 transforma `/platform/administradoras` no hub canônico de Tipos, Modalidades, Curvas, Modelos Master, Programas e Grupos e foi promovida sem backfill ou recálculo histórico.
-> **Vercel Production:** deployment `dpl_9GhcpmEEgo4HCHACcJYcT4EWW6rc` está `READY`, associado aos domínios oficiais.
+> **Fase atual:** consolidação multi-tenant e formalização canônica de vendas/comissões concluída pelas migrations `126–127`, sem perda nem recálculo dos registros financeiros existentes.
+> **Vercel Production:** deployment `7zVp4KAh1MNtCDqd81QktSWzBxF4` está `READY`, associado à `main` e aos domínios oficiais.
 > **Segurança:** o Platform Host continua global, sem fallback de tenant, e exige `is_platform_superadmin()`.
 
 > **Projeto Físico:** `C:\Fernando Hugo\GAUCHINHO SITE`  
