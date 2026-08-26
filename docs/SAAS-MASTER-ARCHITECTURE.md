@@ -385,6 +385,14 @@ As migrations locais que antes usavam os números `102–105` foram supersedidas
 
 O diagnóstico de Production confirmou o conversor antigo usando `grupos_cotas.valor_parcela`. A `127` elimina essa fonte, exige valor em `grupo_cota_modalidade_valores` e remove defaults implícitos de comissão. As duas migrations compilaram conjuntamente no Supabase Production dentro de transação encerrada por `ROLLBACK` e, depois, foram aplicadas em ordem e verificadas. O pós-check confirmou zero fatos sem empresa, RPCs estritas, acesso anônimo negado e preservação de 4 vendas, 23 previsões da franquia e 23 previsões de participantes. Relatório: `docs/relatorios-fases/FASE-126-127-CONSOLIDACAO-PRODUCAO-FORMALIZACAO-COMISSOES.md`.
 
+## 7. Hardening financeiro de Contas a Pagar — Migration 128
+
+Em 26/08/2026 foi implementada localmente a primeira subfase financeira posterior à consolidação 126–127. A migration `128_financeiro_contas_pagar_hardening_privacidade_tenant.sql` converte o bucket `contas-pagar-documentos` para privado, substitui as políticas amplas da migration 118 por políticas tenant-aware e impede novos vínculos cruzados de centro de custo, banco, fornecedor, sócio pagador ou documento.
+
+Novos anexos usam caminho `empresa_id/competencia/uuid_nome`, não sobrescrevem objetos e só são abertos por URL assinada após autorização financeira. URLs públicas históricas continuam reconhecidas como referência legada para permitir a transição sem perda dos arquivos. A aplicação deixou de usar `usuarios.perfil` como autoridade no módulo e passou a exigir a permissão canônica `gerenciar_financeiro` do vínculo N:N ativo.
+
+O build de produção e os seis testes contratuais da subfase foram aprovados localmente. A migration 128 ainda não foi aplicada ao Supabase Production neste marco; o procedimento e os pós-checks estão em `docs/relatorios-fases/FASE-128-HARDENING-CONTAS-PAGAR-PRIVACIDADE-TENANT.md`.
+
 
 
 

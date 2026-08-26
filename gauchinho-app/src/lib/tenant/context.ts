@@ -34,6 +34,7 @@ export type EmpresaUsuarioVinculo = {
   ativo: boolean;
   imobiliaria_id?: string | null;
   socio_pagador?: boolean;
+  pode_estornar_contas?: boolean;
   is_consultor?: boolean | null;
   leads_apenas_proprios?: boolean | null;
   agenda_acesso_todos?: boolean | null;
@@ -82,6 +83,7 @@ export async function getUserCompanies(usuarioId: string): Promise<EmpresaUsuari
       ativo,
       imobiliaria_id,
       socio_pagador,
+      pode_estornar_contas,
       is_consultor,
       leads_apenas_proprios,
       agenda_acesso_todos,
@@ -122,6 +124,7 @@ export async function getUserCompanies(usuarioId: string): Promise<EmpresaUsuari
     .map((vinculo) => ({
       ...(vinculo as unknown as EmpresaUsuarioVinculo),
     socio_pagador: false,
+    pode_estornar_contas: false,
     is_consultor: null,
     leads_apenas_proprios: null,
     agenda_acesso_todos: null,

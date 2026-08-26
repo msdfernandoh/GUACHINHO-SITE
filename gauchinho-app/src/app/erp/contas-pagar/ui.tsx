@@ -44,6 +44,7 @@ import {
   estornarConta,
   excluirConta,
   importarContasCsv,
+  obterUrlNotaFiscalConta,
   removerNotaFiscalConta,
   unificarFornecedores,
   type ContasActionResult,
@@ -657,6 +658,21 @@ export function ContasPagarClient({
       } else {
         setModalErro(result.message);
       }
+    });
+  }
+
+  function abrirDocumentoFinanceiro(contaId: string) {
+    const popup = window.open("about:blank", "_blank");
+    if (popup) popup.opener = null;
+    startTransition(async () => {
+      const result = await obterUrlNotaFiscalConta(contaId);
+      if (!result.ok) {
+        popup?.close();
+        setModalErro(result.message);
+        return;
+      }
+      if (popup) popup.location.href = result.url;
+      else window.open(result.url, "_blank", "noopener,noreferrer");
     });
   }
 
@@ -1736,16 +1752,15 @@ export function ContasPagarClient({
                         {/* Nota Fiscal / Comprovante */}
                         {conta.comprovante_url ? (
                           <div className="inline-flex items-center gap-1 rounded-lg border border-blue-200 bg-blue-50/80 px-2 py-1 text-xs">
-                            <a
-                              href={conta.comprovante_url}
-                              target="_blank"
-                              rel="noopener noreferrer"
+                            <button
+                              type="button"
+                              onClick={() => abrirDocumentoFinanceiro(conta.id)}
                               className="flex items-center gap-1 font-bold text-blue-700 hover:underline"
                               title={conta.nota_fiscal_nome || "Ver arquivo"}
                             >
                               <FileText className="h-3.5 w-3.5" />
                               <span>Ver NF</span>
-                            </a>
+                            </button>
                             <button
                               type="button"
                               onClick={() => execute(() => removerNotaFiscalConta(conta.id))}
@@ -2266,15 +2281,14 @@ export function ContasPagarClient({
                 <label className="font-bold text-slate-700 block">Nota Fiscal / Comprovante</label>
                 {editando.comprovante_url ? (
                   <div className="flex items-center justify-between rounded-lg border border-blue-200 bg-blue-50 p-2 text-xs">
-                    <a
-                      href={editando.comprovante_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
+                    <button
+                      type="button"
+                      onClick={() => abrirDocumentoFinanceiro(editando.id)}
                       className="flex items-center gap-1.5 font-bold text-blue-700 hover:underline"
                     >
                       <FileText className="h-4 w-4" />
                       <span>{editando.nota_fiscal_nome || "Visualizar Nota Fiscal Anexada"}</span>
-                    </a>
+                    </button>
                     <label className="flex items-center gap-1 text-[11px] font-bold text-rose-700 cursor-pointer">
                       <input type="checkbox" name="remover_nf" value="true" className="rounded text-rose-600" />
                       Remover arquivo

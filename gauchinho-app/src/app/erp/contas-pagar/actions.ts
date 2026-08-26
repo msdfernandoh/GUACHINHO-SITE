@@ -1,9 +1,10 @@
 "use server";
 
+import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
-import { getCurrentTenantContext } from "@/lib/tenant/context";
+import { requireTenantPermission } from "@/lib/tenant/context";
 import { parseContasPagarCsv } from "@/lib/financeiro/contas-pagar-csv";
 import { getErpSistemaConfig } from "@/lib/erp/erp-modulos";
 import { canAccessErpRoute } from "@/lib/erp/erp-acesso";
@@ -14,16 +15,17 @@ export type ContasActionResult = {
   importacao?: { importadas: number; duplicadas: number; invalidas: number; erros: string[] };
 };
 
+export type DocumentoFinanceiroResult =
+  | { ok: true; url: string }
+  | { ok: false; message: string };
+
 function failure(error: unknown): ContasActionResult {
   return { ok: false, message: error instanceof Error ? error.message : "Não foi possível concluir a operação." };
 }
 
 async function requireFinanceWrite() {
-  const { usuario, empresaAtiva, vinculos } = await getCurrentTenantContext();
-  if (!usuario || !empresaAtiva || !vinculos.some((v) => v.empresa_id === empresaAtiva.id)) {
-    throw new Error("Empresa ou usuário não identificado.");
-  }
-  const vinculo = vinculos.find((item) => item.empresa_id === empresaAtiva.id);
+  const { empresaAtiva, vinculos, vinculoAtivo } = await requireTenantPermission("gerenciar_financeiro");
+  const vinculo = vinculoAtivo ?? vinculos.find((item) => item.empresa_id === empresaAtiva.id);
   const config = getErpSistemaConfig(empresaAtiva.configuracoes);
   if (!canAccessErpRoute(config, vinculo?.erp_modulos_visiveis, "contas-pagar")) {
     throw new Error("Este usuário não possui acesso ao menu Contas a pagar e caixa.");
@@ -44,13 +46,68 @@ function value(form: FormData, name: string) {
 async function ensureContasBucket(admin: ReturnType<typeof createAdminClient>) {
   try {
     await admin.storage.createBucket("contas-pagar-documentos", {
-      public: true,
+      public: false,
       fileSizeLimit: 20971520,
       allowedMimeTypes: ["application/pdf", "image/jpeg", "image/png", "image/webp", "text/xml", "application/xml"],
     });
   } catch {
     // bucket may already exist
   }
+  const { error } = await admin.storage.updateBucket("contas-pagar-documentos", {
+    public: false,
+    fileSizeLimit: 20971520,
+    allowedMimeTypes: ["application/pdf", "image/jpeg", "image/png", "image/webp", "text/xml", "application/xml"],
+  });
+  if (error) throw new Error(`Não foi possível proteger o armazenamento financeiro: ${error.message}`);
+}
+
+const CONTAS_BUCKET = "contas-pagar-documentos";
+const CONTAS_ALLOWED_MIME = new Set([
+  "application/pdf",
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "text/xml",
+  "application/xml",
+]);
+
+function storagePathFromReference(reference: string | null | undefined): string | null {
+  const raw = String(reference ?? "").trim();
+  if (!raw) return null;
+  if (!/^https?:\/\//i.test(raw)) return raw.replace(/^\/+/, "");
+  try {
+    const pathname = decodeURIComponent(new URL(raw).pathname);
+    const markers = [
+      `/storage/v1/object/public/${CONTAS_BUCKET}/`,
+      `/storage/v1/object/sign/${CONTAS_BUCKET}/`,
+      `/storage/v1/object/${CONTAS_BUCKET}/`,
+    ];
+    for (const marker of markers) {
+      const index = pathname.indexOf(marker);
+      if (index >= 0) return pathname.slice(index + marker.length).replace(/^\/+/, "");
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
+
+function assertStoragePathEmpresa(path: string, empresaId: string) {
+  if (!path.startsWith(`${empresaId}/`)) {
+    throw new Error("O documento financeiro não pertence à empresa ativa.");
+  }
+}
+
+async function removeStoredDocument(
+  admin: ReturnType<typeof createAdminClient>,
+  empresaId: string,
+  reference: string | null | undefined,
+) {
+  const path = storagePathFromReference(reference);
+  if (!path) return;
+  assertStoragePathEmpresa(path, empresaId);
+  const { error } = await admin.storage.from(CONTAS_BUCKET).remove([path]);
+  if (error) console.warn("Não foi possível remover o arquivo financeiro órfão:", error.message);
 }
 
 async function uploadNotaFiscal(
@@ -59,18 +116,22 @@ async function uploadNotaFiscal(
   file: File | null
 ): Promise<{ url: string; nome: string } | null> {
   if (!file || !(file instanceof File) || file.size === 0) return null;
+  if (file.size > 20 * 1024 * 1024) throw new Error("O documento deve ter no máximo 20 MB.");
+  if (!CONTAS_ALLOWED_MIME.has(file.type)) {
+    throw new Error("Formato inválido. Envie PDF, JPG, PNG, WEBP ou XML.");
+  }
   await ensureContasBucket(admin);
-  const ext = file.name.split(".").pop() || "pdf";
+  const ext = (file.name.split(".").pop() || "pdf").toLowerCase().replace(/[^a-z0-9]/g, "");
   const cleanName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
-  const filePath = `${empresaId}/${Date.now()}_${cleanName}`;
+  const filePath = `${empresaId}/${new Date().toISOString().slice(0, 7)}/${randomUUID()}_${cleanName || `documento.${ext}`}`;
   const arrayBuffer = await file.arrayBuffer();
   const buffer = Buffer.from(arrayBuffer);
 
   const { error } = await admin.storage
-    .from("contas-pagar-documentos")
+    .from(CONTAS_BUCKET)
     .upload(filePath, buffer, {
-      contentType: file.type || "application/octet-stream",
-      upsert: true,
+      contentType: file.type,
+      upsert: false,
     });
 
   if (error) {
@@ -78,14 +139,27 @@ async function uploadNotaFiscal(
     throw new Error(`Falha no upload da Nota Fiscal: ${error.message}`);
   }
 
-  const { data } = admin.storage
-    .from("contas-pagar-documentos")
-    .getPublicUrl(filePath);
-
   return {
-    url: data.publicUrl,
+    url: filePath,
     nome: file.name,
   };
+}
+
+async function assertTenantReference(
+  admin: ReturnType<typeof createAdminClient>,
+  table: "financeiro_centros_custo" | "financeiro_contas_bancarias" | "financeiro_fornecedores",
+  empresaId: string,
+  id: string | null,
+  label: string,
+) {
+  if (!id) return;
+  const { data, error } = await admin
+    .from(table)
+    .select("id")
+    .eq("id", id)
+    .eq("empresa_id", empresaId)
+    .maybeSingle();
+  if (error || !data) throw new Error(`${label} não pertence à empresa ativa.`);
 }
 
 function normalizeName(name: string) {
@@ -192,16 +266,24 @@ export async function criarConta(form: FormData): Promise<ContasActionResult> {
       }
     }
 
+    const centroId = value(form, "centro") || null;
+    const bancoId = value(form, "banco") || null;
+    await Promise.all([
+      assertTenantReference(admin, "financeiro_centros_custo", empresaId, centroId, "Centro de custo"),
+      assertTenantReference(admin, "financeiro_contas_bancarias", empresaId, bancoId, "Conta bancária"),
+      assertTenantReference(admin, "financeiro_fornecedores", empresaId, fornecedorId, "Fornecedor"),
+    ]);
+
     const arquivoNf = form.get("arquivo_nf") as File | null;
     const uploadNf = await uploadNotaFiscal(admin, empresaId, arquivoNf);
 
-    const centroId = value(form, "centro") || null;
     let descontadoComissao = form.get("descontado_comissao") === "on";
     if (!descontadoComissao && centroId) {
       const { data: cData } = await admin
         .from("financeiro_centros_custo")
         .select("descontado_comissao")
         .eq("id", centroId)
+        .eq("empresa_id", empresaId)
         .maybeSingle();
       if (cData?.descontado_comissao) descontadoComissao = true;
     }
@@ -212,7 +294,7 @@ export async function criarConta(form: FormData): Promise<ContasActionResult> {
       fornecedor: fornecedorTexto || null,
       fornecedor_id: fornecedorId,
       centro_custo_id: centroId,
-      conta_bancaria_id: value(form, "banco") || null,
+      conta_bancaria_id: bancoId,
       vencimento,
       competencia: vencimento.slice(0, 7),
       valor,
@@ -238,7 +320,10 @@ export async function criarConta(form: FormData): Promise<ContasActionResult> {
       const retry = await admin.from("financeiro_contas_pagar").insert(payload);
       error = retry.error;
     }
-    if (error) throw new Error(error.message);
+    if (error) {
+      if (uploadNf) await removeStoredDocument(admin, empresaId, uploadNf.url);
+      throw new Error(error.message);
+    }
     revalidatePath("/erp/contas-pagar");
     return { ok: true, message: "Conta adicionada com sucesso." };
   } catch (error) {
@@ -271,6 +356,15 @@ export async function alterarConta(id: string, form: FormData): Promise<ContasAc
   try {
     const { empresaId, session, admin } = await requireFinanceWrite();
     const pessoal = form.get("pessoal") === "on";
+    const socioId = pessoal ? value(form, "socio") || null : null;
+    const centroId = value(form, "centro") || null;
+    const bancoId = value(form, "banco") || null;
+    if (pessoal && !socioId) throw new Error("Selecione quem pagou pessoalmente.");
+    if (socioId) await assertSocio(admin, empresaId, socioId);
+    await Promise.all([
+      assertTenantReference(admin, "financeiro_centros_custo", empresaId, centroId, "Centro de custo"),
+      assertTenantReference(admin, "financeiro_contas_bancarias", empresaId, bancoId, "Conta bancária"),
+    ]);
     const { error } = await session.rpc("rpc_alterar_conta_pagar", {
       p_empresa_id: empresaId,
       p_conta_id: id,
@@ -278,24 +372,24 @@ export async function alterarConta(id: string, form: FormData): Promise<ContasAc
       p_fornecedor: value(form, "fornecedor"),
       p_vencimento: value(form, "vencimento"),
       p_valor: Number(value(form, "valor")),
-      p_centro_custo_id: value(form, "centro") || null,
-      p_conta_bancaria_id: value(form, "banco") || null,
+      p_centro_custo_id: centroId,
+      p_conta_bancaria_id: bancoId,
       p_observacao: value(form, "obs"),
       p_pago_pessoalmente: pessoal,
-      p_socio_pagador_usuario_id: pessoal ? value(form, "socio") || null : null,
+      p_socio_pagador_usuario_id: socioId,
     });
     if (error) throw new Error(error.message);
 
     const removerNf = form.get("remover_nf") === "true";
     const arquivoNf = form.get("arquivo_nf") as File | null;
 
-    const centroId = value(form, "centro") || null;
     let descontadoComissao = form.get("descontado_comissao") === "on";
     if (!descontadoComissao && centroId) {
       const { data: cData } = await admin
         .from("financeiro_centros_custo")
         .select("descontado_comissao")
         .eq("id", centroId)
+        .eq("empresa_id", empresaId)
         .maybeSingle();
       if (cData?.descontado_comissao) descontadoComissao = true;
     }
@@ -704,6 +798,13 @@ export async function alternarStatusFornecedor(id: string, ativo: boolean): Prom
 export async function anexarNotaFiscalConta(id: string, form: FormData): Promise<ContasActionResult> {
   try {
     const { empresaId, admin } = await requireFinanceWrite();
+    const { data: contaAtual, error: contaError } = await admin
+      .from("financeiro_contas_pagar")
+      .select("id,comprovante_url")
+      .eq("id", id)
+      .eq("empresa_id", empresaId)
+      .maybeSingle();
+    if (contaError || !contaAtual) throw new Error("Conta não encontrada na empresa ativa.");
     const arquivoNf = form.get("arquivo_nf") as File | null;
     if (!arquivoNf || arquivoNf.size === 0) {
       throw new Error("Selecione um arquivo de Nota Fiscal ou comprovante.");
@@ -722,7 +823,13 @@ export async function anexarNotaFiscalConta(id: string, form: FormData): Promise
       .eq("id", id)
       .eq("empresa_id", empresaId);
 
-    if (error) throw new Error(error.message);
+    if (error) {
+      await removeStoredDocument(admin, empresaId, uploadNf.url);
+      throw new Error(error.message);
+    }
+    if (contaAtual.comprovante_url) {
+      await removeStoredDocument(admin, empresaId, contaAtual.comprovante_url);
+    }
     revalidatePath("/erp/contas-pagar");
     return { ok: true, message: "Nota Fiscal anexada com sucesso." };
   } catch (error) {
@@ -733,6 +840,13 @@ export async function anexarNotaFiscalConta(id: string, form: FormData): Promise
 export async function removerNotaFiscalConta(id: string): Promise<ContasActionResult> {
   try {
     const { empresaId, admin } = await requireFinanceWrite();
+    const { data: contaAtual, error: contaError } = await admin
+      .from("financeiro_contas_pagar")
+      .select("id,comprovante_url")
+      .eq("id", id)
+      .eq("empresa_id", empresaId)
+      .maybeSingle();
+    if (contaError || !contaAtual) throw new Error("Conta não encontrada na empresa ativa.");
     const { error } = await admin
       .from("financeiro_contas_pagar")
       .update({
@@ -745,10 +859,36 @@ export async function removerNotaFiscalConta(id: string): Promise<ContasActionRe
       .eq("empresa_id", empresaId);
 
     if (error) throw new Error(error.message);
+    await removeStoredDocument(admin, empresaId, contaAtual.comprovante_url);
     revalidatePath("/erp/contas-pagar");
     return { ok: true, message: "Nota Fiscal removida da conta." };
   } catch (error) {
     return failure(error);
+  }
+}
+
+export async function obterUrlNotaFiscalConta(id: string): Promise<DocumentoFinanceiroResult> {
+  try {
+    const { empresaId, admin } = await requireFinanceWrite();
+    const { data: conta, error } = await admin
+      .from("financeiro_contas_pagar")
+      .select("id,comprovante_url")
+      .eq("id", id)
+      .eq("empresa_id", empresaId)
+      .maybeSingle();
+    if (error || !conta?.comprovante_url) {
+      throw new Error("Documento não encontrado na empresa ativa.");
+    }
+    const path = storagePathFromReference(conta.comprovante_url);
+    if (!path) throw new Error("O caminho do documento legado é inválido.");
+    assertStoragePathEmpresa(path, empresaId);
+    const { data, error: signedError } = await admin.storage
+      .from(CONTAS_BUCKET)
+      .createSignedUrl(path, 60);
+    if (signedError || !data?.signedUrl) throw new Error("Não foi possível autorizar a abertura do documento.");
+    return { ok: true, url: data.signedUrl };
+  } catch (error) {
+    return { ok: false, message: error instanceof Error ? error.message : "Não foi possível abrir o documento." };
   }
 }
 

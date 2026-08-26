@@ -3,17 +3,14 @@ import { getCurrentTenantContext } from "@/lib/tenant/context";
 import { ContasPagarClient } from "./ui";
 
 export default async function ContasPagarPage() {
-  const { empresaAtiva, usuario, vinculos: vinculosContexto } = await getCurrentTenantContext();
+  const { empresaAtiva, vinculos: vinculosContexto } = await getCurrentTenantContext();
   if (!empresaAtiva) return null;
   const db = createAdminClient();
   const empresaId = empresaAtiva.id;
   const vinculoAtivo = vinculosContexto?.find((vinculo) => vinculo.empresa_id === empresaId);
-  const isMaster = Boolean(
-    usuario?.perfil === "master" ||
-      vinculoAtivo?.papel?.codigo === "admin_empresa"
-  );
+  const isMaster = vinculoAtivo?.papel?.codigo === "admin_empresa";
   const podeEstornar = Boolean(
-    isMaster || (vinculoAtivo as { pode_estornar_contas?: boolean })?.pode_estornar_contas
+    isMaster || vinculoAtivo?.pode_estornar_contas
   );
 
   const [contas, bancos, centros, fornecedores, vinculos, caixa, logs] = await Promise.all([
