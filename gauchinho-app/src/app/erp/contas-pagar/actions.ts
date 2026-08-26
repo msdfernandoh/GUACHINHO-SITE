@@ -4,7 +4,7 @@ import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
-import { requireTenantPermission } from "@/lib/tenant/context";
+import { getCurrentTenantContext, requireTenantPermission } from "@/lib/tenant/context";
 import { parseContasPagarCsv } from "@/lib/financeiro/contas-pagar-csv";
 import { getErpSistemaConfig } from "@/lib/erp/erp-modulos";
 import { canAccessErpRoute } from "@/lib/erp/erp-acesso";
@@ -18,6 +18,82 @@ export type ContasActionResult = {
 export type DocumentoFinanceiroResult =
   | { ok: true; url: string }
   | { ok: false; message: string };
+
+export type ConsultaContasPagarInput = {
+  status?: "todas" | "abertas" | "pagas";
+  dataTipo?: "vencimento" | "pagamento";
+  inicio?: string;
+  fim?: string;
+  bancoId?: string;
+  centroId?: string;
+  socioId?: string;
+  busca?: string;
+  card?: "pagas_mes" | "a_pagar_mes" | "futuras" | "entradas_mes" | null;
+  ordenacao?: string;
+  pagina?: number;
+  porPagina?: number;
+  logAcao?: string;
+  logBusca?: string;
+  logInicio?: string;
+  logFim?: string;
+  logPagina?: number;
+  logsPorPagina?: number;
+};
+
+export type ConsultaContasPagarResult = {
+  contas: unknown[];
+  total_contas: number;
+  pagina: number;
+  por_pagina: number;
+  saldo_caixa: number;
+  cards: { pagas_mes: number; a_pagar_mes: number; futuras: number; entradas_mes: number };
+  entradas_mes: unknown[];
+  balanco: {
+    socios: Array<{ id: string; nome: string; pago: number; contas_pagas: number; aberto: number; contas_abertas: number }>;
+    pago_empresa: number;
+    contas_pagas_empresa: number;
+    impostos_descontados: number;
+    contas_descontadas: number;
+  };
+  logs: unknown[];
+  total_logs: number;
+  fornecedores_uso: Array<{ nome: string; total: number }>;
+};
+
+export async function consultarContasPagar(
+  input: ConsultaContasPagarInput = {},
+): Promise<ConsultaContasPagarResult> {
+  const { empresaAtiva, vinculos } = await getCurrentTenantContext();
+  if (!empresaAtiva) throw new Error("Empresa ativa não encontrada.");
+  const vinculo = vinculos.find((item) => item.empresa_id === empresaAtiva.id);
+  if (!canAccessErpRoute(getErpSistemaConfig(empresaAtiva.configuracoes), vinculo?.erp_modulos_visiveis, "contas-pagar")) {
+    throw new Error("Este usuário não possui acesso ao menu Contas a pagar e caixa.");
+  }
+  const session = await createClient();
+  const { data, error } = await session.rpc("rpc_consultar_contas_pagar", {
+    p_empresa_id: empresaAtiva.id,
+    p_status: input.status ?? "todas",
+    p_data_tipo: input.dataTipo ?? "vencimento",
+    p_inicio: input.inicio || null,
+    p_fim: input.fim || null,
+    p_banco_id: input.bancoId || null,
+    p_centro_id: input.centroId || null,
+    p_socio_id: input.socioId || null,
+    p_busca: input.busca?.trim() || null,
+    p_card: input.card === "entradas_mes" ? null : input.card ?? null,
+    p_ordenacao: input.ordenacao ?? "vencimento_asc",
+    p_pagina: Math.max(1, input.pagina ?? 1),
+    p_por_pagina: Math.min(100, Math.max(10, input.porPagina ?? 25)),
+    p_log_acao: input.logAcao?.trim() || null,
+    p_log_busca: input.logBusca?.trim() || null,
+    p_log_inicio: input.logInicio || null,
+    p_log_fim: input.logFim || null,
+    p_log_pagina: Math.max(1, input.logPagina ?? 1),
+    p_logs_por_pagina: Math.min(100, Math.max(10, input.logsPorPagina ?? 50)),
+  });
+  if (error) throw new Error(`Não foi possível consultar o financeiro: ${error.message}`);
+  return data as ConsultaContasPagarResult;
+}
 
 function failure(error: unknown): ContasActionResult {
   return { ok: false, message: error instanceof Error ? error.message : "Não foi possível concluir a operação." };

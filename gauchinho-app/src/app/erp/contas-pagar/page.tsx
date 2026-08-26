@@ -1,6 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentTenantContext } from "@/lib/tenant/context";
 import { ContasPagarClient } from "./ui";
+import { consultarContasPagar } from "./actions";
 
 export default async function ContasPagarPage() {
   const { empresaAtiva, vinculos: vinculosContexto } = await getCurrentTenantContext();
@@ -13,14 +14,8 @@ export default async function ContasPagarPage() {
     isMaster || vinculoAtivo?.pode_estornar_contas
   );
 
-  const [contas, bancos, centros, fornecedores, vinculos, caixa, logs] = await Promise.all([
-    db
-      .from("financeiro_contas_pagar")
-      .select("*")
-      .eq("empresa_id", empresaId)
-      .neq("status", "cancelada")
-      .order("vencimento", { ascending: true })
-      .limit(10000),
+  const [consulta, bancos, centros, fornecedores, vinculos] = await Promise.all([
+    consultarContasPagar(),
     db.from("financeiro_contas_bancarias").select("*").eq("empresa_id", empresaId).order("nome"),
     db.from("financeiro_centros_custo").select("*").eq("empresa_id", empresaId).order("nome"),
     db.from("financeiro_fornecedores").select("*").eq("empresa_id", empresaId).order("nome"),
@@ -29,13 +24,6 @@ export default async function ContasPagarPage() {
       .select("socio_pagador,pode_estornar_contas,usuario:usuarios!empresa_usuarios_usuario_id_fkey(id,nome,email)")
       .eq("empresa_id", empresaId)
       .eq("ativo", true),
-    db.from("caixa_movimentos").select("id,tipo_movimento,valor,data_movimento,descricao").eq("empresa_id", empresaId),
-    db
-      .from("financeiro_contas_pagar_logs")
-      .select("*,usuario:usuarios!financeiro_contas_pagar_logs_usuario_id_fkey(nome,email)")
-      .eq("empresa_id", empresaId)
-      .order("created_at", { ascending: false })
-      .limit(500),
   ]);
   if (vinculos.error) throw new Error(vinculos.error.message);
   const usuarios = (vinculos.data ?? []).flatMap((vinculo) => {
@@ -43,7 +31,6 @@ export default async function ContasPagarPage() {
     return usuario ? [{ ...usuario, socioPagador: Boolean(vinculo.socio_pagador) }] : [];
   });
 
-  const contasData = (contas.data ?? []) as any[];
   const fornecedoresDb = (fornecedores.data ?? []) as any[];
 
   // Monta lista unificada de fornecedores (tabela + despesas já cadastradas)
@@ -58,20 +45,19 @@ export default async function ContasPagarPage() {
     }
   });
 
-  contasData.forEach((c) => {
-    const nome = (c.fornecedor ?? "").trim();
+  consulta.fornecedores_uso.forEach((uso) => {
+    const nome = uso.nome.trim();
     if (nome) {
       const key = nome.toLowerCase();
       if (fornecedoresMap.has(key)) {
         const item = fornecedoresMap.get(key);
-        item.totalContas = (item.totalContas || 0) + 1;
-        if (!item.id && c.fornecedor_id) item.id = c.fornecedor_id;
+        item.totalContas = Number(uso.total);
       } else {
         fornecedoresMap.set(key, {
-          id: c.fornecedor_id || `temp-${encodeURIComponent(nome)}`,
+          id: `temp-${encodeURIComponent(nome)}`,
           nome: nome,
           ativo: true,
-          totalContas: 1,
+          totalContas: Number(uso.total),
           isFromContas: true,
         });
       }
@@ -84,13 +70,11 @@ export default async function ContasPagarPage() {
 
   return (
     <ContasPagarClient
-      contas={contasData}
+      consultaInicial={consulta}
       bancos={(bancos.data ?? []) as any[]}
       centros={(centros.data ?? []) as any[]}
       fornecedores={todosFornecedores}
       socios={usuarios.filter((usuario) => usuario.socioPagador)}
-      caixa={(caixa.data ?? []) as any[]}
-      logs={(logs.data ?? []) as any[]}
       master={isMaster}
       podeEstornar={podeEstornar}
     />

@@ -425,6 +425,14 @@ Operações críticas de Vendas usam `formalizar_vendas`, `papeis.codigo = admin
 
 O build de 146 rotas, a suíte completa e os testes contratuais foram aprovados. As fases 128–132 foram promovidas pela `main` no commit `db47ef2`; o deployment Production `dpl_6mzUBfbzzDpDU3jzax7RrVdg2jtV` ficou `Ready` e os smokes públicos dos hosts principal, ERP e Platform foram aprovados. A próxima etapa de escala é a paginação e agregação server-side de Contas a Pagar. Relatório: `docs/relatorios-fases/FASE-132-CHECKUP-MENUS-ERP-AUTORIZACAO.md`.
 
+## 12. Paginação e agregados financeiros server-side — Fase 133 / Migration 131
+
+A tela de Contas a Pagar deixa de baixar milhares de fatos para filtrar, paginar e totalizar no navegador. A RPC `rpc_consultar_contas_pagar` recebe filtros defensivos, limita despesas e logs a 100 itens por página e calcula saldo de caixa, cards mensais, despesas da empresa, pagamentos dos sócios, contas abertas e auditoria diretamente sobre o conjunto integral do tenant.
+
+A empresa nunca vem do formulário: é resolvida pelo contexto ativo e revalidada pela função com `can_read_tenant_internal`. A UI usa sessão autenticada, não service role, e continua exigindo o módulo ERP correspondente. A opção “Todas” foi removida para impedir respostas sem limite. Relatório: `docs/relatorios-fases/FASE-133-CONTAS-PAGAR-PAGINACAO-AGREGADOS-SERVIDOR.md`.
+
+Em 26/08/2026, a migration 131 foi compilada sob rollback, exercitada com uma sessão tenant real e aplicada no Supabase Production. O pós-check confirmou quatro índices, função registrada, acesso exclusivo de `authenticated` e retorno paginado com agregados completos. Nenhum fato financeiro foi modificado.
+
 
 
 

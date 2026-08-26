@@ -1,16 +1,14 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   AlertCircle,
-  AlertTriangle,
   Banknote,
   CheckCircle2,
   Copy,
   FileUp,
   History,
-  Info,
   Landmark,
   Pencil,
   Plus,
@@ -42,6 +40,7 @@ import {
   criarCentro,
   criarConta,
   criarFornecedor,
+  consultarContasPagar,
   duplicarContaMeses,
   estornarConta,
   excluirConta,
@@ -50,6 +49,7 @@ import {
   removerNotaFiscalConta,
   unificarFornecedores,
   type ContasActionResult,
+  type ConsultaContasPagarResult,
 } from "./actions";
 
 type Conta = {
@@ -276,27 +276,26 @@ function FornecedorAutocomplete({
 }
 
 export function ContasPagarClient({
-  contas,
+  consultaInicial,
   bancos,
   centros,
   fornecedores = [],
   socios,
-  caixa,
-  logs,
   master,
   podeEstornar,
 }: {
-  contas: Conta[];
+  consultaInicial: ConsultaContasPagarResult;
   bancos: Banco[];
   centros: Centro[];
   fornecedores?: Fornecedor[];
   socios: Usuario[];
-  caixa: Movimento[];
-  logs: Log[];
   master: boolean;
   podeEstornar: boolean;
 }) {
   const router = useRouter();
+  const [consulta, setConsulta] = useState(consultaInicial);
+  const contas = consulta.contas as Conta[];
+  const logs = consulta.logs as Log[];
   const [tab, setTab] = useState<Tab>("conta");
   const [filtro, setFiltro] = useState<Filtro>("todas");
   const [pessoal, setPessoal] = useState(false);
@@ -318,6 +317,9 @@ export function ContasPagarClient({
   const [ordenacao, setOrdenacao] = useState<string>("vencimento_asc");
   const [pagina, setPagina] = useState<number>(1);
   const [itensPorPagina, setItensPorPagina] = useState<number>(25);
+  const [logPagina, setLogPagina] = useState(1);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [consultando, setConsultando] = useState(false);
   const [anexandoNfConta, setAnexandoNfConta] = useState<Conta | null>(null);
   const [duplicandoConta, setDuplicandoConta] = useState<Conta | null>(null);
   const [duplicarMeses, setDuplicarMeses] = useState(6);
@@ -345,191 +347,88 @@ export function ContasPagarClient({
   const [logDataInicio, setLogDataInicio] = useState<string>("");
   const [logDataFim, setLogDataFim] = useState<string>("");
 
-  const saldo = caixa.reduce(
-    (acc, movimento) => acc + (movimento.tipo_movimento === "entrada" ? Number(movimento.valor) : -Number(movimento.valor)),
-    0,
-  );
+  const saldo = Number(consulta.saldo_caixa);
 
-  const contasFiltradas = contas.filter((conta) => {
-    const data = dataTipo === "pagamento" ? conta.pago_em : conta.vencimento;
-    const buscaNorm = buscaLivre.trim().toLowerCase();
-    const matchBusca =
-      !buscaNorm ||
-      conta.descricao.toLowerCase().includes(buscaNorm) ||
-      (conta.fornecedor && conta.fornecedor.toLowerCase().includes(buscaNorm)) ||
-      (conta.observacao && conta.observacao.toLowerCase().includes(buscaNorm));
 
-    return (
-      matchBusca &&
-      (filtro === "todas"
-        ? conta.status !== "cancelada"
-        : filtro === "abertas"
-          ? conta.status === "aberta"
-          : conta.status === "paga") &&
-      (!inicio || Boolean(data && data >= inicio)) &&
-      (!fim || Boolean(data && data <= fim)) &&
-      (!bancoFiltro || conta.conta_bancaria_id === bancoFiltro) &&
-      (!centroFiltro || conta.centro_custo_id === centroFiltro) &&
-      (!socioFiltro || conta.socio_pagador_usuario_id === socioFiltro)
-    );
-  });
+  const sociosBalanco = consulta.balanco.socios;
+  const socioA = sociosBalanco[0];
+  const socioB = sociosBalanco[1];
+  const acertoServidor = calcularAcertoSocios(Number(socioA?.pago ?? 0), Number(socioB?.pago ?? 0));
+  const balancoSocios = {
+    fernandoNome: socioA?.nome ?? socios[0]?.nome ?? "Sócio A",
+    eroniNome: socioB?.nome ?? socios[1]?.nome ?? "Sócio B",
+    pagoFernando: Number(socioA?.pago ?? 0),
+    pagoEroni: Number(socioB?.pago ?? 0),
+    totalGastoSocios: Number(socioA?.pago ?? 0) + Number(socioB?.pago ?? 0),
+    totalPagoEmpresa: Number(consulta.balanco.pago_empresa),
+    totalContasPagasEmpresa: Number(consulta.balanco.contas_pagas_empresa),
+    totalGeralPagoOperacional:
+      Number(consulta.balanco.pago_empresa) + Number(socioA?.pago ?? 0) + Number(socioB?.pago ?? 0),
+    totalImpostosDescontados: Number(consulta.balanco.impostos_descontados),
+    totalContasDescontadas: Number(consulta.balanco.contas_descontadas),
+    totalContasPagas: sociosBalanco.reduce((total, socio) => total + Number(socio.contas_pagas), 0),
+    ...acertoServidor,
+  };
+  const contasAbertasSocios = {
+    fernandoNome: socioA?.nome ?? socios[0]?.nome ?? "Sócio A",
+    eroniNome: socioB?.nome ?? socios[1]?.nome ?? "Sócio B",
+    abertaFernando: Number(socioA?.aberto ?? 0),
+    abertaEroni: Number(socioB?.aberto ?? 0),
+    totalAberto: sociosBalanco.reduce((total, socio) => total + Number(socio.aberto), 0),
+    totalContasAbertas: sociosBalanco.reduce((total, socio) => total + Number(socio.contas_abertas), 0),
+  };
+  const resumoMensal = {
+    pagasContas: contas,
+    aPagarContas: contas,
+    futurasContas: contas,
+    entradasMovimentos: consulta.entradas_mes as Movimento[],
+    pagasMes: Number(consulta.cards.pagas_mes),
+    aPagarMes: Number(consulta.cards.a_pagar_mes),
+    futuras: Number(consulta.cards.futuras),
+    entradasMes: Number(consulta.cards.entradas_mes),
+  };
 
-  const balancoSocios = useMemo(() => {
-    const nomeNormalizado = (nome: string) =>
-      nome.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
-    const fernando = socios.find((socio) => nomeNormalizado(socio.nome).includes("fernando"));
-    const eroni = socios.find((socio) => nomeNormalizado(socio.nome).includes("eroni"));
-
-    const centrosDescontadosSet = new Set(
-      centros.filter((c) => c.descontado_comissao).map((c) => c.id)
-    );
-
-    // Contas pagas no período selecionado
-    const contasPagasDoPeriodo = contas.filter((conta) => {
-      if (conta.status !== "paga") return false;
-      const data = dataTipo === "pagamento" ? (conta.pago_em || conta.vencimento) : conta.vencimento;
-      return (
-        (!inicio || Boolean(data && data >= inicio)) &&
-        (!fim || Boolean(data && data <= fim)) &&
-        (!bancoFiltro || conta.conta_bancaria_id === bancoFiltro) &&
-        (!centroFiltro || conta.centro_custo_id === centroFiltro) &&
-        (!socioFiltro || conta.socio_pagador_usuario_id === socioFiltro)
-      );
-    });
-
-    // 1. Impostos e deduções que já foram descontados na comissão (não duplicam no balanço)
-    const contasDescontadas = contasPagasDoPeriodo.filter(
-      (c) => Boolean(c.descontado_comissao) || (c.centro_custo_id && centrosDescontadosSet.has(c.centro_custo_id))
-    );
-    const totalImpostosDescontados = contasDescontadas.reduce((sum, c) => sum + Number(c.valor), 0);
-
-    // 2. Contas pagas com recursos da Empresa (Caixa Geral / Comissões - Dinheiro dos dois sócios)
-    const contasPagasEmpresa = contasPagasDoPeriodo.filter((c) => {
-      const isDesc = Boolean(c.descontado_comissao) || (c.centro_custo_id && centrosDescontadosSet.has(c.centro_custo_id));
-      if (isDesc) return false;
-      return !c.pago_pessoalmente && !c.socio_pagador_usuario_id;
-    });
-    const totalPagoEmpresa = contasPagasEmpresa.reduce((sum, c) => sum + Number(c.valor), 0);
-
-    // 3. Contas pagas pessoalmente pelos Sócios (entram no acerto 50/50)
-    const contasPagasSocios = contasPagasDoPeriodo.filter((c) => {
-      const isDesc = Boolean(c.descontado_comissao) || (c.centro_custo_id && centrosDescontadosSet.has(c.centro_custo_id));
-      if (isDesc) return false;
-      return c.pago_pessoalmente || Boolean(c.socio_pagador_usuario_id);
-    });
-
-    const pagoFernando = contasPagasSocios
-      .filter((conta) => conta.socio_pagador_usuario_id === fernando?.id)
-      .reduce((total, conta) => total + Number(conta.valor), 0);
-    const pagoEroni = contasPagasSocios
-      .filter((conta) => conta.socio_pagador_usuario_id === eroni?.id)
-      .reduce((total, conta) => total + Number(conta.valor), 0);
-
-    const totalGastoSocios = pagoFernando + pagoEroni;
-    const cotaIndividual = totalGastoSocios / 2;
-    const totalGeralPagoOperacional = totalPagoEmpresa + totalGastoSocios;
-
-    return {
-      fernandoNome: fernando?.nome ?? "Fernando",
-      eroniNome: eroni?.nome ?? "Eroni",
-      pagoFernando,
-      pagoEroni,
-      totalGastoSocios,
-      totalPagoEmpresa,
-      totalContasPagasEmpresa: contasPagasEmpresa.length,
-      totalGeralPagoOperacional,
-      totalImpostosDescontados,
-      totalContasDescontadas: contasDescontadas.length,
-      totalContasPagas: contasPagasSocios.length,
-      ...calcularAcertoSocios(pagoFernando, pagoEroni),
+  useEffect(() => {
+    let ativo = true;
+    const timer = window.setTimeout(async () => {
+      setConsultando(true);
+      try {
+        const resultado = await consultarContasPagar({
+          status: filtro,
+          dataTipo,
+          inicio,
+          fim,
+          bancoId: bancoFiltro,
+          centroId: centroFiltro,
+          socioId: socioFiltro,
+          busca: buscaLivre,
+          card: cardFiltro,
+          ordenacao,
+          pagina,
+          porPagina: itensPorPagina,
+          logAcao: logAcaoFiltro,
+          logBusca,
+          logInicio: logDataInicio,
+          logFim: logDataFim,
+          logPagina,
+          logsPorPagina: 50,
+        });
+        if (ativo) setConsulta(resultado);
+      } catch (error) {
+        if (ativo) setModalErro(error instanceof Error ? error.message : "Não foi possível atualizar o financeiro.");
+      } finally {
+        if (ativo) setConsultando(false);
+      }
+    }, buscaLivre || logBusca ? 350 : 50);
+    return () => {
+      ativo = false;
+      window.clearTimeout(timer);
     };
-  }, [bancoFiltro, centroFiltro, centros, contas, dataTipo, fim, inicio, socioFiltro, socios]);
-
-  const contasAbertasSocios = useMemo(() => {
-    const nomeNormalizado = (nome: string) =>
-      nome.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
-    const fernando = socios.find((socio) => nomeNormalizado(socio.nome).includes("fernando"));
-    const eroni = socios.find((socio) => nomeNormalizado(socio.nome).includes("eroni"));
-
-    const abertas = contas.filter((conta) => {
-      if (conta.status !== "aberta") return false;
-      if (!conta.pago_pessoalmente && !conta.socio_pagador_usuario_id) return false;
-
-      const data = conta.vencimento;
-      return (
-        (!inicio || Boolean(data && data >= inicio)) &&
-        (!fim || Boolean(data && data <= fim)) &&
-        (!bancoFiltro || conta.conta_bancaria_id === bancoFiltro) &&
-        (!centroFiltro || conta.centro_custo_id === centroFiltro) &&
-        (!socioFiltro || conta.socio_pagador_usuario_id === socioFiltro)
-      );
-    });
-
-    const abertaFernando = abertas
-      .filter((conta) => conta.socio_pagador_usuario_id === fernando?.id)
-      .reduce((total, conta) => total + Number(conta.valor), 0);
-
-    const abertaEroni = abertas
-      .filter((conta) => conta.socio_pagador_usuario_id === eroni?.id)
-      .reduce((total, conta) => total + Number(conta.valor), 0);
-
-    const totalAberto = abertaFernando + abertaEroni;
-
-    return {
-      fernandoNome: fernando?.nome ?? "Fernando",
-      eroniNome: eroni?.nome ?? "Eroni",
-      abertaFernando,
-      abertaEroni,
-      totalAberto,
-      totalContasAbertas: abertas.length,
-    };
-  }, [bancoFiltro, centroFiltro, contas, fim, inicio, socioFiltro, socios]);
-
-  const resumoMensal = useMemo(() => {
-    const hoje = new Date();
-    const inicioMes = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, "0")}-01`;
-    const proximo = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 1);
-    const inicioProximoMes = `${proximo.getFullYear()}-${String(proximo.getMonth() + 1).padStart(2, "0")}-01`;
-    const base = contas.filter(
-      (conta) =>
-        (!bancoFiltro || conta.conta_bancaria_id === bancoFiltro) &&
-        (!centroFiltro || conta.centro_custo_id === centroFiltro) &&
-        (!socioFiltro || conta.socio_pagador_usuario_id === socioFiltro),
-    );
-    const somar = (itens: Conta[]) => itens.reduce((total, conta) => total + Number(conta.valor), 0);
-    const pagasContas = base.filter(
-      (conta) =>
-        conta.status === "paga" &&
-        Boolean(conta.pago_em && conta.pago_em >= inicioMes && conta.pago_em < inicioProximoMes),
-    );
-    const aPagarContas = base.filter(
-      (conta) =>
-        conta.status === "aberta" &&
-        conta.vencimento >= inicioMes &&
-        conta.vencimento < inicioProximoMes,
-    );
-    const futurasContas = base.filter(
-      (conta) => conta.status === "aberta" && conta.vencimento >= inicioProximoMes,
-    );
-    const entradasMovimentos = caixa
-      .filter(
-        (movimento) =>
-          movimento.tipo_movimento === "entrada" &&
-          movimento.data_movimento >= inicioMes &&
-          movimento.data_movimento < inicioProximoMes,
-      )
-      .sort((a, b) => b.data_movimento.localeCompare(a.data_movimento));
-    return {
-      pagasContas,
-      aPagarContas,
-      futurasContas,
-      entradasMovimentos,
-      pagasMes: somar(pagasContas),
-      aPagarMes: somar(aPagarContas),
-      futuras: somar(futurasContas),
-      entradasMes: entradasMovimentos.reduce((total, movimento) => total + Number(movimento.valor), 0),
-    };
-  }, [bancoFiltro, caixa, centroFiltro, contas, socioFiltro]);
+  }, [
+    bancoFiltro, buscaLivre, cardFiltro, centroFiltro, dataTipo, fim, filtro, inicio,
+    itensPorPagina, logAcaoFiltro, logBusca, logDataFim, logDataInicio, logPagina,
+    ordenacao, pagina, refreshKey, socioFiltro,
+  ]);
 
   function filtrarMesAtual() {
     const hoje = new Date();
@@ -564,97 +463,17 @@ export function ContasPagarClient({
     setPagina(1);
   }
 
-  const contasBaseFiltro =
-    cardFiltro === "pagas_mes"
-      ? resumoMensal.pagasContas
-      : cardFiltro === "a_pagar_mes"
-        ? resumoMensal.aPagarContas
-        : cardFiltro === "futuras"
-          ? resumoMensal.futurasContas
-          : contasFiltradas;
+  const contasOrdenadas = contas;
 
-  const contasOrdenadas = useMemo(() => {
-    const lista = [...contasBaseFiltro];
-    lista.sort((a, b) => {
-      switch (ordenacao) {
-        case "pagamento_desc": {
-          const dtA = a.pago_em || a.vencimento || "";
-          const dtB = b.pago_em || b.vencimento || "";
-          return dtB.localeCompare(dtA);
-        }
-        case "pagamento_asc": {
-          const dtA = a.pago_em || a.vencimento || "";
-          const dtB = b.pago_em || b.vencimento || "";
-          return dtA.localeCompare(dtB);
-        }
-        case "vencimento_desc": {
-          const dtA = a.vencimento || "";
-          const dtB = b.vencimento || "";
-          return dtB.localeCompare(dtA);
-        }
-        case "vencimento_asc": {
-          const dtA = a.vencimento || "";
-          const dtB = b.vencimento || "";
-          return dtA.localeCompare(dtB);
-        }
-        case "nome_asc": {
-          const nomeA = a.fornecedor || a.descricao || "";
-          const nomeB = b.fornecedor || b.descricao || "";
-          return nomeA.localeCompare(nomeB, "pt-BR", { sensitivity: "base" });
-        }
-        case "nome_desc": {
-          const nomeA = a.fornecedor || a.descricao || "";
-          const nomeB = b.fornecedor || b.descricao || "";
-          return nomeB.localeCompare(nomeA, "pt-BR", { sensitivity: "base" });
-        }
-        case "fornecedor_asc": {
-          const fA = a.fornecedor || a.descricao || "";
-          const fB = b.fornecedor || b.descricao || "";
-          return fA.localeCompare(fB, "pt-BR", { sensitivity: "base" });
-        }
-        case "fornecedor_desc": {
-          const fA = a.fornecedor || a.descricao || "";
-          const fB = b.fornecedor || b.descricao || "";
-          return fB.localeCompare(fA, "pt-BR", { sensitivity: "base" });
-        }
-        case "valor_desc":
-          return Number(b.valor) - Number(a.valor);
-        case "valor_asc":
-          return Number(a.valor) - Number(b.valor);
-        default:
-          return (a.vencimento || "").localeCompare(b.vencimento || "");
-      }
-    });
-    return lista;
-  }, [contasBaseFiltro, ordenacao]);
-
-  const totalItens = contasOrdenadas.length;
-  const totalPaginas = itensPorPagina === 0 ? 1 : Math.max(1, Math.ceil(totalItens / itensPorPagina));
+  const totalItens = Number(consulta.total_contas);
+  const totalPaginas = Math.max(1, Math.ceil(totalItens / itensPorPagina));
   const paginaAtual = Math.min(Math.max(1, pagina), totalPaginas);
 
   const contasExibidas = useMemo(() => {
-    if (itensPorPagina === 0) return contasOrdenadas;
-    const start = (paginaAtual - 1) * itensPorPagina;
-    return contasOrdenadas.slice(start, start + itensPorPagina);
-  }, [contasOrdenadas, itensPorPagina, paginaAtual]);
+    return contasOrdenadas;
+  }, [contasOrdenadas]);
 
-  const logsFiltrados = useMemo(() => {
-    return logs.filter((log) => {
-      const logData = log.created_at.slice(0, 10);
-      const matchAcao = !logAcaoFiltro || log.acao === logAcaoFiltro;
-      const matchDataInicio = !logDataInicio || logData >= logDataInicio;
-      const matchDataFim = !logDataFim || logData <= logDataFim;
-      const buscaNorm = logBusca.trim().toLowerCase();
-      const matchBusca =
-        !buscaNorm ||
-        log.descricao.toLowerCase().includes(buscaNorm) ||
-        (log.fornecedor && log.fornecedor.toLowerCase().includes(buscaNorm)) ||
-        (log.motivo && log.motivo.toLowerCase().includes(buscaNorm)) ||
-        (log.usuario?.nome && log.usuario.nome.toLowerCase().includes(buscaNorm)) ||
-        (log.usuario?.email && log.usuario.email.toLowerCase().includes(buscaNorm));
-      return matchAcao && matchDataInicio && matchDataFim && matchBusca;
-    });
-  }, [logs, logAcaoFiltro, logBusca, logDataInicio, logDataFim]);
+  const logsFiltrados = logs;
 
   const cards: Array<{ id: CardFiltro; label: string; value: number; color: string; Icon: LucideIcon }> = [
     { id: "pagas_mes", label: "Pagas no mês atual", value: resumoMensal.pagasMes, color: "bg-emerald-600", Icon: CheckCircle2 },
@@ -669,6 +488,7 @@ export function ContasPagarClient({
       setFeedback(result);
       if (result.ok) {
         onSuccess?.();
+        setRefreshKey((current) => current + 1);
         router.refresh();
       } else {
         setModalErro(result.message);
@@ -786,11 +606,14 @@ export function ContasPagarClient({
           <h1 className="mt-1 text-3xl font-extrabold text-slate-950">Contas a pagar e caixa</h1>
           <p className="mt-2 text-slate-500">Lance despesas, controle baixas, estornos, exclusões e auditoria completa.</p>
         </div>
-        {master && (
-          <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-bold text-amber-900 shadow-xs">
-            👑 Sessão Master / Administrador
-          </div>
-        )}
+        <div className="flex items-center gap-2">
+          {consultando && <span className="text-xs font-semibold text-blue-700">Atualizando dados…</span>}
+          {master && (
+            <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-bold text-amber-900 shadow-xs">
+              👑 Sessão Master / Administrador
+            </div>
+          )}
+        </div>
       </header>
 
       <section className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-blue-200 bg-blue-50/60 px-4 py-3 shadow-sm">
@@ -827,6 +650,7 @@ export function ContasPagarClient({
             onClick={() => {
               setCardFiltro((atual) => (atual === id ? null : id));
               setSelecionadas(new Set());
+              setPagina(1);
             }}
             className={`${color} rounded-2xl p-5 text-left text-white shadow-lg transition hover:-translate-y-0.5 hover:shadow-xl focus:outline-none focus:ring-4 focus:ring-blue-300 ${
               cardFiltro === id ? "ring-4 ring-slate-900 ring-offset-2" : ""
@@ -1545,7 +1369,7 @@ export function ContasPagarClient({
         >
           <span>Despesas</span>
           <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600 font-semibold">
-            {contasFiltradas.length}
+            {totalItens}
           </span>
         </button>
         <button
@@ -2000,8 +1824,8 @@ export function ContasPagarClient({
                 <div className="flex flex-wrap items-center justify-between gap-3 border-t bg-slate-50/90 px-4 py-3 text-xs">
                   <div className="flex flex-wrap items-center gap-3 text-slate-600 font-medium">
                     <span>
-                      Mostrando <strong>{itensPorPagina === 0 ? 1 : (paginaAtual - 1) * itensPorPagina + 1}</strong> a{" "}
-                      <strong>{itensPorPagina === 0 ? totalItens : Math.min(paginaAtual * itensPorPagina, totalItens)}</strong> de{" "}
+                      Mostrando <strong>{(paginaAtual - 1) * itensPorPagina + 1}</strong> a{" "}
+                      <strong>{Math.min((paginaAtual - 1) * itensPorPagina + contasExibidas.length, totalItens)}</strong> de{" "}
                       <strong>{totalItens}</strong> despesa(s)
                     </span>
 
@@ -2019,12 +1843,11 @@ export function ContasPagarClient({
                         <option value={25}>25</option>
                         <option value={50}>50</option>
                         <option value={100}>100</option>
-                        <option value={0}>Todas ({totalItens})</option>
                       </select>
                     </div>
                   </div>
 
-                  {itensPorPagina > 0 && totalPaginas > 1 && (
+                  {totalPaginas > 1 && (
                     <div className="flex items-center gap-1">
                       <button
                         type="button"
@@ -2088,7 +1911,7 @@ export function ContasPagarClient({
             </div>
             <div className="flex items-center gap-2">
               <span className="text-xs font-semibold text-slate-500">
-                Exibindo <strong>{logsFiltrados.length}</strong> de {logs.length} eventos
+                Exibindo <strong>{logsFiltrados.length}</strong> de {consulta.total_logs} eventos
               </span>
             </div>
           </div>
@@ -2101,13 +1924,13 @@ export function ContasPagarClient({
                 type="text"
                 placeholder="Buscar por descrição, fornecedor, motivo ou usuário..."
                 value={logBusca}
-                onChange={(e) => setLogBusca(e.target.value)}
+                onChange={(e) => { setLogBusca(e.target.value); setLogPagina(1); }}
                 className="pl-9 text-xs"
               />
             </div>
             <Select
               value={logAcaoFiltro}
-              onChange={(e) => setLogAcaoFiltro(e.target.value)}
+              onChange={(e) => { setLogAcaoFiltro(e.target.value); setLogPagina(1); }}
               className="text-xs"
             >
               <option value="">Todas as ações</option>
@@ -2121,14 +1944,14 @@ export function ContasPagarClient({
               type="date"
               aria-label="Data inicial do log"
               value={logDataInicio}
-              onChange={(e) => setLogDataInicio(e.target.value)}
+              onChange={(e) => { setLogDataInicio(e.target.value); setLogPagina(1); }}
               className="text-xs"
             />
             <Input
               type="date"
               aria-label="Data final do log"
               value={logDataFim}
-              onChange={(e) => setLogDataFim(e.target.value)}
+              onChange={(e) => { setLogDataFim(e.target.value); setLogPagina(1); }}
               className="text-xs"
             />
           </div>
@@ -2142,6 +1965,7 @@ export function ContasPagarClient({
                   setLogBusca("");
                   setLogDataInicio("");
                   setLogDataFim("");
+                  setLogPagina(1);
                 }}
                 className="text-xs font-bold text-blue-700 hover:underline"
               >
@@ -2244,6 +2068,19 @@ export function ContasPagarClient({
               </tbody>
             </table>
           </div>
+          {consulta.total_logs > 50 && (
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-slate-500">Página {logPagina} de {Math.ceil(consulta.total_logs / 50)}</span>
+              <div className="flex gap-2">
+                <Button type="button" variant="outline" disabled={logPagina <= 1 || consultando} onClick={() => setLogPagina((p) => Math.max(1, p - 1))}>
+                  Anterior
+                </Button>
+                <Button type="button" variant="outline" disabled={logPagina >= Math.ceil(consulta.total_logs / 50) || consultando} onClick={() => setLogPagina((p) => p + 1)}>
+                  Próxima
+                </Button>
+              </div>
+            </div>
+          )}
         </section>
       )}
 
