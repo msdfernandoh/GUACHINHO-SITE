@@ -375,13 +375,15 @@ A plataforma suporta:
 * As migrations `070–101` estão versionadas e aplicadas em Produção; correções futuras permanecem obrigatoriamente forward-only.
 * Evidências consolidadas: `docs/relatorios-fases/PLATFORM-GRUPOS-CATALOGO-085.md`, `docs/relatorios-fases/PLATFORM-GRUPOS-TEMPORAL-HERANCA-086.md`, `docs/relatorios-fases/PLATFORM-PROGRAMAS-REGRAS-EDITOR-087.md`, `docs/relatorios-fases/fase-088-platform-templates-dominios-onboarding.md`, `docs/relatorios-fases/fase-089-platform-planos-assinaturas-limits.md`, `docs/relatorios-fases/fase-091-platform-template-racon-inspired-v2.md`, `docs/relatorios-fases/fase-092-platform-planos-quotas-overrides.md`, `docs/relatorios-fases/fase-093-platform-master-franquias-hub.md`, `docs/relatorios-fases/fase-094-platform-usuarios-governanca.md`, `docs/relatorios-fases/fase-095-platform-overrides-gestao-operacional.md` e `docs/relatorios-fases/ERP-FINANCEIRO-GOVERNANCA-CONTAS.md`.
 
-## 6. Evolução local pendente de promoção — Migrations 102–105
+## 6. Consolidação para escala — Migrations 126–127
 
-Em 26/08/2026 foi concluído localmente o hardening necessário para expansão multiempresa. O contrato comercial da formalização separa definitivamente `grupo_id`, `grupo_cota_id`, `modalidade_pagamento_id`, valor da parcela da modalidade e prazo restante na data da venda. Vendas e cotas definitivas congelam os UUIDs e o snapshot temporal; grupos em andamento não reutilizam o prazo original como saldo restante.
+Em 26/08/2026 foi concluído o hardening necessário para expansão multiempresa. O contrato comercial da formalização separa definitivamente `grupo_id`, `grupo_cota_id`, `administradora_modalidade_id`, valor da parcela da modalidade e prazo restante na data da venda. Vendas e cotas definitivas congelam os UUIDs e o snapshot temporal; grupos em andamento não reutilizam o prazo original como saldo restante.
 
 O tenant operacional é resolvido pelo domínio e pelo vínculo N:N exato. O acesso público operacional depende de `empresas.configuracoes.site_publico.operacional_habilitado`, sem exceção de autorização por slug ou UUID. Imobiliárias, imóveis, simulações, eventos de analytics e integrações passam a carregar empresa; usuários imobiliários recebem vínculo por empresa em `empresa_usuarios.imobiliaria_id`.
 
-As migrations 102–105 e a aplicação correspondente estão **validadas localmente, mas não aplicadas em Production**. A promoção exige Preview compatível, dry-run, matriz E2E de três modalidades, grupo em andamento e isolamento simultâneo de dois tenants. Relatório obrigatório: `docs/relatorios-fases/FASE-105-HARDENING-MULTITENANT-FORMALIZACAO-ESCALA.md`.
+As migrations locais que antes usavam os números `102–105` foram supersedidas para evitar colisão com a linha oficial da `main`, já avançada até a `125`. A sequência final é `126_hardening_multitenant_escala_franquias.sql` seguida de `127_formalizacao_canonica_e_comissoes_estritas.sql`.
+
+O diagnóstico de Production confirmou o conversor antigo usando `grupos_cotas.valor_parcela`. A `127` elimina essa fonte, exige valor em `grupo_cota_modalidade_valores` e remove defaults implícitos de comissão. As duas migrations compilaram conjuntamente no Supabase Production dentro de transação encerrada por `ROLLBACK` e, depois, foram aplicadas em ordem e verificadas. O pós-check confirmou zero fatos sem empresa, RPCs estritas, acesso anônimo negado e preservação de 4 vendas, 23 previsões da franquia e 23 previsões de participantes. Relatório: `docs/relatorios-fases/FASE-126-127-CONSOLIDACAO-PRODUCAO-FORMALIZACAO-COMISSOES.md`.
 
 
 

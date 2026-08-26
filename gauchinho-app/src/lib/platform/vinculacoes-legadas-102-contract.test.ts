@@ -3,7 +3,11 @@ import fs from "node:fs";
 import path from "node:path";
 
 const migration102 = fs.readFileSync(
-  path.resolve(process.cwd(), "../supabase/migrations/103_platform_vinculacoes_legadas_grupos.sql"),
+  path.resolve(process.cwd(), "../supabase/migrations/102_platform_vinculacoes_legadas_grupos.sql"),
+  "utf8"
+);
+const migration126 = fs.readFileSync(
+  path.resolve(process.cwd(), "../supabase/migrations/126_hardening_multitenant_escala_franquias.sql"),
   "utf8"
 );
 
@@ -16,11 +20,11 @@ describe("Fase 102 — Vinculações Legadas dos Grupos com o Catálogo Canônic
   });
 
   it("reconcilia execução parcial sem inventar empresa para histórico existente", () => {
-    expect(migration102).toContain("ADD COLUMN IF NOT EXISTS empresa_id uuid REFERENCES public.empresas");
-    expect(migration102).toContain("WHERE empresa_id IS NULL");
-    expect(migration102).toContain("classifique-os antes de reaplicar a migration 103");
-    expect(migration102).toContain("contratacoes_online.empresa_id");
-    expect(migration102).toContain("ALTER COLUMN empresa_id SET NOT NULL");
+    expect(migration126).toContain("ADD COLUMN IF NOT EXISTS empresa_id uuid REFERENCES public.empresas");
+    expect(migration126).toContain("WHERE empresa_id IS NULL");
+    expect(migration126).toContain("classifique os registros antes de aplicar a migration 126");
+    expect(migration126).toContain("WHERE empresa_id = p_empresa_id");
+    expect(migration126).toContain("ALTER COLUMN empresa_id SET NOT NULL");
   });
 
   it("mapeia produtos legados por valor_credito contra grupos_cotas canônicos", () => {

@@ -458,8 +458,173 @@ GRANT EXECUTE ON FUNCTION public.rpc_alterar_status_solicitacao_repasse(uuid,uui
 GRANT EXECUTE ON FUNCTION public.rpc_registrar_recebimento_solicitacao_repasse(uuid,uuid,date,numeric,text,uuid,text,text,text) TO authenticated;
 
 -- ---------------------------------------------------------------------------
--- 4. Formalização: grupo, produto, modalidade e participantes por UUID exato
+-- 4. Histórico de vínculos legados: reconciliação do schema e escopo por tenant
 -- ---------------------------------------------------------------------------
+ALTER TABLE public.grupos_vinculacoes_legadas_historico
+  ADD COLUMN IF NOT EXISTS empresa_id uuid REFERENCES public.empresas(id) ON DELETE RESTRICT;
+
+DO $$
+DECLARE
+  v_empresa_unica uuid;
+  v_total_empresas integer;
+BEGIN
+  IF EXISTS (SELECT 1 FROM public.grupos_vinculacoes_legadas_historico WHERE empresa_id IS NULL) THEN
+    SELECT count(*) INTO v_total_empresas FROM public.empresas WHERE ativo;
+    IF v_total_empresas = 1 THEN
+      SELECT id INTO v_empresa_unica FROM public.empresas WHERE ativo LIMIT 1;
+      UPDATE public.grupos_vinculacoes_legadas_historico
+      SET empresa_id = v_empresa_unica
+      WHERE empresa_id IS NULL;
+    ELSE
+      RAISE EXCEPTION 'Histórico legado sem empresa_id: classifique os registros antes de aplicar a migration 126';
+    END IF;
+  END IF;
+END $$;
+
+ALTER TABLE public.grupos_vinculacoes_legadas_historico
+  ALTER COLUMN empresa_id SET NOT NULL;
+CREATE INDEX IF NOT EXISTS grupos_vinculacoes_legadas_empresa_idx
+  ON public.grupos_vinculacoes_legadas_historico(empresa_id, created_at DESC);
+
+DROP POLICY IF EXISTS vinculacoes_legadas_read ON public.grupos_vinculacoes_legadas_historico;
+CREATE POLICY vinculacoes_legadas_read ON public.grupos_vinculacoes_legadas_historico
+  FOR SELECT TO authenticated USING (public.can_read_tenant_internal(empresa_id));
+DROP POLICY IF EXISTS vinculacoes_legadas_write ON public.grupos_vinculacoes_legadas_historico;
+CREATE POLICY vinculacoes_legadas_write ON public.grupos_vinculacoes_legadas_historico
+  FOR INSERT TO authenticated WITH CHECK (public.has_company_permission(empresa_id, 'gerenciar_grupos'));
+
+REVOKE ALL ON FUNCTION public.rpc_vincular_grupo_legado(text,text,uuid,jsonb,boolean,text)
+  FROM PUBLIC, anon, authenticated, service_role;
+
+CREATE OR REPLACE FUNCTION public.rpc_vincular_grupo_legado(
+  p_empresa_id uuid,
+  p_origem text,
+  p_identificador_legado text,
+  p_grupo_consorcio_id uuid,
+  p_produtos_mapeamento jsonb DEFAULT '[]'::jsonb,
+  p_atualizar_contratacoes boolean DEFAULT true,
+  p_observacoes text DEFAULT NULL
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog
+AS $$
+DECLARE
+  v_grupo public.grupos_consorcio%ROWTYPE;
+  v_afetadas integer := 0;
+  v_hist_id uuid;
+  v_item jsonb;
+  v_credito numeric(15,2);
+  v_cota_id uuid;
+BEGIN
+  IF auth.uid() IS NULL OR NOT public.has_company_permission(p_empresa_id, 'gerenciar_grupos') THEN
+    RAISE EXCEPTION 'Sem permissão para vincular grupos nesta empresa';
+  END IF;
+  IF jsonb_typeof(COALESCE(p_produtos_mapeamento, '[]'::jsonb)) <> 'array' THEN
+    RAISE EXCEPTION 'Mapeamento de produtos deve ser uma lista JSON';
+  END IF;
+  SELECT * INTO v_grupo FROM public.grupos_consorcio
+  WHERE id = p_grupo_consorcio_id AND ativo IS TRUE;
+  IF NOT FOUND OR NOT public.grupo_concedido_para_empresa(p_empresa_id, p_grupo_consorcio_id) THEN
+    RAISE EXCEPTION 'Grupo canônico não concedido para a empresa';
+  END IF;
+
+  FOR v_item IN SELECT * FROM jsonb_array_elements(COALESCE(p_produtos_mapeamento, '[]'::jsonb)) LOOP
+    IF (v_item->>'grupo_cota_id') !~* '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$' THEN
+      RAISE EXCEPTION 'UUID de produto inválido no mapeamento';
+    END IF;
+    v_cota_id := (v_item->>'grupo_cota_id')::uuid;
+    IF NOT EXISTS (SELECT 1 FROM public.grupos_cotas WHERE id = v_cota_id AND grupo_id = v_grupo.id) THEN
+      RAISE EXCEPTION 'Produto mapeado não pertence ao grupo canônico';
+    END IF;
+  END LOOP;
+
+  IF p_atualizar_contratacoes THEN
+    UPDATE public.contratacoes_online
+    SET grupo_id = v_grupo.id,
+        administradora = COALESCE(administradora, (SELECT nome FROM public.administradoras WHERE id = v_grupo.administradora_id)),
+        updated_at = now()
+    WHERE empresa_id = p_empresa_id
+      AND (grupo_id IS NULL OR grupo_id <> v_grupo.id)
+      AND (
+        grupo_nome = p_identificador_legado OR grupo_nome = v_grupo.codigo_grupo
+        OR dados_simulacao->>'grupo_nome' = p_identificador_legado
+        OR dados_simulacao->>'codigoGrupo' = v_grupo.codigo_grupo
+      );
+    GET DIAGNOSTICS v_afetadas = ROW_COUNT;
+
+    FOR v_item IN SELECT * FROM jsonb_array_elements(COALESCE(p_produtos_mapeamento, '[]'::jsonb)) LOOP
+      v_credito := NULLIF(v_item->>'valor_credito', '')::numeric;
+      v_cota_id := (v_item->>'grupo_cota_id')::uuid;
+      UPDATE public.contratacoes_online
+      SET cota_id = v_cota_id::text, updated_at = now()
+      WHERE empresa_id = p_empresa_id AND grupo_id = v_grupo.id
+        AND (cota_id IS NULL OR cota_id <> v_cota_id::text)
+        AND abs(COALESCE(credito_selecionado, NULLIF(dados_simulacao->>'valor_credito', '')::numeric, 0) - v_credito) < 0.01;
+    END LOOP;
+  END IF;
+
+  INSERT INTO public.grupos_vinculacoes_legadas_historico(
+    empresa_id, origem, identificador_legado, grupo_consorcio_id,
+    produtos_mapeamento, contratacoes_afetadas, usuario_id, observacoes, metadata
+  ) VALUES (
+    p_empresa_id, p_origem, p_identificador_legado, v_grupo.id,
+    COALESCE(p_produtos_mapeamento, '[]'::jsonb), v_afetadas,
+    public.current_usuario_id(), p_observacoes,
+    jsonb_build_object('grupo_codigo', v_grupo.codigo_grupo, 'administradora_id', v_grupo.administradora_id, 'data_vinculacao', now())
+  ) RETURNING id INTO v_hist_id;
+  RETURN jsonb_build_object('ok', true, 'grupo_id', v_grupo.id, 'contratacoes_afetadas', v_afetadas, 'historico_id', v_hist_id);
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.rpc_vincular_grupo_legado(uuid,text,text,uuid,jsonb,boolean,text)
+  FROM PUBLIC, anon, service_role;
+GRANT EXECUTE ON FUNCTION public.rpc_vincular_grupo_legado(uuid,text,text,uuid,jsonb,boolean,text)
+  TO authenticated;
+
+-- ---------------------------------------------------------------------------
+-- 5. Formalização: grupo, produto, modalidade e participantes por UUID exato
+-- ---------------------------------------------------------------------------
+CREATE OR REPLACE FUNCTION public.calcular_prazo_restante_grupo(
+  p_grupo_id uuid,
+  p_data_referencia date DEFAULT CURRENT_DATE
+)
+RETURNS integer
+LANGUAGE plpgsql
+STABLE
+SECURITY INVOKER
+SET search_path = pg_catalog
+AS $$
+DECLARE
+  v_grupo public.grupos_consorcio%ROWTYPE;
+  v_meses integer := 0;
+  v_realizadas integer;
+BEGIN
+  SELECT * INTO v_grupo FROM public.grupos_consorcio WHERE id = p_grupo_id;
+  IF NOT FOUND OR v_grupo.prazo_total IS NULL OR v_grupo.prazo_total <= 0 THEN
+    RETURN NULL;
+  END IF;
+  IF COALESCE(v_grupo.atualizacao_parcelas_automatica, false)
+     AND v_grupo.data_base_parcelas IS NOT NULL
+     AND v_grupo.parcelas_realizadas_base IS NOT NULL THEN
+    v_meses := GREATEST(
+      0,
+      (extract(year FROM age(p_data_referencia, v_grupo.data_base_parcelas))::integer * 12)
+      + extract(month FROM age(p_data_referencia, v_grupo.data_base_parcelas))::integer
+    );
+    v_realizadas := LEAST(v_grupo.prazo_total, GREATEST(0, v_grupo.parcelas_realizadas_base + v_meses));
+    RETURN GREATEST(v_grupo.prazo_total - v_realizadas, 0);
+  END IF;
+  RETURN GREATEST(
+    COALESCE(v_grupo.prazo_restante, v_grupo.prazo_total - COALESCE(v_grupo.parcelas_realizadas, 0)),
+    0
+  );
+END;
+$$;
+REVOKE ALL ON FUNCTION public.calcular_prazo_restante_grupo(uuid,date) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.calcular_prazo_restante_grupo(uuid,date) TO authenticated, service_role;
+
 ALTER TABLE public.vendas
   ADD COLUMN IF NOT EXISTS prazo_original_grupo integer,
   ADD COLUMN IF NOT EXISTS parcelas_restantes_venda integer,
@@ -571,7 +736,12 @@ CREATE OR REPLACE FUNCTION public.rpc_preparar_formalizacao_contratacao(
   p_modalidade_comissao_id uuid,
   p_participante_principal_id uuid,
   p_participante_secundario_id uuid DEFAULT NULL,
-  p_fracao_secundario numeric DEFAULT NULL
+  p_fracao_secundario numeric DEFAULT NULL,
+  p_perfil_principal_id uuid DEFAULT NULL,
+  p_perfil_secundario_id uuid DEFAULT NULL,
+  p_cronograma_secundario text DEFAULT 'SEGUIR_PRINCIPAL',
+  p_data_primeira_parcela date DEFAULT NULL,
+  p_data_segunda_parcela date DEFAULT NULL
 )
 RETURNS jsonb
 LANGUAGE plpgsql
@@ -583,6 +753,9 @@ DECLARE
   v_grupo public.grupos_consorcio%ROWTYPE;
   v_cota public.grupos_cotas%ROWTYPE;
   v_regra_count integer;
+  v_programa_id uuid;
+  v_modalidade_codigo text;
+  v_valor_parcela numeric(15,2);
 BEGIN
   IF auth.uid() IS NULL OR NOT public.has_company_permission(p_empresa_id, 'formalizar_vendas') THEN
     RAISE EXCEPTION 'Sem permissão para formalizar vendas nesta empresa';
@@ -613,8 +786,8 @@ BEGIN
   WHERE id = p_opcao_cota_id AND grupo_id = p_grupo_id
     AND ativo IS TRUE AND status NOT ILIKE 'inativo' AND status NOT ILIKE 'esgotado';
   IF NOT FOUND THEN RAISE EXCEPTION 'Produto/cota não pertence ao grupo ou está indisponível'; END IF;
-  IF NOT EXISTS (
-    SELECT 1
+  SELECT m.codigo, mv.valor_parcela
+    INTO v_modalidade_codigo, v_valor_parcela
     FROM public.grupo_cota_modalidade_valores mv
     JOIN public.grupos_modalidades_disponiveis gm
       ON gm.grupo_id = p_grupo_id
@@ -627,11 +800,14 @@ BEGIN
     WHERE mv.grupo_cota_id = p_opcao_cota_id
       AND mv.administradora_modalidade_id = p_modalidade_comissao_id
       AND mv.ativo
-  ) THEN RAISE EXCEPTION 'Modalidade sem valor homologado para o produto escolhido'; END IF;
+      AND mv.habilitado;
+  IF v_valor_parcela IS NULL OR v_valor_parcela <= 0 THEN
+    RAISE EXCEPTION 'Modalidade sem valor homologado para o produto escolhido';
+  END IF;
 
   IF NOT EXISTS (
     SELECT 1 FROM public.participantes_comerciais
-    WHERE id = p_participante_principal_id AND empresa_id = p_empresa_id AND status = 'ATIVO'
+    WHERE id = p_participante_principal_id AND empresa_id = p_empresa_id AND lower(status) = 'ativo'
   ) THEN RAISE EXCEPTION 'Participante principal inválido para a empresa'; END IF;
   IF p_participante_secundario_id IS NOT NULL THEN
     IF p_participante_secundario_id = p_participante_principal_id THEN
@@ -642,16 +818,61 @@ BEGIN
     END IF;
     IF NOT EXISTS (
       SELECT 1 FROM public.participantes_comerciais
-      WHERE id = p_participante_secundario_id AND empresa_id = p_empresa_id AND status = 'ATIVO'
+      WHERE id = p_participante_secundario_id AND empresa_id = p_empresa_id AND lower(status) = 'ativo'
     ) THEN RAISE EXCEPTION 'Participante secundário inválido para a empresa'; END IF;
   ELSIF p_fracao_secundario IS NOT NULL THEN
     RAISE EXCEPTION 'Fração secundária informada sem participante secundário';
+  END IF;
+
+  IF p_perfil_principal_id IS NULL THEN
+    RAISE EXCEPTION 'Perfil de comissão do participante principal é obrigatório';
+  END IF;
+  SELECT rp.programa_id INTO v_programa_id
+  FROM public.participante_comissao_perfis pc
+  JOIN public.comissao_regras_participantes rp
+    ON rp.empresa_id = pc.empresa_id
+   AND rp.perfil_id = pc.perfil_id
+   AND rp.ativa
+   AND rp.configuracao_homologada
+   AND rp.status = 'HOMOLOGADA'
+   AND rp.vigencia_inicio <= CURRENT_DATE
+   AND (rp.vigencia_fim IS NULL OR rp.vigencia_fim >= CURRENT_DATE)
+  WHERE pc.empresa_id = p_empresa_id
+    AND pc.participante_id = p_participante_principal_id
+    AND pc.perfil_id = p_perfil_principal_id
+    AND pc.ativo
+    AND pc.vigencia_inicio <= CURRENT_DATE
+    AND (pc.vigencia_fim IS NULL OR pc.vigencia_fim >= CURRENT_DATE);
+  IF v_programa_id IS NULL THEN
+    RAISE EXCEPTION 'Perfil principal sem regra de comissão homologada e vigente';
+  END IF;
+
+  IF p_participante_secundario_id IS NOT NULL AND p_perfil_secundario_id IS NOT NULL AND NOT EXISTS (
+    SELECT 1 FROM public.participante_comissao_perfis pc
+    WHERE pc.empresa_id = p_empresa_id
+      AND pc.participante_id = p_participante_secundario_id
+      AND pc.perfil_id = p_perfil_secundario_id
+      AND pc.ativo
+      AND pc.vigencia_inicio <= CURRENT_DATE
+      AND (pc.vigencia_fim IS NULL OR pc.vigencia_fim >= CURRENT_DATE)
+  ) THEN
+    RAISE EXCEPTION 'Perfil secundário não pertence ao participante informado';
+  END IF;
+
+  IF p_cronograma_secundario NOT IN ('SEGUIR_PRINCIPAL', 'CRONOGRAMA_PROPRIO') THEN
+    RAISE EXCEPTION 'Cronograma do participante secundário inválido';
+  END IF;
+  IF p_data_primeira_parcela IS NOT NULL AND p_data_segunda_parcela IS NOT NULL
+     AND p_data_segunda_parcela < p_data_primeira_parcela THEN
+    RAISE EXCEPTION 'A segunda parcela não pode vencer antes da primeira';
   END IF;
 
   SELECT count(*) INTO v_regra_count
   FROM public.comissao_regras_franquia r
   JOIN public.comissao_programas p ON p.id = r.programa_id
   WHERE r.empresa_id = p_empresa_id
+    AND r.programa_id = v_programa_id
+    AND p.id = v_programa_id
     AND p.administradora_id = v_grupo.administradora_id
     AND p.ativo AND p.status = 'ATIVO'
     AND r.ativa AND r.configuracao_homologada
@@ -673,7 +894,17 @@ BEGIN
     dados_simulacao = COALESCE(dados_simulacao, '{}'::jsonb) || jsonb_build_object(
       'grupoId', p_grupo_id,
       'cotaId', p_opcao_cota_id,
-      'modalidade_comissao_id', p_modalidade_comissao_id
+      'modalidade_comissao_id', p_modalidade_comissao_id,
+      'tipo_venda', v_modalidade_codigo,
+      'valor_credito', v_cota.valor_credito,
+      'valor_parcela', v_valor_parcela,
+      'perfil_principal_id', p_perfil_principal_id,
+      'perfil_secundario_id', p_perfil_secundario_id,
+      'programa_comissao_id', v_programa_id,
+      'cronograma_secundario', p_cronograma_secundario,
+      'data_primeira_parcela', p_data_primeira_parcela,
+      'data_segunda_parcela', p_data_segunda_parcela,
+      'fracao_secundario', CASE WHEN p_participante_secundario_id IS NULL THEN NULL ELSE p_fracao_secundario END
     ),
     status_operacional_erp = 'PRONTO_FORMALIZAR',
     pendencia_codigo = NULL,
@@ -691,6 +922,9 @@ BEGIN
       'grupo_id', p_grupo_id,
       'cota_id', p_opcao_cota_id,
       'modalidade_comissao_id', p_modalidade_comissao_id,
+      'perfil_principal_id', p_perfil_principal_id,
+      'perfil_secundario_id', p_perfil_secundario_id,
+      'programa_comissao_id', v_programa_id,
       'principal_id', p_participante_principal_id,
       'secundario_id', p_participante_secundario_id,
       'fracao_secundario', p_fracao_secundario
@@ -700,16 +934,24 @@ BEGIN
 END;
 $$;
 
--- A assinatura antiga inferia modalidade; permanece inacessível para impedir regressão.
-REVOKE ALL ON FUNCTION public.rpc_preparar_formalizacao_contratacao(uuid,uuid,uuid,uuid,uuid,uuid,numeric) FROM PUBLIC, anon, authenticated, service_role;
-REVOKE ALL ON FUNCTION public.rpc_preparar_formalizacao_contratacao(uuid,uuid,uuid,uuid,uuid,uuid,uuid,numeric) FROM PUBLIC, anon, service_role;
-GRANT EXECUTE ON FUNCTION public.rpc_preparar_formalizacao_contratacao(uuid,uuid,uuid,uuid,uuid,uuid,uuid,numeric) TO authenticated;
+-- Assinaturas antigas que inferiam modalidade permanecem inacessíveis, quando existirem.
+DO $$
+BEGIN
+  IF to_regprocedure('public.rpc_preparar_formalizacao_contratacao(uuid,uuid,uuid,uuid,uuid,uuid,numeric)') IS NOT NULL THEN
+    EXECUTE 'REVOKE ALL ON FUNCTION public.rpc_preparar_formalizacao_contratacao(uuid,uuid,uuid,uuid,uuid,uuid,numeric) FROM PUBLIC, anon, authenticated, service_role';
+  END IF;
+  IF to_regprocedure('public.rpc_preparar_formalizacao_contratacao(uuid,uuid,uuid,uuid,uuid,uuid,uuid,numeric)') IS NOT NULL THEN
+    EXECUTE 'REVOKE ALL ON FUNCTION public.rpc_preparar_formalizacao_contratacao(uuid,uuid,uuid,uuid,uuid,uuid,uuid,numeric) FROM PUBLIC, anon, authenticated, service_role';
+  END IF;
+END $$;
+REVOKE ALL ON FUNCTION public.rpc_preparar_formalizacao_contratacao(uuid,uuid,uuid,uuid,uuid,uuid,uuid,numeric,uuid,uuid,text,date,date) FROM PUBLIC, anon, service_role;
+GRANT EXECUTE ON FUNCTION public.rpc_preparar_formalizacao_contratacao(uuid,uuid,uuid,uuid,uuid,uuid,uuid,numeric,uuid,uuid,text,date,date) TO authenticated;
 
 REVOKE ALL ON FUNCTION public.rpc_converter_contratacao_venda(uuid,uuid,text) FROM PUBLIC, anon, service_role;
 GRANT EXECUTE ON FUNCTION public.rpc_converter_contratacao_venda(uuid,uuid,text) TO authenticated;
 
 -- ---------------------------------------------------------------------------
--- 5. RPCs financeiras/comissões: somente sessão autenticada, nunca service_role
+-- 6. RPCs financeiras/comissões: somente sessão autenticada, nunca service_role
 -- ---------------------------------------------------------------------------
 REVOKE ALL ON FUNCTION public.rpc_gerar_previsoes_comissao(uuid,uuid,text) FROM PUBLIC, anon, service_role;
 REVOKE ALL ON FUNCTION public.rpc_gerar_previsoes_comissao_v2(uuid,uuid,text) FROM PUBLIC, anon, service_role;
@@ -739,7 +981,7 @@ GRANT EXECUTE ON FUNCTION public.rpc_platform_gerar_regras_padrao_programa(uuid,
 GRANT EXECUTE ON FUNCTION public.rpc_platform_excluir_regra_programa(uuid) TO authenticated;
 
 -- ---------------------------------------------------------------------------
--- 6. Fatos públicos também carregam empresa_id; nenhuma simulação/evento solto
+-- 7. Fatos públicos também carregam empresa_id; nenhuma simulação/evento solto
 -- ---------------------------------------------------------------------------
 ALTER TABLE public.simulacoes_grupos
   ADD COLUMN IF NOT EXISTS empresa_id uuid REFERENCES public.empresas(id) ON DELETE RESTRICT;

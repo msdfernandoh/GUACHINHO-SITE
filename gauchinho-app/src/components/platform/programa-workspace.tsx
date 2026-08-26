@@ -221,6 +221,29 @@ export function ProgramaWorkspace({
               </form>
             </>
           )}
+
+          <form
+            action={actionExcluirProg}
+            onSubmit={(e) => {
+              if (
+                !confirm(
+                  `Deseja realmente excluir permanentemente o programa "${programa.nome} (v${programa.versao})"?\n\nTodas as regras e etapas vinculadas serão excluídas.`
+                )
+              ) {
+                e.preventDefault();
+              }
+            }}
+          >
+            <input type="hidden" name="administradora_id" value={administradoraId} />
+            <input type="hidden" name="programa_id" value={programa.id} />
+            <button
+              type="submit"
+              disabled={isPendingExcluirProg}
+              className="rounded-lg border border-rose-200 bg-white px-3 py-2 text-xs font-bold text-rose-700 hover:bg-rose-50 shadow-sm dark:border-rose-900 dark:bg-slate-900 dark:text-rose-400"
+            >
+              🗑️ Excluir Programa
+            </button>
+          </form>
         </div>
       </header>
 
@@ -399,8 +422,7 @@ export function ProgramaWorkspace({
                     </span>
                   )}
 
-                  {isRascunho && (
-                    <div className="flex items-center gap-1.5 pl-2">
+                  <div className="flex items-center gap-1.5 pl-2">
                       <button
                         type="button"
                         onClick={() => {
@@ -415,7 +437,7 @@ export function ProgramaWorkspace({
                       <form
                         action={actionExcluirRegra}
                         onSubmit={(e) => {
-                          if (!confirm(`Excluir a regra de ${rule.tipo?.nome} · ${rule.modalidade?.nome}?`)) {
+                          if (!confirm(`Excluir permanentemente a regra de ${rule.tipo?.nome} · ${rule.modalidade?.nome}?`)) {
                             e.preventDefault();
                           }
                         }}
@@ -425,14 +447,13 @@ export function ProgramaWorkspace({
                         <button
                           type="submit"
                           disabled={isPendingExcluirRegra}
-                          className="rounded-lg p-1.5 text-xs font-bold text-red-600 hover:bg-red-50 dark:hover:bg-red-950/50"
+                          className="rounded-lg border border-rose-200 p-1.5 text-xs font-bold text-rose-600 hover:bg-rose-50 dark:border-rose-900 dark:text-rose-400"
                           title="Excluir regra"
                         >
-                          ✕
+                          🗑️
                         </button>
                       </form>
                     </div>
-                  )}
                 </div>
               </div>
 

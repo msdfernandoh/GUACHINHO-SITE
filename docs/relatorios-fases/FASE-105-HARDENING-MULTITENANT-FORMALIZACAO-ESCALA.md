@@ -1,7 +1,7 @@
 # Fase 105 — Hardening multi-tenant, formalização e prontidão para escala
 
 Data da implementação local: 26/08/2026  
-Estado: **implementado e validado localmente; ainda não promovido ao Supabase Production**
+Estado: **supersedido pela consolidação forward-only das migrations 126–127**
 
 ## 1. Objetivo
 
@@ -13,10 +13,10 @@ O fluxo canônico passa a representar quatro conceitos independentes:
 
 1. **Grupo**: grupo real da administradora, identificado por UUID.
 2. **Produto/cota comercial**: faixa de crédito disponível naquele grupo, identificada pelo UUID de `grupos_cotas`.
-3. **Modalidade de venda**: integral, reduzida de 60% a 99% ou reduzida abaixo de 59%, identificada pelo UUID de `modalidades_pagamento`.
+3. **Modalidade de venda**: integral, reduzida de 60% a 99% ou reduzida abaixo de 59%, identificada pelo UUID de `administradora_modalidades_comissao`.
 4. **Prazo no momento da venda**: prazo original do grupo, parcelas já realizadas e parcelas restantes na data de referência.
 
-O valor da parcela não pertence mais ao rótulo do produto. Ele é resolvido pela combinação exata `grupo_id + grupo_cota_id + modalidade_pagamento_id` em `grupos_cotas_modalidades_valores`. Assim, trocar a modalidade troca o valor exibido e posteriormente congelado na venda.
+O valor da parcela não pertence mais ao rótulo do produto. Ele é resolvido pela combinação exata `grupo_id + grupo_cota_id + administradora_modalidade_id` em `grupo_cota_modalidade_valores`. Assim, trocar a modalidade troca o valor exibido e posteriormente congelado na venda.
 
 ## 3. Alterações de UI/UX na formalização
 
@@ -30,7 +30,7 @@ O valor da parcela não pertence mais ao rótulo do produto. Ele é resolvido pe
 
 ## 4. Persistência e invariantes
 
-A migration `104_fix_rpc_prazo_total_e_governanca.sql` introduz `calcular_prazo_restante_grupo(uuid,date)` e corrige a conversão de contratação. A migration `105_hardening_multitenant_escala_franquias.sql` congela em vendas e cotas definitivas:
+Após a integração da `main`, esse conteúdo foi renumerado e consolidado nas migrations `126_hardening_multitenant_escala_franquias.sql` e `127_formalizacao_canonica_e_comissoes_estritas.sql`. Elas congelam em vendas e cotas definitivas:
 
 - `prazo_original_grupo`;
 - `parcelas_restantes_venda`;
@@ -76,22 +76,17 @@ O vínculo com a imobiliária passa a existir também em `empresa_usuarios.imobi
 - Nenhuma venda histórica é recalculada.
 - Nenhuma parcela/comissão paga é reescrita.
 - O runtime não utiliza slug/UUID da Gauchinho como regra de autorização.
-- Migrations anteriores permanecem imutáveis; a evolução é forward-only em 102–105.
+- Migrations anteriores permanecem imutáveis; a evolução final é forward-only em 126–127.
 
 ## 10. Validações realizadas
 
 - TypeScript: aprovado com `node_modules/.bin/tsc.cmd --noEmit`.
-- Testes: **158 arquivos aprovados, 930 testes aprovados, 37 ignorados por contrato de ambiente**.
+- Testes finais: **176 arquivos aprovados, 973 testes aprovados, 37 ignorados por contrato de ambiente**.
 - Build Next.js 16: aprovado, incluindo geração das 146 páginas.
 - Teste de contrato específico criado para produto, modalidade, valor de parcela e prazo restante.
 
-## 11. Pendências para promoção
+## 11. Consolidação posterior
 
-1. Aplicar 102, 103, 104 e 105 primeiro em branch/Preview Supabase compatível com o histórico de Production.
-2. Executar dry-run e validar constraints/backfills sem fixtures permanentes.
-3. Homologar com pelo menos: venda integral, reduzida 60–99, reduzida abaixo de 59 e grupo em andamento.
-4. Confirmar que o snapshot e as previsões financeiras de cada venda usam o valor da modalidade escolhida.
-5. Homologar dois tenants simultâneos, inclusive usuário compartilhado e parceiro imobiliário diferente em cada empresa.
-6. Somente após aprovação, promover migrations e aplicação de forma coordenada.
+O plano antigo de aplicar `102–105` foi cancelado devido à colisão com a `main`, que já avançara até a `125`. O procedimento final e as evidências estão em `FASE-126-127-CONSOLIDACAO-PRODUCAO-FORMALIZACAO-COMISSOES.md`.
 
 Não foi executado `supabase db push`, não houve gravação no banco remoto e não houve deploy de aplicação nesta fase local.

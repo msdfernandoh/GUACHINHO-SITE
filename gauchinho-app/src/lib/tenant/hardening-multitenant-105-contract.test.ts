@@ -5,8 +5,8 @@ import path from "node:path";
 const read = (relative: string) =>
   fs.readFileSync(path.resolve(process.cwd(), relative), "utf8");
 
-describe("migration 105 — isolamento multi-tenant", () => {
-  const migration = read("../supabase/migrations/105_hardening_multitenant_escala_franquias.sql");
+describe("migration 126 — isolamento multi-tenant", () => {
+  const migration = read("../supabase/migrations/126_hardening_multitenant_escala_franquias.sql");
   const imobiliarias = read("src/app/admin/imobiliarias/actions.ts");
   const imoveis = read("src/app/admin/imoveis/actions.ts");
   const operationalAccess = read("src/lib/tenant/operational-access.ts");

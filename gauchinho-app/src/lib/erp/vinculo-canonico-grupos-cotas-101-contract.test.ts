@@ -3,7 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 
 const migration101 = fs.readFileSync(
-  path.resolve(process.cwd(), "../supabase/migrations/102_vinculo_canonico_saas_grupos_cotas_vendas.sql"),
+  path.resolve(process.cwd(), "../supabase/migrations/101_vinculo_canonico_saas_grupos_cotas_vendas.sql"),
   "utf8"
 );
 

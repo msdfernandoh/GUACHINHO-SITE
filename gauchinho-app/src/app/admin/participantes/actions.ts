@@ -71,11 +71,29 @@ export async function fetchParticipantesList(filters?: {
     const { data, error } = await query;
     if (error) throw new Error(error.message);
 
+    const { data: euData } = await supabase
+      .from("empresa_usuarios")
+      .select("usuario_id, erp_modulos_visiveis")
+      .eq("empresa_id", empresaId);
+
+    const euMap = new Map<string, string[]>();
+    (euData ?? []).forEach((eu: any) => {
+      if (eu.usuario_id && Array.isArray(eu.erp_modulos_visiveis)) {
+        euMap.set(eu.usuario_id, eu.erp_modulos_visiveis);
+      }
+    });
+
     const rows: ParticipanteComTipos[] = (data ?? []).map((row: Record<string, unknown>) => {
       const tiposRaw = row.participante_tipos as Array<{ tipo_codigo: string }> | null;
       const { participante_tipos: _t, ...rest } = row;
+      const uId = row.usuario_id as string | null;
+      let modulos = row.modulos_permitidos as string[] | null;
+      if ((modulos === null || modulos === undefined) && uId && euMap.has(uId)) {
+        modulos = euMap.get(uId) ?? null;
+      }
       return {
         ...(rest as unknown as ParticipanteComTipos),
+        modulos_permitidos: modulos,
         tipos: (tiposRaw ?? [])
           .map((t) => t.tipo_codigo)
           .filter((c): c is (typeof PARTICIPANTE_TIPOS)[number] =>
@@ -293,49 +311,66 @@ export async function updateParticipanteAction(formData: FormData): Promise<{ ok
     if (!validated.ok) return { ok: false, success: false, error: validated.error };
 
     const supabase = await createClient();
+
+    // Preserva usuario_id se já estava associado
+    let finalUsuarioId = input.usuarioId;
+    if (!finalUsuarioId) {
+      const { data: existingPart } = await supabase
+        .from("participantes_comerciais")
+        .select("usuario_id")
+        .eq("id", id)
+        .eq("empresa_id", empresaId)
+        .maybeSingle();
+      if (existingPart?.usuario_id) {
+        finalUsuarioId = existingPart.usuario_id;
+      }
+    }
+
     const gestorId = String(formData.get("gestor_participante_id") ?? "") || null;
 
-    try {
-      const { error } = await supabase
+    const updatePayload: Record<string, unknown> = {
+      nome: input.nome.trim(),
+      nome_exibicao: String(formData.get("nome_exibicao") ?? "") || null,
+      cpf: normalizeCpf(input.cpf),
+      email: normalizeEmail(input.email),
+      telefone: input.telefone,
+      whatsapp: input.whatsapp,
+      cargo: String(formData.get("cargo") ?? "") || null,
+      status: input.status,
+      usuario_id: finalUsuarioId,
+      gestor_participante_id: gestorId,
+      observacoes: String(formData.get("observacoes") ?? "") || null,
+      modulos_permitidos: modulosPermitidos,
+      escopo_visualizacao: String(formData.get("escopo_visualizacao") ?? "TODOS"),
+      updated_at: new Date().toISOString(),
+    };
+
+    const { error: updateErr } = await supabase
+      .from("participantes_comerciais")
+      .update(updatePayload)
+      .eq("id", id)
+      .eq("empresa_id", empresaId);
+
+    if (updateErr) {
+      delete updatePayload.modulos_permitidos;
+      const { error: fbErr } = await supabase
         .from("participantes_comerciais")
-        .update({
-          nome: input.nome.trim(),
-          nome_exibicao: String(formData.get("nome_exibicao") ?? "") || null,
-          cpf: normalizeCpf(input.cpf),
-          email: normalizeEmail(input.email),
-          telefone: input.telefone,
-          whatsapp: input.whatsapp,
-          cargo: String(formData.get("cargo") ?? "") || null,
-          status: input.status,
-          usuario_id: input.usuarioId,
-          gestor_participante_id: gestorId,
-          observacoes: String(formData.get("observacoes") ?? "") || null,
-          modulos_permitidos: modulosPermitidos,
-          escopo_visualizacao: String(formData.get("escopo_visualizacao") ?? "TODOS"),
-          updated_at: new Date().toISOString(),
-        })
+        .update(updatePayload)
         .eq("id", id)
         .eq("empresa_id", empresaId);
+      if (fbErr) return { ok: false, success: false, error: fbErr.message };
+    }
 
-      if (error) throw error;
-    } catch {
-      const { error: fallbackErr } = await supabase
-        .from("participantes_comerciais")
-        .update({
-          nome: input.nome.trim(),
-          cpf: normalizeCpf(input.cpf),
-          email: normalizeEmail(input.email),
-          telefone: input.telefone,
-          whatsapp: input.whatsapp,
-          status: input.status,
-          usuario_id: input.usuarioId,
-          gestor_participante_id: gestorId,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", id)
-        .eq("empresa_id", empresaId);
-
-      if (fallbackErr) return { ok: false, success: false, error: fallbackErr.message };
+    if (finalUsuarioId) {
+      try {
+        await supabase
+          .from("empresa_usuarios")
+          .update({ erp_modulos_visiveis: modulosPermitidos })
+          .eq("empresa_id", empresaId)
+          .eq("usuario_id", finalUsuarioId);
+      } catch {
+        // Tolerar
+      }
     }
 
     if (tipos.length) {

@@ -438,10 +438,15 @@ export function AdministratorWorkspace({
               type="hidden"
               name="faixas"
               value={JSON.stringify(
-                ranges.map((x) => ({
-                  mes: Number(x.mes),
-                  percentual: Number(x.percentual.replace(",", ".")),
-                })),
+                ranges.map((x) => {
+                  const mesNum = parseInt(String(x.mes || "").replace(/\D/g, ""), 10) || 1;
+                  const pctClean = String(x.percentual || "").replace("%", "").replace(",", ".").trim();
+                  const pctNum = parseFloat(pctClean);
+                  return {
+                    mes: String(mesNum),
+                    percentual: String(isNaN(pctNum) ? 0 : pctNum),
+                  };
+                }),
               )}
             />
             <div className="grid gap-3 md:grid-cols-2">
@@ -825,22 +830,27 @@ export function AdministratorWorkspace({
                       </>
                     )}
 
-                    {isRascunho && (
-                      <form
-                        action={programDeleteAction}
-                        onSubmit={(event) => {
-                          if (!confirm("Excluir este rascunho sem uso definitivamente?")) {
-                            event.preventDefault();
-                          }
-                        }}
+                    <form
+                      action={programDeleteAction}
+                      onSubmit={(event) => {
+                        if (
+                          !confirm(
+                            `Deseja realmente excluir o programa "${program.nome} (v${program.versao})"?\n\nEsta ação removerá o programa e todas as suas regras associadas.`
+                          )
+                        ) {
+                          event.preventDefault();
+                        }
+                      }}
+                    >
+                      <input type="hidden" name="administradora_id" value={administradora.id} />
+                      <input type="hidden" name="programa_id" value={program.id} />
+                      <button
+                        title="Excluir este programa e suas regras"
+                        className="inline-flex cursor-pointer items-center rounded-lg border border-rose-200 bg-white px-3 py-2 text-sm font-semibold text-rose-700 shadow-sm hover:bg-rose-50 dark:border-rose-900 dark:bg-slate-900 dark:text-rose-400"
                       >
-                        <input type="hidden" name="administradora_id" value={administradora.id} />
-                        <input type="hidden" name="programa_id" value={program.id} />
-                        <button className="inline-flex cursor-pointer items-center rounded-lg px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-50">
-                          Excluir rascunho
-                        </button>
-                      </form>
-                    )}
+                        🗑️ {isRascunho ? "Excluir rascunho" : "Excluir Programa"}
+                      </button>
+                    </form>
                   </div>
                 </div>
 

@@ -1,14 +1,16 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getCurrentTenantContext } from "@/lib/tenant/context";
+import { requireTenantPermission } from "@/lib/tenant/context";
 import { calcularPrazoGrupoFromRow } from "@/lib/grupos/prazos";
-import { formalizarContratacaoAction } from "../actions";
 import { DocumentoLink } from "./documento-link";
 import {
-  FormalizacaoCatalogoFields,
-  type FormalizacaoCatalogoGrupo,
-} from "./formalizacao-catalogo-fields";
+  FormalizacaoVendaForm,
+  type GrupoConsorcio,
+  type ParticipanteComercial,
+  type VinculoPerfil,
+  type RegraParticipante,
+} from "@/components/erp/contratacoes/formalizacao-venda-form";
 
 function relation<T>(value: unknown): T | null { return (Array.isArray(value) ? value[0] : value) as T | null; }
 
@@ -43,38 +45,6 @@ type ContratacaoDetalhe = {
   vendas: unknown;
 };
 
-type GrupoCota = {
-  id: string;
-  valor_credito: number;
-  ativo: boolean;
-  status: string;
-};
-
-type GrupoConsorcio = {
-  id: string;
-  codigo_grupo: string;
-  administradora_id: string;
-  status_governanca: string | null;
-  tipo_administradora_id: string | null;
-  modalidade_comissao_id: string | null;
-  prazo_total: number | null;
-  parcelas_realizadas: number | null;
-  prazo_restante: number | null;
-  parcelas_realizadas_base: number | null;
-  data_base_parcelas: string | null;
-  atualizacao_parcelas_automatica: boolean;
-  administradora: unknown;
-  tipo: unknown;
-  modalidade: unknown;
-  grupos_cotas: GrupoCota[] | null;
-};
-
-type ParticipanteComercial = {
-  id: string;
-  nome: string;
-  nome_exibicao: string | null;
-};
-
 type DocumentoContratacao = {
   id: string;
   tipo_documento: string;
@@ -90,53 +60,78 @@ type HistoricoFormalizacao = {
 
 export default async function ConferirContratacaoPage({
   params,
-  searchParams
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
   searchParams: Promise<Record<string, string | undefined>>;
 }) {
   const { id } = await params;
   const feedback = await searchParams;
-  const { empresaAtiva } = await getCurrentTenantContext();
-  if (!empresaAtiva) notFound();
+  const { empresaAtiva } = await requireTenantPermission("formalizar_vendas");
   const admin = createAdminClient();
+  const hoje = new Date().toISOString().slice(0, 10);
 
-  const [{ data: concessoes }, { data: configuracoesGrupo }] = await Promise.all([
+  const [{ data: administradorasEmpresa }, { data: configuracoesGrupos }] = await Promise.all([
     admin
       .from("empresa_administradoras")
       .select("administradora_id")
       .eq("empresa_id", empresaAtiva.id)
-      .eq("status", "ATIVA"),
+      .eq("ativo", true),
     admin
       .from("empresa_grupos_config")
       .select("grupo_id,visivel")
       .eq("empresa_id", empresaAtiva.id),
   ]);
-  const administradorasPermitidas = (concessoes ?? []).map((item) => item.administradora_id);
+  const administradorasPermitidas = (administradorasEmpresa ?? []).map((item) => item.administradora_id);
   const gruposOcultos = new Set(
-    (configuracoesGrupo ?? []).filter((item) => !item.visivel).map((item) => item.grupo_id),
+    (configuracoesGrupos ?? []).filter((item) => item.visivel === false).map((item) => item.grupo_id),
   );
-  const gruposQuery = admin
-    .from("grupos_consorcio")
-    .select("id,codigo_grupo,administradora_id,status_governanca,prazo_total,parcelas_realizadas,prazo_restante,parcelas_realizadas_base,data_base_parcelas,atualizacao_parcelas_automatica,tipo_administradora_id,modalidade_comissao_id,administradora:administradoras(nome),tipo:administradora_tipos(nome),modalidade:administradora_modalidades_comissao(nome),grupos_cotas(id,valor_credito,ativo,status)")
-    .eq("ativo", true)
-    .in("administradora_id", administradorasPermitidas.length ? administradorasPermitidas : ["00000000-0000-0000-0000-000000000000"])
-    .order("codigo_grupo");
 
-  const [contratacaoResult, gruposResult, participantesResult, documentosResult, historicoResult] = await Promise.all([
+  const [
+    contratacaoResult,
+    gruposResult,
+    participantesResult,
+    vinculosResult,
+    regrasParticipantesResult,
+    documentosResult,
+    historicoResult,
+    regrasFranquiaResult,
+  ] = await Promise.all([
     admin
       .from("contratacoes_online")
       .select("*,cliente:clientes(id,nome,cpf_cnpj,email,telefone),vendas(id,status,cotas_definitivas(id,numero_cota,status))")
       .eq("id", id)
       .eq("empresa_id", empresaAtiva.id)
       .maybeSingle(),
-    gruposQuery,
+    admin
+      .from("grupos_consorcio")
+      .select("id,codigo_grupo,administradora_id,status_governanca,prazo_total,prazo_restante,parcelas_realizadas,parcelas_realizadas_base,data_base_parcelas,atualizacao_parcelas_automatica,tipo_administradora_id,modalidade_comissao_id,administradora:administradoras(nome),tipo:administradora_tipos(nome),modalidade:administradora_modalidades_comissao(nome),grupos_modalidades_disponiveis(administradora_modalidade_id,ativo),grupos_cotas(id,valor_credito,ativo,status,grupo_cota_modalidade_valores(administradora_modalidade_id,valor_parcela,percentual_reducao,habilitado,ativo,modalidade:administradora_modalidades_comissao(id,codigo,nome,ativo)))")
+      .eq("ativo", true)
+      .in("administradora_id", administradorasPermitidas.length ? administradorasPermitidas : ["00000000-0000-0000-0000-000000000000"])
+      .order("codigo_grupo"),
     admin
       .from("participantes_comerciais")
       .select("id,nome,nome_exibicao,status,participante_tipos(tipo_codigo)")
       .eq("empresa_id", empresaAtiva.id)
       .ilike("status", "ativo")
       .order("nome"),
+    admin
+      .from("participante_comissao_perfis")
+      .select("id,participante_id,papel_tipo,perfil_id,override_percentual,perfil:comissao_perfis(id,nome,papel_base)")
+      .eq("empresa_id", empresaAtiva.id)
+      .eq("ativo", true)
+      .lte("vigencia_inicio", hoje)
+      .or(`vigencia_fim.is.null,vigencia_fim.gte.${hoje}`),
+    admin
+      .from("comissao_regras_participantes")
+      .select("id,perfil_id,programa_id,percentual_comissao,seguir_cronograma_franquia,etapas_cronograma,base_v2,status,versao")
+      .eq("empresa_id", empresaAtiva.id)
+      .eq("ativa", true)
+      .eq("configuracao_homologada", true)
+      .eq("status", "HOMOLOGADA")
+      .lte("vigencia_inicio", hoje)
+      .or(`vigencia_fim.is.null,vigencia_fim.gte.${hoje}`)
+      .order("versao", { ascending: false }),
     admin
       .from("contratacoes_documentos")
       .select("id,tipo_documento,arquivo_nome,mime_type,created_at")
@@ -148,6 +143,14 @@ export default async function ConferirContratacaoPage({
       .eq("empresa_id", empresaAtiva.id)
       .eq("contratacao_id", id)
       .order("created_at", { ascending: false }),
+    admin
+      .from("comissao_regras_franquia")
+      .select("id,programa_id,percentual_total_comissao,tipo_administradora_id,modalidade_comissao_id,ativa,configuracao_homologada,etapas_cronograma,comissao_regra_etapas(id,ordem,percentual_venda,nome,tipo_gatilho)")
+      .eq("empresa_id", empresaAtiva.id)
+      .eq("ativa", true)
+      .eq("configuracao_homologada", true)
+      .lte("vigencia_inicio", hoje)
+      .or(`vigencia_fim.is.null,vigencia_fim.gte.${hoje}`),
   ]);
 
   if (contratacaoResult.error || !contratacaoResult.data) notFound();
@@ -157,119 +160,97 @@ export default async function ConferirContratacaoPage({
   const cota = relation<{ id: string; numero_cota: string | null; status: string }>(venda?.cotas_definitivas);
   const formalizada = Boolean(venda?.id && cota?.id);
 
-  const grupos = ((gruposResult.data ?? []) as GrupoConsorcio[]).filter(
-    (grupo) => !gruposOcultos.has(grupo.id),
-  );
-
-  const grupoIds = grupos.map((grupo) => grupo.id);
-  const cotaIds = grupos.flatMap((grupo) => (grupo.grupos_cotas ?? []).map((cota) => cota.id));
-  const [{ data: modalidadesDisponiveis }, { data: valoresModalidade }] = await Promise.all([
-    admin
-      .from("grupos_modalidades_disponiveis")
-      .select("grupo_id,administradora_modalidade_id,ativo,modalidade:administradora_modalidades_comissao(id,codigo,nome,ativo)")
-      .in("grupo_id", grupoIds.length ? grupoIds : ["00000000-0000-0000-0000-000000000000"])
-      .eq("ativo", true),
-    admin
-      .from("grupo_cota_modalidade_valores")
-      .select("grupo_cota_id,administradora_modalidade_id,valor_parcela,percentual_reducao,habilitado,ativo")
-      .in("grupo_cota_id", cotaIds.length ? cotaIds : ["00000000-0000-0000-0000-000000000000"])
-      .eq("ativo", true),
-  ]);
-
-  const catalogoGrupos: FormalizacaoCatalogoGrupo[] = grupos.map((grupo) => {
-    const prazo = calcularPrazoGrupoFromRow(grupo);
-    return {
-      id: grupo.id,
-      codigo: grupo.codigo_grupo,
-      administradora: relation<{ nome: string }>(grupo.administradora)?.nome ?? "Administradora",
-      tipo: relation<{ nome: string }>(grupo.tipo)?.nome ?? "Tipo não configurado",
-      prazoOriginal: prazo.prazoTotal,
-      parcelasRestantes: prazo.prazoRestanteAtual,
-      produtos: (grupo.grupos_cotas ?? [])
-      .filter((cota) => cota.ativo && !["Inativo", "Esgotado"].includes(cota.status))
-      .map((cota) => ({
-        id: cota.id,
-        valorCredito: Number(cota.valor_credito),
-        modalidades: (modalidadesDisponiveis ?? []).flatMap((disponibilidade) => {
-          if (disponibilidade.grupo_id !== grupo.id) return [];
-          const modalidade = relation<{ id: string; codigo: string; nome: string; ativo: boolean }>(disponibilidade.modalidade);
-          const valor = (valoresModalidade ?? []).find(
-            (item) =>
-              item.grupo_cota_id === cota.id &&
-              item.administradora_modalidade_id === disponibilidade.administradora_modalidade_id,
-          );
-          return modalidade?.ativo && valor?.habilitado
-            ? [{
+  const grupos = ((gruposResult.data ?? []) as Array<Record<string, any>>)
+    .filter((grupo) => !gruposOcultos.has(String(grupo.id)))
+    .map((grupo) => {
+      const prazo = calcularPrazoGrupoFromRow(grupo as any);
+      const modalidadesAtivas = new Set(
+        ((grupo.grupos_modalidades_disponiveis ?? []) as Array<Record<string, any>>)
+          .filter((item) => item.ativo !== false)
+          .map((item) => String(item.administradora_modalidade_id)),
+      );
+      const gruposCotas = ((grupo.grupos_cotas ?? []) as Array<Record<string, any>>)
+        .filter((produto) => produto.ativo !== false && !["inativo", "esgotado"].includes(String(produto.status ?? "").toLowerCase()))
+        .map((produto) => ({
+          id: String(produto.id),
+          valor_credito: Number(produto.valor_credito),
+          ativo: produto.ativo !== false,
+          status: produto.status == null ? undefined : String(produto.status),
+          grupo_codigo: String(grupo.codigo_grupo),
+          modalidades: ((produto.grupo_cota_modalidade_valores ?? []) as Array<Record<string, any>>)
+            .filter((valor) => valor.ativo !== false && valor.habilitado !== false && modalidadesAtivas.has(String(valor.administradora_modalidade_id)))
+            .map((valor) => {
+              const modalidade = relation<{ id: string; codigo: string; nome: string; ativo: boolean }>(valor.modalidade);
+              if (!modalidade?.id || modalidade.ativo === false) return null;
+              return {
                 id: modalidade.id,
                 codigo: modalidade.codigo,
                 nome: modalidade.nome,
-                valorParcela: Number(valor.valor_parcela),
-                percentualReducao: valor.percentual_reducao == null ? null : Number(valor.percentual_reducao),
-              }]
-            : [];
-        }),
-      }))
-      .filter((produto) => produto.modalidades.length > 0),
-    };
-  }).filter((grupo) => grupo.parcelasRestantes > 0 && grupo.produtos.length > 0);
+                valor_parcela: Number(valor.valor_parcela),
+                percentual_reducao: valor.percentual_reducao == null ? null : Number(valor.percentual_reducao),
+              };
+            })
+            .filter((modalidade): modalidade is NonNullable<typeof modalidade> => modalidade !== null),
+        }))
+        .filter((produto) => produto.modalidades.length > 0);
 
-  // Pré-seleção somente por UUID canônico já persistido; nunca por nome/valor aproximado.
-  const grupoMatch = c.grupo_id ? grupos.find((g) => g.id === c.grupo_id) : undefined;
+      return {
+        ...grupo,
+        prazo_total: prazo.prazoTotal,
+        prazo_restante: prazo.prazoRestanteAtual,
+        parcelas_realizadas: prazo.parcelasRealizadasAtuais,
+        atualizacao_parcelas_automatica: prazo.modoAutomatico,
+        grupos_cotas: gruposCotas,
+      } as GrupoConsorcio;
+    })
+    .filter((grupo) => grupo.prazo_restante > 0 && (grupo.grupos_cotas?.length ?? 0) > 0);
+  const participantes = (participantesResult.data ?? []) as ParticipanteComercial[];
+  const vinculosPerfis = ((vinculosResult.data ?? []) as unknown) as VinculoPerfil[];
+  const regrasParticipantes = ((regrasParticipantesResult.data ?? []) as unknown) as RegraParticipante[];
+
+  // Pré-seleção somente por UUID canônico persistido. Nunca escolhe o primeiro item por aproximação.
+  const grupoMatch = c.grupo_id ? grupos.find((grupo) => grupo.id === c.grupo_id) : undefined;
 
   const grupoSelecionadoId = grupoMatch?.id || "";
 
-  const opcoes: Array<{
-    id: string;
-    grupo_id: string;
-    grupo_codigo: string;
-    valor_credito: number;
-  }> = grupos.flatMap((g) =>
-    (g.grupos_cotas ?? [])
-      .filter((o) => o.ativo && !["Inativo", "Esgotado"].includes(o.status))
-      .map((o) => ({
-        id: String(o.id),
-        grupo_id: String(g.id),
-        grupo_codigo: String(g.codigo_grupo),
-        valor_credito: Number(o.valor_credito),
-      }))
-  );
-
   const cotaMatch = c.cota_id
-    ? opcoes.find((o) => o.id === c.cota_id && o.grupo_id === grupoSelecionadoId)
+    ? (grupoMatch?.grupos_cotas ?? []).find((produto) => produto.id === c.cota_id)
     : undefined;
 
   const cotaSelecionadaId = cotaMatch?.id || "";
-  const modalidadeSelecionadaId =
-    String((c.dados_simulacao as Record<string, unknown> | null)?.modalidade_comissao_id ?? "") ||
-    "";
+  const modalidadePersistidaId = String((c.dados_simulacao as any)?.modalidade_comissao_id ?? "");
+  const modalidadeSelecionadaId = cotaMatch?.modalidades.some((item) => item.id === modalidadePersistidaId)
+    ? modalidadePersistidaId
+    : "";
 
-  const participantes = (participantesResult.data ?? []) as ParticipanteComercial[];
-  const consultorSelecionadoId = c.participante_comercial_id || participantes[0]?.id || "";
+  const consultorSelecionadoId =
+    c.participante_comercial_id && participantes.some((participante) => participante.id === c.participante_comercial_id)
+      ? c.participante_comercial_id
+      : "";
 
   return (
-    <div className="mx-auto max-w-7xl space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-4">
+    <div className="mx-auto max-w-7xl space-y-6 pb-12">
+      <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <Link href="/erp/contratacoes" className="text-sm font-semibold text-blue-700">
-            ← Voltar à fila de contratações
+          <Link href="/erp/contratacoes" className="text-xs font-semibold text-blue-700 hover:underline">
+            ← Voltar para contratações
           </Link>
-          <p className="mt-4 text-xs font-bold uppercase tracking-[.2em] text-blue-700">
-            Conferência operacional
-          </p>
-          <h1 className="text-3xl font-bold">Contrato {c.protocolo}</h1>
-          <p className="mt-1 text-slate-600">Revise os dados antes de acionar o motor canônico de venda.</p>
+          <h1 className="mt-1 text-2xl font-black text-slate-900 dark:text-white">
+            Conferência e Formalização da Contratação
+          </h1>
+          <p className="text-xs text-slate-500">Conferência operacional · Regra de comissão resolvida · Protocolo {c.protocolo}</p>
         </div>
         <span
-          className={`rounded-full px-3 py-1 text-sm font-semibold ${
+          className={`rounded-full px-3 py-1 text-xs font-black uppercase ${
             formalizada
-              ? "bg-emerald-100 text-emerald-800"
+              ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
               : c.contrato_assinado
-              ? "bg-blue-100 text-blue-800"
-              : "bg-amber-100 text-amber-900"
+              ? "bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300"
+              : "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300"
           }`}
         >
           {formalizada
-            ? "FORMALIZADO"
+            ? "VENDA FORMALIZADA"
             : c.contrato_assinado
             ? "PRONTO PARA CONFERÊNCIA"
             : "AGUARDANDO ASSINATURA"}
@@ -287,14 +268,14 @@ export default async function ConferirContratacaoPage({
           <h2 className="font-bold">Venda formalizada com sucesso</h2>
           <div className="mt-3 flex gap-2">
             {cliente?.id && (
-              <Link className="rounded-lg bg-white px-3 py-2 font-semibold shadow-sm hover:bg-slate-50" href={`/erp/clientes/${cliente.id}`}>
+              <Link className="rounded-lg bg-white px-3 py-2 font-semibold shadow-xs hover:bg-slate-50" href={`/erp/clientes/${cliente.id}`}>
                 Abrir cliente
               </Link>
             )}
-            <Link className="rounded-lg bg-white px-3 py-2 font-semibold shadow-sm hover:bg-slate-50" href={`/erp/vendas?venda=${feedback.venda}`}>
+            <Link className="rounded-lg bg-white px-3 py-2 font-semibold shadow-xs hover:bg-slate-50" href={`/erp/vendas?venda=${feedback.venda}`}>
               Abrir venda
             </Link>
-            <Link className="rounded-lg bg-white px-3 py-2 font-semibold shadow-sm hover:bg-slate-50" href={`/erp/vendas?cota=${feedback.cota}`}>
+            <Link className="rounded-lg bg-white px-3 py-2 font-semibold shadow-xs hover:bg-slate-50" href={`/erp/vendas?cota=${feedback.cota}`}>
               Abrir cota
             </Link>
           </div>
@@ -302,7 +283,7 @@ export default async function ConferirContratacaoPage({
       )}
 
       <section className="grid gap-5 xl:grid-cols-2">
-        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs dark:border-slate-800 dark:bg-slate-900">
           <h2 className="text-lg font-bold">1. Cliente</h2>
           <dl className="mt-4 grid gap-3 sm:grid-cols-2">
             {[
@@ -330,7 +311,7 @@ export default async function ConferirContratacaoPage({
           </div>
         </div>
 
-        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs dark:border-slate-800 dark:bg-slate-900">
           <h2 className="text-lg font-bold">Documentos</h2>
           <p className="mt-1 text-sm text-slate-500">Arquivos privados da contratação; nenhuma cópia será criada.</p>
           <div className="mt-4 space-y-3">
@@ -349,81 +330,31 @@ export default async function ConferirContratacaoPage({
         </div>
       </section>
 
-      <form action={formalizarContratacaoAction} className="space-y-5 rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-        <input type="hidden" name="contratacao_id" value={id} />
-        <h2 className="text-lg font-bold">2. Dados comerciais e participantes</h2>
-        <FormalizacaoCatalogoFields
-          grupos={catalogoGrupos}
-          initialGrupoId={grupoSelecionadoId}
-          initialProdutoId={cotaSelecionadaId}
-          initialModalidadeId={modalidadeSelecionadaId}
-        />
+      {/* Formulário Interativo de Formalização com Divisão Dinâmica */}
+      <FormalizacaoVendaForm
+        contratacaoId={id}
+        clienteNome={cliente?.nome || c.nome}
+        formaPagamento={c.forma_pagamento || "Boleto"}
+        formalizada={formalizada}
+        grupos={grupos}
+        participantes={participantes}
+        vinculosPerfis={vinculosPerfis}
+        regrasParticipantes={regrasParticipantes}
+        regrasFranquia={((regrasFranquiaResult.data ?? []) as any)}
+        initialGrupoId={grupoSelecionadoId}
+        initialCotaId={cotaSelecionadaId}
+        initialModalidadeId={modalidadeSelecionadaId}
+        initialPrincipalId={consultorSelecionadoId}
+        initialPerfilPrincipalId={(c.dados_simulacao as any)?.perfil_principal_id || null}
+        initialPerfilSecundarioId={(c.dados_simulacao as any)?.perfil_secundario_id || null}
+        initialDataPrimeiraParcela={(c.dados_simulacao as any)?.data_primeira_parcela || null}
+        initialDataSegundaParcela={(c.dados_simulacao as any)?.data_segunda_parcela || null}
+        initialCronogramaSecundario={(c.dados_simulacao as any)?.cronograma_secundario || "SEGUIR_PRINCIPAL"}
+        initialSecundarioId={c.participante_secundario_id}
+        initialFracaoSecundario={c.participante_secundario_fracao_percentual}
+      />
 
-        <div className="grid gap-4 md:grid-cols-3">
-          <label className="text-sm font-semibold">
-            Consultor principal
-            <select required name="participante_principal_id" defaultValue={consultorSelecionadoId} className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800 dark:text-white">
-              <option value="">Selecione</option>
-              {participantes.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.nome_exibicao || p.nome}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className="text-sm font-semibold">
-            Participante secundário
-            <select name="participante_secundario_id" defaultValue={c.participante_secundario_id ?? ""} className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800 dark:text-white">
-              <option value="">Sem secundário</option>
-              {participantes.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.nome_exibicao || p.nome}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className="text-sm font-semibold">
-            Fração do secundário (%)
-            <input
-              name="fracao_secundario"
-              type="number"
-              min="0.0001"
-              max="99.9999"
-              step="0.0001"
-              defaultValue={c.participante_secundario_fracao_percentual ?? ""}
-              className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-            />
-          </label>
-        </div>
-
-        <div className="rounded-lg bg-blue-50 p-4 text-blue-950 dark:bg-blue-950/40 dark:text-blue-200">
-          <h3 className="font-bold">Validação da comissão</h3>
-          <p className="text-sm">
-            Ao confirmar, o banco exigirá exatamente uma regra homologada para a empresa,
-            administradora, tipo e UUID da modalidade escolhida. Nenhum percentual será inferido pelo nome.
-          </p>
-        </div>
-
-        <div className="rounded-lg border border-slate-200 p-4 dark:border-slate-800">
-          <h3 className="font-bold text-slate-900 dark:text-white">3. Cliente e pagamento</h3>
-          <p className="mt-2 text-sm text-slate-700 dark:text-slate-300">
-            Cliente: <strong>{cliente?.nome || c.nome}</strong> · Forma de pagamento: <strong>{c.forma_pagamento || "Boleto"}</strong>
-          </p>
-        </div>
-
-        {!formalizada && (
-          <button
-            type="submit"
-            className="rounded-xl bg-blue-700 px-6 py-3 font-bold text-white shadow-md hover:bg-blue-800"
-          >
-            Confirmar e formalizar venda
-          </button>
-        )}
-      </form>
-
-      <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+      <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs dark:border-slate-800 dark:bg-slate-900">
         <h2 className="text-lg font-bold">Histórico Operacional</h2>
         <div className="mt-4 space-y-3">
           {((historicoResult.data ?? []) as HistoricoFormalizacao[]).map((h) => (
