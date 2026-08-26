@@ -2,7 +2,7 @@
 
 Data de implementação local: 26/08/2026  
 Migration: não aplicável  
-Estado: implementada e validada localmente; sem alteração de banco.
+Estado: **implementada, validada e promovida a Production em 26/08/2026**; sem alteração de banco.
 
 ## Problema corrigido
 
@@ -36,4 +36,5 @@ Uma integração futura deverá possuir fluxo próprio de importação, históri
 ## Validação
 
 - teste contratual específico cobrindo autorização e semântica;
-- build e suíte completa executados antes do encerramento da fase.
+- build e suíte completa executados antes do encerramento da fase;
+- promoção pela `main` no commit `db47ef2` e deployment Production `dpl_6mzUBfbzzDpDU3jzax7RrVdg2jtV`, estado `Ready`.

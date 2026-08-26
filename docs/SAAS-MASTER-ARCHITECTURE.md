@@ -423,7 +423,7 @@ Todos os menus base e operacionais do ERP foram confrontados com suas rotas, sub
 
 Operações críticas de Vendas usam `formalizar_vendas`, `papeis.codigo = admin_empresa` e `is_platform_superadmin()`, sem autoridade baseada em `usuarios.perfil` ou texto do nome do papel. Propostas gravam empresa explicitamente; documentos de contratação só recebem URL assinada depois da confirmação do tenant; Grupos e seletores de comissão respeitam as administradoras concedidas à franquia. Fallbacks operacionais para o UUID fixo da Gauchinho foram removidos das páginas reutilizadas pelo ERP.
 
-O build de 146 rotas e os testes contratuais da fase são obrigatórios. A próxima etapa de escala é a paginação e agregação server-side de Contas a Pagar. Relatório: `docs/relatorios-fases/FASE-132-CHECKUP-MENUS-ERP-AUTORIZACAO.md`.
+O build de 146 rotas, a suíte completa e os testes contratuais foram aprovados. As fases 128–132 foram promovidas pela `main` no commit `db47ef2`; o deployment Production `dpl_6mzUBfbzzDpDU3jzax7RrVdg2jtV` ficou `Ready` e os smokes públicos dos hosts principal, ERP e Platform foram aprovados. A próxima etapa de escala é a paginação e agregação server-side de Contas a Pagar. Relatório: `docs/relatorios-fases/FASE-132-CHECKUP-MENUS-ERP-AUTORIZACAO.md`.
 
 
 

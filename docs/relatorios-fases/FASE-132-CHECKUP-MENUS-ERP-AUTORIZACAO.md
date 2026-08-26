@@ -2,7 +2,7 @@
 
 Data da auditoria e implementação local: 26/08/2026  
 Migration: não aplicável  
-Estado: implementada e validada localmente; sem alteração de banco.
+Estado: **implementada, validada e promovida a Production em 26/08/2026**; sem alteração de banco.
 
 ## Escopo do check-up
 
@@ -18,7 +18,7 @@ Foram confrontados:
 - isolamento por empresa e por administradora concedida;
 - build completo das 146 rotas da aplicação.
 
-A tentativa de validação visual em Production confirmou que `/erp` redireciona usuário anônimo para `/login?next=/erp`. A navegação autenticada não foi simulada com credenciais. O check-up funcional autenticado permanece parte da homologação pós-deploy, sem reduzir as validações estruturais executadas em código.
+O smoke pós-deploy confirmou que `/erp` redireciona usuário anônimo para `/login?next=/erp` e que o host administrativo redireciona para `/login?next=%2Fplatform`. A navegação autenticada não foi simulada com credenciais nesta promoção; ela permanece como aceite operacional assistido, não como substituto nem bloqueio dos testes estruturais, contratuais e server-side executados.
 
 ## Correções aplicadas
 
@@ -76,3 +76,11 @@ Criação, edição, pesquisa e download exigem `gerenciar_propostas`, usam `emp
 A Fase 133 deve retirar de Contas a Pagar o carregamento de até 10.000 registros e 500 logs no primeiro render. A meta é paginação, filtros, saldos e agregações no servidor/banco, mantendo o fechamento contábil consistente sem calcular a partir de uma página parcial.
 
 Depois da Fase 133, a implementação do fechamento formal entre sócios depende da definição sobre percentuais de participação e modalidades de quitação. A importação de clientes/comissões legadas depende do layout real do relatório da administradora.
+
+## Promoção Production
+
+- `main`: `db47ef27d6a4fe83037ee6edfdf2441ac06e75f7`;
+- deployment: `dpl_6mzUBfbzzDpDU3jzax7RrVdg2jtV`;
+- estado Vercel: `Ready`;
+- aliases: domínio principal, `www`, host administrativo e alias canônico da Vercel;
+- smoke público: página inicial `200`, ERP anônimo redirecionado ao login e Platform anônima redirecionada ao login.
