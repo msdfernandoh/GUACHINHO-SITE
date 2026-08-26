@@ -2,7 +2,12 @@ import "server-only";
 
 import { headers } from "next/headers";
 import { getEmpresaBrandingPublic, type EmpresaBranding } from "./branding";
-import { TENANT_EMPRESA_ID_HEADER, TENANT_SLUG_HEADER, GAUCHINHO_SLUG } from "./constants";
+import {
+  TENANT_EMPRESA_ID_HEADER,
+  TENANT_OPERATIONAL_ENABLED_HEADER,
+  TENANT_SLUG_HEADER,
+  GAUCHINHO_SLUG,
+} from "./constants";
 import { tenantAllowsLegacyOperationalData } from "./operational-access";
 
 export type ResolvedTenant = {
@@ -21,6 +26,7 @@ export async function getResolvedTenant(): Promise<ResolvedTenant | null> {
   const headerList = await headers();
   const empresaId = headerList.get(TENANT_EMPRESA_ID_HEADER);
   const slug = headerList.get(TENANT_SLUG_HEADER);
+  const operationalEnabled = headerList.get(TENANT_OPERATIONAL_ENABLED_HEADER) === "true";
 
   if (!empresaId || !slug) return null;
 
@@ -31,7 +37,7 @@ export async function getResolvedTenant(): Promise<ResolvedTenant | null> {
     empresaId,
     slug,
     branding,
-    allowsLegacyOperationalData: tenantAllowsLegacyOperationalData(slug),
+    allowsLegacyOperationalData: tenantAllowsLegacyOperationalData(operationalEnabled),
   };
 }
 

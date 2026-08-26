@@ -31,12 +31,14 @@ import type {
 const money = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 
 export function VinculacoesLegadasView({
+  empresaId,
   itens,
   historico,
   totalPendentes,
   totalSugestoes,
   gruposSaasDisponiveis
 }: {
+  empresaId: string;
   itens: GrupoLegadoItem[];
   historico: HistoricoVinculacao[];
   totalPendentes: number;
@@ -55,8 +57,6 @@ export function VinculacoesLegadasView({
     cotas: {
       id: string;
       valor_credito: number;
-      valor_parcela: number;
-      prazo: number;
     }[];
   }[];
 }) {
@@ -85,27 +85,30 @@ export function VinculacoesLegadasView({
   const grupoSelecionadoObj = gruposSaasDisponiveis.find((g) => g.id === selectedGrupoId);
   const mapeamentoAtual: ProdutoMapeado[] = modalItem
     ? modalItem.creditos.map((cred) => {
-        const match = grupoSelecionadoObj?.cotas.find((c) => Math.abs(c.valor_credito - cred) < 0.01);
-        if (match) {
+        const matches = (grupoSelecionadoObj?.cotas ?? []).filter((c) => Math.abs(c.valor_credito - cred) < 0.01);
+        if (matches.length === 1) {
           return {
             valor_credito: cred,
-            grupo_cota_id: match.id,
-            prazo: match.prazo,
-            valor_parcela: match.valor_parcela,
+            grupo_cota_id: matches[0].id,
             status_produto: "ENCONTRADO"
+          };
+        }
+        if (matches.length > 1) {
+          return {
+            valor_credito: cred,
+            grupo_cota_id: null,
+            status_produto: "AMBIGUO_NO_SAAS" as const,
           };
         }
         return {
           valor_credito: cred,
           grupo_cota_id: null,
-          prazo: null,
-          valor_parcela: null,
           status_produto: "NAO_ENCONTRADO_NO_SAAS"
         };
       })
     : [];
 
-  const temProdutoPendente = mapeamentoAtual.some((m) => m.status_produto === "NAO_ENCONTRADO_NO_SAAS");
+  const temProdutoPendente = mapeamentoAtual.some((m) => m.status_produto !== "ENCONTRADO");
 
   function handleSincronizarCatalogo() {
     startSyncTransition(async () => {
@@ -130,6 +133,7 @@ export function VinculacoesLegadasView({
 
     startTransition(async () => {
       const formData = new FormData();
+      formData.set("empresa_id", empresaId);
       formData.set("origem", modalItem.origem);
       formData.set("identificador_legado", modalItem.identificador);
       formData.set("grupo_consorcio_id", selectedGrupoId);
@@ -614,7 +618,7 @@ export function VinculacoesLegadasView({
                           {m.grupo_cota_id ? `ID: ${m.grupo_cota_id.slice(0, 8)}...` : "—"}
                         </td>
                         <td className="p-2.5 text-slate-700 dark:text-slate-300">
-                          {m.valor_parcela ? `${m.prazo}x de ${money.format(m.valor_parcela)}` : "—"}
+                          {m.grupo_cota_id ? `Produto ${m.grupo_cota_id.slice(0, 8)}…` : m.status_produto === "AMBIGUO_NO_SAAS" ? "Crédito duplicado no catálogo" : "—"}
                         </td>
                         <td className="p-2.5 text-center">
                           {m.status_produto === "ENCONTRADO" ? (

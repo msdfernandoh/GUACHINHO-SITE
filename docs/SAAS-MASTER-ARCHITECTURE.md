@@ -1,5 +1,9 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
+> [!IMPORTANT]
+> **ESTADO-ALVO E CORREÇÕES OBRIGATÓRIAS**
+> Antes de alterar tenancy, usuários, catálogo, sites, comissões, financeiro, Storage, RPCs ou migrations, leia também integralmente [`SAAS-ARQUITETURA-ALVO-E-PLANO-DE-CORRECAO.md`](./SAAS-ARQUITETURA-ALVO-E-PLANO-DE-CORRECAO.md). O documento descreve o estado-alvo e o plano de remediação; seus itens não devem ser interpretados como já implantados sem evidência no banco e no código.
+
 > **Versão da Arquitetura:** 5.8.0
 > **Data de Atualização:** 17/08/2026
 > **Production code:** `main@ad297e62232618d609fb579caba7656dd848e6e7`; Supabase principal `eaeuoynprurmmulzhydt` com migrations oficiais `001–083` promovidas.
@@ -370,6 +374,14 @@ A plataforma suporta:
 * `admin.gauchinhoconsorcios.com.br` está ativo, verificado e associado ao deployment Production da `main`; ele não é tenant e não possui fallback para Gauchinho.
 * As migrations `070–101` estão versionadas e aplicadas em Produção; correções futuras permanecem obrigatoriamente forward-only.
 * Evidências consolidadas: `docs/relatorios-fases/PLATFORM-GRUPOS-CATALOGO-085.md`, `docs/relatorios-fases/PLATFORM-GRUPOS-TEMPORAL-HERANCA-086.md`, `docs/relatorios-fases/PLATFORM-PROGRAMAS-REGRAS-EDITOR-087.md`, `docs/relatorios-fases/fase-088-platform-templates-dominios-onboarding.md`, `docs/relatorios-fases/fase-089-platform-planos-assinaturas-limits.md`, `docs/relatorios-fases/fase-091-platform-template-racon-inspired-v2.md`, `docs/relatorios-fases/fase-092-platform-planos-quotas-overrides.md`, `docs/relatorios-fases/fase-093-platform-master-franquias-hub.md`, `docs/relatorios-fases/fase-094-platform-usuarios-governanca.md`, `docs/relatorios-fases/fase-095-platform-overrides-gestao-operacional.md` e `docs/relatorios-fases/ERP-FINANCEIRO-GOVERNANCA-CONTAS.md`.
+
+## 6. Evolução local pendente de promoção — Migrations 102–105
+
+Em 26/08/2026 foi concluído localmente o hardening necessário para expansão multiempresa. O contrato comercial da formalização separa definitivamente `grupo_id`, `grupo_cota_id`, `modalidade_pagamento_id`, valor da parcela da modalidade e prazo restante na data da venda. Vendas e cotas definitivas congelam os UUIDs e o snapshot temporal; grupos em andamento não reutilizam o prazo original como saldo restante.
+
+O tenant operacional é resolvido pelo domínio e pelo vínculo N:N exato. O acesso público operacional depende de `empresas.configuracoes.site_publico.operacional_habilitado`, sem exceção de autorização por slug ou UUID. Imobiliárias, imóveis, simulações, eventos de analytics e integrações passam a carregar empresa; usuários imobiliários recebem vínculo por empresa em `empresa_usuarios.imobiliaria_id`.
+
+As migrations 102–105 e a aplicação correspondente estão **validadas localmente, mas não aplicadas em Production**. A promoção exige Preview compatível, dry-run, matriz E2E de três modalidades, grupo em andamento e isolamento simultâneo de dois tenants. Relatório obrigatório: `docs/relatorios-fases/FASE-105-HARDENING-MULTITENANT-FORMALIZACAO-ESCALA.md`.
 
 
 

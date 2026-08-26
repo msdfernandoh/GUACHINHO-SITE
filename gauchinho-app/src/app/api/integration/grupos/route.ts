@@ -1,18 +1,15 @@
 import { NextResponse } from "next/server";
-import { rejectIfTenantBlocksLegacyOperationalApi } from "@/lib/tenant/assert-legacy-operational-api";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { resolveIntegrationEmpresa } from "@/lib/integration/verify-api-key";
 import { listGruposAutorizadosForEmpresa } from "@/lib/grupos/catalogo-autorizado-service";
 
 /**
  * Leitura de grupos + contagem de cotas para integração (Consórcio ERP).
- * Autenticação: X-Api-Key / Bearer → empresa Gauchinho (única key atual).
+ * Autenticação: X-Api-Key / Bearer → empresa proprietária da chave hashada.
  * Catálogo filtrado por concessão ATIVA da empresa da key — não lista global.
  */
 export async function GET(request: Request) {
-  const __tenantBlocked = await rejectIfTenantBlocksLegacyOperationalApi(request);
-  if (__tenantBlocked) return __tenantBlocked;
-  const auth = resolveIntegrationEmpresa(request);
+  const auth = await resolveIntegrationEmpresa(request);
   if (auth instanceof NextResponse) return auth;
 
   const { searchParams } = new URL(request.url);

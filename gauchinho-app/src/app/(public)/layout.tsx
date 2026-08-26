@@ -25,7 +25,7 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default async function PublicLayout({ children }: { children: React.ReactNode }) {
   const tenant = await getResolvedTenant();
-  const allowsOperational = tenant?.allowsLegacyOperationalData ?? true;
+  const allowsOperational = tenant?.allowsLegacyOperationalData === true;
 
   const brandStyle: CSSProperties & Record<string, string> = { background: "var(--brand-blue)" };
   if (tenant?.branding.cor_primaria) brandStyle["--brand-blue"] = tenant.branding.cor_primaria;

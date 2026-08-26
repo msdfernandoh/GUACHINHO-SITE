@@ -23,7 +23,7 @@ describe("resolveTenantForRequest — fallback de transição e overrides", () =
     }) as typeof fetch;
   }
 
-  it("host oficial Gauchinho com infra 044 ausente → fallback temporário", async () => {
+  it("host oficial Gauchinho com infra 044 ausente → falha fechada", async () => {
     vi.stubEnv("NODE_ENV", "production");
     mockSupabaseMissingTable();
 
@@ -33,14 +33,11 @@ describe("resolveTenantForRequest — fallback de transição e overrides", () =
       serviceKey: "service-role-test-key",
     });
 
-    expect(result.ok).toBe(true);
-    if (result.ok) {
-      expect(result.tenant.slug).toBe("gauchinho");
-      expect(result.tenant.source).toBe("emergency_gauchinho_fallback");
-    }
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.reason).toBe("infra_unavailable_non_official");
   });
 
-  it("www oficial também recebe fallback quando 044 ausente", async () => {
+  it("www oficial também falha fechado quando 044 está ausente", async () => {
     vi.stubEnv("NODE_ENV", "production");
     mockSupabaseMissingTable();
 
@@ -50,8 +47,7 @@ describe("resolveTenantForRequest — fallback de transição e overrides", () =
       serviceKey: "service-role-test-key",
     });
 
-    expect(result.ok).toBe(true);
-    if (result.ok) expect(result.tenant.slug).toBe("gauchinho");
+    expect(result.ok).toBe(false);
   });
 
   it("host desconhecido com 044 ausente NÃO vira Gauchinho", async () => {
@@ -82,9 +78,29 @@ describe("resolveTenantForRequest — fallback de transição e overrides", () =
     expect(result.ok).toBe(false);
   });
 
-  it("empresa-b.localhost resolve em development mesmo sem 044", async () => {
+  it("empresa-b.localhost resolve em development pelo cadastro real", async () => {
     vi.stubEnv("NODE_ENV", "development");
-    mockSupabaseMissingTable();
+    globalThis.fetch = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes("empresa_dominios")) {
+        return new Response(JSON.stringify({
+          message: "Could not find the table 'public.empresa_dominios' in the schema cache",
+          code: "PGRST205",
+        }), { status: 404, headers: { "content-type": "application/json" } });
+      }
+      if (url.includes("empresas")) {
+        return new Response(JSON.stringify({
+          id: "8e4e13f9-80e6-44db-a21b-584a43b6f024",
+          slug: "empresa-b",
+          status: "rascunho",
+          ativo: false,
+        }), { status: 200, headers: { "content-type": "application/json" } });
+      }
+      return new Response(JSON.stringify(null), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    }) as typeof fetch;
 
     const result = await resolveTenantForRequest({
       hostHeader: "empresa-b.localhost",
@@ -113,7 +129,7 @@ describe("resolveTenantForRequest — fallback de transição e overrides", () =
     expect(result.ok).toBe(false);
   });
 
-  it("erro transitório no host oficial usa fallback sem misturar cache com outro host", async () => {
+  it("erro transitório falha fechado e não mistura cache entre hosts", async () => {
     vi.stubEnv("NODE_ENV", "production");
     globalThis.fetch = vi.fn(async () => {
       return new Response(JSON.stringify({ message: "upstream timeout" }), {
@@ -133,8 +149,7 @@ describe("resolveTenantForRequest — fallback de transição e overrides", () =
       serviceKey: "service-role-test-key",
     });
 
-    expect(official.ok).toBe(true);
-    if (official.ok) expect(official.tenant.slug).toBe("gauchinho");
+    expect(official.ok).toBe(false);
     expect(unknown.ok).toBe(false);
   });
 

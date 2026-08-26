@@ -2,10 +2,14 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentTenantContext } from "@/lib/tenant/context";
+import { calcularPrazoGrupoFromRow } from "@/lib/grupos/prazos";
 import { formalizarContratacaoAction } from "../actions";
 import { DocumentoLink } from "./documento-link";
+import {
+  FormalizacaoCatalogoFields,
+  type FormalizacaoCatalogoGrupo,
+} from "./formalizacao-catalogo-fields";
 
-const money = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 function relation<T>(value: unknown): T | null { return (Array.isArray(value) ? value[0] : value) as T | null; }
 
 type ContratacaoDetalhe = {
@@ -42,7 +46,6 @@ type ContratacaoDetalhe = {
 type GrupoCota = {
   id: string;
   valor_credito: number;
-  valor_parcela: number;
   ativo: boolean;
   status: string;
 };
@@ -55,6 +58,11 @@ type GrupoConsorcio = {
   tipo_administradora_id: string | null;
   modalidade_comissao_id: string | null;
   prazo_total: number | null;
+  parcelas_realizadas: number | null;
+  prazo_restante: number | null;
+  parcelas_realizadas_base: number | null;
+  data_base_parcelas: string | null;
+  atualizacao_parcelas_automatica: boolean;
   administradora: unknown;
   tipo: unknown;
   modalidade: unknown;
@@ -65,22 +73,6 @@ type ParticipanteComercial = {
   id: string;
   nome: string;
   nome_exibicao: string | null;
-};
-
-type RegraFranquia = {
-  id: string;
-  versao: number;
-  configuracao_homologada: boolean;
-  vigencia_inicio: string;
-  vigencia_fim: string | null;
-  tipo_administradora_id: string | null;
-  modalidade_comissao_id: string | null;
-};
-
-type ProgramaComissao = {
-  id: string;
-  nome: string;
-  comissao_regras_franquia: RegraFranquia[] | null;
 };
 
 type DocumentoContratacao = {
@@ -109,6 +101,28 @@ export default async function ConferirContratacaoPage({
   if (!empresaAtiva) notFound();
   const admin = createAdminClient();
 
+  const [{ data: concessoes }, { data: configuracoesGrupo }] = await Promise.all([
+    admin
+      .from("empresa_administradoras")
+      .select("administradora_id")
+      .eq("empresa_id", empresaAtiva.id)
+      .eq("status", "ATIVA"),
+    admin
+      .from("empresa_grupos_config")
+      .select("grupo_id,visivel")
+      .eq("empresa_id", empresaAtiva.id),
+  ]);
+  const administradorasPermitidas = (concessoes ?? []).map((item) => item.administradora_id);
+  const gruposOcultos = new Set(
+    (configuracoesGrupo ?? []).filter((item) => !item.visivel).map((item) => item.grupo_id),
+  );
+  const gruposQuery = admin
+    .from("grupos_consorcio")
+    .select("id,codigo_grupo,administradora_id,status_governanca,prazo_total,parcelas_realizadas,prazo_restante,parcelas_realizadas_base,data_base_parcelas,atualizacao_parcelas_automatica,tipo_administradora_id,modalidade_comissao_id,administradora:administradoras(nome),tipo:administradora_tipos(nome),modalidade:administradora_modalidades_comissao(nome),grupos_cotas(id,valor_credito,ativo,status)")
+    .eq("ativo", true)
+    .in("administradora_id", administradorasPermitidas.length ? administradorasPermitidas : ["00000000-0000-0000-0000-000000000000"])
+    .order("codigo_grupo");
+
   const [contratacaoResult, gruposResult, participantesResult, documentosResult, historicoResult] = await Promise.all([
     admin
       .from("contratacoes_online")
@@ -116,11 +130,7 @@ export default async function ConferirContratacaoPage({
       .eq("id", id)
       .eq("empresa_id", empresaAtiva.id)
       .maybeSingle(),
-    admin
-      .from("grupos_consorcio")
-      .select("id,codigo_grupo,administradora_id,status_governanca,prazo_total,tipo_administradora_id,modalidade_comissao_id,administradora:administradoras(nome),tipo:administradora_tipos(nome),modalidade:administradora_modalidades_comissao(nome),grupos_cotas(id,valor_credito,valor_parcela,ativo,status)")
-      .eq("ativo", true)
-      .order("codigo_grupo"),
+    gruposQuery,
     admin
       .from("participantes_comerciais")
       .select("id,nome,nome_exibicao,status,participante_tipos(tipo_codigo)")
@@ -147,26 +157,72 @@ export default async function ConferirContratacaoPage({
   const cota = relation<{ id: string; numero_cota: string | null; status: string }>(venda?.cotas_definitivas);
   const formalizada = Boolean(venda?.id && cota?.id);
 
-  const grupos = (gruposResult.data ?? []) as GrupoConsorcio[];
+  const grupos = ((gruposResult.data ?? []) as GrupoConsorcio[]).filter(
+    (grupo) => !gruposOcultos.has(grupo.id),
+  );
 
-  // Auto-resolução inteligente do Grupo
-  const grupoMatch =
-    (c.grupo_id && grupos.find((g) => g.id === c.grupo_id)) ||
-    grupos.find((g) => g.codigo_grupo === c.grupo_nome) ||
-    grupos.find((g) => c.grupo_nome && g.codigo_grupo === c.grupo_nome.replace(/\D/g, "")) ||
-    grupos.find((g) => (c.dados_simulacao as any)?.grupoId === g.id) ||
-    grupos[0];
+  const grupoIds = grupos.map((grupo) => grupo.id);
+  const cotaIds = grupos.flatMap((grupo) => (grupo.grupos_cotas ?? []).map((cota) => cota.id));
+  const [{ data: modalidadesDisponiveis }, { data: valoresModalidade }] = await Promise.all([
+    admin
+      .from("grupos_modalidades_disponiveis")
+      .select("grupo_id,administradora_modalidade_id,ativo,modalidade:administradora_modalidades_comissao(id,codigo,nome,ativo)")
+      .in("grupo_id", grupoIds.length ? grupoIds : ["00000000-0000-0000-0000-000000000000"])
+      .eq("ativo", true),
+    admin
+      .from("grupo_cota_modalidade_valores")
+      .select("grupo_cota_id,administradora_modalidade_id,valor_parcela,percentual_reducao,habilitado,ativo")
+      .in("grupo_cota_id", cotaIds.length ? cotaIds : ["00000000-0000-0000-0000-000000000000"])
+      .eq("ativo", true),
+  ]);
+
+  const catalogoGrupos: FormalizacaoCatalogoGrupo[] = grupos.map((grupo) => {
+    const prazo = calcularPrazoGrupoFromRow(grupo);
+    return {
+      id: grupo.id,
+      codigo: grupo.codigo_grupo,
+      administradora: relation<{ nome: string }>(grupo.administradora)?.nome ?? "Administradora",
+      tipo: relation<{ nome: string }>(grupo.tipo)?.nome ?? "Tipo não configurado",
+      prazoOriginal: prazo.prazoTotal,
+      parcelasRestantes: prazo.prazoRestanteAtual,
+      produtos: (grupo.grupos_cotas ?? [])
+      .filter((cota) => cota.ativo && !["Inativo", "Esgotado"].includes(cota.status))
+      .map((cota) => ({
+        id: cota.id,
+        valorCredito: Number(cota.valor_credito),
+        modalidades: (modalidadesDisponiveis ?? []).flatMap((disponibilidade) => {
+          if (disponibilidade.grupo_id !== grupo.id) return [];
+          const modalidade = relation<{ id: string; codigo: string; nome: string; ativo: boolean }>(disponibilidade.modalidade);
+          const valor = (valoresModalidade ?? []).find(
+            (item) =>
+              item.grupo_cota_id === cota.id &&
+              item.administradora_modalidade_id === disponibilidade.administradora_modalidade_id,
+          );
+          return modalidade?.ativo && valor?.habilitado
+            ? [{
+                id: modalidade.id,
+                codigo: modalidade.codigo,
+                nome: modalidade.nome,
+                valorParcela: Number(valor.valor_parcela),
+                percentualReducao: valor.percentual_reducao == null ? null : Number(valor.percentual_reducao),
+              }]
+            : [];
+        }),
+      }))
+      .filter((produto) => produto.modalidades.length > 0),
+    };
+  }).filter((grupo) => grupo.parcelasRestantes > 0 && grupo.produtos.length > 0);
+
+  // Pré-seleção somente por UUID canônico já persistido; nunca por nome/valor aproximado.
+  const grupoMatch = c.grupo_id ? grupos.find((g) => g.id === c.grupo_id) : undefined;
 
   const grupoSelecionadoId = grupoMatch?.id || "";
-  const grupoAtual = grupos.find((g) => g.id === grupoSelecionadoId);
 
   const opcoes: Array<{
     id: string;
     grupo_id: string;
     grupo_codigo: string;
     valor_credito: number;
-    valor_parcela: number;
-    prazo: number;
   }> = grupos.flatMap((g) =>
     (g.grupos_cotas ?? [])
       .filter((o) => o.ativo && !["Inativo", "Esgotado"].includes(o.status))
@@ -175,52 +231,20 @@ export default async function ConferirContratacaoPage({
         grupo_id: String(g.id),
         grupo_codigo: String(g.codigo_grupo),
         valor_credito: Number(o.valor_credito),
-        valor_parcela: Number(o.valor_parcela),
-        prazo: Number(g.prazo_total || (c.dados_simulacao as any)?.prazo || 180),
       }))
   );
 
-  const creditoBuscado = Number(c.credito_selecionado || (c.dados_simulacao as any)?.valor_credito || (c.dados_simulacao as any)?.somaCotas || 0);
-
-  // Auto-resolução da Cota
-  const cotaMatch =
-    (c.cota_id && opcoes.find((o) => o.id === c.cota_id)) ||
-    opcoes.find((o) => o.grupo_id === grupoSelecionadoId && Math.abs(o.valor_credito - creditoBuscado) < 0.01) ||
-    opcoes.find((o) => o.grupo_id === grupoSelecionadoId) ||
-    opcoes[0];
+  const cotaMatch = c.cota_id
+    ? opcoes.find((o) => o.id === c.cota_id && o.grupo_id === grupoSelecionadoId)
+    : undefined;
 
   const cotaSelecionadaId = cotaMatch?.id || "";
+  const modalidadeSelecionadaId =
+    String((c.dados_simulacao as Record<string, unknown> | null)?.modalidade_comissao_id ?? "") ||
+    "";
 
   const participantes = (participantesResult.data ?? []) as ParticipanteComercial[];
   const consultorSelecionadoId = c.participante_comercial_id || participantes[0]?.id || "";
-
-  const dataVenda = new Date().toISOString().slice(0, 10);
-  const tipoId = grupoAtual?.tipo_administradora_id;
-  const modalidadeId = grupoAtual?.modalidade_comissao_id;
-
-  const { data: programas } = grupoAtual?.administradora_id
-    ? await admin
-        .from("comissao_programas")
-        .select(
-          "id,nome,status,comissao_regras_franquia(id,versao,configuracao_homologada,vigencia_inicio,vigencia_fim,tipo_administradora_id,modalidade_comissao_id,percentual_total_comissao,valor_fixo_total),comissao_regras_participantes(id,configuracao_homologada,tipo_administradora_id,modalidade_comissao_id)"
-        )
-        .eq("empresa_id", empresaAtiva.id)
-        .eq("administradora_id", grupoAtual.administradora_id)
-        .eq("status", "ATIVO")
-    : { data: [] };
-
-  const regras = ((programas ?? []) as ProgramaComissao[]).flatMap((p) =>
-    (p.comissao_regras_franquia ?? [])
-      .filter(
-        (r) =>
-          r.configuracao_homologada &&
-          r.vigencia_inicio <= dataVenda &&
-          (!r.vigencia_fim || r.vigencia_fim >= dataVenda) &&
-          (!r.tipo_administradora_id || !tipoId || r.tipo_administradora_id === tipoId) &&
-          (!r.modalidade_comissao_id || !modalidadeId || r.modalidade_comissao_id === modalidadeId)
-      )
-      .map((r) => ({ programa: p, regra: r }))
-  );
 
   return (
     <div className="mx-auto max-w-7xl space-y-6">
@@ -328,31 +352,14 @@ export default async function ConferirContratacaoPage({
       <form action={formalizarContratacaoAction} className="space-y-5 rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
         <input type="hidden" name="contratacao_id" value={id} />
         <h2 className="text-lg font-bold">2. Dados comerciais e participantes</h2>
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <label className="text-sm font-semibold">
-            Grupo canônico
-            <select required name="grupo_id" defaultValue={grupoSelecionadoId} className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800 dark:text-white">
-              <option value="">Selecione</option>
-              {grupos.map((g) => (
-                <option key={g.id} value={g.id}>
-                  {relation<{ nome: string }>(g.administradora)?.nome} · Grupo {g.codigo_grupo} · {relation<{ nome: string }>(g.tipo)?.nome || "Tipo"} · {relation<{ nome: string }>(g.modalidade)?.nome || "Modalidade"}
-                </option>
-              ))}
-            </select>
-          </label>
+        <FormalizacaoCatalogoFields
+          grupos={catalogoGrupos}
+          initialGrupoId={grupoSelecionadoId}
+          initialProdutoId={cotaSelecionadaId}
+          initialModalidadeId={modalidadeSelecionadaId}
+        />
 
-          <label className="text-sm font-semibold">
-            Produto / cota comercial
-            <select required name="opcao_cota_id" defaultValue={cotaSelecionadaId} className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800 dark:text-white">
-              <option value="">Selecione</option>
-              {opcoes.map((o) => (
-                <option key={o.id} value={o.id}>
-                  Grupo {o.grupo_codigo} · {money.format(Number(o.valor_credito))} · {o.prazo}x de {money.format(Number(o.valor_parcela))}
-                </option>
-              ))}
-            </select>
-          </label>
-
+        <div className="grid gap-4 md:grid-cols-3">
           <label className="text-sm font-semibold">
             Consultor principal
             <select required name="participante_principal_id" defaultValue={consultorSelecionadoId} className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800 dark:text-white">
@@ -391,32 +398,18 @@ export default async function ConferirContratacaoPage({
           </label>
         </div>
 
-        {grupoAtual && (
-          <div className="rounded-lg bg-slate-50 p-4 dark:bg-slate-800/50">
-            <h3 className="font-bold text-slate-900 dark:text-white">Configuração do Grupo SaaS</h3>
-            <p className="text-sm text-slate-600 dark:text-slate-400">
-              Administradora: {relation<{ nome: string }>(grupoAtual.administradora)?.nome || "Racon"} · Tipo: {relation<{ nome: string }>(grupoAtual.tipo)?.nome || "Imóvel"} · Modalidade: {relation<{ nome: string }>(grupoAtual.modalidade)?.nome || "Padrão"} · Prazo: {grupoAtual.prazo_total || 180}m
-            </p>
-          </div>
-        )}
-
-        <div className={`rounded-lg p-4 ${regras.length >= 1 ? "bg-emerald-50 text-emerald-950 dark:bg-emerald-950/40 dark:text-emerald-200" : "bg-blue-50 text-blue-950 dark:bg-blue-950/40 dark:text-blue-200"}`}>
-          <h3 className="font-bold">Regra de comissão resolvida</h3>
-          {regras.length >= 1 ? (
-            <p className="text-sm">
-              Programa {regras[0].programa.nome} (regra v{regras[0].regra.versao}). As previsões de comissão serão geradas pelo motor canônico.
-            </p>
-          ) : (
-            <p className="text-sm">
-              Regra padrão da Administradora homologada. As previsões serão computadas na conversão da venda.
-            </p>
-          )}
+        <div className="rounded-lg bg-blue-50 p-4 text-blue-950 dark:bg-blue-950/40 dark:text-blue-200">
+          <h3 className="font-bold">Validação da comissão</h3>
+          <p className="text-sm">
+            Ao confirmar, o banco exigirá exatamente uma regra homologada para a empresa,
+            administradora, tipo e UUID da modalidade escolhida. Nenhum percentual será inferido pelo nome.
+          </p>
         </div>
 
         <div className="rounded-lg border border-slate-200 p-4 dark:border-slate-800">
-          <h3 className="font-bold text-slate-900 dark:text-white">3. Resumo da Venda</h3>
+          <h3 className="font-bold text-slate-900 dark:text-white">3. Cliente e pagamento</h3>
           <p className="mt-2 text-sm text-slate-700 dark:text-slate-300">
-            Cliente: <strong>{cliente?.nome || c.nome}</strong> · Grupo: <strong>Grupo {grupoAtual?.codigo_grupo || "1463"}</strong> · Crédito: <strong>{money.format(creditoBuscado || 500000)}</strong> · Forma de pagamento: <strong>{c.forma_pagamento || "Boleto"}</strong>
+            Cliente: <strong>{cliente?.nome || c.nome}</strong> · Forma de pagamento: <strong>{c.forma_pagamento || "Boleto"}</strong>
           </p>
         </div>
 

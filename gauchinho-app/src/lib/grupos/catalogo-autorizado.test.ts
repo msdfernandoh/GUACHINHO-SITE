@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import fs from "node:fs";
+import path from "node:path";
 import {
   EMPRESA_B_ID,
   GAUCHINHO_EMPRESA_ID,
@@ -23,13 +25,13 @@ describe("resolveEmpresaIdForCatalog", () => {
     ).toBe(EMPRESA_B_ID);
   });
 
-  it("mapeia synthetic Gauchinho por slug confiável do proxy", () => {
+  it("não mapeia identificador sintético nem para Gauchinho", () => {
     expect(
       resolveEmpresaIdForCatalog({
         empresaId: "dev-gauchinho-synthetic",
         slug: "gauchinho",
       }),
-    ).toBe(GAUCHINHO_EMPRESA_ID);
+    ).toBeNull();
   });
 
   it("não mapeia synthetic de outro slug", () => {
@@ -448,20 +450,14 @@ describe("catalogo service — caminho pós-049 (mock admin)", () => {
   });
 });
 
-describe("resolveIntegrationEmpresa (legado Gauchinho)", () => {
-  it("key válida → GAUCHINHO_EMPRESA_ID", async () => {
-    const { resolveIntegrationEmpresa } = await import("@/lib/integration/verify-api-key");
-    const prev = process.env.GAUCHINHO_INTEGRATION_API_KEY;
-    process.env.GAUCHINHO_INTEGRATION_API_KEY = "test-key-e6-hardening";
-    try {
-      const req = new Request("https://example.com/api/integration/grupos", {
-        headers: { "x-api-key": "test-key-e6-hardening" },
-      });
-      const auth = resolveIntegrationEmpresa(req);
-      expect(auth).toEqual({ empresaId: GAUCHINHO_EMPRESA_ID, slug: "gauchinho" });
-    } finally {
-      if (prev === undefined) delete process.env.GAUCHINHO_INTEGRATION_API_KEY;
-      else process.env.GAUCHINHO_INTEGRATION_API_KEY = prev;
-    }
+describe("chaves de integração multi-tenant", () => {
+  it("não depende de UUID fixo da Gauchinho", () => {
+    const source = fs.readFileSync(
+      path.resolve(process.cwd(), "src/lib/integration/verify-api-key.ts"),
+      "utf8",
+    );
+    expect(source).toContain("integracao_api_keys");
+    expect(source).not.toContain("GAUCHINHO_EMPRESA_ID");
+    expect(source).not.toContain("7170f38e-15dd-4b19-8588-51e9a9cf0d4c");
   });
 });

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { rejectIfTenantBlocksLegacyOperationalApi } from "@/lib/tenant/assert-legacy-operational-api";
+import { authorizePublicIngress } from "@/lib/security/public-ingress";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { registrarEvento } from "@/lib/eventos/registrar";
 import { DEFAULT_LEADS, getConfigJsonPublic } from "@/server/config";
@@ -15,8 +15,8 @@ type Body = {
 };
 
 export async function POST(request: Request) {
-  const __tenantBlocked = await rejectIfTenantBlocksLegacyOperationalApi(request);
-  if (__tenantBlocked) return __tenantBlocked;
+  const ingress = await authorizePublicIngress(request, "carta_interesse", { limit: 10 });
+  if (!ingress.ok) return ingress.response;
   try {
     const body = (await request.json()) as Body;
     if (!body.cartaId || !body.nome?.trim() || !body.whatsapp?.trim()) {
@@ -28,6 +28,9 @@ export async function POST(request: Request) {
     const empresaId = await getCatalogEmpresaIdFromRequest(request);
 
     if (!empresaId) {
+      return NextResponse.json({ error: "Carta indisponível" }, { status: 404 });
+    }
+    if (empresaId !== ingress.empresaId) {
       return NextResponse.json({ error: "Carta indisponível" }, { status: 404 });
     }
 
@@ -60,6 +63,7 @@ export async function POST(request: Request) {
     const { data: leadRow, error: leadErr } = await admin
       .from("leads")
       .insert({
+        empresa_id: ingress.empresaId,
         nome: body.nome.trim(),
         whatsapp: body.whatsapp.trim(),
         email: body.email?.trim() || null,
@@ -88,6 +92,7 @@ export async function POST(request: Request) {
     const origem = "carta_contemplada";
 
     await registrarEvento({
+      empresa_id: ingress.empresaId,
       tipo_evento: "lead_criado",
       origem,
       pagina: "/cartas-contempladas",
@@ -96,6 +101,7 @@ export async function POST(request: Request) {
       dados_evento: { carta_id: carta.id },
     });
     await registrarEvento({
+      empresa_id: ingress.empresaId,
       tipo_evento: "carta_interesse",
       origem,
       pagina: "/cartas-contempladas",

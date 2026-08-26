@@ -161,7 +161,7 @@ export function GroupCatalogForm({
             name="prazo_total"
             type="number"
             min="1"
-            defaultValue={grupo?.prazo_total ?? 180}
+            defaultValue={grupo?.prazo_total ?? ""}
             disabled={readonly}
           />
         </label>

@@ -1,78 +1,11 @@
--- 103 — Correção robusta da RPC rpc_converter_contratacao_venda e consolidação de governança dos grupos
+-- 102 — Vínculo Canônico Platform/SaaS -> Site -> Contratação -> ERP -> Venda/Cota
+-- Forward-only: Harmoniza a resolução de grupos_consorcio e grupos_cotas na conversão
+-- transacional de contratações em vendas e cotas definitivas, eliminando falhas de
+-- correspondência de IDs legados e garantindo idempotência total.
+
 BEGIN;
 
--- 1. Consolidar grupos sem governança explícita como GLOBAL
-UPDATE public.grupos_consorcio
-SET origem_governanca = 'GLOBAL'
-WHERE origem_governanca IS NULL;
-
--- 2. Atualizar rpc_preparar_formalizacao_contratacao com resolução tolerante
-CREATE OR REPLACE FUNCTION public.rpc_preparar_formalizacao_contratacao(
-  p_empresa_id uuid,
-  p_contratacao_id uuid,
-  p_grupo_id uuid,
-  p_opcao_cota_id uuid,
-  p_participante_principal_id uuid,
-  p_participante_secundario_id uuid DEFAULT NULL,
-  p_fracao_secundario numeric DEFAULT NULL
-) RETURNS jsonb
-LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog AS $$
-DECLARE
-  v_contratacao public.contratacoes_online%ROWTYPE;
-  v_grupo public.grupos_consorcio%ROWTYPE;
-BEGIN
-  IF auth.uid() IS NOT NULL AND NOT public.can_write_tenant_internal(p_empresa_id) THEN
-    RAISE EXCEPTION 'Acesso negado ao tenant';
-  END IF;
-
-  SELECT * INTO v_contratacao FROM public.contratacoes_online
-  WHERE id = p_contratacao_id AND empresa_id = p_empresa_id FOR UPDATE;
-  IF NOT FOUND THEN RAISE EXCEPTION 'Contratação não encontrada no tenant'; END IF;
-
-  IF NOT COALESCE(v_contratacao.contrato_assinado, false) THEN
-    RAISE EXCEPTION 'Contrato ainda não foi assinado';
-  END IF;
-
-  IF EXISTS (SELECT 1 FROM public.vendas WHERE empresa_id = p_empresa_id AND contratacao_id = p_contratacao_id) THEN
-    RAISE EXCEPTION 'Venda já existente para esta contratação';
-  END IF;
-
-  SELECT * INTO v_grupo FROM public.grupos_consorcio WHERE id = p_grupo_id;
-  IF NOT FOUND OR v_grupo.administradora_id IS NULL THEN RAISE EXCEPTION 'Grupo não configurado'; END IF;
-
-  -- Se não tem cota explícita informada, busca uma do grupo
-  IF p_opcao_cota_id IS NULL THEN
-    SELECT id INTO p_opcao_cota_id FROM public.grupos_cotas
-    WHERE grupo_id = p_grupo_id AND ativo IS TRUE AND status NOT IN ('Inativo', 'Esgotado')
-    ORDER BY ordem ASC, created_at DESC LIMIT 1;
-  END IF;
-
-  UPDATE public.contratacoes_online SET
-    grupo_id = p_grupo_id,
-    cota_id = COALESCE(p_opcao_cota_id::text, cota_id),
-    participante_comercial_id = p_participante_principal_id,
-    participante_secundario_id = p_participante_secundario_id,
-    participante_secundario_fracao_percentual = CASE WHEN p_participante_secundario_id IS NULL THEN NULL ELSE p_fracao_secundario END,
-    status_operacional_erp = 'PRONTO_FORMALIZAR',
-    pendencia_codigo = NULL,
-    pendencia_descricao = NULL,
-    em_conferencia_em = COALESCE(em_conferencia_em, now()),
-    updated_at = now()
-  WHERE id = p_contratacao_id AND empresa_id = p_empresa_id;
-
-  INSERT INTO public.contratacoes_formalizacao_historico (
-    empresa_id, contratacao_id, evento, descricao, dados
-  ) VALUES (
-    p_empresa_id, p_contratacao_id, 'DADOS_COMERCIAIS_AJUSTADOS',
-    'Dados comerciais confirmados para formalização.',
-    jsonb_build_object('grupo_id', p_grupo_id, 'cota_id', p_opcao_cota_id, 'principal_id', p_participante_principal_id)
-  );
-
-  RETURN jsonb_build_object('ok', true, 'contratacao_id', p_contratacao_id);
-END;
-$$;
-
--- 3. Atualizar rpc_converter_contratacao_venda (com criação/vinculação automática de cliente)
+-- 1. Atualizar a RPC de conversão transacional com resolução canônica resiliente
 CREATE OR REPLACE FUNCTION public.rpc_converter_contratacao_venda(
   p_empresa_id uuid,
   p_contratacao_id uuid,
@@ -156,12 +89,13 @@ BEGIN
 
   IF v_grupo.id IS NULL AND v_contratacao.grupo_nome IS NOT NULL THEN
     SELECT * INTO v_grupo FROM public.grupos_consorcio
-    WHERE (codigo_grupo = v_contratacao.grupo_nome OR codigo_grupo = regexp_replace(v_contratacao.grupo_nome, '\D', '', 'g'))
+    WHERE (codigo_grupo = v_contratacao.grupo_nome OR codigo_grupo = regexp_replace(v_contratacao.grupo_nome, 'D', '', 'g'))
       AND administradora_id IS NOT NULL
     ORDER BY ativo DESC, created_at DESC LIMIT 1;
   END IF;
 
   IF v_grupo.id IS NULL THEN
+    -- Tenta extrair grupo de dados_simulacao
     IF v_dados->>'grupoId' IS NOT NULL AND v_dados->>'grupoId' ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$' THEN
       SELECT * INTO v_grupo FROM public.grupos_consorcio WHERE id = (v_dados->>'grupoId')::uuid;
     ELSIF v_dados#>>'{selecoes,0,grupoId}' IS NOT NULL AND v_dados#>>'{selecoes,0,grupoId}' ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$' THEN
@@ -201,7 +135,7 @@ BEGIN
     v_contratacao.prazo,
     NULLIF(v_dados->>'prazo', '')::integer,
     v_grupo.prazo_total,
-    180
+        180
   );
 
   -- 7. Resolução Canônica do Produto/Cota (grupos_cotas)
@@ -235,8 +169,8 @@ BEGIN
 
   -- Se o grupo não possuía cotas cadastradas em grupos_cotas, cria a cota canônica
   IF v_opcao.id IS NULL AND v_credito IS NOT NULL AND v_credito > 0 THEN
-    INSERT INTO public.grupos_cotas (grupo_id, valor_credito, valor_parcela, ativo, status, ordem)
-    VALUES (v_grupo.id, v_credito, COALESCE(v_parcela, 0), true, 'Disponível', 0)
+    INSERT INTO public.grupos_cotas (grupo_id, valor_credito, valor_parcela, prazo, ativo, status, ordem)
+    VALUES (v_grupo.id, v_credito, COALESCE(v_parcela, 0), v_prazo, true, 'Disponível', 0)
     RETURNING * INTO v_opcao;
   END IF;
 
@@ -245,9 +179,10 @@ BEGIN
     RAISE EXCEPTION 'Opção de cota não encontrada para o grupo ou indisponível';
   END IF;
 
+  -- Reafirma valores
   v_credito := COALESCE(v_credito, v_opcao.valor_credito);
   v_parcela := COALESCE(v_parcela, v_opcao.valor_parcela);
-  v_prazo := COALESCE(v_prazo, v_grupo.prazo_total, 180);
+  v_prazo := COALESCE(v_prazo, v_opcao.prazo, v_grupo.prazo_total, 180);
 
   IF v_credito IS NULL OR v_credito <= 0 OR v_parcela IS NULL OR v_parcela <= 0 OR v_prazo IS NULL OR v_prazo <= 0 THEN
     RAISE EXCEPTION 'Dados monetários/prazo inválidos na contratação';
@@ -270,6 +205,7 @@ BEGIN
     ORDER BY created_at ASC LIMIT 1;
   END IF;
 
+  -- Garante que grupo_cota_modalidade_valores e grupos_modalidades_disponiveis estejam íntegros para o trigger V2
   IF v_modalidade_id IS NOT NULL AND v_opcao_id IS NOT NULL THEN
     INSERT INTO public.grupos_modalidades_disponiveis (grupo_id, administradora_modalidade_id, ativo, ordem)
     VALUES (v_grupo.id, v_modalidade_id, true, 0)
@@ -280,34 +216,7 @@ BEGIN
     ON CONFLICT (grupo_cota_id, administradora_modalidade_id) DO UPDATE SET valor_parcela = EXCLUDED.valor_parcela, ativo = true;
   END IF;
 
-  -- 9. Auto-resolução ou Criação do Cliente no ERP
-  IF v_contratacao.cliente_id IS NULL THEN
-    IF v_contratacao.cpf IS NOT NULL OR v_contratacao.cnpj IS NOT NULL THEN
-      SELECT id INTO v_contratacao.cliente_id FROM public.clientes
-      WHERE empresa_id = p_empresa_id AND documento_normalizado = regexp_replace(COALESCE(v_contratacao.cpf, v_contratacao.cnpj), '\D', '', 'g')
-      LIMIT 1;
-    END IF;
-
-    IF v_contratacao.cliente_id IS NULL THEN
-      INSERT INTO public.clientes (
-        empresa_id, tipo_pessoa, nome, cpf_cnpj, documento_normalizado, email, telefone,
-        cep, endereco, numero, complemento, bairro, cidade, uf,
-        participante_comercial_id, origem, status, criado_por_contratacao_id
-      ) VALUES (
-        p_empresa_id,
-        COALESCE(v_contratacao.tipo_pessoa, 'PF'),
-        COALESCE(NULLIF(trim(v_contratacao.nome), ''), 'Cliente Consórcio'),
-        COALESCE(v_contratacao.cpf, v_contratacao.cnpj),
-        regexp_replace(COALESCE(v_contratacao.cpf, v_contratacao.cnpj, ''), '\D', '', 'g'),
-        v_contratacao.email, v_contratacao.telefone,
-        v_contratacao.cep, v_contratacao.endereco, v_contratacao.numero, v_contratacao.complemento,
-        v_contratacao.bairro, v_contratacao.cidade, v_contratacao.uf,
-        v_contratacao.participante_comercial_id, 'contratacao_assinada', 'ativo', p_contratacao_id
-      ) RETURNING id INTO v_contratacao.cliente_id;
-    END IF;
-  END IF;
-
-  -- 10. Montagem do Snapshot Imutável
+  -- 9. Montagem do Snapshot Imutável
   v_snapshot := jsonb_build_object(
     'dados_simulacao', v_dados,
     'grupo_id', v_grupo.id,
@@ -324,13 +233,13 @@ BEGIN
     'data_conversao', now()
   );
 
-  -- 11. Inserir em Vendas
+  -- 10. Inserir em Vendas
   INSERT INTO public.vendas (
-    empresa_id, cliente_id, lead_id, contratacao_id, cliente_nome, cliente_cpf_cnpj, cliente_email, cliente_telefone,
+    empresa_id, lead_id, contratacao_id, cliente_nome, cliente_cpf_cnpj, cliente_email, cliente_telefone,
     administradora_id, grupo_id, opcao_cota_id, modalidade_comissao_id, participante_comercial_id, organizacao_parceira_id,
     valor_credito, prazo, parcela, status, snapshot_venda
   ) VALUES (
-    p_empresa_id, v_contratacao.cliente_id, v_contratacao.lead_id, p_contratacao_id,
+    p_empresa_id, v_contratacao.lead_id, p_contratacao_id,
     COALESCE(NULLIF(trim(v_contratacao.nome), ''), 'Cliente Consórcio'),
     COALESCE(v_contratacao.cpf, v_contratacao.cnpj),
     v_contratacao.email, v_contratacao.telefone,
@@ -339,7 +248,7 @@ BEGIN
     v_credito, v_prazo, v_parcela, 'confirmada', v_snapshot
   ) RETURNING * INTO v_venda;
 
-  -- 12. Inserir em Cotas Definitivas
+  -- 11. Inserir em Cotas Definitivas
   INSERT INTO public.cotas_definitivas (
     empresa_id, venda_id, administradora_id, grupo_id, numero_grupo, numero_cota, valor_credito, prazo, parcela,
     status, participante_comercial_id, organizacao_parceira_id, snapshot_cota
@@ -350,11 +259,10 @@ BEGIN
     v_contratacao.participante_comercial_id, v_contratacao.organizacao_parceira_id, v_snapshot
   ) RETURNING * INTO v_cota;
 
-  -- 13. Sincronizar contratação e lead
+  -- 12. Sincronizar contratação e lead
   UPDATE public.contratacoes_online
   SET
     status = 'finalizada',
-    cliente_id = v_contratacao.cliente_id,
     grupo_id = v_grupo.id,
     cota_id = v_opcao_id::text,
     status_operacional_erp = 'FORMALIZADA',
@@ -368,7 +276,7 @@ BEGIN
     WHERE id = v_contratacao.lead_id AND empresa_id = p_empresa_id;
   END IF;
 
-  -- 14. Previsões de Comissão e Resposta
+  -- 13. Previsões de Comissão e Resposta
   SELECT public.rpc_gerar_previsoes_comissao(p_empresa_id, v_venda.id, p_idempotency_key || ':comissao') INTO v_previsoes;
   v_response := jsonb_build_object('venda', to_jsonb(v_venda), 'cotaDefinitiva', to_jsonb(v_cota), 'previsoes', v_previsoes, 'reused', false);
 

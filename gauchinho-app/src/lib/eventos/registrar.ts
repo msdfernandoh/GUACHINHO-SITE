@@ -1,6 +1,8 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getResolvedTenant } from "@/lib/tenant/get-resolved-empresa";
 
 export type RegistrarEventoInput = {
+  empresa_id?: string;
   tipo_evento: string;
   origem?: string;
   pagina?: string;
@@ -17,7 +19,22 @@ export type RegistrarEventoInput = {
 /** Persiste evento de analytics/comercial (service role — insert público). */
 export async function registrarEvento(input: RegistrarEventoInput) {
   const admin = createAdminClient();
+  let empresaId = input.empresa_id ?? null;
+  if (!empresaId && input.lead_id) {
+    const { data: lead } = await admin
+      .from("leads")
+      .select("empresa_id")
+      .eq("id", input.lead_id)
+      .maybeSingle();
+    empresaId = lead?.empresa_id ?? null;
+  }
+  if (!empresaId) empresaId = (await getResolvedTenant())?.empresaId ?? null;
+  if (!empresaId) {
+    console.error("[eventos_site] evento descartado sem empresa_id", input.tipo_evento);
+    return;
+  }
   const { error } = await admin.from("eventos_site").insert({
+    empresa_id: empresaId,
     tipo_evento: input.tipo_evento,
     origem: input.origem ?? null,
     pagina: input.pagina ?? null,

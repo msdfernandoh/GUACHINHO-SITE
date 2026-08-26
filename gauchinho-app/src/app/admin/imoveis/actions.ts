@@ -18,6 +18,8 @@ import type { ImovelPublic, ImovelRow, ImobiliariaRow } from "@/lib/imoveis/type
 import { IMOVEL_STATUS } from "@/lib/imoveis/types";
 import { toImobiliariaPublic } from "@/lib/imobiliarias/public-card-utils";
 import { registrarEvento } from "@/lib/eventos/registrar";
+import { requireTenantPermission } from "@/lib/tenant/context";
+import { getResolvedTenant } from "@/lib/tenant/get-resolved-empresa";
 
 function numForm(formData: FormData, name: string): number | null {
   const raw = String(formData.get(name) ?? "").trim();
@@ -70,12 +72,13 @@ export async function fetchImoveisList(filters: {
   ativo?: string;
   q?: string;
 }) {
-  const u = await requireUsuario();
+  const { usuario: u, empresaAtiva } = await requireTenantPermission("gerenciar_imoveis");
   const supabase = await createClient();
 
   let q = supabase
     .from("imoveis")
     .select("*, imobiliarias(id, nome, slug)")
+    .eq("empresa_id", empresaAtiva.id)
     .order("created_at", { ascending: false });
 
   if (isImobiliaria(u.perfil)) {
@@ -97,10 +100,12 @@ export async function fetchImoveisList(filters: {
 }
 
 export async function fetchImovel(id: string) {
+  const { empresaAtiva } = await requireTenantPermission("gerenciar_imoveis");
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("imoveis")
     .select("*, imobiliarias(*)")
+    .eq("empresa_id", empresaAtiva.id)
     .eq("id", id)
     .single();
   if (error) throw new Error(error.message);
@@ -123,10 +128,14 @@ export type PublicImoveisFilters = {
 export async function fetchPublicImoveis(
   filters: PublicImoveisFilters = {},
 ): Promise<ImovelPublic[]> {
+  const tenant = await getResolvedTenant();
+  if (!tenant?.allowsLegacyOperationalData) return [];
   const admin = createAdminClient();
   let q = admin
     .from("imoveis")
     .select("*, imobiliarias!inner(id, nome, slug, whatsapp, logo_url, ativo)")
+    .eq("empresa_id", tenant.empresaId)
+    .eq("imobiliarias.empresa_id", tenant.empresaId)
     .eq("ativo", true)
     .eq("imobiliarias.ativo", true)
     .in("status", ["ativo", "reservado"]);
@@ -167,10 +176,14 @@ export async function fetchPublicImoveis(
 }
 
 export async function fetchPublicImovelBySlug(slug: string) {
+  const tenant = await getResolvedTenant();
+  if (!tenant?.allowsLegacyOperationalData) return null;
   const admin = createAdminClient();
   const { data, error } = await admin
     .from("imoveis")
     .select("*, imobiliarias!inner(*)")
+    .eq("empresa_id", tenant.empresaId)
+    .eq("imobiliarias.empresa_id", tenant.empresaId)
     .eq("slug", slug)
     .eq("ativo", true)
     .maybeSingle();
@@ -188,7 +201,7 @@ export async function fetchPublicImovelBySlug(slug: string) {
 }
 
 export async function createImovelAction(formData: FormData) {
-  const u = await requireUsuario();
+  const { usuario: u, empresaAtiva } = await requireTenantPermission("gerenciar_imoveis");
   let imobiliariaId = String(formData.get("imobiliaria_id") ?? "").trim();
   if (isImobiliaria(u.perfil)) {
     if (!u.imobiliaria_id) throw new Error("Imobiliária não vinculada");
@@ -202,40 +215,56 @@ export async function createImovelAction(formData: FormData) {
 
   const slug = uniqueSlug(payload.titulo);
   const admin = createAdminClient();
+  const { data: imobiliaria, error: imobiliariaError } = await admin
+    .from("imobiliarias")
+    .select("id")
+    .eq("empresa_id", empresaAtiva.id)
+    .eq("id", imobiliariaId)
+    .maybeSingle();
+  if (imobiliariaError) throw new Error(imobiliariaError.message);
+  if (!imobiliaria) throw new Error("Imobiliária não pertence à empresa deste domínio");
   const { data, error } = await admin
     .from("imoveis")
-    .insert({ ...payload, slug })
+    .insert({ ...payload, slug, empresa_id: empresaAtiva.id })
     .select("id")
     .single();
   if (error) throw new Error(error.message);
 
-  await uploadImovelFoto(data.id, formData);
+  await uploadImovelFoto(empresaAtiva.id, data.id, formData);
   revalidatePath("/admin/imoveis");
   redirect(`/admin/imoveis/${data.id}`);
 }
 
 export async function updateImovelAction(id: string, formData: FormData) {
-  const u = await requireUsuario();
+  const { usuario: u, empresaAtiva } = await requireTenantPermission("gerenciar_imoveis");
   const existing = await fetchImovel(id);
   assertImovelAccess(u, existing.imobiliaria_id);
 
   const payload = imovelFromForm(formData, existing.imobiliaria_id);
   const client = isMaster(u.perfil) ? createAdminClient() : await createClient();
-  const { error } = await client.from("imoveis").update(payload).eq("id", id);
+  const { error } = await client
+    .from("imoveis")
+    .update(payload)
+    .eq("empresa_id", empresaAtiva.id)
+    .eq("id", id);
   if (error) throw new Error(error.message);
 
-  await uploadImovelFoto(id, formData);
+  await uploadImovelFoto(empresaAtiva.id, id, formData);
   revalidatePath("/admin/imoveis");
   revalidatePath(`/admin/imoveis/${id}`);
   redirect(`/admin/imoveis/${id}`);
 }
 
-async function uploadImovelFoto(id: string, formData: FormData) {
+async function uploadImovelFoto(empresaId: string, id: string, formData: FormData) {
   const foto = formData.get("foto_file");
   if (!(foto instanceof File) || foto.size === 0) return;
   const url = await uploadImagemPublica("imoveis", id, foto);
   const admin = createAdminClient();
-  await admin.from("imoveis").update({ foto_principal_url: url }).eq("id", id);
+  await admin
+    .from("imoveis")
+    .update({ foto_principal_url: url })
+    .eq("empresa_id", empresaId)
+    .eq("id", id);
 }
 
 export async function registrarImovelVisualizado(imovelId: string, pagina: string) {

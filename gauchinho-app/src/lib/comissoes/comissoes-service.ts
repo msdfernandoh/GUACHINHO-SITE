@@ -1,6 +1,6 @@
 import "server-only";
 
-import { createAdminClient } from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/server";
 
 export type EtapaCronograma = {
   ordem: number;
@@ -80,7 +80,7 @@ export async function gerarPrevisoesComissaoParaVenda(
   vendaId: string,
   idempotencyKey = `previsoes:${vendaId}`,
 ): Promise<{ franquia: PrevisaoFranquiaRow[]; participantes: PrevisaoParticipanteRow[] }> {
-  const admin = createAdminClient();
+  const admin = await createClient();
   const { data, error } = await admin.rpc("rpc_gerar_previsoes_comissao", {
     p_empresa_id: empresaId,
     p_venda_id: vendaId,
@@ -98,7 +98,7 @@ export async function suspenderPrevisoesComissao(
   empresaId: string,
   vendaId: string,
 ): Promise<{ ok: boolean }> {
-  const admin = createAdminClient();
+  const admin = await createClient();
 
   await admin
     .from("comissao_previsoes_franquia")
@@ -124,7 +124,7 @@ export async function reativarPrevisoesComissao(
   empresaId: string,
   vendaId: string,
 ): Promise<{ ok: boolean }> {
-  const admin = createAdminClient();
+  const admin = await createClient();
 
   await admin
     .from("comissao_previsoes_franquia")
@@ -151,7 +151,7 @@ export async function listPrevisoesFranquiaForEmpresa(
   empresaId: string,
   competencia?: string,
 ): Promise<PrevisaoFranquiaRow[]> {
-  const admin = createAdminClient();
+  const admin = await createClient();
   let query = admin.from("comissao_previsoes_franquia").select("*").eq("empresa_id", empresaId);
 
   if (competencia) {
@@ -170,7 +170,7 @@ export async function listPrevisoesParticipantesForEmpresa(
   empresaId: string,
   competencia?: string,
 ): Promise<PrevisaoParticipanteRow[]> {
-  const admin = createAdminClient();
+  const admin = await createClient();
   let query = admin.from("comissao_previsoes_participantes").select("*").eq("empresa_id", empresaId);
 
   if (competencia) {

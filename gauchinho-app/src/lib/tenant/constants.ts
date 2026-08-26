@@ -1,6 +1,7 @@
 /** Headers internos de tenant — definidos apenas pelo proxy (nunca confiar no cliente). */
 export const TENANT_EMPRESA_ID_HEADER = "x-tenant-empresa-id";
 export const TENANT_SLUG_HEADER = "x-tenant-slug";
+export const TENANT_OPERATIONAL_ENABLED_HEADER = "x-tenant-operational-enabled";
 
 /** Slug canônico da empresa 1 (tenant legado operacional). */
 export const GAUCHINHO_SLUG = "gauchinho";

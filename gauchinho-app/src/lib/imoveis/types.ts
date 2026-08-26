@@ -26,6 +26,7 @@ export type StatusImovel = (typeof IMOVEL_STATUS)[number]["value"];
 
 export type ImobiliariaRow = {
   id: string;
+  empresa_id: string;
   nome: string;
   slug: string;
   responsavel: string | null;
@@ -53,6 +54,7 @@ export type ImobiliariaRow = {
 
 export type ImovelRow = {
   id: string;
+  empresa_id: string;
   imobiliaria_id: string;
   titulo: string;
   slug: string;

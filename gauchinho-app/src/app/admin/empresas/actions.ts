@@ -12,6 +12,7 @@ import { invalidateTenantHostCache } from "@/lib/tenant/tenant-host-cache";
 import type { Empresa } from "@/lib/tenant/context";
 import type { EmpresaBranding } from "@/lib/tenant/branding";
 import { ERP_MODULES, normalizeErpSistemaConfig } from "@/lib/erp/erp-modulos";
+import { mergeSitePublicoConfig } from "@/lib/tenant/site-public-config";
 
 export type EmpresaDominioRow = {
   id: string;
@@ -96,6 +97,25 @@ export async function updateErpSistemaAction(id: string, formData: FormData) {
   revalidatePath(`/admin/empresas/${id}`);
   revalidatePath("/admin");
   revalidatePath("/erp");
+}
+
+export async function updateSitePublicoAction(id: string, formData: FormData) {
+  await requireSuperadmin();
+  const supabase = await createClient();
+  const { data: empresa, error: readError } = await supabase
+    .from("empresas")
+    .select("configuracoes")
+    .eq("id", id)
+    .single();
+  if (readError || !empresa) throw new Error(readError?.message ?? "Empresa não encontrada.");
+
+  const configuracoes = mergeSitePublicoConfig(empresa.configuracoes, {
+    operacionalHabilitado: formData.get("site_operacional_habilitado") === "on",
+  });
+  const { error } = await supabase.from("empresas").update({ configuracoes }).eq("id", id);
+  if (error) throw new Error(error.message);
+  invalidateTenantHostCache();
+  revalidatePath(`/admin/empresas/${id}`);
 }
 
 export async function upsertBrandingAction(id: string, formData: FormData) {

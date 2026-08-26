@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { rejectIfTenantBlocksLegacyOperationalApi } from "@/lib/tenant/assert-legacy-operational-api";
+import { authorizePublicIngress } from "@/lib/security/public-ingress";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { registrarEvento } from "@/lib/eventos/registrar";
 import {
@@ -36,8 +36,8 @@ type Body = {
 };
 
 export async function POST(request: Request) {
-  const __tenantBlocked = await rejectIfTenantBlocksLegacyOperationalApi(request);
-  if (__tenantBlocked) return __tenantBlocked;
+  const ingress = await authorizePublicIngress(request, "grupos_fluxo", { limit: 12 });
+  if (!ingress.ok) return ingress.response;
   try {
     const body = (await request.json()) as Body;
     if (!propostaMinimumValid({ nome: body.nome, telefone: body.whatsapp }) || !body.selecoes?.length) {
@@ -51,6 +51,7 @@ export async function POST(request: Request) {
     const { data: leadRow, error: leadErr } = await admin
       .from("leads")
       .insert({
+        empresa_id: ingress.empresaId,
         nome: body.nome.trim(),
         whatsapp,
         origem: "grupos",
@@ -70,6 +71,9 @@ export async function POST(request: Request) {
 
     const empresaId = await getCatalogEmpresaIdFromRequest(request);
     if (!empresaId) {
+      return NextResponse.json({ error: GRUPO_NOT_FOUND_MESSAGE }, { status: 404 });
+    }
+    if (empresaId !== ingress.empresaId) {
       return NextResponse.json({ error: GRUPO_NOT_FOUND_MESSAGE }, { status: 404 });
     }
 
@@ -110,6 +114,7 @@ export async function POST(request: Request) {
     const { data: sim, error: simErr } = await admin
       .from("simulacoes_grupos")
       .insert({
+        empresa_id: ingress.empresaId,
         lead_id: leadId,
         origem: "grupos",
         modalidade: selecoesCalc.map((s) => s.grupo.modalidade).join(", "),
@@ -139,6 +144,7 @@ export async function POST(request: Request) {
         const mod = resolveModalidadeLanceAtiva(s.config, modsAtivas);
         const lanceSnapshot = buildSnapshotLanceLinha(s.config, s.resultado, mod);
         return {
+        empresa_id: ingress.empresaId,
         simulacao_grupo_id: sim.id,
         grupo_id: s.grupo.id,
         grupo_cota_id: s.cota.id,
@@ -193,6 +199,7 @@ export async function POST(request: Request) {
       const { data: prop } = await admin
         .from("propostas")
         .insert({
+          empresa_id: ingress.empresaId,
           lead_id: leadId,
           nome_cliente: body.nome.trim(),
           whatsapp_cliente: whatsapp,
@@ -233,12 +240,14 @@ export async function POST(request: Request) {
           pagina: "/grupos",
         });
         await registrarEvento({
+          empresa_id: ingress.empresaId,
           tipo_evento: "lead_criado",
           origem: "grupos",
           pagina: "/grupos",
           lead_id: leadId,
         });
         await registrarEvento({
+          empresa_id: ingress.empresaId,
           tipo_evento: "simulacao_grupo_criada",
           origem: "grupos",
           entidade_tipo: "simulacao_grupo",
@@ -247,6 +256,7 @@ export async function POST(request: Request) {
           dados_evento: { acao: body.acao },
         });
         await registrarEvento({
+          empresa_id: ingress.empresaId,
           tipo_evento: "clique_gerar_proposta",
           origem: "grupos",
           lead_id: leadId,
@@ -266,12 +276,14 @@ export async function POST(request: Request) {
     }
 
     await registrarEvento({
+      empresa_id: ingress.empresaId,
       tipo_evento: "lead_criado",
       origem: "grupos",
       pagina: "/grupos",
       lead_id: leadId,
     });
     await registrarEvento({
+      empresa_id: ingress.empresaId,
       tipo_evento: "simulacao_grupo_criada",
       origem: "grupos",
       entidade_tipo: "simulacao_grupo",

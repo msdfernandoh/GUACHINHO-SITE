@@ -1,10 +1,8 @@
 import {
   EMPRESA_ADMINISTRADORA_STATUS,
   ADMINISTRADORA_STATUS,
-  GAUCHINHO_EMPRESA_ID,
 } from "@/lib/administradoras/constants";
 import { concessaoPermiteUso } from "@/lib/administradoras/rules";
-import { GAUCHINHO_SLUG } from "@/lib/tenant/constants";
 
 export const GRUPO_NOT_FOUND_MESSAGE = "Grupo não encontrado.";
 export const COTA_NOT_FOUND_MESSAGE = "Cota não encontrada.";
@@ -54,7 +52,7 @@ export function isEmpresaUuid(valor: string | null | undefined): boolean {
 
 /**
  * Normaliza empresa_id do tenant resolvido pelo proxy.
- * Aceita UUID real; mapeia synthetic/emergency Gauchinho → UUID canônico.
+ * Aceita somente UUID real resolvido pela infraestrutura de tenant.
  * Nunca aceita empresa_id vindo do client como autoridade.
  */
 export function resolveEmpresaIdForCatalog(tenant: {
@@ -66,14 +64,6 @@ export function resolveEmpresaIdForCatalog(tenant: {
   if (!id || !slug) return null;
 
   if (isEmpresaUuid(id)) return id;
-
-  // Headers synthetic/emergency do proxy (dev/fallback) — só por slug confiável.
-  if (
-    (id.startsWith("dev-") || id.startsWith("emergency-")) &&
-    slug === GAUCHINHO_SLUG
-  ) {
-    return GAUCHINHO_EMPRESA_ID;
-  }
 
   return null;
 }

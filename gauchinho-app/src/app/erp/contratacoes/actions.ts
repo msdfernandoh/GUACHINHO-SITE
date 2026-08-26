@@ -2,9 +2,9 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { requireStaffAdmin } from "@/lib/auth/require-staff-admin";
-import { getCurrentTenantContext } from "@/lib/tenant/context";
+import { requireTenantPermission } from "@/lib/tenant/context";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/server";
 import { converterContratacaoEmVenda } from "@/lib/vendas/vendas-service";
 
 function value(formData: FormData, key: string) {
@@ -24,16 +24,16 @@ function classificarPendencia(message: string) {
 }
 
 export async function formalizarContratacaoAction(formData: FormData) {
-  await requireStaffAdmin();
-  const { empresaAtiva } = await getCurrentTenantContext();
-  if (!empresaAtiva?.id) redirect("/erp/contratacoes?erro=Tenant não identificado");
+  const { empresaAtiva } = await requireTenantPermission("formalizar_vendas");
   const contratacaoId = value(formData, "contratacao_id");
   const grupoId = value(formData, "grupo_id");
   const opcaoCotaId = value(formData, "opcao_cota_id");
+  const modalidadeComissaoId = value(formData, "modalidade_comissao_id");
   const principalId = value(formData, "participante_principal_id");
   const secundarioId = value(formData, "participante_secundario_id") || null;
   const fracao = value(formData, "fracao_secundario");
   const admin = createAdminClient();
+  const db = await createClient();
   try {
     const { data: contratacao, error: contratacaoError } = await admin
       .from("contratacoes_online")
@@ -49,11 +49,12 @@ export async function formalizarContratacaoAction(formData: FormData) {
       const { error: syncError } = await admin.from("contratacoes_online").update({ contrato_assinado: true }).eq("id", contratacaoId).eq("empresa_id", empresaAtiva.id);
       if (syncError) throw new Error(syncError.message);
     }
-    const { error: prepararError } = await admin.rpc("rpc_preparar_formalizacao_contratacao", {
+    const { error: prepararError } = await db.rpc("rpc_preparar_formalizacao_contratacao", {
       p_empresa_id: empresaAtiva.id,
       p_contratacao_id: contratacaoId,
       p_grupo_id: grupoId,
       p_opcao_cota_id: opcaoCotaId,
+      p_modalidade_comissao_id: modalidadeComissaoId,
       p_participante_principal_id: principalId,
       p_participante_secundario_id: secundarioId,
       p_fracao_secundario: secundarioId ? Number(fracao) : null,

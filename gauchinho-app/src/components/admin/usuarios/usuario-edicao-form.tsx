@@ -1,12 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
 import { AdminFormSubmitButton } from "@/components/admin/admin-form-submit-button";
-import { Input, Label, Select } from "@/components/ui/form-primitives";
-import { surfaceInputDark } from "@/components/ui/form-primitives";
+import { Label, Select } from "@/components/ui/form-primitives";
 import { ADMIN_MENU_ITEMS, type AdminMenuKey } from "@/lib/admin/admin-menus";
 import { PERFIS } from "@/lib/auth/permissions";
-import { isGmailAddress } from "@/lib/google-calendar/email";
 import type { ErpAccessId } from "@/lib/erp/erp-acesso";
 
 type Props = {
@@ -46,8 +43,7 @@ export function UsuarioEdicaoForm({
   erpMenuOptions,
   updateAction,
 }: Props) {
-  const [emailEdit, setEmailEdit] = useState(email);
-  const gmail = useMemo(() => isGmailAddress(emailEdit), [emailEdit]);
+  const gmail = email.trim().toLowerCase().endsWith("@gmail.com");
 
   return (
     <details className="group">
@@ -59,9 +55,10 @@ export function UsuarioEdicaoForm({
         className="mt-3 min-w-[18rem] max-w-md space-y-3 rounded-lg border border-zinc-700 bg-zinc-950/60 p-3"
       >
         <input type="hidden" name="usuario_id" value={usuarioId} />
-        <div>
-          <Label className="text-xs">Nome</Label>
-          <Input name="nome" defaultValue={nome} required className={`mt-1 ${surfaceInputDark}`} />
+        <div className="rounded-md border border-zinc-800 bg-zinc-900/60 p-2 text-[11px] text-zinc-400">
+          <p className="font-semibold text-zinc-200">Identidade global protegida</p>
+          <p>{nome} · {email}{telefone ? ` · ${telefone}` : ""}</p>
+          <p className="mt-1">Nome, login e senha são administrados na identidade da plataforma; aqui você altera somente o acesso desta empresa.</p>
         </div>
         <div className="space-y-2 rounded-md border border-blue-900 p-2">
           <p className="text-xs font-semibold text-zinc-300">Menus do ERP</p>
@@ -83,38 +80,6 @@ export function UsuarioEdicaoForm({
           <input type="checkbox" name="pode_estornar_contas" defaultChecked={podeEstornarContas} className="mt-0.5" />
           Autorizado a estornar contas pagas no ERP
         </label>
-        <div>
-          <Label className="text-xs">E-mail (login)</Label>
-          <Input
-            name="email"
-            type="email"
-            required
-            value={emailEdit}
-            onChange={(e) => setEmailEdit(e.target.value)}
-            className={`mt-1 ${surfaceInputDark}`}
-          />
-          <p className="mt-1 text-[10px] text-zinc-500">Altera também o login no Supabase Auth.</p>
-        </div>
-        <div>
-          <Label className="text-xs">Telefone</Label>
-          <Input
-            name="telefone"
-            type="tel"
-            defaultValue={telefone ?? ""}
-            className={`mt-1 ${surfaceInputDark}`}
-          />
-        </div>
-        <div>
-          <Label className="text-xs">Nova senha (opcional)</Label>
-          <Input
-            name="nova_senha"
-            type="password"
-            minLength={8}
-            autoComplete="new-password"
-            placeholder="Mín. 8 caracteres"
-            className={`mt-1 ${surfaceInputDark}`}
-          />
-        </div>
         <div>
           <Label className="text-xs">Perfil</Label>
           <Select name="perfil" defaultValue={perfil} className="mt-1 w-full">
@@ -181,7 +146,7 @@ export function UsuarioEdicaoForm({
           ) : googleAgendaSync ? (
             <p className="mt-1 text-[10px] text-zinc-500">
               {googleConnected
-                ? "Conectado ao Google — se mudar o e-mail, será preciso conectar de novo na Agenda."
+                ? "Identidade conectada ao Google; habilitação válida somente nesta empresa."
                 : "Habilitado — o usuário conecta em Admin → Agenda."}
             </p>
           ) : (

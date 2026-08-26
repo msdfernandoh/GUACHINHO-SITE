@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { rejectIfTenantBlocksLegacyOperationalApi } from "@/lib/tenant/assert-legacy-operational-api";
+import { authorizePublicIngress } from "@/lib/security/public-ingress";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { registrarEvento } from "@/lib/eventos/registrar";
 import { DEFAULT_LEADS, getConfigJsonPublic } from "@/server/config";
@@ -18,8 +18,8 @@ type Body = {
 };
 
 export async function POST(request: Request) {
-  const __tenantBlocked = await rejectIfTenantBlocksLegacyOperationalApi(request);
-  if (__tenantBlocked) return __tenantBlocked;
+  const ingress = await authorizePublicIngress(request, "simulador_captura", { limit: 12 });
+  if (!ingress.ok) return ingress.response;
   try {
     const body = (await request.json()) as Body;
     if (!propostaMinimumValid({ nome: body.nome, telefone: body.whatsapp })) {
@@ -39,6 +39,7 @@ export async function POST(request: Request) {
     const { data: leadRow, error: leadErr } = await admin
       .from("leads")
       .insert({
+        empresa_id: ingress.empresaId,
         nome: body.nome.trim(),
         whatsapp: body.whatsapp.trim(),
         email: body.email?.trim() || null,
@@ -80,6 +81,7 @@ export async function POST(request: Request) {
       const { data: prop } = await admin
         .from("propostas")
         .insert({
+          empresa_id: ingress.empresaId,
           lead_id: leadId,
           nome_cliente: body.nome.trim(),
           whatsapp_cliente: body.whatsapp.trim(),
@@ -114,6 +116,7 @@ export async function POST(request: Request) {
           pagina: "/simulador",
         });
         await registrarEvento({
+          empresa_id: ingress.empresaId,
           tipo_evento: "lead_criado",
           origem,
           pagina: "/simulador",
@@ -121,6 +124,7 @@ export async function POST(request: Request) {
           dados_evento: { acao: body.acao, modo: body.modo },
         });
         await registrarEvento({
+          empresa_id: ingress.empresaId,
           tipo_evento: "clique_gerar_proposta",
           origem,
           lead_id: leadId,
@@ -152,6 +156,7 @@ export async function POST(request: Request) {
       .maybeSingle();
 
     await registrarEvento({
+      empresa_id: ingress.empresaId,
       tipo_evento: "lead_criado",
       origem,
       pagina: "/simulador",
@@ -160,6 +165,7 @@ export async function POST(request: Request) {
     });
     if (body.acao === "proposta") {
       await registrarEvento({
+        empresa_id: ingress.empresaId,
         tipo_evento: "clique_gerar_proposta",
         origem,
         lead_id: leadId,

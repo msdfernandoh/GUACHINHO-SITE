@@ -9,8 +9,10 @@ import {
   deleteDominioAction,
   verifyDominioAction,
   updateErpSistemaAction,
+  updateSitePublicoAction,
 } from "../actions";
 import { ERP_MODULES, getErpSistemaConfig } from "@/lib/erp/erp-modulos";
+import { getSitePublicoConfig } from "@/lib/tenant/site-public-config";
 import {
   fetchAdministradorasCandidatasAction,
   fetchEmpresaAdministradorasAction,
@@ -46,6 +48,8 @@ export default async function EditarEmpresaPage({ params }: { params: Promise<{ 
   ) => setEmpresaAdministradoraStatusAction(vinculoId, id, status);
   const updateErp = updateErpSistemaAction.bind(null, id);
   const erpConfig = getErpSistemaConfig(empresa.configuracoes);
+  const sitePublicoConfig = getSitePublicoConfig(empresa.configuracoes);
+  const updateSitePublico = updateSitePublicoAction.bind(null, id);
 
   return (
     <div className="space-y-6">
@@ -65,6 +69,25 @@ export default async function EditarEmpresaPage({ params }: { params: Promise<{ 
         updateAction={updateVinculo}
         setStatusAction={setVinculoStatus}
       />
+
+      <Card>
+        <h2 className="mb-1 text-lg font-semibold">Site operacional</h2>
+        <p className="mb-4 text-sm text-zinc-500">
+          Libera simulador, grupos, propostas e captação pública somente após catálogo,
+          domínio, branding e permissões estarem homologados.
+        </p>
+        <form action={updateSitePublico} className="space-y-3">
+          <label className="flex items-center gap-2 text-sm font-medium">
+            <input
+              type="checkbox"
+              name="site_operacional_habilitado"
+              defaultChecked={sitePublicoConfig.operacionalHabilitado}
+            />
+            Site operacional habilitado
+          </label>
+          <Button type="submit">Salvar liberação do site</Button>
+        </form>
+      </Card>
 
       <Card>
         <h2 className="mb-1 text-lg font-semibold">ERP Sistema</h2>

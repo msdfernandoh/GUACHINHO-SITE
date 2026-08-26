@@ -36,7 +36,7 @@ describe("ERP Contratações — formalização V1", () => {
     expect(list).toContain("Contratações para formalizar");
     expect(list).not.toMatch(/Excluir|deleteContratacaoAction/);
     expect(detail).toContain("Conferência operacional");
-    expect(detail).toContain("Regra de comissão resolvida");
+    expect(detail).toContain("Validação da comissão");
     expect(detail).toContain("nenhuma cópia será criada");
   });
 });

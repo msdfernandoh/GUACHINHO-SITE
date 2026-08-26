@@ -1,15 +1,16 @@
 import { NextResponse } from "next/server";
-import { rejectIfTenantBlocksLegacyOperationalApi } from "@/lib/tenant/assert-legacy-operational-api";
+import { resolveOperationalTenantForApi } from "@/lib/tenant/assert-legacy-operational-api";
 import { getIndicesPublicos } from "@/lib/indices-financeiros";
 import { registrarEvento } from "@/lib/eventos/registrar";
 
 export async function GET(request: Request) {
-  const __tenantBlocked = await rejectIfTenantBlocksLegacyOperationalApi(request);
-  if (__tenantBlocked) return __tenantBlocked;
+  const tenant = await resolveOperationalTenantForApi(request);
+  if (!tenant.ok) return tenant.response;
   try {
     const { indices, refreshErrors } = await getIndicesPublicos({ tentarAtualizarAutomaticos: false });
 
     await registrarEvento({
+      empresa_id: tenant.empresaId,
       tipo_evento: "indice_financeiro_consultado",
       origem: "api_public_indices",
       pagina: "/api/public/indices-financeiros",

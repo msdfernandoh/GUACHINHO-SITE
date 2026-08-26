@@ -17,7 +17,6 @@ import {
   setCachedTenantResolution,
   invalidateTenantHostCache,
 } from "./tenant-host-cache";
-import { GAUCHINHO_SLUG, EMPRESA_B_SLUG } from "./constants";
 
 describe("normalizeHost", () => {
   it("minúsculas, sem porta, sem www", () => {
@@ -89,10 +88,12 @@ describe("devSlugFromHost", () => {
 });
 
 describe("tenantAllowsLegacyOperationalData", () => {
-  it("somente gauchinho", () => {
-    expect(tenantAllowsLegacyOperationalData(GAUCHINHO_SLUG)).toBe(true);
-    expect(tenantAllowsLegacyOperationalData({ slug: GAUCHINHO_SLUG })).toBe(true);
-    expect(tenantAllowsLegacyOperationalData(EMPRESA_B_SLUG)).toBe(false);
+  it("depende exclusivamente do entitlement explícito", () => {
+    expect(tenantAllowsLegacyOperationalData(true)).toBe(true);
+    expect(tenantAllowsLegacyOperationalData({ operationalEnabled: true })).toBe(true);
+    expect(tenantAllowsLegacyOperationalData(false)).toBe(false);
+    expect(tenantAllowsLegacyOperationalData({ operationalEnabled: false })).toBe(false);
+    expect(tenantAllowsLegacyOperationalData({})).toBe(false);
     expect(tenantAllowsLegacyOperationalData(null)).toBe(false);
   });
 });
@@ -122,6 +123,7 @@ describe("tenant-host-cache", () => {
       empresaId: "1",
       slug: "gauchinho",
       source: "domain",
+      operationalEnabled: true,
     });
     setCachedTenantResolution("b.com", { kind: "miss", reason: "not_found" });
     expect(getCachedTenantResolution("a.com")?.kind).toBe("hit");

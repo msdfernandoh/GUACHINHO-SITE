@@ -19,6 +19,7 @@ import { buildLeadTimeline } from "@/lib/crm/timeline";
 import { MOTIVOS_PERDA } from "@/lib/crm/constants";
 import { isTipoSonhoSorteio, tipoSonhoParaCreditoLead } from "@/lib/eventos-sorteio/lead-map";
 import { isDbMissingColumnError } from "@/lib/comercial-eventos/db-ready";
+import { getCurrentTenantContext } from "@/lib/tenant/context";
 
 async function touchInteracao(supabase: Awaited<ReturnType<typeof createClient>>, leadId: string) {
   await supabase
@@ -686,6 +687,8 @@ export async function fetchLeadDetail(leadId: string) {
 import { listarConsultores } from "@/lib/admin/consultores";
 
 export async function fetchSrdOptions() {
+  const { empresaAtiva } = await getCurrentTenantContext();
+  if (!empresaAtiva) return [];
   const supabase = await createClient();
-  return listarConsultores(supabase);
+  return listarConsultores(supabase, { empresaId: empresaAtiva.id });
 }

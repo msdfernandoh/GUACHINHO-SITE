@@ -129,7 +129,11 @@ export async function criarPropostaDoFluxo(input: {
   let consultorNome = input.gerador?.nome ?? input.draft.consultor_nome?.trim() ?? null;
   let consultorEmail = input.gerador?.email ?? null;
   if (input.draft.consultor_id?.trim()) {
-    const consultor = await resolverConsultorPorId(admin, input.draft.consultor_id.trim());
+    const consultor = await resolverConsultorPorId(
+      admin,
+      input.draft.consultor_id.trim(),
+      input.empresaId,
+    );
     if (!consultor) throw new Error("Consultor responsável inválido.");
     consultorId = consultor.id;
     consultorNome = input.draft.consultor_nome?.trim() || consultor.nome;

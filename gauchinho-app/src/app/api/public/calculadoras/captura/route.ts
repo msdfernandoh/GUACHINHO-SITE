@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { rejectIfTenantBlocksLegacyOperationalApi } from "@/lib/tenant/assert-legacy-operational-api";
+import { authorizePublicIngress } from "@/lib/security/public-ingress";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { registrarEvento } from "@/lib/eventos/registrar";
 import {
@@ -26,8 +26,8 @@ type Body = {
 const ORIGEM = "calculadora_financeira";
 
 export async function POST(request: Request) {
-  const __tenantBlocked = await rejectIfTenantBlocksLegacyOperationalApi(request);
-  if (__tenantBlocked) return __tenantBlocked;
+  const ingress = await authorizePublicIngress(request, "calculadora_captura", { limit: 12 });
+  if (!ingress.ok) return ingress.response;
   try {
     const body = (await request.json()) as Body;
     if (!body.nome?.trim() || !body.whatsapp?.trim() || !body.calculadoraId) {
@@ -99,6 +99,7 @@ export async function POST(request: Request) {
     const { data: leadRow, error: leadErr } = await admin
       .from("leads")
       .insert({
+        empresa_id: ingress.empresaId,
         nome: body.nome.trim(),
         whatsapp: body.whatsapp.trim(),
         email: body.email?.trim() || null,
@@ -146,6 +147,7 @@ export async function POST(request: Request) {
     }
 
     await registrarEvento({
+      empresa_id: ingress.empresaId,
       tipo_evento: "lead_criado",
       origem: ORIGEM,
       pagina: "/calculadoras",

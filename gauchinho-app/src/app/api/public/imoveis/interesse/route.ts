@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { rejectIfTenantBlocksLegacyOperationalApi } from "@/lib/tenant/assert-legacy-operational-api";
+import { authorizePublicIngress } from "@/lib/security/public-ingress";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { registrarEvento } from "@/lib/eventos/registrar";
 import { DEFAULT_LEADS, getConfigJsonPublic } from "@/server/config";
@@ -19,8 +19,8 @@ type Body = {
 };
 
 export async function POST(request: Request) {
-  const __tenantBlocked = await rejectIfTenantBlocksLegacyOperationalApi(request);
-  if (__tenantBlocked) return __tenantBlocked;
+  const ingress = await authorizePublicIngress(request, "imovel_interesse", { limit: 10 });
+  if (!ingress.ok) return ingress.response;
   try {
     const body = (await request.json()) as Body;
     if (!body.imovelId || !body.nome?.trim() || !body.whatsapp?.trim()) {
@@ -32,6 +32,7 @@ export async function POST(request: Request) {
       .from("imoveis")
       .select("*, imobiliarias(*)")
       .eq("id", body.imovelId)
+      .eq("empresa_id", ingress.empresaId)
       .eq("ativo", true)
       .in("status", ["ativo", "reservado"])
       .maybeSingle();
@@ -72,6 +73,7 @@ export async function POST(request: Request) {
     const { data: leadRow, error: leadErr } = await admin
       .from("leads")
       .insert({
+        empresa_id: ingress.empresaId,
         nome: body.nome.trim(),
         whatsapp: body.whatsapp.trim(),
         email: body.email?.trim() || null,
@@ -100,6 +102,7 @@ export async function POST(request: Request) {
     const pagina = "/oportunidades-imobiliarias";
 
     await registrarEvento({
+      empresa_id: ingress.empresaId,
       tipo_evento: "lead_criado",
       origem: "oportunidade_imobiliaria",
       pagina,
@@ -108,6 +111,7 @@ export async function POST(request: Request) {
       imovel_id: imovel.id,
     });
     await registrarEvento({
+      empresa_id: ingress.empresaId,
       tipo_evento: "imovel_interesse",
       origem: "oportunidade_imobiliaria",
       pagina,
@@ -132,6 +136,7 @@ export async function POST(request: Request) {
     if (wa) {
       whatsappLink = whatsappUrl(wa.numero, wa.mensagem);
       await registrarEvento({
+        empresa_id: ingress.empresaId,
         tipo_evento: "clique_whatsapp_imobiliaria",
         origem: "oportunidade_imobiliaria",
         pagina,

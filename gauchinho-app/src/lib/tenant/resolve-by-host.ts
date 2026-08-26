@@ -7,7 +7,6 @@ import {
 import {
   devSlugFromHost,
   isDevelopmentNodeEnv,
-  isOfficialGauchinhoHost,
   isPlatformHost,
   normalizeHost,
 } from "./dominio";
@@ -25,6 +24,7 @@ import {
 export type ResolvedTenantRef = {
   empresaId: string;
   slug: string;
+  operationalEnabled: boolean;
   source: CachedTenantHit["source"];
 };
 
@@ -51,7 +51,13 @@ type EmpresaRow = {
   slug: string;
   status: string;
   ativo: boolean;
+  configuracoes: Record<string, unknown> | null;
 };
+
+function operationalEnabled(empresa: EmpresaRow): boolean {
+  const site = empresa.configuracoes?.site_publico;
+  return Boolean(site && typeof site === "object" && (site as Record<string, unknown>).operacional_habilitado === true);
+}
 
 type BrandingRow = {
   status_publicacao: string;
@@ -118,7 +124,7 @@ async function resolveByDomainValor(
   const { data, error } = await reader
     .from("empresa_dominios")
     .select(
-      "ativo, verificado, empresa:empresas!inner(id, slug, status, ativo)",
+      "ativo, verificado, empresa:empresas!inner(id, slug, status, ativo, configuracoes)",
     )
     .eq("valor", valor)
     .eq("ativo", true)
@@ -152,7 +158,7 @@ async function resolveEmpresaBySlug(
 > {
   const { data, error } = await reader
     .from("empresas")
-    .select("id, slug, status, ativo")
+    .select("id, slug, status, ativo, configuracoes")
     .eq("slug", slug)
     .maybeSingle();
 
@@ -166,43 +172,23 @@ async function resolveEmpresaBySlug(
   return { kind: "hit", empresa: data as EmpresaRow };
 }
 
-function emergencyGauchinhoFallback(rawHost: string): ResolveTenantResult | null {
-  if (!isOfficialGauchinhoHost(rawHost)) return null;
-  /**
-   * TODO(fase-2-pos-044): Remover este fallback emergencial após a Migration 044
-   * estar aplicada e homologada em produção. Mantido apenas para evitar 404 no
-   * domínio oficial da Gauchinho durante a janela código-antes-da-044.
-   * Escopo estrito: somente gauchinhoconsorcios.com.br e www.
-   */
-  return {
-    ok: true,
-    tenant: {
-      empresaId: "emergency-gauchinho-fallback",
-      slug: GAUCHINHO_SLUG,
-      source: "emergency_gauchinho_fallback",
-    },
-  };
-}
-
 async function resolveVercelPreviewGauchinho(
   reader: SupabaseClient | null,
   rawHost: string,
   cacheKey: string,
 ): Promise<ResolveTenantResult | null> {
   if (!isVercelPreviewGauchinhoHost(rawHost)) return null;
+  if (!reader) return null;
 
-  let empresaId = "vercel-preview-gauchinho";
-  if (reader) {
-    const slugResult = await resolveEmpresaBySlug(reader, GAUCHINHO_SLUG);
-    if (slugResult.kind === "hit") {
-      empresaId = slugResult.empresa.id;
-    }
-  }
+  const slugResult = await resolveEmpresaBySlug(reader, GAUCHINHO_SLUG);
+  if (slugResult.kind !== "hit") return null;
+  const empresaId = slugResult.empresa.id;
 
   const hit: CachedTenantEntry = {
     kind: "hit",
     empresaId,
     slug: GAUCHINHO_SLUG,
+    operationalEnabled: operationalEnabled(slugResult.empresa),
     source: VERCEL_PREVIEW_TENANT_SOURCE,
   };
   if (cacheKey) {
@@ -213,6 +199,7 @@ async function resolveVercelPreviewGauchinho(
     tenant: {
       empresaId,
       slug: GAUCHINHO_SLUG,
+      operationalEnabled: operationalEnabled(slugResult.empresa),
       source: VERCEL_PREVIEW_TENANT_SOURCE,
     },
   };
@@ -237,8 +224,8 @@ function logTechnical(message: string, detail?: string): void {
  * 2. www já tratado na normalização
  * 3. subdomínio cadastrado (mesmo match por valor)
  * 4. override exclusivo de development
- * 5. fallback temporário só para hosts oficiais da Gauchinho se infra 044 ausente
- * 6. site não configurado
+ * 5. preview oficial validado no cadastro da empresa
+ * 6. site não configurado (falha fechada)
  *
  * Credenciais: lidas neste módulo a partir de process.env (não receber a service
  * role como argumento do proxy). Em testes, supabaseUrl/serviceKey podem ser
@@ -271,13 +258,10 @@ export async function resolveTenantForRequest(input: {
           tenant: {
             empresaId: cached.empresaId,
             slug: cached.slug,
+            operationalEnabled: cached.operationalEnabled,
             source: cached.source,
           },
         };
-      }
-      if (cached.reason === "infra_unavailable") {
-        const emergency = emergencyGauchinhoFallback(rawHost ?? "");
-        if (emergency) return emergency;
       }
       // Miss em cache: hosts reais param aqui; preview Vercel oficial reavalia.
       if (!isVercelPreviewGauchinhoHost(rawHost)) {
@@ -287,13 +271,6 @@ export async function resolveTenantForRequest(input: {
   }
 
   if (!supabaseUrl || !serviceKey) {
-    const emergency = emergencyGauchinhoFallback(rawHost ?? "");
-    if (emergency) {
-      logTechnical("credenciais de leitura ausentes; fallback temporário Gauchinho para host oficial");
-      return emergency;
-    }
-    const previewWithoutKey = await resolveVercelPreviewGauchinho(null, rawHost ?? "", cacheKey);
-    if (previewWithoutKey) return previewWithoutKey;
     return { ok: false, reason: "missing_service_key" };
   }
 
@@ -306,14 +283,6 @@ export async function resolveTenantForRequest(input: {
 
     if (domainResult.kind === "infra_missing") {
       logTechnical("infra Migration 044 indisponível", domainResult.message);
-      const emergency = emergencyGauchinhoFallback(rawHost ?? "");
-      if (emergency) {
-        setCachedTenantResolution(cacheKey, {
-          kind: "miss",
-          reason: "infra_unavailable",
-        }, { errorTransient: true });
-        return emergency;
-      }
       // Em development, continua para overrides (*.localhost / ?__tenant=)
       // mesmo com infra ausente — não falha fechado ainda.
       if (!isDev) {
@@ -328,8 +297,6 @@ export async function resolveTenantForRequest(input: {
       }
     } else if (domainResult.kind === "transient_error") {
       logTechnical("erro transitório ao consultar empresa_dominios", domainResult.message);
-      const emergency = emergencyGauchinhoFallback(rawHost ?? "");
-      if (emergency) return emergency;
       if (!isDev) {
         setCachedTenantResolution(cacheKey, { kind: "miss", reason: "not_found" }, {
           errorTransient: true,
@@ -355,8 +322,6 @@ export async function resolveTenantForRequest(input: {
       const brandingResult = await loadBranding(reader, empresa.id);
       if (brandingResult.infraMissing) {
         logTechnical("empresa_branding indisponível", brandingResult.errorMessage);
-        const emergency = emergencyGauchinhoFallback(rawHost ?? "");
-        if (emergency) return emergency;
         if (!isDev) {
           return { ok: false, reason: "infra_unavailable_non_official" };
         }
@@ -371,12 +336,18 @@ export async function resolveTenantForRequest(input: {
           kind: "hit",
           empresaId: empresa.id,
           slug: empresa.slug,
+          operationalEnabled: operationalEnabled(empresa),
           source: "domain",
         };
         setCachedTenantResolution(cacheKey, hit);
         return {
           ok: true,
-          tenant: { empresaId: empresa.id, slug: empresa.slug, source: "domain" },
+          tenant: {
+            empresaId: empresa.id,
+            slug: empresa.slug,
+            operationalEnabled: operationalEnabled(empresa),
+            source: "domain",
+          },
         };
       }
     }
@@ -396,6 +367,7 @@ export async function resolveTenantForRequest(input: {
           kind: "hit",
           empresaId: slugResult.empresa.id,
           slug: slugResult.empresa.slug,
+          operationalEnabled: operationalEnabled(slugResult.empresa),
           source: "dev_override",
         };
         setCachedTenantResolution(cacheKey || devSlug, hit);
@@ -404,32 +376,10 @@ export async function resolveTenantForRequest(input: {
           tenant: {
             empresaId: slugResult.empresa.id,
             slug: slugResult.empresa.slug,
+            operationalEnabled: operationalEnabled(slugResult.empresa),
             source: "dev_override",
           },
         };
-      }
-      if (slugResult.kind === "infra_missing") {
-        // Sem 044: em dev, sintetiza Empresa B / Gauchinho só para preview local.
-        if (devSlug === GAUCHINHO_SLUG) {
-          return {
-            ok: true,
-            tenant: {
-              empresaId: "dev-gauchinho-synthetic",
-              slug: GAUCHINHO_SLUG,
-              source: "dev_override",
-            },
-          };
-        }
-        if (devSlug === EMPRESA_B_SLUG) {
-          return {
-            ok: true,
-            tenant: {
-              empresaId: "dev-empresa-b-synthetic",
-              slug: EMPRESA_B_SLUG,
-              source: "dev_override",
-            },
-          };
-        }
       }
     }
   }
@@ -441,9 +391,7 @@ export async function resolveTenantForRequest(input: {
   if (preview) return preview;
 
   // --- 6) Sem domínio cadastrado e sem override de development ---
-  // Fallback temporário Gauchinho NÃO se aplica em miss limpo (tabela existe,
-  // linha ausente). Ele só ocorre acima quando a infra 044 está indisponível
-  // ou há erro transitório — e apenas para hosts oficiais.
+  // Não existe fallback para empresa fixa: ausência de cadastro falha fechada.
   if (cacheKey) {
     setCachedTenantResolution(cacheKey, { kind: "miss", reason: "not_found" });
   }

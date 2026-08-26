@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
-import { rejectIfTenantBlocksLegacyOperationalApi } from "@/lib/tenant/assert-legacy-operational-api";
+import { authorizePublicIngress } from "@/lib/security/public-ingress";
 import { registrarEvento } from "@/lib/eventos/registrar";
 
 export async function POST(request: Request) {
-  const __tenantBlocked = await rejectIfTenantBlocksLegacyOperationalApi(request);
-  if (__tenantBlocked) return __tenantBlocked;
+  const ingress = await authorizePublicIngress(request, "evento_analytics", { limit: 60 });
+  if (!ingress.ok) return ingress.response;
   try {
     const body = (await request.json()) as {
       tipo_evento: string;
@@ -17,6 +17,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "tipo_evento obrigatório" }, { status: 400 });
     }
     await registrarEvento({
+      empresa_id: ingress.empresaId,
       tipo_evento: body.tipo_evento,
       origem: body.origem ?? "client",
       entidade_tipo: body.entidade_tipo,

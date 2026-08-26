@@ -1,17 +1,31 @@
+import Link from "next/link";
+import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { listarGruposLegados } from "@/lib/platform/vinculacoes-legadas-service";
 import { VinculacoesLegadasView } from "@/components/platform/vinculacoes-legadas-view";
 
-export default async function VinculacoesLegadasPage() {
-  const [dataLegados, db] = await Promise.all([
-    listarGruposLegados(),
-    createClient()
-  ]);
+export default async function VinculacoesLegadasPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ empresa?: string }>;
+}) {
+  const db = await createClient();
+  const { data: empresas } = await db
+    .from("empresas")
+    .select("id,nome_fantasia,slug,status")
+    .order("nome_fantasia");
+  const requested = (await searchParams).empresa;
+  const empresaId = requested && (empresas ?? []).some((empresa) => empresa.id === requested)
+    ? requested
+    : empresas?.[0]?.id;
+  if (!empresaId) redirect("/platform/empresas");
+
+  const dataLegados = await listarGruposLegados(empresaId);
 
   const { data: gruposSaas } = await db
     .from("grupos_consorcio")
     .select(
-      "id,codigo_grupo,status,ativo,prazo_total,administradora:administradoras(nome),tipo:administradora_tipos(nome),modalidade_comissao:administradora_modalidades_comissao(nome),cotas:grupos_cotas(id,valor_credito,valor_parcela,prazo,ativo,status)"
+      "id,codigo_grupo,status,ativo,prazo_total,administradora:administradoras(nome),tipo:administradora_tipos(nome),modalidade_comissao:administradora_modalidades_comissao(nome),cotas:grupos_cotas(id,valor_credito,ativo,status)"
     )
     .order("codigo_grupo");
 
@@ -29,18 +43,42 @@ export default async function VinculacoesLegadasPage() {
       .map((c) => ({
         id: c.id,
         valor_credito: Number(c.valor_credito),
-        valor_parcela: Number(c.valor_parcela),
-        prazo: Number(c.prazo)
       }))
   }));
 
   return (
-    <VinculacoesLegadasView
-      itens={dataLegados.itens}
-      historico={dataLegados.historico}
-      totalPendentes={dataLegados.totalPendentes}
-      totalSugestoes={dataLegados.totalSugestoes}
-      gruposSaasDisponiveis={gruposSaasDisponiveis}
-    />
+    <div className="space-y-4">
+      <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-900 dark:bg-amber-950/30">
+        <p className="text-xs font-bold uppercase tracking-wide text-amber-800 dark:text-amber-300">
+          Empresa alvo da correção legada
+        </p>
+        <div className="mt-2 flex flex-wrap gap-2">
+          {(empresas ?? []).map((empresa) => (
+            <Link
+              key={empresa.id}
+              href={`/platform/grupos/vinculacoes?empresa=${empresa.id}`}
+              className={`rounded-lg px-3 py-2 text-xs font-semibold ${
+                empresa.id === empresaId
+                  ? "bg-amber-700 text-white"
+                  : "border border-amber-300 bg-white text-amber-900 dark:bg-slate-900 dark:text-amber-200"
+              }`}
+            >
+              {empresa.nome_fantasia} ({empresa.slug})
+            </Link>
+          ))}
+        </div>
+        <p className="mt-2 text-xs text-amber-800/80 dark:text-amber-300/80">
+          Toda leitura, alteração e auditoria abaixo fica limitada à empresa selecionada.
+        </p>
+      </div>
+      <VinculacoesLegadasView
+        empresaId={empresaId}
+        itens={dataLegados.itens}
+        historico={dataLegados.historico}
+        totalPendentes={dataLegados.totalPendentes}
+        totalSugestoes={dataLegados.totalSugestoes}
+        gruposSaasDisponiveis={gruposSaasDisponiveis}
+      />
+    </div>
   );
 }

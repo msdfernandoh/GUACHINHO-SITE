@@ -45,7 +45,7 @@ export async function PublicHeader({ showNav = true, className }: Props) {
     subtitulo,
   );
 
-  const allowsOperational = tenant?.allowsLegacyOperationalData ?? true;
+  const allowsOperational = tenant?.allowsLegacyOperationalData === true;
 
   return (
     <PublicHeaderWrapper className={className}>

@@ -1,6 +1,6 @@
 import "server-only";
 
-import { createAdminClient } from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/server";
 
 /** Valor decimal serializado. O PostgreSQL faz toda aritmética monetária crítica. */
 export type ValorMonetario = string;
@@ -50,7 +50,7 @@ function hojeIso(): string {
 export async function registrarRecebimentoAdministradora(
   input: RecebimentoInput,
 ) {
-  const admin = createAdminClient();
+  const admin = await createClient();
   if (input.motivoDivergencia) {
     if (input.itens.length !== 1) {
       throw new Error(
@@ -104,7 +104,7 @@ export async function transferirPendenciaRecebimento(input: {
   motivo: string;
   idempotencyKey: string;
 }) {
-  const admin = createAdminClient();
+  const admin = await createClient();
   const { data, error } = await admin.rpc(
     "rpc_transferir_pendencia_recebimento",
     {
@@ -120,7 +120,7 @@ export async function transferirPendenciaRecebimento(input: {
 }
 
 export async function registrarPagamentoParticipante(input: PagamentoInput) {
-  const admin = createAdminClient();
+  const admin = await createClient();
   const { data, error } = await admin.rpc("rpc_registrar_pagamento", {
     p_empresa_id: input.empresaId,
     p_competencia: input.competencia,
@@ -148,7 +148,7 @@ export async function gerarCompensacaoParticipante(
   vendaId: string | null,
   idempotencyKey: string,
 ) {
-  const admin = createAdminClient();
+  const admin = await createClient();
   const { data, error } = await admin.rpc("rpc_gerar_compensacao", {
     p_empresa_id: empresaId,
     p_motivo: motivo,
@@ -168,7 +168,7 @@ export async function cancelarVendaComCompensacao(
   motivo: string,
   idempotencyKey: string,
 ) {
-  const admin = createAdminClient();
+  const admin = await createClient();
   const { data, error } = await admin.rpc("rpc_cancelar_venda_comissoes", {
     p_empresa_id: empresaId,
     p_venda_id: vendaId,
@@ -185,7 +185,7 @@ export async function estornarRecebimento(
   motivo: string,
   idempotencyKey: string,
 ) {
-  const admin = createAdminClient();
+  const admin = await createClient();
   const { data, error } = await admin.rpc("rpc_estornar_recebimento", {
     p_empresa_id: empresaId,
     p_recebimento_id: recebimentoId,
@@ -202,7 +202,7 @@ export async function estornarPagamento(
   motivo: string,
   idempotencyKey: string,
 ) {
-  const admin = createAdminClient();
+  const admin = await createClient();
   const { data, error } = await admin.rpc("rpc_estornar_pagamento", {
     p_empresa_id: empresaId,
     p_pagamento_id: pagamentoId,
@@ -216,7 +216,7 @@ export async function estornarPagamento(
 export async function getResumoCaixaEmpresa(
   empresaId: string,
 ): Promise<ResumoCaixa> {
-  const admin = createAdminClient();
+  const admin = await createClient();
   const [movimentos, franquia, participantes, compensacoes] = await Promise.all(
     [
       admin

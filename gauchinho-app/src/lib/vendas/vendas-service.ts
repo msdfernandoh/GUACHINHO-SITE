@@ -1,6 +1,6 @@
 import "server-only";
 
-import { createAdminClient } from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/server";
 
 export type VendaRow = {
   id: string;
@@ -55,8 +55,8 @@ export async function converterContratacaoEmVenda(
   contratacaoId: string,
   idempotencyKey = `conversao:${contratacaoId}`,
 ): Promise<{ venda: VendaRow; cotaDefinitiva: CotaDefinitivaRow }> {
-  const admin = createAdminClient();
-  const { data, error } = await admin.rpc("rpc_converter_contratacao_venda", {
+  const db = await createClient();
+  const { data, error } = await db.rpc("rpc_converter_contratacao_venda", {
     p_empresa_id: empresaId,
     p_contratacao_id: contratacaoId,
     p_idempotency_key: idempotencyKey,
@@ -74,8 +74,8 @@ export async function converterContratacaoEmVenda(
  * Para a Empresa B (0 concessões), retorna lista vazia.
  */
 export async function listVendasForEmpresa(empresaId: string): Promise<VendaRow[]> {
-  const admin = createAdminClient();
-  const { data, error } = await admin
+  const db = await createClient();
+  const { data, error } = await db
     .from("vendas")
     .select("*")
     .eq("empresa_id", empresaId)
@@ -89,8 +89,8 @@ export async function listVendasForEmpresa(empresaId: string): Promise<VendaRow[
  * Lista cotas definitivas de clientes para uma empresa / tenant.
  */
 export async function listCotasDefinitivasForEmpresa(empresaId: string): Promise<CotaDefinitivaRow[]> {
-  const admin = createAdminClient();
-  const { data, error } = await admin
+  const db = await createClient();
+  const { data, error } = await db
     .from("cotas_definitivas")
     .select("*")
     .eq("empresa_id", empresaId)

@@ -1,6 +1,4 @@
 import { redirect } from "next/navigation";
-import { getUsuarioNegocio } from "@/lib/auth/get-usuario";
-import { canManageUsers } from "@/lib/auth/permissions";
 import {
   createUsuarioAction,
   fetchUsuarios,
@@ -18,19 +16,29 @@ import { getCurrentTenantContext } from "@/lib/tenant/context";
 import { getErpSistemaConfig } from "@/lib/erp/erp-modulos";
 import { ERP_ACCESS_ITEMS, listTenantErpAccessIds, resolveErpUserAccess, type ErpAccessId } from "@/lib/erp/erp-acesso";
 
+function perfilLegadoDoPapel(
+  codigo: string | null | undefined,
+  fallback: (typeof PERFIS)[number],
+): (typeof PERFIS)[number] {
+  if (codigo === "admin_empresa") return "master";
+  if (codigo === "parceiro_imobiliaria") return "imobiliaria";
+  if (codigo === "visualizador") return "visualizador";
+  if (codigo === "consultor" || codigo === "gestor") return "srd";
+  return fallback;
+}
+
 export default async function UsuariosPage({
   searchParams,
 }: {
   searchParams: Promise<{ flash?: string }>;
 }) {
-  const current = await getUsuarioNegocio();
-  if (!canManageUsers(current?.perfil)) {
+  const { empresaAtiva, permissoes } = await getCurrentTenantContext();
+  if (!empresaAtiva || !permissoes.has("gerenciar_usuarios")) {
     redirect("/admin");
   }
   const sp = await searchParams;
   const usuarios = await fetchUsuarios();
   const defaultMenus = resolveAdminMenus("srd", null);
-  const { empresaAtiva } = await getCurrentTenantContext();
   const erpConfig = getErpSistemaConfig(empresaAtiva?.configuracoes);
   const erpDefaultMenus = listTenantErpAccessIds(erpConfig);
   const erpMenuOptions = ERP_ACCESS_ITEMS.filter((item) => erpDefaultMenus.includes(item.id));
@@ -39,7 +47,9 @@ export default async function UsuariosPage({
     <div className="space-y-8">
       <div>
         <h1 className="text-2xl font-bold">Usuários</h1>
-        <p className="text-sm text-zinc-500">Master — Supabase Auth + perfil</p>
+        <p className="text-sm text-zinc-500">
+          Identidade global + papel e acesso exclusivos de {empresaAtiva.nome_fantasia}
+        </p>
       </div>
       <UsuarioAdminFlashBanner codigo={sp.flash} />
       <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-4 text-sm dark:border-zinc-800 dark:bg-zinc-900/50">
@@ -196,7 +206,11 @@ export default async function UsuariosPage({
               const googleConnectedAt = (u as { google_calendar_connected_at?: string | null })
                 .google_calendar_connected_at;
               const adminMenusRaw = (u as { admin_menus?: AdminMenuKey[] | null }).admin_menus;
-              const menuKeysAtivos = resolveAdminMenus(u.perfil, adminMenusRaw);
+              const perfilTenant = perfilLegadoDoPapel(
+                (u as { papel_codigo?: string | null }).papel_codigo,
+                u.perfil,
+              );
+              const menuKeysAtivos = resolveAdminMenus(perfilTenant, adminMenusRaw);
               const socioPagador = Boolean((u as { socio_pagador?: boolean }).socio_pagador);
               const podeEstornarContas = Boolean((u as { pode_estornar_contas?: boolean }).pode_estornar_contas);
               const erpMenusRaw = (u as { erp_modulos_visiveis?: ErpAccessId[] | null }).erp_modulos_visiveis;
@@ -206,14 +220,14 @@ export default async function UsuariosPage({
                   <td className="px-3 py-2">{u.nome}</td>
                   <td className="px-3 py-2">{u.email}</td>
                   <td className="px-3 py-2">
-                    <span className="font-medium">{u.perfil}</span>
+                    <span className="font-medium">{u.papel_nome ?? u.papel_codigo ?? u.perfil}</span>
                     <div className="mt-1">
                       <UsuarioEdicaoForm
                         usuarioId={u.id}
                         nome={u.nome}
                         email={u.email}
                         telefone={u.telefone ?? null}
-                        perfil={u.perfil}
+                        perfil={perfilTenant}
                         isConsultor={isConsultor}
                         leadsApenasProprios={leadsApenasProprios}
                         agendaAcessoTodos={agendaAcessoTodos}

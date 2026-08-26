@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { rejectIfTenantBlocksLegacyOperationalApi } from "@/lib/tenant/assert-legacy-operational-api";
+import { resolveOperationalTenantForApi } from "@/lib/tenant/assert-legacy-operational-api";
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
   GRUPO_NOT_FOUND_MESSAGE,
@@ -31,11 +31,14 @@ type SorteioRow = {
  * Não usa join anon em grupos_consorcio (compatível pós-migration 049).
  */
 export async function GET(request: Request) {
-  const __tenantBlocked = await rejectIfTenantBlocksLegacyOperationalApi(request);
-  if (__tenantBlocked) return __tenantBlocked;
+  const tenant = await resolveOperationalTenantForApi(request);
+  if (!tenant.ok) return tenant.response;
 
   const empresaId = await getCatalogEmpresaIdFromRequest(request);
   if (!empresaId) {
+    return NextResponse.json({ rows: [] }, { headers: { "Cache-Control": "private, no-store" } });
+  }
+  if (empresaId !== tenant.empresaId) {
     return NextResponse.json({ rows: [] }, { headers: { "Cache-Control": "private, no-store" } });
   }
 

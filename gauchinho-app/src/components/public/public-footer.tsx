@@ -4,7 +4,7 @@ import { getResolvedTenant } from "@/lib/tenant/get-resolved-empresa";
 export async function PublicFooter() {
   const year = new Date().getFullYear();
   const tenant = await getResolvedTenant();
-  const allowsOperational = tenant?.allowsLegacyOperationalData ?? true;
+  const allowsOperational = tenant?.allowsLegacyOperationalData === true;
   const nome = tenant?.branding.nome_site || "Gauchinho — Consórcios e soluções financeiras";
 
   return (

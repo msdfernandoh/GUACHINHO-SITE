@@ -22,7 +22,7 @@ describe("evaluateLegacyOperationalApiAccess (sem proxy)", () => {
     ) as typeof fetch;
   }
 
-  it("permite Gauchinho oficial com fallback de infra", async () => {
+  it("falha fechado no host oficial quando a infraestrutura de tenant está ausente", async () => {
     vi.stubEnv("NODE_ENV", "production");
     vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "https://example.supabase.co");
     vi.stubEnv("SUPABASE_SERVICE_ROLE_KEY", "test-service-key");
@@ -31,8 +31,8 @@ describe("evaluateLegacyOperationalApiAccess (sem proxy)", () => {
     const r = await evaluateLegacyOperationalApiAccess({
       hostHeader: "gauchinhoconsorcios.com.br",
     });
-    expect(r.allow).toBe(true);
-    if (r.allow) expect(r.slug).toBe("gauchinho");
+    expect(r.allow).toBe(false);
+    if (!r.allow) expect(r.error).toMatch(/não configurado/i);
   });
 
   it("bloqueia host desconhecido mesmo com x-tenant injetável no Request", async () => {
@@ -57,6 +57,6 @@ describe("evaluateLegacyOperationalApiAccess (sem proxy)", () => {
       hostHeader: "empresa-b.localhost",
     });
     expect(r.allow).toBe(false);
-    if (!r.allow) expect(r.error).toMatch(/não disponível/i);
+    if (!r.allow) expect(r.error).toMatch(/não configurado/i);
   });
 });

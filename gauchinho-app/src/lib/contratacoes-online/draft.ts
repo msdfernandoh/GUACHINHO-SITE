@@ -3,6 +3,7 @@ import type { ContratacaoModo, ContratacaoOrigem } from "./types";
 export const CONTRATACAO_DRAFT_STORAGE_KEY = "gauchinho_contratacao_draft_v1";
 
 export type ContratacaoDraftPayload = {
+  empresa_id?: string;
   modo: ContratacaoModo;
   origem: ContratacaoOrigem;
   dados_simulacao: Record<string, unknown>;
@@ -21,7 +22,8 @@ export function isContratacaoDraftPayload(v: unknown): v is ContratacaoDraftPayl
     (o.modo === "cliente_site" || o.modo === "sdr_link") &&
     (o.origem === "simulador" || o.origem === "grupos") &&
     !!o.dados_simulacao &&
-    typeof o.dados_simulacao === "object"
+    typeof o.dados_simulacao === "object" &&
+    (o.empresa_id === undefined || typeof o.empresa_id === "string")
   );
 }
 

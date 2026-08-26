@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { rejectIfTenantBlocksLegacyOperationalApi } from "@/lib/tenant/assert-legacy-operational-api";
+import { authorizePublicIngress } from "@/lib/security/public-ingress";
 import { getUsuarioNegocio } from "@/lib/auth/get-usuario";
 import { isContratacaoDraftPayload } from "@/lib/contratacoes-online/draft";
 import { criarPropostaDoFluxo, atualizarFluxoProposta } from "@/lib/contratacoes-online/proposta-flow";
@@ -8,13 +8,16 @@ import { getCatalogEmpresaIdFromRequest } from "@/lib/grupos/resolve-catalog-emp
 
 /** Persiste somente a proposta após nome + telefone. Nunca cria contratação. */
 export async function POST(request: Request) {
-  const tenantBlocked = await rejectIfTenantBlocksLegacyOperationalApi(request);
-  if (tenantBlocked) return tenantBlocked;
+  const ingress = await authorizePublicIngress(request, "contratacao_materializar", { limit: 10 });
+  if (!ingress.ok) return ingress.response;
   try {
     const body = await request.json() as Record<string, unknown>;
     if (!isContratacaoDraftPayload(body.draft)) return NextResponse.json({ error: "Rascunho inválido" }, { status: 400 });
     const empresaId = await getCatalogEmpresaIdFromRequest(request);
     if (!empresaId) return NextResponse.json({ error: "Tenant não identificado." }, { status: 404 });
+    if (empresaId !== ingress.empresaId || (body.draft.empresa_id && body.draft.empresa_id !== empresaId)) {
+      return NextResponse.json({ error: "Rascunho pertence a outra empresa." }, { status: 404 });
+    }
     const usuario = await getUsuarioNegocio();
     let proposal = await criarPropostaDoFluxo({
       draft: body.draft,

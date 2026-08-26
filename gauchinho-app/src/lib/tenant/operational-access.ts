@@ -1,14 +1,12 @@
-import { GAUCHINHO_SLUG } from "./constants";
-
 /**
- * Regra central: dados operacionais legados só para a Gauchinho.
+ * Regra central: o catálogo/site operacional é um entitlement explícito da empresa.
+ * Não há exceção por slug ou UUID.
  */
 export function tenantAllowsLegacyOperationalData(
-  tenant: { slug: string } | string | null | undefined,
+  tenant: { operationalEnabled?: boolean } | boolean | null | undefined,
 ): boolean {
-  if (!tenant) return false;
-  const slug = typeof tenant === "string" ? tenant : tenant.slug;
-  return slug === GAUCHINHO_SLUG;
+  if (typeof tenant === "boolean") return tenant;
+  return tenant?.operationalEnabled === true;
 }
 
 /**

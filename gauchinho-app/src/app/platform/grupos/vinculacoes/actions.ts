@@ -25,12 +25,16 @@ export async function sincronizarCatalogoSiteErpAction() {
 }
 
 export async function vincularGrupoLegadoAction(formData: FormData) {
+  const empresa_id = String(formData.get("empresa_id") || "").trim();
   const origem = String(formData.get("origem") || "site_grupos").trim();
   const identificador_legado = String(formData.get("identificador_legado") || "").trim();
   const grupo_consorcio_id = String(formData.get("grupo_consorcio_id") || "").trim();
   const produtos_mapeamento_raw = String(formData.get("produtos_mapeamento") || "[]");
   const observacoes = String(formData.get("observacoes") || "").trim();
 
+  if (!empresa_id) {
+    return { ok: false, error: "Empresa alvo não informada." };
+  }
   if (!identificador_legado) {
     return { ok: false, error: "Identificador legado não informado." };
   }
@@ -47,6 +51,7 @@ export async function vincularGrupoLegadoAction(formData: FormData) {
 
   try {
     const res = await vincularGrupoLegado({
+      empresa_id,
       origem,
       identificador_legado,
       grupo_consorcio_id,

@@ -7,11 +7,14 @@ import {
   PARCEIRO_SITE_SLUG_HEADER,
   PARCEIRO_SOURCE_HEADER,
 } from "@/lib/parceiros/partner-site-types";
-import { TENANT_EMPRESA_ID_HEADER, TENANT_SLUG_HEADER } from "@/lib/tenant/constants";
+import {
+  TENANT_EMPRESA_ID_HEADER,
+  TENANT_OPERATIONAL_ENABLED_HEADER,
+  TENANT_SLUG_HEADER,
+} from "@/lib/tenant/constants";
 import {
   isLegacyOperationalApiPath,
   isLegacyOperationalPath,
-  isPlatformEmpresasAdminPath,
   tenantAllowsLegacyOperationalData,
 } from "@/lib/tenant/operational-access";
 import { isPlatformHost } from "@/lib/tenant/dominio";
@@ -41,13 +44,6 @@ function moduleUnavailableApiResponse(): NextResponse {
     { error: "Módulo ainda não disponível para este site." },
     { status: 404 },
   );
-}
-
-function adminUnavailableOnTenantResponse(): NextResponse {
-  return new NextResponse("Painel administrativo não disponível neste site.", {
-    status: 403,
-    headers: { "content-type": "text/plain; charset=utf-8" },
-  });
 }
 
 function platformAccessDeniedResponse(): NextResponse {
@@ -84,6 +80,7 @@ export async function proxy(request: NextRequest) {
   const requestHeaders = new Headers(request.headers);
   requestHeaders.delete(TENANT_EMPRESA_ID_HEADER);
   requestHeaders.delete(TENANT_SLUG_HEADER);
+  requestHeaders.delete(TENANT_OPERATIONAL_ENABLED_HEADER);
   requestHeaders.delete(PARCEIRO_SITE_ID_HEADER);
   requestHeaders.delete(PARCEIRO_SITE_SLUG_HEADER);
   requestHeaders.delete(PARCEIRO_SOURCE_HEADER);
@@ -94,6 +91,7 @@ export async function proxy(request: NextRequest) {
 
   const skipTenant = skipsTenantGate(path);
   let tenantSlug: string | null = null;
+  let tenantOperationalEnabled = false;
   let platformHost = isPlatformHost(request.headers.get("host"));
 
   if (!skipTenant) {
@@ -119,6 +117,7 @@ export async function proxy(request: NextRequest) {
           }
           requestHeaders.set(TENANT_EMPRESA_ID_HEADER, partner.partner.empresa_id);
           requestHeaders.set(TENANT_SLUG_HEADER, partner.partner.empresa_slug);
+          requestHeaders.set(TENANT_OPERATIONAL_ENABLED_HEADER, "true");
           requestHeaders.set(PARCEIRO_SITE_ID_HEADER, partner.partner.parceiro_site_id);
           requestHeaders.set(PARCEIRO_SITE_SLUG_HEADER, partner.partner.site_slug);
           requestHeaders.set(PARCEIRO_SOURCE_HEADER, partner.partner.source);
@@ -151,34 +150,24 @@ export async function proxy(request: NextRequest) {
         }
       }
 
-      if (process.env.NODE_ENV === "development") {
-        const host = (request.headers.get("host") ?? "").toLowerCase();
-        const isLocal =
-          host.startsWith("localhost") ||
-          host.startsWith("127.0.0.1") ||
-          host.includes(".localhost");
-        if (isLocal) {
-          requestHeaders.set(TENANT_EMPRESA_ID_HEADER, "dev-gauchinho-synthetic");
-          requestHeaders.set(TENANT_SLUG_HEADER, "gauchinho");
-          tenantSlug = "gauchinho";
-        } else {
-          return siteNotConfiguredResponse();
-        }
-      } else {
-        return siteNotConfiguredResponse();
-      }
+      return siteNotConfiguredResponse();
     } else if (resolved.context === "platform") {
       // Contexto global: não envia empresa/slug em headers e não consulta tenant.
       platformHost = true;
     } else {
       requestHeaders.set(TENANT_EMPRESA_ID_HEADER, resolved.tenant.empresaId);
       requestHeaders.set(TENANT_SLUG_HEADER, resolved.tenant.slug);
+      requestHeaders.set(
+        TENANT_OPERATIONAL_ENABLED_HEADER,
+        resolved.tenant.operationalEnabled ? "true" : "false",
+      );
       tenantSlug = resolved.tenant.slug;
+      tenantOperationalEnabled = resolved.tenant.operationalEnabled;
     }
 
-    // Bloqueio de APIs/páginas operacionais públicas para tenants ≠ gauchinho.
+    // Bloqueio de APIs/páginas operacionais públicas por entitlement da empresa.
     // /admin NÃO entra aqui — autenticação/autorização abaixo.
-    if (tenantSlug && !tenantAllowsLegacyOperationalData(tenantSlug)) {
+    if (tenantSlug && !tenantAllowsLegacyOperationalData(tenantOperationalEnabled)) {
       if (isLegacyOperationalApiPath(path)) {
         return moduleUnavailableApiResponse();
       }
@@ -257,13 +246,8 @@ export async function proxy(request: NextRequest) {
       return NextResponse.redirect(login);
     }
 
-    // 2) Host institucional ≠ Gauchinho: não redireciona para /?modulo=indisponivel.
-    //    Bloqueia painel operacional; /admin/empresas segue para checagem SuperAdmin na página.
-    if (tenantSlug && !tenantAllowsLegacyOperationalData(tenantSlug)) {
-      if (!isPlatformEmpresasAdminPath(path)) {
-        return adminUnavailableOnTenantResponse();
-      }
-    }
+    // 2) O layout administrativo valida vínculo ativo exatamente com a empresa
+    //    resolvida pelo host. O proxy não bloqueia novas franquias por slug fixo.
   }
 
   if (path === "/login" && user) {

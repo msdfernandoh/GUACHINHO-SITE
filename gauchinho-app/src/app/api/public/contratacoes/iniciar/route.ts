@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
-import { rejectIfTenantBlocksLegacyOperationalApi } from "@/lib/tenant/assert-legacy-operational-api";
-import { getUsuarioNegocio } from "@/lib/auth/get-usuario";
-import { canCreateProposta } from "@/lib/auth/permissions";
+import { authorizePublicIngress } from "@/lib/security/public-ingress";
+import { getCurrentTenantContext } from "@/lib/tenant/context";
 import type { IniciarContratacaoBody } from "@/lib/contratacoes-online/types";
 import {
   CotaNotFoundError,
@@ -13,8 +12,8 @@ import { getCatalogEmpresaIdFromRequest } from "@/lib/grupos/resolve-catalog-emp
 import { criarContratacaoDraftLink } from "@/lib/contratacoes-online/draft-link";
 
 export async function POST(request: Request) {
-  const __tenantBlocked = await rejectIfTenantBlocksLegacyOperationalApi(request);
-  if (__tenantBlocked) return __tenantBlocked;
+  const ingress = await authorizePublicIngress(request, "contratacao_iniciar", { limit: 30 });
+  if (!ingress.ok) return ingress.response;
   try {
     const body = (await request.json()) as IniciarContratacaoBody;
     if (!body.origem || !body.modo || !body.dados_simulacao) {
@@ -27,9 +26,14 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Modo inválido" }, { status: 400 });
     }
 
-    const usuario = await getUsuarioNegocio();
+    const tenantContext = await getCurrentTenantContext();
+    const usuario = tenantContext.usuario;
     if (body.modo === "sdr_link") {
-      if (!usuario || !canCreateProposta(usuario.perfil)) {
+      if (
+        !usuario ||
+        tenantContext.empresaAtiva?.id !== ingress.empresaId ||
+        !tenantContext.permissoes.has("gerenciar_propostas")
+      ) {
         return NextResponse.json({ error: "Sem permissão para gerar link" }, { status: 403 });
       }
     }
@@ -39,6 +43,9 @@ export async function POST(request: Request) {
     if (body.origem === "grupos" && body.modo === "sdr_link") {
       const empresaId = await getCatalogEmpresaIdFromRequest(request);
       if (!empresaId) {
+        return NextResponse.json({ error: GRUPO_NOT_FOUND_MESSAGE }, { status: 404 });
+      }
+      if (empresaId !== ingress.empresaId) {
         return NextResponse.json({ error: GRUPO_NOT_FOUND_MESSAGE }, { status: 404 });
       }
       try {
@@ -63,6 +70,7 @@ export async function POST(request: Request) {
         );
       }
       const draftPayload = {
+        empresa_id: ingress.empresaId,
         modo: body.modo,
         origem: body.origem,
         dados_simulacao: body.dados_simulacao,

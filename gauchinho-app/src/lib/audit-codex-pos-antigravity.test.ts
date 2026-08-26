@@ -57,7 +57,9 @@ describe("Hotfix de segurança Codex pós-Antigravity", () => {
   it("conversão de vendas delega idempotência e isolamento ao RPC transacional", () => {
     const source = read("gauchinho-app/src/lib/vendas/vendas-service.ts");
     const migration = read("supabase/migrations/061_motor_comissoes_rpc_comercial.sql");
-    expect(source).toContain('admin.rpc("rpc_converter_contratacao_venda"');
+    expect(source).toContain('db.rpc("rpc_converter_contratacao_venda"');
+    expect(source).toContain("await createClient()");
+    expect(source).not.toContain("createAdminClient");
     expect(source).not.toContain('.from("vendas").insert');
     expect(migration).toContain("v_contratacao.empresa_id<>p_empresa_id");
     expect(migration).toContain("pg_advisory_xact_lock");

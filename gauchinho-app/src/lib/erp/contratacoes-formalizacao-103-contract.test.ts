@@ -3,7 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 
 const migration103 = fs.readFileSync(
-  path.resolve(process.cwd(), "../supabase/migrations/103_fix_rpc_prazo_total_e_governanca.sql"),
+  path.resolve(process.cwd(), "../supabase/migrations/104_fix_rpc_prazo_total_e_governanca.sql"),
   "utf8"
 );
 

@@ -16,6 +16,7 @@ export type CachedTenantHit = {
   kind: "hit";
   empresaId: string;
   slug: string;
+  operationalEnabled: boolean;
   source:
     | "domain"
     | "dev_override"

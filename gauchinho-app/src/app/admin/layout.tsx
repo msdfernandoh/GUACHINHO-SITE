@@ -1,6 +1,5 @@
 import { redirect } from "next/navigation";
 import type { Metadata } from "next";
-import { getUsuarioNegocio } from "@/lib/auth/get-usuario";
 import { isPlatformSuperadmin } from "@/lib/auth/is-superadmin";
 import { AdminSidebar } from "@/components/admin/sidebar";
 import { AdminHeader } from "@/components/admin/header";
@@ -18,13 +17,15 @@ export default async function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const usuario = await getUsuarioNegocio();
+  const { usuario, empresaAtiva, vinculoAtivo } = await getCurrentTenantContext();
   if (!usuario) {
     redirect("/login?next=/admin");
   }
+  if (!empresaAtiva || !vinculoAtivo) {
+    redirect("/?acesso=empresa_negado");
+  }
 
   const isSuperadmin = await isPlatformSuperadmin();
-  const { empresaAtiva } = await getCurrentTenantContext();
   const erpEnabled = getErpSistemaConfig(empresaAtiva?.configuracoes).habilitado;
 
   return (

@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { getCurrentTenantContext } from "@/lib/tenant/context";
+import { requireTenantPermission } from "@/lib/tenant/context";
 import {
   normalizarPedidos,
   gerarIdempotencyKeyRecebimento,
@@ -13,14 +13,28 @@ export type ReceiptState = { ok: boolean; message: string; receiptId?: string };
 export type SolicitacaoState = { ok: boolean; message: string; solicitacaoId?: string; codigo?: string };
 
 async function context() {
-  const { empresaAtiva } = await getCurrentTenantContext();
-  if (!empresaAtiva?.id) throw new Error("Empresa ativa não encontrada.");
+  const { empresaAtiva } = await requireTenantPermission("gerenciar_financeiro");
   const db = await createClient();
-  const { data } = await db.rpc("can_write_tenant_internal", {
-    p_empresa_id: empresaAtiva.id,
-  });
-  if (!data) throw new Error("Sem permissão financeira no tenant.");
   return { db, empresaId: empresaAtiva.id };
+}
+
+const MAX_REPASSE_FILE_SIZE = 15 * 1024 * 1024;
+const REPASSE_FILE_EXTENSIONS: Record<string, string> = {
+  "application/pdf": "pdf",
+  "image/jpeg": "jpg",
+  "image/png": "png",
+  "image/webp": "webp",
+};
+
+function validarArquivoRepasse(file: File, label: string): string {
+  if (file.size <= 0 || file.size > MAX_REPASSE_FILE_SIZE) {
+    throw new Error(`${label}: o arquivo deve ter no máximo 15 MB.`);
+  }
+  const extension = REPASSE_FILE_EXTENSIONS[file.type];
+  if (!extension) {
+    throw new Error(`${label}: envie PDF, JPG, PNG ou WEBP.`);
+  }
+  return extension;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -62,25 +76,20 @@ export async function criarSolicitacaoRepasseAction(
       formData.get("status") === "SOLICITADO" ? "SOLICITADO" : "RASCUNHO";
 
     // 1. Gerar código único da solicitação (ex: REP-2026-000001)
-    let codigo = "";
-    const { data: rpcCodigo } = await db.rpc("rpc_gerar_codigo_solicitacao_repasse", {
+    const { data: rpcCodigo, error: codigoError } = await db.rpc("rpc_gerar_codigo_solicitacao_repasse", {
       p_empresa_id: empresaId,
     });
-    if (rpcCodigo) {
-      codigo = String(rpcCodigo);
-    } else {
-      const ano = new Date().getFullYear();
-      const randomSeq = Math.floor(1000 + Math.random() * 9000);
-      codigo = `REP-${ano}-${String(randomSeq).padStart(6, "0")}`;
-    }
+    if (codigoError || !rpcCodigo) throw new Error(codigoError?.message || "Não foi possível gerar o código da solicitação.");
+    const codigo = String(rpcCodigo);
+    const uploadedPaths: string[] = [];
 
     // 2. Upload da Nota Fiscal (se enviada)
     let arquivoNfUrl: string | null = null;
     let arquivoNfNome: string | null = null;
     const fileNf = formData.get("arquivo_nf") as File | null;
     if (fileNf && fileNf.size > 0) {
-      const ext = fileNf.name.split(".").pop() || "pdf";
-      const storagePath = `${empresaId}/solicitacoes/${codigo}/nf_${Date.now()}.${ext}`;
+      const ext = validarArquivoRepasse(fileNf, "Nota fiscal");
+      const storagePath = `${empresaId}/solicitacoes/${codigo}/nf_${crypto.randomUUID()}.${ext}`;
       const arrayBuffer = await fileNf.arrayBuffer();
       const buffer = Buffer.from(arrayBuffer);
 
@@ -88,13 +97,12 @@ export async function criarSolicitacaoRepasseAction(
         .from("repasse-documentos")
         .upload(storagePath, buffer, {
           contentType: fileNf.type,
-          upsert: true,
+          upsert: false,
         });
-
-      if (!uploadError) {
-        arquivoNfUrl = storagePath;
-        arquivoNfNome = fileNf.name;
-      }
+      if (uploadError) throw new Error(`Falha ao enviar a nota fiscal: ${uploadError.message}`);
+      uploadedPaths.push(storagePath);
+      arquivoNfUrl = storagePath;
+      arquivoNfNome = fileNf.name.slice(0, 255);
     }
 
     // 3. Upload de Pedidos (se enviado)
@@ -102,8 +110,8 @@ export async function criarSolicitacaoRepasseAction(
     let arquivoPedidosNome: string | null = null;
     const filePedidos = formData.get("arquivo_pedidos") as File | null;
     if (filePedidos && filePedidos.size > 0) {
-      const ext = filePedidos.name.split(".").pop() || "pdf";
-      const storagePath = `${empresaId}/solicitacoes/${codigo}/pedidos_${Date.now()}.${ext}`;
+      const ext = validarArquivoRepasse(filePedidos, "Arquivo de pedidos");
+      const storagePath = `${empresaId}/solicitacoes/${codigo}/pedidos_${crypto.randomUUID()}.${ext}`;
       const arrayBuffer = await filePedidos.arrayBuffer();
       const buffer = Buffer.from(arrayBuffer);
 
@@ -111,69 +119,42 @@ export async function criarSolicitacaoRepasseAction(
         .from("repasse-documentos")
         .upload(storagePath, buffer, {
           contentType: filePedidos.type,
-          upsert: true,
+          upsert: false,
         });
-
-      if (!uploadError) {
-        arquivoPedidosUrl = storagePath;
-        arquivoPedidosNome = filePedidos.name;
+      if (uploadError) {
+        if (uploadedPaths.length) await db.storage.from("repasse-documentos").remove(uploadedPaths);
+        throw new Error(`Falha ao enviar o arquivo de pedidos: ${uploadError.message}`);
       }
+      uploadedPaths.push(storagePath);
+      arquivoPedidosUrl = storagePath;
+      arquivoPedidosNome = filePedidos.name.slice(0, 255);
     }
 
-    // 4. Inserir a Solicitação
-    const { data: insertedSolic, error: insertError } = await db
-      .from("erp_solicitacoes_repasse")
-      .insert({
-        empresa_id: empresaId,
-        codigo_solicitacao: codigo,
-        administradora_id: administradoraId,
-        mes_referencia: mesReferencia,
-        data_solicitacao: new Date().toISOString().slice(0, 10),
-        valor_solicitado: valorSolicitado,
-        numero_nota_fiscal: numeroNotaFiscal,
-        data_nota_fiscal: dataNotaFiscal,
-        valor_nota_fiscal: valorNotaFiscal,
-        arquivo_nf_url: arquivoNfUrl,
-        arquivo_nf_nome: arquivoNfNome,
-        arquivo_pedidos_url: arquivoPedidosUrl,
-        arquivo_pedidos_nome: arquivoPedidosNome,
-        observacao: observacao,
-        status: statusInicial,
-      })
-      .select("id, codigo_solicitacao")
-      .single();
-
-    if (insertError || !insertedSolic) {
-      throw new Error(insertError?.message || "Erro ao salvar solicitação de repasse.");
-    }
-
-    const solicitacaoId = insertedSolic.id;
-
-    // 5. Inserir os Pedidos individualizados
-    const pedidosRows = pedidos.map((p) => ({
-      empresa_id: empresaId,
-      solicitacao_id: solicitacaoId,
-      numero_pedido: p,
-      arquivo_url: arquivoPedidosUrl,
-      arquivo_nome: arquivoPedidosNome,
-    }));
-
-    await db.from("erp_solicitacao_repasse_pedidos").insert(pedidosRows);
-
-    // 6. Gravar histórico inicial
-    await db.from("erp_solicitacao_repasse_historico").insert({
-      empresa_id: empresaId,
-      solicitacao_id: solicitacaoId,
-      acao: statusInicial === "SOLICITADO" ? "CRIACAO_E_ENVIO" : "CRIACAO_RASCUNHO",
-      estado_novo: {
-        codigo,
-        status: statusInicial,
-        valor_solicitado: valorSolicitado,
-        pedidos_count: pedidos.length,
-        numero_nota_fiscal: numeroNotaFiscal,
-      },
-      motivo: "Solicitação de repasse criada pelo usuário.",
+    // 4. Solicitação, pedidos e histórico são persistidos na mesma transação SQL.
+    const { data: created, error: insertError } = await db.rpc("rpc_criar_solicitacao_repasse", {
+      p_empresa_id: empresaId,
+      p_codigo_solicitacao: codigo,
+      p_administradora_id: administradoraId,
+      p_mes_referencia: mesReferencia,
+      p_valor_solicitado: valorSolicitado,
+      p_pedidos: pedidos,
+      p_status: statusInicial,
+      p_numero_nota_fiscal: numeroNotaFiscal,
+      p_data_nota_fiscal: dataNotaFiscal,
+      p_valor_nota_fiscal: valorNotaFiscal,
+      p_arquivo_nf_url: arquivoNfUrl,
+      p_arquivo_nf_nome: arquivoNfNome,
+      p_arquivo_pedidos_url: arquivoPedidosUrl,
+      p_arquivo_pedidos_nome: arquivoPedidosNome,
+      p_observacao: observacao,
     });
+    if (insertError) {
+      if (uploadedPaths.length) await db.storage.from("repasse-documentos").remove(uploadedPaths);
+      throw new Error(insertError.message);
+    }
+    const createdResult = created as { solicitacao?: { id?: string } } | null;
+    const solicitacaoId = createdResult?.solicitacao?.id;
+    if (!solicitacaoId) throw new Error("A transação não retornou a solicitação criada.");
 
     revalidatePath("/erp/repasse-franquia");
 
@@ -213,29 +194,13 @@ export async function alterarStatusSolicitacaoAction(
 
     if (buscaError || !atual) throw new Error("Solicitação não encontrada no tenant.");
 
-    if (atual.status === "RECEBIDO" && novoStatus !== "RECEBIDO") {
-      throw new Error("Não é permitido alterar o status de uma solicitação com recebimento já liquidado.");
-    }
-
-    const { error: updateError } = await db
-      .from("erp_solicitacoes_repasse")
-      .update({
-        status: novoStatus,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", solicitacaoId)
-      .eq("empresa_id", empresaId);
-
-    if (updateError) throw new Error(updateError.message);
-
-    await db.from("erp_solicitacao_repasse_historico").insert({
-      empresa_id: empresaId,
-      solicitacao_id: solicitacaoId,
-      acao: "ALTERACAO_STATUS",
-      estado_anterior: { status: atual.status },
-      estado_novo: { status: novoStatus },
-      motivo: motivo || `Status alterado de ${atual.status} para ${novoStatus}.`,
+    const { error: updateError } = await db.rpc("rpc_alterar_status_solicitacao_repasse", {
+      p_empresa_id: empresaId,
+      p_solicitacao_id: solicitacaoId,
+      p_novo_status: novoStatus,
+      p_motivo: motivo,
     });
+    if (updateError) throw new Error(updateError.message);
 
     revalidatePath("/erp/repasse-franquia");
 
@@ -274,7 +239,6 @@ export async function registrarRecebimentoSolicitacaoAction(
     if (!dataRecebimento) throw new Error("Data de recebimento é obrigatória.");
     if (isNaN(valorRecebido) || valorRecebido <= 0) throw new Error("Valor recebido inválido.");
 
-    // Tentar executar via RPC segura
     const { data: rpcRes, error: rpcError } = await db.rpc(
       "rpc_registrar_recebimento_solicitacao_repasse",
       {
@@ -290,74 +254,7 @@ export async function registrarRecebimentoSolicitacaoAction(
       }
     );
 
-    if (rpcError) {
-      // Fallback transacional caso a migration ainda não esteja compilada no banco
-      const { data: solic } = await db
-        .from("erp_solicitacoes_repasse")
-        .select("*")
-        .eq("id", solicitacaoId)
-        .eq("empresa_id", empresaId)
-        .single();
-
-      if (!solic) throw new Error(rpcError.message);
-
-      if (solic.recebimento_id) {
-        return {
-          ok: true,
-          message: "Esta solicitação já possui recebimento financeiro registrado.",
-          receiptId: solic.recebimento_id,
-        };
-      }
-
-      // Executa registro no motor canônico
-      const { data: recData, error: recError } = await db.rpc("rpc_registrar_recebimento_manual", {
-        p_empresa_id: empresaId,
-        p_administradora_id: solic.administradora_id,
-        p_competencia: solic.mes_referencia,
-        p_valor_total: valorRecebido,
-        p_data_recebimento: dataRecebimento,
-        p_conta_entrada: contaEntrada,
-        p_idempotency_key: idempotencyKey,
-        p_conta_bancaria_id: contaBancariaId,
-        p_numero_nota_fiscal: solic.numero_nota_fiscal,
-        p_data_nota_fiscal: solic.data_nota_fiscal,
-        p_descricao: descricao || `Recebimento via Solicitação ${solic.codigo_solicitacao}`,
-        p_observacoes: observacoes,
-      });
-
-      if (recError) throw new Error(recError.message);
-
-      const result = recData as { recebimento?: { id?: string } };
-      const recebimentoId = result.recebimento?.id;
-
-      if (recebimentoId) {
-        await db
-          .from("erp_solicitacoes_repasse")
-          .update({
-            recebimento_id: recebimentoId,
-            status: "RECEBIDO",
-            updated_at: new Date().toISOString(),
-          })
-          .eq("id", solicitacaoId)
-          .eq("empresa_id", empresaId);
-
-        await db.from("erp_solicitacao_repasse_historico").insert({
-          empresa_id: empresaId,
-          solicitacao_id: solicitacaoId,
-          acao: "REGISTRO_RECEBIMENTO",
-          estado_novo: { status: "RECEBIDO", recebimento_id: recebimentoId, valor_recebido: valorRecebido },
-          motivo: "Recebimento financeiro registrado no Caixa.",
-        });
-      }
-
-      revalidatePath("/erp/repasse-franquia");
-
-      return {
-        ok: true,
-        message: "Recebimento financeiro registrado e solicitação marcada como RECEBIDA com sucesso!",
-        receiptId: recebimentoId,
-      };
-    }
+    if (rpcError) throw new Error(rpcError.message);
 
     revalidatePath("/erp/repasse-franquia");
 
@@ -388,9 +285,15 @@ export async function obterUrlDocumentoRepasseAction(storagePath: string): Promi
       throw new Error("Acesso não autorizado a este documento.");
     }
 
+    const [{ data: solicitacao }, { data: pedido }] = await Promise.all([
+      db.from("erp_solicitacoes_repasse").select("id").eq("empresa_id", empresaId).or(`arquivo_nf_url.eq.${storagePath},arquivo_pedidos_url.eq.${storagePath}`).limit(1).maybeSingle(),
+      db.from("erp_solicitacao_repasse_pedidos").select("id").eq("empresa_id", empresaId).eq("arquivo_url", storagePath).limit(1).maybeSingle(),
+    ]);
+    if (!solicitacao && !pedido) throw new Error("Documento não está vinculado a um repasse desta empresa.");
+
     const { data, error } = await db.storage
       .from("repasse-documentos")
-      .createSignedUrl(storagePath, 60 * 60); // 1 hora de expiração
+      .createSignedUrl(storagePath, 5 * 60);
 
     if (error || !data?.signedUrl) return null;
     return data.signedUrl;
