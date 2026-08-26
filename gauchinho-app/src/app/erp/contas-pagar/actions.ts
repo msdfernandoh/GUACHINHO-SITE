@@ -13,6 +13,12 @@ export type ContasActionResult = {
   ok: boolean;
   message: string;
   importacao?: { importadas: number; duplicadas: number; invalidas: number; erros: string[] };
+  fechamento?: {
+    fechamento_id: string;
+    total_despesas_pessoais?: number;
+    reused?: boolean;
+    instrucoes?: Array<{ id: string; descricao: string; valor_transferencia: number; valor_contas_alternativo: number }>;
+  };
 };
 
 export type DocumentoFinanceiroResult =
@@ -49,7 +55,7 @@ export type ConsultaContasPagarResult = {
   cards: { pagas_mes: number; a_pagar_mes: number; futuras: number; entradas_mes: number };
   entradas_mes: unknown[];
   balanco: {
-    socios: Array<{ id: string; nome: string; pago: number; contas_pagas: number; aberto: number; contas_abertas: number }>;
+    socios: Array<{ id: string; nome: string; pago: number; contas_pagas: number; aberto: number; contas_abertas: number; percentual: number }>;
     pago_empresa: number;
     contas_pagas_empresa: number;
     impostos_descontados: number;
@@ -92,7 +98,22 @@ export async function consultarContasPagar(
     p_logs_por_pagina: Math.min(100, Math.max(10, input.logsPorPagina ?? 50)),
   });
   if (error) throw new Error(`Não foi possível consultar o financeiro: ${error.message}`);
-  return data as ConsultaContasPagarResult;
+  const resultado = data as ConsultaContasPagarResult;
+  const { data: quadro, error: quadroError } = await session
+    .from("empresa_socios")
+    .select("usuario_id, percentual_participacao")
+    .eq("empresa_id", empresaAtiva.id)
+    .eq("ativo", true);
+  if (quadroError) throw new Error(`Não foi possível consultar o quadro societário: ${quadroError.message}`);
+  const percentuais = new Map((quadro ?? []).map((item) => [item.usuario_id, Number(item.percentual_participacao)]));
+  if (resultado.balanco.socios.some((socio) => !percentuais.has(socio.id))) {
+    throw new Error("O quadro societário está incompleto. Revise a aba Sociedade no SaaS antes de calcular o fechamento.");
+  }
+  resultado.balanco.socios = resultado.balanco.socios.map((socio) => ({
+    ...socio,
+    percentual: percentuais.get(socio.id) ?? 0,
+  }));
+  return resultado;
 }
 
 function failure(error: unknown): ContasActionResult {
@@ -135,6 +156,32 @@ async function ensureContasBucket(admin: ReturnType<typeof createAdminClient>) {
     allowedMimeTypes: ["application/pdf", "image/jpeg", "image/png", "image/webp", "text/xml", "application/xml"],
   });
   if (error) throw new Error(`Não foi possível proteger o armazenamento financeiro: ${error.message}`);
+}
+
+export async function fecharSociosPeriodo(inicio: string, fim: string): Promise<ContasActionResult> {
+  try {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(inicio) || !/^\d{4}-\d{2}-\d{2}$/.test(fim) || fim < inicio) {
+      throw new Error("Informe um período inicial e final válido para fechar os sócios.");
+    }
+    const { empresaId, session } = await requireFinanceWrite();
+    const { data, error } = await session.rpc("rpc_fechar_socios", {
+      p_empresa_id: empresaId,
+      p_periodo_inicio: inicio,
+      p_periodo_fim: fim,
+      p_idempotency_key: `fechamento-socios:${inicio}:${fim}`,
+    });
+    if (error) throw new Error(error.message);
+    revalidatePath("/erp/contas-pagar");
+    return {
+      ok: true,
+      message: data?.reused
+        ? "Este período já estava fechado. O documento imutável existente foi reutilizado."
+        : "Fechamento societário criado e congelado com sucesso.",
+      fechamento: data as ContasActionResult["fechamento"],
+    };
+  } catch (error) {
+    return failure(error);
+  }
 }
 
 const CONTAS_BUCKET = "contas-pagar-documentos";

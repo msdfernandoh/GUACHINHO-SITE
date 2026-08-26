@@ -322,6 +322,43 @@ export async function alterarModeloEmpresaPlatformAction(
   return { status: "SUCCESS", message: "Modelo de site da franquia alterado com sucesso." };
 }
 
+export async function salvarQuadroSocietarioPlatformAction(
+  _prev: PlatformFormState,
+  formData: FormData,
+): Promise<PlatformFormState> {
+  if (!(await isPlatformSuperadmin())) {
+    return { status: "ERROR", message: "Acesso restrito ao Platform Superadmin." };
+  }
+
+  const empresaId = String(formData.get("empresa_id") ?? "").trim();
+  const rawSocios = String(formData.get("socios_json") ?? "[]");
+  let socios: Array<Record<string, unknown>>;
+  try {
+    socios = JSON.parse(rawSocios) as Array<Record<string, unknown>>;
+  } catch {
+    return { status: "ERROR", message: "Configuração societária inválida." };
+  }
+
+  if (!empresaId || !Array.isArray(socios) || socios.length === 0) {
+    return { status: "ERROR", message: "Informe a empresa e ao menos um sócio." };
+  }
+  const total = socios.reduce((soma, socio) => soma + Number(socio.percentual ?? 0), 0);
+  if (Math.abs(total - 100) > 0.0001) {
+    return { status: "ERROR", message: `A participação total precisa ser 100%. Total atual: ${total.toFixed(4)}%.` };
+  }
+
+  const db = await createClient();
+  const { data, error } = await db.rpc("rpc_platform_salvar_quadro_societario", {
+    p_empresa_id: empresaId,
+    p_socios: socios,
+  });
+  if (error) return { status: "ERROR", message: error.message };
+
+  revalidatePath(`/platform/empresas/${empresaId}`);
+  revalidatePath("/erp/contas-pagar");
+  return { status: "SUCCESS", message: "Quadro societário versionado e sincronizado com o ERP.", data };
+}
+
 export async function concederAdministradoraEmpresaPlatformAction(
   _prev: PlatformFormState,
   formData: FormData,

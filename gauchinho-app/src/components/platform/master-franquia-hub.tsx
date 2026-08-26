@@ -9,6 +9,7 @@ import {
   reativarEmpresaPlatformAction,
   alterarPlanoEmpresaPlatformAction,
   alterarModeloEmpresaPlatformAction,
+  salvarQuadroSocietarioPlatformAction,
   concederAdministradoraEmpresaPlatformAction,
   revogarAdministradoraEmpresaPlatformAction,
   criarSiteParceiroEmpresaPlatformAction,
@@ -127,6 +128,26 @@ export type UsuarioHubItem = {
   } | null;
 };
 
+export type SocioHubItem = {
+  id: string;
+  usuario_id: string;
+  nome: string;
+  percentual_participacao: number;
+  vigencia_inicio: string;
+  observacao: string | null;
+  contas: Array<{
+    id: string;
+    banco_nome: string | null;
+    agencia: string | null;
+    conta: string | null;
+    tipo_chave_pix: string | null;
+    chave_pix: string | null;
+    favorecido: string;
+    principal: boolean;
+    ativo: boolean;
+  }>;
+};
+
 export type ParceiroSiteDetail = {
   id: string;
   slug: string;
@@ -221,6 +242,7 @@ export function MasterFranquiaHub({
   dominios = [],
   administradoras = [],
   usuarios = [],
+  socios = [],
   parceiros = [],
   modulosCatalogo = [],
   overrides = [],
@@ -235,6 +257,7 @@ export function MasterFranquiaHub({
   dominios: DominioHubItem[];
   administradoras: AdminHubItem[];
   usuarios: UsuarioHubItem[];
+  socios: SocioHubItem[];
   parceiros: ParceiroHubItem[];
   modulosCatalogo: ModuloCatalogoHub[];
   overrides: OverrideHubItem[];
@@ -249,6 +272,7 @@ export function MasterFranquiaHub({
     | "plano"
     | "erp"
     | "usuarios"
+    | "sociedade"
     | "administradoras"
     | "site"
     | "dominios"
@@ -277,6 +301,24 @@ export function MasterFranquiaHub({
   const [cidade, setCidade] = useState(empresa.cidade ?? "");
   const [estado, setEstado] = useState(empresa.estado ?? "");
 
+  const [sociosEdicao, setSociosEdicao] = useState(() =>
+    socios.map((socio) => {
+      const conta = socio.contas.find((item) => item.ativo && item.principal) ?? socio.contas[0];
+      return {
+        usuario_id: socio.usuario_id,
+        nome: socio.nome,
+        percentual: socio.percentual_participacao,
+        observacao: socio.observacao ?? "",
+        banco_nome: conta?.banco_nome ?? "",
+        agencia: conta?.agencia ?? "",
+        conta: conta?.conta ?? "",
+        tipo_chave_pix: conta?.tipo_chave_pix ?? "",
+        chave_pix: conta?.chave_pix ?? "",
+        favorecido: conta?.favorecido ?? socio.nome,
+      };
+    }),
+  );
+
   // State para troca de plano assistida
   const [novoPlanoId, setNovoPlanoId] = useState(assinatura?.plano_id || planosDisponiveis[0]?.id || "");
   const [novosUsuarios, setNovosUsuarios] = useState(assinatura?.usuarios_contratados || 10);
@@ -299,6 +341,7 @@ export function MasterFranquiaHub({
   const [stateReativar, actionReativar, isPendingReativar] = useActionState(reativarEmpresaPlatformAction, initial);
   const [statePlano, actionPlano, isPendingPlano] = useActionState(alterarPlanoEmpresaPlatformAction, initial);
   const [stateModelo, actionModelo, isPendingModelo] = useActionState(alterarModeloEmpresaPlatformAction, initial);
+  const [stateQuadro, actionQuadro, isPendingQuadro] = useActionState(salvarQuadroSocietarioPlatformAction, initial);
   const [stateConcederAdmin, actionConcederAdmin, isPendingConcederAdmin] = useActionState(concederAdministradoraEmpresaPlatformAction, initial);
   const [stateRevogarAdmin, actionRevogarAdmin, isPendingRevogarAdmin] = useActionState(revogarAdministradoraEmpresaPlatformAction, initial);
   const [stateSiteParceiro, actionSiteParceiro, isPendingSiteParceiro] = useActionState(criarSiteParceiroEmpresaPlatformAction, initial);
@@ -313,6 +356,7 @@ export function MasterFranquiaHub({
   const siteOperacionalHabilitado = Boolean(sitePublicoConfig?.operacional_habilitado);
 
   const totalUsuariosUsados = usuarios.filter((u) => u.ativo).length;
+  const totalParticipacaoSocietaria = sociosEdicao.reduce((total, socio) => total + Number(socio.percentual || 0), 0);
   const limiteUsuariosContratados = assinatura?.usuarios_contratados || 10;
   const maxUsuariosPlano = planoAtual?.limite_usuarios ?? 10;
 
@@ -596,11 +640,12 @@ export function MasterFranquiaHub({
           ["plano", "3. Plano & Assinatura"],
           ["erp", "4. ERP & Módulos"],
           ["usuarios", `5. Usuários (${totalUsuariosUsados})`],
-          ["administradoras", `6. Administradoras (${adminsAtivas.length})`],
-          ["site", "7. Site & Identidade"],
-          ["dominios", `8. Domínios (${dominios.length})`],
-          ["parceiros", `9. Parceiros & Sites (${totalParceirosCadastrados})`],
-          ["historico", "10. Histórico"],
+          ["sociedade", `6. Sociedade (${socios.length})`],
+          ["administradoras", `7. Administradoras (${adminsAtivas.length})`],
+          ["site", "8. Site & Identidade"],
+          ["dominios", `9. Domínios (${dominios.length})`],
+          ["parceiros", `10. Parceiros & Sites (${totalParceirosCadastrados})`],
+          ["historico", "11. Histórico"],
         ].map(([key, label]) => (
           <button
             key={key}
@@ -1023,7 +1068,112 @@ export function MasterFranquiaHub({
       )}
 
       {/* ───────────────────────────────────────────────────────────
-          ABA 6: ADMINISTRADORAS
+          ABA 6: SOCIEDADE
+      ─────────────────────────────────────────────────────────── */}
+      {tab === "sociedade" && (
+        <form action={actionQuadro} className="space-y-5 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+          <input type="hidden" name="empresa_id" value={empresa.id} />
+          <input type="hidden" name="socios_json" value={JSON.stringify(sociosEdicao)} />
+          <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-100 pb-4 dark:border-slate-800">
+            <div>
+              <h3 className="text-base font-bold text-slate-900 dark:text-white">Quadro societário da empresa</h3>
+              <p className="mt-1 max-w-3xl text-xs text-slate-500">
+                Esta configuração define quem participa da equalização financeira no ERP. Cada sócio precisa ser um usuário ativo desta empresa; alterações criam uma nova vigência e preservam os fechamentos anteriores.
+              </p>
+            </div>
+            <div className={`rounded-xl px-4 py-2 text-center ${Math.abs(totalParticipacaoSocietaria - 100) < 0.0001 ? "bg-emerald-50 text-emerald-800" : "bg-rose-50 text-rose-800"}`}>
+              <p className="text-[10px] font-bold uppercase">Participação total</p>
+              <p className="text-xl font-black">{totalParticipacaoSocietaria.toFixed(2)}%</p>
+            </div>
+          </div>
+
+          {stateQuadro.message && (
+            <div className={`rounded-xl border px-4 py-3 text-sm font-semibold ${stateQuadro.status === "SUCCESS" ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-rose-200 bg-rose-50 text-rose-800"}`}>
+              {stateQuadro.message}
+            </div>
+          )}
+
+          <div className="space-y-4">
+            {sociosEdicao.map((socio, index) => (
+              <article key={`${socio.usuario_id}-${index}`} className="rounded-xl border border-slate-200 p-4 dark:border-slate-700">
+                <div className="grid gap-3 md:grid-cols-[2fr_1fr_auto]">
+                  <label className="space-y-1 text-xs font-bold text-slate-700 dark:text-slate-300">
+                    Usuário / sócio
+                    <select
+                      value={socio.usuario_id}
+                      onChange={(event) => {
+                        const escolhido = usuarios.find((item) => item.usuario_id === event.target.value);
+                        setSociosEdicao((atual) => atual.map((item, posicao) => posicao === index ? { ...item, usuario_id: event.target.value, nome: escolhido?.usuario?.nome ?? item.nome, favorecido: escolhido?.usuario?.nome ?? item.favorecido } : item));
+                      }}
+                      className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 font-normal dark:border-slate-700 dark:bg-slate-950"
+                    >
+                      <option value="">Selecione um usuário ativo</option>
+                      {usuarios.filter((item) => item.ativo && item.usuario).map((item) => (
+                        <option key={item.usuario_id} value={item.usuario_id}>{item.usuario?.nome} — {item.usuario?.email}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="space-y-1 text-xs font-bold text-slate-700 dark:text-slate-300">
+                    Participação (%)
+                    <input
+                      type="number" min="0.0001" max="100" step="0.0001"
+                      value={socio.percentual}
+                      onChange={(event) => setSociosEdicao((atual) => atual.map((item, posicao) => posicao === index ? { ...item, percentual: Number(event.target.value) } : item))}
+                      className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 font-normal dark:border-slate-700 dark:bg-slate-950"
+                    />
+                  </label>
+                  <button type="button" onClick={() => setSociosEdicao((atual) => atual.filter((_, posicao) => posicao !== index))} className="self-end rounded-lg border border-rose-200 px-3 py-2 text-xs font-bold text-rose-700 hover:bg-rose-50">
+                    Remover
+                  </button>
+                </div>
+
+                <div className="mt-4 grid gap-3 md:grid-cols-3">
+                  <label className="space-y-1 text-xs font-bold text-slate-700 dark:text-slate-300">Banco
+                    <input value={socio.banco_nome} onChange={(event) => setSociosEdicao((atual) => atual.map((item, posicao) => posicao === index ? { ...item, banco_nome: event.target.value } : item))} className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 font-normal dark:border-slate-700 dark:bg-slate-950" placeholder="Ex.: Sicredi" />
+                  </label>
+                  <label className="space-y-1 text-xs font-bold text-slate-700 dark:text-slate-300">Agência
+                    <input value={socio.agencia} onChange={(event) => setSociosEdicao((atual) => atual.map((item, posicao) => posicao === index ? { ...item, agencia: event.target.value } : item))} className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 font-normal dark:border-slate-700 dark:bg-slate-950" />
+                  </label>
+                  <label className="space-y-1 text-xs font-bold text-slate-700 dark:text-slate-300">Conta
+                    <input value={socio.conta} onChange={(event) => setSociosEdicao((atual) => atual.map((item, posicao) => posicao === index ? { ...item, conta: event.target.value } : item))} className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 font-normal dark:border-slate-700 dark:bg-slate-950" />
+                  </label>
+                  <label className="space-y-1 text-xs font-bold text-slate-700 dark:text-slate-300">Tipo de chave Pix
+                    <select value={socio.tipo_chave_pix} onChange={(event) => setSociosEdicao((atual) => atual.map((item, posicao) => posicao === index ? { ...item, tipo_chave_pix: event.target.value } : item))} className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 font-normal dark:border-slate-700 dark:bg-slate-950">
+                      <option value="">Não informado</option><option value="CPF_CNPJ">CPF/CNPJ</option><option value="EMAIL">E-mail</option><option value="TELEFONE">Telefone</option><option value="ALEATORIA">Aleatória</option>
+                    </select>
+                  </label>
+                  <label className="space-y-1 text-xs font-bold text-slate-700 dark:text-slate-300">Chave Pix
+                    <input value={socio.chave_pix} onChange={(event) => setSociosEdicao((atual) => atual.map((item, posicao) => posicao === index ? { ...item, chave_pix: event.target.value } : item))} className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 font-normal dark:border-slate-700 dark:bg-slate-950" />
+                  </label>
+                  <label className="space-y-1 text-xs font-bold text-slate-700 dark:text-slate-300">Favorecido
+                    <input value={socio.favorecido} onChange={(event) => setSociosEdicao((atual) => atual.map((item, posicao) => posicao === index ? { ...item, favorecido: event.target.value } : item))} className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 font-normal dark:border-slate-700 dark:bg-slate-950" />
+                  </label>
+                </div>
+              </article>
+            ))}
+          </div>
+
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-4 dark:border-slate-800">
+            <button
+              type="button"
+              onClick={() => {
+                const disponivel = usuarios.find((item) => item.ativo && item.usuario && !sociosEdicao.some((socio) => socio.usuario_id === item.usuario_id));
+                if (!disponivel?.usuario) return;
+                setSociosEdicao((atual) => [...atual, { usuario_id: disponivel.usuario_id, nome: disponivel.usuario!.nome, percentual: 0, observacao: "", banco_nome: "", agencia: "", conta: "", tipo_chave_pix: "", chave_pix: "", favorecido: disponivel.usuario!.nome }]);
+              }}
+              className="rounded-lg border border-cyan-200 px-4 py-2 text-xs font-bold text-cyan-800 hover:bg-cyan-50"
+            >
+              + Adicionar sócio
+            </button>
+            <button type="submit" disabled={isPendingQuadro || sociosEdicao.length === 0 || Math.abs(totalParticipacaoSocietaria - 100) >= 0.0001} className="rounded-lg bg-cyan-700 px-5 py-2.5 text-xs font-bold text-white shadow hover:bg-cyan-800 disabled:cursor-not-allowed disabled:opacity-50">
+              {isPendingQuadro ? "Salvando nova vigência..." : "Salvar quadro societário"}
+            </button>
+          </div>
+        </form>
+      )}
+
+      {/* ───────────────────────────────────────────────────────────
+          ABA 7: ADMINISTRADORAS
       ─────────────────────────────────────────────────────────── */}
       {tab === "administradoras" && (
         <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900 space-y-4 text-xs">

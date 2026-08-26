@@ -8,6 +8,7 @@ import {
   type DominioHubItem,
   type AdminHubItem,
   type UsuarioHubItem,
+  type SocioHubItem,
   type ParceiroHubItem,
   type ModuloCatalogoHub,
   type OverrideHubItem,
@@ -33,6 +34,7 @@ export default async function MasterFranquiaDetailPage({
     dominiosRes,
     adminsRes,
     usuariosRes,
+    sociosRes,
     parceirosRes,
     modulosCatalogoRes,
     overridesRes,
@@ -72,6 +74,12 @@ export default async function MasterFranquiaDetailPage({
       .select("id, usuario_id, ativo, is_responsavel_principal, status, erp_modulos_visiveis, convite_enviado_em, created_at, usuario:usuarios(id, nome, email, status, ultimo_acesso), papel:papeis(id, nome)")
       .eq("empresa_id", id),
     db
+      .from("empresa_socios")
+      .select("id, usuario_id, nome, percentual_participacao, vigencia_inicio, observacao, contas:empresa_socio_contas(id, banco_nome, agencia, conta, tipo_chave_pix, chave_pix, favorecido, principal, ativo)")
+      .eq("empresa_id", id)
+      .eq("ativo", true)
+      .order("nome", { ascending: true }),
+    db
       .from("organizacoes_parceiras")
       .select("id, nome, status, sites:parceiro_sites(id, slug, nome_site, canal_principal, status_publicacao, ativo, branding, template_codigo)")
       .eq("empresa_id", id),
@@ -108,6 +116,9 @@ export default async function MasterFranquiaDetailPage({
 
   if (!empresaRes.data) {
     notFound();
+  }
+  if (sociosRes.error) {
+    throw new Error(`Não foi possível carregar o quadro societário: ${sociosRes.error.message}`);
   }
 
   const empresaData: EmpresaHubDetail = {
@@ -195,6 +206,18 @@ export default async function MasterFranquiaDetailPage({
     papel: (Array.isArray(u.papel) ? u.papel[0] : u.papel) as unknown as UsuarioHubItem["papel"],
   }));
 
+  const sociosData: SocioHubItem[] = (sociosRes.data ?? []).map((s) => ({
+    id: s.id,
+    usuario_id: s.usuario_id,
+    nome: s.nome,
+    percentual_participacao: Number(s.percentual_participacao),
+    vigencia_inicio: s.vigencia_inicio,
+    observacao: s.observacao,
+    contas: Array.isArray(s.contas)
+      ? (s.contas as unknown as SocioHubItem["contas"])
+      : [],
+  }));
+
   const parceirosData: ParceiroHubItem[] = (parceirosRes.data ?? []).map((p) => ({
     id: p.id,
     nome: p.nome,
@@ -263,6 +286,7 @@ export default async function MasterFranquiaDetailPage({
       dominios={dominiosData}
       administradoras={adminsData}
       usuarios={usuariosData}
+      socios={sociosData}
       parceiros={parceirosData}
       modulosCatalogo={modulosCatalogoData}
       overrides={overridesData}

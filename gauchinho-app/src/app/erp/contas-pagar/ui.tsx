@@ -24,7 +24,7 @@ import {
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { Button, Input, Select, Textarea } from "@/components/ui/form-primitives";
-import { calcularAcertoSocios } from "@/lib/financeiro/acerto-socios";
+import { calcularEqualizacaoSocios } from "@/lib/financeiro/equalizacao-socios";
 import {
   alterarBanco,
   alterarCentro,
@@ -43,6 +43,7 @@ import {
   consultarContasPagar,
   duplicarContaMeses,
   estornarConta,
+  fecharSociosPeriodo,
   excluirConta,
   importarContasCsv,
   obterUrlNotaFiscalConta,
@@ -351,29 +352,23 @@ export function ContasPagarClient({
 
 
   const sociosBalanco = consulta.balanco.socios;
-  const socioA = sociosBalanco[0];
-  const socioB = sociosBalanco[1];
-  const acertoServidor = calcularAcertoSocios(Number(socioA?.pago ?? 0), Number(socioB?.pago ?? 0));
+  const equalizacaoPreview = calcularEqualizacaoSocios(sociosBalanco.map((socio) => ({
+    id: socio.id,
+    nome: socio.nome,
+    percentual: Number(socio.percentual),
+    pago: Number(socio.pago),
+  })));
   const balancoSocios = {
-    fernandoNome: socioA?.nome ?? socios[0]?.nome ?? "Sócio A",
-    eroniNome: socioB?.nome ?? socios[1]?.nome ?? "Sócio B",
-    pagoFernando: Number(socioA?.pago ?? 0),
-    pagoEroni: Number(socioB?.pago ?? 0),
-    totalGastoSocios: Number(socioA?.pago ?? 0) + Number(socioB?.pago ?? 0),
+    totalGastoSocios: equalizacaoPreview.totalPago,
     totalPagoEmpresa: Number(consulta.balanco.pago_empresa),
     totalContasPagasEmpresa: Number(consulta.balanco.contas_pagas_empresa),
     totalGeralPagoOperacional:
-      Number(consulta.balanco.pago_empresa) + Number(socioA?.pago ?? 0) + Number(socioB?.pago ?? 0),
+      Number(consulta.balanco.pago_empresa) + equalizacaoPreview.totalPago,
     totalImpostosDescontados: Number(consulta.balanco.impostos_descontados),
     totalContasDescontadas: Number(consulta.balanco.contas_descontadas),
     totalContasPagas: sociosBalanco.reduce((total, socio) => total + Number(socio.contas_pagas), 0),
-    ...acertoServidor,
   };
   const contasAbertasSocios = {
-    fernandoNome: socioA?.nome ?? socios[0]?.nome ?? "Sócio A",
-    eroniNome: socioB?.nome ?? socios[1]?.nome ?? "Sócio B",
-    abertaFernando: Number(socioA?.aberto ?? 0),
-    abertaEroni: Number(socioB?.aberto ?? 0),
     totalAberto: sociosBalanco.reduce((total, socio) => total + Number(socio.aberto), 0),
     totalContasAbertas: sociosBalanco.reduce((total, socio) => total + Number(socio.contas_abertas), 0),
   };
@@ -671,17 +666,28 @@ export function ContasPagarClient({
         <div>
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h2 className="font-bold text-slate-900 text-base">Balanço e Fechamento entre Sócios</h2>
-            <span className="rounded-full bg-emerald-100 px-3 py-0.5 text-xs font-bold text-emerald-800">
-              Cálculo baseado exclusivamente em contas liquidadas/pagas
-            </span>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="rounded-full bg-emerald-100 px-3 py-0.5 text-xs font-bold text-emerald-800">
+                Cálculo baseado exclusivamente em contas liquidadas/pagas
+              </span>
+              <button
+                type="button"
+                disabled={!inicio || !fim || pending}
+                onClick={() => execute(() => fecharSociosPeriodo(inicio, fim))}
+                className="rounded-lg bg-slate-950 px-3 py-1.5 text-xs font-bold text-white shadow disabled:cursor-not-allowed disabled:opacity-40"
+                title={!inicio || !fim ? "Defina as datas inicial e final nos filtros" : "Gera um fechamento histórico que não pode ser editado"}
+              >
+                Fechar período selecionado
+              </button>
+            </div>
           </div>
           <p className="text-xs text-slate-500 mt-0.5">
-            Total gasto pelos sócios pessoalmente, divisão de 50% para cada e transferência direta de equalização.
+            A prévia acompanha os filtros. Para congelar percentuais, valores, contas de recebimento e instruções de transferência, defina início/fim e feche o período.
           </p>
         </div>
 
         {/* 1. CARDS DE CONTAS PAGAS (EMPRESA + SÓCIOS) */}
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           <div className="rounded-2xl border border-teal-200 bg-teal-50/90 p-4 shadow-sm text-teal-950">
             <p className="text-xs font-bold uppercase tracking-wide opacity-80">🏢 Pago pela Empresa</p>
             <p className="mt-2 text-2xl font-black">{brl(balancoSocios.totalPagoEmpresa)}</p>
@@ -690,24 +696,18 @@ export function ContasPagarClient({
             </p>
           </div>
 
-          <div className="rounded-2xl border border-blue-200 bg-blue-50/90 p-4 shadow-sm text-blue-950">
-            <p className="text-xs font-bold uppercase tracking-wide opacity-80">Pago por {balancoSocios.fernandoNome}</p>
-            <p className="mt-2 text-2xl font-black">{brl(balancoSocios.pagoFernando)}</p>
-            <p className="mt-1 text-[10px] text-blue-800 font-medium">Pessoalmente no período</p>
-          </div>
-
-          <div className="rounded-2xl border border-violet-200 bg-violet-50/90 p-4 shadow-sm text-violet-950">
-            <p className="text-xs font-bold uppercase tracking-wide opacity-80">Pago por {balancoSocios.eroniNome}</p>
-            <p className="mt-2 text-2xl font-black">{brl(balancoSocios.pagoEroni)}</p>
-            <p className="mt-1 text-[10px] text-violet-800 font-medium">Pessoalmente no período</p>
-          </div>
+          {equalizacaoPreview.socios.map((socio) => (
+            <div key={socio.id} className="rounded-2xl border border-blue-200 bg-blue-50/90 p-4 shadow-sm text-blue-950">
+              <p className="text-xs font-bold uppercase tracking-wide opacity-80">Pago por {socio.nome}</p>
+              <p className="mt-2 text-2xl font-black">{brl(socio.pago)}</p>
+              <p className="mt-1 text-[10px] text-blue-800 font-medium">Responsabilidade {socio.percentual.toFixed(2)}%: {brl(socio.responsabilidade)}</p>
+            </div>
+          ))}
 
           <div className="rounded-2xl border border-indigo-200 bg-indigo-50/90 p-4 shadow-sm text-indigo-950">
-            <p className="text-xs font-bold uppercase tracking-wide opacity-80">👥 Total Sócios (50/50)</p>
+            <p className="text-xs font-bold uppercase tracking-wide opacity-80">👥 Total pago pelos sócios</p>
             <p className="mt-2 text-2xl font-black">{brl(balancoSocios.totalGastoSocios)}</p>
-            <p className="mt-1 text-[10px] text-indigo-800 font-medium">
-              Cota 50%: {brl(balancoSocios.cotaIndividual)}
-            </p>
+            <p className="mt-1 text-[10px] text-indigo-800 font-medium">Rateado conforme percentuais vigentes no SaaS</p>
           </div>
 
           <div className="rounded-2xl border border-slate-300 bg-slate-100 p-4 shadow-sm text-slate-900">
@@ -717,19 +717,9 @@ export function ContasPagarClient({
           </div>
 
           <div className="rounded-2xl border border-emerald-300 bg-emerald-50 p-4 shadow-sm text-emerald-950">
-            <p className="text-xs font-bold uppercase tracking-wide opacity-80">Acerto entre Sócios</p>
-            <p className="mt-2 text-lg font-black leading-tight text-emerald-900">
-              {balancoSocios.totalGastoSocios === 0
-                ? "Sem despesas"
-                : balancoSocios.socioCredor === null
-                  ? "Quites (0,00)"
-                  : `${balancoSocios.socioCredor === "A" ? balancoSocios.eroniNome.split(" ")[0] : balancoSocios.fernandoNome.split(" ")[0]} paga ${brl(balancoSocios.transferenciaParaEqualizar)}`}
-            </p>
-            <p className="mt-1 text-[10px] text-emerald-700 font-medium">
-              {balancoSocios.socioCredor !== null
-                ? `Para ${balancoSocios.socioCredor === "A" ? balancoSocios.fernandoNome.split(" ")[0] : balancoSocios.eroniNome.split(" ")[0]}`
-                : "Balanço 100% equilibrado"}
-            </p>
+            <p className="text-xs font-bold uppercase tracking-wide opacity-80">Acertos necessários</p>
+            <p className="mt-2 text-2xl font-black leading-tight text-emerald-900">{equalizacaoPreview.instrucoes.length}</p>
+            <p className="mt-1 text-[10px] text-emerald-700 font-medium">{equalizacaoPreview.instrucoes.length ? "Veja as instruções detalhadas abaixo" : "Balanço equilibrado"}</p>
           </div>
         </div>
 
@@ -757,8 +747,9 @@ export function ContasPagarClient({
               <span>Contas a Pagar Atribuídas aos Sócios (Ainda não entram no acerto):</span>
             </div>
             <div className="flex flex-wrap items-center gap-4 font-semibold text-slate-800">
-              <span>{contasAbertasSocios.fernandoNome}: <strong className="text-rose-700">{brl(contasAbertasSocios.abertaFernando)}</strong></span>
-              <span>{contasAbertasSocios.eroniNome}: <strong className="text-rose-700">{brl(contasAbertasSocios.abertaEroni)}</strong></span>
+              {sociosBalanco.filter((socio) => Number(socio.aberto) > 0).map((socio) => (
+                <span key={socio.id}>{socio.nome}: <strong className="text-rose-700">{brl(Number(socio.aberto))}</strong></span>
+              ))}
               <span className="border-l border-rose-200 pl-4">Total a Pagar: <strong className="text-slate-950">{brl(contasAbertasSocios.totalAberto)}</strong></span>
             </div>
           </div>
@@ -774,9 +765,7 @@ export function ContasPagarClient({
             <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-600 text-sm font-bold">⚖️</span>
             <div>
               <h3 className="text-base font-bold text-white">Fechamento & Equalização entre Sócios</h3>
-              <p className="text-xs text-slate-400">
-                Cálculo baseado nas despesas pagas no período selecionado (cada sócio assume 50% das despesas pessoais).
-              </p>
+              <p className="text-xs text-slate-400">Prévia conforme os percentuais societários vigentes cadastrados no SaaS.</p>
             </div>
           </div>
           <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-slate-300">
@@ -784,18 +773,14 @@ export function ContasPagarClient({
           </span>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-3">
-          {/* Coluna 1: Total e Divisão */}
+        <div className="grid gap-4 lg:grid-cols-[0.8fr_1.2fr_1.3fr]">
           <div className="rounded-xl bg-white/5 p-3.5 space-y-2 border border-white/5">
-            <p className="text-xs font-bold uppercase tracking-wider text-slate-400">1. Total e Divisão 50%</p>
+            <p className="text-xs font-bold uppercase tracking-wider text-slate-400">1. Total do período</p>
             <div className="flex justify-between items-center text-xs">
               <span className="text-slate-300">Total Gasto Sócios:</span>
               <strong className="text-white text-sm">{brl(balancoSocios.totalGastoSocios)}</strong>
             </div>
-            <div className="flex justify-between items-center text-xs border-t border-white/10 pt-1.5">
-              <span className="text-slate-300">Cota 50% de Cada Sócio:</span>
-              <strong className="text-amber-300 text-sm">{brl(balancoSocios.cotaIndividual)}</strong>
-            </div>
+            <p className="border-t border-white/10 pt-2 text-[11px] text-slate-400">O sistema divide esse total pelos percentuais individuais, nunca por nomes ou quantidade fixa.</p>
             {balancoSocios.totalPagoEmpresa > 0 && (
               <div className="flex justify-between items-center text-[11px] text-teal-300 border-t border-white/10 pt-1.5">
                 <span>Pago pela Empresa:</span>
@@ -804,60 +789,29 @@ export function ContasPagarClient({
             )}
           </div>
 
-          {/* Coluna 2: Demonstrativo Individual */}
           <div className="rounded-xl bg-white/5 p-3.5 space-y-2 border border-white/5 text-xs">
             <p className="text-xs font-bold uppercase tracking-wider text-slate-400">2. Demonstrativo por Sócio</p>
-            <div className="rounded-lg bg-black/30 p-2 space-y-0.5">
-              <div className="flex justify-between font-semibold text-blue-300">
-                <span>{balancoSocios.fernandoNome}</span>
-                <span>Pagou {brl(balancoSocios.pagoFernando)}</span>
+            {equalizacaoPreview.socios.map((socio) => (
+              <div key={socio.id} className="rounded-lg bg-black/30 p-2 space-y-0.5">
+                <div className="flex justify-between font-semibold text-blue-300"><span>{socio.nome} · {socio.percentual.toFixed(2)}%</span><span>Pagou {brl(socio.pago)}</span></div>
+                <p className="text-[11px] text-slate-300">Responsabilidade: {brl(socio.responsabilidade)} · {socio.saldo >= 0 ? <strong className="text-emerald-400">Tem a receber {brl(socio.saldo)}</strong> : <strong className="text-rose-300">Precisa compensar {brl(-socio.saldo)}</strong>}</p>
               </div>
-              <p className="text-[11px] text-slate-300">
-                Cota: {brl(balancoSocios.cotaIndividual)} − Pagou: {brl(balancoSocios.pagoFernando)} ={" "}
-                {balancoSocios.pagoFernando >= balancoSocios.cotaIndividual ? (
-                  <strong className="text-emerald-400">Recebe {brl(balancoSocios.pagoFernando - balancoSocios.cotaIndividual)}</strong>
-                ) : (
-                  <strong className="text-rose-300">Falta {brl(balancoSocios.cotaIndividual - balancoSocios.pagoFernando)}</strong>
-                )}
-              </p>
-            </div>
-
-            <div className="rounded-lg bg-black/30 p-2 space-y-0.5">
-              <div className="flex justify-between font-semibold text-violet-300">
-                <span>{balancoSocios.eroniNome}</span>
-                <span>Pagou {brl(balancoSocios.pagoEroni)}</span>
-              </div>
-              <p className="text-[11px] text-slate-300">
-                Cota: {brl(balancoSocios.cotaIndividual)} − Pagou: {brl(balancoSocios.pagoEroni)} ={" "}
-                {balancoSocios.pagoEroni >= balancoSocios.cotaIndividual ? (
-                  <strong className="text-emerald-400">Recebe {brl(balancoSocios.pagoEroni - balancoSocios.cotaIndividual)}</strong>
-                ) : (
-                  <strong className="text-rose-300">Falta {brl(balancoSocios.cotaIndividual - balancoSocios.pagoEroni)}</strong>
-                )}
-              </p>
-            </div>
+            ))}
           </div>
 
-          {/* Coluna 3: Conclusão do Acerto */}
           <div className="rounded-xl border border-amber-400/40 bg-amber-400/15 p-3.5 space-y-2 flex flex-col justify-center">
             <p className="text-xs font-bold uppercase tracking-wider text-amber-300">3. Como Equalizar</p>
             {balancoSocios.totalGastoSocios === 0 ? (
               <p className="text-xs text-slate-300">Nenhuma despesa pessoal paga no período selecionado.</p>
-            ) : balancoSocios.socioCredor === null ? (
-              <p className="text-xs font-bold text-emerald-200">
-                Os dois sócios pagaram exatamente o mesmo valor. Contas 100% equilibradas.
-              </p>
+            ) : equalizacaoPreview.instrucoes.length === 0 ? (
+              <p className="text-xs font-bold text-emerald-200">Todos pagaram exatamente a responsabilidade configurada. Contas 100% equilibradas.</p>
             ) : (
-              <div className="space-y-1">
-                <p className="text-sm text-white font-medium">
-                  👉 <strong>{balancoSocios.socioCredor === "A" ? balancoSocios.eroniNome : balancoSocios.fernandoNome}</strong> deve transferir{" "}
-                  <strong className="text-amber-200 text-base">{brl(balancoSocios.transferenciaParaEqualizar)}</strong> diretamente para{" "}
-                  <strong>{balancoSocios.socioCredor === "A" ? balancoSocios.fernandoNome : balancoSocios.eroniNome}</strong>.
-                </p>
-                <p className="text-[10px] text-slate-300 border-t border-amber-400/20 pt-1">
-                  Ambos ficam com exatamente {brl(balancoSocios.cotaIndividual)} desembolsados (50%).
-                </p>
-              </div>
+              <div className="space-y-3">{equalizacaoPreview.instrucoes.map((instrucao) => (
+                <div key={`${instrucao.devedorId}-${instrucao.credorId}`} className="rounded-lg border border-amber-300/20 bg-black/20 p-2.5">
+                  <p className="text-sm text-white"><strong>{instrucao.devedorNome}</strong> deve transferir <strong className="text-amber-200">{brl(instrucao.valorTransferencia)}</strong> para <strong>{instrucao.credorNome}</strong>.</p>
+                  <p className="mt-1 text-[10px] text-slate-300">Isso reduz o valor adiantado por {instrucao.credorNome} e aumenta o valor efetivamente assumido por {instrucao.devedorNome}. Alternativa: {instrucao.devedorNome} pagar {brl(instrucao.valorContasAlternativo)} em próximas contas.</p>
+                </div>
+              ))}</div>
             )}
           </div>
         </div>
@@ -886,6 +840,19 @@ export function ContasPagarClient({
           }`}
         >
           <p className="font-semibold">{feedback.message}</p>
+          {feedback.fechamento?.instrucoes?.length ? (
+            <div className="mt-3 space-y-2 rounded-lg border border-current/15 bg-white/60 p-3 text-xs">
+              <p className="font-black uppercase">Instruções do fechamento imutável</p>
+              {feedback.fechamento.instrucoes.map((instrucao) => (
+                <div key={instrucao.id} className="rounded-md bg-white p-2 shadow-sm">
+                  <p className="font-semibold">{instrucao.descricao}</p>
+                  <p className="mt-1 text-slate-600">
+                    Alternativa sem transferência: assumir {brl(Number(instrucao.valor_contas_alternativo))} em próximas contas da empresa.
+                  </p>
+                </div>
+              ))}
+            </div>
+          ) : null}
           {feedback.importacao?.erros.length ? (
             <ul className="mt-2 list-disc pl-5 text-xs">
               {feedback.importacao.erros.map((error) => (

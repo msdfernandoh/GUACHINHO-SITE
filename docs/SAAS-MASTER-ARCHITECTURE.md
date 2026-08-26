@@ -4,11 +4,11 @@
 > **ESTADO-ALVO E CORREÇÕES OBRIGATÓRIAS**
 > Antes de alterar tenancy, usuários, catálogo, sites, comissões, financeiro, Storage, RPCs ou migrations, leia também integralmente [`SAAS-ARQUITETURA-ALVO-E-PLANO-DE-CORRECAO.md`](./SAAS-ARQUITETURA-ALVO-E-PLANO-DE-CORRECAO.md). O documento descreve o estado-alvo e o plano de remediação; seus itens não devem ser interpretados como já implantados sem evidência no banco e no código.
 
-> **Versão da Arquitetura:** 6.1.0
+> **Versão da Arquitetura:** 6.2.0
 > **Data de Atualização:** 26/08/2026
-> **Production code:** branch `main`, incluindo a Fase 135 de reconciliação; Supabase principal `eaeuoynprurmmulzhydt` alinhado de `001–133`.
+> **Production code:** branch `main`, com a Fase 135 promovida; Supabase principal `eaeuoynprurmmulzhydt` alinhado de `001–135`, incluindo o quadro societário e fechamento imutável da Fase 136.
 > **Preview/isolado desta fase:** a branch `bwwgbmiwtrglbtxsdooi` permanece preservada como evidência de homologação da 083 até autorização separada de exclusão.
-> **Fase atual:** baseline de migrations reconciliado de `001–133`; a migration forward-only `133` restaurou somente contratos ausentes das fases `092–127`, preservando fatos financeiros e as implementações canônicas posteriores.
+> **Fase atual:** quadro societário tenant-scoped e fechamento financeiro imutável implantados pelas migrations `134–135`; baseline local/remoto contínuo de `001–135`.
 > **Vercel Production:** publicação automática vinculada à branch `main`; a promoção de cada fase só é encerrada após build `READY`.
 > **Segurança:** o Platform Host continua global, sem fallback de tenant, e exige `is_platform_superadmin()`.
 
@@ -468,13 +468,35 @@ migrations `126–127`.
 
 Relatório: `docs/relatorios-fases/FASE-135-RECONCILIACAO-MIGRATIONS-092-127.md`.
 
-### Próxima fase: cadastro societário e fechamento imutável
+## 14. Quadro societário e fechamento imutável — Fase 136 / Migrations 134–135
 
-O cadastro de sócios será configuração tenant-scoped da empresa no SaaS, com
-percentuais e dados financeiros vigentes. O fechamento do ERP consumirá essa
-configuração, congelará um snapshot do quadro societário por período e registrará
-transferências/compensações em conta-corrente auditável. Nenhum nome, UUID ou
-percentual da Gauchinho será convertido em default global.
+O cadastro de sócios é configuração tenant-scoped da empresa no SaaS. A tabela
+`empresa_socios` liga empresa, usuário, percentual e vigência; dados bancários e
+Pix ficam em `empresa_socio_contas`, protegidos por RLS de escrita financeira.
+O quadro vigente deve somar exatamente 100% e todo sócio precisa possuir vínculo
+ativo em `empresa_usuarios` na mesma empresa.
+
+O fechamento do ERP usa `rpc_fechar_socios` e congela cabeçalho, itens e
+instruções nas tabelas `financeiro_fechamentos_socios`,
+`financeiro_fechamento_socios_itens` e
+`financeiro_fechamento_socios_instrucoes`. Nome, percentual, total pago,
+responsabilidade e conta de destino viram snapshots. Triggers impedem `UPDATE`
+e `DELETE`; correções futuras exigem um novo período, preservando a auditoria.
+A migration 135 serializa o fechamento por empresa e rejeita qualquer período
+sobreposto, impedindo dupla contabilização inclusive sob concorrência.
+
+A equalização não presume dois sócios nem divisão 50/50. O algoritmo distribui
+responsabilidades pelos percentuais vigentes, combina múltiplos devedores e
+credores e explica tanto a transferência direta quanto o valor alternativo de
+próximas contas. Os vínculos legados da Gauchinho foram migrados inicialmente
+sem apagar fatos, e podem ser confirmados na aba **Sociedade** antes do primeiro
+fechamento formal.
+
+Pós-check de Production: cinco tabelas com RLS, três triggers de imutabilidade,
+dois sócios ativos, nenhum quadro inválido, nenhum fechamento automático e RPCs
+sem execução para `anon`/`service_role`. Histórico contínuo `001–135`.
+
+Relatório: `docs/relatorios-fases/FASE-136-QUADRO-SOCIETARIO-FECHAMENTO-IMUTAVEL.md`.
 
 
 
