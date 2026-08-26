@@ -11,6 +11,10 @@ export type PrevisaoParticipanteItem = {
   valor_previsto: number;
   valor_elegivel: number;
   valor_pago: number;
+  valor_bruto_atribuido: number | null;
+  valor_imposto_atribuido: number | null;
+  valor_liquido: number;
+  percentual_imposto: number | null;
   status: string;
   tipo_gatilho: string;
   conferido_por_participante: boolean;
@@ -23,6 +27,7 @@ export type PrevisaoParticipanteItem = {
 interface MinhasComissoesClientProps {
   participanteNome: string;
   previsoes: PrevisaoParticipanteItem[];
+  mostrarDetalhesFiscais: boolean;
 }
 
 const brl = (val: number) =>
@@ -31,6 +36,7 @@ const brl = (val: number) =>
 export function MinhasComissoesClient({
   participanteNome,
   previsoes,
+  mostrarDetalhesFiscais,
 }: MinhasComissoesClientProps) {
   const now = new Date();
   const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
@@ -95,10 +101,18 @@ export function MinhasComissoesClient({
 
   // Métricas do período filtrado
   const metricas = useMemo(() => {
-    const totalGerado = previsoesFiltradas.reduce((s, p) => s + Number(p.valor_previsto || 0), 0);
+    const totalLiquido = previsoesFiltradas.reduce((s, p) => s + Number(p.valor_liquido || 0), 0);
+    const totalBruto = previsoesFiltradas.reduce(
+      (s, p) => s + Number(p.valor_bruto_atribuido ?? p.valor_liquido ?? 0),
+      0,
+    );
+    const totalImposto = previsoesFiltradas.reduce(
+      (s, p) => s + Number(p.valor_imposto_atribuido ?? 0),
+      0,
+    );
     const totalElegivel = previsoesFiltradas.reduce((s, p) => s + Number(p.valor_elegivel || 0), 0);
     const totalPago = previsoesFiltradas.reduce((s, p) => s + Number(p.valor_pago || 0), 0);
-    const totalAReceber = totalGerado - totalPago;
+    const totalAReceber = totalLiquido - totalPago;
 
     // Métricas para o subconjunto de cliente (se filtrado) ou global
     const baseParaMeses = clienteSelecionado || buscaCliente.trim()
@@ -121,7 +135,9 @@ export function MinhasComissoesClient({
       .reduce((s, p) => s + Number(p.valor_previsto || 0), 0);
 
     return {
-      totalGerado,
+      totalBruto,
+      totalImposto,
+      totalLiquido,
       totalElegivel,
       totalPago,
       totalAReceber,
@@ -274,10 +290,18 @@ export function MinhasComissoesClient({
       <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-2xs dark:border-slate-800 dark:bg-slate-900">
           <p className="text-xs font-semibold text-slate-500">
-            Total Previsto {clienteSelecionado ? `(${clienteSelecionado})` : "no Período"}
+            Valor líquido previsto {clienteSelecionado ? `(${clienteSelecionado})` : "no período"}
           </p>
-          <p className="mt-2 text-2xl font-black text-slate-950 dark:text-white">{brl(metricas.totalGerado)}</p>
-          <p className="mt-1 text-[11px] text-slate-400">{previsoesFiltradas.length} parcelas</p>
+          <p className="mt-2 text-2xl font-black text-slate-950 dark:text-white">{brl(metricas.totalLiquido)}</p>
+          {mostrarDetalhesFiscais ? (
+            <div className="mt-3 space-y-1 border-t border-slate-100 pt-2 text-[11px] dark:border-slate-800">
+              <div className="flex justify-between text-slate-500"><span>Bruto proporcional</span><strong>{brl(metricas.totalBruto)}</strong></div>
+              <div className="flex justify-between text-rose-600"><span>Imposto abatido</span><strong>- {brl(metricas.totalImposto)}</strong></div>
+              <div className="flex justify-between text-emerald-700"><span>Líquido do participante</span><strong>{brl(metricas.totalLiquido)}</strong></div>
+            </div>
+          ) : (
+            <p className="mt-1 text-[11px] text-slate-400">{previsoesFiltradas.length} parcelas · imposto já abatido</p>
+          )}
         </div>
 
         <div className="rounded-2xl border border-blue-200 bg-blue-50/50 p-5 shadow-2xs dark:border-blue-900/40 dark:bg-blue-950/20">
@@ -322,7 +346,9 @@ export function MinhasComissoesClient({
                   <th className="p-3">Competência</th>
                   <th className="p-3">Cliente / Cota</th>
                   <th className="p-3">Etapa / Parcela</th>
-                  <th className="p-3">Gerado</th>
+                  {mostrarDetalhesFiscais ? <th className="p-3">Bruto proporcional</th> : null}
+                  {mostrarDetalhesFiscais ? <th className="p-3">Imposto</th> : null}
+                  <th className="p-3">Líquido gerado</th>
                   <th className="p-3">Elegível</th>
                   <th className="p-3">Pago</th>
                   <th className="p-3 text-right">Conferência</th>
@@ -346,7 +372,18 @@ export function MinhasComissoesClient({
                     <td className="p-3 font-bold text-slate-800 dark:text-slate-200">
                       {row.tipo_gatilho === "CONTEMPLACAO" ? "CONTEMPLAÇÃO" : row.nome_etapa}
                     </td>
-                    <td className="p-3 font-mono font-bold text-slate-950 dark:text-white">{brl(Number(row.valor_previsto))}</td>
+                    {mostrarDetalhesFiscais ? (
+                      <td className="p-3 font-mono text-slate-700 dark:text-slate-300">
+                        {row.valor_bruto_atribuido == null ? "—" : brl(row.valor_bruto_atribuido)}
+                      </td>
+                    ) : null}
+                    {mostrarDetalhesFiscais ? (
+                      <td className="p-3 font-mono text-rose-700 dark:text-rose-400">
+                        {row.valor_imposto_atribuido == null ? "—" : `- ${brl(row.valor_imposto_atribuido)}`}
+                        {row.percentual_imposto != null ? <span className="ml-1 text-[9px]">({row.percentual_imposto}%)</span> : null}
+                      </td>
+                    ) : null}
+                    <td className="p-3 font-mono font-bold text-slate-950 dark:text-white">{brl(Number(row.valor_liquido))}</td>
                     <td className="p-3 font-mono text-slate-700 dark:text-slate-300">{brl(Number(row.valor_elegivel))}</td>
                     <td className="p-3 font-mono text-emerald-700 dark:text-emerald-400 font-bold">{brl(Number(row.valor_pago))}</td>
                     <td className="p-3 text-right">

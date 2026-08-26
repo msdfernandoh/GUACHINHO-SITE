@@ -401,6 +401,14 @@ A criação recorrente e a duplicação usam RPCs transacionais com permissão `
 
 O build, o TypeScript e seis testes contratuais específicos foram aprovados localmente. A migration 129 ainda não foi aplicada ao Supabase Production. Relatório: `docs/relatorios-fases/FASE-129-CONTAS-RECORRENTES-DUPLICACAO-FUTURO.md`.
 
+## 9. Transparência fiscal das comissões — Migration 130
+
+A migration `130_comissoes_transparencia_fiscal_vinculo_previsoes.sql` formaliza o vínculo entre a previsão do participante e a previsão da franquia que lhe deu origem. Vínculos antigos presentes apenas em `snapshot_regra` são recuperados somente quando empresa e venda coincidem; novos vínculos são protegidos por FK e trigger tenant-aware.
+
+O extrato `Minhas comissões` passa a chamar o valor do participante de líquido e, quando `participante_exibe_detalhes_fiscais` estiver habilitado, mostra bruto proporcional, imposto abatido e líquido dentro do mesmo card e no detalhamento mensal. Todos os valores vêm dos snapshots gravados em `comissao_previsoes_franquia`; nenhuma alteração fiscal atual recalcula fatos históricos.
+
+Build e testes específicos aprovados localmente. A migration 130 ainda não foi aplicada ao Supabase Production. Relatório: `docs/relatorios-fases/FASE-130-COMISSOES-TRANSPARENCIA-FISCAL.md`.
+
 
 
 
