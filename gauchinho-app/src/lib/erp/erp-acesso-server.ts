@@ -18,5 +18,9 @@ export async function requireErpRouteAccess(routeId: ErpAccessId) {
   if (!access.usuario || !access.empresaAtiva || !canAccessErpRoute(access.config, access.vinculo?.erp_modulos_visiveis, routeId)) {
     notFound();
   }
-  return access;
+  return access as typeof access & {
+    usuario: NonNullable<typeof access.usuario>;
+    empresaAtiva: NonNullable<typeof access.empresaAtiva>;
+    vinculo: NonNullable<typeof access.vinculo>;
+  };
 }

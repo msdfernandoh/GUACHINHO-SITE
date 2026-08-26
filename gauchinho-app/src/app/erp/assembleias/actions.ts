@@ -2,17 +2,10 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { getCurrentTenantContext } from "@/lib/tenant/context";
-import { getErpSistemaConfig } from "@/lib/erp/erp-modulos";
-import { erpOperationalRouteEnabled } from "@/lib/erp/erp-operational";
+import { requireErpRouteAccess } from "@/lib/erp/erp-acesso-server";
 
 async function requireAssembleias(write = false) {
-  const { usuario, vinculos, empresaAtiva } = await getCurrentTenantContext();
-  if (!usuario || !empresaAtiva || !vinculos.some((v) => v.empresa_id === empresaAtiva.id)) {
-    throw new Error("Tenant não autorizado.");
-  }
-  const config = getErpSistemaConfig(empresaAtiva.configuracoes);
-  if (!erpOperationalRouteEnabled(config, "assembleias")) throw new Error("Módulo não habilitado.");
+  const { usuario, empresaAtiva } = await requireErpRouteAccess("assembleias");
   const supabase = await createClient();
   if (write) {
     const { data, error } = await supabase.rpc("can_write_tenant_internal", { p_empresa_id: empresaAtiva.id });

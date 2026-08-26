@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { requireTenantPermission } from "@/lib/tenant/context";
+import { requireErpRouteAccess } from "@/lib/erp/erp-acesso-server";
 import {
   normalizarPedidos,
   gerarIdempotencyKeyRecebimento,
@@ -13,6 +14,7 @@ export type ReceiptState = { ok: boolean; message: string; receiptId?: string };
 export type SolicitacaoState = { ok: boolean; message: string; solicitacaoId?: string; codigo?: string };
 
 async function context() {
+  await requireErpRouteAccess("repasse-franquia");
   const { empresaAtiva } = await requireTenantPermission("gerenciar_financeiro");
   const db = await createClient();
   return { db, empresaId: empresaAtiva.id };

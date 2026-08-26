@@ -2,6 +2,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentTenantContext } from "@/lib/tenant/context";
 import { ErpGruposSyncButton } from "@/components/erp/erp-grupos-sync-button";
+import { listAdministradoraIdsAutorizadasForEmpresa } from "@/lib/grupos/catalogo-autorizado-service";
 
 export default async function ErpGruposPage({
   searchParams,
@@ -11,12 +12,16 @@ export default async function ErpGruposPage({
   const f = await searchParams;
   const { empresaAtiva } = await getCurrentTenantContext();
   const db = await createClient();
+  const administradoraIds = empresaAtiva
+    ? await listAdministradoraIdsAutorizadasForEmpresa(empresaAtiva.id)
+    : [];
 
   let q = db
     .from("grupos_consorcio")
     .select(
       "id,codigo_grupo,status,ativo,prazo_total,vagas_disponiveis,data_primeira_assembleia,origem_governanca,status_governanca,empresa_origem_id,administradora:administradoras(nome),tipo:administradora_tipos(nome),modalidade_comissao:administradora_modalidades_comissao(nome),cotas:grupos_cotas(id,valor_credito,ativo,status)"
     )
+    .in("administradora_id", administradoraIds.length ? administradoraIds : ["00000000-0000-0000-0000-000000000000"])
     .order("codigo_grupo");
 
   if (f.busca) q = q.ilike("codigo_grupo", `%${f.busca}%`);

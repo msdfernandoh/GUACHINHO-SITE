@@ -1,4 +1,5 @@
 import { getCurrentTenantContext } from "@/lib/tenant/context";
+import { notFound } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
   ErpVendasHubView,
@@ -10,7 +11,8 @@ import {
 
 export default async function AdminVendasPage() {
   const { empresaAtiva, vinculos } = await getCurrentTenantContext();
-  const empresaId = empresaAtiva?.id ?? "7170f38e-15dd-4b19-8588-51e9a9cf0d4c";
+  if (!empresaAtiva) notFound();
+  const empresaId = empresaAtiva.id;
   const empresaNome = empresaAtiva?.nome_fantasia ?? empresaAtiva?.razao_social ?? "Gauchinho Consórcios";
 
   const vinculo = (vinculos ?? []).find((item) => item.empresa_id === empresaId);

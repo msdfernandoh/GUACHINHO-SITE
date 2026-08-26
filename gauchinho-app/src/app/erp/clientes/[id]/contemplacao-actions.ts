@@ -1,14 +1,14 @@
 "use server";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { getCurrentTenantContext } from "@/lib/tenant/context";
+import { requireErpRouteAccess } from "@/lib/erp/erp-acesso-server";
 export type ContemplacaoState = { ok: boolean; message: string };
 export async function marcarCotaContempladaAction(
   _state: ContemplacaoState,
   formData: FormData,
 ): Promise<ContemplacaoState> {
   try {
-    const { empresaAtiva } = await getCurrentTenantContext();
+    const { empresaAtiva } = await requireErpRouteAccess("clientes");
     if (!empresaAtiva) throw new Error("Selecione uma empresa.");
     if (formData.get("confirmacao") !== "on")
       throw new Error("Confirme explicitamente a contemplação.");

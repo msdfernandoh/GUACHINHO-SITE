@@ -4,10 +4,15 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { isPlatformSuperadmin } from "@/lib/auth/is-superadmin";
 import { commissionRuleScopesConflict, parseFranchiseRuleForm } from "@/lib/erp/commission-rule-input";
+import { requireErpRouteAccess } from "@/lib/erp/erp-acesso-server";
 
 export type CommissionActionState = { ok: boolean; message: string; data?: any };
 
 async function assertCanWrite(empresaId: string) {
+  const { empresaAtiva } = await requireErpRouteAccess("regras-comissao");
+  if (!empresaAtiva || empresaAtiva.id !== empresaId) {
+    throw new Error("A empresa informada não corresponde ao tenant ativo.");
+  }
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("can_write_tenant_internal", {
     p_empresa_id: empresaId,

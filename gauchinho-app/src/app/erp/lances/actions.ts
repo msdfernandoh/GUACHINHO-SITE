@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getCurrentTenantContext } from "@/lib/tenant/context";
+import { requireErpRouteAccess } from "@/lib/erp/erp-acesso-server";
 
 export type CotaLanceOperacionalDTO = {
   id: string;
@@ -111,6 +111,7 @@ export async function fetchCotasComLancesOperacional(filters?: {
   rows: CotaLanceOperacionalDTO[];
   empresaId: string;
 }> {
+  const { empresaAtiva, usuario } = await requireErpRouteAccess("lances");
   const emptyStats: LancesDashboardStats = {
     totalCotas: 0,
     comLanceAtivo: 0,
@@ -121,7 +122,6 @@ export async function fetchCotasComLancesOperacional(filters?: {
   };
 
   try {
-    const { empresaAtiva, usuario } = await getCurrentTenantContext();
     if (!empresaAtiva?.id) {
       return { stats: emptyStats, rows: [], empresaId: "" };
     }
@@ -398,7 +398,7 @@ export async function fetchCotasComLancesOperacional(filters?: {
 
 
 export async function salvarEstrategiaLanceCompletaAction(formData: FormData) {
-  const { empresaAtiva, usuario } = await getCurrentTenantContext();
+  const { empresaAtiva, usuario } = await requireErpRouteAccess("lances");
   if (!empresaAtiva?.id) throw new Error("Empresa ativa não encontrada.");
 
   const cotaId = String(formData.get("cota_id") ?? "");
@@ -546,7 +546,7 @@ export async function salvarEstrategiaLanceCompletaAction(formData: FormData) {
 }
 
 export async function confirmarLanceOperacionalAction(cotaId: string, observacao?: string) {
-  const { empresaAtiva } = await getCurrentTenantContext();
+  const { empresaAtiva } = await requireErpRouteAccess("lances");
   if (!empresaAtiva?.id) throw new Error("Empresa ativa não encontrada.");
 
   const supabase = await createClient();
@@ -562,7 +562,7 @@ export async function confirmarLanceOperacionalAction(cotaId: string, observacao
 }
 
 export async function revogarConfirmacaoLanceOperacionalAction(cotaId: string, motivo: string) {
-  const { empresaAtiva } = await getCurrentTenantContext();
+  const { empresaAtiva } = await requireErpRouteAccess("lances");
   if (!empresaAtiva?.id) throw new Error("Empresa ativa não encontrada.");
 
   const supabase = await createClient();

@@ -4,11 +4,12 @@ import { Input, Label, Select, Textarea } from "@/components/ui/form-primitives"
 import { PROPOSTA_STATUS } from "@/lib/types";
 import { PARCEIROS_SUGERIDOS } from "@/lib/proposta/pdf/types";
 
-export function PropostaForm({ initial }: { initial?: Record<string, unknown> }) {
+export function PropostaForm({ initial, origem = "admin" }: { initial?: Record<string, unknown>; origem?: "admin" | "erp" }) {
   return (
     <form action={savePropostaAction} className="space-y-4 rounded-xl border bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900">
       {initial?.id ? <input type="hidden" name="id" value={String(initial.id)} /> : null}
       {initial?.cliente_id ? <input type="hidden" name="cliente_id" value={String(initial.cliente_id)} /> : null}
+      <input type="hidden" name="origem_interface" value={origem} />
       <div>
         <Label>Lead ID (opcional)</Label>
         <Input name="lead_id" defaultValue={String(initial?.lead_id ?? "")} />

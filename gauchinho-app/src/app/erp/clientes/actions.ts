@@ -4,14 +4,14 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getCurrentTenantContext } from "@/lib/tenant/context";
+import { requireErpRouteAccess } from "@/lib/erp/erp-acesso-server";
 import { converterContratacaoEmVenda } from "@/lib/vendas/vendas-service";
 
 const text = (value: FormDataEntryValue | null) => String(value ?? "").trim();
 const digits = (value: string) => value.replace(/\D/g, "");
 
 export async function saveClienteAction(formData: FormData) {
-  const { empresaAtiva } = await getCurrentTenantContext();
+  const { empresaAtiva } = await requireErpRouteAccess("clientes");
   if (!empresaAtiva) throw new Error("Empresa ativa não encontrada.");
   const supabase = await createClient();
   const id = text(formData.get("id"));
@@ -80,7 +80,7 @@ export async function saveClienteAction(formData: FormData) {
 }
 
 export async function inativarClienteAction(formData: FormData) {
-  const { empresaAtiva } = await getCurrentTenantContext();
+  const { empresaAtiva } = await requireErpRouteAccess("clientes");
   if (!empresaAtiva) throw new Error("Empresa ativa não encontrada.");
   const id = text(formData.get("id"));
   const supabase = await createClient();
@@ -97,7 +97,7 @@ export async function inativarClienteAction(formData: FormData) {
 }
 
 export async function gerarCotaRealClienteAction(formData: FormData) {
-  const { empresaAtiva } = await getCurrentTenantContext();
+  const { empresaAtiva } = await requireErpRouteAccess("clientes");
   if (!empresaAtiva) throw new Error("Empresa ativa não encontrada.");
 
   const contratacaoId = text(formData.get("contratacao_id"));
@@ -140,10 +140,22 @@ export async function gerarCotaRealClienteAction(formData: FormData) {
 
 export async function obterUrlDocumentoContratacaoAction(storagePath: string): Promise<string | null> {
   try {
-    const { empresaAtiva } = await getCurrentTenantContext();
+    const { empresaAtiva } = await requireErpRouteAccess("clientes");
     if (!empresaAtiva || !storagePath) return null;
 
     const admin = createAdminClient();
+    const contratacaoId = storagePath.split("/", 1)[0];
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(contratacaoId)) {
+      return null;
+    }
+    const { data: contratacao } = await admin
+      .from("contratacoes_online")
+      .select("id")
+      .eq("id", contratacaoId)
+      .eq("empresa_id", empresaAtiva.id)
+      .maybeSingle();
+    if (!contratacao) return null;
+
     const { data, error } = await admin.storage
       .from("contratacoes-documentos")
       .createSignedUrl(storagePath, 60 * 60);

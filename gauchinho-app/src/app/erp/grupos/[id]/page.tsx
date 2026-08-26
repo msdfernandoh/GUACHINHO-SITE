@@ -4,6 +4,8 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentTenantContext } from "@/lib/tenant/context";
 import { GroupCatalogForm } from "@/components/erp/group-catalog-form";
 import { salvarGrupoLocalAction } from "../actions";
+import { getGrupoAutorizadoForEmpresa } from "@/lib/grupos/catalogo-autorizado-service";
+import { isPlatformSuperadmin } from "@/lib/auth/is-superadmin";
 
 const money = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 
@@ -14,7 +16,14 @@ export default async function GrupoErpPage({
 }) {
   const { id } = await params;
   const { empresaAtiva } = await getCurrentTenantContext();
+  if (!empresaAtiva) notFound();
+  try {
+    await getGrupoAutorizadoForEmpresa(empresaAtiva.id, id);
+  } catch {
+    notFound();
+  }
   const db = await createClient();
+  const platformSuperadmin = await isPlatformSuperadmin();
 
   const [grupoRes, cotasRes] = await Promise.all([
     db
@@ -112,12 +121,14 @@ export default async function GrupoErpPage({
           </p>
         </div>
 
-        <Link
-          href={`/platform/grupos/${g.id}`}
-          className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2 text-xs font-bold text-slate-700 shadow-sm hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-        >
-          ⚙️ Abrir no Editor da Platform
-        </Link>
+        {platformSuperadmin ? (
+          <Link
+            href={`/platform/grupos/${g.id}`}
+            className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2 text-xs font-bold text-slate-700 shadow-sm hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+          >
+            ⚙️ Abrir no Editor da Platform
+          </Link>
+        ) : null}
       </div>
 
       {/* 1. FORMULÁRIO DE CONFIGURAÇÃO DO GRUPO */}

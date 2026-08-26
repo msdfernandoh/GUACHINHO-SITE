@@ -29,7 +29,10 @@ describe("Contrato da Migration 113 - Datas de Comissões, Curva de Estorno e Ge
   });
 
   it("garante proteção restrita a Master para exclusão/estorno e exigência do texto EXCLUIR", () => {
-    expect(vendasActionsContent).toContain("isMaster");
+    expect(vendasActionsContent).toContain("requireVendaMaster");
+    expect(vendasActionsContent).toContain('papel?.codigo === "admin_empresa"');
+    expect(vendasActionsContent).toContain("isPlatformSuperadmin");
+    expect(vendasActionsContent).not.toContain("papelNome.includes");
     expect(vendasActionsContent).toContain('acao === "EXCLUIR" && confirmacao !== "EXCLUIR"');
     expect(vendasActionsContent).toContain("cancelarCotaEstornoAction");
     expect(vendasActionsContent).toContain("masterAtualizarVendaAction");

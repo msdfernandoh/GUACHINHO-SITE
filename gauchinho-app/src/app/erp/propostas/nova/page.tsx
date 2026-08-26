@@ -78,7 +78,7 @@ export default async function ErpNovaPropostaPage({
         </div>
       )}
 
-      <PropostaForm initial={initial} />
+      <PropostaForm initial={initial} origem="erp" />
     </div>
   );
 }

@@ -3,8 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { requireUsuario } from "@/lib/auth/get-usuario";
-import { isStaff } from "@/lib/auth/permissions";
+import { requireTenantPermission } from "@/lib/tenant/context";
 import { registrarEvento } from "@/lib/eventos/registrar";
 import {
   enrichPropostaProjecaoFromSimulacao,
@@ -14,10 +13,12 @@ import {
 import { assertPropostaMinimum } from "@/lib/proposta/minimum";
 
 export async function fetchPropostasList(status?: string) {
+  const { empresaAtiva } = await requireTenantPermission("gerenciar_propostas");
   const supabase = await createClient();
   let q = supabase
     .from("propostas")
     .select("id, created_at, nome_cliente, tipo_proposta, valor_credito, status, lead_id, pdf_url")
+    .eq("empresa_id", empresaAtiva.id)
     .order("created_at", { ascending: false })
     .limit(100);
   if (status) q = q.eq("status", status);
@@ -27,8 +28,9 @@ export async function fetchPropostasList(status?: string) {
 }
 
 export async function fetchProposta(id: string) {
+  const { empresaAtiva } = await requireTenantPermission("gerenciar_propostas");
   const supabase = await createClient();
-  const { data, error } = await supabase.from("propostas").select("*").eq("id", id).single();
+  const { data, error } = await supabase.from("propostas").select("*").eq("id", id).eq("empresa_id", empresaAtiva.id).single();
   if (error) throw new Error(error.message);
   return data;
 }
@@ -77,27 +79,47 @@ function readPropostaPayload(formData: FormData, existingPdfUrl?: string | null)
 }
 
 export async function savePropostaAction(formData: FormData) {
-  const usuario = await requireUsuario();
+  const { usuario, empresaAtiva } = await requireTenantPermission("gerenciar_propostas");
   const id = String(formData.get("id") ?? "").trim();
+  const origemInterface = formData.get("origem_interface") === "erp" ? "erp" : "admin";
   const supabase = await createClient();
 
   let existingPdf: string | null = null;
   if (id) {
-    const { data } = await supabase.from("propostas").select("pdf_url").eq("id", id).single();
+    const { data } = await supabase.from("propostas").select("pdf_url").eq("id", id).eq("empresa_id", empresaAtiva.id).single();
     existingPdf = data?.pdf_url ?? null;
   }
 
   const payload = readPropostaPayload(formData, existingPdf);
   assertPropostaMinimum({ nome: payload.nome_cliente, telefone: payload.whatsapp_cliente });
 
+  if (payload.lead_id) {
+    const { data: lead } = await supabase
+      .from("leads")
+      .select("id")
+      .eq("id", payload.lead_id)
+      .eq("empresa_id", empresaAtiva.id)
+      .maybeSingle();
+    if (!lead) throw new Error("O lead informado não pertence à empresa ativa.");
+  }
+  if (payload.cliente_id) {
+    const { data: cliente } = await supabase
+      .from("clientes")
+      .select("id")
+      .eq("id", payload.cliente_id)
+      .eq("empresa_id", empresaAtiva.id)
+      .maybeSingle();
+    if (!cliente) throw new Error("O cliente informado não pertence à empresa ativa.");
+  }
+
   if (id) {
-    const { error } = await supabase.from("propostas").update(payload).eq("id", id);
+    const { error } = await supabase.from("propostas").update(payload).eq("id", id).eq("empresa_id", empresaAtiva.id);
     if (error) throw new Error(error.message);
     revalidatePath(`/admin/propostas/${id}`);
     redirect(`/admin/propostas/${id}`);
   }
 
-  const { data, error } = await supabase.from("propostas").insert(payload).select("id").single();
+  const { data, error } = await supabase.from("propostas").insert({ ...payload, empresa_id: empresaAtiva.id }).select("id").single();
   if (error) throw new Error(error.message);
 
   await registrarEvento({
@@ -110,16 +132,17 @@ export async function savePropostaAction(formData: FormData) {
   });
 
   revalidatePath("/admin/propostas");
-  redirect(`/admin/propostas/${data.id}`);
+  revalidatePath("/erp/propostas");
+  redirect(origemInterface === "erp" ? "/erp/propostas" : `/admin/propostas/${data.id}`);
 }
 
 export async function generatePropostaPdfAction(formData: FormData) {
-  const usuario = await requireUsuario();
-  if (!isStaff(usuario.perfil)) {
-    throw new Error("Sem permissão para gerar PDF de proposta.");
-  }
+  const { usuario, empresaAtiva } = await requireTenantPermission("gerenciar_propostas");
   const propostaId = String(formData.get("proposta_id") ?? "").trim();
   if (!propostaId) throw new Error("Proposta inválida");
+  const supabase = await createClient();
+  const { data: proposta } = await supabase.from("propostas").select("id").eq("id", propostaId).eq("empresa_id", empresaAtiva.id).maybeSingle();
+  if (!proposta) throw new Error("Proposta não encontrada nesta empresa.");
 
   await enrichPropostaProjecaoFromSimulacao(propostaId);
   const { signedUrl } = await generateAndStorePropostaPdf(propostaId, {
@@ -140,10 +163,10 @@ export async function generatePropostaPdfAction(formData: FormData) {
 }
 
 export async function getPropostaDownloadUrlAction(propostaId: string) {
-  const usuario = await requireUsuario();
-  if (!isStaff(usuario.perfil)) {
-    throw new Error("Sem permissão para baixar PDF de proposta.");
-  }
+  const { empresaAtiva } = await requireTenantPermission("gerenciar_propostas");
+  const supabase = await createClient();
+  const { data: proposta } = await supabase.from("propostas").select("id").eq("id", propostaId).eq("empresa_id", empresaAtiva.id).maybeSingle();
+  if (!proposta) throw new Error("Proposta não encontrada nesta empresa.");
   const url = await getPropostaPdfDownloadUrl(propostaId);
   await registrarEvento({
     tipo_evento: "proposta_pdf_baixada",
@@ -155,10 +178,12 @@ export async function getPropostaDownloadUrlAction(propostaId: string) {
 }
 
 export async function searchLeadsForProposta(q: string) {
+  const { empresaAtiva } = await requireTenantPermission("gerenciar_propostas");
   const supabase = await createClient();
   const { data } = await supabase
     .from("leads")
     .select("id, nome, whatsapp")
+    .eq("empresa_id", empresaAtiva.id)
     .ilike("nome", `%${q}%`)
     .limit(10);
   return data ?? [];

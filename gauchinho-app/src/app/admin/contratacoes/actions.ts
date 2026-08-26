@@ -360,7 +360,8 @@ export async function converterContratacaoEmVendaAction(
     await requireStaffAdmin();
     const { getCurrentTenantContext } = await import("@/lib/tenant/context");
     const { empresaAtiva } = await getCurrentTenantContext();
-    const empresaId = empresaAtiva?.id ?? "7170f38e-15dd-4b19-8588-51e9a9cf0d4c";
+    if (!empresaAtiva) throw new Error("Tenant não identificado.");
+    const empresaId = empresaAtiva.id;
     const { converterContratacaoEmVenda } = await import("@/lib/vendas/vendas-service");
 
     const result = await converterContratacaoEmVenda(empresaId, contratacaoId);

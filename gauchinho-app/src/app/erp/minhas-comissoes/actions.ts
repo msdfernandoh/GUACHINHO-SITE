@@ -1,9 +1,9 @@
 "use server";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { getCurrentTenantContext } from "@/lib/tenant/context";
+import { requireErpRouteAccess } from "@/lib/erp/erp-acesso-server";
 export async function conferirPagamentoAction(formData: FormData) {
-  const { empresaAtiva } = await getCurrentTenantContext();
+  const { empresaAtiva } = await requireErpRouteAccess("minhas-comissoes");
   if (!empresaAtiva) throw new Error("Empresa não selecionada.");
   const id = String(formData.get("previsao_id") ?? "");
   const db = await createClient();

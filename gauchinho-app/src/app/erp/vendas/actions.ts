@@ -1,23 +1,32 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireStaffAdmin } from "@/lib/auth/require-staff-admin";
-import { getCurrentTenantContext } from "@/lib/tenant/context";
+import { requireErpRouteAccess } from "@/lib/erp/erp-acesso-server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { requireTenantPermission } from "@/lib/tenant/context";
+import { isPlatformSuperadmin } from "@/lib/auth/is-superadmin";
 
 function val(formData: FormData, key: string) {
   return String(formData.get(key) ?? "").trim();
 }
 
-export async function masterAtualizarVendaAction(formData: FormData) {
-  const user = await requireStaffAdmin();
-  const { empresaAtiva, vinculos } = await getCurrentTenantContext();
-  if (!empresaAtiva) throw new Error("Tenant não identificado.");
+async function requireVendaWrite() {
+  await requireErpRouteAccess("vendas");
+  return requireTenantPermission("formalizar_vendas");
+}
 
-  const vinculo = (vinculos ?? []).find((item) => item.empresa_id === empresaAtiva?.id);
-  const papelNome = vinculo?.papel?.nome?.toLowerCase() ?? "";
-  const isMaster = papelNome.includes("master") || papelNome.includes("admin") || papelNome.includes("gestor") || Boolean((user as any)?.is_master);
-  if (!isMaster) throw new Error("Apenas o usuário Master tem autorização para editar vendas e comissões.");
+async function requireVendaMaster() {
+  const context = await requireVendaWrite();
+  const isAdminEmpresa = context.vinculoAtivo.papel?.codigo === "admin_empresa";
+  if (!isAdminEmpresa && !(await isPlatformSuperadmin())) {
+    throw new Error("Apenas o administrador da empresa pode executar esta operação crítica.");
+  }
+  return context;
+}
+
+export async function masterAtualizarVendaAction(formData: FormData) {
+  const { empresaAtiva } = await requireVendaMaster();
+  if (!empresaAtiva) throw new Error("Tenant não identificado.");
 
   const vendaId = val(formData, "venda_id");
   const numeroGrupo = val(formData, "numero_grupo");
@@ -110,8 +119,7 @@ export async function masterAtualizarVendaAction(formData: FormData) {
 }
 
 export async function cancelarCotaEstornoAction(formData: FormData) {
-  await requireStaffAdmin();
-  const { empresaAtiva } = await getCurrentTenantContext();
+  const { empresaAtiva } = await requireVendaWrite();
   if (!empresaAtiva) throw new Error("Tenant não identificado.");
 
   const cotaId = val(formData, "cota_id");
@@ -133,14 +141,8 @@ export async function cancelarCotaEstornoAction(formData: FormData) {
 }
 
 export async function masterExcluirOuEstornarVendaAction(formData: FormData) {
-  const user = await requireStaffAdmin();
-  const { empresaAtiva, vinculos } = await getCurrentTenantContext();
+  const { empresaAtiva } = await requireVendaMaster();
   if (!empresaAtiva) throw new Error("Tenant não identificado.");
-
-  const vinculo = (vinculos ?? []).find((item) => item.empresa_id === empresaAtiva?.id);
-  const papelNome = vinculo?.papel?.nome?.toLowerCase() ?? "";
-  const isMaster = papelNome.includes("master") || papelNome.includes("admin") || papelNome.includes("gestor") || Boolean((user as any)?.is_master);
-  if (!isMaster) throw new Error("Apenas o usuário Master tem autorização para excluir ou estornar vendas.");
 
   const vendaId = val(formData, "venda_id");
   const acao = val(formData, "acao"); // "EXCLUIR" ou "ESTORNAR"
@@ -171,8 +173,7 @@ export async function masterExcluirOuEstornarVendaAction(formData: FormData) {
 }
 
 export async function atualizarNumeroCotaAction(formData: FormData) {
-  await requireStaffAdmin();
-  const { empresaAtiva } = await getCurrentTenantContext();
+  const { empresaAtiva } = await requireVendaWrite();
   if (!empresaAtiva) throw new Error("Tenant não identificado.");
 
   const cotaId = val(formData, "cota_id");
@@ -192,8 +193,7 @@ export async function atualizarNumeroCotaAction(formData: FormData) {
 }
 
 export async function registrarContemplacaoAction(formData: FormData) {
-  await requireStaffAdmin();
-  const { empresaAtiva } = await getCurrentTenantContext();
+  const { empresaAtiva } = await requireVendaWrite();
   if (!empresaAtiva) throw new Error("Tenant não identificado.");
 
   const cotaId = val(formData, "cota_id");

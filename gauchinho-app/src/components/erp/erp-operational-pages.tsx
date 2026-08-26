@@ -5,6 +5,8 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentTenantContext } from "@/lib/tenant/context";
 import { CommissionRuleManager } from "@/components/erp/commission-rule-manager";
 import { isPlatformSuperadmin } from "@/lib/auth/is-superadmin";
+import { listAdministradoraIdsAutorizadasForEmpresa } from "@/lib/grupos/catalogo-autorizado-service";
+import { notFound } from "next/navigation";
 import {
   deleteCommissionProgramAction,
   deleteCommissionRuleAction,
@@ -225,7 +227,14 @@ function stages(value: unknown) {
 export async function ErpRegrasComissaoPage() {
   const { empresaAtiva } = await getCurrentTenantContext();
   const supabase = await createClient();
-  const empresaId = empresaAtiva?.id ?? "";
+  if (!empresaAtiva) notFound();
+  const empresaId = empresaAtiva.id;
+  const administradoraIdsAutorizadas = empresaId
+    ? await listAdministradoraIdsAutorizadasForEmpresa(empresaId)
+    : [];
+  const administradoraIdsConsulta = administradoraIdsAutorizadas.length
+    ? administradoraIdsAutorizadas
+    : ["00000000-0000-0000-0000-000000000000"];
   const [
     programasResult,
     franquiaResult,
@@ -261,6 +270,7 @@ export async function ErpRegrasComissaoPage() {
     supabase
       .from("grupos_consorcio")
       .select("id,codigo_grupo,administradora,administradora_id")
+      .in("administradora_id", administradoraIdsConsulta)
       .eq("ativo", true)
       .not("administradora_id", "is", null)
       .order("codigo_grupo"),
@@ -272,11 +282,13 @@ export async function ErpRegrasComissaoPage() {
     supabase
       .from("administradora_tipos")
       .select("id,nome,administradora_id")
+      .in("administradora_id", administradoraIdsConsulta)
       .eq("ativo", true)
       .order("nome"),
     supabase
       .from("administradora_modalidades_comissao")
       .select("id,nome,administradora_id")
+      .in("administradora_id", administradoraIdsConsulta)
       .eq("ativo", true)
       .order("nome"),
     supabase
@@ -748,7 +760,8 @@ function RuleTable({
 
 export async function ErpRepasseFranquiaPage() {
   const { empresaAtiva } = await getCurrentTenantContext();
-  const empresaId = empresaAtiva?.id ?? "";
+  if (!empresaAtiva) notFound();
+  const empresaId = empresaAtiva.id;
   const db = await createClient();
   const [grants, contas, recebimentos, previsoes, solicitacoesRes] = await Promise.all([
     db

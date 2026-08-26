@@ -1,7 +1,7 @@
 "use server";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { getCurrentTenantContext } from "@/lib/tenant/context";
+import { requireErpRouteAccess } from "@/lib/erp/erp-acesso-server";
 import type { GroupActionState } from "@/app/platform/grupos-actions";
 
 export async function salvarGrupoLocalAction(
@@ -9,7 +9,7 @@ export async function salvarGrupoLocalAction(
   formData: FormData,
 ): Promise<GroupActionState> {
   try {
-    const { empresaAtiva } = await getCurrentTenantContext();
+    const { empresaAtiva } = await requireErpRouteAccess("grupos");
     const empresaId = empresaAtiva?.id;
     if (!empresaId)
       return {

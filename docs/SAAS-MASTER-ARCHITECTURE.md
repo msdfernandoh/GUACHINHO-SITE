@@ -417,6 +417,14 @@ A atualização pode ser executada por superadmin da plataforma ou por usuário 
 
 Integrações futuras com administradoras deverão usar pipeline separado, auditável, idempotente e com histórico de execução. Relatório: `docs/relatorios-fases/FASE-131-GOVERNANCA-ATUALIZACAO-CATALOGO.md`.
 
+## 11. Check-up e hardening dos menus do ERP — Fase 132
+
+Todos os menus base e operacionais do ERP foram confrontados com suas rotas, subrotas, ações e regras de acesso. Rotas físicas passaram a possuir guards server-side próprios, impedindo acesso por URL direta quando o módulo estiver ausente de `empresa_usuarios.erp_modulos_visiveis`. Ações específicas também revalidam o módulo, em vez de confiar na ocultação da interface.
+
+Operações críticas de Vendas usam `formalizar_vendas`, `papeis.codigo = admin_empresa` e `is_platform_superadmin()`, sem autoridade baseada em `usuarios.perfil` ou texto do nome do papel. Propostas gravam empresa explicitamente; documentos de contratação só recebem URL assinada depois da confirmação do tenant; Grupos e seletores de comissão respeitam as administradoras concedidas à franquia. Fallbacks operacionais para o UUID fixo da Gauchinho foram removidos das páginas reutilizadas pelo ERP.
+
+O build de 146 rotas e os testes contratuais da fase são obrigatórios. A próxima etapa de escala é a paginação e agregação server-side de Contas a Pagar. Relatório: `docs/relatorios-fases/FASE-132-CHECKUP-MENUS-ERP-AUTORIZACAO.md`.
+
 
 
 
