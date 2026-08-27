@@ -102,7 +102,12 @@ export function GruposPublicClient({
     const q = busca.trim().toLowerCase();
     return aggregates.filter(({ grupo, cotas }) => {
       if (!cotas.length) return false;
-      if (filtro !== "Todos" && grupo.modalidade !== filtro) return false;
+      if (
+        filtro !== "Todos" &&
+        !(grupo.categorias_publicacao?.length
+          ? grupo.categorias_publicacao.includes(filtro)
+          : grupo.modalidade === filtro)
+      ) return false;
       if (!q) return true;
       return (
         grupo.codigo_grupo.toLowerCase().includes(q) ||

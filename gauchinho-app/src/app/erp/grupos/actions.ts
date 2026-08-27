@@ -3,6 +3,8 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { requireErpRouteAccess } from "@/lib/erp/erp-acesso-server";
 import type { GroupActionState } from "@/app/platform/grupos-actions";
+import { randomUUID } from "node:crypto";
+import { parseBatchCotasInput } from "@/lib/platform/grupos-prontidao";
 
 export async function salvarGrupoLocalAction(
   _previous: GroupActionState,
@@ -96,32 +98,40 @@ export async function salvarGrupoLocalAction(
         ) || null,
       updated_at: new Date().toISOString(),
     };
-    let error;
     if (id) {
-      const result = await db
-        .from("grupos_consorcio")
-        .update(payload)
-        .eq("id", id)
-        .eq("origem_governanca", "LOCAL")
-        .eq("empresa_origem_id", empresaId);
-      error = result.error;
-    } else {
-      const result = await db.from("grupos_consorcio").insert({
-        ...payload,
-        origem_governanca: "LOCAL",
-        status_governanca: "PENDENTE_PLATFORM",
-        empresa_origem_id: empresaId,
+      const { error: configError } = await db.rpc("rpc_configurar_grupo_franquia", {
+        p_empresa_id: empresaId,
+        p_grupo_id: id,
+        p_visivel: true,
+        p_destaque: false,
+        p_ordem: null,
+        p_titulo_comercial: "",
+        p_descricao_comercial: "",
+        p_integral: formData.get("modalidade_integral_habilitada") === "on",
+        p_reduzida: formData.get("modalidade_reduzida_habilitada") === "on",
+        p_personalizada: formData.get("modalidade_personalizada_habilitada") === "on",
+        p_status_vagas: String(formData.get("status_vagas_local") ?? "HERDAR"),
       });
-      error = result.error;
+      if (configError) throw new Error(configError.message);
     }
+    const creditos = parseBatchCotasInput(String(formData.get("creditos") ?? ""));
+    const { error } = await db.rpc("rpc_submeter_alteracao_grupo_franquia", {
+      p_empresa_id: empresaId,
+      p_grupo_id: id,
+      p_administradora_id: administradoraId,
+      p_tipo_administradora_id: tipoId,
+      p_codigo_grupo: codigo,
+      p_payload: { ...payload, ...(creditos.length ? { creditos } : {}) },
+      p_chave_idempotencia: randomUUID(),
+    });
     if (error) throw new Error(error.message);
     revalidatePath("/erp/grupos");
     if (id) revalidatePath(`/erp/grupos/${id}`);
     return {
       status: "SUCCESS",
       message: id
-        ? "Grupo local atualizado."
-        : "Grupo local criado e enviado à fila da Platform.",
+        ? "Alteração aplicada somente nesta franquia e enviada para análise da Platform."
+        : "Novo grupo enviado para homologação. Ele não será publicado antes da aprovação.",
     };
   } catch (error) {
     const message =

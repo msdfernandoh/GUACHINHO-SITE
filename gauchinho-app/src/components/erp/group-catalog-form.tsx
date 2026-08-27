@@ -25,6 +25,11 @@ type Group = {
   origem_governanca?: string;
   status_governanca?: string;
   modalidades_habilitadas_ids?: string[];
+  modalidade_integral_habilitada?: boolean;
+  modalidade_reduzida_habilitada?: boolean;
+  modalidade_personalizada_habilitada?: boolean;
+  status_vagas_local?: string;
+  alteracao_catalogo_status?: string;
 };
 
 export function GroupCatalogForm({
@@ -65,6 +70,11 @@ export function GroupCatalogForm({
     // Por padrão todas as modalidades da administradora vêm habilitadas
     return new Set(modalidades.map((m) => m.id));
   });
+  const [integral, setIntegral] = useState(grupo?.modalidade_integral_habilitada !== false);
+  const [reduzida, setReduzida] = useState(grupo?.modalidade_reduzida_habilitada !== false);
+  const [personalizada, setPersonalizada] = useState(
+    grupo?.modalidade_personalizada_habilitada !== false,
+  );
 
   function toggleMode(modeId: string) {
     if (readonly) return;
@@ -91,6 +101,12 @@ export function GroupCatalogForm({
         name="modalidade_comissao_id"
         value={grupo?.modalidade_comissao_id || Array.from(selectedModes)[0] || ""}
       />
+
+      {scope === "ERP" && grupo?.alteracao_catalogo_status && grupo.alteracao_catalogo_status !== "SEM_ALTERACAO" ? (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+          Alteração local ativa · <strong>{grupo.alteracao_catalogo_status}</strong>. Ela vale somente para esta franquia até a análise da Platform.
+        </div>
+      ) : null}
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">
@@ -179,7 +195,35 @@ export function GroupCatalogForm({
       </div>
 
       {/* SEÇÃO MODALIDADES DE PAGAMENTO HABILITADAS (N:N) */}
-      <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-4 dark:border-slate-800 dark:bg-slate-800/40 space-y-3">
+      {scope === "ERP" ? (
+        <div className="space-y-3 rounded-xl border border-blue-200 bg-blue-50/60 p-4">
+          <div>
+            <h3 className="text-sm font-bold text-slate-900">Modalidades visíveis nesta franquia</h3>
+            <p className="text-xs text-slate-600">A franquia pode restringir as opções oficiais. Isso não altera as outras empresas.</p>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-3">
+            <label className="rounded-lg border bg-white p-3 text-sm font-semibold">
+              <input name="modalidade_integral_habilitada" type="checkbox" checked={integral} onChange={(e) => setIntegral(e.target.checked)} className="mr-2" /> Integral
+            </label>
+            <label className="rounded-lg border bg-white p-3 text-sm font-semibold">
+              <input name="modalidade_reduzida_habilitada" type="checkbox" checked={reduzida} onChange={(e) => { setReduzida(e.target.checked); if (!e.target.checked) setPersonalizada(false); }} className="mr-2" /> Reduzida 60%
+            </label>
+            <label className="rounded-lg border bg-white p-3 text-sm font-semibold">
+              <input name="modalidade_personalizada_habilitada" type="checkbox" checked={personalizada} disabled={!reduzida} onChange={(e) => setPersonalizada(e.target.checked)} className="mr-2" /> Personalizada
+            </label>
+          </div>
+          <label className="block text-sm font-semibold text-slate-700">
+            Situação de vagas no site
+            <select className={field} name="status_vagas_local" defaultValue={grupo?.status_vagas_local ?? "HERDAR"}>
+              <option value="HERDAR">Usar vagas oficiais do SaaS</option>
+              <option value="DISPONIVEL">Disponível nesta franquia</option>
+              <option value="AGUARDANDO_NOVAS_VAGAS">Aguardando novas vagas</option>
+            </select>
+          </label>
+        </div>
+      ) : null}
+
+      {scope === "PLATFORM" ? <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-4 dark:border-slate-800 dark:bg-slate-800/40 space-y-3">
         <div>
           <h3 className="text-sm font-bold text-slate-900 dark:text-white">
             Modalidades de Pagamento Permitidas no Grupo
@@ -219,7 +263,15 @@ export function GroupCatalogForm({
             );
           })}
         </div>
-      </div>
+      </div> : null}
+
+      {scope === "ERP" ? (
+        <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300">
+          Novos créditos sugeridos para este grupo
+          <textarea className={field} name="creditos" rows={2} placeholder="Ex.: 100.000; 150.000; 200.000" />
+          <span className="mt-1 block text-xs font-normal text-slate-500">Os créditos entram como solicitação para homologação global. Nenhum valor de parcela é cadastrado aqui.</span>
+        </label>
+      ) : null}
 
       <div className="grid gap-4 sm:grid-cols-2">
         <label className="flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-300">
@@ -258,7 +310,7 @@ export function GroupCatalogForm({
             type="submit"
             className="rounded-xl bg-blue-700 px-6 py-2.5 text-sm font-bold text-white shadow-md hover:bg-blue-800"
           >
-            Salvar alterações
+            {scope === "ERP" ? "Aplicar localmente e enviar para análise" : "Salvar alterações"}
           </button>
         )}
       </div>

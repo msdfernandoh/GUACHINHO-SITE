@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils/cn";
 const sections = [
   ["Visão geral", [["/platform", "Dashboard", LayoutDashboard]]],
   ["Franquias / Empresas", [["/platform/empresas", "Master Franquias", Building2], ["/platform/usuarios", "Usuários / Responsáveis", Users], ["/platform/dominios", "Domínios", Globe2]]],
-  ["Catálogo global", [["/platform/administradoras", "Administradoras", Landmark], ["/platform/grupos", "Grupos", Layers3], ["/platform/produtos", "Produtos comerciais", Boxes]]],
+  ["Catálogo global", [["/platform/administradoras", "Administradoras", Landmark], ["/platform/grupos", "Grupos e créditos", Layers3]]],
   ["Sites & Portais", [["/platform/sites", "Sites / Portais", Globe2], ["/platform/templates", "Modelos de Site", FileStack]]],
   ["ERP / Recursos", [["/platform/erp-modulos", "Catálogo de módulos", Settings2], ["/platform/recursos", "Liberações e overrides", Boxes]]],
   ["Planos SaaS", [["/platform/planos", "Planos", CreditCard], ["/platform/assinaturas", "Assinaturas SaaS", ScrollText]]],

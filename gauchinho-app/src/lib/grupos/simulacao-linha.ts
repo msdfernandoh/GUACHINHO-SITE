@@ -58,7 +58,7 @@ export function resolveParcelaTipoLinha(
   config: Pick<ConfigLinhaSimulacaoGrupo, "modalidadeParcela">,
   grupo: Pick<
     GrupoConsorcio,
-    "tem_parcela_reduzida" | "permite_parcela_reduzida_personalizada"
+    "tem_parcela_reduzida" | "permite_parcela_reduzida_personalizada" | "permite_parcela_integral"
   >,
 ): ModalidadeParcelaLinha {
   let t = config.modalidadeParcela;
@@ -66,6 +66,9 @@ export function resolveParcelaTipoLinha(
     t = grupo.tem_parcela_reduzida ? "reduzida" : "integral";
   }
   if (t === "reduzida" && !grupo.tem_parcela_reduzida) t = "integral";
+  if (t === "integral" && grupo.permite_parcela_integral === false) {
+    t = grupo.tem_parcela_reduzida ? "reduzida" : "personalizada";
+  }
   return t;
 }
 

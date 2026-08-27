@@ -154,6 +154,7 @@ export type GrupoRecord = {
   updated_at?: string;
   modalidades?: GrupoModalidadeItem[];
   produtos?: GrupoCotaItem[];
+  categorias?: Array<{ categoria?: { codigo?: string; nome?: string; ativo?: boolean } | null }>;
 };
 
 export type AssembleiasTemporalResult = {

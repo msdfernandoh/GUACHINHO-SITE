@@ -27,6 +27,37 @@ export async function decidirGovernancaGrupoAction(formData: FormData) {
   revalidatePath(`/platform/grupos/${grupoId}`);
 }
 
+export async function salvarCategoriasGrupoAction(formData: FormData) {
+  if (!(await isPlatformSuperadmin())) throw new Error("Somente Platform Superadmin.");
+  const grupoId = String(formData.get("grupo_id") ?? "").trim();
+  const codigos = formData.getAll("categoria_codigo").map(String).filter(Boolean);
+  if (!grupoId || codigos.length === 0) throw new Error("Selecione ao menos uma categoria de publicação.");
+  const db = await createClient();
+  const { error } = await db.rpc("rpc_platform_configurar_categorias_grupo", {
+    p_grupo_id: grupoId,
+    p_codigos: codigos,
+  });
+  if (error) throw new Error(error.message);
+  revalidatePath("/platform/grupos");
+  revalidatePath(`/platform/grupos/${grupoId}`);
+}
+
+export async function decidirSolicitacaoGrupoAction(formData: FormData) {
+  if (!(await isPlatformSuperadmin())) throw new Error("Somente Platform Superadmin.");
+  const solicitacaoId = String(formData.get("solicitacao_id") ?? "").trim();
+  const decisao = String(formData.get("decisao") ?? "").trim();
+  const observacao = String(formData.get("observacao") ?? "").trim() || null;
+  const db = await createClient();
+  const { error } = await db.rpc("rpc_platform_decidir_solicitacao_grupo", {
+    p_solicitacao_id: solicitacaoId,
+    p_decisao: decisao,
+    p_observacao: observacao,
+  });
+  if (error) throw new Error(error.message);
+  revalidatePath("/platform/grupos");
+  revalidatePath("/platform/grupos/solicitacoes");
+}
+
 export async function salvarGrupoPlatformAction(
   _previous: GroupActionState,
   formData: FormData,

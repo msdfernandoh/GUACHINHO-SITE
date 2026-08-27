@@ -1,7 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentTenantContext } from "@/lib/tenant/context";
 import { ContasPagarClient } from "./ui";
-import { consultarContasPagar } from "./actions";
+import { consultarContasPagar, consultarProjecaoCaixa } from "./actions";
 
 export default async function ContasPagarPage() {
   const { empresaAtiva, vinculos: vinculosContexto } = await getCurrentTenantContext();
@@ -14,8 +14,9 @@ export default async function ContasPagarPage() {
     isMaster || vinculoAtivo?.pode_estornar_contas
   );
 
-  const [consulta, bancos, centros, fornecedores, vinculos] = await Promise.all([
+  const [consulta, projecaoCaixa, bancos, centros, fornecedores, vinculos] = await Promise.all([
     consultarContasPagar(),
+    consultarProjecaoCaixa(),
     db.from("financeiro_contas_bancarias").select("*").eq("empresa_id", empresaId).order("nome"),
     db.from("financeiro_centros_custo").select("*").eq("empresa_id", empresaId).order("nome"),
     db.from("financeiro_fornecedores").select("*").eq("empresa_id", empresaId).order("nome"),
@@ -71,6 +72,7 @@ export default async function ContasPagarPage() {
   return (
     <ContasPagarClient
       consultaInicial={consulta}
+      projecaoCaixa={projecaoCaixa}
       bancos={(bancos.data ?? []) as any[]}
       centros={(centros.data ?? []) as any[]}
       fornecedores={todosFornecedores}

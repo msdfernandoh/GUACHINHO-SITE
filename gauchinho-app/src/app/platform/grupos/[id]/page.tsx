@@ -15,7 +15,7 @@ export default async function PlatformGrupoPage({
     db
       .from("grupos_consorcio")
       .select(
-        "id,codigo_grupo,administradora_id,tipo_administradora_id,modalidade,status,ativo,prazo_total,data_primeira_assembleia,parcelas_realizadas,prazo_restante,taxa_administrativa_percentual,fundo_reserva_percentual,seguro_percentual,seguro_habilitado,capacidade_total,vagas_disponiveis,vagas_atualizado_em,dados_estatisticos,dados_estatisticos_atualizado_em,permite_lance_embutido,percentual_lance_embutido,origem_governanca,status_governanca,observacoes,updated_at,administradora:administradoras(id,nome),tipo:administradora_tipos(id,nome,codigo),modalidades:grupos_modalidades_disponiveis(id,administradora_modalidade_id,ativo,ordem,configuracao,modalidade:administradora_modalidades_comissao(id,nome,codigo,modo_reduzido_padrao,percentual_padrao,percentual_minimo,percentual_maximo)),produtos:grupos_cotas(id,valor_credito,valor_parcela,status,ativo,grupo_cota_modalidade_valores(id,administradora_modalidade_id,valor_parcela,percentual_reducao,habilitado,modo_reduzido,modo_override,percentual_override,percentual_minimo,percentual_maximo,ativo))",
+        "id,codigo_grupo,administradora_id,tipo_administradora_id,modalidade,status,ativo,prazo_total,data_primeira_assembleia,parcelas_realizadas,prazo_restante,taxa_administrativa_percentual,fundo_reserva_percentual,seguro_percentual,seguro_habilitado,capacidade_total,vagas_disponiveis,vagas_atualizado_em,dados_estatisticos,dados_estatisticos_atualizado_em,permite_lance_embutido,percentual_lance_embutido,origem_governanca,status_governanca,observacoes,updated_at,administradora:administradoras(id,nome),tipo:administradora_tipos(id,nome,codigo),modalidades:grupos_modalidades_disponiveis(id,administradora_modalidade_id,ativo,ordem,configuracao,modalidade:administradora_modalidades_comissao(id,nome,codigo,modo_reduzido_padrao,percentual_padrao,percentual_minimo,percentual_maximo)),produtos:grupos_cotas(id,valor_credito,status,ativo),categorias:grupos_categorias(categoria:catalogo_grupo_categorias(codigo,nome,ativo))",
       )
       .eq("id", id)
       .maybeSingle(),
@@ -33,7 +33,7 @@ export default async function PlatformGrupoPage({
   const grupo = grupoRes.data as unknown as GrupoRecord;
   const adminId = grupo.administradora_id;
 
-  const [tiposRes, modalidadesRes] = await Promise.all([
+  const [tiposRes, modalidadesRes, categoriasRes] = await Promise.all([
     adminId
       ? db
           .from("administradora_tipos")
@@ -50,6 +50,7 @@ export default async function PlatformGrupoPage({
           .eq("ativo", true)
           .order("nome")
       : Promise.resolve({ data: [] }),
+    db.from("catalogo_grupo_categorias").select("codigo,nome").eq("ativo", true).order("ordem"),
   ]);
 
   return (
@@ -69,6 +70,7 @@ export default async function PlatformGrupoPage({
         usuario?: { nome?: string } | null;
         empresa?: { nome_fantasia?: string } | null;
       }>}
+      categoriasDisponiveis={(categoriasRes.data ?? []) as Array<{ codigo: string; nome: string }>}
     />
   );
 }

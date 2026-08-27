@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { isPlatformSection } from "@/lib/platform/catalog";
 import { decidirGovernancaGrupoAction } from "../grupos-actions";
@@ -196,6 +196,7 @@ export default async function PlatformSectionPage({
   searchParams: Promise<Record<string, string | undefined>>;
 }) {
   const { secao } = await params;
+  if (secao === "produtos" || secao === "produtos-comerciais") redirect("/platform/grupos");
   const filters = await searchParams;
   if (!isPlatformSection(secao)) notFound();
   const section = config[secao];

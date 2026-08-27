@@ -119,7 +119,7 @@ export function GrupoRowAdjustments({ grupo, cotas, modalidades, config, onChang
                     handlers.patch(next);
                   }}
                 >
-                  <option value="integral">Integral</option>
+                  {grupo.permite_parcela_integral !== false ? <option value="integral">Integral</option> : null}
                   {temReduzida ? <option value="reduzida">Reduzida</option> : null}
                   {permitePersonalizada ? (
                     <option value="personalizada">Personalizada</option>

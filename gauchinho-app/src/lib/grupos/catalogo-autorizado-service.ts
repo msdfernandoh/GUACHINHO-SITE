@@ -83,7 +83,7 @@ export async function listGruposAutorizadosForEmpresa(
     const presentation = resolveEmpresaGrupoPresentation(g, config);
 
     if (presentation.exibirAoPublico) {
-      result.push(g);
+      result.push(presentation.grupo);
     }
   }
 
@@ -188,7 +188,11 @@ export async function fetchPublicGruposAggregatesForEmpresa(
   const configMap = await fetchEmpresaGruposConfigMap(empresaId, deps);
   const grupoIds = grupos.map((g) => g.id);
   const admin = deps.adminFrom();
-  const [{ data: cotas, error: cErr }, { data: modalidades, error: mErr }] = await Promise.all([
+  const [
+    { data: cotas, error: cErr },
+    { data: modalidades, error: mErr },
+    categoriasRes,
+  ] = await Promise.all([
     admin
       .from("grupos_cotas")
       .select("*")
@@ -203,6 +207,10 @@ export async function fetchPublicGruposAggregatesForEmpresa(
       .in("grupo_id", grupoIds)
       .eq("ativo", true)
       .order("ordem", { ascending: true }),
+    admin
+      .from("grupos_categorias")
+      .select("grupo_id,categoria:catalogo_grupo_categorias(codigo,nome,ativo)")
+      .in("grupo_id", grupoIds),
   ]);
   if (cErr) throw new Error(cErr.message);
   if (mErr) throw new Error(mErr.message);
@@ -219,6 +227,24 @@ export async function fetchPublicGruposAggregatesForEmpresa(
     list.push(m);
     modsByGrupo.set(m.grupo_id, list);
   }
+  const categoriasByGrupo = new Map<string, string[]>();
+  if (!categoriasRes.error) {
+    for (const row of categoriasRes.data ?? []) {
+      const categoria = row.categoria as unknown as { codigo?: string; ativo?: boolean } | null;
+      if (!categoria?.codigo || categoria.ativo === false) continue;
+      const value = ({
+        IMOVEL: "Imóvel",
+        AUTOMOVEL: "Auto",
+        MOTO: "Moto",
+        CAMINHAO: "Caminhão",
+        SERVICOS: "Serviços",
+        OUTROS: "Outros",
+      } as Record<string, string>)[categoria.codigo] ?? categoria.codigo;
+      const list = categoriasByGrupo.get(row.grupo_id) ?? [];
+      list.push(value);
+      categoriasByGrupo.set(row.grupo_id, list);
+    }
+  }
 
   const aggregates: PublicGrupoAggregate[] = [];
   for (const g of grupos) {
@@ -233,6 +259,8 @@ export async function fetchPublicGruposAggregatesForEmpresa(
     aggregates.push({
       grupo: {
         ...g,
+        categorias_publicacao:
+          categoriasByGrupo.get(g.id) ?? (g.modalidade ? [g.modalidade] : []),
         ...(presentation.tituloComercial ? { titulo_comercial: presentation.tituloComercial } : {}),
       },
       cotas: list,

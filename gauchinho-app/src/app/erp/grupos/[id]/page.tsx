@@ -25,7 +25,7 @@ export default async function GrupoErpPage({
   const db = await createClient();
   const platformSuperadmin = await isPlatformSuperadmin();
 
-  const [grupoRes, cotasRes] = await Promise.all([
+  const [grupoRes, cotasRes, configRes] = await Promise.all([
     db
       .from("grupos_consorcio")
       .select(
@@ -36,11 +36,17 @@ export default async function GrupoErpPage({
     db
       .from("grupos_cotas")
       .select(
-        "id,valor_credito,valor_parcela,parcela_reduzida,parcela_com_seguro,parcela_sem_seguro,vagas_texto,vagas_percentual,status,ativo,ordem,grupo_cota_modalidade_valores(id,valor_parcela,percentual_reducao,ativo,modalidade:administradora_modalidades_comissao(id,nome))"
+        "id,valor_credito,vagas_texto,vagas_percentual,status,ativo,ordem"
       )
       .eq("grupo_id", id)
       .order("valor_credito", { ascending: true })
       .order("ordem", { ascending: true }),
+    db
+      .from("empresa_grupos_config")
+      .select("modalidade_integral_habilitada,modalidade_reduzida_habilitada,modalidade_personalizada_habilitada,status_vagas_local,alteracao_catalogo_status")
+      .eq("empresa_id", empresaAtiva.id)
+      .eq("grupo_id", id)
+      .maybeSingle(),
   ]);
 
   const g = grupoRes.data;
@@ -93,6 +99,11 @@ export default async function GrupoErpPage({
   const grupoComModalidades = {
     ...g,
     modalidades_habilitadas_ids: modalidadesHabilitadasIds,
+    modalidade_integral_habilitada: configRes.data?.modalidade_integral_habilitada ?? true,
+    modalidade_reduzida_habilitada: configRes.data?.modalidade_reduzida_habilitada ?? true,
+    modalidade_personalizada_habilitada: configRes.data?.modalidade_personalizada_habilitada ?? true,
+    status_vagas_local: configRes.data?.status_vagas_local ?? "HERDAR",
+    alteracao_catalogo_status: configRes.data?.alteracao_catalogo_status ?? "SEM_ALTERACAO",
   };
 
   return (
@@ -138,7 +149,7 @@ export default async function GrupoErpPage({
         tipos={t.data ?? []}
         modalidades={m.data ?? []}
         grupo={grupoComModalidades as any}
-        readonly={g.origem_governanca === "GLOBAL"}
+        readonly={false}
         scope="ERP"
       />
 
@@ -147,10 +158,10 @@ export default async function GrupoErpPage({
         <div className="flex flex-wrap items-center justify-between gap-3 border-b pb-4 dark:border-slate-800">
           <div>
             <h2 className="text-xl font-bold text-slate-900 dark:text-white">
-              Cotas e Produtos Comerciais deste Grupo ({cotas.length})
+              Créditos disponíveis neste Grupo ({cotas.length})
             </h2>
             <p className="text-xs text-slate-500">
-              Faixas de crédito e parcelas disponíveis para simulação, proposta e contratação online.
+              O SaaS guarda somente os créditos. O site calcula as parcelas com prazo, taxas, seguro e modalidade escolhida.
             </p>
           </div>
 
@@ -174,8 +185,6 @@ export default async function GrupoErpPage({
               <thead className="bg-slate-50 text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:bg-slate-800 dark:text-slate-400">
                 <tr>
                   <th className="p-3">Crédito</th>
-                  <th className="p-3">Parcela Padrão / Integral</th>
-                  <th className="p-3">Modalidades & Reduzidas</th>
                   <th className="p-3 text-center">Prazo</th>
                   <th className="p-3 text-center">Vagas</th>
                   <th className="p-3 text-center">Status da Cota</th>
@@ -183,14 +192,6 @@ export default async function GrupoErpPage({
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                 {cotas.map((c) => {
-                  const modalidadesCota = (c.grupo_cota_modalidade_valores ?? []) as unknown as Array<{
-                    id: string;
-                    valor_parcela: number;
-                    percentual_reducao: number | null;
-                    ativo: boolean;
-                    modalidade?: { id: string; nome: string } | null;
-                  }>;
-
                   const isAtiva = c.ativo !== false && !["Inativo", "Esgotado"].includes(c.status);
 
                   return (
@@ -201,35 +202,13 @@ export default async function GrupoErpPage({
                       <td className="p-3 font-mono text-sm font-extrabold text-blue-700 dark:text-blue-400">
                         {money.format(Number(c.valor_credito))}
                       </td>
-                      <td className="p-3 font-mono font-bold text-slate-900 dark:text-white">
-                        {money.format(Number(c.valor_parcela))}
-                      </td>
-                      <td className="p-3">
-                        {modalidadesCota.length > 0 ? (
-                          <div className="flex flex-wrap gap-1.5">
-                            {modalidadesCota.map((mv) => (
-                              <span
-                                key={mv.id}
-                                className="rounded bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-300"
-                              >
-                                {mv.modalidade?.nome || "Reduzida"}:{" "}
-                                <strong className="font-mono">{money.format(Number(mv.valor_parcela))}</strong>
-                              </span>
-                            ))}
-                          </div>
-                        ) : c.parcela_reduzida ? (
-                          <span className="rounded bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-300">
-                            Reduzida: <strong className="font-mono">{money.format(Number(c.parcela_reduzida))}</strong>
-                          </span>
-                        ) : (
-                          <span className="text-slate-400">Padrão da Administradora</span>
-                        )}
-                      </td>
                       <td className="p-3 text-center font-mono font-semibold text-slate-700 dark:text-slate-300">
                         {g.prazo_total ? `${g.prazo_total}m` : "—"}
                       </td>
                       <td className="p-3 text-center text-slate-600 dark:text-slate-400">
-                        {c.vagas_texto || (c.vagas_percentual != null ? `${c.vagas_percentual}%` : "Disponível")}
+                        {Number(g.vagas_disponiveis ?? 0) <= 0
+                          ? "Aguardando novas vagas"
+                          : c.vagas_texto || (c.vagas_percentual != null ? `${c.vagas_percentual}%` : "Disponível")}
                       </td>
                       <td className="p-3 text-center">
                         <span

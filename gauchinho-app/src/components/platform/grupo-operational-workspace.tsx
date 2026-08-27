@@ -5,6 +5,7 @@ import { useActionState, useState } from "react";
 import {
   salvarGrupoPlatformAction,
   salvarEstatisticasGrupoAction,
+  salvarCategoriasGrupoAction,
   type GroupActionState,
 } from "@/app/platform/grupos-actions";
 import {
@@ -59,6 +60,7 @@ export function GrupoOperationalWorkspace({
   modalidadesAdministradora,
   historico,
   empresaConfig,
+  categoriasDisponiveis,
 }: {
   grupo: GrupoRecord;
   administradoras: Array<{ id: string; nome: string }>;
@@ -80,6 +82,7 @@ export function GrupoOperationalWorkspace({
     dados_estatisticos_locais?: unknown;
     vagas_disponiveis_locais?: number | null;
   } | null;
+  categoriasDisponiveis: Array<{ codigo: string; nome: string }>;
 }) {
   const [tab, setTab] = useState<"gerais" | "cotas" | "estatisticas" | "historico">("gerais");
   const [modoEstatisticas, setModoEstatisticas] = useState<"GLOBAL" | "LOCAL">("GLOBAL");
@@ -150,11 +153,10 @@ export function GrupoOperationalWorkspace({
     cotaValor?: GrupoCotaModalidadeValor;
     grupoMod?: GrupoModalidadeItem;
   } | null>(null);
-
   const [selectedCotas, setSelectedCotas] = useState<Set<string>>(new Set());
-  const [batchModalidadeId, setBatchModalidadeId] = useState<string>("");
+  const [batchModalidadeId, setBatchModalidadeId] = useState("");
   const [batchModo, setBatchModo] = useState<"HERDAR" | "PERSONALIZADO" | "DESABILITADO">("HERDAR");
-  const [batchPercentual, setBatchPercentual] = useState<string>("");
+  const [batchPercentual, setBatchPercentual] = useState("");
   const [isPendingBatch, setIsPendingBatch] = useState(false);
 
   const [formStateGrupo, formActionGrupo, isPendingGrupo] = useActionState(
@@ -190,11 +192,7 @@ export function GrupoOperationalWorkspace({
   }
 
   function handleToggleSelectAll() {
-    if (selectedCotas.size === cotas.length) {
-      setSelectedCotas(new Set());
-    } else {
-      setSelectedCotas(new Set(cotas.map((c) => c.id)));
-    }
+    setSelectedCotas(selectedCotas.size === cotas.length ? new Set() : new Set(cotas.map((c) => c.id)));
   }
 
   async function handleApplyBatchAction() {
@@ -202,13 +200,7 @@ export function GrupoOperationalWorkspace({
     setIsPendingBatch(true);
     try {
       const pct = batchModo === "PERSONALIZADO" ? Number(batchPercentual.replace(",", ".")) : null;
-      await salvarCotaModalidadeEmMassaAction(
-        grupo.id,
-        Array.from(selectedCotas),
-        batchModalidadeId,
-        batchModo,
-        pct,
-      );
+      await salvarCotaModalidadeEmMassaAction(grupo.id, Array.from(selectedCotas), batchModalidadeId, batchModo, pct);
       setSelectedCotas(new Set());
     } finally {
       setIsPendingBatch(false);
@@ -339,6 +331,26 @@ export function GrupoOperationalWorkspace({
           </ul>
         </div>
       ) : null}
+
+      <form action={salvarCategoriasGrupoAction} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <input type="hidden" name="grupo_id" value={grupo.id} />
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <h2 className="text-sm font-bold text-slate-900 dark:text-white">Categorias de publicação</h2>
+            <p className="text-xs text-slate-500">Um único grupo pode aparecer em Automóvel e Moto sem duplicar cadastro, taxas ou créditos.</p>
+            <div className="mt-3 flex flex-wrap gap-3">
+              {categoriasDisponiveis.map((categoria) => {
+                const marcada = (grupo.categorias ?? []).some((item) => item.categoria?.codigo === categoria.codigo);
+                return <label key={categoria.codigo} className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold dark:border-slate-700">
+                  <input type="checkbox" name="categoria_codigo" value={categoria.codigo} defaultChecked={marcada} className="mr-2" />
+                  {categoria.nome}
+                </label>;
+              })}
+            </div>
+          </div>
+          <button type="submit" className="rounded-lg bg-cyan-700 px-4 py-2 text-sm font-bold text-white hover:bg-cyan-800">Salvar categorias</button>
+        </div>
+      </form>
 
       {/* Tabs */}
       <div className="border-b border-slate-200 dark:border-slate-800">
@@ -642,17 +654,17 @@ export function GrupoOperationalWorkspace({
             </div>
           </form>
 
-          {/* Cadastro Rápido de Cotas em Lote */}
+          {/* Cadastro rápido de créditos em lote */}
           <form action={formActionLote} className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900 space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3 dark:border-slate-800">
               <div>
-                <h2 className="text-lg font-bold text-slate-900 dark:text-white">2. Adicionar Cotas / Produtos em Lote</h2>
+                <h2 className="text-lg font-bold text-slate-900 dark:text-white">2. Adicionar Créditos em Lote</h2>
                 <p className="text-xs text-slate-500">
-                  Cole os valores de crédito separados por linha ou vírgula (ex: 100.000,00 ou 80000). Moeda BRL normalizada automaticamente.
+                  Cadastre somente os créditos. O site calcula as parcelas com prazo, taxas e modalidades oficiais do grupo.
                 </p>
               </div>
               <button type="submit" disabled={isPendingLote} className="rounded-lg bg-cyan-700 px-4 py-2 text-sm font-bold text-white hover:bg-cyan-800 disabled:opacity-50">
-                {isPendingLote ? "Adicionando..." : "Processar e Adicionar Cotas"}
+                {isPendingLote ? "Adicionando..." : "Processar e Adicionar Créditos"}
               </button>
             </div>
             <Feedback state={formStateLote} />
@@ -667,8 +679,35 @@ export function GrupoOperationalWorkspace({
             </div>
           </form>
 
-          {/* Tabela Compacta de Cotas com Overrides */}
-          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900 space-y-4">
+          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+            <div className="mb-4">
+              <h2 className="text-lg font-bold text-slate-900 dark:text-white">3. Créditos disponíveis ({cotas.length})</h2>
+              <p className="text-xs text-slate-500">Não há valor de parcela no catálogo central; a proposta calcula e preserva o resultado aceito pelo cliente.</p>
+            </div>
+            {cotas.length === 0 ? (
+              <p className="py-8 text-center text-sm text-slate-400">Nenhum crédito cadastrado neste grupo.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="min-w-full text-sm">
+                  <thead className="border-b bg-slate-50 text-left text-xs uppercase text-slate-500 dark:bg-slate-800">
+                    <tr><th className="px-4 py-3">Crédito</th><th className="px-4 py-3">Status</th><th className="px-4 py-3 text-right">Ações</th></tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                    {cotas.map((cota) => (
+                      <tr key={cota.id}>
+                        <td className="px-4 py-3 font-bold text-slate-900 dark:text-white">{formatBRL(cota.valor_credito)}</td>
+                        <td className="px-4 py-3"><span className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700">{cota.status || "Ativo"}</span></td>
+                        <td className="px-4 py-3 text-right"><button type="button" onClick={async () => { if (confirm(`Deseja excluir o crédito de ${formatBRL(cota.valor_credito)}?`)) await excluirCotaProdutoAction(grupo.id, cota.id); }} className="text-xs font-semibold text-red-600 hover:underline">Excluir</button></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          {/* Compatibilidade histórica: controles de parcela não são mais exibidos nem usados no fluxo oficial. */}
+          <div className="hidden rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900 space-y-4" aria-hidden="true">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <h2 className="text-lg font-bold text-slate-900 dark:text-white">3. Tabela de Cotas do Grupo ({cotas.length})</h2>

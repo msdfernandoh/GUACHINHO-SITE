@@ -4,11 +4,11 @@
 > **ESTADO-ALVO E CORREÇÕES OBRIGATÓRIAS**
 > Antes de alterar tenancy, usuários, catálogo, sites, comissões, financeiro, Storage, RPCs ou migrations, leia também integralmente [`SAAS-ARQUITETURA-ALVO-E-PLANO-DE-CORRECAO.md`](./SAAS-ARQUITETURA-ALVO-E-PLANO-DE-CORRECAO.md). O documento descreve o estado-alvo e o plano de remediação; seus itens não devem ser interpretados como já implantados sem evidência no banco e no código.
 
-> **Versão da Arquitetura:** 7.0.0
+> **Versão da Arquitetura:** 7.1.0
 > **Data de Atualização:** 26/08/2026
-> **Production code:** Fase 144 publicada em `main@3d4b106`; Supabase principal `eaeuoynprurmmulzhydt` alinhado de `001–138`.
+> **Production code:** Fase 145 validada para publicação; Supabase principal `eaeuoynprurmmulzhydt` alinhado de `001–144`.
 > **Preview/isolado desta fase:** a branch `bwwgbmiwtrglbtxsdooi` permanece preservada como evidência de homologação da 083 até autorização separada de exclusão.
-> **Fase atual:** site recalcula a proposta no servidor e congela o snapshot comercial; ERP preserva a condição aceita e formaliza somente UUIDs, cota real, participantes e comissões; Admin da franquia não edita estrutura global.
+> **Fase atual:** catálogo central armazena grupos, categorias e créditos; site calcula parcelas; ERP preserva a proposta, aplica restrições locais e envia alterações estruturais para homologação Platform. Projeção de caixa opera sem conciliação bancária.
 > **Vercel Production:** deployment da Fase 144 `dpl_6kQ5RJutA2X2JDfpPCdPgvLK6hxy` está `READY` e atende os domínios público, `www` e Platform.
 > **Segurança:** o Platform Host continua global, sem fallback de tenant, e exige `is_platform_superadmin()`.
 
@@ -745,6 +745,28 @@ principal está alinhado em `001–138`.
 
 Relatório:
 `docs/relatorios-fases/FASE-144-SNAPSHOT-COMERCIAL-SITE-ERP-E-PERMISSOES.md`.
+
+## 23. Catálogo de créditos, autonomia local e projeção de caixa — Fase 145
+
+`grupos_consorcio` permanece canônico por administradora e `grupos_cotas`
+representa somente valores de crédito, não parcelas. As categorias N:N permitem
+que o mesmo UUID de grupo seja publicado em múltiplos segmentos. O site calcula
+Integral, Reduzida e Personalizada a partir das regras do grupo; o ERP conserva
+o snapshot aceito pelo cliente.
+
+A franquia pode ocultar grupo/modalidade e usar uma alteração estrutural
+candidata enquanto aguarda homologação. Somente a Platform promove a alteração
+para toda a rede. Zero vagas mantém o grupo publicado com o estado “Aguardando
+novas vagas”. A importação histórica pode criar grupo/crédito básico inativo,
+sem afetar faturamento ou disponibilizar venda.
+
+O financeiro exibe projeção mensal baseada no saldo contábil append-only,
+comissões líquidas previstas e contas abertas da empresa. Conciliação e
+sincronização bancária não fazem parte desta fase. O schema de Produção foi
+saneado até `144` e o lint remoto não apresenta erros.
+
+Relatório:
+`docs/relatorios-fases/FASE-145-CATALOGO-CREDITOS-GOVERNANCA-E-PROJECAO-CAIXA.md`.
 
 
 

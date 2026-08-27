@@ -13,6 +13,11 @@ export async function preverImportacaoLegadoAction(input: PreviewInput) {
   if (!empresaAtiva) throw new Error("Empresa ativa não encontrada.");
   if (!input.linhas.length || input.linhas.length > 2000) throw new Error("A planilha deve conter entre 1 e 2.000 linhas.");
   const db = await createClient();
+  const { error: preparoError } = await db.rpc("rpc_preparar_catalogo_importacao_legado_racon", {
+    p_empresa_id: empresaAtiva.id,
+    p_itens: input.linhas,
+  });
+  if (preparoError) throw new Error(`Não foi possível preparar grupos legados: ${preparoError.message}`);
   const { data: admins } = await db.from("administradoras").select("id,nome,nome_fantasia").eq("status", "ATIVA");
   const racon = (admins ?? []).find((item) => `${item.nome ?? ""} ${item.nome_fantasia ?? ""}`.toUpperCase().includes("RACON"));
   if (!racon) throw new Error("Administradora Racon ativa não encontrada.");
@@ -46,7 +51,7 @@ export async function preverImportacaoLegadoAction(input: PreviewInput) {
     if (!(linha.valor_credito > 0)) erros.push("Valor inválido");
     if (!linha.administradora.toUpperCase().includes("RACON")) erros.push("Administradora diferente de Racon");
     const grupoEncontrado = gruposOk.has(numeroGrupo(linha.grupo));
-    if (!grupoEncontrado) erros.push("Grupo Racon não encontrado ou sem produto ativo");
+    if (!grupoEncontrado) erros.push("Grupo Racon não pôde ser preparado para importação");
     const natural = `${numeroGrupo(linha.grupo)}::${linha.cota.trim()}`;
     const duplicada = vistos.has(natural) || cotasImportadas.has(natural);
     if (duplicada) erros.push("Grupo/cota já consta no arquivo ou em importação anterior");

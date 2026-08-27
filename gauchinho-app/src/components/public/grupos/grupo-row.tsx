@@ -74,6 +74,11 @@ export function GrupoRow({
       >
         <Td className="min-w-[72px]">
           <div className="font-semibold text-amber-400">{grupo.codigo_grupo}</div>
+          {grupo.aguardando_novas_vagas ? (
+            <span className="mt-1 inline-block rounded bg-sky-500/15 px-1.5 py-px text-[9px] font-medium text-sky-200">
+              Aguardando novas vagas
+            </span>
+          ) : null}
           {ativo ? (
             <span className="mt-0.5 inline-block rounded bg-amber-500/15 px-1.5 py-px text-[9px] font-medium uppercase text-amber-200">
               Ativo

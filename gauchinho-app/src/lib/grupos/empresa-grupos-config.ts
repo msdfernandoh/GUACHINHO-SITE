@@ -12,6 +12,12 @@ export type EmpresaGrupoConfig = {
   ordem: number | null;
   titulo_comercial: string | null;
   descricao_comercial: string | null;
+  modalidade_integral_habilitada?: boolean | null;
+  modalidade_reduzida_habilitada?: boolean | null;
+  modalidade_personalizada_habilitada?: boolean | null;
+  status_vagas_local?: "HERDAR" | "DISPONIVEL" | "AGUARDANDO_NOVAS_VAGAS";
+  alteracao_catalogo_payload?: Record<string, unknown> | null;
+  alteracao_catalogo_status?: string | null;
   created_at?: string;
   updated_at?: string;
 };
@@ -126,14 +132,55 @@ export function resolveEmpresaGrupoPresentation(
   grupo: GrupoConsorcio,
   config?: EmpresaGrupoConfig | null,
 ): GrupoPresentationResolved {
-  const globalElegivel = grupo.ativo && grupo.status === "Disponível";
+  const payload =
+    config?.alteracao_catalogo_status &&
+    ["RASCUNHO_LOCAL", "PENDENTE_PLATFORM", "EM_ANALISE", "DEVOLVIDA"].includes(
+      config.alteracao_catalogo_status,
+    )
+      ? config.alteracao_catalogo_payload ?? {}
+      : {};
+  const localCatalogKeys = [
+    "status",
+    "ativo",
+    "prazo_total",
+    "taxa_administrativa_percentual",
+    "fundo_reserva_percentual",
+    "seguro_percentual",
+    "seguro_habilitado",
+    "capacidade_total",
+    "vagas_disponiveis",
+    "permite_lance_embutido",
+    "percentual_lance_embutido",
+    "observacoes",
+  ] as const;
+  const localCatalog: Record<string, unknown> = {};
+  for (const key of localCatalogKeys) {
+    if (Object.prototype.hasOwnProperty.call(payload, key)) localCatalog[key] = payload[key];
+  }
+
+  const grupoEfetivo: GrupoConsorcio = {
+    ...grupo,
+    ...localCatalog,
+    permite_parcela_integral: config?.modalidade_integral_habilitada ?? true,
+    tem_parcela_reduzida:
+      grupo.tem_parcela_reduzida && (config?.modalidade_reduzida_habilitada ?? true),
+    permite_parcela_reduzida_personalizada:
+      Boolean(grupo.permite_parcela_reduzida_personalizada) &&
+      (config?.modalidade_reduzida_habilitada ?? true) &&
+      (config?.modalidade_personalizada_habilitada ?? true),
+    aguardando_novas_vagas:
+      config?.status_vagas_local === "AGUARDANDO_NOVAS_VAGAS" ||
+      (config?.status_vagas_local !== "DISPONIVEL" && Number(localCatalog.vagas_disponiveis ?? grupo.vagas_disponiveis ?? 0) <= 0),
+    alteracao_catalogo_status: config?.alteracao_catalogo_status ?? null,
+  };
+  const globalElegivel = grupoEfetivo.ativo && grupoEfetivo.status === "Disponível";
   const visivelConfig = config ? config.visivel : true;
 
   // A visibilidade final exige elegibilidade global E visibilidade local
   const exibirAoPublico = globalElegivel && visivelConfig;
 
   return {
-    grupo,
+    grupo: grupoEfetivo,
     visivelLocal: visivelConfig,
     destaqueLocal: config ? config.destaque : false,
     ordemLocal: config?.ordem ?? null,
@@ -155,6 +202,10 @@ export async function upsertEmpresaGrupoConfig(
     ordem?: number | null;
     titulo_comercial?: string | null;
     descricao_comercial?: string | null;
+    modalidade_integral_habilitada?: boolean | null;
+    modalidade_reduzida_habilitada?: boolean | null;
+    modalidade_personalizada_habilitada?: boolean | null;
+    status_vagas_local?: "HERDAR" | "DISPONIVEL" | "AGUARDANDO_NOVAS_VAGAS";
   },
   deps: EmpresaGrupoConfigDeps = defaultDeps,
 ): Promise<EmpresaGrupoConfig> {
@@ -172,6 +223,19 @@ export async function upsertEmpresaGrupoConfig(
     ordem: payload.ordem !== undefined ? payload.ordem : existing?.ordem ?? null,
     titulo_comercial: payload.titulo_comercial !== undefined ? payload.titulo_comercial : existing?.titulo_comercial ?? null,
     descricao_comercial: payload.descricao_comercial !== undefined ? payload.descricao_comercial : existing?.descricao_comercial ?? null,
+    modalidade_integral_habilitada:
+      payload.modalidade_integral_habilitada !== undefined
+        ? payload.modalidade_integral_habilitada
+        : existing?.modalidade_integral_habilitada ?? null,
+    modalidade_reduzida_habilitada:
+      payload.modalidade_reduzida_habilitada !== undefined
+        ? payload.modalidade_reduzida_habilitada
+        : existing?.modalidade_reduzida_habilitada ?? null,
+    modalidade_personalizada_habilitada:
+      payload.modalidade_personalizada_habilitada !== undefined
+        ? payload.modalidade_personalizada_habilitada
+        : existing?.modalidade_personalizada_habilitada ?? null,
+    status_vagas_local: payload.status_vagas_local ?? existing?.status_vagas_local ?? "HERDAR",
     updated_at: new Date().toISOString(),
   };
 

@@ -54,6 +54,8 @@ export type GrupoConsorcio = {
   id: string;
   codigo_grupo: string;
   modalidade: string;
+  /** Categorias de publicação N:N. Um grupo pode aparecer em Auto e Moto sem duplicação. */
+  categorias_publicacao?: Array<"Imóvel" | "Auto" | "Moto" | "Caminhão" | "Serviços" | "Outros" | string>;
   /** Snapshot/display legado (RACON/Racon). Não usar para autorização quando UUID existir. */
   administradora: string | null;
   /** FK estrutural → administradoras (preenchida a partir da E5). */
@@ -69,6 +71,8 @@ export type GrupoConsorcio = {
   seguro_percentual: number | null;
   seguro_valor: number | null;
   tem_parcela_reduzida: boolean;
+  /** Pode ser restringida pela franquia, sem alterar o catálogo global. */
+  permite_parcela_integral?: boolean;
   percentual_parcela_reduzida: number | null;
   permite_parcela_reduzida_personalizada?: boolean;
   percentual_parcela_reduzida_personalizada?: number | null;
@@ -87,6 +91,11 @@ export type GrupoConsorcio = {
   cet_percentual: number | null;
   status: string;
   ativo: boolean;
+  capacidade_total?: number | null;
+  vagas_disponiveis?: number | null;
+  vagas_atualizado_em?: string | null;
+  aguardando_novas_vagas?: boolean;
+  alteracao_catalogo_status?: string | null;
   observacoes: string | null;
   quantidade_cotas_sorteio?: number | null;
   created_at: string;

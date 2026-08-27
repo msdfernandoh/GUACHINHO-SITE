@@ -65,6 +65,26 @@ export type ConsultaContasPagarResult = {
   fornecedores_uso: Array<{ nome: string; total: number }>;
 };
 
+export type ProjecaoCaixaResult = {
+  saldo_atual: number;
+  inicio: string;
+  meses: number;
+  inclui_conciliacao_bancaria: false;
+  serie: Array<{ mes: string; entradas_previstas: number; saidas_previstas: number; resultado_mes: number; saldo_projetado: number }>;
+};
+
+export async function consultarProjecaoCaixa(meses = 12): Promise<ProjecaoCaixaResult> {
+  const { empresaAtiva } = await requireErpRouteAccess("contas-pagar");
+  const session = await createClient();
+  const { data, error } = await session.rpc("rpc_projetar_caixa", {
+    p_empresa_id: empresaAtiva.id,
+    p_inicio: null,
+    p_meses: Math.min(36, Math.max(1, meses)),
+  });
+  if (error) throw new Error(`Não foi possível projetar o caixa: ${error.message}`);
+  return data as ProjecaoCaixaResult;
+}
+
 export async function consultarContasPagar(
   input: ConsultaContasPagarInput = {},
 ): Promise<ConsultaContasPagarResult> {

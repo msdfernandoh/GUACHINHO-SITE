@@ -20,7 +20,7 @@ export default async function PlatformGruposListingPage({
   let query = db
     .from("grupos_consorcio")
     .select(
-      "id,codigo_grupo,administradora_id,tipo_administradora_id,modalidade,status,ativo,prazo_total,data_primeira_assembleia,parcelas_realizadas,prazo_restante,taxa_administrativa_percentual,fundo_reserva_percentual,seguro_percentual,capacidade_total,vagas_disponiveis,vagas_atualizado_em,dados_estatisticos,origem_governanca,status_governanca,updated_at,administradora:administradoras(id,nome),tipo:administradora_tipos(id,nome,codigo),modalidades:grupos_modalidades_disponiveis(id,administradora_modalidade_id,ativo,modalidade:administradora_modalidades_comissao(id,nome,codigo)),produtos:grupos_cotas(id,valor_credito,ativo,grupo_cota_modalidade_valores(id,administradora_modalidade_id,valor_parcela,percentual_reducao,habilitado,modo_reduzido,modo_override,percentual_override,percentual_minimo,percentual_maximo,ativo))",
+      "id,codigo_grupo,administradora_id,tipo_administradora_id,modalidade,status,ativo,prazo_total,data_primeira_assembleia,parcelas_realizadas,prazo_restante,taxa_administrativa_percentual,fundo_reserva_percentual,seguro_percentual,capacidade_total,vagas_disponiveis,vagas_atualizado_em,dados_estatisticos,origem_governanca,status_governanca,updated_at,administradora:administradoras(id,nome),tipo:administradora_tipos(id,nome,codigo),modalidades:grupos_modalidades_disponiveis(id,administradora_modalidade_id,ativo,modalidade:administradora_modalidades_comissao(id,nome,codigo)),produtos:grupos_cotas(id,valor_credito,status,ativo)",
     )
     .order("codigo_grupo");
 
@@ -54,6 +54,12 @@ export default async function PlatformGruposListingPage({
           </p>
         </div>
         <div className="flex items-center gap-3">
+          <Link
+            href="/platform/grupos/solicitacoes"
+            className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-2 text-sm font-bold text-amber-800 shadow-sm hover:bg-amber-100"
+          >
+            Aprovações das franquias
+          </Link>
           <Link
             href="/platform/grupos/vinculacoes"
             className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-bold text-slate-700 shadow-sm hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
@@ -188,7 +194,7 @@ export default async function PlatformGruposListingPage({
                         {grupo.capacidade_total ?? 0}
                       </td>
                       <td className="px-4 py-3 text-center text-xs font-bold text-slate-900 dark:text-white">
-                        {grupo.vagas_disponiveis ?? 0}
+                        {(grupo.vagas_disponiveis ?? 0) > 0 ? grupo.vagas_disponiveis : <span className="text-amber-700">Aguardando novas vagas</span>}
                       </td>
                       <td className="px-4 py-3 text-center">
                         <span

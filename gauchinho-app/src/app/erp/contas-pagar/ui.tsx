@@ -51,6 +51,7 @@ import {
   unificarFornecedores,
   type ContasActionResult,
   type ConsultaContasPagarResult,
+  type ProjecaoCaixaResult,
 } from "./actions";
 
 type Conta = {
@@ -278,6 +279,7 @@ function FornecedorAutocomplete({
 
 export function ContasPagarClient({
   consultaInicial,
+  projecaoCaixa,
   bancos,
   centros,
   fornecedores = [],
@@ -286,6 +288,7 @@ export function ContasPagarClient({
   podeEstornar,
 }: {
   consultaInicial: ConsultaContasPagarResult;
+  projecaoCaixa: ProjecaoCaixaResult;
   bancos: Banco[];
   centros: Centro[];
   fornecedores?: Fornecedor[];
@@ -661,6 +664,18 @@ export function ContasPagarClient({
         ))}
       </div>
       <p className="-mt-3 text-right text-xs font-semibold text-slate-500">Saldo contábil geral de caixa: {brl(saldo)}</p>
+
+      <section className="rounded-2xl border border-indigo-200 bg-white p-5 shadow-sm">
+        <div className="flex flex-wrap items-end justify-between gap-2">
+          <div><h2 className="font-bold text-slate-900">Projeção de caixa — próximos {projecaoCaixa.meses} meses</h2><p className="text-xs text-slate-500">Comissões líquidas previstas menos contas abertas pagas pela empresa. Não inclui conciliação nem sincronização bancária.</p></div>
+          <span className="rounded-full bg-indigo-50 px-3 py-1 text-xs font-bold text-indigo-800">Saldo inicial {brl(projecaoCaixa.saldo_atual)}</span>
+        </div>
+        <div className="mt-4 overflow-x-auto">
+          <table className="min-w-full text-sm"><thead className="border-b text-left text-[11px] uppercase text-slate-500"><tr><th className="px-3 py-2">Mês</th><th className="px-3 py-2 text-right">Entradas</th><th className="px-3 py-2 text-right">Saídas</th><th className="px-3 py-2 text-right">Resultado</th><th className="px-3 py-2 text-right">Saldo projetado</th></tr></thead>
+            <tbody className="divide-y">{projecaoCaixa.serie.map((item) => <tr key={item.mes}><td className="px-3 py-2 font-bold">{item.mes.split("-").reverse().join("/")}</td><td className="px-3 py-2 text-right text-emerald-700">{brl(item.entradas_previstas)}</td><td className="px-3 py-2 text-right text-rose-700">{brl(item.saidas_previstas)}</td><td className={`px-3 py-2 text-right font-bold ${item.resultado_mes >= 0 ? "text-emerald-700" : "text-rose-700"}`}>{brl(item.resultado_mes)}</td><td className={`px-3 py-2 text-right font-black ${item.saldo_projetado >= 0 ? "text-slate-950" : "text-rose-700"}`}>{brl(item.saldo_projetado)}</td></tr>)}</tbody>
+          </table>
+        </div>
+      </section>
 
       <section aria-label="Balanço das despesas pagas pelos sócios" className="space-y-4">
         <div>

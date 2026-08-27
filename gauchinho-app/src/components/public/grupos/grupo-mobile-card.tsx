@@ -41,6 +41,11 @@ export function GrupoMobileCard({ grupo, cotas, modalidades, config, onChange }:
       <div className="flex flex-wrap items-start justify-between gap-3 p-4">
         <div>
           <p className="text-lg font-semibold text-amber-400">Grupo {grupo.codigo_grupo}</p>
+          {grupo.aguardando_novas_vagas ? (
+            <span className="mt-1 inline-flex rounded-full bg-sky-500/15 px-2 py-0.5 text-[10px] font-semibold text-sky-200">
+              Aguardando novas vagas
+            </span>
+          ) : null}
           <div className="mt-2 flex flex-wrap gap-2">
             <CompactSelect
               className="min-w-[140px]"
