@@ -1,13 +1,77 @@
 "use server";
 
 import { isPlatformSuperadmin } from "@/lib/auth/is-superadmin";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { getPublicSiteUrl } from "@/lib/url/public-url";
+import { revalidatePath } from "next/cache";
 
 export type PlatformFormState = {
   status: "IDLE" | "SUCCESS" | "ERROR";
   message: string;
   data?: unknown;
 };
+
+async function enviarConviteAcesso(linkId: string, nome: string, empresaId: string, reenviar = false) {
+  const admin = createAdminClient();
+  const { data: link, error: linkError } = await admin
+    .from("empresa_usuarios")
+    .select("id, usuario:usuarios!inner(id, email, auth_user_id)")
+    .eq("id", linkId)
+    .single();
+
+  if (linkError || !link) {
+    return { ok: false as const, message: "Vínculo criado, mas não foi possível localizar a identidade para enviar o convite." };
+  }
+
+  const usuarioRaw = Array.isArray(link.usuario) ? link.usuario[0] : link.usuario;
+  const usuario = usuarioRaw as { id: string; email: string; auth_user_id: string | null } | null;
+  if (!usuario?.id || !usuario.email) {
+    return { ok: false as const, message: "Vínculo criado, mas a identidade não possui e-mail válido para convite." };
+  }
+
+  const redirectTo = `${getPublicSiteUrl()}/definir-senha?next=/admin`;
+  if (usuario.auth_user_id && reenviar) {
+    const { error: recoveryError } = await admin.auth.resetPasswordForEmail(usuario.email, { redirectTo });
+    if (recoveryError) {
+      return { ok: false as const, message: `Não foi possível reenviar o e-mail de acesso: ${recoveryError.message}` };
+    }
+    return { ok: true as const, invited: true, email: usuario.email };
+  }
+
+  if (usuario.auth_user_id) {
+    await admin.from("empresa_usuarios").update({ status: "ATIVO" }).eq("id", linkId);
+    return { ok: true as const, invited: false, email: usuario.email };
+  }
+
+  const { data: convite, error: conviteError } = await admin.auth.admin.inviteUserByEmail(usuario.email, {
+    redirectTo,
+    data: { nome, usuario_id: usuario.id, empresa_id: empresaId },
+  });
+
+  if (conviteError || !convite.user) {
+    return {
+      ok: false as const,
+      message: `Usuário cadastrado, mas o e-mail de acesso não foi enviado: ${conviteError?.message || "falha no serviço de autenticação"}. Use Reenviar após conferir o e-mail.`,
+    };
+  }
+
+  const { error: identityError } = await admin
+    .from("usuarios")
+    .update({ auth_user_id: convite.user.id })
+    .eq("id", usuario.id)
+    .is("auth_user_id", null);
+
+  if (identityError) {
+    await admin.auth.admin.deleteUser(convite.user.id);
+    return {
+      ok: false as const,
+      message: `Usuário cadastrado, mas a identidade de acesso não pôde ser vinculada: ${identityError.message}`,
+    };
+  }
+
+  return { ok: true as const, invited: true, email: usuario.email };
+}
 
 export async function convidarUsuarioPlatformAction(
   _prev: PlatformFormState,
@@ -51,7 +115,18 @@ export async function convidarUsuarioPlatformAction(
     return { status: "ERROR", message: error.message };
   }
 
-  return { status: "SUCCESS", message: `Convite enviado com sucesso para ${email}.`, data };
+  const convite = await enviarConviteAcesso(String(data), nome, empresaId);
+  revalidatePath("/platform/usuarios");
+  if (!convite.ok) {
+    return { status: "ERROR", message: convite.message, data };
+  }
+  return {
+    status: "SUCCESS",
+    message: convite.invited
+      ? `Usuário cadastrado. Convite seguro enviado para ${email}.`
+      : `Usuário já possuía acesso e foi vinculado à franquia com sucesso.`,
+    data,
+  };
 }
 
 export async function alterarUsuarioPlatformAction(
@@ -94,6 +169,7 @@ export async function alterarUsuarioPlatformAction(
     return { status: "ERROR", message: error.message };
   }
 
+  revalidatePath("/platform/usuarios");
   return { status: "SUCCESS", message: "Usuário atualizado com sucesso." };
 }
 
@@ -122,6 +198,7 @@ export async function definirResponsavelPlatformAction(
     return { status: "ERROR", message: error.message };
   }
 
+  revalidatePath("/platform/usuarios");
   return { status: "SUCCESS", message: "Responsável principal da Master Franquia transferido com sucesso." };
 }
 
@@ -148,5 +225,22 @@ export async function reenviarConvitePlatformAction(
     return { status: "ERROR", message: error.message };
   }
 
-  return { status: "SUCCESS", message: "Convite reenviado com sucesso." };
+  const admin = createAdminClient();
+  const { data: row, error: rowError } = await admin
+    .from("empresa_usuarios")
+    .select("empresa_id, usuario:usuarios!inner(nome)")
+    .eq("id", linkId)
+    .single();
+  if (rowError || !row) {
+    return { status: "ERROR", message: "Convite marcado como pendente, mas o usuário não pôde ser carregado." };
+  }
+  const usuarioRaw = Array.isArray(row.usuario) ? row.usuario[0] : row.usuario;
+  const usuario = usuarioRaw as { nome?: string } | null;
+  const convite = await enviarConviteAcesso(linkId, usuario?.nome || "Usuário", row.empresa_id, true);
+  revalidatePath("/platform/usuarios");
+  if (!convite.ok) return { status: "ERROR", message: convite.message };
+  return {
+    status: "SUCCESS",
+    message: convite.invited ? "Convite reenviado com sucesso." : "O usuário já possui acesso ativo.",
+  };
 }

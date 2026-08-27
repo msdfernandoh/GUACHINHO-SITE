@@ -768,6 +768,26 @@ saneado até `144` e o lint remoto não apresenta erros.
 Relatório:
 `docs/relatorios-fases/FASE-145-CATALOGO-CREDITOS-GOVERNANCA-E-PROJECAO-CAIXA.md`.
 
+## 24. Identidade e convite do responsável da franquia — Fase 146
+
+O cadastro da Platform cria uma identidade-base neutra em `usuarios` e mantém
+papel, permissões, módulos e condição de responsável exclusivamente no vínculo
+N:N `empresa_usuarios`. O campo legado `usuarios.perfil` não representa mais o
+papel tenant e recebe `visualizador`, valor aceito pela constraint histórica.
+
+Um vínculo de empresa aceita somente papel `COMPANY`: papéis `PLATFORM` são
+rejeitados por trigger, e papéis customizados precisam pertencer à mesma
+empresa. Assim, marcar “Responsável Principal” não promove o usuário a
+Superadmin da plataforma.
+
+O convite é emitido pelo Supabase Auth. O UUID de autenticação é persistido em
+`usuarios.auth_user_id`; o usuário define a própria senha em `/definir-senha` e
+`rpc_ativar_meus_convites()` ativa apenas seus vínculos pendentes. Falhas de
+entrega preservam o vínculo como `CONVIDADO` para reenvio auditável.
+
+Relatório:
+`docs/relatorios-fases/FASE-146-HOTFIX-USUARIO-PRINCIPAL-FRANQUIA.md`.
+
 
 
 

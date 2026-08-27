@@ -31,7 +31,9 @@ export default async function PlatformUsuariosPage() {
       .order("nome_fantasia", { ascending: true }),
     db
       .from("papeis")
-      .select("id, codigo, nome, descricao")
+      .select("id, codigo, nome, descricao, empresa_id, escopo, ativo")
+      .eq("escopo", "COMPANY")
+      .eq("ativo", true)
       .order("nome", { ascending: true }),
     db
       .from("erp_modulos_catalogo")
@@ -124,6 +126,7 @@ export default async function PlatformUsuariosPage() {
     codigo: p.codigo,
     nome: p.nome,
     descricao: p.descricao,
+    empresa_id: p.empresa_id,
   }));
 
   const modulosOptions: ModuloOption[] = (modulosRes.data ?? []).map((m) => ({

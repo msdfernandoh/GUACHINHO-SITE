@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import Link from "next/link";
 import {
   convidarUsuarioPlatformAction,
@@ -45,6 +45,7 @@ export type PapelOption = {
   codigo: string;
   nome: string;
   descricao: string | null;
+  empresa_id: string | null;
 };
 
 export type ModuloOption = {
@@ -81,7 +82,8 @@ export function PlatformUsuariosClient({
   const [conviteEmpresaId, setConviteEmpresaId] = useState(franquias[0]?.id || "");
   const [conviteNome, setConviteNome] = useState("");
   const [conviteEmail, setConviteEmail] = useState("");
-  const [convitePapelId, setConvitePapelId] = useState(papeis[0]?.id || "");
+  const papelAdminEmpresa = papeis.find((p) => p.codigo === "admin_empresa" && p.empresa_id === null);
+  const [convitePapelId, setConvitePapelId] = useState(papelAdminEmpresa?.id || papeis[0]?.id || "");
   const [conviteIsResponsavel, setConviteIsResponsavel] = useState(false);
   const [conviteModulos, setConviteModulos] = useState<string[]>([]);
 
@@ -92,9 +94,22 @@ export function PlatformUsuariosClient({
   const [stateReenviar, actionReenviar, isPendingReenviar] = useActionState(reenviarConvitePlatformAction, initial);
 
   const franquiaSelecionada = franquias.find((f) => f.id === conviteEmpresaId);
+  const papeisDisponiveis = papeis.filter((p) => p.empresa_id === null || p.empresa_id === conviteEmpresaId);
   const modulosDisponiveisParaFranquia = modulosCatalogo.filter((m) =>
     franquiaSelecionada?.modulos_permitidos?.includes(m.codigo),
   );
+
+  useEffect(() => {
+    if (stateConvidar.status === "SUCCESS") {
+      setModalConvidar(false);
+    }
+  }, [stateConvidar.status]);
+
+  useEffect(() => {
+    if (stateAlterar.status === "SUCCESS") {
+      setModalEditar(null);
+    }
+  }, [stateAlterar.status]);
 
   const filtrados = usuarios.filter((u) => {
     const matchBusca =
@@ -402,14 +417,11 @@ export function PlatformUsuariosClient({
           <div className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl space-y-4 dark:border-slate-800 dark:bg-slate-900 text-xs">
             <h3 className="text-base font-bold text-slate-900 dark:text-white">+ Convidar Novo Usuário</h3>
             <p className="text-slate-500">
-              O usuário receberá convite seguro de acesso à plataforma sem geração de senha manual.
+              O usuário receberá um convite seguro por e-mail para definir a própria senha.
             </p>
 
             <form
-              action={async (formData) => {
-                await actionConvidar(formData);
-                setModalConvidar(false);
-              }}
+              action={actionConvidar}
               className="space-y-4"
             >
               <input type="hidden" name="modulos_json" value={JSON.stringify(conviteModulos)} />
@@ -423,6 +435,10 @@ export function PlatformUsuariosClient({
                     setConviteEmpresaId(e.target.value);
                     const sel = franquias.find((f) => f.id === e.target.value);
                     setConviteModulos(sel?.modulos_permitidos || []);
+                    const papelAtual = papeis.find((p) => p.id === convitePapelId);
+                    if (papelAtual?.empresa_id && papelAtual.empresa_id !== e.target.value) {
+                      setConvitePapelId(papelAdminEmpresa?.id || "");
+                    }
                   }}
                   required
                   className="mt-1 w-full rounded-lg border border-slate-300 p-2.5 font-bold dark:border-slate-700 dark:bg-slate-800"
@@ -477,7 +493,7 @@ export function PlatformUsuariosClient({
                     onChange={(e) => setConvitePapelId(e.target.value)}
                     className="mt-1 w-full rounded-lg border border-slate-300 p-2.5 font-bold dark:border-slate-700 dark:bg-slate-800"
                   >
-                    {papeis.map((p) => (
+                    {papeisDisponiveis.map((p) => (
                       <option key={p.id} value={p.id}>
                         {p.nome}
                       </option>
@@ -566,10 +582,7 @@ export function PlatformUsuariosClient({
             <p className="text-slate-500 font-mono text-[11px]">{modalEditar.email}</p>
 
             <form
-              action={async (formData) => {
-                await actionAlterar(formData);
-                setModalEditar(null);
-              }}
+              action={actionAlterar}
               className="space-y-4"
             >
               <input type="hidden" name="empresa_usuario_id" value={modalEditar.id} />
@@ -582,11 +595,13 @@ export function PlatformUsuariosClient({
                   defaultValue={modalEditar.papel_id}
                   className="mt-1 w-full rounded-lg border border-slate-300 p-2.5 font-bold dark:border-slate-700 dark:bg-slate-800"
                 >
-                  {papeis.map((p) => (
+                  {papeis
+                    .filter((p) => p.empresa_id === null || p.empresa_id === modalEditar.empresa_id)
+                    .map((p) => (
                     <option key={p.id} value={p.id}>
                       {p.nome}
                     </option>
-                  ))}
+                    ))}
                 </select>
               </div>
 
