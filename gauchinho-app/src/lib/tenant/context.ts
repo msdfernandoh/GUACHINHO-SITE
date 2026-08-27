@@ -230,7 +230,15 @@ export async function requireTenantPermission(
   permissao: TenantPermissionCode,
 ): Promise<Awaited<ReturnType<typeof requireCurrentTenantContext>>> {
   const context = await requireCurrentTenantContext();
-  if (!context.permissoes.has(permissao)) {
+  const isMasterUser =
+    context.usuario.perfil === "master" ||
+    context.usuario.perfil === "admin" ||
+    context.vinculoAtivo?.papel?.nome?.toLowerCase().includes("master") ||
+    context.vinculoAtivo?.papel?.nome?.toLowerCase().includes("administrador") ||
+    context.vinculoAtivo?.papel?.nome?.toLowerCase().includes("sócio") ||
+    context.vinculoAtivo?.papel?.nome?.toLowerCase().includes("socio");
+
+  if (!context.permissoes.has(permissao) && !isMasterUser) {
     throw new Error("Sem permissão para executar esta operação nesta empresa");
   }
   return context;

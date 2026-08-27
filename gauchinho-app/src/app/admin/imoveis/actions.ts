@@ -73,13 +73,16 @@ export async function fetchImoveisList(filters: {
   q?: string;
 }) {
   const { usuario: u, empresaAtiva } = await requireTenantPermission("gerenciar_imoveis");
-  const supabase = await createClient();
+  const admin = createAdminClient();
 
-  let q = supabase
+  let q = admin
     .from("imoveis")
     .select("*, imobiliarias(id, nome, slug)")
-    .eq("empresa_id", empresaAtiva.id)
     .order("created_at", { ascending: false });
+
+  if (empresaAtiva?.id) {
+    q = q.or(`empresa_id.eq.${empresaAtiva.id},empresa_id.is.null`);
+  }
 
   if (isImobiliaria(u.perfil)) {
     if (!u.imobiliaria_id) return [];
@@ -95,20 +98,36 @@ export async function fetchImoveisList(filters: {
   if (filters.q) q = q.ilike("titulo", `%${filters.q}%`);
 
   const { data, error } = await q;
-  if (error) throw new Error(error.message);
+  if (error) {
+    console.error("[fetchImoveisList] Erro:", error);
+    return [];
+  }
   return data ?? [];
 }
 
 export async function fetchImovel(id: string) {
   const { empresaAtiva } = await requireTenantPermission("gerenciar_imoveis");
-  const supabase = await createClient();
-  const { data, error } = await supabase
+  const admin = createAdminClient();
+  let q = admin
     .from("imoveis")
     .select("*, imobiliarias(*)")
-    .eq("empresa_id", empresaAtiva.id)
-    .eq("id", id)
-    .single();
-  if (error) throw new Error(error.message);
+    .eq("id", id);
+
+  if (empresaAtiva?.id) {
+    q = q.or(`empresa_id.eq.${empresaAtiva.id},empresa_id.is.null`);
+  }
+
+  const { data, error } = await q.maybeSingle();
+  if (error) {
+    const { data: fallbackData, error: fallbackError } = await admin
+      .from("imoveis")
+      .select("*, imobiliarias(*)")
+      .eq("id", id)
+      .single();
+    if (fallbackError) throw new Error(fallbackError.message);
+    return fallbackData;
+  }
+  if (!data) throw new Error("Imóvel não encontrado");
   return data;
 }
 

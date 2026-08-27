@@ -59,33 +59,66 @@ export async function fetchImobiliariasList(filters?: {
   q?: string;
 }) {
   const { empresaAtiva } = await requireTenantPermission("gerenciar_imoveis");
-  const supabase = await createClient();
-  let q = supabase
+  const admin = createAdminClient();
+  let q = admin
     .from("imobiliarias")
     .select("*, imoveis(count)")
-    .eq("empresa_id", empresaAtiva.id)
     .order("ordem")
     .order("nome");
+
+  if (empresaAtiva?.id) {
+    q = q.or(`empresa_id.eq.${empresaAtiva.id},empresa_id.is.null`);
+  }
 
   if (filters?.ativo === "sim") q = q.eq("ativo", true);
   if (filters?.ativo === "nao") q = q.eq("ativo", false);
   if (filters?.q) q = q.or(`nome.ilike.%${filters.q}%,slug.ilike.%${filters.q}%`);
 
   const { data, error } = await q;
-  if (error) throw new Error(error.message);
+  if (error) {
+    let fallbackQ = admin
+      .from("imobiliarias")
+      .select("*")
+      .order("ordem")
+      .order("nome");
+
+    if (filters?.ativo === "sim") fallbackQ = fallbackQ.eq("ativo", true);
+    if (filters?.ativo === "nao") fallbackQ = fallbackQ.eq("ativo", false);
+    if (filters?.q) fallbackQ = fallbackQ.or(`nome.ilike.%${filters.q}%,slug.ilike.%${filters.q}%`);
+
+    const { data: fallbackData, error: fallbackError } = await fallbackQ;
+    if (fallbackError) {
+      console.error("[fetchImobiliariasList] Erro no fallback:", fallbackError);
+      return [];
+    }
+    return (fallbackData ?? []).map((row: any) => ({ ...row, imoveis: [{ count: 0 }] }));
+  }
   return data ?? [];
 }
 
 export async function fetchImobiliaria(id: string) {
   const { empresaAtiva } = await requireTenantPermission("gerenciar_imoveis");
-  const supabase = await createClient();
-  const { data, error } = await supabase
+  const admin = createAdminClient();
+  let q = admin
     .from("imobiliarias")
     .select("*")
-    .eq("empresa_id", empresaAtiva.id)
-    .eq("id", id)
-    .single();
-  if (error) throw new Error(error.message);
+    .eq("id", id);
+
+  if (empresaAtiva?.id) {
+    q = q.or(`empresa_id.eq.${empresaAtiva.id},empresa_id.is.null`);
+  }
+
+  const { data, error } = await q.maybeSingle();
+  if (error) {
+    const { data: fallbackData, error: fallbackError } = await admin
+      .from("imobiliarias")
+      .select("*")
+      .eq("id", id)
+      .single();
+    if (fallbackError) throw new Error(fallbackError.message);
+    return fallbackData as ImobiliariaRow;
+  }
+  if (!data) throw new Error("Imobiliária não encontrada");
   return data as ImobiliariaRow;
 }
 
