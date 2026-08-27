@@ -16,7 +16,7 @@ async function enviarConviteAcesso(linkId: string, nome: string, empresaId: stri
   const admin = createAdminClient();
   const { data: link, error: linkError } = await admin
     .from("empresa_usuarios")
-    .select("id, usuario_id")
+    .select("id, usuario_id, status")
     .eq("id", linkId)
     .single();
 
@@ -39,7 +39,7 @@ async function enviarConviteAcesso(linkId: string, nome: string, empresaId: stri
   }
 
   const redirectTo = `${getPublicSiteUrl()}/definir-senha?next=/admin`;
-  if (usuario.auth_user_id && reenviar) {
+  if (usuario.auth_user_id && (reenviar || link.status === "CONVIDADO")) {
     const { error: recoveryError } = await admin.auth.resetPasswordForEmail(usuario.email, { redirectTo });
     if (recoveryError) {
       return { ok: false as const, message: `Não foi possível reenviar o e-mail de acesso: ${recoveryError.message}` };
@@ -48,7 +48,6 @@ async function enviarConviteAcesso(linkId: string, nome: string, empresaId: stri
   }
 
   if (usuario.auth_user_id) {
-    await admin.from("empresa_usuarios").update({ status: "ATIVO" }).eq("id", linkId);
     return { ok: true as const, invited: false, email: usuario.email };
   }
 

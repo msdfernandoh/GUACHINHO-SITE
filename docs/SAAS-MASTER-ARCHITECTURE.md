@@ -913,7 +913,10 @@ porque se tornam ambíguas e podem ocultar toda a equipe.
 O envio do convite resolve o vínculo por UUID e consulta a identidade por
 `usuario_id` em uma segunda operação administrativa. Essa separação mantém o
 fluxo idempotente, permite reaproveitar vínculos `CONVIDADO` após falha de envio
-e evita criar usuários ou vínculos duplicados. `usuarios.ativo` descreve a
+e evita criar usuários ou vínculos duplicados. A existência de
+`auth_user_id` não ativa antecipadamente o vínculo: enquanto o estado for
+`CONVIDADO`, o reenvio gera um novo link e a ativação ocorre somente após a
+autenticação por `rpc_ativar_meus_convites()`. `usuarios.ativo` descreve a
 identidade; o estado do convite pertence exclusivamente a
 `empresa_usuarios.status`.
 

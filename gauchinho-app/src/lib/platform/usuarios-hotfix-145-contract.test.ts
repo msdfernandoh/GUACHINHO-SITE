@@ -15,6 +15,10 @@ const client = fs.readFileSync(
   path.join(process.cwd(), "src/app/platform/usuarios/client.tsx"),
   "utf8",
 );
+const actions = fs.readFileSync(
+  path.join(process.cwd(), "src/app/platform/usuarios-actions.ts"),
+  "utf8",
+);
 
 describe("Fase 146 — cadastro seguro de usuário principal da franquia", () => {
   it("usa perfil legado aceito apenas como identidade-base", () => {
@@ -44,5 +48,7 @@ describe("Fase 146 — cadastro seguro de usuário principal da franquia", () =>
     expect(migration).toContain("CREATE OR REPLACE FUNCTION public.rpc_ativar_meus_convites()");
     expect(migration).toContain("u.auth_user_id = auth.uid()");
     expect(migration).toContain("eu.status = 'CONVIDADO'");
+    expect(actions).toContain('link.status === "CONVIDADO"');
+    expect(actions).not.toContain('update({ status: "ATIVO" })');
   });
 });

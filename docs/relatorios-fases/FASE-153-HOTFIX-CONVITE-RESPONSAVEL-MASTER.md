@@ -25,6 +25,8 @@ ou alteração destrutiva foi realizada.
 - Convite resolve primeiro `empresa_usuarios.usuario_id` e depois consulta
   `usuarios.id`, sem depender de embedding ambíguo.
 - Reenvio usa a mesma resolução explícita e idempotente.
+- Uma identidade Auth já criada com vínculo ainda `CONVIDADO` recebe novo link
+  seguro, mas não é marcada como `ATIVO` antes de autenticar e aceitar o acesso.
 - Listagem global e ficha da Master usam
   `usuarios!empresa_usuarios_usuario_id_fkey`.
 - A leitura inválida de `usuarios.status` foi substituída por `usuarios.ativo`.
