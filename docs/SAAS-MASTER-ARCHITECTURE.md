@@ -823,6 +823,22 @@ snapshot comercial aceito pelo cliente.
 Relatório:
 `docs/relatorios-fases/FASE-148-GRUPOS-TIPO-CANONICO-REAJUSTE-SAAS-E-LEITURA-SITE.md`.
 
+## 27. Isolamento tenant nas consultas SaaS do admin — Fase 149
+
+O namespace `/admin` sempre opera no tenant resolvido pelo host, sessão e
+vínculo ativo, inclusive quando o operador também é Platform Superadmin. A
+consulta de empresa mostra somente `empresaAtiva`; a consulta de
+administradoras mostra apenas concessões ativas de `empresa_administradoras`
+para esse mesmo UUID.
+
+Rotas de detalhe validam o UUID solicitado contra o tenant ou concessão antes
+da leitura. A visão global de todas as franquias, administradoras e vínculos
+existe apenas em `/platform`. Assim, privilégios globais não provocam exposição
+acidental de outros tenants dentro do site de uma franquia.
+
+Relatório:
+`docs/relatorios-fases/FASE-149-ESCOPO-TENANT-CONSULTAS-SAAS-NO-SITE.md`.
+
 
 
 

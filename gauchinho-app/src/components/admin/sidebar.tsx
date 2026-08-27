@@ -68,8 +68,8 @@ const imobiliariaNav = [
 ];
 
 const SUPERADMIN_READONLY_NAV = [
-  { href: "/admin/empresas", label: "Empresas (SaaS)", icon: Building2 },
-  { href: "/admin/administradoras", label: "Catálogo de Administradoras", icon: Landmark },
+  { href: "/admin/empresas", label: "Minha empresa (SaaS)", icon: Building2 },
+  { href: "/admin/administradoras", label: "Administradoras autorizadas", icon: Landmark },
 ] as const;
 
 export function AdminSidebar({

@@ -20,7 +20,7 @@ describe("contrato de governança do catálogo global", () => {
     const administradora = read("gauchinho-app/src/app/admin/administradoras/[id]/page.tsx");
     const grupo = read("gauchinho-app/src/app/admin/grupos/[id]/page.tsx");
     expect(empresa).toContain("Consulta do cadastro SaaS");
-    expect(administradora).toContain("Consulta do cadastro global");
+    expect(administradora).toContain("Consulta da concessão ativa");
     expect(grupo).not.toMatch(/Salvar cota|Excluir|Inativar/);
     expect(empresa).not.toMatch(/<form|Salvar|Remover/);
     expect(administradora).not.toMatch(/<form|Salvar|Inativar/);

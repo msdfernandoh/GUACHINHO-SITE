@@ -6,10 +6,13 @@ import { getErpSistemaConfig } from "@/lib/erp/erp-modulos";
 import { getSitePublicoConfig } from "@/lib/tenant/site-public-config";
 import { fetchEmpresaComDetalhes } from "../actions";
 import { fetchEmpresaAdministradorasAction } from "../administradoras-actions";
+import { getCurrentTenantContext } from "@/lib/tenant/context";
 
 export default async function VisualizarEmpresaPage({ params }: { params: Promise<{ id: string }> }) {
   if (!(await isPlatformSuperadmin())) redirect("/admin");
   const { id } = await params;
+  const { empresaAtiva } = await getCurrentTenantContext();
+  if (!empresaAtiva || id !== empresaAtiva.id) notFound();
   const detalhes = await fetchEmpresaComDetalhes(id).catch(() => null);
   if (!detalhes) notFound();
   const { empresa, branding, dominios } = detalhes;
