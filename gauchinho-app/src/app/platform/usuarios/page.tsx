@@ -7,7 +7,12 @@ import {
   type ModuloOption,
 } from "./client";
 
-export default async function PlatformUsuariosPage() {
+export default async function PlatformUsuariosPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ empresa_id?: string; novo?: string; retorno?: string }>;
+}) {
+  const filtros = await searchParams;
   const db = await createClient();
 
   const [
@@ -22,7 +27,7 @@ export default async function PlatformUsuariosPage() {
     db
       .from("empresa_usuarios")
       .select(
-        "id, usuario_id, empresa_id, papel_id, ativo, is_responsavel_principal, status, convite_enviado_em, erp_modulos_visiveis, created_at, usuario:usuarios(id, nome, email, ultimo_acesso), empresa:empresas(id, nome_fantasia, slug, configuracoes), papel:papeis(id, nome, codigo)",
+        "id, usuario_id, empresa_id, papel_id, ativo, is_responsavel_principal, status, convite_enviado_em, erp_modulos_visiveis, created_at, usuario:usuarios!empresa_usuarios_usuario_id_fkey(id, nome, email, ultimo_acesso), empresa:empresas(id, nome_fantasia, slug, configuracoes), papel:papeis(id, nome, codigo)",
       )
       .order("created_at", { ascending: false }),
     db
@@ -136,12 +141,23 @@ export default async function PlatformUsuariosPage() {
     categoria: m.categoria,
   }));
 
+  const empresaInicialId = franquiasOptions.some((empresa) => empresa.id === filtros.empresa_id)
+    ? filtros.empresa_id
+    : undefined;
+  const retornoEmpresaHref =
+    empresaInicialId && filtros.retorno === `/platform/empresas/${empresaInicialId}`
+      ? filtros.retorno
+      : undefined;
+
   return (
     <PlatformUsuariosClient
       usuarios={items}
       franquias={franquiasOptions}
       papeis={papeisOptions}
       modulosCatalogo={modulosOptions}
+      empresaInicialId={empresaInicialId}
+      abrirConviteInicial={Boolean(empresaInicialId && filtros.novo === "1")}
+      retornoEmpresaHref={retornoEmpresaHref}
     />
   );
 }

@@ -16,7 +16,7 @@ async function enviarConviteAcesso(linkId: string, nome: string, empresaId: stri
   const admin = createAdminClient();
   const { data: link, error: linkError } = await admin
     .from("empresa_usuarios")
-    .select("id, usuario:usuarios!inner(id, email, auth_user_id)")
+    .select("id, usuario_id")
     .eq("id", linkId)
     .single();
 
@@ -24,8 +24,16 @@ async function enviarConviteAcesso(linkId: string, nome: string, empresaId: stri
     return { ok: false as const, message: "Vínculo criado, mas não foi possível localizar a identidade para enviar o convite." };
   }
 
-  const usuarioRaw = Array.isArray(link.usuario) ? link.usuario[0] : link.usuario;
-  const usuario = usuarioRaw as { id: string; email: string; auth_user_id: string | null } | null;
+  const { data: usuario, error: usuarioError } = await admin
+    .from("usuarios")
+    .select("id, email, auth_user_id")
+    .eq("id", link.usuario_id)
+    .single();
+
+  if (usuarioError || !usuario) {
+    return { ok: false as const, message: "Vínculo criado, mas não foi possível localizar a identidade para enviar o convite." };
+  }
+
   if (!usuario?.id || !usuario.email) {
     return { ok: false as const, message: "Vínculo criado, mas a identidade não possui e-mail válido para convite." };
   }
@@ -117,6 +125,7 @@ export async function convidarUsuarioPlatformAction(
 
   const convite = await enviarConviteAcesso(String(data), nome, empresaId);
   revalidatePath("/platform/usuarios");
+  revalidatePath(`/platform/empresas/${empresaId}`);
   if (!convite.ok) {
     return { status: "ERROR", message: convite.message, data };
   }
@@ -228,16 +237,20 @@ export async function reenviarConvitePlatformAction(
   const admin = createAdminClient();
   const { data: row, error: rowError } = await admin
     .from("empresa_usuarios")
-    .select("empresa_id, usuario:usuarios!inner(nome)")
+    .select("empresa_id, usuario_id")
     .eq("id", linkId)
     .single();
   if (rowError || !row) {
     return { status: "ERROR", message: "Convite marcado como pendente, mas o usuário não pôde ser carregado." };
   }
-  const usuarioRaw = Array.isArray(row.usuario) ? row.usuario[0] : row.usuario;
-  const usuario = usuarioRaw as { nome?: string } | null;
+  const { data: usuario } = await admin
+    .from("usuarios")
+    .select("nome")
+    .eq("id", row.usuario_id)
+    .maybeSingle();
   const convite = await enviarConviteAcesso(linkId, usuario?.nome || "Usuário", row.empresa_id, true);
   revalidatePath("/platform/usuarios");
+  revalidatePath(`/platform/empresas/${row.empresa_id}`);
   if (!convite.ok) return { status: "ERROR", message: convite.message };
   return {
     status: "SUCCESS",

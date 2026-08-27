@@ -62,11 +62,17 @@ export function PlatformUsuariosClient({
   franquias,
   papeis,
   modulosCatalogo,
+  empresaInicialId,
+  abrirConviteInicial = false,
+  retornoEmpresaHref,
 }: {
   usuarios: PlatformUsuarioItem[];
   franquias: MasterFranquiaOption[];
   papeis: PapelOption[];
   modulosCatalogo: ModuloOption[];
+  empresaInicialId?: string;
+  abrirConviteInicial?: boolean;
+  retornoEmpresaHref?: string;
 }) {
   const [busca, setBusca] = useState("");
   const [filtroFranquia, setFiltroFranquia] = useState("TODOS");
@@ -75,17 +81,25 @@ export function PlatformUsuariosClient({
   const [filtroConvite, setFiltroConvite] = useState("TODOS");
 
   // Modais
-  const [modalConvidar, setModalConvidar] = useState(false);
+  const [modalConvidar, setModalConvidar] = useState(abrirConviteInicial);
   const [modalEditar, setModalEditar] = useState<PlatformUsuarioItem | null>(null);
 
   // Form State Convidar
-  const [conviteEmpresaId, setConviteEmpresaId] = useState(franquias[0]?.id || "");
+  const [conviteEmpresaId, setConviteEmpresaId] = useState(
+    empresaInicialId && franquias.some((franquia) => franquia.id === empresaInicialId)
+      ? empresaInicialId
+      : franquias[0]?.id || "",
+  );
   const [conviteNome, setConviteNome] = useState("");
   const [conviteEmail, setConviteEmail] = useState("");
   const papelAdminEmpresa = papeis.find((p) => p.codigo === "admin_empresa" && p.empresa_id === null);
   const [convitePapelId, setConvitePapelId] = useState(papelAdminEmpresa?.id || papeis[0]?.id || "");
-  const [conviteIsResponsavel, setConviteIsResponsavel] = useState(false);
-  const [conviteModulos, setConviteModulos] = useState<string[]>([]);
+  const [conviteIsResponsavel, setConviteIsResponsavel] = useState(
+    (franquias.find((franquia) => franquia.id === empresaInicialId)?.usuarios_ativos ?? 1) === 0,
+  );
+  const [conviteModulos, setConviteModulos] = useState<string[]>(
+    franquias.find((franquia) => franquia.id === empresaInicialId)?.modulos_permitidos || [],
+  );
 
   // Actions
   const [stateConvidar, actionConvidar, isPendingConvidar] = useActionState(convidarUsuarioPlatformAction, initial);
@@ -144,6 +158,15 @@ export function PlatformUsuariosClient({
             Governança global de identidades, credenciais, papéis e quotas de equipe das Master Franquias.
           </p>
         </div>
+        <div className="flex flex-wrap gap-2">
+        {retornoEmpresaHref && (
+          <Link
+            href={retornoEmpresaHref}
+            className="rounded-lg border border-slate-300 px-4 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+          >
+            ← Voltar à Master Franquia
+          </Link>
+        )}
         <button
           type="button"
           onClick={() => {
@@ -157,6 +180,7 @@ export function PlatformUsuariosClient({
         >
           + Novo Usuário / Convidar
         </button>
+        </div>
       </div>
 
       {/* Feedbacks */}

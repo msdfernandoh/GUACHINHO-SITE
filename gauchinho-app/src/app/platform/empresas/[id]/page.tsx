@@ -71,7 +71,7 @@ export default async function MasterFranquiaDetailPage({
       .eq("empresa_id", id),
     db
       .from("empresa_usuarios")
-      .select("id, usuario_id, ativo, is_responsavel_principal, status, erp_modulos_visiveis, convite_enviado_em, created_at, usuario:usuarios(id, nome, email, status, ultimo_acesso), papel:papeis(id, nome)")
+      .select("id, usuario_id, ativo, is_responsavel_principal, status, erp_modulos_visiveis, convite_enviado_em, created_at, usuario:usuarios!empresa_usuarios_usuario_id_fkey(id, nome, email, ativo, ultimo_acesso), papel:papeis(id, nome)")
       .eq("empresa_id", id),
     db
       .from("empresa_socios")

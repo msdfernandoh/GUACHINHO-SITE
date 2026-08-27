@@ -129,7 +129,7 @@ export type UsuarioHubItem = {
     id: string;
     nome: string;
     email: string;
-    status: string;
+    ativo: boolean;
     ultimo_acesso: string | null;
   } | null;
   papel: {
@@ -1000,10 +1000,10 @@ export function MasterFranquiaHub({
               <p className="text-slate-500">Equipe autorizada a acessar o painel operacional e ERP desta empresa.</p>
             </div>
             <Link
-              href="/platform/usuarios"
+              href={`/platform/usuarios?empresa_id=${empresa.id}&novo=1&retorno=${encodeURIComponent(`/platform/empresas/${empresa.id}`)}`}
               className="rounded-lg bg-cyan-700 px-3.5 py-1.5 font-bold text-white shadow hover:bg-cyan-800 transition-colors"
             >
-              + Gerenciar em Usuários Globais
+              + Cadastrar usuário nesta Master
             </Link>
           </div>
 

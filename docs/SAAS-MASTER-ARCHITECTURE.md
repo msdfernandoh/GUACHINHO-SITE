@@ -902,6 +902,29 @@ cada substituição, incluindo empresa, usuário, origem e horário.
 Relatório:
 `docs/relatorios-fases/FASE-152-GRUPOS-DETALHES-TABELA-CANONICA-E-LANCES.md`.
 
+## 31. Convite e exibição do responsável da Master — Fase 153
+
+`empresa_usuarios` possui duas relações com `usuarios`: a identidade vinculada
+em `usuario_id` e o eventual autor em `convidado_por`. Todo embedding PostgREST
+partindo de `empresa_usuarios` deve declarar explicitamente
+`usuarios!empresa_usuarios_usuario_id_fkey`; relações implícitas são proibidas
+porque se tornam ambíguas e podem ocultar toda a equipe.
+
+O envio do convite resolve o vínculo por UUID e consulta a identidade por
+`usuario_id` em uma segunda operação administrativa. Essa separação mantém o
+fluxo idempotente, permite reaproveitar vínculos `CONVIDADO` após falha de envio
+e evita criar usuários ou vínculos duplicados. `usuarios.ativo` descreve a
+identidade; o estado do convite pertence exclusivamente a
+`empresa_usuarios.status`.
+
+Ao iniciar o cadastro na ficha da Master, o UUID da empresa é carregado no
+formulário global, o primeiro usuário é marcado como responsável e o operador
+pode retornar à mesma ficha. A empresa pode permanecer `em_treinamento`: o
+responsável é pré-requisito para ativação, não consequência dela.
+
+Relatório:
+`docs/relatorios-fases/FASE-153-HOTFIX-CONVITE-RESPONSAVEL-MASTER.md`.
+
 
 
 
