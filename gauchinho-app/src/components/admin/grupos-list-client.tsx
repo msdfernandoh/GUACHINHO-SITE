@@ -4,9 +4,12 @@ import Link from "next/link";
 import { calcularPrazoGrupoFromRow, grupoPrecisaReajusteCredito } from "@/lib/grupos/prazos";
 import type { GrupoConsorcio } from "@/lib/types";
 import { cn } from "@/lib/utils/cn";
+import { GrupoTabelaActions } from "@/components/grupos/grupo-tabela-actions";
+import type { GrupoTabelaMetadata } from "@/lib/grupos/grupo-tabela.server";
 
 type GrupoListRow = GrupoConsorcio & {
   grupos_cotas?: { count: number }[] | { count: number } | null;
+  tabela_grupo?: GrupoTabelaMetadata | null;
 };
 
 export function GruposListClient({ grupos }: { grupos: GrupoListRow[] }) {
@@ -77,12 +80,15 @@ export function GruposListClient({ grupos }: { grupos: GrupoListRow[] }) {
                 </td>
                 <td className="px-3 py-2">{grupo.ativo ? "Sim" : "Não"}</td>
                 <td className="px-3 py-2">
-                  <Link
-                    href={`/admin/grupos/${grupo.id}`}
-                    className="text-amber-600 hover:underline dark:text-amber-400"
-                  >
-                    Visualizar
-                  </Link>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Link
+                      href={`/admin/grupos/${grupo.id}`}
+                      className="text-amber-600 hover:underline dark:text-amber-400"
+                    >
+                      Detalhes
+                    </Link>
+                    <GrupoTabelaActions grupoId={grupo.id} origemPortal="SITE" tabela={grupo.tabela_grupo} compact />
+                  </div>
                 </td>
               </tr>
             );

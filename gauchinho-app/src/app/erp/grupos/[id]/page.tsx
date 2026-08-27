@@ -6,6 +6,10 @@ import { GroupCatalogForm } from "@/components/erp/group-catalog-form";
 import { salvarGrupoLocalAction } from "../actions";
 import { getGrupoAutorizadoForEmpresa } from "@/lib/grupos/catalogo-autorizado-service";
 import { isPlatformSuperadmin } from "@/lib/auth/is-superadmin";
+import { calcularPrazoGrupoFromRow } from "@/lib/grupos/prazos";
+import { buscarTabelaGrupo } from "@/lib/grupos/grupo-tabela.server";
+import { GrupoTabelaActions } from "@/components/grupos/grupo-tabela-actions";
+import type { GrupoConsorcio, GrupoModalidadeLance } from "@/lib/types";
 
 const money = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 
@@ -25,11 +29,11 @@ export default async function GrupoErpPage({
   const db = await createClient();
   const platformSuperadmin = await isPlatformSuperadmin();
 
-  const [grupoRes, cotasRes, configRes] = await Promise.all([
+  const [grupoRes, cotasRes, configRes, lancesRes] = await Promise.all([
     db
       .from("grupos_consorcio")
       .select(
-        "id,codigo_grupo,administradora_id,tipo_administradora_id,modalidade_comissao_id,status,ativo,prazo_total,taxa_administrativa_percentual,fundo_reserva_percentual,seguro_percentual,permite_lance_embutido,percentual_lance_embutido,vagas_disponiveis,origem_governanca,status_governanca,empresa_origem_id,administradora:administradoras(id,nome),tipo:administradora_tipos(id,nome),modalidade:administradora_modalidades_comissao(id,nome)"
+        "id,codigo_grupo,administradora_id,tipo_administradora_id,modalidade_comissao_id,status,ativo,prazo_total,data_primeira_assembleia,parcelas_realizadas,prazo_restante,capacidade_total,taxa_administrativa_percentual,fundo_reserva_percentual,seguro_habilitado,seguro_percentual,permite_lance_embutido,percentual_lance_embutido,vagas_disponiveis,observacoes,origem_governanca,status_governanca,empresa_origem_id,administradora:administradoras(id,nome),tipo:administradora_tipos(id,nome),modalidade:administradora_modalidades_comissao(id,nome)"
       )
       .eq("id", id)
       .maybeSingle(),
@@ -47,6 +51,12 @@ export default async function GrupoErpPage({
       .eq("empresa_id", empresaAtiva.id)
       .eq("grupo_id", id)
       .maybeSingle(),
+    db
+      .from("grupos_modalidades_lance")
+      .select("id,grupo_id,nome,percentual_lance_embutido,percentual_recurso_proprio_minimo,descricao,ativo,ordem,created_at,updated_at")
+      .eq("grupo_id", id)
+      .eq("ativo", true)
+      .order("ordem"),
   ]);
 
   const g = grupoRes.data;
@@ -92,6 +102,9 @@ export default async function GrupoErpPage({
   ]);
 
   const cotas = cotasRes.data ?? [];
+  const lances = (lancesRes.data ?? []) as GrupoModalidadeLance[];
+  const tabela = await buscarTabelaGrupo(id);
+  const prazo = calcularPrazoGrupoFromRow(g as unknown as GrupoConsorcio);
   const modalidadesHabilitadasIds = (modulosHabilitadosRes.data ?? []).map(
     (x) => x.administradora_modalidade_id
   );
@@ -128,19 +141,59 @@ export default async function GrupoErpPage({
             </span>
           </div>
           <p className="mt-1 text-sm text-slate-500">
-            Administradora: <strong>{(g.administradora as any)?.nome ?? "Racon"}</strong> · Tipo: <strong>{(g.tipo as any)?.nome ?? "Imóvel"}</strong> · Prazo Total: <strong>{g.prazo_total ?? 180} meses</strong>
+            Administradora: <strong>{(g.administradora as unknown as { nome?: string } | null)?.nome ?? "Racon"}</strong> · Tipo: <strong>{(g.tipo as unknown as { nome?: string } | null)?.nome ?? "Imóvel"}</strong> · Prazo Total: <strong>{g.prazo_total ?? 180} meses</strong>
           </p>
         </div>
 
-        {platformSuperadmin ? (
-          <Link
-            href={`/platform/grupos/${g.id}`}
-            className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2 text-xs font-bold text-slate-700 shadow-sm hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-          >
-            ⚙️ Abrir no Editor da Platform
-          </Link>
-        ) : null}
+        <div className="flex flex-wrap items-start gap-3">
+          <GrupoTabelaActions grupoId={id} origemPortal="ERP" tabela={tabela} />
+          {platformSuperadmin ? (
+            <Link
+              href={`/platform/grupos/${g.id}`}
+              className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2 text-xs font-bold text-slate-700 shadow-sm hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+            >
+              ⚙️ Abrir no Editor da Platform
+            </Link>
+          ) : null}
+        </div>
       </div>
+
+      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        {[
+          ["Assembleias / prazo", prazo.prazoTotal > 0 ? `${prazo.parcelasRealizadasAtuais} / ${prazo.prazoTotal}` : "—"],
+          ["Prazo restante", prazo.prazoTotal > 0 ? `${prazo.prazoRestanteAtual} meses` : "—"],
+          ["Participantes / capacidade", g.capacidade_total ?? "—"],
+          ["Vagas disponíveis", g.vagas_disponiveis ?? 0],
+          ["Taxa administrativa", `${Number(g.taxa_administrativa_percentual ?? 0).toLocaleString("pt-BR")}%`],
+          ["Fundo de reserva", `${Number(g.fundo_reserva_percentual ?? 0).toLocaleString("pt-BR")}%`],
+          ["Seguro", g.seguro_habilitado ? `${Number(g.seguro_percentual ?? 0).toLocaleString("pt-BR", { maximumFractionDigits: 4 })}%` : "Não habilitado"],
+          ["1ª assembleia", g.data_primeira_assembleia ? new Date(`${g.data_primeira_assembleia}T12:00:00`).toLocaleDateString("pt-BR") : "—"],
+        ].map(([label, value]) => (
+          <div key={String(label)} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+            <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">{String(label)}</p>
+            <p className="mt-1 font-bold text-slate-900 dark:text-white">{String(value)}</p>
+          </div>
+        ))}
+      </section>
+
+      <section className="grid gap-4 lg:grid-cols-2">
+        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+          <h2 className="font-bold text-slate-900 dark:text-white">Tipos de lance oficiais</h2>
+          {lances.length === 0 ? <p className="mt-3 text-sm text-slate-500">Nenhum lance embutido cadastrado no SaaS.</p> : (
+            <div className="mt-3 space-y-2">{lances.map((lance) => (
+              <div key={lance.id} className="rounded-lg border border-slate-200 p-3 text-sm dark:border-slate-700">
+                <div className="flex justify-between gap-3"><strong>{lance.nome}</strong><span>{Number(lance.percentual_lance_embutido).toLocaleString("pt-BR")}%</span></div>
+                {Number(lance.percentual_recurso_proprio_minimo) > 0 ? <p className="text-xs text-slate-500">Recurso próprio mínimo: {Number(lance.percentual_recurso_proprio_minimo).toLocaleString("pt-BR")}%</p> : null}
+                {lance.descricao ? <p className="mt-1 text-xs text-slate-500">{lance.descricao}</p> : null}
+              </div>
+            ))}</div>
+          )}
+        </div>
+        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+          <h2 className="font-bold text-slate-900 dark:text-white">Observações operacionais do SaaS</h2>
+          <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-slate-600 dark:text-slate-300">{g.observacoes || "Nenhuma observação operacional cadastrada."}</p>
+        </div>
+      </section>
 
       {/* 1. FORMULÁRIO DE CONFIGURAÇÃO DO GRUPO */}
       <GroupCatalogForm
@@ -148,7 +201,7 @@ export default async function GrupoErpPage({
         administradoras={admins}
         tipos={t.data ?? []}
         modalidades={m.data ?? []}
-        grupo={grupoComModalidades as any}
+        grupo={grupoComModalidades}
         readonly={false}
         scope="ERP"
       />

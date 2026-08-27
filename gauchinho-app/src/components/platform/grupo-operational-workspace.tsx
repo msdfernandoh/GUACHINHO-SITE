@@ -6,6 +6,7 @@ import {
   salvarGrupoPlatformAction,
   salvarEstatisticasGrupoAction,
   salvarCategoriasGrupoAction,
+  salvarLancesEmbutidosGrupoAction,
   type GroupActionState,
 } from "@/app/platform/grupos-actions";
 import {
@@ -188,11 +189,30 @@ export function GrupoOperationalWorkspace({
     salvarCotasEmLoteAction.bind(null, grupo.id),
     initial,
   );
+  const [formStateCategorias, formActionCategorias, isPendingCategorias] = useActionState(
+    salvarCategoriasGrupoAction,
+    initial,
+  );
+  const [formStateLances, formActionLances, isPendingLances] = useActionState(
+    salvarLancesEmbutidosGrupoAction,
+    initial,
+  );
+  const [lancesEmbutidos, setLancesEmbutidos] = useState(() =>
+    (grupo.lances ?? []).map((item) => ({
+      id: item.id,
+      nome: item.nome,
+      percentual_lance_embutido: String(item.percentual_lance_embutido ?? ""),
+      percentual_recurso_proprio_minimo: String(item.percentual_recurso_proprio_minimo ?? 0),
+      descricao: item.descricao ?? "",
+      ativo: item.ativo !== false,
+      tipo_parcela: item.tipo_parcela ?? "",
+      percentual_parcela_reduzida: item.percentual_parcela_reduzida == null ? "" : String(item.percentual_parcela_reduzida),
+    })),
+  );
 
   const prontidao: GrupoProntidaoResult = validateGrupoProntidao(grupo);
 
   const modalidadesDisponiveis = grupo.modalidades ?? [];
-  const modsAtivas = modalidadesDisponiveis.filter((m) => m.ativo);
   const cotas = (grupo.produtos ?? []).filter((p) => p.ativo).sort((a, b) => b.valor_credito - a.valor_credito);
   const marcoReajuste = Math.floor(prontidao.temporal.realizadas / 12) * 12;
   const reajustePendente = marcoReajuste >= 12 && marcoReajuste > Number(grupo.credito_reajustado_ate_meses ?? 0);
@@ -366,8 +386,9 @@ export function GrupoOperationalWorkspace({
         </div>
       ) : null}
 
-      <form action={salvarCategoriasGrupoAction} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+      <form action={formActionCategorias} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
         <input type="hidden" name="grupo_id" value={grupo.id} />
+        <Feedback state={formStateCategorias} />
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
             <h2 className="text-sm font-bold text-slate-900 dark:text-white">Categorias de publicação</h2>
@@ -382,7 +403,88 @@ export function GrupoOperationalWorkspace({
               })}
             </div>
           </div>
-          <button type="submit" className="rounded-lg bg-cyan-700 px-4 py-2 text-sm font-bold text-white hover:bg-cyan-800">Salvar categorias</button>
+          <button type="submit" disabled={isPendingCategorias} className="rounded-lg bg-cyan-700 px-4 py-2 text-sm font-bold text-white hover:bg-cyan-800 disabled:opacity-50">{isPendingCategorias ? "Salvando..." : "Salvar categorias"}</button>
+        </div>
+      </form>
+
+      <form action={formActionLances} className="space-y-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <input type="hidden" name="grupo_id" value={grupo.id} />
+        <input type="hidden" name="lances_json" value={JSON.stringify(lancesEmbutidos)} />
+        <Feedback state={formStateLances} />
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h2 className="text-sm font-bold text-slate-900 dark:text-white">Tipos de lance embutido</h2>
+            <p className="text-xs text-slate-500">Coleção canônica exibida no site e no ERP para este grupo.</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setLancesEmbutidos((current) => [...current, { id: `novo-${Date.now()}`, nome: "", percentual_lance_embutido: "", percentual_recurso_proprio_minimo: "0", descricao: "", ativo: true, tipo_parcela: "", percentual_parcela_reduzida: "" }])}
+            className="rounded-lg border border-cyan-600 px-3 py-1.5 text-xs font-bold text-cyan-700 hover:bg-cyan-50 dark:text-cyan-300"
+          >
+            + Adicionar tipo
+          </button>
+        </div>
+        {lancesEmbutidos.length === 0 ? (
+          <p className="rounded-lg border border-dashed border-slate-300 p-4 text-center text-xs text-slate-500 dark:border-slate-700">Nenhum lance embutido cadastrado.</p>
+        ) : (
+          <div className="space-y-2">
+            {lancesEmbutidos.map((lance, index) => (
+              <div key={lance.id} className="grid gap-2 rounded-lg border border-slate-200 p-3 md:grid-cols-2 lg:grid-cols-6 dark:border-slate-700">
+                <input
+                  aria-label={`Nome do lance ${index + 1}`}
+                  value={lance.nome}
+                  onChange={(event) => setLancesEmbutidos((rows) => rows.map((row, rowIndex) => rowIndex === index ? { ...row, nome: event.target.value } : row))}
+                  placeholder="Ex.: Lance embutido 25%"
+                  className={inputStyle}
+                />
+                <select
+                  aria-label={`Modalidade de parcela do lance ${index + 1}`}
+                  value={lance.tipo_parcela}
+                  onChange={(event) => setLancesEmbutidos((rows) => rows.map((row, rowIndex) => rowIndex === index ? { ...row, tipo_parcela: event.target.value as "" | "integral" | "reduzida" } : row))}
+                  className={inputStyle}
+                >
+                  <option value="">Parcela escolhida no site</option>
+                  <option value="integral">Parcela integral</option>
+                  <option value="reduzida">Parcela reduzida</option>
+                </select>
+                <input
+                  aria-label={`Percentual de parcela reduzida do lance ${index + 1}`}
+                  value={lance.percentual_parcela_reduzida}
+                  disabled={lance.tipo_parcela !== "reduzida"}
+                  onChange={(event) => setLancesEmbutidos((rows) => rows.map((row, rowIndex) => rowIndex === index ? { ...row, percentual_parcela_reduzida: event.target.value } : row))}
+                  placeholder="Parcela reduzida %"
+                  className={inputStyle}
+                />
+                <input
+                  aria-label={`Percentual do lance ${index + 1}`}
+                  value={lance.percentual_lance_embutido}
+                  onChange={(event) => setLancesEmbutidos((rows) => rows.map((row, rowIndex) => rowIndex === index ? { ...row, percentual_lance_embutido: event.target.value } : row))}
+                  placeholder="Percentual"
+                  className={inputStyle}
+                />
+                <input
+                  aria-label={`Recurso próprio mínimo do lance ${index + 1}`}
+                  value={lance.percentual_recurso_proprio_minimo}
+                  onChange={(event) => setLancesEmbutidos((rows) => rows.map((row, rowIndex) => rowIndex === index ? { ...row, percentual_recurso_proprio_minimo: event.target.value } : row))}
+                  placeholder="Recurso próprio mín. %"
+                  className={inputStyle}
+                />
+                <input
+                  aria-label={`Descrição do lance ${index + 1}`}
+                  value={lance.descricao}
+                  onChange={(event) => setLancesEmbutidos((rows) => rows.map((row, rowIndex) => rowIndex === index ? { ...row, descricao: event.target.value } : row))}
+                  placeholder="Descrição opcional"
+                  className={inputStyle}
+                />
+                <button type="button" onClick={() => setLancesEmbutidos((rows) => rows.filter((_, rowIndex) => rowIndex !== index))} className="text-xs font-bold text-red-600 hover:underline">Remover</button>
+              </div>
+            ))}
+          </div>
+        )}
+        <div className="flex justify-end">
+          <button type="submit" disabled={isPendingLances} className="rounded-lg bg-cyan-700 px-4 py-2 text-sm font-bold text-white hover:bg-cyan-800 disabled:opacity-50">
+            {isPendingLances ? "Salvando..." : "Salvar tipos de lance"}
+          </button>
         </div>
       </form>
 
@@ -560,13 +662,11 @@ export function GrupoOperationalWorkspace({
               <label className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
                 Lance Embutido Geral
               </label>
-              <div className="mt-2 flex items-center gap-3">
-                <label className="flex items-center gap-2 text-sm font-semibold">
-                  <input type="checkbox" name="permite_lance_embutido" defaultChecked={grupo.permite_lance_embutido} className="rounded" />
-                  Permite lance embutido
-                </label>
-                <input name="percentual_lance_embutido" defaultValue={grupo.percentual_lance_embutido ?? ""} placeholder="%" className="w-20 rounded border p-1 text-sm" />
-              </div>
+              <input type="hidden" name="permite_lance_embutido" value={lancesEmbutidos.length > 0 ? "on" : "false"} />
+              <input type="hidden" name="percentual_lance_embutido" value={lancesEmbutidos[0]?.percentual_lance_embutido ?? ""} />
+              <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
+                {lancesEmbutidos.length > 0 ? `${lancesEmbutidos.length} tipo(s) configurado(s) no bloco acima.` : "Nenhum tipo configurado."}
+              </p>
             </div>
           </div>
 

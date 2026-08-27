@@ -156,6 +156,17 @@ export type GrupoRecord = {
   modalidades?: GrupoModalidadeItem[];
   produtos?: GrupoCotaItem[];
   categorias?: Array<{ categoria?: { codigo?: string; nome?: string; ativo?: boolean } | null }>;
+  lances?: Array<{
+    id: string;
+    nome: string;
+    percentual_lance_embutido: number;
+    percentual_recurso_proprio_minimo: number;
+    descricao?: string | null;
+    ativo: boolean;
+    ordem: number;
+    tipo_parcela?: "integral" | "reduzida" | null;
+    percentual_parcela_reduzida?: number | null;
+  }>;
 };
 
 export type AssembleiasTemporalResult = {

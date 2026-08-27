@@ -9,9 +9,7 @@ import { isPlatformSuperadmin } from "@/lib/auth/is-superadmin";
 import {
   canDeleteRecords,
   canEditSettings,
-  canManageGrupos,
 } from "@/lib/auth/permissions";
-import { DEFAULT_LEADS, getConfigJson } from "@/server/config";
 import { parseBulkCreditLines } from "@/lib/utils/format";
 import { estimarCamposCotaBulk, calcularParcelasSeguroDaCota, type GrupoBulkEstimateInput } from "@/lib/grupos/calculos";
 import {
@@ -34,6 +32,7 @@ import {
 } from "@/lib/grupos/empresa-grupos-config";
 import type { GrupoModalidadeLance, GrupoConsorcio, PublicGrupoAggregate } from "@/lib/types";
 import { getCurrentTenantContext, requireTenantPermission } from "@/lib/tenant/context";
+import { listarTabelasGrupos } from "@/lib/grupos/grupo-tabela.server";
 
 const GRUPO_AUTO_PARCEL_COLS = [
   "parcelas_realizadas_base",
@@ -323,9 +322,15 @@ async function syncModalidadesLance(grupoId: string, formData: FormData) {
     (insErr.message.includes("tipo_parcela") ||
       insErr.message.includes("percentual_parcela_reduzida"))
   ) {
-    const legacyPayload = fullPayload.map(
-      ({ tipo_parcela: _t, percentual_parcela_reduzida: _p, ...rest }) => rest,
-    );
+    const legacyPayload = fullPayload.map((item) => ({
+      grupo_id: item.grupo_id,
+      nome: item.nome,
+      percentual_lance_embutido: item.percentual_lance_embutido,
+      percentual_recurso_proprio_minimo: item.percentual_recurso_proprio_minimo,
+      descricao: item.descricao,
+      ativo: item.ativo,
+      ordem: item.ordem,
+    }));
     ({ error: insErr } = await admin.from("grupos_modalidades_lance").insert(legacyPayload));
   }
   if (insErr) throw new Error(insErr.message);
@@ -406,9 +411,11 @@ export async function fetchGruposList(filters: {
 
   const { data, error } = await q;
   if (error) throw new Error(error.message);
+  const tabelas = await listarTabelasGrupos((data ?? []).map((grupo) => grupo.id));
   const normalizados = (data ?? []).map((grupo) => ({
     ...grupo,
     modalidade: (grupo.tipo as unknown as { nome?: string } | null)?.nome ?? grupo.modalidade,
+    tabela_grupo: tabelas.get(grupo.id) ?? null,
   }));
   return filters.modalidade
     ? normalizados.filter((grupo) => grupo.modalidade === filters.modalidade)
@@ -423,17 +430,17 @@ export async function fetchGrupoWithCotas(id: string) {
     .eq("id", id)
     .single();
   if (error) throw new Error(error.message);
-  const { data: cotas } = await supabase
-    .from("grupos_cotas")
-    .select("*")
-    .eq("grupo_id", id)
-    .order("ordem", { ascending: true });
+  const [{ data: cotas }, { data: modalidadesLance }] = await Promise.all([
+    supabase.from("grupos_cotas").select("*").eq("grupo_id", id).order("ordem", { ascending: true }),
+    supabase.from("grupos_modalidades_lance").select("*").eq("grupo_id", id).eq("ativo", true).order("ordem", { ascending: true }),
+  ]);
   return {
     grupo: {
       ...grupo,
       modalidade: (grupo.tipo as unknown as { nome?: string } | null)?.nome ?? grupo.modalidade,
     },
     cotas: cotas ?? [],
+    modalidadesLance: modalidadesLance ?? [],
   };
 }
 
@@ -867,7 +874,10 @@ export async function duplicateGrupoAction(grupoId: string) {
   await assertCanManageGrupos();
   const supabase = await createClient();
   const { grupo, cotas } = await fetchGrupoWithCotas(grupoId);
-  const { id: _id, created_at: _c, updated_at: _u, ...rest } = grupo;
+  const rest = { ...grupo };
+  delete rest.id;
+  delete rest.created_at;
+  delete rest.updated_at;
   const copy = {
     ...rest,
     codigo_grupo: `${grupo.codigo_grupo}-copia`,
@@ -882,10 +892,14 @@ export async function duplicateGrupoAction(grupoId: string) {
 
   if (cotas.length) {
     await supabase.from("grupos_cotas").insert(
-      cotas.map(({ id: _cid, grupo_id: _gid, created_at: _ca, updated_at: _ua, ...cota }) => ({
-        ...cota,
-        grupo_id: novo.id,
-      })),
+      cotas.map((item) => {
+        const cota = { ...item };
+        delete cota.id;
+        delete cota.grupo_id;
+        delete cota.created_at;
+        delete cota.updated_at;
+        return { ...cota, grupo_id: novo.id };
+      }),
     );
   }
   revalidatePath("/admin/grupos");

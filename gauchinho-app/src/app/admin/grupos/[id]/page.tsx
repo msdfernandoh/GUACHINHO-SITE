@@ -3,6 +3,10 @@ import { notFound } from "next/navigation";
 import { fetchGrupoWithCotas } from "../actions";
 import { getCurrentTenantContext } from "@/lib/tenant/context";
 import { getErpSistemaConfig } from "@/lib/erp/erp-modulos";
+import { calcularPrazoGrupoFromRow } from "@/lib/grupos/prazos";
+import { buscarTabelaGrupo } from "@/lib/grupos/grupo-tabela.server";
+import { GrupoTabelaActions } from "@/components/grupos/grupo-tabela-actions";
+import type { GrupoConsorcio, GrupoModalidadeLance } from "@/lib/types";
 
 function percentual(value: unknown) {
   const numero = Number(value ?? 0);
@@ -22,11 +26,16 @@ export default async function GrupoReadonlyPage({ params }: { params: Promise<{ 
   }
 
   const grupo = data.grupo as Record<string, unknown>;
+  const tabela = await buscarTabelaGrupo(id);
+  const prazo = calcularPrazoGrupoFromRow(grupo as GrupoConsorcio);
+  const modalidadesLance = (data.modalidadesLance ?? []) as GrupoModalidadeLance[];
   const administradora = grupo.administradora_rel as { nome?: string } | null;
   const resumo = [
     ["Administradora", administradora?.nome ?? grupo.administradora ?? "—"],
     ["Tipo oficial", grupo.modalidade ?? "—"],
-    ["Prazo total", grupo.prazo_total ? `${grupo.prazo_total} meses` : "—"],
+    ["Assembleias / prazo", prazo.prazoTotal > 0 ? `${prazo.parcelasRealizadasAtuais} / ${prazo.prazoTotal}` : "—"],
+    ["Prazo restante", prazo.prazoTotal > 0 ? `${prazo.prazoRestanteAtual} meses` : "—"],
+    ["Participantes / capacidade", grupo.capacidade_total ?? "—"],
     ["Vagas disponíveis", grupo.vagas_disponiveis ?? 0],
     ["Taxa administrativa", percentual(grupo.taxa_administrativa_percentual)],
     ["Fundo de reserva", percentual(grupo.fundo_reserva_percentual)],
@@ -46,14 +55,17 @@ export default async function GrupoReadonlyPage({ params }: { params: Promise<{ 
             Visualização do catálogo oficial. Esta área do site não altera dados estruturais.
           </p>
         </div>
-        {erpEnabled ? (
-          <Link
-            href={`/erp/grupos/${id}`}
-            className="rounded-lg bg-blue-700 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-800"
-          >
-            Configurar no ERP
-          </Link>
-        ) : null}
+        <div className="flex flex-wrap items-start gap-3">
+          <GrupoTabelaActions grupoId={id} origemPortal="SITE" tabela={tabela} />
+          {erpEnabled ? (
+            <Link
+              href={`/erp/grupos/${id}`}
+              className="rounded-lg bg-blue-700 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-800"
+            >
+              Configurar no ERP
+            </Link>
+          ) : null}
+        </div>
       </div>
 
       <section className="rounded-xl border border-zinc-800 bg-zinc-900/80 p-6">
@@ -66,6 +78,30 @@ export default async function GrupoReadonlyPage({ params }: { params: Promise<{ 
             </div>
           ))}
         </dl>
+      </section>
+
+      <section className="grid gap-4 lg:grid-cols-2">
+        <div className="rounded-xl border border-zinc-800 bg-zinc-900/80 p-6">
+          <h2 className="text-lg font-bold">Tipos de lance do grupo</h2>
+          <p className="mt-1 text-sm text-zinc-400">Informações oficiais cadastradas no SaaS.</p>
+          {modalidadesLance.length === 0 ? (
+            <p className="mt-4 text-sm text-zinc-500">Nenhum tipo de lance embutido cadastrado.</p>
+          ) : (
+            <div className="mt-4 space-y-2">
+              {modalidadesLance.map((lance) => (
+                <div key={lance.id} className="rounded-lg border border-zinc-800 bg-zinc-950/60 p-3 text-sm">
+                  <div className="flex justify-between gap-3"><strong>{lance.nome}</strong><span>{percentual(lance.percentual_lance_embutido)}</span></div>
+                  {Number(lance.percentual_recurso_proprio_minimo) > 0 ? <p className="mt-1 text-zinc-400">Recurso próprio mínimo: {percentual(lance.percentual_recurso_proprio_minimo)}</p> : null}
+                  {lance.descricao ? <p className="mt-1 text-zinc-400">{lance.descricao}</p> : null}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+        <div className="rounded-xl border border-zinc-800 bg-zinc-900/80 p-6">
+          <h2 className="text-lg font-bold">Observações operacionais</h2>
+          <p className="mt-4 whitespace-pre-wrap text-sm leading-6 text-zinc-300">{String(grupo.observacoes || "Nenhuma observação operacional cadastrada no SaaS.")}</p>
+        </div>
       </section>
 
       <section className="rounded-xl border border-zinc-800 bg-zinc-900/80 p-6">

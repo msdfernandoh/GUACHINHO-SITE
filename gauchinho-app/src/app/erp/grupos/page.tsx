@@ -3,6 +3,8 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentTenantContext } from "@/lib/tenant/context";
 import { ErpGruposSyncButton } from "@/components/erp/erp-grupos-sync-button";
 import { listAdministradoraIdsAutorizadasForEmpresa } from "@/lib/grupos/catalogo-autorizado-service";
+import { listarTabelasGrupos } from "@/lib/grupos/grupo-tabela.server";
+import { GrupoTabelaActions } from "@/components/grupos/grupo-tabela-actions";
 
 export default async function ErpGruposPage({
   searchParams,
@@ -29,11 +31,12 @@ export default async function ErpGruposPage({
 
   const { data: rawData, error } = await q;
   const data = (rawData ?? []).filter(
-    (g: any) =>
+    (g) =>
       g.origem_governanca !== "LOCAL" ||
       g.empresa_origem_id === empresaAtiva?.id ||
       !g.empresa_origem_id
   );
+  const tabelas = await listarTabelasGrupos(data.map((grupo) => grupo.id));
 
   return (
     <div className="space-y-6">
@@ -104,7 +107,7 @@ export default async function ErpGruposPage({
           </thead>
           <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
             {(data ?? []).map((g) => {
-              const cotasAtivas = ((g.cotas ?? []) as any[]).filter(
+              const cotasAtivas = ((g.cotas ?? []) as Array<{ ativo: boolean; status: string }>).filter(
                 (c) => c.ativo && !["Inativo", "Esgotado"].includes(c.status)
               );
               const isPronto = cotasAtivas.length > 0 && g.ativo !== false && g.status !== "Inativo";
@@ -159,12 +162,15 @@ export default async function ErpGruposPage({
                     </span>
                   </td>
                   <td className="p-3 text-center whitespace-nowrap">
-                    <Link
-                      className="rounded-lg bg-slate-900 px-3 py-1 text-xs font-bold text-white hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-900"
-                      href={`/erp/grupos/${g.id}`}
-                    >
-                      {g.origem_governanca === "LOCAL" ? "Editar" : "Ver Detalhes"}
-                    </Link>
+                    <div className="flex flex-wrap items-center justify-center gap-2">
+                      <Link
+                        className="rounded-lg bg-slate-900 px-3 py-1 text-xs font-bold text-white hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-900"
+                        href={`/erp/grupos/${g.id}`}
+                      >
+                        {g.origem_governanca === "LOCAL" ? "Editar" : "Ver Detalhes"}
+                      </Link>
+                      <GrupoTabelaActions grupoId={g.id} origemPortal="ERP" tabela={tabelas.get(g.id)} compact />
+                    </div>
                   </td>
                 </tr>
               );

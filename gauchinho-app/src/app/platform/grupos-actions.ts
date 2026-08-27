@@ -27,19 +27,61 @@ export async function decidirGovernancaGrupoAction(formData: FormData) {
   revalidatePath(`/platform/grupos/${grupoId}`);
 }
 
-export async function salvarCategoriasGrupoAction(formData: FormData) {
-  if (!(await isPlatformSuperadmin())) throw new Error("Somente Platform Superadmin.");
-  const grupoId = String(formData.get("grupo_id") ?? "").trim();
-  const codigos = formData.getAll("categoria_codigo").map(String).filter(Boolean);
-  if (!grupoId || codigos.length === 0) throw new Error("Selecione ao menos uma categoria de publicação.");
-  const db = await createClient();
-  const { error } = await db.rpc("rpc_platform_configurar_categorias_grupo", {
-    p_grupo_id: grupoId,
-    p_codigos: codigos,
-  });
-  if (error) throw new Error(error.message);
-  revalidatePath("/platform/grupos");
-  revalidatePath(`/platform/grupos/${grupoId}`);
+export async function salvarCategoriasGrupoAction(
+  _previous: GroupActionState,
+  formData: FormData,
+): Promise<GroupActionState> {
+  try {
+    if (!(await isPlatformSuperadmin())) return { status: "SERVER_ERROR", message: "Somente Platform Superadmin." };
+    const grupoId = String(formData.get("grupo_id") ?? "").trim();
+    const codigos = formData.getAll("categoria_codigo").map(String).filter(Boolean);
+    if (!grupoId || codigos.length === 0) return { status: "VALIDATION_ERROR", message: "Selecione ao menos uma categoria de publicação." };
+    const db = await createClient();
+    const { error } = await db.rpc("rpc_platform_configurar_categorias_grupo", {
+      p_grupo_id: grupoId,
+      p_codigos: codigos,
+    });
+    if (error) throw new Error(error.message);
+    revalidatePath("/platform/grupos");
+    revalidatePath(`/platform/grupos/${grupoId}`);
+    revalidatePath("/admin/grupos");
+    revalidatePath("/erp/grupos");
+    return { status: "SUCCESS", message: "Categorias de publicação salvas com sucesso." };
+  } catch (error) {
+    return { status: "SERVER_ERROR", message: error instanceof Error ? error.message : "Falha ao salvar categorias." };
+  }
+}
+
+export async function salvarLancesEmbutidosGrupoAction(
+  _previous: GroupActionState,
+  formData: FormData,
+): Promise<GroupActionState> {
+  try {
+    if (!(await isPlatformSuperadmin())) return { status: "SERVER_ERROR", message: "Somente Platform Superadmin." };
+    const grupoId = String(formData.get("grupo_id") ?? "").trim();
+    const raw = String(formData.get("lances_json") ?? "[]");
+    if (!grupoId) return { status: "VALIDATION_ERROR", message: "Grupo não identificado." };
+    let lances: unknown;
+    try {
+      lances = JSON.parse(raw);
+    } catch {
+      return { status: "VALIDATION_ERROR", message: "Revise os tipos de lance informados." };
+    }
+    if (!Array.isArray(lances)) return { status: "VALIDATION_ERROR", message: "A lista de lances é inválida." };
+    const db = await createClient();
+    const { error } = await db.rpc("rpc_platform_salvar_lances_embutidos_grupo", {
+      p_grupo_id: grupoId,
+      p_lances: lances,
+    });
+    if (error) throw new Error(error.message);
+    revalidatePath(`/platform/grupos/${grupoId}`);
+    revalidatePath(`/admin/grupos/${grupoId}`);
+    revalidatePath(`/erp/grupos/${grupoId}`);
+    revalidatePath("/grupos");
+    return { status: "SUCCESS", message: lances.length ? `${lances.length} tipo(s) de lance salvo(s) e publicado(s) no site.` : "Lances embutidos desativados para este grupo." };
+  } catch (error) {
+    return { status: "SERVER_ERROR", message: error instanceof Error ? error.message : "Falha ao salvar lances." };
+  }
 }
 
 export async function decidirSolicitacaoGrupoAction(formData: FormData) {

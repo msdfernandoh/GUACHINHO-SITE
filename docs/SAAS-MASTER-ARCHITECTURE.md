@@ -878,6 +878,30 @@ tenant continua condicionado aos gates normais de empresa e vínculo.
 Relatório:
 `docs/relatorios-fases/FASE-151-CADASTRO-MASTER-ENDERECO-E-BOOTSTRAP-RESPONSAVEL.md`.
 
+## 30. Detalhes operacionais, tabela canônica e múltiplos lances — Fase 152
+
+O UUID de `grupos_consorcio` continua sendo a identidade canônica consumida por
+SaaS, Site e ERP. As visualizações tenant exibem assembleias realizadas/prazo,
+prazo restante, capacidade de participantes, taxas, seguro, vagas, observações
+operacionais e os tipos de lance registrados no catálogo global.
+
+`grupos_modalidades_lance` é a coleção canônica N:1 de estratégias por grupo.
+Ela admite vários tipos de lance, recurso próprio mínimo e a modalidade de
+parcela que o motor do site já interpreta. O cadastro é feito no SaaS por RPC
+transacional; os campos escalares legados do grupo guardam somente o primeiro
+lance válido para compatibilidade, sem substituir a coleção.
+
+`grupos_tabelas` guarda exatamente um documento comercial atual por UUID do
+grupo. O bucket `grupos-tabelas` é privado e não possui leitura direta por
+usuários autenticados: upload e URL assinada passam por Server Actions que
+validam vínculo N:N, permissão `gerenciar_grupos` para escrita e concessão da
+administradora. Upload pelo Site ou ERP substitui o arquivo anterior e atualiza
+ambos os portais; `grupos_tabelas_historico` preserva metadados imutáveis de
+cada substituição, incluindo empresa, usuário, origem e horário.
+
+Relatório:
+`docs/relatorios-fases/FASE-152-GRUPOS-DETALHES-TABELA-CANONICA-E-LANCES.md`.
+
 
 
 
