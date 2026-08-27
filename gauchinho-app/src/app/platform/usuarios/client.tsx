@@ -150,6 +150,7 @@ export function PlatformUsuariosClient({
             setConviteNome("");
             setConviteEmail("");
             setConviteModulos(modulosDisponiveisParaFranquia.map((m) => m.codigo));
+            setConviteIsResponsavel((franquiaSelecionada?.usuarios_ativos ?? 0) === 0);
             setModalConvidar(true);
           }}
           className="rounded-lg bg-cyan-700 px-4 py-2.5 text-xs font-bold text-white shadow hover:bg-cyan-800 transition-colors"
@@ -435,6 +436,7 @@ export function PlatformUsuariosClient({
                     setConviteEmpresaId(e.target.value);
                     const sel = franquias.find((f) => f.id === e.target.value);
                     setConviteModulos(sel?.modulos_permitidos || []);
+                    setConviteIsResponsavel((sel?.usuarios_ativos ?? 0) === 0);
                     const papelAtual = papeis.find((p) => p.id === convitePapelId);
                     if (papelAtual?.empresa_id && papelAtual.empresa_id !== e.target.value) {
                       setConvitePapelId(papelAdminEmpresa?.id || "");

@@ -26,6 +26,9 @@ Escopo: cadastro/onboarding de Master Franquia e convite do primeiro usuário re
 - convite do primeiro responsável autorizado para franquias em treinamento,
   exclusivamente pela Platform e sem remover validações de papel, quota,
   módulos, unicidade ou multi-tenancy N:N;
+- primeiro vínculo marcado automaticamente como responsável principal quando a
+  empresa ainda não possui responsável, mesmo que o operador não marque o
+  checkbox; a interface também antecipa visualmente essa seleção;
 - a ativação continua sendo uma etapa posterior e continua validando assinatura,
   administradora concedida e usuário responsável.
 
@@ -38,8 +41,9 @@ continua `SECURITY DEFINER`, com `search_path` fixo, checagem explícita de
 
 ## Banco de dados
 
-Migrations: `149_cadastro_master_endereco_e_bootstrap_responsavel.sql` e
-`150_resolve_onboarding_endereco_overload.sql`.
+Migrations: `149_cadastro_master_endereco_e_bootstrap_responsavel.sql`,
+`150_resolve_onboarding_endereco_overload.sql` e
+`151_primeiro_usuario_responsavel_automatico.sql`.
 
 Ela é aditiva e idempotente para as colunas. A ampliação das RPCs é publicada
 como sobrecarga compatível para não interromper consumidores históricos; a

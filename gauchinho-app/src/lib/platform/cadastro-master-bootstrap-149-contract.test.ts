@@ -15,6 +15,14 @@ const enderecoUi = fs.readFileSync(
   path.join(process.cwd(), "src/components/platform/empresa-endereco-fields.tsx"),
   "utf8",
 );
+const usuarioUi = fs.readFileSync(
+  path.join(process.cwd(), "src/app/platform/usuarios/client.tsx"),
+  "utf8",
+);
+const primeiroResponsavel = fs.readFileSync(
+  path.join(raiz, "supabase/migrations/151_primeiro_usuario_responsavel_automatico.sql"),
+  "utf8",
+);
 
 describe("fase 149 — cadastro da Master e primeiro responsável", () => {
   it("mantém endereço estruturado em colunas próprias e RPCs auditáveis", () => {
@@ -40,5 +48,8 @@ describe("fase 149 — cadastro da Master e primeiro responsável", () => {
     expect(migration).toContain("IF v_nova = v_def THEN");
     expect(migration).toContain("rpc_platform_convidar_usuario(uuid,text,text,uuid,text[],boolean)");
     expect(migration).toContain("public.is_platform_superadmin()");
+    expect(primeiroResponsavel).toContain("p_is_responsavel := true");
+    expect(primeiroResponsavel).toContain("is_responsavel_principal = true");
+    expect(usuarioUi).toContain("setConviteIsResponsavel((sel?.usuarios_ativos ?? 0) === 0)");
   });
 });
