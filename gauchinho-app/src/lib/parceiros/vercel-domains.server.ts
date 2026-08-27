@@ -22,7 +22,7 @@ export type VercelDomainConfig = {
   configuredBy?: string | null;
   acceptedChallenges?: string[];
   recommendedCNAME?: Array<{ rank: number; value: string }>;
-  recommendedIPv4?: Array<{ rank: number; value: string }>;
+  recommendedIPv4?: Array<{ rank: number; value: string | string[] }>;
   misconfigured?: boolean;
 };
 
@@ -56,6 +56,11 @@ function readProjectId(): string {
 
 function readTeamId(): string | null {
   return process.env.VERCEL_TEAM_ID?.trim() || null;
+}
+
+/** Credenciais suficientes para operar domínios do projeto, sem depender das flags dos sites parceiros. */
+export function hasVercelDomainsApiCredentials(): boolean {
+  return Boolean(readToken() && readProjectId());
 }
 
 /** Integração pronta: flag + token + projeto. Nunca expõe token. */
@@ -183,20 +188,24 @@ export function createVercelDomainsClient(deps?: {
           ? ((json as { error?: { code?: string } }).error?.code ??
             (json as { code?: string }).code)
           : undefined;
-      if (
-        status === 409 &&
-        (code === "domain_already_exists" ||
-          code === "domain_already_in_use" ||
-          /already/i.test(String((json as { error?: { message?: string } })?.error?.message ?? "")))
-      ) {
+      if (status === 409) {
+        // A Vercel também pode responder domain_already_in_use para um domínio
+        // já presente neste mesmo projeto. A leitura no endpoint do projeto é
+        // a evidência canônica antes de classificar como conflito externo.
+        const existing = await this.getDomain(name);
+        if (existing.ok && existing.data) {
+          return { ok: true, data: existing.data, alreadyExists: true };
+        }
         if (code === "domain_already_in_use") {
           const s = sanitizeErrorMessage(json, status);
           return { ok: false, error: s.error, code: s.code, status };
         }
-        // mesmo projeto — sincronizar
-        const existing = await this.getDomain(name);
-        if (existing.ok && existing.data) {
-          return { ok: true, data: existing.data, alreadyExists: true };
+        if (
+          code !== "domain_already_exists" &&
+          !/already/i.test(String((json as { error?: { message?: string } })?.error?.message ?? ""))
+        ) {
+          const s = sanitizeErrorMessage(json, status);
+          return { ok: false, error: s.error, code: s.code, status };
         }
         return {
           ok: true,
@@ -275,16 +284,44 @@ export function dnsRegistrosFromVercelConfig(
     }
   }
   for (const a of config.recommendedIPv4 ?? []) {
-    if (a?.value) {
+    const values = Array.isArray(a?.value) ? a.value : a?.value ? [a.value] : [];
+    for (const value of values) {
       regs.push({
         tipo: "A",
         host: hostLabel,
-        valor: a.value,
+        valor: value,
         origem: "vercel",
       });
     }
   }
   return regs;
+}
+
+/**
+ * Retorna somente a alternativa de DNS prioritária para o host informado.
+ * Domínios raiz usam os IPv4 de menor rank; subdomínios usam o CNAME de menor
+ * rank. Assim a UI não apresenta A e CNAME como se fossem exigências cumulativas.
+ */
+export function dnsRegistrosPreferenciaisFromVercelConfig(
+  config: VercelDomainConfig,
+  host: string,
+  isSubdominio: boolean,
+): DnsRegistro[] {
+  if (isSubdominio) {
+    const cnames = config.recommendedCNAME ?? [];
+    const menorRank = Math.min(...cnames.map((item) => item.rank));
+    return cnames
+      .filter((item) => item.rank === menorRank && item.value)
+      .map((item) => ({ tipo: "CNAME", host, valor: item.value, origem: "vercel" }));
+  }
+
+  const ipv4 = config.recommendedIPv4 ?? [];
+  const menorRank = Math.min(...ipv4.map((item) => item.rank));
+  return ipv4
+    .filter((item) => item.rank === menorRank)
+    .flatMap((item) => (Array.isArray(item.value) ? item.value : [item.value]))
+    .filter(Boolean)
+    .map((valor) => ({ tipo: "A", host: "@", valor, origem: "vercel" }));
 }
 
 /** Cliente default — só usar em server actions; testes injetam mock. */

@@ -1,11 +1,12 @@
 "use client";
 
-import { useActionState, useState } from "react";
-import Link from "next/link";
+import { useActionState, useEffect, useState } from "react";
 import {
   criarDominioTenantPlatformAction,
   definirDominioPrincipalPlatformAction,
+  editarDominioTenantPlatformAction,
   toggleStatusDominioPlatformAction,
+  verificarDominioTenantPlatformAction,
   type PlatformFormState,
 } from "@/app/platform/dominios-actions";
 
@@ -17,6 +18,16 @@ type DominioItem = {
   principal: boolean;
   ativo: boolean;
   verificado: boolean;
+  status_dns: string;
+  status_vercel: string;
+  status_ssl: string;
+  dns_instrucoes: {
+    registros_esperados?: Array<{ tipo: string; host: string; valor: string }>;
+    registros_encontrados?: Array<{ tipo: string; host: string; valor: string }>;
+    nota?: string;
+  } | null;
+  ultima_verificacao_em: string | null;
+  ultima_mensagem_erro: string | null;
   created_at: string;
   updated_at: string;
   empresa?: { id: string; nome_fantasia: string; slug: string } | null;
@@ -34,17 +45,38 @@ const initial: PlatformFormState = { status: "IDLE", message: "" };
 export function DominiosListingClient({
   dominios,
   empresas,
+  dominioInicialId,
+  automacaoVercelDisponivel,
 }: {
   dominios: DominioItem[];
   empresas: EmpresaOption[];
+  dominioInicialId: string | null;
+  automacaoVercelDisponivel: boolean;
 }) {
   const [modalNovo, setModalNovo] = useState(false);
+  const [modalEditar, setModalEditar] = useState<DominioItem | null>(
+    dominios.find((d) => d.id === dominioInicialId) ?? null,
+  );
   const [stateNovo, actionNovo, isPendingNovo] = useActionState(criarDominioTenantPlatformAction, initial);
   const [statePrincipal, actionPrincipal, isPendingPrincipal] = useActionState(
     definirDominioPrincipalPlatformAction,
     initial,
   );
   const [stateToggle, actionToggle, isPendingToggle] = useActionState(toggleStatusDominioPlatformAction, initial);
+  const [stateEditar, actionEditar, isPendingEditar] = useActionState(editarDominioTenantPlatformAction, initial);
+  const [stateVerificar, actionVerificar, isPendingVerificar] = useActionState(verificarDominioTenantPlatformAction, initial);
+
+  useEffect(() => {
+    if (stateNovo.status === "SUCCESS") setModalNovo(false);
+  }, [stateNovo.status]);
+  useEffect(() => {
+    if (stateEditar.status === "SUCCESS") setModalEditar(null);
+  }, [stateEditar.status]);
+  useEffect(() => {
+    if (modalEditar) {
+      setModalEditar(dominios.find((dominio) => dominio.id === modalEditar.id) ?? null);
+    }
+  }, [dominios]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const totalDominios = dominios.length;
   const totalAtivos = dominios.filter((d) => d.ativo).length;
@@ -101,6 +133,11 @@ export function DominiosListingClient({
           {stateToggle.message}
         </p>
       )}
+      {[stateEditar, stateVerificar].map((state, index) => state.message ? (
+        <p key={index} role="status" className={`rounded-lg p-3 text-xs font-bold ${state.status === "SUCCESS" ? "bg-emerald-50 text-emerald-800" : "bg-red-50 text-red-800"}`}>
+          {state.message}
+        </p>
+      ) : null)}
 
       {/* KPIs */}
       <section className="grid gap-3 sm:grid-cols-3">
@@ -120,9 +157,13 @@ export function DominiosListingClient({
 
       {/* Card Informativo de Apontamento DNS */}
       <div className="rounded-2xl border border-cyan-200 bg-cyan-50 p-4 text-xs text-slate-700 dark:border-cyan-900 dark:bg-cyan-950 dark:text-slate-300 space-y-2">
-        <h3 className="font-bold text-cyan-950 dark:text-cyan-200">ℹ Instruções de Apontamento DNS para Franquias:</h3>
+        <h3 className="font-bold text-cyan-950 dark:text-cyan-200">Fluxo simplificado de domínio</h3>
+        <p><strong>1.</strong> Cadastre o domínio. <strong>2.</strong> Copie o único apontamento exibido para o provedor DNS. <strong>3.</strong> O sistema verifica DNS e HTTPS automaticamente; também é possível clicar em “Verificar agora”.</p>
         <p>
-          • <strong>Domínio Customizado (ex: <code>minhafranquia.com.br</code>):</strong> Criar registro <strong>CNAME</strong> apontando para <code>cname.vercel-dns.com</code> ou registro <strong>A</strong> apontando para <code>76.76.21.21</code>.
+          <strong>Status da automação Vercel:</strong>{" "}
+          <span className={automacaoVercelDisponivel ? "font-bold text-emerald-700" : "font-bold text-amber-700"}>
+            {automacaoVercelDisponivel ? "Conectada" : "Credencial pendente — o DNS pode ser conferido, mas novos domínios precisam ser adicionados manualmente ao projeto"}
+          </span>
         </p>
         <p>
           • <strong>Segurança:</strong> O domínio <code>admin.gauchinhoconsorcios.com.br</code> é de uso exclusivo da Plataforma Master e nunca pode ser vinculado a uma franquia.
@@ -209,16 +250,21 @@ export function DominiosListingClient({
                             : "bg-amber-50 text-amber-800 dark:bg-amber-950 dark:text-amber-300"
                         }`}
                       >
-                        {d.verificado ? "✓ Verificado" : "⏳ Pendente DNS"}
+                        {d.verificado ? "✓ Operacional" : d.status_dns === "ATIVO" ? "DNS OK / SSL pendente" : "⏳ Pendente DNS"}
                       </span>
+                      <div className="mt-1 text-[10px] text-slate-400">Vercel: {d.status_vercel} · SSL: {d.status_ssl}</div>
                     </td>
                     <td className="p-3 text-center">
-                      <Link
-                        href={`/platform/empresas/${d.empresa_id}`}
-                        className="rounded bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300"
-                      >
-                        Ver Empresa
-                      </Link>
+                      <div className="flex justify-center gap-2">
+                        <button type="button" onClick={() => setModalEditar(d)} className="rounded bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-200">DNS / Editar</button>
+                        <form action={actionVerificar}>
+                          <input type="hidden" name="id" value={d.id} />
+                          <input type="hidden" name="empresa_id" value={d.empresa_id} />
+                          <button type="submit" disabled={isPendingVerificar} className="rounded bg-cyan-700 px-2.5 py-1 text-xs font-bold text-white disabled:opacity-60">
+                            {isPendingVerificar ? "Verificando..." : "Verificar agora"}
+                          </button>
+                        </form>
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -243,10 +289,7 @@ export function DominiosListingClient({
               </button>
             </div>
             <form
-              action={async (formData) => {
-                await actionNovo(formData);
-                setModalNovo(false);
-              }}
+              action={actionNovo}
               className="space-y-4 text-xs"
             >
               <div>
@@ -314,6 +357,69 @@ export function DominiosListingClient({
                 >
                   {isPendingNovo ? "Cadastrando..." : "Cadastrar Domínio"}
                 </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {modalEditar && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm">
+          <div className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl space-y-5 text-xs">
+            <div className="flex items-center justify-between border-b pb-3">
+              <div>
+                <h3 className="text-lg font-extrabold text-slate-900">Configuração do domínio</h3>
+                <p className="font-mono text-cyan-700">{modalEditar.valor}</p>
+              </div>
+              <button type="button" onClick={() => setModalEditar(null)} className="text-lg text-slate-400">✕</button>
+            </div>
+
+            <section className="grid gap-3 sm:grid-cols-3">
+              <div className="rounded-lg border p-3"><span className="text-slate-500">Vercel</span><strong className="mt-1 block">{modalEditar.status_vercel}</strong></div>
+              <div className="rounded-lg border p-3"><span className="text-slate-500">DNS</span><strong className="mt-1 block">{modalEditar.status_dns}</strong></div>
+              <div className="rounded-lg border p-3"><span className="text-slate-500">HTTPS/SSL</span><strong className="mt-1 block">{modalEditar.status_ssl}</strong></div>
+            </section>
+
+            <section className="rounded-xl border border-cyan-200 bg-cyan-50 p-4">
+              <h4 className="font-extrabold text-cyan-950">Registros para copiar no provedor DNS</h4>
+              <div className="mt-3 space-y-2">
+                {(modalEditar.dns_instrucoes?.registros_esperados ?? []).map((registro, index) => (
+                  <div key={`${registro.tipo}-${index}`} className="grid grid-cols-[70px_1fr_2fr] gap-2 rounded-lg bg-white p-3 font-mono">
+                    <strong>{registro.tipo}</strong><span>{registro.host}</span><span className="break-all font-bold text-cyan-800">{registro.valor}</span>
+                  </div>
+                ))}
+              </div>
+              {modalEditar.ultima_mensagem_erro ? <p className="mt-3 rounded bg-amber-100 p-2 text-amber-900">{modalEditar.ultima_mensagem_erro}</p> : null}
+              <p className="mt-2 text-slate-600">Última verificação: {modalEditar.ultima_verificacao_em ? new Date(modalEditar.ultima_verificacao_em).toLocaleString("pt-BR") : "ainda não executada"}</p>
+            </section>
+
+            <form action={actionVerificar} className="flex justify-start">
+              <input type="hidden" name="id" value={modalEditar.id} />
+              <input type="hidden" name="empresa_id" value={modalEditar.empresa_id} />
+              <button type="submit" disabled={isPendingVerificar} className="rounded-lg bg-emerald-700 px-4 py-2 font-bold text-white disabled:opacity-60">
+                {isPendingVerificar ? "Verificando DNS..." : "Verificar DNS agora"}
+              </button>
+            </form>
+
+            <form action={actionEditar} className="space-y-4">
+              <input type="hidden" name="id" value={modalEditar.id} />
+              <input type="hidden" name="empresa_id" value={modalEditar.empresa_id} />
+              <label className="block font-bold">Domínio
+                <input name="valor" defaultValue={modalEditar.valor} required className="mt-1 w-full rounded-lg border p-2.5 font-mono" />
+              </label>
+              <label className="block font-bold">Tipo
+                <select name="tipo" defaultValue={modalEditar.tipo} className="mt-1 w-full rounded-lg border p-2.5">
+                  <option value="DOMINIO_CUSTOMIZADO">Domínio próprio</option>
+                  <option value="SUBDOMINIO">Subdomínio</option>
+                </select>
+              </label>
+              <div className="flex flex-wrap gap-5">
+                <label className="flex items-center gap-2 font-bold"><input type="checkbox" name="principal" value="true" defaultChecked={modalEditar.principal} /> Principal</label>
+                <label className="flex items-center gap-2 font-bold"><input type="checkbox" name="ativo" value="true" defaultChecked={modalEditar.ativo} /> Ativo</label>
+                {!automacaoVercelDisponivel ? <label className="flex items-center gap-2 font-bold"><input type="checkbox" name="confirmar_vercel" value="true" defaultChecked={modalEditar.status_vercel === "ADICIONADO"} /> Já adicionado ao projeto Vercel</label> : null}
+              </div>
+              <div className="flex justify-end gap-2 border-t pt-4">
+                <button type="button" onClick={() => setModalEditar(null)} className="rounded-lg border px-4 py-2 font-bold">Cancelar</button><button type="submit" disabled={isPendingEditar} className="rounded-lg bg-cyan-700 px-4 py-2 font-bold text-white">{isPendingEditar ? "Salvando..." : "Salvar alterações"}</button>
               </div>
             </form>
           </div>

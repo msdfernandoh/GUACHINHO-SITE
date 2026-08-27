@@ -92,6 +92,9 @@ export type DominioHubItem = {
   principal: boolean;
   ativo: boolean;
   verificado: boolean;
+  status_dns: string;
+  status_vercel: string;
+  status_ssl: string;
 };
 
 export type AdminHubItem = {
@@ -1313,12 +1316,13 @@ export function MasterFranquiaHub({
                   <th className="p-3 text-center">Principal</th>
                   <th className="p-3 text-center">Ativo</th>
                   <th className="p-3 text-center">DNS Verificado</th>
+                  <th className="p-3 text-center">Ação</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                 {dominios.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="p-6 text-center text-slate-400">
+                    <td colSpan={6} className="p-6 text-center text-slate-400">
                       Nenhum domínio configurado. A franquia está acessível via subdomínio padrão.
                     </td>
                   </tr>
@@ -1337,6 +1341,11 @@ export function MasterFranquiaHub({
                         >
                           {d.verificado ? "VERIFICADO" : "PENDENTE"}
                         </span>
+                      </td>
+                      <td className="p-3 text-center">
+                        <Link href={`/platform/dominios?empresa_id=${empresa.id}&dominio_id=${d.id}`} className="rounded bg-cyan-50 px-2.5 py-1 font-bold text-cyan-800 hover:bg-cyan-100">
+                          Editar / configurar DNS
+                        </Link>
                       </td>
                     </tr>
                   ))

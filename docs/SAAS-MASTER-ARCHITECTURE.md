@@ -788,6 +788,21 @@ entrega preservam o vínculo como `CONVIDADO` para reenvio auditável.
 Relatório:
 `docs/relatorios-fases/FASE-146-HOTFIX-USUARIO-PRINCIPAL-FRANQUIA.md`.
 
+## 25. Domínios tenant e DNS automático — Fase 147
+
+`empresa_dominios` mantém estados independentes para registro no projeto
+Vercel, propagação DNS e HTTPS/SSL. O cadastro da Platform tenta registrar o
+host no projeto `guachinho-site`, obtém os registros recomendados e apresenta ao
+operador apenas o apontamento necessário no provedor do domínio.
+
+A ativação não é manual: DNS público e HTTPS precisam fornecer evidência real.
+Pendências são reprocessadas pelo cron `/api/cron/dominios` a cada dez minutos,
+protegido por `CRON_SECRET`. Alterar o host invalida a verificação anterior e
+reinicia o ciclo. A integração usa `VERCEL_API_TOKEN` exclusivamente no servidor.
+
+Relatório:
+`docs/relatorios-fases/FASE-147-DOMINIOS-DNS-VERCEL-AUTOMATICO.md`.
+
 
 
 

@@ -62,7 +62,7 @@ export default async function MasterFranquiaDetailPage({
       .maybeSingle(),
     db
       .from("empresa_dominios")
-      .select("id, valor, tipo, principal, ativo, verificado")
+      .select("id, valor, tipo, principal, ativo, verificado, status_dns, status_vercel, status_ssl")
       .eq("empresa_id", id)
       .order("principal", { ascending: false }),
     db
@@ -184,6 +184,9 @@ export default async function MasterFranquiaDetailPage({
     principal: d.principal,
     ativo: d.ativo,
     verificado: d.verificado,
+    status_dns: d.status_dns,
+    status_vercel: d.status_vercel,
+    status_ssl: d.status_ssl,
   }));
 
   const adminsData: AdminHubItem[] = (adminsRes.data ?? []).map((a) => ({

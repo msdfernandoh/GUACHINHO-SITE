@@ -132,9 +132,11 @@ describe("E5 — vercel-domains.server", () => {
       return new Response("{}", { status: 500 });
     }) as unknown as typeof fetch;
 
-    const { createVercelDomainsClient, dnsRegistrosFromVercelConfig } = await import(
-      "./vercel-domains.server"
-    );
+    const {
+      createVercelDomainsClient,
+      dnsRegistrosFromVercelConfig,
+      dnsRegistrosPreferenciaisFromVercelConfig,
+    } = await import("./vercel-domains.server");
     const client = createVercelDomainsClient({
       fetchImpl,
       token: "tok",
@@ -150,6 +152,12 @@ describe("E5 — vercel-domains.server", () => {
       const regs = dnsRegistrosFromVercelConfig(cfg.data, "@");
       expect(regs.some((r) => r.tipo === "CNAME")).toBe(true);
       expect(regs.some((r) => r.tipo === "A")).toBe(true);
+      const raiz = dnsRegistrosPreferenciaisFromVercelConfig(cfg.data, "x.com.br", false);
+      const subdominio = dnsRegistrosPreferenciaisFromVercelConfig(cfg.data, "site.x.com.br", true);
+      expect(raiz.length).toBeGreaterThan(0);
+      expect(raiz.every((r) => r.tipo === "A" && r.host === "@")).toBe(true);
+      expect(subdominio.length).toBeGreaterThan(0);
+      expect(subdominio.every((r) => r.tipo === "CNAME" && r.host === "site.x.com.br")).toBe(true);
     }
 
     const del = await client.removeDomain("x.com.br");
