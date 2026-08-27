@@ -76,6 +76,9 @@ o conteúdo integralmente para `contratacoes_online`.
   live intencionalmente ignorados;
 - migration aplicada no projeto `eaeuoynprurmmulzhydt`;
 - `supabase migration list --linked` confirmou `001–138` alinhado.
+- código funcional publicado em `main@3d4b106`;
+- deployment de Produção `dpl_6kQ5RJutA2X2JDfpPCdPgvLK6hxy` confirmado
+  como `READY`, com smoke test HTTP 200 em site, grupos e login da Platform.
 
 ## Limites conscientes
 
