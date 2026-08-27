@@ -2,6 +2,8 @@
 
 import { useActionState, useState } from "react";
 import Link from "next/link";
+import { EmpresaEnderecoFields, type EmpresaEnderecoState } from "@/components/platform/empresa-endereco-fields";
+import { formatCnpjBrInput, formatWhatsappBrInput } from "@/lib/utils/format";
 import {
   atualizarDadosEmpresaPlatformAction,
   ativarEmpresaPlatformAction,
@@ -26,6 +28,11 @@ export type EmpresaHubDetail = {
   telefone: string | null;
   whatsapp: string | null;
   email: string | null;
+  cep: string | null;
+  endereco: string | null;
+  numero: string | null;
+  complemento: string | null;
+  bairro: string | null;
   cidade: string | null;
   estado: string | null;
   status: string;
@@ -297,12 +304,19 @@ export function MasterFranquiaHub({
   // States do formulário de dados da empresa
   const [nomeFantasia, setNomeFantasia] = useState(empresa.nome_fantasia);
   const [razaoSocial, setRazaoSocial] = useState(empresa.razao_social);
-  const [cnpj, setCnpj] = useState(empresa.cnpj ?? "");
-  const [telefone, setTelefone] = useState(empresa.telefone ?? "");
-  const [whatsapp, setWhatsapp] = useState(empresa.whatsapp ?? "");
+  const [cnpj, setCnpj] = useState(formatCnpjBrInput(empresa.cnpj ?? ""));
+  const [telefone, setTelefone] = useState(formatWhatsappBrInput(empresa.telefone ?? ""));
+  const [whatsapp, setWhatsapp] = useState(formatWhatsappBrInput(empresa.whatsapp ?? ""));
   const [email, setEmail] = useState(empresa.email ?? "");
-  const [cidade, setCidade] = useState(empresa.cidade ?? "");
-  const [estado, setEstado] = useState(empresa.estado ?? "");
+  const [enderecoEmpresa, setEnderecoEmpresa] = useState<EmpresaEnderecoState>({
+    cep: empresa.cep ?? "",
+    endereco: empresa.endereco ?? "",
+    numero: empresa.numero ?? "",
+    complemento: empresa.complemento ?? "",
+    bairro: empresa.bairro ?? "",
+    cidade: empresa.cidade ?? "",
+    estado: empresa.estado ?? "",
+  });
 
   const [sociosEdicao, setSociosEdicao] = useState(() =>
     socios.map((socio) => {
@@ -451,7 +465,7 @@ export function MasterFranquiaHub({
             {empresa.nome_fantasia}
           </h1>
           <p className="text-xs text-slate-500 font-medium">
-            {empresa.razao_social} • CNPJ: {empresa.cnpj || "Não informado"} • Slug:{" "}
+            {empresa.razao_social} • CNPJ: {empresa.cnpj ? formatCnpjBrInput(empresa.cnpj) : "Não informado"} • Slug:{" "}
             <span className="font-mono text-slate-700 dark:text-slate-300">/{empresa.slug}</span>
           </p>
         </div>
@@ -803,7 +817,10 @@ export function MasterFranquiaHub({
               <input
                 name="cnpj"
                 value={cnpj}
-                onChange={(e) => setCnpj(e.target.value)}
+                onChange={(e) => setCnpj(formatCnpjBrInput(e.target.value))}
+                inputMode="numeric"
+                maxLength={18}
+                placeholder="00.000.000/0001-00"
                 className="mt-1 w-full rounded-lg border border-slate-300 p-2.5 font-mono dark:border-slate-700 dark:bg-slate-800"
               />
             </div>
@@ -833,7 +850,10 @@ export function MasterFranquiaHub({
               <input
                 name="telefone"
                 value={telefone}
-                onChange={(e) => setTelefone(e.target.value)}
+                onChange={(e) => setTelefone(formatWhatsappBrInput(e.target.value))}
+                inputMode="tel"
+                maxLength={15}
+                placeholder="(65) 3333-4444"
                 className="mt-1 w-full rounded-lg border border-slate-300 p-2.5 dark:border-slate-700 dark:bg-slate-800"
               />
             </div>
@@ -843,32 +863,17 @@ export function MasterFranquiaHub({
               <input
                 name="whatsapp"
                 value={whatsapp}
-                onChange={(e) => setWhatsapp(e.target.value)}
+                onChange={(e) => setWhatsapp(formatWhatsappBrInput(e.target.value))}
+                inputMode="tel"
+                maxLength={15}
+                placeholder="(65) 99999-9999"
                 className="mt-1 w-full rounded-lg border border-slate-300 p-2.5 dark:border-slate-700 dark:bg-slate-800"
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <label className="font-bold text-slate-700 dark:text-slate-300">Cidade:</label>
-                <input
-                  name="cidade"
-                  value={cidade}
-                  onChange={(e) => setCidade(e.target.value)}
-                  className="mt-1 w-full rounded-lg border border-slate-300 p-2.5 dark:border-slate-700 dark:bg-slate-800"
-                />
-              </div>
-              <div>
-                <label className="font-bold text-slate-700 dark:text-slate-300">Estado (UF):</label>
-                <input
-                  name="estado"
-                  value={estado}
-                  onChange={(e) => setEstado(e.target.value)}
-                  className="mt-1 w-full rounded-lg border border-slate-300 p-2.5 uppercase dark:border-slate-700 dark:bg-slate-800"
-                />
-              </div>
-            </div>
           </div>
+
+          <EmpresaEnderecoFields values={enderecoEmpresa} onChange={(patch) => setEnderecoEmpresa((atual) => ({ ...atual, ...patch }))} />
 
           <div className="flex justify-end pt-4 border-t border-slate-100 dark:border-slate-800">
             <button

@@ -859,6 +859,25 @@ confirmação manual de presença na Vercel é um fallback explícito.
 Relatório:
 `docs/relatorios-fases/FASE-150-DNS-REGISTROBR-VERCEL.md`.
 
+## 29. Cadastro completo e bootstrap do responsável — Fase 151
+
+O cadastro da Master Franquia mantém CNPJ, telefone, WhatsApp e CEP
+normalizados no banco, enquanto a interface aplica máscaras brasileiras. O
+endereço da sede é estruturado em `cep`, `endereco`, `numero`, `complemento`,
+`bairro`, `cidade` e `estado`. A consulta ViaCEP é apenas uma assistência de
+preenchimento: o operador pode corrigir os dados manualmente e o servidor
+valida CNPJ, DDD/número, CEP e UF antes da persistência.
+
+O primeiro responsável é cadastrado ainda durante `em_treinamento`. Esse fluxo
+é exclusivo do Platform Superadmin, conserva papel `COMPANY`, quota, módulos,
+unicidade do responsável, vínculo N:N em `empresa_usuarios` e auditoria. A
+empresa não precisa estar ativa para receber o primeiro convite porque esse
+vínculo é justamente um requisito para sua ativação; acesso operacional do
+tenant continua condicionado aos gates normais de empresa e vínculo.
+
+Relatório:
+`docs/relatorios-fases/FASE-151-CADASTRO-MASTER-ENDERECO-E-BOOTSTRAP-RESPONSAVEL.md`.
+
 
 
 

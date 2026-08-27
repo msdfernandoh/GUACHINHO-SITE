@@ -3,12 +3,52 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { isPlatformSuperadmin } from "@/lib/auth/is-superadmin";
 import { createClient } from "@/lib/supabase/server";
+import { formatUfInput, sanitizeCep, validarUfBr } from "@/lib/contratacoes-online/endereco";
+import { sanitizeCnpj, sanitizeDigits, validarCnpj } from "@/lib/contratacoes-online/validacao";
 
 export type PlatformFormState = {
   status: "IDLE" | "SUCCESS" | "ERROR";
   message: string;
   data?: unknown;
 };
+
+function normalizarCadastroEmpresa(formData: FormData) {
+  const cnpj = sanitizeCnpj(String(formData.get("cnpj") ?? ""));
+  const telefone = sanitizeDigits(String(formData.get("telefone") ?? "")).slice(0, 11);
+  const whatsapp = sanitizeDigits(String(formData.get("whatsapp") ?? "")).slice(0, 11);
+  const cep = sanitizeCep(String(formData.get("cep") ?? ""));
+  const endereco = String(formData.get("endereco") ?? "").trim();
+  const numero = String(formData.get("numero") ?? "").trim();
+  const complemento = String(formData.get("complemento") ?? "").trim();
+  const bairro = String(formData.get("bairro") ?? "").trim();
+  const cidade = String(formData.get("cidade") ?? "").trim();
+  const estado = formatUfInput(String(formData.get("estado") ?? ""));
+
+  if (cnpj && !validarCnpj(cnpj)) throw new Error("CNPJ inválido. Confira os 14 dígitos.");
+  if (telefone && ![10, 11].includes(telefone.length)) throw new Error("Telefone inválido. Informe DDD e número.");
+  if (whatsapp && ![10, 11].includes(whatsapp.length)) throw new Error("WhatsApp inválido. Informe DDD e número.");
+
+  const informouEndereco = Boolean(cep || endereco || numero || complemento || bairro || cidade || estado);
+  if (informouEndereco) {
+    if (cep.length !== 8) throw new Error("CEP inválido. Informe 8 dígitos.");
+    if (!endereco || !numero || !bairro || !cidade || !validarUfBr(estado)) {
+      throw new Error("Para salvar o endereço, informe logradouro, número, bairro, cidade e uma UF válida.");
+    }
+  }
+
+  return {
+    cnpj: cnpj || null,
+    telefone: telefone || null,
+    whatsapp: whatsapp || null,
+    cep: cep || null,
+    endereco: endereco || null,
+    numero: numero || null,
+    complemento: complemento || null,
+    bairro: bairro || null,
+    cidade: cidade || null,
+    estado: estado || null,
+  };
+}
 
 export async function createMasterFranquiaAction(formData: FormData) {
   if (!(await isPlatformSuperadmin())) throw new Error("Acesso restrito ao Platform Superadmin.");
@@ -45,12 +85,13 @@ export async function onboardingMasterFranquiaAction(
   const nomeFantasia = String(formData.get("nome_fantasia") ?? "").trim();
   const razaoSocial = String(formData.get("razao_social") ?? "").trim();
   const slug = String(formData.get("slug") ?? "").trim().toLowerCase();
-  const cnpj = String(formData.get("cnpj") ?? "").trim() || null;
+  let cadastro;
+  try {
+    cadastro = normalizarCadastroEmpresa(formData);
+  } catch (error) {
+    return { status: "ERROR", message: error instanceof Error ? error.message : "Dados cadastrais inválidos." };
+  }
   const email = String(formData.get("email") ?? "").trim() || null;
-  const telefone = String(formData.get("telefone") ?? "").trim() || null;
-  const whatsapp = String(formData.get("whatsapp") ?? "").trim() || null;
-  const cidade = String(formData.get("cidade") ?? "").trim() || null;
-  const estado = String(formData.get("estado") ?? "").trim() || null;
 
   const modeloSiteId = String(formData.get("modelo_site_id") ?? "").trim() || null;
   const usarLogoPropria = formData.get("usar_logo_propria") === "true";
@@ -107,12 +148,17 @@ export async function onboardingMasterFranquiaAction(
     p_nome_fantasia: nomeFantasia,
     p_razao_social: razaoSocial,
     p_slug: slug || null,
-    p_cnpj: cnpj,
+    p_cnpj: cadastro.cnpj,
     p_email: email,
-    p_telefone: telefone,
-    p_whatsapp: whatsapp,
-    p_cidade: cidade,
-    p_estado: estado,
+    p_telefone: cadastro.telefone,
+    p_whatsapp: cadastro.whatsapp,
+    p_cidade: cadastro.cidade,
+    p_estado: cadastro.estado,
+    p_cep: cadastro.cep,
+    p_endereco: cadastro.endereco,
+    p_numero: cadastro.numero,
+    p_complemento: cadastro.complemento,
+    p_bairro: cadastro.bairro,
     p_modelo_site_id: modeloSiteId,
     p_usar_logo_propria: usarLogoPropria,
     p_logo_url: logoUrl,
@@ -147,12 +193,13 @@ export async function atualizarDadosEmpresaPlatformAction(
   const id = String(formData.get("id") ?? "").trim();
   const nomeFantasia = String(formData.get("nome_fantasia") ?? "").trim();
   const razaoSocial = String(formData.get("razao_social") ?? "").trim();
-  const cnpj = String(formData.get("cnpj") ?? "").trim() || null;
-  const telefone = String(formData.get("telefone") ?? "").trim() || null;
-  const whatsapp = String(formData.get("whatsapp") ?? "").trim() || null;
+  let cadastro;
+  try {
+    cadastro = normalizarCadastroEmpresa(formData);
+  } catch (error) {
+    return { status: "ERROR", message: error instanceof Error ? error.message : "Dados cadastrais inválidos." };
+  }
   const email = String(formData.get("email") ?? "").trim() || null;
-  const cidade = String(formData.get("cidade") ?? "").trim() || null;
-  const estado = String(formData.get("estado") ?? "").trim() || null;
 
   if (!id || !nomeFantasia || !razaoSocial) {
     return { status: "ERROR", message: "ID, Nome fantasia e Razão social são obrigatórios." };
@@ -163,12 +210,17 @@ export async function atualizarDadosEmpresaPlatformAction(
     p_empresa_id: id,
     p_nome_fantasia: nomeFantasia,
     p_razao_social: razaoSocial,
-    p_cnpj: cnpj,
-    p_telefone: telefone,
-    p_whatsapp: whatsapp,
+    p_cnpj: cadastro.cnpj,
+    p_telefone: cadastro.telefone,
+    p_whatsapp: cadastro.whatsapp,
     p_email: email,
-    p_cidade: cidade,
-    p_estado: estado,
+    p_cidade: cadastro.cidade,
+    p_estado: cadastro.estado,
+    p_cep: cadastro.cep,
+    p_endereco: cadastro.endereco,
+    p_numero: cadastro.numero,
+    p_complemento: cadastro.complemento,
+    p_bairro: cadastro.bairro,
   });
 
   if (error) {

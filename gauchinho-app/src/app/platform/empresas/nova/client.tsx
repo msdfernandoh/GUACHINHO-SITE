@@ -6,6 +6,8 @@ import {
   onboardingMasterFranquiaAction,
   type PlatformFormState,
 } from "@/app/platform/empresas/actions";
+import { EmpresaEnderecoFields, type EmpresaEnderecoState } from "@/components/platform/empresa-endereco-fields";
+import { formatCnpjBrInput, formatWhatsappBrInput } from "@/lib/utils/format";
 
 type ModeloOption = {
   id: string;
@@ -90,8 +92,15 @@ export function OnboardingFranquiaClient({
   const [email, setEmail] = useState("");
   const [telefone, setTelefone] = useState("");
   const [whatsapp, setWhatsapp] = useState("");
-  const [cidade, setCidade] = useState("");
-  const [estado, setEstado] = useState("");
+  const [enderecoEmpresa, setEnderecoEmpresa] = useState<EmpresaEnderecoState>({
+    cep: "",
+    endereco: "",
+    numero: "",
+    complemento: "",
+    bairro: "",
+    cidade: "",
+    estado: "",
+  });
 
   function autoSlug(str: string) {
     return str
@@ -274,8 +283,13 @@ export function OnboardingFranquiaClient({
         <input type="hidden" name="email" value={email} />
         <input type="hidden" name="telefone" value={telefone} />
         <input type="hidden" name="whatsapp" value={whatsapp} />
-        <input type="hidden" name="cidade" value={cidade} />
-        <input type="hidden" name="estado" value={estado} />
+        <input type="hidden" name="cep" value={enderecoEmpresa.cep} />
+        <input type="hidden" name="endereco" value={enderecoEmpresa.endereco} />
+        <input type="hidden" name="numero" value={enderecoEmpresa.numero} />
+        <input type="hidden" name="complemento" value={enderecoEmpresa.complemento} />
+        <input type="hidden" name="bairro" value={enderecoEmpresa.bairro} />
+        <input type="hidden" name="cidade" value={enderecoEmpresa.cidade} />
+        <input type="hidden" name="estado" value={enderecoEmpresa.estado} />
         <input type="hidden" name="modelo_site_id" value={modeloSiteId} />
         <input type="hidden" name="usar_logo_propria" value={String(usarLogoPropria)} />
         <input type="hidden" name="logo_url" value={logoUrl} />
@@ -336,7 +350,9 @@ export function OnboardingFranquiaClient({
                 <label className="text-xs font-bold text-slate-700 dark:text-slate-300">CNPJ:</label>
                 <input
                   value={cnpj}
-                  onChange={(e) => setCnpj(e.target.value)}
+                  onChange={(e) => setCnpj(formatCnpjBrInput(e.target.value))}
+                  inputMode="numeric"
+                  maxLength={18}
                   placeholder="00.000.000/0001-00"
                   className="mt-1 w-full rounded-lg border border-slate-300 p-2.5 text-xs dark:border-slate-700 dark:bg-slate-800"
                 />
@@ -355,31 +371,22 @@ export function OnboardingFranquiaClient({
                 <label className="text-xs font-bold text-slate-700 dark:text-slate-300">WhatsApp / Telefone:</label>
                 <input
                   value={whatsapp}
-                  onChange={(e) => setWhatsapp(e.target.value)}
+                  onChange={(e) => {
+                    const valor = formatWhatsappBrInput(e.target.value);
+                    setWhatsapp(valor);
+                    setTelefone(valor);
+                  }}
+                  inputMode="tel"
+                  maxLength={15}
                   placeholder="(41) 99999-9999"
                   className="mt-1 w-full rounded-lg border border-slate-300 p-2.5 text-xs dark:border-slate-700 dark:bg-slate-800"
                 />
               </div>
-              <div>
-                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Cidade:</label>
-                <input
-                  value={cidade}
-                  onChange={(e) => setCidade(e.target.value)}
-                  placeholder="Curitiba"
-                  className="mt-1 w-full rounded-lg border border-slate-300 p-2.5 text-xs dark:border-slate-700 dark:bg-slate-800"
-                />
-              </div>
-              <div>
-                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Estado (UF):</label>
-                <input
-                  value={estado}
-                  onChange={(e) => setEstado(e.target.value.toUpperCase())}
-                  maxLength={2}
-                  placeholder="PR"
-                  className="mt-1 w-full rounded-lg border border-slate-300 p-2.5 text-xs font-bold uppercase dark:border-slate-700 dark:bg-slate-800"
-                />
-              </div>
             </div>
+            <EmpresaEnderecoFields
+              values={enderecoEmpresa}
+              onChange={(patch) => setEnderecoEmpresa((atual) => ({ ...atual, ...patch }))}
+            />
           </div>
         )}
 
@@ -543,7 +550,14 @@ export function OnboardingFranquiaClient({
               </div>
               <div>
                 <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Telefone:</label>
-                <input value={responsavelTelefone} onChange={(e) => setResponsavelTelefone(e.target.value)} className="mt-1 w-full rounded-lg border border-slate-300 p-2.5 text-xs dark:border-slate-700 dark:bg-slate-800" />
+                <input
+                  value={responsavelTelefone}
+                  onChange={(e) => setResponsavelTelefone(formatWhatsappBrInput(e.target.value))}
+                  inputMode="tel"
+                  maxLength={15}
+                  placeholder="(65) 99999-9999"
+                  className="mt-1 w-full rounded-lg border border-slate-300 p-2.5 text-xs dark:border-slate-700 dark:bg-slate-800"
+                />
               </div>
             </div>
           </div>
