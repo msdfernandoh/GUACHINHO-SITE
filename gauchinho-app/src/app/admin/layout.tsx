@@ -25,8 +25,8 @@ export default async function AdminLayout({
     redirect("/?acesso=empresa_negado");
   }
 
-  const isSuperadmin = await isPlatformSuperadmin();
   const erpEnabled = getErpSistemaConfig(empresaAtiva?.configuracoes).habilitado;
+  const isSuperadmin = await isPlatformSuperadmin();
 
   return (
     <div className="dark flex min-h-screen bg-zinc-950 text-zinc-100">

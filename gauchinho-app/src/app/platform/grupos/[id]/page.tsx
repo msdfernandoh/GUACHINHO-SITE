@@ -11,11 +11,11 @@ export default async function PlatformGrupoPage({
   const { id } = await params;
   const db = await createClient();
 
-  const [grupoRes, administradorasRes, historicoRes] = await Promise.all([
+  const [grupoRes, administradorasRes, historicoRes, reajustesRes] = await Promise.all([
     db
       .from("grupos_consorcio")
       .select(
-        "id,codigo_grupo,administradora_id,tipo_administradora_id,modalidade,status,ativo,prazo_total,data_primeira_assembleia,parcelas_realizadas,prazo_restante,taxa_administrativa_percentual,fundo_reserva_percentual,seguro_percentual,seguro_habilitado,capacidade_total,vagas_disponiveis,vagas_atualizado_em,dados_estatisticos,dados_estatisticos_atualizado_em,permite_lance_embutido,percentual_lance_embutido,origem_governanca,status_governanca,observacoes,updated_at,administradora:administradoras(id,nome),tipo:administradora_tipos(id,nome,codigo),modalidades:grupos_modalidades_disponiveis(id,administradora_modalidade_id,ativo,ordem,configuracao,modalidade:administradora_modalidades_comissao(id,nome,codigo,modo_reduzido_padrao,percentual_padrao,percentual_minimo,percentual_maximo)),produtos:grupos_cotas(id,valor_credito,status,ativo),categorias:grupos_categorias(categoria:catalogo_grupo_categorias(codigo,nome,ativo))",
+        "id,codigo_grupo,administradora_id,tipo_administradora_id,modalidade,status,ativo,prazo_total,data_primeira_assembleia,parcelas_realizadas,prazo_restante,credito_reajustado_ate_meses,taxa_administrativa_percentual,fundo_reserva_percentual,seguro_percentual,seguro_habilitado,capacidade_total,vagas_disponiveis,vagas_atualizado_em,dados_estatisticos,dados_estatisticos_atualizado_em,permite_lance_embutido,percentual_lance_embutido,origem_governanca,status_governanca,observacoes,updated_at,administradora:administradoras(id,nome),tipo:administradora_tipos(id,nome,codigo),modalidades:grupos_modalidades_disponiveis(id,administradora_modalidade_id,ativo,ordem,configuracao,modalidade:administradora_modalidades_comissao(id,nome,codigo,modo_reduzido_padrao,percentual_padrao,percentual_minimo,percentual_maximo)),produtos:grupos_cotas(id,valor_credito,status,ativo),categorias:grupos_categorias(categoria:catalogo_grupo_categorias(codigo,nome,ativo))",
       )
       .eq("id", id)
       .maybeSingle(),
@@ -26,6 +26,12 @@ export default async function PlatformGrupoPage({
       .eq("grupo_id", id)
       .order("created_at", { ascending: false })
       .limit(50),
+    db
+      .from("grupos_creditos_reajustes")
+      .select("id,marco_meses,percentual_referencia,valores_anteriores,valores_novos,observacao,created_at,usuario:usuarios(nome)")
+      .eq("grupo_id", id)
+      .order("created_at", { ascending: false })
+      .limit(20),
   ]);
 
   if (!grupoRes.data) notFound();
@@ -69,6 +75,16 @@ export default async function PlatformGrupoPage({
         created_at: string;
         usuario?: { nome?: string } | null;
         empresa?: { nome_fantasia?: string } | null;
+      }>}
+      reajustesCredito={(reajustesRes.data ?? []) as Array<{
+        id: string;
+        marco_meses: number;
+        percentual_referencia: number | null;
+        valores_anteriores: Array<{ id: string; valor_credito: number }>;
+        valores_novos: Array<{ id: string; valor_credito: number }>;
+        observacao: string | null;
+        created_at: string;
+        usuario?: { nome?: string } | null;
       }>}
       categoriasDisponiveis={(categoriasRes.data ?? []) as Array<{ codigo: string; nome: string }>}
     />

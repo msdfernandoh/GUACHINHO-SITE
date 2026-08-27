@@ -209,7 +209,7 @@ export async function fetchPublicGruposAggregatesForEmpresa(
       .order("ordem", { ascending: true }),
     admin
       .from("grupos_categorias")
-      .select("grupo_id,categoria:catalogo_grupo_categorias(codigo,nome,ativo)")
+      .select("grupo_id,principal,ordem,categoria:catalogo_grupo_categorias(codigo,nome,ativo)")
       .in("grupo_id", grupoIds),
   ]);
   if (cErr) throw new Error(cErr.message);
@@ -229,7 +229,10 @@ export async function fetchPublicGruposAggregatesForEmpresa(
   }
   const categoriasByGrupo = new Map<string, string[]>();
   if (!categoriasRes.error) {
-    for (const row of categoriasRes.data ?? []) {
+    const rows = [...(categoriasRes.data ?? [])].sort(
+      (a, b) => Number(b.principal) - Number(a.principal) || Number(a.ordem) - Number(b.ordem),
+    );
+    for (const row of rows) {
       const categoria = row.categoria as unknown as { codigo?: string; ativo?: boolean } | null;
       if (!categoria?.codigo || categoria.ativo === false) continue;
       const value = ({

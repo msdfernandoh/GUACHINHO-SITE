@@ -398,23 +398,28 @@ export async function fetchGruposList(filters: {
   const supabase = await createClient();
   let q = supabase
     .from("grupos_consorcio")
-    .select("*, grupos_cotas(count)")
+    .select("*, tipo:administradora_tipos(nome), grupos_cotas(count)")
     .order("codigo_grupo", { ascending: true });
 
-  if (filters.modalidade) q = q.eq("modalidade", filters.modalidade);
   if (filters.status) q = q.eq("status", filters.status);
   if (filters.q) q = q.ilike("codigo_grupo", `%${filters.q}%`);
 
   const { data, error } = await q;
   if (error) throw new Error(error.message);
-  return data ?? [];
+  const normalizados = (data ?? []).map((grupo) => ({
+    ...grupo,
+    modalidade: (grupo.tipo as unknown as { nome?: string } | null)?.nome ?? grupo.modalidade,
+  }));
+  return filters.modalidade
+    ? normalizados.filter((grupo) => grupo.modalidade === filters.modalidade)
+    : normalizados;
 }
 
 export async function fetchGrupoWithCotas(id: string) {
   const supabase = await createClient();
   const { data: grupo, error } = await supabase
     .from("grupos_consorcio")
-    .select("*")
+    .select("*, tipo:administradora_tipos(nome), administradora_rel:administradoras(nome)")
     .eq("id", id)
     .single();
   if (error) throw new Error(error.message);
@@ -423,7 +428,13 @@ export async function fetchGrupoWithCotas(id: string) {
     .select("*")
     .eq("grupo_id", id)
     .order("ordem", { ascending: true });
-  return { grupo, cotas: cotas ?? [] };
+  return {
+    grupo: {
+      ...grupo,
+      modalidade: (grupo.tipo as unknown as { nome?: string } | null)?.nome ?? grupo.modalidade,
+    },
+    cotas: cotas ?? [],
+  };
 }
 
 export async function createGrupoAction(formData: FormData) {

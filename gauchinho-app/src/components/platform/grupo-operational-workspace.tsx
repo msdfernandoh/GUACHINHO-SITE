@@ -32,6 +32,7 @@ import {
   calcularResumoContemplacoes,
   DEFAULT_TIPOS_CONTEMPLACAO,
 } from "@/lib/platform/grupos-prontidao";
+import { GrupoReajusteCreditosDialog } from "@/components/platform/grupo-reajuste-creditos-dialog";
 
 const initial: GroupActionState = { status: "IDLE", message: "" };
 const inputStyle =
@@ -59,6 +60,7 @@ export function GrupoOperationalWorkspace({
   tiposAdministradora,
   modalidadesAdministradora,
   historico,
+  reajustesCredito,
   empresaConfig,
   categoriasDisponiveis,
 }: {
@@ -77,6 +79,16 @@ export function GrupoOperationalWorkspace({
     usuario?: { nome?: string } | null;
     empresa?: { nome_fantasia?: string } | null;
   }>;
+  reajustesCredito: Array<{
+    id: string;
+    marco_meses: number;
+    percentual_referencia: number | null;
+    valores_anteriores: Array<{ id: string; valor_credito: number }>;
+    valores_novos: Array<{ id: string; valor_credito: number }>;
+    observacao: string | null;
+    created_at: string;
+    usuario?: { nome?: string } | null;
+  }>;
   empresaConfig?: {
     usar_dados_globais?: boolean;
     dados_estatisticos_locais?: unknown;
@@ -86,6 +98,7 @@ export function GrupoOperationalWorkspace({
 }) {
   const [tab, setTab] = useState<"gerais" | "cotas" | "estatisticas" | "historico">("gerais");
   const [modoEstatisticas, setModoEstatisticas] = useState<"GLOBAL" | "LOCAL">("GLOBAL");
+  const [reajusteAberto, setReajusteAberto] = useState(false);
 
   const [caracteristicas, setCaracteristicas] = useState<CaracteristicaContemplacaoItem[]>(() => {
     const existing = (grupo.dados_estatisticos as Record<string, unknown> | null)?.caracteristicas_contemplacao;
@@ -181,6 +194,8 @@ export function GrupoOperationalWorkspace({
   const modalidadesDisponiveis = grupo.modalidades ?? [];
   const modsAtivas = modalidadesDisponiveis.filter((m) => m.ativo);
   const cotas = (grupo.produtos ?? []).filter((p) => p.ativo).sort((a, b) => b.valor_credito - a.valor_credito);
+  const marcoReajuste = Math.floor(prontidao.temporal.realizadas / 12) * 12;
+  const reajustePendente = marcoReajuste >= 12 && marcoReajuste > Number(grupo.credito_reajustado_ate_meses ?? 0);
 
   function handleToggleSelectCota(cotaId: string) {
     setSelectedCotas((prev) => {
@@ -233,6 +248,15 @@ export function GrupoOperationalWorkspace({
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
+          {reajustePendente ? (
+            <button
+              type="button"
+              onClick={() => setReajusteAberto(true)}
+              className="rounded-lg bg-amber-500 px-4 py-2 text-sm font-extrabold text-slate-950 shadow hover:bg-amber-400"
+            >
+              Ajustar créditos · {marcoReajuste} meses
+            </button>
+          ) : null}
           <span
             className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold ${
               prontidao.ready
@@ -257,6 +281,16 @@ export function GrupoOperationalWorkspace({
           </span>
         </div>
       </div>
+
+      {reajusteAberto ? (
+        <GrupoReajusteCreditosDialog
+          grupoId={grupo.id}
+          codigoGrupo={grupo.codigo_grupo}
+          marcoMeses={marcoReajuste}
+          cotas={cotas.map((cota) => ({ id: cota.id, valor_credito: Number(cota.valor_credito) }))}
+          onClose={() => setReajusteAberto(false)}
+        />
+      ) : null}
 
       {/* Cards Resumo Operacional */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
@@ -1463,7 +1497,23 @@ export function GrupoOperationalWorkspace({
 
       {/* TAB 4: HISTÓRICO E AUDITORIA */}
       {tab === "historico" ? (
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900 space-y-4">
+        <div className="space-y-4">
+          <div className="rounded-2xl border border-amber-200 bg-amber-50 p-6 shadow-sm dark:border-amber-900 dark:bg-amber-950/30">
+            <h2 className="text-lg font-bold text-slate-900 dark:text-white">Reajustes anuais de crédito</h2>
+            <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">Histórico imutável dos créditos oficiais alterados no SaaS. Valores de parcela continuam calculados pelo site.</p>
+            {reajustesCredito.length === 0 ? <p className="mt-4 text-sm text-slate-500">Nenhum reajuste anual registrado.</p> : (
+              <div className="mt-4 divide-y divide-amber-200 dark:divide-amber-900">
+                {reajustesCredito.map((r) => (
+                  <div key={r.id} className="py-3 text-sm">
+                    <div className="flex flex-wrap justify-between gap-2"><strong>Marco {r.marco_meses} meses · {r.valores_novos.length} crédito(s)</strong><span>{new Date(r.created_at).toLocaleString("pt-BR")}</span></div>
+                    <p className="mt-1 text-slate-600 dark:text-slate-300">Referência: {r.percentual_referencia == null ? "ajuste individual" : `${formatPercent(r.percentual_referencia)}`} · Por: {r.usuario?.nome || "Sistema"}</p>
+                    {r.observacao ? <p className="mt-1 text-slate-600 dark:text-slate-300">{r.observacao}</p> : null}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900 space-y-4">
           <h2 className="text-lg font-bold text-slate-900 dark:text-white">Linha do Tempo de Alterações</h2>
           {historico.length === 0 ? (
             <p className="py-8 text-center text-sm text-slate-400">Nenhum evento registrado ainda.</p>
@@ -1489,6 +1539,7 @@ export function GrupoOperationalWorkspace({
               ))}
             </div>
           )}
+          </div>
         </div>
       ) : null}
     </div>

@@ -1,35 +1,18 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import {
-  deleteGrupoAction,
-  duplicateGrupoAction,
-  fetchGrupoWithCotas,
-  fetchModalidadesByGrupoId,
-  toggleGrupoAtivoAction,
-  updateGrupoAction,
-} from "../actions";
-import { GrupoFormFields } from "@/components/admin/grupo-form-fields";
-import { GrupoCotasAdmin } from "@/components/admin/grupo-cotas-admin";
-import { GrupoEmpresaConfigSection } from "@/components/admin/grupo-empresa-config-section";
-import { isPlatformSuperadmin } from "@/lib/auth/is-superadmin";
-import { canDeleteRecords } from "@/lib/auth/permissions";
+import { fetchGrupoWithCotas } from "../actions";
 import { getCurrentTenantContext } from "@/lib/tenant/context";
-import { getEmpresaGrupoConfig } from "@/lib/grupos/empresa-grupos-config";
-import type { GrupoConsorcio } from "@/lib/types";
-import { Button } from "@/components/ui/form-primitives";
-import { createClient } from "@/lib/supabase/server";
+import { getErpSistemaConfig } from "@/lib/erp/erp-modulos";
 
-export default async function GrupoEditPage({
-  params,
-  searchParams,
-}: {
-  params: Promise<{ id: string }>;
-  searchParams: Promise<{ saved?: string; error?: string }>;
-}) {
+function percentual(value: unknown) {
+  const numero = Number(value ?? 0);
+  return `${numero.toLocaleString("pt-BR", { maximumFractionDigits: 4 })}%`;
+}
+
+export default async function GrupoReadonlyPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const sp = await searchParams;
-  const { usuario, empresaAtiva, permissoes } = await getCurrentTenantContext();
-  const isSuper = await isPlatformSuperadmin();
+  const { empresaAtiva } = await getCurrentTenantContext();
+  const erpEnabled = getErpSistemaConfig(empresaAtiva?.configuracoes).habilitado;
 
   let data;
   try {
@@ -38,133 +21,79 @@ export default async function GrupoEditPage({
     notFound();
   }
 
-  const modalidades = await fetchModalidadesByGrupoId(id);
-  const supabase = await createClient();
-  const [{ data: tiposAdministradora }, { data: modalidadesComissao }] = await Promise.all([
-    supabase.from("administradora_tipos").select("id,nome").eq("administradora_id", data.grupo.administradora_id).eq("ativo", true).order("nome"),
-    supabase.from("administradora_modalidades_comissao").select("id,nome").eq("administradora_id", data.grupo.administradora_id).eq("ativo", true).order("nome"),
-  ]);
-  const empresaId = empresaAtiva?.id;
-  const empresaConfig = empresaId
-    ? await getEmpresaGrupoConfig(empresaId, id)
-    : null;
-
-  const update = updateGrupoAction.bind(null, id);
-  const dup = duplicateGrupoAction.bind(null, id);
-  const del = deleteGrupoAction.bind(null, id);
-  const toggleOff = toggleGrupoAtivoAction.bind(null, id, false);
-  const toggleOn = toggleGrupoAtivoAction.bind(null, id, true);
+  const grupo = data.grupo as Record<string, unknown>;
+  const administradora = grupo.administradora_rel as { nome?: string } | null;
+  const resumo = [
+    ["Administradora", administradora?.nome ?? grupo.administradora ?? "—"],
+    ["Tipo oficial", grupo.modalidade ?? "—"],
+    ["Prazo total", grupo.prazo_total ? `${grupo.prazo_total} meses` : "—"],
+    ["Vagas disponíveis", grupo.vagas_disponiveis ?? 0],
+    ["Taxa administrativa", percentual(grupo.taxa_administrativa_percentual)],
+    ["Fundo de reserva", percentual(grupo.fundo_reserva_percentual)],
+    ["Seguro", grupo.seguro_habilitado ? percentual(grupo.seguro_percentual) : "Não habilitado"],
+    ["Status", grupo.status ?? "—"],
+  ];
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
-      <Link href="/admin/grupos" className="text-sm text-amber-600 hover:underline">
-        ← Grupos
-      </Link>
-      {sp.error ? (
-        <p className="rounded-lg border border-red-600/40 bg-red-500/10 px-4 py-2 text-sm text-red-700 dark:text-red-300">
-          {decodeURIComponent(sp.error)}
-        </p>
-      ) : null}
-      {sp.saved === "1" ? (
-        <p className="rounded-lg border border-emerald-600/40 bg-emerald-500/10 px-4 py-2 text-sm text-emerald-700 dark:text-emerald-300">
-          Grupo salvo com sucesso.
-        </p>
-      ) : null}
-
-      {isSuper ? (
-        <div className="flex flex-wrap gap-2">
-          <form action={dup}>
-            <Button type="submit" variant="outline" size="sm" className="border-zinc-600 bg-zinc-900 text-zinc-100">
-              Duplicar Grupo Global
-            </Button>
-          </form>
-          {data.grupo.ativo ? (
-            <form action={toggleOff}>
-              <Button type="submit" variant="outline" size="sm" className="border-zinc-600 bg-zinc-900 text-zinc-100">
-                Inativar Globalmente
-              </Button>
-            </form>
-          ) : (
-            <form action={toggleOn}>
-              <Button type="submit" variant="outline" size="sm" className="border-zinc-600 bg-zinc-900 text-zinc-100">
-                Reativar Globalmente
-              </Button>
-            </form>
-          )}
-          {canDeleteRecords(usuario?.perfil) ? (
-            <form action={del}>
-              <Button type="submit" variant="danger" size="sm">
-                Excluir (Superadmin)
-              </Button>
-            </form>
-          ) : null}
-        </div>
-      ) : null}
-
-      <h1 className="text-2xl font-bold">Grupo {data.grupo.codigo_grupo}</h1>
-
-      {empresaId && permissoes.has("gerenciar_grupos") ? (
-        <GrupoEmpresaConfigSection
-          empresaId={empresaId}
-          grupoId={id}
-          codigoGrupo={data.grupo.codigo_grupo}
-          config={empresaConfig}
-        />
-      ) : null}
-
-      {isSuper ? (
-        <form id="grupo-form" action={update} className="space-y-6">
-          <div className="rounded-xl border border-zinc-200 bg-white p-6 dark:border-zinc-700 dark:bg-zinc-900/90 space-y-6">
-            <h2 className="text-lg font-bold text-zinc-900 dark:text-zinc-50">
-              Estrutura Oficial do Catálogo Global (Superadmin)
-            </h2>
-            <GrupoFormFields
-              formId="grupo-form"
-              initial={data.grupo as Record<string, unknown>}
-              modalidadesInitial={modalidades}
-              tiposAdministradora={tiposAdministradora ?? []}
-              modalidadesComissao={modalidadesComissao ?? []}
-            />
-          </div>
-        </form>
-      ) : null}
-
-      {isSuper ? (
-        <GrupoCotasAdmin
-          grupoId={id}
-          grupo={data.grupo as GrupoConsorcio}
-          cotas={data.cotas}
-          canHardDelete={canDeleteRecords(usuario?.perfil)}
-        />
-      ) : (
-        <section className="rounded-xl border border-zinc-200 bg-white p-6 dark:border-zinc-700 dark:bg-zinc-900/90">
-          <h2 className="text-lg font-bold text-zinc-900 dark:text-zinc-50">
-            Produtos e regras oficiais (somente leitura)
-          </h2>
-          <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-            O SaaS publica crédito, prazo, taxas e regras do grupo. O site aplica o motor de cálculo oficial
-            e congela os valores aceitos na proposta; o ERP não recalcula nem altera essa condição.
+    <div className="mx-auto max-w-5xl space-y-6">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <Link href="/admin/grupos" className="text-sm text-amber-500 hover:underline">
+            ← Catálogo de grupos
+          </Link>
+          <h1 className="mt-2 text-2xl font-bold">Grupo {String(grupo.codigo_grupo)}</h1>
+          <p className="mt-1 text-sm text-zinc-400">
+            Visualização do catálogo oficial. Esta área do site não altera dados estruturais.
           </p>
-          <div className="mt-4 overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead className="text-xs uppercase text-zinc-500">
-                <tr><th className="py-2">Crédito</th><th className="py-2">Status</th><th className="py-2">Uso</th></tr>
-              </thead>
-              <tbody>
-                {data.cotas.map((cota) => (
-                  <tr key={cota.id} className="border-t border-zinc-100 dark:border-zinc-800">
-                    <td className="py-2 font-medium">
-                      {Number(cota.valor_credito).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
-                    </td>
-                    <td className="py-2">{cota.status}</td>
-                    <td className="py-2 text-zinc-500">Cálculo realizado no site</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </section>
-      )}
+        </div>
+        {erpEnabled ? (
+          <Link
+            href={`/erp/grupos/${id}`}
+            className="rounded-lg bg-blue-700 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-800"
+          >
+            Configurar no ERP
+          </Link>
+        ) : null}
+      </div>
+
+      <section className="rounded-xl border border-zinc-800 bg-zinc-900/80 p-6">
+        <h2 className="text-lg font-bold">Dados oficiais</h2>
+        <dl className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {resumo.map(([label, value]) => (
+            <div key={String(label)} className="rounded-lg border border-zinc-800 bg-zinc-950/60 p-3">
+              <dt className="text-xs font-semibold uppercase tracking-wide text-zinc-500">{String(label)}</dt>
+              <dd className="mt-1 font-medium text-zinc-100">{String(value)}</dd>
+            </div>
+          ))}
+        </dl>
+      </section>
+
+      <section className="rounded-xl border border-zinc-800 bg-zinc-900/80 p-6">
+        <div>
+          <h2 className="text-lg font-bold">Créditos publicados</h2>
+          <p className="mt-1 text-sm text-zinc-400">
+            O site calcula as parcelas com as regras oficiais; aqui são exibidos apenas os valores de crédito.
+          </p>
+        </div>
+        <div className="mt-4 overflow-x-auto">
+          <table className="w-full text-left text-sm">
+            <thead className="text-xs uppercase text-zinc-500">
+              <tr><th className="py-2">Crédito</th><th className="py-2">Status</th><th className="py-2">Ativo</th></tr>
+            </thead>
+            <tbody>
+              {data.cotas.map((cota) => (
+                <tr key={cota.id} className="border-t border-zinc-800">
+                  <td className="py-3 font-medium">
+                    {Number(cota.valor_credito).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                  </td>
+                  <td className="py-3">{cota.status}</td>
+                  <td className="py-3">{cota.ativo ? "Sim" : "Não"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
     </div>
   );
 }

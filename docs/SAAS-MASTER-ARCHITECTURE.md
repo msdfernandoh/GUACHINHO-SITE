@@ -803,6 +803,26 @@ reinicia o ciclo. A integração usa `VERCEL_API_TOKEN` exclusivamente no servid
 Relatório:
 `docs/relatorios-fases/FASE-147-DOMINIOS-DNS-VERCEL-AUTOMATICO.md`.
 
+## 26. Tipo canônico, categorias N:N e reajuste anual no SaaS — Fase 148
+
+O tipo estrutural do grupo é `tipo_administradora_id` (UUID). O campo textual
+`modalidade` existe somente por compatibilidade e é sincronizado por trigger,
+eliminando divergências como um UUID Imóvel ainda descrito como Moto.
+
+Categorias de publicação são independentes e N:N. Um único grupo pode aparecer
+simultaneamente nas abas Imóvel, Automóvel e Moto sem duplicar grupo, taxas ou
+créditos. Modalidades de parcela continuam sendo Integral, Reduzida e
+Personalizada e não devem ser confundidas com tipo ou categoria.
+
+Empresas, administradoras e grupos permanecem visíveis no admin do site somente
+para consulta. A Plataforma SaaS é o único local de mutação global. O reajuste
+anual altera exclusivamente os valores de crédito, de forma transacional e
+auditada; o site mantém seu motor de cálculo de parcelas e o ERP conserva o
+snapshot comercial aceito pelo cliente.
+
+Relatório:
+`docs/relatorios-fases/FASE-148-GRUPOS-TIPO-CANONICO-REAJUSTE-SAAS-E-LEITURA-SITE.md`.
+
 
 
 

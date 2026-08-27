@@ -151,7 +151,8 @@ export type GrupoRecord = {
   origem_governanca?: string;
   status_governanca?: string;
   observacoes?: string | null;
-  updated_at?: string;
+    updated_at?: string;
+    credito_reajustado_ate_meses?: number | null;
   modalidades?: GrupoModalidadeItem[];
   produtos?: GrupoCotaItem[];
   categorias?: Array<{ categoria?: { codigo?: string; nome?: string; ativo?: boolean } | null }>;

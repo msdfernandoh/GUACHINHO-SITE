@@ -1,15 +1,7 @@
 "use client";
 
-import { useState, useTransition } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { marcarReajusteCreditoGrupoAction } from "@/app/admin/grupos/actions";
-import { GrupoReajusteCotasDialog } from "@/components/admin/grupo-reajuste-cotas-dialog";
-import {
-  calcularPrazoGrupoFromRow,
-  grupoPrecisaReajusteCredito,
-  milestoneReajusteMeses,
-} from "@/lib/grupos/prazos";
+import { calcularPrazoGrupoFromRow, grupoPrecisaReajusteCredito } from "@/lib/grupos/prazos";
 import type { GrupoConsorcio } from "@/lib/types";
 import { cn } from "@/lib/utils/cn";
 
@@ -17,177 +9,86 @@ type GrupoListRow = GrupoConsorcio & {
   grupos_cotas?: { count: number }[] | { count: number } | null;
 };
 
-export function GruposListClient({
-  grupos,
-  isSuperadmin = false,
-}: {
-  grupos: GrupoListRow[];
-  isSuperadmin?: boolean;
-}) {
-  const router = useRouter();
-  const [pending, startTransition] = useTransition();
-  const [reajusteGrupo, setReajusteGrupo] = useState<{ id: string; codigo: string } | null>(
-    null,
-  );
-
-  const marcarReajuste = (grupoId: string, codigo: string, marco: number) => {
-    if (
-      !confirm(
-        `Confirmar que o crédito do grupo ${codigo} já foi reajustado no marco de ${marco} meses?\n\nO destaque será removido sem alterar os valores das cotas.`,
-      )
-    ) {
-      return;
-    }
-    startTransition(async () => {
-      const res = await marcarReajusteCreditoGrupoAction(grupoId);
-      if (!res.ok) {
-        alert(res.error);
-        return;
-      }
-      router.refresh();
-    });
-  };
-
+export function GruposListClient({ grupos }: { grupos: GrupoListRow[] }) {
   return (
-    <>
-      <div className="overflow-x-auto rounded-xl border border-zinc-200 bg-white dark:border-zinc-700 dark:bg-zinc-900/90">
-        <table className="min-w-full text-sm">
-          <thead className="border-b border-zinc-200 bg-zinc-50 text-left text-xs uppercase tracking-wide text-zinc-600 dark:border-zinc-700 dark:bg-zinc-800/80 dark:text-zinc-300">
+    <div className="overflow-x-auto rounded-xl border border-zinc-200 bg-white dark:border-zinc-700 dark:bg-zinc-900/90">
+      <table className="min-w-full text-sm">
+        <thead className="border-b border-zinc-200 bg-zinc-50 text-left text-xs uppercase tracking-wide text-zinc-600 dark:border-zinc-700 dark:bg-zinc-800/80 dark:text-zinc-300">
+          <tr>
+            <th className="px-3 py-2">Código</th>
+            <th className="px-3 py-2">Tipo oficial</th>
+            <th className="px-3 py-2">Prazo</th>
+            <th className="px-3 py-2">Status</th>
+            <th className="px-3 py-2">Créditos</th>
+            <th className="px-3 py-2">Participantes</th>
+            <th className="px-3 py-2">Ativo</th>
+            <th className="px-3 py-2">Ação</th>
+          </tr>
+        </thead>
+        <tbody className="text-zinc-800 dark:text-zinc-200">
+          {grupos.length === 0 ? (
             <tr>
-              <th className="px-3 py-2">Código</th>
-              <th className="px-3 py-2">Modalidade</th>
-              <th className="px-3 py-2">Prazo</th>
-              <th className="px-3 py-2">Status</th>
-              <th className="px-3 py-2">Cotas (valores)</th>
-              <th className="px-3 py-2">Participantes</th>
-              <th className="px-3 py-2">Ativo</th>
-              <th className="px-3 py-2">Ações</th>
+              <td colSpan={8} className="px-3 py-10 text-center text-zinc-500 dark:text-zinc-400">
+                Nenhum grupo encontrado com os filtros selecionados.
+              </td>
             </tr>
-          </thead>
-          <tbody className="text-zinc-800 dark:text-zinc-200">
-            {grupos.length === 0 ? (
-              <tr>
-                <td colSpan={8} className="px-3 py-10 text-center text-zinc-500 dark:text-zinc-400">
-                  Nenhum grupo encontrado. Ajuste os filtros ou cadastre um novo grupo.
+          ) : null}
+          {grupos.map((grupo) => {
+            const count = Array.isArray(grupo.grupos_cotas)
+              ? grupo.grupos_cotas[0]?.count
+              : (grupo.grupos_cotas as { count: number } | undefined)?.count;
+            const prazo = calcularPrazoGrupoFromRow(grupo);
+            const precisaReajuste = grupoPrecisaReajusteCredito(
+              prazo.parcelasRealizadasAtuais,
+              grupo.credito_reajustado_ate_meses,
+            );
+            return (
+              <tr
+                key={grupo.id}
+                className={cn(
+                  "border-b border-zinc-100 transition-colors dark:border-zinc-800",
+                  precisaReajuste
+                    ? "bg-amber-500/10 dark:bg-amber-500/15"
+                    : "hover:bg-zinc-50 dark:hover:bg-zinc-800/60",
+                )}
+              >
+                <td className="px-3 py-2 font-medium text-zinc-900 dark:text-zinc-50">
+                  {grupo.codigo_grupo}
+                </td>
+                <td className="px-3 py-2">{grupo.modalidade}</td>
+                <td className="px-3 py-2">
+                  {prazo.prazoTotal > 0 ? (
+                    <div className="flex flex-col gap-0.5">
+                      <span className="font-semibold tabular-nums">
+                        {prazo.parcelasRealizadasAtuais} / {prazo.prazoTotal}
+                      </span>
+                      <span className="text-[11px] text-zinc-500">
+                        Restam {prazo.prazoRestanteAtual} meses
+                      </span>
+                    </div>
+                  ) : "—"}
+                </td>
+                <td className="px-3 py-2">{grupo.status}</td>
+                <td className="px-3 py-2">{count ?? 0}</td>
+                <td className="px-3 py-2">
+                  {grupo.quantidade_cotas_sorteio != null && grupo.quantidade_cotas_sorteio > 0
+                    ? grupo.quantidade_cotas_sorteio
+                    : "—"}
+                </td>
+                <td className="px-3 py-2">{grupo.ativo ? "Sim" : "Não"}</td>
+                <td className="px-3 py-2">
+                  <Link
+                    href={`/admin/grupos/${grupo.id}`}
+                    className="text-amber-600 hover:underline dark:text-amber-400"
+                  >
+                    Visualizar
+                  </Link>
                 </td>
               </tr>
-            ) : null}
-            {grupos.map((g) => {
-              const count = Array.isArray(g.grupos_cotas)
-                ? g.grupos_cotas[0]?.count
-                : (g.grupos_cotas as { count: number } | undefined)?.count;
-              const prazo = calcularPrazoGrupoFromRow(g);
-              const marco = milestoneReajusteMeses(prazo.parcelasRealizadasAtuais);
-              const precisaReajuste = grupoPrecisaReajusteCredito(
-                prazo.parcelasRealizadasAtuais,
-                g.credito_reajustado_ate_meses,
-              );
-              const prazoLabel =
-                prazo.prazoTotal > 0
-                  ? `${prazo.parcelasRealizadasAtuais} / ${prazo.prazoTotal}`
-                  : "—";
-
-              return (
-                <tr
-                  key={g.id}
-                  className={cn(
-                    "border-b border-zinc-100 transition-colors dark:border-zinc-800",
-                    precisaReajuste
-                      ? "bg-amber-500/15 hover:bg-amber-500/25 dark:bg-amber-500/20 dark:hover:bg-amber-500/30"
-                      : "hover:bg-zinc-50 dark:hover:bg-zinc-800/60",
-                  )}
-                >
-                  <td className="px-3 py-2 font-medium text-zinc-900 dark:text-zinc-50">
-                    {g.codigo_grupo}
-                  </td>
-                  <td className="px-3 py-2">{g.modalidade}</td>
-                  <td className="px-3 py-2">
-                    <div className="flex flex-col gap-0.5">
-                      <span
-                        className={cn(
-                          "font-semibold tabular-nums",
-                          precisaReajuste && "text-amber-700 dark:text-amber-300",
-                        )}
-                      >
-                        {prazoLabel}
-                      </span>
-                      {precisaReajuste ? (
-                        <span className="text-[11px] font-bold uppercase tracking-wide text-amber-700 dark:text-amber-300">
-                          Reajustar crédito ({marco}m)
-                        </span>
-                      ) : prazo.prazoTotal > 0 ? (
-                        <span className="text-[11px] text-zinc-500">
-                          Restam {prazo.prazoRestanteAtual} meses
-                        </span>
-                      ) : null}
-                    </div>
-                  </td>
-                  <td className="px-3 py-2">{g.status}</td>
-                  <td className="px-3 py-2">{count ?? 0}</td>
-                  <td className="px-3 py-2">
-                    {g.quantidade_cotas_sorteio != null && g.quantidade_cotas_sorteio > 0
-                      ? g.quantidade_cotas_sorteio
-                      : "—"}
-                  </td>
-                  <td className="px-3 py-2">{g.ativo ? "Sim" : "Não"}</td>
-                  <td className="px-3 py-2">
-                    <div className="flex flex-col gap-1 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">
-                      {isSuperadmin ? (
-                        <>
-                          <button
-                            type="button"
-                            onClick={() => setReajusteGrupo({ id: g.id, codigo: g.codigo_grupo })}
-                            className={cn(
-                              "text-left text-sm font-semibold hover:underline",
-                              precisaReajuste
-                                ? "text-amber-800 dark:text-amber-200"
-                                : "text-amber-600 dark:text-amber-400",
-                            )}
-                          >
-                            Ajustar
-                          </button>
-                          <Link
-                            href={`/admin/grupos/${g.id}`}
-                            className="text-zinc-600 hover:underline dark:text-zinc-300"
-                          >
-                            Editar
-                          </Link>
-                          {precisaReajuste ? (
-                            <button
-                              type="button"
-                              disabled={pending}
-                              onClick={() => marcarReajuste(g.id, g.codigo_grupo, marco)}
-                              className="text-left text-xs text-zinc-500 underline decoration-zinc-500/40 hover:text-zinc-800 disabled:opacity-50 dark:text-zinc-400"
-                            >
-                              Só remover destaque
-                            </button>
-                          ) : null}
-                        </>
-                      ) : (
-                        <Link
-                          href={`/admin/grupos/${g.id}`}
-                          className="text-amber-600 hover:underline dark:text-amber-400"
-                        >
-                          Ver detalhes
-                        </Link>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-
-      {reajusteGrupo ? (
-        <GrupoReajusteCotasDialog
-          grupoId={reajusteGrupo.id}
-          codigoGrupo={reajusteGrupo.codigo}
-          open
-          onClose={() => setReajusteGrupo(null)}
-        />
-      ) : null}
-    </>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
   );
 }

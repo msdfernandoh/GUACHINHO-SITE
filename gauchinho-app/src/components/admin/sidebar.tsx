@@ -50,7 +50,7 @@ const NAV: Array<{
   { key: "relatorios", href: "/admin/relatorios", label: "Relatórios", icon: BarChart2 },
   { key: "propostas", href: "/admin/propostas", label: "Propostas", icon: FileText },
   { key: "contratacoes", href: "/admin/contratacoes", label: "Contratações", icon: FileText },
-  { key: "grupos", href: "/admin/grupos", label: "Grupos", icon: Layers },
+  { key: "grupos", href: "/admin/grupos", label: "Catálogo de grupos", icon: Layers },
   { key: "cartas", href: "/admin/cartas-contempladas", label: "Cartas Contempladas", icon: FileText },
   { key: "imobiliarias", href: "/admin/imobiliarias", label: "Imobiliárias", icon: Building2, masterOnly: true },
   { key: "seguradoras", href: "/admin/seguradoras", label: "Seguradoras", icon: Shield, masterOnly: true },
@@ -62,15 +62,15 @@ const NAV: Array<{
   { key: "configuracoes", href: "/admin/configuracoes/qr-codes", label: "QR Codes únicos", icon: QrCode, masterOnly: true },
 ];
 
-const SUPERADMIN_NAV = [
-  { href: "/admin/empresas", label: "Empresas (SaaS)", icon: Building2 },
-  { href: "/admin/administradoras", label: "Catálogo de Administradoras", icon: Landmark },
-] as const;
-
 const imobiliariaNav = [
   { href: "/admin/minha-imobiliaria", label: "Minha imobiliária", icon: Building2 },
   { href: "/admin/imoveis", label: "Meus imóveis", icon: Home },
 ];
+
+const SUPERADMIN_READONLY_NAV = [
+  { href: "/admin/empresas", label: "Empresas (SaaS)", icon: Building2 },
+  { href: "/admin/administradoras", label: "Catálogo de Administradoras", icon: Landmark },
+] as const;
 
 export function AdminSidebar({
   perfil,
@@ -165,23 +165,17 @@ export function AdminSidebar({
               );
             })}
         {isPlatformSuperadmin
-          ? SUPERADMIN_NAV.map((item) => {
-              const active =
-                pathname === item.href || pathname.startsWith(`${item.href}/`);
+          ? SUPERADMIN_READONLY_NAV.map((item) => {
+              const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
               const Icon = item.icon;
               return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={cn(
-                    "flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
-                    active
-                      ? "bg-zinc-900 text-white dark:bg-amber-500 dark:text-zinc-950"
-                      : "text-zinc-700 hover:bg-zinc-200/80 dark:text-zinc-300 dark:hover:bg-zinc-800",
-                  )}
-                >
-                  <Icon className="h-4 w-4 shrink-0" />
-                  {item.label}
+                <Link key={item.href} href={item.href} className={cn(
+                  "flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                  active
+                    ? "bg-zinc-900 text-white dark:bg-amber-500 dark:text-zinc-950"
+                    : "text-zinc-700 hover:bg-zinc-200/80 dark:text-zinc-300 dark:hover:bg-zinc-800",
+                )}>
+                  <Icon className="h-4 w-4 shrink-0" />{item.label}
                 </Link>
               );
             })

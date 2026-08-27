@@ -3,10 +3,7 @@ import { redirect } from "next/navigation";
 import { isPlatformSuperadmin } from "@/lib/auth/is-superadmin";
 import { formatDate } from "@/lib/utils/format";
 import { Button, Input, Select } from "@/components/ui/form-primitives";
-import {
-  fetchAdministradorasGlobaisList,
-  setAdministradoraStatusAction,
-} from "./actions";
+import { fetchAdministradorasGlobaisList } from "./actions";
 
 export default async function AdministradorasAdminPage({
   searchParams,
@@ -26,12 +23,9 @@ export default async function AdministradorasAdminPage({
           <h1 className="text-2xl font-bold">Catálogo de Administradoras</h1>
           <p className="text-sm text-zinc-500">
             Administradoras globais da plataforma (ex.: Racon). Empresas/franqueadas são tenants
-            distintos — concessões serão geridas na E4.
+            distintos. Esta área é somente leitura; a manutenção fica no SaaS.
           </p>
         </div>
-        <Link href="/admin/administradoras/nova">
-          <Button>Nova administradora</Button>
-        </Link>
       </div>
 
       <form method="get" className="flex flex-wrap items-end gap-3">
@@ -75,8 +69,6 @@ export default async function AdministradorasAdminPage({
               </tr>
             ) : (
               list.map((row) => {
-                const nextStatus = row.status === "ATIVA" ? "INATIVA" : "ATIVA";
-                const toggle = setAdministradoraStatusAction.bind(null, row.id, nextStatus);
                 return (
                   <tr key={row.id} className="border-b dark:border-zinc-800">
                     <td className="px-3 py-2 font-medium">{row.nome}</td>
@@ -91,13 +83,8 @@ export default async function AdministradorasAdminPage({
                         href={`/admin/administradoras/${row.id}`}
                         className="text-amber-600 hover:underline"
                       >
-                        Editar
+                        Visualizar
                       </Link>
-                      <form action={toggle} className="ml-2 inline">
-                        <Button type="submit" size="sm" variant="outline">
-                          {row.status === "ATIVA" ? "Inativar" : "Reativar"}
-                        </Button>
-                      </form>
                     </td>
                   </tr>
                 );

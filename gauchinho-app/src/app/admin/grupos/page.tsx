@@ -2,10 +2,6 @@ import Link from "next/link";
 import { fetchGruposList } from "./actions";
 import { Button, Input, Label, Select } from "@/components/ui/form-primitives";
 import { MODALIDADES_GRUPO } from "@/lib/types";
-import { getUsuarioNegocio } from "@/lib/auth/get-usuario";
-import { isPlatformSuperadmin } from "@/lib/auth/is-superadmin";
-import { canEditSettings } from "@/lib/auth/permissions";
-import { PopularGruposTesteButton } from "@/components/admin/popular-grupos-teste-button";
 import { GruposListClient } from "@/components/admin/grupos-list-client";
 
 export default async function GruposAdminPage({
@@ -15,9 +11,6 @@ export default async function GruposAdminPage({
 }) {
   const sp = await searchParams;
   const grupos = await fetchGruposList(sp);
-  const usuario = await getUsuarioNegocio();
-  const isSuper = await isPlatformSuperadmin();
-  const showPopular = isSuper && canEditSettings(usuario?.perfil);
 
   return (
     <div className="space-y-6">
@@ -25,22 +18,16 @@ export default async function GruposAdminPage({
         <div>
           <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">Grupos</h1>
           <p className="text-sm text-zinc-500 dark:text-zinc-400">
-            Consórcio — catálogo e configurações de grupos. Destaque âmbar = prazo em marco de 12 meses (reajuste de crédito).
+            Catálogo oficial em somente leitura. Alterações estruturais são feitas no SaaS; configurações da franquia ficam no ERP.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          {showPopular ? <PopularGruposTesteButton /> : null}
           <Link
             href="/admin/grupos/sorteios"
             className="text-sm text-amber-600 hover:underline dark:text-amber-400 dark:hover:text-amber-300"
           >
             Sorteios Loteria Federal
           </Link>
-          {isSuper ? (
-            <Link href="/admin/grupos/novo">
-              <Button>Novo grupo global</Button>
-            </Link>
-          ) : null}
         </div>
       </div>
       <form
@@ -70,7 +57,7 @@ export default async function GruposAdminPage({
           Filtrar
         </Button>
       </form>
-      <GruposListClient grupos={grupos} isSuperadmin={isSuper} />
+      <GruposListClient grupos={grupos} />
     </div>
   );
 }

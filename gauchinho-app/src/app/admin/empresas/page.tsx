@@ -14,7 +14,7 @@ export default async function EmpresasAdminPage() {
       <div>
         <h1 className="text-2xl font-bold">Empresas (Plataforma SaaS)</h1>
         <p className="text-sm text-zinc-500">
-          Tenants da plataforma. A Gauchinho é a empresa 1; demais empresas são independentes.
+          Consulta dos tenants cadastrados. Inclusões e alterações são feitas exclusivamente no SaaS.
         </p>
       </div>
       <div className="overflow-x-auto rounded-xl border bg-white dark:border-zinc-800 dark:bg-zinc-900">
@@ -37,7 +37,7 @@ export default async function EmpresasAdminPage() {
                 <td className="px-3 py-2">{row.ativo ? "Sim" : "Não"}</td>
                 <td className="px-3 py-2">
                   <Link href={`/admin/empresas/${row.id}`} className="text-amber-600 hover:underline">
-                    Gerenciar
+                    Visualizar
                   </Link>
                 </td>
               </tr>

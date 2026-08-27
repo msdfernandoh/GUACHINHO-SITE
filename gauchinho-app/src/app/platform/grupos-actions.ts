@@ -139,6 +139,50 @@ export async function salvarGrupoPlatformAction(
   }
 }
 
+export type ReajusteCreditoPlatformInput = { id: string; valor_credito: number };
+
+export async function reajustarCreditosGrupoPlatformAction(
+  grupoId: string,
+  marcoMeses: number,
+  percentualReferencia: number,
+  creditos: ReajusteCreditoPlatformInput[],
+  observacao?: string,
+): Promise<{ ok: true; atualizados: number } | { ok: false; error: string }> {
+  try {
+    if (!(await isPlatformSuperadmin())) {
+      return { ok: false, error: "Somente Platform Superadmin pode reajustar créditos globais." };
+    }
+    if (!grupoId || marcoMeses < 12 || marcoMeses % 12 !== 0) {
+      return { ok: false, error: "Marco anual de reajuste inválido." };
+    }
+    if (!creditos.length || creditos.some((item) => !item.id || !Number.isFinite(item.valor_credito) || item.valor_credito <= 0)) {
+      return { ok: false, error: "Revise os valores de crédito antes de confirmar." };
+    }
+
+    const db = await createClient();
+    const { data, error } = await db.rpc("rpc_platform_reajustar_creditos_grupo", {
+      p_grupo_id: grupoId,
+      p_marco_meses: marcoMeses,
+      p_percentual_referencia: Number.isFinite(percentualReferencia) ? percentualReferencia : null,
+      p_creditos: creditos,
+      p_observacao: observacao?.trim() || null,
+    });
+    if (error) return { ok: false, error: error.message };
+
+    revalidatePath("/platform/grupos");
+    revalidatePath(`/platform/grupos/${grupoId}`);
+    revalidatePath("/admin/grupos");
+    revalidatePath("/erp/grupos");
+    revalidatePath("/grupos");
+    return {
+      ok: true,
+      atualizados: Number((data as { creditos_atualizados?: number } | null)?.creditos_atualizados ?? creditos.length),
+    };
+  } catch (error) {
+    return { ok: false, error: error instanceof Error ? error.message : "Falha ao reajustar créditos." };
+  }
+}
+
 export async function salvarEstatisticasGrupoAction(
   _previous: GroupActionState,
   formData: FormData,
