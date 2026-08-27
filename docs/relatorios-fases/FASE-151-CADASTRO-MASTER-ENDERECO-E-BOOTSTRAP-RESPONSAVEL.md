@@ -1,6 +1,6 @@
 # Fase 151 — Cadastro completo e bootstrap do responsável
 
-Data: 27/08/2026  
+Data: 27/08/2026
 Escopo: cadastro/onboarding de Master Franquia e convite do primeiro usuário responsável.
 
 ## Problemas corrigidos
