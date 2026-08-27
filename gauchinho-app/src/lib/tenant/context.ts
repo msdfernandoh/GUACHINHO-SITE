@@ -232,7 +232,6 @@ export async function requireTenantPermission(
   const context = await requireCurrentTenantContext();
   const isMasterUser =
     context.usuario.perfil === "master" ||
-    context.usuario.perfil === "admin" ||
     context.vinculoAtivo?.papel?.nome?.toLowerCase().includes("master") ||
     context.vinculoAtivo?.papel?.nome?.toLowerCase().includes("administrador") ||
     context.vinculoAtivo?.papel?.nome?.toLowerCase().includes("sócio") ||

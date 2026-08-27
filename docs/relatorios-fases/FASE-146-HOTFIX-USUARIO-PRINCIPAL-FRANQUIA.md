@@ -47,5 +47,9 @@ ativação do convite atualiza somente vínculos cuja identidade canônica possu
 - TypeScript sem erros;
 - ESLint sem erros;
 - build Next.js de produção concluído, incluindo `/definir-senha`;
+- incompatibilidade TypeScript paralela em `tenant/context.ts`, recebida da
+  `main` durante o rebase, corrigida removendo o perfil legado inexistente
+  `admin` (o perfil válido de administração continua `master` e o papel tenant
+  continua canônico em `empresa_usuarios`);
 - migration `145` aplicada no Supabase de Produção após confirmação de
   alinhamento remoto `001–144`.
