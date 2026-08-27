@@ -33,7 +33,7 @@ import {
   deleteEmpresaGrupoConfig,
 } from "@/lib/grupos/empresa-grupos-config";
 import type { GrupoModalidadeLance, GrupoConsorcio, PublicGrupoAggregate } from "@/lib/types";
-import { getCurrentTenantContext } from "@/lib/tenant/context";
+import { getCurrentTenantContext, requireTenantPermission } from "@/lib/tenant/context";
 
 const GRUPO_AUTO_PARCEL_COLS = [
   "parcelas_realizadas_base",
@@ -979,17 +979,12 @@ export async function popularGruposTesteAction(): Promise<{
 }
 
 export async function updateEmpresaGrupoConfigAction(formData: FormData) {
-  const usuario = await requireUsuario();
-  const leadsConfig = await getConfigJson("leads", DEFAULT_LEADS);
-
-  if (!canManageGrupos(usuario.perfil, leadsConfig.srdPodeEditarGrupos)) {
-    throw new Error("Sem permissão para alterar a configuração comercial local de grupos.");
-  }
-
-  const empresaId = (formData.get("empresa_id") as string)?.trim();
+  const { empresaAtiva } = await requireTenantPermission("gerenciar_grupos");
+  const empresaIdInformada = (formData.get("empresa_id") as string)?.trim();
+  const empresaId = empresaAtiva.id;
   const grupoId = (formData.get("grupo_id") as string)?.trim();
 
-  if (!empresaId || !grupoId) {
+  if (!grupoId || (empresaIdInformada && empresaIdInformada !== empresaId)) {
     throw new Error("Identificadores de empresa e grupo são obrigatórios.");
   }
 
@@ -1015,17 +1010,12 @@ export async function updateEmpresaGrupoConfigAction(formData: FormData) {
 }
 
 export async function resetEmpresaGrupoConfigAction(formData: FormData) {
-  const usuario = await requireUsuario();
-  const leadsConfig = await getConfigJson("leads", DEFAULT_LEADS);
-
-  if (!canManageGrupos(usuario.perfil, leadsConfig.srdPodeEditarGrupos)) {
-    throw new Error("Sem permissão para restaurar a configuração padrão comercial de grupos.");
-  }
-
-  const empresaId = (formData.get("empresa_id") as string)?.trim();
+  const { empresaAtiva } = await requireTenantPermission("gerenciar_grupos");
+  const empresaIdInformada = (formData.get("empresa_id") as string)?.trim();
+  const empresaId = empresaAtiva.id;
   const grupoId = (formData.get("grupo_id") as string)?.trim();
 
-  if (!empresaId || !grupoId) {
+  if (!grupoId || (empresaIdInformada && empresaIdInformada !== empresaId)) {
     throw new Error("Identificadores de empresa e grupo são obrigatórios.");
   }
 

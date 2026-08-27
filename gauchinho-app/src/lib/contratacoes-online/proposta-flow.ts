@@ -5,6 +5,10 @@ import { assertDadosSimulacaoGruposAutorizadosForEmpresa } from "@/lib/grupos/ca
 import { DEFAULT_CONTRATACAO_ONLINE_CONFIG, pixConfigValida } from "./pagamento";
 import { getConfigJsonPublic } from "@/server/config";
 import { extrairCamposFlat } from "./extract-fields";
+import {
+  assertSnapshotCalculoGruposIntegro,
+  canonicalizarDadosSimulacaoGrupos,
+} from "./snapshot-calculo-grupos";
 import { generatePublicToken } from "./public-token";
 import { parseEnderecoContratacao } from "./endereco";
 import { sanitizeCnpj, sanitizeCpf, sanitizeTelefone, validarCnpj, validarCpf, validarEmail } from "./validacao";
@@ -142,10 +146,11 @@ export async function criarPropostaDoFluxo(input: {
   if (!consultorId) throw new Error("Selecione o consultor responsável pela proposta.");
   await assertConsultorDoTenant(admin, input.empresaId, consultorId);
 
-  if (input.draft.origem === "grupos") {
-    await assertDadosSimulacaoGruposAutorizadosForEmpresa(input.empresaId, input.draft.dados_simulacao);
-  }
-  const flat = extrairCamposFlat(input.draft.origem, input.draft.dados_simulacao);
+  const dadosSimulacao =
+    input.draft.origem === "grupos"
+      ? await canonicalizarDadosSimulacaoGrupos(input.empresaId, input.draft.dados_simulacao)
+      : input.draft.dados_simulacao;
+  const flat = extrairCamposFlat(input.draft.origem, dadosSimulacao);
   for (let attempt = 0; attempt < 5; attempt++) {
     const token = generatePublicToken();
     const { data, error } = await admin.from("propostas").insert({
@@ -160,7 +165,7 @@ export async function criarPropostaDoFluxo(input: {
       valor_credito: flat.credito_selecionado,
       valor_parcela: flat.parcela_estimada,
       prazo: flat.prazo,
-      dados_simulacao: input.draft.dados_simulacao,
+      dados_simulacao: dadosSimulacao,
       consultor_nome: consultorNome,
       consultor_email: consultorEmail,
       status: "Gerada",
@@ -286,7 +291,10 @@ export async function finalizarPropostaEmContratacao(token: string, empresaId: s
   if (fill.tipo_pessoa === "cnpj" && (!validarCnpj(sanitizeCnpj(String(fill.cnpj ?? ""))) || !validarCpf(sanitizeCpf(String(fill.responsavel_cpf ?? ""))))) throw new Error("Dados da pessoa jurídica inválidos.");
   parseEnderecoContratacao(fill);
   if (!fill.forma_pagamento) throw new Error("Selecione a forma de pagamento.");
-  if (proposal.origem_contratacao === "grupos") await assertDadosSimulacaoGruposAutorizadosForEmpresa(empresaId, proposal.dados_simulacao);
+  if (proposal.origem_contratacao === "grupos") {
+    await assertDadosSimulacaoGruposAutorizadosForEmpresa(empresaId, proposal.dados_simulacao);
+    assertSnapshotCalculoGruposIntegro(proposal.dados_simulacao);
+  }
   const { data: docs, error: docsError } = await admin
     .from("propostas_documentos")
     .select("arquivo_url,tamanho_bytes")

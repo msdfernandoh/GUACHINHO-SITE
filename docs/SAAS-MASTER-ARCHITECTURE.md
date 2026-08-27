@@ -4,11 +4,11 @@
 > **ESTADO-ALVO E CORREÇÕES OBRIGATÓRIAS**
 > Antes de alterar tenancy, usuários, catálogo, sites, comissões, financeiro, Storage, RPCs ou migrations, leia também integralmente [`SAAS-ARQUITETURA-ALVO-E-PLANO-DE-CORRECAO.md`](./SAAS-ARQUITETURA-ALVO-E-PLANO-DE-CORRECAO.md). O documento descreve o estado-alvo e o plano de remediação; seus itens não devem ser interpretados como já implantados sem evidência no banco e no código.
 
-> **Versão da Arquitetura:** 6.9.0
+> **Versão da Arquitetura:** 7.0.0
 > **Data de Atualização:** 26/08/2026
-> **Production code:** Fase 139 publicada em `main@23eaa3e`; Supabase principal `eaeuoynprurmmulzhydt` alinhado de `001–137`.
+> **Production code:** Fase 144 pronta para publicação em `main`; Supabase principal `eaeuoynprurmmulzhydt` alinhado de `001–138`.
 > **Preview/isolado desta fase:** a branch `bwwgbmiwtrglbtxsdooi` permanece preservada como evidência de homologação da 083 até autorização separada de exclusão.
-> **Fase atual:** fluxo site→contratação→ERP e matriz de autorizações auditados; decisão de restringir o Admin do site à apresentação local definida, ainda sem alteração de schema/runtime; baseline local/remoto continua em `001–137`.
+> **Fase atual:** site recalcula a proposta no servidor e congela o snapshot comercial; ERP preserva a condição aceita e formaliza somente UUIDs, cota real, participantes e comissões; Admin da franquia não edita estrutura global.
 > **Vercel Production:** deployment da Fase 140 `dpl_HkF4FVmGHxBbXz4RY83ApJwB5sqx` está `READY` e atende os domínios público, `www` e Platform.
 > **Segurança:** o Platform Host continua global, sem fallback de tenant, e exige `is_platform_superadmin()`.
 
@@ -723,6 +723,28 @@ tenant-aware e negar por padrão.
 
 Relatório:
 `docs/relatorios-fases/FASE-143-FLUXO-CONTRATACAO-CATALOGO-E-PERMISSOES.md`.
+
+## 22. Snapshot comercial imutável do site e formalização ERP — Fase 144
+
+O site permanece como origem do cálculo completo de crédito, parcela, seguro,
+lances e pós-contemplação. A criação da proposta passou a repetir o cálculo no
+servidor com o mesmo motor TypeScript e o catálogo autorizado, descartando
+resultados financeiros enviados pelo navegador. O snapshot persistido recebe
+versão, data, origem, imutabilidade e hash SHA-256.
+
+O ERP confere a assinatura, preserva crédito/parcela aceitos e bloqueia a troca
+de grupo/produto nas propostas novas. Modalidade, perfil e cronograma no ERP são
+exclusivamente referências para o motor de comissão. A migration 138 removeu a
+tabela N:N de parcelas por modalidade como fonte da venda e impediu que uma
+venda altere o catálogo global compartilhado.
+
+O editor estrutural antigo de produtos foi ocultado para não-Superadmin. A
+franquia mantém somente configuração de apresentação local e essa escrita exige
+`gerenciar_grupos`, usando obrigatoriamente o tenant ativo da sessão. O Supabase
+principal está alinhado em `001–138`.
+
+Relatório:
+`docs/relatorios-fases/FASE-144-SNAPSHOT-COMERCIAL-SITE-ERP-E-PERMISSOES.md`.
 
 
 

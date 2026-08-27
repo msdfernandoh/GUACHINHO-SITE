@@ -6,6 +6,7 @@ import { requireTenantPermission } from "@/lib/tenant/context";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { converterContratacaoEmVenda } from "@/lib/vendas/vendas-service";
+import { assertSnapshotCalculoGruposIntegro } from "@/lib/contratacoes-online/snapshot-calculo-grupos";
 
 function value(formData: FormData, key: string) {
   return String(formData.get(key) ?? "").trim();
@@ -46,6 +47,9 @@ export async function formalizarContratacaoAction(formData: FormData) {
       .eq("id", contratacaoId).eq("empresa_id", empresaAtiva.id).maybeSingle();
     if (contratacaoError || !contratacao) throw new Error(contratacaoError?.message || "Contratação não encontrada.");
     if (!contratacao.contrato_assinado) throw new Error("Contrato ainda não foi assinado.");
+    assertSnapshotCalculoGruposIntegro(
+      (contratacao.dados_simulacao ?? {}) as Record<string, unknown>,
+    );
     if (!(contratacao.cpf || contratacao.cnpj) || !contratacao.nome || !contratacao.telefone || !contratacao.email) throw new Error("Cliente incompleto: nome, documento, telefone e e-mail são obrigatórios.");
     const { count: documentos, error: documentosError } = await admin.from("contratacoes_documentos").select("id", { count: "exact", head: true }).eq("contratacao_id", contratacaoId);
     if (documentosError) throw new Error(documentosError.message);

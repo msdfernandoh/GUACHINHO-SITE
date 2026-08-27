@@ -103,6 +103,9 @@ interface FormalizacaoVendaFormProps {
   initialCronogramaSecundario?: string | null;
   initialSecundarioId: string | null;
   initialFracaoSecundario: number | null;
+  creditoAceito: number;
+  parcelaAceita: number;
+  condicaoComercialCongelada: boolean;
 }
 
 const brl = (val: number) =>
@@ -129,6 +132,9 @@ export function FormalizacaoVendaForm({
   initialCronogramaSecundario,
   initialSecundarioId,
   initialFracaoSecundario,
+  creditoAceito,
+  parcelaAceita,
+  condicaoComercialCongelada,
 }: FormalizacaoVendaFormProps) {
   const [isPending, startTransition] = useTransition();
 
@@ -168,7 +174,7 @@ export function FormalizacaoVendaForm({
     [cotasDisponiveis, selectedCotaId]
   );
 
-  const valorCredito = cotaAtual?.valor_credito || 0;
+  const valorCredito = creditoAceito > 0 ? creditoAceito : cotaAtual?.valor_credito || 0;
   const prazoTotal = grupoAtual?.prazo_total || 0;
   const prazoRestante = grupoAtual?.prazo_restante || 0;
 
@@ -245,8 +251,7 @@ export function FormalizacaoVendaForm({
         id: modalidade.id,
         codigo: modalidade.codigo,
         nome: modalidade.nome,
-        descricao: `${brl(modalidade.valor_parcela)} por parcela${etapasCount ? ` · ${etapasCount} etapas de comissão` : ""}`,
-        valorParcela: modalidade.valor_parcela,
+        descricao: `${etapasCount ? `${etapasCount} etapas de comissão` : "Cronograma da comissão"}`,
         percentualReferencia: percentualRef,
         etapasCount,
         badge,
@@ -260,7 +265,7 @@ export function FormalizacaoVendaForm({
     return modalidadesOpcoes.find((m) => m.id === selectedModalidadeId) || null;
   }, [modalidadesOpcoes, selectedModalidadeId]);
 
-  const valorParcela = modalidadeAtiva?.valorParcela || 0;
+  const valorParcela = parcelaAceita;
 
   const percentualFranqueadoraEfetivo = useMemo(() => {
     return modalidadeAtiva?.percentualReferencia ?? 0;
@@ -336,7 +341,7 @@ export function FormalizacaoVendaForm({
           2. Dados comerciais e comissionamento da venda
         </h2>
         <p className="text-xs text-slate-500">
-          Defina o grupo, produto, tipo de venda (integral/reduzida), consultor principal, divisão com SDR e datas das parcelas.
+          Confira a condição aceita no site e defina somente comissão, consultores, divisão com SDR e datas de recebimento.
         </p>
       </div>
 
@@ -346,8 +351,9 @@ export function FormalizacaoVendaForm({
           Grupo Canônico
           <select
             required
-            name="grupo_id"
+            name={condicaoComercialCongelada ? undefined : "grupo_id"}
             value={selectedGrupoId}
+            disabled={condicaoComercialCongelada}
             onChange={(e) => {
               setSelectedGrupoId(e.target.value);
               setSelectedCotaId("");
@@ -362,14 +368,17 @@ export function FormalizacaoVendaForm({
               </option>
             ))}
           </select>
+          {condicaoComercialCongelada ? <input type="hidden" name="grupo_id" value={selectedGrupoId} /> : null}
+          {condicaoComercialCongelada ? <span className="mt-1 block text-[10px] normal-case text-emerald-700">Condição aceita no site — bloqueada para edição</span> : null}
         </label>
 
         <label className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
           Produto / Cota Comercial
           <select
             required
-            name="opcao_cota_id"
+            name={condicaoComercialCongelada ? undefined : "opcao_cota_id"}
             value={selectedCotaId}
+            disabled={condicaoComercialCongelada}
             onChange={(e) => {
               setSelectedCotaId(e.target.value);
               setSelectedModalidadeId("");
@@ -383,6 +392,7 @@ export function FormalizacaoVendaForm({
               </option>
             ))}
           </select>
+          {condicaoComercialCongelada ? <input type="hidden" name="opcao_cota_id" value={selectedCotaId} /> : null}
         </label>
 
         <label className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
@@ -429,13 +439,13 @@ export function FormalizacaoVendaForm({
         </label>
       </div>
 
-      {/* BLOCO EXCLUSIVO: TIPO DE VENDA / MODALIDADE DA PARCELA */}
+      {/* Modalidade comercial define somente a regra/cronograma de comissão. */}
       <div className="rounded-2xl border border-indigo-200 bg-indigo-50/40 p-4.5 dark:border-indigo-900/40 dark:bg-indigo-950/20 space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             <Sparkles className="h-4 w-4 text-indigo-700 dark:text-indigo-400" />
             <h3 className="text-xs font-extrabold uppercase tracking-wider text-indigo-950 dark:text-indigo-200">
-              Tipo de Venda & Modalidade da Parcela (Define o Percentual de Comissão)
+              Modelo comercial da comissão
             </h3>
           </div>
           <div className="flex items-center gap-2">
@@ -494,7 +504,7 @@ export function FormalizacaoVendaForm({
         </div>
         {selectedCotaId && modalidadesOpcoes.length === 0 && (
           <p className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-xs font-semibold text-amber-900">
-            Este crédito não possui modalidade com valor de parcela homologado. Ajuste o catálogo antes de formalizar.
+            Não existe modelo de comissão homologado para esta administradora. Ajuste as regras antes de formalizar.
           </p>
         )}
 
@@ -697,6 +707,7 @@ export function FormalizacaoVendaForm({
           <div className="rounded-xl bg-white p-3 shadow-2xs dark:bg-slate-800">
             <p className="text-[11px] font-semibold text-slate-500">Crédito da Cota</p>
             <p className="text-base font-black text-slate-900 dark:text-white">{brl(calculo.valorCredito)}</p>
+            <p className="text-[10px] font-semibold text-emerald-700">Parcela aceita: {valorParcela > 0 ? brl(valorParcela) : "—"}</p>
             <p className="text-[10px] text-slate-400">
               {prazoRestante} parcelas restantes de {prazoTotal} originais
             </p>
@@ -744,7 +755,7 @@ export function FormalizacaoVendaForm({
           3. Resumo da Venda
         </h3>
         <p className="mt-2 text-xs text-slate-700 dark:text-slate-300">
-          Cliente: <strong>{clienteNome}</strong> · Grupo: <strong>{grupoAtual ? `Grupo ${grupoAtual.codigo_grupo}` : "não selecionado"}</strong> · Tipo: <strong>{modalidadeAtiva?.nome || "não selecionado"}</strong> · Crédito: <strong>{brl(valorCredito)}</strong> · Parcela: <strong>{valorParcela ? brl(valorParcela) : "não selecionada"}</strong> · Prazo: <strong>{prazoRestante}/{prazoTotal}</strong> · Forma de pagamento: <strong>{formaPagamento || "Boleto"}</strong>
+          Cliente: <strong>{clienteNome}</strong> · Grupo: <strong>{grupoAtual ? `Grupo ${grupoAtual.codigo_grupo}` : "não selecionado"}</strong> · Modelo de comissão: <strong>{modalidadeAtiva?.nome || "não selecionado"}</strong> · Crédito aceito: <strong>{brl(valorCredito)}</strong> · Parcela aceita no site: <strong>{valorParcela ? brl(valorParcela) : "não informada"}</strong> · Prazo: <strong>{prazoRestante}/{prazoTotal}</strong> · Forma de pagamento: <strong>{formaPagamento || "Boleto"}</strong>
         </p>
       </div>
 

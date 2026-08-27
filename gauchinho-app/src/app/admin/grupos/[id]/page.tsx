@@ -28,7 +28,7 @@ export default async function GrupoEditPage({
 }) {
   const { id } = await params;
   const sp = await searchParams;
-  const { usuario, empresaAtiva } = await getCurrentTenantContext();
+  const { usuario, empresaAtiva, permissoes } = await getCurrentTenantContext();
   const isSuper = await isPlatformSuperadmin();
 
   let data;
@@ -103,7 +103,7 @@ export default async function GrupoEditPage({
 
       <h1 className="text-2xl font-bold">Grupo {data.grupo.codigo_grupo}</h1>
 
-      {empresaId ? (
+      {empresaId && permissoes.has("gerenciar_grupos") ? (
         <GrupoEmpresaConfigSection
           empresaId={empresaId}
           grupoId={id}
@@ -129,12 +129,42 @@ export default async function GrupoEditPage({
         </form>
       ) : null}
 
-      <GrupoCotasAdmin
-        grupoId={id}
-        grupo={data.grupo as GrupoConsorcio}
-        cotas={data.cotas}
-        canHardDelete={isSuper && canDeleteRecords(usuario?.perfil)}
-      />
+      {isSuper ? (
+        <GrupoCotasAdmin
+          grupoId={id}
+          grupo={data.grupo as GrupoConsorcio}
+          cotas={data.cotas}
+          canHardDelete={canDeleteRecords(usuario?.perfil)}
+        />
+      ) : (
+        <section className="rounded-xl border border-zinc-200 bg-white p-6 dark:border-zinc-700 dark:bg-zinc-900/90">
+          <h2 className="text-lg font-bold text-zinc-900 dark:text-zinc-50">
+            Produtos e regras oficiais (somente leitura)
+          </h2>
+          <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+            O SaaS publica crédito, prazo, taxas e regras do grupo. O site aplica o motor de cálculo oficial
+            e congela os valores aceitos na proposta; o ERP não recalcula nem altera essa condição.
+          </p>
+          <div className="mt-4 overflow-x-auto">
+            <table className="w-full text-left text-sm">
+              <thead className="text-xs uppercase text-zinc-500">
+                <tr><th className="py-2">Crédito</th><th className="py-2">Status</th><th className="py-2">Uso</th></tr>
+              </thead>
+              <tbody>
+                {data.cotas.map((cota) => (
+                  <tr key={cota.id} className="border-t border-zinc-100 dark:border-zinc-800">
+                    <td className="py-2 font-medium">
+                      {Number(cota.valor_credito).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                    </td>
+                    <td className="py-2">{cota.status}</td>
+                    <td className="py-2 text-zinc-500">Cálculo realizado no site</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
     </div>
   );
 }

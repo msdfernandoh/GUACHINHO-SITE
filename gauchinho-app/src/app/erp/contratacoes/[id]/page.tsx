@@ -96,6 +96,7 @@ export default async function ConferirContratacaoPage({
     documentosResult,
     historicoResult,
     regrasFranquiaResult,
+    modalidadesComissaoResult,
   ] = await Promise.all([
     admin
       .from("contratacoes_online")
@@ -151,6 +152,12 @@ export default async function ConferirContratacaoPage({
       .eq("configuracao_homologada", true)
       .lte("vigencia_inicio", hoje)
       .or(`vigencia_fim.is.null,vigencia_fim.gte.${hoje}`),
+    admin
+      .from("administradora_modalidades_comissao")
+      .select("id,administradora_id,codigo,nome,ativo")
+      .in("administradora_id", administradorasPermitidas.length ? administradorasPermitidas : ["00000000-0000-0000-0000-000000000000"])
+      .eq("ativo", true)
+      .order("ordem"),
   ]);
 
   if (contratacaoResult.error || !contratacaoResult.data) notFound();
@@ -160,15 +167,20 @@ export default async function ConferirContratacaoPage({
   const cota = relation<{ id: string; numero_cota: string | null; status: string }>(venda?.cotas_definitivas);
   const formalizada = Boolean(venda?.id && cota?.id);
 
+  const modalidadesComissao = (modalidadesComissaoResult.data ?? []) as Array<Record<string, any>>;
   const grupos = ((gruposResult.data ?? []) as Array<Record<string, any>>)
-    .filter((grupo) => !gruposOcultos.has(String(grupo.id)))
+    .filter((grupo) => !gruposOcultos.has(String(grupo.id)) || String(grupo.id) === c.grupo_id)
     .map((grupo) => {
       const prazo = calcularPrazoGrupoFromRow(grupo as any);
-      const modalidadesAtivas = new Set(
-        ((grupo.grupos_modalidades_disponiveis ?? []) as Array<Record<string, any>>)
-          .filter((item) => item.ativo !== false)
-          .map((item) => String(item.administradora_modalidade_id)),
-      );
+      const modalidadesDaAdministradora = modalidadesComissao
+        .filter((modalidade) => String(modalidade.administradora_id) === String(grupo.administradora_id))
+        .map((modalidade) => ({
+          id: String(modalidade.id),
+          codigo: String(modalidade.codigo),
+          nome: String(modalidade.nome),
+          valor_parcela: 0,
+          percentual_reducao: null,
+        }));
       const gruposCotas = ((grupo.grupos_cotas ?? []) as Array<Record<string, any>>)
         .filter((produto) => produto.ativo !== false && !["inativo", "esgotado"].includes(String(produto.status ?? "").toLowerCase()))
         .map((produto) => ({
@@ -177,20 +189,7 @@ export default async function ConferirContratacaoPage({
           ativo: produto.ativo !== false,
           status: produto.status == null ? undefined : String(produto.status),
           grupo_codigo: String(grupo.codigo_grupo),
-          modalidades: ((produto.grupo_cota_modalidade_valores ?? []) as Array<Record<string, any>>)
-            .filter((valor) => valor.ativo !== false && valor.habilitado !== false && modalidadesAtivas.has(String(valor.administradora_modalidade_id)))
-            .map((valor) => {
-              const modalidade = relation<{ id: string; codigo: string; nome: string; ativo: boolean }>(valor.modalidade);
-              if (!modalidade?.id || modalidade.ativo === false) return null;
-              return {
-                id: modalidade.id,
-                codigo: modalidade.codigo,
-                nome: modalidade.nome,
-                valor_parcela: Number(valor.valor_parcela),
-                percentual_reducao: valor.percentual_reducao == null ? null : Number(valor.percentual_reducao),
-              };
-            })
-            .filter((modalidade): modalidade is NonNullable<typeof modalidade> => modalidade !== null),
+          modalidades: modalidadesDaAdministradora,
         }))
         .filter((produto) => produto.modalidades.length > 0);
 
@@ -227,6 +226,8 @@ export default async function ConferirContratacaoPage({
     c.participante_comercial_id && participantes.some((participante) => participante.id === c.participante_comercial_id)
       ? c.participante_comercial_id
       : "";
+  const snapshotCalculo = (c.dados_simulacao as any)?.snapshot_calculo;
+  const condicaoComercialCongelada = Boolean(snapshotCalculo?.hash_sha256 && snapshotCalculo?.imutavel);
 
   return (
     <div className="mx-auto max-w-7xl space-y-6 pb-12">
@@ -352,6 +353,9 @@ export default async function ConferirContratacaoPage({
         initialCronogramaSecundario={(c.dados_simulacao as any)?.cronograma_secundario || "SEGUIR_PRINCIPAL"}
         initialSecundarioId={c.participante_secundario_id}
         initialFracaoSecundario={c.participante_secundario_fracao_percentual}
+        creditoAceito={Number(c.credito_selecionado ?? (c.dados_simulacao as any)?.valor_credito ?? 0)}
+        parcelaAceita={Number(c.parcela_estimada ?? (c.dados_simulacao as any)?.valor_parcela ?? 0)}
+        condicaoComercialCongelada={condicaoComercialCongelada}
       />
 
       <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs dark:border-slate-800 dark:bg-slate-900">

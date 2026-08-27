@@ -17,10 +17,12 @@ describe("formalização — produto, modalidade e prazo separados", () => {
     expect(fields).toContain("Crédito de {brl(Number(o.valor_credito))}");
   });
 
-  it("modalidade escolhida altera a parcela exibida", () => {
+  it("modalidade escolhida altera somente a regra de comissão e preserva a parcela aceita", () => {
     expect(fields).toContain('type="radio"');
     expect(fields).toContain('name="modalidade_comissao_id"');
-    expect(fields).toContain("brl(modalidade.valor_parcela)");
+    expect(fields).toContain("const valorParcela = parcelaAceita");
+    expect(fields).toContain("Parcela aceita no site");
+    expect(fields).not.toContain("brl(modalidade.valor_parcela)");
     expect(fields).toContain("setSelectedModalidadeId(m.id)");
   });
 
