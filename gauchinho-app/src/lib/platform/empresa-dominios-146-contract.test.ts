@@ -8,6 +8,7 @@ const migration = fs.readFileSync(path.join(repoRoot, "supabase/migrations/146_e
 const actions = fs.readFileSync(path.join(appRoot, "src/app/platform/dominios-actions.ts"), "utf8");
 const client = fs.readFileSync(path.join(appRoot, "src/app/platform/dominios/client.tsx"), "utf8");
 const cron = fs.readFileSync(path.join(appRoot, "src/app/api/cron/dominios/route.ts"), "utf8");
+const proxy = fs.readFileSync(path.join(appRoot, "src/proxy.ts"), "utf8");
 
 describe("Fase 147 — ciclo operacional de domínio tenant", () => {
   it("persiste estados separados de Vercel, DNS e SSL", () => {
@@ -33,5 +34,7 @@ describe("Fase 147 — ciclo operacional de domínio tenant", () => {
     expect(cron).toContain("process.env.CRON_SECRET");
     expect(cron).toContain('.eq("verificado", false)');
     expect(cron).toContain("Promise.allSettled");
+    expect(proxy).toContain('if (path.startsWith("/api/cron"))');
+    expect(proxy).toContain("return NextResponse.next");
   });
 });

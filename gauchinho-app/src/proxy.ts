@@ -90,6 +90,14 @@ export async function proxy(request: NextRequest) {
   }
 
   const skipTenant = skipsTenantGate(path);
+
+  // Cron jobs não usam sessão de usuário. Cada rota /api/cron valida o segredo
+  // Bearer antes de executar; portanto ela precisa chegar à própria route handler
+  // inclusive no host da Platform, sem ser desviada para /login.
+  if (path.startsWith("/api/cron")) {
+    return NextResponse.next({ request: { headers: requestHeaders } });
+  }
+
   let tenantSlug: string | null = null;
   let tenantOperationalEnabled = false;
   let platformHost = isPlatformHost(request.headers.get("host"));

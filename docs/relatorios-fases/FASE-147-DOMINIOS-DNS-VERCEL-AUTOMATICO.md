@@ -38,6 +38,10 @@ não são mais exibidas como se fossem cumulativas.
 7. O domínio só recebe `verificado = true` quando DNS e certificado HTTPS estão
    efetivamente disponíveis.
 
+O proxy libera `/api/cron/*` da autenticação interativa e da resolução de tenant;
+cada endpoint continua negando a execução sem seu `CRON_SECRET` no cabeçalho
+Bearer. Isso evita redirecionamento indevido ao login sem tornar o cron público.
+
 Os estados `status_vercel`, `status_dns` e `status_ssl` são independentes e a
 última verificação, registros encontrados e erro ficam persistidos para suporte.
 
