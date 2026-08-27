@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
         statusVercel = "ADICIONADO";
         const config = await client.getDomainConfig(dominio.valor);
         if (config.ok) {
-          const isSubdominio = dominio.tipo === "SUBDOMINIO" || dominio.valor.split(".").length > 2;
+          const isSubdominio = dominio.tipo === "SUBDOMINIO";
           registrosRecomendados = dnsRegistrosPreferenciaisFromVercelConfig(
             config.data,
             dominio.valor,

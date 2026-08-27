@@ -158,11 +158,11 @@ export function DominiosListingClient({
       {/* Card Informativo de Apontamento DNS */}
       <div className="rounded-2xl border border-cyan-200 bg-cyan-50 p-4 text-xs text-slate-700 dark:border-cyan-900 dark:bg-cyan-950 dark:text-slate-300 space-y-2">
         <h3 className="font-bold text-cyan-950 dark:text-cyan-200">Fluxo simplificado de domínio</h3>
-        <p><strong>1.</strong> Cadastre o domínio. <strong>2.</strong> Copie o único apontamento exibido para o provedor DNS. <strong>3.</strong> O sistema verifica DNS e HTTPS automaticamente; também é possível clicar em “Verificar agora”.</p>
+        <p><strong>1.</strong> Cadastre o domínio. <strong>2.</strong> Confirme que ele foi aceito no projeto Vercel. <strong>3.</strong> No Registro.br, use os servidores DNS da Vercel mostrados pelo sistema. <strong>4.</strong> Clique em “Verificar agora”.</p>
         <p>
-          <strong>Status da automação Vercel:</strong>{" "}
+          <strong>Credenciais da automação Vercel:</strong>{" "}
           <span className={automacaoVercelDisponivel ? "font-bold text-emerald-700" : "font-bold text-amber-700"}>
-            {automacaoVercelDisponivel ? "Conectada" : "Credencial pendente — o DNS pode ser conferido, mas novos domínios precisam ser adicionados manualmente ao projeto"}
+            {automacaoVercelDisponivel ? "configuradas — o resultado de cada domínio aparece em seu próprio status" : "pendentes — novos domínios precisam ser adicionados manualmente ao projeto"}
           </span>
         </p>
         <p>
@@ -381,7 +381,32 @@ export function DominiosListingClient({
             </section>
 
             <section className="rounded-xl border border-cyan-200 bg-cyan-50 p-4">
-              <h4 className="font-extrabold text-cyan-950">Registros para copiar no provedor DNS</h4>
+              <h4 className="font-extrabold text-cyan-950">Configuração recomendada no Registro.br</h4>
+              {modalEditar.tipo !== "SUBDOMINIO" ? (
+                <div className="mt-3 space-y-3 text-slate-700">
+                  <div className={`rounded-lg border p-3 ${modalEditar.status_vercel === "ADICIONADO" ? "border-emerald-300 bg-emerald-50" : "border-amber-300 bg-amber-50"}`}>
+                    <strong className="block">Antes de alterar o DNS</strong>
+                    <span>
+                      {modalEditar.status_vercel === "ADICIONADO"
+                        ? "O domínio foi aceito no projeto Vercel. A troca dos servidores DNS pode ser feita."
+                        : "Ainda não altere os servidores DNS. Resolva primeiro o status Vercel acima e clique em Verificar DNS agora."}
+                    </span>
+                  </div>
+                  <ol className="list-decimal space-y-1 pl-5">
+                    <li>No Registro.br, abra <strong>Alterar servidores DNS</strong>.</li>
+                    <li>Em Servidor 1, informe <code className="font-bold">ns1.vercel-dns.com</code>.</li>
+                    <li>Em Servidor 2, informe <code className="font-bold">ns2.vercel-dns.com</code>.</li>
+                    <li>Salve e aguarde a propagação, que pode levar até 48 horas.</li>
+                  </ol>
+                  <p className="rounded-lg bg-white p-3">
+                    <strong>Importante:</strong> com essa opção, não é necessário usar “Configurar endereçamento” no Registro.br. Se o domínio usa e-mail, copie antes os registros MX, TXT e demais entradas para o DNS da Vercel.
+                  </p>
+                </div>
+              ) : (
+                <p className="mt-2 text-slate-700">Como este endereço é um subdomínio, mantenha o DNS principal e cadastre o CNAME abaixo em “Configurar endereçamento”.</p>
+              )}
+              <details className="mt-3 rounded-lg bg-white p-3">
+                <summary className="cursor-pointer font-bold text-cyan-900">Ver apontamentos técnicos usados na conferência</summary>
               <div className="mt-3 space-y-2">
                 {(modalEditar.dns_instrucoes?.registros_esperados ?? []).map((registro, index) => (
                   <div key={`${registro.tipo}-${index}`} className="grid grid-cols-[70px_1fr_2fr] gap-2 rounded-lg bg-white p-3 font-mono">
@@ -389,6 +414,7 @@ export function DominiosListingClient({
                   </div>
                 ))}
               </div>
+              </details>
               {modalEditar.ultima_mensagem_erro ? <p className="mt-3 rounded bg-amber-100 p-2 text-amber-900">{modalEditar.ultima_mensagem_erro}</p> : null}
               <p className="mt-2 text-slate-600">Última verificação: {modalEditar.ultima_verificacao_em ? new Date(modalEditar.ultima_verificacao_em).toLocaleString("pt-BR") : "ainda não executada"}</p>
             </section>
@@ -416,7 +442,7 @@ export function DominiosListingClient({
               <div className="flex flex-wrap gap-5">
                 <label className="flex items-center gap-2 font-bold"><input type="checkbox" name="principal" value="true" defaultChecked={modalEditar.principal} /> Principal</label>
                 <label className="flex items-center gap-2 font-bold"><input type="checkbox" name="ativo" value="true" defaultChecked={modalEditar.ativo} /> Ativo</label>
-                {!automacaoVercelDisponivel ? <label className="flex items-center gap-2 font-bold"><input type="checkbox" name="confirmar_vercel" value="true" defaultChecked={modalEditar.status_vercel === "ADICIONADO"} /> Já adicionado ao projeto Vercel</label> : null}
+                {modalEditar.status_vercel !== "ADICIONADO" ? <label className="flex items-center gap-2 font-bold"><input type="checkbox" name="confirmar_vercel" value="true" /> Confirmei manualmente que está no projeto Vercel</label> : null}
               </div>
               <div className="flex justify-end gap-2 border-t pt-4">
                 <button type="button" onClick={() => setModalEditar(null)} className="rounded-lg border px-4 py-2 font-bold">Cancelar</button><button type="submit" disabled={isPendingEditar} className="rounded-lg bg-cyan-700 px-4 py-2 font-bold text-white">{isPendingEditar ? "Salvando..." : "Salvar alterações"}</button>

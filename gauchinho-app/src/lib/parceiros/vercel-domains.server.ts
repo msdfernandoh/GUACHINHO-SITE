@@ -101,15 +101,22 @@ function sanitizeErrorMessage(raw: unknown, status?: number): { error: string; c
     const o = raw as { error?: { code?: string; message?: string }; code?: string; message?: string };
     const code = o.error?.code ?? o.code;
     const message = o.error?.message ?? o.message;
-    if (code === "domain_already_in_use") {
+    const normalizedMessage = typeof message === "string" ? message.toLowerCase() : "";
+    if (
+      code === "domain_already_in_use" ||
+      normalizedMessage.includes("already assigned to another project")
+    ) {
       return {
-        code,
+        code: code ?? "domain_already_in_use",
         error:
-          "Domínio já pertence a outro projeto Vercel. Registro local marcado como ERRO — sem transferência automática.",
+          "Este domínio já está vinculado a outro projeto ou conta Vercel. Remova-o do projeto anterior e depois clique em Verificar DNS agora; a transferência nunca é automática.",
       };
     }
     if (code === "forbidden" || status === 403) {
-      return { code: code ?? "forbidden", error: "Sem permissão na API Vercel para este projeto." };
+      return {
+        code: code ?? "forbidden",
+        error: "A credencial Vercel foi encontrada, mas não tem acesso ao projeto configurado. Confira token, equipe e VERCEL_PROJECT_ID.",
+      };
     }
     if (typeof message === "string" && message.trim()) {
       // Nunca ecoar tokens; mensagens da API são técnicas e seguras.

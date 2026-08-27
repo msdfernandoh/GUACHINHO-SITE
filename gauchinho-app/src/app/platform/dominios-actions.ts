@@ -17,12 +17,38 @@ export type PlatformFormState = {
 };
 
 function instrucoesDnsPadrao(valor: string, tipo: string) {
+  const isSubdominio = tipo === "SUBDOMINIO";
   return {
-    registros_esperados:
-      tipo === "SUBDOMINIO" || valor.split(".").length > 2
-        ? [{ tipo: "CNAME", host: valor, valor: VERCEL_CNAME, origem: "padrao_vercel" }]
-        : [{ tipo: "A", host: "@", valor: VERCEL_APEX_IP, origem: "padrao_vercel" }],
-    nota: "Cadastre estes registros no provedor onde o DNS do domínio é administrado.",
+    registros_esperados: isSubdominio
+      ? [{ tipo: "CNAME", host: valor, valor: VERCEL_CNAME, origem: "padrao_vercel" }]
+      : [
+          { tipo: "A", host: "@", valor: VERCEL_APEX_IP, origem: "padrao_vercel" },
+          { tipo: "CNAME", host: "www", valor: VERCEL_CNAME, origem: "padrao_vercel" },
+        ],
+    nota: isSubdominio
+      ? "No Registro.br, mantenha os servidores DNS atuais e cadastre o CNAME em Configurar endereçamento."
+      : "Depois de confirmar o domínio no projeto Vercel, use ns1.vercel-dns.com e ns2.vercel-dns.com no Registro.br.",
+  };
+}
+
+function mesclarInstrucoesDns(
+  valor: string,
+  tipo: string,
+  recomendadas: Array<{ tipo: string; host: string; valor: string; origem?: string }> | null,
+) {
+  const padrao = instrucoesDnsPadrao(valor, tipo);
+  if (!recomendadas?.length) return padrao;
+  const isSubdominio = tipo === "SUBDOMINIO";
+  if (isSubdominio) return { ...padrao, registros_esperados: recomendadas };
+
+  const raiz = recomendadas.filter((registro) => registro.tipo.toUpperCase() === "A");
+  const www = recomendadas.filter((registro) => registro.tipo.toUpperCase() === "CNAME" && registro.host === "www");
+  return {
+    ...padrao,
+    registros_esperados: [
+      ...(raiz.length ? raiz : padrao.registros_esperados.filter((registro) => registro.tipo === "A")),
+      ...(www.length ? www : padrao.registros_esperados.filter((registro) => registro.host === "www")),
+    ],
   };
 }
 
@@ -39,7 +65,7 @@ async function prepararDominioNaVercel(valor: string, tipo: string) {
   const add = await client.addDomain(valor);
   if (!add.ok) return { status: "ERRO" as const, instrucoes: null, erro: add.error };
   const config = await client.getDomainConfig(valor);
-  const isSubdominio = tipo === "SUBDOMINIO" || valor.split(".").length > 2;
+  const isSubdominio = tipo === "SUBDOMINIO";
   return {
     status: "ADICIONADO" as const,
     instrucoes: config.ok
@@ -88,10 +114,7 @@ export async function criarDominioTenantPlatformAction(
   }
 
   const vercel = await prepararDominioNaVercel(valor, tipo);
-  const instrucoesPadrao = instrucoesDnsPadrao(valor, tipo);
-  const dnsInstrucoes = vercel.instrucoes?.length
-    ? { ...instrucoesPadrao, registros_esperados: vercel.instrucoes, nota: "Registros recomendados pela Vercel." }
-    : instrucoesPadrao;
+  const dnsInstrucoes = mesclarInstrucoesDns(valor, tipo, vercel.instrucoes);
   await db
     .from("empresa_dominios")
     .update({
@@ -209,7 +232,7 @@ export async function verificarDominioTenantPlatformAction(
     : !sslReady
       ? "DNS correto, mas HTTPS/SSL ainda não está disponível. Aguarde a emissão do certificado e verifique novamente."
       : null;
-  const instrucoesPadrao = instrucoesDnsPadrao(dominio.valor, dominio.tipo);
+  const instrucoesPadrao = mesclarInstrucoesDns(dominio.valor, dominio.tipo, vercel.instrucoes);
   const { error } = await db
     .from("empresa_dominios")
     .update({
@@ -219,7 +242,7 @@ export async function verificarDominioTenantPlatformAction(
       status_ssl: sslReady ? "READY" : "PENDING",
       dns_instrucoes: {
         ...instrucoesPadrao,
-        registros_esperados: vercel.instrucoes?.length ? vercel.instrucoes : diagnostico.registros_esperados,
+        registros_esperados: instrucoesPadrao.registros_esperados,
         registros_encontrados: diagnostico.registros_encontrados,
       },
       ultima_verificacao_em: new Date().toISOString(),

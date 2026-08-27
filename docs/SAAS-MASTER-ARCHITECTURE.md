@@ -839,6 +839,26 @@ acidental de outros tenants dentro do site de uma franquia.
 Relatório:
 `docs/relatorios-fases/FASE-149-ESCOPO-TENANT-CONSULTAS-SAAS-NO-SITE.md`.
 
+## 28. DNS Registro.br, domínio raiz e delegação Vercel — Fase 150
+
+`empresa_dominios.tipo` é a única fonte para distinguir domínio próprio de
+subdomínio. A quantidade de pontos não pode ser usada, pois domínios brasileiros
+como `.com.br` seriam classificados incorretamente.
+
+Para domínio próprio, o fluxo preferencial delega o DNS completo à Vercel por
+`ns1.vercel-dns.com` e `ns2.vercel-dns.com`, somente depois de o host estar no
+projeto `guachinho-site`. Se houver e-mail, MX/TXT devem ser preservados antes da
+troca. Para subdomínio, mantém-se o provedor do domínio pai e usa-se CNAME.
+
+O diagnóstico aceita a delegação NS da Vercel, o IP atual recomendado pelo
+projeto e o IP legado ainda suportado. Presença de variáveis de ambiente indica
+apenas credenciais configuradas, não conexão validada. Falhas de token, conflito
+de projeto, DNS e SSL permanecem estados independentes e auditáveis; a
+confirmação manual de presença na Vercel é um fallback explícito.
+
+Relatório:
+`docs/relatorios-fases/FASE-150-DNS-REGISTROBR-VERCEL.md`.
+
 
 
 
