@@ -6,10 +6,10 @@
 
 > **Versão da Arquitetura:** 7.1.0
 > **Data de Atualização:** 26/08/2026
-> **Production code:** Fase 145 validada para publicação; Supabase principal `eaeuoynprurmmulzhydt` alinhado de `001–144`.
+> **Production code:** Fase 145 publicada em `main@4a3d3ee`; Supabase principal `eaeuoynprurmmulzhydt` alinhado de `001–144`.
 > **Preview/isolado desta fase:** a branch `bwwgbmiwtrglbtxsdooi` permanece preservada como evidência de homologação da 083 até autorização separada de exclusão.
 > **Fase atual:** catálogo central armazena grupos, categorias e créditos; site calcula parcelas; ERP preserva a proposta, aplica restrições locais e envia alterações estruturais para homologação Platform. Projeção de caixa opera sem conciliação bancária.
-> **Vercel Production:** deployment da Fase 144 `dpl_6kQ5RJutA2X2JDfpPCdPgvLK6hxy` está `READY` e atende os domínios público, `www` e Platform.
+> **Vercel Production:** deployment funcional da Fase 145 `dpl_GRV1UgjBzLvwg4j3AZZgMcm1FjcW` está `READY`; os hosts público, `www` e Platform responderam pela Vercel.
 > **Segurança:** o Platform Host continua global, sem fallback de tenant, e exige `is_platform_superadmin()`.
 
 > **Projeto Físico:** `C:\Fernando Hugo\GAUCHINHO SITE`  

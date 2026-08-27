@@ -42,6 +42,7 @@ Objetos principais: `catalogo_grupo_categorias`, `grupos_categorias`, `catalogo_
 - `next build`: aprovado, 148 páginas;
 - `supabase db lint --linked --level error`: zero erros;
 - migrations `001–144` alinhadas no Supabase principal.
+- código funcional publicado em `main@4a3d3ee` e deployment `dpl_GRV1UgjBzLvwg4j3AZZgMcm1FjcW` em estado `READY`.
 
 ## Itens externos intencionalmente não implantados
 
