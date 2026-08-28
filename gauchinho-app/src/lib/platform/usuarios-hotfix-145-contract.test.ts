@@ -19,6 +19,15 @@ const actions = fs.readFileSync(
   path.join(process.cwd(), "src/app/platform/usuarios-actions.ts"),
   "utf8",
 );
+const loginActions = fs.readFileSync(
+  path.join(process.cwd(), "src/app/(auth)/login/actions.ts"),
+  "utf8",
+);
+const proxy = fs.readFileSync(path.join(process.cwd(), "src/proxy.ts"), "utf8");
+const passwordActions = fs.readFileSync(
+  path.join(process.cwd(), "src/app/definir-senha/actions.ts"),
+  "utf8",
+);
 
 describe("Fase 146 — cadastro seguro de usuário principal da franquia", () => {
   it("usa perfil legado aceito apenas como identidade-base", () => {
@@ -38,17 +47,33 @@ describe("Fase 146 — cadastro seguro de usuário principal da franquia", () =>
     expect(client).toContain("p.empresa_id === null || p.empresa_id === conviteEmpresaId");
   });
 
-  it("mantém o modal aberto quando o cadastro falha", () => {
-    expect(client).toContain('if (stateConvidar.status === "SUCCESS")');
+  it("mantém o modal e exibe a senha inicial uma única vez", () => {
+    expect(client).toContain("aceitarResultadoCadastro");
+    expect(client).toContain("Copiar e-mail e senha");
     expect(client).toContain("action={actionConvidar}");
     expect(client).not.toContain("await actionConvidar(formData)");
   });
 
-  it("ativa somente os convites da identidade autenticada", () => {
+  it("preserva a ativação autenticada dos convites legados", () => {
     expect(migration).toContain("CREATE OR REPLACE FUNCTION public.rpc_ativar_meus_convites()");
     expect(migration).toContain("u.auth_user_id = auth.uid()");
     expect(migration).toContain("eu.status = 'CONVIDADO'");
-    expect(actions).toContain('link.status === "CONVIDADO"');
-    expect(actions).not.toContain('update({ status: "ATIVO" })');
+    expect(passwordActions).toContain('rpc("rpc_ativar_meus_convites")');
+  });
+
+  it("cria acesso direto sem convite ou recuperação por e-mail", () => {
+    expect(actions).toContain("admin.auth.admin.createUser");
+    expect(actions).toContain("gerarSenhaTemporaria");
+    expect(actions).toContain('exige_troca_senha: true');
+    expect(actions).toContain('update({ status: "ATIVO", ativo: true })');
+    expect(actions).not.toContain("inviteUserByEmail");
+    expect(actions).not.toContain("resetPasswordForEmail");
+  });
+
+  it("obriga a troca da senha inicial antes de liberar a navegação", () => {
+    expect(loginActions).toContain("data.user.app_metadata?.exige_troca_senha === true");
+    expect(proxy).toContain("user?.app_metadata?.exige_troca_senha === true");
+    expect(proxy).toContain("Troque a senha inicial antes de continuar.");
+    expect(passwordActions).toContain("exige_troca_senha: false");
   });
 });

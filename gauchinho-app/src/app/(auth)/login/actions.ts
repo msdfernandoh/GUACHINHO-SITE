@@ -9,13 +9,18 @@ export async function loginAction(formData: FormData) {
   const next = String(formData.get("next") ?? "/admin");
 
   const supabase = await createClient();
-  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
   if (error) {
     redirect(`/login?error=${encodeURIComponent(error.message)}&next=${encodeURIComponent(next)}`);
   }
 
-  redirect(next.startsWith("/") ? next : "/admin");
+  if (data.user.app_metadata?.exige_troca_senha === true) {
+    const destino = next.startsWith("/") && !next.startsWith("//") ? next : "/admin";
+    redirect(`/definir-senha?next=${encodeURIComponent(destino)}`);
+  }
+
+  redirect(next.startsWith("/") && !next.startsWith("//") ? next : "/admin");
 }
 
 export async function logoutAction() {

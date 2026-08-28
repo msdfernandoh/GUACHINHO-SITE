@@ -83,6 +83,8 @@ export function PlatformUsuariosClient({
   // Modais
   const [modalConvidar, setModalConvidar] = useState(abrirConviteInicial);
   const [modalEditar, setModalEditar] = useState<PlatformUsuarioItem | null>(null);
+  const [copiado, setCopiado] = useState(false);
+  const [aceitarResultadoCadastro, setAceitarResultadoCadastro] = useState(false);
 
   // Form State Convidar
   const [conviteEmpresaId, setConviteEmpresaId] = useState(
@@ -114,16 +116,17 @@ export function PlatformUsuariosClient({
   );
 
   useEffect(() => {
-    if (stateConvidar.status === "SUCCESS") {
-      setModalConvidar(false);
-    }
-  }, [stateConvidar.status]);
-
-  useEffect(() => {
     if (stateAlterar.status === "SUCCESS") {
       setModalEditar(null);
     }
   }, [stateAlterar.status]);
+
+  async function copiarCredenciais(email: string, senhaTemporaria?: string) {
+    if (!senhaTemporaria) return;
+    await navigator.clipboard.writeText(`E-mail: ${email}\nSenha inicial: ${senhaTemporaria}`);
+    setCopiado(true);
+    window.setTimeout(() => setCopiado(false), 2500);
+  }
 
   const filtrados = usuarios.filter((u) => {
     const matchBusca =
@@ -174,11 +177,12 @@ export function PlatformUsuariosClient({
             setConviteEmail("");
             setConviteModulos(modulosDisponiveisParaFranquia.map((m) => m.codigo));
             setConviteIsResponsavel((franquiaSelecionada?.usuarios_ativos ?? 0) === 0);
+            setAceitarResultadoCadastro(false);
             setModalConvidar(true);
           }}
           className="rounded-lg bg-cyan-700 px-4 py-2.5 text-xs font-bold text-white shadow hover:bg-cyan-800 transition-colors"
         >
-          + Novo Usuário / Convidar
+          + Cadastrar Usuário
         </button>
         </div>
       </div>
@@ -199,6 +203,24 @@ export function PlatformUsuariosClient({
           </p>
         ) : null,
       )}
+
+      {stateReenviar.status === "SUCCESS" && stateReenviar.data?.senhaTemporaria ? (
+        <section className="rounded-2xl border-2 border-amber-300 bg-amber-50 p-5 text-sm text-amber-950 shadow-sm">
+          <p className="font-extrabold">Nova senha inicial — copie agora</p>
+          <p className="mt-1 text-xs">Ela é mostrada somente nesta resposta e deverá ser trocada no primeiro acesso.</p>
+          <div className="mt-3 grid gap-2 rounded-xl bg-white p-3 font-mono sm:grid-cols-2">
+            <span>{stateReenviar.data.email}</span>
+            <strong>{stateReenviar.data.senhaTemporaria}</strong>
+          </div>
+          <button
+            type="button"
+            onClick={() => copiarCredenciais(stateReenviar.data!.email, stateReenviar.data!.senhaTemporaria)}
+            className="mt-3 rounded-lg bg-amber-700 px-4 py-2 text-xs font-bold text-white hover:bg-amber-800"
+          >
+            {copiado ? "Credenciais copiadas" : "Copiar e-mail e senha"}
+          </button>
+        </section>
+      ) : null}
 
       {/* KPIs */}
       <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -405,7 +427,7 @@ export function PlatformUsuariosClient({
                               disabled={isPendingReenviar}
                               className="rounded bg-amber-50 px-2 py-1 text-[11px] font-bold text-amber-800 hover:bg-amber-100 border border-amber-200"
                             >
-                              Reenviar
+                              Gerar acesso
                             </button>
                           </form>
                         )}
@@ -435,18 +457,44 @@ export function PlatformUsuariosClient({
       </div>
 
       {/* ───────────────────────────────────────────────────────────
-          MODAL: NOVO USUÁRIO / CONVIDAR
+          MODAL: CADASTRAR USUÁRIO
       ─────────────────────────────────────────────────────────── */}
       {modalConvidar && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm">
           <div className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl space-y-4 dark:border-slate-800 dark:bg-slate-900 text-xs">
-            <h3 className="text-base font-bold text-slate-900 dark:text-white">+ Convidar Novo Usuário</h3>
+            <h3 className="text-base font-bold text-slate-900 dark:text-white">+ Cadastrar Novo Usuário</h3>
             <p className="text-slate-500">
-              O usuário receberá um convite seguro por e-mail para definir a própria senha.
+              O acesso será ativado sem envio de e-mail. O sistema gerará uma senha inicial que deverá ser trocada no primeiro acesso.
             </p>
 
+            {aceitarResultadoCadastro && !isPendingConvidar && stateConvidar.status === "SUCCESS" && stateConvidar.data ? (
+              <div className="rounded-xl border-2 border-amber-300 bg-amber-50 p-4 text-amber-950">
+                {stateConvidar.data.senhaTemporaria ? (
+                  <>
+                    <p className="font-extrabold">Acesso criado — copie a senha agora</p>
+                    <p className="mt-1 text-[11px]">Esta senha não será exibida novamente.</p>
+                    <div className="mt-3 space-y-2 rounded-lg bg-white p-3 font-mono text-sm">
+                      <p><span className="font-sans text-xs text-slate-500">E-mail:</span> {stateConvidar.data.email}</p>
+                      <p><span className="font-sans text-xs text-slate-500">Senha inicial:</span> <strong>{stateConvidar.data.senhaTemporaria}</strong></p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => copiarCredenciais(stateConvidar.data!.email, stateConvidar.data!.senhaTemporaria)}
+                      className="mt-3 rounded-lg bg-amber-700 px-4 py-2 font-bold text-white hover:bg-amber-800"
+                    >
+                      {copiado ? "Credenciais copiadas" : "Copiar e-mail e senha"}
+                    </button>
+                  </>
+                ) : (
+                  <p className="font-bold">Usuário já existente ativado nesta franquia. Ele deve entrar com a senha atual.</p>
+                )}
+              </div>
+            ) : null}
+
+            {!(aceitarResultadoCadastro && !isPendingConvidar && stateConvidar.status === "SUCCESS") ? (
             <form
               action={actionConvidar}
+              onSubmit={() => setAceitarResultadoCadastro(true)}
               className="space-y-4"
             >
               <input type="hidden" name="modulos_json" value={JSON.stringify(conviteModulos)} />
@@ -590,10 +638,21 @@ export function PlatformUsuariosClient({
                   disabled={isPendingConvidar}
                   className="rounded-lg bg-cyan-700 px-4 py-2 font-bold text-white hover:bg-cyan-800"
                 >
-                  {isPendingConvidar ? "Enviando..." : "Enviar Convite"}
+                  {isPendingConvidar ? "Criando acesso..." : "Cadastrar e gerar senha"}
                 </button>
               </div>
             </form>
+            ) : (
+              <div className="flex justify-end border-t border-slate-100 pt-3 dark:border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setModalConvidar(false)}
+                  className="rounded-lg bg-cyan-700 px-4 py-2 font-bold text-white hover:bg-cyan-800"
+                >
+                  Concluir
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}

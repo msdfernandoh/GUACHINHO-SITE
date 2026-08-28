@@ -1,27 +1,53 @@
 "use server";
 
+import { randomInt } from "node:crypto";
 import { isPlatformSuperadmin } from "@/lib/auth/is-superadmin";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
-import { getPublicSiteUrl } from "@/lib/url/public-url";
 import { revalidatePath } from "next/cache";
+
+export type CredenciaisIniciais = {
+  email: string;
+  senhaTemporaria?: string;
+  usuarioJaExistente: boolean;
+};
 
 export type PlatformFormState = {
   status: "IDLE" | "SUCCESS" | "ERROR";
   message: string;
-  data?: unknown;
+  data?: CredenciaisIniciais;
 };
 
-async function enviarConviteAcesso(linkId: string, nome: string, empresaId: string, reenviar = false) {
+function gerarSenhaTemporaria(): string {
+  const grupos = [
+    "ABCDEFGHJKLMNPQRSTUVWXYZ",
+    "abcdefghijkmnopqrstuvwxyz",
+    "23456789",
+    "!@#$%&*+-_",
+  ];
+  const todos = grupos.join("");
+  const caracteres = grupos.map((grupo) => grupo[randomInt(grupo.length)]);
+
+  while (caracteres.length < 16) {
+    caracteres.push(todos[randomInt(todos.length)]);
+  }
+  for (let i = caracteres.length - 1; i > 0; i -= 1) {
+    const j = randomInt(i + 1);
+    [caracteres[i], caracteres[j]] = [caracteres[j], caracteres[i]];
+  }
+  return caracteres.join("");
+}
+
+async function provisionarAcessoDireto(linkId: string, nome: string, empresaId: string) {
   const admin = createAdminClient();
   const { data: link, error: linkError } = await admin
     .from("empresa_usuarios")
-    .select("id, usuario_id, status")
+    .select("id, usuario_id")
     .eq("id", linkId)
     .single();
 
   if (linkError || !link) {
-    return { ok: false as const, message: "Vínculo criado, mas não foi possível localizar a identidade para enviar o convite." };
+    return { ok: false as const, message: "Vínculo criado, mas não foi possível localizar a identidade de acesso." };
   }
 
   const { data: usuario, error: usuarioError } = await admin
@@ -31,53 +57,116 @@ async function enviarConviteAcesso(linkId: string, nome: string, empresaId: stri
     .single();
 
   if (usuarioError || !usuario) {
-    return { ok: false as const, message: "Vínculo criado, mas não foi possível localizar a identidade para enviar o convite." };
+    return { ok: false as const, message: "Vínculo criado, mas não foi possível localizar a identidade de acesso." };
   }
 
   if (!usuario?.id || !usuario.email) {
-    return { ok: false as const, message: "Vínculo criado, mas a identidade não possui e-mail válido para convite." };
-  }
-
-  const redirectTo = `${getPublicSiteUrl()}/definir-senha?next=/admin`;
-  if (usuario.auth_user_id && (reenviar || link.status === "CONVIDADO")) {
-    const { error: recoveryError } = await admin.auth.resetPasswordForEmail(usuario.email, { redirectTo });
-    if (recoveryError) {
-      return { ok: false as const, message: `Não foi possível reenviar o e-mail de acesso: ${recoveryError.message}` };
-    }
-    return { ok: true as const, invited: true, email: usuario.email };
+    return { ok: false as const, message: "Vínculo criado, mas a identidade não possui e-mail válido." };
   }
 
   if (usuario.auth_user_id) {
-    return { ok: true as const, invited: false, email: usuario.email };
+    const { data: outroVinculo } = await admin
+      .from("empresa_usuarios")
+      .select("id")
+      .eq("usuario_id", usuario.id)
+      .eq("ativo", true)
+      .eq("status", "ATIVO")
+      .neq("id", linkId)
+      .limit(1)
+      .maybeSingle();
+
+    if (outroVinculo) {
+      const { error: ativacaoError } = await admin
+        .from("empresa_usuarios")
+        .update({ status: "ATIVO", ativo: true })
+        .eq("id", linkId);
+      if (ativacaoError) {
+        return { ok: false as const, message: `Não foi possível ativar o vínculo: ${ativacaoError.message}` };
+      }
+      return {
+        ok: true as const,
+        credenciais: {
+          email: usuario.email,
+          usuarioJaExistente: true,
+        } satisfies CredenciaisIniciais,
+      };
+    }
   }
 
-  const { data: convite, error: conviteError } = await admin.auth.admin.inviteUserByEmail(usuario.email, {
-    redirectTo,
-    data: { nome, usuario_id: usuario.id, empresa_id: empresaId },
-  });
+  const senhaTemporaria = gerarSenhaTemporaria();
+  let authUserId = usuario.auth_user_id;
+  let criouIdentidade = false;
 
-  if (conviteError || !convite.user) {
-    return {
-      ok: false as const,
-      message: `Usuário cadastrado, mas o e-mail de acesso não foi enviado: ${conviteError?.message || "falha no serviço de autenticação"}. Use Reenviar após conferir o e-mail.`,
-    };
+  if (authUserId) {
+    const { data: authAtual, error: authAtualError } = await admin.auth.admin.getUserById(authUserId);
+    if (authAtualError || !authAtual.user) {
+      return { ok: false as const, message: "A identidade existente não pôde ser carregada para gerar a senha inicial." };
+    }
+    const { error: updateError } = await admin.auth.admin.updateUserById(authUserId, {
+      password: senhaTemporaria,
+      email_confirm: true,
+      app_metadata: {
+        ...authAtual.user.app_metadata,
+        exige_troca_senha: true,
+      },
+      user_metadata: {
+        ...authAtual.user.user_metadata,
+        nome,
+        usuario_id: usuario.id,
+        empresa_id: empresaId,
+      },
+    });
+    if (updateError) {
+      return { ok: false as const, message: `Não foi possível gerar a senha inicial: ${updateError.message}` };
+    }
+  } else {
+    const { data: identidade, error: identidadeError } = await admin.auth.admin.createUser({
+      email: usuario.email,
+      password: senhaTemporaria,
+      email_confirm: true,
+      app_metadata: { exige_troca_senha: true },
+      user_metadata: { nome, usuario_id: usuario.id, empresa_id: empresaId },
+    });
+    if (identidadeError || !identidade.user) {
+      return {
+        ok: false as const,
+        message: `Usuário cadastrado, mas a identidade de acesso não pôde ser criada: ${identidadeError?.message || "falha no serviço de autenticação"}.`,
+      };
+    }
+    authUserId = identidade.user.id;
+    criouIdentidade = true;
   }
 
   const { error: identityError } = await admin
     .from("usuarios")
-    .update({ auth_user_id: convite.user.id })
+    .update({ auth_user_id: authUserId })
     .eq("id", usuario.id)
-    .is("auth_user_id", null);
+    .or(`auth_user_id.is.null,auth_user_id.eq.${authUserId}`);
 
   if (identityError) {
-    await admin.auth.admin.deleteUser(convite.user.id);
+    if (criouIdentidade && authUserId) await admin.auth.admin.deleteUser(authUserId);
     return {
       ok: false as const,
       message: `Usuário cadastrado, mas a identidade de acesso não pôde ser vinculada: ${identityError.message}`,
     };
   }
 
-  return { ok: true as const, invited: true, email: usuario.email };
+  const { error: ativacaoError } = await admin
+    .from("empresa_usuarios")
+    .update({ status: "ATIVO", ativo: true })
+    .eq("id", linkId);
+  if (ativacaoError) {
+    return { ok: false as const, message: `A senha foi gerada, mas o vínculo não pôde ser ativado: ${ativacaoError.message}` };
+  }
+
+  return {
+    ok: true as const,
+    credenciais: {
+      email: usuario.email,
+      senhaTemporaria,
+      usuarioJaExistente: false,
+    } satisfies CredenciaisIniciais,
+  };
 }
 
 export async function convidarUsuarioPlatformAction(
@@ -122,18 +211,18 @@ export async function convidarUsuarioPlatformAction(
     return { status: "ERROR", message: error.message };
   }
 
-  const convite = await enviarConviteAcesso(String(data), nome, empresaId);
+  const acesso = await provisionarAcessoDireto(String(data), nome, empresaId);
   revalidatePath("/platform/usuarios");
   revalidatePath(`/platform/empresas/${empresaId}`);
-  if (!convite.ok) {
-    return { status: "ERROR", message: convite.message, data };
+  if (!acesso.ok) {
+    return { status: "ERROR", message: acesso.message };
   }
   return {
     status: "SUCCESS",
-    message: convite.invited
-      ? `Usuário cadastrado. Convite seguro enviado para ${email}.`
-      : `Usuário já possuía acesso e foi vinculado à franquia com sucesso.`,
-    data,
+    message: acesso.credenciais.usuarioJaExistente
+      ? "Usuário já possuía acesso ao SaaS e foi ativado nesta franquia. Ele deve usar a senha atual."
+      : "Usuário criado e ativado. Copie a senha inicial agora; ela não será exibida novamente.",
+    data: acesso.credenciais,
   };
 }
 
@@ -224,15 +313,6 @@ export async function reenviarConvitePlatformAction(
     return { status: "ERROR", message: "Usuário é obrigatório." };
   }
 
-  const db = await createClient();
-  const { error } = await db.rpc("rpc_platform_reenviar_convite_usuario", {
-    p_empresa_usuario_id: linkId,
-  });
-
-  if (error) {
-    return { status: "ERROR", message: error.message };
-  }
-
   const admin = createAdminClient();
   const { data: row, error: rowError } = await admin
     .from("empresa_usuarios")
@@ -240,19 +320,22 @@ export async function reenviarConvitePlatformAction(
     .eq("id", linkId)
     .single();
   if (rowError || !row) {
-    return { status: "ERROR", message: "Convite marcado como pendente, mas o usuário não pôde ser carregado." };
+    return { status: "ERROR", message: "O usuário não pôde ser carregado para gerar o acesso." };
   }
   const { data: usuario } = await admin
     .from("usuarios")
     .select("nome")
     .eq("id", row.usuario_id)
     .maybeSingle();
-  const convite = await enviarConviteAcesso(linkId, usuario?.nome || "Usuário", row.empresa_id, true);
+  const acesso = await provisionarAcessoDireto(linkId, usuario?.nome || "Usuário", row.empresa_id);
   revalidatePath("/platform/usuarios");
   revalidatePath(`/platform/empresas/${row.empresa_id}`);
-  if (!convite.ok) return { status: "ERROR", message: convite.message };
+  if (!acesso.ok) return { status: "ERROR", message: acesso.message };
   return {
     status: "SUCCESS",
-    message: convite.invited ? "Convite reenviado com sucesso." : "O usuário já possui acesso ativo.",
+    message: acesso.credenciais.usuarioJaExistente
+      ? "Vínculo ativado. O usuário deve usar a senha atual."
+      : "Nova senha inicial gerada. Copie-a agora; ela não será exibida novamente.",
+    data: acesso.credenciais,
   };
 }

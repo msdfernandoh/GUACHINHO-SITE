@@ -902,7 +902,7 @@ cada substituição, incluindo empresa, usuário, origem e horário.
 Relatório:
 `docs/relatorios-fases/FASE-152-GRUPOS-DETALHES-TABELA-CANONICA-E-LANCES.md`.
 
-## 31. Convite e exibição do responsável da Master — Fase 153
+## 31. Cadastro e exibição do responsável da Master — Fase 153
 
 `empresa_usuarios` possui duas relações com `usuarios`: a identidade vinculada
 em `usuario_id` e o eventual autor em `convidado_por`. Todo embedding PostgREST
@@ -910,15 +910,11 @@ partindo de `empresa_usuarios` deve declarar explicitamente
 `usuarios!empresa_usuarios_usuario_id_fkey`; relações implícitas são proibidas
 porque se tornam ambíguas e podem ocultar toda a equipe.
 
-O envio do convite resolve o vínculo por UUID e consulta a identidade por
-`usuario_id` em uma segunda operação administrativa. Essa separação mantém o
-fluxo idempotente, permite reaproveitar vínculos `CONVIDADO` após falha de envio
-e evita criar usuários ou vínculos duplicados. A existência de
-`auth_user_id` não ativa antecipadamente o vínculo: enquanto o estado for
-`CONVIDADO`, o reenvio gera um novo link e a ativação ocorre somente após a
-autenticação por `rpc_ativar_meus_convites()`. `usuarios.ativo` descreve a
-identidade; o estado do convite pertence exclusivamente a
-`empresa_usuarios.status`.
+O cadastro resolve o vínculo por UUID e consulta a identidade por `usuario_id`
+em uma segunda operação administrativa. Essa separação mantém o fluxo
+idempotente, reaproveita identidades globais sem duplicá-las e preserva a
+relação N:N entre usuário e empresas. O mecanismo histórico por convite foi
+substituído pelo cadastro direto descrito na seção 36.
 
 Ao iniciar o cadastro na ficha da Master, o UUID da empresa é carregado no
 formulário global, o primeiro usuário é marcado como responsável e o operador
@@ -981,6 +977,26 @@ base reduzida e integral, sem transformar seguro em redução. A leitura recomp�
 também propostas anteriores que preservam modalidade e primeira parcela, sem
 alterar fatos no banco. Relatório:
 `docs/relatorios-fases/HOTFIX-PROPOSTA-PARCELA-REDUZIDA-IGUAL-SIMULADA.md`.
+
+## 36. Cadastro direto com senha inicial e troca obrigatória — Hotfix
+
+O Platform Superadmin cadastra o usuário sem envio de convite ou recuperação
+de senha por e-mail. O servidor cria e confirma a identidade no Supabase Auth,
+gera uma senha inicial criptograficamente aleatória e ativa o vínculo N:N em
+`empresa_usuarios`. A senha é devolvida somente na resposta imediata da ação
+para cópia pelo operador; ela não é gravada em tabelas, auditoria ou logs.
+
+A identidade recebe `app_metadata.exige_troca_senha = true`. Login e proxy
+direcionam essa sessão exclusivamente para `/definir-senha`; após a alteração,
+o servidor marca o requisito como concluído e libera a navegação. Identidades
+que já estejam ativas em outra empresa são apenas vinculadas à nova franquia e
+mantêm sua senha atual, evitando redefinir uma credencial global por causa de
+um novo vínculo tenant. Convites históricos continuam compatíveis com
+`rpc_ativar_meus_convites()`, sem novos e-mails.
+
+Não há migration, backfill ou alteração de dados históricos neste hotfix.
+Relatório:
+`docs/relatorios-fases/HOTFIX-USUARIO-SENHA-INICIAL-TROCA-OBRIGATORIA.md`.
 
 
 

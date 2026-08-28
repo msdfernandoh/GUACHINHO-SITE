@@ -211,6 +211,22 @@ export async function proxy(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
+  const exigeTrocaSenha = user?.app_metadata?.exige_troca_senha === true;
+  if (user && path === "/definir-senha") {
+    return response;
+  }
+  if (user && exigeTrocaSenha && path.startsWith("/api/")) {
+    return NextResponse.json(
+      { error: "Troque a senha inicial antes de continuar." },
+      { status: 403 },
+    );
+  }
+  if (user && exigeTrocaSenha) {
+    const troca = new URL("/definir-senha", request.url);
+    if (path.startsWith("/") && path !== "/login") troca.searchParams.set("next", path);
+    return NextResponse.redirect(troca);
+  }
+
   // O host da plataforma é uma fronteira de autorização própria. Não representa
   // a Gauchinho nem qualquer outra empresa: somente PLATFORM_SUPERADMIN entra.
   if (platformHost) {
