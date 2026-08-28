@@ -1049,6 +1049,21 @@ onde o novo grupo aparece com seu estado de homologação.
 Relatório:
 `docs/relatorios-fases/FASE-156-CADASTRO-COMPLETO-GRUPOS-OPCOES-REDUZIDAS.md`.
 
+## 38. Seguro prestamista global dos grupos — Fase 157
+
+Seguro prestamista deixa de ser uma capacidade opcional do grupo. Todo grupo
+mantém apenas sua taxa decimal; a adesão antes da contemplação pertence à venda
+e o seguro é obrigatório após a contemplação. ERP, Platform e o cadastro
+administrativo legado não exibem mais checkbox de habilitação.
+
+As colunas `seguro_habilitado` e `seguro_pos_contemplacao` permanecem somente
+para compatibilidade com o runtime existente. A migration 155 normaliza grupos
+existentes e define `true` como padrão futuro, sem remover dados nem alterar
+snapshots históricos.
+
+Relatório:
+`docs/relatorios-fases/FASE-157-SEGURO-PRESTAMISTA-GLOBAL-GRUPOS.md`.
+
 
 
 

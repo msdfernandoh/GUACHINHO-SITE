@@ -228,16 +228,6 @@ export function GrupoFormFields({
             <Input name="prazo_restante" type="number" defaultValue={String(g.prazo_restante ?? "")} />
           </div>
         </div>
-        <div className="flex flex-wrap gap-4">
-          <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" name="seguro_habilitado" value="on" defaultChecked={!!g.seguro_habilitado} />
-            Seguro habilitado
-          </label>
-          <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" name="seguro_pos_contemplacao" value="on" defaultChecked={!!g.seguro_pos_contemplacao} />
-            Seguro pós-contemplação
-          </label>
-        </div>
         <div className="grid gap-3 sm:grid-cols-2">
           <div>
             <Label>Seguro mensal (0,04% a.m. da planilha)</Label>
@@ -255,7 +245,8 @@ export function GrupoFormFields({
             <p className="mt-1 text-xs text-zinc-500">
               Use o fator da planilha <strong>0,0004</strong> (0,04% ao mês sobre o saldo). Também aceita{" "}
               <strong>0,04</strong> (= 0,04%). Não use <strong>1</strong> — isso vira 1% ao mês e infla o
-              seguro (~R$ 11 mil em vez de ~R$ 444).
+              seguro (~R$ 11 mil em vez de ~R$ 444). O cliente escolhe a contratação no início da venda;
+              após a contemplação o seguro é obrigatório.
             </p>
           </div>
           <div>

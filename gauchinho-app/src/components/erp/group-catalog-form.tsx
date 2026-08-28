@@ -21,7 +21,6 @@ type Group = {
   data_primeira_assembleia?: string | null;
   taxa_administrativa_percentual?: number | null;
   fundo_reserva_percentual?: number | null;
-  seguro_habilitado?: boolean;
   seguro_percentual?: number | null;
   permite_lance_embutido?: boolean;
   percentual_lance_embutido?: number | null;
@@ -83,9 +82,6 @@ export function GroupCatalogForm({
   const [reduzida, setReduzida] = useState(grupo?.modalidade_reduzida_habilitada !== false);
   const [personalizada, setPersonalizada] = useState(
     grupo?.modalidade_personalizada_habilitada !== false,
-  );
-  const [seguroHabilitado, setSeguroHabilitado] = useState(
-    grupo?.seguro_habilitado ?? Number(grupo?.seguro_percentual ?? 0) > 0,
   );
   const [percentuaisReduzidos, setPercentuaisReduzidos] = useState<string[]>(() => {
     const cadastrados = grupo?.percentuais_parcela_reduzida;
@@ -230,14 +226,21 @@ export function GroupCatalogForm({
           <input className={field} name="fundo_reserva_percentual" inputMode="decimal" defaultValue={grupo?.fundo_reserva_percentual ?? 0} disabled={readonly} placeholder="Ex.: 2" />
         </label>
 
-        <div className="space-y-2 text-sm font-semibold text-slate-700 dark:text-slate-300">
-          <label className="block">
-            <input name="seguro_habilitado" type="checkbox" checked={seguroHabilitado} onChange={(event) => setSeguroHabilitado(event.target.checked)} disabled={readonly} className="mr-2" />
-            Seguro prestamista
-          </label>
-          <input className={field} name="seguro_percentual" inputMode="decimal" defaultValue={grupo?.seguro_percentual ?? 0.0004} disabled={readonly || !seguroHabilitado} placeholder="0,0004" />
-          <span className="block text-xs font-normal text-slate-500">Taxa decimal. Ex.: 0,0004 equivale a 0,04% do saldo.</span>
-        </div>
+        <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+          Taxa do seguro prestamista
+          <input
+            className={field}
+            name="seguro_percentual"
+            inputMode="decimal"
+            defaultValue={Number(grupo?.seguro_percentual ?? 0) > 0 ? grupo?.seguro_percentual ?? 0.0004 : 0.0004}
+            disabled={readonly}
+            placeholder="0,0004"
+            required
+          />
+          <span className="mt-1 block text-xs font-normal text-slate-500">
+            Taxa decimal. O cliente escolhe o seguro no início da venda; após a contemplação ele é obrigatório.
+          </span>
+        </label>
       </div>
 
       <div className="space-y-4 rounded-xl border border-blue-200 bg-blue-50/60 p-4 dark:border-blue-900 dark:bg-blue-950/20">

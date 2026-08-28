@@ -101,11 +101,9 @@ export async function salvarGrupoLocalAction(
         ) || null,
       fundo_reserva_percentual:
         Number(String(formData.get("fundo_reserva_percentual") ?? "0").replace(",", ".")) || 0,
-      seguro_habilitado: formData.get("seguro_habilitado") === "on",
+      seguro_habilitado: true,
       seguro_percentual:
-        formData.get("seguro_habilitado") === "on"
-          ? Number(String(formData.get("seguro_percentual") ?? "0").replace(",", ".")) || 0
-          : 0,
+        Number(String(formData.get("seguro_percentual") ?? "0,0004").replace(",", ".")) || 0.0004,
       data_primeira_assembleia: dataPrimeiraAssembleia || null,
       percentual_parcela_reduzida:
         percentuaisReduzidos[0] ?? null,
