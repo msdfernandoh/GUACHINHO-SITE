@@ -10,6 +10,7 @@ export type CredenciaisIniciais = {
   email: string;
   senhaTemporaria?: string;
   usuarioJaExistente: boolean;
+  empresaAtivada: boolean;
 };
 
 export type PlatformFormState = {
@@ -42,7 +43,7 @@ async function provisionarAcessoDireto(linkId: string, nome: string, empresaId: 
   const admin = createAdminClient();
   const { data: link, error: linkError } = await admin
     .from("empresa_usuarios")
-    .select("id, usuario_id")
+    .select("id, usuario_id, is_responsavel_principal")
     .eq("id", linkId)
     .single();
 
@@ -88,7 +89,8 @@ async function provisionarAcessoDireto(linkId: string, nome: string, empresaId: 
         credenciais: {
           email: usuario.email,
           usuarioJaExistente: true,
-        } satisfies CredenciaisIniciais,
+          empresaAtivada: false,
+        } as CredenciaisIniciais,
       };
     }
   }
@@ -165,7 +167,8 @@ async function provisionarAcessoDireto(linkId: string, nome: string, empresaId: 
       email: usuario.email,
       senhaTemporaria,
       usuarioJaExistente: false,
-    } satisfies CredenciaisIniciais,
+      empresaAtivada: false,
+    } as CredenciaisIniciais,
   };
 }
 
@@ -214,14 +217,35 @@ export async function convidarUsuarioPlatformAction(
   const acesso = await provisionarAcessoDireto(String(data), nome, empresaId);
   revalidatePath("/platform/usuarios");
   revalidatePath(`/platform/empresas/${empresaId}`);
+  revalidatePath("/platform/empresas");
   if (!acesso.ok) {
     return { status: "ERROR", message: acesso.message };
+  }
+
+  const admin = createAdminClient();
+  const { data: vinculo } = await admin
+    .from("empresa_usuarios")
+    .select("is_responsavel_principal")
+    .eq("id", String(data))
+    .single();
+  if (vinculo?.is_responsavel_principal) {
+    const { error: ativacaoError } = await db.rpc("rpc_platform_ativar_empresa", {
+      p_empresa_id: empresaId,
+    });
+    if (ativacaoError) {
+      return {
+        status: "SUCCESS",
+        message: `Usuário criado e ativo, mas a empresa ainda não pôde ser ativada: ${ativacaoError.message}`,
+        data: acesso.credenciais,
+      };
+    }
+    acesso.credenciais.empresaAtivada = true;
   }
   return {
     status: "SUCCESS",
     message: acesso.credenciais.usuarioJaExistente
-      ? "Usuário já possuía acesso ao SaaS e foi ativado nesta franquia. Ele deve usar a senha atual."
-      : "Usuário criado e ativado. Copie a senha inicial agora; ela não será exibida novamente.",
+      ? `Usuário já possuía acesso e foi ativado nesta franquia.${acesso.credenciais.empresaAtivada ? " Empresa ativada com sucesso." : " Ele deve usar a senha atual."}`
+      : `Usuário criado e ativo.${acesso.credenciais.empresaAtivada ? " Empresa ativada com sucesso." : ""} Copie a senha inicial agora; ela não será exibida novamente.`,
     data: acesso.credenciais,
   };
 }
@@ -267,6 +291,7 @@ export async function alterarUsuarioPlatformAction(
   }
 
   revalidatePath("/platform/usuarios");
+  revalidatePath("/platform/empresas");
   return { status: "SUCCESS", message: "Usuário atualizado com sucesso." };
 }
 

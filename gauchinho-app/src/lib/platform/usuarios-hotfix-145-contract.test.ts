@@ -54,6 +54,12 @@ describe("Fase 146 — cadastro seguro de usuário principal da franquia", () =>
     expect(client).not.toContain("await actionConvidar(formData)");
   });
 
+  it("lista identidades globais com leitura administrativa explícita", () => {
+    expect(page).toContain("createAdminClient");
+    expect(page).toContain("isPlatformSuperadmin");
+    expect(page).toContain("Falha ao carregar usuários da Platform");
+  });
+
   it("preserva a ativação autenticada dos convites legados", () => {
     expect(migration).toContain("CREATE OR REPLACE FUNCTION public.rpc_ativar_meus_convites()");
     expect(migration).toContain("u.auth_user_id = auth.uid()");
@@ -68,6 +74,8 @@ describe("Fase 146 — cadastro seguro de usuário principal da franquia", () =>
     expect(actions).toContain('update({ status: "ATIVO", ativo: true })');
     expect(actions).not.toContain("inviteUserByEmail");
     expect(actions).not.toContain("resetPasswordForEmail");
+    expect(actions).toContain('rpc("rpc_platform_ativar_empresa"');
+    expect(actions).toContain("empresaAtivada = true");
   });
 
   it("obriga a troca da senha inicial antes de liberar a navegação", () => {

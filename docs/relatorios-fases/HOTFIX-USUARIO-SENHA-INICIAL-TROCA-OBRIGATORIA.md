@@ -13,6 +13,13 @@ distintos de convite e recuperação do Supabase. O Platform Superadmin agora
 cria o acesso diretamente e recebe uma senha inicial forte para copiar uma
 única vez. O vínculo é ativado sem depender da entrega de e-mail.
 
+A correção complementar eliminou a lista vazia causada pela leitura tenant
+sujeita a RLS. Após validar o Platform Superadmin, a página usa leitura
+administrativa e transforma falhas em erro explícito. Ao cadastrar o primeiro
+responsável, o fluxo também executa o gate canônico de ativação da empresa; se
+outro requisito de prontidão impedir a ativação, as credenciais continuam
+visíveis e a pendência é informada ao operador.
+
 No primeiro login, `app_metadata.exige_troca_senha` obriga a sessão a passar
 por `/definir-senha`. A navegação só é liberada depois que a senha é alterada e
 o marcador é concluído pelo servidor. O fluxo antigo de ativação permanece
@@ -26,12 +33,13 @@ somente como compatibilidade para convites históricos.
 - a senha inicial não é persistida nem registrada em auditoria;
 - usuário global já ativo em outra empresa mantém a credencial existente;
 - nenhum dado comercial, histórico ou tenant foi recriado;
-- nenhuma empresa foi ativada automaticamente por esta entrega.
+- somente a empresa do primeiro responsável pode ser ativada automaticamente,
+  sempre pela RPC canônica e após todos os gates de prontidão.
 
 ## Validação
 
 - TypeScript: aprovado;
-- teste de contrato do cadastro/primeiro acesso: 7 testes aprovados;
+- teste de contrato do cadastro/primeiro acesso: 8 testes aprovados;
 - lint do escopo: sem erros (um warning preexistente no fechamento do modal de
   edição);
 - suíte completa: 197 arquivos aprovados, 9 ignorados; 1.070 testes

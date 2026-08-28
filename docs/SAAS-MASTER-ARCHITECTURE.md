@@ -986,6 +986,13 @@ gera uma senha inicial criptograficamente aleatória e ativa o vínculo N:N em
 `empresa_usuarios`. A senha é devolvida somente na resposta imediata da ação
 para cópia pelo operador; ela não é gravada em tabelas, auditoria ou logs.
 
+A listagem global usa o cliente administrativo somente após validar
+`PLATFORM_SUPERADMIN`, pois a RLS tenant não deve ocultar vínculos da governança
+global. Erros de leitura são exibidos, nunca convertidos silenciosamente em
+“0 usuários”. Quando o cadastro cria o primeiro responsável, o fluxo executa
+`rpc_platform_ativar_empresa`; com os demais gates satisfeitos, empresa e
+assinatura são ativadas imediatamente.
+
 A identidade recebe `app_metadata.exige_troca_senha = true`. Login e proxy
 direcionam essa sessão exclusivamente para `/definir-senha`; após a alteração,
 o servidor marca o requisito como concluído e libera a navegação. Identidades

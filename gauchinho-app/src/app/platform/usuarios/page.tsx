@@ -1,4 +1,6 @@
-import { createClient } from "@/lib/supabase/server";
+import { redirect } from "next/navigation";
+import { isPlatformSuperadmin } from "@/lib/auth/is-superadmin";
+import { createAdminClient } from "@/lib/supabase/admin";
 import {
   PlatformUsuariosClient,
   type PlatformUsuarioItem,
@@ -13,7 +15,8 @@ export default async function PlatformUsuariosPage({
   searchParams: Promise<{ empresa_id?: string; novo?: string; retorno?: string }>;
 }) {
   const filtros = await searchParams;
-  const db = await createClient();
+  if (!(await isPlatformSuperadmin())) redirect("/login?next=/platform/usuarios");
+  const db = createAdminClient();
 
   const [
     empresaUsuariosRes,
@@ -60,6 +63,19 @@ export default async function PlatformUsuariosPage({
   const assinaturasRows = assinaturasRes.data ?? [];
   const quotasRows = quotasRes.data ?? [];
   const overridesRows = overridesRes.data ?? [];
+
+  const erroCarregamento = [
+    empresaUsuariosRes.error,
+    empresasRes.error,
+    papeisRes.error,
+    modulosRes.error,
+    assinaturasRes.error,
+    quotasRes.error,
+    overridesRes.error,
+  ].find(Boolean);
+  if (erroCarregamento) {
+    throw new Error(`Falha ao carregar usuários da Platform: ${erroCarregamento.message}`);
+  }
 
   const items: PlatformUsuarioItem[] = rawRows.map((r) => {
     const usr = (Array.isArray(r.usuario) ? r.usuario[0] : r.usuario) as {
