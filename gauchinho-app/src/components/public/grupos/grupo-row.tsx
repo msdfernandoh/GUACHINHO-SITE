@@ -48,7 +48,6 @@ export function GrupoRow({
     modalidades,
     config,
   });
-  const temReduzida = grupo.tem_parcela_reduzida;
   const temSeguro = grupoUsaSeguroNaParcela(grupo);
   const pctMinRecurso = modAtiva ? Number(modAtiva.percentual_recurso_proprio_minimo) : 0;
   const handlers = createGrupoLinhaHandlers(config, onChange, mods, pctMinRecurso);
@@ -136,7 +135,7 @@ export function GrupoRow({
               <span className="block text-[10px] text-zinc-500">
                 {ativo ? labelModalidadeParcelaLinha(config, grupo) : ""}
               </span>
-              <MoneyValue value={resultado.parcelaBase} compact className="mt-0.5" />
+              <MoneyValue value={resultado.primeiraParcela} compact className="mt-0.5" />
             </div>
           ) : (
             <CellDash />
@@ -257,7 +256,7 @@ export function GrupoRow({
             <MoneyValue
               value={resultado.parcelaPosContemplacao}
               compact
-              className="font-medium text-emerald-300"
+              className="font-medium text-amber-300"
             />
           ) : (
             <CellDash />

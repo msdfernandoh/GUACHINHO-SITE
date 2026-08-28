@@ -359,6 +359,8 @@ describe("simulacao linha grupo", () => {
     const tot = agregarResultadosLinhas([linha]);
     expect(tot.totalCotas).toBe(2);
     expect(tot.somaCotas).toBe(1_500_000);
+    expect(linha.primeiraParcela).toBeCloseTo(linha.parcelaBase * 2, 2);
+    expect(tot.primeiraParcela).toBeCloseTo(linha.primeiraParcela, 2);
   });
 
   it("lance percentual usa saldo devedor da linha", () => {

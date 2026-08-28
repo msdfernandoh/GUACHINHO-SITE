@@ -37,7 +37,7 @@ function TotalCard({
   label: string;
   value: string;
   sub?: string;
-  accent?: "gold" | "green";
+  accent?: "gold";
   className?: string;
 }) {
   return (
@@ -51,11 +51,7 @@ function TotalCard({
       <p
         className={cn(
           "mt-0.5 break-words text-sm font-bold tabular-nums sm:text-base",
-          accent === "gold"
-            ? "text-amber-400"
-            : accent === "green"
-              ? "text-emerald-300"
-              : "text-zinc-100",
+          accent === "gold" ? "text-amber-400" : "text-zinc-100",
         )}
       >
         {value}
@@ -113,7 +109,7 @@ function TotalsBarContent({
         <TotalCard
           label="Parcela pós-contemplação"
           value={formatCurrency(totais.parcelaPosContemplacaoTotal)}
-          accent="green"
+          accent="gold"
         />
         <TotalCard
           label="Prazo restante pós-contemplação"
@@ -191,6 +187,7 @@ function DesktopTotalsBar(props: Props) {
         <InlineStat
           label="Parcela pós-cont."
           value={formatCurrency(totais.parcelaPosContemplacaoTotal)}
+          accent
         />
         <InlineStat
           label="Prazo pós-cont."

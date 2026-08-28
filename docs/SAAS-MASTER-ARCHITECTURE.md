@@ -956,6 +956,18 @@ aplicado, como “Parcela reduzida (60%)”. Não há alteração de fatos ou mi
 Relatório:
 `docs/relatorios-fases/HOTFIX-PARCELAS-CONSOLIDADAS-POR-COTAS.md`.
 
+## 34. Parcela total por linha e padrão visual pós-contemplação — Hotfix
+
+Na tabela pública de grupos, “Parcela” representa o desembolso total da linha:
+parcela unitária da modalidade selecionada, com a opção de seguro aplicável,
+multiplicada por `quantidadeCotas`. Assim, linha e rodapé usam o mesmo valor
+consolidado.
+
+A parcela pós-contemplação mantém a fórmula comercial vigente e passa a usar o
+destaque amarelo dos valores comerciais principais em desktop, mobile e telas
+de ajustes. Não há alteração de dados ou migration. Relatório:
+`docs/relatorios-fases/HOTFIX-GRUPOS-PARCELA-TOTAL-LINHA-COR-POS-CONTEMPLACAO.md`.
+
 
 
 

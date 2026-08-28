@@ -90,7 +90,7 @@ export function GrupoMobileCard({ grupo, cotas, modalidades, config, onChange }:
               {formatCurrency(resultado.creditoLiquido)}
             </p>
             <p className="mt-1 text-zinc-500">Pós-contempl.</p>
-            <p className="font-semibold text-emerald-300">
+            <p className="font-semibold text-amber-300">
               {formatCurrency(resultado.parcelaPosContemplacao)}
             </p>
           </div>

@@ -337,7 +337,7 @@ export function GrupoRowAdjustments({ grupo, cotas, modalidades, config, onChang
             <MoneyValue
               value={resultado.parcelaPosContemplacao}
               compact
-              className="text-emerald-300"
+              className="text-amber-300"
             />
           </div>
           <div className="col-span-2 rounded-md bg-zinc-950/60 p-2">
