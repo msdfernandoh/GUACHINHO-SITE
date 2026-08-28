@@ -151,6 +151,47 @@ describe("simulacao linha grupo", () => {
     expect(r.seguroMensal).toBeLessThan(saldoEsperado * 0.0004 + 0.02);
   });
 
+  it("usa exclusivamente a taxa cadastrada no grupo nas opções com e sem seguro", () => {
+    const grupo = {
+      ...grupoBase,
+      seguro_habilitado: false,
+      seguro_pos_contemplacao: false,
+      seguro_percentual: 0.0007,
+    };
+    const config = {
+      cotaId: cota.id,
+      quantidadeCotas: 1,
+      modalidadeParcela: "integral" as const,
+      usaLanceEmbutido: false,
+      modalidadeLanceId: null,
+      usaRecursoProprio: false,
+      recursoProprioModo: "percentual" as const,
+      recursoProprioInput: 0,
+      percentualParcelaPersonalizada: null,
+    };
+    const semSeguro = calcularLinhaSimulacaoGrupo({
+      grupo,
+      cota,
+      modalidades: [],
+      config: { ...config, usaSeguro: false },
+    });
+    const comSeguro = calcularLinhaSimulacaoGrupo({
+      grupo,
+      cota,
+      modalidades: [],
+      config: { ...config, usaSeguro: true },
+    });
+
+    expect(comSeguro.seguroPrimeiraParcela).toBeCloseTo(
+      comSeguro.saldoDevedorInicial * 0.0007,
+      2,
+    );
+    expect(comSeguro.primeiraParcela - semSeguro.primeiraParcela).toBeCloseTo(
+      comSeguro.seguroPrimeiraParcela,
+      2,
+    );
+  });
+
   it("parcela pós inclui seguro mesmo com usaSeguro=false; seguro cai com o lance", () => {
     const cfgBase = {
       cotaId: cota.id,

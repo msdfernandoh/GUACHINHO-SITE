@@ -18,6 +18,10 @@ venda e, depois da contemplacao, torna-se obrigatoria.
   legadas para `true`, sem remover colunas nem snapshots historicos.
 - A escolha do cliente continua pertencendo a simulacao/venda; a taxa do grupo
   permanece a fonte do calculo quando o seguro for aplicado.
+- No site, a existencia de uma taxa valida no grupo e a unica fonte para exibir
+  as opcoes `Com` e `Sem`. `Com` soma ao valor inicial o saldo devedor
+  multiplicado pelo fator cadastrado; `Sem` nao soma seguro na primeira parcela.
+  Flags legadas nao habilitam, desabilitam nem substituem esse fator.
 
 ## Preservacao
 

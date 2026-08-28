@@ -7,12 +7,13 @@ import { normalizarPercentualGrupo } from "./percentual";
 import { calcularPrazoGrupoFromRow } from "./prazos";
 import type { GrupoConsorcio } from "@/lib/types";
 
-/** Seguro entra na parcela “com seguro” quando habilitado ou pós-contemplação (planilha). */
+/** A taxa do grupo e a fonte canonica da disponibilidade e do calculo do seguro. */
 export function grupoUsaSeguroNaParcela(grupo: {
   seguro_habilitado?: boolean;
   seguro_pos_contemplacao?: boolean;
+  seguro_percentual?: number | null;
 }): boolean {
-  return !!grupo.seguro_habilitado || !!grupo.seguro_pos_contemplacao;
+  return fatorSeguroGrupo(grupo.seguro_percentual) > 0;
 }
 
 export function seguroMensalSobreSaldo(

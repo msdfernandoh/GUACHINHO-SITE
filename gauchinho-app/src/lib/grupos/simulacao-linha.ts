@@ -366,7 +366,7 @@ export function calcularLinhaSimulacaoGrupo(args: {
   });
 
   const fatorSeg = fatorSeguroGrupo(grupo.seguro_percentual);
-  const temSeguroGrupo = params.seguroHabilitado && fatorSeg > 0;
+  const temSeguroGrupo = fatorSeg > 0;
 
   // Planilha: parcelaSemSeguro = (saldo / prazoTotal) * fatorParcela
   const parcelaSemSeguroUnit = parcelasCalc.parcelaExibida;

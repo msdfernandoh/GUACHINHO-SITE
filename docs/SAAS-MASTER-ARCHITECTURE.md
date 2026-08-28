@@ -1061,6 +1061,11 @@ para compatibilidade com o runtime existente. A migration 155 normaliza grupos
 existentes e define `true` como padrão futuro, sem remover dados nem alterar
 snapshots históricos.
 
+No site, `grupos_consorcio.seguro_percentual` é a fonte canônica tanto para a
+disponibilidade das opções `Com`/`Sem` quanto para o valor calculado. A opção
+`Com` soma o seguro calculado com o fator do grupo; a opção `Sem` mantém a
+primeira parcela sem esse acréscimo. Os booleanos legados não substituem a taxa.
+
 Relatório:
 `docs/relatorios-fases/FASE-157-SEGURO-PRESTAMISTA-GLOBAL-GRUPOS.md`.
 
