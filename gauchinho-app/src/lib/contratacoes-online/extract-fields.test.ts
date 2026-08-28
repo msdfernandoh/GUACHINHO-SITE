@@ -57,6 +57,30 @@ describe("resumoFinanceiroFromDados — grupos", () => {
     });
     expect(fin.parcelaReduzida).toBe(681.82);
     expect(fin.parcelaIntegral).toBe(1704.55);
+    expect(fin.percentualParcelaReduzida).toBe(40);
+  });
+
+  it("consolida parcelas pela quantidade de cotas mesmo em snapshots antigos", () => {
+    const fin = resumoFinanceiroFromDados("grupos", {
+      selecoes: [
+        {
+          config: { quantidadeCotas: 4, modalidadeParcela: "reduzida" },
+          resultado: {
+            quantidadeCotas: 4,
+            parcelaIntegral: 1346.2,
+            parcelaReduzida: 807.72,
+          },
+        },
+      ],
+      totais: {
+        parcelaIntegralTotal: 1346.2,
+        parcelaReduzidaTotal: 807.72,
+      },
+    });
+
+    expect(fin.parcelaIntegral).toBeCloseTo(5384.8, 2);
+    expect(fin.parcelaReduzida).toBeCloseTo(3230.88, 2);
+    expect(fin.percentualParcelaReduzida).toBe(60);
   });
 
   it("usa parcelaPosContemplacaoTotal dos totais quando linha não traz o campo", () => {

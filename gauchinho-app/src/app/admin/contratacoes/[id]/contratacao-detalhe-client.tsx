@@ -206,7 +206,10 @@ export function ContratacaoDetalheClient({
             <Field label="Crédito" value={money(contratacao.credito_selecionado)} />
             <Field label="Parcela inicial" value={money(contratacao.parcela_estimada)} />
             <Field label="Parcela integral" value={money(fin.parcelaIntegral as number)} />
-            <Field label="Parcela reduzida" value={money(fin.parcelaReduzida as number)} />
+            <Field
+              label={`Parcela reduzida${fin.percentualParcelaReduzida != null ? ` (${Number(fin.percentualParcelaReduzida).toLocaleString("pt-BR") }%)` : ""}`}
+              value={money(fin.parcelaReduzida as number)}
+            />
             <Field
               label="Parcela após contemplação"
               value={money(fin.parcelaPosContemplacao as number)}

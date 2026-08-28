@@ -928,6 +928,34 @@ responsável é pré-requisito para ativação, não consequência dela.
 Relatório:
 `docs/relatorios-fases/FASE-153-HOTFIX-CONVITE-RESPONSAVEL-MASTER.md`.
 
+## 32. Data civil sem deslocamento de fuso — Hotfix
+
+Campos SQL `date`, como `contratacoes_online.data_nascimento`, representam uma
+data civil e não um instante. A apresentação de strings `AAAA-MM-DD` deve ser
+feita sem conversão UTC/local, evitando que fusos negativos exibam o dia
+anterior. Timestamps e objetos `Date` continuam sujeitos à formatação temporal
+normal.
+
+O hotfix não altera nem recalcula registros: ele corrige somente a apresentação
+do valor já persistido e mantém o formulário de edição no formato ISO civil.
+Relatório:
+`docs/relatorios-fases/HOTFIX-DATA-NASCIMENTO-SEM-DESLOCAMENTO-FUSO.md`.
+
+## 33. Parcelas consolidadas pela quantidade de cotas — Hotfix
+
+O cálculo de linha mantém valores unitários para permitir a escolha comercial
+de cada cota, mas todo resumo de proposta ou contratação apresenta valores
+consolidados. `parcelaIntegralTotal` e `parcelaReduzidaTotal` somam a parcela de
+cada linha multiplicada por `quantidadeCotas`, assim como crédito, primeira
+parcela e demais totais já faziam.
+
+A leitura prioriza a recomposição pelas linhas persistidas para corrigir também
+snapshots anteriores que gravaram totais unitários. Quando todas as linhas
+compartilham a mesma razão reduzida/integral, a interface explicita o percentual
+aplicado, como “Parcela reduzida (60%)”. Não há alteração de fatos ou migration.
+Relatório:
+`docs/relatorios-fases/HOTFIX-PARCELAS-CONSOLIDADAS-POR-COTAS.md`.
+
 
 
 

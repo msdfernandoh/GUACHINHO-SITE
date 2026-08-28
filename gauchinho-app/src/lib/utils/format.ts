@@ -8,6 +8,14 @@ export function formatCurrency(value: number | null | undefined): string {
 
 export function formatDate(value: string | Date | null | undefined): string {
   if (!value) return "—";
+
+  if (typeof value === "string") {
+    const dateOnly = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+    if (dateOnly) {
+      return `${dateOnly[3]}/${dateOnly[2]}/${dateOnly[1]}`;
+    }
+  }
+
   const d = typeof value === "string" ? new Date(value) : value;
   return new Intl.DateTimeFormat("pt-BR").format(d);
 }

@@ -58,9 +58,45 @@ function somarParcelasReduzidas(selecoes: unknown[]): number | null {
         : num(resultado.parcelaReduzida);
     if (valor == null) return acc;
     encontrou = true;
-    return acc + valor;
+    const quantidade = Math.max(1, Math.floor(num(config.quantidadeCotas) ?? num(resultado.quantidadeCotas) ?? 1));
+    return acc + valor * quantidade;
   }, 0);
   return encontrou ? total : null;
+}
+
+function somarParcelasIntegrais(selecoes: unknown[]): number | null {
+  let encontrou = false;
+  const total = selecoes.reduce<number>((acc, raw) => {
+    const selecao = (raw ?? {}) as Record<string, unknown>;
+    const config = (selecao.config ?? {}) as Record<string, unknown>;
+    const resultado = (selecao.resultado ?? {}) as Record<string, unknown>;
+    const valor = num(resultado.parcelaIntegral) ?? num(resultado.parcelaBase);
+    if (valor == null) return acc;
+    encontrou = true;
+    const quantidade = Math.max(1, Math.floor(num(config.quantidadeCotas) ?? num(resultado.quantidadeCotas) ?? 1));
+    return acc + valor * quantidade;
+  }, 0);
+  return encontrou ? total : null;
+}
+
+function percentualParcelaReduzida(selecoes: unknown[]): number | null {
+  const percentuais = selecoes.flatMap((raw) => {
+    const selecao = (raw ?? {}) as Record<string, unknown>;
+    const config = (selecao.config ?? {}) as Record<string, unknown>;
+    const resultado = (selecao.resultado ?? {}) as Record<string, unknown>;
+    const integral = num(resultado.parcelaIntegral);
+    const reduzida =
+      str(config.modalidadeParcela) === "personalizada"
+        ? num(resultado.parcelaPersonalizada) ?? num(resultado.parcelaBase)
+        : num(resultado.parcelaReduzida);
+    if (integral == null || integral <= 0 || reduzida == null) return [];
+    return [Math.round((reduzida / integral) * 10_000) / 100];
+  });
+  if (percentuais.length === 0) return null;
+  const primeiro = percentuais[0]!;
+  return percentuais.every((percentual) => Math.abs(percentual - primeiro) < 0.01)
+    ? primeiro
+    : null;
 }
 
 function custoEfetivoFromGrupo(grupo: Record<string, unknown>): {
@@ -271,8 +307,8 @@ export function resumoFinanceiroFromDados(
       parcelaReduzida;
   }
   const parcelaIntegral =
+    somarParcelasIntegrais(selecoes) ??
     num(totais.parcelaIntegralTotal) ??
-    somarResultados(selecoes, "parcelaIntegral") ??
     num(resultado.parcelaIntegral) ??
     num(resultado.parcelaBase) ??
     num(totais.parcelaIntegral);
@@ -283,9 +319,10 @@ export function resumoFinanceiroFromDados(
       somarResultados(selecoes, "saldoDevedorInicial") ??
       num(resultado.saldoDevedorInicial),
     parcelaReduzida:
-      num(totais.parcelaReduzidaTotal) ??
       somarParcelasReduzidas(selecoes) ??
+      num(totais.parcelaReduzidaTotal) ??
       parcelaReduzida,
+    percentualParcelaReduzida: percentualParcelaReduzida(selecoes),
     parcelaIntegral,
     lanceEmbutido:
       num(totais.lanceEmbutido) ??

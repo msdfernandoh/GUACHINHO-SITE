@@ -469,9 +469,14 @@ export function agregarResultadosLinhas(
     totalCotas,
     somaCotas: ativas.reduce((a, l) => a + l.somaCotas, 0),
     primeiraParcela: ativas.reduce((a, l) => a + l.primeiraParcela, 0),
-    parcelaIntegralTotal: ativas.reduce((a, l) => a + l.parcelaIntegral, 0),
+    parcelaIntegralTotal: ativas.reduce(
+      (a, l) => a + l.parcelaIntegral * l.quantidadeCotas,
+      0,
+    ),
     parcelaReduzidaTotal: ativas.reduce(
-      (a, l) => a + (l.parcelaPersonalizada ?? l.parcelaReduzida ?? 0),
+      (a, l) =>
+        a +
+        (l.parcelaPersonalizada ?? l.parcelaReduzida ?? 0) * l.quantidadeCotas,
       0,
     ),
     lanceEmbutido: ativas.reduce((a, l) => a + l.lanceEmbutido, 0),

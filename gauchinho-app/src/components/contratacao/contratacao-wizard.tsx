@@ -661,7 +661,10 @@ export function ContratacaoWizard({
               <Row label="Parcela integral" value={money(fin.parcelaIntegral as number)} />
               {visualizacao === "completa" ? (
                 <>
-                  <Row label="Parcela reduzida" value={money(fin.parcelaReduzida as number)} />
+                  <Row
+                    label={`Parcela reduzida${fin.percentualParcelaReduzida != null ? ` (${Number(fin.percentualParcelaReduzida).toLocaleString("pt-BR") }%)` : ""}`}
+                    value={money(fin.parcelaReduzida as number)}
+                  />
                   <Row
                     label="Parcela após contemplação"
                     value={money(fin.parcelaPosContemplacao as number)}
