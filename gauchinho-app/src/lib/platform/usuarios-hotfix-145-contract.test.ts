@@ -57,7 +57,8 @@ describe("Fase 146 — cadastro seguro de usuário principal da franquia", () =>
   it("lista identidades globais com leitura administrativa explícita", () => {
     expect(page).toContain("createAdminClient");
     expect(page).toContain("isPlatformSuperadmin");
-    expect(page).toContain("Falha ao carregar usuários da Platform");
+    expect(page).toContain("Não foi possível carregar os usuários");
+    expect(page).not.toContain("usuario:usuarios!");
   });
 
   it("preserva a ativação autenticada dos convites legados", () => {

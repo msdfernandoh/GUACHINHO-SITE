@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { isPlatformSuperadmin } from "@/lib/auth/is-superadmin";
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
@@ -20,6 +21,7 @@ export default async function PlatformUsuariosPage({
 
   const [
     empresaUsuariosRes,
+    usuariosRes,
     empresasRes,
     papeisRes,
     modulosRes,
@@ -30,9 +32,10 @@ export default async function PlatformUsuariosPage({
     db
       .from("empresa_usuarios")
       .select(
-        "id, usuario_id, empresa_id, papel_id, ativo, is_responsavel_principal, status, convite_enviado_em, erp_modulos_visiveis, created_at, usuario:usuarios!empresa_usuarios_usuario_id_fkey(id, nome, email, ultimo_acesso), empresa:empresas(id, nome_fantasia, slug, configuracoes), papel:papeis(id, nome, codigo)",
+        "id, usuario_id, empresa_id, papel_id, ativo, is_responsavel_principal, status, convite_enviado_em, erp_modulos_visiveis, created_at",
       )
       .order("created_at", { ascending: false }),
+    db.from("usuarios").select("id, nome, email, ultimo_acesso"),
     db
       .from("empresas")
       .select("id, nome_fantasia, slug, configuracoes")
@@ -59,41 +62,33 @@ export default async function PlatformUsuariosPage({
   ]);
 
   const rawRows = empresaUsuariosRes.data ?? [];
+  const usuariosRows = usuariosRes.data ?? [];
   const empresasRows = empresasRes.data ?? [];
   const assinaturasRows = assinaturasRes.data ?? [];
   const quotasRows = quotasRes.data ?? [];
   const overridesRows = overridesRes.data ?? [];
 
-  const erroCarregamento = [
-    empresaUsuariosRes.error,
-    empresasRes.error,
-    papeisRes.error,
-    modulosRes.error,
-    assinaturasRes.error,
-    quotasRes.error,
-    overridesRes.error,
-  ].find(Boolean);
+  const erroCarregamento = empresaUsuariosRes.error || usuariosRes.error || empresasRes.error || papeisRes.error;
   if (erroCarregamento) {
-    throw new Error(`Falha ao carregar usuários da Platform: ${erroCarregamento.message}`);
+    return (
+      <section className="rounded-2xl border border-red-200 bg-red-50 p-6 text-red-900">
+        <h1 className="text-xl font-extrabold">Não foi possível carregar os usuários</h1>
+        <p className="mt-2 text-sm">{erroCarregamento.message}</p>
+        <Link href="/platform/usuarios" className="mt-4 inline-block rounded-lg bg-red-800 px-4 py-2 text-sm font-bold text-white">
+          Tentar novamente
+        </Link>
+      </section>
+    );
   }
 
+  const usuariosPorId = new Map(usuariosRows.map((usuario) => [usuario.id, usuario]));
+  const empresasPorId = new Map(empresasRows.map((empresa) => [empresa.id, empresa]));
+  const papeisPorId = new Map((papeisRes.data ?? []).map((papel) => [papel.id, papel]));
+
   const items: PlatformUsuarioItem[] = rawRows.map((r) => {
-    const usr = (Array.isArray(r.usuario) ? r.usuario[0] : r.usuario) as {
-      id?: string;
-      nome?: string;
-      email?: string;
-      ultimo_acesso?: string | null;
-    } | null;
-    const emp = (Array.isArray(r.empresa) ? r.empresa[0] : r.empresa) as {
-      id?: string;
-      nome_fantasia?: string;
-      slug?: string;
-    } | null;
-    const pap = (Array.isArray(r.papel) ? r.papel[0] : r.papel) as {
-      id?: string;
-      nome?: string;
-      codigo?: string;
-    } | null;
+    const usr = usuariosPorId.get(r.usuario_id);
+    const emp = empresasPorId.get(r.empresa_id);
+    const pap = papeisPorId.get(r.papel_id);
 
     return {
       id: r.id,
