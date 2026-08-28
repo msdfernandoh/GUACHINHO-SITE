@@ -50,8 +50,17 @@ function somarParcelasReduzidas(selecoes: unknown[]): number | null {
     const selecao = (raw ?? {}) as Record<string, unknown>;
     const config = (selecao.config ?? {}) as Record<string, unknown>;
     const resultado = (selecao.resultado ?? {}) as Record<string, unknown>;
+    const modalidade = str(config.modalidadeParcela);
+    const primeiraParcela = num(resultado.primeiraParcela);
+    if (
+      (modalidade === "reduzida" || modalidade === "personalizada") &&
+      primeiraParcela != null
+    ) {
+      encontrou = true;
+      return acc + primeiraParcela;
+    }
     const valor =
-      str(config.modalidadeParcela) === "personalizada"
+      modalidade === "personalizada"
         ? num(resultado.parcelaPersonalizada) ??
           num(resultado.parcelaBase) ??
           num(resultado.parcelaReduzida)

@@ -968,6 +968,20 @@ destaque amarelo dos valores comerciais principais em desktop, mobile e telas
 de ajustes. Não há alteração de dados ou migration. Relatório:
 `docs/relatorios-fases/HOTFIX-GRUPOS-PARCELA-TOTAL-LINHA-COR-POS-CONTEMPLACAO.md`.
 
+## 35. Parcela reduzida da proposta preserva a simulação — Hotfix
+
+Quando a modalidade selecionada é reduzida ou personalizada, os campos
+“Parcela inicial estimada” e “Parcela reduzida” da proposta representam o mesmo
+desembolso inicial aceito pelo cliente. Ambos usam `primeiraParcela` do snapshot
+e, portanto, incluem o seguro somente quando ele foi selecionado na tela de
+grupos.
+
+O percentual exibido continua descrevendo a razão comercial entre as parcelas
+base reduzida e integral, sem transformar seguro em redução. A leitura recompõe
+também propostas anteriores que preservam modalidade e primeira parcela, sem
+alterar fatos no banco. Relatório:
+`docs/relatorios-fases/HOTFIX-PROPOSTA-PARCELA-REDUZIDA-IGUAL-SIMULADA.md`.
+
 
 
 

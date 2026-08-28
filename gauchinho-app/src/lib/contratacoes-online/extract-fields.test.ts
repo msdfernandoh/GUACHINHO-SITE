@@ -83,6 +83,53 @@ describe("resumoFinanceiroFromDados — grupos", () => {
     expect(fin.percentualParcelaReduzida).toBe(60);
   });
 
+  it("usa na reduzida a primeira parcela simulada com seguro", () => {
+    const dados = {
+      selecoes: [
+        {
+          config: { quantidadeCotas: 2, modalidadeParcela: "reduzida", usaSeguro: true },
+          resultado: {
+            quantidadeCotas: 2,
+            parcelaIntegral: 1740,
+            parcelaReduzida: 1044,
+            primeiraParcela: 2255.04,
+          },
+        },
+      ],
+      totais: { primeiraParcela: 2255.04, parcelaReduzidaTotal: 2088 },
+    };
+
+    const flat = extrairCamposFlat("grupos", dados);
+    const fin = resumoFinanceiroFromDados("grupos", dados);
+
+    expect(flat.parcela_estimada).toBe(2255.04);
+    expect(fin.parcelaReduzida).toBe(2255.04);
+    expect(fin.percentualParcelaReduzida).toBe(60);
+  });
+
+  it("mantém estimada e reduzida iguais quando a simulação não usa seguro", () => {
+    const dados = {
+      selecoes: [
+        {
+          config: { quantidadeCotas: 2, modalidadeParcela: "reduzida", usaSeguro: false },
+          resultado: {
+            quantidadeCotas: 2,
+            parcelaIntegral: 1740,
+            parcelaReduzida: 1044,
+            primeiraParcela: 2088,
+          },
+        },
+      ],
+      totais: { primeiraParcela: 2088 },
+    };
+
+    const flat = extrairCamposFlat("grupos", dados);
+    const fin = resumoFinanceiroFromDados("grupos", dados);
+
+    expect(flat.parcela_estimada).toBe(2088);
+    expect(fin.parcelaReduzida).toBe(2088);
+  });
+
   it("usa parcelaPosContemplacaoTotal dos totais quando linha não traz o campo", () => {
     const fin = resumoFinanceiroFromDados("grupos", {
       selecoes: [{ resultado: { parcelaIntegral: 100, parcelaReduzida: 60 } }],
