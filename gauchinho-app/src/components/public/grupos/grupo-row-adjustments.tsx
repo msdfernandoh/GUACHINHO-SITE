@@ -2,7 +2,7 @@
 
 import type { GrupoConsorcio, GrupoCota, GrupoModalidadeLance } from "@/lib/types";
 import { grupoUsaSeguroNaParcela } from "@/lib/grupos/calculos";
-import { formatPrazoGrupo, labelModalidadeParcelaLinha, type ConfigLinhaSimulacaoGrupo } from "@/lib/grupos/simulacao-linha";
+import { formatPrazoGrupo, labelModalidadeParcelaLinha, listarPercentuaisParcelaReduzida, type ConfigLinhaSimulacaoGrupo } from "@/lib/grupos/simulacao-linha";
 import { normalizarPercentualGrupo } from "@/lib/grupos/percentual";
 import { parcelaTipoFromModalidade } from "@/lib/grupos/modalidades-admin";
 import { formatCurrency } from "@/lib/utils/format";
@@ -38,6 +38,7 @@ export function GrupoRowAdjustments({ grupo, cotas, modalidades, config, onChang
   const temSeguro = grupoUsaSeguroNaParcela(grupo);
   const temReduzida = grupo.tem_parcela_reduzida;
   const permitePersonalizada = !!grupo.permite_parcela_reduzida_personalizada;
+  const percentuaisReduzidos = listarPercentuaisParcelaReduzida(grupo);
   const exibeTipoParcela = temReduzida || permitePersonalizada;
   const exibeEstrategias = mods.length > 0;
   const pctMinRecurso = modAtiva ? Number(modAtiva.percentual_recurso_proprio_minimo) : 0;
@@ -110,6 +111,9 @@ export function GrupoRowAdjustments({ grupo, cotas, modalidades, config, onChang
                   onChange={(e) => {
                     const v = e.target.value as "reduzida" | "integral" | "personalizada";
                     const next: Partial<ConfigLinhaSimulacaoGrupo> = { modalidadeParcela: v };
+                    if (v === "reduzida" && config.percentualParcelaReduzida == null) {
+                      next.percentualParcelaReduzida = percentuaisReduzidos[0] ?? null;
+                    }
                     if (v === "personalizada" && config.percentualParcelaPersonalizada == null) {
                       next.percentualParcelaPersonalizada =
                         grupo.percentual_parcela_reduzida_personalizada != null
@@ -125,6 +129,20 @@ export function GrupoRowAdjustments({ grupo, cotas, modalidades, config, onChang
                     <option value="personalizada">Personalizada</option>
                   ) : null}
                 </CompactSelect>
+                {config.modalidadeParcela === "reduzida" && percentuaisReduzidos.length > 1 ? (
+                  <div>
+                    <p className="mb-1 text-[10px] uppercase text-zinc-500">Opção reduzida</p>
+                    <CompactSelect
+                      className="max-w-[160px]"
+                      value={String(config.percentualParcelaReduzida ?? percentuaisReduzidos[0])}
+                      onChange={(event) => handlers.patch({ percentualParcelaReduzida: Number(event.target.value) })}
+                    >
+                      {percentuaisReduzidos.map((percentual) => (
+                        <option key={percentual} value={percentual}>{percentual}% da integral</option>
+                      ))}
+                    </CompactSelect>
+                  </div>
+                ) : null}
                 {config.modalidadeParcela === "personalizada" && permitePersonalizada ? (
                   <div>
                     <p className="mb-1 text-[10px] uppercase text-zinc-500">% da integral</p>
@@ -162,7 +180,7 @@ export function GrupoRowAdjustments({ grupo, cotas, modalidades, config, onChang
                 </p>
                 {temReduzida && resultado.parcelaReduzida != null ? (
                   <p>
-                    Reduzida ({normalizarPercentualGrupo(grupo.percentual_parcela_reduzida) || 60}
+                    Reduzida ({normalizarPercentualGrupo(config.percentualParcelaReduzida ?? grupo.percentual_parcela_reduzida) || 60}
                     %):{" "}
                     <span className="text-zinc-300">
                       {formatCurrency(resultado.parcelaReduzida)}

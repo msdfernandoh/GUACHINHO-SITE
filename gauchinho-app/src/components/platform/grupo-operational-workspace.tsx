@@ -607,10 +607,10 @@ export function GrupoOperationalWorkspace({
 
             <div>
               <label className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
-                Parcela reduzida efetiva (%)
+                Opções fixas de parcela reduzida (%)
               </label>
-              <input name="percentual_parcela_reduzida" inputMode="decimal" defaultValue={grupo.percentual_parcela_reduzida ?? ""} placeholder="Ex.: 70" className={inputStyle} />
-              <p className="mt-1 text-[11px] text-slate-500">Não altera a faixa de comissão; ela é identificada automaticamente.</p>
+              <input name="percentuais_parcela_reduzida_csv" inputMode="decimal" defaultValue={(grupo.percentuais_parcela_reduzida?.length ? grupo.percentuais_parcela_reduzida : grupo.percentual_parcela_reduzida != null ? [grupo.percentual_parcela_reduzida] : []).join("; ")} placeholder="Ex.: 60; 70" className={inputStyle} />
+              <p className="mt-1 text-[11px] text-slate-500">Separe por ponto e vírgula. A primeira opção é o padrão do site; a comissão é identificada automaticamente.</p>
             </div>
 
             <fieldset className="space-y-2 rounded-lg border border-slate-200 p-3 sm:col-span-2 lg:col-span-3 dark:border-slate-700">
@@ -654,9 +654,10 @@ export function GrupoOperationalWorkspace({
 
             <div>
               <label className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
-                Seguro Prestamista (%)
+                Seguro Prestamista (taxa decimal)
               </label>
-              <input name="seguro_percentual" defaultValue={grupo.seguro_percentual ?? ""} placeholder="Ex: 0.04" className={inputStyle} />
+              <input name="seguro_percentual" defaultValue={grupo.seguro_percentual ?? ""} placeholder="Ex.: 0,0004" className={inputStyle} />
+              <p className="mt-1 text-[11px] text-slate-500">0,0004 equivale a 0,04% do saldo.</p>
             </div>
 
             <div>
@@ -690,6 +691,14 @@ export function GrupoOperationalWorkspace({
               Observações Operacionais
             </label>
             <textarea name="observacoes" defaultValue={grupo.observacoes || ""} rows={3} className={inputStyle} placeholder="Observações e regras específicas do grupo..." />
+          </div>
+
+          <div>
+            <label className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
+              Tabela comercial do grupo
+            </label>
+            <input name="tabela_arquivo" type="file" accept="application/pdf,image/jpeg,image/png,image/webp" className={inputStyle} />
+            <p className="mt-1 text-[11px] text-slate-500">Opcional. Substitui a tabela atual no Storage compartilhado com o ERP. Máximo de 15 MB.</p>
           </div>
 
           <div className="flex justify-end gap-3 pt-4 border-t border-slate-200 dark:border-slate-800">

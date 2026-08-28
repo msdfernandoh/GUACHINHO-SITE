@@ -5,6 +5,22 @@ import { requireErpRouteAccess } from "@/lib/erp/erp-acesso-server";
 import type { GroupActionState } from "@/app/platform/grupos-actions";
 import { randomUUID } from "node:crypto";
 import { parseBatchCotasInput } from "@/lib/platform/grupos-prontidao";
+import { uploadTabelaGrupo } from "@/lib/grupos/grupo-tabela.server";
+
+function parsePercentuaisReduzidos(formData: FormData): number[] {
+  let raw: unknown;
+  try {
+    raw = JSON.parse(String(formData.get("percentuais_parcela_reduzida_json") ?? "[]"));
+  } catch {
+    throw new Error("Revise as opções fixas da parcela reduzida.");
+  }
+  if (!Array.isArray(raw)) throw new Error("A lista de parcelas reduzidas é inválida.");
+  const valores = [...new Set(raw.map((item) => Number(String(item).replace(",", "."))))];
+  if (valores.some((valor) => !Number.isFinite(valor) || valor <= 0 || valor >= 100)) {
+    throw new Error("Cada parcela reduzida deve possuir percentual maior que 0 e menor que 100.");
+  }
+  return valores;
+}
 
 export async function salvarGrupoLocalAction(
   _previous: GroupActionState,
@@ -29,6 +45,9 @@ export async function salvarGrupoLocalAction(
         message: "Administradora, número, tipo e data da primeira assembleia são obrigatórios.",
       };
     const db = await createClient();
+    const percentuaisReduzidos = formData.get("modalidade_reduzida_habilitada") === "on"
+      ? parsePercentuaisReduzidos(formData)
+      : [];
     const { data: canWrite } = await db.rpc("can_write_tenant_internal", {
       p_empresa_id: empresaId,
     });
@@ -80,11 +99,17 @@ export async function salvarGrupoLocalAction(
             ".",
           ),
         ) || null,
+      fundo_reserva_percentual:
+        Number(String(formData.get("fundo_reserva_percentual") ?? "0").replace(",", ".")) || 0,
+      seguro_habilitado: formData.get("seguro_habilitado") === "on",
+      seguro_percentual:
+        formData.get("seguro_habilitado") === "on"
+          ? Number(String(formData.get("seguro_percentual") ?? "0").replace(",", ".")) || 0
+          : 0,
       data_primeira_assembleia: dataPrimeiraAssembleia || null,
       percentual_parcela_reduzida:
-        formData.get("modalidade_reduzida_habilitada") === "on"
-          ? Number(String(formData.get("percentual_parcela_reduzida") ?? "").replace(",", ".")) || null
-          : null,
+        percentuaisReduzidos[0] ?? null,
+      percentuais_parcela_reduzida: percentuaisReduzidos.length ? percentuaisReduzidos : null,
       regra_integralizacao_parcela_reduzida:
         formData.get("modalidade_reduzida_habilitada") === "on"
           ? String(formData.get("regra_integralizacao_parcela_reduzida") ?? "CONTEMPLACAO")
@@ -93,6 +118,7 @@ export async function salvarGrupoLocalAction(
         formData.get("regra_integralizacao_parcela_reduzida") === "ASSEMBLEIA"
           ? Number(formData.get("assembleia_limite_parcela_reduzida")) || null
           : null,
+      observacoes: String(formData.get("observacoes") ?? "").trim() || null,
       updated_at: new Date().toISOString(),
     };
     let lances: unknown = [];
@@ -132,6 +158,17 @@ export async function salvarGrupoLocalAction(
     });
     if (error) throw new Error(error.message);
     const grupoSalvoId = String((submitted as { grupo_id?: string } | null)?.grupo_id ?? id ?? "");
+    if (grupoSalvoId) {
+      const { error: percentuaisError } = await db.rpc("rpc_salvar_percentuais_parcela_reduzida_grupo", {
+        p_grupo_id: grupoSalvoId,
+        p_percentuais: percentuaisReduzidos.length ? percentuaisReduzidos : null,
+      });
+      if (percentuaisError) throw new Error(percentuaisError.message);
+      const tabelaArquivo = formData.get("tabela_arquivo");
+      if (tabelaArquivo instanceof File && tabelaArquivo.size > 0) {
+        await uploadTabelaGrupo(grupoSalvoId, "ERP", tabelaArquivo);
+      }
+    }
     revalidatePath("/erp/grupos");
     if (grupoSalvoId) revalidatePath(`/erp/grupos/${grupoSalvoId}`);
     return {
@@ -139,6 +176,7 @@ export async function salvarGrupoLocalAction(
       message: id
         ? "Alteração aplicada somente nesta franquia e enviada para análise da Platform."
         : "Grupo criado localmente no ERP e enviado para homologação. A aprovação o publica para todas as franquias sem trocar seu cadastro.",
+      redirectTo: formData.get("acao_pos_salvar") === "VOLTAR" ? "/erp/grupos" : undefined,
     };
   } catch (error) {
     const message =

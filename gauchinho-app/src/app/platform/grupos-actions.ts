@@ -4,10 +4,33 @@ import { revalidatePath } from "next/cache";
 import { isPlatformSuperadmin } from "@/lib/auth/is-superadmin";
 import { createClient } from "@/lib/supabase/server";
 import { parseBRLNumber } from "@/lib/platform/grupos-prontidao";
+import { uploadTabelaGrupo } from "@/lib/grupos/grupo-tabela.server";
+
+function parsePercentuaisReduzidos(formData: FormData): number[] {
+  const json = formData.get("percentuais_parcela_reduzida_json");
+  const csv = String(formData.get("percentuais_parcela_reduzida_csv") ?? "").trim();
+  let raw: unknown = [];
+  if (json != null) {
+    try {
+      raw = JSON.parse(String(json));
+    } catch {
+      throw new Error("Revise as opções fixas da parcela reduzida.");
+    }
+  } else if (csv) {
+    raw = csv.split(/[;\r\n]+/).filter(Boolean);
+  }
+  if (!Array.isArray(raw)) throw new Error("A lista de parcelas reduzidas é inválida.");
+  const valores = [...new Set(raw.map((item) => parseBRLNumber(String(item))))];
+  if (valores.some((valor) => !Number.isFinite(valor) || valor <= 0 || valor >= 100)) {
+    throw new Error("Cada parcela reduzida deve possuir percentual maior que 0 e menor que 100.");
+  }
+  return valores;
+}
 
 export type GroupActionState = {
   status: "IDLE" | "SUCCESS" | "VALIDATION_ERROR" | "CONFLICT" | "SERVER_ERROR";
   message: string;
+  redirectTo?: string;
 };
 
 export async function decidirGovernancaGrupoAction(formData: FormData) {
@@ -130,10 +153,12 @@ export async function salvarGrupoPlatformAction(
     const seguroPercentual = parseBRLNumber(formData.get("seguro_percentual") as string);
     const capacidadeTotal = Number(formData.get("capacidade_total")) || 0;
     const vagasDisponiveis = Number(formData.get("vagas_disponiveis")) || 0;
-    const percentualParcelaReduzidaRaw = String(formData.get("percentual_parcela_reduzida") ?? "").trim();
-    const percentualParcelaReduzida = percentualParcelaReduzidaRaw
-      ? parseBRLNumber(percentualParcelaReduzidaRaw)
-      : null;
+    const percentuaisReduzidos = formData.has("percentuais_parcela_reduzida_json") || formData.has("percentuais_parcela_reduzida_csv")
+      ? parsePercentuaisReduzidos(formData)
+      : String(formData.get("percentual_parcela_reduzida") ?? "").trim()
+        ? [parseBRLNumber(String(formData.get("percentual_parcela_reduzida")))]
+        : [];
+    const percentualParcelaReduzida = percentuaisReduzidos[0] ?? null;
     const regraIntegralizacao = percentualParcelaReduzida != null
       ? String(formData.get("regra_integralizacao_parcela_reduzida") ?? "CONTEMPLACAO")
       : null;
@@ -178,6 +203,17 @@ export async function salvarGrupoPlatformAction(
     if (error) throw new Error(error.message);
 
     const savedId = (saved as { id?: string })?.id || id;
+    if (savedId) {
+      const { error: percentuaisError } = await db.rpc("rpc_salvar_percentuais_parcela_reduzida_grupo", {
+        p_grupo_id: savedId,
+        p_percentuais: percentuaisReduzidos.length ? percentuaisReduzidos : null,
+      });
+      if (percentuaisError) throw new Error(percentuaisError.message);
+      const tabelaArquivo = formData.get("tabela_arquivo");
+      if (tabelaArquivo instanceof File && tabelaArquivo.size > 0) {
+        await uploadTabelaGrupo(savedId, "PLATFORM", tabelaArquivo);
+      }
+    }
     revalidatePath("/platform/grupos");
     revalidatePath("/platform/administradoras");
     if (savedId) {
@@ -190,6 +226,7 @@ export async function salvarGrupoPlatformAction(
       message: id
         ? "Dados do Grupo atualizados com sucesso."
         : "Novo Grupo Global cadastrado com sucesso.",
+      redirectTo: formData.get("acao_pos_salvar") === "VOLTAR" ? "/platform/grupos" : undefined,
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : "Erro ao salvar Grupo.";

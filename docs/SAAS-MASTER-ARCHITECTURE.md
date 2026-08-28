@@ -1027,6 +1027,28 @@ mesmo registro para `GLOBAL`; não duplica grupo nem altera snapshots histórico
 Relatório:
 `docs/relatorios-fases/FASE-155-GRUPOS-LANCES-E-VIGENCIA-PARCELA-REDUZIDA.md`.
 
+## 37. Cadastro completo e opções fixas de parcela reduzida — Fase 156
+
+O cadastro compartilhado entre ERP e Platform passou a expor os campos já
+canônicos de fundo de reserva, seguro prestamista em fator decimal e observações.
+A tabela comercial continua no Storage privado e nas tabelas canônicas da Fase
+152; seu envio pode ocorrer no mesmo formulário depois da criação do UUID
+definitivo do grupo.
+
+`grupos_consorcio.percentuais_parcela_reduzida` guarda uma coleção ordenada de
+opções fixas, como 60% e 70%. A primeira mantém compatibilidade com o campo
+singular legado. Grupos antigos sem a coleção continuam inalterados. O site
+permite selecionar uma das opções e o servidor valida e congela essa escolha no
+snapshot comercial. As faixas de comissão permanecem independentes.
+
+O ERP pode escrever diretamente a coleção somente em grupo local originado pelo
+próprio tenant; catálogo global continua sob autoridade exclusiva da Platform.
+O fluxo de cadastro oferece salvar e continuar ou salvar e retornar à lista,
+onde o novo grupo aparece com seu estado de homologação.
+
+Relatório:
+`docs/relatorios-fases/FASE-156-CADASTRO-COMPLETO-GRUPOS-OPCOES-REDUZIDAS.md`.
+
 
 
 

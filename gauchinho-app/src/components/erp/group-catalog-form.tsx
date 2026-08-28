@@ -1,5 +1,6 @@
 "use client";
-import { useActionState, useMemo, useState } from "react";
+import { useActionState, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import type { GroupActionState } from "@/app/platform/grupos-actions";
 import { calcularAssembleiaMetade } from "@/lib/grupos/regra-integralizacao";
 
@@ -20,10 +21,12 @@ type Group = {
   data_primeira_assembleia?: string | null;
   taxa_administrativa_percentual?: number | null;
   fundo_reserva_percentual?: number | null;
+  seguro_habilitado?: boolean;
   seguro_percentual?: number | null;
   permite_lance_embutido?: boolean;
   percentual_lance_embutido?: number | null;
   percentual_parcela_reduzida?: number | null;
+  percentuais_parcela_reduzida?: number[] | null;
   regra_integralizacao_parcela_reduzida?: "CONTEMPLACAO" | "ASSEMBLEIA" | null;
   assembleia_limite_parcela_reduzida?: number | null;
   lances?: Array<{
@@ -43,6 +46,7 @@ type Group = {
   modalidade_personalizada_habilitada?: boolean;
   status_vagas_local?: string;
   alteracao_catalogo_status?: string;
+  observacoes?: string | null;
 };
 
 export function GroupCatalogForm({
@@ -62,7 +66,11 @@ export function GroupCatalogForm({
   readonly?: boolean;
   scope: "PLATFORM" | "ERP";
 }) {
+  const router = useRouter();
   const [state, formAction] = useActionState(action, initial);
+  useEffect(() => {
+    if (state.status === "SUCCESS" && state.redirectTo) router.push(state.redirectTo);
+  }, [router, state]);
   const [admin, setAdmin] = useState(
     grupo?.administradora_id ?? administradoras[0]?.id ?? ""
   );
@@ -76,6 +84,14 @@ export function GroupCatalogForm({
   const [personalizada, setPersonalizada] = useState(
     grupo?.modalidade_personalizada_habilitada !== false,
   );
+  const [seguroHabilitado, setSeguroHabilitado] = useState(
+    grupo?.seguro_habilitado ?? Number(grupo?.seguro_percentual ?? 0) > 0,
+  );
+  const [percentuaisReduzidos, setPercentuaisReduzidos] = useState<string[]>(() => {
+    const cadastrados = grupo?.percentuais_parcela_reduzida;
+    if (Array.isArray(cadastrados) && cadastrados.length > 0) return cadastrados.map(String);
+    return [String(grupo?.percentual_parcela_reduzida ?? 60)];
+  });
   const [prazoTotal, setPrazoTotal] = useState(grupo?.prazo_total ? String(grupo.prazo_total) : "");
   const [regraIntegralizacao, setRegraIntegralizacao] = useState<"" | "CONTEMPLACAO" | "ASSEMBLEIA">(
     grupo?.regra_integralizacao_parcela_reduzida ?? (grupo?.id ? "" : "CONTEMPLACAO"),
@@ -101,6 +117,7 @@ export function GroupCatalogForm({
     >
       <input type="hidden" name="id" value={grupo?.id ?? ""} />
       <input type="hidden" name="lances_json" value={JSON.stringify(lances)} />
+      <input type="hidden" name="percentuais_parcela_reduzida_json" value={JSON.stringify(percentuaisReduzidos)} />
 
       {scope === "ERP" && grupo?.alteracao_catalogo_status && grupo.alteracao_catalogo_status !== "SEM_ALTERACAO" ? (
         <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
@@ -207,6 +224,20 @@ export function GroupCatalogForm({
             disabled={readonly}
           />
         </label>
+
+        <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+          Fundo de Reserva (%)
+          <input className={field} name="fundo_reserva_percentual" inputMode="decimal" defaultValue={grupo?.fundo_reserva_percentual ?? 0} disabled={readonly} placeholder="Ex.: 2" />
+        </label>
+
+        <div className="space-y-2 text-sm font-semibold text-slate-700 dark:text-slate-300">
+          <label className="block">
+            <input name="seguro_habilitado" type="checkbox" checked={seguroHabilitado} onChange={(event) => setSeguroHabilitado(event.target.checked)} disabled={readonly} className="mr-2" />
+            Seguro prestamista
+          </label>
+          <input className={field} name="seguro_percentual" inputMode="decimal" defaultValue={grupo?.seguro_percentual ?? 0.0004} disabled={readonly || !seguroHabilitado} placeholder="0,0004" />
+          <span className="block text-xs font-normal text-slate-500">Taxa decimal. Ex.: 0,0004 equivale a 0,04% do saldo.</span>
+        </div>
       </div>
 
       <div className="space-y-4 rounded-xl border border-blue-200 bg-blue-50/60 p-4 dark:border-blue-900 dark:bg-blue-950/20">
@@ -226,11 +257,19 @@ export function GroupCatalogForm({
           </label> : null}
         </div>
         {reduzida ? <div className="grid gap-4 md:grid-cols-2">
-          <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">
-            Percentual efetivo da parcela reduzida (%)
-            <input className={field} name="percentual_parcela_reduzida" inputMode="decimal" defaultValue={grupo?.percentual_parcela_reduzida ?? 60} required />
-            <span className="mt-1 block text-xs font-normal text-slate-500">Ex.: 70% calcula a parcela em 70% da integral; a comissão permanece na faixa automática de 60% a 99%.</span>
-          </label>
+          <div className="space-y-2 text-sm font-semibold text-slate-700 dark:text-slate-300">
+            <div className="flex items-center justify-between gap-2">
+              <span>Opções fixas de parcela reduzida (%)</span>
+              <button type="button" onClick={() => setPercentuaisReduzidos((atuais) => [...atuais, ""])} className="rounded-lg border border-blue-300 bg-white px-2 py-1 text-xs font-bold text-blue-700">+ Adicionar</button>
+            </div>
+            {percentuaisReduzidos.map((percentual, index) => (
+              <div key={`${index}-${percentuaisReduzidos.length}`} className="flex gap-2">
+                <input className={field} inputMode="decimal" value={percentual} onChange={(event) => setPercentuaisReduzidos((atuais) => atuais.map((item, i) => i === index ? event.target.value : item))} placeholder={index === 0 ? "60" : "70"} required />
+                {percentuaisReduzidos.length > 1 ? <button type="button" onClick={() => setPercentuaisReduzidos((atuais) => atuais.filter((_, i) => i !== index))} className="mt-1 text-xs font-bold text-red-600">Remover</button> : null}
+              </div>
+            ))}
+            <span className="block text-xs font-normal text-slate-500">Cadastre 60%, 70% ou outras opções fixas. A primeira será o padrão do site; a comissão continua na faixa automática.</span>
+          </div>
           <fieldset className="space-y-2 text-sm text-slate-700 dark:text-slate-300">
             <legend className="font-semibold">Vigência informativa da parcela reduzida</legend>
             {grupo?.id && !grupo.regra_integralizacao_parcela_reduzida ? <label className="block"><input type="radio" name="regra_integralizacao_parcela_reduzida" value="" checked={regraIntegralizacao === ""} onChange={() => setRegraIntegralizacao("")} className="mr-2" />Grupo legado — não alterar nem exibir regra nova</label> : null}
@@ -262,6 +301,17 @@ export function GroupCatalogForm({
           </label>
         </div>
       ) : null}
+
+      <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300">
+        Observações do grupo
+        <textarea className={field} name="observacoes" rows={3} defaultValue={grupo?.observacoes ?? ""} placeholder="Informações importantes para o consultor e para a proposta." disabled={readonly} />
+      </label>
+
+      {!readonly ? <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300">
+        Tabela comercial do grupo
+        <input className={`${field} file:mr-3 file:rounded-md file:border-0 file:bg-blue-700 file:px-3 file:py-1.5 file:text-xs file:font-bold file:text-white`} name="tabela_arquivo" type="file" accept="application/pdf,image/jpeg,image/png,image/webp" />
+        <span className="mt-1 block text-xs font-normal text-slate-500">Opcional. PDF, JPG, PNG ou WEBP de até 15 MB. O arquivo ficará disponível no ERP e no SaaS.</span>
+      </label> : null}
 
       {scope === "ERP" ? (
         <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300">
@@ -296,14 +346,14 @@ export function GroupCatalogForm({
           </strong>
         </p>
 
-        {!readonly && (
-          <button
-            type="submit"
-            className="rounded-xl bg-blue-700 px-6 py-2.5 text-sm font-bold text-white shadow-md hover:bg-blue-800"
-          >
-            {scope === "ERP" ? "Aplicar localmente e enviar para análise" : "Salvar alterações"}
+        {!readonly && <div className="flex flex-wrap gap-2">
+          <button type="submit" name="acao_pos_salvar" value="CONTINUAR" className="rounded-xl border border-blue-300 bg-white px-5 py-2.5 text-sm font-bold text-blue-800 hover:bg-blue-50">
+            Salvar e continuar
           </button>
-        )}
+          <button type="submit" name="acao_pos_salvar" value="VOLTAR" className="rounded-xl bg-blue-700 px-6 py-2.5 text-sm font-bold text-white shadow-md hover:bg-blue-800">
+            Salvar e voltar para Grupos
+          </button>
+        </div>}
       </div>
 
       {state.status !== "IDLE" && (

@@ -74,6 +74,8 @@ export type GrupoConsorcio = {
   /** Pode ser restringida pela franquia, sem alterar o catálogo global. */
   permite_parcela_integral?: boolean;
   percentual_parcela_reduzida: number | null;
+  /** Opções comerciais fixas da parcela reduzida (ex.: 60% e 70%). */
+  percentuais_parcela_reduzida?: number[] | null;
   /** Regra informativa para novos grupos; grupos legados permanecem sem valor. */
   regra_integralizacao_parcela_reduzida?: "CONTEMPLACAO" | "ASSEMBLEIA" | null;
   /** Última assembleia reduzida. A parcela integral começa em X+1. */

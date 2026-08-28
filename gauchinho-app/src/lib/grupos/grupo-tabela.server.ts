@@ -1,6 +1,8 @@
 import "server-only";
 
 import { createAdminClient } from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/server";
+import { isPlatformSuperadmin } from "@/lib/auth/is-superadmin";
 import { requireCurrentTenantContext, requireTenantPermission } from "@/lib/tenant/context";
 import { getGrupoAutorizadoForEmpresa } from "@/lib/grupos/catalogo-autorizado-service";
 
@@ -65,10 +67,29 @@ async function assertGrupoTenant(grupoId: string, write: boolean) {
 
 export async function uploadTabelaGrupo(
   grupoId: string,
-  origemPortal: "SITE" | "ERP",
+  origemPortal: "SITE" | "ERP" | "PLATFORM",
   arquivo: File,
 ) {
-  const context = await assertGrupoTenant(grupoId, true);
+  let uploadedByUsuarioId: string | null = null;
+  let uploadedByEmpresaId: string | null = null;
+  if (origemPortal === "PLATFORM") {
+    if (!(await isPlatformSuperadmin())) throw new Error("Somente Platform Superadmin pode enviar a tabela global.");
+    const db = await createClient();
+    const { data: authData } = await db.auth.getUser();
+    if (authData.user) {
+      const adminIdentity = createAdminClient();
+      const { data: usuario } = await adminIdentity
+        .from("usuarios")
+        .select("id")
+        .eq("auth_user_id", authData.user.id)
+        .maybeSingle();
+      uploadedByUsuarioId = usuario?.id ?? null;
+    }
+  } else {
+    const context = await assertGrupoTenant(grupoId, true);
+    uploadedByUsuarioId = context.usuario.id;
+    uploadedByEmpresaId = context.empresaAtiva.id;
+  }
   if (!(arquivo instanceof File) || arquivo.size <= 0) throw new Error("Selecione uma tabela para enviar.");
   if (arquivo.size > GRUPO_TABELA_MAX_BYTES) throw new Error("A tabela deve ter no máximo 15 MB.");
   const extension = MIME_EXTENSION[arquivo.type];
@@ -92,8 +113,8 @@ export async function uploadTabelaGrupo(
     mime_type: arquivo.type,
     tamanho_bytes: arquivo.size,
     uploaded_at: uploadedAt,
-    uploaded_by_usuario_id: context.usuario.id,
-    uploaded_by_empresa_id: context.empresaAtiva.id,
+    uploaded_by_usuario_id: uploadedByUsuarioId,
+    uploaded_by_empresa_id: uploadedByEmpresaId,
     origem_portal: origemPortal,
     updated_at: uploadedAt,
   };
@@ -111,8 +132,8 @@ export async function uploadTabelaGrupo(
     mime_type: arquivo.type,
     tamanho_bytes: arquivo.size,
     uploaded_at: uploadedAt,
-    uploaded_by_usuario_id: context.usuario.id,
-    uploaded_by_empresa_id: context.empresaAtiva.id,
+    uploaded_by_usuario_id: uploadedByUsuarioId,
+    uploaded_by_empresa_id: uploadedByEmpresaId,
     origem_portal: origemPortal,
   });
   if (historyError) throw new Error(`Tabela salva, mas a auditoria falhou: ${historyError.message}`);

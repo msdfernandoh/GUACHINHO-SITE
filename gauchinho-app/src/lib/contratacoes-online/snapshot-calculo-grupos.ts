@@ -122,10 +122,26 @@ function normalizarConfig(
     throw new Error("Percentual da parcela personalizada inválido.");
   }
 
+  const percentuaisReduzidos = Array.isArray(grupo.percentuais_parcela_reduzida)
+    ? grupo.percentuais_parcela_reduzida.map(Number).filter((valor) => Number.isFinite(valor) && valor > 0 && valor < 100)
+    : grupo.percentual_parcela_reduzida != null
+      ? [Number(grupo.percentual_parcela_reduzida)]
+      : [];
+  const percentualReduzido = raw.percentualParcelaReduzida == null
+    ? base.percentualParcelaReduzida
+    : finite(raw.percentualParcelaReduzida, 0);
+  if (
+    modalidadeParcela === "reduzida" &&
+    (percentualReduzido == null || !percentuaisReduzidos.some((valor) => Math.abs(valor - percentualReduzido) < 0.0001))
+  ) {
+    throw new Error("Percentual da parcela reduzida não pertence ao grupo selecionado.");
+  }
+
   return {
     cotaId: cota.id,
     quantidadeCotas,
     modalidadeParcela,
+    percentualParcelaReduzida: percentualReduzido,
     percentualParcelaPersonalizada: percentualPersonalizado,
     usaLanceEmbutido: bool(raw.usaLanceEmbutido, base.usaLanceEmbutido),
     modalidadeLanceId,

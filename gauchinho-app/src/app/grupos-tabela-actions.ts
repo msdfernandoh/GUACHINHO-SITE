@@ -9,7 +9,7 @@ export type GrupoTabelaActionResult =
 
 export async function uploadTabelaGrupoAction(
   grupoId: string,
-  origemPortal: "SITE" | "ERP",
+  origemPortal: "SITE" | "ERP" | "PLATFORM",
   formData: FormData,
 ): Promise<GrupoTabelaActionResult> {
   try {

@@ -34,7 +34,7 @@ export default async function GrupoErpPage({
     db
       .from("grupos_consorcio")
       .select(
-        "id,codigo_grupo,administradora_id,tipo_administradora_id,modalidade_comissao_id,status,ativo,prazo_total,data_primeira_assembleia,parcelas_realizadas,prazo_restante,capacidade_total,taxa_administrativa_percentual,fundo_reserva_percentual,seguro_habilitado,seguro_percentual,permite_lance_embutido,percentual_lance_embutido,percentual_parcela_reduzida,regra_integralizacao_parcela_reduzida,assembleia_limite_parcela_reduzida,vagas_disponiveis,observacoes,origem_governanca,status_governanca,empresa_origem_id,administradora:administradoras(id,nome),tipo:administradora_tipos(id,nome),modalidade:administradora_modalidades_comissao(id,nome)"
+        "id,codigo_grupo,administradora_id,tipo_administradora_id,modalidade_comissao_id,status,ativo,prazo_total,data_primeira_assembleia,parcelas_realizadas,prazo_restante,capacidade_total,taxa_administrativa_percentual,fundo_reserva_percentual,seguro_habilitado,seguro_percentual,permite_lance_embutido,percentual_lance_embutido,percentual_parcela_reduzida,percentuais_parcela_reduzida,regra_integralizacao_parcela_reduzida,assembleia_limite_parcela_reduzida,vagas_disponiveis,observacoes,origem_governanca,status_governanca,empresa_origem_id,administradora:administradoras(id,nome),tipo:administradora_tipos(id,nome),modalidade:administradora_modalidades_comissao(id,nome)"
       )
       .eq("id", id)
       .maybeSingle(),

@@ -76,6 +76,8 @@ export type ConfigLinhaSimulacaoGrupo = {
   cotaId: string | null;
   quantidadeCotas: number;
   modalidadeParcela: ModalidadeParcelaLinha;
+  /** Opção fixa selecionada quando a modalidade é reduzida. */
+  percentualParcelaReduzida?: number | null;
   /** Percentual sobre a integral quando modalidadeParcela = personalizada (ex.: 40). */
   percentualParcelaPersonalizada: number | null;
   usaLanceEmbutido: boolean;
@@ -85,6 +87,17 @@ export type ConfigLinhaSimulacaoGrupo = {
   recursoProprioInput: number;
   usaSeguro: boolean;
 };
+
+export function listarPercentuaisParcelaReduzida(
+  grupo: Pick<GrupoConsorcio, "percentuais_parcela_reduzida" | "percentual_parcela_reduzida">,
+): number[] {
+  const cadastrados = Array.isArray(grupo.percentuais_parcela_reduzida)
+    ? grupo.percentuais_parcela_reduzida
+    : [];
+  const legado = grupo.percentual_parcela_reduzida;
+  const valores = cadastrados.length > 0 ? cadastrados : legado != null ? [legado] : [];
+  return [...new Set(valores.map((valor) => Number(valor)).filter((valor) => Number.isFinite(valor) && valor > 0 && valor < 100))];
+}
 
 export type ResultadoLinhaSimulacaoGrupo = {
   ativo: boolean;
@@ -344,7 +357,10 @@ export function calcularLinhaSimulacaoGrupo(args: {
     prazoTotal: params.prazoTotal,
     quantidadeCotas: qty,
     temParcelaReduzida: !!grupo.tem_parcela_reduzida,
-    percentualParcelaReduzida: num(grupo.percentual_parcela_reduzida, 100),
+    percentualParcelaReduzida:
+      parcelaTipoLinha === "reduzida"
+        ? num(config.percentualParcelaReduzida ?? listarPercentuaisParcelaReduzida(grupo)[0], 100)
+        : num(grupo.percentual_parcela_reduzida, 100),
     modalidadeParcela: parcelaTipoLinha,
     percentualParcelaPersonalizada: pctPersonalLinha,
   });
@@ -513,7 +529,7 @@ export function formatPrazoGrupo(grupo: GrupoConsorcio): string {
 }
 
 export function labelModalidadeParcelaLinha(
-  config: Pick<ConfigLinhaSimulacaoGrupo, "modalidadeParcela" | "percentualParcelaPersonalizada">,
+  config: Pick<ConfigLinhaSimulacaoGrupo, "modalidadeParcela" | "percentualParcelaReduzida" | "percentualParcelaPersonalizada">,
   grupo?: Pick<
     GrupoConsorcio,
     "percentual_parcela_reduzida" | "percentual_parcela_reduzida_personalizada"
@@ -527,7 +543,9 @@ export function labelModalidadeParcelaLinha(
     return pct != null && pct > 0 ? `Personalizada (${pct}%)` : "Personalizada";
   }
   if (config.modalidadeParcela === "reduzida") {
-    const pct = normalizarPercentualGrupo(grupo?.percentual_parcela_reduzida) || 60;
+    const pct = normalizarPercentualGrupo(
+      config.percentualParcelaReduzida ?? grupo?.percentual_parcela_reduzida,
+    ) || 60;
     return `Reduzida (${pct}%)`;
   }
   return "Integral";
@@ -542,11 +560,13 @@ export function defaultConfigLinha(
   const umaMod = mods.length === 1 ? mods[0]! : null;
   const parcelaTipo = umaMod ? parcelaTipoFromModalidade(umaMod) : null;
   const pctEmb = umaMod ? num(umaMod.percentual_lance_embutido) : 0;
+  const percentuaisReduzidos = listarPercentuaisParcelaReduzida(grupo);
   return {
     cotaId: cotas[0]?.id ?? null,
     quantidadeCotas: 0,
     modalidadeParcela:
       parcelaTipo ?? (grupo.tem_parcela_reduzida ? "reduzida" : "integral"),
+    percentualParcelaReduzida: percentuaisReduzidos[0] ?? null,
     percentualParcelaPersonalizada:
       grupo.percentual_parcela_reduzida_personalizada != null
         ? num(grupo.percentual_parcela_reduzida_personalizada)
