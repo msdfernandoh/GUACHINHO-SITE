@@ -35,7 +35,7 @@ export default async function PlatformUsuariosPage({
         "id, usuario_id, empresa_id, papel_id, ativo, is_responsavel_principal, status, convite_enviado_em, erp_modulos_visiveis, created_at",
       )
       .order("created_at", { ascending: false }),
-    db.from("usuarios").select("id, nome, email, ultimo_acesso"),
+    db.from("usuarios").select("id, nome, email"),
     db
       .from("empresas")
       .select("id, nome_fantasia, slug, configuracoes")
@@ -106,7 +106,7 @@ export default async function PlatformUsuariosPage({
       is_responsavel_principal: Boolean(r.is_responsavel_principal),
       erp_modulos_visiveis: Array.isArray(r.erp_modulos_visiveis) ? (r.erp_modulos_visiveis as string[]) : [],
       convite_enviado_em: r.convite_enviado_em,
-      ultimo_acesso: usr?.ultimo_acesso || null,
+      ultimo_acesso: null,
       created_at: r.created_at,
     };
   });

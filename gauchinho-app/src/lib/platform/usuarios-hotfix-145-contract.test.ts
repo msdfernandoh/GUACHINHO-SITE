@@ -59,6 +59,7 @@ describe("Fase 146 — cadastro seguro de usuário principal da franquia", () =>
     expect(page).toContain("isPlatformSuperadmin");
     expect(page).toContain("Não foi possível carregar os usuários");
     expect(page).not.toContain("usuario:usuarios!");
+    expect(page).not.toContain('select("id, nome, email, ultimo_acesso")');
   });
 
   it("preserva a ativação autenticada dos convites legados", () => {
