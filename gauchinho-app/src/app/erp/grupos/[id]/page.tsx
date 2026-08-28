@@ -10,6 +10,7 @@ import { calcularPrazoGrupoFromRow } from "@/lib/grupos/prazos";
 import { buscarTabelaGrupo } from "@/lib/grupos/grupo-tabela.server";
 import { GrupoTabelaActions } from "@/components/grupos/grupo-tabela-actions";
 import type { GrupoConsorcio, GrupoModalidadeLance } from "@/lib/types";
+import { descricaoIntegralizacaoParcela } from "@/lib/grupos/regra-integralizacao";
 
 const money = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 
@@ -33,7 +34,7 @@ export default async function GrupoErpPage({
     db
       .from("grupos_consorcio")
       .select(
-        "id,codigo_grupo,administradora_id,tipo_administradora_id,modalidade_comissao_id,status,ativo,prazo_total,data_primeira_assembleia,parcelas_realizadas,prazo_restante,capacidade_total,taxa_administrativa_percentual,fundo_reserva_percentual,seguro_habilitado,seguro_percentual,permite_lance_embutido,percentual_lance_embutido,vagas_disponiveis,observacoes,origem_governanca,status_governanca,empresa_origem_id,administradora:administradoras(id,nome),tipo:administradora_tipos(id,nome),modalidade:administradora_modalidades_comissao(id,nome)"
+        "id,codigo_grupo,administradora_id,tipo_administradora_id,modalidade_comissao_id,status,ativo,prazo_total,data_primeira_assembleia,parcelas_realizadas,prazo_restante,capacidade_total,taxa_administrativa_percentual,fundo_reserva_percentual,seguro_habilitado,seguro_percentual,permite_lance_embutido,percentual_lance_embutido,percentual_parcela_reduzida,regra_integralizacao_parcela_reduzida,assembleia_limite_parcela_reduzida,vagas_disponiveis,observacoes,origem_governanca,status_governanca,empresa_origem_id,administradora:administradoras(id,nome),tipo:administradora_tipos(id,nome),modalidade:administradora_modalidades_comissao(id,nome)"
       )
       .eq("id", id)
       .maybeSingle(),
@@ -53,7 +54,7 @@ export default async function GrupoErpPage({
       .maybeSingle(),
     db
       .from("grupos_modalidades_lance")
-      .select("id,grupo_id,nome,percentual_lance_embutido,percentual_recurso_proprio_minimo,descricao,ativo,ordem,created_at,updated_at")
+      .select("id,grupo_id,nome,percentual_lance_embutido,percentual_recurso_proprio_minimo,base_referencia,descricao,ativo,ordem,created_at,updated_at")
       .eq("grupo_id", id)
       .eq("ativo", true)
       .order("ordem"),
@@ -105,6 +106,7 @@ export default async function GrupoErpPage({
   const lances = (lancesRes.data ?? []) as GrupoModalidadeLance[];
   const tabela = await buscarTabelaGrupo(id);
   const prazo = calcularPrazoGrupoFromRow(g as unknown as GrupoConsorcio);
+  const descricaoIntegralizacao = descricaoIntegralizacaoParcela(g);
   const modalidadesHabilitadasIds = (modulosHabilitadosRes.data ?? []).map(
     (x) => x.administradora_modalidade_id
   );
@@ -117,6 +119,7 @@ export default async function GrupoErpPage({
     modalidade_personalizada_habilitada: configRes.data?.modalidade_personalizada_habilitada ?? true,
     status_vagas_local: configRes.data?.status_vagas_local ?? "HERDAR",
     alteracao_catalogo_status: configRes.data?.alteracao_catalogo_status ?? "SEM_ALTERACAO",
+    lances,
   };
 
   return (
@@ -182,8 +185,9 @@ export default async function GrupoErpPage({
           {lances.length === 0 ? <p className="mt-3 text-sm text-slate-500">Nenhum lance embutido cadastrado no SaaS.</p> : (
             <div className="mt-3 space-y-2">{lances.map((lance) => (
               <div key={lance.id} className="rounded-lg border border-slate-200 p-3 text-sm dark:border-slate-700">
-                <div className="flex justify-between gap-3"><strong>{lance.nome}</strong><span>{Number(lance.percentual_lance_embutido).toLocaleString("pt-BR")}%</span></div>
+                <div className="flex justify-between gap-3"><strong>{lance.nome}</strong><span>Até {Number(lance.percentual_lance_embutido).toLocaleString("pt-BR")}% embutido</span></div>
                 {Number(lance.percentual_recurso_proprio_minimo) > 0 ? <p className="text-xs text-slate-500">Recurso próprio mínimo: {Number(lance.percentual_recurso_proprio_minimo).toLocaleString("pt-BR")}%</p> : null}
+                <p className="text-xs text-slate-500">Base: {lance.base_referencia === "CREDITO" ? "crédito contratado" : "saldo devedor"}</p>
                 {lance.descricao ? <p className="mt-1 text-xs text-slate-500">{lance.descricao}</p> : null}
               </div>
             ))}</div>
@@ -192,6 +196,7 @@ export default async function GrupoErpPage({
         <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
           <h2 className="font-bold text-slate-900 dark:text-white">Observações operacionais do SaaS</h2>
           <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-slate-600 dark:text-slate-300">{g.observacoes || "Nenhuma observação operacional cadastrada."}</p>
+          {descricaoIntegralizacao ? <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm font-medium text-amber-950">{descricaoIntegralizacao}</p> : null}
         </div>
       </section>
 

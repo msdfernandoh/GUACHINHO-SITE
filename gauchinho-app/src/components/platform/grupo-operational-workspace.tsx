@@ -34,6 +34,7 @@ import {
   DEFAULT_TIPOS_CONTEMPLACAO,
 } from "@/lib/platform/grupos-prontidao";
 import { GrupoReajusteCreditosDialog } from "@/components/platform/grupo-reajuste-creditos-dialog";
+import { calcularAssembleiaMetade } from "@/lib/grupos/regra-integralizacao";
 
 const initial: GroupActionState = { status: "IDLE", message: "" };
 const inputStyle =
@@ -203,11 +204,16 @@ export function GrupoOperationalWorkspace({
       nome: item.nome,
       percentual_lance_embutido: String(item.percentual_lance_embutido ?? ""),
       percentual_recurso_proprio_minimo: String(item.percentual_recurso_proprio_minimo ?? 0),
+      base_referencia: item.base_referencia ?? "SALDO_DEVEDOR",
       descricao: item.descricao ?? "",
       ativo: item.ativo !== false,
-      tipo_parcela: item.tipo_parcela ?? "",
-      percentual_parcela_reduzida: item.percentual_parcela_reduzida == null ? "" : String(item.percentual_parcela_reduzida),
     })),
+  );
+  const [regraIntegralizacao, setRegraIntegralizacao] = useState<"" | "CONTEMPLACAO" | "ASSEMBLEIA">(
+    grupo.regra_integralizacao_parcela_reduzida ?? "",
+  );
+  const [assembleiaLimite, setAssembleiaLimite] = useState(
+    grupo.assembleia_limite_parcela_reduzida ? String(grupo.assembleia_limite_parcela_reduzida) : "",
   );
 
   const prontidao: GrupoProntidaoResult = validateGrupoProntidao(grupo);
@@ -418,7 +424,7 @@ export function GrupoOperationalWorkspace({
           </div>
           <button
             type="button"
-            onClick={() => setLancesEmbutidos((current) => [...current, { id: `novo-${Date.now()}`, nome: "", percentual_lance_embutido: "", percentual_recurso_proprio_minimo: "0", descricao: "", ativo: true, tipo_parcela: "", percentual_parcela_reduzida: "" }])}
+            onClick={() => setLancesEmbutidos((current) => [...current, { id: `novo-${Date.now()}`, nome: "", percentual_lance_embutido: "", percentual_recurso_proprio_minimo: "0", base_referencia: "SALDO_DEVEDOR" as const, descricao: "", ativo: true }])}
             className="rounded-lg border border-cyan-600 px-3 py-1.5 text-xs font-bold text-cyan-700 hover:bg-cyan-50 dark:text-cyan-300"
           >
             + Adicionar tipo
@@ -429,54 +435,42 @@ export function GrupoOperationalWorkspace({
         ) : (
           <div className="space-y-2">
             {lancesEmbutidos.map((lance, index) => (
-              <div key={lance.id} className="grid gap-2 rounded-lg border border-slate-200 p-3 md:grid-cols-2 lg:grid-cols-6 dark:border-slate-700">
-                <input
+              <div key={lance.id} className="grid gap-3 rounded-lg border border-slate-200 p-3 md:grid-cols-2 lg:grid-cols-5 dark:border-slate-700">
+                <label className="text-xs font-bold text-slate-600">Nome da modalidade<input
                   aria-label={`Nome do lance ${index + 1}`}
                   value={lance.nome}
                   onChange={(event) => setLancesEmbutidos((rows) => rows.map((row, rowIndex) => rowIndex === index ? { ...row, nome: event.target.value } : row))}
                   placeholder="Ex.: Lance embutido 25%"
                   className={inputStyle}
-                />
-                <select
-                  aria-label={`Modalidade de parcela do lance ${index + 1}`}
-                  value={lance.tipo_parcela}
-                  onChange={(event) => setLancesEmbutidos((rows) => rows.map((row, rowIndex) => rowIndex === index ? { ...row, tipo_parcela: event.target.value as "" | "integral" | "reduzida" } : row))}
-                  className={inputStyle}
-                >
-                  <option value="">Parcela escolhida no site</option>
-                  <option value="integral">Parcela integral</option>
-                  <option value="reduzida">Parcela reduzida</option>
-                </select>
-                <input
-                  aria-label={`Percentual de parcela reduzida do lance ${index + 1}`}
-                  value={lance.percentual_parcela_reduzida}
-                  disabled={lance.tipo_parcela !== "reduzida"}
-                  onChange={(event) => setLancesEmbutidos((rows) => rows.map((row, rowIndex) => rowIndex === index ? { ...row, percentual_parcela_reduzida: event.target.value } : row))}
-                  placeholder="Parcela reduzida %"
-                  className={inputStyle}
-                />
-                <input
+                /></label>
+                <label className="text-xs font-bold text-slate-600">Máximo embutido (%)<input
                   aria-label={`Percentual do lance ${index + 1}`}
                   value={lance.percentual_lance_embutido}
                   onChange={(event) => setLancesEmbutidos((rows) => rows.map((row, rowIndex) => rowIndex === index ? { ...row, percentual_lance_embutido: event.target.value } : row))}
-                  placeholder="Percentual"
+                  placeholder="Ex.: 40"
                   className={inputStyle}
-                />
-                <input
+                /></label>
+                <label className="text-xs font-bold text-slate-600">Recurso próprio mínimo (%)<input
                   aria-label={`Recurso próprio mínimo do lance ${index + 1}`}
                   value={lance.percentual_recurso_proprio_minimo}
                   onChange={(event) => setLancesEmbutidos((rows) => rows.map((row, rowIndex) => rowIndex === index ? { ...row, percentual_recurso_proprio_minimo: event.target.value } : row))}
                   placeholder="Recurso próprio mín. %"
                   className={inputStyle}
-                />
-                <input
+                /></label>
+                <label className="text-xs font-bold text-slate-600">Base de referência<select
+                  aria-label={`Base de referência do lance ${index + 1}`}
+                  value={lance.base_referencia}
+                  onChange={(event) => setLancesEmbutidos((rows) => rows.map((row, rowIndex) => rowIndex === index ? { ...row, base_referencia: event.target.value as "SALDO_DEVEDOR" | "CREDITO" } : row))}
+                  className={inputStyle}
+                ><option value="SALDO_DEVEDOR">Saldo devedor</option><option value="CREDITO">Crédito contratado</option></select></label>
+                <label className="text-xs font-bold text-slate-600">Descrição opcional<input
                   aria-label={`Descrição do lance ${index + 1}`}
                   value={lance.descricao}
                   onChange={(event) => setLancesEmbutidos((rows) => rows.map((row, rowIndex) => rowIndex === index ? { ...row, descricao: event.target.value } : row))}
                   placeholder="Descrição opcional"
                   className={inputStyle}
-                />
-                <button type="button" onClick={() => setLancesEmbutidos((rows) => rows.filter((_, rowIndex) => rowIndex !== index))} className="text-xs font-bold text-red-600 hover:underline">Remover</button>
+                /></label>
+                <div className="flex items-center justify-between md:col-span-2 lg:col-span-5"><span className="text-xs text-slate-500">Composição mínima informada: {Number(lance.percentual_lance_embutido || 0) + Number(lance.percentual_recurso_proprio_minimo || 0)}%</span><button type="button" onClick={() => setLancesEmbutidos((rows) => rows.filter((_, rowIndex) => rowIndex !== index))} className="text-xs font-bold text-red-600 hover:underline">Remover</button></div>
               </div>
             ))}
           </div>
@@ -613,6 +607,27 @@ export function GrupoOperationalWorkspace({
 
             <div>
               <label className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
+                Parcela reduzida efetiva (%)
+              </label>
+              <input name="percentual_parcela_reduzida" inputMode="decimal" defaultValue={grupo.percentual_parcela_reduzida ?? ""} placeholder="Ex.: 70" className={inputStyle} />
+              <p className="mt-1 text-[11px] text-slate-500">Não altera a faixa de comissão; ela é identificada automaticamente.</p>
+            </div>
+
+            <fieldset className="space-y-2 rounded-lg border border-slate-200 p-3 sm:col-span-2 lg:col-span-3 dark:border-slate-700">
+              <legend className="px-1 text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">Vigência informativa da parcela reduzida</legend>
+              <div className="flex flex-wrap gap-4 text-sm">
+                {!grupo.regra_integralizacao_parcela_reduzida ? <label><input type="radio" name="regra_integralizacao_parcela_reduzida" value="" checked={regraIntegralizacao === ""} onChange={() => setRegraIntegralizacao("")} className="mr-2" />Grupo legado — sem regra nova</label> : null}
+                <label><input type="radio" name="regra_integralizacao_parcela_reduzida" value="CONTEMPLACAO" checked={regraIntegralizacao === "CONTEMPLACAO"} onChange={() => setRegraIntegralizacao("CONTEMPLACAO")} className="mr-2" />Até a contemplação</label>
+                <label><input type="radio" name="regra_integralizacao_parcela_reduzida" value="ASSEMBLEIA" checked={regraIntegralizacao === "ASSEMBLEIA"} onChange={() => setRegraIntegralizacao("ASSEMBLEIA")} className="mr-2" />Até a assembleia X; integral em X+1</label>
+              </div>
+              {regraIntegralizacao === "ASSEMBLEIA" ? <div className="flex max-w-xl items-end gap-2">
+                <label className="flex-1 text-xs font-bold">Última assembleia reduzida<input name="assembleia_limite_parcela_reduzida" type="number" min="1" max={Math.max(1, Number(grupo.prazo_total ?? 1) - 1)} value={assembleiaLimite} onChange={(event) => setAssembleiaLimite(event.target.value)} className={inputStyle} required /></label>
+                <button type="button" onClick={() => setAssembleiaLimite(String(calcularAssembleiaMetade(Number(grupo.prazo_total ?? 0))))} className="rounded-lg border border-cyan-500 px-3 py-2 text-xs font-bold text-cyan-700">Usar 50% do prazo</button>
+              </div> : null}
+            </fieldset>
+
+            <div>
+              <label className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
                 Status Operacional
               </label>
               <select name="status" defaultValue={grupo.status || "Disponível"} className={inputStyle}>
@@ -692,13 +707,13 @@ export function GrupoOperationalWorkspace({
           <form action={formActionMods} className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900 space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3 dark:border-slate-800">
               <div>
-                <h2 className="text-lg font-bold text-slate-900 dark:text-white">1. Modalidades Disponíveis no Grupo</h2>
+                <h2 className="text-lg font-bold text-slate-900 dark:text-white">1. Faixas de comissão herdadas</h2>
                 <p className="text-xs text-slate-500">
-                  Carrega automaticamente os valores padrão da Administradora. Personalize apenas se este Grupo possuir regra de exceção.
+                  Integral 100%, reduzida de 60% a 99% e reduzida até 59% são classificações automáticas da comissão. O percentual efetivo da parcela do grupo é cadastrado em Dados Gerais e não exige selecionar uma faixa aqui.
                 </p>
               </div>
               <button type="submit" disabled={isPendingMods} className="rounded-lg bg-cyan-700 px-4 py-2 text-sm font-bold text-white hover:bg-cyan-800 disabled:opacity-50">
-                {isPendingMods ? "Salvando..." : "Salvar Modalidades do Grupo"}
+                {isPendingMods ? "Salvando..." : "Salvar exceções de comissão"}
               </button>
             </div>
             <Feedback state={formStateMods} />

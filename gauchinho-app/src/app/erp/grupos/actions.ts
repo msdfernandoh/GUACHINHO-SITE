@@ -21,12 +21,12 @@ export async function salvarGrupoLocalAction(
     const id = String(formData.get("id") ?? "") || null;
     const administradoraId = String(formData.get("administradora_id") ?? "");
     const tipoId = String(formData.get("tipo_administradora_id") ?? "");
-    const modalidadeId = String(formData.get("modalidade_comissao_id") ?? "");
     const codigo = String(formData.get("codigo_grupo") ?? "").trim();
-    if (!administradoraId || !tipoId || !modalidadeId || !codigo)
+    const dataPrimeiraAssembleia = String(formData.get("data_primeira_assembleia") ?? "").trim();
+    if (!administradoraId || !tipoId || !codigo || (!id && !dataPrimeiraAssembleia))
       return {
         status: "VALIDATION_ERROR",
-        message: "Administradora, número, Tipo e Modalidade são obrigatórios.",
+        message: "Administradora, número, tipo e data da primeira assembleia são obrigatórios.",
       };
     const db = await createClient();
     const { data: canWrite } = await db.rpc("can_write_tenant_internal", {
@@ -37,7 +37,7 @@ export async function salvarGrupoLocalAction(
         status: "SERVER_ERROR",
         message: "Sem permissão para editar Grupos desta empresa.",
       };
-    const [grant, admin, tipo, modalidade] = await Promise.all([
+    const [grant, admin, tipo] = await Promise.all([
       db
         .from("empresa_administradoras")
         .select("id")
@@ -57,15 +57,8 @@ export async function salvarGrupoLocalAction(
         .eq("administradora_id", administradoraId)
         .eq("ativo", true)
         .maybeSingle(),
-      db
-        .from("administradora_modalidades_comissao")
-        .select("nome")
-        .eq("id", modalidadeId)
-        .eq("administradora_id", administradoraId)
-        .eq("ativo", true)
-        .maybeSingle(),
     ]);
-    if (!grant.data || !admin.data || !tipo.data || !modalidade.data)
+    if (!grant.data || !admin.data || !tipo.data)
       return {
         status: "VALIDATION_ERROR",
         message:
@@ -77,7 +70,6 @@ export async function salvarGrupoLocalAction(
       administradora: admin.data.nome,
       modalidade: tipo.data.nome,
       tipo_administradora_id: tipoId,
-      modalidade_comissao_id: modalidadeId,
       status: String(formData.get("status") ?? "Disponível"),
       ativo: formData.get("ativo") !== "false",
       prazo_total: Number(formData.get("prazo_total")) || null,
@@ -88,16 +80,30 @@ export async function salvarGrupoLocalAction(
             ".",
           ),
         ) || null,
-      permite_lance_embutido: formData.get("permite_lance_embutido") === "on",
-      percentual_lance_embutido:
-        Number(
-          String(formData.get("percentual_lance_embutido") ?? "").replace(
-            ",",
-            ".",
-          ),
-        ) || null,
+      data_primeira_assembleia: dataPrimeiraAssembleia || null,
+      percentual_parcela_reduzida:
+        formData.get("modalidade_reduzida_habilitada") === "on"
+          ? Number(String(formData.get("percentual_parcela_reduzida") ?? "").replace(",", ".")) || null
+          : null,
+      regra_integralizacao_parcela_reduzida:
+        formData.get("modalidade_reduzida_habilitada") === "on"
+          ? String(formData.get("regra_integralizacao_parcela_reduzida") ?? "CONTEMPLACAO")
+          : null,
+      assembleia_limite_parcela_reduzida:
+        formData.get("regra_integralizacao_parcela_reduzida") === "ASSEMBLEIA"
+          ? Number(formData.get("assembleia_limite_parcela_reduzida")) || null
+          : null,
       updated_at: new Date().toISOString(),
     };
+    let lances: unknown = [];
+    try {
+      lances = JSON.parse(String(formData.get("lances_json") ?? "[]"));
+    } catch {
+      return { status: "VALIDATION_ERROR", message: "Revise as modalidades de lance informadas." };
+    }
+    if (!Array.isArray(lances)) {
+      return { status: "VALIDATION_ERROR", message: "A lista de modalidades de lance é inválida." };
+    }
     if (id) {
       const { error: configError } = await db.rpc("rpc_configurar_grupo_franquia", {
         p_empresa_id: empresaId,
@@ -115,23 +121,24 @@ export async function salvarGrupoLocalAction(
       if (configError) throw new Error(configError.message);
     }
     const creditos = parseBatchCotasInput(String(formData.get("creditos") ?? ""));
-    const { error } = await db.rpc("rpc_submeter_alteracao_grupo_franquia", {
+    const { data: submitted, error } = await db.rpc("rpc_submeter_alteracao_grupo_franquia", {
       p_empresa_id: empresaId,
       p_grupo_id: id,
       p_administradora_id: administradoraId,
       p_tipo_administradora_id: tipoId,
       p_codigo_grupo: codigo,
-      p_payload: { ...payload, ...(creditos.length ? { creditos } : {}) },
+      p_payload: { ...payload, lances, ...(creditos.length ? { creditos } : {}) },
       p_chave_idempotencia: randomUUID(),
     });
     if (error) throw new Error(error.message);
+    const grupoSalvoId = String((submitted as { grupo_id?: string } | null)?.grupo_id ?? id ?? "");
     revalidatePath("/erp/grupos");
-    if (id) revalidatePath(`/erp/grupos/${id}`);
+    if (grupoSalvoId) revalidatePath(`/erp/grupos/${grupoSalvoId}`);
     return {
       status: "SUCCESS",
       message: id
         ? "Alteração aplicada somente nesta franquia e enviada para análise da Platform."
-        : "Novo grupo enviado para homologação. Ele não será publicado antes da aprovação.",
+        : "Grupo criado localmente no ERP e enviado para homologação. A aprovação o publica para todas as franquias sem trocar seu cadastro.",
     };
   } catch (error) {
     const message =

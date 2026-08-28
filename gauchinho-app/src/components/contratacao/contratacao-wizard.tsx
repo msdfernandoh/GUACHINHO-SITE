@@ -42,6 +42,7 @@ import {
   buildPropostaVisualizacaoUrl,
   type VisualizacaoProposta,
 } from "@/lib/contratacoes-online/proposta-visualizacao";
+import { descricaoIntegralizacaoParcela } from "@/lib/grupos/regra-integralizacao";
 
 const ENDERECO_VAZIO: EnderecoFormState = {
   cep: "",
@@ -286,6 +287,20 @@ export function ContratacaoWizard({
   const c = data?.contratacao;
   const fin = data?.resumoFinanceiro ?? {};
   const gruposLinhas = data?.gruposLinhas ?? [];
+  const selecoesSnapshot = Array.isArray(c?.dados_simulacao?.selecoes)
+    ? (c.dados_simulacao.selecoes as Array<Record<string, unknown>>)
+    : [];
+  const regrasIntegralizacao = [...new Set(selecoesSnapshot.flatMap((selecao) => {
+    const grupo = selecao.grupo as Record<string, unknown> | undefined;
+    const descricao = grupo ? descricaoIntegralizacaoParcela(grupo) : null;
+    return descricao ? [descricao] : [];
+  }))];
+  const modalidadesLanceSnapshot = selecoesSnapshot.flatMap((selecao) => {
+    const grupo = selecao.grupo as Record<string, unknown> | undefined;
+    return Array.isArray(grupo?.modalidades_lance_informativas)
+      ? (grupo.modalidades_lance_informativas as Array<Record<string, unknown>>)
+      : [];
+  });
   const lanceEmbutido = Number(fin.lanceEmbutido);
   const recursoProprio = Number(fin.recursoProprio);
   const temLanceEmbutido = Number.isFinite(lanceEmbutido) && lanceEmbutido > 0;
@@ -671,8 +686,15 @@ export function ContratacaoWizard({
                   />
                   <Row label="Lance embutido" value={money(fin.lanceEmbutido as number)} />
                   <Row label="Recurso próprio" value={money(fin.recursoProprio as number)} />
-                  <Row label="Lance total" value={money(fin.lanceTotal as number)} />
-                </>
+                   <Row label="Lance total" value={money(fin.lanceTotal as number)} />
+                   {modalidadesLanceSnapshot.map((modalidade, index) => (
+                     <div key={`${String(modalidade.id ?? modalidade.nome)}-${index}`} className="rounded-lg border border-slate-800 p-3 text-sm">
+                       <p className="font-semibold text-slate-100">{String(modalidade.nome ?? "Modalidade de lance")}</p>
+                       <p className="mt-1 text-slate-400">Até {Number(modalidade.percentual_lance_embutido ?? 0).toLocaleString("pt-BR")}% embutido · recurso próprio mínimo de {Number(modalidade.percentual_recurso_proprio_minimo ?? 0).toLocaleString("pt-BR")}%</p>
+                       <p className="text-slate-500">Base de referência: {modalidade.base_referencia === "CREDITO" ? "crédito contratado" : "saldo devedor"}</p>
+                     </div>
+                   ))}
+                 </>
               ) : null}
               {visualizacao === "resumida" && temLanceEmbutido ? (
                 <Row label="Lance embutido" value={money(lanceEmbutido)} />
@@ -688,14 +710,17 @@ export function ContratacaoWizard({
               {visualizacao === "completa" ? (
                 <Row label="Seguro" value={money(fin.seguro as number)} />
               ) : null}
-              <Row
-                label="Prazo pós contemplação"
+               <Row
+                 label="Prazo pós contemplação"
                 value={
                   fin.parcelasRestantes != null && Number.isFinite(Number(fin.parcelasRestantes))
                     ? `${Math.round(Number(fin.parcelasRestantes))} meses`
                     : null
                 }
-              />
+               />
+               {regrasIntegralizacao.map((regra) => (
+                 <div key={regra} className="mt-3 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-sm text-amber-100">{regra}</div>
+               ))}
               {visualizacao === "completa" ? (
                 <>
                   <Row label="Custo efetivo mensal" value={percentAm(fin.custoEfetivoMensal as number)} />

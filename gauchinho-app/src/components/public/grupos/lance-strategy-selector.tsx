@@ -1,7 +1,6 @@
 "use client";
 
 import type { GrupoModalidadeLance } from "@/lib/types";
-import { labelParcelaModalidade } from "@/lib/grupos/modalidades-admin";
 import { cn } from "@/lib/utils/cn";
 import { formatCurrency } from "@/lib/utils/format";
 import { minimoRecursoValor } from "@/components/public/grupos/use-grupo-linha";
@@ -56,10 +55,9 @@ export function LanceStrategySelector({
           const sel = selectedId === m.id;
           const pctEmb = Number(m.percentual_lance_embutido);
           const pctRec = Number(m.percentual_recurso_proprio_minimo);
-          const baseLance = saldoDevedorLance;
+          const baseLance = m.base_referencia === "CREDITO" ? somaCotas : saldoDevedorLance;
           const embR$ = pctEmb > 0 ? minimoRecursoValor(baseLance, pctEmb) : 0;
           const recMinR$ = minimoRecursoValor(baseLance, pctRec);
-          const parcelaLbl = labelParcelaModalidade(m);
           return (
             <button
               key={m.id}
@@ -80,14 +78,12 @@ export function LanceStrategySelector({
               ) : (
                 <p className="mt-0.5 text-[11px] text-zinc-500">Sem lance embutido</p>
               )}
-              {parcelaLbl ? (
-                <p className="text-[10px] text-emerald-400/90">{parcelaLbl}</p>
-              ) : null}
               {pctRec > 0 ? (
                 <p className="text-[10px] text-zinc-500">
-                  + mín. {pctRec}% ({formatCurrency(recMinR$)})
+                  Recurso próprio mínimo {pctRec}% · {formatCurrency(recMinR$)}
                 </p>
               ) : null}
+              <p className="text-[10px] text-zinc-600">Base: {m.base_referencia === "CREDITO" ? "crédito" : "saldo devedor"}</p>
               <input
                 type="radio"
                 name={`lance-${grupoId}`}

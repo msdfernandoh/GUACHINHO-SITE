@@ -1,6 +1,7 @@
 "use client";
 import { useActionState, useMemo, useState } from "react";
 import type { GroupActionState } from "@/app/platform/grupos-actions";
+import { calcularAssembleiaMetade } from "@/lib/grupos/regra-integralizacao";
 
 const initial: GroupActionState = { status: "IDLE", message: "" };
 const field = "mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-white";
@@ -16,11 +17,23 @@ type Group = {
   status?: string;
   ativo?: boolean;
   prazo_total?: number | null;
+  data_primeira_assembleia?: string | null;
   taxa_administrativa_percentual?: number | null;
   fundo_reserva_percentual?: number | null;
   seguro_percentual?: number | null;
   permite_lance_embutido?: boolean;
   percentual_lance_embutido?: number | null;
+  percentual_parcela_reduzida?: number | null;
+  regra_integralizacao_parcela_reduzida?: "CONTEMPLACAO" | "ASSEMBLEIA" | null;
+  assembleia_limite_parcela_reduzida?: number | null;
+  lances?: Array<{
+    id?: string;
+    nome: string;
+    percentual_lance_embutido: number;
+    percentual_recurso_proprio_minimo: number;
+    base_referencia?: "SALDO_DEVEDOR" | "CREDITO";
+    descricao?: string | null;
+  }>;
   vagas_disponiveis?: number | null;
   origem_governanca?: string;
   status_governanca?: string;
@@ -36,7 +49,7 @@ export function GroupCatalogForm({
   action,
   administradoras,
   tipos,
-  modalidades,
+  modalidades: _modalidades,
   grupo,
   readonly = false,
   scope,
@@ -58,36 +71,28 @@ export function GroupCatalogForm({
     () => tipos.filter((x) => x.administradora_id === admin),
     [tipos, admin]
   );
-  const availableModes = useMemo(
-    () => modalidades.filter((x) => x.administradora_id === admin),
-    [modalidades, admin]
-  );
-
-  const [selectedModes, setSelectedModes] = useState<Set<string>>(() => {
-    if (grupo?.modalidades_habilitadas_ids && grupo.modalidades_habilitadas_ids.length > 0) {
-      return new Set(grupo.modalidades_habilitadas_ids);
-    }
-    // Por padrão todas as modalidades da administradora vêm habilitadas
-    return new Set(modalidades.map((m) => m.id));
-  });
   const [integral, setIntegral] = useState(grupo?.modalidade_integral_habilitada !== false);
   const [reduzida, setReduzida] = useState(grupo?.modalidade_reduzida_habilitada !== false);
   const [personalizada, setPersonalizada] = useState(
     grupo?.modalidade_personalizada_habilitada !== false,
   );
-
-  function toggleMode(modeId: string) {
-    if (readonly) return;
-    setSelectedModes((prev) => {
-      const next = new Set(prev);
-      if (next.has(modeId)) {
-        if (next.size > 1) next.delete(modeId); // Mantém pelo menos uma
-      } else {
-        next.add(modeId);
-      }
-      return next;
-    });
-  }
+  const [prazoTotal, setPrazoTotal] = useState(grupo?.prazo_total ? String(grupo.prazo_total) : "");
+  const [regraIntegralizacao, setRegraIntegralizacao] = useState<"" | "CONTEMPLACAO" | "ASSEMBLEIA">(
+    grupo?.regra_integralizacao_parcela_reduzida ?? (grupo?.id ? "" : "CONTEMPLACAO"),
+  );
+  const [assembleiaLimite, setAssembleiaLimite] = useState(
+    grupo?.assembleia_limite_parcela_reduzida ? String(grupo.assembleia_limite_parcela_reduzida) : "",
+  );
+  const [lances, setLances] = useState(() =>
+    (grupo?.lances ?? []).map((lance, index) => ({
+      id: lance.id ?? `existente-${index}`,
+      nome: lance.nome,
+      percentual_lance_embutido: String(lance.percentual_lance_embutido ?? ""),
+      percentual_recurso_proprio_minimo: String(lance.percentual_recurso_proprio_minimo ?? 0),
+      base_referencia: lance.base_referencia ?? "SALDO_DEVEDOR",
+      descricao: lance.descricao ?? "",
+    })),
+  );
 
   return (
     <form
@@ -95,12 +100,7 @@ export function GroupCatalogForm({
       className="space-y-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900"
     >
       <input type="hidden" name="id" value={grupo?.id ?? ""} />
-      {/* Fallback de compatibilidade modalidade_comissao_id com primeira modalidade ativa */}
-      <input
-        type="hidden"
-        name="modalidade_comissao_id"
-        value={grupo?.modalidade_comissao_id || Array.from(selectedModes)[0] || ""}
-      />
+      <input type="hidden" name="lances_json" value={JSON.stringify(lances)} />
 
       {scope === "ERP" && grupo?.alteracao_catalogo_status && grupo.alteracao_catalogo_status !== "SEM_ALTERACAO" ? (
         <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
@@ -177,9 +177,24 @@ export function GroupCatalogForm({
             name="prazo_total"
             type="number"
             min="1"
-            defaultValue={grupo?.prazo_total ?? ""}
+            value={prazoTotal}
+            onChange={(event) => setPrazoTotal(event.target.value)}
             disabled={readonly}
+            required
           />
+        </label>
+
+        <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+          Data da primeira assembleia
+          <input
+            className={field}
+            name="data_primeira_assembleia"
+            type="date"
+            defaultValue={grupo?.data_primeira_assembleia?.split("T")[0] ?? ""}
+            disabled={readonly}
+            required={!grupo?.id}
+          />
+          <span className="mt-1 block text-xs font-normal text-slate-500">Obrigatória em todo novo grupo e usada para projetar a data da integralização.</span>
         </label>
 
         <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">
@@ -194,23 +209,48 @@ export function GroupCatalogForm({
         </label>
       </div>
 
-      {/* SEÇÃO MODALIDADES DE PAGAMENTO HABILITADAS (N:N) */}
+      <div className="space-y-4 rounded-xl border border-blue-200 bg-blue-50/60 p-4 dark:border-blue-900 dark:bg-blue-950/20">
+        <div>
+          <h3 className="text-sm font-bold text-slate-900 dark:text-white">Modalidades de parcela do grupo</h3>
+          <p className="text-xs text-slate-600 dark:text-slate-400">A faixa da comissão é identificada automaticamente. Aqui é informado somente o percentual comercial usado pelo site.</p>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-3">
+          <label className="rounded-lg border bg-white p-3 text-sm font-semibold dark:bg-slate-900">
+            <input name="modalidade_integral_habilitada" type="checkbox" checked={integral} onChange={(e) => setIntegral(e.target.checked)} className="mr-2" /> Integral 100%
+          </label>
+          <label className="rounded-lg border bg-white p-3 text-sm font-semibold dark:bg-slate-900">
+            <input name="modalidade_reduzida_habilitada" type="checkbox" checked={reduzida} onChange={(e) => { setReduzida(e.target.checked); if (!e.target.checked) setPersonalizada(false); }} className="mr-2" /> Parcela reduzida
+          </label>
+          {scope === "ERP" ? <label className="rounded-lg border bg-white p-3 text-sm font-semibold dark:bg-slate-900">
+            <input name="modalidade_personalizada_habilitada" type="checkbox" checked={personalizada} disabled={!reduzida} onChange={(e) => setPersonalizada(e.target.checked)} className="mr-2" /> Permitir ajuste personalizado
+          </label> : null}
+        </div>
+        {reduzida ? <div className="grid gap-4 md:grid-cols-2">
+          <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+            Percentual efetivo da parcela reduzida (%)
+            <input className={field} name="percentual_parcela_reduzida" inputMode="decimal" defaultValue={grupo?.percentual_parcela_reduzida ?? 60} required />
+            <span className="mt-1 block text-xs font-normal text-slate-500">Ex.: 70% calcula a parcela em 70% da integral; a comissão permanece na faixa automática de 60% a 99%.</span>
+          </label>
+          <fieldset className="space-y-2 text-sm text-slate-700 dark:text-slate-300">
+            <legend className="font-semibold">Vigência informativa da parcela reduzida</legend>
+            {grupo?.id && !grupo.regra_integralizacao_parcela_reduzida ? <label className="block"><input type="radio" name="regra_integralizacao_parcela_reduzida" value="" checked={regraIntegralizacao === ""} onChange={() => setRegraIntegralizacao("")} className="mr-2" />Grupo legado — não alterar nem exibir regra nova</label> : null}
+            <label className="block"><input type="radio" name="regra_integralizacao_parcela_reduzida" value="CONTEMPLACAO" checked={regraIntegralizacao === "CONTEMPLACAO"} onChange={() => setRegraIntegralizacao("CONTEMPLACAO")} className="mr-2" />Até a contemplação</label>
+            <label className="block"><input type="radio" name="regra_integralizacao_parcela_reduzida" value="ASSEMBLEIA" checked={regraIntegralizacao === "ASSEMBLEIA"} onChange={() => setRegraIntegralizacao("ASSEMBLEIA")} className="mr-2" />Até a assembleia X; integral a partir de X+1</label>
+            {regraIntegralizacao === "ASSEMBLEIA" ? <div className="flex items-end gap-2">
+              <label className="flex-1 font-semibold">Última assembleia reduzida
+                <input className={field} name="assembleia_limite_parcela_reduzida" type="number" min="1" max={Math.max(1, Number(prazoTotal || 1) - 1)} value={assembleiaLimite} onChange={(e) => setAssembleiaLimite(e.target.value)} required />
+              </label>
+              <button type="button" onClick={() => setAssembleiaLimite(String(calcularAssembleiaMetade(Number(prazoTotal || 0))))} className="mb-0.5 rounded-lg border border-blue-300 bg-white px-3 py-2 text-xs font-bold text-blue-800">Usar 50% do prazo</button>
+            </div> : null}
+          </fieldset>
+        </div> : null}
+      </div>
+
       {scope === "ERP" ? (
         <div className="space-y-3 rounded-xl border border-blue-200 bg-blue-50/60 p-4">
           <div>
-            <h3 className="text-sm font-bold text-slate-900">Modalidades visíveis nesta franquia</h3>
-            <p className="text-xs text-slate-600">A franquia pode restringir as opções oficiais. Isso não altera as outras empresas.</p>
-          </div>
-          <div className="grid gap-3 sm:grid-cols-3">
-            <label className="rounded-lg border bg-white p-3 text-sm font-semibold">
-              <input name="modalidade_integral_habilitada" type="checkbox" checked={integral} onChange={(e) => setIntegral(e.target.checked)} className="mr-2" /> Integral
-            </label>
-            <label className="rounded-lg border bg-white p-3 text-sm font-semibold">
-              <input name="modalidade_reduzida_habilitada" type="checkbox" checked={reduzida} onChange={(e) => { setReduzida(e.target.checked); if (!e.target.checked) setPersonalizada(false); }} className="mr-2" /> Reduzida 60%
-            </label>
-            <label className="rounded-lg border bg-white p-3 text-sm font-semibold">
-              <input name="modalidade_personalizada_habilitada" type="checkbox" checked={personalizada} disabled={!reduzida} onChange={(e) => setPersonalizada(e.target.checked)} className="mr-2" /> Personalizada
-            </label>
+            <h3 className="text-sm font-bold text-slate-900">Apresentação nesta franquia</h3>
+            <p className="text-xs text-slate-600">Esta configuração é local e não altera as demais empresas.</p>
           </div>
           <label className="block text-sm font-semibold text-slate-700">
             Situação de vagas no site
@@ -223,48 +263,6 @@ export function GroupCatalogForm({
         </div>
       ) : null}
 
-      {scope === "PLATFORM" ? <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-4 dark:border-slate-800 dark:bg-slate-800/40 space-y-3">
-        <div>
-          <h3 className="text-sm font-bold text-slate-900 dark:text-white">
-            Modalidades de Pagamento Permitidas no Grupo
-          </h3>
-          <p className="text-xs text-slate-500">
-            O grupo disponibiliza as modalidades abaixo. A escolha específica do plano de pagamento (Integral ou Reduzida) é feita pelo cliente no momento da contratação/venda.
-          </p>
-        </div>
-
-        <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3">
-          {availableModes.map((m) => {
-            const isChecked = selectedModes.has(m.id);
-            return (
-              <label
-                key={m.id}
-                className={`flex items-center gap-3 rounded-xl border p-3 cursor-pointer transition-colors ${
-                  isChecked
-                    ? "border-emerald-300 bg-emerald-50/60 dark:border-emerald-800 dark:bg-emerald-950/30"
-                    : "border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800"
-                }`}
-              >
-                <input
-                  type="checkbox"
-                  name={`modalidade_habilitada_${m.id}`}
-                  checked={isChecked}
-                  onChange={() => toggleMode(m.id)}
-                  disabled={readonly}
-                  className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
-                />
-                <div>
-                  <p className="text-xs font-bold text-slate-900 dark:text-white">{m.nome}</p>
-                  <p className="text-[11px] text-slate-500">
-                    {isChecked ? "✓ Habilitada para simulação e venda" : "Desabilitada neste grupo"}
-                  </p>
-                </div>
-              </label>
-            );
-          })}
-        </div>
-      </div> : null}
-
       {scope === "ERP" ? (
         <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300">
           Novos créditos sugeridos para este grupo
@@ -273,28 +271,21 @@ export function GroupCatalogForm({
         </label>
       ) : null}
 
-      <div className="grid gap-4 sm:grid-cols-2">
-        <label className="flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-300">
-          <input
-            name="permite_lance_embutido"
-            type="checkbox"
-            defaultChecked={grupo?.permite_lance_embutido !== false}
-            disabled={readonly}
-            className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-          />
-          Permite lance embutido
-        </label>
-
-        <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">
-          Limite Lance Embutido (%)
-          <input
-            className={field}
-            name="percentual_lance_embutido"
-            inputMode="decimal"
-            defaultValue={grupo?.percentual_lance_embutido ?? 25}
-            disabled={readonly}
-          />
-        </label>
+      <div className="space-y-3 rounded-xl border border-slate-200 p-4 dark:border-slate-800">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div><h3 className="text-sm font-bold text-slate-900 dark:text-white">Modalidades de lance</h3><p className="text-xs text-slate-500">Informação comercial exibida separadamente no site e na proposta; não define a modalidade da parcela.</p></div>
+          <button type="button" onClick={() => setLances((current) => [...current, { id: `novo-${Date.now()}`, nome: "", percentual_lance_embutido: "", percentual_recurso_proprio_minimo: "0", base_referencia: "SALDO_DEVEDOR", descricao: "" }])} className="rounded-lg border border-blue-500 px-3 py-1.5 text-xs font-bold text-blue-700">+ Adicionar modalidade</button>
+        </div>
+        {lances.length === 0 ? <p className="rounded-lg border border-dashed p-4 text-center text-xs text-slate-500">Nenhuma modalidade cadastrada.</p> : <div className="space-y-3">{lances.map((lance, index) => (
+          <div key={lance.id} className="grid gap-3 rounded-lg border p-3 md:grid-cols-2 xl:grid-cols-5">
+            <label className="text-xs font-semibold">Nome da modalidade<input className={field} value={lance.nome} onChange={(e) => setLances((rows) => rows.map((row, i) => i === index ? { ...row, nome: e.target.value } : row))} placeholder="Ex.: Lance total de 50%" required /></label>
+            <label className="text-xs font-semibold">Máximo embutido (%)<input className={field} value={lance.percentual_lance_embutido} onChange={(e) => setLances((rows) => rows.map((row, i) => i === index ? { ...row, percentual_lance_embutido: e.target.value } : row))} inputMode="decimal" placeholder="40" required /></label>
+            <label className="text-xs font-semibold">Recurso próprio mínimo (%)<input className={field} value={lance.percentual_recurso_proprio_minimo} onChange={(e) => setLances((rows) => rows.map((row, i) => i === index ? { ...row, percentual_recurso_proprio_minimo: e.target.value } : row))} inputMode="decimal" placeholder="10" required /></label>
+            <label className="text-xs font-semibold">Base de referência<select className={field} value={lance.base_referencia} onChange={(e) => setLances((rows) => rows.map((row, i) => i === index ? { ...row, base_referencia: e.target.value as "SALDO_DEVEDOR" | "CREDITO" } : row))}><option value="SALDO_DEVEDOR">Saldo devedor</option><option value="CREDITO">Crédito contratado</option></select></label>
+            <label className="text-xs font-semibold">Descrição opcional<input className={field} value={lance.descricao} onChange={(e) => setLances((rows) => rows.map((row, i) => i === index ? { ...row, descricao: e.target.value } : row))} /></label>
+            <div className="flex items-center justify-between md:col-span-2 xl:col-span-5"><span className="text-xs text-slate-500">Composição mínima informada: {Number(lance.percentual_lance_embutido || 0) + Number(lance.percentual_recurso_proprio_minimo || 0)}%</span><button type="button" onClick={() => setLances((rows) => rows.filter((_, i) => i !== index))} className="text-xs font-bold text-red-600">Remover</button></div>
+          </div>
+        ))}</div>}
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-3 pt-2">

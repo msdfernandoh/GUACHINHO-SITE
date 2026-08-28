@@ -161,7 +161,7 @@ export function canonicalizarDadosSimulacaoGruposComCatalogo(
     if (!resultado.ativo || resultado.primeiraParcela <= 0 || resultado.somaCotas <= 0) {
       throw new Error("Não foi possível validar o cálculo comercial da proposta.");
     }
-    return { grupoId: grupo.id, cotaId: cota.id, grupo, config, resultado };
+    return { grupoId: grupo.id, cotaId: cota.id, grupo, modalidades, config, resultado };
   });
 
   const totais = agregarResultadosLinhas(linhas.map((linha) => linha.resultado));

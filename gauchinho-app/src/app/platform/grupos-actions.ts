@@ -115,11 +115,12 @@ export async function salvarGrupoPlatformAction(
     const administradoraId = String(formData.get("administradora_id") ?? "").trim();
     const tipoId = String(formData.get("tipo_administradora_id") ?? "").trim();
     const codigo = String(formData.get("codigo_grupo") ?? "").trim();
+    const dataPrimeiraAssembleia = String(formData.get("data_primeira_assembleia") ?? "").trim() || null;
 
-    if (!administradoraId || !tipoId || !codigo) {
+    if (!administradoraId || !tipoId || !codigo || (!id && !dataPrimeiraAssembleia)) {
       return {
         status: "VALIDATION_ERROR",
-        message: "Administradora, Tipo oficial e Código do Grupo são obrigatórios.",
+        message: "Administradora, tipo oficial, código e data da primeira assembleia são obrigatórios.",
       };
     }
 
@@ -129,15 +130,31 @@ export async function salvarGrupoPlatformAction(
     const seguroPercentual = parseBRLNumber(formData.get("seguro_percentual") as string);
     const capacidadeTotal = Number(formData.get("capacidade_total")) || 0;
     const vagasDisponiveis = Number(formData.get("vagas_disponiveis")) || 0;
-    const permiteLanceEmbutido = formData.get("permite_lance_embutido") === "on";
-    const percentualLanceEmbutido = parseBRLNumber(formData.get("percentual_lance_embutido") as string);
-    const dataPrimeiraAssembleia = String(formData.get("data_primeira_assembleia") ?? "").trim() || null;
+    const percentualParcelaReduzidaRaw = String(formData.get("percentual_parcela_reduzida") ?? "").trim();
+    const percentualParcelaReduzida = percentualParcelaReduzidaRaw
+      ? parseBRLNumber(percentualParcelaReduzidaRaw)
+      : null;
+    const regraIntegralizacao = percentualParcelaReduzida != null
+      ? String(formData.get("regra_integralizacao_parcela_reduzida") ?? "CONTEMPLACAO")
+      : null;
+    const assembleiaLimite = regraIntegralizacao === "ASSEMBLEIA"
+      ? Number(formData.get("assembleia_limite_parcela_reduzida")) || null
+      : null;
+    let lances: unknown = null;
+    if (formData.has("lances_json")) {
+      try {
+        lances = JSON.parse(String(formData.get("lances_json") ?? "[]"));
+      } catch {
+        return { status: "VALIDATION_ERROR", message: "Revise as modalidades de lance informadas." };
+      }
+      if (!Array.isArray(lances)) return { status: "VALIDATION_ERROR", message: "A lista de modalidades de lance é inválida." };
+    }
     const status = String(formData.get("status") ?? "Disponível").trim();
     const ativo = formData.get("ativo") !== "false";
     const observacoes = String(formData.get("observacoes") ?? "").trim() || null;
 
     const db = await createClient();
-    const { data: saved, error } = await db.rpc("rpc_platform_salvar_grupo", {
+    const { data: saved, error } = await db.rpc("rpc_platform_salvar_grupo_comercial", {
       p_id: id,
       p_administradora_id: administradoraId,
       p_tipo_administradora_id: tipoId,
@@ -150,10 +167,12 @@ export async function salvarGrupoPlatformAction(
       p_seguro_percentual: seguroPercentual,
       p_capacidade_total: capacidadeTotal,
       p_vagas_disponiveis: vagasDisponiveis,
-      p_permite_lance_embutido: permiteLanceEmbutido,
-      p_percentual_lance_embutido: percentualLanceEmbutido,
       p_observacoes: observacoes,
       p_data_primeira_assembleia: dataPrimeiraAssembleia,
+      p_percentual_parcela_reduzida: percentualParcelaReduzida,
+      p_regra_integralizacao: regraIntegralizacao,
+      p_assembleia_limite: assembleiaLimite,
+      p_lances: lances,
     });
 
     if (error) throw new Error(error.message);

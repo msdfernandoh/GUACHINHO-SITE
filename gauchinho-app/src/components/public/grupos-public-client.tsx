@@ -164,6 +164,7 @@ export function GruposPublicClient({
         config: l.config,
         resultado: l.resultado,
         grupo: l.grupo!,
+        modalidades: aggregates.find((aggregate) => aggregate.grupo.id === l.grupoId)?.modalidades ?? [],
       })),
       totais as unknown as Record<string, unknown>,
     );

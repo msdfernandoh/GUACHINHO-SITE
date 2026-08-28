@@ -998,6 +998,28 @@ Não há migration, backfill ou alteração de dados históricos neste hotfix.
 Relatório:
 `docs/relatorios-fases/HOTFIX-USUARIO-SENHA-INICIAL-TROCA-OBRIGATORIA.md`.
 
+## 37. Regras comerciais informativas no cadastro de grupos — Fase 155
+
+`grupos_modalidades_lance` permanece como a única coleção de modalidades de
+lance consumida por Site, ERP e Platform. A migration 153 acrescenta a base de
+referência (`SALDO_DEVEDOR` ou `CREDITO`) sem criar tabela paralela. Máximo
+embutido e recurso próprio mínimo são apresentados separadamente e não escolhem
+nem alteram a modalidade da parcela.
+
+O percentual efetivo da parcela reduzida é configurado no grupo e não exige a
+seleção manual de modalidade de comissão. As três faixas canônicas de comissão
+continuam inalteradas. Para novos grupos, a vigência informativa pode ser até a
+contemplação ou até a assembleia X; nesse último caso a integral começa em X+1,
+com data projetada a partir da primeira assembleia. Configurações ausentes em
+grupos legados permanecem nulas e não produzem texto novo nas propostas.
+
+O ERP cria o candidato local com UUID definitivo e o disponibiliza para
+continuidade do cadastro no próprio tenant. A homologação da Platform promove o
+mesmo registro para `GLOBAL`; não duplica grupo nem altera snapshots históricos.
+
+Relatório:
+`docs/relatorios-fases/FASE-155-GRUPOS-LANCES-E-VIGENCIA-PARCELA-REDUZIDA.md`.
+
 
 
 

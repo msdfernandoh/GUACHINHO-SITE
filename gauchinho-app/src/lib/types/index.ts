@@ -74,6 +74,11 @@ export type GrupoConsorcio = {
   /** Pode ser restringida pela franquia, sem alterar o catálogo global. */
   permite_parcela_integral?: boolean;
   percentual_parcela_reduzida: number | null;
+  /** Regra informativa para novos grupos; grupos legados permanecem sem valor. */
+  regra_integralizacao_parcela_reduzida?: "CONTEMPLACAO" | "ASSEMBLEIA" | null;
+  /** Última assembleia reduzida. A parcela integral começa em X+1. */
+  assembleia_limite_parcela_reduzida?: number | null;
+  data_primeira_assembleia?: string | null;
   permite_parcela_reduzida_personalizada?: boolean;
   percentual_parcela_reduzida_personalizada?: number | null;
   permite_lance_embutido: boolean;
@@ -132,6 +137,7 @@ export type GrupoModalidadeLance = {
   nome: string;
   percentual_lance_embutido: number;
   percentual_recurso_proprio_minimo: number;
+  base_referencia?: "SALDO_DEVEDOR" | "CREDITO";
   descricao: string | null;
   ativo: boolean;
   ordem: number;

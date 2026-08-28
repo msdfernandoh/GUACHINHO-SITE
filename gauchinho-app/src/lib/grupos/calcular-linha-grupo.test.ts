@@ -148,6 +148,23 @@ describe("calcularLinhaSimulacaoGrupo — saldo e parcelas", () => {
     expect(r.saldoPosLance).toBe(846_300);
   });
 
+  it("aplica percentuais sobre o crédito quando a modalidade assim define", () => {
+    const r = calcularLinhaSimulacaoGrupo({
+      grupo: grupoFixture(),
+      cota: cotaFixture(),
+      modalidades: [{ ...mod25, base_referencia: "CREDITO" }],
+      config: configBase({
+        usaLanceEmbutido: true,
+        modalidadeLanceId: "m25",
+        usaRecursoProprio: true,
+        recursoProprioModo: "percentual",
+        recursoProprioInput: 10,
+      }),
+    });
+    expect(r.lanceEmbutido).toBe(262_500);
+    expect(r.recursoProprio).toBe(105_000);
+  });
+
   it("parcela personalizada usa percentual informado na linha", () => {
     const r = calcularLinhaSimulacaoGrupo({
       grupo: grupoFixture({

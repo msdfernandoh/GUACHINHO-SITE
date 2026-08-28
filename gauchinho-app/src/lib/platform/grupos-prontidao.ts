@@ -148,6 +148,9 @@ export type GrupoRecord = {
   dados_estatisticos_atualizado_por?: string | null;
   permite_lance_embutido?: boolean;
   percentual_lance_embutido?: number | null;
+  percentual_parcela_reduzida?: number | null;
+  regra_integralizacao_parcela_reduzida?: "CONTEMPLACAO" | "ASSEMBLEIA" | null;
+  assembleia_limite_parcela_reduzida?: number | null;
   origem_governanca?: string;
   status_governanca?: string;
   observacoes?: string | null;
@@ -161,6 +164,7 @@ export type GrupoRecord = {
     nome: string;
     percentual_lance_embutido: number;
     percentual_recurso_proprio_minimo: number;
+    base_referencia?: "SALDO_DEVEDOR" | "CREDITO";
     descricao?: string | null;
     ativo: boolean;
     ordem: number;

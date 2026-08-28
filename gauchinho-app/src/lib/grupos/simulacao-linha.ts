@@ -205,6 +205,7 @@ export type SnapshotLanceLinha = {
     nome: string;
     percentual_lance_embutido: number;
     percentual_recurso_proprio_minimo: number;
+    base_referencia: "SALDO_DEVEDOR" | "CREDITO";
   } | null;
   lance_embutido: { percentual: number; valor: number };
   recurso_proprio: {
@@ -230,6 +231,7 @@ export function buildSnapshotLanceLinha(
           nome: mod.nome,
           percentual_lance_embutido: num(mod.percentual_lance_embutido),
           percentual_recurso_proprio_minimo: num(mod.percentual_recurso_proprio_minimo),
+          base_referencia: mod.base_referencia ?? "SALDO_DEVEDOR",
         }
       : null,
     lance_embutido: {
@@ -303,15 +305,16 @@ export function calcularLinhaSimulacaoGrupo(args: {
       ? normalizarPercentualGrupo(modLance.percentual_recurso_proprio_minimo)
       : 0;
   const parcelaTipoLinha = resolveParcelaTipoLinha(config, grupo);
+  const baseLance = modLance?.base_referencia === "CREDITO" ? somaCotas : saldoDevedorInicial;
 
   const lanceEmbutido =
-    pctEmbutido > 0 ? calcularLanceEmbutidoLinha(saldoDevedorInicial, pctEmbutido) : 0;
+    pctEmbutido > 0 ? calcularLanceEmbutidoLinha(baseLance, pctEmbutido) : 0;
 
   let recursoProprio = 0;
   if (config.usaRecursoProprio) {
     if (config.recursoProprioModo === "percentual") {
       recursoProprio = calcularLanceEmbutidoLinha(
-        saldoDevedorInicial,
+        baseLance,
         num(config.recursoProprioInput),
       );
     } else {
@@ -321,7 +324,7 @@ export function calcularLinhaSimulacaoGrupo(args: {
 
   let avisoRecursoProprio: string | null = null;
   if (config.usaLanceEmbutido && pctRecursoMin > 0) {
-    const minimo = calcularLanceEmbutidoLinha(saldoDevedorInicial, pctRecursoMin);
+    const minimo = calcularLanceEmbutidoLinha(baseLance, pctRecursoMin);
     if (recursoProprio + 0.009 < minimo) {
       avisoRecursoProprio = `Recurso próprio mínimo: ${pctRecursoMin}% (${minimo.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })})`;
     }
