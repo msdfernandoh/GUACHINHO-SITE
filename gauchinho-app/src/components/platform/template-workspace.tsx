@@ -204,8 +204,9 @@ export function TemplateWorkspace({
           { id: "home", label: "Início", rota: "/", ativo_padrao: true, obrigatorio: true },
           { id: "simulador", label: "Simulador", rota: "/simulador", ativo_padrao: true },
           { id: "consorcio", label: "Consórcios", rota: "/consorcio", ativo_padrao: true },
-          { id: "veiculos", label: "Veículos", rota: "/consorcio/veiculos", ativo_padrao: true },
-          { id: "imoveis", label: "Imóveis", rota: "/consorcio/imoveis", ativo_padrao: true },
+          { id: "veiculos", label: "Veículos", rota: "/consorcio/carro-sem-entrada", ativo_padrao: true },
+          { id: "imoveis", label: "Imóveis", rota: "/consorcio/imovel-parcela-reduzida", ativo_padrao: true },
+          { id: "pesados", label: "Pesados", rota: "/consorcio/caminhao-para-autonomo", ativo_padrao: true },
           { id: "grupos", label: "Grupos e Modalidades", rota: "/grupos", ativo_padrao: true },
           { id: "como_funciona", label: "Como Funciona", rota: "/#como-funciona", ativo_padrao: true },
           { id: "sobre", label: "Sobre Nós", rota: "/#sobre", ativo_padrao: true },
@@ -945,7 +946,7 @@ export function TemplateWorkspace({
                         <div>
                           <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300">Link CTA:</label>
                           <input
-                            value={identidade.imagens_banners?.card_veiculos_cta_url || "/consorcio/veiculos"}
+                            value={identidade.imagens_banners?.card_veiculos_cta_url || "/consorcio/carro-sem-entrada"}
                             onChange={(e) =>
                               setIdentidade({
                                 ...identidade,
@@ -1090,7 +1091,7 @@ export function TemplateWorkspace({
                         <div>
                           <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300">Link CTA:</label>
                           <input
-                            value={identidade.imagens_banners?.card_imoveis_cta_url || "/consorcio/imoveis"}
+                            value={identidade.imagens_banners?.card_imoveis_cta_url || "/consorcio/imovel-parcela-reduzida"}
                             onChange={(e) =>
                               setIdentidade({
                                 ...identidade,

@@ -508,7 +508,7 @@ export function RaconInspiredHome({
 
                 <div className="relative z-10 pt-6">
                   <Link
-                    href={banners.card_veiculos_cta_url || "/consorcio/veiculos"}
+                    href={banners.card_veiculos_cta_url || "/consorcio/carro-sem-entrada"}
                     className="inline-flex items-center gap-2 rounded-full bg-[#00a3e0] px-5 py-2.5 text-xs font-black text-white shadow-md hover:bg-[#008fd5] transition-colors"
                   >
                     <span>{banners.card_veiculos_cta_label || "Conquiste agora"}</span>
@@ -545,7 +545,7 @@ export function RaconInspiredHome({
 
                 <div className="relative z-10 pt-6">
                   <Link
-                    href={banners.card_imoveis_cta_url || "/consorcio/imoveis"}
+                    href={banners.card_imoveis_cta_url || "/consorcio/imovel-parcela-reduzida"}
                     className="inline-flex items-center gap-2 rounded-full bg-[#00a3e0] px-5 py-2.5 text-xs font-black text-white shadow-md hover:bg-[#008fd5] transition-colors"
                   >
                     <span>{banners.card_imoveis_cta_label || "Conquiste agora"}</span>
@@ -747,7 +747,7 @@ export function RaconInspiredHome({
       {/* ───────────────────────────────────────────────────────────
           7. BLOCO: CONQUISTE COM A RACON (STATS + RUBINHO APONTANDO)
       ─────────────────────────────────────────────────────────── */}
-      <section className="relative overflow-hidden bg-[#0c2340] text-white py-14 sm:py-18">
+      <section id="sobre" className="scroll-mt-24 relative overflow-hidden bg-[#0c2340] text-white py-14 sm:py-18">
         <div className="mx-auto max-w-7xl px-4 sm:px-6">
           <div className="grid lg:grid-cols-12 gap-8 items-center">
             
@@ -903,12 +903,12 @@ export function RaconInspiredHome({
               </strong>
               <ul className="space-y-1.5 text-[11px]">
                 <li>
-                  <Link href="/consorcio/imoveis" className="hover:text-white transition-colors">
+                  <Link href="/consorcio/imovel-parcela-reduzida" className="hover:text-white transition-colors">
                     Consórcio de Imóveis
                   </Link>
                 </li>
                 <li>
-                  <Link href="/consorcio/veiculos" className="hover:text-white transition-colors">
+                  <Link href="/consorcio/carro-sem-entrada" className="hover:text-white transition-colors">
                     Consórcio de Veículos
                   </Link>
                 </li>

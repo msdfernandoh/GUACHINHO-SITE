@@ -1139,6 +1139,20 @@ mantém a falha fechada.
 Relatório:
 `docs/relatorios-fases/FASE-161-MENUS-MODELO-RUNTIME-TENANT.md`.
 
+## 43. Rotas canônicas do catálogo Racon — Hotfix
+
+Os menus e CTAs do modelo `racon_inspired` apontam exclusivamente para rotas
+públicas existentes: imóvel com parcela reduzida, carro sem entrada e caminhão
+para autônomo. A migration 161 reconcilia catálogo, banners e links auxiliares
+sem modificar a seleção de menus de qualquer empresa.
+
+O chrome do modelo apresenta todos os menus configurados também no desktop e
+as âncoras institucionais `sobre` e `contato` pertencem ao próprio template,
+mantendo a identidade visual Racon em toda a navegação.
+
+Relatório:
+`docs/relatorios-fases/HOTFIX-ROTAS-MENUS-MODELO-RACON.md`.
+
 
 
 

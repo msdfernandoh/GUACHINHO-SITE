@@ -28,7 +28,7 @@ export function RaconInspiredHeader({
   const secondary = identidade.cor_secundaria || "#0c2340";
   const accent = identidade.cor_destaque || "#ffb800";
   const login = menus.find((menu) => menu.id === "login");
-  const navegacao = menus.filter((menu) => menu.id !== "login" && menu.id !== "home");
+  const navegacao = menus.filter((menu) => menu.id !== "login");
 
   return (
     <>
@@ -106,7 +106,7 @@ export function RaconInspiredFooter({
   const links = menus.filter((menu) => menu.id !== "home");
 
   return (
-    <footer style={{ backgroundColor: secondary }} className="border-t border-slate-800 pt-10 pb-7 text-xs text-slate-400">
+    <footer id="contato" style={{ backgroundColor: secondary }} className="scroll-mt-24 border-t border-slate-800 pt-10 pb-7 text-xs text-slate-400">
       <div className="mx-auto max-w-7xl space-y-7 px-4 sm:px-6">
         <div className="grid gap-8 lg:grid-cols-[1fr_2fr_1fr]">
           <div className="space-y-3">
