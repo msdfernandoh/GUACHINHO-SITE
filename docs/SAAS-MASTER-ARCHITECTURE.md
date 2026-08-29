@@ -1110,6 +1110,19 @@ canônicos e apresentam os rótulos femininos apenas na interface.
 Relatório:
 `docs/relatorios-fases/FASE-159-ATIVACAO-MASTER-STATUS-CANONICO.md`.
 
+## 41. Publicação atômica do site na ativação — Fase 160
+
+Ativar uma Master Franquia publica, na mesma transação, a empresa, a assinatura,
+o branding institucional e o vínculo do modelo de site. A transição exige domínio
+principal ativo e verificado; identidade e modelo também são obrigatórios.
+
+O resolver público continua falhando fechado. A ativação não cria fallback por
+slug nem ignora verificação de domínio. Registros ativados antes desta regra são
+reconciliados somente quando todo o conjunto publicável já está configurado.
+
+Relatório:
+`docs/relatorios-fases/FASE-160-PUBLICACAO-SITE-ATIVACAO-MASTER.md`.
+
 
 
 

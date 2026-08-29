@@ -390,7 +390,11 @@ export function MasterFranquiaHub({
   const maxDominiosPropriosPlano = planoAtual?.max_sites_dominio_proprio ?? 0;
 
   const adminsAtivas = administradoras.filter((a) => a.status === "ATIVA");
-  const dominioPrincipal = dominios.find((d) => d.principal)?.valor || null;
+  const dominioPrincipalRegistro = dominios.find((d) => d.principal);
+  const dominioPrincipal = dominioPrincipalRegistro?.valor || null;
+  const dominioPrincipalPublicavel = Boolean(
+    dominioPrincipalRegistro?.ativo && dominioPrincipalRegistro.verificado,
+  );
 
   // Checklist de Prontidão da Master
   const checklist = [
@@ -426,8 +430,12 @@ export function MasterFranquiaHub({
     },
     {
       titulo: "7. Domínio / Endereço",
-      ok: Boolean(dominioPrincipal || empresa.slug),
-      desc: dominioPrincipal ? dominioPrincipal : `Subdomínio /${empresa.slug}`,
+      ok: dominioPrincipalPublicavel,
+      desc: dominioPrincipalPublicavel
+        ? dominioPrincipal || "Domínio verificado"
+        : dominioPrincipal
+          ? `${dominioPrincipal} — aguardando verificação`
+          : "Domínio principal não configurado",
     },
   ];
 
