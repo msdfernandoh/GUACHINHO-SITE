@@ -1,8 +1,10 @@
 import type { EmpresaBranding } from "@/lib/tenant/branding";
 import { RaconInspiredHome } from "@/components/public/templates/racon-inspired-home";
+import type { EmpresaSiteModel } from "@/lib/tenant/site-model";
 
 type Props = {
   branding: EmpresaBranding;
+  siteModel: EmpresaSiteModel;
   showModuloIndisponivel?: boolean;
 };
 
@@ -10,7 +12,17 @@ type Props = {
  * Home institucional de alta conversão para tenants e franquias
  * utilizando a experiência visual Racon Inspired.
  */
-export function InstitutionalTenantHome({ branding, showModuloIndisponivel }: Props) {
+export function InstitutionalTenantHome({ branding, siteModel, showModuloIndisponivel }: Props) {
+  const identidade = {
+    ...siteModel.identidadeVisual,
+    ...(branding.cor_primaria ? { cor_primaria: branding.cor_primaria } : {}),
+    ...(branding.cor_secundaria ? { cor_secundaria: branding.cor_secundaria } : {}),
+    ...(branding.cor_destaque ? { cor_destaque: branding.cor_destaque } : {}),
+  };
+  const logoUrl = siteModel.usarLogoPropria
+    ? branding.logo_url
+    : siteModel.logoPadraoUrl ?? branding.logo_url;
+
   return (
     <div>
       {showModuloIndisponivel && (
@@ -20,16 +32,14 @@ export function InstitutionalTenantHome({ branding, showModuloIndisponivel }: Pr
       )}
       <RaconInspiredHome
         empresaNome={branding.nome_site}
-        logoUrl={branding.logo_url}
-        identidade={{
-          cor_primaria: branding.cor_primaria || "#0066cc",
-          cor_secundaria: branding.cor_secundaria || "#0c2340",
-          cor_destaque: branding.cor_destaque || "#ffb800",
-          cor_fundo: "#ffffff",
-          cor_texto: "#0f172a",
-        }}
+        logoUrl={logoUrl}
+        identidade={identidade}
+        menus={siteModel.menus}
+        secoes={siteModel.secoes}
+        footerCopyright={siteModel.footerCopyright ?? undefined}
         telefoneContato={branding.telefone || "(41) 3000-0000"}
         whatsappContato={branding.whatsapp || "(41) 99999-9999"}
+        showChrome={false}
       />
     </div>
   );

@@ -7,6 +7,7 @@ import { IaChatWidget } from "@/components/public/ia-chat/ia-chat-widget";
 import { PublicJsonLd } from "@/components/public/seo/public-json-ld";
 import { getIaConfigPublic } from "@/server/config";
 import { getResolvedTenant } from "@/lib/tenant/get-resolved-empresa";
+import { RaconInspiredFooter, RaconInspiredHeader } from "@/components/public/templates/racon-inspired-chrome";
 
 export async function generateMetadata(): Promise<Metadata> {
   const tenant = await getResolvedTenant();
@@ -26,6 +27,16 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function PublicLayout({ children }: { children: React.ReactNode }) {
   const tenant = await getResolvedTenant();
   const allowsOperational = tenant?.allowsLegacyOperationalData === true;
+  const usaChromeRacon = tenant?.siteModel?.codigo === "racon_inspired";
+  const identidadeRacon = tenant?.siteModel ? {
+    ...tenant.siteModel.identidadeVisual,
+    ...(tenant.branding.cor_primaria ? { cor_primaria: tenant.branding.cor_primaria } : {}),
+    ...(tenant.branding.cor_secundaria ? { cor_secundaria: tenant.branding.cor_secundaria } : {}),
+    ...(tenant.branding.cor_destaque ? { cor_destaque: tenant.branding.cor_destaque } : {}),
+  } : {};
+  const logoRacon = tenant?.siteModel?.usarLogoPropria
+    ? tenant.branding.logo_url
+    : tenant?.siteModel?.logoPadraoUrl ?? tenant?.branding.logo_url;
 
   const brandStyle: CSSProperties & Record<string, string> = { background: "var(--brand-blue)" };
   if (tenant?.branding.cor_primaria) brandStyle["--brand-blue"] = tenant.branding.cor_primaria;
@@ -42,9 +53,29 @@ export default async function PublicLayout({ children }: { children: React.React
     <LenisProvider>
       {allowsOperational ? <PublicJsonLd /> : null}
       <div className="min-h-screen text-zinc-100" style={brandStyle}>
-        <PublicHeader />
+        {usaChromeRacon && tenant?.siteModel ? (
+          <RaconInspiredHeader
+            empresaNome={tenant.branding.nome_site}
+            logoUrl={logoRacon}
+            identidade={identidadeRacon}
+            menus={tenant.siteModel.menus}
+            telefoneContato={tenant.branding.telefone || "(41) 3000-0000"}
+            whatsappContato={tenant.branding.whatsapp || "(41) 99999-9999"}
+            footerCopyright={tenant.siteModel.footerCopyright}
+          />
+        ) : <PublicHeader />}
         {children}
-        <PublicFooter />
+        {usaChromeRacon && tenant?.siteModel ? (
+          <RaconInspiredFooter
+            empresaNome={tenant.branding.nome_site}
+            logoUrl={logoRacon}
+            identidade={identidadeRacon}
+            menus={tenant.siteModel.menus}
+            telefoneContato={tenant.branding.telefone || "(41) 3000-0000"}
+            whatsappContato={tenant.branding.whatsapp || "(41) 99999-9999"}
+            footerCopyright={tenant.siteModel.footerCopyright}
+          />
+        ) : <PublicFooter />}
         {iaConfig ? <IaChatWidget config={iaConfig} /> : null}
       </div>
     </LenisProvider>

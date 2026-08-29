@@ -7,6 +7,24 @@ export type EmpresaSiteModel = {
   codigo: string;
   nome: string;
   versao: number;
+  identidadeVisual: Record<string, unknown>;
+  menus: Array<{
+    id: string;
+    label: string;
+    rota: string;
+    ativo_padrao?: boolean;
+    obrigatorio?: boolean;
+  }>;
+  secoes: Array<{
+    id: string;
+    tipo: string;
+    titulo: string;
+    ordem: number;
+    habilitada: boolean;
+  }>;
+  footerCopyright: string | null;
+  logoPadraoUrl: string | null;
+  usarLogoPropria: boolean;
 };
 
 /**
@@ -22,7 +40,7 @@ export async function getEmpresaSiteModelPublic(
     const admin = createAdminClient();
     const { data, error } = await admin
       .from("empresa_site_modelos")
-      .select("status, modelo:site_modelos!inner(id,codigo,nome,versao,status)")
+      .select("status,menus_habilitados,secoes_customizadas,usar_logo_propria,modelo:site_modelos!inner(id,codigo,nome,versao,status,identidade_visual,catalogo_menus,secoes_home,configuracao_footer,logo_padrao_url)")
       .eq("empresa_id", empresaId)
       .eq("status", "PUBLICADO")
       .eq("modelo.status", "PUBLICADO")
@@ -31,11 +49,41 @@ export async function getEmpresaSiteModelPublic(
     if (error || !data?.modelo) return null;
     const modelo = Array.isArray(data.modelo) ? data.modelo[0] : data.modelo;
     if (!modelo) return null;
+    const vinculo = data as unknown as {
+      menus_habilitados?: string[] | null;
+      secoes_customizadas?: unknown[] | null;
+      usar_logo_propria?: boolean | null;
+    };
+    const catalogo = Array.isArray(modelo.catalogo_menus) ? modelo.catalogo_menus : [];
+    const idsHabilitados = new Set(
+      Array.isArray(vinculo.menus_habilitados) ? vinculo.menus_habilitados : [],
+    );
+    const menus = catalogo.filter((item: { id?: string; obrigatorio?: boolean }) =>
+      item.obrigatorio === true || (item.id ? idsHabilitados.has(item.id) : false),
+    );
+    const secoesCustomizadas = Array.isArray(vinculo.secoes_customizadas)
+      ? vinculo.secoes_customizadas
+      : [];
+    const secoes = secoesCustomizadas.length > 0
+      ? secoesCustomizadas
+      : Array.isArray(modelo.secoes_home) ? modelo.secoes_home : [];
+    const footer = modelo.configuracao_footer && typeof modelo.configuracao_footer === "object"
+      ? modelo.configuracao_footer as { copyright?: string }
+      : {};
+
     return {
       id: modelo.id,
       codigo: modelo.codigo,
       nome: modelo.nome,
       versao: Number(modelo.versao || 1),
+      identidadeVisual: modelo.identidade_visual && typeof modelo.identidade_visual === "object"
+        ? modelo.identidade_visual as Record<string, unknown>
+        : {},
+      menus,
+      secoes,
+      footerCopyright: footer.copyright ?? null,
+      logoPadraoUrl: modelo.logo_padrao_url ?? null,
+      usarLogoPropria: Boolean(vinculo.usar_logo_propria),
     };
   } catch {
     return null;

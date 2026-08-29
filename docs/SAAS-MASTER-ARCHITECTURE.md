@@ -1123,6 +1123,22 @@ reconciliados somente quando todo o conjunto publicável já está configurado.
 Relatório:
 `docs/relatorios-fases/FASE-160-PUBLICACAO-SITE-ATIVACAO-MASTER.md`.
 
+## 42. Runtime orientado pelo modelo e menus do tenant — Fase 161
+
+`empresa_site_modelos` é a fonte canônica da apresentação efetiva do tenant. O
+runtime combina o catálogo do `site_modelos` com `menus_habilitados`, carrega
+identidade, seções e footer do modelo e aplica apenas overrides não nulos do
+branding da empresa.
+
+Templates que fornecem chrome próprio, como `racon_inspired`, substituem o
+header/footer global em todas as páginas públicas. Nenhum CTA é criado fora do
+catálogo habilitado. A seleção publicada de menus operacionais também funciona
+como entitlement explícito das rotas correspondentes; ausência de aprovação
+mantém a falha fechada.
+
+Relatório:
+`docs/relatorios-fases/FASE-161-MENUS-MODELO-RUNTIME-TENANT.md`.
+
 
 
 

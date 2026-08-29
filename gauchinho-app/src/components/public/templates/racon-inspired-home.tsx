@@ -130,6 +130,7 @@ export type RaconInspiredHomeProps = {
   telefoneContato?: string;
   whatsappContato?: string;
   isInteractive?: boolean;
+  showChrome?: boolean;
 };
 
 export function RaconInspiredHome({
@@ -142,6 +143,7 @@ export function RaconInspiredHome({
   telefoneContato = "0800 645 4500",
   whatsappContato = "(41) 99999-9999",
   isInteractive = true,
+  showChrome = true,
 }: RaconInspiredHomeProps) {
   // Cores canônicas da identidade Racon
   const primary = identidade.cor_primaria || "#0099dd"; // Sky Blue Racon
@@ -229,7 +231,7 @@ export function RaconInspiredHome({
       {/* ───────────────────────────────────────────────────────────
           1. TOPBAR DISCRETA (PADRÃO RACON: Televendas 0800...)
       ─────────────────────────────────────────────────────────── */}
-      <div className="w-full bg-[#008fd5] px-4 py-1.5 text-white text-[11px] font-semibold border-b border-white/10">
+      {showChrome ? <><div className="w-full bg-[#008fd5] px-4 py-1.5 text-white text-[11px] font-semibold border-b border-white/10">
         <div className="mx-auto flex max-w-7xl items-center justify-end gap-6">
           <span className="flex items-center gap-1.5">
             <Phone className="h-3 w-3 text-amber-300" />
@@ -301,7 +303,7 @@ export function RaconInspiredHome({
             </Link>
           </div>
         </div>
-      </header>
+      </header></> : null}
 
       {/* ───────────────────────────────────────────────────────────
           3. HERO PRINCIPAL: BANNER DO GAROTO PROPAGANDA (RUBINHO) + SIMULADOR RACON
@@ -879,7 +881,7 @@ export function RaconInspiredHome({
       {/* ───────────────────────────────────────────────────────────
           9. FOOTER INSTITUCIONAL CORPORATIVO COM BACEN
       ─────────────────────────────────────────────────────────── */}
-      <footer className="border-t border-slate-800 bg-[#0c2340] text-slate-400 text-xs pt-12 pb-8">
+      {showChrome ? <footer className="border-t border-slate-800 bg-[#0c2340] text-slate-400 text-xs pt-12 pb-8">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 space-y-8">
           <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
             {/* Coluna 1 */}
@@ -962,7 +964,7 @@ export function RaconInspiredHome({
             <p>Plataforma SaaS Gauchinho Consórcios Multi-Tenant</p>
           </div>
         </div>
-      </footer>
+      </footer> : null}
     </div>
   );
 }

@@ -62,6 +62,7 @@ export default async function HomePage({
     return (
       <InstitutionalTenantHome
         branding={tenant.branding}
+        siteModel={tenant.siteModel!}
         showModuloIndisponivel={params.modulo === "indisponivel"}
       />
     );
