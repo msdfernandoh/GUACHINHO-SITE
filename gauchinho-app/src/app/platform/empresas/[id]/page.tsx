@@ -1,5 +1,6 @@
-import { notFound } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { notFound, redirect } from "next/navigation";
+import { isPlatformSuperadmin } from "@/lib/auth/is-superadmin";
+import { createAdminClient } from "@/lib/supabase/admin";
 import {
   MasterFranquiaHub,
   type EmpresaHubDetail,
@@ -24,7 +25,8 @@ export default async function MasterFranquiaDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const db = await createClient();
+  if (!(await isPlatformSuperadmin())) redirect(`/login?next=/platform/empresas/${id}`);
+  const db = createAdminClient();
 
   const [
     empresaRes,
@@ -71,7 +73,7 @@ export default async function MasterFranquiaDetailPage({
       .eq("empresa_id", id),
     db
       .from("empresa_usuarios")
-      .select("id, usuario_id, ativo, is_responsavel_principal, status, erp_modulos_visiveis, convite_enviado_em, created_at, usuario:usuarios!empresa_usuarios_usuario_id_fkey(id, nome, email, ativo, ultimo_acesso), papel:papeis(id, nome)")
+      .select("id, usuario_id, ativo, is_responsavel_principal, status, erp_modulos_visiveis, convite_enviado_em, created_at, usuario:usuarios!empresa_usuarios_usuario_id_fkey(id, nome, email, ativo), papel:papeis(id, nome)")
       .eq("empresa_id", id),
     db
       .from("empresa_socios")
@@ -119,6 +121,9 @@ export default async function MasterFranquiaDetailPage({
   }
   if (sociosRes.error) {
     throw new Error(`Não foi possível carregar o quadro societário: ${sociosRes.error.message}`);
+  }
+  if (usuariosRes.error) {
+    throw new Error(`Não foi possível carregar os usuários da Master Franquia: ${usuariosRes.error.message}`);
   }
 
   const empresaData: EmpresaHubDetail = {
@@ -201,7 +206,9 @@ export default async function MasterFranquiaDetailPage({
     administradora: (Array.isArray(a.administradora) ? a.administradora[0] : a.administradora) as unknown as AdminHubItem["administradora"],
   }));
 
-  const usuariosData: UsuarioHubItem[] = (usuariosRes.data ?? []).map((u) => ({
+  const usuariosData: UsuarioHubItem[] = (usuariosRes.data ?? []).map((u) => {
+    const usuario = (Array.isArray(u.usuario) ? u.usuario[0] : u.usuario) as Omit<NonNullable<UsuarioHubItem["usuario"]>, "ultimo_acesso"> | null;
+    return {
     id: u.id,
     usuario_id: u.usuario_id,
     ativo: u.ativo,
@@ -210,9 +217,10 @@ export default async function MasterFranquiaDetailPage({
     erp_modulos_visiveis: Array.isArray(u.erp_modulos_visiveis) ? (u.erp_modulos_visiveis as string[]) : [],
     convite_enviado_em: u.convite_enviado_em,
     created_at: u.created_at,
-    usuario: (Array.isArray(u.usuario) ? u.usuario[0] : u.usuario) as unknown as UsuarioHubItem["usuario"],
+    usuario: usuario ? { ...usuario, ultimo_acesso: null } : null,
     papel: (Array.isArray(u.papel) ? u.papel[0] : u.papel) as unknown as UsuarioHubItem["papel"],
-  }));
+    };
+  });
 
   const sociosData: SocioHubItem[] = (sociosRes.data ?? []).map((s) => ({
     id: s.id,

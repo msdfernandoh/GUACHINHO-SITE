@@ -993,6 +993,11 @@ global. Erros de leitura são exibidos, nunca convertidos silenciosamente em
 `rpc_platform_ativar_empresa`; com os demais gates satisfeitos, empresa e
 assinatura são ativadas imediatamente.
 
+A ficha da Master usa a mesma leitura administrativa após autorização e deve
+contabilizar vínculos ativos ainda durante `em_treinamento`. O gate de usuário
+não pode depender de a empresa já estar ativa, pois o primeiro responsável é
+justamente um pré-requisito para essa ativação.
+
 A identidade recebe `app_metadata.exige_troca_senha = true`. Login e proxy
 direcionam essa sessão exclusivamente para `/definir-senha`; após a alteração,
 o servidor marca o requisito como concluído e libera a navegação. Identidades

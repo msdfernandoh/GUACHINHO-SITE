@@ -8,17 +8,21 @@ function source(path: string) {
 
 describe("relações de empresa_usuarios com usuarios", () => {
   it("escolhe usuario_id explicitamente quando convidado_por também referencia usuarios", () => {
-    const erpFiles = [
+    const relationFiles = [
       "src/app/admin/usuarios/actions.ts",
       "src/app/erp/contas-pagar/page.tsx",
-      "src/app/platform/usuarios/page.tsx",
       "src/app/platform/empresas/[id]/page.tsx",
     ];
-    for (const file of erpFiles) {
+    for (const file of relationFiles) {
       const contents = source(file);
       expect(contents).toContain("usuarios!empresa_usuarios_usuario_id_fkey");
       expect(contents).not.toContain("usuario:usuarios(");
     }
+    const usuariosPage = source("src/app/platform/usuarios/page.tsx");
+    expect(usuariosPage).toContain('.from("usuarios").select("id, nome, email")');
+    expect(usuariosPage).toContain("usuariosPorId");
+    expect(usuariosPage).toContain("r.usuario_id");
+    expect(usuariosPage).not.toContain("usuario:usuarios(");
     const actions = source("src/app/platform/usuarios-actions.ts");
     expect(actions).not.toContain("usuario:usuarios!inner");
     expect(actions).toContain('.from("usuarios")');

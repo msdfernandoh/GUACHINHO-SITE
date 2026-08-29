@@ -20,6 +20,13 @@ responsável, o fluxo também executa o gate canônico de ativação da empresa;
 outro requisito de prontidão impedir a ativação, as credenciais continuam
 visíveis e a pendência é informada ao operador.
 
+A ficha individual da Master Franquia segue a mesma fronteira: após validar o
+Platform Superadmin, lê administrativamente `empresa_usuarios`, inclusive
+enquanto a empresa está em treinamento. A consulta não depende da coluna
+legada inexistente `usuarios.ultimo_acesso`. Assim, o responsável ativo exibido
+na governança global também é contabilizado no checklist e libera o botão da
+RPC canônica de ativação, sem duplicar nem mover vínculos.
+
 No primeiro login, `app_metadata.exige_troca_senha` obriga a sessão a passar
 por `/definir-senha`. A navegação só é liberada depois que a senha é alterada e
 o marcador é concluído pelo servidor. O fluxo antigo de ativação permanece
