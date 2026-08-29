@@ -8,7 +8,7 @@ export type MasterFranquiaItem = {
   nome_fantasia: string;
   razao_social: string;
   slug: string;
-  status: string; // 'ativa', 'em_treinamento', 'suspensa', 'inativa'
+  status: string; // 'ativo', 'em_treinamento', 'suspenso', 'cancelado'
   ativo: boolean;
   erp_habilitado: boolean;
   plano_nome: string;
@@ -35,6 +35,10 @@ export function MasterFranquiasListingClient({
   const [filtroPlano, setFiltroPlano] = useState("TODOS");
   const [filtroModelo, setFiltroModelo] = useState("TODOS");
 
+  const normalizarStatus = (status: string) => status.toLowerCase();
+  const statusAtivo = (status: string) => ["ativo", "ativa"].includes(normalizarStatus(status));
+  const statusSuspenso = (status: string) => ["suspenso", "suspensa"].includes(normalizarStatus(status));
+
   const planosUnicos = Array.from(new Set(empresas.map((e) => e.plano_nome).filter(Boolean)));
   const modelosUnicos = Array.from(new Set(empresas.map((e) => e.modelo_site_nome).filter(Boolean)));
 
@@ -47,10 +51,10 @@ export function MasterFranquiasListingClient({
 
     const matchStatus =
       filtroStatus === "TODOS" ||
-      (filtroStatus === "ATIVA" && (emp.status === "ativa" || emp.status === "ATIVA")) ||
-      (filtroStatus === "TREINAMENTO" && (emp.status === "em_treinamento" || emp.status === "TREINAMENTO")) ||
-      (filtroStatus === "SUSPENSA" && (emp.status === "suspensa" || emp.status === "SUSPENSA")) ||
-      (filtroStatus === "INATIVA" && (emp.status === "inativa" || emp.status === "INATIVA"));
+      (filtroStatus === "ATIVA" && statusAtivo(emp.status)) ||
+      (filtroStatus === "TREINAMENTO" && ["em_treinamento", "treinamento"].includes(normalizarStatus(emp.status))) ||
+      (filtroStatus === "SUSPENSA" && statusSuspenso(emp.status)) ||
+      (filtroStatus === "INATIVA" && ["cancelado", "cancelada", "inativo", "inativa"].includes(normalizarStatus(emp.status)));
 
     const matchErp =
       filtroErp === "TODOS" ||
@@ -63,11 +67,11 @@ export function MasterFranquiasListingClient({
     return matchBusca && matchStatus && matchErp && matchPlano && matchModelo;
   });
 
-  const totalAtivas = empresas.filter((e) => e.status === "ativa" || e.status === "ATIVA").length;
-  const totalTreinamento = empresas.filter((e) => e.status === "em_treinamento" || e.status === "TREINAMENTO").length;
-  const totalSuspensas = empresas.filter((e) => e.status === "suspensa" || e.status === "SUSPENSA").length;
+  const totalAtivas = empresas.filter((e) => statusAtivo(e.status)).length;
+  const totalTreinamento = empresas.filter((e) => ["em_treinamento", "treinamento"].includes(normalizarStatus(e.status))).length;
+  const totalSuspensas = empresas.filter((e) => statusSuspenso(e.status)).length;
   const totalMrr = empresas
-    .filter((e) => e.status === "ativa" || e.status === "ATIVA")
+    .filter((e) => statusAtivo(e.status))
     .reduce((acc, e) => acc + (e.valor_mensal_estimado || 0), 0);
 
   return (
@@ -211,6 +215,8 @@ export function MasterFranquiasListingClient({
               ) : (
                 filtradas.map((emp) => {
                   const statusNorm = (emp.status || "").toLowerCase();
+                  const ativo = statusAtivo(emp.status);
+                  const suspenso = statusSuspenso(emp.status);
                   return (
                     <tr key={emp.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40">
                       <td className="p-3">
@@ -222,16 +228,16 @@ export function MasterFranquiasListingClient({
                       <td className="p-3 text-center">
                         <span
                           className={`inline-block rounded-full px-2.5 py-0.5 text-[10px] font-extrabold uppercase ${
-                            statusNorm === "ativa"
+                            ativo
                               ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
                               : statusNorm === "em_treinamento"
                               ? "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300"
-                              : statusNorm === "suspensa"
+                              : suspenso
                               ? "bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300"
                               : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400"
                           }`}
                         >
-                          {statusNorm === "em_treinamento" ? "TREINAMENTO" : emp.status}
+                          {ativo ? "ATIVA" : suspenso ? "SUSPENSA" : statusNorm === "em_treinamento" ? "TREINAMENTO" : emp.status}
                         </span>
                       </td>
 

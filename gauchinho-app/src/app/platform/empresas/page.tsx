@@ -85,7 +85,7 @@ export default async function MasterFranquiasPage() {
       nome_fantasia: emp.nome_fantasia,
       razao_social: emp.razao_social,
       slug: emp.slug,
-      status: emp.status || (emp.ativo ? "ativa" : "em_treinamento"),
+      status: emp.status || (emp.ativo ? "ativo" : "em_treinamento"),
       ativo: emp.ativo,
       erp_habilitado: erpHabilitado,
       plano_nome: planoData?.nome || "Sem Plano Vinculado",

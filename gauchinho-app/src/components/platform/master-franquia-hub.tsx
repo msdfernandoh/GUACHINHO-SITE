@@ -435,6 +435,15 @@ export function MasterFranquiaHub({
   const prontaParaAtivacao = pendencias.length === 0;
 
   const statusNorm = (empresa.status || "").toLowerCase();
+  const empresaAtiva = statusNorm === "ativo" || statusNorm === "ativa";
+  const empresaSuspensa = statusNorm === "suspenso" || statusNorm === "suspensa";
+  const statusLabel = empresaAtiva
+    ? "ATIVA"
+    : empresaSuspensa
+      ? "SUSPENSA"
+      : statusNorm === "em_treinamento"
+        ? "EM TREINAMENTO"
+        : empresa.status;
 
   return (
     <div className="space-y-6">
@@ -449,16 +458,16 @@ export function MasterFranquiaHub({
             </span>
             <span
               className={`rounded-full px-3 py-0.5 text-xs font-black uppercase ${
-                statusNorm === "ativa"
+                empresaAtiva
                   ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
                   : statusNorm === "em_treinamento"
                   ? "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300"
-                  : statusNorm === "suspensa"
+                  : empresaSuspensa
                   ? "bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300"
                   : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400"
               }`}
             >
-              {statusNorm === "em_treinamento" ? "EM TREINAMENTO" : empresa.status}
+              {statusLabel}
             </span>
           </div>
           <h1 className="text-3xl font-extrabold text-slate-900 dark:text-white">
@@ -472,7 +481,26 @@ export function MasterFranquiaHub({
 
         {/* Botões de Ação de Status */}
         <div className="flex flex-wrap items-center gap-2">
-          {statusNorm !== "ativa" ? (
+          {empresaAtiva ? (
+            <button
+              type="button"
+              onClick={() => setModalSuspender(true)}
+              className="rounded-lg border border-rose-300 bg-rose-50 px-4 py-2 text-xs font-bold text-rose-800 hover:bg-rose-100 dark:border-rose-800 dark:bg-rose-950 dark:text-rose-300 transition-colors"
+            >
+              ⚠️ Suspender Franquia
+            </button>
+          ) : empresaSuspensa ? (
+            <form action={actionReativar}>
+              <input type="hidden" name="id" value={empresa.id} />
+              <button
+                type="submit"
+                disabled={isPendingReativar}
+                className="rounded-lg bg-cyan-700 px-4 py-2 text-xs font-bold text-white shadow hover:bg-cyan-800"
+              >
+                {isPendingReativar ? "Reativando..." : "Reativar Franquia"}
+              </button>
+            </form>
+          ) : (
             <form action={actionAtivar}>
               <input type="hidden" name="id" value={empresa.id} />
               <button
@@ -482,27 +510,6 @@ export function MasterFranquiaHub({
                 className="rounded-lg bg-emerald-600 px-4 py-2 text-xs font-bold text-white shadow hover:bg-emerald-700 disabled:opacity-40 transition-colors"
               >
                 {isPendingAtivar ? "Ativando..." : "✓ Ativar Master Franquia"}
-              </button>
-            </form>
-          ) : (
-            <button
-              type="button"
-              onClick={() => setModalSuspender(true)}
-              className="rounded-lg border border-rose-300 bg-rose-50 px-4 py-2 text-xs font-bold text-rose-800 hover:bg-rose-100 dark:border-rose-800 dark:bg-rose-950 dark:text-rose-300 transition-colors"
-            >
-              ⚠️ Suspender Franquia
-            </button>
-          )}
-
-          {statusNorm === "inativa" && (
-            <form action={actionReativar}>
-              <input type="hidden" name="id" value={empresa.id} />
-              <button
-                type="submit"
-                disabled={isPendingReativar}
-                className="rounded-lg bg-cyan-700 px-4 py-2 text-xs font-bold text-white shadow hover:bg-cyan-800"
-              >
-                Reativar Franquia
               </button>
             </form>
           )}

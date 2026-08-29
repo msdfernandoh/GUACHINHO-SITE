@@ -1096,6 +1096,20 @@ congelada no snapshot da proposta.
 Relatório:
 `docs/relatorios-fases/FASE-158-CREDITOS-GRUPO-INCLUIR-EDITAR-EXCLUIR.md`.
 
+## 40. Status canônico da Master Franquia — Fase 159
+
+As transições operacionais da Master Franquia usam os valores canônicos da
+tabela `empresas`: `ativo`, `suspenso`, `cancelado` e `em_treinamento`. O campo
+booleano `ativo` permanece coerente e protegido pela constraint
+`empresas_status_ativo_coerente`; a correção não flexibiliza essa integridade.
+
+As RPCs de ativação, suspensão e reativação gravam o mesmo vocabulário no
+registro e na auditoria. O hub e a listagem da Platform reconhecem os estados
+canônicos e apresentam os rótulos femininos apenas na interface.
+
+Relatório:
+`docs/relatorios-fases/FASE-159-ATIVACAO-MASTER-STATUS-CANONICO.md`.
+
 
 
 
