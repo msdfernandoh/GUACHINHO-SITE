@@ -188,6 +188,21 @@ export async function excluirCotaProdutoAction(grupoId: string, cotaId: string) 
   return res as { acao: string; mensagem: string };
 }
 
+export async function atualizarCotaProdutoAction(grupoId: string, cotaId: string, formData: FormData) {
+  const db = await platformDb();
+  const valorCredito = parseBRLNumber(String(formData.get("valor_credito") ?? ""));
+  if (valorCredito <= 0) throw new Error("Informe um crédito válido.");
+  const { error } = await db.rpc("rpc_salvar_credito_grupo", {
+    p_grupo_id: grupoId,
+    p_grupo_cota_id: cotaId,
+    p_valor_credito: valorCredito,
+  });
+  if (error) throw new Error(error.message);
+  revalidatePath(path(grupoId));
+  revalidatePath("/platform/grupos");
+  revalidatePath("/grupos");
+}
+
 export const salvarModalidadesGrupoAction = salvarModalidadesGrupoPlatformAction;
 export const salvarProdutoAction = salvarCotaModalidadeAction;
 export const inativarProdutoAction = excluirCotaProdutoAction;

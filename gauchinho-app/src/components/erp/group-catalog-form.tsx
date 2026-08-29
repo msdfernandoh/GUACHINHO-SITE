@@ -67,9 +67,6 @@ export function GroupCatalogForm({
 }) {
   const router = useRouter();
   const [state, formAction] = useActionState(action, initial);
-  useEffect(() => {
-    if (state.status === "SUCCESS" && state.redirectTo) router.push(state.redirectTo);
-  }, [router, state]);
   const [admin, setAdmin] = useState(
     grupo?.administradora_id ?? administradoras[0]?.id ?? ""
   );
@@ -105,6 +102,22 @@ export function GroupCatalogForm({
       descricao: lance.descricao ?? "",
     })),
   );
+  const [novoCredito, setNovoCredito] = useState("");
+  const [creditos, setCreditos] = useState<string[]>([]);
+  useEffect(() => {
+    if (state.status === "SUCCESS") {
+      setCreditos([]);
+      setNovoCredito("");
+      if (state.redirectTo) router.push(state.redirectTo);
+    }
+  }, [router, state]);
+
+  function adicionarCredito() {
+    const valor = novoCredito.trim();
+    if (!valor) return;
+    setCreditos((atuais) => (atuais.includes(valor) ? atuais : [...atuais, valor]));
+    setNovoCredito("");
+  }
 
   return (
     <form
@@ -114,6 +127,7 @@ export function GroupCatalogForm({
       <input type="hidden" name="id" value={grupo?.id ?? ""} />
       <input type="hidden" name="lances_json" value={JSON.stringify(lances)} />
       <input type="hidden" name="percentuais_parcela_reduzida_json" value={JSON.stringify(percentuaisReduzidos)} />
+      <input type="hidden" name="creditos_json" value={JSON.stringify(creditos)} />
 
       {scope === "ERP" && grupo?.alteracao_catalogo_status && grupo.alteracao_catalogo_status !== "SEM_ALTERACAO" ? (
         <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
@@ -316,12 +330,28 @@ export function GroupCatalogForm({
         <span className="mt-1 block text-xs font-normal text-slate-500">Opcional. PDF, JPG, PNG ou WEBP de até 15 MB. O arquivo ficará disponível no ERP e no SaaS.</span>
       </label> : null}
 
-      {scope === "ERP" ? (
-        <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300">
-          Novos créditos sugeridos para este grupo
-          <textarea className={field} name="creditos" rows={2} placeholder="Ex.: 100.000; 150.000; 200.000" />
-          <span className="mt-1 block text-xs font-normal text-slate-500">Os créditos entram como solicitação para homologação global. Nenhum valor de parcela é cadastrado aqui.</span>
-        </label>
+      {!readonly ? (
+        <section className="space-y-3 rounded-xl border border-slate-200 p-4 dark:border-slate-800">
+          <div>
+            <h3 className="text-sm font-bold text-slate-900 dark:text-white">Créditos do grupo</h3>
+            <p className="text-xs text-slate-500">Inclua os valores que serão exibidos como cotas comerciais. As parcelas são calculadas pelo site.</p>
+          </div>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <input className={field} value={novoCredito} onChange={(event) => setNovoCredito(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); adicionarCredito(); } }} inputMode="decimal" placeholder="Ex.: 200.000,00" aria-label="Novo valor de crédito" />
+            <button type="button" onClick={adicionarCredito} className="rounded-lg border border-blue-500 px-4 py-2 text-sm font-bold text-blue-700 hover:bg-blue-50">+ Adicionar crédito</button>
+          </div>
+          {creditos.length > 0 ? (
+            <div className="flex flex-wrap gap-2">
+              {creditos.map((credito, index) => (
+                <span key={`${credito}-${index}`} className="inline-flex items-center gap-2 rounded-full bg-blue-50 px-3 py-1.5 text-xs font-bold text-blue-800">
+                  {credito}
+                  <button type="button" onClick={() => setCreditos((atuais) => atuais.filter((_, i) => i !== index))} className="text-red-600" aria-label={`Remover crédito ${credito}`}>×</button>
+                </span>
+              ))}
+            </div>
+          ) : <p className="text-xs text-slate-400">Nenhum novo crédito incluído nesta edição.</p>}
+          {scope === "ERP" ? <p className="text-xs text-slate-500">Em grupo local, os créditos ficam disponíveis imediatamente no ERP e seguem junto para homologação global.</p> : null}
+        </section>
       ) : null}
 
       <div className="space-y-3 rounded-xl border border-slate-200 p-4 dark:border-slate-800">

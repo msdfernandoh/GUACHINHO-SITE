@@ -1069,6 +1069,22 @@ primeira parcela sem esse acréscimo. Os booleanos legados não substituem a tax
 Relatório:
 `docs/relatorios-fases/FASE-157-SEGURO-PRESTAMISTA-GLOBAL-GRUPOS.md`.
 
+## 39. Créditos comerciais no cadastro de grupos — Fase 158
+
+ERP e Platform gerenciam os créditos comerciais na tabela canônica
+`grupos_cotas`. O formulário de grupo permite preparar e incluir múltiplos
+créditos; a tabela de detalhes oferece edição e exclusão. Grupos locais podem
+ser gerenciados imediatamente pelo tenant de origem, enquanto grupos globais
+permanecem sob autoridade da Platform.
+
+Edição ou exclusão nunca reescreve fatos históricos: produto utilizado é
+inativado e, em caso de mudança de valor, substituído por uma nova opção. A
+parcela não é persistida nesse cadastro; continua calculada pelo site e
+congelada no snapshot da proposta.
+
+Relatório:
+`docs/relatorios-fases/FASE-158-CREDITOS-GRUPO-INCLUIR-EDITAR-EXCLUIR.md`.
+
 
 
 

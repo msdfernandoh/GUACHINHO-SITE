@@ -11,8 +11,7 @@ import { buscarTabelaGrupo } from "@/lib/grupos/grupo-tabela.server";
 import { GrupoTabelaActions } from "@/components/grupos/grupo-tabela-actions";
 import type { GrupoConsorcio, GrupoModalidadeLance } from "@/lib/types";
 import { descricaoIntegralizacaoParcela } from "@/lib/grupos/regra-integralizacao";
-
-const money = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
+import { GrupoCreditosManager } from "@/components/erp/grupo-creditos-manager";
 
 export default async function GrupoErpPage({
   params,
@@ -110,6 +109,7 @@ export default async function GrupoErpPage({
   const modalidadesHabilitadasIds = (modulosHabilitadosRes.data ?? []).map(
     (x) => x.administradora_modalidade_id
   );
+  const canManageCotas = g.origem_governanca === "LOCAL" && g.empresa_origem_id === empresaAtiva.id;
 
   const grupoComModalidades = {
     ...g,
@@ -230,62 +230,7 @@ export default async function GrupoErpPage({
           </div>
         </div>
 
-        {cotas.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-slate-300 p-8 text-center text-slate-500 dark:border-slate-700">
-            <p className="font-semibold">Nenhuma cota/produto cadastrado para este grupo no momento.</p>
-            <p className="mt-1 text-xs text-slate-400">
-              As cotas são sincronizadas a partir do catálogo oficial SaaS na Platform.
-            </p>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-slate-50 text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:bg-slate-800 dark:text-slate-400">
-                <tr>
-                  <th className="p-3">Crédito</th>
-                  <th className="p-3 text-center">Prazo</th>
-                  <th className="p-3 text-center">Vagas</th>
-                  <th className="p-3 text-center">Status da Cota</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                {cotas.map((c) => {
-                  const isAtiva = c.ativo !== false && !["Inativo", "Esgotado"].includes(c.status);
-
-                  return (
-                    <tr
-                      key={c.id}
-                      className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition-colors"
-                    >
-                      <td className="p-3 font-mono text-sm font-extrabold text-blue-700 dark:text-blue-400">
-                        {money.format(Number(c.valor_credito))}
-                      </td>
-                      <td className="p-3 text-center font-mono font-semibold text-slate-700 dark:text-slate-300">
-                        {g.prazo_total ? `${g.prazo_total}m` : "—"}
-                      </td>
-                      <td className="p-3 text-center text-slate-600 dark:text-slate-400">
-                        {Number(g.vagas_disponiveis ?? 0) <= 0
-                          ? "Aguardando novas vagas"
-                          : c.vagas_texto || (c.vagas_percentual != null ? `${c.vagas_percentual}%` : "Disponível")}
-                      </td>
-                      <td className="p-3 text-center">
-                        <span
-                          className={`inline-block rounded-full px-2.5 py-0.5 text-[10px] font-extrabold uppercase ${
-                            isAtiva
-                              ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
-                              : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400"
-                          }`}
-                        >
-                          {c.status || (isAtiva ? "Disponível" : "Inativo")}
-                        </span>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
+        <GrupoCreditosManager grupoId={id} cotas={cotas} canManage={canManageCotas} />
       </section>
     </div>
   );

@@ -22,6 +22,20 @@ function parsePercentuaisReduzidos(formData: FormData): number[] {
   return valores;
 }
 
+function parseCreditos(formData: FormData): number[] {
+  const json = formData.get("creditos_json");
+  if (json != null) {
+    try {
+      const valores = JSON.parse(String(json));
+      if (!Array.isArray(valores)) throw new Error();
+      return parseBatchCotasInput(valores.map(String).join("\n"));
+    } catch {
+      throw new Error("Revise os créditos informados.");
+    }
+  }
+  return parseBatchCotasInput(String(formData.get("creditos") ?? ""));
+}
+
 export async function salvarGrupoLocalAction(
   _previous: GroupActionState,
   formData: FormData,
@@ -144,7 +158,7 @@ export async function salvarGrupoLocalAction(
       });
       if (configError) throw new Error(configError.message);
     }
-    const creditos = parseBatchCotasInput(String(formData.get("creditos") ?? ""));
+    const creditos = parseCreditos(formData);
     const { data: submitted, error } = await db.rpc("rpc_submeter_alteracao_grupo_franquia", {
       p_empresa_id: empresaId,
       p_grupo_id: id,
@@ -157,6 +171,21 @@ export async function salvarGrupoLocalAction(
     if (error) throw new Error(error.message);
     const grupoSalvoId = String((submitted as { grupo_id?: string } | null)?.grupo_id ?? id ?? "");
     if (grupoSalvoId) {
+      const { data: grupoSalvo } = await db
+        .from("grupos_consorcio")
+        .select("origem_governanca,empresa_origem_id")
+        .eq("id", grupoSalvoId)
+        .maybeSingle();
+      if (grupoSalvo?.origem_governanca === "LOCAL" && grupoSalvo.empresa_origem_id === empresaId) {
+        for (const credito of creditos) {
+          const { error: creditoError } = await db.rpc("rpc_salvar_credito_grupo", {
+            p_grupo_id: grupoSalvoId,
+            p_grupo_cota_id: null,
+            p_valor_credito: credito,
+          });
+          if (creditoError) throw new Error(creditoError.message);
+        }
+      }
       const { error: percentuaisError } = await db.rpc("rpc_salvar_percentuais_parcela_reduzida_grupo", {
         p_grupo_id: grupoSalvoId,
         p_percentuais: percentuaisReduzidos.length ? percentuaisReduzidos : null,
@@ -186,4 +215,35 @@ export async function salvarGrupoLocalAction(
       message,
     };
   }
+}
+
+export async function salvarCreditoGrupoLocalAction(formData: FormData) {
+  await requireErpRouteAccess("grupos");
+  const grupoId = String(formData.get("grupo_id") ?? "");
+  const cotaId = String(formData.get("cota_id") ?? "") || null;
+  const valor = parseBatchCotasInput(String(formData.get("valor_credito") ?? ""))[0];
+  if (!grupoId || !valor) throw new Error("Informe um crédito válido.");
+  const db = await createClient();
+  const { error } = await db.rpc("rpc_salvar_credito_grupo", {
+    p_grupo_id: grupoId,
+    p_grupo_cota_id: cotaId,
+    p_valor_credito: valor,
+  });
+  if (error) throw new Error(error.message);
+  revalidatePath(`/erp/grupos/${grupoId}`);
+  revalidatePath("/erp/grupos");
+  revalidatePath("/grupos");
+}
+
+export async function excluirCreditoGrupoLocalAction(formData: FormData) {
+  await requireErpRouteAccess("grupos");
+  const grupoId = String(formData.get("grupo_id") ?? "");
+  const cotaId = String(formData.get("cota_id") ?? "");
+  if (!grupoId || !cotaId) throw new Error("Crédito não identificado.");
+  const db = await createClient();
+  const { error } = await db.rpc("rpc_excluir_credito_grupo", { p_grupo_cota_id: cotaId });
+  if (error) throw new Error(error.message);
+  revalidatePath(`/erp/grupos/${grupoId}`);
+  revalidatePath("/erp/grupos");
+  revalidatePath("/grupos");
 }

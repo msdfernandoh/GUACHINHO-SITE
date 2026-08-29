@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { isPlatformSuperadmin } from "@/lib/auth/is-superadmin";
 import { createClient } from "@/lib/supabase/server";
-import { parseBRLNumber } from "@/lib/platform/grupos-prontidao";
+import { parseBatchCotasInput, parseBRLNumber } from "@/lib/platform/grupos-prontidao";
 import { uploadTabelaGrupo } from "@/lib/grupos/grupo-tabela.server";
 
 function parsePercentuaisReduzidos(formData: FormData): number[] {
@@ -25,6 +25,18 @@ function parsePercentuaisReduzidos(formData: FormData): number[] {
     throw new Error("Cada parcela reduzida deve possuir percentual maior que 0 e menor que 100.");
   }
   return valores;
+}
+
+function parseCreditos(formData: FormData): number[] {
+  const json = formData.get("creditos_json");
+  if (json == null) return [];
+  try {
+    const valores = JSON.parse(String(json));
+    if (!Array.isArray(valores)) throw new Error();
+    return parseBatchCotasInput(valores.map(String).join("\n"));
+  } catch {
+    throw new Error("Revise os créditos informados.");
+  }
 }
 
 export type GroupActionState = {
@@ -177,6 +189,7 @@ export async function salvarGrupoPlatformAction(
     const status = String(formData.get("status") ?? "Disponível").trim();
     const ativo = formData.get("ativo") !== "false";
     const observacoes = String(formData.get("observacoes") ?? "").trim() || null;
+    const creditos = parseCreditos(formData);
 
     const db = await createClient();
     const { data: saved, error } = await db.rpc("rpc_platform_salvar_grupo_comercial", {
@@ -204,6 +217,13 @@ export async function salvarGrupoPlatformAction(
 
     const savedId = (saved as { id?: string })?.id || id;
     if (savedId) {
+      if (creditos.length > 0) {
+        const { error: creditosError } = await db.rpc("rpc_platform_salvar_cotas_lote", {
+          p_grupo_id: savedId,
+          p_valores_credito: creditos,
+        });
+        if (creditosError) throw new Error(creditosError.message);
+      }
       const { error: percentuaisError } = await db.rpc("rpc_salvar_percentuais_parcela_reduzida_grupo", {
         p_grupo_id: savedId,
         p_percentuais: percentuaisReduzidos.length ? percentuaisReduzidos : null,

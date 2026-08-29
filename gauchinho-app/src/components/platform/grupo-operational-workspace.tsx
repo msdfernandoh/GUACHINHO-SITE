@@ -15,6 +15,7 @@ import {
   salvarCotaModalidadeAction,
   salvarCotaModalidadeEmMassaAction,
   excluirCotaProdutoAction,
+  atualizarCotaProdutoAction,
 } from "@/app/platform/grupos-catalogo-actions";
 import {
   type GrupoRecord,
@@ -853,7 +854,12 @@ export function GrupoOperationalWorkspace({
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                     {cotas.map((cota) => (
                       <tr key={cota.id}>
-                        <td className="px-4 py-3 font-bold text-slate-900 dark:text-white">{formatBRL(cota.valor_credito)}</td>
+                        <td className="px-4 py-3 font-bold text-slate-900 dark:text-white">
+                          <form action={atualizarCotaProdutoAction.bind(null, grupo.id, cota.id)} className="flex items-center gap-2">
+                            <input name="valor_credito" defaultValue={Number(cota.valor_credito).toLocaleString("pt-BR", { minimumFractionDigits: 2 })} className="w-40 rounded-lg border px-2 py-1.5 font-mono text-xs dark:bg-slate-800" inputMode="decimal" />
+                            <button type="submit" className="text-xs font-semibold text-cyan-700 hover:underline">Editar</button>
+                          </form>
+                        </td>
                         <td className="px-4 py-3"><span className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700">{cota.status || "Ativo"}</span></td>
                         <td className="px-4 py-3 text-right"><button type="button" onClick={async () => { if (confirm(`Deseja excluir o crédito de ${formatBRL(cota.valor_credito)}?`)) await excluirCotaProdutoAction(grupo.id, cota.id); }} className="text-xs font-semibold text-red-600 hover:underline">Excluir</button></td>
                       </tr>
