@@ -362,6 +362,12 @@ A plataforma suporta:
   - Reenvio de convite seguro sem criação de senha manual e integração total com a aba de usuários do HUB de franquias.
   - Relatório: `docs/relatorios-fases/fase-094-platform-usuarios-governanca.md`.
 
+* Ativação coerente do Plano SaaS no onboarding (Migration 157):
+  - O plano escolhido no onboarding cria uma assinatura `RASCUNHO`, reconhecida como vínculo válido pelo gate de ativação da Master Franquia.
+  - A ativação explícita promove empresa e assinatura vinculada de forma atômica para `ativa`/`ATIVA`, mantendo administradora e usuário ativo como gates obrigatórios.
+  - Não cria ou duplica assinatura, não executa backfill e registra a transição da assinatura na auditoria Platform.
+  - Relatório: `docs/relatorios-fases/HOTFIX-ATIVACAO-MASTER-ASSINATURA-RASCUNHO-157.md`.
+
 * Platform Gestão Operacional de Exceções & Overrides (Migration 095):
   - Central de governança em `/platform/overrides` (e `/platform/recursos`) para concessões pontuais e bloqueios de módulos/limites por Master Franquia.
   - Suporte a 7 tipos de exceções: `MODULO_ERP`, `LIMITE_USUARIOS`, `LIMITE_PARCEIROS`, `LIMITE_SITES`, `LIMITE_DOMINIOS_PROPRIOS`, `ERP_HABILITADO` e `RECURSO_CATALOGO`.
