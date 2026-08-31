@@ -19,7 +19,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (!caso) return { title: "Caso não encontrado" };
   const seo = seoFromCaso(caso);
   return {
-    title: `${seo.title} | Gauchinho`,
+    title: seo.title,
     description: seo.description,
     openGraph: { title: seo.title, description: seo.description },
   };

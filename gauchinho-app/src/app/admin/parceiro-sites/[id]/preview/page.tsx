@@ -61,7 +61,7 @@ export default async function ParceiroSiteAdminPreviewPage({
     empresa: {
       id: empresaId,
       slug: "gauchinho",
-      nome: "Gauchinho Consórcios",
+      nome: "Consórcios",
       logo_url: null,
       telefone: null,
       whatsapp: null,

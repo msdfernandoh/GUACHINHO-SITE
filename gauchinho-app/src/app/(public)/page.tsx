@@ -10,7 +10,7 @@ import { DEFAULT_HOME_OPORTUNIDADES } from "@/lib/config/defaults";
 import { getResolvedTenant } from "@/lib/tenant/get-resolved-empresa";
 import { InstitutionalTenantHome } from "@/components/public/institutional-tenant-home";
 
-export const metadata: Metadata = {
+const gauchinhoMetadata: Metadata = {
   title: "Consórcios de Imóveis, Veículos, Caminhões e Máquinas",
   description:
     "Simule consórcio para imóvel, carro, moto, caminhão e máquinas. Compare parcelas, lance embutido, grupos e financiamento com orientação consultiva.",
@@ -46,6 +46,24 @@ export const metadata: Metadata = {
     images: ["/media/gauchinho-campanha.jpeg"],
   },
 };
+
+export async function generateMetadata(): Promise<Metadata> {
+  const tenant = await getResolvedTenant();
+  if (!tenant || tenant.siteModel?.codigo === "gauchinho_default") return gauchinhoMetadata;
+  const nome = tenant.branding.nome_site || tenant.siteModel?.nome || "Consórcios";
+  const tituloSeo = tenant.branding.seo_titulo?.trim();
+  const descricao = tenant.branding.seo_descricao || tenant.branding.descricao_institucional || undefined;
+  const imagem = tenant.branding.logo_url || tenant.siteModel?.logoPadraoUrl || undefined;
+  return {
+    title: tituloSeo && tituloSeo.toLocaleLowerCase("pt-BR") !== nome.toLocaleLowerCase("pt-BR")
+      ? tituloSeo
+      : { absolute: nome },
+    description: descricao,
+    alternates: { canonical: "/" },
+    openGraph: { title: nome, description: descricao, url: "/", type: "website", ...(imagem ? { images: [imagem] } : {}) },
+    twitter: { card: "summary_large_image", title: nome, description: descricao, ...(imagem ? { images: [imagem] } : {}) },
+  };
+}
 
 export default async function HomePage({
   searchParams,

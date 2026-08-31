@@ -8,6 +8,7 @@ import { Button, Input, Label } from "@/components/ui/form-primitives";
 import { formatBRL, maskBRLMoneyInput, parseBRLMoney } from "@/lib/formatters/money";
 import { formatWhatsappBrInput } from "@/lib/utils/format";
 import { TIPOS_SONHO_SORTEIO } from "@/lib/eventos-sorteio/types";
+import { useTenantBrand } from "@/components/tenant/tenant-brand-context";
 
 type Props = {
   qrNome: string;
@@ -31,6 +32,7 @@ function permiteCadastroSimples(motivo: Props["motivo"]): boolean {
 }
 
 export function QrUnicoSemEventoForm({ qrNome, qrSlug, qrCodeUnicoId, motivo, eventoNome }: Props) {
+  const tenantBrand = useTenantBrand();
   const [nome, setNome] = useState("");
   const [telefone, setTelefone] = useState("");
   const [valorDisplay, setValorDisplay] = useState("");
@@ -83,9 +85,9 @@ export function QrUnicoSemEventoForm({ qrNome, qrSlug, qrCodeUnicoId, motivo, ev
   if (!podeCadastrar) {
     return (
       <div className="rounded-2xl border border-amber-500/25 bg-slate-900/85 p-5 text-center shadow-xl sm:p-7">
-        <div className="flex justify-center">
-          <Image src="/media/gauchinho-sem-fundo.svg" alt="Gauchinho" width={120} height={80} className="h-14 w-auto" />
-        </div>
+        {tenantBrand.logoUrl ? <div className="flex justify-center">
+          <Image src={tenantBrand.logoUrl} alt={tenantBrand.nome} width={160} height={80} className="h-14 w-auto object-contain" />
+        </div> : null}
         <p className="mt-4 text-xs uppercase tracking-wide text-amber-400/90">{qrNome}</p>
         {eventoNome ? (
           <p className="mt-2 text-sm font-medium text-white">Evento: {eventoNome}</p>
@@ -103,9 +105,9 @@ export function QrUnicoSemEventoForm({ qrNome, qrSlug, qrCodeUnicoId, motivo, ev
 
   return (
     <div className="rounded-2xl border border-amber-500/25 bg-slate-900/85 p-5 shadow-xl sm:p-7">
-      <div className="flex justify-center">
-        <Image src="/media/gauchinho-sem-fundo.svg" alt="Gauchinho" width={120} height={80} className="h-14 w-auto" />
-      </div>
+      {tenantBrand.logoUrl ? <div className="flex justify-center">
+        <Image src={tenantBrand.logoUrl} alt={tenantBrand.nome} width={160} height={80} className="h-14 w-auto object-contain" />
+      </div> : null}
       <p className="mt-4 text-center text-xs uppercase tracking-wide text-amber-400/90">{qrNome}</p>
       {eventoNome ? (
         <p className="mt-1 text-center text-xs text-slate-500">Último vínculo: {eventoNome}</p>

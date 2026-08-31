@@ -9,7 +9,7 @@ export const metadata: Metadata = {
   alternates: { canonical: "/consorcio" },
   keywords: ["consórcio", "simulador de consórcio", "carta de crédito", "consórcio sem entrada", "lance embutido"],
   openGraph: {
-    title: "Consórcios por objetivo | Gauchinho",
+    title: "Consórcios por objetivo",
     description: "Encontre o planejamento de consórcio adequado ao seu objetivo e simule gratuitamente.",
     url: "/consorcio",
     type: "website",

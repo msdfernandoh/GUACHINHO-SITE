@@ -14,6 +14,7 @@ export type PublicLogoProps = {
   /** Mascote ao lado do texto quando não há logo em imagem */
   showMascot?: boolean;
   mascotSrc?: string;
+  lightTheme?: boolean;
 };
 
 export function PublicLogo({
@@ -25,6 +26,7 @@ export function PublicLogo({
   size = "md",
   showMascot = true,
   mascotSrc = PUBLIC_LOGO_MASCOT_SRC,
+  lightTheme = false,
 }: PublicLogoProps) {
   const tagline = publicHeaderTagline(subtitle);
 
@@ -47,7 +49,7 @@ export function PublicLogo({
         "group inline-flex shrink-0 items-center gap-2.5 transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-500",
         className,
       )}
-      aria-label="Gauchinho — voltar ao início"
+      aria-label={`${title} — voltar ao início`}
     >
       {logoUrl?.trim() ? (
         <span className="relative block h-10 w-40 sm:h-12 sm:w-48">
@@ -79,13 +81,13 @@ export function PublicLogo({
             <span
               className={cn(
                 titleClass,
-                "whitespace-nowrap bg-gradient-to-r from-amber-200 to-amber-500 bg-clip-text text-transparent group-hover:from-amber-100 group-hover:to-amber-400",
+                lightTheme ? "whitespace-nowrap text-[var(--tenant-primary,#0099dd)]" : "whitespace-nowrap bg-gradient-to-r from-amber-200 to-amber-500 bg-clip-text text-transparent group-hover:from-amber-100 group-hover:to-amber-400",
               )}
             >
               {title.toUpperCase()}
             </span>
             {tagline ? (
-              <span className={cn(subClass, "mt-0.5 hidden whitespace-nowrap sm:block")}>
+              <span className={cn(subClass, "mt-0.5 hidden whitespace-nowrap sm:block", lightTheme && "!text-slate-600")}>
                 {tagline.toUpperCase()}
               </span>
             ) : null}

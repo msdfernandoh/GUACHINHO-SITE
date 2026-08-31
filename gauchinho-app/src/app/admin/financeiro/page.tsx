@@ -8,7 +8,7 @@ export default async function AdminFinanceiroPage() {
   const { empresaAtiva } = await getCurrentTenantContext();
   if (!empresaAtiva) notFound();
   const empresaId = empresaAtiva.id;
-  const empresaNome = empresaAtiva?.nome_fantasia ?? empresaAtiva?.razao_social ?? "Gauchinho Consórcios";
+  const empresaNome = empresaAtiva?.nome_fantasia ?? empresaAtiva?.razao_social ?? "Consórcios";
 
   const resumo = await getResumoCaixaEmpresa(empresaId);
 

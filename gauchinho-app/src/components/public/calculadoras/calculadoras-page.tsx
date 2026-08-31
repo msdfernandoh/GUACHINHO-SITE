@@ -13,6 +13,7 @@ import { simuladorShell, sectionCardClass } from "@/components/simulador/simulad
 import { Button } from "@/components/ui/form-primitives";
 import { MascoteGauchinho } from "@/components/public/mascote-gauchinho";
 import { HOME_MEDIA } from "@/lib/home/home-media";
+import { useTenantBrand } from "@/components/tenant/tenant-brand-context";
 import { CalculadoraCard } from "./calculadora-card";
 import { CalculatorLeadModal, type AcaoCalculadoraLead } from "./calculator-lead-modal";
 import { AplicacaoMensalCalculator } from "./aplicacao-mensal-calculator";
@@ -37,6 +38,7 @@ type Props = {
 };
 
 export function CalculadorasPage({ config, initialCalc, indices, aplicacaoPrefill }: Props) {
+  const tenantBrand = useTenantBrand();
   const ativas = useMemo(() => calculadorasAtivas(config), [config]);
   const [activeId, setActiveId] = useState<CalculadoraId | null>(() => {
     if (initialCalc && ativas.some((a) => a.id === initialCalc)) return initialCalc;
@@ -174,7 +176,7 @@ export function CalculadorasPage({ config, initialCalc, indices, aplicacaoPrefil
     <div className={simuladorShell}>
       <div className="mx-auto max-w-7xl px-4 pb-20 pt-10 sm:px-6 sm:pt-14">
         <header className="relative mb-8 sm:mb-10">
-          <div
+          {tenantBrand.isGauchinho ? <div
             className="pointer-events-none absolute -left-2 top-1/2 hidden -translate-y-1/2 select-none opacity-80 lg:block xl:-left-6"
             aria-hidden
           >
@@ -188,24 +190,24 @@ export function CalculadorasPage({ config, initialCalc, indices, aplicacaoPrefil
                 sizes="208px"
               />
             </div>
-          </div>
-          <div
+          </div> : null}
+          {tenantBrand.isGauchinho ? <div
             className="pointer-events-none absolute left-2 top-2 opacity-[0.12] sm:left-4 lg:hidden"
             aria-hidden
           >
             <div className="relative h-16 w-16">
               <Image src={HOME_MEDIA.mascoteSvg} alt="" fill unoptimized className="object-contain" sizes="64px" />
             </div>
-          </div>
+          </div> : null}
           <div className="relative z-[1] mx-auto max-w-3xl text-center">
-            <div className="mb-4 flex justify-center">
+            {tenantBrand.isGauchinho ? <div className="mb-4 flex justify-center">
               <MascoteGauchinho variant="cta" />
-            </div>
+            </div> : null}
             <p className="text-xs font-bold uppercase tracking-[0.25em] text-amber-400 sm:text-sm">
-              Gauchinho · Ferramentas
+              {tenantBrand.nome} · Ferramentas
             </p>
             <h1 className="mt-3 text-3xl font-extrabold leading-tight tracking-tight text-white sm:text-4xl lg:text-[2.75rem]">
-              Calculadoras Gauchinho
+              Calculadoras {tenantBrand.nome}
             </h1>
             <p className="mx-auto mt-4 max-w-2xl text-base leading-relaxed text-slate-400 sm:text-lg">
               Compare cenários e descubra qual estratégia combina melhor com seu objetivo — antes de

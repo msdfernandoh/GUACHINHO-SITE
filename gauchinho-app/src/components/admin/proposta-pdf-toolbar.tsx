@@ -8,6 +8,7 @@ import {
 import { Button, Input, Label, Select } from "@/components/ui/form-primitives";
 import { PARCEIROS_SUGERIDOS } from "@/lib/proposta/pdf/types";
 import { registrarEventoClient } from "@/lib/eventos/registrar-client";
+import { useTenantBrand } from "@/components/tenant/tenant-brand-context";
 
 type Props = {
   propostaId: string;
@@ -24,6 +25,7 @@ type Props = {
 };
 
 export function PropostaPdfToolbar({ propostaId, pdfUrl, defaults }: Props) {
+  const tenantBrand = useTenantBrand();
   const [msg, setMsg] = useState<string | null>(null);
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -77,7 +79,7 @@ export function PropostaPdfToolbar({ propostaId, pdfUrl, defaults }: Props) {
     if (!tel) return null;
     const nome = defaults.nome_cliente ?? "Cliente";
     const text = encodeURIComponent(
-      `Olá, gerei uma proposta no site Gauchinho Escritório de Soluções Financeiras. Meu nome é ${nome} e gostaria de falar com um especialista. Proposta: ${propostaId}`,
+      `Olá, gerei uma proposta no site ${tenantBrand.nome}. Meu nome é ${nome} e gostaria de falar com um especialista. Proposta: ${propostaId}`,
     );
     return `https://wa.me/${tel}?text=${text}`;
   }

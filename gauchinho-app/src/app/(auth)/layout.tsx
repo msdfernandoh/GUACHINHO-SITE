@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { CSSProperties } from "react";
 import type { Metadata } from "next";
 import { AuthMascotBubble } from "@/components/public/auth-mascot-bubble";
 import { PublicLogo } from "@/components/public/public-logo";
@@ -38,16 +39,21 @@ export default async function AuthLayout({ children }: { children: React.ReactNo
 
   const { title, subtitle } = resolvePublicLogoText(nomeEmpresa, subtitulo);
   const showMascot = !tenant || tenant.slug === GAUCHINHO_SLUG;
+  const isRacon = tenant?.siteModel?.codigo === "racon_inspired";
+  const primary = tenant?.branding.cor_primaria || "#0099dd";
 
   return (
-    <div className="flex min-h-screen flex-col bg-zinc-100 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
+    <div
+      className={isRacon ? "flex min-h-screen flex-col bg-white text-slate-900" : "flex min-h-screen flex-col bg-zinc-100 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100"}
+      style={isRacon ? { "--tenant-primary": primary } as CSSProperties : undefined}
+    >
       <div className="flex justify-center px-4 pt-6 sm:pt-8">
-        <PublicLogo href="/" logoUrl={logoUrl} title={title} subtitle={subtitle} />
+        <PublicLogo href="/" logoUrl={logoUrl} title={title} subtitle={subtitle} showMascot={showMascot} lightTheme={isRacon} />
       </div>
       <div className="flex flex-1 flex-col">{children}</div>
       {showMascot ? <AuthMascotBubble /> : null}
       <p className="pb-6 text-center text-xs text-zinc-500">
-        <Link href="/" className="hover:text-amber-500">
+        <Link href="/" className={isRacon ? "hover:text-[var(--tenant-primary)]" : "hover:text-amber-500"}>
           ← Voltar para o site
         </Link>
       </p>

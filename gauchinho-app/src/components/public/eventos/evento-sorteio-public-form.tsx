@@ -14,6 +14,7 @@ import { formatBRL, maskBRLMoneyInput, parseBRLMoney } from "@/lib/formatters/mo
 import { formatWhatsappBrInput } from "@/lib/utils/format";
 import { TIPOS_SONHO_SORTEIO, type PublicSorteioView } from "@/lib/eventos-sorteio/types";
 import type { NpsPerguntaPublica } from "@/lib/eventos-sorteio/nps";
+import { useTenantBrand } from "@/components/tenant/tenant-brand-context";
 
 type Props = {
   sorteio: PublicSorteioView;
@@ -23,6 +24,7 @@ type Props = {
 type Fase = 1 | 2 | 3 | "done";
 
 export function EventoSorteioPublicForm({ sorteio, qrCodeUnicoId }: Props) {
+  const tenantBrand = useTenantBrand();
   const [fase, setFase] = useState<Fase>(1);
   const [participanteId, setParticipanteId] = useState<string | null>(null);
   const [codigos, setCodigos] = useState<string[]>([]);
@@ -205,9 +207,9 @@ export function EventoSorteioPublicForm({ sorteio, qrCodeUnicoId }: Props) {
 
   return (
     <div className="rounded-2xl border border-amber-500/25 bg-slate-900/85 p-5 shadow-xl sm:p-7">
-      <div className="flex justify-center">
-        <Image src="/media/gauchinho-sem-fundo.svg" alt="Gauchinho" width={120} height={80} className="h-14 w-auto" />
-      </div>
+      {tenantBrand.logoUrl ? <div className="flex justify-center">
+        <Image src={tenantBrand.logoUrl} alt={tenantBrand.nome} width={160} height={80} className="h-14 w-auto object-contain" />
+      </div> : null}
       <p className="mt-4 text-center text-xs uppercase tracking-wide text-amber-400/90">{sorteio.eventoNome}</p>
       {dataFmt ? <p className="text-center text-xs text-slate-500">{dataFmt}</p> : null}
       <h1 className="mt-4 text-center text-xl font-bold text-white">{sorteio.titulo}</h1>

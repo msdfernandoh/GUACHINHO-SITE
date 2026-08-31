@@ -40,7 +40,7 @@ export default async function PerguntasFrequentesPage() {
       <ConteudoViewTracker tipo_evento="faq_visualizado" entidade_tipo="lista" />
       <div className="mx-auto max-w-7xl px-4 pb-20 pt-10 sm:px-6 sm:pt-14">
         <PublicPremiumHero
-          eyebrow="Gauchinho · Ajuda"
+          eyebrow="Ajuda"
           title="Perguntas frequentes"
           subtitle="Tire as principais dúvidas antes de simular, indicar ou falar com um especialista."
         />

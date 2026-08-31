@@ -10,6 +10,7 @@ import { digitsOnlyPhone, formatWhatsappBrInput } from "@/lib/utils/format";
 import { TIPOS_CREDITO_PUBLICO } from "@/lib/leads/tipo-credito";
 import { MoneyInput } from "@/components/ui/money-input";
 import { useLockBodyScroll } from "@/lib/ui/use-lock-body-scroll";
+import { useTenantBrand } from "@/components/tenant/tenant-brand-context";
 
 type WhatsappOrigem = {
   exibir_botao_apos_lead?: boolean;
@@ -32,6 +33,7 @@ export function EspecialistaLeadModal({
   variant = "full",
   leadContext,
 }: Props) {
+  const tenantBrand = useTenantBrand();
   const compact = variant === "compact";
   const [nome, setNome] = useState("");
   const [whatsapp, setWhatsapp] = useState("");
@@ -103,7 +105,7 @@ export function EspecialistaLeadModal({
       const wa = data.whatsappOrigem as WhatsappOrigem | null;
       if (wa?.exibir_botao_apos_lead && wa?.whatsapp_destino) {
         const text = encodeURIComponent(
-          wa.mensagem_padrao ?? "Olá! Acabei de me cadastrar como especialista no site Gauchinho.",
+          wa.mensagem_padrao ?? `Olá! Acabei de me cadastrar no site ${tenantBrand.nome}.`,
         );
         setWaLink(`https://wa.me/${wa.whatsapp_destino.replace(/\D/g, "")}?text=${text}`);
       }
@@ -167,7 +169,7 @@ export function EspecialistaLeadModal({
                 <p className="text-sm leading-relaxed text-slate-300">
                   {compact
                     ? "Recebemos seus dados. Nossa equipe entra em contato pelo WhatsApp em breve."
-                    : "Cadastro recebido. Um especialista do Gauchinho vai te chamar para uma análise personalizada."}
+                    : `Cadastro recebido. Um especialista da ${tenantBrand.nome} vai te chamar para uma análise personalizada.`}
                 </p>
                 {waLink ? (
                   <a

@@ -15,7 +15,7 @@ export default async function EventoSorteioPublicPage({ params }: { params: Prom
   return (
     <main className="mx-auto flex min-h-[70vh] max-w-lg flex-col justify-center px-4 py-10">
       <EventoSorteioPublicForm sorteio={sorteio} />
-      <p className="mt-6 text-center text-xs text-slate-500">Gauchinho Consórcios — sorteio de brindes</p>
+      <p className="mt-6 text-center text-xs text-slate-500">Sorteio de brindes</p>
     </main>
   );
 }

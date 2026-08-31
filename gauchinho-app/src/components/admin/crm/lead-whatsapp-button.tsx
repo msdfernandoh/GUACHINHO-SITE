@@ -1,6 +1,7 @@
 "use client";
 
 import { registrarEventoClient } from "@/lib/eventos/registrar-client";
+import { useTenantBrand } from "@/components/tenant/tenant-brand-context";
 
 function waUrl(numero: string, msg: string) {
   const n = numero.replace(/\D/g, "");
@@ -16,9 +17,10 @@ type Props = {
 };
 
 export function LeadWhatsappButton({ nome, whatsapp, produto, leadId, compact }: Props) {
+  const tenantBrand = useTenantBrand();
   if (!whatsapp?.trim()) return null;
   const produtoTxt = produto?.trim() || "seu interesse";
-  const msg = `Olá, ${nome.split(" ")[0] || nome}. Aqui é do Gauchinho Escritório de Soluções Financeiras. Vi sua simulação/interesse em ${produtoTxt} e posso te ajudar com uma análise personalizada.`;
+  const msg = `Olá, ${nome.split(" ")[0] || nome}. Aqui é da ${tenantBrand.nome}. Vi sua simulação/interesse em ${produtoTxt} e posso te ajudar com uma análise personalizada.`;
   const href = waUrl(whatsapp, msg);
 
   return (

@@ -13,7 +13,7 @@ export default async function AdminVendasPage() {
   const { empresaAtiva, vinculos } = await getCurrentTenantContext();
   if (!empresaAtiva) notFound();
   const empresaId = empresaAtiva.id;
-  const empresaNome = empresaAtiva?.nome_fantasia ?? empresaAtiva?.razao_social ?? "Gauchinho Consórcios";
+  const empresaNome = empresaAtiva?.nome_fantasia ?? empresaAtiva?.razao_social ?? "Consórcios";
 
   const vinculo = (vinculos ?? []).find((item) => item.empresa_id === empresaId);
   const papelNome = vinculo?.papel?.nome?.toLowerCase() ?? "";

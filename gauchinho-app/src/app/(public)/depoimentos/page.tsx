@@ -7,7 +7,7 @@ import { DEFAULT_CONTATO, type ContatoConfig } from "@/lib/config/defaults";
 import { getConfigJsonPublic } from "@/server/config";
 
 export const metadata: Metadata = {
-  title: "Depoimentos e casos de sucesso | Gauchinho",
+  title: "Depoimentos e casos de sucesso",
   description:
     "Depoimentos de clientes e histórias de conquistas planejadas com consórcio, financiamento e orientação financeira.",
   openGraph: {

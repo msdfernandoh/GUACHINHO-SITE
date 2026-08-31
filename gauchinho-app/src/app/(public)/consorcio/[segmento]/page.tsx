@@ -4,6 +4,8 @@ import { notFound } from "next/navigation";
 import { ArrowRight, Calculator, CheckCircle2, Info, ShieldCheck } from "lucide-react";
 import { getPublicSiteUrl } from "@/lib/seo/site-url";
 import { CONSORCIO_SEO_SEGMENTS, getConsorcioSeoSegment } from "@/lib/seo/consorcio-segments";
+import { getResolvedTenant } from "@/lib/tenant/get-resolved-empresa";
+import { headers } from "next/headers";
 
 type Props = { params: Promise<{ segmento: string }> };
 
@@ -30,7 +32,11 @@ export default async function ConsorcioSegmentPage({ params }: Props) {
   const { segmento } = await params;
   const page = getConsorcioSeoSegment(segmento);
   if (!page) notFound();
-  const origin = getPublicSiteUrl() ?? "https://www.gauchinhoconsorcios.com.br";
+  const tenant = await getResolvedTenant();
+  const requestHeaders = await headers();
+  const host = requestHeaders.get("x-forwarded-host") || requestHeaders.get("host");
+  const protocol = requestHeaders.get("x-forwarded-proto") || "https";
+  const origin = host ? `${protocol}://${host}` : getPublicSiteUrl() ?? "https://localhost";
   const url = `${origin}/consorcio/${page.slug}`;
   const jsonLd = {
     "@context": "https://schema.org",
@@ -41,7 +47,7 @@ export default async function ConsorcioSegmentPage({ params }: Props) {
         name: page.title,
         description: page.metaDescription,
         url,
-        provider: { "@id": `${origin}/#organization` },
+        provider: { "@type": "Organization", name: tenant?.branding.nome_site || "Consórcios" },
         areaServed: { "@type": "Country", name: "Brasil" },
         serviceType: "Consultoria e simulação de consórcio",
       },

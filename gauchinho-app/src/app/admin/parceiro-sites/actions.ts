@@ -60,7 +60,7 @@ async function resolveEmpresaIdPadrao(): Promise<string> {
     .select("id")
     .eq("slug", "gauchinho")
     .single();
-  if (error || !data) throw new Error("Empresa Gauchinho não encontrada.");
+  if (error || !data) throw new Error("Empresa não encontrada.");
   return data.id as string;
 }
 

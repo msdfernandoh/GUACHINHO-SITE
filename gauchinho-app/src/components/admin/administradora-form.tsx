@@ -17,7 +17,7 @@ export function AdministradoraForm({ action, administradora }: Props) {
     >
       <p className="text-sm text-zinc-500">
         Catálogo <strong className="font-medium text-zinc-700 dark:text-zinc-300">global</strong> de
-        administradoras da plataforma. Empresas/franqueadas (ex.: Gauchinho) são gerenciadas em
+        administradoras da plataforma. Empresas/franqueadas são gerenciadas em
         Empresas (SaaS) — concessões na E4.
       </p>
 

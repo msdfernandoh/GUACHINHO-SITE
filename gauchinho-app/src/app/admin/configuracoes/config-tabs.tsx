@@ -116,7 +116,7 @@ export function ConfigTabs({ configs, whatsapp, iaEnv }: Props) {
       {tab === "site" ? (
         <form action={saveSiteConfigAction} className="max-w-xl space-y-3">
           <div>
-            <Label>Marca no header (ex.: Gauchinho)</Label>
+            <Label>Marca no header</Label>
             <Input name="nomeEmpresa" defaultValue={String(site.nomeEmpresa ?? "")} />
           </div>
           <div>

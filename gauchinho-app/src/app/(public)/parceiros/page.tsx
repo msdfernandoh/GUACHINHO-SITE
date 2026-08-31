@@ -7,7 +7,7 @@ import { DEFAULT_CONTATO, type ContatoConfig } from "@/lib/config/defaults";
 import { getConfigJsonPublic } from "@/server/config";
 
 export const metadata: Metadata = {
-  title: "Parceiros | Gauchinho",
+  title: "Parceiros",
   description: "Rede de parceiros institucionais, administradoras, imobiliárias e correspondentes.",
 };
 

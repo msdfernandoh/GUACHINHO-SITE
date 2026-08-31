@@ -1,11 +1,9 @@
 @import "tailwindcss";
 
-/* Admin: class "dark". Auth/outside: still respect OS dark preference. */
+/* O tema escuro é explícito por aplicação. Isso impede que um tenant configurado
+   como claro herde as preferências do dispositivo e perca sua identidade. */
 @custom-variant dark {
   &:where(.dark, .dark *) {
-    @slot;
-  }
-  @media (prefers-color-scheme: dark) {
     @slot;
   }
 }
@@ -102,4 +100,104 @@ body {
   box-shadow:
     0 0 0 1px rgba(245, 158, 11, 0.15),
     0 20px 50px -20px rgba(245, 158, 11, 0.25);
+}
+
+body.tenant-root-independent {
+  background: #ffffff;
+  color: #0f172a;
+}
+
+/* Tema público independente do modelo Racon. Componentes operacionais legados
+   mantêm a mesma estrutura e comportamento, mas recebem superfícies claras e a
+   paleta azul do tenant em vez da identidade visual Gauchinho. */
+.tenant-racon {
+  --tenant-primary: var(--brand-blue, #0099dd);
+  --tenant-secondary: var(--brand-blue-mid, #0c2340);
+  --tenant-accent: var(--brand-gold, #0099dd);
+  color-scheme: light;
+  background: #fff;
+  color: #0f172a;
+}
+
+.tenant-racon-content [class*="from-[#0a1628]"],
+.tenant-racon-content [class*="from-[#07111f]"],
+.tenant-racon-content [class*="bg-[#07111f]"],
+.tenant-racon-content [class*="bg-[#0d1e33]"],
+.tenant-racon-content [class~="bg-zinc-950"],
+.tenant-racon-content [class*="bg-zinc-900"],
+.tenant-racon-content [class*="bg-slate-900"] {
+  background-color: #fff !important;
+  background-image: none !important;
+}
+
+.tenant-racon-content [class*="rgba(201,168,76"] {
+  background-image: radial-gradient(circle at top, rgba(0, 153, 221, 0.12), transparent 48%) !important;
+}
+
+.tenant-racon-content [class*="text-zinc-100"],
+.tenant-racon-content [class*="text-zinc-200"],
+.tenant-racon-content [class*="text-zinc-300"],
+.tenant-racon-content [class*="text-slate-100"],
+.tenant-racon-content [class*="text-slate-200"],
+.tenant-racon-content [class*="text-slate-300"],
+.tenant-racon-content [class~="text-white"] {
+  color: #0f172a !important;
+}
+
+.tenant-racon-content [class*="text-amber"],
+.tenant-racon-content [class*="text-[#c9a84c]"] {
+  color: var(--tenant-primary) !important;
+}
+
+.tenant-racon-content [class*="bg-amber"],
+.tenant-racon-content [class*="bg-[#c9a84c]"] {
+  background-color: var(--tenant-primary) !important;
+  color: #fff !important;
+}
+
+.tenant-racon-content [class*="border-zinc-7"],
+.tenant-racon-content [class*="border-zinc-8"],
+.tenant-racon-content [class*="border-slate-7"],
+.tenant-racon-content [class*="border-[#1e3a5f]"],
+.tenant-racon-content [class*="border-[#c9a84c]"] {
+  border-color: #dbeafe !important;
+}
+
+.tenant-racon-content input,
+.tenant-racon-content select,
+.tenant-racon-content textarea {
+  color-scheme: light;
+}
+
+/* O mesmo contrato visual vale para o painel administrativo do tenant. */
+.tenant-admin-racon {
+  color-scheme: light;
+}
+
+.tenant-admin-racon main [class*="bg-zinc-950"],
+.tenant-admin-racon main [class*="bg-zinc-900"],
+.tenant-admin-racon main [class*="bg-slate-900"] {
+  background-color: #fff !important;
+}
+
+.tenant-admin-racon main [class*="text-zinc-100"],
+.tenant-admin-racon main [class*="text-zinc-200"],
+.tenant-admin-racon main [class*="text-zinc-300"],
+.tenant-admin-racon main [class*="text-slate-100"],
+.tenant-admin-racon main [class~="text-white"] {
+  color: #0f172a !important;
+}
+
+.tenant-admin-racon main [class*="text-amber"] {
+  color: var(--tenant-primary) !important;
+}
+
+.tenant-admin-racon main [class*="bg-amber"] {
+  background-color: var(--tenant-primary) !important;
+  color: #fff !important;
+}
+
+.tenant-admin-racon main [class*="border-zinc-7"],
+.tenant-admin-racon main [class*="border-zinc-8"] {
+  border-color: #e2e8f0 !important;
 }

@@ -8,7 +8,7 @@ import { DEFAULT_CONTATO, type ContatoConfig } from "@/lib/config/defaults";
 import { getConfigJsonPublic } from "@/server/config";
 
 export const metadata: Metadata = {
-  title: "Dicas do Tchê | Gauchinho",
+  title: "Conteúdos e dicas",
   description:
     "Conteúdos rápidos para entender consórcio, financiamento, cartas contempladas e planejamento financeiro.",
 };
@@ -29,7 +29,7 @@ export default async function DicasDoTchePage() {
     <div className={simuladorShell}>
       <div className="mx-auto max-w-7xl px-4 pb-16 pt-10 sm:px-6 sm:pt-14">
         <PublicPremiumHero
-          eyebrow="Gauchinho · Conteúdo"
+          eyebrow="Conteúdo"
           title="Dicas do Tchê"
           subtitle="Conteúdos rápidos para você entender melhor consórcio, financiamento, cartas contempladas e planejamento financeiro."
         />

@@ -43,6 +43,7 @@ import {
   type VisualizacaoProposta,
 } from "@/lib/contratacoes-online/proposta-visualizacao";
 import { descricaoIntegralizacaoParcela } from "@/lib/grupos/regra-integralizacao";
+import { useTenantBrand } from "@/components/tenant/tenant-brand-context";
 
 const ENDERECO_VAZIO: EnderecoFormState = {
   cep: "",
@@ -108,6 +109,7 @@ export function ContratacaoWizard({
   canGenerateLinks?: boolean;
   draftLink?: { d: string; s: string };
 }) {
+  const tenantBrand = useTenantBrand();
   const router = useRouter();
   const [publicToken, setPublicToken] = useState(initialToken ?? "");
   const [isDraft, setIsDraft] = useState(Boolean(draftMode && !initialToken));
@@ -619,7 +621,7 @@ export function ContratacaoWizard({
         </div>
         <header className="text-center">
           <p className="text-xs font-semibold uppercase tracking-widest text-amber-400/90">
-            Gauchinho Consórcios
+            {tenantBrand.nome}
           </p>
           <h1 className="mt-2 text-2xl font-bold text-white sm:text-3xl">FECHAMENTO DA PROPOSTA</h1>
           {step === "confirm" ? (
@@ -730,7 +732,7 @@ export function ContratacaoWizard({
             </div>
             <p className="text-sm text-slate-400">
               Ao continuar, você confirma que deseja avançar com esta proposta para análise e emissão
-              manual do contrato pela equipe Gauchinho.
+              manual do contrato pela equipe {tenantBrand.nome}.
             </p>
             <Button
               type="button"

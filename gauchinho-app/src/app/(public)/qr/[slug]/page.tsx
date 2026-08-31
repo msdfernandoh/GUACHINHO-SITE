@@ -28,7 +28,7 @@ export default async function QrUnicoPublicPage({ params }: { params: Promise<{ 
           eventoNome={resolved.eventoNome}
         />
       )}
-      <p className="mt-6 text-center text-xs text-slate-500">Gauchinho Consórcios — QR Code único</p>
+      <p className="mt-6 text-center text-xs text-slate-500">QR Code único</p>
     </main>
   );
 }

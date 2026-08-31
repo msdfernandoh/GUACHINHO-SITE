@@ -1153,6 +1153,21 @@ mantendo a identidade visual Racon em toda a navegação.
 Relatório:
 `docs/relatorios-fases/HOTFIX-ROTAS-MENUS-MODELO-RACON.md`.
 
+## 44. Identidade independente por tenant — Fase 162
+
+O branding efetivo de todas as superfícies é resolvido pelo domínio e composto a
+partir de `empresa_branding` e `empresa_site_modelos`. Site público, login,
+Admin, ERP e Área do Parceiro recebem o mesmo contexto de nome, logomarca e
+paleta, sem importar identidade de outra empresa.
+
+O modelo `racon_inspired` usa tema claro branco/azul e não renderiza mascote,
+textos, metadata ou assistente próprios do Gauchinho. As funcionalidades
+operacionais continuam compartilhadas; somente a apresentação é isolada. O
+tenant original preserva seu tema legado em seu próprio domínio.
+
+Relatório:
+`docs/relatorios-fases/FASE-162-IDENTIDADE-INDEPENDENTE-TENANT-RACON.md`.
+
 
 
 

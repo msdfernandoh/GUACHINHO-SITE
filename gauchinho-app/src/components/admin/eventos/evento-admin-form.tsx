@@ -341,7 +341,7 @@ export function EventoAdminForm({
               className="mt-1"
             />
             <span>
-              <span className="font-medium">Pela plataforma Gauchinho</span>
+              <span className="font-medium">Pela plataforma</span>
               <span className="mt-0.5 block text-xs text-zinc-500">Formulário de inscrição neste site.</span>
             </span>
           </label>

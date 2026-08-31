@@ -25,6 +25,7 @@ import { useIniciarContratacao } from "@/lib/contratacoes-online/use-iniciar-con
 import { buildDadosSimulacaoGrupos } from "@/lib/contratacoes-online/build-grupos-payload";
 import { GruposSorteioPublicSection } from "@/components/grupos-sorteio/grupos-sorteio-admin-client";
 import type { GrupoSorteioOption } from "@/components/grupos-sorteio/grupos-sorteio-panel";
+import { useTenantBrand } from "@/components/tenant/tenant-brand-context";
 
 type ModalFiltro = (typeof MODALIDADE_FILTRO_PUBLICO)[number]["value"];
 type AbaGruposPublic = "simulacao" | "sorteios";
@@ -49,6 +50,7 @@ export function GruposPublicClient({
   gruposSorteio?: GrupoSorteioOption[];
   canManageSorteios?: boolean;
 }) {
+  const tenantBrand = useTenantBrand();
   const [filtro, setFiltro] = useState<ModalFiltro>("Todos");
   const [aba, setAba] = useState<AbaGruposPublic>("simulacao");
   const [busca, setBusca] = useState("");
@@ -279,7 +281,7 @@ export function GruposPublicClient({
     >
       <div className="mx-auto max-w-[1600px] px-4 py-8 md:px-6">
         <PublicPremiumHero
-          eyebrow="Gauchinho · Grupos"
+          eyebrow={`${tenantBrand.nome} · Grupos`}
           title="Nossos Grupos"
           subtitle="Planilha inteligente: compare grupos na linha e use Ajustar para modalidades de lance e recurso próprio."
         />

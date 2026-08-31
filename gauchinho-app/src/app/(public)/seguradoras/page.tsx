@@ -11,8 +11,8 @@ import type { SeguradoraRow } from "@/lib/seguradoras/types";
 import { Button } from "@/components/ui/form-primitives";
 
 export const metadata: Metadata = {
-  title: "Seguradoras | Gauchinho",
-  description: "Parceiros seguradores do Gauchinho Consórcios.",
+  title: "Seguradoras",
+  description: "Parceiros seguradores disponíveis para atendimento.",
 };
 
 export const dynamic = "force-dynamic";
@@ -27,7 +27,7 @@ export default async function SeguradorasPublicPage() {
     <div className={simuladorShell}>
       <div className="mx-auto max-w-7xl px-4 pb-12 pt-10 sm:px-6 sm:pt-14">
         <PublicPremiumHero
-          eyebrow="Gauchinho · Seguradoras"
+          eyebrow="Seguradoras"
           title="Seguradoras"
           subtitle="Empresas parceiras com atuação em seguros e proteção patrimonial."
         />

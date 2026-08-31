@@ -7,8 +7,8 @@ import { fetchPublicEventosList } from "@/lib/comercial-eventos/public";
 import { loadHomeConteudoDestaques } from "@/lib/home/load-home-data";
 
 export const metadata: Metadata = {
-  title: "Eventos | Gauchinho",
-  description: "Encontros, apresentações e ações comerciais do Gauchinho Consórcios.",
+  title: "Eventos",
+  description: "Encontros, apresentações e ações comerciais.",
 };
 
 export const dynamic = "force-dynamic";
@@ -23,7 +23,7 @@ export default async function EventosPublicPage() {
     <div className={simuladorShell}>
       <div className="mx-auto max-w-7xl px-4 pb-12 pt-10 sm:px-6 sm:pt-14">
         <PublicPremiumHero
-          eyebrow="Gauchinho · Eventos"
+          eyebrow="Eventos"
           title="Eventos"
           subtitle="Jantares, encontros e apresentações — inscreva-se e participe."
         />

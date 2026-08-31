@@ -8,6 +8,8 @@ import { PublicJsonLd } from "@/components/public/seo/public-json-ld";
 import { getIaConfigPublic } from "@/server/config";
 import { getResolvedTenant } from "@/lib/tenant/get-resolved-empresa";
 import { RaconInspiredFooter, RaconInspiredHeader } from "@/components/public/templates/racon-inspired-chrome";
+import { TenantBrandProvider } from "@/components/tenant/tenant-brand-context";
+import { GAUCHINHO_SLUG } from "@/lib/tenant/constants";
 
 export async function generateMetadata(): Promise<Metadata> {
   const tenant = await getResolvedTenant();
@@ -28,6 +30,7 @@ export default async function PublicLayout({ children }: { children: React.React
   const tenant = await getResolvedTenant();
   const allowsOperational = tenant?.allowsLegacyOperationalData === true;
   const usaChromeRacon = tenant?.siteModel?.codigo === "racon_inspired";
+  const isGauchinho = tenant?.slug === GAUCHINHO_SLUG;
   const identidadeRacon = tenant?.siteModel ? {
     ...tenant.siteModel.identidadeVisual,
     ...(tenant.branding.cor_primaria ? { cor_primaria: tenant.branding.cor_primaria } : {}),
@@ -38,7 +41,10 @@ export default async function PublicLayout({ children }: { children: React.React
     ? tenant.branding.logo_url
     : tenant?.siteModel?.logoPadraoUrl ?? tenant?.branding.logo_url;
 
-  const brandStyle: CSSProperties & Record<string, string> = { background: "var(--brand-blue)" };
+  const brandStyle: CSSProperties & Record<string, string> = {
+    background: usaChromeRacon ? "#ffffff" : "var(--brand-blue)",
+    color: usaChromeRacon ? "#0f172a" : "#f4f4f5",
+  };
   if (tenant?.branding.cor_primaria) brandStyle["--brand-blue"] = tenant.branding.cor_primaria;
   if (tenant?.branding.cor_secundaria) brandStyle["--brand-blue-mid"] = tenant.branding.cor_secundaria;
   if (tenant?.branding.cor_destaque) {
@@ -47,12 +53,24 @@ export default async function PublicLayout({ children }: { children: React.React
   }
 
   // IA e JSON-LD operacional: só Gauchinho
-  const iaConfig = allowsOperational ? await getIaConfigPublic() : null;
+  const iaConfig = allowsOperational && isGauchinho ? await getIaConfigPublic() : null;
+
+  const brandValue = {
+    nome: tenant?.branding.nome_site || "Gauchinho Consórcios",
+    slug: tenant?.slug || GAUCHINHO_SLUG,
+    logoUrl: logoRacon || tenant?.branding.logo_url || null,
+    corPrimaria: tenant?.branding.cor_primaria || String(identidadeRacon.cor_primaria || "#0066cc"),
+    corSecundaria: tenant?.branding.cor_secundaria || String(identidadeRacon.cor_secundaria || "#0c2340"),
+    corDestaque: tenant?.branding.cor_destaque || String(identidadeRacon.cor_destaque || "#0099dd"),
+    isGauchinho,
+    isRacon: usaChromeRacon,
+  };
 
   return (
     <LenisProvider>
       {allowsOperational ? <PublicJsonLd /> : null}
-      <div className="min-h-screen text-zinc-100" style={brandStyle}>
+      <TenantBrandProvider value={brandValue}>
+      <div className={usaChromeRacon ? "tenant-racon min-h-screen" : "min-h-screen text-zinc-100"} style={brandStyle}>
         {usaChromeRacon && tenant?.siteModel ? (
           <RaconInspiredHeader
             empresaNome={tenant.branding.nome_site}
@@ -64,7 +82,7 @@ export default async function PublicLayout({ children }: { children: React.React
             footerCopyright={tenant.siteModel.footerCopyright}
           />
         ) : <PublicHeader />}
-        {children}
+        <div className={usaChromeRacon ? "tenant-racon-content" : undefined}>{children}</div>
         {usaChromeRacon && tenant?.siteModel ? (
           <RaconInspiredFooter
             empresaNome={tenant.branding.nome_site}
@@ -78,6 +96,7 @@ export default async function PublicLayout({ children }: { children: React.React
         ) : <PublicFooter />}
         {iaConfig ? <IaChatWidget config={iaConfig} /> : null}
       </div>
+      </TenantBrandProvider>
     </LenisProvider>
   );
 }

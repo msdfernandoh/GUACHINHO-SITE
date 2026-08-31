@@ -30,7 +30,7 @@ export function EventoListCard({ evento }: Props) {
           aria-hidden
         >
           <CalendarDays className="h-10 w-10 text-amber-500/50" />
-          <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Evento Gauchinho</span>
+          <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Evento</span>
         </div>
       )}
       <div className="p-5 sm:p-6">

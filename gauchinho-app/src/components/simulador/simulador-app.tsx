@@ -19,6 +19,7 @@ import { gerarProjecaoAnoAno } from "@/lib/simulador/projecao";
 import { digitsOnlyPhone } from "@/lib/utils/format";
 import { Button } from "@/components/ui/form-primitives";
 import { SimuladorPageShell } from "./simulador-page-shell";
+import { useTenantBrand } from "@/components/tenant/tenant-brand-context";
 import { SolutionSelector } from "./solution-selector";
 import { AssetTypeSelector } from "./asset-type-selector";
 import { CreditValueStep } from "./credit-value-step";
@@ -125,6 +126,7 @@ export function SimuladorApp({
   prefill?: SimuladorPrefill;
   isConsultor?: boolean;
 }) {
+  const tenantBrand = useTenantBrand();
   const resultRef = useRef<HTMLDivElement>(null);
   const prefillAppliedRef = useRef(false);
 
@@ -660,7 +662,7 @@ export function SimuladorApp({
       );
       const wa = data.whatsappOrigem;
       if (wa?.exibir_botao_apos_lead && wa?.whatsapp_destino) {
-        const text = encodeURIComponent(wa.mensagem_padrao ?? "Olá, simulei no site Gauchinho.");
+        const text = encodeURIComponent(wa.mensagem_padrao ?? `Olá, simulei no site ${tenantBrand.nome}.`);
         setWaLink(`https://wa.me/${wa.whatsapp_destino.replace(/\D/g, "")}?text=${text}`);
       }
     } catch (err) {

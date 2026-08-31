@@ -16,7 +16,7 @@ export default async function ListaConvidadosPublicPage({ params }: { params: Pr
     <main className="mx-auto flex min-h-[70vh] max-w-lg flex-col justify-center px-4 py-12">
       <ListaConvidadosPublicForm lista={lista} />
       <p className="mt-6 text-center text-xs text-slate-500">
-        Gauchinho Consórcios — lista de convites do consultor
+        Lista de convites do consultor
       </p>
     </main>
   );

@@ -19,8 +19,8 @@ type Props = { params: Promise<{ slug: string }> };
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const ev = await fetchPublicEventoBySlug(slug);
-  if (!ev) return { title: "Evento | Gauchinho" };
-  return { title: `${ev.nome} | Eventos Gauchinho`, description: ev.descricao_curta ?? undefined };
+  if (!ev) return { title: "Evento" };
+  return { title: ev.nome, description: ev.descricao_curta ?? undefined };
 }
 
 export default async function EventoSlugPage({ params }: Props) {

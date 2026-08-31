@@ -20,7 +20,7 @@ export default async function AdminComissoesPage() {
   const empresaNome =
     empresaAtiva?.nome_fantasia ??
     empresaAtiva?.razao_social ??
-    "Gauchinho Consórcios";
+    "Consórcios";
 
   const prevFranquia = await listPrevisoesFranquiaForEmpresa(empresaId);
   const prevParticipantes =
