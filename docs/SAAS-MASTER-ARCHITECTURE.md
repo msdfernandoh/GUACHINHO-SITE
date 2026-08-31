@@ -1153,6 +1153,29 @@ mantendo a identidade visual Racon em toda a navegação.
 Relatório:
 `docs/relatorios-fases/HOTFIX-ROTAS-MENUS-MODELO-RACON.md`.
 
+## 44. Formalização ERP com múltiplas cotas — Fase 170
+
+A concessão de administradoras no ERP usa o estado canônico
+`empresa_administradoras.status = 'ATIVA'`. Erros dessa consulta não podem ser
+convertidos em catálogo vazio, pois isso oculta grupos válidos e induz o
+operador a acreditar que o produto não foi cadastrado.
+
+Uma contratação continua gerando exatamente uma venda, pelo crédito e parcela
+totais aceitos. `quantidade_cotas` congela a quantidade comercial e a venda
+passa a possuir uma ou mais `cotas_definitivas`, ordenadas e únicas por
+`(venda_id, ordem_cota)`. Crédito e parcela unitários reconciliam exatamente com
+o total da venda; comissão e previsões permanecem únicas por venda e usam o
+snapshot total, sem multiplicação posterior.
+
+Snapshots assinados pelo site são imutáveis também quanto à quantidade. A RPC
+multicotas reutiliza o conversor canônico dentro da mesma transação, exige
+`formalizar_vendas`, valida tenant, concessão, grupo, produto e total contratado
+e não altera o catálogo global. Registros históricos permanecem com quantidade
+e ordem 1.
+
+Relatório:
+`docs/relatorios-fases/FASE-170-ERP-FORMALIZACAO-MULTIPLAS-COTAS.md`.
+
 ## 44. Identidade independente por tenant — Fase 162
 
 O branding efetivo de todas as superfícies é resolvido pelo domínio e composto a

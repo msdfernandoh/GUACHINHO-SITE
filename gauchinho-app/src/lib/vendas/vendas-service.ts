@@ -18,6 +18,7 @@ export type VendaRow = {
   participante_comercial_id: string | null;
   organizacao_parceira_id: string | null;
   valor_credito: number;
+  quantidade_cotas?: number;
   prazo: number;
   parcela: number;
   status: "pendente" | "confirmada" | "cancelada" | "suspensa";
@@ -35,6 +36,7 @@ export type CotaDefinitivaRow = {
   grupo_id: string;
   numero_grupo: string;
   numero_cota: string | null;
+  ordem_cota?: number;
   valor_credito: number;
   prazo: number;
   parcela: number;
@@ -54,19 +56,21 @@ export async function converterContratacaoEmVenda(
   empresaId: string,
   contratacaoId: string,
   idempotencyKey = `conversao:${contratacaoId}`,
-): Promise<{ venda: VendaRow; cotaDefinitiva: CotaDefinitivaRow }> {
+  quantidadeCotas = 1,
+): Promise<{ venda: VendaRow; cotaDefinitiva: CotaDefinitivaRow; cotasDefinitivas: CotaDefinitivaRow[] }> {
   const db = await createClient();
-  const { data, error } = await db.rpc("rpc_converter_contratacao_venda", {
+  const { data, error } = await db.rpc("rpc_converter_contratacao_venda_multicotas", {
     p_empresa_id: empresaId,
     p_contratacao_id: contratacaoId,
+    p_quantidade_cotas: quantidadeCotas,
     p_idempotency_key: idempotencyKey,
   });
   if (error) throw new Error(error.message);
-  const result = data as { venda?: VendaRow; cotaDefinitiva?: CotaDefinitivaRow } | null;
-  if (!result?.venda || !result.cotaDefinitiva) {
+  const result = data as { venda?: VendaRow; cotaDefinitiva?: CotaDefinitivaRow; cotasDefinitivas?: CotaDefinitivaRow[] } | null;
+  if (!result?.venda || !result.cotaDefinitiva || !Array.isArray(result.cotasDefinitivas) || result.cotasDefinitivas.length !== quantidadeCotas) {
     throw new Error("Conversão transacional não retornou venda e cota definitiva íntegras.");
   }
-  return { venda: result.venda, cotaDefinitiva: result.cotaDefinitiva };
+  return { venda: result.venda, cotaDefinitiva: result.cotaDefinitiva, cotasDefinitivas: result.cotasDefinitivas };
 }
 
 /**

@@ -38,6 +38,7 @@ export async function formalizarContratacaoAction(formData: FormData) {
   const cronogramaSecundario = value(formData, "cronograma_secundario") || "SEGUIR_PRINCIPAL";
   const dataPrimeiraParcela = value(formData, "data_primeira_parcela") || null;
   const dataSegundaParcela = value(formData, "data_segunda_parcela") || null;
+  const quantidadeCotas = Number(value(formData, "quantidade_cotas"));
   const admin = createAdminClient();
   const db = await createClient();
   try {
@@ -58,6 +59,9 @@ export async function formalizarContratacaoAction(formData: FormData) {
     if (!grupoId || !opcaoCotaId || !principalId || !modalidadeComissaoId) {
       throw new Error("Grupo, produto, modalidade e consultor principal são obrigatórios.");
     }
+    if (!Number.isInteger(quantidadeCotas) || quantidadeCotas < 1 || quantidadeCotas > 100) {
+      throw new Error("A quantidade de cotas deve ser um número inteiro entre 1 e 100.");
+    }
 
     // Uma única RPC autenticada valida todos os UUIDs no tenant e congela o snapshot
     // comercial antes da conversão. Percentuais nunca são aceitos do navegador.
@@ -77,14 +81,19 @@ export async function formalizarContratacaoAction(formData: FormData) {
       p_data_segunda_parcela: dataSegundaParcela,
     });
     if (prepararError) throw new Error(prepararError.message);
-    const result = await converterContratacaoEmVenda(empresaAtiva.id, contratacaoId, `erp-formalizacao:${contratacaoId}`);
+    const result = await converterContratacaoEmVenda(
+      empresaAtiva.id,
+      contratacaoId,
+      `erp-formalizacao:${contratacaoId}`,
+      quantidadeCotas,
+    );
 
     revalidatePath("/erp/contratacoes");
     revalidatePath(`/erp/contratacoes/${contratacaoId}`);
     revalidatePath("/erp/clientes");
     revalidatePath("/erp/vendas");
     revalidatePath("/erp/minhas-comissoes");
-    redirect(`/erp/contratacoes/${contratacaoId}?sucesso=1&venda=${result.venda.id}&cota=${result.cotaDefinitiva.id}`);
+    redirect(`/erp/contratacoes/${contratacaoId}?sucesso=1&venda=${result.venda.id}&cota=${result.cotaDefinitiva.id}&quantidade=${result.cotasDefinitivas.length}`);
   } catch (error) {
     if (error && typeof error === "object" && "digest" in error && String((error as { digest?: string }).digest).startsWith("NEXT_REDIRECT")) throw error;
     const message = error instanceof Error ? error.message : "Não foi possível formalizar.";

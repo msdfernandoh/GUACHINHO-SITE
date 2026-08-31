@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireErpRouteAccess } from "@/lib/erp/erp-acesso-server";
 import { converterContratacaoEmVenda } from "@/lib/vendas/vendas-service";
+import { obterQuantidadeCotasContratacao } from "@/lib/contratacoes-online/quantidade-cotas";
 
 const text = (value: FormDataEntryValue | null) => String(value ?? "").trim();
 const digits = (value: string) => value.replace(/\D/g, "");
@@ -107,13 +108,25 @@ export async function gerarCotaRealClienteAction(formData: FormData) {
   if (!clienteId) throw new Error("Cliente não informado.");
 
   try {
+    const supabase = await createClient();
+    const { data: contratacao, error: contratacaoError } = await supabase
+      .from("contratacoes_online")
+      .select("quantidade_cotas,dados_simulacao")
+      .eq("empresa_id", empresaAtiva.id)
+      .eq("id", contratacaoId)
+      .maybeSingle();
+    if (contratacaoError || !contratacao) throw new Error(contratacaoError?.message || "Contratação não encontrada.");
+    const quantidadeCotas = obterQuantidadeCotasContratacao(
+      contratacao.dados_simulacao as Record<string, unknown> | null,
+      contratacao.quantidade_cotas,
+    );
     const { venda, cotaDefinitiva } = await converterContratacaoEmVenda(
       empresaAtiva.id,
       contratacaoId,
-      `conversao-cliente:${contratacaoId}`
+      `conversao-cliente:${contratacaoId}`,
+      quantidadeCotas,
     );
 
-    const supabase = await createClient();
     await supabase.from("clientes_historico").insert({
       empresa_id: empresaAtiva.id,
       cliente_id: clienteId,

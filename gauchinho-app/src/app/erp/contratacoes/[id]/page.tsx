@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireTenantPermission } from "@/lib/tenant/context";
 import { calcularPrazoGrupoFromRow } from "@/lib/grupos/prazos";
+import { obterQuantidadeCotasContratacao } from "@/lib/contratacoes-online/quantidade-cotas";
 import { DocumentoLink } from "./documento-link";
 import {
   FormalizacaoVendaForm,
@@ -39,6 +40,7 @@ type ContratacaoDetalhe = {
   participante_secundario_fracao_percentual: number | null;
   credito_selecionado: number | null;
   parcela_estimada: number | null;
+  quantidade_cotas: number | null;
   forma_pagamento: string | null;
   dados_simulacao: Record<string, unknown> | null;
   cliente: unknown;
@@ -71,17 +73,25 @@ export default async function ConferirContratacaoPage({
   const admin = createAdminClient();
   const hoje = new Date().toISOString().slice(0, 10);
 
-  const [{ data: administradorasEmpresa }, { data: configuracoesGrupos }] = await Promise.all([
+  const [administradorasEmpresaResult, configuracoesGruposResult] = await Promise.all([
     admin
       .from("empresa_administradoras")
       .select("administradora_id")
       .eq("empresa_id", empresaAtiva.id)
-      .eq("ativo", true),
+      .eq("status", "ATIVA"),
     admin
       .from("empresa_grupos_config")
       .select("grupo_id,visivel")
       .eq("empresa_id", empresaAtiva.id),
   ]);
+  if (administradorasEmpresaResult.error) {
+    throw new Error(`Não foi possível consultar as administradoras concedidas: ${administradorasEmpresaResult.error.message}`);
+  }
+  if (configuracoesGruposResult.error) {
+    throw new Error(`Não foi possível consultar a apresentação dos grupos: ${configuracoesGruposResult.error.message}`);
+  }
+  const administradorasEmpresa = administradorasEmpresaResult.data;
+  const configuracoesGrupos = configuracoesGruposResult.data;
   const administradorasPermitidas = (administradorasEmpresa ?? []).map((item) => item.administradora_id);
   const gruposOcultos = new Set(
     (configuracoesGrupos ?? []).filter((item) => item.visivel === false).map((item) => item.grupo_id),
@@ -161,6 +171,12 @@ export default async function ConferirContratacaoPage({
   ]);
 
   if (contratacaoResult.error || !contratacaoResult.data) notFound();
+  if (gruposResult.error) {
+    throw new Error(`Não foi possível carregar os grupos concedidos: ${gruposResult.error.message}`);
+  }
+  if (modalidadesComissaoResult.error) {
+    throw new Error(`Não foi possível carregar os modelos de comissão: ${modalidadesComissaoResult.error.message}`);
+  }
   const c = contratacaoResult.data as ContratacaoDetalhe;
   const cliente = relation<{ id: string; nome: string; cpf_cnpj: string | null; email: string | null; telefone: string | null }>(c.cliente);
   const venda = relation<{ id: string; status: string; cotas_definitivas: unknown }>(c.vendas);
@@ -228,6 +244,7 @@ export default async function ConferirContratacaoPage({
       : "";
   const snapshotCalculo = (c.dados_simulacao as any)?.snapshot_calculo;
   const condicaoComercialCongelada = Boolean(snapshotCalculo?.hash_sha256 && snapshotCalculo?.imutavel);
+  const quantidadeCotas = obterQuantidadeCotasContratacao(c.dados_simulacao, c.quantidade_cotas);
 
   return (
     <div className="mx-auto max-w-7xl space-y-6 pb-12">
@@ -267,6 +284,9 @@ export default async function ConferirContratacaoPage({
       {feedback.sucesso && (
         <div className="rounded-xl border border-emerald-300 bg-emerald-50 p-5 text-emerald-950">
           <h2 className="font-bold">Venda formalizada com sucesso</h2>
+          <p className="mt-1 text-sm">
+            {Number(feedback.quantidade || 1)} {Number(feedback.quantidade || 1) === 1 ? "cota definitiva foi gerada" : "cotas definitivas foram geradas"} para esta venda.
+          </p>
           <div className="mt-3 flex gap-2">
             {cliente?.id && (
               <Link className="rounded-lg bg-white px-3 py-2 font-semibold shadow-xs hover:bg-slate-50" href={`/erp/clientes/${cliente.id}`}>
@@ -355,6 +375,7 @@ export default async function ConferirContratacaoPage({
         initialFracaoSecundario={c.participante_secundario_fracao_percentual}
         creditoAceito={Number(c.credito_selecionado ?? (c.dados_simulacao as any)?.valor_credito ?? 0)}
         parcelaAceita={Number(c.parcela_estimada ?? (c.dados_simulacao as any)?.valor_parcela ?? 0)}
+        initialQuantidadeCotas={quantidadeCotas}
         condicaoComercialCongelada={condicaoComercialCongelada}
       />
 

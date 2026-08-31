@@ -105,6 +105,7 @@ interface FormalizacaoVendaFormProps {
   initialFracaoSecundario: number | null;
   creditoAceito: number;
   parcelaAceita: number;
+  initialQuantidadeCotas: number;
   condicaoComercialCongelada: boolean;
 }
 
@@ -134,6 +135,7 @@ export function FormalizacaoVendaForm({
   initialFracaoSecundario,
   creditoAceito,
   parcelaAceita,
+  initialQuantidadeCotas,
   condicaoComercialCongelada,
 }: FormalizacaoVendaFormProps) {
   const [isPending, startTransition] = useTransition();
@@ -141,6 +143,7 @@ export function FormalizacaoVendaForm({
   const [selectedGrupoId, setSelectedGrupoId] = useState(initialGrupoId || "");
   const [selectedCotaId, setSelectedCotaId] = useState(initialCotaId || "");
   const [selectedModalidadeId, setSelectedModalidadeId] = useState<string>(initialModalidadeId || "");
+  const [quantidadeCotas, setQuantidadeCotas] = useState(initialQuantidadeCotas || 1);
 
   // Datas de pagamento personalizadas (Adesão vs 2ª Parcela em diante)
   const todayStr = new Date().toISOString().slice(0, 10);
@@ -346,7 +349,7 @@ export function FormalizacaoVendaForm({
       </div>
 
       {/* Grid de Seleção de Grupo, Cota e Consultores */}
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
         <label className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
           Grupo Canônico
           <select
@@ -370,6 +373,25 @@ export function FormalizacaoVendaForm({
           </select>
           {condicaoComercialCongelada ? <input type="hidden" name="grupo_id" value={selectedGrupoId} /> : null}
           {condicaoComercialCongelada ? <span className="mt-1 block text-[10px] normal-case text-emerald-700">Condição aceita no site — bloqueada para edição</span> : null}
+        </label>
+
+        <label className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
+          Quantidade de cotas
+          <input
+            required
+            type="number"
+            min={1}
+            max={100}
+            name={condicaoComercialCongelada ? undefined : "quantidade_cotas"}
+            value={quantidadeCotas}
+            disabled={condicaoComercialCongelada}
+            onChange={(event) => setQuantidadeCotas(Math.max(1, Math.min(100, Number(event.target.value) || 1)))}
+            className="mt-1.5 w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-xs font-semibold shadow-2xs focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 disabled:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+          />
+          {condicaoComercialCongelada ? <input type="hidden" name="quantidade_cotas" value={quantidadeCotas} /> : null}
+          <span className="mt-1 block text-[10px] normal-case text-slate-500">
+            A formalização gerará {quantidadeCotas} {quantidadeCotas === 1 ? "cota definitiva" : "cotas definitivas"} na mesma venda.
+          </span>
         </label>
 
         <label className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
@@ -705,7 +727,7 @@ export function FormalizacaoVendaForm({
 
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <div className="rounded-xl bg-white p-3 shadow-2xs dark:bg-slate-800">
-            <p className="text-[11px] font-semibold text-slate-500">Crédito da Cota</p>
+            <p className="text-[11px] font-semibold text-slate-500">Crédito contratado ({quantidadeCotas} {quantidadeCotas === 1 ? "cota" : "cotas"})</p>
             <p className="text-base font-black text-slate-900 dark:text-white">{brl(calculo.valorCredito)}</p>
             <p className="text-[10px] font-semibold text-emerald-700">Parcela aceita: {valorParcela > 0 ? brl(valorParcela) : "—"}</p>
             <p className="text-[10px] text-slate-400">
@@ -755,7 +777,7 @@ export function FormalizacaoVendaForm({
           3. Resumo da Venda
         </h3>
         <p className="mt-2 text-xs text-slate-700 dark:text-slate-300">
-          Cliente: <strong>{clienteNome}</strong> · Grupo: <strong>{grupoAtual ? `Grupo ${grupoAtual.codigo_grupo}` : "não selecionado"}</strong> · Modelo de comissão: <strong>{modalidadeAtiva?.nome || "não selecionado"}</strong> · Crédito aceito: <strong>{brl(valorCredito)}</strong> · Parcela aceita no site: <strong>{valorParcela ? brl(valorParcela) : "não informada"}</strong> · Prazo: <strong>{prazoRestante}/{prazoTotal}</strong> · Forma de pagamento: <strong>{formaPagamento || "Boleto"}</strong>
+          Cliente: <strong>{clienteNome}</strong> · Grupo: <strong>{grupoAtual ? `Grupo ${grupoAtual.codigo_grupo}` : "não selecionado"}</strong> · Quantidade: <strong>{quantidadeCotas} {quantidadeCotas === 1 ? "cota" : "cotas"}</strong> · Modelo de comissão: <strong>{modalidadeAtiva?.nome || "não selecionado"}</strong> · Crédito aceito: <strong>{brl(valorCredito)}</strong> · Parcela aceita no site: <strong>{valorParcela ? brl(valorParcela) : "não informada"}</strong> · Prazo: <strong>{prazoRestante}/{prazoTotal}</strong> · Forma de pagamento: <strong>{formaPagamento || "Boleto"}</strong>
         </p>
       </div>
 
@@ -773,7 +795,7 @@ export function FormalizacaoVendaForm({
           }
           className="w-full sm:w-auto rounded-xl bg-blue-700 px-7 py-3.5 text-sm font-extrabold text-white shadow-md hover:bg-blue-800 disabled:opacity-50 transition cursor-pointer"
         >
-          {isPending ? "Formalizando venda e gerando cota..." : "Confirmar e formalizar venda"}
+          {isPending ? `Formalizando venda e gerando ${quantidadeCotas} ${quantidadeCotas === 1 ? "cota" : "cotas"}...` : "Confirmar e formalizar venda"}
         </button>
       )}
     </form>

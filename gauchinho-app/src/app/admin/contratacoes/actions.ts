@@ -21,6 +21,7 @@ import type { ContratacaoDocumentoRow, ContratacaoOnlineRow } from "@/lib/contra
 import { buildPropostaPublicUrl } from "@/lib/url/public-url";
 import { DEFAULT_SITE, getConfigJsonPublic } from "@/server/config";
 import { isDbMissingColumnError } from "@/lib/comercial-eventos/db-ready";
+import { obterQuantidadeCotasContratacao } from "@/lib/contratacoes-online/quantidade-cotas";
 
 export async function fetchContratacoesList(): Promise<ContratacaoOnlineRow[]> {
   const usuario = await requireStaffAdmin();
@@ -364,7 +365,24 @@ export async function converterContratacaoEmVendaAction(
     const empresaId = empresaAtiva.id;
     const { converterContratacaoEmVenda } = await import("@/lib/vendas/vendas-service");
 
-    const result = await converterContratacaoEmVenda(empresaId, contratacaoId);
+    const db = await createClient();
+    const { data: contratacao, error: contratacaoError } = await db
+      .from("contratacoes_online")
+      .select("quantidade_cotas,dados_simulacao")
+      .eq("empresa_id", empresaId)
+      .eq("id", contratacaoId)
+      .maybeSingle();
+    if (contratacaoError || !contratacao) throw new Error(contratacaoError?.message || "Contratação não encontrada.");
+    const quantidadeCotas = obterQuantidadeCotasContratacao(
+      contratacao.dados_simulacao as Record<string, unknown> | null,
+      contratacao.quantidade_cotas,
+    );
+    const result = await converterContratacaoEmVenda(
+      empresaId,
+      contratacaoId,
+      `conversao:${contratacaoId}`,
+      quantidadeCotas,
+    );
     revalidatePath(`/admin/contratacoes/${contratacaoId}`);
     revalidatePath("/admin/contratacoes");
     revalidatePath("/admin/vendas");
