@@ -4,7 +4,7 @@ import type { EmpresaSiteModel } from "@/lib/tenant/site-model";
 
 type Props = {
   branding: EmpresaBranding;
-  siteModel: EmpresaSiteModel;
+  siteModel: EmpresaSiteModel | null;
   showModuloIndisponivel?: boolean;
 };
 
@@ -13,6 +13,17 @@ type Props = {
  * utilizando a experiência visual Racon Inspired.
  */
 export function InstitutionalTenantHome({ branding, siteModel, showModuloIndisponivel }: Props) {
+  // Um entitlement suspenso nunca troca a identidade de um modelo pelo Racon.
+  if (siteModel?.codigo !== "racon_inspired") {
+    return (
+      <main className="mx-auto max-w-5xl px-6 py-20">
+        <h1 className="text-3xl font-bold">{branding.nome_site}</h1>
+        <p className="mt-4">{showModuloIndisponivel
+          ? "Este módulo não está disponível neste site."
+          : "Site em configuração. Entre em contato com a empresa."}</p>
+      </main>
+    );
+  }
   const identidade = {
     ...siteModel.identidadeVisual,
     ...(branding.cor_primaria ? { cor_primaria: branding.cor_primaria } : {}),

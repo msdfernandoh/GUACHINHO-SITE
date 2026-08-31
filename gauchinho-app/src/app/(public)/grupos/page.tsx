@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import { fetchPublicGruposAggregates } from "@/app/admin/grupos/actions";
 import { GruposPublicClient } from "@/components/public/grupos-public-client";
 import { getUsuarioNegocio } from "@/lib/auth/get-usuario";
-import { canCreateProposta, canManageGruposSorteios, isStaff } from "@/lib/auth/permissions";
+import { canManageGruposSorteios, isStaff } from "@/lib/auth/permissions";
+import { getCurrentTenantContext } from "@/lib/tenant/context";
 import { DEFAULT_LEADS, getConfigJson } from "@/server/config";
 import { getCatalogEmpresaIdFromHeaders } from "@/lib/grupos/resolve-catalog-empresa";
 import { listGruposAutorizadosForEmpresa } from "@/lib/grupos/catalogo-autorizado-service";
@@ -24,7 +25,7 @@ export default async function GruposPublicPage() {
   const aggregates = await fetchPublicGruposAggregates();
   const usuario = await getUsuarioNegocio();
   const staff = isStaff(usuario?.perfil);
-  const isConsultor = canCreateProposta(usuario?.perfil);
+  const tenantContext = await getCurrentTenantContext();
   const leadsConfig = await getConfigJson("leads", DEFAULT_LEADS);
   const canManageSorteios = canManageGruposSorteios(
     usuario?.perfil,
@@ -32,6 +33,10 @@ export default async function GruposPublicPage() {
   );
 
   const empresaId = await getCatalogEmpresaIdFromHeaders();
+  // Mesmo vínculo e permissão exigidos pela API, independentemente do modelo.
+  const isConsultor = Boolean(usuario && empresaId &&
+    tenantContext.empresaAtiva?.id === empresaId &&
+    tenantContext.permissoes.has("gerenciar_propostas"));
   const gruposAutorizados = empresaId
     ? await listGruposAutorizadosForEmpresa(empresaId)
     : [];

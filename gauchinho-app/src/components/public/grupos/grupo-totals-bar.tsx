@@ -140,7 +140,7 @@ function TotalsBarContent({
             disabled={contratarLoading}
             onClick={onGerarLink}
           >
-            Gerar link da proposta
+            Gerar link · resumida / detalhada
           </Button>
         ) : null}
         <Button
@@ -216,7 +216,7 @@ function DesktopTotalsBar(props: Props) {
             disabled={contratarLoading}
             onClick={onGerarLink}
           >
-            Link proposta
+            Link · resumida / detalhada
           </Button>
         ) : null}
         <Button

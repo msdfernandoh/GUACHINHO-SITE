@@ -1205,6 +1205,20 @@ Nenhuma senha real é alterada como parte de testes ou implantação.
 
 Relatório: `docs/relatorios-fases/FASE-164-NOVA-SENHA-RESPONSAVEL-PRINCIPAL.md`.
 
+## 47. Isolamento do modelo e contraste de Grupos — Fase 165
+
+Uma home institucional não é fallback visual Racon: o renderer Racon exige
+`codigo=racon_inspired`. Entitlements continuam explícitos e fechados por padrão.
+O vínculo legado Gauchinho com menus vazios foi reconciliado explicitamente com
+seu próprio catálogo, sem trocar modelo ou alterar dados operacionais. O script
+de reparação é idempotente, restrito e executado somente por operador autorizado.
+
+Estilos de seleção e controles de Grupos são isolados pelo modelo Racon. A geração
+de links resumidos/detalhados reutiliza o fluxo existente e verifica empresa ativa
+e permissão canônica tanto na página quanto na API; visibilidade do botão não
+concede acesso. Relatório:
+`docs/relatorios-fases/FASE-165-RESTAURACAO-GAUCHINHO-CONTRASTE-GRUPOS.md`.
+
 
 
 

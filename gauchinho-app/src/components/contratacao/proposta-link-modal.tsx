@@ -113,7 +113,7 @@ export function PropostaLinkModal({
                 setCopied(false);
               }}
             >
-              Link completo
+              Link detalhado
             </button>
           </div>
         </div>

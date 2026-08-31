@@ -275,7 +275,7 @@ export function GruposPublicClient({
     <div
       className={cn(
         simuladorShell,
-        "pb-[5rem] lg:pb-[6.5rem]",
+        "grupos-workspace pb-[5rem] lg:pb-[10rem]",
         "max-lg:has-[button[aria-expanded=true]]:pb-[min(40vh,18rem)]",
       )}
     >
@@ -328,6 +328,15 @@ export function GruposPublicClient({
             />
           </div>
         </div>
+
+        {!isConsultor && aba === "simulacao" ? (
+          <p className="mb-4 text-sm text-zinc-400">
+            Para compartilhar propostas resumidas ou detalhadas, {" "}
+            <Link href="/login?next=%2Fgrupos" className="font-semibold text-amber-400 underline">
+              entre com seu acesso desta empresa
+            </Link>.
+          </p>
+        ) : null}
 
         {aba === "sorteios" ? (
           <GruposSorteioPublicSection grupos={gruposSorteio} canManage={canManageSorteios} />
@@ -385,7 +394,13 @@ export function GruposPublicClient({
         pdfLink={pdfLink}
         onProposta={openPropostaModal}
         onContratar={() => openContratar("cliente_site")}
-        onGerarLink={isConsultor ? () => openContratar("sdr_link") : undefined}
+        onGerarLink={() => {
+          if (!isConsultor) {
+            setToastMsg("Entre com um usuário autorizado desta empresa para gerar os links resumido e detalhado.");
+            return;
+          }
+          openContratar("sdr_link");
+        }}
         contratarLoading={contratacaoLoading}
       />
       ) : null}

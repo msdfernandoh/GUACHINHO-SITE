@@ -65,6 +65,7 @@ export function GrupoRow({
   return (
     <>
       <tr
+        data-grupo-selected={ativo}
         className={cn(
           "border-b border-zinc-800/80 transition hover:bg-zinc-800/20",
           ativo && "bg-amber-500/[0.04]",
@@ -291,7 +292,7 @@ export function GrupoRow({
       </tr>
 
       {expanded ? (
-        <tr className="border-b border-zinc-800/80 bg-zinc-950/80">
+        <tr data-grupo-details className="border-b border-zinc-800/80 bg-zinc-950/80">
           <td colSpan={GRUPO_TABLE_COLSPAN} className="px-3 py-3">
             <GrupoRowAdjustments
               grupo={grupo}

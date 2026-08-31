@@ -254,7 +254,8 @@ body.tenant-root-independent {
   color: var(--visual-button-text) !important;
 }
 .tenant-operational .sim-choice-selected *,
-.tenant-operational [class*="bg-amber"] *,
+.tenant-operational:not([data-site-page="/grupos"]) [class*="bg-amber"] *,
+.tenant-operational :is(button, a)[class*="bg-amber"] *,
 .tenant-operational thead * {
   color: var(--visual-button-text) !important;
 }
@@ -279,3 +280,50 @@ body.tenant-root-independent {
 }
 .racon-home [data-site-block] a[class*="rounded"] *,
 .racon-home [data-site-block] button[class*="bg-[#"] * { color: var(--visual-button-text) !important; }
+
+/* Grupos: somente o modelo Racon. Linhas selecionadas não são botões:
+   campos brancos mantêm texto escuro, inclusive no menu nativo de opções. */
+.tenant-racon .grupos-workspace :is([class*="bg-zinc-950/"], [class*="bg-zinc-800/"]) {
+  background-color: var(--visual-bg, #ffffff) !important;
+}
+.tenant-racon .grupos-workspace [data-grupo-selected="true"],
+.tenant-racon .grupos-workspace [data-grupo-details] {
+  background-color: color-mix(in srgb, var(--visual-button), white 94%) !important;
+  color: var(--visual-text) !important;
+}
+.tenant-racon .grupos-workspace :is(input, select, textarea, option, optgroup) {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  color-scheme: light;
+  border-color: #94a3b8 !important;
+}
+.tenant-racon .grupos-workspace :is([class*="text-zinc-4"], [class*="text-zinc-5"], [class*="text-zinc-6"], [class*="text-sky-2"]) {
+  color: var(--visual-text) !important;
+}
+.tenant-racon .grupos-workspace :is(button, a)[class*="bg-zinc-9"] {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+}
+.tenant-racon .grupos-workspace :is(button, a)[class*="bg-zinc-9"] * { color: inherit !important; }
+.tenant-racon .grupos-workspace :is(button, a)[class*="bg-amber"],
+.tenant-racon .grupos-workspace button[class*="bg-zinc-600"] {
+  background-color: var(--visual-button) !important;
+  color: var(--visual-button-text) !important;
+}
+.tenant-racon .grupos-workspace :is(button, a)[class*="bg-amber"] * {
+  color: var(--visual-button-text) !important;
+}
+.tenant-racon .grupos-workspace :not(button):not(a)[class*="bg-amber"] {
+  background-color: color-mix(in srgb, var(--visual-button), white 94%) !important;
+  color: var(--visual-text) !important;
+}
+.tenant-racon .grupos-workspace [data-site-block="totais"] {
+  background-color: var(--visual-button) !important;
+  color: var(--visual-button-text) !important;
+}
+.tenant-racon .grupos-workspace [data-site-block="totais"] :is([class*="bg-zinc-950/"], [class*="bg-zinc-800/"]) {
+  background-color: rgb(255 255 255 / 12%) !important;
+}
+.tenant-racon .grupos-workspace [data-site-block="totais"] button[class*="bg-amber"] {
+  border: 1px solid currentColor;
+}
