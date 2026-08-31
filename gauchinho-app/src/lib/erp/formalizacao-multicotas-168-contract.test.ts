@@ -22,6 +22,12 @@ describe("formalização com múltiplas cotas", () => {
     expect(page).not.toContain('.from("empresa_administradoras")\n      .select("administradora_id")\n      .eq("empresa_id", empresaAtiva.id)\n      .eq("ativo", true)');
   });
 
+  it("não ordena modalidades por coluna inexistente", () => {
+    expect(page).not.toContain('.order("ordem")');
+    expect(page).toContain('.order("nome")');
+    expect(page).toContain('.order("id")');
+  });
+
   it("mantém uma venda e libera a cardinalidade 1:N de cotas", () => {
     expect(migration).toContain("DROP INDEX IF EXISTS public.cotas_definitivas_venda_uidx");
     expect(migration).toContain("cotas_definitivas_venda_ordem_uidx");

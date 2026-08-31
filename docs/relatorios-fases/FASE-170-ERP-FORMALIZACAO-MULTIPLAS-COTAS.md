@@ -63,3 +63,9 @@ por isso nenhum Grupo/Produto aparecia apesar de existirem 21 grupos ativos.
 O banco foi expandido de forma compatível. Em caso de regressão visual, a
 aplicação anterior continua operando com a primeira cota. A estrutura e os dados
 novos não devem ser removidos; qualquer correção será forward-only.
+## Hotfix de carregamento da conferência — 31/08/2026
+
+A tela de conferência deixou de ordenar `administradora_modalidades_comissao`
+pela coluna inexistente `ordem`. A ordenação estável passa a usar `nome` e `id`,
+colunas confirmadas no schema. O ajuste não altera contratos, vendas, cotas,
+regras ou valores de comissão.

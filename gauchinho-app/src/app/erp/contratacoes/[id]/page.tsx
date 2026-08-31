@@ -167,7 +167,8 @@ export default async function ConferirContratacaoPage({
       .select("id,administradora_id,codigo,nome,ativo")
       .in("administradora_id", administradorasPermitidas.length ? administradorasPermitidas : ["00000000-0000-0000-0000-000000000000"])
       .eq("ativo", true)
-      .order("ordem"),
+      .order("nome")
+      .order("id"),
   ]);
 
   if (contratacaoResult.error || !contratacaoResult.data) notFound();
