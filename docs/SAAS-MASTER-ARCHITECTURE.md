@@ -1473,6 +1473,18 @@ implementação anterior.
 Relatório:
 `docs/relatorios-fases/FASE-179-RECALCULO-ATOMICO-E-RECUPERACAO-COMISSOES.md`.
 
+## 62. Restauração do cronograma histórico — Fase 180
+
+Previsões históricas devem conservar o perfil, percentual e cronograma
+congelados no momento da venda. A migration 177 corrige as quatro vendas
+afetadas para o programa histórico de 2%, comprovado pelos snapshots, e valida
+transacionalmente a recomposição de 23 parcelas e R$ 34.240,00 brutos. As regras
+e vigências históricas permanecem imutáveis e o programa antigo não é reativado
+para vendas futuras.
+
+Relatório:
+`docs/relatorios-fases/FASE-180-RESTAURACAO-CRONOGRAMA-HISTORICO-COMISSOES.md`.
+
 
 
 

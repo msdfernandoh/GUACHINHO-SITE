@@ -12,6 +12,10 @@ describe("Contrato da Fase 179 - recálculo atômico e recuperação das previs�
     path.join(root, "supabase", "migrations", "176_reparar_previsoes_vendas_e_recalculo_atomico.sql"),
     "utf8",
   );
+  const historicalMigration = fs.readFileSync(
+    path.join(root, "supabase", "migrations", "177_restaurar_cronograma_historico_2_porcento.sql"),
+    "utf8",
+  );
   const action = actions.slice(
     actions.indexOf("export async function masterAtualizarVendaAction"),
     actions.indexOf("export async function cancelarCotaEstornoAction"),
@@ -36,5 +40,14 @@ describe("Contrato da Fase 179 - recálculo atômico e recuperação das previs�
     expect(migration).toContain("comissao_gerar_previsoes_perfis_171");
     expect(migration).toContain("possui cronograma parcial");
     expect(migration).toContain("cota administrativa ativa");
+  });
+
+  it("restaura e valida o perfil e os totais históricos sem reativar a regra antiga", () => {
+    expect(historicalMigration).toContain("perfil_principal_id = v_perfil_historico_id");
+    expect(historicalMigration).toContain("v_count <> 23");
+    expect(historicalMigration).toContain("round(v_total, 2) <> 34240.00");
+    expect(historicalMigration).not.toContain("UPDATE public.comissao_regras_franquia");
+    expect(historicalMigration).toContain("restauracao_historica_177");
+    expect(historicalMigration).toContain("Existem valores elegíveis ou pagos");
   });
 });
