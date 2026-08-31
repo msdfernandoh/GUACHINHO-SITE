@@ -11,6 +11,7 @@ import {
   statusProgramaAction,
   novaVersaoProgramaAction,
   excluirProgramaAction,
+  definirProgramaImportacaoLegadoAction,
 } from "@/app/platform/administradoras-actions";
 import { validateProgramRule, type ProgramRule, type ProgramRuleStage } from "@/lib/platform/homologacao";
 
@@ -44,6 +45,7 @@ export type ProgramaDetail = {
   versao: number;
   status: string;
   ativo: boolean;
+  uso_exclusivo_importacao_legado?: boolean;
   administradora_id: string;
   empresa_id?: string | null;
   administradora?: { nome?: string; nome_fantasia?: string } | null;
@@ -75,11 +77,13 @@ export function ProgramaWorkspace({
   const [stateStatus, actionStatus, isPendingStatus] = useActionState(statusProgramaAction, initial);
   const [stateNovaVersao, actionNovaVersao, isPendingNovaVersao] = useActionState(novaVersaoProgramaAction, initial);
   const [stateExcluirProg, actionExcluirProg, isPendingExcluirProg] = useActionState(excluirProgramaAction, initial);
+  const [stateImportacao, actionImportacao, isPendingImportacao] = useActionState(definirProgramaImportacaoLegadoAction, initial);
 
   const regras = programa.regras ?? [];
   const isHistorical = programa.status === "SUBSTITUIDO";
   const isHomologado = programa.status === "ATIVO";
   const isRascunho = programa.status === "RASCUNHO";
+  const isImportacaoLegado = Boolean(programa.uso_exclusivo_importacao_legado);
   const admin = programa.administradora;
   const empresa = programa.empresa;
 
@@ -95,7 +99,7 @@ export function ProgramaWorkspace({
     });
   }
 
-  const mayHomologate = isRascunho && regras.length > 0 && allIssues.length === 0;
+  const mayHomologate = isRascunho && !isImportacaoLegado && regras.length > 0 && allIssues.length === 0;
 
   return (
     <div className="space-y-6">
@@ -124,7 +128,9 @@ export function ProgramaWorkspace({
                   : "bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-300"
               }`}
             >
-              {isHistorical
+              {isImportacaoLegado
+                ? "SOMENTE IMPORTAÇÃO"
+                : isHistorical
                 ? "SUBSTITUÍDA · HISTÓRICO"
                 : isHomologado
                 ? "HOMOLOGADO"
@@ -147,7 +153,7 @@ export function ProgramaWorkspace({
                 ✎ Renomear Programa
               </button>
 
-              <form action={actionStatus}>
+              {!isImportacaoLegado ? <form action={actionStatus}>
                 <input type="hidden" name="administradora_id" value={administradoraId} />
                 <input type="hidden" name="programa_id" value={programa.id} />
                 <input type="hidden" name="status" value="ATIVO" />
@@ -165,6 +171,19 @@ export function ProgramaWorkspace({
                   }`}
                 >
                   {isPendingStatus ? "Homologando..." : `Homologar Versão v${programa.versao}`}
+                </button>
+              </form> : null}
+
+              <form action={actionImportacao}>
+                <input type="hidden" name="administradora_id" value={administradoraId} />
+                <input type="hidden" name="programa_id" value={programa.id} />
+                <input type="hidden" name="exclusivo" value="true" />
+                <button
+                  disabled={isPendingImportacao || regras.length === 0}
+                  className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-bold text-blue-800 hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-50"
+                  title="Disponibiliza estas regras no importador de clientes antigos sem concorrer com as regras de novas vendas"
+                >
+                  {isPendingImportacao ? "Salvando..." : "Usar somente na importação histórica"}
                 </button>
               </form>
 
@@ -222,6 +241,20 @@ export function ProgramaWorkspace({
             </>
           )}
 
+          {isImportacaoLegado && (
+            <form action={actionImportacao}>
+              <input type="hidden" name="administradora_id" value={administradoraId} />
+              <input type="hidden" name="programa_id" value={programa.id} />
+              <input type="hidden" name="exclusivo" value="false" />
+              <button
+                disabled={isPendingImportacao}
+                className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50"
+              >
+                Retirar da importação exclusiva
+              </button>
+            </form>
+          )}
+
           <form
             action={actionExcluirProg}
             onSubmit={(e) => {
@@ -254,6 +287,7 @@ export function ProgramaWorkspace({
       <Feedback state={stateStatus} />
       <Feedback state={stateNovaVersao} />
       <Feedback state={stateExcluirProg} />
+      <Feedback state={stateImportacao} />
 
       <div
         className={`rounded-2xl border p-4 text-xs ${
@@ -265,14 +299,18 @@ export function ProgramaWorkspace({
         }`}
       >
         <p className="font-bold text-sm">
-          {isRascunho
+          {isImportacaoLegado
+            ? "SOMENTE IMPORTAÇÃO HISTÓRICA — Disponível no importador de clientes antigos e isolado das novas vendas."
+            : isRascunho
             ? "RASCUNHO — Versão em edição e revisão. Não participa de novas vendas até ser homologada."
             : isHistorical
             ? "VERSÃO SUBSTITUÍDA — Histórico congelado para auditoria e comissões passadas."
             : "PROGRAMA HOMOLOGADO — Ativo e alimentando o motor de novas vendas da Franqueadora."}
         </p>
         <p className="mt-1">
-          {isRascunho
+          {isImportacaoLegado
+            ? "Não homologue este programa. A separação evita conflito com regras canônicas sobrepostas e preserva o cálculo histórico selecionado na importação."
+            : isRascunho
             ? "Configure as regras para cada Tipo e Modalidade, ajuste o cronograma de repasse e vincule curvas de estorno antes de homologar."
             : isHistorical
             ? "Preserva os snapshots de vendas contratadas no período desta versão."
@@ -302,7 +340,7 @@ export function ProgramaWorkspace({
         <div className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
           <p className="text-[11px] font-bold uppercase text-slate-500">Prontidão para Homologação</p>
           <p className={`mt-1 text-base font-bold ${mayHomologate ? "text-emerald-600" : "text-amber-600"}`}>
-            {mayHomologate ? "✓ 100% Pronto" : `${allIssues.length} pendência(s)`}
+            {isImportacaoLegado ? "Exclusivo do importador" : mayHomologate ? "✓ 100% Pronto" : `${allIssues.length} pendência(s)`}
           </p>
         </div>
       </section>

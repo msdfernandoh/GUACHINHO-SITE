@@ -14,7 +14,7 @@ export default async function ProgramaPlatformPage({
     db
       .from("comissao_programas")
       .select(
-        "id,nome,descricao,versao,status,ativo,administradora_id,empresa_id,programa_origem_id,administradora:administradoras(nome,nome_fantasia),empresa:empresas(nome_fantasia),regras:comissao_regras_franquia(id,versao,percentual_total_comissao,valor_fixo_total,base_calculo,vigencia_inicio,vigencia_fim,configuracao_homologada,origem_configuracao,tipo_administradora_id,modalidade_comissao_id,curva_estorno_id,tipo:administradora_tipos(id,nome),modalidade:administradora_modalidades_comissao(id,nome),curva:administradora_curvas_estorno(id,nome,versao),etapas:comissao_regra_etapas(id,ordem,tipo_gatilho,mes_relativo,nome,percentual_venda))",
+        "id,nome,descricao,versao,status,ativo,uso_exclusivo_importacao_legado,administradora_id,empresa_id,programa_origem_id,administradora:administradoras(nome,nome_fantasia),empresa:empresas(nome_fantasia),regras:comissao_regras_franquia(id,versao,percentual_total_comissao,valor_fixo_total,base_calculo,vigencia_inicio,vigencia_fim,configuracao_homologada,origem_configuracao,tipo_administradora_id,modalidade_comissao_id,curva_estorno_id,tipo:administradora_tipos(id,nome),modalidade:administradora_modalidades_comissao(id,nome),curva:administradora_curvas_estorno(id,nome,versao),etapas:comissao_regra_etapas(id,ordem,tipo_gatilho,mes_relativo,nome,percentual_venda))",
       )
       .eq("id", programaId)
       .eq("administradora_id", id)

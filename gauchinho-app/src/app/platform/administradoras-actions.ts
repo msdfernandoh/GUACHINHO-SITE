@@ -247,6 +247,24 @@ export async function statusProgramaAction(_previous: PlatformFormState, formDat
   );
 }
 
+export async function definirProgramaImportacaoLegadoAction(
+  _previous: PlatformFormState,
+  formData: FormData,
+) {
+  const exclusivo = String(formData.get("exclusivo") ?? "true") === "true";
+  return rpcState(
+    "rpc_platform_definir_programa_importacao_legado",
+    {
+      p_programa_id: String(formData.get("programa_id") ?? ""),
+      p_exclusivo: exclusivo,
+    },
+    exclusivo
+      ? "Programa disponibilizado somente para importação histórica. Ele não participa de novas vendas."
+      : "Programa retirado do uso exclusivo na importação histórica.",
+    String(formData.get("administradora_id") ?? ""),
+  );
+}
+
 export async function novaVersaoProgramaAction(_previous: PlatformFormState, formData: FormData) {
   return rpcState("rpc_platform_nova_versao_programa", {
     p_programa_id: String(formData.get("programa_id") ?? ""),

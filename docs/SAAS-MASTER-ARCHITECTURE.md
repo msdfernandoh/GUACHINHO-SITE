@@ -1295,6 +1295,24 @@ entidade repetidamente após uma consolidação operacional.
 
 Relatório: `docs/relatorios-fases/FASE-169-LISTAGEM-GRUPOS-SEM-REPETICAO.md`.
 
+## 52. Programa de comissão exclusivo para importação histórica — Fase 170
+
+Programas usados para recompor carteira antiga podem ser marcados em
+`comissao_programas.uso_exclusivo_importacao_legado`. Nesse estado eles ficam
+inativos e não homologados no motor canônico de novas vendas, mas continuam
+disponíveis no importador histórico. A separação permite representar condições
+contratuais antigas que se sobrepõem temporalmente a outro programa sem criar
+ambiguidade para vendas novas.
+
+A Platform Superadmin controla essa finalidade por RPC auditada. Um gatilho
+impede a ativação acidental do programa exclusivo. O importador identifica e
+prioriza essas regras e valida a data de cada contrato contra a vigência
+selecionada antes de confirmar o lote. A importação preserva seus snapshots e
+continua sem afetar o faturamento da empresa.
+
+Relatório:
+`docs/relatorios-fases/FASE-170-PROGRAMA-COMISSAO-IMPORTACAO-HISTORICA.md`.
+
 
 
 

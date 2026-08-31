@@ -62,7 +62,7 @@ import {
 } from "@/lib/platform/grupos-prontidao";
 
 type Model = { id:string;nome:string;descricao:string|null;versao:number;percentual_total_referencia:number;status:string;tipo_id:string;tipo?:{nome?:string}|null;modalidades?:Array<{modalidade_id:string;regra_franquia_origem_id:string|null;modalidade?:{nome?:string}|null}> };
-type Program = { id:string; nome:string; versao:number; status:string; ativo:boolean; empresa_id?:string; administradora_id?:string; programa_origem_id?:string|null; empresa?: {nome_fantasia?:string}|null; regras?: ProgramRule[] };
+type Program = { id:string; nome:string; versao:number; status:string; ativo:boolean; uso_exclusivo_importacao_legado?:boolean; empresa_id?:string; administradora_id?:string; programa_origem_id?:string|null; empresa?: {nome_fantasia?:string}|null; regras?: ProgramRule[] };
 type Group = GrupoRecord;
 type Audit = { id:string; acao:string; entidade_tipo:string; campos_alterados:unknown; created_at:string };
 
@@ -705,7 +705,8 @@ export function AdministratorWorkspace({
                 });
               });
             }
-            const mayHomologate = program.status === "RASCUNHO" && rules.length > 0 && allIssues.length === 0;
+            const isImportacaoLegado = Boolean(program.uso_exclusivo_importacao_legado);
+            const mayHomologate = program.status === "RASCUNHO" && !isImportacaoLegado && rules.length > 0 && allIssues.length === 0;
             const isHistorical = program.status === "SUBSTITUIDO";
             const isHomologado = program.status === "ATIVO";
             const isRascunho = program.status === "RASCUNHO";
@@ -749,7 +750,9 @@ export function AdministratorWorkspace({
                               : "bg-amber-100 text-amber-900"
                         }`}
                       >
-                        {isHistorical
+                        {isImportacaoLegado
+                          ? "SOMENTE IMPORTAÇÃO"
+                          : isHistorical
                           ? successor
                             ? `SUBSTITUÍDA POR v${successor.versao}`
                             : "SUBSTITUÍDA · HISTÓRICO"
@@ -775,7 +778,7 @@ export function AdministratorWorkspace({
                       {isRascunho ? "Editar regras e cronograma" : "Ver regras e cronograma"}
                     </Link>
 
-                    {isRascunho && (
+                    {isRascunho && !isImportacaoLegado && (
                       <form action={programStatusAction}>
                         <input type="hidden" name="administradora_id" value={administradora.id} />
                         <input type="hidden" name="programa_id" value={program.id} />

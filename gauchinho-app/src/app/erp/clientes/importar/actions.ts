@@ -31,10 +31,16 @@ export async function preverImportacaoLegadoAction(input: PreviewInput) {
   const cotasImportadas = new Set((importados ?? []).map((item) => `${numeroGrupo(item.numero_grupo)}::${item.numero_cota}`));
   const vistos = new Set<string>();
   let etapas: Array<{ mes_relativo: number | null }> = [];
+  let vigenciaRegra: { inicio: string; fim: string | null } | null = null;
   if (!input.semComissao) {
     if (!input.regraId) throw new Error("Selecione a regra histórica ou marque importação sem comissão.");
-    const { data } = await db.from("comissao_regra_etapas").select("mes_relativo,tipo_gatilho").eq("regra_franquia_id", input.regraId).eq("tipo_gatilho", "MES_RELATIVO");
+    const [{ data }, { data: regra }] = await Promise.all([
+      db.from("comissao_regra_etapas").select("mes_relativo,tipo_gatilho").eq("regra_franquia_id", input.regraId).eq("tipo_gatilho", "MES_RELATIVO"),
+      db.from("comissao_regras_franquia").select("vigencia_inicio,vigencia_fim").eq("id", input.regraId).eq("empresa_id", empresaAtiva.id).maybeSingle(),
+    ]);
+    if (!regra) throw new Error("A regra histórica selecionada não pertence à empresa ativa.");
     etapas = data ?? [];
+    vigenciaRegra = { inicio: regra.vigencia_inicio, fim: regra.vigencia_fim };
   }
 
   const diagnosticos: DiagnosticoClienteLegado[] = input.linhas.map((linha) => {
@@ -46,6 +52,9 @@ export async function preverImportacaoLegadoAction(input: PreviewInput) {
     if (tel.length < 10) pendencias.push("PENDENTE_TELEFONE");
     if (!linha.cliente_nome) erros.push("Nome não informado");
     if (!linha.data_contrato) erros.push("Data do contrato inválida");
+    if (linha.data_contrato && vigenciaRegra && (linha.data_contrato < vigenciaRegra.inicio || (vigenciaRegra.fim && linha.data_contrato > vigenciaRegra.fim))) {
+      erros.push(`Contrato fora da vigência da regra (${vigenciaRegra.inicio} a ${vigenciaRegra.fim ?? "sem término"})`);
+    }
     if (!linha.grupo) erros.push("Grupo não informado");
     if (!linha.cota) erros.push("Cota não informada");
     if (!(linha.valor_credito > 0)) erros.push("Valor inválido");
