@@ -1,6 +1,10 @@
 import Link from "next/link";
 import { SolicitacaoGrupoDecisionForm } from "@/components/platform/solicitacao-grupo-decision-form";
 import { createClient } from "@/lib/supabase/server";
+import { deduplicarSolicitacoesGrupos } from "@/lib/platform/grupos-listagem";
+
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 type Solicitacao = {
   id: string;
@@ -8,6 +12,8 @@ type Solicitacao = {
   status: string;
   payload: Record<string, unknown>;
   criado_em: string;
+  empresa_id?: string | null;
+  administradora_id?: string | null;
   empresa?: { nome_fantasia?: string } | null;
   administradora?: { nome?: string } | null;
   grupo_id?: string | null;
@@ -16,10 +22,10 @@ type Solicitacao = {
 export default async function SolicitacoesGruposPage() {
   const db = await createClient();
   const { data, error } = await db.from("catalogo_grupo_solicitacoes")
-    .select("id,codigo_grupo,status,payload,criado_em,grupo_id,empresa:empresas(nome_fantasia),administradora:administradoras(nome)")
+    .select("id,empresa_id,administradora_id,codigo_grupo,status,payload,criado_em,grupo_id,empresa:empresas(nome_fantasia),administradora:administradoras(nome)")
     .in("status", ["PENDENTE_PLATFORM", "EM_ANALISE", "DEVOLVIDA"])
     .order("criado_em", { ascending: true });
-  const rows = (data ?? []) as unknown as Solicitacao[];
+  const rows = deduplicarSolicitacoesGrupos((data ?? []) as unknown as Solicitacao[]);
 
   return <div className="space-y-6">
     <div>

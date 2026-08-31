@@ -1259,6 +1259,19 @@ uma ação explícita do Platform Superadmin e a interface bloqueia reenvios.
 
 Relatório: `docs/relatorios-fases/FASE-168-APROVACAO-E-CONSOLIDACAO-GRUPOS.md`.
 
+## 51. Listagens dinâmicas e sem repetição — Fase 169
+
+As páginas de catálogo e aprovação de grupos da Platform são sempre dinâmicas.
+Como proteção de apresentação, o catálogo renderiza uma linha por chave natural
+`(administradora, código normalizado)` e prefere a versão global; solicitações
+renderizam uma linha por grupo, sem combinar empresas ou administradoras.
+
+Essa camada não substitui a unicidade transacional do banco e não apaga dados.
+Ela impede que estado de navegação anterior ou respostas expandidas exibam uma
+entidade repetidamente após uma consolidação operacional.
+
+Relatório: `docs/relatorios-fases/FASE-169-LISTAGEM-GRUPOS-SEM-REPETICAO.md`.
+
 
 
 

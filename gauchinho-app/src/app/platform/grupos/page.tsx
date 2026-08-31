@@ -8,6 +8,10 @@ import {
   computeGrupoMetrics,
   validateGrupoProntidao,
 } from "@/lib/platform/grupos-prontidao";
+import { deduplicarCatalogoGrupos } from "@/lib/platform/grupos-listagem";
+
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 export default async function PlatformGruposListingPage({
   searchParams,
@@ -39,7 +43,7 @@ export default async function PlatformGruposListingPage({
     db.from("administradoras").select("id,nome").eq("status", "ATIVA").order("nome"),
   ]);
 
-  const rows = (grupos ?? []) as unknown as GrupoRecord[];
+  const rows = deduplicarCatalogoGrupos((grupos ?? []) as unknown as GrupoRecord[]);
 
   return (
     <div className="space-y-6">
