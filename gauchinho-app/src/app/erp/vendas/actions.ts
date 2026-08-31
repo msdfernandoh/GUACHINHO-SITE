@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { requireErpRouteAccess } from "@/lib/erp/erp-acesso-server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/server";
 import { requireTenantPermission } from "@/lib/tenant/context";
 import { isPlatformSuperadmin } from "@/lib/auth/is-superadmin";
 
@@ -81,7 +82,12 @@ export async function masterAtualizarVendaAction(formData: FormData) {
     };
   }
 
-  await admin.from("vendas").update(vendaUpdatePayload).eq("id", vendaId).eq("empresa_id", empresaAtiva.id);
+  const { error: vendaUpdateError } = await admin
+    .from("vendas")
+    .update(vendaUpdatePayload)
+    .eq("id", vendaId)
+    .eq("empresa_id", empresaAtiva.id);
+  if (vendaUpdateError) throw new Error(vendaUpdateError.message);
 
   // 2. Atualiza número da cota e grupo se fornecido
   const cotaPayload: Record<string, unknown> = {
@@ -98,17 +104,23 @@ export async function masterAtualizarVendaAction(formData: FormData) {
   if (valorParcela) cotaPayload.parcela = Number(valorParcela);
   if (prazo) cotaPayload.prazo = Number(prazo);
 
-  await admin.from("cotas_definitivas").update(cotaPayload).eq("venda_id", vendaId).eq("empresa_id", empresaAtiva.id);
+  const { error: cotaUpdateError } = await admin
+    .from("cotas_definitivas")
+    .update(cotaPayload)
+    .eq("venda_id", vendaId)
+    .eq("empresa_id", empresaAtiva.id);
+  if (cotaUpdateError) throw new Error(cotaUpdateError.message);
 
-  // 3. Se recalcular comissões futuras
+  // 3. A RPC autenticada substitui as previsões dentro de uma única transação.
+  // Não apague antes: se a geração falhar, o PostgreSQL preserva o cronograma anterior.
   if (recalcular) {
-    await admin.from("comissao_previsoes_participantes").delete().eq("venda_id", vendaId).in("status", ["prevista", "elegivel"]);
-    await admin.from("comissao_previsoes_franquia").delete().eq("venda_id", vendaId).eq("status", "prevista");
-    await admin.rpc("rpc_gerar_previsoes_comissao_v2", {
+    const db = await createClient();
+    const { error: recalculoError } = await db.rpc("rpc_gerar_previsoes_comissao_v2", {
       p_empresa_id: empresaAtiva.id,
       p_venda_id: vendaId,
       p_idempotency_key: `recalculo_master:${vendaId}:${Date.now()}`
     });
+    if (recalculoError) throw new Error(`Não foi possível recalcular as comissões: ${recalculoError.message}`);
   }
 
   revalidatePath("/erp/vendas");

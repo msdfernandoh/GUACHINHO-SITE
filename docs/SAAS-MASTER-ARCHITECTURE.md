@@ -1461,6 +1461,18 @@ link, sem persistir uma imagem ou alterar o snapshot.
 Relatório:
 `docs/relatorios-fases/FASE-178-LINK-CURTO-E-IMAGEM-PROPOSTA.md`.
 
+## 61. Recálculo atômico e recuperação de comissões — Fase 179
+
+O recálculo master de uma venda nunca remove previsões fora da transação do
+motor canônico. A action usa a sessão autenticada, respeita a autorização N:N do
+tenant e propaga falhas da RPC; assim, uma falha de regra ou permissão preserva o
+cronograma anterior. A migration 176 recupera, com escopo fechado e validações
+abortivas, as quatro vendas confirmadas que tiveram as previsões removidas pela
+implementação anterior.
+
+Relatório:
+`docs/relatorios-fases/FASE-179-RECALCULO-ATOMICO-E-RECUPERACAO-COMISSOES.md`.
+
 
 
 
