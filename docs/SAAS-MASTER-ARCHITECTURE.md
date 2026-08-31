@@ -1380,6 +1380,24 @@ operação exige sessão autenticada e administração da empresa; tenant e aces
 Relatório:
 `docs/relatorios-fases/FASE-173-MINHAS-COMISSOES-VENDAS-E-IMPOSTO-LOTE.md`.
 
+## 56. Cronograma próprio nas regras de comissão por perfil — Fase 174
+
+Regras de participante podem optar explicitamente por não seguir o cronograma
+da franqueadora. Nesse caso, o ERP persiste `etapas_cronograma` com meses
+positivos e distintos e distribuição que fecha exatamente 100% do percentual
+ou o valor fixo total. O formulário preserva as etapas ao editar e oferece
+distribuição uniforme sem substituir silenciosamente a configuração por parcela
+única.
+
+A migration 171 mantém regras anteriores no caminho compatível e só reconstrói
+previsões de perfil quando a nova escolha de cronograma próprio ou base fiscal
+bruta for explícita. O cálculo congela base, imposto, regra e etapas no snapshot,
+preserva o resíduo monetário na última parcela e não recalcula fatos históricos.
+Previsões já elegíveis ou pagas não podem ser substituídas.
+
+Relatório:
+`docs/relatorios-fases/ERP-PERFIS-CRONOGRAMA-PROPRIO-CADASTRO.md`.
+
 
 
 

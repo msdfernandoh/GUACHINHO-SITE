@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { ProfileRulePaymentFields } from "./profile-rule-payment-fields";
+import type { CommissionStage } from "@/lib/erp/commission-rule-input";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AplicarImpostoLote } from "./aplicar-imposto-lote";
@@ -73,7 +75,9 @@ export type RegraPerfilRow = {
   percentual_comissao: number | null;
   valor_fixo_total: number | null;
   seguir_cronograma_franquia: boolean;
+  etapas_cronograma: CommissionStage[];
   aplicar_curva_estorno: boolean;
+  aplicar_desconto_impostos: boolean;
   curva_estorno_id: string | null;
   curva_nome?: string;
   versao: number;
@@ -459,6 +463,8 @@ export function ErpCommissionHubView({
               <button
                 onClick={() => {
                   setEditingRegra(null);
+                  setModalAdminId(administradoras[0]?.id ?? "");
+                  setModalProgramaId("");
                   setRegraModalOpen(true);
                 }}
                 className="rounded-xl bg-blue-600 px-4 py-2 text-xs font-bold text-white shadow-sm hover:bg-blue-700 transition"
@@ -584,6 +590,8 @@ export function ErpCommissionHubView({
                                   <button
                                     onClick={() => {
                                       setEditingRegra(regra);
+                                      setModalAdminId(regra.administradora_id ?? "");
+                                      setModalProgramaId(regra.programa_id);
                                       setRegraModalOpen(true);
                                     }}
                                     className="rounded-lg border border-slate-300 px-2.5 py-1 text-xs font-bold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300"
@@ -613,6 +621,8 @@ export function ErpCommissionHubView({
                                   <button
                                     onClick={() => {
                                       setEditingRegra(regra);
+                                      setModalAdminId(regra.administradora_id ?? "");
+                                      setModalProgramaId(regra.programa_id);
                                       setRegraModalOpen(true);
                                     }}
                                     className="rounded-lg border border-slate-300 px-2.5 py-1 text-xs font-bold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300"
@@ -1645,7 +1655,7 @@ export function ErpCommissionHubView({
       {/* MODAL: REGRA DO PERFIL */}
       {regraModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm animate-in fade-in">
-          <div className="w-full max-w-xl rounded-2xl bg-white p-6 shadow-2xl dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-4">
+          <div className="max-h-[90vh] overflow-y-auto w-full max-w-3xl rounded-2xl bg-white p-6 shadow-2xl dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-4">
             <div className="flex items-center justify-between border-b pb-3 dark:border-slate-800">
               <h2 className="text-xl font-bold text-slate-900 dark:text-white">
                 {editingRegra ? "Editar Regra de Perfil (Rascunho)" : "+ Nova Regra para Perfil"}
@@ -1754,50 +1764,10 @@ export function ErpCommissionHubView({
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="font-bold text-slate-700 dark:text-slate-300">Base de Cálculo *</label>
-                  <select
-                    name="base_v2"
-                    defaultValue={editingRegra?.base_v2 || "COMISSAO_FRANQUEADORA_LIQUIDA"}
-                    className="mt-1 w-full rounded-xl border border-slate-300 bg-white p-2.5 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-                  >
-                    <option value="COMISSAO_FRANQUEADORA_LIQUIDA">% da Comissão Líquida da Franquia</option>
-                    <option value="VALOR_VENDIDO">% do Valor do Crédito Vendido</option>
-                    <option value="VALOR_FIXO">Valor Fixo em R$</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="font-bold text-slate-700 dark:text-slate-300">Percentual de Repasse (%) *</label>
-                  <input
-                    name="percentual_comissao"
-                    type="number"
-                    step="0.01"
-                    required
-                    defaultValue={editingRegra?.percentual_comissao ?? 50.0}
-                    placeholder="Ex: 50.00"
-                    className="mt-1 w-full rounded-xl border border-slate-300 bg-white p-2.5 dark:border-slate-700 dark:bg-slate-800 dark:text-white font-mono"
-                  />
-                </div>
-              </div>
+              <ProfileRulePaymentFields initial={editingRegra} />
 
               <div className="space-y-3 rounded-xl border border-blue-200 bg-blue-50/50 p-3.5 dark:border-blue-900/40 dark:bg-blue-950/20">
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      id="seguir_cronograma"
-                      name="seguir_cronograma_franquia"
-                      value="true"
-                      defaultChecked={editingRegra ? editingRegra.seguir_cronograma_franquia : true}
-                      className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 h-4 w-4"
-                    />
-                    <label htmlFor="seguir_cronograma" className="font-bold text-slate-800 dark:text-slate-200 text-xs">
-                      Seguir cronograma da Franqueadora
-                    </label>
-                  </div>
-
                   <div className="flex items-center gap-2">
                     <input
                       type="checkbox"
@@ -1815,7 +1785,7 @@ export function ErpCommissionHubView({
 
                 <div>
                   <label className="font-bold text-slate-800 dark:text-slate-200 text-xs flex items-center justify-between">
-                    <span>Modelo / Programa da Franqueadora a Seguir:</span>
+                    <span>Programa de referência da comissão:</span>
                     <span className="text-[10px] text-blue-700 font-normal">
                       {programas.filter((p) => !modalAdminId || p.administradora_id === modalAdminId || !p.administradora_id).length} modelo(s) disponível(is)
                     </span>
@@ -1838,7 +1808,7 @@ export function ErpCommissionHubView({
                       ))}
                   </select>
                   <p className="text-[10px] text-slate-500 mt-1">
-                    Permite definir exatamente qual programa da administradora (ex: Veículo, Imóvel V2, Franquia Antiga) esta regra irá herdar.
+                    Define a origem da comissão. O cronograma só é herdado quando a opção de seguir a franqueadora está marcada.
                   </p>
                 </div>
               </div>

@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { isPlatformSuperadmin } from "@/lib/auth/is-superadmin";
 import { commissionRuleScopesConflict, parseFranchiseRuleForm } from "@/lib/erp/commission-rule-input";
 import { requireErpRouteAccess } from "@/lib/erp/erp-acesso-server";
+import { parseProfileSchedule } from "@/lib/erp/profile-rule-schedule";
 
 export type CommissionActionState = { ok: boolean; message: string; data?: any };
 
@@ -140,8 +141,9 @@ export async function saveParticipantProfileRuleAction(
     const baseV2 = String(formData.get("base_v2") ?? "COMISSAO_FRANQUEADORA_LIQUIDA").trim();
     const percentualComissao = Number(formData.get("percentual_comissao") ?? 0);
     const valorFixoTotal = formData.get("valor_fixo_total") ? Number(formData.get("valor_fixo_total")) : null;
-    const seguirCronograma = formData.get("seguir_cronograma_franquia") !== "false";
+    const seguirCronograma = formData.get("seguir_cronograma_franquia") === "true";
     const aplicarCurva = formData.get("aplicar_curva_estorno") === "true";
+    const aplicarDescontoImpostos = formData.get("aplicar_desconto_impostos") === "true";
     const curvaEstornoId = String(formData.get("curva_estorno_id") ?? "").trim() || null;
     const vigenciaInicio = String(formData.get("vigencia_inicio") ?? "").trim() || new Date().toISOString().slice(0, 10);
     const vigenciaFim = String(formData.get("vigencia_fim") ?? "").trim() || null;
@@ -175,7 +177,13 @@ export async function saveParticipantProfileRuleAction(
       throw new Error("Empresa, Perfil e Administradora são obrigatórios.");
     }
 
-    if (baseV2 !== "VALOR_FIXO" && (percentualComissao <= 0 || percentualComissao > 100)) {
+    if (!["VALOR_FIXO", "VALOR_VENDIDO", "COMISSAO_FRANQUEADORA_LIQUIDA"].includes(baseV2)) {
+      throw new Error("Base de cálculo inválida.");
+    }
+    if (baseV2 === "VALOR_FIXO" && (valorFixoTotal === null || !Number.isFinite(valorFixoTotal) || valorFixoTotal <= 0)) {
+      throw new Error("Informe um valor fixo total maior que zero.");
+    }
+    if (baseV2 !== "VALOR_FIXO" && (!Number.isFinite(percentualComissao) || percentualComissao <= 0 || percentualComissao > 100)) {
       throw new Error("O percentual de comissão deve estar entre 0,01% e 100%.");
     }
 
@@ -192,6 +200,7 @@ export async function saveParticipantProfileRuleAction(
       modo_regra: seguirCronograma ? "AUTOMATICA" : "MANUAL",
       seguir_cronograma_franquia: seguirCronograma,
       aplicar_curva_estorno: aplicarCurva,
+      aplicar_desconto_impostos: aplicarDescontoImpostos,
       curva_estorno_id: aplicarCurva ? curvaEstornoId : null,
       vigencia_inicio: vigenciaInicio,
       vigencia_fim: vigenciaFim,
@@ -201,9 +210,7 @@ export async function saveParticipantProfileRuleAction(
       configuracao_homologada: false,
       origem_configuracao: "ERP_MANUAL_NAO_HOMOLOGADO",
       ativa: true,
-      etapas_cronograma: seguirCronograma
-        ? []
-        : [{ ordem: 1, mes_relativo: 1, percentual_etapa: 100, nome: "Parcela Única" }],
+      etapas_cronograma: parseProfileSchedule(formData, baseV2 === "VALOR_FIXO" ? valorFixoTotal : null),
       updated_at: new Date().toISOString(),
     };
 
