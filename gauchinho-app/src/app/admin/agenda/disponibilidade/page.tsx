@@ -4,7 +4,6 @@ import { fetchCompromissosRange } from "@/app/admin/agenda/actions";
 import { fetchMinhaDisponibilidade } from "./actions";
 import { DisponibilidadeForm } from "./disponibilidade-form";
 import { adminPageSubtitleClass, adminPageTitleClass } from "@/components/admin/admin-contrast";
-import { usuarioAgendaFiltradaPorConsultor } from "@/lib/auth/permissions";
 
 export default async function AgendaDisponibilidadePage() {
   const u = await requireStaffAdmin();
@@ -13,11 +12,7 @@ export default async function AgendaDisponibilidadePage() {
   const now = new Date();
   const from = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString();
   const to = new Date(now.getFullYear(), now.getMonth() + 4, 0, 23, 59, 59).toISOString();
-  const compromissos = await fetchCompromissosRange(
-    from,
-    to,
-    usuarioAgendaFiltradaPorConsultor(u) ? u.id : undefined,
-  ).catch(() => []);
+  const compromissos = await fetchCompromissosRange(from, to, u.id).catch(() => []);
   const datasComCompromisso = [
     ...new Set(
       compromissos

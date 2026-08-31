@@ -2,12 +2,14 @@ import Link from "next/link";
 import { requireStaffAdmin } from "@/lib/auth/require-staff-admin";
 import { fetchSrdOptions } from "@/app/admin/leads/actions";
 import { getGoogleCalendarSetupInfo } from "@/lib/google-calendar/config";
-import { fetchCompromissosRange, fetchGoogleCalendarStatusForCurrentUser, fetchLeadAgendaPreview } from "./actions";
+import { fetchAgendaLeadOptions, fetchCompromissosRange, fetchGoogleCalendarStatusForCurrentUser, fetchLeadAgendaPreview } from "./actions";
 import { fetchDisponibilidadeConsultores } from "./disponibilidade/actions";
 import { GoogleCalendarAgendaBanner } from "@/components/admin/agenda/google-calendar-banner";
 import { adminPageSubtitleClass, adminPageTitleClass } from "@/components/admin/admin-contrast";
 import { AgendaView } from "@/components/admin/agenda/agenda-view";
 import type { DisponibilidadeConsultor } from "@/lib/agenda/disponibilidade";
+import { requireTenantPermission } from "@/lib/tenant/context";
+import { usuarioAgendaFiltradaPorConsultor } from "@/lib/auth/permissions";
 
 export default async function AgendaAdminPage({
   searchParams,
@@ -23,6 +25,7 @@ export default async function AgendaAdminPage({
   }>;
 }) {
   await requireStaffAdmin();
+  const agendaContext = await requireTenantPermission("acessar_agenda");
   const sp = await searchParams;
   const now = new Date();
   const year = parseInt(sp.ano ?? String(now.getFullYear()), 10);
@@ -30,7 +33,7 @@ export default async function AgendaAdminPage({
   const from = new Date(year, month - 1, 1).toISOString();
   const to = new Date(year, month, 0, 23, 59, 59).toISOString();
   const leadPreview = sp.lead ? await fetchLeadAgendaPreview(sp.lead).catch(() => null) : null;
-  const [compromissos, srds, googleStatus] = await Promise.all([
+  const [compromissos, srds, googleStatus, leadOptions] = await Promise.all([
     fetchCompromissosRange(from, to),
     fetchSrdOptions(),
     fetchGoogleCalendarStatusForCurrentUser().catch(() => {
@@ -48,6 +51,7 @@ export default async function AgendaAdminPage({
         hasClientSecret: setup.hasClientSecret,
       };
     }),
+    fetchAgendaLeadOptions().catch(() => []),
   ]);
 
   const dispRaw = await fetchDisponibilidadeConsultores(srds.map((s) => s.id)).catch(() => []);
@@ -93,6 +97,9 @@ export default async function AgendaAdminPage({
         initialDay={sp.dia ?? (sp.lead ? new Date().toISOString().slice(0, 10) : undefined)}
         initialLeadId={sp.lead}
         leadPreview={leadPreview}
+        currentUserId={agendaContext.usuario.id}
+        canViewTeam={!usuarioAgendaFiltradaPorConsultor(agendaContext.usuario)}
+        leadOptions={leadOptions}
       />
     </div>
   );

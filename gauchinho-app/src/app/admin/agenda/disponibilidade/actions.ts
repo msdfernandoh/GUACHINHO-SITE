@@ -2,8 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { requireUsuario } from "@/lib/auth/get-usuario";
-import { canManageLeads } from "@/lib/auth/permissions";
+import { requireTenantPermission } from "@/lib/tenant/context";
 import type {
   BloqueioAgenda,
   DisponibilidadeConsultor,
@@ -30,8 +29,7 @@ export async function fetchMinhaDisponibilidade(): Promise<{
   observacao: string | null;
   modalidadePadrao: ModalidadeAtendimento;
 }> {
-  const u = await requireUsuario();
-  if (!canManageLeads(u.perfil)) throw new Error("Sem permissão");
+  const { usuario: u, empresaAtiva } = await requireTenantPermission("acessar_agenda");
   const supabase = await createClient();
 
   const [{ data: slots, error: sErr }, { data: meta }, { data: bloqueios, error: bErr }] =
@@ -39,6 +37,7 @@ export async function fetchMinhaDisponibilidade(): Promise<{
       supabase
         .from("agenda_disponibilidade")
         .select("id, dia_semana, data_especifica, hora_inicio, hora_fim, ativo, modalidade_atendimento")
+        .eq("empresa_id", empresaAtiva.id)
         .eq("usuario_id", u.id)
         .order("data_especifica", { ascending: true, nullsFirst: true })
         .order("dia_semana")
@@ -46,11 +45,13 @@ export async function fetchMinhaDisponibilidade(): Promise<{
       supabase
         .from("agenda_disponibilidade_meta")
         .select("observacao, modalidade_padrao")
+        .eq("empresa_id", empresaAtiva.id)
         .eq("usuario_id", u.id)
         .maybeSingle(),
       supabase
         .from("agenda_bloqueios")
         .select("id, data_inicio, data_fim, hora_inicio, hora_fim, motivo")
+        .eq("empresa_id", empresaAtiva.id)
         .eq("usuario_id", u.id)
         .order("data_inicio"),
     ]);
@@ -88,8 +89,7 @@ export async function fetchMinhaDisponibilidade(): Promise<{
 }
 
 export async function saveMinhaDisponibilidadeAction(formData: FormData) {
-  const u = await requireUsuario();
-  if (!canManageLeads(u.perfil)) throw new Error("Sem permissão");
+  const { usuario: u, empresaAtiva } = await requireTenantPermission("acessar_agenda");
   const supabase = await createClient();
 
   const observacao = String(formData.get("observacao") ?? "").trim() || null;
@@ -130,6 +130,7 @@ export async function saveMinhaDisponibilidadeAction(formData: FormData) {
         throw new Error("Informe o dia da semana ou a data específica.");
       }
       return {
+        empresa_id: empresaAtiva.id,
         usuario_id: u.id,
         dia_semana: dia,
         data_especifica: dataEsp,
@@ -145,6 +146,7 @@ export async function saveMinhaDisponibilidadeAction(formData: FormData) {
     .map((b) => {
       if (b.data_fim < b.data_inicio) throw new Error("Data final do bloqueio deve ser ≥ inicial.");
       return {
+        empresa_id: empresaAtiva.id,
         usuario_id: u.id,
         data_inicio: b.data_inicio.slice(0, 10),
         data_fim: b.data_fim.slice(0, 10),
@@ -154,7 +156,7 @@ export async function saveMinhaDisponibilidadeAction(formData: FormData) {
       };
     });
 
-  const { error: delErr } = await supabase.from("agenda_disponibilidade").delete().eq("usuario_id", u.id);
+  const { error: delErr } = await supabase.from("agenda_disponibilidade").delete().eq("empresa_id", empresaAtiva.id).eq("usuario_id", u.id);
   if (delErr) {
     if (/agenda_disponibilidade|schema cache|does not exist/i.test(delErr.message)) {
       throw new Error("Aplique as migrations 036 e 037 de disponibilidade no Supabase.");
@@ -172,7 +174,7 @@ export async function saveMinhaDisponibilidadeAction(formData: FormData) {
     }
   }
 
-  await supabase.from("agenda_bloqueios").delete().eq("usuario_id", u.id);
+  await supabase.from("agenda_bloqueios").delete().eq("empresa_id", empresaAtiva.id).eq("usuario_id", u.id);
   if (bloqueios.length) {
     const { error: bErr } = await supabase.from("agenda_bloqueios").insert(bloqueios);
     if (bErr && !/agenda_bloqueios|schema cache|does not exist/i.test(bErr.message)) {
@@ -185,20 +187,21 @@ export async function saveMinhaDisponibilidadeAction(formData: FormData) {
 
   const { error: metaErr } = await supabase.from("agenda_disponibilidade_meta").upsert(
     {
+      empresa_id: empresaAtiva.id,
       usuario_id: u.id,
       observacao,
       modalidade_padrao: modalidadePadrao,
       updated_at: new Date().toISOString(),
     },
-    { onConflict: "usuario_id" },
+    { onConflict: "empresa_id,usuario_id" },
   );
   if (metaErr && !/agenda_disponibilidade_meta|schema cache|does not exist|modalidade_padrao/i.test(metaErr.message)) {
     throw new Error(metaErr.message);
   }
   if (metaErr && /modalidade_padrao/i.test(metaErr.message)) {
     await supabase.from("agenda_disponibilidade_meta").upsert(
-      { usuario_id: u.id, observacao, updated_at: new Date().toISOString() },
-      { onConflict: "usuario_id" },
+      { empresa_id: empresaAtiva.id, usuario_id: u.id, observacao, updated_at: new Date().toISOString() },
+      { onConflict: "empresa_id,usuario_id" },
     );
   }
 
@@ -209,19 +212,19 @@ export async function saveMinhaDisponibilidadeAction(formData: FormData) {
 export async function fetchDisponibilidadeConsultores(
   consultorIds?: string[],
 ): Promise<DisponibilidadeConsultor[]> {
-  const u = await requireUsuario();
-  if (!canManageLeads(u.perfil)) throw new Error("Sem permissão");
+  const { empresaAtiva } = await requireTenantPermission("acessar_agenda");
   const supabase = await createClient();
 
-  let usuariosQ = supabase.from("usuarios").select("id, nome").eq("ativo", true).order("nome");
-  if (consultorIds?.length) {
-    usuariosQ = usuariosQ.in("id", consultorIds);
-  } else {
-    usuariosQ = usuariosQ.in("perfil", ["master", "srd", "visualizador"]);
-  }
-
-  const { data: usuarios, error: uErr } = await usuariosQ;
+  let usuariosQ = supabase.from("empresa_usuarios")
+    .select("usuario:usuarios!empresa_usuarios_usuario_id_fkey(id,nome,ativo)")
+    .eq("empresa_id", empresaAtiva.id).eq("ativo", true);
+  if (consultorIds?.length) usuariosQ = usuariosQ.in("usuario_id", consultorIds);
+  const { data: vinculos, error: uErr } = await usuariosQ;
   if (uErr) throw new Error(uErr.message);
+  const usuarios = (vinculos ?? []).flatMap((v) => {
+    const usr = Array.isArray(v.usuario) ? v.usuario[0] : v.usuario;
+    return usr?.ativo ? [usr] : [];
+  });
   const ids = (usuarios ?? []).map((x) => x.id as string);
   if (!ids.length) return [];
 
@@ -229,6 +232,7 @@ export async function fetchDisponibilidadeConsultores(
     supabase
       .from("agenda_disponibilidade")
       .select("usuario_id, dia_semana, data_especifica, hora_inicio, hora_fim, ativo, modalidade_atendimento")
+      .eq("empresa_id", empresaAtiva.id)
       .in("usuario_id", ids)
       .eq("ativo", true)
       .order("dia_semana")
@@ -236,10 +240,12 @@ export async function fetchDisponibilidadeConsultores(
     supabase
       .from("agenda_disponibilidade_meta")
       .select("usuario_id, observacao, modalidade_padrao")
+      .eq("empresa_id", empresaAtiva.id)
       .in("usuario_id", ids),
     supabase
       .from("agenda_bloqueios")
       .select("usuario_id, data_inicio, data_fim, hora_inicio, hora_fim, motivo")
+      .eq("empresa_id", empresaAtiva.id)
       .in("usuario_id", ids)
       .order("data_inicio"),
   ]);
@@ -308,14 +314,14 @@ export async function fetchProximosCompromissosDoConsultor(limit = 5): Promise<
     leadNome: string | null;
   }>
 > {
-  const u = await requireUsuario();
-  if (!canManageLeads(u.perfil)) return [];
+  const { usuario: u, empresaAtiva } = await requireTenantPermission("acessar_agenda");
   const supabase = await createClient();
   const now = new Date().toISOString();
 
   const { data, error } = await supabase
     .from("agenda_compromissos")
     .select("id, titulo, data_inicio, tipo, lead_id, consultor_id")
+    .eq("empresa_id", empresaAtiva.id)
     .eq("status", "agendado")
     .eq("consultor_id", u.id)
     .gte("data_inicio", now)
@@ -327,7 +333,7 @@ export async function fetchProximosCompromissosDoConsultor(limit = 5): Promise<
   const leadIds = [...new Set((data ?? []).map((r) => r.lead_id).filter(Boolean))] as string[];
   const leadNames = new Map<string, string>();
   if (leadIds.length) {
-    const { data: leads } = await supabase.from("leads").select("id, nome").in("id", leadIds);
+    const { data: leads } = await supabase.from("leads").select("id, nome").eq("empresa_id", empresaAtiva.id).in("id", leadIds);
     for (const l of leads ?? []) leadNames.set(l.id as string, l.nome as string);
   }
 

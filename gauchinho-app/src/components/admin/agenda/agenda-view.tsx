@@ -9,6 +9,7 @@ import {
   createCompromissoAction,
   reagendarCompromissoAction,
   retornarCompromissoAction,
+  marcarNaoCompareceuAction,
 } from "@/app/admin/agenda/actions";
 import { AgendaConcluirForm } from "@/components/admin/agenda/agenda-concluir-form";
 import {
@@ -43,6 +44,9 @@ type Props = {
   initialDay?: string;
   initialLeadId?: string;
   leadPreview?: { id: string; nome: string } | null;
+  currentUserId: string;
+  canViewTeam: boolean;
+  leadOptions: Array<{ id: string; nome: string; whatsapp: string | null }>;
 };
 
 function pad(n: number) {
@@ -64,6 +68,9 @@ export function AgendaView({
   initialDay,
   initialLeadId,
   leadPreview,
+  currentUserId,
+  canViewTeam,
+  leadOptions,
 }: Props) {
   const [selected, setSelected] = useState(initialDay ?? `${year}-${pad(month)}-01`);
   const [consultorId, setConsultorId] = useState(srds[0]?.id ?? "");
@@ -71,6 +78,8 @@ export function AgendaView({
   const [concluirId, setConcluirId] = useState<string | null>(null);
   const [reagendarId, setReagendarId] = useState<string | null>(null);
   const [retornarId, setRetornarId] = useState<string | null>(null);
+  const [filtroConsultor, setFiltroConsultor] = useState(canViewTeam ? "todos" : currentUserId);
+  const [filtroStatus, setFiltroStatus] = useState("ativos");
 
   useEffect(() => {
     if (!selected.startsWith(`${year}-${pad(month)}`)) {
@@ -79,16 +88,23 @@ export function AgendaView({
     }
   }, [year, month, selected]);
 
+  const compromissosFiltrados = useMemo(() => compromissos.filter((c) => {
+    if (filtroConsultor !== "todos" && c.consultor_id !== filtroConsultor) return false;
+    if (filtroStatus === "ativos") return c.status === "agendado";
+    if (filtroStatus !== "todos") return c.status === filtroStatus;
+    return true;
+  }), [compromissos, filtroConsultor, filtroStatus]);
+
   const byDay = useMemo(() => {
     const map = new Map<string, AgendaCompromissoRow[]>();
-    for (const c of compromissos) {
+    for (const c of compromissosFiltrados) {
       const d = c.data_inicio.slice(0, 10);
       const list = map.get(d) ?? [];
       list.push(c);
       map.set(d, list);
     }
     return map;
-  }, [compromissos]);
+  }, [compromissosFiltrados]);
 
   const dispAtiva = useMemo(() => {
     const id = consultorId || disponibilidades[0]?.usuarioId;
@@ -97,7 +113,7 @@ export function AgendaView({
 
   const dayItems = byDay.get(selected) ?? [];
   const hoje = new Date().toISOString().slice(0, 10);
-  const atrasados = compromissos.filter((c) => c.status === "agendado" && c.data_inicio.slice(0, 10) < hoje);
+  const atrasados = compromissosFiltrados.filter((c) => c.status === "agendado" && c.data_inicio.slice(0, 10) < hoje);
   const hojeItems = byDay.get(hoje) ?? [];
 
   const prev = shiftMonth(year, month, -1);
@@ -120,7 +136,27 @@ export function AgendaView({
         </div>
         <div className={adminStatCardClass}>
           <p className={adminMutedLabelClass}>Mês</p>
-          <p className="text-2xl font-bold text-zinc-50">{compromissos.length}</p>
+          <p className="text-2xl font-bold text-zinc-50">{compromissosFiltrados.length}</p>
+        </div>
+      </div>
+
+      <div className={`${adminPanelClass} grid gap-3 sm:grid-cols-2`}>
+        <div>
+          <Label>Agenda exibida</Label>
+          <Select value={filtroConsultor} onChange={(e) => setFiltroConsultor(e.target.value)} className={`${surfaceSelectDark} mt-1`}>
+            {canViewTeam ? <option value="todos">Toda a equipe</option> : null}
+            {srds.map((s) => <option key={s.id} value={s.id}>{s.id === currentUserId ? `${s.nome} (minha agenda)` : s.nome}</option>)}
+          </Select>
+        </div>
+        <div>
+          <Label>Status</Label>
+          <Select value={filtroStatus} onChange={(e) => setFiltroStatus(e.target.value)} className={`${surfaceSelectDark} mt-1`}>
+            <option value="ativos">Pendentes / agendados</option>
+            <option value="todos">Todos os status</option>
+            <option value="concluido">Realizados</option>
+            <option value="cancelado">Cancelados</option>
+            <option value="nao_compareceu">Não compareceu</option>
+          </Select>
         </div>
       </div>
 
@@ -249,8 +285,13 @@ export function AgendaView({
                 </div>
               ) : (
                 <div>
-                  <Label>Lead (UUID — opcional)</Label>
-                  <Input name="lead_id" placeholder="cole o id do lead" className={surfaceInputDark} />
+                  <Label>Lead ou cliente (opcional)</Label>
+                  <Select name="lead_id" defaultValue="" className={surfaceSelectDark}>
+                    <option value="">Compromisso sem lead</option>
+                    {leadOptions.map((lead) => (
+                      <option key={lead.id} value={lead.id}>{lead.nome}{lead.whatsapp ? ` · ${lead.whatsapp}` : ""}</option>
+                    ))}
+                  </Select>
                 </div>
               )}
               <div>
@@ -282,7 +323,7 @@ export function AgendaView({
                       <div>
                         <p className="font-medium text-zinc-50">{c.titulo}</p>
                         <p className="text-xs text-zinc-400">
-                          {formatDateTime(c.data_inicio, null)} · {c.tipo} · {c.status}
+                          {formatDateTime(c.data_inicio, null)} · {c.tipo} · {c.status === "concluido" ? "realizado" : c.status}
                           {(c as { modalidade_atendimento?: string | null }).modalidade_atendimento
                             ? ` · ${(c as { modalidade_atendimento?: string }).modalidade_atendimento}`
                             : ""}
@@ -330,6 +371,9 @@ export function AgendaView({
                             >
                               Concluir
                             </Button>
+                            <form action={marcarNaoCompareceuAction.bind(null, c.id)}>
+                              <AdminFormSubmitButton size="sm" variant="outline" label="Não compareceu" pendingLabel="Salvando…" />
+                            </form>
                             <form action={cancelCompromissoAction.bind(null, c.id)}>
                               <AdminFormSubmitButton
                                 size="sm"

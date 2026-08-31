@@ -3,8 +3,9 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { requireUsuario } from "@/lib/auth/get-usuario";
-import { canManageLeads, usuarioAgendaFiltradaPorConsultor } from "@/lib/auth/permissions";
+import { requireTenantPermission } from "@/lib/tenant/context";
+import { usuarioAgendaFiltradaPorConsultor } from "@/lib/auth/permissions";
+import { resolverConsultorPorId } from "@/lib/admin/consultores";
 import type { AgendaCompromissoRow, AgendaStatus } from "@/lib/agenda/types";
 import { AGENDA_RESULTADOS } from "@/lib/agenda/types";
 import {
@@ -29,6 +30,29 @@ function parseDateTimeLocal(date: string, time: string): string {
     throw new Error("Data ou hora inválida.");
   }
   return d.toISOString();
+}
+
+async function assertSemConflito(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  empresaId: string,
+  consultorId: string,
+  inicio: string,
+  fim: string,
+  ignorarId?: string,
+) {
+  let query = supabase
+    .from("agenda_compromissos")
+    .select("id,titulo")
+    .eq("empresa_id", empresaId)
+    .eq("consultor_id", consultorId)
+    .eq("status", "agendado")
+    .lt("data_inicio", fim)
+    .gt("data_fim", inicio)
+    .limit(1);
+  if (ignorarId) query = query.neq("id", ignorarId);
+  const { data, error } = await query;
+  if (error) throw new Error(error.message);
+  if (data?.length) throw new Error(`Conflito de horário com “${data[0].titulo}”. Escolha outro horário.`);
 }
 
 async function attachAgendaRelations(
@@ -68,12 +92,12 @@ async function attachAgendaRelations(
 }
 
 export async function fetchCompromissosRange(fromIso: string, toIso: string, consultorId?: string) {
-  const u = await requireUsuario();
-  if (!canManageLeads(u.perfil)) throw new Error("Sem permissão");
+  const { usuario: u, empresaAtiva } = await requireTenantPermission("acessar_agenda");
   const supabase = await createClient();
   let q = supabase
     .from("agenda_compromissos")
     .select("*")
+    .eq("empresa_id", empresaAtiva.id)
     .gte("data_inicio", fromIso)
     .lte("data_inicio", toIso)
     .order("data_inicio");
@@ -93,10 +117,12 @@ export async function fetchCompromissosRange(fromIso: string, toIso: string, con
 }
 
 export async function fetchCompromissosLead(leadId: string) {
+  const { empresaAtiva } = await requireTenantPermission("acessar_agenda");
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("agenda_compromissos")
     .select("*")
+    .eq("empresa_id", empresaAtiva.id)
     .eq("lead_id", leadId)
     .order("data_inicio", { ascending: false })
     .limit(30);
@@ -107,14 +133,15 @@ export async function fetchCompromissosLead(leadId: string) {
 export async function fetchLeadAgendaPreview(leadId: string) {
   const id = leadId.trim();
   if (!id) return null;
+  const { empresaAtiva } = await requireTenantPermission("acessar_agenda");
   const supabase = await createClient();
-  const { data, error } = await supabase.from("leads").select("id, nome").eq("id", id).maybeSingle();
+  const { data, error } = await supabase.from("leads").select("id, nome").eq("empresa_id", empresaAtiva.id).eq("id", id).maybeSingle();
   if (error || !data) return null;
   return { id: data.id as string, nome: data.nome as string };
 }
 
 export async function fetchGoogleCalendarStatusForCurrentUser() {
-  const u = await requireUsuario();
+  const { usuario: u } = await requireTenantPermission("acessar_agenda");
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("usuarios")
@@ -145,8 +172,7 @@ export async function fetchGoogleCalendarStatusForCurrentUser() {
 }
 
 export async function createCompromissoAction(formData: FormData) {
-  const u = await requireUsuario();
-  if (!canManageLeads(u.perfil)) throw new Error("Sem permissão");
+  const { usuario: u, empresaAtiva } = await requireTenantPermission("acessar_agenda");
   const supabase = await createClient();
   const date = String(formData.get("data") ?? "").trim();
   const time = String(formData.get("hora") ?? "09:00").trim();
@@ -155,8 +181,14 @@ export async function createCompromissoAction(formData: FormData) {
   const dataInicio = parseDateTimeLocal(date, time);
   const dataFim = new Date(new Date(dataInicio).getTime() + duracao * 60_000).toISOString();
   const consultorId = String(formData.get("consultor_id") ?? u.id).trim() || u.id;
+  const podeOperarEquipe = !usuarioAgendaFiltradaPorConsultor(u);
+  if (consultorId !== u.id && !podeOperarEquipe) throw new Error("Sem permissão para agendar para outro responsável.");
+  const consultor = await resolverConsultorPorId(supabase, consultorId, empresaAtiva.id);
+  if (!consultor) throw new Error("Responsável inválido para esta empresa.");
+  await assertSemConflito(supabase, empresaAtiva.id, consultorId, dataInicio, dataFim);
 
   const row = {
+    empresa_id: empresaAtiva.id,
     lead_id: String(formData.get("lead_id") ?? "").trim() || null,
     consultor_id: consultorId,
     titulo: String(formData.get("titulo") ?? "").trim() || "Compromisso",
@@ -200,8 +232,7 @@ export async function createCompromissoAction(formData: FormData) {
 }
 
 export async function reagendarCompromissoAction(compromissoId: string, formData: FormData) {
-  const u = await requireUsuario();
-  if (!canManageLeads(u.perfil)) throw new Error("Sem permissão");
+  const { empresaAtiva } = await requireTenantPermission("acessar_agenda");
   const supabase = await createClient();
 
   const date = String(formData.get("data") ?? "").trim();
@@ -213,11 +244,13 @@ export async function reagendarCompromissoAction(compromissoId: string, formData
 
   const { data: comp, error: fetchErr } = await supabase
     .from("agenda_compromissos")
-    .select("id, status, lead_id")
+    .select("id, status, lead_id, consultor_id")
+    .eq("empresa_id", empresaAtiva.id)
     .eq("id", compromissoId)
     .single();
   if (fetchErr) throw new Error(fetchErr.message);
   if (comp.status !== "agendado") throw new Error("Só é possível reagendar compromissos agendados.");
+  await assertSemConflito(supabase, empresaAtiva.id, comp.consultor_id as string, dataInicio, dataFim, compromissoId);
 
   const { error } = await supabase
     .from("agenda_compromissos")
@@ -227,6 +260,7 @@ export async function reagendarCompromissoAction(compromissoId: string, formData
       duracao_minutos: duracao,
       status: "agendado",
     })
+    .eq("empresa_id", empresaAtiva.id)
     .eq("id", compromissoId);
   if (error) throw new Error(error.message);
 
@@ -240,6 +274,7 @@ export async function reagendarCompromissoAction(compromissoId: string, formData
         data_proxima_acao: dataInicio,
         proximo_retorno_data: date,
       })
+      .eq("empresa_id", empresaAtiva.id)
       .eq("id", leadId);
     revalidatePath(`/admin/leads/${leadId}`);
   }
@@ -256,8 +291,7 @@ export async function reagendarCompromissoAction(compromissoId: string, formData
 }
 
 export async function retornarCompromissoAction(compromissoId: string, formData: FormData) {
-  const u = await requireUsuario();
-  if (!canManageLeads(u.perfil)) throw new Error("Sem permissão");
+  const { empresaAtiva } = await requireTenantPermission("acessar_agenda");
   const supabase = await createClient();
 
   const date = String(formData.get("data") ?? "").trim();
@@ -271,6 +305,7 @@ export async function retornarCompromissoAction(compromissoId: string, formData:
   const { data: comp, error: fetchErr } = await supabase
     .from("agenda_compromissos")
     .select("lead_id, consultor_id, titulo")
+    .eq("empresa_id", empresaAtiva.id)
     .eq("id", compromissoId)
     .single();
   if (fetchErr) throw new Error(fetchErr.message);
@@ -278,6 +313,7 @@ export async function retornarCompromissoAction(compromissoId: string, formData:
   const { data: inserted, error } = await supabase
     .from("agenda_compromissos")
     .insert({
+      empresa_id: empresaAtiva.id,
       lead_id: comp.lead_id,
       consultor_id: comp.consultor_id,
       titulo: "Retorno — follow-up",
@@ -307,6 +343,7 @@ export async function retornarCompromissoAction(compromissoId: string, formData:
         proximo_retorno_data: date,
         proximo_retorno_hora: time.length === 5 ? `${time}:00` : time,
       })
+      .eq("empresa_id", empresaAtiva.id)
       .eq("id", leadId);
     revalidatePath(`/admin/leads/${leadId}`);
   }
@@ -323,8 +360,7 @@ export async function retornarCompromissoAction(compromissoId: string, formData:
 }
 
 export async function concluirCompromissoAction(compromissoId: string, formData: FormData) {
-  const u = await requireUsuario();
-  if (!canManageLeads(u.perfil)) throw new Error("Sem permissão");
+  const { empresaAtiva } = await requireTenantPermission("acessar_agenda");
   const supabase = await createClient();
   const outcome = String(formData.get("outcome") ?? "").trim();
   const observacao = String(formData.get("observacao_resultado") ?? "").trim() || null;
@@ -342,100 +378,73 @@ export async function concluirCompromissoAction(compromissoId: string, formData:
     throw new Error("Informe se o atendimento foi ganho ou perda.");
   }
 
-  const { data: comp, error: fetchErr } = await supabase
-    .from("agenda_compromissos")
-    .select("*, lead_id")
-    .eq("id", compromissoId)
-    .single();
-  if (fetchErr) throw new Error(fetchErr.message);
-
-  const { error } = await supabase
-    .from("agenda_compromissos")
-    .update({
-      status: "concluido",
-      resultado,
-      observacao_resultado: observacao,
-      proxima_data: null,
-    })
-    .eq("id", compromissoId);
-  if (error) throw new Error(error.message);
-
-  const leadId = comp.lead_id as string | null;
-  if (leadId) {
-    const now = new Date().toISOString();
-    if (outcome === "ganho") {
-      const produto = String(formData.get("produto_fechado") ?? "").trim();
-      const valorCredito = parseValorMonetario(String(formData.get("valor_credito") ?? ""));
+  const produto = outcome === "ganho" ? String(formData.get("produto_fechado") ?? "").trim() : null;
+  let valorCredito: number | null = null;
+  let tipoParcela: AgendaFechamentoTipoParcela | null = null;
+  let percentual: number | null = null;
+  let valorParcela: number | null = null;
+  if (outcome === "ganho") {
+      valorCredito = parseValorMonetario(String(formData.get("valor_credito") ?? ""));
       if (!produto) throw new Error("Selecione o tipo do bem.");
       if (valorCredito == null || valorCredito <= 0) throw new Error("Informe o valor do crédito vendido.");
-
-      const tipoParcela = String(formData.get("tipo_parcela") ?? "integral").trim() as AgendaFechamentoTipoParcela;
-      let percentual: number | null = null;
+      tipoParcela = String(formData.get("tipo_parcela") ?? "integral").trim() as AgendaFechamentoTipoParcela;
       if (tipoParcela === "reduzida") {
         percentual = parsePercentualParcela(String(formData.get("percentual_parcela") ?? ""));
         if (percentual == null) throw new Error("Informe o percentual da parcela reduzida (1–100).");
       }
-      const valorParcela = parseValorMonetario(String(formData.get("valor_parcela") ?? ""));
-
-      const leadPatch: Record<string, unknown> = {
-        status: "Fechado",
-        fechado: true,
-        fechado_at: now,
-        data_fechamento: now.slice(0, 10),
-        valor_fechado: valorCredito,
-        produto_fechado: produto,
-        observacao_fechamento: observacao,
-        motivo_perda: null,
-        observacao_perda: null,
-        perdido_at: null,
-        fechamento_tipo_parcela: tipoParcela,
-        fechamento_percentual_parcela: tipoParcela === "reduzida" ? percentual : null,
-        valor_parcela_fechamento: valorParcela,
-      };
-
-      let { error: leadErr } = await supabase.from("leads").update(leadPatch).eq("id", leadId);
-      if (leadErr && /fechamento_|valor_parcela_fechamento|schema cache/i.test(leadErr.message)) {
-        const { fechamento_tipo_parcela: _a, fechamento_percentual_parcela: _b, valor_parcela_fechamento: _c, ...fallback } =
-          leadPatch;
-        ({ error: leadErr } = await supabase.from("leads").update(fallback).eq("id", leadId));
-      }
-      if (leadErr) throw new Error(leadErr.message);
-    } else {
-      const motivo = String(formData.get("motivo_perda") ?? "").trim() || "Sem interesse";
-      if (motivo === "Em negociação") {
-        await supabase.from("leads").update({ status: "Negociação" }).eq("id", leadId);
-      } else if (motivo === "Sem resposta") {
-        await supabase
-          .from("leads")
-          .update({
-            status: "Perdido",
-            perdido_at: now,
-            motivo_perda: motivo,
-            observacao_perda: observacao,
-          })
-          .eq("id", leadId);
-      } else {
-        await supabase
-          .from("leads")
-          .update({
-            status: "Perdido",
-            perdido_at: now,
-            motivo_perda: motivo,
-            observacao_perda: observacao,
-          })
-          .eq("id", leadId);
-      }
-    }
-    revalidatePath(`/admin/leads/${leadId}`);
+      valorParcela = parseValorMonetario(String(formData.get("valor_parcela") ?? ""));
   }
+  const motivo = outcome === "perda" ? String(formData.get("motivo_perda") ?? "").trim() || "Sem interesse" : null;
+  const { data, error } = await supabase.rpc("rpc_concluir_compromisso_agenda", {
+    p_empresa_id: empresaAtiva.id,
+    p_compromisso_id: compromissoId,
+    p_outcome: outcome,
+    p_resultado: resultado,
+    p_observacao: observacao,
+    p_motivo_perda: motivo,
+    p_produto_fechado: produto,
+    p_valor_credito: valorCredito,
+    p_tipo_parcela: tipoParcela,
+    p_percentual_parcela: percentual,
+    p_valor_parcela: valorParcela,
+  });
+  if (error) throw new Error(error.message);
+  const leadId = (data as { lead_id?: string | null } | null)?.lead_id ?? null;
+  if (leadId) revalidatePath(`/admin/leads/${leadId}`);
   revalidatePath("/admin/agenda");
 }
 
+export async function fetchAgendaLeadOptions() {
+  const { empresaAtiva } = await requireTenantPermission("acessar_agenda");
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("leads")
+    .select("id,nome,whatsapp")
+    .eq("empresa_id", empresaAtiva.id)
+    .order("created_at", { ascending: false })
+    .limit(200);
+  if (error) throw new Error(error.message);
+  return (data ?? []).map((lead) => ({ id: lead.id as string, nome: lead.nome as string, whatsapp: lead.whatsapp as string | null }));
+}
+
 export async function cancelCompromissoAction(compromissoId: string) {
-  const u = await requireUsuario();
-  if (!canManageLeads(u.perfil)) throw new Error("Sem permissão");
+  const { empresaAtiva } = await requireTenantPermission("acessar_agenda");
   const supabase = await createClient();
   await removeCompromissoFromGoogleCalendar(compromissoId);
-  await supabase.from("agenda_compromissos").update({ status: "cancelado" }).eq("id", compromissoId);
+  const { error } = await supabase.from("agenda_compromissos").update({ status: "cancelado" }).eq("empresa_id", empresaAtiva.id).eq("id", compromissoId);
+  if (error) throw new Error(error.message);
+  revalidatePath("/admin/agenda");
+}
+
+export async function marcarNaoCompareceuAction(compromissoId: string) {
+  const { empresaAtiva } = await requireTenantPermission("acessar_agenda");
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("agenda_compromissos")
+    .update({ status: "nao_compareceu", resultado: "Não compareceu" })
+    .eq("empresa_id", empresaAtiva.id)
+    .eq("id", compromissoId)
+    .eq("status", "agendado");
+  if (error) throw new Error(error.message);
   revalidatePath("/admin/agenda");
 }

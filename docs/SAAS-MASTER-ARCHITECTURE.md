@@ -1333,6 +1333,29 @@ parceiro permanece necessariamente no modo compartilhado.
 Relatório:
 `docs/relatorios-fases/FASE-171-PORTAIS-PARCEIROS-ERP-COMPARTILHADO.md`.
 
+## 54. Agenda comercial tenant-aware e operação da equipe — Fase 172
+
+Compromissos, disponibilidade e bloqueios da Agenda carregam `empresa_id`
+obrigatório. O backfill deriva o tenant pelo lead ou por vínculo único ativo,
+sem fallback fixo para a Gauchinho, e falha fechado diante de qualquer origem
+ambígua. Lead e responsável são validados contra a mesma empresa.
+
+A visão da equipe depende de `empresa_usuarios.agenda_acesso_todos` ou papel de
+gestão. Consultores sem essa autorização operam somente compromissos próprios.
+A conclusão usa RPC transacional com lock, atualiza lead e compromisso na mesma
+transação e registra auditoria central. A interface oferece filtros por
+responsável e status, seleção legível de lead, conflito de horários e registro
+de não comparecimento.
+
+As migrations 162–164 foram aplicadas no Supabase principal em 31/08/2026; os
+24 compromissos existentes, cinco disponibilidades, três metadados e quatro
+bloqueios foram preservados com tenant definido. Laura recebeu visão da equipe
+no vínculo da Gauchinho. As pontes 163/164 mantêm compatibilidade durante a
+troca da aplicação.
+
+Relatório:
+`docs/relatorios-fases/FASE-172-AGENDA-COMERCIAL-TENANT-UX-PERMISSOES.md`.
+
 
 
 
