@@ -29,7 +29,7 @@ export function getGoogleCalendarRedirectUri(): string {
   return `${base}/api/auth/google-calendar/callback`;
 }
 
-export const GOOGLE_CALENDAR_SCOPE = "https://www.googleapis.com/auth/calendar.events";
+export const GOOGLE_CALENDAR_SCOPE = "openid email https://www.googleapis.com/auth/calendar.events";
 
 export type GoogleCalendarSetupInfo = {
   configured: boolean;

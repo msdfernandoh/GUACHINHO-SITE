@@ -1,13 +1,9 @@
 import { NextResponse } from "next/server";
-import { getUsuarioNegocio } from "@/lib/auth/get-usuario";
-import { canManageLeads } from "@/lib/auth/permissions";
+import { requireTenantPermission } from "@/lib/tenant/context";
 import { clearGoogleRefreshToken } from "@/lib/google-calendar/token-store";
 
 export async function POST() {
-  const usuario = await getUsuarioNegocio();
-  if (!usuario || !canManageLeads(usuario.perfil)) {
-    return NextResponse.json({ error: "Sem permissão" }, { status: 403 });
-  }
+  const { usuario } = await requireTenantPermission("acessar_agenda");
 
   await clearGoogleRefreshToken(usuario.id);
 

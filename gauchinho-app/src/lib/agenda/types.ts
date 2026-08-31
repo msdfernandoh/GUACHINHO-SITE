@@ -49,6 +49,10 @@ export type AgendaCompromissoRow = {
   proxima_data: string | null;
   created_at: string;
   updated_at: string;
+  escopo?: "INDIVIDUAL" | "EQUIPE";
+  dia_inteiro?: boolean;
+  origem?: "SISTEMA" | "GOOGLE";
   leads?: { nome: string; whatsapp: string | null } | null;
   usuarios?: { nome: string } | null;
+  participantes?: Array<{ usuario_id: string; nome: string }>;
 };

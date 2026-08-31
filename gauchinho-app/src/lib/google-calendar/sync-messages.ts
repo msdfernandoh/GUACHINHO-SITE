@@ -6,7 +6,7 @@ export function formatGoogleSyncUserMessage(
   synced: boolean,
 ): string | undefined {
   if (synced && reason === "synced") {
-    return "Compromisso sincronizado com a Google Agenda do consultor.";
+    return "Compromisso sincronizado com as Google Agendas dos participantes.";
   }
   const nome = consultorNome.trim() || "Consultor";
   switch (reason) {
@@ -22,6 +22,8 @@ export function formatGoogleSyncUserMessage(
       return "Compromisso salvo no sistema. Integração Google não configurada no servidor.";
     case "google_temporary_error":
       return "Compromisso salvo no sistema. Não foi possível sincronizar com o Google agora; tente novamente em instantes.";
+    case "google_error":
+      return "Compromisso salvo no sistema, mas a sincronização Google ficou incompleta. Confira a conta conectada e tente novamente.";
     default:
       return undefined;
   }

@@ -2,10 +2,12 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { randomUUID } from "node:crypto";
 import { createClient } from "@/lib/supabase/server";
 import { requireTenantPermission } from "@/lib/tenant/context";
-import { usuarioAgendaFiltradaPorConsultor } from "@/lib/auth/permissions";
 import { resolverConsultorPorId } from "@/lib/admin/consultores";
+import { agendaFormRange } from "@/lib/agenda/timezone";
+import { pullGoogleCalendarToAgenda } from "@/lib/google-calendar/pull-sync";
 import type { AgendaCompromissoRow, AgendaStatus } from "@/lib/agenda/types";
 import { AGENDA_RESULTADOS } from "@/lib/agenda/types";
 import {
@@ -23,13 +25,12 @@ import { appendSyncResultToSearchParams } from "@/lib/google-calendar/sync-messa
 import type { GoogleCalendarSyncResult } from "@/lib/google-calendar/types";
 import { getGoogleRefreshToken } from "@/lib/google-calendar/token-store";
 
-function parseDateTimeLocal(date: string, time: string): string {
-  const normalized = time.length === 5 ? `${time}:00` : time;
-  const d = new Date(`${date}T${normalized}`);
-  if (Number.isNaN(d.getTime())) {
-    throw new Error("Data ou hora inválida.");
-  }
-  return d.toISOString();
+export async function podeOperarEquipeAgenda() {
+  const { empresaAtiva } = await requireTenantPermission("acessar_agenda");
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("agenda_pode_ver_todos", { p_empresa_id: empresaAtiva.id });
+  if (error) throw new Error(error.message);
+  return data === true;
 }
 
 async function assertSemConflito(
@@ -66,6 +67,7 @@ async function attachAgendaRelations(
 
   const leadsById = new Map<string, { nome: string; whatsapp: string | null }>();
   const consultoresById = new Map<string, { nome: string }>();
+  const participantesByCompromisso = new Map<string, Array<{ usuario_id: string; nome: string }>>();
 
   if (leadIds.length) {
     const { data } = await supabase.from("leads").select("id, nome, whatsapp").in("id", leadIds);
@@ -83,11 +85,21 @@ async function attachAgendaRelations(
       consultoresById.set(row.id as string, { nome: row.nome as string });
     }
   }
+  const { data: participantes } = await supabase.from("agenda_compromisso_participantes")
+    .select("compromisso_id,usuario_id,usuario:usuarios(nome)")
+    .in("compromisso_id", rows.map((r) => r.id));
+  for (const p of participantes ?? []) {
+    const usuario = Array.isArray(p.usuario) ? p.usuario[0] : p.usuario;
+    const list = participantesByCompromisso.get(p.compromisso_id as string) ?? [];
+    list.push({ usuario_id: p.usuario_id as string, nome: String(usuario?.nome ?? "Usuário") });
+    participantesByCompromisso.set(p.compromisso_id as string, list);
+  }
 
   return rows.map((r) => ({
     ...r,
     leads: r.lead_id ? leadsById.get(r.lead_id) ?? null : null,
     usuarios: r.consultor_id ? consultoresById.get(r.consultor_id) ?? { nome: "—" } : null,
+    participantes: participantesByCompromisso.get(r.id) ?? [],
   }));
 }
 
@@ -98,13 +110,22 @@ export async function fetchCompromissosRange(fromIso: string, toIso: string, con
     .from("agenda_compromissos")
     .select("*")
     .eq("empresa_id", empresaAtiva.id)
-    .gte("data_inicio", fromIso)
-    .lte("data_inicio", toIso)
+    .lt("data_inicio", toIso)
+    .or(`data_fim.gt.${new Date(fromIso).toISOString()},and(data_fim.is.null,data_inicio.gte.${new Date(fromIso).toISOString()})`)
     .order("data_inicio");
-  if (usuarioAgendaFiltradaPorConsultor(u)) {
-    q = q.eq("consultor_id", u.id);
+  const podeEquipe = await podeOperarEquipeAgenda();
+  if (consultorId && !/^[0-9a-f-]{36}$/i.test(consultorId)) throw new Error("Responsável inválido.");
+  const filtroUsuarioId = !podeEquipe ? u.id : consultorId;
+  let participanteIds: string[] = [];
+  if (filtroUsuarioId) {
+    const { data: participacoes } = await supabase.from("agenda_compromisso_participantes")
+      .select("compromisso_id").eq("empresa_id", empresaAtiva.id).eq("usuario_id", filtroUsuarioId);
+    participanteIds = (participacoes ?? []).map((p) => p.compromisso_id as string);
+  }
+  if (!podeEquipe) {
+    q = participanteIds.length ? q.or(`consultor_id.eq.${u.id},id.in.(${participanteIds.join(",")})`) : q.eq("consultor_id", u.id);
   } else if (consultorId) {
-    q = q.eq("consultor_id", consultorId);
+    q = participanteIds.length ? q.or(`consultor_id.eq.${consultorId},id.in.(${participanteIds.join(",")})`) : q.eq("consultor_id", consultorId);
   }
   const { data, error } = await q;
   if (error) {
@@ -141,7 +162,7 @@ export async function fetchLeadAgendaPreview(leadId: string) {
 }
 
 export async function fetchGoogleCalendarStatusForCurrentUser() {
-  const { usuario: u } = await requireTenantPermission("acessar_agenda");
+  const { usuario: u, empresaAtiva } = await requireTenantPermission("acessar_agenda");
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("usuarios")
@@ -149,10 +170,14 @@ export async function fetchGoogleCalendarStatusForCurrentUser() {
     .eq("id", u.id)
     .maybeSingle();
   const setup = getGoogleCalendarSetupInfo();
+  const { data: link } = await supabase.from("empresa_usuarios").select("google_agenda_bidirecional,google_agenda_sync")
+    .eq("empresa_id", empresaAtiva.id).eq("usuario_id", u.id).maybeSingle();
+  const { data: state } = await supabase.from("agenda_google_sync_estado").select("ultima_sincronizacao,ultimo_erro")
+    .eq("empresa_id", empresaAtiva.id).eq("usuario_id", u.id).maybeSingle();
   const base = {
     configured: setup.configured,
     eligible: isGmailAddress(data?.email ?? u.email),
-    syncEnabled: Boolean(data?.google_agenda_sync),
+    syncEnabled: Boolean(link?.google_agenda_sync),
     connected: Boolean(data?.google_calendar_connected_at),
     googleEmail: (data?.google_calendar_email as string | null) ?? null,
     connectedAt: (data?.google_calendar_connected_at as string | null) ?? null,
@@ -160,6 +185,9 @@ export async function fetchGoogleCalendarStatusForCurrentUser() {
     hasClientId: setup.hasClientId,
     hasClientSecret: setup.hasClientSecret,
     requiresReconnect: false,
+    bidirectional: Boolean(link?.google_agenda_bidirecional),
+    lastSync: state?.ultima_sincronizacao ?? null,
+    lastError: state?.ultimo_erro ?? null,
   };
   if (error && /google_agenda_sync|google_calendar_connected_at|google_calendar_email|schema cache/i.test(error.message)) {
     return { ...base, eligible: isGmailAddress(u.email), syncEnabled: false, connected: false };
@@ -175,19 +203,18 @@ export async function createCompromissoAction(formData: FormData) {
   const { usuario: u, empresaAtiva } = await requireTenantPermission("acessar_agenda");
   const supabase = await createClient();
   const date = String(formData.get("data") ?? "").trim();
-  const time = String(formData.get("hora") ?? "09:00").trim();
   if (!date) throw new Error("Informe a data do compromisso.");
-  const duracao = parseInt(String(formData.get("duracao_minutos") ?? "60"), 10) || 60;
-  const dataInicio = parseDateTimeLocal(date, time);
-  const dataFim = new Date(new Date(dataInicio).getTime() + duracao * 60_000).toISOString();
-  const consultorId = String(formData.get("consultor_id") ?? u.id).trim() || u.id;
-  const podeOperarEquipe = !usuarioAgendaFiltradaPorConsultor(u);
-  if (consultorId !== u.id && !podeOperarEquipe) throw new Error("Sem permissão para agendar para outro responsável.");
+  const { inicio: dataInicio, fim: dataFim, duracao, diaInteiro } = agendaFormRange(formData);
+  const escopoEquipe = formData.get("escopo") === "EQUIPE";
+  const consultorId = escopoEquipe ? u.id : String(formData.get("consultor_id") ?? u.id).trim() || u.id;
+  const podeOperarEquipe = await podeOperarEquipeAgenda();
+  if ((escopoEquipe || consultorId !== u.id) && !podeOperarEquipe) throw new Error("Sem permissão para agendar para a equipe.");
   const consultor = await resolverConsultorPorId(supabase, consultorId, empresaAtiva.id);
   if (!consultor) throw new Error("Responsável inválido para esta empresa.");
-  await assertSemConflito(supabase, empresaAtiva.id, consultorId, dataInicio, dataFim);
 
+  const requestId = String(formData.get("request_id") ?? "");
   const row = {
+    id: /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(requestId) ? requestId : randomUUID(),
     empresa_id: empresaAtiva.id,
     lead_id: String(formData.get("lead_id") ?? "").trim() || null,
     consultor_id: consultorId,
@@ -199,15 +226,23 @@ export async function createCompromissoAction(formData: FormData) {
     duracao_minutos: duracao,
     local: String(formData.get("local") ?? "").trim() || null,
     status: "agendado" as AgendaStatus,
+    escopo: escopoEquipe ? "EQUIPE" : "INDIVIDUAL",
+    dia_inteiro: diaInteiro,
     modalidade_atendimento: (() => {
       const m = String(formData.get("modalidade_atendimento") ?? "").trim();
       return m === "presencial" || m === "online" ? m : null;
     })(),
   };
+  // Participantes são gravados pelo trigger na mesma transação do compromisso.
   let { data: inserted, error } = await supabase.from("agenda_compromissos").insert(row).select("id").single();
-  if (error && /modalidade_atendimento|schema cache/i.test(error.message)) {
-    const { modalidade_atendimento: _m, ...fallback } = row;
-    ({ data: inserted, error } = await supabase.from("agenda_compromissos").insert(fallback).select("id").single());
+  if (error?.code === "23505") {
+    const previous = await supabase.from("agenda_compromissos").select("*").eq("empresa_id", empresaAtiva.id)
+      .eq("id", row.id).eq("criado_por_usuario_id", u.id).single();
+    const matches = previous.data && Object.entries(row).every(([key, value]) => {
+      const saved = previous.data[key];
+      return key === "data_inicio" || key === "data_fim" ? Date.parse(saved) === Date.parse(String(value)) : saved === value;
+    });
+    if (matches) { inserted = { id: row.id }; error = null; }
   }
   if (error) throw new Error(error.message);
 
@@ -220,7 +255,7 @@ export async function createCompromissoAction(formData: FormData) {
   qs.set("dia", date);
 
   if (inserted?.id) {
-    const syncResult = await pushCompromissoToGoogleCalendar(inserted.id as string);
+    const syncResult = await pushCompromissoToGoogleCalendar(inserted.id as string).catch((): GoogleCalendarSyncResult => ({ synced: false, reason: "google_error" }));
     appendSyncResultToSearchParams(qs, syncResult);
   }
 
@@ -236,11 +271,8 @@ export async function reagendarCompromissoAction(compromissoId: string, formData
   const supabase = await createClient();
 
   const date = String(formData.get("data") ?? "").trim();
-  const time = String(formData.get("hora") ?? "10:00").trim();
   if (!date) throw new Error("Informe a nova data.");
-  const duracao = parseInt(String(formData.get("duracao_minutos") ?? "60"), 10) || 60;
-  const dataInicio = parseDateTimeLocal(date, time);
-  const dataFim = new Date(new Date(dataInicio).getTime() + duracao * 60_000).toISOString();
+  const { inicio: dataInicio, fim: dataFim, duracao, diaInteiro } = agendaFormRange(formData);
 
   const { data: comp, error: fetchErr } = await supabase
     .from("agenda_compromissos")
@@ -258,13 +290,14 @@ export async function reagendarCompromissoAction(compromissoId: string, formData
       data_inicio: dataInicio,
       data_fim: dataFim,
       duracao_minutos: duracao,
+      dia_inteiro: diaInteiro,
       status: "agendado",
     })
     .eq("empresa_id", empresaAtiva.id)
-    .eq("id", compromissoId);
+    .eq("id", compromissoId).eq("status", "agendado").select("id").single();
   if (error) throw new Error(error.message);
 
-  const syncResult = await updateCompromissoOnGoogleCalendar(compromissoId);
+  const syncResult = await updateCompromissoOnGoogleCalendar(compromissoId).catch((): GoogleCalendarSyncResult => ({ synced: false, reason: "google_error" }));
 
   const leadId = comp.lead_id as string | null;
   if (leadId) {
@@ -297,9 +330,7 @@ export async function retornarCompromissoAction(compromissoId: string, formData:
   const date = String(formData.get("data") ?? "").trim();
   const time = String(formData.get("hora") ?? "10:00").trim();
   if (!date) throw new Error("Informe a data do retorno.");
-  const duracao = parseInt(String(formData.get("duracao_minutos") ?? "30"), 10) || 30;
-  const dataInicio = parseDateTimeLocal(date, time);
-  const dataFim = new Date(new Date(dataInicio).getTime() + duracao * 60_000).toISOString();
+  const { inicio: dataInicio, fim: dataFim, duracao, diaInteiro } = agendaFormRange(formData, 30);
   const observacao = String(formData.get("descricao") ?? "").trim() || null;
 
   const { data: comp, error: fetchErr } = await supabase
@@ -321,6 +352,7 @@ export async function retornarCompromissoAction(compromissoId: string, formData:
       data_inicio: dataInicio,
       data_fim: dataFim,
       duracao_minutos: duracao,
+      dia_inteiro: diaInteiro,
       status: "agendado",
       descricao: observacao ?? `Retorno após: ${comp.titulo}`,
     })
@@ -330,7 +362,7 @@ export async function retornarCompromissoAction(compromissoId: string, formData:
 
   let syncResult: GoogleCalendarSyncResult = { synced: false, reason: "google_error" };
   if (inserted?.id) {
-    syncResult = await pushCompromissoToGoogleCalendar(inserted.id as string);
+    syncResult = await pushCompromissoToGoogleCalendar(inserted.id as string).catch((): GoogleCalendarSyncResult => ({ synced: false, reason: "google_error" }));
   }
 
   const leadId = comp.lead_id as string | null;
@@ -430,10 +462,12 @@ export async function fetchAgendaLeadOptions() {
 export async function cancelCompromissoAction(compromissoId: string) {
   const { empresaAtiva } = await requireTenantPermission("acessar_agenda");
   const supabase = await createClient();
-  await removeCompromissoFromGoogleCalendar(compromissoId);
-  const { error } = await supabase.from("agenda_compromissos").update({ status: "cancelado" }).eq("empresa_id", empresaAtiva.id).eq("id", compromissoId);
+  const { error } = await supabase.from("agenda_compromissos").update({ status: "cancelado" }).eq("empresa_id", empresaAtiva.id)
+    .eq("id", compromissoId).in("status", ["agendado", "cancelado"]).select("id").single();
   if (error) throw new Error(error.message);
+  const result = await removeCompromissoFromGoogleCalendar(compromissoId);
   revalidatePath("/admin/agenda");
+  if (!result.synced && result.reason === "google_error") throw new Error("Cancelado no sistema. Falha ao cancelar no Google; tente sincronizar novamente.");
 }
 
 export async function marcarNaoCompareceuAction(compromissoId: string) {
@@ -447,4 +481,54 @@ export async function marcarNaoCompareceuAction(compromissoId: string) {
     .eq("status", "agendado");
   if (error) throw new Error(error.message);
   revalidatePath("/admin/agenda");
+}
+
+export async function toggleGoogleBidirecionalAction(formData: FormData) {
+  const { usuario, empresaAtiva } = await requireTenantPermission("acessar_agenda");
+  const enabled = formData.get("enabled") === "true";
+  if (enabled && formData.get("consentimento") !== "on") throw new Error("Confirme o compartilhamento com a empresa.");
+  if (enabled && !(await getGoogleRefreshToken(usuario.id))) throw new Error("Conecte sua Google Agenda primeiro.");
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("rpc_agenda_google_consentimento", { p_empresa_id: empresaAtiva.id, p_habilitar: enabled });
+  if (error) throw new Error(error.message);
+  revalidatePath("/admin/agenda");
+}
+
+export async function sincronizarGoogleAgoraAction() {
+  try {
+    const { usuario, empresaAtiva } = await requireTenantPermission("acessar_agenda");
+    const result = await pullGoogleCalendarToAgenda(empresaAtiva.id, usuario.id);
+    revalidatePath("/admin/agenda");
+    return { error: false, message: `Importação concluída: ${result.imported} novos, ${result.updated} atualizados e ${result.cancelled} cancelados.` };
+  } catch (error) {
+    return { error: true, message: error instanceof Error ? error.message : "Falha ao importar Google Agenda." };
+  }
+}
+
+export async function configurarImportacaoGoogleAction(_state: { error: boolean; message: string }, formData: FormData) {
+  try {
+    await toggleGoogleBidirecionalAction(formData);
+    return { error: false, message: formData.get("enabled") === "true" ? "Importação autorizada. Clique em Importar agora." : "Importação desativada. O histórico foi preservado." };
+  } catch (error) {
+    return { error: true, message: error instanceof Error ? error.message : "Falha ao alterar importação." };
+  }
+}
+
+export async function marcarRealizadoAgendaAction(compromissoId: string) {
+  const { empresaAtiva } = await requireTenantPermission("acessar_agenda");
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("rpc_agenda_marcar_realizado", { p_empresa_id: empresaAtiva.id, p_compromisso_id: compromissoId });
+  if (error) throw new Error(error.message);
+  revalidatePath("/admin/agenda");
+}
+
+export async function reenviarCompromissoGoogleAction(compromissoId: string) {
+  const { empresaAtiva } = await requireTenantPermission("acessar_agenda");
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("agenda_compromissos").select("status").eq("empresa_id", empresaAtiva.id).eq("id", compromissoId).single();
+  if (error) throw new Error("Compromisso indisponível.");
+  const result = await (data.status === "cancelado" ? removeCompromissoFromGoogleCalendar(compromissoId) : pushCompromissoToGoogleCalendar(compromissoId))
+    .catch((): GoogleCalendarSyncResult => ({ synced: false, reason: "google_error" }));
+  const qs = new URLSearchParams(); appendSyncResultToSearchParams(qs, result);
+  revalidatePath("/admin/agenda"); redirect(`/admin/agenda?${qs}`);
 }

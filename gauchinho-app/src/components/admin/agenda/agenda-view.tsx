@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import type { AgendaCompromissoRow } from "@/lib/agenda/types";
 import { AGENDA_TIPOS } from "@/lib/agenda/types";
 import {
@@ -10,6 +10,8 @@ import {
   reagendarCompromissoAction,
   retornarCompromissoAction,
   marcarNaoCompareceuAction,
+  marcarRealizadoAgendaAction,
+  reenviarCompromissoGoogleAction,
 } from "@/app/admin/agenda/actions";
 import { AgendaConcluirForm } from "@/components/admin/agenda/agenda-concluir-form";
 import {
@@ -19,7 +21,8 @@ import {
 } from "@/components/admin/agenda/agenda-month-calendar";
 import { AdminFormSubmitButton } from "@/components/admin/admin-form-submit-button";
 import { Button, Input, Label, Select, Textarea } from "@/components/ui/form-primitives";
-import { formatDateTime } from "@/lib/utils/format";
+import { agendaDateKey, agendaTimeKey, AGENDA_TIME_ZONE } from "@/lib/agenda/timezone";
+import { AgendaDurationFields } from "./agenda-duration-fields";
 import {
   adminMutedLabelClass,
   adminPanelClass,
@@ -36,6 +39,7 @@ import { ConsultorDisponibilidadeSelect } from "@/components/admin/agenda/consul
 type Srd = { id: string; nome: string };
 
 type Props = {
+  requestId: string;
   month: number;
   year: number;
   compromissos: AgendaCompromissoRow[];
@@ -53,13 +57,8 @@ function pad(n: number) {
   return String(n).padStart(2, "0");
 }
 
-function timeFromIso(iso: string): string {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "10:00";
-  return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
-}
-
 export function AgendaView({
+  requestId,
   month,
   year,
   compromissos,
@@ -73,7 +72,8 @@ export function AgendaView({
   leadOptions,
 }: Props) {
   const [selected, setSelected] = useState(initialDay ?? `${year}-${pad(month)}-01`);
-  const [consultorId, setConsultorId] = useState(srds[0]?.id ?? "");
+  const [consultorId, setConsultorId] = useState(currentUserId);
+  const [escopo, setEscopo] = useState("INDIVIDUAL");
   const [showNew, setShowNew] = useState(!!initialLeadId);
   const [concluirId, setConcluirId] = useState<string | null>(null);
   const [reagendarId, setReagendarId] = useState<string | null>(null);
@@ -81,15 +81,8 @@ export function AgendaView({
   const [filtroConsultor, setFiltroConsultor] = useState(canViewTeam ? "todos" : currentUserId);
   const [filtroStatus, setFiltroStatus] = useState("ativos");
 
-  useEffect(() => {
-    if (!selected.startsWith(`${year}-${pad(month)}`)) {
-      setSelected(`${year}-${pad(month)}-01`);
-      setShowNew(false);
-    }
-  }, [year, month, selected]);
-
   const compromissosFiltrados = useMemo(() => compromissos.filter((c) => {
-    if (filtroConsultor !== "todos" && c.consultor_id !== filtroConsultor) return false;
+    if (filtroConsultor !== "todos" && c.consultor_id !== filtroConsultor && !c.participantes?.some((p) => p.usuario_id === filtroConsultor)) return false;
     if (filtroStatus === "ativos") return c.status === "agendado";
     if (filtroStatus !== "todos") return c.status === filtroStatus;
     return true;
@@ -98,13 +91,16 @@ export function AgendaView({
   const byDay = useMemo(() => {
     const map = new Map<string, AgendaCompromissoRow[]>();
     for (const c of compromissosFiltrados) {
-      const d = c.data_inicio.slice(0, 10);
-      const list = map.get(d) ?? [];
-      list.push(c);
-      map.set(d, list);
+      for (let day = 1; day <= new Date(year, month, 0).getDate(); day++) {
+        const d = `${year}-${pad(month)}-${pad(day)}`;
+        if (d < agendaDateKey(c.data_inicio) || d > agendaDateKey(new Date(Date.parse(c.data_fim ?? c.data_inicio) - (c.data_fim ? 1 : 0)))) continue;
+        const list = map.get(d) ?? [];
+        list.push(c);
+        map.set(d, list);
+      }
     }
     return map;
-  }, [compromissosFiltrados]);
+  }, [compromissosFiltrados, year, month]);
 
   const dispAtiva = useMemo(() => {
     const id = consultorId || disponibilidades[0]?.usuarioId;
@@ -112,8 +108,8 @@ export function AgendaView({
   }, [consultorId, disponibilidades]);
 
   const dayItems = byDay.get(selected) ?? [];
-  const hoje = new Date().toISOString().slice(0, 10);
-  const atrasados = compromissosFiltrados.filter((c) => c.status === "agendado" && c.data_inicio.slice(0, 10) < hoje);
+  const hoje = agendaDateKey(new Date());
+  const atrasados = compromissosFiltrados.filter((c) => c.status === "agendado" && agendaDateKey(c.data_fim ?? c.data_inicio) < hoje);
   const hojeItems = byDay.get(hoje) ?? [];
 
   const prev = shiftMonth(year, month, -1);
@@ -208,6 +204,7 @@ export function AgendaView({
             <form action={createCompromissoAction} className={`space-y-3 ${adminPanelClass}`}>
               <h3 className={adminSectionTitleClass}>Novo compromisso</h3>
               <input type="hidden" name="data" value={selected} />
+              <input type="hidden" name="request_id" value={requestId} />
               <input type="hidden" name="mes" value={String(month)} />
               <input type="hidden" name="ano" value={String(year)} />
               {initialLeadId ? <input type="hidden" name="lead_id" value={initialLeadId} /> : null}
@@ -215,16 +212,15 @@ export function AgendaView({
                 <Label>Título</Label>
                 <Input name="titulo" required defaultValue="Atendimento" className={surfaceInputDark} />
               </div>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div>
-                  <Label>Hora</Label>
-                  <Input name="hora" type="time" defaultValue="10:00" required className={surfaceInputDark} />
-                </div>
-                <div>
-                  <Label>Duração (min)</Label>
-                  <Input name="duracao_minutos" type="number" defaultValue="60" className={surfaceInputDark} />
-                </div>
+              <div>
+                <Label htmlFor="agenda-escopo">Agendar para</Label>
+                <Select id="agenda-escopo" name="escopo" value={escopo} onChange={(e) => setEscopo(e.target.value)} className={surfaceSelectDark}>
+                  <option value="INDIVIDUAL">Uma pessoa</option>
+                  {canViewTeam ? <option value="EQUIPE">Toda a equipe</option> : null}
+                </Select>
+                {escopo === "EQUIPE" ? <p className="mt-2 text-xs text-amber-300">Inclui todos os membros ativos com acesso à agenda nesta empresa. Ideal para inaugurações e reuniões gerais. Novos membros não são adicionados retroativamente.</p> : null}
               </div>
+              <AgendaDurationFields />
               <div>
                 <Label>Tipo</Label>
                 <Select name="tipo" defaultValue="Atendimento" className={surfaceSelectDark}>
@@ -235,7 +231,7 @@ export function AgendaView({
                   ))}
                 </Select>
               </div>
-              <div>
+              <div hidden={escopo === "EQUIPE"}>
                 <Label>Consultor</Label>
                 {srds.length === 0 ? (
                   <>
@@ -323,17 +319,20 @@ export function AgendaView({
                       <div>
                         <p className="font-medium text-zinc-50">{c.titulo}</p>
                         <p className="text-xs text-zinc-400">
-                          {formatDateTime(c.data_inicio, null)} · {c.tipo} · {c.status === "concluido" ? "realizado" : c.status}
+                          {c.dia_inteiro ? "Dia todo" : new Date(c.data_inicio).toLocaleString("pt-BR", { timeZone: AGENDA_TIME_ZONE, dateStyle: "short", timeStyle: "short" })} · {c.tipo} · {c.status === "concluido" ? "realizado" : c.status}
                           {(c as { modalidade_atendimento?: string | null }).modalidade_atendimento
                             ? ` · ${(c as { modalidade_atendimento?: string }).modalidade_atendimento}`
                             : ""}
                         </p>
+                        {c.escopo === "EQUIPE" ? <p className="mt-1 text-xs text-amber-300">Toda a equipe · {c.participantes?.length ?? 0} participantes{c.participantes?.length ? `: ${c.participantes.map((p) => p.nome).join(", ")}` : ""}</p> : null}
+                        {c.origem === "GOOGLE" ? <p className="mt-1 text-xs text-sky-300">Importado do Google · alterações devem ser feitas na agenda de origem.</p> : null}
                         <p className="text-xs text-zinc-400">
                           {c.leads?.nome ?? "Sem lead"} · {c.usuarios?.nome ?? "Consultor"}
                         </p>
                       </div>
                       <div className="flex flex-wrap gap-1">
-                        {c.status === "agendado" ? (
+                        {c.origem !== "GOOGLE" && (canViewTeam || c.consultor_id === currentUserId) && ["agendado", "cancelado"].includes(c.status) ? <form action={reenviarCompromissoGoogleAction.bind(null, c.id)}><AdminFormSubmitButton size="sm" variant="outline" label="Sincronizar Google" pendingLabel="Sincronizando…" /></form> : null}
+                        {c.status === "agendado" && c.origem !== "GOOGLE" && (canViewTeam || c.consultor_id === currentUserId) ? (
                           <>
                             <Button
                               type="button"
@@ -359,7 +358,7 @@ export function AgendaView({
                             >
                               Retornar
                             </Button>
-                            <Button
+                            {!c.lead_id ? <form action={marcarRealizadoAgendaAction.bind(null, c.id)}><AdminFormSubmitButton size="sm" variant="gold" label="Marcar realizado" pendingLabel="Salvando…" /></form> : <Button
                               type="button"
                               size="sm"
                               variant="gold"
@@ -370,7 +369,7 @@ export function AgendaView({
                               }}
                             >
                               Concluir
-                            </Button>
+                            </Button>}
                             <form action={marcarNaoCompareceuAction.bind(null, c.id)}>
                               <AdminFormSubmitButton size="sm" variant="outline" label="Não compareceu" pendingLabel="Salvando…" />
                             </form>
@@ -400,31 +399,13 @@ export function AgendaView({
                             <Input
                               name="data"
                               type="date"
-                              defaultValue={c.data_inicio.slice(0, 10)}
-                              required
-                              className={surfaceInputDark}
-                            />
-                          </div>
-                          <div>
-                            <Label>Hora</Label>
-                            <Input
-                              name="hora"
-                              type="time"
-                              defaultValue={timeFromIso(c.data_inicio)}
+                              defaultValue={agendaDateKey(c.data_inicio)}
                               required
                               className={surfaceInputDark}
                             />
                           </div>
                         </div>
-                        <div>
-                          <Label>Duração (min)</Label>
-                          <Input
-                            name="duracao_minutos"
-                            type="number"
-                            defaultValue={String(c.duracao_minutos ?? 60)}
-                            className={surfaceInputDark}
-                          />
-                        </div>
+                        <AgendaDurationFields initialMinutes={c.duracao_minutos ?? 60} initialAllDay={c.dia_inteiro} initialTime={agendaTimeKey(c.data_inicio)} />
                         <AdminFormSubmitButton size="sm" label="Salvar reagendamento" pendingLabel="Salvando…" />
                       </form>
                     ) : null}
@@ -441,15 +422,8 @@ export function AgendaView({
                             <Label>Data</Label>
                             <Input name="data" type="date" required className={surfaceInputDark} />
                           </div>
-                          <div>
-                            <Label>Hora</Label>
-                            <Input name="hora" type="time" defaultValue="10:00" required className={surfaceInputDark} />
-                          </div>
                         </div>
-                        <div>
-                          <Label>Duração (min)</Label>
-                          <Input name="duracao_minutos" type="number" defaultValue="30" className={surfaceInputDark} />
-                        </div>
+                        <AgendaDurationFields initialMinutes={30} />
                         <Textarea name="descricao" rows={2} placeholder="Observação do retorno" className={surfaceInputDark} />
                         <AdminFormSubmitButton size="sm" label="Criar retorno" pendingLabel="Agendando…" />
                       </form>

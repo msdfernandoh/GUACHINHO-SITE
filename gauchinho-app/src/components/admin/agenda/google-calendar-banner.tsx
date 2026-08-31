@@ -1,4 +1,6 @@
 "use client";
+import { useActionState } from "react";
+import { configurarImportacaoGoogleAction, sincronizarGoogleAgoraAction } from "@/app/admin/agenda/actions";
 
 import { Button } from "@/components/ui/form-primitives";
 import { formatGoogleSyncUserMessage } from "@/lib/google-calendar/sync-messages";
@@ -19,6 +21,9 @@ type Props = {
     oauthRedirectUri?: string;
     hasClientId?: boolean;
     hasClientSecret?: boolean;
+    bidirectional?: boolean;
+    lastSync?: string | null;
+    lastError?: string | null;
   };
   flash?: string | null;
   syncFlash?: string | null;
@@ -103,6 +108,8 @@ function syncFlashMessage(syncFlash: string, syncNome?: string | null): string |
 }
 
 export function GoogleCalendarAgendaBanner({ status, flash, syncFlash, syncNome }: Props) {
+  const [importState, importAction, importing] = useActionState(sincronizarGoogleAgoraAction, { error: false, message: "" });
+  const [consentState, consentAction, saving] = useActionState(configurarImportacaoGoogleAction, { error: false, message: "" });
   const flashMsg = flash ? FLASH[flash] : null;
   const syncMsg = syncFlash ? syncFlashMessage(syncFlash, syncNome) : null;
   const redirectUri = status.oauthRedirectUri ?? "https://SEU-DOMINIO/api/auth/google-calendar/callback";
@@ -193,6 +200,21 @@ export function GoogleCalendarAgendaBanner({ status, flash, syncFlash, syncNome 
                   Desconectar
                 </Button>
               </form>
+            </div>
+            <div className="mt-3 space-y-3 border-t border-zinc-700 pt-3">
+              <p className="font-medium text-zinc-100">Google → sistema {status.bidirectional ? "· autorizado" : "· opcional"}</p>
+              <p className="text-xs text-zinc-300">Importa eventos da sua agenda principal, dos últimos 30 dias aos próximos 370 dias. Título, local e descrição ficam visíveis conforme as permissões da equipe. Eventos marcados como privados no Google não são importados.</p>
+              <p className="text-xs text-zinc-400">Edite cada compromisso onde ele foi criado: eventos do sistema são enviados ao Google; eventos criados no Google são atualizados aqui. Não é uma mesclagem de edições dos dois lados.</p>
+              <form action={consentAction} className="space-y-2">
+                <input name="enabled" type="hidden" value={String(!status.bidirectional)} />
+                {!status.bidirectional ? <label className="flex items-start gap-2 text-xs text-zinc-200"><input name="consentimento" type="checkbox" required className="mt-0.5" />Autorizo compartilhar os eventos não privados da minha agenda principal com esta empresa.</label> : null}
+                <Button type="submit" size="sm" variant="outline" disabled={saving}>{saving ? "Salvando…" : status.bidirectional ? "Desativar importação" : "Autorizar importação"}</Button>
+              </form>
+              {status.bidirectional ? <form action={importAction}><Button type="submit" size="sm" variant="gold" disabled={importing}>{importing ? "Importando…" : "Importar agora"}</Button></form> : null}
+              {status.lastSync ? <p className="text-xs text-zinc-400">Última importação concluída: {new Date(status.lastSync).toLocaleString("pt-BR", { timeZone: "America/Cuiaba" })}</p> : null}
+              {status.lastError ? <p className="text-xs text-amber-300">{status.lastError}</p> : null}
+              {consentState.message ? <p role="status" className={consentState.error ? "text-amber-300" : "text-emerald-300"}>{consentState.message}</p> : null}
+              {importState.message ? <p role="status" className={importState.error ? "text-amber-300" : "text-emerald-300"}>{importState.message}</p> : null}
             </div>
           </div>
         ) : (

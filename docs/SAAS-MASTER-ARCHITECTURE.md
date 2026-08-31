@@ -1398,6 +1398,27 @@ Previsões já elegíveis ou pagas não podem ser substituídas.
 Relatório:
 `docs/relatorios-fases/ERP-PERFIS-CRONOGRAMA-PROPRIO-CADASTRO.md`.
 
+## 57. Agenda coletiva, dia todo e Google bidirecional — Fase 175
+
+Compromissos podem ser individuais ou registrar, atomicamente, o snapshot de
+todos os membros ativos com acesso à Agenda. Participantes leem o evento
+coletivo; somente o responsável ou operadores autorizados a ver a equipe podem
+alterá-lo. Conflitos incluem todos os participantes e são serializados no banco.
+
+Data e hora civil são convertidas explicitamente no fuso `America/Cuiaba`, sem
+depender do fuso do processo da aplicação. A interface oferece Dia todo e
+duração separada em horas/minutos. Eventos sem lead possuem conclusão simples e
+auditada; atendimentos preservam o fechamento comercial existente.
+
+A integração Google usa um evento por participante, retry idempotente e vínculo
+com a conta conectada. A importação Google → sistema é opt-in, tenant-aware e
+preserva a origem: evento criado no Google é editado no Google; evento criado no
+sistema é editado no sistema. Eventos privados não transferem detalhes. O job
+usa paginação, `syncToken`, consentimento revalidado e segredo próprio.
+
+Nenhum compromisso histórico é recalculado ou removido. Relatório:
+`docs/relatorios-fases/FASE-175-AGENDA-EQUIPE-DIA-TODO-GOOGLE-BIDIRECIONAL.md`.
+
 
 
 
