@@ -29,7 +29,10 @@ export async function listarConsultores(
       const usuario = (Array.isArray(link.usuario) ? link.usuario[0] : link.usuario) as
         | { id: string; nome: string; email?: string | null; ativo?: boolean }
         | null;
-      if (!usuario?.ativo || !["admin_empresa", "gestor", "consultor"].includes(papel?.codigo ?? "")) return [];
+      const elegivel =
+        link.is_consultor === true ||
+        ["super_admin", "admin_empresa", "gestor", "consultor"].includes(papel?.codigo ?? "");
+      if (!usuario?.ativo || !elegivel) return [];
       return [{
         id: usuario.id,
         nome: usuario.nome,
@@ -98,7 +101,7 @@ export async function resolverConsultorPorId(
   if (empresaId) {
     const { data, error } = await supabase
       .from("empresa_usuarios")
-      .select("papel:papeis(codigo),usuario:usuarios!empresa_usuarios_usuario_id_fkey(id,nome,email,ativo)")
+      .select("is_consultor,papel:papeis(codigo),usuario:usuarios!empresa_usuarios_usuario_id_fkey(id,nome,email,ativo)")
       .eq("empresa_id", empresaId)
       .eq("usuario_id", id)
       .eq("ativo", true)
@@ -107,7 +110,10 @@ export async function resolverConsultorPorId(
     const usuario = (Array.isArray(data?.usuario) ? data.usuario[0] : data?.usuario) as
       | { id: string; nome: string; email?: string | null; ativo?: boolean }
       | null;
-    if (error || !usuario?.ativo || !["admin_empresa", "gestor", "consultor"].includes(papel?.codigo ?? "")) {
+    const elegivel =
+      data?.is_consultor === true ||
+      ["super_admin", "admin_empresa", "gestor", "consultor"].includes(papel?.codigo ?? "");
+    if (error || !usuario?.ativo || !elegivel) {
       return null;
     }
     return { id: usuario.id, nome: usuario.nome, email: usuario.email ?? null };

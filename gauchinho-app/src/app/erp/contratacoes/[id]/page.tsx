@@ -4,6 +4,11 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { requireTenantPermission } from "@/lib/tenant/context";
 import { calcularPrazoGrupoFromRow } from "@/lib/grupos/prazos";
 import { obterQuantidadeCotasContratacao } from "@/lib/contratacoes-online/quantidade-cotas";
+import {
+  resolverModalidadeComissaoId,
+  resolverParticipantePrincipalId,
+  resolverPerfilPrincipalId,
+} from "@/lib/erp/formalizacao-defaults";
 import { DocumentoLink } from "./documento-link";
 import {
   FormalizacaoVendaForm,
@@ -122,7 +127,7 @@ export default async function ConferirContratacaoPage({
       .order("codigo_grupo"),
     admin
       .from("participantes_comerciais")
-      .select("id,nome,nome_exibicao,status,participante_tipos(tipo_codigo)")
+      .select("id,usuario_id,nome,nome_exibicao,status,participante_tipos(tipo_codigo)")
       .eq("empresa_id", empresaAtiva.id)
       .ilike("status", "ativo")
       .order("nome"),
@@ -234,15 +239,22 @@ export default async function ConferirContratacaoPage({
     : undefined;
 
   const cotaSelecionadaId = cotaMatch?.id || "";
-  const modalidadePersistidaId = String((c.dados_simulacao as any)?.modalidade_comissao_id ?? "");
-  const modalidadeSelecionadaId = cotaMatch?.modalidades.some((item) => item.id === modalidadePersistidaId)
-    ? modalidadePersistidaId
-    : "";
+  const modalidadeSelecionadaId = resolverModalidadeComissaoId({
+    modalidadePersistidaId: String((c.dados_simulacao as any)?.modalidade_comissao_id ?? ""),
+    modalidades: cotaMatch?.modalidades ?? [],
+    dadosSimulacao: c.dados_simulacao,
+  });
 
-  const consultorSelecionadoId =
-    c.participante_comercial_id && participantes.some((participante) => participante.id === c.participante_comercial_id)
-      ? c.participante_comercial_id
-      : "";
+  const consultorSelecionadoId = resolverParticipantePrincipalId({
+    participantePersistidoId: c.participante_comercial_id,
+    consultorUsuarioId: String((c.dados_simulacao as any)?.consultor_id ?? ""),
+    participantes,
+  });
+  const perfilPrincipalSelecionadoId = resolverPerfilPrincipalId({
+    perfilPersistidoId: String((c.dados_simulacao as any)?.perfil_principal_id ?? ""),
+    participanteId: consultorSelecionadoId,
+    vinculos: vinculosPerfis,
+  });
   const snapshotCalculo = (c.dados_simulacao as any)?.snapshot_calculo;
   const condicaoComercialCongelada = Boolean(snapshotCalculo?.hash_sha256 && snapshotCalculo?.imutavel);
   const quantidadeCotas = obterQuantidadeCotasContratacao(c.dados_simulacao, c.quantidade_cotas);
@@ -367,7 +379,7 @@ export default async function ConferirContratacaoPage({
         initialCotaId={cotaSelecionadaId}
         initialModalidadeId={modalidadeSelecionadaId}
         initialPrincipalId={consultorSelecionadoId}
-        initialPerfilPrincipalId={(c.dados_simulacao as any)?.perfil_principal_id || null}
+        initialPerfilPrincipalId={perfilPrincipalSelecionadoId}
         initialPerfilSecundarioId={(c.dados_simulacao as any)?.perfil_secundario_id || null}
         initialDataPrimeiraParcela={(c.dados_simulacao as any)?.data_primeira_parcela || null}
         initialDataSegundaParcela={(c.dados_simulacao as any)?.data_segunda_parcela || null}

@@ -1,12 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useActionState, useMemo, useState } from "react";
 import type { AgendaCompromissoRow } from "@/lib/agenda/types";
 import { AGENDA_TIPOS } from "@/lib/agenda/types";
 import {
   cancelCompromissoAction,
   concluirCompromissoAction,
-  createCompromissoAction,
+  createCompromissoStateAction,
   reagendarCompromissoAction,
   retornarCompromissoAction,
   marcarNaoCompareceuAction,
@@ -80,6 +80,7 @@ export function AgendaView({
   const [retornarId, setRetornarId] = useState<string | null>(null);
   const [filtroConsultor, setFiltroConsultor] = useState(canViewTeam ? "todos" : currentUserId);
   const [filtroStatus, setFiltroStatus] = useState("ativos");
+  const [createState, createAction] = useActionState(createCompromissoStateAction, { error: null });
 
   const compromissosFiltrados = useMemo(() => compromissos.filter((c) => {
     if (filtroConsultor !== "todos" && c.consultor_id !== filtroConsultor && !c.participantes?.some((p) => p.usuario_id === filtroConsultor)) return false;
@@ -201,8 +202,13 @@ export function AgendaView({
 
         <div className="space-y-4">
           {showNew ? (
-            <form action={createCompromissoAction} className={`space-y-3 ${adminPanelClass}`}>
+            <form action={createAction} className={`space-y-3 ${adminPanelClass}`}>
               <h3 className={adminSectionTitleClass}>Novo compromisso</h3>
+              {createState.error ? (
+                <p role="alert" className="rounded-lg border border-red-800 bg-red-950/50 px-3 py-2 text-sm text-red-200">
+                  {createState.error}
+                </p>
+              ) : null}
               <input type="hidden" name="data" value={selected} />
               <input type="hidden" name="request_id" value={requestId} />
               <input type="hidden" name="mes" value={String(month)} />

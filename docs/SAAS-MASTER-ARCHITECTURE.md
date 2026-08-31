@@ -1419,6 +1419,25 @@ usa paginação, `syncToken`, consentimento revalidado e segredo próprio.
 Nenhum compromisso histórico é recalculado ou removido. Relatório:
 `docs/relatorios-fases/FASE-175-AGENDA-EQUIPE-DIA-TODO-GOOGLE-BIDIRECIONAL.md`.
 
+## 58. Hotfix de responsável da Agenda e formalização imobiliária — Fase 176
+
+A Agenda considera elegível o membro ativo marcado como consultor no vínculo
+N:N, inclusive quando seu papel canônico é `super_admin`. A validação continua
+exigindo usuário ativo e vínculo com a empresa atual. Erros operacionais da
+criação são devolvidos ao próprio formulário e não encerram a rota.
+
+Na formalização, o `usuarios.id` preservado no snapshot público é resolvido para
+`participantes_comerciais.id` pela relação canônica. Perfil e modalidade só são
+pré-selecionados quando a origem é determinística: único vínculo de papel
+`CONSULTOR` e código de modalidade derivado da condição comercial assinada.
+
+A migration 173 restaura no programa ativo Racon Imóvel as três regras e etapas
+já homologadas no catálogo canônico anterior. O processo não cria percentuais
+novos e não altera vendas, previsões, recebimentos ou pagamentos existentes.
+
+Relatório:
+`docs/relatorios-fases/FASE-176-HOTFIX-AGENDA-E-FORMALIZACAO-RACON-IMOVEL.md`.
+
 
 
 

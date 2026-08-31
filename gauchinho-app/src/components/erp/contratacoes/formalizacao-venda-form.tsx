@@ -40,6 +40,7 @@ export type GrupoConsorcio = {
 
 export type ParticipanteComercial = {
   id: string;
+  usuario_id?: string | null;
   nome: string;
   nome_exibicao: string | null;
   status: string;
@@ -259,7 +260,7 @@ export function FormalizacaoVendaForm({
         etapasCount,
         badge,
         badgeColor,
-        isCadastradaNoBanco: true,
+        isCadastradaNoBanco: Boolean(regra),
       };
     });
   }, [cotaAtual, regrasFranquia, grupoAtual, programaPrincipalId]);
@@ -529,6 +530,11 @@ export function FormalizacaoVendaForm({
             Não existe modelo de comissão homologado para esta administradora. Ajuste as regras antes de formalizar.
           </p>
         )}
+        {selectedCotaId && modalidadesOpcoes.length > 0 && !modalidadesOpcoes.some((item) => item.isCadastradaNoBanco) ? (
+          <p role="alert" className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-xs font-semibold text-amber-900">
+            As modalidades comerciais existem, mas o programa deste perfil ainda não possui regra de comissão vigente. A venda só pode ser formalizada após a configuração canônica da comissão.
+          </p>
+        ) : null}
 
       </div>
 

@@ -266,6 +266,31 @@ export async function createCompromissoAction(formData: FormData) {
   redirect(`/admin/agenda?${qs.toString()}`);
 }
 
+export type CreateCompromissoState = { error: string | null };
+
+/** Mantém falhas operacionais dentro do formulário, sem derrubar a rota inteira. */
+export async function createCompromissoStateAction(
+  _state: CreateCompromissoState,
+  formData: FormData,
+): Promise<CreateCompromissoState> {
+  try {
+    await createCompromissoAction(formData);
+    return { error: null };
+  } catch (error) {
+    if (
+      error &&
+      typeof error === "object" &&
+      "digest" in error &&
+      String((error as { digest?: string }).digest).startsWith("NEXT_REDIRECT")
+    ) {
+      throw error;
+    }
+    return {
+      error: error instanceof Error ? error.message : "Não foi possível salvar o compromisso.",
+    };
+  }
+}
+
 export async function reagendarCompromissoAction(compromissoId: string, formData: FormData) {
   const { empresaAtiva } = await requireTenantPermission("acessar_agenda");
   const supabase = await createClient();
