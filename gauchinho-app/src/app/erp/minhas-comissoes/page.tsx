@@ -6,18 +6,47 @@ import { mesAtualEmCuiaba } from "@/lib/erp/minhas-comissoes-vendas";
 import { carregarResumoVendasMes } from "@/lib/erp/minhas-comissoes-vendas-server";
 import { lerFiscalParticipante } from "@/lib/erp/comissoes-fiscal-extrato";
 
-export default async function MinhasComissoesPage() {
-  const { empresaAtiva, usuario } = await getCurrentTenantContext();
+export default async function MinhasComissoesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ participante?: string }>;
+}) {
+  const { empresaAtiva, usuario, vinculoAtivo, permissoes } = await getCurrentTenantContext();
   if (!empresaAtiva || !usuario) return null;
 
   const db = await createClient();
-  const { data: participante } = await db
+  const papelCodigo = vinculoAtivo?.papel?.codigo ?? "";
+  const podeGerenciarEquipe =
+    papelCodigo === "super_admin" ||
+    (["admin_empresa", "gestor"].includes(papelCodigo) && permissoes.has("gerenciar_comissoes"));
+  const podePagarEquipe =
+    podeGerenciarEquipe &&
+    (papelCodigo === "super_admin" || permissoes.has("gerenciar_financeiro"));
+  const { participante: participanteSolicitado } = await searchParams;
+
+  const { data: participanteProprio } = await db
     .from("participantes_comerciais")
     .select("id,nome,nome_exibicao")
     .eq("empresa_id", empresaAtiva.id)
     .eq("usuario_id", usuario.id)
-    .eq("status", "ATIVO")
+    .ilike("status", "ativo")
     .maybeSingle();
+
+  const { data: participantesEquipe, error: participantesError } = podeGerenciarEquipe
+    ? await db
+        .from("participantes_comerciais")
+        .select("id,nome,nome_exibicao")
+        .eq("empresa_id", empresaAtiva.id)
+        .ilike("status", "ativo")
+        .order("nome")
+    : { data: participanteProprio ? [participanteProprio] : [], error: null };
+  if (participantesError) throw new Error("Não foi possível carregar os consultores da empresa.");
+
+  const participantes = participantesEquipe ?? [];
+  const participanteSelecionado = podeGerenciarEquipe && participanteSolicitado
+    ? participantes.find((item) => item.id === participanteSolicitado) ?? null
+    : null;
+  const participante = participanteSelecionado ?? participanteProprio ?? participantes[0] ?? null;
 
   if (!participante) {
     return (
@@ -127,6 +156,11 @@ export default async function MinhasComissoesPage() {
         mostrarDetalhesFiscais={mostrarDetalhesFiscais}
         resumoVendasMes={resumoVendasMes}
         podeGerenciarFiscal={Boolean(podeGerenciarFiscal)}
+        participantesEquipe={participantes}
+        participanteSelecionadoId={participante.id}
+        participanteProprioId={participanteProprio?.id ?? null}
+        podeGerenciarEquipe={podeGerenciarEquipe}
+        podePagarEquipe={podePagarEquipe}
       />
     </main>
   );

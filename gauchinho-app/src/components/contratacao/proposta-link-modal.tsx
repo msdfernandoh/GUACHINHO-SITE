@@ -1,6 +1,6 @@
 "use client";
 
-import { Copy, ExternalLink, MessageCircle, X } from "lucide-react";
+import { Copy, ExternalLink, Image, MessageCircle, X } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/form-primitives";
 import { formatCurrency } from "@/lib/utils/format";
@@ -32,6 +32,7 @@ export function PropostaLinkModal({
   whatsappDestino,
 }: Props) {
   const [copied, setCopied] = useState(false);
+  const [imageStatus, setImageStatus] = useState<"idle" | "copied" | "error">("idle");
   const [visualizacao, setVisualizacao] = useState<VisualizacaoProposta>("completa");
   if (!open) return null;
 
@@ -46,6 +47,52 @@ export function PropostaLinkModal({
     await navigator.clipboard.writeText(publicUrl);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  }
+
+  async function copyProposalImage() {
+    try {
+      const canvas = document.createElement("canvas");
+      canvas.width = 1080;
+      canvas.height = 1080;
+      const context = canvas.getContext("2d");
+      if (!context) throw new Error("Canvas indisponível");
+      const gradient = context.createLinearGradient(0, 0, 1080, 1080);
+      gradient.addColorStop(0, "#020617");
+      gradient.addColorStop(1, "#172554");
+      context.fillStyle = gradient;
+      context.fillRect(0, 0, 1080, 1080);
+      context.fillStyle = "#fbbf24";
+      context.fillRect(80, 82, 110, 8);
+      context.font = "700 30px Arial";
+      context.fillText("PROPOSTA DE CONSÓRCIO", 80, 145);
+      context.fillStyle = "#ffffff";
+      context.font = "800 58px Arial";
+      context.fillText(tipoBem || "Plano personalizado", 80, 235);
+      const linhas = [
+        ["Crédito", credito != null ? formatCurrency(credito) : "A consultar"],
+        ["Parcela inicial", parcela != null ? formatCurrency(parcela) : "A consultar"],
+        ["Protocolo", protocolo],
+      ];
+      linhas.forEach(([label, value], index) => {
+        const y = 380 + index * 165;
+        context.fillStyle = "#94a3b8";
+        context.font = "600 27px Arial";
+        context.fillText(label, 80, y);
+        context.fillStyle = "#ffffff";
+        context.font = "800 48px Arial";
+        context.fillText(value, 80, y + 62);
+      });
+      context.fillStyle = "#67e8f9";
+      context.font = "700 27px Arial";
+      context.fillText("Gauchinho Consórcios", 80, 965);
+      const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/png"));
+      if (!blob || !navigator.clipboard || typeof ClipboardItem === "undefined") throw new Error("Clipboard indisponível");
+      await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
+      setImageStatus("copied");
+      setTimeout(() => setImageStatus("idle"), 2500);
+    } catch {
+      setImageStatus("error");
+    }
   }
 
   return (
@@ -129,6 +176,10 @@ export function PropostaLinkModal({
           <Button type="button" variant="gold" onClick={copyLink}>
             <Copy className="mr-2 h-4 w-4" />
             {copied ? "Copiado!" : "Copiar link"}
+          </Button>
+          <Button type="button" variant="outlineGold" onClick={() => void copyProposalImage()} className="border-zinc-600 bg-zinc-900">
+            <Image className="mr-2 h-4 w-4" />
+            {imageStatus === "copied" ? "Imagem copiada!" : imageStatus === "error" ? "Não foi possível copiar" : "Copiar imagem"}
           </Button>
           <a href={waHref} target="_blank" rel="noreferrer">
             <Button type="button" variant="outlineGold" className="border-zinc-600 bg-zinc-900">

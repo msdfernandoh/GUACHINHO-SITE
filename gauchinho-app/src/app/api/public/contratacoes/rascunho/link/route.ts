@@ -1,13 +1,15 @@
 import { NextResponse } from "next/server";
-import { validarContratacaoDraftLink } from "@/lib/contratacoes-online/draft-link";
+import { validarContratacaoDraftLink, validarContratacaoDraftLinkCurto } from "@/lib/contratacoes-online/draft-link";
 import { resolveOperationalTenantForApi } from "@/lib/tenant/assert-legacy-operational-api";
 
 export async function POST(request: Request) {
   const tenant = await resolveOperationalTenantForApi(request);
   if (!tenant.ok) return tenant.response;
   try {
-    const body = (await request.json()) as { d?: unknown; s?: unknown };
-    const draft = validarContratacaoDraftLink(body.d, body.s);
+    const body = (await request.json()) as { c?: unknown; d?: unknown; s?: unknown };
+    const draft = body.c
+      ? await validarContratacaoDraftLinkCurto(body.c, tenant.empresaId)
+      : validarContratacaoDraftLink(body.d, body.s);
     if (draft.empresa_id && draft.empresa_id !== tenant.empresaId) {
       return NextResponse.json({ error: "Link pertence a outra empresa." }, { status: 404 });
     }

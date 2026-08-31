@@ -85,7 +85,7 @@ export async function POST(request: Request) {
         ok: true,
         draft: true,
         path: "/proposta/rascunho",
-        url: body.modo === "sdr_link" ? criarContratacaoDraftLink(draftPayload, new URL(request.url).origin) : undefined,
+        url: body.modo === "sdr_link" ? await criarContratacaoDraftLink(draftPayload, new URL(request.url).origin) : undefined,
         draftPayload,
       });
     }

@@ -2,9 +2,10 @@
 
 import { useState, useMemo } from "react";
 import { Calendar, CircleDollarSign, Clock, CheckCircle2, Layers3, Search, User, X } from "lucide-react";
-import { conferirPagamentoAction } from "@/app/erp/minhas-comissoes/actions";
+import { conferirPagamentoAction, pagarComissaoEquipeAction } from "@/app/erp/minhas-comissoes/actions";
 import type { ResumoVendasMes } from "@/lib/erp/minhas-comissoes-vendas";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 export type PrevisaoParticipanteItem = {
   id: string;
@@ -32,6 +33,11 @@ interface MinhasComissoesClientProps {
   mostrarDetalhesFiscais: boolean;
   resumoVendasMes: ResumoVendasMes;
   podeGerenciarFiscal: boolean;
+  participantesEquipe: Array<{ id: string; nome: string; nome_exibicao: string | null }>;
+  participanteSelecionadoId: string;
+  participanteProprioId: string | null;
+  podeGerenciarEquipe: boolean;
+  podePagarEquipe: boolean;
 }
 
 const brl = (val: number) =>
@@ -43,7 +49,13 @@ export function MinhasComissoesClient({
   mostrarDetalhesFiscais,
   resumoVendasMes,
   podeGerenciarFiscal,
+  participantesEquipe,
+  participanteSelecionadoId,
+  participanteProprioId,
+  podeGerenciarEquipe,
+  podePagarEquipe,
 }: MinhasComissoesClientProps) {
+  const router = useRouter();
   const now = new Date();
   const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
   const nextMonthDate = new Date(now.getFullYear(), now.getMonth() + 1, 1);
@@ -158,8 +170,28 @@ export function MinhasComissoesClient({
     <div className="space-y-6">
       {/* Header Principal */}
       <header className="rounded-3xl bg-slate-950 p-7 text-white shadow-xl">
-        <p className="text-xs font-bold uppercase tracking-widest text-cyan-300">Extrato &amp; Projeção de Comissões</p>
-        <h1 className="mt-2 text-3xl font-black">{participanteNome}</h1>
+        <div className="flex flex-wrap items-end justify-between gap-5">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-widest text-cyan-300">Extrato &amp; Projeção de Comissões</p>
+            <h1 className="mt-2 text-3xl font-black">{participanteNome}</h1>
+          </div>
+          {podeGerenciarEquipe ? (
+            <label className="min-w-72 text-xs font-bold text-slate-200">
+              Consultor da equipe
+              <select
+                value={participanteSelecionadoId}
+                onChange={(event) => router.push(`/erp/minhas-comissoes?participante=${encodeURIComponent(event.target.value)}`)}
+                className="mt-2 w-full rounded-xl border border-slate-600 bg-slate-900 px-3 py-2.5 text-sm font-bold text-white"
+              >
+                {participantesEquipe.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.nome_exibicao || item.nome}{item.id === participanteProprioId ? " — Minhas comissões" : ""}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : null}
+        </div>
         <p className="mt-2 text-xs text-slate-300">
           Acompanhe suas previsões mês a mês, valores elegíveis e repasses liberados por cliente e competência.
         </p>
@@ -439,7 +471,15 @@ export function MinhasComissoesClient({
                     <td className="p-3 font-mono text-slate-700 dark:text-slate-300">{brl(Number(row.valor_elegivel))}</td>
                     <td className="p-3 font-mono text-emerald-700 dark:text-emerald-400 font-bold">{brl(Number(row.valor_pago))}</td>
                     <td className="p-3 text-right">
-                      {row.conferido_por_participante ? (
+                      {podePagarEquipe && Number(row.valor_elegivel) > Number(row.valor_pago) ? (
+                        <form action={pagarComissaoEquipeAction}>
+                          <input type="hidden" name="previsao_id" value={row.id} />
+                          <input type="hidden" name="participante_id" value={participanteSelecionadoId} />
+                          <button className="rounded-xl bg-emerald-700 px-3 py-1 text-[11px] font-bold text-white shadow-2xs hover:bg-emerald-800">
+                            Pagar comissão
+                          </button>
+                        </form>
+                      ) : row.conferido_por_participante ? (
                         <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-bold text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300">
                           <CheckCircle2 className="h-3.5 w-3.5" />
                           Conferido por mim

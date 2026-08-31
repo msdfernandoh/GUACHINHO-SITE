@@ -1437,6 +1437,29 @@ novos e não altera vendas, previsões, recebimentos ou pagamentos existentes.
 
 Relatório:
 `docs/relatorios-fases/FASE-176-HOTFIX-AGENDA-E-FORMALIZACAO-RACON-IMOVEL.md`.
+## 59. Visão e pagamento de comissões da equipe — Fase 177
+
+O `super_admin` e Administradores/Gestores com `gerenciar_comissoes` podem selecionar um
+participante ativo da própria empresa em Minhas Comissões. O pagamento exige
+também `gerenciar_financeiro` e reutiliza a RPC financeira transacional, sem
+escrita direta, mantendo elegibilidade, idempotência, caixa append-only e
+auditoria. A migration 174 alinha a autorização interna da RPC a essa permissão
+granular. Consultores permanecem restritos ao próprio extrato.
+
+Relatório:
+`docs/relatorios-fases/FASE-177-MINHAS-COMISSOES-VISAO-EQUIPE-PAGAMENTO.md`.
+
+## 60. Link curto e imagem da proposta — Fase 178
+
+Rascunhos compartilháveis deixam de transportar o payload comercial completo na
+URL. A migration 175 mantém o conteúdo temporário no servidor e expõe somente
+um código aleatório curto, resolvido junto ao tenant do host e à expiração. Links
+assinados legados permanecem compatíveis durante a transição. O modal também
+gera localmente um cartão PNG da primeira visão comercial para cópia e envio sem
+link, sem persistir uma imagem ou alterar o snapshot.
+
+Relatório:
+`docs/relatorios-fases/FASE-178-LINK-CURTO-E-IMAGEM-PROPOSTA.md`.
 
 
 

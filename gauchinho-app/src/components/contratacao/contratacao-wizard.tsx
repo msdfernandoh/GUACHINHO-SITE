@@ -107,7 +107,7 @@ export function ContratacaoWizard({
   draftMode?: boolean;
   visualizacao?: VisualizacaoProposta;
   canGenerateLinks?: boolean;
-  draftLink?: { d: string; s: string };
+  draftLink?: { c: string } | { d: string; s: string };
 }) {
   const tenantBrand = useTenantBrand();
   const router = useRouter();
