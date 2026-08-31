@@ -1168,6 +1168,43 @@ tenant original preserva seu tema legado em seu próprio domínio.
 Relatório:
 `docs/relatorios-fases/FASE-162-IDENTIDADE-INDEPENDENTE-TENANT-RACON.md`.
 
+## 45. Aparência por página e bloco — Fase 163
+
+O modelo Racon reutiliza `site_modelos.identidade_visual.paginas_blocos` para
+armazenar overrides por caminho de página e identificador semântico de bloco.
+Fundo, títulos, textos, destaques, botões e imagens são editáveis separadamente.
+A precedência é padrão do modelo, página e bloco. Configurações ausentes
+preservam os padrões e as imagens legadas de `imagens_banners`.
+
+As cores aceitam hexadecimal validado e as imagens caminhos locais ou HTTPS;
+não é permitido CSS arbitrário nesta configuração. O upload reutiliza a
+biblioteca de mídia existente. A logo padrão usa `logo_padrao_url`, com o
+arquivo oficial Racon como fallback exclusivo deste modelo.
+
+`catalogo_menus[].ativo=false` oculta o menu no modelo; `ativo_padrao`
+continua sendo apenas o padrão de onboarding. As seleções da empresa continuam
+em `empresa_site_modelos.menus_habilitados`. Visibilidade não concede nem
+revoga permissões de rotas. Não há migration, alteração de cálculos ou dados
+comerciais. O salvamento permanece protegido pela RPC de Platform Superadmin.
+
+Relatório: `docs/relatorios-fases/FASE-163-APARENCIA-PAGINAS-BLOCOS-RACON.md`.
+
+## 46. Redefinição de senha do responsável — Fase 164
+
+O Platform Superadmin pode gerar senha temporária para o responsável principal
+ativo via listagem de usuários ou HUB da empresa. A ação valida o vínculo
+`empresa_usuarios` na empresa informada e resolve `usuarios.auth_user_id`;
+não presume igualdade entre identidade comercial e Auth.
+
+A operação exige confirmação, substitui a senha global da identidade e
+preserva papéis, vínculos e status. `app_metadata.exige_troca_senha=true`
+reutiliza o fluxo obrigatório de definição da senha no login.
+Os metadados registram autor e data, nunca a senha. A credencial é retornada
+apenas para a resposta da ação e descartada da interface ao fechar o modal.
+Nenhuma senha real é alterada como parte de testes ou implantação.
+
+Relatório: `docs/relatorios-fases/FASE-164-NOVA-SENHA-RESPONSAVEL-PRINCIPAL.md`.
+
 
 
 

@@ -2,6 +2,7 @@
 
 import { useActionState, useEffect, useState } from "react";
 import Link from "next/link";
+import { ResetPrincipalPassword } from "@/components/platform/reset-principal-password";
 import {
   convidarUsuarioPlatformAction,
   alterarUsuarioPlatformAction,
@@ -432,6 +433,7 @@ export function PlatformUsuariosClient({
                           </form>
                         )}
 
+                        {u.is_responsavel_principal && u.ativo && u.status === "ATIVO" && <ResetPrincipalPassword empresaId={u.empresa_id} linkId={u.id} email={u.email} />}
                         {!u.is_responsavel_principal && (
                           <form action={actionResponsavel}>
                             <input type="hidden" name="empresa_id" value={u.empresa_id} />

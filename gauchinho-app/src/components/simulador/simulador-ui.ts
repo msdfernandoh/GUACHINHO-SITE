@@ -11,7 +11,8 @@ export function stepBadgeClass(active = true) {
 
 export function choiceCardClass(selected: boolean, className?: string) {
   return cn(
-    "rounded-2xl border p-4 text-left transition-all duration-200",
+    "sim-choice rounded-2xl border p-4 text-left transition-all duration-200",
+    selected ? "sim-choice-selected" : "",
     "min-h-[4.5rem] shadow-lg shadow-black/20",
     selected
       ? "border-amber-400/80 bg-amber-400 text-slate-950 ring-2 ring-amber-300/60"
@@ -22,7 +23,7 @@ export function choiceCardClass(selected: boolean, className?: string) {
 
 export function sectionCardClass(className?: string) {
   return cn(
-    "rounded-2xl border border-slate-700/60 bg-slate-900/50 p-5 shadow-xl shadow-black/25 sm:p-6",
+    "sim-section rounded-2xl border border-slate-700/60 bg-slate-900/50 p-5 shadow-xl shadow-black/25 sm:p-6",
     className,
   );
 }

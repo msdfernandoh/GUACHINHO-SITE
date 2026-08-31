@@ -15,7 +15,7 @@ describe("menus e identidade efetivos do modelo no runtime", () => {
   it("carrega catálogo e filtra pelos IDs habilitados da empresa", () => {
     expect(loader).toContain("menus_habilitados");
     expect(loader).toContain("catalogo_menus");
-    expect(loader).toContain("idsHabilitados.has(item.id)");
+    expect(loader).toContain("visibleModelMenus(");
   });
 
   it("entrega menus, seções e identidade completa ao template Racon", () => {
@@ -28,7 +28,7 @@ describe("menus e identidade efetivos do modelo no runtime", () => {
   it("usa um único chrome Racon no layout e não injeta CTAs fora do catálogo", () => {
     expect(layout).toContain("<RaconInspiredHeader");
     expect(layout).toContain("<RaconInspiredFooter");
-    expect(chrome).toContain("menus.map");
+    expect(chrome).toContain("activeMenus.map");
     expect(chrome).not.toContain("Seja um Franqueado");
     expect(chrome).not.toContain("Simule seu Consórcio");
   });

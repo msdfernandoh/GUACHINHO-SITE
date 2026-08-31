@@ -251,7 +251,7 @@ export function GrupoTotalsBar(props: Props) {
   const temSelecao = totais.gruposSelecionados > 0 || totais.totalCotas > 0;
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-20 border-t border-amber-500/25 bg-zinc-950/95 shadow-[0_-8px_28px_rgba(0,0,0,0.28)] backdrop-blur-md">
+    <div data-site-block="totais" data-site-tone="inverse" className="fixed bottom-0 left-0 right-0 z-20 border-t border-amber-500/25 bg-zinc-950/95 shadow-[0_-8px_28px_rgba(0,0,0,0.28)] backdrop-blur-md">
       <div className="lg:hidden">
         <div className="flex items-center gap-2 px-3 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
           <button

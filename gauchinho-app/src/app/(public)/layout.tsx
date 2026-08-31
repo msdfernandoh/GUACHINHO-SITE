@@ -10,6 +10,8 @@ import { getResolvedTenant } from "@/lib/tenant/get-resolved-empresa";
 import { RaconInspiredFooter, RaconInspiredHeader } from "@/components/public/templates/racon-inspired-chrome";
 import { TenantBrandProvider } from "@/components/tenant/tenant-brand-context";
 import { GAUCHINHO_SLUG } from "@/lib/tenant/constants";
+import { SiteAppearance } from "@/components/public/site-appearance";
+import type { RaconTemplateIdentidade } from "@/components/public/templates/racon-inspired-home";
 
 export async function generateMetadata(): Promise<Metadata> {
   const tenant = await getResolvedTenant();
@@ -31,7 +33,7 @@ export default async function PublicLayout({ children }: { children: React.React
   const allowsOperational = tenant?.allowsLegacyOperationalData === true;
   const usaChromeRacon = tenant?.siteModel?.codigo === "racon_inspired";
   const isGauchinho = tenant?.slug === GAUCHINHO_SLUG;
-  const identidadeRacon = tenant?.siteModel ? {
+  const identidadeRacon: RaconTemplateIdentidade = tenant?.siteModel ? {
     ...tenant.siteModel.identidadeVisual,
     ...(tenant.branding.cor_primaria ? { cor_primaria: tenant.branding.cor_primaria } : {}),
     ...(tenant.branding.cor_secundaria ? { cor_secundaria: tenant.branding.cor_secundaria } : {}),
@@ -42,9 +44,20 @@ export default async function PublicLayout({ children }: { children: React.React
     : tenant?.siteModel?.logoPadraoUrl ?? tenant?.branding.logo_url;
 
   const brandStyle: CSSProperties & Record<string, string> = {
-    background: usaChromeRacon ? "#ffffff" : "var(--brand-blue)",
-    color: usaChromeRacon ? "#0f172a" : "#f4f4f5",
+    background: usaChromeRacon ? String(identidadeRacon.cor_fundo || "#ffffff") : "var(--brand-blue)",
+    color: usaChromeRacon ? String(identidadeRacon.cor_texto || "#0f172a") : "#f4f4f5",
   };
+  if (usaChromeRacon) {
+    brandStyle["--tenant-primary"] = String(identidadeRacon.cor_primaria || "#0066cc");
+    brandStyle["--tenant-secondary"] = String(identidadeRacon.cor_secundaria || "#0066cc");
+    brandStyle["--tenant-accent"] = String(identidadeRacon.cor_destaque || "#0099dd");
+    brandStyle["--visual-bg"] = String(identidadeRacon.cor_fundo || "#ffffff");
+    brandStyle["--visual-title"] = String(identidadeRacon.cor_texto || "#0f172a");
+    brandStyle["--visual-text"] = String(identidadeRacon.cor_texto || "#334155");
+    brandStyle["--visual-button"] = String(identidadeRacon.cor_primaria || "#0066cc");
+    brandStyle["--visual-button-text"] = "#ffffff";
+    brandStyle["--visual-accent"] = String(identidadeRacon.cor_primaria || "#0066cc");
+  }
   if (tenant?.branding.cor_primaria) brandStyle["--brand-blue"] = tenant.branding.cor_primaria;
   if (tenant?.branding.cor_secundaria) brandStyle["--brand-blue-mid"] = tenant.branding.cor_secundaria;
   if (tenant?.branding.cor_destaque) {
@@ -82,7 +95,7 @@ export default async function PublicLayout({ children }: { children: React.React
             footerCopyright={tenant.siteModel.footerCopyright}
           />
         ) : <PublicHeader />}
-        <div className={usaChromeRacon ? "tenant-racon-content" : undefined}>{children}</div>
+        {usaChromeRacon ? <SiteAppearance identity={identidadeRacon}>{children}</SiteAppearance> : children}
         {usaChromeRacon && tenant?.siteModel ? (
           <RaconInspiredFooter
             empresaNome={tenant.branding.nome_site}

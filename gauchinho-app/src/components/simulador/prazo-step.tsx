@@ -23,7 +23,7 @@ export function PrazoStep({
   parcelaForPrazo,
 }: Props) {
   return (
-    <section className={sectionCardClass()}>
+    <section data-site-block="prazo" className={sectionCardClass()}>
       <div className="mb-4 flex items-start gap-3">
         <span className={stepBadgeClass()}>{stepNumber}</span>
         <div>

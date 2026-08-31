@@ -3,6 +3,8 @@
 import React, { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { RaconInspiredHeader, RaconInspiredFooter } from "./racon-inspired-chrome";
+import { RACON_LOGO, blockImage, pageAppearanceCss, normalizePageAppearance, visualDefaults, type SitePagesAppearance } from "@/lib/tenant/site-appearance";
 import {
   Home,
   Car,
@@ -102,6 +104,7 @@ export type RaconTemplateIdentidade = {
   estilo_botoes?: string;
   estilo_cards?: string;
   imagens_banners?: ImagensBanners;
+  paginas_blocos?: SitePagesAppearance;
 };
 
 export type RaconTemplateMenu = {
@@ -109,6 +112,7 @@ export type RaconTemplateMenu = {
   label: string;
   rota: string;
   ativo_padrao?: boolean;
+  ativo?: boolean;
   obrigatorio?: boolean;
 };
 
@@ -135,7 +139,7 @@ export type RaconInspiredHomeProps = {
 
 export function RaconInspiredHome({
   empresaNome = "Racon Consórcios",
-  logoUrl,
+  logoUrl = RACON_LOGO,
   identidade = {},
   menus = [],
   secoes = [],
@@ -155,13 +159,19 @@ export function RaconInspiredHome({
 
   // Imagens dinâmicas de banners e propaganda
   const banners = identidade.imagens_banners || {};
-  const heroBannerImg = banners.hero_banner_url || "/racon/racon-rubinho-hero.png";
-  const cardVeiculoImg = banners.card_veiculos_url || "/racon/racon-card-veiculo.png";
-  const cardImovelImg = banners.card_imoveis_url || "/racon/racon-card-imovel.png";
-  const cardPatrimonioImg = banners.card_patrimonio_url || "/racon/racon-card-patrimonio.png";
-  const bannerFiliaisImg = banners.banner_filiais_url || "/racon/racon-rubinho-conquiste.png";
-  const embaixadorStatsImg = banners.embaixador_stats_url || "/racon/racon-rubinho-apontando.png";
+  const heroBannerImg = blockImage(identidade, "/", "hero", banners.hero_banner_url || "/racon/racon-rubinho-hero.png");
+  const cardVeiculoImg = blockImage(identidade, "/", "card_veiculos", banners.card_veiculos_url || "/racon/racon-card-veiculo.png");
+  const cardImovelImg = blockImage(identidade, "/", "card_imoveis", banners.card_imoveis_url || "/racon/racon-card-imovel.png");
+  const cardPatrimonioImg = blockImage(identidade, "/", "card_patrimonio", banners.card_patrimonio_url || "/racon/racon-card-patrimonio.png");
+  const bannerFiliaisImg = blockImage(identidade, "/", "filiais", banners.banner_filiais_url || "/racon/racon-rubinho-conquiste.png");
+  const embaixadorStatsImg = blockImage(identidade, "/", "estatisticas", banners.embaixador_stats_url || "/racon/racon-rubinho-apontando.png");
 
+
+  const appearance = normalizePageAppearance(identidade.paginas_blocos)["/"] || {};
+  const imageStyle = (id: string) => ({
+    ...(appearance[id]?.imagem_ajuste ? { objectFit: appearance[id].imagem_ajuste } : {}),
+    ...(appearance[id]?.imagem_posicao ? { objectPosition: appearance[id].imagem_posicao.replace("-", " ") } : {}),
+  });
 
   // Estado do Simulador Racon no Hero
   const [tipoObjetivo, setTipoObjetivo] = useState<"veiculo" | "casa" | "patrimonio">("casa");
@@ -210,7 +220,7 @@ export function RaconInspiredHome({
   // Menus ativos
   const activeMenus =
     menus.length > 0
-      ? menus.filter((m) => m.ativo_padrao !== false)
+      ? menus.filter((m) => m.ativo !== false)
       : [
           { id: "sobre", label: "A Racon Consórcios", rota: "/#sobre" },
           { id: "unidades", label: "Unidades", rota: "/#unidades" },
@@ -221,94 +231,24 @@ export function RaconInspiredHome({
 
   return (
     <div
-      style={{
+      data-site-page="/" style={{
+        ...visualDefaults(identidade),
         backgroundColor: bg,
         color: text,
         fontFamily: identidade.fonte_familia || "Inter, -apple-system, BlinkMacSystemFont, sans-serif",
       }}
-      className="min-h-screen w-full selection:bg-cyan-500 selection:text-white text-slate-900"
+      className="site-appearance racon-home min-h-screen w-full selection:bg-cyan-500 selection:text-white text-slate-900"
     >
+      <style>{pageAppearanceCss(identidade, "/")}</style>
       {/* ───────────────────────────────────────────────────────────
           1. TOPBAR DISCRETA (PADRÃO RACON: Televendas 0800...)
       ─────────────────────────────────────────────────────────── */}
-      {showChrome ? <><div className="w-full bg-[#008fd5] px-4 py-1.5 text-white text-[11px] font-semibold border-b border-white/10">
-        <div className="mx-auto flex max-w-7xl items-center justify-end gap-6">
-          <span className="flex items-center gap-1.5">
-            <Phone className="h-3 w-3 text-amber-300" />
-            <span>Televendas: {telefoneContato}</span>
-          </span>
-        </div>
-      </div>
-
-      {/* ───────────────────────────────────────────────────────────
-          2. HEADER CLEAN BRANCO COM CTAS RACON
-      ─────────────────────────────────────────────────────────── */}
-      <header className="sticky top-0 z-40 w-full border-b border-slate-100 bg-white shadow-xs">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6">
-          {/* Logotipo */}
-          <Link href="/" className="flex items-center gap-3">
-            {logoUrl ? (
-              <div className="relative h-10 w-44">
-                <Image src={logoUrl} alt={empresaNome} fill className="object-contain object-left" />
-              </div>
-            ) : (
-              <div className="flex items-center gap-2.5">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#008fd5] font-black text-white text-sm shadow-sm">
-                  R
-                </div>
-                <div className="flex flex-col">
-                  <span className="text-lg font-black tracking-tight text-[#0c2340] leading-none">
-                    Racon <span className="text-[#008fd5] font-bold">Consórcios</span>
-                  </span>
-                  <span className="text-[9px] font-bold uppercase tracking-widest text-slate-400">
-                    {empresaNome !== "Racon Consórcios" ? empresaNome : "Soluções Financeiras"}
-                  </span>
-                </div>
-              </div>
-            )}
-          </Link>
-
-          {/* Menus Centrais */}
-          <nav className="hidden lg:flex items-center gap-6 text-xs font-bold text-slate-700">
-            {activeMenus.map((m) => (
-              <Link
-                key={m.id}
-                href={m.rota}
-                className="transition-colors hover:text-[#008fd5] py-1 border-b-2 border-transparent hover:border-[#008fd5]"
-              >
-                {m.label}
-              </Link>
-            ))}
-          </nav>
-
-          {/* Botões de Ação Topo (Estilo Racon) */}
-          <div className="flex items-center gap-2.5 text-xs font-bold">
-            <Link
-              href="/#seja-franqueado"
-              className="hidden sm:inline-flex rounded-full bg-[#008fd5] px-4 py-2 text-white shadow-xs hover:bg-[#007cb8] transition-colors"
-            >
-              Seja um Franqueado
-            </Link>
-            <Link
-              href="/simulador"
-              className="rounded-full bg-[#00a3e0] px-4 py-2 text-white shadow-xs hover:bg-[#008fd5] transition-colors"
-            >
-              Simule seu Consórcio
-            </Link>
-            <Link
-              href="/login"
-              className="hidden md:inline-flex rounded-full border border-[#008fd5] px-4 py-2 text-[#008fd5] hover:bg-blue-50 transition-colors"
-            >
-              Área do Cliente
-            </Link>
-          </div>
-        </div>
-      </header></> : null}
+      {showChrome ? <RaconInspiredHeader empresaNome={empresaNome} logoUrl={logoUrl} identidade={identidade} menus={activeMenus} telefoneContato={telefoneContato} /> : null}
 
       {/* ───────────────────────────────────────────────────────────
           3. HERO PRINCIPAL: BANNER DO GAROTO PROPAGANDA (RUBINHO) + SIMULADOR RACON
       ─────────────────────────────────────────────────────────── */}
-      <section className="relative overflow-hidden bg-gradient-to-r from-[#0099dd] via-[#00a3e0] to-[#00b2f0] text-white pt-6 pb-12 lg:py-10">
+      <section data-site-block="hero" data-site-tone="inverse" className="relative overflow-hidden bg-gradient-to-r from-[#0099dd] via-[#00a3e0] to-[#00b2f0] text-white pt-6 pb-12 lg:py-10">
         <div className="mx-auto max-w-7xl px-4 sm:px-6">
           <div className="grid items-center gap-8 lg:grid-cols-12">
             
@@ -317,13 +257,14 @@ export function RaconInspiredHome({
               {/* Imagem Real do Rubinho / Banner Racon */}
               <div className="absolute inset-0 bg-[#008fd5]">
                 <Image
-                  src={heroBannerImg}
+                  src={heroBannerImg} unoptimized={heroBannerImg.startsWith("https:")}
                   alt="Banner Principal — Embaixador / Garoto Propaganda"
                   fill
                   priority
                   style={{
                     objectFit: banners.hero_object_fit || "cover",
                     objectPosition: banners.hero_object_position || "left top",
+                    ...imageStyle("hero"),
                   }}
                 />
               </div>
@@ -349,7 +290,7 @@ export function RaconInspiredHome({
 
             {/* Lado Direito: SIMULADOR FLUTUANTE RACON */}
             <div className="lg:col-span-5">
-              <div className="rounded-3xl bg-white p-6 sm:p-7 shadow-2xl text-slate-900 border border-slate-100 space-y-4">
+              <div data-site-block="simulador_home" data-site-tone="light" className="rounded-3xl bg-white p-6 sm:p-7 shadow-2xl text-slate-900 border border-slate-100 space-y-4">
                 <div>
                   <h3 className="text-base font-black text-slate-900 text-center">
                     O que você deseja realizar?
@@ -472,7 +413,7 @@ export function RaconInspiredHome({
           4. BLOCO RACON: "A RACON TEM O CONSÓRCIO PERFEITO PARA VOCÊ"
              3 CARDS FOTOGRÁFICOS DE PRODUTOS COM BOTÃO "CONQUISTE AGORA"
       ─────────────────────────────────────────────────────────── */}
-      <section className="py-14 sm:py-20 bg-white">
+      <section data-site-block="produtos" className="py-14 sm:py-20 bg-white">
         <div className="mx-auto max-w-7xl px-4 sm:px-6">
           <div className="text-center max-w-2xl mx-auto space-y-2">
             <h2 className="text-2xl sm:text-3xl font-black text-slate-900">
@@ -483,14 +424,15 @@ export function RaconInspiredHome({
           <div className="mt-10 grid gap-6 sm:grid-cols-3">
             {/* Card 1: Veículos */}
             {banners.card_veiculos_ativo !== false && (
-              <div className="group relative rounded-3xl overflow-hidden shadow-lg border border-slate-200 bg-slate-900 text-white min-h-[300px] flex flex-col justify-between p-6">
+              <div data-site-block="card_veiculos" data-site-tone="inverse" className="group relative rounded-3xl overflow-hidden shadow-lg border border-slate-200 bg-slate-900 text-white min-h-[300px] flex flex-col justify-between p-6">
                 <Image
-                  src={cardVeiculoImg}
+                  src={cardVeiculoImg} unoptimized={cardVeiculoImg.startsWith("https:")}
                   alt={banners.card_veiculos_titulo || "Dirija rumo à sua independência"}
                   fill
                   style={{
                     objectFit: banners.card_veiculos_object_fit || "cover",
                     objectPosition: banners.card_veiculos_object_position || "center",
+                    ...imageStyle("card_veiculos"),
                   }}
                   className="group-hover:scale-105 transition-transform duration-500 opacity-80"
                 />
@@ -520,14 +462,15 @@ export function RaconInspiredHome({
 
             {/* Card 2: Imóveis */}
             {banners.card_imoveis_ativo !== false && (
-              <div className="group relative rounded-3xl overflow-hidden shadow-lg border border-slate-200 bg-slate-900 text-white min-h-[300px] flex flex-col justify-between p-6">
+              <div data-site-block="card_imoveis" data-site-tone="inverse" className="group relative rounded-3xl overflow-hidden shadow-lg border border-slate-200 bg-slate-900 text-white min-h-[300px] flex flex-col justify-between p-6">
                 <Image
-                  src={cardImovelImg}
+                  src={cardImovelImg} unoptimized={cardImovelImg.startsWith("https:")}
                   alt={banners.card_imoveis_titulo || "Conquiste a casa própria"}
                   fill
                   style={{
                     objectFit: banners.card_imoveis_object_fit || "cover",
                     objectPosition: banners.card_imoveis_object_position || "center",
+                    ...imageStyle("card_imoveis"),
                   }}
                   className="group-hover:scale-105 transition-transform duration-500 opacity-80"
                 />
@@ -557,14 +500,15 @@ export function RaconInspiredHome({
 
             {/* Card 3: Patrimônio */}
             {banners.card_patrimonio_ativo !== false && (
-              <div className="group relative rounded-3xl overflow-hidden shadow-lg border border-slate-200 bg-slate-900 text-white min-h-[300px] flex flex-col justify-between p-6">
+              <div data-site-block="card_patrimonio" data-site-tone="inverse" className="group relative rounded-3xl overflow-hidden shadow-lg border border-slate-200 bg-slate-900 text-white min-h-[300px] flex flex-col justify-between p-6">
                 <Image
-                  src={cardPatrimonioImg}
+                  src={cardPatrimonioImg} unoptimized={cardPatrimonioImg.startsWith("https:")}
                   alt={banners.card_patrimonio_titulo || "Amplie seu patrimônio"}
                   fill
                   style={{
                     objectFit: banners.card_patrimonio_object_fit || "cover",
                     objectPosition: banners.card_patrimonio_object_position || "center",
+                    ...imageStyle("card_patrimonio"),
                   }}
                   className="group-hover:scale-105 transition-transform duration-500 opacity-80"
                 />
@@ -598,7 +542,7 @@ export function RaconInspiredHome({
       {/* ───────────────────────────────────────────────────────────
           5. BLOCO: AFINAL, O QUE É CONSÓRCIO? & VANTAGENS
       ─────────────────────────────────────────────────────────── */}
-      <section id="como-funciona" className="py-14 sm:py-20 bg-slate-50 border-t border-slate-100">
+      <section data-site-block="educacao" id="como-funciona" className="py-14 sm:py-20 bg-slate-50 border-t border-slate-100">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 space-y-16">
           
           {/* Parte Superior: Afinal o que é consórcio? */}
@@ -701,18 +645,19 @@ export function RaconInspiredHome({
       {/* ───────────────────────────────────────────────────────────
           6. BLOCO: ENCONTRE A RACON MAIS PRÓXIMA DE VOCÊ (BANNER RUBINHO)
       ─────────────────────────────────────────────────────────── */}
-      <section id="unidades" className="py-14 sm:py-18 bg-white border-t border-slate-100">
+      <section data-site-block="filiais" id="unidades" className="py-14 sm:py-18 bg-white border-t border-slate-100">
         <div className="mx-auto max-w-5xl px-4 sm:px-6">
           <div className="grid sm:grid-cols-12 gap-8 items-center rounded-3xl bg-slate-50 p-6 sm:p-10 border border-slate-200">
             {/* Banner Quadrado Rubinho Conquiste */}
             <div className="sm:col-span-5 relative h-56 w-full rounded-2xl overflow-hidden shadow-md">
               <Image
-                src={bannerFiliaisImg}
+                src={bannerFiliaisImg} unoptimized={bannerFiliaisImg.startsWith("https:")}
                 alt={banners.banner_filiais_titulo || "Encontre as Unidades e Filiais"}
                 fill
                 style={{
                   objectFit: banners.banner_filiais_object_fit || "cover",
                   objectPosition: banners.banner_filiais_object_position || "center",
+                    ...imageStyle("filiais"),
                 }}
               />
             </div>
@@ -747,7 +692,7 @@ export function RaconInspiredHome({
       {/* ───────────────────────────────────────────────────────────
           7. BLOCO: CONQUISTE COM A RACON (STATS + RUBINHO APONTANDO)
       ─────────────────────────────────────────────────────────── */}
-      <section id="sobre" className="scroll-mt-24 relative overflow-hidden bg-[#0c2340] text-white py-14 sm:py-18">
+      <section data-site-block="estatisticas" data-site-tone="inverse" id="sobre" className="scroll-mt-24 relative overflow-hidden bg-[#0c2340] text-white py-14 sm:py-18">
         <div className="mx-auto max-w-7xl px-4 sm:px-6">
           <div className="grid lg:grid-cols-12 gap-8 items-center">
             
@@ -800,12 +745,13 @@ export function RaconInspiredHome({
             <div className="lg:col-span-5 flex justify-center">
               <div className="relative h-72 w-72 sm:h-80 sm:w-80 rounded-full overflow-hidden border-4 border-[#00a3e0]/40 shadow-2xl bg-[#008fd5]">
                 <Image
-                  src={embaixadorStatsImg}
+                  src={embaixadorStatsImg} unoptimized={embaixadorStatsImg.startsWith("https:")}
                   alt="Garoto Propaganda / Embaixador Oficial"
                   fill
                   style={{
                     objectFit: banners.embaixador_stats_object_fit || "cover",
                     objectPosition: banners.embaixador_stats_object_position || "top",
+                    ...imageStyle("estatisticas"),
                   }}
                 />
               </div>
@@ -818,7 +764,7 @@ export function RaconInspiredHome({
       {/* ───────────────────────────────────────────────────────────
           8. BLOCO: SEJA UM FRANQUEADO
       ─────────────────────────────────────────────────────────── */}
-      <section id="seja-franqueado" className="py-14 sm:py-20 bg-white border-t border-slate-100">
+      <section data-site-block="franquia" id="seja-franqueado" className="py-14 sm:py-20 bg-white border-t border-slate-100">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 space-y-10">
           <div className="text-center max-w-2xl mx-auto space-y-2">
             <h2 className="text-2xl sm:text-3xl font-black text-slate-900">
@@ -881,90 +827,7 @@ export function RaconInspiredHome({
       {/* ───────────────────────────────────────────────────────────
           9. FOOTER INSTITUCIONAL CORPORATIVO COM BACEN
       ─────────────────────────────────────────────────────────── */}
-      {showChrome ? <footer className="border-t border-slate-800 bg-[#0c2340] text-slate-400 text-xs pt-12 pb-8">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 space-y-8">
-          <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
-            {/* Coluna 1 */}
-            <div className="space-y-3">
-              <span className="text-sm font-black text-white tracking-tight">{empresaNome}</span>
-              <p className="text-slate-400 text-[11px] leading-relaxed">
-                Consórcios imobiliários, automotivos, pesados e investimentos com a credibilidade e garantia oficial Racon.
-              </p>
-              <div className="text-[11px] text-slate-400 pt-1 space-y-1">
-                <p>Televendas: {telefoneContato}</p>
-                <p>WhatsApp: {whatsappContato}</p>
-              </div>
-            </div>
-
-            {/* Coluna 2 */}
-            <div className="space-y-2.5">
-              <strong className="block text-xs font-bold uppercase tracking-wider text-white">
-                Segmentos
-              </strong>
-              <ul className="space-y-1.5 text-[11px]">
-                <li>
-                  <Link href="/consorcio/imovel-parcela-reduzida" className="hover:text-white transition-colors">
-                    Consórcio de Imóveis
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/consorcio/carro-sem-entrada" className="hover:text-white transition-colors">
-                    Consórcio de Veículos
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/simulador" className="hover:text-white transition-colors">
-                    Aumento de Patrimônio
-                  </Link>
-                </li>
-              </ul>
-            </div>
-
-            {/* Coluna 3 */}
-            <div className="space-y-2.5">
-              <strong className="block text-xs font-bold uppercase tracking-wider text-white">
-                Links Úteis
-              </strong>
-              <ul className="space-y-1.5 text-[11px]">
-                <li>
-                  <Link href="/simulador" className="hover:text-white transition-colors">
-                    Simulador Online
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/login" className="hover:text-white transition-colors">
-                    Área do Cliente
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/area-parceiro" className="hover:text-white transition-colors">
-                    Portal do Franqueado
-                  </Link>
-                </li>
-              </ul>
-            </div>
-
-            {/* Coluna 4 */}
-            <div className="space-y-2.5">
-              <strong className="block text-xs font-bold uppercase tracking-wider text-white">
-                Regulatório
-              </strong>
-              <p className="text-[11px] text-slate-400 leading-relaxed">
-                Empresa autorizada e fiscalizada pelo <strong>Banco Central do Brasil</strong>.
-              </p>
-              <div className="inline-flex items-center gap-1.5 rounded bg-white/5 px-2.5 py-1 text-[10px] text-slate-300">
-                <ShieldCheck className="h-3.5 w-3.5 text-emerald-400" />
-                <span>Ambiente Seguro e Criptografado</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="border-t border-slate-800 pt-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-[11px] text-slate-500">
-            <p>{footerCopyright}</p>
-            <p>Plataforma SaaS Gauchinho Consórcios Multi-Tenant</p>
-          </div>
-        </div>
-      </footer> : null}
+      {showChrome ? <RaconInspiredFooter empresaNome={empresaNome} identidade={identidade} menus={activeMenus} telefoneContato={telefoneContato} whatsappContato={whatsappContato} footerCopyright={footerCopyright} /> : null}
     </div>
   );
 }

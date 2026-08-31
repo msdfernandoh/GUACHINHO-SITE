@@ -26,7 +26,7 @@ function Metric({ label, value, highlight }: { label: string; value: string; hig
 
 export function FinanciamentoResultCards({ resultado, valorBem, entrada, taxaMensal }: Props) {
   return (
-    <section className={sectionCardClass("border-slate-600/50")}>
+    <section data-site-block="resultado" data-site-tone="inverse" className={sectionCardClass("border-slate-600/50")}>
       <p className="text-xs font-bold uppercase tracking-[0.2em] text-slate-400">Sua simulação — financiamento</p>
       <h2 className="mt-2 text-2xl font-extrabold text-white sm:text-3xl">
         {formatCurrency(resultado.parcelaEstimada)}

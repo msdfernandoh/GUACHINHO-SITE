@@ -10,6 +10,8 @@ import {
 } from "@/app/platform/templates-actions";
 import { sanitizeTemplateCode } from "@/lib/platform/html-sanitizer";
 import { RaconInspiredHome } from "@/components/public/templates/racon-inspired-home";
+import { PageBlockAppearanceEditor } from "./page-block-appearance-editor";
+import { RACON_LOGO, type SitePagesAppearance } from "@/lib/tenant/site-appearance";
 import {
   MediaFieldControl,
   type ImageObjectFit,
@@ -24,6 +26,7 @@ export type MenuItem = {
   label: string;
   rota: string;
   ativo_padrao: boolean;
+  ativo?: boolean;
   obrigatorio?: boolean;
 };
 
@@ -99,6 +102,7 @@ export type IdentidadeVisual = {
   estilo_botoes: string;
   estilo_cards: string;
   imagens_banners?: ImagensBanners;
+  paginas_blocos?: SitePagesAppearance;
 };
 
 export type TemplateDetail = {
@@ -179,7 +183,7 @@ export function TemplateWorkspace({
   historico?: { id: string; acao: string; created_at: string; campos_alterados: unknown }[];
 }) {
   const [tab, setTab] = useState<
-    "geral" | "identidade" | "banners" | "menus" | "secoes" | "footer" | "codigo" | "preview" | "historico"
+    "geral" | "identidade" | "banners" | "menus" | "secoes" | "footer" | "codigo" | "preview" | "historico" | "paginas"
   >("geral");
 
 
@@ -191,7 +195,7 @@ export function TemplateWorkspace({
   const [nome, setNome] = useState(template.nome);
   const [descricao, setDescricao] = useState(template.descricao ?? "");
   const [permiteLogoPropria, setPermiteLogoPropria] = useState(template.permite_logo_propria);
-  const [logoPadraoUrl, setLogoPadraoUrl] = useState(template.logo_padrao_url ?? "");
+  const [logoPadraoUrl, setLogoPadraoUrl] = useState(template.logo_padrao_url || (template.codigo === "racon_inspired" ? RACON_LOGO : ""));
 
   // Identidade Visual
   const [identidade, setIdentidade] = useState<IdentidadeVisual>(template.identidade_visual || RACON_PRESET_IDENTIDADE);
@@ -381,6 +385,7 @@ export function TemplateWorkspace({
           ["identidade", "2. Cores & Tipografia"],
           ["banners", "3. Banners & Propaganda"],
           ["menus", "4. Header & Menus"],
+          ["paginas", "Fotos e cores por página / bloco"],
           ["secoes", "5. Home & Seções"],
           ["footer", "6. Footer"],
           ["codigo", "7. HTML Avançado (Seguro)"],
@@ -474,7 +479,7 @@ export function TemplateWorkspace({
                 <input
                   value={logoPadraoUrl}
                   onChange={(e) => setLogoPadraoUrl(e.target.value)}
-                  placeholder="Ex: /media/gauchinho-logo.png ou URL externa"
+                  placeholder="Ex: /racon/logoracon.jpg ou URL HTTPS"
                   className="w-full rounded-lg border border-slate-300 p-2.5 text-xs dark:border-slate-700 dark:bg-slate-800"
                 />
                 <div className="flex flex-wrap gap-1.5 pt-1">
@@ -495,15 +500,18 @@ export function TemplateWorkspace({
                   </button>
                   <button
                     type="button"
-                    onClick={() => setLogoPadraoUrl("")}
+                    onClick={() => setLogoPadraoUrl(RACON_LOGO)}
                     className="rounded bg-slate-100 px-2 py-0.5 text-[10px] font-bold hover:bg-slate-200 dark:bg-slate-800"
                   >
-                    Logo Racon (Tipográfico)
+                    Logomarca oficial Racon
                   </button>
                 </div>
               </div>
 
               {/* Preview do Logo */}
+              <div className="sm:col-span-2">
+                <MediaFieldControl templateId={template.id} spec={{ slotId: "logo", slotLabel: "Logomarca no topo do site", larguraRecomendada: 600, alturaRecomendada: 300, proporcaoRecomendada: "2:1", proporcaoRatio: 2, descricao: "Envie uma imagem ou escolha a logomarca oficial Racon. A imagem será usada no cabeçalho; salve o modelo após o upload.", presets: [{ label: "Logomarca oficial Racon", nome: "Racon Consórcios", url: RACON_LOGO }] }} imageUrl={logoPadraoUrl} objectFit="contain" onChangeUrl={setLogoPadraoUrl} />
+              </div>
               <div className="sm:col-span-2 rounded-xl border border-slate-100 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950 flex items-center gap-4">
                 <span className="text-xs font-bold text-slate-600 dark:text-slate-400">Pré-visualização do Logo:</span>
                 {logoPadraoUrl ? (
@@ -520,6 +528,7 @@ export function TemplateWorkspace({
           </section>
         )}
 
+        {tab === "paginas" && <PageBlockAppearanceEditor templateId={template.id} value={identidade.paginas_blocos} menus={menus} onChange={paginas_blocos => setIdentidade({ ...identidade, paginas_blocos })} />}
         {/* ABA 2: IDENTIDADE VISUAL */}
         {tab === "identidade" && (
           <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900 space-y-6">
@@ -1460,7 +1469,7 @@ export function TemplateWorkspace({
             <div>
               <h2 className="text-base font-bold text-slate-900 dark:text-white">Catálogo de Áreas e Menus Disponíveis</h2>
               <p className="text-xs text-slate-500">
-                Menus que este Modelo disponibiliza. A Master Franquia poderá escolher quais habilitar no seu onboarding.
+                “Ativo no modelo” publica ou oculta o menu para todos os sites deste modelo. “Ativo padrão” apenas sugere a seleção inicial no cadastro da franquia; não altera a seleção das empresas existentes.
               </p>
             </div>
 
@@ -1472,6 +1481,7 @@ export function TemplateWorkspace({
                     <th className="p-2.5">Nome de Exibição</th>
                     <th className="p-2.5">Rota / Destino</th>
                     <th className="p-2.5 text-center">Ativo Padrão</th>
+                    <th className="p-2.5 text-center">Ativo no modelo</th>
                     <th className="p-2.5 text-center">Obrigatório</th>
                   </tr>
                 </thead>
@@ -1513,6 +1523,7 @@ export function TemplateWorkspace({
                           className="h-4 w-4 rounded text-cyan-600"
                         />
                       </td>
+                      <td className="p-2.5 text-center"><input type="checkbox" aria-label={`Ativo no modelo: ${item.label}`} checked={item.ativo !== false} onChange={e => setMenus(menus.map((menu, i) => i === idx ? { ...menu, ativo: e.target.checked } : menu))} /></td>
                       <td className="p-2.5 text-center font-bold text-slate-600">
                         {item.obrigatorio ? "Sim" : "Opcional"}
                       </td>
@@ -1698,7 +1709,7 @@ export function TemplateWorkspace({
               >
                 <RaconInspiredHome
                   empresaNome={previewEmpresaNome}
-                  logoUrl={template.permite_logo_propria ? logoPadraoUrl : null}
+                  logoUrl={logoPadraoUrl}
                   identidade={identidade}
                   menus={menus}
                   secoes={secoes}

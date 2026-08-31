@@ -6,6 +6,7 @@ import { isPlatformSuperadmin } from "@/lib/auth/is-superadmin";
 import { createClient } from "@/lib/supabase/server";
 import { sanitizeTemplateCode } from "@/lib/platform/html-sanitizer";
 import { uploadImagemPublica } from "@/lib/storage/imagens";
+import { normalizePageAppearance, safeImageUrl } from "@/lib/tenant/site-appearance";
 
 export type PlatformFormState = {
   status: "IDLE" | "SUCCESS" | "ERROR";
@@ -88,12 +89,15 @@ export async function salvarModeloSitePlatformAction(
   const descricao = String(formData.get("descricao") ?? "").trim() || null;
   const permiteLogoPropria = formData.get("permite_logo_propria") === "true";
   const logoPadraoUrl = String(formData.get("logo_padrao_url") ?? "").trim() || null;
+  if (logoPadraoUrl && !safeImageUrl(logoPadraoUrl)) return { status: "ERROR", message: "Informe uma URL HTTPS ou caminho local válido para a logomarca." };
 
   let identidadeVisual = null;
   const rawIdentidade = formData.get("identidade_visual_json");
   if (rawIdentidade) {
     try {
       identidadeVisual = JSON.parse(String(rawIdentidade));
+      if (!identidadeVisual || typeof identidadeVisual !== "object" || Array.isArray(identidadeVisual)) throw new Error("Identidade inválida");
+      identidadeVisual.paginas_blocos = normalizePageAppearance(identidadeVisual.paginas_blocos);
     } catch {
       return { status: "ERROR", message: "Formato inválido de Identidade Visual (JSON)." };
     }
@@ -167,6 +171,7 @@ export async function salvarModeloSitePlatformAction(
 
   revalidatePath(`/platform/templates/${id}`);
   revalidatePath("/platform/templates");
+  revalidatePath("/", "layout");
   return { status: "SUCCESS", message: "Modelo de site atualizado com sucesso." };
 }
 

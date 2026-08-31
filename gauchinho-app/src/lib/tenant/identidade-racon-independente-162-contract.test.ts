@@ -18,7 +18,8 @@ describe("identidade independente do tenant Racon", () => {
     expect(rootLayout).toContain("tenant.branding.nome_site");
     expect(rootLayout).toContain("siteName: nome");
     expect(publicLayout).toContain("TenantBrandProvider");
-    expect(publicLayout).toContain("tenant-racon-content");
+    expect(publicLayout).toContain("<SiteAppearance");
+    expect(read("gauchinho-app/src/components/public/site-appearance.tsx")).toContain("tenant-racon-content");
   });
 
   it("não usa o rótulo Gauchinho no login do tenant", () => {

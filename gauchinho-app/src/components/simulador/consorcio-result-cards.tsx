@@ -49,7 +49,7 @@ export function ConsorcioResultCards({ contemplacao, estrategiaLabel }: Props) {
     c.lanceEmbutido > 0 || c.entrada > 0 ? c.saldoDevedorFinal : saldoDevedorAposLanceEmbutido;
 
   return (
-    <section className={sectionCardClass("border-amber-500/30 bg-gradient-to-br from-slate-900/90 to-slate-950")}>
+    <section data-site-block="resultado" data-site-tone="inverse" className={sectionCardClass("border-amber-500/30 bg-gradient-to-br from-slate-900/90 to-slate-950")}>
       <p className="text-xs font-bold uppercase tracking-[0.2em] text-amber-400">Sua simulação — consórcio</p>
       <h2 className="mt-2 text-2xl font-extrabold text-white sm:text-3xl">
         {formatCurrency(c.parcelaEstimada)}

@@ -119,53 +119,53 @@ body.tenant-root-independent {
   color: #0f172a;
 }
 
-.tenant-racon-content [class*="from-[#0a1628]"],
-.tenant-racon-content [class*="from-[#07111f]"],
-.tenant-racon-content [class*="bg-[#07111f]"],
-.tenant-racon-content [class*="bg-[#0d1e33]"],
-.tenant-racon-content [class~="bg-zinc-950"],
-.tenant-racon-content [class*="bg-zinc-900"],
-.tenant-racon-content [class*="bg-slate-900"] {
+.tenant-operational [class*="from-[#0a1628]"],
+.tenant-operational [class*="from-[#07111f]"],
+.tenant-operational [class*="bg-[#07111f]"],
+.tenant-operational [class*="bg-[#0d1e33]"],
+.tenant-operational [class~="bg-zinc-950"],
+.tenant-operational [class*="bg-zinc-900"],
+.tenant-operational [class*="bg-slate-900"] {
   background-color: #fff !important;
   background-image: none !important;
 }
 
-.tenant-racon-content [class*="rgba(201,168,76"] {
+.tenant-operational [class*="rgba(201,168,76"] {
   background-image: radial-gradient(circle at top, rgba(0, 153, 221, 0.12), transparent 48%) !important;
 }
 
-.tenant-racon-content [class*="text-zinc-100"],
-.tenant-racon-content [class*="text-zinc-200"],
-.tenant-racon-content [class*="text-zinc-300"],
-.tenant-racon-content [class*="text-slate-100"],
-.tenant-racon-content [class*="text-slate-200"],
-.tenant-racon-content [class*="text-slate-300"],
-.tenant-racon-content [class~="text-white"] {
+.tenant-operational [class*="text-zinc-100"],
+.tenant-operational [class*="text-zinc-200"],
+.tenant-operational [class*="text-zinc-300"],
+.tenant-operational [class*="text-slate-100"],
+.tenant-operational [class*="text-slate-200"],
+.tenant-operational [class*="text-slate-300"],
+.tenant-operational [class~="text-white"] {
   color: #0f172a !important;
 }
 
-.tenant-racon-content [class*="text-amber"],
-.tenant-racon-content [class*="text-[#c9a84c]"] {
+.tenant-operational [class*="text-amber"],
+.tenant-operational [class*="text-[#c9a84c]"] {
   color: var(--tenant-primary) !important;
 }
 
-.tenant-racon-content [class*="bg-amber"],
-.tenant-racon-content [class*="bg-[#c9a84c]"] {
+.tenant-operational [class*="bg-amber"],
+.tenant-operational [class*="bg-[#c9a84c]"] {
   background-color: var(--tenant-primary) !important;
   color: #fff !important;
 }
 
-.tenant-racon-content [class*="border-zinc-7"],
-.tenant-racon-content [class*="border-zinc-8"],
-.tenant-racon-content [class*="border-slate-7"],
-.tenant-racon-content [class*="border-[#1e3a5f]"],
-.tenant-racon-content [class*="border-[#c9a84c]"] {
+.tenant-operational [class*="border-zinc-7"],
+.tenant-operational [class*="border-zinc-8"],
+.tenant-operational [class*="border-slate-7"],
+.tenant-operational [class*="border-[#1e3a5f]"],
+.tenant-operational [class*="border-[#c9a84c]"] {
   border-color: #dbeafe !important;
 }
 
-.tenant-racon-content input,
-.tenant-racon-content select,
-.tenant-racon-content textarea {
+.tenant-operational input,
+.tenant-operational select,
+.tenant-operational textarea {
   color-scheme: light;
 }
 
@@ -201,3 +201,81 @@ body.tenant-root-independent {
 .tenant-admin-racon main [class*="border-zinc-8"] {
   border-color: #e2e8f0 !important;
 }
+
+/* Contrato semântico do modelo: cada bloco herda a página e pode sobrescrever
+   apenas seus tokens. Nunca aplicar conversão de text-white à home com fotos. */
+.site-appearance {
+  --visual-bg: #ffffff;
+  --visual-title: #0f172a;
+  --visual-text: #334155;
+  --visual-accent: var(--tenant-primary, #0066cc);
+  --visual-button: var(--tenant-primary, #0066cc);
+  --visual-button-text: #ffffff;
+  background-color: var(--visual-bg);
+  color: var(--visual-text);
+}
+.site-page-banner { display: block; width: 100%; height: clamp(140px, 24vw, 360px); }
+.site-appearance [data-site-block] { color: var(--visual-text); }
+.site-appearance [data-site-tone="inverse"] {
+  --visual-title: #ffffff;
+  --visual-text: #ffffff;
+  --visual-accent: #ffffff;
+}
+.site-appearance [data-site-tone="light"] {
+  --visual-title: #0f172a;
+  --visual-text: #334155;
+  --visual-accent: var(--tenant-primary, #0066cc);
+}
+.site-appearance :is(h1, h2, h3, h4, h5, h6),
+.site-appearance :is(h1, h2, h3, h4, h5, h6) span {
+  color: var(--visual-title) !important;
+}
+.site-appearance :is(p, label),
+.site-appearance [data-site-tone="inverse"] :is(strong, span) {
+  color: var(--visual-text) !important;
+}
+.site-appearance [data-site-tone="inverse"] :is(input, select, textarea) {
+  color: #0f172a !important;
+  background-color: #ffffff !important;
+}
+.tenant-operational :is([class*="from-[#0a1628]"], [class*="from-[#07111f]"]) {
+  background: var(--visual-bg) !important;
+}
+.tenant-operational :is([class*="text-amber"], [class*="text-[#c9a84c]"]) {
+  color: var(--visual-accent) !important;
+}
+.tenant-operational .sim-choice { background: #ffffff !important; color: var(--visual-text) !important; }
+.tenant-operational .sim-choice-selected,
+.tenant-operational :is([class*="bg-amber"], [class*="bg-[#c9a84c]"]),
+.tenant-operational thead, .tenant-operational thead th,
+.tenant-operational [data-site-tone="inverse"] {
+  background-color: var(--visual-button) !important;
+  background-image: none !important;
+  color: var(--visual-button-text) !important;
+}
+.tenant-operational .sim-choice-selected *,
+.tenant-operational [class*="bg-amber"] *,
+.tenant-operational thead * {
+  color: var(--visual-button-text) !important;
+}
+.tenant-operational .sim-choice-selected {
+  border-color: var(--visual-button) !important;
+  --tw-ring-color: color-mix(in srgb, var(--visual-button), transparent 60%);
+}
+.tenant-operational [data-site-tone="inverse"] :is([class*="bg-slate-9"], [class*="bg-zinc-9"]) {
+  background-color: rgb(255 255 255 / 12%) !important;
+  background-image: none !important;
+}
+.tenant-operational [data-site-tone="inverse"] :is(p, label, span, strong) { color: var(--visual-text) !important; }
+.site-appearance :is(h1, h2, h3, h4) span { color: var(--visual-accent) !important; }
+.tenant-operational input[type="range"] { accent-color: var(--visual-button); }
+.racon-home [data-site-block="hero"], .racon-home [data-site-block="estatisticas"] {
+  background: var(--tenant-primary, #0066cc);
+}
+.racon-home [data-site-block] a[class*="rounded"],
+.racon-home [data-site-block] button[class*="bg-[#"] {
+  background-color: var(--visual-button) !important;
+  color: var(--visual-button-text) !important;
+}
+.racon-home [data-site-block] a[class*="rounded"] *,
+.racon-home [data-site-block] button[class*="bg-[#"] * { color: var(--visual-button-text) !important; }

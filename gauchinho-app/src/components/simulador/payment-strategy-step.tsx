@@ -49,7 +49,7 @@ export function PaymentStrategyStep({
     percentualReduzidaOverride < 100;
 
   return (
-    <section className={sectionCardClass()}>
+    <section data-site-block="parcela" className={sectionCardClass()}>
       <div className="mb-4 flex items-start gap-3">
         <span className={stepBadgeClass()}>5</span>
         <div>

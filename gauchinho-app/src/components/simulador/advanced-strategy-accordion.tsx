@@ -104,7 +104,7 @@ export function AdvancedStrategyAccordion({
   onPercentualParcelaPersonalizada,
 }: Props) {
   return (
-    <section className={sectionCardClass("overflow-hidden")}>
+    <section data-site-block="estrategia" className={sectionCardClass("overflow-hidden")}>
       <button
         type="button"
         onClick={onToggle}

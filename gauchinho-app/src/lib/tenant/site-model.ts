@@ -1,6 +1,7 @@
 import "server-only";
 
 import { createAdminClient } from "@/lib/supabase/admin";
+import { RACON_LOGO, visibleModelMenus } from "./site-appearance";
 
 export type EmpresaSiteModel = {
   id: string;
@@ -13,6 +14,7 @@ export type EmpresaSiteModel = {
     label: string;
     rota: string;
     ativo_padrao?: boolean;
+    ativo?: boolean;
     obrigatorio?: boolean;
   }>;
   secoes: Array<{
@@ -58,9 +60,7 @@ export async function getEmpresaSiteModelPublic(
     const idsHabilitados = new Set(
       Array.isArray(vinculo.menus_habilitados) ? vinculo.menus_habilitados : [],
     );
-    const menus = catalogo.filter((item: { id?: string; obrigatorio?: boolean }) =>
-      item.obrigatorio === true || (item.id ? idsHabilitados.has(item.id) : false),
-    );
+    const menus = visibleModelMenus(catalogo, [...idsHabilitados]);
     const secoesCustomizadas = Array.isArray(vinculo.secoes_customizadas)
       ? vinculo.secoes_customizadas
       : [];
@@ -82,7 +82,7 @@ export async function getEmpresaSiteModelPublic(
       menus,
       secoes,
       footerCopyright: footer.copyright ?? null,
-      logoPadraoUrl: modelo.logo_padrao_url ?? null,
+      logoPadraoUrl: modelo.logo_padrao_url || (modelo.codigo === "racon_inspired" ? RACON_LOGO : null),
       usarLogoPropria: Boolean(vinculo.usar_logo_propria),
     };
   } catch {

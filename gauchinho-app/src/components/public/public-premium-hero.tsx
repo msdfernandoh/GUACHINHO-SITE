@@ -15,7 +15,7 @@ type Props = {
 export function PublicPremiumHero({ eyebrow, title, subtitle }: Props) {
   const brand = useTenantBrand();
   return (
-    <header className="relative mb-8 sm:mb-10">
+    <header data-site-block="cabecalho" className="relative mb-8 sm:mb-10">
       {brand.isGauchinho ? <div
         className="pointer-events-none absolute -left-2 top-1/2 hidden -translate-y-1/2 select-none opacity-80 lg:block xl:-left-6"
         aria-hidden

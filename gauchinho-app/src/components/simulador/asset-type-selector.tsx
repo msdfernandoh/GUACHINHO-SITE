@@ -32,7 +32,7 @@ export function AssetTypeSelector({ modo, value, onChange }: Props) {
   const options = modo === "consorcio" ? CONSORCIO : FIN;
 
   return (
-    <section className={sectionCardClass()}>
+    <section data-site-block="bem" className={sectionCardClass()}>
       <div className="mb-4 flex items-start gap-3">
         <span className={stepBadgeClass()}>2</span>
         <div>

@@ -324,6 +324,58 @@ export async function definirResponsavelPlatformAction(
   return { status: "SUCCESS", message: "Responsável principal da Master Franquia transferido com sucesso." };
 }
 
+/** Redefinição explícita: não provisiona, ativa ou altera vínculos da empresa. */
+export async function gerarNovaSenhaPrincipalPlatformAction(
+  _prev: PlatformFormState,
+  formData: FormData,
+): Promise<PlatformFormState> {
+  if (!(await isPlatformSuperadmin())) {
+    return { status: "ERROR", message: "Acesso restrito ao Platform Superadmin." };
+  }
+  const linkId = String(formData.get("empresa_usuario_id") ?? "").trim();
+  const empresaId = String(formData.get("empresa_id") ?? "").trim();
+  if (!linkId || !empresaId || formData.get("confirmar") !== "true") {
+    return { status: "ERROR", message: "Confirme a redefinição da senha do responsável." };
+  }
+  const db = await createClient();
+  const { data: sessao, error: sessaoError } = await db.auth.getUser();
+  if (sessaoError || !sessao.user) return { status: "ERROR", message: "Sessão inválida. Entre novamente." };
+  const admin = createAdminClient();
+  const { data: vinculo, error: vinculoError } = await admin.from("empresa_usuarios")
+    .select("usuario_id, is_responsavel_principal, ativo, status")
+    .eq("id", linkId).eq("empresa_id", empresaId).single();
+  if (vinculoError || !vinculo?.is_responsavel_principal || !vinculo.ativo || vinculo.status !== "ATIVO") {
+    return { status: "ERROR", message: "Selecione o responsável principal ativo desta empresa." };
+  }
+  const { data: usuario, error: usuarioError } = await admin.from("usuarios")
+    .select("id, email, auth_user_id, ativo").eq("id", vinculo.usuario_id).single();
+  if (usuarioError || !usuario?.ativo || !usuario.auth_user_id || !usuario.email) {
+    return { status: "ERROR", message: "O responsável não possui uma identidade de acesso ativa. Use o cadastro de acesso primeiro." };
+  }
+  const { data: identidade, error: identidadeError } = await admin.auth.admin.getUserById(usuario.auth_user_id);
+  if (identidadeError || !identidade.user || identidade.user.email?.toLowerCase() !== usuario.email.toLowerCase()) {
+    return { status: "ERROR", message: "A identidade de autenticação não corresponde ao usuário cadastrado." };
+  }
+  const senhaTemporaria = gerarSenhaTemporaria();
+  const { error } = await admin.auth.admin.updateUserById(usuario.auth_user_id, {
+    password: senhaTemporaria,
+    app_metadata: {
+      ...identidade.user.app_metadata,
+      exige_troca_senha: true,
+      senha_redefinida_em: new Date().toISOString(),
+      senha_redefinida_por: sessao.user.id,
+    },
+  });
+  if (error) return { status: "ERROR", message: "Não foi possível redefinir a senha. Tente novamente." };
+  revalidatePath("/platform/usuarios");
+  revalidatePath(`/platform/empresas/${empresaId}`);
+  return {
+    status: "SUCCESS",
+    message: "Nova senha temporária gerada. Copie agora e entregue ao responsável por um canal seguro. A troca será exigida no próximo login.",
+    data: { email: usuario.email, senhaTemporaria, usuarioJaExistente: true, empresaAtivada: false },
+  };
+}
+
 export async function reenviarConvitePlatformAction(
   _prev: PlatformFormState,
   formData: FormData,

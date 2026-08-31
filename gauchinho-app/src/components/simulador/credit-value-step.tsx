@@ -27,7 +27,7 @@ export function CreditValueStep({
   const sliderValue = Math.min(max, Math.max(min, value));
 
   return (
-    <section className={sectionCardClass()}>
+    <section data-site-block="credito" className={sectionCardClass()}>
       <div className="mb-5 flex items-start gap-3">
         <span className={stepBadgeClass()}>{stepNumber}</span>
         <div>

@@ -18,7 +18,7 @@ export function FinanciamentoDetailsStep({
   valorBem,
 }: Props) {
   return (
-    <section className={sectionCardClass()}>
+    <section data-site-block="financiamento" className={sectionCardClass()}>
       <div className="mb-4 flex items-start gap-3">
         <span className={stepBadgeClass()}>5</span>
         <div>

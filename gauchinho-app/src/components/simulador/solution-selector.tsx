@@ -9,7 +9,7 @@ type Props = {
 
 export function SolutionSelector({ value, onChange }: Props) {
   return (
-    <section className={sectionCardClass()}>
+    <section data-site-block="solucao" className={sectionCardClass()}>
       <div className="mb-4 flex items-start gap-3">
         <span className={stepBadgeClass()}>1</span>
         <div>

@@ -2,6 +2,7 @@
 
 import { useActionState, useState } from "react";
 import Link from "next/link";
+import { ResetPrincipalPassword } from "./reset-principal-password";
 import { EmpresaEnderecoFields, type EmpresaEnderecoState } from "@/components/platform/empresa-endereco-fields";
 import { formatCnpjBrInput, formatWhatsappBrInput } from "@/lib/utils/format";
 import {
@@ -1033,6 +1034,7 @@ export function MasterFranquiaHub({
                   <th className="p-3 text-center">Responsável</th>
                   <th className="p-3">Módulos Efetivos</th>
                   <th className="p-3">Último Acesso</th>
+                  <th className="p-3">Acesso</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -1082,6 +1084,7 @@ export function MasterFranquiaHub({
                     <td className="p-3 text-slate-400">
                       {u.usuario?.ultimo_acesso ? new Date(u.usuario.ultimo_acesso).toLocaleDateString("pt-BR") : "Nunca"}
                     </td>
+                    <td className="p-3">{u.is_responsavel_principal && u.ativo && u.status === "ATIVO" && <ResetPrincipalPassword empresaId={empresa.id} linkId={u.id} email={u.usuario?.email || ""} />}</td>
                   </tr>
                 ))}
               </tbody>

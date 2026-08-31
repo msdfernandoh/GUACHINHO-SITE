@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Menu, Phone, ShieldCheck, X } from "lucide-react";
 import { useState } from "react";
 import type { RaconTemplateIdentidade, RaconTemplateMenu } from "./racon-inspired-home";
+import { RACON_LOGO } from "@/lib/tenant/site-appearance";
 
 type Props = {
   empresaNome: string;
@@ -27,8 +28,9 @@ export function RaconInspiredHeader({
   const primary = identidade.cor_primaria || "#0099dd";
   const secondary = identidade.cor_secundaria || "#0c2340";
   const accent = identidade.cor_destaque || "#ffb800";
-  const login = menus.find((menu) => menu.id === "login");
-  const navegacao = menus.filter((menu) => menu.id !== "login");
+  const activeMenus = menus.filter(menu => menu.ativo !== false);
+  const login = activeMenus.find((menu) => menu.id === "login");
+  const navegacao = activeMenus.filter((menu) => menu.id !== "login");
 
   return (
     <>
@@ -43,21 +45,9 @@ export function RaconInspiredHeader({
       <header className="sticky top-0 z-40 w-full border-b border-slate-100 bg-white shadow-sm">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
           <Link href="/" className="flex shrink-0 items-center gap-3">
-            {logoUrl ? (
-              <div className="relative h-10 w-44">
-                <Image src={logoUrl} alt={empresaNome} fill className="object-contain object-left" />
-              </div>
-            ) : (
-              <div className="flex items-center gap-2.5">
-                <div style={{ backgroundColor: primary }} className="flex h-9 w-9 items-center justify-center rounded-xl font-black text-white shadow-sm">R</div>
-                <div className="flex flex-col">
-                  <span style={{ color: secondary }} className="text-lg font-black leading-none tracking-tight">
-                    Racon <span style={{ color: primary }}>Consórcios</span>
-                  </span>
-                  <span className="text-[9px] font-bold uppercase tracking-widest text-slate-400">{empresaNome}</span>
-                </div>
-              </div>
-            )}
+            <div className="relative h-16 w-44 overflow-hidden">
+              <Image src={logoUrl || RACON_LOGO} unoptimized={Boolean(logoUrl?.startsWith("https:"))} alt={`${empresaNome} — Racon Consórcios`} fill sizes="176px" className={`object-contain ${!logoUrl || logoUrl === RACON_LOGO ? "scale-150" : ""}`} />
+            </div>
           </Link>
 
           <nav className="hidden min-w-0 flex-1 items-center justify-end gap-x-3 text-[11px] font-bold text-slate-700 xl:flex" aria-label="Navegação principal">
@@ -81,7 +71,7 @@ export function RaconInspiredHeader({
         {aberto ? (
           <nav id="racon-menu-mobile" className="max-h-[75vh] overflow-y-auto border-t border-slate-100 bg-white px-4 py-3 xl:hidden" aria-label="Navegação mobile">
             <div className="mx-auto grid max-w-7xl gap-1 sm:grid-cols-2">
-              {menus.map((menu) => (
+              {activeMenus.map((menu) => (
                 <Link key={menu.id} href={menu.rota} onClick={() => setAberto(false)} className="rounded-lg px-3 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">
                   {menu.label}
                 </Link>
@@ -102,11 +92,11 @@ export function RaconInspiredFooter({
   whatsappContato = "(41) 99999-9999",
   footerCopyright,
 }: Props) {
-  const secondary = identidade.cor_secundaria || "#0c2340";
-  const links = menus.filter((menu) => menu.id !== "home");
+  const secondary = identidade.cor_primaria || "#0066cc";
+  const links = menus.filter((menu) => menu.id !== "home" && menu.ativo !== false);
 
   return (
-    <footer id="contato" style={{ backgroundColor: secondary }} className="scroll-mt-24 border-t border-slate-800 pt-10 pb-7 text-xs text-slate-400">
+    <footer id="contato" data-site-tone="inverse" style={{ backgroundColor: secondary }} className="scroll-mt-24 border-t border-slate-800 pt-10 pb-7 text-xs text-white">
       <div className="mx-auto max-w-7xl space-y-7 px-4 sm:px-6">
         <div className="grid gap-8 lg:grid-cols-[1fr_2fr_1fr]">
           <div className="space-y-3">
@@ -123,7 +113,7 @@ export function RaconInspiredFooter({
             <span className="inline-flex items-center gap-1.5 rounded bg-white/5 px-2.5 py-1 text-[10px] text-slate-300"><ShieldCheck className="h-3.5 w-3.5 text-emerald-400" /> Ambiente seguro</span>
           </div>
         </div>
-        <div className="border-t border-slate-700 pt-5 text-[11px] text-slate-500">
+        <div className="border-t border-slate-700 pt-5 text-[11px] text-white">
           {footerCopyright || "Todos os direitos reservados."}
         </div>
       </div>

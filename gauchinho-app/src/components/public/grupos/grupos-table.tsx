@@ -16,7 +16,7 @@ export function GruposTable({ rows, configs, onConfigChange }: Props) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   return (
-    <div className="overflow-x-auto rounded-xl border border-zinc-800 bg-zinc-900/40">
+    <div data-site-block="tabela" className="overflow-x-auto rounded-xl border border-zinc-800 bg-zinc-900/40">
       <table className="min-w-[1360px] w-full border-collapse text-sm">
         <thead className="sticky top-0 z-10 border-b border-zinc-800 bg-zinc-950/95 backdrop-blur">
           <tr>
