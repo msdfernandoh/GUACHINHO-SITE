@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { decidirSolicitacaoGrupoAction } from "@/app/platform/grupos-actions";
+import { SolicitacaoGrupoDecisionForm } from "@/components/platform/solicitacao-grupo-decision-form";
 import { createClient } from "@/lib/supabase/server";
 
 type Solicitacao = {
@@ -35,13 +35,7 @@ export default async function SolicitacoesGruposPage() {
         <span className="h-fit rounded-full bg-amber-100 px-3 py-1 text-xs font-bold text-amber-800">{row.status}</span>
       </div>
       <dl className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">{Object.entries(row.payload ?? {}).map(([chave, valor]) => <div key={chave} className="rounded-lg bg-slate-50 p-3"><dt className="text-[10px] font-bold uppercase text-slate-500">{chave.replaceAll("_", " ")}</dt><dd className="mt-1 break-words text-sm font-semibold">{Array.isArray(valor) ? valor.join(", ") : String(valor ?? "—")}</dd></div>)}</dl>
-      <form action={decidirSolicitacaoGrupoAction} className="mt-4 flex flex-wrap items-end gap-3 border-t pt-4">
-        <input type="hidden" name="solicitacao_id" value={row.id} />
-        <label className="min-w-64 flex-1 text-xs font-semibold">Observação<input name="observacao" className="mt-1 w-full rounded-lg border px-3 py-2 text-sm" placeholder="Obrigatória quando devolver ou rejeitar" /></label>
-        <button name="decisao" value="DEVOLVER" className="rounded-lg border border-amber-300 px-4 py-2 text-sm font-bold text-amber-800">Devolver</button>
-        <button name="decisao" value="REJEITAR" className="rounded-lg border border-red-300 px-4 py-2 text-sm font-bold text-red-700">Rejeitar</button>
-        <button name="decisao" value="APROVAR" className="rounded-lg bg-emerald-700 px-4 py-2 text-sm font-bold text-white">Aprovar e publicar</button>
-      </form>
+      <SolicitacaoGrupoDecisionForm solicitacaoId={row.id} />
     </article>)}</div>
   </div>;
 }

@@ -1244,6 +1244,21 @@ advisory transaction lock antes do insert, preservando o modelo N:N de tenant.
 
 Relatório: `docs/relatorios-fases/FASE-167-IDEMPOTENCIA-CADASTRO-GRUPO-ERP.md`.
 
+## 50. Aprovação resiliente e consolidação de grupos — Fase 168
+
+A aprovação de grupo local pode reaplicar seus campos cadastrais antes da
+promoção global. O gatilho de unicidade lógica valida apenas inserts ou mudança
+real da chave natural `(empresa, administradora, código normalizado)`; atribuição
+idempotente não constitui novo cadastro. Novas duplicidades continuam bloqueadas
+com lock transacional.
+
+Reparos de dados repetidos exigem lote previamente auditado, igualdade de
+payload e ausência de qualquer uso comercial. A limpeza é transacional,
+idempotente e preserva o registro mais antigo. A decisão de aprovação permanece
+uma ação explícita do Platform Superadmin e a interface bloqueia reenvios.
+
+Relatório: `docs/relatorios-fases/FASE-168-APROVACAO-E-CONSOLIDACAO-GRUPOS.md`.
+
 
 
 

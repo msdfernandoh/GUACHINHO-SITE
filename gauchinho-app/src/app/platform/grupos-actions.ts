@@ -119,20 +119,39 @@ export async function salvarLancesEmbutidosGrupoAction(
   }
 }
 
-export async function decidirSolicitacaoGrupoAction(formData: FormData) {
-  if (!(await isPlatformSuperadmin())) throw new Error("Somente Platform Superadmin.");
-  const solicitacaoId = String(formData.get("solicitacao_id") ?? "").trim();
-  const decisao = String(formData.get("decisao") ?? "").trim();
-  const observacao = String(formData.get("observacao") ?? "").trim() || null;
-  const db = await createClient();
-  const { error } = await db.rpc("rpc_platform_decidir_solicitacao_grupo", {
-    p_solicitacao_id: solicitacaoId,
-    p_decisao: decisao,
-    p_observacao: observacao,
-  });
-  if (error) throw new Error(error.message);
-  revalidatePath("/platform/grupos");
-  revalidatePath("/platform/grupos/solicitacoes");
+export async function decidirSolicitacaoGrupoAction(
+  _previous: GroupActionState,
+  formData: FormData,
+): Promise<GroupActionState> {
+  try {
+    if (!(await isPlatformSuperadmin())) {
+      return { status: "SERVER_ERROR", message: "Somente Platform Superadmin." };
+    }
+    const solicitacaoId = String(formData.get("solicitacao_id") ?? "").trim();
+    const decisao = String(formData.get("decisao") ?? "").trim().toUpperCase();
+    const observacao = String(formData.get("observacao") ?? "").trim() || null;
+    if (!solicitacaoId || !["APROVAR", "DEVOLVER", "REJEITAR"].includes(decisao)) {
+      return { status: "VALIDATION_ERROR", message: "Solicitação ou decisão inválida." };
+    }
+    if (["DEVOLVER", "REJEITAR"].includes(decisao) && !observacao) {
+      return { status: "VALIDATION_ERROR", message: "Informe uma observação para devolver ou rejeitar." };
+    }
+    const db = await createClient();
+    const { error } = await db.rpc("rpc_platform_decidir_solicitacao_grupo", {
+      p_solicitacao_id: solicitacaoId,
+      p_decisao: decisao,
+      p_observacao: observacao,
+    });
+    if (error) return { status: "SERVER_ERROR", message: error.message };
+    revalidatePath("/platform/grupos");
+    revalidatePath("/platform/grupos/solicitacoes");
+    return {
+      status: "SUCCESS",
+      message: decisao === "APROVAR" ? "Grupo aprovado e publicado no catálogo." : "Solicitação atualizada.",
+    };
+  } catch (error) {
+    return { status: "SERVER_ERROR", message: error instanceof Error ? error.message : "Falha ao decidir a solicitação." };
+  }
 }
 
 export async function salvarGrupoPlatformAction(
