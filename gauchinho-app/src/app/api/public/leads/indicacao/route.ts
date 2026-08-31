@@ -80,6 +80,8 @@ export async function POST(request: Request) {
 
       const baseRow = {
         empresa_id: ingress.empresaId,
+        parceiro_site_id: ingress.parceiroSiteId ?? null,
+        organizacao_parceira_id: ingress.organizacaoParceiraId ?? null,
         nome: ind.nome.trim(),
         whatsapp: ind.whatsapp.trim(),
         email: null,
@@ -131,6 +133,7 @@ export async function POST(request: Request) {
         lead_id: leadRow.id,
         dados_evento: {
           indicador: body.indicadorNome.trim(),
+          ...(ingress.parceiroSiteId ? { parceiroSiteId: ingress.parceiroSiteId } : {}),
           ...(indicadorTelefone ? { indicadorTelefone } : {}),
           ...(origemPagina ? { origemPagina } : {}),
         },

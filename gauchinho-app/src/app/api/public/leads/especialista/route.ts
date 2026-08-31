@@ -44,6 +44,8 @@ export async function POST(request: Request) {
       .from("leads")
       .insert({
         empresa_id: ingress.empresaId,
+        parceiro_site_id: ingress.parceiroSiteId ?? null,
+        organizacao_parceira_id: ingress.organizacaoParceiraId ?? null,
         nome: body.nome.trim(),
         whatsapp: body.whatsapp.trim(),
         email: null,
@@ -72,6 +74,9 @@ export async function POST(request: Request) {
       origem: ORIGEM,
       pagina: request.headers.get("referer") ?? "/",
       lead_id: leadRow.id,
+      dados_evento: ingress.parceiroSiteId
+        ? { parceiro_site_id: ingress.parceiroSiteId }
+        : undefined,
     });
 
     const whatsappOrigem =

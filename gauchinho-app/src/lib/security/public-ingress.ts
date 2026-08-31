@@ -10,7 +10,13 @@ export async function authorizePublicIngress(
   action: string,
   options: { limit?: number; windowSeconds?: number } = {},
 ): Promise<
-  | { ok: true; empresaId: string; slug: string }
+  | {
+      ok: true;
+      empresaId: string;
+      slug: string;
+      parceiroSiteId?: string;
+      organizacaoParceiraId?: string;
+    }
   | { ok: false; response: NextResponse }
 > {
   const tenant = await resolveOperationalTenantForApi(request);

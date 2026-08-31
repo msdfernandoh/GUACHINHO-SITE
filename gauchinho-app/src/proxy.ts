@@ -131,6 +131,14 @@ export async function proxy(request: NextRequest) {
           requestHeaders.set(PARCEIRO_SOURCE_HEADER, partner.partner.source);
           tenantSlug = partner.partner.empresa_slug;
 
+          // APIs de um portal parceiro precisam chegar ao Route Handler
+          // original. Reescrever para a página institucional faria o formulário
+          // público falhar e perderia a atribuição do parceiro. Os handlers
+          // revalidam o domínio no servidor antes de gravar qualquer dado.
+          if (path.startsWith("/api/")) {
+            return NextResponse.next({ request: { headers: requestHeaders } });
+          }
+
           const rewriteUrl = request.nextUrl.clone();
           rewriteUrl.pathname = `/parceiro/${partner.partner.site_slug}`;
           let response = NextResponse.rewrite(rewriteUrl, {

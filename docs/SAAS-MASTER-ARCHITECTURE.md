@@ -1313,6 +1313,26 @@ continua sem afetar o faturamento da empresa.
 Relatório:
 `docs/relatorios-fases/FASE-170-PROGRAMA-COMISSAO-IMPORTACAO-HISTORICA.md`.
 
+## 53. Portais de parceiros com ERP compartilhado — Fase 171
+
+Novos parceiros utilizam `parceiro_sites` e `parceiro_site_dominios` como
+portais comerciais subordinados à empresa/franquia. O host resolve no servidor
+`empresa_id`, `parceiro_site_id` e `organizacao_parceira_id`; o navegador não
+informa esses identificadores como autoridade.
+
+O portal parceiro não cria um segundo ERP nem duplica empresa: leads e
+indicações públicos entram no ERP da franquia, com origem do site e organização
+gravadas nas colunas canônicas já existentes. A área do parceiro continua
+restringindo a consulta à própria organização. Sites e dados anteriores não
+são migrados nem reinterpretados.
+
+Quando houver ERP próprio, a unidade deve ser cadastrada como nova Master
+Franquia, com empresa, usuários N:N, domínio e publicação próprios; um site de
+parceiro permanece necessariamente no modo compartilhado.
+
+Relatório:
+`docs/relatorios-fases/FASE-171-PORTAIS-PARCEIROS-ERP-COMPARTILHADO.md`.
+
 
 
 
