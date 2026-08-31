@@ -30,6 +30,9 @@ as autorizações multiempresa.
 - Build de produção e TypeScript aprovados; suíte completa com 1.120 testes
   aprovados e 37 ignorados pelas condições já existentes.
 - ESLint sem erros nos arquivos novos e principais arquivos alterados.
+- Verificação no domínio publicado confirmou logo oficial e tabela azul.
+  Destaques textuais usam azul por padrão para evitar amarelo pouco legível
+  em superfícies brancas; permanecem personalizáveis por página/bloco.
 
 - Testes unitários de isolamento, round-trip JSON, herança, imagens e rejeição de injeção CSS.
 - Testes de seleção de menus e contratos de identidade/rotas.

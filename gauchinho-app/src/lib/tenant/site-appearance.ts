@@ -19,7 +19,9 @@ export function visualDefaults(identity: SiteVisualIdentity) {
     "--visual-text": identity.cor_texto || "#334155",
     "--visual-button": identity.cor_primaria || "#0066cc",
     "--visual-button-text": "#ffffff",
-    "--visual-accent": identity.cor_destaque || identity.cor_primaria || "#0066cc",
+    // Destaques de texto sobre fundo claro usam azul por padrão; a página/bloco
+    // pode configurar outra cor, sem herdar o amarelo de CTAs legados.
+    "--visual-accent": identity.cor_primaria || "#0066cc",
     "--tenant-primary": identity.cor_primaria || "#0066cc",
   };
 }
