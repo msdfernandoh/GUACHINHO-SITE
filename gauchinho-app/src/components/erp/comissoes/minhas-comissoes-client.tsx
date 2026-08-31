@@ -1,8 +1,10 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { Calendar, DollarSign, Clock, CheckCircle2, Search, User, X } from "lucide-react";
+import { Calendar, CircleDollarSign, Clock, CheckCircle2, Layers3, Search, User, X } from "lucide-react";
 import { conferirPagamentoAction } from "@/app/erp/minhas-comissoes/actions";
+import type { ResumoVendasMes } from "@/lib/erp/minhas-comissoes-vendas";
+import Link from "next/link";
 
 export type PrevisaoParticipanteItem = {
   id: string;
@@ -28,6 +30,8 @@ interface MinhasComissoesClientProps {
   participanteNome: string;
   previsoes: PrevisaoParticipanteItem[];
   mostrarDetalhesFiscais: boolean;
+  resumoVendasMes: ResumoVendasMes;
+  podeGerenciarFiscal: boolean;
 }
 
 const brl = (val: number) =>
@@ -37,6 +41,8 @@ export function MinhasComissoesClient({
   participanteNome,
   previsoes,
   mostrarDetalhesFiscais,
+  resumoVendasMes,
+  podeGerenciarFiscal,
 }: MinhasComissoesClientProps) {
   const now = new Date();
   const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
@@ -158,6 +164,15 @@ export function MinhasComissoesClient({
           Acompanhe suas previsões mês a mês, valores elegíveis e repasses liberados por cliente e competência.
         </p>
       </header>
+
+      {podeGerenciarFiscal && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-blue-200 bg-blue-50 p-4 dark:border-blue-900 dark:bg-blue-950/20">
+          <p className="text-xs text-blue-900 dark:text-blue-200">Atualize o líquido das comissões pendentes de todos os participantes com uma única aplicação fiscal.</p>
+          <Link href="/erp/regras-comissao?aba=fiscal" className="rounded-xl bg-blue-700 px-4 py-2 text-xs font-bold text-white">
+            Aplicar imposto em lote
+          </Link>
+        </div>
+      )}
 
       {/* Barra de Filtros: Cliente + Competência */}
       <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-2xs dark:border-slate-800 dark:bg-slate-900 space-y-3">
@@ -285,6 +300,43 @@ export function MinhasComissoesClient({
           </div>
         </div>
       </div>
+
+      {/* Indicadores comerciais fixos do mês da venda */}
+      <section className="grid gap-4 sm:grid-cols-2">
+        <div className="rounded-2xl border border-cyan-200 bg-cyan-50/60 p-5 shadow-2xs dark:border-cyan-900/40 dark:bg-cyan-950/20">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="text-xs font-semibold text-cyan-800 dark:text-cyan-300">
+                Valor em cotas vendidas no mês ({resumoVendasMes.competencia})
+              </p>
+              <p className="mt-2 text-2xl font-black text-cyan-950 dark:text-cyan-100">
+                {brl(resumoVendasMes.valorVendido)}
+              </p>
+              <p className="mt-1 text-[11px] text-cyan-700/80">
+                Crédito total de {resumoVendasMes.quantidadeVendas} {resumoVendasMes.quantidadeVendas === 1 ? "venda confirmada" : "vendas confirmadas"}
+              </p>
+            </div>
+            <CircleDollarSign className="h-8 w-8 shrink-0 text-cyan-700 dark:text-cyan-300" />
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-amber-200 bg-amber-50/60 p-5 shadow-2xs dark:border-amber-900/40 dark:bg-amber-950/20">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="text-xs font-semibold text-amber-800 dark:text-amber-300">
+                Cotas vendidas no mês ({resumoVendasMes.competencia})
+              </p>
+              <p className="mt-2 text-2xl font-black text-amber-950 dark:text-amber-100">
+                {resumoVendasMes.quantidadeCotas.toLocaleString("pt-BR")} {resumoVendasMes.quantidadeCotas === 1 ? "cota" : "cotas"}
+              </p>
+              <p className="mt-1 text-[11px] text-amber-700/80">
+                Soma da quantidade de cotas das vendas que afetam o faturamento
+              </p>
+            </div>
+            <Layers3 className="h-8 w-8 shrink-0 text-amber-700 dark:text-amber-300" />
+          </div>
+        </div>
+      </section>
 
       {/* Cards de Métricas */}
       <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

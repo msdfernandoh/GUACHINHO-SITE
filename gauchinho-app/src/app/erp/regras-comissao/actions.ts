@@ -486,6 +486,33 @@ export async function saveFiscalConfigAction(
 
 export const saveFiscalCommissionConfigAction = saveFiscalConfigAction;
 
+export async function aplicarImpostoComissoesLoteAction(
+  _previous: CommissionActionState,
+  formData: FormData,
+): Promise<CommissionActionState> {
+  try {
+    const empresaId = String(formData.get("empresa_id") ?? "").trim();
+    const configuracaoId = String(formData.get("configuracao_fiscal_id") ?? "").trim();
+    const confirmar = formData.get("confirmar") === "true";
+    if (!empresaId || !configuracaoId) throw new Error("Selecione uma alíquota fiscal cadastrada.");
+    const supabase = await assertCanWrite(empresaId);
+    const { data, error } = await supabase.rpc("rpc_aplicar_imposto_comissoes_lote", {
+      p_empresa_id: empresaId,
+      p_configuracao_fiscal_id: configuracaoId,
+      p_confirmar: confirmar,
+    });
+    if (error) throw new Error(error.message);
+    if (confirmar) {
+      for (const path of ["/erp/regras-comissao", "/erp/minhas-comissoes", "/erp/comissoes", "/admin/comissoes", "/erp/financeiro"]) {
+        revalidatePath(path);
+      }
+    }
+    return { ok: true, message: confirmar ? "Imposto aplicado às previsões sem movimentação financeira." : "Prévia calculada. Nenhum valor foi alterado.", data };
+  } catch (error) {
+    return { ok: false, message: error instanceof Error ? error.message : "Não foi possível aplicar o imposto em lote." };
+  }
+}
+
 // --------------------------------------------------------------------------
 // 5. COMPATIBILIDADE COM MOTOR E COMPONENTES LEGADOS
 // --------------------------------------------------------------------------

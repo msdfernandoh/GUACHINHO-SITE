@@ -1356,6 +1356,30 @@ troca da aplicação.
 Relatório:
 `docs/relatorios-fases/FASE-172-AGENDA-COMERCIAL-TENANT-UX-PERMISSOES.md`.
 
+## 55. Vendas mensais e imposto em lote — Fase 173
+
+Minhas comissões apresenta dois indicadores adicionais de produção no mês:
+crédito total vendido e quantidade de cotas. Os fatos vêm de `vendas` e
+`venda_participantes`, com tenant/participante resolvidos no servidor, paginação
+e deduplicação por venda. Somente vendas confirmadas que afetam faturamento
+participam; crédito já totalizado não é multiplicado novamente pelas cotas.
+
+A aplicação fiscal em lote é uma operação administrativa explícita com prévia
+e confirmação. A migration 170 instala a RPC sem alterar registros existentes.
+Ela aplica a alíquota cadastrada selecionada às previsões sem movimentação,
+incluindo importações históricas, preservando integralmente vendas que já
+possuam movimentos financeiros ou origem fiscal não identificável. Registra
+bruto original e líquido em snapshot e auditoria, sem desconto cumulativo,
+sem alterar regras comerciais, caixa, pagamentos ou recebimentos.
+
+O extrato lê também os snapshots fiscais próprios das importações e do lote,
+sem depender exclusivamente do vínculo com uma previsão da franquia. A
+operação exige sessão autenticada e administração da empresa; tenant e acesso
+à rota são novamente validados na Server Action.
+
+Relatório:
+`docs/relatorios-fases/FASE-173-MINHAS-COMISSOES-VENDAS-E-IMPOSTO-LOTE.md`.
+
 
 
 

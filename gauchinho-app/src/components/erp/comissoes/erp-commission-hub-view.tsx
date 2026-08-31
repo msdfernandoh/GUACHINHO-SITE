@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import { AplicarImpostoLote } from "./aplicar-imposto-lote";
 import {
   createCommissionProfileAction,
   updateCommissionProfileAction,
@@ -150,9 +151,10 @@ export function ErpCommissionHubView({
   canWrite: boolean;
 }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   // Active Tab
-  const [activeTab, setActiveTab] = useState<"franquia" | "perfis" | "regras" | "participantes" | "curvas" | "fiscal">("regras");
+  const [activeTab, setActiveTab] = useState<"franquia" | "perfis" | "regras" | "participantes" | "curvas" | "fiscal">(searchParams.get("aba") === "fiscal" ? "fiscal" : "regras");
 
   // Modal: Novo / Editar Perfil
   const [perfilModalOpen, setPerfilModalOpen] = useState(false);
@@ -1147,6 +1149,7 @@ export function ErpCommissionHubView({
       {/* ABA 6: FISCAL & IMPOSTOS */}
       {activeTab === "fiscal" && (
         <section className="space-y-4">
+          {canWrite && <AplicarImpostoLote empresaId={empresaId} configs={fiscais} />}
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <h2 className="text-xl font-bold text-slate-900 dark:text-white">Configurações Fiscais e Tributárias</h2>

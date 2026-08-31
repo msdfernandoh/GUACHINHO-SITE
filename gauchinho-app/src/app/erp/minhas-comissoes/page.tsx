@@ -2,6 +2,9 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentTenantContext } from "@/lib/tenant/context";
 import { MinhasComissoesClient, type PrevisaoParticipanteItem } from "@/components/erp/comissoes/minhas-comissoes-client";
+import { mesAtualEmCuiaba } from "@/lib/erp/minhas-comissoes-vendas";
+import { carregarResumoVendasMes } from "@/lib/erp/minhas-comissoes-vendas-server";
+import { lerFiscalParticipante } from "@/lib/erp/comissoes-fiscal-extrato";
 
 export default async function MinhasComissoesPage() {
   const { empresaAtiva, usuario } = await getCurrentTenantContext();
@@ -38,6 +41,7 @@ export default async function MinhasComissoesPage() {
       previsao_franquia_id,
       status,
       tipo_gatilho,
+      snapshot_regra,
       conferido_por_participante,
       venda:vendas(id, valor_credito, cliente:clientes(nome), cota:cotas_definitivas(numero_cota, numero_grupo))
     `)
@@ -51,7 +55,7 @@ export default async function MinhasComissoesPage() {
       .map((row: any) => row.previsao_franquia_id)
       .filter((id: unknown): id is string => typeof id === "string" && id.length > 0),
   )];
-  const [{ data: previsoesFranquia }, { data: fiscal }] = await Promise.all([
+  const [{ data: previsoesFranquia }, { data: fiscal }, { data: podeGerenciarFiscal }] = await Promise.all([
     previsaoFranquiaIds.length
       ? admin
           .from("comissao_previsoes_franquia")
@@ -69,15 +73,19 @@ export default async function MinhasComissoesPage() {
       .order("vigencia_inicio", { ascending: false })
       .limit(1)
       .maybeSingle(),
+    db.rpc("can_write_tenant_internal", { p_empresa_id: empresaAtiva.id }),
   ]);
   const franquiaMap = new Map((previsoesFranquia ?? []).map((item: any) => [item.id, item]));
   const mostrarDetalhesFiscais = Boolean(fiscal?.participante_exibe_detalhes_fiscais);
+  const competenciaVendasMes = mesAtualEmCuiaba();
+  const resumoVendasMes = await carregarResumoVendasMes(empresaAtiva.id, participante.id, competenciaVendasMes);
 
   const previsoes: PrevisaoParticipanteItem[] = (data ?? []).map((row: any) => {
     const venda = Array.isArray(row.venda) ? row.venda[0] : row.venda;
     const cliente = Array.isArray(venda?.cliente) ? venda?.cliente[0] : venda?.cliente;
     const cota = Array.isArray(venda?.cota) ? venda?.cota[0] : venda?.cota;
     const franquia = row.previsao_franquia_id ? franquiaMap.get(row.previsao_franquia_id) : null;
+    const fiscalParticipante = lerFiscalParticipante(row.snapshot_regra);
     const liquidoFranquia = Number(franquia?.valor_liquido ?? row.base_calculo_valor ?? 0);
     const liquidoParticipante = Number(row.valor_previsto ?? 0);
     const proporcaoParticipante = liquidoFranquia > 0
@@ -97,10 +105,10 @@ export default async function MinhasComissoesPage() {
       valor_previsto: Number(row.valor_previsto),
       valor_elegivel: Number(row.valor_elegivel),
       valor_pago: Number(row.valor_pago),
-      valor_bruto_atribuido: brutoAtribuido,
-      valor_imposto_atribuido: impostoAtribuido,
+      valor_bruto_atribuido: fiscalParticipante?.bruto ?? brutoAtribuido,
+      valor_imposto_atribuido: fiscalParticipante?.imposto ?? impostoAtribuido,
       valor_liquido: liquidoParticipante,
-      percentual_imposto: franquia?.percentual_imposto != null ? Number(franquia.percentual_imposto) : null,
+      percentual_imposto: fiscalParticipante?.aliquota ?? (franquia?.percentual_imposto != null ? Number(franquia.percentual_imposto) : null),
       status: row.status,
       tipo_gatilho: row.tipo_gatilho,
       conferido_por_participante: Boolean(row.conferido_por_participante),
@@ -117,6 +125,8 @@ export default async function MinhasComissoesPage() {
         participanteNome={participante.nome_exibicao || participante.nome}
         previsoes={previsoes}
         mostrarDetalhesFiscais={mostrarDetalhesFiscais}
+        resumoVendasMes={resumoVendasMes}
+        podeGerenciarFiscal={Boolean(podeGerenciarFiscal)}
       />
     </main>
   );
