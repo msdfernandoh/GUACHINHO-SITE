@@ -54,7 +54,7 @@ export default async function MasterFranquiaDetailPage({
       .maybeSingle(),
     db
       .from("empresa_branding")
-      .select("id, nome_site, status_publicacao, logo_url")
+      .select("id, nome_site, status_publicacao, logo_url, telefone, whatsapp")
       .eq("empresa_id", id)
       .maybeSingle(),
     db
@@ -179,6 +179,8 @@ export default async function MasterFranquiaDetailPage({
         modelo_id: rawModeloEmpresa?.modelo_id ?? null,
         template_codigo: modeloEmpresa?.codigo ?? null,
         logo_url: rawBranding.logo_url,
+        telefone: rawBranding.telefone,
+        whatsapp: rawBranding.whatsapp,
         menus: Array.isArray(rawModeloEmpresa?.menus_habilitados)
           ? (rawModeloEmpresa.menus_habilitados as BrandingHubDetail["menus"])
           : [],

@@ -1219,6 +1219,31 @@ e permissão canônica tanto na página quanto na API; visibilidade do botão n�
 concede acesso. Relatório:
 `docs/relatorios-fases/FASE-165-RESTAURACAO-GAUCHINHO-CONTRASTE-GRUPOS.md`.
 
+## 48. Modelos independentes, marca própria e contatos — Fase 166
+
+Modelos derivados preservam a família de renderização pela relação canônica
+`site_modelos.modelo_origem_id`, nunca por nome, slug ou prefixo. A resolução é
+limitada e falha fechada diante de ciclo/origem ausente. Conteúdo, status,
+publicação e vínculo da cópia continuam independentes.
+
+Contatos públicos possuem precedência: `empresa_branding` da empresa, padrão
+opcional em `site_modelos.identidade_visual.contatos`, ou ausência. Números de
+exemplo não são fallback. Cópias destinadas a marca própria removem identidade
+e campanhas da origem na própria edição antes do salvamento; o original é
+imutável nessa operação.
+
+Relatório: `docs/relatorios-fases/FASE-166-MODELOS-MARCA-PROPRIA-E-CONTATOS.md`.
+
+## 49. Cadastro idempotente de Grupo no ERP — Fase 167
+
+Novo grupo local é identificado por empresa, administradora, tipo e código
+normalizado. O cliente bloqueia reenvio enquanto a operação está pendente; a
+ação usa chave determinística, detecta registro anterior e sempre navega para o
+resultado. A proteção definitiva no banco serializa a chave natural com
+advisory transaction lock antes do insert, preservando o modelo N:N de tenant.
+
+Relatório: `docs/relatorios-fases/FASE-167-IDEMPOTENCIA-CADASTRO-GRUPO-ERP.md`.
+
 
 
 

@@ -3,6 +3,7 @@
 import { useActionState, useState } from "react";
 import Link from "next/link";
 import { ResetPrincipalPassword } from "./reset-principal-password";
+import { SiteContactsForm } from "./site-contacts-form";
 import { EmpresaEnderecoFields, type EmpresaEnderecoState } from "@/components/platform/empresa-endereco-fields";
 import { formatCnpjBrInput, formatWhatsappBrInput } from "@/lib/utils/format";
 import {
@@ -74,6 +75,8 @@ export type AssinaturaHubDetail = {
 };
 
 export type BrandingHubDetail = {
+  telefone?: string;
+  whatsapp?: string;
   id: string;
   nome_site: string;
   status_publicacao: string;
@@ -1306,6 +1309,7 @@ export function MasterFranquiaHub({
             </div>
           </div>
 
+          <SiteContactsForm empresaId={empresa.id} telefone={branding?.telefone} whatsapp={branding?.whatsapp} />
           <p className="rounded-lg bg-sky-50 p-3 text-sky-900 dark:bg-sky-950/40 dark:text-sky-200">
             A troca afeta somente esta empresa. O modelo define o layout; cores, logotipo e textos continuam no cadastro de identidade da franquia.
           </p>
@@ -2048,6 +2052,10 @@ export function MasterFranquiaHub({
                   />
                 </div>
 
+                <div>
+                  <label className="font-bold text-slate-700 dark:text-slate-300">Telefone de Contato:</label>
+                  <input name="telefone" type="tel" maxLength={40} defaultValue={String(siteParaEditar.site.branding?.telefone ?? "")} className="mt-1 w-full rounded border border-slate-300 p-2 dark:border-slate-700 dark:bg-slate-800" />
+                </div>
                 <div>
                   <label className="font-bold text-slate-700 dark:text-slate-300">WhatsApp de Contato:</label>
                   <input

@@ -1,4 +1,6 @@
 import type { CSSProperties } from "react";
+import { isRaconModel } from "@/lib/tenant/model-family";
+import { resolveSiteContacts } from "@/lib/tenant/site-contacts";
 import type { Metadata } from "next";
 import { PublicHeader } from "@/components/public/public-header";
 import { PublicFooter } from "@/components/public/public-footer";
@@ -31,7 +33,7 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function PublicLayout({ children }: { children: React.ReactNode }) {
   const tenant = await getResolvedTenant();
   const allowsOperational = tenant?.allowsLegacyOperationalData === true;
-  const usaChromeRacon = tenant?.siteModel?.codigo === "racon_inspired";
+  const usaChromeRacon = isRaconModel(tenant?.siteModel);
   const isGauchinho = tenant?.slug === GAUCHINHO_SLUG;
   const identidadeRacon: RaconTemplateIdentidade = tenant?.siteModel ? {
     ...tenant.siteModel.identidadeVisual,
@@ -42,6 +44,7 @@ export default async function PublicLayout({ children }: { children: React.React
   const logoRacon = tenant?.siteModel?.usarLogoPropria
     ? tenant.branding.logo_url
     : tenant?.siteModel?.logoPadraoUrl ?? tenant?.branding.logo_url;
+  const contatos = resolveSiteContacts(tenant?.branding || {}, identidadeRacon.contatos);
 
   const brandStyle: CSSProperties & Record<string, string> = {
     background: usaChromeRacon ? String(identidadeRacon.cor_fundo || "#ffffff") : "var(--brand-blue)",
@@ -90,8 +93,8 @@ export default async function PublicLayout({ children }: { children: React.React
             logoUrl={logoRacon}
             identidade={identidadeRacon}
             menus={tenant.siteModel.menus}
-            telefoneContato={tenant.branding.telefone || "(41) 3000-0000"}
-            whatsappContato={tenant.branding.whatsapp || "(41) 99999-9999"}
+            telefoneContato={contatos.telefone}
+            whatsappContato={contatos.whatsapp}
             footerCopyright={tenant.siteModel.footerCopyright}
           />
         ) : <PublicHeader />}
@@ -102,8 +105,8 @@ export default async function PublicLayout({ children }: { children: React.React
             logoUrl={logoRacon}
             identidade={identidadeRacon}
             menus={tenant.siteModel.menus}
-            telefoneContato={tenant.branding.telefone || "(41) 3000-0000"}
-            whatsappContato={tenant.branding.whatsapp || "(41) 99999-9999"}
+            telefoneContato={contatos.telefone}
+            whatsappContato={contatos.whatsapp}
             footerCopyright={tenant.siteModel.footerCopyright}
           />
         ) : <PublicFooter />}

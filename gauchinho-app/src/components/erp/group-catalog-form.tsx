@@ -66,7 +66,7 @@ export function GroupCatalogForm({
   scope: "PLATFORM" | "ERP";
 }) {
   const router = useRouter();
-  const [state, formAction] = useActionState(action, initial);
+  const [state, formAction, isPending] = useActionState(action, initial);
   const [admin, setAdmin] = useState(
     grupo?.administradora_id ?? administradoras[0]?.id ?? ""
   );
@@ -108,7 +108,9 @@ export function GroupCatalogForm({
     if (state.status === "SUCCESS") {
       setCreditos([]);
       setNovoCredito("");
-      if (state.redirectTo) router.push(state.redirectTo);
+      if (state.redirectTo) router.replace(state.redirectTo);
+    } else if (state.status === "CONFLICT" && state.redirectTo) {
+      router.replace(state.redirectTo);
     }
   }, [router, state]);
 
@@ -380,16 +382,16 @@ export function GroupCatalogForm({
         </p>
 
         {!readonly && <div className="flex flex-wrap gap-2">
-          <button type="submit" name="acao_pos_salvar" value="CONTINUAR" className="rounded-xl border border-blue-300 bg-white px-5 py-2.5 text-sm font-bold text-blue-800 hover:bg-blue-50">
-            Salvar e continuar
+          <button disabled={isPending} type="submit" name="acao_pos_salvar" value="CONTINUAR" className="rounded-xl border border-blue-300 bg-white px-5 py-2.5 text-sm font-bold text-blue-800 hover:bg-blue-50 disabled:cursor-wait disabled:opacity-60">
+            {isPending ? "Salvando grupo…" : "Salvar e continuar"}
           </button>
-          <button type="submit" name="acao_pos_salvar" value="VOLTAR" className="rounded-xl bg-blue-700 px-6 py-2.5 text-sm font-bold text-white shadow-md hover:bg-blue-800">
-            Salvar e voltar para Grupos
+          <button disabled={isPending} type="submit" name="acao_pos_salvar" value="VOLTAR" className="rounded-xl bg-blue-700 px-6 py-2.5 text-sm font-bold text-white shadow-md hover:bg-blue-800 disabled:cursor-wait disabled:opacity-60">
+            {isPending ? "Salvando grupo…" : "Salvar e voltar para Grupos"}
           </button>
         </div>}
       </div>
 
-      {state.status !== "IDLE" && (
+      {(state.status !== "IDLE" || isPending) && (
         <p
           className={`rounded-lg p-3 text-xs font-bold ${
             state.status === "SUCCESS"
@@ -397,7 +399,7 @@ export function GroupCatalogForm({
               : "bg-rose-50 text-rose-800 dark:bg-rose-950 dark:text-rose-300"
           }`}
         >
-          {state.message}
+          {isPending ? "Salvando o grupo e seus créditos. Aguarde a confirmação para evitar duplicidade." : state.message}
         </p>
       )}
     </form>

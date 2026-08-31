@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { RaconInspiredHeader, RaconInspiredFooter } from "./racon-inspired-chrome";
-import { RACON_LOGO, blockImage, pageAppearanceCss, normalizePageAppearance, visualDefaults, type SitePagesAppearance } from "@/lib/tenant/site-appearance";
+import { blockImage, pageAppearanceCss, normalizePageAppearance, visualDefaults, type SitePagesAppearance } from "@/lib/tenant/site-appearance";
 import {
   Home,
   Car,
@@ -94,6 +94,8 @@ export type ImagensBanners = {
 };
 
 export type RaconTemplateIdentidade = {
+  contatos?: { telefone?: string; whatsapp?: string };
+  marca_propria?: boolean;
   cor_primaria?: string;
   cor_secundaria?: string;
   cor_destaque?: string;
@@ -139,16 +141,18 @@ export type RaconInspiredHomeProps = {
 
 export function RaconInspiredHome({
   empresaNome = "Racon Consórcios",
-  logoUrl = RACON_LOGO,
+  logoUrl,
   identidade = {},
   menus = [],
   secoes = [],
-  footerCopyright = "Todos os direitos reservados. Administradora autorizada e fiscalizada pelo Banco Central do Brasil.",
-  telefoneContato = "0800 645 4500",
-  whatsappContato = "(41) 99999-9999",
+  footerCopyright,
+  telefoneContato,
+  whatsappContato,
   isInteractive = true,
   showChrome = true,
 }: RaconInspiredHomeProps) {
+  const ownBrand = identidade.marca_propria === true;
+  const brandName = ownBrand ? empresaNome : "Racon Consórcios";
   // Cores canônicas da identidade Racon
   const primary = identidade.cor_primaria || "#0099dd"; // Sky Blue Racon
   const secondary = identidade.cor_secundaria || "#0c2340"; // Navy Escuro
@@ -159,12 +163,13 @@ export function RaconInspiredHome({
 
   // Imagens dinâmicas de banners e propaganda
   const banners = identidade.imagens_banners || {};
-  const heroBannerImg = blockImage(identidade, "/", "hero", banners.hero_banner_url || "/racon/racon-rubinho-hero.png");
-  const cardVeiculoImg = blockImage(identidade, "/", "card_veiculos", banners.card_veiculos_url || "/racon/racon-card-veiculo.png");
-  const cardImovelImg = blockImage(identidade, "/", "card_imoveis", banners.card_imoveis_url || "/racon/racon-card-imovel.png");
-  const cardPatrimonioImg = blockImage(identidade, "/", "card_patrimonio", banners.card_patrimonio_url || "/racon/racon-card-patrimonio.png");
-  const bannerFiliaisImg = blockImage(identidade, "/", "filiais", banners.banner_filiais_url || "/racon/racon-rubinho-conquiste.png");
-  const embaixadorStatsImg = blockImage(identidade, "/", "estatisticas", banners.embaixador_stats_url || "/racon/racon-rubinho-apontando.png");
+  const fallbackImage = (racon: string) => ownBrand ? "/media/consorcio-neutro.svg" : racon;
+  const heroBannerImg = blockImage(identidade, "/", "hero", banners.hero_banner_url || fallbackImage("/racon/racon-rubinho-hero.png"));
+  const cardVeiculoImg = blockImage(identidade, "/", "card_veiculos", banners.card_veiculos_url || fallbackImage("/racon/racon-card-veiculo.png"));
+  const cardImovelImg = blockImage(identidade, "/", "card_imoveis", banners.card_imoveis_url || fallbackImage("/racon/racon-card-imovel.png"));
+  const cardPatrimonioImg = blockImage(identidade, "/", "card_patrimonio", banners.card_patrimonio_url || fallbackImage("/racon/racon-card-patrimonio.png"));
+  const bannerFiliaisImg = blockImage(identidade, "/", "filiais", banners.banner_filiais_url || fallbackImage("/racon/racon-rubinho-conquiste.png"));
+  const embaixadorStatsImg = blockImage(identidade, "/", "estatisticas", banners.embaixador_stats_url || fallbackImage("/racon/racon-rubinho-apontando.png"));
 
 
   const appearance = normalizePageAppearance(identidade.paginas_blocos)["/"] || {};
@@ -222,7 +227,7 @@ export function RaconInspiredHome({
     menus.length > 0
       ? menus.filter((m) => m.ativo !== false)
       : [
-          { id: "sobre", label: "A Racon Consórcios", rota: "/#sobre" },
+          { id: "sobre", label: ownBrand ? "Sobre nós" : "A Racon Consórcios", rota: "/#sobre" },
           { id: "unidades", label: "Unidades", rota: "/#unidades" },
           { id: "como_funciona", label: "Como Funciona", rota: "/#como-funciona" },
           { id: "tipos", label: "Tipos de Consórcio", rota: "/consorcio" },
@@ -417,7 +422,7 @@ export function RaconInspiredHome({
         <div className="mx-auto max-w-7xl px-4 sm:px-6">
           <div className="text-center max-w-2xl mx-auto space-y-2">
             <h2 className="text-2xl sm:text-3xl font-black text-slate-900">
-              A Racon tem <span className="text-[#008fd5]">o consórcio perfeito</span> para você contemplar suas conquistas!
+              {ownBrand ? empresaNome : "A Racon"} tem <span className="text-[#008fd5]">o consórcio perfeito</span> para você contemplar suas conquistas!
             </h2>
           </div>
 
@@ -588,7 +593,7 @@ export function RaconInspiredHome({
           <div className="space-y-8">
             <div className="text-center space-y-1">
               <h3 className="text-xl sm:text-2xl font-black text-slate-900">
-                Vantagens de ter um <span className="text-[#008fd5]">Consórcio Racon</span>
+                Vantagens de ter um <span className="text-[#008fd5]">{ownBrand ? "consórcio" : "Consórcio Racon"}</span>
               </h3>
             </div>
 
@@ -667,13 +672,13 @@ export function RaconInspiredHome({
               <h3 className="text-2xl font-black text-slate-900 leading-tight">
                 {banners.banner_filiais_titulo || (
                   <>
-                    Encontre a <span className="text-[#008fd5]">Racon Consórcios</span> mais próxima de você
+                    Conheça <span className="text-[#008fd5]">{brandName}</span>
                   </>
                 )}
               </h3>
               <p className="text-xs text-slate-600 leading-relaxed">
                 {banners.banner_filiais_subtitulo ||
-                  "A Racon está presente em diversas regiões do país com atendimento especializado para você planejar seu investimento com segurança e transparência."}
+                  (ownBrand ? "Atendimento especializado para você planejar seu investimento com segurança e transparência." : "A Racon está presente em diversas regiões do país com atendimento especializado para você planejar seu investimento com segurança e transparência.")}
               </p>
               <div className="pt-2">
                 <Link
@@ -701,17 +706,17 @@ export function RaconInspiredHome({
               <h2 className="text-2xl sm:text-3xl font-black text-white">
                 {banners.embaixador_stats_titulo || (
                   <>
-                    Conquiste com a <span className="text-[#00a3e0]">Racon Consórcios</span>
+                    Conquiste com <span className="text-[#00a3e0]">{brandName}</span>
                   </>
                 )}
               </h2>
               <p className="text-xs text-slate-300 max-w-lg leading-relaxed">
                 {banners.embaixador_stats_subtitulo ||
-                  "Mais de três décadas de solidez, realizando sonhos e construindo patrimônios sólidos em todo o Brasil."}
+                  (ownBrand ? "Planeje suas conquistas com atendimento personalizado." : "Mais de três décadas de solidez, realizando sonhos e construindo patrimônios sólidos em todo o Brasil.")}
               </p>
 
               {/* Grid 4 KPIs */}
-              <div className="grid grid-cols-2 gap-4 pt-2">
+              {!ownBrand && <div className="grid grid-cols-2 gap-4 pt-2">
                 <div className="rounded-2xl bg-white/10 p-4 backdrop-blur-sm border border-white/15">
                   <strong className="block text-2xl font-black text-amber-300">+500</strong>
                   <span className="text-[11px] text-slate-300 font-medium">pontos de venda</span>
@@ -728,7 +733,7 @@ export function RaconInspiredHome({
                   <strong className="block text-2xl font-black text-emerald-300">+120 mil</strong>
                   <span className="text-[11px] text-slate-300 font-medium">cotas comercializadas</span>
                 </div>
-              </div>
+              </div>}
 
               <div className="pt-2">
                 <Link
@@ -764,7 +769,7 @@ export function RaconInspiredHome({
       {/* ───────────────────────────────────────────────────────────
           8. BLOCO: SEJA UM FRANQUEADO
       ─────────────────────────────────────────────────────────── */}
-      <section data-site-block="franquia" id="seja-franqueado" className="py-14 sm:py-20 bg-white border-t border-slate-100">
+      {!ownBrand && <section data-site-block="franquia" id="seja-franqueado" className="py-14 sm:py-20 bg-white border-t border-slate-100">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 space-y-10">
           <div className="text-center max-w-2xl mx-auto space-y-2">
             <h2 className="text-2xl sm:text-3xl font-black text-slate-900">
@@ -824,6 +829,7 @@ export function RaconInspiredHome({
         </div>
       </section>
 
+      }
       {/* ───────────────────────────────────────────────────────────
           9. FOOTER INSTITUCIONAL CORPORATIVO COM BACEN
       ─────────────────────────────────────────────────────────── */}

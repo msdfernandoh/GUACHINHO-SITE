@@ -2,10 +2,12 @@ import "server-only";
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import { RACON_LOGO, visibleModelMenus } from "./site-appearance";
+import { resolveModelFamily, type ModelFamily } from "./model-family";
 
 export type EmpresaSiteModel = {
   id: string;
   codigo: string;
+  layoutBase?: ModelFamily;
   nome: string;
   versao: number;
   identidadeVisual: Record<string, unknown>;
@@ -42,7 +44,7 @@ export async function getEmpresaSiteModelPublic(
     const admin = createAdminClient();
     const { data, error } = await admin
       .from("empresa_site_modelos")
-      .select("status,menus_habilitados,secoes_customizadas,usar_logo_propria,modelo:site_modelos!inner(id,codigo,nome,versao,status,identidade_visual,catalogo_menus,secoes_home,configuracao_footer,logo_padrao_url)")
+      .select("status,menus_habilitados,secoes_customizadas,usar_logo_propria,modelo:site_modelos!inner(id,codigo,nome,versao,status,modelo_origem_id,identidade_visual,catalogo_menus,secoes_home,configuracao_footer,logo_padrao_url)")
       .eq("empresa_id", empresaId)
       .eq("status", "PUBLICADO")
       .eq("modelo.status", "PUBLICADO")
@@ -51,6 +53,11 @@ export async function getEmpresaSiteModelPublic(
     if (error || !data?.modelo) return null;
     const modelo = Array.isArray(data.modelo) ? data.modelo[0] : data.modelo;
     if (!modelo) return null;
+    const layoutBase = await resolveModelFamily(modelo, async (id) => {
+      const { data: origin, error } = await admin.from("site_modelos")
+        .select("codigo,modelo_origem_id").eq("id", id).maybeSingle();
+      return error ? null : origin;
+    });
     const vinculo = data as unknown as {
       menus_habilitados?: string[] | null;
       secoes_customizadas?: unknown[] | null;
@@ -74,6 +81,7 @@ export async function getEmpresaSiteModelPublic(
     return {
       id: modelo.id,
       codigo: modelo.codigo,
+      layoutBase,
       nome: modelo.nome,
       versao: Number(modelo.versao || 1),
       identidadeVisual: modelo.identidade_visual && typeof modelo.identidade_visual === "object"
@@ -82,7 +90,7 @@ export async function getEmpresaSiteModelPublic(
       menus,
       secoes,
       footerCopyright: footer.copyright ?? null,
-      logoPadraoUrl: modelo.logo_padrao_url || (modelo.codigo === "racon_inspired" ? RACON_LOGO : null),
+      logoPadraoUrl: modelo.logo_padrao_url || (layoutBase === "racon_inspired" ? RACON_LOGO : null),
       usarLogoPropria: Boolean(vinculo.usar_logo_propria),
     };
   } catch {

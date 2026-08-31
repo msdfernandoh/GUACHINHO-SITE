@@ -6,6 +6,7 @@ import { Menu, Phone, ShieldCheck, X } from "lucide-react";
 import { useState } from "react";
 import type { RaconTemplateIdentidade, RaconTemplateMenu } from "./racon-inspired-home";
 import { RACON_LOGO } from "@/lib/tenant/site-appearance";
+import { contactNumber, resolveSiteContacts } from "@/lib/tenant/site-contacts";
 
 type Props = {
   empresaNome: string;
@@ -22,7 +23,7 @@ export function RaconInspiredHeader({
   logoUrl,
   identidade = {},
   menus,
-  telefoneContato = "(41) 3000-0000",
+  telefoneContato,
 }: Props) {
   const [aberto, setAberto] = useState(false);
   const primary = identidade.cor_primaria || "#0099dd";
@@ -31,22 +32,25 @@ export function RaconInspiredHeader({
   const activeMenus = menus.filter(menu => menu.ativo !== false);
   const login = activeMenus.find((menu) => menu.id === "login");
   const navegacao = activeMenus.filter((menu) => menu.id !== "login");
+  const telefone = resolveSiteContacts({ telefone: telefoneContato }, identidade.contatos).telefone;
+  const number = contactNumber(telefone);
+  const logo = logoUrl || (identidade.marca_propria ? null : RACON_LOGO);
 
   return (
     <>
       <div style={{ backgroundColor: primary }} className="w-full px-4 py-1.5 text-white text-[11px] font-semibold">
         <div className="mx-auto flex max-w-7xl items-center justify-end gap-6">
-          <span className="flex items-center gap-1.5">
+          {number ? <a href={`tel:${number}`} className="flex items-center gap-1.5">
             <Phone className="h-3 w-3" style={{ color: accent }} />
-            <span>Televendas: {telefoneContato}</span>
-          </span>
+            <span>Televendas: {telefone}</span>
+          </a> : null}
         </div>
       </div>
       <header className="sticky top-0 z-40 w-full border-b border-slate-100 bg-white shadow-sm">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
           <Link href="/" className="flex shrink-0 items-center gap-3">
             <div className="relative h-16 w-44 overflow-hidden">
-              <Image src={logoUrl || RACON_LOGO} unoptimized={Boolean(logoUrl?.startsWith("https:"))} alt={`${empresaNome} — Racon Consórcios`} fill sizes="176px" className={`object-contain ${!logoUrl || logoUrl === RACON_LOGO ? "scale-150" : ""}`} />
+              {logo ? <Image src={logo} unoptimized={Boolean(logo.startsWith("https:"))} alt={empresaNome} fill sizes="176px" className={`object-contain ${logo === RACON_LOGO ? "scale-150" : ""}`} /> : <strong className="flex h-full items-center text-lg" style={{ color: primary }}>{empresaNome}</strong>}
             </div>
           </Link>
 
@@ -88,12 +92,15 @@ export function RaconInspiredFooter({
   empresaNome,
   identidade = {},
   menus,
-  telefoneContato = "(41) 3000-0000",
-  whatsappContato = "(41) 99999-9999",
+  telefoneContato,
+  whatsappContato,
   footerCopyright,
 }: Props) {
   const secondary = identidade.cor_primaria || "#0066cc";
   const links = menus.filter((menu) => menu.id !== "home" && menu.ativo !== false);
+  const contatos = resolveSiteContacts({ telefone: telefoneContato, whatsapp: whatsappContato }, identidade.contatos);
+  const phone = contactNumber(contatos.telefone);
+  const whatsapp = contactNumber(contatos.whatsapp, true);
 
   return (
     <footer id="contato" data-site-tone="inverse" style={{ backgroundColor: secondary }} className="scroll-mt-24 border-t border-slate-800 pt-10 pb-7 text-xs text-white">
@@ -101,15 +108,15 @@ export function RaconInspiredFooter({
         <div className="grid gap-8 lg:grid-cols-[1fr_2fr_1fr]">
           <div className="space-y-3">
             <strong className="block text-sm font-black tracking-tight text-white">{empresaNome}</strong>
-            <p>Televendas: {telefoneContato}</p>
-            <p>WhatsApp: {whatsappContato}</p>
+            {phone ? <p><a href={`tel:${phone}`}>Televendas: {contatos.telefone}</a></p> : null}
+            {whatsapp ? <p><a href={`https://wa.me/${whatsapp}`} target="_blank" rel="noreferrer">WhatsApp: {contatos.whatsapp}</a></p> : null}
           </div>
           <nav className="grid grid-cols-2 gap-x-5 gap-y-2 sm:grid-cols-3" aria-label="Links do site">
             {links.map((menu) => <Link key={menu.id} href={menu.rota} className="hover:text-white">{menu.label}</Link>)}
           </nav>
           <div className="space-y-3">
             <strong className="block text-xs font-bold uppercase tracking-wider text-white">Regulatório</strong>
-            <p>Empresa autorizada e fiscalizada pelo Banco Central do Brasil.</p>
+            <p>{identidade.marca_propria ? `Atendimento por ${empresaNome}.` : "Empresa autorizada e fiscalizada pelo Banco Central do Brasil."}</p>
             <span className="inline-flex items-center gap-1.5 rounded bg-white/5 px-2.5 py-1 text-[10px] text-slate-300"><ShieldCheck className="h-3.5 w-3.5 text-emerald-400" /> Ambiente seguro</span>
           </div>
         </div>

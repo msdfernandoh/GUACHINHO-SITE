@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { isRaconModel } from "@/lib/tenant/model-family";
 import { loginAction } from "./actions";
 import { Button, Input, Label } from "@/components/ui/form-primitives";
 import { headers } from "next/headers";
@@ -13,7 +14,7 @@ export default async function LoginPage({
   const sp = await searchParams;
   const platform = isPlatformHost((await headers()).get("host"));
   const tenant = platform ? null : await getResolvedTenant();
-  const isRacon = tenant?.siteModel?.codigo === "racon_inspired";
+  const isRacon = isRaconModel(tenant?.siteModel);
   const nome = tenant?.branding.nome_site || "Gauchinho";
   const primary = tenant?.branding.cor_primaria || "#0099dd";
   const error = sp.error;

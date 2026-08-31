@@ -1,4 +1,5 @@
 import type { EmpresaBranding } from "@/lib/tenant/branding";
+import { isRaconModel } from "@/lib/tenant/model-family";
 import { RaconInspiredHome } from "@/components/public/templates/racon-inspired-home";
 import type { EmpresaSiteModel } from "@/lib/tenant/site-model";
 
@@ -14,7 +15,7 @@ type Props = {
  */
 export function InstitutionalTenantHome({ branding, siteModel, showModuloIndisponivel }: Props) {
   // Um entitlement suspenso nunca troca a identidade de um modelo pelo Racon.
-  if (siteModel?.codigo !== "racon_inspired") {
+  if (!siteModel || !isRaconModel(siteModel)) {
     return (
       <main className="mx-auto max-w-5xl px-6 py-20">
         <h1 className="text-3xl font-bold">{branding.nome_site}</h1>
@@ -48,8 +49,8 @@ export function InstitutionalTenantHome({ branding, siteModel, showModuloIndispo
         menus={siteModel.menus}
         secoes={siteModel.secoes}
         footerCopyright={siteModel.footerCopyright ?? undefined}
-        telefoneContato={branding.telefone || "(41) 3000-0000"}
-        whatsappContato={branding.whatsapp || "(41) 99999-9999"}
+        telefoneContato={branding.telefone}
+        whatsappContato={branding.whatsapp}
         showChrome={false}
       />
     </div>

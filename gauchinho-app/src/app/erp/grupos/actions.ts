@@ -3,9 +3,9 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { requireErpRouteAccess } from "@/lib/erp/erp-acesso-server";
 import type { GroupActionState } from "@/app/platform/grupos-actions";
-import { randomUUID } from "node:crypto";
 import { parseBatchCotasInput } from "@/lib/platform/grupos-prontidao";
 import { uploadTabelaGrupo } from "@/lib/grupos/grupo-tabela.server";
+import { grupoCreateIdempotencyKey, normalizeGrupoCodigo } from "@/lib/grupos/grupo-local-create";
 
 function parsePercentuaisReduzidos(formData: FormData): number[] {
   let raw: unknown;
@@ -51,7 +51,7 @@ export async function salvarGrupoLocalAction(
     const id = String(formData.get("id") ?? "") || null;
     const administradoraId = String(formData.get("administradora_id") ?? "");
     const tipoId = String(formData.get("tipo_administradora_id") ?? "");
-    const codigo = String(formData.get("codigo_grupo") ?? "").trim();
+    const codigo = normalizeGrupoCodigo(String(formData.get("codigo_grupo") ?? ""));
     const dataPrimeiraAssembleia = String(formData.get("data_primeira_assembleia") ?? "").trim();
     if (!administradoraId || !tipoId || !codigo || (!id && !dataPrimeiraAssembleia))
       return {
@@ -97,6 +97,21 @@ export async function salvarGrupoLocalAction(
         message:
           "Selecione itens ativos do catálogo oficial concedido à empresa.",
       };
+    if (!id) {
+      const { data: existente, error: existingError } = await db.from("grupos_consorcio")
+        .select("id,codigo_grupo,origem_governanca,empresa_origem_id")
+        .eq("administradora_id", administradoraId)
+        .ilike("codigo_grupo", codigo)
+        .order("created_at", { ascending: true })
+        .limit(1)
+        .maybeSingle();
+      if (existingError) throw new Error(existingError.message);
+      if (existente) return {
+        status: "CONFLICT",
+        message: `O grupo ${existente.codigo_grupo} já foi cadastrado. Abra o cadastro existente para continuar, sem criar outra cópia.`,
+        redirectTo: `/erp/grupos/${existente.id}`,
+      };
+    }
     const payload = {
       codigo_grupo: codigo,
       administradora_id: administradoraId,
@@ -166,7 +181,7 @@ export async function salvarGrupoLocalAction(
       p_tipo_administradora_id: tipoId,
       p_codigo_grupo: codigo,
       p_payload: { ...payload, lances, ...(creditos.length ? { creditos } : {}) },
-      p_chave_idempotencia: randomUUID(),
+      p_chave_idempotencia: grupoCreateIdempotencyKey({ empresaId, administradoraId, tipoId, codigo }),
     });
     if (error) throw new Error(error.message);
     const grupoSalvoId = String((submitted as { grupo_id?: string } | null)?.grupo_id ?? id ?? "");
@@ -203,7 +218,9 @@ export async function salvarGrupoLocalAction(
       message: id
         ? "Alteração aplicada somente nesta franquia e enviada para análise da Platform."
         : "Grupo criado localmente no ERP e enviado para homologação. A aprovação o publica para todas as franquias sem trocar seu cadastro.",
-      redirectTo: formData.get("acao_pos_salvar") === "VOLTAR" ? "/erp/grupos" : undefined,
+      redirectTo: formData.get("acao_pos_salvar") === "VOLTAR"
+        ? `/erp/grupos?criado=${encodeURIComponent(grupoSalvoId)}`
+        : `/erp/grupos/${grupoSalvoId}`,
     };
   } catch (error) {
     const message =

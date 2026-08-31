@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/server";
 import { sanitizeTemplateCode } from "@/lib/platform/html-sanitizer";
 import { uploadImagemPublica } from "@/lib/storage/imagens";
 import { normalizePageAppearance, safeImageUrl } from "@/lib/tenant/site-appearance";
+import { contactNumber } from "@/lib/tenant/site-contacts";
 
 export type PlatformFormState = {
   status: "IDLE" | "SUCCESS" | "ERROR";
@@ -61,6 +62,7 @@ export async function duplicarModeloSitePlatformAction(
   if (!modeloId) {
     return { status: "ERROR", message: "ID do modelo é obrigatório." };
   }
+  if (!novoNome || novoNome.length > 120) return { status: "ERROR", message: "Informe o nome da cópia (até 120 caracteres)." };
 
   const db = await createClient();
   const { data, error } = await db.rpc("rpc_platform_duplicar_modelo_site", {
@@ -98,6 +100,10 @@ export async function salvarModeloSitePlatformAction(
       identidadeVisual = JSON.parse(String(rawIdentidade));
       if (!identidadeVisual || typeof identidadeVisual !== "object" || Array.isArray(identidadeVisual)) throw new Error("Identidade inválida");
       identidadeVisual.paginas_blocos = normalizePageAppearance(identidadeVisual.paginas_blocos);
+      for (const campo of ["telefone", "whatsapp"] as const) {
+        const valor = identidadeVisual.contatos?.[campo];
+        if (valor && !contactNumber(valor, campo === "whatsapp")) return { status: "ERROR", message: `Informe ${campo} válido com DDD; telefone também aceita 0800.` };
+      }
     } catch {
       return { status: "ERROR", message: "Formato inválido de Identidade Visual (JSON)." };
     }

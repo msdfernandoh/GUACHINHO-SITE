@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { isRaconModel } from "@/lib/tenant/model-family";
 import type { CSSProperties } from "react";
 import type { Metadata } from "next";
 import { isPlatformSuperadmin } from "@/lib/auth/is-superadmin";
@@ -32,7 +33,7 @@ export default async function AdminLayout({
   const erpEnabled = getErpSistemaConfig(empresaAtiva?.configuracoes).habilitado;
   const isSuperadmin = await isPlatformSuperadmin();
   const tenant = await getResolvedTenant();
-  const isRacon = tenant?.empresaId === empresaAtiva.id && tenant.siteModel?.codigo === "racon_inspired";
+  const isRacon = tenant?.empresaId === empresaAtiva.id && isRaconModel(tenant.siteModel);
   const primary = tenant?.branding.cor_primaria || "#0099dd";
   const brandName = tenant?.branding.nome_site || empresaAtiva.nome_fantasia;
   const brandLogo = tenant?.branding.logo_url || tenant?.siteModel?.logoPadraoUrl || null;

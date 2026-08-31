@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { isRaconModel } from "@/lib/tenant/model-family";
 import type { CSSProperties } from "react";
 import type { Metadata } from "next";
 import { AuthMascotBubble } from "@/components/public/auth-mascot-bubble";
@@ -39,7 +40,7 @@ export default async function AuthLayout({ children }: { children: React.ReactNo
 
   const { title, subtitle } = resolvePublicLogoText(nomeEmpresa, subtitulo);
   const showMascot = !tenant || tenant.slug === GAUCHINHO_SLUG;
-  const isRacon = tenant?.siteModel?.codigo === "racon_inspired";
+  const isRacon = isRaconModel(tenant?.siteModel);
   const primary = tenant?.branding.cor_primaria || "#0099dd";
 
   return (

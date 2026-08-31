@@ -92,6 +92,8 @@ export type ImagensBanners = {
 };
 
 export type IdentidadeVisual = {
+  contatos?: { telefone?: string; whatsapp?: string };
+  marca_propria?: boolean;
   cor_primaria: string;
   cor_secundaria: string;
   cor_destaque: string;
@@ -313,9 +315,12 @@ export function TemplateWorkspace({
 
         <div className="flex flex-wrap items-center gap-2">
           {/* Duplicar */}
-          <form action={actionDuplicar}>
+          <form action={actionDuplicar} className="max-w-sm space-y-2 rounded-lg border p-3">
             <input type="hidden" name="modelo_id" value={template.id} />
-            <input type="hidden" name="novo_nome" value={`${template.nome} (Cópia)`} />
+            <label className="block text-xs font-bold">Nome da cópia independente
+              <input name="novo_nome" required maxLength={120} defaultValue={`${template.nome} (Cópia)`} className="mt-1 w-full rounded border p-2 text-slate-900" />
+            </label>
+            <p className="text-xs text-slate-500">Copia a última versão salva em rascunho. Depois configure a marca, contatos e menus, publique e vincule ao site desejado. O original não muda.</p>
             <button
               type="submit"
               disabled={isPendingDuplicar}
@@ -357,6 +362,7 @@ export function TemplateWorkspace({
       </header>
 
       {/* Feedback de Status */}
+      {stateDuplicar.message ? <p role="alert" className="rounded bg-red-50 p-3 text-sm text-red-800">{stateDuplicar.message}</p> : null}
       {stateSave.message && (
         <p
           role="status"
@@ -432,6 +438,29 @@ export function TemplateWorkspace({
         {tab === "geral" && (
           <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900 space-y-4">
             <h2 className="text-base font-bold text-slate-900 dark:text-white">Dados Gerais e Logomarca do Modelo</h2>
+            {template.modelo_origem_id ? <div className="space-y-2 rounded-xl border border-sky-200 bg-sky-50 p-4 text-sm text-sky-900">
+              <strong>{identidade.marca_propria ? "Modelo preparado para marca própria" : "Cópia independente: preparar marca própria"}</strong>
+              <p>Use o nome da empresa atendida, sem logotipo, fotos de campanha, estatísticas ou textos padrão da Racon. O botão limpa as imagens, textos de campanha, logo e contatos herdados desta edição; configure os novos e salve. O modelo original não é alterado.</p>
+              <button type="button" disabled={identidade.marca_propria === true} className="rounded bg-cyan-700 px-3 py-2 font-bold text-white disabled:opacity-50" onClick={() => {
+                setIdentidade({ ...identidade, marca_propria: true, contatos: {}, imagens_banners: {}, paginas_blocos: Object.fromEntries(Object.entries(identidade.paginas_blocos || {}).map(([page, blocks]) => [page, Object.fromEntries(Object.entries(blocks).map(([id, block]) => [id, { ...block, imagem_url: undefined }]))])) });
+                setLogoPadraoUrl("");
+                setPermiteLogoPropria(true);
+                setCopyright("Todos os direitos reservados.");
+                setMenus(menus.map(menu => /racon|gauchinho/i.test(menu.label) ? { ...menu, label: menu.id === "sobre" ? "Sobre nós" : menu.id === "home" ? "Início" : "Consórcios" } : menu));
+              }}>Preparar cópia para marca própria</button>
+            </div> : null}
+            <fieldset className="space-y-3 rounded-xl border p-4">
+              <legend className="text-sm font-bold">Telefones padrão deste modelo</legend>
+              <p className="text-xs text-slate-500">Os contatos próprios da empresa têm prioridade. Deixe vazio para não exibir um número padrão. Para trocar só uma empresa: Master Franquias → Site & Identidade → Contatos do site.</p>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <label className="text-xs font-bold">Telefone / televendas
+                  <input type="tel" maxLength={40} value={identidade.contatos?.telefone || ""} onChange={e => setIdentidade({ ...identidade, contatos: { ...identidade.contatos, telefone: e.target.value } })} className="mt-1 w-full rounded border p-2 text-slate-900" placeholder="DDD + número ou 0800" />
+                </label>
+                <label className="text-xs font-bold">WhatsApp
+                  <input type="tel" maxLength={40} value={identidade.contatos?.whatsapp || ""} onChange={e => setIdentidade({ ...identidade, contatos: { ...identidade.contatos, whatsapp: e.target.value } })} className="mt-1 w-full rounded border p-2 text-slate-900" placeholder="DDD + número" />
+                </label>
+              </div>
+            </fieldset>
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
                 <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Nome do Modelo:</label>

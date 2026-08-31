@@ -9,7 +9,7 @@ import { GrupoTabelaActions } from "@/components/grupos/grupo-tabela-actions";
 export default async function ErpGruposPage({
   searchParams,
 }: {
-  searchParams: Promise<{ busca?: string; status?: string }>;
+    searchParams: Promise<{ busca?: string; status?: string; criado?: string }>;
 }) {
   const f = await searchParams;
   const { empresaAtiva } = await getCurrentTenantContext();
@@ -61,6 +61,7 @@ export default async function ErpGruposPage({
           </Link>
         </div>
       </header>
+      {f.criado ? <p role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 font-semibold text-emerald-800">Grupo salvo com sucesso. O cadastro já está disponível abaixo e foi enviado para homologação da Platform.</p> : null}
 
       <form className="flex flex-wrap gap-2 rounded-xl border bg-white p-3 shadow-sm dark:border-slate-800 dark:bg-slate-900">
         <input
@@ -113,7 +114,7 @@ export default async function ErpGruposPage({
               const isPronto = cotasAtivas.length > 0 && g.ativo !== false && g.status !== "Inativo";
 
               return (
-                <tr key={g.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40">
+                <tr key={g.id} className={f.criado === g.id ? "bg-emerald-50 ring-2 ring-inset ring-emerald-400" : "hover:bg-slate-50/60 dark:hover:bg-slate-800/40"}>
                   <td className="p-3 font-mono font-bold text-slate-900 dark:text-white">
                     Grupo {g.codigo_grupo}
                   </td>
