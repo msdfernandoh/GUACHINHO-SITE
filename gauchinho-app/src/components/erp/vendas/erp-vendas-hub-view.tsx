@@ -73,6 +73,7 @@ export type CotaItem = {
   status: string;
   contemplada?: boolean;
   cliente_nome?: string;
+  consultor_nome?: string;
   ordem_cota?: number;
 };
 
@@ -540,15 +541,21 @@ export function ErpVendasHubView({
                   <tr key={c.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition">
                     <td className="p-3 font-mono font-bold text-slate-900 dark:text-white">Grupo {c.numero_grupo}</td>
                     <td className="p-3">
-                      {c.numero_cota ? (
-                        <span className="font-mono font-bold text-emerald-700 dark:text-emerald-400">
-                          Cota #{c.numero_cota}
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
-                          Pendente SIF (Em definição)
-                        </span>
-                      )}
+                      <div>
+                        {c.numero_cota ? (
+                          <span className="font-mono font-bold text-emerald-700 dark:text-emerald-400">
+                            Cota #{c.numero_cota}
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
+                            Pendente SIF (Em definição)
+                          </span>
+                        )}
+                        <div className="mt-1 text-[10px] leading-4 text-slate-600 dark:text-slate-300">
+                          <span className="block font-bold">{c.cliente_nome || "Cliente não identificado"}</span>
+                          <span className="block">Consultor: {c.consultor_nome || "Não informado"}</span>
+                        </div>
+                      </div>
                     </td>
                     <td className="p-3 font-mono font-bold text-slate-950 dark:text-white">{brl(c.valor_credito)}</td>
                     <td className="p-3 font-mono text-slate-700 dark:text-slate-300">{brl(c.parcela)}</td>

@@ -37,7 +37,7 @@ export default async function AdminVendasPage() {
       .order("created_at", { ascending: false }),
     admin
       .from("cotas_definitivas")
-      .select("*, venda:vendas(id,cliente_nome,cliente_cpf_cnpj,numero_grupo), grupo:grupos_consorcio(codigo_grupo)")
+      .select("*")
       .eq("empresa_id", empresaId)
       .order("created_at", { ascending: false }),
     admin
@@ -78,6 +78,9 @@ export default async function AdminVendasPage() {
     ativo: boolean;
   }>;
   const participantesMap = new Map(participantes.map((p) => [p.id, p.nome_exibicao || p.nome]));
+
+  if (vendasRes.error) throw new Error("Não foi possível carregar as vendas da empresa.");
+  if (cotasRes.error) throw new Error("Não foi possível carregar as cotas definitivas da empresa.");
 
   const vendas: VendaItem[] = (vendasRes.data ?? []).map((v: any) => {
     const cotasDaVenda = Array.isArray(v.cotas_definitivas) ? v.cotas_definitivas : v.cotas_definitivas ? [v.cotas_definitivas] : [];
@@ -143,15 +146,15 @@ export default async function AdminVendasPage() {
     };
   });
 
+  const vendasMap = new Map(vendas.map((v) => [v.id, v]));
   const cotasMap = new Set((cotasRes.data ?? []).map((c: any) => c.venda_id));
   const cotas: CotaItem[] = (cotasRes.data ?? []).map((c: any) => {
-    const venda = Array.isArray(c.venda) ? c.venda[0] : c.venda;
-    const grupo = Array.isArray(c.grupo) ? c.grupo[0] : c.grupo;
+    const venda = vendasMap.get(c.venda_id);
 
     return {
       id: c.id,
       venda_id: c.venda_id,
-      numero_grupo: grupo?.codigo_grupo || c.numero_grupo || venda?.numero_grupo || "1463",
+      numero_grupo: c.numero_grupo || venda?.grupo_codigo || "1463",
       numero_cota: c.numero_cota || null,
       valor_credito: Number(c.valor_credito),
       prazo: Number(c.prazo),
@@ -160,6 +163,7 @@ export default async function AdminVendasPage() {
       ordem_cota: Number(c.ordem_cota || 1),
       contemplada: c.status === "contemplada",
       cliente_nome: venda?.cliente_nome || c.snapshot_cota?.cliente_nome || undefined,
+      consultor_nome: venda?.consultor_nome,
     };
   });
 
@@ -177,6 +181,7 @@ export default async function AdminVendasPage() {
         status: v.status === "confirmada" ? "ativa" : v.status,
         contemplada: false,
         cliente_nome: v.cliente_nome,
+        consultor_nome: v.consultor_nome,
       });
     }
   });

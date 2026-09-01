@@ -3,6 +3,7 @@ export type VendaParaResumoMensal = {
   valor_credito?: number | string | null;
   quantidade_cotas?: number | string | null;
   data_venda?: string | null;
+  data_primeira_parcela?: string | null;
   status?: string | null;
   afeta_faturamento?: boolean | null;
 };
@@ -46,7 +47,7 @@ export function calcularResumoVendasMes(
       !venda.id ||
       venda.status !== "confirmada" ||
       venda.afeta_faturamento !== true ||
-      venda.data_venda?.slice(0, 7) !== competencia
+      (venda.data_primeira_parcela || venda.data_venda)?.slice(0, 7) !== competencia
     ) {
       continue;
     }

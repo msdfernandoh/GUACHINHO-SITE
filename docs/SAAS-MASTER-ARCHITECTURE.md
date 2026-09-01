@@ -57,6 +57,12 @@ A plataforma suporta:
 ### Tabelas do Motor de Comissões e Competências (Macrobloco C - Migration 054)
 - `comissao_programas`, `comissao_regras_franquia`, `comissao_regras_participantes`, `comissao_previsoes_franquia`, `comissao_previsoes_participantes`.
 
+### Correção operacional 185 — cardinalidade de cotas e competência comercial
+
+- A tela de vendas consome `vendas 1:N cotas_definitivas` sem reconstruir uma cota agregada quando a relação PostgREST falha; cliente e consultor são derivados da venda canônica.
+- Os cards mensais de vendas em **Minhas comissões** usam a competência de `data_primeira_parcela`, com `data_venda` como fallback para legado, e preservam deduplicação por venda e soma da quantidade de cotas.
+- O programa vigente usado pelo perfil Sócio passa a conter também as regras Racon Automóvel já homologadas no catálogo veicular, mantendo resolução estrita por tipo e modalidade.
+
 ### Tabelas Financeiras e Caixa (Macrobloco D - Migration 055)
 - `financeiro_recebimentos`, `financeiro_recebimento_itens`, `financeiro_pagamentos`, `financeiro_pagamento_itens`, `financeiro_compensacoes`, `caixa_movimentos`.
 

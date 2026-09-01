@@ -7,14 +7,15 @@ export async function carregarResumoVendasMes(empresaId: string, participanteId:
   const db = createAdminClient();
   const [ano, mes] = competencia.split("-").map(Number);
   const proximoMes = new Date(Date.UTC(ano, mes, 1)).toISOString().slice(0, 10);
-  const campos = "id,valor_credito,quantidade_cotas,data_venda,status,afeta_faturamento";
+  const filtroCompetencia = `and(data_primeira_parcela.gte.${competencia}-01,data_primeira_parcela.lt.${proximoMes}),and(data_primeira_parcela.is.null,data_venda.gte.${competencia}-01,data_venda.lt.${proximoMes})`;
+  const campos = "id,valor_credito,quantidade_cotas,data_venda,data_primeira_parcela,status,afeta_faturamento";
   const vendas: VendaParaResumoMensal[] = [];
   // Não depender de previsões: uma venda também conta antes de gerar comissões.
   for (let offset = 0; ; offset += 500) {
     const { data, error } = await db.from("vendas").select(campos)
       .eq("empresa_id", empresaId).eq("participante_comercial_id", participanteId)
       .eq("status", "confirmada").eq("afeta_faturamento", true)
-      .gte("data_venda", `${competencia}-01`).lt("data_venda", proximoMes)
+      .or(filtroCompetencia)
       .order("id").range(offset, offset + 499);
     if (error) throw new Error("Não foi possível consultar as vendas do mês.");
     vendas.push(...(data ?? []));
@@ -25,7 +26,7 @@ export async function carregarResumoVendasMes(empresaId: string, participanteId:
       .select(`id,venda:vendas!inner(${campos})`)
       .eq("empresa_id", empresaId).eq("participante_comercial_id", participanteId)
       .eq("venda.empresa_id", empresaId).eq("venda.status", "confirmada").eq("venda.afeta_faturamento", true)
-      .gte("venda.data_venda", `${competencia}-01`).lt("venda.data_venda", proximoMes)
+      .or(filtroCompetencia, { referencedTable: "venda" })
       .order("id").range(offset, offset + 499);
     if (error) throw new Error("Não foi possível consultar a participação nas vendas do mês.");
     for (const row of data ?? []) {
