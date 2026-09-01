@@ -389,6 +389,7 @@ export async function linkParticipantePerfilAction(
     const vigenciaInicio = String(formData.get("vigencia_inicio") ?? "").trim() || new Date().toISOString().slice(0, 10);
     const vigenciaFim = String(formData.get("vigencia_fim") ?? "").trim() || null;
     const observacoes = String(formData.get("observacoes") ?? "").trim() || null;
+    const ativo = formData.getAll("ativo").map(String).includes("true");
 
     if (!empresaId || !participanteId || !perfilId || !papelTipo) {
       throw new Error("Participante, Função Comercial e Perfil são obrigatórios.");
@@ -405,7 +406,7 @@ export async function linkParticipantePerfilAction(
       vigencia_inicio: vigenciaInicio,
       vigencia_fim: vigenciaFim,
       observacoes: observacoes,
-      ativo: true,
+      ativo,
       updated_at: new Date().toISOString(),
     };
 
@@ -424,7 +425,12 @@ export async function linkParticipantePerfilAction(
     }
 
     revalidatePath("/erp/regras-comissao");
-    return { ok: true, message: "Vínculo de perfil do participante salvo com sucesso." };
+    return {
+      ok: true,
+      message: ativo
+        ? "Vínculo de perfil do participante ativado com sucesso."
+        : "Vínculo inativado. O participante não receberá novas comissões por esta função e perfil.",
+    };
   } catch (error) {
     return {
       ok: false,
@@ -433,19 +439,22 @@ export async function linkParticipantePerfilAction(
   }
 }
 
-export async function unlinkParticipantePerfilAction(formData: FormData): Promise<void> {
+export async function toggleParticipantePerfilAction(formData: FormData): Promise<void> {
   const id = String(formData.get("id") ?? "").trim();
   const empresaId = String(formData.get("empresa_id") ?? "").trim();
+  const ativo = String(formData.get("ativo") ?? "false") === "true";
   if (!id || !empresaId) return;
 
   const supabase = await assertCanWrite(empresaId);
-  await supabase
+  const { error } = await supabase
     .from("participante_comissao_perfis")
-    .delete()
+    .update({ ativo, updated_at: new Date().toISOString() })
     .eq("id", id)
     .eq("empresa_id", empresaId);
+  if (error) throw new Error(error.message);
 
   revalidatePath("/erp/regras-comissao");
+  revalidatePath("/erp/contratacoes");
 }
 
 // --------------------------------------------------------------------------

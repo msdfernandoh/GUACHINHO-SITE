@@ -1775,3 +1775,14 @@ conversões voltem a divergir entre Repasse, Comissões e Minhas comissões.
 
 Relatório:
 `docs/relatorios-fases/FASE-203-REPASSE-CANONICO-VINCULO-ATOMICO-CNPJ.md`.
+
+### Evolução operacional 204 — inativação do vínculo participante–perfil
+
+O vínculo `participante_comissao_perfis` pode ser inativado ou reativado pelo
+ERP para uma combinação específica de participante, função comercial e perfil.
+A ação não inativa a pessoa e não exclui registros: previsões e pagamentos já
+gerados permanecem preservados, enquanto novas vendas consideram somente
+vínculos ativos e dentro da vigência.
+
+Relatório:
+`docs/relatorios-fases/FASE-204-INATIVACAO-VINCULO-PARTICIPANTE-PERFIL.md`.

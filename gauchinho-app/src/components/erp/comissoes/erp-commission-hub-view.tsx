@@ -16,7 +16,7 @@ import {
   toggleParticipantProfileRuleAction,
   deleteParticipantProfileRuleAction,
   linkParticipantePerfilAction,
-  unlinkParticipantePerfilAction,
+  toggleParticipantePerfilAction,
   saveFiscalConfigAction,
   homologarRegraPadraoOficialAction,
   updateFranchiseRuleAction,
@@ -882,16 +882,22 @@ export function ErpCommissionHubView({
                                 >
                                   Editar
                                 </button>
-                                <form action={unlinkParticipantePerfilAction}>
+                                <form action={toggleParticipantePerfilAction}>
                                   <input type="hidden" name="empresa_id" value={empresaId} />
                                   <input type="hidden" name="id" value={v.id} />
+                                  <input type="hidden" name="ativo" value={String(!v.ativo)} />
                                   <button
                                     onClick={(e) => {
-                                      if (!confirm("Remover este vínculo de perfil?")) e.preventDefault();
+                                      const acao = v.ativo ? "inativar" : "reativar";
+                                      if (!confirm(`Deseja ${acao} este vínculo? A alteração vale apenas para novas comissões desta função e perfil.`)) e.preventDefault();
                                     }}
-                                    className="rounded-lg border border-rose-200 p-1 text-rose-600 hover:bg-rose-50"
+                                    className={`rounded-lg border px-2.5 py-1 text-xs font-bold ${
+                                      v.ativo
+                                        ? "border-amber-200 text-amber-700 hover:bg-amber-50"
+                                        : "border-emerald-200 text-emerald-700 hover:bg-emerald-50"
+                                    }`}
                                   >
-                                    🗑️
+                                    {v.ativo ? "Inativar" : "Reativar"}
                                   </button>
                                 </form>
                               </>
@@ -1999,6 +2005,23 @@ export function ErpCommissionHubView({
                   />
                 </div>
               </div>
+
+              <label className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-slate-800 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-200">
+                <input type="hidden" name="ativo" value="false" />
+                <input
+                  name="ativo"
+                  type="checkbox"
+                  value="true"
+                  defaultChecked={editingVinculo?.ativo ?? true}
+                  className="mt-0.5 h-4 w-4 rounded border-slate-300"
+                />
+                <span>
+                  <strong className="block">Vínculo ativo para esta função e perfil</strong>
+                  <small className="mt-1 block font-normal">
+                    Ao inativar, o participante deixa de receber novas comissões por este vínculo. Valores já gerados ou pagos permanecem preservados.
+                  </small>
+                </span>
+              </label>
 
               <div className="flex justify-end gap-2 pt-3 border-t dark:border-slate-800">
                 <button
