@@ -15,7 +15,7 @@ export function resolverModalidadeRegraId(params: {
   return disponiveis.find((item) => item.id === params.modalidadeAtualId)?.id
     ?? disponiveis.find((item) => item.id === params.modalidadePropostaId)?.id
     ?? disponiveis.find((item) => item.id === params.modalidadeGrupoId)?.id
-    ?? disponiveis[0]?.id
+    ?? (disponiveis.length === 1 ? disponiveis[0]?.id : undefined)
     ?? "";
 }
 

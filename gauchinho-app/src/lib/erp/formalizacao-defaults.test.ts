@@ -51,7 +51,13 @@ describe("resolverModalidadeRegraId", () => {
     expect(resolverModalidadeRegraId({ modalidadePropostaId: "reduzida", modalidades })).toBe("reduzida");
   });
 
-  it("ignora modalidade sem regra e usa a primeira opção homologada", () => {
-    expect(resolverModalidadeRegraId({ modalidadeAtualId: "sem-regra", modalidades })).toBe("integral");
+  it("não escolhe percentual arbitrário quando há mais de uma opção homologada", () => {
+    expect(resolverModalidadeRegraId({ modalidadeAtualId: "sem-regra", modalidades })).toBe("");
+  });
+
+  it("fixa automaticamente quando existe somente uma opção homologada", () => {
+    expect(resolverModalidadeRegraId({
+      modalidades: [{ id: "unica", isCadastradaNoBanco: true, percentualReferencia: 4 }],
+    })).toBe("unica");
   });
 });

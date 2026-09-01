@@ -11,8 +11,11 @@ zerados e o botão permanecia desabilitado sem explicar a causa.
 
 - a modalidade preservada na proposta passa a ser selecionada automaticamente
   quando possui regra homologada e percentual positivo;
-- na ausência dela, a resolução usa a modalidade canônica do grupo e depois a
-  primeira alternativa vigente;
+- na ausência dela, a resolução usa a modalidade canônica do grupo; somente uma
+  alternativa única pode ser fixada automaticamente;
+- se o consultor tiver apenas uma regra homologada compatível com a venda, ela
+  fica fixa; se possuir mais de uma, o operador escolhe entre as regras elegíveis;
+- percentuais sempre vêm da regra selecionada, sem padrão financeiro implícito;
 - modalidades sem regra para o perfil continuam visíveis para diagnóstico, mas
   não podem ser selecionadas;
 - o formulário lista todas as pendências que ainda impedem a formalização e

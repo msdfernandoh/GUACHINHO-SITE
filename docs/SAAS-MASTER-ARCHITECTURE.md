@@ -1583,6 +1583,13 @@ Relatório:
 
 
 
+### Evolução operacional 194 — formalização sem bloqueio silencioso
+
+A conferência da contratação resolve automaticamente uma modalidade de comissão
+homologada, priorizando a escolha preservada na proposta. Opções sem regra
+vigente ficam indisponíveis e o formulário apresenta as pendências exatas antes
+de habilitar **Confirmar e formalizar venda**. Consulte
+[`FASE-194-DESBLOQUEIO-FORMALIZACAO-MODALIDADE-CANONICA.md`](relatorios-fases/FASE-194-DESBLOQUEIO-FORMALIZACAO-MODALIDADE-CANONICA.md).
 
 
 

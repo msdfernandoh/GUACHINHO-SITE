@@ -189,10 +189,37 @@ export function FormalizacaoVendaForm({
     return vinculosPerfis.filter((v) => v.participante_id === selectedPrincipalId && v.perfil);
   }, [vinculosPerfis, selectedPrincipalId]);
 
+  const perfisPrincipalElegiveis = useMemo(() => {
+    const modalidadesCota = new Set((cotaAtual?.modalidades ?? []).map((item) => item.id));
+    return perfisPrincipal.filter((vinculo) => {
+      const regraParticipante = regrasParticipantes.find((regra) => regra.perfil_id === vinculo.perfil_id);
+      if (!regraParticipante?.programa_id) return false;
+      return regrasFranquia.some((regraFranquia) => {
+        const tipoCompativel = grupoAtual?.tipo_administradora_id
+          ? regraFranquia.tipo_administradora_id === null || regraFranquia.tipo_administradora_id === grupoAtual.tipo_administradora_id
+          : regraFranquia.tipo_administradora_id === null;
+        return regraFranquia.programa_id === regraParticipante.programa_id
+          && tipoCompativel
+          && modalidadesCota.has(String(regraFranquia.modalidade_comissao_id))
+          && Number(regraFranquia.percentual_total_comissao) > 0;
+      });
+    });
+  }, [cotaAtual, grupoAtual, perfisPrincipal, regrasFranquia, regrasParticipantes]);
+
+  useEffect(() => {
+    if (perfisPrincipalElegiveis.some((item) => item.perfil_id === selectedPerfilPrincipalId)) return;
+    const perfilPersistido = perfisPrincipalElegiveis.find((item) => item.perfil_id === initialPerfilPrincipalId);
+    if (perfilPersistido) {
+      setSelectedPerfilPrincipalId(perfilPersistido.perfil_id);
+      return;
+    }
+    setSelectedPerfilPrincipalId(perfisPrincipalElegiveis.length === 1 ? perfisPrincipalElegiveis[0]!.perfil_id : "");
+  }, [initialPerfilPrincipalId, perfisPrincipalElegiveis, selectedPerfilPrincipalId]);
+
   const perfilPrincipalAtivo = useMemo(() => {
     if (!selectedPerfilPrincipalId) return null;
-    return perfisPrincipal.find((p) => p.perfil_id === selectedPerfilPrincipalId) || null;
-  }, [perfisPrincipal, selectedPerfilPrincipalId]);
+    return perfisPrincipalElegiveis.find((p) => p.perfil_id === selectedPerfilPrincipalId) || null;
+  }, [perfisPrincipalElegiveis, selectedPerfilPrincipalId]);
 
   // Regra do perfil comercial selecionado (contém o programa_id da franqueadora, ex: Franquia Antiga)
   const regraPrincipalAtiva = useMemo(() => {
@@ -626,22 +653,29 @@ export function FormalizacaoVendaForm({
             <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
               Perfil / regra homologada do consultor:
             </label>
-            <select
-              required
-              value={selectedPerfilPrincipalId}
-              onChange={(e) => setSelectedPerfilPrincipalId(e.target.value)}
-              className="w-full rounded-xl border border-blue-300 bg-white px-3.5 py-2 text-xs font-bold text-slate-900 shadow-2xs dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-            >
-              <option value="">Selecione o perfil</option>
-              {perfisPrincipal.map((p) => (
-                <option key={p.perfil_id} value={p.perfil_id}>
-                  {p.perfil?.nome} ({p.override_percentual !== null ? `${p.override_percentual}%` : "Percentual da regra"})
-                </option>
-              ))}
-            </select>
-            {selectedPrincipalId && perfisPrincipal.length === 0 && (
-              <p className="text-xs font-semibold text-amber-700">Este participante não possui perfil de comissão ativo.</p>
-            )}
+            {perfisPrincipalElegiveis.length === 1 ? (
+              <div className="rounded-xl border border-emerald-300 bg-emerald-50 px-3.5 py-2.5 text-xs font-bold text-emerald-950">
+                {perfisPrincipalElegiveis[0]!.perfil?.nome} · regra única aplicável à venda
+              </div>
+            ) : perfisPrincipalElegiveis.length > 1 ? (
+              <select
+                required
+                value={selectedPerfilPrincipalId}
+                onChange={(e) => setSelectedPerfilPrincipalId(e.target.value)}
+                className="w-full rounded-xl border border-blue-300 bg-white px-3.5 py-2 text-xs font-bold text-slate-900 shadow-2xs dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+              >
+                <option value="">Selecione a regra permitida</option>
+                {perfisPrincipalElegiveis.map((p) => (
+                  <option key={p.perfil_id} value={p.perfil_id}>
+                    {p.perfil?.nome} ({p.override_percentual !== null ? `${p.override_percentual}%` : "Percentual da regra"})
+                  </option>
+                ))}
+              </select>
+            ) : selectedPrincipalId ? (
+              <p className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-xs font-semibold text-amber-900">
+                Este consultor não possui regra homologada compatível com esta venda.
+              </p>
+            ) : null}
           </div>
         </div>
 
