@@ -1591,6 +1591,21 @@ vigente ficam indisponíveis e o formulário apresenta as pendências exatas ant
 de habilitar **Confirmar e formalizar venda**. Consulte
 [`FASE-194-DESBLOQUEIO-FORMALIZACAO-MODALIDADE-CANONICA.md`](relatorios-fases/FASE-194-DESBLOQUEIO-FORMALIZACAO-MODALIDADE-CANONICA.md).
 
+### Evolução operacional 195 — reconciliação do montante multicotas
+
+Na formalização, depois de validados o tenant, o grupo, o produto canônico e a
+quantidade contratada, o montante operacional é reconciliado pelo valor unitário
+vigente do produto multiplicado pela quantidade. Divergências não bloqueiam a
+criação das cotas: valor anterior e corrigido são registrados no histórico
+append-only dentro da mesma transação. A venda preserva o total reconciliado e
+cada cota definitiva recebe o valor unitário canônico. As previsões são
+reconstruídas sobre o total antes de sua distribuição por cota, evitando que a
+base de comissão fique limitada à primeira unidade criada pelo núcleo.
+
+Relatório:
+`docs/relatorios-fases/FASE-195-RECONCILIACAO-MONTANTE-FORMALIZACAO-MULTICOTAS.md`.
+
+
 
 
 

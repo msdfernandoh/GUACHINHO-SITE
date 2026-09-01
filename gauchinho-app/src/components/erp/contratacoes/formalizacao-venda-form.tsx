@@ -179,7 +179,10 @@ export function FormalizacaoVendaForm({
     [cotasDisponiveis, selectedCotaId]
   );
 
-  const valorCredito = creditoAceito > 0 ? creditoAceito : cotaAtual?.valor_credito || 0;
+  const valorCreditoUnitario = Number(cotaAtual?.valor_credito || 0);
+  const valorCreditoCanonico = Math.round(valorCreditoUnitario * quantidadeCotas * 100) / 100;
+  const valorCredito = valorCreditoCanonico > 0 ? valorCreditoCanonico : creditoAceito;
+  const creditoFoiReconciliado = creditoAceito > 0 && Math.abs(creditoAceito - valorCredito) > 0.05;
   const prazoTotal = grupoAtual?.prazo_total || 0;
   const prazoRestante = grupoAtual?.prazo_restante || 0;
 
@@ -791,6 +794,11 @@ export function FormalizacaoVendaForm({
           <div className="rounded-xl bg-white p-3 shadow-2xs dark:bg-slate-800">
             <p className="text-[11px] font-semibold text-slate-500">Crédito contratado ({quantidadeCotas} {quantidadeCotas === 1 ? "cota" : "cotas"})</p>
             <p className="text-base font-black text-slate-900 dark:text-white">{brl(calculo.valorCredito)}</p>
+            {creditoFoiReconciliado ? (
+              <p className="text-[10px] font-semibold text-amber-700">
+                Total anterior de {brl(creditoAceito)} corrigido por produto × quantidade.
+              </p>
+            ) : null}
             <p className="text-[10px] font-semibold text-emerald-700">Parcela aceita: {valorParcela > 0 ? brl(valorParcela) : "—"}</p>
             <p className="text-[10px] text-slate-400">
               {prazoRestante} parcelas restantes de {prazoTotal} originais
@@ -839,7 +847,7 @@ export function FormalizacaoVendaForm({
           3. Resumo da Venda
         </h3>
         <p className="mt-2 text-xs text-slate-700 dark:text-slate-300">
-          Cliente: <strong>{clienteNome}</strong> · Grupo: <strong>{grupoAtual ? `Grupo ${grupoAtual.codigo_grupo}` : "não selecionado"}</strong> · Quantidade: <strong>{quantidadeCotas} {quantidadeCotas === 1 ? "cota" : "cotas"}</strong> · Modelo de comissão: <strong>{modalidadeAtiva?.nome || "não selecionado"}</strong> · Crédito aceito: <strong>{brl(valorCredito)}</strong> · Parcela aceita no site: <strong>{valorParcela ? brl(valorParcela) : "não informada"}</strong> · Prazo: <strong>{prazoRestante}/{prazoTotal}</strong> · Forma de pagamento: <strong>{formaPagamento || "Boleto"}</strong>
+          Cliente: <strong>{clienteNome}</strong> · Grupo: <strong>{grupoAtual ? `Grupo ${grupoAtual.codigo_grupo}` : "não selecionado"}</strong> · Quantidade: <strong>{quantidadeCotas} {quantidadeCotas === 1 ? "cota" : "cotas"}</strong> · Modelo de comissão: <strong>{modalidadeAtiva?.nome || "não selecionado"}</strong> · Crédito total: <strong>{brl(valorCredito)}</strong> · Parcela aceita no site: <strong>{valorParcela ? brl(valorParcela) : "não informada"}</strong> · Prazo: <strong>{prazoRestante}/{prazoTotal}</strong> · Forma de pagamento: <strong>{formaPagamento || "Boleto"}</strong>
         </p>
       </div>
 
