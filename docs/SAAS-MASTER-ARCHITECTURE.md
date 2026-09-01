@@ -86,6 +86,7 @@ A plataforma suporta:
 - recebimento e pagamento em RPCs com locks, idempotência, aritmética `numeric` e elegibilidade proporcional ao caixa da franquia efetivamente liquidado;
 - compensações, consumos, cancelamentos de crédito e estornos registrados como eventos append-only; nenhum pagamento líquido negativo;
 - `operacoes_idempotentes`, `financeiro_compensacao_movimentos`, `financeiro_estornos` e view `financeiro_compensacoes_saldos`;
+- a formalização multicotas reconstrói respostas em retry a partir dos fatos persistidos e nunca atualiza `operacoes_idempotentes`, preservando sua semântica append-only (migration 181);
 - estado: aplicado ao projeto principal em 11/08/2026 após auditoria final e autorização explícita.
 
 ### Fechamento técnico da base (Migrations 064–066 — aplicadas em Produção)
