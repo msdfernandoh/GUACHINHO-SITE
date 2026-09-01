@@ -31,6 +31,7 @@ export type PagamentoInput = {
   formaPagamento?: "pix" | "ted" | "outros";
   referenciaDocumento?: string;
   observacoes?: string;
+  contaBancariaOrigemId?: string | null;
   itens: { previsaoParticipanteId: string; valorLiquidado: ValorMonetario }[];
 };
 
@@ -121,7 +122,10 @@ export async function transferirPendenciaRecebimento(input: {
 
 export async function registrarPagamentoParticipante(input: PagamentoInput) {
   const admin = await createClient();
-  const { data, error } = await admin.rpc("rpc_registrar_pagamento", {
+  const rpc = input.contaBancariaOrigemId
+    ? "rpc_registrar_pagamento_bancario"
+    : "rpc_registrar_pagamento";
+  const payload = {
     p_empresa_id: input.empresaId,
     p_competencia: input.competencia,
     p_data_pagamento: input.dataPagamento ?? hojeIso(),
@@ -134,7 +138,11 @@ export async function registrarPagamentoParticipante(input: PagamentoInput) {
       valor_liquidado: item.valorLiquidado,
     })),
     p_idempotency_key: input.idempotencyKey,
-  });
+    ...(input.contaBancariaOrigemId
+      ? { p_conta_origem_id: input.contaBancariaOrigemId }
+      : {}),
+  };
+  const { data, error } = await admin.rpc(rpc, payload);
   if (error) throw new Error(error.message);
   return (data as { pagamento?: unknown } | null)?.pagamento ?? data;
 }

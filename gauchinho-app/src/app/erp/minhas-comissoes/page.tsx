@@ -84,7 +84,7 @@ export default async function MinhasComissoesPage({
       .map((row: any) => row.previsao_franquia_id)
       .filter((id: unknown): id is string => typeof id === "string" && id.length > 0),
   )];
-  const [{ data: previsoesFranquia }, { data: fiscal }, { data: podeGerenciarFiscal }] = await Promise.all([
+  const [{ data: previsoesFranquia }, { data: fiscal }, { data: podeGerenciarFiscal }, { data: contasBancarias }] = await Promise.all([
     previsaoFranquiaIds.length
       ? admin
           .from("comissao_previsoes_franquia")
@@ -103,6 +103,9 @@ export default async function MinhasComissoesPage({
       .limit(1)
       .maybeSingle(),
     db.rpc("can_write_tenant_internal", { p_empresa_id: empresaAtiva.id }),
+    podePagarEquipe
+      ? db.from("financeiro_contas_saldos").select("id,nome,banco,saldo_atual").eq("empresa_id", empresaAtiva.id).eq("ativo", true).order("nome")
+      : Promise.resolve({ data: [] as Array<{ id: string; nome: string; banco: string | null; saldo_atual: number }>, error: null }),
   ]);
   const franquiaMap = new Map((previsoesFranquia ?? []).map((item: any) => [item.id, item]));
   const mostrarDetalhesFiscais = Boolean(fiscal?.participante_exibe_detalhes_fiscais);
@@ -151,6 +154,7 @@ export default async function MinhasComissoesPage({
   return (
     <main className="p-6">
       <MinhasComissoesClient
+        key={participanteSelecionado?.id ?? "sem-participante"}
         participanteNome={participante.nome_exibicao || participante.nome}
         previsoes={previsoes}
         mostrarDetalhesFiscais={mostrarDetalhesFiscais}
@@ -161,6 +165,7 @@ export default async function MinhasComissoesPage({
         participanteProprioId={participanteProprio?.id ?? null}
         podeGerenciarEquipe={podeGerenciarEquipe}
         podePagarEquipe={podePagarEquipe}
+        contasBancarias={(contasBancarias ?? []).map((conta) => ({ ...conta, saldo_atual: Number(conta.saldo_atual) }))}
       />
     </main>
   );

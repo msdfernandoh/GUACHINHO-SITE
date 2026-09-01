@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { Calendar, CircleDollarSign, Clock, CheckCircle2, Layers3, Search, User, X } from "lucide-react";
-import { conferirPagamentoAction, pagarComissaoEquipeAction } from "@/app/erp/minhas-comissoes/actions";
+import { conferirPagamentoAction, pagarComissoesAgrupadasAction } from "@/app/erp/minhas-comissoes/actions";
 import type { ResumoVendasMes } from "@/lib/erp/minhas-comissoes-vendas";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -38,6 +38,7 @@ interface MinhasComissoesClientProps {
   participanteProprioId: string | null;
   podeGerenciarEquipe: boolean;
   podePagarEquipe: boolean;
+  contasBancarias: Array<{ id: string; nome: string; banco: string | null; saldo_atual: number }>;
 }
 
 const brl = (val: number) =>
@@ -54,6 +55,7 @@ export function MinhasComissoesClient({
   participanteProprioId,
   podeGerenciarEquipe,
   podePagarEquipe,
+  contasBancarias,
 }: MinhasComissoesClientProps) {
   const router = useRouter();
   const now = new Date();
@@ -65,6 +67,14 @@ export function MinhasComissoesClient({
   const [mesEspecifico, setMesEspecifico] = useState<string>("");
   const [buscaCliente, setBuscaCliente] = useState<string>("");
   const [clienteSelecionado, setClienteSelecionado] = useState<string>("");
+  const [selecionadasPagamento, setSelecionadasPagamento] = useState<Set<string>>(new Set());
+  const [operacaoPagamento, setOperacaoPagamento] = useState(() => crypto.randomUUID());
+
+  async function pagarSelecionadas(formData: FormData) {
+    await pagarComissoesAgrupadasAction(formData);
+    setSelecionadasPagamento(new Set());
+    setOperacaoPagamento(crypto.randomUUID());
+  }
 
   // Clientes únicos disponíveis
   const clientesDisponiveis = useMemo(() => {
@@ -165,6 +175,10 @@ export function MinhasComissoesClient({
   }, [previsoesFiltradas, previsoes, clienteSelecionado, buscaCliente, currentMonth, nextMonth]);
 
   const temFiltroAtivo = Boolean(clienteSelecionado || buscaCliente || mesEspecifico || filtroPeriodo !== "TODOS");
+  const elegiveisPagamento = previsoesFiltradas.filter((item) => Number(item.valor_elegivel) > Number(item.valor_pago));
+  const totalSelecionado = elegiveisPagamento
+    .filter((item) => selecionadasPagamento.has(item.id))
+    .reduce((soma, item) => soma + Number(item.valor_elegivel) - Number(item.valor_pago), 0);
 
   return (
     <div className="space-y-6">
@@ -205,6 +219,27 @@ export function MinhasComissoesClient({
           </Link>
         </div>
       )}
+
+      {podePagarEquipe && elegiveisPagamento.length ? (
+        <form action={pagarSelecionadas} className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 shadow-sm">
+          <input type="hidden" name="participante_id" value={participanteSelecionadoId} />
+          <input type="hidden" name="operacao_id" value={operacaoPagamento} />
+          <input type="hidden" name="previsoes_ids" value={JSON.stringify([...selecionadasPagamento])} />
+          <div className="flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <p className="text-xs font-black uppercase tracking-wide text-emerald-900">Pagamento agrupado</p>
+              <p className="mt-1 text-sm text-emerald-800">{selecionadasPagamento.size} parcela(s) · {brl(totalSelecionado)}</p>
+            </div>
+            <label className="min-w-72 text-xs font-bold text-emerald-950">Conta da empresa
+              <select name="conta_origem_id" required className="mt-1 w-full rounded-xl border border-emerald-300 bg-white px-3 py-2 text-sm">
+                <option value="">Selecione a conta de saída</option>
+                {contasBancarias.map((conta) => <option key={conta.id} value={conta.id}>{conta.nome} · saldo {brl(conta.saldo_atual)}</option>)}
+              </select>
+            </label>
+            <button disabled={!selecionadasPagamento.size} className="rounded-xl bg-emerald-800 px-5 py-2.5 text-xs font-black text-white disabled:opacity-40">Pagar selecionadas</button>
+          </div>
+        </form>
+      ) : null}
 
       {/* Barra de Filtros: Cliente + Competência */}
       <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-2xs dark:border-slate-800 dark:bg-slate-900 space-y-3">
@@ -427,6 +462,7 @@ export function MinhasComissoesClient({
             <table className="w-full text-left text-xs">
               <thead className="bg-slate-50 text-[11px] font-bold uppercase text-slate-500 dark:bg-slate-800 dark:text-slate-400">
                 <tr>
+                  {podePagarEquipe ? <th className="p-3"><span className="sr-only">Selecionar</span></th> : null}
                   <th className="p-3">Competência</th>
                   <th className="p-3">Cliente / Cota</th>
                   <th className="p-3">Etapa / Parcela</th>
@@ -441,6 +477,7 @@ export function MinhasComissoesClient({
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                 {previsoesFiltradas.map((row) => (
                   <tr key={row.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition">
+                    {podePagarEquipe ? <td className="p-3">{Number(row.valor_elegivel) > Number(row.valor_pago) ? <input type="checkbox" aria-label={`Selecionar comissão de ${row.cliente_nome || row.id}`} checked={selecionadasPagamento.has(row.id)} onChange={(event) => setSelecionadasPagamento((atual) => { const proximo = new Set(atual); if (event.target.checked) proximo.add(row.id); else proximo.delete(row.id); return proximo; })} /> : null}</td> : null}
                     <td className="p-3 font-mono font-bold text-blue-700 dark:text-blue-400">
                       {row.competencia}
                     </td>
@@ -472,13 +509,7 @@ export function MinhasComissoesClient({
                     <td className="p-3 font-mono text-emerald-700 dark:text-emerald-400 font-bold">{brl(Number(row.valor_pago))}</td>
                     <td className="p-3 text-right">
                       {podePagarEquipe && Number(row.valor_elegivel) > Number(row.valor_pago) ? (
-                        <form action={pagarComissaoEquipeAction}>
-                          <input type="hidden" name="previsao_id" value={row.id} />
-                          <input type="hidden" name="participante_id" value={participanteSelecionadoId} />
-                          <button className="rounded-xl bg-emerald-700 px-3 py-1 text-[11px] font-bold text-white shadow-2xs hover:bg-emerald-800">
-                            Pagar comissão
-                          </button>
-                        </form>
+                        <span className="text-[11px] font-bold text-emerald-700">Selecione para pagar</span>
                       ) : row.conferido_por_participante ? (
                         <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-bold text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300">
                           <CheckCircle2 className="h-3.5 w-3.5" />

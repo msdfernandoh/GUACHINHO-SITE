@@ -71,6 +71,13 @@ A plataforma suporta:
 - A liberação da previsão do participante respeita também `cota_definitiva_id`, evitando que uma cota recebida libere outra cota da mesma venda.
 - A tela de Comissões separa pendências, previsões futuras, histórico recebido e pagamentos, sem seleção massiva por checkboxes.
 
+### Evolução financeira 192 — contas da empresa e equalização dos sócios
+
+- Repasses recebidos são lançados no livro auxiliar append-only da conta bancária empresarial selecionada; estornos geram lançamentos compensatórios na mesma conta.
+- Pagamentos de comissão podem agrupar parcelas do mesmo beneficiário, debitam uma conta da empresa e mantêm conta interna de destino opcional para colaboradores.
+- Sócios possuem extrato interno derivado de comissões, despesas empresariais pagas pessoalmente e transferências de equalização; esse extrato não representa saldo bancário pessoal.
+- Transferências entre contas da empresa não alteram o caixa consolidado. Transferências entre sócios podem liquidar parcialmente as instruções imutáveis de um fechamento.
+
 ### Tabelas Financeiras e Caixa (Macrobloco D - Migration 055)
 - `financeiro_recebimentos`, `financeiro_recebimento_itens`, `financeiro_pagamentos`, `financeiro_pagamento_itens`, `financeiro_compensacoes`, `caixa_movimentos`.
 
