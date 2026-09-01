@@ -151,8 +151,6 @@ export async function lancarItemRepasseLegadoAction(
     const { db, empresaId } = await context();
     const itemId = String(formData.get("item_id") ?? "");
     const participanteId = String(formData.get("participante_id") ?? "");
-    const regraId = String(formData.get("regra_participante_id") ?? "");
-    const semRegra = formData.get("sem_regra") === "true";
     const clienteNome = String(formData.get("cliente_nome") ?? "").trim();
     const grupoId = String(formData.get("grupo_id") ?? "").trim() || null;
     const numeroGrupo = String(formData.get("numero_grupo") ?? "").trim();
@@ -160,13 +158,12 @@ export async function lancarItemRepasseLegadoAction(
     if (!itemId || !participanteId || !clienteNome || !numeroGrupo || !numeroCota) {
       throw new Error("Informe cliente, grupo, cota e consultor.");
     }
-    if (!semRegra && !regraId) throw new Error("Selecione a regra ou marque a opção sem regra.");
     const { error } = await db.rpc("rpc_lancar_item_repasse_legado", {
       p_empresa_id: empresaId,
       p_item_id: itemId,
       p_participante_id: participanteId,
-      p_regra_participante_id: regraId || null,
-      p_sem_regra: semRegra,
+      p_regra_participante_id: null,
+      p_sem_regra: true,
       p_cliente_nome: clienteNome,
       p_grupo_id: grupoId,
       p_numero_grupo: numeroGrupo,

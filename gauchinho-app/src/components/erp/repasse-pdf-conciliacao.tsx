@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState } from "react";
 import {
   importarRelatorioRepasseRaconAction,
   vincularItemRepasseManualAction,
@@ -181,8 +181,7 @@ function ReconciliationTable({ title, items, previsoes, action, disabled, legacy
   return <div className="overflow-hidden rounded-xl border bg-white dark:border-slate-800 dark:bg-slate-900"><h3 className="border-b p-3 text-sm font-bold">{title} ({items.length})</h3><div className="overflow-x-auto"><table className="w-full text-xs"><thead className="bg-slate-50 text-left"><tr><th className="p-2">Linha</th><th>Cliente</th><th>Grupo / Cota</th><th>Parcela</th><th>Comissão</th><th>Atenção</th><th className="min-w-80">Vínculo manual</th></tr></thead><tbody className="divide-y">{items.map((item) => <tr key={item.id}><td className="p-2">{item.linha}</td><td className="font-bold">{item.cliente_nome}</td><td>{item.numero_grupo} / {item.numero_cota}</td><td>{item.parcela_numero}/{item.parcela_total}</td><td className="font-mono">{money(Number(item.valor_comissao))}</td><td><span className={`rounded-full px-2 py-1 text-[10px] font-bold ${statusStyle[item.status_conciliacao]}`}>{item.status_conciliacao}</span><p className="mt-1 max-w-56 text-[10px] text-amber-700">{item.alertas.join(" · ")}</p></td><td className="space-y-2"><form action={action} className="flex gap-2"><input type="hidden" name="item_id" value={item.id}/><select name="previsao_franquia_id" required defaultValue={item.previsao_sugerida_id ?? ""} className="min-w-64 flex-1 rounded-lg border p-1.5 dark:bg-slate-900"><option value="">Selecione uma comissão aberta (qualquer competência)</option>{previsoes.map((p) => <option key={p.id} value={p.id}>{p.competencia} · {p.cliente_nome} · {p.numero_grupo}/{p.numero_cota} · {p.ordem_etapa}ª · {money(Number(p.valor_previsto)-Number(p.valor_liquidado))}</option>)}</select><button disabled={disabled} className="rounded-lg bg-slate-900 px-3 py-1.5 font-bold text-white">Vincular</button></form>{legacyAction && <MissingRegistrationForm item={item} action={legacyAction} disabled={Boolean(legacyDisabled)} participantes={participantes} regras={regras} grupos={grupos} />}</td></tr>)}</tbody></table></div></div>;
 }
 
-function MissingRegistrationForm({ item, action, disabled, participantes, regras, grupos }: { item: RepassePdfItem; action: (payload: FormData) => void; disabled: boolean; participantes: RepasseParticipante[]; regras: RepasseRegraParticipante[]; grupos: RepasseGrupo[] }) {
-  const [semRegra, setSemRegra] = useState(true);
+function MissingRegistrationForm({ item, action, disabled, participantes, grupos }: { item: RepassePdfItem; action: (payload: FormData) => void; disabled: boolean; participantes: RepasseParticipante[]; regras: RepasseRegraParticipante[]; grupos: RepasseGrupo[] }) {
   return <details className="rounded-lg border border-violet-200 bg-violet-50 p-2">
     <summary className="cursor-pointer font-bold text-violet-800">Cadastrar cliente, grupo/cota e comissão</summary>
     <form action={action} className="mt-2 grid grid-cols-2 gap-2">
@@ -195,8 +194,8 @@ function MissingRegistrationForm({ item, action, disabled, participantes, regras
       <label className="font-bold">Número do grupo <input name="numero_grupo" required defaultValue={item.numero_grupo} className="mt-1 w-full rounded border p-1.5 font-normal"/></label>
       <label className="font-bold">Número da cota <input name="numero_cota" required defaultValue={item.numero_cota} className="mt-1 w-full rounded border p-1.5 font-normal"/></label>
       <label className="font-bold">Consultor <select name="participante_id" required className="mt-1 w-full rounded border p-1.5 font-normal"><option value="">Selecione</option>{participantes.map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}</select></label>
-      <label className="col-span-2 flex items-center gap-2 rounded border border-violet-300 bg-white p-2 font-bold"><input type="checkbox" name="sem_regra" value="true" checked={semRegra} onChange={(e) => setSemRegra(e.target.checked)}/> Usar exatamente o valor do relatório ({money(Number(item.valor_comissao))}), sem regra de comissão</label>
-      {!semRegra && <label className="col-span-2 font-bold">Regra do consultor <select name="regra_participante_id" required className="mt-1 w-full rounded border p-1.5 font-normal"><option value="">Selecione</option>{regras.map((r) => <option key={r.id} value={r.id}>{r.nome} · {r.percentual}%</option>)}</select></label>}
+      <input type="hidden" name="sem_regra" value="true" />
+      <p className="col-span-2 rounded border border-emerald-300 bg-emerald-50 p-2 font-bold text-emerald-900">Comissão direta: será usado exatamente o valor do relatório ({money(Number(item.valor_comissao))}), sem regra de comissão.</p>
       <button disabled={disabled} className="col-span-2 rounded bg-violet-700 px-3 py-2 font-bold text-white disabled:opacity-50">Cadastrar e vincular esta linha</button>
     </form>
   </details>;
