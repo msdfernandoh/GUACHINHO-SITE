@@ -189,6 +189,7 @@ export async function generatePropostaPdfAction(formData: FormData) {
     parceiro_nome: String(formData.get("parceiro_nome") ?? "").trim() || undefined,
     validade_dias: Number(formData.get("validade_dias") ?? 0) || undefined,
     validade_data: String(formData.get("validade_data") ?? "").trim() || undefined,
+    observacao: String(formData.get("observacao") ?? "").trim() || undefined,
     origem: "admin",
     pagina: `/admin/propostas/${propostaId}`,
     usuario_id: usuario.id,

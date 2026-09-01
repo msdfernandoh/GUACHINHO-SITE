@@ -84,6 +84,7 @@ A plataforma suporta:
 - Se a comissão de participante relacionada já tiver pagamento, a troca é recusada até o estorno do pagamento, evitando saldo negativo ou compensação implícita.
 - A migration 199 implementa a transferência por dois novos itens compensatórios (reversão negativa na previsão anterior e classificação positiva na nova), respeitando a proteção append-only de `financeiro_recebimento_itens`.
 - A aba Valores divergentes oferece `Substituir vínculo e resolver`; ao escolher a parcela correta, vínculo, baixa, elegibilidade e lista de vinculados são atualizados na mesma operação.
+- A migration 200 completa a baixa com o saldo ainda não classificado do próprio relatório, oferece busca textual nos seletores e permite encerrar `No sistema, fora do relatório` quando a mesma previsão possui baixa comprovada em outro PDF, sem liberar comissão em duplicidade.
 
 ### Evolução financeira 192 — contas da empresa e equalização dos sócios
 
@@ -1720,3 +1721,38 @@ baixas e resoluções anteriores permanecem imutáveis.
 
 Relatório:
 `docs/relatorios-fases/FASE-201-CENTRAL-ATENCAO-REPASSE-RELEITURA-IDEMPOTENTE.md`.
+
+### Evolução operacional 202 — proposta em PDF com identidade Racon e capa Conquiste+
+
+O PDF de proposta gerado pelo menu Grupos ("Gerar proposta PDF") ganha uma segunda
+geração, sem migration: o mesmo `renderPropostaPdfBuffer` agora ramifica para um layout
+por segmento quando a simulação tem grupos (`propostas.dados_simulacao.selecoes`), e
+preserva o layout legado (Helvetica, sem imagens) quando não tem — proposta de simulador
+avulso ou carta contemplada continuam iguais.
+
+- `build-segmentos.ts` cruza `simulacoes_grupos_itens` com `grupos_consorcio` e
+  `grupos_modalidades_lance` para produzir blocos por grupo (início da 1ª assembleia,
+  prazo, taxas, todos os tipos de lance com o escolhido em destaque, evolução
+  pós-contemplação) agrupados por segmento comercial (`imovel` | `veiculo` | `outro`),
+  sempre separados visualmente (azul Racon × ciano).
+- `custo-plano.ts` calcula o **custo do plano diluído** — `(taxa administração + fundo de
+  reserva) ÷ prazo` = % ao mês, ×12 = % ao ano — deliberadamente diferente de "custo
+  efetivo" (CET).
+- A capa tem dois estilos, escolhidos em **Configurações → Propostas**
+  (`configuracoes_sistema.propostas.capaEstilo`): `padrao` (documento, identidade Racon) ou
+  `campanha` (visual "Conquiste+" — gradiente, lockup, selo do embaixador Rubinho, cena de
+  casa/carro ao fundo). A mesma tela liga/desliga blocos inteiros (custo do plano, tipos de
+  lance, evolução, comparativo, observação) e linhas de "Dados do grupo" — sempre por
+  padrão da empresa, nunca campo a campo livre, para não arriscar o layout.
+- O formulário de "Gerar proposta PDF" (menu Grupos, quando o usuário é consultor) pede
+  observação livre e nome/telefone do consultor, opcionais, gravados em `propostas` e
+  usados na folha de encerramento.
+- Paginação: proposta só de um segmento sai em **capa + 2 folhas**; com dois segmentos,
+  **capa + 3**; segmentos adicionais (3º grupo em diante) somam mais uma folha cada.
+- Fontes (Archivo + Roboto Mono) e imagens (logo Racon, selo do Rubinho, cena de casa,
+  gradientes da capa) ficam embutidas como base64 em `src/lib/proposta/pdf/fonts/` e
+  `assets/`, lidas em runtime por `assets.ts` — sem chamada de rede, compatíveis com
+  serverless (`next.config.ts` inclui esses diretórios via `outputFileTracingIncludes`).
+
+Relatório:
+`docs/relatorios-fases/FASE-202-PROPOSTA-PDF-RACON-CAMPANHA.md`.

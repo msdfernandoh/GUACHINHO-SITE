@@ -33,6 +33,9 @@ type Body = {
   whatsapp: string;
   selecoes: SelecaoPayload[];
   acao: "simulacao" | "proposta" | "especialista";
+  observacao?: string;
+  consultor_nome?: string;
+  consultor_telefone?: string;
 };
 
 export async function POST(request: Request) {
@@ -194,6 +197,10 @@ export async function POST(request: Request) {
       }),
     );
 
+    const observacao = String(body.observacao ?? "").trim() || null;
+    const consultorNome = String(body.consultor_nome ?? "").trim() || null;
+    const consultorTelefone = String(body.consultor_telefone ?? "").trim() || null;
+
     let propostaId: string | null = null;
     if (body.acao === "proposta") {
       const { data: prop } = await admin
@@ -206,6 +213,10 @@ export async function POST(request: Request) {
           tipo_proposta: "Consórcio — Grupos",
           valor_credito: totais.somaCotas,
           valor_parcela: totais.primeiraParcela,
+          observacoes: observacao,
+          consultor_nome: consultorNome,
+          consultor_telefone: consultorTelefone,
+          contato_exibido_tipo: consultorNome ? "consultor" : null,
           dados_simulacao: {
             simulacao_grupo_id: sim.id,
             totais,
@@ -238,6 +249,9 @@ export async function POST(request: Request) {
         const pdf = await generateAndStorePropostaPdf(propostaId, {
           origem: "grupos",
           pagina: "/grupos",
+          observacao: observacao ?? undefined,
+          consultor_nome: consultorNome ?? undefined,
+          consultor_telefone: consultorTelefone ?? undefined,
         });
         await registrarEvento({
           empresa_id: ingress.empresaId,

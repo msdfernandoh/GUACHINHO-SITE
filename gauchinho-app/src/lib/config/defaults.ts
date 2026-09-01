@@ -22,10 +22,36 @@ export type LeadsConfig = {
   srdPodeEditarGrupos?: boolean;
 };
 
+export type CapaPropostaEstilo = "padrao" | "campanha";
+
+/** Blocos opcionais da proposta em PDF (menu Grupos). */
+export type PropostaBlocosConfig = {
+  custoPlano: boolean;
+  tiposLance: boolean;
+  evolucao: boolean;
+  comparativo: boolean;
+  observacao: boolean;
+};
+
+/** Linhas de "Dados do grupo" que podem ser exibidas/ocultadas na proposta. */
+export type PropostaLinhasGrupoConfig = {
+  administradora: boolean;
+  taxaAdm: boolean;
+  fundoReserva: boolean;
+  seguro: boolean;
+  reajuste: boolean;
+  contemplacao: boolean;
+  assembleiasDecorridas: boolean;
+  prazoRestante: boolean;
+};
+
 export type PropostasConfig = {
   validadePadraoDias: number;
   textoResumoExecutivo: string;
   avisoLegalPadrao: string;
+  capaEstilo: CapaPropostaEstilo;
+  blocos: PropostaBlocosConfig;
+  linhasGrupo: PropostaLinhasGrupoConfig;
 };
 
 export type ContatoConfig = {
@@ -125,6 +151,24 @@ export const DEFAULT_PROPOSTAS: PropostasConfig = {
   validadePadraoDias: 7,
   textoResumoExecutivo: "",
   avisoLegalPadrao: "",
+  capaEstilo: "padrao",
+  blocos: {
+    custoPlano: true,
+    tiposLance: true,
+    evolucao: true,
+    comparativo: false,
+    observacao: true,
+  },
+  linhasGrupo: {
+    administradora: true,
+    taxaAdm: true,
+    fundoReserva: true,
+    seguro: true,
+    reajuste: true,
+    contemplacao: true,
+    assembleiasDecorridas: false,
+    prazoRestante: true,
+  },
 };
 
 export const DEFAULT_CONTATO: ContatoConfig = {

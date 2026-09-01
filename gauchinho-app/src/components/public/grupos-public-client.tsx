@@ -64,6 +64,9 @@ export function GruposPublicClient({
   const [modalOpen, setModalOpen] = useState(false);
   const [nome, setNome] = useState("");
   const [whatsapp, setWhatsapp] = useState("");
+  const [observacaoPdf, setObservacaoPdf] = useState("");
+  const [consultorNomePdf, setConsultorNomePdf] = useState("");
+  const [consultorTelPdf, setConsultorTelPdf] = useState("");
   const [loading, setLoading] = useState(false);
   const [resultMsg, setResultMsg] = useState<string | null>(null);
   const [pdfLink, setPdfLink] = useState<string | null>(null);
@@ -251,6 +254,9 @@ export function GruposPublicClient({
           nome,
           whatsapp: digitsOnlyPhone(whatsapp),
           acao: "proposta",
+          observacao: observacaoPdf.trim() || undefined,
+          consultor_nome: consultorNomePdf.trim() || undefined,
+          consultor_telefone: consultorTelPdf.trim() || undefined,
           selecoes: linhasAtivas.map((s) => ({
             grupoId: s.grupoId,
             cotaId: s.cotaId,
@@ -455,9 +461,13 @@ export function GruposPublicClient({
             onSubmit={submitModal}
             className="w-full max-w-md space-y-4 rounded-2xl border border-zinc-700 bg-zinc-900 p-6"
           >
-            <h2 className="text-lg font-semibold text-white">Seus dados</h2>
+            <h2 className="text-lg font-semibold text-white">
+              {isConsultor ? "Gerar proposta PDF" : "Seus dados"}
+            </h2>
             <div>
-              <label className="mb-1 block text-sm font-medium text-zinc-300">Nome</label>
+              <label className="mb-1 block text-sm font-medium text-zinc-300">
+                {isConsultor ? "Nome do cliente" : "Nome"}
+              </label>
               <Input
                 required
                 value={nome}
@@ -477,6 +487,45 @@ export function GruposPublicClient({
                 className={surfaceInputDark}
               />
             </div>
+            {isConsultor ? (
+              <>
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-zinc-300">
+                    Observação do consultor <span className="text-zinc-500">(opcional)</span>
+                  </label>
+                  <textarea
+                    rows={3}
+                    value={observacaoPdf}
+                    onChange={(e) => setObservacaoPdf(e.target.value)}
+                    className={`${surfaceInputDark} w-full resize-y rounded-md px-3 py-2 text-sm`}
+                    placeholder="Recado que aparece na última folha do PDF"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="mb-1 block text-sm font-medium text-zinc-300">
+                      Consultor — nome <span className="text-zinc-500">(opcional)</span>
+                    </label>
+                    <Input
+                      value={consultorNomePdf}
+                      onChange={(e) => setConsultorNomePdf(e.target.value)}
+                      className={surfaceInputDark}
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-sm font-medium text-zinc-300">
+                      Consultor — telefone <span className="text-zinc-500">(opcional)</span>
+                    </label>
+                    <Input
+                      inputMode="tel"
+                      value={consultorTelPdf}
+                      onChange={(e) => setConsultorTelPdf(formatWhatsappBrInput(e.target.value))}
+                      className={surfaceInputDark}
+                    />
+                  </div>
+                </div>
+              </>
+            ) : null}
             <div className="flex gap-2">
               <Button type="submit" variant="gold" disabled={loading || digitsOnlyPhone(whatsapp).length < 10}>
                 {loading ? "Enviando…" : "Confirmar"}

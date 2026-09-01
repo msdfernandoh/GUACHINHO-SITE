@@ -13,6 +13,108 @@ export const TEXTO_ENCERRAMENTO =
 
 export const PARCEIROS_SUGERIDOS = ["Racon", "Creditas", "Tutors", "Outro"] as const;
 
+export const MARCA_ADMINISTRADORA = "Randon Consórcios";
+export const SLOGAN_CAMPANHA = "Conquiste+";
+export const RUBINHO_NOME = "Rubinho Barrichello";
+
+/** Segmento comercial do grupo, para separar imóvel × veículo na proposta. */
+export type SegmentoTipo = "imovel" | "veiculo" | "outro";
+
+export type ModalidadeLancePdf = {
+  nome: string;
+  embutidoLabel: string;
+  recProprioLabel: string;
+  baseLabel: string;
+  lanceTotalLabel: string;
+  escolhida: boolean;
+};
+
+export type MarcoEvolucaoPdf = {
+  periodo: string;
+  linhas: string[];
+};
+
+export type GrupoPdfBlock = {
+  segmento: SegmentoTipo;
+  codigoGrupo: string;
+  cotaLabel: string;
+  quantidadeCotas: number;
+  administradora: string;
+  /** Data da 1ª assembleia (dd/mm/aaaa) ou "—". */
+  inicioGrupo: string;
+  prazoTotal: number | null;
+  prazoRestante: number | null;
+  assembleiasDecorridas: number | null;
+  taxaAdmPercentual: number | null;
+  fundoReservaPercentual: number | null;
+  seguroLabel: string;
+  reajusteLabel: string;
+  contemplacaoLabel: string;
+  custoBasePercentual: number;
+  custoMesLabel: string;
+  custoAnoLabel: string;
+  credito: number;
+  saldoDevedor: number;
+  primeiraParcela: number;
+  parcelaTipoLabel: string;
+  lanceEmbutido: number;
+  recursoProprio: number;
+  lanceTotal: number;
+  creditoLiquido: number;
+  parcelaPosContemplacao: number;
+  modalidadeEscolhidaNome: string | null;
+  modalidades: ModalidadeLancePdf[];
+  evolucao: MarcoEvolucaoPdf[];
+};
+
+export type SegmentoTotaisPdf = {
+  credito: number;
+  primeiraParcela: number;
+  lanceEmbutido: number;
+  recursoProprio: number;
+  lanceTotal: number;
+  creditoLiquido: number;
+  parcelaPosContemplacao: number;
+};
+
+export type SegmentoPdf = {
+  tipo: SegmentoTipo;
+  label: string;
+  grupos: GrupoPdfBlock[];
+  totais: SegmentoTotaisPdf;
+};
+
+export type PropostaConsolidadoPdf = {
+  totalGrupos: number;
+  totalCotas: number;
+  credito: number;
+  primeiraParcela: number;
+  lanceEmbutido: number;
+  recursoProprio: number;
+  lanceTotal: number;
+  creditoLiquido: number;
+  parcelaPosContemplacaoMedia: number;
+};
+
+export type PropostaBlocosPdf = {
+  custoPlano: boolean;
+  tiposLance: boolean;
+  evolucao: boolean;
+  comparativo: boolean;
+  observacao: boolean;
+};
+
+export type PropostaLinhasGrupoPdf = {
+  administradora: boolean;
+  taxaAdm: boolean;
+  fundoReserva: boolean;
+  seguro: boolean;
+  reajuste: boolean;
+  contemplacao: boolean;
+  assembleiasDecorridas: boolean;
+  prazoRestante: boolean;
+};
+
 export type GrupoCotaPdfRow = {
   codigoGrupo: string;
   modalidade: string;
@@ -92,4 +194,14 @@ export type PropostaPdfData = {
   } | null;
   marcosProjecao: MarcoProjecaoPdf[];
   mostrarProjecao: boolean;
+
+  /** Estilo da capa escolhido em Configurações → Propostas. */
+  capaEstilo: "padrao" | "campanha";
+  /** Observação livre do consultor (fluxo Grupos). */
+  observacaoConsultor: string | null;
+  /** Grupos agrupados por segmento (imóvel, veículo, outro). Vazio → layout legado. */
+  segmentos: SegmentoPdf[];
+  consolidado: PropostaConsolidadoPdf | null;
+  blocos: PropostaBlocosPdf;
+  linhasGrupo: PropostaLinhasGrupoPdf;
 };

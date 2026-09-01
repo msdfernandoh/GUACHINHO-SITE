@@ -14,6 +14,7 @@ export type GeneratePdfOverrides = {
   parceiro_nome?: string;
   validade_dias?: number;
   validade_data?: string;
+  observacao?: string;
   origem?: string;
   pagina?: string;
   usuario_id?: string;
@@ -37,6 +38,7 @@ export async function generateAndStorePropostaPdf(
   if (overrides?.consultor_telefone) updatePayload.consultor_telefone = overrides.consultor_telefone;
   if (overrides?.consultor_email) updatePayload.consultor_email = overrides.consultor_email;
   if (overrides?.parceiro_nome) updatePayload.parceiro_nome = overrides.parceiro_nome;
+  if (overrides?.observacao) updatePayload.observacoes = overrides.observacao;
   if (overrides?.consultor_nome) {
     updatePayload.contato_exibido_tipo = "consultor";
   }

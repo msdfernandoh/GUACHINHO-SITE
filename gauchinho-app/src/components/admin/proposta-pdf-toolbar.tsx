@@ -127,6 +127,14 @@ export function PropostaPdfToolbar({ propostaId, pdfUrl, defaults }: Props) {
           <Label>E-mail consultor</Label>
           <Input name="consultor_email" defaultValue={defaults.consultor_email ?? ""} />
         </div>
+        <div className="sm:col-span-2">
+          <Label>Observação do consultor</Label>
+          <textarea
+            name="observacao"
+            rows={2}
+            className="mt-1 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-950"
+          />
+        </div>
         <div className="sm:col-span-2 flex flex-wrap gap-2">
           <Button type="submit" variant="gold" disabled={loading}>
             {loading ? "Gerando…" : "Gerar PDF"}

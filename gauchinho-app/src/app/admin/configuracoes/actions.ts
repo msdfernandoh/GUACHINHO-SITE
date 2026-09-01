@@ -43,10 +43,29 @@ export async function saveContatoConfigAction(formData: FormData) {
 
 export async function savePropostasConfigAction(formData: FormData) {
   await requireMasterConfig();
+  const capaEstiloRaw = String(formData.get("capaEstilo") ?? "padrao");
   await saveConfigJson("propostas", {
     validadePadraoDias: Number(formData.get("validadePadraoDias") ?? 7),
     textoResumoExecutivo: String(formData.get("textoResumoExecutivo") ?? ""),
     avisoLegalPadrao: String(formData.get("avisoLegalPadrao") ?? ""),
+    capaEstilo: capaEstiloRaw === "campanha" ? "campanha" : "padrao",
+    blocos: {
+      custoPlano: formData.get("bloco_custoPlano") === "on",
+      tiposLance: formData.get("bloco_tiposLance") === "on",
+      evolucao: formData.get("bloco_evolucao") === "on",
+      comparativo: formData.get("bloco_comparativo") === "on",
+      observacao: formData.get("bloco_observacao") === "on",
+    },
+    linhasGrupo: {
+      administradora: formData.get("linha_administradora") === "on",
+      taxaAdm: formData.get("linha_taxaAdm") === "on",
+      fundoReserva: formData.get("linha_fundoReserva") === "on",
+      seguro: formData.get("linha_seguro") === "on",
+      reajuste: formData.get("linha_reajuste") === "on",
+      contemplacao: formData.get("linha_contemplacao") === "on",
+      assembleiasDecorridas: formData.get("linha_assembleiasDecorridas") === "on",
+      prazoRestante: formData.get("linha_prazoRestante") === "on",
+    },
   });
   revalidatePath("/admin/configuracoes");
 }

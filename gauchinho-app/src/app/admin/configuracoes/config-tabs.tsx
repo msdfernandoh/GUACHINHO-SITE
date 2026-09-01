@@ -28,9 +28,11 @@ import { HomeModulosForm } from "./home-modulos-form";
 import {
   DEFAULT_HOME_CARTAS,
   DEFAULT_CALCULADORAS_FINANCEIRAS,
+  DEFAULT_PROPOSTAS,
   DEFAULT_SIMULADOR_AUTOMOVEL,
   DEFAULT_SIMULADOR_IMOVEL,
   type HomeCartasConfig,
+  type PropostasConfig,
   type SimuladorTipoBemConfig,
   type CalculadorasFinanceirasConfig,
 } from "@/lib/config/defaults";
@@ -68,7 +70,15 @@ export function ConfigTabs({ configs, whatsapp, iaEnv }: Props) {
   const [tab, setTab] = useState<string>("site");
   const site = configs.site ?? {};
   const contato = configs.contato ?? {};
-  const propostas = configs.propostas ?? {};
+  const propostas: PropostasConfig = {
+    ...DEFAULT_PROPOSTAS,
+    ...(configs.propostas as Partial<PropostasConfig> | undefined),
+    blocos: { ...DEFAULT_PROPOSTAS.blocos, ...(configs.propostas as PropostasConfig | undefined)?.blocos },
+    linhasGrupo: {
+      ...DEFAULT_PROPOSTAS.linhasGrupo,
+      ...(configs.propostas as PropostasConfig | undefined)?.linhasGrupo,
+    },
+  };
   const leads = configs.leads ?? {};
   const simImovel = { ...DEFAULT_SIMULADOR_IMOVEL, ...(configs.simulador_imovel as SimuladorTipoBemConfig | undefined) };
   const simAuto = { ...DEFAULT_SIMULADOR_AUTOMOVEL, ...(configs.simulador_automovel as SimuladorTipoBemConfig | undefined) };
@@ -151,13 +161,71 @@ export function ConfigTabs({ configs, whatsapp, iaEnv }: Props) {
       ) : null}
 
       {tab === "propostas" ? (
-        <form action={savePropostasConfigAction} className="max-w-xl space-y-3">
+        <form action={savePropostasConfigAction} className="max-w-xl space-y-4">
           <div>
             <Label>Validade padrão (dias)</Label>
             <Input name="validadePadraoDias" type="number" defaultValue={String(propostas.validadePadraoDias ?? 7)} />
           </div>
-          <Textarea name="textoResumoExecutivo" rows={3} defaultValue={String(propostas.textoResumoExecutivo ?? "")} />
-          <Textarea name="avisoLegalPadrao" rows={3} defaultValue={String(propostas.avisoLegalPadrao ?? "")} />
+          <div>
+            <Label>Texto do resumo executivo</Label>
+            <Textarea name="textoResumoExecutivo" rows={3} defaultValue={String(propostas.textoResumoExecutivo ?? "")} />
+          </div>
+          <div>
+            <Label>Aviso legal padrão</Label>
+            <Textarea name="avisoLegalPadrao" rows={3} defaultValue={String(propostas.avisoLegalPadrao ?? "")} />
+          </div>
+
+          <div>
+            <Label>Capa do PDF de proposta (menu Grupos)</Label>
+            <select
+              name="capaEstilo"
+              defaultValue={propostas.capaEstilo}
+              className="mt-1 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-950"
+            >
+              <option value="padrao">Padrão — documento</option>
+              <option value="campanha">Campanha — Conquiste+</option>
+            </select>
+          </div>
+
+          <fieldset className="space-y-2 rounded-lg border border-zinc-200 p-3 dark:border-zinc-800">
+            <legend className="px-1 text-xs font-semibold uppercase tracking-wide text-zinc-500">
+              Blocos da proposta
+            </legend>
+            {([
+              ["bloco_custoPlano", "Custo do plano diluído", propostas.blocos.custoPlano],
+              ["bloco_tiposLance", "Tipos de lance do grupo", propostas.blocos.tiposLance],
+              ["bloco_evolucao", "Evolução após a contemplação", propostas.blocos.evolucao],
+              ["bloco_comparativo", "Comparativo consórcio × financiamento", propostas.blocos.comparativo],
+              ["bloco_observacao", "Observação do consultor e assinaturas", propostas.blocos.observacao],
+            ] as const).map(([name, label, checked]) => (
+              <label key={name} className="flex items-center gap-2 text-sm">
+                <input type="checkbox" name={name} defaultChecked={checked} />
+                {label}
+              </label>
+            ))}
+          </fieldset>
+
+          <fieldset className="space-y-2 rounded-lg border border-zinc-200 p-3 dark:border-zinc-800">
+            <legend className="px-1 text-xs font-semibold uppercase tracking-wide text-zinc-500">
+              Linhas de "Dados do grupo"
+            </legend>
+            {([
+              ["linha_administradora", "Administradora", propostas.linhasGrupo.administradora],
+              ["linha_taxaAdm", "Taxa de administração", propostas.linhasGrupo.taxaAdm],
+              ["linha_fundoReserva", "Fundo de reserva", propostas.linhasGrupo.fundoReserva],
+              ["linha_seguro", "Seguro prestamista", propostas.linhasGrupo.seguro],
+              ["linha_reajuste", "Reajuste do crédito", propostas.linhasGrupo.reajuste],
+              ["linha_contemplacao", "Forma de contemplação", propostas.linhasGrupo.contemplacao],
+              ["linha_assembleiasDecorridas", "Assembleias decorridas", propostas.linhasGrupo.assembleiasDecorridas],
+              ["linha_prazoRestante", "Prazo restante", propostas.linhasGrupo.prazoRestante],
+            ] as const).map(([name, label, checked]) => (
+              <label key={name} className="flex items-center gap-2 text-sm">
+                <input type="checkbox" name={name} defaultChecked={checked} />
+                {label}
+              </label>
+            ))}
+          </fieldset>
+
           <AdminFormSubmitButton label="Salvar Propostas" />
         </form>
       ) : null}

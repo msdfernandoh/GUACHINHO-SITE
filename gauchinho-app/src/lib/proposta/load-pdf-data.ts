@@ -1,5 +1,6 @@
 import type { PropostaPdfData, MarcoProjecaoPdf, GrupoCotaPdfRow } from "./pdf/types";
 import { fmtDateBr, fmtMoney } from "./pdf/format";
+import { construirSegmentos, type ItemGrupoRow } from "./pdf/build-segmentos";
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
   DEFAULT_PROPOSTAS,
@@ -7,8 +8,10 @@ import {
   DEFAULT_CONTATO,
   getConfigJsonPublic,
 } from "@/server/config";
+import type { PropostasConfig } from "@/lib/config/defaults";
 import { gerarProjecaoAnoAno, resumoProjecaoAnos } from "@/lib/simulador/projecao";
 import type { EntradaConsorcio } from "@/lib/simulador/consorcio";
+import type { GrupoConsorcio, GrupoModalidadeLance } from "@/lib/types";
 
 type PropostaRow = Record<string, unknown>;
 
@@ -55,6 +58,7 @@ export async function buildPropostaPdfData(
     parceiro_nome?: string;
     validade_dias?: number;
     validade_data?: string;
+    observacao?: string;
   },
 ): Promise<PropostaPdfData> {
   const admin = createAdminClient();
@@ -80,6 +84,8 @@ export async function buildPropostaPdfData(
 
   let gruposCotas: GrupoCotaPdfRow[] = [];
   let gruposTotais: PropostaPdfData["gruposTotais"] = null;
+  let segmentos: PropostaPdfData["segmentos"] = [];
+  let consolidado: PropostaPdfData["consolidado"] = null;
 
   const simGrupoId = dadosSim.simulacao_grupo_id as string | undefined;
 
@@ -90,6 +96,33 @@ export async function buildPropostaPdfData(
         .from("simulacoes_grupos_itens")
         .select("*")
         .eq("simulacao_grupo_id", simId);
+
+      const grupoIds = [
+        ...new Set(((itens ?? []) as Array<{ grupo_id: string | null }>).map((i) => i.grupo_id).filter((id): id is string => !!id)),
+      ];
+      if (grupoIds.length > 0) {
+        const [{ data: grupos }, { data: mods }] = await Promise.all([
+          admin.from("grupos_consorcio").select("*").in("id", grupoIds),
+          admin.from("grupos_modalidades_lance").select("*").in("grupo_id", grupoIds).eq("ativo", true),
+        ]);
+        const gruposById = new Map<string, GrupoConsorcio>(
+          ((grupos ?? []) as GrupoConsorcio[]).map((g) => [g.id, g]),
+        );
+        const modsByGrupo = new Map<string, GrupoModalidadeLance[]>();
+        for (const m of (mods ?? []) as GrupoModalidadeLance[]) {
+          const list = modsByGrupo.get(m.grupo_id) ?? [];
+          list.push(m);
+          modsByGrupo.set(m.grupo_id, list);
+        }
+        const built = construirSegmentos(
+          (itens ?? []) as ItemGrupoRow[],
+          gruposById,
+          modsByGrupo,
+        );
+        segmentos = built.segmentos;
+        consolidado = built.consolidado;
+      }
+
       gruposCotas = (itens ?? []).map((it) => {
         const dadosLinha = (it.dados_linha ?? {}) as Record<string, unknown>;
         const modLance = dadosLinha.modalidade_lance as { nome?: string } | null | undefined;
@@ -235,6 +268,15 @@ export async function buildPropostaPdfData(
   const consultorEmail = overrides?.consultor_email ?? (p.consultor_email as string) ?? null;
   const usarConsultor = !!(consultorNome && (consultorTel || consultorEmail));
 
+  const propostasFull: PropostasConfig = {
+    ...DEFAULT_PROPOSTAS,
+    ...propostasCfg,
+    blocos: { ...DEFAULT_PROPOSTAS.blocos, ...(propostasCfg as PropostasConfig).blocos },
+    linhasGrupo: { ...DEFAULT_PROPOSTAS.linhasGrupo, ...(propostasCfg as PropostasConfig).linhasGrupo },
+  };
+  const observacaoConsultor =
+    (overrides?.observacao ?? (p.observacoes as string) ?? "").trim() || null;
+
   const validadePadrao = propostasCfg.validadePadraoDias ?? 7;
   let validadeTexto = resolveValidadeTexto(p, validadePadrao);
   if (overrides?.validade_data) validadeTexto = fmtDateBr(overrides.validade_data);
@@ -286,5 +328,11 @@ export async function buildPropostaPdfData(
     comparativo,
     marcosProjecao,
     mostrarProjecao: !isFin && !isCarta && marcosProjecao.length > 0,
+    capaEstilo: propostasFull.capaEstilo === "campanha" ? "campanha" : "padrao",
+    observacaoConsultor,
+    segmentos,
+    consolidado,
+    blocos: propostasFull.blocos,
+    linhasGrupo: propostasFull.linhasGrupo,
   };
 }
