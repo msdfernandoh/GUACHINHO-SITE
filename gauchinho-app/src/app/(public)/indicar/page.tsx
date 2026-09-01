@@ -4,8 +4,8 @@ import { simuladorShell } from "@/components/simulador/simulador-ui";
 import { IndicacaoForm } from "@/components/public/indicacao-form";
 
 export const metadata: Metadata = {
-  title: "Indicar cliente",
-  description: "Indique um ou mais clientes para nossa equipe.",
+  title: "Programa de Indicação",
+  description: "Indique clientes, participe do programa e acompanhe suas indicações.",
 };
 
 export default async function IndicarPage({
@@ -20,8 +20,8 @@ export default async function IndicarPage({
       <div className="mx-auto max-w-7xl px-4 pb-16 pt-10 sm:px-6 sm:pt-14">
         <PublicPremiumHero
           eyebrow="Indicação"
-          title="Indicar cliente"
-          subtitle="Preencha quem indicou uma vez e adicione quantos indicados precisar."
+          title="Programa de Indicação"
+          subtitle="Faça indicações, cadastre-se para receber comissões e acompanhe cada resultado."
         />
         <IndicacaoForm origem={origem} />
       </div>

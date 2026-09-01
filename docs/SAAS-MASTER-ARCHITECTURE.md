@@ -1497,6 +1497,38 @@ separadas para ausências de cada lado e permitem vínculo manual auditado.
 
 Relatório:
 `docs/relatorios-fases/FASE-181-CONCILIACAO-PDF-REPASSE-RACON.md`.
+## 64. Programa de Indicação público e comissões — Fase 182
+
+O menu público de Indicação dos modelos Gauchinho e Racon reúne cadastro no
+programa, envio de indicações e acompanhamento. Indicadores são participantes
+comerciais tenant-aware do tipo `INDICADOR`; CPF e telefone são únicos dentro da
+empresa, e a chave PIX permanece privada para recebimento.
+
+Cada indicação possui registro próprio ligado ao lead. A venda é reconhecida
+exclusivamente por `vendas.lead_id`, sem associação heurística por texto. A
+consulta pública por CPF retorna somente os indicados daquele cadastro, com nome
+parcialmente oculto, status e valor contratado.
+
+Comissões usam o perfil `INDICADOR` e uma regra ativa e homologada cadastrada no
+ERP para o mesmo programa da franqueadora. Não existe percentual ou valor padrão.
+Elegibilidade e pagamento continuam no motor financeiro canônico.
+
+Relatório:
+`docs/relatorios-fases/FASE-182-PROGRAMA-INDICACAO-PUBLICO-COMISSOES.md`.
+
+## 65. Correção da formalização multicotas e histórico — Fase 183
+
+O histórico operacional aceita os eventos canônicos produzidos pela conversão
+multicotas, incluindo `VENDA_FORMALIZADA` e `COTAS_DEFINITIVAS_GERADAS`. O insert
+de auditoria final deixa de reverter venda e cotas já validadas na mesma transação.
+
+Para contratações anteriores à coluna `quantidade_cotas`, o default técnico 1
+não prevalece sobre uma quantidade explícita no snapshot comercial. A
+reconciliação alcança somente contratações ainda sem venda e não modifica fatos
+comerciais existentes.
+
+Relatório:
+`docs/relatorios-fases/FASE-183-CORRECAO-FORMALIZACAO-MULTICOTAS-HISTORICO.md`.
 
 
 

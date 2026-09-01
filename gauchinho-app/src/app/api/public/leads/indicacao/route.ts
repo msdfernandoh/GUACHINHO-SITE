@@ -24,6 +24,7 @@ type Body = {
   consultorId?: string | null;
   consultorNome?: string | null;
   indicados: Indicado[];
+  indicadorId?: string | null;
 };
 
 const ORIGEM = "indicacao";
@@ -53,7 +54,15 @@ export async function POST(request: Request) {
     const indicadorTelefone = indicadorTelefoneRaw
       ? digitsOnlyPhone(indicadorTelefoneRaw) || indicadorTelefoneRaw.replace(/\D/g, "")
       : "";
+    if (indicadorTelefone.length < 10) {
+      return NextResponse.json({ error: "Informe o telefone de quem está indicando" }, { status: 400 });
+    }
     const origemPagina = body.origem?.trim() || null;
+    const indicadorId = body.indicadorId?.trim() || null;
+    if (indicadorId) {
+      const { data: indicador } = await admin.from("programa_indicadores").select("id").eq("id", indicadorId).eq("empresa_id", ingress.empresaId).eq("ativo", true).maybeSingle();
+      if (!indicador) return NextResponse.json({ error: "Cadastro do indicador inválido." }, { status: 400 });
+    }
 
     let srdResponsavelId: string | null = null;
     let srdResponsavelNome: string | null = null;
@@ -125,6 +134,14 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: leadErr?.message ?? "Falha ao salvar indicação" }, { status: 500 });
       }
       leadIds.push(leadRow.id);
+      const { error: vinculoError } = await admin.from("programa_indicacoes").insert({
+        empresa_id: ingress.empresaId,
+        indicador_id: indicadorId,
+        indicador_nome_snapshot: body.indicadorNome.trim(),
+        indicador_telefone_snapshot: indicadorTelefone,
+        lead_id: leadRow.id,
+      });
+      if (vinculoError) return NextResponse.json({ error: vinculoError.message }, { status: 500 });
       await registrarEvento({
         empresa_id: ingress.empresaId,
         tipo_evento: "lead_criado",

@@ -667,6 +667,11 @@ export function ErpCommissionHubView({
               <p className="text-xs text-slate-500">
                 Perfis padronizados e reutilizáveis por função (Microfranquia, Consultor, SDR, Indicador, etc.).
               </p>
+              <p className="mt-2 max-w-3xl rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-200">
+                Programa de Indicação: use um perfil com função <strong>INDICADOR</strong> e cadastre uma regra
+                homologada. Somente essa regra gera comissão para as pessoas inscritas no programa; o sistema
+                não presume percentual ou valor padrão.
+              </p>
             </div>
             {canWrite && (
               <button

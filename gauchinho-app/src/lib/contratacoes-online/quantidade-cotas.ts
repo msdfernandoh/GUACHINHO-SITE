@@ -15,11 +15,11 @@ export function obterQuantidadeCotasContratacao(
   const selecao = Array.isArray(dados.selecoes) ? dados.selecoes[0] : null;
 
   return (
-    numeroInteiroPositivo(quantidadePersistida) ??
     numeroInteiroPositivo(dados.quantidade_cotas_formalizacao) ??
     numeroInteiroPositivo(selecao?.config?.quantidadeCotas) ??
     numeroInteiroPositivo(selecao?.resultado?.quantidadeCotas) ??
     numeroInteiroPositivo(dados.totais?.totalCotas) ??
+    numeroInteiroPositivo(quantidadePersistida) ??
     1
   );
 }

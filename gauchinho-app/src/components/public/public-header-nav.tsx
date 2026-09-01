@@ -17,7 +17,7 @@ const PRIMARY_LINKS = [
   { href: "/cartas-contempladas", label: "Contempladas" },
   { href: "/oportunidades-imobiliarias", label: "Imobiliárias" },
   { href: "/seguradoras", label: "Seguradoras" },
-  { href: "/indicar", label: "Indicação" },
+  { href: "/indicar", label: "Programa de Indicação" },
 ] as const;
 
 const INSTITUTIONAL_LINKS = [{ href: "/", label: "Início" }] as const;
