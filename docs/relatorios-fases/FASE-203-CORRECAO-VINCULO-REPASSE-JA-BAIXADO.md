@@ -12,6 +12,8 @@ Ao selecionar outra previsão em um vínculo já baixado, a action recusava a al
 - A trilha `erp_repasse_vinculo_correcoes` registra vínculo anterior, novo, valor transferido, usuário e chave idempotente.
 - Comissão já paga exige estorno antes da correção.
 - O retorno de sucesso ou erro passa a ficar destacado na própria área de conferência.
+- Após a proteção append-only impedir a primeira implementação de reclassificação por `UPDATE`, a migration 199 substituiu o mecanismo por dois novos lançamentos: reversão da classificação antiga e classificação da nova previsão.
+- A ação `Substituir vínculo e resolver` foi adicionada diretamente ao cartão de Valores divergentes.
 
 ## Preservação
 

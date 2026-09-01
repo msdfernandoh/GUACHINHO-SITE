@@ -82,6 +82,8 @@ A plataforma suporta:
 - A alteração manual de um vínculo do PDF transfere, na mesma transação, a classificação da baixa para a previsão correta e recalcula liquidação e elegibilidade nas previsões anterior e nova.
 - O valor do recebimento e o caixa não mudam; cada correção é registrada de forma append-only em `erp_repasse_vinculo_correcoes`.
 - Se a comissão de participante relacionada já tiver pagamento, a troca é recusada até o estorno do pagamento, evitando saldo negativo ou compensação implícita.
+- A migration 199 implementa a transferência por dois novos itens compensatórios (reversão negativa na previsão anterior e classificação positiva na nova), respeitando a proteção append-only de `financeiro_recebimento_itens`.
+- A aba Valores divergentes oferece `Substituir vínculo e resolver`; ao escolher a parcela correta, vínculo, baixa, elegibilidade e lista de vinculados são atualizados na mesma operação.
 
 ### Evolução financeira 192 — contas da empresa e equalização dos sócios
 
