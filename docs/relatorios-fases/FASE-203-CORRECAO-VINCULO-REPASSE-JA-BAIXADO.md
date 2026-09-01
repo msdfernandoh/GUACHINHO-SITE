@@ -14,6 +14,7 @@ Ao selecionar outra previsão em um vínculo já baixado, a action recusava a al
 - O retorno de sucesso ou erro passa a ficar destacado na própria área de conferência.
 - Após a proteção append-only impedir a primeira implementação de reclassificação por `UPDATE`, a migration 199 substituiu o mecanismo por dois novos lançamentos: reversão da classificação antiga e classificação da nova previsão.
 - A ação `Substituir vínculo e resolver` foi adicionada diretamente ao cartão de Valores divergentes.
+- A migration 200 completa o valor vinculado usando o saldo disponível do recebimento, adiciona busca por cliente/grupo/cota/competência/parcela e registra `Título já baixado em outro relatório` somente após comprovação da baixa anterior.
 
 ## Preservação
 

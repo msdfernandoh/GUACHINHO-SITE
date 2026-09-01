@@ -122,11 +122,18 @@ export async function vincularItemRepasseManualAction(
       p_idempotency_key: `corrigir-vinculo:${itemId}:${previsaoId}`,
     });
     if (error) throw new Error(error.message);
+    const { data: completed, error: completeError } = await db.rpc("rpc_completar_baixa_item_repasse", {
+      p_empresa_id: empresaId,
+      p_item_id: itemId,
+      p_idempotency_key: `completar-baixa:${itemId}:${previsaoId}`,
+    });
+    if (completeError) throw new Error(completeError.message);
     revalidatePath("/erp/repasse-franquia");
     revalidatePath("/erp/comissoes");
     revalidatePath("/erp/minhas-comissoes");
     const result = data as { alterado?: boolean; baixa_transferida?: number } | null;
-    return { ok: true, message: result?.alterado ? `Vínculo corrigido. Baixa de ${Number(result.baixa_transferida ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })} transferida para a comissão correta.` : "O vínculo selecionado já estava salvo." };
+    const completion = completed as { valor_vinculado?: number; complemento?: number } | null;
+    return { ok: true, message: `Vínculo salvo. Total baixado neste relatório: ${Number(completion?.valor_vinculado ?? result?.baixa_transferida ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}${Number(completion?.complemento ?? 0) > 0 ? " (saldo complementar incluído)." : "."}` };
   } catch (error) {
     return { ok: false, message: error instanceof Error ? error.message : "Erro ao vincular a linha." };
   }
@@ -228,6 +235,32 @@ export async function resolverAtencaoRepasseAction(
     return { ok: true, message: result.idempotente ? "Esta decisão já havia sido registrada." : labels[result.decisao ?? decisao] ?? "Atenção resolvida." };
   } catch (error) {
     return { ok: false, message: error instanceof Error ? error.message : "Não foi possível resolver a atenção." };
+  }
+}
+
+export async function resolverTituloJaBaixadoAction(
+  _previous: AtencaoRepasseState,
+  formData: FormData,
+): Promise<AtencaoRepasseState> {
+  try {
+    const { db, empresaId } = await context();
+    const previsaoId = String(formData.get("previsao_franquia_id") ?? "").trim();
+    const importacaoId = String(formData.get("importacao_id") ?? "").trim();
+    if (!previsaoId || !importacaoId) throw new Error("Título e relatório são obrigatórios.");
+    const { data, error } = await db.rpc("rpc_resolver_titulo_repasse_ja_baixado", {
+      p_empresa_id: empresaId,
+      p_previsao_franquia_id: previsaoId,
+      p_importacao_id: importacaoId,
+      p_idempotency_key: `titulo-ja-baixado:${importacaoId}:${previsaoId}`,
+    });
+    if (error) throw new Error(error.message);
+    const result = data as { arquivo_origem?: string; valor_comprovado?: number } | null;
+    revalidatePath("/erp/repasse-franquia");
+    revalidatePath("/erp/comissoes");
+    revalidatePath("/erp/minhas-comissoes");
+    return { ok: true, message: `Pendência resolvida: título comprovado em ${result?.arquivo_origem ?? "outro relatório"}, com baixa de ${Number(result?.valor_comprovado ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}.` };
+  } catch (error) {
+    return { ok: false, message: error instanceof Error ? error.message : "Não foi possível comprovar a baixa em outro relatório." };
   }
 }
 
