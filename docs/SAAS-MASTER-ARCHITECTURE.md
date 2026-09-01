@@ -1613,3 +1613,15 @@ Relatório:
 # Atualização operacional — Fase 190 (01/09/2026)
 
 A limpeza das filas comerciais passa a oferecer exclusão em lote para o Master nas telas de propostas e contratações. A operação é uma exclusão lógica transacional por tenant, preserva documentos/histórico, gera auditoria central e é recusada integralmente quando qualquer registro selecionado já possui venda ou cota. Detalhes em `docs/relatorios-fases/FASE-190-EXCLUSAO-LOTE-PRE-COTA-MASTER.md`.
+
+### Evolução operacional 196 — imposto automático e incremental
+
+Toda nova previsão reconhecida aplica a configuração fiscal vigente na data da
+venda e persiste bruto, alíquota, imposto e líquido. A distribuição multicotas
+proporcionaliza esses fatos sem desconto cumulativo. O lote fiscal procura por
+linha as previsões sem cálculo, mesmo que outras parcelas da venda já estejam
+elegíveis; fatos pagos, conferidos ou cancelados permanecem imutáveis. A
+reconciliação é idempotente, tenant-aware e auditada.
+
+Relatório:
+`docs/relatorios-fases/FASE-196-IMPOSTO-AUTOMATICO-COMISSOES-INCREMENTAIS.md`.
