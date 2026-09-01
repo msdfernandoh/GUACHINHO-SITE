@@ -71,6 +71,12 @@ A plataforma suporta:
 - A liberação da previsão do participante respeita também `cota_definitiva_id`, evitando que uma cota recebida libere outra cota da mesma venda.
 - A tela de Comissões separa pendências, previsões futuras, histórico recebido e pagamentos, sem seleção massiva por checkboxes.
 
+### Correção operacional 197 — cadastro não bloqueante e decisão de divergência
+
+- CPF/CNPJ e telefone ausentes são pendências exclusivas do cadastro do cliente; o cadastro mínimo pelo PDF conclui atomicamente cliente, cota, comissão e vínculo, sem deixar o repasse ou a comissão pendentes por esses campos.
+- Divergências de valor oferecem decisões distintas: ajustar a conciliação ao valor do relatório, manter os valores atuais e dar por ajustado, manter o sistema com crédito, ou cancelar a cota.
+- As decisões permanecem tenant-aware, idempotentes e append-only em `erp_repasse_atencao_resolucoes`; o snapshot histórico da regra financeira não é sobrescrito.
+
 ### Evolução financeira 192 — contas da empresa e equalização dos sócios
 
 > Correção operacional 188: `financeiro_estornos` concede somente leitura

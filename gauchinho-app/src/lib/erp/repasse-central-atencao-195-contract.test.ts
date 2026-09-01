@@ -22,8 +22,8 @@ describe("repasse — central de atenção e releitura idempotente", () => {
   it("oferece vínculo, cadastro, próximo relatório, crédito, ajuste e cancelamento", () => {
     expect(ui).toContain("Cadastrar cliente, grupo/cota e comissão");
     expect(ui).toContain("Manter para o próximo relatório");
-    expect(ui).toContain("Considerar sistema e gerar crédito");
-    expect(ui).toContain("Dar por ajustado");
+    expect(ui).toContain("Manter sistema e gerar crédito");
+    expect(ui).toContain("Dar por ajustado · manter como está");
     expect(ui).toContain("Cliente cancelou");
     for (const decision of ["AGUARDAR_PROXIMO", "GERAR_CREDITO", "AJUSTAR_DIFERENCA", "CANCELAR_COTA"]) {
       expect(migration).toContain(decision);

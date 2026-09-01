@@ -232,7 +232,8 @@ export async function resolverAtencaoRepasseAction(
     const labels: Record<string, string> = {
       AGUARDAR_PROXIMO: "Comissão mantida para conferência no próximo relatório.",
       GERAR_CREDITO: "Valor do relatório baixado e diferença mantida como crédito pendente.",
-      AJUSTAR_DIFERENCA: "Diferença registrada como ajustada.",
+      AJUSTAR_DIFERENCA: "Sistema ajustado para considerar o valor do relatório nesta conciliação.",
+      MANTER_COMO_ESTA: "Divergência encerrada mantendo os valores atuais como estão.",
       CANCELAR_COTA: "Cota cancelada e curva de estorno aplicada.",
     };
     revalidatePath("/erp/repasse-franquia");
@@ -274,7 +275,7 @@ export async function lancarItemRepasseLegadoAction(
     if (error) throw new Error(error.message);
     revalidatePath("/erp/repasse-franquia");
     revalidatePath("/erp/minhas-comissoes");
-    return { ok: true, message: "Cota antiga criada e comissão incluída no extrato do consultor." };
+    return { ok: true, message: "Cliente, cota, comissão e vínculo criados. A linha foi resolvida; CPF/CNPJ e telefone permanecem apenas como aviso no cadastro do cliente." };
   } catch (error) {
     return { ok: false, message: error instanceof Error ? error.message : "Erro ao lançar a comissão antiga." };
   }
