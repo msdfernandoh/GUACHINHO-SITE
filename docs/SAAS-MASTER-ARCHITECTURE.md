@@ -1815,3 +1815,13 @@ data no snapshot canônico e na auditoria central.
 
 Relatório:
 `docs/relatorios-fases/FASE-206-AJUSTE-MANUAL-COMISSAO-PARTICIPANTE.md`.
+
+### Evolução operacional 207 — indicação pública com primeiro nome
+
+O formulário público de indicação aceita o primeiro nome da pessoa indicada,
+mantendo obrigatórios um nome não vazio e um telefone válido. A API de criação
+de leads segue a mesma regra, evitando que a interface bloqueie um cadastro que
+o servidor já suporta.
+
+Relatório:
+`docs/relatorios-fases/FASE-207-INDICACAO-PRIMEIRO-NOME.md`.
