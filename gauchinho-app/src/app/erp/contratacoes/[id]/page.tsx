@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { requireTenantPermission } from "@/lib/tenant/context";
+import { requireErpRouteAccess } from "@/lib/erp/erp-acesso-server";
 import { calcularPrazoGrupoFromRow } from "@/lib/grupos/prazos";
 import { obterQuantidadeCotasContratacao } from "@/lib/contratacoes-online/quantidade-cotas";
 import { nomeComModeloParceria } from "@/lib/participantes/nome-com-parceria";
@@ -75,7 +75,11 @@ export default async function ConferirContratacaoPage({
 }) {
   const { id } = await params;
   const feedback = await searchParams;
-  const { empresaAtiva } = await requireTenantPermission("formalizar_vendas");
+  const { empresaAtiva, vinculo, permissoes } = await requireErpRouteAccess("contratacoes");
+  const podeFormalizar =
+    permissoes.has("formalizar_vendas") ||
+    vinculo.papel?.codigo === "admin_empresa" ||
+    vinculo.papel?.codigo === "super_admin";
   const admin = createAdminClient();
   const hoje = new Date().toISOString().slice(0, 10);
 
@@ -325,6 +329,16 @@ export default async function ConferirContratacaoPage({
         </div>
       )}
 
+      {!podeFormalizar && !formalizada && (
+        <div className="rounded-xl border border-blue-200 bg-blue-50 p-4 text-blue-950">
+          <strong>Acesso de conferência</strong>
+          <p className="mt-1 text-sm">
+            Você pode consultar esta contratação, mas a confirmação da venda exige a permissão
+            <span className="font-semibold"> Formalizar vendas</span>. Solicite essa liberação ao administrador da empresa.
+          </p>
+        </div>
+      )}
+
       <section className="grid gap-5 xl:grid-cols-2">
         <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs dark:border-slate-800 dark:bg-slate-900">
           <h2 className="text-lg font-bold">1. Cliente</h2>
@@ -379,6 +393,7 @@ export default async function ConferirContratacaoPage({
         clienteNome={cliente?.nome || c.nome}
         formaPagamento={c.forma_pagamento || "Boleto"}
         formalizada={formalizada}
+        canFormalizar={podeFormalizar}
         grupos={grupos}
         participantes={participantes}
         vinculosPerfis={vinculosPerfis}

@@ -89,6 +89,7 @@ interface FormalizacaoVendaFormProps {
   clienteNome: string;
   formaPagamento: string;
   formalizada: boolean;
+  canFormalizar?: boolean;
   grupos: GrupoConsorcio[];
   participantes: ParticipanteComercial[];
   vinculosPerfis: VinculoPerfil[];
@@ -119,6 +120,7 @@ export function FormalizacaoVendaForm({
   clienteNome,
   formaPagamento,
   formalizada,
+  canFormalizar = true,
   grupos,
   participantes,
   vinculosPerfis,
@@ -876,6 +878,7 @@ export function FormalizacaoVendaForm({
           <button
           type="submit"
           disabled={
+            !canFormalizar ||
             isPending ||
             !selectedGrupoId ||
             !selectedCotaId ||
@@ -888,7 +891,7 @@ export function FormalizacaoVendaForm({
           }
           className="w-full sm:w-auto rounded-xl bg-blue-700 px-7 py-3.5 text-sm font-extrabold text-white shadow-md hover:bg-blue-800 disabled:opacity-50 transition cursor-pointer"
         >
-          {isPending ? `Formalizando venda e gerando ${quantidadeCotas} ${quantidadeCotas === 1 ? "cota" : "cotas"}...` : "Confirmar e formalizar venda"}
+          {!canFormalizar ? "Sem permissão para formalizar" : isPending ? `Formalizando venda e gerando ${quantidadeCotas} ${quantidadeCotas === 1 ? "cota" : "cotas"}...` : "Confirmar e formalizar venda"}
           </button>
         </div>
       )}

@@ -36,7 +36,11 @@ export default async function ErpContratacoesPage({
   searchParams: Promise<Record<string, string | undefined>>;
 }) {
   const filtros = await searchParams;
-  const { empresaAtiva, vinculo } = await requireErpRouteAccess("contratacoes");
+  const { empresaAtiva, vinculo, permissoes } = await requireErpRouteAccess("contratacoes");
+  const podeFormalizar =
+    permissoes.has("formalizar_vendas") ||
+    vinculo.papel?.codigo === "admin_empresa" ||
+    vinculo.papel?.codigo === "super_admin";
   const podeExcluirEmLote = vinculo.papel?.codigo === "admin_empresa" || await isPlatformSuperadmin();
   let rows = ordenarFilaContratacoes(await listarContratacoesOperacionais(empresaAtiva.id));
   if (filtros.busca) {
@@ -86,7 +90,7 @@ export default async function ErpContratacoesPage({
         <td className="px-4 py-4 font-mono text-xs">{r.protocolo}</td><td className="px-4 py-4"><div>{r.contratoAssinadoEm ? new Date(r.contratoAssinadoEm).toLocaleDateString("pt-BR") : "—"}</div><div className="mt-1 text-xs text-slate-500">{tempoAguardando(r.contratoAssinadoEm)}</div></td>
         <td className="px-4 py-4 font-semibold text-slate-900">{r.nome}</td><td className="px-4 py-4">{r.documento || "—"}</td><td className="px-4 py-4">{r.telefone || "—"}</td><td className="px-4 py-4">{r.administradora || "—"}</td><td className="px-4 py-4">{r.grupo || "Não mapeado"}</td><td className="px-4 py-4">{r.credito ? moeda.format(r.credito) : "—"}</td><td className="px-4 py-4">{r.parcela ? moeda.format(r.parcela) : "—"}</td><td className="px-4 py-4">{r.consultor || "Não atribuído"}</td>
         <td className="px-4 py-4"><span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${statusCor[r.status]}`}>{statusNome[r.status]}</span>{r.pendencia && <p className="mt-2 max-w-48 text-xs text-amber-800">{r.pendencia}</p>}</td>
-        <td className="px-4 py-4"><div className="flex flex-wrap gap-2">{r.status === "FORMALIZADA" ? <>{r.clienteId && <Link className="rounded-md border px-2 py-1" href={`/erp/clientes/${r.clienteId}`}>Ver cliente</Link>}<Link className="rounded-md border px-2 py-1" href={`/erp/vendas?venda=${r.vendaId}`}>Ver venda</Link><Link className="rounded-md border px-2 py-1" href={`/erp/vendas?cota=${r.cotaId}`}>Ver cota</Link></> : <Link className="rounded-md bg-blue-700 px-3 py-2 font-semibold text-white" href={`/erp/contratacoes/${r.id}`}>{r.status === "PENDENCIA" ? "Resolver pendência" : r.contratoAssinado ? "Conferir e formalizar" : "Ver contrato"}</Link>}</div></td>
+        <td className="px-4 py-4"><div className="flex flex-wrap gap-2">{r.status === "FORMALIZADA" ? <>{r.clienteId && <Link className="rounded-md border px-2 py-1" href={`/erp/clientes/${r.clienteId}`}>Ver cliente</Link>}<Link className="rounded-md border px-2 py-1" href={`/erp/vendas?venda=${r.vendaId}`}>Ver venda</Link><Link className="rounded-md border px-2 py-1" href={`/erp/vendas?cota=${r.cotaId}`}>Ver cota</Link></> : <Link className="rounded-md bg-blue-700 px-3 py-2 font-semibold text-white" href={`/erp/contratacoes/${r.id}`}>{podeFormalizar ? (r.status === "PENDENCIA" ? "Resolver pendência" : r.contratoAssinado ? "Conferir e formalizar" : "Ver contrato") : "Conferir contratação"}</Link>}</div></td>
       </tr>)}</tbody></table>
       {!rows.length && <p className="p-10 text-center text-slate-500">Nenhuma contratação encontrada para os filtros.</p>}
     </div>

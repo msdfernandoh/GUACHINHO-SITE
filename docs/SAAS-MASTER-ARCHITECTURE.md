@@ -1873,3 +1873,14 @@ mantêm o formulário disponível, e o fluxo não altera a API, comissões ou da
 
 Relatório:
 `docs/relatorios-fases/FASE-210-POS-CADASTRO-PROGRAMA-INDICACAO.md`.
+
+### Evolução operacional 211 — conferência de contratações sem erro de permissão
+
+Lista, layout e detalhe de Contratações usam o mesmo guard do módulo ERP. Usuários com
+`gerenciar_propostas` podem abrir e conferir o registro sem receber erro 500; a criação
+da venda e das cotas continua restrita a `formalizar_vendas` ou aos papéis administrativos
+canônicos. Quando a permissão final não existe, a interface informa a limitação, desabilita
+a confirmação e não amplia autoridade por simples visibilidade do módulo.
+
+Relatório:
+`docs/relatorios-fases/FASE-211-ACESSO-DETALHE-CONTRATACOES-ERP.md`.
