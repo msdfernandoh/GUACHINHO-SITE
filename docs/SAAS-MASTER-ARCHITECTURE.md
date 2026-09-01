@@ -63,6 +63,14 @@ A plataforma suporta:
 - Os cards mensais de vendas em **Minhas comissões** usam a competência de `data_primeira_parcela`, com `data_venda` como fallback para legado, e preservam deduplicação por venda e soma da quantidade de cotas.
 - O programa vigente usado pelo perfil Sócio passa a conter também as regras Racon Automóvel já homologadas no catálogo veicular, mantendo resolução estrita por tipo e modalidade.
 
+### Correção operacional 191 — relatório como confirmação do recebimento
+
+- O item do PDF vinculado a `comissao_previsoes_franquia` passa a ser o fato operacional de baixa, com idempotência individual por linha.
+- `financeiro_recebimentos` permanece append-only; valor classificado, saldo e status de conciliação são derivados dos itens e classificações financeiras inseridos no livro.
+- Previsões esperadas ausentes em um relatório já importado permanecem abertas e recebem a classificação visual **Não veio no relatório** para conferência.
+- A liberação da previsão do participante respeita também `cota_definitiva_id`, evitando que uma cota recebida libere outra cota da mesma venda.
+- A tela de Comissões separa pendências, previsões futuras, histórico recebido e pagamentos, sem seleção massiva por checkboxes.
+
 ### Tabelas Financeiras e Caixa (Macrobloco D - Migration 055)
 - `financeiro_recebimentos`, `financeiro_recebimento_itens`, `financeiro_pagamentos`, `financeiro_pagamento_itens`, `financeiro_compensacoes`, `caixa_movimentos`.
 

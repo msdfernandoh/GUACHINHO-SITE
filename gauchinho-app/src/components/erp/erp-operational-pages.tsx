@@ -835,6 +835,46 @@ export async function ErpRepasseFranquiaPage() {
   });
 
   const solicitacoes = (solicitacoesRes.data ?? []) as unknown as SolicitacaoRepasseItem[];
+  const recebimentosBase = recebimentos.data ?? [];
+  const recebimentoIds = recebimentosBase.map((row) => row.id);
+  const [itensRecebidosRes, classificacoesRecebidasRes] = recebimentoIds.length
+    ? await Promise.all([
+        db
+          .from("financeiro_recebimento_itens")
+          .select("recebimento_id,valor_liquidado")
+          .in("recebimento_id", recebimentoIds),
+        db
+          .from("financeiro_recebimento_classificacoes")
+          .select("recebimento_id,valor")
+          .in("recebimento_id", recebimentoIds),
+      ])
+    : [{ data: [] }, { data: [] }];
+  const classificadosPorRecebimento = new Map<string, number>();
+  for (const item of itensRecebidosRes.data ?? []) {
+    classificadosPorRecebimento.set(
+      item.recebimento_id,
+      (classificadosPorRecebimento.get(item.recebimento_id) ?? 0) + Number(item.valor_liquidado),
+    );
+  }
+  for (const item of classificacoesRecebidasRes.data ?? []) {
+    classificadosPorRecebimento.set(
+      item.recebimento_id,
+      (classificadosPorRecebimento.get(item.recebimento_id) ?? 0) + Number(item.valor),
+    );
+  }
+  const recebimentosCalculados = recebimentosBase.map((row) => {
+    const valorClassificado = classificadosPorRecebimento.get(row.id) ?? 0;
+    return {
+      ...row,
+      valor_classificado: valorClassificado,
+      conciliacao_status:
+        valorClassificado >= Number(row.valor_total)
+          ? "CONCILIADO"
+          : valorClassificado > 0
+            ? "PARCIALMENTE_CONCILIADO"
+            : "PENDENTE_CLASSIFICACAO",
+    };
+  });
 
   return (
     <div className="space-y-6">
@@ -883,7 +923,7 @@ export async function ErpRepasseFranquiaPage() {
           <p className="text-sm text-slate-500">Recebido</p>
           <p className="text-xl font-bold">
             {money(
-              (recebimentos.data ?? []).reduce(
+              recebimentosCalculados.reduce(
                 (s, r) => s + Number(r.valor_total),
                 0,
               ),
@@ -894,7 +934,7 @@ export async function ErpRepasseFranquiaPage() {
           <p className="text-sm text-slate-500">Classificado</p>
           <p className="text-xl font-bold">
             {money(
-              (recebimentos.data ?? []).reduce(
+              recebimentosCalculados.reduce(
                 (s, r) => s + Number(r.valor_classificado),
                 0,
               ),
@@ -905,7 +945,7 @@ export async function ErpRepasseFranquiaPage() {
           <p className="text-sm text-slate-500">Não classificado</p>
           <p className="text-xl font-bold">
             {money(
-              (recebimentos.data ?? []).reduce(
+              recebimentosCalculados.reduce(
                 (s, r) =>
                   s + Number(r.valor_total) - Number(r.valor_classificado),
                 0,
@@ -961,7 +1001,7 @@ export async function ErpRepasseFranquiaPage() {
         contas={contas.data ?? []}
         solicitacoes={solicitacoes}
         recebimentos={
-          (recebimentos.data ?? []) as unknown as Parameters<
+          recebimentosCalculados as unknown as Parameters<
             typeof ReceiptManager
           >[0]["recebimentos"]
         }

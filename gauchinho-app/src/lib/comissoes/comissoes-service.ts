@@ -33,6 +33,8 @@ export type PrevisaoFranquiaRow = {
   snapshot_regra: Record<string, unknown>;
   created_at: string;
   updated_at: string;
+  venda?: { cliente_nome: string | null } | Array<{ cliente_nome: string | null }> | null;
+  cota?: { numero_grupo: string | null; numero_cota: string | null } | Array<{ numero_grupo: string | null; numero_cota: string | null }> | null;
 };
 
 export type PrevisaoParticipanteRow = {
@@ -152,7 +154,10 @@ export async function listPrevisoesFranquiaForEmpresa(
   competencia?: string,
 ): Promise<PrevisaoFranquiaRow[]> {
   const admin = await createClient();
-  let query = admin.from("comissao_previsoes_franquia").select("*").eq("empresa_id", empresaId);
+  let query = admin
+    .from("comissao_previsoes_franquia")
+    .select("*,venda:vendas(cliente_nome),cota:cotas_definitivas(numero_grupo,numero_cota)")
+    .eq("empresa_id", empresaId);
 
   if (competencia) {
     query = query.eq("competencia", competencia);

@@ -82,12 +82,14 @@ export async function importarRelatorioRepasseRaconAction(
     if (error) throw new Error(error.message);
     const result = data as { importacao_id?: string; idempotente?: boolean; vinculados_auto?: number; atencao?: number; nao_encontrados?: number };
     revalidatePath("/erp/repasse-franquia");
+    revalidatePath("/erp/comissoes");
+    revalidatePath("/erp/minhas-comissoes");
     return {
       ok: true,
       importacaoId: result.importacao_id,
       message: result.idempotente
         ? "Este PDF já havia sido importado; nenhuma entrada foi duplicada."
-        : `Repasse bruto importado. ${result.vinculados_auto ?? 0} linhas vinculadas, ${result.atencao ?? 0} com atenção e ${result.nao_encontrados ?? 0} antigas/não encontradas.`,
+        : `Repasse importado. ${result.vinculados_auto ?? 0} linhas vinculadas e baixadas automaticamente, ${result.atencao ?? 0} com atenção e ${result.nao_encontrados ?? 0} antigas/não encontradas.`,
     };
   } catch (error) {
     return { ok: false, message: error instanceof Error ? error.message : "Erro ao importar o PDF de repasse." };
@@ -110,7 +112,9 @@ export async function vincularItemRepasseManualAction(
     });
     if (error) throw new Error(error.message);
     revalidatePath("/erp/repasse-franquia");
-    return { ok: true, message: "Linha vinculada manualmente com sucesso." };
+    revalidatePath("/erp/comissoes");
+    revalidatePath("/erp/minhas-comissoes");
+    return { ok: true, message: "Linha vinculada e recebimento baixado automaticamente." };
   } catch (error) {
     return { ok: false, message: error instanceof Error ? error.message : "Erro ao vincular a linha." };
   }
