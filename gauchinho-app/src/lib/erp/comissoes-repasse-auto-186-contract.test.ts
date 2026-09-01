@@ -5,6 +5,7 @@ import path from "node:path";
 const root = path.resolve(process.cwd(), "..");
 const migration = fs.readFileSync(path.join(root, "supabase/migrations/186_baixa_automatica_itens_repasse_vinculados.sql"), "utf8");
 const page = fs.readFileSync(path.join(root, "gauchinho-app/src/app/admin/comissoes/page.tsx"), "utf8");
+const dashboard = fs.readFileSync(path.join(root, "gauchinho-app/src/components/erp/comissoes/company-commissions-dashboard.tsx"), "utf8");
 const actions = fs.readFileSync(path.join(root, "gauchinho-app/src/app/erp/repasse-franquia/actions.ts"), "utf8");
 
 describe("Fase 191 — conferência prática e baixa automática do repasse", () => {
@@ -27,9 +28,9 @@ describe("Fase 191 — conferência prática e baixa automática do repasse", ()
 
   it("remove os seletores em massa e prioriza pendências que não vieram no relatório", () => {
     expect(page).not.toContain("CommissionBulkSelector");
-    expect(page).toContain("Não veio no relatório");
-    expect(page).toContain("Baixa automática");
-    expect(page).toContain("Ajustar manualmente");
+    expect(dashboard).toContain("Não veio no relatório");
+    expect(dashboard).toContain("Baixa automática");
+    expect(dashboard).toContain("Ajustar manualmente");
   });
 
   it("atualiza as telas de comissão assim que o PDF é importado ou vinculado", () => {

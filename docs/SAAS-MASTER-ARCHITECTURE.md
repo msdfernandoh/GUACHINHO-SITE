@@ -1625,3 +1625,16 @@ reconciliação é idempotente, tenant-aware e auditada.
 
 Relatório:
 `docs/relatorios-fases/FASE-196-IMPOSTO-AUTOMATICO-COMISSOES-INCREMENTAIS.md`.
+
+### Evolução operacional 197 — painel mensal de comissões da empresa
+
+Comissões da empresa, próximos recebimentos, histórico e pagamentos possuem
+filtros de competência independentes com opção Todos e cards de totais. O valor
+gerado para a empresa é a comissão bruta da franqueadora na referência. Os
+participantes ativos são exibidos como agrupadores, inclusive os que não geram
+comissão, e suas previsões aparecem como subitens pagáveis individualmente ou
+por seleção múltipla. O servidor consolida itens do mesmo participante e
+competência em uma operação financeira idempotente.
+
+Relatório:
+`docs/relatorios-fases/FASE-197-PAINEL-MENSAL-COMISSOES-EMPRESA.md`.

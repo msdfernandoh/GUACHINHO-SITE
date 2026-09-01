@@ -424,9 +424,9 @@ export function MinhasComissoesClient({
         </div>
 
         <div className="rounded-2xl border border-blue-200 bg-blue-50/50 p-5 shadow-2xs dark:border-blue-900/40 dark:bg-blue-950/20">
-          <p className="text-xs font-semibold text-blue-800 dark:text-blue-300">Recebimento do Mês Atual ({currentMonth})</p>
+          <p className="text-xs font-semibold text-blue-800 dark:text-blue-300">Comissões geradas no mês ({currentMonth})</p>
           <p className="mt-2 text-2xl font-black text-blue-900 dark:text-blue-100">{brl(metricas.ganhoMesAtual)}</p>
-          <p className="mt-1 text-[11px] text-blue-700/80">Projetado para este mês</p>
+          <p className="mt-1 text-[11px] text-blue-700/80">Líquido gerado para este participante no mês</p>
         </div>
 
         <div className="rounded-2xl border border-indigo-200 bg-indigo-50/50 p-5 shadow-2xs dark:border-indigo-900/40 dark:bg-indigo-950/20">

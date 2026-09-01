@@ -156,23 +156,29 @@ export async function confirmarPagamentosEmLoteAction(formData: FormData) {
     .in("id", ids);
   if (error || (data?.length ?? 0) !== ids.length)
     throw new Error("Uma ou mais previsões não pertencem à empresa.");
+  const operacaoId = String(formData.get("operacao_id") ?? crypto.randomUUID());
+  const grupos = new Map<string, NonNullable<typeof data>>();
   for (const previsao of data ?? []) {
-    const saldo = Number(previsao.valor_elegivel) - Number(previsao.valor_pago);
-    if (saldo <= 0) continue;
+    const chave = `${previsao.participante_comercial_id ?? ""}:${previsao.organizacao_parceira_id ?? ""}:${previsao.competencia}`;
+    grupos.set(chave, [...(grupos.get(chave) ?? []), previsao]);
+  }
+  for (const [chave, previsoes] of grupos) {
+    const itens = previsoes.map((previsao) => ({
+      previsaoParticipanteId: previsao.id,
+      valorLiquidado: (Number(previsao.valor_elegivel) - Number(previsao.valor_pago)).toFixed(2),
+    })).filter((item) => Number(item.valorLiquidado) > 0);
+    if (!itens.length) continue;
+    const primeira = previsoes[0];
+    const total = itens.reduce((soma, item) => soma + Number(item.valorLiquidado), 0);
     await registrarPagamentoParticipante({
       empresaId: empresaAtiva.id,
-      participanteComercialId: previsao.participante_comercial_id,
-      organizacaoParceiraId: previsao.organizacao_parceira_id,
-      competencia: previsao.competencia,
-      valorBruto: saldo.toFixed(2),
-      observacoes: "Pagamento em lote ERP",
-      idempotencyKey: `pagamento-lote:${previsao.id}:${saldo.toFixed(2)}`,
-      itens: [
-        {
-          previsaoParticipanteId: previsao.id,
-          valorLiquidado: saldo.toFixed(2),
-        },
-      ],
+      participanteComercialId: primeira.participante_comercial_id,
+      organizacaoParceiraId: primeira.organizacao_parceira_id,
+      competencia: primeira.competencia,
+      valorBruto: total.toFixed(2),
+      observacoes: `Pagamento agrupado ERP — ${itens.length} comissão(ões)`,
+      idempotencyKey: `pagamento-lote:${operacaoId}:${chave}`,
+      itens,
     });
   }
   revalidatePath("/erp/comissoes");
