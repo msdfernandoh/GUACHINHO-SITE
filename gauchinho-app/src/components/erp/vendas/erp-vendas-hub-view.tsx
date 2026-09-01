@@ -252,12 +252,26 @@ export function ErpVendasHubView({
   const vendasFiltradas = vendas.filter((v) => {
     if (!termoBusca) return true;
     const t = termoBusca.toLowerCase();
+    const cotasDaVenda = cotas.filter((c) => c.venda_id === v.id);
     return (
       v.cliente_nome.toLowerCase().includes(t) ||
       (v.cliente_cpf_cnpj && v.cliente_cpf_cnpj.includes(t)) ||
-      (v.cota_numero && v.cota_numero.includes(t)) ||
-      (v.grupo_codigo && v.grupo_codigo.includes(t))
+      (v.grupo_codigo && v.grupo_codigo.includes(t)) ||
+      cotasDaVenda.some((c) => c.numero_cota?.toLowerCase().includes(t) || c.numero_grupo.toLowerCase().includes(t))
     );
+  });
+  const operacoesPorCota = vendasFiltradas.flatMap<{
+    venda: VendaItem;
+    cota: CotaItem | null;
+    indice: number;
+    total: number;
+  }>((v) => {
+    const cotasDaVenda = cotas
+      .filter((c) => c.venda_id === v.id)
+      .sort((a, b) => (a.ordem_cota || 1) - (b.ordem_cota || 1));
+    return cotasDaVenda.length > 0
+      ? cotasDaVenda.map((cota, indice) => ({ venda: v, cota, indice, total: cotasDaVenda.length }))
+      : [{ venda: v, cota: null, indice: 0, total: 1 }];
   });
 
   function abrirEditarVenda(v: VendaItem) {
@@ -341,7 +355,7 @@ export function ErpVendasHubView({
           />
         </div>
         <div className="flex items-center gap-2 text-xs font-bold text-slate-600 dark:text-slate-300">
-          <span>Total de Vendas: <strong>{vendas.length}</strong></span>
+          <span>Operações de venda: <strong>{cotas.length}</strong></span>
           <span>·</span>
           <span>Cotas Ativas: <strong>{cotas.filter((c) => c.status === "ativa").length}</strong></span>
           <span>·</span>
@@ -353,11 +367,11 @@ export function ErpVendasHubView({
       <section className="space-y-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-2xs dark:border-slate-800 dark:bg-slate-900">
         <div className="flex items-center justify-between border-b pb-3">
           <h2 className="text-base font-black text-slate-900 dark:text-white">
-            Vendas Efetivadas ({vendasFiltradas.length})
+            Vendas individualizadas por cota ({operacoesPorCota.length})
           </h2>
         </div>
 
-        {vendasFiltradas.length === 0 ? (
+        {operacoesPorCota.length === 0 ? (
           <p className="p-8 text-center text-xs text-slate-500">Nenhuma venda encontrada para os filtros aplicados.</p>
         ) : (
           <div className="overflow-x-auto">
@@ -376,11 +390,9 @@ export function ErpVendasHubView({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                {vendasFiltradas.map((v) => {
-                  const cotasDaVenda = cotas.filter((c) => c.venda_id === v.id).sort((a, b) => (a.ordem_cota || 1) - (b.ordem_cota || 1));
-                  const cotasContempladas = cotasDaVenda.filter((c) => c.status === "contemplada").length;
+                {operacoesPorCota.map(({ venda: v, cota, indice, total }) => {
                   return (
-                    <tr key={v.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition">
+                    <tr key={`${v.id}-${cota?.id || "sem-cota"}`} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition">
                       <td className="p-3 font-semibold text-slate-900 dark:text-white">
                         <div className="font-bold">{v.cliente_nome}</div>
                         {v.cliente_cpf_cnpj && <div className="text-[10px] text-slate-400 font-mono">{v.cliente_cpf_cnpj}</div>}
@@ -388,30 +400,26 @@ export function ErpVendasHubView({
                       <td className="p-3">
                         <div className="flex items-center gap-1.5">
                           <span className="rounded-md bg-blue-50 px-2 py-0.5 text-[11px] font-extrabold text-blue-900 dark:bg-blue-950/60 dark:text-blue-200 border border-blue-200 dark:border-blue-800 font-mono">
-                            Grupo {v.grupo_codigo || "1463"}
+                            Grupo {cota?.numero_grupo || v.grupo_codigo || "1463"}
                           </span>
                         </div>
                         <div className="mt-1 flex flex-col gap-1">
-                          {cotasDaVenda.map((cota, indice) => cota.numero_cota ? (
-                            <span key={cota.id} className="font-mono font-bold text-emerald-700 dark:text-emerald-400 text-xs">
-                              🎯 Cota {indice + 1}: #{cota.numero_cota}
-                            </span>
+                          {cota?.numero_cota ? (
+                            <span className="font-mono font-bold text-emerald-700 dark:text-emerald-400 text-xs">🎯 Cota {cota.ordem_cota || indice + 1}: #{cota.numero_cota}</span>
                           ) : (
-                            <span key={cota.id} className="inline-flex items-center rounded-md bg-amber-50 px-1.5 py-0.5 text-[10px] font-bold text-amber-800 dark:bg-amber-950/50 dark:text-amber-200 border border-amber-200 dark:border-amber-800">
-                              ⏳ Cota {indice + 1}: SIF pendente
-                            </span>
-                          ))}
+                            <span className="inline-flex items-center rounded-md bg-amber-50 px-1.5 py-0.5 text-[10px] font-bold text-amber-800 dark:bg-amber-950/50 dark:text-amber-200 border border-amber-200 dark:border-amber-800">⏳ Cota {cota?.ordem_cota || indice + 1}: SIF pendente</span>
+                          )}
                         </div>
                       </td>
                       <td className="p-3 text-center">
                         <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-black text-slate-800 dark:bg-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700">
-                          {v.quantidade_cotas || 1} {v.quantidade_cotas && v.quantidade_cotas > 1 ? "cotas" : "cota"}
+                          Cota {cota?.ordem_cota || indice + 1} de {total}
                         </span>
                       </td>
-                      <td className="p-3 font-mono font-bold text-slate-950 dark:text-white">{brl(v.valor_credito)}</td>
+                      <td className="p-3 font-mono font-bold text-slate-950 dark:text-white">{brl(cota?.valor_credito ?? v.valor_credito)}</td>
                       <td className="p-3">
                         <div className="font-mono font-semibold text-blue-700 dark:text-blue-400">
-                          {brl(v.parcela)} <span className="text-[10px] text-slate-500">({v.prazo}m)</span>
+                          {brl(cota?.parcela ?? v.parcela)} <span className="text-[10px] text-slate-500">({cota?.prazo ?? v.prazo}m)</span>
                         </div>
                         <div className="mt-1">
                           <span className="inline-flex items-center rounded-md bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold text-slate-700 dark:bg-slate-800 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
@@ -438,27 +446,20 @@ export function ErpVendasHubView({
                       <td className="p-3">
                         <span
                           className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black uppercase ${
-                            cotasContempladas === cotasDaVenda.length && cotasDaVenda.length > 0
+                            cota?.status === "contemplada"
                               ? "bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300"
-                              : cotasContempladas > 0
-                              ? "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300"
-                              : v.status === "confirmada"
+                              : cota?.status === "ativa" || (!cota && v.status === "confirmada")
                               ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
                               : "bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300"
                           }`}
                         >
-                          {cotasContempladas === cotasDaVenda.length && cotasDaVenda.length > 0
-                            ? "🏆 TODAS CONTEMPLADAS"
-                            : cotasContempladas > 0
-                            ? `${cotasContempladas}/${cotasDaVenda.length} CONTEMPLADAS`
-                            : v.status}
+                          {cota?.status === "contemplada" ? "🏆 CONTEMPLADA" : cota?.status || v.status}
                         </span>
                       </td>
                       <td className="p-3 text-right">
                         <div className="flex flex-col items-end gap-1 min-w-[125px]">
-                          {cotasDaVenda.filter((c) => c.status !== "contemplada").map((cota, indice) => (
+                          {cota && cota.status !== "contemplada" && cota.status !== "cancelada" && (
                             <button
-                              key={`contemplar-${cota.id}`}
                               type="button"
                               onClick={() => abrirContemplarCota(cota)}
                               title="Registrar Contemplação e Antecipar Comissões"
@@ -467,7 +468,12 @@ export function ErpVendasHubView({
                               <Trophy className="inline h-3 w-3 mr-1" />
                               Contemplar cota {cota.ordem_cota || indice + 1}
                             </button>
-                          ))}
+                          )}
+                          {cota && (
+                            <button type="button" onClick={() => { setEditandoCotaNum(cota); setEditNumCota(cota.numero_cota || ""); setModalErro(null); }} className="w-full text-left rounded-lg bg-slate-100 px-2 py-1 text-[10px] font-bold text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 transition cursor-pointer">
+                              <Hash className="inline h-3 w-3 mr-1" />{cota.numero_cota ? "Alterar número" : "Definir número da cota"}
+                            </button>
+                          )}
                           {isMaster && (
                             <button
                               type="button"
@@ -479,12 +485,12 @@ export function ErpVendasHubView({
                               Editar Venda
                             </button>
                           )}
-                          {cotasDaVenda.filter((c) => c.status !== "cancelada").map((cota, indice) => <button
-                            key={`cancelar-${cota.id}`} type="button" onClick={() => { setCancelandoCota(cota); setModalErro(null); }}
+                          {cota && cota.status !== "cancelada" && <button
+                            type="button" onClick={() => { setCancelandoCota(cota); setModalErro(null); }}
                             title="Cancelar somente esta cota com aplicação de curva de estorno"
                             className="w-full text-left rounded-lg bg-amber-50 px-2 py-1 text-[10px] font-bold text-amber-800 hover:bg-amber-100 dark:bg-amber-950/40 dark:text-amber-300 transition cursor-pointer"
-                          ><Ban className="inline h-3 w-3 mr-1" />Cancelar cota {cota.ordem_cota || indice + 1}</button>)}
-                          {isMaster && (
+                          ><Ban className="inline h-3 w-3 mr-1" />Cancelar cota {cota.ordem_cota || indice + 1}</button>}
+                          {isMaster && indice === 0 && (
                             <button
                               type="button"
                               onClick={() => abrirExcluirVenda(v)}

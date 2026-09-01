@@ -24,7 +24,7 @@ describe("Fase 186 — independência operacional por cota", () => {
     expect(view).toContain("cotasDaVenda");
     expect(view).toContain("Contemplar cota");
     expect(view).toContain("Cancelar cota");
-    expect(view).toContain("TODAS CONTEMPLADAS");
+    expect(view).toContain("operacoesPorCota");
   });
 
   it("redistribui as previsões depois de um recálculo master", () => {

@@ -90,6 +90,7 @@ A plataforma suporta:
 - a conciliação de repasse lista previsões abertas da mesma administradora em qualquer competência e permite cadastro administrativo mínimo de cliente/cota; grupos ausentes nascem locais, inativos e fora do site, com pendências cadastrais explícitas (migration 182);
 - a quantidade informada na formalização materializa o mesmo número de registros em `cotas_definitivas`; a venda conserva apenas o vínculo comercial comum, enquanto cada cota possui ID, valor, parcela, número, cronograma de franquia/participante, contemplação, cancelamento e estorno independentes; a soma dos cronogramas por cota preserva exatamente o total contratado (migration 183);
 - o cadastro mínimo de uma linha antiga do repasse é independente de regra de comissão: cria cliente, grupo local inativo, cota e previsão do consultor usando exatamente o valor do relatório; o contrato do banco força o modo sem regra inclusive para clientes de interface antigos (migration 184);
+- a tela de vendas é orientada à cota: cada `cotas_definitivas` gera uma linha operacional própria, com valor, parcela, prazo, número, status, contemplação e cancelamento independentes; a venda pai mantém somente os dados comerciais compartilhados e o total contratado (Fase 188);
 - estado: aplicado ao projeto principal em 11/08/2026 após auditoria final e autorização explícita.
 
 ### Fechamento técnico da base (Migrations 064–066 — aplicadas em Produção)

@@ -1,6 +1,7 @@
 import { getCurrentTenantContext } from "@/lib/tenant/context";
 import { notFound } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { unstable_noStore as noStore } from "next/cache";
 import {
   ErpVendasHubView,
   type VendaItem,
@@ -10,6 +11,7 @@ import {
 } from "@/components/erp/vendas/erp-vendas-hub-view";
 
 export default async function AdminVendasPage() {
+  noStore();
   const { empresaAtiva, vinculos } = await getCurrentTenantContext();
   if (!empresaAtiva) notFound();
   const empresaId = empresaAtiva.id;
