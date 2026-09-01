@@ -1,5 +1,9 @@
 # Fase 203 — Repasse canônico, vínculo atômico e titular CNPJ
 
+> Correção de implantação: o livro `financeiro_recebimento_itens` herda o tenant
+> pelo recebimento pai e não possui `empresa_id`; consultas tenant-aware usam
+> `financeiro_recebimentos.empresa_id`.
+
 ## Problema auditado
 
 No relatório `RACON.pdf` de 2026-08, a linha 19 (grupo 005288, cota 1176)
@@ -36,4 +40,3 @@ As tabelas financeiras existentes continuam append-only. Trocas de vínculo
 geram reversão e novo lançamento, sem editar o histórico. O ajuste bloqueia
 redução abaixo de valores já pagos, respeita tenant e exige a permissão
 `gerenciar_financeiro` nas RPCs públicas.
-

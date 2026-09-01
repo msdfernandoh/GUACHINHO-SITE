@@ -55,8 +55,7 @@ SELECT
 FROM public.erp_repasse_importacao_itens item
 JOIN public.erp_repasse_importacoes imp ON imp.id = item.importacao_id
 LEFT JOIN public.financeiro_recebimento_itens fri
-  ON fri.empresa_id = imp.empresa_id
- AND fri.recebimento_id = imp.recebimento_id
+  ON fri.recebimento_id = imp.recebimento_id
  AND fri.previsao_franquia_id = item.previsao_franquia_id
 WHERE item.previsao_franquia_id IS NOT NULL
   AND imp.recebimento_id IS NOT NULL
@@ -86,8 +85,9 @@ BEGIN
 
   SELECT round(greatest(COALESCE(sum(valor_liquidado), 0), 0), 2)
   INTO v_liquidado
-  FROM public.financeiro_recebimento_itens
-  WHERE empresa_id = p_empresa_id AND previsao_franquia_id = p_previsao_id;
+  FROM public.financeiro_recebimento_itens fri
+  JOIN public.financeiro_recebimentos fr ON fr.id = fri.recebimento_id
+  WHERE fr.empresa_id = p_empresa_id AND fri.previsao_franquia_id = p_previsao_id;
 
   UPDATE public.comissao_previsoes_franquia
   SET valor_liquidado = v_liquidado,
@@ -196,7 +196,7 @@ BEGIN
 
     SELECT round(COALESCE(sum(valor_liquidado), 0), 2) INTO v_rateio_total
     FROM public.financeiro_recebimento_itens
-    WHERE recebimento_id = v_importacao.recebimento_id AND empresa_id = p_empresa_id;
+    WHERE recebimento_id = v_importacao.recebimento_id;
 
     IF v_delta > round(COALESCE(v_recebido, 0) - v_classificado - v_rateio_total, 2) + 0.009 THEN
       RAISE EXCEPTION 'Saldo do recebimento insuficiente para completar a linha do relatorio';
