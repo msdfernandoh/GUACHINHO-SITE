@@ -347,6 +347,34 @@ describe("E8 — site público parceiros", () => {
     expect(r2.redirect).toBe(true);
   });
 
+  it("não redireciona www para ele mesmo quando www é o host principal", async () => {
+    vi.resetModules();
+    vi.stubEnv("FASE3_PARCEIRO_PUBLIC_SITE_ENABLED", "true");
+    const { resolvePartnerSiteFromFacts: resolve } = await import("./resolve-partner-site");
+    const { computeCanonicalRedirect: canon } = await import("./public-site-gates");
+
+    const resolution = resolve({
+      hostHeader: "www.parceiro-alfa.com.br",
+      pathname: "/",
+      facts: facts(),
+      mode: "public",
+    });
+    const partner = {
+      ...asPartner(resolution),
+      canonical_host: "www.parceiro-alfa.com.br",
+      public_eligible: true,
+    };
+
+    expect(
+      canon({
+        requestedHost: "www.parceiro-alfa.com.br",
+        requestedPath: "/",
+        partner,
+        principalVariant: "www",
+      })
+    ).toEqual({ redirect: false });
+  });
+
   it("SEO robots: PUBLICADO indexável; preview/rascunho noindex", async () => {
     vi.resetModules();
     vi.stubEnv("FASE3_PARCEIRO_PUBLIC_SITE_ENABLED", "true");

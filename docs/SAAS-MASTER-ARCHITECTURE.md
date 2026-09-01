@@ -1838,6 +1838,20 @@ Comissões de participantes já pagas exigem estorno prévio.
 Relatório:
 `docs/relatorios-fases/FASE-208-EXCLUSAO-VENDA-REABRE-REPASSE.md`.
 
+### Evolução operacional 209 — conversão de Master em parceira sem interromper o site
+
+A criação de `parceiro_sites` usa o identificador interno retornado por
+`current_usuario_id()`, compatível com a chave estrangeira para `usuarios`.
+Masters sem fatos operacionais podem ser convertidas em organizações parceiras
+da anfitriã, preservando usuário, modelo publicado e domínio verificado. O site
+continua publicado no mesmo runtime, enquanto o usuário passa a compartilhar o
+ERP da Master anfitriã; o tenant anterior fica suspenso para auditoria.
+O host canônico do parceiro deve acompanhar a variante principal publicada no
+provedor (`apex` ou `www`) para nunca formar ciclos de redirecionamento.
+
+Relatório:
+`docs/relatorios-fases/FASE-209-RACON-SINOP-PARCEIRA-SITE-PUBLICADO.md`.
+
 ### Evolução operacional 209 — identificação de consultores e grupos em formação
 
 Seletores de consultor exibem o modelo de parceria canônico antes do nome, derivado de

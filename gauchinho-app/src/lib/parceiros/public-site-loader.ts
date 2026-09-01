@@ -294,7 +294,10 @@ export async function resolvePartnerPublicRequest(input: {
   if (!gate.ok) return { ok: false, reason: gate.reason };
 
   const redirect = computeCanonicalRedirect({
-    requestedHost: host || (input.hostHeader ?? ""),
+    // A resolução usa o host normalizado (sem www), mas a política canônica
+    // precisa conhecer a variante realmente solicitada. Caso contrário, um
+    // domínio cujo principal é www é redirecionado para ele mesmo em loop.
+    requestedHost: input.hostHeader ?? host,
     requestedPath: input.pathname,
     partner: gate.partner,
     principalVariant:
