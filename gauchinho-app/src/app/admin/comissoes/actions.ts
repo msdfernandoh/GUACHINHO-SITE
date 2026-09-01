@@ -114,6 +114,32 @@ export async function confirmarPagamentoComissaoAction(formData: FormData) {
   revalidatePath("/erp/minhas-comissoes");
 }
 
+export async function ajustarPrevisaoParticipanteManualAction(formData: FormData) {
+  const { empresaAtiva } = await getCurrentTenantContext();
+  if (!empresaAtiva) throw new Error("Empresa não selecionada.");
+  const previsaoId = String(formData.get("previsao_id") ?? "").trim();
+  const valorPrevisto = decimal(formData.get("valor_previsto"));
+  const valorElegivel = decimal(formData.get("valor_elegivel"));
+  const motivo = String(formData.get("motivo") ?? "").trim();
+  if (!previsaoId) throw new Error("Previsão não informada.");
+  if (!Number.isFinite(valorPrevisto) || !Number.isFinite(valorElegivel)) {
+    throw new Error("Informe valores válidos para gerado e disponível.");
+  }
+  if (motivo.length < 5) throw new Error("Informe o motivo do ajuste.");
+  const db = await createClient();
+  const { error } = await db.rpc("rpc_ajustar_previsao_participante_manual", {
+    p_empresa_id: empresaAtiva.id,
+    p_previsao_id: previsaoId,
+    p_valor_previsto: valorPrevisto,
+    p_valor_elegivel: valorElegivel,
+    p_motivo: motivo,
+  });
+  if (error) throw new Error(error.message);
+  revalidatePath("/erp/comissoes");
+  revalidatePath("/erp/minhas-comissoes");
+  revalidatePath("/erp/financeiro");
+}
+
 export async function confirmarRecebimentosEmLoteAction(formData: FormData) {
   const { empresaAtiva } = await getCurrentTenantContext();
   if (!empresaAtiva) throw new Error("Empresa não selecionada.");

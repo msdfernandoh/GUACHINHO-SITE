@@ -1804,3 +1804,14 @@ homologados simultâneos são destacados para conferência, sem exclusão autom�
 
 Relatório:
 `docs/relatorios-fases/FASE-205-INATIVACAO-PERFIS-PROGRAMAS-COMISSAO.md`.
+
+### Evolução operacional 206 — ajuste manual auditado da comissão do participante
+
+Para correções excepcionais de dados migrados, a tela Comissões da empresa permite
+ajustar o valor gerado e o valor disponível da previsão do participante. A RPC
+`rpc_ajustar_previsao_participante_manual` é tenant-aware, preserva o valor pago,
+impede saldos incompatíveis e registra valores anteriores/novos, motivo, usuário e
+data no snapshot canônico e na auditoria central.
+
+Relatório:
+`docs/relatorios-fases/FASE-206-AJUSTE-MANUAL-COMISSAO-PARTICIPANTE.md`.
