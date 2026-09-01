@@ -1,0 +1,3 @@
+import{describe,expect,it}from"vitest";import fs from"node:fs";import path from"node:path";
+const sql=fs.readFileSync(path.join(process.cwd(),"../supabase/migrations/201_ajuste_repasse_canonico_todas_telas.sql"),"utf8");
+describe("ajuste canônico 201",()=>{it("propaga valor e preserva auditoria",()=>{expect(sql).toContain("valor_previsto=v_novo_f");expect(sql).toContain("valor_previsto=v_novo_p");expect(sql).toContain("valor_elegivel=v_novo_eleg");expect(sql).toContain("ajuste_repasse_canonico");});it("protege pagamentos e reconcilia legado",()=>{expect(sql).toContain("estorne o pagamento antes");expect(sql).toContain("DO $$");});});

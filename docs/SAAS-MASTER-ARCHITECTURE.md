@@ -85,6 +85,7 @@ A plataforma suporta:
 - A migration 199 implementa a transferência por dois novos itens compensatórios (reversão negativa na previsão anterior e classificação positiva na nova), respeitando a proteção append-only de `financeiro_recebimento_itens`.
 - A aba Valores divergentes oferece `Substituir vínculo e resolver`; ao escolher a parcela correta, vínculo, baixa, elegibilidade e lista de vinculados são atualizados na mesma operação.
 - A migration 200 completa a baixa com o saldo ainda não classificado do próprio relatório, oferece busca textual nos seletores e permite encerrar `No sistema, fora do relatório` quando a mesma previsão possui baixa comprovada em outro PDF, sem liberar comissão em duplicidade.
+- A migration 201 transforma a decisão explícita `Ajustar no sistema` em atualização canônica auditada: empresa, participante, elegibilidade, saldo e detalhamento fiscal passam a derivar do valor adotado do relatório; o snapshot preserva valor anterior, novo, resolução e data.
 
 ### Evolução financeira 192 — contas da empresa e equalização dos sócios
 
