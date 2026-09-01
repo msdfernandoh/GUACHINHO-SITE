@@ -5,6 +5,7 @@ import { ErpGruposSyncButton } from "@/components/erp/erp-grupos-sync-button";
 import { listAdministradoraIdsAutorizadasForEmpresa } from "@/lib/grupos/catalogo-autorizado-service";
 import { listarTabelasGrupos } from "@/lib/grupos/grupo-tabela.server";
 import { GrupoTabelaActions } from "@/components/grupos/grupo-tabela-actions";
+import { grupoEmFormacao } from "@/lib/grupos/em-formacao";
 
 export default async function ErpGruposPage({
   searchParams,
@@ -116,7 +117,8 @@ export default async function ErpGruposPage({
               return (
                 <tr key={g.id} className={f.criado === g.id ? "bg-emerald-50 ring-2 ring-inset ring-emerald-400" : "hover:bg-slate-50/60 dark:hover:bg-slate-800/40"}>
                   <td className="p-3 font-mono font-bold text-slate-900 dark:text-white">
-                    Grupo {g.codigo_grupo}
+                    <span className="block">Grupo {g.codigo_grupo}</span>
+                    {grupoEmFormacao(g.data_primeira_assembleia) ? <span className="mt-1 inline-block rounded-full bg-emerald-100 px-2 py-0.5 font-sans text-[10px] font-bold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">Em Formação</span> : null}
                   </td>
                   <td className="p-3 font-semibold text-slate-700 dark:text-slate-300">
                     {(g.administradora as unknown as { nome?: string })?.nome ?? "—"}

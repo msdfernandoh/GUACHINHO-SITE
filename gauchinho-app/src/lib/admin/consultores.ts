@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { nomeComModeloParceria } from "@/lib/participantes/nome-com-parceria";
 
 export type ConsultorOption = { id: string; nome: string; email?: string | null };
 
@@ -40,10 +41,24 @@ export async function listarConsultores(
         is_consultor: link.is_consultor ?? papel?.codigo === "consultor",
       }];
     });
+    const ids = tenantRows.map((row) => row.id);
+    const { data: participantes } = ids.length
+      ? await supabase
+          .from("participantes_comerciais")
+          .select("usuario_id,participante_tipos(tipo_codigo)")
+          .eq("empresa_id", opts.empresaId)
+          .in("usuario_id", ids)
+          .ilike("status", "ativo")
+      : { data: [] };
+    const tiposPorUsuario = new Map<string, string[]>();
+    for (const participante of participantes ?? []) {
+      const tipos = (participante.participante_tipos ?? []).map((tipo: { tipo_codigo: string }) => tipo.tipo_codigo);
+      tiposPorUsuario.set(participante.usuario_id, tipos);
+    }
     const preferidos = opts.preferirMarcados ? tenantRows.filter((row) => row.is_consultor) : tenantRows;
     return (preferidos.length ? preferidos : tenantRows)
       .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"))
-      .map(({ id, nome, email }) => ({ id, nome, email }));
+      .map(({ id, nome, email }) => ({ id, nome: nomeComModeloParceria(nome, tiposPorUsuario.get(id)), email }));
   }
 
   const staff = await supabase

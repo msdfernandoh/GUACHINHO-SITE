@@ -4,6 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { requireTenantPermission } from "@/lib/tenant/context";
 import { calcularPrazoGrupoFromRow } from "@/lib/grupos/prazos";
 import { obterQuantidadeCotasContratacao } from "@/lib/contratacoes-online/quantidade-cotas";
+import { nomeComModeloParceria } from "@/lib/participantes/nome-com-parceria";
 import {
   resolverModalidadeComissaoId,
   resolverParticipantePrincipalId,
@@ -226,7 +227,14 @@ export default async function ConferirContratacaoPage({
       } as GrupoConsorcio;
     })
     .filter((grupo) => grupo.prazo_restante > 0 && (grupo.grupos_cotas?.length ?? 0) > 0);
-  const participantes = (participantesResult.data ?? []) as ParticipanteComercial[];
+  const participantes = ((participantesResult.data ?? []) as ParticipanteComercial[]).map((participante) => ({
+    ...participante,
+    nome: nomeComModeloParceria(
+      participante.nome_exibicao || participante.nome,
+      participante.participante_tipos?.map((tipo) => tipo.tipo_codigo),
+    ),
+    nome_exibicao: null,
+  }));
   const vinculosPerfis = ((vinculosResult.data ?? []) as unknown) as VinculoPerfil[];
   const regrasParticipantes = ((regrasParticipantesResult.data ?? []) as unknown) as RegraParticipante[];
 

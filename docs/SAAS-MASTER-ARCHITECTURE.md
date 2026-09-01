@@ -1837,3 +1837,25 @@ Comissões de participantes já pagas exigem estorno prévio.
 
 Relatório:
 `docs/relatorios-fases/FASE-208-EXCLUSAO-VENDA-REABRE-REPASSE.md`.
+
+### Evolução operacional 209 — identificação de consultores e grupos em formação
+
+Seletores de consultor exibem o modelo de parceria canônico antes do nome, derivado de
+`participante_tipos`, permitindo distinguir Microfranquia, Parceiro, SDR e Consultor no
+lançamento comercial. Grupos cuja `data_primeira_assembleia` é futura recebem a tag
+`Em Formação` no ERP e no site público. No catálogo público, a identificação do grupo
+deixa de apresentar o percentual/descrição de reajuste nessa posição. A regra é somente
+de apresentação, usa data civil em `America/Cuiaba` e não altera fatos ou status no banco.
+
+Relatório:
+`docs/relatorios-fases/FASE-209-IDENTIFICACAO-CONSULTORES-E-GRUPOS-EM-FORMACAO.md`.
+
+### Evolução operacional 210 — conclusão do cadastro no Programa de Indicação
+
+O cadastro público bem-sucedido de indicador encerra o formulário e apresenta um estado
+de confirmação com ações para fazer uma indicação, visualizar as próprias indicações ou
+retornar à página inicial. A consulta recebe previamente o CPF usado no cadastro. Erros
+mantêm o formulário disponível, e o fluxo não altera a API, comissões ou dados históricos.
+
+Relatório:
+`docs/relatorios-fases/FASE-210-POS-CADASTRO-PROGRAMA-INDICACAO.md`.

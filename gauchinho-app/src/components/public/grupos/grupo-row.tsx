@@ -22,7 +22,7 @@ import {
   useGrupoLinhaCalculo,
 } from "@/components/public/grupos/use-grupo-linha";
 import { GrupoEmbutidoSelect, GrupoRecursoProprioCell } from "@/components/public/grupos/grupo-lance-cells";
-import { descricaoReajusteAnual } from "@/lib/grupos/reajuste-anual";
+import { grupoEmFormacao } from "@/lib/grupos/em-formacao";
 
 export type GrupoRowProps = {
   grupo: GrupoConsorcio;
@@ -55,7 +55,7 @@ export function GrupoRow({
   const ativo = resultado.ativo;
   const exibeLance = mods.length > 0;
   const modSelecionadaId = config.modalidadeLanceId;
-  const reajusteAnual = descricaoReajusteAnual(grupo);
+  const emFormacao = grupoEmFormacao(grupo.data_primeira_assembleia);
 
   const modalidadeLabel =
     ativo && modAtiva
@@ -76,7 +76,7 @@ export function GrupoRow({
       >
         <Td className="min-w-[72px]">
           <div className="font-semibold text-amber-400">{grupo.codigo_grupo}</div>
-          {reajusteAnual ? <span className="mt-1 block max-w-[130px] whitespace-normal text-[9px] leading-tight text-zinc-400">{reajusteAnual}</span> : null}
+          {emFormacao ? <span className="mt-1 block w-fit rounded bg-emerald-500/15 px-1.5 py-px text-[9px] font-semibold text-emerald-200">Em Formação</span> : null}
           {grupo.aguardando_novas_vagas ? (
             <span className="mt-1 inline-block rounded bg-sky-500/15 px-1.5 py-px text-[9px] font-medium text-sky-200">
               Aguardando novas vagas
