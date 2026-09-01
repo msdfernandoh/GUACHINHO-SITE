@@ -105,6 +105,23 @@ export async function vincularItemRepasseManualAction(
     const itemId = String(formData.get("item_id") ?? "");
     const previsaoId = String(formData.get("previsao_franquia_id") ?? "");
     if (!itemId || !previsaoId) throw new Error("Selecione a linha e a comissão do sistema.");
+    const { data: itemAtual, error: itemError } = await db
+      .from("erp_repasse_importacao_itens")
+      .select("previsao_franquia_id,importacao:erp_repasse_importacoes!inner(recebimento_id)")
+      .eq("empresa_id", empresaId)
+      .eq("id", itemId)
+      .single();
+    if (itemError || !itemAtual) throw new Error("Linha do relatório não encontrada no tenant.");
+    const importacao = Array.isArray(itemAtual.importacao) ? itemAtual.importacao[0] : itemAtual.importacao;
+    if (itemAtual.previsao_franquia_id && itemAtual.previsao_franquia_id !== previsaoId && importacao?.recebimento_id) {
+      const { count, error: baixaError } = await db
+        .from("financeiro_recebimento_itens")
+        .select("id", { count: "exact", head: true })
+        .eq("recebimento_id", importacao.recebimento_id)
+        .eq("previsao_franquia_id", itemAtual.previsao_franquia_id);
+      if (baixaError) throw new Error("Não foi possível conferir a baixa financeira do vínculo.");
+      if ((count ?? 0) > 0) throw new Error("Este vínculo já possui baixa financeira. Estorne o recebimento antes de trocar a previsão; o livro financeiro não pode ser reescrito.");
+    }
     const { error } = await db.rpc("rpc_vincular_item_repasse_manual", {
       p_empresa_id: empresaId,
       p_item_id: itemId,

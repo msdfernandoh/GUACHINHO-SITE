@@ -82,6 +82,7 @@ export async function confirmarPagamentoComissaoAction(formData: FormData) {
   const { empresaAtiva } = await getCurrentTenantContext();
   if (!empresaAtiva) throw new Error("Empresa não selecionada.");
   const id = String(formData.get("previsao_id") ?? "");
+  const contaOrigemId = String(formData.get("conta_origem_id") ?? "");
   const valor = decimal(formData.get("valor"));
   const db = await createClient();
   const { data: p, error } = await db
@@ -94,6 +95,7 @@ export async function confirmarPagamentoComissaoAction(formData: FormData) {
     .maybeSingle();
   if (error || !p) throw new Error("Previsão não encontrada.");
   const saldo = Number(p.valor_elegivel) - Number(p.valor_pago);
+  if (!contaOrigemId) throw new Error("Selecione a conta bancária de saída.");
   if (!Number.isFinite(valor) || valor <= 0 || valor > saldo)
     throw new Error("Pagamento excede a elegibilidade liberada pela fonte.");
   await registrarPagamentoParticipante({
@@ -102,6 +104,7 @@ export async function confirmarPagamentoComissaoAction(formData: FormData) {
     organizacaoParceiraId: p.organizacao_parceira_id,
     competencia: p.competencia,
     valorBruto: valor.toFixed(2),
+    contaBancariaOrigemId: contaOrigemId,
     idempotencyKey: `pagamento:${id}:${valor.toFixed(2)}:${new Date().toISOString().slice(0, 10)}`,
     itens: [{ previsaoParticipanteId: id, valorLiquidado: valor.toFixed(2) }],
   });
@@ -157,6 +160,8 @@ export async function confirmarPagamentosEmLoteAction(formData: FormData) {
   if (error || (data?.length ?? 0) !== ids.length)
     throw new Error("Uma ou mais previsões não pertencem à empresa.");
   const operacaoId = String(formData.get("operacao_id") ?? crypto.randomUUID());
+  const contaOrigemId = String(formData.get("conta_origem_id") ?? "");
+  if (!contaOrigemId) throw new Error("Selecione a conta bancária de saída.");
   const grupos = new Map<string, NonNullable<typeof data>>();
   for (const previsao of data ?? []) {
     const chave = `${previsao.participante_comercial_id ?? ""}:${previsao.organizacao_parceira_id ?? ""}:${previsao.competencia}`;
@@ -176,6 +181,7 @@ export async function confirmarPagamentosEmLoteAction(formData: FormData) {
       organizacaoParceiraId: primeira.organizacao_parceira_id,
       competencia: primeira.competencia,
       valorBruto: total.toFixed(2),
+      contaBancariaOrigemId: contaOrigemId,
       observacoes: `Pagamento agrupado ERP — ${itens.length} comissão(ões)`,
       idempotencyKey: `pagamento-lote:${operacaoId}:${chave}`,
       itens,

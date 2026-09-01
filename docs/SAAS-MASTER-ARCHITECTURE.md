@@ -1639,6 +1639,32 @@ competência em uma operação financeira idempotente.
 Relatório:
 `docs/relatorios-fases/FASE-197-PAINEL-MENSAL-COMISSOES-EMPRESA.md`.
 
+### Evolução operacional 199 — reabertura da conciliação de repasse
+
+Recebimentos originados por relatório PDF preservam a ligação explícita com a
+respectiva importação. A ação **Conciliar** da lista de recebimentos reabre esse
+relatório, inclusive quando não é o último importado, sem registrar outra entrada
+de caixa. O card **Vinculados** abre a composição por linha e confronta o valor do
+relatório com o valor efetivamente lançado em `financeiro_recebimento_itens`, mantendo
+a alteração do vínculo sob a RPC financeira tenant-aware existente. Quando a linha já
+possui baixa, a troca é bloqueada até o estorno compensatório do recebimento, pois fatos
+do livro financeiro não são reescritos.
+
+Relatório:
+`docs/relatorios-fases/FASE-199-REABERTURA-CONCILIACAO-REPASSE-VINCULOS.md`.
+
+### Evolução operacional 200 — transferência de comissões e crédito fiscal
+
+Pagamento bancário de comissão gera saída na conta empresarial escolhida e, quando o
+beneficiário possui conta interna vinculada, entrada nessa conta pelo mesmo pagamento.
+Movimentos ausentes de pagamentos confirmados são recompostos de forma append-only,
+idempotente e somente com origem/destino determinísticos. O Financeiro & Caixa também
+expõe o imposto descontado das comissões na competência corrente como crédito reservado
+para a obrigação fiscal, sem convertê-lo em entrada ou saldo bancário disponível.
+
+Relatório:
+`docs/relatorios-fases/FASE-200-TRANSFERENCIA-COMISSOES-CREDITO-FISCAL-CAIXA.md`.
+
 ### Evolução operacional 200 — reajuste anual canônico dos grupos
 
 Cada grupo pode declarar reajuste anual fixo, com percentual, ou variável, com

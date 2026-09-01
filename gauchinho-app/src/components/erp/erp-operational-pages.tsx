@@ -801,7 +801,7 @@ export async function ErpRepasseFranquiaPage() {
       .limit(200),
     db
       .from("erp_repasse_importacoes")
-      .select("id,administradora_id,competencia,arquivo_nome,valor_total_bruto,ponto_venda,comissionado_nome,pedidos,status,recebimento_id,created_at,itens:erp_repasse_importacao_itens(id,linha,produto,data_alocacao,numero_grupo,numero_cota,cliente_nome,parcela_numero,parcela_total,valor_comissao,valor_base,status_conciliacao,previsao_franquia_id,previsao_sugerida_id,alertas)")
+      .select("id,administradora_id,competencia,arquivo_nome,valor_total_bruto,ponto_venda,comissionado_nome,pedidos,status,recebimento_id,created_at,itens:erp_repasse_importacao_itens(id,linha,produto,data_alocacao,numero_grupo,numero_cota,cliente_nome,parcela_numero,parcela_total,valor_comissao,valor_base,status_conciliacao,previsao_franquia_id,previsao_sugerida_id,alertas,previsao:comissao_previsoes_franquia(competencia,valor_previsto,valor_liquidado,ordem_etapa,nome_etapa))")
       .eq("empresa_id", empresaId)
       .order("created_at", { ascending: false })
       .limit(12),
@@ -841,7 +841,7 @@ export async function ErpRepasseFranquiaPage() {
     ? await Promise.all([
         db
           .from("financeiro_recebimento_itens")
-          .select("recebimento_id,valor_liquidado")
+          .select("recebimento_id,previsao_franquia_id,valor_liquidado")
           .in("recebimento_id", recebimentoIds),
         db
           .from("financeiro_recebimento_classificacoes")
@@ -862,10 +862,26 @@ export async function ErpRepasseFranquiaPage() {
       (classificadosPorRecebimento.get(item.recebimento_id) ?? 0) + Number(item.valor),
     );
   }
+  const importacaoPorRecebimento = new Map((importacoesRes.data ?? []).filter((item) => item.recebimento_id).map((item) => [item.recebimento_id as string, item.id]));
+  const valorVinculadoPorRecebimentoPrevisao = new Map<string, number>();
+  for (const item of itensRecebidosRes.data ?? []) {
+    const key = `${item.recebimento_id}:${item.previsao_franquia_id}`;
+    valorVinculadoPorRecebimentoPrevisao.set(key, (valorVinculadoPorRecebimentoPrevisao.get(key) ?? 0) + Number(item.valor_liquidado));
+  }
+  const importacoesComValores = (importacoesRes.data ?? []).map((importacao) => ({
+    ...importacao,
+    itens: (importacao.itens ?? []).map((item) => ({
+      ...item,
+      valor_vinculado: importacao.recebimento_id && item.previsao_franquia_id
+        ? valorVinculadoPorRecebimentoPrevisao.get(`${importacao.recebimento_id}:${item.previsao_franquia_id}`) ?? 0
+        : 0,
+    })),
+  }));
   const recebimentosCalculados = recebimentosBase.map((row) => {
     const valorClassificado = classificadosPorRecebimento.get(row.id) ?? 0;
     return {
       ...row,
+      repasse_importacao_id: importacaoPorRecebimento.get(row.id) ?? null,
       valor_classificado: valorClassificado,
       conciliacao_status:
         valorClassificado >= Number(row.valor_total)
@@ -958,7 +974,7 @@ export async function ErpRepasseFranquiaPage() {
       <RepassePdfConciliacao
         administradoras={administradoras}
         contas={contas.data ?? []}
-        importacoes={(importacoesRes.data ?? []) as unknown as RepassePdfImportacao[]}
+        importacoes={importacoesComValores as unknown as RepassePdfImportacao[]}
         previsoes={(previsoes.data ?? []).map((row: any) => {
           const cota = Array.isArray(row.cota) ? row.cota[0] : row.cota;
           const venda = Array.isArray(row.venda) ? row.venda[0] : row.venda;

@@ -11,15 +11,17 @@ const campo = "rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm t
 export default async function FinanceiroCaixaPage() {
   const { empresaAtiva } = await requireErpRouteAccess("financeiro");
   const db = await createClient();
-  const [contasRes, movimentosRes, sociosRes, extratoRes, instrucoesRes, transferenciasRes] = await Promise.all([
+  const competenciaAtual = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Cuiaba", year: "numeric", month: "2-digit" }).format(new Date()).slice(0, 7);
+  const [contasRes, movimentosRes, sociosRes, extratoRes, instrucoesRes, transferenciasRes, impostosRes] = await Promise.all([
     db.from("financeiro_contas_saldos").select("*").eq("empresa_id", empresaAtiva.id).eq("ativo", true).order("nome"),
     db.from("financeiro_conta_movimentos").select("id,conta_bancaria_id,tipo,categoria,valor,data_movimento,descricao,comprovante_referencia,created_at").eq("empresa_id", empresaAtiva.id).order("created_at", { ascending: false }).limit(100),
     db.from("financeiro_socios_saldos").select("*").eq("empresa_id", empresaAtiva.id).order("nome"),
     db.from("financeiro_socios_extrato").select("*").eq("empresa_id", empresaAtiva.id).order("created_at", { ascending: false }).limit(100),
     db.from("financeiro_fechamento_socios_instrucoes").select("id,fechamento_id,devedor_socio_id,credor_socio_id,valor_transferencia,descricao,conta_destino_snapshot,fechamento:financeiro_fechamentos_socios(periodo_inicio,periodo_fim)").eq("empresa_id", empresaAtiva.id).order("created_at", { ascending: false }).limit(50),
     db.from("financeiro_transferencias_socios").select("instrucao_id,valor").eq("empresa_id", empresaAtiva.id),
+    db.from("comissao_previsoes_franquia").select("valor_imposto").eq("empresa_id", empresaAtiva.id).eq("competencia", competenciaAtual).neq("status", "cancelada"),
   ]);
-  for (const resposta of [contasRes, movimentosRes, sociosRes, extratoRes, instrucoesRes, transferenciasRes]) {
+  for (const resposta of [contasRes, movimentosRes, sociosRes, extratoRes, instrucoesRes, transferenciasRes, impostosRes]) {
     if (resposta.error) throw new Error(resposta.error.message);
   }
   const contas = contasRes.data ?? [];
@@ -34,6 +36,7 @@ export default async function FinanceiroCaixaPage() {
   const saldoEmpresa = contas.reduce((soma, conta) => soma + Number(conta.saldo_atual), 0);
   const entradas = movimentos.filter((item) => item.tipo === "ENTRADA").reduce((soma, item) => soma + Number(item.valor), 0);
   const saidas = movimentos.filter((item) => item.tipo === "SAIDA").reduce((soma, item) => soma + Number(item.valor), 0);
+  const creditoFiscalMes = (impostosRes.data ?? []).reduce((soma, item) => soma + Number(item.valor_imposto ?? 0), 0);
 
   return <main className="space-y-6 p-6">
     <header className="rounded-3xl bg-slate-950 p-7 text-white shadow-xl">
@@ -41,8 +44,8 @@ export default async function FinanceiroCaixaPage() {
       <div className="mt-2 flex flex-wrap items-end justify-between gap-4"><div><h1 className="text-3xl font-black">Financeiro &amp; Caixa</h1><p className="mt-1 text-sm text-slate-300">Saldos bancários, entradas, comissões e equalização dos sócios.</p></div><div className="flex gap-2"><Link href="/erp/contas-pagar" className="rounded-xl bg-white/10 px-4 py-2 text-xs font-bold">Contas a pagar</Link><Link href="/erp/minhas-comissoes" className="rounded-xl bg-white/10 px-4 py-2 text-xs font-bold">Comissões</Link></div></div>
     </header>
 
-    <section className="grid gap-4 md:grid-cols-3">
-      {[['Saldo nas contas',saldoEmpresa,'bg-blue-50 border-blue-200 text-blue-950'],['Entradas registradas',entradas,'bg-emerald-50 border-emerald-200 text-emerald-950'],['Saídas registradas',saidas,'bg-rose-50 border-rose-200 text-rose-950']].map(([titulo,valor,classe]) => <div key={String(titulo)} className={`rounded-2xl border p-5 ${classe}`}><p className="text-xs font-black uppercase">{titulo}</p><p className="mt-2 text-3xl font-black">{brl(Number(valor))}</p></div>)}
+    <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      {[['Saldo nas contas',saldoEmpresa,'bg-blue-50 border-blue-200 text-blue-950','Saldo bancário consolidado'],['Entradas registradas',entradas,'bg-emerald-50 border-emerald-200 text-emerald-950','Movimentos de entrada'],['Saídas registradas',saidas,'bg-rose-50 border-rose-200 text-rose-950','Movimentos de saída'],['Crédito para impostos',creditoFiscalMes,'bg-amber-50 border-amber-200 text-amber-950',`Descontado das comissões · ${competenciaAtual}`]].map(([titulo,valor,classe,detalhe]) => <div key={String(titulo)} className={`rounded-2xl border p-5 ${classe}`}><p className="text-xs font-black uppercase">{titulo}</p><p className="mt-2 text-3xl font-black">{brl(Number(valor))}</p><p className="mt-1 text-[11px] opacity-70">{detalhe}</p></div>)}
     </section>
 
     <section className="grid gap-4 lg:grid-cols-2 xl:grid-cols-3">

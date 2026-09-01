@@ -11,11 +11,12 @@ export default async function AdminComissoesPage() {
   if (!empresaAtiva) notFound();
   const empresaId = empresaAtiva.id;
   const db = await createClient();
-  const [prevFranquia, prevParticipantes, importacoesRes, itensRepasseRes, participantesRes] = await Promise.all([
+  const [prevFranquia, prevParticipantes, importacoesRes, itensRepasseRes, participantesRes, contasRes] = await Promise.all([
     listPrevisoesFranquiaForEmpresa(empresaId), listPrevisoesParticipantesForEmpresa(empresaId),
     db.from("erp_repasse_importacoes").select("id,administradora_id,competencia,arquivo_nome,status,created_at").eq("empresa_id", empresaId).order("created_at", { ascending: false }).limit(100),
     db.from("erp_repasse_importacao_itens").select("previsao_franquia_id,previsao_sugerida_id,status_conciliacao,importacao:erp_repasse_importacoes!inner(arquivo_nome,created_at)").eq("empresa_id", empresaId).or("previsao_franquia_id.not.is.null,previsao_sugerida_id.not.is.null"),
     db.from("participantes_comerciais").select("id,nome,nome_exibicao,cargo,status").eq("empresa_id", empresaId).order("nome"),
+    db.from("financeiro_contas_bancarias").select("id,nome,participante_comercial_id").eq("empresa_id", empresaId).eq("ativo", true).order("nome"),
   ]);
   if (importacoesRes.error || itensRepasseRes.error || participantesRes.error) throw new Error("Não foi possível carregar a conferência de comissões da empresa.");
   const relatoriosPorCompetencia = new Set((importacoesRes.data ?? []).map((item) => `${item.administradora_id}:${item.competencia}`));
@@ -38,5 +39,5 @@ export default async function AdminComissoesPage() {
   const participanteMap = new Map(todosParticipantes.map((item) => [item.id,item]));
   const linhaPorVendaCota = new Map(linhas.map((item) => [`${item.vendaId}:${item.cotaId??""}`,item])); const linhaPorVenda = new Map(linhas.map((item) => [item.vendaId,item]));
   const pagamentos: ParticipantCommissionLine[] = prevParticipantes.map((item) => { const comercial=item.participante_comercial_id?participanteMap.get(item.participante_comercial_id):null; const origem=linhaPorVendaCota.get(`${item.venda_id}:${item.cota_definitiva_id??""}`)??linhaPorVenda.get(item.venda_id); return { id:item.id,participanteId:item.participante_comercial_id,participanteNome:comercial?.nome||"Participante não identificado",participanteCargo:comercial?.cargo||null,competencia:item.competencia,nomeEtapa:item.nome_etapa,clienteNome:origem?.clienteNome||"Venda sem cliente identificado",numeroGrupo:origem?.numeroGrupo||null,numeroCota:origem?.numeroCota||null,valorGerado:Number(item.valor_previsto),valorElegivel:Number(item.valor_elegivel),valorPago:Number(item.valor_pago) }; });
-  return <CompanyCommissionsDashboard empresaNome={empresaAtiva.nome_fantasia??empresaAtiva.razao_social??"Consórcios"} competenciaAtual={competenciaAtual} linhas={linhas} pagamentos={pagamentos} participantes={participantes} />;
+  return <CompanyCommissionsDashboard empresaNome={empresaAtiva.nome_fantasia??empresaAtiva.razao_social??"Consórcios"} competenciaAtual={competenciaAtual} linhas={linhas} pagamentos={pagamentos} participantes={participantes} contas={(contasRes.data ?? []).map((conta) => ({ id: conta.id, nome: conta.nome, participanteId: conta.participante_comercial_id }))} />;
 }

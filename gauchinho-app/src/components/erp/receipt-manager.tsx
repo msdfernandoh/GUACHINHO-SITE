@@ -19,6 +19,7 @@ type Receipt = {
   conciliacao_status: string;
   numero_nota_fiscal: string | null;
   administradora: { nome: string } | null;
+  repasse_importacao_id?: string | null;
 };
 type Forecast = {
   id: string;
@@ -224,6 +225,10 @@ export function ReceiptManager({
                 <td>
                   <button
                     onClick={() => {
+                      if (r.repasse_importacao_id) {
+                        window.dispatchEvent(new CustomEvent("abrir-conciliacao-repasse", { detail: r.repasse_importacao_id }));
+                        return;
+                      }
                       setSelected(r.id);
                       setItems({});
                       setClasses([

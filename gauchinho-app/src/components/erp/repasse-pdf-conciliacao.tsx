@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import {
   importarRelatorioRepasseRaconAction,
   vincularItemRepasseManualAction,
@@ -28,6 +28,14 @@ export type RepassePdfItem = {
   previsao_franquia_id: string | null;
   previsao_sugerida_id: string | null;
   alertas: string[];
+  valor_vinculado?: number;
+  previsao: {
+    competencia: string;
+    valor_previsto: number;
+    valor_liquidado: number;
+    ordem_etapa: number;
+    nome_etapa: string;
+  } | null;
 };
 
 export type RepassePdfImportacao = {
@@ -91,7 +99,19 @@ export function RepassePdfConciliacao({
   const [linkState, linkAction, linking] = useActionState(vincularItemRepasseManualAction, initialState);
   const [confirmState, confirmAction, confirming] = useActionState(confirmarConciliacaoRepasseAction, initialState);
   const [legacyState, legacyAction, launchingLegacy] = useActionState(lancarItemRepasseLegadoAction, initialState);
-  const atual = importacoes[0] ?? null;
+  const [importacaoSelecionadaId, setImportacaoSelecionadaId] = useState(importacoes[0]?.id ?? "");
+  const [mostrarVinculados, setMostrarVinculados] = useState(false);
+  useEffect(() => {
+    const abrir = (event: Event) => {
+      const id = (event as CustomEvent<string>).detail;
+      if (!importacoes.some((item) => item.id === id)) return;
+      setImportacaoSelecionadaId(id);
+      document.getElementById("conciliacao-repasse")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    };
+    window.addEventListener("abrir-conciliacao-repasse", abrir);
+    return () => window.removeEventListener("abrir-conciliacao-repasse", abrir);
+  }, [importacoes]);
+  const atual = importacoes.find((item) => item.id === importacaoSelecionadaId) ?? importacoes[0] ?? null;
   const usados = new Set((atual?.itens ?? []).map((item) => item.previsao_franquia_id).filter(Boolean));
   const sistemaSemRelatorio = atual
     ? previsoes.filter((p) => p.administradora_id === atual.administradora_id && p.competencia === atual.competencia && !usados.has(p.id))
@@ -101,7 +121,7 @@ export function RepassePdfConciliacao({
   const vinculados = (atual?.itens ?? []).filter((item) => item.status_conciliacao.startsWith("VINCULADO") || item.status_conciliacao === "LANCADO_LEGADO");
 
   return (
-    <section className="space-y-4 rounded-2xl border border-blue-200 bg-blue-50/30 p-4 shadow-sm dark:border-blue-900 dark:bg-blue-950/10">
+    <section id="conciliacao-repasse" className="scroll-mt-4 space-y-4 rounded-2xl border border-blue-200 bg-blue-50/30 p-4 shadow-sm dark:border-blue-900 dark:bg-blue-950/10">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="text-xs font-extrabold uppercase tracking-widest text-blue-700">Conciliação do repasse</p>
@@ -141,13 +161,22 @@ export function RepassePdfConciliacao({
 
       {atual && (
         <>
+          {importacoes.length > 1 && <label className="block max-w-xl text-xs font-bold">Relatório em conferência
+            <select value={atual.id} onChange={(event) => { setImportacaoSelecionadaId(event.target.value); setMostrarVinculados(false); }} className="mt-1 block w-full rounded-lg border bg-white p-2 font-normal dark:bg-slate-900">
+              {importacoes.map((item) => <option key={item.id} value={item.id}>{item.competencia} · {item.arquivo_nome} · {money(Number(item.valor_total_bruto))} · {item.status}</option>)}
+            </select>
+          </label>}
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5 text-xs">
             <Summary label="Entrada bruta do PDF" value={money(Number(atual.valor_total_bruto))} color="text-emerald-700" />
-            <Summary label="Vinculados" value={String(vinculados.length)} color="text-blue-700" />
+            <button type="button" onClick={() => setMostrarVinculados((value) => !value)} aria-expanded={mostrarVinculados} className="rounded-xl text-left focus:outline-none focus:ring-2 focus:ring-blue-600">
+              <Summary label="Vinculados · clique para conferir" value={String(vinculados.length)} color="text-blue-700" />
+            </button>
             <Summary label="Com atenção" value={String(atencoes.length)} color="text-amber-700" />
             <Summary label="Antigas no relatório" value={String(relatorioSemSistema.length)} color="text-rose-700" />
             <Summary label="Só no sistema" value={String(sistemaSemRelatorio.length)} color="text-violet-700" />
           </div>
+
+          {mostrarVinculados && <LinkedItemsTable items={vinculados} previsoes={previsoes.filter((p) => p.administradora_id === atual.administradora_id)} action={linkAction} disabled={linking} />}
           <div className="rounded-xl border bg-white p-3 text-xs dark:border-slate-800 dark:bg-slate-900">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div><p className="font-bold">{atual.arquivo_nome} · {atual.competencia} · {atual.comissionado_nome || "Comissionado não identificado"}</p>
@@ -179,6 +208,20 @@ function Summary({ label, value, color }: { label: string; value: string; color:
 function ReconciliationTable({ title, items, previsoes, action, disabled, legacyAction, legacyDisabled, participantes = [], regras = [], grupos = [] }: { title: string; items: RepassePdfItem[]; previsoes: RepassePrevisaoAberta[]; action: (payload: FormData) => void; disabled: boolean; legacyAction?: (payload: FormData) => void; legacyDisabled?: boolean; participantes?: RepasseParticipante[]; regras?: RepasseRegraParticipante[]; grupos?: RepasseGrupo[] }) {
   if (!items.length) return null;
   return <div className="overflow-hidden rounded-xl border bg-white dark:border-slate-800 dark:bg-slate-900"><h3 className="border-b p-3 text-sm font-bold">{title} ({items.length})</h3><div className="overflow-x-auto"><table className="w-full text-xs"><thead className="bg-slate-50 text-left"><tr><th className="p-2">Linha</th><th>Cliente</th><th>Grupo / Cota</th><th>Parcela</th><th>Comissão</th><th>Atenção</th><th className="min-w-80">Vínculo manual</th></tr></thead><tbody className="divide-y">{items.map((item) => <tr key={item.id}><td className="p-2">{item.linha}</td><td className="font-bold">{item.cliente_nome}</td><td>{item.numero_grupo} / {item.numero_cota}</td><td>{item.parcela_numero}/{item.parcela_total}</td><td className="font-mono">{money(Number(item.valor_comissao))}</td><td><span className={`rounded-full px-2 py-1 text-[10px] font-bold ${statusStyle[item.status_conciliacao]}`}>{item.status_conciliacao}</span><p className="mt-1 max-w-56 text-[10px] text-amber-700">{item.alertas.join(" · ")}</p></td><td className="space-y-2"><form action={action} className="flex gap-2"><input type="hidden" name="item_id" value={item.id}/><select name="previsao_franquia_id" required defaultValue={item.previsao_sugerida_id ?? ""} className="min-w-64 flex-1 rounded-lg border p-1.5 dark:bg-slate-900"><option value="">Selecione uma comissão aberta (qualquer competência)</option>{previsoes.map((p) => <option key={p.id} value={p.id}>{p.competencia} · {p.cliente_nome} · {p.numero_grupo}/{p.numero_cota} · {p.ordem_etapa}ª · {money(Number(p.valor_previsto)-Number(p.valor_liquidado))}</option>)}</select><button disabled={disabled} className="rounded-lg bg-slate-900 px-3 py-1.5 font-bold text-white">Vincular</button></form>{legacyAction && <MissingRegistrationForm item={item} action={legacyAction} disabled={Boolean(legacyDisabled)} participantes={participantes} regras={regras} grupos={grupos} />}</td></tr>)}</tbody></table></div></div>;
+}
+
+function LinkedItemsTable({ items, previsoes, action, disabled }: { items: RepassePdfItem[]; previsoes: RepassePrevisaoAberta[]; action: (payload: FormData) => void; disabled: boolean }) {
+  return <div className="overflow-hidden rounded-xl border border-blue-200 bg-white dark:border-blue-900 dark:bg-slate-900">
+    <h3 className="border-b p-3 text-sm font-bold text-blue-800">Vínculos do relatório ({items.length})</h3>
+    {!items.length ? <p className="p-4 text-xs text-slate-500">Nenhuma linha vinculada neste relatório.</p> : <div className="overflow-x-auto"><table className="w-full text-xs"><thead className="bg-slate-50 text-left"><tr><th className="p-2">Linha</th><th>Cliente</th><th>Grupo / Cota</th><th>Parcela</th><th className="text-right">Valor do relatório</th><th className="text-right">Valor vinculado</th><th className="min-w-96 pl-3">Conferir ou alterar vínculo</th></tr></thead><tbody className="divide-y">{items.map((item) => {
+      const current = item.previsao;
+      const valorVinculado = Number(item.valor_vinculado ?? 0);
+      const options = current && item.previsao_franquia_id && !previsoes.some((p) => p.id === item.previsao_franquia_id)
+        ? [{ id: item.previsao_franquia_id, administradora_id: "", competencia: current.competencia, ordem_etapa: current.ordem_etapa, nome_etapa: current.nome_etapa, valor_previsto: current.valor_previsto, valor_liquidado: current.valor_liquidado, numero_grupo: item.numero_grupo, numero_cota: item.numero_cota, cliente_nome: item.cliente_nome }, ...previsoes]
+        : previsoes;
+      return <tr key={item.id}><td className="p-2">{item.linha}</td><td className="font-bold">{item.cliente_nome}</td><td>{item.numero_grupo} / {item.numero_cota}</td><td>{item.parcela_numero}/{item.parcela_total}</td><td className="text-right font-mono">{money(Number(item.valor_comissao))}</td><td className="text-right font-mono font-bold text-blue-700">{money(valorVinculado)}</td><td className="pl-3"><form action={action} className="flex gap-2"><input type="hidden" name="item_id" value={item.id}/><select name="previsao_franquia_id" required defaultValue={item.previsao_franquia_id ?? ""} className="min-w-72 flex-1 rounded-lg border p-1.5 dark:bg-slate-900">{options.map((p) => <option key={p.id} value={p.id}>{p.competencia} · {p.cliente_nome} · {p.numero_grupo}/{p.numero_cota} · {p.ordem_etapa}ª · {money(Number(p.valor_previsto))}</option>)}</select><button disabled={disabled} className="rounded-lg bg-blue-700 px-3 py-1.5 font-bold text-white disabled:opacity-50">Salvar alteração</button></form></td></tr>;
+    })}</tbody></table></div>}
+  </div>;
 }
 
 function MissingRegistrationForm({ item, action, disabled, participantes, grupos }: { item: RepassePdfItem; action: (payload: FormData) => void; disabled: boolean; participantes: RepasseParticipante[]; regras: RepasseRegraParticipante[]; grupos: RepasseGrupo[] }) {
