@@ -22,6 +22,7 @@ import { FiscalCommissionConfig } from "@/components/erp/fiscal-commission-confi
 import { ConfirmSubmitButton } from "@/components/erp/confirm-submit-button";
 import { ReceiptManager } from "@/components/erp/receipt-manager";
 import { RepasseFranquiaView, type SolicitacaoRepasseItem } from "@/components/erp/repasse-franquia-view";
+import { RepassePdfConciliacao, type RepassePdfImportacao, type RepassePrevisaoAberta, type RepasseParticipante, type RepasseRegraParticipante } from "@/components/erp/repasse-pdf-conciliacao";
 import {
   BidStrategyTable,
   type BidRow,
@@ -763,7 +764,7 @@ export async function ErpRepasseFranquiaPage() {
   if (!empresaAtiva) notFound();
   const empresaId = empresaAtiva.id;
   const db = await createClient();
-  const [grants, contas, recebimentos, previsoes, solicitacoesRes] = await Promise.all([
+  const [grants, contas, recebimentos, previsoes, solicitacoesRes, importacoesRes, participantesRes, regrasRes] = await Promise.all([
     db
       .from("empresa_administradoras")
       .select("administradora:administradoras(id,nome)")
@@ -786,7 +787,7 @@ export async function ErpRepasseFranquiaPage() {
     db
       .from("comissao_previsoes_franquia")
       .select(
-        "id,administradora_id,competencia,valor_previsto,valor_liquidado,administradora:administradoras(nome)",
+        "id,administradora_id,competencia,ordem_etapa,nome_etapa,valor_previsto,valor_liquidado,administradora:administradoras(nome),cota:cotas_definitivas(numero_grupo,numero_cota),venda:vendas(cliente_nome)",
       )
       .eq("empresa_id", empresaId)
       .in("status", ["prevista", "parcialmente_liquidada"])
@@ -799,6 +800,26 @@ export async function ErpRepasseFranquiaPage() {
       .eq("empresa_id", empresaId)
       .order("created_at", { ascending: false })
       .limit(200),
+    db
+      .from("erp_repasse_importacoes")
+      .select("id,competencia,arquivo_nome,valor_total_bruto,ponto_venda,comissionado_nome,pedidos,status,recebimento_id,created_at,itens:erp_repasse_importacao_itens(id,linha,produto,data_alocacao,numero_grupo,numero_cota,cliente_nome,parcela_numero,parcela_total,valor_comissao,valor_base,status_conciliacao,previsao_franquia_id,previsao_sugerida_id,alertas)")
+      .eq("empresa_id", empresaId)
+      .order("created_at", { ascending: false })
+      .limit(12),
+    db
+      .from("participantes_comerciais")
+      .select("id,nome,nome_exibicao")
+      .eq("empresa_id", empresaId)
+      .eq("status", "ATIVO")
+      .order("nome"),
+    db
+      .from("comissao_regras_participantes")
+      .select("id,percentual_comissao,perfil:comissao_perfis(nome)")
+      .eq("empresa_id", empresaId)
+      .eq("ativa", true)
+      .eq("configuracao_homologada", true)
+      .eq("status", "HOMOLOGADA")
+      .order("versao", { ascending: false }),
   ]);
 
   const administradoras = (grants.data ?? []).flatMap((x) => {
@@ -889,6 +910,39 @@ export async function ErpRepasseFranquiaPage() {
           </p>
         </div>
       </div>
+
+      <RepassePdfConciliacao
+        administradoras={administradoras}
+        contas={contas.data ?? []}
+        importacoes={(importacoesRes.data ?? []) as unknown as RepassePdfImportacao[]}
+        previsoes={(previsoes.data ?? []).map((row: any) => {
+          const cota = Array.isArray(row.cota) ? row.cota[0] : row.cota;
+          const venda = Array.isArray(row.venda) ? row.venda[0] : row.venda;
+          return {
+            id: row.id,
+            competencia: row.competencia,
+            ordem_etapa: Number(row.ordem_etapa),
+            nome_etapa: row.nome_etapa,
+            valor_previsto: Number(row.valor_previsto),
+            valor_liquidado: Number(row.valor_liquidado),
+            numero_grupo: cota?.numero_grupo ?? null,
+            numero_cota: cota?.numero_cota ?? null,
+            cliente_nome: venda?.cliente_nome ?? "Cliente não identificado",
+          } satisfies RepassePrevisaoAberta;
+        })}
+        participantes={(participantesRes.data ?? []).map((row) => ({
+          id: row.id,
+          nome: row.nome_exibicao || row.nome,
+        } satisfies RepasseParticipante))}
+        regras={(regrasRes.data ?? []).map((row: any) => {
+          const perfil = Array.isArray(row.perfil) ? row.perfil[0] : row.perfil;
+          return {
+            id: row.id,
+            nome: perfil?.nome || "Regra homologada",
+            percentual: Number(row.percentual_comissao),
+          } satisfies RepasseRegraParticipante;
+        })}
+      />
 
       <RepasseFranquiaView
         administradoras={administradoras}

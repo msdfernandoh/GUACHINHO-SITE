@@ -1,6 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { createHash } from "node:crypto";
+import { extractText, getDocumentProxy } from "unpdf";
 import { createClient } from "@/lib/supabase/server";
 import { requireTenantPermission } from "@/lib/tenant/context";
 import { requireErpRouteAccess } from "@/lib/erp/erp-acesso-server";
@@ -9,9 +11,11 @@ import {
   gerarIdempotencyKeyRecebimento,
   type SolicitacaoRepasseStatus,
 } from "@/lib/erp/repasse-solicitacoes-helpers";
+import { parseRepasseRaconText } from "@/lib/erp/repasse-racon-parser";
 
 export type ReceiptState = { ok: boolean; message: string; receiptId?: string };
 export type SolicitacaoState = { ok: boolean; message: string; solicitacaoId?: string; codigo?: string };
+export type ImportacaoRepasseState = { ok: boolean; message: string; importacaoId?: string };
 
 async function context() {
   await requireErpRouteAccess("repasse-franquia");
@@ -27,6 +31,148 @@ const REPASSE_FILE_EXTENSIONS: Record<string, string> = {
   "image/png": "png",
   "image/webp": "webp",
 };
+
+export async function importarRelatorioRepasseRaconAction(
+  _previous: ImportacaoRepasseState,
+  formData: FormData,
+): Promise<ImportacaoRepasseState> {
+  let storagePath: string | null = null;
+  try {
+    const { db, empresaId } = await context();
+    const file = formData.get("arquivo_pdf") as File | null;
+    const competencia = String(formData.get("competencia") ?? "");
+    const administradoraId = String(formData.get("administradora_id") ?? "");
+    const dataRecebimento = String(formData.get("data_recebimento") ?? "");
+    const contaEntrada = String(formData.get("conta_entrada") ?? "Caixa geral").trim();
+    const contaBancariaId = String(formData.get("conta_bancaria_id") ?? "").trim() || null;
+    if (!file || file.size <= 0) throw new Error("Selecione o PDF de repasse.");
+    if (file.type !== "application/pdf") throw new Error("O relatório de repasse deve ser um arquivo PDF.");
+    if (file.size > MAX_REPASSE_FILE_SIZE) throw new Error("O PDF deve ter no máximo 15 MB.");
+    if (!administradoraId) throw new Error("Selecione a administradora.");
+    if (!dataRecebimento) throw new Error("Informe a data da entrada do repasse.");
+    if (contaEntrada.length < 2) throw new Error("Informe a conta/caixa de entrada.");
+
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    const hash = createHash("sha256").update(bytes).digest("hex");
+    const pdf = await getDocumentProxy(bytes);
+    const extracted = await extractText(pdf, { mergePages: true });
+    const parsed = parseRepasseRaconText(String(extracted.text), competencia);
+
+    storagePath = `${empresaId}/conciliacoes/${competencia}/${hash}.pdf`;
+    const { error: uploadError } = await db.storage.from("repasse-documentos").upload(storagePath, bytes, {
+      contentType: "application/pdf",
+      upsert: false,
+    });
+    if (uploadError && !/already exists|duplicate/i.test(uploadError.message)) {
+      throw new Error(`Falha ao guardar o PDF: ${uploadError.message}`);
+    }
+
+    const { data, error } = await db.rpc("rpc_importar_repasse_racon", {
+      p_empresa_id: empresaId,
+      p_administradora_id: administradoraId,
+      p_competencia: competencia,
+      p_arquivo_nome: file.name.slice(0, 255),
+      p_arquivo_path: storagePath,
+      p_arquivo_hash: hash,
+      p_relatorio: parsed,
+      p_data_recebimento: dataRecebimento,
+      p_conta_entrada: contaEntrada,
+      p_conta_bancaria_id: contaBancariaId,
+    });
+    if (error) throw new Error(error.message);
+    const result = data as { importacao_id?: string; idempotente?: boolean; vinculados_auto?: number; atencao?: number; nao_encontrados?: number };
+    revalidatePath("/erp/repasse-franquia");
+    return {
+      ok: true,
+      importacaoId: result.importacao_id,
+      message: result.idempotente
+        ? "Este PDF já havia sido importado; nenhuma entrada foi duplicada."
+        : `Repasse bruto importado. ${result.vinculados_auto ?? 0} linhas vinculadas, ${result.atencao ?? 0} com atenção e ${result.nao_encontrados ?? 0} antigas/não encontradas.`,
+    };
+  } catch (error) {
+    return { ok: false, message: error instanceof Error ? error.message : "Erro ao importar o PDF de repasse." };
+  }
+}
+
+export async function vincularItemRepasseManualAction(
+  _previous: ImportacaoRepasseState,
+  formData: FormData,
+): Promise<ImportacaoRepasseState> {
+  try {
+    const { db, empresaId } = await context();
+    const itemId = String(formData.get("item_id") ?? "");
+    const previsaoId = String(formData.get("previsao_franquia_id") ?? "");
+    if (!itemId || !previsaoId) throw new Error("Selecione a linha e a comissão do sistema.");
+    const { error } = await db.rpc("rpc_vincular_item_repasse_manual", {
+      p_empresa_id: empresaId,
+      p_item_id: itemId,
+      p_previsao_franquia_id: previsaoId,
+    });
+    if (error) throw new Error(error.message);
+    revalidatePath("/erp/repasse-franquia");
+    return { ok: true, message: "Linha vinculada manualmente com sucesso." };
+  } catch (error) {
+    return { ok: false, message: error instanceof Error ? error.message : "Erro ao vincular a linha." };
+  }
+}
+
+export async function confirmarConciliacaoRepasseAction(
+  _previous: ImportacaoRepasseState,
+  formData: FormData,
+): Promise<ImportacaoRepasseState> {
+  try {
+    const { db, empresaId } = await context();
+    const importacaoId = String(formData.get("importacao_id") ?? "");
+    if (!importacaoId) throw new Error("Importação não informada.");
+    const { data, error } = await db.rpc("rpc_confirmar_conciliacao_repasse", {
+      p_empresa_id: empresaId,
+      p_importacao_id: importacaoId,
+    });
+    if (error) throw new Error(error.message);
+    const result = data as { confirmado?: boolean; motivo?: string; idempotente?: boolean };
+    revalidatePath("/erp/repasse-franquia");
+    return {
+      ok: Boolean(result.confirmado),
+      importacaoId,
+      message: result.confirmado
+        ? result.idempotente ? "Este repasse já estava confirmado." : "Regras conferidas, repasse conciliado e comissões liberadas."
+        : result.motivo || "A conciliação voltou para atenção.",
+    };
+  } catch (error) {
+    return { ok: false, message: error instanceof Error ? error.message : "Erro ao confirmar a conciliação." };
+  }
+}
+
+export async function lancarItemRepasseLegadoAction(
+  _previous: ImportacaoRepasseState,
+  formData: FormData,
+): Promise<ImportacaoRepasseState> {
+  try {
+    const { db, empresaId } = await context();
+    const itemId = String(formData.get("item_id") ?? "");
+    const participanteId = String(formData.get("participante_id") ?? "");
+    const regraId = String(formData.get("regra_participante_id") ?? "");
+    const valorRaw = String(formData.get("valor_comissao_manual") ?? "").trim().replace(",", ".");
+    const valorManual = valorRaw ? Number(valorRaw) : null;
+    if (!itemId || !participanteId || !regraId) throw new Error("Selecione o consultor e a regra da comissão.");
+    if (valorManual !== null && (!Number.isFinite(valorManual) || valorManual <= 0)) {
+      throw new Error("Informe um valor manual de comissão válido.");
+    }
+    const { error } = await db.rpc("rpc_lancar_item_repasse_legado", {
+      p_empresa_id: empresaId,
+      p_item_id: itemId,
+      p_participante_id: participanteId,
+      p_regra_participante_id: regraId,
+      p_valor_comissao_manual: valorManual,
+    });
+    if (error) throw new Error(error.message);
+    revalidatePath("/erp/repasse-franquia");
+    revalidatePath("/erp/minhas-comissoes");
+    return { ok: true, message: "Cota antiga criada e comissão incluída no extrato do consultor." };
+  } catch (error) {
+    return { ok: false, message: error instanceof Error ? error.message : "Erro ao lançar a comissão antiga." };
+  }
+}
 
 function validarArquivoRepasse(file: File, label: string): string {
   if (file.size <= 0 || file.size > MAX_REPASSE_FILE_SIZE) {

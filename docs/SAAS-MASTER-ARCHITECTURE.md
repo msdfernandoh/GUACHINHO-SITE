@@ -1485,6 +1485,19 @@ para vendas futuras.
 Relatório:
 `docs/relatorios-fases/FASE-180-RESTAURACAO-CRONOGRAMA-HISTORICO-COMISSOES.md`.
 
+## 63. Conciliação de PDF de repasse Racon — Fase 181
+
+O relatório de Pedidos de Compras é persistido por hash, tenant e competência,
+com linhas normalizadas por grupo, cota, parcela e valor. O total entra no caixa
+como repasse bruto, enquanto a liberação das comissões ocorre somente em uma
+segunda confirmação. Antes de liquidar, a rotina compara a regra vigente com o
+programa congelado na previsão; mudanças reorganizam o cronograma aberto e
+forçam nova conferência quando o PDF divergir. Relatório e sistema mantêm filas
+separadas para ausências de cada lado e permitem vínculo manual auditado.
+
+Relatório:
+`docs/relatorios-fases/FASE-181-CONCILIACAO-PDF-REPASSE-RACON.md`.
+
 
 
 
