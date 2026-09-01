@@ -39,6 +39,16 @@ function parseCreditos(formData: FormData): number[] {
   }
 }
 
+function parseReajusteAnual(formData: FormData) {
+  const tipo = String(formData.get("tipo_reajuste_anual") ?? "").trim().toUpperCase();
+  const percentual = parseBRLNumber(String(formData.get("reajuste_anual_percentual") ?? ""));
+  const indice = String(formData.get("reajuste_anual_indice") ?? "").trim();
+  if (!(["FIXO", "VARIAVEL"] as string[]).includes(tipo)) throw new Error("Informe se o reajuste anual é fixo ou variável.");
+  if (tipo === "FIXO" && (!Number.isFinite(percentual) || percentual <= 0 || percentual > 100)) throw new Error("Informe o percentual anual fixo entre 0 e 100.");
+  if (tipo === "VARIAVEL" && !indice) throw new Error("Informe o nome do índice ou alíquota do reajuste variável.");
+  return { tipo, percentual: tipo === "FIXO" ? percentual : null, indice: tipo === "VARIAVEL" ? indice : null };
+}
+
 export type GroupActionState = {
   status: "IDLE" | "SUCCESS" | "VALIDATION_ERROR" | "CONFLICT" | "SERVER_ERROR";
   message: string;
@@ -145,6 +155,9 @@ export async function decidirSolicitacaoGrupoAction(
     if (error) return { status: "SERVER_ERROR", message: error.message };
     revalidatePath("/platform/grupos");
     revalidatePath("/platform/grupos/solicitacoes");
+    revalidatePath("/erp/grupos");
+    revalidatePath("/admin/grupos");
+    revalidatePath("/grupos");
     return {
       status: "SUCCESS",
       message: decisao === "APROVAR" ? "Grupo aprovado e publicado no catálogo." : "Solicitação atualizada.",
@@ -209,6 +222,7 @@ export async function salvarGrupoPlatformAction(
     const ativo = formData.get("ativo") !== "false";
     const observacoes = String(formData.get("observacoes") ?? "").trim() || null;
     const creditos = parseCreditos(formData);
+    const reajusteAnual = parseReajusteAnual(formData);
 
     const db = await createClient();
     const { data: saved, error } = await db.rpc("rpc_platform_salvar_grupo_comercial", {
@@ -236,6 +250,15 @@ export async function salvarGrupoPlatformAction(
 
     const savedId = (saved as { id?: string })?.id || id;
     if (savedId) {
+      const { error: reajusteError } = await db.rpc("rpc_salvar_reajuste_anual_grupo", {
+        p_grupo_id: savedId,
+        p_tipo: reajusteAnual.tipo,
+        p_percentual: reajusteAnual.percentual,
+        p_indice: reajusteAnual.indice,
+        p_empresa_id: null,
+        p_solicitacao_id: null,
+      });
+      if (reajusteError) throw new Error(reajusteError.message);
       if (creditos.length > 0) {
         const { error: creditosError } = await db.rpc("rpc_platform_salvar_cotas_lote", {
           p_grupo_id: savedId,
@@ -255,6 +278,9 @@ export async function salvarGrupoPlatformAction(
     }
     revalidatePath("/platform/grupos");
     revalidatePath("/platform/administradoras");
+    revalidatePath("/erp/grupos");
+    revalidatePath("/admin/grupos");
+    revalidatePath("/grupos");
     if (savedId) {
       revalidatePath(`/platform/grupos/${savedId}`);
       revalidatePath(`/platform/administradoras/${administradoraId}`);

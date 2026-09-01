@@ -67,6 +67,9 @@ export type GrupoConsorcio = {
   modalidade_comissao_id?: string | null;
   taxa_administrativa_percentual: number | null;
   fundo_reserva_percentual: number | null;
+  tipo_reajuste_anual?: "FIXO" | "VARIAVEL" | null;
+  reajuste_anual_percentual?: number | null;
+  reajuste_anual_indice?: string | null;
   seguro_habilitado: boolean;
   seguro_percentual: number | null;
   seguro_valor: number | null;

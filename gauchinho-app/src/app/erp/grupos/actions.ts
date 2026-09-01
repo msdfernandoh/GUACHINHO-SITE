@@ -36,6 +36,16 @@ function parseCreditos(formData: FormData): number[] {
   return parseBatchCotasInput(String(formData.get("creditos") ?? ""));
 }
 
+function parseReajusteAnual(formData: FormData) {
+  const tipo = String(formData.get("tipo_reajuste_anual") ?? "").trim().toUpperCase();
+  const percentual = Number(String(formData.get("reajuste_anual_percentual") ?? "").replace(",", "."));
+  const indice = String(formData.get("reajuste_anual_indice") ?? "").trim();
+  if (!(["FIXO", "VARIAVEL"] as string[]).includes(tipo)) throw new Error("Informe se o reajuste anual é fixo ou variável.");
+  if (tipo === "FIXO" && (!Number.isFinite(percentual) || percentual <= 0 || percentual > 100)) throw new Error("Informe o percentual anual fixo entre 0 e 100.");
+  if (tipo === "VARIAVEL" && !indice) throw new Error("Informe o nome do índice ou alíquota do reajuste variável.");
+  return { tipo, percentual: tipo === "FIXO" ? percentual : null, indice: tipo === "VARIAVEL" ? indice : null };
+}
+
 export async function salvarGrupoLocalAction(
   _previous: GroupActionState,
   formData: FormData,
@@ -59,6 +69,7 @@ export async function salvarGrupoLocalAction(
         message: "Administradora, número, tipo e data da primeira assembleia são obrigatórios.",
       };
     const db = await createClient();
+    const reajusteAnual = parseReajusteAnual(formData);
     const percentuaisReduzidos = formData.get("modalidade_reduzida_habilitada") === "on"
       ? parsePercentuaisReduzidos(formData)
       : [];
@@ -184,8 +195,18 @@ export async function salvarGrupoLocalAction(
       p_chave_idempotencia: grupoCreateIdempotencyKey({ empresaId, administradoraId, tipoId, codigo }),
     });
     if (error) throw new Error(error.message);
-    const grupoSalvoId = String((submitted as { grupo_id?: string } | null)?.grupo_id ?? id ?? "");
+    const resultadoSubmissao = submitted as { id?: string; grupo_id?: string } | null;
+    const grupoSalvoId = String(resultadoSubmissao?.grupo_id ?? id ?? "");
     if (grupoSalvoId) {
+      const { error: reajusteError } = await db.rpc("rpc_salvar_reajuste_anual_grupo", {
+        p_grupo_id: grupoSalvoId,
+        p_tipo: reajusteAnual.tipo,
+        p_percentual: reajusteAnual.percentual,
+        p_indice: reajusteAnual.indice,
+        p_empresa_id: empresaId,
+        p_solicitacao_id: resultadoSubmissao?.id ?? null,
+      });
+      if (reajusteError) throw new Error(reajusteError.message);
       const { data: grupoSalvo } = await db
         .from("grupos_consorcio")
         .select("origem_governanca,empresa_origem_id")
@@ -213,6 +234,7 @@ export async function salvarGrupoLocalAction(
     }
     revalidatePath("/erp/grupos");
     if (grupoSalvoId) revalidatePath(`/erp/grupos/${grupoSalvoId}`);
+    revalidatePath("/grupos");
     return {
       status: "SUCCESS",
       message: id

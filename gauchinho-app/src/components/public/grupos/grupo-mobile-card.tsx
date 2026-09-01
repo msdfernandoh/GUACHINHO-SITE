@@ -11,6 +11,7 @@ import { GrupoRowAdjustments } from "@/components/public/grupos/grupo-row-adjust
 import { GrupoPrazoCell } from "@/components/public/grupos/grupo-row";
 import { createGrupoLinhaHandlers, useGrupoLinhaCalculo } from "@/components/public/grupos/use-grupo-linha";
 import { GrupoEmbutidoSelect, GrupoRecursoProprioCell } from "@/components/public/grupos/grupo-lance-cells";
+import { descricaoReajusteAnual } from "@/lib/grupos/reajuste-anual";
 
 type Props = {
   grupo: GrupoConsorcio;
@@ -30,6 +31,7 @@ export function GrupoMobileCard({ grupo, cotas, modalidades, config, onChange }:
   });
   const pctMinRecurso = modAtiva ? Number(modAtiva.percentual_recurso_proprio_minimo) : 0;
   const handlers = createGrupoLinhaHandlers(config, onChange, mods, pctMinRecurso);
+  const reajusteAnual = descricaoReajusteAnual(grupo);
 
   return (
     <article
@@ -41,6 +43,7 @@ export function GrupoMobileCard({ grupo, cotas, modalidades, config, onChange }:
       <div className="flex flex-wrap items-start justify-between gap-3 p-4">
         <div>
           <p className="text-lg font-semibold text-amber-400">Grupo {grupo.codigo_grupo}</p>
+          {reajusteAnual ? <p className="mt-1 text-[11px] font-medium text-zinc-300">{reajusteAnual}</p> : null}
           {grupo.aguardando_novas_vagas ? (
             <span className="mt-1 inline-flex rounded-full bg-sky-500/15 px-2 py-0.5 text-[10px] font-semibold text-sky-200">
               Aguardando novas vagas

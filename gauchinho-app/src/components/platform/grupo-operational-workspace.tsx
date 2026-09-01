@@ -216,6 +216,9 @@ export function GrupoOperationalWorkspace({
   const [assembleiaLimite, setAssembleiaLimite] = useState(
     grupo.assembleia_limite_parcela_reduzida ? String(grupo.assembleia_limite_parcela_reduzida) : "",
   );
+  const [tipoReajuste, setTipoReajuste] = useState<"" | "FIXO" | "VARIAVEL">(
+    grupo.tipo_reajuste_anual ?? "",
+  );
 
   const prontidao: GrupoProntidaoResult = validateGrupoProntidao(grupo);
 
@@ -652,6 +655,23 @@ export function GrupoOperationalWorkspace({
               </label>
               <input name="fundo_reserva_percentual" defaultValue={grupo.fundo_reserva_percentual ?? ""} placeholder="Ex: 2.00" className={inputStyle} />
             </div>
+
+            <div>
+              <label className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">Reajuste anual *</label>
+              <select name="tipo_reajuste_anual" value={tipoReajuste} onChange={(event) => setTipoReajuste(event.target.value as "" | "FIXO" | "VARIAVEL")} className={inputStyle} required>
+                <option value="">Selecione…</option><option value="FIXO">Fixo</option><option value="VARIAVEL">Variável</option>
+              </select>
+            </div>
+
+            {tipoReajuste === "FIXO" ? <div>
+              <label className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">Percentual anual (%) *</label>
+              <input name="reajuste_anual_percentual" inputMode="decimal" defaultValue={grupo.reajuste_anual_percentual ?? ""} placeholder="Ex.: 6" className={inputStyle} required />
+            </div> : null}
+
+            {tipoReajuste === "VARIAVEL" ? <div>
+              <label className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">Nome do índice / alíquota *</label>
+              <input name="reajuste_anual_indice" defaultValue={grupo.reajuste_anual_indice ?? ""} placeholder="Ex.: INCC, IPCA" className={inputStyle} required />
+            </div> : null}
 
             <div>
               <label className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">

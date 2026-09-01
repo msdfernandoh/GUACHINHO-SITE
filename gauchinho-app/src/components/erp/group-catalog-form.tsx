@@ -21,6 +21,9 @@ type Group = {
   data_primeira_assembleia?: string | null;
   taxa_administrativa_percentual?: number | null;
   fundo_reserva_percentual?: number | null;
+  tipo_reajuste_anual?: "FIXO" | "VARIAVEL" | null;
+  reajuste_anual_percentual?: number | null;
+  reajuste_anual_indice?: string | null;
   seguro_percentual?: number | null;
   permite_lance_embutido?: boolean;
   percentual_lance_embutido?: number | null;
@@ -86,6 +89,9 @@ export function GroupCatalogForm({
     return [String(grupo?.percentual_parcela_reduzida ?? 60)];
   });
   const [prazoTotal, setPrazoTotal] = useState(grupo?.prazo_total ? String(grupo.prazo_total) : "");
+  const [tipoReajuste, setTipoReajuste] = useState<"" | "FIXO" | "VARIAVEL">(
+    grupo?.tipo_reajuste_anual ?? (grupo?.id ? "" : "FIXO"),
+  );
   const [regraIntegralizacao, setRegraIntegralizacao] = useState<"" | "CONTEMPLACAO" | "ASSEMBLEIA">(
     grupo?.regra_integralizacao_parcela_reduzida ?? (grupo?.id ? "" : "CONTEMPLACAO"),
   );
@@ -258,6 +264,23 @@ export function GroupCatalogForm({
           </span>
         </label>
       </div>
+
+      <section className="space-y-3 rounded-xl border border-amber-200 bg-amber-50/60 p-4 dark:border-amber-900 dark:bg-amber-950/20">
+        <div><h3 className="text-sm font-bold text-slate-900 dark:text-white">Reajuste anual</h3><p className="text-xs text-slate-600 dark:text-slate-400">Regra informativa aplicada ao grupo e exibida no catálogo do site.</p></div>
+        <div className="grid gap-4 md:grid-cols-2">
+          <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">Tipo de reajuste
+            <select className={field} name="tipo_reajuste_anual" value={tipoReajuste} onChange={(event) => setTipoReajuste(event.target.value as "" | "FIXO" | "VARIAVEL")} disabled={readonly} required>
+              <option value="">Selecione…</option><option value="FIXO">Fixo</option><option value="VARIAVEL">Variável</option>
+            </select>
+          </label>
+          {tipoReajuste === "FIXO" ? <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">Percentual anual (%)
+            <input className={field} name="reajuste_anual_percentual" inputMode="decimal" defaultValue={grupo?.reajuste_anual_percentual ?? ""} placeholder="Ex.: 6" disabled={readonly} required />
+          </label> : null}
+          {tipoReajuste === "VARIAVEL" ? <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">Nome do índice / alíquota
+            <input className={field} name="reajuste_anual_indice" defaultValue={grupo?.reajuste_anual_indice ?? ""} placeholder="Ex.: INCC, IPCA" disabled={readonly} required />
+          </label> : null}
+        </div>
+      </section>
 
       <div className="space-y-4 rounded-xl border border-blue-200 bg-blue-50/60 p-4 dark:border-blue-900 dark:bg-blue-950/20">
         <div>

@@ -1638,3 +1638,14 @@ competência em uma operação financeira idempotente.
 
 Relatório:
 `docs/relatorios-fases/FASE-197-PAINEL-MENSAL-COMISSOES-EMPRESA.md`.
+
+### Evolução operacional 200 — reajuste anual canônico dos grupos
+
+Cada grupo pode declarar reajuste anual fixo, com percentual, ou variável, com
+nome do índice/alíquota. A constraint mantém os formatos mutuamente exclusivos;
+grupos legados continuam sem regra até edição explícita. ERP e Platform editam
+o mesmo dado, respeitando a homologação de alterações globais, e o catálogo
+público apresenta a condição sem recalcular automaticamente créditos antigos.
+
+Relatório:
+`docs/relatorios-fases/FASE-200-REAJUSTE-ANUAL-CANONICO-GRUPOS.md`.
