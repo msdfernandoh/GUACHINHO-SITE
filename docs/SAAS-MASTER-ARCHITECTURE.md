@@ -1758,3 +1758,20 @@ avulso ou carta contemplada continuam iguais.
 
 Relatório:
 `docs/relatorios-fases/FASE-202-PROPOSTA-PDF-RACON-CAMPANHA.md`.
+
+### Evolução operacional 203 — repasse canônico, vínculo atômico e titular CNPJ
+
+A conciliação do PDF registra a baixa exata por linha em
+`erp_repasse_item_baixas`, livro append-only ligado ao recebimento e à previsão.
+A troca de título, a reversão do anterior, o complemento do valor do relatório
+e o recálculo das comissões da empresa e dos participantes ocorrem na mesma
+transação. A view `erp_repasse_item_conciliacao_canonica` é a leitura unificada
+para conferência entre valor do PDF, valor vinculado e previsão.
+
+Para contratos de pessoa jurídica, `vendas.cliente_nome` passa a representar o
+titular contratual pela razão social; o nome da pessoa física continua no
+snapshot como responsável. O trigger de normalização impede que novas
+conversões voltem a divergir entre Repasse, Comissões e Minhas comissões.
+
+Relatório:
+`docs/relatorios-fases/FASE-203-REPASSE-CANONICO-VINCULO-ATOMICO-CNPJ.md`.

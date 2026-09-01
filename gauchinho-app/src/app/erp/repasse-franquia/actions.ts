@@ -122,18 +122,14 @@ export async function vincularItemRepasseManualAction(
       p_idempotency_key: `corrigir-vinculo:${itemId}:${previsaoId}`,
     });
     if (error) throw new Error(error.message);
-    const { data: completed, error: completeError } = await db.rpc("rpc_completar_baixa_item_repasse", {
-      p_empresa_id: empresaId,
-      p_item_id: itemId,
-      p_idempotency_key: `completar-baixa:${itemId}:${previsaoId}`,
-    });
-    if (completeError) throw new Error(completeError.message);
     revalidatePath("/erp/repasse-franquia");
     revalidatePath("/erp/comissoes");
     revalidatePath("/erp/minhas-comissoes");
-    const result = data as { alterado?: boolean; baixa_transferida?: number } | null;
-    const completion = completed as { valor_vinculado?: number; complemento?: number } | null;
-    return { ok: true, message: `Vínculo salvo. Total baixado neste relatório: ${Number(completion?.valor_vinculado ?? result?.baixa_transferida ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}${Number(completion?.complemento ?? 0) > 0 ? " (saldo complementar incluído)." : "."}` };
+    const result = data as { valor_vinculado?: number; valor_relatorio?: number } | null;
+    return {
+      ok: true,
+      message: `Vínculo, baixa e comissões sincronizados. Total desta linha: ${Number(result?.valor_vinculado ?? result?.valor_relatorio ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}.`,
+    };
   } catch (error) {
     return { ok: false, message: error instanceof Error ? error.message : "Erro ao vincular a linha." };
   }
