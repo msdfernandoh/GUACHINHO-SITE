@@ -25,6 +25,8 @@ A auditoria confirmou para Racon Sinop:
 - O host canônico foi alinhado para `www.raconsinop.com.br`, que já é o destino
   principal configurado na Vercel, eliminando o ciclo de redirecionamento entre
   `www` e o domínio raiz.
+- O redirecionamento canônico fica sob responsabilidade exclusiva da Vercel;
+  ele foi desativado no runtime Next.js para não duplicar a política do provedor.
 - O usuário passa a operar como parceiro dentro do ERP da Gauchinho; o tenant
   anterior fica suspenso e preservado para auditoria.
 
