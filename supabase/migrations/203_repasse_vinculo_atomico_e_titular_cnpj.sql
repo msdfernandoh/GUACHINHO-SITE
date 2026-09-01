@@ -96,7 +96,6 @@ BEGIN
         WHEN v_liquidado + 0.009 >= valor_previsto THEN 'liquidada'
         ELSE 'parcialmente_liquidada'
       END,
-      liquidado_em = CASE WHEN v_liquidado + 0.009 >= valor_previsto THEN COALESCE(liquidado_em, now()) ELSE NULL END,
       updated_at = now()
   WHERE id = p_previsao_id;
 
