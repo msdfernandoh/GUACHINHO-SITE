@@ -23,6 +23,7 @@ export type PartnerPublicViewModel = {
   nome_site: string;
   descricao: string;
   template_codigo: string;
+  modelo_identidade: Record<string, unknown>;
   status_publicacao: string;
   canal_principal: string;
   whatsapp_modo: string;
@@ -233,6 +234,12 @@ export function buildPartnerPublicViewModel(input: {
     nome_site,
     descricao: sanitizePublicText(input.site.descricao, 2000),
     template_codigo: input.site.template_codigo,
+    modelo_identidade: {
+      ...((b.modelo_identidade && typeof b.modelo_identidade === "object" ? b.modelo_identidade : {}) as Record<string, unknown>),
+      cor_primaria,
+      cor_secundaria,
+      cor_destaque,
+    },
     status_publicacao: input.site.status_publicacao,
     canal_principal: input.site.canal_principal,
     whatsapp_modo: input.site.whatsapp_modo,

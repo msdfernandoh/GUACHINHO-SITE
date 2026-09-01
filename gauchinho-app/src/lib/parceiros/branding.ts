@@ -18,6 +18,7 @@ export type SiteBranding = {
   email?: string | null;
   instagram?: string | null;
   redes?: Record<string, string>;
+  modelo_identidade?: Record<string, unknown>;
 };
 
 export type SiteSeo = {

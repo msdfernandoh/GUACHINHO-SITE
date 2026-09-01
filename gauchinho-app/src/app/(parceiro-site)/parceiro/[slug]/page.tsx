@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { notFound, permanentRedirect } from "next/navigation";
 import { InstitucionalV1Site } from "@/components/parceiro-site/institucional-v1";
+import { RaconInspiredHome, type RaconTemplateIdentidade } from "@/components/public/templates/racon-inspired-home";
 import { FASE3_PARCEIRO_PUBLIC_SITE_ENABLED } from "@/lib/parceiros/constants";
 import { robotsForPartnerStatus } from "@/lib/parceiros/public-site-gates";
 import { resolvePartnerPublicRequest } from "@/lib/parceiros/public-site-loader";
@@ -83,9 +84,18 @@ export default async function ParceiroPublicPage({ params }: PageProps) {
     permanentRedirect(result.redirect.location);
   }
 
-  if (result.view.template_codigo !== "institucional_v1") {
-    notFound();
+  if (result.view.template_codigo === "racon_inspired") {
+    return (
+      <RaconInspiredHome
+        empresaNome={result.view.nome_site}
+        logoUrl={result.view.logo_url}
+        identidade={result.view.modelo_identidade as RaconTemplateIdentidade}
+        telefoneContato={result.view.contato.telefone ?? undefined}
+        whatsappContato={result.view.contato.whatsapp ?? undefined}
+        footerCopyright={result.view.tenant_identificacao}
+      />
+    );
   }
-
-  return <InstitucionalV1Site vm={result.view} />;
+  if (result.view.template_codigo === "institucional_v1") return <InstitucionalV1Site vm={result.view} />;
+  notFound();
 }

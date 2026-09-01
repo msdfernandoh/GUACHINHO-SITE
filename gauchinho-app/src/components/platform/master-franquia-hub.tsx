@@ -18,6 +18,7 @@ import {
   revogarAdministradoraEmpresaPlatformAction,
   criarSiteParceiroEmpresaPlatformAction,
   salvarIdentidadeSiteParceiroPlatformAction,
+  converterMasterEmParceiraPlatformAction,
   type PlatformFormState,
 } from "@/app/platform/empresas/actions";
 
@@ -170,6 +171,7 @@ export type ParceiroSiteDetail = {
   status_publicacao: string;
   ativo: boolean;
   template_codigo?: string;
+  site_modelo_id?: string | null;
   whatsapp?: string | null;
   branding?: {
     identidade_visual_modo?: "HERDAR_MASTER" | "PERSONALIZADA";
@@ -247,6 +249,14 @@ export type AuditoriaHubItem = {
   created_at: string;
 };
 
+export type MasterOptionHub = {
+  id: string;
+  nome: string;
+  slug: string;
+  status: string;
+  ativo: boolean;
+};
+
 const initial: PlatformFormState = { status: "IDLE", message: "" };
 
 export function MasterFranquiaHub({
@@ -264,6 +274,7 @@ export function MasterFranquiaHub({
   modelosDisponiveis = [],
   adminsDisponiveis = [],
   historico = [],
+  mastersDisponiveis = [],
 }: {
   empresa: EmpresaHubDetail;
   assinatura: AssinaturaHubDetail | null;
@@ -279,6 +290,7 @@ export function MasterFranquiaHub({
   modelosDisponiveis: ModeloOptionHub[];
   adminsDisponiveis: AdminOptionHub[];
   historico: AuditoriaHubItem[];
+  mastersDisponiveis: MasterOptionHub[];
 }) {
   const [tab, setTab] = useState<
     | "geral"
@@ -300,6 +312,7 @@ export function MasterFranquiaHub({
   const [modalTrocarModelo, setModalTrocarModelo] = useState(false);
   const [modalConcederAdmin, setModalConcederAdmin] = useState(false);
   const [modalNovoSiteParceiro, setModalNovoSiteParceiro] = useState(false);
+  const [modalConverterMaster, setModalConverterMaster] = useState(false);
 
   // Modais de Parceiro
   const [siteParaEditar, setSiteParaEditar] = useState<{ parceiroNome: string; site: ParceiroSiteDetail } | null>(null);
@@ -354,6 +367,9 @@ export function MasterFranquiaHub({
 
   // State para novo site de parceiro
   const [novoSiteModoIdentidade, setNovoSiteModoIdentidade] = useState<"HERDAR_MASTER" | "PERSONALIZADA">("HERDAR_MASTER");
+  const [novoSiteNovaOrganizacao, setNovoSiteNovaOrganizacao] = useState(parceiros.length === 0);
+  const [novoSiteModeloId, setNovoSiteModeloId] = useState(modelosDisponiveis[0]?.id || "");
+  const [masterOrigemId, setMasterOrigemId] = useState(mastersDisponiveis[0]?.id || "");
 
   // Actions
   const [stateDados, actionDados, isPendingDados] = useActionState(atualizarDadosEmpresaPlatformAction, initial);
@@ -367,6 +383,7 @@ export function MasterFranquiaHub({
   const [stateRevogarAdmin, actionRevogarAdmin, isPendingRevogarAdmin] = useActionState(revogarAdministradoraEmpresaPlatformAction, initial);
   const [stateSiteParceiro, actionSiteParceiro, isPendingSiteParceiro] = useActionState(criarSiteParceiroEmpresaPlatformAction, initial);
   const [stateIdentidadeSite, actionIdentidadeSite, isPendingIdentidadeSite] = useActionState(salvarIdentidadeSiteParceiroPlatformAction, initial);
+  const [stateConverterMaster, actionConverterMaster, isPendingConverterMaster] = useActionState(converterMasterEmParceiraPlatformAction, initial);
 
   // Cálculos de Entitlements & Limites
   const planoAtual = assinatura?.plano;
@@ -1398,13 +1415,14 @@ export function MasterFranquiaHub({
               </p>
             </div>
             {planoAtual?.permite_sites_parceiros && (
-              <button
-                type="button"
-                onClick={() => setModalNovoSiteParceiro(true)}
-                className="rounded-lg bg-cyan-700 px-4 py-2 font-bold text-white shadow hover:bg-cyan-800"
-              >
-                + Novo Site de Parceiro
-              </button>
+              <div className="flex flex-wrap gap-2">
+                <button type="button" onClick={() => setModalConverterMaster(true)} className="rounded-lg border border-cyan-700 px-4 py-2 font-bold text-cyan-800 hover:bg-cyan-50 dark:text-cyan-300">
+                  Converter Master em Parceira
+                </button>
+                <button type="button" onClick={() => setModalNovoSiteParceiro(true)} className="rounded-lg bg-cyan-700 px-4 py-2 font-bold text-white shadow hover:bg-cyan-800">
+                  + Organização e Site de Parceiro
+                </button>
+              </div>
             )}
           </div>
 
@@ -1418,6 +1436,11 @@ export function MasterFranquiaHub({
               }`}
             >
               {stateIdentidadeSite.message}
+            </p>
+          )}
+          {stateConverterMaster.message && (
+            <p role="status" className={`rounded-lg p-3 text-xs font-bold ${stateConverterMaster.status === "SUCCESS" ? "bg-emerald-50 text-emerald-800" : "bg-rose-50 text-rose-800"}`}>
+              {stateConverterMaster.message}
             </p>
           )}
 
@@ -1450,7 +1473,7 @@ export function MasterFranquiaHub({
                         <tr key={s.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40">
                           <td className="p-3 font-bold text-slate-900 dark:text-white">{p.nome}</td>
                           <td className="p-3 font-semibold text-slate-700 dark:text-slate-300">
-                            {branding?.modelo?.nome || "Racon Inspired"}
+                            {String((s.branding as Record<string, unknown> | undefined)?.site_modelo_nome ?? (isPersonalizada ? s.template_codigo : branding?.modelo?.nome) ?? "Institucional v1")}
                           </td>
                           <td className="p-3 text-center">
                             <span
@@ -1807,6 +1830,45 @@ export function MasterFranquiaHub({
       )}
 
       {/* Modal: Novo Site de Parceiro */}
+      {modalConverterMaster && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-xl space-y-4 rounded-2xl border border-slate-200 bg-white p-6 text-xs shadow-2xl dark:border-slate-800 dark:bg-slate-900">
+            <div>
+              <h3 className="text-base font-bold text-slate-900 dark:text-white">Converter Master em organização parceira</h3>
+              <p className="mt-1 text-slate-500">A parceira passará a enviar leads e propostas para o ERP de <strong>{empresa.nome_fantasia}</strong>. O cadastro original será preservado suspenso para auditoria.</p>
+            </div>
+            <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-amber-900">
+              A conversão automática é bloqueada se a origem já possuir leads, propostas, contratações, vendas ou caixa. Nenhum fato é movido silenciosamente entre tenants.
+            </div>
+            <form action={async (formData) => { await actionConverterMaster(formData); setModalConverterMaster(false); }} className="space-y-3">
+              <input type="hidden" name="empresa_destino_id" value={empresa.id} />
+              <div>
+                <label className="font-bold">Master que será convertida:</label>
+                <select name="empresa_origem_id" required value={masterOrigemId} onChange={(event) => setMasterOrigemId(event.target.value)} className="mt-1 w-full rounded-lg border border-slate-300 p-2.5 dark:border-slate-700 dark:bg-slate-800">
+                  <option value="">Selecione…</option>
+                  {mastersDisponiveis.map((master) => <option key={master.id} value={master.id}>{master.nome} — {master.status}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="font-bold">Modelo do portal parceiro:</label>
+                <select name="site_modelo_id" defaultValue="" className="mt-1 w-full rounded-lg border border-slate-300 p-2.5 dark:border-slate-700 dark:bg-slate-800">
+                  <option value="">Manter o modelo da Master de origem</option>
+                  {modelosDisponiveis.map((modelo) => <option key={modelo.id} value={modelo.id}>{modelo.nome} — v{modelo.versao}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="font-bold">Confirmação:</label>
+                <input name="confirmacao" required placeholder="Digite: CONVERTER PARA PARCEIRO" className="mt-1 w-full rounded-lg border border-slate-300 p-2.5 font-mono dark:border-slate-700 dark:bg-slate-800" />
+              </div>
+              <div className="flex justify-end gap-2 border-t pt-3">
+                <button type="button" onClick={() => setModalConverterMaster(false)} className="rounded-lg border px-4 py-2 font-bold">Cancelar</button>
+                <button type="submit" disabled={isPendingConverterMaster || !masterOrigemId} className="rounded-lg bg-cyan-700 px-4 py-2 font-bold text-white disabled:opacity-50">{isPendingConverterMaster ? "Convertendo…" : "Converter e usar este ERP"}</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {modalNovoSiteParceiro && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm">
           <div className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl space-y-4 dark:border-slate-800 dark:bg-slate-900 text-xs">
@@ -1821,17 +1883,22 @@ export function MasterFranquiaHub({
               <input type="hidden" name="empresa_id" value={empresa.id} />
               <div>
                 <label className="font-bold text-slate-700 dark:text-slate-300">Organização Parceira:</label>
-                <select
-                  name="organizacao_parceira_id"
-                  required
-                  className="mt-1 w-full rounded-lg border border-slate-300 p-2.5 font-bold dark:border-slate-700 dark:bg-slate-800"
-                >
-                  {parceiros.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.nome}
-                    </option>
-                  ))}
-                </select>
+                <div className="mt-1 flex gap-2">
+                  <button type="button" onClick={() => setNovoSiteNovaOrganizacao(false)} className={`rounded-lg border px-3 py-2 font-bold ${!novoSiteNovaOrganizacao ? "border-cyan-600 bg-cyan-50 text-cyan-800" : "border-slate-300"}`} disabled={parceiros.length === 0}>Selecionar existente</button>
+                  <button type="button" onClick={() => setNovoSiteNovaOrganizacao(true)} className={`rounded-lg border px-3 py-2 font-bold ${novoSiteNovaOrganizacao ? "border-cyan-600 bg-cyan-50 text-cyan-800" : "border-slate-300"}`}>Cadastrar nova</button>
+                </div>
+                {novoSiteNovaOrganizacao ? (
+                  <div className="mt-2 grid grid-cols-2 gap-2">
+                    <input name="nova_organizacao_nome" required placeholder="Nome da organização" className="rounded-lg border border-slate-300 p-2.5 dark:border-slate-700 dark:bg-slate-800" />
+                    <input name="nova_organizacao_cnpj" placeholder="CNPJ (opcional)" className="rounded-lg border border-slate-300 p-2.5 dark:border-slate-700 dark:bg-slate-800" />
+                    <input name="whatsapp" required placeholder="WhatsApp da organização" className="col-span-2 rounded-lg border border-slate-300 p-2.5 dark:border-slate-700 dark:bg-slate-800" />
+                  </div>
+                ) : (
+                  <select name="organizacao_parceira_id" required className="mt-2 w-full rounded-lg border border-slate-300 p-2.5 font-bold dark:border-slate-700 dark:bg-slate-800">
+                    <option value="">Selecione…</option>
+                    {parceiros.map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}
+                  </select>
+                )}
               </div>
 
               <div>
@@ -1895,7 +1962,16 @@ export function MasterFranquiaHub({
                 </div>
 
                 {novoSiteModoIdentidade === "PERSONALIZADA" && (
-                  <div className="pt-2 grid grid-cols-2 gap-2">
+                  <div className="space-y-3 pt-2">
+                    <div>
+                      <label className="text-[11px] font-bold text-slate-600 dark:text-slate-400">Modelo publicado:</label>
+                      <select name="site_modelo_id" required value={novoSiteModeloId} onChange={(event) => setNovoSiteModeloId(event.target.value)} className="mt-1 w-full rounded border border-slate-300 p-2 text-xs font-bold dark:border-slate-700 dark:bg-slate-800">
+                        <option value="">Selecione um modelo…</option>
+                        {modelosDisponiveis.map((modelo) => <option key={modelo.id} value={modelo.id}>{modelo.nome} — v{modelo.versao}</option>)}
+                      </select>
+                      <p className="mt-1 text-[10px] text-slate-500">Cópias publicadas mantêm a família visual do modelo de origem.</p>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
                     <div>
                       <label className="text-[11px] font-bold text-slate-600 dark:text-slate-400">Logo Própria (URL):</label>
                       <input
@@ -1911,6 +1987,7 @@ export function MasterFranquiaHub({
                         placeholder="#0A1628"
                         className="mt-1 w-full rounded border border-slate-300 p-2 text-xs font-mono dark:border-slate-700 dark:bg-slate-800"
                       />
+                    </div>
                     </div>
                   </div>
                 )}
@@ -1968,6 +2045,15 @@ export function MasterFranquiaHub({
             >
               <input type="hidden" name="site_id" value={siteParaEditar.site.id} />
               <input type="hidden" name="empresa_id" value={empresa.id} />
+
+              <div>
+                <label className="font-bold text-slate-700 dark:text-slate-300">Modelo publicado deste portal:</label>
+                <select name="site_modelo_id" defaultValue={siteParaEditar.site.site_modelo_id ?? modelosDisponiveis[0]?.id ?? ""} required className="mt-1 w-full rounded-lg border border-slate-300 p-2.5 font-bold dark:border-slate-700 dark:bg-slate-800">
+                  <option value="">Selecione um modelo…</option>
+                  {modelosDisponiveis.map((modelo) => <option key={modelo.id} value={modelo.id}>{modelo.nome} — v{modelo.versao}</option>)}
+                </select>
+                <p className="mt-1 text-[10px] text-slate-500">Usado quando o modo “Personalizar este site” estiver selecionado.</p>
+              </div>
 
               <div className="rounded-xl border border-slate-200 p-3.5 bg-slate-50 dark:border-slate-800 dark:bg-slate-950/40 space-y-2">
                 <label className="font-bold text-slate-800 dark:text-slate-200 block text-xs">

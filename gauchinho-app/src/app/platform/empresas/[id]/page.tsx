@@ -17,6 +17,7 @@ import {
   type ModeloOptionHub,
   type AdminOptionHub,
   type AuditoriaHubItem,
+  type MasterOptionHub,
 } from "@/components/platform/master-franquia-hub";
 
 export default async function MasterFranquiaDetailPage({
@@ -44,6 +45,7 @@ export default async function MasterFranquiaDetailPage({
     modelosDisponiveisRes,
     adminsDisponiveisRes,
     auditoriaRes,
+    mastersDisponiveisRes,
   ] = await Promise.all([
     db.from("empresas").select("*").eq("id", id).maybeSingle(),
     db
@@ -83,7 +85,7 @@ export default async function MasterFranquiaDetailPage({
       .order("nome", { ascending: true }),
     db
       .from("organizacoes_parceiras")
-      .select("id, nome, status, sites:parceiro_sites(id, slug, nome_site, canal_principal, status_publicacao, ativo, branding, template_codigo)")
+      .select("id, nome, status, sites:parceiro_sites(id, slug, nome_site, canal_principal, status_publicacao, ativo, branding, template_codigo, site_modelo_id)")
       .eq("empresa_id", id),
     db
       .from("erp_modulos_catalogo")
@@ -114,6 +116,11 @@ export default async function MasterFranquiaDetailPage({
       .eq("entidade_id", id)
       .order("created_at", { ascending: false })
       .limit(30),
+    db
+      .from("empresas")
+      .select("id, nome_fantasia, slug, status, ativo")
+      .neq("id", id)
+      .order("nome_fantasia", { ascending: true }),
   ]);
 
   if (!empresaRes.data) {
@@ -296,6 +303,14 @@ export default async function MasterFranquiaDetailPage({
     created_at: h.created_at,
   }));
 
+  const mastersDisponiveis: MasterOptionHub[] = (mastersDisponiveisRes.data ?? []).map((item) => ({
+    id: item.id,
+    nome: item.nome_fantasia,
+    slug: item.slug,
+    status: item.status,
+    ativo: Boolean(item.ativo),
+  }));
+
   return (
     <MasterFranquiaHub
       empresa={empresaData}
@@ -312,6 +327,7 @@ export default async function MasterFranquiaDetailPage({
       modelosDisponiveis={modelosOptions}
       adminsDisponiveis={adminsOptions}
       historico={historicoData}
+      mastersDisponiveis={mastersDisponiveis}
     />
   );
 }

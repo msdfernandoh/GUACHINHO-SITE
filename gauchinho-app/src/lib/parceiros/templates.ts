@@ -3,7 +3,7 @@
  * Sem page builder livre; sem HTML/JS arbitrário persistido.
  */
 
-export type SiteTemplateCodigo = "institucional_v1";
+export type SiteTemplateCodigo = "institucional_v1" | "racon_inspired";
 
 export type SiteTemplateDef = {
   codigo: SiteTemplateCodigo;
@@ -58,6 +58,17 @@ export const SITE_TEMPLATES: Record<SiteTemplateCodigo, SiteTemplateDef> = {
       "menus_allowlist",
       "identificacao_tenant",
     ],
+    exigeIdentificacaoTenant: true,
+  },
+  racon_inspired: {
+    codigo: "racon_inspired",
+    nome: "Racon Inspired",
+    descricao: "Modelo comercial Racon publicado no catálogo SaaS, adaptado ao portal parceiro.",
+    componentes: ["hero", "simulador", "segmentos", "como_funciona", "contato", "rodape_tenant"],
+    estrutura: ["header", "main", "footer"],
+    menusPermitidos: ["INICIO", "CONSORCIO", "SIMULADOR", "GRUPOS", "INDICACAO", "CONTATO"],
+    camposConfiguraveis: ["nome_site", "branding", "whatsapp", "seo"],
+    regrasObrigatorias: ["org_ativa", "modelo_publicado", "identificacao_tenant"],
     exigeIdentificacaoTenant: true,
   },
 };

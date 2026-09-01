@@ -1562,6 +1562,25 @@ comerciais existentes.
 Relatório:
 `docs/relatorios-fases/FASE-183-CORRECAO-FORMALIZACAO-MULTICOTAS-HISTORICO.md`.
 
+## 66. Conversão segura de Master em parceira e modelos publicados — Fase 193
+
+O cadastro de portal parceiro cria a organização no mesmo fluxo quando ela
+ainda não existe. A identidade personalizada seleciona um modelo publicado do
+catálogo SaaS e preserva sua família de renderização pela cadeia canônica
+`modelo_origem_id`; os portais suportam as famílias institucional e Racon sem
+conteúdo executável arbitrário.
+
+Uma Master criada por engano pode ser convertida para organização parceira de
+outra Master e compartilhar seu ERP somente quando não possuir leads,
+propostas, contratações, vendas ou caixa. A operação exige Platform Superadmin e
+confirmação explícita, é transacional, transfere domínio e responsável para o
+escopo parceiro e preserva a empresa de origem suspensa e auditável. A presença
+de qualquer fato bloqueia a automação e exige migração assistida específica;
+fatos nunca mudam de tenant silenciosamente.
+
+Relatório:
+`docs/relatorios-fases/FASE-193-MASTER-PARA-PARCEIRO-ERP-COMPARTILHADO-MODELOS.md`.
+
 
 
 

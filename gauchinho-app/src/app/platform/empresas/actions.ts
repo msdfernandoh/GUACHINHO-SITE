@@ -479,6 +479,8 @@ export async function criarSiteParceiroEmpresaPlatformAction(
 
   const empresaId = String(formData.get("empresa_id") ?? "").trim();
   const orgId = String(formData.get("organizacao_parceira_id") ?? "").trim();
+  const novaOrganizacaoNome = String(formData.get("nova_organizacao_nome") ?? "").trim() || null;
+  const novaOrganizacaoCnpj = String(formData.get("nova_organizacao_cnpj") ?? "").trim() || null;
   const slug = String(formData.get("slug") ?? "").trim();
   const nomeSite = String(formData.get("nome_site") ?? "").trim();
   const whatsapp = String(formData.get("whatsapp") ?? "").trim() || null;
@@ -488,15 +490,21 @@ export async function criarSiteParceiroEmpresaPlatformAction(
   const corSecundaria = String(formData.get("cor_secundaria") ?? "").trim() || null;
   const corDestaque = String(formData.get("cor_destaque") ?? "").trim() || null;
   const logoUrl = String(formData.get("logo_url") ?? "").trim() || null;
+  const siteModeloId = String(formData.get("site_modelo_id") ?? "").trim() || null;
 
-  if (!empresaId || !orgId || !slug || !nomeSite) {
-    return { status: "ERROR", message: "Empresa, Organização, Slug e Nome do Site são obrigatórios." };
+  if (!empresaId || (!orgId && !novaOrganizacaoNome) || !slug || !nomeSite) {
+    return { status: "ERROR", message: "Empresa, organização (existente ou nova), slug e nome do site são obrigatórios." };
+  }
+  if (modoIdentidade === "PERSONALIZADA" && !siteModeloId) {
+    return { status: "ERROR", message: "Selecione um modelo publicado para personalizar o site." };
   }
 
   const db = await createClient();
-  const { data, error } = await db.rpc("rpc_platform_criar_site_parceiro", {
+  const { data, error } = await db.rpc("rpc_platform_criar_organizacao_site_parceiro", {
     p_empresa_id: empresaId,
-    p_organizacao_parceira_id: orgId,
+    p_organizacao_parceira_id: orgId || null,
+    p_nova_organizacao_nome: novaOrganizacaoNome,
+    p_nova_organizacao_cnpj: novaOrganizacaoCnpj,
     p_slug: slug,
     p_nome_site: nomeSite,
     p_whatsapp: whatsapp,
@@ -506,13 +514,43 @@ export async function criarSiteParceiroEmpresaPlatformAction(
     p_cor_secundaria: corSecundaria,
     p_cor_destaque: corDestaque,
     p_logo_url: logoUrl,
+    p_site_modelo_id: siteModeloId,
   });
 
   if (error) {
     return { status: "ERROR", message: error.message };
   }
 
-  return { status: "SUCCESS", message: "Site de parceiro criado com sucesso.", data };
+  revalidatePath(`/platform/empresas/${empresaId}`);
+  return { status: "SUCCESS", message: novaOrganizacaoNome ? "Organização e site de parceiro criados com sucesso." : "Site de parceiro criado com sucesso.", data };
+}
+
+export async function converterMasterEmParceiraPlatformAction(
+  _prev: PlatformFormState,
+  formData: FormData,
+): Promise<PlatformFormState> {
+  if (!(await isPlatformSuperadmin())) {
+    return { status: "ERROR", message: "Acesso restrito ao Platform Superadmin." };
+  }
+  const empresaOrigemId = String(formData.get("empresa_origem_id") ?? "").trim();
+  const empresaDestinoId = String(formData.get("empresa_destino_id") ?? "").trim();
+  const siteModeloId = String(formData.get("site_modelo_id") ?? "").trim() || null;
+  const confirmacao = String(formData.get("confirmacao") ?? "").trim();
+  if (!empresaOrigemId || !empresaDestinoId) {
+    return { status: "ERROR", message: "Selecione a Master de origem e a Master anfitriã." };
+  }
+  const db = await createClient();
+  const { data, error } = await db.rpc("rpc_platform_converter_master_em_parceira", {
+    p_empresa_origem_id: empresaOrigemId,
+    p_empresa_destino_id: empresaDestinoId,
+    p_site_modelo_id: siteModeloId,
+    p_confirmacao: confirmacao,
+  });
+  if (error) return { status: "ERROR", message: error.message };
+  revalidatePath(`/platform/empresas/${empresaDestinoId}`);
+  revalidatePath(`/platform/empresas/${empresaOrigemId}`);
+  revalidatePath("/platform/empresas");
+  return { status: "SUCCESS", message: "Master convertida em parceira. O cadastro original foi preservado suspenso e o ERP anfitrião passou a receber a operação.", data };
 }
 
 export async function salvarIdentidadeSiteParceiroPlatformAction(
@@ -526,6 +564,7 @@ export async function salvarIdentidadeSiteParceiroPlatformAction(
   const siteId = String(formData.get("site_id") ?? "").trim();
   const empresaId = String(formData.get("empresa_id") ?? "").trim();
   const modo = String(formData.get("identidade_visual_modo") ?? "HERDAR_MASTER").trim();
+  const siteModeloId = String(formData.get("site_modelo_id") ?? "").trim() || null;
 
   const logoUrl = String(formData.get("logo_url") ?? "").trim() || null;
   const corPrimaria = String(formData.get("cor_primaria") ?? "").trim() || null;
@@ -564,6 +603,16 @@ export async function salvarIdentidadeSiteParceiroPlatformAction(
   if (error) {
     return { status: "ERROR", message: error.message };
   }
+  if (modo === "PERSONALIZADA") {
+    if (!siteModeloId) return { status: "ERROR", message: "Selecione um modelo publicado para personalizar o site." };
+    const { error: modeloError } = await db.rpc("rpc_platform_definir_modelo_site_parceiro", {
+      p_empresa_id: empresaId,
+      p_site_id: siteId,
+      p_site_modelo_id: siteModeloId,
+    });
+    if (modeloError) return { status: "ERROR", message: modeloError.message };
+  }
+  revalidatePath(`/platform/empresas/${empresaId}`);
 
   return {
     status: "SUCCESS",
