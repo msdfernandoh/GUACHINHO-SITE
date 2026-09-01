@@ -32,6 +32,7 @@ export type PagamentoInput = {
   referenciaDocumento?: string;
   observacoes?: string;
   contaBancariaOrigemId?: string | null;
+  contaBancariaDestinoId?: string | null;
   itens: { previsaoParticipanteId: string; valorLiquidado: ValorMonetario }[];
 };
 
@@ -139,7 +140,7 @@ export async function registrarPagamentoParticipante(input: PagamentoInput) {
     })),
     p_idempotency_key: input.idempotencyKey,
     ...(input.contaBancariaOrigemId
-      ? { p_conta_origem_id: input.contaBancariaOrigemId }
+      ? { p_conta_origem_id: input.contaBancariaOrigemId, p_conta_destino_id: input.contaBancariaDestinoId ?? null }
       : {}),
   };
   const { data, error } = await admin.rpc(rpc, payload);

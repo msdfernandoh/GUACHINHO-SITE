@@ -8,24 +8,42 @@ const dataBr = (data: string) => data.split("-").reverse().join("/");
 const operacao = () => crypto.randomUUID();
 const campo = "rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900";
 
-export default async function FinanceiroCaixaPage() {
+export default async function FinanceiroCaixaPage({ searchParams }: { searchParams?: Promise<{ mes?: string }> }) {
   const { empresaAtiva } = await requireErpRouteAccess("financeiro");
   const db = await createClient();
   const competenciaAtual = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Cuiaba", year: "numeric", month: "2-digit" }).format(new Date()).slice(0, 7);
+  const params = await searchParams;
+  const mes = params?.mes === "todos" || /^\d{4}-(0[1-9]|1[0-2])$/.test(params?.mes ?? "") ? params!.mes! : competenciaAtual;
+  const inicio = mes === "todos" ? null : `${mes}-01`;
+  const fim = mes === "todos" ? null : new Date(Date.UTC(Number(mes.slice(0,4)),Number(mes.slice(5,7)),0)).toISOString().slice(0,10);
+  const movimentosQuery = db.from("financeiro_conta_movimentos").select("id,conta_bancaria_id,tipo,categoria,valor,data_movimento,descricao,comprovante_referencia,created_at").eq("empresa_id", empresaAtiva.id).order("created_at", { ascending: false });
+  if (fim) movimentosQuery.lte("data_movimento", fim);
+  const extratoQuery = db.from("financeiro_socios_extrato").select("*").eq("empresa_id", empresaAtiva.id).order("created_at", { ascending: false }).limit(100);
+  if (inicio && fim) extratoQuery.gte("data_movimento", inicio).lte("data_movimento", fim);
+  const impostosQuery = db.from("comissao_previsoes_franquia").select("competencia,valor_imposto").eq("empresa_id", empresaAtiva.id).neq("status", "cancelada");
+  if (mes !== "todos") impostosQuery.eq("competencia", mes);
   const [contasRes, movimentosRes, sociosRes, extratoRes, instrucoesRes, transferenciasRes, impostosRes] = await Promise.all([
-    db.from("financeiro_contas_saldos").select("*").eq("empresa_id", empresaAtiva.id).eq("ativo", true).order("nome"),
-    db.from("financeiro_conta_movimentos").select("id,conta_bancaria_id,tipo,categoria,valor,data_movimento,descricao,comprovante_referencia,created_at").eq("empresa_id", empresaAtiva.id).order("created_at", { ascending: false }).limit(100),
+    db.from("financeiro_contas_bancarias").select("id,nome,banco,conta_mascarada,tipo_conta,saldo_inicial,ativo").eq("empresa_id", empresaAtiva.id).eq("ativo", true).order("nome"),
+    movimentosQuery,
     db.from("financeiro_socios_saldos").select("*").eq("empresa_id", empresaAtiva.id).order("nome"),
-    db.from("financeiro_socios_extrato").select("*").eq("empresa_id", empresaAtiva.id).order("created_at", { ascending: false }).limit(100),
+    extratoQuery,
     db.from("financeiro_fechamento_socios_instrucoes").select("id,fechamento_id,devedor_socio_id,credor_socio_id,valor_transferencia,descricao,conta_destino_snapshot,fechamento:financeiro_fechamentos_socios(periodo_inicio,periodo_fim)").eq("empresa_id", empresaAtiva.id).order("created_at", { ascending: false }).limit(50),
     db.from("financeiro_transferencias_socios").select("instrucao_id,valor").eq("empresa_id", empresaAtiva.id),
-    db.from("comissao_previsoes_franquia").select("valor_imposto").eq("empresa_id", empresaAtiva.id).eq("competencia", competenciaAtual).neq("status", "cancelada"),
+    impostosQuery,
   ]);
   for (const resposta of [contasRes, movimentosRes, sociosRes, extratoRes, instrucoesRes, transferenciasRes, impostosRes]) {
     if (resposta.error) throw new Error(resposta.error.message);
   }
-  const contas = contasRes.data ?? [];
-  const movimentos = movimentosRes.data ?? [];
+  const movimentosAteFim = movimentosRes.data ?? [];
+  const movimentos = inicio ? movimentosAteFim.filter((item) => item.data_movimento >= inicio) : movimentosAteFim;
+  const contas = (contasRes.data ?? []).map((conta) => {
+    const daContaAteFim = movimentosAteFim.filter((item) => item.conta_bancaria_id === conta.id);
+    const daContaPeriodo = movimentos.filter((item) => item.conta_bancaria_id === conta.id);
+    const totalEntradas = daContaPeriodo.filter((item) => item.tipo === "ENTRADA").reduce((soma,item)=>soma+Number(item.valor),0);
+    const totalSaidas = daContaPeriodo.filter((item) => item.tipo === "SAIDA").reduce((soma,item)=>soma+Number(item.valor),0);
+    const saldoAtual = Number(conta.saldo_inicial ?? 0)+daContaAteFim.reduce((soma,item)=>soma+(item.tipo === "ENTRADA" ? Number(item.valor) : -Number(item.valor)),0);
+    return { ...conta, saldo_atual: saldoAtual, total_entradas: totalEntradas, total_saidas: totalSaidas };
+  });
   const socios = sociosRes.data ?? [];
   const extrato = extratoRes.data ?? [];
   const contasMap = new Map(contas.map((conta) => [conta.id, conta]));
@@ -44,8 +62,10 @@ export default async function FinanceiroCaixaPage() {
       <div className="mt-2 flex flex-wrap items-end justify-between gap-4"><div><h1 className="text-3xl font-black">Financeiro &amp; Caixa</h1><p className="mt-1 text-sm text-slate-300">Saldos bancários, entradas, comissões e equalização dos sócios.</p></div><div className="flex gap-2"><Link href="/erp/contas-pagar" className="rounded-xl bg-white/10 px-4 py-2 text-xs font-bold">Contas a pagar</Link><Link href="/erp/minhas-comissoes" className="rounded-xl bg-white/10 px-4 py-2 text-xs font-bold">Comissões</Link></div></div>
     </header>
 
+    <form method="get" className="flex flex-wrap items-end gap-3 rounded-2xl border bg-white p-4 shadow-sm"><label className="text-xs font-black uppercase text-slate-600">Mês de referência<input type="month" name="mes" defaultValue={mes === "todos" ? competenciaAtual : mes} className={`${campo} mt-1 block`} /></label><button className="rounded-xl bg-blue-800 px-5 py-2.5 text-sm font-black text-white">Aplicar mês</button><Link href="/erp/financeiro?mes=todos" className={`rounded-xl border px-5 py-2.5 text-sm font-black ${mes === "todos" ? "border-blue-700 bg-blue-50 text-blue-800" : "text-slate-700"}`}>Todos</Link><p className="ml-auto text-xs font-bold text-slate-500">Exibindo: {mes === "todos" ? "todo o histórico" : mes}</p></form>
+
     <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-      {[['Saldo nas contas',saldoEmpresa,'bg-blue-50 border-blue-200 text-blue-950','Saldo bancário consolidado'],['Entradas registradas',entradas,'bg-emerald-50 border-emerald-200 text-emerald-950','Movimentos de entrada'],['Saídas registradas',saidas,'bg-rose-50 border-rose-200 text-rose-950','Movimentos de saída'],['Crédito para impostos',creditoFiscalMes,'bg-amber-50 border-amber-200 text-amber-950',`Descontado das comissões · ${competenciaAtual}`]].map(([titulo,valor,classe,detalhe]) => <div key={String(titulo)} className={`rounded-2xl border p-5 ${classe}`}><p className="text-xs font-black uppercase">{titulo}</p><p className="mt-2 text-3xl font-black">{brl(Number(valor))}</p><p className="mt-1 text-[11px] opacity-70">{detalhe}</p></div>)}
+      {[['Saldo nas contas',saldoEmpresa,'bg-blue-50 border-blue-200 text-blue-950',mes === "todos" ? 'Saldo bancário atual' : `Saldo ao fim de ${mes}`],['Entradas registradas',entradas,'bg-emerald-50 border-emerald-200 text-emerald-950','Movimentos do período'],['Saídas registradas',saidas,'bg-rose-50 border-rose-200 text-rose-950','Movimentos do período'],['Crédito para impostos',creditoFiscalMes,'bg-amber-50 border-amber-200 text-amber-950',`Descontado das comissões · ${mes === "todos" ? "todos" : mes}`]].map(([titulo,valor,classe,detalhe]) => <div key={String(titulo)} className={`rounded-2xl border p-5 ${classe}`}><p className="text-xs font-black uppercase">{titulo}</p><p className="mt-2 text-3xl font-black">{brl(Number(valor))}</p><p className="mt-1 text-[11px] opacity-70">{detalhe}</p></div>)}
     </section>
 
     <section className="grid gap-4 lg:grid-cols-2 xl:grid-cols-3">

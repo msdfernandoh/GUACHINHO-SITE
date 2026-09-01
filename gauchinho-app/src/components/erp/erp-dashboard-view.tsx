@@ -221,7 +221,7 @@ export function ErpDashboardView({ initialData }: ErpDashboardViewProps) {
       ─────────────────────────────────────────────────────────── */}
       <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {/* Card 1: Vendas no Mês */}
-        <div className="relative overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-5 shadow-2xs dark:border-slate-800 dark:bg-slate-900">
+        <Link href="/erp/vendas" className="relative block overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-5 shadow-2xs transition hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-md dark:border-slate-800 dark:bg-slate-900">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Vendas no Período</span>
             <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-blue-50 text-blue-600 dark:bg-blue-950 dark:text-blue-400">
@@ -258,10 +258,10 @@ export function ErpDashboardView({ initialData }: ErpDashboardViewProps) {
               <span className="text-slate-400 font-bold">Sem base anterior</span>
             )}
           </div>
-        </div>
+        </Link>
 
         {/* Card 2: Comissão da Franquia */}
-        <div className="relative overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-5 shadow-2xs dark:border-slate-800 dark:bg-slate-900">
+        <Link href="/erp/comissoes" className="relative block overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-5 shadow-2xs transition hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-md dark:border-slate-800 dark:bg-slate-900">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Comissão da Franquia</span>
             <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400">
@@ -286,10 +286,10 @@ export function ErpDashboardView({ initialData }: ErpDashboardViewProps) {
               <span className="font-bold text-amber-600">{formatCurrency(comissaoFranquia.pendente)}</span>
             </div>
           </div>
-        </div>
+        </Link>
 
         {/* Card 3: Comissão dos Participantes */}
-        <div className="relative overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-5 shadow-2xs dark:border-slate-800 dark:bg-slate-900">
+        <Link href="/erp/minhas-comissoes" className="relative block overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-5 shadow-2xs transition hover:-translate-y-0.5 hover:border-purple-300 hover:shadow-md dark:border-slate-800 dark:bg-slate-900">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Comissão Participantes</span>
             <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-purple-50 text-purple-600 dark:bg-purple-950 dark:text-purple-400">
@@ -313,7 +313,7 @@ export function ErpDashboardView({ initialData }: ErpDashboardViewProps) {
               {comissaoParticipantes.participantesComPendenciaCount} com saldo
             </span>
           </div>
-        </div>
+        </Link>
 
         {/* Card 4: Caixa & Saldo Disponível */}
         <div className="relative overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-5 shadow-2xs dark:border-slate-800 dark:bg-slate-900">

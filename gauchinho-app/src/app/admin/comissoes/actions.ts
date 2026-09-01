@@ -83,6 +83,7 @@ export async function confirmarPagamentoComissaoAction(formData: FormData) {
   if (!empresaAtiva) throw new Error("Empresa não selecionada.");
   const id = String(formData.get("previsao_id") ?? "");
   const contaOrigemId = String(formData.get("conta_origem_id") ?? "");
+  const contaDestinoId = String(formData.get("conta_destino_id") ?? "") || null;
   const valor = decimal(formData.get("valor"));
   const db = await createClient();
   const { data: p, error } = await db
@@ -105,6 +106,7 @@ export async function confirmarPagamentoComissaoAction(formData: FormData) {
     competencia: p.competencia,
     valorBruto: valor.toFixed(2),
     contaBancariaOrigemId: contaOrigemId,
+    contaBancariaDestinoId: contaDestinoId,
     idempotencyKey: `pagamento:${id}:${valor.toFixed(2)}:${new Date().toISOString().slice(0, 10)}`,
     itens: [{ previsaoParticipanteId: id, valorLiquidado: valor.toFixed(2) }],
   });
@@ -161,6 +163,7 @@ export async function confirmarPagamentosEmLoteAction(formData: FormData) {
     throw new Error("Uma ou mais previsões não pertencem à empresa.");
   const operacaoId = String(formData.get("operacao_id") ?? crypto.randomUUID());
   const contaOrigemId = String(formData.get("conta_origem_id") ?? "");
+  const contaDestinoId = String(formData.get("conta_destino_id") ?? "") || null;
   if (!contaOrigemId) throw new Error("Selecione a conta bancária de saída.");
   const grupos = new Map<string, NonNullable<typeof data>>();
   for (const previsao of data ?? []) {
@@ -182,6 +185,7 @@ export async function confirmarPagamentosEmLoteAction(formData: FormData) {
       competencia: primeira.competencia,
       valorBruto: total.toFixed(2),
       contaBancariaOrigemId: contaOrigemId,
+      contaBancariaDestinoId: contaDestinoId,
       observacoes: `Pagamento agrupado ERP — ${itens.length} comissão(ões)`,
       idempotencyKey: `pagamento-lote:${operacaoId}:${chave}`,
       itens,

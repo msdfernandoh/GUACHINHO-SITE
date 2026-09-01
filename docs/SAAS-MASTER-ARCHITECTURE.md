@@ -1668,6 +1668,18 @@ para a obrigação fiscal, sem convertê-lo em entrada ou saldo bancário dispon
 Relatório:
 `docs/relatorios-fases/FASE-200-TRANSFERENCIA-COMISSOES-CREDITO-FISCAL-CAIXA.md`.
 
+### Evolução operacional 201 — filtros mensais e destino bancário da comissão
+
+Financeiro & Caixa reconstrói saldos até o fim da competência selecionada e filtra
+movimentos, extrato e crédito fiscal, com opção Todos. Pagamentos de comissão podem
+informar conta de entrada opcional do mesmo tenant; correções de destino usam
+transferência compensatória append-only. Vendas & Cotas filtra pela competência da
+primeira parcela e apresenta valor vendido, meta, falta, comissões dos participantes e
+valor da empresa. No Painel, os cards de vendas e comissões navegam para seus módulos.
+
+Relatório:
+`docs/relatorios-fases/FASE-201-FILTROS-FINANCEIRO-VENDAS-PAINEL-DESTINO-COMISSAO.md`.
+
 ### Evolução operacional 200 — reajuste anual canônico dos grupos
 
 Cada grupo pode declarar reajuste anual fixo, com percentual, ou variável, com

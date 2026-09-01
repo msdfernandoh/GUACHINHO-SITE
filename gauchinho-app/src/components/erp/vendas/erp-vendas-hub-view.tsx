@@ -60,6 +60,8 @@ export type VendaItem = {
   cota_id?: string | null;
   grupo_codigo?: string;
   cota_status?: string;
+  comissoes_geradas?: number;
+  valor_empresa?: number;
 };
 
 export type CotaItem = {
@@ -122,6 +124,7 @@ interface ErpVendasHubViewProps {
   regrasFranquia?: RegraFranquiaSimples[];
   empresaNome: string;
   isMaster: boolean;
+  metas: Array<{ valor:number;inicio:string;fim:string }>;
 }
 
 const brl = (v: number) =>
@@ -169,9 +172,12 @@ export function ErpVendasHubView({
   regrasFranquia = [],
   empresaNome,
   isMaster,
+  metas,
 }: ErpVendasHubViewProps) {
   const [isPending, startTransition] = useTransition();
   const [termoBusca, setTermoBusca] = useState("");
+  const competencias = useMemo(()=>[...new Set(vendas.map((v)=>(v.data_primeira_parcela||v.data_venda).slice(0,7)))].sort().reverse(),[vendas]);
+  const [competencia,setCompetencia]=useState(competencias[0]??"todos");
 
   // Modais
   const [editandoVenda, setEditandoVenda] = useState<VendaItem | null>(null);
@@ -251,6 +257,7 @@ export function ErpVendasHubView({
 
   // Filtragem de vendas
   const vendasFiltradas = vendas.filter((v) => {
+    if (competencia !== "todos" && (v.data_primeira_parcela||v.data_venda).slice(0,7) !== competencia) return false;
     if (!termoBusca) return true;
     const t = termoBusca.toLowerCase();
     const cotasDaVenda = cotas.filter((c) => c.venda_id === v.id);
@@ -261,6 +268,10 @@ export function ErpVendasHubView({
       cotasDaVenda.some((c) => c.numero_cota?.toLowerCase().includes(t) || c.numero_grupo.toLowerCase().includes(t))
     );
   });
+  const valorVendido=vendasFiltradas.filter((v)=>!["cancelada","suspensa"].includes(v.status)).reduce((s,v)=>s+Number(v.valor_credito),0);
+  const metaPeriodo=competencia === "todos" ? metas.reduce((s,m)=>s+m.valor,0) : metas.filter((m)=>m.inicio.slice(0,7)<=competencia&&m.fim.slice(0,7)>=competencia).reduce((s,m)=>s+m.valor,0);
+  const comissoesGeradas=vendasFiltradas.reduce((s,v)=>s+Number(v.comissoes_geradas??0),0);
+  const valorEmpresa=vendasFiltradas.reduce((s,v)=>s+Number(v.valor_empresa??0),0);
   const operacoesPorCota = vendasFiltradas.flatMap<{
     venda: VendaItem;
     cota: CotaItem | null;
@@ -335,6 +346,16 @@ export function ErpVendasHubView({
           </div>
         )}
       </header>
+
+      <div className="flex flex-wrap items-end justify-between gap-3 rounded-2xl border bg-white p-4"><label className="text-xs font-black uppercase text-slate-600">Mês de referência<select value={competencia} onChange={(event)=>setCompetencia(event.target.value)} className="mt-1 block rounded-xl border px-4 py-2 text-sm normal-case"><option value="todos">Todos</option>{competencias.map((mes)=><option key={mes} value={mes}>{mes}</option>)}</select></label><p className="text-xs font-bold text-slate-500">Competência pela primeira parcela; data da venda apenas para legado.</p></div>
+
+      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">{[
+        ["Valor vendido",valorVendido,"border-blue-200 bg-blue-50 text-blue-950"],
+        ["Meta",metaPeriodo,"border-violet-200 bg-violet-50 text-violet-950"],
+        ["Falta para meta",Math.max(0,metaPeriodo-valorVendido),"border-amber-200 bg-amber-50 text-amber-950"],
+        ["Comissões geradas",comissoesGeradas,"border-emerald-200 bg-emerald-50 text-emerald-950"],
+        ["Valor para empresa",valorEmpresa,"border-cyan-200 bg-cyan-50 text-cyan-950"],
+      ].map(([titulo,valor,classe])=><div key={String(titulo)} className={`rounded-2xl border p-5 ${classe}`}><p className="text-xs font-black uppercase">{titulo}</p><p className="mt-2 text-2xl font-black">{brl(Number(valor))}</p></div>)}</section>
 
       {modalSucesso && (
         <div className="flex items-center justify-between rounded-xl bg-emerald-50 p-4 text-xs font-bold text-emerald-900 border border-emerald-300">

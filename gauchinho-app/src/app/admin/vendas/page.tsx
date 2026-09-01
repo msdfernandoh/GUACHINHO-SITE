@@ -23,7 +23,7 @@ export default async function AdminVendasPage() {
 
   const admin = createAdminClient({ noStore: true });
 
-  const [vendasRes, cotasRes, participantesRes, vinculosRes, modalidadesRes, regrasPartRes, regrasFranqRes] = await Promise.all([
+  const [vendasRes, cotasRes, participantesRes, vinculosRes, modalidadesRes, regrasPartRes, regrasFranqRes, prevFranqRes, prevPartRes, metasRes] = await Promise.all([
     admin
       .from("vendas")
       .select(`
@@ -66,6 +66,9 @@ export default async function AdminVendasPage() {
       .select("id,programa_id,percentual_total_comissao,tipo_administradora_id,modalidade_comissao_id,ativa,configuracao_homologada")
       .or(`empresa_id.eq.${empresaId},empresa_id.is.null`)
       .eq("ativa", true),
+    admin.from("comissao_previsoes_franquia").select("venda_id,valor_bruto,valor_previsto").eq("empresa_id",empresaId).neq("status","cancelada"),
+    admin.from("comissao_previsoes_participantes").select("venda_id,valor_previsto").eq("empresa_id",empresaId).neq("status","cancelada"),
+    admin.from("metas_comerciais").select("id,indicador,valor_meta,data_inicio,data_fim,alvo_tipo").eq("empresa_id",empresaId).eq("indicador","valor_credito_vendido").eq("alvo_tipo","empresa"),
   ]);
 
   const participantes = (participantesRes.data ?? []) as ParticipanteSimples[];
@@ -78,6 +81,10 @@ export default async function AdminVendasPage() {
     ativo: boolean;
   }>;
   const participantesMap = new Map(participantes.map((p) => [p.id, p.nome_exibicao || p.nome]));
+  const franquiaPorVenda = new Map<string,number>();
+  for (const item of prevFranqRes.data ?? []) franquiaPorVenda.set(item.venda_id,(franquiaPorVenda.get(item.venda_id)??0)+Number(item.valor_bruto??item.valor_previsto));
+  const participantesPorVenda = new Map<string,number>();
+  for (const item of prevPartRes.data ?? []) participantesPorVenda.set(item.venda_id,(participantesPorVenda.get(item.venda_id)??0)+Number(item.valor_previsto));
 
   if (vendasRes.error) throw new Error("Não foi possível carregar as vendas da empresa.");
   if (cotasRes.error) throw new Error("Não foi possível carregar as cotas definitivas da empresa.");
@@ -143,6 +150,8 @@ export default async function AdminVendasPage() {
       cota_numero: cotaPrincipal?.numero_cota || v.snapshot_venda?.numero_cota || null,
       cota_id: cotaPrincipal?.id || null,
       grupo_codigo: grupo?.codigo_grupo || v.numero_grupo || v.snapshot_venda?.numero_grupo || "1463",
+      comissoes_geradas: participantesPorVenda.get(v.id) ?? 0,
+      valor_empresa: franquiaPorVenda.get(v.id) ?? 0,
     };
   });
 
@@ -198,6 +207,7 @@ export default async function AdminVendasPage() {
         regrasFranquia={((regrasFranqRes.data ?? []) as any)}
         empresaNome={empresaNome}
         isMaster={isMaster}
+        metas={(metasRes.data ?? []).map((meta) => ({ valor: Number(meta.valor_meta), inicio: meta.data_inicio, fim: meta.data_fim }))}
       />
     </main>
   );
