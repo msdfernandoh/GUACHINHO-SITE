@@ -4,8 +4,9 @@ import { useActionState, useCallback, useEffect, useState } from "react";
 import {
   importarRelatorioRepasseRaconAction,
   vincularItemRepasseManualAction,
-  confirmarConciliacaoRepasseAction,
   lancarItemRepasseLegadoAction,
+  reprocessarRelatorioRepasseAction,
+  resolverAtencaoRepasseAction,
   type ImportacaoRepasseState,
 } from "@/app/erp/repasse-franquia/actions";
 
@@ -30,6 +31,15 @@ export type RepassePdfItem = {
   alertas: string[];
   valor_vinculado?: number;
   previsao: {
+    id: string;
+    competencia: string;
+    valor_previsto: number;
+    valor_liquidado: number;
+    ordem_etapa: number;
+    nome_etapa: string;
+  } | null;
+  previsao_sugerida: {
+    id: string;
     competencia: string;
     valor_previsto: number;
     valor_liquidado: number;
@@ -64,6 +74,22 @@ export type RepassePrevisaoAberta = {
   numero_grupo: string | null;
   numero_cota: string | null;
   cliente_nome: string;
+  cota_definitiva_id: string | null;
+  status: string;
+};
+
+export type RepasseAtencaoResolucao = {
+  id: string;
+  importacao_id: string | null;
+  item_importacao_id: string | null;
+  previsao_franquia_id: string;
+  tipo: "SISTEMA_SEM_RELATORIO" | "VALOR_DIVERGENTE";
+  decisao: "AGUARDAR_PROXIMO" | "GERAR_CREDITO" | "AJUSTAR_DIFERENCA" | "CANCELAR_COTA";
+  valor_sistema: number;
+  valor_relatorio: number | null;
+  valor_diferenca: number;
+  motivo: string | null;
+  created_at: string;
 };
 
 export type RepasseParticipante = { id: string; nome: string };
@@ -86,6 +112,7 @@ export function RepassePdfConciliacao({
   participantes,
   regras,
   grupos,
+  resolucoes,
 }: {
   administradoras: { id: string; nome: string }[];
   contas: { id: string; nome: string }[];
@@ -94,13 +121,16 @@ export function RepassePdfConciliacao({
   participantes: RepasseParticipante[];
   regras: RepasseRegraParticipante[];
   grupos: RepasseGrupo[];
+  resolucoes: RepasseAtencaoResolucao[];
 }) {
   const [importState, importAction, importing] = useActionState(importarRelatorioRepasseRaconAction, initialState);
   const [linkState, linkAction, linking] = useActionState(vincularItemRepasseManualAction, initialState);
-  const [confirmState, confirmAction, confirming] = useActionState(confirmarConciliacaoRepasseAction, initialState);
   const [legacyState, legacyAction, launchingLegacy] = useActionState(lancarItemRepasseLegadoAction, initialState);
+  const [refreshState, refreshAction, refreshing] = useActionState(reprocessarRelatorioRepasseAction, initialState);
+  const [attentionState, attentionAction, resolvingAttention] = useActionState(resolverAtencaoRepasseAction, initialState);
   const [importacaoSelecionadaId, setImportacaoSelecionadaId] = useState(importacoes[0]?.id ?? "");
   const [mostrarVinculados, setMostrarVinculados] = useState(false);
+  const [abaAtencao, setAbaAtencao] = useState<"SEM_VINCULO" | "SISTEMA_AUSENTE" | "DIVERGENTES">("SEM_VINCULO");
   const abrirImportacao = useCallback((id: string) => {
     if (!importacoes.some((item) => item.id === id)) return;
     setImportacaoSelecionadaId(id);
@@ -123,12 +153,41 @@ export function RepassePdfConciliacao({
   }, [abrirImportacao, importState.importacaoId, importState.ok]);
   const atual = importacoes.find((item) => item.id === importacaoSelecionadaId) ?? importacoes[0] ?? null;
   const usados = new Set((atual?.itens ?? []).map((item) => item.previsao_franquia_id).filter(Boolean));
+  const sugeridos = new Set((atual?.itens ?? []).map((item) => item.previsao_sugerida_id).filter(Boolean));
+  const ultimaResolucaoPorPrevisao = new Map<string, RepasseAtencaoResolucao>();
+  const ultimaResolucaoPorItem = new Map<string, RepasseAtencaoResolucao>();
+  for (const resolucao of resolucoes) {
+    if (!ultimaResolucaoPorPrevisao.has(resolucao.previsao_franquia_id)) ultimaResolucaoPorPrevisao.set(resolucao.previsao_franquia_id, resolucao);
+    if (resolucao.item_importacao_id && !ultimaResolucaoPorItem.has(resolucao.item_importacao_id)) ultimaResolucaoPorItem.set(resolucao.item_importacao_id, resolucao);
+  }
   const sistemaSemRelatorio = atual
-    ? previsoes.filter((p) => p.administradora_id === atual.administradora_id && p.competencia === atual.competencia && !usados.has(p.id))
+    ? previsoes.filter((p) => {
+        const resolucao = ultimaResolucaoPorPrevisao.get(p.id);
+        return p.administradora_id === atual.administradora_id
+          && p.competencia === atual.competencia
+          && !usados.has(p.id)
+          && !sugeridos.has(p.id)
+          && resolucao?.decisao !== "AJUSTAR_DIFERENCA"
+          && resolucao?.decisao !== "CANCELAR_COTA";
+      })
     : [];
-  const relatorioSemSistema = (atual?.itens ?? []).filter((item) => item.status_conciliacao === "NAO_ENCONTRADO");
-  const atencoes = (atual?.itens ?? []).filter((item) => item.status_conciliacao === "ATENCAO");
+  const valorSistemaReferencia = (item: RepassePdfItem) => {
+    const previsao = item.previsao ?? item.previsao_sugerida;
+    if (!previsao) return null;
+    return Math.max(Number(previsao.valor_previsto) - Number(previsao.valor_liquidado) + Number(item.valor_vinculado ?? 0), 0);
+  };
+  const relatorioSemSistema = (atual?.itens ?? []).filter((item) => {
+    if (item.previsao_franquia_id) return false;
+    const valorSistema = valorSistemaReferencia(item);
+    return valorSistema === null || Math.abs(valorSistema - Number(item.valor_comissao)) <= 0.02;
+  });
   const vinculados = (atual?.itens ?? []).filter((item) => item.status_conciliacao.startsWith("VINCULADO") || item.status_conciliacao === "LANCADO_LEGADO");
+  const divergentes = (atual?.itens ?? []).filter((item) => {
+    const resolucao = ultimaResolucaoPorItem.get(item.id);
+    if (resolucao && ["GERAR_CREDITO", "AJUSTAR_DIFERENCA", "CANCELAR_COTA"].includes(resolucao.decisao)) return false;
+    const valorSistema = valorSistemaReferencia(item);
+    return valorSistema !== null && Math.abs(valorSistema - Number(item.valor_comissao)) > 0.02;
+  });
 
   return (
     <section id="conciliacao-repasse" className="scroll-mt-4 space-y-4 rounded-2xl border border-blue-200 bg-blue-50/30 p-4 shadow-sm dark:border-blue-900 dark:bg-blue-950/10">
@@ -143,6 +202,7 @@ export function RepassePdfConciliacao({
       <form action={importAction} className="grid gap-3 rounded-xl border bg-white p-4 text-xs dark:border-slate-800 dark:bg-slate-900 md:grid-cols-6">
         <label className="md:col-span-2 font-bold">PDF de Pedidos de Compras Racon
           <input name="arquivo_pdf" type="file" accept="application/pdf" required className="mt-1 block w-full rounded-lg border p-2 font-normal" />
+          <span className="mt-1 block font-normal text-slate-500">Pode reenviar o mesmo PDF: a leitura será atualizada sem duplicar o recebimento.</span>
         </label>
         <label className="font-bold">Competência
           <input name="competencia" type="month" required defaultValue="2026-08" className="mt-1 block w-full rounded-lg border p-2" />
@@ -192,14 +252,15 @@ export function RepassePdfConciliacao({
                     <td className="whitespace-nowrap font-semibold">{item.competencia}</td>
                     <td className="max-w-64 truncate" title={item.arquivo_nome}>{item.arquivo_nome}</td>
                     <td className="whitespace-nowrap text-right font-mono">{money(Number(item.valor_total_bruto))}</td>
-                    <td className="pl-3"><span className="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-bold text-slate-700 dark:bg-slate-800 dark:text-slate-200">{item.status.replaceAll("_", " ")}</span></td>
-                    <td className="px-3 text-right"><button type="button" onClick={() => abrirImportacao(item.id)} className="whitespace-nowrap font-bold text-blue-700 hover:underline">{item.id === atual?.id ? "Em conferência" : "Abrir conferência"}</button></td>
+                    <td className="pl-3"><span className="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-bold text-slate-700 dark:bg-slate-800 dark:text-slate-200">{item.status === "PENDENTE" ? "RECEBIDO · ATENÇÕES ABERTAS" : item.status.replaceAll("_", " ")}</span></td>
+                    <td className="px-3 py-2 text-right"><div className="flex justify-end gap-3"><button type="button" onClick={() => abrirImportacao(item.id)} className="whitespace-nowrap font-bold text-blue-700 hover:underline">{item.id === atual?.id ? "Em conferência" : "Abrir conferência"}</button><form action={refreshAction}><input type="hidden" name="importacao_id" value={item.id}/><button disabled={refreshing} className="whitespace-nowrap font-bold text-violet-700 hover:underline disabled:opacity-50">Atualizar leitura</button></form></div></td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
         )}
+        {refreshState.message && <p role="status" className={`mt-3 rounded-lg p-2 font-bold ${refreshState.ok ? "bg-emerald-50 text-emerald-800" : "bg-rose-50 text-rose-800"}`}>{refreshState.message}</p>}
       </div>
 
       {atual && (
@@ -214,9 +275,9 @@ export function RepassePdfConciliacao({
             <button type="button" onClick={() => setMostrarVinculados((value) => !value)} aria-expanded={mostrarVinculados} className="rounded-xl text-left focus:outline-none focus:ring-2 focus:ring-blue-600">
               <Summary label="Vinculados · clique para conferir" value={String(vinculados.length)} color="text-blue-700" />
             </button>
-            <Summary label="Com atenção" value={String(atencoes.length)} color="text-amber-700" />
-            <Summary label="Antigas no relatório" value={String(relatorioSemSistema.length)} color="text-rose-700" />
-            <Summary label="Só no sistema" value={String(sistemaSemRelatorio.length)} color="text-violet-700" />
+            <Summary label="Valores divergentes" value={String(divergentes.length)} color="text-amber-700" />
+            <Summary label="Aguardando vínculo/cadastro" value={String(relatorioSemSistema.length)} color="text-rose-700" />
+            <Summary label="Sistema sem relatório" value={String(sistemaSemRelatorio.length)} color="text-violet-700" />
           </div>
 
           {mostrarVinculados && <LinkedItemsTable items={vinculados} previsoes={previsoes.filter((p) => p.administradora_id === atual.administradora_id)} action={linkAction} disabled={linking} />}
@@ -224,24 +285,66 @@ export function RepassePdfConciliacao({
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div><p className="font-bold">{atual.arquivo_nome} · {atual.competencia} · {atual.comissionado_nome || "Comissionado não identificado"}</p>
               <p className="text-slate-500">Pedidos: {atual.pedidos.map((p) => p.numero).join(", ") || "não identificados"} · Ponto de venda: {atual.ponto_venda || "—"}</p></div>
-              <form action={confirmAction}><input type="hidden" name="importacao_id" value={atual.id}/><button disabled={confirming || atencoes.length > 0 || relatorioSemSistema.length > 0 || atual.status === "CONFIRMADO"} className="rounded-xl bg-emerald-700 px-4 py-2 font-bold text-white disabled:cursor-not-allowed disabled:opacity-40">{atual.status === "CONFIRMADO" ? "Recebimento confirmado" : confirming ? "Revalidando regras..." : "Revalidar regras e confirmar recebimento"}</button></form>
+              <span className="rounded-xl bg-emerald-100 px-4 py-2 font-bold text-emerald-900">Recebimento registrado · atenções não bloqueiam</span>
             </div>
-            {confirmState.message && <p role="status" className={`mt-2 font-bold ${confirmState.ok ? "text-emerald-700" : "text-amber-700"}`}>{confirmState.message}</p>}
+            <p className="mt-2 text-slate-500">Use as abas abaixo para conferir no seu ritmo. O relatório e a entrada financeira permanecem preservados.</p>
           </div>
 
-          <ReconciliationTable title="Linhas com atenção — confirme o vínculo manual" items={atencoes} previsoes={previsoes.filter((p) => p.administradora_id === atual.administradora_id)} action={linkAction} disabled={linking} />
+          <div className="overflow-hidden rounded-2xl border border-amber-200 bg-white dark:border-amber-900 dark:bg-slate-900">
+            <div className="border-b p-3"><h3 className="font-bold">Central de atenção do repasse</h3><p className="text-xs text-slate-500">Pendências operacionais não bloqueiam o recebimento.</p></div>
+            <div className="flex flex-wrap gap-2 border-b bg-slate-50 p-3 dark:bg-slate-950">
+              <AttentionTab active={abaAtencao === "SEM_VINCULO"} onClick={() => setAbaAtencao("SEM_VINCULO")} label="Não vinculadas/cadastradas" count={relatorioSemSistema.length}/>
+              <AttentionTab active={abaAtencao === "SISTEMA_AUSENTE"} onClick={() => setAbaAtencao("SISTEMA_AUSENTE")} label="No sistema, fora do relatório" count={sistemaSemRelatorio.length}/>
+              <AttentionTab active={abaAtencao === "DIVERGENTES"} onClick={() => setAbaAtencao("DIVERGENTES")} label="Valores divergentes" count={divergentes.length}/>
+            </div>
+            <div className="p-3">
+              {abaAtencao === "SEM_VINCULO" && <ReconciliationTable title="Linhas do relatório aguardando vínculo ou cadastro" items={relatorioSemSistema} previsoes={previsoes.filter((p) => p.administradora_id === atual.administradora_id)} action={linkAction} disabled={linking} legacyAction={legacyAction} legacyDisabled={launchingLegacy} participantes={participantes} regras={regras} grupos={grupos.filter((g) => g.administradora_id === atual.administradora_id)} />}
+              {abaAtencao === "SISTEMA_AUSENTE" && <SystemMissingTable importacao={atual} items={sistemaSemRelatorio} resolutions={ultimaResolucaoPorPrevisao} action={attentionAction} disabled={resolvingAttention}/>}
+              {abaAtencao === "DIVERGENTES" && <DivergenceTable importacao={atual} items={divergentes} action={attentionAction} disabled={resolvingAttention}/>}
+            </div>
+          </div>
           {linkState.message && <p role="status" className={linkState.ok ? "text-xs font-bold text-emerald-700" : "text-xs font-bold text-rose-700"}>{linkState.message}</p>}
-          <ReconciliationTable title="No relatório e ainda não encontradas no sistema (cotas antigas)" items={relatorioSemSistema} previsoes={previsoes.filter((p) => p.administradora_id === atual.administradora_id)} action={linkAction} disabled={linking} legacyAction={legacyAction} legacyDisabled={launchingLegacy} participantes={participantes} regras={regras} grupos={grupos.filter((g) => g.administradora_id === atual.administradora_id)} />
           {legacyState.message && <p role="status" className={legacyState.ok ? "text-xs font-bold text-emerald-700" : "text-xs font-bold text-rose-700"}>{legacyState.message}</p>}
-
-          <div className="overflow-hidden rounded-xl border bg-white dark:border-slate-800 dark:bg-slate-900">
-            <h3 className="border-b p-3 text-sm font-bold text-violet-800">Comissões do sistema não encontradas no relatório ({sistemaSemRelatorio.length})</h3>
-            <div className="overflow-x-auto"><table className="w-full text-xs"><thead className="bg-slate-50 text-left"><tr><th className="p-2">Cliente</th><th>Grupo / Cota</th><th>Parcela</th><th className="text-right pr-3">Saldo</th></tr></thead><tbody className="divide-y">{sistemaSemRelatorio.map((p) => <tr key={p.id}><td className="p-2 font-bold">{p.cliente_nome}</td><td>{p.numero_grupo} / {p.numero_cota}</td><td>{p.ordem_etapa}ª · {p.nome_etapa}</td><td className="pr-3 text-right font-mono">{money(Number(p.valor_previsto)-Number(p.valor_liquidado))}</td></tr>)}</tbody></table></div>
-          </div>
+          {attentionState.message && <p role="status" className={attentionState.ok ? "rounded-lg bg-emerald-50 p-3 text-xs font-bold text-emerald-800" : "rounded-lg bg-rose-50 p-3 text-xs font-bold text-rose-800"}>{attentionState.message}</p>}
         </div>
       )}
     </section>
   );
+}
+
+function AttentionTab({ active, onClick, label, count }: { active: boolean; onClick: () => void; label: string; count: number }) {
+  return <button type="button" onClick={onClick} className={`rounded-xl px-3 py-2 text-xs font-bold transition ${active ? "bg-amber-600 text-white shadow-sm" : "border bg-white text-slate-700 hover:border-amber-400 dark:bg-slate-900 dark:text-slate-200"}`}>{label} <span className={`ml-1 rounded-full px-2 py-0.5 ${active ? "bg-white/20" : "bg-slate-100 dark:bg-slate-800"}`}>{count}</span></button>;
+}
+
+function SystemMissingTable({ importacao, items, resolutions, action, disabled }: { importacao: RepassePdfImportacao; items: RepassePrevisaoAberta[]; resolutions: Map<string, RepasseAtencaoResolucao>; action: (payload: FormData) => void; disabled: boolean }) {
+  if (!items.length) return <EmptyAttention text="Nenhuma comissão do sistema ficou fora deste relatório."/>;
+  return <div className="overflow-x-auto"><table className="min-w-[1050px] w-full text-left text-xs"><thead className="bg-violet-50 text-violet-900"><tr><th className="p-3">Cliente</th><th>Grupo / Cota</th><th>Parcela</th><th className="text-right">Saldo esperado</th><th className="pl-3">Situação</th><th className="p-3">Ações</th></tr></thead><tbody className="divide-y">{items.map((item) => {
+    const resolution = resolutions.get(item.id);
+    return <tr key={item.id}><td className="p-3 font-bold">{item.cliente_nome}</td><td>{item.numero_grupo} / {item.numero_cota}</td><td>{item.ordem_etapa}ª · {item.nome_etapa}</td><td className="text-right font-mono font-bold">{money(Number(item.valor_previsto)-Number(item.valor_liquidado))}</td><td className="pl-3">{resolution?.decisao === "AGUARDAR_PROXIMO" ? <span className="rounded-full bg-blue-100 px-2 py-1 font-bold text-blue-800">Aguardando próximo relatório</span> : <span className="rounded-full bg-amber-100 px-2 py-1 font-bold text-amber-900">Conferir inadimplência/cancelamento</span>}</td><td className="p-3"><div className="flex flex-wrap gap-2"><form action={action}><input type="hidden" name="previsao_franquia_id" value={item.id}/><input type="hidden" name="importacao_id" value={importacao.id}/><input type="hidden" name="decisao" value="AGUARDAR_PROXIMO"/><input type="hidden" name="idempotency_key" value={`aguardar:${importacao.id}:${item.id}`}/><button disabled={disabled || resolution?.decisao === "AGUARDAR_PROXIMO"} className="rounded-lg bg-blue-700 px-3 py-2 font-bold text-white disabled:opacity-40">Manter para o próximo relatório</button></form><details className="rounded-lg border border-rose-200 bg-rose-50 p-2"><summary className="cursor-pointer font-bold text-rose-800">Cliente cancelou / dar baixa</summary><form action={action} className="mt-2 flex min-w-80 gap-2"><input type="hidden" name="previsao_franquia_id" value={item.id}/><input type="hidden" name="importacao_id" value={importacao.id}/><input type="hidden" name="decisao" value="CANCELAR_COTA"/><input type="hidden" name="idempotency_key" value={`cancelar:${importacao.id}:${item.id}`}/><input name="motivo" required minLength={5} placeholder="Motivo do cancelamento" className="min-w-56 rounded border bg-white p-2"/><button disabled={disabled} className="rounded bg-rose-700 px-3 py-2 font-bold text-white">Cancelar cota</button></form></details></div></td></tr>;
+  })}</tbody></table></div>;
+}
+
+function DivergenceTable({ importacao, items, action, disabled }: { importacao: RepassePdfImportacao; items: RepassePdfItem[]; action: (payload: FormData) => void; disabled: boolean }) {
+  if (!items.length) return <EmptyAttention text="Nenhuma diferença de valor entre o sistema e este relatório."/>;
+  return <div className="space-y-3">{items.map((item) => {
+    const previsao = item.previsao ?? item.previsao_sugerida;
+    if (!previsao) return null;
+    const valorSistema = Math.max(Number(previsao.valor_previsto)-Number(previsao.valor_liquidado)+Number(item.valor_vinculado ?? 0),0);
+    const valorRelatorio = Number(item.valor_comissao);
+    const diferenca = valorSistema-valorRelatorio;
+    const previsaoId = item.previsao_franquia_id ?? item.previsao_sugerida_id;
+    if (!previsaoId) return null;
+    const hidden = <><input type="hidden" name="previsao_franquia_id" value={previsaoId}/><input type="hidden" name="importacao_id" value={importacao.id}/><input type="hidden" name="item_importacao_id" value={item.id}/></>;
+    return <article key={item.id} className="rounded-xl border border-amber-200 bg-amber-50/50 p-4"><div className="grid gap-3 md:grid-cols-[1.3fr_repeat(3,0.7fr)]"><div><p className="font-bold">{item.cliente_nome}</p><p className="text-slate-500">Grupo {item.numero_grupo} · Cota {item.numero_cota} · {item.parcela_numero}ª parcela</p><p className="mt-1 text-amber-800">{item.alertas.join(" · ")}</p></div><ValueBox label="Sistema" value={valorSistema}/><ValueBox label="Relatório" value={valorRelatorio}/><ValueBox label={diferenca>0 ? "Crédito possível" : "Ajuste necessário"} value={Math.abs(diferenca)} danger={diferenca<0}/></div><div className="mt-3 flex flex-wrap items-start gap-2">{diferenca>0 && <form action={action}>{hidden}<input type="hidden" name="decisao" value="GERAR_CREDITO"/><input type="hidden" name="idempotency_key" value={`credito:${importacao.id}:${item.id}`}/><button disabled={disabled} className="rounded-lg bg-emerald-700 px-3 py-2 font-bold text-white">Considerar sistema e gerar crédito</button></form>}<details className="rounded-lg border bg-white p-2"><summary className="cursor-pointer font-bold text-slate-800">Dar por ajustado</summary><form action={action} className="mt-2 flex min-w-[420px] gap-2">{hidden}<input type="hidden" name="decisao" value="AJUSTAR_DIFERENCA"/><input type="hidden" name="valor_ajuste" value={Math.abs(diferenca).toFixed(2)}/><input type="hidden" name="idempotency_key" value={`ajuste:${importacao.id}:${item.id}`}/><input name="motivo" required placeholder="Explique o ajuste" className="min-w-56 flex-1 rounded border p-2"/><button disabled={disabled} className="rounded bg-slate-800 px-3 py-2 font-bold text-white">Resolver diferença</button></form></details><details className="rounded-lg border border-rose-200 bg-rose-50 p-2"><summary className="cursor-pointer font-bold text-rose-800">Cliente cancelou</summary><form action={action} className="mt-2 flex min-w-[380px] gap-2">{hidden}<input type="hidden" name="decisao" value="CANCELAR_COTA"/><input type="hidden" name="idempotency_key" value={`cancelar-divergencia:${importacao.id}:${item.id}`}/><input name="motivo" required minLength={5} placeholder="Motivo do cancelamento" className="min-w-56 flex-1 rounded border bg-white p-2"/><button disabled={disabled} className="rounded bg-rose-700 px-3 py-2 font-bold text-white">Cancelar cota</button></form></details></div></article>;
+  })}</div>;
+}
+
+function EmptyAttention({ text }: { text: string }) {
+  return <p className="rounded-xl border border-dashed p-6 text-center text-sm text-slate-500">{text}</p>;
+}
+
+function ValueBox({ label, value, danger = false }: { label: string; value: number; danger?: boolean }) {
+  return <div className="rounded-lg border bg-white p-3 text-right"><p className="text-[10px] font-bold uppercase text-slate-500">{label}</p><p className={`mt-1 font-mono text-base font-extrabold ${danger ? "text-rose-700" : "text-slate-900"}`}>{money(value)}</p></div>;
 }
 
 function Summary({ label, value, color }: { label: string; value: string; color: string }) {
@@ -260,7 +363,7 @@ function LinkedItemsTable({ items, previsoes, action, disabled }: { items: Repas
       const current = item.previsao;
       const valorVinculado = Number(item.valor_vinculado ?? 0);
       const options = current && item.previsao_franquia_id && !previsoes.some((p) => p.id === item.previsao_franquia_id)
-        ? [{ id: item.previsao_franquia_id, administradora_id: "", competencia: current.competencia, ordem_etapa: current.ordem_etapa, nome_etapa: current.nome_etapa, valor_previsto: current.valor_previsto, valor_liquidado: current.valor_liquidado, numero_grupo: item.numero_grupo, numero_cota: item.numero_cota, cliente_nome: item.cliente_nome }, ...previsoes]
+        ? [{ id: item.previsao_franquia_id, administradora_id: "", competencia: current.competencia, ordem_etapa: current.ordem_etapa, nome_etapa: current.nome_etapa, valor_previsto: current.valor_previsto, valor_liquidado: current.valor_liquidado, numero_grupo: item.numero_grupo, numero_cota: item.numero_cota, cliente_nome: item.cliente_nome, cota_definitiva_id: null, status: "liquidada" }, ...previsoes]
         : previsoes;
       return <tr key={item.id}><td className="p-2">{item.linha}</td><td className="font-bold">{item.cliente_nome}</td><td>{item.numero_grupo} / {item.numero_cota}</td><td>{item.parcela_numero}/{item.parcela_total}</td><td className="text-right font-mono">{money(Number(item.valor_comissao))}</td><td className="text-right font-mono font-bold text-blue-700">{money(valorVinculado)}</td><td className="pl-3"><form action={action} className="flex gap-2"><input type="hidden" name="item_id" value={item.id}/><select name="previsao_franquia_id" required defaultValue={item.previsao_franquia_id ?? ""} className="min-w-72 flex-1 rounded-lg border p-1.5 dark:bg-slate-900">{options.map((p) => <option key={p.id} value={p.id}>{p.competencia} · {p.cliente_nome} · {p.numero_grupo}/{p.numero_cota} · {p.ordem_etapa}ª · {money(Number(p.valor_previsto))}</option>)}</select><button disabled={disabled} className="rounded-lg bg-blue-700 px-3 py-1.5 font-bold text-white disabled:opacity-50">Salvar alteração</button></form></td></tr>;
     })}</tbody></table></div>}

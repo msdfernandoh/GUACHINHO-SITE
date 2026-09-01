@@ -16,6 +16,7 @@ import { parseRepasseRaconText } from "@/lib/erp/repasse-racon-parser";
 export type ReceiptState = { ok: boolean; message: string; receiptId?: string };
 export type SolicitacaoState = { ok: boolean; message: string; solicitacaoId?: string; codigo?: string };
 export type ImportacaoRepasseState = { ok: boolean; message: string; importacaoId?: string };
+export type AtencaoRepasseState = { ok: boolean; message: string };
 
 async function context() {
   await requireErpRouteAccess("repasse-franquia");
@@ -81,6 +82,15 @@ export async function importarRelatorioRepasseRaconAction(
     });
     if (error) throw new Error(error.message);
     const result = data as { importacao_id?: string; idempotente?: boolean; vinculados_auto?: number; atencao?: number; nao_encontrados?: number };
+    let leituraAtualizada: { vinculados_auto?: number; atencao?: number; nao_encontrados?: number } | null = null;
+    if (result.idempotente && result.importacao_id) {
+      const { data: refreshData, error: refreshError } = await db.rpc("rpc_reprocessar_repasse_racon", {
+        p_empresa_id: empresaId,
+        p_importacao_id: result.importacao_id,
+      });
+      if (refreshError) throw new Error(`O PDF foi localizado, mas a leitura não pôde ser atualizada: ${refreshError.message}`);
+      leituraAtualizada = refreshData as { vinculados_auto?: number; atencao?: number; nao_encontrados?: number };
+    }
     revalidatePath("/erp/repasse-franquia");
     revalidatePath("/erp/comissoes");
     revalidatePath("/erp/minhas-comissoes");
@@ -88,7 +98,7 @@ export async function importarRelatorioRepasseRaconAction(
       ok: true,
       importacaoId: result.importacao_id,
       message: result.idempotente
-        ? "Este PDF já havia sido importado; nenhuma entrada foi duplicada."
+        ? `Este PDF já estava salvo. A leitura foi atualizada sem duplicar a entrada: ${leituraAtualizada?.vinculados_auto ?? 0} novo(s) vínculo(s), ${leituraAtualizada?.atencao ?? 0} atenção(ões) e ${leituraAtualizada?.nao_encontrados ?? 0} não encontrado(s).`
         : `Repasse importado. ${result.vinculados_auto ?? 0} linhas vinculadas e baixadas automaticamente, ${result.atencao ?? 0} com atenção e ${result.nao_encontrados ?? 0} antigas/não encontradas.`,
     };
   } catch (error) {
@@ -161,6 +171,77 @@ export async function confirmarConciliacaoRepasseAction(
     };
   } catch (error) {
     return { ok: false, message: error instanceof Error ? error.message : "Erro ao confirmar a conciliação." };
+  }
+}
+
+export async function reprocessarRelatorioRepasseAction(
+  _previous: ImportacaoRepasseState,
+  formData: FormData,
+): Promise<ImportacaoRepasseState> {
+  try {
+    const { db, empresaId } = await context();
+    const importacaoId = String(formData.get("importacao_id") ?? "").trim();
+    if (!importacaoId) throw new Error("Relatório não informado.");
+    const { data, error } = await db.rpc("rpc_reprocessar_repasse_racon", {
+      p_empresa_id: empresaId,
+      p_importacao_id: importacaoId,
+    });
+    if (error) throw new Error(error.message);
+    const result = data as { vinculados_auto?: number; atencao?: number; nao_encontrados?: number };
+    revalidatePath("/erp/repasse-franquia");
+    return {
+      ok: true,
+      importacaoId,
+      message: `Leitura atualizada sem novo upload ou entrada financeira: ${result.vinculados_auto ?? 0} novo(s) vínculo(s), ${result.atencao ?? 0} atenção(ões) e ${result.nao_encontrados ?? 0} não encontrado(s).`,
+    };
+  } catch (error) {
+    return { ok: false, message: error instanceof Error ? error.message : "Não foi possível atualizar a leitura." };
+  }
+}
+
+export async function resolverAtencaoRepasseAction(
+  _previous: AtencaoRepasseState,
+  formData: FormData,
+): Promise<AtencaoRepasseState> {
+  try {
+    const { db, empresaId } = await context();
+    const previsaoId = String(formData.get("previsao_franquia_id") ?? "").trim();
+    const decisao = String(formData.get("decisao") ?? "").trim();
+    const importacaoId = String(formData.get("importacao_id") ?? "").trim() || null;
+    const itemId = String(formData.get("item_importacao_id") ?? "").trim() || null;
+    const motivo = String(formData.get("motivo") ?? "").trim() || null;
+    const valorAjusteRaw = String(formData.get("valor_ajuste") ?? "").trim().replace(",", ".");
+    const valorAjuste = valorAjusteRaw ? Number(valorAjusteRaw) : null;
+    const idempotencyKey = String(formData.get("idempotency_key") ?? "").trim();
+    if (!previsaoId || !decisao) throw new Error("Comissão e decisão são obrigatórias.");
+    if (valorAjuste !== null && (!Number.isFinite(valorAjuste) || valorAjuste <= 0)) {
+      throw new Error("Informe um valor de ajuste válido.");
+    }
+    const { data, error } = await db.rpc("rpc_resolver_atencao_repasse", {
+      p_empresa_id: empresaId,
+      p_previsao_franquia_id: previsaoId,
+      p_decisao: decisao,
+      p_importacao_id: importacaoId,
+      p_item_importacao_id: itemId,
+      p_valor_ajuste: valorAjuste,
+      p_motivo: motivo,
+      p_idempotency_key: idempotencyKey || `${decisao}:${previsaoId}:${itemId ?? "sem-item"}`,
+    });
+    if (error) throw new Error(error.message);
+    const result = data as { decisao?: string; idempotente?: boolean; diferenca?: number };
+    const labels: Record<string, string> = {
+      AGUARDAR_PROXIMO: "Comissão mantida para conferência no próximo relatório.",
+      GERAR_CREDITO: "Valor do relatório baixado e diferença mantida como crédito pendente.",
+      AJUSTAR_DIFERENCA: "Diferença registrada como ajustada.",
+      CANCELAR_COTA: "Cota cancelada e curva de estorno aplicada.",
+    };
+    revalidatePath("/erp/repasse-franquia");
+    revalidatePath("/erp/comissoes");
+    revalidatePath("/erp/minhas-comissoes");
+    revalidatePath("/erp/vendas");
+    return { ok: true, message: result.idempotente ? "Esta decisão já havia sido registrada." : labels[result.decisao ?? decisao] ?? "Atenção resolvida." };
+  } catch (error) {
+    return { ok: false, message: error instanceof Error ? error.message : "Não foi possível resolver a atenção." };
   }
 }
 

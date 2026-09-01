@@ -1678,3 +1678,19 @@ público apresenta a condição sem recalcular automaticamente créditos antigos
 
 Relatório:
 `docs/relatorios-fases/FASE-200-REAJUSTE-ANUAL-CANONICO-GRUPOS.md`.
+
+### Evolução operacional 201 — central de atenção e releitura do repasse
+
+O recebimento do relatório é independente das pendências de conferência. A UI separa
+linhas sem vínculo/cadastro, previsões do sistema ausentes no PDF e diferenças de valor,
+permitindo aguardar o próximo relatório, manter crédito, registrar ajuste ou cancelar a
+cota pela curva de estorno. As decisões ficam em
+`erp_repasse_atencao_resolucoes`, livro append-only tenant-aware e idempotente.
+
+O mesmo PDF pode ser reenviado: o hash recupera a importação existente e reavalia somente
+linhas ainda abertas, sem criar outro recebimento ou caixa. Como os itens do relatório já
+ficam persistidos, o histórico também oferece releitura direta sem novo upload. Vínculos,
+baixas e resoluções anteriores permanecem imutáveis.
+
+Relatório:
+`docs/relatorios-fases/FASE-201-CENTRAL-ATENCAO-REPASSE-RELEITURA-IDEMPOTENTE.md`.

@@ -21,7 +21,7 @@ import { FiscalCommissionConfig } from "@/components/erp/fiscal-commission-confi
 import { ConfirmSubmitButton } from "@/components/erp/confirm-submit-button";
 import { ReceiptManager } from "@/components/erp/receipt-manager";
 import { RepasseFranquiaView, type SolicitacaoRepasseItem } from "@/components/erp/repasse-franquia-view";
-import { RepassePdfConciliacao, type RepassePdfImportacao, type RepassePrevisaoAberta, type RepasseParticipante, type RepasseRegraParticipante, type RepasseGrupo } from "@/components/erp/repasse-pdf-conciliacao";
+import { RepassePdfConciliacao, type RepassePdfImportacao, type RepassePrevisaoAberta, type RepasseParticipante, type RepasseRegraParticipante, type RepasseGrupo, type RepasseAtencaoResolucao } from "@/components/erp/repasse-pdf-conciliacao";
 import {
   BidStrategyTable,
   type BidRow,
@@ -763,7 +763,7 @@ export async function ErpRepasseFranquiaPage() {
   if (!empresaAtiva) notFound();
   const empresaId = empresaAtiva.id;
   const db = await createClient();
-  const [grants, contas, recebimentos, previsoes, solicitacoesRes, importacoesRes, participantesRes, regrasRes, gruposRes] = await Promise.all([
+  const [grants, contas, recebimentos, previsoes, solicitacoesRes, importacoesRes, participantesRes, regrasRes, gruposRes, resolucoesRes] = await Promise.all([
     db
       .from("empresa_administradoras")
       .select("administradora:administradoras(id,nome)")
@@ -786,7 +786,7 @@ export async function ErpRepasseFranquiaPage() {
     db
       .from("comissao_previsoes_franquia")
       .select(
-        "id,administradora_id,competencia,ordem_etapa,nome_etapa,valor_previsto,valor_liquidado,administradora:administradoras(nome),cota:cotas_definitivas(numero_grupo,numero_cota),venda:vendas(cliente_nome)",
+        "id,administradora_id,competencia,ordem_etapa,nome_etapa,valor_previsto,valor_liquidado,status,administradora:administradoras(nome),cota:cotas_definitivas(id,numero_grupo,numero_cota),venda:vendas(cliente_nome)",
       )
       .eq("empresa_id", empresaId)
       .in("status", ["prevista", "parcialmente_liquidada"])
@@ -801,7 +801,7 @@ export async function ErpRepasseFranquiaPage() {
       .limit(200),
     db
       .from("erp_repasse_importacoes")
-      .select("id,administradora_id,competencia,arquivo_nome,valor_total_bruto,ponto_venda,comissionado_nome,pedidos,status,recebimento_id,created_at,itens:erp_repasse_importacao_itens(id,linha,produto,data_alocacao,numero_grupo,numero_cota,cliente_nome,parcela_numero,parcela_total,valor_comissao,valor_base,status_conciliacao,previsao_franquia_id,previsao_sugerida_id,alertas,previsao:comissao_previsoes_franquia(competencia,valor_previsto,valor_liquidado,ordem_etapa,nome_etapa))")
+      .select("id,administradora_id,competencia,arquivo_nome,valor_total_bruto,ponto_venda,comissionado_nome,pedidos,status,recebimento_id,created_at,itens:erp_repasse_importacao_itens(id,linha,produto,data_alocacao,numero_grupo,numero_cota,cliente_nome,parcela_numero,parcela_total,valor_comissao,valor_base,status_conciliacao,previsao_franquia_id,previsao_sugerida_id,alertas,previsao:comissao_previsoes_franquia!erp_repasse_importacao_itens_previsao_franquia_id_fkey(id,competencia,valor_previsto,valor_liquidado,ordem_etapa,nome_etapa),previsao_sugerida:comissao_previsoes_franquia!erp_repasse_importacao_itens_previsao_sugerida_id_fkey(id,competencia,valor_previsto,valor_liquidado,ordem_etapa,nome_etapa))")
       .eq("empresa_id", empresaId)
       .order("created_at", { ascending: false })
       .limit(100),
@@ -824,6 +824,12 @@ export async function ErpRepasseFranquiaPage() {
       .select("id,administradora_id,codigo_grupo,ativo,origem_governanca,empresa_origem_id")
       .or(`origem_governanca.in.(GLOBAL,LEGADO),empresa_origem_id.eq.${empresaId}`)
       .order("codigo_grupo"),
+    db
+      .from("erp_repasse_atencao_resolucoes")
+      .select("id,importacao_id,item_importacao_id,previsao_franquia_id,tipo,decisao,valor_sistema,valor_relatorio,valor_diferenca,motivo,created_at")
+      .eq("empresa_id", empresaId)
+      .order("created_at", { ascending: false })
+      .limit(500),
   ]);
 
   const administradoras = (grants.data ?? []).flatMap((x) => {
@@ -989,6 +995,8 @@ export async function ErpRepasseFranquiaPage() {
             numero_grupo: cota?.numero_grupo ?? null,
             numero_cota: cota?.numero_cota ?? null,
             cliente_nome: venda?.cliente_nome ?? "Cliente não identificado",
+            cota_definitiva_id: cota?.id ?? null,
+            status: row.status,
           } satisfies RepassePrevisaoAberta;
         })}
         participantes={(participantesRes.data ?? []).map((row) => ({
@@ -1010,6 +1018,7 @@ export async function ErpRepasseFranquiaPage() {
           ativo: row.ativo,
           local: row.origem_governanca === "LOCAL",
         } satisfies RepasseGrupo))}
+        resolucoes={(resolucoesRes.data ?? []) as RepasseAtencaoResolucao[]}
       />
 
       <RepasseFranquiaView
