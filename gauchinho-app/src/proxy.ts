@@ -114,7 +114,10 @@ export async function proxy(request: NextRequest) {
       // Com flag=false, comportamento Fase 2 permanece (404 / dev local).
       if (FASE3_PARCEIRO_PUBLIC_SITE_ENABLED) {
         const partner = await resolvePartnerPublicRequest({
-          hostHeader: request.headers.get("host"),
+          // Na Vercel, o header Host pode chegar normalizado para o apex mesmo
+          // quando a URL pública solicitada usa www. nextUrl preserva a variante
+          // original e evita redirecionamento canônico para a própria URL.
+          hostHeader: request.nextUrl.host || request.headers.get("host"),
           pathname: path === "/" ? "/" : path,
           searchParams: request.nextUrl.searchParams,
           mode: "public",
