@@ -42,7 +42,11 @@ export default async function PublicLayout({ children }: { children: React.React
     : null;
   const allowsOperational = tenant?.allowsLegacyOperationalData === true;
   const usaChromeRacon = partnerView?.template_codigo === "racon_inspired" || isRaconModel(tenant?.siteModel);
-  const isGauchinho = tenant?.slug === GAUCHINHO_SLUG;
+  // Um site parceiro compartilha apenas o ERP da empresa proprietaria. A sua
+  // identidade publica (modelo, cores, nome, logo e recursos de marca) e
+  // independente e nunca pode herdar a marca da empresa do ERP.
+  const isPartnerSite = Boolean(partnerView);
+  const isGauchinho = !isPartnerSite && tenant?.slug === GAUCHINHO_SLUG;
   const identidadeRacon: RaconTemplateIdentidade = partnerView
     ? partnerView.modelo_identidade as RaconTemplateIdentidade
     : tenant?.siteModel ? {
@@ -78,9 +82,9 @@ export default async function PublicLayout({ children }: { children: React.React
     brandStyle["--visual-button-text"] = "#ffffff";
     brandStyle["--visual-accent"] = String(identidadeRacon.cor_primaria || "#0066cc");
   }
-  if (tenant?.branding.cor_primaria) brandStyle["--brand-blue"] = tenant.branding.cor_primaria;
-  if (tenant?.branding.cor_secundaria) brandStyle["--brand-blue-mid"] = tenant.branding.cor_secundaria;
-  if (tenant?.branding.cor_destaque) {
+  if (!isPartnerSite && tenant?.branding.cor_primaria) brandStyle["--brand-blue"] = tenant.branding.cor_primaria;
+  if (!isPartnerSite && tenant?.branding.cor_secundaria) brandStyle["--brand-blue-mid"] = tenant.branding.cor_secundaria;
+  if (!isPartnerSite && tenant?.branding.cor_destaque) {
     brandStyle["--brand-gold"] = tenant.branding.cor_destaque;
     brandStyle["--color-brand-gold"] = tenant.branding.cor_destaque;
   }
@@ -90,11 +94,17 @@ export default async function PublicLayout({ children }: { children: React.React
 
   const brandValue = {
     nome: nomeSite,
-    slug: tenant?.slug || GAUCHINHO_SLUG,
-    logoUrl: logoRacon || tenant?.branding.logo_url || null,
-    corPrimaria: tenant?.branding.cor_primaria || String(identidadeRacon.cor_primaria || "#0066cc"),
-    corSecundaria: tenant?.branding.cor_secundaria || String(identidadeRacon.cor_secundaria || "#0c2340"),
-    corDestaque: tenant?.branding.cor_destaque || String(identidadeRacon.cor_destaque || "#0099dd"),
+    slug: partnerView?.slug || tenant?.slug || GAUCHINHO_SLUG,
+    logoUrl: logoRacon || (!isPartnerSite ? tenant?.branding.logo_url : null) || null,
+    corPrimaria: isPartnerSite
+      ? String(identidadeRacon.cor_primaria || "#0066cc")
+      : tenant?.branding.cor_primaria || String(identidadeRacon.cor_primaria || "#0066cc"),
+    corSecundaria: isPartnerSite
+      ? String(identidadeRacon.cor_secundaria || "#0c2340")
+      : tenant?.branding.cor_secundaria || String(identidadeRacon.cor_secundaria || "#0c2340"),
+    corDestaque: isPartnerSite
+      ? String(identidadeRacon.cor_destaque || "#0099dd")
+      : tenant?.branding.cor_destaque || String(identidadeRacon.cor_destaque || "#0099dd"),
     isGauchinho,
     isRacon: usaChromeRacon,
   };

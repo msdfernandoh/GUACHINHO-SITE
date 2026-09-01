@@ -1870,6 +1870,18 @@ modelo ou dos dados.
 Relatório:
 `docs/relatorios-fases/FASE-212-VISIBILIDADE-PARCEIRO-MODELO-DOMINIO-ERP.md`.
 
+### Evolução operacional 213 — identidade pública independente do ERP compartilhado
+
+Cada `parceiro_sites` resolve domínio, modelo publicado, identidade visual, menus,
+conteúdo, logotipo e contatos próprios. O vínculo com a empresa anfitriã existe
+somente para propriedade, autorização, ERP compartilhado e dados operacionais
+permitidos; `empresa_branding` da anfitriã não pode sobrescrever a apresentação
+pública do parceiro. Recursos exclusivos da marca anfitriã, como mascote e
+assistente, também não são renderizados no domínio parceiro.
+
+Relatório:
+`docs/relatorios-fases/FASE-213-IDENTIDADE-INDEPENDENTE-SITE-PARCEIRO.md`.
+
 ### Evolução operacional 209 — identificação de consultores e grupos em formação
 
 Seletores de consultor exibem o modelo de parceria canônico antes do nome, derivado de
