@@ -9,6 +9,11 @@ import {
   buildPropostaVisualizacaoUrl,
   type VisualizacaoProposta,
 } from "@/lib/contratacoes-online/proposta-visualizacao";
+import {
+  extrairTokenProposta,
+  montarLinhasImagemProposta,
+  type PropostaImagemPayload,
+} from "@/lib/contratacoes-online/proposta-imagem";
 
 type Props = {
   open: boolean;
@@ -51,40 +56,62 @@ export function PropostaLinkModal({
 
   async function copyProposalImage() {
     try {
+      setImageStatus("idle");
+      const token = extrairTokenProposta(publicUrl);
+      if (!token) throw new Error("Token da proposta não identificado");
+      const response = await fetch(`/api/public/contratacoes/${encodeURIComponent(token)}`);
+      if (!response.ok) throw new Error("Não foi possível carregar a proposta");
+      const payload = await response.json() as PropostaImagemPayload;
+      const linhas = montarLinhasImagemProposta(payload, visualizacao);
+      if (!linhas.length) throw new Error("Proposta sem dados para imagem");
+
       const canvas = document.createElement("canvas");
       canvas.width = 1080;
-      canvas.height = 1080;
+      canvas.height = Math.max(1350, 365 + linhas.length * 94 + 150);
       const context = canvas.getContext("2d");
       if (!context) throw new Error("Canvas indisponível");
-      const gradient = context.createLinearGradient(0, 0, 1080, 1080);
+      const gradient = context.createLinearGradient(0, 0, 1080, canvas.height);
       gradient.addColorStop(0, "#020617");
       gradient.addColorStop(1, "#172554");
       context.fillStyle = gradient;
-      context.fillRect(0, 0, 1080, 1080);
+      context.fillRect(0, 0, canvas.width, canvas.height);
       context.fillStyle = "#fbbf24";
       context.fillRect(80, 82, 110, 8);
       context.font = "700 30px Arial";
       context.fillText("PROPOSTA DE CONSÓRCIO", 80, 145);
       context.fillStyle = "#ffffff";
-      context.font = "800 58px Arial";
-      context.fillText(tipoBem || "Plano personalizado", 80, 235);
-      const linhas = [
-        ["Crédito", credito != null ? formatCurrency(credito) : "A consultar"],
-        ["Parcela inicial", parcela != null ? formatCurrency(parcela) : "A consultar"],
-        ["Protocolo", protocolo],
-      ];
-      linhas.forEach(([label, value], index) => {
-        const y = 380 + index * 165;
+      context.font = "800 52px Arial";
+      context.fillText(payload.contratacao.tipo_bem || tipoBem || "Plano personalizado", 80, 220, 920);
+      context.fillStyle = "#cbd5e1";
+      context.font = "700 24px Arial";
+      context.fillText(`${visualizacao === "resumida" ? "VERSÃO RESUMIDA" : "VERSÃO DETALHADA"} · PROTOCOLO ${payload.contratacao.protocolo || protocolo}`, 80, 270);
+
+      let secaoAtual = "";
+      let y = 350;
+      linhas.forEach((linha) => {
+        if (linha.secao !== secaoAtual) {
+          secaoAtual = linha.secao;
+          context.fillStyle = "#fbbf24";
+          context.font = "800 22px Arial";
+          context.fillText(secaoAtual, 80, y);
+          y += 34;
+        }
         context.fillStyle = "#94a3b8";
-        context.font = "600 27px Arial";
-        context.fillText(label, 80, y);
+        context.font = "700 22px Arial";
+        context.fillText(linha.label, 80, y);
         context.fillStyle = "#ffffff";
-        context.font = "800 48px Arial";
-        context.fillText(value, 80, y + 62);
+        context.font = "800 34px Arial";
+        context.fillText(linha.value, 390, y, 610);
+        context.strokeStyle = "rgba(148,163,184,.22)";
+        context.beginPath();
+        context.moveTo(80, y + 26);
+        context.lineTo(1000, y + 26);
+        context.stroke();
+        y += 72;
       });
       context.fillStyle = "#67e8f9";
       context.font = "700 27px Arial";
-      context.fillText("Gauchinho Consórcios", 80, 965);
+      context.fillText("Gauchinho Consórcios", 80, canvas.height - 70);
       const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/png"));
       if (!blob || !navigator.clipboard || typeof ClipboardItem === "undefined") throw new Error("Clipboard indisponível");
       await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);

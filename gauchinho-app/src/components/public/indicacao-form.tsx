@@ -40,4 +40,4 @@ export function IndicacaoForm({ origem }:{ origem?:string|null }) {
   </div>;
 }
 
-function Campo({label,children}:{label:string;children:React.ReactNode}){return <div><Label>{label}</Label><div className="mt-1">{children}</div></div>}
+function Campo({label,children}:{label:string;children:React.ReactNode}){return <div><Label className="font-bold text-white">{label}</Label><div className="mt-1">{children}</div></div>}
