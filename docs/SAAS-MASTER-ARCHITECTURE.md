@@ -1825,3 +1825,15 @@ o servidor já suporta.
 
 Relatório:
 `docs/relatorios-fases/FASE-207-INDICACAO-PRIMEIRO-NOME.md`.
+
+### Evolução operacional 208 — exclusão auditada reabre linha do repasse
+
+Quando uma venda ou comissão cadastrada a partir de um PDF está incorreta, a
+exclusão master registra reversões nos livros append-only, remove o vínculo
+operacional e devolve a linha importada ao estado `NAO_ENCONTRADO`. Havendo
+histórico financeiro, venda, cota e previsões permanecem canceladas como
+tombstones auditáveis; sem histórico, a exclusão física continua disponível.
+Comissões de participantes já pagas exigem estorno prévio.
+
+Relatório:
+`docs/relatorios-fases/FASE-208-EXCLUSAO-VENDA-REABRE-REPASSE.md`.

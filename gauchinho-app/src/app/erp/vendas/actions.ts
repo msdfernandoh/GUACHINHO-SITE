@@ -191,6 +191,7 @@ export async function masterExcluirOuEstornarVendaAction(formData: FormData) {
   revalidatePath("/erp/contratacoes");
   revalidatePath("/erp/minhas-comissoes");
   revalidatePath("/erp/comissoes");
+  revalidatePath("/erp/repasse-franquia");
   return { ok: true, acao };
 }
 

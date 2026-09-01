@@ -1246,8 +1246,8 @@ export function ErpVendasHubView({
                       className="mt-0.5"
                     />
                     <div>
-                      <span className="font-bold text-rose-900 dark:text-rose-300">Excluir Definitivamente (Apenas em Erros Extremos)</span>
-                      <p className="text-[11px] text-rose-700/80">Apaga permanentemente a venda, cota e previsões, liberando a contratação para ser refeita.</p>
+                      <span className="font-bold text-rose-900 dark:text-rose-300">Excluir cadastro incorreto (Apenas em Erros Extremos)</span>
+                      <p className="text-[11px] text-rose-700/80">Remove a venda da operação e libera a contratação. Se houver vínculo em relatório, registra a reversão financeira, reabre a linha como não encontrada e preserva o histórico auditável.</p>
                     </div>
                   </label>
                 </div>
@@ -1309,7 +1309,7 @@ export function ErpVendasHubView({
                   disabled={isPending || (acaoMaster === "EXCLUIR" && textoConfirmacao !== "EXCLUIR")}
                   className="rounded-xl bg-rose-700 px-5 py-2 font-bold text-white shadow-md hover:bg-rose-800 disabled:opacity-50 cursor-pointer"
                 >
-                  {isPending ? "Processando…" : acaoMaster === "EXCLUIR" ? "Excluir Definitivamente" : "Confirmar Estorno"}
+                    {isPending ? "Processando…" : acaoMaster === "EXCLUIR" ? "Excluir cadastro incorreto" : "Confirmar Estorno"}
                 </button>
               </div>
             </form>
