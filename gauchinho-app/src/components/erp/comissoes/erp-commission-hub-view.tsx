@@ -20,8 +20,8 @@ import {
   saveFiscalConfigAction,
   homologarRegraPadraoOficialAction,
   updateFranchiseRuleAction,
-  deleteFranchiseRuleAction,
-  cleanupDuplicateFranchiseRulesAction,
+  toggleFranchiseRuleAction,
+  setCommissionProgramLegacyOnlyAction,
   createFranchiseRuleAction,
   saveCurvaEstornoAction,
   deleteCurvaEstornoAction,
@@ -42,6 +42,11 @@ export type RegraFranquiaRow = {
   id: string;
   programa_id: string;
   programa_nome?: string;
+  programa_versao?: number;
+  programa_status?: string;
+  programa_ativo?: boolean;
+  programa_uso_exclusivo_importacao_legado?: boolean;
+  administradora_id?: string | null;
   administradora_nome?: string;
   versao: number;
   tipo_administradora_id?: string | null;
@@ -147,7 +152,7 @@ export function ErpCommissionHubView({
   vinculos: ParticipanteVinculoRow[];
   participantes: ParticipanteOption[];
   administradoras: Array<{ id: string; nome: string }>;
-  programas: Array<{ id: string; nome: string; administradora_id: string | null; versao?: number; status?: string }>;
+  programas: Array<{ id: string; nome: string; administradora_id: string | null; versao?: number; status?: string; ativo?: boolean; uso_exclusivo_importacao_legado?: boolean }>;
   tipos: Array<{ id: string; nome: string; administradora_id: string }>;
   modalidades: Array<{ id: string; nome: string; administradora_id: string }>;
   curvasEstorno: CurvaEstornoRow[];
@@ -156,6 +161,24 @@ export function ErpCommissionHubView({
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const hoje = new Date().toISOString().slice(0, 10);
+  const programasOperacionais = programas.filter((programa) => programa.ativo !== false && !programa.uso_exclusivo_importacao_legado);
+  const regrasFranquiaEmUso = regrasFranquia.filter(
+    (regra) =>
+      regra.ativa &&
+      regra.configuracao_homologada &&
+      regra.programa_ativo &&
+      regra.programa_status === "ATIVO" &&
+      !regra.programa_uso_exclusivo_importacao_legado &&
+      regra.vigencia_inicio <= hoje &&
+      (!regra.vigencia_fim || regra.vigencia_fim >= hoje),
+  );
+  const escoposAtuais = new Map<string, number>();
+  for (const regra of regrasFranquiaEmUso) {
+    const chave = [regra.administradora_id || regra.administradora_nome, regra.tipo_administradora_id || "TODOS", regra.modalidade_comissao_id || "TODAS"].join("|");
+    escoposAtuais.set(chave, (escoposAtuais.get(chave) || 0) + 1);
+  }
+  const homologacoesDuplicadas = [...escoposAtuais.values()].filter((quantidade) => quantidade > 1).length;
 
   // Active Tab
   const [activeTab, setActiveTab] = useState<"franquia" | "perfis" | "regras" | "participantes" | "curvas" | "fiscal">(searchParams.get("aba") === "fiscal" ? "fiscal" : "regras");
@@ -731,6 +754,26 @@ export function ErpCommissionHubView({
 
                   {canWrite && (
                     <div className="flex items-center justify-end gap-2 border-t pt-3 dark:border-slate-800">
+                      <form action={toggleCommissionProfileAction}>
+                        <input type="hidden" name="empresa_id" value={empresaId} />
+                        <input type="hidden" name="id" value={perfil.id} />
+                        <input type="hidden" name="ativo" value={String(!perfil.ativo)} />
+                        <button
+                          onClick={(event) => {
+                            const mensagem = perfil.ativo
+                              ? "Inativar este perfil? Ele deixará de aparecer em novos vínculos e novas regras; o histórico será preservado."
+                              : "Reativar este perfil para permitir novos vínculos e regras?";
+                            if (!confirm(mensagem)) event.preventDefault();
+                          }}
+                          className={`rounded-lg border px-3 py-1 text-xs font-bold ${
+                            perfil.ativo
+                              ? "border-amber-300 text-amber-800 hover:bg-amber-50"
+                              : "border-emerald-300 text-emerald-700 hover:bg-emerald-50"
+                          }`}
+                        >
+                          {perfil.ativo ? "Inativar" : "Reativar"}
+                        </button>
+                      </form>
                       <button
                         onClick={() => {
                           setEditingPerfil(perfil);
@@ -1042,22 +1085,6 @@ export function ErpCommissionHubView({
 
             {canWrite && (
               <div className="flex items-center gap-2">
-                {regrasFranquia.length > 1 && (
-                  <form action={cleanupDuplicateFranchiseRulesAction}>
-                    <input type="hidden" name="empresa_id" value={empresaId} />
-                    <button
-                      onClick={(e) => {
-                        if (!confirm("Deseja remover regras duplicadas mantendo apenas uma regra única para cada Tipo/Modalidade?")) {
-                          e.preventDefault();
-                        }
-                      }}
-                      className="rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-xs font-bold text-amber-800 shadow-sm hover:bg-amber-100 transition dark:border-amber-800 dark:bg-amber-950 dark:text-amber-300"
-                    >
-                      🧹 Limpar Duplicadas
-                    </button>
-                  </form>
-                )}
-
                 <button
                   onClick={() => {
                     setEditingFranchiseRule(null);
@@ -1069,6 +1096,44 @@ export function ErpCommissionHubView({
                 </button>
               </div>
             )}
+          </div>
+
+          <div className={`rounded-2xl border p-4 ${homologacoesDuplicadas > 0 ? "border-amber-300 bg-amber-50" : "border-emerald-200 bg-emerald-50"}`}>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <h3 className="text-sm font-extrabold text-slate-900">Comissões atualmente usadas</h3>
+                <p className="text-xs text-slate-600">
+                  Somente programas ativos, regras homologadas e vigentes entram nesta relação.
+                </p>
+              </div>
+              <span className="rounded-full bg-white px-3 py-1 text-xs font-extrabold text-slate-800 shadow-sm">
+                {regrasFranquiaEmUso.length} regra(s) em uso
+              </span>
+            </div>
+            {homologacoesDuplicadas > 0 && (
+              <p className="mt-3 rounded-lg border border-amber-300 bg-white px-3 py-2 text-xs font-bold text-amber-900">
+                Atenção: existem {homologacoesDuplicadas} escopo(s) com mais de uma homologação vigente. Inative a regra incorreta após conferir programa, tipo e modalidade.
+              </p>
+            )}
+            <div className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+              {regrasFranquiaEmUso.length === 0 ? (
+                <p className="text-xs font-semibold text-amber-900">Nenhuma regra operacional vigente foi encontrada.</p>
+              ) : (
+                regrasFranquiaEmUso.map((regra) => (
+                  <div key={regra.id} className="rounded-xl border border-white bg-white/90 p-3 text-xs shadow-sm">
+                    <p className="font-extrabold text-slate-900">
+                      {regra.programa_nome || "Programa"} {regra.programa_versao ? `v${regra.programa_versao}` : ""}
+                    </p>
+                    <p className="mt-1 text-slate-600">
+                      {regra.tipo_nome || "Todos os tipos"} · {regra.modalidade_nome || "Todas as modalidades"}
+                    </p>
+                    <p className="mt-1 font-mono font-extrabold text-emerald-700">
+                      {regra.percentual_total_comissao ? `${regra.percentual_total_comissao}%` : money.format(regra.valor_fixo_total || 0)}
+                    </p>
+                  </div>
+                ))
+              )}
+            </div>
           </div>
 
           <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
@@ -1097,6 +1162,9 @@ export function ErpCommissionHubView({
                       <tr key={rf.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40">
                         <td className="p-3.5 font-bold text-slate-900 dark:text-white">
                           {rf.administradora_nome || "Racon Consórcios"}
+                          <p className="mt-1 text-[10px] font-semibold text-slate-500">
+                            {rf.programa_nome || "Programa"} {rf.programa_versao ? `v${rf.programa_versao}` : ""}
+                          </p>
                         </td>
                         <td className="p-3.5">
                           <span className="font-semibold text-slate-800 dark:text-slate-200">
@@ -1124,7 +1192,15 @@ export function ErpCommissionHubView({
                                 : "bg-slate-100 text-slate-600"
                             }`}
                           >
-                            {rf.ativa ? "HOMOLOGADA" : "INATIVA"}
+                            {rf.programa_uso_exclusivo_importacao_legado
+                              ? "SÓ IMPORTAÇÃO"
+                              : regrasFranquiaEmUso.some((regra) => regra.id === rf.id)
+                                ? "EM USO"
+                                : rf.ativa && rf.configuracao_homologada
+                                  ? "HOMOLOGADA FORA DA VIGÊNCIA"
+                                  : rf.ativa
+                                    ? "RASCUNHO"
+                                    : "INATIVA"}
                           </span>
                         </td>
                         <td className="p-3.5 text-right">
@@ -1140,19 +1216,36 @@ export function ErpCommissionHubView({
                                 >
                                   Editar
                                 </button>
-                                <form action={deleteFranchiseRuleAction}>
+                                <form action={toggleFranchiseRuleAction}>
                                   <input type="hidden" name="empresa_id" value={empresaId} />
                                   <input type="hidden" name="regra_id" value={rf.id} />
+                                  <input type="hidden" name="ativa" value={String(!rf.ativa)} />
                                   <button
                                     onClick={(e) => {
-                                      if (!confirm("Deseja excluir esta regra de comissão da Franqueadora?")) e.preventDefault();
+                                      if (!confirm(rf.ativa
+                                        ? "Inativar esta regra? O histórico será preservado e ela deixará de gerar novas previsões."
+                                        : "Reabrir esta regra como rascunho? Ela precisará ser conferida antes de voltar ao uso.")) e.preventDefault();
                                     }}
-                                    title="Excluir regra"
-                                    className="rounded-lg border border-rose-200 p-1 text-rose-600 hover:bg-rose-50 dark:border-rose-900"
+                                    className="rounded-lg border border-amber-300 px-2.5 py-1 text-xs font-bold text-amber-800 hover:bg-amber-50"
                                   >
-                                    🗑️
+                                    {rf.ativa ? "Inativar regra" : "Reabrir rascunho"}
                                   </button>
                                 </form>
+                                {!rf.programa_uso_exclusivo_importacao_legado && (
+                                  <form action={setCommissionProgramLegacyOnlyAction}>
+                                    <input type="hidden" name="empresa_id" value={empresaId} />
+                                    <input type="hidden" name="programa_id" value={rf.programa_id} />
+                                    <input type="hidden" name="exclusivo" value="true" />
+                                    <button
+                                      onClick={(event) => {
+                                        if (!confirm("Reservar todo este programa somente para importação antiga? Todas as regras atuais dele serão inativadas, sem apagar históricos.")) event.preventDefault();
+                                      }}
+                                      className="rounded-lg border border-violet-300 px-2.5 py-1 text-xs font-bold text-violet-800 hover:bg-violet-50"
+                                    >
+                                      Só importação antiga
+                                    </button>
+                                  </form>
+                                )}
                               </>
                             )}
                           </div>
@@ -1456,10 +1549,10 @@ export function ErpCommissionHubView({
                   <select
                     name="programa_id"
                     required
-                    defaultValue={programas[0]?.id || ""}
+                    defaultValue={programasOperacionais[0]?.id || ""}
                     className="mt-1 w-full rounded-xl border border-slate-300 bg-white p-2.5 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
                   >
-                    {programas.map((prog) => (
+                    {programasOperacionais.map((prog) => (
                       <option key={prog.id} value={prog.id}>
                         {prog.nome}
                       </option>
@@ -1709,10 +1802,10 @@ export function ErpCommissionHubView({
                   <select
                     name="perfil_id"
                     required
-                    defaultValue={editingRegra?.perfil_id || perfis[0]?.id || ""}
+                    defaultValue={editingRegra?.perfil_id || perfis.find((perfil) => perfil.ativo)?.id || ""}
                     className="mt-1 w-full rounded-xl border border-slate-300 bg-white p-2.5 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
                   >
-                    {perfis.map((p) => (
+                    {perfis.filter((p) => p.ativo || p.id === editingRegra?.perfil_id).map((p) => (
                       <option key={p.id} value={p.id}>
                         {p.nome} ({p.papel_base})
                       </option>
@@ -1798,19 +1891,19 @@ export function ErpCommissionHubView({
                   <label className="font-bold text-slate-800 dark:text-slate-200 text-xs flex items-center justify-between">
                     <span>Programa de referência da comissão:</span>
                     <span className="text-[10px] text-blue-700 font-normal">
-                      {programas.filter((p) => !modalAdminId || p.administradora_id === modalAdminId || !p.administradora_id).length} modelo(s) disponível(is)
+                      {programasOperacionais.filter((p) => !modalAdminId || p.administradora_id === modalAdminId || !p.administradora_id).length} modelo(s) disponível(is)
                     </span>
                   </label>
                   <select
                     name="programa_id"
                     value={
                       modalProgramaId ||
-                      (programas.filter((p) => !modalAdminId || p.administradora_id === modalAdminId || !p.administradora_id)[0]?.id ?? "")
+                       (programasOperacionais.filter((p) => !modalAdminId || p.administradora_id === modalAdminId || !p.administradora_id)[0]?.id ?? "")
                     }
                     onChange={(e) => setModalProgramaId(e.target.value)}
                     className="mt-1 w-full rounded-lg border border-blue-300 bg-white p-2 text-xs font-bold text-slate-900 shadow-2xs dark:border-slate-700 dark:bg-slate-800 dark:text-white"
                   >
-                    {programas
+                    {programasOperacionais
                       .filter((p) => !modalAdminId || p.administradora_id === modalAdminId || !p.administradora_id)
                       .map((p) => (
                         <option key={p.id} value={p.id}>
@@ -1962,10 +2055,10 @@ export function ErpCommissionHubView({
                 <select
                   name="perfil_id"
                   required
-                  defaultValue={editingVinculo?.perfil_id || perfis[0]?.id || ""}
+                  defaultValue={editingVinculo?.perfil_id || perfis.find((perfil) => perfil.ativo)?.id || ""}
                   className="mt-1 w-full rounded-xl border border-slate-300 bg-white p-2.5 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
                 >
-                  {perfis.map((p) => (
+                  {perfis.filter((p) => p.ativo || p.id === editingVinculo?.perfil_id).map((p) => (
                     <option key={p.id} value={p.id}>
                       {p.nome} ({p.papel_base})
                     </option>

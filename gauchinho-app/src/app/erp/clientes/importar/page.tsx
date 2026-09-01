@@ -28,7 +28,7 @@ export default async function ImportarClientesLegadoPage() {
   const db = await createClient();
   const { data: admins } = await db.from("administradoras").select("id,nome,nome_fantasia").eq("status","ATIVA");
   const racon = (admins ?? []).find((item) => `${item.nome ?? ""} ${item.nome_fantasia ?? ""}`.toUpperCase().includes("RACON"));
-  const { data: programas } = racon ? await db.from("comissao_programas").select("id,nome,versao,status,uso_exclusivo_importacao_legado").eq("empresa_id",empresaAtiva.id).eq("administradora_id",racon.id).order("versao",{ascending:false}) : { data: [] };
+  const { data: programas } = racon ? await db.from("comissao_programas").select("id,nome,versao,status,uso_exclusivo_importacao_legado").eq("empresa_id",empresaAtiva.id).eq("administradora_id",racon.id).eq("uso_exclusivo_importacao_legado",true).order("versao",{ascending:false}) : { data: [] };
   const programaIds = (programas ?? []).map((item) => item.id);
   const [{ data: regras }, { data: participantes }, { data: historico }] = await Promise.all([
     programaIds.length ? db.from("comissao_regras_franquia").select("id,programa_id,versao,percentual_total_comissao,vigencia_inicio,vigencia_fim,tipo:administradora_tipos(nome),modalidade:administradora_modalidades_comissao(nome)").eq("empresa_id",empresaAtiva.id).in("programa_id",programaIds).order("vigencia_inicio",{ascending:false}) : Promise.resolve({data:[]}),

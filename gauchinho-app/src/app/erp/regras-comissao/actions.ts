@@ -113,11 +113,13 @@ export async function toggleCommissionProfileAction(formData: FormData): Promise
   if (!id || !empresaId) return;
 
   const supabase = await assertCanWrite(empresaId);
-  await supabase
+  const { error } = await supabase
     .from("comissao_perfis")
     .update({ ativo, updated_at: new Date().toISOString() })
     .eq("id", id)
     .eq("empresa_id", empresaId);
+
+  if (error) throw new Error(error.message);
 
   revalidatePath("/erp/regras-comissao");
 }
@@ -175,6 +177,15 @@ export async function saveParticipantProfileRuleAction(
 
     if (!empresaId || !perfilId || !programaId) {
       throw new Error("Empresa, Perfil e Administradora são obrigatórios.");
+    }
+
+    const [{ data: selectedProfile }, { data: selectedProgram }] = await Promise.all([
+      supabase.from("comissao_perfis").select("id,ativo").eq("id", perfilId).eq("empresa_id", empresaId).maybeSingle(),
+      supabase.from("comissao_programas").select("id,ativo,uso_exclusivo_importacao_legado").eq("id", programaId).maybeSingle(),
+    ]);
+    if (!selectedProfile?.ativo) throw new Error("O perfil de comissão está inativo e não aceita novas regras.");
+    if (!selectedProgram?.ativo || selectedProgram.uso_exclusivo_importacao_legado) {
+      throw new Error("Selecione um programa operacional ativo. Programas antigos ficam disponíveis somente na importação.");
     }
 
     if (!["VALOR_FIXO", "VALOR_VENDIDO", "COMISSAO_FRANQUEADORA_LIQUIDA"].includes(baseV2)) {
@@ -397,6 +408,26 @@ export async function linkParticipantePerfilAction(
 
     const supabase = await assertCanWrite(empresaId);
 
+    const { data: selectedProfile } = await supabase
+      .from("comissao_perfis")
+      .select("id,ativo")
+      .eq("id", perfilId)
+      .eq("empresa_id", empresaId)
+      .maybeSingle();
+    if (!selectedProfile?.ativo) {
+      const { data: existingLink } = id
+        ? await supabase
+            .from("participante_comissao_perfis")
+            .select("perfil_id")
+            .eq("id", id)
+            .eq("empresa_id", empresaId)
+            .maybeSingle()
+        : { data: null };
+      if (existingLink?.perfil_id !== perfilId) {
+        throw new Error("O perfil de comissão está inativo e não aceita novos vínculos.");
+      }
+    }
+
     const payload: Record<string, unknown> = {
       empresa_id: empresaId,
       participante_id: participanteId,
@@ -572,6 +603,15 @@ export async function createFranchiseRuleAction(
     const input = parseFranchiseRuleForm(formData);
     const supabase = await assertCanWrite(empresaId);
 
+    const { data: selectedProgram } = await supabase
+      .from("comissao_programas")
+      .select("id,ativo,uso_exclusivo_importacao_legado")
+      .eq("id", input.programaId)
+      .maybeSingle();
+    if (!selectedProgram?.ativo || selectedProgram.uso_exclusivo_importacao_legado) {
+      throw new Error("Selecione um programa operacional ativo. Programas antigos são exclusivos da importação.");
+    }
+
     const { data: createdRule, error } = await supabase
       .from("comissao_regras_franquia")
       .insert({
@@ -626,6 +666,15 @@ export async function homologateFranchiseRuleAction(formData: FormData): Promise
     .maybeSingle();
 
   if (targetError || !target) throw new Error("Regra não encontrada.");
+
+  const { data: targetProgram } = await supabase
+    .from("comissao_programas")
+    .select("ativo,uso_exclusivo_importacao_legado")
+    .eq("id", target.programa_id)
+    .maybeSingle();
+  if (!targetProgram?.ativo || targetProgram.uso_exclusivo_importacao_legado) {
+    throw new Error("Homologação bloqueada: o programa está inativo ou reservado para importação antiga.");
+  }
 
   const { data: homologated } = await supabase
     .from("comissao_regras_franquia")
@@ -693,6 +742,69 @@ export async function toggleCommissionProgramAction(formData: FormData): Promise
   const ativo = formData.get("ativo") === "true";
   const supabase = await assertCanWrite(empresaId);
   await supabase.from("comissao_programas").update({ ativo }).eq("id", programaId).eq("empresa_id", empresaId);
+  revalidatePath("/erp/regras-comissao");
+}
+
+export async function setCommissionProgramLegacyOnlyAction(formData: FormData): Promise<void> {
+  const empresaId = String(formData.get("empresa_id") ?? "").trim();
+  const programaId = String(formData.get("programa_id") ?? "").trim();
+  const exclusivo = formData.get("exclusivo") === "true";
+  if (!empresaId || !programaId) throw new Error("Empresa e programa são obrigatórios.");
+
+  const supabase = await assertCanWrite(empresaId);
+
+  if (exclusivo) {
+    // Primeiro interrompe qualquer geração nova; o histórico permanece intacto.
+    const { error: franchiseError } = await supabase
+      .from("comissao_regras_franquia")
+      .update({ ativa: false, configuracao_homologada: false, updated_at: new Date().toISOString() })
+      .eq("empresa_id", empresaId)
+      .eq("programa_id", programaId);
+    if (franchiseError) throw new Error(franchiseError.message);
+
+    const { error: participantError } = await supabase
+      .from("comissao_regras_participantes")
+      .update({ ativa: false, status: "INATIVA", configuracao_homologada: false, updated_at: new Date().toISOString() })
+      .eq("empresa_id", empresaId)
+      .eq("programa_id", programaId);
+    if (participantError) throw new Error(participantError.message);
+  }
+
+  const { error } = await supabase
+    .from("comissao_programas")
+    .update({
+      uso_exclusivo_importacao_legado: exclusivo,
+      ativo: false,
+      status: exclusivo ? "INATIVO" : "RASCUNHO",
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", programaId)
+    .eq("empresa_id", empresaId);
+  if (error) throw new Error(error.message);
+
+  revalidatePath("/erp/regras-comissao");
+  revalidatePath("/erp/clientes/importar");
+}
+
+export async function toggleFranchiseRuleAction(formData: FormData): Promise<void> {
+  const empresaId = String(formData.get("empresa_id") ?? "").trim();
+  const regraId = String(formData.get("regra_id") ?? "").trim();
+  const ativa = formData.get("ativa") === "true";
+  if (!empresaId || !regraId) throw new Error("Empresa e regra são obrigatórias.");
+
+  const supabase = await assertCanWrite(empresaId);
+  const { error } = await supabase
+    .from("comissao_regras_franquia")
+    .update({
+      ativa,
+      configuracao_homologada: false,
+      origem_configuracao: ativa ? "ERP_MANUAL_NAO_HOMOLOGADO" : "ERP_INATIVADA",
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", regraId)
+    .eq("empresa_id", empresaId);
+  if (error) throw new Error(error.message);
+
   revalidatePath("/erp/regras-comissao");
 }
 
@@ -794,6 +906,23 @@ export async function updateFranchiseRuleAction(
     if (!id || !empresaId) throw new Error("ID e empresa são obrigatórios.");
 
     const supabase = await assertCanWrite(empresaId);
+
+    const { data: currentRule } = await supabase
+      .from("comissao_regras_franquia")
+      .select("programa_id")
+      .eq("id", id)
+      .eq("empresa_id", empresaId)
+      .maybeSingle();
+    const { data: currentProgram } = currentRule?.programa_id
+      ? await supabase
+          .from("comissao_programas")
+          .select("ativo,uso_exclusivo_importacao_legado")
+          .eq("id", currentRule.programa_id)
+          .maybeSingle()
+      : { data: null };
+    if (!currentProgram?.ativo || currentProgram.uso_exclusivo_importacao_legado) {
+      throw new Error("Esta regra pertence a um programa inativo ou exclusivo da importação e não pode ser reativada por edição.");
+    }
 
     const { error } = await supabase
       .from("comissao_regras_franquia")

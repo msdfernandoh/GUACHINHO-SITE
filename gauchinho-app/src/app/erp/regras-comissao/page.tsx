@@ -28,7 +28,7 @@ export default async function ErpRegrasComissaoPage() {
     supabase.from("comissao_perfis").select("*").eq("empresa_id", empresaId).order("nome"),
     supabase
       .from("comissao_regras_franquia")
-      .select("*, programa:comissao_programas(nome, administradora:administradoras(nome)), tipo:administradora_tipos(nome), modalidade_obj:administradora_modalidades_comissao(nome)")
+      .select("*, programa:comissao_programas(id, nome, versao, status, ativo, uso_exclusivo_importacao_legado, administradora_id, administradora:administradoras(id, nome)), tipo:administradora_tipos(nome), modalidade_obj:administradora_modalidades_comissao(nome)")
       .eq("empresa_id", empresaId)
       .order("created_at", { ascending: false }),
     supabase
@@ -47,7 +47,7 @@ export default async function ErpRegrasComissaoPage() {
       .eq("empresa_id", empresaId)
       .order("nome"),
     supabase.from("administradoras").select("id, nome").order("nome"),
-    supabase.from("comissao_programas").select("id, nome, administradora_id, versao, status, ativo, administradora:administradoras(nome)").or(`empresa_id.eq.${empresaId},empresa_id.is.null`).order("nome"),
+    supabase.from("comissao_programas").select("id, nome, administradora_id, versao, status, ativo, uso_exclusivo_importacao_legado, administradora:administradoras(nome)").or(`empresa_id.eq.${empresaId},empresa_id.is.null`).order("nome"),
     supabase.from("administradora_tipos").select("id, nome, administradora_id").eq("ativo", true).order("nome"),
     supabase.from("administradora_modalidades_comissao").select("id, nome, administradora_id").eq("ativo", true).order("nome"),
     supabase
@@ -64,6 +64,11 @@ export default async function ErpRegrasComissaoPage() {
     id: rf.id,
     programa_id: rf.programa_id,
     programa_nome: rf.programa?.nome,
+    programa_versao: rf.programa?.versao,
+    programa_status: rf.programa?.status,
+    programa_ativo: Boolean(rf.programa?.ativo),
+    programa_uso_exclusivo_importacao_legado: Boolean(rf.programa?.uso_exclusivo_importacao_legado),
+    administradora_id: rf.programa?.administradora_id || rf.programa?.administradora?.id,
     administradora_nome: rf.programa?.administradora?.nome,
     versao: rf.versao,
     tipo_administradora_id: rf.tipo_administradora_id,

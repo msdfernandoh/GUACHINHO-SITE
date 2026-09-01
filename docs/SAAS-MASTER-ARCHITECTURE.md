@@ -1786,3 +1786,21 @@ vínculos ativos e dentro da vigência.
 
 Relatório:
 `docs/relatorios-fases/FASE-204-INATIVACAO-VINCULO-PARTICIPANTE-PERFIL.md`.
+
+### Evolução operacional 205 — inativação de perfis e programas de comissão
+
+Perfis de comissão e vínculos participante–perfil possuem controles de inativação
+independentes, sempre preservando previsões e pagamentos existentes. Perfis inativos
+deixam de ser elegíveis para novas regras e vínculos.
+
+Programas antigos da franqueadora podem ser reservados exclusivamente para importação
+histórica por `comissao_programas.uso_exclusivo_importacao_legado`; nesse estado suas
+regras operacionais ficam inativas. O importador lista somente esses programas, enquanto
+os formulários de novas comissões oferecem apenas programas ativos e não legados.
+
+A aba Franqueadora separa a lista histórica do quadro **Comissões atualmente usadas**,
+que considera simultaneamente programa ativo, regra homologada/ativa e vigência. Escopos
+homologados simultâneos são destacados para conferência, sem exclusão automática.
+
+Relatório:
+`docs/relatorios-fases/FASE-205-INATIVACAO-PERFIS-PROGRAMAS-COMISSAO.md`.
