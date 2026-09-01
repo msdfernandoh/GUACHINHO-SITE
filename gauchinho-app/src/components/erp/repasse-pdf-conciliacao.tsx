@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
+import { useActionState, useCallback, useEffect, useState } from "react";
 import {
   importarRelatorioRepasseRaconAction,
   vincularItemRepasseManualAction,
@@ -101,16 +101,26 @@ export function RepassePdfConciliacao({
   const [legacyState, legacyAction, launchingLegacy] = useActionState(lancarItemRepasseLegadoAction, initialState);
   const [importacaoSelecionadaId, setImportacaoSelecionadaId] = useState(importacoes[0]?.id ?? "");
   const [mostrarVinculados, setMostrarVinculados] = useState(false);
+  const abrirImportacao = useCallback((id: string) => {
+    if (!importacoes.some((item) => item.id === id)) return;
+    setImportacaoSelecionadaId(id);
+    setMostrarVinculados(false);
+    window.requestAnimationFrame(() => {
+      document.getElementById("conferencia-relatorio-repasse")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }, [importacoes]);
   useEffect(() => {
     const abrir = (event: Event) => {
       const id = (event as CustomEvent<string>).detail;
-      if (!importacoes.some((item) => item.id === id)) return;
-      setImportacaoSelecionadaId(id);
-      document.getElementById("conciliacao-repasse")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      abrirImportacao(id);
     };
     window.addEventListener("abrir-conciliacao-repasse", abrir);
     return () => window.removeEventListener("abrir-conciliacao-repasse", abrir);
-  }, [importacoes]);
+  }, [abrirImportacao]);
+  useEffect(() => {
+    if (!importState.ok || !importState.importacaoId) return;
+    abrirImportacao(importState.importacaoId);
+  }, [abrirImportacao, importState.importacaoId, importState.ok]);
   const atual = importacoes.find((item) => item.id === importacaoSelecionadaId) ?? importacoes[0] ?? null;
   const usados = new Set((atual?.itens ?? []).map((item) => item.previsao_franquia_id).filter(Boolean));
   const sistemaSemRelatorio = atual
@@ -159,13 +169,46 @@ export function RepassePdfConciliacao({
         </div>
       </form>
 
+      <div className="rounded-xl border bg-white p-4 text-xs dark:border-slate-800 dark:bg-slate-900">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h3 className="text-sm font-bold text-slate-950 dark:text-white">Relatórios já importados</h3>
+            <p className="text-slate-500">Abra qualquer PDF anterior na mesma tela usada logo após a importação.</p>
+          </div>
+          <span className="rounded-full bg-blue-100 px-3 py-1 font-bold text-blue-800">{importacoes.length} relatório(s)</span>
+        </div>
+        {!importacoes.length ? (
+          <p className="mt-3 rounded-lg bg-slate-50 p-3 text-slate-500 dark:bg-slate-800">Nenhum relatório foi importado para esta empresa.</p>
+        ) : (
+          <div className="mt-3 max-h-72 overflow-auto rounded-lg border">
+            <table className="min-w-full text-left">
+              <thead className="sticky top-0 bg-slate-50 text-slate-600 dark:bg-slate-800">
+                <tr><th className="p-2">Enviado em</th><th>Competência</th><th>Arquivo</th><th className="text-right">Valor</th><th className="pl-3">Situação</th><th className="px-3 text-right">Ação</th></tr>
+              </thead>
+              <tbody className="divide-y">
+                {importacoes.map((item) => (
+                  <tr key={item.id} className={item.id === atual?.id ? "bg-blue-50 dark:bg-blue-950/30" : ""}>
+                    <td className="p-2 whitespace-nowrap">{new Date(item.created_at).toLocaleDateString("pt-BR")}</td>
+                    <td className="whitespace-nowrap font-semibold">{item.competencia}</td>
+                    <td className="max-w-64 truncate" title={item.arquivo_nome}>{item.arquivo_nome}</td>
+                    <td className="whitespace-nowrap text-right font-mono">{money(Number(item.valor_total_bruto))}</td>
+                    <td className="pl-3"><span className="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-bold text-slate-700 dark:bg-slate-800 dark:text-slate-200">{item.status.replaceAll("_", " ")}</span></td>
+                    <td className="px-3 text-right"><button type="button" onClick={() => abrirImportacao(item.id)} className="whitespace-nowrap font-bold text-blue-700 hover:underline">{item.id === atual?.id ? "Em conferência" : "Abrir conferência"}</button></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
       {atual && (
-        <>
-          {importacoes.length > 1 && <label className="block max-w-xl text-xs font-bold">Relatório em conferência
-            <select value={atual.id} onChange={(event) => { setImportacaoSelecionadaId(event.target.value); setMostrarVinculados(false); }} className="mt-1 block w-full rounded-lg border bg-white p-2 font-normal dark:bg-slate-900">
+        <div id="conferencia-relatorio-repasse" className="scroll-mt-4 space-y-4">
+          <label className="block max-w-xl text-xs font-bold">Relatório em conferência
+            <select value={atual.id} onChange={(event) => abrirImportacao(event.target.value)} className="mt-1 block w-full rounded-lg border bg-white p-2 font-normal dark:bg-slate-900">
               {importacoes.map((item) => <option key={item.id} value={item.id}>{item.competencia} · {item.arquivo_nome} · {money(Number(item.valor_total_bruto))} · {item.status}</option>)}
             </select>
-          </label>}
+          </label>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5 text-xs">
             <Summary label="Entrada bruta do PDF" value={money(Number(atual.valor_total_bruto))} color="text-emerald-700" />
             <button type="button" onClick={() => setMostrarVinculados((value) => !value)} aria-expanded={mostrarVinculados} className="rounded-xl text-left focus:outline-none focus:ring-2 focus:ring-blue-600">
@@ -195,7 +238,7 @@ export function RepassePdfConciliacao({
             <h3 className="border-b p-3 text-sm font-bold text-violet-800">Comissões do sistema não encontradas no relatório ({sistemaSemRelatorio.length})</h3>
             <div className="overflow-x-auto"><table className="w-full text-xs"><thead className="bg-slate-50 text-left"><tr><th className="p-2">Cliente</th><th>Grupo / Cota</th><th>Parcela</th><th className="text-right pr-3">Saldo</th></tr></thead><tbody className="divide-y">{sistemaSemRelatorio.map((p) => <tr key={p.id}><td className="p-2 font-bold">{p.cliente_nome}</td><td>{p.numero_grupo} / {p.numero_cota}</td><td>{p.ordem_etapa}ª · {p.nome_etapa}</td><td className="pr-3 text-right font-mono">{money(Number(p.valor_previsto)-Number(p.valor_liquidado))}</td></tr>)}</tbody></table></div>
           </div>
-        </>
+        </div>
       )}
     </section>
   );

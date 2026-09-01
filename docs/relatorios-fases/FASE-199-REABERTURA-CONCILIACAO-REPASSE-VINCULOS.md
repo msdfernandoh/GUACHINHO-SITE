@@ -15,6 +15,12 @@ mostrava apenas a quantidade, sem permitir conferência das linhas.
 - **Conciliar** reabre e posiciona a tela no relatório correto, sem importar novamente
   o PDF e sem criar uma segunda entrada de caixa;
 - o conciliador mantém seleção explícita entre os relatórios carregados;
+- a área **Relatórios já importados** lista data, competência, arquivo, valor e situação,
+  com ação para abrir cada conferência na mesma UI da importação;
+- o histórico acompanha os 100 recebimentos exibidos na página, em vez de se limitar aos
+  12 PDFs mais recentes;
+- depois de uma importação nova ou idempotente, a UI seleciona automaticamente o relatório
+  retornado pela operação;
 - o card **Vinculados** é acionável e abre a relação das linhas vinculadas;
 - a lista apresenta cliente, grupo/cota, parcela, valor do relatório e valor efetivamente
   vinculado no livro `financeiro_recebimento_itens`;

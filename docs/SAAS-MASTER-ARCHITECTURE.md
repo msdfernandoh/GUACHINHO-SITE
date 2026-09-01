@@ -1644,7 +1644,10 @@ Relatório:
 Recebimentos originados por relatório PDF preservam a ligação explícita com a
 respectiva importação. A ação **Conciliar** da lista de recebimentos reabre esse
 relatório, inclusive quando não é o último importado, sem registrar outra entrada
-de caixa. O card **Vinculados** abre a composição por linha e confronta o valor do
+de caixa. A área **Relatórios já importados** mantém os 100 registros correspondentes
+ao horizonte da tela de recebimentos e permite abrir cada conferência com a mesma UI
+do pós-importação; uma importação nova ou idempotente seleciona automaticamente o PDF
+retornado pela operação. O card **Vinculados** abre a composição por linha e confronta o valor do
 relatório com o valor efetivamente lançado em `financeiro_recebimento_itens`, mantendo
 a alteração do vínculo sob a RPC financeira tenant-aware existente. Quando a linha já
 possui baixa, a troca é bloqueada até o estorno compensatório do recebimento, pois fatos

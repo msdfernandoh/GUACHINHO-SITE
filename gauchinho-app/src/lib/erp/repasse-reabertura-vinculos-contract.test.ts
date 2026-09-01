@@ -19,8 +19,12 @@ describe("repasse da franquia — reabertura e conferência dos vínculos", () =
   });
 
   it("permite alternar entre os relatórios carregados, sem ficar preso ao último", () => {
+    expect(conciliacao).toContain("Relatórios já importados");
+    expect(conciliacao).toContain("Abrir conferência");
     expect(conciliacao).toContain("Relatório em conferência");
-    expect(conciliacao).toContain("setImportacaoSelecionadaId(event.target.value)");
+    expect(conciliacao).toContain("abrirImportacao(event.target.value)");
+    expect(conciliacao).toContain("importState.importacaoId");
+    expect(pagina).toContain(".limit(100)");
   });
 
   it("o card Vinculados abre a lista com os valores de relatório e do livro financeiro", () => {

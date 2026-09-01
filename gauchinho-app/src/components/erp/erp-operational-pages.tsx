@@ -804,7 +804,7 @@ export async function ErpRepasseFranquiaPage() {
       .select("id,administradora_id,competencia,arquivo_nome,valor_total_bruto,ponto_venda,comissionado_nome,pedidos,status,recebimento_id,created_at,itens:erp_repasse_importacao_itens(id,linha,produto,data_alocacao,numero_grupo,numero_cota,cliente_nome,parcela_numero,parcela_total,valor_comissao,valor_base,status_conciliacao,previsao_franquia_id,previsao_sugerida_id,alertas,previsao:comissao_previsoes_franquia(competencia,valor_previsto,valor_liquidado,ordem_etapa,nome_etapa))")
       .eq("empresa_id", empresaId)
       .order("created_at", { ascending: false })
-      .limit(12),
+      .limit(100),
     db
       .from("participantes_comerciais")
       .select("id,nome,nome_exibicao")
