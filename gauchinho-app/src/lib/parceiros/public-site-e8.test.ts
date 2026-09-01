@@ -373,6 +373,17 @@ describe("E8 — site público parceiros", () => {
         principalVariant: "www",
       })
     ).toEqual({ redirect: false });
+
+    // A Vercel pode normalizar o host entregue ao middleware para o apex. O
+    // redirect real apex → www já ocorre antes de a requisição chegar ao app.
+    expect(
+      canon({
+        requestedHost: "parceiro-alfa.com.br",
+        requestedPath: "/",
+        partner,
+        principalVariant: "www",
+      })
+    ).toEqual({ redirect: false });
   });
 
   it("SEO robots: PUBLICADO indexável; preview/rascunho noindex", async () => {

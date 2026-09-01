@@ -68,6 +68,16 @@ export function computeCanonicalRedirect(input: {
   const principalFull = principal.toLowerCase();
 
   if (input.partner.source !== "parceiro_path") {
+    // A Vercel pode entregar ao runtime o host www já normalizado para o apex.
+    // Quando www é a variante principal, o redirect apex → www pertence ao
+    // provedor de domínio; repeti-lo aqui produziria um 308 para a própria URL.
+    if (
+      input.principalVariant === "www" &&
+      principalFull.startsWith("www.") &&
+      reqFull === principalFull.slice(4)
+    ) {
+      return { redirect: false };
+    }
     if (reqFull && reqFull !== principalFull) {
       return { redirect: true, location: `https://${principal}/`, status: 308 };
     }
