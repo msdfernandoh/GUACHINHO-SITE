@@ -152,18 +152,25 @@ export async function lancarItemRepasseLegadoAction(
     const itemId = String(formData.get("item_id") ?? "");
     const participanteId = String(formData.get("participante_id") ?? "");
     const regraId = String(formData.get("regra_participante_id") ?? "");
-    const valorRaw = String(formData.get("valor_comissao_manual") ?? "").trim().replace(",", ".");
-    const valorManual = valorRaw ? Number(valorRaw) : null;
-    if (!itemId || !participanteId || !regraId) throw new Error("Selecione o consultor e a regra da comissão.");
-    if (valorManual !== null && (!Number.isFinite(valorManual) || valorManual <= 0)) {
-      throw new Error("Informe um valor manual de comissão válido.");
+    const semRegra = formData.get("sem_regra") === "true";
+    const clienteNome = String(formData.get("cliente_nome") ?? "").trim();
+    const grupoId = String(formData.get("grupo_id") ?? "").trim() || null;
+    const numeroGrupo = String(formData.get("numero_grupo") ?? "").trim();
+    const numeroCota = String(formData.get("numero_cota") ?? "").trim();
+    if (!itemId || !participanteId || !clienteNome || !numeroGrupo || !numeroCota) {
+      throw new Error("Informe cliente, grupo, cota e consultor.");
     }
+    if (!semRegra && !regraId) throw new Error("Selecione a regra ou marque a opção sem regra.");
     const { error } = await db.rpc("rpc_lancar_item_repasse_legado", {
       p_empresa_id: empresaId,
       p_item_id: itemId,
       p_participante_id: participanteId,
-      p_regra_participante_id: regraId,
-      p_valor_comissao_manual: valorManual,
+      p_regra_participante_id: regraId || null,
+      p_sem_regra: semRegra,
+      p_cliente_nome: clienteNome,
+      p_grupo_id: grupoId,
+      p_numero_grupo: numeroGrupo,
+      p_numero_cota: numeroCota,
     });
     if (error) throw new Error(error.message);
     revalidatePath("/erp/repasse-franquia");

@@ -1,6 +1,5 @@
 import Link from "next/link";
 import Leads from "@/app/admin/leads/page";
-import Comissoes from "@/app/admin/comissoes/page";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentTenantContext } from "@/lib/tenant/context";
 import { CommissionRuleManager } from "@/components/erp/commission-rule-manager";
@@ -22,7 +21,7 @@ import { FiscalCommissionConfig } from "@/components/erp/fiscal-commission-confi
 import { ConfirmSubmitButton } from "@/components/erp/confirm-submit-button";
 import { ReceiptManager } from "@/components/erp/receipt-manager";
 import { RepasseFranquiaView, type SolicitacaoRepasseItem } from "@/components/erp/repasse-franquia-view";
-import { RepassePdfConciliacao, type RepassePdfImportacao, type RepassePrevisaoAberta, type RepasseParticipante, type RepasseRegraParticipante } from "@/components/erp/repasse-pdf-conciliacao";
+import { RepassePdfConciliacao, type RepassePdfImportacao, type RepassePrevisaoAberta, type RepasseParticipante, type RepasseRegraParticipante, type RepasseGrupo } from "@/components/erp/repasse-pdf-conciliacao";
 import {
   BidStrategyTable,
   type BidRow,
@@ -764,7 +763,7 @@ export async function ErpRepasseFranquiaPage() {
   if (!empresaAtiva) notFound();
   const empresaId = empresaAtiva.id;
   const db = await createClient();
-  const [grants, contas, recebimentos, previsoes, solicitacoesRes, importacoesRes, participantesRes, regrasRes] = await Promise.all([
+  const [grants, contas, recebimentos, previsoes, solicitacoesRes, importacoesRes, participantesRes, regrasRes, gruposRes] = await Promise.all([
     db
       .from("empresa_administradoras")
       .select("administradora:administradoras(id,nome)")
@@ -802,7 +801,7 @@ export async function ErpRepasseFranquiaPage() {
       .limit(200),
     db
       .from("erp_repasse_importacoes")
-      .select("id,competencia,arquivo_nome,valor_total_bruto,ponto_venda,comissionado_nome,pedidos,status,recebimento_id,created_at,itens:erp_repasse_importacao_itens(id,linha,produto,data_alocacao,numero_grupo,numero_cota,cliente_nome,parcela_numero,parcela_total,valor_comissao,valor_base,status_conciliacao,previsao_franquia_id,previsao_sugerida_id,alertas)")
+      .select("id,administradora_id,competencia,arquivo_nome,valor_total_bruto,ponto_venda,comissionado_nome,pedidos,status,recebimento_id,created_at,itens:erp_repasse_importacao_itens(id,linha,produto,data_alocacao,numero_grupo,numero_cota,cliente_nome,parcela_numero,parcela_total,valor_comissao,valor_base,status_conciliacao,previsao_franquia_id,previsao_sugerida_id,alertas)")
       .eq("empresa_id", empresaId)
       .order("created_at", { ascending: false })
       .limit(12),
@@ -820,6 +819,11 @@ export async function ErpRepasseFranquiaPage() {
       .eq("configuracao_homologada", true)
       .eq("status", "HOMOLOGADA")
       .order("versao", { ascending: false }),
+    db
+      .from("grupos_consorcio")
+      .select("id,administradora_id,codigo_grupo,ativo,origem_governanca,empresa_origem_id")
+      .or(`origem_governanca.in.(GLOBAL,LEGADO),empresa_origem_id.eq.${empresaId}`)
+      .order("codigo_grupo"),
   ]);
 
   const administradoras = (grants.data ?? []).flatMap((x) => {
@@ -920,6 +924,7 @@ export async function ErpRepasseFranquiaPage() {
           const venda = Array.isArray(row.venda) ? row.venda[0] : row.venda;
           return {
             id: row.id,
+            administradora_id: row.administradora_id,
             competencia: row.competencia,
             ordem_etapa: Number(row.ordem_etapa),
             nome_etapa: row.nome_etapa,
@@ -942,6 +947,13 @@ export async function ErpRepasseFranquiaPage() {
             percentual: Number(row.percentual_comissao),
           } satisfies RepasseRegraParticipante;
         })}
+        grupos={(gruposRes.data ?? []).map((row) => ({
+          id: row.id,
+          administradora_id: row.administradora_id,
+          codigo: row.codigo_grupo,
+          ativo: row.ativo,
+          local: row.origem_governanca === "LOCAL",
+        } satisfies RepasseGrupo))}
       />
 
       <RepasseFranquiaView
@@ -960,9 +972,6 @@ export async function ErpRepasseFranquiaPage() {
         }
       />
 
-      <div className="border-t border-slate-200 pt-6">
-        <Comissoes />
-      </div>
     </div>
   );
 }

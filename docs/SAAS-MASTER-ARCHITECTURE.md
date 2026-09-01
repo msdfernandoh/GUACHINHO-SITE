@@ -87,6 +87,7 @@ A plataforma suporta:
 - compensações, consumos, cancelamentos de crédito e estornos registrados como eventos append-only; nenhum pagamento líquido negativo;
 - `operacoes_idempotentes`, `financeiro_compensacao_movimentos`, `financeiro_estornos` e view `financeiro_compensacoes_saldos`;
 - a formalização multicotas reconstrói respostas em retry a partir dos fatos persistidos e nunca atualiza `operacoes_idempotentes`, preservando sua semântica append-only (migration 181);
+- a conciliação de repasse lista previsões abertas da mesma administradora em qualquer competência e permite cadastro administrativo mínimo de cliente/cota; grupos ausentes nascem locais, inativos e fora do site, com pendências cadastrais explícitas (migration 182);
 - estado: aplicado ao projeto principal em 11/08/2026 após auditoria final e autorização explícita.
 
 ### Fechamento técnico da base (Migrations 064–066 — aplicadas em Produção)
