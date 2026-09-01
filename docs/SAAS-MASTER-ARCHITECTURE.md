@@ -77,6 +77,12 @@ A plataforma suporta:
 - Divergências de valor oferecem decisões distintas: ajustar a conciliação ao valor do relatório, manter os valores atuais e dar por ajustado, manter o sistema com crédito, ou cancelar a cota.
 - As decisões permanecem tenant-aware, idempotentes e append-only em `erp_repasse_atencao_resolucoes`; o snapshot histórico da regra financeira não é sobrescrito.
 
+### Correção operacional 198 — correção auditada de vínculo já baixado
+
+- A alteração manual de um vínculo do PDF transfere, na mesma transação, a classificação da baixa para a previsão correta e recalcula liquidação e elegibilidade nas previsões anterior e nova.
+- O valor do recebimento e o caixa não mudam; cada correção é registrada de forma append-only em `erp_repasse_vinculo_correcoes`.
+- Se a comissão de participante relacionada já tiver pagamento, a troca é recusada até o estorno do pagamento, evitando saldo negativo ou compensação implícita.
+
 ### Evolução financeira 192 — contas da empresa e equalização dos sócios
 
 > Correção operacional 188: `financeiro_estornos` concede somente leitura

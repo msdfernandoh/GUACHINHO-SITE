@@ -303,7 +303,7 @@ export function RepassePdfConciliacao({
               {abaAtencao === "DIVERGENTES" && <DivergenceTable importacao={atual} items={divergentes} action={attentionAction} disabled={resolvingAttention}/>}
             </div>
           </div>
-          {linkState.message && <p role="status" className={linkState.ok ? "text-xs font-bold text-emerald-700" : "text-xs font-bold text-rose-700"}>{linkState.message}</p>}
+          {linkState.message && <p role="alert" className={`sticky bottom-3 z-20 rounded-xl border p-3 text-sm font-bold shadow-lg ${linkState.ok ? "border-emerald-300 bg-emerald-50 text-emerald-800" : "border-rose-300 bg-rose-50 text-rose-800"}`}>{linkState.message}</p>}
           {legacyState.message && <p role="status" className={legacyState.ok ? "text-xs font-bold text-emerald-700" : "text-xs font-bold text-rose-700"}>{legacyState.message}</p>}
           {attentionState.message && <p role="status" className={attentionState.ok ? "rounded-lg bg-emerald-50 p-3 text-xs font-bold text-emerald-800" : "rounded-lg bg-rose-50 p-3 text-xs font-bold text-rose-800"}>{attentionState.message}</p>}
         </div>

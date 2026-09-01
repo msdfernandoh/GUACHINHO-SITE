@@ -115,33 +115,18 @@ export async function vincularItemRepasseManualAction(
     const itemId = String(formData.get("item_id") ?? "");
     const previsaoId = String(formData.get("previsao_franquia_id") ?? "");
     if (!itemId || !previsaoId) throw new Error("Selecione a linha e a comissão do sistema.");
-    const { data: itemAtual, error: itemError } = await db
-      .from("erp_repasse_importacao_itens")
-      .select("previsao_franquia_id,importacao:erp_repasse_importacoes!inner(recebimento_id)")
-      .eq("empresa_id", empresaId)
-      .eq("id", itemId)
-      .single();
-    if (itemError || !itemAtual) throw new Error("Linha do relatório não encontrada no tenant.");
-    const importacao = Array.isArray(itemAtual.importacao) ? itemAtual.importacao[0] : itemAtual.importacao;
-    if (itemAtual.previsao_franquia_id && itemAtual.previsao_franquia_id !== previsaoId && importacao?.recebimento_id) {
-      const { count, error: baixaError } = await db
-        .from("financeiro_recebimento_itens")
-        .select("id", { count: "exact", head: true })
-        .eq("recebimento_id", importacao.recebimento_id)
-        .eq("previsao_franquia_id", itemAtual.previsao_franquia_id);
-      if (baixaError) throw new Error("Não foi possível conferir a baixa financeira do vínculo.");
-      if ((count ?? 0) > 0) throw new Error("Este vínculo já possui baixa financeira. Estorne o recebimento antes de trocar a previsão; o livro financeiro não pode ser reescrito.");
-    }
-    const { error } = await db.rpc("rpc_vincular_item_repasse_manual", {
+    const { data, error } = await db.rpc("rpc_corrigir_vinculo_item_repasse", {
       p_empresa_id: empresaId,
       p_item_id: itemId,
-      p_previsao_franquia_id: previsaoId,
+      p_nova_previsao_franquia_id: previsaoId,
+      p_idempotency_key: `corrigir-vinculo:${itemId}:${previsaoId}`,
     });
     if (error) throw new Error(error.message);
     revalidatePath("/erp/repasse-franquia");
     revalidatePath("/erp/comissoes");
     revalidatePath("/erp/minhas-comissoes");
-    return { ok: true, message: "Linha vinculada e recebimento baixado automaticamente." };
+    const result = data as { alterado?: boolean; baixa_transferida?: number } | null;
+    return { ok: true, message: result?.alterado ? `Vínculo corrigido. Baixa de ${Number(result.baixa_transferida ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })} transferida para a comissão correta.` : "O vínculo selecionado já estava salvo." };
   } catch (error) {
     return { ok: false, message: error instanceof Error ? error.message : "Erro ao vincular a linha." };
   }
