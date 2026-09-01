@@ -19,6 +19,9 @@ import { ErpAssembleiasPage } from "@/components/erp/erp-assembleias-page";
 import ContasPagar from "@/app/erp/contas-pagar/page";
 import { getCurrentErpAccess } from "@/lib/erp/erp-acesso-server";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 const PAGES = { leads: Leads, propostas: Propostas, contratacoes: Contratacoes, vendas: Vendas, grupos: Grupos, comissoes: Comissoes, financeiro: Financeiro, relatorios: Relatorios, metas: Metas, tarefas: Tarefas, usuarios: Usuarios } as const;
 const OPERATIONAL_PAGES = { clientes: ErpClientesPage, consultores: Participantes, lances: ErpLancesPage, assembleias: ErpAssembleiasPage, "regras-comissao": ErpRegrasComissaoPage, "repasse-franquia": ErpRepasseFranquiaPage, "contas-pagar": ContasPagar } as const;
 

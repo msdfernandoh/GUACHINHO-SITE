@@ -21,7 +21,7 @@ export default async function AdminVendasPage() {
   const papelNome = vinculo?.papel?.nome?.toLowerCase() ?? "";
   const isMaster = papelNome.includes("master") || papelNome.includes("admin") || papelNome.includes("gestor");
 
-  const admin = createAdminClient();
+  const admin = createAdminClient({ noStore: true });
 
   const [vendasRes, cotasRes, participantesRes, vinculosRes, modalidadesRes, regrasPartRes, regrasFranqRes] = await Promise.all([
     admin
