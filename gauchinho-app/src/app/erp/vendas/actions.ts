@@ -121,6 +121,16 @@ export async function masterAtualizarVendaAction(formData: FormData) {
       p_idempotency_key: `recalculo_master:${vendaId}:${Date.now()}`
     });
     if (recalculoError) throw new Error(`Não foi possível recalcular as comissões: ${recalculoError.message}`);
+
+    // O motor calcula o total agregado da venda. Em vendas multicotas, cada
+    // cota recebe seu próprio cronograma sem alterar o total geral.
+    const { error: distribuicaoError } = await admin.rpc("distribuir_previsoes_por_cota", {
+      p_empresa_id: empresaAtiva.id,
+      p_venda_id: vendaId,
+    });
+    if (distribuicaoError) {
+      throw new Error(`As comissões foram recalculadas, mas não puderam ser separadas por cota: ${distribuicaoError.message}`);
+    }
   }
 
   revalidatePath("/erp/vendas");

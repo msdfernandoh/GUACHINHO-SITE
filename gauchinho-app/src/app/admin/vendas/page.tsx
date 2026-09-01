@@ -155,6 +155,7 @@ export default async function AdminVendasPage() {
       prazo: Number(c.prazo),
       parcela: Number(c.parcela),
       status: c.status,
+      ordem_cota: Number(c.ordem_cota || 1),
       contemplada: c.status === "contemplada",
       cliente_nome: venda?.cliente_nome || c.snapshot_cota?.cliente_nome || undefined,
     };
