@@ -480,8 +480,8 @@ SELECT
     ELSE COALESCE(NULLIF(trim(v.cliente_nome), ''), item.cliente_nome)
   END AS titular_nome,
   item.cliente_nome AS titular_no_relatorio,
-  item.grupo_numero,
-  item.cota_numero,
+  item.numero_grupo AS grupo_numero,
+  item.numero_cota AS cota_numero,
   item.parcela_numero,
   round(item.valor_comissao, 2) AS valor_relatorio,
   round(COALESCE(sum(baixa.valor_liquidado), 0), 2) AS valor_vinculado,
