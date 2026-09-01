@@ -1,6 +1,23 @@
 type ParticipanteRef = { id: string; usuario_id?: string | null };
 type VinculoPerfilRef = { participante_id: string; perfil_id: string; papel_tipo: string };
 type ModalidadeRef = { id: string; codigo: string };
+type ModalidadeRegraRef = { id: string; isCadastradaNoBanco: boolean; percentualReferencia: number };
+
+export function resolverModalidadeRegraId(params: {
+  modalidadeAtualId?: string | null;
+  modalidadePropostaId?: string | null;
+  modalidadeGrupoId?: string | null;
+  modalidades: ModalidadeRegraRef[];
+}): string {
+  const disponiveis = params.modalidades.filter(
+    (item) => item.isCadastradaNoBanco && item.percentualReferencia > 0,
+  );
+  return disponiveis.find((item) => item.id === params.modalidadeAtualId)?.id
+    ?? disponiveis.find((item) => item.id === params.modalidadePropostaId)?.id
+    ?? disponiveis.find((item) => item.id === params.modalidadeGrupoId)?.id
+    ?? disponiveis[0]?.id
+    ?? "";
+}
 
 export function resolverParticipantePrincipalId(params: {
   participantePersistidoId?: string | null;

@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useMemo, useTransition } from "react";
+import { useEffect, useState, useMemo, useTransition } from "react";
 import { formalizarContratacaoAction } from "@/app/erp/contratacoes/actions";
+import { resolverModalidadeRegraId } from "@/lib/erp/formalizacao-defaults";
 import { Users, Calculator, UserCheck, Calendar, Info, Sparkles } from "lucide-react";
 
 export type GrupoCota = {
@@ -269,6 +270,23 @@ export function FormalizacaoVendaForm({
     return modalidadesOpcoes.find((m) => m.id === selectedModalidadeId) || null;
   }, [modalidadesOpcoes, selectedModalidadeId]);
 
+  // Mantém uma modalidade canônica selecionada ao carregar a proposta ou trocar
+  // grupo/produto/perfil. Cards visíveis sem seleção deixavam o botão bloqueado
+  // silenciosamente, mesmo quando existia uma regra homologada compatível.
+  useEffect(() => {
+    const atualValida = modalidadesOpcoes.some(
+      (item) => item.id === selectedModalidadeId && item.isCadastradaNoBanco && item.percentualReferencia > 0,
+    );
+    if (atualValida) return;
+
+    setSelectedModalidadeId(resolverModalidadeRegraId({
+      modalidadeAtualId: selectedModalidadeId,
+      modalidadePropostaId: initialModalidadeId,
+      modalidadeGrupoId: grupoAtual?.modalidade_comissao_id,
+      modalidades: modalidadesOpcoes,
+    }));
+  }, [grupoAtual?.modalidade_comissao_id, initialModalidadeId, modalidadesOpcoes, selectedModalidadeId]);
+
   const valorParcela = parcelaAceita;
 
   const percentualFranqueadoraEfetivo = useMemo(() => {
@@ -482,10 +500,13 @@ export function FormalizacaoVendaForm({
         <div className="grid gap-3 sm:grid-cols-3">
           {modalidadesOpcoes.map((m) => {
             const isSelected = modalidadeAtiva?.id === m.id || modalidadeAtiva?.codigo === m.codigo;
+            const disponivel = m.isCadastradaNoBanco && m.percentualReferencia > 0;
             return (
               <label
                 key={m.id || m.codigo}
-                className={`flex flex-col justify-between rounded-xl border p-3.5 cursor-pointer transition relative ${
+                className={`flex flex-col justify-between rounded-xl border p-3.5 transition relative ${
+                  disponivel ? "cursor-pointer" : "cursor-not-allowed opacity-55"
+                } ${
                   isSelected
                     ? "border-indigo-600 bg-white shadow-md ring-2 ring-indigo-600/30 text-indigo-950 dark:bg-slate-800 dark:text-white"
                     : "border-slate-200 bg-white/70 hover:bg-white hover:border-slate-300 text-slate-700 dark:border-slate-800 dark:bg-slate-800/60 dark:text-slate-300"
@@ -497,6 +518,7 @@ export function FormalizacaoVendaForm({
                     name="tipo_venda_radio_option"
                     required
                     checked={isSelected}
+                    disabled={!disponivel}
                     onChange={() => {
                       setSelectedModalidadeId(m.id);
                     }}
@@ -510,7 +532,7 @@ export function FormalizacaoVendaForm({
                       </span>
                     </div>
                     <p className="mt-1 text-[11px] text-slate-500 leading-snug dark:text-slate-400">
-                      {m.descricao}
+                      {disponivel ? m.descricao : "Sem regra vigente para este perfil"}
                     </p>
                   </div>
                 </div>
@@ -788,7 +810,28 @@ export function FormalizacaoVendaForm({
       </div>
 
       {!formalizada && (
-        <button
+        <div className="space-y-3">
+          {(() => {
+            const pendencias = [
+              !selectedGrupoId ? "Selecione o grupo" : null,
+              !selectedCotaId ? "Selecione o produto/crédito" : null,
+              !selectedPrincipalId ? "Selecione o consultor principal" : null,
+              !selectedPerfilPrincipalId ? "Selecione o perfil de comissão do consultor" : null,
+              selectedPerfilPrincipalId && !regraPrincipalAtiva ? "O perfil selecionado não possui regra homologada vigente" : null,
+              !selectedModalidadeId ? "Selecione o modelo comercial da comissão" : null,
+              selectedModalidadeId && !modalidadeAtiva?.isCadastradaNoBanco ? "O modelo selecionado não possui regra vigente para este perfil" : null,
+              modalidadeAtiva && percentualFranqueadoraEfetivo <= 0 ? "A regra da franqueadora está com percentual zerado" : null,
+            ].filter(Boolean) as string[];
+            return pendencias.length ? (
+              <div role="alert" className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-xs font-semibold text-amber-950">
+                <p className="font-black">Para liberar a formalização:</p>
+                <ul className="mt-1 list-disc space-y-1 pl-5">{pendencias.map((item) => <li key={item}>{item}</li>)}</ul>
+              </div>
+            ) : (
+              <p className="text-xs font-bold text-emerald-700">Tudo conferido. A venda está pronta para formalização.</p>
+            );
+          })()}
+          <button
           type="submit"
           disabled={
             isPending ||
@@ -797,12 +840,15 @@ export function FormalizacaoVendaForm({
              !selectedModalidadeId ||
              !selectedPrincipalId ||
              !selectedPerfilPrincipalId ||
+             !regraPrincipalAtiva ||
+             !modalidadeAtiva?.isCadastradaNoBanco ||
              percentualFranqueadoraEfetivo <= 0
           }
           className="w-full sm:w-auto rounded-xl bg-blue-700 px-7 py-3.5 text-sm font-extrabold text-white shadow-md hover:bg-blue-800 disabled:opacity-50 transition cursor-pointer"
         >
           {isPending ? `Formalizando venda e gerando ${quantidadeCotas} ${quantidadeCotas === 1 ? "cota" : "cotas"}...` : "Confirmar e formalizar venda"}
-        </button>
+          </button>
+        </div>
       )}
     </form>
   );

@@ -3,6 +3,7 @@ import {
   resolverModalidadeComissaoId,
   resolverParticipantePrincipalId,
   resolverPerfilPrincipalId,
+  resolverModalidadeRegraId,
 } from "./formalizacao-defaults";
 
 describe("defaults canônicos da formalização", () => {
@@ -36,5 +37,21 @@ describe("defaults canônicos da formalização", () => {
         selecoes: [{ config: { modalidadeParcela: "reduzida", percentualParcelaReduzida: 70 } }],
       },
     })).toBe("reduzida");
+  });
+});
+
+describe("resolverModalidadeRegraId", () => {
+  const modalidades = [
+    { id: "sem-regra", isCadastradaNoBanco: false, percentualReferencia: 0 },
+    { id: "integral", isCadastradaNoBanco: true, percentualReferencia: 3.5 },
+    { id: "reduzida", isCadastradaNoBanco: true, percentualReferencia: 3.5 },
+  ];
+
+  it("seleciona automaticamente a modalidade válida preservada na proposta", () => {
+    expect(resolverModalidadeRegraId({ modalidadePropostaId: "reduzida", modalidades })).toBe("reduzida");
+  });
+
+  it("ignora modalidade sem regra e usa a primeira opção homologada", () => {
+    expect(resolverModalidadeRegraId({ modalidadeAtualId: "sem-regra", modalidades })).toBe("integral");
   });
 });
