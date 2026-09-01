@@ -7,6 +7,34 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { converterContratacaoEmVenda } from "@/lib/vendas/vendas-service";
 import { assertSnapshotCalculoGruposIntegro } from "@/lib/contratacoes-online/snapshot-calculo-grupos";
+import { isPlatformSuperadmin } from "@/lib/auth/is-superadmin";
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+export async function excluirContratacoesEmLoteAction(formData: FormData): Promise<
+  { ok: true; quantidade: number } | { ok: false; error: string }
+> {
+  try {
+    const context = await requireTenantPermission("formalizar_vendas");
+    if (context.vinculoAtivo.papel?.codigo !== "admin_empresa" && !(await isPlatformSuperadmin())) {
+      throw new Error("Apenas o usuário Master pode excluir contratações em lote.");
+    }
+    const ids = [...new Set(formData.getAll("ids").map(String).filter((id) => UUID.test(id)))].slice(0, 200);
+    if (!ids.length) throw new Error("Selecione ao menos uma contratação.");
+    const db = await createClient();
+    const { data, error } = await db.rpc("rpc_master_excluir_pre_cota_em_lote", {
+      p_empresa_id: context.empresaAtiva.id,
+      p_tipo: "CONTRATACAO",
+      p_ids: ids,
+      p_motivo: "Exclusão em lote na fila de contratações do ERP",
+    });
+    if (error) throw new Error(error.message);
+    revalidatePath("/erp/contratacoes");
+    return { ok: true, quantidade: Number((data as { quantidade?: number } | null)?.quantidade ?? ids.length) };
+  } catch (error) {
+    return { ok: false, error: error instanceof Error ? error.message : "Não foi possível excluir as contratações." };
+  }
+}
 
 function value(formData: FormData, key: string) {
   return String(formData.get(key) ?? "").trim();

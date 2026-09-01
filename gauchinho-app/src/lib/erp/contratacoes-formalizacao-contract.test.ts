@@ -32,9 +32,10 @@ describe("ERP Contratações — formalização V1", () => {
     expect(action).toContain('status_operacional_erp: "PENDENCIA"');
   });
 
-  it("entrega UI ERP própria sem exclusão destrutiva", () => {
+  it("entrega UI ERP própria com exclusão lógica protegida", () => {
     expect(list).toContain("Contratações para formalizar");
-    expect(list).not.toMatch(/Excluir|deleteContratacaoAction/);
+    expect(list).toContain("excluirContratacoesEmLoteAction");
+    expect(list).not.toContain("deleteContratacaoAction");
     expect(detail).toContain("Conferência operacional");
     expect(detail).toContain("Regra de comissão resolvida");
     expect(detail).toContain("nenhuma cópia será criada");

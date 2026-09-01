@@ -64,6 +64,7 @@ export async function listarContratacoesOperacionais(empresaId: string) {
       "id,protocolo,nome,razao_social,tipo_pessoa,cpf,cnpj,telefone,contrato_assinado,contrato_assinado_em,created_at,administradora,grupo_nome,grupo_id,credito_selecionado,parcela_estimada,gerado_por_nome,status_operacional_erp,pendencia_descricao,cliente_id,vendas(id,cotas_definitivas(id))",
     )
     .eq("empresa_id", empresaId)
+    .is("excluido_at", null)
     .order("contrato_assinado_em", { ascending: false, nullsFirst: false })
     .order("created_at", { ascending: false })
     .limit(500);

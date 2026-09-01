@@ -1610,4 +1610,6 @@ Relatório:
 
 
 
+# Atualização operacional — Fase 190 (01/09/2026)
 
+A limpeza das filas comerciais passa a oferecer exclusão em lote para o Master nas telas de propostas e contratações. A operação é uma exclusão lógica transacional por tenant, preserva documentos/histórico, gera auditoria central e é recusada integralmente quando qualquer registro selecionado já possui venda ou cota. Detalhes em `docs/relatorios-fases/FASE-190-EXCLUSAO-LOTE-PRE-COTA-MASTER.md`.

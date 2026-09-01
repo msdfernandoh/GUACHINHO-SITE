@@ -6,6 +6,9 @@ import {
   tempoAguardando,
   type StatusOperacionalContratacao,
 } from "@/lib/erp/contratacoes-operacionais";
+import { BulkArchiveSelection } from "@/components/erp/bulk-archive-selection";
+import { excluirContratacoesEmLoteAction } from "./actions";
+import { isPlatformSuperadmin } from "@/lib/auth/is-superadmin";
 
 const moeda = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 const statusNome: Record<StatusOperacionalContratacao, string> = {
@@ -33,7 +36,8 @@ export default async function ErpContratacoesPage({
   searchParams: Promise<Record<string, string | undefined>>;
 }) {
   const filtros = await searchParams;
-  const { empresaAtiva } = await requireErpRouteAccess("contratacoes");
+  const { empresaAtiva, vinculo } = await requireErpRouteAccess("contratacoes");
+  const podeExcluirEmLote = vinculo.papel?.codigo === "admin_empresa" || await isPlatformSuperadmin();
   let rows = ordenarFilaContratacoes(await listarContratacoesOperacionais(empresaAtiva.id));
   if (filtros.busca) {
     const busca = filtros.busca.toLowerCase().replace(/\D/g, "") || filtros.busca.toLowerCase();
@@ -74,9 +78,11 @@ export default async function ErpContratacoesPage({
       <input type="date" name="data_inicio" defaultValue={filtros.data_inicio} aria-label="Assinatura inicial" className="rounded-lg border border-slate-300 px-3 py-2" />
       <input type="date" name="data_fim" defaultValue={filtros.data_fim} aria-label="Assinatura final" className="rounded-lg border border-slate-300 px-3 py-2" />
     </form>
+    <BulkArchiveSelection enabled={podeExcluirEmLote} entityLabel="contratações" action={excluirContratacoesEmLoteAction}>
     <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
-      <table className="min-w-[1300px] w-full text-left text-sm"><thead className="border-b bg-slate-50 text-xs uppercase tracking-wide text-slate-500"><tr>{["Protocolo","Data assinatura","Cliente","CPF/CNPJ","Telefone","Administradora","Grupo","Crédito","Parcela","Consultor","Status","Ações"].map((h)=><th key={h} className="px-4 py-3">{h}</th>)}</tr></thead>
+      <table className="min-w-[1300px] w-full text-left text-sm"><thead className="border-b bg-slate-50 text-xs uppercase tracking-wide text-slate-500"><tr>{podeExcluirEmLote && <th className="w-10 px-4 py-3"><span className="sr-only">Selecionar</span></th>}{["Protocolo","Data assinatura","Cliente","CPF/CNPJ","Telefone","Administradora","Grupo","Crédito","Parcela","Consultor","Status","Ações"].map((h)=><th key={h} className="px-4 py-3">{h}</th>)}</tr></thead>
       <tbody className="divide-y divide-slate-100">{rows.map((r)=><tr key={r.id} className="align-top hover:bg-slate-50">
+        {podeExcluirEmLote && <td className="px-4 py-4">{r.vendaId ? <span title="Venda/cota já gerada" className="text-slate-300">—</span> : <input type="checkbox" name="ids" value={r.id} aria-label={`Selecionar contratação ${r.protocolo}`} />}</td>}
         <td className="px-4 py-4 font-mono text-xs">{r.protocolo}</td><td className="px-4 py-4"><div>{r.contratoAssinadoEm ? new Date(r.contratoAssinadoEm).toLocaleDateString("pt-BR") : "—"}</div><div className="mt-1 text-xs text-slate-500">{tempoAguardando(r.contratoAssinadoEm)}</div></td>
         <td className="px-4 py-4 font-semibold text-slate-900">{r.nome}</td><td className="px-4 py-4">{r.documento || "—"}</td><td className="px-4 py-4">{r.telefone || "—"}</td><td className="px-4 py-4">{r.administradora || "—"}</td><td className="px-4 py-4">{r.grupo || "Não mapeado"}</td><td className="px-4 py-4">{r.credito ? moeda.format(r.credito) : "—"}</td><td className="px-4 py-4">{r.parcela ? moeda.format(r.parcela) : "—"}</td><td className="px-4 py-4">{r.consultor || "Não atribuído"}</td>
         <td className="px-4 py-4"><span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${statusCor[r.status]}`}>{statusNome[r.status]}</span>{r.pendencia && <p className="mt-2 max-w-48 text-xs text-amber-800">{r.pendencia}</p>}</td>
@@ -84,5 +90,6 @@ export default async function ErpContratacoesPage({
       </tr>)}</tbody></table>
       {!rows.length && <p className="p-10 text-center text-slate-500">Nenhuma contratação encontrada para os filtros.</p>}
     </div>
+    </BulkArchiveSelection>
   </div>;
 }

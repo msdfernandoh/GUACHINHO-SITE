@@ -11,26 +11,63 @@ import {
   getPropostaPdfDownloadUrl,
 } from "@/lib/proposta/generate-pdf";
 import { assertPropostaMinimum } from "@/lib/proposta/minimum";
+import { isPlatformSuperadmin } from "@/lib/auth/is-superadmin";
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function selectedIds(formData: FormData) {
+  return [...new Set(formData.getAll("ids").map(String).filter((id) => UUID.test(id)))].slice(0, 200);
+}
 
 export async function fetchPropostasList(status?: string) {
-  const { empresaAtiva } = await requireTenantPermission("gerenciar_propostas");
+  const { empresaAtiva, vinculoAtivo } = await requireTenantPermission("gerenciar_propostas");
   const supabase = await createClient();
   let q = supabase
     .from("propostas")
     .select("id, created_at, nome_cliente, tipo_proposta, valor_credito, status, lead_id, pdf_url")
     .eq("empresa_id", empresaAtiva.id)
+    .is("excluido_at", null)
     .order("created_at", { ascending: false })
     .limit(100);
   if (status) q = q.eq("status", status);
   const { data, error } = await q;
   if (error) throw new Error(error.message);
-  return data ?? [];
+  return {
+    rows: data ?? [],
+    podeExcluirEmLote: vinculoAtivo.papel?.codigo === "admin_empresa" || await isPlatformSuperadmin(),
+  };
+}
+
+export async function excluirPropostasEmLoteAction(formData: FormData): Promise<
+  { ok: true; quantidade: number } | { ok: false; error: string }
+> {
+  try {
+    const { empresaAtiva, vinculoAtivo } = await requireTenantPermission("gerenciar_propostas");
+    if (vinculoAtivo.papel?.codigo !== "admin_empresa" && !(await isPlatformSuperadmin())) {
+      throw new Error("Apenas o usuário Master pode excluir propostas em lote.");
+    }
+    const ids = selectedIds(formData);
+    if (!ids.length) throw new Error("Selecione ao menos uma proposta.");
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("rpc_master_excluir_pre_cota_em_lote", {
+      p_empresa_id: empresaAtiva.id,
+      p_tipo: "PROPOSTA",
+      p_ids: ids,
+      p_motivo: "Exclusão em lote na tela de propostas do ERP",
+    });
+    if (error) throw new Error(error.message);
+    revalidatePath("/admin/propostas");
+    revalidatePath("/erp/propostas");
+    return { ok: true, quantidade: Number((data as { quantidade?: number } | null)?.quantidade ?? ids.length) };
+  } catch (error) {
+    return { ok: false, error: error instanceof Error ? error.message : "Não foi possível excluir as propostas." };
+  }
 }
 
 export async function fetchProposta(id: string) {
   const { empresaAtiva } = await requireTenantPermission("gerenciar_propostas");
   const supabase = await createClient();
-  const { data, error } = await supabase.from("propostas").select("*").eq("id", id).eq("empresa_id", empresaAtiva.id).single();
+  const { data, error } = await supabase.from("propostas").select("*").eq("id", id).eq("empresa_id", empresaAtiva.id).is("excluido_at", null).single();
   if (error) throw new Error(error.message);
   return data;
 }

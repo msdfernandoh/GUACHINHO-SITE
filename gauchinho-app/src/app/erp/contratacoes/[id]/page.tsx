@@ -118,6 +118,7 @@ export default async function ConferirContratacaoPage({
       .select("*,cliente:clientes(id,nome,cpf_cnpj,email,telefone),vendas(id,status,cotas_definitivas(id,numero_cota,status))")
       .eq("id", id)
       .eq("empresa_id", empresaAtiva.id)
+      .is("excluido_at", null)
       .maybeSingle(),
     admin
       .from("grupos_consorcio")

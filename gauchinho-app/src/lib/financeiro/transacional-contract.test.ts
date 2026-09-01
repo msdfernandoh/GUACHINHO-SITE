@@ -72,7 +72,8 @@ describe("contrato canônico de comissões e financeiro transacional", () => {
     const comissoes = read("gauchinho-app/src/lib/comissoes/comissoes-service.ts");
     expect(financeiro).toContain("export type ValorMonetario = string");
     expect(financeiro).toContain('rpc("rpc_registrar_recebimento"');
-    expect(financeiro).toContain('rpc("rpc_registrar_pagamento"');
+    expect(financeiro).toContain('"rpc_registrar_pagamento"');
+    expect(financeiro).toContain('"rpc_registrar_pagamento_bancario"');
     expect(vendas).toContain('rpc("rpc_converter_contratacao_venda_multicotas"');
     expect(comissoes).toContain('rpc("rpc_gerar_previsoes_comissao"');
     expect(financeiro).not.toContain('.from("financeiro_pagamentos").insert');

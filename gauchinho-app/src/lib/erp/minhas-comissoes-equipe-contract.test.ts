@@ -25,7 +25,8 @@ describe("Minhas comissões — visão e pagamento da equipe", () => {
     expect(actions).toContain('.eq("empresa_id", access.empresaAtiva.id)');
     expect(actions).toContain('.eq("participante_comercial_id", participanteId)');
     expect(actions).toContain("registrarPagamentoParticipante");
-    expect(client).toContain("Pagar comissão");
+    expect(client).toContain("Pagamento agrupado");
+    expect(client).toContain("Pagar selecionadas");
     expect(migration).toContain("has_company_permission(p_empresa_id, 'gerenciar_financeiro')");
     expect(migration).toContain("pg_advisory_xact_lock");
     expect(migration).toContain("Pagamento excede valor elegível");
