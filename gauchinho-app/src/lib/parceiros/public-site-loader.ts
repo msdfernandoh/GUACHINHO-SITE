@@ -143,14 +143,14 @@ export async function loadPartnerSiteViewModel(input: {
   const { data: site, error } = await reader
     .from("parceiro_sites")
     .select(
-      "id, empresa_id, organizacao_parceira_id, slug, nome_site, descricao, template_codigo, status_publicacao, canal_principal, whatsapp_modo, whatsapp, branding, menus, seo, ativo"
+      "id, empresa_id, organizacao_parceira_id, slug, nome_site, descricao, template_codigo, site_modelo_id, status_publicacao, canal_principal, whatsapp_modo, whatsapp, branding, menus, seo, ativo"
     )
     .eq("id", input.siteId)
     .eq("empresa_id", input.empresaId)
     .maybeSingle();
   if (error || !site) return null;
 
-  const [{ data: org }, { data: empresa }, { data: branding }] = await Promise.all([
+  const [{ data: org }, { data: empresa }, { data: branding }, { data: modelo }] = await Promise.all([
     reader
       .from("organizacoes_parceiras")
       .select("id, nome_fantasia, logo_url, telefone, whatsapp, email, instagram, status, empresa_id")
@@ -167,6 +167,14 @@ export async function loadPartnerSiteViewModel(input: {
       .select("logo_url, cor_primaria, cor_secundaria, cor_destaque, banner_url, telefone, whatsapp, email_contato")
       .eq("empresa_id", input.empresaId)
       .maybeSingle(),
+    site.site_modelo_id
+      ? reader
+          .from("site_modelos")
+          .select("id, codigo, nome, status, catalogo_menus, secoes_home, configuracao_footer, logo_padrao_url")
+          .eq("id", site.site_modelo_id)
+          .eq("status", "PUBLICADO")
+          .maybeSingle()
+      : Promise.resolve({ data: null }),
   ]);
 
   if (!org || !empresa) return null;
@@ -212,6 +220,15 @@ export async function loadPartnerSiteViewModel(input: {
       email: branding?.email_contato ?? null,
     },
     isPreview: input.isPreview,
+    modelo: modelo ? {
+      menus: (Array.isArray(modelo.catalogo_menus) ? modelo.catalogo_menus : []) as PartnerPublicViewModel["modelo_menus"],
+      secoes: (Array.isArray(modelo.secoes_home) ? modelo.secoes_home : []) as PartnerPublicViewModel["modelo_secoes"],
+      footer_copyright:
+        modelo.configuracao_footer && typeof modelo.configuracao_footer === "object"
+          ? String((modelo.configuracao_footer as { copyright?: string }).copyright ?? "") || null
+          : null,
+      logo_padrao_url: modelo.logo_padrao_url ?? null,
+    } : undefined,
   });
 }
 

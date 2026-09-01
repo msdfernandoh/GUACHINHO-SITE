@@ -2,6 +2,7 @@ import type { CSSProperties } from "react";
 import { isRaconModel } from "@/lib/tenant/model-family";
 import { resolveSiteContacts } from "@/lib/tenant/site-contacts";
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import { PublicHeader } from "@/components/public/public-header";
 import { PublicFooter } from "@/components/public/public-footer";
 import { LenisProvider } from "@/components/public/lenis-provider";
@@ -14,6 +15,8 @@ import { TenantBrandProvider } from "@/components/tenant/tenant-brand-context";
 import { GAUCHINHO_SLUG } from "@/lib/tenant/constants";
 import { SiteAppearance } from "@/components/public/site-appearance";
 import type { RaconTemplateIdentidade } from "@/components/public/templates/racon-inspired-home";
+import { loadPartnerSiteViewModel } from "@/lib/parceiros/public-site-loader";
+import { PARCEIRO_SITE_ID_HEADER } from "@/lib/parceiros/partner-site-types";
 
 export async function generateMetadata(): Promise<Metadata> {
   const tenant = await getResolvedTenant();
@@ -32,19 +35,33 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default async function PublicLayout({ children }: { children: React.ReactNode }) {
   const tenant = await getResolvedTenant();
+  const requestHeaders = await headers();
+  const partnerSiteId = requestHeaders.get(PARCEIRO_SITE_ID_HEADER);
+  const partnerView = partnerSiteId && tenant
+    ? await loadPartnerSiteViewModel({ siteId: partnerSiteId, empresaId: tenant.empresaId })
+    : null;
   const allowsOperational = tenant?.allowsLegacyOperationalData === true;
-  const usaChromeRacon = isRaconModel(tenant?.siteModel);
+  const usaChromeRacon = partnerView?.template_codigo === "racon_inspired" || isRaconModel(tenant?.siteModel);
   const isGauchinho = tenant?.slug === GAUCHINHO_SLUG;
-  const identidadeRacon: RaconTemplateIdentidade = tenant?.siteModel ? {
+  const identidadeRacon: RaconTemplateIdentidade = partnerView
+    ? partnerView.modelo_identidade as RaconTemplateIdentidade
+    : tenant?.siteModel ? {
     ...tenant.siteModel.identidadeVisual,
     ...(tenant.branding.cor_primaria ? { cor_primaria: tenant.branding.cor_primaria } : {}),
     ...(tenant.branding.cor_secundaria ? { cor_secundaria: tenant.branding.cor_secundaria } : {}),
     ...(tenant.branding.cor_destaque ? { cor_destaque: tenant.branding.cor_destaque } : {}),
   } : {};
-  const logoRacon = tenant?.siteModel?.usarLogoPropria
+  const logoRacon = partnerView
+    ? partnerView.logo_url ?? partnerView.modelo_logo_padrao_url
+    : tenant?.siteModel?.usarLogoPropria
     ? tenant.branding.logo_url
     : tenant?.siteModel?.logoPadraoUrl ?? tenant?.branding.logo_url;
-  const contatos = resolveSiteContacts(tenant?.branding || {}, identidadeRacon.contatos);
+  const contatos = partnerView
+    ? { telefone: partnerView.contato.telefone, whatsapp: partnerView.contato.whatsapp }
+    : resolveSiteContacts(tenant?.branding || {}, identidadeRacon.contatos);
+  const nomeSite = partnerView?.nome_site ?? tenant?.branding.nome_site ?? "Gauchinho Consórcios";
+  const menusRacon = partnerView?.modelo_menus ?? tenant?.siteModel?.menus ?? [];
+  const footerRacon = partnerView?.modelo_footer_copyright ?? tenant?.siteModel?.footerCopyright ?? undefined;
 
   const brandStyle: CSSProperties & Record<string, string> = {
     background: usaChromeRacon ? String(identidadeRacon.cor_fundo || "#ffffff") : "var(--brand-blue)",
@@ -72,7 +89,7 @@ export default async function PublicLayout({ children }: { children: React.React
   const iaConfig = allowsOperational && isGauchinho ? await getIaConfigPublic() : null;
 
   const brandValue = {
-    nome: tenant?.branding.nome_site || "Gauchinho Consórcios",
+    nome: nomeSite,
     slug: tenant?.slug || GAUCHINHO_SLUG,
     logoUrl: logoRacon || tenant?.branding.logo_url || null,
     corPrimaria: tenant?.branding.cor_primaria || String(identidadeRacon.cor_primaria || "#0066cc"),
@@ -87,27 +104,27 @@ export default async function PublicLayout({ children }: { children: React.React
       {allowsOperational ? <PublicJsonLd /> : null}
       <TenantBrandProvider value={brandValue}>
       <div className={usaChromeRacon ? "tenant-racon min-h-screen" : "min-h-screen text-zinc-100"} style={brandStyle}>
-        {usaChromeRacon && tenant?.siteModel ? (
+        {usaChromeRacon && (tenant?.siteModel || partnerView) ? (
           <RaconInspiredHeader
-            empresaNome={tenant.branding.nome_site}
+            empresaNome={nomeSite}
             logoUrl={logoRacon}
             identidade={identidadeRacon}
-            menus={tenant.siteModel.menus}
-            telefoneContato={contatos.telefone}
-            whatsappContato={contatos.whatsapp}
-            footerCopyright={tenant.siteModel.footerCopyright}
+            menus={menusRacon}
+            telefoneContato={contatos.telefone ?? undefined}
+            whatsappContato={contatos.whatsapp ?? undefined}
+            footerCopyright={footerRacon}
           />
         ) : <PublicHeader />}
         {usaChromeRacon ? <SiteAppearance identity={identidadeRacon}>{children}</SiteAppearance> : children}
-        {usaChromeRacon && tenant?.siteModel ? (
+        {usaChromeRacon && (tenant?.siteModel || partnerView) ? (
           <RaconInspiredFooter
-            empresaNome={tenant.branding.nome_site}
+            empresaNome={nomeSite}
             logoUrl={logoRacon}
             identidade={identidadeRacon}
-            menus={tenant.siteModel.menus}
-            telefoneContato={contatos.telefone}
-            whatsappContato={contatos.whatsapp}
-            footerCopyright={tenant.siteModel.footerCopyright}
+            menus={menusRacon}
+            telefoneContato={contatos.telefone ?? undefined}
+            whatsappContato={contatos.whatsapp ?? undefined}
+            footerCopyright={footerRacon}
           />
         ) : <PublicFooter />}
         {iaConfig ? <IaChatWidget config={iaConfig} /> : null}

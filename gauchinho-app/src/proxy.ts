@@ -142,6 +142,13 @@ export async function proxy(request: NextRequest) {
             return NextResponse.next({ request: { headers: requestHeaders } });
           }
 
+          const partnerOperationalPaths = [
+            "/simulador", "/grupos", "/consorcio", "/area-parceiro", "/indicar", "/login",
+          ];
+          if (partnerOperationalPaths.some((prefix) => path === prefix || path.startsWith(`${prefix}/`))) {
+            return NextResponse.next({ request: { headers: requestHeaders } });
+          }
+
           const rewriteUrl = request.nextUrl.clone();
           rewriteUrl.pathname = `/parceiro/${partner.partner.site_slug}`;
           let response = NextResponse.rewrite(rewriteUrl, {

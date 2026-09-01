@@ -88,11 +88,13 @@ export default async function ParceiroPublicPage({ params }: PageProps) {
     return (
       <RaconInspiredHome
         empresaNome={result.view.nome_site}
-        logoUrl={result.view.logo_url}
+        logoUrl={result.view.logo_url ?? result.view.modelo_logo_padrao_url}
         identidade={result.view.modelo_identidade as RaconTemplateIdentidade}
+        menus={result.view.modelo_menus}
+        secoes={result.view.modelo_secoes}
         telefoneContato={result.view.contato.telefone ?? undefined}
         whatsappContato={result.view.contato.whatsapp ?? undefined}
-        footerCopyright={result.view.tenant_identificacao}
+        footerCopyright={result.view.modelo_footer_copyright ?? result.view.tenant_identificacao}
       />
     );
   }

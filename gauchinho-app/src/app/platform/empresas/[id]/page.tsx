@@ -85,7 +85,7 @@ export default async function MasterFranquiaDetailPage({
       .order("nome", { ascending: true }),
     db
       .from("organizacoes_parceiras")
-      .select("id, nome, status, sites:parceiro_sites(id, slug, nome_site, canal_principal, status_publicacao, ativo, branding, template_codigo, site_modelo_id)")
+      .select("id, nome_fantasia, status, sites:parceiro_sites(id, slug, nome_site, canal_principal, status_publicacao, ativo, branding, template_codigo, site_modelo_id, modelo:site_modelos(id, codigo, nome, versao, status), dominios:parceiro_site_dominios(id, valor, tipo, principal, status, verificado, ssl_status))")
       .eq("empresa_id", id),
     db
       .from("erp_modulos_catalogo")
@@ -131,6 +131,9 @@ export default async function MasterFranquiaDetailPage({
   }
   if (usuariosRes.error) {
     throw new Error(`Não foi possível carregar os usuários da Master Franquia: ${usuariosRes.error.message}`);
+  }
+  if (parceirosRes.error) {
+    throw new Error(`Não foi possível carregar os parceiros e sites: ${parceirosRes.error.message}`);
   }
 
   const empresaData: EmpresaHubDetail = {
@@ -245,7 +248,7 @@ export default async function MasterFranquiaDetailPage({
 
   const parceirosData: ParceiroHubItem[] = (parceirosRes.data ?? []).map((p) => ({
     id: p.id,
-    nome: p.nome,
+    nome: p.nome_fantasia,
     status: p.status,
     sites: Array.isArray(p.sites) ? (p.sites as unknown as ParceiroHubItem["sites"]) : [],
   }));

@@ -172,6 +172,22 @@ export type ParceiroSiteDetail = {
   ativo: boolean;
   template_codigo?: string;
   site_modelo_id?: string | null;
+  modelo?: {
+    id: string;
+    codigo: string;
+    nome: string;
+    versao: number;
+    status: string;
+  } | null;
+  dominios?: Array<{
+    id: string;
+    valor: string;
+    tipo: string;
+    principal: boolean;
+    status: string;
+    verificado: boolean;
+    ssl_status: string;
+  }>;
   whatsapp?: string | null;
   branding?: {
     identidade_visual_modo?: "HERDAR_MASTER" | "PERSONALIZADA";
@@ -402,6 +418,15 @@ export function MasterFranquiaHub({
   const maxParceirosPlano = planoAtual?.max_parceiros ?? 0;
 
   const todosSitesParceiros = parceiros.flatMap((p) => p.sites.filter((s) => s.ativo));
+  const todosDominiosParceiros = parceiros.flatMap((parceiro) =>
+    parceiro.sites.flatMap((site) =>
+      (site.dominios ?? []).map((dominio) => ({
+        ...dominio,
+        parceiroNome: parceiro.nome,
+        siteNome: site.nome_site,
+      })),
+    ),
+  );
   const totalSitesUsados = todosSitesParceiros.length;
   const totalSitesContratados = assinatura?.sites_parceiros_contratados ?? 0;
   const maxSitesPlano = planoAtual?.max_sites_parceiros ?? 0;
@@ -696,7 +721,7 @@ export function MasterFranquiaHub({
           ["sociedade", `6. Sociedade (${socios.length})`],
           ["administradoras", `7. Administradoras (${adminsAtivas.length})`],
           ["site", "8. Site & Identidade"],
-          ["dominios", `9. Domínios (${dominios.length})`],
+          ["dominios", `9. Domínios (${dominios.length + todosDominiosParceiros.length})`],
           ["parceiros", `10. Parceiros & Sites (${totalParceirosCadastrados})`],
           ["historico", "11. Histórico"],
         ].map(([key, label]) => (
@@ -1341,7 +1366,7 @@ export function MasterFranquiaHub({
           <div className="flex items-center justify-between border-b border-slate-100 pb-3 dark:border-slate-800">
             <div>
               <h3 className="text-base font-bold text-slate-900 dark:text-white">Domínios & DNS da Franquia</h3>
-              <p className="text-slate-500">Domínios próprios e subdomínios apontados para esta Master Franquia.</p>
+              <p className="text-slate-500">Domínios da Master e dos sites parceiros vinculados a ela.</p>
             </div>
             <Link
               href="/platform/dominios"
@@ -1364,16 +1389,19 @@ export function MasterFranquiaHub({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                {dominios.length === 0 ? (
+                {dominios.length === 0 && todosDominiosParceiros.length === 0 ? (
                   <tr>
                     <td colSpan={6} className="p-6 text-center text-slate-400">
                       Nenhum domínio configurado. A franquia está acessível via subdomínio padrão.
                     </td>
                   </tr>
                 ) : (
-                  dominios.map((d) => (
+                  <>
+                  {dominios.map((d) => (
                     <tr key={d.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40">
-                      <td className="p-3 font-mono font-bold text-slate-900 dark:text-white">{d.valor}</td>
+                      <td className="p-3 font-mono font-bold text-slate-900 dark:text-white">
+                        {d.valor}<span className="ml-2 font-sans text-[10px] font-bold text-slate-400">MASTER</span>
+                      </td>
                       <td className="p-3 text-slate-500">{d.tipo}</td>
                       <td className="p-3 text-center">{d.principal ? "✓ Sim" : "—"}</td>
                       <td className="p-3 text-center">{d.ativo ? "✓ Ativo" : "Inativo"}</td>
@@ -1392,7 +1420,25 @@ export function MasterFranquiaHub({
                         </Link>
                       </td>
                     </tr>
-                  ))
+                  ))}
+                  {todosDominiosParceiros.map((d) => (
+                    <tr key={d.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40">
+                      <td className="p-3 font-mono font-bold text-slate-900 dark:text-white">
+                        {d.valor}
+                        <span className="ml-2 font-sans text-[10px] font-bold text-cyan-700">PARCEIRO · {d.parceiroNome}</span>
+                      </td>
+                      <td className="p-3 text-slate-500">{d.tipo}</td>
+                      <td className="p-3 text-center">{d.principal ? "✓ Sim" : "—"}</td>
+                      <td className="p-3 text-center">{d.status === "ATIVO" ? "✓ Ativo" : d.status}</td>
+                      <td className="p-3 text-center">
+                        <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${d.verificado ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"}`}>
+                          {d.verificado ? "VERIFICADO" : "PENDENTE"}
+                        </span>
+                      </td>
+                      <td className="p-3 text-center text-slate-500">Site: {d.siteNome}</td>
+                    </tr>
+                  ))}
+                  </>
                 )}
               </tbody>
             </table>
@@ -1473,7 +1519,7 @@ export function MasterFranquiaHub({
                         <tr key={s.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40">
                           <td className="p-3 font-bold text-slate-900 dark:text-white">{p.nome}</td>
                           <td className="p-3 font-semibold text-slate-700 dark:text-slate-300">
-                            {String((s.branding as Record<string, unknown> | undefined)?.site_modelo_nome ?? (isPersonalizada ? s.template_codigo : branding?.modelo?.nome) ?? "Institucional v1")}
+                            {s.modelo?.nome ?? String((s.branding as Record<string, unknown> | undefined)?.site_modelo_nome ?? s.template_codigo ?? "Institucional v1")}
                           </td>
                           <td className="p-3 text-center">
                             <span
@@ -1487,7 +1533,9 @@ export function MasterFranquiaHub({
                             </span>
                           </td>
                           <td className="p-3 font-mono text-slate-500">
-                            {s.canal_principal === "DOMINIO" ? "Domínio Próprio" : `/${s.slug}`}
+                            {s.canal_principal === "DOMINIO"
+                              ? s.dominios?.find((d) => d.principal)?.valor ?? "Domínio próprio não configurado"
+                              : `/${s.slug}`}
                           </td>
                           <td className="p-3 text-center">
                             <span

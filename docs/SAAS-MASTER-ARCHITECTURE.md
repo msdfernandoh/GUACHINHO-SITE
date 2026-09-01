@@ -1852,6 +1852,24 @@ provedor (`apex` ou `www`) para nunca formar ciclos de redirecionamento.
 Relatório:
 `docs/relatorios-fases/FASE-209-RACON-SINOP-PARCEIRA-SITE-PUBLICADO.md`.
 
+### Evolução operacional 212 — parceiro convertido visível e acesso preservado
+
+O detalhe da Master anfitriã consulta organizações parceiras pelos campos
+canônicos, incluindo o modelo e os domínios próprios de cada site. Indicadores e
+abas distinguem domínios da Master e de parceiros, sem usar o modelo da Master
+como identidade do site parceiro. Em conversões assistidas auditadas, o único
+responsável administrativo da origem pode preservar o acesso ao ERP
+compartilhado mediante promoção explícita, limitada por IDs e registrada em
+auditoria.
+Sites parceiros que usam um modelo publicado carregam a mesma fonte canônica de
+catálogo de menus, seções, logotipo e rodapé utilizada pelos sites completos de
+tenant. As rotas públicas operacionais preservam os headers de atribuição do
+parceiro e consomem os dados da Master anfitriã, evitando uma cópia divergente do
+modelo ou dos dados.
+
+Relatório:
+`docs/relatorios-fases/FASE-212-VISIBILIDADE-PARCEIRO-MODELO-DOMINIO-ERP.md`.
+
 ### Evolução operacional 209 — identificação de consultores e grupos em formação
 
 Seletores de consultor exibem o modelo de parceria canônico antes do nome, derivado de

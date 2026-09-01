@@ -43,6 +43,10 @@ export type PartnerPublicViewModel = {
   seo_titulo: string;
   seo_descricao: string;
   menus: Array<{ codigo: MenuCodigo; label: string; href: string }>;
+  modelo_menus: Array<{ id: string; label: string; rota: string; ativo_padrao?: boolean; ativo?: boolean; obrigatorio?: boolean }>;
+  modelo_secoes: Array<{ id: string; tipo: string; titulo: string; ordem: number; habilitada: boolean }>;
+  modelo_footer_copyright: string | null;
+  modelo_logo_padrao_url: string | null;
   tenant_identificacao: string;
   is_preview: boolean;
 };
@@ -168,6 +172,12 @@ export function buildPartnerPublicViewModel(input: {
     whatsapp: string | null;
     email: string | null;
   };
+  modelo?: {
+    menus?: PartnerPublicViewModel["modelo_menus"];
+    secoes?: PartnerPublicViewModel["modelo_secoes"];
+    footer_copyright?: string | null;
+    logo_padrao_url?: string | null;
+  };
   isPreview?: boolean;
 }): PartnerPublicViewModel {
   const b = (input.site.branding ?? {}) as SiteBranding;
@@ -262,6 +272,10 @@ export function buildPartnerPublicViewModel(input: {
       templateCodigo: input.site.template_codigo,
       menus: input.site.menus,
     }),
+    modelo_menus: input.modelo?.menus ?? [],
+    modelo_secoes: input.modelo?.secoes ?? [],
+    modelo_footer_copyright: input.modelo?.footer_copyright ?? null,
+    modelo_logo_padrao_url: input.modelo?.logo_padrao_url ?? null,
     tenant_identificacao: `Realizado em parceria com ${input.empresa.nome}`,
     is_preview: Boolean(input.isPreview),
   };
