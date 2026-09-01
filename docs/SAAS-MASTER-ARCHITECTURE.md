@@ -73,6 +73,10 @@ A plataforma suporta:
 
 ### Evolução financeira 192 — contas da empresa e equalização dos sócios
 
+> Correção operacional 188: `financeiro_estornos` concede somente leitura
+> tenant-aware ao papel autenticado para sustentar a visão segura do extrato dos
+> sócios; escrita continua exclusiva das RPCs financeiras.
+
 - Repasses recebidos são lançados no livro auxiliar append-only da conta bancária empresarial selecionada; estornos geram lançamentos compensatórios na mesma conta.
 - Pagamentos de comissão podem agrupar parcelas do mesmo beneficiário, debitam uma conta da empresa e mantêm conta interna de destino opcional para colaboradores.
 - Sócios possuem extrato interno derivado de comissões, despesas empresariais pagas pessoalmente e transferências de equalização; esse extrato não representa saldo bancário pessoal.

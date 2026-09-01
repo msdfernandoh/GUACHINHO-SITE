@@ -4,6 +4,7 @@ import path from "node:path";
 
 const root = path.resolve(process.cwd(), "..");
 const migration = fs.readFileSync(path.join(root, "supabase/migrations/187_financeiro_contas_socios_transferencias.sql"), "utf8");
+const correction = fs.readFileSync(path.join(root, "supabase/migrations/188_financeiro_estornos_leitura_tenant.sql"), "utf8");
 const financeiro = fs.readFileSync(path.join(root, "gauchinho-app/src/app/erp/financeiro/page.tsx"), "utf8");
 const comissoes = fs.readFileSync(path.join(root, "gauchinho-app/src/components/erp/comissoes/minhas-comissoes-client.tsx"), "utf8");
 const actions = fs.readFileSync(path.join(root, "gauchinho-app/src/app/erp/minhas-comissoes/actions.ts"), "utf8");
@@ -36,5 +37,12 @@ describe("Fase 192 — financeiro por conta e equalização dos sócios", () => 
     expect(financeiro).toContain("Transferir entre contas da empresa");
     expect(financeiro).toContain("Transferências pendentes entre sócios");
     expect(financeiro).toContain("Saldo interno, não saldo bancário pessoal");
+  });
+
+  it("consulta estornos somente com isolamento por empresa", () => {
+    expect(correction).toContain("FOR SELECT");
+    expect(correction).toContain("can_read_tenant_internal(empresa_id)");
+    expect(correction).not.toContain("GRANT INSERT");
+    expect(correction).not.toContain("GRANT UPDATE");
   });
 });

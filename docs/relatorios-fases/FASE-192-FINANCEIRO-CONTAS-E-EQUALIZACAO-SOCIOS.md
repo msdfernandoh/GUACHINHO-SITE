@@ -29,3 +29,10 @@ equalizar despesas empresariais pagas pessoalmente.
 - estornos geram lançamentos compensatórios na mesma conta;
 - a conta do sócio é um extrato interno e não afirma representar saldo bancário
   pessoal.
+
+## Correção operacional 188
+
+A leitura de `financeiro_estornos` foi liberada exclusivamente por política RLS
+tenant-aware para o papel autenticado. Isso permite que a visão
+`financeiro_socios_extrato` desconsidere pagamentos estornados sem expor dados de
+outras empresas ou liberar escrita na tabela imutável.
