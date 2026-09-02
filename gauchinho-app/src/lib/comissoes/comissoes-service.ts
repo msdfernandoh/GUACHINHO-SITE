@@ -157,7 +157,8 @@ export async function listPrevisoesFranquiaForEmpresa(
   let query = admin
     .from("comissao_previsoes_franquia")
     .select("*,venda:vendas(cliente_nome),cota:cotas_definitivas(numero_grupo,numero_cota)")
-    .eq("empresa_id", empresaId);
+    .eq("empresa_id", empresaId)
+    .neq("status", "cancelada");
 
   if (competencia) {
     query = query.eq("competencia", competencia);
@@ -176,7 +177,11 @@ export async function listPrevisoesParticipantesForEmpresa(
   competencia?: string,
 ): Promise<PrevisaoParticipanteRow[]> {
   const admin = await createClient();
-  let query = admin.from("comissao_previsoes_participantes").select("*").eq("empresa_id", empresaId);
+  let query = admin
+    .from("comissao_previsoes_participantes")
+    .select("*")
+    .eq("empresa_id", empresaId)
+    .neq("status", "cancelada");
 
   if (competencia) {
     query = query.eq("competencia", competencia);

@@ -801,7 +801,7 @@ export async function ErpRepasseFranquiaPage() {
       .limit(200),
     db
       .from("erp_repasse_importacoes")
-      .select("id,administradora_id,competencia,arquivo_nome,valor_total_bruto,ponto_venda,comissionado_nome,pedidos,status,recebimento_id,created_at,itens:erp_repasse_importacao_itens(id,linha,produto,data_alocacao,numero_grupo,numero_cota,cliente_nome,parcela_numero,parcela_total,valor_comissao,valor_base,status_conciliacao,previsao_franquia_id,previsao_sugerida_id,alertas,previsao:comissao_previsoes_franquia!erp_repasse_importacao_itens_previsao_franquia_id_fkey(id,competencia,valor_previsto,valor_liquidado,ordem_etapa,nome_etapa),previsao_sugerida:comissao_previsoes_franquia!erp_repasse_importacao_itens_previsao_sugerida_id_fkey(id,competencia,valor_previsto,valor_liquidado,ordem_etapa,nome_etapa))")
+      .select("id,administradora_id,competencia,arquivo_nome,valor_total_bruto,ponto_venda,comissionado_nome,pedidos,status,recebimento_id,created_at,itens:erp_repasse_importacao_itens(id,linha,produto,data_alocacao,numero_grupo,numero_cota,cliente_nome,parcela_numero,parcela_total,valor_comissao,valor_base,valor_participante_referencia,venda_excluida_id,status_conciliacao,previsao_franquia_id,previsao_sugerida_id,alertas,previsao:comissao_previsoes_franquia!erp_repasse_importacao_itens_previsao_franquia_id_fkey(id,competencia,valor_previsto,valor_liquidado,ordem_etapa,nome_etapa),previsao_sugerida:comissao_previsoes_franquia!erp_repasse_importacao_itens_previsao_sugerida_id_fkey(id,competencia,valor_previsto,valor_liquidado,ordem_etapa,nome_etapa))")
       .eq("empresa_id", empresaId)
       .order("created_at", { ascending: false })
       .limit(100),

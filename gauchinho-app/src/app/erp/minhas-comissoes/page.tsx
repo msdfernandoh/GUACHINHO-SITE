@@ -76,6 +76,7 @@ export default async function MinhasComissoesPage({
     `)
     .eq("empresa_id", empresaAtiva.id)
     .eq("participante_comercial_id", participante.id)
+    .neq("status", "cancelada")
     .order("competencia");
 
   const admin = createAdminClient();

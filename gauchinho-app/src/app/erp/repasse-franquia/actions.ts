@@ -272,24 +272,27 @@ export async function lancarItemRepasseLegadoAction(
     const grupoId = String(formData.get("grupo_id") ?? "").trim() || null;
     const numeroGrupo = String(formData.get("numero_grupo") ?? "").trim();
     const numeroCota = String(formData.get("numero_cota") ?? "").trim();
+    const valorParticipante = Number(String(formData.get("valor_participante") ?? "").replace(",", "."));
     if (!itemId || !participanteId || !clienteNome || !numeroGrupo || !numeroCota) {
       throw new Error("Informe cliente, grupo, cota e consultor.");
     }
-    const { error } = await db.rpc("rpc_lancar_item_repasse_legado", {
+    if (!Number.isFinite(valorParticipante) || valorParticipante < 0) {
+      throw new Error("Informe o valor correto da comissão do vendedor.");
+    }
+    const { error } = await db.rpc("rpc_lancar_item_repasse_corrigido_214", {
       p_empresa_id: empresaId,
       p_item_id: itemId,
       p_participante_id: participanteId,
-      p_regra_participante_id: null,
-      p_sem_regra: true,
       p_cliente_nome: clienteNome,
       p_grupo_id: grupoId,
       p_numero_grupo: numeroGrupo,
       p_numero_cota: numeroCota,
+      p_valor_participante: valorParticipante,
     });
     if (error) throw new Error(error.message);
     revalidatePath("/erp/repasse-franquia");
     revalidatePath("/erp/minhas-comissoes");
-    return { ok: true, message: "Cliente, cota, comissão e vínculo criados. A linha foi resolvida; CPF/CNPJ e telefone permanecem apenas como aviso no cadastro do cliente." };
+    return { ok: true, message: "Cliente, cota, comissão da empresa, comissão do vendedor e vínculo foram recriados com os valores informados." };
   } catch (error) {
     return { ok: false, message: error instanceof Error ? error.message : "Erro ao lançar a comissão antiga." };
   }

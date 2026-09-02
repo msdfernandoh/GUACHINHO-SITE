@@ -1882,6 +1882,19 @@ assistente, também não são renderizados no domínio parceiro.
 Relatório:
 `docs/relatorios-fases/FASE-213-IDENTIDADE-INDEPENDENTE-SITE-PARCEIRO.md`.
 
+### Evolução operacional 214 — exclusão operacional e recriação pelo repasse
+
+A exclusão administrativa de venda/cota originada no PDF remove suas previsões
+canceladas das telas operacionais da empresa e do participante, reabre a linha
+original como `NAO_ENCONTRADO` e mantém somente o tombstone histórico exigido
+pelos livros append-only. O vínculo anterior preserva a referência da venda e do
+valor do participante. Na recriação, o operador pesquisa o título pelo nome do
+cliente e informa separadamente o valor recebido pela empresa e a comissão do
+vendedor; ambos ficam validados e auditados na mesma transação.
+
+Relatório:
+`docs/relatorios-fases/FASE-214-EXCLUSAO-OPERACIONAL-REPASSE-RECRIACAO-VALORES.md`.
+
 ### Evolução operacional 209 — identificação de consultores e grupos em formação
 
 Seletores de consultor exibem o modelo de parceria canônico antes do nome, derivado de
