@@ -18,7 +18,7 @@ export function GruposTable({ rows, configs, onConfigChange }: Props) {
   return (
     <div data-site-block="tabela" className="overflow-x-auto rounded-xl border border-zinc-800 bg-zinc-900/40">
       <table className="min-w-[1360px] w-full border-collapse text-sm">
-        <thead className="sticky top-0 z-10 border-b border-zinc-800 bg-zinc-950/95 backdrop-blur">
+        <thead className="sticky top-0 z-10 border-b border-zinc-800 bg-[var(--tenant-primary,#0066cc)] text-white backdrop-blur">
           <tr>
             <Th>Grupo</Th>
             <Th>Cota</Th>
@@ -34,7 +34,7 @@ export function GruposTable({ rows, configs, onConfigChange }: Props) {
             <Th title="Saldo devedor − lance total">Saldo pós-lance</Th>
             <Th>Pós-cont.</Th>
             <Th title="Total / restante / realizadas">Prazo</Th>
-            <Th className="sticky right-0 bg-zinc-950/95">Ajustes</Th>
+            <Th className="sticky right-0 bg-[var(--tenant-primary,#0066cc)]">Ajustes</Th>
           </tr>
         </thead>
         <tbody>

@@ -43,7 +43,7 @@ export function GrupoMobileCard({ grupo, cotas, modalidades, config, onChange }:
       <div className="flex flex-wrap items-start justify-between gap-3 p-4">
         <div>
           <p className="text-lg font-semibold text-amber-400">Grupo {grupo.codigo_grupo}</p>
-          {emFormacao ? <span className="mt-1 inline-flex rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-semibold text-emerald-200">Em Formação</span> : null}
+          {emFormacao ? <span className="mt-1 inline-flex rounded-full bg-[var(--tenant-secondary,#0c2340)] px-2 py-0.5 text-[10px] font-semibold text-white">Em Formação</span> : null}
           {grupo.aguardando_novas_vagas ? (
             <span className="mt-1 inline-flex rounded-full bg-sky-500/15 px-2 py-0.5 text-[10px] font-semibold text-sky-200">
               Aguardando novas vagas

@@ -1925,5 +1925,17 @@ da venda e das cotas continua restrita a `formalizar_vendas` ou aos papéis admi
 canônicos. Quando a permissão final não existe, a interface informa a limitação, desabilita
 a confirmação e não amplia autoridade por simples visibilidade do módulo.
 
+### Evolução operacional 215 — identidade Racon Sinop e contraste de Grupos
+
+O portal parceiro Racon Sinop preserva identidade pública própria e passa a usar a
+paleta Racon azul canônica, sem herdar a cor escura da empresa anfitriã de ERP. A
+alteração é limitada ao branding do portal parceiro e não modifica dados operacionais.
+Na página pública de Grupos, os títulos da tabela usam fundo da cor primária do
+portal e texto branco; a tag `Em Formação` usa azul escuro com texto branco nos
+layouts desktop e mobile.
+
+Relatório:
+`docs/relatorios-fases/FASE-215-PALETA-RACON-SINOP-E-CONTRASTE-GRUPOS.md`.
+
 Relatório:
 `docs/relatorios-fases/FASE-211-ACESSO-DETALHE-CONTRATACOES-ERP.md`.

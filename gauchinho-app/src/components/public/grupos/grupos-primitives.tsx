@@ -136,7 +136,7 @@ export function Th({
   return (
     <th
       className={cn(
-        "whitespace-nowrap px-2 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wide text-zinc-500",
+        "whitespace-nowrap px-2 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wide text-white",
         className,
       )}
       title={title}
