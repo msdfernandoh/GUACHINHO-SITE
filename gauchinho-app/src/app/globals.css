@@ -317,6 +317,10 @@ body.tenant-root-independent {
   background-color: color-mix(in srgb, var(--visual-button), white 94%) !important;
   color: var(--visual-text) !important;
 }
+.tenant-racon .grupos-workspace .grupo-em-formacao {
+  background-color: var(--tenant-secondary, #0c2340) !important;
+  color: #ffffff !important;
+}
 .tenant-racon .grupos-workspace [data-site-block="totais"] {
   background-color: var(--visual-button) !important;
   color: var(--visual-button-text) !important;

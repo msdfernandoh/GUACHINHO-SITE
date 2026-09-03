@@ -12,6 +12,8 @@ Sorriso e assegurar contraste legível na tabela de Grupos.
 - O cabeçalho da tabela de Grupos utiliza a cor primária do portal e títulos em
   branco, inclusive na coluna fixa de Ajustes.
 - A tag `Em Formação` usa azul escuro e texto branco em desktop e mobile.
+- A regra específica da tag prevalece sobre a normalização de texto escuro dos
+  componentes operacionais do modelo Racon.
 
 ## Preservação
 
