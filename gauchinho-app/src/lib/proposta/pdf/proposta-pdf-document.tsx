@@ -618,32 +618,115 @@ function FolhaResumoLink({ data, pagina }: { data: PropostaPdfData; pagina: stri
   const grupos = data.segmentos.flatMap((seg) => seg.grupos);
   const credito = data.consolidado?.credito ?? grupos.reduce((a, g) => a + g.credito, 0);
   const primeira = data.consolidado?.primeiraParcela ?? grupos.reduce((a, g) => a + g.primeiraParcela, 0);
+  const totalCotas = data.consolidado?.totalCotas ?? grupos.reduce((a, g) => a + g.quantidadeCotas, 0);
   const parcelaIntegral = grupos.reduce((a, g) => a + g.parcelaIntegral, 0);
   const lanceEmbutido = grupos.reduce((a, g) => a + g.lanceEmbutido, 0);
   const recursoProprio = grupos.reduce((a, g) => a + g.recursoProprio, 0);
   const creditoLiquido = data.consolidado?.creditoLiquido ?? grupos.reduce((a, g) => a + g.creditoLiquido, 0);
   const saldoPos = grupos.reduce((a, g) => a + Math.max(0, g.saldoDevedor - g.lanceTotal), 0);
   const prazoPos = Math.max(0, ...grupos.map((g) => Number((g.evolucao.find((e) => e.periodo === "Quitação")?.linhas[0] ?? "").match(/\d+/)?.[0] ?? 0)));
-  return <Page size="A4" style={s.page}>
-    <Cabecalho direito={`Proposta #${data.propostaId.slice(0, 8).toUpperCase()}`} />
-    <Text style={s.kicker}>Versão resumida</Text>
-    <Text style={s.h2}>Resumo da proposta</Text>
-    <Text style={s.subline}>Informações exibidas no link público resumido.</Text>
-    <View style={s.cardRow}>
-      <View style={[s.card, s.cardHero]}><Text style={[s.cardLabel, s.cardLabelHero]}>Crédito contratado</Text><Text style={[s.cardValue, s.cardValueHero]}>{fmtMoney(credito)}</Text></View>
-      <View style={s.card}><Text style={s.cardLabel}>Parcela inicial estimada</Text><Text style={s.cardValue}>{fmtMoney(primeira)}</Text></View>
-      <View style={s.card}><Text style={s.cardLabel}>Prazo</Text><Text style={s.cardValue}>{grupos[0]?.prazoTotal ? `${grupos[0].prazoTotal} meses` : "—"}</Text></View>
-    </View>
-    <View style={[s.panel, { marginTop: 10 }]}>
-      <Text style={s.panelHead}>Grupos selecionados</Text>
-      {grupos.map((g) => <View key={`${g.codigoGrupo}-${g.cotaLabel}`} style={s.drow}><Text style={s.drowK}>Grupo {g.codigoGrupo}</Text><Text style={s.drowV}>{g.segmento === "imovel" ? "Imóvel" : g.segmento === "veiculo" ? "Veículo" : "Outros"} · {g.quantidadeCotas} cota(s)</Text></View>)}
-    </View>
-    <View style={[s.panel, { marginTop: 10 }]}>
-      <Text style={s.panelHead}>Detalhes</Text>
-      {[["Parcela integral", fmtMoney(parcelaIntegral)], ...(lanceEmbutido > 0 ? [["Lance embutido", fmtMoney(lanceEmbutido)]] : []), ...(recursoProprio > 0 ? [["Recurso próprio", fmtMoney(recursoProprio)]] : []), ["Crédito líquido", fmtMoney(creditoLiquido)], ["Saldo devedor pós contemplação", fmtMoney(saldoPos)], ["Prazo pós contemplação", prazoPos ? `${prazoPos} meses` : "—"]].map(([k, v]) => <View key={k} style={s.drow}><Text style={s.drowK}>{k}</Text><Text style={s.drowV}>{v}</Text></View>)}
-    </View>
-    <Rodape pagina={pagina} />
-  </Page>;
+
+  const prazosUnicos = [...new Set(grupos.map((g) => g.prazoTotal).filter((v): v is number => v != null))];
+  const prazoTexto = prazosUnicos.length === 1 ? `${prazosUnicos[0]} meses` : prazosUnicos.length > 1 ? "Variável por grupo" : "—";
+
+  const contato = data.consultor.usarConsultor && data.consultor.nome
+    ? { nome: data.consultor.nome, tel: data.consultor.telefone, email: data.consultor.email }
+    : { nome: data.contatoGauchinho.nomeEmpresa, tel: data.contatoGauchinho.whatsapp, email: data.contatoGauchinho.email };
+
+  return (
+    <Page size="A4" style={s.page}>
+      <Cabecalho direito={`Proposta #${data.propostaId.slice(0, 8).toUpperCase()}`} />
+      <Text style={s.kicker}>Versão resumida</Text>
+      <Text style={s.h2}>{resumoTitulo(data)}</Text>
+      <Text style={s.subline}>{resumoSubtitulo(data)}</Text>
+
+      <View style={s.cardRow}>
+        <View style={[s.card, s.cardHero]}>
+          <Text style={[s.cardLabel, s.cardLabelHero]}>Crédito contratado</Text>
+          <Text style={[s.cardValue, s.cardValueHero]}>{fmtMoney(credito)}</Text>
+          <Text style={[s.cardSub, s.cardSubHero]}>{grupos.length} grupo(s) · {totalCotas} cota(s)</Text>
+        </View>
+        <View style={s.card}><Text style={s.cardLabel}>Parcela inicial</Text><Text style={s.cardValue}>{fmtMoney(primeira)}</Text></View>
+        <View style={s.card}><Text style={s.cardLabel}>Prazo</Text><Text style={s.cardValue}>{prazoTexto}</Text></View>
+        <View style={s.card}><Text style={s.cardLabel}>Crédito líquido</Text><Text style={s.cardValue}>{fmtMoney(creditoLiquido)}</Text></View>
+      </View>
+
+      <Text style={[s.lanceHead, { marginTop: 4 }]}>Grupos selecionados</Text>
+      <View style={s.ltHead}>
+        <Text style={[s.ltHeadCell, s.ltColName]}>Grupo</Text>
+        <Text style={[s.ltHeadCell, s.ltCol]}>Segmento</Text>
+        <Text style={[s.ltHeadCell, s.ltCol]}>Cotas</Text>
+        <Text style={[s.ltHeadCell, s.ltCol]}>Crédito</Text>
+      </View>
+      {grupos.map((g, i) => (
+        <View key={`${g.codigoGrupo}-${i}`} style={s.ltRow}>
+          <Text style={[s.ltCell, s.ltCellName, s.ltColName]}>Grupo {g.codigoGrupo}</Text>
+          <Text style={[s.ltCell, s.ltCol]}>
+            {g.segmento === "imovel" ? "Imóvel" : g.segmento === "veiculo" ? "Veículo" : "Outros"}
+          </Text>
+          <Text style={[s.ltCell, s.ltCol]}>{g.quantidadeCotas}</Text>
+          <Text style={[s.ltCell, s.ltCol]}>{fmtMoney(g.credito)}</Text>
+        </View>
+      ))}
+
+      <View style={[s.twocol, { marginTop: 12 }]}>
+        <View style={s.panel}>
+          <Text style={s.panelHead}>Composição financeira</Text>
+          <View style={s.drow}><Text style={s.drowK}>Parcela integral</Text><Text style={s.drowV}>{fmtMoney(parcelaIntegral)}</Text></View>
+          {lanceEmbutido > 0 ? (
+            <View style={s.drow}><Text style={s.drowK}>Lance embutido</Text><Text style={s.drowV}>{fmtMoney(lanceEmbutido)}</Text></View>
+          ) : null}
+          {recursoProprio > 0 ? (
+            <View style={s.drow}><Text style={s.drowK}>Recurso próprio</Text><Text style={s.drowV}>{fmtMoney(recursoProprio)}</Text></View>
+          ) : null}
+          <View style={[s.drow, s.drowEmph, s.drowLast]}>
+            <Text style={s.drowEmphK}>Crédito líquido</Text>
+            <Text style={s.drowEmphV}>{fmtMoney(creditoLiquido)}</Text>
+          </View>
+        </View>
+        <View style={s.panel}>
+          <Text style={s.panelHead}>Após a contemplação</Text>
+          <View style={s.drow}><Text style={s.drowK}>Saldo devedor pós-lance</Text><Text style={s.drowV}>{fmtMoney(saldoPos)}</Text></View>
+          <View style={[s.drow, s.drowLast]}>
+            <Text style={s.drowK}>Prazo pós-contemplação</Text>
+            <Text style={s.drowV}>{prazoPos ? `${prazoPos} meses` : "—"}</Text>
+          </View>
+        </View>
+      </View>
+
+      <View style={[s.ccardRow, { marginTop: 14, marginBottom: 12 }]}>
+        <View style={s.ccard}>
+          <Text style={s.ccardL}>Consultor responsável</Text>
+          <Text style={s.ccardNm}>{contato.nome}</Text>
+          {contato.tel ? <Text style={[s.ccardLi, s.mono]}>{contato.tel}</Text> : null}
+          {contato.email ? <Text style={s.ccardLi}>{contato.email}</Text> : null}
+          {data.contatoGauchinho.site ? <Text style={s.ccardLi}>{data.contatoGauchinho.site}</Text> : null}
+        </View>
+        <View style={s.ccard}>
+          <Text style={s.ccardL}>Administradora</Text>
+          <Text style={s.ccardNm}>Racon Consórcios</Text>
+          <Text style={s.ccardLi}>Randon Administradora de Consórcios Ltda</Text>
+          <Text style={[s.ccardLi, s.mono]}>Grupo Randon</Text>
+        </View>
+      </View>
+
+      <View style={s.disclaimer}>
+        <Text style={s.disclaimerP}>
+          <Text style={{ fontWeight: 700, color: NAVY_INK }}>Aviso legal. </Text>
+          {AVISO_RESUMO} O consórcio não tem juros, mas possui taxa de administração e fundo de reserva. A
+          contemplação ocorre por sorteio ou lance e não é garantida em prazo determinado. Esta é a
+          versão resumida da proposta — solicite ao consultor o detalhamento completo por grupo.
+        </Text>
+        <Text style={s.disclaimerP}>
+          Documento emitido por Gauchinho Consórcios, representante autorizado Racon · Proposta #
+          {data.propostaId.slice(0, 8).toUpperCase()} · Emissão {data.dataEmissao}
+          {data.validadeTexto ? ` · Validade ${data.validadeTexto}` : ""}.
+        </Text>
+      </View>
+
+      <Rodape pagina={pagina} />
+    </Page>
+  );
 }
 
 function SimulacaoSemLance({ g }: { g: GrupoPdfBlock }) {
@@ -754,7 +837,12 @@ export function PropostaPdfDocument({ data }: { data: PropostaPdfData }) {
   }
 
   if (data.visualizacao === "resumida") {
-    return <Document title={`${TITULO_PROPOSTA} - Resumo`} author={MARCA_PRINCIPAL}><FolhaResumoLink data={data} pagina="Folha 1 / 1" /></Document>;
+    return (
+      <Document title={`${TITULO_PROPOSTA} - Resumo`} author={MARCA_PRINCIPAL}>
+        {data.capaEstilo === "campanha" ? <CapaCampanha data={data} /> : <CapaPadrao data={data} />}
+        <FolhaResumoLink data={data} pagina="Folha 1 / 1" />
+      </Document>
+    );
   }
 
   const multi = data.segmentos.length > 1;
