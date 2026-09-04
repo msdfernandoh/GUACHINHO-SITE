@@ -56,12 +56,20 @@ export type GrupoPdfBlock = {
   credito: number;
   saldoDevedor: number;
   primeiraParcela: number;
+  parcelaIntegral: number;
   parcelaTipoLabel: string;
   lanceEmbutido: number;
   recursoProprio: number;
   lanceTotal: number;
   creditoLiquido: number;
   parcelaPosContemplacao: number;
+  /** Cenário alternativo da mesma cota sem lance, quando a proposta usa lance. */
+  simulacaoSemLance: {
+    saldoPosLance: number;
+    creditoLiquido: number;
+    parcelaPosContemplacao: number;
+    prazoRestanteAposContemplacao: number;
+  } | null;
   modalidadeEscolhidaNome: string | null;
   modalidades: ModalidadeLancePdf[];
   evolucao: MarcoEvolucaoPdf[];
@@ -204,4 +212,6 @@ export type PropostaPdfData = {
   consolidado: PropostaConsolidadoPdf | null;
   blocos: PropostaBlocosPdf;
   linhasGrupo: PropostaLinhasGrupoPdf;
+  /** Versão completa ou o mesmo recorte exibido no link público resumido. */
+  visualizacao: "completa" | "resumida";
 };

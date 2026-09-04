@@ -36,6 +36,7 @@ type Body = {
   observacao?: string;
   consultor_nome?: string;
   consultor_telefone?: string;
+  visualizacao_pdf?: "completa" | "resumida";
 };
 
 export async function POST(request: Request) {
@@ -252,6 +253,7 @@ export async function POST(request: Request) {
           observacao: observacao ?? undefined,
           consultor_nome: consultorNome ?? undefined,
           consultor_telefone: consultorTelefone ?? undefined,
+          visualizacao: body.visualizacao_pdf === "resumida" ? "resumida" : "completa",
         });
         await registrarEvento({
           empresa_id: ingress.empresaId,

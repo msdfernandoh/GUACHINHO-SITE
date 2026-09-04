@@ -42,5 +42,6 @@ describe("fase 212 — parceiro e domínio visíveis no SaaS", () => {
     expect(page).toContain("secoes={result.view.modelo_secoes}");
     expect(proxy).toContain("partnerOperationalPaths");
     expect(proxy).toContain('"/grupos"');
+    expect(proxy).toContain('"/proposta"');
   });
 });

@@ -152,6 +152,8 @@ const s = StyleSheet.create({
   node: { flexGrow: 1, flexBasis: "25%", marginHorizontal: 4 },
   nodeYr: { fontFamily: FONT_DISPLAY, fontWeight: 700, fontSize: 8, color: NAVY_INK, marginBottom: 1 },
   nodeM: { fontFamily: FONT_MONO, fontSize: 6.5, color: INK_SOFT, lineHeight: 1.3 },
+  quick: { borderWidth: 1, borderColor: "#b7e7ec", borderRadius: 7, padding: 6, marginTop: 6, backgroundColor: "#f2fcfd" },
+  quickHead: { fontFamily: FONT_MONO, fontSize: 6.5, letterSpacing: 0.8, color: CYAN_DEEP, textTransform: "uppercase", marginBottom: 5 },
 
   obs: { borderWidth: 1, borderColor: AMBER, borderRadius: 10, overflow: "hidden", marginBottom: 16 },
   obsTop: { backgroundColor: AMBER, color: "#fff", fontFamily: FONT_MONO, fontSize: 8, letterSpacing: 1, textTransform: "uppercase", paddingVertical: 7, paddingHorizontal: 12 },
@@ -467,6 +469,7 @@ function SegBlock({ data, segmento }: { data: PropostaPdfData; segmento: Segment
             {data.blocos.custoPlano ? <CustoBox g={g} /> : null}
             {data.blocos.tiposLance && g.modalidades.length > 0 ? <TiposLance g={g} /> : null}
             {data.blocos.evolucao && g.evolucao.length > 0 ? <Evolucao g={g} /> : null}
+            {g.simulacaoSemLance ? <SimulacaoSemLance g={g} /> : null}
           </View>
         </View>
       ))}
@@ -511,6 +514,8 @@ function DadosComposicao({ g, linhas }: { g: GrupoPdfBlock; linhas: PropostaPdfD
     ["1ª parcela", fmtMoney(g.primeiraParcela), false],
     ["Lance embutido", fmtMoney(g.lanceEmbutido), false],
     ...(g.recursoProprio > 0 ? [["Recurso próprio", fmtMoney(g.recursoProprio), false] as [string, string, boolean]] : []),
+    ["Saldo pós-lance", fmtMoney(Math.max(0, g.saldoDevedor - g.lanceTotal)), false],
+    ["Parcela pós-contemplação", fmtMoney(g.parcelaPosContemplacao), false],
     ["Crédito líquido", fmtMoney(g.creditoLiquido), true],
   ];
 
@@ -609,6 +614,66 @@ function Evolucao({ g }: { g: GrupoPdfBlock }) {
   );
 }
 
+function FolhaResumoLink({ data, pagina }: { data: PropostaPdfData; pagina: string }) {
+  const grupos = data.segmentos.flatMap((seg) => seg.grupos);
+  const credito = data.consolidado?.credito ?? grupos.reduce((a, g) => a + g.credito, 0);
+  const primeira = data.consolidado?.primeiraParcela ?? grupos.reduce((a, g) => a + g.primeiraParcela, 0);
+  const parcelaIntegral = grupos.reduce((a, g) => a + g.parcelaIntegral, 0);
+  const lanceEmbutido = grupos.reduce((a, g) => a + g.lanceEmbutido, 0);
+  const recursoProprio = grupos.reduce((a, g) => a + g.recursoProprio, 0);
+  const creditoLiquido = data.consolidado?.creditoLiquido ?? grupos.reduce((a, g) => a + g.creditoLiquido, 0);
+  const saldoPos = grupos.reduce((a, g) => a + Math.max(0, g.saldoDevedor - g.lanceTotal), 0);
+  const prazoPos = Math.max(0, ...grupos.map((g) => Number((g.evolucao.find((e) => e.periodo === "Quitação")?.linhas[0] ?? "").match(/\d+/)?.[0] ?? 0)));
+  return <Page size="A4" style={s.page}>
+    <Cabecalho direito={`Proposta #${data.propostaId.slice(0, 8).toUpperCase()}`} />
+    <Text style={s.kicker}>Versão resumida</Text>
+    <Text style={s.h2}>Resumo da proposta</Text>
+    <Text style={s.subline}>Informações exibidas no link público resumido.</Text>
+    <View style={s.cardRow}>
+      <View style={[s.card, s.cardHero]}><Text style={[s.cardLabel, s.cardLabelHero]}>Crédito contratado</Text><Text style={[s.cardValue, s.cardValueHero]}>{fmtMoney(credito)}</Text></View>
+      <View style={s.card}><Text style={s.cardLabel}>Parcela inicial estimada</Text><Text style={s.cardValue}>{fmtMoney(primeira)}</Text></View>
+      <View style={s.card}><Text style={s.cardLabel}>Prazo</Text><Text style={s.cardValue}>{grupos[0]?.prazoTotal ? `${grupos[0].prazoTotal} meses` : "—"}</Text></View>
+    </View>
+    <View style={[s.panel, { marginTop: 10 }]}>
+      <Text style={s.panelHead}>Grupos selecionados</Text>
+      {grupos.map((g) => <View key={`${g.codigoGrupo}-${g.cotaLabel}`} style={s.drow}><Text style={s.drowK}>Grupo {g.codigoGrupo}</Text><Text style={s.drowV}>{g.segmento === "imovel" ? "Imóvel" : g.segmento === "veiculo" ? "Veículo" : "Outros"} · {g.quantidadeCotas} cota(s)</Text></View>)}
+    </View>
+    <View style={[s.panel, { marginTop: 10 }]}>
+      <Text style={s.panelHead}>Detalhes</Text>
+      {[["Parcela integral", fmtMoney(parcelaIntegral)], ...(lanceEmbutido > 0 ? [["Lance embutido", fmtMoney(lanceEmbutido)]] : []), ...(recursoProprio > 0 ? [["Recurso próprio", fmtMoney(recursoProprio)]] : []), ["Crédito líquido", fmtMoney(creditoLiquido)], ["Saldo devedor pós contemplação", fmtMoney(saldoPos)], ["Prazo pós contemplação", prazoPos ? `${prazoPos} meses` : "—"]].map(([k, v]) => <View key={k} style={s.drow}><Text style={s.drowK}>{k}</Text><Text style={s.drowV}>{v}</Text></View>)}
+    </View>
+    <Rodape pagina={pagina} />
+  </Page>;
+}
+
+function SimulacaoSemLance({ g }: { g: GrupoPdfBlock }) {
+  const semLance = g.simulacaoSemLance;
+  if (!semLance) return null;
+  return (
+    <View style={s.quick}>
+      <Text style={s.quickHead}>Simulação rápida - contemplação sem lance embutido</Text>
+      <View style={s.track}>
+        <View style={s.node}>
+          <Text style={s.nodeYr}>Lance</Text>
+          <Text style={s.nodeM}>R$ 0,00</Text>
+        </View>
+        <View style={s.node}>
+          <Text style={s.nodeYr}>Crédito líquido</Text>
+          <Text style={s.nodeM}>{fmtMoney(semLance.creditoLiquido)}</Text>
+        </View>
+        <View style={s.node}>
+          <Text style={s.nodeYr}>Saldo pós-lance</Text>
+          <Text style={s.nodeM}>{fmtMoney(semLance.saldoPosLance)}</Text>
+        </View>
+        <View style={s.node}>
+          <Text style={s.nodeYr}>Parcela pós-cont.</Text>
+          <Text style={s.nodeM}>{fmtMoney(semLance.parcelaPosContemplacao)}{semLance.prazoRestanteAposContemplacao > 0 ? `\naprox. ${Math.round(semLance.prazoRestanteAposContemplacao)} meses` : ""}</Text>
+        </View>
+      </View>
+    </View>
+  );
+}
+
 /* ---------- folha de encerramento ---------- */
 
 function FolhaEncerramento({ data, pagina }: { data: PropostaPdfData; pagina: string }) {
@@ -686,6 +751,10 @@ export function PropostaPdfDocument({ data }: { data: PropostaPdfData }) {
 
   if (!temSegmentos) {
     return <LegacyDocument data={data} />;
+  }
+
+  if (data.visualizacao === "resumida") {
+    return <Document title={`${TITULO_PROPOSTA} - Resumo`} author={MARCA_PRINCIPAL}><FolhaResumoLink data={data} pagina="Folha 1 / 1" /></Document>;
   }
 
   const multi = data.segmentos.length > 1;

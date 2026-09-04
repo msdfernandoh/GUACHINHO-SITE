@@ -67,6 +67,7 @@ export function GruposPublicClient({
   const [observacaoPdf, setObservacaoPdf] = useState("");
   const [consultorNomePdf, setConsultorNomePdf] = useState("");
   const [consultorTelPdf, setConsultorTelPdf] = useState("");
+  const [pdfResumido, setPdfResumido] = useState(false);
   const [loading, setLoading] = useState(false);
   const [resultMsg, setResultMsg] = useState<string | null>(null);
   const [pdfLink, setPdfLink] = useState<string | null>(null);
@@ -257,6 +258,7 @@ export function GruposPublicClient({
           observacao: observacaoPdf.trim() || undefined,
           consultor_nome: consultorNomePdf.trim() || undefined,
           consultor_telefone: consultorTelPdf.trim() || undefined,
+          visualizacao_pdf: pdfResumido ? "resumida" : "completa",
           selecoes: linhasAtivas.map((s) => ({
             grupoId: s.grupoId,
             cotaId: s.cotaId,
@@ -489,6 +491,7 @@ export function GruposPublicClient({
             </div>
             {isConsultor ? (
               <>
+                <label className="flex items-center gap-2 text-sm text-zinc-300"><input type="checkbox" checked={pdfResumido} onChange={(e) => setPdfResumido(e.target.checked)} /> Gerar versão resumida (mesmos dados do link resumido)</label>
                 <div>
                   <label className="mb-1 block text-sm font-medium text-zinc-300">
                     Observação do consultor <span className="text-zinc-500">(opcional)</span>

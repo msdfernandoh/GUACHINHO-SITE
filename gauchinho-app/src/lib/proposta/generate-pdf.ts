@@ -18,6 +18,7 @@ export type GeneratePdfOverrides = {
   origem?: string;
   pagina?: string;
   usuario_id?: string;
+  visualizacao?: "completa" | "resumida";
 };
 
 export async function generateAndStorePropostaPdf(

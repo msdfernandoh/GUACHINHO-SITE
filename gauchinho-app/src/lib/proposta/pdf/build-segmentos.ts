@@ -1,6 +1,10 @@
 import type { GrupoConsorcio, GrupoModalidadeLance } from "@/lib/types";
 import { calcularPrazoGrupoFromRow, calcularCicloGrupoDatas } from "@/lib/grupos/prazos";
-import { listarModalidadesLanceAtivas } from "@/lib/grupos/simulacao-linha";
+import {
+  calcularPosContemplacaoPorTipo,
+  listarModalidadesLanceAtivas,
+} from "@/lib/grupos/simulacao-linha";
+import { calcularParcelasRestantes, grupoToParametros } from "@/lib/grupos/calculos";
 import { normalizarPercentualGrupo } from "@/lib/grupos/percentual";
 import { fatorSeguroGrupo } from "@/lib/grupos/seguro";
 import { calcularCustoDiluido, fmtPercent } from "./custo-plano";
@@ -145,13 +149,13 @@ function evolucaoDe(
   if (parcelaPos > 0) {
     out.push({
       periodo: "Mês seguinte",
-      linhas: [`Parcela ≈ ${fmtMoney(parcelaPos)}`],
+      linhas: [`Parcela aprox. ${fmtMoney(parcelaPos)}`],
     });
   }
   if (prazoPos > 0) {
     out.push({
       periodo: "Quitação",
-      linhas: [`≈ ${Math.round(prazoPos)} meses após contemplar`],
+      linhas: [`Aprox. ${Math.round(prazoPos)} meses após contemplar`],
     });
   }
   if (segmento === "imovel") {
@@ -169,6 +173,7 @@ export function construirSegmentos(
     const grupo = it.grupo_id ? gruposById.get(it.grupo_id) : undefined;
     const mods = it.grupo_id ? modsByGrupo.get(it.grupo_id) ?? [] : [];
     const dados = it.dados_linha;
+    const resultado = (dados?.resultado ?? {}) as Record<string, unknown>;
     const segmento = segmentoDe(it.modalidade ?? grupo?.modalidade);
     const prazo = grupo
       ? calcularPrazoGrupoFromRow(grupo)
@@ -181,6 +186,26 @@ export function construirSegmentos(
     const escolhidaId = it.modalidade_lance_id;
     const modLanceSnap = (dados?.modalidade_lance ?? null) as { id?: string; nome?: string } | null;
     const escolhidaNome = modLanceSnap?.nome ?? null;
+    const lanceTotal = num(it.lance_total);
+    const semLance = grupo && lanceTotal > 0
+      ? (() => {
+          const parcelasARealizar = calcularParcelasRestantes(grupoToParametros(grupo));
+          const saldoBasePos = credito * (1 + taxaAdm / 100);
+          const pos = calcularPosContemplacaoPorTipo({
+            tipo: segmento === "imovel" ? "imovel" : "veiculo",
+            saldoDevedor: saldoBasePos,
+            lanceTotal: 0,
+            primeiraParcela: num(it.primeira_parcela),
+            parcelasARealizar,
+          });
+          return {
+            saldoPosLance: saldoDevedor,
+            creditoLiquido: credito,
+            parcelaPosContemplacao: pos.parcelaPosContemplacao,
+            prazoRestanteAposContemplacao: pos.prazoRestanteAposContemplacao,
+          };
+        })()
+      : null;
 
     return {
       segmento,
@@ -203,12 +228,14 @@ export function construirSegmentos(
       credito,
       saldoDevedor,
       primeiraParcela: num(it.primeira_parcela),
+      parcelaIntegral: num(resultado.parcelaIntegral) * Math.max(1, num(it.quantidade_cotas) || 1),
       parcelaTipoLabel: parcelaTipoLabel(dados),
       lanceEmbutido: num(it.lance_embutido),
       recursoProprio: num(it.recurso_proprio),
-      lanceTotal: num(it.lance_total),
+      lanceTotal,
       creditoLiquido: num(it.credito_liquido),
       parcelaPosContemplacao: num(it.parcela_pos_contemplacao),
+      simulacaoSemLance: semLance,
       modalidadeEscolhidaNome: escolhidaNome,
       modalidades: montarModalidades(grupo, mods, saldoDevedor, credito, escolhidaId, escolhidaNome),
       evolucao: evolucaoDe(dados, segmento),

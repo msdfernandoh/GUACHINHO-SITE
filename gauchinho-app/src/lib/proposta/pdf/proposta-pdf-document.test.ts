@@ -24,12 +24,19 @@ function grupo(seg: "imovel" | "veiculo", codigo: string): GrupoPdfBlock {
     credito: seg === "imovel" ? 250000 : 120000,
     saldoDevedor: seg === "imovel" ? 305000 : 139200,
     primeiraParcela: seg === "imovel" ? 1508.36 : 932.64,
+    parcelaIntegral: seg === "imovel" ? 1508.36 : 1865.28,
     parcelaTipoLabel: seg === "imovel" ? "parcela integral" : "parcela reduzida 50%",
     lanceEmbutido: seg === "imovel" ? 76250 : 27840,
     recursoProprio: seg === "imovel" ? 0 : 10000,
     lanceTotal: seg === "imovel" ? 76250 : 37840,
     creditoLiquido: seg === "imovel" ? 173750 : 92160,
     parcelaPosContemplacao: seg === "imovel" ? 1040 : 3150,
+    simulacaoSemLance: {
+      saldoPosLance: seg === "imovel" ? 305000 : 139200,
+      creditoLiquido: seg === "imovel" ? 250000 : 120000,
+      parcelaPosContemplacao: seg === "imovel" ? 1480 : 3850,
+      prazoRestanteAposContemplacao: seg === "imovel" ? 205 : 68,
+    },
     modalidadeEscolhidaNome: "Lance Fixo 25%",
     modalidades: [
       { nome: "Lance Livre", embutidoLabel: "livre", recProprioLabel: "livre", baseLabel: "Saldo devedor", lanceTotalLabel: "variável", escolhida: false },
@@ -93,6 +100,7 @@ function baseData(overrides: Partial<PropostaPdfData>): PropostaPdfData {
       assembleiasDecorridas: false,
       prazoRestante: true,
     },
+    visualizacao: "completa",
     ...overrides,
   };
 }
@@ -115,6 +123,16 @@ describe("PDF de proposta — nova geração", () => {
 
   it("cai no layout legado quando não há segmentos", async () => {
     const buf = await renderPropostaPdfBuffer(baseData({ segmentos: [], consolidado: null }));
+    expect(buf.subarray(0, 5).toString()).toBe("%PDF-");
+  }, 30000);
+
+  it("renderiza a versão resumida com o mesmo recorte do link público", async () => {
+    const seg = segmento("imovel", "Imóvel");
+    const buf = await renderPropostaPdfBuffer(baseData({
+      segmentos: [seg],
+      consolidado: consolidadoDe([seg]),
+      visualizacao: "resumida",
+    }));
     expect(buf.subarray(0, 5).toString()).toBe("%PDF-");
   }, 30000);
 });

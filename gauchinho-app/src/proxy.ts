@@ -143,7 +143,7 @@ export async function proxy(request: NextRequest) {
           }
 
           const partnerOperationalPaths = [
-            "/simulador", "/grupos", "/consorcio", "/area-parceiro", "/indicar", "/login",
+            "/simulador", "/grupos", "/consorcio", "/proposta", "/area-parceiro", "/indicar", "/login",
           ];
           if (partnerOperationalPaths.some((prefix) => path === prefix || path.startsWith(`${prefix}/`))) {
             return NextResponse.next({ request: { headers: requestHeaders } });

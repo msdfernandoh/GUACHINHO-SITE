@@ -59,6 +59,7 @@ export async function buildPropostaPdfData(
     validade_dias?: number;
     validade_data?: string;
     observacao?: string;
+    visualizacao?: "completa" | "resumida";
   },
 ): Promise<PropostaPdfData> {
   const admin = createAdminClient();
@@ -334,5 +335,6 @@ export async function buildPropostaPdfData(
     consolidado,
     blocos: propostasFull.blocos,
     linhasGrupo: propostasFull.linhasGrupo,
+    visualizacao: overrides?.visualizacao === "resumida" ? "resumida" : "completa",
   };
 }
