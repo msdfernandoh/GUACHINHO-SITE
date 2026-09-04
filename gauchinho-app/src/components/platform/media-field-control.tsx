@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { startTransition, useState, useEffect, useRef } from "react";
 import {
   Upload,
   Link as LinkIcon,
@@ -202,30 +202,32 @@ export function MediaFieldControl({
     formData.append("slot", spec.slotId);
     formData.append("file", file);
 
-    try {
-      const res = await uploadTemplateMediaPlatformAction({ status: "IDLE", message: "" }, formData);
-      if (res.status === "SUCCESS" && res.data) {
-        const data = res.data as { url: string; fileName: string; sizeBytes: number; path: string };
-        onChangeUrl(data.url);
-        if (onAddToLibrary) {
-          onAddToLibrary({
-            id: `upload-${Date.now()}`,
-            nome: data.fileName,
-            url: data.url,
-            slot_sugerido: spec.slotId,
-            tamanho_bytes: data.sizeBytes,
-            data: new Date().toLocaleDateString("pt-BR"),
-          });
+    startTransition(async () => {
+      try {
+        const res = await uploadTemplateMediaPlatformAction({ status: "IDLE", message: "" }, formData);
+        if (res.status === "SUCCESS" && res.data) {
+          const data = res.data as { url: string; fileName: string; sizeBytes: number; path: string };
+          onChangeUrl(data.url);
+          if (onAddToLibrary) {
+            onAddToLibrary({
+              id: `upload-${Date.now()}`,
+              nome: data.fileName,
+              url: data.url,
+              slot_sugerido: spec.slotId,
+              tamanho_bytes: data.sizeBytes,
+              data: new Date().toLocaleDateString("pt-BR"),
+            });
+          }
+        } else {
+          setUploadError(res.message || "Erro no upload da imagem.");
         }
-      } else {
-        setUploadError(res.message || "Erro no upload da imagem.");
+      } catch (err) {
+        setUploadError(err instanceof Error ? err.message : "Erro na comunicação com o servidor.");
+      } finally {
+        setIsUploading(false);
+        if (fileInputRef.current) fileInputRef.current.value = "";
       }
-    } catch (err) {
-      setUploadError(err instanceof Error ? err.message : "Erro na comunicação com o servidor.");
-    } finally {
-      setIsUploading(false);
-      if (fileInputRef.current) fileInputRef.current.value = "";
-    }
+    });
   };
 
   const poolBiblioteca = [...bibliotecaCustom, ...SYSTEM_MEDIA_PRESETS];
