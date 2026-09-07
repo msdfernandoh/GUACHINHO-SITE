@@ -1939,3 +1939,14 @@ Relatório:
 
 Relatório:
 `docs/relatorios-fases/FASE-211-ACESSO-DETALHE-CONTRATACOES-ERP.md`.
+
+### Hotfix — compartilhamento do link e QR Code de eventos
+
+A listagem administrativa e o detalhe de eventos oferecem cópia do link público
+e visualização/download PNG do QR de `/eventos/{slug}`, gerado no navegador com
+o domínio atual. A operação independe da configuração de QR único reutilizável
+e não altera seus vínculos, períodos, dados ou permissões. Eventos ainda não
+publicados exibem aviso no compartilhamento.
+
+Relatório:
+`docs/relatorios-fases/HOTFIX-EVENTOS-QR-LINK-COMPARTILHAMENTO.md`.

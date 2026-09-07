@@ -5,6 +5,7 @@ import { canManageImobiliarias } from "@/lib/auth/permissions";
 import { fetchEventosAdminListSafe } from "./actions";
 import { Button } from "@/components/ui/form-primitives";
 import { formatDateTime } from "@/lib/utils/format";
+import { EventoCompartilhar } from "@/components/admin/eventos/evento-compartilhar";
 
 export default async function EventosAdminPage() {
   const u = await getUsuarioNegocio();
@@ -63,6 +64,9 @@ export default async function EventosAdminPage() {
                 <td className="px-3 py-2">{row.somente_por_link ? "Sim" : "Não"}</td>
                 <td className="px-3 py-2">{row.evento_destaque ? "Sim" : "—"}</td>
                 <td className="px-3 py-2">
+                  <div className="mb-2">
+                    <EventoCompartilhar slug={row.slug} nome={row.nome} publicado={row.publicado} />
+                  </div>
                   <Link href={`/admin/eventos/${row.id}`} className="text-amber-600 hover:underline">
                     Editar
                   </Link>

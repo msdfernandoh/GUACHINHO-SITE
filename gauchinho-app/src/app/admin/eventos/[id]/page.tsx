@@ -13,6 +13,7 @@ import {
   updateEventoAction,
 } from "../actions";
 import { EventoAdminForm } from "@/components/admin/eventos/evento-admin-form";
+import { EventoCompartilhar } from "@/components/admin/eventos/evento-compartilhar";
 import { AdminFormSubmitButton } from "@/components/admin/admin-form-submit-button";
 import { Button, Input, Label, Textarea } from "@/components/ui/form-primitives";
 import { EVENTOS_INSCRICAO_MIGRATION_HINT } from "@/lib/comercial-eventos/db-ready";
@@ -72,6 +73,7 @@ export default async function EditarEventoPage({ params }: { params: Promise<{ i
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
+          <EventoCompartilhar slug={evento.slug} nome={evento.nome} publicado={evento.publicado} />
           <Link href={`/admin/eventos/${id}/participantes`}>
             <Button variant="outline">Participantes</Button>
           </Link>
