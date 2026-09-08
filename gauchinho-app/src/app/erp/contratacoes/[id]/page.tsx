@@ -4,7 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { requireErpRouteAccess } from "@/lib/erp/erp-acesso-server";
 import { calcularPrazoGrupoFromRow } from "@/lib/grupos/prazos";
 import { obterQuantidadeCotasContratacao } from "@/lib/contratacoes-online/quantidade-cotas";
-import { nomeComModeloParceria } from "@/lib/participantes/nome-com-parceria";
+import { nomeComTipoComissao } from "@/lib/participantes/nome-com-parceria";
 import {
   resolverModalidadeComissaoId,
   resolverParticipantePrincipalId,
@@ -133,7 +133,7 @@ export default async function ConferirContratacaoPage({
       .order("codigo_grupo"),
     admin
       .from("participantes_comerciais")
-      .select("id,usuario_id,nome,nome_exibicao,status,participante_tipos(tipo_codigo)")
+      .select("id,usuario_id,nome,nome_exibicao,status")
       .eq("empresa_id", empresaAtiva.id)
       .ilike("status", "ativo")
       .order("nome"),
@@ -231,15 +231,25 @@ export default async function ConferirContratacaoPage({
       } as GrupoConsorcio;
     })
     .filter((grupo) => grupo.prazo_restante > 0 && (grupo.grupos_cotas?.length ?? 0) > 0);
-  const participantes = ((participantesResult.data ?? []) as ParticipanteComercial[]).map((participante) => ({
+  const vinculosPerfis = ((vinculosResult.data ?? []) as unknown) as VinculoPerfil[];
+  const participantesPorLogin = new Map<string, ParticipanteComercial>();
+  for (const participante of (participantesResult.data ?? []) as ParticipanteComercial[]) {
+    const chave = participante.usuario_id || participante.nome_exibicao?.trim().toLocaleLowerCase("pt-BR") || participante.nome.trim().toLocaleLowerCase("pt-BR");
+    const atual = participantesPorLogin.get(chave);
+    const atualTemPerfil = atual ? vinculosPerfis.some((vinculo) => vinculo.participante_id === atual.id) : false;
+    const novoTemPerfil = vinculosPerfis.some((vinculo) => vinculo.participante_id === participante.id);
+    if (!atual || (!atualTemPerfil && novoTemPerfil)) participantesPorLogin.set(chave, participante);
+  }
+  const participantes = [...participantesPorLogin.values()].map((participante) => ({
     ...participante,
-    nome: nomeComModeloParceria(
+    nome: nomeComTipoComissao(
       participante.nome_exibicao || participante.nome,
-      participante.participante_tipos?.map((tipo) => tipo.tipo_codigo),
+      vinculosPerfis
+        .filter((vinculo) => vinculo.participante_id === participante.id)
+        .map((vinculo) => vinculo.papel_tipo),
     ),
     nome_exibicao: null,
   }));
-  const vinculosPerfis = ((vinculosResult.data ?? []) as unknown) as VinculoPerfil[];
   const regrasParticipantes = ((regrasParticipantesResult.data ?? []) as unknown) as RegraParticipante[];
 
   // Pré-seleção somente por UUID canônico persistido. Nunca escolhe o primeiro item por aproximação.

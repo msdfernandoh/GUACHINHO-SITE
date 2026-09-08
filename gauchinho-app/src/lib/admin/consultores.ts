@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { nomeComModeloParceria } from "@/lib/participantes/nome-com-parceria";
+import { nomeComTipoComissao } from "@/lib/participantes/nome-com-parceria";
 
 export type ConsultorOption = { id: string; nome: string; email?: string | null };
 
@@ -45,20 +45,33 @@ export async function listarConsultores(
     const { data: participantes } = ids.length
       ? await supabase
           .from("participantes_comerciais")
-          .select("usuario_id,participante_tipos(tipo_codigo)")
+          .select("id,usuario_id")
           .eq("empresa_id", opts.empresaId)
           .in("usuario_id", ids)
           .ilike("status", "ativo")
       : { data: [] };
+    const participanteIds = (participantes ?? []).map((participante) => participante.id);
+    const hoje = new Date().toISOString().slice(0, 10);
+    const { data: perfisComissao } = participanteIds.length
+      ? await supabase
+          .from("participante_comissao_perfis")
+          .select("participante_id,papel_tipo")
+          .in("participante_id", participanteIds)
+          .eq("ativo", true)
+          .lte("vigencia_inicio", hoje)
+          .or(`vigencia_fim.is.null,vigencia_fim.gte.${hoje}`)
+      : { data: [] };
+    const usuarioPorParticipante = new Map((participantes ?? []).map((participante) => [participante.id, participante.usuario_id]));
     const tiposPorUsuario = new Map<string, string[]>();
-    for (const participante of participantes ?? []) {
-      const tipos = (participante.participante_tipos ?? []).map((tipo: { tipo_codigo: string }) => tipo.tipo_codigo);
-      tiposPorUsuario.set(participante.usuario_id, tipos);
+    for (const vinculo of perfisComissao ?? []) {
+      const usuarioId = usuarioPorParticipante.get(vinculo.participante_id);
+      if (!usuarioId) continue;
+      tiposPorUsuario.set(usuarioId, [...(tiposPorUsuario.get(usuarioId) ?? []), vinculo.papel_tipo]);
     }
     const preferidos = opts.preferirMarcados ? tenantRows.filter((row) => row.is_consultor) : tenantRows;
     return (preferidos.length ? preferidos : tenantRows)
       .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"))
-      .map(({ id, nome, email }) => ({ id, nome: nomeComModeloParceria(nome, tiposPorUsuario.get(id)), email }));
+      .map(({ id, nome, email }) => ({ id, nome: nomeComTipoComissao(nome, tiposPorUsuario.get(id)), email }));
   }
 
   const staff = await supabase

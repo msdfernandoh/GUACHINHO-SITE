@@ -1,4 +1,11 @@
-const PARCERIA_LABELS: Record<string, string> = {
+const COMISSAO_LABELS: Record<string, string> = {
+  MASTER: "Master",
+  GESTOR: "Master",
+  SOCIO: "Sócio",
+  SÓCIO: "Sócio",
+  INDICADOR: "Indicação",
+  INDICACAO: "Indicação",
+  INDICAÇÃO: "Indicação",
   MICROFRANQUIA: "Microfranquia",
   PARCEIRO: "Parceiro",
   SDR: "SDR",
@@ -6,18 +13,18 @@ const PARCERIA_LABELS: Record<string, string> = {
   CONSULTOR: "Consultor",
 };
 
-const PRIORIDADE = ["MICROFRANQUIA", "PARCEIRO", "SDR", "SRD", "CONSULTOR"];
+const PRIORIDADE = ["MASTER", "GESTOR", "SOCIO", "SÓCIO", "INDICADOR", "INDICACAO", "INDICAÇÃO", "SDR", "SRD", "MICROFRANQUIA", "PARCEIRO", "CONSULTOR"];
 
-export function modeloParceriaLabel(tipos: readonly string[] | null | undefined): string | null {
+export function tipoComissaoLabel(tipos: readonly string[] | null | undefined): string | null {
   const normalizados = new Set((tipos ?? []).map((tipo) => tipo.trim().toUpperCase()));
   const codigo = PRIORIDADE.find((tipo) => normalizados.has(tipo));
-  return codigo ? PARCERIA_LABELS[codigo] : null;
+  return codigo ? COMISSAO_LABELS[codigo] : null;
 }
 
-export function nomeComModeloParceria(
+export function nomeComTipoComissao(
   nome: string,
   tipos: readonly string[] | null | undefined,
 ): string {
-  const label = modeloParceriaLabel(tipos);
+  const label = tipoComissaoLabel(tipos);
   return label ? `${label} · ${nome}` : nome;
 }

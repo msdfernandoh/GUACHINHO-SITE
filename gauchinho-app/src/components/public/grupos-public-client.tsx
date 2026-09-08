@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { Search } from "lucide-react";
+import { Download, Search } from "lucide-react";
 import type { PublicGrupoAggregate } from "@/lib/types";
 import { MODALIDADE_FILTRO_PUBLICO } from "@/lib/types";
+import { generateModoDemonstracaoOfflineHtml } from "@/lib/grupos/gerador-modo-demonstracao-offline";
 import {
   agregarResultadosLinhas,
   calcularLinhaSimulacaoGrupo,
@@ -103,6 +104,29 @@ export function GruposPublicClient({
     "border-zinc-500 bg-zinc-900 text-zinc-100 hover:border-zinc-400 hover:bg-zinc-800 hover:text-zinc-100";
 
   useLockBodyScroll(modalOpen);
+
+  function handleBaixarModoDemonstracaoOffline() {
+    try {
+      const html = generateModoDemonstracaoOfflineHtml({
+        aggregates,
+        tenantBrand,
+      });
+      const blob = new Blob([html], { type: "text/html;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      const dataIso = new Date().toISOString().slice(0, 10);
+      const slug = tenantBrand.slug || "consorcio";
+      a.href = url;
+      a.download = `modo-demonstracao-offline-${slug}-${dataIso}.html`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      setToastMsg("Modo Demonstração Offline baixado com sucesso! O arquivo pode ser aberto no navegador sem internet.");
+    } catch {
+      setToastMsg("Erro ao gerar o arquivo do Modo Demonstração Offline.");
+    }
+  }
 
   const filtered = useMemo(() => {
     const q = busca.trim().toLowerCase();
@@ -324,6 +348,15 @@ export function GruposPublicClient({
             )}
           >
             Sorteios
+          </button>
+          <button
+            type="button"
+            onClick={handleBaixarModoDemonstracaoOffline}
+            title="Baixar versão autônoma desta tabela para apresentações presenciais sem conexão com a internet"
+            className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-1.5 text-xs font-semibold text-emerald-400 transition hover:border-emerald-400 hover:bg-emerald-500/20 md:px-4 md:py-2 md:text-sm"
+          >
+            <Download className="h-3.5 w-3.5 md:h-4 md:w-4" />
+            Modo Demonstração Offline
           </button>
           <div className="relative ml-auto min-w-[200px] flex-1 md:max-w-xs">
             <Search className="absolute left-3 top-2.5 h-4 w-4 text-zinc-500" />

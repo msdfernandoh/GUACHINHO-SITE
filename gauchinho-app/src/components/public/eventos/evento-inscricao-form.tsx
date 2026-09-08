@@ -13,6 +13,8 @@ type Props = {
   className?: string;
 };
 
+const eventFormLabelClassName = "text-white font-bold";
+
 export function EventoInscricaoForm({ slug, permitirAcompanhante, exigirConvidou, className }: Props) {
   const [nome, setNome] = useState("");
   const [telefone, setTelefone] = useState("");
@@ -68,11 +70,11 @@ export function EventoInscricaoForm({ slug, permitirAcompanhante, exigirConvidou
 
       <div className="mt-6 space-y-4">
         <div>
-          <Label>Nome do participante *</Label>
+          <Label className={eventFormLabelClassName}>Nome do participante *</Label>
           <Input className={surfaceInputDarkSlate} value={nome} onChange={(e) => setNome(e.target.value)} required />
         </div>
         <div>
-          <Label>Telefone / WhatsApp *</Label>
+          <Label className={eventFormLabelClassName}>Telefone / WhatsApp *</Label>
           <Input
             className={surfaceInputDarkSlate}
             value={telefone}
@@ -83,14 +85,14 @@ export function EventoInscricaoForm({ slug, permitirAcompanhante, exigirConvidou
 
         {permitirAcompanhante ? (
           <>
-            <label className="flex items-center gap-2 text-sm text-zinc-300">
+            <label className="flex items-center gap-2 text-sm font-bold text-white">
               <input type="checkbox" checked={temAcompanhante} onChange={(e) => setTemAcompanhante(e.target.checked)} />
               Levar acompanhante
             </label>
             {temAcompanhante ? (
               <>
                 <div>
-                  <Label>Nome do acompanhante *</Label>
+                  <Label className={eventFormLabelClassName}>Nome do acompanhante *</Label>
                   <Input
                     className={surfaceInputDarkSlate}
                     value={nomeAcompanhante}
@@ -99,7 +101,7 @@ export function EventoInscricaoForm({ slug, permitirAcompanhante, exigirConvidou
                   />
                 </div>
                 <div>
-                  <Label>Telefone do acompanhante (opcional)</Label>
+                  <Label className={eventFormLabelClassName}>Telefone do acompanhante (opcional)</Label>
                   <Input
                     className={surfaceInputDarkSlate}
                     value={telefoneAcompanhante}
@@ -112,7 +114,7 @@ export function EventoInscricaoForm({ slug, permitirAcompanhante, exigirConvidou
         ) : null}
 
         <div>
-          <Label>Quem convidou você?{exigirConvidou ? " *" : ""}</Label>
+          <Label className={eventFormLabelClassName}>Quem convidou você?{exigirConvidou ? " *" : ""}</Label>
           <Input
             className={surfaceInputDarkSlate}
             value={nomeConvidou}
@@ -121,11 +123,11 @@ export function EventoInscricaoForm({ slug, permitirAcompanhante, exigirConvidou
           />
         </div>
         <div>
-          <Label>Empresa de quem convidou</Label>
+          <Label className={eventFormLabelClassName}>Empresa de quem convidou</Label>
           <Input className={surfaceInputDarkSlate} value={empresaConvidou} onChange={(e) => setEmpresaConvidou(e.target.value)} />
         </div>
         <div>
-          <Label>Observação</Label>
+          <Label className={eventFormLabelClassName}>Observação</Label>
           <Textarea className={surfaceInputDarkSlate} rows={3} value={observacao} onChange={(e) => setObservacao(e.target.value)} />
         </div>
       </div>

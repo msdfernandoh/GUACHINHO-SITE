@@ -31,6 +31,7 @@ A plataforma suporta:
 * **Financeiro Completo e Caixa:** Separação entre parcela do cliente (paga à administradora), comissão da empresa e repasse ao participante.
 * **Gestão, Metas, Tarefas e Auditoria Central:** Equipes comerciais, motor de apuração de metas por indicador canônico, acompanhamento de tarefas operacionais e trilha de auditoria com correlation ID.
 * **Onboarding & Governança:** Governança exclusiva de concessões de administradoras por `PLATFORM_SUPERADMIN`, onboarding formalizado de novos tenants e runbook de operações.
+* **Modo Demonstração Offline:** Download de simulador/planilha inteligente em HTML único e autônomo com a marca e os grupos autorizados da empresa ativa, permitindo simulações comerciais completas mesmo sem conexão com a internet.
 
 ---
 
@@ -1897,9 +1898,10 @@ Relatório:
 
 ### Evolução operacional 209 — identificação de consultores e grupos em formação
 
-Seletores de consultor exibem o modelo de parceria canônico antes do nome, derivado de
-`participante_tipos`, permitindo distinguir Microfranquia, Parceiro, SDR e Consultor no
-lançamento comercial. Grupos cuja `data_primeira_assembleia` é futura recebem a tag
+Seletores de consultor exibem o tipo de comissão canônico antes do nome, derivado do
+vínculo ativo e vigente em `participante_comissao_perfis.papel_tipo`, permitindo distinguir
+Master, Sócio, Indicação, SDR e os demais perfis no lançamento comercial. Registros do
+mesmo login são consolidados no seletor. Grupos cuja `data_primeira_assembleia` é futura recebem a tag
 `Em Formação` no ERP e no site público. No catálogo público, a identificação do grupo
 deixa de apresentar o percentual/descrição de reajuste nessa posição. A regra é somente
 de apresentação, usa data civil em `America/Cuiaba` e não altera fatos ou status no banco.
@@ -1940,6 +1942,48 @@ Relatório:
 Relatório:
 `docs/relatorios-fases/FASE-211-ACESSO-DETALHE-CONTRATACOES-ERP.md`.
 
+### Hotfix — upload de mídia no editor de modelos Platform
+
+O upload de imagem do editor de templates executa a Server Action em uma transição
+React, preservando o contexto de ação necessário para chamadas iniciadas por eventos
+do cliente. O controle continua exigindo Platform Superadmin, validando tipo e tamanho
+de arquivo e usando o bucket `site-template-assets`; não há mudança de RLS, migration
+ou alteração de mídia já persistida.
+
+Relatório:
+`docs/relatorios-fases/HOTFIX-UPLOAD-MIDIA-MODELO-PLATFORM.md`.
+
+### Evolução operacional 216 — proposta PDF com cenários de lance
+
+O PDF da tela pública de Grupos mantém a seleção gravada como cenário principal
+e passa a exibir explicitamente saldo pós-lance e parcela pós-contemplação. Se
+a seleção usa lance, uma faixa inferior apresenta a alternativa sem lance
+embutido, calculada sobre o mesmo grupo e prazo, sem repetir taxas ou alterar
+o snapshot, catálogo, dados financeiros ou regras comerciais.
+
+Relatório:
+`docs/relatorios-fases/FASE-216-PROPOSTA-PDF-CENARIOS-LANCE.md`.
+
+### Hotfix operacional 217 — links públicos de proposta em portal parceiro
+
+O proxy reconhece `/proposta` como rota operacional de portal parceiro, em vez
+de reescrevê-la para a home institucional. A página e sua API continuam
+recebendo o contexto de empresa e parceiro resolvido pelo host; o código curto
+é validado contra essa empresa no servidor, sem fallback de tenant.
+
+Relatório:
+`docs/relatorios-fases/FASE-217-PARCEIRO-ACESSO-LINK-PROPOSTA.md`.
+
+### Evolução operacional 218 — proposta PDF resumida
+
+A geração de proposta em Grupos permite uma versão resumida que preserva a
+identidade do PDF e reproduz somente o recorte de dados do link público
+resumido. A proposta detalhada continua disponível como padrão; a escolha
+altera apenas a apresentação do documento e não modifica o snapshot da
+simulação, seus valores ou seus dados históricos.
+
+Relatório:
+`docs/relatorios-fases/FASE-218-PROPOSTA-PDF-RESUMIDA.md`.
 ### Hotfix — compartilhamento do link e QR Code de eventos
 
 A listagem administrativa e o detalhe de eventos oferecem cópia do link público
@@ -1950,3 +1994,14 @@ publicados exibem aviso no compartilhamento.
 
 Relatório:
 `docs/relatorios-fases/HOTFIX-EVENTOS-QR-LINK-COMPARTILHAMENTO.md`.
+
+### Hotfix — contraste do formulário público de eventos
+
+Os rótulos de todos os campos do formulário público de inscrição em eventos,
+inclusive a opção de acompanhante e seus campos condicionais, usam texto
+branco em negrito para preservar a legibilidade sobre o tema escuro. Não há
+alteração de dados, validação, permissões ou comportamento operacional.
+
+Relatório:
+`docs/relatorios-fases/HOTFIX-FORMULARIO-EVENTOS-CONTRASTE-ROTULOS.md`.
+
