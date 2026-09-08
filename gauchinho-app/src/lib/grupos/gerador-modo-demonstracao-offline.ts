@@ -10,10 +10,12 @@ import type { TenantBrandValue } from "@/components/tenant/tenant-brand-context"
 export type GerarModoDemonstracaoOptions = {
   aggregates: PublicGrupoAggregate[];
   tenantBrand: Partial<TenantBrandValue>;
+  initialConfigs?: Record<string, unknown>;
   timestamp?: string;
 };
 
-function escapeHtml(str: string): string {
+function escapeHtml(str: unknown): string {
+  if (str == null) return "";
   return String(str)
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
@@ -29,6 +31,7 @@ function safeJsonStringify(obj: unknown): string {
 export function generateModoDemonstracaoOfflineHtml({
   aggregates,
   tenantBrand,
+  initialConfigs,
   timestamp,
 }: GerarModoDemonstracaoOptions): string {
   const nomeEmpresa = tenantBrand.nome?.trim() || "Consórcios";
@@ -42,20 +45,6 @@ export function generateModoDemonstracaoOfflineHtml({
       timeStyle: "short",
     });
 
-  // Coleta modalidades/categorias únicas para as abas de filtro
-  const categoriasSet = new Set<string>();
-  categoriasSet.add("Todos");
-  for (const item of aggregates) {
-    if (item.grupo.categorias_publicacao && item.grupo.categorias_publicacao.length > 0) {
-      for (const cat of item.grupo.categorias_publicacao) {
-        if (cat) categoriasSet.add(cat);
-      }
-    } else if (item.grupo.modalidade) {
-      categoriasSet.add(item.grupo.modalidade);
-    }
-  }
-  const categorias = Array.from(categoriasSet);
-
   const jsonAggregates = safeJsonStringify(aggregates);
   const jsonTenant = safeJsonStringify({
     nome: nomeEmpresa,
@@ -64,6 +53,7 @@ export function generateModoDemonstracaoOfflineHtml({
     corDestaque,
     logoUrl: tenantBrand.logoUrl || null,
   });
+  const jsonInitialConfigs = safeJsonStringify(initialConfigs || {});
 
   return `<!DOCTYPE html>
 <html lang="pt-BR" class="dark">
@@ -76,12 +66,12 @@ export function generateModoDemonstracaoOfflineHtml({
       --brand-primary: ${corPrimaria};
       --brand-secondary: ${corSecundaria};
       --brand-accent: ${corDestaque};
-      --bg-main: #09090b;
-      --bg-card: #18181b;
-      --bg-card-hover: #27272a;
-      --border-color: #27272a;
-      --text-main: #f4f4f5;
-      --text-muted: #a1a1aa;
+      --bg-main: #06090e;
+      --bg-card: #0c121c;
+      --bg-card-hover: #141e2e;
+      --border-color: #1e293b;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
       --gold: #f59e0b;
       --gold-light: #fbbf24;
       --gold-bg: rgba(245, 158, 11, 0.08);
@@ -100,16 +90,16 @@ export function generateModoDemonstracaoOfflineHtml({
       padding-bottom: 140px;
     }
     header {
-      background: linear-gradient(180deg, var(--brand-secondary) 0%, rgba(9, 9, 11, 0.95) 100%);
+      background: linear-gradient(180deg, var(--brand-secondary) 0%, rgba(6, 9, 14, 0.95) 100%);
       border-bottom: 1px solid var(--border-color);
-      padding: 24px 20px;
+      padding: 20px 24px;
       position: sticky;
       top: 0;
       z-index: 40;
       backdrop-filter: blur(12px);
     }
     .header-content {
-      max-width: 1440px;
+      max-width: 1600px;
       margin: 0 auto;
       display: flex;
       flex-wrap: wrap;
@@ -118,7 +108,7 @@ export function generateModoDemonstracaoOfflineHtml({
       gap: 16px;
     }
     .brand-title {
-      font-size: 24px;
+      font-size: 22px;
       font-weight: 800;
       letter-spacing: -0.02em;
       color: #ffffff;
@@ -180,22 +170,22 @@ export function generateModoDemonstracaoOfflineHtml({
       box-shadow: 0 0 16px rgba(245, 158, 11, 0.3);
     }
     .btn-outline {
-      background: #18181b;
-      color: #e4e4e7;
-      border-color: #3f3f46;
+      background: #111827;
+      color: #e2e8f0;
+      border-color: #334155;
     }
     .btn-outline:hover {
-      background: #27272a;
-      border-color: #71717a;
+      background: #1e293b;
+      border-color: #64748b;
     }
     .btn-sm {
-      padding: 4px 10px;
-      font-size: 11px;
+      padding: 5px 12px;
+      font-size: 12px;
       border-radius: 6px;
     }
     main {
-      max-width: 1440px;
-      margin: 24px auto;
+      max-width: 1600px;
+      margin: 20px auto;
       padding: 0 20px;
     }
     .filters-bar {
@@ -204,21 +194,21 @@ export function generateModoDemonstracaoOfflineHtml({
       align-items: center;
       justify-content: space-between;
       gap: 12px;
-      margin-bottom: 20px;
+      margin-bottom: 16px;
     }
     .tabs {
       display: flex;
       flex-wrap: wrap;
-      gap: 6px;
+      gap: 8px;
     }
     .tab-btn {
-      padding: 6px 14px;
+      padding: 6px 16px;
       font-size: 13px;
       font-weight: 600;
       border-radius: 9999px;
-      border: 1px solid #3f3f46;
-      background: #18181b;
-      color: #d4d4d8;
+      border: 1px solid #334155;
+      background: #0f172a;
+      color: #cbd5e1;
       cursor: pointer;
       transition: all 0.15s ease;
     }
@@ -235,11 +225,11 @@ export function generateModoDemonstracaoOfflineHtml({
     .search-input {
       padding: 8px 14px;
       border-radius: 8px;
-      background: #18181b;
-      border: 1px solid #3f3f46;
+      background: #0f172a;
+      border: 1px solid #334155;
       color: #ffffff;
       font-size: 13px;
-      width: 240px;
+      width: 260px;
       outline: none;
     }
     .search-input:focus {
@@ -250,31 +240,31 @@ export function generateModoDemonstracaoOfflineHtml({
       border: 1px solid var(--border-color);
       border-radius: 12px;
       overflow-x: auto;
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
     }
     table {
       width: 100%;
       border-collapse: collapse;
       text-align: left;
       font-size: 12px;
-      min-width: 1150px;
+      min-width: 1360px;
     }
     thead th {
-      background-color: var(--brand-secondary);
+      background-color: var(--brand-primary);
       color: #ffffff;
       padding: 12px 10px;
       font-weight: 700;
       text-transform: uppercase;
       letter-spacing: 0.04em;
       font-size: 11px;
-      border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.12);
       white-space: nowrap;
       position: sticky;
       top: 0;
       z-index: 10;
     }
     tbody tr {
-      border-bottom: 1px solid var(--border-color);
+      border-bottom: 1px solid #1e293b;
       transition: background-color 0.15s;
     }
     tbody tr:hover {
@@ -287,46 +277,64 @@ export function generateModoDemonstracaoOfflineHtml({
     tbody td {
       padding: 10px 8px;
       vertical-align: middle;
-      color: #e4e4e7;
+      color: #e2e8f0;
     }
     .col-group {
       font-weight: 700;
       color: var(--gold);
       font-size: 13px;
-      min-width: 80px;
+      min-width: 90px;
     }
-    .group-tag {
-      font-size: 9px;
-      padding: 2px 6px;
-      border-radius: 4px;
-      background: var(--brand-secondary);
-      color: #93c5fd;
+    .badge-tag {
       display: inline-block;
+      font-size: 9px;
+      font-weight: 600;
+      padding: 1px 6px;
+      border-radius: 4px;
       margin-top: 3px;
+      line-height: 1.3;
+    }
+    .badge-ativo {
+      background: rgba(245, 158, 11, 0.18);
+      color: #fbbf24;
+      border: 1px solid rgba(245, 158, 11, 0.35);
+      text-transform: uppercase;
+    }
+    .badge-vagas {
+      background: rgba(14, 165, 233, 0.18);
+      color: #7dd3fc;
+      border: 1px solid rgba(14, 165, 233, 0.35);
+    }
+    .badge-formacao {
+      background: var(--brand-secondary);
+      color: #ffffff;
+      border: 1px solid rgba(255, 255, 255, 0.2);
     }
     select, input[type="number"], input[type="text"] {
-      background: #09090b;
-      border: 1px solid #3f3f46;
+      background: #090d14;
+      border: 1px solid #334155;
       color: #ffffff;
-      padding: 6px 8px;
+      padding: 5px 7px;
       border-radius: 6px;
-      font-size: 12px;
+      font-size: 11px;
       outline: none;
     }
     select:focus, input:focus {
       border-color: var(--gold);
     }
     .input-qty {
-      width: 52px;
+      width: 48px;
       text-align: center;
+      font-weight: 700;
     }
     .input-pct {
-      width: 60px;
+      width: 52px;
       text-align: right;
     }
     .val-currency {
       font-variant-numeric: tabular-nums;
       font-weight: 600;
+      white-space: nowrap;
     }
     .text-gold {
       color: var(--gold);
@@ -337,43 +345,41 @@ export function generateModoDemonstracaoOfflineHtml({
     .text-muted {
       color: var(--text-muted);
     }
-    .btn-toggle-seguro {
-      width: 24px;
-      height: 24px;
-      padding: 0;
+    .btn-toggle {
+      padding: 2px 7px;
       border-radius: 4px;
       font-size: 10px;
       font-weight: 700;
       cursor: pointer;
-      border: 1px solid #3f3f46;
-      background: #27272a;
-      color: #a1a1aa;
+      border: 1px solid #334155;
+      background: #1e293b;
+      color: #94a3b8;
     }
-    .btn-toggle-seguro.active {
+    .btn-toggle.active {
       background: var(--gold);
       color: #09090b;
       border-color: var(--gold);
     }
     .expand-row {
-      background: #101014;
-      border-bottom: 1px solid #3f3f46;
+      background: #090d14;
+      border-bottom: 1px solid #334155;
     }
     .expand-details {
-      padding: 14px 20px;
+      padding: 16px 20px;
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
       gap: 16px;
       font-size: 12px;
-      background: rgba(0, 0, 0, 0.25);
+      background: rgba(0, 0, 0, 0.4);
       border-radius: 8px;
-      margin: 6px 12px 12px 12px;
-      border: 1px solid #27272a;
+      margin: 8px 12px 14px 12px;
+      border: 1px solid #1e293b;
     }
     .detail-card {
-      background: #18181b;
+      background: #0f172a;
       padding: 10px 14px;
       border-radius: 6px;
-      border: 1px solid #27272a;
+      border: 1px solid #1e293b;
     }
     .detail-card-label {
       font-size: 10px;
@@ -385,7 +391,7 @@ export function generateModoDemonstracaoOfflineHtml({
     .detail-card-value {
       font-size: 14px;
       font-weight: 700;
-      color: #f4f4f5;
+      color: #f8fafc;
     }
     /* Fixed Totals Bar */
     .totals-bar {
@@ -393,15 +399,15 @@ export function generateModoDemonstracaoOfflineHtml({
       bottom: 0;
       left: 0;
       right: 0;
-      background: rgba(18, 18, 22, 0.95);
-      border-top: 1px solid var(--border-color);
+      background: rgba(10, 16, 26, 0.95);
+      border-top: 1px solid #334155;
       backdrop-filter: blur(16px);
       padding: 14px 24px;
       z-index: 50;
-      box-shadow: 0 -4px 30px rgba(0, 0, 0, 0.6);
+      box-shadow: 0 -4px 30px rgba(0, 0, 0, 0.7);
     }
     .totals-content {
-      max-width: 1440px;
+      max-width: 1600px;
       margin: 0 auto;
       display: flex;
       flex-wrap: wrap;
@@ -437,11 +443,11 @@ export function generateModoDemonstracaoOfflineHtml({
     .badge-contador {
       font-size: 11px;
       font-weight: 700;
-      background: #27272a;
-      color: #d4d4d8;
+      background: #1e293b;
+      color: #cbd5e1;
       padding: 4px 10px;
       border-radius: 9999px;
-      border: 1px solid #3f3f46;
+      border: 1px solid #334155;
     }
 
     /* Print styles */
@@ -540,12 +546,10 @@ export function generateModoDemonstracaoOfflineHtml({
   <main>
     <div class="filters-bar no-print">
       <div class="tabs">
-        ${categorias
-          .map(
-            (cat, idx) =>
-              `<button type="button" class="tab-btn ${idx === 0 ? "active" : ""}" data-category="${escapeHtml(cat)}" onclick="filtrarCategoria('${escapeHtml(cat)}')">${escapeHtml(cat)}</button>`,
-          )
-          .join("\n        ")}
+        <button type="button" class="tab-btn active" data-category="Todos" onclick="filtrarCategoria('Todos')">Todos</button>
+        <button type="button" class="tab-btn" data-category="Imóvel" onclick="filtrarCategoria('Imóvel')">Imóvel</button>
+        <button type="button" class="tab-btn" data-category="Auto" onclick="filtrarCategoria('Auto')">Veículo</button>
+        <button type="button" class="tab-btn" data-category="Moto" onclick="filtrarCategoria('Moto')">Moto</button>
       </div>
       <div>
         <input
@@ -567,16 +571,16 @@ export function generateModoDemonstracaoOfflineHtml({
             <th>Qtd.</th>
             <th>Soma Cotas</th>
             <th>Saldo Devedor</th>
-            <th>Parcela (1ª)</th>
-            <th>Lance Embutido</th>
-            <th>Recurso Próprio</th>
+            <th>Parcela</th>
+            <th>Embutido</th>
+            <th>Próprio</th>
             <th>Lance Total</th>
             <th>Seguro</th>
             <th>Crédito Líquido</th>
             <th>Saldo Pós-Lance</th>
-            <th>Pós-Contemplação</th>
+            <th>Pós-Cont.</th>
             <th>Prazo</th>
-            <th class="no-print">Detalhes</th>
+            <th class="no-print">Ajustes</th>
           </tr>
         </thead>
         <tbody id="tabelaCorpo">
@@ -625,11 +629,25 @@ export function generateModoDemonstracaoOfflineHtml({
   <script id="tenant-data" type="application/json">
     ${jsonTenant}
   </script>
+  <script id="initial-configs" type="application/json">
+    ${jsonInitialConfigs}
+  </script>
 
   <script>
     (function () {
-      var aggregates = JSON.parse(document.getElementById('grupos-data').textContent);
-      var tenant = JSON.parse(document.getElementById('tenant-data').textContent);
+      function escapeHtml(str) {
+        if (str == null) return '';
+        return String(str)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#39;');
+      }
+
+      var aggregates = JSON.parse(document.getElementById('grupos-data').textContent || '[]');
+      var tenant = JSON.parse(document.getElementById('tenant-data').textContent || '{}');
+      var initialConfigs = JSON.parse(document.getElementById('initial-configs').textContent || '{}');
       var configs = {};
       var expandedId = null;
       var filtroAtivo = "Todos";
@@ -640,19 +658,21 @@ export function generateModoDemonstracaoOfflineHtml({
         var g = item.grupo;
         var cotas = item.cotas || [];
         var modalidades = item.modalidades || [];
+        var cotaPadrao = cotas.length > 0 ? cotas[0].id : null;
+        var userCfg = initialConfigs[g.id] || {};
 
         configs[g.id] = {
-          cotaId: null,
-          quantidadeCotas: 0,
-          modalidadeParcela: g.tem_parcela_reduzida ? "reduzida" : "integral",
-          percentualParcelaReduzida: g.percentual_parcela_reduzida || 70,
-          percentualParcelaPersonalizada: null,
-          usaLanceEmbutido: false,
-          modalidadeLanceId: modalidades.length > 0 ? modalidades[0].id : null,
-          usaRecursoProprio: false,
-          recursoProprioModo: "percentual",
-          recursoProprioInput: 0,
-          usaSeguro: true
+          cotaId: userCfg.cotaId !== undefined ? userCfg.cotaId : cotaPadrao,
+          quantidadeCotas: userCfg.quantidadeCotas !== undefined ? Number(userCfg.quantidadeCotas) : 0,
+          modalidadeParcela: userCfg.modalidadeParcela || (g.tem_parcela_reduzida ? "reduzida" : "integral"),
+          percentualParcelaReduzida: userCfg.percentualParcelaReduzida || g.percentual_parcela_reduzida || 60,
+          percentualParcelaPersonalizada: userCfg.percentualParcelaPersonalizada || null,
+          usaLanceEmbutido: userCfg.usaLanceEmbutido !== undefined ? Boolean(userCfg.usaLanceEmbutido) : false,
+          modalidadeLanceId: userCfg.modalidadeLanceId || (modalidades.length > 0 ? modalidades[0].id : null),
+          usaRecursoProprio: userCfg.usaRecursoProprio !== undefined ? Boolean(userCfg.usaRecursoProprio) : false,
+          recursoProprioModo: userCfg.recursoProprioModo || "percentual",
+          recursoProprioInput: userCfg.recursoProprioInput !== undefined ? Number(userCfg.recursoProprioInput) : 0,
+          usaSeguro: userCfg.usaSeguro !== undefined ? Boolean(userCfg.usaSeguro) : true
         };
       });
 
@@ -664,6 +684,18 @@ export function generateModoDemonstracaoOfflineHtml({
 
       function formatCurrency(val) {
         return (val || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+      }
+
+      function isEmFormacao(dateStr) {
+        if (!dateStr) return false;
+        try {
+          var assembleia = new Date(dateStr + "T00:00:00");
+          var hoje = new Date();
+          hoje.setHours(0, 0, 0, 0);
+          return assembleia > hoje;
+        } catch (e) {
+          return false;
+        }
       }
 
       function calcularLinha(item) {
@@ -687,7 +719,7 @@ export function generateModoDemonstracaoOfflineHtml({
         var saldoDevedorInicial = Math.round(somaCotas * (1 + txAdm + fundo) * 100) / 100;
 
         // Modalidade de Lance
-        var modLance = modalidades.find(function (m) { return m.id === cfg.modalidadeLanceId; }) || null;
+        var modLance = modalidades.find(function (m) { return m.id === cfg.modalidadeLanceId; }) || (modalidades.length > 0 ? modalidades[0] : null);
         var baseLance = modLance && modLance.base_referencia === "CREDITO" ? somaCotas : saldoDevedorInicial;
 
         var pctEmbutido = (cfg.usaLanceEmbutido && modLance) ? num(modLance.percentual_lance_embutido) : 0;
@@ -710,7 +742,7 @@ export function generateModoDemonstracaoOfflineHtml({
         var prazoTotal = Math.max(1, num(g.prazo_total, 180));
         var saldoUnit = saldoDevedorInicial / qty;
         var parcelaIntegral = Math.round((saldoUnit / prazoTotal) * 100) / 100;
-        var pctRed = num(cfg.percentualParcelaReduzida || g.percentual_parcela_reduzida, 70);
+        var pctRed = num(cfg.percentualParcelaReduzida || g.percentual_parcela_reduzida, 60);
         var parcelaReduzida = g.tem_parcela_reduzida ? Math.round((parcelaIntegral * (pctRed / 100)) * 100) / 100 : parcelaIntegral;
 
         var parcelaExibidaUnit = parcelaIntegral;
@@ -726,13 +758,14 @@ export function generateModoDemonstracaoOfflineHtml({
         var primeiraParcela = Math.round((parcelaExibidaUnit + (cfg.usaSeguro ? seguroUnit : 0)) * qty * 100) / 100;
 
         // Pós-contemplação
-        var parcelasRestantes = Math.max(1, num(g.prazo_restante || prazoTotal));
-        var divisor = parcelasRestantes - 1;
+        var parcelasARealizar = Math.max(1, num(g.prazo_restante || prazoTotal));
+        var divisor = parcelasARealizar - 1;
         var tipoImovel = (g.modalidade || "").toLowerCase().indexOf("imóvel") >= 0 || (g.modalidade || "").toLowerCase().indexOf("imovel") >= 0;
         var taxaMinima = tipoImovel ? 0 : 0.007;
-        var basePos = saldoDevedorInicial - lanceTotal - (tipoImovel ? 0 : primeiraParcela);
-        var parcelaPos = divisor > 0 ? Math.max(saldoDevedorInicial * taxaMinima, basePos / divisor) : 0;
-        var prazoPos = parcelaPos > 0 ? (saldoDevedorInicial - lanceTotal - primeiraParcela) / parcelaPos : 0;
+        var saldoDevedorPrazo = somaCotas * (1 + txAdm);
+        var basePos = saldoDevedorPrazo - lanceTotal - (tipoImovel ? 0 : primeiraParcela);
+        var parcelaPos = divisor > 0 ? Math.max(saldoDevedorPrazo * taxaMinima, basePos / divisor) : 0;
+        var prazoPos = parcelaPos > 0 ? (saldoDevedorPrazo - lanceTotal - primeiraParcela) / parcelaPos : 0;
 
         return {
           ativo: true,
@@ -744,16 +777,16 @@ export function generateModoDemonstracaoOfflineHtml({
           saldoPosLance: saldoPosLance,
           creditoLiquido: creditoLiquido,
           primeiraParcela: primeiraParcela,
+          pctEmbutido: pctEmbutido,
           parcelaPosContemplacao: Math.round(parcelaPos * 100) / 100,
-          prazoRestantePos: Math.round(prazoPos),
-          prazoRestanteOriginal: parcelasRestantes,
-          prazoTotal: prazoTotal,
-          seguroUnit: seguroUnit
+          prazoRestantePos: Math.max(0, Math.round(prazoPos)),
+          seguroUnit: seguroUnit * qty
         };
       }
 
       function render() {
         var tbody = document.getElementById('tabelaCorpo');
+        if (!tbody) return;
         var html = '';
         var totais = {
           cotas: 0,
@@ -773,8 +806,13 @@ export function generateModoDemonstracaoOfflineHtml({
 
           // Filtro de Categoria
           if (filtroAtivo !== "Todos") {
-            var temCat = g.categorias_publicacao && g.categorias_publicacao.indexOf(filtroAtivo) >= 0;
-            if (!temCat && g.modalidade !== filtroAtivo) return;
+            var cats = g.categorias_publicacao || [];
+            var mod = (g.modalidade || "").trim();
+            var match = cats.indexOf(filtroAtivo) >= 0 || mod === filtroAtivo;
+            if (!match && filtroAtivo === "Auto") {
+              match = mod === "Automóvel" || mod === "Auto" || cats.indexOf("Auto") >= 0;
+            }
+            if (!match) return;
           }
 
           // Filtro de Busca
@@ -800,81 +838,115 @@ export function generateModoDemonstracaoOfflineHtml({
           var rowClass = calc.ativo ? 'active-row' : '';
 
           html += '<tr class="' + rowClass + '">';
-          // Grupo
-          html += '<td class="col-group">' + escapeHtml(g.codigo_grupo);
-          if (g.modalidade) {
-            html += '<br><span class="group-tag">' + escapeHtml(g.modalidade) + '</span>';
+          // 1. Grupo
+          html += '<td class="col-group">';
+          html += '<div>' + escapeHtml(g.codigo_grupo) + '</div>';
+          if (isEmFormacao(g.data_primeira_assembleia)) {
+            html += '<span class="badge-tag badge-formacao">Em Formação</span> ';
+          }
+          if (g.aguardando_novas_vagas) {
+            html += '<span class="badge-tag badge-vagas">Aguardando novas vagas</span> ';
+          }
+          if (calc.ativo) {
+            html += '<span class="badge-tag badge-ativo">Ativo</span>';
           }
           html += '</td>';
 
-          // Cota
-          html += '<td><select onchange="atualizarCota(\\'' + g.id + '\\', this.value)">';
-          html += '<option value="">Selecione...</option>';
+          // 2. Cota
+          html += '<td><select style="min-width:110px;" onchange="atualizarCota(\\'' + g.id + '\\', this.value)">';
           cotas.forEach(function (c) {
             var sel = cfg.cotaId === c.id ? 'selected' : '';
             html += '<option value="' + c.id + '" ' + sel + '>' + formatCurrency(c.valor_credito) + '</option>';
           });
           html += '</select></td>';
 
-          // Qtd
-          html += '<td><input type="number" min="0" max="99" class="input-qty" value="' + (cfg.quantidadeCotas || 0) + '" onchange="atualizarQtd(\\'' + g.id + '\\', this.value)" /></td>';
+          // 3. Qtd
+          html += '<td><input type="number" min="0" max="99" class="input-qty" value="' + (cfg.quantidadeCotas > 0 ? cfg.quantidadeCotas : '') + '" placeholder="0" onchange="atualizarQtd(\\'' + g.id + '\\', this.value)" /></td>';
 
-          // Soma Cotas
-          html += '<td class="val-currency">' + (calc.ativo ? formatCurrency(calc.somaCotas) : '—') + '</td>';
+          // 4. Soma Cotas
+          html += '<td class="val-currency">' + (calc.ativo ? '<span class="text-gold">' + formatCurrency(calc.somaCotas) + '</span>' : '—') + '</td>';
 
-          // Saldo Devedor
+          // 5. Saldo Devedor
           html += '<td class="val-currency text-muted">' + (calc.ativo ? formatCurrency(calc.saldoDevedorInicial) : '—') + '</td>';
 
-          // Parcela 1ª
-          html += '<td>' + (calc.ativo ? '<strong class="text-gold">' + formatCurrency(calc.primeiraParcela) + '</strong><br><small class="text-muted">' + (cfg.modalidadeParcela === "reduzida" ? 'Reduzida' : 'Integral') + '</small>' : '—') + '</td>';
+          // 6. Parcela (1ª)
+          html += '<td>';
+          if (calc.ativo) {
+            var labelMod = cfg.modalidadeParcela === "reduzida" ? ("Reduzida (" + (cfg.percentualParcelaReduzida || 60) + "%)") : "Integral";
+            html += '<div style="line-height:1.2;">';
+            html += '<span style="font-size:10px;color:var(--text-muted);display:block;">' + labelMod + '</span>';
+            html += '<strong class="text-gold val-currency">' + formatCurrency(calc.primeiraParcela) + '</strong>';
+            html += '</div>';
+          } else {
+            html += '—';
+          }
+          html += '</td>';
 
-          // Lance Embutido
+          // 7. Lance Embutido
           html += '<td>';
           if (modalidades.length > 0) {
-            html += '<label style="display:flex;align-items:center;gap:4px;font-size:11px;">';
-            html += '<input type="checkbox" ' + (cfg.usaLanceEmbutido ? 'checked' : '') + ' onchange="atualizarLanceEmbutido(\\'' + g.id + '\\', this.checked)" /> ';
-            html += '<span>' + (calc.ativo && cfg.usaLanceEmbutido ? formatCurrency(calc.lanceEmbutido) : 'Embutido') + '</span>';
-            html += '</label>';
+            html += '<select style="max-width:115px;font-size:10px;" onchange="atualizarEmbutidoSelect(\\'' + g.id + '\\', this.value)">';
+            html += '<option value="__sem__" ' + (!cfg.usaLanceEmbutido ? 'selected' : '') + '>Sem embutido</option>';
+            modalidades.forEach(function (m) {
+              var selM = (cfg.usaLanceEmbutido && cfg.modalidadeLanceId === m.id) ? 'selected' : '';
+              html += '<option value="' + m.id + '" ' + selM + '>' + escapeHtml(m.nome) + '</option>';
+            });
+            html += '</select>';
+            if (calc.ativo && cfg.usaLanceEmbutido && calc.lanceEmbutido > 0) {
+              html += '<div style="font-size:10px;margin-top:2px;" class="val-currency text-muted">' + calc.pctEmbutido + '% · ' + formatCurrency(calc.lanceEmbutido) + '</div>';
+            }
           } else {
             html += '<span class="text-muted">—</span>';
           }
           html += '</td>';
 
-          // Recurso Próprio
+          // 8. Recurso Próprio
           html += '<td>';
-          html += '<label style="display:flex;align-items:center;gap:4px;font-size:11px;">';
-          html += '<input type="checkbox" ' + (cfg.usaRecursoProprio ? 'checked' : '') + ' onchange="atualizarRecursoProprioCheck(\\'' + g.id + '\\', this.checked)" /> ';
-          if (cfg.usaRecursoProprio) {
-            html += '<input type="number" min="0" step="1" class="input-pct" value="' + (cfg.recursoProprioInput || 0) + '" onchange="atualizarRecursoProprioValor(\\'' + g.id + '\\', this.value)" placeholder="%" />%';
-          } else {
-            html += '<span>Próprio</span>';
+          html += '<div style="display:flex;flex-direction:column;gap:3px;">';
+          html += '<div style="display:flex;gap:2px;">';
+          html += '<button type="button" class="btn-toggle ' + (cfg.recursoProprioModo === 'percentual' ? 'active' : '') + '" onclick="toggleModoRecurso(\\'' + g.id + '\\', \\'percentual\\')">%</button>';
+          html += '<button type="button" class="btn-toggle ' + (cfg.recursoProprioModo === 'valor' ? 'active' : '') + '" onclick="toggleModoRecurso(\\'' + g.id + '\\', \\'valor\\')">R$</button>';
+          html += '<input type="number" min="0" step="1" class="input-pct" value="' + (cfg.recursoProprioInput > 0 ? cfg.recursoProprioInput : '') + '" placeholder="' + (cfg.recursoProprioModo === 'percentual' ? '%' : 'R$') + '" onchange="atualizarRecursoProprioValor(\\'' + g.id + '\\', this.value)" />';
+          html += '</div>';
+          if (calc.ativo && cfg.usaRecursoProprio && calc.recursoProprio > 0) {
+            html += '<span style="font-size:10px;" class="val-currency text-emerald">' + formatCurrency(calc.recursoProprio) + '</span>';
           }
-          html += '</label>';
+          html += '</div>';
           html += '</td>';
 
-          // Lance Total
-          html += '<td class="val-currency">' + (calc.ativo && calc.lanceTotal > 0 ? '<strong class="text-emerald">' + formatCurrency(calc.lanceTotal) + '</strong>' : '—') + '</td>';
+          // 9. Lance Total
+          html += '<td class="val-currency">' + (calc.ativo && calc.lanceTotal > 0 ? '<strong class="text-gold">' + formatCurrency(calc.lanceTotal) + '</strong>' : '—') + '</td>';
 
-          // Seguro
+          // 10. Seguro
           html += '<td>';
-          html += '<button type="button" class="btn-toggle-seguro ' + (cfg.usaSeguro ? 'active' : '') + '" onclick="toggleSeguro(\\'' + g.id + '\\')" title="Alternar seguro na 1ª parcela">' + (cfg.usaSeguro ? 'C' : 'S') + '</button>';
+          html += '<div style="line-height:1.2;">';
+          html += '<div style="display:flex;gap:2px;">';
+          html += '<button type="button" class="btn-toggle ' + (cfg.usaSeguro ? 'active' : '') + '" onclick="toggleSeguro(\\'' + g.id + '\\', true)" title="Com seguro na 1ª parcela">C</button>';
+          html += '<button type="button" class="btn-toggle ' + (!cfg.usaSeguro ? 'active' : '') + '" onclick="toggleSeguro(\\'' + g.id + '\\', false)" title="Sem seguro na 1ª parcela">S</button>';
+          html += '</div>';
+          if (calc.ativo && calc.seguroUnit > 0) {
+            html += '<span style="font-size:10px;margin-top:2px;display:block;" class="val-currency text-muted">' + formatCurrency(calc.seguroUnit) + '</span>';
+          }
+          html += '</div>';
           html += '</td>';
 
-          // Crédito Líquido
-          html += '<td>' + (calc.ativo ? '<strong class="text-gold" style="font-size:13px;">' + formatCurrency(calc.creditoLiquido) + '</strong>' : '—') + '</td>';
+          // 11. Crédito Líquido
+          html += '<td>' + (calc.ativo ? '<strong class="text-gold val-currency" style="font-size:13px;">' + formatCurrency(calc.creditoLiquido) + '</strong>' : '—') + '</td>';
 
-          // Saldo Pós-Lance
+          // 12. Saldo Pós-Lance
           html += '<td class="val-currency text-muted">' + (calc.ativo ? formatCurrency(calc.saldoPosLance) : '—') + '</td>';
 
-          // Pós-Contemplação
-          html += '<td>' + (calc.ativo ? formatCurrency(calc.parcelaPosContemplacao) + '<br><small class="text-muted">em ' + calc.prazoRestantePos + 'x</small>' : '—') + '</td>';
+          // 13. Pós-Contemplação
+          html += '<td>' + (calc.ativo ? '<strong class="text-gold val-currency">' + formatCurrency(calc.parcelaPosContemplacao) + '</strong><br><small class="text-muted">' + calc.prazoRestantePos + 'x</small>' : '—') + '</td>';
 
-          // Prazo
-          html += '<td style="font-family:monospace;font-size:11px;">' + num(g.prazo_total, 180) + ' / ' + num(g.prazo_restante || g.prazo_total, 180) + '</td>';
+          // 14. Prazo (Total / Restante / Realizadas)
+          var realizadas = num(g.parcelas_realizadas_base || g.parcelas_realizadas, 0);
+          var restante = num(g.prazo_restante, Math.max(0, num(g.prazo_total, 180) - realizadas));
+          html += '<td style="font-family:monospace;font-size:11px;color:var(--text-muted);white-space:nowrap;">' + num(g.prazo_total, 180) + ' / ' + restante + ' / ' + realizadas + '</td>';
 
-          // Ações
+          // 15. Ações (Ajustes)
           html += '<td class="no-print">';
-          html += '<button type="button" class="btn btn-outline btn-sm" onclick="toggleExpand(\\'' + g.id + '\\')">' + (isExpanded ? '▲ Fechar' : '⚙️ Ajustes') + '</button>';
+          html += '<button type="button" class="btn btn-outline btn-sm" onclick="toggleExpand(\\'' + g.id + '\\')">' + (isExpanded ? '▲ Fechar' : '⚙️ Ajustar') + '</button>';
           html += '</td>';
           html += '</tr>';
 
@@ -885,17 +957,18 @@ export function generateModoDemonstracaoOfflineHtml({
             html += '<div class="detail-card">';
             html += '<div class="detail-card-label">Modalidade de Parcela</div>';
             html += '<select onchange="atualizarModalidadeParcela(\\'' + g.id + '\\', this.value)" style="width:100%;margin-top:4px;">';
-            html += '<option value="reduzida" ' + (cfg.modalidadeParcela === 'reduzida' ? 'selected' : '') + '>Parcela Reduzida</option>';
-            html += '<option value="integral" ' + (cfg.modalidadeParcela === 'integral' ? 'selected' : '') + '>Parcela Integral</option>';
+            html += '<option value="reduzida" ' + (cfg.modalidadeParcela === 'reduzida' ? 'selected' : '') + '>Parcela Reduzida (' + (cfg.percentualParcelaReduzida || 60) + '%)</option>';
+            html += '<option value="integral" ' + (cfg.modalidadeParcela === 'integral' ? 'selected' : '') + '>Parcela Integral (100%)</option>';
             html += '</select>';
             html += '</div>';
 
             if (modalidades.length > 0) {
               html += '<div class="detail-card">';
               html += '<div class="detail-card-label">Estratégia de Lance Embutido</div>';
-              html += '<select onchange="atualizarModalidadeLance(\\'' + g.id + '\\', this.value)" style="width:100%;margin-top:4px;">';
+              html += '<select onchange="atualizarEmbutidoSelect(\\'' + g.id + '\\', this.value)" style="width:100%;margin-top:4px;">';
+              html += '<option value="__sem__" ' + (!cfg.usaLanceEmbutido ? 'selected' : '') + '>Sem lance embutido</option>';
               modalidades.forEach(function (m) {
-                var selM = cfg.modalidadeLanceId === m.id ? 'selected' : '';
+                var selM = (cfg.usaLanceEmbutido && cfg.modalidadeLanceId === m.id) ? 'selected' : '';
                 html += '<option value="' + m.id + '" ' + selM + '>' + escapeHtml(m.nome) + ' (' + m.percentual_lance_embutido + '%)</option>';
               });
               html += '</select>';
@@ -908,7 +981,7 @@ export function generateModoDemonstracaoOfflineHtml({
             html += '</div>';
 
             html += '<div class="detail-card">';
-            html += '<div class="detail-card-label">Saldo Após Lance</div>';
+            html += '<div class="detail-card-label">Saldo Pós-Lance</div>';
             html += '<div class="detail-card-value">' + (calc.ativo ? formatCurrency(calc.saldoPosLance) : 'R$ 0,00') + '</div>';
             html += '</div>';
 
@@ -917,7 +990,7 @@ export function generateModoDemonstracaoOfflineHtml({
           }
         });
 
-        tbody.innerHTML = html || '<tr><td colspan="15" style="text-align:center;padding:40px;color:#71717a;">Nenhum grupo encontrado com os filtros selecionados.</td></tr>';
+        tbody.innerHTML = html || '<tr><td colspan="15" style="text-align:center;padding:40px;color:#94a3b8;">Nenhum grupo encontrado com os filtros selecionados.</td></tr>';
 
         // Atualiza barra de totais
         document.getElementById('totaisContador').textContent = totais.cotas + (totais.cotas === 1 ? ' cota ativa' : ' cotas ativas');
@@ -940,9 +1013,6 @@ export function generateModoDemonstracaoOfflineHtml({
 
       window.atualizarCota = function (id, cotaId) {
         configs[id].cotaId = cotaId || null;
-        if (cotaId && configs[id].quantidadeCotas === 0) {
-          configs[id].quantidadeCotas = 1;
-        }
         render();
       };
 
@@ -951,33 +1021,36 @@ export function generateModoDemonstracaoOfflineHtml({
         render();
       };
 
-      window.atualizarLanceEmbutido = function (id, checked) {
-        configs[id].usaLanceEmbutido = checked;
+      window.atualizarEmbutidoSelect = function (id, val) {
+        if (val === "__sem__") {
+          configs[id].usaLanceEmbutido = false;
+        } else {
+          configs[id].usaLanceEmbutido = true;
+          configs[id].modalidadeLanceId = val;
+        }
         render();
       };
 
-      window.atualizarRecursoProprioCheck = function (id, checked) {
-        configs[id].usaRecursoProprio = checked;
+      window.toggleModoRecurso = function (id, modo) {
+        configs[id].recursoProprioModo = modo;
+        configs[id].usaRecursoProprio = configs[id].recursoProprioInput > 0;
         render();
       };
 
       window.atualizarRecursoProprioValor = function (id, val) {
-        configs[id].recursoProprioInput = num(val);
+        var n = num(val);
+        configs[id].recursoProprioInput = n;
+        configs[id].usaRecursoProprio = n > 0;
         render();
       };
 
-      window.toggleSeguro = function (id) {
-        configs[id].usaSeguro = !configs[id].usaSeguro;
+      window.toggleSeguro = function (id, comSeguro) {
+        configs[id].usaSeguro = comSeguro;
         render();
       };
 
       window.atualizarModalidadeParcela = function (id, modalidade) {
         configs[id].modalidadeParcela = modalidade;
-        render();
-      };
-
-      window.atualizarModalidadeLance = function (id, modId) {
-        configs[id].modalidadeLanceId = modId;
         render();
       };
 
@@ -1004,10 +1077,10 @@ export function generateModoDemonstracaoOfflineHtml({
       window.resetarSimulacao = function () {
         aggregates.forEach(function (item) {
           var g = item.grupo;
-          configs[g.id].cotaId = null;
           configs[g.id].quantidadeCotas = 0;
           configs[g.id].usaLanceEmbutido = false;
           configs[g.id].usaRecursoProprio = false;
+          configs[g.id].recursoProprioInput = 0;
         });
         expandedId = null;
         render();

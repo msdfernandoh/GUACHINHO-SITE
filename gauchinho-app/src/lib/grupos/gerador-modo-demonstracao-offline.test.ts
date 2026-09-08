@@ -124,4 +124,161 @@ describe("Modo Demonstração Offline — Gerador Multiempresa", () => {
     expect(html).not.toContain("<script>alert(1)</script>");
     expect(html).toContain("Empresa &lt;script&gt;alert(1)&lt;/script&gt; &amp; Cia");
   });
+
+  it("define a função escapeHtml dentro do script cliente para evitar ReferenceError no navegador", () => {
+    const html = generateModoDemonstracaoOfflineHtml({
+      aggregates: MOCK_AGGREGATES,
+      tenantBrand: {
+        nome: "Gauchinho Consórcios",
+        slug: "gauchinho",
+      },
+    });
+
+    expect(html).toContain("function escapeHtml(str)");
+    expect(html).toContain("id=\"initial-configs\"");
+  });
+
+  it("preenche initialConfigs para transferir cotas e lances já selecionados pelo usuário", () => {
+    const html = generateModoDemonstracaoOfflineHtml({
+      aggregates: MOCK_AGGREGATES,
+      tenantBrand: {
+        nome: "Gauchinho Consórcios",
+        slug: "gauchinho",
+      },
+      initialConfigs: {
+        "grupo-1": {
+          cotaId: "cota-1",
+          quantidadeCotas: 2,
+          usaLanceEmbutido: true,
+        },
+      },
+    });
+
+    expect(html).toContain("\"cota-1\"");
+    expect(html).toContain("\"quantidadeCotas\":2");
+  });
+
+  it("executa a renderização do script cliente no mock DOM sem erros e popula a tabela", () => {
+    const html = generateModoDemonstracaoOfflineHtml({
+      aggregates: MOCK_AGGREGATES,
+      tenantBrand: {
+        nome: "Gauchinho Consórcios",
+        slug: "gauchinho",
+      },
+    });
+
+    const scriptMatch = html.match(/<script>([\s\S]*?)<\/script>/);
+    expect(scriptMatch).not.toBeNull();
+    const scriptCode = scriptMatch![1];
+
+    const mockElements: Record<string, { textContent: string; innerHTML: string }> = {
+      "grupos-data": { textContent: JSON.stringify(MOCK_AGGREGATES), innerHTML: "" },
+      "tenant-data": { textContent: JSON.stringify({ nome: "Gauchinho" }), innerHTML: "" },
+      "initial-configs": { textContent: "{}", innerHTML: "" },
+      "tabelaCorpo": { textContent: "", innerHTML: "" },
+      "totaisContador": { textContent: "", innerHTML: "" },
+      "totaisCredito": { textContent: "", innerHTML: "" },
+      "totaisLance": { textContent: "", innerHTML: "" },
+      "totaisParcela": { textContent: "", innerHTML: "" },
+      "totaisLiquido": { textContent: "", innerHTML: "" },
+      "printSummary": { textContent: "", innerHTML: "" },
+    };
+
+    const mockDocument = {
+      getElementById: (id: string) => mockElements[id] || null,
+      querySelectorAll: () => [],
+    };
+
+    const runScript = new Function("document", "window", scriptCode);
+    expect(() => runScript(mockDocument, {})).not.toThrow();
+    expect(mockElements["tabelaCorpo"].innerHTML).toContain("G-100");
+    expect(mockElements["tabelaCorpo"].innerHTML).toContain("250.000,00");
+  });
+
+  it("filtra corretamente grupos de veículo/automóvel pela aba Auto", () => {
+    const veiculoAgg: PublicGrupoAggregate = {
+      grupo: {
+        id: "grupo-veiculo",
+        codigo_grupo: "1071 VEÍCULO",
+        modalidade: "Automóvel",
+        categorias_publicacao: ["Auto"],
+        administradora: "Racon",
+        taxa_administrativa_percentual: 14,
+        fundo_reserva_percentual: 1,
+        seguro_habilitado: true,
+        seguro_percentual: 0.0004,
+        seguro_valor: null,
+        tem_parcela_reduzida: true,
+        percentual_parcela_reduzida: 60,
+        permite_lance_embutido: true,
+        percentual_lance_embutido: 25,
+        percentual_recurso_proprio_sugerido: 0,
+        prazo_total: 100,
+        parcelas_realizadas: 10,
+        prazo_restante: 90,
+        seguro_pos_contemplacao: true,
+        cet_percentual: null,
+        status: "Disponível",
+        ativo: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      },
+      cotas: [
+        {
+          id: "cota-v1",
+          grupo_id: "grupo-veiculo",
+          valor_credito: 400000,
+          valor_parcela: 2760,
+          parcela_integral: 4600,
+          parcela_reduzida: 2760,
+          parcela_com_seguro: 2944,
+          parcela_sem_seguro: 4600,
+          saldo_devedor: 460000,
+          ordem: 1,
+          status: "Disponível",
+          ativo: true,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        },
+      ],
+      modalidades: [],
+    };
+
+    const html = generateModoDemonstracaoOfflineHtml({
+      aggregates: [veiculoAgg],
+      tenantBrand: {
+        nome: "Gauchinho Consórcios",
+        slug: "gauchinho",
+      },
+    });
+
+    const scriptMatch = html.match(/<script>([\s\S]*?)<\/script>/);
+    const scriptCode = scriptMatch![1];
+    const mockElements: Record<string, { textContent: string; innerHTML: string }> = {
+      "grupos-data": { textContent: JSON.stringify([veiculoAgg]), innerHTML: "" },
+      "tenant-data": { textContent: JSON.stringify({ nome: "Gauchinho" }), innerHTML: "" },
+      "initial-configs": { textContent: "{}", innerHTML: "" },
+      "tabelaCorpo": { textContent: "", innerHTML: "" },
+      "totaisContador": { textContent: "", innerHTML: "" },
+      "totaisCredito": { textContent: "", innerHTML: "" },
+      "totaisLance": { textContent: "", innerHTML: "" },
+      "totaisParcela": { textContent: "", innerHTML: "" },
+      "totaisLiquido": { textContent: "", innerHTML: "" },
+      "printSummary": { textContent: "", innerHTML: "" },
+    };
+    const mockWindow: Record<string, any> = {};
+    const runScript = new Function("document", "window", scriptCode);
+    runScript({ getElementById: (id: string) => mockElements[id] || null, querySelectorAll: () => [] }, mockWindow);
+
+    expect(mockElements["tabelaCorpo"].innerHTML).toContain("1071 VEÍCULO");
+    expect(mockElements["tabelaCorpo"].innerHTML).toContain("400.000,00");
+
+    // Filtra categoria Auto
+    mockWindow.filtrarCategoria("Auto");
+    expect(mockElements["tabelaCorpo"].innerHTML).toContain("1071 VEÍCULO");
+
+    // Filtra categoria Imóvel (não deve conter 1071 VEÍCULO)
+    mockWindow.filtrarCategoria("Imóvel");
+    expect(mockElements["tabelaCorpo"].innerHTML).not.toContain("1071 VEÍCULO");
+  });
 });

@@ -42,12 +42,14 @@ export function GruposPublicClient({
   aggregates,
   isStaff = false,
   isConsultor = false,
+  isLoggedIn = false,
   gruposSorteio = [],
   canManageSorteios = false,
 }: {
   aggregates: PublicGrupoAggregate[];
   isStaff?: boolean;
   isConsultor?: boolean;
+  isLoggedIn?: boolean;
   gruposSorteio?: GrupoSorteioOption[];
   canManageSorteios?: boolean;
 }) {
@@ -110,6 +112,7 @@ export function GruposPublicClient({
       const html = generateModoDemonstracaoOfflineHtml({
         aggregates,
         tenantBrand,
+        initialConfigs: configs,
       });
       const blob = new Blob([html], { type: "text/html;charset=utf-8" });
       const url = URL.createObjectURL(blob);
@@ -349,15 +352,17 @@ export function GruposPublicClient({
           >
             Sorteios
           </button>
-          <button
-            type="button"
-            onClick={handleBaixarModoDemonstracaoOffline}
-            title="Baixar versão autônoma desta tabela para apresentações presenciais sem conexão com a internet"
-            className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-1.5 text-xs font-semibold text-emerald-400 transition hover:border-emerald-400 hover:bg-emerald-500/20 md:px-4 md:py-2 md:text-sm"
-          >
-            <Download className="h-3.5 w-3.5 md:h-4 md:w-4" />
-            Modo Demonstração Offline
-          </button>
+          {(isLoggedIn || isConsultor || isStaff) ? (
+            <button
+              type="button"
+              onClick={handleBaixarModoDemonstracaoOffline}
+              title="Baixar versão autônoma desta tabela para apresentações presenciais sem conexão com a internet"
+              className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-1.5 text-xs font-semibold text-emerald-400 transition hover:border-emerald-400 hover:bg-emerald-500/20 md:px-4 md:py-2 md:text-sm"
+            >
+              <Download className="h-3.5 w-3.5 md:h-4 md:w-4" />
+              Modo Demonstração Offline
+            </button>
+          ) : null}
           <div className="relative ml-auto min-w-[200px] flex-1 md:max-w-xs">
             <Search className="absolute left-3 top-2.5 h-4 w-4 text-zinc-500" />
             <Input

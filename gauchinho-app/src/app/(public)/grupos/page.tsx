@@ -52,6 +52,7 @@ export default async function GruposPublicPage() {
       aggregates={aggregates}
       isStaff={staff}
       isConsultor={isConsultor}
+      isLoggedIn={Boolean(usuario)}
       gruposSorteio={gruposSorteio}
       canManageSorteios={canManageSorteios}
     />
