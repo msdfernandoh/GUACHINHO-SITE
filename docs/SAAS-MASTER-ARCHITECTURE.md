@@ -1995,6 +1995,17 @@ publicados exibem aviso no compartilhamento.
 Relatório:
 `docs/relatorios-fases/HOTFIX-EVENTOS-QR-LINK-COMPARTILHAMENTO.md`.
 
+### Hotfix — favicon Racon por domínio
+
+O favicon deixa de ser metadata estática global e passa a acompanhar a
+identidade resolvida para cada domínio. Branding explícito continua prioritário;
+sites da família `racon_inspired` sem ícone próprio usam o “R” oficial da Racon,
+enquanto os demais preservam o favicon anterior. A mudança é somente de
+apresentação e não altera modelos, dados ou permissões.
+
+Relatório:
+`docs/relatorios-fases/HOTFIX-FAVICON-RACON-POR-DOMINIO.md`.
+
 ### Hotfix — contraste do formulário público de eventos
 
 Os rótulos de todos os campos do formulário público de inscrição em eventos,

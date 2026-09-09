@@ -4,6 +4,7 @@ import { headers } from "next/headers";
 import "./globals.css";
 import { getResolvedTenant } from "@/lib/tenant/get-resolved-empresa";
 import { GAUCHINHO_SLUG } from "@/lib/tenant/constants";
+import { isRaconModel } from "@/lib/tenant/model-family";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -61,6 +62,11 @@ const defaultMetadata: Metadata = {
     card: "summary_large_image",
     images: ["/media/gauchinho-campanha.jpeg"],
   },
+  icons: {
+    icon: "/favicon.ico",
+    shortcut: "/favicon.ico",
+    apple: "/favicon.ico",
+  },
 };
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -73,6 +79,7 @@ export async function generateMetadata(): Promise<Metadata> {
   const nome = tenant.branding.nome_site || tenant.siteModel?.nome || "Consórcios";
   const descricao = tenant.branding.seo_descricao || tenant.branding.descricao_institucional || undefined;
   const logo = tenant.branding.logo_url || tenant.siteModel?.logoPadraoUrl || undefined;
+  const favicon = tenant.branding.favicon_url || (isRaconModel(tenant.siteModel) ? "/racon/favicon-racon.png" : "/favicon.ico");
   return {
     metadataBase,
     title: { default: tenant.branding.seo_titulo || nome, template: `%s | ${nome}` },
@@ -81,6 +88,7 @@ export async function generateMetadata(): Promise<Metadata> {
     robots: defaultMetadata.robots,
     openGraph: { type: "website", locale: "pt_BR", siteName: nome, ...(logo ? { images: [logo] } : {}) },
     twitter: { card: "summary_large_image", ...(logo ? { images: [logo] } : {}) },
+    icons: { icon: favicon, shortcut: favicon, apple: favicon },
   };
 }
 
