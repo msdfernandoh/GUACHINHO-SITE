@@ -5,6 +5,8 @@ import "./globals.css";
 import { getResolvedTenant } from "@/lib/tenant/get-resolved-empresa";
 import { GAUCHINHO_SLUG } from "@/lib/tenant/constants";
 import { isRaconModel } from "@/lib/tenant/model-family";
+import { loadPartnerSiteViewModel } from "@/lib/parceiros/public-site-loader";
+import { PARCEIRO_SITE_ID_HEADER } from "@/lib/parceiros/partner-site-types";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -73,13 +75,19 @@ export async function generateMetadata(): Promise<Metadata> {
   const tenant = await getResolvedTenant();
   if (!tenant) return defaultMetadata;
   const requestHeaders = await headers();
+  const partnerSiteId = requestHeaders.get(PARCEIRO_SITE_ID_HEADER);
+  const partnerView = partnerSiteId
+    ? await loadPartnerSiteViewModel({ siteId: partnerSiteId, empresaId: tenant.empresaId })
+    : null;
   const host = requestHeaders.get("x-forwarded-host") || requestHeaders.get("host");
   const protocol = requestHeaders.get("x-forwarded-proto") || (host?.includes("localhost") ? "http" : "https");
   const metadataBase = host ? new URL(`${protocol}://${host}/`) : siteUrl ? new URL(`${siteUrl}/`) : undefined;
   const nome = tenant.branding.nome_site || tenant.siteModel?.nome || "Consórcios";
   const descricao = tenant.branding.seo_descricao || tenant.branding.descricao_institucional || undefined;
   const logo = tenant.branding.logo_url || tenant.siteModel?.logoPadraoUrl || undefined;
-  const favicon = tenant.branding.favicon_url || (isRaconModel(tenant.siteModel) ? "/racon/favicon-racon.png" : "/favicon.ico");
+  const favicon = partnerView
+    ? partnerView.favicon_url || (partnerView.template_codigo === "racon_inspired" ? "/racon/favicon-racon.png" : "/favicon.ico")
+    : tenant.branding.favicon_url || (isRaconModel(tenant.siteModel) ? "/racon/favicon-racon.png" : "/favicon.ico");
   return {
     metadataBase,
     title: { default: tenant.branding.seo_titulo || nome, template: `%s | ${nome}` },

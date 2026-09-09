@@ -21,11 +21,6 @@ import { PARCEIRO_SITE_ID_HEADER } from "@/lib/parceiros/partner-site-types";
 export async function generateMetadata(): Promise<Metadata> {
   const tenant = await getResolvedTenant();
   if (!tenant) return {};
-  const requestHeaders = await headers();
-  const partnerSiteId = requestHeaders.get(PARCEIRO_SITE_ID_HEADER);
-  const partnerView = partnerSiteId
-    ? await loadPartnerSiteViewModel({ siteId: partnerSiteId, empresaId: tenant.empresaId })
-    : null;
   const metadata: Metadata = {};
   if (tenant.branding.seo_titulo) metadata.title = tenant.branding.seo_titulo;
   if (tenant.branding.seo_descricao) metadata.description = tenant.branding.seo_descricao;
@@ -35,10 +30,6 @@ export async function generateMetadata(): Promise<Metadata> {
     metadata.description =
       tenant.branding.seo_descricao || tenant.branding.descricao_institucional || undefined;
   }
-  const favicon = partnerView
-    ? partnerView.favicon_url || (partnerView.template_codigo === "racon_inspired" ? "/racon/favicon-racon.png" : null)
-    : tenant.branding.favicon_url || (isRaconModel(tenant.siteModel) ? "/racon/favicon-racon.png" : null);
-  if (favicon) metadata.icons = { icon: favicon, shortcut: favicon, apple: favicon };
   return metadata;
 }
 
