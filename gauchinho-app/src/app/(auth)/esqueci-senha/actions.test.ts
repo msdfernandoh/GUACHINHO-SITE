@@ -35,7 +35,7 @@ vi.mock("@/lib/supabase/admin", () => ({
 }));
 
 import { solicitarRecuperacaoSenhaAction } from "./actions";
-import { SENHA_PADRAO_CADASTRO } from "@/app/admin/usuarios/actions";
+import { SENHA_PADRAO_CADASTRO } from "@/lib/auth/permissions";
 
 describe("solicitarRecuperacaoSenhaAction", () => {
   beforeEach(() => {

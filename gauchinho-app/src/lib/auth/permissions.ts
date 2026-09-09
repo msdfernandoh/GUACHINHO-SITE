@@ -10,6 +10,8 @@ export const PERFIS = [
   "visualizador",
 ] as const;
 
+export const SENHA_PADRAO_CADASTRO = "midiapormidia@123";
+
 export type Perfil = (typeof PERFIS)[number];
 
 export type UsuarioNegocio = {

@@ -3,14 +3,12 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { PERFIS } from "@/lib/auth/permissions";
+import { PERFIS, SENHA_PADRAO_CADASTRO } from "@/lib/auth/permissions";
 import type { AdminMenuKey } from "@/lib/admin/admin-menus";
 import { isGmailAddress } from "@/lib/google-calendar/config";
 import { requireTenantPermission } from "@/lib/tenant/context";
 import { normalizeErpAccessIds } from "@/lib/erp/erp-acesso";
 import { isMissingErpUserLinkColumns } from "@/lib/erp/migration-077-compat";
-
-export const SENHA_PADRAO_CADASTRO = "midiapormidia@123";
 
 function redirectUsuarios(codigo: string): never {
   redirect(`/admin/usuarios?flash=${encodeURIComponent(codigo)}`);
