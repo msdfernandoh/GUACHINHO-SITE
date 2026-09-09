@@ -39,7 +39,16 @@ export default async function LoginPage({
             <Input id="email" name="email" type="email" required autoComplete="email" />
           </div>
           <div>
-            <Label htmlFor="password">Senha</Label>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="password">Senha</Label>
+              <Link
+                href="/esqueci-senha"
+                className={isRacon ? "text-xs font-medium hover:underline" : "text-xs text-amber-600 hover:underline dark:text-amber-500"}
+                style={isRacon ? { color: primary } : undefined}
+              >
+                Esqueceu a senha?
+              </Link>
+            </div>
             <Input
               id="password"
               name="password"

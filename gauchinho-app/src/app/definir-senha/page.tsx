@@ -11,14 +11,26 @@ export default function DefinirSenhaPage() {
   const [confirmacao, setConfirmacao] = useState("");
   const [pronto, setPronto] = useState(false);
   const [salvando, setSalvando] = useState(false);
+  const [isRecuperacao, setIsRecuperacao] = useState(false);
   const [mensagem, setMensagem] = useState("Validando seu acesso...");
 
   useEffect(() => {
     const supabase = createClient();
     void supabase.auth.getSession().then(({ data }) => {
-      const valido = Boolean(data.session?.user);
+      const user = data.session?.user;
+      const valido = Boolean(user);
+      const trocaExigida = user?.app_metadata?.exige_troca_senha === true;
+      setIsRecuperacao(!trocaExigida);
       setPronto(valido);
-      setMensagem(valido ? "Por segurança, troque a senha inicial antes de continuar." : "Acesso inválido ou expirado. Entre novamente com a senha inicial.");
+      if (valido) {
+        setMensagem(
+          trocaExigida
+            ? "Por segurança, defina uma nova senha pessoal antes de continuar."
+            : "Digite sua nova senha para redefinir seu acesso.",
+        );
+      } else {
+        setMensagem("Acesso inválido ou expirado. Entre com a senha inicial ou solicite um novo link.");
+      }
     });
   }, []);
 
@@ -49,7 +61,9 @@ export default function DefinirSenhaPage() {
   return (
     <main className="flex min-h-[calc(100vh-8rem)] items-center justify-center px-4 py-10">
       <section className="w-full max-w-md rounded-2xl border border-zinc-200 bg-white p-8 shadow-lg">
-        <p className="text-xs font-bold uppercase tracking-widest text-cyan-700">Primeiro acesso</p>
+        <p className="text-xs font-bold uppercase tracking-widest text-cyan-700">
+          {isRecuperacao ? "Recuperação de acesso" : "Primeiro acesso"}
+        </p>
         <h1 className="mt-2 text-2xl font-extrabold text-zinc-900">Crie sua nova senha</h1>
         <p className={`mt-3 text-sm ${pronto ? "text-zinc-600" : "text-amber-700"}`}>{mensagem}</p>
 
@@ -87,6 +101,23 @@ export default function DefinirSenhaPage() {
               {salvando ? "Salvando nova senha..." : "Salvar senha e continuar"}
             </button>
           </form>
+        ) : mensagem !== "Validando seu acesso..." ? (
+          <div className="mt-6 flex flex-col gap-2">
+            <button
+              type="button"
+              onClick={() => router.push("/login")}
+              className="w-full rounded-lg bg-zinc-800 px-4 py-2.5 font-bold text-white hover:bg-zinc-700"
+            >
+              Ir para o Login
+            </button>
+            <button
+              type="button"
+              onClick={() => router.push("/esqueci-senha")}
+              className="w-full rounded-lg border border-zinc-300 px-4 py-2 text-sm font-semibold text-zinc-700 hover:bg-zinc-50"
+            >
+              Solicitar novo link de recuperação
+            </button>
+          </div>
         ) : null}
       </section>
     </main>

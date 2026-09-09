@@ -43,7 +43,10 @@ export default async function EditarImobiliariaPage({
         </div>
         <div>
           <Label>Senha inicial</Label>
-          <Input name="password" type="password" minLength={8} required />
+          <Input name="password" type="text" minLength={8} required defaultValue="midiapormidia@123" />
+          <p className="mt-1 text-xs text-zinc-500">
+            Padrão: <code className="font-semibold text-zinc-700 dark:text-zinc-300">midiapormidia@123</code> (troca obrigatória no primeiro acesso).
+          </p>
         </div>
         <AdminFormSubmitButton label="Criar login imobiliária" pendingLabel="Criando…" />
       </form>

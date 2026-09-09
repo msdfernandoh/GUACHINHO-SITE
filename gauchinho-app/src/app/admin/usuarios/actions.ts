@@ -10,6 +10,8 @@ import { requireTenantPermission } from "@/lib/tenant/context";
 import { normalizeErpAccessIds } from "@/lib/erp/erp-acesso";
 import { isMissingErpUserLinkColumns } from "@/lib/erp/migration-077-compat";
 
+export const SENHA_PADRAO_CADASTRO = "midiapormidia@123";
+
 function redirectUsuarios(codigo: string): never {
   redirect(`/admin/usuarios?flash=${encodeURIComponent(codigo)}`);
 }
@@ -121,7 +123,7 @@ export async function createUsuarioAction(formData: FormData) {
   const { usuario, empresaAtiva } = await requireTenantPermission("gerenciar_usuarios");
   const nome = String(formData.get("nome") ?? "").trim();
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
-  const password = String(formData.get("password") ?? "");
+  const password = String(formData.get("password") ?? "").trim() || SENHA_PADRAO_CADASTRO;
   const perfil = String(formData.get("perfil") ?? "srd").trim();
   const telefone = String(formData.get("telefone") ?? "").trim() || null;
   const isConsultor = formData.get("is_consultor") === "on";
@@ -165,6 +167,9 @@ export async function createUsuarioAction(formData: FormData) {
         email,
         password,
         email_confirm: true,
+        app_metadata: {
+          exige_troca_senha: true,
+        },
       });
       if (authError) throw new Error(authError.message);
       authUserId = authUser.user.id;

@@ -256,7 +256,7 @@ export async function createImobiliariaUsuarioAction(formData: FormData) {
   const imobiliariaId = String(formData.get("imobiliaria_id") ?? "").trim();
   const nome = String(formData.get("nome") ?? "").trim();
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
-  const password = String(formData.get("password") ?? "");
+  const password = String(formData.get("password") ?? "").trim() || "midiapormidia@123";
   if (!imobiliariaId || !nome || !email || password.length < 8) {
     throw new Error("Dados incompletos");
   }
@@ -301,6 +301,9 @@ export async function createImobiliariaUsuarioAction(formData: FormData) {
         email,
         password,
         email_confirm: true,
+        app_metadata: {
+          exige_troca_senha: true,
+        },
       });
       if (authError) throw new Error(authError.message);
       authUserId = authUser.user.id;

@@ -230,7 +230,7 @@ export async function proxy(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const exigeTrocaSenha = user?.app_metadata?.exige_troca_senha === true;
-  if (user && path === "/definir-senha") {
+  if (user && (path === "/definir-senha" || path.startsWith("/auth/"))) {
     return response;
   }
   if (user && exigeTrocaSenha && path.startsWith("/api/")) {

@@ -90,7 +90,16 @@ export default async function UsuariosPage({
         </div>
         <div>
           <Label>Senha inicial</Label>
-          <Input name="password" type="password" required minLength={8} />
+          <Input
+            name="password"
+            type="text"
+            required
+            minLength={8}
+            defaultValue="midiapormidia@123"
+          />
+          <p className="mt-1 text-xs text-zinc-500">
+            Padrão sugerido: <code className="font-semibold text-zinc-700 dark:text-zinc-300">midiapormidia@123</code> (o usuário deverá definir nova senha no primeiro acesso).
+          </p>
         </div>
         <div>
           <Label>Perfil</Label>

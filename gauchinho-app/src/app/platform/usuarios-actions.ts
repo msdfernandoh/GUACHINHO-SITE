@@ -95,7 +95,7 @@ async function provisionarAcessoDireto(linkId: string, nome: string, empresaId: 
     }
   }
 
-  const senhaTemporaria = gerarSenhaTemporaria();
+  const senhaTemporaria = "midiapormidia@123";
   let authUserId = usuario.auth_user_id;
   let criouIdentidade = false;
 
