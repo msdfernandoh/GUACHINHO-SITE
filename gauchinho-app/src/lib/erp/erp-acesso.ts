@@ -113,6 +113,15 @@ export function resolveAuthorizedErpUserAccess(
   );
 }
 
+/**
+ * Define a primeira rota navegável do ERP sem ampliar o acesso do usuário.
+ * O painel continua preferencial quando estiver autorizado.
+ */
+export function resolveErpLandingHref(allowedAccess: Iterable<ErpAccessId>): string | null {
+  const allowed = new Set(allowedAccess);
+  return ERP_ACCESS_ITEMS.find((item) => allowed.has(item.id))?.href ?? null;
+}
+
 export function canAuthorizedAccessErpRoute(
   config: ErpSistemaConfig,
   raw: unknown,

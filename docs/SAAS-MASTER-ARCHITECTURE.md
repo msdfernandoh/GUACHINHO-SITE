@@ -2039,3 +2039,16 @@ alteração de dados, validação, permissões ou comportamento operacional.
 Relatório:
 `docs/relatorios-fases/HOTFIX-FORMULARIO-EVENTOS-CONTRASTE-ROTULOS.md`.
 
+### Hotfix — auditoria de usuários e entrada segura no ERP
+
+A entrada do ERP usa a mesma autorização efetiva que combina módulos da
+empresa, seleção individual, papel e permissões. `/erp` mantém o painel como
+destino preferencial e, quando o usuário possui módulos operacionais mas não o
+painel, redireciona para o primeiro módulo autorizado. O atalho do painel
+administrativo recebe esse destino calculado e não aparece para quem não possui
+rota efetiva. A correção resolve o 404 da Laura sem ampliar suas permissões e
+também protege os demais usuários com seleção equivalente.
+
+Relatório:
+`docs/relatorios-fases/HOTFIX-AUDITORIA-USUARIOS-ENTRADA-ERP.md`.
+

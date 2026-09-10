@@ -9,6 +9,7 @@ import { AgendaCompromissosAlert } from "@/components/admin/agenda-compromissos-
 import type { AdminMenuKey } from "@/lib/admin/admin-menus";
 import { getCurrentTenantContext } from "@/lib/tenant/context";
 import { getErpSistemaConfig } from "@/lib/erp/erp-modulos";
+import { resolveAuthorizedErpUserAccess, resolveErpLandingHref } from "@/lib/erp/erp-acesso";
 import { getResolvedTenant } from "@/lib/tenant/get-resolved-empresa";
 import { TenantBrandProvider } from "@/components/tenant/tenant-brand-context";
 import { GAUCHINHO_SLUG } from "@/lib/tenant/constants";
@@ -22,7 +23,7 @@ export default async function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { usuario, empresaAtiva, vinculoAtivo } = await getCurrentTenantContext();
+  const { usuario, empresaAtiva, vinculoAtivo, permissoes } = await getCurrentTenantContext();
   if (!usuario) {
     redirect("/login?next=/admin");
   }
@@ -30,7 +31,13 @@ export default async function AdminLayout({
     redirect("/?acesso=empresa_negado");
   }
 
-  const erpEnabled = getErpSistemaConfig(empresaAtiva?.configuracoes).habilitado;
+  const erpConfig = getErpSistemaConfig(empresaAtiva.configuracoes);
+  const erpAccess = resolveAuthorizedErpUserAccess(
+    erpConfig,
+    vinculoAtivo.erp_modulos_visiveis,
+    { papelCodigo: vinculoAtivo.papel?.codigo, permissoes },
+  );
+  const erpHref = resolveErpLandingHref(erpAccess);
   const isSuperadmin = await isPlatformSuperadmin();
   const tenant = await getResolvedTenant();
   const isRacon = tenant?.empresaId === empresaAtiva.id && isRaconModel(tenant.siteModel);
@@ -50,7 +57,7 @@ export default async function AdminLayout({
         perfil={usuario.perfil}
         adminMenus={(usuario.admin_menus as AdminMenuKey[] | null) ?? null}
         isPlatformSuperadmin={isSuperadmin}
-        erpEnabled={erpEnabled}
+        erpHref={erpHref}
         brandName={brandName}
         brandLogoUrl={brandLogo}
         brandPrimary={primary}

@@ -3,6 +3,7 @@ import {
   canAccessErpRoute,
   canAuthorizedAccessErpRoute,
   resolveAuthorizedErpUserAccess,
+  resolveErpLandingHref,
   resolveErpUserAccess,
 } from "./erp-acesso";
 
@@ -12,6 +13,18 @@ const config = {
 };
 
 describe("acesso individual ao ERP", () => {
+  it("abre o painel quando ele está autorizado", () => {
+    expect(resolveErpLandingHref(["leads", "painel"])).toBe("/erp");
+  });
+
+  it("abre o primeiro módulo autorizado quando o painel não foi atribuído", () => {
+    expect(resolveErpLandingHref(["propostas", "leads"])).toBe("/erp/leads");
+  });
+
+  it("não cria destino para usuário sem acesso efetivo ao ERP", () => {
+    expect(resolveErpLandingHref([])).toBeNull();
+  });
+
   it("null preserva todos os menus habilitados para a empresa", () => {
     expect(resolveErpUserAccess(config, null)).toContain("contas-pagar");
     expect(resolveErpUserAccess(config, null)).toContain("usuarios");

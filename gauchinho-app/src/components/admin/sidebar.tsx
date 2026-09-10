@@ -77,7 +77,7 @@ export function AdminSidebar({
   perfil,
   adminMenus,
   isPlatformSuperadmin = false,
-  erpEnabled = false,
+  erpHref = null,
   brandName = "Consórcios",
   brandLogoUrl = null,
   brandPrimary = "#C9A84C",
@@ -86,7 +86,7 @@ export function AdminSidebar({
   perfil: string;
   adminMenus: AdminMenuKey[] | null;
   isPlatformSuperadmin?: boolean;
-  erpEnabled?: boolean;
+  erpHref?: string | null;
   brandName?: string;
   brandLogoUrl?: string | null;
   brandPrimary?: string;
@@ -119,8 +119,8 @@ export function AdminSidebar({
         >
           Ver site →
         </Link>
-        {erpEnabled ? (
-          <Link href="/erp" className="mt-3 flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90" style={{ backgroundColor: lightTheme ? brandPrimary : "#1d4ed8" }}>
+        {erpHref ? (
+          <Link href={erpHref} className="mt-3 flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90" style={{ backgroundColor: lightTheme ? brandPrimary : "#1d4ed8" }}>
             <MonitorCog className="h-4 w-4" />ERP Sistema
           </Link>
         ) : null}
