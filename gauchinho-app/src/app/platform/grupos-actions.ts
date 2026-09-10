@@ -476,3 +476,70 @@ export async function salvarEstatisticasGrupoAction(
 }
 
 export const salvarGrupoGlobalAction = salvarGrupoPlatformAction;
+
+export type AtualizarVagaItem = {
+  id: string;
+  vagas_disponiveis: number;
+};
+
+export async function atualizarVagasGruposLotePlatformAction(
+  updates: AtualizarVagaItem[],
+): Promise<{ ok: true; atualizados: number } | { ok: false; error: string }> {
+  try {
+    if (!(await isPlatformSuperadmin())) {
+      return { ok: false, error: "Somente Platform Superadmin pode atualizar vagas em lote." };
+    }
+
+    if (!Array.isArray(updates) || updates.length === 0) {
+      return { ok: false, error: "Nenhum grupo informado para atualização de vagas." };
+    }
+
+    const payload = updates.map((u) => ({
+      id: String(u.id).trim(),
+      vagas_disponiveis: Math.max(0, Math.floor(Number(u.vagas_disponiveis) || 0)),
+    }));
+
+    if (payload.some((u) => !u.id)) {
+      return { ok: false, error: "Há registros com identificador de grupo inválido." };
+    }
+
+    const db = await createClient();
+
+    // Invocar RPC atômica
+    const { data, error: rpcError } = await db.rpc("rpc_platform_atualizar_vagas_grupos_lote", {
+      p_updates: payload,
+    });
+
+    if (rpcError) {
+      // Fallback resiliente direto
+      const agora = new Date().toISOString();
+      for (const item of payload) {
+        const { error: updateError } = await db
+          .from("grupos_consorcio")
+          .update({
+            vagas_disponiveis: item.vagas_disponiveis,
+            vagas_atualizado_em: agora,
+            updated_at: agora,
+          })
+          .eq("id", item.id);
+        if (updateError) throw new Error(updateError.message);
+      }
+    }
+
+    revalidatePath("/platform/grupos");
+    revalidatePath("/admin/grupos");
+    revalidatePath("/erp/grupos");
+    revalidatePath("/grupos");
+    for (const item of payload) {
+      revalidatePath(`/platform/grupos/${item.id}`);
+    }
+
+    const count = Number((data as { atualizados?: number } | null)?.atualizados ?? payload.length);
+    return { ok: true, atualizados: count };
+  } catch (error) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : "Falha ao atualizar vagas dos grupos em lote.",
+    };
+  }
+}

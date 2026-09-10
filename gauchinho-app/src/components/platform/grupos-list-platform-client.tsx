@@ -14,6 +14,7 @@ import {
 import { obterStatusReajusteAnual } from "@/lib/grupos/reajuste-anual";
 import { marcarGrupoJaReajustadoPlatformAction } from "@/app/platform/grupos-actions";
 import { GrupoReajusteAnualModal } from "@/components/platform/grupo-reajuste-anual-modal";
+import { GrupoVagasEmLoteModal } from "@/components/platform/grupo-vagas-lote-modal";
 
 export function GruposListPlatformClient({ grupos }: { grupos: GrupoRecord[] }) {
   const router = useRouter();
@@ -22,6 +23,9 @@ export function GruposListPlatformClient({ grupos }: { grupos: GrupoRecord[] }) 
 
   // Estado para o modal de reajuste
   const [grupoParaReajuste, setGrupoParaReajuste] = useState<GrupoRecord | null>(null);
+
+  // Estado para o modal de atualização de vagas em lote
+  const [showVagasModal, setShowVagasModal] = useState(false);
 
   // Filtro rápido de reajuste
   const [filtroReajuste, setFiltroReajuste] = useState<"TODOS" | "PENDENTE" | "REAJUSTADO">("TODOS");
@@ -64,7 +68,7 @@ export function GruposListPlatformClient({ grupos }: { grupos: GrupoRecord[] }) 
 
   return (
     <div className="space-y-4">
-      {/* Abas / Filtro rápido de reajuste */}
+      {/* Abas / Filtro rápido de reajuste e Botão de Vagas */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="inline-flex rounded-xl border border-slate-200 bg-white p-1 shadow-2xs dark:border-slate-800 dark:bg-slate-900">
           <button
@@ -107,9 +111,20 @@ export function GruposListPlatformClient({ grupos }: { grupos: GrupoRecord[] }) 
           </button>
         </div>
 
-        <p className="text-xs text-slate-500">
-          Mostrando <strong>{gruposFiltrados.length}</strong> de <strong>{grupos.length}</strong> grupos
-        </p>
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => setShowVagasModal(true)}
+            className="inline-flex items-center gap-2 rounded-xl bg-cyan-700 px-3.5 py-2 text-xs font-bold text-white shadow transition hover:bg-cyan-800"
+            title="Abrir painel para incluir ou retirar vagas de múltiplos grupos simultaneamente"
+          >
+            <span>⚡</span>
+            <span>Atualizar Vagas em Lote</span>
+          </button>
+          <p className="text-xs text-slate-500">
+            Mostrando <strong>{gruposFiltrados.length}</strong> de <strong>{grupos.length}</strong> grupos
+          </p>
+        </div>
       </div>
 
       {/* Tabela de Grupos */}
@@ -198,15 +213,15 @@ export function GruposListPlatformClient({ grupos }: { grupos: GrupoRecord[] }) 
                       <td className="px-4 py-3 text-center">
                         {statusReajuste.precisaReajuste ? (
                           <span
-                            title={`Grupo completou 1 ano e o mês de aniversário (${statusReajuste.nomeMesAniversario}) chegou no ano ${statusReajuste.anoAtual}. Reajuste necessário.`}
-                            className="inline-flex items-center gap-1 rounded-full border border-amber-400/80 bg-amber-100 px-2.5 py-1 text-xs font-extrabold text-amber-900 shadow-2xs dark:border-amber-500/50 dark:bg-amber-950/70 dark:text-amber-200 animate-pulse"
+                            title={`Grupo completou 1 ano ou mais da primeira assembleia em ${statusReajuste.nomeMesAniversario}. Reajuste pendente no ano atual.`}
+                            className="inline-flex items-center gap-1 rounded-full bg-amber-500 px-2.5 py-0.5 text-xs font-black text-slate-950 shadow-xs animate-pulse"
                           >
-                            <span>⚠ Reajuste: Mês de {statusReajuste.nomeMesAniversario}</span>
+                            ⚠ Reajuste: Mês de {statusReajuste.nomeMesAniversario}
                           </span>
                         ) : statusReajuste.jaReajustadoAnoAtual ? (
                           <span
-                            title={`Reajuste anual registrado para o ano ${statusReajuste.anoAtual}.`}
-                            className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
+                            title={`Reajuste do ano ${statusReajuste.anoAtual} já aplicado ou dispensado.`}
+                            className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-bold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
                           >
                             ✓ Reajustado ({statusReajuste.anoAtual})
                           </span>
@@ -236,13 +251,28 @@ export function GruposListPlatformClient({ grupos }: { grupos: GrupoRecord[] }) 
                       <td className="px-4 py-3 text-right text-xs font-semibold text-slate-700 dark:text-slate-300">
                         {formatBRL(metrics.cotaMaxima)}
                       </td>
+
+                      {/* Coluna Vagas (com atalho para o modal de vagas) */}
                       <td className="px-4 py-3 text-center text-xs font-bold text-slate-900 dark:text-white">
-                        {(grupo.vagas_disponiveis ?? 0) > 0 ? (
-                          grupo.vagas_disponiveis
-                        ) : (
-                          <span className="text-amber-700">Aguardando novas vagas</span>
-                        )}
+                        <button
+                          type="button"
+                          onClick={() => setShowVagasModal(true)}
+                          className="group inline-flex items-center gap-1 rounded px-2 py-1 transition hover:bg-slate-100 dark:hover:bg-slate-800"
+                          title="Clique para gerenciar vagas rapidamente"
+                        >
+                          {(grupo.vagas_disponiveis ?? 0) > 0 ? (
+                            <span>{grupo.vagas_disponiveis}</span>
+                          ) : (
+                            <span className="text-amber-700 dark:text-amber-400 font-semibold">
+                              Aguardando novas vagas
+                            </span>
+                          )}
+                          <span className="text-[10px] text-slate-400 opacity-0 group-hover:opacity-100 transition">
+                            ✏
+                          </span>
+                        </button>
                       </td>
+
                       <td className="px-4 py-3 text-center">
                         <span
                           className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-bold ${
@@ -251,16 +281,16 @@ export function GruposListPlatformClient({ grupos }: { grupos: GrupoRecord[] }) 
                               : "bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300"
                           }`}
                         >
-                          {prontidao.ready ? "✓ Pronto" : `⚠ ${prontidao.issues.length}`}
+                          {prontidao.ready ? "Pronto" : `${prontidao.issues.length} pendência(s)`}
                         </span>
                       </td>
 
-                      {/* Coluna Ações: Abrir, Aplicar Reajuste, Já Reajustado */}
+                      {/* Coluna de Ações com Aplicar Reajuste e Já Reajustado */}
                       <td className="px-4 py-3 text-center">
-                        <div className="flex flex-wrap items-center justify-center gap-1.5">
+                        <div className="flex items-center justify-center gap-1.5">
                           <Link
                             href={`/platform/grupos/${grupo.id}`}
-                            className="rounded bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+                            className="rounded border border-slate-300 bg-white px-2.5 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
                           >
                             Abrir
                           </Link>
@@ -269,13 +299,13 @@ export function GruposListPlatformClient({ grupos }: { grupos: GrupoRecord[] }) 
                           <button
                             type="button"
                             onClick={() => setGrupoParaReajuste(grupo)}
-                            className="rounded bg-cyan-700 px-2.5 py-1 text-xs font-bold text-white shadow-2xs hover:bg-cyan-800"
-                            title="Abrir formulário de reajuste das cotas deste grupo"
+                            className="rounded border border-cyan-700 bg-cyan-50 px-2.5 py-1 text-xs font-bold text-cyan-800 hover:bg-cyan-100 dark:border-cyan-600 dark:bg-cyan-950/60 dark:text-cyan-200"
+                            title="Abrir tela de reajuste anual de créditos deste grupo"
                           >
                             Aplicar Reajuste
                           </button>
 
-                          {/* Botão Já Reajustado (para tirar a tag de atenção) */}
+                          {/* Botão Já Reajustado */}
                           {statusReajuste.precisaReajuste ? (
                             <button
                               type="button"
@@ -304,6 +334,14 @@ export function GruposListPlatformClient({ grupos }: { grupos: GrupoRecord[] }) 
           grupo={grupoParaReajuste}
           cotas={grupoParaReajuste.produtos ?? []}
           onClose={() => setGrupoParaReajuste(null)}
+        />
+      ) : null}
+
+      {/* Modal de Atualização Rápida de Vagas em Lote */}
+      {showVagasModal ? (
+        <GrupoVagasEmLoteModal
+          grupos={grupos}
+          onClose={() => setShowVagasModal(false)}
         />
       ) : null}
     </div>

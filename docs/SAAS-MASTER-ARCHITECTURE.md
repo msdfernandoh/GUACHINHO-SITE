@@ -97,6 +97,14 @@ A plataforma suporta:
 - No fluxo **FIXO**, a alíquota cadastrada no grupo é aplicada a todas as cotas com 1 clique.
 - O botão **Já Reajustado** atualiza o ano do último reajuste e remove a tag de atenção imediatamente sem alterar valores históricos.
 
+### Operação de Catálogo 217 — atualização ágil de vagas em lote no SaaS Platform
+
+- A listagem de grupos do Platform (`admin.gauchinhoconsorcios.com.br` / `/platform/grupos`) conta com o botão **⚡ Atualizar Vagas em Lote** no cabeçalho e atalho interativo nas células de vagas.
+- Modal dedicado com visualização tabular completa de todos os grupos do catálogo, busca instantânea por código, filtros inteligentes (`Todos`, `Com Vagas`, `Sem Vagas`, `Alterados`) e resumo operacional de grupos com e sem vagas.
+- Edição direta de `vagas_disponiveis` por input numérico ou botões ágeis de incremento e decremento rápido (`-1`, `+1`, `+10`, `Zerar`, `Restaurar`), destacando em badge verde/vermelho a variação planejada e quantidade de grupos modificados.
+- Migration 217 (`217_grupos_atualizacao_vagas_lote.sql`) com RPC atômica `rpc_platform_atualizar_vagas_grupos_lote`, validação de `is_platform_superadmin()`, auditoria de `vagas_atualizado_em` e `updated_at`, e fallback seguro na Server Action `atualizarVagasGruposLotePlatformAction`.
+- Quando `vagas_disponiveis <= 0`, o sistema e os sites públicos automaticamente exibem a tag `Aguardando novas vagas`, refletindo a disponibilidade real em tempo real.
+
 ### Evolução financeira 192 — contas da empresa e equalização dos sócios
 
 > Correção operacional 188: `financeiro_estornos` concede somente leitura
