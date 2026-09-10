@@ -109,15 +109,12 @@ export function createGrupoLinhaHandlers(
   }
 
   function onRecursoInputChange(raw: string) {
-    let v =
+    const v =
       config.recursoProprioModo === "valor"
         ? parseRecursoProprioValorInput(raw)
         : parseRecursoProprioPercentualInput(raw);
-    if (config.recursoProprioModo === "percentual" && pctMinRecurso > 0) {
-      v = Math.max(v, pctMinRecurso);
-    }
     patch({
-      usaRecursoProprio: v > 0,
+      usaRecursoProprio: true,
       recursoProprioInput: v,
     });
   }

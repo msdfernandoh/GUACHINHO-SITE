@@ -13,7 +13,7 @@ import {
   createGrupoLinhaHandlers,
   useGrupoLinhaCalculo,
 } from "@/components/public/grupos/use-grupo-linha";
-import { MoneyValue, CompactSelect, CompactMoneyInput } from "@/components/public/grupos/grupos-primitives";
+import { MoneyValue, CompactSelect, CompactMoneyInput, CompactPercentInput } from "@/components/public/grupos/grupos-primitives";
 import {
   formatCustoEfetivoAnual,
   formatCustoEfetivoMensal,
@@ -240,22 +240,71 @@ export function GrupoRowAdjustments({ grupo, cotas, modalidades, config, onChang
                   className="h-8 min-w-0 flex-1"
                   value={config.recursoProprioInput}
                   onValueChange={(v) => {
-                    if (v <= 0) {
-                      handlers.patch({ usaRecursoProprio: false, recursoProprioInput: 0 });
-                      return;
-                    }
-                    handlers.patch({ usaRecursoProprio: true, recursoProprioInput: v });
+                    handlers.patch({
+                      recursoProprioInput: Math.max(0, v),
+                      usaRecursoProprio: true,
+                    });
                   }}
                 />
               ) : (
-                <Input
-                  type="number"
-                  step="0.01"
-                  min={pctMinRecurso > 0 ? pctMinRecurso : 0}
-                  className="h-8 flex-1 border-zinc-700 bg-zinc-950 text-xs text-zinc-100"
-                  value={config.recursoProprioInput || ""}
-                  onChange={(e) => handlers.onRecursoInputChange(e.target.value)}
-                />
+                <div className="flex flex-1 flex-wrap items-center gap-1">
+                  <CompactPercentInput
+                    step={1}
+                    min={0}
+                    className="h-8 min-w-0 flex-1"
+                    placeholder="%"
+                    value={config.recursoProprioInput}
+                    onValueChange={(v) => handlers.onRecursoInputChange(String(v))}
+                  />
+                  <div className="flex items-center gap-0.5">
+                    <button
+                      type="button"
+                      className="rounded border border-zinc-700 bg-zinc-900 px-1.5 py-1 text-[10px] text-zinc-300 transition hover:bg-zinc-800"
+                      onClick={() =>
+                        handlers.onRecursoInputChange(
+                          String(Math.max(0, (config.recursoProprioInput || 0) - 1)),
+                        )
+                      }
+                      title="Diminuir 1%"
+                    >
+                      -1%
+                    </button>
+                    <button
+                      type="button"
+                      className="rounded border border-zinc-700 bg-zinc-900 px-1.5 py-1 text-[10px] text-zinc-300 transition hover:bg-zinc-800"
+                      onClick={() =>
+                        handlers.onRecursoInputChange(
+                          String((config.recursoProprioInput || 0) + 1),
+                        )
+                      }
+                      title="Aumentar 1%"
+                    >
+                      +1%
+                    </button>
+                    <button
+                      type="button"
+                      className="rounded border border-zinc-700 bg-zinc-900 px-1.5 py-1 text-[10px] text-zinc-300 transition hover:bg-zinc-800"
+                      onClick={() =>
+                        handlers.onRecursoInputChange(
+                          String((config.recursoProprioInput || 0) + 5),
+                        )
+                      }
+                      title="Aumentar 5%"
+                    >
+                      +5%
+                    </button>
+                    {pctMinRecurso > 0 && (
+                      <button
+                        type="button"
+                        className="rounded border border-amber-600/60 bg-amber-500/10 px-1.5 py-1 text-[10px] text-amber-300 transition hover:bg-amber-500/20"
+                        onClick={() => handlers.onRecursoInputChange(String(pctMinRecurso))}
+                        title={`Redefinir para o mínimo de ${pctMinRecurso}%`}
+                      >
+                        Mín ({pctMinRecurso}%)
+                      </button>
+                    )}
+                  </div>
+                </div>
               )}
             </div>
           ) : null}

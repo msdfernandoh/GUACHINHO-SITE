@@ -124,6 +124,72 @@ export function CompactMoneyInput({
   );
 }
 
+type CompactPercentInputProps = {
+  value: number;
+  onValueChange: (value: number) => void;
+  className?: string;
+  placeholder?: string;
+  min?: number;
+  step?: number | string;
+  disabled?: boolean;
+};
+
+/** Campo de percentual para tabela e painel de ajuste de grupos — digitação suave sem clamp forçado e incremento ágil. */
+export function CompactPercentInput({
+  value,
+  onValueChange,
+  className,
+  placeholder = "%",
+  min = 0,
+  step = 1,
+  disabled,
+}: CompactPercentInputProps) {
+  const [display, setDisplay] = useState(() => (value > 0 ? String(value) : ""));
+
+  useEffect(() => {
+    const rawClean = display.trim().replace(",", ".");
+    const currentParsed = rawClean === "" ? 0 : Number(rawClean);
+    if (!Number.isNaN(currentParsed) && currentParsed === value) {
+      return;
+    }
+    setDisplay(value > 0 ? String(value) : "");
+  }, [value]);
+
+  return (
+    <input
+      type="number"
+      min={min}
+      step={step}
+      disabled={disabled}
+      className={cn(compactField, className)}
+      value={display}
+      placeholder={placeholder}
+      onChange={(e) => {
+        const raw = e.target.value;
+        setDisplay(raw);
+        const clean = raw.trim().replace(",", ".");
+        if (!clean) {
+          onValueChange(0);
+          return;
+        }
+        const parsed = Number(clean);
+        if (!Number.isNaN(parsed)) {
+          onValueChange(parsed);
+        }
+      }}
+      onBlur={() => {
+        const clean = display.trim().replace(",", ".");
+        const parsed = clean ? Number(clean) : 0;
+        if (!Number.isNaN(parsed) && parsed > 0) {
+          setDisplay(String(parsed));
+        } else {
+          setDisplay("");
+        }
+      }}
+    />
+  );
+}
+
 export function Th({
   children,
   className,

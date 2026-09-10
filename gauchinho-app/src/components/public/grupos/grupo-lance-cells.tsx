@@ -5,7 +5,7 @@ import type { ConfigLinhaSimulacaoGrupo } from "@/lib/grupos/simulacao-linha";
 import { cn } from "@/lib/utils/cn";
 import {
   CompactMoneyInput,
-  CompactNumberInput,
+  CompactPercentInput,
   CompactSelect,
   MoneyValue,
 } from "@/components/public/grupos/grupos-primitives";
@@ -75,7 +75,6 @@ export function GrupoRecursoProprioCell({
   pctMinRecurso: number;
 }) {
   const modo = config.recursoProprioModo;
-  const pctInputVal = config.recursoProprioInput > 0 ? config.recursoProprioInput : "";
 
   return (
     <div className="flex min-w-[92px] flex-col gap-1">
@@ -92,7 +91,7 @@ export function GrupoRecursoProprioCell({
           onClick={() =>
             handlers.patch({
               recursoProprioModo: "percentual",
-              usaRecursoProprio: config.recursoProprioInput > 0,
+              usaRecursoProprio: true,
             })
           }
         >
@@ -110,7 +109,7 @@ export function GrupoRecursoProprioCell({
           onClick={() =>
             handlers.patch({
               recursoProprioModo: "valor",
-              usaRecursoProprio: config.recursoProprioInput > 0,
+              usaRecursoProprio: true,
             })
           }
         >
@@ -122,27 +121,21 @@ export function GrupoRecursoProprioCell({
           className="w-full min-w-[88px]"
           value={config.recursoProprioInput}
           onValueChange={(v) => {
-            if (v <= 0) {
-              handlers.patch({ usaRecursoProprio: false, recursoProprioInput: 0 });
-              return;
-            }
-            handlers.patch({ usaRecursoProprio: true, recursoProprioInput: v });
+            handlers.patch({
+              recursoProprioInput: Math.max(0, v),
+              usaRecursoProprio: true,
+            });
           }}
         />
       ) : (
-        <CompactNumberInput
+        <CompactPercentInput
           className="w-full min-w-[72px]"
           min={0}
-          step={0.01}
+          step={1}
           placeholder="%"
-          value={pctInputVal}
-          onChange={(e) => {
-            const raw = e.target.value;
-            if (!raw.trim()) {
-              handlers.patch({ usaRecursoProprio: false, recursoProprioInput: 0 });
-              return;
-            }
-            handlers.onRecursoInputChange(raw);
+          value={config.recursoProprioInput}
+          onValueChange={(v) => {
+            handlers.onRecursoInputChange(String(v));
           }}
         />
       )}

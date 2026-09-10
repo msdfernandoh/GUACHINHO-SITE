@@ -50,4 +50,46 @@ describe("parseRecursoProprioPercentualInput", () => {
     expect(atualizado.usaRecursoProprio).toBe(true);
     expect(atualizado.recursoProprioInput).toBe(30);
   });
+
+  it("permite apagar o campo mesmo quando a modalidade exige recurso próprio mínimo (sem clamp forçado no onChange)", () => {
+    const config: ConfigLinhaSimulacaoGrupo = {
+      cotaId: "cota-1",
+      quantidadeCotas: 1,
+      modalidadeParcela: "integral",
+      usaLanceEmbutido: true,
+      modalidadeLanceId: "mod-50-embutido",
+      usaRecursoProprio: true,
+      recursoProprioModo: "percentual",
+      recursoProprioInput: 10,
+      usaSeguro: false,
+      percentualParcelaPersonalizada: null,
+    };
+    let atualizado = config;
+    const handlers = createGrupoLinhaHandlers(
+      config,
+      (next) => {
+        atualizado = next;
+      },
+      [],
+      10, // pctMinRecurso = 10%
+    );
+
+    // Usuário apaga o campo
+    handlers.onRecursoInputChange("");
+    expect(atualizado.recursoProprioInput).toBe(0);
+    expect(atualizado.usaRecursoProprio).toBe(true);
+
+    // Usuário digita valor intermediário "2"
+    handlers.onRecursoInputChange("2");
+    expect(atualizado.recursoProprioInput).toBe(2);
+
+    // Usuário completa com "20" (aumentando acima do mínimo)
+    handlers.onRecursoInputChange("20");
+    expect(atualizado.recursoProprioInput).toBe(20);
+    expect(atualizado.usaRecursoProprio).toBe(true);
+
+    // Usuário digita valor decimal (ex: 29.51)
+    handlers.onRecursoInputChange("29,51");
+    expect(atualizado.recursoProprioInput).toBe(29.51);
+  });
 });
