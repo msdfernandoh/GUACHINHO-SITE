@@ -101,6 +101,7 @@ export async function proxy(request: NextRequest) {
   let tenantSlug: string | null = null;
   let tenantOperationalEnabled = false;
   let platformHost = isPlatformHost(request.headers.get("host"));
+  let partnerRewriteSlug: string | null = null;
 
   if (!skipTenant) {
     // Resolução lê credenciais de env internamente — proxy não passa service role.
@@ -133,50 +134,40 @@ export async function proxy(request: NextRequest) {
           requestHeaders.set(PARCEIRO_SITE_SLUG_HEADER, partner.partner.site_slug);
           requestHeaders.set(PARCEIRO_SOURCE_HEADER, partner.partner.source);
           tenantSlug = partner.partner.empresa_slug;
+          tenantOperationalEnabled = true;
 
-          // APIs de um portal parceiro precisam chegar ao Route Handler
-          // original. Reescrever para a página institucional faria o formulário
-          // público falhar e perderia a atribuição do parceiro. Os handlers
-          // revalidam o domínio no servidor antes de gravar qualquer dado.
-          if (path.startsWith("/api/")) {
-            return NextResponse.next({ request: { headers: requestHeaders } });
-          }
-
+          // As rotas de backoffice (/admin, /erp), autenticação (/login, /definir-senha, etc.),
+          // APIs e módulos operacionais não sofrem rewrite para a home institucional do parceiro.
           const partnerOperationalPaths = [
-            "/simulador", "/grupos", "/consorcio", "/proposta", "/area-parceiro", "/indicar", "/login",
+            "/admin",
+            "/erp",
+            "/login",
+            "/esqueci-senha",
+            "/definir-senha",
+            "/auth",
+            "/simulador",
+            "/grupos",
+            "/consorcio",
+            "/proposta",
+            "/contratar",
+            "/area-parceiro",
+            "/indicar",
           ];
-          if (partnerOperationalPaths.some((prefix) => path === prefix || path.startsWith(`${prefix}/`))) {
-            return NextResponse.next({ request: { headers: requestHeaders } });
+          const isOperationalPath =
+            path.startsWith("/api/") ||
+            partnerOperationalPaths.some(
+              (prefix) => path === prefix || path.startsWith(`${prefix}/`),
+            );
+
+          if (!isOperationalPath && !path.startsWith("/parceiro/")) {
+            partnerRewriteSlug = partner.partner.site_slug;
           }
-
-          const rewriteUrl = request.nextUrl.clone();
-          rewriteUrl.pathname = `/parceiro/${partner.partner.site_slug}`;
-          let response = NextResponse.rewrite(rewriteUrl, {
-            request: { headers: requestHeaders },
-          });
-          // Auth cookie plumbing below expects `response` — fall through via early return after auth.
-          const supabase = createServerClient(supabaseUrl, anonKey, {
-            cookies: {
-              getAll() {
-                return request.cookies.getAll();
-              },
-              setAll(cookiesToSet: { name: string; value: string; options: CookieOptions }[]) {
-                cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
-                response = NextResponse.rewrite(rewriteUrl, {
-                  request: { headers: requestHeaders },
-                });
-                cookiesToSet.forEach(({ name, value, options }) =>
-                  response.cookies.set(name, value, options)
-                );
-              },
-            },
-          });
-          await supabase.auth.getUser();
-          return response;
+        } else {
+          return siteNotConfiguredResponse();
         }
+      } else {
+        return siteNotConfiguredResponse();
       }
-
-      return siteNotConfiguredResponse();
     } else if (resolved.context === "platform") {
       // Contexto global: não envia empresa/slug em headers e não consulta tenant.
       platformHost = true;
@@ -205,9 +196,19 @@ export async function proxy(request: NextRequest) {
     }
   }
 
-  let response = NextResponse.next({
-    request: { headers: requestHeaders },
-  });
+  let rewriteUrl: URL | null = null;
+  if (partnerRewriteSlug) {
+    rewriteUrl = request.nextUrl.clone();
+    rewriteUrl.pathname = `/parceiro/${partnerRewriteSlug}`;
+  }
+
+  let response = rewriteUrl
+    ? NextResponse.rewrite(rewriteUrl, {
+        request: { headers: requestHeaders },
+      })
+    : NextResponse.next({
+        request: { headers: requestHeaders },
+      });
 
   // --- Autenticação/admin (preservada do middleware legado) ---
   const supabase = createServerClient(supabaseUrl, anonKey, {
@@ -217,7 +218,11 @@ export async function proxy(request: NextRequest) {
       },
       setAll(cookiesToSet: { name: string; value: string; options: CookieOptions }[]) {
         cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
-        response = NextResponse.next({ request: { headers: requestHeaders } });
+        response = rewriteUrl
+          ? NextResponse.rewrite(rewriteUrl, {
+              request: { headers: requestHeaders },
+            })
+          : NextResponse.next({ request: { headers: requestHeaders } });
         cookiesToSet.forEach(({ name, value, options }) =>
           response.cookies.set(name, value, options),
         );
@@ -280,7 +285,7 @@ export async function proxy(request: NextRequest) {
     return platformRouteUnavailableResponse();
   }
 
-  if (path.startsWith("/admin")) {
+  if (path.startsWith("/admin") || path.startsWith("/erp")) {
     // 1) Autenticação
     if (!user) {
       const login = new URL("/login", request.url);

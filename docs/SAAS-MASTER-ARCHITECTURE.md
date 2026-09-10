@@ -105,12 +105,21 @@ A plataforma suporta:
 - Migration 217 (`217_grupos_atualizacao_vagas_lote.sql`) com RPC atômica `rpc_platform_atualizar_vagas_grupos_lote`, validação de `is_platform_superadmin()`, auditoria de `vagas_atualizado_em` e `updated_at`, e fallback seguro na Server Action `atualizarVagasGruposLotePlatformAction`.
 - Quando `vagas_disponiveis <= 0`, o sistema e os sites públicos automaticamente exibem a tag `Aguardando novas vagas`, refletindo a disponibilidade real em tempo real.
 
-### Operação Comercial 218 — conversão de propostas em contratações no Login, ERP e Site
+#### Operação Comercial 218 — conversão de propostas em contratações no Login, ERP e Site
 
 - No fluxo de simulação e contratação do site (`/proposta/[token]`), a etapa de documentos (`step === 'docs'`) permite ao cliente ou consultor selecionar explicitamente entre **Apenas Proposta** (salva a proposta comercial para análise, gerando resumo e PDF sem forçar pagamento) e **Contratação** (avança para pagamento e materializa a contratação formal).
 - Na Área de Login do site (`/admin/propostas` e `/admin/propostas/[id]`), cada proposta possui o botão **Marcar Contratada**, que aciona a Server Action `marcarPropostaContratadaAction` e redireciona direto para a tela de contratação `/admin/contratacoes/[id]`.
 - Criação do módulo de Propostas no ERP (`/erp/propostas` e `/erp/propostas/[id]`), com visão gerencial, cards de métricas, busca textual e botão direto **Marcar Contratada**, encaminhando para a fila de formalização em `/erp/contratacoes/[id]`.
 - Migration 218 (`218_converter_proposta_em_contratacao.sql`) introduz a RPC atômica e idempotente `rpc_converter_proposta_em_contratacao`, gerando protocolo sequencial `GC-YYYY-XXXXXX`, preservando integridade por tenant, migrando documentos de `propostas_documentos` para `contratacoes_documentos` e atualizando o status da proposta para `Contratada`.
+
+### Operação Multi-tenant 219 — Área de Login e Backoffice em Domínios de Parceiros (Racon Sinop)
+
+- Correção do proxy Next.js (`proxy.ts`): expansão de `partnerOperationalPaths` para suportar `/admin`, `/erp`, `/login`, `/esqueci-senha`, `/definir-senha`, `/auth`, `/contratar`, impedindo o rewrite indevido do backoffice para a página inicial institucional do parceiro (`/parceiro/[slug]`).
+- Todos os usuários ativos vinculados à Gauchinho possuem acesso ao painel administrativo e ao ERP navegando a partir de domínios públicos de parceiros (ex.: `raconsinop.com.br`).
+- A regra canônica de governança e privacidade de CRM é preservada: consultores com a flag `leads_apenas_proprios` visualizam exclusivamente seus próprios leads atribuídos, enquanto administradores, gestores e sócios visualizam a totalidade dos leads.
+- Pipeline unificado de cookies de autenticação `@supabase/ssr` no proxy, assegurando proteção automática de rotas (`/admin` e `/erp` não autenticados redirecionam para `/login?next=...`) e renovação contínua da sessão.
+- Identidade visual dinâmica: `getResolvedTenant()` absorve `PARCEIRO_SITE_ID_HEADER` e carrega o nome do parceiro ("Racon Sinop") e o tema claro Racon (`racon_inspired`, azul `#0066cc`) nos layouts de login, admin e ERP.
+
 
 ### Evolução financeira 192 — contas da empresa e equalização dos sócios
 

@@ -40,7 +40,7 @@ export default async function AdminLayout({
   const erpHref = resolveErpLandingHref(erpAccess);
   const isSuperadmin = await isPlatformSuperadmin();
   const tenant = await getResolvedTenant();
-  const isRacon = tenant?.empresaId === empresaAtiva.id && isRaconModel(tenant.siteModel);
+  const isRacon = (tenant?.empresaId === empresaAtiva.id && isRaconModel(tenant.siteModel)) || isRaconModel(tenant?.siteModel);
   const primary = tenant?.branding.cor_primaria || "#0099dd";
   const brandName = tenant?.branding.nome_site || empresaAtiva.nome_fantasia;
   const brandLogo = tenant?.branding.logo_url || tenant?.siteModel?.logoPadraoUrl || null;
@@ -48,7 +48,7 @@ export default async function AdminLayout({
   const brandAccent = tenant?.branding.cor_destaque || String(tenant?.siteModel?.identidadeVisual.cor_destaque || primary);
 
   return (
-    <TenantBrandProvider value={{ nome: brandName, slug: tenant?.slug || "", logoUrl: brandLogo, corPrimaria: primary, corSecundaria: brandSecondary, corDestaque: brandAccent, isGauchinho: tenant?.slug === GAUCHINHO_SLUG, isRacon }}>
+    <TenantBrandProvider value={{ nome: brandName, slug: tenant?.slug || "", logoUrl: brandLogo, corPrimaria: primary, corSecundaria: brandSecondary, corDestaque: brandAccent, isGauchinho: !tenant?.parceiroSiteId && tenant?.slug === GAUCHINHO_SLUG, isRacon }}>
     <div
       className={isRacon ? "tenant-admin-racon flex min-h-screen bg-slate-50 text-slate-900" : "dark flex min-h-screen bg-zinc-950 text-zinc-100"}
       style={isRacon ? { "--tenant-primary": primary } as CSSProperties : undefined}
