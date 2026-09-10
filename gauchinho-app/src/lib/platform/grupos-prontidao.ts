@@ -140,6 +140,8 @@ export type GrupoRecord = {
   tipo_reajuste_anual?: "FIXO" | "VARIAVEL" | null;
   reajuste_anual_percentual?: number | null;
   reajuste_anual_indice?: string | null;
+  ano_ultimo_reajuste?: number | null;
+  data_ultimo_reajuste?: string | null;
   seguro_percentual?: number | null;
   seguro_habilitado?: boolean;
   capacidade_total?: number | null;

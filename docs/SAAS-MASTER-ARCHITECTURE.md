@@ -89,6 +89,14 @@ A plataforma suporta:
 - A migration 201 transforma a decisão explícita `Ajustar no sistema` em atualização canônica auditada: empresa, participante, elegibilidade, saldo e detalhamento fiscal passam a derivar do valor adotado do relatório; o snapshot preserva valor anterior, novo, resolução e data.
 - A migration 202 corrige por lançamentos compensatórios os destinos bancários de comissões dos sócios, vincula a conta particular ao participante beneficiário para pagamentos futuros e mantém um extrato filtrável de entradas e saídas por conta.
 
+### Operação de Catálogo 216 — reajuste anual de grupos no SaaS Platform
+
+- A listagem de grupos do Platform (`admin.gauchinhoconsorcios.com.br` / `/platform/grupos`) calcula automaticamente o marco de 1 ano desde a primeira assembleia e destaca em âmbar os grupos que completaram aniversário no ano corrente e necessitam de reajuste (`⚠ Reajuste: Mês de [Mês]`).
+- A migration 216 adiciona as colunas `ano_ultimo_reajuste` e `data_ultimo_reajuste` em `grupos_consorcio` e a RPC segura `rpc_marcar_grupo_reajustado`.
+- No fluxo de reajuste com regra **VARIÁVEL**, o usuário pode informar o percentual ou o novo valor de qualquer cota, recalculando a alíquota e propagando o novo crédito em lote para todas as demais cotas do grupo.
+- No fluxo **FIXO**, a alíquota cadastrada no grupo é aplicada a todas as cotas com 1 clique.
+- O botão **Já Reajustado** atualiza o ano do último reajuste e remove a tag de atenção imediatamente sem alterar valores históricos.
+
 ### Evolução financeira 192 — contas da empresa e equalização dos sócios
 
 > Correção operacional 188: `financeiro_estornos` concede somente leitura

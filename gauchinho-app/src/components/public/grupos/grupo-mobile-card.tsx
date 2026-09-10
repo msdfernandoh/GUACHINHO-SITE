@@ -12,6 +12,7 @@ import { GrupoPrazoCell } from "@/components/public/grupos/grupo-row";
 import { createGrupoLinhaHandlers, useGrupoLinhaCalculo } from "@/components/public/grupos/use-grupo-linha";
 import { GrupoEmbutidoSelect, GrupoRecursoProprioCell } from "@/components/public/grupos/grupo-lance-cells";
 import { grupoEmFormacao } from "@/lib/grupos/em-formacao";
+import { descricaoReajusteAnual } from "@/lib/grupos/reajuste-anual";
 
 type Props = {
   grupo: GrupoConsorcio;
@@ -43,6 +44,7 @@ export function GrupoMobileCard({ grupo, cotas, modalidades, config, onChange }:
       <div className="flex flex-wrap items-start justify-between gap-3 p-4">
         <div>
           <p className="text-lg font-semibold text-amber-400">Grupo {grupo.codigo_grupo}</p>
+          {descricaoReajusteAnual(grupo) ? <span className="mt-1 block text-[10px] text-zinc-400">{descricaoReajusteAnual(grupo)}</span> : null}
           {emFormacao ? <span className="grupo-em-formacao mt-1 inline-flex rounded-full bg-[var(--tenant-secondary,#0c2340)] px-2 py-0.5 text-[10px] font-semibold text-white">Em Formação</span> : null}
           {grupo.aguardando_novas_vagas ? (
             <span className="mt-1 inline-flex rounded-full bg-sky-500/15 px-2 py-0.5 text-[10px] font-semibold text-sky-200">

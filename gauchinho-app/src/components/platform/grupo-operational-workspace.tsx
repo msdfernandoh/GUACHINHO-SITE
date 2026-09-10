@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useActionState, useState } from "react";
 import {
   salvarGrupoPlatformAction,
@@ -34,7 +35,9 @@ import {
   calcularResumoContemplacoes,
   DEFAULT_TIPOS_CONTEMPLACAO,
 } from "@/lib/platform/grupos-prontidao";
-import { GrupoReajusteCreditosDialog } from "@/components/platform/grupo-reajuste-creditos-dialog";
+import { GrupoReajusteAnualModal } from "@/components/platform/grupo-reajuste-anual-modal";
+import { obterStatusReajusteAnual } from "@/lib/grupos/reajuste-anual";
+import { marcarGrupoJaReajustadoPlatformAction } from "@/app/platform/grupos-actions";
 import { calcularAssembleiaMetade } from "@/lib/grupos/regra-integralizacao";
 
 const initial: GroupActionState = { status: "IDLE", message: "" };
@@ -220,12 +223,15 @@ export function GrupoOperationalWorkspace({
     grupo.tipo_reajuste_anual ?? "",
   );
 
+  const router = useRouter();
+  const [isPendingJaReajustado, setIsPendingJaReajustado] = useState(false);
   const prontidao: GrupoProntidaoResult = validateGrupoProntidao(grupo);
+  const statusReajuste = obterStatusReajusteAnual(grupo);
 
   const modalidadesDisponiveis = grupo.modalidades ?? [];
   const cotas = (grupo.produtos ?? []).filter((p) => p.ativo).sort((a, b) => b.valor_credito - a.valor_credito);
   const marcoReajuste = Math.floor(prontidao.temporal.realizadas / 12) * 12;
-  const reajustePendente = marcoReajuste >= 12 && marcoReajuste > Number(grupo.credito_reajustado_ate_meses ?? 0);
+  const reajustePendente = statusReajuste.precisaReajuste || (marcoReajuste >= 12 && marcoReajuste > Number(grupo.credito_reajustado_ate_meses ?? 0));
 
   function handleToggleSelectCota(cotaId: string) {
     setSelectedCotas((prev) => {
@@ -273,20 +279,57 @@ export function GrupoOperationalWorkspace({
           <h1 className="mt-1 text-3xl font-extrabold text-slate-900 dark:text-white">
             Grupo {grupo.codigo_grupo}
           </h1>
+
           <p className="text-sm text-slate-500">
             {adminNome} · {tipoNome} · Prazo {prontidao.temporal.resumoPrazo} ({prontidao.temporal.legenda})
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          {reajustePendente ? (
+          {statusReajuste.precisaReajuste ? (
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setReajusteAberto(true)}
+                className="rounded-lg bg-amber-500 px-4 py-2 text-sm font-extrabold text-slate-950 shadow hover:bg-amber-400 animate-pulse"
+              >
+                ⚠ Aplicar Reajuste · Mês de {statusReajuste.nomeMesAniversario}
+              </button>
+              <button
+                type="button"
+                disabled={isPendingJaReajustado}
+                onClick={async () => {
+                  if (
+                    !confirm(
+                      `Marcar o Grupo ${grupo.codigo_grupo} como já reajustado no ano ${statusReajuste.anoAtual}? Isso removerá a tag de atenção.`,
+                    )
+                  )
+                    return;
+                  setIsPendingJaReajustado(true);
+                  try {
+                    const res = await marcarGrupoJaReajustadoPlatformAction(
+                      grupo.id,
+                      statusReajuste.anoAtual,
+                    );
+                    if (!res.ok) alert(`Erro: ${res.error}`);
+                    else router.refresh();
+                  } finally {
+                    setIsPendingJaReajustado(false);
+                  }
+                }}
+                className="rounded-lg border border-amber-400 bg-amber-50 px-3 py-2 text-sm font-bold text-amber-900 hover:bg-amber-100 disabled:opacity-50 dark:border-amber-700 dark:bg-amber-950/60 dark:text-amber-200"
+              >
+                {isPendingJaReajustado ? "Salvando…" : "Já Reajustado"}
+              </button>
+            </div>
+          ) : (
             <button
               type="button"
               onClick={() => setReajusteAberto(true)}
-              className="rounded-lg bg-amber-500 px-4 py-2 text-sm font-extrabold text-slate-950 shadow hover:bg-amber-400"
+              className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-bold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
             >
-              Ajustar créditos · {marcoReajuste} meses
+              Aplicar Reajuste
             </button>
-          ) : null}
+          )}
           <span
             className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold ${
               prontidao.ready
@@ -313,11 +356,9 @@ export function GrupoOperationalWorkspace({
       </div>
 
       {reajusteAberto ? (
-        <GrupoReajusteCreditosDialog
-          grupoId={grupo.id}
-          codigoGrupo={grupo.codigo_grupo}
-          marcoMeses={marcoReajuste}
-          cotas={cotas.map((cota) => ({ id: cota.id, valor_credito: Number(cota.valor_credito) }))}
+        <GrupoReajusteAnualModal
+          grupo={grupo}
+          cotas={cotas}
           onClose={() => setReajusteAberto(false)}
         />
       ) : null}
