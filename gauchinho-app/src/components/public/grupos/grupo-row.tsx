@@ -79,6 +79,18 @@ export function GrupoRow({
           <div className="font-semibold text-amber-400">{grupo.codigo_grupo}</div>
           {descricaoReajusteAnual(grupo) ? <span className="mt-1 block max-w-[130px] whitespace-normal text-[9px] leading-tight text-zinc-400">{descricaoReajusteAnual(grupo)}</span> : null}
           {emFormacao ? <span className="grupo-em-formacao mt-1 block w-fit rounded bg-[var(--tenant-secondary,#0c2340)] px-1.5 py-px text-[9px] font-semibold text-white">Em Formação</span> : null}
+          {grupo.vagas_disponiveis != null ? (
+            <span
+              className={cn(
+                "mt-1 inline-block rounded px-1.5 py-px text-[9px] font-semibold",
+                grupo.vagas_disponiveis > 0
+                  ? "border border-emerald-500/30 bg-emerald-500/15 text-emerald-300"
+                  : "border border-red-500/30 bg-red-500/15 text-red-300",
+              )}
+            >
+              {grupo.vagas_disponiveis > 0 ? `${grupo.vagas_disponiveis} vagas` : "0 vagas"}
+            </span>
+          ) : null}
           {grupo.aguardando_novas_vagas ? (
             <span className="mt-1 inline-block rounded bg-sky-500/15 px-1.5 py-px text-[9px] font-medium text-sky-200">
               Aguardando novas vagas

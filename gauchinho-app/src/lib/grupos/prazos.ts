@@ -186,64 +186,79 @@ export function adicionarMesesCalendario(
 
 export type GrupoCicloDatas = {
   participantes: number | null;
+  vagasDisponiveis: number | null;
   dataPrimeiraAssembleia: string | null;
   dataTerminoGrupo: string | null;
   prazoTotalMeses: number | null;
+  parcelasRealizadas: number;
+  prazoRestante: number;
 };
 
 /**
- * Estima início (1ª assembleia) a partir da data base e parcelas já realizadas na base;
+ * Estima início (1ª assembleia) a partir de data_primeira_assembleia cadastrada no grupo
+ * ou da data base e parcelas já realizadas na base;
  * término = início + prazo total (meses cadastrados no grupo).
+ * Também consolida participantes (capacidade total), vagas disponíveis e prazos.
  */
 export function calcularCicloGrupoDatas(
-  grupo: Pick<
-    GrupoConsorcio,
-    | "quantidade_cotas_sorteio"
-    | "data_base_parcelas"
-    | "parcelas_realizadas_base"
-    | "parcelas_realizadas"
-    | "prazo_total"
-  >,
+  grupo: Partial<GrupoConsorcio>,
 ): GrupoCicloDatas {
   const participantes =
-    grupo.quantidade_cotas_sorteio != null && grupo.quantidade_cotas_sorteio > 0
-      ? grupo.quantidade_cotas_sorteio
-      : null;
-  const prazoTotalMeses =
-    grupo.prazo_total != null && grupo.prazo_total > 0 ? Math.floor(grupo.prazo_total) : null;
+    grupo.capacidade_total != null && Number(grupo.capacidade_total) > 0
+      ? Number(grupo.capacidade_total)
+      : grupo.quantidade_cotas_sorteio != null && Number(grupo.quantidade_cotas_sorteio) > 0
+        ? Number(grupo.quantidade_cotas_sorteio)
+        : null;
 
-  const baseRaw = grupo.data_base_parcelas;
-  if (!baseRaw) {
-    return {
-      participantes,
-      dataPrimeiraAssembleia: null,
-      dataTerminoGrupo: null,
-      prazoTotalMeses,
-    };
+  const vagasDisponiveis =
+    grupo.vagas_disponiveis != null ? Math.max(0, Number(grupo.vagas_disponiveis)) : null;
+
+  const prazoTotalMeses =
+    grupo.prazo_total != null && Number(grupo.prazo_total) > 0
+      ? Math.floor(Number(grupo.prazo_total))
+      : null;
+
+  const prazoCalc = calcularPrazoGrupoFromRow(grupo as GrupoConsorcio);
+  const parcelasRealizadas = prazoCalc.prazoTotal > 0 ? prazoCalc.parcelasRealizadasAtuais : 0;
+  const prazoRestante =
+    prazoCalc.prazoTotal > 0
+      ? prazoCalc.prazoRestanteAtual
+      : (prazoTotalMeses ?? 0);
+
+  let dataPrimeiraAssembleia: string | null = null;
+  if (grupo.data_primeira_assembleia) {
+    const raw = String(grupo.data_primeira_assembleia).trim();
+    if (/^\d{4}-\d{2}-\d{2}/.test(raw)) {
+      dataPrimeiraAssembleia = raw.slice(0, 10);
+    } else {
+      dataPrimeiraAssembleia = isoFromDate(parseDataCalendario(raw));
+    }
+  } else if (grupo.data_base_parcelas) {
+    const realizadasBase = Math.max(
+      0,
+      Math.floor(
+        grupo.parcelas_realizadas_base != null
+          ? Number(grupo.parcelas_realizadas_base)
+          : Number(grupo.parcelas_realizadas ?? 0),
+      ),
+    );
+    const inicio = adicionarMesesCalendario(grupo.data_base_parcelas, -realizadasBase);
+    dataPrimeiraAssembleia = isoFromDate(inicio);
   }
 
-  const realizadasBase = Math.max(
-    0,
-    Math.floor(
-      grupo.parcelas_realizadas_base != null
-        ? Number(grupo.parcelas_realizadas_base)
-        : Number(grupo.parcelas_realizadas ?? 0),
-    ),
-  );
-
-  const inicio = adicionarMesesCalendario(baseRaw, -realizadasBase);
-  const dataPrimeiraAssembleia = isoFromDate(inicio);
-
   let dataTerminoGrupo: string | null = null;
-  if (prazoTotalMeses != null) {
-    const termino = adicionarMesesCalendario(inicio, prazoTotalMeses);
+  if (dataPrimeiraAssembleia && prazoTotalMeses != null) {
+    const termino = adicionarMesesCalendario(dataPrimeiraAssembleia, prazoTotalMeses);
     dataTerminoGrupo = isoFromDate(termino);
   }
 
   return {
     participantes,
+    vagasDisponiveis,
     dataPrimeiraAssembleia,
     dataTerminoGrupo,
     prazoTotalMeses,
+    parcelasRealizadas,
+    prazoRestante,
   };
 }

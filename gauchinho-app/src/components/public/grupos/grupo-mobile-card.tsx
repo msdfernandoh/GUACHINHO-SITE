@@ -45,12 +45,26 @@ export function GrupoMobileCard({ grupo, cotas, modalidades, config, onChange }:
         <div>
           <p className="text-lg font-semibold text-amber-400">Grupo {grupo.codigo_grupo}</p>
           {descricaoReajusteAnual(grupo) ? <span className="mt-1 block text-[10px] text-zinc-400">{descricaoReajusteAnual(grupo)}</span> : null}
-          {emFormacao ? <span className="grupo-em-formacao mt-1 inline-flex rounded-full bg-[var(--tenant-secondary,#0c2340)] px-2 py-0.5 text-[10px] font-semibold text-white">Em Formação</span> : null}
-          {grupo.aguardando_novas_vagas ? (
-            <span className="mt-1 inline-flex rounded-full bg-sky-500/15 px-2 py-0.5 text-[10px] font-semibold text-sky-200">
-              Aguardando novas vagas
-            </span>
-          ) : null}
+          <div className="mt-1 flex flex-wrap gap-1">
+            {emFormacao ? <span className="grupo-em-formacao inline-flex rounded-full bg-[var(--tenant-secondary,#0c2340)] px-2 py-0.5 text-[10px] font-semibold text-white">Em Formação</span> : null}
+            {grupo.vagas_disponiveis != null ? (
+              <span
+                className={cn(
+                  "inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold",
+                  grupo.vagas_disponiveis > 0
+                    ? "border border-emerald-500/30 bg-emerald-500/15 text-emerald-300"
+                    : "border border-red-500/30 bg-red-500/15 text-red-300",
+                )}
+              >
+                {grupo.vagas_disponiveis > 0 ? `${grupo.vagas_disponiveis} vagas` : "0 vagas"}
+              </span>
+            ) : null}
+            {grupo.aguardando_novas_vagas ? (
+              <span className="inline-flex rounded-full bg-sky-500/15 px-2 py-0.5 text-[10px] font-semibold text-sky-200">
+                Aguardando novas vagas
+              </span>
+            ) : null}
+          </div>
           <div className="mt-2 flex flex-wrap gap-2">
             <CompactSelect
               className="min-w-[140px]"

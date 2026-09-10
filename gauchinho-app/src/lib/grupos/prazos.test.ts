@@ -34,6 +34,25 @@ describe("calcularCicloGrupoDatas", () => {
     expect(r.dataPrimeiraAssembleia).toBe("2024-05-16");
     expect(r.dataTerminoGrupo).toBe("2032-09-16");
   });
+
+  it("prioriza data_primeira_assembleia cadastrada no grupo, capacidade_total e vagas disponíveis (ex: Grupo 1553)", () => {
+    const r = calcularCicloGrupoDatas({
+      codigo_grupo: "1553 IMÓVEL",
+      data_primeira_assembleia: "2026-11-12",
+      capacidade_total: 700,
+      vagas_disponiveis: 650,
+      prazo_total: 160,
+      parcelas_realizadas: 0,
+      prazo_restante: 160,
+    });
+    expect(r.participantes).toBe(700);
+    expect(r.vagasDisponiveis).toBe(650);
+    expect(r.dataPrimeiraAssembleia).toBe("2026-11-12");
+    expect(r.dataTerminoGrupo).toBe("2040-03-12");
+    expect(r.prazoTotalMeses).toBe(160);
+    expect(r.parcelasRealizadas).toBe(0);
+    expect(r.prazoRestante).toBe(160);
+  });
 });
 
 describe("calcularPrazoGrupo — automático", () => {

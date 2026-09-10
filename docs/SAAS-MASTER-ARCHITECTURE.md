@@ -2084,4 +2084,20 @@ Relatório:
 Relatório:
 `docs/relatorios-fases/FASE-220-DOWNLOAD-PDF-PROPOSTAS-UNIFICACAO-CLIENTE-DATA.md`.
 
+### Evolução Operacional 221 — Exibição Completa dos Dados de Cadastro, Vagas Disponíveis e Observações de Grupos no Site
 
+1. **Correção do Ciclo de Datas e Capacidade (`calcularCicloGrupoDatas`):**
+   - Resolução da 1ª assembleia priorizando o campo oficial `data_primeira_assembleia` cadastrado no grupo, eliminando a dependência obrigatória de `data_base_parcelas` para grupos novos ou em formação.
+   - Cálculo automático da data estimada de término do grupo somando o prazo total em meses à data da primeira assembleia.
+   - Resolução de participantes priorizando `capacidade_total` sobre `quantidade_cotas_sorteio`, eliminando o erro de participantes vazios que solicitava cadastro de sorteio no admin.
+   - Inclusão do campo `vagasDisponiveis` normalizado no retorno do ciclo.
+
+2. **Painel Completo na Aba "Ajustar" (`GrupoCicloDetalhes`):**
+   - Grade com 10 cartões informativos cobrindo: Vagas disponíveis, Participantes / Capacidade, 1ª assembleia (início), Término estimado e prazo total, Assembleias realizadas e prazo restante, Taxa administrativa, Fundo de reserva, Reajuste anual, Seguro mensal e Administradora/Modalidade.
+   - Exibição destacada das **Observações Operacionais do SaaS** contendo as diretrizes de lances e sorteios cadastradas no grupo.
+
+3. **Visibilidade de Vagas na Listagem Pública:**
+   - Badges de vagas disponíveis (`X vagas`) integradas na coluna de identificação dos grupos na tabela desktop (`GrupoRow`) e nos cartões mobile (`GrupoMobileCard`).
+
+Relatório:
+`docs/relatorios-fases/FASE-221-EXIBICAO-DADOS-CADASTRO-VAGAS-GRUPOS-SITE.md`.
