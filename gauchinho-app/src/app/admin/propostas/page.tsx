@@ -3,6 +3,7 @@ import { excluirPropostasEmLoteAction, fetchPropostasList } from "./actions";
 import { Button, Input, Label } from "@/components/ui/form-primitives";
 import { formatCurrency, formatDate } from "@/lib/utils/format";
 import { BulkArchiveSelection } from "@/components/erp/bulk-archive-selection";
+import { MarcarPropostaContratadaButton } from "@/components/admin/marcar-proposta-contratada-button";
 
 export default async function PropostasPage({
   searchParams,
@@ -18,14 +19,38 @@ export default async function PropostasPage({
           <tr>
             {podeExcluirEmLote && <th className="w-10 px-3 py-2"><span className="sr-only">Selecionar</span></th>}
             <th className="px-3 py-2">Data</th><th className="px-3 py-2">Cliente</th><th className="px-3 py-2">Tipo</th>
-            <th className="px-3 py-2">Crédito</th><th className="px-3 py-2">Status</th><th className="px-3 py-2" />
+            <th className="px-3 py-2">Crédito</th><th className="px-3 py-2">Status</th><th className="px-3 py-2 text-right">Ações</th>
           </tr>
         </thead>
         <tbody>{rows.map((p) => <tr key={p.id} className="border-b dark:border-zinc-800">
           {podeExcluirEmLote && <td className="px-3 py-2"><input type="checkbox" name="ids" value={p.id} aria-label={`Selecionar proposta de ${p.nome_cliente ?? "cliente não informado"}`} /></td>}
           <td className="px-3 py-2">{formatDate(p.created_at)}</td><td className="px-3 py-2">{p.nome_cliente ?? "—"}</td>
           <td className="px-3 py-2">{p.tipo_proposta ?? "—"}</td><td className="px-3 py-2">{formatCurrency(Number(p.valor_credito))}</td>
-          <td className="px-3 py-2">{p.status}</td><td className="px-3 py-2"><Link href={`/admin/propostas/${p.id}`} className="text-amber-600 hover:underline">Editar</Link></td>
+          <td className="px-3 py-2">
+            <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${
+              p.status === "Contratada"
+                ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300"
+                : p.status === "Aprovada"
+                ? "bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300"
+                : "bg-zinc-100 text-zinc-800 dark:bg-zinc-800 dark:text-zinc-200"
+            }`}>
+              {p.status}
+            </span>
+          </td>
+          <td className="px-3 py-2 text-right">
+            <div className="flex items-center justify-end gap-2">
+              <MarcarPropostaContratadaButton
+                propostaId={p.id}
+                contratacaoId={p.contratacao_id}
+                contratacaoProtocolo={p.contratacao_protocolo}
+                isContratada={p.status === "Contratada" || Boolean(p.contratacao_id)}
+                origem="admin"
+              />
+              <Link href={`/admin/propostas/${p.id}`} className="rounded px-2 py-1 text-xs font-semibold text-amber-600 hover:bg-amber-50 hover:underline dark:hover:bg-amber-950/40">
+                Editar
+              </Link>
+            </div>
+          </td>
         </tr>)}</tbody>
       </table>
     </div>

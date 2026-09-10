@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import QRCode from "react-qr-code";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Copy } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Copy, FileText } from "lucide-react";
 import { Button, Input, Label, Textarea } from "@/components/ui/form-primitives";
 import { sectionCardClass, simuladorShell } from "@/components/simulador/simulador-ui";
 import {
@@ -135,6 +135,25 @@ export function ContratacaoWizard({
   const [documentos, setDocumentos] = useState<DocumentoContratacaoPublico[]>([]);
   const [observacaoCliente, setObservacaoCliente] = useState("");
   const [copiedLink, setCopiedLink] = useState<VisualizacaoProposta | null>(null);
+  const [tipoFinalizacao, setTipoFinalizacao] = useState<"contratacao" | "proposta">("contratacao");
+  const [finalizacaoModo, setFinalizacaoModo] = useState<"contratacao" | "proposta">("contratacao");
+
+  async function concluirComoApenasProposta() {
+    setSubmitting(true);
+    setError(null);
+    try {
+      await patch({
+        etapa: "documentos",
+        observacao_cliente: observacaoCliente,
+      });
+      setFinalizacaoModo("proposta");
+      setStep("success");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Erro ao salvar proposta");
+    } finally {
+      setSubmitting(false);
+    }
+  }
 
   async function copyProposalLink(mode: VisualizacaoProposta) {
     await navigator.clipboard.writeText(
@@ -537,6 +556,7 @@ export function ContratacaoWizard({
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error ?? "Falha ao finalizar");
+      setFinalizacaoModo("contratacao");
       setStep("success");
       await load();
     } catch (e) {
@@ -924,10 +944,81 @@ export function ContratacaoWizard({
               Seus documentos serão utilizados apenas para análise e formalização da proposta, conforme
               nossa política de privacidade.
             </p>
-            {docsAviso ? <p className="text-sm font-medium text-amber-300">{docsAviso}</p> : null}
-            <Button type="button" variant="gold" className="w-full" disabled={submitting} onClick={continuarDocs}>
-              Continuar para pagamento
-            </Button>
+            {/* Escolha entre Apenas Proposta ou Contratação */}
+            <div className="space-y-3 pt-3 border-t border-slate-800">
+              <Label className="text-sm font-semibold text-slate-200">
+                Como você deseja concluir esta solicitação?
+              </Label>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTipoFinalizacao("proposta");
+                    setDocsAviso(null);
+                  }}
+                  className={cn(
+                    "flex flex-col items-start rounded-xl border p-3.5 text-left transition",
+                    tipoFinalizacao === "proposta"
+                      ? "border-amber-500 bg-amber-950/40 text-white shadow-sm"
+                      : "border-slate-800 bg-slate-900/40 text-slate-400 hover:border-slate-700 hover:text-slate-300"
+                  )}
+                >
+                  <span className="flex items-center gap-1.5 font-bold text-amber-400 text-sm">
+                    <FileText size={15} />
+                    Apenas Proposta
+                  </span>
+                  <span className="mt-1 text-xs text-slate-400">
+                    Salvar proposta comercial para análise com o consultor, sem contratação imediata.
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTipoFinalizacao("contratacao");
+                    setDocsAviso(null);
+                  }}
+                  className={cn(
+                    "flex flex-col items-start rounded-xl border p-3.5 text-left transition",
+                    tipoFinalizacao === "contratacao"
+                      ? "border-emerald-500 bg-emerald-950/40 text-white shadow-sm"
+                      : "border-slate-800 bg-slate-900/40 text-slate-400 hover:border-slate-700 hover:text-slate-300"
+                  )}
+                >
+                  <span className="flex items-center gap-1.5 font-bold text-emerald-400 text-sm">
+                    <CheckCircle2 size={15} />
+                    Contratação
+                  </span>
+                  <span className="mt-1 text-xs text-slate-400">
+                    Avançar para formalizar a contratação online da cota e emissão do contrato.
+                  </span>
+                </button>
+              </div>
+
+              {docsAviso ? <p className="text-sm font-medium text-amber-300">{docsAviso}</p> : null}
+
+              {tipoFinalizacao === "proposta" ? (
+                <Button
+                  type="button"
+                  variant="outlineGold"
+                  className="w-full"
+                  disabled={submitting}
+                  onClick={concluirComoApenasProposta}
+                >
+                  {submitting ? "Salvando proposta..." : "📄 Finalizar Apenas como Proposta"}
+                </Button>
+              ) : (
+                <Button
+                  type="button"
+                  variant="gold"
+                  className="w-full"
+                  disabled={submitting}
+                  onClick={continuarDocs}
+                >
+                  {submitting ? "Processando..." : "✍️ Continuar para Contratação"}
+                </Button>
+              )}
+            </div>
           </div>
         ) : null}
 
@@ -1025,17 +1116,52 @@ export function ContratacaoWizard({
         ) : null}
 
         {step === "success" ? (
-          <div className={cn(sectionCardClass(), "space-y-3 text-center")}>
-            <h2 className="text-xl font-bold text-emerald-400">Solicitação enviada com sucesso!</h2>
-            <p className="text-sm text-slate-300">
-              Recebemos seus dados, documentos e a forma de pagamento escolhida. Nossa equipe irá finalizar
-              sua proposta no sistema da administradora.
-            </p>
-            <p className="text-sm text-slate-300">
-              Em breve, você receberá pelo WhatsApp ou e-mail o link de aceite do contrato junto com as
-              orientações de pagamento da opção escolhida.
-            </p>
-            {successExtra ? <p className="text-sm text-amber-200/90">{successExtra}</p> : null}
+          <div className={cn(sectionCardClass(), "space-y-4 text-center")}>
+            {finalizacaoModo === "proposta" ? (
+              <>
+                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-amber-500/20 text-amber-400">
+                  <FileText className="h-6 w-6" />
+                </div>
+                <h2 className="text-xl font-bold text-amber-400">Proposta salva com sucesso!</h2>
+                <p className="text-sm text-slate-300">
+                  Sua proposta comercial foi registrada. Nossa equipe e o consultor responsável
+                  analisarão suas condições e entrarão em contato pelo WhatsApp ou e-mail para
+                  apresentar as melhores opções e tirar dúvidas.
+                </p>
+                {c?.protocolo ? (
+                  <p className="font-mono text-xs text-slate-400">
+                    Protocolo da proposta: <strong className="text-slate-200">{c.protocolo}</strong>
+                  </p>
+                ) : null}
+                <div className="flex flex-wrap justify-center gap-3 pt-2">
+                  <Button
+                    type="button"
+                    variant="outlineGold"
+                    onClick={() => copyProposalLink("resumida")}
+                  >
+                    {copiedLink === "resumida" ? "Link copiado!" : "Copiar link da proposta"}
+                  </Button>
+                </div>
+              </>
+            ) : (
+              <>
+                <h2 className="text-xl font-bold text-emerald-400">Contratação enviada com sucesso!</h2>
+                <p className="text-sm text-slate-300">
+                  Recebemos seus dados, documentos e a forma de pagamento escolhida. Nossa equipe irá finalizar
+                  sua proposta no sistema da administradora para formalizar a contratação.
+                </p>
+                <p className="text-sm text-slate-300">
+                  Em breve, você receberá pelo WhatsApp ou e-mail o link de aceite do contrato junto com as
+                  orientações de pagamento da opção escolhida.
+                </p>
+                {c?.protocolo ? (
+                  <p className="font-mono text-xs text-emerald-300">
+                    Protocolo: <strong>{c.protocolo}</strong>
+                  </p>
+                ) : null}
+                {successExtra ? <p className="text-sm text-amber-200/90">{successExtra}</p> : null}
+              </>
+            )}
           </div>
         ) : null}
       </div>

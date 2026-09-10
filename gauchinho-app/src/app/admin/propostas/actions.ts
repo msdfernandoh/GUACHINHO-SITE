@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { requireTenantPermission } from "@/lib/tenant/context";
 import { registrarEvento } from "@/lib/eventos/registrar";
 import {
@@ -19,12 +20,31 @@ function selectedIds(formData: FormData) {
   return [...new Set(formData.getAll("ids").map(String).filter((id) => UUID.test(id)))].slice(0, 200);
 }
 
+export type PropostaListItem = {
+  id: string;
+  created_at: string;
+  nome_cliente: string | null;
+  whatsapp_cliente?: string | null;
+  email_cliente?: string | null;
+  cidade_cliente?: string | null;
+  tipo_proposta: string | null;
+  valor_credito: number | null;
+  valor_parcela?: number | null;
+  prazo?: number | null;
+  status: string;
+  lead_id: string | null;
+  pdf_url: string | null;
+  consultor_nome?: string | null;
+  contratacao_id?: string | null;
+  contratacao_protocolo?: string | null;
+};
+
 export async function fetchPropostasList(status?: string) {
   const { empresaAtiva, vinculoAtivo } = await requireTenantPermission("gerenciar_propostas");
   const supabase = await createClient();
   let q = supabase
     .from("propostas")
-    .select("id, created_at, nome_cliente, tipo_proposta, valor_credito, status, lead_id, pdf_url")
+    .select("id, created_at, nome_cliente, whatsapp_cliente, email_cliente, cidade_cliente, tipo_proposta, valor_credito, valor_parcela, prazo, status, lead_id, pdf_url, consultor_nome")
     .eq("empresa_id", empresaAtiva.id)
     .is("excluido_at", null)
     .order("created_at", { ascending: false })
@@ -32,8 +52,35 @@ export async function fetchPropostasList(status?: string) {
   if (status) q = q.eq("status", status);
   const { data, error } = await q;
   if (error) throw new Error(error.message);
+
+  const rawRows = data ?? [];
+  const propostaIds = rawRows.map((p) => p.id);
+  const contratacoesMap = new Map<string, { id: string; protocolo: string }>();
+
+  if (propostaIds.length > 0) {
+    const { data: cList } = await supabase
+      .from("contratacoes_online")
+      .select("id, protocolo, proposta_id")
+      .eq("empresa_id", empresaAtiva.id)
+      .in("proposta_id", propostaIds);
+    for (const c of cList ?? []) {
+      if (c.proposta_id) {
+        contratacoesMap.set(c.proposta_id, { id: c.id, protocolo: c.protocolo });
+      }
+    }
+  }
+
+  const rows: PropostaListItem[] = rawRows.map((p) => {
+    const c = contratacoesMap.get(p.id);
+    return {
+      ...p,
+      contratacao_id: c?.id ?? null,
+      contratacao_protocolo: c?.protocolo ?? null,
+    };
+  });
+
   return {
-    rows: data ?? [],
+    rows,
     podeExcluirEmLote: vinculoAtivo.papel?.codigo === "admin_empresa" || await isPlatformSuperadmin(),
   };
 }
@@ -69,7 +116,19 @@ export async function fetchProposta(id: string) {
   const supabase = await createClient();
   const { data, error } = await supabase.from("propostas").select("*").eq("id", id).eq("empresa_id", empresaAtiva.id).is("excluido_at", null).single();
   if (error) throw new Error(error.message);
-  return data;
+
+  const { data: c } = await supabase
+    .from("contratacoes_online")
+    .select("id, protocolo")
+    .eq("proposta_id", id)
+    .eq("empresa_id", empresaAtiva.id)
+    .maybeSingle();
+
+  return {
+    ...data,
+    contratacao_id: c?.id ?? null,
+    contratacao_protocolo: c?.protocolo ?? null,
+  };
 }
 
 function readPropostaPayload(formData: FormData, existingPdfUrl?: string | null) {
@@ -225,4 +284,155 @@ export async function searchLeadsForProposta(q: string) {
     .ilike("nome", `%${q}%`)
     .limit(10);
   return data ?? [];
+}
+
+export async function marcarPropostaContratadaAction(input: {
+  propostaId: string;
+  origemInterface?: "admin" | "erp";
+}): Promise<{ ok: true; contratacaoId: string; protocolo: string; redirectUrl: string } | { ok: false; error: string }> {
+  try {
+    const { empresaAtiva, usuario } = await requireTenantPermission("gerenciar_propostas");
+    const admin = createAdminClient();
+
+    // 1. Tenta via RPC 218
+    let contratacao: { id: string; protocolo: string } | null = null;
+    try {
+      const { data: rpcData, error: rpcError } = await admin.rpc("rpc_converter_proposta_em_contratacao", {
+        p_empresa_id: empresaAtiva.id,
+        p_proposta_id: input.propostaId,
+        p_usuario_id: usuario.id,
+      });
+      if (!rpcError && rpcData) {
+        const row = rpcData as { id: string; protocolo: string };
+        contratacao = { id: row.id, protocolo: row.protocolo };
+      }
+    } catch {
+      // Prossegue para o fallback resiliente
+    }
+
+    // 2. Fallback resiliente se RPC não retornou
+    if (!contratacao) {
+      const { data: prop, error: propErr } = await admin
+        .from("propostas")
+        .select("*")
+        .eq("id", input.propostaId)
+        .eq("empresa_id", empresaAtiva.id)
+        .single();
+      if (propErr || !prop) throw new Error("Proposta não encontrada neste tenant.");
+
+      const { data: existing } = await admin
+        .from("contratacoes_online")
+        .select("id, protocolo")
+        .eq("proposta_id", input.propostaId)
+        .maybeSingle();
+
+      if (existing) {
+        await admin.from("propostas").update({ status: "Contratada", updated_at: new Date().toISOString() }).eq("id", input.propostaId);
+        contratacao = { id: existing.id, protocolo: existing.protocolo };
+      } else {
+        const fill = (prop.preenchimento_contratacao ?? {}) as Record<string, unknown>;
+        const protocolo = `GC-${new Date().getFullYear()}-${Math.floor(100000 + Math.random() * 900000)}`;
+        const token = prop.public_token || `ct_${crypto.randomUUID().replace(/-/g, "")}`;
+
+        const { data: nova, error: novaErr } = await admin
+          .from("contratacoes_online")
+          .insert({
+            proposta_id: prop.id,
+            empresa_id: empresaAtiva.id,
+            public_token: token,
+            protocolo,
+            origem: prop.origem_contratacao === "grupos" ? "grupos" : "simulador",
+            status: "aguardando_consultor",
+            lead_id: prop.lead_id,
+            gerado_por_usuario_id: usuario.id,
+            gerado_por_nome: prop.consultor_nome,
+            gerado_por_email: prop.consultor_email,
+            nome: prop.nome_cliente || "Cliente",
+            telefone: (prop.whatsapp_cliente || "").replace(/\D/g, ""),
+            email: (fill.email as string) || prop.email_cliente,
+            tipo_pessoa: (fill.tipo_pessoa as string) || "cpf",
+            cpf: (fill.cpf as string) || null,
+            data_nascimento: (fill.data_nascimento as string) || null,
+            razao_social: (fill.razao_social as string) || null,
+            cnpj: (fill.cnpj as string) || null,
+            responsavel_nome: (fill.responsavel_nome as string) || null,
+            responsavel_cpf: (fill.responsavel_cpf as string) || null,
+            cep: (fill.cep as string) || null,
+            endereco: (fill.endereco as string) || null,
+            numero: (fill.numero as string) || null,
+            complemento: (fill.complemento as string) || null,
+            bairro: (fill.bairro as string) || null,
+            cidade: (fill.cidade as string) || prop.cidade_cliente,
+            uf: (fill.uf as string) || null,
+            tipo_bem: prop.tipo_bem,
+            credito_selecionado: prop.valor_credito,
+            parcela_estimada: prop.valor_parcela,
+            prazo: prop.prazo,
+            grupo_id: (fill.grupo_id as string) || null,
+            grupo_nome: (fill.grupo_nome as string) || null,
+            administradora: (fill.administradora as string) || null,
+            cota_id: (fill.cota_id as string) || null,
+            dados_simulacao: prop.dados_simulacao || {},
+            forma_pagamento: (fill.forma_pagamento as string) || null,
+            observacao_cliente: (fill.observacao_cliente as string) || null,
+            confirmado_em: new Date().toISOString(),
+            finalizado_em: new Date().toISOString(),
+            contrato_assinado: true,
+            contrato_assinado_em: new Date().toISOString(),
+            participante_comercial_id: prop.participante_comercial_id,
+            organizacao_parceira_id: prop.organizacao_parceira_id,
+          })
+          .select("id, protocolo")
+          .single();
+
+        if (novaErr || !nova) throw new Error(novaErr?.message || "Erro ao criar contratação");
+        contratacao = { id: nova.id, protocolo: nova.protocolo };
+
+        // Copia documentos se houver
+        const { data: pDocs } = await admin
+          .from("propostas_documentos")
+          .select("tipo_documento, arquivo_url, arquivo_nome, mime_type, tamanho_bytes")
+          .eq("proposta_id", prop.id)
+          .eq("empresa_id", empresaAtiva.id);
+
+        if (pDocs && pDocs.length > 0) {
+          await admin.from("contratacoes_documentos").insert(
+            pDocs.map((d) => ({
+              contratacao_id: nova.id,
+              tipo_documento: d.tipo_documento,
+              arquivo_url: d.arquivo_url,
+              arquivo_nome: d.arquivo_nome,
+              mime_type: d.mime_type,
+              tamanho_bytes: d.tamanho_bytes,
+            }))
+          );
+        }
+
+        await admin.from("propostas").update({ status: "Contratada", updated_at: new Date().toISOString() }).eq("id", prop.id);
+      }
+    }
+
+    if (!contratacao) throw new Error("Não foi possível gerar a contratação.");
+
+    revalidatePath("/admin/propostas");
+    revalidatePath("/admin/contratacoes");
+    revalidatePath("/erp/propostas");
+    revalidatePath("/erp/contratacoes");
+
+    const redirectUrl = input.origemInterface === "erp"
+      ? `/erp/contratacoes/${contratacao.id}`
+      : `/admin/contratacoes/${contratacao.id}`;
+
+    return {
+      ok: true,
+      contratacaoId: contratacao.id,
+      protocolo: contratacao.protocolo,
+      redirectUrl,
+    };
+  } catch (err) {
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : "Erro ao converter proposta em contratação.",
+    };
+  }
 }

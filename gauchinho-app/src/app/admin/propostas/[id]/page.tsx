@@ -4,6 +4,7 @@ import { fetchProposta } from "../actions";
 import { PropostaForm } from "@/components/admin/proposta-form";
 import { PropostaPdfToolbar } from "@/components/admin/proposta-pdf-toolbar";
 import { formatCurrency, formatDate } from "@/lib/utils/format";
+import { MarcarPropostaContratadaButton } from "@/components/admin/marcar-proposta-contratada-button";
 
 export default async function PropostaDetailPage({
   params,
@@ -36,6 +37,15 @@ export default async function PropostaDetailPage({
           </Link>
         ) : null}
       </div>
+
+      <MarcarPropostaContratadaButton
+        propostaId={id}
+        contratacaoId={p.contratacao_id as string | undefined}
+        contratacaoProtocolo={p.contratacao_protocolo as string | undefined}
+        isContratada={p.status === "Contratada" || Boolean(p.contratacao_id)}
+        origem="admin"
+        variant="banner-btn"
+      />
 
       <PropostaPdfToolbar
         propostaId={id}

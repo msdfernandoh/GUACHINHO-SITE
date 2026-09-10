@@ -105,6 +105,13 @@ A plataforma suporta:
 - Migration 217 (`217_grupos_atualizacao_vagas_lote.sql`) com RPC atômica `rpc_platform_atualizar_vagas_grupos_lote`, validação de `is_platform_superadmin()`, auditoria de `vagas_atualizado_em` e `updated_at`, e fallback seguro na Server Action `atualizarVagasGruposLotePlatformAction`.
 - Quando `vagas_disponiveis <= 0`, o sistema e os sites públicos automaticamente exibem a tag `Aguardando novas vagas`, refletindo a disponibilidade real em tempo real.
 
+### Operação Comercial 218 — conversão de propostas em contratações no Login, ERP e Site
+
+- No fluxo de simulação e contratação do site (`/proposta/[token]`), a etapa de documentos (`step === 'docs'`) permite ao cliente ou consultor selecionar explicitamente entre **Apenas Proposta** (salva a proposta comercial para análise, gerando resumo e PDF sem forçar pagamento) e **Contratação** (avança para pagamento e materializa a contratação formal).
+- Na Área de Login do site (`/admin/propostas` e `/admin/propostas/[id]`), cada proposta possui o botão **Marcar Contratada**, que aciona a Server Action `marcarPropostaContratadaAction` e redireciona direto para a tela de contratação `/admin/contratacoes/[id]`.
+- Criação do módulo de Propostas no ERP (`/erp/propostas` e `/erp/propostas/[id]`), com visão gerencial, cards de métricas, busca textual e botão direto **Marcar Contratada**, encaminhando para a fila de formalização em `/erp/contratacoes/[id]`.
+- Migration 218 (`218_converter_proposta_em_contratacao.sql`) introduz a RPC atômica e idempotente `rpc_converter_proposta_em_contratacao`, gerando protocolo sequencial `GC-YYYY-XXXXXX`, preservando integridade por tenant, migrando documentos de `propostas_documentos` para `contratacoes_documentos` e atualizando o status da proposta para `Contratada`.
+
 ### Evolução financeira 192 — contas da empresa e equalização dos sócios
 
 > Correção operacional 188: `financeiro_estornos` concede somente leitura

@@ -26,6 +26,7 @@ export const PROPOSTA_STATUS = [
   "Enviada",
   "Em negociação",
   "Aprovada",
+  "Contratada",
   "Perdida",
   "Cancelada",
   "Arquivada",
