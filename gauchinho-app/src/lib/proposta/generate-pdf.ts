@@ -59,6 +59,7 @@ export async function generateAndStorePropostaPdf(
     pagina: overrides?.pagina,
     entidade_tipo: "proposta",
     entidade_id: propostaId,
+
     usuario_id: overrides?.usuario_id,
   });
 
@@ -105,6 +106,23 @@ export async function enrichPropostaProjecaoFromSimulacao(propostaId: string) {
 export async function getPropostaPdfDownloadUrl(propostaId: string) {
   const admin = createAdminClient();
   const { data: p } = await admin.from("propostas").select("pdf_url").eq("id", propostaId).single();
-  if (!p?.pdf_url) throw new Error("PDF ainda não gerado");
-  return createPropostaPdfSignedUrl(p.pdf_url);
+  if (p?.pdf_url) {
+    try {
+      return await createPropostaPdfSignedUrl(p.pdf_url);
+    } catch {
+      // Arquivo pode ter sido expirado ou removido do storage; prosseguir com nova geração sob demanda.
+    }
+  }
+
+  try {
+    await enrichPropostaProjecaoFromSimulacao(propostaId);
+    const generated = await generateAndStorePropostaPdf(propostaId, { origem: "download_direto" });
+    if (generated.signedUrl) return generated.signedUrl;
+    if (generated.storagePath) return await createPropostaPdfSignedUrl(generated.storagePath);
+  } catch (err) {
+    console.error("[getPropostaPdfDownloadUrl] Erro ao gerar PDF sob demanda:", err);
+    throw new Error("Não foi possível gerar o PDF da proposta no momento.");
+  }
+
+  throw new Error("Não foi possível obter a URL de download do PDF.");
 }

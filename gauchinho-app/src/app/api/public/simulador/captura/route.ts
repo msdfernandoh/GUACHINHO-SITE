@@ -4,6 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { registrarEvento } from "@/lib/eventos/registrar";
 import { DEFAULT_LEADS, getConfigJsonPublic } from "@/server/config";
 import { propostaMinimumValid } from "@/lib/proposta/minimum";
+import { buscarPropostaAtivaDoDia } from "@/lib/proposta/proposta-unificacao-service";
 
 type Body = {
   nome: string;
@@ -78,34 +79,52 @@ export async function POST(request: Request) {
             ?.parcelaEstimada ??
           0,
       );
-      const { data: prop } = await admin
-        .from("propostas")
-        .insert({
-          empresa_id: ingress.empresaId,
-          lead_id: leadId,
-          nome_cliente: body.nome.trim(),
-          whatsapp_cliente: body.whatsapp.trim(),
-          cidade_cliente: body.cidade?.trim() || null,
-          tipo_proposta:
-            body.modo === "financiamento" ? "Financiamento" : "Consórcio — Simulador",
-          tipo_bem: body.tipoBem === "imovel" ? "Imóvel" : body.tipoBem === "automovel" ? "Veículo" : null,
-          valor_credito: valorSim,
-          prazo: prazo,
-          entrada: entradaVal,
-          valor_parcela: parcela || null,
-          dados_simulacao: {
-            ...(body.entrada as object),
-            modo: body.modo,
-            tipoBem: body.tipoBem,
-            resultado: body.resultado,
-          },
-          comparativo_financiamento: body.resultado,
-          status: "Gerada",
-          pdf_url: null,
-        })
-        .select("id")
-        .single();
-      propostaId = prop?.id ?? null;
+      const propostaPayload = {
+        empresa_id: ingress.empresaId,
+        lead_id: leadId,
+        nome_cliente: body.nome.trim(),
+        whatsapp_cliente: body.whatsapp.trim(),
+        cidade_cliente: body.cidade?.trim() || null,
+        tipo_proposta:
+          body.modo === "financiamento" ? "Financiamento" : "Consórcio — Simulador",
+        tipo_bem: body.tipoBem === "imovel" ? "Imóvel" : body.tipoBem === "automovel" ? "Veículo" : null,
+        valor_credito: valorSim,
+        prazo: prazo,
+        entrada: entradaVal,
+        valor_parcela: parcela || null,
+        dados_simulacao: {
+          ...(body.entrada as object),
+          modo: body.modo,
+          tipoBem: body.tipoBem,
+          resultado: body.resultado,
+        },
+        comparativo_financiamento: body.resultado,
+        status: "Gerada",
+        pdf_url: null,
+      };
+
+      const propostaAtivaHoje = await buscarPropostaAtivaDoDia(admin, {
+        empresaId: ingress.empresaId,
+        telefone: body.whatsapp,
+        nome: body.nome,
+      });
+
+      if (propostaAtivaHoje) {
+        const { data: prop } = await admin
+          .from("propostas")
+          .update({ ...propostaPayload, updated_at: new Date().toISOString() })
+          .eq("id", propostaAtivaHoje.id)
+          .select("id")
+          .single();
+        propostaId = prop?.id ?? propostaAtivaHoje.id;
+      } else {
+        const { data: prop } = await admin
+          .from("propostas")
+          .insert(propostaPayload)
+          .select("id")
+          .single();
+        propostaId = prop?.id ?? null;
+      }
       if (propostaId) {
         const { enrichPropostaProjecaoFromSimulacao, generateAndStorePropostaPdf } = await import(
           "@/lib/proposta/generate-pdf"

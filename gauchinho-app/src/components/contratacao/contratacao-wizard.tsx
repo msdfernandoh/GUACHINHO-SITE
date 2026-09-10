@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import QRCode from "react-qr-code";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, CheckCircle2, Copy, FileText } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Copy, Download, FileText } from "lucide-react";
 import { Button, Input, Label, Textarea } from "@/components/ui/form-primitives";
 import { sectionCardClass, simuladorShell } from "@/components/simulador/simulador-ui";
 import {
@@ -616,26 +616,40 @@ export function ContratacaoWizard({
             <ArrowLeft className="h-4 w-4" />
             Voltar para grupos
           </Link>
-          {canGenerateLinks && !isDraft && step === "confirm" ? (
-            <div className="flex flex-wrap gap-2">
-              <Button
-                type="button"
-                size="sm"
-                variant="outlineGold"
-                onClick={() => void copyProposalLink("resumida")}
+          {!isDraft && c?.public_token ? (
+            <div className="flex flex-wrap items-center gap-2">
+              <a
+                href={`/api/public/contratacoes/${c.public_token}/pdf`}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-1.5 text-xs font-semibold text-amber-300 transition hover:border-amber-400 hover:bg-amber-500/20"
+                title="Baixar o arquivo PDF oficial desta proposta"
               >
-                <Copy className="mr-2 h-4 w-4" />
-                {copiedLink === "resumida" ? "Link resumido copiado!" : "Link resumido"}
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                variant="outlineGold"
-                onClick={() => void copyProposalLink("completa")}
-              >
-                <Copy className="mr-2 h-4 w-4" />
-                {copiedLink === "completa" ? "Link completo copiado!" : "Link completo"}
-              </Button>
+                <Download className="h-4 w-4" />
+                Baixar PDF
+              </a>
+              {canGenerateLinks && step === "confirm" ? (
+                <>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outlineGold"
+                    onClick={() => void copyProposalLink("resumida")}
+                  >
+                    <Copy className="mr-2 h-4 w-4" />
+                    {copiedLink === "resumida" ? "Link resumido copiado!" : "Link resumido"}
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outlineGold"
+                    onClick={() => void copyProposalLink("completa")}
+                  >
+                    <Copy className="mr-2 h-4 w-4" />
+                    {copiedLink === "completa" ? "Link completo copiado!" : "Link completo"}
+                  </Button>
+                </>
+              ) : null}
             </div>
           ) : null}
         </div>
@@ -754,15 +768,29 @@ export function ContratacaoWizard({
               Ao continuar, você confirma que deseja avançar com esta proposta para análise e emissão
               manual do contrato pela equipe {tenantBrand.nome}.
             </p>
-            <Button
-              type="button"
-              variant="gold"
-              className="min-h-12 w-full text-base font-bold"
-              disabled={submitting}
-              onClick={confirmar}
-            >
-              Confirmar proposta e continuar
-            </Button>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <Button
+                type="button"
+                variant="gold"
+                className="min-h-12 flex-1 text-base font-bold"
+                disabled={submitting}
+                onClick={confirmar}
+              >
+                Confirmar proposta e continuar
+              </Button>
+              {c?.public_token ? (
+                <a
+                  href={`/api/public/contratacoes/${c.public_token}/pdf`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-slate-700 bg-slate-900 px-5 text-sm font-semibold text-slate-200 transition hover:border-amber-500/50 hover:bg-slate-800"
+                  title="Baixar o arquivo PDF da proposta em nova aba"
+                >
+                  <Download className="h-4 w-4 text-amber-400" />
+                  Baixar PDF
+                </a>
+              ) : null}
+            </div>
           </>
         ) : null}
 
@@ -1134,6 +1162,18 @@ export function ContratacaoWizard({
                   </p>
                 ) : null}
                 <div className="flex flex-wrap justify-center gap-3 pt-2">
+                  {c?.public_token ? (
+                    <a
+                      href={`/api/public/contratacoes/${c.public_token}/pdf`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-amber-500 px-5 py-2.5 text-sm font-bold text-zinc-950 shadow-md transition hover:bg-amber-400"
+                      title="Baixar o arquivo PDF da proposta agora mesmo"
+                    >
+                      <Download className="h-4 w-4" />
+                      Baixar PDF da Proposta
+                    </a>
+                  ) : null}
                   <Button
                     type="button"
                     variant="outlineGold"
@@ -1158,6 +1198,19 @@ export function ContratacaoWizard({
                   <p className="font-mono text-xs text-emerald-300">
                     Protocolo: <strong>{c.protocolo}</strong>
                   </p>
+                ) : null}
+                {c?.public_token ? (
+                  <div className="flex justify-center pt-2">
+                    <a
+                      href={`/api/public/contratacoes/${c.public_token}/pdf`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-2 text-sm font-semibold text-emerald-300 transition hover:border-emerald-400 hover:bg-emerald-500/20"
+                    >
+                      <Download className="h-4 w-4" />
+                      Baixar PDF da proposta
+                    </a>
+                  </div>
                 ) : null}
                 {successExtra ? <p className="text-sm text-amber-200/90">{successExtra}</p> : null}
               </>

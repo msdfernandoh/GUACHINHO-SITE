@@ -15,6 +15,7 @@ import { sanitizeCnpj, sanitizeCpf, sanitizeTelefone, validarCnpj, validarCpf, v
 import type { UsuarioNegocio } from "@/lib/auth/permissions";
 import type { ContratacaoDraftPayload } from "./draft";
 import type { ContratacaoOnlineRow, FormaPagamento, TipoDocumentoContratacao, TipoPessoa } from "./types";
+import { buscarPropostaAtivaDoDia } from "@/lib/proposta/proposta-unificacao-service";
 
 type PublicProposalPatch = {
   etapa?: "dados" | "pessoa" | "documentos" | "pagamento";
@@ -151,6 +152,56 @@ export async function criarPropostaDoFluxo(input: {
       ? await canonicalizarDadosSimulacaoGrupos(input.empresaId, input.draft.dados_simulacao)
       : input.draft.dados_simulacao;
   const flat = extrairCamposFlat(input.draft.origem, dadosSimulacao);
+
+  // 1. Unificação: verifica se já existe uma proposta ativa de hoje para o mesmo cliente
+  const propostaExistenteHoje = await buscarPropostaAtivaDoDia(admin, {
+    empresaId: input.empresaId,
+    telefone,
+    nome,
+  });
+
+  if (propostaExistenteHoje) {
+    const preenchimentoAtual = (propostaExistenteHoje.preenchimento_contratacao ?? {}) as Record<string, unknown>;
+    const updatedPreenchimento = {
+      ...preenchimentoAtual,
+      etapa_status: "dados_preenchidos",
+      gerado_por_usuario_id: consultorId,
+      email: email || preenchimentoAtual.email || null,
+      grupo_id: flat.grupo_id,
+      grupo_nome: flat.grupo_nome,
+      administradora: flat.administradora,
+      cota_id: flat.cota_id,
+    };
+
+    const { data: updated, error: updateError } = await admin
+      .from("propostas")
+      .update({
+        origem_contratacao: input.draft.origem,
+        nome_cliente: nome,
+        whatsapp_cliente: telefone,
+        email_cliente: email || null,
+        tipo_proposta: input.draft.origem === "grupos" ? "Consórcio — Grupos" : "Consórcio — Simulador",
+        tipo_bem: flat.tipo_bem,
+        valor_credito: flat.credito_selecionado,
+        valor_parcela: flat.parcela_estimada,
+        prazo: flat.prazo,
+        dados_simulacao: dadosSimulacao,
+        consultor_nome: consultorNome,
+        consultor_email: consultorEmail,
+        pdf_url: null,
+        status: "Gerada",
+        preenchimento_contratacao: updatedPreenchimento,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", propostaExistenteHoje.id)
+      .select("*")
+      .single();
+
+    if (!updateError && updated) {
+      return propostaAsWizardRow(updated as PropostaFluxoRow);
+    }
+  }
+
   for (let attempt = 0; attempt < 5; attempt++) {
     const token = generatePublicToken();
     const { data, error } = await admin.from("propostas").insert({

@@ -21,6 +21,7 @@ import { assertSelecoesAutorizadasForEmpresa } from "@/lib/grupos/catalogo-autor
 import { getCatalogEmpresaIdFromRequest } from "@/lib/grupos/resolve-catalog-empresa";
 import { DEFAULT_LEADS, getConfigJsonPublic } from "@/server/config";
 import { propostaMinimumValid } from "@/lib/proposta/minimum";
+import { buscarPropostaAtivaDoDia } from "@/lib/proposta/proposta-unificacao-service";
 
 type SelecaoPayload = {
   grupoId: string;
@@ -204,43 +205,61 @@ export async function POST(request: Request) {
 
     let propostaId: string | null = null;
     if (body.acao === "proposta") {
-      const { data: prop } = await admin
-        .from("propostas")
-        .insert({
-          empresa_id: ingress.empresaId,
-          lead_id: leadId,
-          nome_cliente: body.nome.trim(),
-          whatsapp_cliente: whatsapp,
-          tipo_proposta: "Consórcio — Grupos",
-          valor_credito: totais.somaCotas,
-          valor_parcela: totais.primeiraParcela,
-          observacoes: observacao,
-          consultor_nome: consultorNome,
-          consultor_telefone: consultorTelefone,
-          contato_exibido_tipo: consultorNome ? "consultor" : null,
-          dados_simulacao: {
-            simulacao_grupo_id: sim.id,
-            totais,
-            selecoes: selecoesCalc.map((s) => {
-              const modsAtivas = listarModalidadesLanceAtivas(s.grupo, s.mods);
-              const mod = resolveModalidadeLanceAtiva(s.config, modsAtivas);
-              return {
-                grupoId: s.grupo.id,
-                codigoGrupo: s.grupo.codigo_grupo,
-                cotaId: s.cota.id,
-                credito: s.cota.valor_credito,
-                config: s.config,
-                resultado: s.resultado,
-                ...buildSnapshotLanceLinha(s.config, s.resultado, mod),
-              };
-            }),
-          },
-          status: "Gerada",
-          pdf_url: null,
-        })
-        .select("id")
-        .single();
-      propostaId = prop?.id ?? null;
+      const propostaPayload = {
+        empresa_id: ingress.empresaId,
+        lead_id: leadId,
+        nome_cliente: body.nome.trim(),
+        whatsapp_cliente: whatsapp,
+        tipo_proposta: "Consórcio — Grupos",
+        valor_credito: totais.somaCotas,
+        valor_parcela: totais.primeiraParcela,
+        observacoes: observacao,
+        consultor_nome: consultorNome,
+        consultor_telefone: consultorTelefone,
+        contato_exibido_tipo: consultorNome ? "consultor" : null,
+        dados_simulacao: {
+          simulacao_grupo_id: sim.id,
+          totais,
+          selecoes: selecoesCalc.map((s) => {
+            const modsAtivas = listarModalidadesLanceAtivas(s.grupo, s.mods);
+            const mod = resolveModalidadeLanceAtiva(s.config, modsAtivas);
+            return {
+              grupoId: s.grupo.id,
+              codigoGrupo: s.grupo.codigo_grupo,
+              cotaId: s.cota.id,
+              credito: s.cota.valor_credito,
+              config: s.config,
+              resultado: s.resultado,
+              ...buildSnapshotLanceLinha(s.config, s.resultado, mod),
+            };
+          }),
+        },
+        status: "Gerada",
+        pdf_url: null,
+      };
+
+      const propostaAtivaHoje = await buscarPropostaAtivaDoDia(admin, {
+        empresaId: ingress.empresaId,
+        telefone: whatsapp,
+        nome: body.nome,
+      });
+
+      if (propostaAtivaHoje) {
+        const { data: prop } = await admin
+          .from("propostas")
+          .update({ ...propostaPayload, updated_at: new Date().toISOString() })
+          .eq("id", propostaAtivaHoje.id)
+          .select("id")
+          .single();
+        propostaId = prop?.id ?? propostaAtivaHoje.id;
+      } else {
+        const { data: prop } = await admin
+          .from("propostas")
+          .insert(propostaPayload)
+          .select("id")
+          .single();
+        propostaId = prop?.id ?? null;
+      }
       if (propostaId) {
         await admin.from("simulacoes_grupos").update({ proposta_id: propostaId }).eq("id", sim.id);
         const { enrichPropostaProjecaoFromSimulacao, generateAndStorePropostaPdf } = await import(

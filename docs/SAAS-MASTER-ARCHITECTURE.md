@@ -2061,3 +2061,27 @@ também protege os demais usuários com seleção equivalente.
 Relatório:
 `docs/relatorios-fases/HOTFIX-AUDITORIA-USUARIOS-ENTRADA-ERP.md`.
 
+### Operação Multi-tenant 219 — Área de Login e Backoffice em Domínios de Parceiros
+
+Usuários de empresas operacionais (como Gauchinho Consórcios) podem acessar normalmente `/login`, `/admin` e `/erp` a partir de domínios públicos de parceiros (ex.: `raconsinop.com.br`). O proxy do Next.js preserva rotas administrativas e o pipeline de cookies `@supabase/ssr`, mantendo a regra canônica de isolamento de leads (`leads_apenas_proprios`) e aplicando a identidade visual dinâmica do parceiro (`racon_inspired`).
+
+Relatório:
+`docs/relatorios-fases/FASE-219-LOGIN-BACKOFFICE-SITES-PARCEIROS.md`.
+
+### Evolução Operacional 220 — Download de PDF de Propostas e Unificação por Cliente e Data
+
+1. **Download Direto de PDF da Proposta:**
+   - Adicionado botão de download direto do PDF no wizard público (`/proposta/[token]` e tela de sucesso) e ações rápidas nas tabelas do Admin (`/admin/propostas`) e ERP (`/erp/propostas`).
+   - Novo endpoint público dedicado `GET /api/public/contratacoes/[token]/pdf` que localiza a proposta por `public_token` e redireciona para a URL assinada do storage.
+   - Geração sob demanda integrada via `getPropostaPdfDownloadUrl`: caso a proposta não possua o arquivo pré-gerado, o sistema gera o PDF e a projeção no storage automaticamente em tempo real sem lançar exceção.
+
+2. **Unificação e Deduplicação por Cliente e Data:**
+   - Criação do serviço `proposta-unificacao-service.ts` para busca de propostas ativas do dia (`buscarPropostaAtivaDoDia`) e agrupamento diário (`agruparPropostasPorClienteEData`).
+   - Reutilização inteligente: quando o mesmo cliente (telefone/WhatsApp e nome) refaz ou altera a simulação na mesma data no site, a proposta aberta existente é atualizada em vez de gerar linhas duplicadas no banco.
+   - Status finais (`Contratada`, `Cancelada`, `Perdida`) são preservados integralmente sem sobrescrita.
+   - Tabelas de propostas do Admin e ERP com suporte nativo a agrupamento diário por cliente e badge de cotações no dia.
+
+Relatório:
+`docs/relatorios-fases/FASE-220-DOWNLOAD-PDF-PROPOSTAS-UNIFICACAO-CLIENTE-DATA.md`.
+
+

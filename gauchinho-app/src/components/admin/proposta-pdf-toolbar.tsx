@@ -139,15 +139,13 @@ export function PropostaPdfToolbar({ propostaId, pdfUrl, defaults }: Props) {
           <Button type="submit" variant="gold" disabled={loading}>
             {loading ? "Gerando…" : "Gerar PDF"}
           </Button>
+          <Button type="button" variant="outline" onClick={handleDownload} disabled={loading}>
+            Baixar PDF
+          </Button>
           {pdfUrl || downloadUrl ? (
-            <>
-              <Button type="button" variant="outline" onClick={handleDownload} disabled={loading}>
-                Baixar PDF
-              </Button>
-              <Button type="button" variant="outline" onClick={handleCopyLink}>
-                Copiar link
-              </Button>
-            </>
+            <Button type="button" variant="outline" onClick={handleCopyLink}>
+              Copiar link
+            </Button>
           ) : null}
           {wa ? (
             <a

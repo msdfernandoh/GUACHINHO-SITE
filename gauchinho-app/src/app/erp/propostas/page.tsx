@@ -5,6 +5,8 @@ import { formatCurrency, formatDate } from "@/lib/utils/format";
 import { BulkArchiveSelection } from "@/components/erp/bulk-archive-selection";
 import { excluirPropostasEmLoteAction } from "@/app/admin/propostas/actions";
 import { MarcarPropostaContratadaButton } from "@/components/admin/marcar-proposta-contratada-button";
+import { BaixarPropostaPdfButton } from "@/components/admin/baixar-proposta-pdf-button";
+import { agruparPropostasPorClienteEData } from "@/lib/proposta/proposta-unificacao-service";
 import { createClient } from "@/lib/supabase/server";
 import { FileText, Plus, Search } from "lucide-react";
 
@@ -71,6 +73,14 @@ export default async function ErpPropostasPage({
       isContratada: p.status === "Contratada" || Boolean(c),
     };
   });
+
+  const unificar = filtros.unificar !== "0";
+  const displayedRows = unificar
+    ? agruparPropostasPorClienteEData(rows).map((g) => ({
+        ...g.propostaPrincipal,
+        _totalNoDia: g.totalNoDia,
+      }))
+    : rows.map((r) => ({ ...r, _totalNoDia: 1 }));
 
   // Métricas para cards operacionais
   const total = rows.length;
@@ -148,6 +158,18 @@ export default async function ErpPropostasPage({
           <option value="Perdida">Perdida</option>
           <option value="Cancelada">Cancelada</option>
         </select>
+        <div className="flex items-center gap-2 xl:col-span-1">
+          <label className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-400 cursor-pointer">
+            <input
+              type="checkbox"
+              name="unificar"
+              value="1"
+              defaultChecked={unificar}
+              className="rounded border-slate-300"
+            />
+            Unificar por cliente e data
+          </label>
+        </div>
         <button
           type="submit"
           className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
@@ -182,7 +204,7 @@ export default async function ErpPropostasPage({
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {rows.map((p) => (
+              {displayedRows.map((p) => (
                 <tr key={p.id} className="align-middle hover:bg-slate-50/80">
                   {podeExcluirEmLote && (
                     <td className="px-4 py-3">
@@ -198,8 +220,18 @@ export default async function ErpPropostasPage({
                     {formatDate(p.created_at)}
                   </td>
                   <td className="px-4 py-3">
-                    <div className="font-semibold text-slate-900">
-                      {p.nome_cliente || "Cliente não informado"}
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="font-semibold text-slate-900">
+                        {p.nome_cliente || "Cliente não informado"}
+                      </span>
+                      {p._totalNoDia > 1 && (
+                        <span
+                          className="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-800"
+                          title={`${p._totalNoDia} cotações geradas nesta data por este cliente`}
+                        >
+                          {p._totalNoDia} no dia
+                        </span>
+                      )}
                     </div>
                     <div className="text-xs text-slate-500">
                       {p.whatsapp_cliente && (
@@ -245,6 +277,7 @@ export default async function ErpPropostasPage({
                   </td>
                   <td className="whitespace-nowrap px-4 py-3 text-right">
                     <div className="flex items-center justify-end gap-2">
+                      <BaixarPropostaPdfButton propostaId={p.id} />
                       <MarcarPropostaContratadaButton
                         propostaId={p.id}
                         contratacaoId={p.contratacao_id}
