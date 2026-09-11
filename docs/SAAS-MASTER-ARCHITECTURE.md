@@ -2101,3 +2101,23 @@ Relatório:
 
 Relatório:
 `docs/relatorios-fases/FASE-221-EXIBICAO-DADOS-CADASTRO-VAGAS-GRUPOS-SITE.md`.
+
+### Evolução Operacional 222 — Correção de Persistência de Lances no ERP e Resolução do Erro 404
+
+1. **Eliminação de 404 por Criação de Páginas Físicas do App Router:**
+   - Criação de `src/app/erp/lances/page.tsx`, `src/app/erp/assembleias/page.tsx` e `src/app/erp/repasse-franquia/page.tsx`.
+   - No Next.js App Router, pastas físicas que continham `layout.tsx` e `actions.ts` sem `page.tsx` interceptavam requisições e Server Actions sem resolver rota de folha, retornando 404. Com as páginas concretas com `dynamic = "force-dynamic"`, o endpoint de renderização e revalidação opera com estabilidade total.
+
+2. **Permissão de Escrita e Auditoria no Banco (`createAdminClient`):**
+   - As server actions `salvarEstrategiaLanceCompletaAction`, `confirmarLanceOperacionalAction` e `revogarConfirmacaoLanceOperacionalAction` realizam a verificação canônica de acesso via `requireErpRouteAccess("lances")` e, em seguida, utilizam o cliente administrativo (`createAdminClient()`) para executar `upsert` em `cota_estrategias_lance` e inserção de auditoria em `cota_estrategias_lance_historico`.
+   - Supera a restrição da migration 078 que limitava escrita authenticated direta, preservando auditoria multi-tenant fechada por empresa.
+
+3. **UX Resiliente e Feedback de Submissão (`erp-lances-view.tsx`):**
+   - Inclusão de banner de erro com ícone de alerta caso o backend reporte inconsistência na cota.
+   - Estado de carregamento (`isSubmitting`) com spinner e botão desabilitado para evitar submissões concorrentes repetidas.
+   - Atualização suave de tela via `router.refresh()` ao concluir com êxito, substituindo recarregamento bruto de página (`window.location.reload()`).
+   - Normalização robusta de valores monetários no formato pt-BR (`num`) e conversão segura de datas civil (`normalizeDate`).
+
+Relatório:
+`docs/relatorios-fases/FASE-222-CORRECAO-SALVAR-LANCES-ERP-404.md`.
+

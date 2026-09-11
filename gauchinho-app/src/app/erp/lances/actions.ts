@@ -407,16 +407,34 @@ export async function salvarEstrategiaLanceCompletaAction(formData: FormData) {
   const num = (k: string) => {
     const v = formData.get(k);
     if (!v) return null;
-    const n = Number(String(v).replace(",", "."));
+    let clean = String(v).replace(/[R$\s]/g, "").trim();
+    if (!clean) return null;
+    if (clean.includes(".") && clean.includes(",")) {
+      clean = clean.replace(/\./g, "").replace(",", ".");
+    } else if (clean.includes(",")) {
+      clean = clean.replace(",", ".");
+    }
+    const n = Number(clean);
     return isNaN(n) ? null : n;
   };
 
+  const normalizeDate = (dStr: string) => {
+    if (!dStr) return null;
+    const s = dStr.trim();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+    if (/^\d{2}\/\d{2}\/\d{4}$/.test(s)) {
+      const [d, m, y] = s.split("/");
+      return `${y}-${m}-${d}`;
+    }
+    return s;
+  };
+
   // Datas com regra operacional: se não informada validade, sugere data do lance + 5 meses
-  const dataLance = String(formData.get("data_lance") ?? "").trim() || new Date().toISOString().slice(0, 10);
-  let dataVencimento = String(formData.get("data_vencimento") ?? "").trim();
+  const dataLance = normalizeDate(String(formData.get("data_lance") ?? "").trim()) || new Date().toISOString().slice(0, 10);
+  let dataVencimento = normalizeDate(String(formData.get("data_vencimento") ?? "").trim());
   if (!dataVencimento) {
     const [y, m, d] = dataLance.split("-").map(Number);
-    const dObj = new Date(y, m - 1 + 5, d);
+    const dObj = new Date(y, (m || 1) - 1 + 5, d || 1);
     dataVencimento = dObj.toISOString().slice(0, 10);
   }
 
@@ -447,8 +465,9 @@ export async function salvarEstrategiaLanceCompletaAction(formData: FormData) {
   let comprovanteStoragePath: string | null = null;
   let comprovanteNome: string | null = null;
 
+  const adminSupabase = createAdminClient();
+
   if (comprovanteFile && comprovanteFile.size > 0) {
-    const adminSupabase = createAdminClient();
     const ext = comprovanteFile.name.split(".").pop()?.toLowerCase() || "pdf";
     const path = `${empresaAtiva.id}/${cotaId}/comprovante_${Date.now()}.${ext}`;
 
@@ -466,16 +485,14 @@ export async function salvarEstrategiaLanceCompletaAction(formData: FormData) {
     }
   }
 
-  const supabase = await createClient();
-
   // Buscar cota para validação de crédito e regras de grupo
-  const { data: cota, error: cotaErr } = await supabase
+  const { data: cota, error: cotaErr } = await adminSupabase
     .from("cotas_definitivas")
     .select("valor_credito, grupo_id")
     .eq("id", cotaId)
     .eq("empresa_id", empresaAtiva.id)
     .single();
-  if (cotaErr || !cota) throw new Error("Cota não encontrada.");
+  if (cotaErr || !cota) throw new Error("Cota não encontrada nesta empresa.");
 
   const valorCredito = Number(cota.valor_credito);
   const lanceEmbutidoValorCalculado =
@@ -516,22 +533,22 @@ export async function salvarEstrategiaLanceCompletaAction(formData: FormData) {
   }
 
   // Buscar estado anterior para histórico
-  const { data: estadoAnterior } = await supabase
+  const { data: estadoAnterior } = await adminSupabase
     .from("cota_estrategias_lance")
     .select("*")
     .eq("cota_definitiva_id", cotaId)
     .maybeSingle();
 
-  const { data: saved, error: saveErr } = await supabase
+  const { data: saved, error: saveErr } = await adminSupabase
     .from("cota_estrategias_lance")
     .upsert(dadosUpsert, { onConflict: "cota_definitiva_id" })
     .select("id")
     .single();
 
-  if (saveErr) throw new Error(saveErr.message);
+  if (saveErr) throw new Error(`Erro ao salvar estratégia: ${saveErr.message}`);
 
   // Inserir histórico
-  await supabase.from("cota_estrategias_lance_historico").insert({
+  await adminSupabase.from("cota_estrategias_lance_historico").insert({
     empresa_id: empresaAtiva.id,
     estrategia_id: saved.id,
     cota_definitiva_id: cotaId,
@@ -549,8 +566,8 @@ export async function confirmarLanceOperacionalAction(cotaId: string, observacao
   const { empresaAtiva } = await requireErpRouteAccess("lances");
   if (!empresaAtiva?.id) throw new Error("Empresa ativa não encontrada.");
 
-  const supabase = await createClient();
-  const { error } = await supabase.rpc("rpc_confirmar_lance_cota", {
+  const adminSupabase = createAdminClient();
+  const { error } = await adminSupabase.rpc("rpc_confirmar_lance_cota", {
     p_empresa_id: empresaAtiva.id,
     p_cota_id: cotaId,
     p_observacao: observacao || null,
@@ -565,8 +582,8 @@ export async function revogarConfirmacaoLanceOperacionalAction(cotaId: string, m
   const { empresaAtiva } = await requireErpRouteAccess("lances");
   if (!empresaAtiva?.id) throw new Error("Empresa ativa não encontrada.");
 
-  const supabase = await createClient();
-  const { error } = await supabase.rpc("rpc_revogar_confirmacao_lance_cota", {
+  const adminSupabase = createAdminClient();
+  const { error } = await adminSupabase.rpc("rpc_revogar_confirmacao_lance_cota", {
     p_empresa_id: empresaAtiva.id,
     p_cota_id: cotaId,
     p_motivo: motivo,
@@ -593,4 +610,3 @@ export async function salvarEstrategiaLanceAction(
     };
   }
 }
-

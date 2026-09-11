@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import {
   TrendingUp,
   Clock,
@@ -51,6 +52,9 @@ export function ErpLancesView({
   const [filtroStatusCota, setFiltroStatusCota] = useState("");
   const [selectedCota, setSelectedCota] = useState<CotaLanceOperacionalDTO | null>(null);
   const [isPending, startTransition] = useTransition();
+  const router = useRouter();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   // Estados do Formulário de Lance
   const [formLanceFixo, setFormLanceFixo] = useState(false);
@@ -88,6 +92,7 @@ export function ErpLancesView({
   });
 
   const handleOpenCota = (cota: CotaLanceOperacionalDTO) => {
+    setActionError(null);
     setSelectedCota(cota);
     setFormLanceFixo(cota.estrategia?.lanceFixoAtivo ?? false);
     setFormSegundoFixo(cota.estrategia?.segundoLanceFixoAtivo ?? false);
@@ -459,12 +464,33 @@ export function ErpLancesView({
               </div>
             </div>
 
+            {/* ALERTA DE ERRO DE OPERAÇÃO */}
+            {actionError && (
+              <div className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs text-rose-800 dark:border-rose-900/50 dark:bg-rose-950/40 dark:text-rose-200 flex items-start gap-2">
+                <AlertTriangle className="h-4 w-4 shrink-0 text-rose-600 mt-0.5" />
+                <div className="space-y-0.5">
+                  <p className="font-bold">Atenção ao registrar estratégia:</p>
+                  <p>{actionError}</p>
+                </div>
+              </div>
+            )}
+
             {/* FORMULÁRIO DE ESTRATÉGIA / RENOVAÇÃO */}
             <form
-              action={async (fd) => {
-                await salvarEstrategiaLanceCompletaAction(fd);
-                setSelectedCota(null);
-                window.location.reload();
+              onSubmit={async (e) => {
+                e.preventDefault();
+                setActionError(null);
+                setIsSubmitting(true);
+                try {
+                  const fd = new FormData(e.currentTarget);
+                  await salvarEstrategiaLanceCompletaAction(fd);
+                  setSelectedCota(null);
+                  router.refresh();
+                } catch (err: any) {
+                  setActionError(err?.message || "Erro ao salvar estratégia de lance.");
+                } finally {
+                  setIsSubmitting(false);
+                }
               }}
               className="space-y-4 text-xs"
             >
@@ -723,9 +749,17 @@ export function ErpLancesView({
                 </button>
                 <button
                   type="submit"
-                  className="rounded-xl bg-blue-600 px-5 py-2 font-bold text-white hover:bg-blue-700"
+                  disabled={isSubmitting}
+                  className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2 font-bold text-white hover:bg-blue-700 disabled:opacity-50"
                 >
-                  Salvar / Renovar Estratégia
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <span>Salvando...</span>
+                    </>
+                  ) : (
+                    "Salvar / Renovar Estratégia"
+                  )}
                 </button>
               </div>
             </form>
@@ -841,15 +875,30 @@ export function ErpLancesView({
               </button>
               <button
                 type="button"
+                disabled={isSubmitting}
                 onClick={async () => {
-                  await confirmarLanceOperacionalAction(selectedCota.id, confirmObs);
-                  setIsConfirmModalOpen(false);
-                  setSelectedCota(null);
-                  window.location.reload();
+                  try {
+                    setIsSubmitting(true);
+                    await confirmarLanceOperacionalAction(selectedCota.id, confirmObs);
+                    setIsConfirmModalOpen(false);
+                    setSelectedCota(null);
+                    router.refresh();
+                  } catch (err: any) {
+                    alert(err?.message || "Erro ao confirmar lance operacional.");
+                  } finally {
+                    setIsSubmitting(false);
+                  }
                 }}
-                className="rounded-xl bg-emerald-600 px-4 py-2 font-bold text-white hover:bg-emerald-700"
+                className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-4 py-2 font-bold text-white hover:bg-emerald-700 disabled:opacity-50"
               >
-                Confirmar
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    <span>Confirmando...</span>
+                  </>
+                ) : (
+                  "Confirmar"
+                )}
               </button>
             </div>
           </div>
@@ -889,16 +938,30 @@ export function ErpLancesView({
               </button>
               <button
                 type="button"
-                disabled={!revokeMotivo.trim()}
+                disabled={!revokeMotivo.trim() || isSubmitting}
                 onClick={async () => {
-                  await revogarConfirmacaoLanceOperacionalAction(selectedCota.id, revokeMotivo);
-                  setIsRevokeModalOpen(false);
-                  setSelectedCota(null);
-                  window.location.reload();
+                  try {
+                    setIsSubmitting(true);
+                    await revogarConfirmacaoLanceOperacionalAction(selectedCota.id, revokeMotivo);
+                    setIsRevokeModalOpen(false);
+                    setSelectedCota(null);
+                    router.refresh();
+                  } catch (err: any) {
+                    alert(err?.message || "Erro ao revogar confirmação de lance.");
+                  } finally {
+                    setIsSubmitting(false);
+                  }
                 }}
-                className="rounded-xl bg-rose-600 px-4 py-2 font-bold text-white hover:bg-rose-700 disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 rounded-xl bg-rose-600 px-4 py-2 font-bold text-white hover:bg-rose-700 disabled:opacity-50"
               >
-                Revogar
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    <span>Revogando...</span>
+                  </>
+                ) : (
+                  "Revogar"
+                )}
               </button>
             </div>
           </div>
