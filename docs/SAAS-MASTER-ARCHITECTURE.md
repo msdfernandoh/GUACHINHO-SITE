@@ -2121,3 +2121,26 @@ Relatório:
 Relatório:
 `docs/relatorios-fases/FASE-222-CORRECAO-SALVAR-LANCES-ERP-404.md`.
 
+### Evolução Operacional 223 — Módulo Financeiro: Conta-Corrente dos Sócios no ERP Gauchinho
+
+1. **Objetivo e Arquitetura do Módulo (`/erp/conta-corrente-socios`):**
+   - Criação de uma área financeira visual, intuitiva e auditada para conciliação e equalização societária entre sócios (Fernando Hugo e Eroni Bolfe, 50% cada).
+   - Suporte a duas modalidades de apresentação:
+     - **Visualização Resumida:** Frase instantânea direta sobre a situação financeira do sócio, 6 cards principais com indicadores de impacto, termômetro de cobertura da empresa, metas individuais de venda e projeção futura 30/60/90 dias.
+     - **Visualização Detalhada:** Tabela completa de rateios com identificador de desembolso pessoal, extrato cronológico do ledger imutável, comissões divididas por classificação, reservas preventivas e fechamento mensal.
+
+2. **Estrutura de Dados e Imutabilidade (Migration 219):**
+   - `socio_conta_corrente_movimentos`: Ledger financeiro append-only com trigger `bloquear_delete_ledger_socio` que impede deleção física de lançamentos. Retificações utilizam estorno auditado com inversão de natureza contábil (`CREDITO` / `DEBITO`).
+   - `financeiro_despesa_rateios`: Rateio granular de despesas da empresa e pessoais (`IGUAL_50_50`, `PERCENTUAL_SOCIETARIO`, `EXCLUSIVO_SOCIO`, `EMPRESA_INTEGRAL`), calculando automaticamente saldos a compensar ou créditos de equalização.
+   - `financeiro_reservas_socios`: Retenções preventivas para aluguel, folha, tributos e contingências, separando rigorosamente o Saldo Contábil do **Valor Disponível para Saque**.
+   - `financeiro_previsoes_orcamento`: Orçamento de despesas fixas recorrentes e variáveis sugeridas pelo sistema com base na média dos últimos 3 meses.
+   - `financeiro_compensacoes_comissoes`: Abatimento auditado de despesas operacionais retendo comissões elegíveis através do fluxo **"USAR COMISSÃO PARA COMPENSAR"**.
+   - `financeiro_metas_socios`: Metas mensais individuais de venda e cálculo automático de break-even.
+
+3. **Automação e Conciliação Societária:**
+   - Equalização contínua: Quando um sócio antecipa o pagamento de despesas da empresa com recursos próprios (`pago_pessoalmente = true`), o sistema gera crédito de reembolso para o pagador e débito proporcional para o parceiro, mantendo a igualdade patrimonial da sociedade.
+   - Motor de Break-Even: Calcula o volume necessário de vendas em cotas com base na taxa média de comissão (3,5%) para suprir o déficit de cobertura do mês.
+
+Relatório:
+`docs/relatorios-fases/FASE-223-CONTA-CORRENTE-SOCIOS-ERP.md`.
+

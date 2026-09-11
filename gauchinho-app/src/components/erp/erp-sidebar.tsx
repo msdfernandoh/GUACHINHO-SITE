@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ArrowLeft, BadgeDollarSign, BriefcaseBusiness, Building2, CircleDollarSign, LayoutDashboard, Settings2, TicketCheck, Users, WalletCards } from "lucide-react";
+import { ArrowLeft, BadgeDollarSign, BriefcaseBusiness, Building2, CircleDollarSign, LayoutDashboard, Scale, Settings2, TicketCheck, Users, WalletCards } from "lucide-react";
 import { ERP_MODULES, type ErpSistemaConfig } from "@/lib/erp/erp-modulos";
 import { listEnabledOperationalRoutes } from "@/lib/erp/erp-operational";
 import { cn } from "@/lib/utils/cn";
@@ -12,7 +12,7 @@ import Image from "next/image";
 export function ErpSidebar({ config, empresaNome, logoUrl, brandPrimary, allowedAccess }: { config: ErpSistemaConfig; empresaNome: string; logoUrl?: string | null; brandPrimary: string; allowedAccess: ErpAccessId[] }) {
   const pathname = usePathname();
   const operational = listEnabledOperationalRoutes(config).filter((module) => allowedAccess.includes(module.id as ErpAccessId));
-  const icons = { clientes: Users, consultores: BriefcaseBusiness, lances: TicketCheck, assembleias: Building2, "regras-comissao": Settings2, "repasse-franquia": BadgeDollarSign, "minhas-comissoes": CircleDollarSign, "contas-pagar": WalletCards } as const;
+  const icons = { clientes: Users, consultores: BriefcaseBusiness, lances: TicketCheck, assembleias: Building2, "regras-comissao": Settings2, "repasse-franquia": BadgeDollarSign, "minhas-comissoes": CircleDollarSign, "contas-pagar": WalletCards, "conta-corrente-socios": Scale } as const;
   return (
     <aside className="flex w-64 shrink-0 flex-col border-r border-slate-200 bg-white text-slate-900">
       <div className="border-b border-slate-200 px-5 py-5">

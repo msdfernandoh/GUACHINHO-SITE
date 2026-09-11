@@ -83,6 +83,7 @@ const ERP_ROUTE_PERMISSIONS: Record<ErpAccessId, string[]> = {
   "repasse-franquia": ["gerenciar_comissoes", "gerenciar_financeiro"],
   "minhas-comissoes": ["gerenciar_comissoes"],
   "contas-pagar": ["gerenciar_financeiro"],
+  "conta-corrente-socios": ["gerenciar_financeiro"],
 };
 
 /**
