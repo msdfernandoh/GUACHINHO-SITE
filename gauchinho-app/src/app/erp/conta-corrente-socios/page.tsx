@@ -8,6 +8,9 @@ interface PageProps {
   searchParams?: Promise<{
     mes?: string;
     socio?: string;
+    tipo_periodo?: string;
+    de?: string;
+    ate?: string;
   }>;
 }
 
@@ -15,8 +18,17 @@ export default async function ContaCorrenteSociosPage({ searchParams }: PageProp
   const params = await searchParams;
   const mesParam = params?.mes;
   const socioParam = params?.socio;
+  const tipoPeriodoParam = params?.tipo_periodo;
+  const deParam = params?.de;
+  const ateParam = params?.ate;
 
-  const dados = await carregarDadosContaCorrenteSocios(mesParam, socioParam);
+  const dados = await carregarDadosContaCorrenteSocios({
+    tipoPeriodo: tipoPeriodoParam as any,
+    competencia: mesParam,
+    dataInicio: deParam,
+    dataFim: ateParam,
+    socioId: socioParam,
+  });
 
   return (
     <main className="p-4 md:p-6 max-w-[1600px] mx-auto">
@@ -36,6 +48,9 @@ export default async function ContaCorrenteSociosPage({ searchParams }: PageProp
           dados={dados}
           competencia={dados.competencia}
           socioSelecionadoId={dados.socioSelecionado?.id || socioParam}
+          tipoPeriodoInicial={dados.tipoPeriodo}
+          dataInicioInicial={dados.dataInicio}
+          dataFimInicial={dados.dataFim}
         />
       </Suspense>
     </main>

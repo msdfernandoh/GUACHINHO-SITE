@@ -2163,4 +2163,24 @@ Relatório:
 Relatório:
 `docs/relatorios-fases/FASE-224-PADRONIZACAO-FAVICON-GAUCHINHO.md`.
 
+### Evolução Operacional 225 — Expansão de Períodos, Quadro de Conferência Mensal e Auditoria na Conta-Corrente dos Sócios
 
+1. **Expansão Multifuncional de Períodos (`/erp/conta-corrente-socios`):**
+   - Criação do seletor abrangente de períodos com suporte a:
+     - Mês específico, Intervalo de meses, Ano inteiro, Todos os períodos (histórico consolidado) e Período personalizado com seletores De / Até (`YYYY-MM-DD`).
+     - Opções rápidas integradas no dropdown: Mês atual, Mês anterior, Últimos 3 meses, Últimos 6 meses, Ano atual, Todos os períodos e Personalizado.
+   - Sincronização e persistência de filtros via URL query parameters (`tipo_periodo`, `mes`, `de`, `ate`, `socio`), viabilizando links diretos e auditoria remota.
+
+2. **Diferenciação Visual e Matemática: Movimentação vs Saldo Acumulado:**
+   - **Visão do Mês / Intervalo:** Foco na apuração da competência: `Saldo Inicial em 01/MM + Movimentações Líquidas (Créditos - Débitos - Reservas - Saques) = Saldo Final em 30/MM & Disponível para Saque`.
+   - **Visão "Todos os Períodos":** Consolidado histórico geral com 8 métricas de vida societária (Comissões pertencentes, Despesas de responsabilidade, Desembolsos do próprio bolso, Compensações, Saques efetuados, Reservas ativas, Saldo Geral e Disponível Geral).
+   - Eliminação de ambiguidade: Interface destaca visualmente que o resultado do período (ex: +R$ 5.000) não se confunde com a posição acumulada histórica (ex: R$ 17.000).
+
+3. **Quadro de Conferência Mensal e Auditoria do Ledger:**
+   - **Tabela de Conferência Mensal Encadeada (`conferenciaMensal`):** Listagem cronológica de competências onde o Saldo Inicial de um mês é rigorosamente igual ao Saldo Final do mês anterior (`saldoInicial[i] === saldoFinal[i-1]`). Linhas interativas com badges de status de fechamento.
+   - **Drill-Down Analítico:** Modal detalhado ativado ao clicar em qualquer mês da tabela de conferência, exibindo cada lançamento contábil (Data, Descrição, Origem, Débito, Crédito, Saldo e Responsável).
+   - **Painel Fechamento Geral & Auditoria do Ledger:** Comparativo transparente entre o Saldo Contábil do Dashboard e o Saldo do Ledger Imutável (`socio_conta_corrente_movimentos`), exibindo badge verde **STATUS OK** ou card vermelho/âmbar **ALERTA DE DIVERGÊNCIA** com detalhamento do valor discrepante.
+   - **Módulo de Domínio Puro:** `src/lib/erp/conta-corrente-periodos.ts` com 11 testes unitários dedicados cobrindo resolução temporal e encadeamento contábil.
+
+Relatório:
+`docs/relatorios-fases/FASE-225-EXPANSAO-PERIODOS-CONTA-CORRENTE-SOCIOS.md`.

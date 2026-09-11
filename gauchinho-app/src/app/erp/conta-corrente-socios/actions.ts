@@ -4,6 +4,27 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireErpRouteAccess } from "@/lib/erp/erp-acesso-server";
+import {
+  type TipoFiltroPeriodo,
+  type FiltroPeriodoParams,
+  type ConferenciaMensalDTO,
+  type LancamentoConferenciaDTO,
+  type FechamentoGeralDTO,
+  resolverIntervaloPeriodo,
+  encadearConferenciaMensal,
+  reconciliarLedgerComDashboard,
+  formatarRotuloMes,
+  formatarDataPtBr,
+  obterHojeCuiaba,
+} from "@/lib/erp/conta-corrente-periodos";
+
+export type {
+  TipoFiltroPeriodo,
+  FiltroPeriodoParams,
+  ConferenciaMensalDTO,
+  LancamentoConferenciaDTO,
+  FechamentoGeralDTO,
+};
 
 export interface SocioDTO {
   id: string;
@@ -109,11 +130,34 @@ export interface MetaSocioDTO {
 }
 
 export interface ContaCorrenteResumoDTO {
+  // Informações de Período
+  tipoPeriodo: TipoFiltroPeriodo;
   competencia: string;
+  rotuloPeriodo: string;
+  dataInicio: string;
+  dataFim: string;
+  isTodosPeriodos: boolean;
+  isMesUnico: boolean;
+
   socioSelecionado: SocioDTO | null;
   todosSocios: SocioDTO[];
+
+  // Conciliação de Saldos: Saldo Inicial vs Movimentações vs Saldo Final
+  saldoInicialPeriodo: number;
+  creditosPeriodo: number;
+  debitosPeriodo: number;
+  saquesPeriodo: number;
+  movimentacaoPeriodoLiquida: number;
+  saldoAcumuladoFinal: number; // Saldo Inicial + Movimentação Líquida
+
+  // Totais Históricos Gerais (Visão Consolidada)
+  totalComissoesGeral: number;
+  totalDespesasResponsabilidadeGeral: number;
+  totalPagoBolsoGeral: number;
+  totalCompensacoesGeral: number;
+  totalSaquesGeral: number;
   
-  // Cards do Sócio Selecionado
+  // Cards do Sócio Selecionado no Período
   comissoesGarantidas: number;
   comissoesPrevistasPeriodo: number;
   comissoesRecebidasPeriodo: number;
@@ -151,21 +195,67 @@ export interface ContaCorrenteResumoDTO {
   ledgerExtrato: MovimentoLedgerDTO[];
   reservas: ReservaFuturaDTO[];
   orcamento: PrevisaoOrcamentoDTO[];
+
+  // Quadro de Conferência Mensal & Fechamento Geral
+  conferenciaMensal: ConferenciaMensalDTO[];
+  fechamentoGeral: FechamentoGeralDTO;
 }
 
 /**
- * Consulta e consolida todos os dados da Conta-Corrente dos Sócios
+ * Consulta e consolida todos os dados da Conta-Corrente dos Sócios com suporte a múltiplos períodos
  */
 export async function carregarDadosContaCorrenteSocios(
-  competenciaParam?: string,
-  socioIdParam?: string
+  filtroOuCompetencia?: string | (FiltroPeriodoParams & { socioId?: string }),
+  socioIdParam?: string,
+  dataInicioParam?: string,
+  dataFimParam?: string,
+  tipoPeriodoParam?: TipoFiltroPeriodo
 ): Promise<ContaCorrenteResumoDTO> {
   const { empresaAtiva } = await requireErpRouteAccess("financeiro");
   if (!empresaAtiva?.id) throw new Error("Empresa ativa não encontrada.");
 
-  const competencia = competenciaParam && /^\d{4}-\d{2}$/.test(competenciaParam)
-    ? competenciaParam
-    : new Intl.DateTimeFormat("en-CA", { timeZone: "America/Cuiaba", year: "numeric", month: "2-digit" }).format(new Date()).slice(0, 7);
+  let tipoPeriodo: TipoFiltroPeriodo = "mes";
+  let competenciaParam: string | undefined;
+  let socioId: string | undefined = socioIdParam;
+  let dataInicioParamDef: string | undefined = dataInicioParam;
+  let dataFimParamDef: string | undefined = dataFimParam;
+
+  if (typeof filtroOuCompetencia === "object" && filtroOuCompetencia !== null) {
+    tipoPeriodo = (filtroOuCompetencia.tipoPeriodo as TipoFiltroPeriodo) || "mes";
+    competenciaParam = filtroOuCompetencia.competencia;
+    socioId = filtroOuCompetencia.socioId ?? socioIdParam;
+    dataInicioParamDef = filtroOuCompetencia.dataInicio ?? dataInicioParam;
+    dataFimParamDef = filtroOuCompetencia.dataFim ?? dataFimParam;
+  } else if (typeof filtroOuCompetencia === "string") {
+    if (
+      [
+        "mes",
+        "mes_atual",
+        "mes_anterior",
+        "ultimos_3_meses",
+        "ultimos_6_meses",
+        "ano_atual",
+        "todos_periodos",
+        "personalizado",
+      ].includes(filtroOuCompetencia)
+    ) {
+      tipoPeriodo = filtroOuCompetencia as TipoFiltroPeriodo;
+    } else if (/^\d{4}-\d{2}$/.test(filtroOuCompetencia)) {
+      competenciaParam = filtroOuCompetencia;
+      tipoPeriodo = tipoPeriodoParam || "mes";
+    }
+  }
+
+  if (tipoPeriodoParam) {
+    tipoPeriodo = tipoPeriodoParam;
+  }
+
+  const periodo = resolverIntervaloPeriodo({
+    tipoPeriodo,
+    competencia: competenciaParam,
+    dataInicio: dataInicioParamDef,
+    dataFim: dataFimParamDef,
+  });
 
   const admin = createAdminClient();
 
@@ -205,25 +295,31 @@ export async function carregarDadosContaCorrenteSocios(
     };
   });
 
-  const socioSelecionado = socioIdParam && socioIdParam !== "todos"
-    ? todosSocios.find((s) => s.id === socioIdParam) ?? todosSocios[0] ?? null
+  const socioSelecionado = socioId && socioId !== "todos"
+    ? todosSocios.find((s) => s.id === socioId) ?? todosSocios[0] ?? null
     : todosSocios[0] ?? null;
 
   const socioIdAtivo = socioSelecionado?.id ?? null;
   const participanteIdAtivo = socioSelecionado?.participanteComercialId ?? null;
 
-  // 3. Buscar Despesas (financeiro_contas_pagar) da competência ou vencimento no mês
-  const inicioMes = `${competencia}-01`;
-  const [anoStr, mesStr] = competencia.split("-");
-  const ultimoDiaNum = new Date(Date.UTC(Number(anoStr), Number(mesStr), 0)).getUTCDate();
-  const fimMes = `${competencia}-${String(ultimoDiaNum).padStart(2, "0")}`;
-
-  const [contasRes, rateiosRes, reservasRes, orcamentoRes, metasRes, ledgerRes, comissoesRes, vendasRes, caixaRes] = await Promise.all([
+  // 3. Buscar Dados Históricos e Operacionais
+  const [
+    contasRes,
+    rateiosRes,
+    reservasRes,
+    orcamentoRes,
+    metasRes,
+    ledgerRes,
+    comissoesRes,
+    vendasRes,
+    caixaRes,
+    fechamentosRes,
+    compensacoesRes,
+  ] = await Promise.all([
     admin
       .from("financeiro_contas_pagar")
       .select("id, empresa_id, descricao, valor, status, vencimento, competencia, pago_em, pago_pessoalmente, socio_pagador_usuario_id, categoria, fornecedor, observacao")
       .eq("empresa_id", empresaAtiva.id)
-      .or(`competencia.eq.${competencia},and(vencimento.gte.${inicioMes},vencimento.lte.${fimMes})`)
       .neq("status", "cancelada")
       .order("vencimento"),
     admin
@@ -234,24 +330,20 @@ export async function carregarDadosContaCorrenteSocios(
       .from("financeiro_reservas_socios")
       .select("*")
       .eq("empresa_id", empresaAtiva.id)
-      .eq("competencia", competencia)
       .eq("status", "ATIVA"),
     admin
       .from("financeiro_previsoes_orcamento")
       .select("*")
-      .eq("empresa_id", empresaAtiva.id)
-      .eq("competencia", competencia),
+      .eq("empresa_id", empresaAtiva.id),
     admin
       .from("financeiro_metas_socios")
       .select("*")
-      .eq("empresa_id", empresaAtiva.id)
-      .eq("competencia", competencia),
+      .eq("empresa_id", empresaAtiva.id),
     admin
       .from("socio_conta_corrente_movimentos")
       .select("*")
       .eq("empresa_id", empresaAtiva.id)
-      .eq("competencia", competencia)
-      .order("data_movimento", { ascending: false }),
+      .order("data_movimento", { ascending: true }),
     admin
       .from("comissao_previsoes_participantes")
       .select(`
@@ -274,27 +366,35 @@ export async function carregarDadosContaCorrenteSocios(
       .from("vendas")
       .select("id, participante_comercial_id, valor_credito, status, data_venda")
       .eq("empresa_id", empresaAtiva.id)
-      .eq("status", "confirmada")
-      .gte("data_venda", `${inicioMes}T00:00:00.000Z`)
-      .lte("data_venda", `${fimMes}T23:59:59.999Z`),
+      .eq("status", "confirmada"),
     admin
       .from("financeiro_contas_saldos")
       .select("saldo_atual")
       .eq("empresa_id", empresaAtiva.id)
       .eq("ativo", true),
+    admin
+      .from("financeiro_fechamentos_socios")
+      .select("id, periodo_inicio, periodo_fim, status, total_despesas_pessoais")
+      .eq("empresa_id", empresaAtiva.id),
+    admin
+      .from("financeiro_compensacoes_comissoes")
+      .select("*")
+      .eq("empresa_id", empresaAtiva.id),
   ]);
 
-  const contas = contasRes.data ?? [];
+  const todasContas = contasRes.data ?? [];
   const rateiosDb = rateiosRes.data ?? [];
   const reservasDb = reservasRes.data ?? [];
   const orcamentoDb = orcamentoRes.data ?? [];
   const metasDb = metasRes.data ?? [];
   const ledgerDb = ledgerRes.data ?? [];
-  const comissoesDb = comissoesRes.data ?? [];
-  const vendasMes = vendasRes.data ?? [];
+  const todasComissoesDb = comissoesRes.data ?? [];
+  const todasVendasDb = vendasRes.data ?? [];
   const caixaSaldoTotal = (caixaRes.data ?? []).reduce((acc, c) => acc + Number(c.saldo_atual || 0), 0);
+  const fechamentosDb = fechamentosRes.data ?? [];
+  const compensacoesDb = compensacoesRes.data ?? [];
 
-  // Mapeamento de Rateios por Conta
+  // Mapeamento de Rateios
   const rateiosMap = new Map<string, Array<any>>();
   rateiosDb.forEach((r) => {
     const list = rateiosMap.get(r.conta_pagar_id) ?? [];
@@ -302,16 +402,15 @@ export async function carregarDadosContaCorrenteSocios(
     rateiosMap.set(r.conta_pagar_id, list);
   });
 
-  // Processar Despesas e Rateios
-  const despesasRateadas: DespesaRateioDTO[] = contas.map((conta) => {
+  // Mapeamento de Despesas
+  function mapearDespesaRateio(conta: any): DespesaRateioDTO {
     const valorConta = Number(conta.valor);
     const rateiosConta = rateiosMap.get(conta.id) ?? [];
     const quemPagouSocioId = todosSocios.find((s) => s.usuarioId === conta.socio_pagador_usuario_id)?.id ?? null;
     const quemPagouSocioNome = todosSocios.find((s) => s.usuarioId === conta.socio_pagador_usuario_id)?.nome ?? null;
     const quemPagouTipo: "EMPRESA" | "SOCIO_PESSOAL" | "OUTRO" = conta.pago_pessoalmente ? "SOCIO_PESSOAL" : "EMPRESA";
 
-    // Se a conta não tem rateios explícitos salvos na tabela, aplica o rateio padrão 50/50 ou societário
-    let rateiosCalculados = todosSocios.map((s) => {
+    const rateiosCalculados = todosSocios.map((s) => {
       const rateioExistente = rateiosConta.find((r) => r.socio_id === s.id);
       if (rateioExistente) {
         return {
@@ -323,13 +422,10 @@ export async function carregarDadosContaCorrenteSocios(
           diferenca: Number(rateioExistente.saldo_diferenca),
         };
       }
-
-      // Regra padrão automática de divisão societária (ex: 50%)
       const pct = s.percentualParticipacao || (100 / (todosSocios.length || 1));
       const resp = Number(((valorConta * pct) / 100).toFixed(2));
       const pago = quemPagouSocioId === s.id ? valorConta : 0;
       const dif = pago - resp;
-
       return {
         socioId: s.id,
         socioNome: s.nome,
@@ -348,9 +444,9 @@ export async function carregarDadosContaCorrenteSocios(
       descricao: conta.descricao,
       categoria: conta.categoria || "Geral",
       valorTotal: valorConta,
-      competencia: conta.competencia || competencia,
+      competencia: conta.competencia || conta.vencimento?.slice(0, 7) || periodo.competencia,
       vencimento: conta.vencimento,
-      status: conta.status as any,
+      status: conta.status,
       pagoPessoalmente: Boolean(conta.pago_pessoalmente),
       quemPagou: quemPagouTipo,
       pagoPorSocioId: quemPagouSocioId,
@@ -361,21 +457,29 @@ export async function carregarDadosContaCorrenteSocios(
       saldoDiferenca: meuRateio?.diferenca ?? 0,
       rateios: rateiosCalculados,
     };
+  }
+
+  const todasDespesasRateadas = todasContas.map(mapearDespesaRateio);
+
+  // Filtragem de despesas para o período ativo
+  const compInicio = periodo.dataInicio.slice(0, 7);
+  const compFim = periodo.dataFim.slice(0, 7);
+
+  const despesasRateadas = todasDespesasRateadas.filter((d) => {
+    if (periodo.isTodosPeriodos) return true;
+    const dt = d.vencimento || d.data;
+    const comp = d.competencia;
+    const inDateRange = dt >= periodo.dataInicio && dt <= periodo.dataFim;
+    const inCompRange = comp >= compInicio && comp <= compFim;
+    return inDateRange || inCompRange;
   });
 
-  // Totais de Despesas do Sócio
-  const despesasMinhaResponsabilidade = despesasRateadas.reduce((acc, d) => acc + d.minhaParteResponsabilidade, 0);
-  const despesasQueEuPaguei = despesasRateadas.reduce((acc, d) => acc + d.quantoEuPaguei, 0);
-  const saldoDiferencaDespesas = despesasQueEuPaguei - despesasMinhaResponsabilidade;
+  // Mapeamento de Comissões
+  const comissoesDoSocioRaw = todasComissoesDb.filter(
+    (c: any) => c.participante_comercial_id === participanteIdAtivo
+  );
 
-  // Se o saldo for negativo, o sócio deve compensar. Se positivo, tem crédito.
-  const saldoACompensar = saldoDiferencaDespesas < 0 ? Math.abs(saldoDiferencaDespesas) : 0;
-  const saldoCreditoEqualizacao = saldoDiferencaDespesas > 0 ? saldoDiferencaDespesas : 0;
-
-  // Processar Comissões do Sócio
-  const comissoesDoSocioRaw = comissoesDb.filter((c: any) => c.participante_comercial_id === participanteIdAtivo);
-
-  const comissoesSocio: ComissaoSocioDTO[] = comissoesDoSocioRaw.map((c: any) => {
+  const todasComissoesSocio: ComissaoSocioDTO[] = comissoesDoSocioRaw.map((c: any) => {
     const venda = Array.isArray(c.venda) ? c.venda[0] : c.venda;
     let tipo: "GARANTIDA" | "PREVISTA" | "RECEBIDA" | "COMPENSADA" = "PREVISTA";
 
@@ -399,24 +503,41 @@ export async function carregarDadosContaCorrenteSocios(
     };
   });
 
-  // Comissões Garantidas do sócio no período (ou acumuladas prontas para acerto)
+  const comissoesSocio = todasComissoesSocio.filter((c) => {
+    if (periodo.isTodosPeriodos) return true;
+    return c.competencia >= compInicio && c.competencia <= compFim;
+  });
+
+  // Totais de Despesas do Sócio no Período
+  const despesasMinhaResponsabilidade = despesasRateadas.reduce((acc, d) => acc + d.minhaParteResponsabilidade, 0);
+  const despesasQueEuPaguei = despesasRateadas.reduce((acc, d) => acc + d.quantoEuPaguei, 0);
+  const saldoDiferencaDespesas = despesasQueEuPaguei - despesasMinhaResponsabilidade;
+
+  const saldoACompensar = saldoDiferencaDespesas < 0 ? Math.abs(saldoDiferencaDespesas) : 0;
+  const saldoCreditoEqualizacao = saldoDiferencaDespesas > 0 ? saldoDiferencaDespesas : 0;
+
+  // Comissões no Período
   const comissoesGarantidas = comissoesSocio
     .filter((c) => c.tipoClassificacao === "GARANTIDA")
     .reduce((acc, c) => acc + (c.valorElegivel - c.valorPago), 0);
 
   const comissoesPrevistasPeriodo = comissoesSocio
-    .filter((c) => c.competencia === competencia && c.tipoClassificacao === "PREVISTA")
+    .filter((c) => c.tipoClassificacao === "PREVISTA")
     .reduce((acc, c) => acc + c.valorPrevisto, 0);
 
   const comissoesRecebidasPeriodo = comissoesSocio
-    .filter((c) => c.competencia === competencia && c.tipoClassificacao === "RECEBIDA")
+    .filter((c) => c.tipoClassificacao === "RECEBIDA")
     .reduce((acc, c) => acc + c.valorPago, 0);
 
-  // Reservas para Próximas Despesas
+  // Reservas no Período
   const reservasDoSocio = reservasDb.filter((r) => !socioIdAtivo || r.socio_id === socioIdAtivo);
-  const reservaProximasDespesas = reservasDoSocio.reduce((acc, r) => acc + Number(r.valor_reservado), 0);
+  const reservasFiltradasPeriodo = reservasDoSocio.filter((r) => {
+    if (periodo.isTodosPeriodos) return true;
+    return r.competencia >= compInicio && r.competencia <= compFim;
+  });
+  const reservaProximasDespesas = reservasFiltradasPeriodo.reduce((acc, r) => acc + Number(r.valor_reservado), 0);
 
-  const reservas: ReservaFuturaDTO[] = reservasDb.map((r) => {
+  const reservas: ReservaFuturaDTO[] = reservasFiltradasPeriodo.map((r) => {
     const s = todosSocios.find((soc) => soc.id === r.socio_id);
     return {
       id: r.id,
@@ -430,10 +551,78 @@ export async function carregarDadosContaCorrenteSocios(
     };
   });
 
-  // Cálculo de Saldo e Disponível para Saque
-  // Saldo Líquido do Sócio = Comissões Garantidas + Crédito por Despesas Pagas - Saldo a Compensar
-  const saldoInternoTotal = comissoesGarantidas + saldoCreditoEqualizacao - saldoACompensar;
-  const disponivelParaSaque = Math.max(0, saldoInternoTotal - reservaProximasDespesas);
+  // Movimentações do Ledger
+  const ledgerDoSocio = socioIdAtivo && socioId !== "todos"
+    ? ledgerDb.filter((m) => m.socio_id === socioIdAtivo)
+    : ledgerDb;
+
+  // Saldo Inicial: soma dos movimentos ANTES de dataInicio
+  const movimentosAnteriores = ledgerDoSocio.filter(
+    (m) => !m.estornado && m.data_movimento < periodo.dataInicio
+  );
+
+  const saldoInicialPeriodo = periodo.isTodosPeriodos
+    ? 0
+    : Number(
+        movimentosAnteriores
+          .reduce(
+            (acc, m) =>
+              acc + (m.natureza === "CREDITO" ? Number(m.valor) : -Number(m.valor)),
+            0
+          )
+          .toFixed(2)
+      );
+
+  // Movimentos DENTRO do período
+  const movimentosNoPeriodo = ledgerDoSocio.filter((m) => {
+    if (m.estornado) return false;
+    if (periodo.isTodosPeriodos) return true;
+    return m.data_movimento >= periodo.dataInicio && m.data_movimento <= periodo.dataFim;
+  });
+
+  const creditosPeriodo = Number(
+    movimentosNoPeriodo
+      .filter((m) => m.natureza === "CREDITO")
+      .reduce((acc, m) => acc + Number(m.valor), 0)
+      .toFixed(2)
+  );
+
+  const debitosPeriodo = Number(
+    movimentosNoPeriodo
+      .filter((m) => m.natureza === "DEBITO" && m.tipo_movimento !== "SAQUE_REPASSE")
+      .reduce((acc, m) => acc + Number(m.valor), 0)
+      .toFixed(2)
+  );
+
+  const saquesPeriodo = Number(
+    movimentosNoPeriodo
+      .filter((m) => m.natureza === "DEBITO" && m.tipo_movimento === "SAQUE_REPASSE")
+      .reduce((acc, m) => acc + Number(m.valor), 0)
+      .toFixed(2)
+  );
+
+  const movimentacaoPeriodoLiquida = Number(
+    (creditosPeriodo - debitosPeriodo - saquesPeriodo).toFixed(2)
+  );
+
+  // Saldo Acumulado Final: Saldo Inicial + Movimentação Líquida
+  const saldoInternoOperacional = comissoesGarantidas + saldoCreditoEqualizacao - saldoACompensar;
+  const saldoAcumuladoFinal = movimentosNoPeriodo.length > 0 || movimentosAnteriores.length > 0
+    ? Number((saldoInicialPeriodo + movimentacaoPeriodoLiquida).toFixed(2))
+    : saldoInternoOperacional;
+
+  const disponivelParaSaque = Math.max(0, saldoAcumuladoFinal - reservaProximasDespesas);
+
+  // Totais Históricos Gerais (Visão Consolidada)
+  const totalComissoesGeral = todasComissoesSocio.reduce((acc, c) => acc + (c.valorPago || c.valorElegivel || 0), 0);
+  const totalDespesasResponsabilidadeGeral = todasDespesasRateadas.reduce((acc, d) => acc + d.minhaParteResponsabilidade, 0);
+  const totalPagoBolsoGeral = todasDespesasRateadas.reduce((acc, d) => acc + d.quantoEuPaguei, 0);
+  const totalCompensacoesGeral = compensacoesDb
+    .filter((comp) => !socioIdAtivo || comp.socio_id === socioIdAtivo)
+    .reduce((acc, comp) => acc + Number(comp.valor_compensado), 0);
+  const totalSaquesGeral = ledgerDoSocio
+    .filter((m) => !m.estornado && m.tipo_movimento === "SAQUE_REPASSE")
+    .reduce((acc, m) => acc + Number(m.valor), 0);
 
   // Frase de Status Instantânea
   let fraseStatus = "";
@@ -457,13 +646,12 @@ export async function carregarDadosContaCorrenteSocios(
 
   // Previsões Orçamentárias da Empresa
   const despesasPrevistasEmpresa = despesasRateadas.reduce((acc, d) => acc + d.valorTotal, 0);
-  const recursosGarantidosEmpresa = Math.max(0, caixaSaldoTotal); // Caixa disponível
+  const recursosGarantidosEmpresa = Math.max(0, caixaSaldoTotal);
   const faltaCobrirEmpresa = Math.max(0, despesasPrevistasEmpresa - recursosGarantidosEmpresa);
   const percentualCoberturaEmpresa = despesasPrevistasEmpresa > 0
     ? Math.min(100, Math.round((recursosGarantidosEmpresa / despesasPrevistasEmpresa) * 100))
     : 100;
 
-  // Taxa de comissão média de referência para Break-even (default 3.5%)
   const metaDbRow = metasDb[0];
   const taxaComissaoReferencia = metaDbRow ? Number(metaDbRow.comissao_taxa_referencia) : 3.5;
 
@@ -471,6 +659,12 @@ export async function carregarDadosContaCorrenteSocios(
     ? Number(((faltaCobrirEmpresa / taxaComissaoReferencia) * 100).toFixed(2))
     : 0;
 
+  // Vendas do período
+  const vendasMes = todasVendasDb.filter((v: any) => {
+    if (periodo.isTodosPeriodos) return true;
+    const dt = v.data_venda?.slice(0, 10);
+    return dt >= periodo.dataInicio && dt <= periodo.dataFim;
+  });
   const vendasRealizadasEmpresa = vendasMes.reduce((acc, v) => acc + Number(v.valor_credito || 0), 0);
 
   // Metas Individuais dos Sócios
@@ -499,7 +693,7 @@ export async function carregarDadosContaCorrenteSocios(
     };
   });
 
-  // Visão 30 / 60 / 90 dias (Projeção simplificada)
+  // Visão 30 / 60 / 90 dias
   const projecao30Dias = {
     percentual: Math.min(100, Math.round((recursosGarantidosEmpresa / (despesasPrevistasEmpresa || 1)) * 100)),
     despesas: despesasPrevistasEmpresa,
@@ -516,12 +710,8 @@ export async function carregarDadosContaCorrenteSocios(
     garantido: recursosGarantidosEmpresa,
   };
 
-  // Movimentos do Ledger da Competência
-  const ledgerFiltrado = socioIdAtivo && socioIdParam !== "todos"
-    ? ledgerDb.filter((m) => m.socio_id === socioIdAtivo)
-    : ledgerDb;
-
-  const ledgerExtrato: MovimentoLedgerDTO[] = ledgerFiltrado.map((m) => {
+  // Movimentos do Ledger da Competência / Período
+  const ledgerExtrato: MovimentoLedgerDTO[] = movimentosNoPeriodo.map((m) => {
     const s = todosSocios.find((soc) => soc.id === m.socio_id);
     return {
       id: m.id,
@@ -541,8 +731,13 @@ export async function carregarDadosContaCorrenteSocios(
     };
   });
 
-  // Orçamento / Previsões
-  const orcamento: PrevisaoOrcamentoDTO[] = orcamentoDb.map((o) => ({
+  // Orçamento
+  const orcamentoFiltrado = orcamentoDb.filter((o) => {
+    if (periodo.isTodosPeriodos) return true;
+    return o.competencia >= compInicio && o.competencia <= compFim;
+  });
+
+  const orcamento: PrevisaoOrcamentoDTO[] = orcamentoFiltrado.map((o) => ({
     id: o.id,
     categoria: o.categoria,
     tipo: o.tipo,
@@ -552,10 +747,210 @@ export async function carregarDadosContaCorrenteSocios(
     observacoes: o.observacoes,
   }));
 
+  // Montar Quadro de Conferência Mensal Encadeado
+  const setCompetencias = new Set<string>();
+
+  ledgerDoSocio.forEach((m) => {
+    if (m.competencia) setCompetencias.add(m.competencia);
+  });
+  todasDespesasRateadas.forEach((d) => {
+    if (d.competencia) setCompetencias.add(d.competencia);
+  });
+  todasComissoesSocio.forEach((c) => {
+    if (c.competencia) setCompetencias.add(c.competencia);
+  });
+  fechamentosDb.forEach((f) => {
+    if (f.periodo_inicio) setCompetencias.add(f.periodo_inicio.slice(0, 7));
+  });
+
+  // Garantir pelo menos os últimos 6 meses até o atual
+  const [anoAtualNum, mesAtualNum] = obterHojeCuiaba().split("-").map(Number);
+  for (let i = 5; i >= 0; i--) {
+    let a = anoAtualNum;
+    let m = mesAtualNum - i;
+    if (m < 1) {
+      m += 12;
+      a -= 1;
+    }
+    setCompetencias.add(`${a}-${String(m).padStart(2, "0")}`);
+  }
+
+  const competenciasOrdenadas = Array.from(setCompetencias).sort();
+
+  const mapaMensal = new Map<
+    string,
+    {
+      creditos: number;
+      debitos: number;
+      reservas: number;
+      saques: number;
+      ajustes: number;
+      statusFechamento: "FECHADO" | "ABERTO";
+      fechamentoId?: string | null;
+      lancamentos: LancamentoConferenciaDTO[];
+    }
+  >();
+
+  for (const comp of competenciasOrdenadas) {
+    const fechamento = fechamentosDb.find(
+      (f) => f.periodo_inicio?.slice(0, 7) === comp || f.periodo_fim?.slice(0, 7) === comp
+    );
+
+    const movsMes = ledgerDoSocio.filter((m) => !m.estornado && m.competencia === comp);
+    const crLedger = movsMes
+      .filter((m) => m.natureza === "CREDITO")
+      .reduce((acc, m) => acc + Number(m.valor), 0);
+    const debLedger = movsMes
+      .filter((m) => m.natureza === "DEBITO" && m.tipo_movimento !== "SAQUE_REPASSE")
+      .reduce((acc, m) => acc + Number(m.valor), 0);
+    const saquesLedger = movsMes
+      .filter((m) => m.natureza === "DEBITO" && m.tipo_movimento === "SAQUE_REPASSE")
+      .reduce((acc, m) => acc + Number(m.valor), 0);
+
+    const despMes = todasDespesasRateadas.filter((d) => d.competencia === comp);
+    const respDespMes = despMes.reduce((acc, d) => acc + d.minhaParteResponsabilidade, 0);
+    const pagBolsoMes = despMes.reduce((acc, d) => acc + d.quantoEuPaguei, 0);
+
+    const comMes = todasComissoesSocio.filter((c) => c.competencia === comp);
+    const comRecebidaOuGarantidaMes = comMes
+      .filter((c) => c.tipoClassificacao === "RECEBIDA" || c.tipoClassificacao === "GARANTIDA")
+      .reduce((acc, c) => acc + (c.tipoClassificacao === "RECEBIDA" ? c.valorPago : (c.valorElegivel - c.valorPago)), 0);
+
+    const creditosMes = crLedger > 0 ? crLedger : (comRecebidaOuGarantidaMes + pagBolsoMes);
+    const debitosMes = debLedger > 0 ? debLedger : respDespMes;
+    const saquesMes = saquesLedger;
+
+    const reservasMes = reservasDb
+      .filter((r) => r.competencia === comp)
+      .reduce((acc, r) => acc + Number(r.valor_reservado), 0);
+
+    const lancamentos: LancamentoConferenciaDTO[] = [];
+
+    movsMes.forEach((m) => {
+      lancamentos.push({
+        id: m.id,
+        data: m.data_movimento,
+        descricao: m.descricao,
+        origem: m.origem_tipo || m.tipo_movimento,
+        debito: m.natureza === "DEBITO" ? Number(m.valor) : 0,
+        credito: m.natureza === "CREDITO" ? Number(m.valor) : 0,
+        saldoApos: Number(m.saldo_apos),
+        responsavelNome: todosSocios.find((s) => s.id === m.socio_id)?.nome,
+        natureza: m.natureza,
+        tipoMovimento: m.tipo_movimento,
+      });
+    });
+
+    if (!lancamentos.length) {
+      despMes.forEach((d) => {
+        if (d.quantoEuPaguei > 0) {
+          lancamentos.push({
+            id: `pago-${d.contaId}`,
+            data: d.data,
+            descricao: `Despesa paga pessoalmente: ${d.descricao}`,
+            origem: "Despesa pessoal",
+            debito: 0,
+            credito: d.quantoEuPaguei,
+            saldoApos: 0,
+            responsavelNome: d.pagoPorSocioNome,
+            natureza: "CREDITO",
+            tipoMovimento: "DESPESA_PAGA_PESSOAL",
+          });
+        }
+        if (d.minhaParteResponsabilidade > 0) {
+          lancamentos.push({
+            id: `resp-${d.contaId}`,
+            data: d.data,
+            descricao: `Rateio de despesa: ${d.descricao}`,
+            origem: "Rateio despesa",
+            debito: d.minhaParteResponsabilidade,
+            credito: 0,
+            saldoApos: 0,
+            responsavelNome: socioSelecionado?.nome,
+            natureza: "DEBITO",
+            tipoMovimento: "RESPONSABILIDADE_DESPESA",
+          });
+        }
+      });
+
+      comMes.forEach((c) => {
+        if (c.valorPago > 0 || c.valorElegivel > 0) {
+          lancamentos.push({
+            id: `com-${c.id}`,
+            data: c.dataVenda || `${comp}-15`,
+            descricao: `Comissão ${c.tipoClassificacao.toLowerCase()} (${c.etapaNome}) - ${c.clienteNome || "Cliente"}`,
+            origem: "Venda consórcio",
+            debito: 0,
+            credito: c.valorPago > 0 ? c.valorPago : c.valorElegivel,
+            saldoApos: 0,
+            responsavelNome: socioSelecionado?.nome,
+            natureza: "CREDITO",
+            tipoMovimento: "COMISSAO_GARANTIDA",
+          });
+        }
+      });
+    }
+
+    mapaMensal.set(comp, {
+      creditos: creditosMes,
+      debitos: debitosMes,
+      reservas: reservasMes,
+      saques: saquesMes,
+      ajustes: 0,
+      statusFechamento: fechamento ? "FECHADO" : "ABERTO",
+      fechamentoId: fechamento?.id ?? null,
+      lancamentos,
+    });
+  }
+
+  const conferenciaMensal = encadearConferenciaMensal(competenciasOrdenadas, mapaMensal, 0);
+
+  // Reconciliação do Ledger & Fechamento Geral
+  const saldoHistoricoLedger = Number(
+    ledgerDoSocio
+      .filter((m) => !m.estornado)
+      .reduce(
+        (acc, m) => acc + (m.natureza === "CREDITO" ? Number(m.valor) : -Number(m.valor)),
+        0
+      )
+      .toFixed(2)
+  );
+
+  const fechamentoGeral = reconciliarLedgerComDashboard({
+    saldoLedger: saldoHistoricoLedger,
+    saldoApurado: saldoAcumuladoFinal,
+    saldoInicialHistorico: 0,
+    todosCreditos: creditosPeriodo,
+    todosDebitos: debitosPeriodo,
+    todosSaques: saquesPeriodo,
+    reservasVigentes: reservaProximasDespesas,
+  });
+
   return {
-    competencia,
+    tipoPeriodo: periodo.tipoPeriodo,
+    competencia: periodo.competencia,
+    rotuloPeriodo: periodo.rotuloPeriodo,
+    dataInicio: periodo.dataInicio,
+    dataFim: periodo.dataFim,
+    isTodosPeriodos: periodo.isTodosPeriodos,
+    isMesUnico: periodo.isMesUnico,
+
     socioSelecionado,
     todosSocios,
+
+    saldoInicialPeriodo,
+    creditosPeriodo,
+    debitosPeriodo,
+    saquesPeriodo,
+    movimentacaoPeriodoLiquida,
+    saldoAcumuladoFinal,
+
+    totalComissoesGeral,
+    totalDespesasResponsabilidadeGeral,
+    totalPagoBolsoGeral,
+    totalCompensacoesGeral,
+    totalSaquesGeral,
+
     comissoesGarantidas,
     comissoesPrevistasPeriodo,
     comissoesRecebidasPeriodo,
@@ -565,7 +960,7 @@ export async function carregarDadosContaCorrenteSocios(
     saldoACompensar,
     saldoCreditoEqualizacao,
     reservaProximasDespesas,
-    saldoInternoTotal,
+    saldoInternoTotal: saldoAcumuladoFinal,
     disponivelParaSaque,
     fraseStatus,
     statusTipo,
@@ -585,8 +980,12 @@ export async function carregarDadosContaCorrenteSocios(
     ledgerExtrato,
     reservas,
     orcamento,
+
+    conferenciaMensal,
+    fechamentoGeral,
   };
 }
+
 
 /**
  * Operação: Usar Comissão para Compensar Despesas Devedoras do Sócio

@@ -11,7 +11,9 @@ import {
   Calculator,
   Calendar,
   CheckCircle2,
+  ChevronDown,
   ChevronRight,
+  Check,
   Clock,
   Coins,
   DollarSign,
@@ -47,6 +49,10 @@ import {
 } from "lucide-react";
 import type {
   ContaCorrenteResumoDTO,
+  TipoFiltroPeriodo,
+  ConferenciaMensalDTO,
+  LancamentoConferenciaDTO,
+  FechamentoGeralDTO,
   DespesaRateioDTO,
   ComissaoSocioDTO,
   MovimentoLedgerDTO,
@@ -69,6 +75,9 @@ interface ContaCorrenteSociosViewProps {
   dados: ContaCorrenteResumoDTO;
   competencia: string;
   socioSelecionadoId?: string;
+  tipoPeriodoInicial?: TipoFiltroPeriodo;
+  dataInicioInicial?: string;
+  dataFimInicial?: string;
 }
 
 const brl = (val: number) =>
@@ -87,6 +96,9 @@ export function ContaCorrenteSociosView({
   dados,
   competencia,
   socioSelecionadoId,
+  tipoPeriodoInicial,
+  dataInicioInicial,
+  dataFimInicial,
 }: ContaCorrenteSociosViewProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -96,6 +108,13 @@ export function ContaCorrenteSociosView({
   const [abaAtiva, setAbaAtiva] = useState<
     "resumo" | "despesas" | "comissoes" | "ledger" | "previsao" | "fechamentos"
   >("resumo");
+
+  // Estados de Controle do Seletor de Período e Drill-Down
+  const [dropdownPeriodoAberto, setDropdownPeriodoAberto] = useState(false);
+  const [modalPeriodoPersonalizadoAberto, setModalPeriodoPersonalizadoAberto] = useState(false);
+  const [customDataInicio, setCustomDataInicio] = useState(dados.dataInicio || "");
+  const [customDataFim, setCustomDataFim] = useState(dados.dataFim || "");
+  const [mesDrillDownSelecionado, setMesDrillDownSelecionado] = useState<ConferenciaMensalDTO | null>(null);
 
   // Filtros internos
   const [filtroComissao, setFiltroComissao] = useState<
@@ -159,14 +178,33 @@ export function ContaCorrenteSociosView({
     });
   }, [dados.comissoesSocio, filtroComissao, buscaComissao]);
 
-  // Handler de navegação de competência / sócio
-  function alterarFiltros(novoMes?: string, novoSocioId?: string) {
-    const mes = novoMes !== undefined ? novoMes : competencia;
-    const socio = novoSocioId !== undefined ? novoSocioId : socioSelecionadoId || "todos";
-    const params = new URLSearchParams();
-    if (mes) params.set("mes", mes);
-    if (socio && socio !== "todos") params.set("socio", socio);
-    router.push(`/erp/conta-corrente-socios?${params.toString()}`);
+  // Handler de navegação de competência, tipo de período e sócio
+  function alterarFiltros(params: {
+    tipoPeriodo?: TipoFiltroPeriodo;
+    mes?: string;
+    de?: string;
+    ate?: string;
+    socioId?: string;
+  }) {
+    const sp = new URLSearchParams();
+    const tp = params.tipoPeriodo !== undefined ? params.tipoPeriodo : dados.tipoPeriodo;
+    const mes = params.mes !== undefined ? params.mes : dados.competencia;
+    const de = params.de !== undefined ? params.de : dados.dataInicio;
+    const ate = params.ate !== undefined ? params.ate : dados.dataFim;
+    const socio = params.socioId !== undefined ? params.socioId : socioSelecionadoId || "todos";
+
+    if (tp && tp !== "mes") sp.set("tipo_periodo", tp);
+    if (mes && tp === "mes") sp.set("mes", mes);
+    if (de && tp === "personalizado") sp.set("de", de);
+    if (ate && tp === "personalizado") sp.set("ate", ate);
+    if (socio && socio !== "todos") sp.set("socio", socio);
+
+    router.push(`/erp/conta-corrente-socios?${sp.toString()}`);
+  }
+
+  // Compatibilidade legada para chamadas com argumentos posicionais
+  function alterarFiltrosLegado(novoMes?: string, novoSocioId?: string) {
+    alterarFiltros({ mes: novoMes, socioId: novoSocioId, tipoPeriodo: novoMes ? "mes" : undefined });
   }
 
   // Ação: Submeter Compensação
@@ -360,21 +398,102 @@ export function ContaCorrenteSociosView({
         {/* BARRA DE CONTROLE: MÊS + SELETOR DE SÓCIO + AÇÕES RÁPIDAS */}
         <div className="mt-5 flex flex-wrap items-center justify-between gap-4">
           <div className="flex flex-wrap items-center gap-3">
-            {/* Seletor de Competência */}
-            <div className="flex items-center gap-2 rounded-xl bg-white/10 px-3 py-2 text-xs font-bold text-white">
-              <Calendar className="h-4 w-4 text-amber-300" />
-              <input
-                type="month"
-                value={competencia}
-                onChange={(e) => alterarFiltros(e.target.value)}
-                className="bg-transparent text-xs font-black uppercase text-white focus:outline-none cursor-pointer"
-              />
+            {/* SELETOR DE PERÍODO MULTIFUNCIONAL */}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setDropdownPeriodoAberto(!dropdownPeriodoAberto)}
+                className="flex items-center gap-2 rounded-xl bg-white/10 hover:bg-white/20 px-3.5 py-2 text-xs font-black text-white transition-all shadow-sm active:scale-95 border border-white/10"
+              >
+                <Calendar className="h-4 w-4 text-amber-300" />
+                <span>{dados.rotuloPeriodo}</span>
+                <ChevronDown className="h-3.5 w-3.5 text-white/70" />
+              </button>
+
+              {dropdownPeriodoAberto && (
+                <div className="absolute left-0 top-full mt-2 w-72 rounded-2xl border border-slate-200 bg-white p-2 shadow-2xl z-50 text-slate-800 animate-in fade-in zoom-in-95 duration-150">
+                  <div className="p-2 border-b border-slate-100 flex items-center justify-between">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">
+                      Filtrar por Período
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setDropdownPeriodoAberto(false)}
+                      className="text-slate-400 hover:text-slate-600"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+
+                  <div className="space-y-0.5 py-1">
+                    {[
+                      { id: "mes_atual", label: "Mês atual" },
+                      { id: "mes_anterior", label: "Mês anterior" },
+                      { id: "ultimos_3_meses", label: "Últimos 3 meses" },
+                      { id: "ultimos_6_meses", label: "Últimos 6 meses" },
+                      { id: "ano_atual", label: "Ano atual" },
+                      { id: "todos_periodos", label: "Todos os períodos" },
+                    ].map((opt) => (
+                      <button
+                        key={opt.id}
+                        type="button"
+                        onClick={() => {
+                          setDropdownPeriodoAberto(false);
+                          alterarFiltros({ tipoPeriodo: opt.id as any });
+                        }}
+                        className={`w-full text-left px-3 py-2 rounded-xl text-xs font-bold transition-colors flex items-center justify-between ${
+                          dados.tipoPeriodo === opt.id
+                            ? "bg-amber-100 text-amber-950 font-black"
+                            : "hover:bg-slate-100 text-slate-700"
+                        }`}
+                      >
+                        <span>{opt.label}</span>
+                        {dados.tipoPeriodo === opt.id && <Check className="h-3.5 w-3.5 text-amber-600" />}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Mês específico */}
+                  <div className="p-2 border-t border-slate-100">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block mb-1">
+                      Mês Específico
+                    </span>
+                    <input
+                      type="month"
+                      defaultValue={dados.competencia}
+                      onChange={(e) => {
+                        if (e.target.value) {
+                          setDropdownPeriodoAberto(false);
+                          alterarFiltros({ tipoPeriodo: "mes", mes: e.target.value });
+                        }
+                      }}
+                      className="w-full rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-bold text-slate-900 focus:border-indigo-600 focus:outline-none"
+                    />
+                  </div>
+
+                  {/* Período personalizado */}
+                  <div className="p-2 border-t border-slate-100">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setDropdownPeriodoAberto(false);
+                        setModalPeriodoPersonalizadoAberto(true);
+                      }}
+                      className="w-full rounded-xl bg-slate-100 hover:bg-slate-200 px-3 py-2 text-xs font-black text-slate-800 flex items-center justify-center gap-1.5 transition-colors"
+                    >
+                      <Filter className="h-3.5 w-3.5" />
+                      Período personalizado (De/Até)
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Seletor de Sócio */}
             <div className="flex items-center gap-1.5 rounded-xl bg-white/10 p-1 text-xs font-semibold">
               <button
-                onClick={() => alterarFiltros(undefined, "todos")}
+                type="button"
+                onClick={() => alterarFiltros({ socioId: "todos" })}
                 className={`rounded-lg px-3 py-1.5 transition-all ${
                   isVisaoTodos
                     ? "bg-amber-400 text-slate-950 font-black shadow"
@@ -386,7 +505,8 @@ export function ContaCorrenteSociosView({
               {dados.todosSocios.map((s) => (
                 <button
                   key={s.id}
-                  onClick={() => alterarFiltros(undefined, s.id)}
+                  type="button"
+                  onClick={() => alterarFiltros({ socioId: s.id })}
                   className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 transition-all ${
                     socioAtivo?.id === s.id
                       ? "bg-amber-400 text-slate-950 font-black shadow"
@@ -512,6 +632,232 @@ export function ContaCorrenteSociosView({
           </div>
         </div>
       </div>
+
+      {/* PAINEL DE CONCILIAÇÃO: SALDO INICIAL vs MOVIMENTAÇÃO vs SALDO ACUMULADO */}
+      <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm space-y-4">
+        {dados.isTodosPeriodos ? (
+          /* VISÃO: TODOS OS PERÍODOS (CONSOLIDADO GERAL) */
+          <div>
+            <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 pb-4">
+              <div>
+                <span className="text-[10px] font-black uppercase tracking-wider text-indigo-600 block">
+                  Posição Histórica Geral
+                </span>
+                <h3 className="text-lg font-black text-slate-900">
+                  {socioAtivo?.nome || "Consolidado da Empresa"} — Consolidado de Todos os Períodos
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Acumulado histórico integral desde o início dos lançamentos na plataforma
+                </p>
+              </div>
+              <span className="rounded-full bg-indigo-50 px-3 py-1 text-xs font-black text-indigo-700 border border-indigo-200">
+                Histórico Geral Acumulado
+              </span>
+            </div>
+
+            <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="rounded-2xl border border-slate-200 bg-slate-50/60 p-4">
+                <span className="text-[10px] font-black uppercase tracking-wider text-slate-500 block">
+                  Total de Comissões
+                </span>
+                <p className="text-xl font-black text-blue-950 mt-1">
+                  {brl(dados.totalComissoesGeral)}
+                </p>
+                <p className="text-[10px] text-slate-400 mt-0.5">Faturadas e garantidas</p>
+              </div>
+
+              <div className="rounded-2xl border border-slate-200 bg-slate-50/60 p-4">
+                <span className="text-[10px] font-black uppercase tracking-wider text-slate-500 block">
+                  Responsabilidade Despesas
+                </span>
+                <p className="text-xl font-black text-indigo-950 mt-1">
+                  {brl(dados.totalDespesasResponsabilidadeGeral)}
+                </p>
+                <p className="text-[10px] text-slate-400 mt-0.5">Cota das contas da empresa</p>
+              </div>
+
+              <div className="rounded-2xl border border-slate-200 bg-slate-50/60 p-4">
+                <span className="text-[10px] font-black uppercase tracking-wider text-slate-500 block">
+                  Total Pago do Próprio Bolso
+                </span>
+                <p className="text-xl font-black text-teal-950 mt-1">
+                  {brl(dados.totalPagoBolsoGeral)}
+                </p>
+                <p className="text-[10px] text-slate-400 mt-0.5">Desembolsos pessoais</p>
+              </div>
+
+              <div className="rounded-2xl border border-slate-200 bg-slate-50/60 p-4">
+                <span className="text-[10px] font-black uppercase tracking-wider text-slate-500 block">
+                  Total de Compensações
+                </span>
+                <p className="text-xl font-black text-amber-950 mt-1">
+                  {brl(dados.totalCompensacoesGeral)}
+                </p>
+                <p className="text-[10px] text-slate-400 mt-0.5">Comissões retidas p/ despesas</p>
+              </div>
+
+              <div className="rounded-2xl border border-slate-200 bg-slate-50/60 p-4">
+                <span className="text-[10px] font-black uppercase tracking-wider text-slate-500 block">
+                  Total de Saques / Repasses
+                </span>
+                <p className="text-xl font-black text-purple-950 mt-1">
+                  {brl(dados.totalSaquesGeral)}
+                </p>
+                <p className="text-[10px] text-slate-400 mt-0.5">Retiradas já efetuadas</p>
+              </div>
+
+              <div className="rounded-2xl border border-amber-200 bg-amber-50/40 p-4">
+                <span className="text-[10px] font-black uppercase tracking-wider text-amber-900 block">
+                  Reservas Atuais Vigentes
+                </span>
+                <p className="text-xl font-black text-amber-950 mt-1">
+                  {brl(dados.reservaProximasDespesas)}
+                </p>
+                <p className="text-[10px] text-amber-800 mt-0.5">Aluguel, folha e custos retidos</p>
+              </div>
+
+              <div className="rounded-2xl border border-slate-900 bg-slate-950 text-white p-4">
+                <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block">
+                  SALDO ATUAL ACUMULADO
+                </span>
+                <p className="text-2xl font-black text-amber-400 mt-1">
+                  {brl(dados.saldoAcumuladoFinal)}
+                </p>
+                <p className="text-[10px] text-slate-400 mt-0.5">Patrimônio líquido do sócio</p>
+              </div>
+
+              <div className="rounded-2xl border border-emerald-300 bg-emerald-50 p-4">
+                <span className="text-[10px] font-black uppercase tracking-wider text-emerald-800 block">
+                  DISPONÍVEL PARA SAQUE
+                </span>
+                <p className="text-2xl font-black text-emerald-950 mt-1">
+                  {brl(dados.disponivelParaSaque)}
+                </p>
+                <p className="text-[10px] text-emerald-700 mt-0.5">Livre p/ transferência imediata</p>
+              </div>
+            </div>
+          </div>
+        ) : (
+          /* VISÃO: PERÍODO ESPECÍFICO (SALDO INICIAL + MOVIMENTAÇÕES = SALDO FINAL) */
+          <div>
+            <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 pb-4">
+              <div>
+                <span className="text-[10px] font-black uppercase tracking-wider text-indigo-600 block">
+                  Conferência de Fechamento do Período
+                </span>
+                <h3 className="text-lg font-black text-slate-900">
+                  {dados.rotuloPeriodo} — Conciliação Encadeada de Saldos
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Demonstração clara do saldo inicial herdado somado à movimentação líquida do período
+                </p>
+              </div>
+              <div className="rounded-xl bg-slate-100 px-3 py-1.5 text-xs text-slate-700 font-bold">
+                Intervalo: <span className="font-black text-slate-950">{formatDataBr(dados.dataInicio)}</span> até <span className="font-black text-slate-950">{formatDataBr(dados.dataFim)}</span>
+              </div>
+            </div>
+
+            <div className="mt-4 grid gap-4 md:grid-cols-4">
+              {/* Saldo Inicial */}
+              <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 flex flex-col justify-between">
+                <div>
+                  <span className="text-[10px] font-black uppercase tracking-wider text-slate-500 block">
+                    1. Saldo Inicial ({formatDataBr(dados.dataInicio)})
+                  </span>
+                  <p className="text-2xl font-black text-slate-900 mt-1.5">
+                    {brl(dados.saldoInicialPeriodo)}
+                  </p>
+                </div>
+                <p className="text-[11px] text-slate-500 mt-2">
+                  Saldo acumulado anterior herdado
+                </p>
+              </div>
+
+              {/* Movimentações do Período */}
+              <div className={`rounded-2xl border p-4 flex flex-col justify-between ${
+                dados.movimentacaoPeriodoLiquida >= 0
+                  ? "border-emerald-200 bg-emerald-50/40"
+                  : "border-rose-200 bg-rose-50/40"
+              }`}>
+                <div>
+                  <span className={`text-[10px] font-black uppercase tracking-wider block ${
+                    dados.movimentacaoPeriodoLiquida >= 0 ? "text-emerald-800" : "text-rose-800"
+                  }`}>
+                    2. Movimentação Líquida
+                  </span>
+                  <p className={`text-2xl font-black mt-1.5 ${
+                    dados.movimentacaoPeriodoLiquida >= 0 ? "text-emerald-900" : "text-rose-900"
+                  }`}>
+                    {dados.movimentacaoPeriodoLiquida >= 0 ? "+" : ""} {brl(dados.movimentacaoPeriodoLiquida)}
+                  </p>
+                </div>
+                <div className="text-[11px] space-y-0.5 mt-2 font-medium">
+                  <div className="text-emerald-800 flex justify-between">
+                    <span>Créditos:</span> <span>+{brl(dados.creditosPeriodo)}</span>
+                  </div>
+                  <div className="text-rose-800 flex justify-between">
+                    <span>Débitos:</span> <span>-{brl(dados.debitosPeriodo)}</span>
+                  </div>
+                  {dados.saquesPeriodo > 0 && (
+                    <div className="text-purple-800 flex justify-between">
+                      <span>Saques:</span> <span>-{brl(dados.saquesPeriodo)}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Saldo Final */}
+              <div className="rounded-2xl border border-indigo-200 bg-indigo-50/50 p-4 flex flex-col justify-between">
+                <div>
+                  <span className="text-[10px] font-black uppercase tracking-wider text-indigo-900 block">
+                    3. Saldo Final ({formatDataBr(dados.dataFim)})
+                  </span>
+                  <p className="text-2xl font-black text-indigo-950 mt-1.5">
+                    {brl(dados.saldoAcumuladoFinal)}
+                  </p>
+                </div>
+                <p className="text-[11px] text-indigo-800 mt-2 font-medium">
+                  Saldo Inicial + Movimentação Líquida
+                </p>
+              </div>
+
+              {/* Disponível para Saque */}
+              <div className="rounded-2xl border border-emerald-300 bg-gradient-to-b from-emerald-50 to-teal-50/80 p-4 flex flex-col justify-between">
+                <div>
+                  <span className="text-[10px] font-black uppercase tracking-wider text-emerald-900 block">
+                    4. Disponível para Saque
+                  </span>
+                  <p className="text-2xl font-black text-emerald-950 mt-1.5">
+                    {brl(dados.disponivelParaSaque)}
+                  </p>
+                </div>
+                <p className="text-[11px] text-emerald-800 mt-2 font-medium">
+                  {dados.reservaProximasDespesas > 0
+                    ? `Deduzidas ${brl(dados.reservaProximasDespesas)} em reservas`
+                    : "Livre para transferência"}
+                </p>
+              </div>
+            </div>
+
+            {/* Aviso didático: Diferença entre Movimentação e Saldo */}
+            <div className="rounded-2xl bg-slate-50 border border-slate-200/80 p-3.5 flex items-center justify-between text-xs">
+              <div className="flex items-center gap-2.5">
+                <HelpCircle className="h-4 w-4 text-indigo-600 shrink-0" />
+                <span className="text-slate-600">
+                  <strong>Atenção:</strong> Não confunda a <strong>Movimentação do Período ({brl(dados.movimentacaoPeriodoLiquida)})</strong> com o <strong>Saldo Acumulado Total ({brl(dados.saldoAcumuladoFinal)})</strong>. O saldo acumulado traz o patrimônio anterior somado às operações do mês.
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setAbaAtiva("fechamentos")}
+                className="text-xs font-black text-indigo-700 hover:underline shrink-0 ml-3"
+              >
+                Ver Quadro de Conferência →
+              </button>
+            </div>
+          </div>
+        )}
+      </section>
 
       {/* CARDS PRINCIPAIS (6 CARDS RESUMIDOS) */}
       <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
@@ -980,7 +1326,7 @@ export function ContaCorrenteSociosView({
               label: `Previsão & Reservas (${dados.reservas.length})`,
               icon: Lock,
             },
-            { id: "fechamentos", label: "Fechamento do Mês", icon: Scale },
+            { id: "fechamentos", label: `Conferência & Auditoria (${dados.conferenciaMensal.length})`, icon: Scale },
           ].map((aba) => {
             const Icon = aba.icon;
             const ativa = abaAtiva === aba.id;
@@ -1818,6 +2164,181 @@ export function ContaCorrenteSociosView({
               })}
             </div>
 
+            {/* QUADRO DE CONFERÊNCIA MENSAL (AUDIT TABLE) */}
+            <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-4">
+                <div>
+                  <span className="text-[10px] font-black uppercase tracking-wider text-indigo-600 block">
+                    Auditoria Mês a Mês Encadeada
+                  </span>
+                  <h3 className="text-lg font-black text-slate-900">
+                    Quadro de Conferência Mensal
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    O saldo inicial de cada competência é rigorosamente igual ao saldo final da competência anterior. Clique em qualquer linha para abrir o Drill-Down analítico.
+                  </p>
+                </div>
+                <div className="rounded-xl bg-slate-100 px-3 py-1.5 text-xs text-slate-600 font-bold">
+                  {dados.conferenciaMensal.length} competências apuradas
+                </div>
+              </div>
+
+              <div className="overflow-x-auto rounded-2xl border border-slate-200">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-slate-50 text-slate-500 font-black uppercase tracking-wider">
+                    <tr>
+                      <th className="p-3">Competência</th>
+                      <th className="p-3 text-right">Saldo Inicial</th>
+                      <th className="p-3 text-right text-emerald-700">Créditos (+)</th>
+                      <th className="p-3 text-right text-rose-700">Débitos (-)</th>
+                      <th className="p-3 text-right text-amber-700">Reservas</th>
+                      <th className="p-3 text-right text-purple-700">Saques (-)</th>
+                      <th className="p-3 text-right">Ajustes</th>
+                      <th className="p-3 text-right font-black bg-slate-100/60">Saldo Final</th>
+                      <th className="p-3 text-center">Status</th>
+                      <th className="p-3 text-right">Drill-Down</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-200">
+                    {dados.conferenciaMensal.map((m) => (
+                      <tr
+                        key={m.competencia}
+                        onClick={() => setMesDrillDownSelecionado(m)}
+                        className="hover:bg-indigo-50/50 cursor-pointer transition-colors"
+                        title="Clique para inspecionar os lançamentos analíticos deste fechamento"
+                      >
+                        <td className="p-3 font-black text-slate-900 whitespace-nowrap">
+                          <span className="flex items-center gap-1.5">
+                            <Calendar className="h-3.5 w-3.5 text-indigo-600" />
+                            {m.rotuloCompetencia}
+                          </span>
+                          <span className="text-[10px] text-slate-400 block">{m.competencia}</span>
+                        </td>
+                        <td className="p-3 text-right font-bold text-slate-700 whitespace-nowrap">
+                          {brl(m.saldoInicial)}
+                        </td>
+                        <td className="p-3 text-right font-bold text-emerald-700 whitespace-nowrap">
+                          +{brl(m.creditos)}
+                        </td>
+                        <td className="p-3 text-right font-bold text-rose-700 whitespace-nowrap">
+                          -{brl(m.debitos)}
+                        </td>
+                        <td className="p-3 text-right font-medium text-amber-800 whitespace-nowrap">
+                          {brl(m.reservas)}
+                        </td>
+                        <td className="p-3 text-right font-bold text-purple-700 whitespace-nowrap">
+                          -{brl(m.saques)}
+                        </td>
+                        <td className="p-3 text-right font-medium text-slate-600 whitespace-nowrap">
+                          {m.ajustes !== 0 ? brl(m.ajustes) : "-"}
+                        </td>
+                        <td className="p-3 text-right font-black text-slate-950 bg-slate-50/60 whitespace-nowrap">
+                          {brl(m.saldoFinal)}
+                        </td>
+                        <td className="p-3 text-center whitespace-nowrap">
+                          <span
+                            className={`rounded-full px-2.5 py-0.5 text-[10px] font-black ${
+                              m.statusFechamento === "FECHADO"
+                                ? "bg-emerald-100 text-emerald-800"
+                                : "bg-amber-100 text-amber-800"
+                            }`}
+                          >
+                            {m.statusFechamento}
+                          </span>
+                        </td>
+                        <td className="p-3 text-right whitespace-nowrap">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setMesDrillDownSelecionado(m);
+                            }}
+                            className="rounded-lg border border-indigo-200 bg-white px-2.5 py-1 text-[11px] font-black text-indigo-700 hover:bg-indigo-50 shadow-sm transition-colors"
+                          >
+                            Drill-Down ({m.totalLancamentos})
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* FECHAMENTO GERAL & RECONCILIAÇÃO DO LEDGER */}
+            <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm space-y-5">
+              <div className="flex flex-wrap items-center justify-between gap-4">
+                <div>
+                  <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block">
+                    Conferência e Integridade do Livro Contábil
+                  </span>
+                  <h3 className="text-lg font-black text-slate-900">
+                    Fechamento Geral & Auditoria do Ledger
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Validação matemática: Saldo inicial histórico (R$ 0,00) + Créditos - Débitos - Saques = Saldo Atual
+                  </p>
+                </div>
+
+                <span
+                  className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-black ${
+                    dados.fechamentoGeral.status === "OK"
+                      ? "bg-emerald-100 text-emerald-800"
+                      : "bg-rose-100 text-rose-800 animate-pulse"
+                  }`}
+                >
+                  {dados.fechamentoGeral.status === "OK" ? (
+                    <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                  ) : (
+                    <AlertCircle className="h-4 w-4 text-rose-600" />
+                  )}
+                  {dados.fechamentoGeral.status === "OK" ? "LEDGER CONCILIADO (OK)" : "ALERTA DE DIVERGÊNCIA"}
+                </span>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-3">
+                <div className="rounded-2xl border border-slate-200 bg-slate-50/60 p-4">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-slate-500 block">
+                    Saldo Calculado pelo Ledger
+                  </span>
+                  <p className="text-2xl font-black text-slate-950 mt-1">
+                    {brl(dados.fechamentoGeral.saldoCalculadoHistorico)}
+                  </p>
+                  <p className="text-[10px] text-slate-400 mt-0.5">
+                    Lançamentos imutáveis append-only
+                  </p>
+                </div>
+
+                <div className="rounded-2xl border border-slate-200 bg-slate-50/60 p-4">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-slate-500 block">
+                    Saldo Exibido no Dashboard
+                  </span>
+                  <p className="text-2xl font-black text-indigo-950 mt-1">
+                    {brl(dados.fechamentoGeral.saldoExibidoDashboard)}
+                  </p>
+                  <p className="text-[10px] text-slate-400 mt-0.5">
+                    Apuração operacional
+                  </p>
+                </div>
+
+                <div className={`rounded-2xl border p-4 ${
+                  dados.fechamentoGeral.status === "OK"
+                    ? "border-emerald-200 bg-emerald-50/50 text-emerald-950"
+                    : "border-rose-300 bg-rose-50 text-rose-950"
+                }`}>
+                  <span className="text-[10px] font-black uppercase tracking-wider block opacity-75">
+                    Diferença Identificada
+                  </span>
+                  <p className="text-2xl font-black mt-1">
+                    {brl(dados.fechamentoGeral.divergencia)}
+                  </p>
+                  <p className="text-[10px] mt-0.5 opacity-80 font-medium">
+                    {dados.fechamentoGeral.mensagemAuditoria}
+                  </p>
+                </div>
+              </div>
+            </div>
+
             {/* Resumo da Equalização */}
             <div className="rounded-2xl bg-indigo-950 p-6 text-white space-y-3">
               <div className="flex items-center gap-2">
@@ -2266,6 +2787,188 @@ export function ContaCorrenteSociosView({
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: PERÍODO PERSONALIZADO */}
+      {modalPeriodoPersonalizadoAberto && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl space-y-5 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2">
+                <div className="rounded-lg bg-indigo-100 p-2 text-indigo-800">
+                  <Calendar className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-slate-900">
+                    Período Personalizado
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Selecione o intervalo de datas (De / Até) para apuração
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setModalPeriodoPersonalizadoAberto(false)}
+                className="rounded-lg p-1 text-slate-400 hover:text-slate-700"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="space-y-4 text-xs">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">De (Data Inicial)</label>
+                  <input
+                    type="date"
+                    value={customDataInicio}
+                    onChange={(e) => setCustomDataInicio(e.target.value)}
+                    className="w-full rounded-xl border border-slate-300 p-2.5 text-xs text-slate-900 font-bold focus:border-indigo-600 focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Até (Data Final)</label>
+                  <input
+                    type="date"
+                    value={customDataFim}
+                    onChange={(e) => setCustomDataFim(e.target.value)}
+                    className="w-full rounded-xl border border-slate-300 p-2.5 text-xs text-slate-900 font-bold focus:border-indigo-600 focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="rounded-xl bg-slate-50 p-3 text-[11px] text-slate-600 border border-slate-200">
+                O sistema calculará o saldo inicial em <strong>{formatDataBr(customDataInicio)}</strong>, as movimentações deste intervalo e o saldo final acumulado em <strong>{formatDataBr(customDataFim)}</strong>.
+              </div>
+
+              <div className="flex justify-end gap-3 pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setModalPeriodoPersonalizadoAberto(false)}
+                  className="rounded-xl border border-slate-200 px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!customDataInicio || !customDataFim) {
+                      alert("Informe as datas de início e fim.");
+                      return;
+                    }
+                    setModalPeriodoPersonalizadoAberto(false);
+                    alterarFiltros({
+                      tipoPeriodo: "personalizado",
+                      de: customDataInicio,
+                      ate: customDataFim,
+                    });
+                  }}
+                  className="rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white px-5 py-2 text-xs font-black shadow-md"
+                >
+                  Aplicar Período
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: DRILL-DOWN ANALÍTICO DE FECHAMENTO */}
+      {mesDrillDownSelecionado && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col rounded-3xl bg-white shadow-2xl border border-slate-100 animate-in fade-in zoom-in-95 duration-150">
+            <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+              <div>
+                <span className="text-[10px] font-black uppercase tracking-wider text-indigo-600 block">
+                  Drill-Down Analítico de Lançamentos
+                </span>
+                <h3 className="text-xl font-black text-slate-900">
+                  Competência {mesDrillDownSelecionado.rotuloCompetencia} ({mesDrillDownSelecionado.competencia})
+                </h3>
+                <div className="flex flex-wrap items-center gap-3 mt-1 text-xs text-slate-500">
+                  <span>Status: <strong className="text-slate-900">{mesDrillDownSelecionado.statusFechamento}</strong></span>
+                  <span>·</span>
+                  <span>Saldo Inicial: <strong className="text-slate-900">{brl(mesDrillDownSelecionado.saldoInicial)}</strong></span>
+                  <span>·</span>
+                  <span>Saldo Final: <strong className="text-slate-900">{brl(mesDrillDownSelecionado.saldoFinal)}</strong></span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setMesDrillDownSelecionado(null)}
+                className="rounded-full p-2 text-slate-400 hover:bg-slate-200 hover:text-slate-800 transition-colors"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="p-6 overflow-y-auto space-y-4">
+              <div className="overflow-x-auto rounded-2xl border border-slate-200">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-slate-50 text-slate-500 font-black uppercase tracking-wider">
+                    <tr>
+                      <th className="p-3">Data</th>
+                      <th className="p-3">Descrição do Lançamento</th>
+                      <th className="p-3">Origem</th>
+                      <th className="p-3 text-right text-rose-700">Débito (-)</th>
+                      <th className="p-3 text-right text-emerald-700">Crédito (+)</th>
+                      <th className="p-3 text-right">Saldo Resultante</th>
+                      <th className="p-3">Responsável</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-200">
+                    {mesDrillDownSelecionado.lancamentos.map((l) => (
+                      <tr key={l.id} className="hover:bg-slate-50 transition-colors">
+                        <td className="p-3 font-bold text-slate-900 whitespace-nowrap">
+                          {formatDataBr(l.data)}
+                        </td>
+                        <td className="p-3 font-medium text-slate-900">
+                          {l.descricao}
+                        </td>
+                        <td className="p-3 whitespace-nowrap">
+                          <span className="rounded bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-700">
+                            {l.origem}
+                          </span>
+                        </td>
+                        <td className="p-3 text-right font-bold text-rose-700 whitespace-nowrap">
+                          {l.debito > 0 ? `-${brl(l.debito)}` : "-"}
+                        </td>
+                        <td className="p-3 text-right font-bold text-emerald-700 whitespace-nowrap">
+                          {l.credito > 0 ? `+${brl(l.credito)}` : "-"}
+                        </td>
+                        <td className="p-3 text-right font-black text-slate-950 whitespace-nowrap">
+                          {l.saldoApos !== 0 ? brl(l.saldoApos) : "-"}
+                        </td>
+                        <td className="p-3 text-slate-500 whitespace-nowrap">
+                          {l.responsavelNome || "-"}
+                        </td>
+                      </tr>
+                    ))}
+
+                    {!mesDrillDownSelecionado.lancamentos.length && (
+                      <tr>
+                        <td colSpan={7} className="p-8 text-center text-xs text-slate-500">
+                          Nenhum lançamento detalhado registrado para esta competência.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div className="p-4 border-t border-slate-100 bg-slate-50 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setMesDrillDownSelecionado(null)}
+                className="rounded-xl bg-slate-950 text-white px-5 py-2 text-xs font-black shadow-md hover:bg-slate-800"
+              >
+                Fechar Drill-Down
+              </button>
+            </div>
           </div>
         </div>
       )}
