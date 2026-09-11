@@ -2184,3 +2184,36 @@ Relatório:
 
 Relatório:
 `docs/relatorios-fases/FASE-225-EXPANSAO-PERIODOS-CONTA-CORRENTE-SOCIOS.md`.
+
+### Evolução Operacional 226 — Reconciliação Real de Caixa vs Competência, Despesas Pagas e Comissões Recebidas na Conta-Corrente dos Sócios
+
+1. **Correção de Causa Raiz e Confiabilidade de Queries:**
+   - **Correção da Query de Despesas:** Removida coluna inexistente `categoria` da query de `financeiro_contas_pagar` que provocava falha HTTP 400 (Postgres `42703`) e zerava indevidamente despesas, responsabilidades e pagamentos do bolso.
+   - **Correção do Termômetro vs Sócio:** O termômetro de cobertura agora reflete os dados apurados estritamente dentro do período selecionado e diferencia comissões faturadas/elegíveis de recursos bancários consolidados em `financeiro_contas_saldos`.
+
+2. **Isolamento Absoluto das 4 Dimensões da Informação:**
+   - **A) PREVISTO:** Parcelas futuras estimadas a vencer das vendas ativas.
+   - **B) GARANTIDO:** Comissões com elegibilidade contratual faturada no período.
+   - **C) RECEBIDO / PAGO:** Movimentações financeiras que efetivamente transitaram pelo caixa no período (liquidadas via `financeiro_pagamentos` ou contas com status `paga`).
+   - **D) ACUMULADO:** Posição histórica global (patrimônio anterior somado às operações realizadas).
+
+3. **Duplo Regime: Competência vs. Caixa:**
+   - Implementado seletor `[ Competência ]` / `[ Caixa ]` sincronizado na URL via `regime`.
+   - **Regime de Competência:** Apura comissões pela data da parcela/etapa (`data_prevista_repasse` / `created_at`) e despesas pela competência contábil (`competencia` ou vencimento).
+   - **Regime de Caixa:** Apura comissões pela data real do pagamento (`financeiro_pagamentos.data_pagamento`) e despesas pela data de liquidação (`pago_em`).
+
+4. **Quadro Comparativo Geral dos Sócios (Item 10) & Grid de 12 Cards Operacionais (Item 9):**
+   - **Visão Todos os Sócios:** Tabela comparativa `FERNANDO | ERONI | TOTAL EMPRESA` contendo 10 linhas contábeis e operacionais rigorosamente reconciliadas (Comissões Garantidas, Recebidas, A Receber, Responsabilidade, Pago do Bolso, Pago pela Empresa, Equalização, Reservas, Saques e Saldo Atual).
+   - **Visão Individual:** 12 cards de fluxo com separação entre Comissões Garantidas, Recebidas, A Receber, Futuro Previsto, Responsabilidade, Paguei do Bolso, Pago pela Empresa, Equalização (com sinal e cor indicativa), Reservas, Já Sacado, Disponível para Saque Agora (realista baseado em caixa) e Disponível Projetado.
+
+5. **Conferência Analítica das Despesas e Comissões com Drill-Down (Itens 11 e 12):**
+   - Seções dedicadas com 6 cards clicáveis cada. Ao clicar em qualquer card (ex: Total Pago, Pago por Fernando, Total Recebido, Total a Receber), abre-se modal com todos os lançamentos individuais auditáveis.
+   - 5 cards de fluxo integrados no topo da aba "Despesas & Rateios" (Item 8).
+
+6. **Testes Unitários e de Reconciliação Matemática (Item 18):**
+   - 34 testes unitários e de reconciliação aprovados com 100% de sucesso em `conta-corrente-periodos.test.ts` e `conta-corrente-socios.test.ts`.
+   - Comprovação matemática de que a soma dos lançamentos do banco bate rigorosamente com os cards do dashboard, respeitando a equalização societária 50/50.
+
+Relatório:
+`docs/relatorios-fases/FASE-226-RECONCILIACAO-REAL-CONTA-CORRENTE-SOCIOS.md`.
+

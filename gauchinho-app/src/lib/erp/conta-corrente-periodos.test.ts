@@ -111,6 +111,23 @@ describe("SUÍTE DE TESTES UNITÁRIOS — EXPANSÃO DE PERÍODOS E CONFERÊNCIA 
       expect(res.dataFim).toBe("2026-09-30");
       expect(res.rotuloPeriodo).toBe("01/01/2026 até 30/09/2026");
     });
+
+    it("Resolve Regime de Competência (default) vs Regime de Caixa", () => {
+      const resCompetencia = resolverIntervaloPeriodo({
+        tipoPeriodo: "mes",
+        competencia: "2026-09",
+        referenciaHoje: refHoje,
+      });
+      expect(resCompetencia.regime).toBe("COMPETENCIA");
+
+      const resCaixa = resolverIntervaloPeriodo({
+        tipoPeriodo: "mes",
+        competencia: "2026-09",
+        regime: "CAIXA",
+        referenciaHoje: refHoje,
+      });
+      expect(resCaixa.regime).toBe("CAIXA");
+    });
   });
 
   describe("2. Quadro de Conferência Mensal Encadeado", () => {

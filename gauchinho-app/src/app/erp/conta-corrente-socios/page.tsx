@@ -11,6 +11,7 @@ interface PageProps {
     tipo_periodo?: string;
     de?: string;
     ate?: string;
+    regime?: string;
   }>;
 }
 
@@ -21,6 +22,7 @@ export default async function ContaCorrenteSociosPage({ searchParams }: PageProp
   const tipoPeriodoParam = params?.tipo_periodo;
   const deParam = params?.de;
   const ateParam = params?.ate;
+  const regimeParam = params?.regime;
 
   const dados = await carregarDadosContaCorrenteSocios({
     tipoPeriodo: tipoPeriodoParam as any,
@@ -28,6 +30,7 @@ export default async function ContaCorrenteSociosPage({ searchParams }: PageProp
     dataInicio: deParam,
     dataFim: ateParam,
     socioId: socioParam,
+    regime: regimeParam as any,
   });
 
   return (
@@ -51,6 +54,7 @@ export default async function ContaCorrenteSociosPage({ searchParams }: PageProp
           tipoPeriodoInicial={dados.tipoPeriodo}
           dataInicioInicial={dados.dataInicio}
           dataFimInicial={dados.dataFim}
+          regimeInicial={dados.regime}
         />
       </Suspense>
     </main>

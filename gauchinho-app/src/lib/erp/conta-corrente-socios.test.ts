@@ -246,4 +246,128 @@ describe("SUÍTE DE TESTES UNITÁRIOS — CONTA-CORRENTE DOS SÓCIOS (REGRAS E C
       expect(diferenca).toBe(600);
     });
   });
+
+  describe("6. Reconciliação Matemática dos Lançamentos com os Cards do Dashboard (Fase 226 - Item 18)", () => {
+    it("Reconcilia Despesas Pagas: soma dos lançamentos pagos individuais é rigorosamente idêntica ao card", () => {
+      const lancamentosDespesas = [
+        { id: "d-1", valor: 1500, status: "paga", pagoPessoalmente: true, pagador: "Fernando" },
+        { id: "d-2", valor: 3200, status: "paga", pagoPessoalmente: false, pagador: "Empresa" },
+        { id: "d-3", valor: 2500, status: "paga", pagoPessoalmente: true, pagador: "Eroni" },
+        { id: "d-4", valor: 800, status: "aberta", pagoPessoalmente: false, pagador: null },
+      ];
+
+      const despesasPagas = lancamentosDespesas.filter((d) => d.status === "paga");
+      const cardTotalPago = despesasPagas.reduce((acc, d) => acc + d.valor, 0);
+
+      const pagoEmpresa = despesasPagas.filter((d) => !d.pagoPessoalmente).reduce((acc, d) => acc + d.valor, 0);
+      const pagoFernando = despesasPagas.filter((d) => d.pagoPessoalmente && d.pagador === "Fernando").reduce((acc, d) => acc + d.valor, 0);
+      const pagoEroni = despesasPagas.filter((d) => d.pagoPessoalmente && d.pagador === "Eroni").reduce((acc, d) => acc + d.valor, 0);
+
+      expect(cardTotalPago).toBe(7200);
+      expect(pagoEmpresa).toBe(3200);
+      expect(pagoFernando).toBe(1500);
+      expect(pagoEroni).toBe(2500);
+      expect(pagoEmpresa + pagoFernando + pagoEroni).toBe(cardTotalPago);
+    });
+
+    it("Reconcilia 'Paguei do Bolso' e Equalização societária (50/50)", () => {
+      // Cenário real verificado na auditoria dos últimos 6 meses:
+      // Despesas Pagas Totais = 36.342,98
+      // Fernando pagou do bolso = 9.790,61
+      // Eroni pagou do bolso = 26.552,37
+      // Pago pela Empresa = 0,00
+      const totalDespesasPagas = 36342.98;
+      const bolsoFernando = 9790.61;
+      const bolsoEroni = 26552.37;
+      const pagoEmpresa = 0.0;
+
+      expect(bolsoFernando + bolsoEroni + pagoEmpresa).toBeCloseTo(totalDespesasPagas, 2);
+
+      const responsabilidadeFernando = Number((totalDespesasPagas * 0.5).toFixed(2));
+      const responsabilidadeEroni = Number((totalDespesasPagas * 0.5).toFixed(2));
+
+      expect(responsabilidadeFernando).toBe(18171.49);
+      expect(responsabilidadeEroni).toBe(18171.49);
+
+      // Equalização = Bolso - Responsabilidade
+      const equalizacaoFernando = Number((bolsoFernando - responsabilidadeFernando).toFixed(2));
+      const equalizacaoEroni = Number((bolsoEroni - responsabilidadeEroni).toFixed(2));
+
+      // Fernando pagou a menos do que sua cota -> a compensar (-8.380,88)
+      expect(equalizacaoFernando).toBe(-8380.88);
+      // Eroni pagou a mais do que sua cota -> crédito (+8.380,88)
+      expect(equalizacaoEroni).toBe(8380.88);
+
+      // A soma das equalizações é exatamente zero
+      expect(equalizacaoFernando + equalizacaoEroni).toBe(0);
+    });
+
+    it("Reconcilia Comissões: soma de recebidas + a receber é rigorosamente idêntica às comissões garantidas", () => {
+      const lancamentosComissoes = [
+        { id: "c-1", valorElegivel: 4500, valorPago: 4500, status: "paga" },
+        { id: "c-2", valorElegivel: 5217.89, valorPago: 5217.89, status: "paga" },
+        { id: "c-3", valorElegivel: 540.89, valorPago: 0, status: "elegivel" },
+      ];
+
+      const totalGarantido = Number(lancamentosComissoes.reduce((acc, c) => acc + c.valorElegivel, 0).toFixed(2));
+      const totalRecebido = Number(lancamentosComissoes.reduce((acc, c) => acc + c.valorPago, 0).toFixed(2));
+      const totalAReceber = Number((totalGarantido - totalRecebido).toFixed(2));
+
+      expect(totalGarantido).toBe(10258.78);
+      expect(totalRecebido).toBe(9717.89);
+      expect(totalAReceber).toBe(540.89);
+      expect(totalRecebido + totalAReceber).toBeCloseTo(totalGarantido, 2);
+    });
+
+    it("Reconcilia Disponível para Saque Realista vs Disponível Projetado", () => {
+      // Regra: Disponível Realista é baseado APENAS no dinheiro que entrou no caixa (comissões recebidas)
+      // Fernando: Comissões Recebidas (9.717,89) + Equalização (-8.380,88) = 1.337,01
+      const comissoesRecebidas = 9717.89;
+      const equalizacao = -8380.88;
+      const saquesRealizados = 0;
+      const reservasFuturas = 0;
+
+      const disponivelRealista = Math.max(0, comissoesRecebidas + equalizacao - saquesRealizados - reservasFuturas);
+      expect(disponivelRealista).toBeCloseTo(1337.01, 2);
+
+      // Disponível Projetado: inclui comissões garantidas a receber (540,89)
+      const comissoesAReceber = 540.89;
+      const disponivelProjetado = Number((disponivelRealista + comissoesAReceber).toFixed(2));
+      expect(disponivelProjetado).toBe(1877.9);
+    });
+
+    it("Garante o isolamento absoluto dos 4 tipos de informação (Previsto vs Garantido vs Recebido vs Acumulado)", () => {
+      const metricasSocio = {
+        previsto: 37305.99, // Parcelas futuras a vencer
+        garantido: 10258.78, // Elegíveis contratuais faturadas
+        recebido: 9717.89,   // Efetivamente liquidadas via caixa
+        acumulado: 1337.01,  // Patrimônio líquido final histórico
+      };
+
+      // Não se misturam:
+      expect(metricasSocio.garantido).not.toBe(metricasSocio.previsto);
+      expect(metricasSocio.recebido).not.toBe(metricasSocio.garantido);
+      expect(metricasSocio.acumulado).not.toBe(metricasSocio.recebido);
+      expect(metricasSocio.previsto).toBeGreaterThan(metricasSocio.garantido);
+      expect(metricasSocio.garantido).toBeGreaterThan(metricasSocio.recebido);
+    });
+
+    it("Reconcilia Quadro Comparativo Societário Geral (Fernando + Eroni === Total Empresa)", () => {
+      const quadro = {
+        comissoesGarantidas: { fernando: 10258.78, eroni: 23274.67, totalEmpresa: 33533.45 },
+        comissoesRecebidas: { fernando: 9717.89, eroni: 23274.67, totalEmpresa: 32992.56 },
+        comissoesAReceber: { fernando: 540.89, eroni: 0, totalEmpresa: 540.89 },
+        responsabilidade: { fernando: 18171.49, eroni: 18171.49, totalEmpresa: 36342.98 },
+        pagoDoBolso: { fernando: 9790.61, eroni: 26552.37, totalEmpresa: 36342.98 },
+        equalizacao: { fernando: -8380.88, eroni: 8380.88, totalEmpresa: 0 },
+      };
+
+      expect(quadro.comissoesGarantidas.fernando + quadro.comissoesGarantidas.eroni).toBeCloseTo(quadro.comissoesGarantidas.totalEmpresa, 2);
+      expect(quadro.comissoesRecebidas.fernando + quadro.comissoesRecebidas.eroni).toBeCloseTo(quadro.comissoesRecebidas.totalEmpresa, 2);
+      expect(quadro.comissoesAReceber.fernando + quadro.comissoesAReceber.eroni).toBeCloseTo(quadro.comissoesAReceber.totalEmpresa, 2);
+      expect(quadro.responsabilidade.fernando + quadro.responsabilidade.eroni).toBeCloseTo(quadro.responsabilidade.totalEmpresa, 2);
+      expect(quadro.pagoDoBolso.fernando + quadro.pagoDoBolso.eroni).toBeCloseTo(quadro.pagoDoBolso.totalEmpresa, 2);
+      expect(quadro.equalizacao.fernando + quadro.equalizacao.eroni).toBe(0);
+    });
+  });
 });

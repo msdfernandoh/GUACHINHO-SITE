@@ -22,4 +22,6 @@ Thumbs.db
 supabase/.temp/
 .npm-cache/
 .codex-worktrees/
+.claude/
+analise/
 

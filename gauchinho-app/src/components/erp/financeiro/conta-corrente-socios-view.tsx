@@ -50,9 +50,15 @@ import {
 import type {
   ContaCorrenteResumoDTO,
   TipoFiltroPeriodo,
+  TipoRegimePeriodo,
   ConferenciaMensalDTO,
   LancamentoConferenciaDTO,
   FechamentoGeralDTO,
+  PainelConferenciaDespesasDTO,
+  PainelConferenciaComissoesDTO,
+  QuadroComparativoGeralDTO,
+  ItemConferenciaDespesaDTO,
+  ItemConferenciaComissaoDTO,
   DespesaRateioDTO,
   ComissaoSocioDTO,
   MovimentoLedgerDTO,
@@ -78,6 +84,7 @@ interface ContaCorrenteSociosViewProps {
   tipoPeriodoInicial?: TipoFiltroPeriodo;
   dataInicioInicial?: string;
   dataFimInicial?: string;
+  regimeInicial?: TipoRegimePeriodo;
 }
 
 const brl = (val: number) =>
@@ -99,7 +106,15 @@ export function ContaCorrenteSociosView({
   tipoPeriodoInicial,
   dataInicioInicial,
   dataFimInicial,
+  regimeInicial,
 }: ContaCorrenteSociosViewProps) {
+  const [drillDownConferencia, setDrillDownConferencia] = useState<{
+    titulo: string;
+    subtitulo: string;
+    tipo: "despesas" | "comissoes";
+    itensDespesas?: ItemConferenciaDespesaDTO[];
+    itensComissoes?: ItemConferenciaComissaoDTO[];
+  } | null>(null);
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
@@ -185,6 +200,7 @@ export function ContaCorrenteSociosView({
     de?: string;
     ate?: string;
     socioId?: string;
+    regime?: TipoRegimePeriodo;
   }) {
     const sp = new URLSearchParams();
     const tp = params.tipoPeriodo !== undefined ? params.tipoPeriodo : dados.tipoPeriodo;
@@ -192,12 +208,14 @@ export function ContaCorrenteSociosView({
     const de = params.de !== undefined ? params.de : dados.dataInicio;
     const ate = params.ate !== undefined ? params.ate : dados.dataFim;
     const socio = params.socioId !== undefined ? params.socioId : socioSelecionadoId || "todos";
+    const reg = params.regime !== undefined ? params.regime : dados.regime;
 
     if (tp && tp !== "mes") sp.set("tipo_periodo", tp);
     if (mes && tp === "mes") sp.set("mes", mes);
     if (de && tp === "personalizado") sp.set("de", de);
     if (ate && tp === "personalizado") sp.set("ate", ate);
     if (socio && socio !== "todos") sp.set("socio", socio);
+    if (reg && reg !== "COMPETENCIA") sp.set("regime", reg);
 
     router.push(`/erp/conta-corrente-socios?${sp.toString()}`);
   }
@@ -859,157 +877,508 @@ export function ContaCorrenteSociosView({
         )}
       </section>
 
-      {/* CARDS PRINCIPAIS (6 CARDS RESUMIDOS) */}
-      <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-        {/* 1. Comissões Garantidas */}
-        <div
-          onClick={() => {
-            setAbaAtiva("comissoes");
-            setFiltroComissao("GARANTIDA");
-          }}
-          className="group cursor-pointer rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-all hover:border-blue-400 hover:shadow-md"
-        >
-          <div className="flex items-center justify-between text-slate-500">
-            <span className="text-xs font-black uppercase tracking-wider">Comissões Garantidas</span>
-            <div className="rounded-lg bg-blue-50 p-2 text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-colors">
-              <Coins className="h-4 w-4" />
+            {/* DASHBOARD GERAL / DO SÓCIO & CONFERÊNCIA DAS DESPESAS E COMISSÕES */}
+      {isVisaoTodos ? (
+        /* VISÃO TODOS OS SÓCIOS: QUADRO COMPARATIVO GERAL (Item 10) */
+        <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 pb-3">
+            <div>
+              <span className="text-[10px] font-black uppercase tracking-wider text-indigo-600 block">
+                Visão Geral da Sociedade
+              </span>
+              <h3 className="text-lg font-black text-slate-900">
+                Comparativo Geral dos Sócios — {dados.rotuloPeriodo} ({dados.regime})
+              </h3>
+              <p className="text-xs text-slate-500">
+                Alinhamento patrimonial entre sócios, responsabilidades, pagamentos do bolso e saldos
+              </p>
             </div>
-          </div>
-          <p className="mt-3 text-2xl font-black text-blue-950">
-            {brl(dados.comissoesGarantidas)}
-          </p>
-          <p className="mt-1 text-[11px] text-slate-500">
-            Elegíveis / faturadas no período
-          </p>
-        </div>
-
-        {/* 2. Despesas da Minha Responsabilidade */}
-        <div
-          onClick={() => {
-            setAbaAtiva("despesas");
-          }}
-          className="group cursor-pointer rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-all hover:border-indigo-400 hover:shadow-md"
-        >
-          <div className="flex items-center justify-between text-slate-500">
-            <span className="text-xs font-black uppercase tracking-wider">Responsabilidade</span>
-            <div className="rounded-lg bg-indigo-50 p-2 text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white transition-colors">
-              <TrendingDown className="h-4 w-4" />
-            </div>
-          </div>
-          <p className="mt-3 text-2xl font-black text-indigo-950">
-            {brl(dados.despesasMinhaResponsabilidade)}
-          </p>
-          <p className="mt-1 text-[11px] text-slate-500">
-            Minha cota nas contas da empresa
-          </p>
-        </div>
-
-        {/* 3. Despesas que Já Paguei */}
-        <div
-          onClick={() => {
-            setAbaAtiva("despesas");
-          }}
-          className="group cursor-pointer rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-all hover:border-teal-400 hover:shadow-md"
-        >
-          <div className="flex items-center justify-between text-slate-500">
-            <span className="text-xs font-black uppercase tracking-wider">Paguei do Bolso</span>
-            <div className="rounded-lg bg-teal-50 p-2 text-teal-600 group-hover:bg-teal-600 group-hover:text-white transition-colors">
-              <Wallet className="h-4 w-4" />
-            </div>
-          </div>
-          <p className="mt-3 text-2xl font-black text-teal-950">
-            {brl(dados.despesasQueEuPaguei)}
-          </p>
-          <p className="mt-1 text-[11px] text-slate-500">
-            Contas pagas pessoalmente
-          </p>
-        </div>
-
-        {/* 4. Saldo a Compensar (vermelho se devedor, ou crédito de equalização) */}
-        <div
-          onClick={() => {
-            setAbaAtiva("ledger");
-          }}
-          className={`group cursor-pointer rounded-2xl border p-5 shadow-sm transition-all hover:shadow-md ${
-            dados.saldoACompensar > 0
-              ? "border-rose-300 bg-rose-50/50 hover:border-rose-400"
-              : "border-slate-200 bg-white hover:border-emerald-400"
-          }`}
-        >
-          <div className="flex items-center justify-between text-slate-500">
-            <span className="text-xs font-black uppercase tracking-wider">
-              {dados.saldoACompensar > 0 ? "A Compensar" : "Equalização"}
+            <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-700">
+              Quadro Societário 50/50
             </span>
+          </div>
+
+          <div className="overflow-x-auto rounded-2xl border border-slate-200">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-slate-900 text-white font-black uppercase tracking-wider">
+                <tr>
+                  <th className="p-3.5">Métrica Contábil / Operacional</th>
+                  <th className="p-3.5 text-right text-amber-300">FERNANDO</th>
+                  <th className="p-3.5 text-right text-cyan-300">ERONI</th>
+                  <th className="p-3.5 text-right text-emerald-400">TOTAL EMPRESA</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-200 font-semibold">
+                <tr className="hover:bg-slate-50">
+                  <td className="p-3 font-bold text-slate-900">Comissões Garantidas</td>
+                  <td className="p-3 text-right font-black text-slate-900">{brl(dados.quadroGeral.comissoesGarantidas.fernando)}</td>
+                  <td className="p-3 text-right font-black text-slate-900">{brl(dados.quadroGeral.comissoesGarantidas.eroni)}</td>
+                  <td className="p-3 text-right font-black text-indigo-950 bg-slate-50/50">{brl(dados.quadroGeral.comissoesGarantidas.totalEmpresa)}</td>
+                </tr>
+                <tr className="hover:bg-slate-50 bg-emerald-50/20">
+                  <td className="p-3 font-bold text-emerald-950">Comissões Recebidas</td>
+                  <td className="p-3 text-right font-black text-emerald-800">{brl(dados.quadroGeral.comissoesRecebidas.fernando)}</td>
+                  <td className="p-3 text-right font-black text-emerald-800">{brl(dados.quadroGeral.comissoesRecebidas.eroni)}</td>
+                  <td className="p-3 text-right font-black text-emerald-950 bg-emerald-50/50">{brl(dados.quadroGeral.comissoesRecebidas.totalEmpresa)}</td>
+                </tr>
+                <tr className="hover:bg-slate-50">
+                  <td className="p-3 font-bold text-blue-900">Comissões a Receber</td>
+                  <td className="p-3 text-right font-black text-blue-800">{brl(dados.quadroGeral.comissoesAReceber.fernando)}</td>
+                  <td className="p-3 text-right font-black text-blue-800">{brl(dados.quadroGeral.comissoesAReceber.eroni)}</td>
+                  <td className="p-3 text-right font-black text-blue-950 bg-slate-50/50">{brl(dados.quadroGeral.comissoesAReceber.totalEmpresa)}</td>
+                </tr>
+                <tr className="hover:bg-slate-50">
+                  <td className="p-3 font-bold text-slate-900">Responsabilidade nas Despesas</td>
+                  <td className="p-3 text-right font-black text-rose-800">{brl(dados.quadroGeral.responsabilidade.fernando)}</td>
+                  <td className="p-3 text-right font-black text-rose-800">{brl(dados.quadroGeral.responsabilidade.eroni)}</td>
+                  <td className="p-3 text-right font-black text-rose-950 bg-slate-50/50">{brl(dados.quadroGeral.responsabilidade.totalEmpresa)}</td>
+                </tr>
+                <tr className="hover:bg-slate-50">
+                  <td className="p-3 font-bold text-slate-900">Pago do Próprio Bolso</td>
+                  <td className="p-3 text-right font-black text-teal-800">{brl(dados.quadroGeral.pagoDoProprioBolso.fernando)}</td>
+                  <td className="p-3 text-right font-black text-teal-800">{brl(dados.quadroGeral.pagoDoProprioBolso.eroni)}</td>
+                  <td className="p-3 text-right font-black text-teal-950 bg-slate-50/50">{brl(dados.quadroGeral.pagoDoProprioBolso.totalEmpresa)}</td>
+                </tr>
+                <tr className="hover:bg-slate-50">
+                  <td className="p-3 font-bold text-slate-900">Pago pela Empresa</td>
+                  <td className="p-3 text-right font-black text-slate-700">{brl(dados.quadroGeral.pagoPelaEmpresa.fernando)}</td>
+                  <td className="p-3 text-right font-black text-slate-700">{brl(dados.quadroGeral.pagoPelaEmpresa.eroni)}</td>
+                  <td className="p-3 text-right font-black text-slate-900 bg-slate-50/50">{brl(dados.quadroGeral.pagoPelaEmpresa.totalEmpresa)}</td>
+                </tr>
+                <tr className="hover:bg-slate-50">
+                  <td className="p-3 font-bold text-slate-900">Equalização (Bolso - Responsabilidade)</td>
+                  <td className={`p-3 text-right font-black ${dados.quadroGeral.equalizacao.fernando >= 0 ? "text-emerald-700" : "text-rose-700"}`}>
+                    {dados.quadroGeral.equalizacao.fernando >= 0 ? "+" : ""}{brl(dados.quadroGeral.equalizacao.fernando)}
+                  </td>
+                  <td className={`p-3 text-right font-black ${dados.quadroGeral.equalizacao.eroni >= 0 ? "text-emerald-700" : "text-rose-700"}`}>
+                    {dados.quadroGeral.equalizacao.eroni >= 0 ? "+" : ""}{brl(dados.quadroGeral.equalizacao.eroni)}
+                  </td>
+                  <td className="p-3 text-right font-black text-slate-600 bg-slate-50/50">R$ 0,00</td>
+                </tr>
+                <tr className="hover:bg-slate-50">
+                  <td className="p-3 font-bold text-amber-900">Reservas</td>
+                  <td className="p-3 text-right font-black text-amber-900">{brl(dados.quadroGeral.reservas.fernando)}</td>
+                  <td className="p-3 text-right font-black text-amber-900">{brl(dados.quadroGeral.reservas.eroni)}</td>
+                  <td className="p-3 text-right font-black text-amber-950 bg-slate-50/50">{brl(dados.quadroGeral.reservas.totalEmpresa)}</td>
+                </tr>
+                <tr className="hover:bg-slate-50">
+                  <td className="p-3 font-bold text-purple-900">Saques / Repasses</td>
+                  <td className="p-3 text-right font-black text-purple-900">{brl(dados.quadroGeral.saques.fernando)}</td>
+                  <td className="p-3 text-right font-black text-purple-900">{brl(dados.quadroGeral.saques.eroni)}</td>
+                  <td className="p-3 text-right font-black text-purple-950 bg-slate-50/50">{brl(dados.quadroGeral.saques.totalEmpresa)}</td>
+                </tr>
+                <tr className="bg-slate-100 font-black text-sm">
+                  <td className="p-3.5 text-slate-950">SALDO ATUAL LÍQUIDO</td>
+                  <td className="p-3.5 text-right text-indigo-950">{brl(dados.quadroGeral.saldoAtual.fernando)}</td>
+                  <td className="p-3.5 text-right text-indigo-950">{brl(dados.quadroGeral.saldoAtual.eroni)}</td>
+                  <td className="p-3.5 text-right text-indigo-950 bg-slate-200/60">{brl(dados.quadroGeral.saldoAtual.totalEmpresa)}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ) : (
+        /* VISÃO INDIVIDUAL DO SÓCIO: 12 CARDS DE FLUXO (Item 9) */
+        <div className="space-y-4">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {/* 1. Comissões Garantidas */}
             <div
-              className={`rounded-lg p-2 transition-colors ${
-                dados.saldoACompensar > 0
-                  ? "bg-rose-100 text-rose-700 group-hover:bg-rose-600 group-hover:text-white"
-                  : "bg-emerald-50 text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white"
+              onClick={() => {
+                setAbaAtiva("comissoes");
+                setFiltroComissao("GARANTIDA");
+              }}
+              className="cursor-pointer rounded-2xl border border-slate-200 bg-white p-4 shadow-sm hover:border-blue-400 hover:shadow-md transition-all group"
+            >
+              <div className="flex items-center justify-between text-slate-500">
+                <span className="text-[10px] font-black uppercase tracking-wider text-blue-700">Comissões Garantidas</span>
+                <Coins className="h-4 w-4 text-blue-600" />
+              </div>
+              <p className="text-xl font-black text-blue-950 mt-1">{brl(dados.comissoesGarantidas)}</p>
+              <p className="text-[10px] text-slate-500 mt-0.5">Elegíveis contratualmente</p>
+            </div>
+
+            {/* 2. Comissões Recebidas */}
+            <div
+              onClick={() => {
+                setAbaAtiva("comissoes");
+                setFiltroComissao("RECEBIDA");
+              }}
+              className="cursor-pointer rounded-2xl border border-emerald-300 bg-emerald-50/50 p-4 shadow-sm hover:border-emerald-500 hover:shadow-md transition-all group"
+            >
+              <div className="flex items-center justify-between text-emerald-800">
+                <span className="text-[10px] font-black uppercase tracking-wider">Comissões Recebidas</span>
+                <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+              </div>
+              <p className="text-xl font-black text-emerald-950 mt-1">{brl(dados.comissoesRecebidasPeriodo)}</p>
+              <p className="text-[10px] text-emerald-700 mt-0.5">Efetivamente no caixa</p>
+            </div>
+
+            {/* 3. Comissões a Receber */}
+            <div
+              onClick={() => {
+                setAbaAtiva("comissoes");
+                setFiltroComissao("GARANTIDA");
+              }}
+              className="cursor-pointer rounded-2xl border border-blue-200 bg-blue-50/40 p-4 shadow-sm hover:border-blue-400 hover:shadow-md transition-all group"
+            >
+              <div className="flex items-center justify-between text-blue-800">
+                <span className="text-[10px] font-black uppercase tracking-wider">Comissões a Receber</span>
+                <Clock className="h-4 w-4 text-blue-600" />
+              </div>
+              <p className="text-xl font-black text-blue-950 mt-1">{brl(dados.comissoesAReceber)}</p>
+              <p className="text-[10px] text-blue-700 mt-0.5">Garantidas ainda não pagas</p>
+            </div>
+
+            {/* 4. Comissões Futuras Previstas */}
+            <div
+              onClick={() => {
+                setAbaAtiva("comissoes");
+                setFiltroComissao("PREVISTA");
+              }}
+              className="cursor-pointer rounded-2xl border border-slate-200 bg-slate-50/50 p-4 shadow-sm hover:border-slate-400 hover:shadow-md transition-all group"
+            >
+              <div className="flex items-center justify-between text-slate-500">
+                <span className="text-[10px] font-black uppercase tracking-wider">Futuro Previsto</span>
+                <Sparkles className="h-4 w-4 text-slate-400" />
+              </div>
+              <p className="text-xl font-black text-slate-900 mt-1">{brl(dados.comissoesFuturasPrevistas)}</p>
+              <p className="text-[10px] text-slate-400 mt-0.5">Parcelas a vencer de vendas</p>
+            </div>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {/* 5. Minha Responsabilidade */}
+            <div
+              onClick={() => setAbaAtiva("despesas")}
+              className="cursor-pointer rounded-2xl border border-slate-200 bg-white p-4 shadow-sm hover:border-indigo-400 hover:shadow-md transition-all group"
+            >
+              <div className="flex items-center justify-between text-slate-500">
+                <span className="text-[10px] font-black uppercase tracking-wider text-indigo-700">Minha Responsabilidade</span>
+                <TrendingDown className="h-4 w-4 text-indigo-600" />
+              </div>
+              <p className="text-xl font-black text-indigo-950 mt-1">{brl(dados.despesasMinhaResponsabilidade)}</p>
+              <p className="text-[10px] text-slate-500 mt-0.5">Minha cota no rateio de despesas</p>
+            </div>
+
+            {/* 6. Paguei do Bolso */}
+            <div
+              onClick={() => setAbaAtiva("despesas")}
+              className="cursor-pointer rounded-2xl border border-teal-300 bg-teal-50/50 p-4 shadow-sm hover:border-teal-500 hover:shadow-md transition-all group"
+            >
+              <div className="flex items-center justify-between text-teal-800">
+                <span className="text-[10px] font-black uppercase tracking-wider">Paguei do Meu Bolso</span>
+                <Wallet className="h-4 w-4 text-teal-600" />
+              </div>
+              <p className="text-xl font-black text-teal-950 mt-1">{brl(dados.despesasQueEuPaguei)}</p>
+              <p className="text-[10px] text-teal-700 mt-0.5">Despesas pagas pessoalmente</p>
+            </div>
+
+            {/* 7. Pago pela Empresa em Minha Responsabilidade */}
+            <div
+              onClick={() => setAbaAtiva("despesas")}
+              className="cursor-pointer rounded-2xl border border-slate-200 bg-slate-50/50 p-4 shadow-sm hover:border-slate-400 hover:shadow-md transition-all group"
+            >
+              <div className="flex items-center justify-between text-slate-500">
+                <span className="text-[10px] font-black uppercase tracking-wider text-slate-600">Pago pela Empresa</span>
+                <DollarSign className="h-4 w-4 text-slate-400" />
+              </div>
+              <p className="text-xl font-black text-slate-900 mt-1">{brl(dados.pagoPelaEmpresaMinhaResponsabilidade)}</p>
+              <p className="text-[10px] text-slate-400 mt-0.5">Parcela quitada pela conta PJ</p>
+            </div>
+
+            {/* 8. Equalização */}
+            <div
+              onClick={() => setAbaAtiva("ledger")}
+              className={`cursor-pointer rounded-2xl border p-4 shadow-sm transition-all hover:shadow-md group ${
+                dados.saldoACompensar > 0 ? "border-rose-300 bg-rose-50/60 hover:border-rose-400" : "border-emerald-300 bg-emerald-50/60 hover:border-emerald-400"
               }`}
             >
-              <AlertCircle className="h-4 w-4" />
+              <div className="flex items-center justify-between text-slate-500">
+                <span className={`text-[10px] font-black uppercase tracking-wider block ${
+                  dados.saldoACompensar > 0 ? "text-rose-800" : "text-emerald-800"
+                }`}>
+                  Equalização (Bolso - Resp.)
+                </span>
+                <AlertCircle className={`h-4 w-4 ${dados.saldoACompensar > 0 ? "text-rose-600" : "text-emerald-600"}`} />
+              </div>
+              <p className={`text-xl font-black mt-1 ${dados.saldoACompensar > 0 ? "text-rose-950" : "text-emerald-950"}`}>
+                {dados.saldoACompensar > 0 ? "-" + brl(dados.saldoACompensar) : "+" + brl(dados.saldoCreditoEqualizacao)}
+              </p>
+              <p className="text-[10px] text-slate-500 mt-0.5">
+                {dados.saldoACompensar > 0 ? "Preciso compensar na empresa" : "Tenho crédito a receber"}
+              </p>
             </div>
           </div>
-          <p
-            className={`mt-3 text-2xl font-black ${
-              dados.saldoACompensar > 0 ? "text-rose-700" : "text-emerald-800"
-            }`}
+
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {/* 9. Reservas Futuras */}
+            <div
+              onClick={() => setAbaAtiva("previsao")}
+              className="cursor-pointer rounded-2xl border border-amber-200 bg-amber-50/40 p-4 shadow-sm hover:border-amber-400 hover:shadow-md transition-all group"
+            >
+              <div className="flex items-center justify-between text-amber-900">
+                <span className="text-[10px] font-black uppercase tracking-wider">Reservas Futuras</span>
+                <Lock className="h-4 w-4 text-amber-700" />
+              </div>
+              <p className="text-xl font-black text-amber-950 mt-1">{brl(dados.reservaProximasDespesas)}</p>
+              <p className="text-[10px] text-amber-800 mt-0.5">Retido p/ aluguel, folha e custos</p>
+            </div>
+
+            {/* 10. Já Sacado */}
+            <div
+              onClick={() => setAbaAtiva("ledger")}
+              className="cursor-pointer rounded-2xl border border-purple-200 bg-purple-50/40 p-4 shadow-sm hover:border-purple-400 hover:shadow-md transition-all group"
+            >
+              <div className="flex items-center justify-between text-purple-900">
+                <span className="text-[10px] font-black uppercase tracking-wider">Já Sacado / Repassado</span>
+                <History className="h-4 w-4 text-purple-700" />
+              </div>
+              <p className="text-xl font-black text-purple-950 mt-1">{brl(dados.totalSaquesGeral)}</p>
+              <p className="text-[10px] text-purple-700 mt-0.5">Retiradas já efetuadas</p>
+            </div>
+
+            {/* 11. Disponível para Saque Agora */}
+            <div
+              onClick={() => setAbaAtiva("fechamentos")}
+              className="cursor-pointer rounded-2xl border border-emerald-400 bg-emerald-500 text-white p-4 shadow-md hover:bg-emerald-600 transition-all group"
+            >
+              <div className="flex items-center justify-between text-emerald-100">
+                <span className="text-[10px] font-black uppercase tracking-wider">Disponível para Saque Agora</span>
+                <ArrowDownLeft className="h-4 w-4" />
+              </div>
+              <p className="text-2xl font-black text-white mt-1">{brl(dados.disponivelParaSaque)}</p>
+              <p className="text-[10px] text-emerald-100 mt-0.5">Baseado em comissões recebidas</p>
+            </div>
+
+            {/* 12. Disponível Projetado */}
+            <div
+              onClick={() => setAbaAtiva("fechamentos")}
+              className="cursor-pointer rounded-2xl border border-indigo-200 bg-indigo-50/60 p-4 shadow-sm hover:border-indigo-400 hover:shadow-md transition-all group"
+            >
+              <div className="flex items-center justify-between text-indigo-900">
+                <span className="text-[10px] font-black uppercase tracking-wider">Disponível Projetado</span>
+                <Sparkles className="h-4 w-4 text-indigo-700" />
+              </div>
+              <p className="text-2xl font-black text-indigo-950 mt-1">{brl(dados.disponivelProjetado)}</p>
+              <p className="text-[10px] text-indigo-700 mt-0.5">Inclui comissões a receber</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* SEÇÃO: CONFERÊNCIA DAS DESPESAS (Item 11) */}
+      <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 pb-3">
+          <div>
+            <span className="text-[10px] font-black uppercase tracking-wider text-rose-600 block">
+              Auditoria de Saídas
+            </span>
+            <h3 className="text-lg font-black text-slate-900">
+              Conferência das Despesas ({dados.regime})
+            </h3>
+            <p className="text-xs text-slate-500">
+              Clique em qualquer card para ver a listagem detalhada dos lançamentos correspondentes
+            </p>
+          </div>
+          <span className="text-xs font-bold text-slate-500 bg-slate-100 px-3 py-1 rounded-full">
+            {dados.painelDespesas.itensLancados.length} lançamentos encontrados
+          </span>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+          <div
+            onClick={() => setDrillDownConferencia({
+              titulo: "Total de Despesas Lançadas",
+              subtitulo: "Todas as despesas mapeadas no período selecionado",
+              tipo: "despesas",
+              itensDespesas: dados.painelDespesas.itensLancados
+            })}
+            className="cursor-pointer rounded-2xl border border-slate-200 bg-slate-50/70 p-4 hover:border-slate-400 hover:shadow-md transition-all group"
           >
-            {dados.saldoACompensar > 0
-              ? brl(dados.saldoACompensar)
-              : brl(dados.saldoCreditoEqualizacao)}
-          </p>
-          <p className="mt-1 text-[11px] text-slate-500">
-            {dados.saldoACompensar > 0
-              ? "Débito a amortizar na empresa"
-              : "Crédito a receber da empresa"}
-          </p>
-        </div>
-
-        {/* 5. Reserva para Próximas Despesas (Amarelo) */}
-        <div
-          onClick={() => {
-            setAbaAtiva("previsao");
-          }}
-          className="group cursor-pointer rounded-2xl border border-amber-200 bg-amber-50/40 p-5 shadow-sm transition-all hover:border-amber-400 hover:shadow-md"
-        >
-          <div className="flex items-center justify-between text-amber-900">
-            <span className="text-xs font-black uppercase tracking-wider">Reservas Futuras</span>
-            <div className="rounded-lg bg-amber-100 p-2 text-amber-700 group-hover:bg-amber-600 group-hover:text-white transition-colors">
-              <Lock className="h-4 w-4" />
-            </div>
+            <span className="text-[10px] font-black uppercase text-slate-500 block">Total Lançado</span>
+            <p className="text-xl font-black text-slate-900 mt-1 group-hover:text-indigo-600 transition-colors">{brl(dados.painelDespesas.totalLancado)}</p>
+            <p className="text-[10px] text-indigo-600 font-bold mt-1">Ver lançamentos →</p>
           </div>
-          <p className="mt-3 text-2xl font-black text-amber-950">
-            {brl(dados.reservaProximasDespesas)}
-          </p>
-          <p className="mt-1 text-[11px] text-amber-800/80">
-            Retido para aluguel, folha e custos
-          </p>
-        </div>
 
-        {/* 6. Disponível para Saque (Verde Grande) */}
-        <div
-          onClick={() => {
-            setAbaAtiva("fechamentos");
-          }}
-          className="group cursor-pointer rounded-2xl border border-emerald-300 bg-gradient-to-b from-emerald-50 to-teal-50/70 p-5 shadow-sm transition-all hover:border-emerald-500 hover:shadow-md"
-        >
-          <div className="flex items-center justify-between text-emerald-900">
-            <span className="text-xs font-black uppercase tracking-wider">Disponível Saque</span>
-            <div className="rounded-lg bg-emerald-100 p-2 text-emerald-700 group-hover:bg-emerald-600 group-hover:text-white transition-colors">
-              <ArrowDownLeft className="h-4 w-4" />
-            </div>
+          <div
+            onClick={() => setDrillDownConferencia({
+              titulo: "Total de Despesas Pagas",
+              subtitulo: "Despesas que efetivamente foram liquidadas",
+              tipo: "despesas",
+              itensDespesas: dados.painelDespesas.itensPagos
+            })}
+            className="cursor-pointer rounded-2xl border border-emerald-200 bg-emerald-50/40 p-4 hover:border-emerald-400 hover:shadow-md transition-all group"
+          >
+            <span className="text-[10px] font-black uppercase text-emerald-800 block">Total Pago</span>
+            <p className="text-xl font-black text-emerald-950 mt-1 group-hover:text-emerald-700 transition-colors">{brl(dados.painelDespesas.totalPago)}</p>
+            <p className="text-[10px] text-emerald-700 font-bold mt-1">Ver lançamentos →</p>
           </div>
-          <p className="mt-3 text-2xl font-black text-emerald-900">
-            {brl(dados.disponivelParaSaque)}
-          </p>
-          <p className="mt-1 text-[11px] text-emerald-700/80 font-medium">
-            Livre para retirada imediata
-          </p>
+
+          <div
+            onClick={() => setDrillDownConferencia({
+              titulo: "Total em Aberto (A Pagar)",
+              subtitulo: "Despesas ainda pendentes de quitação",
+              tipo: "despesas",
+              itensDespesas: dados.painelDespesas.itensEmAberto
+            })}
+            className="cursor-pointer rounded-2xl border border-rose-200 bg-rose-50/40 p-4 hover:border-rose-400 hover:shadow-md transition-all group"
+          >
+            <span className="text-[10px] font-black uppercase text-rose-800 block">Total em Aberto</span>
+            <p className="text-xl font-black text-rose-950 mt-1 group-hover:text-rose-700 transition-colors">{brl(dados.painelDespesas.totalEmAberto)}</p>
+            <p className="text-[10px] text-rose-700 font-bold mt-1">Ver lançamentos →</p>
+          </div>
+
+          <div
+            onClick={() => setDrillDownConferencia({
+              titulo: "Despesas Pagas pela Empresa",
+              subtitulo: "Desembolsos realizados diretamente com as contas da empresa",
+              tipo: "despesas",
+              itensDespesas: dados.painelDespesas.itensEmpresa
+            })}
+            className="cursor-pointer rounded-2xl border border-blue-200 bg-blue-50/40 p-4 hover:border-blue-400 hover:shadow-md transition-all group"
+          >
+            <span className="text-[10px] font-black uppercase text-blue-800 block">Pago pela Empresa</span>
+            <p className="text-xl font-black text-blue-950 mt-1 group-hover:text-blue-700 transition-colors">{brl(dados.painelDespesas.pagoPelaEmpresa)}</p>
+            <p className="text-[10px] text-blue-700 font-bold mt-1">Ver lançamentos →</p>
+          </div>
+
+          <div
+            onClick={() => setDrillDownConferencia({
+              titulo: "Despesas Pagas por Fernando",
+              subtitulo: "Contas pagas pessoalmente com recursos próprios de Fernando",
+              tipo: "despesas",
+              itensDespesas: dados.painelDespesas.itensFernando
+            })}
+            className="cursor-pointer rounded-2xl border border-teal-200 bg-teal-50/40 p-4 hover:border-teal-400 hover:shadow-md transition-all group"
+          >
+            <span className="text-[10px] font-black uppercase text-teal-800 block">Pago por Fernando</span>
+            <p className="text-xl font-black text-teal-950 mt-1 group-hover:text-teal-700 transition-colors">{brl(dados.painelDespesas.pagoPorFernando)}</p>
+            <p className="text-[10px] text-teal-700 font-bold mt-1">Ver lançamentos →</p>
+          </div>
+
+          <div
+            onClick={() => setDrillDownConferencia({
+              titulo: "Despesas Pagas por Eroni",
+              subtitulo: "Contas pagas pessoalmente com recursos próprios de Eroni",
+              tipo: "despesas",
+              itensDespesas: dados.painelDespesas.itensEroni
+            })}
+            className="cursor-pointer rounded-2xl border border-amber-200 bg-amber-50/40 p-4 hover:border-amber-400 hover:shadow-md transition-all group"
+          >
+            <span className="text-[10px] font-black uppercase text-amber-800 block">Pago por Eroni</span>
+            <p className="text-xl font-black text-amber-950 mt-1 group-hover:text-amber-700 transition-colors">{brl(dados.painelDespesas.pagoPorEroni)}</p>
+            <p className="text-[10px] text-amber-700 font-bold mt-1">Ver lançamentos →</p>
+          </div>
         </div>
       </section>
 
-      {/* TERMÔMETRO DO MÊS (% DE COBERTURA DA EMPRESA) & METAS INDIVIDUAIS */}
+      {/* SEÇÃO: CONFERÊNCIA DAS COMISSÕES (Item 12) */}
+      <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 pb-3">
+          <div>
+            <span className="text-[10px] font-black uppercase tracking-wider text-blue-600 block">
+              Auditoria de Entradas
+            </span>
+            <h3 className="text-lg font-black text-slate-900">
+              Conferência das Comissões ({dados.regime})
+            </h3>
+            <p className="text-xs text-slate-500">
+              Clique em qualquer card para ver as comissões e vendas que compõem o valor
+            </p>
+          </div>
+          <span className="text-xs font-bold text-slate-500 bg-slate-100 px-3 py-1 rounded-full">
+            {dados.painelComissoes.itensGerados.length} comissões no período
+          </span>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+          <div
+            onClick={() => setDrillDownConferencia({
+              titulo: "Total Gerado (Previsto)",
+              subtitulo: "Volume total previsto a ser gerado por todas as vendas do período",
+              tipo: "comissoes",
+              itensComissoes: dados.painelComissoes.itensGerados
+            })}
+            className="cursor-pointer rounded-2xl border border-slate-200 bg-slate-50/70 p-4 hover:border-slate-400 hover:shadow-md transition-all group"
+          >
+            <span className="text-[10px] font-black uppercase text-slate-500 block">Total Gerado</span>
+            <p className="text-xl font-black text-slate-900 mt-1 group-hover:text-indigo-600 transition-colors">{brl(dados.painelComissoes.totalGerado)}</p>
+            <p className="text-[10px] text-indigo-600 font-bold mt-1">Ver comissões →</p>
+          </div>
+
+          <div
+            onClick={() => setDrillDownConferencia({
+              titulo: "Total Garantido (Elegível)",
+              subtitulo: "Comissões com liberação contratual/faturamento confirmado",
+              tipo: "comissoes",
+              itensComissoes: dados.painelComissoes.itensGarantidos
+            })}
+            className="cursor-pointer rounded-2xl border border-blue-200 bg-blue-50/40 p-4 hover:border-blue-400 hover:shadow-md transition-all group"
+          >
+            <span className="text-[10px] font-black uppercase text-blue-800 block">Total Garantido</span>
+            <p className="text-xl font-black text-blue-950 mt-1 group-hover:text-blue-700 transition-colors">{brl(dados.painelComissoes.totalGarantido)}</p>
+            <p className="text-[10px] text-blue-700 font-bold mt-1">Ver comissões →</p>
+          </div>
+
+          <div
+            onClick={() => setDrillDownConferencia({
+              titulo: "Total Recebido (Caixa)",
+              subtitulo: "Comissões efetivamente recebidas pelos sócios/empresa",
+              tipo: "comissoes",
+              itensComissoes: dados.painelComissoes.itensRecebidos
+            })}
+            className="cursor-pointer rounded-2xl border border-emerald-200 bg-emerald-50/40 p-4 hover:border-emerald-400 hover:shadow-md transition-all group"
+          >
+            <span className="text-[10px] font-black uppercase text-emerald-800 block">Total Recebido</span>
+            <p className="text-xl font-black text-emerald-950 mt-1 group-hover:text-emerald-700 transition-colors">{brl(dados.painelComissoes.totalRecebido)}</p>
+            <p className="text-[10px] text-emerald-700 font-bold mt-1">Ver comissões →</p>
+          </div>
+
+          <div
+            onClick={() => setDrillDownConferencia({
+              titulo: "Total a Receber (Garantidas Pendentes)",
+              subtitulo: "Comissões garantidas que ainda não foram repassadas ao caixa",
+              tipo: "comissoes",
+              itensComissoes: dados.painelComissoes.itensAReceber
+            })}
+            className="cursor-pointer rounded-2xl border border-indigo-200 bg-indigo-50/40 p-4 hover:border-indigo-400 hover:shadow-md transition-all group"
+          >
+            <span className="text-[10px] font-black uppercase text-indigo-800 block">Total a Receber</span>
+            <p className="text-xl font-black text-indigo-950 mt-1 group-hover:text-indigo-700 transition-colors">{brl(dados.painelComissoes.totalAReceber)}</p>
+            <p className="text-[10px] text-indigo-700 font-bold mt-1">Ver comissões →</p>
+          </div>
+
+          <div
+            onClick={() => setDrillDownConferencia({
+              titulo: "Total Repassado aos Sócios",
+              subtitulo: "Comissões transferidas e pagas aos beneficiários",
+              tipo: "comissoes",
+              itensComissoes: dados.painelComissoes.itensRepassados
+            })}
+            className="cursor-pointer rounded-2xl border border-purple-200 bg-purple-50/40 p-4 hover:border-purple-400 hover:shadow-md transition-all group"
+          >
+            <span className="text-[10px] font-black uppercase text-purple-800 block">Total Repassado</span>
+            <p className="text-xl font-black text-purple-950 mt-1 group-hover:text-purple-700 transition-colors">{brl(dados.painelComissoes.totalRepassadoAosSocios)}</p>
+            <p className="text-[10px] text-purple-700 font-bold mt-1">Ver comissões →</p>
+          </div>
+
+          <div
+            onClick={() => setDrillDownConferencia({
+              titulo: "Total Retido na Empresa (Compensações)",
+              subtitulo: "Valores de comissões retidos para cobrir rateios de despesas",
+              tipo: "comissoes",
+              itensComissoes: dados.painelComissoes.itensRetidos
+            })}
+            className="cursor-pointer rounded-2xl border border-amber-200 bg-amber-50/40 p-4 hover:border-amber-400 hover:shadow-md transition-all group"
+          >
+            <span className="text-[10px] font-black uppercase text-amber-800 block">Retido na Empresa</span>
+            <p className="text-xl font-black text-amber-950 mt-1 group-hover:text-amber-700 transition-colors">{brl(dados.painelComissoes.totalRetidoNaEmpresa)}</p>
+            <p className="text-[10px] text-amber-700 font-bold mt-1">Ver comissões →</p>
+          </div>
+        </div>
+      </section>
+
+{/* TERMÔMETRO DO MÊS (% DE COBERTURA DA EMPRESA) & METAS INDIVIDUAIS */}
       <section className="grid gap-6 lg:grid-cols-12">
         {/* Termômetro de Cobertura */}
         <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm lg:col-span-6 flex flex-col justify-between">
@@ -1514,6 +1883,39 @@ export function ContaCorrenteSociosView({
                     </button>
                   ))}
                 </div>
+              </div>
+            </div>
+
+            {/* 5 CARDS RESUMO DO FLUXO DE DESPESAS (Item 8) */}
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+              <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
+                <span className="text-[10px] font-black uppercase text-slate-500 block">Despesas do Período</span>
+                <p className="text-lg font-black text-slate-900 mt-1">{brl(dados.despesasTotalPeriodo)}</p>
+                <p className="text-[10px] text-slate-400">Total apurado no filtro</p>
+              </div>
+
+              <div className="rounded-2xl border border-emerald-200 bg-emerald-50/40 p-4">
+                <span className="text-[10px] font-black uppercase text-emerald-800 block">Despesas Pagas</span>
+                <p className="text-lg font-black text-emerald-950 mt-1">{brl(dados.despesasPagasPeriodo)}</p>
+                <p className="text-[10px] text-emerald-700">Liquidadas efetivamente</p>
+              </div>
+
+              <div className="rounded-2xl border border-rose-200 bg-rose-50/40 p-4">
+                <span className="text-[10px] font-black uppercase text-rose-800 block">Despesas a Pagar</span>
+                <p className="text-lg font-black text-rose-950 mt-1">{brl(dados.despesasAPagarPeriodo)}</p>
+                <p className="text-[10px] text-rose-700">Em aberto / pendentes</p>
+              </div>
+
+              <div className="rounded-2xl border border-blue-200 bg-blue-50/40 p-4">
+                <span className="text-[10px] font-black uppercase text-blue-800 block">Pago pela Empresa</span>
+                <p className="text-lg font-black text-blue-950 mt-1">{brl(dados.pagoPelaEmpresaPeriodo)}</p>
+                <p className="text-[10px] text-blue-700">Contas bancárias PJ</p>
+              </div>
+
+              <div className="rounded-2xl border border-teal-200 bg-teal-50/40 p-4">
+                <span className="text-[10px] font-black uppercase text-teal-800 block">Pago pelo Sócio</span>
+                <p className="text-lg font-black text-teal-950 mt-1">{brl(dados.despesasQueEuPaguei)}</p>
+                <p className="text-[10px] text-teal-700">Desembolso pessoal</p>
               </div>
             </div>
 
@@ -2162,6 +2564,35 @@ export function ContaCorrenteSociosView({
                   </div>
                 );
               })}
+            </div>
+
+            {/* SELETOR DE REGIME: COMPETÊNCIA vs CAIXA */}
+            <div className="flex items-center gap-1 rounded-xl bg-white/10 p-1 text-xs font-semibold border border-white/10">
+              <span className="text-[10px] font-black uppercase px-2 text-slate-400">Visão:</span>
+              <button
+                type="button"
+                onClick={() => alterarFiltros({ regime: "COMPETENCIA" })}
+                className={`rounded-lg px-2.5 py-1 text-xs font-black transition-all ${
+                  dados.regime === "COMPETENCIA"
+                    ? "bg-indigo-600 text-white shadow"
+                    : "text-slate-300 hover:text-white"
+                }`}
+                title="Competência: mostra a qual mês a despesa/comissão pertence"
+              >
+                Competência
+              </button>
+              <button
+                type="button"
+                onClick={() => alterarFiltros({ regime: "CAIXA" })}
+                className={`rounded-lg px-2.5 py-1 text-xs font-black transition-all ${
+                  dados.regime === "CAIXA"
+                    ? "bg-emerald-500 text-slate-950 shadow font-black"
+                    : "text-slate-300 hover:text-white"
+                }`}
+                title="Caixa: mostra quando o dinheiro realmente entrou ou saiu"
+              >
+                Caixa
+              </button>
             </div>
 
             {/* QUADRO DE CONFERÊNCIA MENSAL (AUDIT TABLE) */}
@@ -3039,6 +3470,156 @@ export function ContaCorrenteSociosView({
                   {isPending ? "Processando..." : "Confirmar Estorno"}
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* MODAL: DRILL-DOWN ANALÍTICO DE CONFERÊNCIA (DESPESAS OU COMISSÕES) */}
+      {drillDownConferencia && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-5xl rounded-3xl bg-white shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150 max-h-[90vh] flex flex-col">
+            <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-900 text-white">
+              <div>
+                <span className="text-[10px] font-black uppercase tracking-wider text-amber-300 block">
+                  Conferência Analítica de Lançamentos
+                </span>
+                <h3 className="text-lg font-black">{drillDownConferencia.titulo}</h3>
+                <p className="text-xs text-slate-300">{drillDownConferencia.subtitulo}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setDrillDownConferencia(null)}
+                className="rounded-xl bg-white/10 hover:bg-white/20 p-2 text-white transition-colors"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="p-6 overflow-y-auto flex-1 space-y-4">
+              {drillDownConferencia.tipo === "despesas" && (
+                <div className="overflow-x-auto rounded-2xl border border-slate-200">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-slate-50 text-slate-500 font-black uppercase tracking-wider">
+                      <tr>
+                        <th className="p-3">Data/Vencimento</th>
+                        <th className="p-3">Descrição / Fornecedor</th>
+                        <th className="p-3">Quem Pagou</th>
+                        <th className="p-3 text-right">Valor</th>
+                        <th className="p-3 text-center">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-200 font-medium">
+                      {(drillDownConferencia.itensDespesas || []).map((item) => (
+                        <tr key={item.id} className="hover:bg-slate-50/80">
+                          <td className="p-3 whitespace-nowrap">
+                            <p className="font-black text-slate-900">{formatDataBr(item.data)}</p>
+                            <p className="text-[10px] text-slate-400">Comp: {item.competencia}</p>
+                          </td>
+                          <td className="p-3">
+                            <p className="font-black text-slate-900">{item.descricao}</p>
+                            <p className="text-[11px] text-slate-500">{item.fornecedor || "-"}</p>
+                          </td>
+                          <td className="p-3 whitespace-nowrap">
+                            <span className={`rounded-full px-2.5 py-0.5 text-[10px] font-black ${
+                              item.pagoPessoalmente ? "bg-amber-100 text-amber-900" : "bg-blue-100 text-blue-900"
+                            }`}>
+                              {item.pagoPessoalmente ? `Sócio: ${item.pagadorNome || item.quemPagouTipo}` : "Empresa"}
+                            </span>
+                          </td>
+                          <td className="p-3 text-right font-black text-slate-950 whitespace-nowrap">
+                            {brl(item.valor)}
+                          </td>
+                          <td className="p-3 text-center whitespace-nowrap">
+                            <span className={`rounded-full px-2 py-0.5 text-[10px] font-black uppercase ${
+                              item.status === "paga" ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"
+                            }`}>
+                              {item.status === "paga" ? "Paga" : "Aberta"}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                      {!drillDownConferencia.itensDespesas?.length && (
+                        <tr>
+                          <td colSpan={5} className="p-8 text-center text-xs text-slate-400">
+                            Nenhuma despesa correspondente encontrada neste agrupamento.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              {drillDownConferencia.tipo === "comissoes" && (
+                <div className="overflow-x-auto rounded-2xl border border-slate-200">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-slate-50 text-slate-500 font-black uppercase tracking-wider">
+                      <tr>
+                        <th className="p-3">Competência</th>
+                        <th className="p-3">Etapa / Venda</th>
+                        <th className="p-3">Consultor</th>
+                        <th className="p-3 text-right">Previsto</th>
+                        <th className="p-3 text-right">Elegível</th>
+                        <th className="p-3 text-right">Pago</th>
+                        <th className="p-3 text-center">Classificação</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-200 font-medium">
+                      {(drillDownConferencia.itensComissoes || []).map((item) => (
+                        <tr key={item.id} className="hover:bg-slate-50/80">
+                          <td className="p-3 font-black text-slate-900 whitespace-nowrap">
+                            {item.competencia}
+                          </td>
+                          <td className="p-3">
+                            <p className="font-black text-slate-900">{item.nomeEtapa}</p>
+                            <p className="text-[11px] text-slate-500">{item.clienteNome || "Venda"}</p>
+                          </td>
+                          <td className="p-3 whitespace-nowrap font-bold text-slate-700">
+                            {item.participanteNome || "-"}
+                          </td>
+                          <td className="p-3 text-right font-black text-slate-900 whitespace-nowrap">
+                            {brl(item.valorPrevisto)}
+                          </td>
+                          <td className="p-3 text-right font-black text-blue-900 whitespace-nowrap">
+                            {brl(item.valorElegivel)}
+                          </td>
+                          <td className="p-3 text-right font-black text-emerald-800 whitespace-nowrap">
+                            {brl(item.valorPago)}
+                          </td>
+                          <td className="p-3 text-center whitespace-nowrap">
+                            <span className={`rounded-full px-2.5 py-0.5 text-[10px] font-black uppercase ${
+                              item.tipoClassificacao === "RECEBIDA"
+                                ? "bg-emerald-100 text-emerald-800"
+                                : item.tipoClassificacao === "GARANTIDA"
+                                ? "bg-blue-100 text-blue-800"
+                                : "bg-slate-100 text-slate-700"
+                            }`}>
+                              {item.tipoClassificacao}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                      {!drillDownConferencia.itensComissoes?.length && (
+                        <tr>
+                          <td colSpan={7} className="p-8 text-center text-xs text-slate-400">
+                            Nenhuma comissão correspondente encontrada neste agrupamento.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
+            <div className="p-4 border-t border-slate-100 bg-slate-50 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setDrillDownConferencia(null)}
+                className="rounded-xl bg-slate-950 text-white px-5 py-2 text-xs font-black shadow hover:bg-slate-800"
+              >
+                Fechar Drill-Down
+              </button>
             </div>
           </div>
         </div>

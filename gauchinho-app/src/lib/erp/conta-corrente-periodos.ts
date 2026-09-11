@@ -8,12 +8,15 @@ export type TipoFiltroPeriodo =
   | "todos_periodos"
   | "personalizado";
 
+export type TipoRegimePeriodo = "COMPETENCIA" | "CAIXA";
+
 export interface FiltroPeriodoParams {
   tipoPeriodo?: TipoFiltroPeriodo | string;
   competencia?: string; // YYYY-MM
   dataInicio?: string;  // YYYY-MM-DD
   dataFim?: string;     // YYYY-MM-DD
   referenciaHoje?: string; // YYYY-MM-DD
+  regime?: TipoRegimePeriodo | string;
 }
 
 export interface FiltroPeriodoResultado {
@@ -24,6 +27,7 @@ export interface FiltroPeriodoResultado {
   rotuloPeriodo: string;
   isTodosPeriodos: boolean;
   isMesUnico: boolean;
+  regime: TipoRegimePeriodo;
 }
 
 export interface LancamentoConferenciaDTO {
@@ -66,6 +70,86 @@ export interface FechamentoGeralDTO {
   divergencia: number;
   status: "OK" | "DIVERGENCIA";
   mensagemAuditoria: string;
+}
+
+export interface ItemConferenciaDespesaDTO {
+  id: string;
+  data: string;
+  descricao: string;
+  fornecedor?: string | null;
+  competencia: string;
+  vencimento?: string | null;
+  pagoEm?: string | null;
+  valor: number;
+  status: string;
+  pagoPessoalmente: boolean;
+  quemPagouTipo: "EMPRESA" | "FERNANDO" | "ERONI" | "OUTRO";
+  pagadorNome?: string | null;
+  formaPagamento?: string | null;
+}
+
+export interface PainelConferenciaDespesasDTO {
+  totalLancado: number;
+  totalPago: number;
+  totalEmAberto: number;
+  pagoPelaEmpresa: number;
+  pagoPorFernando: number;
+  pagoPorEroni: number;
+  itensLancados: ItemConferenciaDespesaDTO[];
+  itensPagos: ItemConferenciaDespesaDTO[];
+  itensEmAberto: ItemConferenciaDespesaDTO[];
+  itensEmpresa: ItemConferenciaDespesaDTO[];
+  itensFernando: ItemConferenciaDespesaDTO[];
+  itensEroni: ItemConferenciaDespesaDTO[];
+}
+
+export interface ItemConferenciaComissaoDTO {
+  id: string;
+  vendaId: string;
+  clienteNome?: string | null;
+  dataVenda?: string | null;
+  competencia: string;
+  nomeEtapa: string;
+  valorPrevisto: number;
+  valorElegivel: number;
+  valorPago: number;
+  status: string;
+  participanteNome?: string | null;
+  tipoClassificacao: "PREVISTA" | "GARANTIDA" | "RECEBIDA" | "COMPENSADA";
+}
+
+export interface PainelConferenciaComissoesDTO {
+  totalGerado: number; // Previsto Total
+  totalGarantido: number; // Elegível
+  totalRecebido: number; // Pago
+  totalAReceber: number; // Garantido - Recebido
+  totalRepassadoAosSocios: number;
+  totalRetidoNaEmpresa: number;
+  itensGerados: ItemConferenciaComissaoDTO[];
+  itensGarantidos: ItemConferenciaComissaoDTO[];
+  itensRecebidos: ItemConferenciaComissaoDTO[];
+  itensAReceber: ItemConferenciaComissaoDTO[];
+  itensRepassados: ItemConferenciaComissaoDTO[];
+  itensRetidos: ItemConferenciaComissaoDTO[];
+}
+
+export interface LinhaComparativaSocioDTO {
+  fernando: number;
+  eroni: number;
+  totalEmpresa: number;
+}
+
+export interface QuadroComparativoGeralDTO {
+  comissoesGarantidas: LinhaComparativaSocioDTO;
+  comissoesRecebidas: LinhaComparativaSocioDTO;
+  comissoesAReceber: LinhaComparativaSocioDTO;
+  responsabilidade: LinhaComparativaSocioDTO;
+  pagoDoProprioBolso: LinhaComparativaSocioDTO;
+  pagoPelaEmpresa: LinhaComparativaSocioDTO;
+  equalizacao: LinhaComparativaSocioDTO;
+  reservas: LinhaComparativaSocioDTO;
+  saques: LinhaComparativaSocioDTO;
+  saldoAtual: LinhaComparativaSocioDTO;
 }
 
 const NOMES_MESES = [
@@ -121,7 +205,6 @@ export function resolverIntervaloPeriodo(params: FiltroPeriodoParams): FiltroPer
 
   let tipo: TipoFiltroPeriodo = (params.tipoPeriodo as TipoFiltroPeriodo) || "mes";
 
-  // Se passou apenas dataInicio e dataFim explícitos sem tipo
   if (!params.tipoPeriodo && params.dataInicio && params.dataFim) {
     tipo = "personalizado";
   } else if (!params.tipoPeriodo && params.competencia) {
@@ -166,7 +249,6 @@ export function resolverIntervaloPeriodo(params: FiltroPeriodoParams): FiltroPer
     }
 
     case "ultimos_3_meses": {
-      // 3 meses incluindo o atual: ex. se mês é 09, inclui 07, 08, 09
       let anoInicio = anoAtual;
       let mesInicio = mesAtual - 2;
       if (mesInicio < 1) {
@@ -231,6 +313,8 @@ export function resolverIntervaloPeriodo(params: FiltroPeriodoParams): FiltroPer
     }
   }
 
+  const regime: TipoRegimePeriodo = params.regime?.toUpperCase() === "CAIXA" ? "CAIXA" : "COMPETENCIA";
+
   return {
     tipoPeriodo: tipo,
     competencia: competenciaPrincipal,
@@ -239,6 +323,7 @@ export function resolverIntervaloPeriodo(params: FiltroPeriodoParams): FiltroPer
     rotuloPeriodo: rotulo,
     isTodosPeriodos: isTodos,
     isMesUnico: isMes,
+    regime,
   };
 }
 
@@ -278,7 +363,6 @@ export function encadearConferenciaMensal(
     const reservas = Number(dadosMes.reservas.toFixed(2));
     const ajustes = Number(dadosMes.ajustes.toFixed(2));
 
-    // Saldo final = Saldo inicial + créditos - débitos - saques + ajustes
     const saldoFinal = Number((saldoInicial + creditos - debitos - saques + ajustes).toFixed(2));
 
     resultado.push({
@@ -297,7 +381,6 @@ export function encadearConferenciaMensal(
       lancamentos: dadosMes.lancamentos,
     });
 
-    // O saldo final do mês atual se torna o saldo inicial do mês seguinte!
     saldoCorrente = saldoFinal;
   }
 
