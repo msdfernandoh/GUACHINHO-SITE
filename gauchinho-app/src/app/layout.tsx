@@ -7,6 +7,7 @@ import { GAUCHINHO_SLUG } from "@/lib/tenant/constants";
 import { isRaconModel } from "@/lib/tenant/model-family";
 import { loadPartnerSiteViewModel } from "@/lib/parceiros/public-site-loader";
 import { PARCEIRO_SITE_ID_HEADER } from "@/lib/parceiros/partner-site-types";
+import { resolveFaviconConfig } from "@/lib/tenant/favicon-resolver";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -65,9 +66,12 @@ const defaultMetadata: Metadata = {
     images: ["/media/gauchinho-campanha.jpeg"],
   },
   icons: {
-    icon: "/favicon.ico",
+    icon: [
+      { url: "/favicon.ico" },
+      { url: "/favicon-gauchinho.png", sizes: "512x512", type: "image/png" },
+    ],
     shortcut: "/favicon.ico",
-    apple: "/favicon.ico",
+    apple: "/apple-touch-icon.png",
   },
 };
 
@@ -85,9 +89,14 @@ export async function generateMetadata(): Promise<Metadata> {
   const nome = tenant.branding.nome_site || tenant.siteModel?.nome || "Consórcios";
   const descricao = tenant.branding.seo_descricao || tenant.branding.descricao_institucional || undefined;
   const logo = tenant.branding.logo_url || tenant.siteModel?.logoPadraoUrl || undefined;
-  const favicon = partnerView
-    ? partnerView.favicon_url || (partnerView.template_codigo === "racon_inspired" ? "/racon/favicon-racon.png" : "/favicon.ico")
-    : tenant.branding.favicon_url || (isRaconModel(tenant.siteModel) ? "/racon/favicon-racon.png" : "/favicon.ico");
+
+  const isRacon = partnerView
+    ? partnerView.template_codigo === "racon_inspired"
+    : isRaconModel(tenant.siteModel);
+
+  const customFavicon = partnerView?.favicon_url || tenant.branding.favicon_url;
+  const { iconList, shortcut, apple } = resolveFaviconConfig({ isRacon, customFavicon });
+
   return {
     metadataBase,
     title: { default: tenant.branding.seo_titulo || nome, template: `%s | ${nome}` },
@@ -96,7 +105,7 @@ export async function generateMetadata(): Promise<Metadata> {
     robots: defaultMetadata.robots,
     openGraph: { type: "website", locale: "pt_BR", siteName: nome, ...(logo ? { images: [logo] } : {}) },
     twitter: { card: "summary_large_image", ...(logo ? { images: [logo] } : {}) },
-    icons: { icon: favicon, shortcut: favicon, apple: favicon },
+    icons: { icon: iconList, shortcut, apple },
   };
 }
 

@@ -2144,3 +2144,23 @@ Relatório:
 Relatório:
 `docs/relatorios-fases/FASE-223-CONTA-CORRENTE-SOCIOS-ERP.md`.
 
+### Evolução de Branding 224 — Padronização Oficial do Favicon do Site Gauchinho
+
+1. **Atualização da Identidade na Barra do Navegador:**
+   - Substituição do favicon padrão legado (triângulo da Vercel) pelos novos assets oficiais da marca Gauchinho: letra "G" estilizada com cuia e bomba de chimarrão sobre canvas minimalista preto sólido.
+   - Geração e distribuição de múltiplos formatos de alta densidade em `gauchinho-app/public/`:
+     - `favicon.ico`: Formato ICO multi-resolução contendo fluxos PNG de 16x16, 32x32, 48x48, 64x64, 128x128 e 256x256 px.
+     - `favicon-gauchinho.png`: Resolução mestre de 512x512 px.
+     - `icon.png`: Resolução 512x512 px padrão App Router do Next.js.
+     - `apple-touch-icon.png`: Resolução 180x180 px para atalhos mobile iOS/Android.
+
+2. **Isolamento de Marca e Multi-tenancy (`resolveFaviconConfig`):**
+   - Criação de `src/lib/tenant/favicon-resolver.ts` garantindo que:
+     - Modelos Racon preservam rigorosamente `/racon/favicon-racon.png` (letra "R").
+     - Tenants e sites de parceiros com favicon customizado têm sua URL respeitada prioritariamente.
+     - O site Gauchinho Consórcios e páginas padrão utilizam a nova suíte de favicons do Gauchinho.
+
+Relatório:
+`docs/relatorios-fases/FASE-224-PADRONIZACAO-FAVICON-GAUCHINHO.md`.
+
+
