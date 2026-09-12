@@ -2272,3 +2272,24 @@ Relatório:
 
 Relatório:
 `docs/relatorios-fases/FASE-228-EVENTOS-UX-CHECKIN-QR-IDENTIDADE-VISUAL.md`.
+
+### Evolução Operacional 229 — Eventos: Correção de Horário & Disponibilidade do Check-in
+
+1. **Auditoria e Correção Definitiva do Deslocamento de Horário:**
+   - Correção da discrepância entre o servidor UTC (Vercel) e o fuso da operação local (`America/Cuiaba` / UTC-4).
+   - Conversão simétrica via `eventoLocalDateTimeToIso` e `eventoIsoToDatetimeLocal` no módulo `@/lib/eventos-sorteio/timezone.ts`.
+   - Idempotência absoluta comprovada em testes unitários para múltiplos salvamentos consecutivos sem deslocamento de horas.
+
+2. **Controle Centralizado de Disponibilidade do Check-in:**
+   - Lógica única em `resolverStatusCheckinEvento()` compartilhada por Admin, Telão, QR Direto e QR Permanente.
+   - Modos de operação: `agendado` (com abertura antecipada configurável, padrão 30 min), `ativo_agora` (ensaio e teste real imediato) e `encerrado`.
+   - Botão prático `[ Voltar ao agendamento ]` restaurando regras temporais sem necessidade de redigitar datas.
+
+3. **Tela de Bloqueio Amigável sem 404:**
+   - Componente mobile `EventoCheckinFechado` exibindo logotipo do evento, nome, data confirmada e horário previsto de abertura.
+
+4. **Migration Aditiva 221:**
+   - `supabase/migrations/221_eventos_checkin_disponibilidade.sql` adicionando colunas opcionais retrocompatíveis com fallback no código.
+
+Relatório:
+`docs/relatorios-fases/FASE-229-EVENTOS-HORARIO-E-DISPONIBILIDADE-CHECKIN.md`.

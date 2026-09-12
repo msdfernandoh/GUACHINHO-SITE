@@ -22,6 +22,8 @@ function mapPublicView(
     slug: string;
     data_evento: string | null;
     checkin_interativo_ativo?: boolean | null;
+    checkin_modo?: string | null;
+    checkin_abertura_antecipada_minutos?: number | null;
     cor_primaria?: string | null;
     cor_secundaria?: string | null;
     logo_personalizado_url?: string | null;
@@ -43,6 +45,8 @@ function mapPublicView(
     npsPerguntas:
       npsPerguntas ?? resolverPerguntasNpsPublicas(parseNpsConfig(sorteio.nps_config)),
     checkinInterativoAtivo: Boolean(evento.checkin_interativo_ativo),
+    checkinModo: evento.checkin_modo ?? "agendado",
+    checkinAberturaAntecipadaMinutos: evento.checkin_abertura_antecipada_minutos ?? 30,
     corPrimaria: evento.cor_primaria ?? null,
     corSecundaria: evento.cor_secundaria ?? null,
     logoPersonalizadoUrl: evento.logo_personalizado_url ?? null,
@@ -58,13 +62,15 @@ export async function fetchPublicSorteioByEventoSlug(
   if (!normalized) return null;
 
   const admin = createAdminClient();
-  const { data: evento, error: evErr } = await admin
+  let evQuery = admin
     .from("eventos")
     .select("id, nome, slug, data_evento")
     .ilike("slug", normalized)
-    .eq("ativo", true)
-    .eq("publicado", true)
-    .maybeSingle();
+    .eq("ativo", true);
+  if (options?.requirePublicado !== false) {
+    evQuery = evQuery.eq("publicado", true);
+  }
+  const { data: evento, error: evErr } = await evQuery.maybeSingle();
   if (evErr) {
     if (/eventos_sorteios|schema cache|does not exist|Could not find/i.test(evErr.message)) {
       return null;
@@ -93,14 +99,14 @@ export async function fetchPublicSorteioByEventoId(
   const admin = createAdminClient();
   let evQuery = admin
     .from("eventos")
-    .select("id, nome, slug, data_evento, ativo, publicado, checkin_interativo_ativo, cor_primaria, cor_secundaria, logo_personalizado_url, prefixo_codigo_sorteio")
+    .select("id, nome, slug, data_evento, ativo, publicado, checkin_interativo_ativo, checkin_modo, checkin_abertura_antecipada_minutos, cor_primaria, cor_secundaria, logo_personalizado_url, prefixo_codigo_sorteio")
     .eq("id", eventoId)
     .eq("ativo", true);
   if (requirePublicado) {
     evQuery = evQuery.eq("publicado", true);
   }
   let { data: evento, error: evErr } = await evQuery.maybeSingle();
-  if (evErr && /checkin_interativo_ativo|cor_primaria|prefixo_codigo_sorteio|Could not find/i.test(evErr.message)) {
+  if (evErr && /checkin_interativo_ativo|checkin_modo|checkin_abertura_antecipada_minutos|cor_primaria|prefixo_codigo_sorteio|Could not find/i.test(evErr.message)) {
     // Fallback para schema sem as colunas novas
     let retryQuery = admin
       .from("eventos")
@@ -113,6 +119,8 @@ export async function fetchPublicSorteioByEventoId(
       ? {
           ...retry.data,
           checkin_interativo_ativo: false,
+          checkin_modo: "agendado",
+          checkin_abertura_antecipada_minutos: 30,
           cor_primaria: null,
           cor_secundaria: null,
           logo_personalizado_url: null,
@@ -148,6 +156,8 @@ export async function fetchPublicSorteioByEventoId(
     slug: string;
     data_evento: string | null;
     checkin_interativo_ativo?: boolean | null;
+    checkin_modo?: string | null;
+    checkin_abertura_antecipada_minutos?: number | null;
     cor_primaria?: string | null;
     cor_secundaria?: string | null;
     logo_personalizado_url?: string | null;

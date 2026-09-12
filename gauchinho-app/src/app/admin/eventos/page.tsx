@@ -5,7 +5,8 @@ import { canManageImobiliarias } from "@/lib/auth/permissions";
 import { fetchEventosAdminListSafe } from "./actions";
 import { fetchEventosQrVinculosMap } from "@/lib/eventos-sorteio/qr-unico";
 import { Button } from "@/components/ui/form-primitives";
-import { formatDateTime } from "@/lib/utils/format";
+import { formatarDataHoraEvento } from "@/lib/eventos-sorteio/timezone";
+import { resolverStatusCheckinEvento } from "@/lib/eventos-sorteio/disponibilidade";
 import { EventoAcoesMenu } from "@/components/admin/eventos/evento-acoes-menu";
 
 export default async function EventosAdminPage() {
@@ -59,31 +60,63 @@ export default async function EventosAdminPage() {
             </tr>
           </thead>
           <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
-            {list.map((row) => (
-              <tr key={row.id} className="hover:bg-zinc-50/50 dark:hover:bg-zinc-800/50 transition">
-                <td className="px-3 py-2.5 font-medium text-zinc-900 dark:text-zinc-100">
-                  <div className="font-semibold">{row.nome}</div>
-                  <div className="text-xs text-zinc-400">/{row.slug}</div>
-                </td>
-                <td className="px-3 py-2.5 whitespace-nowrap">
-                  <span
-                    className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-bold ${
-                      row.checkin_interativo_ativo
-                        ? "bg-emerald-500/15 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300"
-                        : "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400"
-                    }`}
-                  >
-                    <span
-                      className={`h-1.5 w-1.5 rounded-full ${
-                        row.checkin_interativo_ativo ? "bg-emerald-500" : "bg-zinc-400"
-                      }`}
-                    />
-                    {row.checkin_interativo_ativo ? "Interativo" : "Tradicional"}
-                  </span>
-                </td>
-                <td className="px-3 py-2.5 whitespace-nowrap text-zinc-600 dark:text-zinc-300">
-                  {row.data_evento ? formatDateTime(row.data_evento, null) : "—"}
-                </td>
+            {list.map((row) => {
+              const disp = resolverStatusCheckinEvento({
+                ativo: row.ativo,
+                checkin_interativo_ativo: row.checkin_interativo_ativo,
+                data_evento: row.data_evento,
+                checkin_modo: row.checkin_modo,
+                checkin_abertura_antecipada_minutos: row.checkin_abertura_antecipada_minutos,
+              });
+
+              return (
+                <tr key={row.id} className="hover:bg-zinc-50/50 dark:hover:bg-zinc-800/50 transition">
+                  <td className="px-3 py-2.5 font-medium text-zinc-900 dark:text-zinc-100">
+                    <div className="font-semibold">{row.nome}</div>
+                    <div className="text-xs text-zinc-400">/{row.slug}</div>
+                  </td>
+                  <td className="px-3 py-2.5 whitespace-nowrap">
+                    {row.checkin_interativo_ativo ? (
+                      <span
+                        className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-bold ${
+                          disp.status === "ativo_manual"
+                            ? "bg-blue-500/15 text-blue-700 dark:bg-blue-500/20 dark:text-blue-300"
+                            : disp.status === "aberto"
+                            ? "bg-emerald-500/15 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300"
+                            : disp.status === "encerrado"
+                            ? "bg-zinc-200 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"
+                            : "bg-amber-500/15 text-amber-800 dark:bg-amber-500/20 dark:text-amber-300"
+                        }`}
+                      >
+                        <span
+                          className={`h-1.5 w-1.5 rounded-full ${
+                            disp.status === "ativo_manual"
+                              ? "bg-blue-500"
+                              : disp.status === "aberto"
+                              ? "bg-emerald-500"
+                              : disp.status === "encerrado"
+                              ? "bg-zinc-400"
+                              : "bg-amber-500"
+                          }`}
+                        />
+                        {disp.status === "ativo_manual"
+                          ? "Ativo Manualmente"
+                          : disp.status === "aberto"
+                          ? "Aberto Agora"
+                          : disp.status === "encerrado"
+                          ? "Encerrado"
+                          : `Agendado${disp.horarioAberturaFormatado ? ` (${disp.horarioAberturaFormatado})` : ""}`}
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1.5 rounded-full bg-zinc-100 px-2.5 py-0.5 text-xs font-semibold text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
+                        <span className="h-1.5 w-1.5 rounded-full bg-zinc-400" />
+                        Tradicional
+                      </span>
+                    )}
+                  </td>
+                  <td className="px-3 py-2.5 whitespace-nowrap text-zinc-600 dark:text-zinc-300">
+                    {row.data_evento ? formatarDataHoraEvento(row.data_evento) : "—"}
+                  </td>
                 <td className="px-3 py-2.5 whitespace-nowrap">
                   <span
                     className={`rounded px-2 py-0.5 text-xs font-semibold ${
@@ -103,8 +136,9 @@ export default async function EventosAdminPage() {
                     />
                   </div>
                 </td>
-              </tr>
-            ))}
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>

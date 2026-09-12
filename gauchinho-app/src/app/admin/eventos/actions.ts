@@ -11,6 +11,7 @@ import type { EventoParticipanteRow, EventoPostRow, EventoRow, ParticipanteStatu
 import { somarVagasUsadas, STATUS_OCUPA_VAGA } from "@/lib/comercial-eventos/vagas";
 import { dbErrorMessage, isDbMissingColumnError } from "@/lib/comercial-eventos/db-ready";
 import { normalizarPrefixoSorteio } from "@/lib/eventos-sorteio/modelos-identidade";
+import { eventoLocalDateTimeToIso } from "@/lib/eventos-sorteio/timezone";
 
 function boolForm(formData: FormData, name: string): boolean {
   return formData.get(name) === "on";
@@ -45,14 +46,7 @@ function inscricaoFromForm(formData: FormData) {
 }
 
 function datetimeLocalToIso(raw: string): string | null {
-  const t = raw.trim();
-  if (!t) return null;
-  // datetime-local: "YYYY-MM-DDTHH:mm" — interpreta no fuso local do servidor
-  const d = new Date(t);
-  if (Number.isNaN(d.getTime())) {
-    throw new Error("Data do evento inválida.");
-  }
-  return d.toISOString();
+  return eventoLocalDateTimeToIso(raw);
 }
 
 function eventoFromForm(
@@ -98,6 +92,16 @@ function eventoFromForm(
       return false;
     })(),
     checkin_interativo_ativo: boolForm(formData, "checkin_interativo_ativo"),
+    checkin_modo: (() => {
+      const raw = strForm(formData, "checkin_modo");
+      return raw === "ativo_agora" || raw === "encerrado" ? raw : "agendado";
+    })(),
+    checkin_abertura_antecipada_minutos: (() => {
+      const raw = formData.get("checkin_abertura_antecipada_minutos");
+      if (raw == null || raw === "") return 30;
+      const n = parseInt(String(raw), 10);
+      return Number.isFinite(n) && n >= 0 ? n : 30;
+    })(),
     cor_primaria: String(formData.get("cor_primaria") ?? "").trim() || null,
     cor_secundaria: String(formData.get("cor_secundaria") ?? "").trim() || null,
     logo_personalizado_url: String(formData.get("logo_personalizado_url") ?? "").trim() || null,
@@ -207,6 +211,10 @@ export async function fetchEventoLeadsUsuariosIds(eventoId: string): Promise<str
 type EventoPayload = ReturnType<typeof eventoFromForm>;
 
 const EVENTO_OPTIONAL_COLUMNS = [
+  "checkin_modo",
+  "checkin_abertura_antecipada_minutos",
+  "checkin_ativo_manual_at",
+  "checkin_ativo_manual_por_id",
   "checkin_interativo_ativo",
   "cor_primaria",
   "cor_secundaria",
@@ -533,3 +541,32 @@ export async function eventoVagasResumo(eventoId: string, limite: number | null)
   const usadas = somarVagasUsadas((data ?? []) as EventoParticipanteRow[]);
   return { usadas, limite, restantes: limite && limite > 0 ? Math.max(0, limite - usadas) : null };
 }
+
+export async function alternarModoCheckinAction(
+  eventoId: string,
+  modo: "agendado" | "ativo_agora" | "encerrado",
+) {
+  const u = await requireUsuario();
+  if (!canManageImobiliarias(u.perfil)) throw new Error("Sem permissão");
+  const admin = createAdminClient();
+  const payload: Record<string, unknown> = {
+    checkin_modo: modo,
+    updated_at: new Date().toISOString(),
+  };
+  if (modo === "ativo_agora") {
+    payload.checkin_ativo_manual_at = new Date().toISOString();
+    payload.checkin_ativo_manual_por_id = u.id;
+  }
+  const { error } = await admin.from("eventos").update(payload).eq("id", eventoId);
+  if (error) {
+    if (/checkin_modo|Could not find/i.test(error.message)) {
+      throw new Error("Colunas de disponibilidade ainda não migradas.");
+    }
+    throw new Error(error.message);
+  }
+  revalidatePath(`/admin/eventos/${eventoId}`);
+  revalidatePath("/admin/eventos");
+  revalidatePath(`/eventos/${eventoId}/sorteio`);
+  return { ok: true };
+}
+

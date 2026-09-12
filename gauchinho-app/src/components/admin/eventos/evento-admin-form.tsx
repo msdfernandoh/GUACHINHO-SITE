@@ -15,13 +15,15 @@ import {
 } from "@/lib/eventos-sorteio/modelos-identidade";
 import { EventoImageField } from "./evento-image-field";
 
-function toDatetimeLocalValue(iso: string | null | undefined): string {
-  if (!iso?.trim()) return "";
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "";
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-}
+import {
+  eventoIsoToDatetimeLocal,
+  eventoLocalDateTimeToIso,
+} from "@/lib/eventos-sorteio/timezone";
+import {
+  resolverStatusCheckinEvento,
+  type CheckinModo,
+} from "@/lib/eventos-sorteio/disponibilidade";
+import { alternarModoCheckinAction } from "@/app/admin/eventos/actions";
 
 type ActionResult =
   | { ok: true; id?: string }
@@ -57,7 +59,7 @@ export function EventoAdminForm({
   isMaster = false,
 }: Props) {
   const router = useRouter();
-  const dataLocal = toDatetimeLocalValue(evento?.data_evento);
+  const dataLocal = eventoIsoToDatetimeLocal(evento?.data_evento);
 
   const [nome, setNome] = useState(evento?.nome ?? "");
   const [slug, setSlug] = useState(evento?.slug ?? "");
@@ -70,6 +72,21 @@ export function EventoAdminForm({
   );
   const [formError, setFormError] = useState<string | null>(null);
   const [formOk, setFormOk] = useState(false);
+
+  // Estados de Disponibilidade do Check-in
+  const [dataEventoInput, setDataEventoInput] = useState(dataLocal);
+  const [checkinModo, setCheckinModo] = useState<CheckinModo>(
+    (evento?.checkin_modo as CheckinModo) || "agendado",
+  );
+  const [antecedenciaMinutos, setAntecedenciaMinutos] = useState<number>(
+    typeof evento?.checkin_abertura_antecipada_minutos === "number"
+      ? evento.checkin_abertura_antecipada_minutos
+      : 30,
+  );
+  const [checkinInterativo, setCheckinInterativo] = useState<boolean>(
+    Boolean(evento?.checkin_interativo_ativo),
+  );
+  const [alternandoModo, setAlternandoModo] = useState(false);
 
   // Estados de Identidade Visual e Prefixo do Sorteio
   const modeloInicial = detectarModeloAtivo(evento?.logo_personalizado_url, evento?.cor_primaria);
@@ -95,15 +112,51 @@ export function EventoAdminForm({
   const [usarQrUnico, setUsarQrUnico] = useState(Boolean(qrVinculo?.ativo));
   const [qrCodeId, setQrCodeId] = useState(qrVinculo?.qr_code_id ?? "");
 
-  // Após salvar + router.refresh(), alinha o checkbox com o valor persistido no banco
+  // Após salvar + router.refresh(), alinha os estados com o valor persistido no banco
+  /* eslint-disable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
   useEffect(() => {
-    if (evento) setLeadsAcessoTodos(evento.leads_acesso_todos !== false);
-  }, [evento?.id, evento?.leads_acesso_todos]);
+    if (evento) {
+      setLeadsAcessoTodos(evento.leads_acesso_todos !== false);
+      setCheckinModo((evento.checkin_modo as CheckinModo) || "agendado");
+      setAntecedenciaMinutos(
+        typeof evento.checkin_abertura_antecipada_minutos === "number"
+          ? evento.checkin_abertura_antecipada_minutos
+          : 30,
+      );
+      setCheckinInterativo(Boolean(evento.checkin_interativo_ativo));
+      const dl = eventoIsoToDatetimeLocal(evento.data_evento);
+      setDataEventoInput(dl);
+    }
+  }, [
+    evento?.id,
+    evento?.leads_acesso_todos,
+    evento?.data_evento,
+    evento?.checkin_modo,
+    evento?.checkin_abertura_antecipada_minutos,
+    evento?.checkin_interativo_ativo,
+  ]);
 
   useEffect(() => {
     setUsarQrUnico(Boolean(qrVinculo?.ativo));
     setQrCodeId(qrVinculo?.qr_code_id ?? "");
   }, [qrVinculo?.id, qrVinculo?.ativo, qrVinculo?.qr_code_id]);
+  /* eslint-enable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
+
+  const dataIsoAtual = dataEventoInput ? (() => {
+    try {
+      return eventoLocalDateTimeToIso(dataEventoInput);
+    } catch {
+      return evento?.data_evento ?? null;
+    }
+  })() : null;
+
+  const dispInfo = resolverStatusCheckinEvento({
+    ativo: evento?.ativo ?? true,
+    checkin_interativo_ativo: checkinInterativo,
+    data_evento: dataIsoAtual,
+    checkin_modo: checkinModo,
+    checkin_abertura_antecipada_minutos: antecedenciaMinutos,
+  });
 
   const qrSelecionado = qrDisponiveis.find((q) => q.id === qrCodeId) ?? null;
   const slugHint = (usarQrUnico && qrSelecionado?.slug ? qrSelecionado.slug : slug.trim() || nome.trim()) || "evento";
@@ -147,6 +200,8 @@ export function EventoAdminForm({
       formData.set("cor_secundaria", corSecundaria);
       formData.set("logo_personalizado_url", logoPersonalizadoUrl);
       formData.set("prefixo_codigo_sorteio", prefixoSorteio);
+      formData.set("checkin_modo", checkinModo);
+      formData.set("checkin_abertura_antecipada_minutos", String(antecedenciaMinutos));
 
       const result = await action(formData);
       if (result && typeof result === "object" && "ok" in result) {
@@ -188,14 +243,77 @@ export function EventoAdminForm({
       {evento?.slug ? (
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-emerald-500/30 bg-emerald-500/5 p-4 dark:border-emerald-500/20 dark:bg-emerald-950/20">
           <div>
-            <h3 className="text-xs font-bold uppercase tracking-wider text-emerald-800 dark:text-emerald-300">
-              Testar Fluxo do Evento
-            </h3>
-            <p className="mt-0.5 text-xs text-zinc-600 dark:text-zinc-400">
-              Abra o check-in ou telão exatamente como o participante ou operador verá.
+            <div className="flex flex-wrap items-center gap-2">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-emerald-800 dark:text-emerald-300">
+                Check-in & Acesso
+              </h3>
+              <span
+                className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-bold ${
+                  dispInfo.status === "ativo_manual"
+                    ? "bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-200"
+                    : dispInfo.status === "aberto"
+                    ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-200"
+                    : dispInfo.status === "encerrado"
+                    ? "bg-zinc-200 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"
+                    : "bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-200"
+                }`}
+              >
+                {dispInfo.status === "ativo_manual"
+                  ? "🔵 Ativo manualmente"
+                  : dispInfo.status === "aberto"
+                  ? "🟢 Aberto agora"
+                  : dispInfo.status === "encerrado"
+                  ? "⚪ Encerrado"
+                  : `🟡 Agendado${dispInfo.horarioAberturaFormatado ? ` — abre às ${dispInfo.horarioAberturaFormatado}` : ""}`}
+              </span>
+            </div>
+            <p className="mt-1 text-xs text-zinc-600 dark:text-zinc-400">
+              {dispInfo.mensagemAmigavel}
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
+            {evento.id ? (
+              checkinModo === "ativo_agora" ? (
+                <button
+                  type="button"
+                  disabled={alternandoModo}
+                  onClick={async () => {
+                    setAlternandoModo(true);
+                    try {
+                      await alternarModoCheckinAction(evento.id, "agendado");
+                      setCheckinModo("agendado");
+                      router.refresh();
+                    } finally {
+                      setAlternandoModo(false);
+                    }
+                  }}
+                  className="inline-flex items-center gap-1 rounded-xl border border-blue-500/40 bg-blue-50 px-3 py-1.5 text-xs font-bold text-blue-800 hover:bg-blue-100 dark:bg-blue-950/40 dark:text-blue-200 transition"
+                  title="Restaurar regra de agendamento automático"
+                >
+                  <span>Voltar ao agendamento</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  disabled={alternandoModo}
+                  onClick={async () => {
+                    setAlternandoModo(true);
+                    try {
+                      await alternarModoCheckinAction(evento.id, "ativo_agora");
+                      setCheckinModo("ativo_agora");
+                      router.refresh();
+                    } finally {
+                      setAlternandoModo(false);
+                    }
+                  }}
+                  className="inline-flex items-center gap-1 rounded-xl border border-blue-600/40 bg-blue-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-blue-700 shadow-sm transition"
+                  title="Liberar check-in agora mesmo para teste com equipe"
+                >
+                  <span>Ativar check-in real agora</span>
+                </button>
+              )
+            ) : null}
+
             <a
               href={`/eventos/${encodeURIComponent(evento.slug)}/sorteio`}
               target="_blank"
@@ -213,7 +331,7 @@ export function EventoAdminForm({
               className="inline-flex items-center gap-1 rounded-xl border border-emerald-600/40 bg-white px-3 py-1.5 text-xs font-bold text-emerald-800 hover:bg-emerald-50 dark:bg-zinc-900 dark:text-emerald-200 dark:hover:bg-zinc-800 transition"
               title="Testar check-in em modo seguro sem salvar leads ou queimar números"
             >
-              <span>Testar (Preview)</span>
+              <span>Testar sem gravar (Preview)</span>
               <span className="text-[10px]">↗</span>
             </a>
             <a
@@ -269,7 +387,15 @@ export function EventoAdminForm({
         </div>
         <div>
           <Label>Data do evento</Label>
-          <Input name="data_evento" type="datetime-local" defaultValue={dataLocal} />
+          <Input
+            name="data_evento"
+            type="datetime-local"
+            defaultValue={dataLocal}
+            onChange={(e) => setDataEventoInput(e.target.value)}
+          />
+          <p className="mt-1 text-xs text-zinc-500">
+            Horário oficial no fuso da operação (Cuiabá). Preservado com precisão ao salvar.
+          </p>
         </div>
         <div className="grid gap-3 sm:grid-cols-2">
           <div>
@@ -299,7 +425,8 @@ export function EventoAdminForm({
               <input
                 type="checkbox"
                 name="checkin_interativo_ativo"
-                defaultChecked={Boolean(evento?.checkin_interativo_ativo)}
+                checked={checkinInterativo}
+                onChange={(e) => setCheckinInterativo(e.target.checked)}
                 className="mt-1 h-4 w-4 rounded border-zinc-700 text-amber-500 focus:ring-amber-500"
               />
               <div>
@@ -538,6 +665,108 @@ export function EventoAdminForm({
         </div>
       </FormSection>
 
+      <FormSection title="Disponibilidade do Check-in">
+        <div className="space-y-4">
+          <p className="text-xs text-zinc-600 dark:text-zinc-400">
+            Defina quando a página de check-in e o QR Code oficial estarão abertos para receber participantes.
+          </p>
+
+          <div className="space-y-3">
+            {/* Opção 1: Agendado */}
+            <label className="flex items-start gap-3 p-3.5 rounded-xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900/50 cursor-pointer hover:border-zinc-300 dark:hover:border-zinc-700 transition">
+              <input
+                type="radio"
+                name="checkin_modo"
+                value="agendado"
+                checked={checkinModo === "agendado"}
+                onChange={() => setCheckinModo("agendado")}
+                className="mt-1 h-4 w-4 text-emerald-600 focus:ring-emerald-500"
+              />
+              <div className="flex-1">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-sm text-zinc-900 dark:text-zinc-100">
+                    No dia e horário do evento (Agendado)
+                  </span>
+                  <span className="rounded-full bg-amber-500/10 px-2 py-0.5 text-[11px] font-bold text-amber-800 dark:text-amber-300">
+                    Padrão
+                  </span>
+                </div>
+                <p className="mt-1 text-xs text-zinc-500">
+                  Abre automaticamente com base na data do evento. Antes do horário de abertura, o visitante vê uma tela com a data confirmada sem erro 404.
+                </p>
+                {checkinModo === "agendado" ? (
+                  <div className="mt-3 flex items-center gap-2 pt-2.5 border-t border-zinc-100 dark:border-zinc-800">
+                    <Label className="text-xs text-zinc-700 dark:text-zinc-300 mb-0 whitespace-nowrap">
+                      Abrir com antecedência de:
+                    </Label>
+                    <Input
+                      name="checkin_abertura_antecipada_minutos"
+                      type="number"
+                      min="0"
+                      max="1440"
+                      value={antecedenciaMinutos}
+                      onChange={(e) => setAntecedenciaMinutos(Math.max(0, parseInt(e.target.value || "0", 10)))}
+                      className="w-20 text-center text-xs py-1"
+                    />
+                    <span className="text-xs text-zinc-500">minutos antes</span>
+                  </div>
+                ) : null}
+              </div>
+            </label>
+
+            {/* Opção 2: Ativar agora */}
+            <label className="flex items-start gap-3 p-3.5 rounded-xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900/50 cursor-pointer hover:border-zinc-300 dark:hover:border-zinc-700 transition">
+              <input
+                type="radio"
+                name="checkin_modo"
+                value="ativo_agora"
+                checked={checkinModo === "ativo_agora"}
+                onChange={() => setCheckinModo("ativo_agora")}
+                className="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500"
+              />
+              <div className="flex-1">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-sm text-zinc-900 dark:text-zinc-100">
+                    Ativar agora (Ensaio / Teste Real Imediato)
+                  </span>
+                  <span className="rounded-full bg-blue-500/10 px-2 py-0.5 text-[11px] font-bold text-blue-700 dark:text-blue-300">
+                    Imediato
+                  </span>
+                </div>
+                <p className="mt-1 text-xs text-zinc-500">
+                  Libera o check-in imediatamente no celular ou QR impresso para ensaio com a equipe e validação real.
+                </p>
+                {checkinModo === "ativo_agora" ? (
+                  <div className="mt-2 text-xs text-blue-700 dark:text-blue-300 font-medium">
+                    💡 Você pode alternar de volta para o agendamento a qualquer momento sem redigitar as datas.
+                  </div>
+                ) : null}
+              </div>
+            </label>
+
+            {/* Opção 3: Encerrado */}
+            <label className="flex items-start gap-3 p-3.5 rounded-xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900/50 cursor-pointer hover:border-zinc-300 dark:hover:border-zinc-700 transition">
+              <input
+                type="radio"
+                name="checkin_modo"
+                value="encerrado"
+                checked={checkinModo === "encerrado"}
+                onChange={() => setCheckinModo("encerrado")}
+                className="mt-1 h-4 w-4 text-zinc-600 focus:ring-zinc-500"
+              />
+              <div className="flex-1">
+                <span className="font-bold text-sm text-zinc-900 dark:text-zinc-100">
+                  Encerrado manualmente
+                </span>
+                <p className="mt-1 text-xs text-zinc-500">
+                  Fecha o check-in para novos participantes. Quem acessar verá a mensagem amigável de encerramento.
+                </p>
+              </div>
+            </label>
+          </div>
+        </div>
+      </FormSection>
+
       <FormSection title="QR Permanente do Local">
         <p className="text-sm text-zinc-500">
           Use um QR permanente em totens, mesas, recepção ou materiais impressos. Você poderá trocar o evento vinculado sem precisar imprimir outro QR.
@@ -608,7 +837,7 @@ export function EventoAdminForm({
               <Input
                 name="qr_periodo_inicio"
                 type="datetime-local"
-                defaultValue={toDatetimeLocalValue(qrVinculo?.periodo_inicio)}
+                defaultValue={eventoIsoToDatetimeLocal(qrVinculo?.periodo_inicio)}
                 required={usarQrUnico}
               />
             </div>
@@ -617,7 +846,7 @@ export function EventoAdminForm({
               <Input
                 name="qr_periodo_fim"
                 type="datetime-local"
-                defaultValue={toDatetimeLocalValue(qrVinculo?.periodo_fim)}
+                defaultValue={eventoIsoToDatetimeLocal(qrVinculo?.periodo_fim)}
                 required={usarQrUnico}
               />
             </div>

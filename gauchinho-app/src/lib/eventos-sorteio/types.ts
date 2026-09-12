@@ -80,6 +80,8 @@ export type PublicSorteioView = {
   status: SorteioStatus;
   npsPerguntas: NpsPerguntaPublica[];
   checkinInterativoAtivo?: boolean;
+  checkinModo?: string | null;
+  checkinAberturaAntecipadaMinutos?: number | null;
   corPrimaria?: string | null;
   corSecundaria?: string | null;
   logoPersonalizadoUrl?: string | null;

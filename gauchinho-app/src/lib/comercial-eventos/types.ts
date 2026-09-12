@@ -35,6 +35,10 @@ export type EventoRow = {
   inscricao_url_externa?: string | null;
   leads_acesso_todos?: boolean;
   checkin_interativo_ativo?: boolean;
+  checkin_modo?: "agendado" | "ativo_agora" | "encerrado" | string | null;
+  checkin_abertura_antecipada_minutos?: number | null;
+  checkin_ativo_manual_at?: string | null;
+  checkin_ativo_manual_por_id?: string | null;
   cor_primaria?: string | null;
   cor_secundaria?: string | null;
   logo_personalizado_url?: string | null;
