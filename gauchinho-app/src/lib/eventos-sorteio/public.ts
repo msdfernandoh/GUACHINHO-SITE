@@ -50,7 +50,10 @@ function mapPublicView(
   };
 }
 
-export async function fetchPublicSorteioByEventoSlug(slug: string): Promise<PublicSorteioView | null> {
+export async function fetchPublicSorteioByEventoSlug(
+  slug: string,
+  options?: { requirePublicado?: boolean; allowFallback?: boolean },
+): Promise<PublicSorteioView | null> {
   const normalized = slug.trim().toLowerCase();
   if (!normalized) return null;
 
@@ -70,7 +73,10 @@ export async function fetchPublicSorteioByEventoSlug(slug: string): Promise<Publ
   }
   if (!evento) return null;
 
-  return fetchPublicSorteioByEventoId(evento.id as string, { requirePublicado: true });
+  return fetchPublicSorteioByEventoId(evento.id as string, {
+    requirePublicado: options?.requirePublicado !== false,
+    allowFallback: options?.allowFallback,
+  });
 }
 
 /**
@@ -79,7 +85,7 @@ export async function fetchPublicSorteioByEventoSlug(slug: string): Promise<Publ
  */
 export async function fetchPublicSorteioByEventoId(
   eventoId: string,
-  options?: { requirePublicado?: boolean },
+  options?: { requirePublicado?: boolean; allowFallback?: boolean },
 ): Promise<PublicSorteioView | null> {
   const requirePublicado = options?.requirePublicado !== false;
   if (!eventoId?.trim()) return null;
@@ -136,8 +142,6 @@ export async function fetchPublicSorteioByEventoId(
     }
     throw new Error(error.message);
   }
-  if (!sorteio?.id) return null;
-
   type EvType = {
     id: string;
     nome: string;
@@ -149,6 +153,23 @@ export async function fetchPublicSorteioByEventoId(
     logo_personalizado_url?: string | null;
     prefixo_codigo_sorteio?: string | null;
   };
+
+  if (!sorteio?.id) {
+    if (evento.checkin_interativo_ativo || options?.allowFallback) {
+      return mapPublicView(
+        {
+          id: evento.id,
+          titulo: DEFAULTS_SORTEIO.titulo,
+          descricao: DEFAULTS_SORTEIO.descricao,
+          texto_agradecimento: DEFAULTS_SORTEIO.texto_agradecimento,
+          status: "aberto",
+          nps_config: {},
+        },
+        evento as EvType,
+      );
+    }
+    return null;
+  }
 
   return mapPublicView(sorteio, evento as EvType);
 }

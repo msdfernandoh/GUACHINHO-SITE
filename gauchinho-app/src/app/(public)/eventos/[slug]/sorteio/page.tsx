@@ -18,8 +18,6 @@ type Props = {
 export default async function EventoSorteioPublicPage({ params, searchParams }: Props) {
   const { slug } = await params;
   const { preview } = await searchParams;
-  const sorteio = await fetchPublicSorteioByEventoSlug(slug);
-  if (!sorteio) notFound();
 
   let isPreview = false;
   if (preview === "1" || preview === "true") {
@@ -32,6 +30,9 @@ export default async function EventoSorteioPublicPage({ params, searchParams }: 
       isPreview = false;
     }
   }
+
+  const sorteio = await fetchPublicSorteioByEventoSlug(slug, { allowFallback: isPreview });
+  if (!sorteio) notFound();
 
   const usarCheckinConversacional = Boolean(sorteio.checkinInterativoAtivo || isPreview);
 
