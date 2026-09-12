@@ -65,8 +65,9 @@ Toda a evolução foi realizada **sem nenhuma nova migration de banco**, aprovei
    - Campo de prefixo com cálculo dinâmico de exemplo;
    - Configurações Avançadas com campos HEX colapsadas e visíveis apenas para `isMaster`;
    - Seção **QR PERMANENTE DO LOCAL** com texto explicativo e status do totem.
-7. `src/app/(public)/eventos/[slug]/sorteio/page.tsx`: Verificação de permissão administrativa para o parâmetro `?preview=1`, ativando o modo seguro de homologação.
-8. `src/components/public/eventos/evento-checkin-conversacional.tsx`: Banner de aviso e bypass no modo `isPreview`, simulando a emissão de código (`DEMO-027`) sem gravar dados reais.
+7. `src/app/(public)/eventos/[slug]/sorteio/page.tsx`: Verificação de permissão administrativa para o parâmetro `?preview=1`, ativando o modo seguro de homologação e repasse de `allowFallback: isPreview`.
+8. `src/lib/eventos-sorteio/public.ts`: Síntese automática de view de sorteio com `DEFAULTS_SORTEIO` para eventos com `checkin_interativo_ativo = true` ou `allowFallback = true`, garantindo que o check-in funcione imediatamente mesmo sem registro manual na tabela legada `eventos_sorteios` (eliminando o erro 404).
+9. `src/components/public/eventos/evento-checkin-conversacional.tsx`: Banner de aviso e bypass no modo `isPreview`, simulando a emissão de código (`DEMO-027`) sem gravar dados reais.
 
 ---
 
