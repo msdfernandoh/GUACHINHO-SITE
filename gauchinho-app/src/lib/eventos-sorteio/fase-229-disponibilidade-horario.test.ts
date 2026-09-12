@@ -224,6 +224,39 @@ describe("Fase 229 — Auditoria e Validação Completa de Horário e Disponibil
       expect(stAberto.status).toBe("aberto");
       expect(stAberto.aberto).toBe(true);
     });
+
+    it("Cenário J: virada de ano/dia (01/01/2027 00:15 com 30 min de antecedência -> abre em 31/12/2026 23:45)", () => {
+      const eventoViradaIso = eventoLocalDateTimeToIso("2027-01-01T00:15")!;
+      const eventoVirada: EventoDisponibilidadeInput = {
+        ativo: true,
+        checkin_interativo_ativo: true,
+        data_evento: eventoViradaIso,
+        checkin_modo: "agendado",
+        checkin_abertura_antecipada_minutos: 30,
+      };
+
+      // 1. Antes da abertura: 31/12/2026 às 23:40 (Cuiabá) -> Fechado / Agendado
+      const antesAbertura = new Date(eventoLocalDateTimeToIso("2026-12-31T23:40")!);
+      const stFechado = resolverStatusCheckinEvento(eventoVirada, antesAbertura);
+      expect(stFechado.status).toBe("agendado");
+      expect(stFechado.aberto).toBe(false);
+      expect(stFechado.horarioAberturaFormatado).toBe("23:45");
+      expect(stFechado.horarioEventoFormatado).toBe("01/01/2027 às 00:15");
+      expect(stFechado.mensagemAmigavel).toContain("Este evento está confirmado para 01/01/2027 às 00:15");
+      expect(stFechado.mensagemAmigavel).toContain("a partir das 23:45");
+
+      // 2. No momento da abertura: 31/12/2026 às 23:45 (Cuiabá) -> Aberto
+      const noMomento = new Date(eventoLocalDateTimeToIso("2026-12-31T23:45")!);
+      const stNoMomento = resolverStatusCheckinEvento(eventoVirada, noMomento);
+      expect(stNoMomento.status).toBe("aberto");
+      expect(stNoMomento.aberto).toBe(true);
+
+      // 3. Durante o evento: 01/01/2027 às 00:10 (Cuiabá) -> Aberto
+      const duranteEvento = new Date(eventoLocalDateTimeToIso("2027-01-01T00:10")!);
+      const stDurante = resolverStatusCheckinEvento(eventoVirada, duranteEvento);
+      expect(stDurante.status).toBe("aberto");
+      expect(stDurante.aberto).toBe(true);
+    });
   });
 
   describe("3. Resiliência: Evento Interativo sem eventos_sorteios (Fallback DEFAULTS_SORTEIO)", () => {

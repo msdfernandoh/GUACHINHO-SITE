@@ -556,6 +556,9 @@ export async function alternarModoCheckinAction(
   if (modo === "ativo_agora") {
     payload.checkin_ativo_manual_at = new Date().toISOString();
     payload.checkin_ativo_manual_por_id = u.id;
+  } else {
+    payload.checkin_ativo_manual_at = null;
+    payload.checkin_ativo_manual_por_id = null;
   }
   const { error } = await admin.from("eventos").update(payload).eq("id", eventoId);
   if (error) {

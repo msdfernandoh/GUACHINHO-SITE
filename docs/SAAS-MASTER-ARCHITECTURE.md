@@ -2289,7 +2289,8 @@ Relatório:
    - Componente mobile `EventoCheckinFechado` exibindo logotipo do evento, nome, data confirmada e horário previsto de abertura.
 
 4. **Migration Aditiva 221:**
-   - `supabase/migrations/221_eventos_checkin_disponibilidade.sql` adicionando colunas opcionais retrocompatíveis com fallback no código.
+   - `supabase/migrations/221_eventos_checkin_disponibilidade.sql` adicionando colunas opcionais retrocompatíveis com constraints explícitas (`eventos_checkin_modo_check`, `eventos_checkin_antecipacao_check`), auditoria (`checkin_ativo_manual_por_id` -> `public.usuarios(id)`) e rollback documentado.
 
 Relatório:
 `docs/relatorios-fases/FASE-229-EVENTOS-HORARIO-E-DISPONIBILIDADE-CHECKIN.md`.
+
