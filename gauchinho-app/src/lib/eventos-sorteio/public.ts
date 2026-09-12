@@ -16,7 +16,17 @@ function mapPublicView(
     status: string;
     nps_config?: unknown;
   },
-  evento: { id: string; nome: string; slug: string; data_evento: string | null },
+  evento: {
+    id: string;
+    nome: string;
+    slug: string;
+    data_evento: string | null;
+    checkin_interativo_ativo?: boolean | null;
+    cor_primaria?: string | null;
+    cor_secundaria?: string | null;
+    logo_personalizado_url?: string | null;
+    prefixo_codigo_sorteio?: string | null;
+  },
   npsPerguntas?: NpsPerguntaPublica[],
 ): PublicSorteioView {
   return {
@@ -32,6 +42,11 @@ function mapPublicView(
     status: sorteio.status === "encerrado" ? "encerrado" : "aberto",
     npsPerguntas:
       npsPerguntas ?? resolverPerguntasNpsPublicas(parseNpsConfig(sorteio.nps_config)),
+    checkinInterativoAtivo: Boolean(evento.checkin_interativo_ativo),
+    corPrimaria: evento.cor_primaria ?? null,
+    corSecundaria: evento.cor_secundaria ?? null,
+    logoPersonalizadoUrl: evento.logo_personalizado_url ?? null,
+    prefixoCodigoSorteio: evento.prefixo_codigo_sorteio ?? null,
   };
 }
 
@@ -59,7 +74,7 @@ export async function fetchPublicSorteioByEventoSlug(slug: string): Promise<Publ
 }
 
 /**
- * Carrega o formulário público do sorteio (com NPS) pelo id do evento.
+ * Carrega o formulário público do sorteio (com NPS e check-in) pelo id do evento.
  * Usado pelo QR único para não depender de slug/publicado quando o vínculo já existe.
  */
 export async function fetchPublicSorteioByEventoId(
@@ -72,13 +87,34 @@ export async function fetchPublicSorteioByEventoId(
   const admin = createAdminClient();
   let evQuery = admin
     .from("eventos")
-    .select("id, nome, slug, data_evento, ativo, publicado")
+    .select("id, nome, slug, data_evento, ativo, publicado, checkin_interativo_ativo, cor_primaria, cor_secundaria, logo_personalizado_url, prefixo_codigo_sorteio")
     .eq("id", eventoId)
     .eq("ativo", true);
   if (requirePublicado) {
     evQuery = evQuery.eq("publicado", true);
   }
-  const { data: evento, error: evErr } = await evQuery.maybeSingle();
+  let { data: evento, error: evErr } = await evQuery.maybeSingle();
+  if (evErr && /checkin_interativo_ativo|cor_primaria|prefixo_codigo_sorteio|Could not find/i.test(evErr.message)) {
+    // Fallback para schema sem as colunas novas
+    let retryQuery = admin
+      .from("eventos")
+      .select("id, nome, slug, data_evento, ativo, publicado")
+      .eq("id", eventoId)
+      .eq("ativo", true);
+    if (requirePublicado) retryQuery = retryQuery.eq("publicado", true);
+    const retry = await retryQuery.maybeSingle();
+    evento = retry.data
+      ? {
+          ...retry.data,
+          checkin_interativo_ativo: false,
+          cor_primaria: null,
+          cor_secundaria: null,
+          logo_personalizado_url: null,
+          prefixo_codigo_sorteio: "",
+        }
+      : null;
+    evErr = retry.error;
+  }
   if (evErr) {
     if (/eventos_sorteios|schema cache|does not exist|Could not find/i.test(evErr.message)) {
       return null;
@@ -102,12 +138,19 @@ export async function fetchPublicSorteioByEventoId(
   }
   if (!sorteio?.id) return null;
 
-  return mapPublicView(sorteio, {
-    id: evento.id as string,
-    nome: evento.nome as string,
-    slug: evento.slug as string,
-    data_evento: evento.data_evento as string | null,
-  });
+  type EvType = {
+    id: string;
+    nome: string;
+    slug: string;
+    data_evento: string | null;
+    checkin_interativo_ativo?: boolean | null;
+    cor_primaria?: string | null;
+    cor_secundaria?: string | null;
+    logo_personalizado_url?: string | null;
+    prefixo_codigo_sorteio?: string | null;
+  };
+
+  return mapPublicView(sorteio, evento as EvType);
 }
 
 export async function fetchHomeSorteioDestaque(): Promise<HomeSorteioDestaque | null> {

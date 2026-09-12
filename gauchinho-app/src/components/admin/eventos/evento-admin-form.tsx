@@ -290,6 +290,77 @@ export function EventoAdminForm({
         ) : null}
       </FormSection>
 
+      <FormSection title="Experiência de Check-in, Cores e Sorteio">
+        <div className="space-y-4">
+          <label className="flex items-start gap-3 text-sm">
+            <input
+              type="checkbox"
+              name="checkin_interativo_ativo"
+              defaultChecked={Boolean(evento?.checkin_interativo_ativo)}
+              className="mt-1 h-4 w-4 rounded border-zinc-700 text-amber-500 focus:ring-amber-500"
+            />
+            <div>
+              <span className="font-semibold text-zinc-800 dark:text-zinc-200">
+                Check-in Mobile Conversacional Ativo (Recomendado)
+              </span>
+              <span className="mt-0.5 block text-xs text-zinc-500">
+                Ativa o fluxo interativo touch (1 pergunta por tela no celular: boas-vindas → nome → WhatsApp → 3 perguntas de qualificação → número da sorte). Se desmarcado, utiliza o formulário padrão tradicional.
+              </span>
+            </div>
+          </label>
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <Label>Prefixo do Número da Sorte (opcional)</Label>
+              <Input
+                name="prefixo_codigo_sorteio"
+                placeholder="Ex: RCN-, GCH- ou deixe vazio para 001, 002..."
+                defaultValue={evento?.prefixo_codigo_sorteio ?? ""}
+              />
+              <p className="mt-1 text-xs text-zinc-500">
+                Deixe vazio para gerar números sequenciais puros (001, 002, 027).
+              </p>
+            </div>
+            <div>
+              <Label>URL do Logotipo Personalizado (opcional)</Label>
+              <Input
+                name="logo_personalizado_url"
+                placeholder="https://... ou caminho do logo"
+                defaultValue={evento?.logo_personalizado_url ?? ""}
+              />
+              <p className="mt-1 text-xs text-zinc-500">
+                Se vazio, herda a marca / logotipo do tenant atual.
+              </p>
+            </div>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <Label>Cor Primária do Evento (HEX)</Label>
+              <Input
+                name="cor_primaria"
+                placeholder="#0066cc ou #f59e0b"
+                defaultValue={evento?.cor_primaria ?? ""}
+              />
+              <p className="mt-1 text-xs text-zinc-500">
+                Personaliza os botões e destaques da página mobile e do telão.
+              </p>
+            </div>
+            <div>
+              <Label>Cor Secundária do Evento (HEX)</Label>
+              <Input
+                name="cor_secundaria"
+                placeholder="#004499 ou #d97706"
+                defaultValue={evento?.cor_secundaria ?? ""}
+              />
+              <p className="mt-1 text-xs text-zinc-500">
+                Cor secundária para gradientes e detalhes.
+              </p>
+            </div>
+          </div>
+        </div>
+      </FormSection>
+
       <FormSection title="Textos do evento">
         <div>
           <Label>Descrição curta</Label>

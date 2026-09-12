@@ -59,6 +59,14 @@ export default async function EventoSorteioAdminPage({ params }: { params: Promi
     }
   }
 
+  let premios: any[] = [];
+  try {
+    const { listPremiosEvento } = await import("@/lib/eventos-sorteio/premios");
+    premios = await listPremiosEvento(id);
+  } catch {
+    premios = [];
+  }
+
   const h = await headers();
   const host = h.get("x-forwarded-host") ?? h.get("host") ?? "localhost:3000";
   const proto = h.get("x-forwarded-proto") ?? "http";
@@ -89,6 +97,7 @@ export default async function EventoSorteioAdminPage({ params }: { params: Promi
         publicBaseUrl={publicBaseUrl}
         sorteio={sorteio}
         participantes={participantes}
+        premios={premios}
         migrationHint={migrationHint}
         qrDisponiveis={qrDisponiveis}
         qrVinculo={qrVinculo}

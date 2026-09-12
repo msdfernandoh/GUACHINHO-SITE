@@ -79,6 +79,11 @@ export type PublicSorteioView = {
   textoAgradecimento: string;
   status: SorteioStatus;
   npsPerguntas: NpsPerguntaPublica[];
+  checkinInterativoAtivo?: boolean;
+  corPrimaria?: string | null;
+  corSecundaria?: string | null;
+  logoPersonalizadoUrl?: string | null;
+  prefixoCodigoSorteio?: string | null;
 };
 
 export type HomeSorteioDestaque = {

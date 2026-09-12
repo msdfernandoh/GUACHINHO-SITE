@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { EventoSorteioPublicForm } from "@/components/public/eventos/evento-sorteio-public-form";
+import { EventoCheckinConversacional } from "@/components/public/eventos/evento-checkin-conversacional";
 import { QrUnicoSemEventoForm } from "@/components/public/eventos/qr-unico-sem-evento-form";
 import { resolveQrPublicBySlug } from "@/lib/eventos-sorteio/qr-unico";
 
@@ -16,9 +17,23 @@ export default async function QrUnicoPublicPage({ params }: { params: Promise<{ 
   if (!resolved) notFound();
 
   return (
-    <main className="mx-auto flex min-h-[70vh] max-w-lg flex-col justify-center px-4 py-10">
+    <main className="mx-auto flex min-h-[70vh] max-w-lg flex-col justify-center px-4 py-8">
       {resolved.mode === "evento" ? (
-        <EventoSorteioPublicForm sorteio={resolved.sorteio} qrCodeUnicoId={resolved.qr.id} />
+        Boolean(resolved.sorteio.checkinInterativoAtivo) ? (
+          <EventoCheckinConversacional
+            evento={{
+              id: resolved.sorteio.eventoId,
+              nome: resolved.sorteio.eventoNome,
+              slug: resolved.sorteio.eventoSlug,
+              corPrimaria: resolved.sorteio.corPrimaria,
+              corSecundaria: resolved.sorteio.corSecundaria,
+              logoPersonalizadoUrl: resolved.sorteio.logoPersonalizadoUrl,
+            }}
+            qrCodeUnicoId={resolved.qr.id}
+          />
+        ) : (
+          <EventoSorteioPublicForm sorteio={resolved.sorteio} qrCodeUnicoId={resolved.qr.id} />
+        )
       ) : (
         <QrUnicoSemEventoForm
           qrNome={resolved.qr.nome}
@@ -28,7 +43,7 @@ export default async function QrUnicoPublicPage({ params }: { params: Promise<{ 
           eventoNome={resolved.eventoNome}
         />
       )}
-      <p className="mt-6 text-center text-xs text-slate-500">QR Code único</p>
+      <p className="mt-6 text-center text-xs text-slate-500">QR Code oficial · Presença e sorteio</p>
     </main>
   );
 }

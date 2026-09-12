@@ -4,6 +4,8 @@ import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import {
   confirmarVencedorSorteioAction,
+  criarPremioAction,
+  excluirPremioAction,
   exportParticipantesCsvAction,
   saveSorteioConfigAction,
   updateParticipanteSorteioAction,
@@ -18,6 +20,7 @@ import {
   type EventoSorteioRow,
   type SorteioParticipanteRow,
 } from "@/lib/eventos-sorteio/types";
+import type { EventoPremioRow } from "@/lib/eventos-sorteio/premios";
 import { escolherParticipanteAleatorio, codigosParaAnimacao } from "@/lib/eventos-sorteio/sorteio";
 import {
   NPS_PERGUNTAS_FIXAS,
@@ -39,6 +42,7 @@ type Props = {
   publicBaseUrl: string;
   sorteio: EventoSorteioRow | null;
   participantes: SorteioParticipanteRow[];
+  premios?: EventoPremioRow[];
   migrationHint?: string | null;
   qrDisponiveis?: QrCodeUnicoRow[];
   qrVinculo?: (QrCodeVinculoRow & { qr: QrCodeUnicoRow }) | null;
@@ -59,6 +63,7 @@ export function SorteioAdminClient({
   publicBaseUrl,
   sorteio,
   participantes,
+  premios = [],
   migrationHint,
   qrDisponiveis = [],
   qrVinculo = null,
@@ -88,6 +93,8 @@ export function SorteioAdminClient({
   }, [participantes, filtroTipo, filtroGanhador, filtroStatus]);
 
   const saveConfig = saveSorteioConfigAction.bind(null, eventoId);
+  const addPremio = criarPremioAction.bind(null, eventoId);
+  const delPremio = (id: string) => excluirPremioAction.bind(null, eventoId, id);
 
   const runDraw = () => {
     const elegiveis = participantes.filter((p) => p.status === "participando" && !p.ganhador);
@@ -376,14 +383,106 @@ export function SorteioAdminClient({
             />
           ) : null}
 
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap items-center gap-3">
+            <a
+              href={`/eventos/${eventoSlug}/telao`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 px-4 py-2.5 font-bold text-zinc-950 shadow-md shadow-amber-500/20 transition hover:from-amber-400 hover:to-amber-500"
+            >
+              <span className="text-xl">📺</span> Abrir Modo Telão de Palco ↗
+            </a>
             <Button type="button" onClick={runDraw} disabled={!sorteio || pending}>
-              Realizar sorteio
+              Realizar sorteio (painel)
             </Button>
             <Button type="button" variant="outline" onClick={exportCsv} disabled={!sorteio?.id || pending}>
               Exportar CSV
             </Button>
           </div>
+
+          <section className="space-y-4 rounded-xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-950/40">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <h2 className="text-lg font-bold text-zinc-900 dark:text-zinc-100">
+                  🎁 Prêmios do Evento ({premios.length})
+                </h2>
+                <p className="text-xs text-zinc-500">
+                  Prêmios cadastrados para sorteio sequencial no Telão de Palco.
+                </p>
+              </div>
+            </div>
+
+            <form
+              action={addPremio}
+              className="grid gap-3 rounded-lg border border-dashed border-zinc-300 p-4 dark:border-zinc-800 sm:grid-cols-4"
+            >
+              <div className="sm:col-span-2">
+                <Label>Título do prêmio *</Label>
+                <Input name="titulo" placeholder="Ex: Alexa Echo Dot, Vale R$ 500" required />
+              </div>
+              <div>
+                <Label>Ordem</Label>
+                <Input name="ordem" type="number" min={1} defaultValue={premios.length + 1} />
+              </div>
+              <div className="flex items-end">
+                <AdminFormSubmitButton label="Adicionar prêmio" size="sm" className="w-full" />
+              </div>
+              <div className="sm:col-span-4">
+                <Label>Descrição / Parceiro (opcional)</Label>
+                <Input name="descricao" placeholder="Ex: Oferecido pela concessionária parceira" />
+              </div>
+            </form>
+
+            {premios.length === 0 ? (
+              <p className="text-sm text-zinc-500">Nenhum prêmio cadastrado ainda.</p>
+            ) : (
+              <div className="divide-y divide-zinc-200 rounded-xl border dark:divide-zinc-800 dark:border-zinc-800">
+                {premios.map((p) => {
+                  const deleteThis = delPremio(p.id);
+                  return (
+                    <div key={p.id} className="flex flex-wrap items-center justify-between gap-3 p-3 text-sm">
+                      <div className="flex items-center gap-3">
+                        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-amber-500/20 text-xs font-bold text-amber-500">
+                          #{p.ordem}
+                        </span>
+                        <div>
+                          <p className="font-semibold text-zinc-800 dark:text-zinc-200">{p.titulo}</p>
+                          {p.descricao ? <p className="text-xs text-zinc-500">{p.descricao}</p> : null}
+                          {p.status === "sorteado" && p.ganhador_nome ? (
+                            <p className="mt-0.5 text-xs text-emerald-500">
+                              🏆 Ganhador: <strong>{p.ganhador_nome}</strong> ({p.ganhador_codigo})
+                            </p>
+                          ) : null}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                            p.status === "sorteado"
+                              ? "bg-emerald-500/20 text-emerald-600 dark:text-emerald-400"
+                              : "bg-zinc-200 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"
+                          }`}
+                        >
+                          {p.status === "sorteado" ? "Sorteado" : "Pendente"}
+                        </span>
+                        {p.status !== "sorteado" ? (
+                          <form action={deleteThis}>
+                            <AdminFormSubmitButton
+                              variant="danger"
+                              size="sm"
+                              label="Excluir"
+                              pendingLabel="…"
+                            />
+                          </form>
+                        ) : null}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </section>
 
           <section className="space-y-3">
             <h2 className="text-lg font-semibold">Participantes ({filtered.length})</h2>

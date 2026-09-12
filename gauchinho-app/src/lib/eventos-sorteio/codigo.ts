@@ -1,11 +1,16 @@
-const CODIGO_RE = /^GCH-(\d+)$/i;
+const CODIGO_RE = /(?:[A-Za-z0-9]+-)?(\d+)$/i;
 
-/** Formata sequência numérica no padrão GCH-0001. */
-export function formatCodigoParticipacao(sequencia: number): string {
+/** Formata sequência numérica (default: '001', '027' ou com prefixo opcional 'RCN-001'). */
+export function formatCodigoParticipacao(
+  sequencia: number,
+  prefixo: string = "",
+  digitos: number = 3,
+): string {
   if (!Number.isFinite(sequencia) || sequencia < 1) {
     throw new Error("Sequência de código inválida");
   }
-  return `GCH-${String(Math.floor(sequencia)).padStart(4, "0")}`;
+  const numPad = String(Math.floor(sequencia)).padStart(digitos, "0");
+  return prefixo ? `${prefixo}${numPad}` : numPad;
 }
 
 export function parseCodigoSequencia(codigo: string): number | null {
@@ -16,11 +21,15 @@ export function parseCodigoSequencia(codigo: string): number | null {
 }
 
 /** Próximo código a partir da lista de códigos já usados no evento. */
-export function proximoCodigoFromExisting(codigos: string[]): string {
+export function proximoCodigoFromExisting(
+  codigos: string[],
+  prefixo: string = "",
+  digitos: number = 3,
+): string {
   let max = 0;
   for (const c of codigos) {
     const n = parseCodigoSequencia(c);
     if (n != null && n > max) max = n;
   }
-  return formatCodigoParticipacao(max + 1);
+  return formatCodigoParticipacao(max + 1, prefixo, digitos);
 }

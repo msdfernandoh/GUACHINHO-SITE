@@ -31,6 +31,11 @@ import { LeadDetailTabs } from "@/components/admin/crm/lead-detail-tabs";
 import { fetchCompromissosLead } from "@/app/admin/agenda/actions";
 import { LeadContratacaoOnlineSection } from "@/components/admin/lead-contratacao-section";
 import type { ContratacaoOnlineRow } from "@/lib/contratacoes-online/types";
+import {
+  labelVeiculo,
+  labelMoradia,
+  labelCapacidade,
+} from "@/lib/eventos-sorteio/checkin-conversacional";
 
 export default async function LeadDetailPage({
   params,
@@ -45,8 +50,16 @@ export default async function LeadDetailPage({
   } catch {
     notFound();
   }
-  const { lead, propostas, contratacaoOnline, iaConversa, iaMensagens, atividades, timeline } =
-    detail;
+  const {
+    lead,
+    propostas,
+    contratacaoOnline,
+    iaConversa,
+    iaMensagens,
+    atividades,
+    timeline,
+    qualificacoesEventos,
+  } = detail;
   const srds = await fetchSrdOptions();
   const agendaItens = await fetchCompromissosLead(id);
   const podeExcluir = canDeleteRecords(usuario?.perfil);
@@ -449,6 +462,95 @@ export default async function LeadDetailPage({
               ) : null}
             </p>
           ) : null}
+        </section>
+      ) : null}
+
+      {qualificacoesEventos && qualificacoesEventos.length > 0 ? (
+        <section className="rounded-xl border border-amber-500/40 bg-gradient-to-br from-amber-500/10 via-zinc-900/80 to-zinc-950 p-5 shadow-lg shadow-amber-500/5">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-amber-500/20 pb-3">
+            <div className="flex items-center gap-2.5">
+              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-500/20 text-base font-bold text-amber-400">
+                🎯
+              </span>
+              <div>
+                <h2 className="text-base font-bold text-zinc-100">
+                  Qualificação do Evento (Check-in Interativo)
+                </h2>
+                <p className="text-xs text-zinc-400">
+                  Dados coletados no fluxo mobile passo a passo com número da sorte e consentimento LGPD.
+                </p>
+              </div>
+            </div>
+            <span className="rounded-full border border-amber-500/40 bg-amber-500/20 px-3 py-1 text-xs font-semibold text-amber-300">
+              {qualificacoesEventos.length}{" "}
+              {qualificacoesEventos.length === 1 ? "registro de evento" : "registros de eventos"}
+            </span>
+          </div>
+
+          <div className="mt-4 space-y-4">
+            {qualificacoesEventos.map((q: any, idx: number) => {
+              const resp = (q.qualificacao_respostas ?? {}) as {
+                veiculo?: string;
+                moradia?: string;
+                capacidade_mensal?: string;
+              };
+              return (
+                <div
+                  key={q.id || idx}
+                  className="rounded-lg border border-zinc-800 bg-zinc-950/70 p-4 transition hover:border-zinc-700"
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <span className="text-xs uppercase tracking-wider text-zinc-500">Evento</span>
+                      <p className="font-semibold text-zinc-100">{q.evento_nome || "Evento sem nome"}</p>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-xs uppercase tracking-wider text-zinc-500">Número da Sorte</span>
+                      <div className="flex items-center gap-1.5">
+                        <span className="rounded-md border border-amber-400/40 bg-amber-400/10 px-2.5 py-0.5 font-mono text-base font-bold text-amber-300">
+                          {q.codigo_sorteio}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                    <div className="rounded-lg border border-zinc-800/80 bg-zinc-900/50 p-3">
+                      <span className="text-xs font-medium text-zinc-400">1. Veículo atual</span>
+                      <p className="mt-1 font-semibold text-zinc-200">{labelVeiculo(resp.veiculo)}</p>
+                    </div>
+
+                    <div className="rounded-lg border border-zinc-800/80 bg-zinc-900/50 p-3">
+                      <span className="text-xs font-medium text-zinc-400">2. Situação de moradia</span>
+                      <p className="mt-1 font-semibold text-zinc-200">{labelMoradia(resp.moradia)}</p>
+                    </div>
+
+                    <div className="rounded-lg border border-zinc-800/80 bg-zinc-900/50 p-3">
+                      <span className="text-xs font-medium text-zinc-400">3. Capacidade de investimento</span>
+                      <p className="mt-1 font-semibold text-amber-300">
+                        {labelCapacidade(resp.capacidade_mensal)}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-zinc-800/60 pt-2.5 text-xs text-zinc-500">
+                    <div>
+                      Check-in realizado em:{" "}
+                      <span className="text-zinc-400">
+                        {q.checkin_at ? formatDateTime(q.checkin_at, null) : "—"}
+                      </span>
+                    </div>
+                    {q.lgpd_consentimento_at ? (
+                      <div className="flex items-center gap-1 text-emerald-400">
+                        <span>✓</span> LGPD aceito em {formatDateTime(q.lgpd_consentimento_at, null)}
+                        {q.lgpd_termo_versao ? ` (${q.lgpd_termo_versao})` : ""}
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </section>
       ) : null}
 

@@ -96,6 +96,11 @@ function eventoFromForm(
       if (raw === "on" || raw === "true" || raw === "1") return true;
       return false;
     })(),
+    checkin_interativo_ativo: boolForm(formData, "checkin_interativo_ativo"),
+    cor_primaria: String(formData.get("cor_primaria") ?? "").trim() || null,
+    cor_secundaria: String(formData.get("cor_secundaria") ?? "").trim() || null,
+    logo_personalizado_url: String(formData.get("logo_personalizado_url") ?? "").trim() || null,
+    prefixo_codigo_sorteio: String(formData.get("prefixo_codigo_sorteio") ?? "").trim().toUpperCase() || "",
     ...inscricao,
   };
 }
@@ -201,6 +206,11 @@ export async function fetchEventoLeadsUsuariosIds(eventoId: string): Promise<str
 type EventoPayload = ReturnType<typeof eventoFromForm>;
 
 const EVENTO_OPTIONAL_COLUMNS = [
+  "checkin_interativo_ativo",
+  "cor_primaria",
+  "cor_secundaria",
+  "logo_personalizado_url",
+  "prefixo_codigo_sorteio",
   "inscricao_tipo",
   "inscricao_url_externa",
   "leads_acesso_todos",

@@ -672,6 +672,16 @@ export async function fetchLeadDetail(leadId: string) {
     }
   }
 
+  const { data: qualificacoesEventos, error: qualifErr } = await supabase
+    .from("leads_eventos_qualificacoes")
+    .select(
+      "id, lead_id, evento_id, evento_nome, codigo_sorteio, qualificacao_respostas, lgpd_termo_versao, lgpd_consentimento_at, checkin_at, created_at"
+    )
+    .eq("lead_id", leadId)
+    .order("created_at", { ascending: false });
+
+  const qualificacoesSafe = qualifErr ? [] : qualificacoesEventos ?? [];
+
   return {
     lead,
     historico: historicoRows ?? [],
@@ -681,6 +691,7 @@ export async function fetchLeadDetail(leadId: string) {
     iaMensagens,
     atividades: atividadesSafe,
     timeline,
+    qualificacoesEventos: qualificacoesSafe,
   };
 }
 

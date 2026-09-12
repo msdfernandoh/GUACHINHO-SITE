@@ -34,6 +34,11 @@ export type EventoRow = {
   inscricao_tipo?: "interno" | "externo";
   inscricao_url_externa?: string | null;
   leads_acesso_todos?: boolean;
+  checkin_interativo_ativo?: boolean;
+  cor_primaria?: string | null;
+  cor_secundaria?: string | null;
+  logo_personalizado_url?: string | null;
+  prefixo_codigo_sorteio?: string | null;
   created_at: string;
   updated_at: string;
 };

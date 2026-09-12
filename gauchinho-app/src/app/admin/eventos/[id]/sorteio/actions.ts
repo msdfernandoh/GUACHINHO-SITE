@@ -281,3 +281,26 @@ export async function exportParticipantesCsvAction(eventoId: string, sorteioId: 
 export async function redirectSorteioAdmin(eventoId: string) {
   redirect(`/admin/eventos/${eventoId}/sorteio`);
 }
+
+import {
+  criarPremioEvento,
+  excluirPremioEvento,
+} from "@/lib/eventos-sorteio/premios";
+
+export async function criarPremioAction(eventoId: string, formData: FormData) {
+  await assertEventoAccess(eventoId);
+  const titulo = strForm(formData, "titulo");
+  const descricao = strForm(formData, "descricao");
+  const imagemUrl = strForm(formData, "imagem_url");
+  const ordem = intForm(formData, "ordem", 1);
+  if (!titulo) throw new Error("Título do prêmio é obrigatório");
+  await criarPremioEvento({ eventoId, titulo, descricao, imagemUrl, ordem });
+  revalidatePath(`/admin/eventos/${eventoId}/sorteio`);
+}
+
+export async function excluirPremioAction(eventoId: string, premioId: string) {
+  await assertEventoAccess(eventoId);
+  await excluirPremioEvento(premioId);
+  revalidatePath(`/admin/eventos/${eventoId}/sorteio`);
+}
+

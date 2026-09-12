@@ -2217,3 +2217,31 @@ Relatório:
 Relatório:
 `docs/relatorios-fases/FASE-226-RECONCILIACAO-REAL-CONTA-CORRENTE-SOCIOS.md`.
 
+### Evolução Operacional 227 — Eventos: Check-in Conversacional Mobile, Emissão Atômica do Número da Sorte, Gestão de Prêmios e Modo Telão de Palco
+
+1. **Preservação Integral de Infraestrutura e Reutilização:**
+   - Mantida integralmente a estrutura de QR Code permanente (`qr_codes_unicos`, `qr_codes_unicos_vinculos` e rota `/qr/[slug]`).
+   - Motor de sorteio canônico (`sorteio.ts`) e tabela `eventos_sorteio_participantes` mantidos e integrados.
+   - Eventos anteriores preservados sem quebras (`checkin_interativo_ativo = false` mantém formulário tradicional).
+
+2. **Nova Experiência Mobile Conversacional (1 Pergunta por Tela):**
+   - Fluxo touch otimizado para celular em tela cheia: Boas-vindas → Nome → WhatsApp (com verificação instantânea de presença já confirmada) → 3 perguntas de qualificação comercial (Veículo, Moradia, Capacidade de investimento mensal) → Auto check-in e emissão do número da sorte → Tela final de confirmação.
+   - Emissão de código atômico sequencial (`001`, `002`, `027`...) via trava transacional Postgres `pg_advisory_xact_lock`, impedindo duplicações mesmo sob alta concorrência.
+   - Idempotência no WhatsApp: unicidade por par `(evento_id + telefone)`. Consultas repetidas retornam amigavelmente o número da sorte já emitido.
+   - Auto check-in: atualiza automaticamente `eventos_participantes (status = 'presente', checkin_at = now())`.
+
+3. **Isolamento de Dados, LGPD e Histórico de Qualificação no CRM:**
+   - Respostas comerciais salvas no campo isolado `qualificacao_respostas jsonb` (sem contaminar `nps_respostas`).
+   - Consentimento LGPD auditável com versão do termo e timestamp (`lgpd_consentimento_at`).
+   - Nova tabela `leads_eventos_qualificacoes`: armazena o histórico auditável de eventos e respostas de cada lead, viabilizando participação em múltiplos eventos ao longo do tempo sem sobrescrever dados anteriores.
+   - Exibição de destaque no CRM (`/admin/leads/[id]`) no card **Qualificação do Evento (Check-in Interativo)**.
+
+4. **Gestão de Prêmios e Modo Telão de Palco:**
+   - Nova tabela `eventos_premios` com ordem, título, descrição, status e participante ganhador.
+   - Rota limpa para telão de projeção/TV (`/eventos/[slug]/telao`) com roleta visual animada em tela cheia, seleção de prêmio da rodada e celebração de vencedor.
+   - Painel administrativo do sorteio atualizado com botão direto para o Telão e gerenciador visual de prêmios.
+
+Relatório:
+`docs/relatorios-fases/FASE-227-EVENTOS-CHECKIN-CONVERSACIONAL-SORTEIO-PREMIOS-TELAO.md`.
+
+
