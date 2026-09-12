@@ -3,15 +3,19 @@ import Link from "next/link";
 import { getUsuarioNegocio } from "@/lib/auth/get-usuario";
 import { canManageImobiliarias } from "@/lib/auth/permissions";
 import { fetchEventosAdminListSafe } from "./actions";
+import { fetchEventosQrVinculosMap } from "@/lib/eventos-sorteio/qr-unico";
 import { Button } from "@/components/ui/form-primitives";
 import { formatDateTime } from "@/lib/utils/format";
-import { EventoCompartilhar } from "@/components/admin/eventos/evento-compartilhar";
+import { EventoAcoesMenu } from "@/components/admin/eventos/evento-acoes-menu";
 
 export default async function EventosAdminPage() {
   const u = await getUsuarioNegocio();
   if (!canManageImobiliarias(u?.perfil)) redirect("/admin");
 
-  const result = await fetchEventosAdminListSafe();
+  const [result, vinculosMap] = await Promise.all([
+    fetchEventosAdminListSafe(),
+    fetchEventosQrVinculosMap(),
+  ]);
 
   if (!result.ok) {
     return (
@@ -47,46 +51,57 @@ export default async function EventosAdminPage() {
         <table className="min-w-full text-sm">
           <thead className="border-b bg-zinc-50 text-left text-xs uppercase text-zinc-500 dark:bg-zinc-800/50">
             <tr>
-              <th className="px-3 py-2">Nome</th>
-              <th className="px-3 py-2">Data</th>
-              <th className="px-3 py-2">Publicado</th>
-              <th className="px-3 py-2">Só link</th>
-              <th className="px-3 py-2">Destaque</th>
-              <th className="px-3 py-2" />
+              <th className="px-3 py-2.5">Nome</th>
+              <th className="px-3 py-2.5">Check-in</th>
+              <th className="px-3 py-2.5">Data</th>
+              <th className="px-3 py-2.5">Publicado</th>
+              <th className="px-3 py-2.5 text-right">Ações do Evento</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
             {list.map((row) => (
-              <tr key={row.id} className="border-b dark:border-zinc-800">
-                <td className="px-3 py-2 font-medium">{row.nome}</td>
-                <td className="px-3 py-2">{row.data_evento ? formatDateTime(row.data_evento, null) : "—"}</td>
-                <td className="px-3 py-2">{row.publicado ? "Sim" : "Não"}</td>
-                <td className="px-3 py-2">{row.somente_por_link ? "Sim" : "Não"}</td>
-                <td className="px-3 py-2">{row.evento_destaque ? "Sim" : "—"}</td>
-                <td className="px-3 py-2">
-                  <div className="mb-2">
-                    <EventoCompartilhar slug={row.slug} nome={row.nome} publicado={row.publicado} />
+              <tr key={row.id} className="hover:bg-zinc-50/50 dark:hover:bg-zinc-800/50 transition">
+                <td className="px-3 py-2.5 font-medium text-zinc-900 dark:text-zinc-100">
+                  <div className="font-semibold">{row.nome}</div>
+                  <div className="text-xs text-zinc-400">/{row.slug}</div>
+                </td>
+                <td className="px-3 py-2.5 whitespace-nowrap">
+                  <span
+                    className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-bold ${
+                      row.checkin_interativo_ativo
+                        ? "bg-emerald-500/15 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300"
+                        : "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400"
+                    }`}
+                  >
+                    <span
+                      className={`h-1.5 w-1.5 rounded-full ${
+                        row.checkin_interativo_ativo ? "bg-emerald-500" : "bg-zinc-400"
+                      }`}
+                    />
+                    {row.checkin_interativo_ativo ? "Interativo" : "Tradicional"}
+                  </span>
+                </td>
+                <td className="px-3 py-2.5 whitespace-nowrap text-zinc-600 dark:text-zinc-300">
+                  {row.data_evento ? formatDateTime(row.data_evento, null) : "—"}
+                </td>
+                <td className="px-3 py-2.5 whitespace-nowrap">
+                  <span
+                    className={`rounded px-2 py-0.5 text-xs font-semibold ${
+                      row.publicado
+                        ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300"
+                        : "bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400"
+                    }`}
+                  >
+                    {row.publicado ? "Publicado" : "Rascunho"}
+                  </span>
+                </td>
+                <td className="px-3 py-2.5 text-right">
+                  <div className="flex justify-end">
+                    <EventoAcoesMenu
+                      evento={row}
+                      qrVinculo={vinculosMap[row.id] ?? null}
+                    />
                   </div>
-                  <Link href={`/admin/eventos/${row.id}`} className="text-amber-600 hover:underline">
-                    Editar
-                  </Link>
-                  <Link href={`/admin/eventos/${row.id}/participantes`} className="ml-3 text-amber-600 hover:underline">
-                    Participantes
-                  </Link>
-                  <Link href={`/admin/eventos/${row.id}/sorteio#nps-config`} className="ml-3 text-amber-600 hover:underline">
-                    NPS
-                  </Link>
-                  <Link href={`/admin/eventos/nps?evento_id=${row.id}`} className="ml-3 text-amber-600 hover:underline">
-                    Gráficos
-                  </Link>
-                  <Link href={`/admin/eventos/listas-convidados?evento_id=${row.id}`} className="ml-3 text-amber-600 hover:underline">
-                    Listas
-                  </Link>
-                  {row.publicado ? (
-                    <Link href={`/eventos/${row.slug}`} className="ml-3 text-zinc-500 hover:underline" target="_blank">
-                      Ver público
-                    </Link>
-                  ) : null}
                 </td>
               </tr>
             ))}

@@ -3,19 +3,41 @@ import type { Metadata } from "next";
 import { EventoSorteioPublicForm } from "@/components/public/eventos/evento-sorteio-public-form";
 import { EventoCheckinConversacional } from "@/components/public/eventos/evento-checkin-conversacional";
 import { fetchPublicSorteioByEventoSlug } from "@/lib/eventos-sorteio/public";
+import { getUsuarioNegocio } from "@/lib/auth/get-usuario";
+import { canManageImobiliarias } from "@/lib/auth/permissions";
 
 export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-export default async function EventoSorteioPublicPage({ params }: { params: Promise<{ slug: string }> }) {
+type Props = {
+  params: Promise<{ slug: string }>;
+  searchParams: Promise<{ preview?: string }>;
+};
+
+export default async function EventoSorteioPublicPage({ params, searchParams }: Props) {
   const { slug } = await params;
+  const { preview } = await searchParams;
   const sorteio = await fetchPublicSorteioByEventoSlug(slug);
   if (!sorteio) notFound();
 
+  let isPreview = false;
+  if (preview === "1" || preview === "true") {
+    try {
+      const u = await getUsuarioNegocio();
+      if (canManageImobiliarias(u?.perfil)) {
+        isPreview = true;
+      }
+    } catch {
+      isPreview = false;
+    }
+  }
+
+  const usarCheckinConversacional = Boolean(sorteio.checkinInterativoAtivo || isPreview);
+
   return (
     <main className="mx-auto flex min-h-[70vh] max-w-lg flex-col justify-center px-4 py-8">
-      {Boolean(sorteio.checkinInterativoAtivo) ? (
+      {usarCheckinConversacional ? (
         <EventoCheckinConversacional
           evento={{
             id: sorteio.eventoId,
@@ -25,6 +47,7 @@ export default async function EventoSorteioPublicPage({ params }: { params: Prom
             corSecundaria: sorteio.corSecundaria,
             logoPersonalizadoUrl: sorteio.logoPersonalizadoUrl,
           }}
+          isPreview={isPreview}
         />
       ) : (
         <EventoSorteioPublicForm sorteio={sorteio} />

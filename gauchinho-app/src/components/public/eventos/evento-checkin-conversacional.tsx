@@ -30,18 +30,23 @@ type EventoBrandProps = {
 type Props = {
   evento: EventoBrandProps;
   qrCodeUnicoId?: string | null;
+  isPreview?: boolean;
 };
 
 type Step = 1 | 2 | 3 | 4 | 5 | "final";
 
-export function EventoCheckinConversacional({ evento, qrCodeUnicoId }: Props) {
+export function EventoCheckinConversacional({
+  evento,
+  qrCodeUnicoId,
+  isPreview = false,
+}: Props) {
   const tenantBrand = useTenantBrand();
   const [step, setStep] = useState<Step>(1);
   const [nome, setNome] = useState("");
   const [whatsapp, setWhatsapp] = useState("");
   const [veiculo, setVeiculo] = useState<VeiculoQualificacao | "">("");
   const [moradia, setMoradia] = useState<MoradiaQualificacao | "">("");
-  const [capacidade, setCapacidade] = useState<CapacidadeMensalQualificacao | "">("");
+  const [, setCapacidade] = useState<CapacidadeMensalQualificacao | "">("");
 
   const [codigoSorte, setCodigoSorte] = useState<string>("");
   const [jaEstavaCadastrado, setJaEstavaCadastrado] = useState(false);
@@ -77,6 +82,11 @@ export function EventoCheckinConversacional({ evento, qrCodeUnicoId }: Props) {
       return;
     }
     setErro(null);
+
+    if (isPreview) {
+      setStep(3);
+      return;
+    }
 
     startTransition(async () => {
       try {
@@ -121,6 +131,13 @@ export function EventoCheckinConversacional({ evento, qrCodeUnicoId }: Props) {
       return;
     }
 
+    if (isPreview) {
+      setCodigoSorte("DEMO-027");
+      setJaEstavaCadastrado(false);
+      setStep("final");
+      return;
+    }
+
     startTransition(async () => {
       const res = await submeterCheckinConversacionalAction({
         eventoId: evento.id,
@@ -152,6 +169,12 @@ export function EventoCheckinConversacional({ evento, qrCodeUnicoId }: Props) {
       className="mx-auto w-full max-w-md min-h-[75vh] flex flex-col justify-between rounded-3xl border border-zinc-200/80 bg-white/95 p-6 text-zinc-900 shadow-2xl backdrop-blur-md dark:border-zinc-800 dark:bg-zinc-950/90 dark:text-zinc-100 sm:p-8"
       style={{ "--theme-primary": primaryColor } as React.CSSProperties}
     >
+      {isPreview ? (
+        <div className="mb-4 rounded-2xl border border-amber-500/40 bg-amber-500/10 px-4 py-2 text-center text-xs font-bold text-amber-800 dark:text-amber-200">
+          ⚠️ MODO DE TESTE (PREVIEW) — Nenhum dado real de lead, presença ou sorteio será salvo.
+        </div>
+      ) : null}
+
       {/* Cabeçalho da Marca */}
       <header className="flex flex-col items-center text-center">
         {logo ? (
@@ -425,7 +448,11 @@ export function EventoCheckinConversacional({ evento, qrCodeUnicoId }: Props) {
                 Tudo certo, {primeiroNome}!
               </h1>
               <p className="text-base font-semibold text-emerald-600 dark:text-emerald-400">
-                {jaEstavaCadastrado ? "Sua presença já está confirmada." : "Sua presença foi confirmada."}
+                {isPreview
+                  ? "Presença simulada com sucesso (modo teste)."
+                  : jaEstavaCadastrado
+                    ? "Sua presença já está confirmada."
+                    : "Sua presença foi confirmada."}
               </p>
             </div>
 

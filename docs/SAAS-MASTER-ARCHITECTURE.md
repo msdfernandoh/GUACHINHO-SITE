@@ -2244,4 +2244,31 @@ Relatório:
 Relatório:
 `docs/relatorios-fases/FASE-227-EVENTOS-CHECKIN-CONVERSACIONAL-SORTEIO-PREMIOS-TELAO.md`.
 
+### Evolução Operacional 228 — Eventos: UX, Operação, Identidade Visual e QR Code
 
+1. **Separação Rigorosa de QR Direto vs. QR Permanente:**
+   - Auditoria do botão antigo (`EventoCompartilhar`) que gerava `/eventos/[slug]` (vitrine institucional).
+   - Criação do modal `EventoQrCheckinModal` com foco no check-in (`/eventos/[slug]/sorteio`) e abas para alternar/baixar o QR do totem permanente vinculado (`/qr/[slug]`).
+   - Download de PNG em alta resolução (1200x1200px) e cópia de link em 1 clique.
+
+2. **Listagem de Eventos Reorganizada e Responsiva:**
+   - Badge indicativo de Check-in (`🟢 Interativo` / `⚪ Tradicional`).
+   - Ações principais em destaque: `[ Ver check-in ]`, `[ QR Check-in ]` e `[ Telão ]`.
+   - Menu dropdown `[ Mais ▾ ]` agrupando ações secundárias (`Editar`, `Participantes`, `Sorteio / NPS`, `Gráficos`, `Listas`, `Ver vitrine`).
+
+3. **Identidade Visual Sem HEX na UX Comum:**
+   - Seleção de marca através de cards visuais clicáveis (Racon Consórcios e Gauchinho Consórcios).
+   - Reutilização dos assets e paletas oficiais do projeto (`#0066cc` / `#0c2340` para Racon; `#c9a84c` / `#0a1628` para Gauchinho).
+   - Prévia visual dinâmica em tempo real (logo + botão modelo + número da sorte).
+   - Configurações avançadas colapsadas com edição manual de HEX restritas a usuários com perfil **Master**.
+
+4. **Prefixo do Número da Sorte Aperfeiçoado:**
+   - Normalização automática com hífen (ex: `ING` -> `ING-`).
+   - Prévia interativa em tempo real (`Exemplo gerado: ING-001`).
+
+5. **Modo de Teste Seguro (`?preview=1`):**
+   - Parâmetro `?preview=1` acessível apenas para administradores/operadores autenticados.
+   - Navegação completa pelo fluxo conversacional no celular sem salvar leads no CRM, sem queimar números da sorte e sem registrar presença de teste.
+
+Relatório:
+`docs/relatorios-fases/FASE-228-EVENTOS-UX-CHECKIN-QR-IDENTIDADE-VISUAL.md`.

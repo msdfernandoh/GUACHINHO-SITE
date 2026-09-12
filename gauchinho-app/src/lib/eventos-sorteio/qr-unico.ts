@@ -106,7 +106,10 @@ export async function listQrCodesDisponiveisParaEvento(eventoId: string): Promis
         q.ativo &&
         (!q.vinculoAtivo || (!!eventoId && q.vinculoAtivo.evento_id === eventoId)),
     )
-    .map(({ vinculoAtivo: _v, ...row }) => row);
+    .map(({ vinculoAtivo: _, ...row }) => {
+      void _;
+      return row;
+    });
 }
 
 export async function fetchVinculoAtivoDoEvento(eventoId: string): Promise<
@@ -136,6 +139,32 @@ export async function fetchVinculoAtivoDoEvento(eventoId: string): Promise<
     updated_at: data.updated_at as string,
     qr,
   };
+}
+
+export async function fetchEventosQrVinculosMap(): Promise<
+  Record<string, { qrId: string; qrNome: string; qrSlug: string }>
+> {
+  try {
+    const admin = createAdminClient();
+    const { data, error } = await admin
+      .from("qr_codes_unicos_vinculos")
+      .select("evento_id, qr_codes_unicos(id, nome, slug)")
+      .eq("ativo", true);
+    if (error) return {};
+    const res: Record<string, { qrId: string; qrNome: string; qrSlug: string }> = {};
+    for (const row of (data ?? []) as Array<{
+      evento_id: string;
+      qr_codes_unicos: QrCodeUnicoRow | QrCodeUnicoRow[] | null;
+    }>) {
+      const qr = Array.isArray(row.qr_codes_unicos) ? row.qr_codes_unicos[0] : row.qr_codes_unicos;
+      if (row.evento_id && qr) {
+        res[row.evento_id] = { qrId: qr.id, qrNome: qr.nome, qrSlug: qr.slug };
+      }
+    }
+    return res;
+  } catch {
+    return {};
+  }
 }
 
 function nowIso() {

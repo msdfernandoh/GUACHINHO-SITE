@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getUsuarioNegocio } from "@/lib/auth/get-usuario";
-import { canManageImobiliarias } from "@/lib/auth/permissions";
+import { canManageImobiliarias, isMaster } from "@/lib/auth/permissions";
 import { createEventoAction, fetchUsuariosStaffAtivos } from "../actions";
 import { EventoAdminForm } from "@/components/admin/eventos/evento-admin-form";
 import { listQrCodesDisponiveisParaEvento } from "@/lib/eventos-sorteio/qr-unico";
@@ -9,6 +9,7 @@ import { listQrCodesDisponiveisParaEvento } from "@/lib/eventos-sorteio/qr-unico
 export default async function NovoEventoPage() {
   const u = await getUsuarioNegocio();
   if (!canManageImobiliarias(u?.perfil)) redirect("/admin");
+  const master = isMaster(u?.perfil);
   const usuariosStaff = await fetchUsuariosStaffAtivos();
   let qrDisponiveis: Awaited<ReturnType<typeof listQrCodesDisponiveisParaEvento>> = [];
   try {
@@ -33,6 +34,7 @@ export default async function NovoEventoPage() {
         action={createEventoAction}
         usuariosStaff={usuariosStaff}
         qrDisponiveis={qrDisponiveis}
+        isMaster={master}
       />
     </div>
   );

@@ -2,11 +2,17 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Input, Label, Textarea } from "@/components/ui/form-primitives";
 import { AdminFormSubmitButton } from "@/components/admin/admin-form-submit-button";
 import type { EventoRow } from "@/lib/comercial-eventos/types";
 import type { QrCodeUnicoRow, QrCodeVinculoRow } from "@/lib/eventos-sorteio/qr-unico";
+import {
+  MODELOS_IDENTIDADE_EVENTO,
+  detectarModeloAtivo,
+  formatarExemploPrefixo,
+} from "@/lib/eventos-sorteio/modelos-identidade";
 import { EventoImageField } from "./evento-image-field";
 
 function toDatetimeLocalValue(iso: string | null | undefined): string {
@@ -29,6 +35,7 @@ type Props = {
   leadsUsuariosIds?: string[];
   qrDisponiveis?: QrCodeUnicoRow[];
   qrVinculo?: (QrCodeVinculoRow & { qr: QrCodeUnicoRow }) | null;
+  isMaster?: boolean;
 };
 
 function FormSection({ title, children }: { title: string; children: React.ReactNode }) {
@@ -47,6 +54,7 @@ export function EventoAdminForm({
   leadsUsuariosIds = [],
   qrDisponiveis = [],
   qrVinculo = null,
+  isMaster = false,
 }: Props) {
   const router = useRouter();
   const dataLocal = toDatetimeLocalValue(evento?.data_evento);
@@ -62,6 +70,23 @@ export function EventoAdminForm({
   );
   const [formError, setFormError] = useState<string | null>(null);
   const [formOk, setFormOk] = useState(false);
+
+  // Estados de Identidade Visual e Prefixo do Sorteio
+  const modeloInicial = detectarModeloAtivo(evento?.logo_personalizado_url, evento?.cor_primaria);
+  const [modeloSelecionado, setModeloSelecionado] = useState<"racon" | "gauchinho" | "personalizado" | null>(modeloInicial);
+  const [corPrimaria, setCorPrimaria] = useState(evento?.cor_primaria ?? "");
+  const [corSecundaria, setCorSecundaria] = useState(evento?.cor_secundaria ?? "");
+  const [logoPersonalizadoUrl, setLogoPersonalizadoUrl] = useState(evento?.logo_personalizado_url ?? "");
+  const [prefixoSorteio, setPrefixoSorteio] = useState(evento?.prefixo_codigo_sorteio ?? "");
+
+  function selecionarModelo(id: "racon" | "gauchinho") {
+    setModeloSelecionado(id);
+    const m = MODELOS_IDENTIDADE_EVENTO[id];
+    setCorPrimaria(m.corPrimaria);
+    setCorSecundaria(m.corSecundaria);
+    setLogoPersonalizadoUrl(m.logoUrl);
+  }
+
   // Novo evento: por padrão restringe aos consultores marcados.
   // Edição: preserva o valor salvo no banco.
   const [leadsAcessoTodos, setLeadsAcessoTodos] = useState(
@@ -117,6 +142,12 @@ export function EventoAdminForm({
         formData.set("usar_qr_unico", "on");
         formData.set("qr_code_unico_id", qrSelecionado.id);
       }
+      // Garante que campos visuais e de sorteio sejam persistidos
+      formData.set("cor_primaria", corPrimaria);
+      formData.set("cor_secundaria", corSecundaria);
+      formData.set("logo_personalizado_url", logoPersonalizadoUrl);
+      formData.set("prefixo_codigo_sorteio", prefixoSorteio);
+
       const result = await action(formData);
       if (result && typeof result === "object" && "ok" in result) {
         if (!result.ok) {
@@ -151,6 +182,51 @@ export function EventoAdminForm({
       {formOk ? (
         <div className="rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-800 dark:text-emerald-200">
           Evento salvo com sucesso.
+        </div>
+      ) : null}
+
+      {evento?.slug ? (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-emerald-500/30 bg-emerald-500/5 p-4 dark:border-emerald-500/20 dark:bg-emerald-950/20">
+          <div>
+            <h3 className="text-xs font-bold uppercase tracking-wider text-emerald-800 dark:text-emerald-300">
+              Testar Fluxo do Evento
+            </h3>
+            <p className="mt-0.5 text-xs text-zinc-600 dark:text-zinc-400">
+              Abra o check-in ou telão exatamente como o participante ou operador verá.
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <a
+              href={`/eventos/${encodeURIComponent(evento.slug)}/sorteio`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 rounded-xl bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white shadow-sm hover:bg-emerald-700 transition"
+              title="Abrir check-in real em nova aba"
+            >
+              <span>Ver check-in</span>
+              <span className="text-[10px]">↗</span>
+            </a>
+            <a
+              href={`/eventos/${encodeURIComponent(evento.slug)}/sorteio?preview=1`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 rounded-xl border border-emerald-600/40 bg-white px-3 py-1.5 text-xs font-bold text-emerald-800 hover:bg-emerald-50 dark:bg-zinc-900 dark:text-emerald-200 dark:hover:bg-zinc-800 transition"
+              title="Testar check-in em modo seguro sem salvar leads ou queimar números"
+            >
+              <span>Testar (Preview)</span>
+              <span className="text-[10px]">↗</span>
+            </a>
+            <a
+              href={`/eventos/${encodeURIComponent(evento.slug)}/telao`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 rounded-xl border border-purple-500/30 bg-purple-500/10 px-3 py-1.5 text-xs font-bold text-purple-700 hover:bg-purple-500/20 dark:text-purple-300 transition"
+              title="Abrir tela cheia do telão de palco"
+            >
+              <span>Telão</span>
+              <span className="text-[10px]">↗</span>
+            </a>
+          </div>
         </div>
       ) : null}
 
@@ -215,16 +291,275 @@ export function EventoAdminForm({
         </div>
       </FormSection>
 
-      <FormSection title="QR Code único">
+      <FormSection title="Experiência do Evento">
+        <div className="space-y-5">
+          {/* Check-in Interativo */}
+          <div className="rounded-xl border border-zinc-200 bg-zinc-50/70 p-4 dark:border-zinc-800 dark:bg-zinc-900/50">
+            <label className="flex items-start gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                name="checkin_interativo_ativo"
+                defaultChecked={Boolean(evento?.checkin_interativo_ativo)}
+                className="mt-1 h-4 w-4 rounded border-zinc-700 text-amber-500 focus:ring-amber-500"
+              />
+              <div>
+                <span className="font-bold text-sm text-zinc-900 dark:text-zinc-100">
+                  CHECK-IN INTERATIVO NO CELULAR
+                </span>
+                <span className="mt-1 block text-xs text-zinc-600 dark:text-zinc-400">
+                  Mostra uma pergunta por vez e, ao final, confirma a presença e entrega o número da sorte.
+                </span>
+              </div>
+            </label>
+          </div>
+
+          {/* Identidade Visual do Evento */}
+          <div className="space-y-3">
+            <div>
+              <h3 className="text-sm font-bold uppercase tracking-wide text-zinc-700 dark:text-zinc-300">
+                IDENTIDADE VISUAL DO EVENTO
+              </h3>
+              <p className="mt-0.5 text-xs text-zinc-500">
+                Escolha a marca que será usada no check-in, número da sorte e telão.
+              </p>
+            </div>
+
+            {/* Campos ocultos persistidos no FormData */}
+            <input type="hidden" name="logo_personalizado_url" value={logoPersonalizadoUrl} />
+            <input type="hidden" name="cor_primaria" value={corPrimaria} />
+            <input type="hidden" name="cor_secundaria" value={corSecundaria} />
+
+            {/* Cards de Marcas Oficiais Pré-aprovadas */}
+            <div className="grid gap-3 sm:grid-cols-2">
+              {/* Card RACON */}
+              <button
+                type="button"
+                onClick={() => selecionarModelo("racon")}
+                className={`flex flex-col items-start rounded-2xl border-2 p-4 text-left transition ${
+                  modeloSelecionado === "racon"
+                    ? "border-blue-600 bg-blue-50/50 shadow-sm dark:border-blue-500 dark:bg-blue-950/30"
+                    : "border-zinc-200 bg-white hover:border-zinc-300 dark:border-zinc-800 dark:bg-zinc-900"
+                }`}
+              >
+                <div className="flex w-full items-center justify-between">
+                  <div className="relative h-8 w-28">
+                    <Image
+                      src={MODELOS_IDENTIDADE_EVENTO.racon.logoUrl}
+                      alt="Racon Consórcios"
+                      fill
+                      className="object-contain object-left"
+                    />
+                  </div>
+                  {modeloSelecionado === "racon" ? (
+                    <span className="rounded-full bg-blue-600 px-2.5 py-0.5 text-[11px] font-bold text-white">
+                      ✓ Racon selecionado
+                    </span>
+                  ) : null}
+                </div>
+                <div className="mt-3">
+                  <p className="text-sm font-bold text-zinc-900 dark:text-zinc-100">Racon Consórcios</p>
+                  <p className="text-xs text-zinc-500 mt-0.5">Paleta oficial azul e marinho para franquias e encontros</p>
+                </div>
+                <div className="mt-3 flex w-full items-center justify-between gap-2 border-t border-zinc-100 pt-2.5 dark:border-zinc-800">
+                  <div className="flex items-center gap-1.5">
+                    <span className="h-4 w-4 rounded-full bg-[#0066cc]" title="Azul Royal (#0066cc)" />
+                    <span className="h-4 w-4 rounded-full bg-[#0c2340]" title="Azul Marinho (#0c2340)" />
+                    <span className="h-4 w-4 rounded-full bg-[#0099dd]" title="Cyan Destaque (#0099dd)" />
+                  </div>
+                  <span className="rounded-lg bg-[#0066cc] px-2.5 py-1 text-[11px] font-bold text-white shadow-sm">
+                    Botão Modelo
+                  </span>
+                </div>
+              </button>
+
+              {/* Card GAUCHINHO */}
+              <button
+                type="button"
+                onClick={() => selecionarModelo("gauchinho")}
+                className={`flex flex-col items-start rounded-2xl border-2 p-4 text-left transition ${
+                  modeloSelecionado === "gauchinho"
+                    ? "border-amber-500 bg-amber-50/50 shadow-sm dark:border-amber-500 dark:bg-amber-950/30"
+                    : "border-zinc-200 bg-white hover:border-zinc-300 dark:border-zinc-800 dark:bg-zinc-900"
+                }`}
+              >
+                <div className="flex w-full items-center justify-between">
+                  <div className="relative h-8 w-28">
+                    <Image
+                      src={MODELOS_IDENTIDADE_EVENTO.gauchinho.logoUrl}
+                      alt="Gauchinho Consórcios"
+                      fill
+                      className="object-contain object-left"
+                    />
+                  </div>
+                  {modeloSelecionado === "gauchinho" ? (
+                    <span className="rounded-full bg-amber-600 px-2.5 py-0.5 text-[11px] font-bold text-white">
+                      ✓ Gauchinho selecionado
+                    </span>
+                  ) : null}
+                </div>
+                <div className="mt-3">
+                  <p className="text-sm font-bold text-zinc-900 dark:text-zinc-100">Gauchinho Consórcios</p>
+                  <p className="text-xs text-zinc-500 mt-0.5">Paleta dourada e marinho tradicional da plataforma</p>
+                </div>
+                <div className="mt-3 flex w-full items-center justify-between gap-2 border-t border-zinc-100 pt-2.5 dark:border-zinc-800">
+                  <div className="flex items-center gap-1.5">
+                    <span className="h-4 w-4 rounded-full bg-[#c9a84c]" title="Dourado (#c9a84c)" />
+                    <span className="h-4 w-4 rounded-full bg-[#0a1628]" title="Azul Marinho (#0a1628)" />
+                  </div>
+                  <span className="rounded-lg bg-[#c9a84c] px-2.5 py-1 text-[11px] font-bold text-white shadow-sm">
+                    Botão Modelo
+                  </span>
+                </div>
+              </button>
+            </div>
+
+            {/* Prévia Visual em Tempo Real */}
+            <div className="mt-4 rounded-2xl border border-zinc-200 bg-zinc-50/70 p-4 dark:border-zinc-800 dark:bg-zinc-900/50">
+              <p className="text-[11px] font-bold uppercase tracking-wider text-zinc-500">
+                PRÉVIA VISUAL DO EVENTO (Celular / Telão)
+              </p>
+              <div className="mt-3 mx-auto max-w-sm rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
+                <div className="flex flex-col items-center text-center space-y-3">
+                  {logoPersonalizadoUrl ? (
+                    <div className="relative h-10 w-36">
+                      <Image
+                        src={logoPersonalizadoUrl}
+                        alt="Logo do evento"
+                        fill
+                        className="object-contain"
+                      />
+                    </div>
+                  ) : (
+                    <div className="text-sm font-black text-zinc-800 dark:text-zinc-200">
+                      {nome || "Nome do Evento"}
+                    </div>
+                  )}
+                  <p className="text-xs text-zinc-500">Bem-vindo ao evento</p>
+                  <button
+                    type="button"
+                    tabIndex={-1}
+                    style={{
+                      backgroundColor: corPrimaria || "#0066cc",
+                      color: "#ffffff",
+                    }}
+                    className="w-full rounded-xl py-2.5 text-xs font-bold shadow transition cursor-default pointer-events-none"
+                  >
+                    CONFIRMAR PRESENÇA
+                  </button>
+                  <div className="w-full rounded-xl border border-dashed border-zinc-300 bg-zinc-50/80 py-2.5 dark:border-zinc-700 dark:bg-zinc-900">
+                    <p className="text-[10px] text-zinc-400 uppercase font-semibold">Número da Sorte</p>
+                    <p
+                      style={{ color: corPrimaria || "#0066cc" }}
+                      className="font-mono text-lg font-black"
+                    >
+                      {formatarExemploPrefixo(prefixoSorteio, 27)}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Prefixo do Número da Sorte */}
+            <div className="pt-2">
+              <Label>Prefixo do Número da Sorte</Label>
+              <Input
+                name="prefixo_codigo_sorteio"
+                value={prefixoSorteio}
+                onChange={(e) => setPrefixoSorteio(e.target.value)}
+                placeholder="Ex: ING, RCN ou deixe vazio para 001, 002..."
+              />
+              <div className="mt-1.5 flex flex-wrap items-center justify-between gap-2 text-xs">
+                <p className="text-zinc-600 dark:text-zinc-400">
+                  Exemplo:{" "}
+                  <strong className="font-mono text-amber-600 dark:text-amber-400">
+                    {formatarExemploPrefixo(prefixoSorteio, 1)}
+                  </strong>
+                  ,{" "}
+                  <span className="font-mono text-zinc-500">
+                    {formatarExemploPrefixo(prefixoSorteio, 2)}
+                  </span>
+                  ...
+                </p>
+                <span className="text-zinc-400">
+                  O sistema cuida automaticamente do hífen/separador.
+                </span>
+              </div>
+            </div>
+
+            {/* Configurações Avançadas (Somente Master) */}
+            {isMaster ? (
+              <details className="mt-3 rounded-xl border border-zinc-200 bg-zinc-50 p-4 text-xs dark:border-zinc-800 dark:bg-zinc-900/60">
+                <summary className="cursor-pointer font-bold text-zinc-700 hover:underline dark:text-zinc-300">
+                  ⚙️ Configurações Avançadas (Master): Personalizar cores HEX e logotipo manualmente
+                </summary>
+                <div className="mt-3 space-y-3 border-t border-zinc-200 pt-3 dark:border-zinc-700">
+                  <p className="text-zinc-500">
+                    Insira cores HEX customizadas caso este evento específico demande ajustes manuais fora dos modelos padrão.
+                  </p>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div>
+                      <Label>Cor Primária (HEX)</Label>
+                      <Input
+                        value={corPrimaria}
+                        onChange={(e) => {
+                          setCorPrimaria(e.target.value);
+                          setModeloSelecionado("personalizado");
+                        }}
+                        placeholder="#0066cc ou #c9a84c"
+                      />
+                    </div>
+                    <div>
+                      <Label>Cor Secundária (HEX)</Label>
+                      <Input
+                        value={corSecundaria}
+                        onChange={(e) => {
+                          setCorSecundaria(e.target.value);
+                          setModeloSelecionado("personalizado");
+                        }}
+                        placeholder="#0c2340 ou #0a1628"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <Label>URL do Logotipo Personalizado</Label>
+                    <Input
+                      value={logoPersonalizadoUrl}
+                      onChange={(e) => {
+                        setLogoPersonalizadoUrl(e.target.value);
+                        setModeloSelecionado("personalizado");
+                      }}
+                      placeholder="/racon/logoracon.jpg ou https://..."
+                    />
+                  </div>
+                </div>
+              </details>
+            ) : null}
+          </div>
+        </div>
+      </FormSection>
+
+      <FormSection title="QR Permanente do Local">
         <p className="text-sm text-zinc-500">
-          Cadastre QR Codes em{" "}
-          <Link href="/admin/configuracoes/qr-codes" className="font-medium text-amber-600 hover:underline">
-            Configurações → QR Codes únicos
-          </Link>
-          . Ao selecionar um QR, o <strong>slug</strong> e o <strong>local/cidade</strong> do evento
-          passam a usar os dados desse QR. O link impresso (/qr/slug) continua o mesmo.
+          Use um QR permanente em totens, mesas, recepção ou materiais impressos. Você poderá trocar o evento vinculado sem precisar imprimir outro QR.
         </p>
-        <label className="flex items-center gap-2 text-sm">
+
+        {qrVinculo?.ativo ? (
+          <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 p-3 text-xs text-emerald-900 dark:text-emerald-200">
+            <p className="font-semibold">
+              ✓ QR permanente do local vinculado atualmente: <strong>{qrVinculo.qr.nome}</strong> (
+              <code className="font-mono font-bold">/qr/{qrVinculo.qr.slug}</code>)
+            </p>
+            <p className="mt-1 text-emerald-700 dark:text-emerald-300">
+              O material físico com este QR já está direcionando para este evento durante o período definido.
+            </p>
+          </div>
+        ) : (
+          <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3 text-xs text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900/60 dark:text-zinc-400">
+            Nenhum QR permanente vinculado a este evento no momento.
+          </div>
+        )}
+
+        <label className="flex items-center gap-2 text-sm pt-1">
           <input
             type="checkbox"
             name="usar_qr_unico"
@@ -232,7 +567,7 @@ export function EventoAdminForm({
             checked={usarQrUnico}
             onChange={(e) => onToggleUsarQr(e.target.checked)}
           />
-          Usar QR Code único neste evento
+          Vincular QR Code permanente a este evento
         </label>
         {usarQrUnico ? (
           <div className="grid gap-3 sm:grid-cols-2">
@@ -262,7 +597,7 @@ export function EventoAdminForm({
                 <p className="mt-1 text-xs text-amber-700 dark:text-amber-400">
                   Nenhum QR disponível.{" "}
                   <Link href="/admin/configuracoes/qr-codes" className="underline">
-                    Cadastre um QR Code único
+                    Cadastre um QR Code permanente
                   </Link>{" "}
                   ou desative o vínculo ativo em outro evento.
                 </p>
@@ -288,77 +623,6 @@ export function EventoAdminForm({
             </div>
           </div>
         ) : null}
-      </FormSection>
-
-      <FormSection title="Experiência de Check-in, Cores e Sorteio">
-        <div className="space-y-4">
-          <label className="flex items-start gap-3 text-sm">
-            <input
-              type="checkbox"
-              name="checkin_interativo_ativo"
-              defaultChecked={Boolean(evento?.checkin_interativo_ativo)}
-              className="mt-1 h-4 w-4 rounded border-zinc-700 text-amber-500 focus:ring-amber-500"
-            />
-            <div>
-              <span className="font-semibold text-zinc-800 dark:text-zinc-200">
-                Check-in Mobile Conversacional Ativo (Recomendado)
-              </span>
-              <span className="mt-0.5 block text-xs text-zinc-500">
-                Ativa o fluxo interativo touch (1 pergunta por tela no celular: boas-vindas → nome → WhatsApp → 3 perguntas de qualificação → número da sorte). Se desmarcado, utiliza o formulário padrão tradicional.
-              </span>
-            </div>
-          </label>
-
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div>
-              <Label>Prefixo do Número da Sorte (opcional)</Label>
-              <Input
-                name="prefixo_codigo_sorteio"
-                placeholder="Ex: RCN-, GCH- ou deixe vazio para 001, 002..."
-                defaultValue={evento?.prefixo_codigo_sorteio ?? ""}
-              />
-              <p className="mt-1 text-xs text-zinc-500">
-                Deixe vazio para gerar números sequenciais puros (001, 002, 027).
-              </p>
-            </div>
-            <div>
-              <Label>URL do Logotipo Personalizado (opcional)</Label>
-              <Input
-                name="logo_personalizado_url"
-                placeholder="https://... ou caminho do logo"
-                defaultValue={evento?.logo_personalizado_url ?? ""}
-              />
-              <p className="mt-1 text-xs text-zinc-500">
-                Se vazio, herda a marca / logotipo do tenant atual.
-              </p>
-            </div>
-          </div>
-
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div>
-              <Label>Cor Primária do Evento (HEX)</Label>
-              <Input
-                name="cor_primaria"
-                placeholder="#0066cc ou #f59e0b"
-                defaultValue={evento?.cor_primaria ?? ""}
-              />
-              <p className="mt-1 text-xs text-zinc-500">
-                Personaliza os botões e destaques da página mobile e do telão.
-              </p>
-            </div>
-            <div>
-              <Label>Cor Secundária do Evento (HEX)</Label>
-              <Input
-                name="cor_secundaria"
-                placeholder="#004499 ou #d97706"
-                defaultValue={evento?.cor_secundaria ?? ""}
-              />
-              <p className="mt-1 text-xs text-zinc-500">
-                Cor secundária para gradientes e detalhes.
-              </p>
-            </div>
-          </div>
-        </div>
       </FormSection>
 
       <FormSection title="Textos do evento">

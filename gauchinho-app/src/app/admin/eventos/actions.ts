@@ -10,6 +10,7 @@ import { uploadImagemPublica } from "@/lib/storage/imagens";
 import type { EventoParticipanteRow, EventoPostRow, EventoRow, ParticipanteStatus } from "@/lib/comercial-eventos/types";
 import { somarVagasUsadas, STATUS_OCUPA_VAGA } from "@/lib/comercial-eventos/vagas";
 import { dbErrorMessage, isDbMissingColumnError } from "@/lib/comercial-eventos/db-ready";
+import { normalizarPrefixoSorteio } from "@/lib/eventos-sorteio/modelos-identidade";
 
 function boolForm(formData: FormData, name: string): boolean {
   return formData.get(name) === "on";
@@ -100,7 +101,7 @@ function eventoFromForm(
     cor_primaria: String(formData.get("cor_primaria") ?? "").trim() || null,
     cor_secundaria: String(formData.get("cor_secundaria") ?? "").trim() || null,
     logo_personalizado_url: String(formData.get("logo_personalizado_url") ?? "").trim() || null,
-    prefixo_codigo_sorteio: String(formData.get("prefixo_codigo_sorteio") ?? "").trim().toUpperCase() || "",
+    prefixo_codigo_sorteio: normalizarPrefixoSorteio(strForm(formData, "prefixo_codigo_sorteio")),
     ...inscricao,
   };
 }
