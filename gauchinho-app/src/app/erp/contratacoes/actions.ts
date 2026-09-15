@@ -2,11 +2,11 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { requireTenantPermission } from "@/lib/tenant/context";
+import { requireTenantPermission, requireCurrentTenantContext } from "@/lib/tenant/context";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { converterContratacaoEmVenda } from "@/lib/vendas/vendas-service";
-import { assertSnapshotCalculoGruposIntegro } from "@/lib/contratacoes-online/snapshot-calculo-grupos";
+import { assertSnapshotCalculoGruposIntegro, calcularHashSnapshotGrupos } from "@/lib/contratacoes-online/snapshot-calculo-grupos";
 import { isPlatformSuperadmin } from "@/lib/auth/is-superadmin";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -67,18 +67,117 @@ export async function formalizarContratacaoAction(formData: FormData) {
   const dataPrimeiraParcela = value(formData, "data_primeira_parcela") || null;
   const dataSegundaParcela = value(formData, "data_segunda_parcela") || null;
   const quantidadeCotas = Number(value(formData, "quantidade_cotas"));
+  const taxaAjustadaRaw = value(formData, "taxa_administracao_ajustada");
+  const parcelaAjustadaRaw = value(formData, "valor_parcela_ajustado");
+  const motivoPromo = value(formData, "motivo_ajuste_promocional");
   const admin = createAdminClient();
   const db = await createClient();
   try {
     const { data: contratacao, error: contratacaoError } = await admin
       .from("contratacoes_online")
-      .select("id,nome,cpf,cnpj,email,telefone,cliente_id,contrato_assinado,dados_simulacao")
+      .select("id,nome,cpf,cnpj,email,telefone,cliente_id,contrato_assinado,dados_simulacao,parcela_estimada")
       .eq("id", contratacaoId).eq("empresa_id", empresaAtiva.id).maybeSingle();
     if (contratacaoError || !contratacao) throw new Error(contratacaoError?.message || "Contratação não encontrada.");
     if (!contratacao.contrato_assinado) throw new Error("Contrato ainda não foi assinado.");
     assertSnapshotCalculoGruposIntegro(
       (contratacao.dados_simulacao ?? {}) as Record<string, unknown>,
     );
+
+    const taxaAjustada = taxaAjustadaRaw ? Number(taxaAjustadaRaw) : null;
+    const parcelaAjustada = parcelaAjustadaRaw ? Number(parcelaAjustadaRaw) : null;
+    const temAjustePromocional = (taxaAjustada !== null && !isNaN(taxaAjustada)) || (parcelaAjustada !== null && !isNaN(parcelaAjustada));
+
+    if (temAjustePromocional) {
+      if (taxaAjustada !== null && (isNaN(taxaAjustada) || taxaAjustada < 0 || taxaAjustada > 100)) {
+        throw new Error("Taxa de administração promocional inválida.");
+      }
+      if (parcelaAjustada !== null && (isNaN(parcelaAjustada) || parcelaAjustada <= 0)) {
+        throw new Error("Valor da parcela promocional inválido.");
+      }
+
+      const dadosSimulacaoOriginal = ((contratacao.dados_simulacao ?? {}) as Record<string, unknown>);
+      const novoDadosSimulacao: Record<string, unknown> = {
+        ...dadosSimulacaoOriginal,
+        ajuste_promocional: {
+          aplicado: true,
+          taxa_administracao_ajustada: taxaAjustada !== null && !isNaN(taxaAjustada) ? taxaAjustada : null,
+          valor_parcela_ajustada: parcelaAjustada !== null && !isNaN(parcelaAjustada) ? parcelaAjustada : null,
+          motivo: motivoPromo || "Ajuste comercial / promoção de fechamento",
+          aplicado_em: new Date().toISOString(),
+        },
+      };
+
+      if (parcelaAjustada !== null && !isNaN(parcelaAjustada) && parcelaAjustada > 0) {
+        novoDadosSimulacao.valor_parcela = parcelaAjustada;
+        novoDadosSimulacao.primeiraParcelaTotal = parcelaAjustada;
+        if (Array.isArray(novoDadosSimulacao.selecoes) && novoDadosSimulacao.selecoes[0]) {
+          const selecao0 = { ...(novoDadosSimulacao.selecoes[0] as Record<string, unknown>) };
+          if (selecao0.resultado && typeof selecao0.resultado === "object") {
+            selecao0.resultado = {
+              ...(selecao0.resultado as Record<string, unknown>),
+              primeiraParcela: parcelaAjustada,
+            };
+          }
+          novoDadosSimulacao.selecoes = [selecao0, ...novoDadosSimulacao.selecoes.slice(1)];
+        }
+        if (novoDadosSimulacao.totais && typeof novoDadosSimulacao.totais === "object") {
+          novoDadosSimulacao.totais = {
+            ...(novoDadosSimulacao.totais as Record<string, unknown>),
+            primeiraParcela: parcelaAjustada,
+          };
+        }
+      }
+
+      if (taxaAjustada !== null && !isNaN(taxaAjustada) && taxaAjustada >= 0) {
+        novoDadosSimulacao.taxa_administrativa = taxaAjustada;
+        if (Array.isArray(novoDadosSimulacao.selecoes) && novoDadosSimulacao.selecoes[0]) {
+          const selecao0 = { ...(novoDadosSimulacao.selecoes[0] as Record<string, unknown>) };
+          if (selecao0.grupo && typeof selecao0.grupo === "object") {
+            selecao0.grupo = {
+              ...(selecao0.grupo as Record<string, unknown>),
+              taxa_administrativa_percentual: taxaAjustada,
+            };
+          }
+          novoDadosSimulacao.selecoes = [selecao0, ...novoDadosSimulacao.selecoes.slice(1)];
+        }
+      }
+
+      if (novoDadosSimulacao.snapshot_calculo && typeof novoDadosSimulacao.snapshot_calculo === "object") {
+        const novoHash = calcularHashSnapshotGrupos(novoDadosSimulacao);
+        novoDadosSimulacao.snapshot_calculo = {
+          ...(novoDadosSimulacao.snapshot_calculo as Record<string, unknown>),
+          hash_sha256: novoHash,
+          atualizado_em: new Date().toISOString(),
+        };
+      }
+
+      const updatePayload: Record<string, unknown> = {
+        dados_simulacao: novoDadosSimulacao,
+      };
+      if (parcelaAjustada !== null && !isNaN(parcelaAjustada) && parcelaAjustada > 0) {
+        updatePayload.parcela_estimada = parcelaAjustada;
+      }
+
+      const { error: updatePromoError } = await admin
+        .from("contratacoes_online")
+        .update(updatePayload)
+        .eq("id", contratacaoId)
+        .eq("empresa_id", empresaAtiva.id);
+      if (updatePromoError) throw new Error(`Erro ao aplicar ajuste comercial: ${updatePromoError.message}`);
+
+      await admin.from("contratacoes_formalizacao_historico").insert({
+        empresa_id: empresaAtiva.id,
+        contratacao_id: contratacaoId,
+        evento: "AJUSTE_PROMOCIONAL_APLICADO",
+        descricao: `Ajuste comercial aplicado antes da formalização. Parcela: ${parcelaAjustada ? `R$ ${parcelaAjustada}` : "mantida"}, Taxa: ${taxaAjustada ? `${taxaAjustada}%` : "mantida"}.${motivoPromo ? ` Motivo: ${motivoPromo}` : ""}`,
+        dados: {
+          taxa_administracao_ajustada: taxaAjustada,
+          valor_parcela_ajustada: parcelaAjustada,
+          motivo: motivoPromo,
+        },
+      });
+    }
+
     if (!(contratacao.cpf || contratacao.cnpj) || !contratacao.nome || !contratacao.telefone || !contratacao.email) throw new Error("Cliente incompleto: nome, documento, telefone e e-mail são obrigatórios.");
     const { count: documentos, error: documentosError } = await admin.from("contratacoes_documentos").select("id", { count: "exact", head: true }).eq("contratacao_id", contratacaoId);
     if (documentosError) throw new Error(documentosError.message);
@@ -130,5 +229,94 @@ export async function formalizarContratacaoAction(formData: FormData) {
     await admin.from("contratacoes_formalizacao_historico").insert({ empresa_id: empresaAtiva.id, contratacao_id: contratacaoId, evento: "PENDENCIA_REGISTRADA", descricao: message, dados: { codigo } });
     revalidatePath("/erp/contratacoes");
     redirect(`/erp/contratacoes/${contratacaoId}?erro=${encodeURIComponent(message)}`);
+  }
+}
+
+export async function alternarContratoAssinadoAction(input: {
+  contratacaoId: string;
+  assinado: boolean;
+}): Promise<{ ok: true; assinado: boolean } | { ok: false; error: string }> {
+  try {
+    const context = await requireCurrentTenantContext();
+    const podeAlterar =
+      context.permissoes.has("formalizar_vendas") ||
+      context.permissoes.has("gerenciar_propostas") ||
+      context.vinculoAtivo?.papel?.codigo === "admin_empresa" ||
+      context.vinculoAtivo?.papel?.codigo === "super_admin" ||
+      context.usuario.perfil === "master";
+
+    if (!podeAlterar) {
+      return { ok: false, error: "Sem permissão para alterar o status de assinatura da contratação." };
+    }
+
+    if (!UUID.test(input.contratacaoId)) {
+      return { ok: false, error: "Identificador de contratação inválido." };
+    }
+
+    const admin = createAdminClient();
+    const { data: contratacao, error: fetchErr } = await admin
+      .from("contratacoes_online")
+      .select("id,protocolo,nome,contrato_assinado,empresa_id,vendas(id)")
+      .eq("id", input.contratacaoId)
+      .eq("empresa_id", context.empresaAtiva.id)
+      .is("excluido_at", null)
+      .maybeSingle();
+
+    if (fetchErr || !contratacao) {
+      return { ok: false, error: fetchErr?.message || "Contratação não encontrada nesta empresa." };
+    }
+
+    const temVenda = Array.isArray(contratacao.vendas) ? contratacao.vendas.length > 0 : Boolean(contratacao.vendas);
+    if (!input.assinado && temVenda) {
+      return { ok: false, error: "Não é possível desmarcar assinatura de uma contratação já formalizada em venda." };
+    }
+
+    const agora = new Date().toISOString();
+    const updatePayload: Record<string, unknown> = {
+      contrato_assinado: input.assinado,
+      contrato_assinado_em: input.assinado ? agora : null,
+    };
+
+    if (input.assinado) {
+      updatePayload.status_operacional_erp = null;
+      updatePayload.pendencia_codigo = null;
+      updatePayload.pendencia_descricao = null;
+    }
+
+    const { error: updateErr } = await admin
+      .from("contratacoes_online")
+      .update(updatePayload)
+      .eq("id", input.contratacaoId)
+      .eq("empresa_id", context.empresaAtiva.id);
+
+    if (updateErr) {
+      return { ok: false, error: updateErr.message };
+    }
+
+    await admin.from("contratacoes_formalizacao_historico").insert({
+      empresa_id: context.empresaAtiva.id,
+      contratacao_id: input.contratacaoId,
+      evento: input.assinado ? "CONTRATO_ASSINADO" : "CONTRATO_NAO_ASSINADO",
+      descricao: input.assinado
+        ? `Contrato marcado como assinado por ${context.usuario.nome || "usuário"}.`
+        : `Marcação de contrato assinado removida por ${context.usuario.nome || "usuário"}.`,
+      dados: {
+        usuario_id: context.usuario.id,
+        usuario_nome: context.usuario.nome,
+        anterior: contratacao.contrato_assinado,
+        novo: input.assinado,
+      },
+    });
+
+    revalidatePath("/erp/contratacoes");
+    revalidatePath(`/erp/contratacoes/${input.contratacaoId}`);
+    revalidatePath("/erp/clientes");
+
+    return { ok: true, assinado: input.assinado };
+  } catch (error) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : "Falha ao alterar status de assinatura.",
+    };
   }
 }

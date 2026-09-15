@@ -5,6 +5,7 @@ import { registrarEvento } from "@/lib/eventos/registrar";
 import { DEFAULT_LEADS, getConfigJsonPublic } from "@/server/config";
 import { resolveWhatsappOrigem } from "@/lib/whatsapp/resolve-origem";
 import { TIPOS_CREDITO_PUBLICO, type TipoCreditoPublico } from "@/lib/leads/tipo-credito";
+import { upsertLeadPorTelefone } from "@/lib/crm/upsert-lead";
 
 type Body = {
   nome: string;
@@ -40,40 +41,32 @@ export async function POST(request: Request) {
     const admin = createAdminClient();
     const leadsConfig = await getConfigJsonPublic("leads", DEFAULT_LEADS);
 
-    const { data: leadRow, error: leadErr } = await admin
-      .from("leads")
-      .insert({
-        empresa_id: ingress.empresaId,
-        parceiro_site_id: ingress.parceiroSiteId ?? null,
-        organizacao_parceira_id: ingress.organizacaoParceiraId ?? null,
-        nome: body.nome.trim(),
-        whatsapp: body.whatsapp.trim(),
-        email: null,
-        origem: ORIGEM,
-        origem_detalhe: "header_especialista",
-        tipo_interesse: tipoCredito ?? "outro",
-        tipo_credito: tipoCredito,
-        valor_credito: valorCredito,
-        valor_estimado: valorCredito,
-        valor_simulado: valorCredito,
-        observacao_indicacao: body.observacao?.trim() || null,
-        observacoes: body.observacao?.trim() || null,
-        status: leadsConfig.statusInicialPadrao ?? "Novo",
-        criado_manual: false,
-      })
-      .select("id")
-      .single();
+    const upsertRes = await upsertLeadPorTelefone(admin, {
+      empresa_id: ingress.empresaId,
+      parceiro_id: ingress.parceiroSiteId ?? null,
+      nome: body.nome.trim(),
+      whatsapp: body.whatsapp.trim(),
+      origem: ORIGEM,
+      origem_detalhe: "header_especialista",
+      tipo_interesse: tipoCredito ?? "outro",
+      tipo_credito: tipoCredito,
+      valor_estimado: valorCredito,
+      valor_simulado: valorCredito,
+      status: leadsConfig.statusInicialPadrao ?? "Novo",
+    });
 
-    if (leadErr || !leadRow) {
-      return NextResponse.json({ error: leadErr?.message ?? "Falha ao salvar lead" }, { status: 500 });
+    if (!upsertRes.ok || !upsertRes.lead_id) {
+      return NextResponse.json({ error: upsertRes.error ?? "Falha ao salvar lead" }, { status: 500 });
     }
+
+    const leadId = upsertRes.lead_id;
 
     await registrarEvento({
       empresa_id: ingress.empresaId,
       tipo_evento: "lead_criado",
       origem: ORIGEM,
       pagina: request.headers.get("referer") ?? "/",
-      lead_id: leadRow.id,
+      lead_id: leadId,
       dados_evento: ingress.parceiroSiteId
         ? { parceiro_site_id: ingress.parceiroSiteId }
         : undefined,
@@ -82,7 +75,7 @@ export async function POST(request: Request) {
     const whatsappOrigem =
       (await resolveWhatsappOrigem(ORIGEM)) ?? (await resolveWhatsappOrigem("simulador_consorcio"));
 
-    return NextResponse.json({ ok: true, leadId: leadRow.id, whatsappOrigem });
+    return NextResponse.json({ ok: true, leadId, whatsappOrigem });
   } catch (e) {
     const message = e instanceof Error ? e.message : "Erro interno";
     return NextResponse.json({ error: message }, { status: 500 });

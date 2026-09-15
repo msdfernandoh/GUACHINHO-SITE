@@ -18,6 +18,7 @@ import {
   type VinculoPerfil,
   type RegraParticipante,
 } from "@/components/erp/contratacoes/formalizacao-venda-form";
+import { MarcarContratoAssinadoButton } from "@/components/erp/contratacoes/marcar-contrato-assinado-button";
 
 function relation<T>(value: unknown): T | null { return (Array.isArray(value) ? value[0] : value) as T | null; }
 
@@ -25,6 +26,7 @@ type ContratacaoDetalhe = {
   id: string;
   protocolo: string;
   contrato_assinado: boolean;
+  contrato_assinado_em: string | null;
   tipo_pessoa: string | null;
   razao_social: string | null;
   nome: string;
@@ -127,7 +129,7 @@ export default async function ConferirContratacaoPage({
       .maybeSingle(),
     admin
       .from("grupos_consorcio")
-      .select("id,codigo_grupo,administradora_id,status_governanca,prazo_total,prazo_restante,parcelas_realizadas,parcelas_realizadas_base,data_base_parcelas,atualizacao_parcelas_automatica,tipo_administradora_id,modalidade_comissao_id,administradora:administradoras(nome),tipo:administradora_tipos(nome),modalidade:administradora_modalidades_comissao(nome),grupos_modalidades_disponiveis(administradora_modalidade_id,ativo),grupos_cotas(id,valor_credito,ativo,status,grupo_cota_modalidade_valores(administradora_modalidade_id,valor_parcela,percentual_reducao,habilitado,ativo,modalidade:administradora_modalidades_comissao(id,codigo,nome,ativo)))")
+      .select("id,codigo_grupo,administradora_id,status_governanca,prazo_total,prazo_restante,parcelas_realizadas,parcelas_realizadas_base,data_base_parcelas,atualizacao_parcelas_automatica,tipo_administradora_id,modalidade_comissao_id,taxa_administrativa_percentual,fundo_reserva_percentual,seguro_habilitado,seguro_percentual,seguro_valor,seguro_pos_contemplacao,administradora:administradoras(nome),tipo:administradora_tipos(nome),modalidade:administradora_modalidades_comissao(nome),grupos_modalidades_disponiveis(administradora_modalidade_id,ativo),grupos_cotas(id,valor_credito,ativo,status,grupo_cota_modalidade_valores(administradora_modalidade_id,valor_parcela,percentual_reducao,habilitado,ativo,modalidade:administradora_modalidades_comissao(id,codigo,nome,ativo)))")
       .eq("ativo", true)
       .in("administradora_id", administradorasPermitidas.length ? administradorasPermitidas : ["00000000-0000-0000-0000-000000000000"])
       .order("codigo_grupo"),
@@ -294,22 +296,52 @@ export default async function ConferirContratacaoPage({
           </h1>
           <p className="text-xs text-slate-500">Conferência operacional · Regra de comissão resolvida · Protocolo {c.protocolo}</p>
         </div>
-        <span
-          className={`rounded-full px-3 py-1 text-xs font-black uppercase ${
-            formalizada
-              ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
+        <div className="flex flex-wrap items-center gap-3">
+          <span
+            className={`rounded-full px-3 py-1 text-xs font-black uppercase ${
+              formalizada
+                ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
+                : c.contrato_assinado
+                ? "bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300"
+                : "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300"
+            }`}
+          >
+            {formalizada
+              ? "VENDA FORMALIZADA"
               : c.contrato_assinado
-              ? "bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300"
-              : "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300"
-          }`}
-        >
-          {formalizada
-            ? "VENDA FORMALIZADA"
-            : c.contrato_assinado
-            ? "PRONTO PARA CONFERÊNCIA"
-            : "AGUARDANDO ASSINATURA"}
-        </span>
+              ? "PRONTO PARA CONFERÊNCIA"
+              : "AGUARDANDO ASSINATURA"}
+          </span>
+          <MarcarContratoAssinadoButton
+            contratacaoId={id}
+            contratoAssinado={Boolean(c.contrato_assinado)}
+            contratoAssinadoEm={c.contrato_assinado_em}
+            formalizada={formalizada}
+            canAlterar={podeFormalizar || permissoes.has("gerenciar_propostas")}
+            variant="hero"
+          />
+        </div>
       </div>
+
+      {!c.contrato_assinado && !formalizada && (
+        <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-amber-300 bg-amber-50 p-4 text-amber-950 dark:border-amber-800/60 dark:bg-amber-950/30 dark:text-amber-200">
+          <div className="max-w-2xl">
+            <h2 className="text-sm font-black uppercase tracking-wide text-amber-900 dark:text-amber-300">
+              Contrato aguardando assinatura
+            </h2>
+            <p className="mt-1 text-xs text-amber-800 dark:text-amber-300/80">
+              O cliente já assinou o contrato física ou digitalmente? Marque o contrato como assinado para liberar a conferência e formalização da venda no ERP.
+            </p>
+          </div>
+          <MarcarContratoAssinadoButton
+            contratacaoId={id}
+            contratoAssinado={false}
+            formalizada={false}
+            canAlterar={podeFormalizar || permissoes.has("gerenciar_propostas")}
+            variant="banner"
+          />
+        </div>
+      )}
 
       {feedback.erro && (
         <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-amber-950">
@@ -400,6 +432,7 @@ export default async function ConferirContratacaoPage({
       {/* Formulário Interativo de Formalização com Divisão Dinâmica */}
       <FormalizacaoVendaForm
         contratacaoId={id}
+        contratoAssinado={Boolean(c.contrato_assinado)}
         clienteNome={cliente?.nome || c.nome}
         formaPagamento={c.forma_pagamento || "Boleto"}
         formalizada={formalizada}
@@ -424,6 +457,7 @@ export default async function ConferirContratacaoPage({
         parcelaAceita={Number(c.parcela_estimada ?? (c.dados_simulacao as any)?.valor_parcela ?? 0)}
         initialQuantidadeCotas={quantidadeCotas}
         condicaoComercialCongelada={condicaoComercialCongelada}
+        dadosSimulacao={c.dados_simulacao}
       />
 
       <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs dark:border-slate-800 dark:bg-slate-900">

@@ -1,6 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { digitsOnlyPhone, formatWhatsappBrInput } from "@/lib/utils/format";
 import { proximoCodigoFromExisting } from "./codigo";
+import { upsertLeadPorTelefone } from "@/lib/crm/upsert-lead";
 
 export * from "./checkin-conversacional-types";
 import {
@@ -170,44 +171,23 @@ export async function executarCheckinConversacional(params: {
 
   // 2.4 Lead no CRM (localiza existente ou cria novo)
   const telFmt = formatWhatsappBrInput(telNorm);
-  const { data: leadExistente } = await admin
-    .from("leads")
-    .select("id")
-    .ilike("whatsapp", `%${telNorm}%`)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  let leadId = leadExistente?.id as string | undefined;
-  if (leadId) {
-    await admin
-      .from("leads")
-      .update({ ultima_interacao_at: new Date().toISOString(), updated_at: new Date().toISOString() })
-      .eq("id", leadId);
-  } else {
-    const { data: novoLead } = await admin
-      .from("leads")
-      .insert({
-        nome,
-        whatsapp: telFmt,
-        origem: "evento_checkin",
-        origem_detalhe: ev.slug,
-        evento_id: params.eventoId,
-        evento_nome: ev.nome,
-        status: "Novo",
-        criado_manual: false,
-        dados_simulacao: {
-          origem: "qr_checkin_conversacional",
-          evento_id: params.eventoId,
-          evento_nome: ev.nome,
-          qualificacao: params.qualificacao,
-          qr_code_unico_id: params.qrCodeUnicoId ?? null,
-        },
-      })
-      .select("id")
-      .single();
-    if (novoLead?.id) leadId = novoLead.id as string;
-  }
+  const upsertRes = await upsertLeadPorTelefone(admin, {
+    nome,
+    whatsapp: telFmt,
+    origem: "evento_checkin",
+    origem_detalhe: ev.slug,
+    evento_id: params.eventoId,
+    evento_nome: ev.nome,
+    status: "Novo",
+    dados_simulacao: {
+      origem: "qr_checkin_conversacional",
+      evento_id: params.eventoId,
+      evento_nome: ev.nome,
+      qualificacao: params.qualificacao,
+      qr_code_unico_id: params.qrCodeUnicoId ?? null,
+    },
+  });
+  const leadId = upsertRes.lead_id;
 
   // 2.5 Calcula próximo número
   const { data: codigosRows } = await admin

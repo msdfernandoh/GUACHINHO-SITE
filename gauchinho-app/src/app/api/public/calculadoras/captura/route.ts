@@ -11,6 +11,7 @@ import {
 import { resolveWhatsappOrigem } from "@/lib/whatsapp/resolve-origem";
 import { labelCalculadora } from "@/lib/calculadoras/whatsapp-messages";
 import type { CalculadoraId } from "@/lib/calculadoras/types";
+import { upsertLeadPorTelefone } from "@/lib/crm/upsert-lead";
 
 type Body = {
   nome: string;
@@ -96,35 +97,30 @@ export async function POST(request: Request) {
         ? Number(resultado.valorFinanciado ?? valorSim)
         : valorSim;
 
-    const { data: leadRow, error: leadErr } = await admin
-      .from("leads")
-      .insert({
-        empresa_id: ingress.empresaId,
-        nome: body.nome.trim(),
-        whatsapp: body.whatsapp.trim(),
-        email: body.email?.trim() || null,
-        cidade: body.cidade?.trim() || null,
-        origem: ORIGEM,
-        origem_detalhe: body.acao,
-        tipo_interesse: tipoInteresse,
-        produto_interesse: "análise financeira",
-        valor_credito: valorCreditoLead,
-        valor_simulado: valorSim,
-        prazo_simulado: prazo,
-        entrada: entradaVal,
-        dados_simulacao,
-        resultado_resumido: JSON.stringify(body.resultado).slice(0, 500),
-        status: leadsConfig.statusInicialPadrao,
-        criado_manual: false,
-      })
-      .select("id")
-      .single();
+    const upsertRes = await upsertLeadPorTelefone(admin, {
+      empresa_id: ingress.empresaId,
+      nome: body.nome.trim(),
+      whatsapp: body.whatsapp.trim(),
+      email: body.email?.trim() || null,
+      cidade: body.cidade?.trim() || null,
+      origem: ORIGEM,
+      origem_detalhe: body.acao,
+      tipo_interesse: tipoInteresse,
+      produto_interesse: "análise financeira",
+      valor_estimado: valorCreditoLead,
+      valor_simulado: valorSim,
+      prazo_simulado: prazo,
+      entrada: entradaVal,
+      dados_simulacao,
+      resultado_resumido: JSON.stringify(body.resultado).slice(0, 500),
+      status: leadsConfig.statusInicialPadrao,
+    });
 
-    if (leadErr || !leadRow) {
-      return NextResponse.json({ error: leadErr?.message ?? "Lead falhou" }, { status: 500 });
+    if (!upsertRes.ok || !upsertRes.lead_id) {
+      return NextResponse.json({ error: upsertRes.error ?? "Lead falhou" }, { status: 500 });
     }
 
-    const leadId = leadRow.id;
+    const leadId = upsertRes.lead_id;
     const origemKey = calcConfig.whatsappOrigem?.trim() || ORIGEM;
     let whatsappOrigem = await resolveWhatsappOrigem(origemKey);
     if (!whatsappOrigem) {

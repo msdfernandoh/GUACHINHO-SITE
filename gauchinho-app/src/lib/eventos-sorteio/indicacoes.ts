@@ -3,6 +3,7 @@ import { DEFAULT_LEADS, getConfigJsonPublic } from "@/server/config";
 import { registrarEvento } from "@/lib/eventos/registrar";
 import { isDbMissingColumnError } from "@/lib/comercial-eventos/db-ready";
 import { proximoCodigoFromExisting } from "./codigo";
+import { upsertLeadPorTelefone } from "@/lib/crm/upsert-lead";
 import { normalizeTelefoneSorteio, telefoneSorteioValido } from "./vagas";
 import type { TipoIndicacao } from "./types";
 
@@ -100,29 +101,22 @@ async function criarLeadIndicacaoSorteio(
   input: LeadIndicacaoSorteioInput,
 ): Promise<{ id: string } | { error: string }> {
   const row = buildLeadIndicacaoSorteioRow(input);
-  let { data, error } = await admin.from("leads").insert(row).select("id").single();
+  const upsertRes = await upsertLeadPorTelefone(admin, {
+    nome: row.nome,
+    whatsapp: row.whatsapp,
+    origem: row.origem,
+    origem_detalhe: row.origem_detalhe,
+    tipo_interesse: row.tipo_interesse,
+    evento_id: row.evento_id,
+    evento_nome: row.evento_nome,
+    dados_simulacao: row.dados_simulacao,
+    status: row.status,
+  });
 
-  if (error && isDbMissingColumnError(error)) {
-    const legacyRow: Record<string, unknown> = { ...row };
-    delete legacyRow.parceiro_indicador_telefone;
-    delete legacyRow.parentesco_indicacao;
-    delete legacyRow.indicador_lead_id;
-    const observacaoLegacy = `${row.observacao_indicacao}\nTelefone de quem indicou: ${input.indicadorTelefone}`;
-    ({ data, error } = await admin
-      .from("leads")
-      .insert({
-        ...legacyRow,
-        observacao_indicacao: observacaoLegacy,
-        observacoes: observacaoLegacy,
-      })
-      .select("id")
-      .single());
+  if (!upsertRes.ok || !upsertRes.lead_id) {
+    return { error: upsertRes.error ?? "Falha ao criar o lead da pessoa indicada." };
   }
-
-  if (error || !data) {
-    return { error: error?.message ?? "Falha ao criar o lead da pessoa indicada." };
-  }
-  return { id: data.id as string };
+  return { id: upsertRes.lead_id };
 }
 
 /** Telefone do indicado já tem cadastro principal neste sorteio? */

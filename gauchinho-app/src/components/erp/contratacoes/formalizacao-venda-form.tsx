@@ -3,7 +3,8 @@
 import { useEffect, useState, useMemo, useTransition } from "react";
 import { formalizarContratacaoAction } from "@/app/erp/contratacoes/actions";
 import { resolverModalidadeRegraId } from "@/lib/erp/formalizacao-defaults";
-import { Users, Calculator, UserCheck, Calendar, Info, Sparkles } from "lucide-react";
+import { Users, Calculator, UserCheck, Calendar, Info, Sparkles, ShieldCheck, Tag, Percent, PiggyBank, ArrowDownRight } from "lucide-react";
+import { MarcarContratoAssinadoButton } from "./marcar-contrato-assinado-button";
 
 export type GrupoCota = {
   id: string;
@@ -33,6 +34,12 @@ export type GrupoConsorcio = {
   parcelas_realizadas_base: number | null;
   data_base_parcelas: string | null;
   atualizacao_parcelas_automatica: boolean;
+  taxa_administrativa_percentual?: number | null;
+  fundo_reserva_percentual?: number | null;
+  seguro_habilitado?: boolean;
+  seguro_percentual?: number | null;
+  seguro_valor?: number | null;
+  seguro_pos_contemplacao?: boolean;
   administradora: unknown;
   tipo: unknown;
   modalidade: unknown;
@@ -86,6 +93,7 @@ export type RegraFranquia = {
 
 interface FormalizacaoVendaFormProps {
   contratacaoId: string;
+  contratoAssinado?: boolean;
   clienteNome: string;
   formaPagamento: string;
   formalizada: boolean;
@@ -110,6 +118,7 @@ interface FormalizacaoVendaFormProps {
   parcelaAceita: number;
   initialQuantidadeCotas: number;
   condicaoComercialCongelada: boolean;
+  dadosSimulacao?: Record<string, unknown> | null;
 }
 
 const brl = (val: number) =>
@@ -117,6 +126,7 @@ const brl = (val: number) =>
 
 export function FormalizacaoVendaForm({
   contratacaoId,
+  contratoAssinado = false,
   clienteNome,
   formaPagamento,
   formalizada,
@@ -141,6 +151,7 @@ export function FormalizacaoVendaForm({
   parcelaAceita,
   initialQuantidadeCotas,
   condicaoComercialCongelada,
+  dadosSimulacao,
 }: FormalizacaoVendaFormProps) {
   const [isPending, startTransition] = useTransition();
 
@@ -169,6 +180,23 @@ export function FormalizacaoVendaForm({
 
   const [dataPrimeiraParcela, setDataPrimeiraParcela] = useState(initialDataPrimeiraParcela || todayStr);
   const [dataSegundaParcela, setDataSegundaParcela] = useState(initialDataSegundaParcela || defaultSegundaData);
+
+  // Ajuste Comercial / Promoção (taxa e parcelas antes da conclusão)
+  const ajustePromoExistente = (dadosSimulacao as any)?.ajuste_promocional;
+  const initialTaxaAjustada = ajustePromoExistente?.taxa_administracao_ajustada != null
+    ? String(ajustePromoExistente.taxa_administracao_ajustada)
+    : "";
+  const initialParcelaAjustada = ajustePromoExistente?.valor_parcela_ajustada != null
+    ? String(ajustePromoExistente.valor_parcela_ajustada)
+    : "";
+  const initialMotivoPromo = ajustePromoExistente?.motivo ?? "";
+
+  const [aplicarAjustePromo, setAplicarAjustePromo] = useState<boolean>(
+    Boolean(ajustePromoExistente?.aplicado || initialTaxaAjustada || initialParcelaAjustada)
+  );
+  const [taxaAjustada, setTaxaAjustada] = useState<string>(initialTaxaAjustada);
+  const [parcelaAjustada, setParcelaAjustada] = useState<string>(initialParcelaAjustada);
+  const [motivoPromo, setMotivoPromo] = useState<string>(initialMotivoPromo);
 
   // 1. Grupo e Cotas disponíveis
   const grupoAtual = useMemo(
@@ -319,7 +347,68 @@ export function FormalizacaoVendaForm({
     }));
   }, [grupoAtual?.modalidade_comissao_id, initialModalidadeId, modalidadesOpcoes, selectedModalidadeId]);
 
-  const valorParcela = parcelaAceita;
+  // Detalhes da operação originais / capturados no site
+  const rawSelecao0 = Array.isArray((dadosSimulacao as any)?.selecoes) ? (dadosSimulacao as any).selecoes[0] : null;
+  const rawGrupo0 = rawSelecao0?.grupo ?? null;
+  const rawResultado0 = rawSelecao0?.resultado ?? null;
+  const rawConfig0 = rawSelecao0?.config ?? null;
+
+  const seguroContratado = Boolean(
+    rawConfig0?.usaSeguro ??
+    (dadosSimulacao as any)?.usa_seguro ??
+    (dadosSimulacao as any)?.seguro_pos_contemplacao ??
+    (Number((dadosSimulacao as any)?.total_seguro ?? (dadosSimulacao as any)?.seguro ?? 0) > 0) ??
+    grupoAtual?.seguro_habilitado
+  );
+  const seguroValorMensal = Number(
+    rawResultado0?.seguroMensal ??
+    (dadosSimulacao as any)?.total_seguro ??
+    (dadosSimulacao as any)?.seguro ??
+    grupoAtual?.seguro_valor ??
+    0
+  );
+  const seguroAliquotaPercentual = Number(
+    rawGrupo0?.seguro_percentual ??
+    grupoAtual?.seguro_percentual ??
+    0
+  );
+
+  const taxaAdministrativaBase = Number(
+    grupoAtual?.taxa_administrativa_percentual ??
+    rawGrupo0?.taxa_administrativa_percentual ??
+    (dadosSimulacao as any)?.taxa_administrativa ??
+    20
+  );
+  const fundoReservaBase = Number(
+    grupoAtual?.fundo_reserva_percentual ??
+    rawGrupo0?.fundo_reserva_percentual ??
+    (dadosSimulacao as any)?.fundo_reserva ??
+    2
+  );
+
+  const taxaAdministrativaEfetiva = useMemo(() => {
+    if (aplicarAjustePromo && taxaAjustada !== "" && !Number.isNaN(Number(taxaAjustada))) {
+      return Number(taxaAjustada);
+    }
+    return taxaAdministrativaBase;
+  }, [aplicarAjustePromo, taxaAjustada, taxaAdministrativaBase]);
+
+  const valorParcelaEfetiva = useMemo(() => {
+    if (aplicarAjustePromo && parcelaAjustada !== "" && !Number.isNaN(Number(parcelaAjustada))) {
+      return Number(parcelaAjustada);
+    }
+    return parcelaAceita;
+  }, [aplicarAjustePromo, parcelaAjustada, parcelaAceita]);
+
+  const temAjustePromocionalAtivo = useMemo(() => {
+    return (
+      aplicarAjustePromo &&
+      ((taxaAjustada !== "" && Math.abs(Number(taxaAjustada) - taxaAdministrativaBase) > 0.001) ||
+       (parcelaAjustada !== "" && Math.abs(Number(parcelaAjustada) - parcelaAceita) > 0.01))
+    );
+  }, [aplicarAjustePromo, taxaAjustada, taxaAdministrativaBase, parcelaAjustada, parcelaAceita]);
+
+  const valorParcela = valorParcelaEfetiva;
 
   const percentualFranqueadoraEfetivo = useMemo(() => {
     return modalidadeAtiva?.percentualReferencia ?? 0;
@@ -389,6 +478,9 @@ export function FormalizacaoVendaForm({
       <input type="hidden" name="perfil_secundario_id" value={perfilSecundarioAtivo?.perfil_id || ""} />
       <input type="hidden" name="modalidade_comissao_id" value={modalidadeAtiva?.id || ""} />
       <input type="hidden" name="tipo_venda" value={modalidadeAtiva?.codigo || "INTEGRAL"} />
+      <input type="hidden" name="taxa_administracao_ajustada" value={aplicarAjustePromo && taxaAjustada !== "" ? taxaAjustada : ""} />
+      <input type="hidden" name="valor_parcela_ajustado" value={aplicarAjustePromo && parcelaAjustada !== "" ? parcelaAjustada : ""} />
+      <input type="hidden" name="motivo_ajuste_promocional" value={aplicarAjustePromo ? motivoPromo : ""} />
 
       <div>
         <h2 className="text-xl font-black tracking-tight text-slate-950 dark:text-white">
@@ -510,6 +602,199 @@ export function FormalizacaoVendaForm({
               ))}
           </select>
         </label>
+      </div>
+
+      {/* BLOCO: Detalhes da Operação Contratada (Seguro, Taxas e Fundo de Reserva) */}
+      <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4.5 dark:border-slate-800 dark:bg-slate-900/50 space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <Info className="h-4 w-4 text-blue-700 dark:text-blue-400" />
+            <h3 className="text-xs font-extrabold uppercase tracking-wider text-slate-900 dark:text-slate-100">
+              Detalhes da Operação do Grupo & Parcela
+            </h3>
+          </div>
+          {temAjustePromocionalAtivo && (
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-3 py-1 text-xs font-black text-amber-800 dark:bg-amber-950/60 dark:text-amber-300">
+              <Tag className="h-3.5 w-3.5" />
+              Condição Promocional Ativa
+            </span>
+          )}
+        </div>
+
+        {/* 4 Cards de Detalhes da Operação */}
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {/* 1. Seguro Prestamista */}
+          <div className="rounded-xl border border-slate-200 bg-white p-3.5 shadow-2xs dark:border-slate-800 dark:bg-slate-800/80">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold text-slate-500 uppercase">Seguro Prestamista</span>
+              <ShieldCheck className={`h-4 w-4 ${seguroContratado ? "text-emerald-600" : "text-slate-400"}`} />
+            </div>
+            <p className="mt-1 text-sm font-black text-slate-900 dark:text-white">
+              {seguroContratado ? "Contratado" : "Não Contratado"}
+            </p>
+            <p className="text-[11px] text-slate-500">
+              {seguroContratado
+                ? seguroValorMensal > 0
+                  ? `${brl(seguroValorMensal)} / mês embutido`
+                  : seguroAliquotaPercentual > 0
+                  ? `${seguroAliquotaPercentual}% da parcela`
+                  : "Incluso no cálculo"
+                : "Sem inclusão de seguro"}
+            </p>
+          </div>
+
+          {/* 2. Taxa de Administração */}
+          <div className="rounded-xl border border-slate-200 bg-white p-3.5 shadow-2xs dark:border-slate-800 dark:bg-slate-800/80">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold text-slate-500 uppercase">Taxa de Adm.</span>
+              <Percent className="h-4 w-4 text-blue-600" />
+            </div>
+            <div className="mt-1 flex items-baseline gap-1.5">
+              <p className="text-sm font-black text-slate-900 dark:text-white">
+                {taxaAdministrativaEfetiva}%
+              </p>
+              {temAjustePromocionalAtivo && taxaAjustada !== "" && Number(taxaAjustada) !== taxaAdministrativaBase && (
+                <span className="text-[11px] font-semibold text-slate-400 line-through">
+                  {taxaAdministrativaBase}%
+                </span>
+              )}
+            </div>
+            <p className="text-[11px] text-slate-500">
+              {temAjustePromocionalAtivo && taxaAjustada !== "" && Number(taxaAjustada) !== taxaAdministrativaBase
+                ? "Taxa negociada com desconto"
+                : "Taxa contratada do grupo"}
+            </p>
+          </div>
+
+          {/* 3. Fundo de Reserva */}
+          <div className="rounded-xl border border-slate-200 bg-white p-3.5 shadow-2xs dark:border-slate-800 dark:bg-slate-800/80">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold text-slate-500 uppercase">Fundo de Reserva</span>
+              <PiggyBank className="h-4 w-4 text-purple-600" />
+            </div>
+            <p className="mt-1 text-sm font-black text-slate-900 dark:text-white">
+              {fundoReservaBase}%
+            </p>
+            <p className="text-[11px] text-slate-500">
+              Taxa de reserva do grupo
+            </p>
+          </div>
+
+          {/* 4. Valor da Parcela */}
+          <div className="rounded-xl border border-slate-200 bg-white p-3.5 shadow-2xs dark:border-slate-800 dark:bg-slate-800/80">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold text-slate-500 uppercase">Valor da Parcela</span>
+              <ArrowDownRight className="h-4 w-4 text-emerald-600" />
+            </div>
+            <div className="mt-1 flex items-baseline gap-1.5">
+              <p className="text-sm font-black text-emerald-700 dark:text-emerald-400">
+                {valorParcelaEfetiva > 0 ? brl(valorParcelaEfetiva) : "—"}
+              </p>
+              {temAjustePromocionalAtivo && parcelaAjustada !== "" && Number(parcelaAjustada) !== parcelaAceita && (
+                <span className="text-[11px] font-semibold text-slate-400 line-through">
+                  {brl(parcelaAceita)}
+                </span>
+              )}
+            </div>
+            <p className="text-[11px] text-slate-500">
+              {temAjustePromocionalAtivo && parcelaAjustada !== "" && Number(parcelaAjustada) !== parcelaAceita
+                ? "Parcela promocional de fechamento"
+                : "Parcela mensal acordada"}
+            </p>
+          </div>
+        </div>
+
+        {/* Bloco Expansível: Ajuste Comercial / Promoção de Fechamento */}
+        <div className="rounded-xl border border-amber-200/80 bg-amber-50/50 p-3.5 dark:border-amber-900/40 dark:bg-amber-950/20">
+          <div className="flex items-center justify-between">
+            <label className="flex items-center gap-2 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={aplicarAjustePromo}
+                onChange={(e) => {
+                  const checked = e.target.checked;
+                  setAplicarAjustePromo(checked);
+                  if (checked && !taxaAjustada && taxaAdministrativaBase) {
+                    setTaxaAjustada(String(taxaAdministrativaBase));
+                  }
+                  if (checked && !parcelaAjustada && parcelaAceita) {
+                    setParcelaAjustada(String(parcelaAceita));
+                  }
+                }}
+                className="h-4 w-4 rounded border-amber-400 text-amber-600 focus:ring-amber-500"
+              />
+              <span className="text-xs font-black text-amber-950 dark:text-amber-200 flex items-center gap-1.5">
+                <Tag className="h-3.5 w-3.5 text-amber-700 dark:text-amber-400" />
+                Aplicar Ajuste Comercial / Promoção de Fechamento
+              </span>
+            </label>
+            <span className="text-[11px] text-amber-800 dark:text-amber-300 font-medium">
+              Permite adequar taxa e parcelas para campanhas ou promoções antes de formalizar
+            </span>
+          </div>
+
+          {aplicarAjustePromo && (
+            <div className="mt-3.5 pt-3.5 border-t border-amber-200 dark:border-amber-900/50 grid gap-3 sm:grid-cols-3">
+              <div>
+                <label className="block text-[11px] font-bold text-amber-950 dark:text-amber-200">
+                  Taxa de Adm. Ajustada (%):
+                </label>
+                <div className="relative mt-1">
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    max="100"
+                    placeholder={String(taxaAdministrativaBase)}
+                    value={taxaAjustada}
+                    onChange={(e) => setTaxaAjustada(e.target.value)}
+                    className="w-full rounded-lg border border-amber-300 bg-white px-3 py-2 text-xs font-bold text-slate-900 shadow-2xs focus:border-amber-600 focus:ring-2 focus:ring-amber-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                  />
+                  <span className="absolute right-3 top-2 text-xs font-bold text-slate-400">%</span>
+                </div>
+                <span className="mt-0.5 block text-[10px] text-amber-800 dark:text-amber-400">
+                  Base do grupo: {taxaAdministrativaBase}%
+                </span>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-amber-950 dark:text-amber-200">
+                  Valor da Parcela Ajustada (R$):
+                </label>
+                <div className="relative mt-1">
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    placeholder={parcelaAceita ? String(parcelaAceita) : "0.00"}
+                    value={parcelaAjustada}
+                    onChange={(e) => setParcelaAjustada(e.target.value)}
+                    className="w-full rounded-lg border border-amber-300 bg-white px-3 py-2 text-xs font-bold text-slate-900 shadow-2xs focus:border-amber-600 focus:ring-2 focus:ring-amber-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                  />
+                </div>
+                <span className="mt-0.5 block text-[10px] text-amber-800 dark:text-amber-400">
+                  Base aceita: {brl(parcelaAceita)}
+                </span>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-amber-950 dark:text-amber-200">
+                  Motivo / Campanha Promocional:
+                </label>
+                <input
+                  type="text"
+                  placeholder="Ex: Campanha Feirão / Desconto Gerência"
+                  value={motivoPromo}
+                  onChange={(e) => setMotivoPromo(e.target.value)}
+                  className="mt-1 w-full rounded-lg border border-amber-300 bg-white px-3 py-2 text-xs font-semibold text-slate-900 shadow-2xs focus:border-amber-600 focus:ring-2 focus:ring-amber-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                />
+                <span className="mt-0.5 block text-[10px] text-amber-800 dark:text-amber-400">
+                  Registrado no histórico de formalização
+                </span>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Modalidade comercial define somente a regra/cronograma de comissão. */}
@@ -851,12 +1136,18 @@ export function FormalizacaoVendaForm({
         <p className="mt-2 text-xs text-slate-700 dark:text-slate-300">
           Cliente: <strong>{clienteNome}</strong> · Grupo: <strong>{grupoAtual ? `Grupo ${grupoAtual.codigo_grupo}` : "não selecionado"}</strong> · Quantidade: <strong>{quantidadeCotas} {quantidadeCotas === 1 ? "cota" : "cotas"}</strong> · Modelo de comissão: <strong>{modalidadeAtiva?.nome || "não selecionado"}</strong> · Crédito total: <strong>{brl(valorCredito)}</strong> · Parcela aceita no site: <strong>{valorParcela ? brl(valorParcela) : "não informada"}</strong> · Prazo: <strong>{prazoRestante}/{prazoTotal}</strong> · Forma de pagamento: <strong>{formaPagamento || "Boleto"}</strong>
         </p>
+        {temAjustePromocionalAtivo && (
+          <div className="mt-2.5 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
+            <strong>Ajuste Promocional Aplicado:</strong> Parcela ajustada para <strong>{brl(valorParcelaEfetiva)}</strong> (base: {brl(parcelaAceita)}) · Taxa de adm. ajustada para <strong>{taxaAdministrativaEfetiva}%</strong> (base: {taxaAdministrativaBase}%) {motivoPromo ? `· Justificativa: ${motivoPromo}` : ""}
+          </div>
+        )}
       </div>
 
       {!formalizada && (
         <div className="space-y-3">
           {(() => {
             const pendencias = [
+              !contratoAssinado ? "O contrato precisa ser marcado como assinado antes de formalizar a venda" : null,
               !selectedGrupoId ? "Selecione o grupo" : null,
               !selectedCotaId ? "Selecione o produto/crédito" : null,
               !selectedPrincipalId ? "Selecione o consultor principal" : null,
@@ -869,7 +1160,25 @@ export function FormalizacaoVendaForm({
             return pendencias.length ? (
               <div role="alert" className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-xs font-semibold text-amber-950">
                 <p className="font-black">Para liberar a formalização:</p>
-                <ul className="mt-1 list-disc space-y-1 pl-5">{pendencias.map((item) => <li key={item}>{item}</li>)}</ul>
+                <ul className="mt-2 space-y-2 pl-2">
+                  {pendencias.map((item) => (
+                    <li key={item} className="flex flex-wrap items-center justify-between gap-2 border-b border-amber-200/60 pb-1.5 last:border-b-0 last:pb-0">
+                      <div className="flex items-center gap-2">
+                        <span className="h-1.5 w-1.5 rounded-full bg-amber-600" />
+                        <span>{item}</span>
+                      </div>
+                      {item.includes("marcado como assinado") && (
+                        <MarcarContratoAssinadoButton
+                          contratacaoId={contratacaoId}
+                          contratoAssinado={false}
+                          formalizada={formalizada}
+                          canAlterar={canFormalizar}
+                          variant="inline"
+                        />
+                      )}
+                    </li>
+                  ))}
+                </ul>
               </div>
             ) : (
               <p className="text-xs font-bold text-emerald-700">Tudo conferido. A venda está pronta para formalização.</p>
@@ -880,6 +1189,7 @@ export function FormalizacaoVendaForm({
           disabled={
             !canFormalizar ||
             isPending ||
+            !contratoAssinado ||
             !selectedGrupoId ||
             !selectedCotaId ||
              !selectedModalidadeId ||
@@ -891,7 +1201,13 @@ export function FormalizacaoVendaForm({
           }
           className="w-full sm:w-auto rounded-xl bg-blue-700 px-7 py-3.5 text-sm font-extrabold text-white shadow-md hover:bg-blue-800 disabled:opacity-50 transition cursor-pointer"
         >
-          {!canFormalizar ? "Sem permissão para formalizar" : isPending ? `Formalizando venda e gerando ${quantidadeCotas} ${quantidadeCotas === 1 ? "cota" : "cotas"}...` : "Confirmar e formalizar venda"}
+          {!canFormalizar
+            ? "Sem permissão para formalizar"
+            : !contratoAssinado
+            ? "Aguardando assinatura do contrato"
+            : isPending
+            ? `Formalizando venda e gerando ${quantidadeCotas} ${quantidadeCotas === 1 ? "cota" : "cotas"}...`
+            : "Confirmar e formalizar venda"}
           </button>
         </div>
       )}

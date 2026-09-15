@@ -16,6 +16,7 @@ import {
   getPropostaPdfDownloadUrl,
 } from "@/lib/proposta/generate-pdf";
 import { assertPropostaMinimum } from "@/lib/proposta/minimum";
+import { upsertLeadPorTelefone } from "@/lib/crm/upsert-lead";
 
 const LEAD_SELECT =
   "id, created_at, nome, whatsapp, email, status, observacoes, empresa_id, organizacao_parceira_id, participant_id, origem, criado_por_usuario_id";
@@ -119,18 +120,26 @@ export async function createLeadAreaParceiroAction(formData: FormData) {
   if (!payload.nome) throw new Error("Nome é obrigatório.");
 
   const supabase = await createClient();
-  const { data, error } = await supabase.from("leads").insert(payload).select("id").single();
-  if (error || !data) throw new Error("Não foi possível criar o lead.");
+  let leadId: string;
+  if (payload.whatsapp) {
+    const upsertRes = await upsertLeadPorTelefone(supabase, payload as any);
+    if (!upsertRes.ok || !upsertRes.lead_id) throw new Error("Não foi possível criar o lead.");
+    leadId = upsertRes.lead_id;
+  } else {
+    const { data, error } = await supabase.from("leads").insert(payload).select("id").single();
+    if (error || !data) throw new Error("Não foi possível criar o lead.");
+    leadId = data.id;
+  }
 
   await supabase.from("leads_historico").insert({
-    lead_id: data.id,
+    lead_id: leadId,
     usuario_id: session.usuarioId,
     acao: "lead_criado_area_parceiro",
     descricao: "Lead criado na área do parceiro",
   });
 
   revalidatePath("/area-parceiro/leads");
-  redirect(`/area-parceiro/leads/${data.id}${orgQuery(orgId)}`);
+  redirect(`/area-parceiro/leads/${leadId}${orgQuery(orgId)}`);
 }
 
 export async function updateLeadAreaParceiroAction(formData: FormData) {

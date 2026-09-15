@@ -7,6 +7,7 @@ import { TIPOS_CREDITO_PUBLICO, type TipoCreditoPublico } from "@/lib/leads/tipo
 import { digitsOnlyPhone } from "@/lib/utils/format";
 import { isDbMissingColumnError } from "@/lib/comercial-eventos/db-ready";
 import { resolverConsultorPorId } from "@/lib/admin/consultores";
+import { upsertLeadPorTelefone } from "@/lib/crm/upsert-lead";
 
 type Indicado = {
   nome: string;
@@ -111,28 +112,24 @@ export async function POST(request: Request) {
         srd_responsavel_nome: srdResponsavelNome,
       };
 
-      let row: Record<string, unknown> =
-        indicadorTelefone.length > 0
-          ? { ...baseRow, parceiro_indicador_telefone: indicadorTelefone }
-          : { ...baseRow };
+      const upsertRes = await upsertLeadPorTelefone(admin, {
+        empresa_id: ingress.empresaId,
+        parceiro_id: ingress.parceiroSiteId ?? null,
+        nome: ind.nome.trim(),
+        whatsapp: ind.whatsapp.trim(),
+        origem: ORIGEM,
+        origem_detalhe: body.indicadorEmpresa?.trim() || null,
+        tipo_interesse: tipoCredito ?? "outro",
+        tipo_credito: tipoCredito,
+        valor_estimado: valorCredito,
+        valor_simulado: valorCredito,
+        status: leadsConfig.statusInicialPadrao ?? "Novo",
+      });
 
-      let { data: leadRow, error: leadErr } = await admin.from("leads").insert(row).select("id").single();
-
-      if (leadErr && isDbMissingColumnError(leadErr) && "parceiro_indicador_telefone" in row) {
-        const telNote =
-          indicadorTelefone.length > 0 ? `Tel. de quem indicou: ${indicadorTelefone}` : null;
-        const mergedObs = [telNote, obsIndicacao].filter(Boolean).join("\n") || null;
-        row = {
-          ...baseRow,
-          observacao_indicacao: mergedObs,
-          observacoes: mergedObs,
-        };
-        ({ data: leadRow, error: leadErr } = await admin.from("leads").insert(row).select("id").single());
+      if (!upsertRes.ok || !upsertRes.lead_id) {
+        return NextResponse.json({ error: upsertRes.error ?? "Falha ao salvar indicação" }, { status: 500 });
       }
-
-      if (leadErr || !leadRow) {
-        return NextResponse.json({ error: leadErr?.message ?? "Falha ao salvar indicação" }, { status: 500 });
-      }
+      const leadRow = { id: upsertRes.lead_id };
       leadIds.push(leadRow.id);
       const { error: vinculoError } = await admin.from("programa_indicacoes").insert({
         empresa_id: ingress.empresaId,

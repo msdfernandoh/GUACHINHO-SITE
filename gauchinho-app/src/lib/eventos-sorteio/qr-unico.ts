@@ -4,13 +4,39 @@ import { fetchPublicSorteioByEventoId } from "./public";
 import type { PublicSorteioView } from "./types";
 import type { NpsPerguntaPublica } from "./nps";
 
+export type QrCodeTipoDestino =
+  | "site"
+  | "evento"
+  | "checkin_evento"
+  | "whatsapp"
+  | "pagina_interna"
+  | "custom";
+
 export type QrCodeUnicoRow = {
   id: string;
   nome: string;
   slug: string;
   ativo: boolean;
+  tipo_destino?: QrCodeTipoDestino;
+  destino_url?: string | null;
+  destino_evento_id?: string | null;
   created_at: string;
   updated_at: string;
+};
+
+export type QrCodeDestinoHistoricoRow = {
+  id: string;
+  qr_code_id: string;
+  tipo_destino_anterior: string | null;
+  destino_url_anterior: string | null;
+  destino_evento_id_anterior: string | null;
+  tipo_destino_novo: string;
+  destino_url_novo: string | null;
+  destino_evento_id_novo: string | null;
+  alterado_por_id: string | null;
+  alterado_por_nome?: string | null;
+  motivo: string | null;
+  created_at: string;
 };
 
 export type QrCodeVinculoRow = {
@@ -26,9 +52,15 @@ export type QrCodeVinculoRow = {
 
 export type QrCodeUnicoAdmin = QrCodeUnicoRow & {
   vinculoAtivo: (QrCodeVinculoRow & { evento_nome?: string; evento_slug?: string }) | null;
+  destinoEventoNome?: string | null;
 };
 
 export type ResolveQrPublicResult =
+  | {
+      mode: "redirect";
+      qr: QrCodeUnicoRow;
+      url: string;
+    }
   | {
       mode: "evento";
       qr: QrCodeUnicoRow;
@@ -189,6 +221,28 @@ export async function resolveQrPublicBySlug(slug: string): Promise<ResolveQrPubl
     return { mode: "sem_evento", qr: qrRow, motivo: "inativo" };
   }
 
+  const tipoDestino = qrRow.tipo_destino || "evento";
+
+  if (tipoDestino === "site") {
+    return { mode: "redirect", qr: qrRow, url: qrRow.destino_url || "/" };
+  }
+
+  if (tipoDestino === "whatsapp" || tipoDestino === "pagina_interna" || tipoDestino === "custom") {
+    return { mode: "redirect", qr: qrRow, url: qrRow.destino_url || "/" };
+  }
+
+  if (tipoDestino === "checkin_evento" && qrRow.destino_evento_id) {
+    const { data: ev } = await admin
+      .from("eventos")
+      .select("slug, ativo")
+      .eq("id", qrRow.destino_evento_id)
+      .maybeSingle();
+
+    if (ev?.slug && ev.ativo) {
+      return { mode: "redirect", qr: qrRow, url: `/eventos/${ev.slug}/sorteio` };
+    }
+  }
+
   const { data: vinculo, error: vErr } = await admin
     .from("qr_codes_unicos_vinculos")
     .select("*")
@@ -334,4 +388,120 @@ export async function desativarVinculoQrEvento(eventoId: string): Promise<void> 
     .eq("evento_id", eventoId)
     .eq("ativo", true);
   if (error) throw new Error(error.message);
+}
+
+export async function garantirQrInstitucionalSite(): Promise<QrCodeUnicoRow> {
+  const admin = createAdminClient();
+  const { data: existing } = await admin
+    .from("qr_codes_unicos")
+    .select("*")
+    .eq("slug", "site")
+    .maybeSingle();
+
+  if (existing) {
+    return existing as QrCodeUnicoRow;
+  }
+
+  // Cria se não existir
+  const { data: created, error } = await admin
+    .from("qr_codes_unicos")
+    .insert({
+      nome: "QR Institucional — Gauchinho",
+      slug: "site",
+      tipo_destino: "site",
+      destino_url: "/",
+      ativo: true,
+    })
+    .select("*")
+    .single();
+
+  if (error || !created) {
+    throw new Error(`Falha ao inicializar QR Institucional: ${error?.message}`);
+  }
+
+  return created as QrCodeUnicoRow;
+}
+
+export async function atualizarDestinoQrCodeUnico(params: {
+  qrId: string;
+  tipoDestino: QrCodeTipoDestino;
+  destinoUrl?: string | null;
+  destinoEventoId?: string | null;
+  usuarioId?: string | null;
+  motivo?: string | null;
+}): Promise<void> {
+  const admin = createAdminClient();
+
+  const { data: qrAtual, error: qrErr } = await admin
+    .from("qr_codes_unicos")
+    .select("*")
+    .eq("id", params.qrId)
+    .single();
+
+  if (qrErr || !qrAtual) {
+    throw new Error("QR Code não encontrado.");
+  }
+
+  try {
+    await admin.from("qr_codes_unicos_destinos_historico").insert({
+      qr_code_id: params.qrId,
+      tipo_destino_anterior: qrAtual.tipo_destino || "evento",
+      destino_url_anterior: qrAtual.destino_url || null,
+      destino_evento_id_anterior: qrAtual.destino_evento_id || null,
+      tipo_destino_novo: params.tipoDestino,
+      destino_url_novo: params.destinoUrl || null,
+      destino_evento_id_novo: params.destinoEventoId || null,
+      alterado_por_id: params.usuarioId || null,
+      motivo: params.motivo || null,
+    });
+  } catch (err) {
+    console.warn("[qr-unico] Erro ao gravar histórico de destino:", err);
+  }
+
+  const { error: updErr } = await admin
+    .from("qr_codes_unicos")
+    .update({
+      tipo_destino: params.tipoDestino,
+      destino_url: params.destinoUrl || null,
+      destino_evento_id: params.destinoEventoId || null,
+      updated_at: nowIso(),
+    })
+    .eq("id", params.qrId);
+
+  if (updErr) {
+    throw new Error(`Erro ao atualizar destino do QR Code: ${updErr.message}`);
+  }
+}
+
+export async function buscarHistoricoDestinosQrCode(
+  qrId: string
+): Promise<QrCodeDestinoHistoricoRow[]> {
+  const admin = createAdminClient();
+  try {
+    const { data, error } = await admin
+      .from("qr_codes_unicos_destinos_historico")
+      .select("*, usuarios(nome)")
+      .eq("qr_code_id", qrId)
+      .order("created_at", { ascending: false })
+      .limit(50);
+
+    if (error) return [];
+
+    return (data ?? []).map((row: any) => ({
+      id: row.id,
+      qr_code_id: row.qr_code_id,
+      tipo_destino_anterior: row.tipo_destino_anterior,
+      destino_url_anterior: row.destino_url_anterior,
+      destino_evento_id_anterior: row.destino_evento_id_anterior,
+      tipo_destino_novo: row.tipo_destino_novo,
+      destino_url_novo: row.destino_url_novo,
+      destino_evento_id_novo: row.destino_evento_id_novo,
+      alterado_por_id: row.alterado_por_id,
+      alterado_por_nome: row.usuarios?.nome || null,
+      motivo: row.motivo,
+      created_at: row.created_at,
+    }));
+  } catch {
+    return [];
+  }
 }

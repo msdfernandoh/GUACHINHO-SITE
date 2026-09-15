@@ -7,6 +7,9 @@ import {
   atualizarQrCodeUnico,
   criarQrCodeUnico,
   listQrCodesUnicosAdmin,
+  atualizarDestinoQrCodeUnico,
+  buscarHistoricoDestinosQrCode,
+  type QrCodeTipoDestino,
 } from "@/lib/eventos-sorteio/qr-unico";
 
 async function assertMaster() {
@@ -43,3 +46,28 @@ export async function toggleQrCodeUnicoAction(id: string, ativo: boolean) {
   await atualizarQrCodeUnico(id, { ativo });
   revalidatePath("/admin/configuracoes/qr-codes");
 }
+
+export async function updateDestinoQrCodeAction(id: string, formData: FormData) {
+  const u = await assertMaster();
+  const tipoDestino = String(formData.get("tipo_destino") ?? "site") as QrCodeTipoDestino;
+  const destinoUrl = String(formData.get("destino_url") ?? "").trim() || null;
+  const destinoEventoId = String(formData.get("destino_evento_id") ?? "").trim() || null;
+  const motivo = String(formData.get("motivo") ?? "").trim() || null;
+
+  await atualizarDestinoQrCodeUnico({
+    qrId: id,
+    tipoDestino,
+    destinoUrl,
+    destinoEventoId,
+    usuarioId: u.id,
+    motivo,
+  });
+
+  revalidatePath("/admin/configuracoes/qr-codes");
+}
+
+export async function fetchHistoricoDestinosAction(qrId: string) {
+  await assertMaster();
+  return buscarHistoricoDestinosQrCode(qrId);
+}
+

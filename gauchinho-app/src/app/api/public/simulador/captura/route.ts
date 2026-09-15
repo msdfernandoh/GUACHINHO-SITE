@@ -5,6 +5,7 @@ import { registrarEvento } from "@/lib/eventos/registrar";
 import { DEFAULT_LEADS, getConfigJsonPublic } from "@/server/config";
 import { propostaMinimumValid } from "@/lib/proposta/minimum";
 import { buscarPropostaAtivaDoDia } from "@/lib/proposta/proposta-unificacao-service";
+import { upsertLeadPorTelefone } from "@/lib/crm/upsert-lead";
 
 type Body = {
   nome: string;
@@ -37,39 +38,34 @@ export async function POST(request: Request) {
     const prazo = Number(body.entrada.prazoMeses ?? 0) || null;
     const entradaVal = Number(body.entrada.entrada ?? 0) || null;
 
-    const { data: leadRow, error: leadErr } = await admin
-      .from("leads")
-      .insert({
-        empresa_id: ingress.empresaId,
-        nome: body.nome.trim(),
-        whatsapp: body.whatsapp.trim(),
-        email: body.email?.trim() || null,
-        cidade: body.cidade?.trim() || null,
-        origem,
-        origem_detalhe: body.acao,
-        tipo_interesse: body.modo === "financiamento" ? "financiamento" : "consorcio",
-        produto_interesse: body.tipoBem ?? null,
-        valor_simulado: valorSim,
-        prazo_simulado: prazo,
-        entrada: entradaVal,
-        dados_simulacao: {
-          modo: body.modo,
-          tipoBem: body.tipoBem,
-          entrada: body.entrada,
-          resultado: body.resultado,
-        },
-        resultado_resumido: JSON.stringify(body.resultado).slice(0, 500),
-        status: leadsConfig.statusInicialPadrao,
-        criado_manual: false,
-      })
-      .select("id")
-      .single();
+    const upsertRes = await upsertLeadPorTelefone(admin, {
+      empresa_id: ingress.empresaId,
+      nome: body.nome.trim(),
+      whatsapp: body.whatsapp.trim(),
+      email: body.email?.trim() || null,
+      cidade: body.cidade?.trim() || null,
+      origem,
+      origem_detalhe: body.acao,
+      tipo_interesse: body.modo === "financiamento" ? "financiamento" : "consorcio",
+      produto_interesse: body.tipoBem ?? null,
+      valor_simulado: valorSim,
+      prazo_simulado: prazo,
+      entrada: entradaVal,
+      dados_simulacao: {
+        modo: body.modo,
+        tipoBem: body.tipoBem,
+        entrada: body.entrada,
+        resultado: body.resultado,
+      },
+      resultado_resumido: JSON.stringify(body.resultado).slice(0, 500),
+      status: leadsConfig.statusInicialPadrao,
+    });
 
-    if (leadErr || !leadRow) {
-      return NextResponse.json({ error: leadErr?.message ?? "Lead falhou" }, { status: 500 });
+    if (!upsertRes.ok || !upsertRes.lead_id) {
+      return NextResponse.json({ error: upsertRes.error ?? "Lead falhou" }, { status: 500 });
     }
 
-    const leadId = leadRow.id;
+    const leadId = upsertRes.lead_id;
     let propostaId: string | null = null;
 
     if (body.acao === "proposta") {

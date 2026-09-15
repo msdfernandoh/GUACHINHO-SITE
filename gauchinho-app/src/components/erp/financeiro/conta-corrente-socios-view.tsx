@@ -8,9 +8,11 @@ import {
   ArrowDownLeft,
   ArrowUpRight,
   BadgePercent,
+  Building2,
   Calculator,
   Calendar,
   CheckCircle2,
+  CheckSquare,
   ChevronDown,
   ChevronRight,
   Check,
@@ -38,6 +40,7 @@ import {
   ShieldAlert,
   ShieldCheck,
   Sparkles,
+  Square,
   TrendingDown,
   TrendingUp,
   Unlock,
@@ -142,6 +145,12 @@ export function ContaCorrenteSociosView({
   // Modais
   const [modalCompensarAberto, setModalCompensarAberto] = useState(false);
   const [comissaoParaCompensar, setComissaoParaCompensar] = useState<ComissaoSocioDTO | null>(null);
+  const [socioModalId, setSocioModalId] = useState<string>("");
+  const [tipoDestinoModal, setTipoDestinoModal] = useState<"TRANSFERENCIA_SOCIO" | "CONTA_EMPRESA">("TRANSFERENCIA_SOCIO");
+  const [socioDestinoModalId, setSocioDestinoModalId] = useState<string>("");
+  const [contaBancariaModalId, setContaBancariaModalId] = useState<string>("");
+  const [valorModalInput, setValorModalInput] = useState<string>("");
+  const [previsoesSelecionadasModal, setPrevisoesSelecionadasModal] = useState<string[]>([]);
 
   const [modalRateioAberto, setModalRateioAberto] = useState(false);
   const [despesaParaRateio, setDespesaParaRateio] = useState<DespesaRateioDTO | null>(null);
@@ -225,10 +234,47 @@ export function ContaCorrenteSociosView({
     alterarFiltros({ mes: novoMes, socioId: novoSocioId, tipoPeriodo: novoMes ? "mes" : undefined });
   }
 
+  function abrirModalCompensar(comissao?: ComissaoSocioDTO | null) {
+    const sId = socioAtivo?.id || dados.todosSocios[0]?.id || "";
+    setSocioModalId(sId);
+    setComissaoParaCompensar(comissao || null);
+    const outro = dados.todosSocios.find((s) => s.id !== sId);
+    setSocioDestinoModalId(outro?.id || dados.todosSocios[0]?.id || "");
+    setContaBancariaModalId(dados.contasBancariasEmpresa?.[0]?.id || "");
+    setTipoDestinoModal(dados.saldoACompensar > 0 ? "TRANSFERENCIA_SOCIO" : "CONTA_EMPRESA");
+
+    if (comissao) {
+      const disp = Math.max(0, (comissao.valorElegivel || comissao.valorPrevisto) - comissao.valorPago);
+      setValorModalInput(disp > 0 ? disp.toFixed(2) : "");
+      setPrevisoesSelecionadasModal([comissao.id]);
+    } else {
+      const todasComissoesDisp = dados.comissoesSocio
+        .filter((c) => Math.max(0, (c.valorElegivel || c.valorPrevisto) - c.valorPago) > 0.001)
+        .map((c) => c.id);
+      setPrevisoesSelecionadasModal(todasComissoesDisp);
+      if (dados.saldoACompensar > 0) {
+        setValorModalInput(dados.saldoACompensar.toFixed(2));
+      } else {
+        const totalDisp = dados.comissoesSocio
+          .filter((c) => Math.max(0, (c.valorElegivel || c.valorPrevisto) - c.valorPago) > 0.001)
+          .reduce((acc, c) => acc + Math.max(0, (c.valorElegivel || c.valorPrevisto) - c.valorPago), 0);
+        setValorModalInput(totalDisp > 0 ? totalDisp.toFixed(2) : "");
+      }
+    }
+    setModalCompensarAberto(true);
+  }
+
   // Ação: Submeter Compensação
   async function handleCompensar(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const form = new FormData(e.currentTarget);
+    form.set("previsoes_selecionadas", JSON.stringify(previsoesSelecionadasModal));
+    form.set("tipo_destino", tipoDestinoModal);
+    if (tipoDestinoModal === "TRANSFERENCIA_SOCIO") {
+      form.set("socio_destino_id", socioDestinoModalId);
+    } else {
+      form.set("conta_bancaria_id", contaBancariaModalId);
+    }
     startTransition(async () => {
       try {
         await usarComissaoCompensarAction(form);
@@ -541,10 +587,7 @@ export function ContaCorrenteSociosView({
           {/* Botões de Ação Rápida */}
           <div className="flex flex-wrap items-center gap-2">
             <button
-              onClick={() => {
-                setComissaoParaCompensar(null);
-                setModalCompensarAberto(true);
-              }}
+              onClick={() => abrirModalCompensar(null)}
               className="flex items-center gap-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 px-3.5 py-2 text-xs font-black shadow-lg transition-all active:scale-95"
             >
               <Zap className="h-3.5 w-3.5" />
@@ -2185,10 +2228,7 @@ export function ContaCorrenteSociosView({
                         <td className="p-3 text-right whitespace-nowrap">
                           {podeCompensar ? (
                             <button
-                              onClick={() => {
-                                setComissaoParaCompensar(c);
-                                setModalCompensarAberto(true);
-                              }}
+                              onClick={() => abrirModalCompensar(c)}
                               className="rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white px-2.5 py-1 text-[11px] font-black shadow-sm transition-all"
                             >
                               Compensar Despesa
@@ -2806,135 +2846,413 @@ export function ContaCorrenteSociosView({
       </section>
 
       {/* MODAL 1: USAR COMISSÃO PARA COMPENSAR */}
-      {modalCompensarAberto && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl space-y-5 animate-in fade-in zoom-in-95 duration-150">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <div className="flex items-center gap-2">
-                <div className="rounded-lg bg-emerald-100 p-2 text-emerald-800">
-                  <Zap className="h-5 w-5" />
-                </div>
-                <div>
-                  <h3 className="text-base font-black text-slate-900">
-                    Usar Comissão para Compensar Despesa
-                  </h3>
-                  <p className="text-xs text-slate-500">
-                    Retém a comissão na empresa para abater sua cota em despesas
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={() => setModalCompensarAberto(false)}
-                className="rounded-lg p-1 text-slate-400 hover:text-slate-700"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
+      {modalCompensarAberto && (() => {
+        const socioModal = dados.todosSocios.find((s) => s.id === (socioModalId || socioAtivo?.id || dados.todosSocios[0]?.id)) || dados.todosSocios[0];
+        const outrosSocios = dados.todosSocios.filter((s) => s.id !== socioModal?.id);
+        const contasBancarias = dados.contasBancariasEmpresa || [];
 
-            <form onSubmit={handleCompensar} className="space-y-4 text-xs">
-              <div>
-                <label className="font-bold text-slate-700 block mb-1">Sócio Titular</label>
-                <select
-                  name="socio_id"
-                  defaultValue={socioAtivo?.id || dados.todosSocios[0]?.id}
-                  required
-                  className="w-full rounded-xl border border-slate-300 p-2.5 text-xs text-slate-900 font-bold focus:border-blue-500 focus:outline-none"
+        // Comissões disponíveis do sócio
+        const comissoesElegiveis = dados.comissoesSocio.filter(
+          (c) => Math.max(0, (c.valorElegivel || c.valorPrevisto) - c.valorPago) > 0.001
+        );
+        const totalComissoesDisponiveis = comissoesElegiveis.reduce(
+          (acc, c) => acc + Math.max(0, (c.valorElegivel || c.valorPrevisto) - c.valorPago),
+          0
+        );
+
+        // Posição de equalização do sócio no período
+        const dividaEqualizacao = dados.saldoACompensar;
+        const creditoEqualizacao = dados.saldoCreditoEqualizacao;
+
+        // Valor numérico digitado
+        const valorDigitado = parseFloat(String(valorModalInput).replace(/\./g, "").replace(",", ".")) || 0;
+
+        // Cálculo da simulação
+        const pctSocio = (socioModal?.percentualParticipacao || 50) / 100;
+        let abatimentoDivida = 0;
+        let diferencaRestante = dividaEqualizacao;
+
+        if (tipoDestinoModal === "TRANSFERENCIA_SOCIO") {
+          // Transferência direta para o sócio: R$ 1 abate R$ 1 de dívida
+          abatimentoDivida = Math.min(dividaEqualizacao, valorDigitado);
+          diferencaRestante = Math.max(0, dividaEqualizacao - valorDigitado);
+        } else {
+          // Aporte para conta da empresa: como o sócio tem pct da empresa,
+          // o aporte de V abate V * (1 - pct) da dívida com o sócio parceiro!
+          // No caso 50/50: R$ 10.000 de aporte abate R$ 5.000 da dívida!
+          const fatorAbatimento = 1 - pctSocio;
+          abatimentoDivida = Math.min(dividaEqualizacao, valorDigitado * fatorAbatimento);
+          diferencaRestante = Math.max(0, dividaEqualizacao - (valorDigitado * fatorAbatimento));
+        }
+
+        const saldoComissoesRestante = Math.max(0, totalComissoesDisponiveis - valorDigitado);
+        const todasSelecionadas = previsoesSelecionadasModal.length === comissoesElegiveis.length && comissoesElegiveis.length > 0;
+
+        function toggleSelecionarTodas() {
+          if (todasSelecionadas) {
+            setPrevisoesSelecionadasModal([]);
+          } else {
+            setPrevisoesSelecionadasModal(comissoesElegiveis.map((c) => c.id));
+          }
+        }
+
+        function togglePrevisao(id: string) {
+          setPrevisoesSelecionadasModal((prev) =>
+            prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+          );
+        }
+
+        function usarTodoValor() {
+          setValorModalInput(totalComissoesDisponiveis.toFixed(2));
+          setPrevisoesSelecionadasModal(comissoesElegiveis.map((c) => c.id));
+        }
+
+        function abaterDividaExata() {
+          if (tipoDestinoModal === "TRANSFERENCIA_SOCIO") {
+            setValorModalInput(dividaEqualizacao.toFixed(2));
+          } else {
+            const aporteNecessario = dividaEqualizacao / (1 - pctSocio);
+            setValorModalInput(aporteNecessario.toFixed(2));
+          }
+        }
+
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm overflow-y-auto">
+            <div className="w-full max-w-2xl rounded-3xl bg-white p-6 shadow-2xl space-y-5 animate-in fade-in zoom-in-95 duration-150 my-8 max-h-[92vh] flex flex-col">
+              {/* Cabeçalho */}
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3 flex-shrink-0">
+                <div className="flex items-center gap-2.5">
+                  <div className="rounded-xl bg-emerald-100 p-2.5 text-emerald-800">
+                    <Zap className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-black text-slate-900">
+                      Compensar Despesas & Transferência de Comissões
+                    </h3>
+                    <p className="text-xs text-slate-500">
+                      Transfira comissões do sócio para abater dívida com o parceiro ou gerar caixa/crédito na empresa
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setModalCompensarAberto(false)}
+                  className="rounded-lg p-1 text-slate-400 hover:text-slate-700"
                 >
-                  {dados.todosSocios.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.nome} ({s.percentualParticipacao}%)
-                    </option>
-                  ))}
-                </select>
+                  <X className="h-5 w-5" />
+                </button>
               </div>
 
-              <div>
-                <label className="font-bold text-slate-700 block mb-1">
-                  Selecione a Previsão de Comissão
-                </label>
-                <select
-                  name="previsao_id"
-                  defaultValue={comissaoParaCompensar?.id || ""}
-                  required
-                  className="w-full rounded-xl border border-slate-300 p-2.5 text-xs text-slate-900 font-bold focus:border-blue-500 focus:outline-none"
-                >
-                  <option value="">Selecione uma comissão...</option>
-                  {dados.comissoesSocio
-                    .filter((c) => Math.max(0, (c.valorElegivel || c.valorPrevisto) - c.valorPago) > 0)
-                    .map((c) => {
-                      const disponivel = Math.max(0, (c.valorElegivel || c.valorPrevisto) - c.valorPago);
-                      return (
-                        <option key={c.id} value={c.id}>
-                          {c.clienteNome || "Venda"} - {c.etapaNome} (Disponível: {brl(disponivel)})
+              <form onSubmit={handleCompensar} className="space-y-4 text-xs overflow-y-auto pr-1 flex-1">
+                {/* 1. Seleção do Sócio Titular */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="font-bold text-slate-700 block mb-1">Sócio Titular da Comissão</label>
+                    <select
+                      name="socio_id"
+                      value={socioModalId || socioModal?.id}
+                      onChange={(e) => {
+                        const novoId = e.target.value;
+                        setSocioModalId(novoId);
+                        const outro = dados.todosSocios.find((s) => s.id !== novoId);
+                        setSocioDestinoModalId(outro?.id || "");
+                      }}
+                      required
+                      className="w-full rounded-xl border border-slate-300 p-2.5 text-xs text-slate-900 font-bold focus:border-blue-500 focus:outline-none"
+                    >
+                      {dados.todosSocios.map((s) => (
+                        <option key={s.id} value={s.id}>
+                          {s.nome} ({s.percentualParticipacao}%)
                         </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Resumo do Sócio */}
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="rounded-xl bg-emerald-50 border border-emerald-200 p-2.5">
+                      <p className="text-[10px] font-bold text-emerald-800 uppercase">Comissões Disponíveis</p>
+                      <p className="text-sm font-black text-emerald-950">{brl(totalComissoesDisponiveis)}</p>
+                      <p className="text-[10px] text-emerald-700">{comissoesElegiveis.length} lançamentos</p>
+                    </div>
+                    <div className={`rounded-xl border p-2.5 ${
+                      dividaEqualizacao > 0 ? "bg-rose-50 border-rose-200" : "bg-blue-50 border-blue-200"
+                    }`}>
+                      <p className={`text-[10px] font-bold uppercase ${
+                        dividaEqualizacao > 0 ? "text-rose-800" : "text-blue-800"
+                      }`}>
+                        {dividaEqualizacao > 0 ? "Dívida Equalização" : "Posição no Período"}
+                      </p>
+                      <p className={`text-sm font-black ${
+                        dividaEqualizacao > 0 ? "text-rose-950" : "text-blue-950"
+                      }`}>
+                        {dividaEqualizacao > 0 ? brl(dividaEqualizacao) : creditoEqualizacao > 0 ? `+ ${brl(creditoEqualizacao)}` : "Equalizado"}
+                      </p>
+                      <p className={`text-[10px] ${
+                        dividaEqualizacao > 0 ? "text-rose-700" : "text-blue-700"
+                      }`}>
+                        {dividaEqualizacao > 0 ? "A compensar/transferir" : "Sem dívidas pendentes"}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 2. Lista de Comissões Disponíveis com Seleção */}
+                <div className="rounded-2xl border border-slate-200 bg-slate-50/50 p-3 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-slate-800 flex items-center gap-1.5">
+                      <Coins className="h-4 w-4 text-emerald-600" />
+                      Comissões Recebidas / Elegíveis ({comissoesElegiveis.length})
+                    </span>
+                    {comissoesElegiveis.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={toggleSelecionarTodas}
+                        className="text-[11px] font-bold text-blue-600 hover:text-blue-800"
+                      >
+                        {todasSelecionadas ? "Desmarcar Todas" : "Selecionar Todas"}
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="max-h-36 overflow-y-auto space-y-1.5 pr-1">
+                    {comissoesElegiveis.map((c) => {
+                      const disp = Math.max(0, (c.valorElegivel || c.valorPrevisto) - c.valorPago);
+                      const isSel = previsoesSelecionadasModal.includes(c.id);
+                      return (
+                        <div
+                          key={c.id}
+                          onClick={() => togglePrevisao(c.id)}
+                          className={`flex items-center justify-between p-2 rounded-xl border cursor-pointer transition-all ${
+                            isSel
+                              ? "bg-emerald-50 border-emerald-300 text-emerald-950"
+                              : "bg-white border-slate-200 text-slate-700 hover:border-slate-300"
+                          }`}
+                        >
+                          <div className="flex items-center gap-2 min-w-0">
+                            {isSel ? (
+                              <CheckSquare className="h-4 w-4 text-emerald-600 flex-shrink-0" />
+                            ) : (
+                              <Square className="h-4 w-4 text-slate-400 flex-shrink-0" />
+                            )}
+                            <div className="truncate">
+                              <p className="font-bold truncate text-[11px]">{c.clienteNome || "Cliente Venda"}</p>
+                              <p className="text-[10px] text-slate-500 truncate">
+                                {c.etapaNome} · Comp: {c.competencia}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="text-right flex-shrink-0 ml-2">
+                            <p className="font-black text-emerald-700 text-xs">{brl(disp)}</p>
+                            <p className="text-[9px] text-slate-400">{c.status}</p>
+                          </div>
+                        </div>
                       );
                     })}
-                </select>
-              </div>
 
-              <div>
-                <label className="font-bold text-slate-700 block mb-1">
-                  Valor a Compensar / Abater (R$)
-                </label>
-                <input
-                  type="text"
-                  name="valor"
-                  required
-                  placeholder="Ex: 1500,00"
-                  defaultValue={
-                    comissaoParaCompensar
-                      ? Math.max(
-                          0,
-                          (comissaoParaCompensar.valorElegivel || comissaoParaCompensar.valorPrevisto) -
-                            comissaoParaCompensar.valorPago
-                        ).toFixed(2)
-                      : dados.saldoACompensar > 0
-                      ? dados.saldoACompensar.toFixed(2)
-                      : ""
-                  }
-                  className="w-full rounded-xl border border-slate-300 p-2.5 text-xs text-slate-900 font-black focus:border-blue-500 focus:outline-none"
-                />
-              </div>
+                    {!comissoesElegiveis.length && (
+                      <div className="p-4 text-center text-slate-400 text-xs">
+                        Nenhuma comissão elegível ou recebida com saldo disponível para este sócio.
+                      </div>
+                    )}
+                  </div>
+                </div>
 
-              <div>
-                <label className="font-bold text-slate-700 block mb-1">
-                  Motivo / Observação da Compensação
-                </label>
-                <input
-                  type="text"
-                  name="motivo"
-                  defaultValue="Compensação de cota de despesas operacionais retida na empresa"
-                  className="w-full rounded-xl border border-slate-300 p-2.5 text-xs text-slate-900 focus:border-blue-500 focus:outline-none"
-                />
-              </div>
+                {/* 3. Seleção de Destino */}
+                <div className="space-y-2">
+                  <label className="font-bold text-slate-800 block">Destino do Valor da Comissão</label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    {/* Destino A: Transferência Direta para o Sócio */}
+                    <div
+                      onClick={() => setTipoDestinoModal("TRANSFERENCIA_SOCIO")}
+                      className={`p-3 rounded-2xl border-2 cursor-pointer transition-all ${
+                        tipoDestinoModal === "TRANSFERENCIA_SOCIO"
+                          ? "border-blue-600 bg-blue-50/50 shadow-sm"
+                          : "border-slate-200 bg-white hover:border-slate-300"
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 mb-1.5">
+                        <Users className={`h-4 w-4 ${tipoDestinoModal === "TRANSFERENCIA_SOCIO" ? "text-blue-600" : "text-slate-500"}`} />
+                        <span className="font-black text-slate-900 text-xs">Transferir e Abater p/ Sócio</span>
+                      </div>
+                      <p className="text-[11px] text-slate-500 mb-2">
+                        Equalização direta: abate a dívida entre os sócios peso por peso (R$ 1 por R$ 1).
+                      </p>
+                      {tipoDestinoModal === "TRANSFERENCIA_SOCIO" && (
+                        <div>
+                          <label className="text-[10px] font-bold text-slate-600 block mb-1">Sócio Credor de Destino</label>
+                          <select
+                            value={socioDestinoModalId}
+                            onChange={(e) => setSocioDestinoModalId(e.target.value)}
+                            className="w-full rounded-lg border border-blue-300 bg-white p-1.5 text-xs text-slate-900 font-bold focus:outline-none"
+                          >
+                            {outrosSocios.map((s) => (
+                              <option key={s.id} value={s.id}>
+                                {s.nome} ({s.percentualParticipacao}%)
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
+                    </div>
 
-              <div className="rounded-xl bg-amber-50 p-3 border border-amber-200 text-amber-900 text-[11px] space-y-1">
-                <p className="font-black">Atenção sobre o fluxo:</p>
-                <p>
-                  O valor será debitado do saldo de comissões do sócio e aplicado para reduzir o saldo a compensar, gerando um registro imutável no ledger.
-                </p>
-              </div>
+                    {/* Destino B: Conta da Empresa / Aporte Caixa */}
+                    <div
+                      onClick={() => setTipoDestinoModal("CONTA_EMPRESA")}
+                      className={`p-3 rounded-2xl border-2 cursor-pointer transition-all ${
+                        tipoDestinoModal === "CONTA_EMPRESA"
+                          ? "border-emerald-600 bg-emerald-50/50 shadow-sm"
+                          : "border-slate-200 bg-white hover:border-slate-300"
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 mb-1.5">
+                        <Building2 className={`h-4 w-4 ${tipoDestinoModal === "CONTA_EMPRESA" ? "text-emerald-600" : "text-slate-500"}`} />
+                        <span className="font-black text-slate-900 text-xs">Conta / Caixa da Empresa</span>
+                      </div>
+                      <p className="text-[11px] text-slate-500 mb-2">
+                        Aporte no caixa para cobrir despesas futuras. Entra dinheiro real na conta da empresa!
+                      </p>
+                      {tipoDestinoModal === "CONTA_EMPRESA" && (
+                        <div>
+                          <label className="text-[10px] font-bold text-slate-600 block mb-1">Conta Bancária da Empresa</label>
+                          <select
+                            value={contaBancariaModalId}
+                            onChange={(e) => setContaBancariaModalId(e.target.value)}
+                            className="w-full rounded-lg border border-emerald-300 bg-white p-1.5 text-xs text-slate-900 font-bold focus:outline-none"
+                          >
+                            {contasBancarias.map((cb) => (
+                              <option key={cb.id} value={cb.id}>
+                                {cb.descricao} ({cb.banco}) - Saldo: {brl(cb.saldoAtual ?? 0)}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
 
-              <div className="flex justify-end gap-3 pt-3 border-t border-slate-100">
-                <button
-                  type="button"
-                  onClick={() => setModalCompensarAberto(false)}
-                  className="rounded-xl border border-slate-200 px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  disabled={isPending}
-                  className="rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-2 text-xs font-black shadow-md disabled:opacity-50"
-                >
-                  {isPending ? "Processando..." : "Confirmar Compensação"}
-                </button>
-              </div>
-            </form>
+                {/* 4. Valor a Compensar com Atalhos Rápidos */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="font-bold text-slate-800">Valor a Transferir / Compensar (R$)</label>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={usarTodoValor}
+                        className="rounded-lg bg-emerald-100 hover:bg-emerald-200 text-emerald-900 px-2 py-0.5 text-[10px] font-black transition-colors"
+                      >
+                        Usar Todo Valor ({brl(totalComissoesDisponiveis)})
+                      </button>
+                      {dividaEqualizacao > 0 && (
+                        <button
+                          type="button"
+                          onClick={abaterDividaExata}
+                          className="rounded-lg bg-blue-100 hover:bg-blue-200 text-blue-900 px-2 py-0.5 text-[10px] font-black transition-colors"
+                        >
+                          {tipoDestinoModal === "TRANSFERENCIA_SOCIO"
+                            ? `Abater Dívida (${brl(dividaEqualizacao)})`
+                            : `Equalizar Aporte (${brl(dividaEqualizacao / (1 - pctSocio))})`}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  <input
+                    type="text"
+                    name="valor"
+                    required
+                    value={valorModalInput}
+                    onChange={(e) => setValorModalInput(e.target.value)}
+                    placeholder="0,00"
+                    className="w-full rounded-xl border border-slate-300 p-2.5 text-sm text-slate-900 font-black focus:border-blue-500 focus:outline-none"
+                  />
+                </div>
+
+                {/* 5. Simulação em Tempo Real da Diferença */}
+                <div className="rounded-2xl bg-slate-900 p-4 text-white space-y-2.5 shadow-inner">
+                  <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+                    <span className="text-xs font-black uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
+                      <Scale className="h-3.5 w-3.5 text-amber-400" />
+                      Simulação do Impacto Financeiro
+                    </span>
+                    <span className="text-[10px] text-slate-400">
+                      Destino: {tipoDestinoModal === "TRANSFERENCIA_SOCIO" ? "Transferência Sócio" : "Aporte Empresa"}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
+                    <div className="bg-white/5 rounded-xl p-2">
+                      <p className="text-[10px] text-slate-400">Dívida Atual</p>
+                      <p className="text-xs font-black text-rose-400">{brl(dividaEqualizacao)}</p>
+                    </div>
+
+                    <div className="bg-white/5 rounded-xl p-2">
+                      <p className="text-[10px] text-slate-400">Valor Usado</p>
+                      <p className="text-xs font-black text-emerald-400">{brl(valorDigitado)}</p>
+                    </div>
+
+                    <div className={`rounded-xl p-2 ${
+                      diferencaRestante === 0 ? "bg-emerald-500/20 border border-emerald-500/50" : "bg-white/5"
+                    }`}>
+                      <p className="text-[10px] text-slate-400">Diferença Restante</p>
+                      <p className={`text-xs font-black ${
+                        diferencaRestante === 0 ? "text-emerald-300" : "text-amber-300"
+                      }`}>
+                        {brl(diferencaRestante)}
+                      </p>
+                      {diferencaRestante === 0 && dividaEqualizacao > 0 && (
+                        <p className="text-[9px] text-emerald-400 font-bold">100% Quitada!</p>
+                      )}
+                    </div>
+
+                    <div className="bg-white/5 rounded-xl p-2">
+                      <p className="text-[10px] text-slate-400">
+                        {tipoDestinoModal === "CONTA_EMPRESA" ? "Caixa Empresa" : "Comissões Restantes"}
+                      </p>
+                      <p className="text-xs font-black text-cyan-300">
+                        {tipoDestinoModal === "CONTA_EMPRESA" ? `+ ${brl(valorDigitado)}` : brl(saldoComissoesRestante)}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 6. Motivo / Observação */}
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Motivo / Observação da Operação</label>
+                  <input
+                    type="text"
+                    name="motivo"
+                    defaultValue={
+                      tipoDestinoModal === "TRANSFERENCIA_SOCIO"
+                        ? `Transferência de comissão para compensação de despesas entre sócios`
+                        : `Aporte societário via comissões para cobertura de despesas da empresa`
+                    }
+                    className="w-full rounded-xl border border-slate-300 p-2.5 text-xs text-slate-900 focus:border-blue-500 focus:outline-none"
+                  />
+                </div>
+
+                <div className="flex justify-end gap-3 pt-3 border-t border-slate-100 flex-shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setModalCompensarAberto(false)}
+                    className="rounded-xl border border-slate-200 px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isPending || valorDigitado <= 0}
+                    className="rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-2 text-xs font-black shadow-md disabled:opacity-50 transition-all flex items-center gap-1.5"
+                  >
+                    <CheckCircle2 className="h-4 w-4" />
+                    {isPending ? "Processando..." : "Confirmar Transferência & Compensação"}
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* MODAL 2: CONFIGURAR RATEIO DE DESPESA */}
       {modalRateioAberto && despesaParaRateio && (

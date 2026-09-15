@@ -8,6 +8,7 @@ import {
   whatsappUrl,
 } from "@/lib/whatsapp/resolve-imovel";
 import { IMOVEL_TIPOS } from "@/lib/imoveis/types";
+import { upsertLeadPorTelefone } from "@/lib/crm/upsert-lead";
 
 type Body = {
   imovelId: string;
@@ -70,35 +71,28 @@ export async function POST(request: Request) {
       imobiliaria_nome: imob.nome,
     };
 
-    const { data: leadRow, error: leadErr } = await admin
-      .from("leads")
-      .insert({
-        empresa_id: ingress.empresaId,
-        nome: body.nome.trim(),
-        whatsapp: body.whatsapp.trim(),
-        email: body.email?.trim() || null,
-        cidade: body.cidade?.trim() || null,
-        origem: "oportunidade_imobiliaria",
-        origem_detalhe: imob.nome,
-        tipo_interesse: "oportunidade_imobiliaria",
-        produto_interesse: imovel.titulo,
-        valor_simulado: imovel.exibir_valor_publico ? imovel.valor : null,
-        imobiliaria_id: imob.id,
-        imovel_id: imovel.id,
-        dados_simulacao: { imovel: imovelSnapshot, tipoLabel, mensagem: body.mensagem ?? null },
-        resultado_resumido: `${tipoLabel} — ${imovel.titulo} (${imob.nome})`,
-        observacoes: body.mensagem?.trim() || null,
-        status: leadsConfig.statusInicialPadrao,
-        criado_manual: false,
-      })
-      .select("id")
-      .single();
+    const upsertRes = await upsertLeadPorTelefone(admin, {
+      empresa_id: ingress.empresaId,
+      nome: body.nome.trim(),
+      whatsapp: body.whatsapp.trim(),
+      email: body.email?.trim() || null,
+      cidade: body.cidade?.trim() || null,
+      origem: "oportunidade_imobiliaria",
+      origem_detalhe: imob.nome,
+      tipo_interesse: "oportunidade_imobiliaria",
+      produto_interesse: imovel.titulo,
+      valor_simulado: imovel.exibir_valor_publico ? imovel.valor : null,
+      imovel_id: imovel.id,
+      dados_simulacao: { imovel: imovelSnapshot, tipoLabel, mensagem: body.mensagem ?? null },
+      resultado_resumido: `${tipoLabel} — ${imovel.titulo} (${imob.nome})`,
+      status: leadsConfig.statusInicialPadrao,
+    });
 
-    if (leadErr || !leadRow) {
-      return NextResponse.json({ error: leadErr?.message ?? "Lead falhou" }, { status: 500 });
+    if (!upsertRes.ok || !upsertRes.lead_id) {
+      return NextResponse.json({ error: upsertRes.error ?? "Lead falhou" }, { status: 500 });
     }
 
-    const leadId = leadRow.id;
+    const leadId = upsertRes.lead_id;
     const pagina = "/oportunidades-imobiliarias";
 
     await registrarEvento({

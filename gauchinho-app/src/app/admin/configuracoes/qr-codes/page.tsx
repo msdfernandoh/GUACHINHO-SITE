@@ -15,7 +15,24 @@ export default async function QrCodesUnicosAdminPage() {
 
   let items: Awaited<ReturnType<typeof listQrCodesUnicosAdmin>> = [];
   let migrationHint: string | null = null;
+  let eventos: { id: string; nome: string; slug: string; ativo: boolean }[] = [];
+  let historicoSite: any[] = [];
+
   try {
+    const admin = (await import("@/lib/supabase/admin")).createAdminClient();
+    const { garantirQrInstitucionalSite, buscarHistoricoDestinosQrCode } = await import(
+      "@/lib/eventos-sorteio/qr-unico"
+    );
+    const siteQr = await garantirQrInstitucionalSite();
+    if (siteQr?.id) {
+      historicoSite = await buscarHistoricoDestinosQrCode(siteQr.id);
+    }
+    const { data: evs } = await admin
+      .from("eventos")
+      .select("id, nome, slug, ativo")
+      .order("created_at", { ascending: false });
+    eventos = (evs ?? []) as any;
+
     items = await listQrCodesUnicosAdmin();
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
@@ -37,10 +54,9 @@ export default async function QrCodesUnicosAdminPage() {
         <Link href="/admin/configuracoes" className="text-sm text-amber-600 hover:underline">
           ← Configurações
         </Link>
-        <h1 className="mt-2 text-2xl font-bold">QR Codes únicos</h1>
+        <h1 className="mt-2 text-2xl font-bold">QR Codes e Destinos</h1>
         <p className="text-sm text-zinc-500">
-          QR Codes reutilizáveis para materiais impressos. Vincule a um evento na aba Sorteio, com período
-          de utilização.
+          Gerencie o QR Institucional permanente para materiais impressos e crie QR codes vinculados a eventos.
         </p>
       </div>
       {migrationHint ? (
@@ -48,7 +64,12 @@ export default async function QrCodesUnicosAdminPage() {
           {migrationHint}
         </div>
       ) : (
-        <QrCodesAdminClient items={items} publicBaseUrl={publicBaseUrl} />
+        <QrCodesAdminClient
+          items={items}
+          eventos={eventos}
+          historicoSite={historicoSite}
+          publicBaseUrl={publicBaseUrl}
+        />
       )}
     </div>
   );

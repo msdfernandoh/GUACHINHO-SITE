@@ -121,7 +121,7 @@ describe("PDF de proposta — nova geração", () => {
     expect(buf.subarray(0, 5).toString()).toBe("%PDF-");
   }, 30000);
 
-  it("cai no layout legado quando não há segmentos", async () => {
+  it("renderiza layout oficial moderno sintetizando segmento quando não há segmentos prévios", async () => {
     const buf = await renderPropostaPdfBuffer(baseData({ segmentos: [], consolidado: null }));
     expect(buf.subarray(0, 5).toString()).toBe("%PDF-");
   }, 30000);

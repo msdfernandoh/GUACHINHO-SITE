@@ -1,4 +1,4 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import type { Metadata } from "next";
 import { EventoSorteioPublicForm } from "@/components/public/eventos/evento-sorteio-public-form";
 import { EventoCheckinConversacional } from "@/components/public/eventos/evento-checkin-conversacional";
@@ -17,6 +17,10 @@ export default async function QrUnicoPublicPage({ params }: { params: Promise<{ 
   const { slug } = await params;
   const resolved = await resolveQrPublicBySlug(slug);
   if (!resolved) notFound();
+
+  if (resolved.mode === "redirect") {
+    redirect(resolved.url);
+  }
 
   if (resolved.mode === "evento" && resolved.sorteio.checkinInterativoAtivo) {
     const disp = resolverStatusCheckinEvento({

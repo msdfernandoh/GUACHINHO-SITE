@@ -829,33 +829,88 @@ function FolhaEncerramento({ data, pagina }: { data: PropostaPdfData; pagina: st
 
 /* ---------- documento ---------- */
 
+function fallbackSegmentoFromData(data: PropostaPdfData): SegmentoPdf {
+  const isImovel = (data.tipoBem ?? "").toLowerCase().includes("imov") || (data.tipoProposta ?? "").toLowerCase().includes("imov");
+  const tipo: SegmentoTipo = isImovel ? "imovel" : "veiculo";
+  const label = isImovel ? "Imóvel" : "Veículo";
+  const taxaAdm = 20;
+  const fundoReserva = 2;
+  const credito = data.resumo.valorCredito ?? 0;
+  const parcela = data.resumo.parcela ?? 0;
+  const prazo = data.resumo.prazo ?? 180;
+  const lance = data.resumo.entrada ?? 0;
+  const lanceEmb = data.resumo.lanceEmbutido ?? 0;
+  const saldoDevedor = data.resumo.valorTotal ?? (credito * 1.22);
+  const g: GrupoPdfBlock = {
+    segmento: tipo,
+    codigoGrupo: data.tipoBem || data.tipoProposta || "Consórcio",
+    cotaLabel: fmtMoney(credito),
+    quantidadeCotas: 1,
+    administradora: "Racon Consórcios",
+    inicioGrupo: data.dataEmissao,
+    prazoTotal: prazo,
+    prazoRestante: prazo,
+    assembleiasDecorridas: 0,
+    taxaAdmPercentual: taxaAdm,
+    fundoReservaPercentual: fundoReserva,
+    seguroLabel: "Incluso na parcela",
+    reajusteLabel: isImovel ? "INCC · anual" : "IPCA / Tabela FIPE · anual",
+    contemplacaoLabel: "Sorteio e lance",
+    custoBasePercentual: taxaAdm + fundoReserva,
+    custoMesLabel: `${((taxaAdm + fundoReserva) / Math.max(1, prazo)).toFixed(2)}%`,
+    custoAnoLabel: `${(((taxaAdm + fundoReserva) / Math.max(1, prazo)) * 12).toFixed(2)}%`,
+    credito,
+    saldoDevedor,
+    primeiraParcela: parcela,
+    parcelaIntegral: parcela,
+    parcelaTipoLabel: "parcela integral",
+    lanceEmbutido: lanceEmb,
+    recursoProprio: lance,
+    lanceTotal: lanceEmb + lance,
+    creditoLiquido: data.resumo.creditoLiquido ?? Math.max(0, credito - lanceEmb),
+    parcelaPosContemplacao: parcela,
+    simulacaoSemLance: null,
+    modalidadeEscolhidaNome: "Lance Livre",
+    modalidades: [],
+    evolucao: [],
+  };
+  return {
+    tipo,
+    label,
+    grupos: [g],
+    totais: {
+      credito,
+      primeiraParcela: parcela,
+      lanceEmbutido: lanceEmb,
+      recursoProprio: lance,
+      lanceTotal: lanceEmb + lance,
+      creditoLiquido: g.creditoLiquido,
+      parcelaPosContemplacao: parcela,
+    },
+  };
+}
+
 export function PropostaPdfDocument({ data }: { data: PropostaPdfData }) {
-  const temSegmentos = data.segmentos.length > 0;
+  const segmentos = data.segmentos.length > 0 ? data.segmentos : [fallbackSegmentoFromData(data)];
+  const docData = data.segmentos.length > 0 ? data : { ...data, segmentos };
 
-  if (!temSegmentos) {
-    return <LegacyDocument data={data} />;
-  }
-
-  if (data.visualizacao === "resumida") {
+  if (docData.visualizacao === "resumida") {
     return (
       <Document title={`${TITULO_PROPOSTA} - Resumo`} author={MARCA_PRINCIPAL}>
-        {data.capaEstilo === "campanha" ? <CapaCampanha data={data} /> : <CapaPadrao data={data} />}
-        <FolhaResumoLink data={data} pagina="Folha 1 / 1" />
+        {docData.capaEstilo === "campanha" ? <CapaCampanha data={docData} /> : <CapaPadrao data={docData} />}
+        <FolhaResumoLink data={docData} pagina="Folha 1 / 1" />
       </Document>
     );
   }
 
-  const multi = data.segmentos.length > 1;
-  const [seg0, ...segRestantes] = data.segmentos;
-  // Folha 1 = resumo + 1º segmento (sempre); demais segmentos ganham folha própria;
-  // última folha = encerramento. Ex.: 1 segmento → capa + 2; 2 segmentos → capa + 3.
+  const [seg0, ...segRestantes] = segmentos;
   const totalFolhas = 1 + segRestantes.length + 1;
 
   return (
     <Document title={TITULO_PROPOSTA} author={MARCA_PRINCIPAL}>
-      {data.capaEstilo === "campanha" ? <CapaCampanha data={data} /> : <CapaPadrao data={data} />}
+      {docData.capaEstilo === "campanha" ? <CapaCampanha data={docData} /> : <CapaPadrao data={docData} />}
 
-      <FolhaResumo data={data} primeiroSegmento={seg0} pagina={`Folha 1 / ${totalFolhas}`} />
+      <FolhaResumo data={docData} primeiroSegmento={seg0} pagina={`Folha 1 / ${totalFolhas}`} />
 
       {segRestantes.map((seg, i) => (
         <Page key={seg.tipo} size="A4" style={s.page}>
@@ -863,12 +918,12 @@ export function PropostaPdfDocument({ data }: { data: PropostaPdfData }) {
           <Text style={s.kicker}>Segmento {seg.label}</Text>
           <Text style={s.h2}>Detalhamento do grupo</Text>
           <View style={{ height: 8 }} />
-          <SegBlock data={data} segmento={seg} />
+          <SegBlock data={docData} segmento={seg} />
           <Rodape pagina={`Folha ${2 + i} / ${totalFolhas}`} />
         </Page>
       ))}
 
-      <FolhaEncerramento data={data} pagina={`Folha ${totalFolhas} / ${totalFolhas}`} />
+      <FolhaEncerramento data={docData} pagina={`Folha ${totalFolhas} / ${totalFolhas}`} />
     </Document>
   );
 }

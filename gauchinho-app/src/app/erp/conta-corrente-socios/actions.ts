@@ -233,6 +233,17 @@ export interface ContaCorrenteResumoDTO {
 
   // Quadro Comparativo Geral
   quadroGeral: QuadroComparativoGeralDTO;
+
+  // Contas Bancárias / Caixa da Empresa
+  contasBancariasEmpresa: Array<{
+    id: string;
+    banco: string;
+    agencia?: string | null;
+    conta?: string | null;
+    descricao: string;
+    tipo?: string | null;
+    saldoAtual?: number;
+  }>;
 }
 
 /**
@@ -358,6 +369,8 @@ export async function carregarDadosContaCorrenteSocios(
     fechamentosRes,
     compensacoesRes,
     pagamentosRes,
+    contasBancariasRes,
+    transferenciasSociosRes,
   ] = await Promise.all([
     admin
       .from("financeiro_contas_pagar")
@@ -412,7 +425,7 @@ export async function carregarDadosContaCorrenteSocios(
       .eq("status", "confirmada"),
     admin
       .from("financeiro_contas_saldos")
-      .select("saldo_atual")
+      .select("id, saldo_atual")
       .eq("empresa_id", empresaAtiva.id)
       .eq("ativo", true),
     admin
@@ -428,6 +441,17 @@ export async function carregarDadosContaCorrenteSocios(
       .select("id, data_pagamento, valor_bruto, valor_liquido, forma_pagamento, participante_comercial_id, status, created_at, itens:financeiro_pagamento_itens(id, previsao_participante_id, valor_liquidado)")
       .eq("empresa_id", empresaAtiva.id)
       .eq("status", "confirmado"),
+    admin
+      .from("financeiro_contas_bancarias")
+      .select("id, nome, banco, agencia, conta_mascarada, tipo_conta, ativo")
+      .eq("empresa_id", empresaAtiva.id)
+      .eq("ativo", true)
+      .order("nome"),
+    admin
+      .from("financeiro_transferencias_socios")
+      .select("*")
+      .eq("empresa_id", empresaAtiva.id)
+      .order("data_transferencia", { ascending: true }),
   ]);
 
   const todasContas = contasRes.data ?? [];
@@ -442,6 +466,8 @@ export async function carregarDadosContaCorrenteSocios(
   const fechamentosDb = fechamentosRes.data ?? [];
   const compensacoesDb = compensacoesRes.data ?? [];
   const pagamentosDb = pagamentosRes.data ?? [];
+  const contasBancariasDb = contasBancariasRes.data ?? [];
+  const transferenciasSociosDb = transferenciasSociosRes.data ?? [];
 
   // Mapa de Pagamento das Comissões
   const pagamentosPorPrevisaoId = new Map<string, { dataPagamento: string; valor: number }>();
@@ -601,10 +627,86 @@ export async function carregarDadosContaCorrenteSocios(
   const despesasPagasPeriodo = Number(despesasRateadas.filter((d) => d.status === "paga").reduce((acc, d) => acc + d.valorTotal, 0).toFixed(2));
   const despesasAPagarPeriodo = Number(despesasRateadas.filter((d) => d.status !== "paga").reduce((acc, d) => acc + d.valorTotal, 0).toFixed(2));
 
+  // Aportes de comissão transferidos para a conta da empresa pelos sócios
+  const aportesFernando = Number(
+    ledgerDb
+      .filter(
+        (m) =>
+          !m.estornado &&
+          m.socio_id === socioFernando?.id &&
+          (m.origem_tipo === "aporte_empresa" || m.descricao?.includes("Aporte de comissão"))
+      )
+      .filter((m) => periodo.isTodosPeriodos || (m.data_movimento >= periodo.dataInicio && m.data_movimento <= periodo.dataFim))
+      .reduce((acc, m) => acc + Number(m.valor), 0)
+      .toFixed(2)
+  );
+
+  const aportesEroni = Number(
+    ledgerDb
+      .filter(
+        (m) =>
+          !m.estornado &&
+          m.socio_id === socioEroni?.id &&
+          (m.origem_tipo === "aporte_empresa" || m.descricao?.includes("Aporte de comissão"))
+      )
+      .filter((m) => periodo.isTodosPeriodos || (m.data_movimento >= periodo.dataInicio && m.data_movimento <= periodo.dataFim))
+      .reduce((acc, m) => acc + Number(m.valor), 0)
+      .toFixed(2)
+  );
+
+  const aportesSocioAtivo = !isVisaoTodosSocios && socioIdAtivo
+    ? Number(
+        ledgerDb
+          .filter(
+            (m) =>
+              !m.estornado &&
+              m.socio_id === socioIdAtivo &&
+              (m.origem_tipo === "aporte_empresa" || m.descricao?.includes("Aporte de comissão"))
+          )
+          .filter((m) => periodo.isTodosPeriodos || (m.data_movimento >= periodo.dataInicio && m.data_movimento <= periodo.dataFim))
+          .reduce((acc, m) => acc + Number(m.valor), 0)
+          .toFixed(2)
+      )
+    : 0;
+
+  // Transferências diretas de equalização entre os sócios
+  const transferenciasNoPeriodo = transferenciasSociosDb.filter((t: any) => {
+    if (periodo.isTodosPeriodos) return true;
+    const dt = t.data_transferencia || t.created_at?.slice(0, 10);
+    return Boolean(dt && dt >= periodo.dataInicio && dt <= periodo.dataFim);
+  });
+
+  const transfEnviadasSocioAtivo = !isVisaoTodosSocios && socioIdAtivo
+    ? Number(
+        transferenciasNoPeriodo
+          .filter((t: any) => t.socio_origem_id === socioIdAtivo)
+          .reduce((acc, t: any) => acc + Number(t.valor), 0)
+          .toFixed(2)
+      )
+    : 0;
+
+  const transfRecebidasSocioAtivo = !isVisaoTodosSocios && socioIdAtivo
+    ? Number(
+        transferenciasNoPeriodo
+          .filter((t: any) => t.socio_destino_id === socioIdAtivo)
+          .reduce((acc, t: any) => acc + Number(t.valor), 0)
+          .toFixed(2)
+      )
+    : 0;
+
   const pagoPelaEmpresaPeriodo = Number(despesasRateadas.filter((d) => d.status === "paga" && !d.pagoPessoalmente).reduce((acc, d) => acc + d.valorTotal, 0).toFixed(2));
-  const pagoPorFernandoPeriodo = Number(despesasRateadas.filter((d) => d.status === "paga" && d.pagoPessoalmente && d.pagoPorSocioId === socioFernando?.id).reduce((acc, d) => acc + d.valorTotal, 0).toFixed(2));
-  const pagoPorEroniPeriodo = Number(despesasRateadas.filter((d) => d.status === "paga" && d.pagoPessoalmente && d.pagoPorSocioId === socioEroni?.id).reduce((acc, d) => acc + d.valorTotal, 0).toFixed(2));
-  const outrosPagadoresPeriodo = Number((despesasPagasPeriodo - pagoPelaEmpresaPeriodo - pagoPorFernandoPeriodo - pagoPorEroniPeriodo).toFixed(2));
+  const pagoPorFernandoPeriodo = Number(
+    (despesasRateadas.filter((d) => d.status === "paga" && d.pagoPessoalmente && d.pagoPorSocioId === socioFernando?.id).reduce((acc, d) => acc + d.quantoEuPaguei, 0) + aportesFernando).toFixed(2)
+  );
+  const pagoPorEroniPeriodo = Number(
+    (despesasRateadas.filter((d) => d.status === "paga" && d.pagoPessoalmente && d.pagoPorSocioId === socioEroni?.id).reduce((acc, d) => acc + d.quantoEuPaguei, 0) + aportesEroni).toFixed(2)
+  );
+  const outrosPagadoresPeriodo = Number((despesasPagasPeriodo - pagoPelaEmpresaPeriodo - (pagoPorFernandoPeriodo - aportesFernando) - (pagoPorEroniPeriodo - aportesEroni)).toFixed(2));
+
+  // Aportes de todos os sócios no período para despesas operacionais da empresa
+  const totalAportesPeriodo = aportesFernando + aportesEroni;
+  const pctSocioAtivo = (socioSelecionado?.percentualParticipacao || (100 / (todosSocios.length || 1))) / 100;
+  const responsabilidadeAportesSocio = !isVisaoTodosSocios ? Number((totalAportesPeriodo * pctSocioAtivo).toFixed(2)) : totalAportesPeriodo;
 
   // Métricas do Sócio Ativo no Período
   const despesasMinhaResponsabilidade = Number(
@@ -612,14 +714,14 @@ export async function carregarDadosContaCorrenteSocios(
       ? (periodo.regime === "CAIXA" ? despesasPagasPeriodo : despesasTotalPeriodo)
       : (periodo.regime === "CAIXA"
           ? despesasRateadas.filter((d) => d.status === "paga").reduce((acc, d) => acc + d.minhaParteResponsabilidade, 0)
-          : despesasRateadas.reduce((acc, d) => acc + d.minhaParteResponsabilidade, 0))
+          : despesasRateadas.reduce((acc, d) => acc + d.minhaParteResponsabilidade, 0)) + responsabilidadeAportesSocio
     ).toFixed(2)
   );
 
   const despesasQueEuPaguei = Number(
     (isVisaoTodosSocios
       ? (pagoPorFernandoPeriodo + pagoPorEroniPeriodo)
-      : despesasRateadas.filter((d) => d.status === "paga" && d.pagoPessoalmente && d.pagoPorSocioId === socioIdAtivo).reduce((acc, d) => acc + d.quantoEuPaguei, 0)
+      : despesasRateadas.filter((d) => d.status === "paga" && d.pagoPessoalmente && d.pagoPorSocioId === socioIdAtivo).reduce((acc, d) => acc + d.quantoEuPaguei, 0) + aportesSocioAtivo
     ).toFixed(2)
   );
 
@@ -630,8 +732,8 @@ export async function carregarDadosContaCorrenteSocios(
     ).toFixed(2)
   );
 
-  // Equalização: Valor Pago pelo Sócio - Responsabilidade
-  const saldoDiferencaDespesas = Number((despesasQueEuPaguei - despesasMinhaResponsabilidade).toFixed(2));
+  // Equalização: (Valor Pago pelo Sócio + Transferências Enviadas - Transferências Recebidas) - Responsabilidade
+  const saldoDiferencaDespesas = Number((despesasQueEuPaguei + transfEnviadasSocioAtivo - transfRecebidasSocioAtivo - despesasMinhaResponsabilidade).toFixed(2));
   const saldoACompensar = saldoDiferencaDespesas < 0 ? Math.abs(saldoDiferencaDespesas) : 0;
   const saldoCreditoEqualizacao = saldoDiferencaDespesas > 0 ? saldoDiferencaDespesas : 0;
 
@@ -1230,6 +1332,18 @@ export async function carregarDadosContaCorrenteSocios(
     painelDespesas,
     painelComissoes,
     quadroGeral,
+    contasBancariasEmpresa: (contasBancariasDb || []).map((cb: any) => {
+      const saldoObj = (caixaRes.data || []).find((c: any) => c.id === cb.id);
+      return {
+        id: cb.id,
+        banco: cb.banco || "",
+        agencia: cb.agencia || null,
+        conta: cb.conta_mascarada || null,
+        descricao: cb.nome || cb.banco || "Conta Bancária",
+        tipo: cb.tipo_conta || null,
+        saldoAtual: Number(saldoObj?.saldo_atual || 0),
+      };
+    }),
   };
 }
 
@@ -1238,17 +1352,21 @@ export async function usarComissaoCompensarAction(formData: FormData) {
   if (!empresaAtiva?.id) throw new Error("Empresa ativa não encontrada.");
 
   const socioId = String(formData.get("socio_id") ?? "");
-  const previsaoId = String(formData.get("previsao_id") ?? "");
+  const tipoDestino = String(formData.get("tipo_destino") ?? "TRANSFERENCIA_SOCIO") as "TRANSFERENCIA_SOCIO" | "CONTA_EMPRESA";
+  const socioDestinoId = String(formData.get("socio_destino_id") ?? "");
+  const contaBancariaId = String(formData.get("conta_bancaria_id") ?? "");
   const valorACompensar = Number(String(formData.get("valor") ?? "").replace(",", "."));
   const motivo = String(formData.get("motivo") ?? "").trim() || "Compensação de despesas com comissão do sócio";
+  const previsaoId = String(formData.get("previsao_id") ?? "");
+  const previsoesSelecionadasRaw = String(formData.get("previsoes_selecionadas") ?? "");
 
-  if (!socioId || !previsaoId || isNaN(valorACompensar) || valorACompensar <= 0) {
+  if (!socioId || isNaN(valorACompensar) || valorACompensar <= 0) {
     throw new Error("Dados inválidos para compensação de comissão.");
   }
 
   const admin = createAdminClient();
 
-  // Validar sócio
+  // 1. Validar sócio titular
   const { data: socio, error: socioErr } = await admin
     .from("empresa_socios")
     .select("id, usuario_id, nome")
@@ -1256,74 +1374,248 @@ export async function usarComissaoCompensarAction(formData: FormData) {
     .eq("empresa_id", empresaAtiva.id)
     .single();
 
-  if (socioErr || !socio) throw new Error("Sócio não encontrado.");
+  if (socioErr || !socio) throw new Error("Sócio titular não encontrado.");
 
-  // Validar previsão de comissão
-  const { data: previsao, error: prevErr } = await admin
-    .from("comissao_previsoes_participantes")
-    .select("id, status, valor_previsto, valor_elegivel, valor_pago, competencia")
-    .eq("id", previsaoId)
-    .eq("empresa_id", empresaAtiva.id)
-    .single();
+  // 2. Validar destino
+  let socioDestinoNome = "";
+  let contaBancariaNome = "";
 
-  if (prevErr || !previsao) throw new Error("Previsão de comissão não encontrada.");
+  if (tipoDestino === "TRANSFERENCIA_SOCIO") {
+    if (!socioDestinoId || socioDestinoId === socioId) {
+      throw new Error("Selecione um sócio devedor/credor válido para transferir.");
+    }
+    const { data: socioDest, error: destErr } = await admin
+      .from("empresa_socios")
+      .select("id, usuario_id, nome")
+      .eq("id", socioDestinoId)
+      .eq("empresa_id", empresaAtiva.id)
+      .single();
 
-  const valorDisponivelNaPrevisao = Number(previsao.valor_elegivel || previsao.valor_previsto || 0) - Number(previsao.valor_pago || 0);
-  if (valorACompensar > valorDisponivelNaPrevisao) {
-    throw new Error(`Valor informado (R$ ${valorACompensar}) excede o saldo disponível na previsão (R$ ${valorDisponivelNaPrevisao}).`);
+    if (destErr || !socioDest) throw new Error("Sócio de destino não encontrado.");
+    socioDestinoNome = socioDest.nome;
+  } else if (tipoDestino === "CONTA_EMPRESA") {
+    if (!contaBancariaId) {
+      throw new Error("Selecione a conta bancária da empresa para depósito do aporte.");
+    }
+    const { data: contaDb, error: contaErr } = await admin
+      .from("financeiro_contas_bancarias")
+      .select("id, nome, banco")
+      .eq("id", contaBancariaId)
+      .eq("empresa_id", empresaAtiva.id)
+      .eq("ativo", true)
+      .single();
+
+    if (contaErr || !contaDb) throw new Error("Conta bancária da empresa não encontrada.");
+    contaBancariaNome = contaDb.nome || contaDb.banco || "Conta Empresa";
   }
 
-  const idempotencyKey = `comp:${previsaoId}:${Date.now()}`;
+  // 3. Buscar participante comercial vinculado ao sócio
+  const { data: partDb } = await admin
+    .from("participantes_comerciais")
+    .select("id")
+    .eq("empresa_id", empresaAtiva.id)
+    .eq("usuario_id", socio.usuario_id);
 
-  // Inserir registro formal em financeiro_compensacoes_comissoes
-  const { error: compErr } = await admin.from("financeiro_compensacoes_comissoes").insert({
-    empresa_id: empresaAtiva.id,
-    socio_id: socio.id,
-    previsao_participante_id: previsao.id,
-    valor_compensado: valorACompensar,
-    saldo_devedor_anterior: valorACompensar,
-    saldo_devedor_restante: 0,
-    motivo,
-    idempotency_key: idempotencyKey,
-    criado_por: usuario?.id ?? null,
-  });
+  const partIds = (partDb ?? []).map((p) => p.id);
 
-  if (compErr) throw new Error(`Erro ao registrar compensação: ${compErr.message}`);
-
-  // Inserir movimento no Ledger (natureza DEBITO na conta do sócio, pois a comissão ficou retida para pagar sua despesa)
-  await admin.from("socio_conta_corrente_movimentos").insert({
-    empresa_id: empresaAtiva.id,
-    socio_id: socio.id,
-    usuario_id: socio.usuario_id,
-    data_movimento: new Date().toISOString().slice(0, 10),
-    competencia: previsao.competencia || new Date().toISOString().slice(0, 7),
-    natureza: "DEBITO",
-    tipo_movimento: "COMPENSACAO_COMISSAO",
-    valor: valorACompensar,
-    saldo_apos: 0,
-    descricao: `Compensação de despesas retida na empresa (${motivo})`,
-    origem_tipo: "previsao_comissao",
-    origem_id: previsao.id,
-    idempotency_key: `ledger:${idempotencyKey}`,
-    criado_por: usuario?.id ?? null,
-  });
-
-  // Atualizar a previsão como paga/compensada
-  const novoValorPago = Number(previsao.valor_pago || 0) + valorACompensar;
-  const novoStatus = novoValorPago >= Number(previsao.valor_previsto) ? "paga" : "parcialmente_paga";
-
-  await admin
+  // 4. Carregar previsões de comissões do sócio
+  let previsoesQuery = admin
     .from("comissao_previsoes_participantes")
-    .update({
-      valor_pago: novoValorPago,
-      status: novoStatus,
-      updated_at: new Date().toISOString(),
+    .select("id, status, valor_previsto, valor_elegivel, valor_pago, competencia")
+    .eq("empresa_id", empresaAtiva.id)
+    .in("participante_comercial_id", partIds.length ? partIds : ["00000000-0000-0000-0000-000000000000"])
+    .neq("status", "cancelada")
+    .order("competencia", { ascending: true });
+
+  if (previsaoId) {
+    previsoesQuery = previsoesQuery.eq("id", previsaoId);
+  }
+
+  const { data: previsoesDb, error: prevErr } = await previsoesQuery;
+  if (prevErr) throw new Error(`Erro ao buscar comissões: ${prevErr.message}`);
+
+  let previsoesFiltro = previsoesDb ?? [];
+
+  if (previsoesSelecionadasRaw) {
+    try {
+      const idsSelecionados: string[] = JSON.parse(previsoesSelecionadasRaw);
+      if (Array.isArray(idsSelecionados) && idsSelecionados.length > 0) {
+        previsoesFiltro = previsoesFiltro.filter((p) => idsSelecionados.includes(p.id));
+      }
+    } catch {
+      // json parse fallback
+    }
+  }
+
+  const previsoesComSaldo = previsoesFiltro
+    .map((p) => {
+      const maxVal = Number(p.valor_elegivel || p.valor_previsto || 0);
+      const pago = Number(p.valor_pago || 0);
+      return {
+        ...p,
+        valorDisponivel: Math.max(0, maxVal - pago),
+      };
     })
-    .eq("id", previsao.id);
+    .filter((p) => p.valorDisponivel > 0.001);
+
+  const totalComissoesDisponiveis = previsoesComSaldo.reduce((acc, p) => acc + p.valorDisponivel, 0);
+
+  if (valorACompensar > totalComissoesDisponiveis + 0.01) {
+    throw new Error(
+      `Valor informado (R$ ${valorACompensar.toLocaleString("pt-BR", {
+        minimumFractionDigits: 2,
+      })}) excede o saldo de comissões disponíveis selecionadas (R$ ${totalComissoesDisponiveis.toLocaleString("pt-BR", {
+        minimumFractionDigits: 2,
+      })}).`
+    );
+  }
+
+  // 5. Consumo das comissões em cascata FIFO
+  let valorRestante = valorACompensar;
+  const timestamp = Date.now();
+  const loteId = `comp:${socio.id}:${timestamp}`;
+
+  for (const prev of previsoesComSaldo) {
+    if (valorRestante <= 0.001) break;
+    const alocar = Math.min(valorRestante, prev.valorDisponivel);
+    if (alocar <= 0.001) continue;
+
+    const prevIdempKey = `${loteId}:${prev.id}`;
+
+    // Registro em financeiro_compensacoes_comissoes
+    const { error: compErr } = await admin.from("financeiro_compensacoes_comissoes").insert({
+      empresa_id: empresaAtiva.id,
+      socio_id: socio.id,
+      previsao_participante_id: prev.id,
+      valor_compensado: alocar,
+      saldo_devedor_anterior: valorRestante,
+      saldo_devedor_restante: Math.max(0, valorRestante - alocar),
+      motivo: `${motivo} (Alocação FIFO)`,
+      idempotency_key: prevIdempKey,
+      criado_por: usuario?.id ?? null,
+    });
+
+    if (compErr) throw new Error(`Erro ao registrar compensação de comissão: ${compErr.message}`);
+
+    // Atualiza status e valor_pago na comissão
+    const novoValorPago = Number(prev.valor_pago || 0) + alocar;
+    const maxVal = Number(prev.valor_previsto || prev.valor_elegivel || 0);
+    const novoStatus = novoValorPago >= maxVal ? "paga" : "parcialmente_paga";
+
+    await admin
+      .from("comissao_previsoes_participantes")
+      .update({
+        valor_pago: novoValorPago,
+        status: novoStatus,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", prev.id);
+
+    valorRestante -= alocar;
+  }
+
+  const dataHoje = new Date().toISOString().slice(0, 10);
+  const compAtual = new Date().toISOString().slice(0, 7);
+
+  // 6. Efetivação do Destino
+  if (tipoDestino === "TRANSFERENCIA_SOCIO") {
+    // Inserir em financeiro_transferencias_socios
+    const { error: transErr } = await admin.from("financeiro_transferencias_socios").insert({
+      empresa_id: empresaAtiva.id,
+      socio_origem_id: socio.id,
+      socio_destino_id: socioDestinoId,
+      valor: valorACompensar,
+      data_transferencia: dataHoje,
+      comprovante_referencia: motivo,
+      observacao: `Compensação de comissão com transferência direta para ${socioDestinoNome}`,
+      idempotency_key: `transf:${loteId}`,
+      criado_por: usuario?.id ?? null,
+      fechamento_id: null,
+      instrucao_id: null,
+    });
+
+    if (transErr) throw new Error(`Erro ao registrar transferência entre sócios: ${transErr.message}`);
+
+    // Ledger: Débito no sócio devedor (origem)
+    await admin.from("socio_conta_corrente_movimentos").insert({
+      empresa_id: empresaAtiva.id,
+      socio_id: socio.id,
+      usuario_id: socio.usuario_id,
+      data_movimento: dataHoje,
+      competencia: compAtual,
+      natureza: "DEBITO",
+      tipo_movimento: "COMPENSACAO_COMISSAO",
+      valor: valorACompensar,
+      saldo_apos: 0,
+      descricao: `Transferência de comissão para equalização com ${socioDestinoNome} (${motivo})`,
+      origem_tipo: "transferencia_socio",
+      origem_id: socioDestinoId,
+      idempotency_key: `ledger:deb:${loteId}`,
+      criado_por: usuario?.id ?? null,
+    });
+
+    // Ledger: Crédito no sócio credor (destino)
+    const { data: destUsuario } = await admin
+      .from("empresa_socios")
+      .select("usuario_id")
+      .eq("id", socioDestinoId)
+      .single();
+
+    await admin.from("socio_conta_corrente_movimentos").insert({
+      empresa_id: empresaAtiva.id,
+      socio_id: socioDestinoId,
+      usuario_id: destUsuario?.usuario_id ?? null,
+      data_movimento: dataHoje,
+      competencia: compAtual,
+      natureza: "CREDITO",
+      tipo_movimento: "TRANSFERENCIA_SOCIO",
+      valor: valorACompensar,
+      saldo_apos: 0,
+      descricao: `Recebimento de transferência para equalização de despesas de ${socio.nome} (${motivo})`,
+      origem_tipo: "transferencia_socio",
+      origem_id: socio.id,
+      idempotency_key: `ledger:cred:${loteId}`,
+      criado_por: usuario?.id ?? null,
+    });
+  } else if (tipoDestino === "CONTA_EMPRESA") {
+    // Inserir entrada bancária em financeiro_conta_movimentos (categoria APORTE_SOCIO)
+    const { error: movErr } = await admin.from("financeiro_conta_movimentos").insert({
+      empresa_id: empresaAtiva.id,
+      conta_bancaria_id: contaBancariaId,
+      tipo: "ENTRADA",
+      categoria: "APORTE_SOCIO",
+      valor: valorACompensar,
+      data_movimento: dataHoje,
+      descricao: `Aporte do sócio ${socio.nome} via compensação de comissões (${motivo})`,
+      idempotency_key: `mov:${loteId}`,
+      criado_por: usuario?.id ?? null,
+    });
+
+    if (movErr) throw new Error(`Erro ao creditar conta bancária da empresa: ${movErr.message}`);
+
+    // Ledger: Registrar no sócio como comissão transferida/aportada para a empresa
+    await admin.from("socio_conta_corrente_movimentos").insert({
+      empresa_id: empresaAtiva.id,
+      socio_id: socio.id,
+      usuario_id: socio.usuario_id,
+      data_movimento: dataHoje,
+      competencia: compAtual,
+      natureza: "DEBITO",
+      tipo_movimento: "COMPENSACAO_COMISSAO",
+      valor: valorACompensar,
+      saldo_apos: 0,
+      descricao: `Aporte de comissão para a conta da empresa ${contaBancariaNome} (${motivo})`,
+      origem_tipo: "aporte_empresa",
+      origem_id: contaBancariaId,
+      idempotency_key: `ledger:aporte:${loteId}`,
+      criado_por: usuario?.id ?? null,
+    });
+  }
 
   revalidatePath("/erp/conta-corrente-socios");
   revalidatePath("/erp/financeiro");
   revalidatePath("/erp/minhas-comissoes");
+  revalidatePath("/erp/contas-pagar");
 }
 
 /**

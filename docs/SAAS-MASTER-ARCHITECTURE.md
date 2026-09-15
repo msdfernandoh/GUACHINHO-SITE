@@ -2294,3 +2294,107 @@ Relatório:
 Relatório:
 `docs/relatorios-fases/FASE-229-EVENTOS-HORARIO-E-DISPONIBILIDADE-CHECKIN.md`.
 
+### Evolução Operacional 230 — QR Institucional Permanente, Participantes, Exportação XLSX, Resumo Comercial CRM e Deduplicação Global de Leads
+
+1. **Parte A — QR Institucional Permanente (`/qr/site`):**
+   - Reutilização da entidade canônica `public.qr_codes_unicos` com slug canônico `site`.
+   - Alternância dinâmica de destinos via Server Action para administradores Master: Página Inicial (`/`), Evento específico, Check-in Direto (`/eventos/[slug]/sorteio`), WhatsApp, Página Interna ou URL customizada externa, preservando permanentemente a imagem impressa do QR Code.
+   - Histórico de alterações com trilha auditável em `public.qr_codes_unicos_destinos_historico`.
+   - Central de QR Codes com downloads em alta resolução (PNG 1200x1200px via Canvas com margens de impressão e SVG vetorial).
+
+2. **Parte B — Lista Enriquecida de Participantes de Eventos:**
+   - Serviço centralizador `participantes-enriquecidos.ts` unificando a lista oficial (`eventos_participantes`) com os dados do sorteio e check-in direto (`eventos_sorteio_participantes`).
+   - Exibição tabular e em cards mobile de: Veículo Atual, Situação de Moradia, Capacidade de Investimento e Número da Sorte.
+   - Cards de resumo estatístico no topo (Total, Confirmados, Presentes, Check-ins, Com Veículo, Aluguel e Investimento > R$ 1.000).
+   - Filtros combinados completos com busca textual insensível a acentos (`normalizeSearch`).
+
+3. **Parte C — Exportação XLSX Real dos Participantes:**
+   - Implementação de endpoint de download de planilha binária legítima `.xlsx` (OpenXML) em `/api/admin/eventos/[id]/participantes/export-xlsx` via `write-excel-file`.
+   - Cabeçalho estilizado, colunas formatadas e suporte à exportação da visualização filtrada ativa ou base integral.
+
+4. **Parte D — Respostas do Check-in no CRM Leads:**
+   - Componente `LeadCheckinQualificacao` no topo da página de detalhe do Lead (`/admin/leads/[id]`).
+   - Destaque comercial proeminente da participação mais recente no evento com Número da Sorte em destaque, respostas para Veículo, Moradia e Capacidade Mensal de Investimento, data do check-in e consentimento LGPD.
+   - Preservação do histórico completo multievento em seção retrátil organizada.
+
+5. **Parte E — Deduplicação Global de Leads por Telefone:**
+   - Normalizador canônico `normalizePhoneForLead` padronizando números nacionais (10 ou 11 dígitos, sem DDI 55 e sem pontuação).
+   - Coluna `telefone_normalizado` com índice de alto desempenho e trigger automático `trg_leads_normalizar_telefone` em `public.leads`.
+   - RPC PostgreSQL `rpc_upsert_lead_por_telefone` com lock transacional (`pg_advisory_xact_lock`) garantindo idempotência e concorrência segura.
+   - Unificação de todas as 10+ origens de captura de leads no sistema através de `upsertLeadPorTelefone`.
+   - Preservação estrita dos 50 leads duplicados históricos identificados na auditoria inicial e integridade referencial nas 12 tabelas conectadas.
+
+6. **Migration Aditiva 222:**
+   - `supabase/migrations/222_qr_institucional_e_deduplicacao_leads.sql` com novas colunas, tabela de histórico de destinos, funções defensivas, trigger, RPC e script de rollback.
+
+Relatório:
+`docs/relatorios-fases/FASE-230-QR-INSTITUCIONAL-PARTICIPANTES-CRM-DEDUPLICACAO.md`.
+
+### Evolução Operacional 231 — Marcar Contratação como Assinada no ERP de Contratações
+
+1. **Diagnóstico Operacional:**
+   - O fluxo de formalização de contratações no ERP exigia estritamente `contrato_assinado = true`, mas a tela de conferência (`/erp/contratacoes/[id]`) e a lista (`/erp/contratacoes`) não possuíam botão ou controle para registrar a assinatura física/digital do cliente.
+   - As tabelas e triggers no banco de dados (`contratacoes_online.contrato_assinado`, `contratacoes_online.contrato_assinado_em`, `sync_cliente_from_contratacao` e `contratacoes_formalizacao_historico`) já estavam operacionais e foram preservados integralmente sem migrations adicionais.
+
+2. **Server Action Multi-Tenant Segura:**
+   - Implementação de `alternarContratoAssinadoAction` em `gauchinho-app/src/app/erp/contratacoes/actions.ts`.
+   - Valida tenant via `requireCurrentTenantContext()`, exige permissão `formalizar_vendas`, `gerenciar_propostas` ou papéis administrativos (`admin_empresa`, `super_admin`, `master`), impede reversão em contratações já formalizadas em venda, e grava trilha de auditoria append-only em `contratacoes_formalizacao_historico`.
+
+3. **Experiência Visual e Interatividade:**
+   - Componente `MarcarContratoAssinadoButton` com 4 variantes (`hero`, `banner`, `inline`, `table`).
+   - Botão proeminente no cabeçalho de `/erp/contratacoes/[id]` e banner de alerta no topo orientando a assinatura.
+   - Integração no formulário `FormalizacaoVendaForm`: inclusão no checklist de pendências com ação rápida inline e bloqueio informativo no botão de confirmação.
+   - Ação rápida direta na coluna de Ações da lista `/erp/contratacoes`.
+
+Relatório:
+`docs/relatorios-fases/FASE-231-MARCAR-CONTRATACAO-ASSINADA-ERP.md`.
+
+### Evolução Operacional 232 — Detalhes da Operação, Ajuste Promocional de Fechamento e PDF Oficial da Proposta
+
+1. **Diagnóstico Operacional e Comercial:**
+   - Na tela de fechamento de contratações no ERP (`/erp/contratacoes/[id]`), faltava a exibição dos dados operacionais da contratação: contratação de seguro prestamista, taxa de administração do grupo, fundo de reserva e parcelas mensais.
+   - Em negociações especiais e campanhas promocionais de fechamento (ex: feirões, descontos autorizados pela gerência), os operadores precisavam ajustar a taxa de administração e o valor da parcela antes de formalizar a venda.
+   - O download do PDF de propostas por vezes carregava o modelo legado escuro (`LegacyDocument`), desativado, em vez do modelo oficial moderno em 4 folhas (Capa + 3 Folhas).
+
+2. **Unificação Definitiva do PDF Oficial (Capa + 3 Folhas):**
+   - Atualização de `gauchinho-app/src/lib/proposta/load-pdf-data.ts` para construir itens de segmento e executar `construirSegmentos` em todas as propostas, garantindo que `segmentos` nunca seja vazio.
+   - Atualização de `gauchinho-app/src/lib/proposta/pdf/proposta-pdf-document.tsx` com a função `fallbackSegmentoFromData`, garantindo a geração de `CapaPadrao`/`CapaCampanha`, `FolhaResumo`, `SegBlock` e `FolhaEncerramento`. O template legado antigo foi desativado em definitivo.
+
+3. **Exibição dos Detalhes da Operação no Formulário de Formalização:**
+   - Consulta de `grupos_consorcio` em `/erp/contratacoes/[id]/page.tsx` estendida para selecionar `taxa_administrativa_percentual`, `fundo_reserva_percentual`, `seguro_habilitado`, `seguro_percentual` e `seguro_valor`.
+   - 4 cards operacionais de alta visibilidade em `FormalizacaoVendaForm`: Seguro Prestamista (com indicação do valor mensal ou percentual), Taxa de Administração, Fundo de Reserva e Valor da Parcela.
+
+4. **Painel de Ajuste Comercial / Promoção com Criptografia e Auditoria:**
+   - Painel retrátil no formulário permitindo alterar a taxa de administração ajustada e a parcela ajustada com motivo/justificativa.
+   - Em `gauchinho-app/src/app/erp/contratacoes/actions.ts`:
+     - O valor da parcela ajustada atualiza `contratacoes_online.parcela_estimada` e `dados_simulacao.valor_parcela`.
+     - O hash criptográfico `snapshot_calculo.hash_sha256` é recalculado via `calcularHashSnapshotGrupos`, mantendo as garantias de integridade de `assertSnapshotCalculoGruposIntegro`.
+     - Gravação de evento auditável append-only `AJUSTE_PROMOCIONAL_APLICADO` em `contratacoes_formalizacao_historico`.
+     - A transação canônica `rpc_converter_contratacao_venda_multicotas` recebe e materializa a parcela promocional nas `vendas` e `cotas_definitivas`.
+
+Relatório:
+`docs/relatorios-fases/FASE-232-DETALHES-OPERACAO-AJUSTE-PROMO-PDF-PROPOSTA.md`.
+
+### Evolução Operacional 233 — Compensação de Comissões com Transferência entre Sócios e Aporte para Conta da Empresa
+
+1. **Diagnóstico Operacional e Societário:**
+   - No módulo de Conta-Corrente dos Sócios (`/erp/conta-corrente-socios`), o fluxo de compensação de comissões selecionava apenas previsões unitárias e não permitia visualizar o total de comissões do sócio nem direcionar a destinação dos recursos.
+   - Quando um sócio arcou com despesas pessoais superiores às do parceiro (ex.: total de despesas R$ 30.000, Fernando pagou R$ 10.000 e Eroni R$ 20.000, gerando diferença devedora de R$ 5.000 para Fernando), existem duas opções estratégicas para o sócio devedor utilizar suas comissões:
+     - **Opção A (Transferir e Abater para o Sócio Credor):** Transferência direta para o parceiro que reduz a dívida de equalização peso por peso (R$ 1 por R$ 1, ex.: transferir R$ 5.000 zera a diferença).
+     - **Opção B (Transferir para Conta/Caixa da Empresa):** Aporte financeiro em conta bancária da empresa para cobrir despesas futuras. Em um rateio 50/50, aportar R$ 10.000 no banco da empresa iguala as contribuições totais de ambos os sócios em R$ 20.000, quitando a diferença devedora e capitalizando o caixa operacional da empresa.
+
+2. **Backend & Modelagem Canônica (`actions.ts`):**
+   - Disponibilização das contas bancárias e saldos em tempo real (`financeiro_contas_saldos` + `financeiro_contas_bancarias`) via DTO `contasBancariasEmpresa`.
+   - Equalização matemática atualizada com inclusão simétrica de `responsabilidadeAportesSocio`: aportes em contas da empresa somam-se aos pagamentos do sócio e diluem proporcionalmente as responsabilidades, eliminando a assimetria contábil.
+   - Action `usarComissaoCompensarAction` com suporte a alocação FIFO de múltiplas comissões ou seleção customizada de previsões.
+   - Registro append-only em `financeiro_compensacoes_comissoes`, `financeiro_transferencias_socios`, `financeiro_conta_movimentos` (`APORTE_SOCIO`) e lançamentos recíprocos no Ledger (`socio_conta_corrente_movimentos`).
+
+3. **Interface do Usuário e Simulação em Tempo Real (`conta-corrente-socios-view.tsx`):**
+   - Seletor do sócio titular com atualização imediata do total de comissões disponíveis e saldo devedor/credor de equalização.
+   - Lista interativa de comissões elegíveis/recebidas com checkboxes e botões de seleção em massa.
+   - Seleção visual entre Destino A (Transferência Sócio) e Destino B (Conta Empresa).
+   - Botões de atalho: "Usar Todo Valor" e "Abater Dívida / Equalizar Aporte".
+   - Painel escuro de simulação em tempo real exibindo: Dívida Atual, Valor Usado, Diferença Restante (com indicador "100% Quitada!"), Novo Saldo de Comissões e Entrada Real no Caixa da Empresa.
+
+Relatório:
+`docs/relatorios-fases/FASE-233-COMPENSACAO-COMISSAO-TRANSFERENCIA-SOCIOS-EMPRESA.md`.

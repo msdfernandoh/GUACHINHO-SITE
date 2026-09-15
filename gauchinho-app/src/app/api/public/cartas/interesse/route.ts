@@ -5,6 +5,7 @@ import { registrarEvento } from "@/lib/eventos/registrar";
 import { DEFAULT_LEADS, getConfigJsonPublic } from "@/server/config";
 import { resolveWhatsappOrigem } from "@/lib/whatsapp/resolve-origem";
 import { CARTA_TIPOS } from "@/lib/cartas/types";
+import { upsertLeadPorTelefone } from "@/lib/crm/upsert-lead";
 
 type Body = {
   cartaId: string;
@@ -60,35 +61,30 @@ export async function POST(request: Request) {
       status: carta.status,
     };
 
-    const { data: leadRow, error: leadErr } = await admin
-      .from("leads")
-      .insert({
-        empresa_id: ingress.empresaId,
-        nome: body.nome.trim(),
-        whatsapp: body.whatsapp.trim(),
-        email: body.email?.trim() || null,
-        cidade: body.cidade?.trim() || null,
-        origem: "carta_contemplada",
-        origem_detalhe: carta.administradora,
-        tipo_interesse: "carta_contemplada",
-        produto_interesse: carta.tipo_carta,
-        valor_simulado: carta.credito,
-        prazo_simulado: carta.prazo_quantidade,
-        entrada: carta.entrada,
-        carta_contemplada_id: carta.id,
-        dados_simulacao: { carta: cartaSnapshot, tipoLabel },
-        resultado_resumido: `${tipoLabel} ${carta.administradora ?? ""} — crédito ${carta.credito}`,
-        status: leadsConfig.statusInicialPadrao,
-        criado_manual: false,
-      })
-      .select("id")
-      .single();
+    const upsertRes = await upsertLeadPorTelefone(admin, {
+      empresa_id: ingress.empresaId,
+      nome: body.nome.trim(),
+      whatsapp: body.whatsapp.trim(),
+      email: body.email?.trim() || null,
+      cidade: body.cidade?.trim() || null,
+      origem: "carta_contemplada",
+      origem_detalhe: carta.administradora,
+      tipo_interesse: "carta_contemplada",
+      produto_interesse: carta.tipo_carta,
+      valor_simulado: carta.credito,
+      prazo_simulado: carta.prazo_quantidade,
+      entrada: carta.entrada,
+      carta_contemplada_id: carta.id,
+      dados_simulacao: { carta: cartaSnapshot, tipoLabel },
+      resultado_resumido: `${tipoLabel} ${carta.administradora ?? ""} — crédito ${carta.credito}`,
+      status: leadsConfig.statusInicialPadrao,
+    });
 
-    if (leadErr || !leadRow) {
-      return NextResponse.json({ error: leadErr?.message ?? "Lead falhou" }, { status: 500 });
+    if (!upsertRes.ok || !upsertRes.lead_id) {
+      return NextResponse.json({ error: upsertRes.error ?? "Lead falhou" }, { status: 500 });
     }
 
-    const leadId = leadRow.id;
+    const leadId = upsertRes.lead_id;
     const origem = "carta_contemplada";
 
     await registrarEvento({

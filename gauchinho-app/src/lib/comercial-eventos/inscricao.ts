@@ -1,6 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { DEFAULT_LEADS, getConfigJsonPublic } from "@/server/config";
 import { registrarEvento } from "@/lib/eventos/registrar";
+import { upsertLeadPorTelefone } from "@/lib/crm/upsert-lead";
 import type { EventoRow, InscricaoEventoPayload, InscricaoEventoResult } from "./types";
 import {
   haVagaDisponivel,
@@ -59,27 +60,22 @@ export async function inscreverParticipanteEvento(
     status_inscricao: status,
   };
 
-  const { data: leadRow, error: leadErr } = await admin
-    .from("leads")
-    .insert({
-      nome,
-      whatsapp: telefone,
-      origem: "evento",
-      origem_detalhe: evento.slug,
-      tipo_interesse: "evento",
-      produto_interesse: null,
-      evento_id: evento.id,
-      evento_nome: evento.nome,
-      parceiro_indicador_nome: nomeConvidou,
-      parceiro_indicador_empresa: empresaConvidou,
-      observacoes: payload.observacao?.trim() || null,
-      dados_simulacao: dadosInscricao,
-      status: leadsConfig.statusInicialPadrao ?? "Novo",
-      criado_manual: false,
-    })
-    .select("id")
-    .single();
-  if (leadErr || !leadRow) throw new Error(leadErr?.message ?? "Falha ao registrar lead");
+  const upsertRes = await upsertLeadPorTelefone(admin, {
+    nome,
+    whatsapp: telefone,
+    origem: "evento",
+    origem_detalhe: evento.slug,
+    tipo_interesse: "evento",
+    produto_interesse: null,
+    evento_id: evento.id,
+    evento_nome: evento.nome,
+    dados_simulacao: dadosInscricao,
+    status: leadsConfig.statusInicialPadrao ?? "Novo",
+  });
+  if (!upsertRes.ok || !upsertRes.lead_id) {
+    throw new Error(upsertRes.error ?? "Falha ao registrar lead");
+  }
+  const leadRow = { id: upsertRes.lead_id };
 
   const { error: partErr } = await admin.from("eventos_participantes").insert({
     evento_id: evento.id,

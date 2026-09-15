@@ -20,6 +20,7 @@ import { MOTIVOS_PERDA } from "@/lib/crm/constants";
 import { isTipoSonhoSorteio, tipoSonhoParaCreditoLead } from "@/lib/eventos-sorteio/lead-map";
 import { isDbMissingColumnError } from "@/lib/comercial-eventos/db-ready";
 import { getCurrentTenantContext } from "@/lib/tenant/context";
+import { upsertLeadPorTelefone } from "@/lib/crm/upsert-lead";
 
 async function touchInteracao(supabase: Awaited<ReturnType<typeof createClient>>, leadId: string) {
   await supabase
@@ -117,15 +118,23 @@ export async function createLeadManualAction(formData: FormData) {
     ...(dadosSimulacao ? { dados_simulacao: dadosSimulacao } : {}),
   };
 
-  const { data, error } = await supabase.from("leads").insert(payload).select("id").single();
-  if (error) throw new Error(error.message);
+  let leadId: string;
+  if (payload.whatsapp) {
+    const upsertRes = await upsertLeadPorTelefone(supabase, payload as any);
+    if (!upsertRes.ok || !upsertRes.lead_id) throw new Error("Não foi possível salvar o lead.");
+    leadId = upsertRes.lead_id;
+  } else {
+    const { data, error } = await supabase.from("leads").insert(payload).select("id").single();
+    if (error || !data) throw new Error(error?.message ?? "Falha ao criar lead");
+    leadId = data.id;
+  }
 
-  await historico(data.id, usuario.id, "lead_criado", "Lead criado manualmente no admin");
+  await historico(leadId, usuario.id, "lead_criado", "Lead criado/atualizado no admin");
   revalidatePath("/admin/leads");
   if (intent === "stay") {
     redirect("/admin/leads/novo?ok=1");
   }
-  redirect(`/admin/leads/${data.id}`);
+  redirect(`/admin/leads/${leadId}`);
 }
 
 /** Cria leads de indicação tendo o lead atual como quem indicou. */
@@ -202,25 +211,12 @@ export async function createIndicacoesFromLeadAction(
       },
     };
 
-    let { data: leadRow, error } = await supabase.from("leads").insert(payload).select("id").single();
-    if (error && isDbMissingColumnError(error)) {
-      const {
-        tipo_credito: _tc,
-        parceiro_indicador_telefone: _pt,
-        observacao_indicacao: _oi,
-        parentesco_indicacao: _pi,
-        indicador_lead_id: _il,
-        ...legacy
-      } = payload;
-      const telNote = indicadorTel ? `Tel. de quem indicou: ${indicadorTel}` : null;
-      const mergedObs = [telNote, observacao].filter(Boolean).join("\n") || null;
-      ({ data: leadRow, error } = await supabase
-        .from("leads")
-        .insert({ ...legacy, observacoes: mergedObs })
-        .select("id")
-        .single());
+    const upsertRes = await upsertLeadPorTelefone(supabase, payload as any);
+
+    if (!upsertRes.ok || !upsertRes.lead_id) {
+      throw new Error(upsertRes.error ?? "Falha ao salvar indicação");
     }
-    if (error || !leadRow) throw new Error(error?.message ?? "Falha ao salvar indicação");
+    const leadRow = { id: upsertRes.lead_id };
     leadIds.push(leadRow.id);
 
     await historico(
