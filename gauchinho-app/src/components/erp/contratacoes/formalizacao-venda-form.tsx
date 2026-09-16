@@ -357,8 +357,8 @@ export function FormalizacaoVendaForm({
     rawConfig0?.usaSeguro ??
     (dadosSimulacao as any)?.usa_seguro ??
     (dadosSimulacao as any)?.seguro_pos_contemplacao ??
-    (Number((dadosSimulacao as any)?.total_seguro ?? (dadosSimulacao as any)?.seguro ?? 0) > 0) ??
-    grupoAtual?.seguro_habilitado
+    ((Number((dadosSimulacao as any)?.total_seguro ?? (dadosSimulacao as any)?.seguro ?? 0) > 0) ||
+    grupoAtual?.seguro_habilitado)
   );
   const seguroValorMensal = Number(
     rawResultado0?.seguroMensal ??

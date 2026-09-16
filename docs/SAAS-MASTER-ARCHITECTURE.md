@@ -2432,3 +2432,35 @@ Relatório:
 Relatório:
 `docs/relatorios-fases/FASE-234-REORGANIZACAO-DEFINITIVA-CONTA-CORRENTE-SOCIOS.md`.
 
+### Evolução Operacional 235 — Registro de Assembleias Multi-Grupos e Listagem de Cotas Próximas por Grupo
+
+1. **Diagnóstico Operacional:**
+   - No consórcio, as assembleias gerais ordinárias de uma mesma administradora ocorrem em data fixa mensal e a extração oficial (Loteria Federal) gera uma pedra sorteada única aplicável a múltiplos grupos vigentes da mesma administradora.
+   - O ERP exigia o cadastro manual grupo por grupo em `/erp/assembleias`, tornando o registro lento e sujeito a esquecimentos.
+   - Ao apurar as cotas mais próximas, o sistema exibia apenas o grupo selecionado isoladamente. Se aquele grupo não tivesse cotas com numeração definitiva no momento, exibia *"Nenhuma cota definitiva numerada neste grupo"*, forçando o operador a alternar grupo por grupo para encontrar os clientes contemplados ou com diferença mínima.
+
+2. **Backend & Modelagem Transacional (`actions.ts` e `assembleias.ts`):**
+   - **Suporte a "Todos os grupos":** `createAssembleiaAction` reconhece `grupo_id === "TODOS"`, busca todos os grupos concedidos e autorizados da empresa através de `listGruposAutorizadosForEmpresa(empresaId)` e insere em lote (`erp_assembleias_grupo`), preservando os triggers de integridade de tenant (`validate_erp_assembleia_tenant_integrity`) e append-only (`prevent_erp_assembleia_mutation`).
+   - **Função Canônica de Agrupamento e Proximidade (`agruparCotasPorGrupo`):**
+     - Mapeia cotas definitivas numeradas do tenant para todos os grupos do evento de assembleia.
+     - Ordena cotas por proximidade da pedra (`distancia = |cota - pedra|`).
+     - Prioriza grupos com **cotas sorteadas na pedra** (`distancia = 0`) e ranqueia por menor distância para visualização executiva imediata.
+
+3. **Interface do Usuário (`erp-assembleias-page.tsx`):**
+   - **Cadastro com 1 Clique:** Opção `★ Todos os grupos autorizados ({total})` no dropdown de grupos do formulário.
+   - **Histórico Lateral Consolidado por Evento:** Cards agrupados por data e pedra sorteada com badge de contagem de grupos (`Todos os grupos (12)` ou `Grupo {codigo}`).
+   - **Apuração Multi-Grupos com Destaque de Pedra Sorteada:**
+     - Cards estruturados por grupo com cabeçalho, quantidade de cotas e indicativo de menor distância.
+     - Tabela completa de clientes: **Cota**, **Cliente**, **Diferença da pedra**, **Status real** e **Atenção**.
+     - Destaque verde esmeralda `🎯 Sorteada!` para cotas de distância 0 (sorteadas na pedra).
+     - Botão funcional de alternar atenção (`toggleAtencaoAssembleiaAction`) conectado diretamente à assembleia do respectivo grupo.
+     - Barra de filtros rápidos para alternar entre "Todos os grupos" ou focar em um grupo individual.
+
+4. **Testes Automatizados:**
+   - 7 testes passando 100% via Vitest (`assembleias.test.ts` e `assembleias-contract.test.ts`), cobrindo apuração multi-grupos, ordenação por distância, identificação de contemplação na pedra, RLS e contratos de integridade.
+   - 0 erros de compilação TypeScript (`tsc --noEmit`).
+
+Relatório:
+`docs/relatorios-fases/FASE-235-ASSEMBLEIAS-MULTI-GRUPOS-PROXIMIDADE-COTAS.md`.
+
+

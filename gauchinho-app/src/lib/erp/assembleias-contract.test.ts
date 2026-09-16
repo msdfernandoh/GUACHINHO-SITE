@@ -29,4 +29,11 @@ describe("contrato Assembleias/Pedras ERP", () => {
     expect(routes).toContain('id: "assembleias"');
     expect(routes).not.toContain('id: "sorteios"');
   });
+
+  it("permite registrar assembleia para todos os grupos e lista clientes mais próximos por grupo", () => {
+    expect(page).toContain('value="TODOS"');
+    expect(page).toContain("Todos os grupos autorizados");
+    expect(page).toContain("agruparCotasPorGrupo");
+    expect(page).toContain("Diferença da pedra");
+  });
 });

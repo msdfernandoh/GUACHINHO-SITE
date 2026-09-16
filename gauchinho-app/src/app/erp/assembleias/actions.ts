@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { requireErpRouteAccess } from "@/lib/erp/erp-acesso-server";
+import { listGruposAutorizadosForEmpresa } from "@/lib/grupos/catalogo-autorizado-service";
 
 async function requireAssembleias(write = false) {
   const { usuario, empresaAtiva } = await requireErpRouteAccess("assembleias");
@@ -24,16 +25,36 @@ export async function createAssembleiaAction(formData: FormData) {
   if (!Number.isSafeInteger(pedra) || pedra < 0) throw new Error("Pedra sorteada inválida.");
   const numero = numeroRaw ? Number(numeroRaw) : null;
   if (numero != null && (!Number.isSafeInteger(numero) || numero <= 0)) throw new Error("Número da assembleia inválido.");
-  const { error } = await supabase.from("erp_assembleias_grupo").insert({
-    empresa_id: empresaId,
-    grupo_id: grupoId,
-    data_assembleia: dataAssembleia,
-    numero_assembleia: numero,
-    pedra_sorteada: pedra,
-    observacao: String(formData.get("observacao") ?? "").trim() || null,
-    criado_por_usuario_id: usuarioId,
-  });
-  if (error) throw new Error(error.message);
+  const observacao = String(formData.get("observacao") ?? "").trim() || null;
+
+  if (grupoId === "TODOS" || grupoId === "TODOS_GRUPOS") {
+    const gruposAutorizados = await listGruposAutorizadosForEmpresa(empresaId);
+    if (!gruposAutorizados || gruposAutorizados.length === 0) {
+      throw new Error("Nenhum grupo autorizado disponível para este tenant.");
+    }
+    const rows = gruposAutorizados.map((g) => ({
+      empresa_id: empresaId,
+      grupo_id: g.id,
+      data_assembleia: dataAssembleia,
+      numero_assembleia: numero,
+      pedra_sorteada: pedra,
+      observacao,
+      criado_por_usuario_id: usuarioId,
+    }));
+    const { error } = await supabase.from("erp_assembleias_grupo").insert(rows);
+    if (error) throw new Error(error.message);
+  } else {
+    const { error } = await supabase.from("erp_assembleias_grupo").insert({
+      empresa_id: empresaId,
+      grupo_id: grupoId,
+      data_assembleia: dataAssembleia,
+      numero_assembleia: numero,
+      pedra_sorteada: pedra,
+      observacao,
+      criado_por_usuario_id: usuarioId,
+    });
+    if (error) throw new Error(error.message);
+  }
   revalidatePath("/erp/assembleias");
 }
 

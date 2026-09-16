@@ -1,4 +1,4 @@
-import type { PropostaPdfData, SegmentoPdf, GrupoPdfBlock } from "./types";
+import type { PropostaPdfData, SegmentoPdf, GrupoPdfBlock, SegmentoTipo } from "./types";
 import {
   AVISO_PROJECAO_PDF,
   AVISO_RESUMO,
