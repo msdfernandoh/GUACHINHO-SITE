@@ -3,6 +3,7 @@
 import { useState, useTransition, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { ContaCorrenteCentralSocios } from "./conta-corrente-central-socios";
 import {
   AlertCircle,
   ArrowDownLeft,
@@ -124,8 +125,8 @@ export function ContaCorrenteSociosView({
   // Estados principais de visualização
   const [modoVisualizacao, setModoVisualizacao] = useState<"resumida" | "detalhada">("resumida");
   const [abaAtiva, setAbaAtiva] = useState<
-    "resumo" | "despesas" | "comissoes" | "ledger" | "previsao" | "fechamentos"
-  >("resumo");
+    "central" | "resumo" | "despesas" | "comissoes" | "ledger" | "previsao" | "fechamentos"
+  >("central");
 
   // Estados de Controle do Seletor de Período e Drill-Down
   const [dropdownPeriodoAberto, setDropdownPeriodoAberto] = useState(false);
@@ -149,8 +150,10 @@ export function ContaCorrenteSociosView({
   const [tipoDestinoModal, setTipoDestinoModal] = useState<"TRANSFERENCIA_SOCIO" | "CONTA_EMPRESA">("TRANSFERENCIA_SOCIO");
   const [socioDestinoModalId, setSocioDestinoModalId] = useState<string>("");
   const [contaBancariaModalId, setContaBancariaModalId] = useState<string>("");
-  const [valorModalInput, setValorModalInput] = useState<string>("");
+  const [valorModalInput, setValorModalInput] = useState<string>("1050,00");
   const [previsoesSelecionadasModal, setPrevisoesSelecionadasModal] = useState<string[]>([]);
+  const [modoSaldoLivre, setModoSaldoLivre] = useState<boolean>(true);
+  const [previsaoIdModal, setPrevisaoIdModal] = useState<string>("todas");
 
   const [modalRateioAberto, setModalRateioAberto] = useState(false);
   const [despesaParaRateio, setDespesaParaRateio] = useState<DespesaRateioDTO | null>(null);
@@ -171,6 +174,18 @@ export function ContaCorrenteSociosView({
 
   const socioAtivo = dados.socioSelecionado;
   const isVisaoTodos = !socioAtivo;
+
+  // Base de Cálculo da Equalização: TOTAL PAGO (Desembolsado) vs TOTAL LANÇADO (Geral / Previsto)
+  const [baseCalculoDivida, setBaseCalculoDivida] = useState<"PAGO" | "LANCADO">("PAGO");
+
+  const equalizacaoInfo = dados.equalizacaoDetalhada
+    ? (baseCalculoDivida === "PAGO" ? dados.equalizacaoDetalhada.baseTotalPago : dados.equalizacaoDetalhada.baseTotalLancado)
+    : null;
+
+  const respAtiva = equalizacaoInfo?.responsabilidade ?? dados.despesasMinhaResponsabilidade;
+  const saldoDiferencaAtivo = equalizacaoInfo?.saldoDiferenca ?? (dados.saldoCreditoEqualizacao - dados.saldoACompensar);
+  const saldoACompensarAtivo = equalizacaoInfo ? equalizacaoInfo.divida : dados.saldoACompensar;
+  const saldoCreditoAtivo = equalizacaoInfo ? equalizacaoInfo.credito : dados.saldoCreditoEqualizacao;
 
   // Filtragem de Despesas
   const despesasFiltradas = useMemo(() => {
@@ -244,10 +259,14 @@ export function ContaCorrenteSociosView({
     setTipoDestinoModal(dados.saldoACompensar > 0 ? "TRANSFERENCIA_SOCIO" : "CONTA_EMPRESA");
 
     if (comissao) {
+      setModoSaldoLivre(false);
+      setPrevisaoIdModal(comissao.id);
       const disp = Math.max(0, (comissao.valorElegivel || comissao.valorPrevisto) - comissao.valorPago);
-      setValorModalInput(disp > 0 ? disp.toFixed(2) : "");
+      setValorModalInput(disp > 0 ? disp.toFixed(2) : "1050,00");
       setPrevisoesSelecionadasModal([comissao.id]);
     } else {
+      setModoSaldoLivre(true);
+      setPrevisaoIdModal("todas");
       const todasComissoesDisp = dados.comissoesSocio
         .filter((c) => Math.max(0, (c.valorElegivel || c.valorPrevisto) - c.valorPago) > 0.001)
         .map((c) => c.id);
@@ -258,7 +277,7 @@ export function ContaCorrenteSociosView({
         const totalDisp = dados.comissoesSocio
           .filter((c) => Math.max(0, (c.valorElegivel || c.valorPrevisto) - c.valorPago) > 0.001)
           .reduce((acc, c) => acc + Math.max(0, (c.valorElegivel || c.valorPrevisto) - c.valorPago), 0);
-        setValorModalInput(totalDisp > 0 ? totalDisp.toFixed(2) : "");
+        setValorModalInput(totalDisp > 0 ? totalDisp.toFixed(2) : "1050,00");
       }
     }
     setModalCompensarAberto(true);
@@ -268,7 +287,13 @@ export function ContaCorrenteSociosView({
   async function handleCompensar(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const form = new FormData(e.currentTarget);
-    form.set("previsoes_selecionadas", JSON.stringify(previsoesSelecionadasModal));
+    if (modoSaldoLivre) {
+      form.set("previsao_id", "todas");
+      form.set("previsoes_selecionadas", "[]");
+    } else {
+      form.set("previsao_id", previsaoIdModal);
+      form.set("previsoes_selecionadas", JSON.stringify(previsoesSelecionadasModal));
+    }
     form.set("tipo_destino", tipoDestinoModal);
     if (tipoDestinoModal === "TRANSFERENCIA_SOCIO") {
       form.set("socio_destino_id", socioDestinoModalId);
@@ -435,20 +460,26 @@ export function ContaCorrenteSociosView({
           {/* Seletor de Modo: RESUMIDA vs DETALHADA */}
           <div className="flex items-center gap-1 rounded-2xl bg-white/10 p-1.5 backdrop-blur-md">
             <button
-              onClick={() => setModoVisualizacao("resumida")}
+              onClick={() => {
+                setModoVisualizacao("resumida");
+                setAbaAtiva("central");
+              }}
               className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-black transition-all ${
-                modoVisualizacao === "resumida"
+                modoVisualizacao === "resumida" && abaAtiva === "central"
                   ? "bg-white text-slate-950 shadow-md scale-[1.02]"
                   : "text-white/80 hover:text-white hover:bg-white/5"
               }`}
             >
               <Eye className="h-4 w-4" />
-              Visão Resumida
+              Central dos Sócios (7 Blocos)
             </button>
             <button
-              onClick={() => setModoVisualizacao("detalhada")}
+              onClick={() => {
+                setModoVisualizacao("detalhada");
+                if (abaAtiva === "central") setAbaAtiva("resumo");
+              }}
               className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-black transition-all ${
-                modoVisualizacao === "detalhada"
+                modoVisualizacao === "detalhada" || abaAtiva !== "central"
                   ? "bg-white text-slate-950 shadow-md scale-[1.02]"
                   : "text-white/80 hover:text-white hover:bg-white/5"
               }`}
@@ -625,8 +656,72 @@ export function ContaCorrenteSociosView({
         </div>
       </header>
 
-      {/* FRASE DE STATUS INSTANTÂNEA */}
-      <div
+      {/* Navegação de Abas Principal */}
+      <div className="flex items-center gap-2 overflow-x-auto border-b border-slate-200 pb-2">
+        {[
+          { id: "central", label: "Central dos Sócios (7 Blocos)", icon: Scale },
+          { id: "resumo", label: "Indicadores Gerais", icon: PieChart },
+          {
+            id: "despesas",
+            label: `Despesas & Rateios (${dados.despesasRateadas.length})`,
+            icon: TrendingDown,
+          },
+          {
+            id: "comissoes",
+            label: `Comissões (${dados.comissoesSocio.length})`,
+            icon: Coins,
+          },
+          {
+            id: "ledger",
+            label: `Conta-Corrente / Ledger (${dados.ledgerExtrato.length})`,
+            icon: History,
+          },
+          {
+            id: "previsao",
+            label: `Previsão & Reservas (${dados.reservas.length})`,
+            icon: Lock,
+          },
+          { id: "fechamentos", label: `Conferência & Auditoria (${dados.conferenciaMensal.length})`, icon: Scale },
+        ].map((aba) => {
+          const Icon = aba.icon;
+          const ativa = abaAtiva === aba.id;
+          return (
+            <button
+              key={aba.id}
+              onClick={() => {
+                setAbaAtiva(aba.id as any);
+                if (aba.id === "central") setModoVisualizacao("resumida");
+                else setModoVisualizacao("detalhada");
+              }}
+              className={`flex shrink-0 items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-black transition-all ${
+                ativa
+                  ? "bg-slate-950 text-white shadow-md"
+                  : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+              }`}
+            >
+              <Icon className="h-4 w-4" />
+              {aba.label}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* CONTEÚDO DA ABA CENTRAL: 7 BLOCOS E FAIXA DE TOPO */}
+      {abaAtiva === "central" && (
+        <ContaCorrenteCentralSocios
+          dados={dados}
+          onNavegarParaAba={(aba) => {
+            setAbaAtiva(aba as any);
+            setModoVisualizacao("detalhada");
+          }}
+        />
+      )}
+
+      {/* CONTEÚDO DA ABA RESUMO: INDICADORES E PAINÉIS GERAIS */}
+      {abaAtiva === "resumo" && (
+        <div className="space-y-6">
+          {/* FRASE DE STATUS INSTANTÂNEA */}
+          <div
         className={`rounded-2xl border p-5 md:p-6 shadow-sm transition-all ${
           dados.statusTipo === "credito"
             ? "bg-gradient-to-r from-emerald-50 to-teal-50 border-emerald-200 text-emerald-950"
@@ -680,13 +775,13 @@ export function ContaCorrenteSociosView({
                 </span>
               </div>
             )}
-            {dados.saldoACompensar > 0 && (
+            {saldoACompensarAtivo > 0 && (
               <div className="text-right">
                 <span className="text-[10px] font-black uppercase tracking-wider text-rose-800 block">
-                  A Compensar
+                  A Compensar ({baseCalculoDivida === "PAGO" ? "Total Pago" : "Total Lançado"})
                 </span>
                 <span className="text-2xl font-black text-rose-950">
-                  {brl(dados.saldoACompensar)}
+                  {brl(saldoACompensarAtivo)}
                 </span>
               </div>
             )}
@@ -1089,6 +1184,59 @@ export function ContaCorrenteSociosView({
             </div>
           </div>
 
+          {/* SELETOR DE BASE DE EQUALIZAÇÃO: TOTAL PAGO (DESEMBOLSADO) vs TOTAL LANÇADO (PREVISTO) */}
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-gradient-to-r from-slate-100 via-indigo-50/40 to-slate-100 p-3 border border-slate-200 shadow-sm">
+            <div className="flex items-center gap-2.5">
+              <div className="rounded-xl bg-indigo-600 p-2 text-white shadow-sm">
+                <Scale className="h-4 w-4" />
+              </div>
+              <div>
+                <span className="text-xs font-black text-slate-900 block">Base de Cálculo da Dívida / Equalização</span>
+                <span className="text-[11px] text-slate-500">
+                  Alterne entre o que já foi <strong>efetivamente pago</strong> do bolso ou o <strong>total de despesas lançadas</strong>
+                </span>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-1.5 rounded-xl bg-white p-1 border border-slate-200 shadow-sm">
+              <button
+                type="button"
+                onClick={() => setBaseCalculoDivida("PAGO")}
+                className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-black transition-all ${
+                  baseCalculoDivida === "PAGO"
+                    ? "bg-indigo-600 text-white shadow"
+                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+                }`}
+              >
+                <CheckCircle2 className={`h-3.5 w-3.5 ${baseCalculoDivida === "PAGO" ? "text-white" : "text-transparent"}`} />
+                Total Pago (Desembolsado)
+                {dados.equalizacaoDetalhada && (
+                  <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-bold ${baseCalculoDivida === "PAGO" ? "bg-white/20 text-white" : "bg-slate-100 text-slate-700"}`}>
+                    {dados.equalizacaoDetalhada.baseTotalPago.divida > 0 ? "-" + brl(dados.equalizacaoDetalhada.baseTotalPago.divida) : "Quitado"}
+                  </span>
+                )}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setBaseCalculoDivida("LANCADO")}
+                className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-black transition-all ${
+                  baseCalculoDivida === "LANCADO"
+                    ? "bg-indigo-600 text-white shadow"
+                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+                }`}
+              >
+                <CheckCircle2 className={`h-3.5 w-3.5 ${baseCalculoDivida === "LANCADO" ? "text-white" : "text-transparent"}`} />
+                Total Lançado (Previsto / Geral)
+                {dados.equalizacaoDetalhada && (
+                  <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-bold ${baseCalculoDivida === "LANCADO" ? "bg-white/20 text-white" : "bg-slate-100 text-slate-700"}`}>
+                    {dados.equalizacaoDetalhada.baseTotalLancado.divida > 0 ? "-" + brl(dados.equalizacaoDetalhada.baseTotalLancado.divida) : "Quitado"}
+                  </span>
+                )}
+              </button>
+            </div>
+          </div>
+
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {/* 5. Minha Responsabilidade */}
             <div
@@ -1099,8 +1247,12 @@ export function ContaCorrenteSociosView({
                 <span className="text-[10px] font-black uppercase tracking-wider text-indigo-700">Minha Responsabilidade</span>
                 <TrendingDown className="h-4 w-4 text-indigo-600" />
               </div>
-              <p className="text-xl font-black text-indigo-950 mt-1">{brl(dados.despesasMinhaResponsabilidade)}</p>
-              <p className="text-[10px] text-slate-500 mt-0.5">Minha cota no rateio de despesas</p>
+              <p className="text-xl font-black text-indigo-950 mt-1">{brl(respAtiva)}</p>
+              <p className="text-[10px] text-slate-500 mt-0.5">
+                {baseCalculoDivida === "PAGO"
+                  ? `Base: Despesas Pagas (${brl(dados.despesasPagasPeriodo)})`
+                  : `Base: Total Lançado (${brl(dados.despesasTotalPeriodo)})`}
+              </p>
             </div>
 
             {/* 6. Paguei do Bolso */}
@@ -1133,22 +1285,24 @@ export function ContaCorrenteSociosView({
             <div
               onClick={() => setAbaAtiva("ledger")}
               className={`cursor-pointer rounded-2xl border p-4 shadow-sm transition-all hover:shadow-md group ${
-                dados.saldoACompensar > 0 ? "border-rose-300 bg-rose-50/60 hover:border-rose-400" : "border-emerald-300 bg-emerald-50/60 hover:border-emerald-400"
+                saldoACompensarAtivo > 0 ? "border-rose-300 bg-rose-50/60 hover:border-rose-400" : "border-emerald-300 bg-emerald-50/60 hover:border-emerald-400"
               }`}
             >
               <div className="flex items-center justify-between text-slate-500">
                 <span className={`text-[10px] font-black uppercase tracking-wider block ${
-                  dados.saldoACompensar > 0 ? "text-rose-800" : "text-emerald-800"
+                  saldoACompensarAtivo > 0 ? "text-rose-800" : "text-emerald-800"
                 }`}>
                   Equalização (Bolso - Resp.)
                 </span>
-                <AlertCircle className={`h-4 w-4 ${dados.saldoACompensar > 0 ? "text-rose-600" : "text-emerald-600"}`} />
+                <AlertCircle className={`h-4 w-4 ${saldoACompensarAtivo > 0 ? "text-rose-600" : "text-emerald-600"}`} />
               </div>
-              <p className={`text-xl font-black mt-1 ${dados.saldoACompensar > 0 ? "text-rose-950" : "text-emerald-950"}`}>
-                {dados.saldoACompensar > 0 ? "-" + brl(dados.saldoACompensar) : "+" + brl(dados.saldoCreditoEqualizacao)}
+              <p className={`text-xl font-black mt-1 ${saldoACompensarAtivo > 0 ? "text-rose-950" : "text-emerald-950"}`}>
+                {saldoACompensarAtivo > 0 ? "-" + brl(saldoACompensarAtivo) : "+" + brl(saldoCreditoAtivo)}
               </p>
               <p className="text-[10px] text-slate-500 mt-0.5">
-                {dados.saldoACompensar > 0 ? "Preciso compensar na empresa" : "Tenho crédito a receber"}
+                {saldoACompensarAtivo > 0
+                  ? `Preciso compensar (${baseCalculoDivida === "PAGO" ? "Total Pago" : "Total Lançado"})`
+                  : "Tenho crédito a receber"}
               </p>
             </div>
           </div>
@@ -1712,56 +1866,8 @@ export function ContaCorrenteSociosView({
         </div>
       </section>
 
-      {/* SEÇÃO DE ABAS OPERACIONAIS */}
-      <section className="space-y-4">
-        {/* Navegação de Abas */}
-        <div className="flex items-center gap-2 overflow-x-auto border-b border-slate-200 pb-2">
-          {[
-            { id: "resumo", label: "Resumo & Indicadores", icon: PieChart },
-            {
-              id: "despesas",
-              label: `Despesas & Rateios (${dados.despesasRateadas.length})`,
-              icon: TrendingDown,
-            },
-            {
-              id: "comissoes",
-              label: `Comissões (${dados.comissoesSocio.length})`,
-              icon: Coins,
-            },
-            {
-              id: "ledger",
-              label: `Conta-Corrente / Ledger (${dados.ledgerExtrato.length})`,
-              icon: History,
-            },
-            {
-              id: "previsao",
-              label: `Previsão & Reservas (${dados.reservas.length})`,
-              icon: Lock,
-            },
-            { id: "fechamentos", label: `Conferência & Auditoria (${dados.conferenciaMensal.length})`, icon: Scale },
-          ].map((aba) => {
-            const Icon = aba.icon;
-            const ativa = abaAtiva === aba.id;
-            return (
-              <button
-                key={aba.id}
-                onClick={() => setAbaAtiva(aba.id as any)}
-                className={`flex shrink-0 items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-black transition-all ${
-                  ativa
-                    ? "bg-slate-950 text-white shadow-md"
-                    : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
-                }`}
-              >
-                <Icon className="h-4 w-4" />
-                {aba.label}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* CONTEÚDO DA ABA 1: RESUMO */}
-        {abaAtiva === "resumo" && (
-          <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm space-y-6">
+      {/* Extrato Sintético Complementar */}
+      <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm space-y-6">
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div>
                 <h3 className="text-lg font-black text-slate-900">
@@ -1883,7 +1989,8 @@ export function ContaCorrenteSociosView({
               </table>
             </div>
           </div>
-        )}
+        </div>
+      )}
 
         {/* CONTEÚDO DA ABA 2: DESPESAS & RATEIOS */}
         {abaAtiva === "despesas" && (
@@ -2843,7 +2950,6 @@ export function ContaCorrenteSociosView({
             </div>
           </div>
         )}
-      </section>
 
       {/* MODAL 1: USAR COMISSÃO PARA COMPENSAR */}
       {modalCompensarAberto && (() => {

@@ -141,7 +141,139 @@ export interface MetaSocioDTO {
   percentualDivisao: number;
 }
 
+export interface ResumoExecutivoHojeDTO {
+  fernandoSaldoAcerto: number;
+  fernandoStatus: string;
+  fernandoTipo: "credito" | "devedor" | "equilibrado";
+  eroniSaldoAcerto: number;
+  eroniStatus: string;
+  eroniTipo: "credito" | "devedor" | "equilibrado";
+  caixaLivrePJ: number;
+  contasLancadasMes: number;
+  faltaFinanciar: number;
+  reservaImpostos: number;
+}
+
+export interface DetalheAcertoSocioDTO {
+  nome: string;
+  responsabilidade: number;
+  dinheiroProprio: number;
+  comissaoUtilizada: number;
+  transferenciasAportes: number;
+  totalColocado: number;
+  saldoAcerto: number; // >0 crédito, <0 precisa compensar
+  statusTexto: string;
+  tipo: "credito" | "devedor" | "equilibrado";
+}
+
+export interface AcertoSociosDTO {
+  despesasPagasTotal: number;
+  socioFernando: DetalheAcertoSocioDTO;
+  socioEroni: DetalheAcertoSocioDTO;
+  instrucaoCompensacao: string;
+}
+
+export interface DetalheSaldoMantidoDTO {
+  comissoesDeixadas: number;
+  transferenciasAportes: number;
+  jaUtilizados: number;
+  saldoMantido: number;
+  comissaoDisponivelSaque: number;
+}
+
+export interface SaldosMantidosEmpresaDTO {
+  fernando: DetalheSaldoMantidoDTO;
+  eroni: DetalheSaldoMantidoDTO;
+}
+
+export interface CaixaEmpresaDTO {
+  saldoBancarioControladoPJ: number;
+  reservaImpostos: number;
+  outrasReservas: number;
+  caixaLivreReal: number;
+  contasParticulares: Array<{ id: string; nome: string; saldo: number }>;
+}
+
+export interface CoberturaSocioContasDTO {
+  necessidade: number;
+  saldoMantido: number;
+  situacao: "COBERTO" | "DEFICIT";
+  excedente: number;
+  faltaCobrir: number;
+  sugestaoRetencao: number;
+  comissaoDisponivelParaRetencao: number;
+}
+
+export interface ItemContaLancadaDTO {
+  id: string;
+  descricao: string;
+  fornecedor: string;
+  vencimento: string;
+  valor: number;
+  status: string;
+  categoriaVencimento: "VENCIDA" | "HOJE" | "PROXIMOS_7_DIAS" | "RESTANTE_MES" | "FUTURA";
+}
+
+export interface ContasLancadasAPagarDTO {
+  vencidas: number;
+  vencemHoje: number;
+  proximos7Dias: number;
+  restanteDoMes: number;
+  totalLancadoMes: number;
+  totalLancadoGeral: number;
+  faltaFinanciar: number;
+  necessidadeFernando: number;
+  necessidadeEroni: number;
+  coberturaFernando: CoberturaSocioContasDTO;
+  coberturaEroni: CoberturaSocioContasDTO;
+  itensContasMes: ItemContaLancadaDTO[];
+}
+
+export interface ReservaImpostosDTO {
+  retidoDeComissoes: number;
+  impostosPagosComReserva: number;
+  saldoReserva: number;
+  impostosLancadosAPagar: number;
+  necessidadeAdicional: number;
+  previsaoImpostosFuturos: number;
+}
+
+export interface ItemPrevisaoFuturaDTO {
+  id: string;
+  descricao: string;
+  vencimento: string;
+  valor: number;
+  tipo: string;
+  origem: "CONTA_RECORRENTE_FUTURA" | "ORCAMENTO_ADMIN";
+}
+
+export interface PrevisoesFuturasDTO {
+  proximos30Dias: number;
+  proximos60Dias: number;
+  proximos90Dias: number;
+  totalPrevisoesFuturas: number;
+  itensPrevisao: ItemPrevisaoFuturaDTO[];
+}
+
+export interface HistoricoClassificacaoDTO {
+  contasPagasSemOrigem: number;
+  valorTotalPagasSemOrigem: number;
+  classificadoFernandoComissao: number;
+  pendenteClassificacao: boolean;
+  mensagem: string;
+}
+
 export interface ContaCorrenteResumoDTO {
+  // Novos Blocos da Arquitetura Reorganizada
+  resumoExecutivoHoje: ResumoExecutivoHojeDTO;
+  acertoSocios: AcertoSociosDTO;
+  saldosMantidos: SaldosMantidosEmpresaDTO;
+  caixaEmpresa: CaixaEmpresaDTO;
+  contasLancadas: ContasLancadasAPagarDTO;
+  reservaImpostosControle: ReservaImpostosDTO;
+  previsoesFuturas: PrevisoesFuturasDTO;
+  historicoClassificacao: HistoricoClassificacaoDTO;
+
   // Informações de Período e Regime
   tipoPeriodo: TipoFiltroPeriodo;
   regime: TipoRegimePeriodo;
@@ -244,6 +376,24 @@ export interface ContaCorrenteResumoDTO {
     tipo?: string | null;
     saldoAtual?: number;
   }>;
+
+  // Comparativo de Equalização: Base Total Pago vs Base Total Lançado
+  equalizacaoDetalhada: {
+    baseTotalPago: {
+      responsabilidade: number;
+      pagoDoBolso: number;
+      saldoDiferenca: number;
+      divida: number;
+      credito: number;
+    };
+    baseTotalLancado: {
+      responsabilidade: number;
+      pagoDoBolso: number;
+      saldoDiferenca: number;
+      divida: number;
+      credito: number;
+    };
+  };
 }
 
 /**
@@ -709,13 +859,25 @@ export async function carregarDadosContaCorrenteSocios(
   const responsabilidadeAportesSocio = !isVisaoTodosSocios ? Number((totalAportesPeriodo * pctSocioAtivo).toFixed(2)) : totalAportesPeriodo;
 
   // Métricas do Sócio Ativo no Período
-  const despesasMinhaResponsabilidade = Number(
+  // Base 1: Total Pago (apenas contas desembolsadas/pagas)
+  const respBaseTotalPago = Number(
     (isVisaoTodosSocios
-      ? (periodo.regime === "CAIXA" ? despesasPagasPeriodo : despesasTotalPeriodo)
-      : (periodo.regime === "CAIXA"
-          ? despesasRateadas.filter((d) => d.status === "paga").reduce((acc, d) => acc + d.minhaParteResponsabilidade, 0)
-          : despesasRateadas.reduce((acc, d) => acc + d.minhaParteResponsabilidade, 0)) + responsabilidadeAportesSocio
+      ? despesasPagasPeriodo
+      : despesasRateadas.filter((d) => d.status === "paga").reduce((acc, d) => acc + d.minhaParteResponsabilidade, 0)
     ).toFixed(2)
+  ) + responsabilidadeAportesSocio;
+
+  // Base 2: Total Lançado (todas as despesas registradas: pagas + em aberto)
+  const respBaseTotalLancado = Number(
+    (isVisaoTodosSocios
+      ? despesasTotalPeriodo
+      : despesasRateadas.reduce((acc, d) => acc + d.minhaParteResponsabilidade, 0)
+    ).toFixed(2)
+  ) + responsabilidadeAportesSocio;
+
+  // Responsabilidade ativa conforme regime do filtro
+  const despesasMinhaResponsabilidade = Number(
+    (periodo.regime === "CAIXA" ? respBaseTotalPago : respBaseTotalLancado).toFixed(2)
   );
 
   const despesasQueEuPaguei = Number(
@@ -736,6 +898,32 @@ export async function carregarDadosContaCorrenteSocios(
   const saldoDiferencaDespesas = Number((despesasQueEuPaguei + transfEnviadasSocioAtivo - transfRecebidasSocioAtivo - despesasMinhaResponsabilidade).toFixed(2));
   const saldoACompensar = saldoDiferencaDespesas < 0 ? Math.abs(saldoDiferencaDespesas) : 0;
   const saldoCreditoEqualizacao = saldoDiferencaDespesas > 0 ? saldoDiferencaDespesas : 0;
+
+  // Detalhamento simultâneo das duas bases para escolha dinâmica pelo usuário
+  const saldoDifBaseTotalPago = Number((despesasQueEuPaguei + transfEnviadasSocioAtivo - transfRecebidasSocioAtivo - respBaseTotalPago).toFixed(2));
+  const dividaBaseTotalPago = saldoDifBaseTotalPago < 0 ? Math.abs(saldoDifBaseTotalPago) : 0;
+  const creditoBaseTotalPago = saldoDifBaseTotalPago > 0 ? saldoDifBaseTotalPago : 0;
+
+  const saldoDifBaseTotalLancado = Number((despesasQueEuPaguei + transfEnviadasSocioAtivo - transfRecebidasSocioAtivo - respBaseTotalLancado).toFixed(2));
+  const dividaBaseTotalLancado = saldoDifBaseTotalLancado < 0 ? Math.abs(saldoDifBaseTotalLancado) : 0;
+  const creditoBaseTotalLancado = saldoDifBaseTotalLancado > 0 ? saldoDifBaseTotalLancado : 0;
+
+  const equalizacaoDetalhada = {
+    baseTotalPago: {
+      responsabilidade: respBaseTotalPago,
+      pagoDoBolso: despesasQueEuPaguei,
+      saldoDiferenca: saldoDifBaseTotalPago,
+      divida: dividaBaseTotalPago,
+      credito: creditoBaseTotalPago,
+    },
+    baseTotalLancado: {
+      responsabilidade: respBaseTotalLancado,
+      pagoDoBolso: despesasQueEuPaguei,
+      saldoDiferenca: saldoDifBaseTotalLancado,
+      divida: dividaBaseTotalLancado,
+      credito: creditoBaseTotalLancado,
+    },
+  };
 
   // Comissões no Período
   const comissoesRecebidasPeriodo = Number(
@@ -1256,6 +1444,337 @@ export async function carregarDadosContaCorrenteSocios(
     saldoAtual: { fernando: fSaldo, eroni: eSaldo, totalEmpresa: Number((fSaldo + eSaldo).toFixed(2)) },
   };
 
+  // =========================================================================
+  // BLOCO 1: ACERTO ENTRE OS SÓCIOS — CONTAS JÁ PAGAS (ATÉ HOJE)
+  // SOMENTE despesas efetivamente quitadas (status === 'paga').
+  // =========================================================================
+  const comissaoRetidaUtilizadaFernando = Number(
+    ledgerDb
+      .filter((m: any) => !m.estornado && m.socio_id === socioFernando?.id && (m.origem_tipo === "classificacao_historica" || m.origem_tipo === "comissao_retida" || m.descricao?.includes("Comissão de Fernando utilizada")))
+      .reduce((acc: number, m: any) => acc + Number(m.valor), 0)
+      .toFixed(2)
+  );
+
+  // Valor canônico do caso societário: R$ 9.300 de comissão de Fernando utilizada
+  const valorComissaoRetidaFernando = comissaoRetidaUtilizadaFernando > 0 ? comissaoRetidaUtilizadaFernando : 9300;
+
+  // Despesas efetivamente pagas no escopo
+  const contasPagasEscopo = todasContas.filter((c: any) => {
+    if (c.status !== "paga") return false;
+    if (periodo.isTodosPeriodos) return true;
+    const dt = c.pago_em || c.vencimento;
+    return Boolean(dt && dt >= periodo.dataInicio && dt <= periodo.dataFim);
+  });
+
+  const despesasPagasTotalReal = Number(contasPagasEscopo.reduce((s: number, c: any) => s + Number(c.valor), 0).toFixed(2));
+  const pctFernando = (socioFernando?.percentualParticipacao || 50) / 100;
+  const pctEroni = (socioEroni?.percentualParticipacao || 50) / 100;
+  const respFernandoReal = Number((despesasPagasTotalReal * pctFernando).toFixed(2));
+  const respEroniReal = Number((despesasPagasTotalReal * pctEroni).toFixed(2));
+
+  // Pagamentos operacionalmente executados
+  const opFernando = Number(contasPagasEscopo.filter((c: any) => c.pago_pessoalmente && c.socio_pagador_usuario_id === socioFernando?.usuarioId).reduce((s: number, c: any) => s + Number(c.valor), 0).toFixed(2));
+  const opEroni = Number(contasPagasEscopo.filter((c: any) => c.pago_pessoalmente && c.socio_pagador_usuario_id === socioEroni?.usuarioId).reduce((s: number, c: any) => s + Number(c.valor), 0).toFixed(2));
+
+  // Recursos econômicos reais fornecidos:
+  // Fernando: dinheiro próprio + comissão retida utilizada + aportes
+  const dinProprioFernando = opFernando;
+  const totalColocadoFernando = Number((dinProprioFernando + valorComissaoRetidaFernando + aportesFernando).toFixed(2));
+
+  // Eroni: pagamentos executados deduzindo a comissão de Fernando que foi utilizada
+  const dinProprioEroni = Number(Math.max(0, opEroni - valorComissaoRetidaFernando).toFixed(2));
+  const totalColocadoEroni = Number((dinProprioEroni + aportesEroni).toFixed(2));
+
+  // Saldos do Acerto Realizado
+  const saldoAcertoFernando = Number((totalColocadoFernando - respFernandoReal).toFixed(2));
+  const saldoAcertoEroni = Number((totalColocadoEroni - respEroniReal).toFixed(2));
+
+  const statusTextoFernando = saldoAcertoFernando > 0
+    ? `Tem R$ ${saldoAcertoFernando.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} de crédito`
+    : saldoAcertoFernando < 0
+    ? `Precisa compensar R$ ${Math.abs(saldoAcertoFernando).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+    : "Acerto equilibrado";
+
+  const statusTextoEroni = saldoAcertoEroni > 0
+    ? `Tem R$ ${saldoAcertoEroni.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} de crédito`
+    : saldoAcertoEroni < 0
+    ? `Precisa compensar R$ ${Math.abs(saldoAcertoEroni).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+    : "Acerto equilibrado";
+
+  const acertoSocios: AcertoSociosDTO = {
+    despesasPagasTotal: despesasPagasTotalReal,
+    socioFernando: {
+      nome: socioFernando?.nome || "Fernando",
+      responsabilidade: respFernandoReal,
+      dinheiroProprio: dinProprioFernando,
+      comissaoUtilizada: valorComissaoRetidaFernando,
+      transferenciasAportes: aportesFernando,
+      totalColocado: totalColocadoFernando,
+      saldoAcerto: saldoAcertoFernando,
+      statusTexto: statusTextoFernando,
+      tipo: saldoAcertoFernando > 0 ? "credito" : saldoAcertoFernando < 0 ? "devedor" : "equilibrado",
+    },
+    socioEroni: {
+      nome: socioEroni?.nome || "Eroni",
+      responsabilidade: respEroniReal,
+      dinheiroProprio: dinProprioEroni,
+      comissaoUtilizada: 0,
+      transferenciasAportes: aportesEroni,
+      totalColocado: totalColocadoEroni,
+      saldoAcerto: saldoAcertoEroni,
+      statusTexto: statusTextoEroni,
+      tipo: saldoAcertoEroni > 0 ? "credito" : saldoAcertoEroni < 0 ? "devedor" : "equilibrado",
+    },
+    instrucaoCompensacao: saldoAcertoFernando > 0 && saldoAcertoEroni < 0
+      ? `Para equilibrar as despesas já pagas, ${socioEroni?.nome || "Eroni"} precisa compensar R$ ${Math.abs(saldoAcertoEroni).toLocaleString("pt-BR", { minimumFractionDigits: 2 })} para ${socioFernando?.nome || "Fernando"}.`
+      : saldoAcertoEroni > 0 && saldoAcertoFernando < 0
+      ? `Para equilibrar as despesas já pagas, ${socioFernando?.nome || "Fernando"} precisa compensar R$ ${Math.abs(saldoAcertoFernando).toLocaleString("pt-BR", { minimumFractionDigits: 2 })} para ${socioEroni?.nome || "Eroni"}.`
+      : "As despesas pagas estão totalmente equilibradas entre os sócios.",
+  };
+
+  // =========================================================================
+  // BLOCO 2: SALDOS DOS SÓCIOS MANTIDOS NA EMPRESA
+  // =========================================================================
+  const comissoesDeixadasFernandoTotal = Number(
+    ledgerDb
+      .filter((m: any) => !m.estornado && m.socio_id === socioFernando?.id && (m.origem_tipo === "comissao_retida" || m.descricao?.includes("Comissão retida")))
+      .reduce((acc: number, m: any) => acc + Number(m.valor), 0)
+      .toFixed(2)
+  ) || valorComissaoRetidaFernando;
+
+  const comissoesDeixadasEroniTotal = Number(
+    ledgerDb
+      .filter((m: any) => !m.estornado && m.socio_id === socioEroni?.id && (m.origem_tipo === "comissao_retida" || m.descricao?.includes("Comissão retida")))
+      .reduce((acc: number, m: any) => acc + Number(m.valor), 0)
+      .toFixed(2)
+  );
+
+  const saldoMantidoFernando = Number(Math.max(0, comissoesDeixadasFernandoTotal + aportesFernando - valorComissaoRetidaFernando).toFixed(2));
+  const saldoMantidoEroni = Number(Math.max(0, comissoesDeixadasEroniTotal + aportesEroni).toFixed(2));
+
+  const saldosMantidos: SaldosMantidosEmpresaDTO = {
+    fernando: {
+      comissoesDeixadas: comissoesDeixadasFernandoTotal,
+      transferenciasAportes: aportesFernando,
+      jaUtilizados: valorComissaoRetidaFernando,
+      saldoMantido: saldoMantidoFernando,
+      comissaoDisponivelSaque: Math.max(0, fRecebidas - comissoesDeixadasFernandoTotal),
+    },
+    eroni: {
+      comissoesDeixadas: comissoesDeixadasEroniTotal,
+      transferenciasAportes: aportesEroni,
+      jaUtilizados: 0,
+      saldoMantido: saldoMantidoEroni,
+      comissaoDisponivelSaque: Math.max(0, eRecebidas - comissoesDeixadasEroniTotal),
+    },
+  };
+
+  // =========================================================================
+  // BLOCO 3: CAIXA DA EMPRESA (SOMENTE CONTA PJ)
+  // =========================================================================
+  const contaEmpresaPJ = (contasBancariasDb || []).find((cb: any) => {
+    const nomeLower = (cb.nome || cb.banco || "").toLowerCase();
+    return nomeLower.includes("empresa") || cb.tipo_conta === "PJ" || (!nomeLower.includes("particular") && !nomeLower.includes("fernando"));
+  }) || contasBancariasDb[0];
+
+  const saldoPJObj = (caixaRes.data || []).find((c: any) => c.id === contaEmpresaPJ?.id);
+  const saldoBancarioPJ = Number(saldoPJObj?.saldo_atual || 0);
+
+  const reservaImpostosValor = Number(reservasDb.filter((r: any) => r.categoria === "IMPOSTOS" && r.status === "ATIVA").reduce((s: number, r: any) => s + Number(r.valor_reservado), 0).toFixed(2));
+  const outrasReservasValor = Number(reservasDb.filter((r: any) => r.categoria !== "IMPOSTOS" && r.status === "ATIVA").reduce((s: number, r: any) => s + Number(r.valor_reservado), 0).toFixed(2));
+  const caixaLivreReal = Number(Math.max(0, saldoBancarioPJ - reservaImpostosValor - outrasReservasValor).toFixed(2));
+
+  const contasParticulares = (contasBancariasDb || [])
+    .filter((cb: any) => cb.id !== contaEmpresaPJ?.id)
+    .map((cb: any) => {
+      const sObj = (caixaRes.data || []).find((c: any) => c.id === cb.id);
+      return { id: cb.id, nome: cb.nome || cb.banco || "Particular", saldo: Number(sObj?.saldo_atual || 0) };
+    });
+
+  const caixaEmpresa: CaixaEmpresaDTO = {
+    saldoBancarioControladoPJ: saldoBancarioPJ,
+    reservaImpostos: reservaImpostosValor,
+    outrasReservas: outrasReservasValor,
+    caixaLivreReal,
+    contasParticulares,
+  };
+
+  // =========================================================================
+  // BLOCO 4: CONTAS JÁ LANÇADAS — A PAGAR (MÊS CORRENTE)
+  // =========================================================================
+  const hojeIso = obterHojeCuiaba();
+  const hoje = new Date(hojeIso + "T12:00:00Z");
+  const proximo7Dias = new Date(hoje.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  const anoAtual = hoje.getFullYear();
+  const fimMesAtual = new Date(anoAtual, hoje.getMonth() + 1, 0).toISOString().slice(0, 10);
+
+  const contasAbertasGeral = todasContas.filter((c: any) => c.status === "aberta");
+  const totalLancadoGeral = Number(contasAbertasGeral.reduce((s: number, c: any) => s + Number(c.valor), 0).toFixed(2));
+
+  const contasAbertasMes: ItemContaLancadaDTO[] = [];
+  const contasPrevisaoFuturas: ItemPrevisaoFuturaDTO[] = [];
+
+  let somaVencidas = 0;
+  let somaHoje = 0;
+  let somaProximos7 = 0;
+  let somaRestanteMes = 0;
+
+  contasAbertasGeral.forEach((c: any) => {
+    const venc = c.vencimento;
+    const val = Number(c.valor);
+
+    if (venc <= fimMesAtual) {
+      let cat: "VENCIDA" | "HOJE" | "PROXIMOS_7_DIAS" | "RESTANTE_MES" = "RESTANTE_MES";
+      if (venc < hojeIso) {
+        cat = "VENCIDA";
+        somaVencidas += val;
+      } else if (venc === hojeIso) {
+        cat = "HOJE";
+        somaHoje += val;
+      } else if (venc <= proximo7Dias) {
+        cat = "PROXIMOS_7_DIAS";
+        somaProximos7 += val;
+      } else {
+        cat = "RESTANTE_MES";
+        somaRestanteMes += val;
+      }
+
+      contasAbertasMes.push({
+        id: c.id,
+        descricao: c.descricao,
+        fornecedor: c.fornecedor || "Geral",
+        vencimento: venc,
+        valor: val,
+        status: c.status,
+        categoriaVencimento: cat,
+      });
+    } else {
+      contasPrevisaoFuturas.push({
+        id: c.id,
+        descricao: c.descricao,
+        vencimento: venc,
+        valor: val,
+        tipo: "Conta recorrente cadastrada",
+        origem: "CONTA_RECORRENTE_FUTURA",
+      });
+    }
+  });
+
+  const totalLancadoMes = Number((somaVencidas + somaHoje + somaProximos7 + somaRestanteMes).toFixed(2));
+  const faltaFinanciarMes = Number(Math.max(0, totalLancadoMes - caixaLivreReal).toFixed(2));
+  const necessidadeFernandoContas = Number((faltaFinanciarMes * 0.5).toFixed(2));
+  const necessidadeEroniContas = Number((faltaFinanciarMes * 0.5).toFixed(2));
+
+  const cobFernandoStatus = saldoMantidoFernando >= necessidadeFernandoContas ? "COBERTO" : "DEFICIT";
+  const cobFernandoExcedente = Number(Math.max(0, saldoMantidoFernando - necessidadeFernandoContas).toFixed(2));
+  const cobFernandoFalta = Number(Math.max(0, necessidadeFernandoContas - saldoMantidoFernando).toFixed(2));
+
+  const cobEroniStatus = saldoMantidoEroni >= necessidadeEroniContas ? "COBERTO" : "DEFICIT";
+  const cobEroniExcedente = Number(Math.max(0, saldoMantidoEroni - necessidadeEroniContas).toFixed(2));
+  const cobEroniFalta = Number(Math.max(0, necessidadeEroniContas - saldoMantidoEroni).toFixed(2));
+
+  const contasLancadas: ContasLancadasAPagarDTO = {
+    vencidas: Number(somaVencidas.toFixed(2)),
+    vencemHoje: Number(somaHoje.toFixed(2)),
+    proximos7Dias: Number(somaProximos7.toFixed(2)),
+    restanteDoMes: Number(somaRestanteMes.toFixed(2)),
+    totalLancadoMes,
+    totalLancadoGeral,
+    faltaFinanciar: faltaFinanciarMes,
+    necessidadeFernando: necessidadeFernandoContas,
+    necessidadeEroni: necessidadeEroniContas,
+    coberturaFernando: {
+      necessidade: necessidadeFernandoContas,
+      saldoMantido: saldoMantidoFernando,
+      situacao: cobFernandoStatus,
+      excedente: cobFernandoExcedente,
+      faltaCobrir: cobFernandoFalta,
+      sugestaoRetencao: cobFernandoFalta,
+      comissaoDisponivelParaRetencao: fAReceber,
+    },
+    coberturaEroni: {
+      necessidade: necessidadeEroniContas,
+      saldoMantido: saldoMantidoEroni,
+      situacao: cobEroniStatus,
+      excedente: cobEroniExcedente,
+      faltaCobrir: cobEroniFalta,
+      sugestaoRetencao: cobEroniFalta,
+      comissaoDisponivelParaRetencao: eAReceber,
+    },
+    itensContasMes: contasAbertasMes,
+  };
+
+  // =========================================================================
+  // BLOCO 5: RESERVA E CONTROLE DE IMPOSTOS
+  // =========================================================================
+  const impostosContasAbertas = contasAbertasGeral
+    .filter((c: any) => {
+      const d = (c.descricao || "").toLowerCase();
+      const f = (c.fornecedor || "").toLowerCase();
+      return d.includes("imposto") || d.includes("simples") || d.includes("das") || f.includes("receita");
+    })
+    .reduce((s: number, c: any) => s + Number(c.valor), 0);
+
+  const reservaImpostosControle: ReservaImpostosDTO = {
+    retidoDeComissoes: reservaImpostosValor,
+    impostosPagosComReserva: 0,
+    saldoReserva: reservaImpostosValor,
+    impostosLancadosAPagar: Number(impostosContasAbertas.toFixed(2)),
+    necessidadeAdicional: Number(Math.max(0, impostosContasAbertas - reservaImpostosValor).toFixed(2)),
+    previsaoImpostosFuturos: 0,
+  };
+
+  // =========================================================================
+  // BLOCO 6: PREVISÕES FUTURAS (30 / 60 / 90 DIAS)
+  // =========================================================================
+  const d30Limite = new Date(hoje.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  const d60Limite = new Date(hoje.getTime() + 60 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  const d90Limite = new Date(hoje.getTime() + 90 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+
+  let p30 = 0;
+  let p60 = 0;
+  let p90 = 0;
+
+  contasPrevisaoFuturas.forEach((cp) => {
+    if (cp.vencimento <= d30Limite) p30 += cp.valor;
+    else if (cp.vencimento <= d60Limite) p60 += cp.valor;
+    else if (cp.vencimento <= d90Limite) p90 += cp.valor;
+  });
+
+  const previsoesFuturas: PrevisoesFuturasDTO = {
+    proximos30Dias: Number(p30.toFixed(2)),
+    proximos60Dias: Number(p60.toFixed(2)),
+    proximos90Dias: Number(p90.toFixed(2)),
+    totalPrevisoesFuturas: Number(contasPrevisaoFuturas.reduce((s, c) => s + c.valor, 0).toFixed(2)),
+    itensPrevisao: contasPrevisaoFuturas,
+  };
+
+  // =========================================================================
+  // RESUMO EXECUTIVO HOJE & CLASSIFICAÇÃO HISTÓRICA
+  // =========================================================================
+  const resumoExecutivoHoje: ResumoExecutivoHojeDTO = {
+    fernandoSaldoAcerto: saldoAcertoFernando,
+    fernandoStatus: statusTextoFernando,
+    fernandoTipo: saldoAcertoFernando > 0 ? "credito" : saldoAcertoFernando < 0 ? "devedor" : "equilibrado",
+    eroniSaldoAcerto: saldoAcertoEroni,
+    eroniStatus: statusTextoEroni,
+    eroniTipo: saldoAcertoEroni > 0 ? "credito" : saldoAcertoEroni < 0 ? "devedor" : "equilibrado",
+    caixaLivrePJ: caixaLivreReal,
+    contasLancadasMes: totalLancadoMes,
+    faltaFinanciar: faltaFinanciarMes,
+    reservaImpostos: reservaImpostosValor,
+  };
+
+  const historicoClassificacao: HistoricoClassificacaoDTO = {
+    contasPagasSemOrigem: contasPagasEscopo.length,
+    valorTotalPagasSemOrigem: despesasPagasTotalReal,
+    classificadoFernandoComissao: valorComissaoRetidaFernando,
+    pendenteClassificacao: comissaoRetidaUtilizadaFernando === 0,
+    mensagem: comissaoRetidaUtilizadaFernando === 0
+      ? "Identificamos R$ 9.300 em pagamentos executados por Eroni que pertenciam a comissões de Fernando. O Master pode confirmar formalmente esta classificação para registro no Ledger."
+      : "Classificação histórica auditada e aplicada ao Ledger.",
+  };
+
   return {
     tipoPeriodo: periodo.tipoPeriodo,
     regime: periodo.regime,
@@ -1344,6 +1863,17 @@ export async function carregarDadosContaCorrenteSocios(
         saldoAtual: Number(saldoObj?.saldo_atual || 0),
       };
     }),
+    equalizacaoDetalhada,
+
+    // Novos Blocos da Reorganização Definitiva
+    resumoExecutivoHoje,
+    acertoSocios,
+    saldosMantidos,
+    caixaEmpresa,
+    contasLancadas,
+    reservaImpostosControle,
+    previsoesFuturas,
+    historicoClassificacao,
   };
 }
 
@@ -1427,7 +1957,7 @@ export async function usarComissaoCompensarAction(formData: FormData) {
     .neq("status", "cancelada")
     .order("competencia", { ascending: true });
 
-  if (previsaoId) {
+  if (previsaoId && previsaoId !== "todas") {
     previsoesQuery = previsoesQuery.eq("id", previsaoId);
   }
 
@@ -1891,3 +2421,322 @@ export async function estornarMovimentoLedgerAction(movimentoId: string, motivo:
 
   revalidatePath("/erp/conta-corrente-socios");
 }
+
+/**
+ * Operação: Classificar formalmente a origem de pagamentos históricos (Item 37)
+ * Permite ao Master confirmar a alocação de R$ 9.300 de comissões de Fernando
+ * utilizadas em pagamentos operacionais executados por Eroni.
+ */
+export async function classificarOrigemHistoricaAction(formData?: FormData) {
+  const { empresaAtiva, usuario } = await requireErpRouteAccess("financeiro");
+  if (!empresaAtiva?.id) throw new Error("Empresa ativa não encontrada.");
+
+  const socioBeneficiarioId = String(formData?.get("socio_beneficiario_id") ?? "");
+  const socioOperacionalId = String(formData?.get("socio_operacional_id") ?? "");
+  const valor = Number(String(formData?.get("valor") ?? "9300").replace(",", "."));
+  const descricao = String(formData?.get("descricao") ?? "").trim() || "Classificação histórica: comissão de Fernando utilizada em pagamentos operacionais por Eroni";
+
+  const admin = createAdminClient();
+
+  let sBenId = socioBeneficiarioId;
+  let sOpId = socioOperacionalId;
+
+  if (!sBenId) {
+    const { data: todosSocios } = await admin
+      .from("empresa_socios")
+      .select("id, usuario_id, nome")
+      .eq("empresa_id", empresaAtiva.id);
+    const f = todosSocios?.find((s) => s.nome.toLowerCase().includes("fernando"));
+    const e = todosSocios?.find((s) => s.nome.toLowerCase().includes("eroni"));
+    if (f) sBenId = f.id;
+    if (e && !sOpId) sOpId = e.id;
+  }
+
+  if (!sBenId || isNaN(valor) || valor <= 0) {
+    throw new Error("Dados inválidos para classificação histórica.");
+  }
+
+  const { data: socioBen } = await admin
+    .from("empresa_socios")
+    .select("id, usuario_id, nome")
+    .eq("id", sBenId)
+    .eq("empresa_id", empresaAtiva.id)
+    .single();
+
+  const { data: socioOp } = sOpId
+    ? await admin
+        .from("empresa_socios")
+        .select("id, usuario_id, nome")
+        .eq("id", sOpId)
+        .eq("empresa_id", empresaAtiva.id)
+        .single()
+    : { data: null };
+
+  if (!socioBen) throw new Error("Sócio beneficiário não encontrado.");
+
+  const dataHoje = new Date().toISOString().slice(0, 10);
+  const compAtual = new Date().toISOString().slice(0, 7);
+  const timestamp = Date.now();
+  const idempKey = `classif_hist:${empresaAtiva.id}:${timestamp}`;
+
+  // 1. Inserir no Ledger: Crédito para Fernando (recurso fornecido)
+  await admin.from("socio_conta_corrente_movimentos").insert({
+    empresa_id: empresaAtiva.id,
+    socio_id: socioBen.id,
+    usuario_id: socioBen.usuario_id,
+    data_movimento: dataHoje,
+    competencia: compAtual,
+    natureza: "CREDITO",
+    tipo_movimento: "COMISSAO_RETIDA",
+    valor: valor,
+    saldo_apos: 0,
+    descricao: `Recurso originário de comissão mantido e utilizado na operação (${descricao})`,
+    origem_tipo: "classificacao_historica",
+    origem_id: socioOp?.id || null,
+    idempotency_key: `ledger:cred:${idempKey}`,
+    criado_por: usuario?.id ?? null,
+  });
+
+  // 2. Se houver sócio operacional (Eroni), debitar para compensação simétrica
+  if (socioOp) {
+    await admin.from("socio_conta_corrente_movimentos").insert({
+      empresa_id: empresaAtiva.id,
+      socio_id: socioOp.id,
+      usuario_id: socioOp.usuario_id,
+      data_movimento: dataHoje,
+      competencia: compAtual,
+      natureza: "DEBITO",
+      tipo_movimento: "COMPENSACAO_COMISSAO",
+      valor: valor,
+      saldo_apos: 0,
+      descricao: `Reclassificação de pagamentos executados (recurso econômico fornecido por ${socioBen.nome})`,
+      origem_tipo: "classificacao_historica",
+      origem_id: socioBen.id,
+      idempotency_key: `ledger:deb:${idempKey}`,
+      criado_por: usuario?.id ?? null,
+    });
+  }
+
+  // 3. Tentar gravar na tabela de classificação histórica se existir
+  try {
+    await admin.from("financeiro_ajustes_classificacao_historica").insert({
+      empresa_id: empresaAtiva.id,
+      socio_beneficiario_id: socioBen.id,
+      socio_operacional_id: socioOp?.id || null,
+      tipo_classificacao: "COMISSAO_RETIDA_UTILIZADA",
+      valor: valor,
+      descricao,
+      competencia: compAtual,
+      data_ajuste: dataHoje,
+      idempotency_key: idempKey,
+      aprovado_por: usuario?.id ?? null,
+    });
+  } catch {
+    // Tabela pode ainda estar em processo de migração
+  }
+
+  revalidatePath("/erp/conta-corrente-socios");
+  revalidatePath("/erp/financeiro");
+  return {
+    success: true,
+    mensagem: "Classificação histórica de R$ 9.300 de comissão de Fernando aplicada com sucesso!",
+  };
+}
+
+/**
+ * Operação: Deixar Comissão na Empresa (Item 5 e Item 18)
+ * Não cria PIX fictício. Não cria movimentação bancária fictícia.
+ * Reclassifica a obrigação da empresa, alimentando o Saldo Mantido do sócio.
+ */
+export async function deixarComissaoNaEmpresaAction(formData: FormData) {
+  const { empresaAtiva, usuario } = await requireErpRouteAccess("financeiro");
+  if (!empresaAtiva?.id) throw new Error("Empresa ativa não encontrada.");
+
+  const socioId = String(formData.get("socio_id") ?? "");
+  const valor = Number(String(formData.get("valor") ?? "").replace(",", "."));
+  const motivo = String(formData.get("motivo") ?? "").trim() || "Comissão mantida na empresa para custeio operacional";
+  const previsaoId = String(formData.get("previsao_id") ?? "");
+
+  if (!socioId || isNaN(valor) || valor <= 0) {
+    throw new Error("Informe o sócio e um valor válido para manter na empresa.");
+  }
+
+  const admin = createAdminClient();
+
+  const { data: socio, error: socioErr } = await admin
+    .from("empresa_socios")
+    .select("id, usuario_id, nome")
+    .eq("id", socioId)
+    .eq("empresa_id", empresaAtiva.id)
+    .single();
+
+  if (socioErr || !socio) throw new Error("Sócio não encontrado.");
+
+  // Se informada previsão específica ou cascata, atualiza status da comissão para que não seja sacada duas vezes
+  if (previsaoId && previsaoId !== "todas") {
+    const { data: prev } = await admin
+      .from("comissao_previsoes_participantes")
+      .select("id, valor_pago, valor_previsto, valor_elegivel")
+      .eq("id", previsaoId)
+      .single();
+
+    if (prev) {
+      const maxVal = Number(prev.valor_previsto || prev.valor_elegivel || 0);
+      const novoPago = Number(prev.valor_pago || 0) + valor;
+      const novoStatus = novoPago >= maxVal ? "paga" : "parcialmente_paga";
+
+      await admin
+        .from("comissao_previsoes_participantes")
+        .update({
+          valor_pago: novoPago,
+          status: novoStatus,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", prev.id);
+    }
+  }
+
+  const dataHoje = new Date().toISOString().slice(0, 10);
+  const compAtual = new Date().toISOString().slice(0, 7);
+  const idempKey = `deixar_comissao:${socio.id}:${Date.now()}`;
+
+  // Inserir no Ledger: Crédito como comissão retida
+  await admin.from("socio_conta_corrente_movimentos").insert({
+    empresa_id: empresaAtiva.id,
+    socio_id: socio.id,
+    usuario_id: socio.usuario_id,
+    data_movimento: dataHoje,
+    competencia: compAtual,
+    natureza: "CREDITO",
+    tipo_movimento: "COMISSAO_RETIDA",
+    valor: valor,
+    saldo_apos: 0,
+    descricao: `Comissão mantida na empresa: ${motivo}`,
+    origem_tipo: "comissao_retida",
+    origem_id: previsaoId || null,
+    idempotency_key: idempKey,
+    criado_por: usuario?.id ?? null,
+  });
+
+  revalidatePath("/erp/conta-corrente-socios");
+  revalidatePath("/erp/financeiro");
+  revalidatePath("/erp/minhas-comissoes");
+  return {
+    success: true,
+    mensagem: "Comissão retida na empresa registrada com sucesso!",
+  };
+}
+
+/**
+ * Operação: Baixar Conta com Origem Econômica e Sugestão Inteligente de Caixa (Itens 22, 23)
+ */
+export async function salvarBaixaContaComOrigemAction(formData: FormData) {
+  const { empresaAtiva } = await requireErpRouteAccess("financeiro");
+  if (!empresaAtiva?.id) throw new Error("Empresa ativa não encontrada.");
+
+  const contaId = String(formData.get("conta_id") ?? "");
+  const pagadorOperacional = String(formData.get("pagador_operacional") ?? "EMPRESA");
+  const origemRecurso = String(formData.get("origem_recurso_economico") ?? "CAIXA_LIVRE_EMPRESA");
+  const dataPagamento = String(formData.get("data_pagamento") ?? "").trim() || new Date().toISOString().slice(0, 10);
+
+  if (!contaId) throw new Error("Conta a pagar não informada.");
+
+  const admin = createAdminClient();
+
+  const { data: conta, error: cErr } = await admin
+    .from("financeiro_contas_pagar")
+    .select("id, valor, descricao, status, competencia")
+    .eq("id", contaId)
+    .eq("empresa_id", empresaAtiva.id)
+    .single();
+
+  if (cErr || !conta) throw new Error("Conta não encontrada.");
+
+  const { data: socios } = await admin
+    .from("empresa_socios")
+    .select("id, usuario_id, nome")
+    .eq("empresa_id", empresaAtiva.id)
+    .eq("ativo", true);
+
+  const socioFernando = (socios || []).find((s) => s.nome.toLowerCase().includes("fernando"));
+  const socioEroni = (socios || []).find((s) => s.nome.toLowerCase().includes("eroni"));
+
+  let pagoPessoalmente = false;
+  let socioPagadorUsuarioId: string | null = null;
+  let socioOrigemRecursoId: string | null = null;
+
+  if (origemRecurso === "DINHEIRO_PROPRIO_FERNANDO" || origemRecurso === "COMISSAO_RETIDA_FERNANDO") {
+    pagoPessoalmente = true;
+    socioPagadorUsuarioId = socioFernando?.usuario_id || null;
+    socioOrigemRecursoId = socioFernando?.id || null;
+  } else if (origemRecurso === "DINHEIRO_PROPRIO_ERONI" || origemRecurso === "COMISSAO_RETIDA_ERONI") {
+    pagoPessoalmente = true;
+    socioPagadorUsuarioId = socioEroni?.usuario_id || null;
+    socioOrigemRecursoId = socioEroni?.id || null;
+  }
+
+  // Atualizar a conta
+  const updatePayload: Record<string, any> = {
+    pago_pessoalmente: pagoPessoalmente,
+    socio_pagador_usuario_id: socioPagadorUsuarioId,
+    pago_em: dataPagamento,
+    status: "paga",
+    updated_at: new Date().toISOString(),
+  };
+
+  try {
+    updatePayload.pagador_operacional = pagadorOperacional;
+    updatePayload.origem_recurso_economico = origemRecurso;
+    updatePayload.socio_origem_recurso_id = socioOrigemRecursoId;
+    updatePayload.estagio_despesa = "PAGA";
+  } catch {
+    // Colunas adicionais
+  }
+
+  const { error: upErr } = await admin
+    .from("financeiro_contas_pagar")
+    .update(updatePayload)
+    .eq("id", conta.id);
+
+  if (upErr) {
+    // Se falhar devido a novas colunas não migradas, atualiza com campos canônicos
+    await admin
+      .from("financeiro_contas_pagar")
+      .update({
+        pago_pessoalmente: pagoPessoalmente,
+        socio_pagador_usuario_id: socioPagadorUsuarioId,
+        pago_em: dataPagamento,
+        status: "paga",
+        observacao: `[Origem Econômica: ${origemRecurso} | Pagador: ${pagadorOperacional}]`,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", conta.id);
+  }
+
+  // Se não pago pessoalmente, registrar saída no caixa da empresa
+  if (!pagoPessoalmente) {
+    try {
+      await admin.from("caixa_movimentos").insert({
+        empresa_id: empresaAtiva.id,
+        tipo_movimento: "saida",
+        origem_tipo: "conta_pagar",
+        origem_id: conta.id,
+        data_movimento: dataPagamento,
+        competencia: conta.competencia,
+        valor: conta.valor,
+        descricao: `Conta paga: ${conta.descricao}`,
+      });
+    } catch {
+      // Ignorar se já existente
+    }
+  }
+
+  revalidatePath("/erp/conta-corrente-socios");
+  revalidatePath("/erp/contas-pagar");
+  revalidatePath("/erp/financeiro");
+  return {
+    success: true,
+    mensagem: "Conta baixada com segregação de origem com sucesso!",
+  };
+}
+

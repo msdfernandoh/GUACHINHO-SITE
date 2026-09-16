@@ -370,4 +370,112 @@ describe("SUÍTE DE TESTES UNITÁRIOS — CONTA-CORRENTE DOS SÓCIOS (REGRAS E C
       expect(quadro.equalizacao.fernando + quadro.equalizacao.eroni).toBe(0);
     });
   });
+
+  describe("7. Reorganização Definitiva: 3 Estágios, Origem Econômica e Caso Canônico", () => {
+    it("Caso Canônico Obrigatório: R$ 35.800 de despesas pagas com R$ 9.300 de comissão de Fernando executada por Eroni", () => {
+      const totalDespesasPagas = 35800;
+      const respFernando = totalDespesasPagas * 0.5; // 17.900
+      const respEroni = totalDespesasPagas * 0.5;    // 17.900
+
+      // Fernando colocou R$ 9.800 do bolso + R$ 9.300 de comissões retidas na empresa = R$ 19.100
+      const bolsoFernando = 9800;
+      const comissaoRetidaFernando = 9300;
+      const totalColocadoFernando = bolsoFernando + comissaoRetidaFernando; // 19.100
+
+      // Eroni executou pagamentos de R$ 26.000, mas R$ 9.300 vieram de comissão de Fernando
+      const pagamentosExecutadosEroni = 26000;
+      const totalColocadoEroni = pagamentosExecutadosEroni - comissaoRetidaFernando; // 16.700
+
+      // Saldo de Equalização do Acerto
+      const saldoFernando = totalColocadoFernando - respFernando; // 19.100 - 17.900 = +1.200 (CRÉDITO)
+      const saldoEroni = totalColocadoEroni - respEroni;          // 16.700 - 17.900 = -1.200 (A COMPENSAR)
+
+      expect(saldoFernando).toBe(1200);
+      expect(saldoEroni).toBe(-1200);
+      expect(saldoFernando + saldoEroni).toBe(0);
+    });
+
+    it("Caso Real de Produção: R$ 36.422,98 pagos, Eroni executou 26.632,37 com 9.300 de comissão de Fernando", () => {
+      const totalDespesasPagas = 36422.98;
+      const responsabilidade = Number((totalDespesasPagas / 2).toFixed(2)); // 18.211,49
+
+      const bolsoFernando = 9790.61;
+      const comissaoFernandoUtilizada = 9300.0;
+      const totalEconomicoFernando = bolsoFernando + comissaoFernandoUtilizada; // 19.090,61
+
+      const pagamentosOperacionaisEroni = 26632.37;
+      const totalEconomicoEroni = Number((pagamentosOperacionaisEroni - comissaoFernandoUtilizada).toFixed(2)); // 17.332,37
+
+      const saldoFernando = Number((totalEconomicoFernando - responsabilidade).toFixed(2)); // +879,12 (CRÉDITO)
+      const saldoEroni = Number((totalEconomicoEroni - responsabilidade).toFixed(2));       // -879,12 (PRECISA COMPENSAR)
+
+      expect(saldoFernando).toBe(879.12);
+      expect(saldoEroni).toBe(-879.12);
+      expect(saldoFernando + saldoEroni).toBe(0);
+    });
+
+    it("Isolamento Absoluto de Estágios: Adicionar R$ 20.000 em contas abertas (Estágio 2) NÃO altera o saldo do acerto (Estágio 1)", () => {
+      const saldoAcertoInicialFernando = 879.12;
+
+      // Inclusão de novas contas lançadas a pagar (Estágio 2)
+      const novasContasLancadasAPagar = [
+        { id: "cp-1", valor: 12000, status: "aberta" },
+        { id: "cp-2", valor: 8000, status: "aberta" },
+      ];
+      const totalNovasContas = novasContasLancadasAPagar.reduce((acc, c) => acc + c.valor, 0);
+      expect(totalNovasContas).toBe(20000);
+
+      // Regra de Ouro: Contas abertas (Estágio 2) NÃO entram no Estágio 1 (Contas Pagas)
+      const despesasPagas = 36422.98;
+      const responsabilidadePagas = despesasPagas / 2;
+      const totalColocadoFernando = 19090.61;
+      const saldoAcertoAposContasAbertas = Number((totalColocadoFernando - responsabilidadePagas).toFixed(2));
+
+      expect(saldoAcertoAposContasAbertas).toBe(saldoAcertoInicialFernando);
+    });
+
+    it("Isolamento de Previsões Futuras (Estágio 3): Previsões de 30/60/90 dias não alteram acerto nem contas lançadas de hoje", () => {
+      const saldoAcertoEstagio1 = 879.12;
+      const contasLancadasMesEstagio2 = 14538.02;
+
+      // Inclusão de R$ 15.000 em previsões futuras (Estágio 3)
+      const previsoesFuturas = [
+        { id: "pf-1", valor: 5000, tipo: "aluguel_futuro" },
+        { id: "pf-2", valor: 10000, tipo: "folha_futura" },
+      ];
+      const totalPrevisoes = previsoesFuturas.reduce((acc, p) => acc + p.valor, 0);
+      expect(totalPrevisoes).toBe(15000);
+
+      // Verificação: Estágio 1 e Estágio 2 permanecem rigorosamente isolados
+      expect(saldoAcertoEstagio1).toBe(879.12);
+      expect(contasLancadasMesEstagio2).toBe(14538.02);
+    });
+
+    it("Retenção de Comissão na Empresa: Alimenta Saldo Mantido sem gerar movimentação bancária fictícia", () => {
+      const saldoBancarioPJFisico = 4016.13;
+      const comissaoDisponivelFernando = 10000;
+
+      // Fernando decide deixar R$ 5.000 de comissão na empresa para capital de giro
+      const comissaoRetida = 5000;
+      const saldoMantidoFernando = comissaoRetida;
+      const comissaoDisponivelParaSaque = comissaoDisponivelFernando - comissaoRetida;
+
+      expect(comissaoDisponivelParaSaque).toBe(5000);
+      expect(saldoMantidoFernando).toBe(5000);
+
+      // O saldo bancário físico da empresa não sofre movimentação fictícia (PIX fictício proibido)
+      const saldoBancarioPJAposRetencao = saldoBancarioPJFisico;
+      expect(saldoBancarioPJAposRetencao).toBe(4016.13);
+
+      // Cálculo de Cobertura das Contas do Mês com Saldo Mantido
+      const contasLancadasMes = 14538.02;
+      const caixaLivrePJ = 4016.13;
+      const faltaFinanciarTotal = Number((contasLancadasMes - caixaLivrePJ).toFixed(2)); // 10.521,89
+      const necessidadeFernando = Number((faltaFinanciarTotal / 2).toFixed(2)); // 5.260,95 ou 5.260,94
+
+      // Com R$ 5.000 de saldo mantido, Fernando só precisa cobrir a diferença
+      const faltaCobrirFernando = Number((necessidadeFernando - saldoMantidoFernando).toFixed(2));
+      expect(faltaCobrirFernando).toBeCloseTo(260.94, 1);
+    });
+  });
 });

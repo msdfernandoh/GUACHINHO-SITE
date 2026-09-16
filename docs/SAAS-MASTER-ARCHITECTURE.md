@@ -2398,3 +2398,37 @@ Relatório:
 
 Relatório:
 `docs/relatorios-fases/FASE-233-COMPENSACAO-COMISSAO-TRANSFERENCIA-SOCIOS-EMPRESA.md`.
+
+### Evolução Operacional 234 — Reorganização Definitiva da Tela Conta-Corrente dos Sócios (7 Blocos, 3 Estágios e Origem Econômica)
+
+1. **Diagnóstico Operacional e Governança Societária:**
+   - A tela `/erp/conta-corrente-socios` acumulava múltiplos painéis e tabelas sobrepostos, tornando confusa a identificação imediata das 11 perguntas vitais dos sócios.
+   - Havia mistura conceitual entre contas pagas, contas a pagar abertas do mês e previsões futuras de 30/60/90 dias, o que inflava indevidamente o saldo devedor imediato do sócio.
+   - Das 67 contas pagas (R$ 36.422,98), Eroni executou pagamentos operacionais de R$ 26.632,37 e Fernando R$ 9.790,61. No entanto, **R$ 9.300,00** pagos por Eroni vieram de comissões de Fernando retidas na empresa. Sem a distinção entre Pagador Operacional e Origem Econômica, o sistema apontava erroneamente Fernando como devedor de R$ 8.380,88.
+   - Quando devidamente classificado: Fernando colocou R$ 19.090,61 e Eroni R$ 17.332,37. Com responsabilidade de R$ 18.211,49 (50%), **Fernando possui Crédito no Acerto de +R$ 879,12** e **Eroni deve Compensar -R$ 879,12**.
+
+2. **Arquitetura dos Três Estágios e Origem Econômica:**
+   - **Estágio 1 (Conta Paga):** Base exclusiva do acerto entre sócios. Não sofre interferência de contas a pagar nem previsões.
+   - **Estágio 2 (Conta Lançada a Pagar):** Obrigações lançadas com vencimento no mês corrente (R$ 14.538,02 no mês 09/2026). Subtrai o Caixa Livre PJ (R$ 4.016,13), resultando no Falta Financiar de R$ 10.521,89 (R$ 5.260,95 para cada sócio).
+   - **Estágio 3 (Previsão Futura):** Projeções para 30, 60 e 90 dias com carimbo de NÃO É DÍVIDA REAL IMEDIATA.
+   - Migration `223_conta_corrente_origem_recurso_estagios.sql`: colunas `pagador_operacional`, `origem_recurso_economico`, `socio_origem_recurso_id`, `valor_recurso_proprio`, `valor_recurso_comissao_retida`, `estagio_despesa` em `financeiro_contas_pagar` e tabela `financeiro_ajustes_classificacao_historica`.
+
+3. **Backend & Server Actions (`actions.ts`):**
+   - DTOs dedicados: `ResumoExecutivoHojeDTO`, `AcertoSociosDTO`, `SaldosMantidosEmpresaDTO`, `CaixaEmpresaDTO`, `ContasLancadasAPagarDTO`, `ReservaImpostosDTO`, `PrevisoesFuturasDTO`, `HistoricoClassificacaoDTO`.
+   - `classificarOrigemHistoricaAction`: confirma a origem de R$ 9.300 de Fernando com idempotência e registro auditável.
+   - `deixarComissaoNaEmpresaAction`: retenção voluntária na empresa para capital de giro sem gerar PIX fictício.
+   - `salvarBaixaContaComOrigemAction`: baixa inteligente com especificação de pagador operacional e fonte econômica.
+
+4. **Nova Interface e Componentes (`conta-corrente-central-socios.tsx` & `conta-corrente-socios-view.tsx`):**
+   - **Faixa de Topo — Resumo Executivo (HOJE):** 6 cards imediatos (Fernando Hugo, Eroni Bolfe, Caixa Livre PJ, Contas Lançadas Mês, Falta Financiar, Reserva de Impostos).
+   - **Banner de Reconciliação Histórica:** Notificação interativa com ação de 1 clique.
+   - **7 Blocos Estruturados:** Bloco 1 (Acerto), Bloco 2 (Saldos Mantidos), Bloco 3 (Caixa PJ), Bloco 4 (Contas Lançadas Mês), Bloco 5 (Reserva de Impostos), Bloco 6 (Previsões Futuras) e Bloco 7 (Ledger).
+   - **Modais de Drill-Down:** "Ver Composição" detalhando o cálculo de cada saldo.
+   - **Preservação de Abas Operacionais:** Abas detalhadas acessíveis via barra de navegação no topo sem poluição visual.
+
+5. **Testes Automatizados:**
+   - 46 testes unitários passando 100% via Vitest (`conta-corrente-socios.test.ts`), incluindo o caso canônico de R$ 35.800, dados reais de produção de R$ 36.422,98, isolamento absoluto de estágios e retenção de comissão na empresa.
+
+Relatório:
+`docs/relatorios-fases/FASE-234-REORGANIZACAO-DEFINITIVA-CONTA-CORRENTE-SOCIOS.md`.
+
