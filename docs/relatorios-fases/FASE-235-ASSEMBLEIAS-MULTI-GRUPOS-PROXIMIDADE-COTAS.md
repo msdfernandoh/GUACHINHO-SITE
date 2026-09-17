@@ -42,15 +42,33 @@ Anteriormente:
     - **DIFERENÇA DA PEDRA:** Distância absoluta calculada em relação à pedra sorteada.
     - **STATUS REAL:** Status no consórcio (`ativa`, `contemplada`, etc.).
     - **ATENÇÃO:** Botão funcional para marcar/desmarcar atenção operacional na respectiva assembleia do grupo (`erp_assembleia_atencoes`).
-- **Filtros Rápidos:**
-  - Permite visualizar `Todos os grupos` simultaneamente ou filtrar por um grupo específico através de pills dinâmicas com contadores de cotas e indicativo de pedra sorteada (`🎯`).
+### 2.3. Sorteio pela Loteria Federal no ERP (Igual no Site)
+- **Cálculo da Pedra por Grupo:**
+  - O formulário agora oferece o modo **🎯 Pela Loteria Federal (Site)** além do modo manual.
+  - Ao informar o **1º Prêmio da Loteria Federal** (5 dígitos, ex: `95866` ou `80246`), o sistema calcula a pedra sorteada de cada grupo aplicando a fórmula canônica:
+    $$\text{Pedra} = \text{1º Prêmio} \pmod{\text{Quantidade de Cotas do Grupo}}$$
+    - Grupos de Imóvel (999 cotas): `80246 mod 999 = 326`
+    - Grupos de Automóvel (2000 cotas): `80246 mod 2000 = 246`
+  - Ao selecionar "Todos os grupos", cada grupo é registrado e apurado com a **sua respectiva pedra calculada**.
+- **Busca Oficial na Caixa:**
+  - Botão **"Buscar Caixa"** que consulta a API oficial da Caixa Econômica Federal em tempo real para a data da assembleia, preenchendo automaticamente o 1º prêmio e informando o número do concurso.
+- **Preview em Tempo Real:**
+  - Exibe badges dinâmicos de cada grupo autorizado com a sua pedra resultante e quantidade de cotas antes mesmo de gravar.
+
+### 2.4. Critério Oficial de Aproximação: "Sempre o Número ou Maior"
+- Em consórcios, a apuração segue estritamente a fila de contemplação em ordem crescente a partir da pedra sorteada:
+  1. **Exata (`distancia = 0`):** Cota igual à pedra sorteada (Destaque `0 (Sorteada!)` e badge `🎯 Sorteada!`).
+  2. **Superior (`cota > pedra`):** Cotas com numeração imediatamente superior ordenadas em ordem crescente (`+1`, `+2`, `+3`...). A cota `468` vem **sempre antes** da cota `465` quando a pedra for `466`.
+  3. **Após Giro (`cota < pedra`):** Caso a fila atinja o término do grupo (`999` ou `2000` cotas) sem preencher a vaga, a contemplação avança do início (`001, 002...` até `pedra - 1`), identificada com o rótulo `+(Após giro)`.
 
 ---
 
 ## 3. Cobertura de Testes Automatizados
 
 - `src/lib/erp/assembleias.test.ts`:
-  - `ordena por distância e desempata pelo número da cota`
+  - `valida e calcula pedra de cada grupo pela Loteria Federal (igual no site)`
+  - `calcula distância seguindo a regra oficial do consórcio: sempre o número ou maior`
+  - `ordena cotas priorizando número sorteado e cotas superiores antes do giro`
   - `ignora cota sem número inteiro real`
   - `agrupa cotas por grupo e prioriza grupos com cotas sorteadas na pedra (distância 0)`
 - `src/lib/erp/assembleias-contract.test.ts`:
@@ -59,5 +77,5 @@ Anteriormente:
   - `usa cotas definitivas e mantém sorteios do Portal fora do ERP`
   - `permite registrar assembleia para todos os grupos e lista clientes mais próximos por grupo`
 
-Resultados: **7 testes aprovados com 100% de sucesso**.
+Resultados: **9 testes aprovados com 100% de sucesso**.  
 Typecheck TypeScript (`tsc --noEmit`): **0 erros**.

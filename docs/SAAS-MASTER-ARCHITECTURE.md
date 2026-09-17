@@ -2441,23 +2441,34 @@ Relatório:
 
 2. **Backend & Modelagem Transacional (`actions.ts` e `assembleias.ts`):**
    - **Suporte a "Todos os grupos":** `createAssembleiaAction` reconhece `grupo_id === "TODOS"`, busca todos os grupos concedidos e autorizados da empresa através de `listGruposAutorizadosForEmpresa(empresaId)` e insere em lote (`erp_assembleias_grupo`), preservando os triggers de integridade de tenant (`validate_erp_assembleia_tenant_integrity`) e append-only (`prevent_erp_assembleia_mutation`).
+   - **Sorteio pela Loteria Federal (Igual no Site):**
+     - O sistema permite informar o **1º Prêmio da Loteria Federal** (5 dígitos, ex: `80246` ou `95866`) ou consultar a API oficial da Caixa Econômica Federal via data do concurso.
+     - A pedra sorteada de cada grupo é calculada pela fórmula canônica:
+       $$\text{Pedra} = \text{1º Prêmio} \pmod{\text{Quantidade de Cotas do Grupo}}$$
+       (ex.: Grupos de Imóvel com 999 cotas: `80246 mod 999 = 326`; Grupos de Auto com 2000 cotas: `80246 mod 2000 = 246`).
+     - Ao cadastrar com "Todos os grupos", cada grupo recebe a sua respectiva pedra calculada e vinculada.
    - **Função Canônica de Agrupamento e Proximidade (`agruparCotasPorGrupo`):**
      - Mapeia cotas definitivas numeradas do tenant para todos os grupos do evento de assembleia.
-     - Ordena cotas por proximidade da pedra (`distancia = |cota - pedra|`).
+     - **Critério Oficial de Contemplação ("Sempre o número ou maior"):** Em consórcio, a fila avança em ordem crescente a partir da pedra sorteada:
+       1. `cota == pedra`: Distância 0 (`0 (Sorteada!)`, badge `🎯 Sorteada!`).
+       2. `cota > pedra`: Distância `cota - pedra` (`+X (Superior)`). Cotas superiores sempre têm prioridade sobre cotas menores que a pedra.
+       3. `cota < pedra`: Distância `(quantidadeCotas - pedra) + cota` (`+Y (Após giro)`). Cotas inferiores só concorrem após a fila girar todo o grupo.
      - Prioriza grupos com **cotas sorteadas na pedra** (`distancia = 0`) e ranqueia por menor distância para visualização executiva imediata.
 
-3. **Interface do Usuário (`erp-assembleias-page.tsx`):**
-   - **Cadastro com 1 Clique:** Opção `★ Todos os grupos autorizados ({total})` no dropdown de grupos do formulário.
+3. **Interface do Usuário (`erp-assembleias-page.tsx` e `erp-assembleias-form.tsx`):**
+   - **Cadastro com 1 Clique e 2 Modos:** Modo **🎯 Pela Loteria Federal (Site)** e modo **✍️ Pedra Manual Fixa**.
+   - **Busca Caixa Automática:** Consulta ao 1º prêmio oficial da Caixa em tempo real pela data da assembleia.
+   - **Preview Dinâmico Multi-Grupos:** Tabela ao vivo calculando a pedra de cada grupo autorizado conforme o usuário digita o número da federal.
    - **Histórico Lateral Consolidado por Evento:** Cards agrupados por data e pedra sorteada com badge de contagem de grupos (`Todos os grupos (12)` ou `Grupo {codigo}`).
    - **Apuração Multi-Grupos com Destaque de Pedra Sorteada:**
      - Cards estruturados por grupo com cabeçalho, quantidade de cotas e indicativo de menor distância.
-     - Tabela completa de clientes: **Cota**, **Cliente**, **Diferença da pedra**, **Status real** e **Atenção**.
+     - Tabela completa de clientes: **Cota**, **Cliente**, **Diferença da pedra** com tags explicativas (`0 (Sorteada!)`, `+X (Superior)`, `+Y (Após giro)`), **Status real** e **Atenção**.
      - Destaque verde esmeralda `🎯 Sorteada!` para cotas de distância 0 (sorteadas na pedra).
      - Botão funcional de alternar atenção (`toggleAtencaoAssembleiaAction`) conectado diretamente à assembleia do respectivo grupo.
      - Barra de filtros rápidos para alternar entre "Todos os grupos" ou focar em um grupo individual.
 
 4. **Testes Automatizados:**
-   - 7 testes passando 100% via Vitest (`assembleias.test.ts` e `assembleias-contract.test.ts`), cobrindo apuração multi-grupos, ordenação por distância, identificação de contemplação na pedra, RLS e contratos de integridade.
+   - 9 testes passando 100% via Vitest (`assembleias.test.ts` e `assembleias-contract.test.ts`), cobrindo cálculo da Loteria Federal por grupo (mod 999 e mod 2000), regra de contemplação "sempre o número ou maior" (exata, superior e giro), ordenação de proximidade, apuração multi-grupos, RLS e contratos de integridade.
    - 0 erros de compilação TypeScript (`tsc --noEmit`).
 
 Relatório:
