@@ -112,16 +112,51 @@ function previsaoLabel(p: RepassePrevisaoAberta) {
 }
 
 function SearchablePrevisaoSelect({ previsoes, defaultValue = "", placeholder = "Digite o nome do cliente" }: { previsoes: RepassePrevisaoAberta[]; defaultValue?: string; placeholder?: string }) {
+  const [selectedId, setSelectedId] = useState(defaultValue);
   const [termo, setTermo] = useState("");
+
+  useEffect(() => {
+    setSelectedId(defaultValue);
+  }, [defaultValue]);
+
   const normalizado = termo.trim().toLocaleLowerCase("pt-BR");
   const filtradas = normalizado
-    ? previsoes.filter((p) => previsaoLabel(p).toLocaleLowerCase("pt-BR").includes(normalizado))
+    ? previsoes.filter((p) => {
+        const full = `${p.competencia} ${p.cliente_nome} ${p.numero_grupo ?? ""} ${p.numero_cota ?? ""} ${p.ordem_etapa}`.toLocaleLowerCase("pt-BR");
+        return full.includes(normalizado) || previsaoLabel(p).toLocaleLowerCase("pt-BR").includes(normalizado);
+      })
     : previsoes;
-  const atual = defaultValue ? previsoes.find((p) => p.id === defaultValue) : null;
+  const atual = selectedId ? previsoes.find((p) => p.id === selectedId) : null;
   const opcoes = atual && !filtradas.some((p) => p.id === atual.id) ? [atual, ...filtradas] : filtradas;
+
   return <div className="min-w-72 flex-1 space-y-1">
-    <input type="search" value={termo} onChange={(event) => setTermo(event.target.value)} placeholder={placeholder} className="w-full rounded-lg border bg-white p-1.5 font-normal dark:bg-slate-900" />
-    <select name="previsao_franquia_id" required defaultValue={defaultValue} className="w-full rounded-lg border bg-white p-1.5 dark:bg-slate-900">
+    <input
+      type="search"
+      value={termo}
+      onChange={(event) => {
+        const val = event.target.value;
+        setTermo(val);
+        const norm = val.trim().toLocaleLowerCase("pt-BR");
+        if (norm) {
+          const matches = previsoes.filter((p) => {
+            const full = `${p.competencia} ${p.cliente_nome} ${p.numero_grupo ?? ""} ${p.numero_cota ?? ""} ${p.ordem_etapa}`.toLocaleLowerCase("pt-BR");
+            return full.includes(norm) || previsaoLabel(p).toLocaleLowerCase("pt-BR").includes(norm);
+          });
+          if (matches.length === 1) {
+            setSelectedId(matches[0].id);
+          }
+        }
+      }}
+      placeholder={placeholder}
+      className="w-full rounded-lg border bg-white p-1.5 font-normal dark:bg-slate-900"
+    />
+    <select
+      name="previsao_franquia_id"
+      required
+      value={selectedId}
+      onChange={(event) => setSelectedId(event.target.value)}
+      className="w-full rounded-lg border bg-white p-1.5 dark:bg-slate-900"
+    >
       <option value="">Selecione uma comissão aberta, em qualquer competência ({opcoes.length} encontrada(s))</option>
       {opcoes.map((p) => <option key={p.id} value={p.id}>{previsaoLabel(p)}</option>)}
     </select>

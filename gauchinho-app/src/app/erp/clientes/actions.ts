@@ -68,6 +68,20 @@ export async function saveClienteAction(formData: FormData) {
 
   if (result.error || !result.data) throw new Error(result.error?.message ?? "Não foi possível salvar o cliente.");
 
+  if (id) {
+    await supabase
+      .from("vendas")
+      .update({
+        cliente_nome: nome,
+        cliente_cpf_cnpj: documento || null,
+        cliente_telefone: text(formData.get("telefone")) || null,
+        cliente_email: text(formData.get("email")) || null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("cliente_id", id)
+      .eq("empresa_id", empresaAtiva.id);
+  }
+
   await supabase.from("clientes_historico").insert({
     empresa_id: empresaAtiva.id,
     cliente_id: result.data.id,
@@ -77,6 +91,9 @@ export async function saveClienteAction(formData: FormData) {
 
   revalidatePath("/erp/clientes");
   revalidatePath(`/erp/clientes/${result.data.id}`);
+  revalidatePath("/erp/vendas");
+  revalidatePath("/erp/repasse-franquia");
+  revalidatePath("/erp/comissoes");
   redirect(`/erp/clientes/${result.data.id}`);
 }
 

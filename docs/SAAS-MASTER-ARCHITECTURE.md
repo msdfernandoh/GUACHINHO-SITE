@@ -2510,3 +2510,15 @@ legadas ocultem uma alteração operacional do perfil.
 
 Relatório:
 `docs/relatorios-fases/FASE-236-INDICADORES-PERFIL-COMISSAO-ERONI.md`.
+
+### Evolução operacional 237 — Correção do Vínculo de Repasse & Sincronização de Nome de Clientes (Migration 225)
+
+A conciliação manual de recebimentos do relatório de repasse (`/erp/repasse-franquia`) foi estabilizada de ponta a ponta com a remoção do trigger legado `trg_repasse_item_baixa_automatica` (Migration 186), que colidia com a RPC canônica da Fase 203 duplicando baixas em `financeiro_recebimento_itens` e violando a check constraint `comissao_previsao_franquia_saldos_check` (`valor_liquidado <= valor_previsto`).
+
+A função canônica `sincronizar_item_repasse_canonico_203` e a liquidação em `recalcular_liquidacao_previsao_repasse_203` receberam proteção idempotente e teto estrito no valor previsto da cota. A RPC `rpc_corrigir_vinculo_item_repasse` foi atualizada para limpar automaticamente alertas de divergência cadastral ao registrar o vínculo manual.
+
+Adicionalmente, a tabela `clientes` recebeu o trigger `trg_sync_cliente_para_vendas` para propagar alterações de nome, CPF/CNPJ, telefone e e-mail diretamente para as vendas associadas em tempo real. Foi executado backfill retroativo no banco de dados e a consulta de previsões do ERP passou a priorizar `cliente:clientes(nome)` sobre `vendas.cliente_nome`. No frontend, `SearchablePrevisaoSelect` tornou-se um componente controlado com auto-seleção em correspondências únicas e busca enriquecida por nome, cota, grupo e competência.
+
+Relatório:
+`docs/relatorios-fases/FASE-237-CORRECAO-VINCULO-REPASSE-E-SYNC-CLIENTES.md`.
+
