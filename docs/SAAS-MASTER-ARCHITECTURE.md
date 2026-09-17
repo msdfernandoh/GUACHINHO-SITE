@@ -2545,3 +2545,14 @@ venda.
 
 Relatório:
 `docs/relatorios-fases/FASE-238-CONVERSAO-PROGRAMA-CANONICO-COMISSAO.md`.
+
+### Evolução operacional 239 — reconciliação segura de lead legado
+
+Antes de criar a venda, a conversão reconcilia leads públicos históricos que
+ainda não possuem `empresa_id`, desde que o vínculo com uma única empresa seja
+comprovado pelas contratações existentes. Leads sem vínculo ou associados a
+contratações de empresas diferentes permanecem bloqueados para análise manual.
+A trigger de integridade multiempresa da venda não foi flexibilizada.
+
+Relatório:
+`docs/relatorios-fases/FASE-239-LEAD-LEGADO-TENANT-FORMALIZACAO.md`.
