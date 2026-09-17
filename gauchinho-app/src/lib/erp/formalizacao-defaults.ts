@@ -2,7 +2,12 @@ type ParticipanteRef = { id: string; usuario_id?: string | null };
 type VinculoPerfilRef = { participante_id: string; perfil_id: string; papel_tipo: string };
 type ModalidadeRef = { id: string; codigo: string };
 type ModalidadeRegraRef = { id: string; isCadastradaNoBanco: boolean; percentualReferencia: number };
-type RegraProgramaRef = { programa?: { nome?: string | null } | null };
+type RegraProgramaRef = {
+  programa?: {
+    nome?: string | null;
+    tipos?: Array<{ tipo_administradora_id: string; ativo?: boolean | null }> | null;
+  } | null;
+};
 
 const normalizar = (valor?: string | null) => String(valor ?? "")
   .normalize("NFD")
@@ -11,8 +16,13 @@ const normalizar = (valor?: string | null) => String(valor ?? "")
 
 export function programaComissaoCompativelComTipoBem(
   regra: RegraProgramaRef,
+  tipoBemId?: string | null,
   tipoBem?: string | null,
 ): boolean {
+  const mapeamentos = regra.programa?.tipos?.filter((item) => item.ativo !== false) ?? [];
+  if (mapeamentos.length > 0 && tipoBemId) {
+    return mapeamentos.some((item) => item.tipo_administradora_id === tipoBemId);
+  }
   const tipo = normalizar(tipoBem);
   const programa = normalizar(regra.programa?.nome);
   if (tipo.includes("veiculo")) return programa.includes("veiculo");

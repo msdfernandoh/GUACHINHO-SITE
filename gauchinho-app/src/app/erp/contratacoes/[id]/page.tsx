@@ -148,7 +148,7 @@ export default async function ConferirContratacaoPage({
       .or(`vigencia_fim.is.null,vigencia_fim.gte.${hoje}`),
     admin
       .from("comissao_regras_participantes")
-      .select("id,perfil_id,programa_id,percentual_comissao,seguir_cronograma_franquia,etapas_cronograma,base_v2,status,versao,programa:comissao_programas(id,nome)")
+      .select("id,perfil_id,programa_id,percentual_comissao,seguir_cronograma_franquia,etapas_cronograma,base_v2,status,versao,programa:comissao_programas(id,nome,tipos:comissao_programa_tipos(tipo_administradora_id,ativo))")
       .eq("empresa_id", empresaAtiva.id)
       .eq("ativa", true)
       .eq("configuracao_homologada", true)

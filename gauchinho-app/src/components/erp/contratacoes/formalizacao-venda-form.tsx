@@ -77,7 +77,11 @@ export type RegraParticipante = {
   etapas_cronograma: unknown;
   base_v2: string;
   status: string;
-  programa?: { id: string; nome: string } | null;
+  programa?: {
+    id: string;
+    nome: string;
+    tipos?: Array<{ tipo_administradora_id: string; ativo?: boolean | null }> | null;
+  } | null;
 };
 
 export type RegraFranquia = {
@@ -242,7 +246,11 @@ export function FormalizacaoVendaForm({
     const tipoBem = (grupoAtual?.tipo as { nome?: string } | null)?.nome;
     return perfisPrincipal.filter((vinculo) => {
       const regrasDoPerfil = regrasParticipantes.filter((regra) =>
-        regra.perfil_id === vinculo.perfil_id && programaComissaoCompativelComTipoBem(regra, tipoBem),
+        regra.perfil_id === vinculo.perfil_id && programaComissaoCompativelComTipoBem(
+          regra,
+          grupoAtual?.tipo_administradora_id,
+          tipoBem,
+        ),
       );
       return regrasDoPerfil.some((regraParticipante) => regrasFranquia.some((regraFranquia) => {
         const tipoCompativel = grupoAtual?.tipo_administradora_id
@@ -283,7 +291,11 @@ export function FormalizacaoVendaForm({
     if (!perfilPrincipalAtivo) return null;
     const tipoBem = (grupoAtual?.tipo as { nome?: string } | null)?.nome;
     const regrasDoPerfil = regrasParticipantes.filter((regra) => regra.perfil_id === perfilPrincipalAtivo.perfil_id);
-    return regrasDoPerfil.find((regra) => programaComissaoCompativelComTipoBem(regra, tipoBem))
+    return regrasDoPerfil.find((regra) => programaComissaoCompativelComTipoBem(
+      regra,
+      grupoAtual?.tipo_administradora_id,
+      tipoBem,
+    ))
       ?? (regrasDoPerfil.length === 1 ? regrasDoPerfil[0]! : null);
   }, [grupoAtual, regrasParticipantes, perfilPrincipalAtivo]);
 

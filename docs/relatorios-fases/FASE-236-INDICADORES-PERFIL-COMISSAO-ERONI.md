@@ -82,3 +82,25 @@ para `Sócio`, mantendo o código técnico legado `MICROFRANQUIA`. O fechamento
 passou a montar o rótulo pelo perfil de comissão vigente; por isso a alteração
 aparece imediatamente como `Sócio · Eroni Bolfe`. O salvamento de vínculos
 também invalida as páginas filhas de Contratações para evitar dados antigos.
+
+Foi corrigida ainda a validação final da formalização para perfis com dois
+programas. Antes, a RPC podia escolher arbitrariamente a regra de Veículo do
+perfil `Sócio` durante uma venda de Imóvel e então informar zero regras da
+franqueadora. A migration 226 filtra primeiro por administradora, tipo do grupo
+e modalidade. Se qualquer etapa posterior falhar, a ação preserva o consultor,
+o perfil e as escolhas comerciais na contratação.
+
+A solução foi generalizada para todos os perfis e participantes. A tabela
+`comissao_programa_tipos` declara quais programas atendem cada tipo de bem; a
+RPC exige exatamente um deles dentro das regras do perfil selecionado. Assim,
+o programa `Franquia Antiga` pode atender Imóvel e Automóvel sem conflitar com
+os programas Racon usados por Sócio, Microfranquia, SDR, Indicador e Parceiro.
+Um trigger valida empresa e administradora. A tela e a RPC usam esse vínculo
+canônico, sem depender do nome “Imóvel” ou “Veículo” e sem escolher a primeira
+regra encontrada.
+
+As migrations 226 e 227 foram aplicadas em produção. A auditoria pós-aplicação
+validou 12 combinações `perfil × tipo`, todas com exatamente um programa:
+Franquia Antiga, Parceiro Padrão, Indicador, Sócio, Microfranquia Padrão e SDR
+Padrão, cada um para Imóvel e Automóvel. Nenhuma combinação ficou ausente ou
+ambígua.

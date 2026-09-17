@@ -2508,6 +2508,17 @@ fonte do rótulo do participante. O código de função do vínculo permanece co
 fallback para participantes com mais de um perfil, evitando que classificações
 legadas ocultem uma alteração operacional do perfil.
 
+Quando um perfil possui regras em mais de um programa, como `Sócio` em Racon
+Imóvel e Racon Veículo, a RPC de formalização resolve o programa pela
+administradora e pelo vínculo canônico N:N `comissao_programa_tipos`; a
+modalidade é validada na regra da franqueadora. A resolução exige exatamente
+um programa dentro das regras do perfil selecionado para o tipo da venda. Isso
+permite que programas canônicos e legados atendam ao mesmo tipo quando estão
+ligados a perfis diferentes. Um trigger impede vínculos entre empresas ou
+administradoras diferentes. A tentativa com erro
+preserva participante, perfil, grupo, produto e modalidade na contratação para
+que a página não apague a seleção do operador.
+
 Relatório:
 `docs/relatorios-fases/FASE-236-INDICADORES-PERFIL-COMISSAO-ERONI.md`.
 
@@ -2521,4 +2532,3 @@ Adicionalmente, a tabela `clientes` recebeu o trigger `trg_sync_cliente_para_ven
 
 Relatório:
 `docs/relatorios-fases/FASE-237-CORRECAO-VINCULO-REPASSE-E-SYNC-CLIENTES.md`.
-

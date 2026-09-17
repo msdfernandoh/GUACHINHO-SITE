@@ -72,12 +72,14 @@ export async function formalizarContratacaoAction(formData: FormData) {
   const motivoPromo = value(formData, "motivo_ajuste_promocional");
   const admin = createAdminClient();
   const db = await createClient();
+  let dadosSimulacaoAtual: Record<string, unknown> = {};
   try {
     const { data: contratacao, error: contratacaoError } = await admin
       .from("contratacoes_online")
       .select("id,nome,cpf,cnpj,email,telefone,cliente_id,contrato_assinado,dados_simulacao,parcela_estimada")
       .eq("id", contratacaoId).eq("empresa_id", empresaAtiva.id).maybeSingle();
     if (contratacaoError || !contratacao) throw new Error(contratacaoError?.message || "Contratação não encontrada.");
+    dadosSimulacaoAtual = (contratacao.dados_simulacao ?? {}) as Record<string, unknown>;
     if (!contratacao.contrato_assinado) throw new Error("Contrato ainda não foi assinado.");
     assertSnapshotCalculoGruposIntegro(
       (contratacao.dados_simulacao ?? {}) as Record<string, unknown>,
@@ -106,6 +108,7 @@ export async function formalizarContratacaoAction(formData: FormData) {
           aplicado_em: new Date().toISOString(),
         },
       };
+      dadosSimulacaoAtual = novoDadosSimulacao;
 
       if (parcelaAjustada !== null && !isNaN(parcelaAjustada) && parcelaAjustada > 0) {
         novoDadosSimulacao.valor_parcela = parcelaAjustada;
@@ -225,7 +228,37 @@ export async function formalizarContratacaoAction(formData: FormData) {
     if (error && typeof error === "object" && "digest" in error && String((error as { digest?: string }).digest).startsWith("NEXT_REDIRECT")) throw error;
     const message = error instanceof Error ? error.message : "Não foi possível formalizar.";
     const codigo = classificarPendencia(message);
-    await admin.from("contratacoes_online").update({ status_operacional_erp: "PENDENCIA", pendencia_codigo: codigo, pendencia_descricao: message }).eq("id", contratacaoId).eq("empresa_id", empresaAtiva.id);
+    const selecaoValida = UUID.test(grupoId) && UUID.test(opcaoCotaId) && UUID.test(principalId)
+      && UUID.test(modalidadeComissaoId) && Boolean(perfilPrincipalId && UUID.test(perfilPrincipalId))
+      && (!secundarioId || UUID.test(secundarioId))
+      && (!perfilSecundarioId || UUID.test(perfilSecundarioId));
+    const payloadPendencia: Record<string, unknown> = {
+      status_operacional_erp: "PENDENCIA",
+      pendencia_codigo: codigo,
+      pendencia_descricao: message,
+    };
+    if (selecaoValida) {
+      payloadPendencia.grupo_id = grupoId;
+      payloadPendencia.cota_id = opcaoCotaId;
+      payloadPendencia.participante_comercial_id = principalId;
+      payloadPendencia.participante_secundario_id = secundarioId;
+      payloadPendencia.participante_secundario_fracao_percentual = secundarioId && fracao ? Number(fracao) : null;
+      payloadPendencia.dados_simulacao = {
+        ...dadosSimulacaoAtual,
+        grupoId,
+        cotaId: opcaoCotaId,
+        modalidade_comissao_id: modalidadeComissaoId,
+        perfil_principal_id: perfilPrincipalId,
+        perfil_secundario_id: perfilSecundarioId,
+        participante_principal_id: principalId,
+        participante_secundario_id: secundarioId,
+        fracao_secundario: secundarioId && fracao ? Number(fracao) : null,
+        cronograma_secundario: cronogramaSecundario,
+        data_primeira_parcela: dataPrimeiraParcela,
+        data_segunda_parcela: dataSegundaParcela,
+      };
+    }
+    await admin.from("contratacoes_online").update(payloadPendencia).eq("id", contratacaoId).eq("empresa_id", empresaAtiva.id);
     await admin.from("contratacoes_formalizacao_historico").insert({ empresa_id: empresaAtiva.id, contratacao_id: contratacaoId, evento: "PENDENCIA_REGISTRADA", descricao: message, dados: { codigo } });
     revalidatePath("/erp/contratacoes");
     redirect(`/erp/contratacoes/${contratacaoId}?erro=${encodeURIComponent(message)}`);
