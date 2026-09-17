@@ -2556,3 +2556,13 @@ A trigger de integridade multiempresa da venda não foi flexibilizada.
 
 Relatório:
 `docs/relatorios-fases/FASE-239-LEAD-LEGADO-TENANT-FORMALIZACAO.md`.
+
+### Evolução operacional 240 — previsões pelo programa canônico da venda
+
+O núcleo do gerador de previsões de comissão consome o programa congelado no
+snapshot da venda e busca o percentual apenas na regra homologada do perfil
+nesse programa. Isso mantém Imóvel e Veículo separados durante todo o fluxo,
+inclusive após a criação transacional da venda e da cota.
+
+Relatório:
+`docs/relatorios-fases/FASE-240-PREVISOES-PROGRAMA-CANONICO.md`.
