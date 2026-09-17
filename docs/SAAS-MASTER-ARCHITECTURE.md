@@ -2474,4 +2474,16 @@ Relatório:
 Relatório:
 `docs/relatorios-fases/FASE-235-ASSEMBLEIAS-MULTI-GRUPOS-PROXIMIDADE-COTAS.md`.
 
+### Hotfix — schema de leads para o PDF do portal Racon Sinop
+
+Em 17/09/2026, a migration `222_qr_institucional_e_deduplicacao_leads.sql`
+foi aplicada isoladamente em produção. O código de captura de leads do fluxo
+`/grupos` já exigia `leads.telefone_normalizado` e
+`rpc_upsert_lead_por_telefone`, mas esses objetos ainda não existiam no banco;
+por isso a geração da proposta PDF interrompia antes da criação da proposta.
+A coluna e a RPC foram verificadas pelo PostgREST após a aplicação, sem gravar
+uma proposta de teste. A migration `223` permaneceu pendente.
+
+Relatório:
+`docs/relatorios-fases/HOTFIX-RACON-SINOP-PDF-LEAD-SCHEMA-2026-09-17.md`.
 
