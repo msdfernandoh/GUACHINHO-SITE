@@ -2,6 +2,23 @@ type ParticipanteRef = { id: string; usuario_id?: string | null };
 type VinculoPerfilRef = { participante_id: string; perfil_id: string; papel_tipo: string };
 type ModalidadeRef = { id: string; codigo: string };
 type ModalidadeRegraRef = { id: string; isCadastradaNoBanco: boolean; percentualReferencia: number };
+type RegraProgramaRef = { programa?: { nome?: string | null } | null };
+
+const normalizar = (valor?: string | null) => String(valor ?? "")
+  .normalize("NFD")
+  .replace(/[\u0300-\u036f]/g, "")
+  .toLowerCase();
+
+export function programaComissaoCompativelComTipoBem(
+  regra: RegraProgramaRef,
+  tipoBem?: string | null,
+): boolean {
+  const tipo = normalizar(tipoBem);
+  const programa = normalizar(regra.programa?.nome);
+  if (tipo.includes("veiculo")) return programa.includes("veiculo");
+  if (tipo.includes("imovel")) return programa.includes("imovel");
+  return true;
+}
 
 export function resolverModalidadeRegraId(params: {
   modalidadeAtualId?: string | null;

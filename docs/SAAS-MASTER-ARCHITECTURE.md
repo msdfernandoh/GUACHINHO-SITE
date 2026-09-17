@@ -2496,7 +2496,13 @@ inativa o perfil sem regra `Indicador Padrão`. A identidade comercial de Eroni
 passa a refletir seu perfil `Microfranquia Padrão` no seletor de formalização;
 quando essa é a única microfranquia elegível, a tela a seleciona como padrão
 sem impedir a escolha de outro perfil válido. O papel administrativo de login
-permanece separado da função comercial do participante.
+permanece separado da função comercial do participante. Participantes SDR,
+parceiros e indicadores são oferecidos como secundários e suas regras são
+resolvidas no mesmo programa da venda. Laura mantém o vínculo `SDR Padrão`,
+incluindo a regra homologada equivalente no programa Racon Veículo. Os perfis
+comerciais não são duplicados por tipo de bem: cada perfil possui uma regra por
+programa, e a formalização seleciona automaticamente Racon Imóvel ou Racon
+Veículo a partir do tipo canônico do grupo.
 
 Relatório:
 `docs/relatorios-fases/FASE-236-INDICADORES-PERFIL-COMISSAO-ERONI.md`.

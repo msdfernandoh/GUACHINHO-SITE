@@ -148,7 +148,7 @@ export default async function ConferirContratacaoPage({
       .or(`vigencia_fim.is.null,vigencia_fim.gte.${hoje}`),
     admin
       .from("comissao_regras_participantes")
-      .select("id,perfil_id,programa_id,percentual_comissao,seguir_cronograma_franquia,etapas_cronograma,base_v2,status,versao")
+      .select("id,perfil_id,programa_id,percentual_comissao,seguir_cronograma_franquia,etapas_cronograma,base_v2,status,versao,programa:comissao_programas(id,nome)")
       .eq("empresa_id", empresaAtiva.id)
       .eq("ativa", true)
       .eq("configuracao_homologada", true)
@@ -256,6 +256,11 @@ export default async function ConferirContratacaoPage({
     ),
     nome_exibicao: null,
   }));
+  const participanteIdsPrincipais = new Set(
+    vinculosPerfis
+      .filter((vinculo) => ["CONSULTOR", "GESTOR", "MICROFRANQUIA"].includes(vinculo.papel_tipo.toUpperCase()))
+      .map((vinculo) => vinculo.participante_id),
+  );
   const regrasParticipantes = ((regrasParticipantesResult.data ?? []) as unknown) as RegraParticipante[];
 
   // Pré-seleção somente por UUID canônico persistido. Nunca escolhe o primeiro item por aproximação.
@@ -277,7 +282,7 @@ export default async function ConferirContratacaoPage({
   const consultorSelecionadoId = resolverParticipantePrincipalId({
     participantePersistidoId: c.participante_comercial_id,
     consultorUsuarioId: String((c.dados_simulacao as any)?.consultor_id ?? ""),
-    participantes,
+    participantes: participantes.filter((participante) => participanteIdsPrincipais.has(participante.id)),
   });
   const perfilPrincipalSelecionadoId = resolverPerfilPrincipalId({
     perfilPersistidoId: String((c.dados_simulacao as any)?.perfil_principal_id ?? ""),

@@ -4,6 +4,7 @@ import {
   resolverParticipantePrincipalId,
   resolverPerfilPrincipalId,
   resolverModalidadeRegraId,
+  programaComissaoCompativelComTipoBem,
 } from "./formalizacao-defaults";
 
 describe("defaults canônicos da formalização", () => {
@@ -37,6 +38,21 @@ describe("defaults canônicos da formalização", () => {
         selecoes: [{ config: { modalidadeParcela: "reduzida", percentualParcelaReduzida: 70 } }],
       },
     })).toBe("reduzida");
+  });
+});
+
+describe("programaComissaoCompativelComTipoBem", () => {
+  const imovel = { programa: { nome: "Racon Imóvel — Comissão V2" } };
+  const veiculo = { programa: { nome: "Racon Veículo — Comissão" } };
+
+  it("seleciona o programa de imóvel para grupos de imóvel", () => {
+    expect(programaComissaoCompativelComTipoBem(imovel, "IMÓVEL")).toBe(true);
+    expect(programaComissaoCompativelComTipoBem(veiculo, "IMÓVEL")).toBe(false);
+  });
+
+  it("seleciona o programa de veículo para grupos de veículo", () => {
+    expect(programaComissaoCompativelComTipoBem(veiculo, "VEÍCULO")).toBe(true);
+    expect(programaComissaoCompativelComTipoBem(imovel, "VEÍCULO")).toBe(false);
   });
 });
 

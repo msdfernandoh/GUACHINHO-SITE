@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo, useTransition } from "react";
 import { formalizarContratacaoAction } from "@/app/erp/contratacoes/actions";
-import { resolverModalidadeRegraId } from "@/lib/erp/formalizacao-defaults";
+import { programaComissaoCompativelComTipoBem, resolverModalidadeRegraId } from "@/lib/erp/formalizacao-defaults";
 import { Users, Calculator, UserCheck, Calendar, Info, Sparkles, ShieldCheck, Tag, Percent, PiggyBank, ArrowDownRight } from "lucide-react";
 import { MarcarContratoAssinadoButton } from "./marcar-contrato-assinado-button";
 
@@ -77,6 +77,7 @@ export type RegraParticipante = {
   etapas_cronograma: unknown;
   base_v2: string;
   status: string;
+  programa?: { id: string; nome: string } | null;
 };
 
 export type RegraFranquia = {
@@ -222,12 +223,28 @@ export function FormalizacaoVendaForm({
     return vinculosPerfis.filter((v) => v.participante_id === selectedPrincipalId && v.perfil);
   }, [vinculosPerfis, selectedPrincipalId]);
 
+  const participantesPrincipais = useMemo(() => participantes.filter((participante) =>
+    vinculosPerfis.some((vinculo) =>
+      vinculo.participante_id === participante.id &&
+      ["CONSULTOR", "GESTOR", "MICROFRANQUIA"].includes(vinculo.papel_tipo.toUpperCase()),
+    ),
+  ), [participantes, vinculosPerfis]);
+
+  const participantesSecundarios = useMemo(() => participantes.filter((participante) =>
+    vinculosPerfis.some((vinculo) =>
+      vinculo.participante_id === participante.id &&
+      ["SDR", "PARCEIRO", "INDICADOR"].includes(vinculo.papel_tipo.toUpperCase()),
+    ),
+  ), [participantes, vinculosPerfis]);
+
   const perfisPrincipalElegiveis = useMemo(() => {
     const modalidadesCota = new Set((cotaAtual?.modalidades ?? []).map((item) => item.id));
+    const tipoBem = (grupoAtual?.tipo as { nome?: string } | null)?.nome;
     return perfisPrincipal.filter((vinculo) => {
-      const regraParticipante = regrasParticipantes.find((regra) => regra.perfil_id === vinculo.perfil_id);
-      if (!regraParticipante?.programa_id) return false;
-      return regrasFranquia.some((regraFranquia) => {
+      const regrasDoPerfil = regrasParticipantes.filter((regra) =>
+        regra.perfil_id === vinculo.perfil_id && programaComissaoCompativelComTipoBem(regra, tipoBem),
+      );
+      return regrasDoPerfil.some((regraParticipante) => regrasFranquia.some((regraFranquia) => {
         const tipoCompativel = grupoAtual?.tipo_administradora_id
           ? regraFranquia.tipo_administradora_id === null || regraFranquia.tipo_administradora_id === grupoAtual.tipo_administradora_id
           : regraFranquia.tipo_administradora_id === null;
@@ -235,7 +252,7 @@ export function FormalizacaoVendaForm({
           && tipoCompativel
           && modalidadesCota.has(String(regraFranquia.modalidade_comissao_id))
           && Number(regraFranquia.percentual_total_comissao) > 0;
-      });
+      }));
     });
   }, [cotaAtual, grupoAtual, perfisPrincipal, regrasFranquia, regrasParticipantes]);
 
@@ -264,8 +281,11 @@ export function FormalizacaoVendaForm({
   // Regra do perfil comercial selecionado (contém o programa_id da franqueadora, ex: Franquia Antiga)
   const regraPrincipalAtiva = useMemo(() => {
     if (!perfilPrincipalAtivo) return null;
-    return regrasParticipantes.find((r) => r.perfil_id === perfilPrincipalAtivo.perfil_id) || null;
-  }, [regrasParticipantes, perfilPrincipalAtivo]);
+    const tipoBem = (grupoAtual?.tipo as { nome?: string } | null)?.nome;
+    const regrasDoPerfil = regrasParticipantes.filter((regra) => regra.perfil_id === perfilPrincipalAtivo.perfil_id);
+    return regrasDoPerfil.find((regra) => programaComissaoCompativelComTipoBem(regra, tipoBem))
+      ?? (regrasDoPerfil.length === 1 ? regrasDoPerfil[0]! : null);
+  }, [grupoAtual, regrasParticipantes, perfilPrincipalAtivo]);
 
   const programaPrincipalId = useMemo(() => {
     return regraPrincipalAtiva?.programa_id || null;
@@ -424,8 +444,29 @@ export function FormalizacaoVendaForm({
   // 4. Perfis do Secundário
   const perfisSecundario = useMemo(() => {
     if (!selectedSecundarioId) return [];
-    return vinculosPerfis.filter((v) => v.participante_id === selectedSecundarioId && v.perfil);
-  }, [vinculosPerfis, selectedSecundarioId]);
+    return vinculosPerfis.filter((vinculo) =>
+      vinculo.participante_id === selectedSecundarioId &&
+      Boolean(vinculo.perfil) &&
+      ["SDR", "PARCEIRO", "INDICADOR"].includes(vinculo.papel_tipo.toUpperCase()) &&
+      regrasParticipantes.some((regra) =>
+        regra.perfil_id === vinculo.perfil_id && regra.programa_id === programaPrincipalId,
+      ),
+    );
+  }, [programaPrincipalId, regrasParticipantes, selectedSecundarioId, vinculosPerfis]);
+
+  useEffect(() => {
+    if (!selectedSecundarioId) {
+      setSelectedPerfilSecundarioId("");
+      return;
+    }
+    if (perfisSecundario.some((item) => item.perfil_id === selectedPerfilSecundarioId)) return;
+    if (perfisSecundario.length === 1) {
+      setSelectedPerfilSecundarioId(perfisSecundario[0]!.perfil_id);
+      setModoSecundario("PERFIL");
+      return;
+    }
+    setSelectedPerfilSecundarioId("");
+  }, [perfisSecundario, selectedPerfilSecundarioId, selectedSecundarioId]);
 
   const perfilSecundarioAtivo = useMemo(() => {
     if (!selectedPerfilSecundarioId) return null;
@@ -438,11 +479,13 @@ export function FormalizacaoVendaForm({
       if (perfilSecundarioAtivo.override_percentual !== null) {
         return Number(perfilSecundarioAtivo.override_percentual);
       }
-      const regra = regrasParticipantes.find((r) => r.perfil_id === perfilSecundarioAtivo.perfil_id);
+      const regra = regrasParticipantes.find((r) =>
+        r.perfil_id === perfilSecundarioAtivo.perfil_id && r.programa_id === programaPrincipalId,
+      );
       return regra ? Number(regra.percentual_comissao) : 20;
     }
     return Number(fracaoManualSecundario) || 0;
-  }, [selectedSecundarioId, modoSecundario, perfilSecundarioAtivo, regrasParticipantes, fracaoManualSecundario]);
+  }, [selectedSecundarioId, modoSecundario, perfilSecundarioAtivo, regrasParticipantes, programaPrincipalId, fracaoManualSecundario]);
 
   // 5. Memória de Cálculo
   const calculo = useMemo(() => {
@@ -580,7 +623,7 @@ export function FormalizacaoVendaForm({
             className="mt-1.5 w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-xs font-semibold shadow-2xs focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
           >
             <option value="">Selecione o consultor</option>
-            {participantes.map((p) => (
+            {participantesPrincipais.map((p) => (
               <option key={p.id} value={p.id}>
                 {p.nome_exibicao || p.nome}
               </option>
@@ -600,7 +643,7 @@ export function FormalizacaoVendaForm({
             className="mt-1.5 w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-xs font-semibold shadow-2xs focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
           >
             <option value="">Sem secundário (100% para o principal)</option>
-            {participantes
+            {participantesSecundarios
               .filter((p) => p.id !== selectedPrincipalId)
               .map((p) => (
                 <option key={p.id} value={p.id}>

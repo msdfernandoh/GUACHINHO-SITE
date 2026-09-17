@@ -18,6 +18,11 @@ perfil `Sócio`. Ao trocar o participante principal, a interface não escolhia
 o perfil aplicável quando havia mais de um, deixando o modelo comercial vazio.
 A regra vigente da microfranquia está homologada para o programa Racon Imóvel.
 
+Laura Cervelheira tinha o vínculo correto `SDR → SDR Padrão`, mas também um
+vínculo incompatível `CONSULTOR → Indicador`, que fazia seu nome aparecer como
+principal. A regra SDR existia para Racon Imóvel, mas não para Racon Veículo,
+programa usado pelo grupo 5588 da conferência apresentada.
+
 ## Correção
 
 - O cadastro público exige o perfil ativo `Indicador` antes de criar qualquer
@@ -35,6 +40,17 @@ A regra vigente da microfranquia está homologada para o programa Racon Imóvel.
   evitando que o cadastro duplicado do programa de indicação tome seu lugar.
   Quando há uma única microfranquia elegível, ela é a seleção inicial; a escolha
   explícita de outro perfil válido continua disponível.
+- A formalização separa as funções principais das funções secundárias. `SDR`,
+  `PARCEIRO` e `INDICADOR` aparecem como secundários e um único perfil
+  homologado para o programa da venda é selecionado automaticamente.
+- O vínculo incompatível de Laura é encerrado, mantendo `SDR Padrão`.
+- Perfis comerciais não são duplicados por tipo de bem. As regras homologadas
+  dos perfis de Microfranquia, SDR, Indicador, Sócio e Parceiro são vinculadas
+  também ao programa Racon Veículo, conservando percentual, base, curva e
+  cronograma do programa Racon Imóvel.
+- A formalização compara o tipo do grupo (`IMÓVEL` ou `VEÍCULO`) com o programa
+  da regra. Assim, Eroni e Laura usam automaticamente a regra do programa da
+  venda, sem cadastros duplicados da mesma pessoa ou perfil.
 
 ## Limites e verificação
 
@@ -45,6 +61,8 @@ papel e permissão adequados. Em `Minhas comissões`, a consulta usa o
 `participante_comercial_id` ligado ao usuário e filtra previsões por esse ID;
 um consultor comum não recebe o seletor de equipe.
 
-Verificações: teste dos defaults da formalização e contrato do programa de
-indicação, lint dos arquivos alterados, build de produção, aplicação controlada
-da migration e conferência dos registros alterados no Supabase.
+Verificações: os 9 testes dos defaults da formalização passaram, o lint não
+apontou erros e o build de produção foi concluído. Na suíte ampla, 296 arquivos
+passaram e 7 arquivos de contratos legados de repasse/financeiro mantiveram 8
+falhas de texto preexistentes e não relacionadas a esta fase. A migration será
+aplicada de forma controlada e seus registros serão conferidos no Supabase.
