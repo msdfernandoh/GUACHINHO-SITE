@@ -64,5 +64,15 @@ um consultor comum não recebe o seletor de equipe.
 Verificações: os 9 testes dos defaults da formalização passaram, o lint não
 apontou erros e o build de produção foi concluído. Na suíte ampla, 296 arquivos
 passaram e 7 arquivos de contratos legados de repasse/financeiro mantiveram 8
-falhas de texto preexistentes e não relacionadas a esta fase. A migration será
-aplicada de forma controlada e seus registros serão conferidos no Supabase.
+falhas de texto preexistentes e não relacionadas a esta fase.
+
+A migration 224 foi aplicada isoladamente em produção após o deploy do commit
+`b9f934c`; a migration 223 permaneceu pendente. A conferência no Supabase
+confirmou:
+
+- `Indicador Padrão` inativo e todos os três participantes do programa ligados
+  ao perfil `Indicador`, com escopo `VINCULADOS` e menu `minhas-comissoes`;
+- Eroni com vínculo ativo `MICROFRANQUIA → Microfranquia Padrão`;
+- Laura com vínculo ativo `SDR → SDR Padrão` e o vínculo incompatível inativo;
+- regras de Veículo homologadas para `SDR Padrão` (12,5%), `Parceiro Padrão`
+  (25%), `Indicador` (25%), `Microfranquia Padrão` (50%) e `Sócio` (100%).
