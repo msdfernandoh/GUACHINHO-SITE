@@ -211,6 +211,19 @@ export async function formalizarContratacaoAction(formData: FormData) {
       p_data_segunda_parcela: dataSegundaParcela,
     });
     if (prepararError) throw new Error(prepararError.message);
+
+    // A preparação resolve e congela o programa canônico. Se uma etapa
+    // posterior falhar, preserve esse snapshot atualizado ao registrar a
+    // pendência, inclusive para perfis que atendem Imóvel e Veículo.
+    const { data: contratacaoPreparada, error: preparadaError } = await admin
+      .from("contratacoes_online")
+      .select("dados_simulacao")
+      .eq("id", contratacaoId)
+      .eq("empresa_id", empresaAtiva.id)
+      .single();
+    if (preparadaError) throw new Error(preparadaError.message);
+    dadosSimulacaoAtual = (contratacaoPreparada.dados_simulacao ?? {}) as Record<string, unknown>;
+
     const result = await converterContratacaoEmVenda(
       empresaAtiva.id,
       contratacaoId,

@@ -2532,3 +2532,16 @@ Adicionalmente, a tabela `clientes` recebeu o trigger `trg_sync_cliente_para_ven
 
 Relatório:
 `docs/relatorios-fases/FASE-237-CORRECAO-VINCULO-REPASSE-E-SYNC-CLIENTES.md`.
+
+### Evolução operacional 238 — conversão pelo programa canônico da comissão
+
+A conversão definitiva da contratação reutiliza o `programa_comissao_id`
+congelado pela preparação e valida esse programa contra empresa,
+administradora, tipo do grupo, perfil e vigência. Perfis com regras em mais de
+um programa, como Sócio para Imóvel e Veículo, deixam de passar por uma segunda
+seleção ambígua durante o fechamento. A regra da franqueadora continua sendo
+exigida para a modalidade escolhida, mas sempre dentro do programa canônico da
+venda.
+
+Relatório:
+`docs/relatorios-fases/FASE-238-CONVERSAO-PROGRAMA-CANONICO-COMISSAO.md`.
