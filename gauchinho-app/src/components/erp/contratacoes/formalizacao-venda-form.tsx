@@ -246,7 +246,14 @@ export function FormalizacaoVendaForm({
       setSelectedPerfilPrincipalId(perfilPersistido.perfil_id);
       return;
     }
-    setSelectedPerfilPrincipalId(perfisPrincipalElegiveis.length === 1 ? perfisPrincipalElegiveis[0]!.perfil_id : "");
+    const microfranquias = perfisPrincipalElegiveis.filter((item) => item.papel_tipo.toUpperCase() === "MICROFRANQUIA");
+    setSelectedPerfilPrincipalId(
+      microfranquias.length === 1
+        ? microfranquias[0]!.perfil_id
+        : perfisPrincipalElegiveis.length === 1
+          ? perfisPrincipalElegiveis[0]!.perfil_id
+          : "",
+    );
   }, [initialPerfilPrincipalId, perfisPrincipalElegiveis, selectedPerfilPrincipalId]);
 
   const perfilPrincipalAtivo = useMemo(() => {

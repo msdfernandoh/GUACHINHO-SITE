@@ -51,6 +51,16 @@ describe("resolverModalidadeRegraId", () => {
     expect(resolverModalidadeRegraId({ modalidadePropostaId: "reduzida", modalidades })).toBe("reduzida");
   });
 
+  it("prefere a microfranquia quando o participante também possui perfil de consultor", () => {
+    expect(resolverPerfilPrincipalId({
+      participanteId: "eroni",
+      vinculos: [
+        { participante_id: "eroni", perfil_id: "socio", papel_tipo: "CONSULTOR" },
+        { participante_id: "eroni", perfil_id: "microfranquia", papel_tipo: "MICROFRANQUIA" },
+      ],
+    })).toBe("microfranquia");
+  });
+
   it("não escolhe percentual arbitrário quando há mais de uma opção homologada", () => {
     expect(resolverModalidadeRegraId({ modalidadeAtualId: "sem-regra", modalidades })).toBe("");
   });

@@ -240,7 +240,11 @@ export default async function ConferirContratacaoPage({
     const atual = participantesPorLogin.get(chave);
     const atualTemPerfil = atual ? vinculosPerfis.some((vinculo) => vinculo.participante_id === atual.id) : false;
     const novoTemPerfil = vinculosPerfis.some((vinculo) => vinculo.participante_id === participante.id);
-    if (!atual || (!atualTemPerfil && novoTemPerfil)) participantesPorLogin.set(chave, participante);
+    if (
+      !atual ||
+      (Boolean(participante.usuario_id) && !atual.usuario_id) ||
+      (!atual.usuario_id && !atualTemPerfil && novoTemPerfil)
+    ) participantesPorLogin.set(chave, participante);
   }
   const participantes = [...participantesPorLogin.values()].map((participante) => ({
     ...participante,

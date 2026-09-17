@@ -41,6 +41,9 @@ export function resolverPerfilPrincipalId(params: {
   const persistido = params.perfilPersistidoId?.trim();
   if (persistido && vinculados.some((item) => item.perfil_id === persistido)) return persistido;
 
+  const microfranquias = vinculados.filter((item) => item.papel_tipo.toUpperCase() === "MICROFRANQUIA");
+  if (microfranquias.length === 1) return microfranquias[0]!.perfil_id;
+
   const perfisConsultor = vinculados.filter((item) => item.papel_tipo.toUpperCase() === "CONSULTOR");
   return perfisConsultor.length === 1 ? perfisConsultor[0]!.perfil_id : "";
 }

@@ -72,7 +72,18 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: true, indicadorId: mesmoCpf.id, existente: true });
     }
 
-    const { data: participante, error: participanteError } = await admin.from("participantes_comerciais").insert({ empresa_id: ingress.empresaId, nome, nome_exibicao: nome, cpf, telefone, whatsapp: telefone, status: "ATIVO", cargo: "Indicador do programa" }).select("id").single();
+    const { data: perfilIndicador, error: perfilError } = await admin.from("comissao_perfis")
+      .select("id")
+      .eq("empresa_id", ingress.empresaId)
+      .eq("papel_base", "INDICADOR")
+      .eq("nome", "Indicador")
+      .eq("ativo", true)
+      .maybeSingle();
+    if (perfilError || !perfilIndicador) {
+      return NextResponse.json({ error: "O perfil de comissão Indicador não está disponível. Procure a equipe para concluir o cadastro." }, { status: 503 });
+    }
+
+    const { data: participante, error: participanteError } = await admin.from("participantes_comerciais").insert({ empresa_id: ingress.empresaId, nome, nome_exibicao: nome, cpf, telefone, whatsapp: telefone, status: "ATIVO", cargo: "Indicador do programa", escopo_visualizacao: "VINCULADOS", modulos_permitidos: ["minhas-comissoes"] }).select("id").single();
     if (participanteError || !participante) return NextResponse.json({ error: participanteError?.message ?? "Falha ao criar indicador." }, { status: 500 });
     const { error: tipoError } = await admin.from("participante_tipos").insert({ empresa_id: ingress.empresaId, participante_id: participante.id, tipo_codigo: "INDICADOR" });
     const { data: indicador, error: indicadorError } = await admin.from("programa_indicadores").insert({ empresa_id: ingress.empresaId, participante_id: participante.id, cpf, telefone, chave_pix: chavePix, empresa_trabalho: empresaTrabalho || null }).select("id").single();
@@ -80,9 +91,11 @@ export async function POST(request: Request) {
       await admin.from("participantes_comerciais").delete().eq("id", participante.id).eq("empresa_id", ingress.empresaId);
       return NextResponse.json({ error: tipoError?.message ?? indicadorError?.message ?? "Falha ao concluir cadastro." }, { status: 500 });
     }
-    const { data: perfilIndicador } = await admin.from("comissao_perfis").select("id").eq("empresa_id", ingress.empresaId).eq("papel_base", "INDICADOR").eq("nome", "Indicador Padrão").eq("ativo", true).maybeSingle();
-    if (perfilIndicador) {
-      await admin.from("participante_comissao_perfis").insert({ empresa_id: ingress.empresaId, participante_id: participante.id, papel_tipo: "INDICADOR", perfil_id: perfilIndicador.id, vigencia_inicio: new Date().toISOString().slice(0, 10), ativo: true });
+    const { error: vinculoError } = await admin.from("participante_comissao_perfis").insert({ empresa_id: ingress.empresaId, participante_id: participante.id, papel_tipo: "INDICADOR", perfil_id: perfilIndicador.id, vigencia_inicio: new Date().toISOString().slice(0, 10), ativo: true });
+    if (vinculoError) {
+      await admin.from("programa_indicadores").delete().eq("id", indicador.id).eq("empresa_id", ingress.empresaId);
+      await admin.from("participantes_comerciais").delete().eq("id", participante.id).eq("empresa_id", ingress.empresaId);
+      return NextResponse.json({ error: "Falha ao vincular o perfil de comissão Indicador. Tente novamente." }, { status: 500 });
     }
     await admin.from("programa_indicacoes").update({ indicador_id: indicador.id }).eq("empresa_id", ingress.empresaId).is("indicador_id", null).eq("indicador_telefone_snapshot", telefone);
     return NextResponse.json({ ok: true, indicadorId: indicador.id, existente: false });

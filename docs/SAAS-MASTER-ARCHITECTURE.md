@@ -2487,3 +2487,16 @@ uma proposta de teste. A migration `223` permaneceu pendente.
 Relatório:
 `docs/relatorios-fases/HOTFIX-RACON-SINOP-PDF-LEAD-SCHEMA-2026-09-17.md`.
 
+### Evolução operacional 236 — perfil canônico do indicador e microfranquia de Eroni
+
+O cadastro público do programa de indicação usa o perfil de comissão ativo
+`Indicador` e pré-configura o participante com `Minhas comissões` e escopo
+`VINCULADOS`. A migração dos indicadores existentes preserva seu histórico e
+inativa o perfil sem regra `Indicador Padrão`. A identidade comercial de Eroni
+passa a refletir seu perfil `Microfranquia Padrão` no seletor de formalização;
+quando essa é a única microfranquia elegível, a tela a seleciona como padrão
+sem impedir a escolha de outro perfil válido. O papel administrativo de login
+permanece separado da função comercial do participante.
+
+Relatório:
+`docs/relatorios-fases/FASE-236-INDICADORES-PERFIL-COMISSAO-ERONI.md`.
