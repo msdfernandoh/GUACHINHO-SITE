@@ -28,3 +28,17 @@ export function nomeComTipoComissao(
   const label = tipoComissaoLabel(tipos);
   return label ? `${label} · ${nome}` : nome;
 }
+
+export function nomeComPerfilComissao(
+  nome: string,
+  perfis: readonly (string | null | undefined)[] | null | undefined,
+  tiposFallback?: readonly string[] | null,
+): string {
+  const nomes = [...new Set(
+    (perfis ?? [])
+      .map((perfil) => perfil?.trim())
+      .filter((perfil): perfil is string => Boolean(perfil)),
+  )];
+  if (nomes.length === 1) return `${nomes[0]} · ${nome}`;
+  return nomeComTipoComissao(nome, tiposFallback);
+}

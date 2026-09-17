@@ -252,6 +252,7 @@ export async function saveParticipantProfileRuleAction(
     }
 
     revalidatePath("/erp/regras-comissao");
+    revalidatePath("/erp/contratacoes", "layout");
     return {
       ok: true,
       message: id ? "Regra atualizada em Rascunho." : "Regra criada em Rascunho. Clique em Homologar para ativá-la.",
@@ -456,6 +457,7 @@ export async function linkParticipantePerfilAction(
     }
 
     revalidatePath("/erp/regras-comissao");
+    revalidatePath("/erp/contratacoes", "layout");
     return {
       ok: true,
       message: ativo

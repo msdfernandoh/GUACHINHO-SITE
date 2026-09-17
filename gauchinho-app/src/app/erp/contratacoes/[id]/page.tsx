@@ -4,7 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { requireErpRouteAccess } from "@/lib/erp/erp-acesso-server";
 import { calcularPrazoGrupoFromRow } from "@/lib/grupos/prazos";
 import { obterQuantidadeCotasContratacao } from "@/lib/contratacoes-online/quantidade-cotas";
-import { nomeComTipoComissao } from "@/lib/participantes/nome-com-parceria";
+import { nomeComPerfilComissao } from "@/lib/participantes/nome-com-parceria";
 import {
   resolverModalidadeComissaoId,
   resolverParticipantePrincipalId,
@@ -248,8 +248,11 @@ export default async function ConferirContratacaoPage({
   }
   const participantes = [...participantesPorLogin.values()].map((participante) => ({
     ...participante,
-    nome: nomeComTipoComissao(
+    nome: nomeComPerfilComissao(
       participante.nome_exibicao || participante.nome,
+      vinculosPerfis
+        .filter((vinculo) => vinculo.participante_id === participante.id)
+        .map((vinculo) => vinculo.perfil?.nome),
       vinculosPerfis
         .filter((vinculo) => vinculo.participante_id === participante.id)
         .map((vinculo) => vinculo.papel_tipo),

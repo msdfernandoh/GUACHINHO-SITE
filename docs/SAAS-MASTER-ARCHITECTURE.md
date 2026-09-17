@@ -2503,6 +2503,10 @@ incluindo a regra homologada equivalente no programa Racon Veículo. Os perfis
 comerciais não são duplicados por tipo de bem: cada perfil possui uma regra por
 programa, e a formalização seleciona automaticamente Racon Imóvel ou Racon
 Veículo a partir do tipo canônico do grupo.
+Na apresentação da formalização, o nome do perfil de comissão vigente é a
+fonte do rótulo do participante. O código de função do vínculo permanece como
+fallback para participantes com mais de um perfil, evitando que classificações
+legadas ocultem uma alteração operacional do perfil.
 
 Relatório:
 `docs/relatorios-fases/FASE-236-INDICADORES-PERFIL-COMISSAO-ERONI.md`.

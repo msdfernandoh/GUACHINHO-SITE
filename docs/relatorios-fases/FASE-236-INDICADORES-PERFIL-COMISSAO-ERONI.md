@@ -76,3 +76,9 @@ confirmou:
 - Laura com vínculo ativo `SDR → SDR Padrão` e o vínculo incompatível inativo;
 - regras de Veículo homologadas para `SDR Padrão` (12,5%), `Parceiro Padrão`
   (25%), `Indicador` (25%), `Microfranquia Padrão` (50%) e `Sócio` (100%).
+
+Após a homologação, o perfil do vínculo de Eroni foi alterado operacionalmente
+para `Sócio`, mantendo o código técnico legado `MICROFRANQUIA`. O fechamento
+passou a montar o rótulo pelo perfil de comissão vigente; por isso a alteração
+aparece imediatamente como `Sócio · Eroni Bolfe`. O salvamento de vínculos
+também invalida as páginas filhas de Contratações para evitar dados antigos.
