@@ -1,12 +1,16 @@
 import type { MetadataRoute } from "next";
+import { headers } from "next/headers";
 import { fetchPublicImobiliariasParceiras } from "@/app/admin/imobiliarias/actions";
 import { fetchPublicImoveis } from "@/app/admin/imoveis/actions";
 import { fetchPublicEventosList } from "@/lib/comercial-eventos/public";
 import { fetchPublicCasosSucesso, fetchPublicDicas } from "@/lib/conteudo/fetch-public";
-import { resolvePublicSiteUrl } from "@/lib/seo/site-url";
+import { isRaconHost, resolveOriginFromHost, resolvePublicSiteUrl } from "@/lib/seo/site-url";
 import { CONSORCIO_SEO_SEGMENTS } from "@/lib/seo/consorcio-segments";
 
-const PUBLIC_PATHS = [
+export const dynamic = "force-dynamic";
+
+/** Rotas públicas canônicas da Gauchinho Consórcios (sem URLs com redirect 308). */
+const GAUCHINHO_PUBLIC_PATHS = [
   "/",
   "/simulador",
   "/calculadoras",
@@ -15,13 +19,23 @@ const PUBLIC_PATHS = [
   "/oportunidades-imobiliarias",
   "/eventos",
   "/dicas-do-tche",
-  "/casos-de-sucesso",
   "/depoimentos",
   "/parceiros",
   "/perguntas-frequentes",
   "/seguradoras",
   "/indicar",
   "/consorcio",
+] as const;
+
+/** Rotas públicas canônicas da Racon Sinop MT. */
+const RACON_PUBLIC_PATHS = [
+  "/",
+  "/simulador",
+  "/grupos",
+  "/consorcio",
+  "/parceiros",
+  "/perguntas-frequentes",
+  "/indicar",
 ] as const;
 
 function toLastModified(iso?: string | null): Date {
@@ -37,8 +51,39 @@ function absoluteUrl(base: string, path: string): string {
 }
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const base = resolvePublicSiteUrl();
+  let host: string | null = null;
+  let proto = "https";
+  try {
+    const h = await headers();
+    host = h.get("x-forwarded-host") || h.get("host");
+    proto = h.get("x-forwarded-proto") || (host?.includes("localhost") ? "http" : "https");
+  } catch {
+    // Contexto estático de build
+  }
 
+  const isRacon = isRaconHost(host);
+  const base = resolveOriginFromHost(host, proto);
+
+  if (isRacon) {
+    // Sitemap focado e otimizado exclusivamente para o portal da Racon Sinop
+    const raconStaticEntries: MetadataRoute.Sitemap = RACON_PUBLIC_PATHS.map((path) => ({
+      url: absoluteUrl(base, path),
+      lastModified: new Date(),
+      changeFrequency: path === "/" ? "weekly" : "monthly",
+      priority: path === "/" ? 1.0 : 0.8,
+    }));
+
+    const raconDynamicSegments: MetadataRoute.Sitemap = CONSORCIO_SEO_SEGMENTS.map((item) => ({
+      url: `${base}/consorcio/${item.slug}`,
+      lastModified: new Date(),
+      changeFrequency: "monthly" as const,
+      priority: 0.75,
+    }));
+
+    return [...raconStaticEntries, ...raconDynamicSegments];
+  }
+
+  // Sitemap completo do portal Gauchinho Consórcios
   const [dicas, casos, eventos, imoveis, imobiliarias] = await Promise.all([
     fetchPublicDicas().catch(() => []),
     fetchPublicCasosSucesso().catch(() => []),
@@ -47,7 +92,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     fetchPublicImobiliariasParceiras().catch(() => []),
   ]);
 
-  const staticEntries: MetadataRoute.Sitemap = PUBLIC_PATHS.map((path) => ({
+  const staticEntries: MetadataRoute.Sitemap = GAUCHINHO_PUBLIC_PATHS.map((path) => ({
     url: absoluteUrl(base, path),
     lastModified: new Date(),
     changeFrequency: path === "/" ? "weekly" : "monthly",

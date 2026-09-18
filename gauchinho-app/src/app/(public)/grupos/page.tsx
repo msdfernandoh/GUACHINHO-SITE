@@ -9,16 +9,28 @@ import { getCatalogEmpresaIdFromHeaders } from "@/lib/grupos/resolve-catalog-emp
 import { listGruposAutorizadosForEmpresa } from "@/lib/grupos/catalogo-autorizado-service";
 
 export const metadata: Metadata = {
-  title: "Grupos de Consórcio Disponíveis: Crédito e Parcelas",
+  title: "Tabela de Grupos de Consórcio em Andamento | Gauchinho & Racon",
   description:
-    "Consulte grupos de consórcio disponíveis, valores de crédito, parcelas, prazos e modalidades de lance para encontrar um plano compatível.",
+    "Consulte grupos de consórcio disponíveis, valores de crédito, parcelas, prazos e modalidades de lance livre e embutido para imóveis, veículos e pesados.",
   keywords: [
     "grupos de consórcio disponíveis",
     "cotas de consórcio",
     "consórcio parcela reduzida",
     "grupo de consórcio imóvel",
+    "grupos racon sinop",
   ],
   alternates: { canonical: "/grupos" },
+  openGraph: {
+    title: "Tabela de Grupos de Consórcio em Andamento",
+    description: "Consulte grupos abertos e cotas de consórcio para imóveis, veículos e agronegócio.",
+    url: "/grupos",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Grupos de Consórcio Disponíveis | Gauchinho Consórcios",
+    description: "Encontre o grupo ideal com parcelas e prazos planejados.",
+  },
 };
 
 export default async function GruposPublicPage() {

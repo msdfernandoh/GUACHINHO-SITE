@@ -11,16 +11,28 @@ import { DEFAULT_CONTATO, type ContatoConfig } from "@/lib/config/defaults";
 import { getConfigJsonPublic } from "@/server/config";
 
 export const metadata: Metadata = {
-  title: "Dúvidas sobre Consórcio, Lance e Contemplação",
+  title: "Perguntas Frequentes sobre Consórcio | FAQ Completo",
   description:
-    "Respostas objetivas sobre consórcio, financiamento, cartas contempladas, grupos e atendimento — sempre como orientação, não promessa.",
+    "Tire todas as suas dúvidas sobre consórcios imobiliários, veículos e pesados: como funcionam assembleias, lances livres, lance embutido, reajustes e contemplação.",
   keywords: [
     "como funciona consórcio",
     "como funciona lance embutido",
     "contemplação por sorteio ou lance",
     "dúvidas sobre consórcio",
+    "faq consórcio sinop mt",
   ],
   alternates: { canonical: "/perguntas-frequentes" },
+  openGraph: {
+    title: "Perguntas Frequentes sobre Consórcio | FAQ Completo",
+    description: "Respostas transparentes sobre funcionamento, lances e contemplação de consórcios.",
+    url: "/perguntas-frequentes",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Dúvidas sobre Consórcio | Gauchinho & Racon",
+    description: "Entenda o funcionamento de consórcios com respostas diretas.",
+  },
 };
 
 function whatsappHref(contato: ContatoConfig) {

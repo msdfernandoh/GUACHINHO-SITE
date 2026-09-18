@@ -75,6 +75,14 @@ export async function proxy(request: NextRequest) {
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   const path = request.nextUrl.pathname;
 
+  // Verificação instantânea do Google Search Console via arquivo HTML (ex: /google1234567890abcdef.html)
+  if (/^\/google[a-zA-Z0-9_-]+\.html$/i.test(path)) {
+    return new NextResponse(`google-site-verification: ${path.slice(1)}`, {
+      status: 200,
+      headers: { "content-type": "text/html; charset=utf-8" },
+    });
+  }
+
   // Headers internos: sempre remover qualquer valor injetado pelo cliente
   // antes de definir os confiáveis (tenant Fase 2 + parceiro E6).
   const requestHeaders = new Headers(request.headers);

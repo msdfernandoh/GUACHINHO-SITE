@@ -8,6 +8,15 @@ O CTA do bloco institucional de franquia no template Racon Sinop e o novo módul
 
 A landing apresenta primeiro as páginas específicas de vantagens das três modalidades e só então oferece o cadastro. A migration 232 cria o perfil legado explícito `parceiro`, sem permissões de equipe; autorização e escopo continuam derivados de `empresa_usuarios`, permissões e módulos visíveis.
 
+### Evolução operacional 242 — SEO Avançado, Metatags, Schema.org e Otimização para IA (GEO)
+
+A plataforma passa a operar com infraestrutura canônica de SEO e GEO (Generative Engine Optimization para ChatGPT, Perplexity, Gemini, Claude e Copilot) ciente de múltiplos domínios públicos (`gauchinhoconsorcios.com.br` e `raconsinop.com.br`).
+- `sitemap.xml` e `robots.txt` são gerados dinamicamente com base no host da requisição, isolando os catálogos públicos e eliminando conflitos de indexação e avisos de redirecionamento no Google Search Console.
+- O `robots.txt` autoriza expressamente rastreadores de inteligência artificial (`GPTBot`, `PerplexityBot`, `Google-Extended`, `ClaudeBot`, `Applebot-Extended`), mantendo a proteção integral de rotas administrativas e privadas.
+- O padrão `/llms.txt` e `/llms-full.txt` foi implantado com sínteses factuais sobre produtos, simulações, taxas e atuação em Sinop - MT.
+- A verificação de domínio Google Search Console opera tanto por meta tag dinâmica quanto por interceptação automática de `/google[codigo].html`.
+- Foram introduzidos dados estruturados Schema.org (`Organization`, `FinancialService`, `LocalBusiness`, `FAQPage`) e geo-tags específicas de Sinop MT para ambos os portais.
+
 > [!IMPORTANT]
 > **ESTADO-ALVO E CORREÇÕES OBRIGATÓRIAS**
 > Antes de alterar tenancy, usuários, catálogo, sites, comissões, financeiro, Storage, RPCs ou migrations, leia também integralmente [`SAAS-ARQUITETURA-ALVO-E-PLANO-DE-CORRECAO.md`](./SAAS-ARQUITETURA-ALVO-E-PLANO-DE-CORRECAO.md). O documento descreve o estado-alvo e o plano de remediação; seus itens não devem ser interpretados como já implantados sem evidência no banco e no código.

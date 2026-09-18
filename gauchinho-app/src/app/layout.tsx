@@ -21,6 +21,11 @@ const geistMono = Geist_Mono({
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL?.trim().replace(/\/$/, "");
 
+const defaultGoogleVerification =
+  process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION_GAUCHINHO ||
+  process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION ||
+  "JoZmaDBhXbcdFfJKHd4uXE-ogA6NuOzLdFCKoAKll84";
+
 const defaultMetadata: Metadata = {
   metadataBase: siteUrl ? new URL(`${siteUrl}/`) : undefined,
   title: {
@@ -31,22 +36,36 @@ const defaultMetadata: Metadata = {
     "Consórcios, simuladores, calculadoras e soluções financeiras com atendimento online em todo o Brasil. Planeje imóveis, veículos, caminhões e máquinas.",
   category: "finance",
   keywords: [
-    "consórcio",
-    "simulador de consórcio",
-    "consórcio de imóvel",
-    "consórcio de veículos",
-    "consórcio de caminhão",
-    "consórcio de máquinas agrícolas",
-    "carta de crédito",
+    "gauchinho consorcios",
+    "consorcio sinop mt",
+    "simulador de consorcio",
+    "consorcio de imovel",
+    "consorcio de veiculos",
+    "consorcio de caminhao",
+    "consorcio de maquinas agricolas",
+    "carta de credito",
     "lance embutido",
+    "racon sinop",
   ],
   verification: {
-    google: "JoZmaDBhXbcdFfJKHd4uXE-ogA6NuOzLdFCKoAKll84",
+    google: defaultGoogleVerification,
   },
   robots: {
     index: true,
     follow: true,
-    googleBot: { index: true, follow: true, "max-image-preview": "large" },
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+      "max-video-preview": -1,
+    },
+  },
+  other: {
+    "geo.region": "BR-MT",
+    "geo.placename": "Sinop",
+    "geo.position": "-11.8642;-55.5053",
+    ICBM: "-11.8642, -55.5053",
   },
   openGraph: {
     type: "website",
@@ -86,25 +105,77 @@ export async function generateMetadata(): Promise<Metadata> {
   const host = requestHeaders.get("x-forwarded-host") || requestHeaders.get("host");
   const protocol = requestHeaders.get("x-forwarded-proto") || (host?.includes("localhost") ? "http" : "https");
   const metadataBase = host ? new URL(`${protocol}://${host}/`) : siteUrl ? new URL(`${siteUrl}/`) : undefined;
-  const nome = tenant.branding.nome_site || tenant.siteModel?.nome || "Consórcios";
-  const descricao = tenant.branding.seo_descricao || tenant.branding.descricao_institucional || undefined;
-  const logo = tenant.branding.logo_url || tenant.siteModel?.logoPadraoUrl || undefined;
 
   const isRacon = partnerView
     ? partnerView.template_codigo === "racon_inspired"
     : isRaconModel(tenant.siteModel);
 
+  const nome = partnerView?.nome_site || tenant.branding.nome_site || tenant.siteModel?.nome || (isRacon ? "Racon Sinop" : "Consórcios");
+  const descricao = partnerView?.seo_descricao || tenant.branding.seo_descricao || tenant.branding.descricao_institucional || undefined;
+  const logo = partnerView?.logo_url || partnerView?.modelo_logo_padrao_url || tenant.branding.logo_url || tenant.siteModel?.logoPadraoUrl || undefined;
+
   const customFavicon = partnerView?.favicon_url || tenant.branding.favicon_url;
   const { iconList, shortcut, apple } = resolveFaviconConfig({ isRacon, customFavicon });
 
+  const googleVerification = isRacon
+    ? (process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION_RACON || defaultGoogleVerification)
+    : defaultGoogleVerification;
+
+  const raconKeywords = [
+    "racon sinop",
+    "racon consorcios sinop",
+    "consorcio sinop mt",
+    "consorcio imobiliario sinop",
+    "consorcio de automovel sinop",
+    "consorcio pesados agricolas",
+    "empresas randon sinop",
+    "simulador racon",
+    "carta contemplada sinop",
+  ];
+
   return {
     metadataBase,
-    title: { default: tenant.branding.seo_titulo || nome, template: `%s | ${nome}` },
+    title: {
+      default: partnerView?.seo_titulo || tenant.branding.seo_titulo || nome,
+      template: `%s | ${nome}`,
+    },
     description: descricao,
     category: "finance",
-    robots: defaultMetadata.robots,
-    openGraph: { type: "website", locale: "pt_BR", siteName: nome, ...(logo ? { images: [logo] } : {}) },
-    twitter: { card: "summary_large_image", ...(logo ? { images: [logo] } : {}) },
+    keywords: isRacon ? raconKeywords : defaultMetadata.keywords,
+    verification: {
+      google: googleVerification,
+    },
+    other: {
+      "geo.region": "BR-MT",
+      "geo.placename": "Sinop",
+      "geo.position": "-11.8642;-55.5053",
+      ICBM: "-11.8642, -55.5053",
+    },
+    robots: {
+      index: true,
+      follow: true,
+      googleBot: {
+        index: true,
+        follow: true,
+        "max-image-preview": "large",
+        "max-snippet": -1,
+        "max-video-preview": -1,
+      },
+    },
+    openGraph: {
+      type: "website",
+      locale: "pt_BR",
+      siteName: nome,
+      title: partnerView?.seo_titulo || tenant.branding.seo_titulo || nome,
+      description: descricao,
+      ...(logo ? { images: [logo] } : {}),
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: partnerView?.seo_titulo || tenant.branding.seo_titulo || nome,
+      description: descricao,
+      ...(logo ? { images: [logo] } : {}),
+    },
     icons: { icon: iconList, shortcut, apple },
   };
 }

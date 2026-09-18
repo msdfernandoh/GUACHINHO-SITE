@@ -7,10 +7,21 @@ import { getUsuarioNegocio } from "@/lib/auth/get-usuario";
 import { canCreateProposta } from "@/lib/auth/permissions";
 
 export const metadata: Metadata = {
-  title: "Simulador de Consórcio e Financiamento Online",
-  description: "Simule consórcio e financiamento para imóvel, carro, moto, caminhão e máquinas. Compare parcela, prazo, lance livre e lance embutido.",
-  keywords: ["simulador de consórcio", "calcular parcela consórcio", "simulador lance embutido", "consórcio x financiamento"],
+  title: "Simulador de Consórcio e Financiamento Online | Gauchinho",
+  description: "Simule consórcio e financiamento para imóvel, carro, moto, caminhão e máquinas agrícolas. Compare parcelas, prazos, lance livre e lance embutido.",
+  keywords: ["simulador de consórcio", "calcular parcela consórcio", "simulador lance embutido", "consórcio x financiamento", "simulador consorcio sinop mt"],
   alternates: { canonical: "/simulador" },
+  openGraph: {
+    title: "Simulador de Consórcio e Financiamento Online | Gauchinho",
+    description: "Simule seu consórcio em segundos. Calcule parcelas e compare opções de lance livre e embutido.",
+    url: "/simulador",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Simulador de Consórcio Online | Gauchinho Consórcios",
+    description: "Compare consórcio versus financiamento e descubra sua economia.",
+  },
 };
 
 function parseModo(raw: string | undefined): Modo | undefined {
