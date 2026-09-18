@@ -4,20 +4,14 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { formatCpfBrInput, formatWhatsappBrInput } from "@/lib/utils/format";
 import { InstalarAppParceiroButton } from "@/components/public/instalar-app-parceiro-button";
-
-export const MODELOS = [
-  { id: "MICROFRANQUEADO", slug: "microfranqueado", nome: "Microfranqueado", ganho: "50%", meta: "Meta anual de R$ 12 milhões", resumo: "Para quem quer construir sua própria operação comercial.", vantagens: ["Estrutura pronta e suporte da Master", "Treinamento comercial e operacional", "Eventos e apoio em vendas estratégicas"] },
-  { id: "GERADOR_NEGOCIOS", slug: "gerador-de-negocios", nome: "Gerador de Negócios", ganho: "25%", meta: "Meta anual de R$ 6 milhões", resumo: "Para quem vende, reúne pessoas e transforma conexões em negócios.", vantagens: ["Apoio em reuniões e apresentações", "Network semanal e materiais comerciais", "Você pode vender ou encaminhar para a equipe"] },
-  { id: "GERADOR_POSSIBILIDADES", slug: "gerador-de-possibilidades", nome: "Gerador de Possibilidades", ganho: "12,5%", meta: "Sem meta obrigatória", resumo: "Para quem quer indicar oportunidades sem precisar vender.", vantagens: ["Cadastro simples de indicações pelo celular", "Acompanhamento do andamento e das comissões", "Sem obrigação de reunião ou fechamento"] },
-] as const;
-export type ModeloId = (typeof MODELOS)[number]["id"];
+import { MODELOS_PROGRAMA_PARCEIROS, type ModeloParceiroId } from "@/lib/parceiros/modelos-programa";
 
 export function ParceirosLandingClient() {
   useEffect(() => { if ("serviceWorker" in navigator) void navigator.serviceWorker.register("/sw.js"); }, []);
-  return <main className="min-h-screen bg-zinc-950 text-white"><section className="mx-auto max-w-5xl px-5 py-20 text-center"><p className="font-bold text-amber-400">GAUCHINHO CONSÓRCIOS | RACON</p><h1 className="mt-4 text-4xl font-black sm:text-6xl">Faça parte da nossa rede de negócios.</h1><p className="mx-auto mt-5 max-w-2xl text-lg text-zinc-300">Conheça as vantagens de cada modalidade e escolha o caminho que combina com seu momento.</p><div className="mt-8"><InstalarAppParceiroButton dark /></div></section><section className="mx-auto grid max-w-5xl gap-4 px-5 pb-20 md:grid-cols-3">{MODELOS.map((m) => <Link key={m.id} href={`/parceiros/${m.slug}`} className="group rounded-3xl border border-zinc-700 p-7 transition hover:-translate-y-1 hover:border-amber-400 hover:bg-amber-400/10"><b className="text-2xl">{m.nome}</b><p className="mt-4 text-4xl font-black text-amber-400">{m.ganho}</p><p className="mt-2 text-zinc-300">{m.meta}</p><p className="mt-5 text-sm text-zinc-400">{m.resumo}</p><span className="mt-6 inline-block font-bold text-amber-400">Ver vantagens e condições →</span></Link>)}</section></main>;
+  return <main className="min-h-screen bg-zinc-950 text-white"><section className="mx-auto max-w-5xl px-5 py-20 text-center"><p className="font-bold text-amber-400">GAUCHINHO CONSÓRCIOS | RACON</p><h1 className="mt-4 text-4xl font-black sm:text-6xl">Faça parte da nossa rede de negócios.</h1><p className="mx-auto mt-5 max-w-2xl text-lg text-zinc-300">Conheça as vantagens de cada modalidade e escolha o caminho que combina com seu momento.</p><div className="mt-8"><InstalarAppParceiroButton dark /></div></section><section className="mx-auto grid max-w-5xl gap-4 px-5 pb-20 md:grid-cols-3">{MODELOS_PROGRAMA_PARCEIROS.map((m) => <Link key={m.id} href={`/parceiros/${m.slug}`} className="group rounded-3xl border border-zinc-700 p-7 transition hover:-translate-y-1 hover:border-amber-400 hover:bg-amber-400/10"><b className="text-2xl">{m.nome}</b><p className="mt-4 text-4xl font-black text-amber-400">{m.ganho}</p><p className="mt-2 text-zinc-300">{m.meta}</p><p className="mt-5 text-sm text-zinc-400">{m.resumo}</p><span className="mt-6 inline-block font-bold text-amber-400">Ver vantagens e condições →</span></Link>)}</section></main>;
 }
 
-export function CadastroParceiroClient({ modeloInicial }: { modeloInicial: ModeloId }) {
+export function CadastroParceiroClient({ modeloInicial }: { modeloInicial: ModeloParceiroId }) {
   const [modelo] = useState(modeloInicial); const [step, setStep] = useState(0); const [loading, setLoading] = useState(false); const [message, setMessage] = useState(""); const [tipoPix, setTipoPix] = useState("CELULAR");
   const [form, setForm] = useState({ nome:"", whatsapp:"", email:"", cpf:"", senha:"", cidade:"", profissao:"", chavePix:"", observacao:"" });
   const update = (k: keyof typeof form, v: string) => setForm(x => ({ ...x, [k]: v }));
