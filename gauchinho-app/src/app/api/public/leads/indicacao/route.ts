@@ -14,6 +14,8 @@ type Indicado = {
   whatsapp: string;
   tipoCredito?: string;
   valorCredito?: number | string | null;
+  produtoInteresse?: string | null;
+  capacidadeMensal?: number | string | null;
   observacao?: string | null;
 };
 
@@ -87,6 +89,11 @@ export async function POST(request: Request) {
       }
       const valorCredito = parseValor(ind.valorCredito);
       const obsIndicacao = ind.observacao?.trim() || null;
+      const produtoInteresse = String(ind.produtoInteresse ?? "").trim().toUpperCase();
+      const capacidadeMensal = parseValor(ind.capacidadeMensal);
+      if (produtoInteresse && !["IMOVEL", "VEICULO", "MOTO", "FROTA"].includes(produtoInteresse)) {
+        return NextResponse.json({ error: "Produto de interesse inválido" }, { status: 400 });
+      }
 
       const baseRow = {
         empresa_id: ingress.empresaId,
@@ -137,6 +144,10 @@ export async function POST(request: Request) {
         indicador_nome_snapshot: body.indicadorNome.trim(),
         indicador_telefone_snapshot: indicadorTelefone,
         lead_id: leadRow.id,
+        produto_interesse: produtoInteresse || null,
+        credito_desejado: valorCredito,
+        capacidade_mensal: capacidadeMensal,
+        observacao_indicado: obsIndicacao,
       });
       if (vinculoError) return NextResponse.json({ error: vinculoError.message }, { status: 500 });
       await registrarEvento({

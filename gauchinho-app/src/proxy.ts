@@ -152,6 +152,7 @@ export async function proxy(request: NextRequest) {
             "/contratar",
             "/area-parceiro",
             "/indicar",
+            "/app-indicador",
           ];
           const isOperationalPath =
             path.startsWith("/api/") ||

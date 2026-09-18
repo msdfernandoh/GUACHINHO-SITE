@@ -100,5 +100,41 @@ export async function POST(request: Request) {
     await admin.from("programa_indicacoes").update({ indicador_id: indicador.id }).eq("empresa_id", ingress.empresaId).is("indicador_id", null).eq("indicador_telefone_snapshot", telefone);
     return NextResponse.json({ ok: true, indicadorId: indicador.id, existente: false });
   }
+  if (acao === "cadastrar_parceiro") {
+    const nome = String(body.nome ?? "").trim(); const cpf = digits(body.cpf); const telefone = digits(body.whatsapp);
+    const email = String(body.email ?? "").trim().toLowerCase(); const senha = String(body.senha ?? "");
+    const chavePix = String(body.chavePix ?? "").trim();
+    const modelo = String(body.modeloInteresse ?? "GERADOR_POSSIBILIDADES");
+    if (nome.split(/\s+/).length < 2 || !cpfValido(cpf) || telefone.length < 10 || !email.includes("@") || senha.length < 8 || chavePix.length < 3) {
+      return NextResponse.json({ error: "Preencha nome, CPF, WhatsApp, e-mail, senha de 8 caracteres e chave PIX." }, { status: 400 });
+    }
+    if (!['MICROFRANQUEADO','GERADOR_NEGOCIOS','GERADOR_POSSIBILIDADES','CONVERSAR_EQUIPE'].includes(modelo)) return NextResponse.json({ error: "Modelo de parceria inválido." }, { status: 400 });
+    const { data: existente } = await admin.from("programa_indicadores").select("id").eq("empresa_id", ingress.empresaId).eq("cpf", cpf).maybeSingle();
+    if (existente) return NextResponse.json({ error: "Este CPF já possui cadastro. Entre no app para continuar." }, { status: 409 });
+    const { data: perfil } = await admin.from("comissao_perfis").select("id").eq("empresa_id", ingress.empresaId).eq("papel_base", "INDICADOR").eq("nome", "Indicador").eq("ativo", true).maybeSingle();
+    const { data: papel } = await admin.from("papeis").select("id").eq("escopo", "COMPANY").eq("codigo", "consultor").is("empresa_id", null).maybeSingle();
+    if (!perfil || !papel) return NextResponse.json({ error: "Configuração de acesso indisponível. Procure a equipe." }, { status: 503 });
+    const loginEmail = `cpf-${cpf}@parceiro.gauchinho.local`;
+    const { data: auth, error: authError } = await admin.auth.admin.createUser({ email: loginEmail, password: senha, email_confirm: true, user_metadata: { email_contato: email, cpf } });
+    if (authError || !auth.user) return NextResponse.json({ error: authError?.message ?? "Não foi possível criar o acesso." }, { status: 409 });
+    try {
+      const { data: usuario, error: usuarioError } = await admin.from("usuarios").insert({ auth_user_id: auth.user.id, nome, email, telefone, perfil: "consultor", ativo: true, is_consultor: true, leads_apenas_proprios: true }).select("id").single();
+      if (usuarioError || !usuario) throw new Error(usuarioError?.message ?? "Falha ao criar usuário.");
+      const { error: vinculoError } = await admin.from("empresa_usuarios").insert({ empresa_id: ingress.empresaId, usuario_id: usuario.id, papel_id: papel.id, ativo: true, origem: "LANDING_PARCEIROS", erp_modulos_visiveis: ["minhas-comissoes"] });
+      if (vinculoError) throw new Error(vinculoError.message);
+      const { data: participante, error: participanteError } = await admin.from("participantes_comerciais").insert({ empresa_id: ingress.empresaId, usuario_id: usuario.id, nome, nome_exibicao: nome, cpf, telefone, whatsapp: telefone, status: "ATIVO", cargo: "Gerador de Possibilidades", escopo_visualizacao: "VINCULADOS", modulos_permitidos: ["minhas-comissoes"] }).select("id").single();
+      if (participanteError || !participante) throw new Error(participanteError?.message ?? "Falha ao criar participante.");
+      const statusSolicitacao = modelo === "GERADOR_POSSIBILIDADES" ? "APROVADO_NIVEL_1" : "EM_ANALISE";
+      const { data: indicador, error: indicadorError } = await admin.from("programa_indicadores").insert({ empresa_id: ingress.empresaId, participante_id: participante.id, cpf, telefone, chave_pix: chavePix, modelo_interesse: modelo, status_solicitacao_modelo: statusSolicitacao, cidade: String(body.cidade ?? "").trim() || null, estado: String(body.estado ?? "").trim() || null, profissao: String(body.profissao ?? "").trim() || null, observacao_cadastro: String(body.observacao ?? "").trim() || null }).select("id").single();
+      if (indicadorError || !indicador) throw new Error(indicadorError?.message ?? "Falha ao criar cadastro.");
+      const { error: perfilError } = await admin.from("participante_comissao_perfis").insert({ empresa_id: ingress.empresaId, participante_id: participante.id, papel_tipo: "INDICADOR", perfil_id: perfil.id, vigencia_inicio: new Date().toISOString().slice(0, 10), ativo: true });
+      if (perfilError) throw new Error(perfilError.message);
+      if (statusSolicitacao === "EM_ANALISE") await admin.from("programa_indicadores_solicitacoes").insert({ empresa_id: ingress.empresaId, indicador_id: indicador.id, modelo_solicitado: modelo });
+      return NextResponse.json({ ok: true, indicadorId: indicador.id, acesso: "/app-indicador/login" });
+    } catch (error) {
+      await admin.auth.admin.deleteUser(auth.user.id);
+      return NextResponse.json({ error: error instanceof Error ? error.message : "Falha ao concluir cadastro." }, { status: 500 });
+    }
+  }
   return NextResponse.json({ error: "Ação inválida." }, { status: 400 });
 }

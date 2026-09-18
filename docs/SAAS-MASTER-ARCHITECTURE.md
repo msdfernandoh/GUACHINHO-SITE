@@ -1,5 +1,9 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
+### Evolução operacional 241 — Landing de parceiros e PWA de indicadores
+
+O programa público de parceiros usa as comunicações Microfranqueado, Gerador de Negócios e Gerador de Possibilidades, mas toda entrada aprovada automaticamente inicia no perfil comercial canônico `INDICADOR` (Nível 1). Solicitações de nível superior são registradas para decisão exclusiva de administradores da Gauchinho; a landing nunca altera regra ou percentual homologado. A PWA do indicador exige credencial autenticada e vínculo `usuarios → empresa_usuarios → participantes_comerciais`, exibindo somente os próprios indicados e suas comissões. CPF isolado não é canal de acesso a dados financeiros.
+
 > [!IMPORTANT]
 > **ESTADO-ALVO E CORREÇÕES OBRIGATÓRIAS**
 > Antes de alterar tenancy, usuários, catálogo, sites, comissões, financeiro, Storage, RPCs ou migrations, leia também integralmente [`SAAS-ARQUITETURA-ALVO-E-PLANO-DE-CORRECAO.md`](./SAAS-ARQUITETURA-ALVO-E-PLANO-DE-CORRECAO.md). O documento descreve o estado-alvo e o plano de remediação; seus itens não devem ser interpretados como já implantados sem evidência no banco e no código.
