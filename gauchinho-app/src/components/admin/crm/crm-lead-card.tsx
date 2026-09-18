@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { formatCurrency } from "@/lib/utils/format";
-import { labelOrigem, valorEstimadoLead } from "@/lib/crm/constants";
+import { labelOrigem, valorEstimadoLead, mapLegacyStatusToEtapaSlug } from "@/lib/crm/constants";
 import type { LeadListRow, CrmFunilEtapaRow } from "@/lib/crm/types";
 import {
   MessageCircle,
@@ -54,8 +54,13 @@ export function CrmLeadCard({
   const isParado7d = hoursSinceInteraction >= 168 && !lead.fechado;
 
   // Fase atual do lead
+  const mappedSlug = mapLegacyStatusToEtapaSlug(lead.status);
   const currentEtapa = etapas.find(
-    (e) => e.id === lead.etapa_id || e.slug === lead.status || e.nome.toLowerCase() === lead.status.toLowerCase(),
+    (e) =>
+      e.id === lead.etapa_id ||
+      e.slug === mappedSlug ||
+      e.slug === lead.status ||
+      e.nome.toLowerCase() === (lead.status ?? "").toLowerCase(),
   );
 
   const canSendToErp =

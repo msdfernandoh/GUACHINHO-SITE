@@ -171,11 +171,22 @@ export async function queryLeadsList(filters: LeadFilters, limit = 200): Promise
   });
 }
 
-export async function queryLeadsForKanban(filters?: LeadFilters): Promise<LeadListRow[]> {
+export async function queryLeadsForKanban(
+  filters?: LeadFilters,
+  empresaId?: string,
+): Promise<LeadListRow[]> {
   const supabase = await createClient();
   return selectLeads(async (select, skipOptional) => {
+    let q = supabase.from("leads").select(select);
+    if (empresaId) {
+      if (empresaId === "7170f38e-15dd-4b19-8588-51e9a9cf0d4c") {
+        q = q.or(`empresa_id.eq.${empresaId},empresa_id.is.null`);
+      } else {
+        q = q.eq("empresa_id", empresaId);
+      }
+    }
     const query = applyLeadFilters(
-      supabase.from("leads").select(select).order("created_at", { ascending: false }).limit(600),
+      q.order("created_at", { ascending: false }).limit(600),
       filters ?? {},
       { skipOptionalCrmFilters: skipOptional },
     );

@@ -111,3 +111,48 @@ export function valorEstimadoLead(lead: {
   const v = Number(lead.valor_estimado ?? lead.valor_simulado ?? 0);
   return Number.isFinite(v) ? v : 0;
 }
+
+export function mapLegacyStatusToEtapaSlug(status: string | null | undefined): string {
+  if (!status) return "novo_lead";
+  const s = status.trim().toLowerCase();
+
+  if (s === "novo" || s === "novo lead" || s === "novo_lead") return "novo_lead";
+  if (s === "em atendimento" || s === "contato realizado" || s === "contato_realizado" || s === "contato")
+    return "contato_realizado";
+  if (s === "qualificado") return "qualificado";
+  if (s === "reunião agendada" || s === "reuniao agendada" || s === "reuniao_agendada") return "reuniao_agendada";
+  if (s === "reunião realizada" || s === "reuniao realizada" || s === "reuniao_realizada") return "reuniao_realizada";
+  if (
+    s === "proposta enviada" ||
+    s === "proposta_enviada" ||
+    s === "proposta" ||
+    s === "negociação" ||
+    s === "negociacao"
+  )
+    return "proposta_enviada";
+  if (
+    s === "documentação / cadastro" ||
+    s === "documentacao / cadastro" ||
+    s === "documentacao_cadastro" ||
+    s === "documentação" ||
+    s === "documentacao" ||
+    s === "cadastro"
+  )
+    return "documentacao_cadastro";
+  if (s === "boleto enviado" || s === "boleto_enviado" || s === "boleto") return "boleto_enviado";
+  if (s === "venda fechada" || s === "venda_fechada" || s === "ganho" || s === "fechado" || s === "convertido")
+    return "venda_fechada";
+  if (s === "pós-venda" || s === "pos-venda" || s === "pos_venda" || s === "pos venda") return "pos_venda";
+  if (s === "perdido") return "perdido";
+  if (
+    s === "stand-by / futuro" ||
+    s === "standby / futuro" ||
+    s === "standby_futuro" ||
+    s === "standby" ||
+    s === "futuro"
+  )
+    return "standby_futuro";
+
+  return "novo_lead";
+}
+

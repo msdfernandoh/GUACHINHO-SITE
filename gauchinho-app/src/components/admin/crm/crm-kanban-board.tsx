@@ -3,7 +3,7 @@
 import { useState, useEffect, useTransition } from "react";
 import type { LeadListRow, CrmFunilEtapaRow, LeadFilters } from "@/lib/crm/types";
 import { formatCurrency } from "@/lib/utils/format";
-import { valorEstimadoLead } from "@/lib/crm/constants";
+import { valorEstimadoLead, mapLegacyStatusToEtapaSlug } from "@/lib/crm/constants";
 import { CrmLeadCard } from "./crm-lead-card";
 import { CrmStageMoveModal } from "./crm-stage-move-modal";
 import { updateLeadEtapaAction } from "@/app/admin/leads/actions";
@@ -118,8 +118,12 @@ export function CrmKanbanBoard({
   for (const l of filteredLeads) {
     let etapaId = l.etapa_id;
     if (!etapaId || !leadsByEtapa.has(etapaId)) {
+      const mappedSlug = mapLegacyStatusToEtapaSlug(l.status);
       const found = etapas.find(
-        (e) => e.slug === l.status || e.nome.toLowerCase() === (l.status ?? "").toLowerCase(),
+        (e) =>
+          e.slug === mappedSlug ||
+          e.slug === l.status ||
+          e.nome.toLowerCase() === (l.status ?? "").toLowerCase(),
       );
       if (found) etapaId = found.id;
       else if (etapas.length > 0) etapaId = etapas[0].id;

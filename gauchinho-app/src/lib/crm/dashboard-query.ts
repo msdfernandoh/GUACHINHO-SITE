@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { CRM_12_ETAPAS } from "./constants";
+import { CRM_12_ETAPAS, mapLegacyStatusToEtapaSlug } from "./constants";
 import type { CrmFunilEtapaRow } from "./types";
 import { fetchCrmFunilEtapas } from "./leads-query";
 
@@ -66,10 +66,20 @@ export async function fetchCrmDashboardData(empresaId: string): Promise<CrmDashb
   const etapas = await fetchCrmFunilEtapas(empresaId);
 
   // 2. Buscar todos os leads do tenant para agregação segura
-  const { data: leadsRaw } = await supabase
+  // Para Gauchinho Consórcios (Tenant 1), inclui leads legados com empresa_id nulo
+  let leadsQuery = supabase
     .from("leads")
-    .select("id, status, etapa_id, valor_estimado, valor_simulado, valor_fechado, fechado, temperatura, srd_responsavel_id, srd_responsavel_nome, created_at, ultima_interacao_at, data_fechamento, perdido_at")
-    .eq("empresa_id", empresaId);
+    .select(
+      "id, status, etapa_id, valor_estimado, valor_simulado, valor_fechado, fechado, temperatura, srd_responsavel_id, srd_responsavel_nome, created_at, ultima_interacao_at, data_fechamento, perdido_at",
+    );
+
+  if (empresaId === "7170f38e-15dd-4b19-8588-51e9a9cf0d4c") {
+    leadsQuery = leadsQuery.or(`empresa_id.eq.${empresaId},empresa_id.is.null`);
+  } else {
+    leadsQuery = leadsQuery.eq("empresa_id", empresaId);
+  }
+
+  const { data: leadsRaw } = await leadsQuery;
 
   const leads = leadsRaw ?? [];
 
@@ -166,9 +176,13 @@ export async function fetchCrmDashboardData(empresaId: string): Promise<CrmDashb
     // Etapas aggregation
     let etapaKey = l.etapa_id;
     if (!etapaKey || !etapaMap.has(etapaKey)) {
-      // Tenta fallback por slug
+      // Tenta fallback por slug mapeado, direto ou nome
+      const mappedSlug = mapLegacyStatusToEtapaSlug(l.status);
       const found = etapas.find(
-        (e) => e.slug === l.status || e.nome.toLowerCase() === (l.status ?? "").toLowerCase(),
+        (e) =>
+          e.slug === mappedSlug ||
+          e.slug === l.status ||
+          e.nome.toLowerCase() === (l.status ?? "").toLowerCase(),
       );
       if (found) etapaKey = found.id;
       else if (etapas.length > 0) etapaKey = etapas[0].id;
