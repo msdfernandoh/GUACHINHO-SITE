@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { isDbMissingColumnError } from "@/lib/comercial-eventos/db-ready";
-import type { LeadFilters, LeadListRow } from "./types";
+import type { CrmFunilEtapaRow, LeadFilters, LeadListRow } from "./types";
+import { CRM_12_ETAPAS } from "./constants";
 
 /** Colunas mínimas — inclui quem indicou para a coluna Origem. */
 const LIST_SELECT_MINIMAL =
@@ -11,7 +12,7 @@ const LIST_SELECT_ULTRA_MINIMAL =
   "id, created_at, nome, whatsapp, email, cidade, origem, tipo_interesse, produto_interesse, status, srd_responsavel_id, srd_responsavel_nome";
 
 const LIST_SELECT_BASE =
-  `${LIST_SELECT_MINIMAL}, temperatura, proxima_acao, data_proxima_acao, proximo_retorno_data, ultima_interacao_at, valor_estimado, valor_simulado, fechado, evento_id, evento_nome`;
+  `${LIST_SELECT_MINIMAL}, etapa_id, is_incompleto, modelo_interesse, data_ultimo_contato, motivo_perda_codigo, temperatura, proxima_acao, data_proxima_acao, proximo_retorno_data, ultima_interacao_at, valor_estimado, valor_simulado, fechado, evento_id, evento_nome`;
 
 const LIST_SELECT_INDICADOR_CORE =
   `${LIST_SELECT_BASE}, parceiro_indicador_empresa, parceiro_indicador_telefone`;
@@ -29,6 +30,7 @@ function applyLeadFilters(
 
   if (filters.origem) query = query.eq("origem", filters.origem);
   if (filters.status) query = query.eq("status", filters.status);
+  if (filters.etapa_id) query = query.eq("etapa_id", filters.etapa_id);
   if (filters.srd) query = query.eq("srd_responsavel_id", filters.srd);
   if (filters.cidade) query = query.ilike("cidade", `%${filters.cidade}%`);
   if (filters.produto) {
@@ -38,6 +40,18 @@ function applyLeadFilters(
   }
   if (filters.sem_responsavel === "1") query = query.is("srd_responsavel_id", null);
   if (filters.somente_novos === "1") query = query.eq("status", "Novo");
+  if (filters.somente_incompletos === "1") query = query.eq("is_incompleto", true);
+  if (filters.modelo_interesse) query = query.eq("modelo_interesse", filters.modelo_interesse);
+
+  if (filters.parados_dias) {
+    const days = parseInt(filters.parados_dias, 10);
+    if (!isNaN(days) && days > 0) {
+      const targetDate = new Date();
+      targetDate.setDate(targetDate.getDate() - days);
+      const iso = targetDate.toISOString();
+      query = query.or(`ultima_interacao_at.lt.${iso},and(ultima_interacao_at.is.null,created_at.lt.${iso})`);
+    }
+  }
 
   if (filters.q?.trim()) {
     const q = filters.q.trim();
@@ -50,7 +64,7 @@ function applyLeadFilters(
     if (filters.evento) query = query.eq("evento_id", filters.evento);
     if (filters.temperatura) query = query.eq("temperatura", filters.temperatura);
     if (filters.somente_quentes === "1") {
-      query = query.in("temperatura", ["Quente", "Muito quente"]);
+      query = query.in("temperatura", ["Quente", "Muito quente", "Urgente"]);
     }
 
     const today = new Date().toISOString().slice(0, 10);
@@ -105,15 +119,44 @@ async function selectLeads(
     const result = await build(attempt.select, attempt.skipOptional);
     if (!result.error) return (result.data ?? []) as LeadListRow[];
     lastError = result.error;
-    // Continua tentando em qualquer erro de coluna/schema; outros erros também
-    // tentam fallback mínimo antes de falhar de vez.
     if (!isDbMissingColumnError(result.error) && attempt.select !== LIST_SELECT_MINIMAL) {
-      // ainda tenta o mínimo
       continue;
     }
   }
 
   throw new Error(lastError?.message ?? "Falha ao listar leads");
+}
+
+export async function fetchCrmFunilEtapas(empresaId?: string): Promise<CrmFunilEtapaRow[]> {
+  const supabase = await createClient();
+  let query = supabase
+    .from("crm_funil_etapas")
+    .select("id, empresa_id, nome, slug, ordem, cor, is_won, is_lost, is_standby, is_ativo, created_at")
+    .eq("is_ativo", true)
+    .order("ordem", { ascending: true });
+
+  if (empresaId) {
+    query = query.eq("empresa_id", empresaId);
+  }
+
+  const { data, error } = await query;
+  if (error || !data || data.length === 0) {
+    // Fallback gracioso com as 12 etapas canônicas se a tabela ainda não tiver sido populada no banco remoto
+    return CRM_12_ETAPAS.map((etapa) => ({
+      id: etapa.slug,
+      empresa_id: empresaId ?? "",
+      nome: etapa.nome,
+      slug: etapa.slug,
+      ordem: etapa.ordem,
+      cor: etapa.cor,
+      is_won: "isWon" in etapa ? Boolean(etapa.isWon) : false,
+      is_lost: "isLost" in etapa ? Boolean(etapa.isLost) : false,
+      is_standby: "isStandby" in etapa ? Boolean(etapa.isStandby) : false,
+      is_ativo: true,
+    }));
+  }
+
+  return data as CrmFunilEtapaRow[];
 }
 
 export async function queryLeadsList(filters: LeadFilters, limit = 200): Promise<LeadListRow[]> {
@@ -128,15 +171,15 @@ export async function queryLeadsList(filters: LeadFilters, limit = 200): Promise
   });
 }
 
-export async function queryLeadsForKanban(): Promise<LeadListRow[]> {
+export async function queryLeadsForKanban(filters?: LeadFilters): Promise<LeadListRow[]> {
   const supabase = await createClient();
   return selectLeads(async (select, skipOptional) => {
     const query = applyLeadFilters(
-      supabase.from("leads").select(select).order("created_at", { ascending: false }).limit(500),
-      { status: skipOptional ? undefined : undefined },
-      { skipOptionalCrmFilters: true },
+      supabase.from("leads").select(select).order("created_at", { ascending: false }).limit(600),
+      filters ?? {},
+      { skipOptionalCrmFilters: skipOptional },
     );
-    // Evita filtrar por "Arquivado" se status tiver valores legados; só ordena.
     return query;
   });
 }
+

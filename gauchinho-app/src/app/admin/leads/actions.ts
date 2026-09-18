@@ -692,6 +692,9 @@ export async function fetchLeadDetail(leadId: string) {
 }
 
 import { listarConsultores } from "@/lib/admin/consultores";
+import { fetchCrmFunilEtapas } from "@/lib/crm/leads-query";
+import { randomUUID } from "node:crypto";
+import type { CrmFunilEtapaRow, LeadArquivoRow } from "@/lib/crm/types";
 
 export async function fetchSrdOptions() {
   const { empresaAtiva } = await getCurrentTenantContext();
@@ -699,3 +702,314 @@ export async function fetchSrdOptions() {
   const supabase = await createClient();
   return listarConsultores(supabase, { empresaId: empresaAtiva.id });
 }
+
+export async function fetchCrmFunilEtapasAction(): Promise<CrmFunilEtapaRow[]> {
+  const { empresaAtiva } = await getCurrentTenantContext();
+  return fetchCrmFunilEtapas(empresaAtiva?.id);
+}
+
+export async function updateLeadEtapaAction(
+  leadId: string,
+  etapaIdOrSlug: string,
+  extra?: {
+    proximaAcao?: string;
+    dataProximaAcao?: string;
+    observacao?: string;
+    motivoPerda?: string;
+    temperatura?: string;
+  },
+) {
+  const usuario = await requireUsuario();
+  const supabase = await createClient();
+  const { empresaAtiva } = await getCurrentTenantContext();
+
+  let etapaNome = etapaIdOrSlug;
+  let isWon = false;
+  let isLost = false;
+  let realEtapaId: string | null = null;
+
+  if (empresaAtiva) {
+    const { data: etapa } = await supabase
+      .from("crm_funil_etapas")
+      .select("id, nome, slug, is_won, is_lost")
+      .or(`id.eq.${etapaIdOrSlug},slug.eq.${etapaIdOrSlug}`)
+      .eq("empresa_id", empresaAtiva.id)
+      .maybeSingle();
+
+    if (etapa) {
+      etapaNome = etapa.nome;
+      realEtapaId = etapa.id;
+      isWon = etapa.is_won;
+      isLost = etapa.is_lost;
+    }
+  }
+
+  const { data: before } = await supabase
+    .from("leads")
+    .select("status, etapa_id")
+    .eq("id", leadId)
+    .single();
+
+  const updatePayload: Record<string, unknown> = {
+    status: etapaNome,
+    ultima_interacao_at: new Date().toISOString(),
+    data_ultimo_contato: new Date().toISOString(),
+  };
+
+  if (realEtapaId) updatePayload.etapa_id = realEtapaId;
+  if (extra?.proximaAcao) updatePayload.proxima_acao = extra.proximaAcao;
+  if (extra?.dataProximaAcao) updatePayload.data_proxima_acao = extra.dataProximaAcao;
+  if (extra?.temperatura) updatePayload.temperatura = extra.temperatura;
+
+  if (extra?.motivoPerda) {
+    updatePayload.motivo_perda_codigo = extra.motivoPerda;
+    updatePayload.motivo_perda = extra.motivoPerda;
+    updatePayload.observacao_perda = extra.observacao ?? extra.motivoPerda;
+  }
+  if (isWon) {
+    updatePayload.fechado = true;
+    updatePayload.fechado_at = new Date().toISOString();
+    updatePayload.data_fechamento = new Date().toISOString().slice(0, 10);
+  }
+  if (isLost) {
+    updatePayload.perdido_at = new Date().toISOString();
+  }
+
+  const { error } = await supabase.from("leads").update(updatePayload).eq("id", leadId);
+  if (error) throw new Error(error.message);
+
+  const descHistorico = extra?.observacao
+    ? `Etapa alterada para “${etapaNome}”. Obs: ${extra.observacao}`
+    : `Etapa alterada para “${etapaNome}”`;
+
+  await historico(leadId, usuario.id, "lead_etapa_alterada", descHistorico, {
+    status_anterior: before?.status,
+    status_novo: etapaNome,
+  });
+
+  if (extra?.proximaAcao) {
+    await supabase.from("lead_atividades").insert({
+      lead_id: leadId,
+      usuario_id: usuario.id,
+      tipo: "Próximo passo",
+      titulo: extra.proximaAcao,
+      descricao: extra.observacao ?? null,
+      status: "pendente",
+      data_agendada: extra.dataProximaAcao ? new Date(extra.dataProximaAcao).toISOString() : null,
+    });
+  }
+
+  await registrarEvento({
+    tipo_evento: "lead_status_alterado",
+    origem: "crm_pipeline",
+    lead_id: leadId,
+    usuario_id: usuario.id,
+    dados_evento: { de: before?.status, para: etapaNome, etapa_id: realEtapaId },
+  });
+
+  revalidatePath("/admin/crm");
+  revalidatePath("/admin/crm/pipeline");
+  revalidatePath("/admin/leads");
+  revalidatePath("/admin/leads/funil");
+  revalidatePath(`/admin/leads/${leadId}`);
+}
+
+export async function createLeadRapidoAction(data: {
+  nome: string;
+  contato: string;
+  origem?: string;
+  modeloInteresse?: string;
+  produtoInteresse?: string;
+  valorEstimado?: number;
+  temperatura?: string;
+  responsavelId?: string;
+  proximaAcao?: string;
+  observacoes?: string;
+}) {
+  const usuario = await requireUsuario();
+  const supabase = await createClient();
+  const { empresaAtiva } = await getCurrentTenantContext();
+  if (!empresaAtiva) throw new Error("Empresa ativa não identificada.");
+
+  if (!data.nome?.trim()) throw new Error("Nome ou identificação é obrigatório.");
+  if (!data.contato?.trim()) throw new Error("Telefone, WhatsApp ou e-mail é obrigatório.");
+
+  const isEmail = data.contato.includes("@");
+  const whatsapp = !isEmail ? data.contato.trim() : null;
+  const email = isEmail ? data.contato.trim().toLowerCase() : null;
+
+  let etapaId: string | null = null;
+  const { data: etapaNovo } = await supabase
+    .from("crm_funil_etapas")
+    .select("id")
+    .eq("empresa_id", empresaAtiva.id)
+    .eq("slug", "novo_lead")
+    .maybeSingle();
+
+  if (etapaNovo) etapaId = etapaNovo.id;
+
+  const srdId = data.responsavelId || null;
+  let srdNome: string | null = null;
+  if (srdId) {
+    const { data: resp } = await supabase.from("usuarios").select("nome").eq("id", srdId).maybeSingle();
+    srdNome = resp?.nome ?? null;
+  }
+
+  const isIncompleto = !email || !whatsapp || !data.produtoInteresse || !data.valorEstimado;
+
+  const payload: Record<string, unknown> = {
+    empresa_id: empresaAtiva.id,
+    nome: data.nome.trim(),
+    whatsapp,
+    email,
+    origem: data.origem || "manual",
+    status: "Novo",
+    etapa_id: etapaId,
+    tipo_interesse: data.produtoInteresse || null,
+    produto_interesse: data.produtoInteresse || null,
+    valor_estimado: data.valorEstimado ? Number(data.valorEstimado) : null,
+    temperatura: data.temperatura || "Morno",
+    modelo_interesse: data.modeloInteresse || "CLIENTE_FINAL",
+    srd_responsavel_id: srdId,
+    srd_responsavel_nome: srdNome,
+    proxima_acao: data.proximaAcao || null,
+    observacoes: data.observacoes || null,
+    is_incompleto: isIncompleto,
+    criado_manual: true,
+    criado_por_usuario_id: usuario.id,
+    ultima_interacao_at: new Date().toISOString(),
+    data_ultimo_contato: new Date().toISOString(),
+  };
+
+  const { data: inserted, error } = await supabase.from("leads").insert(payload).select("id").single();
+  if (error) throw new Error(error.message);
+
+  await historico(inserted.id, usuario.id, "lead_criado_rapido", "Lead cadastrado via Entrada Rápida do CRM");
+
+  revalidatePath("/admin/crm");
+  revalidatePath("/admin/crm/pipeline");
+  revalidatePath("/admin/leads");
+  return { id: inserted.id };
+}
+
+export async function converterLeadParaErpAction(leadId: string): Promise<{ ok: boolean; redirectUrl: string }> {
+  const usuario = await requireUsuario();
+  const supabase = await createClient();
+  const { empresaAtiva } = await getCurrentTenantContext();
+  if (!empresaAtiva) throw new Error("Empresa ativa não identificada.");
+
+  const { data: lead, error: leadErr } = await supabase
+    .from("leads")
+    .select("id, nome, whatsapp, telefone_normalizado, email, cidade, valor_estimado, valor_simulado, tipo_interesse, produto_interesse")
+    .eq("id", leadId)
+    .single();
+
+  if (leadErr || !lead) throw new Error("Lead não encontrado.");
+
+  // Verificar se já tem proposta
+  const { data: propExistente } = await supabase
+    .from("propostas")
+    .select("id")
+    .eq("lead_id", leadId)
+    .limit(1)
+    .maybeSingle();
+
+  if (propExistente) {
+    return { ok: true, redirectUrl: `/erp/propostas/${propExistente.id}` };
+  }
+
+  const token = randomUUID();
+  const valorCredito = Number(lead.valor_estimado ?? lead.valor_simulado ?? 0);
+
+  const { data: novaProp, error: propErr } = await supabase
+    .from("propostas")
+    .insert({
+      empresa_id: empresaAtiva.id,
+      lead_id: leadId,
+      nome_cliente: lead.nome,
+      telefone_cliente: lead.whatsapp || lead.telefone_normalizado || null,
+      email_cliente: lead.email || null,
+      cidade_cliente: lead.cidade || null,
+      valor_credito: valorCredito > 0 ? valorCredito : null,
+      tipo_interesse: lead.tipo_interesse || lead.produto_interesse || "imovel",
+      status: "Gerada",
+      token,
+      criado_por_usuario_id: usuario.id,
+    })
+    .select("id")
+    .single();
+
+  if (propErr) throw new Error(propErr.message);
+
+  await historico(
+    leadId,
+    usuario.id,
+    "lead_enviado_erp",
+    "Lead enviado para o ERP. Proposta gerada com sucesso.",
+  );
+
+  revalidatePath("/erp/propostas");
+  revalidatePath(`/admin/leads/${leadId}`);
+  return { ok: true, redirectUrl: `/erp/propostas/${novaProp.id}` };
+}
+
+export async function fetchLeadArquivosAction(leadId: string): Promise<LeadArquivoRow[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("lead_arquivos")
+    .select("id, empresa_id, lead_id, arquivo_url, arquivo_nome, arquivo_tamanho, mime_type, criado_por_usuario_id, created_at")
+    .eq("lead_id", leadId)
+    .order("created_at", { ascending: false });
+
+  if (error || !data) return [];
+  return data as LeadArquivoRow[];
+}
+
+export async function uploadLeadArquivoAction(leadId: string, formData: FormData) {
+  const usuario = await requireUsuario();
+  const supabase = await createClient();
+  const { empresaAtiva } = await getCurrentTenantContext();
+  if (!empresaAtiva) throw new Error("Empresa ativa não identificada.");
+
+  const file = formData.get("file") as File | null;
+  if (!file || !(file instanceof File) || file.size === 0) {
+    throw new Error("Nenhum arquivo selecionado.");
+  }
+
+  const ext = file.name.split(".").pop() || "bin";
+  const path = `${empresaAtiva.id}/leads/${leadId}/${randomUUID()}.${ext}`;
+  const bytes = Buffer.from(await file.arrayBuffer());
+
+  const { error: upErr } = await supabase.storage
+    .from("contratacoes-documentos")
+    .upload(path, bytes, { contentType: file.type, upsert: false });
+
+  if (upErr) throw new Error(`Falha no upload: ${upErr.message}`);
+
+  const { error: insErr } = await supabase.from("lead_arquivos").insert({
+    empresa_id: empresaAtiva.id,
+    lead_id: leadId,
+    arquivo_url: path,
+    arquivo_nome: file.name,
+    arquivo_tamanho: file.size,
+    mime_type: file.type,
+    criado_por_usuario_id: usuario.id,
+  });
+
+  if (insErr) throw new Error(insErr.message);
+
+  await historico(leadId, usuario.id, "lead_arquivo_anexado", `Arquivo anexado: ${file.name}`);
+
+  revalidatePath(`/admin/leads/${leadId}`);
+  return { ok: true };
+}
+
+export async function getLeadArquivoSignedUrlAction(arquivoUrl: string) {
+  const supabase = await createClient();
+  const { data, error } = await supabase.storage
+    .from("contratacoes-documentos")
+    .createSignedUrl(arquivoUrl, 60 * 15);
+  if (error || !data?.signedUrl) throw new Error("Falha ao gerar link do arquivo.");
+  return data.signedUrl;
+}
+

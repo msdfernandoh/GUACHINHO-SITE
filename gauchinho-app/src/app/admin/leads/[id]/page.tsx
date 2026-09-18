@@ -10,6 +10,7 @@ import {
   fetchLeadDetail,
   fetchSrdOptions,
   updateLeadAction,
+  fetchLeadArquivosAction,
 } from "../actions";
 import { MOTIVOS_PERDA } from "@/lib/crm/constants";
 import { gerarPropostaFromCartaLeadAction } from "@/app/admin/cartas-contempladas/actions";
@@ -35,6 +36,10 @@ import {
   LeadCheckinQualificacao,
   type QualificacaoEventoItem,
 } from "@/components/admin/crm/lead-checkin-qualificacao";
+import { CrmSendToErpButton } from "@/components/admin/crm/crm-send-to-erp-button";
+import { CrmLeadArquivos } from "@/components/admin/crm/crm-lead-arquivos";
+import { Users, Calendar, AlertTriangle } from "lucide-react";
+
 
 export default async function LeadDetailPage({
   params,
@@ -61,6 +66,7 @@ export default async function LeadDetailPage({
   } = detail;
   const srds = await fetchSrdOptions();
   const agendaItens = await fetchCompromissosLead(id);
+  const arquivos = await fetchLeadArquivosAction(id);
   const podeExcluir = canDeleteRecords(usuario?.perfil);
   const leadEvento = lead as typeof lead & {
     evento_id?: string | null;
@@ -406,7 +412,15 @@ export default async function LeadDetailPage({
             <span className="text-sm text-zinc-500">{formatDate(lead.created_at)}</span>
           </div>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <Link
+            href={`/admin/agenda/novo?lead_id=${lead.id}&titulo=${encodeURIComponent(`Network de Negócios: ${lead.nome}`)}&tipo=reuniao`}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-purple-500/40 bg-purple-950/20 px-3 py-1.5 text-xs font-semibold text-purple-300 transition hover:bg-purple-900/30"
+          >
+            <Calendar className="h-3.5 w-3.5" />
+            Convidar Network (Terça 19h)
+          </Link>
+          <CrmSendToErpButton leadId={lead.id} leadNome={lead.nome} />
           <LeadWhatsappButton
             nome={lead.nome}
             whatsapp={lead.whatsapp}
@@ -420,6 +434,16 @@ export default async function LeadDetailPage({
           ) : null}
         </div>
       </div>
+
+      {(lead as Record<string, unknown>).is_incompleto ? (
+        <div className="flex items-center gap-2.5 rounded-xl border border-amber-500/40 bg-amber-950/20 p-3.5 text-xs text-amber-200">
+          <AlertTriangle className="h-4 w-4 shrink-0 text-amber-400" />
+          <span>
+            <strong>Lead Incompleto:</strong> Este contato entrou com dados parciais. Enriqueça o cadastro abaixo para acelerar a qualificação e o fechamento.
+          </span>
+        </div>
+      ) : null}
+
 
       <LeadContratacaoOnlineSection
         lead={lead as Record<string, unknown>}
@@ -515,6 +539,8 @@ export default async function LeadDetailPage({
           {propostas.length === 0 ? <p className="text-zinc-500">Nenhuma proposta</p> : null}
         </ul>
       </section>
+
+      <CrmLeadArquivos leadId={id} arquivosIniciais={arquivos} />
 
       <section>
         <h2 className="mb-4 font-semibold text-zinc-100">Histórico comercial</h2>

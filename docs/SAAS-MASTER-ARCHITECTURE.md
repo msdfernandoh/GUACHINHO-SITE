@@ -2604,3 +2604,15 @@ total contra o produto unitário e a quantidade antes de materializar as cotas.
 
 Relatório:
 `docs/relatorios-fases/FASE-244-VALORES-ACEITOS-FORMALIZACAO.md`.
+
+### Evolução operacional 245 — CRM Pipeline em 12 Etapas, Dashboard Comercial e Transição ERP
+
+O módulo de CRM e Gestão de Leads da área logada foi expandido para atender ao ciclo de vendas consultivas de consórcios com uma esteira de 12 etapas canônicas (`crm_funil_etapas`), garantindo isolamento estrito multi-tenant e preservação integral dos dados do Tenant 1 (Gauchinho Consórcios).
+
+A migration `235_crm_pipeline_etapas_e_melhorias_leads.sql` introduziu as 12 etapas ordenadas por tenant, catalogação documental em `lead_arquivos`, motivos estruturados de perda em `crm_motivos_perda` e campos de qualificação ágil em `leads` (`etapa_id`, `is_incompleto`, `modelo_interesse`, `data_ultimo_contato`, `motivo_perda_codigo`), acompanhados de rotina idempotente de seed e backfill dos dados pré-existentes.
+
+No frontend Next.js 15, foram entregues o Dashboard Comercial com 8 KPIs estratégicos e visão gráfica do funil (`/admin/crm`), o Kanban interativo com drag-and-drop HTML5 nativo e filtros rápidos de SDR (`/admin/crm/pipeline`), o modal de transição com justificativa ou agendamento de retorno (`CrmStageMoveModal`), cadastro rápido de lead (`CrmQuickLeadModal`), biblioteca de materiais e scripts de contorno de objeções com cópia rápida para WhatsApp (`/admin/crm/materiais`), e a transição transacional CRM → ERP via `converterLeadParaErpAction` que cria propostas comerciais preservando a soberania do ERP financeiro.
+
+Relatório:
+`docs/relatorios-fases/FASE-245-CRM-PIPELINE-E-DASHBOARD.md`.
+

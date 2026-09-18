@@ -1,3 +1,29 @@
+export type CrmFunilEtapaRow = {
+  id: string;
+  empresa_id: string;
+  nome: string;
+  slug: string;
+  ordem: number;
+  cor: string;
+  is_won: boolean;
+  is_lost: boolean;
+  is_standby: boolean;
+  is_ativo: boolean;
+  created_at?: string;
+};
+
+export type LeadArquivoRow = {
+  id: string;
+  empresa_id: string;
+  lead_id: string;
+  arquivo_url: string;
+  arquivo_nome: string;
+  arquivo_tamanho: number | null;
+  mime_type: string | null;
+  criado_por_usuario_id: string | null;
+  created_at: string;
+};
+
 export type LeadListRow = {
   id: string;
   created_at: string;
@@ -9,6 +35,14 @@ export type LeadListRow = {
   tipo_interesse: string | null;
   produto_interesse: string | null;
   status: string;
+  etapa_id?: string | null;
+  etapa_slug?: string | null;
+  etapa_nome?: string | null;
+  etapa_cor?: string | null;
+  is_incompleto?: boolean | null;
+  modelo_interesse?: string | null;
+  data_ultimo_contato?: string | null;
+  motivo_perda_codigo?: string | null;
   temperatura: string | null;
   srd_responsavel_id: string | null;
   srd_responsavel_nome: string | null;
@@ -66,6 +100,7 @@ export type LeadFilters = {
   periodo?: string;
   origem?: string;
   status?: string;
+  etapa_id?: string;
   srd?: string;
   retorno?: string;
   q?: string;
@@ -75,6 +110,10 @@ export type LeadFilters = {
   sem_responsavel?: string;
   somente_novos?: string;
   somente_quentes?: string;
+  somente_incompletos?: string;
+  parados_dias?: string;
   acao_vencida?: string;
   evento?: string;
+  modelo_interesse?: string;
 };
+

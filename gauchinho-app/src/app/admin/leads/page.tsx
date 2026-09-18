@@ -12,6 +12,9 @@ import { ExportLeadsButton } from "@/components/admin/crm/export-leads-button";
 import type { LeadFilters as LF, LeadListRow } from "@/lib/crm/types";
 import type { ConsultorOption } from "@/lib/admin/consultores";
 
+import { CrmQuickLeadButton } from "@/components/admin/crm/crm-quick-lead-button";
+import { LayoutDashboard, Kanban } from "lucide-react";
+
 export const dynamic = "force-dynamic";
 
 export default async function LeadsListPage({
@@ -26,6 +29,7 @@ export default async function LeadsListPage({
     periodo: sp.periodo,
     origem: sp.origem,
     status: sp.status,
+    etapa_id: sp.etapa_id,
     srd: sp.srd,
     retorno: sp.retorno,
     q: sp.q,
@@ -35,8 +39,11 @@ export default async function LeadsListPage({
     sem_responsavel: sp.sem_responsavel,
     somente_novos: sp.somente_novos,
     somente_quentes: sp.somente_quentes,
+    somente_incompletos: sp.somente_incompletos,
+    parados_dias: sp.parados_dias,
     acao_vencida: sp.acao_vencida,
     evento: sp.evento,
+    modelo_interesse: sp.modelo_interesse,
   };
 
   let leads: LeadListRow[] = [];
@@ -63,16 +70,26 @@ export default async function LeadsListPage({
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-white">Leads — CRM</h1>
-          <p className="text-sm font-medium text-zinc-400">Funil comercial, follow-ups e conversão</p>
+          <p className="text-sm font-medium text-zinc-400">Lista tabular, follow-ups e conversão comercial</p>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <Link href="/admin/crm">
+            <Button variant="outline" type="button" className="flex items-center gap-1.5 text-xs">
+              <LayoutDashboard className="h-4 w-4" />
+              Dashboard CRM
+            </Button>
+          </Link>
+          <Link href="/admin/crm/pipeline">
+            <Button variant="outline" type="button" className="flex items-center gap-1.5 text-xs border-blue-500/40 text-blue-300">
+              <Kanban className="h-4 w-4" />
+              Pipeline Kanban
+            </Button>
+          </Link>
+          <CrmQuickLeadButton />
           <Link href="/admin/relatorios">
             <Button variant="outline" type="button">
               Relatórios
             </Button>
-          </Link>
-          <Link href="/admin/leads/novo">
-            <Button>Novo lead manual</Button>
           </Link>
           <Suspense fallback={null}>
             <ExportLeadsButton />

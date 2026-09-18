@@ -1,3 +1,28 @@
+export const CRM_12_ETAPAS = [
+  { slug: "novo_lead", nome: "Novo lead", ordem: 1, cor: "#3b82f6" },
+  { slug: "contato_realizado", nome: "Contato realizado", ordem: 2, cor: "#06b6d4" },
+  { slug: "qualificado", nome: "Qualificado", ordem: 3, cor: "#8b5cf6" },
+  { slug: "reuniao_agendada", nome: "Reunião agendada", ordem: 4, cor: "#ec4899" },
+  { slug: "reuniao_realizada", nome: "Reunião realizada", ordem: 5, cor: "#f59e0b" },
+  { slug: "proposta_enviada", nome: "Proposta enviada", ordem: 6, cor: "#eab308" },
+  { slug: "documentacao_cadastro", nome: "Documentação / cadastro", ordem: 7, cor: "#10b981" },
+  { slug: "boleto_enviado", nome: "Boleto enviado", ordem: 8, cor: "#14b8a6" },
+  { slug: "venda_fechada", nome: "Venda fechada", ordem: 9, cor: "#22c55e", isWon: true },
+  { slug: "pos_venda", nome: "Pós-venda / acompanhamento", ordem: 10, cor: "#64748b" },
+  { slug: "perdido", nome: "Perdido", ordem: 11, cor: "#ef4444", isLost: true },
+  { slug: "standby_futuro", nome: "Stand-by / futuro", ordem: 12, cor: "#a855f7", isStandby: true },
+] as const;
+
+export type CrmEtapaSlug = (typeof CRM_12_ETAPAS)[number]["slug"];
+
+export const MODELOS_INTERESSE = [
+  { codigo: "CLIENTE_FINAL", label: "Cliente Final" },
+  { codigo: "MICROFRANQUEADO", label: "Microfranqueado" },
+  { codigo: "GERADOR_NEGOCIOS", label: "Gerador de Negócios" },
+  { codigo: "GERADOR_POSSIBILIDADES", label: "Gerador de Possibilidades" },
+  { codigo: "NAO_DEFINIDO", label: "Ainda não definido" },
+] as const;
+
 export const FUNNEL_STATUSES = [
   "Novo",
   "Em atendimento",
@@ -14,7 +39,7 @@ export const FUNNEL_STATUSES = [
 
 export type FunnelStatus = (typeof FUNNEL_STATUSES)[number];
 
-/** Colunas do Kanban (subset operacional). */
+/** Colunas legadas do Kanban (compatibilidade). */
 export const KANBAN_STATUSES = [
   "Novo",
   "Em atendimento",
@@ -26,7 +51,7 @@ export const KANBAN_STATUSES = [
   "Perdido",
 ] as const;
 
-export const LEAD_TEMPERATURES = ["Frio", "Morno", "Quente", "Muito quente"] as const;
+export const LEAD_TEMPERATURES = ["Frio", "Morno", "Quente", "Muito quente", "Urgente"] as const;
 
 export type LeadTemperature = (typeof LEAD_TEMPERATURES)[number];
 

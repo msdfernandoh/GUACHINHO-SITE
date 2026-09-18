@@ -22,6 +22,7 @@ import {
   Clock,
   Landmark,
   MonitorCog,
+  Kanban,
 } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import type { AdminMenuKey } from "@/lib/admin/admin-menus";
@@ -37,7 +38,11 @@ const NAV: Array<{
   conteudoOnly?: boolean;
 }> = [
   { key: "dashboard", href: "/admin", label: "Dashboard", icon: LayoutDashboard },
-  { key: "leads", href: "/admin/leads", label: "Leads", icon: Users },
+  { key: "leads", href: "/admin/crm", label: "CRM — Vendas", icon: Kanban },
+  { key: "leads", href: "/admin/crm/pipeline", label: "Pipeline Funil", icon: Kanban },
+  { key: "leads", href: "/admin/leads", label: "Lista de Leads", icon: Users },
+  { key: "leads", href: "/admin/crm/performance", label: "Performance CRM", icon: BarChart2, masterOnly: true },
+  { key: "leads", href: "/admin/crm/materiais", label: "Materiais & Scripts", icon: BookOpen },
   { key: "agenda", href: "/admin/agenda", label: "Agenda", icon: CalendarDays },
   {
     key: "agenda_disponibilidade",
@@ -154,14 +159,20 @@ export function AdminSidebar({
               const active =
                 item.href === "/admin/configuracoes"
                   ? pathname === "/admin/configuracoes"
-                  : item.href === "/admin/eventos"
-                    ? pathname === "/admin/eventos" ||
-                      (pathname.startsWith("/admin/eventos/") &&
-                        !pathname.startsWith("/admin/eventos/nps") &&
-                        !pathname.startsWith("/admin/eventos/listas-convidados"))
-                    : item.key === "dashboard"
-                      ? pathname === item.href
-                      : pathname === item.href || pathname.startsWith(`${item.href}/`);
+                  : item.href === "/admin/crm"
+                    ? pathname === "/admin/crm"
+                    : item.href === "/admin/crm/pipeline"
+                      ? pathname === "/admin/crm/pipeline"
+                      : item.href === "/admin/leads"
+                        ? pathname === "/admin/leads" || (pathname.startsWith("/admin/leads/") && !pathname.startsWith("/admin/leads/funil"))
+                        : item.href === "/admin/eventos"
+                          ? pathname === "/admin/eventos" ||
+                            (pathname.startsWith("/admin/eventos/") &&
+                              !pathname.startsWith("/admin/eventos/nps") &&
+                              !pathname.startsWith("/admin/eventos/listas-convidados"))
+                          : item.key === "dashboard"
+                            ? pathname === item.href
+                            : pathname === item.href || pathname.startsWith(`${item.href}/`);
               const Icon = item.icon;
               return (
                 <Link

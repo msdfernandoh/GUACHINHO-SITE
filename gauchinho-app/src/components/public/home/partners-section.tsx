@@ -1,4 +1,5 @@
 import Image from "next/image";
+import Link from "next/link";
 import { PARCEIROS_FIXOS } from "@/lib/home/home-content";
 import { HomeReveal } from "./home-reveal";
 import { HomeSection } from "./home-section";
@@ -51,12 +52,12 @@ export function PartnersSection({
       className="border-y border-zinc-800/60"
     >
       <div className="mb-8 flex justify-end">
-        <a
+        <Link
           href="/parceiros"
           className="text-sm font-semibold text-amber-400 hover:text-amber-300"
         >
           Ver todos os parceiros →
-        </a>
+        </Link>
       </div>
       <div className="flex flex-wrap justify-center gap-4 md:gap-5">
         {all.map((p, i) => (
