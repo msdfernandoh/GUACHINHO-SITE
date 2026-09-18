@@ -26,6 +26,10 @@ A migration 232 foi aplicada e registrada no Supabase de produção após a conf
 
 O endpoint público de cadastro trata CPF já existente em `programa_indicadores` como atualização controlada, e não como erro de duplicidade. Telefone, chave PIX, dados de qualificação, origem e interesse comercial são atualizados no mesmo indicador e participante já vinculados ao tenant; a credencial e a senha existentes não são recriadas nem substituídas. Pedidos de Microfranqueado e Gerador de Negócios continuam gerando solicitação administrativa idempotente.
 
+### Hotfix operacional 247 — Máscara de CPF no acesso mobile do indicador
+
+O login do app do indicador mantém a autenticação canônica por dígitos, mas apresenta máscara brasileira `000.000.000-00` enquanto a pessoa digita. A ação de login continua removendo caracteres não numéricos no servidor antes de formar a credencial, sem alterar identidade, senha ou escopo de acesso.
+
 ### Evolução operacional 242 — SEO Avançado, Metatags, Schema.org e Otimização para IA (GEO)
 
 A plataforma passa a operar com infraestrutura canônica de SEO e GEO (Generative Engine Optimization para ChatGPT, Perplexity, Gemini, Claude e Copilot) ciente de múltiplos domínios públicos (`gauchinhoconsorcios.com.br` e `raconsinop.com.br`).
