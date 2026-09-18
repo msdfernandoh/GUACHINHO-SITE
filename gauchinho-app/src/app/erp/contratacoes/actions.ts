@@ -187,7 +187,7 @@ export async function formalizarContratacaoAction(formData: FormData) {
     if (!documentos) throw new Error("Documento obrigatório ausente.");
 
     if (!grupoId || !opcaoCotaId || !principalId || !modalidadeComissaoId) {
-      throw new Error("Grupo, produto, modalidade e consultor principal são obrigatórios.");
+      throw new Error("Grupo, produto, modalidade e participante comercial principal são obrigatórios.");
     }
     if (!Number.isInteger(quantidadeCotas) || quantidadeCotas < 1 || quantidadeCotas > 100) {
       throw new Error("A quantidade de cotas deve ser um número inteiro entre 1 e 100.");

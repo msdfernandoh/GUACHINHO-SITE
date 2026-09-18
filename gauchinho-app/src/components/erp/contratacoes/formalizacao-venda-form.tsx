@@ -230,7 +230,7 @@ export function FormalizacaoVendaForm({
   const participantesPrincipais = useMemo(() => participantes.filter((participante) =>
     vinculosPerfis.some((vinculo) =>
       vinculo.participante_id === participante.id &&
-      ["CONSULTOR", "GESTOR", "MICROFRANQUIA"].includes(vinculo.papel_tipo.toUpperCase()),
+      Boolean(vinculo.perfil_id && vinculo.perfil),
     ),
   ), [participantes, vinculosPerfis]);
 
@@ -623,7 +623,7 @@ export function FormalizacaoVendaForm({
         </label>
 
         <label className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
-          Consultor Principal *
+          Participante Comercial Principal *
           <select
             required
             name="participante_principal_id"
@@ -634,7 +634,7 @@ export function FormalizacaoVendaForm({
             }}
             className="mt-1.5 w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-xs font-semibold shadow-2xs focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
           >
-            <option value="">Selecione o consultor</option>
+            <option value="">Selecione o participante</option>
             {participantesPrincipais.map((p) => (
               <option key={p.id} value={p.id}>
                 {p.nome_exibicao || p.nome}

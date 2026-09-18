@@ -2605,6 +2605,17 @@ total contra o produto unitário e a quantidade antes de materializar as cotas.
 Relatório:
 `docs/relatorios-fases/FASE-244-VALORES-ACEITOS-FORMALIZACAO.md`.
 
+### Evolução operacional 245 — participante principal por perfil homologado
+
+O participante principal da venda é elegível pelo vínculo vigente com perfil
+de comissão e pela existência de regra homologada compatível com programa,
+tipo e modalidade. O nome do papel (`CONSULTOR`, `SDR`, `PARCEIRO`,
+`MICROFRANQUIA` etc.) não restringe sozinho a seleção. Isso permite que SDRs e
+parceiros atuem como principal quando sua própria regra comercial autoriza.
+
+Relatório:
+`docs/relatorios-fases/FASE-245-PARTICIPANTES-PRINCIPAIS-POR-PERFIL.md`.
+
 ### Evolução operacional 245 — CRM Pipeline em 12 Etapas, Dashboard Comercial e Transição ERP
 
 O módulo de CRM e Gestão de Leads da área logada foi expandido para atender ao ciclo de vendas consultivas de consórcios com uma esteira de 12 etapas canônicas (`crm_funil_etapas`), garantindo isolamento estrito multi-tenant e preservação integral dos dados do Tenant 1 (Gauchinho Consórcios).
@@ -2615,4 +2626,3 @@ No frontend Next.js 15, foram entregues o Dashboard Comercial com 8 KPIs estrat�
 
 Relatório:
 `docs/relatorios-fases/FASE-245-CRM-PIPELINE-E-DASHBOARD.md`.
-

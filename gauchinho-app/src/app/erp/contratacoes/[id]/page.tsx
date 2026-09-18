@@ -261,7 +261,7 @@ export default async function ConferirContratacaoPage({
   }));
   const participanteIdsPrincipais = new Set(
     vinculosPerfis
-      .filter((vinculo) => ["CONSULTOR", "GESTOR", "MICROFRANQUIA"].includes(vinculo.papel_tipo.toUpperCase()))
+      .filter((vinculo) => Boolean(vinculo.perfil_id && vinculo.perfil))
       .map((vinculo) => vinculo.participante_id),
   );
   const regrasParticipantes = ((regrasParticipantesResult.data ?? []) as unknown) as RegraParticipante[];
