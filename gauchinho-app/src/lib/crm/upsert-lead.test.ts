@@ -128,4 +128,214 @@ describe("upsertLeadPorTelefone - Fluxo RPC e Fallback", () => {
       })
     );
   });
+
+  it("acumula histórico com data na frente ao atualizar lead existente", async () => {
+    const mockRpc = vi.fn().mockResolvedValue({
+      data: null,
+      error: { message: "function rpc_upsert_lead_por_telefone does not exist", code: "42883" },
+    });
+
+    const mockSelect = vi.fn().mockReturnValue({
+      or: vi.fn().mockReturnValue({
+        order: vi.fn().mockReturnValue({
+          limit: vi.fn().mockResolvedValue({
+            data: [
+              {
+                id: "existing-lead-789",
+                nome: "Cliente Recorrente",
+                whatsapp: "66999126120",
+                telefone_normalizado: "66999126120",
+                historico_cadastros: "[10/08/2026 10:00] Nova abordagem / cadastro (Simulador Site):\n• Valor disponível / pretendido: R$ 150.000,00",
+                observacoes: "Lead antigo interessado em imóvel",
+              },
+            ],
+            error: null,
+          }),
+        }),
+      }),
+    });
+
+    const mockUpdate = vi.fn().mockReturnValue({
+      eq: vi.fn().mockResolvedValue({ error: null }),
+    });
+
+    const mockAdmin = {
+      rpc: mockRpc,
+      from: vi.fn((table: string) => {
+        if (table === "leads") {
+          return {
+            select: mockSelect,
+            update: mockUpdate,
+          };
+        }
+        return {};
+      }),
+    } as any;
+
+    const result = await upsertLeadPorTelefone(mockAdmin, {
+      whatsapp: "(66) 99912-6120",
+      evento_nome: "Feirão Agro 2026",
+      origem: "evento",
+      produto_interesse: "Pesados",
+      valor_estimado: 400000,
+      entrada: 50000,
+      cidade: "Sinop - MT",
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.action).toBe("updated");
+    expect(mockUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        historico_cadastros: expect.stringContaining("Feirão Agro 2026"),
+        observacoes: expect.stringContaining("Feirão Agro 2026"),
+      })
+    );
+
+    // Confirma que o histórico antigo foi preservado e está separado por ---
+    const updateCall = mockUpdate.mock.calls[0][0];
+    expect(updateCall.historico_cadastros).toContain("---");
+    expect(updateCall.historico_cadastros).toContain("Simulador Site");
+    expect(updateCall.historico_cadastros).toContain("R$ 150.000,00");
+    expect(updateCall.historico_cadastros).toContain("Pesados");
+  });
+
+  it("cria uma cópia / nova negociação quando o lead existente está no funil de ganho (Fechado / Ganho)", async () => {
+    const mockRpc = vi.fn().mockResolvedValue({
+      data: null,
+      error: { message: "function rpc_upsert_lead_por_telefone does not exist", code: "42883" },
+    });
+
+    const mockSelect = vi.fn().mockReturnValue({
+      or: vi.fn().mockReturnValue({
+        order: vi.fn().mockReturnValue({
+          limit: vi.fn().mockResolvedValue({
+            data: [
+              {
+                id: "lead-won-999",
+                nome: "Cliente Comprador",
+                whatsapp: "66999126120",
+                telefone_normalizado: "66999126120",
+                status: "Fechado",
+                etapa_id: "etapa-won-id",
+                srd_responsavel_id: "srd-1",
+                srd_responsavel_nome: "Consultor Top",
+                historico_cadastros: "[01/01/2026 10:00] Venda concluída: Imóvel R$ 300.000,00",
+              },
+            ],
+            error: null,
+          }),
+        }),
+      }),
+    });
+
+    const mockInsert = vi.fn().mockReturnValue({
+      select: vi.fn().mockReturnValue({
+        single: vi.fn().mockResolvedValue({
+          data: { id: "new-deal-lead-888" },
+          error: null,
+        }),
+      }),
+    });
+
+    const mockAdmin = {
+      rpc: mockRpc,
+      from: vi.fn((table: string) => {
+        if (table === "leads") {
+          return {
+            select: mockSelect,
+            insert: mockInsert,
+          };
+        }
+        return {};
+      }),
+    } as any;
+
+    const result = await upsertLeadPorTelefone(mockAdmin, {
+      whatsapp: "(66) 99912-6120",
+      evento_nome: "Exposinop 2026",
+      origem: "evento",
+      produto_interesse: "Automóvel",
+      valor_estimado: 120000,
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.action).toBe("copied_new_deal");
+    expect(result.lead_id).toBe("new-deal-lead-888");
+    expect(result.lead_origem_ganho_id).toBe("lead-won-999");
+    expect(mockInsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        status: "Novo",
+        nome: "Cliente Comprador",
+        srd_responsavel_id: "srd-1",
+        srd_responsavel_nome: "Consultor Top",
+        historico_cadastros: expect.stringContaining("NOVA NEGOCIAÇÃO"),
+      })
+    );
+
+    const insertedData = mockInsert.mock.calls[0][0];
+    expect(insertedData.historico_cadastros).toContain("Exposinop 2026");
+    expect(insertedData.historico_cadastros).toContain("Venda concluída: Imóvel R$ 300.000,00");
+  });
+
+  it("permite gerar nova negociação forçada quando permitir_gerar_novo for true", async () => {
+    const mockRpc = vi.fn().mockResolvedValue({
+      data: null,
+      error: { message: "function rpc_upsert_lead_por_telefone does not exist", code: "42883" },
+    });
+
+    const mockSelect = vi.fn().mockReturnValue({
+      or: vi.fn().mockReturnValue({
+        order: vi.fn().mockReturnValue({
+          limit: vi.fn().mockResolvedValue({
+            data: [
+              {
+                id: "lead-won-777",
+                nome: "Cliente Fiel",
+                whatsapp: "66999126120",
+                telefone_normalizado: "66999126120",
+                status: "Fechado",
+                historico_cadastros: "[01/01/2026] Venda 1",
+              },
+            ],
+            error: null,
+          }),
+        }),
+      }),
+    });
+
+    const mockInsert = vi.fn().mockReturnValue({
+      select: vi.fn().mockReturnValue({
+        single: vi.fn().mockResolvedValue({
+          data: { id: "new-forced-deal-id" },
+          error: null,
+        }),
+      }),
+    });
+
+    const mockAdmin = {
+      rpc: mockRpc,
+      from: vi.fn((table: string) => {
+        if (table === "leads") {
+          return {
+            select: mockSelect,
+            insert: mockInsert,
+          };
+        }
+        return {};
+      }),
+    } as any;
+
+    const result = await upsertLeadPorTelefone(mockAdmin, {
+      whatsapp: "(66) 99912-6120",
+      permitir_gerar_novo: true,
+      produto_interesse: "Investimento",
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.action).toBe("copied_new_deal");
+    expect(result.lead_id).toBe("new-forced-deal-id");
+    expect(mockInsert).toHaveBeenCalled();
+  });
 });
+
+

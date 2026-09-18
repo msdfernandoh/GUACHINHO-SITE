@@ -62,6 +62,8 @@ export type LeadListRow = {
   indicador_lead_id?: string | null;
   /** Carro, Moto, Casa… — cadastro do sorteio/evento */
   tipo_sonho?: string | null;
+  historico_cadastros?: string | null;
+  observacoes?: string | null;
 };
 
 export type IndicacaoRapidaItem = {

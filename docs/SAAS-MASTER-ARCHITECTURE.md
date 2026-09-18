@@ -2642,3 +2642,15 @@ No frontend Next.js 15, foram entregues o Dashboard Comercial com 8 KPIs estrat�
 
 Relatório:
 `docs/relatorios-fases/FASE-245-CRM-PIPELINE-E-DASHBOARD.md`.
+
+### Evolução operacional 246 — Unificação de Leads por Telefone, Histórico Cronológico e Nova Negociação para Clientes Ganhos
+
+O ciclo de captação e relacionamento comercial multi-canal (eventos, feirões agro, simuladores públicos, indicações de parceiros, WhatsApp e criação rápida no CRM) foi consolidado para garantir anti-duplicação e visão 360° do cliente tendo o telefone brasileiro normalizado (`telefone_normalizado`) como chave principal de desduplicação.
+
+A migração `236_unificacao_leads_telefone_e_historico_cadastros.sql` introduziu a coluna `historico_cadastros` e a RPC transacional `rpc_upsert_lead_por_telefone` com bloqueio consultivo (`pg_advisory_xact_lock`), registrando no topo do histórico (`prepend`) todas as novas abordagens no padrão cronológico `[DD/MM/AAAA HH:mm]` no timezone operacional `America/Cuiaba` (Sinop-MT), detalhando evento de captação, tipo de investimento pretendido, valor disponível, entrada, capacidade mensal e observações, com separador canônico `---`.
+
+A migração `237_leads_recorrentes_funil_ganho_nova_negociacao.sql` estabeleceu a regra de negócio para clientes com contratos fechados: quando um lead que já está no funil de ganho (`is_won = true` ou `status IN ('Fechado', 'Ganho', 'Venda fechada')`) reingressa por qualquer canal ou evento, o sistema não sobrescreve a venda concluída; ao invés disso, gera automaticamente uma **nova negociação (cópia no funil de entrada)** na etapa `novo_lead`, herdando dados cadastrais e consultor anterior, e consolidando o histórico anterior. Na interface de detalhes do lead (`/admin/leads/[id]`), o componente `CrmNovaNegociacaoButton` permite também que o operador abra uma nova negociação para o cliente ganho com um clique via `duplicarLeadParaNovaNegociacaoAction`.
+
+Relatório:
+`docs/relatorios-fases/FASE-246-UNIFICACAO-LEADS-TELEFONE-HISTORICO.md`.
+

@@ -55,20 +55,104 @@ export interface UpsertLeadPayload {
   utm_campaign?: string | null;
   participante_comercial_id?: string | null;
   status?: string | null;
+  etapa_id?: string | null;
+  capacidade_mensal?: string | null;
+  observacoes?: string | null;
+  historico_cadastros?: string | null;
+  srd_responsavel_id?: string | null;
+  srd_responsavel_nome?: string | null;
+  temperatura?: string | null;
+  modelo_interesse?: string | null;
+  proxima_acao?: string | null;
+  permitir_gerar_novo?: boolean | null;
+  forcar_novo?: boolean | null;
+}
+
+/**
+ * Formata um bloco cronológico com data e hora operacional (America/Cuiaba)
+ * detalhando as novas informações trazidas por um cadastro ou abordagem.
+ */
+export function formatarEntradaHistoricoLead(
+  payload: UpsertLeadPayload,
+  options?: { dataHora?: Date }
+): string {
+  const dt = options?.dataHora ?? new Date();
+  const dataFormatada = new Intl.DateTimeFormat("pt-BR", {
+    timeZone: "America/Cuiaba",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(dt);
+
+  const origemTxt = payload.evento_nome || payload.origem_detalhe || payload.origem || "Novo contato";
+  const tipoInv = payload.produto_interesse || payload.tipo_interesse || payload.tipo_credito;
+  const valor = payload.valor_estimado ?? payload.valor_simulado;
+
+  const linhas: string[] = [
+    `[${dataFormatada}] Nova abordagem / cadastro (${origemTxt}):`,
+  ];
+
+  if (payload.evento_nome) {
+    linhas.push(`• Evento: ${payload.evento_nome}`);
+  }
+  if (tipoInv) {
+    linhas.push(`• Tipo de investimento / interesse: ${tipoInv}`);
+  }
+  if (valor != null && Number.isFinite(Number(valor)) && Number(valor) > 0) {
+    linhas.push(
+      `• Valor disponível / pretendido: ${new Intl.NumberFormat("pt-BR", {
+        style: "currency",
+        currency: "BRL",
+      }).format(Number(valor))}`
+    );
+  }
+  if (payload.entrada != null && Number.isFinite(Number(payload.entrada)) && Number(payload.entrada) > 0) {
+    linhas.push(
+      `• Entrada disponível: ${new Intl.NumberFormat("pt-BR", {
+        style: "currency",
+        currency: "BRL",
+      }).format(Number(payload.entrada))}`
+    );
+  }
+  if (payload.capacidade_mensal) {
+    linhas.push(`• Capacidade mensal de parcela: ${payload.capacidade_mensal}`);
+  }
+  if (payload.prazo_simulado != null && payload.prazo_simulado > 0) {
+    linhas.push(`• Prazo pretendido: ${payload.prazo_simulado} meses`);
+  }
+  if (payload.cidade) {
+    linhas.push(`• Cidade: ${payload.cidade}`);
+  }
+  if (payload.observacoes?.trim()) {
+    linhas.push(`• Observações: ${payload.observacoes.trim()}`);
+  }
+
+  return linhas.join("\n");
 }
 
 export interface UpsertLeadResult {
   ok: boolean;
-  action: "created" | "updated";
+  action: "created" | "updated" | "copied_new_deal";
   lead_id: string;
   telefone_normalizado: string;
+  lead_origem_ganho_id?: string | null;
   error?: string;
+}
+
+export function isLeadGanho(status?: string | null, isWon?: boolean | null): boolean {
+  if (isWon) return true;
+  if (!status) return false;
+  const s = status.toLowerCase().trim();
+  return s === "fechado" || s === "ganho" || s === "venda fechada" || s === "venda_fechada";
 }
 
 /**
  * Realiza o cadastro ou atualização atômica e idempotente do lead por telefone.
  * Utiliza bloqueio transacional (advisory lock) no PostgreSQL para impedir 100% de duplicações concorrentes.
- * Possui fallback defensivo caso a RPC da migration ainda não esteja ativa no ambiente de execução.
+ * Se o lead anterior estiver no funil de ganho (venda fechada), cria automaticamente uma cópia
+ * como NOVA NEGOCIAÇÃO no funil inicial, preservando o histórico consolidado.
  */
 export async function upsertLeadPorTelefone(
   supabaseAdmin: SupabaseClient,
@@ -97,9 +181,10 @@ export async function upsertLeadPorTelefone(
     if (!rpcError && rpcData && rpcData.ok) {
       return {
         ok: true,
-        action: rpcData.action as "created" | "updated",
+        action: rpcData.action as "created" | "updated" | "copied_new_deal",
         lead_id: rpcData.lead_id as string,
         telefone_normalizado: (rpcData.telefone_normalizado as string) || norm,
+        lead_origem_ganho_id: (rpcData.lead_origem_ganho_id as string) || null,
       };
     }
 
@@ -112,34 +197,54 @@ export async function upsertLeadPorTelefone(
   }
 
   // 2. Fallback defensivo client-side (compatibilidade e resiliência)
-  // Busca se já existe lead pelo telefone normalizado ou pelo whatsapp exato
+  const forcarNovo = Boolean(payload.permitir_gerar_novo || payload.forcar_novo);
+
+  // Busca se já existem leads pelo telefone normalizado ou pelo whatsapp
   const { data: existingLeads } = await supabaseAdmin
     .from("leads")
-    .select("id, nome, email, cidade, whatsapp, telefone_normalizado, dados_simulacao, valor_simulado")
+    .select("id, nome, email, cidade, whatsapp, telefone_normalizado, dados_simulacao, valor_simulado, valor_estimado, historico_cadastros, observacoes, status, etapa_id, srd_responsavel_id, srd_responsavel_nome, modelo_interesse, empresa_id, tipo_interesse, produto_interesse, tipo_credito, carta_contemplada_id, imovel_id, parceiro_id")
     .or(`telefone_normalizado.eq.${norm},whatsapp.ilike.%${norm.slice(-8)}%`)
-    .order("created_at", { ascending: true })
-    .limit(1);
+    .order("created_at", { ascending: false })
+    .limit(20);
 
-  const existing = existingLeads && existingLeads.length > 0 ? existingLeads[0] : null;
+  const newEntry = formatarEntradaHistoricoLead(payload);
 
-  if (existing) {
+  const activeLead = !forcarNovo
+    ? (existingLeads ?? []).find((l) => !isLeadGanho(l.status))
+    : null;
+
+  const wonLead = (existingLeads ?? []).find((l) => isLeadGanho(l.status));
+
+  // CASO 1: Lead em andamento ativo encontrado -> Atualiza e acumula histórico
+  if (activeLead) {
     const updateData: Record<string, unknown> = {
       telefone_normalizado: norm,
       ultima_interacao_at: new Date().toISOString(),
+      data_ultimo_contato: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
 
-    if (payload.nome && (!existing.nome || existing.nome.trim() === "" || existing.nome.toLowerCase() === "teste")) {
+    // Acúmulo de histórico com data na frente
+    const existingHist = activeLead.historico_cadastros ? String(activeLead.historico_cadastros).trim() : "";
+    updateData.historico_cadastros = existingHist ? `${newEntry}\n\n---\n\n${existingHist}` : newEntry;
+
+    const existingObs = activeLead.observacoes ? String(activeLead.observacoes).trim() : "";
+    updateData.observacoes = existingObs ? `${newEntry}\n\n---\n\n${existingObs}` : newEntry;
+
+    if (payload.nome && (!activeLead.nome || activeLead.nome.trim() === "" || activeLead.nome.toLowerCase() === "teste")) {
       updateData.nome = payload.nome.trim();
     }
-    if (payload.email && !existing.email) {
+    if (payload.email && !activeLead.email) {
       updateData.email = payload.email.trim().toLowerCase();
     }
-    if (payload.cidade && !existing.cidade) {
+    if (payload.cidade && !activeLead.cidade) {
       updateData.cidade = payload.cidade.trim();
     }
     if (payload.valor_simulado != null) {
       updateData.valor_simulado = payload.valor_simulado;
+    }
+    if (payload.valor_estimado != null) {
+      updateData.valor_estimado = payload.valor_estimado;
     }
     if (payload.prazo_simulado != null) {
       updateData.prazo_simulado = payload.prazo_simulado;
@@ -168,11 +273,29 @@ export async function upsertLeadPorTelefone(
     if (payload.evento_nome != null) {
       updateData.evento_nome = payload.evento_nome;
     }
+    if (payload.etapa_id != null) {
+      updateData.etapa_id = payload.etapa_id;
+    }
+    if (payload.srd_responsavel_id != null) {
+      updateData.srd_responsavel_id = payload.srd_responsavel_id;
+    }
+    if (payload.srd_responsavel_nome != null) {
+      updateData.srd_responsavel_nome = payload.srd_responsavel_nome;
+    }
+    if (payload.temperatura != null) {
+      updateData.temperatura = payload.temperatura;
+    }
+    if (payload.modelo_interesse != null) {
+      updateData.modelo_interesse = payload.modelo_interesse;
+    }
+    if (payload.proxima_acao != null) {
+      updateData.proxima_acao = payload.proxima_acao;
+    }
 
     const { error: updateErr } = await supabaseAdmin
       .from("leads")
       .update(updateData)
-      .eq("id", existing.id);
+      .eq("id", activeLead.id);
 
     if (updateErr) {
       throw new Error(`Falha ao atualizar lead existente: ${updateErr.message}`);
@@ -181,12 +304,83 @@ export async function upsertLeadPorTelefone(
     return {
       ok: true,
       action: "updated",
-      lead_id: existing.id,
+      lead_id: activeLead.id,
       telefone_normalizado: norm,
     };
   }
 
-  // Não existia: insere novo lead
+  // CASO 2: Nenhum lead ativo. Existe lead Ganho / Fechado -> GERA NOVA NEGOCIAÇÃO (CÓPIA)
+  if (wonLead) {
+    const dataFormatada = new Intl.DateTimeFormat("pt-BR", {
+      timeZone: "America/Cuiaba",
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    }).format(new Date());
+
+    const entryGanho = `[${dataFormatada}] 🌟 NOVA NEGOCIAÇÃO (Cliente com venda anterior ganha - Ref #${wonLead.id.slice(0, 8)}):\n${newEntry}`;
+
+    const histConsolidado = wonLead.historico_cadastros
+      ? `${entryGanho}\n\n---\n[Histórico Consolidado da Negociação Anterior]:\n${wonLead.historico_cadastros}`
+      : wonLead.observacoes
+      ? `${entryGanho}\n\n---\n[Histórico Consolidado da Negociação Anterior]:\n${wonLead.observacoes}`
+      : entryGanho;
+
+    const insertData: Record<string, unknown> = {
+      empresa_id: payload.empresa_id || wonLead.empresa_id || null,
+      nome: payload.nome?.trim() || wonLead.nome || "Contato sem nome",
+      whatsapp: payload.whatsapp.trim(),
+      telefone_normalizado: norm,
+      email: payload.email?.trim().toLowerCase() || wonLead.email || null,
+      cidade: payload.cidade?.trim() || wonLead.cidade || null,
+      origem: payload.origem || "recorrente",
+      origem_detalhe: payload.origem_detalhe || "Nova negociação de cliente ganho",
+      tipo_interesse: payload.tipo_interesse || wonLead.tipo_interesse || null,
+      produto_interesse: payload.produto_interesse || wonLead.produto_interesse || null,
+      tipo_credito: payload.tipo_credito || wonLead.tipo_credito || null,
+      valor_simulado: payload.valor_simulado ?? null,
+      prazo_simulado: payload.prazo_simulado ?? null,
+      entrada: payload.entrada ?? null,
+      renda: payload.renda ?? null,
+      valor_estimado: payload.valor_estimado ?? payload.valor_simulado ?? wonLead.valor_estimado ?? null,
+      dados_simulacao: payload.dados_simulacao ?? null,
+      resultado_resumido: payload.resultado_resumido ?? null,
+      status: "Novo",
+      etapa_id: payload.etapa_id || null,
+      srd_responsavel_id: wonLead.srd_responsavel_id || null,
+      srd_responsavel_nome: wonLead.srd_responsavel_nome || null,
+      temperatura: "Quente",
+      modelo_interesse: payload.modelo_interesse || wonLead.modelo_interesse || "CLIENTE_FINAL",
+      proxima_acao: payload.proxima_acao || "Fazer contato - Cliente recorrente",
+      historico_cadastros: histConsolidado,
+      observacoes: histConsolidado,
+      ultima_interacao_at: new Date().toISOString(),
+      data_ultimo_contato: new Date().toISOString(),
+      criado_manual: false,
+    };
+
+    const { data: newLead, error: insertErr } = await supabaseAdmin
+      .from("leads")
+      .insert(insertData)
+      .select("id")
+      .single();
+
+    if (insertErr || !newLead) {
+      throw new Error(`Falha ao gerar nova negociação para cliente ganho: ${insertErr?.message}`);
+    }
+
+    return {
+      ok: true,
+      action: "copied_new_deal",
+      lead_id: newLead.id,
+      telefone_normalizado: norm,
+      lead_origem_ganho_id: wonLead.id,
+    };
+  }
+
+  // CASO 3: Não existia nenhum lead prévio -> Insere novo lead normal
   const insertData: Record<string, unknown> = {
     nome: payload.nome?.trim() || "Contato sem nome",
     whatsapp: payload.whatsapp.trim(),
@@ -218,7 +412,16 @@ export async function upsertLeadPorTelefone(
     utm_medium: payload.utm_medium || null,
     utm_campaign: payload.utm_campaign || null,
     participante_comercial_id: payload.participante_comercial_id || null,
+    historico_cadastros: newEntry,
+    observacoes: payload.observacoes?.trim() || newEntry,
+    etapa_id: payload.etapa_id || null,
+    srd_responsavel_id: payload.srd_responsavel_id || null,
+    srd_responsavel_nome: payload.srd_responsavel_nome || null,
+    temperatura: payload.temperatura || null,
+    modelo_interesse: payload.modelo_interesse || null,
+    proxima_acao: payload.proxima_acao || null,
     ultima_interacao_at: new Date().toISOString(),
+    data_ultimo_contato: new Date().toISOString(),
     criado_manual: false,
   };
 

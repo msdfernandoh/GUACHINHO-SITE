@@ -141,12 +141,20 @@ export function CrmLeadCard({
       {/* 3. ORIGEM E INDICAÇÃO */}
       <div className="mt-2 text-[11px] text-zinc-400">
         <p className="truncate">
-          Origem: <span className="text-zinc-300">{labelOrigem(lead.origem)}</span>
+          Origem:{" "}
+          <span className="text-zinc-300">
+            {lead.evento_nome ? `Evento (${lead.evento_nome})` : labelOrigem(lead.origem)}
+          </span>
         </p>
         {lead.parceiro_indicador_nome && (
           <p className="mt-0.5 truncate text-[10px] text-amber-300/80">
             Indicado por: {lead.parceiro_indicador_nome}
           </p>
+        )}
+        {lead.historico_cadastros && lead.historico_cadastros.includes("---") && (
+          <span className="mt-1 inline-flex items-center gap-1 rounded bg-blue-500/15 px-1.5 py-0.5 text-[9px] font-semibold text-blue-300">
+            🔄 Múltiplas abordagens
+          </span>
         )}
       </div>
 

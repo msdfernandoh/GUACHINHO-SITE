@@ -20,7 +20,7 @@ import { MOTIVOS_PERDA } from "@/lib/crm/constants";
 import { isTipoSonhoSorteio, tipoSonhoParaCreditoLead } from "@/lib/eventos-sorteio/lead-map";
 import { isDbMissingColumnError } from "@/lib/comercial-eventos/db-ready";
 import { getCurrentTenantContext } from "@/lib/tenant/context";
-import { upsertLeadPorTelefone } from "@/lib/crm/upsert-lead";
+import { upsertLeadPorTelefone, normalizePhoneForLead } from "@/lib/crm/upsert-lead";
 
 async function touchInteracao(supabase: Awaited<ReturnType<typeof createClient>>, leadId: string) {
   await supabase
@@ -855,12 +855,52 @@ export async function createLeadRapidoAction(data: {
     srdNome = resp?.nome ?? null;
   }
 
+  if (whatsapp && normalizePhoneForLead(whatsapp).length >= 10) {
+    const upsertRes = await upsertLeadPorTelefone(supabase, {
+      empresa_id: empresaAtiva.id,
+      nome: data.nome.trim(),
+      whatsapp: whatsapp.trim(),
+      email,
+      origem: data.origem || "manual",
+      status: "Novo",
+      etapa_id: etapaId,
+      tipo_interesse: data.produtoInteresse || null,
+      produto_interesse: data.produtoInteresse || null,
+      valor_estimado: data.valorEstimado ? Number(data.valorEstimado) : null,
+      temperatura: data.temperatura || "Morno",
+      modelo_interesse: data.modeloInteresse || "CLIENTE_FINAL",
+      srd_responsavel_id: srdId,
+      srd_responsavel_nome: srdNome,
+      proxima_acao: data.proximaAcao || null,
+      observacoes: data.observacoes || null,
+    });
+
+    if (!upsertRes.ok || !upsertRes.lead_id) {
+      throw new Error(upsertRes.error || "Falha ao salvar lead");
+    }
+
+    const desc =
+      upsertRes.action === "updated"
+        ? "Lead reabordado / unificado via Entrada Rápida do CRM"
+        : upsertRes.action === "copied_new_deal"
+        ? "Nova negociação gerada via Entrada Rápida (Cliente com negócio anterior ganho)"
+        : "Lead cadastrado via Entrada Rápida do CRM";
+
+    await historico(upsertRes.lead_id, usuario.id, "lead_criado_rapido", desc);
+
+    revalidatePath("/admin/crm");
+    revalidatePath("/admin/crm/pipeline");
+    revalidatePath("/admin/leads");
+    return { id: upsertRes.lead_id, action: upsertRes.action };
+  }
+
+  // Fallback seguro caso o contato seja exclusivamente e-mail
   const isIncompleto = !email || !whatsapp || !data.produtoInteresse || !data.valorEstimado;
 
   const payload: Record<string, unknown> = {
     empresa_id: empresaAtiva.id,
     nome: data.nome.trim(),
-    whatsapp,
+    whatsapp: whatsapp || null,
     email,
     origem: data.origem || "manual",
     status: "Novo",
@@ -889,7 +929,7 @@ export async function createLeadRapidoAction(data: {
   revalidatePath("/admin/crm");
   revalidatePath("/admin/crm/pipeline");
   revalidatePath("/admin/leads");
-  return { id: inserted.id };
+  return { id: inserted.id, action: "created" as const };
 }
 
 export async function converterLeadParaErpAction(leadId: string): Promise<{ ok: boolean; redirectUrl: string }> {
@@ -1011,5 +1051,114 @@ export async function getLeadArquivoSignedUrlAction(arquivoUrl: string) {
     .createSignedUrl(arquivoUrl, 60 * 15);
   if (error || !data?.signedUrl) throw new Error("Falha ao gerar link do arquivo.");
   return data.signedUrl;
+}
+
+/**
+ * Duplica um lead (especialmente no funil de ganho ou negociação fechada)
+ * gerando uma NOVA NEGOCIAÇÃO no funil inicial ('novo_lead' / 'Novo'),
+ * preservando o histórico consolidado e permitindo novo fluxo comercial.
+ */
+export async function duplicarLeadParaNovaNegociacaoAction(leadId: string): Promise<{ ok: boolean; newLeadId: string }> {
+  const usuario = await requireUsuario();
+  const supabase = await createClient();
+  const { empresaAtiva } = await getCurrentTenantContext();
+  if (!empresaAtiva) throw new Error("Empresa ativa não identificada.");
+
+  const { data: lead, error } = await supabase
+    .from("leads")
+    .select("*")
+    .eq("id", leadId)
+    .eq("empresa_id", empresaAtiva.id)
+    .single();
+
+  if (error || !lead) {
+    throw new Error("Lead não encontrado para gerar nova negociação.");
+  }
+
+  // Busca etapa inicial 'novo_lead'
+  const { data: etapaNovo } = await supabase
+    .from("crm_funil_etapas")
+    .select("id")
+    .eq("empresa_id", empresaAtiva.id)
+    .eq("slug", "novo_lead")
+    .maybeSingle();
+
+  const dataHora = new Intl.DateTimeFormat("pt-BR", {
+    timeZone: "America/Cuiaba",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date());
+
+  const newEntry = `[${dataHora}] 🌟 NOVA NEGOCIAÇÃO GERADA (Cliente com histórico anterior #${lead.id.slice(0, 8)}):
+• Operador: ${usuario.nome || "Equipe Comercial"}
+• Origem: Duplicação / Nova oportunidade de negócio`;
+
+  const histConsolidado = lead.historico_cadastros
+    ? `${newEntry}\n\n---\n[Histórico Consolidado da Negociação Anterior]:\n${lead.historico_cadastros}`
+    : lead.observacoes
+    ? `${newEntry}\n\n---\n[Histórico Consolidado da Negociação Anterior]:\n${lead.observacoes}`
+    : newEntry;
+
+  const insertPayload = {
+    empresa_id: empresaAtiva.id,
+    nome: lead.nome,
+    whatsapp: lead.whatsapp,
+    telefone_normalizado: lead.telefone_normalizado,
+    email: lead.email,
+    cidade: lead.cidade,
+    origem: "recorrente",
+    origem_detalhe: `Nova negociação gerada a partir do lead #${lead.id.slice(0, 8)}`,
+    tipo_interesse: lead.tipo_interesse,
+    produto_interesse: lead.produto_interesse,
+    tipo_credito: lead.tipo_credito,
+    valor_estimado: lead.valor_estimado,
+    status: "Novo",
+    etapa_id: etapaNovo?.id || null,
+    srd_responsavel_id: lead.srd_responsavel_id,
+    srd_responsavel_nome: lead.srd_responsavel_nome,
+    temperatura: "Quente",
+    modelo_interesse: lead.modelo_interesse || "CLIENTE_FINAL",
+    proxima_acao: "Fazer primeiro contato da nova negociação",
+    historico_cadastros: histConsolidado,
+    observacoes: histConsolidado,
+    ultima_interacao_at: new Date().toISOString(),
+    data_ultimo_contato: new Date().toISOString(),
+    criado_manual: true,
+    criado_por_usuario_id: usuario.id,
+  };
+
+  const { data: newLead, error: insertErr } = await supabase
+    .from("leads")
+    .insert(insertPayload)
+    .select("id")
+    .single();
+
+  if (insertErr || !newLead) {
+    throw new Error(`Falha ao gerar nova negociação: ${insertErr?.message}`);
+  }
+
+  await historico(
+    newLead.id,
+    usuario.id,
+    "nova_negociacao_duplicada",
+    `Nova negociação iniciada a partir do lead anterior #${lead.id.slice(0, 8)}`
+  );
+
+  await historico(
+    lead.id,
+    usuario.id,
+    "nova_negociacao_gerada",
+    `Cliente iniciou uma nova negociação (Lead #${newLead.id.slice(0, 8)})`
+  );
+
+  revalidatePath("/admin/crm");
+  revalidatePath("/admin/crm/pipeline");
+  revalidatePath("/admin/leads");
+  revalidatePath(`/admin/leads/${lead.id}`);
+
+  return { ok: true, newLeadId: newLead.id };
 }
 

@@ -37,7 +37,10 @@ import {
   type QualificacaoEventoItem,
 } from "@/components/admin/crm/lead-checkin-qualificacao";
 import { CrmSendToErpButton } from "@/components/admin/crm/crm-send-to-erp-button";
+import { CrmNovaNegociacaoButton } from "@/components/admin/crm/crm-nova-negociacao-button";
 import { CrmLeadArquivos } from "@/components/admin/crm/crm-lead-arquivos";
+import { LeadHistoricoCadastros } from "@/components/admin/crm/lead-historico-cadastros";
+import { isLeadGanho } from "@/lib/crm/upsert-lead";
 import { Users, Calendar, AlertTriangle } from "lucide-react";
 
 
@@ -420,6 +423,11 @@ export default async function LeadDetailPage({
             <Calendar className="h-3.5 w-3.5" />
             Convidar Network (Terça 19h)
           </Link>
+          <CrmNovaNegociacaoButton
+            leadId={lead.id}
+            leadNome={lead.nome}
+            isWon={isLeadGanho(lead.status)}
+          />
           <CrmSendToErpButton leadId={lead.id} leadNome={lead.nome} />
           <LeadWhatsappButton
             nome={lead.nome}
@@ -448,6 +456,14 @@ export default async function LeadDetailPage({
       <LeadContratacaoOnlineSection
         lead={lead as Record<string, unknown>}
         contratacao={(contratacaoOnline as ContratacaoOnlineRow | null) ?? null}
+      />
+
+      {/* Histórico Cronológico de Abordagens e Cadastros Unificados por Telefone */}
+      <LeadHistoricoCadastros
+        historicoTexto={
+          ((lead as Record<string, unknown>).historico_cadastros as string | null) ||
+          ((lead as Record<string, unknown>).observacoes as string | null)
+        }
       />
 
       {/* Resumo Comercial de Check-in em Eventos */}

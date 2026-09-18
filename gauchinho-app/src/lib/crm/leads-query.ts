@@ -12,7 +12,7 @@ const LIST_SELECT_ULTRA_MINIMAL =
   "id, created_at, nome, whatsapp, email, cidade, origem, tipo_interesse, produto_interesse, status, srd_responsavel_id, srd_responsavel_nome";
 
 const LIST_SELECT_BASE =
-  `${LIST_SELECT_MINIMAL}, etapa_id, is_incompleto, modelo_interesse, data_ultimo_contato, motivo_perda_codigo, temperatura, proxima_acao, data_proxima_acao, proximo_retorno_data, ultima_interacao_at, valor_estimado, valor_simulado, fechado, evento_id, evento_nome`;
+  `${LIST_SELECT_MINIMAL}, etapa_id, is_incompleto, modelo_interesse, data_ultimo_contato, motivo_perda_codigo, temperatura, proxima_acao, data_proxima_acao, proximo_retorno_data, ultima_interacao_at, valor_estimado, valor_simulado, fechado, evento_id, evento_nome, historico_cadastros`;
 
 const LIST_SELECT_INDICADOR_CORE =
   `${LIST_SELECT_BASE}, parceiro_indicador_empresa, parceiro_indicador_telefone`;
