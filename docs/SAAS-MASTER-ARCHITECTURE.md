@@ -2590,7 +2590,7 @@ inclusive após a criação transacional da venda e da cota.
 Relatório:
 `docs/relatorios-fases/FASE-240-PREVISOES-PROGRAMA-CANONICO.md`.
 
-### Evolução operacional 241 — preservação dos valores comerciais aceitos
+### Evolução operacional 244 — preservação dos valores comerciais aceitos
 
 A preparação da formalização valida que a modalidade está habilitada para o
 grupo, mas não exige duplicação da parcela em
@@ -2599,4 +2599,4 @@ com seus fallbacks no snapshot comercial. A RPC multicotas valida o crédito
 total contra o produto unitário e a quantidade antes de materializar as cotas.
 
 Relatório:
-`docs/relatorios-fases/FASE-241-VALORES-ACEITOS-FORMALIZACAO.md`.
+`docs/relatorios-fases/FASE-244-VALORES-ACEITOS-FORMALIZACAO.md`.
