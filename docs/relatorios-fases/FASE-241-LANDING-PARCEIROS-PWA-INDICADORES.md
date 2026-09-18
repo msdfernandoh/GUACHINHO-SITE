@@ -22,3 +22,10 @@ O indicador vê a evolução registrada no CRM, crédito desejado e crédito con
 
 - O bloco **Seja um Franqueado** do template Racon Sinop passou a direcionar seu botão **Saiba mais** para `/parceiros`.
 - A home do modelo próprio Gauchinho passou a exibir um módulo visual de Programa de Parceiros, com benefícios institucionais e CTA para a mesma landing.
+- Na home Gauchinho, o módulo é ordenado na última faixa institucional, depois do CTA comercial e antes da faixa final de parceiros/rodapé.
+
+## Correção de cadastro e jornadas por modalidade
+
+- Cada card da landing passou a abrir uma página própria de vantagens e condições antes do cadastro.
+- O cadastro aplica máscaras de WhatsApp e CPF e oferece escolha por toque da chave PIX (celular, e-mail, CPF ou aleatória), com a orientação de recebimento automático de comissões.
+- A migration 232 cria o perfil legado explícito `parceiro`, sem permissões de equipe. A autorização efetiva continua limitada pelo vínculo N:N e pelo único módulo visível `minhas-comissoes`.

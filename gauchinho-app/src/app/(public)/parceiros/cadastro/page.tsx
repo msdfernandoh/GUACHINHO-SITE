@@ -1,0 +1,2 @@
+import { CadastroParceiroClient, MODELOS, type ModeloId } from "@/components/public/parceiros-landing-client";
+export default async function CadastroParceiroPage({ searchParams }: { searchParams: Promise<{ modelo?: string }> }) { const { modelo } = await searchParams; const selecionado = MODELOS.find((item) => item.id === modelo)?.id ?? "GERADOR_POSSIBILIDADES"; return <CadastroParceiroClient modeloInicial={selecionado as ModeloId} />; }

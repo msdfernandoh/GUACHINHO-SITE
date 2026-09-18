@@ -8,6 +8,7 @@ export const PERFIS = [
   "srd",
   "imobiliaria",
   "visualizador",
+  "parceiro",
 ] as const;
 
 export const SENHA_PADRAO_CADASTRO = "midiapormidia@123";

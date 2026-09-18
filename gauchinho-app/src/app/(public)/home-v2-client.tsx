@@ -1103,7 +1103,7 @@ export function HomeV2Client({
       </div>
 
       {/* Programa de parceiros — entrada institucional para a landing /parceiros. */}
-      <section className="px-4 py-24 sm:px-6 lg:px-16" style={{ background: C.bgCard }}>
+      <section className="px-4 py-24 sm:px-6 lg:px-16" style={{ background: C.bgCard, order: 9998 }}>
         <div className="container mx-auto max-w-6xl">
           <motion.div variants={fadeUp} initial="hidden" whileInView="visible" viewport={{ once: true }} className="mx-auto max-w-3xl text-center">
             <p className="text-xs font-black uppercase tracking-[0.22em]" style={{ color: C.gold }}>Programa de parceiros</p>

@@ -118,7 +118,9 @@ export async function POST(request: Request) {
     const { data: auth, error: authError } = await admin.auth.admin.createUser({ email: loginEmail, password: senha, email_confirm: true, user_metadata: { email_contato: email, cpf } });
     if (authError || !auth.user) return NextResponse.json({ error: authError?.message ?? "Não foi possível criar o acesso." }, { status: 409 });
     try {
-      const { data: usuario, error: usuarioError } = await admin.from("usuarios").insert({ auth_user_id: auth.user.id, nome, email, telefone, perfil: "consultor", ativo: true, is_consultor: true, leads_apenas_proprios: true }).select("id").single();
+      // O perfil legado parceiro não concede permissões de equipe; o escopo real
+      // é definido pelo vínculo N:N e por `erp_modulos_visiveis`.
+      const { data: usuario, error: usuarioError } = await admin.from("usuarios").insert({ auth_user_id: auth.user.id, nome, email, telefone, perfil: "parceiro", ativo: true, is_consultor: true, leads_apenas_proprios: true }).select("id").single();
       if (usuarioError || !usuario) throw new Error(usuarioError?.message ?? "Falha ao criar usuário.");
       const { error: vinculoError } = await admin.from("empresa_usuarios").insert({ empresa_id: ingress.empresaId, usuario_id: usuario.id, papel_id: papel.id, ativo: true, origem: "LANDING_PARCEIROS", erp_modulos_visiveis: ["minhas-comissoes"] });
       if (vinculoError) throw new Error(vinculoError.message);

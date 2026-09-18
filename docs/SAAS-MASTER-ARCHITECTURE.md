@@ -6,6 +6,8 @@ O programa público de parceiros usa as comunicações Microfranqueado, Gerador 
 
 O CTA do bloco institucional de franquia no template Racon Sinop e o novo módulo de Programa de Parceiros da home Gauchinho apontam para a mesma rota tenant-aware `/parceiros`.
 
+A landing apresenta primeiro as páginas específicas de vantagens das três modalidades e só então oferece o cadastro. A migration 232 cria o perfil legado explícito `parceiro`, sem permissões de equipe; autorização e escopo continuam derivados de `empresa_usuarios`, permissões e módulos visíveis.
+
 > [!IMPORTANT]
 > **ESTADO-ALVO E CORREÇÕES OBRIGATÓRIAS**
 > Antes de alterar tenancy, usuários, catálogo, sites, comissões, financeiro, Storage, RPCs ou migrations, leia também integralmente [`SAAS-ARQUITETURA-ALVO-E-PLANO-DE-CORRECAO.md`](./SAAS-ARQUITETURA-ALVO-E-PLANO-DE-CORRECAO.md). O documento descreve o estado-alvo e o plano de remediação; seus itens não devem ser interpretados como já implantados sem evidência no banco e no código.
