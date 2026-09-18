@@ -32,3 +32,4 @@ O indicador vê a evolução registrada no CRM, crédito desejado e crédito con
 - As rotas de modalidade compartilham seus dados por módulo neutro de servidor (`lib/parceiros/modelos-programa.ts`), sem importar constantes de componente client durante a renderização do Next.js.
 - O PWA registra service worker globalmente, declara manifesto completo com ícone PNG e oferece ações separadas para abrir o painel mobile e instalar na tela inicial.
 - O login mobile do indicador aplica a máscara brasileira de CPF durante a digitação e envia apenas os dígitos para a autenticação no servidor.
+- Em iPhone, o botão de instalação abre uma orientação visível para usar **Compartilhar → Adicionar à Tela de Início** e explica que o ícone inicia no painel do indicador; o site inteiro não é baixado para o aparelho.
