@@ -819,7 +819,7 @@ export function RaconInspiredHome({
 
           <div className="text-center pt-2">
             <Link
-              href="/simulador"
+              href="/parceiros"
               className="inline-flex items-center gap-2 rounded-full bg-[#008fd5] px-8 py-3 text-xs font-black text-white shadow-md hover:bg-[#007cb8] transition-colors"
             >
               <span>Saiba mais</span>

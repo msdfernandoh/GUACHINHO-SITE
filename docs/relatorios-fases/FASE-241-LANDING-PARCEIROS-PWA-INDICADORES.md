@@ -17,3 +17,8 @@ O indicador vê a evolução registrada no CRM, crédito desejado e crédito con
 
 - `npx tsc --noEmit`: aprovado.
 - `npm run lint:errors`: aprovado.
+
+## Complemento — módulo institucional nas homes
+
+- O bloco **Seja um Franqueado** do template Racon Sinop passou a direcionar seu botão **Saiba mais** para `/parceiros`.
+- A home do modelo próprio Gauchinho passou a exibir um módulo visual de Programa de Parceiros, com benefícios institucionais e CTA para a mesma landing.

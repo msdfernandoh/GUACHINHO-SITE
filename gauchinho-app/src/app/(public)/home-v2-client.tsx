@@ -6,6 +6,7 @@ import {
   Brain, Target, BarChart2, FileText,
   Home, Car, Bike, Truck, Tractor,
   ChevronLeft, ChevronRight, ArrowRight,
+  BadgeDollarSign, BriefcaseBusiness, GraduationCap, Handshake, TrendingUp, Trophy,
 } from "lucide-react";
 import Link from "next/link";
 import {
@@ -1100,6 +1101,35 @@ export function HomeV2Client({
       >
         <FeaturedDicasSection dicas={conteudoDestaques.dicasDestaque} />
       </div>
+
+      {/* Programa de parceiros — entrada institucional para a landing /parceiros. */}
+      <section className="px-4 py-24 sm:px-6 lg:px-16" style={{ background: C.bgCard }}>
+        <div className="container mx-auto max-w-6xl">
+          <motion.div variants={fadeUp} initial="hidden" whileInView="visible" viewport={{ once: true }} className="mx-auto max-w-3xl text-center">
+            <p className="text-xs font-black uppercase tracking-[0.22em]" style={{ color: C.gold }}>Programa de parceiros</p>
+            <h2 className="mt-3 text-4xl font-black text-white lg:text-5xl">Faça parte da nossa <span style={{ color: C.gold }}>rede de negócios</span></h2>
+            <p className="mt-4 text-base" style={{ color: C.muted }}>Estrutura, treinamento e suporte para transformar relacionamento em oportunidades reais.</p>
+          </motion.div>
+          <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {[
+              [BriefcaseBusiness, "Marca forte", "Atue com uma estrutura comercial consolidada e preparada para crescer."],
+              [GraduationCap, "Treinamento especializado", "Capacitação contínua para você evoluir com segurança e método."],
+              [Handshake, "Suporte ao parceiro", "Apoio comercial, operacional e de pós-venda quando precisar."],
+              [Trophy, "Incentivo às vendas", "Campanhas, eventos e materiais para movimentar a sua rede."],
+              [TrendingUp, "Crescimento escalável", "Escolha indicar, gerar negócios ou construir uma operação própria."],
+              [BadgeDollarSign, "Participação no resultado", "Regras claras e comissões sempre vinculadas à operação efetivada."],
+            ].map(([Icon, titulo, descricao], index) => {
+              const CardIcon = Icon as typeof BriefcaseBusiness;
+              return <motion.div key={String(titulo)} variants={fadeUp} initial="hidden" whileInView="visible" viewport={{ once: true }} transition={{ delay: index * 0.04 }} className="rounded-2xl border p-6" style={{ borderColor: C.border, background: C.bg }}>
+                <CardIcon className="mb-4 h-7 w-7" style={{ color: C.gold }} />
+                <h3 className="font-black text-white">{String(titulo)}</h3>
+                <p className="mt-2 text-sm leading-relaxed" style={{ color: C.muted }}>{String(descricao)}</p>
+              </motion.div>;
+            })}
+          </div>
+          <div className="mt-10 text-center"><Link href="/parceiros" className="inline-flex items-center gap-2 rounded-2xl px-8 py-4 font-black transition-transform hover:scale-[1.02]" style={{ background: C.gold, color: C.bg }}>Conhecer o programa <ArrowRight className="h-4 w-4" /></Link></div>
+        </div>
+      </section>
 
       {/* ══════════════════════════════════════════
           SEÇÃO 7 — CTA FINAL
