@@ -22,6 +22,10 @@ O mesmo motor público das rotas `/parceiros` e `/parceiros/[modelo]` agora reso
 
 A migration 232 foi aplicada e registrada no Supabase de produção após a confirmação de que `usuarios_perfil_check` ainda não aceitava o perfil técnico `parceiro`. A restrição agora permite explicitamente `master`, `srd`, `imobiliaria`, `visualizador` e `parceiro`. Esse perfil não concede permissões: o acesso efetivo do indicador continua restrito pelo vínculo N:N `empresa_usuarios`, pelo papel e por `erp_modulos_visiveis`.
 
+### Hotfix operacional 246 — Reenvio idempotente do cadastro de parceiro
+
+O endpoint público de cadastro trata CPF já existente em `programa_indicadores` como atualização controlada, e não como erro de duplicidade. Telefone, chave PIX, dados de qualificação, origem e interesse comercial são atualizados no mesmo indicador e participante já vinculados ao tenant; a credencial e a senha existentes não são recriadas nem substituídas. Pedidos de Microfranqueado e Gerador de Negócios continuam gerando solicitação administrativa idempotente.
+
 ### Evolução operacional 242 — SEO Avançado, Metatags, Schema.org e Otimização para IA (GEO)
 
 A plataforma passa a operar com infraestrutura canônica de SEO e GEO (Generative Engine Optimization para ChatGPT, Perplexity, Gemini, Claude e Copilot) ciente de múltiplos domínios públicos (`gauchinhoconsorcios.com.br` e `raconsinop.com.br`).

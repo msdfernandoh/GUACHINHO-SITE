@@ -112,8 +112,38 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Preencha nome, CPF, WhatsApp, e-mail, senha de 8 caracteres e chave PIX." }, { status: 400 });
     }
     if (!['MICROFRANQUEADO','GERADOR_NEGOCIOS','GERADOR_POSSIBILIDADES','CONVERSAR_EQUIPE'].includes(modelo)) return NextResponse.json({ error: "Modelo de parceria inválido." }, { status: 400 });
-    const { data: existente } = await admin.from("programa_indicadores").select("id").eq("empresa_id", ingress.empresaId).eq("cpf", cpf).maybeSingle();
-    if (existente) return NextResponse.json({ error: "Este CPF já possui cadastro. Entre no app para continuar." }, { status: 409 });
+    const { data: existente } = await admin.from("programa_indicadores").select("id,participante_id").eq("empresa_id", ingress.empresaId).eq("cpf", cpf).maybeSingle();
+    if (existente) {
+      const requerAnalise = modelo === "MICROFRANQUEADO" || modelo === "GERADOR_NEGOCIOS";
+      const statusSolicitacao = requerAnalise ? "EM_ANALISE" : "APROVADO_NIVEL_1";
+      const { error: atualizacaoError } = await admin.from("programa_indicadores").update({
+        telefone,
+        chave_pix: chavePix,
+        modelo_interesse: modelo,
+        status_solicitacao_modelo: statusSolicitacao,
+        cidade: String(body.cidade ?? "").trim() || null,
+        estado: String(body.estado ?? "").trim() || null,
+        profissao: String(body.profissao ?? "").trim() || null,
+        observacao_cadastro: String(body.observacao ?? "").trim() || null,
+        ja_vende_consorcio: String(body.jaVendeConsorcio ?? "").trim() || null,
+        rede_relacionamento: redeRelacionamento,
+        potencial_mensal: String(body.potencialMensal ?? "").trim() || null,
+        interesse_network: String(body.interesseNetwork ?? "").trim() || null,
+        origem_cadastro: "LANDING_PARCEIROS",
+        pagina_origem: String(body.paginaOrigem ?? "").trim().slice(0, 255) || null,
+        utm_source: String(body.utmSource ?? "").trim().slice(0, 255) || null,
+        utm_medium: String(body.utmMedium ?? "").trim().slice(0, 255) || null,
+        utm_campaign: String(body.utmCampaign ?? "").trim().slice(0, 255) || null,
+      }).eq("empresa_id", ingress.empresaId).eq("id", existente.id);
+      if (atualizacaoError) return NextResponse.json({ error: "Não foi possível atualizar seu cadastro agora." }, { status: 500 });
+      if (existente.participante_id) {
+        await admin.from("participantes_comerciais").update({ nome, nome_exibicao: nome, telefone, whatsapp: telefone }).eq("empresa_id", ingress.empresaId).eq("id", existente.participante_id);
+      }
+      if (requerAnalise) {
+        await admin.from("programa_indicadores_solicitacoes").upsert({ empresa_id: ingress.empresaId, indicador_id: existente.id, modelo_solicitado: modelo }, { onConflict: "empresa_id,indicador_id,modelo_solicitado,status", ignoreDuplicates: true });
+      }
+      return NextResponse.json({ ok: true, indicadorId: existente.id, existente: true, atualizado: true, acesso: "/app-indicador/login" });
+    }
     const { data: perfil } = await admin.from("comissao_perfis").select("id").eq("empresa_id", ingress.empresaId).eq("papel_base", "INDICADOR").eq("nome", "Indicador").eq("ativo", true).maybeSingle();
     const { data: papel } = await admin.from("papeis").select("id").eq("escopo", "COMPANY").eq("codigo", "consultor").is("empresa_id", null).maybeSingle();
     if (!perfil || !papel) return NextResponse.json({ error: "Configuração de acesso indisponível. Procure a equipe." }, { status: 503 });
@@ -129,7 +159,8 @@ export async function POST(request: Request) {
       if (vinculoError) throw new Error(vinculoError.message);
       const { data: participante, error: participanteError } = await admin.from("participantes_comerciais").insert({ empresa_id: ingress.empresaId, usuario_id: usuario.id, nome, nome_exibicao: nome, cpf, telefone, whatsapp: telefone, status: "ATIVO", cargo: "Gerador de Possibilidades", escopo_visualizacao: "VINCULADOS", modulos_permitidos: ["minhas-comissoes"] }).select("id").single();
       if (participanteError || !participante) throw new Error(participanteError?.message ?? "Falha ao criar participante.");
-      const statusSolicitacao = modelo === "GERADOR_POSSIBILIDADES" ? "APROVADO_NIVEL_1" : "EM_ANALISE";
+      const requerAnalise = modelo === "MICROFRANQUEADO" || modelo === "GERADOR_NEGOCIOS";
+      const statusSolicitacao = requerAnalise ? "EM_ANALISE" : "APROVADO_NIVEL_1";
       const { data: indicador, error: indicadorError } = await admin.from("programa_indicadores").insert({
         empresa_id: ingress.empresaId,
         participante_id: participante.id,
@@ -155,7 +186,7 @@ export async function POST(request: Request) {
       if (indicadorError || !indicador) throw new Error(indicadorError?.message ?? "Falha ao criar cadastro.");
       const { error: perfilError } = await admin.from("participante_comissao_perfis").insert({ empresa_id: ingress.empresaId, participante_id: participante.id, papel_tipo: "INDICADOR", perfil_id: perfil.id, vigencia_inicio: new Date().toISOString().slice(0, 10), ativo: true });
       if (perfilError) throw new Error(perfilError.message);
-      if (statusSolicitacao === "EM_ANALISE") await admin.from("programa_indicadores_solicitacoes").insert({ empresa_id: ingress.empresaId, indicador_id: indicador.id, modelo_solicitado: modelo });
+      if (requerAnalise) await admin.from("programa_indicadores_solicitacoes").insert({ empresa_id: ingress.empresaId, indicador_id: indicador.id, modelo_solicitado: modelo });
       return NextResponse.json({ ok: true, indicadorId: indicador.id, acesso: "/app-indicador/login" });
     } catch (error) {
       await admin.auth.admin.deleteUser(auth.user.id);
