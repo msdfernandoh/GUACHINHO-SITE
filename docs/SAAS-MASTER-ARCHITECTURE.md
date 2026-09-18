@@ -8,6 +8,12 @@ O CTA do bloco institucional de franquia no template Racon Sinop e o novo módul
 
 A landing apresenta primeiro as páginas específicas de vantagens das três modalidades e só então oferece o cadastro. A migration 232 cria o perfil legado explícito `parceiro`, sem permissões de equipe; autorização e escopo continuam derivados de `empresa_usuarios`, permissões e módulos visíveis.
 
+### Evolução operacional 243 — Funil comercial e qualificação de parceiros
+
+As rotas públicas `/parceiros` e `/parceiros/[modelo]` passam a apresentar a proposta comercial completa do Programa de Parceiros, com condições, projeções transparentes e simulador de potencial baseado na premissa de comunicação de base líquida. Nenhum percentual de comissão é gravado ou homologado pelo frontend; as estimativas permanecem informativas e dependem da operação efetiva e das regras comerciais canônicas.
+
+O cadastro conversacional passou a registrar, de forma tenant-aware em `programa_indicadores`, a qualificação comercial informada: experiência com consórcio, redes de relacionamento, potencial mensal, interesse no network, origem, página de origem e UTMs. Essas colunas são aditivas na migration 233 e preservam todos os registros existentes. A entrada comercial canônica continua `INDICADOR` (Nível 1); pedidos de outras modalidades continuam sujeitos à análise administrativa.
+
 ### Evolução operacional 242 — SEO Avançado, Metatags, Schema.org e Otimização para IA (GEO)
 
 A plataforma passa a operar com infraestrutura canônica de SEO e GEO (Generative Engine Optimization para ChatGPT, Perplexity, Gemini, Claude e Copilot) ciente de múltiplos domínios públicos (`gauchinhoconsorcios.com.br` e `raconsinop.com.br`).
@@ -2583,3 +2589,14 @@ inclusive após a criação transacional da venda e da cota.
 
 Relatório:
 `docs/relatorios-fases/FASE-240-PREVISOES-PROGRAMA-CANONICO.md`.
+
+### Evolução operacional 241 — preservação dos valores comerciais aceitos
+
+A preparação da formalização valida que a modalidade está habilitada para o
+grupo, mas não exige duplicação da parcela em
+`grupo_cota_modalidade_valores`. Crédito e parcela vêm da contratação assinada,
+com seus fallbacks no snapshot comercial. A RPC multicotas valida o crédito
+total contra o produto unitário e a quantidade antes de materializar as cotas.
+
+Relatório:
+`docs/relatorios-fases/FASE-241-VALORES-ACEITOS-FORMALIZACAO.md`.

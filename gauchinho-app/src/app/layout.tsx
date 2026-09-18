@@ -8,6 +8,7 @@ import { isRaconModel } from "@/lib/tenant/model-family";
 import { loadPartnerSiteViewModel } from "@/lib/parceiros/public-site-loader";
 import { PARCEIRO_SITE_ID_HEADER } from "@/lib/parceiros/partner-site-types";
 import { resolveFaviconConfig } from "@/lib/tenant/favicon-resolver";
+import { PwaRegistration } from "@/components/public/pwa-registration";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -194,6 +195,7 @@ export default async function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className={`min-h-full flex flex-col ${isGauchinho ? "" : "tenant-root-independent"}`}>
+        <PwaRegistration />
         {children}
       </body>
     </html>
