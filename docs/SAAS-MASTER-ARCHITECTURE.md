@@ -30,6 +30,10 @@ O endpoint público de cadastro trata CPF já existente em `programa_indicadores
 
 O login do app do indicador mantém a autenticação canônica por dígitos, mas apresenta máscara brasileira `000.000.000-00` enquanto a pessoa digita. A ação de login continua removendo caracteres não numéricos no servidor antes de formar a credencial, sem alterar identidade, senha ou escopo de acesso.
 
+### Evolução operacional 248 — Recuperação e redefinição de senha do indicador
+
+O indicador pode solicitar recuperação pelo e-mail informado no cadastro, recebendo um link de uso único para criar nova senha e retornar ao painel mobile. Credenciais legadas que usavam e-mail técnico são migradas para o e-mail de contato somente durante essa recuperação. Administradores autorizados podem, em `/admin/participantes`, definir uma nova senha para participantes do tipo `INDICADOR`; a operação é tenant-aware e registrada em `participante_auditoria`, sem ampliar papéis, módulos ou escopo.
+
 ### Evolução operacional 242 — SEO Avançado, Metatags, Schema.org e Otimização para IA (GEO)
 
 A plataforma passa a operar com infraestrutura canônica de SEO e GEO (Generative Engine Optimization para ChatGPT, Perplexity, Gemini, Claude e Copilot) ciente de múltiplos domínios públicos (`gauchinhoconsorcios.com.br` e `raconsinop.com.br`).

@@ -27,6 +27,7 @@ import {
   deleteParticipanteAction,
   updateParticipanteStatusAction,
   verificarDependenciasParticipanteAction,
+  redefinirSenhaIndicadorAction,
 } from "@/app/admin/participantes/actions";
 import type { ParticipanteComTipos } from "@/lib/parceiros/types";
 import { PARTICIPANTE_STATUS, PARTICIPANTE_TIPOS } from "@/lib/parceiros/constants";
@@ -96,6 +97,10 @@ export function ParticipantesManagerView({
   const [createSelectedModulos, setCreateSelectedModulos] = useState<string[]>([]);
   const [createError, setCreateError] = useState<string | null>(null);
   const [isSavingCreate, setIsSavingCreate] = useState(false);
+  const [senhaPart, setSenhaPart] = useState<ParticipanteComTipos | null>(null);
+  const [novaSenha, setNovaSenha] = useState("");
+  const [senhaError, setSenhaError] = useState<string | null>(null);
+  const [isSavingSenha, setIsSavingSenha] = useState(false);
 
   const handleOpenEdit = (part: ParticipanteComTipos) => {
     setEditingPart(part);
@@ -334,6 +339,15 @@ export function ParticipantesManagerView({
                         >
                           <Shield className="h-3.5 w-3.5" />
                         </button>
+
+                        {part.usuario_id && part.tipos.includes("INDICADOR") ? <button
+                          type="button"
+                          onClick={() => { setSenhaPart(part); setNovaSenha(""); setSenhaError(null); }}
+                          title="Redefinir senha do indicador"
+                          className="flex h-7 w-7 items-center justify-center rounded-lg border border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-300 cursor-pointer"
+                        >
+                          <Key className="h-3.5 w-3.5" />
+                        </button> : null}
 
                         <button
                           type="button"
@@ -869,6 +883,8 @@ export function ParticipantesManagerView({
           </div>
         </div>
       )}
+
+      {senhaPart && <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-xs" role="dialog" aria-modal="true" aria-label="Redefinir senha do indicador"><form onSubmit={async (event) => { event.preventDefault(); setIsSavingSenha(true); setSenhaError(null); try { const result = await redefinirSenhaIndicadorAction(senhaPart.id, novaSenha); if (!result.success) { setSenhaError(result.error || "Não foi possível redefinir a senha."); return; } setSenhaPart(null); } catch { setSenhaError("Não foi possível redefinir a senha."); } finally { setIsSavingSenha(false); } }} className="w-full max-w-md rounded-2xl bg-white p-6 text-sm text-slate-900 shadow-2xl dark:bg-slate-900 dark:text-white"><h3 className="text-lg font-black">Nova senha do indicador</h3><p className="mt-2 text-slate-600 dark:text-slate-300">Defina uma senha temporária para <b>{senhaPart.nome}</b> e entregue-a por um canal seguro. Ele poderá alterá-la pelo e-mail de recuperação.</p><label className="mt-5 block font-bold">Nova senha<input type="password" minLength={8} required autoComplete="new-password" value={novaSenha} onChange={(event) => setNovaSenha(event.target.value)} className="mt-2 w-full rounded-xl border border-slate-300 p-3 text-slate-900" /></label>{senhaError ? <p className="mt-3 text-sm font-bold text-rose-700">{senhaError}</p> : null}<div className="mt-6 flex justify-end gap-3"><button type="button" onClick={() => setSenhaPart(null)} disabled={isSavingSenha} className="rounded-xl border px-4 py-2 font-bold">Cancelar</button><button disabled={isSavingSenha} className="rounded-xl bg-amber-500 px-4 py-2 font-bold text-zinc-950">{isSavingSenha ? "Salvando..." : "Redefinir senha"}</button></div></form></div>}
 
       {/* ───────────────────────────────────────────────────────────
           MODAL: NOVO PARTICIPANTE

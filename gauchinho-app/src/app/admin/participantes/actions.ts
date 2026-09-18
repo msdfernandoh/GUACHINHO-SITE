@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { isPlatformSuperadmin } from "@/lib/auth/is-superadmin";
 import { requireGerenciarParticipantes } from "@/lib/parceiros/authorization";
 import { getCurrentTenantContext } from "@/lib/tenant/context";
@@ -571,6 +572,47 @@ export async function canAccessParticipantesAdmin(): Promise<boolean> {
     return true;
   } catch {
     return false;
+  }
+}
+
+export async function redefinirSenhaIndicadorAction(
+  participanteId: string,
+  novaSenha: string,
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    if (novaSenha.length < 8) return { success: false, error: "A senha deve ter pelo menos 8 caracteres." };
+    const empresaId = await resolveEmpresaIdPadrao();
+    await assertAdminAccess(empresaId);
+    const supabase = await createClient();
+    const { data: participante, error: participanteError } = await supabase
+      .from("participantes_comerciais")
+      .select("id,usuario_id,participante_tipos(tipo_codigo)")
+      .eq("empresa_id", empresaId)
+      .eq("id", participanteId)
+      .maybeSingle();
+    if (participanteError || !participante?.usuario_id) return { success: false, error: "Indicador sem login vinculado." };
+    const tipos = (participante.participante_tipos ?? []).map((item: { tipo_codigo: string }) => item.tipo_codigo);
+    if (!tipos.includes("INDICADOR")) return { success: false, error: "A redefinição nesta tela é exclusiva para indicadores." };
+
+    const admin = createAdminClient();
+    const { data: usuario, error: usuarioError } = await admin
+      .from("usuarios")
+      .select("auth_user_id")
+      .eq("id", participante.usuario_id)
+      .maybeSingle();
+    if (usuarioError || !usuario?.auth_user_id) return { success: false, error: "Não foi possível localizar a credencial do indicador." };
+    const { error: authError } = await admin.auth.admin.updateUserById(usuario.auth_user_id, { password: novaSenha });
+    if (authError) return { success: false, error: "Não foi possível redefinir a senha agora." };
+
+    await supabase.from("participante_auditoria").insert({
+      participante_id: participanteId,
+      empresa_id: empresaId,
+      acao: "REDEFINIR_SENHA_INDICADOR",
+      payload: { origem: "ADMIN_PARTICIPANTES" },
+    });
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : "Erro ao redefinir senha." };
   }
 }
 

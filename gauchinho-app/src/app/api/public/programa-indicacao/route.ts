@@ -147,7 +147,9 @@ export async function POST(request: Request) {
     const { data: perfil } = await admin.from("comissao_perfis").select("id").eq("empresa_id", ingress.empresaId).eq("papel_base", "INDICADOR").eq("nome", "Indicador").eq("ativo", true).maybeSingle();
     const { data: papel } = await admin.from("papeis").select("id").eq("escopo", "COMPANY").eq("codigo", "consultor").is("empresa_id", null).maybeSingle();
     if (!perfil || !papel) return NextResponse.json({ error: "Configuração de acesso indisponível. Procure a equipe." }, { status: 503 });
-    const loginEmail = `cpf-${cpf}@parceiro.gauchinho.local`;
+    // O e-mail real é a identidade de Auth do parceiro para que a recuperação
+    // de senha seja entregue no endereço informado. O login continua por CPF.
+    const loginEmail = email;
     const { data: auth, error: authError } = await admin.auth.admin.createUser({ email: loginEmail, password: senha, email_confirm: true, user_metadata: { email_contato: email, cpf } });
     if (authError || !auth.user) return NextResponse.json({ error: authError?.message ?? "Não foi possível criar o acesso." }, { status: 409 });
     try {

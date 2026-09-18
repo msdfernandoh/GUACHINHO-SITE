@@ -10,7 +10,9 @@ export async function GET(request: NextRequest) {
   const next = searchParams.get("next") ?? "/definir-senha";
 
   const redirectTo = request.nextUrl.clone();
-  redirectTo.pathname = next.startsWith("/") && !next.startsWith("//") ? next : "/definir-senha";
+  const [nextPathname, nextQuery] = next.split("?", 2);
+  redirectTo.pathname = nextPathname.startsWith("/") && !nextPathname.startsWith("//") ? nextPathname : "/definir-senha";
+  redirectTo.search = nextQuery ? `?${nextQuery}` : "";
   redirectTo.searchParams.delete("token_hash");
   redirectTo.searchParams.delete("type");
   redirectTo.searchParams.delete("code");

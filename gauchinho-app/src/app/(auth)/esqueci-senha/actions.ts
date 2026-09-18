@@ -27,7 +27,11 @@ export async function solicitarRecuperacaoSenhaAction(
     const host = headersList.get("host") || "localhost:3000";
     const proto = headersList.get("x-forwarded-proto") || (host.includes("localhost") ? "http" : "https");
     const origin = `${proto}://${host}`;
-    const redirectTo = `${origin}/auth/confirm?next=/definir-senha`;
+    const referer = headersList.get("referer") || "";
+    const next = referer.includes("/app-indicador/")
+      ? "/definir-senha?next=/app-indicador"
+      : "/definir-senha";
+    const redirectTo = `${origin}/auth/confirm?next=${encodeURIComponent(next)}`;
 
     const admin = createAdminClient();
     const { data: usuario, error: usuarioErr } = await admin
@@ -68,6 +72,20 @@ export async function solicitarRecuperacaoSenhaAction(
           .from("usuarios")
           .update({ auth_user_id: authCreated.user.id })
           .eq("id", usuario.id);
+      }
+    }
+
+    // Indicadores legados foram criados com e-mail técnico baseado em CPF.
+    // Antes de enviar a recuperação, migra somente a identidade do Auth para
+    // o e-mail de contato já confirmado no registro de negócio.
+    if (usuario.auth_user_id) {
+      const { data: authUser } = await admin.auth.admin.getUserById(usuario.auth_user_id);
+      if (authUser.user?.email && authUser.user.email.toLowerCase() !== usuario.email.toLowerCase()) {
+        const { error: emailError } = await admin.auth.admin.updateUserById(usuario.auth_user_id, {
+          email: usuario.email,
+          email_confirm: true,
+        });
+        if (emailError) console.error("[solicitarRecuperacaoSenha] Erro ao atualizar e-mail do Auth:", emailError);
       }
     }
 

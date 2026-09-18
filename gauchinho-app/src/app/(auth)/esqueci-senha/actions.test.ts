@@ -9,6 +9,8 @@ const mocks = vi.hoisted(() => ({
   adminSelect: vi.fn(),
   adminUpdate: vi.fn(),
   adminCreateUser: vi.fn(),
+  adminGetUserById: vi.fn(),
+  adminUpdateUserById: vi.fn(),
 }));
 
 vi.mock("next/headers", () => ({
@@ -29,6 +31,8 @@ vi.mock("@/lib/supabase/admin", () => ({
     auth: {
       admin: {
         createUser: mocks.adminCreateUser,
+        getUserById: mocks.adminGetUserById,
+        updateUserById: mocks.adminUpdateUserById,
       },
     },
   }),
@@ -51,6 +55,8 @@ describe("solicitarRecuperacaoSenhaAction", () => {
       data: { user: { id: "new-auth-id" } },
       error: null,
     });
+    mocks.adminGetUserById.mockResolvedValue({ data: { user: { email: "consultor@gauchinho.com.br" } } });
+    mocks.adminUpdateUserById.mockResolvedValue({ error: null });
   });
 
   it("rejeita e-mail em branco ou inválido", async () => {
@@ -125,7 +131,7 @@ describe("solicitarRecuperacaoSenhaAction", () => {
     expect(mocks.resetPasswordForEmail).toHaveBeenCalledWith(
       "consultor@gauchinho.com.br",
       {
-        redirectTo: "https://gauchinho.com.br/auth/confirm?next=/definir-senha",
+        redirectTo: "https://gauchinho.com.br/auth/confirm?next=%2Fdefinir-senha",
       },
     );
   });
