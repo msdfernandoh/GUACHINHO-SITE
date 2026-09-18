@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { formatCpfBrInput, formatWhatsappBrInput } from "@/lib/utils/format";
 import { MODELOS_PROGRAMA_PARCEIROS, type ModeloParceiroId } from "@/lib/parceiros/modelos-programa";
+import { InstalarAppParceiroButton } from "@/components/public/instalar-app-parceiro-button";
 
 const dinheiro = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
 
@@ -47,6 +48,7 @@ export function ParceirosLandingClient({ racon = false }: { racon?: boolean }) {
             <h1 className="max-w-4xl text-4xl font-black leading-[.98] sm:text-6xl lg:text-7xl">Transforme relacionamento em negócio com uma estrutura pronta para vender.</h1>
             <p className="mt-7 max-w-2xl text-lg leading-relaxed text-zinc-300">Escolha como quer participar: indicar oportunidades, gerar negócios ou construir sua própria operação comercial com o apoio da Master.</p>
             <div className="mt-9 flex flex-wrap gap-3"><Cta href="#modelos">Conhecer os modelos de ganho</Cta><Cta href="/parceiros/cadastro?modelo=CONVERSAR_EQUIPE" secondary>Quero falar com a equipe</Cta></div>
+            <div className="mt-7"><InstalarAppParceiroButton dark /></div>
           </div>
           <div className="rounded-3xl border border-amber-300/30 bg-zinc-900/80 p-6 shadow-2xl shadow-amber-500/10">
             <p className="text-sm font-bold text-amber-300">VOCÊ ESCOLHE O CAMINHO</p>
