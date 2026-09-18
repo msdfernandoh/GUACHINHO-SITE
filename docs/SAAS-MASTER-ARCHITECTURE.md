@@ -14,6 +14,10 @@ As rotas públicas `/parceiros` e `/parceiros/[modelo]` passam a apresentar a pr
 
 O cadastro conversacional passou a registrar, de forma tenant-aware em `programa_indicadores`, a qualificação comercial informada: experiência com consórcio, redes de relacionamento, potencial mensal, interesse no network, origem, página de origem e UTMs. Essas colunas são aditivas na migration 233 e preservam todos os registros existentes. A entrada comercial canônica continua `INDICADOR` (Nível 1); pedidos de outras modalidades continuam sujeitos à análise administrativa.
 
+### Evolução operacional 244 — Landing de parceiros por família visual
+
+O mesmo motor público das rotas `/parceiros` e `/parceiros/[modelo]` agora resolve a família visual do tenant em tempo de renderização. Quando o site ativo usa o modelo `racon_inspired`, a landing recebe composição clara com a paleta institucional azul do Racon Sinop, preservando integralmente conteúdo, cálculos de comunicação, rotas, cadastro e integração tenant-aware do programa Gauchinho. Nenhuma regra comercial é duplicada por domínio.
+
 ### Evolução operacional 242 — SEO Avançado, Metatags, Schema.org e Otimização para IA (GEO)
 
 A plataforma passa a operar com infraestrutura canônica de SEO e GEO (Generative Engine Optimization para ChatGPT, Perplexity, Gemini, Claude e Copilot) ciente de múltiplos domínios públicos (`gauchinhoconsorcios.com.br` e `raconsinop.com.br`).

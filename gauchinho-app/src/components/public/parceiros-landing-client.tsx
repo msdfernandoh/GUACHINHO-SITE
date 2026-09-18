@@ -14,13 +14,32 @@ const pilares = [
   ["Autonomia com suporte", "Você escolhe a forma de participar e conta com a Master nas etapas estratégicas."],
 ];
 
+const raconLandingCss = `
+  .racon-parceiros { background: #ffffff; color: #0b2855; }
+  .racon-parceiros [class*="bg-zinc-"] { background-color: #f7faff; }
+  .racon-parceiros [class*="text-white"] { color: #0b2855; }
+  .racon-parceiros [class*="text-zinc-"] { color: #385270; }
+  .racon-parceiros [class*="text-amber"] { color: #0066cc; }
+  .racon-parceiros [class*="border-white"] { border-color: #dbe7f5; }
+  .racon-parceiros [class*="bg-amber"] { background-color: #0066cc; color: #ffffff; }
+  .racon-parceiros [class*="bg-amber"] [class*="text-zinc-"] { color: #ffffff; }
+  .racon-parceiros .racon-hero { background: linear-gradient(125deg, #0055b8 0%, #006dcc 55%, #0099dd 100%); }
+  .racon-parceiros .racon-hero [class*="bg-zinc-"] { background-color: rgba(5, 41, 94, .28); }
+  .racon-parceiros .racon-hero [class*="text-white"] { color: #ffffff; }
+  .racon-parceiros .racon-hero [class*="text-zinc-"] { color: #e1efff; }
+  .racon-parceiros .racon-hero [class*="text-amber"] { color: #b9e0ff; }
+  .racon-parceiros .racon-hero [class*="bg-amber"] { background-color: #ffffff; color: #0066cc; }
+  .racon-parceiros .racon-hero [class*="bg-amber"] [class*="text-zinc-"] { color: #0066cc; }
+`;
+
 function Cta({ href, children, secondary = false }: { href: string; children: React.ReactNode; secondary?: boolean }) {
   return <Link href={href} className={`inline-flex min-h-12 items-center justify-center rounded-2xl px-6 py-3 text-center text-sm font-black transition ${secondary ? "border border-white/25 bg-white/5 text-white hover:bg-white/10" : "bg-amber-400 text-zinc-950 hover:-translate-y-0.5 hover:bg-amber-300"}`}>{children}</Link>;
 }
 
-export function ParceirosLandingClient() {
-  return <main className="overflow-hidden bg-zinc-950 text-white">
-    <section className="relative isolate border-b border-white/10 bg-[radial-gradient(circle_at_15%_15%,rgba(245,158,11,.23),transparent_32%),radial-gradient(circle_at_90%_35%,rgba(37,99,235,.20),transparent_34%)]">
+export function ParceirosLandingClient({ racon = false }: { racon?: boolean }) {
+  return <main className={`overflow-hidden bg-zinc-950 text-white ${racon ? "racon-parceiros" : ""}`}>
+    {racon ? <style>{raconLandingCss}</style> : null}
+    <section className={`relative isolate border-b border-white/10 bg-[radial-gradient(circle_at_15%_15%,rgba(245,158,11,.23),transparent_32%),radial-gradient(circle_at_90%_35%,rgba(37,99,235,.20),transparent_34%)] ${racon ? "racon-hero" : ""}`}>
       <div className="mx-auto max-w-6xl px-5 py-20 sm:py-28">
         <p className="text-sm font-black tracking-[.18em] text-amber-400">GAUCHINHO CONSÓRCIOS | RACON</p>
         <div className="mt-7 grid items-end gap-10 lg:grid-cols-[1.35fr_.65fr]">

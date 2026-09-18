@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { ParceirosLandingClient } from "@/components/public/parceiros-landing-client";
+import { getResolvedTenant } from "@/lib/tenant/get-resolved-empresa";
+import { isRaconModel } from "@/lib/tenant/model-family";
 
 export const metadata: Metadata = {
   title: "Programa de Parceiros e Indicadores de Consórcio",
@@ -28,7 +30,7 @@ export const metadata: Metadata = {
   },
 };
 
-export default function ParceirosPage() {
-  return <ParceirosLandingClient />;
+export default async function ParceirosPage() {
+  const tenant = await getResolvedTenant();
+  return <ParceirosLandingClient racon={isRaconModel(tenant?.siteModel)} />;
 }
-

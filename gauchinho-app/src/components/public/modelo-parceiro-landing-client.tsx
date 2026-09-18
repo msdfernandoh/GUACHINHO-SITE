@@ -6,13 +6,31 @@ import { estimarGanhoParceria, type ModeloParceiro } from "@/lib/parceiros/model
 
 const moeda = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
 
-export function ModeloParceiroLandingClient({ modelo }: { modelo: ModeloParceiro }) {
+const raconModeloCss = `
+  .racon-modelo { background: #fff; color: #0b2855; }
+  .racon-modelo [class*="bg-zinc-"] { background-color: #f7faff; }
+  .racon-modelo [class*="text-white"] { color: #0b2855; }
+  .racon-modelo [class*="text-zinc-"] { color: #385270; }
+  .racon-modelo [class*="text-amber"] { color: #0066cc; }
+  .racon-modelo [class*="border-white"] { border-color: #dbe7f5; }
+  .racon-modelo [class*="bg-amber"] { background-color: #0066cc; color: #fff; }
+  .racon-modelo [class*="bg-amber"] [class*="text-zinc-"] { color: #fff; }
+  .racon-modelo .racon-modelo-hero { background: linear-gradient(125deg, #0055b8, #0076d7 58%, #00a1df); }
+  .racon-modelo .racon-modelo-hero [class*="text-white"] { color: #fff; }
+  .racon-modelo .racon-modelo-hero [class*="text-zinc-"] { color: #e1efff; }
+  .racon-modelo .racon-modelo-hero [class*="text-amber"] { color: #b9e0ff; }
+  .racon-modelo .racon-modelo-hero [class*="bg-zinc-"] { background-color: rgba(5, 41, 94, .28); }
+  .racon-modelo .racon-modelo-hero [class*="bg-amber"] { background: #fff; color: #0066cc; }
+`;
+
+export function ModeloParceiroLandingClient({ modelo, racon = false }: { modelo: ModeloParceiro; racon?: boolean }) {
   const [producao, setProducao] = useState<number>(modelo.producoes[0]);
   const ganho = estimarGanhoParceria(modelo.id, producao);
   const ganho12 = ganho * 12;
   const ganho24 = ganho * 24;
-  return <main className="min-h-screen bg-zinc-950 text-white">
-    <section className="border-b border-white/10 bg-[radial-gradient(circle_at_80%_0%,rgba(245,158,11,.24),transparent_35%)]"><div className="mx-auto max-w-6xl px-5 py-12 sm:py-20"><Link href="/parceiros" className="text-sm font-black text-amber-300">← Voltar para todos os modelos</Link><div className="mt-12 grid gap-10 lg:grid-cols-[1.25fr_.75fr]"><div><p className="text-sm font-black tracking-[.16em] text-amber-400">PROGRAMA DE PARCEIROS · {modelo.ganho} DA BASE LÍQUIDA</p><h1 className="mt-5 max-w-4xl text-4xl font-black leading-[.98] sm:text-6xl">{modelo.titulo}</h1><p className="mt-6 max-w-2xl text-lg leading-relaxed text-zinc-300">{modelo.resumo}</p><div className="mt-8 flex flex-wrap gap-3"><Link href={`/parceiros/cadastro?modelo=${modelo.id}`} className="rounded-2xl bg-amber-400 px-6 py-4 text-sm font-black text-zinc-950 transition hover:bg-amber-300">{modelo.cta}</Link><a href="#projecao" className="rounded-2xl border border-white/25 px-6 py-4 text-sm font-black transition hover:bg-white/10">Ver projeção de ganhos</a></div></div><aside className="rounded-3xl border border-amber-300/30 bg-zinc-900 p-7"><p className="text-sm font-black text-amber-300">O MODELO EM UMA FRASE</p><p className="mt-5 text-3xl font-black">{modelo.nome}</p><p className="mt-3 text-zinc-300">{modelo.meta}</p><div className="mt-7 border-t border-white/10 pt-5"><p className="text-4xl font-black text-amber-400">{modelo.ganho}</p><p className="mt-1 text-sm text-zinc-400">participação comunicada sobre a base líquida</p></div></aside></div></div></section>
+  return <main className={`min-h-screen bg-zinc-950 text-white ${racon ? "racon-modelo" : ""}`}>
+    {racon ? <style>{raconModeloCss}</style> : null}
+    <section className={`border-b border-white/10 bg-[radial-gradient(circle_at_80%_0%,rgba(245,158,11,.24),transparent_35%)] ${racon ? "racon-modelo-hero" : ""}`}><div className="mx-auto max-w-6xl px-5 py-12 sm:py-20"><Link href="/parceiros" className="text-sm font-black text-amber-300">← Voltar para todos os modelos</Link><div className="mt-12 grid gap-10 lg:grid-cols-[1.25fr_.75fr]"><div><p className="text-sm font-black tracking-[.16em] text-amber-400">PROGRAMA DE PARCEIROS · {modelo.ganho} DA BASE LÍQUIDA</p><h1 className="mt-5 max-w-4xl text-4xl font-black leading-[.98] sm:text-6xl">{modelo.titulo}</h1><p className="mt-6 max-w-2xl text-lg leading-relaxed text-zinc-300">{modelo.resumo}</p><div className="mt-8 flex flex-wrap gap-3"><Link href={`/parceiros/cadastro?modelo=${modelo.id}`} className="rounded-2xl bg-amber-400 px-6 py-4 text-sm font-black text-zinc-950 transition hover:bg-amber-300">{modelo.cta}</Link><a href="#projecao" className="rounded-2xl border border-white/25 px-6 py-4 text-sm font-black transition hover:bg-white/10">Ver projeção de ganhos</a></div></div><aside className="rounded-3xl border border-amber-300/30 bg-zinc-900 p-7"><p className="text-sm font-black text-amber-300">O MODELO EM UMA FRASE</p><p className="mt-5 text-3xl font-black">{modelo.nome}</p><p className="mt-3 text-zinc-300">{modelo.meta}</p><div className="mt-7 border-t border-white/10 pt-5"><p className="text-4xl font-black text-amber-400">{modelo.ganho}</p><p className="mt-1 text-sm text-zinc-400">participação comunicada sobre a base líquida</p></div></aside></div></div></section>
 
     <section className="mx-auto grid max-w-6xl gap-10 px-5 py-20 lg:grid-cols-[.9fr_1.1fr]"><div><p className="text-sm font-black tracking-[.16em] text-amber-400">PARA QUEM É</p><h2 className="mt-4 text-3xl font-black sm:text-4xl">Existe espaço para você crescer do seu jeito.</h2><ul className="mt-7 space-y-4">{modelo.publico.map((item) => <li key={item} className="flex gap-3 text-zinc-300"><span className="font-black text-amber-400">✓</span>{item}</li>)}</ul></div><div className="overflow-hidden rounded-3xl border border-white/10 bg-zinc-900"><div className="border-b border-white/10 p-6"><p className="text-sm font-black tracking-[.16em] text-amber-400">CONDIÇÕES DO MODELO</p><h2 className="mt-2 text-2xl font-black">Clareza antes de começar.</h2></div><dl>{modelo.condicoes.map(([rotulo, valor]) => <div key={rotulo} className="grid grid-cols-2 border-b border-white/10 p-5 last:border-0"><dt className="text-zinc-400">{rotulo}</dt><dd className="font-bold text-white">{valor}</dd></div>)}</dl></div></section>
 
