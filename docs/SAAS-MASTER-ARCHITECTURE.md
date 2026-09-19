@@ -2663,4 +2663,7 @@ O backend (`src/lib/crm/dashboard-query.ts`) foi expandido com o helper `extrair
 Relatório:
 `docs/relatorios-fases/FASE-247-FUNIL-VISUAL-3D-METRICAS-ESTRATEGICAS.md`.
 
+### Evolução operacional 249 — Compatibilidade do wizard de propostas com registros legados
+
+O reaproveitamento diário de propostas no fechamento público considera somente registros com `public_token` válido e não vazio. Propostas históricas geradas apenas para PDF não possuem token de navegação e permanecem preservadas, mas não bloqueiam a criação de uma nova proposta no wizard.
 

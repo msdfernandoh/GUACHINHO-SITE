@@ -1,4 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import {
   getInicioDoDiaBrasilUtc,
   getDataBrasilString,
@@ -9,6 +11,15 @@ import {
 
 describe("Fase 220 — Contrato de Unificação de Propostas e PDF", () => {
   describe("proposta-unificacao-service", () => {
+    it("não reutiliza proposta legada sem token público no wizard", () => {
+      const service = readFileSync(
+        resolve(process.cwd(), "src/lib/proposta/proposta-unificacao-service.ts"),
+        "utf8",
+      );
+      expect(service).toContain('.not("public_token", "is", null)');
+      expect(service).toContain('.neq("public_token", "")');
+    });
+
     it("deve calcular o início do dia no fuso horário de Brasília (UTC-3)", () => {
       const refDate = new Date("2026-09-10T15:30:00Z");
       const inicio = getInicioDoDiaBrasilUtc(refDate);

@@ -128,6 +128,10 @@ export async function buscarPropostaAtivaDoDia(
     .eq("whatsapp_cliente", tel)
     .gte("created_at", inicioDoDia)
     .is("excluido_at", null)
+    // Propostas antigas de PDF não possuem token público. Elas não podem ser
+    // reaproveitadas no wizard, pois o retorno precisa abrir /proposta/{token}.
+    .not("public_token", "is", null)
+    .neq("public_token", "")
     .not("status", "in", '("Contratada","Cancelada","Perdida")')
     .order("created_at", { ascending: false })
     .limit(1)
