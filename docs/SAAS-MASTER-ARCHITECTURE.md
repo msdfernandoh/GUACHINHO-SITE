@@ -2654,3 +2654,13 @@ A migração `237_leads_recorrentes_funil_ganho_nova_negociacao.sql` estabeleceu
 Relatório:
 `docs/relatorios-fases/FASE-246-UNIFICACAO-LEADS-TELEFONE-HISTORICO.md`.
 
+### Evolução operacional 247 — Módulo Executivo de Funil 3D & Métricas Estratégicas (Crédito, Parcela e Leads)
+
+Para proporcionar uma visão de alta densidade e apelo executivo no Dashboard Comercial do CRM (`/admin/crm`), foi adicionado o componente `CrmFunnel3dVisual` (`src/components/admin/crm/crm-funnel-3d-visual.tsx`), estruturado na forma de um funil geométrico estratificado 3D com legendas estilo ribbon conectadas com encaixe puzzle, inspirado nos padrões canônicos de pipeline de vendas consultivas.
+
+O backend (`src/lib/crm/dashboard-query.ts`) foi expandido com o helper `extrairValorParcelaLead`, que recupera a parcela real fechada, as parcelas calculadas nos simuladores ou projeta a mensalidade de consórcio canônica a partir do crédito e prazo, permitindo agregar em cada etapa e macro-nível as três informações fundamentais: (1) **Valor de Crédito Total (R$)**, (2) **Valor de Parcela Mensal Recorrente Estimada (R$/mês)** e (3) **Volume de Leads/Oportunidades**, acompanhados das taxas de passagem entre níveis, visualização comparativa (Macro 4 Fases vs Detalhada 12 Etapas) e rodapé de oportunidades recuperáveis em Perdido e Stand-by.
+
+Relatório:
+`docs/relatorios-fases/FASE-247-FUNIL-VISUAL-3D-METRICAS-ESTRATEGICAS.md`.
+
+

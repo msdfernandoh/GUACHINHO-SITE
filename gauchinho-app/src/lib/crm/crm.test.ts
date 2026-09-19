@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { leadsToCsv } from "@/lib/crm/csv-export";
 import { MOTIVOS_PERDA, FUNNEL_STATUSES } from "@/lib/crm/constants";
 import { buildLeadTimeline } from "@/lib/crm/timeline";
+import { extrairValorParcelaLead } from "@/lib/crm/dashboard-query";
 
 describe("CRM Fase 10", () => {
   it("export CSV escapa vírgulas", () => {
@@ -53,5 +54,33 @@ describe("CRM Fase 10", () => {
       atividades: [],
     });
     expect(items.length).toBeGreaterThanOrEqual(2);
+  });
+
+  describe("extrairValorParcelaLead", () => {
+    it("retorna valor_parcela_fechamento quando informado", () => {
+      const p = extrairValorParcelaLead({ valor_parcela_fechamento: 2500 });
+      expect(p).toBe(2500);
+    });
+
+    it("retorna parcela de dados_simulacao.resultado quando disponível", () => {
+      const p = extrairValorParcelaLead({
+        dados_simulacao: { resultado: { parcela: 1850.5 } },
+      });
+      expect(p).toBe(1850.5);
+    });
+
+    it("calcula parcela estimada via crédito e prazo quando não há parcela explícita", () => {
+      // 200.000 com prazo 200 meses e taxa 1.18 -> (200000 * 1.18) / 200 = 1180
+      const p = extrairValorParcelaLead({
+        valor_estimado: 200000,
+        prazo_simulado: 200,
+      });
+      expect(p).toBe(1180);
+    });
+
+    it("retorna 0 para lead sem crédito", () => {
+      const p = extrairValorParcelaLead({ valor_estimado: 0 });
+      expect(p).toBe(0);
+    });
   });
 });

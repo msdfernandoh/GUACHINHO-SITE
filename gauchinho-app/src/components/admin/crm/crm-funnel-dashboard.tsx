@@ -19,6 +19,7 @@ import {
   Kanban,
   FileCheck2,
 } from "lucide-react";
+import { CrmFunnel3dVisual } from "./crm-funnel-3d-visual";
 
 export function CrmFunnelDashboard({ data }: { data: CrmDashboardData }) {
   const { kpis, funil, alertas } = data;
@@ -184,7 +185,10 @@ export function CrmFunnelDashboard({ data }: { data: CrmDashboardData }) {
         </div>
       </div>
 
-      {/* 3. FUNIL VISUAL PROPORCIONAL (12 ETAPAS CANÔNICAS) */}
+      {/* 3. NOVO MÓDULO EXECUTIVO: FUNIL VISUAL 3D COM CRÉDITO, PARCELA E LEADS */}
+      <CrmFunnel3dVisual data={data} />
+
+      {/* 4. FUNIL VISUAL PROPORCIONAL (12 ETAPAS CANÔNICAS - VISÃO HORIZONTAL) */}
       <div className="rounded-xl border border-zinc-800 bg-zinc-900/60 p-6 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-4 border-b border-zinc-800/80 pb-4">
           <div>
@@ -239,13 +243,16 @@ export function CrmFunnelDashboard({ data }: { data: CrmDashboardData }) {
                   </div>
                 </div>
 
-                {/* Valor acumulado e contagem */}
-                <div className="flex w-44 shrink-0 items-center justify-end gap-3 font-mono text-zinc-400">
+                {/* Valor acumulado, parcelas e contagem */}
+                <div className="flex w-72 shrink-0 items-center justify-end gap-3 font-mono text-xs text-zinc-400">
                   <span className="font-semibold text-zinc-200">
                     {etapa.totalLeads} {etapa.totalLeads === 1 ? "lead" : "leads"}
                   </span>
-                  <span className="text-[11px] text-zinc-500">
+                  <span className="text-[11px] font-bold text-zinc-300">
                     {etapa.valorTotal > 0 ? formatCurrency(etapa.valorTotal) : "R$ 0"}
+                  </span>
+                  <span className="text-[10px] font-semibold text-emerald-400">
+                    {etapa.valorParcelaTotal > 0 ? formatCurrency(etapa.valorParcelaTotal) + "/m" : "R$ 0/m"}
                   </span>
                 </div>
               </div>

@@ -22,7 +22,41 @@ export type CrmFunilEtapaStats = {
   cor: string;
   totalLeads: number;
   valorTotal: number;
+  valorParcelaTotal: number;
   percentual: number;
+};
+
+export type CrmFunilMacroTier = {
+  id: string;
+  slug: string;
+  nivelNumero: number;
+  fase: "topo" | "meio_sup" | "meio_inf" | "fundo";
+  nomeNivel: string;
+  categoria: string;
+  subtitulo: string;
+  conceito: string;
+  corHex: string;
+  corGradiente: string;
+  icone: "eye" | "mail" | "magnet" | "handshake";
+  totalLeads: number;
+  valorCreditoTotal: number;
+  valorParcelaTotal: number;
+  percentualTotal: number;
+  taxaPassagem: number;
+  etapasNomes: string[];
+};
+
+export type CrmDashboardTotais = {
+  totalLeads: number;
+  totalCredito: number;
+  totalParcelaMensal: number;
+  ticketMedioCredito: number;
+  ticketMedioParcela: number;
+  leadsPerdidos: number;
+  creditoPerdido: number;
+  parcelaPerdida: number;
+  leadsStandby: number;
+  creditoStandby: number;
 };
 
 export type CrmAlertasOperacionais = {
@@ -48,10 +82,42 @@ export type CrmConsultorPerformance = {
 export type CrmDashboardData = {
   kpis: CrmDashboardKpis;
   funil: CrmFunilEtapaStats[];
+  macroFunil: CrmFunilMacroTier[];
+  totaisGerais: CrmDashboardTotais;
   alertas: CrmAlertasOperacionais;
   etapas: CrmFunilEtapaRow[];
   performance: CrmConsultorPerformance[];
 };
+
+export function extrairValorParcelaLead(lead: {
+  valor_fechado?: number | null;
+  valor_parcela_fechamento?: number | null;
+  valor_estimado?: number | null;
+  valor_simulado?: number | null;
+  prazo_simulado?: number | null;
+  dados_simulacao?: unknown;
+}): number {
+  if (lead.valor_parcela_fechamento && Number(lead.valor_parcela_fechamento) > 0) {
+    return Number(lead.valor_parcela_fechamento);
+  }
+
+  if (lead.dados_simulacao && typeof lead.dados_simulacao === "object") {
+    const ds = lead.dados_simulacao as Record<string, unknown>;
+    const res = ds.resultado as Record<string, unknown> | undefined;
+    const p1 = res?.parcela ?? res?.valorParcela ?? res?.parcelaReduzida ?? res?.parcelaIntegral;
+    if (p1 && Number(p1) > 0) return Number(p1);
+
+    const p2 = ds.parcela ?? ds.valorParcela ?? ds.valor_parcela;
+    if (p2 && Number(p2) > 0) return Number(p2);
+  }
+
+  const cred = Number(lead.valor_fechado ?? lead.valor_estimado ?? lead.valor_simulado ?? 0);
+  if (cred <= 0) return 0;
+
+  const prazo = Number(lead.prazo_simulado && lead.prazo_simulado > 0 ? lead.prazo_simulado : 160);
+  const parcelaEstimada = (cred * 1.18) / prazo;
+  return Math.round(parcelaEstimada * 100) / 100;
+}
 
 export async function fetchCrmDashboardData(empresaId: string): Promise<CrmDashboardData> {
   const supabase = await createClient();
@@ -70,7 +136,7 @@ export async function fetchCrmDashboardData(empresaId: string): Promise<CrmDashb
   let leadsQuery = supabase
     .from("leads")
     .select(
-      "id, status, etapa_id, valor_estimado, valor_simulado, valor_fechado, fechado, temperatura, srd_responsavel_id, srd_responsavel_nome, created_at, ultima_interacao_at, data_fechamento, perdido_at",
+      "id, status, etapa_id, valor_estimado, valor_simulado, valor_fechado, valor_parcela_fechamento, prazo_simulado, dados_simulacao, fechado, temperatura, srd_responsavel_id, srd_responsavel_nome, created_at, ultima_interacao_at, data_fechamento, perdido_at",
     );
 
   if (empresaId === "7170f38e-15dd-4b19-8588-51e9a9cf0d4c") {
@@ -103,6 +169,7 @@ export async function fetchCrmDashboardData(empresaId: string): Promise<CrmDashb
       cor: e.cor,
       totalLeads: 0,
       valorTotal: 0,
+      valorParcelaTotal: 0,
       percentual: 0,
     });
   }
@@ -125,6 +192,7 @@ export async function fetchCrmDashboardData(empresaId: string): Promise<CrmDashb
 
   for (const l of leads) {
     const val = Number(l.valor_estimado ?? l.valor_simulado ?? 0);
+    const parcela = extrairValorParcelaLead(l);
     const createdAtIso = l.created_at;
     const isThisMonth = createdAtIso >= startOfMonth;
     const isToday = createdAtIso?.slice(0, 10) === todayStr;
@@ -192,6 +260,7 @@ export async function fetchCrmDashboardData(empresaId: string): Promise<CrmDashb
       const st = etapaMap.get(etapaKey)!;
       st.totalLeads++;
       st.valorTotal += val;
+      st.valorParcelaTotal += parcela;
     }
   }
 
@@ -225,6 +294,110 @@ export async function fetchCrmDashboardData(empresaId: string): Promise<CrmDashb
       percentual: totalLeadsCount > 0 ? (item.totalLeads / totalLeadsCount) * 100 : 0,
     }));
 
+  // Montar agrupamento macro dos 4 níveis estratégicos de funil (3D)
+  const macroConfigs = [
+    {
+      id: "nivel-1-topo",
+      slug: "topo_funil",
+      nivelNumero: 1,
+      fase: "topo" as const,
+      nomeNivel: "TOPO FUNIL",
+      categoria: "VISITANTE & LEAD",
+      subtitulo: "Aprendizado e Descoberta",
+      conceito: "Entrada de leads, simuladores e eventos",
+      corHex: "#7c3aed",
+      corGradiente: "from-purple-600 via-indigo-600 to-purple-700",
+      icone: "eye" as const,
+      etapasSlugs: ["novo_lead", "contato_realizado"],
+    },
+    {
+      id: "nivel-2-meio-sup",
+      slug: "meio_superior",
+      nivelNumero: 2,
+      fase: "meio_sup" as const,
+      nomeNivel: "TOPO-MEIO",
+      categoria: "LEAD QUALIFICADO",
+      subtitulo: "Reconhecimento do Problema",
+      conceito: "Validação de perfil, poder de compra e reuniões",
+      corHex: "#06b6d4",
+      corGradiente: "from-cyan-500 via-teal-500 to-cyan-600",
+      icone: "mail" as const,
+      etapasSlugs: ["qualificado", "reuniao_agendada", "reuniao_realizada"],
+    },
+    {
+      id: "nivel-3-meio-inf",
+      slug: "meio_inferior",
+      nivelNumero: 3,
+      fase: "meio_inf" as const,
+      nomeNivel: "MEIO FUNIL",
+      categoria: "OPORTUNIDADE",
+      subtitulo: "Consideração da Solução",
+      conceito: "Propostas na mesa, lances e cadastros em análise",
+      corHex: "#f43f5e",
+      corGradiente: "from-rose-500 via-pink-600 to-rose-600",
+      icone: "magnet" as const,
+      etapasSlugs: ["proposta_enviada", "documentacao_cadastro", "boleto_enviado"],
+    },
+    {
+      id: "nivel-4-fundo",
+      slug: "fundo_funil",
+      nivelNumero: 4,
+      fase: "fundo" as const,
+      nomeNivel: "FUNDO FUNIL",
+      categoria: "VENDA FECHADA",
+      subtitulo: "Decisão de Compra & Contrato",
+      conceito: "Cotas ativadas, boletos pagos e conversão",
+      corHex: "#f59e0b",
+      corGradiente: "from-amber-500 via-emerald-500 to-green-600",
+      icone: "handshake" as const,
+      etapasSlugs: ["venda_fechada", "pos_venda"],
+    },
+  ];
+
+  let prevTierLeads = 0;
+  const macroFunil: CrmFunilMacroTier[] = macroConfigs.map((cfg, idx) => {
+    const etapasMatched = funilStats.filter((e) => cfg.etapasSlugs.includes(e.slug));
+    const totalLeads = etapasMatched.reduce((acc, e) => acc + e.totalLeads, 0);
+    const valorCreditoTotal = etapasMatched.reduce((acc, e) => acc + e.valorTotal, 0);
+    const valorParcelaTotal = etapasMatched.reduce((acc, e) => acc + e.valorParcelaTotal, 0);
+    const etapasNomes = etapasMatched.map((e) => e.nome);
+
+    let taxaPassagem = 100;
+    if (idx > 0 && prevTierLeads > 0) {
+      taxaPassagem = Math.min(100, (totalLeads / prevTierLeads) * 100);
+    }
+    prevTierLeads = totalLeads;
+
+    return {
+      ...cfg,
+      totalLeads,
+      valorCreditoTotal,
+      valorParcelaTotal,
+      percentualTotal: totalLeadsCount > 0 ? (totalLeads / totalLeadsCount) * 100 : 0,
+      taxaPassagem: Math.round(taxaPassagem * 10) / 10,
+      etapasNomes,
+    };
+  });
+
+  const etapaPerdido = funilStats.find((e) => e.slug === "perdido");
+  const etapaStandby = funilStats.find((e) => e.slug === "standby_futuro");
+
+  const totalCreditoGeral = funilStats.reduce((acc, e) => acc + e.valorTotal, 0);
+  const totalParcelaGeral = funilStats.reduce((acc, e) => acc + e.valorParcelaTotal, 0);
+
+  const totaisGerais: CrmDashboardTotais = {
+    totalLeads: totalLeadsCount,
+    totalCredito: totalCreditoGeral,
+    totalParcelaMensal: totalParcelaGeral,
+    ticketMedioCredito: totalLeadsCount > 0 ? totalCreditoGeral / totalLeadsCount : 0,
+    ticketMedioParcela: totalLeadsCount > 0 ? totalParcelaGeral / totalLeadsCount : 0,
+    leadsPerdidos: etapaPerdido?.totalLeads ?? 0,
+    creditoPerdido: etapaPerdido?.valorTotal ?? 0,
+    parcelaPerdida: etapaPerdido?.valorParcelaTotal ?? 0,
+    leadsStandby: etapaStandby?.totalLeads ?? 0,
+    creditoStandby: etapaStandby?.valorTotal ?? 0,
+  };
+
   // Performance da equipe
   const performance: CrmConsultorPerformance[] = Array.from(consultoresMap.entries()).map(
     ([id, item]) => ({
@@ -250,6 +423,8 @@ export async function fetchCrmDashboardData(empresaId: string): Promise<CrmDashb
       metaMensalAtingida,
     },
     funil: funilStats,
+    macroFunil,
+    totaisGerais,
     alertas: {
       leadsSemResponsavel,
       leadsSemContato24h,
