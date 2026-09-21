@@ -4,6 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { DEFAULT_LEADS, getConfigJsonPublic } from "@/server/config";
 import { TIPOS_CREDITO_PUBLICO, type TipoCreditoPublico } from "@/lib/leads/tipo-credito";
 import { registrarEvento } from "@/lib/eventos/registrar";
+import { upsertLeadPorTelefone } from "@/lib/crm/upsert-lead";
 
 type Body = {
   nome: string;
@@ -41,34 +42,28 @@ export async function POST(request: Request) {
     const leadsConfig = await getConfigJsonPublic("leads", DEFAULT_LEADS);
     const pagina = body.paginaOrigem ?? "/";
 
-    const { data: leadRow, error } = await admin
-      .from("leads")
-      .insert({
-        empresa_id: ingress.empresaId,
-        nome: body.nome.trim(),
-        whatsapp: body.whatsapp.trim(),
-        origem: ORIGEM,
-        origem_detalhe: pagina,
-        tipo_interesse: tipoCredito ?? "outro",
-        tipo_credito: tipoCredito,
-        valor_credito: valorCredito,
-        valor_estimado: valorCredito,
-        valor_simulado: valorCredito,
-        observacoes: body.observacao?.trim() || "Assistente em modo fallback sem IA.",
-        dados_simulacao: {
-          sessionId: body.sessionId,
-          modo: "fallback_form",
-          pagina_origem: pagina,
-        },
-        status: leadsConfig.statusInicialPadrao ?? "Novo",
-        criado_manual: false,
-      })
-      .select("id")
-      .single();
+    const upsertRes = await upsertLeadPorTelefone(admin, {
+      empresa_id: ingress.empresaId,
+      nome: body.nome.trim(),
+      whatsapp: body.whatsapp.trim(),
+      origem: ORIGEM,
+      origem_detalhe: pagina,
+      tipo_interesse: tipoCredito ?? "outro",
+      tipo_credito: tipoCredito,
+      valor_estimado: valorCredito,
+      valor_simulado: valorCredito,
+      observacoes: body.observacao?.trim() || "Assistente em modo fallback sem IA.",
+      dados_simulacao: {
+        sessionId: body.sessionId,
+        modo: "fallback_form",
+        pagina_origem: pagina,
+      },
+      status: leadsConfig.statusInicialPadrao ?? "Novo",
+    });
 
-    if (error || !leadRow) {
-      console.error("[ia/fallback-lead]", error?.message);
-      return NextResponse.json({ error: error?.message ?? "Falha ao salvar" }, { status: 500 });
+    if (!upsertRes.ok || !upsertRes.lead_id) {
+      console.error("[ia/fallback-lead]", upsertRes.error);
+      return NextResponse.json({ error: upsertRes.error ?? "Falha ao salvar" }, { status: 500 });
     }
 
     await registrarEvento({
@@ -76,10 +71,10 @@ export async function POST(request: Request) {
       tipo_evento: "lead_criado",
       origem: ORIGEM,
       pagina,
-      lead_id: leadRow.id,
+      lead_id: upsertRes.lead_id,
     });
 
-    return NextResponse.json({ ok: true, leadId: leadRow.id });
+    return NextResponse.json({ ok: true, leadId: upsertRes.lead_id, action: upsertRes.action });
   } catch (e) {
     const message = e instanceof Error ? e.message : "Erro interno";
     return NextResponse.json({ error: message }, { status: 500 });

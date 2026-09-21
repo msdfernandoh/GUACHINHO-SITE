@@ -2,7 +2,7 @@
 -- e sincronizar etapa_id e fechado de leads que já fecharam mas estão em etapas divergentes.
 
 -- 1. Atualiza FK de programa_indicacoes para permitir exclusão em cascata pelo admin
-DO 
+DO $$
 BEGIN
   IF EXISTS (
     SELECT 1 FROM pg_constraint
@@ -15,10 +15,10 @@ BEGIN
   ALTER TABLE public.programa_indicacoes
     ADD CONSTRAINT programa_indicacoes_lead_id_fkey
     FOREIGN KEY (lead_id) REFERENCES public.leads(id) ON DELETE CASCADE;
-END ;
+END $$;
 
 -- 2. Sincroniza leads que já fecharam / ganharam mas constam em etapas antigas ('novo_lead', etc.)
-DO 
+DO $$
 DECLARE
   v_empresa RECORD;
   v_etapa_fechado uuid;
@@ -44,4 +44,4 @@ BEGIN
         );
     END IF;
   END LOOP;
-END ;
+END $$;

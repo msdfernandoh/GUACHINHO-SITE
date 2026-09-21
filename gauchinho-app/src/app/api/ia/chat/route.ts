@@ -25,6 +25,7 @@ import {
 } from "@/lib/ia/conversa-db";
 import { resolveWhatsappOrigem } from "@/lib/whatsapp/resolve-origem";
 import type { IaChatMessage } from "@/lib/ia/types";
+import { upsertLeadPorTelefone } from "@/lib/crm/upsert-lead";
 
 const ORIGEM = "ia_chat";
 const ORIGEM_GUIDED = "ia_chat_guided";
@@ -66,36 +67,31 @@ async function criarLeadGuided(
   const admin = createAdminClient();
   const leadsConfig = await getConfigJsonPublic("leads", DEFAULT_LEADS);
 
-  const { data: leadRow, error: leadErr } = await admin
-    .from("leads")
-    .insert({
-      nome: payload.nome!.trim(),
-      whatsapp: payload.whatsapp!,
-      origem: ORIGEM_GUIDED,
-      origem_detalhe: pagina,
-      tipo_interesse: payload.intencao ?? "IA Chat guiado",
-      tipo_credito: payload.tipoCredito ?? null,
-      valor_credito: payload.valorCredito ?? null,
-      valor_simulado: payload.valorCredito ?? null,
-      observacoes: payload.observacao?.slice(0, 500) ?? null,
-      dados_simulacao: {
-        sessionId,
-        pagina_origem: pagina,
-        url_origem: url,
-        ...payload.dadosSimulacao,
-      },
-      status: leadsConfig.statusInicialPadrao,
-      criado_manual: false,
-    })
-    .select("id")
-    .single();
+  const upsertRes = await upsertLeadPorTelefone(admin, {
+    nome: payload.nome!.trim(),
+    whatsapp: payload.whatsapp!,
+    origem: ORIGEM_GUIDED,
+    origem_detalhe: pagina,
+    tipo_interesse: payload.intencao ?? "IA Chat guiado",
+    tipo_credito: payload.tipoCredito ?? null,
+    valor_estimado: payload.valorCredito ?? null,
+    valor_simulado: payload.valorCredito ?? null,
+    observacoes: payload.observacao?.slice(0, 500) ?? null,
+    dados_simulacao: {
+      sessionId,
+      pagina_origem: pagina,
+      url_origem: url,
+      ...payload.dadosSimulacao,
+    },
+    status: leadsConfig.statusInicialPadrao ?? "Novo",
+  });
 
-  if (leadErr || !leadRow) {
-    console.error("[ia/chat] erro lead guiado:", leadErr?.message);
+  if (!upsertRes.ok || !upsertRes.lead_id) {
+    console.error("[ia/chat] erro lead guiado:", upsertRes.error);
     return null;
   }
 
-  const leadId = leadRow.id as string;
+  const leadId = upsertRes.lead_id;
   if (conversaId) {
     try {
       await updateConversaLead(conversaId, leadId, {
@@ -158,48 +154,42 @@ async function criarLeadFromConversa(
   const admin = createAdminClient();
   const leadsConfig = await getConfigJsonPublic("leads", DEFAULT_LEADS);
 
-  const { data: leadRow, error: leadErr } = await admin
-    .from("leads")
-    .insert({
-      nome: dadosFinal.nome!.trim(),
-      whatsapp: dadosFinal.whatsapp!,
-      cidade: dadosFinal.cidade ?? null,
-      origem: ORIGEM,
-      origem_detalhe: pagina,
-      tipo_interesse: dadosFinal.tipoCredito ?? dadosFinal.tipoInteresse ?? "IA Chat",
-      produto_interesse: dadosFinal.produtoInteresse ?? dadosFinal.tipoInteresse ?? null,
-      tipo_credito: dadosFinal.tipoCredito ?? null,
-      valor_credito: dadosFinal.valorAproximado ?? null,
-      valor_simulado: dadosFinal.valorAproximado ?? null,
-      entrada: dadosFinal.recursoProprio ?? null,
-      observacoes: dadosFinal.observacao?.slice(0, 500) ?? null,
-      analise_ia: dadosFinal.resumo ?? null,
-      dados_simulacao: {
-        sessionId,
-        pagina_origem: pagina,
-        url_origem: url,
-        interesse: dadosFinal.tipoInteresse,
-        tipoCredito: dadosFinal.tipoCredito,
-        valorAproximado: dadosFinal.valorAproximado,
-        modo: isOpenAiConfigured() ? "ai" : "fallback",
-        mensagensResumo: history.slice(-8).map((m) => ({
-          role: m.role,
-          content: m.content.slice(0, 500),
-        })),
-      },
-      resultado_resumido: (dadosFinal.resumo ?? "").slice(0, 500),
-      status: leadsConfig.statusInicialPadrao,
-      criado_manual: false,
-    })
-    .select("id")
-    .single();
+  const upsertRes = await upsertLeadPorTelefone(admin, {
+    nome: dadosFinal.nome!.trim(),
+    whatsapp: dadosFinal.whatsapp!,
+    cidade: dadosFinal.cidade ?? null,
+    origem: ORIGEM,
+    origem_detalhe: pagina,
+    tipo_interesse: dadosFinal.tipoCredito ?? dadosFinal.tipoInteresse ?? "IA Chat",
+    produto_interesse: dadosFinal.produtoInteresse ?? dadosFinal.tipoInteresse ?? null,
+    tipo_credito: dadosFinal.tipoCredito ?? null,
+    valor_estimado: dadosFinal.valorAproximado ?? null,
+    valor_simulado: dadosFinal.valorAproximado ?? null,
+    entrada: dadosFinal.recursoProprio ?? null,
+    observacoes: dadosFinal.observacao?.slice(0, 500) ?? null,
+    resultado_resumido: (dadosFinal.resumo ?? "").slice(0, 500),
+    dados_simulacao: {
+      sessionId,
+      pagina_origem: pagina,
+      url_origem: url,
+      interesse: dadosFinal.tipoInteresse,
+      tipoCredito: dadosFinal.tipoCredito,
+      valorAproximado: dadosFinal.valorAproximado,
+      modo: isOpenAiConfigured() ? "ai" : "fallback",
+      mensagensResumo: history.slice(-8).map((m) => ({
+        role: m.role,
+        content: m.content.slice(0, 500),
+      })),
+    },
+    status: leadsConfig.statusInicialPadrao ?? "Novo",
+  });
 
-  if (leadErr || !leadRow) {
-    console.error("[ia/chat] erro ao criar lead:", leadErr?.message);
+  if (!upsertRes.ok || !upsertRes.lead_id) {
+    console.error("[ia/chat] erro ao criar lead:", upsertRes.error);
     return null;
   }
 
-  const leadId = leadRow.id as string;
+  const leadId = upsertRes.lead_id;
   if (conversaId) {
     try {
       await updateConversaLead(conversaId, leadId, dadosFinal);

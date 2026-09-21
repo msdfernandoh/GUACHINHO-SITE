@@ -215,10 +215,30 @@ export async function upsertLeadPorTelefone(
 
   const wonLead = (existingLeads ?? []).find((l) => isLeadGanho(l.status));
 
-  // CASO 1: Lead em andamento ativo encontrado -> Atualiza e acumula histórico
+  // CASO 1: Lead em andamento ativo encontrado -> Atualiza, move para 'Novo lead' e acumula histórico
   if (activeLead) {
+    let targetEtapaId = payload.etapa_id;
+    if (!targetEtapaId) {
+      const empId = payload.empresa_id || activeLead.empresa_id;
+      if (empId) {
+        const { data: etapaNovo } = await supabaseAdmin
+          .from("crm_funil_etapas")
+          .select("id")
+          .eq("empresa_id", empId)
+          .eq("slug", "novo_lead")
+          .maybeSingle();
+        if (etapaNovo?.id) {
+          targetEtapaId = etapaNovo.id;
+        }
+      }
+    }
+
     const updateData: Record<string, unknown> = {
       telefone_normalizado: norm,
+      status: "Novo",
+      etapa_id: targetEtapaId || activeLead.etapa_id,
+      fechado: false,
+      perdido_at: null,
       ultima_interacao_at: new Date().toISOString(),
       data_ultimo_contato: new Date().toISOString(),
       updated_at: new Date().toISOString(),
@@ -228,8 +248,8 @@ export async function upsertLeadPorTelefone(
     const existingHist = activeLead.historico_cadastros ? String(activeLead.historico_cadastros).trim() : "";
     updateData.historico_cadastros = existingHist ? `${newEntry}\n\n---\n\n${existingHist}` : newEntry;
 
-    const existingObs = activeLead.observacoes ? String(activeLead.observacoes).trim() : "";
-    updateData.observacoes = existingObs ? `${newEntry}\n\n---\n\n${existingObs}` : newEntry;
+    // Mantém no campo observações a última observação informada (ou a nova entrada se não houver texto avulso)
+    updateData.observacoes = payload.observacoes?.trim() || newEntry;
 
     if (payload.nome && (!activeLead.nome || activeLead.nome.trim() === "" || activeLead.nome.toLowerCase() === "teste")) {
       updateData.nome = payload.nome.trim();
@@ -328,6 +348,22 @@ export async function upsertLeadPorTelefone(
       ? `${entryGanho}\n\n---\n[Histórico Consolidado da Negociação Anterior]:\n${wonLead.observacoes}`
       : entryGanho;
 
+    let wonTargetEtapaId = payload.etapa_id;
+    if (!wonTargetEtapaId) {
+      const empId = payload.empresa_id || wonLead.empresa_id;
+      if (empId) {
+        const { data: etapaNovo } = await supabaseAdmin
+          .from("crm_funil_etapas")
+          .select("id")
+          .eq("empresa_id", empId)
+          .eq("slug", "novo_lead")
+          .maybeSingle();
+        if (etapaNovo?.id) {
+          wonTargetEtapaId = etapaNovo.id;
+        }
+      }
+    }
+
     const insertData: Record<string, unknown> = {
       empresa_id: payload.empresa_id || wonLead.empresa_id || null,
       nome: payload.nome?.trim() || wonLead.nome || "Contato sem nome",
@@ -348,14 +384,14 @@ export async function upsertLeadPorTelefone(
       dados_simulacao: payload.dados_simulacao ?? null,
       resultado_resumido: payload.resultado_resumido ?? null,
       status: "Novo",
-      etapa_id: payload.etapa_id || null,
+      etapa_id: wonTargetEtapaId || null,
       srd_responsavel_id: wonLead.srd_responsavel_id || null,
       srd_responsavel_nome: wonLead.srd_responsavel_nome || null,
       temperatura: "Quente",
       modelo_interesse: payload.modelo_interesse || wonLead.modelo_interesse || "CLIENTE_FINAL",
       proxima_acao: payload.proxima_acao || "Fazer contato - Cliente recorrente",
       historico_cadastros: histConsolidado,
-      observacoes: histConsolidado,
+      observacoes: payload.observacoes?.trim() || entryGanho,
       ultima_interacao_at: new Date().toISOString(),
       data_ultimo_contato: new Date().toISOString(),
       criado_manual: false,

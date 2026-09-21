@@ -336,6 +336,91 @@ describe("upsertLeadPorTelefone - Fluxo RPC e Fallback", () => {
     expect(result.lead_id).toBe("new-forced-deal-id");
     expect(mockInsert).toHaveBeenCalled();
   });
+
+  it("reingressando lead ativo (não ganho) reposiciona na etapa Novo lead, redefine fechado/perdido e preserva a última observação", async () => {
+    const mockRpc = vi.fn().mockResolvedValue({
+      data: null,
+      error: { message: "function rpc_upsert_lead_por_telefone does not exist", code: "42883" },
+    });
+
+    const mockSelect = vi.fn().mockReturnValue({
+      or: vi.fn().mockReturnValue({
+        order: vi.fn().mockReturnValue({
+          limit: vi.fn().mockResolvedValue({
+            data: [
+              {
+                id: "lead-em-andamento-123",
+                nome: "Carlos Silva",
+                whatsapp: "66999126120",
+                telefone_normalizado: "66999126120",
+                status: "Perdido",
+                etapa_id: "etapa-perdido-id",
+                empresa_id: "empresa-1",
+                historico_cadastros: "[01/05/2026 10:00] Cadastro inicial",
+                observacoes: "Observação antiga que deve ser substituída pela nova",
+              },
+            ],
+            error: null,
+          }),
+        }),
+      }),
+    });
+
+    const mockUpdate = vi.fn().mockReturnValue({
+      eq: vi.fn().mockResolvedValue({ error: null }),
+    });
+
+    const mockAdmin = {
+      rpc: mockRpc,
+      from: vi.fn((table: string) => {
+        if (table === "leads") {
+          return {
+            select: mockSelect,
+            update: mockUpdate,
+          };
+        }
+        if (table === "crm_funil_etapas") {
+          return {
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                eq: vi.fn().mockReturnValue({
+                  maybeSingle: vi.fn().mockResolvedValue({
+                    data: { id: "etapa-novo-lead-id" },
+                    error: null,
+                  }),
+                }),
+              }),
+            }),
+          };
+        }
+        return {};
+      }),
+    } as any;
+
+    const result = await upsertLeadPorTelefone(mockAdmin, {
+      whatsapp: "(66) 99912-6120",
+      empresa_id: "empresa-1",
+      produto_interesse: "Imóvel",
+      observacoes: "Cliente voltou a ter interesse agora em setembro",
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.action).toBe("updated");
+    expect(result.lead_id).toBe("lead-em-andamento-123");
+    expect(mockUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        status: "Novo",
+        etapa_id: "etapa-novo-lead-id",
+        fechado: false,
+        perdido_at: null,
+        observacoes: "Cliente voltou a ter interesse agora em setembro",
+        historico_cadastros: expect.stringContaining("Cliente voltou a ter interesse agora em setembro"),
+      })
+    );
+    const updatePayload = mockUpdate.mock.calls[0][0];
+    expect(updatePayload.historico_cadastros).toContain("Cadastro inicial");
+  });
 });
+
 
 
