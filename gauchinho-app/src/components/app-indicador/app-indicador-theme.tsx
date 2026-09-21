@@ -16,6 +16,8 @@ const raconAppCss = `
   .racon-indicador [class*="from-amber"] { --tw-gradient-from: #0066cc var(--tw-gradient-from-position); --tw-gradient-to: rgb(0 102 204 / 0) var(--tw-gradient-to-position); }
   .racon-indicador [class*="to-amber"] { --tw-gradient-to: #20c9d7 var(--tw-gradient-to-position); }
   .racon-indicador input, .racon-indicador textarea { background: #ffffff; color: #0b2855; }
+  .racon-indicador button[class*="bg-zinc-950"], .racon-indicador a[class*="bg-zinc-950"] { background: #0066cc; color: #ffffff; }
+  .racon-indicador button[class*="bg-zinc-950"] *, .racon-indicador a[class*="bg-zinc-950"] * { color: #ffffff; }
 `;
 
 export function AppIndicadorTheme({ racon, children }: { racon: boolean; children: ReactNode }) {

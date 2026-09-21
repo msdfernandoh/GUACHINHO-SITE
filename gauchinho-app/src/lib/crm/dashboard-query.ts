@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { CRM_12_ETAPAS, CRM_MACRO_TIERS, mapLegacyStatusToEtapaSlug } from "./constants";
 import type { CrmFunilEtapaRow } from "./types";
 import { fetchCrmFunilEtapas } from "./leads-query";
+import { extrairValorParcelaLead } from "./lead-metrics";
 
 export type CrmDashboardKpis = {
   leadsNoMes: number;
@@ -89,36 +90,6 @@ export type CrmDashboardData = {
   etapas: CrmFunilEtapaRow[];
   performance: CrmConsultorPerformance[];
 };
-
-export function extrairValorParcelaLead(lead: {
-  valor_fechado?: number | null;
-  valor_parcela_fechamento?: number | null;
-  valor_estimado?: number | null;
-  valor_simulado?: number | null;
-  prazo_simulado?: number | null;
-  dados_simulacao?: unknown;
-}): number {
-  if (lead.valor_parcela_fechamento && Number(lead.valor_parcela_fechamento) > 0) {
-    return Number(lead.valor_parcela_fechamento);
-  }
-
-  if (lead.dados_simulacao && typeof lead.dados_simulacao === "object") {
-    const ds = lead.dados_simulacao as Record<string, unknown>;
-    const res = ds.resultado as Record<string, unknown> | undefined;
-    const p1 = res?.parcela ?? res?.valorParcela ?? res?.parcelaReduzida ?? res?.parcelaIntegral;
-    if (p1 && Number(p1) > 0) return Number(p1);
-
-    const p2 = ds.parcela ?? ds.valorParcela ?? ds.valor_parcela;
-    if (p2 && Number(p2) > 0) return Number(p2);
-  }
-
-  const cred = Number(lead.valor_fechado ?? lead.valor_estimado ?? lead.valor_simulado ?? 0);
-  if (cred <= 0) return 0;
-
-  const prazo = Number(lead.prazo_simulado && lead.prazo_simulado > 0 ? lead.prazo_simulado : 160);
-  const parcelaEstimada = (cred * 1.18) / prazo;
-  return Math.round(parcelaEstimada * 100) / 100;
-}
 
 export async function fetchCrmDashboardData(empresaId: string): Promise<CrmDashboardData> {
   const supabase = await createClient();

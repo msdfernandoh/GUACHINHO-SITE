@@ -2676,6 +2676,12 @@ Os domínios de sites parceiros com modelo Racon preservam a home institucional,
 
 Relatório: `docs/relatorios-fases/FASE-251-RACON-PARCEIROS-APP-INDICADOR.md`.
 
+### Evolução operacional 253 — Contraste visual e navegação do programa Racon
+
+A área pública de parceiros Racon possui tokens próprios para superfícies claras e banners azuis. Títulos, textos, tags e CTAs de seções inversas mantêm contraste legível mesmo sob as regras globais de aparência configurável. Na navegação Racon, `Programa de Indicação` é preservado, um novo item `Seja parceiro` aponta para `/parceiros` e o item `Seguradoras` é omitido. Os demais menus continuam originados do modelo/site publicado.
+
+Relatório: `docs/relatorios-fases/FASE-253-UI-RACON-PARCEIROS-MENU.md`.
+
 ### Evolução operacional 252 — Funil 3D Interativo e Clicável com Filtro Direto no Pipeline Kanban
 
 O Módulo Executivo de Funil 3D e seus cartões de fases e etapas (`src/components/admin/crm/crm-funnel-3d-visual.tsx`) foram transformados em elementos 100% interativos e clicáveis, permitindo navegação direta para o Pipeline Kanban (`/admin/crm/pipeline`) já filtrado pela etapa ou fase macro selecionada.

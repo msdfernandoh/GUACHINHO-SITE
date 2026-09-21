@@ -24,13 +24,18 @@ const raconLandingCss = `
   .racon-parceiros [class*="border-white"] { border-color: #dbe7f5; }
   .racon-parceiros [class*="bg-amber"] { background-color: #0066cc; color: #ffffff; }
   .racon-parceiros [class*="bg-amber"] [class*="text-zinc-"] { color: #ffffff; }
-  .racon-parceiros .racon-hero { background: linear-gradient(125deg, #0055b8 0%, #006dcc 55%, #0099dd 100%); }
+  .racon-parceiros button[class*="bg-zinc-950"] { background-color: #0066cc !important; color: #ffffff !important; }
+  .racon-parceiros .racon-hero { --visual-title: #ffffff; --visual-text: #eaf5ff; --visual-accent: #ffffff; background: linear-gradient(125deg, #004ca8 0%, #006dcc 55%, #0099dd 100%); }
+  .racon-parceiros .racon-hero > div > p { color: #ffffff !important; }
   .racon-parceiros .racon-hero [class*="bg-zinc-"] { background-color: rgba(5, 41, 94, .28); }
   .racon-parceiros .racon-hero [class*="text-white"] { color: #ffffff; }
   .racon-parceiros .racon-hero [class*="text-zinc-"] { color: #e1efff; }
   .racon-parceiros .racon-hero [class*="text-amber"] { color: #b9e0ff; }
   .racon-parceiros .racon-hero [class*="bg-amber"] { background-color: #ffffff; color: #0066cc; }
   .racon-parceiros .racon-hero [class*="bg-amber"] [class*="text-zinc-"] { color: #0066cc; }
+  .racon-parceiros .racon-network { --visual-title: #ffffff; --visual-text: #eef8ff; --visual-accent: #ffffff; background: linear-gradient(135deg, #0055b8, #008fcf) !important; }
+  .racon-parceiros .racon-network a { background: #ffffff !important; color: #005db8 !important; box-shadow: 0 8px 24px rgba(0, 48, 112, .2); }
+  .racon-parceiros .racon-network a * { color: #005db8 !important; }
 `;
 
 function Cta({ href, children, secondary = false }: { href: string; children: React.ReactNode; secondary?: boolean }) {
@@ -72,7 +77,7 @@ export function ParceirosLandingClient({ racon = false, brandName = "Gauchinho C
       </div>
     </section>
 
-    <section className="mx-auto grid max-w-6xl gap-8 px-5 py-20 sm:grid-cols-2 sm:py-28"><div className="rounded-3xl bg-amber-400 p-8 text-zinc-950"><p className="text-sm font-black tracking-[.16em]">NETWORK DE NEGÓCIOS</p><h2 className="mt-4 text-3xl font-black sm:text-4xl">Toda terça-feira, às 19h, uma nova oportunidade de conexão.</h2><p className="mt-5 leading-relaxed">Parceiros, empresários, vendedores, corretores e pessoas com visão de crescimento reunidos para gerar conversas, conexões e negócios.</p><div className="mt-7"><Cta href="/parceiros/cadastro?modelo=CONVERSAR_EQUIPE">Quero participar do próximo encontro</Cta></div></div><div className="rounded-3xl border border-white/10 bg-zinc-900 p-8"><p className="text-sm font-black tracking-[.16em] text-amber-400">O QUE A ESTRUTURA ENTREGA</p><ul className="mt-6 grid gap-4 text-zinc-200">{["Treinamento de produto, abordagem e objeções", "Material digital e impresso", "Suporte em reuniões e vendas estratégicas", "Backoffice de cadastro, documentos e contratos", "Pós-venda e acompanhamento de cotas", "Gestão de leads e oportunidades"].map((item) => <li key={item} className="flex gap-3"><span className="text-amber-400">✦</span>{item}</li>)}</ul></div></section>
+    <section className="mx-auto grid max-w-6xl gap-8 px-5 py-20 sm:grid-cols-2 sm:py-28"><div className={`rounded-3xl bg-amber-400 p-8 text-zinc-950 ${racon ? "racon-network" : ""}`}><p className="text-sm font-black tracking-[.16em]">NETWORK DE NEGÓCIOS</p><h2 className="mt-4 text-3xl font-black sm:text-4xl">Toda terça-feira, às 19h, uma nova oportunidade de conexão.</h2><p className="mt-5 leading-relaxed">Parceiros, empresários, vendedores, corretores e pessoas com visão de crescimento reunidos para gerar conversas, conexões e negócios.</p><div className="mt-7"><Cta href="/parceiros/cadastro?modelo=CONVERSAR_EQUIPE">Quero participar do próximo encontro</Cta></div></div><div className="rounded-3xl border border-white/10 bg-zinc-900 p-8"><p className="text-sm font-black tracking-[.16em] text-amber-400">O QUE A ESTRUTURA ENTREGA</p><ul className="mt-6 grid gap-4 text-zinc-200">{["Treinamento de produto, abordagem e objeções", "Material digital e impresso", "Suporte em reuniões e vendas estratégicas", "Backoffice de cadastro, documentos e contratos", "Pós-venda e acompanhamento de cotas", "Gestão de leads e oportunidades"].map((item) => <li key={item} className="flex gap-3"><span className="text-amber-400">✦</span>{item}</li>)}</ul></div></section>
 
     <section className="border-t border-white/10 bg-zinc-900 px-5 py-20 text-center"><div className="mx-auto max-w-3xl"><p className="text-sm font-black tracking-[.16em] text-amber-400">SEU PRÓXIMO PASSO</p><h2 className="mt-4 text-4xl font-black sm:text-6xl">Sua rede já tem valor. Vamos transformá-la em oportunidade?</h2><p className="mt-6 text-lg text-zinc-300">Cadastre-se, escolha a modalidade que mais combina com seu momento e receba a orientação da equipe para começar.</p><div className="mt-9"><Cta href="/parceiros/cadastro?modelo=CONVERSAR_EQUIPE">Quero me cadastrar como parceiro</Cta></div><p className="mt-8 text-xs leading-relaxed text-zinc-500">Os valores apresentados nas simulações são estimativos e dependem de regras comerciais vigentes, recebimento efetivo de comissão, validação da operação, cancelamentos, inadimplência e estornos.</p></div></section>
   </main>;

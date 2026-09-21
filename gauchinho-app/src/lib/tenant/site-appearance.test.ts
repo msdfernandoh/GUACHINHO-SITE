@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { blockImage, normalizePageAppearance, pageAppearanceCss, safeImageUrl, visibleModelMenus, visualBlocksForPage, RACON_LOGO } from "./site-appearance";
+import { blockImage, normalizePageAppearance, pageAppearanceCss, raconPartnerNavigation, safeImageUrl, visibleModelMenus, visualBlocksForPage, RACON_LOGO } from "./site-appearance";
 
 describe("aparência por página e bloco", () => {
   it("preserva fotos, cores e enquadramento independentes", () => {
@@ -36,5 +36,15 @@ describe("menus do modelo", () => {
     const menus = [{ id: "home", obrigatorio: true }, { id: "grupos", ativo: false }, { id: "simulador", ativo_padrao: false }, { id: "login" }];
     expect(visibleModelMenus(menus, ["grupos", "simulador"]).map(m => m.id)).toEqual(["home", "simulador"]);
     expect(visibleModelMenus([{ id: "home", obrigatorio: true, ativo: false }], ["home"])).toEqual([]);
+  });
+  it("mantém indicação, cria Seja parceiro e remove Seguradoras na família Racon", () => {
+    const menus = raconPartnerNavigation([
+      { id: "home", label: "Início", rota: "/" },
+      { id: "seguradoras", label: "Seguradoras", rota: "/seguradoras" },
+      { id: "indicacao", label: "Programa de Indicação", rota: "/indicar" },
+      { id: "login", label: "Login", rota: "/login" },
+    ]);
+    expect(menus.map((menu) => menu.label)).toEqual(["Início", "Programa de Indicação", "Seja parceiro", "Login"]);
+    expect(menus[2].rota).toBe("/parceiros");
   });
 });

@@ -10,7 +10,7 @@ import {
   getMacroTierByFase,
   isEtapaInMacroTier,
 } from "@/lib/crm/constants";
-import { extrairValorParcelaLead } from "@/lib/crm/dashboard-query";
+import { extrairValorParcelaLead } from "@/lib/crm/lead-metrics";
 import { CrmLeadCard } from "./crm-lead-card";
 import { CrmStageMoveModal } from "./crm-stage-move-modal";
 import { updateLeadEtapaAction } from "@/app/admin/leads/actions";

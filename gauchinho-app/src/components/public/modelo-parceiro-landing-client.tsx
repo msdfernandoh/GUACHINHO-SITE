@@ -15,12 +15,14 @@ const raconModeloCss = `
   .racon-modelo [class*="border-white"] { border-color: #dbe7f5; }
   .racon-modelo [class*="bg-amber"] { background-color: #0066cc; color: #fff; }
   .racon-modelo [class*="bg-amber"] [class*="text-zinc-"] { color: #fff; }
-  .racon-modelo .racon-modelo-hero { background: linear-gradient(125deg, #0055b8, #0076d7 58%, #00a1df); }
+  .racon-modelo .racon-modelo-hero { --visual-title: #ffffff; --visual-text: #eaf5ff; --visual-accent: #ffffff; background: linear-gradient(125deg, #004ca8, #0076d7 58%, #00a1df); }
+  .racon-modelo .racon-modelo-hero > div > a { color: #ffffff !important; }
   .racon-modelo .racon-modelo-hero [class*="text-white"] { color: #fff; }
   .racon-modelo .racon-modelo-hero [class*="text-zinc-"] { color: #e1efff; }
   .racon-modelo .racon-modelo-hero [class*="text-amber"] { color: #b9e0ff; }
   .racon-modelo .racon-modelo-hero [class*="bg-zinc-"] { background-color: rgba(5, 41, 94, .28); }
   .racon-modelo .racon-modelo-hero [class*="bg-amber"] { background: #fff; color: #0066cc; }
+  .racon-modelo [class*="bg-amber"] { --visual-title: #ffffff; --visual-text: #ffffff; }
 `;
 
 export function ModeloParceiroLandingClient({ modelo, racon = false }: { modelo: ModeloParceiro; racon?: boolean }) {
@@ -39,6 +41,6 @@ export function ModeloParceiroLandingClient({ modelo, racon = false }: { modelo:
 
     <section className="mx-auto max-w-6xl px-5 py-20"><div className="grid gap-5 md:grid-cols-3">{modelo.vantagens.map((vantagem, indice) => <article key={vantagem} className="rounded-3xl border border-white/10 bg-zinc-900 p-7"><span className="text-2xl font-black text-amber-400">0{indice + 1}</span><h2 className="mt-5 text-xl font-black">{vantagem}</h2><p className="mt-3 text-sm leading-relaxed text-zinc-400">Você cuida da geração de oportunidades; a estrutura entra para tornar a jornada comercial mais organizada e consistente.</p></article>)}</div></section>
 
-    <section className="border-t border-white/10 bg-zinc-900 px-5 py-20 text-center"><div className="mx-auto max-w-3xl"><p className="text-sm font-black tracking-[.16em] text-amber-400">PRONTO PARA O PRÓXIMO PASSO?</p><h2 className="mt-4 text-4xl font-black sm:text-5xl">{modelo.nome}: transforme sua rede em novos negócios.</h2><p className="mt-5 text-zinc-300">Cadastre seu interesse. Todos começam no Nível 1; solicitações de outros modelos passam pela análise dos administradores da Gauchinho.</p><Link href={`/parceiros/cadastro?modelo=${modelo.id}`} className="mt-8 inline-flex rounded-2xl bg-amber-400 px-7 py-4 font-black text-zinc-950 transition hover:bg-amber-300">{modelo.cta}</Link><p className="mx-auto mt-8 max-w-2xl text-xs leading-relaxed text-zinc-500">Valores estimativos e sujeitos às regras comerciais vigentes, recebimento efetivo de comissão, validação da operação, cancelamentos, inadimplência e estornos. Não constituem promessa de renda ou resultado garantido.</p></div></section>
+    <section className="border-t border-white/10 bg-zinc-900 px-5 py-20 text-center"><div className="mx-auto max-w-3xl"><p className="text-sm font-black tracking-[.16em] text-amber-400">PRONTO PARA O PRÓXIMO PASSO?</p><h2 className="mt-4 text-4xl font-black sm:text-5xl">{modelo.nome}: transforme sua rede em novos negócios.</h2><p className="mt-5 text-zinc-300">Cadastre seu interesse. Todos começam no Nível 1; solicitações de outros modelos passam pela análise da equipe responsável.</p><Link href={`/parceiros/cadastro?modelo=${modelo.id}`} className="mt-8 inline-flex rounded-2xl bg-amber-400 px-7 py-4 font-black text-zinc-950 transition hover:bg-amber-300">{modelo.cta}</Link><p className="mx-auto mt-8 max-w-2xl text-xs leading-relaxed text-zinc-500">Valores estimativos e sujeitos às regras comerciais vigentes, recebimento efetivo de comissão, validação da operação, cancelamentos, inadimplência e estornos. Não constituem promessa de renda ou resultado garantido.</p></div></section>
   </main>;
 }

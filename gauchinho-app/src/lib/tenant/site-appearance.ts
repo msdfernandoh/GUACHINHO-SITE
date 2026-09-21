@@ -99,3 +99,22 @@ export function visibleModelMenus<T extends { id: string; ativo?: boolean; obrig
   const selected = new Set(enabled);
   return catalog.filter(item => item.ativo !== false && (item.obrigatorio === true || selected.has(item.id)));
 }
+
+/** Ajusta a navegação da família Racon para o programa público de parceiros. */
+export function raconPartnerNavigation<T extends { id: string; label: string; rota: string; ativo?: boolean }>(menus: T[]): T[] {
+  let partnerMenuFound = false;
+  const normalized = menus.flatMap((menu) => {
+    const key = `${menu.id} ${menu.label} ${menu.rota}`.toLocaleLowerCase("pt-BR");
+    if (key.includes("seguradora") || menu.rota === "/seguradoras") return [];
+    if (menu.rota === "/parceiros" || key.includes("seja parceiro")) {
+      if (partnerMenuFound) return [];
+      partnerMenuFound = true;
+      return [{ ...menu, label: "Seja parceiro", rota: "/parceiros", ativo: true }];
+    }
+    return [menu];
+  });
+  if (partnerMenuFound) return normalized;
+  const item = { id: "parceiros", label: "Seja parceiro", rota: "/parceiros", ativo: true } as T;
+  const loginIndex = normalized.findIndex((menu) => menu.id === "login");
+  return loginIndex < 0 ? [...normalized, item] : [...normalized.slice(0, loginIndex), item, ...normalized.slice(loginIndex)];
+}

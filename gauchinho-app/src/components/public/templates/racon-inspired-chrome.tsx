@@ -31,7 +31,8 @@ export function RaconInspiredHeader({
   const accent = identidade.cor_destaque || "#ffb800";
   const activeMenus = menus.filter(menu => menu.ativo !== false);
   const login = activeMenus.find((menu) => menu.id === "login");
-  const navegacao = activeMenus.filter((menu) => menu.id !== "login");
+  const partner = activeMenus.find((menu) => menu.rota === "/parceiros");
+  const navegacao = activeMenus.filter((menu) => menu.id !== "login" && menu.rota !== "/parceiros");
   const telefone = resolveSiteContacts({ telefone: telefoneContato }, identidade.contatos).telefone;
   const number = contactNumber(telefone);
   const logo = logoUrl || (identidade.marca_propria ? null : RACON_LOGO);
@@ -60,6 +61,11 @@ export function RaconInspiredHeader({
                 {menu.label}
               </Link>
             ))}
+            {partner ? (
+              <Link href={partner.rota} style={{ backgroundColor: primary }} className="whitespace-nowrap rounded-full px-3.5 py-2 font-black text-white shadow-sm transition hover:brightness-95">
+                {partner.label}
+              </Link>
+            ) : null}
             {login ? (
               <Link href={login.rota} style={{ borderColor: primary, color: primary }} className="whitespace-nowrap rounded-full border px-4 py-2 font-black uppercase">
                 {login.label}

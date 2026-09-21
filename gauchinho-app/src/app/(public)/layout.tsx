@@ -14,6 +14,7 @@ import { RaconInspiredFooter, RaconInspiredHeader } from "@/components/public/te
 import { TenantBrandProvider } from "@/components/tenant/tenant-brand-context";
 import { GAUCHINHO_SLUG } from "@/lib/tenant/constants";
 import { SiteAppearance } from "@/components/public/site-appearance";
+import { raconPartnerNavigation } from "@/lib/tenant/site-appearance";
 import type { RaconTemplateIdentidade } from "@/components/public/templates/racon-inspired-home";
 import { loadPartnerSiteViewModel } from "@/lib/parceiros/public-site-loader";
 import { PARCEIRO_SITE_ID_HEADER } from "@/lib/parceiros/partner-site-types";
@@ -64,7 +65,8 @@ export default async function PublicLayout({ children }: { children: React.React
     ? { telefone: partnerView.contato.telefone, whatsapp: partnerView.contato.whatsapp }
     : resolveSiteContacts(tenant?.branding || {}, identidadeRacon.contatos);
   const nomeSite = partnerView?.nome_site ?? tenant?.branding.nome_site ?? "Gauchinho Consórcios";
-  const menusRacon = partnerView?.modelo_menus ?? tenant?.siteModel?.menus ?? [];
+  const menusBase = partnerView?.modelo_menus ?? tenant?.siteModel?.menus ?? [];
+  const menusRacon = usaChromeRacon ? raconPartnerNavigation(menusBase) : menusBase;
   const footerRacon = partnerView?.modelo_footer_copyright ?? tenant?.siteModel?.footerCopyright ?? undefined;
 
   const brandStyle: CSSProperties & Record<string, string> = {
