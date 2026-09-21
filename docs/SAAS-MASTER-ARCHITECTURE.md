@@ -2666,4 +2666,7 @@ Relatório:
 ### Evolução operacional 249 — Compatibilidade do wizard de propostas com registros legados
 
 O reaproveitamento diário de propostas no fechamento público considera somente registros com `public_token` válido e não vazio. Propostas históricas geradas apenas para PDF não possuem token de navegação e permanecem preservadas, mas não bloqueiam a criação de uma nova proposta no wizard.
+### Evolução operacional 250 — Fluxos nativos do app do indicador
+
+O app instalado do indicador possui rotas próprias para indicação conversacional e extrato de comissões mobile. A indicação identifica o titular exclusivamente pela sessão autenticada e valida o vínculo `usuarios → participantes_comerciais → programa_indicadores`; nenhum identificador do indicador é aceito do navegador. A tela de comissões lê as previsões do mesmo domínio ERP, limitada ao participante autenticado, e permite somente confirmar recebimentos próprios já pagos.
 
