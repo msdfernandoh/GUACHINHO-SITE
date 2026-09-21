@@ -1,5 +1,9 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
+### Evolução operacional 256 — Exclusão em lote de leads e transição irrestrita de etapas no CRM
+
+A exclusão de leads no CRM passa a operar com integridade referencial em cascata sobre vínculos dependentes (`programa_indicacoes` via Migration 237) e tratamento estruturado `{ ok: boolean, deleted?: number, error?: string }` nas Server Actions, eliminando telas de erro do React em produção. A gestão de etapas do funil de vendas (`/admin/leads` e `/admin/leads/[id]`) foi desacoplada de exigências burocráticas de proposta/fechamento, permitindo aos consultores e administradores reclassificar qualquer lead diretamente entre as 12 etapas canônicas (tanto individualmente via dropdown inline quanto em lote). Leads anteriormente fechados ou ganhos que se encontravam alocados em etapas iniciais foram reclassificados e sincronizados para a etapa canônica *Venda fechada*.
+
 ### Evolução operacional 241 — Landing de parceiros e PWA de indicadores
 
 O programa público de parceiros usa as comunicações Microfranqueado, Gerador de Negócios e Gerador de Possibilidades, mas toda entrada aprovada automaticamente inicia no perfil comercial canônico `INDICADOR` (Nível 1). Solicitações de nível superior são registradas para decisão exclusiva de administradores da Gauchinho; a landing nunca altera regra ou percentual homologado. A PWA do indicador exige credencial autenticada e vínculo `usuarios → empresa_usuarios → participantes_comerciais`, exibindo somente os próprios indicados e suas comissões. CPF isolado não é canal de acesso a dados financeiros.

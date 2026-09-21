@@ -11,6 +11,7 @@ import {
   fetchSrdOptions,
   updateLeadAction,
   fetchLeadArquivosAction,
+  fetchCrmFunilEtapasAction,
 } from "../actions";
 import { MOTIVOS_PERDA } from "@/lib/crm/constants";
 import { gerarPropostaFromCartaLeadAction } from "@/app/admin/cartas-contempladas/actions";
@@ -67,9 +68,12 @@ export default async function LeadDetailPage({
     timeline,
     qualificacoesEventos,
   } = detail;
-  const srds = await fetchSrdOptions();
-  const agendaItens = await fetchCompromissosLead(id);
-  const arquivos = await fetchLeadArquivosAction(id);
+  const [srds, etapas, agendaItens, arquivos] = await Promise.all([
+    fetchSrdOptions(),
+    fetchCrmFunilEtapasAction().catch(() => []),
+    fetchCompromissosLead(id),
+    fetchLeadArquivosAction(id),
+  ]);
   const podeExcluir = canDeleteRecords(usuario?.perfil);
   const leadEvento = lead as typeof lead & {
     evento_id?: string | null;
@@ -137,15 +141,34 @@ export default async function LeadDetailPage({
           />
         </div>
       </div>
-      <div>
-        <Label>Status (funil)</Label>
-        <Select name="status" defaultValue={lead.status}>
-          {FUNNEL_STATUSES.map((s) => (
-            <option key={s} value={s}>
-              {s}
-            </option>
-          ))}
-        </Select>
+      <div className="rounded-lg border border-blue-500/30 bg-blue-950/20 p-3">
+        <div className="flex items-center justify-between">
+          <Label className="text-blue-300 font-semibold">Etapa do Funil CRM</Label>
+          <span className="text-[11px] font-medium text-zinc-400">
+            {lead.fechado ? "🏆 Venda fechada (Ganho)" : "⚡ Mudança direta de etapa"}
+          </span>
+        </div>
+        {etapas && etapas.length > 0 ? (
+          <Select name="etapa_id" defaultValue={lead.etapa_id ?? ""}>
+            <option value="">Selecione uma etapa do CRM…</option>
+            {etapas.map((e) => (
+              <option key={e.id} value={e.id}>
+                {e.nome} {e.is_won ? "🏆 (Venda Fechada / Ganho)" : e.is_lost ? "❌ (Perdido)" : ""}
+              </option>
+            ))}
+          </Select>
+        ) : (
+          <Select name="status" defaultValue={lead.status}>
+            {FUNNEL_STATUSES.map((s) => (
+              <option key={s} value={s}>
+                {s}
+              </option>
+            ))}
+          </Select>
+        )}
+        <p className="mt-1 text-[11px] text-zinc-400">
+          Você pode trocar a etapa para qualquer fase livremente sem necessidade de gerar proposta ou preencher formulário de fechamento.
+        </p>
       </div>
       <div>
         <Label>Temperatura</Label>

@@ -26,12 +26,13 @@ export function CrmStageMoveModal({
   isPending: boolean;
 }) {
   const isLost = targetEtapa.is_lost || targetEtapa.slug === "perdido";
+  const isWon = targetEtapa.is_won || targetEtapa.slug === "venda_fechada";
   const [motivoPerda, setMotivoPerda] = useState("Sem interesse");
   const [observacao, setObservacao] = useState("");
   const [proximaAcao, setProximaAcao] = useState(lead.proxima_acao || "");
   const [dataRetorno, setDataRetorno] = useState(lead.proximo_retorno_data || "");
   const [temperatura, setTemperatura] = useState(lead.temperatura || "Quente");
-  const [definirRetorno, setDefinirRetorno] = useState(!isLost);
+  const [definirRetorno, setDefinirRetorno] = useState(!isLost && !isWon);
 
   useEffect(() => {
     if (!lead.proximo_retorno_data) {
@@ -65,11 +66,17 @@ export function CrmStageMoveModal({
         <div className="flex items-center gap-2">
           {isLost ? (
             <AlertTriangle className="h-5 w-5 text-red-400" />
+          ) : isWon ? (
+            <CheckCircle2 className="h-5 w-5 text-emerald-400" />
           ) : (
             <CheckCircle2 className="h-5 w-5 text-blue-400" />
           )}
           <h2 className="text-base font-bold text-zinc-100">
-            {isLost ? "Marcar Lead como Perdido" : "Atualizar Etapa do Lead"}
+            {isLost
+              ? "Marcar Lead como Perdido"
+              : isWon
+              ? "Marcar Lead como Venda Fechada"
+              : "Atualizar Etapa do Lead"}
           </h2>
         </div>
 
@@ -85,6 +92,14 @@ export function CrmStageMoveModal({
         </div>
 
         <form onSubmit={handleSave} className="mt-4 space-y-3.5">
+          {isWon && (
+            <div className="rounded-lg border border-emerald-500/30 bg-emerald-950/20 p-3 text-xs text-emerald-200">
+              <p className="font-semibold text-emerald-300">🏆 Transição para Venda Fechada</p>
+              <p className="mt-1 text-emerald-300/80">
+                O lead será atualizado para a etapa de Venda Fechada sem obrigatoriedade de proposta ou burocracia de fechamento prévio.
+              </p>
+            </div>
+          )}
           {/* Se for Perdido, exige motivo de perda */}
           {isLost ? (
             <div>
@@ -189,10 +204,14 @@ export function CrmStageMoveModal({
               type="submit"
               disabled={isPending}
               className={`text-xs font-semibold text-white shadow ${
-                isLost ? "bg-red-600 hover:bg-red-500" : "bg-blue-600 hover:bg-blue-500"
+                isLost
+                  ? "bg-red-600 hover:bg-red-500"
+                  : isWon
+                  ? "bg-emerald-600 hover:bg-emerald-500"
+                  : "bg-blue-600 hover:bg-blue-500"
               }`}
             >
-              {isPending ? "Salvando..." : "Confirmar Mudança"}
+              {isPending ? "Salvando..." : isWon ? "Confirmar Fechamento" : "Confirmar Mudança"}
             </Button>
           </div>
         </form>

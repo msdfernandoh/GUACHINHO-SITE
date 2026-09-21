@@ -279,7 +279,51 @@ export async function updateLeadAction(leadId: string, formData: FormData) {
     observacoes: String(formData.get("observacoes") ?? "").trim() || null,
     srd_responsavel_id: String(formData.get("srd_responsavel_id") ?? "").trim() || null,
     srd_responsavel_nome: String(formData.get("srd_responsavel_nome") ?? "").trim() || null,
+    etapa_id: String(formData.get("etapa_id") ?? before?.etapa_id ?? "").trim() || null,
+    fechado: before?.fechado ?? false,
+    fechado_at: before?.fechado_at ?? null,
+    data_fechamento: before?.data_fechamento ?? null,
+    perdido_at: before?.perdido_at ?? null,
   };
+
+  const etapaIdForm = String(formData.get("etapa_id") ?? "").trim();
+  if (etapaIdForm) {
+    const { data: etapaRow } = await supabase
+      .from("crm_funil_etapas")
+      .select("id, nome, is_won, is_lost")
+      .eq("id", etapaIdForm)
+      .maybeSingle();
+    if (etapaRow) {
+      updates.etapa_id = etapaRow.id;
+      updates.status = etapaRow.nome;
+      updates.fechado = etapaRow.is_won;
+      if (etapaRow.is_won) {
+        updates.fechado_at = new Date().toISOString();
+        updates.data_fechamento = updates.data_fechamento || new Date().toISOString().slice(0, 10);
+      } else {
+        updates.fechado_at = null;
+      }
+      if (etapaRow.is_lost) {
+        updates.perdido_at = new Date().toISOString();
+      } else {
+        updates.perdido_at = null;
+      }
+    }
+  } else if (updates.status) {
+    const { data: etapaByStatus } = await supabase
+      .from("crm_funil_etapas")
+      .select("id, nome, is_won, is_lost")
+      .ilike("nome", updates.status)
+      .maybeSingle();
+    if (etapaByStatus) {
+      updates.etapa_id = etapaByStatus.id;
+      updates.fechado = etapaByStatus.is_won;
+      if (etapaByStatus.is_won) {
+        updates.fechado_at = new Date().toISOString();
+        updates.data_fechamento = updates.data_fechamento || new Date().toISOString().slice(0, 10);
+      }
+    }
+  }
 
   const eventoId = updates.evento_id;
   if (eventoId) {
@@ -413,30 +457,141 @@ export async function deleteLeadAction(leadId: string) {
     throw new Error("Sem permissão para excluir leads");
   }
   const supabase = await createClient();
+  // Limpa indicações associadas que poderiam ter RESTRICT
+  await supabase.from("programa_indicacoes").delete().eq("lead_id", leadId);
   const { error } = await supabase.from("leads").delete().eq("id", leadId);
   if (error) throw new Error(error.message);
   revalidatePath("/admin/leads");
+  revalidatePath("/admin/crm");
+  revalidatePath("/admin/crm/pipeline");
+  revalidatePath("/admin");
   redirect("/admin/leads");
 }
 
-export async function bulkDeleteLeadsAction(leadIds: string[], confirmacao: string) {
-  const usuario = await requireUsuario();
-  if (!canDeleteRecords(usuario.perfil)) {
-    throw new Error("Sem permissão para excluir leads");
-  }
-  if (confirmacao.trim().toUpperCase() !== "EXCLUIR") {
-    throw new Error('Digite EXCLUIR para confirmar a exclusão em massa.');
-  }
-  const ids = [...new Set(leadIds.map((id) => id.trim()).filter(Boolean))];
-  if (!ids.length) throw new Error("Nenhum lead selecionado.");
+export async function bulkDeleteLeadsAction(
+  leadIds: string[],
+  confirmacao: string,
+): Promise<{ ok: boolean; deleted?: number; error?: string }> {
+  try {
+    const usuario = await requireUsuario();
+    if (!canDeleteRecords(usuario.perfil)) {
+      return { ok: false, error: "Sem permissão para excluir leads." };
+    }
+    if (confirmacao.trim().toUpperCase() !== "EXCLUIR") {
+      return { ok: false, error: "Digite EXCLUIR para confirmar a exclusão em massa." };
+    }
+    const ids = [...new Set(leadIds.map((id) => id.trim()).filter(Boolean))];
+    if (!ids.length) return { ok: false, error: "Nenhum lead selecionado." };
 
-  const supabase = await createClient();
-  const { error } = await supabase.from("leads").delete().in("id", ids);
-  if (error) throw new Error(error.message);
+    const supabase = await createClient();
 
-  revalidatePath("/admin/leads");
-  revalidatePath("/admin");
-  return { deleted: ids.length };
+    // 1. Limpa vínculos dependentes em programa_indicacoes que possam travar por FK
+    const { error: indErr } = await supabase
+      .from("programa_indicacoes")
+      .delete()
+      .in("lead_id", ids);
+    if (indErr) {
+      console.warn("[bulkDeleteLeadsAction] Aviso ao desvincular programa_indicacoes:", indErr.message);
+    }
+
+    // 2. Executa exclusão dos leads
+    const { error } = await supabase.from("leads").delete().in("id", ids);
+    if (error) {
+      console.error("[bulkDeleteLeadsAction] Erro no Supabase:", error);
+      return { ok: false, error: `Erro ao excluir leads: ${error.message}` };
+    }
+
+    revalidatePath("/admin/leads");
+    revalidatePath("/admin/crm");
+    revalidatePath("/admin/crm/pipeline");
+    revalidatePath("/admin");
+    return { ok: true, deleted: ids.length };
+  } catch (err) {
+    console.error("[bulkDeleteLeadsAction] Falha inesperada:", err);
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : "Erro inesperado ao excluir leads.",
+    };
+  }
+}
+
+export async function bulkUpdateLeadEtapaAction(
+  leadIds: string[],
+  etapaIdOrSlug: string,
+): Promise<{ ok: boolean; count?: number; error?: string }> {
+  try {
+    const usuario = await requireUsuario();
+    const ids = [...new Set(leadIds.map((id) => id.trim()).filter(Boolean))];
+    if (!ids.length) return { ok: false, error: "Nenhum lead selecionado." };
+    if (!etapaIdOrSlug) return { ok: false, error: "Selecione a nova etapa." };
+
+    const supabase = await createClient();
+    const { empresaAtiva } = await getCurrentTenantContext();
+
+    let etapaNome = etapaIdOrSlug;
+    let isWon = false;
+    let isLost = false;
+    let realEtapaId: string | null = null;
+
+    if (empresaAtiva) {
+      const { data: etapa } = await supabase
+        .from("crm_funil_etapas")
+        .select("id, nome, slug, is_won, is_lost")
+        .or(`id.eq.${etapaIdOrSlug},slug.eq.${etapaIdOrSlug}`)
+        .eq("empresa_id", empresaAtiva.id)
+        .maybeSingle();
+
+      if (etapa) {
+        etapaNome = etapa.nome;
+        realEtapaId = etapa.id;
+        isWon = etapa.is_won;
+        isLost = etapa.is_lost;
+      }
+    }
+
+    const updatePayload: Record<string, unknown> = {
+      status: etapaNome,
+      ultima_interacao_at: new Date().toISOString(),
+      fechado: isWon,
+    };
+
+    if (realEtapaId) updatePayload.etapa_id = realEtapaId;
+    if (isWon) {
+      updatePayload.fechado_at = new Date().toISOString();
+      updatePayload.data_fechamento = new Date().toISOString().slice(0, 10);
+    } else {
+      updatePayload.fechado_at = null;
+    }
+    if (isLost) {
+      updatePayload.perdido_at = new Date().toISOString();
+    } else {
+      updatePayload.perdido_at = null;
+    }
+
+    const { error } = await supabase.from("leads").update(updatePayload).in("id", ids);
+    if (error) {
+      console.error("[bulkUpdateLeadEtapaAction] Erro:", error);
+      return { ok: false, error: error.message };
+    }
+
+    for (const id of ids) {
+      await historico(id, usuario.id, "lead_etapa_alterada", `Etapa alterada em lote para “${etapaNome}”`, {
+        status_novo: etapaNome,
+      });
+    }
+
+    revalidatePath("/admin/leads");
+    revalidatePath("/admin/crm");
+    revalidatePath("/admin/crm/pipeline");
+    revalidatePath("/admin");
+    return { ok: true, count: ids.length };
+  } catch (err) {
+    console.error("[bulkUpdateLeadEtapaAction] Exceção:", err);
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : "Erro ao atualizar etapas em lote.",
+    };
+  }
 }
 
 export async function fetchLeadsList(filters: LeadFilters) {
@@ -770,9 +925,14 @@ export async function updateLeadEtapaAction(
     updatePayload.fechado = true;
     updatePayload.fechado_at = new Date().toISOString();
     updatePayload.data_fechamento = new Date().toISOString().slice(0, 10);
+  } else {
+    updatePayload.fechado = false;
+    updatePayload.fechado_at = null;
   }
   if (isLost) {
     updatePayload.perdido_at = new Date().toISOString();
+  } else {
+    updatePayload.perdido_at = null;
   }
 
   const { error } = await supabase.from("leads").update(updatePayload).eq("id", leadId);

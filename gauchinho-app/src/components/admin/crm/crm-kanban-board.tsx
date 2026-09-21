@@ -14,6 +14,7 @@ import { extrairValorParcelaLead } from "@/lib/crm/lead-metrics";
 import { CrmLeadCard } from "./crm-lead-card";
 import { CrmStageMoveModal } from "./crm-stage-move-modal";
 import { updateLeadEtapaAction } from "@/app/admin/leads/actions";
+import { isLeadGanho } from "@/lib/crm/upsert-lead";
 import {
   Search,
   Filter,
@@ -220,6 +221,17 @@ export function CrmKanbanBoard({
 
   for (const l of filteredLeads) {
     let etapaId = l.etapa_id;
+    const isClosed = isLeadGanho(l.status, l.fechado);
+
+    // Se o lead já fechou/ganhou mas a etapa_id aponta para uma etapa divergente, direciona para Venda Fechada
+    if (isClosed) {
+      const currentEtapaTarget = etapas.find((e) => e.id === etapaId);
+      if (!currentEtapaTarget || !currentEtapaTarget.is_won) {
+        const wonEtapa = etapas.find((e) => e.is_won || e.slug === "venda_fechada");
+        if (wonEtapa) etapaId = wonEtapa.id;
+      }
+    }
+
     if (!etapaId || !leadsByEtapa.has(etapaId)) {
       const mappedSlug = mapLegacyStatusToEtapaSlug(l.status);
       const found = etapas.find(
@@ -329,7 +341,7 @@ export function CrmKanbanBoard({
               proxima_acao: extra.proximaAcao || l.proxima_acao,
               data_proxima_acao: extra.dataProximaAcao || l.data_proxima_acao,
               temperatura: extra.temperatura || l.temperatura,
-              fechado: targetEtapa.is_won ? true : l.fechado,
+              fechado: Boolean(targetEtapa.is_won),
             }
           : l,
       ),

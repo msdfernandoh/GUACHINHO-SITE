@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
-import type { LeadListRow } from "@/lib/crm/types";
+import type { LeadListRow, CrmFunilEtapaRow } from "@/lib/crm/types";
 import type { ConsultorOption } from "@/lib/admin/consultores";
 import { labelOrigem, valorEstimadoLead } from "@/lib/crm/constants";
 import { labelEventoProduto } from "@/lib/crm/label-evento-produto";
@@ -13,18 +13,24 @@ import { LeadWhatsappButton } from "./lead-whatsapp-button";
 import { LeadQuickIndicacaoButton } from "./lead-quick-indicacao";
 import { adminTableCellClass, adminTableHeadClass } from "@/components/admin/admin-contrast";
 import { cn } from "@/lib/utils/cn";
-import { bulkAssignConsultorAction, bulkDeleteLeadsAction } from "@/app/admin/leads/actions";
+import {
+  bulkAssignConsultorAction,
+  bulkDeleteLeadsAction,
+  bulkUpdateLeadEtapaAction,
+} from "@/app/admin/leads/actions";
 import { Button, Input, Select } from "@/components/ui/form-primitives";
 
 type Props = {
   leads: LeadListRow[];
   consultores: ConsultorOption[];
+  etapas?: CrmFunilEtapaRow[];
   canDelete?: boolean;
 };
 
-export function LeadListWithBulk({ leads, consultores, canDelete = false }: Props) {
+export function LeadListWithBulk({ leads, consultores, etapas = [], canDelete = false }: Props) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [consultorId, setConsultorId] = useState("");
+  const [targetEtapaId, setTargetEtapaId] = useState("");
   const [pending, startTransition] = useTransition();
   const [msg, setMsg] = useState<string | null>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -64,6 +70,29 @@ export function LeadListWithBulk({ leads, consultores, canDelete = false }: Prop
     });
   }
 
+  function aplicarEtapa() {
+    setMsg(null);
+    if (!targetEtapaId) {
+      setMsg("Escolha a nova etapa para os leads selecionados.");
+      return;
+    }
+    const ids = [...selected];
+    startTransition(async () => {
+      try {
+        const res = await bulkUpdateLeadEtapaAction(ids, targetEtapaId);
+        if (!res.ok) {
+          setMsg(res.error || "Erro ao mudar etapa dos leads.");
+          return;
+        }
+        setSelected(new Set());
+        setTargetEtapaId("");
+        setMsg(`${res.count ?? ids.length} lead(s) movido(s) de etapa com sucesso.`);
+      } catch (e) {
+        setMsg(e instanceof Error ? e.message : "Erro ao atualizar etapas.");
+      }
+    });
+  }
+
   function abrirExclusao() {
     setMsg(null);
     if (selected.size === 0) {
@@ -80,10 +109,14 @@ export function LeadListWithBulk({ leads, consultores, canDelete = false }: Prop
     startTransition(async () => {
       try {
         const result = await bulkDeleteLeadsAction(ids, confirmText);
+        if (!result.ok) {
+          setMsg(result.error || "Erro ao excluir leads.");
+          return;
+        }
         setSelected(new Set());
         setDeleteOpen(false);
         setConfirmText("");
-        setMsg(`${result.deleted} lead(s) excluído(s).`);
+        setMsg(`${result.deleted} lead(s) excluído(s) com sucesso.`);
       } catch (e) {
         setMsg(e instanceof Error ? e.message : "Erro ao excluir leads.");
       }
@@ -93,7 +126,8 @@ export function LeadListWithBulk({ leads, consultores, canDelete = false }: Prop
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-end gap-3 rounded-xl border border-zinc-700 bg-zinc-900/60 p-3">
-        <div className="min-w-[200px] flex-1">
+        {/* Atribuição de Consultor */}
+        <div className="min-w-[180px] flex-1">
           <label className="mb-1 block text-xs font-semibold text-zinc-300">Consultor para selecionados</label>
           <Select value={consultorId} onChange={(e) => setConsultorId(e.target.value)}>
             <option value="">Selecione…</option>
@@ -107,6 +141,33 @@ export function LeadListWithBulk({ leads, consultores, canDelete = false }: Prop
         <Button type="button" disabled={pending || selected.size === 0} onClick={aplicarConsultor}>
           {pending ? "Salvando…" : `Atribuir (${selected.size})`}
         </Button>
+
+        {/* Mudança Rápida de Etapa em Lote */}
+        {etapas && etapas.length > 0 ? (
+          <>
+            <div className="min-w-[200px] flex-1">
+              <label className="mb-1 block text-xs font-semibold text-zinc-300">Etapa para selecionados</label>
+              <Select value={targetEtapaId} onChange={(e) => setTargetEtapaId(e.target.value)}>
+                <option value="">Selecione a etapa…</option>
+                {etapas.map((et) => (
+                  <option key={et.id} value={et.id}>
+                    {et.nome} {et.is_won ? "🏆 (Ganho)" : et.is_lost ? "❌ (Perdido)" : ""}
+                  </option>
+                ))}
+              </Select>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              className="border-blue-500/50 text-blue-300 hover:bg-blue-500/10"
+              disabled={pending || selected.size === 0 || !targetEtapaId}
+              onClick={aplicarEtapa}
+            >
+              {pending ? "Alterando…" : `Mudar etapa (${selected.size})`}
+            </Button>
+          </>
+        ) : null}
+
         {canDelete ? (
           <Button
             type="button"
@@ -118,7 +179,7 @@ export function LeadListWithBulk({ leads, consultores, canDelete = false }: Prop
             Excluir selecionados ({selected.size})
           </Button>
         ) : null}
-        {msg ? <p className="text-sm text-amber-300">{msg}</p> : null}
+        {msg ? <p className="w-full text-sm font-medium text-amber-300">{msg}</p> : null}
       </div>
 
       {deleteOpen ? (
@@ -236,7 +297,36 @@ export function LeadListWithBulk({ leads, consultores, canDelete = false }: Prop
                     <LeadTipoSonhoBadge value={l.tipo_sonho} />
                   </td>
                   <td className="px-3 py-2">
-                    <LeadStatusBadge status={l.status} />
+                    <div className="flex flex-col gap-1">
+                      <LeadStatusBadge status={l.status} />
+                      {etapas && etapas.length > 0 ? (
+                        <select
+                          disabled={pending}
+                          value={l.etapa_id ?? ""}
+                          onChange={(e) => {
+                            const newEtapaId = e.target.value;
+                            if (newEtapaId) {
+                              startTransition(async () => {
+                                const res = await bulkUpdateLeadEtapaAction([l.id], newEtapaId);
+                                if (!res.ok) setMsg(res.error || "Erro ao mudar etapa");
+                                else setMsg(`Etapa de “${l.nome}” atualizada com sucesso.`);
+                              });
+                            }
+                          }}
+                          className="h-6 max-w-[130px] rounded border border-zinc-800 bg-zinc-900 px-1 text-[10px] text-zinc-400 hover:border-zinc-600 focus:border-blue-500 focus:outline-hidden"
+                          title="Mudar etapa deste lead"
+                        >
+                          <option value="" disabled>
+                            Mudar etapa…
+                          </option>
+                          {etapas.map((et) => (
+                            <option key={et.id} value={et.id}>
+                              {et.nome}
+                            </option>
+                          ))}
+                        </select>
+                      ) : null}
+                    </div>
                   </td>
                   <td className={cn(adminTableCellClass, "text-zinc-300")}>{l.srd_responsavel_nome ?? "—"}</td>
                   <td className="px-3 py-2 max-w-[140px] truncate text-xs text-zinc-300" title={prox}>

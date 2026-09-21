@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Suspense } from "react";
-import { fetchLeadsList, fetchSrdOptions } from "./actions";
+import { fetchCrmFunilEtapasAction, fetchLeadsList, fetchSrdOptions } from "./actions";
 import { fetchEventosOptionsForFilter } from "@/app/admin/eventos/actions";
 import { requireStaffAdmin } from "@/lib/auth/require-staff-admin";
 import { getUsuarioNegocio } from "@/lib/auth/get-usuario";
@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/form-primitives";
 import { LeadFilters } from "@/components/admin/crm/lead-filters";
 import { LeadListWithBulk } from "@/components/admin/crm/lead-list-with-bulk";
 import { ExportLeadsButton } from "@/components/admin/crm/export-leads-button";
-import type { LeadFilters as LF, LeadListRow } from "@/lib/crm/types";
+import type { CrmFunilEtapaRow, LeadFilters as LF, LeadListRow } from "@/lib/crm/types";
 import type { ConsultorOption } from "@/lib/admin/consultores";
 
 import { CrmQuickLeadButton } from "@/components/admin/crm/crm-quick-lead-button";
@@ -49,17 +49,20 @@ export default async function LeadsListPage({
   let leads: LeadListRow[] = [];
   let srds: ConsultorOption[] = [];
   let eventos: { id: string; nome: string }[] = [];
+  let etapas: CrmFunilEtapaRow[] = [];
   let loadError: string | null = null;
 
   try {
-    const [leadsRes, srdsRes, eventosRes] = await Promise.all([
+    const [leadsRes, srdsRes, eventosRes, etapasRes] = await Promise.all([
       fetchLeadsList(filters),
       fetchSrdOptions().catch(() => [] as ConsultorOption[]),
       fetchEventosOptionsForFilter().catch(() => [] as { id: string; nome: string }[]),
+      fetchCrmFunilEtapasAction().catch(() => [] as CrmFunilEtapaRow[]),
     ]);
     leads = leadsRes;
     srds = srdsRes;
     eventos = eventosRes;
+    etapas = etapasRes;
   } catch (e) {
     loadError = e instanceof Error ? e.message : String(e);
     console.error("[admin/leads] page load:", loadError);
@@ -116,6 +119,7 @@ export default async function LeadsListPage({
       <LeadListWithBulk
         leads={leads}
         consultores={srds}
+        etapas={etapas}
         canDelete={canDeleteRecords(usuario?.perfil)}
       />
     </div>

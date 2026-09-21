@@ -338,7 +338,11 @@ export function ErpLeadsView({
     if (!canDelete || selectedIds.length === 0) return;
     if (!confirm(`Tem certeza que deseja excluir permanentemente ${selectedIds.length} lead(s)?`)) return;
     try {
-      await bulkDeleteLeadsAction(selectedIds, "EXCLUIR");
+      const res = await bulkDeleteLeadsAction(selectedIds, "EXCLUIR");
+      if (!res.ok) {
+        alert(res.error || "Erro ao excluir leads");
+        return;
+      }
       setSelectedIds([]);
       router.refresh();
     } catch (err) {

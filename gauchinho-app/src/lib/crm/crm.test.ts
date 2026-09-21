@@ -6,9 +6,10 @@ import {
   CRM_MACRO_TIERS,
   getMacroTierByFase,
   isEtapaInMacroTier,
+  mapLegacyStatusToEtapaSlug,
 } from "@/lib/crm/constants";
 import { buildLeadTimeline } from "@/lib/crm/timeline";
-import { extrairValorParcelaLead } from "@/lib/crm/dashboard-query";
+import { extrairValorParcelaLead } from "@/lib/crm/lead-metrics";
 
 describe("CRM Fase 10", () => {
   it("export CSV escapa vírgulas", () => {
@@ -126,6 +127,14 @@ describe("CRM Fase 10", () => {
 
       expect(isEtapaInMacroTier("venda_fechada", "fundo")).toBe(true);
       expect(isEtapaInMacroTier("pos_venda", "fundo")).toBe(true);
+    });
+
+    it("mapLegacyStatusToEtapaSlug mapeia ganho e fechado para venda_fechada", () => {
+      expect(mapLegacyStatusToEtapaSlug("ganho")).toBe("venda_fechada");
+      expect(mapLegacyStatusToEtapaSlug("Fechado")).toBe("venda_fechada");
+      expect(mapLegacyStatusToEtapaSlug("venda fechada")).toBe("venda_fechada");
+      expect(mapLegacyStatusToEtapaSlug("convertido")).toBe("venda_fechada");
+      expect(mapLegacyStatusToEtapaSlug("Novo")).toBe("novo_lead");
     });
   });
 });
