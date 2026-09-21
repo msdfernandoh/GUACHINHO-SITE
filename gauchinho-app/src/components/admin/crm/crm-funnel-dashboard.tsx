@@ -212,19 +212,21 @@ export function CrmFunnelDashboard({ data }: { data: CrmDashboardData }) {
           {funil.map((etapa) => {
             const widthPct = Math.max(2, Math.min(100, etapa.percentual));
             return (
-              <div key={etapa.id} className="group flex items-center gap-4 text-xs">
+              <Link
+                key={etapa.id}
+                href={`/admin/crm/pipeline?etapa=${etapa.slug}`}
+                className="group flex items-center gap-4 text-xs rounded-lg p-1.5 -mx-1.5 transition hover:bg-zinc-800/60"
+                title={`Abrir etapa "${etapa.nome}" no Pipeline`}
+              >
                 {/* Nome e ordem */}
                 <div className="w-48 shrink-0">
-                  <Link
-                    href={`/admin/crm/pipeline?etapa_id=${etapa.id}`}
-                    className="flex items-center gap-2 font-medium text-zinc-300 hover:text-white"
-                  >
+                  <div className="flex items-center gap-2 font-medium text-zinc-300 group-hover:text-white">
                     <span
                       className="h-2.5 w-2.5 shrink-0 rounded-full"
                       style={{ backgroundColor: etapa.cor }}
                     />
                     <span className="truncate">{etapa.nome}</span>
-                  </Link>
+                  </div>
                 </div>
 
                 {/* Barra horizontal proporcional */}
@@ -245,7 +247,7 @@ export function CrmFunnelDashboard({ data }: { data: CrmDashboardData }) {
 
                 {/* Valor acumulado, parcelas e contagem */}
                 <div className="flex w-72 shrink-0 items-center justify-end gap-3 font-mono text-xs text-zinc-400">
-                  <span className="font-semibold text-zinc-200">
+                  <span className="font-semibold text-zinc-200 group-hover:text-blue-300">
                     {etapa.totalLeads} {etapa.totalLeads === 1 ? "lead" : "leads"}
                   </span>
                   <span className="text-[11px] font-bold text-zinc-300">
@@ -255,7 +257,7 @@ export function CrmFunnelDashboard({ data }: { data: CrmDashboardData }) {
                     {etapa.valorParcelaTotal > 0 ? formatCurrency(etapa.valorParcelaTotal) + "/m" : "R$ 0/m"}
                   </span>
                 </div>
-              </div>
+              </Link>
             );
           })}
         </div>

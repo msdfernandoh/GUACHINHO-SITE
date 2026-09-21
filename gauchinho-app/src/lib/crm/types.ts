@@ -117,5 +117,8 @@ export type LeadFilters = {
   acao_vencida?: string;
   evento?: string;
   modelo_interesse?: string;
+  etapa?: string;
+  fase?: string;
+  etapa_slug?: string;
 };
 

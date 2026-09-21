@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { leadsToCsv } from "@/lib/crm/csv-export";
-import { MOTIVOS_PERDA, FUNNEL_STATUSES } from "@/lib/crm/constants";
+import {
+  MOTIVOS_PERDA,
+  FUNNEL_STATUSES,
+  CRM_MACRO_TIERS,
+  getMacroTierByFase,
+  isEtapaInMacroTier,
+} from "@/lib/crm/constants";
 import { buildLeadTimeline } from "@/lib/crm/timeline";
 import { extrairValorParcelaLead } from "@/lib/crm/dashboard-query";
 
@@ -81,6 +87,45 @@ describe("CRM Fase 10", () => {
     it("retorna 0 para lead sem crédito", () => {
       const p = extrairValorParcelaLead({ valor_estimado: 0 });
       expect(p).toBe(0);
+    });
+  });
+
+  describe("CRM_MACRO_TIERS & Navegação Interativa do Funil", () => {
+    it("possui 4 níveis macro com etapas atribuídas", () => {
+      expect(CRM_MACRO_TIERS.length).toBe(4);
+      expect(CRM_MACRO_TIERS.map((t) => t.fase)).toEqual(["topo", "meio_sup", "meio_inf", "fundo"]);
+      for (const tier of CRM_MACRO_TIERS) {
+        expect(tier.etapasSlugs.length).toBeGreaterThan(0);
+        expect(tier.nomeNivel).toBeTruthy();
+        expect(tier.corHex).toMatch(/^#/);
+      }
+    });
+
+    it("getMacroTierByFase resolve corretamente por slug ou fase", () => {
+      expect(getMacroTierByFase("topo")?.nomeNivel).toBe("TOPO FUNIL");
+      expect(getMacroTierByFase("meio_sup")?.nomeNivel).toBe("TOPO-MEIO");
+      expect(getMacroTierByFase("meio_inf")?.nomeNivel).toBe("MEIO FUNIL");
+      expect(getMacroTierByFase("fundo")?.nomeNivel).toBe("FUNDO FUNIL");
+      expect(getMacroTierByFase("topo_funil")?.fase).toBe("topo");
+      expect(getMacroTierByFase("inexistente")).toBeNull();
+      expect(getMacroTierByFase(null)).toBeNull();
+    });
+
+    it("isEtapaInMacroTier identifica etapas de cada fase macro", () => {
+      expect(isEtapaInMacroTier("novo_lead", "topo")).toBe(true);
+      expect(isEtapaInMacroTier("contato_realizado", "topo")).toBe(true);
+      expect(isEtapaInMacroTier("qualificado", "topo")).toBe(false);
+
+      expect(isEtapaInMacroTier("qualificado", "meio_sup")).toBe(true);
+      expect(isEtapaInMacroTier("reuniao_agendada", "meio_sup")).toBe(true);
+      expect(isEtapaInMacroTier("reuniao_realizada", "meio_sup")).toBe(true);
+
+      expect(isEtapaInMacroTier("proposta_enviada", "meio_inf")).toBe(true);
+      expect(isEtapaInMacroTier("documentacao_cadastro", "meio_inf")).toBe(true);
+      expect(isEtapaInMacroTier("boleto_enviado", "meio_inf")).toBe(true);
+
+      expect(isEtapaInMacroTier("venda_fechada", "fundo")).toBe(true);
+      expect(isEtapaInMacroTier("pos_venda", "fundo")).toBe(true);
     });
   });
 });

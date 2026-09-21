@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { formatCurrency } from "@/lib/utils/format";
 import type { CrmDashboardData, CrmFunilMacroTier, CrmFunilEtapaStats } from "@/lib/crm/dashboard-query";
 import {
@@ -21,9 +22,18 @@ import {
 } from "lucide-react";
 
 export function CrmFunnel3dVisual({ data }: { data: CrmDashboardData }) {
+  const router = useRouter();
   const { macroFunil, funil, totaisGerais } = data;
   const [activeTierId, setActiveTierId] = useState<string | null>(null);
   const [modoVisao, setModoVisao] = useState<"macro" | "detalhado">("macro");
+
+  function navigateToStage(tipo: "fase" | "etapa", valor: string) {
+    if (tipo === "fase") {
+      router.push(`/admin/crm/pipeline?fase=${encodeURIComponent(valor)}`);
+    } else {
+      router.push(`/admin/crm/pipeline?etapa=${encodeURIComponent(valor)}`);
+    }
+  }
 
   // Paleta e ícones para cada nível macro
   const tierIconMap = {
@@ -211,27 +221,41 @@ export function CrmFunnel3dVisual({ data }: { data: CrmDashboardData }) {
 
                 {/* CAMADA 1 — TOPO DO FUNIL */}
                 <g
-                  className="cursor-pointer transition-all duration-300"
+                  role="button"
+                  tabIndex={0}
+                  aria-label="Abrir Topo do Funil no Pipeline"
+                  onClick={() => navigateToStage("fase", "topo")}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      navigateToStage("fase", "topo");
+                    }
+                  }}
+                  className="cursor-pointer transition-all duration-300 focus:outline-hidden"
                   onMouseEnter={() => setActiveTierId("nivel-1-topo")}
                   onMouseLeave={() => setActiveTierId(null)}
                   style={{
-                    transform: activeTierId === "nivel-1-topo" ? "scale(1.02) translateY(-2px)" : "scale(1)",
+                    transform: activeTierId === "nivel-1-topo" ? "scale(1.03) translateY(-3px)" : "scale(1)",
                     transformOrigin: "center top",
                   }}
                 >
+                  <title>Clique para abrir Topo do Funil no Pipeline ({macroFunil[0]?.totalLeads ?? 0} leads)</title>
                   {/* Topo Elíptico 3D da Boca do Funil */}
-                  <ellipse cx="200" cy="30" rx="190" ry="24" fill="url(#grad-tier-1-top)" stroke="#c4b5fd" strokeWidth="1.5" />
+                  <ellipse cx="200" cy="30" rx="190" ry="24" fill="url(#grad-tier-1-top)" stroke={activeTierId === "nivel-1-topo" ? "#ffffff" : "#c4b5fd"} strokeWidth={activeTierId === "nivel-1-topo" ? "2.5" : "1.5"} />
                   {/* Corpo Trapezoidal */}
-                  <polygon points="10,30 390,30 325,130 75,130" fill="url(#grad-tier-1)" />
+                  <polygon points="10,30 390,30 325,130 75,130" fill="url(#grad-tier-1)" stroke={activeTierId === "nivel-1-topo" ? "#a78bfa" : "none"} strokeWidth="1.5" />
                   <polygon points="10,30 390,30 325,130 75,130" fill="url(#facet-shadow)" />
                   <ellipse cx="200" cy="130" rx="125" ry="12" fill="#4c1d95" opacity="0.6" />
                   
                   {/* Textos internos */}
-                  <text x="200" y="70" textAnchor="middle" fill="#ffffff" fontWeight="800" fontSize="15" letterSpacing="1">
+                  <text x="200" y="68" textAnchor="middle" fill="#ffffff" fontWeight="800" fontSize="15" letterSpacing="1">
                     TOPO FUNIL
                   </text>
-                  <text x="200" y="92" textAnchor="middle" fill="#e0e7ff" fontWeight="600" fontSize="12">
+                  <text x="200" y="88" textAnchor="middle" fill="#e0e7ff" fontWeight="600" fontSize="12">
                     {macroFunil[0]?.totalLeads ?? 0} leads • {formatCurrency(macroFunil[0]?.valorCreditoTotal ?? 0)}
+                  </text>
+                  <text x="200" y="106" textAnchor="middle" fill="#c4b5fd" fontWeight="700" fontSize="9" opacity={activeTierId === "nivel-1-topo" ? "1" : "0.75"}>
+                    {activeTierId === "nivel-1-topo" ? "➔ Clique para abrir no Pipeline" : "Ver oportunidades no Pipeline →"}
                   </text>
                 </g>
 
@@ -245,23 +269,37 @@ export function CrmFunnel3dVisual({ data }: { data: CrmDashboardData }) {
 
                 {/* CAMADA 2 — MEIO SUPERIOR (QUALIFICAÇÃO) */}
                 <g
-                  className="cursor-pointer transition-all duration-300"
+                  role="button"
+                  tabIndex={0}
+                  aria-label="Abrir Topo-Meio no Pipeline"
+                  onClick={() => navigateToStage("fase", "meio_sup")}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      navigateToStage("fase", "meio_sup");
+                    }
+                  }}
+                  className="cursor-pointer transition-all duration-300 focus:outline-hidden"
                   onMouseEnter={() => setActiveTierId("nivel-2-meio-sup")}
                   onMouseLeave={() => setActiveTierId(null)}
                   style={{
-                    transform: activeTierId === "nivel-2-meio-sup" ? "scale(1.02) translateY(-2px)" : "scale(1)",
+                    transform: activeTierId === "nivel-2-meio-sup" ? "scale(1.03) translateY(-3px)" : "scale(1)",
                     transformOrigin: "center",
                   }}
                 >
-                  <polygon points="75,142 325,142 265,242 135,242" fill="url(#grad-tier-2)" />
+                  <title>Clique para abrir Topo-Meio no Pipeline ({macroFunil[1]?.totalLeads ?? 0} leads)</title>
+                  <polygon points="75,142 325,142 265,242 135,242" fill="url(#grad-tier-2)" stroke={activeTierId === "nivel-2-meio-sup" ? "#67e8f9" : "none"} strokeWidth="1.5" />
                   <polygon points="75,142 325,142 265,242 135,242" fill="url(#facet-shadow)" />
                   <ellipse cx="200" cy="242" rx="65" ry="8" fill="#155e75" opacity="0.6" />
 
-                  <text x="200" y="185" textAnchor="middle" fill="#ffffff" fontWeight="800" fontSize="14" letterSpacing="1">
+                  <text x="200" y="182" textAnchor="middle" fill="#ffffff" fontWeight="800" fontSize="14" letterSpacing="1">
                     TOPO-MEIO
                   </text>
-                  <text x="200" y="205" textAnchor="middle" fill="#cffafe" fontWeight="600" fontSize="12">
+                  <text x="200" y="202" textAnchor="middle" fill="#cffafe" fontWeight="600" fontSize="12">
                     {macroFunil[1]?.totalLeads ?? 0} leads • {formatCurrency(macroFunil[1]?.valorCreditoTotal ?? 0)}
+                  </text>
+                  <text x="200" y="219" textAnchor="middle" fill="#a5f3fc" fontWeight="700" fontSize="9" opacity={activeTierId === "nivel-2-meio-sup" ? "1" : "0.75"}>
+                    {activeTierId === "nivel-2-meio-sup" ? "➔ Clique para abrir no Pipeline" : "Ver no Pipeline →"}
                   </text>
                 </g>
 
@@ -275,23 +313,37 @@ export function CrmFunnel3dVisual({ data }: { data: CrmDashboardData }) {
 
                 {/* CAMADA 3 — MEIO INFERIOR (OPORTUNIDADE) */}
                 <g
-                  className="cursor-pointer transition-all duration-300"
+                  role="button"
+                  tabIndex={0}
+                  aria-label="Abrir Meio do Funil no Pipeline"
+                  onClick={() => navigateToStage("fase", "meio_inf")}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      navigateToStage("fase", "meio_inf");
+                    }
+                  }}
+                  className="cursor-pointer transition-all duration-300 focus:outline-hidden"
                   onMouseEnter={() => setActiveTierId("nivel-3-meio-inf")}
                   onMouseLeave={() => setActiveTierId(null)}
                   style={{
-                    transform: activeTierId === "nivel-3-meio-inf" ? "scale(1.02) translateY(-2px)" : "scale(1)",
+                    transform: activeTierId === "nivel-3-meio-inf" ? "scale(1.03) translateY(-3px)" : "scale(1)",
                     transformOrigin: "center",
                   }}
                 >
-                  <polygon points="135,254 265,254 220,354 180,354" fill="url(#grad-tier-3)" />
+                  <title>Clique para abrir Meio Funil no Pipeline ({macroFunil[2]?.totalLeads ?? 0} leads)</title>
+                  <polygon points="135,254 265,254 220,354 180,354" fill="url(#grad-tier-3)" stroke={activeTierId === "nivel-3-meio-inf" ? "#fda4af" : "none"} strokeWidth="1.5" />
                   <polygon points="135,254 265,254 220,354 180,354" fill="url(#facet-shadow)" />
                   <ellipse cx="200" cy="354" rx="20" ry="5" fill="#881337" opacity="0.6" />
 
-                  <text x="200" y="295" textAnchor="middle" fill="#ffffff" fontWeight="800" fontSize="13" letterSpacing="0.8">
+                  <text x="200" y="292" textAnchor="middle" fill="#ffffff" fontWeight="800" fontSize="13" letterSpacing="0.8">
                     MEIO FUNIL
                   </text>
-                  <text x="200" y="315" textAnchor="middle" fill="#ffe4e6" fontWeight="600" fontSize="11">
+                  <text x="200" y="311" textAnchor="middle" fill="#ffe4e6" fontWeight="600" fontSize="11">
                     {macroFunil[2]?.totalLeads ?? 0} leads • {formatCurrency(macroFunil[2]?.valorCreditoTotal ?? 0)}
+                  </text>
+                  <text x="200" y="327" textAnchor="middle" fill="#fecdd3" fontWeight="700" fontSize="8.5" opacity={activeTierId === "nivel-3-meio-inf" ? "1" : "0.75"}>
+                    {activeTierId === "nivel-3-meio-inf" ? "➔ Clique para abrir" : "Ver no Pipeline →"}
                   </text>
                 </g>
 
@@ -305,24 +357,38 @@ export function CrmFunnel3dVisual({ data }: { data: CrmDashboardData }) {
 
                 {/* CAMADA 4 — FUNDO DO FUNIL (PONTA DE CONVERSÃO / VENDA) */}
                 <g
-                  className="cursor-pointer transition-all duration-300"
+                  role="button"
+                  tabIndex={0}
+                  aria-label="Abrir Fundo do Funil no Pipeline"
+                  onClick={() => navigateToStage("fase", "fundo")}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      navigateToStage("fase", "fundo");
+                    }
+                  }}
+                  className="cursor-pointer transition-all duration-300 focus:outline-hidden"
                   onMouseEnter={() => setActiveTierId("nivel-4-fundo")}
                   onMouseLeave={() => setActiveTierId(null)}
                   style={{
-                    transform: activeTierId === "nivel-4-fundo" ? "scale(1.04) translateY(-2px)" : "scale(1)",
+                    transform: activeTierId === "nivel-4-fundo" ? "scale(1.05) translateY(-3px)" : "scale(1)",
                     transformOrigin: "center bottom",
                   }}
                 >
+                  <title>Clique para abrir Fundo de Funil no Pipeline ({macroFunil[3]?.totalLeads ?? 0} vendas)</title>
                   {/* Ponta cônica do funil */}
-                  <polygon points="180,366 220,366 200,455" fill="url(#grad-tier-4)" />
+                  <polygon points="180,366 220,366 200,455" fill="url(#grad-tier-4)" stroke={activeTierId === "nivel-4-fundo" ? "#fde68a" : "none"} strokeWidth="1.5" />
                   <polygon points="180,366 220,366 200,455" fill="url(#facet-shadow)" />
                   <circle cx="200" cy="455" r="5" fill="#10b981" />
 
-                  <text x="200" y="398" textAnchor="middle" fill="#ffffff" fontWeight="800" fontSize="11" letterSpacing="0.5">
+                  <text x="200" y="396" textAnchor="middle" fill="#ffffff" fontWeight="800" fontSize="11" letterSpacing="0.5">
                     FUNDO
                   </text>
-                  <text x="200" y="415" textAnchor="middle" fill="#fef3c7" fontWeight="700" fontSize="10">
+                  <text x="200" y="412" textAnchor="middle" fill="#fef3c7" fontWeight="700" fontSize="10">
                     {macroFunil[3]?.totalLeads ?? 0} vendas
+                  </text>
+                  <text x="200" y="426" textAnchor="middle" fill="#fde68a" fontWeight="700" fontSize="8" opacity={activeTierId === "nivel-4-fundo" ? "1" : "0.75"}>
+                    {activeTierId === "nivel-4-fundo" ? "➔ Abrir" : "Pipeline →"}
                   </text>
                 </g>
               </svg>
@@ -363,10 +429,19 @@ export function CrmFunnel3dVisual({ data }: { data: CrmDashboardData }) {
               return (
                 <div
                   key={tier.id}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => navigateToStage("fase", tier.fase)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      navigateToStage("fase", tier.fase);
+                    }
+                  }}
                   onMouseEnter={() => setActiveTierId(tier.id)}
                   onMouseLeave={() => setActiveTierId(null)}
-                  className={`group relative flex flex-col justify-between overflow-hidden rounded-2xl border p-4 shadow-lg transition-all duration-300 sm:flex-row sm:items-center ${borderClasses} ${
-                    isHovered ? "scale-[1.01] shadow-2xl ring-1 ring-zinc-700" : ""
+                  className={`group relative flex flex-col justify-between overflow-hidden rounded-2xl border p-4 shadow-lg transition-all duration-300 sm:flex-row sm:items-center cursor-pointer ${borderClasses} ${
+                    isHovered ? "scale-[1.015] shadow-2xl ring-2 ring-zinc-500/40" : ""
                   }`}
                 >
                   {/* Conector puzzle / aba lateral esquerda */}
@@ -388,12 +463,32 @@ export function CrmFunnel3dVisual({ data }: { data: CrmDashboardData }) {
                     <p className="mt-1 text-xs text-zinc-400">
                       {tier.subtitulo}
                     </p>
-                    <p className="text-[11px] text-zinc-500">
-                      Etapas: {tier.etapasNomes.join(" • ")}
-                    </p>
+                    
+                    {/* Sub-etapas como botões individuais */}
+                    <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[11px]">
+                      <span className="text-[10px] font-medium text-zinc-500">Etapas:</span>
+                      {tier.etapasSlugs.map((slug) => {
+                        const etapaFound = funil.find((f) => f.slug === slug);
+                        const nome = etapaFound ? etapaFound.nome : slug;
+                        return (
+                          <button
+                            key={slug}
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigateToStage("etapa", slug);
+                            }}
+                            className="rounded-md border border-zinc-700/70 bg-zinc-900/90 px-2 py-0.5 text-[10px] font-medium text-zinc-300 transition hover:border-zinc-400 hover:bg-zinc-800 hover:text-white"
+                            title={`Filtrar apenas "${nome}" no Pipeline`}
+                          >
+                            {nome}
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
 
-                  {/* AS 3 INFORMAÇÕES FUNDAMENTAIS (CRÉDITO, PARCELA E LEADS) */}
+                  {/* AS 3 INFORMAÇÕES FUNDAMENTAIS (CRÉDITO, PARCELA E LEADS) + CTA */}
                   <div className="mt-3 flex flex-wrap items-center gap-4 pl-3 sm:mt-0 sm:pl-0">
                     {/* 1. Valor de Crédito */}
                     <div className="text-left sm:text-right">
@@ -429,6 +524,12 @@ export function CrmFunnel3dVisual({ data }: { data: CrmDashboardData }) {
                       </span>
                     </div>
 
+                    {/* Botão de Ação Abrir Pipeline */}
+                    <div className="hidden items-center gap-1 rounded-xl border border-zinc-700/80 bg-zinc-800/80 px-2.5 py-1.5 text-[11px] font-bold text-zinc-200 group-hover:border-zinc-500 group-hover:bg-zinc-700 group-hover:text-white group-hover:shadow transition md:flex">
+                      <span>Pipeline</span>
+                      <ArrowRight className="h-3.5 w-3.5 transition group-hover:translate-x-0.5" />
+                    </div>
+
                     {/* Ícone Redondo Conectado da Ponta (Referência Visual) */}
                     <div
                       className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl shadow-md transition-all group-hover:scale-110 ${iconBgColors}`}
@@ -445,7 +546,7 @@ export function CrmFunnel3dVisual({ data }: { data: CrmDashboardData }) {
         /* 4. VISÃO DETALHADA (12 ETAPAS COMPLETAS COM CRÉDITO, PARCELA E LEADS) */
         <div className="relative z-10 mt-8 space-y-2.5">
           <p className="text-xs font-semibold text-zinc-400">
-            Detalhamento analítico de cada uma das 12 fases do CRM com Crédito, Parcela Estimada e Volume de Oportunidades:
+            Detalhamento analítico de cada uma das 12 fases do CRM (clique em qualquer linha para abrir filtrado no Pipeline):
           </p>
 
           {funil.map((etapa, idx) => {
@@ -453,7 +554,16 @@ export function CrmFunnel3dVisual({ data }: { data: CrmDashboardData }) {
             return (
               <div
                 key={etapa.id}
-                className="group flex flex-col gap-2 rounded-xl border border-zinc-800/80 bg-zinc-950/60 p-3.5 transition hover:border-zinc-700 hover:bg-zinc-900/80 sm:flex-row sm:items-center sm:justify-between"
+                role="button"
+                tabIndex={0}
+                onClick={() => navigateToStage("etapa", etapa.slug)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    navigateToStage("etapa", etapa.slug);
+                  }
+                }}
+                className="group flex flex-col gap-2 rounded-xl border border-zinc-800/80 bg-zinc-950/60 p-3.5 transition hover:border-zinc-500 hover:bg-zinc-900/90 cursor-pointer sm:flex-row sm:items-center sm:justify-between shadow-xs hover:shadow-md"
               >
                 {/* Nome e ordem */}
                 <div className="flex items-center gap-3 sm:w-60 shrink-0">
@@ -464,12 +574,9 @@ export function CrmFunnel3dVisual({ data }: { data: CrmDashboardData }) {
                     {idx + 1}
                   </span>
                   <div>
-                    <Link
-                      href={`/admin/crm/pipeline?etapa_id=${etapa.id}`}
-                      className="text-xs font-bold text-zinc-200 transition hover:text-white group-hover:underline"
-                    >
+                    <span className="text-xs font-bold text-zinc-200 transition hover:text-white group-hover:text-blue-300">
                       {etapa.nome}
-                    </Link>
+                    </span>
                     <p className="text-[10px] text-zinc-500">
                       {etapa.totalLeads} {etapa.totalLeads === 1 ? "oportunidade" : "oportunidades"}
                     </p>
@@ -520,6 +627,11 @@ export function CrmFunnel3dVisual({ data }: { data: CrmDashboardData }) {
                       {etapa.totalLeads} ({etapa.percentual.toFixed(0)}%)
                     </span>
                   </div>
+
+                  {/* Ícone de Seta de Navegação */}
+                  <div className="hidden sm:flex items-center pl-2 text-zinc-500 group-hover:text-zinc-200 transition group-hover:translate-x-1">
+                    <ArrowRight className="h-4 w-4" />
+                  </div>
                 </div>
               </div>
             );
@@ -531,26 +643,34 @@ export function CrmFunnel3dVisual({ data }: { data: CrmDashboardData }) {
       <div className="relative z-10 mt-8 flex flex-wrap items-center justify-between gap-4 rounded-xl border border-zinc-800 bg-zinc-950/80 p-4 text-xs">
         <div className="flex flex-wrap items-center gap-6">
           {/* Leads Perdidos */}
-          <div className="flex items-center gap-2">
+          <Link
+            href="/admin/crm/pipeline?etapa=perdido"
+            className="flex items-center gap-2 group transition hover:opacity-90"
+            title="Ver leads perdidos no pipeline"
+          >
             <span className="h-2.5 w-2.5 rounded-full bg-red-500" />
-            <span className="text-zinc-400">Leads Perdidos / Desqualificados:</span>
-            <strong className="text-red-300">
+            <span className="text-zinc-400 group-hover:text-zinc-200">Leads Perdidos / Desqualificados:</span>
+            <strong className="text-red-300 group-hover:underline">
               {totaisGerais.leadsPerdidos} ({formatCurrency(totaisGerais.creditoPerdido)})
             </strong>
-          </div>
+          </Link>
 
           {/* Stand-by / Futuro */}
-          <div className="flex items-center gap-2">
+          <Link
+            href="/admin/crm/pipeline?etapa=standby_futuro"
+            className="flex items-center gap-2 group transition hover:opacity-90"
+            title="Ver oportunidades em stand-by no pipeline"
+          >
             <span className="h-2.5 w-2.5 rounded-full bg-purple-400" />
-            <span className="text-zinc-400">Oportunidades em Stand-by:</span>
-            <strong className="text-purple-300">
+            <span className="text-zinc-400 group-hover:text-zinc-200">Oportunidades em Stand-by:</span>
+            <strong className="text-purple-300 group-hover:underline">
               {totaisGerais.leadsStandby} ({formatCurrency(totaisGerais.creditoStandby)})
             </strong>
-          </div>
+          </Link>
         </div>
 
         <Link
-          href="/admin/crm/pipeline?perdidos=1"
+          href="/admin/crm/pipeline?etapa=perdido"
           className="inline-flex items-center gap-1.5 font-bold text-amber-400 hover:text-amber-300 hover:underline"
         >
           <RotateCcw className="h-3.5 w-3.5" />

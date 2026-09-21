@@ -29,11 +29,17 @@ export default async function CrmPipelinePage({
   }
 
   const sp = await searchParams;
+  const etapaParam =
+    sp.etapa || sp.etapa_slug || sp.etapa_id || (sp.perdidos === "1" ? "perdido" : undefined);
+  const faseParam = sp.fase || sp.macro;
+
   const filters: LeadFilters = {
     periodo: sp.periodo,
     origem: sp.origem,
     status: sp.status,
     etapa_id: sp.etapa_id,
+    etapa: etapaParam,
+    fase: faseParam,
     srd: sp.srd,
     q: sp.q,
     temperatura: sp.temperatura,
@@ -47,8 +53,15 @@ export default async function CrmPipelinePage({
     modelo_interesse: sp.modelo_interesse,
   };
 
+  // Para o Kanban interativo, carregamos o conjunto da empresa para permitir chaveamento
+  // dinâmico em tempo real de colunas e garantir preservação de leads legados baseados em status.
+  const filtersForKanbanQuery: LeadFilters = {
+    ...filters,
+    etapa_id: undefined,
+  };
+
   const [rawLeads, etapas, consultores] = await Promise.all([
-    queryLeadsForKanban(filters, empresaAtiva.id),
+    queryLeadsForKanban(filtersForKanbanQuery, empresaAtiva.id),
     fetchCrmFunilEtapas(empresaAtiva.id),
     fetchSrdOptions().catch(() => []),
   ]);
@@ -104,6 +117,10 @@ export default async function CrmPipelinePage({
         etapas={etapas}
         consultores={consultores}
         currentUserId={usuario.id}
+        initialFilters={filters}
+        initialStageFilter={
+          faseParam ? `fase:${faseParam}` : etapaParam ? `etapa:${etapaParam}` : undefined
+        }
       />
     </div>
   );

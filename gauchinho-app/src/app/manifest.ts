@@ -17,11 +17,13 @@ export default async function manifest(): Promise<MetadataRoute.Manifest> {
     display_override: ["standalone", "minimal-ui"],
     background_color: racon ? "#f4f8fc" : "#09090b",
     theme_color: racon ? "#0066cc" : "#d4a017",
-    icons: racon ? [
-      { src: "/racon/favicon-racon.png", sizes: "512x512", type: "image/png", purpose: "any" },
-    ] : [
-      { src: "/icon.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
-      { src: "/apple-touch-icon.png", sizes: "180x180", type: "image/png", purpose: "any" },
-    ],
+    icons: (racon
+      ? [
+          { src: "/racon/favicon-racon.png", sizes: "512x512", type: "image/png", purpose: "any" as const },
+        ]
+      : [
+          { src: "/icon.png", sizes: "512x512", type: "image/png", purpose: "maskable" as const },
+          { src: "/apple-touch-icon.png", sizes: "180x180", type: "image/png", purpose: "any" as const },
+        ]) as MetadataRoute.Manifest["icons"],
   };
 }

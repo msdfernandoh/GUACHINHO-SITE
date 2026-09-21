@@ -2675,3 +2675,13 @@ O app instalado do indicador possui rotas próprias para indicação conversacio
 Os domínios de sites parceiros com modelo Racon preservam a home institucional, mas as rotas `/parceiros`, `/parceiros/cadastro`, `/app-indicador` e `/manifest.webmanifest` chegam aos módulos compartilhados, com o tenant e o site parceiro resolvidos pelo proxy. O programa e o app usam o nome e a identidade visual Racon para o host, inclusive no cadastro, login, recuperação de senha, indicação, extrato e instalação PWA. Links relativos mantêm o usuário no próprio domínio. Nenhuma tabela, permissão ou regra de comissão foi alterada.
 
 Relatório: `docs/relatorios-fases/FASE-251-RACON-PARCEIROS-APP-INDICADOR.md`.
+
+### Evolução operacional 252 — Funil 3D Interativo e Clicável com Filtro Direto no Pipeline Kanban
+
+O Módulo Executivo de Funil 3D e seus cartões de fases e etapas (`src/components/admin/crm/crm-funnel-3d-visual.tsx`) foram transformados em elementos 100% interativos e clicáveis, permitindo navegação direta para o Pipeline Kanban (`/admin/crm/pipeline`) já filtrado pela etapa ou fase macro selecionada.
+
+As 4 camadas geométricas tridimensionais em SVG (Topo Funil, Topo-Meio, Meio Funil e Fundo Funil) e os 4 cartões ribbon conectados agora possuem gatilhos de navegação que apontam para as fases macro (`?fase=topo`, `?fase=meio_sup`, `?fase=meio_inf`, `?fase=fundo`). As sub-etapas internas de cada fase (ex: *Novo lead*, *Contato realizado*) receberam chips individuais com `stopPropagation`, permitindo filtrar tanto o agrupamento macro quanto colunas pontuais (`?etapa=novo_lead`). Na visão detalhada de 12 etapas, cada linha horizontal é totalmente clicável, e os cards de rodapé conduzem aos filtros de Perdidos e Stand-by.
+
+No Pipeline Kanban (`src/components/admin/crm/crm-kanban-board.tsx`), foi implementado o banner executivo `CrmStageFilterBanner`, exibindo os totalizadores da etapa filtrada (Volume de Leads, Montante de Crédito e Parcelas Mensais Estimadas), o botão para alternar entre **Modo Foco** (apenas as colunas relevantes na tela sem rolagem desnecessária) e **Modo Completo** (todas as 12 colunas com realce e rolagem suave para a coluna ativa), e o botão de limpeza de filtro. Na barra superior do Kanban, um novo seletor agrupado (`🎯 Filtrar por Etapa / Nível`) permite chaveamento dinâmico sem recarregamento da página, sincronizado em tempo real com a URL do navegador.
+
+Relatório: `docs/relatorios-fases/FASE-252-FUNIL-3D-INTERATIVO-FILTRO-PIPELINE-KANBAN.md`.

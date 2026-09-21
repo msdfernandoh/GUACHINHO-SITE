@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { CRM_12_ETAPAS, mapLegacyStatusToEtapaSlug } from "./constants";
+import { CRM_12_ETAPAS, CRM_MACRO_TIERS, mapLegacyStatusToEtapaSlug } from "./constants";
 import type { CrmFunilEtapaRow } from "./types";
 import { fetchCrmFunilEtapas } from "./leads-query";
 
@@ -44,6 +44,7 @@ export type CrmFunilMacroTier = {
   percentualTotal: number;
   taxaPassagem: number;
   etapasNomes: string[];
+  etapasSlugs: readonly string[];
 };
 
 export type CrmDashboardTotais = {
@@ -295,68 +296,11 @@ export async function fetchCrmDashboardData(empresaId: string): Promise<CrmDashb
     }));
 
   // Montar agrupamento macro dos 4 níveis estratégicos de funil (3D)
-  const macroConfigs = [
-    {
-      id: "nivel-1-topo",
-      slug: "topo_funil",
-      nivelNumero: 1,
-      fase: "topo" as const,
-      nomeNivel: "TOPO FUNIL",
-      categoria: "VISITANTE & LEAD",
-      subtitulo: "Aprendizado e Descoberta",
-      conceito: "Entrada de leads, simuladores e eventos",
-      corHex: "#7c3aed",
-      corGradiente: "from-purple-600 via-indigo-600 to-purple-700",
-      icone: "eye" as const,
-      etapasSlugs: ["novo_lead", "contato_realizado"],
-    },
-    {
-      id: "nivel-2-meio-sup",
-      slug: "meio_superior",
-      nivelNumero: 2,
-      fase: "meio_sup" as const,
-      nomeNivel: "TOPO-MEIO",
-      categoria: "LEAD QUALIFICADO",
-      subtitulo: "Reconhecimento do Problema",
-      conceito: "Validação de perfil, poder de compra e reuniões",
-      corHex: "#06b6d4",
-      corGradiente: "from-cyan-500 via-teal-500 to-cyan-600",
-      icone: "mail" as const,
-      etapasSlugs: ["qualificado", "reuniao_agendada", "reuniao_realizada"],
-    },
-    {
-      id: "nivel-3-meio-inf",
-      slug: "meio_inferior",
-      nivelNumero: 3,
-      fase: "meio_inf" as const,
-      nomeNivel: "MEIO FUNIL",
-      categoria: "OPORTUNIDADE",
-      subtitulo: "Consideração da Solução",
-      conceito: "Propostas na mesa, lances e cadastros em análise",
-      corHex: "#f43f5e",
-      corGradiente: "from-rose-500 via-pink-600 to-rose-600",
-      icone: "magnet" as const,
-      etapasSlugs: ["proposta_enviada", "documentacao_cadastro", "boleto_enviado"],
-    },
-    {
-      id: "nivel-4-fundo",
-      slug: "fundo_funil",
-      nivelNumero: 4,
-      fase: "fundo" as const,
-      nomeNivel: "FUNDO FUNIL",
-      categoria: "VENDA FECHADA",
-      subtitulo: "Decisão de Compra & Contrato",
-      conceito: "Cotas ativadas, boletos pagos e conversão",
-      corHex: "#f59e0b",
-      corGradiente: "from-amber-500 via-emerald-500 to-green-600",
-      icone: "handshake" as const,
-      etapasSlugs: ["venda_fechada", "pos_venda"],
-    },
-  ];
-
   let prevTierLeads = 0;
-  const macroFunil: CrmFunilMacroTier[] = macroConfigs.map((cfg, idx) => {
-    const etapasMatched = funilStats.filter((e) => cfg.etapasSlugs.includes(e.slug));
+  const macroFunil: CrmFunilMacroTier[] = CRM_MACRO_TIERS.map((cfg, idx) => {
+    const etapasMatched = funilStats.filter((e) =>
+      (cfg.etapasSlugs as readonly string[]).includes(e.slug),
+    );
     const totalLeads = etapasMatched.reduce((acc, e) => acc + e.totalLeads, 0);
     const valorCreditoTotal = etapasMatched.reduce((acc, e) => acc + e.valorTotal, 0);
     const valorParcelaTotal = etapasMatched.reduce((acc, e) => acc + e.valorParcelaTotal, 0);
