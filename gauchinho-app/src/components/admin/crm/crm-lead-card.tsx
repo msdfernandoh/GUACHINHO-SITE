@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { formatCurrency } from "@/lib/utils/format";
-import { labelOrigem, valorEstimadoLead, mapLegacyStatusToEtapaSlug } from "@/lib/crm/constants";
+import { labelOrigem, valorEstimadoLead, valorParcelaLead, mapLegacyStatusToEtapaSlug } from "@/lib/crm/constants";
 import type { LeadListRow, CrmFunilEtapaRow } from "@/lib/crm/types";
 import {
   MessageCircle,
@@ -34,7 +34,8 @@ export function CrmLeadCard({
   const [isConverting, startConverting] = useTransition();
   const [erpFeedback, setErpFeedback] = useState<string | null>(null);
 
-  const valor = valorEstimadoLead(lead);
+  const credito = valorEstimadoLead(lead);
+  const parcela = valorParcelaLead(lead);
   const rawPhone = lead.whatsapp || "";
   const phoneDigits = rawPhone.replace(/\D/g, "");
   const whatsappUrl = phoneDigits
@@ -128,14 +129,24 @@ export function CrmLeadCard({
         </div>
       </div>
 
-      {/* 2. VALOR ESTIMADO E PRODUTO */}
-      <div className="mt-2 flex items-center justify-between text-xs">
-        <span className="font-bold text-emerald-400">
-          {valor > 0 ? formatCurrency(valor) : "Crédito a definir"}
-        </span>
-        <span className="rounded bg-zinc-800/80 px-2 py-0.5 text-[10px] font-medium text-zinc-300 capitalize">
-          {lead.produto_interesse || lead.tipo_interesse || "Consórcio"}
-        </span>
+      {/* 2. VALOR DE CRÉDITO E PARCELA MENSAL */}
+      <div className="mt-2 space-y-1">
+        <div className="flex items-center justify-between text-xs">
+          <span className="font-bold text-emerald-400">
+            {credito > 0 ? formatCurrency(credito) : "Crédito a definir"}
+          </span>
+          <span className="rounded bg-zinc-800/80 px-2 py-0.5 text-[10px] font-medium text-zinc-300 capitalize">
+            {lead.produto_interesse || lead.tipo_interesse || "Consórcio"}
+          </span>
+        </div>
+        {parcela > 0 ? (
+          <div className="flex items-center gap-1 text-[11px] text-cyan-400">
+            <span className="font-medium">Parcela:</span>
+            <span className="font-semibold">{formatCurrency(parcela)}/mês</span>
+          </div>
+        ) : (
+          <div className="text-[10px] text-zinc-500">Parcela a definir</div>
+        )}
       </div>
 
       {/* 3. ORIGEM E INDICAÇÃO */}

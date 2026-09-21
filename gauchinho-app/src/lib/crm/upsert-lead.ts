@@ -41,6 +41,8 @@ export interface UpsertLeadPayload {
   entrada?: number | null;
   renda?: number | null;
   valor_estimado?: number | null;
+  valor_credito?: number | null;
+  valor_parcela?: number | null;
   dados_simulacao?: Record<string, unknown> | null;
   resultado_resumido?: string | null;
   parceiro_id?: string | null;
@@ -88,7 +90,11 @@ export function formatarEntradaHistoricoLead(
 
   const origemTxt = payload.evento_nome || payload.origem_detalhe || payload.origem || "Novo contato";
   const tipoInv = payload.produto_interesse || payload.tipo_interesse || payload.tipo_credito;
-  const valor = payload.valor_estimado ?? payload.valor_simulado;
+  const credito =
+    payload.valor_credito ??
+    payload.valor_estimado ??
+    (payload.valor_simulado && payload.valor_simulado > 5000 ? payload.valor_simulado : null);
+  const parcela = payload.valor_parcela;
 
   const linhas: string[] = [
     `[${dataFormatada}] Nova abordagem / cadastro (${origemTxt}):`,
@@ -100,23 +106,22 @@ export function formatarEntradaHistoricoLead(
   if (tipoInv) {
     linhas.push(`• Tipo de investimento / interesse: ${tipoInv}`);
   }
-  if (valor != null && Number.isFinite(Number(valor)) && Number(valor) > 0) {
+  if (credito != null && Number.isFinite(Number(credito)) && Number(credito) > 0) {
     linhas.push(
-      `• Valor disponível / pretendido: ${new Intl.NumberFormat("pt-BR", {
+      `• Crédito pretendido: ${new Intl.NumberFormat("pt-BR", {
         style: "currency",
         currency: "BRL",
-      }).format(Number(valor))}`
+      }).format(Number(credito))}`
     );
   }
-  if (payload.entrada != null && Number.isFinite(Number(payload.entrada)) && Number(payload.entrada) > 0) {
+  if (parcela != null && Number.isFinite(Number(parcela)) && Number(parcela) > 0) {
     linhas.push(
-      `• Entrada disponível: ${new Intl.NumberFormat("pt-BR", {
+      `• Parcela mensal pretendida: ${new Intl.NumberFormat("pt-BR", {
         style: "currency",
         currency: "BRL",
-      }).format(Number(payload.entrada))}`
+      }).format(Number(parcela))}/mês`
     );
-  }
-  if (payload.capacidade_mensal) {
+  } else if (payload.capacidade_mensal) {
     linhas.push(`• Capacidade mensal de parcela: ${payload.capacidade_mensal}`);
   }
   if (payload.prazo_simulado != null && payload.prazo_simulado > 0) {
@@ -260,11 +265,18 @@ export async function upsertLeadPorTelefone(
     if (payload.cidade && !activeLead.cidade) {
       updateData.cidade = payload.cidade.trim();
     }
+    if (payload.valor_credito != null) {
+      updateData.valor_credito = payload.valor_credito;
+      updateData.valor_estimado = payload.valor_credito;
+    } else if (payload.valor_estimado != null) {
+      updateData.valor_estimado = payload.valor_estimado;
+      updateData.valor_credito = payload.valor_estimado;
+    }
     if (payload.valor_simulado != null) {
       updateData.valor_simulado = payload.valor_simulado;
     }
-    if (payload.valor_estimado != null) {
-      updateData.valor_estimado = payload.valor_estimado;
+    if (payload.valor_parcela != null) {
+      updateData.valor_parcela = payload.valor_parcela;
     }
     if (payload.prazo_simulado != null) {
       updateData.prazo_simulado = payload.prazo_simulado;
@@ -380,7 +392,9 @@ export async function upsertLeadPorTelefone(
       prazo_simulado: payload.prazo_simulado ?? null,
       entrada: payload.entrada ?? null,
       renda: payload.renda ?? null,
-      valor_estimado: payload.valor_estimado ?? payload.valor_simulado ?? wonLead.valor_estimado ?? null,
+      valor_credito: payload.valor_credito ?? payload.valor_estimado ?? null,
+      valor_estimado: payload.valor_credito ?? payload.valor_estimado ?? payload.valor_simulado ?? wonLead.valor_estimado ?? null,
+      valor_parcela: payload.valor_parcela ?? null,
       dados_simulacao: payload.dados_simulacao ?? null,
       resultado_resumido: payload.resultado_resumido ?? null,
       status: "Novo",
@@ -428,11 +442,13 @@ export async function upsertLeadPorTelefone(
     tipo_interesse: payload.tipo_interesse || null,
     produto_interesse: payload.produto_interesse || null,
     tipo_credito: payload.tipo_credito || null,
+    valor_credito: payload.valor_credito ?? payload.valor_estimado ?? null,
+    valor_estimado: payload.valor_credito ?? payload.valor_estimado ?? null,
     valor_simulado: payload.valor_simulado ?? null,
+    valor_parcela: payload.valor_parcela ?? null,
     prazo_simulado: payload.prazo_simulado ?? null,
     entrada: payload.entrada ?? null,
     renda: payload.renda ?? null,
-    valor_estimado: payload.valor_estimado ?? null,
     dados_simulacao: payload.dados_simulacao ?? null,
     resultado_resumido: payload.resultado_resumido ?? null,
     status: payload.status || "Novo",

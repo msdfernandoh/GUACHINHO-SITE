@@ -51,7 +51,12 @@ export type LeadListRow = {
   proximo_retorno_data: string | null;
   ultima_interacao_at: string | null;
   valor_estimado: number | null;
+  valor_credito?: number | null;
   valor_simulado: number | null;
+  valor_parcela?: number | null;
+  valor_fechado?: number | null;
+  valor_parcela_fechamento?: number | null;
+  dados_simulacao?: unknown;
   fechado: boolean;
   evento_id?: string | null;
   evento_nome?: string | null;

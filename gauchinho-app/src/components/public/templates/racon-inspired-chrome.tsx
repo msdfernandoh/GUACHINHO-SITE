@@ -32,7 +32,7 @@ export function RaconInspiredHeader({
   const activeMenus = menus.filter(menu => menu.ativo !== false);
   const login = activeMenus.find((menu) => menu.id === "login");
   const partner = activeMenus.find((menu) => menu.rota === "/parceiros");
-  const navegacao = activeMenus.filter((menu) => menu.id !== "login" && menu.rota !== "/parceiros");
+  const navegacao = activeMenus.filter((menu) => menu.id !== "login").filter((menu) => menu.rota !== "/parceiros");
   const telefone = resolveSiteContacts({ telefone: telefoneContato }, identidade.contatos).telefone;
   const number = contactNumber(telefone);
   const logo = logoUrl || (identidade.marca_propria ? null : RACON_LOGO);

@@ -97,6 +97,15 @@ export async function POST(request: Request) {
         ? Number(resultado.valorFinanciado ?? valorSim)
         : valorSim;
 
+    const parcela = Number(
+      (resultado as { parcela?: number; parcelaMensal?: number; parcelaFinanciamento?: number })?.parcela ??
+        (resultado as { parcela?: number; parcelaMensal?: number; parcelaFinanciamento?: number })?.parcelaMensal ??
+        (resultado as { parcela?: number; parcelaMensal?: number; parcelaFinanciamento?: number })?.parcelaFinanciamento ??
+        (body.inputs as { parcela?: number; valorParcela?: number })?.parcela ??
+        (body.inputs as { parcela?: number; valorParcela?: number })?.valorParcela ??
+        0,
+    );
+
     const upsertRes = await upsertLeadPorTelefone(admin, {
       empresa_id: ingress.empresaId,
       nome: body.nome.trim(),
@@ -107,8 +116,10 @@ export async function POST(request: Request) {
       origem_detalhe: body.acao,
       tipo_interesse: tipoInteresse,
       produto_interesse: "análise financeira",
+      valor_credito: valorCreditoLead,
       valor_estimado: valorCreditoLead,
       valor_simulado: valorSim,
+      valor_parcela: parcela > 0 ? parcela : null,
       prazo_simulado: prazo,
       entrada: entradaVal,
       dados_simulacao,

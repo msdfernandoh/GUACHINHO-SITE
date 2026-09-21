@@ -213,10 +213,12 @@ export function CrmKanbanBoard({
   // Agrupamento por etapa
   const leadsByEtapa = new Map<string, LeadListRow[]>();
   const totalValueByEtapa = new Map<string, number>();
+  const totalParcelaByEtapa = new Map<string, number>();
 
   for (const e of etapas) {
     leadsByEtapa.set(e.id, []);
     totalValueByEtapa.set(e.id, 0);
+    totalParcelaByEtapa.set(e.id, 0);
   }
 
   for (const l of filteredLeads) {
@@ -249,6 +251,10 @@ export function CrmKanbanBoard({
       totalValueByEtapa.set(
         etapaId,
         (totalValueByEtapa.get(etapaId) ?? 0) + valorEstimadoLead(l),
+      );
+      totalParcelaByEtapa.set(
+        etapaId,
+        (totalParcelaByEtapa.get(etapaId) ?? 0) + extrairValorParcelaLead(l),
       );
     }
   }
@@ -562,6 +568,7 @@ export function CrmKanbanBoard({
         {visibleEtapas.map((col) => {
           const colLeads = leadsByEtapa.get(col.id) ?? [];
           const colTotalVal = totalValueByEtapa.get(col.id) ?? 0;
+          const colTotalParcela = totalParcelaByEtapa.get(col.id) ?? 0;
           const isOver = dragOverStageId === col.id;
           const isColMatchingFilter = isEtapaInActiveFilter(col, selectedStageFilter);
           const isFirstMatchingCol = isFiltered && isColMatchingFilter && activeEtapas[0]?.id === col.id;
@@ -609,11 +616,21 @@ export function CrmKanbanBoard({
                   </div>
                 </div>
 
-                <div className="mt-1 flex items-center justify-between text-[10px] text-zinc-500">
-                  <span>Volume potencial</span>
-                  <span className="font-mono font-semibold text-zinc-400">
-                    {colTotalVal > 0 ? formatCurrency(colTotalVal) : "R$ 0"}
-                  </span>
+                <div className="mt-1 flex flex-col gap-0.5 text-[10px] text-zinc-500">
+                  <div className="flex items-center justify-between">
+                    <span>Crédito</span>
+                    <span className="font-mono font-semibold text-zinc-300">
+                      {colTotalVal > 0 ? formatCurrency(colTotalVal) : "R$ 0"}
+                    </span>
+                  </div>
+                  {colTotalParcela > 0 && (
+                    <div className="flex items-center justify-between text-cyan-400/90">
+                      <span>Parcelas</span>
+                      <span className="font-mono font-semibold">
+                        {formatCurrency(colTotalParcela)}/mês
+                      </span>
+                    </div>
+                  )}
                 </div>
               </div>
 

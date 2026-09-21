@@ -128,7 +128,7 @@ export async function fetchCrmDashboardData(empresaId: string): Promise<CrmDashb
   let leadsQuery = supabase
     .from("leads")
     .select(
-      "id, nome, email, whatsapp, telefone_normalizado, status, etapa_id, valor_estimado, valor_simulado, valor_fechado, valor_parcela_fechamento, prazo_simulado, dados_simulacao, fechado, temperatura, srd_responsavel_id, srd_responsavel_nome, created_at, ultima_interacao_at, data_fechamento, fechado_at, perdido_at",
+      "id, nome, email, whatsapp, telefone_normalizado, status, etapa_id, valor_credito, valor_estimado, valor_simulado, valor_parcela, valor_fechado, valor_parcela_fechamento, prazo_simulado, dados_simulacao, fechado, temperatura, srd_responsavel_id, srd_responsavel_nome, created_at, ultima_interacao_at, data_fechamento, fechado_at, perdido_at",
     );
 
   if (empresaId === "7170f38e-15dd-4b19-8588-51e9a9cf0d4c") {
@@ -217,7 +217,7 @@ export async function fetchCrmDashboardData(empresaId: string): Promise<CrmDashb
   const consultoresMap = new Map<string, { nome: string; totalLeads: number; vendasFechadas: number; valorFechado: number }>();
 
   for (const l of leads) {
-    const val = Number(l.valor_estimado ?? l.valor_simulado ?? 0);
+    const valCredito = Number(l.valor_credito ?? l.valor_estimado ?? l.valor_simulado ?? 0);
     const parcela = extrairValorParcelaLead(l);
     const createdAtIso = l.created_at;
     const isThisMonth = createdAtIso >= startOfMonth;
@@ -240,7 +240,7 @@ export async function fetchCrmDashboardData(empresaId: string): Promise<CrmDashb
       c.totalLeads++;
       if (l.fechado) {
         c.vendasFechadas++;
-        c.valorFechado += Number(l.valor_fechado ?? val);
+        c.valorFechado += Number(l.valor_fechado ?? valCredito);
       }
     } else {
       leadsSemResponsavel++;
@@ -261,10 +261,10 @@ export async function fetchCrmDashboardData(empresaId: string): Promise<CrmDashb
     if (l.fechado) {
       totalFechados++;
       if (l.data_fechamento && l.data_fechamento >= startOfMonth.slice(0, 10)) {
-        vendasFechadasMesValor += Number(l.valor_fechado ?? val);
+        vendasFechadasMesValor += Number(l.valor_fechado ?? valCredito);
       }
     } else if (!l.perdido_at) {
-      oportunidadesNegociacaoValor += val;
+      oportunidadesNegociacaoValor += valCredito;
     }
 
     // Etapas aggregation
@@ -285,7 +285,7 @@ export async function fetchCrmDashboardData(empresaId: string): Promise<CrmDashb
     if (etapaKey && etapaMap.has(etapaKey)) {
       const st = etapaMap.get(etapaKey)!;
       st.totalLeads++;
-      st.valorTotal += val;
+      st.valorTotal += valCredito;
       st.valorParcelaTotal += parcela;
     }
   }

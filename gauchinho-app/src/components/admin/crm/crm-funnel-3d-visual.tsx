@@ -54,7 +54,10 @@ export function CrmFunnel3dVisual({
   };
 
   return (
-    <div className="relative overflow-hidden rounded-2xl border border-zinc-800 bg-gradient-to-b from-zinc-900/95 via-zinc-950/90 to-black p-6 shadow-2xl backdrop-blur-md sm:p-8">
+    <div
+      data-theme-executive="dark"
+      className="racon-funnel-executive relative overflow-hidden rounded-2xl border border-zinc-800 bg-gradient-to-b from-zinc-900/95 via-zinc-950/90 to-black p-6 shadow-2xl backdrop-blur-md sm:p-8"
+    >
       {/* Luzes decorativas de fundo (ambient glows) */}
       <div className="pointer-events-none absolute -left-20 -top-20 h-72 w-72 rounded-full bg-purple-600/10 blur-3xl" />
       <div className="pointer-events-none absolute -right-20 top-40 h-72 w-72 rounded-full bg-cyan-600/10 blur-3xl" />

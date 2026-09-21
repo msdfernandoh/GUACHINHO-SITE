@@ -7,6 +7,9 @@ import { CrmQuickLeadButton } from "@/components/admin/crm/crm-quick-lead-button
 import { Kanban, List, BarChart3, BookOpen } from "lucide-react";
 import { Button } from "@/components/ui/form-primitives";
 
+import { getResolvedTenant } from "@/lib/tenant/get-resolved-empresa";
+import { isRaconModel } from "@/lib/tenant/model-family";
+
 export const dynamic = "force-dynamic";
 
 export default async function CrmDashboardPage() {
@@ -21,6 +24,10 @@ export default async function CrmDashboardPage() {
     );
   }
 
+  const tenant = await getResolvedTenant();
+  const isRacon = (tenant?.empresaId === empresaAtiva.id && isRaconModel(tenant.siteModel)) || isRaconModel(tenant?.siteModel);
+  const brandName = tenant?.branding.nome_site || (isRacon ? "Racon Sinop" : empresaAtiva.nome_fantasia || "Consórcios");
+
   const data = await fetchCrmDashboardData(empresaAtiva.id);
 
   return (
@@ -29,14 +36,14 @@ export default async function CrmDashboardPage() {
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
-            <span className="rounded bg-blue-500/20 px-2 py-0.5 text-xs font-semibold uppercase tracking-wider text-blue-400">
+            <span className="rounded bg-sky-500/15 px-2 py-0.5 text-xs font-bold uppercase tracking-wider text-sky-700 dark:bg-blue-500/20 dark:text-blue-400">
               Módulo Comercial
             </span>
-            <span className="text-xs text-zinc-500">•</span>
-            <span className="text-xs text-zinc-400">{empresaAtiva.nome_fantasia}</span>
+            <span className="text-xs text-zinc-400">•</span>
+            <span className="text-xs font-semibold text-zinc-600 dark:text-zinc-400">{brandName}</span>
           </div>
-          <h1 className="mt-1 text-2xl font-bold text-zinc-100">CRM — Gestão de Leads e Vendas</h1>
-          <p className="text-xs text-zinc-400">
+          <h1 className="mt-1 text-2xl font-bold text-zinc-900 dark:text-zinc-100">CRM — Gestão de Leads e Vendas</h1>
+          <p className="text-xs text-zinc-500 dark:text-zinc-400">
             Acompanhamento em tempo real do funil, atividades e conversão de oportunidades
           </p>
         </div>

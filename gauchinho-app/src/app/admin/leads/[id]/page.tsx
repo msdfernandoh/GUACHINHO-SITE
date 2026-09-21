@@ -126,18 +126,29 @@ export default async function LeadDetailPage({
           <Input name="email" defaultValue={lead.email ?? ""} />
         </div>
       </div>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <div>
           <Label>Cidade</Label>
           <Input name="cidade" defaultValue={lead.cidade ?? ""} />
         </div>
         <div>
-          <Label>Valor estimado</Label>
+          <Label>Crédito Pretendido (R$)</Label>
           <Input
             name="valor_estimado"
             type="number"
             step="0.01"
-            defaultValue={lead.valor_estimado ?? lead.valor_simulado ?? ""}
+            placeholder="Ex: 250000"
+            defaultValue={lead.valor_credito ?? lead.valor_estimado ?? lead.valor_simulado ?? ""}
+          />
+        </div>
+        <div>
+          <Label>Parcela Mensal (R$)</Label>
+          <Input
+            name="valor_parcela"
+            type="number"
+            step="0.01"
+            placeholder="Ex: 1500"
+            defaultValue={lead.valor_parcela ?? ""}
           />
         </div>
       </div>

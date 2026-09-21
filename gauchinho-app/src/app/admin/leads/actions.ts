@@ -274,6 +274,12 @@ export async function updateLeadAction(leadId: string, formData: FormData) {
     valor_estimado: formData.get("valor_estimado")
       ? Number(formData.get("valor_estimado"))
       : before?.valor_estimado ?? null,
+    valor_credito: formData.get("valor_estimado")
+      ? Number(formData.get("valor_estimado"))
+      : before?.valor_credito ?? before?.valor_estimado ?? null,
+    valor_parcela: formData.get("valor_parcela") !== null && formData.get("valor_parcela") !== ""
+      ? Number(formData.get("valor_parcela"))
+      : before?.valor_parcela ?? null,
     proxima_acao: String(formData.get("proxima_acao") ?? "").trim() || null,
     data_proxima_acao: String(formData.get("data_proxima_acao") ?? "").trim() || null,
     observacoes: String(formData.get("observacoes") ?? "").trim() || null,
@@ -981,6 +987,8 @@ export async function createLeadRapidoAction(data: {
   modeloInteresse?: string;
   produtoInteresse?: string;
   valorEstimado?: number;
+  valorCredito?: number;
+  valorParcela?: number;
   temperatura?: string;
   responsavelId?: string;
   proximaAcao?: string;
@@ -1015,6 +1023,9 @@ export async function createLeadRapidoAction(data: {
     srdNome = resp?.nome ?? null;
   }
 
+  const creditoPretendido = data.valorCredito ?? data.valorEstimado ?? null;
+  const parcelaPretendida = data.valorParcela ?? null;
+
   if (whatsapp && normalizePhoneForLead(whatsapp).length >= 10) {
     const upsertRes = await upsertLeadPorTelefone(supabase, {
       empresa_id: empresaAtiva.id,
@@ -1026,7 +1037,9 @@ export async function createLeadRapidoAction(data: {
       etapa_id: etapaId,
       tipo_interesse: data.produtoInteresse || null,
       produto_interesse: data.produtoInteresse || null,
-      valor_estimado: data.valorEstimado ? Number(data.valorEstimado) : null,
+      valor_estimado: creditoPretendido ? Number(creditoPretendido) : null,
+      valor_credito: creditoPretendido ? Number(creditoPretendido) : null,
+      valor_parcela: parcelaPretendida ? Number(parcelaPretendida) : null,
       temperatura: data.temperatura || "Morno",
       modelo_interesse: data.modeloInteresse || "CLIENTE_FINAL",
       srd_responsavel_id: srdId,
@@ -1055,7 +1068,7 @@ export async function createLeadRapidoAction(data: {
   }
 
   // Fallback seguro caso o contato seja exclusivamente e-mail
-  const isIncompleto = !email || !whatsapp || !data.produtoInteresse || !data.valorEstimado;
+  const isIncompleto = !email || !whatsapp || !data.produtoInteresse || (!creditoPretendido && !parcelaPretendida);
 
   const payload: Record<string, unknown> = {
     empresa_id: empresaAtiva.id,
@@ -1067,7 +1080,9 @@ export async function createLeadRapidoAction(data: {
     etapa_id: etapaId,
     tipo_interesse: data.produtoInteresse || null,
     produto_interesse: data.produtoInteresse || null,
-    valor_estimado: data.valorEstimado ? Number(data.valorEstimado) : null,
+    valor_estimado: creditoPretendido ? Number(creditoPretendido) : null,
+    valor_credito: creditoPretendido ? Number(creditoPretendido) : null,
+    valor_parcela: parcelaPretendida ? Number(parcelaPretendida) : null,
     temperatura: data.temperatura || "Morno",
     modelo_interesse: data.modeloInteresse || "CLIENTE_FINAL",
     srd_responsavel_id: srdId,

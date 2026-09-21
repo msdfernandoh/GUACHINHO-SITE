@@ -16,6 +16,7 @@ export function CrmQuickLeadModal({ onClose }: { onClose: () => void }) {
   const [modeloInteresse, setModeloInteresse] = useState("CLIENTE_FINAL");
   const [produtoInteresse, setProdutoInteresse] = useState("imovel");
   const [valorEstimado, setValorEstimado] = useState("");
+  const [valorParcela, setValorParcela] = useState("");
   const [temperatura, setTemperatura] = useState("Quente");
   const [proximaAcao, setProximaAcao] = useState("");
   const [observacoes, setObservacoes] = useState("");
@@ -42,6 +43,8 @@ export function CrmQuickLeadModal({ onClose }: { onClose: () => void }) {
           modeloInteresse,
           produtoInteresse: expandido ? produtoInteresse : undefined,
           valorEstimado: expandido && valorEstimado ? Number(valorEstimado.replace(/\D/g, "")) : undefined,
+          valorCredito: expandido && valorEstimado ? Number(valorEstimado.replace(/\D/g, "")) : undefined,
+          valorParcela: expandido && valorParcela ? Number(valorParcela.replace(/\D/g, "")) : undefined,
           temperatura,
           proximaAcao: proximaAcao.trim() || undefined,
           observacoes: observacoes.trim() || undefined,
@@ -181,14 +184,14 @@ export function CrmQuickLeadModal({ onClose }: { onClose: () => void }) {
             onClick={() => setExpandido(!expandido)}
             className="text-xs text-blue-400 hover:underline"
           >
-            {expandido ? "- Ocultar campos adicionais" : "+ Adicionar valor estimado, produto e observações"}
+            {expandido ? "- Ocultar campos adicionais" : "+ Adicionar valor de crédito, parcela, produto e observações"}
           </button>
 
           {expandido && (
             <div className="space-y-3 rounded-xl border border-zinc-800 bg-zinc-950/50 p-3">
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                 <div>
-                  <label className="block text-[11px] font-semibold text-zinc-400">Produto de Interesse</label>
+                  <label className="block text-[11px] font-semibold text-zinc-400">Produto</label>
                   <select
                     value={produtoInteresse}
                     onChange={(e) => setProdutoInteresse(e.target.value)}
@@ -202,12 +205,22 @@ export function CrmQuickLeadModal({ onClose }: { onClose: () => void }) {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-[11px] font-semibold text-zinc-400">Crédito Estimado (R$)</label>
+                  <label className="block text-[11px] font-semibold text-zinc-400">Crédito Pretendido (R$)</label>
                   <input
                     type="number"
                     placeholder="Ex: 500000"
                     value={valorEstimado}
                     onChange={(e) => setValorEstimado(e.target.value)}
+                    className="mt-1 w-full rounded border border-zinc-700 bg-zinc-900 px-2.5 py-1.5 text-xs text-zinc-200"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-semibold text-zinc-400">Parcela Mensal (R$)</label>
+                  <input
+                    type="number"
+                    placeholder="Ex: 2500"
+                    value={valorParcela}
+                    onChange={(e) => setValorParcela(e.target.value)}
                     className="mt-1 w-full rounded border border-zinc-700 bg-zinc-900 px-2.5 py-1.5 text-xs text-zinc-200"
                   />
                 </div>

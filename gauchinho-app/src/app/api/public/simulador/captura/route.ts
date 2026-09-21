@@ -37,6 +37,12 @@ export async function POST(request: Request) {
       Number(body.entrada.valorCredito ?? body.entrada.valorBem ?? 0) || null;
     const prazo = Number(body.entrada.prazoMeses ?? 0) || null;
     const entradaVal = Number(body.entrada.entrada ?? 0) || null;
+    const parcelaEstimada = Number(
+      (body.resultado as { parcelaEstimada?: number })?.parcelaEstimada ??
+        (body.resultado as { consorcio?: { parcelaEstimada?: number } })?.consorcio
+          ?.parcelaEstimada ??
+        0,
+    );
 
     const upsertRes = await upsertLeadPorTelefone(admin, {
       empresa_id: ingress.empresaId,
@@ -48,7 +54,10 @@ export async function POST(request: Request) {
       origem_detalhe: body.acao,
       tipo_interesse: body.modo === "financiamento" ? "financiamento" : "consorcio",
       produto_interesse: body.tipoBem ?? null,
+      valor_credito: valorSim,
+      valor_estimado: valorSim,
       valor_simulado: valorSim,
+      valor_parcela: parcelaEstimada > 0 ? parcelaEstimada : null,
       prazo_simulado: prazo,
       entrada: entradaVal,
       dados_simulacao: {
