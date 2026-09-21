@@ -3,34 +3,23 @@ import { ParceirosLandingClient } from "@/components/public/parceiros-landing-cl
 import { getResolvedTenant } from "@/lib/tenant/get-resolved-empresa";
 import { isRaconModel } from "@/lib/tenant/model-family";
 
-export const metadata: Metadata = {
-  title: "Programa de Parceiros e Indicadores de Consórcio",
-  description:
-    "Faça parte do programa de parceiros da Gauchinho Consórcios e Racon. Indique clientes para consórcio imobiliário, veicular e pesados e receba comissões atrativas com acompanhamento em tempo real.",
-  keywords: [
-    "parceiros consórcio",
-    "indicador de consórcio",
-    "programa de afiliados consórcio",
-    "comissão consórcio",
-    "parceiro imobiliário sinop",
-    "gauchinho parceiros",
-  ],
-  alternates: { canonical: "/parceiros" },
-  openGraph: {
-    title: "Programa de Parceiros e Indicadores de Consórcio",
-    description:
-      "Indique clientes e construa uma carteira de comissões sólida com a Gauchinho Consórcios e Racon.",
-    url: "/parceiros",
-    type: "website",
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "Programa de Parceiros e Indicadores | Gauchinho Consórcios",
-    description: "Seja um parceiro indicador de consórcio e ganhe comissões atrativas.",
-  },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const tenant = await getResolvedTenant();
+  const brandName = tenant?.branding.nome_site || "Gauchinho Consórcios";
+  const title = `Programa de Parceiros e Indicadores | ${brandName}`;
+  const description = `Indique clientes para consórcio imobiliário e veicular e acompanhe suas comissões com ${brandName}.`;
+  return {
+    title,
+    description,
+    keywords: ["parceiros consórcio", "indicador de consórcio", "comissão consórcio", "parceiro imobiliário sinop"],
+    alternates: { canonical: "/parceiros" },
+    openGraph: { title, description, url: "/parceiros", type: "website" },
+    twitter: { card: "summary_large_image", title, description },
+  };
+}
 
 export default async function ParceirosPage() {
   const tenant = await getResolvedTenant();
-  return <ParceirosLandingClient racon={isRaconModel(tenant?.siteModel)} />;
+  const racon = isRaconModel(tenant?.siteModel);
+  return <ParceirosLandingClient racon={racon} brandName={racon ? (tenant?.branding.nome_site || "Racon Sinop") : "Gauchinho Consórcios"} />;
 }

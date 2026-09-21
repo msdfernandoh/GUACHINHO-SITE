@@ -2670,3 +2670,8 @@ O reaproveitamento diário de propostas no fechamento público considera somente
 
 O app instalado do indicador possui rotas próprias para indicação conversacional e extrato de comissões mobile. A indicação identifica o titular exclusivamente pela sessão autenticada e valida o vínculo `usuarios → participantes_comerciais → programa_indicadores`; nenhum identificador do indicador é aceito do navegador. A tela de comissões lê as previsões do mesmo domínio ERP, limitada ao participante autenticado, e permite somente confirmar recebimentos próprios já pagos.
 
+### Evolução operacional 251 — Programa de parceiros e app do indicador no domínio Racon
+
+Os domínios de sites parceiros com modelo Racon preservam a home institucional, mas as rotas `/parceiros`, `/parceiros/cadastro`, `/app-indicador` e `/manifest.webmanifest` chegam aos módulos compartilhados, com o tenant e o site parceiro resolvidos pelo proxy. O programa e o app usam o nome e a identidade visual Racon para o host, inclusive no cadastro, login, recuperação de senha, indicação, extrato e instalação PWA. Links relativos mantêm o usuário no próprio domínio. Nenhuma tabela, permissão ou regra de comissão foi alterada.
+
+Relatório: `docs/relatorios-fases/FASE-251-RACON-PARCEIROS-APP-INDICADOR.md`.

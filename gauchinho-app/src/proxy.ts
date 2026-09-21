@@ -161,6 +161,9 @@ export async function proxy(request: NextRequest) {
             "/area-parceiro",
             "/indicar",
             "/app-indicador",
+            "/parceiros",
+            "/manifest.webmanifest",
+            "/manifest.json",
           ];
           const isOperationalPath =
             path.startsWith("/api/") ||
@@ -335,6 +338,6 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon\\.ico|robots\\.txt|sitemap\\.xml|manifest\\.webmanifest|manifest\\.json|assets/|media/|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|css|js|map|woff2?|ttf|eot|txt|xml|json)$).*)",
+    "/((?!_next/static|_next/image|favicon\\.ico|robots\\.txt|sitemap\\.xml|assets/|media/|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|css|js|map|woff2?|ttf|eot|txt|xml|json)$).*)",
   ],
 };
