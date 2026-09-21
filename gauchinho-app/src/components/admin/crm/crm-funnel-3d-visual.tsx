@@ -20,12 +20,22 @@ import {
   RotateCcw,
   Zap,
 } from "lucide-react";
+import { CrmVendasFechadasModal } from "./crm-vendas-fechadas-modal";
 
-export function CrmFunnel3dVisual({ data }: { data: CrmDashboardData }) {
+export function CrmFunnel3dVisual({
+  data,
+  onOpenVendasModal,
+}: {
+  data: CrmDashboardData;
+  onOpenVendasModal?: () => void;
+}) {
   const router = useRouter();
   const { macroFunil, funil, totaisGerais } = data;
   const [activeTierId, setActiveTierId] = useState<string | null>(null);
   const [modoVisao, setModoVisao] = useState<"macro" | "detalhado">("macro");
+  const [modalInterno, setModalInterno] = useState(false);
+
+  const handleOpenVendas = onOpenVendasModal ?? (() => setModalInterno(true));
 
   function navigateToStage(tipo: "fase" | "etapa", valor: string) {
     if (tipo === "fase") {
@@ -153,17 +163,34 @@ export function CrmFunnel3dVisual({ data }: { data: CrmDashboardData }) {
           </p>
         </div>
 
-        {/* Vendas Fechadas e Conversão */}
-        <div className="rounded-xl border border-amber-500/20 bg-amber-950/20 p-4 shadow-sm backdrop-blur-xs">
-          <p className="flex items-center gap-1.5 text-xs font-semibold text-amber-300">
-            <Trophy className="h-3.5 w-3.5 text-amber-400" />
-            Conversão do Funil
-          </p>
+        {/* Vendas Fechadas e Conversão (Clicável com Modal) */}
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={handleOpenVendas}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              handleOpenVendas();
+            }
+          }}
+          className="group cursor-pointer rounded-xl border border-amber-500/30 bg-amber-950/20 p-4 shadow-sm backdrop-blur-xs transition-all duration-200 hover:border-amber-400/60 hover:bg-amber-950/40 hover:scale-[1.02] focus:outline-hidden focus:ring-2 focus:ring-amber-500/40"
+          title="Clique para ver o relatório detalhado de vendas fechadas no mês"
+        >
+          <div className="flex items-center justify-between">
+            <p className="flex items-center gap-1.5 text-xs font-semibold text-amber-300">
+              <Trophy className="h-3.5 w-3.5 text-amber-400 group-hover:scale-110 transition-transform" />
+              Conversão do Funil
+            </p>
+            <span className="text-[10px] font-bold text-amber-300 group-hover:underline">
+              Ver vendas ({data.vendasFechadasMes?.length || 0}) ↗
+            </span>
+          </div>
           <p className="mt-2 text-xl font-extrabold tracking-tight text-amber-300 sm:text-2xl">
             {data.kpis.taxaConversao.toFixed(1)}%
           </p>
-          <p className="mt-1 text-[11px] text-zinc-400">
-            Fundo do funil: {formatCurrency(data.kpis.vendasFechadasMesValor)}
+          <p className="mt-1 flex items-center justify-between text-[11px] text-zinc-400">
+            <span>Fundo do funil: <strong className="text-amber-200">{formatCurrency(data.kpis.vendasFechadasMesValor)}</strong></span>
           </p>
         </div>
       </div>
@@ -485,6 +512,20 @@ export function CrmFunnel3dVisual({ data }: { data: CrmDashboardData }) {
                           </button>
                         );
                       })}
+                      {tier.id === "nivel-4-fundo" && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleOpenVendas();
+                          }}
+                          className="inline-flex items-center gap-1 rounded-md border border-amber-500/40 bg-amber-950/70 px-2 py-0.5 text-[10px] font-bold text-amber-300 transition hover:bg-amber-900/90 hover:text-amber-100 shadow-xs"
+                          title="Abrir modal com a lista de todas as vendas fechadas do mês"
+                        >
+                          <Trophy className="h-3 w-3 text-amber-400" />
+                          Ver Vendas ({data.vendasFechadasMes?.length || 0}) ↗
+                        </button>
+                      )}
                     </div>
                   </div>
 
@@ -628,6 +669,22 @@ export function CrmFunnel3dVisual({ data }: { data: CrmDashboardData }) {
                     </span>
                   </div>
 
+                  {/* Botão de Ver Vendas para Etapa Venda Fechada */}
+                  {etapa.slug === "venda_fechada" && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleOpenVendas();
+                      }}
+                      className="inline-flex items-center gap-1 rounded-md border border-emerald-500/40 bg-emerald-950/70 px-2 py-1 text-[10px] font-bold text-emerald-300 transition hover:bg-emerald-900/90 hover:text-white"
+                      title="Ver detalhes de cada venda fechada no mês"
+                    >
+                      <Trophy className="h-3 w-3" />
+                      Ver Vendas ({data.vendasFechadasMes?.length || 0}) ↗
+                    </button>
+                  )}
+
                   {/* Ícone de Seta de Navegação */}
                   <div className="hidden sm:flex items-center pl-2 text-zinc-500 group-hover:text-zinc-200 transition group-hover:translate-x-1">
                     <ArrowRight className="h-4 w-4" />
@@ -677,6 +734,16 @@ export function CrmFunnel3dVisual({ data }: { data: CrmDashboardData }) {
           Reaquecer Oportunidades no Pipeline →
         </Link>
       </div>
+
+      {/* 6. MODAL DE AUDITORIA DE VENDAS (QUANDO UTILIZADO DE FORMA AVULSA) */}
+      {!onOpenVendasModal && (
+        <CrmVendasFechadasModal
+          isOpen={modalInterno}
+          onClose={() => setModalInterno(false)}
+          vendas={data.vendasFechadasMes || []}
+          metaMensal={2000000}
+        />
+      )}
     </div>
   );
 }

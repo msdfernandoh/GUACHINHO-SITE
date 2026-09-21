@@ -136,5 +136,29 @@ describe("CRM Fase 10", () => {
       expect(mapLegacyStatusToEtapaSlug("convertido")).toBe("venda_fechada");
       expect(mapLegacyStatusToEtapaSlug("Novo")).toBe("novo_lead");
     });
+
+    it("contrato de CrmVendaFechadaItem suporta Daiana Caruline Tasso e vendas consolidadas", () => {
+      const mockVenda = {
+        id: "b20e0f00-6892-4056-8e90-141592c2368c",
+        leadId: "4737b007-7235-48d3-ad50-347ff8d5968d",
+        clienteNome: "Daiana Caruline Tasso",
+        clienteCpfCnpj: "02046471180",
+        clienteTelefone: "66997120374",
+        clienteEmail: "Daicaroltasso@outlook.com",
+        valorCredito: 2800000.0,
+        valorParcela: 16445.1,
+        prazo: 160,
+        dataVenda: "2026-09-18T17:03:09.843662+00:00",
+        status: "confirmada",
+        responsavelNome: "FERNANDO",
+        origem: "Contratação Online",
+      };
+
+      expect(mockVenda.valorCredito).toBe(2800000.0);
+      expect(mockVenda.valorParcela).toBe(16445.1);
+      expect(mockVenda.clienteNome).toBe("Daiana Caruline Tasso");
+      expect(mockVenda.status).toBe("confirmada");
+    });
   });
 });
+

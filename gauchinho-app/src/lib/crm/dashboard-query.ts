@@ -82,6 +82,24 @@ export type CrmConsultorPerformance = {
   tempoMedioPrimeiroContatoHoras?: number;
 };
 
+export type CrmVendaFechadaItem = {
+  id: string;
+  leadId: string | null;
+  clienteNome: string;
+  clienteCpfCnpj: string | null;
+  clienteTelefone: string | null;
+  clienteEmail: string | null;
+  valorCredito: number;
+  valorParcela: number;
+  prazo: number;
+  dataVenda: string;
+  status: string;
+  responsavelNome: string;
+  grupoCodigo?: string | null;
+  cotaNumero?: string | null;
+  origem: string;
+};
+
 export type CrmDashboardData = {
   kpis: CrmDashboardKpis;
   funil: CrmFunilEtapaStats[];
@@ -90,13 +108,14 @@ export type CrmDashboardData = {
   alertas: CrmAlertasOperacionais;
   etapas: CrmFunilEtapaRow[];
   performance: CrmConsultorPerformance[];
+  vendasFechadasMes: CrmVendaFechadaItem[];
 };
 
 export async function fetchCrmDashboardData(empresaId: string): Promise<CrmDashboardData> {
   const supabase = await createClient();
 
   const now = new Date();
-  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+  const startOfMonth = new Date(Date.UTC(now.getFullYear(), now.getMonth(), 1)).toISOString();
   const todayStr = now.toISOString().slice(0, 10);
   const yesterdayIso = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
   const sevenDaysAgoIso = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
@@ -109,7 +128,7 @@ export async function fetchCrmDashboardData(empresaId: string): Promise<CrmDashb
   let leadsQuery = supabase
     .from("leads")
     .select(
-      "id, status, etapa_id, valor_estimado, valor_simulado, valor_fechado, valor_parcela_fechamento, prazo_simulado, dados_simulacao, fechado, temperatura, srd_responsavel_id, srd_responsavel_nome, created_at, ultima_interacao_at, data_fechamento, perdido_at",
+      "id, nome, email, whatsapp, telefone_normalizado, status, etapa_id, valor_estimado, valor_simulado, valor_fechado, valor_parcela_fechamento, prazo_simulado, dados_simulacao, fechado, temperatura, srd_responsavel_id, srd_responsavel_nome, created_at, ultima_interacao_at, data_fechamento, fechado_at, perdido_at",
     );
 
   if (empresaId === "7170f38e-15dd-4b19-8588-51e9a9cf0d4c") {
@@ -130,6 +149,40 @@ export async function fetchCrmDashboardData(empresaId: string): Promise<CrmDashb
     .gte("data_inicio", startOfMonth);
 
   const compromissos = compromissosRaw ?? [];
+
+  // 4. Buscar vendas confirmadas do mês na tabela public.vendas (registro oficial de vendas do ERP)
+  let vendasQuery = supabase
+    .from("vendas")
+    .select(`
+      id,
+      cliente_nome,
+      cliente_cpf_cnpj,
+      cliente_telefone,
+      cliente_email,
+      valor_credito,
+      parcela,
+      prazo,
+      status,
+      data_venda,
+      lead_id,
+      proposta_id,
+      contratacao_id,
+      snapshot_venda,
+      participante_comercial_id,
+      participante:participantes_comerciais!vendas_participante_comercial_id_fkey(id, nome, nome_exibicao)
+    `)
+    .eq("status", "confirmada")
+    .gte("data_venda", startOfMonth)
+    .order("data_venda", { ascending: false });
+
+  if (empresaId === "7170f38e-15dd-4b19-8588-51e9a9cf0d4c") {
+    vendasQuery = vendasQuery.or(`empresa_id.eq.${empresaId},empresa_id.is.null`);
+  } else {
+    vendasQuery = vendasQuery.eq("empresa_id", empresaId);
+  }
+
+  const { data: vendasDbRaw } = await vendasQuery;
+  const vendasDb = vendasDbRaw ?? [];
 
   // Mapear etapas por ID e slug para contagem
   const etapaMap = new Map<string, CrmFunilEtapaStats>();
@@ -314,6 +367,98 @@ export async function fetchCrmDashboardData(empresaId: string): Promise<CrmDashb
     creditoStandby: etapaStandby?.valorTotal ?? 0,
   };
 
+  // 5. Reconciliar vendas fechadas do mês (Vendas ERP + Leads Fechados)
+  const vendasFechadasMes: CrmVendaFechadaItem[] = [];
+  const seenLeadIds = new Set<string>();
+
+  for (const v of vendasDb) {
+    if (v.lead_id) seenLeadIds.add(v.lead_id);
+    const snap = (v.snapshot_venda as Record<string, any>) ?? {};
+    const partObj = Array.isArray(v.participante) ? v.participante[0] : v.participante;
+    const respNome =
+      partObj?.nome_exibicao ||
+      partObj?.nome ||
+      snap.participante_nome ||
+      "Consultor Comercial";
+
+    vendasFechadasMes.push({
+      id: v.id,
+      leadId: v.lead_id ?? null,
+      clienteNome: v.cliente_nome,
+      clienteCpfCnpj: v.cliente_cpf_cnpj,
+      clienteTelefone: v.cliente_telefone,
+      clienteEmail: v.cliente_email,
+      valorCredito: Number(v.valor_credito || 0),
+      valorParcela: Number(v.parcela || 0),
+      prazo: Number(v.prazo || 0),
+      dataVenda: v.data_venda,
+      status: v.status,
+      responsavelNome: respNome,
+      grupoCodigo: snap.numero_grupo || snap.grupo_codigo || null,
+      cotaNumero: snap.numero_cota || null,
+      origem: v.contratacao_id
+        ? "Contratação Online"
+        : v.proposta_id
+        ? "Proposta Comercial"
+        : "Venda ERP",
+    });
+
+    // Se o participante comercial não estava nos consultores, adiciona à performance
+    if (v.participante_comercial_id) {
+      if (!consultoresMap.has(v.participante_comercial_id)) {
+        consultoresMap.set(v.participante_comercial_id, {
+          nome: respNome,
+          totalLeads: 0,
+          vendasFechadas: 0,
+          valorFechado: 0,
+        });
+      }
+      const c = consultoresMap.get(v.participante_comercial_id)!;
+      if (!v.lead_id || !leads.some((l) => l.id === v.lead_id && l.srd_responsavel_id === v.participante_comercial_id)) {
+        c.vendasFechadas++;
+        c.valorFechado += Number(v.valor_credito || 0);
+      }
+    }
+  }
+
+  // Reconciliar leads fechados no mês não vinculados a vendas registradas
+  for (const l of leads) {
+    if (l.fechado && l.data_fechamento && l.data_fechamento >= startOfMonth.slice(0, 10)) {
+      if (!seenLeadIds.has(l.id)) {
+        const jaListado = vendasFechadasMes.some(
+          (item) =>
+            (l.nome && item.clienteNome.toLowerCase() === l.nome.toLowerCase()) ||
+            (l.telefone_normalizado && item.clienteTelefone?.includes(l.telefone_normalizado))
+        );
+        if (!jaListado) {
+          const valFechado = Number(l.valor_fechado ?? l.valor_estimado ?? l.valor_simulado ?? 0);
+          const parcelaFechado = Number(l.valor_parcela_fechamento ?? extrairValorParcelaLead(l));
+          vendasFechadasMes.push({
+            id: `lead-${l.id}`,
+            leadId: l.id,
+            clienteNome: l.nome ?? "Lead sem nome",
+            clienteCpfCnpj: null,
+            clienteTelefone: l.whatsapp ?? null,
+            clienteEmail: l.email ?? null,
+            valorCredito: valFechado,
+            valorParcela: parcelaFechado,
+            prazo: Number(l.prazo_simulado || 0),
+            dataVenda: l.fechado_at || `${l.data_fechamento}T12:00:00Z`,
+            status: "confirmada",
+            responsavelNome: l.srd_responsavel_nome || "Consultor CRM",
+            origem: "CRM Pipeline (Lead Ganho)",
+          });
+        }
+      }
+    }
+  }
+
+  // O total de produção fechada no mês reflete fielmente as vendas reais consolidadas
+  if (vendasFechadasMes.length > 0) {
+    vendasFechadasMesValor = vendasFechadasMes.reduce((acc, v) => acc + v.valorCredito, 0);
+  }
+  totalFechados = Math.max(totalFechados, vendasFechadasMes.length);
+
   // Performance da equipe
   const performance: CrmConsultorPerformance[] = Array.from(consultoresMap.entries()).map(
     ([id, item]) => ({
@@ -351,5 +496,6 @@ export async function fetchCrmDashboardData(empresaId: string): Promise<CrmDashb
     },
     etapas,
     performance,
+    vendasFechadasMes,
   };
 }

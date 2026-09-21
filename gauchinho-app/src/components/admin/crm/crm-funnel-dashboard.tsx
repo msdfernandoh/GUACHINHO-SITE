@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { formatCurrency } from "@/lib/utils/format";
 import type { CrmDashboardData } from "@/lib/crm/dashboard-query";
@@ -20,9 +21,11 @@ import {
   FileCheck2,
 } from "lucide-react";
 import { CrmFunnel3dVisual } from "./crm-funnel-3d-visual";
+import { CrmVendasFechadasModal } from "./crm-vendas-fechadas-modal";
 
 export function CrmFunnelDashboard({ data }: { data: CrmDashboardData }) {
   const { kpis, funil, alertas } = data;
+  const [modalVendasAberto, setModalVendasAberto] = useState(false);
 
   return (
     <div className="space-y-8">
@@ -80,17 +83,32 @@ export function CrmFunnelDashboard({ data }: { data: CrmDashboardData }) {
           <p className="mt-1 text-[11px] text-zinc-500">Crédito potencial</p>
         </div>
 
-        {/* Vendas fechadas no mês */}
-        <div className="rounded-xl border border-emerald-500/20 bg-emerald-950/20 p-4 shadow-sm">
+        {/* Vendas fechadas no mês (Clicável com Modal Detalhado) */}
+        <button
+          type="button"
+          onClick={() => setModalVendasAberto(true)}
+          className="group text-left cursor-pointer rounded-xl border border-emerald-500/30 bg-emerald-950/20 p-4 shadow-sm transition-all duration-200 hover:border-emerald-400/60 hover:bg-emerald-950/40 hover:scale-[1.02] focus:outline-hidden focus:ring-2 focus:ring-emerald-500/40"
+          title="Clique para ver o relatório detalhado de vendas fechadas no mês"
+        >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-emerald-300">Vendas no mês</span>
-            <Trophy className="h-4 w-4 text-emerald-400" />
+            <span className="text-xs font-semibold text-emerald-300 flex items-center gap-1.5">
+              Vendas no mês
+              <span className="rounded-full bg-emerald-500/20 px-1.5 py-0.2 text-[10px] font-bold text-emerald-300">
+                {data.vendasFechadasMes?.length || 0}
+              </span>
+            </span>
+            <Trophy className="h-4 w-4 text-emerald-400 group-hover:scale-110 transition-transform" />
           </div>
-          <p className="mt-2 text-xl font-bold text-emerald-300">
+          <p className="mt-2 text-xl font-extrabold text-emerald-300">
             {formatCurrency(kpis.vendasFechadasMesValor)}
           </p>
-          <p className="mt-1 text-[11px] text-emerald-400/70">Produção fechada</p>
-        </div>
+          <p className="mt-1 flex items-center justify-between text-[11px] text-emerald-400/80">
+            <span>Produção fechada</span>
+            <span className="text-[10px] font-medium text-emerald-300 group-hover:underline">
+              Ver detalhes →
+            </span>
+          </p>
+        </button>
 
         {/* Meta mensal atingida */}
         <div className="rounded-xl border border-zinc-800 bg-zinc-900/80 p-4 shadow-sm">
@@ -186,7 +204,7 @@ export function CrmFunnelDashboard({ data }: { data: CrmDashboardData }) {
       </div>
 
       {/* 3. NOVO MÓDULO EXECUTIVO: FUNIL VISUAL 3D COM CRÉDITO, PARCELA E LEADS */}
-      <CrmFunnel3dVisual data={data} />
+      <CrmFunnel3dVisual data={data} onOpenVendasModal={() => setModalVendasAberto(true)} />
 
       {/* 4. FUNIL VISUAL PROPORCIONAL (12 ETAPAS CANÔNICAS - VISÃO HORIZONTAL) */}
       <div className="rounded-xl border border-zinc-800 bg-zinc-900/60 p-6 shadow-sm">
@@ -200,10 +218,9 @@ export function CrmFunnelDashboard({ data }: { data: CrmDashboardData }) {
           <div className="flex items-center gap-2">
             <Link
               href="/admin/crm/pipeline"
-              className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white shadow hover:bg-blue-500"
+              className="inline-flex items-center gap-1 text-xs font-semibold text-blue-400 transition hover:text-blue-300"
             >
-              <Kanban className="h-4 w-4" />
-              Ver Pipeline Kanban
+              Abrir Pipeline Kanban →
             </Link>
           </div>
         </div>
@@ -215,10 +232,9 @@ export function CrmFunnelDashboard({ data }: { data: CrmDashboardData }) {
               <Link
                 key={etapa.id}
                 href={`/admin/crm/pipeline?etapa=${etapa.slug}`}
-                className="group flex items-center gap-4 text-xs rounded-lg p-1.5 -mx-1.5 transition hover:bg-zinc-800/60"
-                title={`Abrir etapa "${etapa.nome}" no Pipeline`}
+                className="group flex flex-col gap-2 rounded-lg p-2 transition hover:bg-zinc-800/50 sm:flex-row sm:items-center"
               >
-                {/* Nome e ordem */}
+                {/* Nome e cor da etapa */}
                 <div className="w-48 shrink-0">
                   <div className="flex items-center gap-2 font-medium text-zinc-300 group-hover:text-white">
                     <span
@@ -262,6 +278,14 @@ export function CrmFunnelDashboard({ data }: { data: CrmDashboardData }) {
           })}
         </div>
       </div>
+
+      {/* 5. MODAL INTERATIVO DE AUDITORIA E LISTAGEM DE VENDAS FECHADAS DO MÊS */}
+      <CrmVendasFechadasModal
+        isOpen={modalVendasAberto}
+        onClose={() => setModalVendasAberto(false)}
+        vendas={data.vendasFechadasMes || []}
+        metaMensal={2000000}
+      />
     </div>
   );
 }
