@@ -84,6 +84,11 @@ export async function importarRelatorioRepasseRaconAction(
     const result = data as { importacao_id?: string; idempotente?: boolean; vinculados_auto?: number; atencao?: number; nao_encontrados?: number };
     let leituraAtualizada: { vinculados_auto?: number; atencao?: number; nao_encontrados?: number } | null = null;
     if (result.idempotente && result.importacao_id) {
+      const { error: identificacaoError } = await db.rpc("rpc_identificar_cotas_repasse_unicas", {
+        p_empresa_id: empresaId,
+        p_importacao_id: result.importacao_id,
+      });
+      if (identificacaoError) throw new Error(`O PDF foi localizado, mas as cotas não puderam ser conferidas: ${identificacaoError.message}`);
       const { data: refreshData, error: refreshError } = await db.rpc("rpc_reprocessar_repasse_racon", {
         p_empresa_id: empresaId,
         p_importacao_id: result.importacao_id,
@@ -115,7 +120,7 @@ export async function vincularItemRepasseManualAction(
     const itemId = String(formData.get("item_id") ?? "");
     const previsaoId = String(formData.get("previsao_franquia_id") ?? "");
     if (!itemId || !previsaoId) throw new Error("Selecione a linha e a comissão do sistema.");
-    const { data, error } = await db.rpc("rpc_corrigir_vinculo_item_repasse", {
+    const { data, error } = await db.rpc("rpc_vincular_item_repasse_com_cota", {
       p_empresa_id: empresaId,
       p_item_id: itemId,
       p_nova_previsao_franquia_id: previsaoId,
@@ -170,6 +175,11 @@ export async function reprocessarRelatorioRepasseAction(
     const { db, empresaId } = await context();
     const importacaoId = String(formData.get("importacao_id") ?? "").trim();
     if (!importacaoId) throw new Error("Relatório não informado.");
+    const { data: cotasIdentificadas, error: identificacaoError } = await db.rpc("rpc_identificar_cotas_repasse_unicas", {
+      p_empresa_id: empresaId,
+      p_importacao_id: importacaoId,
+    });
+    if (identificacaoError) throw new Error(`Não foi possível conferir as cotas novas: ${identificacaoError.message}`);
     const { data, error } = await db.rpc("rpc_reprocessar_repasse_racon", {
       p_empresa_id: empresaId,
       p_importacao_id: importacaoId,
@@ -180,7 +190,7 @@ export async function reprocessarRelatorioRepasseAction(
     return {
       ok: true,
       importacaoId,
-      message: `Leitura atualizada sem novo upload ou entrada financeira: ${result.vinculados_auto ?? 0} novo(s) vínculo(s), ${result.atencao ?? 0} atenção(ões) e ${result.nao_encontrados ?? 0} não encontrado(s).`,
+      message: `Leitura atualizada sem novo upload ou entrada financeira: ${Number(cotasIdentificadas ?? 0)} cota(s) identificada(s), ${result.vinculados_auto ?? 0} novo(s) vínculo(s), ${result.atencao ?? 0} atenção(ões) e ${result.nao_encontrados ?? 0} não encontrado(s).`,
     };
   } catch (error) {
     return { ok: false, message: error instanceof Error ? error.message : "Não foi possível atualizar a leitura." };

@@ -2710,3 +2710,7 @@ O app mobile de indicações passou a usar uma resolução centralizada do vínc
 ### Fase 255 — Idempotência da indicação e proteção da atribuição
 
 O envio do app consulta `programa_indicacoes` pela chave canônica `(empresa_id, lead_id)` antes da inserção. Uma repetição pendente do mesmo indicador atualiza os dados da indicação; vínculos pertencentes a outro indicador ou já convertidos permanecem protegidos contra sobrescrita. Quando o telefone já pertence a outro indicador, a interface avisa o conflito e permite retornar diretamente para alterar o número, preservando o restante do preenchimento. A restrição única continua sendo a garantia estrutural contra duplicidade de atribuição e comissão.
+
+### Fase 256 — Cotas identificadas após importação do repasse
+
+O PDF preserva grupo e número oficial da cota em `erp_repasse_importacao_itens`. Uma venda posterior pode criar `cotas_definitivas` antes de receber seu número oficial. A atualização do relatório identifica essa cota somente quando há um candidato único que coincide em tenant, administradora, grupo, cliente, competência, etapa e valor; em caso de múltiplas cotas, exige seleção manual. O vínculo manual persiste o número oficial na cota e executa a baixa na mesma transação, mantendo proteção contra números conflitantes e duplo vínculo.

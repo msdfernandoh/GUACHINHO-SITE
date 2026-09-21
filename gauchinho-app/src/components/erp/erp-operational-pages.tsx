@@ -786,7 +786,7 @@ export async function ErpRepasseFranquiaPage() {
     db
       .from("comissao_previsoes_franquia")
       .select(
-        "id,administradora_id,competencia,ordem_etapa,nome_etapa,valor_previsto,valor_liquidado,status,administradora:administradoras(nome),cota:cotas_definitivas(id,numero_grupo,numero_cota),venda:vendas(cliente_nome,cliente:clientes(nome))",
+        "id,administradora_id,competencia,ordem_etapa,nome_etapa,valor_previsto,valor_liquidado,status,administradora:administradoras(nome),cota:cotas_definitivas(id,numero_grupo,numero_cota,ordem_cota),venda:vendas(cliente_nome,cliente:clientes(nome))",
       )
       .eq("empresa_id", empresaId)
       .in("status", ["prevista", "parcialmente_liquidada"])
@@ -995,6 +995,7 @@ export async function ErpRepasseFranquiaPage() {
             valor_liquidado: Number(row.valor_liquidado),
             numero_grupo: cota?.numero_grupo ?? null,
             numero_cota: cota?.numero_cota ?? null,
+            ordem_cota: cota?.ordem_cota ?? null,
             cliente_nome: cliente?.nome || venda?.cliente_nome || "Cliente não identificado",
             cota_definitiva_id: cota?.id ?? null,
             status: row.status,

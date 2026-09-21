@@ -76,6 +76,7 @@ export type RepassePrevisaoAberta = {
   valor_liquidado: number;
   numero_grupo: string | null;
   numero_cota: string | null;
+  ordem_cota: number | null;
   cliente_nome: string;
   cota_definitiva_id: string | null;
   status: string;
@@ -108,7 +109,8 @@ const statusStyle: Record<string, string> = {
 };
 
 function previsaoLabel(p: RepassePrevisaoAberta) {
-  return `${p.competencia} · ${p.cliente_nome} · ${p.numero_grupo ?? "—"}/${p.numero_cota ?? "—"} · ${p.ordem_etapa}ª · ${money(Number(p.valor_previsto) - Number(p.valor_liquidado))}`;
+  const cota = p.numero_cota ? `Cota ${p.numero_cota}` : `Cota não cadastrada${p.ordem_cota ? ` (interna ${p.ordem_cota})` : ""}`;
+  return `${p.competencia} · ${p.cliente_nome} · Grupo ${p.numero_grupo ?? "—"} · ${cota} · ${p.ordem_etapa}ª parcela · ${money(Number(p.valor_previsto) - Number(p.valor_liquidado))}`;
 }
 
 function SearchablePrevisaoSelect({ previsoes, defaultValue = "", placeholder = "Digite o nome do cliente" }: { previsoes: RepassePrevisaoAberta[]; defaultValue?: string; placeholder?: string }) {
@@ -122,7 +124,7 @@ function SearchablePrevisaoSelect({ previsoes, defaultValue = "", placeholder = 
   const normalizado = termo.trim().toLocaleLowerCase("pt-BR");
   const filtradas = normalizado
     ? previsoes.filter((p) => {
-        const full = `${p.competencia} ${p.cliente_nome} ${p.numero_grupo ?? ""} ${p.numero_cota ?? ""} ${p.ordem_etapa}`.toLocaleLowerCase("pt-BR");
+        const full = `${p.competencia} ${p.cliente_nome} ${p.numero_grupo ?? ""} ${p.numero_cota ?? ""} ${p.ordem_cota ?? ""} ${p.ordem_etapa}`.toLocaleLowerCase("pt-BR");
         return full.includes(normalizado) || previsaoLabel(p).toLocaleLowerCase("pt-BR").includes(normalizado);
       })
     : previsoes;
@@ -139,7 +141,7 @@ function SearchablePrevisaoSelect({ previsoes, defaultValue = "", placeholder = 
         const norm = val.trim().toLocaleLowerCase("pt-BR");
         if (norm) {
           const matches = previsoes.filter((p) => {
-            const full = `${p.competencia} ${p.cliente_nome} ${p.numero_grupo ?? ""} ${p.numero_cota ?? ""} ${p.ordem_etapa}`.toLocaleLowerCase("pt-BR");
+            const full = `${p.competencia} ${p.cliente_nome} ${p.numero_grupo ?? ""} ${p.numero_cota ?? ""} ${p.ordem_cota ?? ""} ${p.ordem_etapa}`.toLocaleLowerCase("pt-BR");
             return full.includes(norm) || previsaoLabel(p).toLocaleLowerCase("pt-BR").includes(norm);
           });
           if (matches.length === 1) {
@@ -433,7 +435,7 @@ function LinkedItemsTable({ items, previsoes, action, disabled }: { items: Repas
       const current = item.previsao;
       const valorVinculado = Number(item.valor_vinculado ?? 0);
       const options = current && item.previsao_franquia_id && !previsoes.some((p) => p.id === item.previsao_franquia_id)
-        ? [{ id: item.previsao_franquia_id, administradora_id: "", competencia: current.competencia, ordem_etapa: current.ordem_etapa, nome_etapa: current.nome_etapa, valor_previsto: current.valor_previsto, valor_liquidado: current.valor_liquidado, numero_grupo: item.numero_grupo, numero_cota: item.numero_cota, cliente_nome: item.cliente_nome, cota_definitiva_id: null, status: "liquidada" }, ...previsoes]
+        ? [{ id: item.previsao_franquia_id, administradora_id: "", competencia: current.competencia, ordem_etapa: current.ordem_etapa, nome_etapa: current.nome_etapa, valor_previsto: current.valor_previsto, valor_liquidado: current.valor_liquidado, numero_grupo: item.numero_grupo, numero_cota: item.numero_cota, ordem_cota: null, cliente_nome: item.cliente_nome, cota_definitiva_id: null, status: "liquidada" }, ...previsoes]
         : previsoes;
       return <tr key={item.id}><td className="p-2">{item.linha}</td><td className="font-bold">{item.cliente_nome}</td><td>{item.numero_grupo} / {item.numero_cota}</td><td>{item.parcela_numero}/{item.parcela_total}</td><td className="text-right font-mono">{money(Number(item.valor_comissao))}</td><td className="text-right font-mono font-bold text-blue-700">{money(valorVinculado)}</td><td className="pl-3"><form action={action} className="flex items-end gap-2"><input type="hidden" name="item_id" value={item.id}/><SearchablePrevisaoSelect previsoes={options} defaultValue={item.previsao_franquia_id ?? ""}/><button disabled={disabled} className="rounded-lg bg-blue-700 px-3 py-1.5 font-bold text-white disabled:opacity-50">Salvar alteração</button></form></td></tr>;
     })}</tbody></table></div>}
