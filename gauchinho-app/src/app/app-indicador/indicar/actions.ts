@@ -5,6 +5,7 @@ import { getCurrentTenantContext } from "@/lib/tenant/context";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { digitsOnlyPhone } from "@/lib/utils/format";
 import { upsertLeadPorTelefone } from "@/lib/crm/upsert-lead";
+import { resolveIndicadorAppSession } from "@/lib/parceiros/indicador-app-session";
 
 export type NovaIndicacaoApp = {
   nome: string;
@@ -34,22 +35,8 @@ export async function registrarIndicacaoDoAppAction(input: NovaIndicacaoApp) {
   }
 
   const admin = createAdminClient();
-  const { data: participante } = await admin
-    .from("participantes_comerciais")
-    .select("id,nome,telefone,whatsapp")
-    .eq("empresa_id", empresaAtiva.id)
-    .eq("usuario_id", usuario.id)
-    .eq("status", "ATIVO")
-    .maybeSingle();
+  const { participante, indicador } = await resolveIndicadorAppSession(empresaAtiva.id, usuario.id);
   if (!participante) return { ok: false, error: "Seu acesso não está vinculado a um indicador ativo." };
-
-  const { data: indicador } = await admin
-    .from("programa_indicadores")
-    .select("id")
-    .eq("empresa_id", empresaAtiva.id)
-    .eq("participante_id", participante.id)
-    .eq("ativo", true)
-    .maybeSingle();
   if (!indicador) return { ok: false, error: "Seu cadastro de indicador não foi localizado." };
 
   const relacao = input.relacao === "OUTROS" ? input.relacaoOutro!.trim() : input.relacao.toLowerCase();

@@ -37,3 +37,9 @@ export async function loginIndicadorAction(formData: FormData) {
   if (error) redirect(`/app-indicador/login?error=${encodeURIComponent("CPF ou senha inválidos.")}`);
   redirect("/app-indicador");
 }
+
+export async function logoutIndicadorAction() {
+  const db = await createClient();
+  await db.auth.signOut();
+  redirect("/app-indicador/login");
+}
