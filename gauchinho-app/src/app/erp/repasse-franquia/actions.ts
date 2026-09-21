@@ -123,7 +123,7 @@ export async function vincularItemRepasseManualAction(
     const { data, error } = await db.rpc("rpc_vincular_item_repasse_com_cota", {
       p_empresa_id: empresaId,
       p_item_id: itemId,
-      p_nova_previsao_franquia_id: previsaoId,
+      p_previsao_franquia_id: previsaoId,
       p_idempotency_key: `corrigir-vinculo:${itemId}:${previsaoId}`,
     });
     if (error) throw new Error(error.message);

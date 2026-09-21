@@ -763,7 +763,7 @@ export async function ErpRepasseFranquiaPage() {
   if (!empresaAtiva) notFound();
   const empresaId = empresaAtiva.id;
   const db = await createClient();
-  const [grants, contas, recebimentos, previsoes, solicitacoesRes, importacoesRes, participantesRes, regrasRes, gruposRes, resolucoesRes] = await Promise.all([
+  const [grants, contas, recebimentos, previsoes, solicitacoesRes, importacoesRes, participantesRes, perfisParticipantesRes, regrasRes, gruposRes, resolucoesRes] = await Promise.all([
     db
       .from("empresa_administradoras")
       .select("administradora:administradoras(id,nome)")
@@ -812,6 +812,11 @@ export async function ErpRepasseFranquiaPage() {
       .eq("status", "ATIVO")
       .order("nome"),
     db
+      .from("participante_comissao_perfis")
+      .select("participante_id,papel_tipo,vigencia_inicio,vigencia_fim,perfil:comissao_perfis(nome)")
+      .eq("empresa_id", empresaId)
+      .eq("ativo", true),
+    db
       .from("comissao_regras_participantes")
       .select("id,percentual_comissao,perfil:comissao_perfis(nome)")
       .eq("empresa_id", empresaId)
@@ -831,6 +836,31 @@ export async function ErpRepasseFranquiaPage() {
       .order("created_at", { ascending: false })
       .limit(500),
   ]);
+
+  const hoje = new Date().toISOString().slice(0, 10);
+  const perfisPorParticipante = new Map<string, Set<string>>();
+  for (const vinculo of perfisParticipantesRes.data ?? []) {
+    if (vinculo.vigencia_inicio > hoje || (vinculo.vigencia_fim && vinculo.vigencia_fim < hoje)) continue;
+    const perfilRelacao = Array.isArray(vinculo.perfil) ? vinculo.perfil[0] : vinculo.perfil;
+    const perfilNome = perfilRelacao?.nome || vinculo.papel_tipo || "Sem perfil de comissão";
+    const perfis = perfisPorParticipante.get(vinculo.participante_id) ?? new Set<string>();
+    perfis.add(perfilNome);
+    perfisPorParticipante.set(vinculo.participante_id, perfis);
+  }
+  const participantesBase = (participantesRes.data ?? []).map((row) => ({
+    id: row.id,
+    nome: row.nome_exibicao || row.nome,
+  }));
+  const totalPorNome = participantesBase.reduce((totais, participante) => {
+    const chave = participante.nome.trim().toLocaleUpperCase("pt-BR");
+    totais.set(chave, (totais.get(chave) ?? 0) + 1);
+    return totais;
+  }, new Map<string, number>());
+  const participantesRepasse = participantesBase.map((participante) => ({
+    ...participante,
+    perfil_comissao: [...(perfisPorParticipante.get(participante.id) ?? [])].join(" / ") || null,
+    nome_repetido: (totalPorNome.get(participante.nome.trim().toLocaleUpperCase("pt-BR")) ?? 0) > 1,
+  } satisfies RepasseParticipante));
 
   const administradoras = (grants.data ?? []).flatMap((x) => {
     const a = x.administradora as unknown as {
@@ -1001,10 +1031,7 @@ export async function ErpRepasseFranquiaPage() {
             status: row.status,
           } satisfies RepassePrevisaoAberta;
         })}
-        participantes={(participantesRes.data ?? []).map((row) => ({
-          id: row.id,
-          nome: row.nome_exibicao || row.nome,
-        } satisfies RepasseParticipante))}
+        participantes={participantesRepasse}
         regras={(regrasRes.data ?? []).map((row: any) => {
           const perfil = Array.isArray(row.perfil) ? row.perfil[0] : row.perfil;
           return {

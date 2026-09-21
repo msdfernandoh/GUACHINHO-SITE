@@ -96,7 +96,12 @@ export type RepasseAtencaoResolucao = {
   created_at: string;
 };
 
-export type RepasseParticipante = { id: string; nome: string };
+export type RepasseParticipante = {
+  id: string;
+  nome: string;
+  perfil_comissao?: string | null;
+  nome_repetido?: boolean;
+};
 export type RepasseRegraParticipante = { id: string; nome: string; percentual: number };
 export type RepasseGrupo = { id: string; administradora_id: string; codigo: string; ativo: boolean; local: boolean };
 
@@ -454,7 +459,7 @@ function MissingRegistrationForm({ item, action, disabled, participantes, grupos
       </label>
       <label className="font-bold">Número do grupo <input name="numero_grupo" required defaultValue={item.numero_grupo} className="mt-1 w-full rounded border p-1.5 font-normal"/></label>
       <label className="font-bold">Número da cota <input name="numero_cota" required defaultValue={item.numero_cota} className="mt-1 w-full rounded border p-1.5 font-normal"/></label>
-      <label className="font-bold">Consultor <select name="participante_id" required className="mt-1 w-full rounded border p-1.5 font-normal"><option value="">Selecione</option>{participantes.map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}</select></label>
+      <label className="font-bold">Consultor <select name="participante_id" required className="mt-1 w-full rounded border p-1.5 font-normal"><option value="">Selecione</option>{participantes.map((p) => <option key={p.id} value={p.id}>{p.nome_repetido ? `${p.perfil_comissao || "Sem perfil de comissão"} · ${p.nome}` : p.nome}</option>)}</select></label>
       <input type="hidden" name="sem_regra" value="true" />
       <div className="col-span-2 grid gap-2 rounded border border-emerald-300 bg-emerald-50 p-2 sm:grid-cols-2">
         <label className="font-bold text-emerald-950">Valor recebido pela empresa<input readOnly value={Number(item.valor_comissao).toFixed(2)} className="mt-1 w-full rounded border bg-slate-100 p-1.5 font-mono"/></label>

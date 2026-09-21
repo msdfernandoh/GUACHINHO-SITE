@@ -2714,3 +2714,9 @@ O envio do app consulta `programa_indicacoes` pela chave canônica `(empresa_id,
 ### Fase 256 — Cotas identificadas após importação do repasse
 
 O PDF preserva grupo e número oficial da cota em `erp_repasse_importacao_itens`. Uma venda posterior pode criar `cotas_definitivas` antes de receber seu número oficial. A atualização do relatório identifica essa cota somente quando há um candidato único que coincide em tenant, administradora, grupo, cliente, competência, etapa e valor; em caso de múltiplas cotas, exige seleção manual. O vínculo manual persiste o número oficial na cota e executa a baixa na mesma transação, mantendo proteção contra números conflitantes e duplo vínculo.
+
+### Fase 257 — Identificação de consultores repetidos e RPC de vínculo do repasse
+
+No cadastro manual de linhas de repasse, participantes com nomes repetidos são diferenciados pelo perfil de comissão ativo e vigente, apresentado antes do nome. A chamada de `rpc_vincular_item_repasse_com_cota` usa a assinatura nominal publicada na migração 242 (`p_previsao_franquia_id`), permitindo vincular e baixar linhas de relatórios antigos após a criação posterior do cliente e da cota.
+
+Relatório: `docs/relatorios-fases/FASE-257-CONSULTORES-REPETIDOS-E-RPC-REPASSE.md`.
