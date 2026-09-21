@@ -58,6 +58,44 @@ export async function registrarIndicacaoDoAppAction(input: NovaIndicacaoApp) {
   });
   if (!lead.ok || !lead.lead_id) return { ok: false, error: lead.error ?? "Não foi possível registrar a indicação." };
 
+  const { data: indicacaoExistente } = await admin
+    .from("programa_indicacoes")
+    .select("id,indicador_id,status,venda_id")
+    .eq("empresa_id", empresaAtiva.id)
+    .eq("lead_id", lead.lead_id)
+    .maybeSingle();
+
+  if (indicacaoExistente) {
+    if (indicacaoExistente.indicador_id !== indicador.id) {
+      return {
+        ok: false,
+        error: "Este telefone já possui uma indicação cadastrada por outro participante.",
+        field: "telefone" as const,
+      };
+    }
+
+    if (!indicacaoExistente.venda_id && indicacaoExistente.status === "PENDENTE") {
+      const { error: updateError } = await admin
+        .from("programa_indicacoes")
+        .update({
+          indicador_nome_snapshot: participante.nome,
+          indicador_telefone_snapshot: digitsOnlyPhone(participante.whatsapp || participante.telefone || ""),
+          produto_interesse: input.produto,
+          credito_desejado: input.credito,
+          capacidade_mensal: input.capacidadeMensal,
+          observacao_indicado: observacao || null,
+        })
+        .eq("empresa_id", empresaAtiva.id)
+        .eq("id", indicacaoExistente.id);
+      if (updateError) return { ok: false, error: "Não foi possível atualizar esta indicação agora." };
+      revalidatePath("/app-indicador");
+      revalidatePath("/app-indicador/indicar");
+      return { ok: true };
+    }
+
+    return { ok: false, error: "Este telefone já possui uma indicação em andamento." };
+  }
+
   const { error } = await admin.from("programa_indicacoes").insert({
     empresa_id: empresaAtiva.id,
     indicador_id: indicador.id,
@@ -69,7 +107,16 @@ export async function registrarIndicacaoDoAppAction(input: NovaIndicacaoApp) {
     capacidade_mensal: input.capacidadeMensal,
     observacao_indicado: observacao || null,
   });
-  if (error) return { ok: false, error: "A pessoa foi localizada, mas não foi possível concluir o vínculo da indicação." };
+  if (error) {
+    console.error("[app-indicador] falha ao vincular indicação", {
+      code: error.code,
+      message: error.message,
+      empresaId: empresaAtiva.id,
+      indicadorId: indicador.id,
+      leadId: lead.lead_id,
+    });
+    return { ok: false, error: "A pessoa foi localizada, mas não foi possível concluir o vínculo da indicação." };
+  }
 
   revalidatePath("/app-indicador");
   revalidatePath("/app-indicador/indicar");

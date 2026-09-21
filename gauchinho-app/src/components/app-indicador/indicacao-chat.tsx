@@ -19,9 +19,10 @@ export function IndicacaoChat({ racon = false }: { racon?: boolean }) {
   const [step, setStep] = useState(0);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [errorField, setErrorField] = useState<"telefone" | null>(null);
   const [done, setDone] = useState(false);
   const [data, setData] = useState<Partial<NovaIndicacaoApp>>({});
-  const update = (patch: Partial<NovaIndicacaoApp>) => { setData((current) => ({ ...current, ...patch })); setError(""); };
+  const update = (patch: Partial<NovaIndicacaoApp>) => { setData((current) => ({ ...current, ...patch })); setError(""); setErrorField(null); };
   const avancar = () => {
     if (step === 0 && (!data.nome?.trim() || !data.telefone || data.telefone.replace(/\D/g, "").length < 10)) return setError("Informe nome e telefone com DDD.");
     if (step === 1 && (!data.relacao || (data.relacao === "OUTROS" && !data.relacaoOutro?.trim()))) return setError("Escolha ou explique a relação.");
@@ -31,10 +32,14 @@ export function IndicacaoChat({ racon = false }: { racon?: boolean }) {
     setStep((current) => current + 1);
   };
   const enviar = async () => {
-    setSaving(true); setError("");
+    setSaving(true); setError(""); setErrorField(null);
     const result = await registrarIndicacaoDoAppAction(data as NovaIndicacaoApp);
     setSaving(false);
-    if (!result.ok) return setError(result.error || "Não foi possível enviar agora.");
+    if (!result.ok) {
+      setError(result.error || "Não foi possível enviar agora.");
+      if ("field" in result && result.field === "telefone") setErrorField("telefone");
+      return;
+    }
     setDone(true);
   };
   if (done) return <AppIndicadorTheme racon={racon}><main className="min-h-screen bg-zinc-950 px-5 py-10 text-white"><section className="mx-auto max-w-md rounded-[2rem] border border-emerald-400/30 bg-zinc-900 p-7 text-center shadow-2xl"><span className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-400 text-zinc-950"><Check className="h-9 w-9" /></span><p className="mt-6 text-xs font-black tracking-[.18em] text-emerald-300">INDICAÇÃO ENVIADA</p><h1 className="mt-3 text-3xl font-black">Pronto, você ajudou alguém a começar.</h1><p className="mt-3 text-sm leading-relaxed text-zinc-300">Acompanhe a evolução em Meus indicados e suas comissões pelo app.</p><div className="mt-7 grid gap-3"><button onClick={() => { setData({}); setStep(0); setDone(false); }} className="rounded-2xl bg-amber-400 p-4 font-black text-zinc-950">Cadastrar outra indicação</button><Link href="/app-indicador" className="rounded-2xl border border-zinc-700 p-4 font-black">Voltar ao meu painel</Link></div></section></main></AppIndicadorTheme>;
@@ -47,7 +52,7 @@ export function IndicacaoChat({ racon = false }: { racon?: boolean }) {
     {step === 3 && <div className="space-y-4"><div className="grid grid-cols-2 gap-3">{creditos.map((value) => <Escolha key={value} value={moeda(value)} selected={data.credito === value} onClick={() => update({ credito: value })} />)}</div><label className="block text-sm font-bold">Ou digite outro valor<input inputMode="numeric" onChange={(e) => update({ credito: Number(e.target.value.replace(/\D/g, "")) || undefined })} className="mt-2 w-full rounded-2xl border border-zinc-700 bg-zinc-950 p-4 outline-none focus:border-amber-400" placeholder="Ex.: 250000" /></label></div>}
     {step === 4 && <div className="space-y-4"><div className="grid grid-cols-2 gap-3">{parcelas.map((value) => <Escolha key={value} value={`${moeda(value)} / mês`} selected={data.capacidadeMensal === value} onClick={() => update({ capacidadeMensal: value })} />)}</div><label className="block text-sm font-bold">Ou informe outro valor mensal<input inputMode="numeric" onChange={(e) => update({ capacidadeMensal: Number(e.target.value.replace(/\D/g, "")) || undefined })} className="mt-2 w-full rounded-2xl border border-zinc-700 bg-zinc-950 p-4 outline-none focus:border-amber-400" placeholder="Ex.: 1800" /></label></div>}
     {step === 5 && <div className="space-y-4"><div className="rounded-2xl bg-zinc-800 p-4 text-sm leading-7 text-zinc-200"><p><b>Indicado:</b> {data.nome}</p><p><b>Interesse:</b> {data.produto} · {moeda(data.credito || 0)}</p><p><b>Disponível por mês:</b> {moeda(data.capacidadeMensal || 0)}</p></div><label className="block text-sm font-bold">Alguma observação? <span className="font-normal text-zinc-500">(opcional)</span><textarea value={data.observacao || ""} onChange={(e) => update({ observacao: e.target.value })} className="mt-2 min-h-24 w-full rounded-2xl border border-zinc-700 bg-zinc-950 p-4 outline-none focus:border-amber-400" placeholder="Ex.: prefere contato à tarde" /></label></div>}
-    {error && <p className="mt-4 rounded-xl bg-rose-500/10 p-3 text-sm font-bold text-rose-300">{error}</p>}
+    {error && <div className="mt-4 rounded-xl bg-rose-500/10 p-3 text-sm font-bold text-rose-300"><p>{error}</p>{errorField === "telefone" && <button type="button" onClick={() => { setData((current) => ({ ...current, telefone: "" })); setStep(0); setError(""); setErrorField(null); }} className="mt-3 rounded-xl border border-rose-300/40 px-4 py-2 text-white">Alterar telefone</button>}</div>}
     <div className="mt-6 flex gap-3">{step > 0 && <button type="button" onClick={() => { setStep((current) => current - 1); setError(""); }} className="rounded-2xl border border-zinc-700 px-5 font-black">Voltar</button>}<button type="button" disabled={saving} onClick={step === 5 ? enviar : avancar} className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-amber-400 p-4 font-black text-zinc-950 disabled:opacity-60">{saving ? "Enviando…" : step === 5 ? <><Send className="h-4 w-4" />Enviar indicação</> : "Continuar"}</button></div>
   </section></div></main></AppIndicadorTheme>;
 }

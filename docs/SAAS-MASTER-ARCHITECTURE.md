@@ -2694,3 +2694,7 @@ Relatório: `docs/relatorios-fases/FASE-252-FUNIL-3D-INTERATIVO-FILTRO-PIPELINE-
 # Fase 254 — Sessão consistente no app do indicador
 
 O app mobile de indicações passou a usar uma resolução centralizada do vínculo autenticado entre `usuarios`, `participantes_comerciais` e `programa_indicadores`. A resolução sempre restringe a empresa ativa, aceita a capitalização histórica do status e, quando existem vínculos antigos, seleciona o participante que possui indicador ativo. Contas legadas completas que perderam somente a linha de `programa_indicadores` têm esse vínculo recomposto de forma idempotente e recebem o tipo comercial `INDICADOR`. Painel e envio compartilham essa regra. O painel também expõe a ação de troca de usuário com encerramento da sessão.
+
+### Fase 255 — Idempotência da indicação e proteção da atribuição
+
+O envio do app consulta `programa_indicacoes` pela chave canônica `(empresa_id, lead_id)` antes da inserção. Uma repetição pendente do mesmo indicador atualiza os dados da indicação; vínculos pertencentes a outro indicador ou já convertidos permanecem protegidos contra sobrescrita. Quando o telefone já pertence a outro indicador, a interface avisa o conflito e permite retornar diretamente para alterar o número, preservando o restante do preenchimento. A restrição única continua sendo a garantia estrutural contra duplicidade de atribuição e comissão.

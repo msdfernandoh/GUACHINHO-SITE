@@ -26,4 +26,14 @@ describe("fase 254 - sessão consistente no app do indicador", () => {
     expect(source("src/app/app-indicador/login/actions.ts")).toContain("auth.signOut()");
     expect(source("src/components/app-indicador/indicacao-chat.tsx")).toContain("Qual valor disponível mensal para investimento?");
   });
+
+  it("trata reenvio sem duplicar a atribuição da comissão", () => {
+    const action = source("src/app/app-indicador/indicar/actions.ts");
+    expect(action).toContain('eq("lead_id", lead.lead_id)');
+    expect(action).toContain("indicacaoExistente.indicador_id !== indicador.id");
+    expect(action).toContain("Este telefone já possui uma indicação cadastrada por outro participante.");
+    expect(action).toContain('field: "telefone"');
+    expect(action).toContain('.update({');
+    expect(source("src/components/app-indicador/indicacao-chat.tsx")).toContain("Alterar telefone");
+  });
 });
