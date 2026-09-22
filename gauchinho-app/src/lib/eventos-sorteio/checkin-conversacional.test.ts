@@ -1,12 +1,17 @@
 import { describe, expect, it } from "vitest";
 import {
   labelCapacidade,
+  labelAvaliacaoEncontro,
+  labelMomentoOportunidade,
   labelMoradia,
   labelVeiculo,
+  OPCOES_AVALIACAO_ENCONTRO,
   OPCOES_CAPACIDADE_MENSAL,
+  OPCOES_MOMENTO_OPORTUNIDADE,
   OPCOES_MORADIA,
   OPCOES_VEICULO,
   type QualificacaoRespostasPayload,
+  validarQualificacaoRespostas,
 } from "./checkin-conversacional";
 import { formatCodigoParticipacao, proximoCodigoFromExisting } from "./codigo";
 
@@ -27,6 +32,23 @@ describe("checkin-conversacional labels e opções", () => {
     const ids = OPCOES_CAPACIDADE_MENSAL.map((o) => o.id);
     expect(ids).toEqual(["ate_500", "500_1000", "1000_2000", "acima_2000", "entender_primeiro"]);
     expect(labelCapacidade("1000_2000")).toBe("R$ 1.000 a R$ 2.000");
+  });
+
+  it("contém as novas opções de avaliação e momento atual", () => {
+    expect(OPCOES_AVALIACAO_ENCONTRO.map((o) => o.id)).toEqual([
+      "gostei_bastante",
+      "gostei_entender_melhor",
+      "pode_melhorar",
+    ]);
+    expect(OPCOES_MOMENTO_OPORTUNIDADE.map((o) => o.id)).toEqual([
+      "simulacao_agora",
+      "atendimento_presencial",
+      "retomar_ate_3_meses",
+      "futuro_acima_3_meses",
+      "sem_interesse",
+    ]);
+    expect(labelAvaliacaoEncontro("gostei_bastante")).toBe("Gostei bastante e fez sentido para mim");
+    expect(labelMomentoOportunidade("atendimento_presencial")).toBe("Quero agendar um atendimento presencial para os próximos dias");
   });
 });
 
@@ -69,6 +91,9 @@ describe("isolamento entre qualificação comercial e NPS", () => {
       veiculo: "carro",
       moradia: "aluguel",
       capacidade_mensal: "1000_2000",
+      avaliacao_encontro: "gostei_bastante",
+      avaliacao_melhoria: null,
+      momento_oportunidade: "simulacao_agora",
     };
 
     expect(qual.veiculo).toBe("carro");
@@ -77,5 +102,30 @@ describe("isolamento entre qualificação comercial e NPS", () => {
     // Garante que não possui chaves de NPS
     expect("recomendacao_evento" in qual).toBe(false);
     expect("conteudo_apresentado" in qual).toBe(false);
+  });
+
+  it("exige comentário quando a avaliação indica que pode melhorar", () => {
+    const incompleta = validarQualificacaoRespostas({
+      veiculo: "carro",
+      moradia: "aluguel",
+      capacidade_mensal: "1000_2000",
+      avaliacao_encontro: "pode_melhorar",
+      avaliacao_melhoria: "",
+      momento_oportunidade: "retomar_ate_3_meses",
+    });
+    expect(incompleta.ok).toBe(false);
+
+    const completa = validarQualificacaoRespostas({
+      veiculo: "carro",
+      moradia: "aluguel",
+      capacidade_mensal: "1000_2000",
+      avaliacao_encontro: "pode_melhorar",
+      avaliacao_melhoria: "Mais tempo para perguntas.",
+      momento_oportunidade: "retomar_ate_3_meses",
+    });
+    expect(completa).toMatchObject({
+      ok: true,
+      value: { avaliacao_melhoria: "Mais tempo para perguntas." },
+    });
   });
 });

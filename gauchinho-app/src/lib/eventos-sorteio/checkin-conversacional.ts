@@ -10,6 +10,9 @@ import {
   labelVeiculo,
   labelMoradia,
   labelCapacidade,
+  labelAvaliacaoEncontro,
+  labelMomentoOportunidade,
+  validarQualificacaoRespostas,
 } from "./checkin-conversacional-types";
 
 /**
@@ -90,6 +93,9 @@ export async function executarCheckinConversacional(params: {
   if (!telNorm || telNorm.length < 10) {
     return { ok: false, error: "WhatsApp inválido. Informe o DDD e o número completo." };
   }
+  const qualificacaoValidada = validarQualificacaoRespostas(params.qualificacao);
+  if (!qualificacaoValidada.ok) return qualificacaoValidada;
+  const qualificacao = qualificacaoValidada.value;
 
   const admin = createAdminClient();
 
@@ -99,7 +105,7 @@ export async function executarCheckinConversacional(params: {
       p_evento_id: params.eventoId,
       p_nome: nome,
       p_whatsapp: formatWhatsappBrInput(telNorm),
-      p_qualificacao: params.qualificacao,
+      p_qualificacao: qualificacao,
       p_lgpd_versao: params.lgpdVersao ?? "v1_checkin_evento",
       p_qr_code_unico_id: params.qrCodeUnicoId ?? null,
     });
@@ -183,7 +189,7 @@ export async function executarCheckinConversacional(params: {
       origem: "qr_checkin_conversacional",
       evento_id: params.eventoId,
       evento_nome: ev.nome,
-      qualificacao: params.qualificacao,
+      qualificacao,
       qr_code_unico_id: params.qrCodeUnicoId ?? null,
     },
   });
@@ -236,7 +242,7 @@ export async function executarCheckinConversacional(params: {
     ganhador: false,
     fase_cadastro: "completo",
     origem_cupom: "cadastro",
-    qualificacao_respostas: params.qualificacao,
+    qualificacao_respostas: qualificacao,
     lgpd_termo_versao: params.lgpdVersao ?? "v1_checkin_evento",
     lgpd_consentimento_at: now,
     qr_code_unico_id: params.qrCodeUnicoId ?? null,
@@ -260,7 +266,7 @@ export async function executarCheckinConversacional(params: {
         evento_nome: ev.nome,
         sorteio_participante_id: sorteioPart?.id ?? null,
         codigo_sorteio: codigo,
-        qualificacao_respostas: params.qualificacao,
+        qualificacao_respostas: qualificacao,
         lgpd_termo_versao: params.lgpdVersao ?? "v1_checkin_evento",
         lgpd_consentimento_at: now,
         checkin_at: now,
@@ -274,7 +280,7 @@ export async function executarCheckinConversacional(params: {
         lead_id: leadId,
         tipo: "evento_checkin",
         titulo: `Check-in no evento ${ev.nome}`,
-        descricao: `Número da Sorte: ${codigo}\n• Veículo: ${labelVeiculo(params.qualificacao.veiculo)}\n• Moradia: ${labelMoradia(params.qualificacao.moradia)}\n• Investimento: ${labelCapacidade(params.qualificacao.capacidade_mensal)}`,
+        descricao: `Número da Sorte: ${codigo}\n• Veículo: ${labelVeiculo(qualificacao.veiculo)}\n• Moradia: ${labelMoradia(qualificacao.moradia)}\n• Investimento: ${labelCapacidade(qualificacao.capacidade_mensal)}\n• Avaliação do encontro: ${labelAvaliacaoEncontro(qualificacao.avaliacao_encontro)}${qualificacao.avaliacao_melhoria ? `\n• O que pode melhorar: ${qualificacao.avaliacao_melhoria}` : ""}\n• Momento atual: ${labelMomentoOportunidade(qualificacao.momento_oportunidade)}`,
         status: "concluida",
         data_conclusao: now,
       });

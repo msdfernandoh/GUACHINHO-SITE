@@ -4,6 +4,8 @@ import {
   labelVeiculo,
   labelMoradia,
   labelCapacidade,
+  labelAvaliacaoEncontro,
+  labelMomentoOportunidade,
 } from "@/lib/eventos-sorteio/checkin-conversacional-types";
 
 export type EnrichedEventoParticipante = {
@@ -30,6 +32,11 @@ export type EnrichedEventoParticipante = {
   moradia_label: string;
   investimento: string | null;
   investimento_label: string;
+  avaliacao_encontro: string | null;
+  avaliacao_encontro_label: string;
+  avaliacao_melhoria: string | null;
+  momento_oportunidade: string | null;
+  momento_oportunidade_label: string;
 };
 
 export type ParticipantesResumoStats = {
@@ -108,6 +115,9 @@ export async function fetchParticipantesEventoEnriquecidos(
     const veiculo = qResp.veiculo || null;
     const moradia = qResp.moradia || null;
     const investimento = qResp.capacidade_mensal || qResp.investimento || null;
+    const avaliacaoEncontro = qResp.avaliacao_encontro || null;
+    const avaliacaoMelhoria = qResp.avaliacao_melhoria || null;
+    const momentoOportunidade = qResp.momento_oportunidade || null;
 
     allEnriched.push({
       id: p.id,
@@ -132,6 +142,11 @@ export async function fetchParticipantesEventoEnriquecidos(
       moradia_label: labelMoradia(moradia),
       investimento,
       investimento_label: labelCapacidade(investimento),
+      avaliacao_encontro: avaliacaoEncontro,
+      avaliacao_encontro_label: labelAvaliacaoEncontro(avaliacaoEncontro),
+      avaliacao_melhoria: avaliacaoMelhoria,
+      momento_oportunidade: momentoOportunidade,
+      momento_oportunidade_label: labelMomentoOportunidade(momentoOportunidade),
     });
   }
 
@@ -142,6 +157,9 @@ export async function fetchParticipantesEventoEnriquecidos(
       const veiculo = qResp.veiculo || null;
       const moradia = qResp.moradia || null;
       const investimento = qResp.capacidade_mensal || qResp.investimento || null;
+      const avaliacaoEncontro = qResp.avaliacao_encontro || null;
+      const avaliacaoMelhoria = qResp.avaliacao_melhoria || null;
+      const momentoOportunidade = qResp.momento_oportunidade || null;
 
       allEnriched.push({
         id: `sorteio_${sp.id}`,
@@ -166,6 +184,11 @@ export async function fetchParticipantesEventoEnriquecidos(
         moradia_label: labelMoradia(moradia),
         investimento,
         investimento_label: labelCapacidade(investimento),
+        avaliacao_encontro: avaliacaoEncontro,
+        avaliacao_encontro_label: labelAvaliacaoEncontro(avaliacaoEncontro),
+        avaliacao_melhoria: avaliacaoMelhoria,
+        momento_oportunidade: momentoOportunidade,
+        momento_oportunidade_label: labelMomentoOportunidade(momentoOportunidade),
       });
     }
   }

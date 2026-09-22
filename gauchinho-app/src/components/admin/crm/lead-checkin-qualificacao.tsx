@@ -4,6 +4,8 @@ import {
   labelVeiculo,
   labelMoradia,
   labelCapacidade,
+  labelAvaliacaoEncontro,
+  labelMomentoOportunidade,
 } from "@/lib/eventos-sorteio/checkin-conversacional";
 
 export type QualificacaoEventoItem = {
@@ -16,6 +18,9 @@ export type QualificacaoEventoItem = {
     veiculo?: string;
     moradia?: string;
     capacidade_mensal?: string;
+    avaliacao_encontro?: string;
+    avaliacao_melhoria?: string;
+    momento_oportunidade?: string;
     [key: string]: unknown;
   } | null;
   lgpd_termo_versao: string | null;
@@ -36,6 +41,9 @@ export function LeadCheckinQualificacao({
     veiculo?: string;
     moradia?: string;
     capacidade_mensal?: string;
+    avaliacao_encontro?: string;
+    avaliacao_melhoria?: string;
+    momento_oportunidade?: string;
   };
 
   return (
@@ -67,6 +75,34 @@ export function LeadCheckinQualificacao({
           </span>
         ) : null}
       </div>
+
+      {(respRecente.avaliacao_encontro || respRecente.momento_oportunidade) ? (
+        <div className="mt-3 grid gap-3 sm:grid-cols-2">
+          <div className="rounded-lg border border-sky-500/25 bg-sky-500/10 p-3.5">
+            <div className="flex items-center gap-2 text-xs font-medium text-sky-300">
+              <span>💬</span>
+              <span>Avaliação do encontro</span>
+            </div>
+            <p className="mt-2 text-sm font-semibold text-zinc-100">
+              {labelAvaliacaoEncontro(respRecente.avaliacao_encontro)}
+            </p>
+            {respRecente.avaliacao_melhoria ? (
+              <p className="mt-2 rounded-md bg-zinc-950/50 p-2 text-xs leading-relaxed text-zinc-300">
+                {respRecente.avaliacao_melhoria}
+              </p>
+            ) : null}
+          </div>
+          <div className="rounded-lg border border-emerald-500/25 bg-emerald-500/10 p-3.5">
+            <div className="flex items-center gap-2 text-xs font-medium text-emerald-300">
+              <span>🚀</span>
+              <span>Momento atual / próximo passo</span>
+            </div>
+            <p className="mt-2 text-sm font-semibold text-zinc-100">
+              {labelMomentoOportunidade(respRecente.momento_oportunidade)}
+            </p>
+          </div>
+        </div>
+      ) : null}
 
       {/* Destaque do Evento e Número da Sorte Mais Recente */}
       <div className="mt-4 flex flex-wrap items-center justify-between gap-4 rounded-lg border border-amber-500/25 bg-amber-950/20 px-4 py-3">
@@ -172,6 +208,9 @@ export function LeadCheckinQualificacao({
                 veiculo?: string;
                 moradia?: string;
                 capacidade_mensal?: string;
+                avaliacao_encontro?: string;
+                avaliacao_melhoria?: string;
+                momento_oportunidade?: string;
               };
               return (
                 <div
@@ -213,6 +252,19 @@ export function LeadCheckinQualificacao({
                       </span>
                     </div>
                   </div>
+                  {(hResp.avaliacao_encontro || hResp.momento_oportunidade) ? (
+                    <div className="mt-2 grid gap-2 text-xs sm:grid-cols-2">
+                      <div className="text-zinc-400">
+                        <span className="text-zinc-500">Avaliação: </span>
+                        <span className="text-zinc-200">{labelAvaliacaoEncontro(hResp.avaliacao_encontro)}</span>
+                        {hResp.avaliacao_melhoria ? <p className="mt-1 text-zinc-400">{hResp.avaliacao_melhoria}</p> : null}
+                      </div>
+                      <div className="text-zinc-400">
+                        <span className="text-zinc-500">Próximo passo: </span>
+                        <span className="text-emerald-300">{labelMomentoOportunidade(hResp.momento_oportunidade)}</span>
+                      </div>
+                    </div>
+                  ) : null}
                 </div>
               );
             })}

@@ -9,9 +9,13 @@ import {
 } from "@/app/(public)/eventos/[slug]/sorteio/checkin-actions";
 import {
   OPCOES_CAPACIDADE_MENSAL,
+  OPCOES_AVALIACAO_ENCONTRO,
+  OPCOES_MOMENTO_OPORTUNIDADE,
   OPCOES_MORADIA,
   OPCOES_VEICULO,
+  type AvaliacaoEncontro,
   type CapacidadeMensalQualificacao,
+  type MomentoOportunidade,
   type MoradiaQualificacao,
   type VeiculoQualificacao,
 } from "@/lib/eventos-sorteio/checkin-conversacional-types";
@@ -33,7 +37,7 @@ type Props = {
   isPreview?: boolean;
 };
 
-type Step = 1 | 2 | 3 | 4 | 5 | "final";
+type Step = 1 | 2 | 3 | 4 | 5 | 6 | 7 | "final";
 
 export function EventoCheckinConversacional({
   evento,
@@ -46,7 +50,10 @@ export function EventoCheckinConversacional({
   const [whatsapp, setWhatsapp] = useState("");
   const [veiculo, setVeiculo] = useState<VeiculoQualificacao | "">("");
   const [moradia, setMoradia] = useState<MoradiaQualificacao | "">("");
-  const [, setCapacidade] = useState<CapacidadeMensalQualificacao | "">("");
+  const [capacidade, setCapacidade] = useState<CapacidadeMensalQualificacao | "">("");
+  const [avaliacao, setAvaliacao] = useState<AvaliacaoEncontro | "">("");
+  const [avaliacaoMelhoria, setAvaliacaoMelhoria] = useState("");
+  const [momentoOportunidade, setMomentoOportunidade] = useState<MomentoOportunidade | "">("");
 
   const [codigoSorte, setCodigoSorte] = useState<string>("");
   const [jaEstavaCadastrado, setJaEstavaCadastrado] = useState(false);
@@ -121,12 +128,32 @@ export function EventoCheckinConversacional({
     setStep(5);
   };
 
-  // Pergunta 3 (Capacidade): seleção final e submissão atômica
+  // Pergunta 3 (Capacidade): segue para a avaliação final do encontro.
   const handleSelecionarCapacidade = (c: CapacidadeMensalQualificacao) => {
     setCapacidade(c);
     setErro(null);
+    setStep(6);
+  };
 
-    if (!veiculo || !moradia) {
+  const handleAvancarAvaliacao = () => {
+    if (!avaliacao) {
+      setErro("Avalie o conteúdo e as oportunidades do encontro.");
+      return;
+    }
+    if (avaliacao === "pode_melhorar" && avaliacaoMelhoria.trim().length < 3) {
+      setErro("Conte brevemente o que poderíamos fazer melhor.");
+      return;
+    }
+    setErro(null);
+    setStep(7);
+  };
+
+  // Pergunta 5: seleção final e submissão atômica.
+  const handleSelecionarMomento = (momento: MomentoOportunidade) => {
+    setMomentoOportunidade(momento);
+    setErro(null);
+
+    if (!veiculo || !moradia || !capacidade || !avaliacao) {
       setErro("Responda todas as perguntas para concluir.");
       return;
     }
@@ -146,7 +173,10 @@ export function EventoCheckinConversacional({
         qualificacao: {
           veiculo,
           moradia,
-          capacidade_mensal: c,
+          capacidade_mensal: capacidade,
+          avaliacao_encontro: avaliacao,
+          avaliacao_melhoria: avaliacao === "pode_melhorar" ? avaliacaoMelhoria.trim() : null,
+          momento_oportunidade: momento,
         },
         qrCodeUnicoId,
         lgpdVersao: "v1_checkin_evento",
@@ -200,7 +230,7 @@ export function EventoCheckinConversacional({
         {/* Barra de Progresso Discreta (se não estiver na tela final) */}
         {step !== "final" ? (
           <div className="mt-4 flex w-full justify-center gap-1.5">
-            {[1, 2, 3, 4, 5].map((n) => (
+            {[1, 2, 3, 4, 5, 6, 7].map((n) => (
               <span
                 key={n}
                 className={`h-1.5 rounded-full transition-all duration-300 ${
@@ -315,7 +345,7 @@ export function EventoCheckinConversacional({
           <div className="space-y-6">
             <div className="space-y-2">
               <span className="text-xs font-bold uppercase tracking-widest text-[var(--theme-primary)]">
-                Pergunta 1 de 3
+                Pergunta 1 de 5
               </span>
               <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-white sm:text-3xl">
                 {primeiroNome}, hoje você possui algum veículo?
@@ -350,7 +380,7 @@ export function EventoCheckinConversacional({
           <div className="space-y-6">
             <div className="space-y-2">
               <span className="text-xs font-bold uppercase tracking-widest text-[var(--theme-primary)]">
-                Pergunta 2 de 3
+                Pergunta 2 de 5
               </span>
               <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-white sm:text-3xl">
                 E sobre sua moradia atual?
@@ -380,18 +410,18 @@ export function EventoCheckinConversacional({
           </div>
         ) : null}
 
-        {/* TELA 5 — Pergunta 3: Capacidade Mensal + LGPD */}
+        {/* TELA 5 — Pergunta 3: Capacidade Mensal */}
         {step === 5 ? (
           <div className="space-y-5">
             <div className="space-y-2">
               <span className="text-xs font-bold uppercase tracking-widest text-[var(--theme-primary)]">
-                Pergunta 3 de 3
+                Pergunta 3 de 5
               </span>
               <h1 className="text-xl font-bold tracking-tight text-zinc-900 dark:text-white sm:text-2xl">
                 Pensando em aumentar seu patrimônio, qual valor mensal hoje faria sentido para você investir?
               </h1>
               <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                Toque para confirmar sua presença e gerar seu número da sorte:
+                Toque na opção para avançar:
               </p>
             </div>
 
@@ -400,7 +430,6 @@ export function EventoCheckinConversacional({
                 <button
                   key={opcao.id}
                   type="button"
-                  disabled={pending}
                   onClick={() => handleSelecionarCapacidade(opcao.id)}
                   className="flex min-h-14 w-full items-center justify-between rounded-2xl border-2 border-zinc-200 bg-white px-4 py-3 text-left shadow-sm transition hover:border-[var(--theme-primary)] hover:bg-[var(--theme-primary)]/5 active:scale-[0.98] disabled:opacity-50 dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-[var(--theme-primary)]"
                 >
@@ -412,7 +441,110 @@ export function EventoCheckinConversacional({
               ))}
             </div>
 
-            {/* Aviso de Ciência / LGPD */}
+            {erro ? <p className="text-sm font-medium text-red-500">{erro}</p> : null}
+          </div>
+        ) : null}
+
+        {/* TELA 6 — Pergunta 4: Avaliação do encontro */}
+        {step === 6 ? (
+          <div className="space-y-5">
+            <div className="space-y-2">
+              <span className="text-xs font-bold uppercase tracking-widest text-[var(--theme-primary)]">
+                Pergunta 4 de 5
+              </span>
+              <h1 className="text-xl font-bold tracking-tight text-zinc-900 dark:text-white sm:text-2xl">
+                Como você avalia o conteúdo e as oportunidades apresentadas no encontro?
+              </h1>
+            </div>
+
+            <div className="grid gap-2.5">
+              {OPCOES_AVALIACAO_ENCONTRO.map((opcao) => (
+                <button
+                  key={opcao.id}
+                  type="button"
+                  onClick={() => {
+                    setAvaliacao(opcao.id);
+                    if (opcao.id !== "pode_melhorar") setAvaliacaoMelhoria("");
+                    setErro(null);
+                  }}
+                  className={`min-h-14 w-full rounded-2xl border-2 px-4 py-3 text-left text-sm font-bold transition active:scale-[0.98] ${
+                    avaliacao === opcao.id
+                      ? "border-[var(--theme-primary)] bg-[var(--theme-primary)]/10 text-zinc-950 dark:text-white"
+                      : "border-zinc-200 bg-white text-zinc-900 hover:border-[var(--theme-primary)] dark:border-zinc-800 dark:bg-zinc-900 dark:text-white"
+                  }`}
+                >
+                  {opcao.label}
+                </button>
+              ))}
+            </div>
+
+            {avaliacao === "pode_melhorar" ? (
+              <div className="space-y-2">
+                <label htmlFor="avaliacao-melhoria" className="block text-sm font-semibold text-zinc-700 dark:text-zinc-200">
+                  Se marcou “Pode melhorar”, conte pra gente o que poderíamos fazer melhor:
+                </label>
+                <textarea
+                  id="avaliacao-melhoria"
+                  autoFocus
+                  rows={4}
+                  maxLength={1000}
+                  value={avaliacaoMelhoria}
+                  onChange={(e) => {
+                    setAvaliacaoMelhoria(e.target.value);
+                    setErro(null);
+                  }}
+                  placeholder="Escreva sua sugestão"
+                  className="w-full resize-none rounded-2xl border-2 border-zinc-300 bg-white px-4 py-3 text-base text-zinc-950 placeholder-zinc-400 outline-none transition focus:border-[var(--theme-primary)] focus:ring-4 focus:ring-[var(--theme-primary)]/15 dark:border-zinc-700 dark:bg-zinc-900 dark:text-white"
+                />
+                <p className="text-right text-xs text-zinc-400">{avaliacaoMelhoria.length}/1000</p>
+              </div>
+            ) : null}
+
+            {erro ? <p className="text-sm font-medium text-red-500">{erro}</p> : null}
+            <button
+              type="button"
+              disabled={!avaliacao || (avaliacao === "pode_melhorar" && avaliacaoMelhoria.trim().length < 3)}
+              onClick={handleAvancarAvaliacao}
+              className="flex min-h-14 w-full items-center justify-center rounded-2xl bg-[var(--theme-primary)] px-6 text-lg font-bold text-white shadow-lg transition active:scale-[0.98] disabled:opacity-50"
+            >
+              Continuar →
+            </button>
+          </div>
+        ) : null}
+
+        {/* TELA 7 — Pergunta 5: Próximo passo + LGPD + submissão */}
+        {step === 7 ? (
+          <div className="space-y-5">
+            <div className="space-y-2">
+              <span className="text-xs font-bold uppercase tracking-widest text-[var(--theme-primary)]">
+                Pergunta 5 de 5
+              </span>
+              <h1 className="text-xl font-bold tracking-tight text-zinc-900 dark:text-white sm:text-2xl">
+                Pensando nas oportunidades apresentadas, qual dessas opções mais combina com o seu momento atual?
+              </h1>
+              <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                Toque para confirmar sua presença e gerar seu número da sorte:
+              </p>
+            </div>
+
+            <div className="grid gap-2.5">
+              {OPCOES_MOMENTO_OPORTUNIDADE.map((opcao) => (
+                <button
+                  key={opcao.id}
+                  type="button"
+                  disabled={pending}
+                  onClick={() => handleSelecionarMomento(opcao.id)}
+                  className={`min-h-14 w-full rounded-2xl border-2 px-4 py-3 text-left text-sm font-bold transition active:scale-[0.98] disabled:opacity-50 ${
+                    momentoOportunidade === opcao.id
+                      ? "border-[var(--theme-primary)] bg-[var(--theme-primary)]/10 text-zinc-950 dark:text-white"
+                      : "border-zinc-200 bg-white text-zinc-900 hover:border-[var(--theme-primary)] dark:border-zinc-800 dark:bg-zinc-900 dark:text-white"
+                  }`}
+                >
+                  {opcao.label}
+                </button>
+              ))}
+            </div>
+
             <div className="rounded-xl bg-zinc-100 p-3 text-xs leading-relaxed text-zinc-600 dark:bg-zinc-900/60 dark:text-zinc-400">
               <p>
                 Ao continuar, confirmo minha presença no evento e concordo com o tratamento dos meus dados

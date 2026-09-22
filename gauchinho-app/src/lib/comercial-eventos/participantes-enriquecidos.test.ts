@@ -31,6 +31,11 @@ function mockParticipante(
     moradia_label: "Moro de aluguel",
     investimento: "1000_2000",
     investimento_label: "R$ 1.000 a R$ 2.000",
+    avaliacao_encontro: "gostei_bastante",
+    avaliacao_encontro_label: "Gostei bastante e fez sentido para mim",
+    avaliacao_melhoria: null,
+    momento_oportunidade: "simulacao_agora",
+    momento_oportunidade_label: "Quero fazer uma simulação agora, de acordo com meus objetivos e necessidades",
     ...override,
   };
 }

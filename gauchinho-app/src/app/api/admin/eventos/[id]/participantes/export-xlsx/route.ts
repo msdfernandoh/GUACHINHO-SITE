@@ -122,6 +122,21 @@ export async function GET(request: Request, ctx: { params: Promise<{ id: string 
       cell: (p: EnrichedEventoParticipante) => ({ type: String, value: p.investimento_label }),
     },
     {
+      header: "Avaliação do encontro",
+      width: 42,
+      cell: (p: EnrichedEventoParticipante) => ({ type: String, value: p.avaliacao_encontro_label }),
+    },
+    {
+      header: "O que pode melhorar",
+      width: 48,
+      cell: (p: EnrichedEventoParticipante) => ({ type: String, value: p.avaliacao_melhoria || "—" }),
+    },
+    {
+      header: "Momento atual / próximo passo",
+      width: 58,
+      cell: (p: EnrichedEventoParticipante) => ({ type: String, value: p.momento_oportunidade_label }),
+    },
+    {
       header: "Número da sorte",
       width: 18,
       cell: (p: EnrichedEventoParticipante) => ({ type: String, value: p.codigo_sorteio || "—" }),

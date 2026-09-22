@@ -2755,3 +2755,16 @@ histórico e persiste os dados próprios do evento em
 
 Relatório:
 `docs/relatorios-fases/FASE-261-APP-INDICADOR-CADASTRO-IDEMPOTENTE-E-CONVITE-NETWORK.md`.
+
+### Evolução operacional 262 — Avaliação e oportunidades no check-in de eventos
+
+O check-in conversacional compartilhado pelos eventos e QR codes permanentes
+inclui, ao final da qualificação, a avaliação do conteúdo do encontro e o
+momento comercial do participante. A opção de melhoria exige comentário. As
+respostas permanecem em `qualificacao_respostas`, separadas do NPS, e também
+aparecem no histórico do lead, nos detalhes do CRM e na exportação XLSX do
+evento. A validação é repetida no servidor e os registros históricos continuam
+compatíveis sem alteração destrutiva.
+
+Relatório:
+`docs/relatorios-fases/FASE-262-AVALIACAO-E-OPORTUNIDADES-CHECKIN-EVENTOS.md`.

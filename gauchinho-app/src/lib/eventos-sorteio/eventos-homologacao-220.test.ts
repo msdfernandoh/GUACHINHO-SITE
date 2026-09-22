@@ -534,6 +534,9 @@ describe("Homologação Completa — Migration 220 & Check-in / Sorteio / Prêmi
       veiculo: "carro",
       moradia: "propria_quitada",
       capacidade_mensal: "1000_2000",
+      avaliacao_encontro: "gostei_bastante",
+      avaliacao_melhoria: null,
+      momento_oportunidade: "simulacao_agora",
     };
 
     const res = await db.query<{ rpc_realizar_checkin_conversacional: any }>(`
@@ -583,6 +586,9 @@ describe("Homologação Completa — Migration 220 & Check-in / Sorteio / Prêmi
       veiculo: "moto",
       moradia: "aluguel",
       capacidade_mensal: "500_1000",
+      avaliacao_encontro: "gostei_entender_melhor",
+      avaliacao_melhoria: null,
+      momento_oportunidade: "atendimento_presencial",
     };
 
     const res = await db.query<{ rpc_realizar_checkin_conversacional: any }>(`
@@ -615,6 +621,9 @@ describe("Homologação Completa — Migration 220 & Check-in / Sorteio / Prêmi
       veiculo: "carro_moto",
       moradia: "propria_financiada",
       capacidade_mensal: "acima_2000",
+      avaliacao_encontro: "pode_melhorar",
+      avaliacao_melhoria: "Reservar mais tempo para perguntas.",
+      momento_oportunidade: "futuro_acima_3_meses",
     };
 
     const res = await db.query<{ rpc_realizar_checkin_conversacional: any }>(`
