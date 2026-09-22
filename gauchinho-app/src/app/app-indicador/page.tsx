@@ -160,7 +160,7 @@ export default async function AppIndicadorPage() {
           <h2 className="mt-2 text-2xl font-black">{eventoAtivo.nome}</h2>
           <p className="mt-2 text-sm text-zinc-200">{eventoAtivo.data_evento ? new Intl.DateTimeFormat("pt-BR", { weekday: "long", day: "2-digit", month: "long", hour: "2-digit", minute: "2-digit", timeZone: "America/Cuiaba" }).format(new Date(eventoAtivo.data_evento)) : "Data e horário a confirmar"}</p>
           <p className="mt-3 text-lg font-black text-amber-300">{eventoAtivo.vagas_disponiveis == null ? "Vagas sem limite definido" : `${eventoAtivo.vagas_disponiveis} vaga${eventoAtivo.vagas_disponiveis === 1 ? "" : "s"} ${eventoAtivo.vagas_disponiveis === 1 ? "disponível" : "disponíveis"}`}</p>
-          <Link href="/app-indicador/indicar?tipo=evento" className="mt-4 inline-flex rounded-xl bg-amber-400 px-4 py-3 text-sm font-black text-zinc-950">Convidar para este evento</Link>
+          <div className="mt-4 flex flex-wrap gap-3"><Link href="/app-indicador/indicar?tipo=evento" className="inline-flex rounded-xl bg-amber-400 px-4 py-3 text-sm font-black text-zinc-950">Convidar para este evento</Link><Link href="/app-indicador/evento/lista-convidados" className="inline-flex rounded-xl border border-zinc-600 px-4 py-3 text-sm font-black text-zinc-100">Lista de convidados</Link></div>
         </section> : null}
         <section className="mt-6">
           <h2 className="text-xl font-black">Meus indicados</h2>

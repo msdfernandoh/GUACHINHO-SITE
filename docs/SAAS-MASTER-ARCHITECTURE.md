@@ -2901,3 +2901,18 @@ fica registrada em auditoria de participante.
 
 Relatório:
 `docs/relatorios-fases/FASE-269-APP-INDICADOR-CONSULTOR-EXISTENTE.md`.
+
+### Evolução operacional 270 — Acesso por e-mail e lista própria do evento
+
+O app de indicação aceita CPF ou o e-mail da mesma conta já utilizada no
+sistema. Uma sessão autenticada existente continua válida ao abrir o app; não
+há criação de conta paralela. O escopo permanece condicionado ao participante
+e ao vínculo ativo em `programa_indicadores`.
+
+O card do evento ativo oferece a lista de convidados. O indicador visualiza
+exclusivamente a lista criada pelo seu próprio usuário para a edição ativa,
+incluindo status de presença, acompanhante e vagas consumidas. A lista de
+outro consultor não é consultada nem exibida.
+
+Relatório:
+`docs/relatorios-fases/FASE-270-LOGIN-EMAIL-E-LISTA-CONVIDADOS.md`.
