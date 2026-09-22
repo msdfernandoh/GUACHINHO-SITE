@@ -34,6 +34,7 @@ type ContratacaoDetalhe = {
   cpf: string | null;
   telefone: string | null;
   email: string | null;
+  lead_id: string | null;
   responsavel_nome: string | null;
   endereco: string | null;
   numero: string | null;
@@ -192,6 +193,31 @@ export default async function ConferirContratacaoPage({
     throw new Error(`Não foi possível carregar os modelos de comissão: ${modalidadesComissaoResult.error.message}`);
   }
   const c = contratacaoResult.data as ContratacaoDetalhe;
+  let indicadorSegundoVendedor: { participanteId: string; nome: string } | null = null;
+  if (c.lead_id) {
+    const { data: indicacao } = await admin
+      .from("programa_indicacoes")
+      .select("indicador_id")
+      .eq("empresa_id", empresaAtiva.id)
+      .eq("lead_id", c.lead_id)
+      .maybeSingle();
+    if (indicacao?.indicador_id) {
+      const { data: indicador } = await admin
+        .from("programa_indicadores")
+        .select("participante_id,participante:participantes_comerciais(nome,nome_exibicao)")
+        .eq("empresa_id", empresaAtiva.id)
+        .eq("id", indicacao.indicador_id)
+        .eq("ativo", true)
+        .maybeSingle();
+      const participanteIndicador = relation<{ nome: string; nome_exibicao: string | null }>(indicador?.participante);
+      if (indicador?.participante_id && participanteIndicador) {
+        indicadorSegundoVendedor = {
+          participanteId: indicador.participante_id,
+          nome: participanteIndicador.nome_exibicao || participanteIndicador.nome,
+        };
+      }
+    }
+  }
   const cliente = relation<{ id: string; nome: string; cpf_cnpj: string | null; email: string | null; telefone: string | null }>(c.cliente);
   const venda = relation<{ id: string; status: string; cotas_definitivas: unknown }>(c.vendas);
   const cota = relation<{ id: string; numero_cota: string | null; status: string }>(venda?.cotas_definitivas);
@@ -465,6 +491,7 @@ export default async function ConferirContratacaoPage({
         initialCronogramaSecundario={(c.dados_simulacao as any)?.cronograma_secundario || "SEGUIR_PRINCIPAL"}
         initialSecundarioId={c.participante_secundario_id}
         initialFracaoSecundario={c.participante_secundario_fracao_percentual}
+        indicadorSegundoVendedor={indicadorSegundoVendedor}
         creditoAceito={Number(c.credito_selecionado ?? (c.dados_simulacao as any)?.valor_credito ?? 0)}
         parcelaAceita={Number(c.parcela_estimada ?? (c.dados_simulacao as any)?.valor_parcela ?? 0)}
         initialQuantidadeCotas={quantidadeCotas}

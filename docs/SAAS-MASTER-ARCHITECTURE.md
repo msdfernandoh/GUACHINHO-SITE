@@ -2768,3 +2768,20 @@ compatíveis sem alteração destrutiva.
 
 Relatório:
 `docs/relatorios-fases/FASE-262-AVALIACAO-E-OPORTUNIDADES-CHECKIN-EVENTOS.md`.
+
+### Evolução operacional 263 — Preferências de atendimento e indicador como segundo vendedor
+
+O formulário público do link curto de indicação possui 11 etapas, informa
+visualmente quando está terminando e persiste por sete dias o rascunho local
+vinculado ao código do indicador. O nome do indicador permanece visível e as
+preferências de formato, prazo e período de atendimento são gravadas no lead,
+no histórico cronológico e nas atividades do CRM.
+
+Na formalização de uma contratação originada por indicação, o participante
+comercial vinculado ao indicador é apresentado como segundo vendedor fixo. A
+materialização ocorre no gatilho canônico da venda e a remuneração continua
+seguindo a regra homologada `INDICADOR`, sem aceitar ID de login do navegador e
+sem duplicar o rateio manual do consultor principal.
+
+Relatório:
+`docs/relatorios-fases/FASE-263-PREFERENCIAS-ATENDIMENTO-E-INDICADOR-SEGUNDO-VENDEDOR.md`.

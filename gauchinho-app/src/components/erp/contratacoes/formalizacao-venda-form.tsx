@@ -119,6 +119,7 @@ interface FormalizacaoVendaFormProps {
   initialCronogramaSecundario?: string | null;
   initialSecundarioId: string | null;
   initialFracaoSecundario: number | null;
+  indicadorSegundoVendedor?: { participanteId: string; nome: string } | null;
   creditoAceito: number;
   parcelaAceita: number;
   initialQuantidadeCotas: number;
@@ -152,6 +153,7 @@ export function FormalizacaoVendaForm({
   initialCronogramaSecundario,
   initialSecundarioId,
   initialFracaoSecundario,
+  indicadorSegundoVendedor,
   creditoAceito,
   parcelaAceita,
   initialQuantidadeCotas,
@@ -175,7 +177,7 @@ export function FormalizacaoVendaForm({
   const [selectedPrincipalId, setSelectedPrincipalId] = useState(initialPrincipalId || "");
   const [selectedPerfilPrincipalId, setSelectedPerfilPrincipalId] = useState(initialPerfilPrincipalId || "");
 
-  const [selectedSecundarioId, setSelectedSecundarioId] = useState(initialSecundarioId || "");
+  const [selectedSecundarioId, setSelectedSecundarioId] = useState(indicadorSegundoVendedor ? "" : initialSecundarioId || "");
   const [modoSecundario, setModoSecundario] = useState<"PERFIL" | "MANUAL">(initialPerfilSecundarioId ? "PERFIL" : "MANUAL");
   const [selectedPerfilSecundarioId, setSelectedPerfilSecundarioId] = useState(initialPerfilSecundarioId || "");
   const [fracaoManualSecundario, setFracaoManualSecundario] = useState<number>(
@@ -643,27 +645,35 @@ export function FormalizacaoVendaForm({
           </select>
         </label>
 
-        <label className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
-          Participante Secundário (SDR / Parceiro)
-          <select
-            name="participante_secundario_id"
-            value={selectedSecundarioId}
-            onChange={(e) => {
-              setSelectedSecundarioId(e.target.value);
-              setSelectedPerfilSecundarioId("");
-            }}
-            className="mt-1.5 w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-xs font-semibold shadow-2xs focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-          >
-            <option value="">Sem secundário (100% para o principal)</option>
-            {participantesSecundarios
-              .filter((p) => p.id !== selectedPrincipalId)
-              .map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.nome_exibicao || p.nome}
-                </option>
-              ))}
-          </select>
-        </label>
+        {indicadorSegundoVendedor ? (
+          <div className="rounded-xl border border-amber-300 bg-amber-50 px-3.5 py-2.5 text-xs dark:border-amber-700/60 dark:bg-amber-950/30">
+            <span className="font-bold uppercase tracking-wider text-amber-800 dark:text-amber-300">Segundo vendedor da indicação · fixo</span>
+            <p className="mt-1 text-sm font-black text-slate-900 dark:text-white">{indicadorSegundoVendedor.nome}</p>
+            <p className="mt-1 normal-case text-slate-600 dark:text-slate-300">Vínculo protegido pelo lead indicado. A comissão segue a regra homologada do programa de indicação.</p>
+          </div>
+        ) : (
+          <label className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
+            Participante Secundário (SDR / Parceiro)
+            <select
+              name="participante_secundario_id"
+              value={selectedSecundarioId}
+              onChange={(e) => {
+                setSelectedSecundarioId(e.target.value);
+                setSelectedPerfilSecundarioId("");
+              }}
+              className="mt-1.5 w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-xs font-semibold shadow-2xs focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+            >
+              <option value="">Sem secundário (100% para o principal)</option>
+              {participantesSecundarios
+                .filter((p) => p.id !== selectedPrincipalId)
+                .map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.nome_exibicao || p.nome}
+                  </option>
+                ))}
+            </select>
+          </label>
+        )}
       </div>
 
       {/* BLOCO: Detalhes da Operação Contratada (Seguro, Taxas e Fundo de Reserva) */}
@@ -1120,6 +1130,16 @@ export function FormalizacaoVendaForm({
                 </select>
               </div>
             </div>
+          </div>
+        ) : indicadorSegundoVendedor ? (
+          <div className="rounded-xl border border-amber-200 bg-amber-50/50 p-4 text-xs dark:border-amber-900/40 dark:bg-amber-950/20">
+            <div className="flex items-center gap-2">
+              <Users className="h-4 w-4 text-amber-700 dark:text-amber-400" />
+              <p className="font-black text-amber-950 dark:text-amber-200">Segundo vendedor: {indicadorSegundoVendedor.nome}</p>
+            </div>
+            <p className="mt-2 text-slate-600 dark:text-slate-300">
+              A participação é fixa e será materializada na venda pela regra do programa de indicação, sem desconto manual na comissão do consultor principal.
+            </p>
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-slate-200 p-4 text-center text-xs text-slate-400 dark:border-slate-800">

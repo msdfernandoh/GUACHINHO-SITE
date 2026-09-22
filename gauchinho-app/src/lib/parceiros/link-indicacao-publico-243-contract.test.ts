@@ -63,4 +63,41 @@ describe("fase 243 - link público do indicador", () => {
     expect(route).toContain('evento_codigo: "NETWORK_2026_09_29"');
     expect(source("src/app/(public)/network/[codigo]/page.tsx")).toContain("NetworkConviteForm");
   });
+
+  it("salva preferências de atendimento no lead e no histórico", () => {
+    const migration = source("../supabase/migrations/247_preferencias_atendimento_indicacao_e_segundo_vendedor.sql");
+    const route = source("src/app/api/public/programa-indicacao/route.ts");
+    const upsert = source("src/lib/crm/upsert-lead.ts");
+    expect(migration).toContain("preferencia_atendimento text");
+    expect(migration).toContain("quando_atendimento text");
+    expect(migration).toContain("periodo_contato text");
+    expect(route).toContain("preferencia_atendimento: preferenciaTexto");
+    expect(route).toContain("quando_atendimento: quandoTexto");
+    expect(route).toContain("periodo_contato: periodoTexto");
+    expect(upsert).toContain("• Preferência de atendimento:");
+    expect(upsert).toContain("• Melhor período para contato:");
+  });
+
+  it("preserva o rascunho por link e mantém o nome do indicador visível", () => {
+    const chat = source("src/components/app-indicador/indicacao-chat.tsx");
+    expect(chat).toContain("window.localStorage.setItem");
+    expect(chat).toContain("window.localStorage.getItem");
+    expect(chat).toContain("Indicação de");
+    expect(chat).toContain("FALTA POUCO");
+    expect(chat).toContain("preferenciasAtendimento");
+    expect(chat).toContain("momentosAtendimento");
+    expect(chat).toContain("periodosContato");
+  });
+
+  it("fixa o participante do indicador como segundo vendedor sem rateio manual duplicado", () => {
+    const migration = source("../supabase/migrations/247_preferencias_atendimento_indicacao_e_segundo_vendedor.sql");
+    const action = source("src/app/erp/contratacoes/actions.ts");
+    const page = source("src/app/erp/contratacoes/[id]/page.tsx");
+    expect(migration).toContain("'PARTICIPANTE_SECUNDARIO'");
+    expect(migration).toContain("'INDICADOR'");
+    expect(migration).toContain("AFTER INSERT ON public.vendas");
+    expect(action).toContain("secundarioId = null");
+    expect(action).toContain("perfilSecundarioId = null");
+    expect(page).toContain("indicadorSegundoVendedor={indicadorSegundoVendedor}");
+  });
 });

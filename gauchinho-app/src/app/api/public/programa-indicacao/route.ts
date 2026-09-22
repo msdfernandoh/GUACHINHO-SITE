@@ -68,11 +68,15 @@ export async function POST(request: Request) {
     const observacaoLivre = String(body.observacao ?? "").trim();
     const estrategiaCredito = String(body.estrategiaCredito ?? "").trim();
     const prazoUtilizacaoCredito = String(body.prazoUtilizacaoCredito ?? "").trim();
+    const preferenciaAtendimento = String(body.preferenciaAtendimento ?? "").trim();
+    const quandoAtendimento = String(body.quandoAtendimento ?? "").trim();
+    const periodoContato = String(body.periodoContato ?? "").trim();
     if (!/^[A-F0-9]{10}$/.test(codigoIndicacao)) return NextResponse.json({ error: "Link de indicação inválido." }, { status: 404 });
     if (nome.length < 3 || telefone.length < 10) return NextResponse.json({ error: "Informe nome completo e telefone com DDD." }, { status: 400 });
     if (!['AMIGO', 'FAMILIAR', 'CLIENTE', 'OUTROS'].includes(relacao) || (relacao === 'OUTROS' && !relacaoOutro)) return NextResponse.json({ error: "Informe a relação com quem indicou." }, { status: 400 });
     if (!['IMOVEL', 'VEICULO', 'MOTO', 'FROTA'].includes(produto) || !Number.isFinite(credito) || credito <= 0 || !Number.isFinite(capacidadeMensal) || capacidadeMensal <= 0) return NextResponse.json({ error: "Complete as informações da indicação." }, { status: 400 });
     if (!['ACESSO_RAPIDO', 'PARCELA_CONFORTAVEL', 'EQUILIBRIO'].includes(estrategiaCredito) || !['RAPIDO', 'ATE_6_MESES', 'DE_6_A_12_MESES', 'DE_1_A_2_ANOS', 'MAIS_DE_2_ANOS', 'SEM_PRAZO'].includes(prazoUtilizacaoCredito)) return NextResponse.json({ error: "Responda as duas perguntas iniciais para continuar." }, { status: 400 });
+    if (!['NETWORK', 'VISITA', 'ESCRITORIO'].includes(preferenciaAtendimento) || !['QUANTO_ANTES', 'PROXIMOS_DIAS', 'PROXIMA_SEMANA', 'COMBINAR_DEPOIS'].includes(quandoAtendimento) || !['MANHA', 'TARDE', 'NOITE', 'QUALQUER'].includes(periodoContato)) return NextResponse.json({ error: "Responda as preferências de atendimento para concluir." }, { status: 400 });
 
     const { data: indicador } = await admin
       .from("programa_indicadores")
@@ -87,7 +91,10 @@ export async function POST(request: Request) {
     const relacaoTexto = relacao === 'OUTROS' ? relacaoOutro : relacao.toLowerCase();
     const estrategiaTexto = { ACESSO_RAPIDO: "Buscar uma estratégia para ter acesso ao crédito mais rápido", PARCELA_CONFORTAVEL: "Ter uma parcela mais confortável para alcançar um crédito maior", EQUILIBRIO: "Encontrar equilíbrio entre prazo, parcela e valor do crédito" }[estrategiaCredito]!;
     const prazoTexto = { RAPIDO: "O mais rápido possível", ATE_6_MESES: "Até 6 meses", DE_6_A_12_MESES: "De 6 a 12 meses", DE_1_A_2_ANOS: "De 1 a 2 anos", MAIS_DE_2_ANOS: "Mais de 2 anos", SEM_PRAZO: "Ainda não tenho um prazo definido" }[prazoUtilizacaoCredito]!;
-    const observacao = [`Indicação recebida por link público. Relação com o indicador: ${relacaoTexto}.`, `Estratégia desejada: ${estrategiaTexto}.`, `Prazo para utilizar o crédito: ${prazoTexto}.`, observacaoLivre].filter(Boolean).join(" ");
+    const preferenciaTexto = { NETWORK: "Participar do Network de Negócios, realizado às terças-feiras", VISITA: "Agendar uma visita em casa ou na empresa", ESCRITORIO: "Agendar um atendimento no escritório" }[preferenciaAtendimento]!;
+    const quandoTexto = { QUANTO_ANTES: "O quanto antes", PROXIMOS_DIAS: "Nos próximos dias", PROXIMA_SEMANA: "Na próxima semana", COMBINAR_DEPOIS: "Prefere combinar uma data depois" }[quandoAtendimento]!;
+    const periodoTexto = { MANHA: "Manhã", TARDE: "Tarde", NOITE: "Noite", QUALQUER: "Qualquer período" }[periodoContato]!;
+    const observacao = [`Indicação recebida por link público. Relação com o indicador: ${relacaoTexto}.`, `Estratégia desejada: ${estrategiaTexto}.`, `Prazo para utilizar o crédito: ${prazoTexto}.`, `Preferência de atendimento: ${preferenciaTexto}.`, `Quando deseja atendimento: ${quandoTexto}.`, `Melhor período para contato: ${periodoTexto}.`, observacaoLivre].filter(Boolean).join(" ");
     const lead = await upsertLeadPorTelefone(admin, {
       empresa_id: ingress.empresaId,
       nome,
@@ -103,10 +110,18 @@ export async function POST(request: Request) {
       observacoes: observacao,
       estrategia_credito: estrategiaTexto,
       prazo_utilizacao_credito: prazoTexto,
+      preferencia_atendimento: preferenciaTexto,
+      quando_atendimento: quandoTexto,
+      periodo_contato: periodoTexto,
     });
     if (!lead.ok || !lead.lead_id) return NextResponse.json({ error: lead.error ?? "Não foi possível registrar sua indicação." }, { status: 500 });
-    await admin.from("leads").update({ estrategia_credito: estrategiaTexto, prazo_utilizacao_credito: prazoTexto }).eq("empresa_id", ingress.empresaId).eq("id", lead.lead_id);
-
+    await admin.from("leads").update({
+      estrategia_credito: estrategiaTexto,
+      prazo_utilizacao_credito: prazoTexto,
+      preferencia_atendimento: preferenciaTexto,
+      quando_atendimento: quandoTexto,
+      periodo_contato: periodoTexto,
+    }).eq("empresa_id", ingress.empresaId).eq("id", lead.lead_id);
     const { data: existente } = await admin.from("programa_indicacoes")
       .select("id,indicador_id,status,venda_id")
       .eq("empresa_id", ingress.empresaId).eq("lead_id", lead.lead_id).maybeSingle();
@@ -125,6 +140,15 @@ export async function POST(request: Request) {
         : await admin.from("programa_indicacoes").update(valores).eq("empresa_id", ingress.empresaId).eq("id", existente.id)
       : await admin.from("programa_indicacoes").insert({ empresa_id: ingress.empresaId, indicador_id: indicador.id, lead_id: lead.lead_id, ...valores });
     if (write.error) return NextResponse.json({ error: "Não foi possível concluir o vínculo da indicação." }, { status: existente ? 409 : 500 });
+    await admin.from("lead_atividades").insert({
+      empresa_id: ingress.empresaId,
+      lead_id: lead.lead_id,
+      tipo: "qualificacao_indicacao",
+      titulo: "Preferências de atendimento informadas",
+      descricao: `Indicador: ${participante?.nome ?? "Indicador"}\n• Atendimento: ${preferenciaTexto}\n• Quando: ${quandoTexto}\n• Melhor período: ${periodoTexto}`,
+      status: "concluida",
+      data_conclusao: new Date().toISOString(),
+    });
     return NextResponse.json({ ok: true });
   }
 

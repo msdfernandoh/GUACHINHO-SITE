@@ -68,6 +68,9 @@ export interface UpsertLeadPayload {
   proxima_acao?: string | null;
   estrategia_credito?: string | null;
   prazo_utilizacao_credito?: string | null;
+  preferencia_atendimento?: string | null;
+  quando_atendimento?: string | null;
+  periodo_contato?: string | null;
   permitir_gerar_novo?: boolean | null;
   forcar_novo?: boolean | null;
 }
@@ -140,6 +143,15 @@ export function formatarEntradaHistoricoLead(
   }
   if (payload.prazo_utilizacao_credito) {
     linhas.push(`• Prazo para utilizar o crédito: ${payload.prazo_utilizacao_credito}`);
+  }
+  if (payload.preferencia_atendimento) {
+    linhas.push(`• Preferência de atendimento: ${payload.preferencia_atendimento}`);
+  }
+  if (payload.quando_atendimento) {
+    linhas.push(`• Quando deseja atendimento: ${payload.quando_atendimento}`);
+  }
+  if (payload.periodo_contato) {
+    linhas.push(`• Melhor período para contato: ${payload.periodo_contato}`);
   }
 
   return linhas.join("\n");
@@ -334,6 +346,9 @@ export async function upsertLeadPorTelefone(
     }
     if (payload.estrategia_credito != null) updateData.estrategia_credito = payload.estrategia_credito;
     if (payload.prazo_utilizacao_credito != null) updateData.prazo_utilizacao_credito = payload.prazo_utilizacao_credito;
+    if (payload.preferencia_atendimento != null) updateData.preferencia_atendimento = payload.preferencia_atendimento;
+    if (payload.quando_atendimento != null) updateData.quando_atendimento = payload.quando_atendimento;
+    if (payload.periodo_contato != null) updateData.periodo_contato = payload.periodo_contato;
 
     const { error: updateErr } = await supabaseAdmin
       .from("leads")
@@ -417,6 +432,9 @@ export async function upsertLeadPorTelefone(
       proxima_acao: payload.proxima_acao || "Fazer contato - Cliente recorrente",
       estrategia_credito: payload.estrategia_credito ?? null,
       prazo_utilizacao_credito: payload.prazo_utilizacao_credito ?? null,
+      preferencia_atendimento: payload.preferencia_atendimento ?? null,
+      quando_atendimento: payload.quando_atendimento ?? null,
+      periodo_contato: payload.periodo_contato ?? null,
       historico_cadastros: histConsolidado,
       observacoes: payload.observacoes?.trim() || entryGanho,
       ultima_interacao_at: new Date().toISOString(),
@@ -487,6 +505,9 @@ export async function upsertLeadPorTelefone(
     proxima_acao: payload.proxima_acao || null,
     estrategia_credito: payload.estrategia_credito ?? null,
     prazo_utilizacao_credito: payload.prazo_utilizacao_credito ?? null,
+    preferencia_atendimento: payload.preferencia_atendimento ?? null,
+    quando_atendimento: payload.quando_atendimento ?? null,
+    periodo_contato: payload.periodo_contato ?? null,
     ultima_interacao_at: new Date().toISOString(),
     data_ultimo_contato: new Date().toISOString(),
     criado_manual: false,

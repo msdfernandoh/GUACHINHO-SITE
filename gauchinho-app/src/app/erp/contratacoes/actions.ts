@@ -58,10 +58,10 @@ export async function formalizarContratacaoAction(formData: FormData) {
   const grupoId = value(formData, "grupo_id");
   const opcaoCotaId = value(formData, "opcao_cota_id");
   const principalId = value(formData, "participante_principal_id");
-  const secundarioId = value(formData, "participante_secundario_id") || null;
-  const fracao = value(formData, "fracao_secundario");
+  let secundarioId = value(formData, "participante_secundario_id") || null;
+  let fracao = value(formData, "fracao_secundario");
   const perfilPrincipalId = value(formData, "perfil_principal_id") || null;
-  const perfilSecundarioId = value(formData, "perfil_secundario_id") || null;
+  let perfilSecundarioId = value(formData, "perfil_secundario_id") || null;
   const modalidadeComissaoId = value(formData, "modalidade_comissao_id");
   const cronogramaSecundario = value(formData, "cronograma_secundario") || "SEGUIR_PRINCIPAL";
   const dataPrimeiraParcela = value(formData, "data_primeira_parcela") || null;
@@ -76,10 +76,35 @@ export async function formalizarContratacaoAction(formData: FormData) {
   try {
     const { data: contratacao, error: contratacaoError } = await admin
       .from("contratacoes_online")
-      .select("id,nome,cpf,cnpj,email,telefone,cliente_id,contrato_assinado,dados_simulacao,parcela_estimada")
+      .select("id,nome,cpf,cnpj,email,telefone,cliente_id,lead_id,contrato_assinado,dados_simulacao,parcela_estimada")
       .eq("id", contratacaoId).eq("empresa_id", empresaAtiva.id).maybeSingle();
     if (contratacaoError || !contratacao) throw new Error(contratacaoError?.message || "Contratação não encontrada.");
     dadosSimulacaoAtual = (contratacao.dados_simulacao ?? {}) as Record<string, unknown>;
+    if (contratacao.lead_id) {
+      const { data: indicacao } = await admin
+        .from("programa_indicacoes")
+        .select("indicador_id")
+        .eq("empresa_id", empresaAtiva.id)
+        .eq("lead_id", contratacao.lead_id)
+        .maybeSingle();
+      if (indicacao?.indicador_id) {
+        const { data: indicadorAtivo } = await admin
+          .from("programa_indicadores")
+          .select("participante_id")
+          .eq("empresa_id", empresaAtiva.id)
+          .eq("id", indicacao.indicador_id)
+          .eq("ativo", true)
+          .maybeSingle();
+        if (indicadorAtivo?.participante_id) {
+          // O indicador é materializado como PARTICIPANTE_SECUNDARIO pelo
+          // gatilho da venda e remunerado pela regra INDICADOR. Não o duplica
+          // no rateio manual da contratação.
+          secundarioId = null;
+          perfilSecundarioId = null;
+          fracao = "";
+        }
+      }
+    }
     if (!contratacao.contrato_assinado) throw new Error("Contrato ainda não foi assinado.");
     assertSnapshotCalculoGruposIntegro(
       (contratacao.dados_simulacao ?? {}) as Record<string, unknown>,
