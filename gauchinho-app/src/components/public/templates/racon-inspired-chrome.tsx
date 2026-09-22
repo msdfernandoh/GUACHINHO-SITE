@@ -115,7 +115,7 @@ export function RaconInspiredHeader({
                   style={{ color: secondary }}
                   aria-haspopup="menu"
                 >
-                  Parceiros <ChevronDown className="h-3.5 w-3.5" aria-hidden />
+                  Negócios <ChevronDown className="h-3.5 w-3.5" aria-hidden />
                 </button>
                 <div
                   role="menu"
@@ -186,7 +186,7 @@ export function RaconInspiredHeader({
               {partnerDestinations.length ? (
                 <div className="rounded-lg border border-slate-100 p-2 sm:col-span-2">
                   <p className="px-1 pb-1 text-xs font-black uppercase tracking-wide text-slate-400">
-                    Parceiros
+                    Negócios
                   </p>
                   {partnerDestinations.map((menu) => (
                     <Link

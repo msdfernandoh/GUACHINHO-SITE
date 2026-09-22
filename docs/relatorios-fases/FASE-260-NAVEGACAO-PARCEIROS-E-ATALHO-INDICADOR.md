@@ -8,7 +8,7 @@ Programa de Parceiros.
 
 ## Entrega
 
-- O menu público padrão agrupa `Imobiliárias` e `Seguradoras` em `Parceiros`,
+- O menu público padrão agrupa `Imobiliárias` e `Seguradoras` em `Negócios`,
   com os dois links disponíveis no desktop e no menu mobile.
 - `Seja parceiro` foi incluído como item próprio de navegação e direciona para
   `/parceiros`.

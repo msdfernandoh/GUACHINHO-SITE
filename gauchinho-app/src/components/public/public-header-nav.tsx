@@ -104,7 +104,7 @@ export function PublicHeaderNav({
           {!institutionalOnly ? (
             <div className="mt-2 border-t border-white/10 pt-3">
               <p className="px-4 pb-1 text-xs font-bold uppercase tracking-wide text-zinc-500">
-                Parceiros
+                Negócios
               </p>
               {PARTNER_DESTINATIONS.map((l) => (
                 <Link
@@ -171,7 +171,7 @@ export function PublicHeaderNav({
                 aria-expanded={partnerOpen}
                 aria-haspopup="menu"
               >
-                Parceiros
+                Negócios
                 <ChevronDown className="h-3.5 w-3.5" aria-hidden />
               </button>
               {partnerOpen ? (

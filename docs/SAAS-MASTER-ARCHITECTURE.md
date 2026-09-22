@@ -2731,7 +2731,7 @@ Relatório: `docs/relatorios-fases/FASE-257-CONSULTORES-REPETIDOS-E-RPC-REPASSE.
 ### Evolução operacional 260 — Navegação consolidada de parceiros
 
 A navegação pública passa a agrupar os destinos `Imobiliárias` e `Seguradoras`
-sob `Parceiros`, sem remover ou redirecionar as rotas públicas existentes. O
+sob `Negócios`, sem remover ou redirecionar as rotas públicas existentes. O
 item `Seja parceiro` direciona para a landing tenant-aware `/parceiros` tanto
 no site padrão quanto no chrome Racon. O painel autenticado do indicador inclui
 somente o atalho `Conheça os nossos programas` para a mesma rota, preservando
