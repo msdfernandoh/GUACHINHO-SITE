@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { getUsuarioNegocio } from "@/lib/auth/get-usuario";
 import { canManageLeads } from "@/lib/auth/permissions";
 import { Button, Input, Label, Select } from "@/components/ui/form-primitives";
-import { fetchEventosOptionsForListas, fetchListasConvidadosResumo } from "./actions";
+import { fetchConvitesEventosPendentes, fetchEventosOptionsForListas, fetchListasConvidadosResumo, vincularConvitePendenteAoEventoAction } from "./actions";
 
 export default async function ListasConvidadosPage({
   searchParams,
@@ -14,12 +14,13 @@ export default async function ListasConvidadosPage({
   if (!canManageLeads(u?.perfil)) redirect("/admin");
 
   const sp = await searchParams;
-  const [result, eventos] = await Promise.all([
+  const [result, eventos, pendentes] = await Promise.all([
     fetchListasConvidadosResumo({
       evento_id: sp.evento_id,
       consultor: sp.consultor,
     }),
     fetchEventosOptionsForListas(),
+    fetchConvitesEventosPendentes(),
   ]);
 
   if ("migrationMissing" in result && result.migrationMissing) {
@@ -30,6 +31,7 @@ export default async function ListasConvidadosPage({
           Execute a migration <code className="text-amber-200">020_eventos_listas_convidados.sql</code> no Supabase.
         </div>
       </div>
+
     );
   }
 
@@ -51,6 +53,19 @@ export default async function ListasConvidadosPage({
           <Button>Nova lista</Button>
         </Link>
       </div>
+
+      <section className="rounded-xl border border-amber-300/50 p-4 dark:border-amber-800">
+        <h2 className="font-bold">Convites aguardando evento ({pendentes.length})</h2>
+        <p className="mt-1 text-sm text-zinc-500">Indicações recebidas quando não havia evento ativo. Permanecem atribuídas ao indicador.</p>
+        {pendentes.length ? <div className="mt-4 space-y-2">{pendentes.map((row) => {
+          const indicador = Array.isArray(row.indicador) ? row.indicador[0] : row.indicador;
+          const participante = Array.isArray(indicador?.participante) ? indicador.participante[0] : indicador?.participante;
+          return <div key={row.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border p-3 text-sm dark:border-zinc-800">
+            <div><strong>{row.nome}</strong> · {row.telefone}<br /><span className="text-zinc-500">Indicador: {participante?.nome ?? "—"}{row.empresa_atividade ? ` · ${row.empresa_atividade}` : ""}</span></div>
+            <form action={vincularConvitePendenteAoEventoAction}><input type="hidden" name="pendente_id" value={row.id} /><Button type="submit">Vincular ao evento ativo</Button></form>
+          </div>;
+        })}</div> : <p className="mt-3 text-sm text-zinc-500">Nenhum convite aguardando evento.</p>}
+      </section>
 
       <form method="get" className="flex flex-wrap gap-3 rounded-xl border p-4 dark:border-zinc-800">
         <div>

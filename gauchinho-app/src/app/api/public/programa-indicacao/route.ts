@@ -263,13 +263,10 @@ export async function POST(request: Request) {
     if (!['MICROFRANQUEADO','GERADOR_NEGOCIOS','GERADOR_POSSIBILIDADES','CONVERSAR_EQUIPE'].includes(modelo)) return NextResponse.json({ error: "Modelo de parceria inválido." }, { status: 400 });
     const { data: existente } = await admin.from("programa_indicadores").select("id,participante_id").eq("empresa_id", ingress.empresaId).eq("cpf", cpf).maybeSingle();
     if (existente) {
-      const requerAnalise = modelo === "MICROFRANQUEADO" || modelo === "GERADOR_NEGOCIOS";
-      const statusSolicitacao = requerAnalise ? "EM_ANALISE" : "APROVADO_NIVEL_1";
       const { error: atualizacaoError } = await admin.from("programa_indicadores").update({
         telefone,
         chave_pix: chavePix,
         modelo_interesse: modelo,
-        status_solicitacao_modelo: statusSolicitacao,
         cidade: String(body.cidade ?? "").trim() || null,
         estado: String(body.estado ?? "").trim() || null,
         profissao: String(body.profissao ?? "").trim() || null,
@@ -288,12 +285,9 @@ export async function POST(request: Request) {
       if (existente.participante_id) {
         await admin.from("participantes_comerciais").update({ nome, nome_exibicao: nome, telefone, whatsapp: telefone }).eq("empresa_id", ingress.empresaId).eq("id", existente.participante_id);
       }
-      if (requerAnalise) {
-        await admin.from("programa_indicadores_solicitacoes").upsert({ empresa_id: ingress.empresaId, indicador_id: existente.id, modelo_solicitado: modelo }, { onConflict: "empresa_id,indicador_id,modelo_solicitado,status", ignoreDuplicates: true });
-      }
       return NextResponse.json({ ok: true, indicadorId: existente.id, existente: true, atualizado: true, acesso: "/app-indicador/login" });
     }
-    const { data: perfil } = await admin.from("comissao_perfis").select("id").eq("empresa_id", ingress.empresaId).eq("papel_base", "INDICADOR").eq("nome", "Indicador").eq("ativo", true).maybeSingle();
+    const { data: perfil } = await admin.from("comissao_perfis").select("id").eq("empresa_id", ingress.empresaId).eq("nome", "Gerador de Oportunidades").eq("ativo", true).maybeSingle();
     const { data: papel } = await admin.from("papeis").select("id").eq("escopo", "COMPANY").eq("codigo", "consultor").is("empresa_id", null).maybeSingle();
     if (!perfil || !papel) return NextResponse.json({ error: "Configuração de acesso indisponível. Procure a equipe." }, { status: 503 });
     // O e-mail real é a identidade de Auth do parceiro para que a recuperação
@@ -312,7 +306,7 @@ export async function POST(request: Request) {
       usuarioNovoId = usuario.id;
       const { error: vinculoError } = await admin.from("empresa_usuarios").insert({ empresa_id: ingress.empresaId, usuario_id: usuario.id, papel_id: papel.id, ativo: true, origem: "LANDING_PARCEIROS", erp_modulos_visiveis: ["minhas-comissoes"] });
       if (vinculoError) throw new Error(vinculoError.message);
-      const participantePayload = { nome, nome_exibicao: nome, cpf, telefone, whatsapp: telefone, status: "ATIVO", cargo: "Gerador de Possibilidades", escopo_visualizacao: "VINCULADOS", modulos_permitidos: ["minhas-comissoes"] };
+      const participantePayload = { nome, nome_exibicao: nome, cpf, telefone, whatsapp: telefone, status: "ATIVO", cargo: "Consultor", escopo_visualizacao: "VINCULADOS", modulos_permitidos: ["minhas-comissoes"] };
       const { data: participanteCriadoPeloVinculo } = await admin.from("participantes_comerciais")
         .select("id").eq("empresa_id", ingress.empresaId).eq("usuario_id", usuario.id).eq("status", "ATIVO").maybeSingle();
       const participanteResult = participanteCriadoPeloVinculo
@@ -321,8 +315,7 @@ export async function POST(request: Request) {
       const { data: participante, error: participanteError } = participanteResult;
       if (participanteError || !participante) throw new Error(participanteError?.message ?? "Falha ao criar participante.");
       participanteNovoId = participante.id;
-      const requerAnalise = modelo === "MICROFRANQUEADO" || modelo === "GERADOR_NEGOCIOS";
-      const statusSolicitacao = requerAnalise ? "EM_ANALISE" : "APROVADO_NIVEL_1";
+      const statusSolicitacao = "APROVADO_NIVEL_1";
       const { data: indicador, error: indicadorError } = await admin.from("programa_indicadores").insert({
         empresa_id: ingress.empresaId,
         participante_id: participante.id,
@@ -349,7 +342,10 @@ export async function POST(request: Request) {
       indicadorNovoId = indicador.id;
       const { error: perfilError } = await admin.from("participante_comissao_perfis").insert({ empresa_id: ingress.empresaId, participante_id: participante.id, papel_tipo: "INDICADOR", perfil_id: perfil.id, vigencia_inicio: new Date().toISOString().slice(0, 10), ativo: true });
       if (perfilError) throw new Error(perfilError.message);
-      if (requerAnalise) await admin.from("programa_indicadores_solicitacoes").insert({ empresa_id: ingress.empresaId, indicador_id: indicador.id, modelo_solicitado: modelo });
+      const { error: tipoConsultorError } = await admin.from("participante_tipos").upsert({
+        empresa_id: ingress.empresaId, participante_id: participante.id, tipo_codigo: "CONSULTOR",
+      }, { onConflict: "participante_id,tipo_codigo", ignoreDuplicates: true });
+      if (tipoConsultorError) throw new Error(tipoConsultorError.message);
       return NextResponse.json({ ok: true, indicadorId: indicador.id, acesso: "/app-indicador/login" });
     } catch (error) {
       console.error("[programa-indicacao] falha no cadastro de parceiro", error instanceof Error ? error.message : error);

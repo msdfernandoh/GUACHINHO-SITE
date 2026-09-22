@@ -84,6 +84,20 @@ export async function fetchParticipantesList(filters?: {
       }
     });
 
+    const participanteIds = (data ?? []).map((row) => row.id);
+    const [indicadoresRes, perfisRes] = participanteIds.length ? await Promise.all([
+      supabase.from("programa_indicadores")
+        .select("participante_id,modelo_interesse,status_solicitacao_modelo")
+        .eq("empresa_id", empresaId).in("participante_id", participanteIds)
+        .eq("origem_cadastro", "LANDING_PARCEIROS"),
+      supabase.from("participante_comissao_perfis")
+        .select("participante_id,perfil:comissao_perfis(nome)")
+        .eq("empresa_id", empresaId).in("participante_id", participanteIds)
+        .eq("ativo", true).eq("papel_tipo", "INDICADOR"),
+    ]) : [{ data: [] }, { data: [] }];
+    const indicadoresMap = new Map((indicadoresRes.data ?? []).map((item) => [item.participante_id, item]));
+    const perfisMap = new Map((perfisRes.data ?? []).map((item) => [item.participante_id, item.perfil?.[0]?.nome ?? null]));
+
     const rows: ParticipanteComTipos[] = (data ?? []).map((row: Record<string, unknown>) => {
       const tiposRaw = row.participante_tipos as Array<{ tipo_codigo: string }> | null;
       const { participante_tipos: _t, ...rest } = row;
@@ -95,6 +109,9 @@ export async function fetchParticipantesList(filters?: {
       return {
         ...(rest as unknown as ParticipanteComTipos),
         modulos_permitidos: modulos,
+        modelo_interesse: indicadoresMap.get(row.id as string)?.modelo_interesse ?? null,
+        status_solicitacao_modelo: indicadoresMap.get(row.id as string)?.status_solicitacao_modelo ?? null,
+        perfil_comissao_atual: perfisMap.get(row.id as string) ?? null,
         tipos: (tiposRaw ?? [])
           .map((t) => t.tipo_codigo)
           .filter((c): c is (typeof PARTICIPANTE_TIPOS)[number] =>
@@ -112,6 +129,28 @@ export async function fetchParticipantesList(filters?: {
       message: err instanceof Error ? err.message : "Erro ao listar participantes.",
     };
   }
+}
+
+export async function concluirRevisaoModeloParceiroAction(formData: FormData) {
+  const empresaId = await resolveEmpresaIdPadrao();
+  await assertAdminAccess(empresaId);
+  const participanteId = String(formData.get("participante_id") ?? "");
+  const admin = createAdminClient();
+  const { data: indicador } = await admin.from("programa_indicadores")
+    .select("id,status_solicitacao_modelo")
+    .eq("empresa_id", empresaId).eq("participante_id", participanteId)
+    .eq("origem_cadastro", "LANDING_PARCEIROS").maybeSingle();
+  if (!indicador || indicador.status_solicitacao_modelo !== "EM_ANALISE") throw new Error("Revisão pendente não encontrada.");
+  const { usuario } = await getCurrentTenantContext();
+  const { error } = await admin.from("programa_indicadores")
+    .update({ status_solicitacao_modelo: "APROVADO" })
+    .eq("empresa_id", empresaId).eq("id", indicador.id).eq("status_solicitacao_modelo", "EM_ANALISE");
+  if (error) throw new Error(error.message);
+  await admin.from("programa_indicadores_solicitacoes")
+    .update({ status: "APROVADO", decisoes_por_usuario_id: usuario?.id ?? null, decidido_em: new Date().toISOString(), motivo_decisao: "Revisão manual do perfil de comissão concluída no ERP." })
+    .eq("empresa_id", empresaId).eq("indicador_id", indicador.id).eq("status", "EM_ANALISE");
+  revalidatePath("/erp/consultores");
+  revalidatePath("/admin/participantes");
 }
 
 export async function createParticipanteAction(formData: FormData): Promise<{ ok: boolean; success: boolean; error?: string }> {

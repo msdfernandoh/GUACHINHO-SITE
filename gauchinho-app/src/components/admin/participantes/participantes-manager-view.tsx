@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState, useTransition } from "react";
 import {
   Users,
@@ -28,6 +29,7 @@ import {
   updateParticipanteStatusAction,
   verificarDependenciasParticipanteAction,
   redefinirSenhaIndicadorAction,
+  concluirRevisaoModeloParceiroAction,
 } from "@/app/admin/participantes/actions";
 import type { ParticipanteComTipos } from "@/lib/parceiros/types";
 import { PARTICIPANTE_STATUS, PARTICIPANTE_TIPOS } from "@/lib/parceiros/constants";
@@ -57,6 +59,13 @@ export const MODULOS_ERP_CATALOGO = [
   { id: "tarefas", label: "Tarefas & Follow-up", desc: "Acompanhamento de tarefas e rotinas de clientes", categoria: "Gestão & CRM" },
   { id: "usuarios", label: "Usuários do Sistema", desc: "Controle de acessos e logins do ERP", categoria: "Gestão & CRM" },
 ];
+
+const MODELO_PARCEIRO_LABEL: Record<string, string> = {
+  MICROFRANQUEADO: "Microfranqueado",
+  GERADOR_NEGOCIOS: "Gerador de Negócios",
+  GERADOR_POSSIBILIDADES: "Gerador de Possibilidades",
+  CONVERSAR_EQUIPE: "Conversar com a equipe",
+};
 
 interface ParticipantesManagerViewProps {
   empresaId: string;
@@ -254,6 +263,15 @@ export function ParticipantesManagerView({
                           {part.cargo}
                         </span>
                       )}
+                      {part.modelo_interesse ? <div className="mt-1 text-[11px] font-semibold text-indigo-700 dark:text-indigo-300">Modelo escolhido: {MODELO_PARCEIRO_LABEL[part.modelo_interesse] ?? part.modelo_interesse}</div> : null}
+                      {part.modelo_interesse ? <div className="text-[11px] font-medium text-slate-500">Comissão atual: {part.perfil_comissao_atual ?? "Sem perfil ativo"}</div> : null}
+                      {part.status_solicitacao_modelo === "EM_ANALISE" ? <div className="mt-1 space-y-1 text-[11px]">
+                        <span className="font-bold text-amber-700">Pendente: gestor revisar o perfil de comissão</span>
+                        <div className="flex flex-wrap gap-2">
+                          <Link href="/erp/regras-comissao" className="font-bold text-blue-700 underline">Alterar perfil manualmente</Link>
+                          <form action={concluirRevisaoModeloParceiroAction}><input type="hidden" name="participante_id" value={part.id} /><button type="submit" className="font-bold text-emerald-700 underline">Concluir revisão</button></form>
+                        </div>
+                      </div> : null}
                     </td>
 
                     <td className="px-4 py-3">

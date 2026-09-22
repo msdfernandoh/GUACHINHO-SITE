@@ -12,6 +12,6 @@ export async function fetchEventosDisponiveisParaIndicador() {
     .eq("publicado", true)
     .gte("data_evento", limite.toISOString())
     .order("data_evento")
-    .limit(20);
+    .limit(1);
   return data ?? [];
 }

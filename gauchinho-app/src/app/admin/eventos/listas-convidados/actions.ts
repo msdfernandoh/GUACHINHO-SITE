@@ -18,8 +18,68 @@ import type {
 import { LISTA_CONVIDADO_RESULTADO, LISTA_CONVIDADO_STATUS } from "@/lib/comercial-eventos/listas-convidados-types";
 import { fetchEventosOptionsForFilter } from "../actions";
 import { slugify } from "@/lib/utils/slug";
+import { getCurrentTenantContext } from "@/lib/tenant/context";
 
 const BASE = "/admin/eventos/listas-convidados";
+
+export async function fetchConvitesEventosPendentes() {
+  const u = await requireUsuario();
+  assertCanManageListas(u.perfil);
+  const { empresaAtiva } = await getCurrentTenantContext();
+  if (!empresaAtiva) return [];
+  const admin = createAdminClient();
+  const { data, error } = await admin.from("programa_convites_eventos_pendentes")
+    .select("id,nome,telefone,empresa_atividade,created_at,indicador:programa_indicadores(participante:participantes_comerciais(nome))")
+    .eq("empresa_id", empresaAtiva.id).eq("status", "PENDENTE")
+    .order("created_at", { ascending: false });
+  if (error) throw new Error(error.message);
+  return data ?? [];
+}
+
+export async function vincularConvitePendenteAoEventoAction(formData: FormData) {
+  const u = await requireUsuario();
+  assertCanManageListas(u.perfil);
+  const { empresaAtiva } = await getCurrentTenantContext();
+  if (!empresaAtiva) throw new Error("Empresa ativa não encontrada.");
+  const pendenteId = String(formData.get("pendente_id") ?? "");
+  const admin = createAdminClient();
+  const { data: pendente } = await admin.from("programa_convites_eventos_pendentes")
+    .select("id,indicador_id,nome,telefone,empresa_atividade,status,indicador:programa_indicadores(participante:participantes_comerciais(nome,usuario_id))")
+    .eq("empresa_id", empresaAtiva.id).eq("id", pendenteId).eq("status", "PENDENTE").maybeSingle();
+  if (!pendente) throw new Error("Convite pendente não encontrado.");
+  const { data: evento } = await admin.from("eventos").select("id")
+    .eq("ativo", true).eq("publicado", true)
+    .gte("data_evento", new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
+    .order("data_evento").limit(1).maybeSingle();
+  if (!evento) throw new Error("Ainda não existe evento ativo para receber este convite.");
+  const titular = pendente.indicador?.[0]?.participante?.[0];
+  if (!titular?.usuario_id) throw new Error("Usuário do indicador não encontrado.");
+  const { data: listaExistente } = await admin.from("eventos_listas_convidados")
+    .select("id").eq("evento_id", evento.id).eq("consultor_usuario_id", titular.usuario_id).limit(1).maybeSingle();
+  let listaId = listaExistente?.id;
+  if (!listaId) {
+    const { data: criada, error } = await admin.from("eventos_listas_convidados").insert({
+      evento_id: evento.id, consultor_nome: titular.nome, consultor_usuario_id: titular.usuario_id, criado_por_usuario_id: u.id,
+    }).select("id").single();
+    if (error || !criada) throw new Error("Não foi possível criar a lista do evento.");
+    listaId = criada.id;
+  }
+  const { data: item } = await admin.from("eventos_listas_convidados_itens")
+    .select("id").eq("lista_id", listaId).eq("telefone", pendente.telefone).limit(1).maybeSingle();
+  if (!item) {
+    const { error } = await admin.from("eventos_listas_convidados_itens").insert({
+      lista_id: listaId, nome: pendente.nome, telefone: pendente.telefone,
+      empresa: pendente.empresa_atividade, convidado_por: titular.nome, status_presenca: "pendente",
+    });
+    if (error) throw new Error("Não foi possível incluir o convidado no evento.");
+  }
+  const { error: updateError } = await admin.from("programa_convites_eventos_pendentes")
+    .update({ status: "VINCULADO", evento_id: evento.id, updated_at: new Date().toISOString() })
+    .eq("empresa_id", empresaAtiva.id).eq("id", pendente.id).eq("status", "PENDENTE");
+  if (updateError) throw new Error("Convite incluído, mas a fila não pôde ser atualizada.");
+  revalidatePath(BASE);
+  revalidatePath(`${BASE}/${listaId}`);
+}
 
 function assertCanManageListas(perfil: string | undefined) {
   if (!canManageLeads(perfil as import("@/lib/auth/permissions").Perfil)) {

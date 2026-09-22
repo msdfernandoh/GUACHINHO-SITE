@@ -30,6 +30,9 @@ export type ParticipanteComercial = {
 
 export type ParticipanteComTipos = ParticipanteComercial & {
   tipos: ParticipanteTipoCodigo[];
+  modelo_interesse?: string | null;
+  status_solicitacao_modelo?: string | null;
+  perfil_comissao_atual?: string | null;
 };
 
 export type OrganizacaoParceira = {

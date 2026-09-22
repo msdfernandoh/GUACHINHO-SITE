@@ -19,7 +19,6 @@ export type NovaIndicacaoApp = {
 };
 
 export type NovaIndicacaoEventoApp = {
-  eventoId: string;
   nome: string;
   telefone: string;
   empresa?: string;
@@ -137,8 +136,8 @@ export async function registrarIndicacaoEventoDoAppAction(input: NovaIndicacaoEv
 
   const nome = input.nome.trim();
   const telefone = digitsOnlyPhone(input.telefone);
-  if (!input.eventoId || nome.length < 3 || telefone.length < 10) {
-    return { ok: false, error: "Selecione o evento e informe nome e telefone com DDD." };
+  if (nome.length < 3 || telefone.length < 10) {
+    return { ok: false, error: "Informe nome e telefone com DDD." };
   }
 
   const admin = createAdminClient();
@@ -148,15 +147,15 @@ export async function registrarIndicacaoEventoDoAppAction(input: NovaIndicacaoEv
   const { data: evento } = await admin
     .from("eventos")
     .select("id,nome,data_evento,ativo")
-    .eq("id", input.eventoId)
     .eq("ativo", true)
     .eq("publicado", true)
     .gte("data_evento", new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
+    .order("data_evento")
+    .limit(1)
     .maybeSingle();
-  if (!evento) return { ok: false, error: "Este evento não está mais disponível." };
 
   const observacao = [
-    `Convidado por ${participante.nome} pelo app do indicador para o evento ${evento.nome}.`,
+    `Convidado por ${participante.nome} pelo app do indicador${evento ? ` para o evento ${evento.nome}` : "; aguardando evento ativo"}.`,
     input.empresa?.trim() ? `Empresa/atividade: ${input.empresa.trim()}.` : "",
     input.observacao?.trim(),
   ].filter(Boolean).join(" ");
@@ -167,8 +166,7 @@ export async function registrarIndicacaoEventoDoAppAction(input: NovaIndicacaoEv
     whatsapp: telefone,
     origem: "evento",
     origem_detalhe: "Convite pelo app do indicador",
-    evento_id: evento.id,
-    evento_nome: evento.nome,
+    ...(evento ? { evento_id: evento.id, evento_nome: evento.nome } : {}),
     status: "Novo",
     observacoes: observacao,
   });
@@ -193,6 +191,25 @@ export async function registrarIndicacaoEventoDoAppAction(input: NovaIndicacaoEv
       observacao_indicado: observacao,
     });
     if (indicacaoError) return { ok: false, error: "Não foi possível atribuir o convite ao indicador." };
+  }
+
+  if (!evento) {
+    const { error: pendenteError } = await admin.from("programa_convites_eventos_pendentes").upsert({
+      empresa_id: empresaAtiva.id,
+      indicador_id: indicador.id,
+      lead_id: lead.lead_id,
+      nome,
+      telefone,
+      empresa_atividade: input.empresa?.trim() || null,
+      observacao: input.observacao?.trim() || null,
+      status: "PENDENTE",
+      evento_id: null,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: "empresa_id,lead_id" });
+    if (pendenteError) return { ok: false, error: "Não foi possível incluir o convite na lista de pendentes." };
+    revalidatePath("/admin/eventos/listas-convidados");
+    revalidatePath("/app-indicador");
+    return { ok: true, eventoNome: null };
   }
 
   let { data: lista } = await admin
@@ -237,8 +254,13 @@ export async function registrarIndicacaoEventoDoAppAction(input: NovaIndicacaoEv
     : await admin.from("eventos_listas_convidados_itens").insert({ lista_id: lista.id, ...itemPayload });
   if (itemWrite.error) return { ok: false, error: "Não foi possível incluir o convidado na lista do evento." };
 
+  await admin.from("programa_convites_eventos_pendentes")
+    .update({ status: "VINCULADO", evento_id: evento.id, updated_at: new Date().toISOString() })
+    .eq("empresa_id", empresaAtiva.id).eq("lead_id", lead.lead_id).eq("indicador_id", indicador.id);
+
   await admin.from("eventos_listas_convidados").update({ updated_at: new Date().toISOString() }).eq("id", lista.id);
   revalidatePath("/app-indicador");
   revalidatePath("/app-indicador/indicar");
+  revalidatePath("/admin/eventos/listas-convidados");
   return { ok: true, eventoNome: evento.nome };
 }

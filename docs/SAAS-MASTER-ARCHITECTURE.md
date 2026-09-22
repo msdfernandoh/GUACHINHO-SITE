@@ -2814,3 +2814,21 @@ existentes, sem migration.
 
 Relatório:
 `docs/relatorios-fases/FASE-264-INDICACAO-CONTATO-OU-EVENTO-NO-APP.md`.
+
+### Evolução operacional 265 — Evento ativo e perfil inicial dos parceiros
+
+O convite de evento no app usa automaticamente a próxima edição ativa e
+publicada. Na ausência de evento disponível, o lead permanece atribuído ao
+indicador em uma fila tenant-aware, visível na administração de listas, para
+vinculação posterior ao evento ativo.
+
+Participantes cadastrados pela landing de parceiros entram como consultores e
+mantêm o tipo técnico de indicador. Independentemente do modelo comercial
+escolhido, recebem inicialmente o perfil já existente **Gerador de
+Oportunidades**, com regra homologada de 12,5% para Imóvel e Veículo. O modelo
+escolhido e o perfil atual aparecem no ERP Consultores. Após a primeira
+indicação, o cadastro é sinalizado para revisão do gestor; qualquer mudança de
+perfil continua sendo feita manualmente em Regras de Comissão.
+
+Relatório:
+`docs/relatorios-fases/FASE-265-EVENTO-ATIVO-E-PERFIL-INICIAL-PARCEIROS.md`.
