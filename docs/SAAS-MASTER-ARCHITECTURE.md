@@ -2864,3 +2864,22 @@ preservando o cálculo para Imóvel e Veículo.
 
 Relatório:
 `docs/relatorios-fases/FASE-267-REGRAS-POR-PROGRAMA-E-INATIVACAO.md`.
+
+### Evolução operacional 268 — Extrato de comissões do indicador por venda
+
+O app autenticado do indicador agrupa as previsões pelo fato canônico da
+venda, exibindo o nome do comprador, o crédito vendido, a comissão bruta da
+franqueadora, impostos, base líquida e o percentual efetivamente congelado na
+previsão do perfil comercial. O valor do indicador é sempre a soma das suas
+parcelas geradas pelo motor de comissões; a interface não recalcula percentuais
+nem altera regras do ERP.
+
+O cronograma apresenta cada parcela na ordem oficial, com valor, estado de
+pagamento e previsão de até 30 dias por etapa a partir da conclusão da venda.
+Quando não há data suficiente no histórico, a competência canônica do ERP é
+mostrada como fallback. A consulta é autorizada pela sessão do próprio
+participante e só lê o snapshot fiscal das vendas às quais ele já está
+vinculado.
+
+Relatório:
+`docs/relatorios-fases/FASE-268-EXTRATO-COMISSOES-INDICADOR-POR-VENDA.md`.
