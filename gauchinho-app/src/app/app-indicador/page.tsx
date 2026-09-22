@@ -159,7 +159,7 @@ export default async function AppIndicadorPage() {
           <p className="text-xs font-black tracking-[.16em] text-amber-300">EVENTO ATIVO</p>
           <h2 className="mt-2 text-2xl font-black">{eventoAtivo.nome}</h2>
           <p className="mt-2 text-sm text-zinc-200">{eventoAtivo.data_evento ? new Intl.DateTimeFormat("pt-BR", { weekday: "long", day: "2-digit", month: "long", hour: "2-digit", minute: "2-digit", timeZone: "America/Cuiaba" }).format(new Date(eventoAtivo.data_evento)) : "Data e horário a confirmar"}</p>
-          <p className="mt-3 text-lg font-black text-amber-300">{eventoAtivo.vagas_disponiveis == null ? "Vagas sem limite definido" : `${eventoAtivo.vagas_disponiveis} vaga${eventoAtivo.vagas_disponiveis === 1 ? "" : "s"} disponível${eventoAtivo.vagas_disponiveis === 1 ? "" : "is"}`}</p>
+          <p className="mt-3 text-lg font-black text-amber-300">{eventoAtivo.vagas_disponiveis == null ? "Vagas sem limite definido" : `${eventoAtivo.vagas_disponiveis} vaga${eventoAtivo.vagas_disponiveis === 1 ? "" : "s"} ${eventoAtivo.vagas_disponiveis === 1 ? "disponível" : "disponíveis"}`}</p>
           <Link href="/app-indicador/indicar?tipo=evento" className="mt-4 inline-flex rounded-xl bg-amber-400 px-4 py-3 text-sm font-black text-zinc-950">Convidar para este evento</Link>
         </section> : null}
         <section className="mt-6">
