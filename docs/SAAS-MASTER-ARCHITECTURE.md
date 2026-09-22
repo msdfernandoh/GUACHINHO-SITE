@@ -2916,3 +2916,14 @@ outro consultor não é consultada nem exibida.
 
 Relatório:
 `docs/relatorios-fases/FASE-270-LOGIN-EMAIL-E-LISTA-CONVIDADOS.md`.
+
+### Hotfix operacional 271 — Cadastro direto pelo app do indicador
+
+Na tela de login do app instalado, o CTA **Quero me cadastrar** abre diretamente
+o formulário tenant-aware `/parceiros/cadastro`, em vez da landing institucional
+`/parceiros`. A rota relativa preserva o host, a identidade visual e o tenant
+ativo, inclusive nos domínios Racon. Nenhuma regra de dados, acesso ou comissão
+foi alterada.
+
+Relatório:
+`docs/relatorios-fases/HOTFIX-271-CADASTRO-APP-INDICADOR.md`.

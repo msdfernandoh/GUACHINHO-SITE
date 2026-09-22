@@ -19,4 +19,10 @@ describe("Fase 251 — programa de parceiros no domínio Racon", () => {
     expect(source("src/app/app-indicador/recuperar-senha/page.tsx")).toContain("isRaconModel");
     expect(source("src/app/manifest.ts")).toContain("racon ?");
   });
+
+  it("leva o novo parceiro diretamente ao formulário de cadastro pelo app", () => {
+    const login = source("src/app/app-indicador/login/page.tsx");
+    expect(login).toContain('href="/parceiros/cadastro"');
+    expect(login).not.toContain('href="/parceiros" className="mt-3');
+  });
 });
