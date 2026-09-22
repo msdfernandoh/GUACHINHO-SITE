@@ -2848,3 +2848,19 @@ preservam os mesmos dados até a vinculação.
 
 Relatório:
 `docs/relatorios-fases/FASE-266-EVENTO-NO-PAINEL-E-ACOMPANHANTE.md`.
+
+### Evolução operacional 267 — Regras por programa e inativação
+
+As regras de comissão passam a exibir o programa da franqueadora explicitamente,
+diferenciando as condições de Racon Imóvel e Racon Veículo que antes apareciam
+apenas sob a mesma administradora. A auditoria comprovou que `Gerador de
+Oportunidades` e `Indicador` possuem um único perfil cada; suas duas regras não
+são duplicatas, pois atendem programas diferentes e ambas são necessárias.
+
+O estado inativo prevalece visualmente sobre a homologação histórica, oferece
+reativação e a ação do servidor valida a atualização antes de confirmar sucesso.
+A regra canônica de 12,5% de Imóvel foi restaurada após a inativação de teste,
+preservando o cálculo para Imóvel e Veículo.
+
+Relatório:
+`docs/relatorios-fases/FASE-267-REGRAS-POR-PROGRAMA-E-INATIVACAO.md`.

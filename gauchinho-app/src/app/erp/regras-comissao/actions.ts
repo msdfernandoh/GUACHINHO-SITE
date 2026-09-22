@@ -343,7 +343,7 @@ export async function toggleParticipantProfileRuleAction(formData: FormData): Pr
   if (!id || !empresaId) return;
 
   const supabase = await assertCanWrite(empresaId);
-  await supabase
+  const { data, error } = await supabase
     .from("comissao_regras_participantes")
     .update({
       ativa,
@@ -351,7 +351,11 @@ export async function toggleParticipantProfileRuleAction(formData: FormData): Pr
       updated_at: new Date().toISOString(),
     })
     .eq("id", id)
-    .eq("empresa_id", empresaId);
+    .eq("empresa_id", empresaId)
+    .select("id")
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!data) throw new Error("Regra não encontrada ou não pôde ser alterada.");
 
   revalidatePath("/erp/regras-comissao");
 }
