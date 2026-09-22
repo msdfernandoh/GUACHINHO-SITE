@@ -225,7 +225,14 @@ export function IndicacaoChat({ racon = false, codigoIndicacao, nomeIndicador }:
             {publico && step === 9 ? <div className="grid gap-3">{periodosContato.map(([id, label]) => <Escolha key={id} value={label} selected={data.periodoContato === id} onClick={() => update({ periodoContato: id })} />)}</div> : null}
             {isFinal ? <label className="block text-sm font-bold">Alguma observação? <textarea value={data.observacao || ""} onChange={(event) => update({ observacao: event.target.value })} className="mt-2 min-h-24 w-full rounded-2xl border border-zinc-700 bg-zinc-950 p-4" placeholder="Ex.: prefere contato à tarde" /></label> : null}
 
-            {error ? <p className="mt-4 rounded-xl bg-rose-500/10 p-3 text-sm font-bold text-rose-300">{error}</p> : null}
+            {error ? (
+              <div className="mt-4 rounded-xl bg-rose-500/10 p-3 text-sm font-bold text-rose-300">
+                <p>{error}</p>
+                {error.toLowerCase().includes("telefone") ? (
+                  <button type="button" onClick={() => setStep(publico ? 2 : 0)} className="mt-2 underline">Alterar telefone</button>
+                ) : null}
+              </div>
+            ) : null}
             <div className="mt-6 flex gap-3">
               {step > 0 ? <button type="button" onClick={() => setStep((current) => current - 1)} className="rounded-2xl border border-zinc-700 px-5 font-black">Voltar</button> : null}
               <button type="button" disabled={saving || !draftReady} onClick={isFinal ? enviar : avancar} className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-amber-400 p-4 font-black text-zinc-950 disabled:opacity-60">

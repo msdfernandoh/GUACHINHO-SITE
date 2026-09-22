@@ -2798,3 +2798,19 @@ sem duplicar o rateio manual do consultor principal.
 
 Relatório:
 `docs/relatorios-fases/FASE-263-PREFERENCIAS-ATENDIMENTO-E-INDICADOR-SEGUNDO-VENDEDOR.md`.
+
+### Evolução operacional 264 — Indicação de contato ou evento no app
+
+A ação de nova indicação no app autenticado oferece a escolha entre cadastrar
+um contato comercial e convidar uma pessoa para um evento. O convite lista
+somente eventos ativos, publicados e disponíveis, consolida o lead por telefone
+no tenant e preserva a atribuição canônica do indicador resolvido pela sessão.
+
+O convidado é incluído na lista vinculada ao usuário indicador com presença
+`pendente`, permitindo a confirmação posterior. Nenhum identificador comercial
+é aceito do navegador e um vínculo preexistente com outro indicador permanece
+protegido. A entrega reutiliza as tabelas de eventos e listas de convidados já
+existentes, sem migration.
+
+Relatório:
+`docs/relatorios-fases/FASE-264-INDICACAO-CONTATO-OU-EVENTO-NO-APP.md`.
