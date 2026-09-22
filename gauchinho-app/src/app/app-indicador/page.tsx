@@ -123,6 +123,12 @@ export default async function AppIndicadorPage() {
           Minhas comissões
         </Link>
       </div>
+      <Link
+        href="/parceiros"
+        className="mt-3 flex rounded-2xl border border-amber-400/30 bg-amber-400/10 px-4 py-3 text-sm font-black text-amber-300 transition hover:bg-amber-400/20"
+      >
+        Conheça os nossos programas
+      </Link>
       {linkIndicacao && (
           <IndicadorLinkCard
             url={linkIndicacao}

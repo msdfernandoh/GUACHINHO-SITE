@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { LogIn, Menu, X } from "lucide-react";
+import { ChevronDown, LogIn, Menu, X } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import { EspecialistaLeadModal } from "@/components/public/especialista-lead-modal";
 
@@ -15,9 +15,13 @@ const PRIMARY_LINKS = [
   { href: "/eventos", label: "Eventos" },
   { href: "/grupos", label: "Grupos" },
   { href: "/cartas-contempladas", label: "Contempladas" },
+  { href: "/parceiros", label: "Seja parceiro" },
+  { href: "/indicar", label: "Indicação" },
+] as const;
+
+const PARTNER_DESTINATIONS = [
   { href: "/oportunidades-imobiliarias", label: "Imobiliárias" },
   { href: "/seguradoras", label: "Seguradoras" },
-  { href: "/indicar", label: "Indicação" },
 ] as const;
 
 const INSTITUTIONAL_LINKS = [{ href: "/", label: "Início" }] as const;
@@ -35,6 +39,7 @@ export function PublicHeaderNav({
 }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  const [partnerOpen, setPartnerOpen] = useState(false);
   const [especialistaOpen, setEspecialistaOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [menuTopPx, setMenuTopPx] = useState(64);
@@ -46,6 +51,7 @@ export function PublicHeaderNav({
 
   useEffect(() => {
     setOpen(false);
+    setPartnerOpen(false);
   }, [pathname]);
 
   useEffect(() => {
@@ -59,7 +65,10 @@ export function PublicHeaderNav({
   const closeMobile = () => setOpen(false);
 
   const linkClass = (href: string) =>
-    cn("whitespace-nowrap transition hover:text-amber-400", pathname === href && "text-amber-400");
+    cn(
+      "whitespace-nowrap transition hover:text-amber-400",
+      pathname === href && "text-amber-400",
+    );
 
   const allMobile = links;
 
@@ -68,11 +77,17 @@ export function PublicHeaderNav({
       <div
         id="public-nav-mobile"
         className="fixed inset-x-0 z-[9999] max-h-[calc(100dvh-var(--public-header-h,4rem))] overflow-y-auto overflow-x-hidden border-t border-white/10 bg-[#07111f] shadow-2xl lg:hidden"
-        style={{ top: menuTopPx, ["--public-header-h" as string]: `${menuTopPx}px` }}
+        style={{
+          top: menuTopPx,
+          ["--public-header-h" as string]: `${menuTopPx}px`,
+        }}
         role="dialog"
         aria-modal="true"
       >
-        <nav className="mx-auto flex max-w-screen-xl flex-col gap-1 px-5 py-5" aria-label="Navegação mobile">
+        <nav
+          className="mx-auto flex max-w-screen-xl flex-col gap-1 px-5 py-5"
+          aria-label="Navegação mobile"
+        >
           {allMobile.map((l) => (
             <Link
               key={l.href}
@@ -86,6 +101,26 @@ export function PublicHeaderNav({
               {l.label}
             </Link>
           ))}
+          {!institutionalOnly ? (
+            <div className="mt-2 border-t border-white/10 pt-3">
+              <p className="px-4 pb-1 text-xs font-bold uppercase tracking-wide text-zinc-500">
+                Parceiros
+              </p>
+              {PARTNER_DESTINATIONS.map((l) => (
+                <Link
+                  key={l.href}
+                  href={l.href}
+                  className={cn(
+                    "ml-2 block rounded-lg px-4 py-3 text-base font-medium text-zinc-100 hover:bg-white/5",
+                    pathname === l.href && "bg-white/5 text-amber-400",
+                  )}
+                  onClick={closeMobile}
+                >
+                  {l.label}
+                </Link>
+              ))}
+            </div>
+          ) : null}
           {!institutionalOnly ? (
             <button
               type="button"
@@ -123,6 +158,46 @@ export function PublicHeaderNav({
             </Link>
           ))}
           {!institutionalOnly ? (
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setPartnerOpen((value) => !value)}
+                className={cn(
+                  "inline-flex items-center gap-1 whitespace-nowrap transition hover:text-amber-400",
+                  PARTNER_DESTINATIONS.some(
+                    (destination) => pathname === destination.href,
+                  ) && "text-amber-400",
+                )}
+                aria-expanded={partnerOpen}
+                aria-haspopup="menu"
+              >
+                Parceiros
+                <ChevronDown className="h-3.5 w-3.5" aria-hidden />
+              </button>
+              {partnerOpen ? (
+                <div
+                  role="menu"
+                  className="absolute right-0 top-full z-50 mt-3 w-52 rounded-xl border border-white/10 bg-[#07111f] p-2 shadow-2xl"
+                >
+                  {PARTNER_DESTINATIONS.map((destination) => (
+                    <Link
+                      key={destination.href}
+                      href={destination.href}
+                      role="menuitem"
+                      className={cn(
+                        "block rounded-lg px-3 py-2 text-sm text-zinc-100 hover:bg-white/5",
+                        pathname === destination.href && "text-amber-400",
+                      )}
+                      onClick={() => setPartnerOpen(false)}
+                    >
+                      {destination.label}
+                    </Link>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+          {!institutionalOnly ? (
             <button
               type="button"
               onClick={() => setEspecialistaOpen(true)}
@@ -150,9 +225,14 @@ export function PublicHeaderNav({
           {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
         </button>
       </div>
-      {mobilePanel && typeof document !== "undefined" ? createPortal(mobilePanel, document.body) : null}
+      {mobilePanel && typeof document !== "undefined"
+        ? createPortal(mobilePanel, document.body)
+        : null}
       {!institutionalOnly ? (
-        <EspecialistaLeadModal open={especialistaOpen} onClose={() => setEspecialistaOpen(false)} />
+        <EspecialistaLeadModal
+          open={especialistaOpen}
+          onClose={() => setEspecialistaOpen(false)}
+        />
       ) : null}
     </>
   );

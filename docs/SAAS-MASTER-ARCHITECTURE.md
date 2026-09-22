@@ -2728,6 +2728,18 @@ No cadastro manual de linhas de repasse, participantes com nomes repetidos são 
 
 Relatório: `docs/relatorios-fases/FASE-257-CONSULTORES-REPETIDOS-E-RPC-REPASSE.md`.
 
+### Evolução operacional 260 — Navegação consolidada de parceiros
+
+A navegação pública passa a agrupar os destinos `Imobiliárias` e `Seguradoras`
+sob `Parceiros`, sem remover ou redirecionar as rotas públicas existentes. O
+item `Seja parceiro` direciona para a landing tenant-aware `/parceiros` tanto
+no site padrão quanto no chrome Racon. O painel autenticado do indicador inclui
+somente o atalho `Conheça os nossos programas` para a mesma rota, preservando
+o modelo visual, as métricas e os fluxos operacionais existentes. Nenhuma
+tabela, permissão, comissão ou regra multiempresa foi alterada.
+
+Relatório: `docs/relatorios-fases/FASE-260-NAVEGACAO-PARCEIROS-E-ATALHO-INDICADOR.md`.
+
 ### Evolução operacional 261 — App do indicador, cadastro idempotente e convite Network
 
 O painel autenticado do indicador informa o modelo comercial vigente e oferece
