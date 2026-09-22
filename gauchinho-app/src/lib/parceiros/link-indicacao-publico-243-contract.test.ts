@@ -35,4 +35,32 @@ describe("fase 243 - link público do indicador", () => {
     expect(source("src/components/app-indicador/indicacao-chat.tsx")).toContain("codigoIndicacao");
     expect(source("src/app/app-indicador/page.tsx")).toContain("IndicadorLinkCard");
   });
+
+  it("mostra modelo comercial e os dois links no app", () => {
+    const page = source("src/app/app-indicador/page.tsx");
+    expect(page).toContain('MICROFRANQUEADO: "Microfranqueado"');
+    expect(page).toContain('GERADOR_NEGOCIOS: "Gerador de Negócios"');
+    expect(page).toContain('GERADOR_POSSIBILIDADES: "Gerador de Possibilidades"');
+    expect(page).toContain("/network/${indicador.codigo_indicacao_curto}");
+    expect(page).toContain('titulo="Link para novos interessados"');
+    expect(page).toContain('titulo="Convite do Network de Negócios"');
+  });
+
+  it("reutiliza o participante criado pelo trigger no cadastro público", () => {
+    const route = source("src/app/api/public/programa-indicacao/route.ts");
+    expect(route).toContain("participanteCriadoPeloVinculo");
+    expect(route).toContain("participanteResult");
+    expect(route).toContain("Nenhum acesso incompleto foi mantido");
+  });
+
+  it("registra o convite do Network com tenant, indicador e lead", () => {
+    const migration = source("../supabase/migrations/245_convite_network_indicador.sql");
+    const route = source("src/app/api/public/programa-indicacao/route.ts");
+    expect(migration).toContain("CREATE TABLE IF NOT EXISTS public.programa_convites_network");
+    expect(migration).toContain("empresa_id uuid NOT NULL");
+    expect(migration).toContain("indicador_id uuid NOT NULL");
+    expect(route).toContain('acao === "confirmar_network"');
+    expect(route).toContain('evento_codigo: "NETWORK_2026_09_29"');
+    expect(source("src/app/(public)/network/[codigo]/page.tsx")).toContain("NetworkConviteForm");
+  });
 });

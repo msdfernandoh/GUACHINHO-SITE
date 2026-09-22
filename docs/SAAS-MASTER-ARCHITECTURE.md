@@ -2727,3 +2727,19 @@ O PDF preserva grupo e número oficial da cota em `erp_repasse_importacao_itens`
 No cadastro manual de linhas de repasse, participantes com nomes repetidos são diferenciados pelo perfil de comissão ativo e vigente, apresentado antes do nome. A chamada de `rpc_vincular_item_repasse_com_cota` usa a assinatura nominal publicada na migração 242 (`p_previsao_franquia_id`), permitindo vincular e baixar linhas de relatórios antigos após a criação posterior do cliente e da cota.
 
 Relatório: `docs/relatorios-fases/FASE-257-CONSULTORES-REPETIDOS-E-RPC-REPASSE.md`.
+
+### Evolução operacional 261 — App do indicador, cadastro idempotente e convite Network
+
+O painel autenticado do indicador informa o modelo comercial vigente e oferece
+dois links curtos e copiáveis: o formulário de intenção de consórcio e o convite
+do Network de Negócios. Ambos resolvem o indicador pelo código público vinculado
+ao tenant, preservando a atribuição comercial do lead.
+
+O cadastro público de parceiro reaproveita o participante comercial criado pelo
+sincronismo de `empresa_usuarios`, eliminando a duplicidade de participante
+ativo. O convite Network consolida o contato em `leads`, registra a origem no
+histórico e persiste os dados próprios do evento em
+`programa_convites_network`, sem sobrescrever indicações de terceiros.
+
+Relatório:
+`docs/relatorios-fases/FASE-261-APP-INDICADOR-CADASTRO-IDEMPOTENTE-E-CONVITE-NETWORK.md`.

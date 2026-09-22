@@ -128,6 +128,58 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true });
   }
 
+  if (acao === "confirmar_network") {
+    const codigoIndicacao = String(body.codigoIndicacao ?? "").trim().toUpperCase();
+    const nome = String(body.nome ?? "").trim();
+    const telefone = digits(body.telefone);
+    const atividadeProfissional = String(body.atividadeProfissional ?? "").trim();
+    const interesse = String(body.interesse ?? "").trim();
+    if (!/^[A-F0-9]{10}$/.test(codigoIndicacao)) return NextResponse.json({ error: "Link de convite inválido." }, { status: 404 });
+    if (nome.split(/\s+/).length < 2 || telefone.length < 10 || atividadeProfissional.length < 2) return NextResponse.json({ error: "Preencha nome completo, telefone e atividade profissional." }, { status: 400 });
+    if (!['CONFIRMADO', 'MAIS_INFORMACOES'].includes(interesse)) return NextResponse.json({ error: "Confirme como deseja participar." }, { status: 400 });
+
+    const { data: indicador } = await admin.from("programa_indicadores")
+      .select("id,participante:participantes_comerciais(nome,telefone,whatsapp)")
+      .eq("empresa_id", ingress.empresaId).eq("codigo_indicacao_curto", codigoIndicacao).eq("ativo", true).maybeSingle();
+    if (!indicador) return NextResponse.json({ error: "Este link de convite não está mais disponível." }, { status: 404 });
+    const participante = Array.isArray(indicador.participante) ? indicador.participante[0] : indicador.participante;
+    const observacao = `Convite para o Network de Negócios em 29/09/2026 às 19h. Atividade: ${atividadeProfissional}. Interesse: ${interesse === 'CONFIRMADO' ? 'participação confirmada' : 'deseja mais informações'}.`;
+    const lead = await upsertLeadPorTelefone(admin, {
+      empresa_id: ingress.empresaId, nome, whatsapp: telefone, origem: "evento",
+      origem_detalhe: "Network de Negócios — convite do indicador",
+      evento_nome: "Network de Negócios — 29/09/2026",
+      observacoes: observacao,
+      dados_simulacao: { evento_codigo: "NETWORK_2026_09_29", atividade_profissional: atividadeProfissional, interesse_participacao: interesse, indicador_id: indicador.id },
+      status: "Novo",
+    });
+    if (!lead.ok || !lead.lead_id) return NextResponse.json({ error: lead.error ?? "Não foi possível confirmar agora." }, { status: 500 });
+
+    const { data: indicacaoExistente } = await admin.from("programa_indicacoes").select("id,indicador_id")
+      .eq("empresa_id", ingress.empresaId).eq("lead_id", lead.lead_id).maybeSingle();
+    if (indicacaoExistente && indicacaoExistente.indicador_id !== indicador.id) return NextResponse.json({ error: "Este contato já está vinculado a outro indicador." }, { status: 409 });
+    const { data: conviteExistente } = await admin.from("programa_convites_network").select("id,indicador_id")
+      .eq("empresa_id", ingress.empresaId).eq("evento_codigo", "NETWORK_2026_09_29").eq("telefone", telefone).maybeSingle();
+    if (conviteExistente && conviteExistente.indicador_id !== indicador.id) return NextResponse.json({ error: "Este telefone já confirmou participação por outro convite." }, { status: 409 });
+
+    if (!indicacaoExistente) {
+      const { error: indicacaoError } = await admin.from("programa_indicacoes").insert({
+        empresa_id: ingress.empresaId, indicador_id: indicador.id, lead_id: lead.lead_id,
+        indicador_nome_snapshot: participante?.nome ?? "Indicador",
+        indicador_telefone_snapshot: digits(participante?.whatsapp ?? participante?.telefone),
+        observacao_indicado: observacao,
+      });
+      if (indicacaoError) return NextResponse.json({ error: "Não foi possível atribuir este contato ao indicador agora." }, { status: 500 });
+    }
+
+    const convitePayload = { empresa_id: ingress.empresaId, indicador_id: indicador.id, lead_id: lead.lead_id, evento_codigo: "NETWORK_2026_09_29", nome, telefone, atividade_profissional: atividadeProfissional, interesse_participacao: interesse, updated_at: new Date().toISOString() };
+    const conviteWrite = conviteExistente
+      ? await admin.from("programa_convites_network").update(convitePayload).eq("empresa_id", ingress.empresaId).eq("id", conviteExistente.id)
+      : await admin.from("programa_convites_network").insert(convitePayload);
+    if (conviteWrite.error) return NextResponse.json({ error: "Não foi possível salvar sua participação agora." }, { status: 500 });
+
+    return NextResponse.json({ ok: true, confirmado: interesse === "CONFIRMADO" });
+  }
+
   if (acao === "cadastrar") {
     const nome = String(body.nome ?? "").trim();
     const cpf = digits(body.cpf); const telefone = digits(body.telefone);
@@ -224,16 +276,27 @@ export async function POST(request: Request) {
     // de senha seja entregue no endereço informado. O login continua por CPF.
     const loginEmail = email;
     const { data: auth, error: authError } = await admin.auth.admin.createUser({ email: loginEmail, password: senha, email_confirm: true, user_metadata: { email_contato: email, cpf } });
-    if (authError || !auth.user) return NextResponse.json({ error: authError?.message ?? "Não foi possível criar o acesso." }, { status: 409 });
+    if (authError || !auth.user) return NextResponse.json({ error: "Este e-mail já possui acesso ou não pôde ser cadastrado. Entre no app ou use a recuperação de senha." }, { status: 409 });
+    let usuarioNovoId: string | null = null;
+    let participanteNovoId: string | null = null;
+    let indicadorNovoId: string | null = null;
     try {
       // O perfil legado parceiro não concede permissões de equipe; o escopo real
       // é definido pelo vínculo N:N e por `erp_modulos_visiveis`.
       const { data: usuario, error: usuarioError } = await admin.from("usuarios").insert({ auth_user_id: auth.user.id, nome, email, telefone, perfil: "parceiro", ativo: true, is_consultor: true, leads_apenas_proprios: true }).select("id").single();
       if (usuarioError || !usuario) throw new Error(usuarioError?.message ?? "Falha ao criar usuário.");
+      usuarioNovoId = usuario.id;
       const { error: vinculoError } = await admin.from("empresa_usuarios").insert({ empresa_id: ingress.empresaId, usuario_id: usuario.id, papel_id: papel.id, ativo: true, origem: "LANDING_PARCEIROS", erp_modulos_visiveis: ["minhas-comissoes"] });
       if (vinculoError) throw new Error(vinculoError.message);
-      const { data: participante, error: participanteError } = await admin.from("participantes_comerciais").insert({ empresa_id: ingress.empresaId, usuario_id: usuario.id, nome, nome_exibicao: nome, cpf, telefone, whatsapp: telefone, status: "ATIVO", cargo: "Gerador de Possibilidades", escopo_visualizacao: "VINCULADOS", modulos_permitidos: ["minhas-comissoes"] }).select("id").single();
+      const participantePayload = { nome, nome_exibicao: nome, cpf, telefone, whatsapp: telefone, status: "ATIVO", cargo: "Gerador de Possibilidades", escopo_visualizacao: "VINCULADOS", modulos_permitidos: ["minhas-comissoes"] };
+      const { data: participanteCriadoPeloVinculo } = await admin.from("participantes_comerciais")
+        .select("id").eq("empresa_id", ingress.empresaId).eq("usuario_id", usuario.id).eq("status", "ATIVO").maybeSingle();
+      const participanteResult = participanteCriadoPeloVinculo
+        ? await admin.from("participantes_comerciais").update(participantePayload).eq("empresa_id", ingress.empresaId).eq("id", participanteCriadoPeloVinculo.id).select("id").single()
+        : await admin.from("participantes_comerciais").insert({ empresa_id: ingress.empresaId, usuario_id: usuario.id, ...participantePayload }).select("id").single();
+      const { data: participante, error: participanteError } = participanteResult;
       if (participanteError || !participante) throw new Error(participanteError?.message ?? "Falha ao criar participante.");
+      participanteNovoId = participante.id;
       const requerAnalise = modelo === "MICROFRANQUEADO" || modelo === "GERADOR_NEGOCIOS";
       const statusSolicitacao = requerAnalise ? "EM_ANALISE" : "APROVADO_NIVEL_1";
       const { data: indicador, error: indicadorError } = await admin.from("programa_indicadores").insert({
@@ -259,13 +322,21 @@ export async function POST(request: Request) {
         utm_campaign: String(body.utmCampaign ?? "").trim().slice(0, 255) || null,
       }).select("id").single();
       if (indicadorError || !indicador) throw new Error(indicadorError?.message ?? "Falha ao criar cadastro.");
+      indicadorNovoId = indicador.id;
       const { error: perfilError } = await admin.from("participante_comissao_perfis").insert({ empresa_id: ingress.empresaId, participante_id: participante.id, papel_tipo: "INDICADOR", perfil_id: perfil.id, vigencia_inicio: new Date().toISOString().slice(0, 10), ativo: true });
       if (perfilError) throw new Error(perfilError.message);
       if (requerAnalise) await admin.from("programa_indicadores_solicitacoes").insert({ empresa_id: ingress.empresaId, indicador_id: indicador.id, modelo_solicitado: modelo });
       return NextResponse.json({ ok: true, indicadorId: indicador.id, acesso: "/app-indicador/login" });
     } catch (error) {
+      console.error("[programa-indicacao] falha no cadastro de parceiro", error instanceof Error ? error.message : error);
+      if (indicadorNovoId) await admin.from("programa_indicadores").delete().eq("empresa_id", ingress.empresaId).eq("id", indicadorNovoId);
+      if (participanteNovoId) await admin.from("participantes_comerciais").delete().eq("empresa_id", ingress.empresaId).eq("id", participanteNovoId);
+      if (usuarioNovoId) {
+        await admin.from("empresa_usuarios").delete().eq("empresa_id", ingress.empresaId).eq("usuario_id", usuarioNovoId);
+        await admin.from("usuarios").delete().eq("id", usuarioNovoId);
+      }
       await admin.auth.admin.deleteUser(auth.user.id);
-      return NextResponse.json({ error: error instanceof Error ? error.message : "Falha ao concluir cadastro." }, { status: 500 });
+      return NextResponse.json({ error: "Não foi possível concluir seu cadastro agora. Nenhum acesso incompleto foi mantido." }, { status: 500 });
     }
   }
   return NextResponse.json({ error: "Ação inválida." }, { status: 400 });
