@@ -14,6 +14,7 @@ import {
 } from "../actions";
 import { EventoAdminForm } from "@/components/admin/eventos/evento-admin-form";
 import { EventoQrCheckinModal } from "@/components/admin/eventos/evento-qr-checkin-modal";
+import { GerarProximaEdicaoButton } from "@/components/admin/eventos/gerar-proxima-edicao-button";
 import { AdminFormSubmitButton } from "@/components/admin/admin-form-submit-button";
 import { Button, Input, Label, Textarea } from "@/components/ui/form-primitives";
 import { EVENTOS_INSCRICAO_MIGRATION_HINT } from "@/lib/comercial-eventos/db-ready";
@@ -85,6 +86,7 @@ export default async function EditarEventoPage({ params }: { params: Promise<{ i
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          {evento.recorrencia_ativa ? <GerarProximaEdicaoButton eventoId={evento.id} /> : null}
           {/* Ações Primárias de Ver/Testar Check-in */}
           <a
             href={`/eventos/${encodeURIComponent(evento.slug)}/sorteio`}

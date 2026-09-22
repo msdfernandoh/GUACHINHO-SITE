@@ -43,6 +43,12 @@ export type EventoRow = {
   cor_secundaria?: string | null;
   logo_personalizado_url?: string | null;
   prefixo_codigo_sorteio?: string | null;
+  recorrencia_ativa?: boolean;
+  recorrencia_frequencia?: "semanal" | string | null;
+  recorrencia_dia_semana?: number | null;
+  recorrencia_raiz_id?: string | null;
+  recorrencia_nome_base?: string | null;
+  recorrencia_slug_base?: string | null;
   created_at: string;
   updated_at: string;
 };

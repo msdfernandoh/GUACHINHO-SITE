@@ -7,7 +7,10 @@ import { useRouter } from "next/navigation";
 import { Input, Label, Textarea } from "@/components/ui/form-primitives";
 import { AdminFormSubmitButton } from "@/components/admin/admin-form-submit-button";
 import type { EventoRow } from "@/lib/comercial-eventos/types";
-import type { QrCodeUnicoRow, QrCodeVinculoRow } from "@/lib/eventos-sorteio/qr-unico";
+import type {
+  QrCodeUnicoRow,
+  QrCodeVinculoRow,
+} from "@/lib/eventos-sorteio/qr-unico";
 import {
   MODELOS_IDENTIDADE_EVENTO,
   detectarModeloAtivo,
@@ -26,9 +29,7 @@ import {
 import { alternarModoCheckinAction } from "@/app/admin/eventos/actions";
 
 type ActionResult =
-  | { ok: true; id?: string }
-  | { ok: false; error: string }
-  | void;
+  { ok: true; id?: string } | { ok: false; error: string } | void;
 
 type Props = {
   evento?: EventoRow;
@@ -40,10 +41,18 @@ type Props = {
   isMaster?: boolean;
 };
 
-function FormSection({ title, children }: { title: string; children: React.ReactNode }) {
+function FormSection({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
   return (
     <section className="space-y-4 rounded-xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-950/40">
-      <h2 className="text-sm font-bold uppercase tracking-wide text-zinc-500">{title}</h2>
+      <h2 className="text-sm font-bold uppercase tracking-wide text-zinc-500">
+        {title}
+      </h2>
       {children}
     </section>
   );
@@ -86,15 +95,29 @@ export function EventoAdminForm({
   const [checkinInterativo, setCheckinInterativo] = useState<boolean>(
     Boolean(evento?.checkin_interativo_ativo),
   );
+  const [recorrenciaAtiva, setRecorrenciaAtiva] = useState(
+    Boolean(evento?.recorrencia_ativa),
+  );
   const [alternandoModo, setAlternandoModo] = useState(false);
 
   // Estados de Identidade Visual e Prefixo do Sorteio
-  const modeloInicial = detectarModeloAtivo(evento?.logo_personalizado_url, evento?.cor_primaria);
-  const [modeloSelecionado, setModeloSelecionado] = useState<"racon" | "gauchinho" | "personalizado" | null>(modeloInicial);
+  const modeloInicial = detectarModeloAtivo(
+    evento?.logo_personalizado_url,
+    evento?.cor_primaria,
+  );
+  const [modeloSelecionado, setModeloSelecionado] = useState<
+    "racon" | "gauchinho" | "personalizado" | null
+  >(modeloInicial);
   const [corPrimaria, setCorPrimaria] = useState(evento?.cor_primaria ?? "");
-  const [corSecundaria, setCorSecundaria] = useState(evento?.cor_secundaria ?? "");
-  const [logoPersonalizadoUrl, setLogoPersonalizadoUrl] = useState(evento?.logo_personalizado_url ?? "");
-  const [prefixoSorteio, setPrefixoSorteio] = useState(evento?.prefixo_codigo_sorteio ?? "");
+  const [corSecundaria, setCorSecundaria] = useState(
+    evento?.cor_secundaria ?? "",
+  );
+  const [logoPersonalizadoUrl, setLogoPersonalizadoUrl] = useState(
+    evento?.logo_personalizado_url ?? "",
+  );
+  const [prefixoSorteio, setPrefixoSorteio] = useState(
+    evento?.prefixo_codigo_sorteio ?? "",
+  );
 
   function selecionarModelo(id: "racon" | "gauchinho") {
     setModeloSelecionado(id);
@@ -124,6 +147,7 @@ export function EventoAdminForm({
           : 30,
       );
       setCheckinInterativo(Boolean(evento.checkin_interativo_ativo));
+      setRecorrenciaAtiva(Boolean(evento.recorrencia_ativa));
       const dl = eventoIsoToDatetimeLocal(evento.data_evento);
       setDataEventoInput(dl);
     }
@@ -134,6 +158,7 @@ export function EventoAdminForm({
     evento?.checkin_modo,
     evento?.checkin_abertura_antecipada_minutos,
     evento?.checkin_interativo_ativo,
+    evento?.recorrencia_ativa,
   ]);
 
   useEffect(() => {
@@ -142,13 +167,15 @@ export function EventoAdminForm({
   }, [qrVinculo?.id, qrVinculo?.ativo, qrVinculo?.qr_code_id]);
   /* eslint-enable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
 
-  const dataIsoAtual = dataEventoInput ? (() => {
-    try {
-      return eventoLocalDateTimeToIso(dataEventoInput);
-    } catch {
-      return evento?.data_evento ?? null;
-    }
-  })() : null;
+  const dataIsoAtual = dataEventoInput
+    ? (() => {
+        try {
+          return eventoLocalDateTimeToIso(dataEventoInput);
+        } catch {
+          return evento?.data_evento ?? null;
+        }
+      })()
+    : null;
 
   const dispInfo = resolverStatusCheckinEvento({
     ativo: evento?.ativo ?? true,
@@ -159,7 +186,10 @@ export function EventoAdminForm({
   });
 
   const qrSelecionado = qrDisponiveis.find((q) => q.id === qrCodeId) ?? null;
-  const slugHint = (usarQrUnico && qrSelecionado?.slug ? qrSelecionado.slug : slug.trim() || nome.trim()) || "evento";
+  const slugHint =
+    (usarQrUnico && qrSelecionado?.slug
+      ? qrSelecionado.slug
+      : slug.trim() || nome.trim()) || "evento";
   const isEdit = Boolean(evento?.id);
 
   function applyQrToEvento(qr: QrCodeUnicoRow) {
@@ -172,7 +202,8 @@ export function EventoAdminForm({
   function onToggleUsarQr(checked: boolean) {
     setUsarQrUnico(checked);
     if (!checked) return;
-    const qr = qrDisponiveis.find((q) => q.id === qrCodeId) ?? qrDisponiveis[0] ?? null;
+    const qr =
+      qrDisponiveis.find((q) => q.id === qrCodeId) ?? qrDisponiveis[0] ?? null;
     if (qr) {
       setQrCodeId(qr.id);
       applyQrToEvento(qr);
@@ -201,7 +232,10 @@ export function EventoAdminForm({
       formData.set("logo_personalizado_url", logoPersonalizadoUrl);
       formData.set("prefixo_codigo_sorteio", prefixoSorteio);
       formData.set("checkin_modo", checkinModo);
-      formData.set("checkin_abertura_antecipada_minutos", String(antecedenciaMinutos));
+      formData.set(
+        "checkin_abertura_antecipada_minutos",
+        String(antecedenciaMinutos),
+      );
 
       const result = await action(formData);
       if (result && typeof result === "object" && "ok" in result) {
@@ -220,14 +254,17 @@ export function EventoAdminForm({
       setFormOk(true);
       router.refresh();
     } catch (e) {
-      const msg = e instanceof Error ? e.message : "Não foi possível salvar o evento.";
+      const msg =
+        e instanceof Error ? e.message : "Não foi possível salvar o evento.";
       setFormError(msg);
     }
   }
 
   return (
     <form action={onSubmit} className="max-w-2xl space-y-6">
-      {evento?.id ? <input type="hidden" name="evento_id" value={evento.id} /> : null}
+      {evento?.id ? (
+        <input type="hidden" name="evento_id" value={evento.id} />
+      ) : null}
 
       {formError ? (
         <div className="rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-700 dark:text-red-300">
@@ -252,19 +289,19 @@ export function EventoAdminForm({
                   dispInfo.status === "ativo_manual"
                     ? "bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-200"
                     : dispInfo.status === "aberto"
-                    ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-200"
-                    : dispInfo.status === "encerrado"
-                    ? "bg-zinc-200 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"
-                    : "bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-200"
+                      ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-200"
+                      : dispInfo.status === "encerrado"
+                        ? "bg-zinc-200 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"
+                        : "bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-200"
                 }`}
               >
                 {dispInfo.status === "ativo_manual"
                   ? "🔵 Ativo manualmente"
                   : dispInfo.status === "aberto"
-                  ? "🟢 Aberto agora"
-                  : dispInfo.status === "encerrado"
-                  ? "⚪ Encerrado"
-                  : `🟡 Agendado${dispInfo.horarioAberturaFormatado ? ` — abre às ${dispInfo.horarioAberturaFormatado}` : ""}`}
+                    ? "🟢 Aberto agora"
+                    : dispInfo.status === "encerrado"
+                      ? "⚪ Encerrado"
+                      : `🟡 Agendado${dispInfo.horarioAberturaFormatado ? ` — abre às ${dispInfo.horarioAberturaFormatado}` : ""}`}
               </span>
             </div>
             <p className="mt-1 text-xs text-zinc-600 dark:text-zinc-400">
@@ -358,7 +395,8 @@ export function EventoAdminForm({
             required
           />
           <p className="mt-1 text-xs text-zinc-500">
-            Pode alterar o nome quando quiser — com QR único o link impresso (/qr/…) não muda.
+            Pode alterar o nome quando quiser — com QR único o link impresso
+            (/qr/…) não muda.
           </p>
         </div>
         <div>
@@ -369,18 +407,23 @@ export function EventoAdminForm({
             onChange={(e) => setSlug(e.target.value)}
             placeholder={isEdit ? "mantem-o-link-atual" : "ex-sinop"}
             readOnly={usarQrUnico && Boolean(qrSelecionado)}
-            className={usarQrUnico && qrSelecionado ? "bg-zinc-100 dark:bg-zinc-900" : undefined}
+            className={
+              usarQrUnico && qrSelecionado
+                ? "bg-zinc-100 dark:bg-zinc-900"
+                : undefined
+            }
           />
           <p className="mt-1 text-xs text-zinc-500">
             {usarQrUnico && qrSelecionado ? (
               <>
-                Com QR único, o slug do evento é o do QR: <strong>/eventos/{qrSelecionado.slug}</strong> e{" "}
+                Com QR único, o slug do evento é o do QR:{" "}
+                <strong>/eventos/{qrSelecionado.slug}</strong> e{" "}
                 <strong>/qr/{qrSelecionado.slug}</strong>.
               </>
             ) : (
               <>
-                URL pública: /eventos/{slugHint || "…"}. Independente do nome. Só altere se quiser mudar o
-                link do evento.
+                URL pública: /eventos/{slugHint || "…"}. Independente do nome.
+                Só altere se quiser mudar o link do evento.
               </>
             )}
           </p>
@@ -394,26 +437,95 @@ export function EventoAdminForm({
             onChange={(e) => setDataEventoInput(e.target.value)}
           />
           <p className="mt-1 text-xs text-zinc-500">
-            Horário oficial no fuso da operação (Cuiabá). Preservado com precisão ao salvar.
+            Horário oficial no fuso da operação (Cuiabá). Preservado com
+            precisão ao salvar.
           </p>
+        </div>
+        <div className="rounded-xl border border-sky-500/30 bg-sky-500/5 p-4 dark:bg-sky-950/20">
+          <label className="flex cursor-pointer items-start gap-3">
+            <input
+              type="checkbox"
+              name="recorrencia_ativa"
+              checked={recorrenciaAtiva}
+              onChange={(event) => setRecorrenciaAtiva(event.target.checked)}
+              className="mt-1 h-4 w-4 rounded border-zinc-700 text-sky-600 focus:ring-sky-500"
+            />
+            <span>
+              <span className="block text-sm font-bold text-zinc-900 dark:text-zinc-100">
+                Repetir este evento toda terça-feira
+              </span>
+              <span className="mt-1 block text-xs text-zinc-600 dark:text-zinc-400">
+                Na quarta-feira, a edição encerrada é inativada e a próxima é
+                criada automaticamente. Participantes, check-ins, sorteios e
+                leads ficam somente na edição original.
+              </span>
+            </span>
+          </label>
+          {recorrenciaAtiva ? (
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <div>
+                <Label>Nome-base da série</Label>
+                <Input
+                  name="recorrencia_nome_base"
+                  defaultValue={
+                    evento?.recorrencia_nome_base ??
+                    nome.replace(/\s+[—-]\s+\d{1,2}\/\d{1,2}(\/\d{2,4})?$/, "")
+                  }
+                  placeholder="Network de Negócios"
+                />
+              </div>
+              <div>
+                <Label>Slug-base da série</Label>
+                <Input
+                  name="recorrencia_slug_base"
+                  defaultValue={
+                    evento?.recorrencia_slug_base ??
+                    slug.replace(/-\d{4}-\d{2}-\d{2}$/, "")
+                  }
+                  placeholder="network-de-negocios"
+                />
+              </div>
+              <p className="text-xs text-zinc-500 sm:col-span-2">
+                A próxima edição recebe a data no nome e no link, por exemplo:
+                Network de Negócios — 29/09.
+              </p>
+            </div>
+          ) : null}
         </div>
         <div className="grid gap-3 sm:grid-cols-2">
           <div>
             <Label>Local</Label>
-            <Input name="local" value={local} onChange={(e) => setLocal(e.target.value)} />
+            <Input
+              name="local"
+              value={local}
+              onChange={(e) => setLocal(e.target.value)}
+            />
           </div>
           <div>
             <Label>Cidade</Label>
-            <Input name="cidade" value={cidade} onChange={(e) => setCidade(e.target.value)} />
+            <Input
+              name="cidade"
+              value={cidade}
+              onChange={(e) => setCidade(e.target.value)}
+            />
           </div>
         </div>
         <div>
           <Label>Endereço</Label>
-          <Input name="endereco" value={endereco} onChange={(e) => setEndereco(e.target.value)} />
+          <Input
+            name="endereco"
+            value={endereco}
+            onChange={(e) => setEndereco(e.target.value)}
+          />
         </div>
         <div>
           <Label>Estado (UF)</Label>
-          <Input name="estado" maxLength={2} value={estado} onChange={(e) => setEstado(e.target.value)} />
+          <Input
+            name="estado"
+            maxLength={2}
+            value={estado}
+            onChange={(e) => setEstado(e.target.value)}
+          />
         </div>
       </FormSection>
 
@@ -434,7 +546,8 @@ export function EventoAdminForm({
                   CHECK-IN INTERATIVO NO CELULAR
                 </span>
                 <span className="mt-1 block text-xs text-zinc-600 dark:text-zinc-400">
-                  Mostra uma pergunta por vez e, ao final, confirma a presença e entrega o número da sorte.
+                  Mostra uma pergunta por vez e, ao final, confirma a presença e
+                  entrega o número da sorte.
                 </span>
               </div>
             </label>
@@ -447,12 +560,17 @@ export function EventoAdminForm({
                 IDENTIDADE VISUAL DO EVENTO
               </h3>
               <p className="mt-0.5 text-xs text-zinc-500">
-                Escolha a marca que será usada no check-in, número da sorte e telão.
+                Escolha a marca que será usada no check-in, número da sorte e
+                telão.
               </p>
             </div>
 
             {/* Campos ocultos persistidos no FormData */}
-            <input type="hidden" name="logo_personalizado_url" value={logoPersonalizadoUrl} />
+            <input
+              type="hidden"
+              name="logo_personalizado_url"
+              value={logoPersonalizadoUrl}
+            />
             <input type="hidden" name="cor_primaria" value={corPrimaria} />
             <input type="hidden" name="cor_secundaria" value={corSecundaria} />
 
@@ -484,14 +602,27 @@ export function EventoAdminForm({
                   ) : null}
                 </div>
                 <div className="mt-3">
-                  <p className="text-sm font-bold text-zinc-900 dark:text-zinc-100">Racon Consórcios</p>
-                  <p className="text-xs text-zinc-500 mt-0.5">Paleta oficial azul e marinho para franquias e encontros</p>
+                  <p className="text-sm font-bold text-zinc-900 dark:text-zinc-100">
+                    Racon Consórcios
+                  </p>
+                  <p className="text-xs text-zinc-500 mt-0.5">
+                    Paleta oficial azul e marinho para franquias e encontros
+                  </p>
                 </div>
                 <div className="mt-3 flex w-full items-center justify-between gap-2 border-t border-zinc-100 pt-2.5 dark:border-zinc-800">
                   <div className="flex items-center gap-1.5">
-                    <span className="h-4 w-4 rounded-full bg-[#0066cc]" title="Azul Royal (#0066cc)" />
-                    <span className="h-4 w-4 rounded-full bg-[#0c2340]" title="Azul Marinho (#0c2340)" />
-                    <span className="h-4 w-4 rounded-full bg-[#0099dd]" title="Cyan Destaque (#0099dd)" />
+                    <span
+                      className="h-4 w-4 rounded-full bg-[#0066cc]"
+                      title="Azul Royal (#0066cc)"
+                    />
+                    <span
+                      className="h-4 w-4 rounded-full bg-[#0c2340]"
+                      title="Azul Marinho (#0c2340)"
+                    />
+                    <span
+                      className="h-4 w-4 rounded-full bg-[#0099dd]"
+                      title="Cyan Destaque (#0099dd)"
+                    />
                   </div>
                   <span className="rounded-lg bg-[#0066cc] px-2.5 py-1 text-[11px] font-bold text-white shadow-sm">
                     Botão Modelo
@@ -525,13 +656,23 @@ export function EventoAdminForm({
                   ) : null}
                 </div>
                 <div className="mt-3">
-                  <p className="text-sm font-bold text-zinc-900 dark:text-zinc-100">Gauchinho Consórcios</p>
-                  <p className="text-xs text-zinc-500 mt-0.5">Paleta dourada e marinho tradicional da plataforma</p>
+                  <p className="text-sm font-bold text-zinc-900 dark:text-zinc-100">
+                    Gauchinho Consórcios
+                  </p>
+                  <p className="text-xs text-zinc-500 mt-0.5">
+                    Paleta dourada e marinho tradicional da plataforma
+                  </p>
                 </div>
                 <div className="mt-3 flex w-full items-center justify-between gap-2 border-t border-zinc-100 pt-2.5 dark:border-zinc-800">
                   <div className="flex items-center gap-1.5">
-                    <span className="h-4 w-4 rounded-full bg-[#c9a84c]" title="Dourado (#c9a84c)" />
-                    <span className="h-4 w-4 rounded-full bg-[#0a1628]" title="Azul Marinho (#0a1628)" />
+                    <span
+                      className="h-4 w-4 rounded-full bg-[#c9a84c]"
+                      title="Dourado (#c9a84c)"
+                    />
+                    <span
+                      className="h-4 w-4 rounded-full bg-[#0a1628]"
+                      title="Azul Marinho (#0a1628)"
+                    />
                   </div>
                   <span className="rounded-lg bg-[#c9a84c] px-2.5 py-1 text-[11px] font-bold text-white shadow-sm">
                     Botão Modelo
@@ -574,7 +715,9 @@ export function EventoAdminForm({
                     CONFIRMAR PRESENÇA
                   </button>
                   <div className="w-full rounded-xl border border-dashed border-zinc-300 bg-zinc-50/80 py-2.5 dark:border-zinc-700 dark:bg-zinc-900">
-                    <p className="text-[10px] text-zinc-400 uppercase font-semibold">Número da Sorte</p>
+                    <p className="text-[10px] text-zinc-400 uppercase font-semibold">
+                      Número da Sorte
+                    </p>
                     <p
                       style={{ color: corPrimaria || "#0066cc" }}
                       className="font-mono text-lg font-black"
@@ -617,11 +760,13 @@ export function EventoAdminForm({
             {isMaster ? (
               <details className="mt-3 rounded-xl border border-zinc-200 bg-zinc-50 p-4 text-xs dark:border-zinc-800 dark:bg-zinc-900/60">
                 <summary className="cursor-pointer font-bold text-zinc-700 hover:underline dark:text-zinc-300">
-                  ⚙️ Configurações Avançadas (Master): Personalizar cores HEX e logotipo manualmente
+                  ⚙️ Configurações Avançadas (Master): Personalizar cores HEX e
+                  logotipo manualmente
                 </summary>
                 <div className="mt-3 space-y-3 border-t border-zinc-200 pt-3 dark:border-zinc-700">
                   <p className="text-zinc-500">
-                    Insira cores HEX customizadas caso este evento específico demande ajustes manuais fora dos modelos padrão.
+                    Insira cores HEX customizadas caso este evento específico
+                    demande ajustes manuais fora dos modelos padrão.
                   </p>
                   <div className="grid gap-3 sm:grid-cols-2">
                     <div>
@@ -668,7 +813,8 @@ export function EventoAdminForm({
       <FormSection title="Disponibilidade do Check-in">
         <div className="space-y-4">
           <p className="text-xs text-zinc-600 dark:text-zinc-400">
-            Defina quando a página de check-in e o QR Code oficial estarão abertos para receber participantes.
+            Defina quando a página de check-in e o QR Code oficial estarão
+            abertos para receber participantes.
           </p>
 
           <div className="space-y-3">
@@ -692,7 +838,9 @@ export function EventoAdminForm({
                   </span>
                 </div>
                 <p className="mt-1 text-xs text-zinc-500">
-                  Abre automaticamente com base na data do evento. Antes do horário de abertura, o visitante vê uma tela com a data confirmada sem erro 404.
+                  Abre automaticamente com base na data do evento. Antes do
+                  horário de abertura, o visitante vê uma tela com a data
+                  confirmada sem erro 404.
                 </p>
                 {checkinModo === "agendado" ? (
                   <div className="mt-3 flex items-center gap-2 pt-2.5 border-t border-zinc-100 dark:border-zinc-800">
@@ -705,7 +853,11 @@ export function EventoAdminForm({
                       min="0"
                       max="1440"
                       value={antecedenciaMinutos}
-                      onChange={(e) => setAntecedenciaMinutos(Math.max(0, parseInt(e.target.value || "0", 10)))}
+                      onChange={(e) =>
+                        setAntecedenciaMinutos(
+                          Math.max(0, parseInt(e.target.value || "0", 10)),
+                        )
+                      }
                       className="w-20 text-center text-xs py-1"
                     />
                     <span className="text-xs text-zinc-500">minutos antes</span>
@@ -734,11 +886,13 @@ export function EventoAdminForm({
                   </span>
                 </div>
                 <p className="mt-1 text-xs text-zinc-500">
-                  Libera o check-in imediatamente no celular ou QR impresso para ensaio com a equipe e validação real.
+                  Libera o check-in imediatamente no celular ou QR impresso para
+                  ensaio com a equipe e validação real.
                 </p>
                 {checkinModo === "ativo_agora" ? (
                   <div className="mt-2 text-xs text-blue-700 dark:text-blue-300 font-medium">
-                    💡 Você pode alternar de volta para o agendamento a qualquer momento sem redigitar as datas.
+                    💡 Você pode alternar de volta para o agendamento a qualquer
+                    momento sem redigitar as datas.
                   </div>
                 ) : null}
               </div>
@@ -759,7 +913,8 @@ export function EventoAdminForm({
                   Encerrado manualmente
                 </span>
                 <p className="mt-1 text-xs text-zinc-500">
-                  Fecha o check-in para novos participantes. Quem acessar verá a mensagem amigável de encerramento.
+                  Fecha o check-in para novos participantes. Quem acessar verá a
+                  mensagem amigável de encerramento.
                 </p>
               </div>
             </label>
@@ -769,17 +924,24 @@ export function EventoAdminForm({
 
       <FormSection title="QR Permanente do Local">
         <p className="text-sm text-zinc-500">
-          Use um QR permanente em totens, mesas, recepção ou materiais impressos. Você poderá trocar o evento vinculado sem precisar imprimir outro QR.
+          Use um QR permanente em totens, mesas, recepção ou materiais
+          impressos. Você poderá trocar o evento vinculado sem precisar imprimir
+          outro QR.
         </p>
 
         {qrVinculo?.ativo ? (
           <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 p-3 text-xs text-emerald-900 dark:text-emerald-200">
             <p className="font-semibold">
-              ✓ QR permanente do local vinculado atualmente: <strong>{qrVinculo.qr.nome}</strong> (
-              <code className="font-mono font-bold">/qr/{qrVinculo.qr.slug}</code>)
+              ✓ QR permanente do local vinculado atualmente:{" "}
+              <strong>{qrVinculo.qr.nome}</strong> (
+              <code className="font-mono font-bold">
+                /qr/{qrVinculo.qr.slug}
+              </code>
+              )
             </p>
             <p className="mt-1 text-emerald-700 dark:text-emerald-300">
-              O material físico com este QR já está direcionando para este evento durante o período definido.
+              O material físico com este QR já está direcionando para este
+              evento durante o período definido.
             </p>
           </div>
         ) : (
@@ -818,14 +980,18 @@ export function EventoAdminForm({
               </select>
               {qrSelecionado ? (
                 <p className="mt-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
-                  QR selecionado: <strong>{qrSelecionado.nome}</strong> — link impresso{" "}
+                  QR selecionado: <strong>{qrSelecionado.nome}</strong> — link
+                  impresso{" "}
                   <code className="font-mono">/qr/{qrSelecionado.slug}</code>
                 </p>
               ) : null}
               {qrDisponiveis.length === 0 ? (
                 <p className="mt-1 text-xs text-amber-700 dark:text-amber-400">
                   Nenhum QR disponível.{" "}
-                  <Link href="/admin/configuracoes/qr-codes" className="underline">
+                  <Link
+                    href="/admin/configuracoes/qr-codes"
+                    className="underline"
+                  >
                     Cadastre um QR Code permanente
                   </Link>{" "}
                   ou desative o vínculo ativo em outro evento.
@@ -837,7 +1003,9 @@ export function EventoAdminForm({
               <Input
                 name="qr_periodo_inicio"
                 type="datetime-local"
-                defaultValue={eventoIsoToDatetimeLocal(qrVinculo?.periodo_inicio)}
+                defaultValue={eventoIsoToDatetimeLocal(
+                  qrVinculo?.periodo_inicio,
+                )}
                 required={usarQrUnico}
               />
             </div>
@@ -857,19 +1025,34 @@ export function EventoAdminForm({
       <FormSection title="Textos do evento">
         <div>
           <Label>Descrição curta</Label>
-          <Input name="descricao_curta" defaultValue={evento?.descricao_curta ?? ""} />
+          <Input
+            name="descricao_curta"
+            defaultValue={evento?.descricao_curta ?? ""}
+          />
         </div>
         <div>
           <Label>Descrição</Label>
-          <Textarea name="descricao" rows={5} defaultValue={evento?.descricao ?? ""} />
+          <Textarea
+            name="descricao"
+            rows={5}
+            defaultValue={evento?.descricao ?? ""}
+          />
         </div>
         <div>
           <Label>Mensagem de confirmação</Label>
-          <Textarea name="mensagem_confirmacao" rows={2} defaultValue={evento?.mensagem_confirmacao ?? ""} />
+          <Textarea
+            name="mensagem_confirmacao"
+            rows={2}
+            defaultValue={evento?.mensagem_confirmacao ?? ""}
+          />
         </div>
         <div>
           <Label>Observações internas</Label>
-          <Textarea name="observacoes_internas" rows={2} defaultValue={evento?.observacoes_internas ?? ""} />
+          <Textarea
+            name="observacoes_internas"
+            rows={2}
+            defaultValue={evento?.observacoes_internas ?? ""}
+          />
         </div>
       </FormSection>
 
@@ -906,7 +1089,9 @@ export function EventoAdminForm({
             />
             <span>
               <span className="font-medium">Pela plataforma</span>
-              <span className="mt-0.5 block text-xs text-zinc-500">Formulário de inscrição neste site.</span>
+              <span className="mt-0.5 block text-xs text-zinc-500">
+                Formulário de inscrição neste site.
+              </span>
             </span>
           </label>
           <label className="flex cursor-pointer items-start gap-2 text-sm">
@@ -920,7 +1105,9 @@ export function EventoAdminForm({
             />
             <span>
               <span className="font-medium">Em site externo / parceiro</span>
-              <span className="mt-0.5 block text-xs text-zinc-500">Redireciona para o link do parceiro.</span>
+              <span className="mt-0.5 block text-xs text-zinc-500">
+                Redireciona para o link do parceiro.
+              </span>
             </span>
           </label>
         </fieldset>
@@ -949,29 +1136,46 @@ export function EventoAdminForm({
         </div>
         <div className="flex flex-wrap gap-4 text-sm">
           <label className="flex items-center gap-2">
-            <input type="checkbox" name="permitir_acompanhante" defaultChecked={!!evento?.permitir_acompanhante} />{" "}
+            <input
+              type="checkbox"
+              name="permitir_acompanhante"
+              defaultChecked={!!evento?.permitir_acompanhante}
+            />{" "}
             Permitir acompanhante
           </label>
           <label className="flex items-center gap-2">
-            <input type="checkbox" name="exigir_convidou" defaultChecked={!!evento?.exigir_convidou} /> Exigir quem
-            convidou
+            <input
+              type="checkbox"
+              name="exigir_convidou"
+              defaultChecked={!!evento?.exigir_convidou}
+            />{" "}
+            Exigir quem convidou
           </label>
           <label className="flex items-center gap-2">
-            <input type="checkbox" name="mostrar_vagas" defaultChecked={evento?.mostrar_vagas !== false} /> Mostrar
-            vagas
+            <input
+              type="checkbox"
+              name="mostrar_vagas"
+              defaultChecked={evento?.mostrar_vagas !== false}
+            />{" "}
+            Mostrar vagas
           </label>
         </div>
       </FormSection>
 
       <FormSection title="Consultores com acesso aos leads">
         <p className="text-sm text-zinc-500">
-          Selecione o(s) consultor(es) responsável(is) que poderão ver os leads deste evento e do
-          sorteio. Com acesso restrito ao evento, usuários com visão completa só enxergam esses leads
-          se estiverem marcados aqui. Usuários com &quot;só leads próprios&quot; continuam vendo
-          apenas os leads em que forem o consultor responsável.
+          Selecione o(s) consultor(es) responsável(is) que poderão ver os leads
+          deste evento e do sorteio. Com acesso restrito ao evento, usuários com
+          visão completa só enxergam esses leads se estiverem marcados aqui.
+          Usuários com &quot;só leads próprios&quot; continuam vendo apenas os
+          leads em que forem o consultor responsável.
         </p>
         {/* Valor explícito: checkbox controlado sem name evita FormData ambíguo */}
-        <input type="hidden" name="leads_acesso_todos" value={leadsAcessoTodos ? "on" : "off"} />
+        <input
+          type="hidden"
+          name="leads_acesso_todos"
+          value={leadsAcessoTodos ? "on" : "off"}
+        />
         <label className="flex items-center gap-2 text-sm">
           <input
             type="checkbox"
@@ -983,7 +1187,8 @@ export function EventoAdminForm({
         {!leadsAcessoTodos ? (
           <>
             <p className="text-xs text-zinc-500">
-              Marque pelo menos um consultor responsável pelos leads do evento/sorteio:
+              Marque pelo menos um consultor responsável pelos leads do
+              evento/sorteio:
             </p>
             <div className="grid max-h-48 gap-2 overflow-y-auto sm:grid-cols-2">
               {usuariosStaff.map((u) => (
@@ -1010,18 +1215,36 @@ export function EventoAdminForm({
       <FormSection title="Publicação">
         <div className="flex flex-wrap gap-4 text-sm">
           <label className="flex items-center gap-2">
-            <input type="checkbox" name="ativo" defaultChecked={evento?.ativo !== false} /> Ativo
+            <input
+              type="checkbox"
+              name="ativo"
+              defaultChecked={evento?.ativo !== false}
+            />{" "}
+            Ativo
           </label>
           <label className="flex items-center gap-2">
-            <input type="checkbox" name="publicado" defaultChecked={!!evento?.publicado} /> Publicado
+            <input
+              type="checkbox"
+              name="publicado"
+              defaultChecked={!!evento?.publicado}
+            />{" "}
+            Publicado
           </label>
           <label className="flex items-center gap-2">
-            <input type="checkbox" name="somente_por_link" defaultChecked={evento?.somente_por_link !== false} />{" "}
+            <input
+              type="checkbox"
+              name="somente_por_link"
+              defaultChecked={evento?.somente_por_link !== false}
+            />{" "}
             Somente por link
           </label>
           <label className="flex items-center gap-2">
-            <input type="checkbox" name="evento_destaque" defaultChecked={!!evento?.evento_destaque} /> Destaque
-            (Especialista)
+            <input
+              type="checkbox"
+              name="evento_destaque"
+              defaultChecked={!!evento?.evento_destaque}
+            />{" "}
+            Destaque (Especialista)
           </label>
         </div>
       </FormSection>

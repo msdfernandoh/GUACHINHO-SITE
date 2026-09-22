@@ -7,9 +7,20 @@ import { requireUsuario } from "@/lib/auth/get-usuario";
 import { canManageImobiliarias } from "@/lib/auth/permissions";
 import { slugify } from "@/lib/utils/slug";
 import { uploadImagemPublica } from "@/lib/storage/imagens";
-import type { EventoParticipanteRow, EventoPostRow, EventoRow, ParticipanteStatus } from "@/lib/comercial-eventos/types";
-import { somarVagasUsadas, STATUS_OCUPA_VAGA } from "@/lib/comercial-eventos/vagas";
-import { dbErrorMessage, isDbMissingColumnError } from "@/lib/comercial-eventos/db-ready";
+import type {
+  EventoParticipanteRow,
+  EventoPostRow,
+  EventoRow,
+  ParticipanteStatus,
+} from "@/lib/comercial-eventos/types";
+import {
+  somarVagasUsadas,
+  STATUS_OCUPA_VAGA,
+} from "@/lib/comercial-eventos/vagas";
+import {
+  dbErrorMessage,
+  isDbMissingColumnError,
+} from "@/lib/comercial-eventos/db-ready";
 import { normalizarPrefixoSorteio } from "@/lib/eventos-sorteio/modelos-identidade";
 import { eventoLocalDateTimeToIso } from "@/lib/eventos-sorteio/timezone";
 
@@ -29,7 +40,8 @@ function strForm(formData: FormData, name: string): string {
 }
 
 function inscricaoFromForm(formData: FormData) {
-  const tipo = strForm(formData, "inscricao_tipo") === "externo" ? "externo" : "interno";
+  const tipo =
+    strForm(formData, "inscricao_tipo") === "externo" ? "externo" : "interno";
   const url = strForm(formData, "inscricao_url_externa") || null;
   if (tipo === "externo") {
     if (!url) throw new Error("Informe o link externo de inscrição.");
@@ -42,7 +54,10 @@ function inscricaoFromForm(formData: FormData) {
       throw new Error("Informe uma URL externa válida (http ou https).");
     }
   }
-  return { inscricao_tipo: tipo as "interno" | "externo", inscricao_url_externa: tipo === "externo" ? url : null };
+  return {
+    inscricao_tipo: tipo as "interno" | "externo",
+    inscricao_url_externa: tipo === "externo" ? url : null,
+  };
 }
 
 function datetimeLocalToIso(raw: string): string | null {
@@ -59,20 +74,24 @@ function eventoFromForm(
   // Com QR único: o slug do evento segue o slug do QR.
   // Senão: nome e slug são independentes — alterar o nome NÃO muda o link.
   // Em edição, se o slug vier vazio, preserva o atual.
-  const slug = slugify(opts?.forceSlug || slugRaw || opts?.preserveSlug || nome);
+  const slug = slugify(
+    opts?.forceSlug || slugRaw || opts?.preserveSlug || nome,
+  );
   if (!slug) throw new Error("Slug (link) inválido");
   const inscricao = inscricaoFromForm(formData);
   return {
     nome,
     slug,
-    descricao_curta: String(formData.get("descricao_curta") ?? "").trim() || null,
+    descricao_curta:
+      String(formData.get("descricao_curta") ?? "").trim() || null,
     descricao: String(formData.get("descricao") ?? "").trim() || null,
     data_evento: datetimeLocalToIso(String(formData.get("data_evento") ?? "")),
     local: String(formData.get("local") ?? "").trim() || null,
     endereco: String(formData.get("endereco") ?? "").trim() || null,
     cidade: String(formData.get("cidade") ?? "").trim() || null,
     estado: String(formData.get("estado") ?? "").trim() || null,
-    imagem_capa_url: String(formData.get("imagem_capa_url") ?? "").trim() || null,
+    imagem_capa_url:
+      String(formData.get("imagem_capa_url") ?? "").trim() || null,
     banner_url: String(formData.get("banner_url") ?? "").trim() || null,
     ativo: boolForm(formData, "ativo"),
     publicado: boolForm(formData, "publicado"),
@@ -82,8 +101,10 @@ function eventoFromForm(
     permitir_acompanhante: boolForm(formData, "permitir_acompanhante"),
     exigir_convidou: boolForm(formData, "exigir_convidou"),
     mostrar_vagas: boolForm(formData, "mostrar_vagas"),
-    mensagem_confirmacao: String(formData.get("mensagem_confirmacao") ?? "").trim() || null,
-    observacoes_internas: String(formData.get("observacoes_internas") ?? "").trim() || null,
+    mensagem_confirmacao:
+      String(formData.get("mensagem_confirmacao") ?? "").trim() || null,
+    observacoes_internas:
+      String(formData.get("observacoes_internas") ?? "").trim() || null,
     // Aceita "on"/"off" explícitos (hidden do form) — nunca defaultar true se o campo faltar.
     leads_acesso_todos: (() => {
       const raw = formData.get("leads_acesso_todos");
@@ -104,8 +125,21 @@ function eventoFromForm(
     })(),
     cor_primaria: String(formData.get("cor_primaria") ?? "").trim() || null,
     cor_secundaria: String(formData.get("cor_secundaria") ?? "").trim() || null,
-    logo_personalizado_url: String(formData.get("logo_personalizado_url") ?? "").trim() || null,
-    prefixo_codigo_sorteio: normalizarPrefixoSorteio(strForm(formData, "prefixo_codigo_sorteio")),
+    logo_personalizado_url:
+      String(formData.get("logo_personalizado_url") ?? "").trim() || null,
+    prefixo_codigo_sorteio: normalizarPrefixoSorteio(
+      strForm(formData, "prefixo_codigo_sorteio"),
+    ),
+    recorrencia_ativa: boolForm(formData, "recorrencia_ativa"),
+    recorrencia_frequencia: boolForm(formData, "recorrencia_ativa")
+      ? "semanal"
+      : null,
+    recorrencia_dia_semana: boolForm(formData, "recorrencia_ativa") ? 2 : null,
+    recorrencia_raiz_id: null as string | null,
+    recorrencia_nome_base:
+      String(formData.get("recorrencia_nome_base") ?? "").trim() || null,
+    recorrencia_slug_base:
+      String(formData.get("recorrencia_slug_base") ?? "").trim() || null,
     ...inscricao,
   };
 }
@@ -116,14 +150,17 @@ export async function uploadEventoImagemAction(formData: FormData) {
   const u = await requireUsuario();
   if (!canManageImobiliarias(u.perfil)) throw new Error("Sem permissão");
   const kind = strForm(formData, "kind");
-  if (kind !== "capa" && kind !== "banner") throw new Error("Tipo de imagem inválido");
+  if (kind !== "capa" && kind !== "banner")
+    throw new Error("Tipo de imagem inválido");
   const file = formData.get("file");
-  if (!(file instanceof File) || file.size === 0) throw new Error("Arquivo inválido");
+  if (!(file instanceof File) || file.size === 0)
+    throw new Error("Arquivo inválido");
   if (file.size > 5 * 1024 * 1024) throw new Error("Arquivo maior que 5 MB.");
   if (file.type && !EVENTO_IMAGE_MIME.has(file.type)) {
     throw new Error("Formato inválido. Use JPEG, PNG ou WebP.");
   }
-  const slugHint = slugify(strForm(formData, "slug_hint") || "evento") || "evento";
+  const slugHint =
+    slugify(strForm(formData, "slug_hint") || "evento") || "evento";
   const date = new Date().toISOString().slice(0, 10).replace(/-/g, "");
   const id = crypto.randomUUID().slice(0, 8);
   const folder = kind === "capa" ? "capas" : "banners";
@@ -131,9 +168,16 @@ export async function uploadEventoImagemAction(formData: FormData) {
   return uploadImagemPublica("eventos", path, file);
 }
 
-async function syncEventoDestaque(admin: ReturnType<typeof createAdminClient>, eventoId: string, destaque: boolean) {
+async function syncEventoDestaque(
+  admin: ReturnType<typeof createAdminClient>,
+  eventoId: string,
+  destaque: boolean,
+) {
   if (!destaque) return;
-  const { error } = await admin.from("eventos").update({ evento_destaque: false }).neq("id", eventoId);
+  const { error } = await admin
+    .from("eventos")
+    .update({ evento_destaque: false })
+    .neq("id", eventoId);
   if (error && !isDbMissingColumnError(error)) {
     throw new Error(dbErrorMessage(error));
   }
@@ -162,19 +206,32 @@ async function syncEventoLeadsUsuarios(
     throw new Error(dbErrorMessage(updErr));
   }
 
-  const { error: delErr } = await admin.from("eventos_leads_usuarios").delete().eq("evento_id", eventoId);
+  const { error: delErr } = await admin
+    .from("eventos_leads_usuarios")
+    .delete()
+    .eq("evento_id", eventoId);
   if (delErr) {
-    if (/eventos_leads_usuarios|does not exist|schema cache/i.test(dbErrorMessage(delErr))) {
+    if (
+      /eventos_leads_usuarios|does not exist|schema cache/i.test(
+        dbErrorMessage(delErr),
+      )
+    ) {
       throw new Error(LEADS_ACESSO_MIGRATION_HINT);
     }
     throw new Error(dbErrorMessage(delErr));
   }
   if (!leadsAcessoTodos && usuarioIds.length) {
-    const { error: insErr } = await admin.from("eventos_leads_usuarios").insert(
-      usuarioIds.map((usuario_id) => ({ evento_id: eventoId, usuario_id })),
-    );
+    const { error: insErr } = await admin
+      .from("eventos_leads_usuarios")
+      .insert(
+        usuarioIds.map((usuario_id) => ({ evento_id: eventoId, usuario_id })),
+      );
     if (insErr) {
-      if (/eventos_leads_usuarios|does not exist|schema cache/i.test(dbErrorMessage(insErr))) {
+      if (
+        /eventos_leads_usuarios|does not exist|schema cache/i.test(
+          dbErrorMessage(insErr),
+        )
+      ) {
         throw new Error(LEADS_ACESSO_MIGRATION_HINT);
       }
       throw new Error(dbErrorMessage(insErr));
@@ -194,7 +251,9 @@ export async function fetchUsuariosStaffAtivos() {
   return (data ?? []) as { id: string; nome: string }[];
 }
 
-export async function fetchEventoLeadsUsuariosIds(eventoId: string): Promise<string[]> {
+export async function fetchEventoLeadsUsuariosIds(
+  eventoId: string,
+): Promise<string[]> {
   const supabase = await createClient();
   try {
     const { data, error } = await supabase
@@ -225,12 +284,25 @@ const EVENTO_OPTIONAL_COLUMNS = [
   "leads_acesso_todos",
   "evento_destaque",
   "endereco",
+  "recorrencia_ativa",
+  "recorrencia_frequencia",
+  "recorrencia_dia_semana",
+  "recorrencia_raiz_id",
+  "recorrencia_nome_base",
+  "recorrencia_slug_base",
 ] as const;
 
-async function persistEventoInsert(admin: ReturnType<typeof createAdminClient>, payload: EventoPayload) {
+async function persistEventoInsert(
+  admin: ReturnType<typeof createAdminClient>,
+  payload: EventoPayload,
+) {
   let row: Record<string, unknown> = { ...payload };
   for (let attempt = 0; attempt < 8; attempt++) {
-    const { data, error } = await admin.from("eventos").insert(row).select("id").single();
+    const { data, error } = await admin
+      .from("eventos")
+      .insert(row)
+      .select("id")
+      .single();
     if (!error && data) return data;
     if (!error) throw new Error("Falha ao criar evento.");
     if (!isDbMissingColumnError(error)) throw new Error(dbErrorMessage(error));
@@ -255,10 +327,16 @@ async function persistEventoInsert(admin: ReturnType<typeof createAdminClient>, 
     if (!removed) throw new Error(msg);
     row = stripped;
   }
-  throw new Error("Não foi possível criar o evento (colunas incompatíveis com o banco).");
+  throw new Error(
+    "Não foi possível criar o evento (colunas incompatíveis com o banco).",
+  );
 }
 
-async function persistEventoUpdate(admin: ReturnType<typeof createAdminClient>, id: string, payload: EventoPayload) {
+async function persistEventoUpdate(
+  admin: ReturnType<typeof createAdminClient>,
+  id: string,
+  payload: EventoPayload,
+) {
   let row: Record<string, unknown> = { ...payload };
   for (let attempt = 0; attempt < 8; attempt++) {
     const { error } = await admin.from("eventos").update(row).eq("id", id);
@@ -286,12 +364,19 @@ async function persistEventoUpdate(admin: ReturnType<typeof createAdminClient>, 
     if (!removed) throw new Error(msg);
     row = stripped;
   }
-  throw new Error("Não foi possível salvar o evento (colunas incompatíveis com o banco).");
+  throw new Error(
+    "Não foi possível salvar o evento (colunas incompatíveis com o banco).",
+  );
 }
 
-export async function fetchEventosAdminList(): Promise<import("@/lib/comercial-eventos/types").EventoRow[]> {
+export async function fetchEventosAdminList(): Promise<
+  import("@/lib/comercial-eventos/types").EventoRow[]
+> {
   const supabase = await createClient();
-  const { data, error } = await supabase.from("eventos").select("*").order("data_evento", { ascending: false, nullsFirst: false });
+  const { data, error } = await supabase
+    .from("eventos")
+    .select("*")
+    .order("data_evento", { ascending: false, nullsFirst: false });
   if (error) throw new Error(error.message);
   return (data ?? []) as import("@/lib/comercial-eventos/types").EventoRow[];
 }
@@ -306,11 +391,16 @@ export async function fetchEventosAdminListSafe(): Promise<
     const list = await fetchEventosAdminList();
     return { ok: true, list };
   } catch (e) {
-    const { isDbMissingRelationError, EVENTOS_MIGRATION_HINT } = await import("@/lib/comercial-eventos/db-ready");
+    const { isDbMissingRelationError, EVENTOS_MIGRATION_HINT } =
+      await import("@/lib/comercial-eventos/db-ready");
     const message = e instanceof Error ? e.message : String(e);
     console.error("[admin/eventos] fetch list:", message);
     if (isDbMissingRelationError(e)) {
-      return { ok: false, migrationMissing: true, message: EVENTOS_MIGRATION_HINT };
+      return {
+        ok: false,
+        migrationMissing: true,
+        message: EVENTOS_MIGRATION_HINT,
+      };
     }
     return { ok: false, migrationMissing: false, message };
   }
@@ -318,20 +408,31 @@ export async function fetchEventosAdminListSafe(): Promise<
 
 export async function fetchEventoAdmin(id: string) {
   const supabase = await createClient();
-  const { data, error } = await supabase.from("eventos").select("*").eq("id", id).single();
+  const { data, error } = await supabase
+    .from("eventos")
+    .select("*")
+    .eq("id", id)
+    .single();
   if (error) throw new Error(error.message);
   return data as EventoRow;
 }
 
 export async function fetchEventosOptionsForFilter() {
   const supabase = await createClient();
-  const { data, error } = await supabase.from("eventos").select("id, nome").order("nome");
+  const { data, error } = await supabase
+    .from("eventos")
+    .select("id, nome")
+    .order("nome");
   if (error) return [] as { id: string; nome: string }[];
   return (data ?? []) as { id: string; nome: string }[];
 }
 
-async function syncQrVinculoFromEventoForm(eventoId: string, formData: FormData) {
-  const { vincularQrAoEvento, desativarVinculoQrEvento } = await import("@/lib/eventos-sorteio/qr-unico");
+async function syncQrVinculoFromEventoForm(
+  eventoId: string,
+  formData: FormData,
+) {
+  const { vincularQrAoEvento, desativarVinculoQrEvento } =
+    await import("@/lib/eventos-sorteio/qr-unico");
   const usar = formData.get("usar_qr_unico") === "on";
   const qrCodeId = strForm(formData, "qr_code_unico_id");
   const periodoInicio = strForm(formData, "qr_periodo_inicio");
@@ -348,7 +449,9 @@ async function syncQrVinculoFromEventoForm(eventoId: string, formData: FormData)
 }
 
 /** Quando o evento usa QR único, o slug do evento = slug do QR. */
-async function resolveForceSlugFromQr(formData: FormData): Promise<string | null> {
+async function resolveForceSlugFromQr(
+  formData: FormData,
+): Promise<string | null> {
   if (formData.get("usar_qr_unico") !== "on") return null;
   const qrCodeId = strForm(formData, "qr_code_unico_id");
   if (!qrCodeId) return null;
@@ -359,16 +462,20 @@ async function resolveForceSlugFromQr(formData: FormData): Promise<string | null
     .eq("id", qrCodeId)
     .maybeSingle();
   if (error) {
-    if (/qr_codes_unicos|does not exist|schema cache/i.test(error.message)) return null;
+    if (/qr_codes_unicos|does not exist|schema cache/i.test(error.message))
+      return null;
     throw new Error(error.message);
   }
   return data?.slug ? String(data.slug) : null;
 }
 
-export type CreateEventoResult = { ok: true; id: string } | { ok: false; error: string };
+export type CreateEventoResult =
+  { ok: true; id: string } | { ok: false; error: string };
 
 /** Cria evento sem redirect — o form client navega após sucesso (evita erro de Server Components). */
-export async function createEventoAction(formData: FormData): Promise<CreateEventoResult> {
+export async function createEventoAction(
+  formData: FormData,
+): Promise<CreateEventoResult> {
   try {
     const u = await requireUsuario();
     if (!canManageImobiliarias(u.perfil)) {
@@ -376,14 +483,32 @@ export async function createEventoAction(formData: FormData): Promise<CreateEven
     }
     const forceSlug = await resolveForceSlugFromQr(formData);
     const payload = eventoFromForm(formData, { forceSlug });
-    const usuarioIds = formData.getAll("leads_usuario_id").map((v) => String(v).trim()).filter(Boolean);
+    const usuarioIds = formData
+      .getAll("leads_usuario_id")
+      .map((v) => String(v).trim())
+      .filter(Boolean);
     if (!payload.leads_acesso_todos && usuarioIds.length === 0) {
-      return { ok: false, error: "Selecione ao menos um consultor com acesso aos leads do evento." };
+      return {
+        ok: false,
+        error:
+          "Selecione ao menos um consultor com acesso aos leads do evento.",
+      };
     }
     const admin = createAdminClient();
     const data = await persistEventoInsert(admin, payload);
+    if (payload.recorrencia_ativa) {
+      await persistEventoUpdate(admin, data.id, {
+        ...payload,
+        recorrencia_raiz_id: data.id,
+      });
+    }
     await syncEventoDestaque(admin, data.id, payload.evento_destaque);
-    await syncEventoLeadsUsuarios(admin, data.id, payload.leads_acesso_todos, usuarioIds);
+    await syncEventoLeadsUsuarios(
+      admin,
+      data.id,
+      payload.leads_acesso_todos,
+      usuarioIds,
+    );
     try {
       await syncQrVinculoFromEventoForm(data.id, formData);
     } catch (e) {
@@ -404,7 +529,8 @@ export async function createEventoAction(formData: FormData): Promise<CreateEven
     if (/duplicate|unique|slug/i.test(msg)) {
       return {
         ok: false,
-        error: "Já existe um evento com este slug (link). Escolha outro ou use o slug do QR único.",
+        error:
+          "Já existe um evento com este slug (link). Escolha outro ou use o slug do QR único.",
       };
     }
     return { ok: false, error: msg || "Não foi possível criar o evento." };
@@ -414,7 +540,9 @@ export async function createEventoAction(formData: FormData): Promise<CreateEven
 export type UpdateEventoResult = { ok: true } | { ok: false; error: string };
 
 /** Atualiza evento. Não usa redirect — evita erro genérico de Server Components no form client. */
-export async function updateEventoAction(formData: FormData): Promise<UpdateEventoResult> {
+export async function updateEventoAction(
+  formData: FormData,
+): Promise<UpdateEventoResult> {
   try {
     const u = await requireUsuario();
     if (!canManageImobiliarias(u.perfil)) {
@@ -425,15 +553,35 @@ export async function updateEventoAction(formData: FormData): Promise<UpdateEven
 
     const existing = await fetchEventoAdmin(id);
     const forceSlug = await resolveForceSlugFromQr(formData);
-    const payload = eventoFromForm(formData, { preserveSlug: existing.slug, forceSlug });
-    const usuarioIds = formData.getAll("leads_usuario_id").map((v) => String(v).trim()).filter(Boolean);
+    const payload = eventoFromForm(formData, {
+      preserveSlug: existing.slug,
+      forceSlug,
+    });
+    const usuarioIds = formData
+      .getAll("leads_usuario_id")
+      .map((v) => String(v).trim())
+      .filter(Boolean);
     if (!payload.leads_acesso_todos && usuarioIds.length === 0) {
-      return { ok: false, error: "Selecione ao menos um consultor com acesso aos leads do evento." };
+      return {
+        ok: false,
+        error:
+          "Selecione ao menos um consultor com acesso aos leads do evento.",
+      };
     }
     const admin = createAdminClient();
-    await persistEventoUpdate(admin, id, payload);
+    await persistEventoUpdate(admin, id, {
+      ...payload,
+      recorrencia_raiz_id: payload.recorrencia_ativa
+        ? (existing.recorrencia_raiz_id ?? id)
+        : null,
+    });
     await syncEventoDestaque(admin, id, payload.evento_destaque);
-    await syncEventoLeadsUsuarios(admin, id, payload.leads_acesso_todos, usuarioIds);
+    await syncEventoLeadsUsuarios(
+      admin,
+      id,
+      payload.leads_acesso_todos,
+      usuarioIds,
+    );
     try {
       await syncQrVinculoFromEventoForm(id, formData);
     } catch (e) {
@@ -446,7 +594,8 @@ export async function updateEventoAction(formData: FormData): Promise<UpdateEven
     revalidatePath(`/admin/eventos/${id}`);
     revalidatePath("/eventos");
     revalidatePath(`/eventos/${payload.slug}`);
-    if (existing.slug !== payload.slug) revalidatePath(`/eventos/${existing.slug}`);
+    if (existing.slug !== payload.slug)
+      revalidatePath(`/eventos/${existing.slug}`);
     revalidatePath("/admin/configuracoes/qr-codes");
     return { ok: true };
   } catch (e) {
@@ -455,10 +604,61 @@ export async function updateEventoAction(formData: FormData): Promise<UpdateEven
     if (/duplicate|unique|slug/i.test(msg)) {
       return {
         ok: false,
-        error: "Já existe um evento com este slug (link). Escolha outro ou use o slug do QR único.",
+        error:
+          "Já existe um evento com este slug (link). Escolha outro ou use o slug do QR único.",
       };
     }
     return { ok: false, error: msg || "Não foi possível salvar o evento." };
+  }
+}
+
+export type GerarProximaEdicaoResult =
+  | { ok: true; id: string; created: boolean; message?: string }
+  | { ok: false; error: string };
+
+/** Gera uma edição semanal isolada e idempotente a partir do evento recorrente. */
+export async function gerarProximaEdicaoEventoAction(
+  eventoId: string,
+): Promise<GerarProximaEdicaoResult> {
+  try {
+    const u = await requireUsuario();
+    if (!canManageImobiliarias(u.perfil))
+      return { ok: false, error: "Sem permissão" };
+    if (!eventoId) return { ok: false, error: "Evento inválido." };
+    const admin = createAdminClient();
+    const { data, error } = await admin.rpc("rpc_gerar_proxima_edicao_evento", {
+      p_evento_id: eventoId,
+      p_forcar: true,
+    });
+    if (error) throw error;
+    const result = data as {
+      ok?: boolean;
+      id?: string;
+      created?: boolean;
+      message?: string;
+      error?: string;
+    } | null;
+    if (!result?.ok || !result.id)
+      return {
+        ok: false,
+        error: result?.error ?? "Não foi possível gerar a próxima edição.",
+      };
+    revalidatePath("/admin/eventos");
+    revalidatePath("/eventos");
+    return {
+      ok: true,
+      id: result.id,
+      created: Boolean(result.created),
+      message: result.message,
+    };
+  } catch (e) {
+    return {
+      ok: false,
+      error:
+        e instanceof Error
+          ? e.message
+          : "Não foi possível gerar a próxima edição.",
+    };
   }
 }
 
@@ -467,9 +667,14 @@ export async function fetchParticipantesEvento(
   filters?: { status?: string; convidou?: string; acompanhante?: string },
 ) {
   const supabase = await createClient();
-  let q = supabase.from("eventos_participantes").select("*").eq("evento_id", eventoId).order("created_at", { ascending: false });
+  let q = supabase
+    .from("eventos_participantes")
+    .select("*")
+    .eq("evento_id", eventoId)
+    .order("created_at", { ascending: false });
   if (filters?.status) q = q.eq("status", filters.status);
-  if (filters?.convidou?.trim()) q = q.ilike("nome_convidou", `%${filters.convidou.trim()}%`);
+  if (filters?.convidou?.trim())
+    q = q.ilike("nome_convidou", `%${filters.convidou.trim()}%`);
   if (filters?.acompanhante === "sim") q = q.eq("tem_acompanhante", true);
   if (filters?.acompanhante === "nao") q = q.eq("tem_acompanhante", false);
   const { data, error } = await q;
@@ -477,14 +682,21 @@ export async function fetchParticipantesEvento(
   return (data ?? []) as EventoParticipanteRow[];
 }
 
-export async function updateParticipanteStatusAction(participanteId: string, eventoId: string, status: ParticipanteStatus) {
+export async function updateParticipanteStatusAction(
+  participanteId: string,
+  eventoId: string,
+  status: ParticipanteStatus,
+) {
   const u = await requireUsuario();
   const { canManageLeads } = await import("@/lib/auth/permissions");
   if (!canManageLeads(u.perfil)) throw new Error("Sem permissão");
   const supabase = await createClient();
   const patch: Record<string, unknown> = { status };
   if (status === "presente") patch.checkin_at = new Date().toISOString();
-  const { error } = await supabase.from("eventos_participantes").update(patch).eq("id", participanteId);
+  const { error } = await supabase
+    .from("eventos_participantes")
+    .update(patch)
+    .eq("id", participanteId);
   if (error) throw new Error(error.message);
   revalidatePath(`/admin/eventos/${eventoId}/participantes`);
   revalidatePath(`/admin/eventos/${eventoId}/sorteio`);
@@ -492,16 +704,24 @@ export async function updateParticipanteStatusAction(participanteId: string, eve
 
 export async function fetchEventoPosts(eventoId: string) {
   const supabase = await createClient();
-  const { data, error } = await supabase.from("eventos_posts").select("*").eq("evento_id", eventoId).order("ordem");
+  const { data, error } = await supabase
+    .from("eventos_posts")
+    .select("*")
+    .eq("evento_id", eventoId)
+    .order("ordem");
   if (error) {
-    const { isDbMissingRelationError } = await import("@/lib/comercial-eventos/db-ready");
+    const { isDbMissingRelationError } =
+      await import("@/lib/comercial-eventos/db-ready");
     if (isDbMissingRelationError(error)) return [] as EventoPostRow[];
     throw new Error(error.message);
   }
   return (data ?? []) as EventoPostRow[];
 }
 
-export async function saveEventoPostAction(eventoId: string, formData: FormData) {
+export async function saveEventoPostAction(
+  eventoId: string,
+  formData: FormData,
+) {
   const u = await requireUsuario();
   if (!canManageImobiliarias(u.perfil)) throw new Error("Sem permissão");
   const id = String(formData.get("post_id") ?? "").trim();
@@ -531,7 +751,10 @@ export async function deleteEventoPostAction(eventoId: string, postId: string) {
   revalidatePath(`/admin/eventos/${eventoId}`);
 }
 
-export async function eventoVagasResumo(eventoId: string, limite: number | null) {
+export async function eventoVagasResumo(
+  eventoId: string,
+  limite: number | null,
+) {
   const supabase = await createClient();
   const { data } = await supabase
     .from("eventos_participantes")
@@ -539,7 +762,11 @@ export async function eventoVagasResumo(eventoId: string, limite: number | null)
     .eq("evento_id", eventoId)
     .in("status", STATUS_OCUPA_VAGA);
   const usadas = somarVagasUsadas((data ?? []) as EventoParticipanteRow[]);
-  return { usadas, limite, restantes: limite && limite > 0 ? Math.max(0, limite - usadas) : null };
+  return {
+    usadas,
+    limite,
+    restantes: limite && limite > 0 ? Math.max(0, limite - usadas) : null,
+  };
 }
 
 export async function alternarModoCheckinAction(
@@ -560,7 +787,10 @@ export async function alternarModoCheckinAction(
     payload.checkin_ativo_manual_at = null;
     payload.checkin_ativo_manual_por_id = null;
   }
-  const { error } = await admin.from("eventos").update(payload).eq("id", eventoId);
+  const { error } = await admin
+    .from("eventos")
+    .update(payload)
+    .eq("id", eventoId);
   if (error) {
     if (/checkin_modo|Could not find/i.test(error.message)) {
       throw new Error("Colunas de disponibilidade ainda não migradas.");
@@ -572,4 +802,3 @@ export async function alternarModoCheckinAction(
   revalidatePath(`/eventos/${eventoId}/sorteio`);
   return { ok: true };
 }
-

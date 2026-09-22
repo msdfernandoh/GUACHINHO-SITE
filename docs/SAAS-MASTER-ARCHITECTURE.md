@@ -2740,6 +2740,19 @@ tabela, permissão, comissão ou regra multiempresa foi alterada.
 
 Relatório: `docs/relatorios-fases/FASE-260-NAVEGACAO-PARCEIROS-E-ATALHO-INDICADOR.md`.
 
+### Evolução operacional 261 — Eventos semanais recorrentes
+
+Eventos recorrentes semanais preservam cada edição como um evento independente,
+com nome e slug datados. A configuração da série replica somente o conteúdo e
+as regras operacionais para a próxima ocorrência; participantes, check-ins,
+sorteios, prêmios, resultados, leads e histórico da edição anterior não são
+copiados. O agendador autenticado cria a próxima edição após a ocorrência,
+inativa a anterior e transfere o vínculo do QR físico permanente por uma nova
+linha histórica, preservando o mesmo URL impresso. A geração manual é
+idempotente e exige autorização de Eventos; a automática exige `CRON_SECRET`.
+
+Relatório: `docs/relatorios-fases/FASE-261-EVENTOS-RECORRENTES-SEMANAIS.md`.
+
 ### Evolução operacional 261 — App do indicador, cadastro idempotente e convite Network
 
 O painel autenticado do indicador informa o modelo comercial vigente e oferece

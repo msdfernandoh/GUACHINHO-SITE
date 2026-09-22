@@ -1,5 +1,11 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "installCommand": "cd gauchinho-app && npm install",
-  "buildCommand": "cd gauchinho-app && npm run build"
+  "buildCommand": "cd gauchinho-app && npm run build",
+  "crons": [
+    {
+      "path": "/api/cron/eventos-recorrentes",
+      "schedule": "0 7 * * *"
+    }
+  ]
 }

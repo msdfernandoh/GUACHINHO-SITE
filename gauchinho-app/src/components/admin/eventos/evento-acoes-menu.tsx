@@ -3,12 +3,14 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { EventoQrCheckinModal } from "./evento-qr-checkin-modal";
+import { GerarProximaEdicaoButton } from "./gerar-proxima-edicao-button";
 
 type EventoItem = {
   id: string;
   nome: string;
   slug: string;
   publicado: boolean;
+  recorrencia_ativa?: boolean;
   checkin_interativo_ativo?: boolean;
 };
 
@@ -30,7 +32,8 @@ export function EventoAcoesMenu({ evento, qrVinculo = null }: Props) {
     }
     if (aberto) {
       document.addEventListener("mousedown", handleClickOutside);
-      return () => document.removeEventListener("mousedown", handleClickOutside);
+      return () =>
+        document.removeEventListener("mousedown", handleClickOutside);
     }
   }, [aberto]);
 
@@ -74,6 +77,10 @@ export function EventoAcoesMenu({ evento, qrVinculo = null }: Props) {
         label="QR Check-in"
       />
 
+      {evento.recorrencia_ativa ? (
+        <GerarProximaEdicaoButton eventoId={evento.id} />
+      ) : null}
+
       {/* 3. Telão do Sorteio */}
       <a
         href={`/eventos/${encodeURIComponent(evento.slug)}/telao`}
@@ -103,7 +110,11 @@ export function EventoAcoesMenu({ evento, qrVinculo = null }: Props) {
             stroke="currentColor"
             strokeWidth="2"
           >
-            <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M19 9l-7 7-7-7"
+            />
           </svg>
         </button>
 
