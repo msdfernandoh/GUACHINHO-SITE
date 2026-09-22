@@ -66,6 +66,8 @@ export interface UpsertLeadPayload {
   temperatura?: string | null;
   modelo_interesse?: string | null;
   proxima_acao?: string | null;
+  estrategia_credito?: string | null;
+  prazo_utilizacao_credito?: string | null;
   permitir_gerar_novo?: boolean | null;
   forcar_novo?: boolean | null;
 }
@@ -132,6 +134,12 @@ export function formatarEntradaHistoricoLead(
   }
   if (payload.observacoes?.trim()) {
     linhas.push(`• Observações: ${payload.observacoes.trim()}`);
+  }
+  if (payload.estrategia_credito) {
+    linhas.push(`• Estratégia desejada: ${payload.estrategia_credito}`);
+  }
+  if (payload.prazo_utilizacao_credito) {
+    linhas.push(`• Prazo para utilizar o crédito: ${payload.prazo_utilizacao_credito}`);
   }
 
   return linhas.join("\n");
@@ -209,6 +217,7 @@ export async function upsertLeadPorTelefone(
     .from("leads")
     .select("id, nome, email, cidade, whatsapp, telefone_normalizado, dados_simulacao, valor_simulado, valor_estimado, historico_cadastros, observacoes, status, etapa_id, srd_responsavel_id, srd_responsavel_nome, modelo_interesse, empresa_id, tipo_interesse, produto_interesse, tipo_credito, carta_contemplada_id, imovel_id, parceiro_id")
     .or(`telefone_normalizado.eq.${norm},whatsapp.ilike.%${norm.slice(-8)}%`)
+    .eq("empresa_id", payload.empresa_id ?? "__tenant_required__")
     .order("created_at", { ascending: false })
     .limit(20);
 
@@ -323,6 +332,8 @@ export async function upsertLeadPorTelefone(
     if (payload.proxima_acao != null) {
       updateData.proxima_acao = payload.proxima_acao;
     }
+    if (payload.estrategia_credito != null) updateData.estrategia_credito = payload.estrategia_credito;
+    if (payload.prazo_utilizacao_credito != null) updateData.prazo_utilizacao_credito = payload.prazo_utilizacao_credito;
 
     const { error: updateErr } = await supabaseAdmin
       .from("leads")
@@ -404,6 +415,8 @@ export async function upsertLeadPorTelefone(
       temperatura: "Quente",
       modelo_interesse: payload.modelo_interesse || wonLead.modelo_interesse || "CLIENTE_FINAL",
       proxima_acao: payload.proxima_acao || "Fazer contato - Cliente recorrente",
+      estrategia_credito: payload.estrategia_credito ?? null,
+      prazo_utilizacao_credito: payload.prazo_utilizacao_credito ?? null,
       historico_cadastros: histConsolidado,
       observacoes: payload.observacoes?.trim() || entryGanho,
       ultima_interacao_at: new Date().toISOString(),
@@ -472,6 +485,8 @@ export async function upsertLeadPorTelefone(
     temperatura: payload.temperatura || null,
     modelo_interesse: payload.modelo_interesse || null,
     proxima_acao: payload.proxima_acao || null,
+    estrategia_credito: payload.estrategia_credito ?? null,
+    prazo_utilizacao_credito: payload.prazo_utilizacao_credito ?? null,
     ultima_interacao_at: new Date().toISOString(),
     data_ultimo_contato: new Date().toISOString(),
     criado_manual: false,

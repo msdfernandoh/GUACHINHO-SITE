@@ -30,7 +30,7 @@ export async function resolveIndicadorAppSession(empresaId: string, usuarioId: s
 
   const { data: indicadores } = await admin
     .from("programa_indicadores")
-    .select("id,participante_id")
+    .select("id,participante_id,codigo_indicacao,codigo_indicacao_curto")
     .eq("empresa_id", empresaId)
     .in("participante_id", participantesAtivos.map((participante) => participante.id))
     .eq("ativo", true)
@@ -65,7 +65,7 @@ export async function resolveIndicadorAppSession(empresaId: string, usuarioId: s
           chave_pix: telefone,
           origem_cadastro: "APP_LEGADO_REPARADO",
         })
-        .select("id,participante_id")
+        .select("id,participante_id,codigo_indicacao,codigo_indicacao_curto")
         .maybeSingle();
 
       if (criado) {

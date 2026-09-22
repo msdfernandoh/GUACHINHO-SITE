@@ -1,5 +1,9 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
+### Evolução operacional 259 — Link público do indicador e cadastro conversacional
+
+Cada indicador recebe o código curto aleatório `programa_indicadores.codigo_indicacao_curto`. O link compacto `/i/[codigo]` é compartilhado pelo painel do indicador e abre o mesmo cadastro conversacional usado no app. Antes da identificação, a página pública coleta a estratégia desejada e o prazo de utilização do crédito em `leads.estrategia_credito` e `leads.prazo_utilizacao_credito`, também registrados no histórico cronológico do lead. A resolução do código ocorre sempre junto ao `empresa_id` confiável do host; o cadastro cria ou atualiza o lead tenant-aware e vincula a indicação ao `indicador_id` do link, sem substituir uma atribuição existente de outro indicador.
+
 ### Evolução operacional 258 — Separação canônica de crédito vs. parcela, reconciliação de vendas e layout Racon Sinop no CRM
 
 O CRM comercial (`/admin/crm` e `/admin/crm/pipeline`) passa a operar com tripla evolução de precisão, governança e identidade visual:
