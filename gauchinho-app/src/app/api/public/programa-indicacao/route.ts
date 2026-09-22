@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { authorizePublicIngress } from "@/lib/security/public-ingress";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { upsertLeadPorTelefone } from "@/lib/crm/upsert-lead";
+import { senhaInicialIndicador } from "@/lib/parceiros/acesso-indicador";
 
 const digits = (value: unknown) => String(value ?? "").replace(/\D/g, "");
 
@@ -251,14 +252,14 @@ export async function POST(request: Request) {
   }
   if (acao === "cadastrar_parceiro") {
     const nome = String(body.nome ?? "").trim(); const cpf = digits(body.cpf); const telefone = digits(body.whatsapp);
-    const email = String(body.email ?? "").trim().toLowerCase(); const senha = String(body.senha ?? "");
+    const email = String(body.email ?? "").trim().toLowerCase();
     const chavePix = String(body.chavePix ?? "").trim();
     const modelo = String(body.modeloInteresse ?? "GERADOR_POSSIBILIDADES");
     const redeRelacionamento = Array.isArray(body.redeRelacionamento)
       ? body.redeRelacionamento.map((item) => String(item).trim()).filter(Boolean).slice(0, 12)
       : [];
-    if (nome.split(/\s+/).length < 2 || !cpfValido(cpf) || telefone.length < 10 || !email.includes("@") || senha.length < 8 || chavePix.length < 3) {
-      return NextResponse.json({ error: "Preencha nome, CPF, WhatsApp, e-mail, senha de 8 caracteres e chave PIX." }, { status: 400 });
+    if (nome.split(/\s+/).length < 2 || !cpfValido(cpf) || telefone.length < 10 || !email.includes("@") || chavePix.length < 3) {
+      return NextResponse.json({ error: "Preencha nome, CPF, WhatsApp, e-mail e chave PIX." }, { status: 400 });
     }
     if (!['MICROFRANQUEADO','GERADOR_NEGOCIOS','GERADOR_POSSIBILIDADES','CONVERSAR_EQUIPE'].includes(modelo)) return NextResponse.json({ error: "Modelo de parceria inválido." }, { status: 400 });
     const { data: existente } = await admin.from("programa_indicadores").select("id,participante_id").eq("empresa_id", ingress.empresaId).eq("cpf", cpf).maybeSingle();
@@ -290,10 +291,118 @@ export async function POST(request: Request) {
     const { data: perfil } = await admin.from("comissao_perfis").select("id").eq("empresa_id", ingress.empresaId).eq("nome", "Gerador de Oportunidades").eq("ativo", true).maybeSingle();
     const { data: papel } = await admin.from("papeis").select("id").eq("escopo", "COMPANY").eq("codigo", "consultor").is("empresa_id", null).maybeSingle();
     if (!perfil || !papel) return NextResponse.json({ error: "Configuração de acesso indisponível. Procure a equipe." }, { status: 503 });
+    const { data: consultorExistente } = await admin
+      .from("participantes_comerciais")
+      .select("id,usuario_id,status,tipos:participante_tipos(tipo_codigo)")
+      .eq("empresa_id", ingress.empresaId)
+      .eq("cpf", cpf)
+      .maybeSingle();
+
+    // Um consultor já cadastrado entra no programa pelo mesmo participante.
+    // Isso preserva seu histórico comercial, as permissões existentes e evita
+    // duplicar CPF, usuário ou participante no tenant.
+    if (consultorExistente) {
+      const tipos = Array.isArray(consultorExistente.tipos) ? consultorExistente.tipos : [];
+      if (!tipos.some((tipo: { tipo_codigo?: string | null }) => tipo.tipo_codigo === "CONSULTOR")) {
+        return NextResponse.json({ error: "Este CPF já pertence a outro cadastro comercial. Peça ao gestor para habilitá-lo como consultor antes de entrar no programa." }, { status: 409 });
+      }
+      if ((consultorExistente.status ?? "").toUpperCase() !== "ATIVO") {
+        return NextResponse.json({ error: "Este consultor está inativo. Peça ao gestor para reativar o cadastro antes de habilitar o app de indicação." }, { status: 409 });
+      }
+      let usuarioId = consultorExistente.usuario_id as string | null;
+      let usuarioNovoId: string | null = null;
+      let authNovoId: string | null = null;
+      let usuarioComAuthNovoId: string | null = null;
+      let indicadorNovoId: string | null = null;
+      let vinculouUsuarioAoParticipante = false;
+      try {
+        if (usuarioId) {
+          const { data: usuarioExistente } = await admin
+            .from("usuarios")
+            .select("id,auth_user_id")
+            .eq("id", usuarioId)
+            .maybeSingle();
+          if (!usuarioExistente?.auth_user_id) {
+            const { data: auth, error: authError } = await admin.auth.admin.createUser({
+              email,
+              password: senhaInicialIndicador(cpf),
+              email_confirm: true,
+              user_metadata: { email_contato: email, cpf },
+            });
+            if (authError || !auth.user) throw new Error("Não foi possível criar o acesso inicial deste consultor.");
+            authNovoId = auth.user.id;
+            const { error: authVinculoError } = await admin.from("usuarios").update({ auth_user_id: auth.user.id }).eq("id", usuarioId);
+            if (authVinculoError) throw new Error(authVinculoError.message);
+            usuarioComAuthNovoId = usuarioId;
+          }
+        } else {
+          const { data: auth, error: authError } = await admin.auth.admin.createUser({
+            email,
+            password: senhaInicialIndicador(cpf),
+            email_confirm: true,
+            user_metadata: { email_contato: email, cpf },
+          });
+          if (authError || !auth.user) throw new Error("Não foi possível criar o acesso inicial deste consultor.");
+          authNovoId = auth.user.id;
+          const { data: usuarioNovo, error: usuarioError } = await admin
+            .from("usuarios")
+            .insert({ auth_user_id: auth.user.id, nome, email, telefone, perfil: "parceiro", ativo: true, is_consultor: true, leads_apenas_proprios: true })
+            .select("id")
+            .single();
+          if (usuarioError || !usuarioNovo) throw new Error(usuarioError?.message ?? "Falha ao criar o usuário do consultor.");
+          usuarioId = usuarioNovo.id;
+          usuarioNovoId = usuarioNovo.id;
+          const { error: participanteVinculoError } = await admin
+            .from("participantes_comerciais")
+            .update({ usuario_id: usuarioId, telefone, whatsapp: telefone })
+            .eq("empresa_id", ingress.empresaId)
+            .eq("id", consultorExistente.id);
+          if (participanteVinculoError) throw new Error(participanteVinculoError.message);
+          vinculouUsuarioAoParticipante = true;
+        }
+        if (!usuarioId) throw new Error("Usuário do consultor não localizado.");
+        const { data: vinculoEmpresa } = await admin.from("empresa_usuarios").select("usuario_id").eq("empresa_id", ingress.empresaId).eq("usuario_id", usuarioId).maybeSingle();
+        if (!vinculoEmpresa) {
+          const { error: vinculoError } = await admin.from("empresa_usuarios").insert({ empresa_id: ingress.empresaId, usuario_id: usuarioId, papel_id: papel.id, ativo: true, origem: "APP_INDICADOR_CONSULTOR", erp_modulos_visiveis: ["minhas-comissoes"] });
+          if (vinculoError) throw new Error(vinculoError.message);
+        }
+        const { data: indicador, error: indicadorError } = await admin.from("programa_indicadores").insert({
+          empresa_id: ingress.empresaId, participante_id: consultorExistente.id, cpf, telefone, chave_pix: chavePix,
+          modelo_interesse: modelo, status_solicitacao_modelo: "APROVADO_NIVEL_1",
+          cidade: String(body.cidade ?? "").trim() || null, estado: String(body.estado ?? "").trim() || null,
+          profissao: String(body.profissao ?? "").trim() || null, observacao_cadastro: String(body.observacao ?? "").trim() || null,
+          ja_vende_consorcio: String(body.jaVendeConsorcio ?? "").trim() || null, rede_relacionamento: redeRelacionamento,
+          potencial_mensal: String(body.potencialMensal ?? "").trim() || null, interesse_network: String(body.interesseNetwork ?? "").trim() || null,
+          origem_cadastro: "LANDING_PARCEIROS", pagina_origem: String(body.paginaOrigem ?? "").trim().slice(0, 255) || null,
+          utm_source: String(body.utmSource ?? "").trim().slice(0, 255) || null, utm_medium: String(body.utmMedium ?? "").trim().slice(0, 255) || null,
+          utm_campaign: String(body.utmCampaign ?? "").trim().slice(0, 255) || null,
+        }).select("id").single();
+        if (indicadorError || !indicador) throw new Error(indicadorError?.message ?? "Falha ao habilitar o programa para o consultor.");
+        indicadorNovoId = indicador.id;
+        await admin.from("participante_comissao_perfis").update({ ativo: false, vigencia_fim: new Date().toISOString().slice(0, 10) })
+          .eq("empresa_id", ingress.empresaId).eq("participante_id", consultorExistente.id).eq("papel_tipo", "INDICADOR").neq("perfil_id", perfil.id).eq("ativo", true);
+        const { error: perfilError } = await admin.from("participante_comissao_perfis").upsert({ empresa_id: ingress.empresaId, participante_id: consultorExistente.id, papel_tipo: "INDICADOR", perfil_id: perfil.id, vigencia_inicio: new Date().toISOString().slice(0, 10), ativo: true }, { onConflict: "empresa_id,participante_id,papel_tipo,perfil_id" });
+        if (perfilError) throw new Error(perfilError.message);
+        const { error: tipoError } = await admin.from("participante_tipos").upsert({ empresa_id: ingress.empresaId, participante_id: consultorExistente.id, tipo_codigo: "INDICADOR" }, { onConflict: "participante_id,tipo_codigo", ignoreDuplicates: true });
+        if (tipoError) throw new Error(tipoError.message);
+        await admin.from("participante_auditoria").insert({ empresa_id: ingress.empresaId, participante_id: consultorExistente.id, acao: "ATUALIZAR", motivo: "App de indicação habilitado sem duplicar o consultor", payload: { origem: "LANDING_PARCEIROS", senha_inicial: usuarioNovoId ? "ULTIMOS_6_CPF" : "CREDENCIAL_EXISTENTE_PRESERVADA" } });
+        return NextResponse.json({ ok: true, indicadorId: indicador.id, acesso: "/app-indicador/login", consultorReaproveitado: true, senhaInicialCriada: Boolean(usuarioNovoId || authNovoId) });
+      } catch (error) {
+        if (indicadorNovoId) await admin.from("programa_indicadores").delete().eq("empresa_id", ingress.empresaId).eq("id", indicadorNovoId);
+        if (vinculouUsuarioAoParticipante) await admin.from("participantes_comerciais").update({ usuario_id: null }).eq("empresa_id", ingress.empresaId).eq("id", consultorExistente.id);
+        if (usuarioComAuthNovoId) await admin.from("usuarios").update({ auth_user_id: null }).eq("id", usuarioComAuthNovoId);
+        if (usuarioNovoId) {
+          await admin.from("empresa_usuarios").delete().eq("empresa_id", ingress.empresaId).eq("usuario_id", usuarioNovoId);
+          await admin.from("usuarios").delete().eq("id", usuarioNovoId);
+        }
+        if (authNovoId) await admin.auth.admin.deleteUser(authNovoId);
+        return NextResponse.json({ error: error instanceof Error ? error.message : "Não foi possível habilitar o app para este consultor." }, { status: 500 });
+      }
+    }
     // O e-mail real é a identidade de Auth do parceiro para que a recuperação
     // de senha seja entregue no endereço informado. O login continua por CPF.
     const loginEmail = email;
-    const { data: auth, error: authError } = await admin.auth.admin.createUser({ email: loginEmail, password: senha, email_confirm: true, user_metadata: { email_contato: email, cpf } });
+    const { data: auth, error: authError } = await admin.auth.admin.createUser({ email: loginEmail, password: senhaInicialIndicador(cpf), email_confirm: true, user_metadata: { email_contato: email, cpf } });
     if (authError || !auth.user) return NextResponse.json({ error: "Este e-mail já possui acesso ou não pôde ser cadastrado. Entre no app ou use a recuperação de senha." }, { status: 409 });
     let usuarioNovoId: string | null = null;
     let participanteNovoId: string | null = null;

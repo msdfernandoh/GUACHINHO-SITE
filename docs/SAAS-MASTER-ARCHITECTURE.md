@@ -2883,3 +2883,21 @@ vinculado.
 
 Relatório:
 `docs/relatorios-fases/FASE-268-EXTRATO-COMISSOES-INDICADOR-POR-VENDA.md`.
+
+### Evolução operacional 269 — App de indicação para consultores existentes
+
+O cadastro do Programa de Parceiros identifica um participante comercial pelo
+CPF antes de criar qualquer identidade. Quando o registro já possui o tipo
+`CONSULTOR` e está ativo, o sistema reutiliza o mesmo participante, usuário e
+histórico comercial para habilitar o app de indicação. O perfil comercial de
+consultor permanece preservado e é adicionado o vínculo técnico `INDICADOR`
+com o perfil inicial homologado Gerador de Oportunidades.
+
+A credencial já existente nunca é redefinida. Quando é necessário criar a
+primeira credencial de acesso, o login é feito pelo CPF e a senha inicial é
+formada pelos últimos seis dígitos do CPF. Registros inativos ou CPFs ligados a
+outro tipo comercial são bloqueados para decisão explícita do gestor. A ação
+fica registrada em auditoria de participante.
+
+Relatório:
+`docs/relatorios-fases/FASE-269-APP-INDICADOR-CONSULTOR-EXISTENTE.md`.
