@@ -61,7 +61,7 @@ export default async function ListasConvidadosPage({
           const indicador = Array.isArray(row.indicador) ? row.indicador[0] : row.indicador;
           const participante = Array.isArray(indicador?.participante) ? indicador.participante[0] : indicador?.participante;
           return <div key={row.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border p-3 text-sm dark:border-zinc-800">
-            <div><strong>{row.nome}</strong> · {row.telefone}<br /><span className="text-zinc-500">Indicador: {participante?.nome ?? "—"}{row.empresa_atividade ? ` · ${row.empresa_atividade}` : ""}</span></div>
+            <div><strong>{row.nome}</strong> · {row.telefone}<br /><span className="text-zinc-500">Indicador: {participante?.nome ?? "—"}{row.empresa_atividade ? ` · ${row.empresa_atividade}` : ""}{row.tem_acompanhante ? ` · Acompanhante: ${row.nome_acompanhante} (2 vagas)` : " · 1 vaga"}</span></div>
             <form action={vincularConvitePendenteAoEventoAction}><input type="hidden" name="pendente_id" value={row.id} /><Button type="submit">Vincular ao evento ativo</Button></form>
           </div>;
         })}</div> : <p className="mt-3 text-sm text-zinc-500">Nenhum convite aguardando evento.</p>}

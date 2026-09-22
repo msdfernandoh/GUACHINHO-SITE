@@ -19,6 +19,7 @@ import { LISTA_CONVIDADO_RESULTADO, LISTA_CONVIDADO_STATUS } from "@/lib/comerci
 import { fetchEventosOptionsForFilter } from "../actions";
 import { slugify } from "@/lib/utils/slug";
 import { getCurrentTenantContext } from "@/lib/tenant/context";
+import { registrarParticipacaoEventoIndicador } from "@/lib/parceiros/participacao-evento-indicador";
 
 const BASE = "/admin/eventos/listas-convidados";
 
@@ -29,7 +30,7 @@ export async function fetchConvitesEventosPendentes() {
   if (!empresaAtiva) return [];
   const admin = createAdminClient();
   const { data, error } = await admin.from("programa_convites_eventos_pendentes")
-    .select("id,nome,telefone,empresa_atividade,created_at,indicador:programa_indicadores(participante:participantes_comerciais(nome))")
+    .select("id,nome,telefone,empresa_atividade,tem_acompanhante,nome_acompanhante,quantidade_vagas,created_at,indicador:programa_indicadores(participante:participantes_comerciais(nome))")
     .eq("empresa_id", empresaAtiva.id).eq("status", "PENDENTE")
     .order("created_at", { ascending: false });
   if (error) throw new Error(error.message);
@@ -44,16 +45,27 @@ export async function vincularConvitePendenteAoEventoAction(formData: FormData) 
   const pendenteId = String(formData.get("pendente_id") ?? "");
   const admin = createAdminClient();
   const { data: pendente } = await admin.from("programa_convites_eventos_pendentes")
-    .select("id,indicador_id,nome,telefone,empresa_atividade,status,indicador:programa_indicadores(participante:participantes_comerciais(nome,usuario_id))")
+    .select("id,indicador_id,lead_id,nome,telefone,empresa_atividade,observacao,tem_acompanhante,nome_acompanhante,status,indicador:programa_indicadores(participante:participantes_comerciais(nome,usuario_id))")
     .eq("empresa_id", empresaAtiva.id).eq("id", pendenteId).eq("status", "PENDENTE").maybeSingle();
   if (!pendente) throw new Error("Convite pendente não encontrado.");
-  const { data: evento } = await admin.from("eventos").select("id")
+  const { data: evento } = await admin.from("eventos").select("id,limite_participantes,permitir_acompanhante")
     .eq("ativo", true).eq("publicado", true)
     .gte("data_evento", new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
     .order("data_evento").limit(1).maybeSingle();
   if (!evento) throw new Error("Ainda não existe evento ativo para receber este convite.");
   const titular = pendente.indicador?.[0]?.participante?.[0];
   if (!titular?.usuario_id) throw new Error("Usuário do indicador não encontrado.");
+  const participacao = await registrarParticipacaoEventoIndicador({
+    evento,
+    leadId: pendente.lead_id,
+    nome: pendente.nome,
+    telefone: pendente.telefone,
+    nomeIndicador: titular.nome,
+    empresaIndicador: pendente.empresa_atividade,
+    observacao: pendente.observacao,
+    temAcompanhante: Boolean(pendente.tem_acompanhante),
+    nomeAcompanhante: pendente.nome_acompanhante,
+  });
   const { data: listaExistente } = await admin.from("eventos_listas_convidados")
     .select("id").eq("evento_id", evento.id).eq("consultor_usuario_id", titular.usuario_id).limit(1).maybeSingle();
   let listaId = listaExistente?.id;
@@ -70,6 +82,8 @@ export async function vincularConvitePendenteAoEventoAction(formData: FormData) 
     const { error } = await admin.from("eventos_listas_convidados_itens").insert({
       lista_id: listaId, nome: pendente.nome, telefone: pendente.telefone,
       empresa: pendente.empresa_atividade, convidado_por: titular.nome, status_presenca: "pendente",
+      tem_acompanhante: Boolean(pendente.tem_acompanhante), nome_acompanhante: pendente.nome_acompanhante,
+      quantidade_vagas: participacao.quantidadeVagas,
     });
     if (error) throw new Error("Não foi possível incluir o convidado no evento.");
   }

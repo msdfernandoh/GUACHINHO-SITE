@@ -9,6 +9,7 @@ import { resolveIndicadorAppSession } from "@/lib/parceiros/indicador-app-sessio
 import { logoutIndicadorAction } from "./login/actions";
 import { IndicadorLinkCard } from "@/components/app-indicador/indicador-link-card";
 import { headers } from "next/headers";
+import { fetchEventoAtivoParaPainelIndicador } from "@/lib/parceiros/eventos-indicador";
 
 const brl = (v: number) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(
@@ -30,7 +31,7 @@ export default async function AppIndicadorPage() {
         Seu acesso ainda não está vinculado ao programa.
       </main>
     );
-  const [{ data: indicacoes }, { data: previsoes }] = await Promise.all([
+  const [{ data: indicacoes }, { data: previsoes }, eventoAtivo] = await Promise.all([
     db
       .from("programa_indicacoes")
       .select(
@@ -48,6 +49,7 @@ export default async function AppIndicadorPage() {
       .eq("participante_comercial_id", participante.id)
       .neq("status", "cancelada")
       .order("competencia", { ascending: false }),
+    fetchEventoAtivoParaPainelIndicador(),
   ]);
   const total = (previsoes ?? []).reduce(
     (s: any, p: any) => s + Number(p.valor_previsto ?? 0),
@@ -153,6 +155,13 @@ export default async function AppIndicadorPage() {
             <b className="text-xl">{brl(pago)}</b>
           </div>
         </section>
+        {eventoAtivo ? <section className="mt-6 rounded-[2rem] border border-amber-400/30 bg-gradient-to-br from-amber-400/15 to-zinc-900 p-5">
+          <p className="text-xs font-black tracking-[.16em] text-amber-300">EVENTO ATIVO</p>
+          <h2 className="mt-2 text-2xl font-black">{eventoAtivo.nome}</h2>
+          <p className="mt-2 text-sm text-zinc-200">{eventoAtivo.data_evento ? new Intl.DateTimeFormat("pt-BR", { weekday: "long", day: "2-digit", month: "long", hour: "2-digit", minute: "2-digit", timeZone: "America/Cuiaba" }).format(new Date(eventoAtivo.data_evento)) : "Data e horário a confirmar"}</p>
+          <p className="mt-3 text-lg font-black text-amber-300">{eventoAtivo.vagas_disponiveis == null ? "Vagas sem limite definido" : `${eventoAtivo.vagas_disponiveis} vaga${eventoAtivo.vagas_disponiveis === 1 ? "" : "s"} disponível${eventoAtivo.vagas_disponiveis === 1 ? "" : "is"}`}</p>
+          <Link href="/app-indicador/indicar?tipo=evento" className="mt-4 inline-flex rounded-xl bg-amber-400 px-4 py-3 text-sm font-black text-zinc-950">Convidar para este evento</Link>
+        </section> : null}
         <section className="mt-6">
           <h2 className="text-xl font-black">Meus indicados</h2>
           <p className="mt-1 text-sm text-zinc-400">

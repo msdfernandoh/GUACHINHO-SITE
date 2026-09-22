@@ -6,6 +6,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { digitsOnlyPhone } from "@/lib/utils/format";
 import { upsertLeadPorTelefone } from "@/lib/crm/upsert-lead";
 import { resolveIndicadorAppSession } from "@/lib/parceiros/indicador-app-session";
+import { registrarParticipacaoEventoIndicador } from "@/lib/parceiros/participacao-evento-indicador";
 
 export type NovaIndicacaoApp = {
   nome: string;
@@ -23,6 +24,8 @@ export type NovaIndicacaoEventoApp = {
   telefone: string;
   empresa?: string;
   observacao?: string;
+  temAcompanhante?: boolean;
+  nomeAcompanhante?: string;
 };
 
 export async function registrarIndicacaoDoAppAction(input: NovaIndicacaoApp) {
@@ -139,6 +142,9 @@ export async function registrarIndicacaoEventoDoAppAction(input: NovaIndicacaoEv
   if (nome.length < 3 || telefone.length < 10) {
     return { ok: false, error: "Informe nome e telefone com DDD." };
   }
+  const temAcompanhante = Boolean(input.temAcompanhante);
+  const nomeAcompanhante = input.nomeAcompanhante?.trim() || "";
+  if (temAcompanhante && !nomeAcompanhante) return { ok: false, error: "Informe o primeiro nome do acompanhante." };
 
   const admin = createAdminClient();
   const { participante, indicador } = await resolveIndicadorAppSession(empresaAtiva.id, usuario.id);
@@ -146,7 +152,7 @@ export async function registrarIndicacaoEventoDoAppAction(input: NovaIndicacaoEv
 
   const { data: evento } = await admin
     .from("eventos")
-    .select("id,nome,data_evento,ativo")
+    .select("id,nome,data_evento,ativo,limite_participantes,permitir_acompanhante")
     .eq("ativo", true)
     .eq("publicado", true)
     .gte("data_evento", new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
@@ -202,6 +208,9 @@ export async function registrarIndicacaoEventoDoAppAction(input: NovaIndicacaoEv
       telefone,
       empresa_atividade: input.empresa?.trim() || null,
       observacao: input.observacao?.trim() || null,
+      tem_acompanhante: temAcompanhante,
+      nome_acompanhante: nomeAcompanhante || null,
+      quantidade_vagas: temAcompanhante ? 2 : 1,
       status: "PENDENTE",
       evento_id: null,
       updated_at: new Date().toISOString(),
@@ -210,6 +219,23 @@ export async function registrarIndicacaoEventoDoAppAction(input: NovaIndicacaoEv
     revalidatePath("/admin/eventos/listas-convidados");
     revalidatePath("/app-indicador");
     return { ok: true, eventoNome: null };
+  }
+
+  let participacao;
+  try {
+    participacao = await registrarParticipacaoEventoIndicador({
+      evento,
+      leadId: lead.lead_id,
+      nome,
+      telefone,
+      nomeIndicador: participante.nome,
+      empresaIndicador: input.empresa?.trim() || null,
+      observacao: input.observacao?.trim() || null,
+      temAcompanhante,
+      nomeAcompanhante,
+    });
+  } catch (error) {
+    return { ok: false, error: error instanceof Error ? error.message : "Não foi possível reservar as vagas do evento." };
   }
 
   let { data: lista } = await admin
@@ -248,6 +274,9 @@ export async function registrarIndicacaoEventoDoAppAction(input: NovaIndicacaoEv
     telefone,
     convidado_por: participante.nome,
     status_presenca: "pendente",
+    tem_acompanhante: temAcompanhante,
+    nome_acompanhante: nomeAcompanhante || null,
+    quantidade_vagas: participacao.quantidadeVagas,
   };
   const itemWrite = itemExistente
     ? await admin.from("eventos_listas_convidados_itens").update(itemPayload).eq("id", itemExistente.id)
@@ -262,5 +291,5 @@ export async function registrarIndicacaoEventoDoAppAction(input: NovaIndicacaoEv
   revalidatePath("/app-indicador");
   revalidatePath("/app-indicador/indicar");
   revalidatePath("/admin/eventos/listas-convidados");
-  return { ok: true, eventoNome: evento.nome };
+  return { ok: true, eventoNome: evento.nome, statusEvento: participacao.status, vagasRestantes: participacao.vagasRestantes };
 }

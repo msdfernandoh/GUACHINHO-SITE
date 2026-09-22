@@ -37,6 +37,7 @@ export default async function IndicarNoAppPage({
           dataEvento: evento.data_evento,
           local: evento.local,
           cidade: evento.cidade,
+          permitirAcompanhante: evento.permitir_acompanhante,
         }))}
       />
     );

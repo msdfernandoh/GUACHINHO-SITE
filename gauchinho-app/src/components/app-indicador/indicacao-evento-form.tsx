@@ -13,6 +13,7 @@ type EventoOption = {
   dataEvento: string | null;
   local: string | null;
   cidade: string | null;
+  permitirAcompanhante: boolean;
 };
 
 const dataEvento = (value: string | null) =>
@@ -33,6 +34,8 @@ export function IndicacaoEventoForm({
   const [telefone, setTelefone] = useState("");
   const [empresa, setEmpresa] = useState("");
   const [observacao, setObservacao] = useState("");
+  const [temAcompanhante, setTemAcompanhante] = useState(false);
+  const [nomeAcompanhante, setNomeAcompanhante] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [done, setDone] = useState<string | null>(null);
@@ -40,7 +43,7 @@ export function IndicacaoEventoForm({
   const enviar = async () => {
     setSaving(true);
     setError("");
-    const result = await registrarIndicacaoEventoDoAppAction({ nome, telefone, empresa, observacao });
+    const result = await registrarIndicacaoEventoDoAppAction({ nome, telefone, empresa, observacao, temAcompanhante, nomeAcompanhante });
     setSaving(false);
     if (!result.ok) return setError(result.error ?? "Não foi possível incluir o convidado.");
     setDone(result.eventoNome ?? "pendente");
@@ -83,6 +86,15 @@ export function IndicacaoEventoForm({
                 <label className="block text-sm font-bold">Nome completo<input value={nome} onChange={(event) => setNome(event.target.value)} className="mt-2 w-full rounded-2xl border border-zinc-700 bg-zinc-950 p-4" /></label>
                 <label className="block text-sm font-bold">WhatsApp / telefone<input inputMode="tel" value={telefone} onChange={(event) => setTelefone(formatWhatsappBrInput(event.target.value))} className="mt-2 w-full rounded-2xl border border-zinc-700 bg-zinc-950 p-4" placeholder="(00) 00000-0000" /></label>
                 <label className="block text-sm font-bold">Empresa ou atividade (opcional)<input value={empresa} onChange={(event) => setEmpresa(event.target.value)} className="mt-2 w-full rounded-2xl border border-zinc-700 bg-zinc-950 p-4" /></label>
+                {(eventos[0]?.permitirAcompanhante ?? true) ? <div className="rounded-2xl border border-zinc-700 p-4">
+                  <p className="text-sm font-bold">Vai levar acompanhante?</p>
+                  <div className="mt-3 grid grid-cols-2 gap-2">
+                    <button type="button" onClick={() => setTemAcompanhante(false)} className={`rounded-xl p-3 font-bold ${!temAcompanhante ? "bg-amber-400 text-zinc-950" : "bg-zinc-800"}`}>Não</button>
+                    <button type="button" onClick={() => setTemAcompanhante(true)} className={`rounded-xl p-3 font-bold ${temAcompanhante ? "bg-amber-400 text-zinc-950" : "bg-zinc-800"}`}>Sim</button>
+                  </div>
+                  {temAcompanhante ? <label className="mt-4 block text-sm font-bold">Primeiro nome do acompanhante<input value={nomeAcompanhante} onChange={(event) => setNomeAcompanhante(event.target.value)} className="mt-2 w-full rounded-2xl border border-zinc-700 bg-zinc-950 p-4" /></label> : null}
+                  {temAcompanhante ? <p className="mt-2 text-xs text-amber-200">Esta inscrição utilizará 2 vagas.</p> : null}
+                </div> : null}
                 <label className="block text-sm font-bold">Observação (opcional)<textarea value={observacao} onChange={(event) => setObservacao(event.target.value)} className="mt-2 min-h-24 w-full rounded-2xl border border-zinc-700 bg-zinc-950 p-4" /></label>
                 {error ? <p className="rounded-xl bg-rose-500/10 p-3 text-sm font-bold text-rose-300">{error}</p> : null}
                 <button type="button" disabled={saving} onClick={enviar} className="w-full rounded-2xl bg-amber-400 p-4 font-black text-zinc-950 disabled:opacity-60">{saving ? "Salvando…" : "Adicionar à lista do evento"}</button>

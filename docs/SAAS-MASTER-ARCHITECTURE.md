@@ -2832,3 +2832,19 @@ perfil continua sendo feita manualmente em Regras de Comissão.
 
 Relatório:
 `docs/relatorios-fases/FASE-265-EVENTO-ATIVO-E-PERFIL-INICIAL-PARCEIROS.md`.
+
+### Evolução operacional 266 — Evento no painel e acompanhante
+
+O painel principal do indicador apresenta o evento ativo antes da relação de
+indicados, com nome, data, horário e vagas disponíveis calculadas a partir das
+participações confirmadas ou presentes. O card conduz diretamente ao convite da
+edição ativa.
+
+O convite pergunta se haverá acompanhante e solicita seu primeiro nome. A
+participação é registrada na estrutura oficial do evento, consumindo uma vaga
+sem acompanhante ou duas com acompanhante. Quando não há capacidade suficiente,
+o registro permanece em lista de espera. Convites aguardando uma futura edição
+preservam os mesmos dados até a vinculação.
+
+Relatório:
+`docs/relatorios-fases/FASE-266-EVENTO-NO-PAINEL-E-ACOMPANHANTE.md`.
