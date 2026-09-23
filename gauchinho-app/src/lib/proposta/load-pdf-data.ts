@@ -1,6 +1,10 @@
 import type { PropostaPdfData, MarcoProjecaoPdf, GrupoCotaPdfRow } from "./pdf/types";
 import { fmtDateBr, fmtMoney } from "./pdf/format";
 import { construirSegmentos, type ItemGrupoRow } from "./pdf/build-segmentos";
+import {
+  calcularLinhaSimulacaoGrupo,
+  type ConfigLinhaSimulacaoGrupo,
+} from "@/lib/grupos/simulacao-linha";
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
   DEFAULT_PROPOSTAS,
@@ -11,7 +15,7 @@ import {
 import type { PropostasConfig } from "@/lib/config/defaults";
 import { gerarProjecaoAnoAno, resumoProjecaoAnos } from "@/lib/simulador/projecao";
 import type { EntradaConsorcio } from "@/lib/simulador/consorcio";
-import type { GrupoConsorcio, GrupoModalidadeLance } from "@/lib/types";
+import type { GrupoConsorcio, GrupoCota, GrupoModalidadeLance } from "@/lib/types";
 
 type PropostaRow = Record<string, unknown>;
 
@@ -100,10 +104,21 @@ export async function buildPropostaPdfData(
     const grupoIds = [
       ...new Set(((itens ?? []) as Array<{ grupo_id: string | null }>).map((i) => i.grupo_id).filter((id): id is string => !!id)),
     ];
+    const cotaIds = [
+      ...new Set(
+        ((itens ?? []) as Array<{ grupo_cota_id?: string | null }>)
+          .map((i) => i.grupo_cota_id)
+          .filter((id): id is string => !!id),
+      ),
+    ];
+    let itensAtuais = (itens ?? []) as ItemGrupoRow[];
     if (grupoIds.length > 0) {
-      const [{ data: grupos }, { data: mods }] = await Promise.all([
+      const [{ data: grupos }, { data: mods }, { data: cotas }] = await Promise.all([
         admin.from("grupos_consorcio").select("*").in("id", grupoIds),
         admin.from("grupos_modalidades_lance").select("*").in("grupo_id", grupoIds).eq("ativo", true),
+        cotaIds.length > 0
+          ? admin.from("grupos_cotas").select("*").in("id", cotaIds)
+          : Promise.resolve({ data: [] }),
       ]);
       const gruposById = new Map<string, GrupoConsorcio>(
         ((grupos ?? []) as GrupoConsorcio[]).map((g) => [g.id, g]),
@@ -114,8 +129,52 @@ export async function buildPropostaPdfData(
         list.push(m);
         modsByGrupo.set(m.grupo_id, list);
       }
+      const cotasById = new Map<string, GrupoCota>(
+        ((cotas ?? []) as GrupoCota[]).map((cota) => [cota.id, cota]),
+      );
+
+      // A simulação salva a estratégia escolhida, não os valores financeiros imutáveis.
+      // Ao emitir uma proposta, reaplica a estratégia ao catálogo vigente para que uma
+      // taxa do grupo alterada não mantenha parcela/totais antigos no PDF.
+      itensAtuais = ((itens ?? []) as Array<ItemGrupoRow & { grupo_cota_id?: string | null }>).map((item) => {
+        const grupo = item.grupo_id ? gruposById.get(item.grupo_id) : undefined;
+        const cota = item.grupo_cota_id ? cotasById.get(item.grupo_cota_id) : undefined;
+        const dadosLinha = (item.dados_linha ?? {}) as Record<string, unknown>;
+        const config = dadosLinha.config as ConfigLinhaSimulacaoGrupo | undefined;
+        if (!grupo || !cota || !config) return item;
+        const configAtual: ConfigLinhaSimulacaoGrupo = {
+          ...config,
+          cotaId: config.cotaId ?? item.grupo_cota_id ?? cota.id,
+        };
+
+        const resultado = calcularLinhaSimulacaoGrupo({
+          grupo,
+          cota,
+          config: configAtual,
+          modalidades: modsByGrupo.get(grupo.id) ?? [],
+        });
+        if (!resultado.ativo) return item;
+
+        return {
+          ...item,
+          codigo_grupo: grupo.codigo_grupo,
+          modalidade: grupo.modalidade,
+          valor_credito: cota.valor_credito,
+          quantidade_cotas: resultado.quantidadeCotas,
+          saldo_devedor: resultado.saldoDevedorInicial,
+          primeira_parcela: resultado.primeiraParcela,
+          lance_embutido: resultado.lanceEmbutido,
+          recurso_proprio: resultado.recursoProprio,
+          lance_total: resultado.lanceTotal,
+          parcela_pos_contemplacao: resultado.parcelaPosContemplacao,
+          credito_liquido: resultado.creditoLiquido,
+          parcelas_realizadas: grupo.parcelas_realizadas,
+          prazo_restante: resultado.parcelasRestantesPosContemplacao,
+          dados_linha: { ...dadosLinha, config: configAtual, resultado },
+        } satisfies ItemGrupoRow;
+      });
       const built = construirSegmentos(
-        (itens ?? []) as ItemGrupoRow[],
+        itensAtuais,
         gruposById,
         modsByGrupo,
       );
@@ -123,7 +182,7 @@ export async function buildPropostaPdfData(
       consolidado = built.consolidado;
     }
 
-    gruposCotas = (itens ?? []).map((it) => {
+    gruposCotas = itensAtuais.map((it) => {
       const dadosLinha = (it.dados_linha ?? {}) as Record<string, unknown>;
       const modLance = dadosLinha.modalidade_lance as { nome?: string } | null | undefined;
       return {
@@ -142,15 +201,14 @@ export async function buildPropostaPdfData(
         creditoLiquido: num(it.credito_liquido),
       };
     });
-    const { data: sim } = await admin.from("simulacoes_grupos").select("*").eq("id", simGrupoId).maybeSingle();
-    if (sim) {
+    if (consolidado) {
       gruposTotais = {
-        creditoTotal: num(sim.total_credito) ?? 0,
-        lanceTotal: num(sim.total_lance) ?? 0,
-        lanceEmbutido: num(sim.total_lance_embutido) ?? 0,
-        recursoProprio: num(sim.total_recurso_proprio) ?? 0,
-        primeiraParcela: num(sim.total_primeira_parcela) ?? 0,
-        creditoLiquido: num(sim.credito_liquido) ?? 0,
+        creditoTotal: consolidado.credito,
+        lanceTotal: consolidado.lanceTotal,
+        lanceEmbutido: consolidado.lanceEmbutido,
+        recursoProprio: consolidado.recursoProprio,
+        primeiraParcela: consolidado.primeiraParcela,
+        creditoLiquido: consolidado.creditoLiquido,
       };
     }
   } else if (rawSelecoes && rawSelecoes.length > 0) {

@@ -26,6 +26,8 @@ export type ItemGrupoRow = {
   quantidade_cotas: number | null;
   saldo_devedor: number | null;
   primeira_parcela: number | null;
+  seguro?: number | null;
+  parcelas_restantes?: number | null;
   lance_embutido: number | null;
   recurso_proprio: number | null;
   lance_total: number | null;

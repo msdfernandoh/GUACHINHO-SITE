@@ -105,8 +105,17 @@ export async function enrichPropostaProjecaoFromSimulacao(propostaId: string) {
 
 export async function getPropostaPdfDownloadUrl(propostaId: string) {
   const admin = createAdminClient();
-  const { data: p } = await admin.from("propostas").select("pdf_url").eq("id", propostaId).single();
-  if (p?.pdf_url) {
+  const { data: p } = await admin
+    .from("propostas")
+    .select("pdf_url,dados_simulacao")
+    .eq("id", propostaId)
+    .single();
+  const dadosSimulacao = (p?.dados_simulacao ?? {}) as Record<string, unknown>;
+  const dependeDeGrupoVigente = Boolean(dadosSimulacao.simulacao_grupo_id);
+
+  // Propostas de grupos usam o catálogo vigente até a formalização. Não devolver
+  // um arquivo em cache quando taxa, fundo ou seguro do grupo puderam mudar.
+  if (p?.pdf_url && !dependeDeGrupoVigente) {
     try {
       return await createPropostaPdfSignedUrl(p.pdf_url);
     } catch {

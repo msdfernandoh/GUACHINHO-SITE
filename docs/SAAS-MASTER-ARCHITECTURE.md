@@ -1,5 +1,11 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
+### Evolução operacional 274 — PDF de proposta de grupos recalculado no catálogo vigente
+
+Propostas preliminares vinculadas ao simulador de grupos reaplicam a estratégia salva às taxas, fundo, seguro, cotas e modalidades vigentes no momento de emitir ou baixar o PDF. O arquivo em cache é renovado para essas propostas, preservando o mesmo comportamento tenant-aware em Gauchinho Consórcios e Racon Sinop. Vendas e contratações formalizadas permanecem fatos históricos sem recálculo.
+
+Relatório: `docs/relatorios-fases/FASE-274-PDF-PROPOSTAS-CATALOGO-VIGENTE.md`.
+
 ### Evolução operacional 273 — Exclusão íntegra de leads vinculados ao Network
 
 Os convites Network vinculados a um lead passam a ser removidos junto com ele por chave estrangeira `ON DELETE CASCADE`. As ações de exclusão individual e em lote mantêm também remoção explícita compatível com ambientes em atualização, eliminando o bloqueio de integridade sem deixar vínculos órfãos.
