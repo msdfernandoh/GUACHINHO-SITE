@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   fetchPropostasDoLeadComArquivosAction,
   getPropostaArquivoHistoricoUrlAction,
@@ -35,50 +36,59 @@ export function CrmLeadPropostasModal({
   const [uploadTargetId, setUploadTargetId] = useState<string | null>(null);
   const [busyKey, setBusyKey] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [isPending, startTransition] = useTransition();
+  const [isLoading, setIsLoading] = useState(true);
+  const [isUploading, setIsUploading] = useState(false);
 
-  function loadPropostas() {
+  const loadPropostas = useCallback(async () => {
     setError(null);
-    startTransition(async () => {
-      try {
-        setPropostas(await fetchPropostasDoLeadComArquivosAction(leadId));
-      } catch (cause) {
-        setError(cause instanceof Error ? cause.message : "Não foi possível carregar as propostas.");
-        setPropostas([]);
-      }
-    });
-  }
+    setIsLoading(true);
+    try {
+      const rows = await fetchPropostasDoLeadComArquivosAction(leadId);
+      setPropostas(rows);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Não foi possível carregar as propostas.");
+      setPropostas([]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [leadId]);
 
   useEffect(() => {
-    loadPropostas();
-    // A abertura do modal define a consulta; não recarregue a cada renderização.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [leadId]);
+    void loadPropostas();
+  }, [loadPropostas]);
+
+  useEffect(() => {
+    function closeOnEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") onClose();
+    }
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [onClose]);
 
   function selectFile(propostaId: string) {
     setUploadTargetId(propostaId);
     inputRef.current?.click();
   }
 
-  function handleFileChange(event: React.ChangeEvent<HTMLInputElement>) {
+  async function handleFileChange(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     const propostaId = uploadTargetId;
     event.target.value = "";
     if (!file || !propostaId) return;
 
     setError(null);
-    startTransition(async () => {
-      try {
-        const formData = new FormData();
-        formData.append("file", file);
-        await uploadPdfPropostaAction(propostaId, formData);
-        await loadPropostas();
-      } catch (cause) {
-        setError(cause instanceof Error ? cause.message : "Não foi possível enviar o PDF.");
-      } finally {
-        setUploadTargetId(null);
-      }
-    });
+    setIsUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      await uploadPdfPropostaAction(propostaId, formData);
+      await loadPropostas();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Não foi possível enviar o PDF.");
+    } finally {
+      setUploadTargetId(null);
+      setIsUploading(false);
+    }
   }
 
   async function openCurrentPdf(propostaId: string, download: boolean) {
@@ -107,11 +117,11 @@ export function CrmLeadPropostasModal({
     }
   }
 
-  const isLoading = propostas === null && isPending;
+  if (typeof document === "undefined") return null;
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" role="dialog" aria-modal="true" aria-label="Propostas do lead">
-      <section className="max-h-[85vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-zinc-700 bg-zinc-950 p-5 shadow-2xl">
+  return createPortal(
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 p-4" role="dialog" aria-modal="true" aria-label="Propostas do lead" onMouseDown={onClose}>
+      <section className="max-h-[85vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-zinc-700 bg-zinc-950 p-5 shadow-2xl" onMouseDown={(event) => event.stopPropagation()}>
         <div className="flex items-start justify-between gap-4 border-b border-zinc-800 pb-4">
           <div>
             <h2 className="text-lg font-bold text-zinc-100">Propostas e PDFs</h2>
@@ -144,8 +154,8 @@ export function CrmLeadPropostasModal({
                     <p className="font-semibold text-zinc-100">{proposta.tipo_proposta || "Proposta"}</p>
                     <p className="mt-0.5 text-[11px] text-zinc-500">{proposta.status} · gerada em {formatDate(proposta.created_at)}</p>
                   </div>
-                  <button type="button" onClick={() => selectFile(proposta.id)} disabled={isPending} className="inline-flex items-center gap-1.5 rounded-md bg-blue-600 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-blue-500 disabled:opacity-60">
-                    {isPending && uploadTargetId === proposta.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+                  <button type="button" onClick={() => selectFile(proposta.id)} disabled={isLoading || isUploading} className="inline-flex items-center gap-1.5 rounded-md bg-blue-600 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-blue-500 disabled:opacity-60">
+                    {isUploading && uploadTargetId === proposta.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
                     Enviar PDF
                   </button>
                 </div>
@@ -184,6 +194,7 @@ export function CrmLeadPropostasModal({
           </div>
         )}
       </section>
-    </div>
+    </div>,
+    document.body,
   );
 }

@@ -1,5 +1,15 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
+### Hotfix operacional 282 — Modal de PDFs isolado do card arrastável
+
+O painel de PDFs das propostas do Pipeline CRM é renderizado diretamente no
+`body` por portal, fora do card Kanban arrastável. Isso elimina conflito de
+stacking context e repintura causado pela transformação visual do card. O
+carregamento da lista também deixou de usar transições aninhadas e passa a ter
+estado explícito, evitando reaberturas e piscadas.
+
+Relatório: `docs/relatorios-fases/HOTFIX-282-MODAL-PDFS-CRM-ESTAVEL.md`.
+
 ### Hotfix operacional 281 — Escolha de agrupamento no PDF por identificação comercial do grupo
 
 O modal de geração de proposta passa a identificar grupos equivalentes também
