@@ -85,7 +85,9 @@ function dadosPdfDeGrupo(data: PropostaPdfData, segmentoOriginal: SegmentoPdf, c
       parcelaPosContemplacaoMedia: totais.parcelaPosContemplacao,
     },
     modoAgrupamentoGrupos: "unificado",
-    visualizacao: "completa",
+    // Cada arquivo contém somente um grupo; por isso a versão resumida também
+    // é segura e não perde condições de outro grupo.
+    visualizacao: data.visualizacao,
   };
 }
 

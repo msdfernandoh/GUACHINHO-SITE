@@ -556,7 +556,7 @@ export function GruposPublicClient({
             </div>
             {isConsultor ? (
               <>
-                <label className="flex items-center gap-2 text-sm text-zinc-300"><input type="checkbox" checked={pdfResumido} disabled={modoAgrupamentoGrupos !== "unificado"} onChange={(e) => setPdfResumido(e.target.checked)} /> Gerar versão resumida (mesmos dados do link resumido)</label>
+                <label className="flex items-center gap-2 text-sm text-zinc-300"><input type="checkbox" checked={pdfResumido} onChange={(e) => setPdfResumido(e.target.checked)} /> Gerar versão resumida (mesmos dados do link resumido)</label>
                 {temMaisDeUmGrupo ? (
                   <fieldset className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3">
                     <legend className="px-1 text-sm font-semibold text-amber-200">Mais de um grupo selecionado</legend>
@@ -566,14 +566,14 @@ export function GruposPublicClient({
                       <span><strong>Unificar</strong><span className="block text-xs text-zinc-400">Resume todos os grupos na mesma proposta.</span></span>
                     </label>
                     <label className="mt-2 flex cursor-pointer items-start gap-2 text-sm text-zinc-200">
-                      <input type="radio" name="modo-agrupamento-grupos" checked={modoAgrupamentoGrupos === "separado"} onChange={() => { setModoAgrupamentoGrupos("separado"); setPdfResumido(false); }} />
+                      <input type="radio" name="modo-agrupamento-grupos" checked={modoAgrupamentoGrupos === "separado"} onChange={() => setModoAgrupamentoGrupos("separado")} />
                       <span><strong>Separar por grupo</strong><span className="block text-xs text-zinc-400">Mantém uma única capa e gera uma folha para cada grupo, inclusive imóvel e veículo.</span></span>
                     </label>
                     <label className="mt-2 flex cursor-pointer items-start gap-2 text-sm text-zinc-200">
-                      <input type="radio" name="modo-agrupamento-grupos" checked={modoAgrupamentoGrupos === "independentes"} onChange={() => { setModoAgrupamentoGrupos("independentes"); setPdfResumido(false); }} />
-                      <span><strong>Arquivos independentes</strong><span className="block text-xs text-zinc-400">Gera um PDF completo para cada grupo; cotas do mesmo grupo ficam no mesmo arquivo.</span></span>
+                      <input type="radio" name="modo-agrupamento-grupos" checked={modoAgrupamentoGrupos === "independentes"} onChange={() => setModoAgrupamentoGrupos("independentes")} />
+                      <span><strong>Arquivos independentes</strong><span className="block text-xs text-zinc-400">Gera um PDF para cada grupo; cotas do mesmo grupo ficam no mesmo arquivo.</span></span>
                     </label>
-                    {modoAgrupamentoGrupos !== "unificado" ? <p className="mt-2 text-[11px] text-amber-100">A versão resumida fica indisponível porque ela não comporta o detalhamento individual.</p> : null}
+                    {modoAgrupamentoGrupos === "independentes" && pdfResumido ? <p className="mt-2 text-[11px] text-amber-100">Será gerado um PDF resumido independente para cada grupo.</p> : null}
                   </fieldset>
                 ) : null}
                 <div>

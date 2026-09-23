@@ -1,5 +1,14 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
+### Hotfix operacional 285 — Versões resumidas em arquivos independentes
+
+A escolha **Arquivos independentes** não remove mais a preferência pela versão
+resumida. Quando ambas estão marcadas, a plataforma emite um PDF resumido por
+grupo; como cada arquivo contém somente o seu grupo, não há consolidação ou
+perda de condições entre grupos distintos.
+
+Relatório: `docs/relatorios-fases/HOTFIX-285-RESUMIDA-ARQUIVOS-INDEPENDENTES.md`.
+
 ### Evolução operacional 284 — PDFs independentes por grupo
 
 Na geração de propostas multigrupo, além de unificar ou separar as folhas em
