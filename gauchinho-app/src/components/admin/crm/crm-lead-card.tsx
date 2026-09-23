@@ -13,11 +13,13 @@ import {
   Send,
   User,
   FilePlus2,
+  Files,
 } from "lucide-react";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { converterLeadParaErpAction } from "@/app/admin/leads/actions";
 import { CrmLeadEditModal } from "./crm-lead-edit-modal";
+import { CrmLeadPropostasModal } from "./crm-lead-propostas-modal";
 
 export function CrmLeadCard({
   lead,
@@ -37,6 +39,7 @@ export function CrmLeadCard({
   const [isConverting, startConverting] = useTransition();
   const [erpFeedback, setErpFeedback] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
+  const [isPropostasOpen, setIsPropostasOpen] = useState(false);
   const [cardLead, setCardLead] = useState(lead);
   const router = useRouter();
 
@@ -258,6 +261,19 @@ export function CrmLeadCard({
             <FilePlus2 className="h-3.5 w-3.5" />
             Proposta
           </Link>
+
+          <button
+            type="button"
+            title="Ver, baixar ou guardar PDFs das propostas deste lead"
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsPropostasOpen(true);
+            }}
+            className="inline-flex h-7 items-center gap-1 rounded-md bg-sky-500/10 px-2 text-[10px] font-semibold text-sky-300 transition hover:bg-sky-500/20 hover:text-sky-200"
+          >
+            <Files className="h-3.5 w-3.5" />
+            PDFs
+          </button>
         </div>
 
         <div className="flex items-center gap-1">
@@ -297,6 +313,7 @@ export function CrmLeadCard({
         </div>
       </div>
       {isEditing && <CrmLeadEditModal lead={cardLead} etapas={etapas} consultores={consultores} onClose={() => setIsEditing(false)} onSaved={(updated) => { setCardLead(updated); setIsEditing(false); router.refresh(); }} />}
+      {isPropostasOpen && <CrmLeadPropostasModal leadId={lead.id} leadName={cardLead.nome} onClose={() => setIsPropostasOpen(false)} />}
     </article>
   );
 }

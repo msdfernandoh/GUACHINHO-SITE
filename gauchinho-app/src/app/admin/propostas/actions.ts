@@ -13,6 +13,8 @@ import {
 } from "@/lib/proposta/generate-pdf";
 import { assertPropostaMinimum } from "@/lib/proposta/minimum";
 import { isPlatformSuperadmin } from "@/lib/auth/is-superadmin";
+import { randomUUID } from "node:crypto";
+import { PROPOSTAS_PDF_BUCKET, createPropostaPdfSignedUrl } from "@/lib/proposta/storage";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -272,6 +274,142 @@ export async function getPropostaDownloadUrlAction(propostaId: string) {
     entidade_id: propostaId,
   });
   return url;
+}
+
+export type PropostaArquivoHistorico = {
+  id: string;
+  arquivo_nome: string;
+  tamanho_bytes: number;
+  created_at: string;
+  categoria: "pdf_gerado" | "pdf_anexado";
+};
+
+export type PropostaDoLeadComArquivos = {
+  id: string;
+  tipo_proposta: string | null;
+  status: string;
+  created_at: string;
+  pdf_url: string | null;
+  arquivos: PropostaArquivoHistorico[];
+};
+
+export async function fetchPropostasDoLeadComArquivosAction(leadId: string): Promise<PropostaDoLeadComArquivos[]> {
+  const { empresaAtiva } = await requireTenantPermission("gerenciar_propostas");
+  const supabase = await createClient();
+  const { data: propostas, error } = await supabase
+    .from("propostas")
+    .select("id,tipo_proposta,status,created_at,pdf_url")
+    .eq("empresa_id", empresaAtiva.id)
+    .eq("lead_id", leadId)
+    .is("excluido_at", null)
+    .order("created_at", { ascending: false });
+  if (error) throw new Error(error.message);
+  const ids = (propostas ?? []).map((proposta) => proposta.id);
+  const { data: arquivos, error: arquivosError } = ids.length
+    ? await supabase
+        .from("propostas_arquivos")
+        .select("id,proposta_id,arquivo_nome,tamanho_bytes,created_at,categoria")
+        .eq("empresa_id", empresaAtiva.id)
+        .in("proposta_id", ids)
+        .order("created_at", { ascending: false })
+    : { data: [], error: null };
+  if (arquivosError) throw new Error(arquivosError.message);
+
+  return (propostas ?? []).map((proposta) => ({
+    ...proposta,
+    arquivos: (arquivos ?? []).filter((arquivo) => arquivo.proposta_id === proposta.id) as PropostaArquivoHistorico[],
+  }));
+}
+
+export async function uploadPdfPropostaAction(propostaId: string, formData: FormData) {
+  const { usuario, empresaAtiva } = await requireTenantPermission("gerenciar_propostas");
+  const file = formData.get("file");
+  if (!(file instanceof File) || file.size <= 0) throw new Error("Selecione um PDF válido.");
+  const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
+  if (!isPdf) throw new Error("Envie somente arquivos PDF.");
+  if (file.size > 20 * 1024 * 1024) throw new Error("O PDF deve ter no máximo 20 MB.");
+
+  const supabase = await createClient();
+  const { data: proposta } = await supabase
+    .from("propostas")
+    .select("id")
+    .eq("id", propostaId)
+    .eq("empresa_id", empresaAtiva.id)
+    .is("excluido_at", null)
+    .maybeSingle();
+  if (!proposta) throw new Error("Proposta não encontrada nesta empresa.");
+
+  const storagePath = `${propostaId}/historico/${randomUUID()}.pdf`;
+  const admin = createAdminClient();
+  const { error: uploadError } = await admin.storage
+    .from(PROPOSTAS_PDF_BUCKET)
+    .upload(storagePath, Buffer.from(await file.arrayBuffer()), {
+      contentType: "application/pdf",
+      upsert: false,
+    });
+  if (uploadError) throw new Error(`Falha no envio do PDF: ${uploadError.message}`);
+
+  const { data: arquivo, error: insertError } = await admin
+    .from("propostas_arquivos")
+    .insert({
+      empresa_id: empresaAtiva.id,
+      proposta_id: propostaId,
+      categoria: "pdf_anexado",
+      storage_path: storagePath,
+      arquivo_nome: file.name.trim() || "proposta.pdf",
+      mime_type: "application/pdf",
+      tamanho_bytes: file.size,
+      criado_por_usuario_id: usuario.id,
+    })
+    .select("id,arquivo_nome,tamanho_bytes,created_at,categoria")
+    .single();
+  if (insertError || !arquivo) {
+    await admin.storage.from(PROPOSTAS_PDF_BUCKET).remove([storagePath]);
+    throw new Error(insertError?.message ?? "Não foi possível registrar o PDF.");
+  }
+
+  await registrarEvento({
+    tipo_evento: "proposta_pdf_anexada",
+    origem: "crm_pipeline",
+    entidade_tipo: "proposta",
+    entidade_id: propostaId,
+    usuario_id: usuario.id,
+  });
+  revalidatePath("/admin/crm/pipeline");
+  revalidatePath(`/admin/propostas/${propostaId}`);
+  return arquivo as PropostaArquivoHistorico;
+}
+
+export async function getPropostaArquivoHistoricoUrlAction(
+  propostaId: string,
+  arquivoId: string,
+  baixar = false,
+) {
+  const { empresaAtiva } = await requireTenantPermission("gerenciar_propostas");
+  const supabase = await createClient();
+  const { data: arquivo } = await supabase
+    .from("propostas_arquivos")
+    .select("storage_path,arquivo_nome")
+    .eq("id", arquivoId)
+    .eq("proposta_id", propostaId)
+    .eq("empresa_id", empresaAtiva.id)
+    .maybeSingle();
+  if (!arquivo) throw new Error("PDF não encontrado nesta proposta.");
+  return createPropostaPdfSignedUrl(arquivo.storage_path, 60 * 15, baixar ? arquivo.arquivo_nome : undefined);
+}
+
+export async function getPropostaPdfAtualUrlAction(propostaId: string, baixar = false) {
+  const { empresaAtiva } = await requireTenantPermission("gerenciar_propostas");
+  const supabase = await createClient();
+  const { data: proposta } = await supabase
+    .from("propostas")
+    .select("pdf_url")
+    .eq("id", propostaId)
+    .eq("empresa_id", empresaAtiva.id)
+    .maybeSingle();
+  if (!proposta) throw new Error("Proposta não encontrada nesta empresa.");
+  if (!proposta.pdf_url) return getPropostaDownloadUrlAction(propostaId);
+  return createPropostaPdfSignedUrl(proposta.pdf_url, 60 * 15, baixar ? "proposta-atual.pdf" : undefined);
 }
 
 export async function searchLeadsForProposta(q: string) {

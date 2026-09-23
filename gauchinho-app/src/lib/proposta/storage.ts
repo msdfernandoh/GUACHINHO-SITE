@@ -18,11 +18,15 @@ export async function uploadPropostaPdf(propostaId: string, buffer: Buffer) {
   return path;
 }
 
-export async function createPropostaPdfSignedUrl(storagePath: string, expiresIn = 3600) {
+export async function createPropostaPdfSignedUrl(
+  storagePath: string,
+  expiresIn = 3600,
+  download?: string,
+) {
   const admin = createAdminClient();
   const { data, error } = await admin.storage
     .from(PROPOSTAS_PDF_BUCKET)
-    .createSignedUrl(storagePath, expiresIn);
+    .createSignedUrl(storagePath, expiresIn, download ? { download } : undefined);
   if (error || !data?.signedUrl) throw new Error(error?.message ?? "URL assinada falhou");
   return data.signedUrl;
 }

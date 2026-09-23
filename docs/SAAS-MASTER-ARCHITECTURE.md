@@ -1,5 +1,17 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
+### Evolução operacional 280 — Histórico privado de PDFs no Pipeline CRM
+
+O card do Pipeline CRM passa a oferecer o atalho **PDFs**, que reúne as propostas
+vinculadas ao lead. A equipe pode visualizar ou baixar o PDF atual gerado pelo
+sistema e enviar versões em PDF para o histórico de cada proposta. Os objetos
+permanecem no bucket privado `propostas-pdf`; a tabela tenant-aware
+`propostas_arquivos` guarda somente metadados, vínculo composto com a proposta
+e autoria. URLs de leitura e download são assinadas, de curta duração, e nunca
+expõem arquivos entre empresas.
+
+Relatório: `docs/relatorios-fases/FASE-280-HISTORICO-PDFS-PROPOSTAS-CRM.md`.
+
 ### Evolução operacional 279 — Proposta de grupos separada por folha
 
 Ao gerar proposta com mais de um grupo do mesmo tipo de bem, o consultor pode escolher **Unificar** ou **Separar por grupo**. A escolha é persistida em `propostas.dados_simulacao`. No modo separado, o PDF mantém uma capa e um resumo únicos, mas cria uma folha exclusiva para cada grupo, agregando somente suas próprias cotas e preservando início, prazo e condições independentes.
