@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireErpRouteAccess } from "@/lib/erp/erp-acesso-server";
+import { lerFiscalParticipante } from "@/lib/erp/comissoes-fiscal-extrato";
 import {
   type TipoFiltroPeriodo,
   type TipoRegimePeriodo,
@@ -238,6 +239,24 @@ export interface ReservaImpostosDTO {
   previsaoImpostosFuturos: number;
 }
 
+/** Imposto já descontado da comissão. O titular é quem deve explicar/pagar este tributo. */
+export interface ResumoFiscalTitularDTO {
+  titular: string;
+  tipo: "SOCIO" | "VENDEDOR_EMPRESA";
+  comissaoLiquida: number;
+  impostoRetido: number;
+  comissaoBruta: number;
+}
+
+export interface ReceitaEmpresaComissoesDTO {
+  comissaoLiquidaRecebida: number;
+  repassesPagosVendedores: number;
+  receitaLiquidaAposRepasses: number;
+  comissaoLiquidaPrevista: number;
+  repassesPrevistosVendedores: number;
+  receitaProjetadaAposRepasses: number;
+}
+
 export interface ItemPrevisaoFuturaDTO {
   id: string;
   descricao: string;
@@ -271,6 +290,8 @@ export interface ContaCorrenteResumoDTO {
   caixaEmpresa: CaixaEmpresaDTO;
   contasLancadas: ContasLancadasAPagarDTO;
   reservaImpostosControle: ReservaImpostosDTO;
+  resumoFiscalPorTitular: ResumoFiscalTitularDTO[];
+  receitaEmpresaComissoes: ReceitaEmpresaComissoesDTO;
   previsoesFuturas: PrevisoesFuturasDTO;
   historicoClassificacao: HistoricoClassificacaoDTO;
 
@@ -475,7 +496,6 @@ export async function carregarDadosContaCorrenteSocios(
     .from("participantes_comerciais")
     .select("id, usuario_id, nome, email")
     .eq("empresa_id", empresaAtiva.id)
-    .in("usuario_id", usuarioIds)
     .ilike("status", "ativo");
 
   const partMapByUsuario = new Map((partDb ?? []).map((p) => [p.usuario_id, p]));
@@ -494,9 +514,12 @@ export async function carregarDadosContaCorrenteSocios(
     };
   });
 
+  // Sem parâmetro de sócio é visão consolidada. Não selecionar o primeiro
+  // sócio silenciosamente: isso fazia o botão "Todos os Sócios" parecer não
+  // funcionar e misturava totais da empresa com a visão individual.
   const socioSelecionado = socioId && socioId !== "todos"
-    ? todosSocios.find((s) => s.id === socioId) ?? todosSocios[0] ?? null
-    : todosSocios[0] ?? null;
+    ? todosSocios.find((s) => s.id === socioId) ?? null
+    : null;
 
   const socioIdAtivo = socioSelecionado?.id ?? null;
   const participanteIdAtivo = socioSelecionado?.participanteComercialId ?? null;
@@ -521,6 +544,7 @@ export async function carregarDadosContaCorrenteSocios(
     pagamentosRes,
     contasBancariasRes,
     transferenciasSociosRes,
+    comissoesFranquiaRes,
   ] = await Promise.all([
     admin
       .from("financeiro_contas_pagar")
@@ -561,6 +585,7 @@ export async function carregarDadosContaCorrenteSocios(
         valor_elegivel,
         valor_pago,
         status,
+        snapshot_regra,
         participante_comercial_id,
         venda:vendas(id, valor_credito, cliente_nome, data_venda)
       `)
@@ -602,6 +627,11 @@ export async function carregarDadosContaCorrenteSocios(
       .select("*")
       .eq("empresa_id", empresaAtiva.id)
       .order("data_transferencia", { ascending: true }),
+    admin
+      .from("comissao_previsoes_franquia")
+      .select("competencia, status, valor_previsto, valor_liquido, valor_pago")
+      .eq("empresa_id", empresaAtiva.id)
+      .neq("status", "cancelada"),
   ]);
 
   const todasContas = contasRes.data ?? [];
@@ -618,6 +648,7 @@ export async function carregarDadosContaCorrenteSocios(
   const pagamentosDb = pagamentosRes.data ?? [];
   const contasBancariasDb = contasBancariasRes.data ?? [];
   const transferenciasSociosDb = transferenciasSociosRes.data ?? [];
+  const comissoesFranquiaDb = comissoesFranquiaRes.data ?? [];
 
   // Mapa de Pagamento das Comissões
   const pagamentosPorPrevisaoId = new Map<string, { dataPagamento: string; valor: number }>();
@@ -1450,13 +1481,18 @@ export async function carregarDadosContaCorrenteSocios(
   // =========================================================================
   const comissaoRetidaUtilizadaFernando = Number(
     ledgerDb
-      .filter((m: any) => !m.estornado && m.socio_id === socioFernando?.id && (m.origem_tipo === "classificacao_historica" || m.origem_tipo === "comissao_retida" || m.descricao?.includes("Comissão de Fernando utilizada")))
+      .filter((m: any) => !m.estornado && (
+        m.socio_id === socioFernando?.id ||
+        /recurso econ[oô]mico fornecido por fernando|comiss[aã]o de fernando utilizada/i.test(m.descricao || "")
+      ) && (m.origem_tipo === "classificacao_historica" || m.origem_tipo === "comissao_retida" || /fernando/i.test(m.descricao || "")))
       .reduce((acc: number, m: any) => acc + Number(m.valor), 0)
       .toFixed(2)
   );
 
   // Valor canônico do caso societário: R$ 9.300 de comissão de Fernando utilizada
-  const valorComissaoRetidaFernando = comissaoRetidaUtilizadaFernando > 0 ? comissaoRetidaUtilizadaFernando : 9300;
+  // Nunca inventar uma retenção histórica: se não houver lançamento auditável,
+  // o painel deve mostrar zero e solicitar a classificação do recurso.
+  const valorComissaoRetidaFernando = comissaoRetidaUtilizadaFernando;
 
   // Despesas efetivamente pagas no escopo
   const contasPagasEscopo = todasContas.filter((c: any) => {
@@ -1724,6 +1760,63 @@ export async function carregarDadosContaCorrenteSocios(
     previsaoImpostosFuturos: 0,
   };
 
+  // O imposto é atribuído ao titular da comissão, inclusive vendedores que
+  // trabalham para a empresa. `valor_previsto` já é o líquido do participante.
+  const socioPorParticipante = new Map(
+    todosSocios
+      .filter((s) => s.participanteComercialId)
+      .map((s) => [s.participanteComercialId as string, s.nome]),
+  );
+  const fiscalPorTitular = new Map<string, ResumoFiscalTitularDTO>();
+  todasComissoesDb
+    .filter((row: any) => periodo.isTodosPeriodos || (row.competencia >= compInicio && row.competencia <= compFim))
+    .forEach((row: any) => {
+    const fiscal = lerFiscalParticipante(row.snapshot_regra);
+    const titularSocio = socioPorParticipante.get(row.participante_comercial_id);
+    const participante = (partDb ?? []).find((p: any) => p.id === row.participante_comercial_id);
+    const titular = titularSocio || participante?.nome || "Vendedor da empresa";
+    const tipo: ResumoFiscalTitularDTO["tipo"] = titularSocio ? "SOCIO" : "VENDEDOR_EMPRESA";
+    const anterior = fiscalPorTitular.get(titular) || {
+      titular,
+      tipo,
+      comissaoLiquida: 0,
+      impostoRetido: 0,
+      comissaoBruta: 0,
+    };
+    const liquido = Number(row.valor_previsto || 0);
+    const imposto = Number(fiscal?.imposto || 0);
+    fiscalPorTitular.set(titular, {
+      ...anterior,
+      comissaoLiquida: Number((anterior.comissaoLiquida + liquido).toFixed(2)),
+      impostoRetido: Number((anterior.impostoRetido + imposto).toFixed(2)),
+      comissaoBruta: Number((anterior.comissaoBruta + (fiscal?.bruto ?? liquido + imposto)).toFixed(2)),
+    });
+    });
+  const resumoFiscalPorTitular = [...fiscalPorTitular.values()];
+
+  // Receita da empresa não é a comissão do vendedor. É o que sobra para a PJ
+  // depois de pagar todos os vendedores que não pertencem ao quadro societário.
+  const participantesSociosIds = new Set(socioPorParticipante.keys());
+  const comissoesVendedoresEmpresa = todasComissoesDb.filter((row: any) =>
+    !participantesSociosIds.has(row.participante_comercial_id) &&
+    (periodo.isTodosPeriodos || (row.competencia >= compInicio && row.competencia <= compFim)),
+  );
+  const franquiaNoPeriodo = comissoesFranquiaDb.filter((row: any) =>
+    periodo.isTodosPeriodos || (row.competencia >= compInicio && row.competencia <= compFim),
+  );
+  const comissaoLiquidaRecebida = Number(franquiaNoPeriodo.reduce((s: number, row: any) => s + Number(row.valor_pago || 0), 0).toFixed(2));
+  const repassesPagosVendedores = Number(comissoesVendedoresEmpresa.reduce((s: number, row: any) => s + Number(row.valor_pago || 0), 0).toFixed(2));
+  const comissaoLiquidaPrevista = Number(franquiaNoPeriodo.reduce((s: number, row: any) => s + Number(row.valor_liquido ?? row.valor_previsto ?? 0), 0).toFixed(2));
+  const repassesPrevistosVendedores = Number(comissoesVendedoresEmpresa.reduce((s: number, row: any) => s + Number(row.valor_previsto || 0), 0).toFixed(2));
+  const receitaEmpresaComissoes: ReceitaEmpresaComissoesDTO = {
+    comissaoLiquidaRecebida,
+    repassesPagosVendedores,
+    receitaLiquidaAposRepasses: Number((comissaoLiquidaRecebida - repassesPagosVendedores).toFixed(2)),
+    comissaoLiquidaPrevista,
+    repassesPrevistosVendedores,
+    receitaProjetadaAposRepasses: Number((comissaoLiquidaPrevista - repassesPrevistosVendedores).toFixed(2)),
+  };
+
   // =========================================================================
   // BLOCO 6: PREVISÕES FUTURAS (30 / 60 / 90 DIAS)
   // =========================================================================
@@ -1872,6 +1965,8 @@ export async function carregarDadosContaCorrenteSocios(
     caixaEmpresa,
     contasLancadas,
     reservaImpostosControle,
+    resumoFiscalPorTitular,
+    receitaEmpresaComissoes,
     previsoesFuturas,
     historicoClassificacao,
   };
@@ -1885,7 +1980,13 @@ export async function usarComissaoCompensarAction(formData: FormData) {
   const tipoDestino = String(formData.get("tipo_destino") ?? "TRANSFERENCIA_SOCIO") as "TRANSFERENCIA_SOCIO" | "CONTA_EMPRESA";
   const socioDestinoId = String(formData.get("socio_destino_id") ?? "");
   const contaBancariaId = String(formData.get("conta_bancaria_id") ?? "");
-  const valorACompensar = Number(String(formData.get("valor") ?? "").replace(",", "."));
+  const valorInformado = String(formData.get("valor") ?? "").trim();
+  // Aceita R$ 7.486,51 e 7486.51 sem multiplicar centavos.
+  const valorACompensar = Number(
+    valorInformado.includes(",")
+      ? valorInformado.replace(/\./g, "").replace(",", ".")
+      : valorInformado,
+  );
   const motivo = String(formData.get("motivo") ?? "").trim() || "Compensação de despesas com comissão do sócio";
   const previsaoId = String(formData.get("previsao_id") ?? "");
   const previsoesSelecionadasRaw = String(formData.get("previsoes_selecionadas") ?? "");
@@ -1978,8 +2079,11 @@ export async function usarComissaoCompensarAction(formData: FormData) {
   }
 
   const previsoesComSaldo = previsoesFiltro
+    // Previsão é expectativa, não dinheiro. Só valores já confirmados podem
+    // compensar uma despesa ou registrar uma transferência entre sócios.
+    .filter((p) => ["elegivel", "parcialmente_elegivel", "paga", "parcialmente_paga"].includes(p.status))
     .map((p) => {
-      const maxVal = Number(p.valor_elegivel || p.valor_previsto || 0);
+      const maxVal = Number(p.valor_elegivel || 0);
       const pago = Number(p.valor_pago || 0);
       return {
         ...p,
@@ -2739,4 +2843,3 @@ export async function salvarBaixaContaComOrigemAction(formData: FormData) {
     mensagem: "Conta baixada com segregação de origem com sucesso!",
   };
 }
-

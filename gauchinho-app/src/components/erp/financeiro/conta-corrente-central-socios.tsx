@@ -176,6 +176,12 @@ export function ContaCorrenteCentralSocios({
         d.pagoPorSocioNome?.toLowerCase().includes("eroni"))
   );
 
+  // Dois assuntos que não podem ser misturados no fechamento:
+  // (1) contas abertas devem receber dinheiro na PJ; (2) conta já paga gera
+  // eventual transferência entre os sócios.
+  const valorTransferirParaFernando = Math.max(0, dados.acertoSocios.socioFernando.saldoAcerto);
+  const valorTransferirParaEroni = Math.max(0, dados.acertoSocios.socioEroni.saldoAcerto);
+
   return (
     <div className="space-y-6">
       {/* Toast de Feedback */}
@@ -1013,6 +1019,50 @@ export function ContaCorrenteCentralSocios({
             <span className="text-lg font-black text-indigo-950 mt-1 block">
               {brl(dados.contasLancadas.totalLancadoMes)}
             </span>
+          </div>
+        </div>
+
+        {/* Fechamento simples: primeiro as contas abertas, depois o acerto já pago. */}
+        <div className="grid gap-4 lg:grid-cols-2">
+          <div className="rounded-2xl border border-indigo-200 bg-indigo-50/50 p-4">
+            <span className="text-[10px] font-black uppercase tracking-wider text-indigo-700 block">
+              Passo 1 · Dinheiro para pagar as contas abertas
+            </span>
+            <p className="mt-1 text-sm font-black text-slate-950">
+              Ainda faltam {brl(dados.contasLancadas.faltaFinanciar)} na conta da empresa.
+            </p>
+            <p className="mt-1 text-xs leading-relaxed text-slate-600">
+              Como a divisão é 50/50, a parte de Fernando é {brl(dados.contasLancadas.necessidadeFernando)} e a de Eroni é {brl(dados.contasLancadas.necessidadeEroni)}. Este dinheiro vai para a <strong>conta PJ</strong>; não é transferência entre sócios.
+            </p>
+            <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+              <div className="rounded-xl border border-white bg-white/80 p-2.5">
+                <span className="block text-[10px] font-bold text-slate-500">Falta Fernando deixar / transferir à PJ</span>
+                <strong className="mt-0.5 block text-base text-indigo-950">{brl(dados.contasLancadas.coberturaFernando.faltaCobrir)}</strong>
+              </div>
+              <div className="rounded-xl border border-white bg-white/80 p-2.5">
+                <span className="block text-[10px] font-bold text-slate-500">Falta Eroni deixar / transferir à PJ</span>
+                <strong className="mt-0.5 block text-base text-indigo-950">{brl(dados.contasLancadas.coberturaEroni.faltaCobrir)}</strong>
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-emerald-200 bg-emerald-50/50 p-4">
+            <span className="text-[10px] font-black uppercase tracking-wider text-emerald-700 block">
+              Passo 2 · Acerto de contas que já foram pagas
+            </span>
+            <p className="mt-1 text-sm font-black text-slate-950">
+              {valorTransferirParaFernando > 0
+                ? `Eroni transfere ${brl(valorTransferirParaFernando)} para Fernando.`
+                : valorTransferirParaEroni > 0
+                ? `Fernando transfere ${brl(valorTransferirParaEroni)} para Eroni.`
+                : "Ninguém precisa transferir para o outro agora."}
+            </p>
+            <p className="mt-1 text-xs leading-relaxed text-slate-600">
+              Este valor considera somente despesas que foram marcadas como <strong>pagas</strong>, quem colocou o dinheiro e as comissões já usadas para elas. Contas em aberto ficam no passo 1.
+            </p>
+            <div className="mt-3 rounded-xl border border-white bg-white/80 p-2.5 text-xs text-slate-700">
+              <span className="font-bold">Explicação do sistema: </span>{dados.acertoSocios.instrucaoCompensacao}
+            </div>
           </div>
         </div>
 

@@ -27,6 +27,19 @@ export type PrevisaoParticipanteItem = {
   valor_credito?: number;
 };
 
+type FiltroConferencia = "TODAS" | "AGUARDANDO_LIBERACAO" | "PRONTA_PARA_PAGAR" | "PAGA" | "CONFERIDA" | "CANCELADA";
+
+function obterSituacaoConferencia(previsao: PrevisaoParticipanteItem): Exclude<FiltroConferencia, "TODAS"> {
+  if (previsao.status === "cancelada") return "CANCELADA";
+  if (previsao.conferido_por_participante) return "CONFERIDA";
+
+  const elegivel = Number(previsao.valor_elegivel || 0);
+  const pago = Number(previsao.valor_pago || 0);
+  if (elegivel > pago + 0.001) return "PRONTA_PARA_PAGAR";
+  if (pago > 0 && pago + 0.001 >= elegivel) return "PAGA";
+  return "AGUARDANDO_LIBERACAO";
+}
+
 interface MinhasComissoesClientProps {
   participanteNome: string;
   previsoes: PrevisaoParticipanteItem[];
@@ -67,6 +80,7 @@ export function MinhasComissoesClient({
   const [mesEspecifico, setMesEspecifico] = useState<string>("");
   const [buscaCliente, setBuscaCliente] = useState<string>("");
   const [clienteSelecionado, setClienteSelecionado] = useState<string>("");
+  const [filtroConferencia, setFiltroConferencia] = useState<FiltroConferencia>("TODAS");
   const [selecionadasPagamento, setSelecionadasPagamento] = useState<Set<string>>(new Set());
   const [operacaoPagamento, setOperacaoPagamento] = useState(() => crypto.randomUUID());
 
@@ -101,6 +115,9 @@ export function MinhasComissoesClient({
         const matchCota = p.cota_numero?.toLowerCase().includes(query);
         if (!matchNome && !matchGrupo && !matchCota) return false;
       }
+      if (filtroConferencia !== "TODAS" && obterSituacaoConferencia(p) !== filtroConferencia) {
+        return false;
+      }
       if (mesEspecifico) {
         return p.competencia === mesEspecifico;
       }
@@ -125,7 +142,7 @@ export function MinhasComissoesClient({
       }
       return true;
     });
-  }, [previsoes, clienteSelecionado, buscaCliente, filtroPeriodo, mesEspecifico, currentMonth, nextMonth, now]);
+  }, [previsoes, clienteSelecionado, buscaCliente, filtroConferencia, filtroPeriodo, mesEspecifico, currentMonth, nextMonth, now]);
 
   // Métricas do período filtrado
   const metricas = useMemo(() => {
@@ -174,7 +191,7 @@ export function MinhasComissoesClient({
     };
   }, [previsoesFiltradas, previsoes, clienteSelecionado, buscaCliente, currentMonth, nextMonth]);
 
-  const temFiltroAtivo = Boolean(clienteSelecionado || buscaCliente || mesEspecifico || filtroPeriodo !== "TODOS");
+  const temFiltroAtivo = Boolean(clienteSelecionado || buscaCliente || filtroConferencia !== "TODAS" || mesEspecifico || filtroPeriodo !== "TODOS");
   const elegiveisPagamento = previsoesFiltradas.filter((item) => Number(item.valor_elegivel) > Number(item.valor_pago));
   const totalSelecionado = elegiveisPagamento
     .filter((item) => selecionadasPagamento.has(item.id))
@@ -294,6 +311,20 @@ export function MinhasComissoesClient({
               </select>
             )}
 
+            <select
+              aria-label="Filtrar pela situação de conferência"
+              value={filtroConferencia}
+              onChange={(e) => setFiltroConferencia(e.target.value as FiltroConferencia)}
+              className="rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-xs font-bold text-slate-800 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+            >
+              <option value="TODAS">Conferência: todas</option>
+              <option value="AGUARDANDO_LIBERACAO">Aguardando liberação</option>
+              <option value="PRONTA_PARA_PAGAR">Pronta para pagar</option>
+              <option value="PAGA">Paga, sem conferência</option>
+              <option value="CONFERIDA">Conferida por mim</option>
+              <option value="CANCELADA">Cancelada / estornada</option>
+            </select>
+
             {temFiltroAtivo && (
               <button
                 type="button"
@@ -302,6 +333,7 @@ export function MinhasComissoesClient({
                   setMesEspecifico("");
                   setBuscaCliente("");
                   setClienteSelecionado("");
+                  setFiltroConferencia("TODAS");
                 }}
                 className="flex items-center gap-1 rounded-xl bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 cursor-pointer"
               >

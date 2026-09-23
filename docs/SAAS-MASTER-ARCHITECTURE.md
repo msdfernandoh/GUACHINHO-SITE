@@ -1,5 +1,21 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
+### Evolução operacional 273 — Sincronização de ajustes de repasse e fechamento mensal
+
+Decisões de ajuste de uma linha de repasse devem disparar a sincronização canônica de recebimento e das previsões de participantes. O estado de pagamento é consequência de `valor_elegivel` calculado a partir de recebimento alocado, nunca de valor apenas previsto. Na Conta-Corrente dos Sócios, a interface deve manter duas decisões separadas: contas abertas recebem recursos na conta PJ; despesas já pagas podem gerar transferência entre sócios. A tela de comissões expõe o estado de conferência como filtro próprio. Relatório: `docs/relatorios-fases/FASE-273-REPASSE-E-FECHAMENTO-MENSAL-SOCIOS.md`.
+
+### Evolução operacional 272 — Fechamento didático de comissões, despesas e impostos dos sócios
+
+A Conta-Corrente dos Sócios separa explicitamente propriedade da comissão,
+imposto retido, valor líquido disponível, recurso aplicado em despesas e
+transferência de equalização. O filtro sem sócio representa a visão consolidada
+e o filtro individual não seleciona mais um sócio por padrão. A compensação
+financeira aceita exclusivamente parcelas elegíveis/confirmadas, nunca
+previsões. O resumo fiscal agrupa sócios e vendedores da empresa, mantendo
+vendedores fora do rateio societário e demonstrando a reserva de impostos e
+as guias registradas. Relatório:
+`docs/relatorios-fases/FASE-272-FECHAMENTO-SOCIOS-COMISSOES-IMPOSTOS.md`.
+
 ### Evolução operacional 259 — Link público do indicador e cadastro conversacional
 
 Cada indicador recebe o código curto aleatório `programa_indicadores.codigo_indicacao_curto`. O link compacto `/i/[codigo]` é compartilhado pelo painel do indicador e abre o mesmo cadastro conversacional usado no app. Antes da identificação, a página pública coleta a estratégia desejada e o prazo de utilização do crédito em `leads.estrategia_credito` e `leads.prazo_utilizacao_credito`, também registrados no histórico cronológico do lead. A resolução do código ocorre sempre junto ao `empresa_id` confiável do host; o cadastro cria ou atualiza o lead tenant-aware e vincula a indicação ao `indicador_id` do link, sem substituir uma atribuição existente de outro indicador.

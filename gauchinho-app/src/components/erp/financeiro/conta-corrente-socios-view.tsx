@@ -250,7 +250,14 @@ export function ContaCorrenteSociosView({
   }
 
   function abrirModalCompensar(comissao?: ComissaoSocioDTO | null) {
-    const sId = socioAtivo?.id || dados.todosSocios[0]?.id || "";
+    if (!socioAtivo) {
+      setMensagemFeedback({
+        tipo: "erro",
+        texto: "Primeiro escolha o titular da comissão (Fernando, Eroni ou outro sócio). Assim a compensação sempre usa o dinheiro da pessoa certa.",
+      });
+      return;
+    }
+    const sId = socioAtivo.id;
     setSocioModalId(sId);
     setComissaoParaCompensar(comissao || null);
     const outro = dados.todosSocios.find((s) => s.id !== sId);
@@ -261,22 +268,22 @@ export function ContaCorrenteSociosView({
     if (comissao) {
       setModoSaldoLivre(false);
       setPrevisaoIdModal(comissao.id);
-      const disp = Math.max(0, (comissao.valorElegivel || comissao.valorPrevisto) - comissao.valorPago);
+      const disp = Math.max(0, comissao.valorElegivel - comissao.valorPago);
       setValorModalInput(disp > 0 ? disp.toFixed(2) : "1050,00");
       setPrevisoesSelecionadasModal([comissao.id]);
     } else {
       setModoSaldoLivre(true);
       setPrevisaoIdModal("todas");
       const todasComissoesDisp = dados.comissoesSocio
-        .filter((c) => Math.max(0, (c.valorElegivel || c.valorPrevisto) - c.valorPago) > 0.001)
+        .filter((c) => Math.max(0, c.valorElegivel - c.valorPago) > 0.001)
         .map((c) => c.id);
       setPrevisoesSelecionadasModal(todasComissoesDisp);
       if (dados.saldoACompensar > 0) {
         setValorModalInput(dados.saldoACompensar.toFixed(2));
       } else {
         const totalDisp = dados.comissoesSocio
-          .filter((c) => Math.max(0, (c.valorElegivel || c.valorPrevisto) - c.valorPago) > 0.001)
-          .reduce((acc, c) => acc + Math.max(0, (c.valorElegivel || c.valorPrevisto) - c.valorPago), 0);
+          .filter((c) => Math.max(0, c.valorElegivel - c.valorPago) > 0.001)
+          .reduce((acc, c) => acc + Math.max(0, c.valorElegivel - c.valorPago), 0);
         setValorModalInput(totalDisp > 0 ? totalDisp.toFixed(2) : "1050,00");
       }
     }
@@ -1469,6 +1476,40 @@ export function ContaCorrenteSociosView({
         </div>
       </section>
 
+      {/* TRIBUTOS: sempre separados do dinheiro livre para despesas/saque */}
+      <section className="rounded-3xl border border-amber-200 bg-amber-50/40 p-6 shadow-sm space-y-4">
+        <div>
+          <span className="text-[10px] font-black uppercase tracking-wider text-amber-700 block">Impostos das comissões</span>
+          <h3 className="text-lg font-black text-slate-900">Primeiro separamos o imposto; depois decidimos o que usar nas despesas</h3>
+          <p className="text-xs text-slate-600 mt-1">Cada pessoa que recebe comissão responde pelo imposto da sua parte. Vendedores que não são sócios aparecem como receita e imposto da empresa, sem entrar no rateio 50/50.</p>
+        </div>
+        <div className="grid gap-3 md:grid-cols-3">
+          <div className="rounded-2xl border border-blue-200 bg-blue-50 p-4"><p className="text-[10px] font-black uppercase text-blue-800">1. Comissão líquida recebida pela empresa</p><p className="mt-1 text-xl font-black text-blue-950">{brl(dados.receitaEmpresaComissoes.comissaoLiquidaRecebida)}</p><p className="mt-1 text-[10px] text-blue-700">Dinheiro de comissão que entrou na PJ, já após imposto.</p></div>
+          <div className="rounded-2xl border border-violet-200 bg-violet-50 p-4"><p className="text-[10px] font-black uppercase text-violet-800">2. Pago aos vendedores não sócios</p><p className="mt-1 text-xl font-black text-violet-950">-{brl(dados.receitaEmpresaComissoes.repassesPagosVendedores)}</p><p className="mt-1 text-[10px] text-violet-700">Laura, Enos e qualquer vendedor que não seja sócio.</p></div>
+          <div className="rounded-2xl border border-emerald-300 bg-emerald-50 p-4"><p className="text-[10px] font-black uppercase text-emerald-800">3. Receita que ficou para a empresa</p><p className="mt-1 text-2xl font-black text-emerald-950">{brl(dados.receitaEmpresaComissoes.receitaLiquidaAposRepasses)}</p><p className="mt-1 text-[10px] font-bold text-emerald-700">Entrou na empresa − pagamentos aos vendedores. Ainda não desconta despesas gerais.</p></div>
+        </div>
+        <p className="rounded-xl border border-slate-200 bg-white p-3 text-xs text-slate-700"><strong>Se todas as comissões previstas forem confirmadas:</strong> a empresa deve receber {brl(dados.receitaEmpresaComissoes.comissaoLiquidaPrevista)}, pagar {brl(dados.receitaEmpresaComissoes.repassesPrevistosVendedores)} aos vendedores e ficar com {brl(dados.receitaEmpresaComissoes.receitaProjetadaAposRepasses)} antes das despesas gerais.</p>
+        <div className="overflow-x-auto rounded-2xl border border-amber-200 bg-white">
+          <table className="w-full text-left text-xs">
+            <thead className="bg-amber-100/70 text-amber-950 font-black uppercase tracking-wider">
+              <tr><th className="p-3">Quem recebeu a comissão</th><th className="p-3 text-right">Bruto</th><th className="p-3 text-right">Imposto separado</th><th className="p-3 text-right">Líquido para despesas/saque</th></tr>
+            </thead>
+            <tbody className="divide-y divide-amber-100">
+              {dados.resumoFiscalPorTitular.map((item) => (
+                <tr key={item.titular}>
+                  <td className="p-3 font-bold text-slate-900">{item.titular}<span className="ml-2 text-[10px] font-medium text-slate-500">{item.tipo === "SOCIO" ? "sócio" : "vendedor da empresa"}</span></td>
+                  <td className="p-3 text-right">{brl(item.comissaoBruta)}</td>
+                  <td className="p-3 text-right font-black text-amber-800">-{brl(item.impostoRetido)}</td>
+                  <td className="p-3 text-right font-black text-emerald-800">{brl(item.comissaoLiquida)}</td>
+                </tr>
+              ))}
+              {!dados.resumoFiscalPorTitular.length && <tr><td colSpan={4} className="p-4 text-center text-slate-500">Ainda não há comissões com composição fiscal neste período.</td></tr>}
+            </tbody>
+          </table>
+        </div>
+        <p className="rounded-xl border border-amber-200 bg-amber-100/50 p-3 text-xs text-amber-950"><strong>Reserva de imposto da empresa:</strong> {brl(dados.reservaImpostosControle.saldoReserva)}. Impostos já lançados a pagar: {brl(dados.reservaImpostosControle.impostosLancadosAPagar)}. {dados.reservaImpostosControle.necessidadeAdicional > 0 ? `Faltam ${brl(dados.reservaImpostosControle.necessidadeAdicional)} para cobrir as guias registradas.` : "A reserva registrada cobre as guias atualmente lançadas."}</p>
+      </section>
+
       {/* SEÇÃO: CONFERÊNCIA DAS COMISSÕES (Item 12) */}
       <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 pb-3">
@@ -2260,6 +2301,29 @@ export function ContaCorrenteSociosView({
               </div>
             </div>
 
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              <div className="rounded-2xl border border-emerald-300 bg-emerald-50 p-4">
+                <p className="text-[10px] font-black uppercase text-emerald-800">Comissões da empresa</p>
+                <p className="mt-1 text-xl font-black text-emerald-950">{brl(dados.receitaEmpresaComissoes.comissaoLiquidaRecebida)}</p>
+                <p className="mt-1 text-[10px] text-emerald-700">Entrou na PJ após imposto</p>
+                <p className="mt-2 border-t border-emerald-200 pt-2 text-[10px] font-bold text-emerald-900">Ficou após vendedores: {brl(dados.receitaEmpresaComissoes.receitaLiquidaAposRepasses)}</p>
+              </div>
+              {dados.resumoFiscalPorTitular.filter((item) => item.tipo === "SOCIO").map((item) => (
+                <div key={item.titular} className="rounded-2xl border border-blue-200 bg-blue-50 p-4">
+                  <p className="text-[10px] font-black uppercase text-blue-800">Comissões de {item.titular}</p>
+                  <p className="mt-1 text-xl font-black text-blue-950">{brl(item.comissaoLiquida)}</p>
+                  <p className="mt-1 text-[10px] text-blue-700">Líquido após {brl(item.impostoRetido)} de imposto</p>
+                  <p className="mt-2 border-t border-blue-200 pt-2 text-[10px] font-bold text-blue-900">Pode abater despesa ou ser transferido</p>
+                </div>
+              ))}
+              <div className="rounded-2xl border border-violet-200 bg-violet-50 p-4">
+                <p className="text-[10px] font-black uppercase text-violet-800">Comissões de vendedores</p>
+                <p className="mt-1 text-xl font-black text-violet-950">{brl(dados.receitaEmpresaComissoes.repassesPagosVendedores)}</p>
+                <p className="mt-1 text-[10px] text-violet-700">Já pagas a não sócios</p>
+                <p className="mt-2 border-t border-violet-200 pt-2 text-[10px] font-bold text-violet-900">Não entra no rateio 50% / 50%</p>
+              </div>
+            </div>
+
             {/* Tabela de Comissões */}
             <div className="overflow-x-auto rounded-2xl border border-slate-200">
               <table className="w-full text-left text-xs">
@@ -2959,10 +3023,10 @@ export function ContaCorrenteSociosView({
 
         // Comissões disponíveis do sócio
         const comissoesElegiveis = dados.comissoesSocio.filter(
-          (c) => Math.max(0, (c.valorElegivel || c.valorPrevisto) - c.valorPago) > 0.001
+          (c) => Math.max(0, c.valorElegivel - c.valorPago) > 0.001
         );
         const totalComissoesDisponiveis = comissoesElegiveis.reduce(
-          (acc, c) => acc + Math.max(0, (c.valorElegivel || c.valorPrevisto) - c.valorPago),
+          (acc, c) => acc + Math.max(0, c.valorElegivel - c.valorPago),
           0
         );
 
@@ -3053,24 +3117,11 @@ export function ContaCorrenteSociosView({
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className="font-bold text-slate-700 block mb-1">Sócio Titular da Comissão</label>
-                    <select
-                      name="socio_id"
-                      value={socioModalId || socioModal?.id}
-                      onChange={(e) => {
-                        const novoId = e.target.value;
-                        setSocioModalId(novoId);
-                        const outro = dados.todosSocios.find((s) => s.id !== novoId);
-                        setSocioDestinoModalId(outro?.id || "");
-                      }}
-                      required
-                      className="w-full rounded-xl border border-slate-300 p-2.5 text-xs text-slate-900 font-bold focus:border-blue-500 focus:outline-none"
-                    >
-                      {dados.todosSocios.map((s) => (
-                        <option key={s.id} value={s.id}>
-                          {s.nome} ({s.percentualParticipacao}%)
-                        </option>
-                      ))}
-                    </select>
+                    <input type="hidden" name="socio_id" value={socioModal?.id || ""} />
+                    <div className="w-full rounded-xl border border-slate-300 bg-slate-50 p-2.5 text-xs text-slate-900 font-bold">
+                      {socioModal?.nome} ({socioModal?.percentualParticipacao}%)
+                    </div>
+                    <p className="mt-1 text-[10px] text-slate-500">Para trocar o titular, feche esta janela e use o seletor no topo. Isso evita compensar a comissão da pessoa errada.</p>
                   </div>
 
                   {/* Resumo do Sócio */}
@@ -3149,7 +3200,7 @@ export function ContaCorrenteSociosView({
                           </div>
                           <div className="text-right flex-shrink-0 ml-2">
                             <p className="font-black text-emerald-700 text-xs">{brl(disp)}</p>
-                            <p className="text-[9px] text-slate-400">{c.status}</p>
+                            <p className="text-[9px] text-slate-400">confirmada: {c.status}</p>
                           </div>
                         </div>
                       );
