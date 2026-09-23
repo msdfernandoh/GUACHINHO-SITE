@@ -1,5 +1,11 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
+### Evolução operacional 277 — Telefone visível no card do Pipeline CRM
+
+Os cards do Pipeline CRM exibem o WhatsApp do lead logo abaixo do nome, com máscara brasileira e normalização visual do DDI `+55`. A informação torna a identificação e a ação de contato imediatas sem abrir o detalhe do cadastro.
+
+Relatório: `docs/relatorios-fases/FASE-277-TELEFONE-VISIVEL-CARD-PIPELINE.md`.
+
 ### Evolução operacional 276 — Atalho de proposta no card do Pipeline CRM
 
 Cada card do Pipeline CRM oferece o atalho **Proposta**, aberto em nova aba, para a tela de grupos. O acesso transmite somente o identificador do lead; a página valida a sessão e o tenant do host antes de preencher nome e WhatsApp. Ao concluir o PDF, a consolidação canônica por telefone reutiliza o mesmo lead ativo e mantém proposta e simulação no seu histórico.

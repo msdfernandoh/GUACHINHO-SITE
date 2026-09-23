@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { formatCurrency } from "@/lib/utils/format";
+import { formatCurrency, formatWhatsappBrInput } from "@/lib/utils/format";
 import { labelOrigem, valorEstimadoLead, valorParcelaLead, mapLegacyStatusToEtapaSlug } from "@/lib/crm/constants";
 import type { LeadListRow, CrmFunilEtapaRow } from "@/lib/crm/types";
 import type { ConsultorOption } from "@/lib/admin/consultores";
@@ -47,6 +47,10 @@ export function CrmLeadCard({
   const parcela = valorParcelaLead(lead);
   const rawPhone = lead.whatsapp || "";
   const phoneDigits = rawPhone.replace(/\D/g, "");
+  const displayPhoneDigits = phoneDigits.startsWith("55") && (phoneDigits.length === 12 || phoneDigits.length === 13)
+    ? phoneDigits.slice(2)
+    : phoneDigits;
+  const displayPhone = displayPhoneDigits ? formatWhatsappBrInput(displayPhoneDigits) : null;
   const whatsappUrl = phoneDigits
     ? `https://wa.me/${phoneDigits.startsWith("55") ? phoneDigits : `55${phoneDigits}`}?text=${encodeURIComponent(
         `Olá ${lead.nome}, tudo bem? Sou da Gauchinho Consórcios | Racon e estou retornando seu contato!`,
@@ -104,12 +108,17 @@ export function CrmLeadCard({
     >
       {/* 1. TOPO DO CARD: Nome e Badges */}
       <div className="flex items-start justify-between gap-2">
-        <Link
-          href={`/admin/leads/${lead.id}`}
-          className="font-semibold text-zinc-100 hover:text-blue-400"
-        >
-          {cardLead.nome}
-        </Link>
+        <div className="min-w-0">
+          <Link
+            href={`/admin/leads/${lead.id}`}
+            className="block truncate font-semibold text-zinc-100 hover:text-blue-400"
+          >
+            {cardLead.nome}
+          </Link>
+          {displayPhone ? (
+            <span className="mt-0.5 block text-[10px] text-zinc-400">{displayPhone}</span>
+          ) : null}
+        </div>
 
         <div className="flex shrink-0 items-center gap-1">
           {lead.is_incompleto && (
