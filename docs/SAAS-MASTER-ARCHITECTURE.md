@@ -3087,3 +3087,13 @@ visual do tenant aplica cores por bloco.
 
 Relatório:
 `docs/relatorios-fases/HOTFIX-273-MENU-E-CONTRASTE-PARCEIROS-RACON.md`.
+
+### Hotfix operacional 274 — Cadastro antes da instalação do app de indicação
+
+As páginas públicas do programa de parceiros passam a conduzir primeiro ao
+cadastro, preservando a modalidade escolhida, antes de oferecer a instalação
+do app. A orientação de adicionar à tela inicial — inclusive a instrução
+específica do iPhone — é exibida dentro do painel autenticado de indicação.
+
+Relatório:
+`docs/relatorios-fases/HOTFIX-274-CADASTRO-E-INSTALACAO-APP-INDICADOR.md`.

@@ -25,4 +25,16 @@ describe("Fase 251 — programa de parceiros no domínio Racon", () => {
     expect(login).toContain('href="/parceiros/cadastro"');
     expect(login).not.toContain('href="/parceiros" className="mt-3');
   });
+
+  it("prioriza cadastro público e oferece instalação dentro do painel autenticado", () => {
+    const cta = source("src/components/public/instalar-app-parceiro-button.tsx");
+    const modalidade = source("src/components/public/modelo-parceiro-landing-client.tsx");
+    const painel = source("src/app/app-indicador/page.tsx");
+    expect(cta).toContain("Cadastre-se e baixe o app");
+    expect(cta).toContain("/parceiros/cadastro?modelo=");
+    expect(cta).not.toContain("beforeinstallprompt");
+    expect(modalidade).toContain("InstalarAppParceiroButton");
+    expect(modalidade).toContain("modelo={modelo.id}");
+    expect(painel).toContain("InstalarAppIndicadorCard");
+  });
 });

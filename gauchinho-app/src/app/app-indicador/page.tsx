@@ -8,6 +8,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { resolveIndicadorAppSession } from "@/lib/parceiros/indicador-app-session";
 import { logoutIndicadorAction } from "./login/actions";
 import { IndicadorLinkCard } from "@/components/app-indicador/indicador-link-card";
+import { InstalarAppIndicadorCard } from "@/components/app-indicador/instalar-app-indicador-card";
 import { headers } from "next/headers";
 import { fetchEventoAtivoParaPainelIndicador } from "@/lib/parceiros/eventos-indicador";
 
@@ -131,6 +132,7 @@ export default async function AppIndicadorPage() {
       >
         Conheça os nossos programas
       </Link>
+      <InstalarAppIndicadorCard />
       {linkIndicacao && (
           <IndicadorLinkCard
             url={linkIndicacao}
