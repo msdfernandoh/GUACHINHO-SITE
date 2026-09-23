@@ -9,6 +9,8 @@ import {
   visualBlocksForPage,
   RACON_LOGO,
 } from "./site-appearance";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 
 describe("aparência por página e bloco", () => {
   it("preserva fotos, cores e enquadramento independentes", () => {
@@ -133,5 +135,16 @@ describe("menus do modelo", () => {
       { id: "home", label: "Início", rota: "/" },
       { id: "parceiros", label: "Seja parceiro", rota: "/parceiros", ativo: true },
     ]);
+  });
+});
+
+describe("isolamento da landing de parceiros", () => {
+  it("não aplica o tema operacional às rotas públicas do programa", () => {
+    const source = readFileSync(
+      resolve(process.cwd(), "src/components/public/site-appearance.tsx"),
+      "utf8",
+    );
+    expect(source).toContain('page === "/parceiros" || page.startsWith("/parceiros/")');
+    expect(source).toContain("!isPartnerLanding");
   });
 });

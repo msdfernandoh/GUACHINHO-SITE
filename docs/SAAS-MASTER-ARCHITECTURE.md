@@ -3097,3 +3097,13 @@ específica do iPhone — é exibida dentro do painel autenticado de indicação
 
 Relatório:
 `docs/relatorios-fases/HOTFIX-274-CADASTRO-E-INSTALACAO-APP-INDICADOR.md`.
+
+### Hotfix operacional 275 — Isolamento visual das landings de parceiros
+
+As páginas públicas do programa de parceiros deixaram de receber a camada de
+estilos operacionais do tenant Racon. Seus tokens de hero, superfícies, cards
+e CTAs passam a ser aplicados exclusivamente pela própria landing, impedindo
+que regras globais substituam cores e escondam textos de botões.
+
+Relatório:
+`docs/relatorios-fases/HOTFIX-275-ISOLAMENTO-VISUAL-LANDINGS-PARCEIROS.md`.
