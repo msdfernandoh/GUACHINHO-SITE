@@ -8,13 +8,10 @@ import type { ConsultorOption } from "@/lib/admin/consultores";
 import {
   MessageCircle,
   Clock,
-  Flame,
   AlertCircle,
-  ExternalLink,
   CalendarPlus,
   Send,
   User,
-  ArrowRight,
   FilePlus2,
 } from "lucide-react";
 import { useState, useTransition } from "react";
