@@ -389,12 +389,16 @@ function FolhaResumo({
   pagina: string;
 }) {
   const c = data.consolidado;
-  const multi = data.segmentos.length > 1;
+  const multi = (c?.totalGrupos ?? primeiroSegmento.grupos.length) > 1;
   return (
     <Page size="A4" style={s.page}>
       <Cabecalho direito={`Proposta #${data.propostaId.slice(0, 8).toUpperCase()}`} />
       <Text style={s.kicker}>{multi ? "Resumo consolidado" : "Resumo da proposta"}</Text>
-      <Text style={s.h2}>{multi ? "Dois objetivos, uma só estratégia" : resumoTitulo(data)}</Text>
+      <Text style={s.h2}>
+        {data.modoAgrupamentoGrupos === "separado" && multi
+          ? "Uma estratégia, condições detalhadas por grupo"
+          : multi ? "Dois objetivos, uma só estratégia" : resumoTitulo(data)}
+      </Text>
       <Text style={s.subline}>{resumoSubtitulo(data)}</Text>
 
       {multi && c ? (
@@ -447,7 +451,33 @@ function resumoSubtitulo(data: PropostaPdfData): string {
   const partes = data.segmentos
     .map((seg) => `${seg.label.toLowerCase()} (${fmtMoney(seg.totais.credito)})`)
     .join(" e ");
-  return `A proposta reúne ${partes}. Abaixo o resumo e o detalhamento de cada grupo — início, custo do plano, tipos de lance e evolução após a contemplação.`;
+  const detalhamento = data.modoAgrupamentoGrupos === "separado"
+    ? "Cada grupo está detalhado em sua própria folha, sem somar prazos ou condições diferentes."
+    : "Abaixo o resumo e o detalhamento de cada grupo — início, custo do plano, tipos de lance e evolução após a contemplação.";
+  return `A proposta reúne ${partes}. ${detalhamento}`;
+}
+
+function totaisDeGrupo(g: GrupoPdfBlock): SegmentoPdf["totais"] {
+  return {
+    credito: g.credito,
+    primeiraParcela: g.primeiraParcela,
+    lanceEmbutido: g.lanceEmbutido,
+    recursoProprio: g.recursoProprio,
+    lanceTotal: g.lanceTotal,
+    creditoLiquido: g.creditoLiquido,
+    parcelaPosContemplacao: g.parcelaPosContemplacao,
+  };
+}
+
+function separarSegmentosPorGrupo(segmentos: SegmentoPdf[]): SegmentoPdf[] {
+  return segmentos.flatMap((segmento) =>
+    segmento.grupos.map((grupo) => ({
+      tipo: segmento.tipo,
+      label: segmento.label,
+      grupos: [grupo],
+      totais: totaisDeGrupo(grupo),
+    })),
+  );
 }
 
 /* ---------- bloco de segmento ---------- */
@@ -903,7 +933,10 @@ export function PropostaPdfDocument({ data }: { data: PropostaPdfData }) {
     );
   }
 
-  const [seg0, ...segRestantes] = segmentos;
+  const segmentosDocumento = docData.modoAgrupamentoGrupos === "separado"
+    ? separarSegmentosPorGrupo(segmentos)
+    : segmentos;
+  const [seg0, ...segRestantes] = segmentosDocumento;
   const totalFolhas = 1 + segRestantes.length + 1;
 
   return (
@@ -913,10 +946,10 @@ export function PropostaPdfDocument({ data }: { data: PropostaPdfData }) {
       <FolhaResumo data={docData} primeiroSegmento={seg0} pagina={`Folha 1 / ${totalFolhas}`} />
 
       {segRestantes.map((seg, i) => (
-        <Page key={seg.tipo} size="A4" style={s.page}>
-          <Cabecalho direito={`Segmento ${seg.label}`} />
-          <Text style={s.kicker}>Segmento {seg.label}</Text>
-          <Text style={s.h2}>Detalhamento do grupo</Text>
+        <Page key={`${seg.tipo}-${seg.grupos[0]?.codigoGrupo ?? i}-${i}`} size="A4" style={s.page}>
+          <Cabecalho direito={docData.modoAgrupamentoGrupos === "separado" ? `Grupo ${seg.grupos[0]?.codigoGrupo ?? ""}` : `Segmento ${seg.label}`} />
+          <Text style={s.kicker}>{docData.modoAgrupamentoGrupos === "separado" ? `Grupo ${seg.grupos[0]?.codigoGrupo ?? ""}` : `Segmento ${seg.label}`}</Text>
+          <Text style={s.h2}>{docData.modoAgrupamentoGrupos === "separado" ? "Condições deste grupo" : "Detalhamento do grupo"}</Text>
           <View style={{ height: 8 }} />
           <SegBlock data={docData} segmento={seg} />
           <Rodape pagina={`Folha ${2 + i} / ${totalFolhas}`} />

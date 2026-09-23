@@ -1,5 +1,11 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
+### Evolução operacional 279 — Proposta de grupos separada por folha
+
+Ao gerar proposta com mais de um grupo do mesmo tipo de bem, o consultor pode escolher **Unificar** ou **Separar por grupo**. A escolha é persistida em `propostas.dados_simulacao`. No modo separado, o PDF mantém uma capa e um resumo únicos, mas cria uma folha exclusiva para cada grupo, agregando somente suas próprias cotas e preservando início, prazo e condições independentes.
+
+Relatório: `docs/relatorios-fases/FASE-279-PROPOSTA-GRUPOS-SEPARADA-POR-FOLHA.md`.
+
 ### Correção operacional 278 — Adoção auditável de lead legado em proposta pública
 
 A adoção de um lead anterior à tenantização deixou de depender de sinalização de sessão do banco. A RPC agora grava autorização/auditoria explícita por `lead_id` e `empresa_id` antes de executar a transição permitida `NULL → empresa`, que o gatilho aceita exclusivamente para esse par. O fallback da aplicação não altera escopo: qualquer falha na RPC é devolvida de modo seguro, sem duplicar ou cruzar dados de empresas.

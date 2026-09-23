@@ -82,6 +82,9 @@ export async function buildPropostaPdfData(
   ]);
 
   const dadosSim = (p.dados_simulacao ?? {}) as Record<string, unknown>;
+  const modoAgrupamentoGrupos = dadosSim.modo_agrupamento_grupos === "separado"
+    ? "separado"
+    : "unificado";
   const comparativoRaw = (p.comparativo_financiamento ?? dadosSim.comparativo ?? null) as Record<
     string,
     unknown
@@ -585,6 +588,7 @@ export async function buildPropostaPdfData(
     consolidado,
     blocos: propostasFull.blocos,
     linhasGrupo: propostasFull.linhasGrupo,
+    modoAgrupamentoGrupos,
     visualizacao: overrides?.visualizacao === "resumida" ? "resumida" : "completa",
   };
 }

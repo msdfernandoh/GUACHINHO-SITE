@@ -30,6 +30,7 @@ import { useTenantBrand } from "@/components/tenant/tenant-brand-context";
 
 type ModalFiltro = (typeof MODALIDADE_FILTRO_PUBLICO)[number]["value"];
 type AbaGruposPublic = "simulacao" | "sorteios";
+type ModoAgrupamentoGrupos = "unificado" | "separado";
 
 export type SelecaoGrupoPayload = {
   grupoId: string;
@@ -75,6 +76,7 @@ export function GruposPublicClient({
   const [consultorNomePdf, setConsultorNomePdf] = useState("");
   const [consultorTelPdf, setConsultorTelPdf] = useState("");
   const [pdfResumido, setPdfResumido] = useState(false);
+  const [modoAgrupamentoGrupos, setModoAgrupamentoGrupos] = useState<ModoAgrupamentoGrupos>("unificado");
   const [loading, setLoading] = useState(false);
   const [resultMsg, setResultMsg] = useState<string | null>(null);
   const [pdfLink, setPdfLink] = useState<string | null>(null);
@@ -178,7 +180,6 @@ export function GruposPublicClient({
   );
 
   const hasSelection = linhasAtivas.length > 0;
-
   function setConfig(grupoId: string, config: ConfigLinhaSimulacaoGrupo) {
     setConfigs((prev) => ({ ...prev, [grupoId]: config }));
   }
@@ -192,6 +193,20 @@ export function GruposPublicClient({
       };
     }).filter((l) => l.grupo);
   }, [linhasAtivas, aggregates]);
+
+  const temMaisDeUmGrupoMesmoTipo = useMemo(() => {
+    const porTipo = new Map<string, number>();
+    for (const linha of linhasEnriquecidas) {
+      const modalidade = linha.grupo?.modalidade?.toLocaleLowerCase("pt-BR") ?? "outro";
+      const tipo = modalidade.includes("imóv") || modalidade.includes("imov")
+        ? "imovel"
+        : modalidade.includes("auto") || modalidade.includes("veíc") || modalidade.includes("veic") || modalidade.includes("moto") || modalidade.includes("caminh") || modalidade.includes("máquin") || modalidade.includes("maquin")
+          ? "veiculo"
+          : "outro";
+      porTipo.set(tipo, (porTipo.get(tipo) ?? 0) + 1);
+    }
+    return [...porTipo.values()].some((quantidade) => quantidade > 1);
+  }, [linhasEnriquecidas]);
 
   function buildPayloadGrupos() {
     return buildDadosSimulacaoGrupos(
@@ -290,6 +305,7 @@ export function GruposPublicClient({
           consultor_nome: consultorNomePdf.trim() || undefined,
           consultor_telefone: consultorTelPdf.trim() || undefined,
           visualizacao_pdf: pdfResumido ? "resumida" : "completa",
+          modo_agrupamento_grupos: temMaisDeUmGrupoMesmoTipo ? modoAgrupamentoGrupos : "unificado",
           selecoes: linhasAtivas.map((s) => ({
             grupoId: s.grupoId,
             cotaId: s.cotaId,
@@ -534,6 +550,20 @@ export function GruposPublicClient({
             {isConsultor ? (
               <>
                 <label className="flex items-center gap-2 text-sm text-zinc-300"><input type="checkbox" checked={pdfResumido} onChange={(e) => setPdfResumido(e.target.checked)} /> Gerar versão resumida (mesmos dados do link resumido)</label>
+                {temMaisDeUmGrupoMesmoTipo && !pdfResumido ? (
+                  <fieldset className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3">
+                    <legend className="px-1 text-sm font-semibold text-amber-200">Grupos do mesmo tipo</legend>
+                    <p className="mb-2 text-xs text-zinc-400">Escolha como apresentar grupos com prazos e condições diferentes.</p>
+                    <label className="flex cursor-pointer items-start gap-2 text-sm text-zinc-200">
+                      <input type="radio" name="modo-agrupamento-grupos" checked={modoAgrupamentoGrupos === "unificado"} onChange={() => setModoAgrupamentoGrupos("unificado")} />
+                      <span><strong>Unificar</strong><span className="block text-xs text-zinc-400">Resume os grupos do mesmo tipo na mesma proposta.</span></span>
+                    </label>
+                    <label className="mt-2 flex cursor-pointer items-start gap-2 text-sm text-zinc-200">
+                      <input type="radio" name="modo-agrupamento-grupos" checked={modoAgrupamentoGrupos === "separado"} onChange={() => setModoAgrupamentoGrupos("separado")} />
+                      <span><strong>Separar por grupo</strong><span className="block text-xs text-zinc-400">Mantém uma única capa e gera uma folha para cada grupo.</span></span>
+                    </label>
+                  </fieldset>
+                ) : null}
                 <div>
                   <label className="mb-1 block text-sm font-medium text-zinc-300">
                     Observação do consultor <span className="text-zinc-500">(opcional)</span>

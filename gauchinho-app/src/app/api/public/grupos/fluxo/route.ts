@@ -39,6 +39,7 @@ type Body = {
   consultor_nome?: string;
   consultor_telefone?: string;
   visualizacao_pdf?: "completa" | "resumida";
+  modo_agrupamento_grupos?: "unificado" | "separado";
 };
 
 export async function POST(request: Request) {
@@ -53,6 +54,9 @@ export async function POST(request: Request) {
     const admin = createAdminClient();
     const leadsConfig = await getConfigJsonPublic("leads", DEFAULT_LEADS);
     const whatsapp = body.whatsapp.trim();
+    const modoAgrupamentoGrupos = body.modo_agrupamento_grupos === "separado"
+      ? "separado"
+      : "unificado";
 
     const upsertRes = await upsertLeadPorTelefone(admin, {
       empresa_id: ingress.empresaId,
@@ -229,6 +233,7 @@ export async function POST(request: Request) {
               ...buildSnapshotLanceLinha(s.config, s.resultado, mod),
             };
           }),
+          modo_agrupamento_grupos: modoAgrupamentoGrupos,
         },
         status: "Gerada",
         pdf_url: null,

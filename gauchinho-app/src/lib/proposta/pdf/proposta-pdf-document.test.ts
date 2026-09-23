@@ -100,6 +100,7 @@ function baseData(overrides: Partial<PropostaPdfData>): PropostaPdfData {
       assembleiasDecorridas: false,
       prazoRestante: true,
     },
+    modoAgrupamentoGrupos: "unificado",
     visualizacao: "completa",
     ...overrides,
   };
@@ -132,6 +133,23 @@ describe("PDF de proposta — nova geração", () => {
       segmentos: [seg],
       consolidado: consolidadoDe([seg]),
       visualizacao: "resumida",
+    }));
+    expect(buf.subarray(0, 5).toString()).toBe("%PDF-");
+  }, 30000);
+
+  it("separa grupos do mesmo tipo em folhas próprias, mantendo a capa única", async () => {
+    const g1 = grupo("veiculo", "001553");
+    const g2 = { ...grupo("veiculo", "001554"), prazoTotal: 160, prazoRestante: 158 };
+    const seg: SegmentoPdf = {
+      tipo: "veiculo",
+      label: "Veículo",
+      grupos: [g1, g2],
+      totais: consolidadoDe([{ ...segmento("veiculo", "Veículo"), grupos: [g1, g2] }])!,
+    };
+    const buf = await renderPropostaPdfBuffer(baseData({
+      segmentos: [seg],
+      consolidado: consolidadoDe([seg]),
+      modoAgrupamentoGrupos: "separado",
     }));
     expect(buf.subarray(0, 5).toString()).toBe("%PDF-");
   }, 30000);
