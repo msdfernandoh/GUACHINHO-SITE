@@ -1,5 +1,11 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
+### Correção operacional 278 — Adoção auditável de lead legado em proposta pública
+
+A adoção de um lead anterior à tenantização deixou de depender de sinalização de sessão do banco. A RPC agora grava autorização/auditoria explícita por `lead_id` e `empresa_id` antes de executar a transição permitida `NULL → empresa`, que o gatilho aceita exclusivamente para esse par. O fallback da aplicação não altera escopo: qualquer falha na RPC é devolvida de modo seguro, sem duplicar ou cruzar dados de empresas.
+
+Relatório: `docs/relatorios-fases/FASE-278-ADOOCAO-AUDITAVEL-LEAD-LEGADO.md`.
+
 ### Evolução operacional 277 — Telefone visível no card do Pipeline CRM
 
 Os cards do Pipeline CRM exibem o WhatsApp do lead logo abaixo do nome, com máscara brasileira e normalização visual do DDI `+55`. A informação torna a identificação e a ação de contato imediatas sem abrir o detalhe do cadastro.

@@ -213,9 +213,14 @@ export async function upsertLeadPorTelefone(
       };
     }
 
-    // Se a RPC falhar por outro motivo que não ausência da função, loga aviso
+    // Só o banco pode adotar um lead legado (NULL -> empresa). Em caso de
+    // falha real, não caímos no fallback para não tentar alterar o escopo sem
+    // a autorização transacional da RPC.
     if (rpcError && !rpcError.message.includes("does not exist") && !rpcError.message.includes("function") && rpcError.code !== "42883") {
-      console.warn("[upsertLeadPorTelefone] Erro na RPC, acionando fallback:", rpcError);
+      throw new Error(`Falha ao consolidar lead: ${rpcError.message}`);
+    }
+    if (rpcData && !rpcData.ok) {
+      throw new Error(String(rpcData.error ?? "Falha ao consolidar lead."));
     }
   } catch (err) {
     console.warn("[upsertLeadPorTelefone] Exceção ao chamar RPC, acionando fallback:", err);
@@ -281,9 +286,9 @@ export async function upsertLeadPorTelefone(
     }
 
     const updateData: Record<string, unknown> = {
-      // A adoção NULL -> tenant é intencional e ocorre somente para o lead
-      // legado escolhido acima. Não há alteração de escopo entre empresas.
-      empresa_id: activeLead.empresa_id ?? payload.empresa_id ?? null,
+      // O fallback nunca adota escopo. A mudança NULL -> empresa é exclusiva
+      // da RPC transacional; assim uma falha de banco não cria acesso cruzado.
+      empresa_id: activeLead.empresa_id ?? null,
       telefone_normalizado: norm,
       status: "Novo",
       etapa_id: targetEtapaId || activeLead.etapa_id,
