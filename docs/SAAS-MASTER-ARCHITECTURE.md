@@ -2756,6 +2756,12 @@ As rotas públicas sob `/eventos`, incluindo `/{slug}/sorteio` e `/{slug}/telao`
 
 Relatório: `docs/relatorios-fases/FASE-271-CHECKIN-EVENTO-DOMINIO-RACON.md`.
 
+### Fase 272 — Marca Racon no check-in de eventos
+
+Os formulários públicos de presença e sorteio apresentam a logo Racon Consórcios no cabeçalho interno tanto no portal Racon quanto no Gauchinho. A regra abrange o fluxo conversacional, o formulário clássico e as telas de indisponibilidade, preservando o nome e as cores operacionais do evento.
+
+Relatório: `docs/relatorios-fases/FASE-272-LOGO-RACON-CHECKIN-EVENTOS.md`.
+
 ### Evolução operacional 260 — Navegação consolidada de parceiros
 
 A navegação pública passa a agrupar os destinos `Imobiliárias` e `Seguradoras`

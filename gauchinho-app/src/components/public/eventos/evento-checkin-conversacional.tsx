@@ -61,10 +61,10 @@ export function EventoCheckinConversacional({
   const [pending, startTransition] = useTransition();
   const [modalLgpdAberto, setModalLgpdAberto] = useState(false);
 
-  // Identidade visual dinâmica (prioridade para customização do evento, fallback para o tenant)
-  const logo = evento.logoPersonalizadoUrl || tenantBrand.logoUrl;
+  // O check-in usa a marca Racon nos dois portais para manter o formulário padronizado.
+  const logo = "/racon/logoracon.jpg";
   const primaryColor = evento.corPrimaria || tenantBrand.corPrimaria || "#0066cc";
-  const brandNome = tenantBrand.nome || "Consórcios";
+  const brandNome = "Racon Consórcios";
 
   // Primeiro nome para fala amigável
   const primeiroNome = nome.trim().split(" ")[0] || "amigo";

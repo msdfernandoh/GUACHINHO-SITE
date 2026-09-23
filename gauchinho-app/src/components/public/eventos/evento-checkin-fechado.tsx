@@ -18,9 +18,9 @@ type Props = {
 
 export function EventoCheckinFechado({ evento, disponibilidade }: Props) {
   const tenantBrand = useTenantBrand();
-  const logo = evento.logoPersonalizadoUrl || tenantBrand.logoUrl;
+  const logo = "/racon/logoracon.jpg";
   const primaryColor = evento.corPrimaria || tenantBrand.corPrimaria || "#0066cc";
-  const brandNome = tenantBrand.nome || "Consórcios";
+  const brandNome = "Racon Consórcios";
 
   const isEncerrado = disponibilidade.status === "encerrado";
 
