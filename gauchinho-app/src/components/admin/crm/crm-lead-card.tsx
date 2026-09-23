@@ -15,6 +15,7 @@ import {
   Send,
   User,
   ArrowRight,
+  FilePlus2,
 } from "lucide-react";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
@@ -238,6 +239,18 @@ export function CrmLeadCard({
             className="inline-flex h-7 w-7 items-center justify-center rounded-md bg-purple-500/10 text-purple-400 transition hover:bg-purple-500/20 hover:text-purple-300"
           >
             <CalendarPlus className="h-3.5 w-3.5" />
+          </Link>
+
+          <Link
+            href={`/grupos?lead_id=${encodeURIComponent(lead.id)}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            title="Gerar proposta para este lead em nova aba"
+            onClick={(e) => e.stopPropagation()}
+            className="inline-flex h-7 items-center gap-1 rounded-md bg-amber-500/10 px-2 text-[10px] font-semibold text-amber-300 transition hover:bg-amber-500/20 hover:text-amber-200"
+          >
+            <FilePlus2 className="h-3.5 w-3.5" />
+            Proposta
           </Link>
         </div>
 

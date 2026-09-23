@@ -7,6 +7,7 @@ import { getCurrentTenantContext } from "@/lib/tenant/context";
 import { DEFAULT_LEADS, getConfigJson } from "@/server/config";
 import { getCatalogEmpresaIdFromHeaders } from "@/lib/grupos/resolve-catalog-empresa";
 import { listGruposAutorizadosForEmpresa } from "@/lib/grupos/catalogo-autorizado-service";
+import { createClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = {
   title: "Tabela de Grupos de Consórcio em Andamento | Gauchinho & Racon",
@@ -33,7 +34,12 @@ export const metadata: Metadata = {
   },
 };
 
-export default async function GruposPublicPage() {
+export default async function GruposPublicPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | undefined>>;
+}) {
+  const sp = await searchParams;
   const aggregates = await fetchPublicGruposAggregates();
   const usuario = await getUsuarioNegocio();
   const staff = isStaff(usuario?.perfil);
@@ -58,6 +64,24 @@ export default async function GruposPublicPage() {
     modalidade: g.modalidade,
     quantidade_cotas_sorteio: g.quantidade_cotas_sorteio ?? null,
   }));
+  const leadId = sp.lead_id;
+  const isUuid = Boolean(leadId && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(leadId));
+  let leadPrefill: { nome: string; whatsapp: string } | undefined;
+
+  // O identificador vem do card, mas os dados só são lidos após confirmar a
+  // sessão e o tenant atual. A URL não carrega nome ou telefone do cliente.
+  if (isConsultor && empresaId && isUuid) {
+    const supabase = await createClient();
+    const { data: lead } = await supabase
+      .from("leads")
+      .select("nome, whatsapp")
+      .eq("id", leadId!)
+      .or(`empresa_id.eq.${empresaId},empresa_id.is.null`)
+      .maybeSingle();
+    if (lead?.whatsapp) {
+      leadPrefill = { nome: lead.nome || "", whatsapp: lead.whatsapp };
+    }
+  }
 
   return (
     <GruposPublicClient
@@ -67,6 +91,7 @@ export default async function GruposPublicPage() {
       isLoggedIn={Boolean(usuario)}
       gruposSorteio={gruposSorteio}
       canManageSorteios={canManageSorteios}
+      leadPrefill={leadPrefill}
     />
   );
 }

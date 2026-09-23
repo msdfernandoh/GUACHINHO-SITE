@@ -1,5 +1,11 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
+### Evolução operacional 276 — Atalho de proposta no card do Pipeline CRM
+
+Cada card do Pipeline CRM oferece o atalho **Proposta**, aberto em nova aba, para a tela de grupos. O acesso transmite somente o identificador do lead; a página valida a sessão e o tenant do host antes de preencher nome e WhatsApp. Ao concluir o PDF, a consolidação canônica por telefone reutiliza o mesmo lead ativo e mantém proposta e simulação no seu histórico.
+
+Relatório: `docs/relatorios-fases/FASE-276-ATALHO-PROPOSTA-CARD-PIPELINE.md`.
+
 ### Evolução operacional 275 — Proposta pública reutiliza lead ativo pelo telefone
 
 O fluxo público de grupos resolve a empresa exclusivamente pelo host e passa a reutilizar o lead ativo já existente para o mesmo telefone, inclusive quando o registro histórico ainda não possuía `empresa_id`. A adoção de legado é transacional e estritamente limitada a `NULL → empresa` do host confiável, sem registro ativo concorrente naquela empresa e nunca entre empresas. A proposta e a simulação ficam vinculadas ao mesmo `lead_id`; clientes com venda ganha continuam abrindo uma nova negociação, como regra comercial canônica.

@@ -45,6 +45,7 @@ export function GruposPublicClient({
   isLoggedIn = false,
   gruposSorteio = [],
   canManageSorteios = false,
+  leadPrefill,
 }: {
   aggregates: PublicGrupoAggregate[];
   isStaff?: boolean;
@@ -52,6 +53,7 @@ export function GruposPublicClient({
   isLoggedIn?: boolean;
   gruposSorteio?: GrupoSorteioOption[];
   canManageSorteios?: boolean;
+  leadPrefill?: { nome: string; whatsapp: string };
 }) {
   const tenantBrand = useTenantBrand();
   const [filtro, setFiltro] = useState<ModalFiltro>("Todos");
@@ -65,8 +67,10 @@ export function GruposPublicClient({
     return init;
   });
   const [modalOpen, setModalOpen] = useState(false);
-  const [nome, setNome] = useState("");
-  const [whatsapp, setWhatsapp] = useState("");
+  const [nome, setNome] = useState(leadPrefill?.nome ?? "");
+  const [whatsapp, setWhatsapp] = useState(
+    leadPrefill?.whatsapp ? formatWhatsappBrInput(leadPrefill.whatsapp) : "",
+  );
   const [observacaoPdf, setObservacaoPdf] = useState("");
   const [consultorNomePdf, setConsultorNomePdf] = useState("");
   const [consultorTelPdf, setConsultorTelPdf] = useState("");
