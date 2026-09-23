@@ -1,5 +1,15 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
+### Hotfix operacional 287 — Rolagem superior do Pipeline CRM
+
+O quadro Kanban do Pipeline Comercial passa a apresentar uma barra horizontal
+acima das colunas sempre que elas excedem a largura disponível. A barra superior
+e a rolagem nativa do quadro são sincronizadas nos dois sentidos e recalculadas
+após filtros, mudanças de foco ou redimensionamento, permitindo navegar pelas
+etapas sem descer até o fim dos cards.
+
+Relatório: `docs/relatorios-fases/HOTFIX-287-ROLAGEM-SUPERIOR-PIPELINE-CRM.md`.
+
 ### Evolução operacional 286 — Meus contatos e conversão segura em lead
 
 O painel administrativo inclui o menu tenant-aware **Meus contatos**. A tabela

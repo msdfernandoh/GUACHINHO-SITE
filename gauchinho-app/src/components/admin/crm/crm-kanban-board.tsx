@@ -105,6 +105,13 @@ export function CrmKanbanBoard({
 
   // Referência para rolagem suave para a primeira coluna filtrada quando em modo todas as colunas
   const firstFilteredColRef = useRef<HTMLDivElement | null>(null);
+  const kanbanScrollRef = useRef<HTMLDivElement | null>(null);
+  const kanbanContentRef = useRef<HTMLDivElement | null>(null);
+  const kanbanTopScrollRef = useRef<HTMLDivElement | null>(null);
+  const [kanbanScrollMetrics, setKanbanScrollMetrics] = useState({
+    contentWidth: 0,
+    viewportWidth: 0,
+  });
 
   useEffect(() => {
     if (!focusMode && selectedStageFilter !== "todas" && firstFilteredColRef.current) {
@@ -288,6 +295,63 @@ export function CrmKanbanBoard({
     : null;
 
   const visibleEtapas = focusMode && isFiltered ? activeEtapas : etapas;
+  const hasKanbanHorizontalOverflow =
+    kanbanScrollMetrics.contentWidth > kanbanScrollMetrics.viewportWidth + 1;
+
+  // A barra superior evita que o usuário precise ir ao fim da lista de cards para
+  // alcançar as outras etapas. Ela acompanha a rolagem natural do quadro abaixo.
+  useEffect(() => {
+    const board = kanbanScrollRef.current;
+    const content = kanbanContentRef.current;
+    if (!board || !content) return;
+
+    const updateMetrics = () => {
+      setKanbanScrollMetrics({
+        contentWidth: content.scrollWidth,
+        viewportWidth: board.clientWidth,
+      });
+    };
+
+    updateMetrics();
+    const observer = new ResizeObserver(updateMetrics);
+    observer.observe(board);
+    observer.observe(content);
+    window.addEventListener("resize", updateMetrics);
+
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", updateMetrics);
+    };
+  }, [visibleEtapas.length, focusMode]);
+
+  useEffect(() => {
+    const board = kanbanScrollRef.current;
+    const topScroll = kanbanTopScrollRef.current;
+    if (!board || !topScroll) return;
+
+    let isSyncing = false;
+    let syncFrame: number | undefined;
+    const syncScroll = (source: HTMLDivElement, target: HTMLDivElement) => {
+      if (isSyncing) return;
+      isSyncing = true;
+      target.scrollLeft = source.scrollLeft;
+      syncFrame = window.requestAnimationFrame(() => {
+        isSyncing = false;
+      });
+    };
+    const syncFromBoard = () => syncScroll(board, topScroll);
+    const syncFromTop = () => syncScroll(topScroll, board);
+
+    board.addEventListener("scroll", syncFromBoard, { passive: true });
+    topScroll.addEventListener("scroll", syncFromTop, { passive: true });
+    topScroll.scrollLeft = board.scrollLeft;
+
+    return () => {
+      board.removeEventListener("scroll", syncFromBoard);
+      topScroll.removeEventListener("scroll", syncFromTop);
+      if (syncFrame) window.cancelAnimationFrame(syncFrame);
+    };
+  }, [hasKanbanHorizontalOverflow]);
 
   // Drag & Drop Handlers
   function handleDragStart(e: React.DragEvent, lead: LeadListRow) {
@@ -564,8 +628,24 @@ export function CrmKanbanBoard({
       )}
 
       {/* PIPELINE KANBAN COM AS COLUNAS (FOCADAS OU COMPLETAS) E DRAG & DROP */}
-      <div className="flex gap-3 overflow-x-auto pb-6 pt-1">
-        {visibleEtapas.map((col) => {
+      {hasKanbanHorizontalOverflow && (
+        <div className="rounded-xl border border-zinc-800 bg-zinc-950/60 px-3 py-2">
+          <div className="mb-1 flex items-center justify-between gap-3 text-[10px] font-semibold uppercase tracking-wider text-zinc-400">
+            <span>Etapas do funil</span>
+            <span className="normal-case tracking-normal text-zinc-500">Deslize para navegar pelas colunas</span>
+          </div>
+          <div
+            ref={kanbanTopScrollRef}
+            className="crm-kanban-top-scroll h-4 overflow-x-scroll"
+            aria-label="Rolagem horizontal das etapas do funil"
+          >
+            <div aria-hidden="true" className="h-px" style={{ width: kanbanScrollMetrics.contentWidth }} />
+          </div>
+        </div>
+      )}
+      <div ref={kanbanScrollRef} className="overflow-x-auto pb-6 pt-1">
+        <div ref={kanbanContentRef} className="flex min-w-max gap-3">
+          {visibleEtapas.map((col) => {
           const colLeads = leadsByEtapa.get(col.id) ?? [];
           const colTotalVal = totalValueByEtapa.get(col.id) ?? 0;
           const colTotalParcela = totalParcelaByEtapa.get(col.id) ?? 0;
@@ -656,7 +736,8 @@ export function CrmKanbanBoard({
               </div>
             </div>
           );
-        })}
+          })}
+        </div>
       </div>
 
       {/* MODAL DE TRANSIÇÃO DE ETAPA */}
