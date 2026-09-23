@@ -197,10 +197,20 @@ export function GruposPublicClient({
   const temMaisDeUmGrupoMesmoTipo = useMemo(() => {
     const porTipo = new Map<string, number>();
     for (const linha of linhasEnriquecidas) {
-      const modalidade = linha.grupo?.modalidade?.toLocaleLowerCase("pt-BR") ?? "outro";
-      const tipo = modalidade.includes("imóv") || modalidade.includes("imov")
+      // Alguns catálogos legados guardam o tipo no código ou nas categorias
+      // publicadas, e não somente em `modalidade`. Considerar as três fontes
+      // evita omitir a escolha para grupos como “5388 VEÍCULO”.
+      const identificadores = [
+        linha.grupo?.modalidade,
+        ...(linha.grupo?.categorias_publicacao ?? []),
+        linha.grupo?.codigo_grupo,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLocaleLowerCase("pt-BR");
+      const tipo = identificadores.includes("imóv") || identificadores.includes("imov")
         ? "imovel"
-        : modalidade.includes("auto") || modalidade.includes("veíc") || modalidade.includes("veic") || modalidade.includes("moto") || modalidade.includes("caminh") || modalidade.includes("máquin") || modalidade.includes("maquin")
+        : identificadores.includes("auto") || identificadores.includes("veíc") || identificadores.includes("veic") || identificadores.includes("moto") || identificadores.includes("caminh") || identificadores.includes("máquin") || identificadores.includes("maquin")
           ? "veiculo"
           : "outro";
       porTipo.set(tipo, (porTipo.get(tipo) ?? 0) + 1);
@@ -550,7 +560,7 @@ export function GruposPublicClient({
             {isConsultor ? (
               <>
                 <label className="flex items-center gap-2 text-sm text-zinc-300"><input type="checkbox" checked={pdfResumido} onChange={(e) => setPdfResumido(e.target.checked)} /> Gerar versão resumida (mesmos dados do link resumido)</label>
-                {temMaisDeUmGrupoMesmoTipo && !pdfResumido ? (
+                {temMaisDeUmGrupoMesmoTipo ? (
                   <fieldset className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3">
                     <legend className="px-1 text-sm font-semibold text-amber-200">Grupos do mesmo tipo</legend>
                     <p className="mb-2 text-xs text-zinc-400">Escolha como apresentar grupos com prazos e condições diferentes.</p>

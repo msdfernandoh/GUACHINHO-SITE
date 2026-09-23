@@ -1,5 +1,15 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
+### Hotfix operacional 281 — Escolha de agrupamento no PDF por identificação comercial do grupo
+
+O modal de geração de proposta passa a identificar grupos equivalentes também
+pelas categorias publicadas e pelo código comercial, além da modalidade técnica.
+Assim, grupos legados exibidos como `VEÍCULO` no catálogo apresentam
+corretamente a escolha **Unificar** ou **Separar por grupo**, inclusive quando
+o PDF resumido estiver marcado.
+
+Relatório: `docs/relatorios-fases/HOTFIX-281-ESCOLHA-AGRUPAMENTO-PDF.md`.
+
 ### Evolução operacional 280 — Histórico privado de PDFs no Pipeline CRM
 
 O card do Pipeline CRM passa a oferecer o atalho **PDFs**, que reúne as propostas
