@@ -30,7 +30,7 @@ import { useTenantBrand } from "@/components/tenant/tenant-brand-context";
 
 type ModalFiltro = (typeof MODALIDADE_FILTRO_PUBLICO)[number]["value"];
 type AbaGruposPublic = "simulacao" | "sorteios";
-type ModoAgrupamentoGrupos = "unificado" | "separado";
+type ModoAgrupamentoGrupos = "unificado" | "separado" | "independentes";
 
 export type SelecaoGrupoPayload = {
   grupoId: string;
@@ -80,6 +80,7 @@ export function GruposPublicClient({
   const [loading, setLoading] = useState(false);
   const [resultMsg, setResultMsg] = useState<string | null>(null);
   const [pdfLink, setPdfLink] = useState<string | null>(null);
+  const [pdfLinks, setPdfLinks] = useState<Array<{ nome: string; url: string }>>([]);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
   const [linkModal, setLinkModal] = useState<{
     protocolo: string;
@@ -279,6 +280,7 @@ export function GruposPublicClient({
     setModalOpen(true);
     setResultMsg(null);
     setPdfLink(null);
+    setPdfLinks([]);
     setToastMsg(null);
   }
 
@@ -298,7 +300,7 @@ export function GruposPublicClient({
           observacao: observacaoPdf.trim() || undefined,
           consultor_nome: consultorNomePdf.trim() || undefined,
           consultor_telefone: consultorTelPdf.trim() || undefined,
-          visualizacao_pdf: pdfResumido ? "resumida" : "completa",
+          visualizacao_pdf: pdfResumido && modoAgrupamentoGrupos === "unificado" ? "resumida" : "completa",
           modo_agrupamento_grupos: temMaisDeUmGrupo ? modoAgrupamentoGrupos : "unificado",
           selecoes: linhasAtivas.map((s) => ({
             grupoId: s.grupoId,
@@ -309,9 +311,19 @@ export function GruposPublicClient({
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Falha");
+      const arquivosRecebidos: unknown[] = Array.isArray(data.pdfFiles) ? data.pdfFiles : [];
+      const independentes = arquivosRecebidos.filter(
+        (arquivo): arquivo is { nome: string; url: string } =>
+          typeof arquivo === "object" && arquivo !== null &&
+          typeof (arquivo as { nome?: unknown }).nome === "string" &&
+          typeof (arquivo as { url?: unknown }).url === "string",
+      );
+      setPdfLinks(independentes);
       const pdfHref = (data.pdfPath as string) ?? (data.pdfDownloadUrl as string) ?? null;
-      setPdfLink(pdfHref);
-      setResultMsg(`Proposta criada. Crédito líquido: ${formatCurrency(data.creditoLiquido)}`);
+      setPdfLink(independentes.length ? null : pdfHref);
+      setResultMsg(independentes.length
+        ? `${independentes.length} PDFs independentes criados. Baixe cada grupo abaixo.`
+        : `Proposta criada. Crédito líquido: ${formatCurrency(data.creditoLiquido)}`);
       setModalOpen(false);
     } catch (err) {
       setResultMsg(err instanceof Error ? err.message : "Erro ao enviar");
@@ -452,6 +464,7 @@ export function GruposPublicClient({
         toastMsg={toastMsg}
         resultMsg={resultMsg}
         pdfLink={pdfLink}
+        pdfLinks={pdfLinks}
         onProposta={openPropostaModal}
         onContratar={() => openContratar("cliente_site")}
         onGerarLink={() => {
@@ -543,7 +556,7 @@ export function GruposPublicClient({
             </div>
             {isConsultor ? (
               <>
-                <label className="flex items-center gap-2 text-sm text-zinc-300"><input type="checkbox" checked={pdfResumido} disabled={modoAgrupamentoGrupos === "separado"} onChange={(e) => setPdfResumido(e.target.checked)} /> Gerar versão resumida (mesmos dados do link resumido)</label>
+                <label className="flex items-center gap-2 text-sm text-zinc-300"><input type="checkbox" checked={pdfResumido} disabled={modoAgrupamentoGrupos !== "unificado"} onChange={(e) => setPdfResumido(e.target.checked)} /> Gerar versão resumida (mesmos dados do link resumido)</label>
                 {temMaisDeUmGrupo ? (
                   <fieldset className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3">
                     <legend className="px-1 text-sm font-semibold text-amber-200">Mais de um grupo selecionado</legend>
@@ -556,7 +569,11 @@ export function GruposPublicClient({
                       <input type="radio" name="modo-agrupamento-grupos" checked={modoAgrupamentoGrupos === "separado"} onChange={() => { setModoAgrupamentoGrupos("separado"); setPdfResumido(false); }} />
                       <span><strong>Separar por grupo</strong><span className="block text-xs text-zinc-400">Mantém uma única capa e gera uma folha para cada grupo, inclusive imóvel e veículo.</span></span>
                     </label>
-                    {modoAgrupamentoGrupos === "separado" ? <p className="mt-2 text-[11px] text-amber-100">A versão resumida fica indisponível porque ela não comporta as folhas individuais.</p> : null}
+                    <label className="mt-2 flex cursor-pointer items-start gap-2 text-sm text-zinc-200">
+                      <input type="radio" name="modo-agrupamento-grupos" checked={modoAgrupamentoGrupos === "independentes"} onChange={() => { setModoAgrupamentoGrupos("independentes"); setPdfResumido(false); }} />
+                      <span><strong>Arquivos independentes</strong><span className="block text-xs text-zinc-400">Gera um PDF completo para cada grupo; cotas do mesmo grupo ficam no mesmo arquivo.</span></span>
+                    </label>
+                    {modoAgrupamentoGrupos !== "unificado" ? <p className="mt-2 text-[11px] text-amber-100">A versão resumida fica indisponível porque ela não comporta o detalhamento individual.</p> : null}
                   </fieldset>
                 ) : null}
                 <div>

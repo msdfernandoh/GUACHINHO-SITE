@@ -18,6 +18,17 @@ export async function uploadPropostaPdf(propostaId: string, buffer: Buffer) {
   return path;
 }
 
+/** Arquivos versionados/independentes não substituem o PDF principal da proposta. */
+export async function uploadPropostaPdfAtPath(storagePath: string, buffer: Buffer) {
+  const admin = createAdminClient();
+  const { error } = await admin.storage.from(PROPOSTAS_PDF_BUCKET).upload(storagePath, buffer, {
+    contentType: "application/pdf",
+    upsert: false,
+  });
+  if (error) throw new Error(`Storage upload: ${error.message}`);
+  return storagePath;
+}
+
 export async function createPropostaPdfSignedUrl(
   storagePath: string,
   expiresIn = 3600,

@@ -1,5 +1,16 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
+### Evolução operacional 284 — PDFs independentes por grupo
+
+Na geração de propostas multigrupo, além de unificar ou separar as folhas em
+um único documento, o consultor pode escolher **Arquivos independentes**. O
+sistema produz um PDF completo para cada grupo, preserva cotas do mesmo grupo
+no mesmo arquivo e guarda cada objeto no Storage privado como versão gerada da
+proposta. A tela disponibiliza um link de download por grupo ao término da
+emissão.
+
+Relatório: `docs/relatorios-fases/FASE-284-PDFS-INDEPENDENTES-POR-GRUPO.md`.
+
 ### Hotfix operacional 283 — Separação explícita para toda proposta multigrupo
 
 Ao gerar PDF com dois ou mais grupos, inclusive a combinação Imóvel + Veículo,

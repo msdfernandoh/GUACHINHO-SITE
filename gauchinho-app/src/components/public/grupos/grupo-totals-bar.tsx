@@ -14,6 +14,7 @@ type Props = {
   toastMsg: string | null;
   resultMsg: string | null;
   pdfLink: string | null;
+  pdfLinks?: Array<{ nome: string; url: string }>;
   onProposta: () => void;
   onContratar: () => void;
   onGerarLink?: () => void;
@@ -77,6 +78,7 @@ function TotalsBarContent({
   toastMsg,
   resultMsg,
   pdfLink,
+  pdfLinks = [],
   onProposta,
   onContratar,
   onGerarLink,
@@ -165,12 +167,13 @@ function TotalsBarContent({
           Baixar proposta PDF
         </a>
       ) : null}
+      {pdfLinks.length ? <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1">{pdfLinks.map((pdf) => <a key={pdf.url} href={pdf.url} target="_blank" rel="noreferrer" className="text-xs text-amber-400 underline">Baixar {pdf.nome}</a>)}</div> : null}
     </>
   );
 }
 
 function DesktopTotalsBar(props: Props) {
-  const { totais, toastMsg, resultMsg, pdfLink, onProposta, onContratar, onGerarLink, contratarLoading } =
+  const { totais, toastMsg, resultMsg, pdfLink, pdfLinks = [], onProposta, onContratar, onGerarLink, contratarLoading } =
     props;
 
   return (
@@ -229,7 +232,7 @@ function DesktopTotalsBar(props: Props) {
         </Button>
       </div>
 
-      {(toastMsg || resultMsg || pdfLink) && (
+      {(toastMsg || resultMsg || pdfLink || pdfLinks.length) && (
         <div className="w-full basis-full border-t border-zinc-800/80 pt-2 text-xs">
           {toastMsg ? <p className="text-amber-300">{toastMsg}</p> : null}
           {resultMsg ? <p className="text-emerald-400">{resultMsg}</p> : null}
@@ -238,6 +241,7 @@ function DesktopTotalsBar(props: Props) {
               Baixar proposta PDF
             </a>
           ) : null}
+          {pdfLinks.length ? <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1">{pdfLinks.map((pdf) => <a key={pdf.url} href={pdf.url} target="_blank" rel="noreferrer" className="text-amber-400 underline">Baixar {pdf.nome}</a>)}</div> : null}
         </div>
       )}
     </div>

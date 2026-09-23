@@ -39,7 +39,7 @@ type Body = {
   consultor_nome?: string;
   consultor_telefone?: string;
   visualizacao_pdf?: "completa" | "resumida";
-  modo_agrupamento_grupos?: "unificado" | "separado";
+  modo_agrupamento_grupos?: "unificado" | "separado" | "independentes";
 };
 
 export async function POST(request: Request) {
@@ -54,9 +54,11 @@ export async function POST(request: Request) {
     const admin = createAdminClient();
     const leadsConfig = await getConfigJsonPublic("leads", DEFAULT_LEADS);
     const whatsapp = body.whatsapp.trim();
-    const modoAgrupamentoGrupos = body.modo_agrupamento_grupos === "separado"
-      ? "separado"
-      : "unificado";
+    const modoAgrupamentoGrupos = body.modo_agrupamento_grupos === "independentes"
+      ? "independentes"
+      : body.modo_agrupamento_grupos === "separado"
+        ? "separado"
+        : "unificado";
 
     const upsertRes = await upsertLeadPorTelefone(admin, {
       empresa_id: ingress.empresaId,
@@ -263,18 +265,22 @@ export async function POST(request: Request) {
       }
       if (propostaId) {
         await admin.from("simulacoes_grupos").update({ proposta_id: propostaId }).eq("id", sim.id);
-        const { enrichPropostaProjecaoFromSimulacao, generateAndStorePropostaPdf } = await import(
+        const { enrichPropostaProjecaoFromSimulacao, generateAndStorePropostaPdf, generateAndStorePropostaPdfsIndependentes } = await import(
           "@/lib/proposta/generate-pdf"
         );
         await enrichPropostaProjecaoFromSimulacao(propostaId);
-        const pdf = await generateAndStorePropostaPdf(propostaId, {
+        const overrides = {
           origem: "grupos",
           pagina: "/grupos",
           observacao: observacao ?? undefined,
           consultor_nome: consultorNome ?? undefined,
           consultor_telefone: consultorTelefone ?? undefined,
-          visualizacao: body.visualizacao_pdf === "resumida" ? "resumida" : "completa",
-        });
+          visualizacao: body.visualizacao_pdf === "resumida" ? "resumida" as const : "completa" as const,
+        };
+        const pdfIndependentes = modoAgrupamentoGrupos === "independentes"
+          ? await generateAndStorePropostaPdfsIndependentes(propostaId, overrides)
+          : null;
+        const pdf = pdfIndependentes ? null : await generateAndStorePropostaPdf(propostaId, overrides);
         await registrarEvento({
           empresa_id: ingress.empresaId,
           tipo_evento: "lead_criado",
@@ -305,8 +311,12 @@ export async function POST(request: Request) {
           simulacaoId: sim.id,
           propostaId,
           creditoLiquido: totais.creditoLiquido,
-          pdfDownloadUrl: pdf.signedUrl,
-          pdfPath: buildPropostaPdfPublicPath(propostaId),
+          pdfDownloadUrl: pdf?.signedUrl ?? pdfIndependentes?.arquivos[0]?.signedUrl ?? null,
+          pdfPath: pdfIndependentes ? null : buildPropostaPdfPublicPath(propostaId),
+          pdfFiles: pdfIndependentes?.arquivos.map((arquivo) => ({
+            nome: arquivo.arquivoNome,
+            url: arquivo.signedUrl,
+          })) ?? [],
         });
       }
     }
