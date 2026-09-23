@@ -1,5 +1,11 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
+### Evolução operacional 273 — Exclusão íntegra de leads vinculados ao Network
+
+Os convites Network vinculados a um lead passam a ser removidos junto com ele por chave estrangeira `ON DELETE CASCADE`. As ações de exclusão individual e em lote mantêm também remoção explícita compatível com ambientes em atualização, eliminando o bloqueio de integridade sem deixar vínculos órfãos.
+
+Relatório: `docs/relatorios-fases/FASE-273-EXCLUSAO-LEADS-CONVITES-NETWORK.md`.
+
 ### Evolução operacional 273 — Sincronização de ajustes de repasse e fechamento mensal
 
 Decisões de ajuste de uma linha de repasse devem disparar a sincronização canônica de recebimento e das previsões de participantes. O estado de pagamento é consequência de `valor_elegivel` calculado a partir de recebimento alocado, nunca de valor apenas previsto. Na Conta-Corrente dos Sócios, a interface deve manter duas decisões separadas: contas abertas recebem recursos na conta PJ; despesas já pagas podem gerar transferência entre sócios. A tela de comissões expõe o estado de conferência como filtro próprio. Relatório: `docs/relatorios-fases/FASE-273-REPASSE-E-FECHAMENTO-MENSAL-SOCIOS.md`.

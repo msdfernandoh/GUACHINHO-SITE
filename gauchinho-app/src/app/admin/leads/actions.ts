@@ -465,8 +465,13 @@ export async function deleteLeadAction(leadId: string) {
     throw new Error("Sem permissão para excluir leads");
   }
   const supabase = await createClient();
-  // Limpa indicações associadas que poderiam ter RESTRICT
+  // Compatibilidade com bancos ainda não migrados: limpa vínculos que tinham RESTRICT.
   await supabase.from("programa_indicacoes").delete().eq("lead_id", leadId);
+  const { error: conviteErr } = await supabase
+    .from("programa_convites_network")
+    .delete()
+    .eq("lead_id", leadId);
+  if (conviteErr) throw new Error(`Não foi possível remover os convites Network vinculados: ${conviteErr.message}`);
   const { error } = await supabase.from("leads").delete().eq("id", leadId);
   if (error) throw new Error(error.message);
   revalidatePath("/admin/leads");
@@ -493,13 +498,22 @@ export async function bulkDeleteLeadsAction(
 
     const supabase = await createClient();
 
-    // 1. Limpa vínculos dependentes em programa_indicacoes que possam travar por FK
+    // 1. Limpa vínculos dependentes, inclusive em bancos que ainda não receberam a FK em cascata.
     const { error: indErr } = await supabase
       .from("programa_indicacoes")
       .delete()
       .in("lead_id", ids);
     if (indErr) {
       console.warn("[bulkDeleteLeadsAction] Aviso ao desvincular programa_indicacoes:", indErr.message);
+    }
+
+    const { error: conviteErr } = await supabase
+      .from("programa_convites_network")
+      .delete()
+      .in("lead_id", ids);
+    if (conviteErr) {
+      console.error("[bulkDeleteLeadsAction] Erro ao remover convites Network:", conviteErr);
+      return { ok: false, error: `Erro ao excluir convites Network vinculados: ${conviteErr.message}` };
     }
 
     // 2. Executa exclusão dos leads
