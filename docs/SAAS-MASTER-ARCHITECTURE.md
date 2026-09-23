@@ -2750,6 +2750,12 @@ No cadastro manual de linhas de repasse, participantes com nomes repetidos são 
 
 Relatório: `docs/relatorios-fases/FASE-257-CONSULTORES-REPETIDOS-E-RPC-REPASSE.md`.
 
+### Fase 271 — Check-in de eventos no domínio parceiro Racon
+
+As rotas públicas sob `/eventos`, incluindo `/{slug}/sorteio` e `/{slug}/telao`, são preservadas pelo proxy em domínios de sites parceiros. Elas compartilham o módulo operacional da empresa proprietária e recebem a identidade visual do site resolvido nos headers internos. Assim, o QR de check-in aberto em `raconsinop.com.br` apresenta o evento solicitado com o layout Racon, sem rewrite para a página inicial institucional.
+
+Relatório: `docs/relatorios-fases/FASE-271-CHECKIN-EVENTO-DOMINIO-RACON.md`.
+
 ### Evolução operacional 260 — Navegação consolidada de parceiros
 
 A navegação pública passa a agrupar os destinos `Imobiliárias` e `Seguradoras`
