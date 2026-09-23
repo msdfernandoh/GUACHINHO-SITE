@@ -108,6 +108,7 @@ export async function createLeadManualAction(formData: FormData) {
     evento_id: eventoId,
     evento_nome: eventoNome,
     observacoes: String(formData.get("observacoes") ?? "").trim() || null,
+    tags: String(formData.get("tags") ?? "").split(",").map((tag) => tag.trim().replace(/^#/, "")).filter(Boolean).filter((tag, index, all) => all.indexOf(tag) === index).slice(0, 12),
     status: leadsConfig.statusInicialPadrao,
     criado_manual: true,
     criado_por_usuario_id: usuario.id,
@@ -283,6 +284,7 @@ export async function updateLeadAction(leadId: string, formData: FormData) {
     proxima_acao: String(formData.get("proxima_acao") ?? "").trim() || null,
     data_proxima_acao: String(formData.get("data_proxima_acao") ?? "").trim() || null,
     observacoes: String(formData.get("observacoes") ?? "").trim() || null,
+    tags: String(formData.get("tags") ?? "").split(",").map((tag) => tag.trim().replace(/^#/, "")).filter(Boolean).filter((tag, index, all) => all.indexOf(tag) === index).slice(0, 12),
     srd_responsavel_id: String(formData.get("srd_responsavel_id") ?? "").trim() || null,
     srd_responsavel_nome: String(formData.get("srd_responsavel_nome") ?? "").trim() || null,
     etapa_id: String(formData.get("etapa_id") ?? before?.etapa_id ?? "").trim() || null,
@@ -1336,4 +1338,3 @@ export async function duplicarLeadParaNovaNegociacaoAction(leadId: string): Prom
 
   return { ok: true, newLeadId: newLead.id };
 }
-

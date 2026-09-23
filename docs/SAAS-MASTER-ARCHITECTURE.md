@@ -2710,6 +2710,12 @@ As 4 camadas geométricas tridimensionais em SVG (Topo Funil, Topo-Meio, Meio Fu
 No Pipeline Kanban (`src/components/admin/crm/crm-kanban-board.tsx`), foi implementado o banner executivo `CrmStageFilterBanner`, exibindo os totalizadores da etapa filtrada (Volume de Leads, Montante de Crédito e Parcelas Mensais Estimadas), o botão para alternar entre **Modo Foco** (apenas as colunas relevantes na tela sem rolagem desnecessária) e **Modo Completo** (todas as 12 colunas com realce e rolagem suave para a coluna ativa), e o botão de limpeza de filtro. Na barra superior do Kanban, um novo seletor agrupado (`🎯 Filtrar por Etapa / Nível`) permite chaveamento dinâmico sem recarregamento da página, sincronizado em tempo real com a URL do navegador.
 
 Relatório: `docs/relatorios-fases/FASE-252-FUNIL-3D-INTERATIVO-FILTRO-PIPELINE-KANBAN.md`.
+# Evolução operacional 272 — Edição rápida de leads no pipeline
+
+Os cards do pipeline CRM abrem uma janela compacta para edição de dados básicos, etapa, observações e tags. A persistência reutiliza a ação autorizada de atualização de leads e a coluna aditiva `leads.tags` (`text[]`), sem alteração destrutiva dos registros existentes.
+
+Relatório: `docs/relatorios-fases/FASE-272-CRM-EDICAO-RAPIDA-LEAD.md`.
+
 # Fase 254 — Sessão consistente no app do indicador
 
 O app mobile de indicações passou a usar uma resolução centralizada do vínculo autenticado entre `usuarios`, `participantes_comerciais` e `programa_indicadores`. A resolução sempre restringe a empresa ativa, aceita a capitalização histórica do status e, quando existem vínculos antigos, seleciona o participante que possui indicador ativo. Contas legadas completas que perderam somente a linha de `programa_indicadores` têm esse vínculo recomposto de forma idempotente e recebem o tipo comercial `INDICADOR`. Painel e envio compartilham essa regra. O painel também expõe a ação de troca de usuário com encerramento da sessão.

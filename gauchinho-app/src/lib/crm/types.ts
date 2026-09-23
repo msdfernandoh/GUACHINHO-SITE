@@ -69,6 +69,7 @@ export type LeadListRow = {
   tipo_sonho?: string | null;
   historico_cadastros?: string | null;
   observacoes?: string | null;
+  tags?: string[] | null;
 };
 
 export type IndicacaoRapidaItem = {
@@ -126,4 +127,3 @@ export type LeadFilters = {
   fase?: string;
   etapa_slug?: string;
 };
-

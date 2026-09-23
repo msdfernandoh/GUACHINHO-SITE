@@ -16,7 +16,9 @@ import {
   ArrowRight,
 } from "lucide-react";
 import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { converterLeadParaErpAction } from "@/app/admin/leads/actions";
+import { CrmLeadEditModal } from "./crm-lead-edit-modal";
 
 export function CrmLeadCard({
   lead,
@@ -33,6 +35,9 @@ export function CrmLeadCard({
 }) {
   const [isConverting, startConverting] = useTransition();
   const [erpFeedback, setErpFeedback] = useState<string | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [cardLead, setCardLead] = useState(lead);
+  const router = useRouter();
 
   const credito = valorEstimadoLead(lead);
   const parcela = valorParcelaLead(lead);
@@ -89,7 +94,9 @@ export function CrmLeadCard({
     <article
       draggable={true}
       onDragStart={(e) => onDragStart(e, lead)}
-      className="group relative flex cursor-grab flex-col rounded-xl border border-zinc-800/80 bg-zinc-900/90 p-3.5 shadow-sm transition-all duration-150 hover:-translate-y-0.5 hover:border-blue-500/50 hover:bg-zinc-900 hover:shadow-md active:cursor-grabbing"
+      onDoubleClick={() => setIsEditing(true)}
+      title="Duplo clique para editar dados, observações e tags"
+      className="group relative flex cursor-pointer flex-col rounded-xl border border-zinc-800/80 bg-zinc-900/90 p-3.5 shadow-sm transition-all duration-150 hover:-translate-y-0.5 hover:border-blue-500/50 hover:bg-zinc-900 hover:shadow-md active:cursor-grabbing"
     >
       {/* 1. TOPO DO CARD: Nome e Badges */}
       <div className="flex items-start justify-between gap-2">
@@ -97,7 +104,7 @@ export function CrmLeadCard({
           href={`/admin/leads/${lead.id}`}
           className="font-semibold text-zinc-100 hover:text-blue-400"
         >
-          {lead.nome}
+          {cardLead.nome}
         </Link>
 
         <div className="flex shrink-0 items-center gap-1">
@@ -128,6 +135,7 @@ export function CrmLeadCard({
           )}
         </div>
       </div>
+      {cardLead.tags?.length ? <div className="mt-2 flex flex-wrap gap-1">{cardLead.tags.map((tag) => <span key={tag} className="rounded-full bg-cyan-500/10 px-1.5 py-0.5 text-[9px] text-cyan-300">#{tag}</span>)}</div> : null}
 
       {/* 2. VALOR DE CRÉDITO E PARCELA MENSAL */}
       <div className="mt-2 space-y-1">
@@ -266,6 +274,7 @@ export function CrmLeadCard({
           </select>
         </div>
       </div>
+      {isEditing && <CrmLeadEditModal lead={cardLead} etapas={etapas} onClose={() => setIsEditing(false)} onSaved={(updated) => { setCardLead(updated); setIsEditing(false); router.refresh(); }} />}
     </article>
   );
 }
