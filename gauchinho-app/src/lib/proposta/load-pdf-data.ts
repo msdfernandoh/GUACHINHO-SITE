@@ -16,6 +16,10 @@ import type { PropostasConfig } from "@/lib/config/defaults";
 import { gerarProjecaoAnoAno, resumoProjecaoAnos } from "@/lib/simulador/projecao";
 import type { EntradaConsorcio } from "@/lib/simulador/consorcio";
 import type { GrupoConsorcio, GrupoCota, GrupoModalidadeLance } from "@/lib/types";
+import {
+  fetchEmpresaGruposConfigMap,
+  resolveEmpresaGrupoPresentation,
+} from "@/lib/grupos/empresa-grupos-config";
 
 type PropostaRow = Record<string, unknown>;
 
@@ -123,8 +127,15 @@ export async function buildPropostaPdfData(
           ? admin.from("grupos_cotas").select("*").in("id", cotaIds)
           : Promise.resolve({ data: [] }),
       ]);
+      // A proposta é sempre emitida no contexto da empresa que a criou. Dessa
+      // forma taxa, fundo de reserva e demais regras locais são os mesmos que
+      // o consultor acabou de ver no simulador público.
+      const configsPorGrupo = await fetchEmpresaGruposConfigMap(String(p.empresa_id ?? ""));
       const gruposById = new Map<string, GrupoConsorcio>(
-        ((grupos ?? []) as GrupoConsorcio[]).map((g) => [g.id, g]),
+        ((grupos ?? []) as GrupoConsorcio[]).map((g) => {
+          const presentation = resolveEmpresaGrupoPresentation(g, configsPorGrupo.get(g.id));
+          return [g.id, presentation.grupo];
+        }),
       );
       const modsByGrupo = new Map<string, GrupoModalidadeLance[]>();
       for (const m of (mods ?? []) as GrupoModalidadeLance[]) {

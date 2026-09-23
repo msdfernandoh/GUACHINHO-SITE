@@ -3065,3 +3065,14 @@ foi alterada.
 
 Relatório:
 `docs/relatorios-fases/HOTFIX-271-CADASTRO-APP-INDICADOR.md`.
+
+### Hotfix operacional 272 — Paridade financeira entre simulador e proposta PDF
+
+O fluxo público de grupos e a emissão de proposta PDF passam a resolver o
+catálogo efetivo do tenant antes de calcular ou reemitir uma proposta. Assim,
+taxa administrativa, fundo de reserva e demais ajustes locais pendentes usam
+a mesma regra do simulador exibido ao consultor, sem depender da fotografia
+financeira anterior gravada na simulação.
+
+Relatório:
+`docs/relatorios-fases/HOTFIX-272-PARIDADE-PARCELA-PROPOSTA-PDF.md`.

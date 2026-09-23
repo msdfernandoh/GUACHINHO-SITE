@@ -312,9 +312,15 @@ export async function assertSelecoesAutorizadasForEmpresa(
   ]);
 
   const grupoMap = new Map<string, GrupoConsorcio>();
+  // A tela pública já recebe o catálogo efetivo da empresa, inclusive ajustes
+  // locais pendentes. A proposta precisa calcular com exatamente esse mesmo
+  // catálogo — nunca com a linha global anterior ao ajuste.
+  const configMap = await fetchEmpresaGruposConfigMap(empresaId, deps);
   for (const g of (grupos ?? []) as GrupoConsorcio[]) {
     assertGrupoAutorizadoPorIds(g, allowed);
-    grupoMap.set(g.id, g);
+    const presentation = resolveEmpresaGrupoPresentation(g, configMap.get(g.id));
+    if (!presentation.exibirAoPublico) throwGrupoNotFound();
+    grupoMap.set(g.id, presentation.grupo);
   }
 
   const cotaMap = new Map<string, GrupoCota>();

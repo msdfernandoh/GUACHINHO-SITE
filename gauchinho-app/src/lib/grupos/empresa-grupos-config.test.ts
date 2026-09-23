@@ -72,6 +72,27 @@ describe("ETAPA E1.3 — Fechamento Final de Autorização DB-Side da Migration 
       expect(resolved.tituloComercial).toBe("Grupo Especial");
       expect(resolved.exibirAoPublico).toBe(false);
     });
+
+    it("Ajuste local pendente substitui taxa e fundo usados na simulação da empresa", () => {
+      const resolved = resolveEmpresaGrupoPresentation(GRUPO_RACON_ATIVO, {
+        id: "cfg-calculo-local",
+        empresa_id: GAUCHINHO_ID,
+        grupo_id: "grupo-racon-1",
+        visivel: true,
+        destaque: false,
+        ordem: null,
+        titulo_comercial: null,
+        descricao_comercial: null,
+        alteracao_catalogo_status: "PENDENTE_PLATFORM",
+        alteracao_catalogo_payload: {
+          taxa_administrativa_percentual: 25,
+          fundo_reserva_percentual: 2,
+        },
+      });
+
+      expect(resolved.grupo.taxa_administrativa_percentual).toBe(25);
+      expect(resolved.grupo.fundo_reserva_percentual).toBe(2);
+    });
   });
 
   describe("2. Testes de Não Escalada de Autorização (Proteção Tríplice)", () => {
