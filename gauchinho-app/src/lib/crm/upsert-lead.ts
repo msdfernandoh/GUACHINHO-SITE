@@ -191,7 +191,7 @@ export async function upsertLeadPorTelefone(
   // 1. Tentar executar via RPC atômica (com pg_advisory_xact_lock)
   try {
     const { data: rpcData, error: rpcError } = await supabaseAdmin.rpc(
-      "rpc_upsert_lead_por_telefone",
+      "rpc_adotar_lead_legado_e_upsert_por_telefone",
       {
         p_payload: {
           ...payload,
@@ -225,21 +225,42 @@ export async function upsertLeadPorTelefone(
   const forcarNovo = Boolean(payload.permitir_gerar_novo || payload.forcar_novo);
 
   // Busca se já existem leads pelo telefone normalizado ou pelo whatsapp
+  // O telefone pode pertencer a um lead legado, criado antes da tenantização.
+  // Ele só é elegível como fallback quando está sem empresa; nunca misturamos
+  // registros de outra empresa. A RPC cobre o caminho atômico em produção.
+  const phoneAndTenantFilter = payload.empresa_id
+    ? [
+        `and(telefone_normalizado.eq.${norm},empresa_id.eq.${payload.empresa_id})`,
+        `and(telefone_normalizado.eq.${norm},empresa_id.is.null)`,
+        `and(whatsapp.ilike.%${norm.slice(-8)}%,empresa_id.eq.${payload.empresa_id})`,
+        `and(whatsapp.ilike.%${norm.slice(-8)}%,empresa_id.is.null)`,
+      ].join(",")
+    : [
+        `and(telefone_normalizado.eq.${norm},empresa_id.is.null)`,
+        `and(whatsapp.ilike.%${norm.slice(-8)}%,empresa_id.is.null)`,
+      ].join(",");
+
   const { data: existingLeads } = await supabaseAdmin
     .from("leads")
     .select("id, nome, email, cidade, whatsapp, telefone_normalizado, dados_simulacao, valor_simulado, valor_estimado, historico_cadastros, observacoes, status, etapa_id, srd_responsavel_id, srd_responsavel_nome, modelo_interesse, empresa_id, tipo_interesse, produto_interesse, tipo_credito, carta_contemplada_id, imovel_id, parceiro_id")
-    .or(`telefone_normalizado.eq.${norm},whatsapp.ilike.%${norm.slice(-8)}%`)
-    .eq("empresa_id", payload.empresa_id ?? "__tenant_required__")
+    .or(phoneAndTenantFilter)
     .order("created_at", { ascending: false })
     .limit(20);
 
   const newEntry = formatarEntradaHistoricoLead(payload);
 
-  const activeLead = !forcarNovo
-    ? (existingLeads ?? []).find((l) => !isLeadGanho(l.status))
-    : null;
+  const activeLeads = !forcarNovo
+    ? (existingLeads ?? []).filter((l) => !isLeadGanho(l.status))
+    : [];
+  // Um registro já associado ao tenant tem precedência sobre o legado. Isso
+  // impede que um dado histórico sem empresa concorra com uma negociação atual.
+  const activeLead = activeLeads.find((l) => l.empresa_id === payload.empresa_id)
+    ?? activeLeads.find((l) => l.empresa_id == null)
+    ?? null;
 
-  const wonLead = (existingLeads ?? []).find((l) => isLeadGanho(l.status));
+  const wonLeads = (existingLeads ?? []).filter((l) => isLeadGanho(l.status));
+  const wonLead = wonLeads.find((l) => l.empresa_id === payload.empresa_id)
+    ?? wonLeads.find((l) => l.empresa_id == null);
 
   // CASO 1: Lead em andamento ativo encontrado -> Atualiza, move para 'Novo lead' e acumula histórico
   if (activeLead) {
@@ -260,6 +281,9 @@ export async function upsertLeadPorTelefone(
     }
 
     const updateData: Record<string, unknown> = {
+      // A adoção NULL -> tenant é intencional e ocorre somente para o lead
+      // legado escolhido acima. Não há alteração de escopo entre empresas.
+      empresa_id: activeLead.empresa_id ?? payload.empresa_id ?? null,
       telefone_normalizado: norm,
       status: "Novo",
       etapa_id: targetEtapaId || activeLead.etapa_id,

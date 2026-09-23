@@ -1,5 +1,11 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
+### Evolução operacional 275 — Proposta pública reutiliza lead ativo pelo telefone
+
+O fluxo público de grupos resolve a empresa exclusivamente pelo host e passa a reutilizar o lead ativo já existente para o mesmo telefone, inclusive quando o registro histórico ainda não possuía `empresa_id`. A adoção de legado é transacional e estritamente limitada a `NULL → empresa` do host confiável, sem registro ativo concorrente naquela empresa e nunca entre empresas. A proposta e a simulação ficam vinculadas ao mesmo `lead_id`; clientes com venda ganha continuam abrindo uma nova negociação, como regra comercial canônica.
+
+Relatório: `docs/relatorios-fases/FASE-275-REUSO-LEAD-ATIVO-PROPOSTA-GRUPOS.md`.
+
 ### Evolução operacional 274 — PDF de proposta de grupos recalculado no catálogo vigente
 
 Propostas preliminares vinculadas ao simulador de grupos reaplicam a estratégia salva às taxas, fundo, seguro, cotas e modalidades vigentes no momento de emitir ou baixar o PDF. O arquivo em cache é renovado para essas propostas, preservando o mesmo comportamento tenant-aware em Gauchinho Consórcios e Racon Sinop. Vendas e contratações formalizadas permanecem fatos históricos sem recálculo.

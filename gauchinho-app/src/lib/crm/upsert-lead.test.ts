@@ -66,7 +66,7 @@ describe("upsertLeadPorTelefone - Fluxo RPC e Fallback", () => {
     expect(result.action).toBe("created");
     expect(result.lead_id).toBe("lead-123-uuid");
     expect(result.telefone_normalizado).toBe("66999126120");
-    expect(mockRpc).toHaveBeenCalledWith("rpc_upsert_lead_por_telefone", expect.any(Object));
+    expect(mockRpc).toHaveBeenCalledWith("rpc_adotar_lead_legado_e_upsert_por_telefone", expect.any(Object));
   });
 
   it("utiliza fallback defensivo quando a RPC não está disponível no banco", async () => {
@@ -421,6 +421,5 @@ describe("upsertLeadPorTelefone - Fluxo RPC e Fallback", () => {
     expect(updatePayload.historico_cadastros).toContain("Cadastro inicial");
   });
 });
-
 
 
