@@ -1,5 +1,15 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
+### Hotfix operacional 283 — Separação explícita para toda proposta multigrupo
+
+Ao gerar PDF com dois ou mais grupos, inclusive a combinação Imóvel + Veículo,
+o consultor passa a ver a escolha de apresentação. **Separar por grupo** é a
+opção inicial segura e cria uma capa única com uma folha por grupo; a versão
+resumida fica indisponível nesse modo porque não comporta os detalhamentos
+individuais.
+
+Relatório: `docs/relatorios-fases/HOTFIX-283-PDF-MULTIGRUPO-SEPARADO.md`.
+
 ### Hotfix operacional 282 — Modal de PDFs isolado do card arrastável
 
 O painel de PDFs das propostas do Pipeline CRM é renderizado diretamente no

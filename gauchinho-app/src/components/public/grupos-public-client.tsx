@@ -194,29 +194,9 @@ export function GruposPublicClient({
     }).filter((l) => l.grupo);
   }, [linhasAtivas, aggregates]);
 
-  const temMaisDeUmGrupoMesmoTipo = useMemo(() => {
-    const porTipo = new Map<string, number>();
-    for (const linha of linhasEnriquecidas) {
-      // Alguns catálogos legados guardam o tipo no código ou nas categorias
-      // publicadas, e não somente em `modalidade`. Considerar as três fontes
-      // evita omitir a escolha para grupos como “5388 VEÍCULO”.
-      const identificadores = [
-        linha.grupo?.modalidade,
-        ...(linha.grupo?.categorias_publicacao ?? []),
-        linha.grupo?.codigo_grupo,
-      ]
-        .filter(Boolean)
-        .join(" ")
-        .toLocaleLowerCase("pt-BR");
-      const tipo = identificadores.includes("imóv") || identificadores.includes("imov")
-        ? "imovel"
-        : identificadores.includes("auto") || identificadores.includes("veíc") || identificadores.includes("veic") || identificadores.includes("moto") || identificadores.includes("caminh") || identificadores.includes("máquin") || identificadores.includes("maquin")
-          ? "veiculo"
-          : "outro";
-      porTipo.set(tipo, (porTipo.get(tipo) ?? 0) + 1);
-    }
-    return [...porTipo.values()].some((quantidade) => quantidade > 1);
-  }, [linhasEnriquecidas]);
+  // A decisão é necessária para qualquer composição com múltiplos grupos:
+  // inclusive um imóvel + um veículo têm prazos, reajustes e custos próprios.
+  const temMaisDeUmGrupo = linhasEnriquecidas.length > 1;
 
   function buildPayloadGrupos() {
     return buildDadosSimulacaoGrupos(
@@ -292,6 +272,10 @@ export function GruposPublicClient({
       setToastMsg("Informe cota e quantidade (mín. 1) em ao menos um grupo.");
       return;
     }
+    // Por segurança comercial, propostas com mais de um grupo começam no modo
+    // separado. O consultor pode optar por unificar explicitamente no modal.
+    setModoAgrupamentoGrupos(temMaisDeUmGrupo ? "separado" : "unificado");
+    setPdfResumido(false);
     setModalOpen(true);
     setResultMsg(null);
     setPdfLink(null);
@@ -315,7 +299,7 @@ export function GruposPublicClient({
           consultor_nome: consultorNomePdf.trim() || undefined,
           consultor_telefone: consultorTelPdf.trim() || undefined,
           visualizacao_pdf: pdfResumido ? "resumida" : "completa",
-          modo_agrupamento_grupos: temMaisDeUmGrupoMesmoTipo ? modoAgrupamentoGrupos : "unificado",
+          modo_agrupamento_grupos: temMaisDeUmGrupo ? modoAgrupamentoGrupos : "unificado",
           selecoes: linhasAtivas.map((s) => ({
             grupoId: s.grupoId,
             cotaId: s.cotaId,
@@ -559,19 +543,20 @@ export function GruposPublicClient({
             </div>
             {isConsultor ? (
               <>
-                <label className="flex items-center gap-2 text-sm text-zinc-300"><input type="checkbox" checked={pdfResumido} onChange={(e) => setPdfResumido(e.target.checked)} /> Gerar versão resumida (mesmos dados do link resumido)</label>
-                {temMaisDeUmGrupoMesmoTipo ? (
+                <label className="flex items-center gap-2 text-sm text-zinc-300"><input type="checkbox" checked={pdfResumido} disabled={modoAgrupamentoGrupos === "separado"} onChange={(e) => setPdfResumido(e.target.checked)} /> Gerar versão resumida (mesmos dados do link resumido)</label>
+                {temMaisDeUmGrupo ? (
                   <fieldset className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3">
-                    <legend className="px-1 text-sm font-semibold text-amber-200">Grupos do mesmo tipo</legend>
-                    <p className="mb-2 text-xs text-zinc-400">Escolha como apresentar grupos com prazos e condições diferentes.</p>
+                    <legend className="px-1 text-sm font-semibold text-amber-200">Mais de um grupo selecionado</legend>
+                    <p className="mb-2 text-xs text-zinc-400">Escolha como apresentar os grupos. Imóvel e veículo também podem ter uma folha própria cada.</p>
                     <label className="flex cursor-pointer items-start gap-2 text-sm text-zinc-200">
                       <input type="radio" name="modo-agrupamento-grupos" checked={modoAgrupamentoGrupos === "unificado"} onChange={() => setModoAgrupamentoGrupos("unificado")} />
-                      <span><strong>Unificar</strong><span className="block text-xs text-zinc-400">Resume os grupos do mesmo tipo na mesma proposta.</span></span>
+                      <span><strong>Unificar</strong><span className="block text-xs text-zinc-400">Resume todos os grupos na mesma proposta.</span></span>
                     </label>
                     <label className="mt-2 flex cursor-pointer items-start gap-2 text-sm text-zinc-200">
-                      <input type="radio" name="modo-agrupamento-grupos" checked={modoAgrupamentoGrupos === "separado"} onChange={() => setModoAgrupamentoGrupos("separado")} />
-                      <span><strong>Separar por grupo</strong><span className="block text-xs text-zinc-400">Mantém uma única capa e gera uma folha para cada grupo.</span></span>
+                      <input type="radio" name="modo-agrupamento-grupos" checked={modoAgrupamentoGrupos === "separado"} onChange={() => { setModoAgrupamentoGrupos("separado"); setPdfResumido(false); }} />
+                      <span><strong>Separar por grupo</strong><span className="block text-xs text-zinc-400">Mantém uma única capa e gera uma folha para cada grupo, inclusive imóvel e veículo.</span></span>
                     </label>
+                    {modoAgrupamentoGrupos === "separado" ? <p className="mt-2 text-[11px] text-amber-100">A versão resumida fica indisponível porque ela não comporta as folhas individuais.</p> : null}
                   </fieldset>
                 ) : null}
                 <div>
