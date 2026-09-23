@@ -4,6 +4,7 @@ import Link from "next/link";
 import { formatCurrency } from "@/lib/utils/format";
 import { labelOrigem, valorEstimadoLead, valorParcelaLead, mapLegacyStatusToEtapaSlug } from "@/lib/crm/constants";
 import type { LeadListRow, CrmFunilEtapaRow } from "@/lib/crm/types";
+import type { ConsultorOption } from "@/lib/admin/consultores";
 import {
   MessageCircle,
   Clock,
@@ -23,12 +24,14 @@ import { CrmLeadEditModal } from "./crm-lead-edit-modal";
 export function CrmLeadCard({
   lead,
   etapas,
+  consultores,
   onMoveStage,
   onDragStart,
   currentTime,
 }: {
   lead: LeadListRow;
   etapas: CrmFunilEtapaRow[];
+  consultores: ConsultorOption[];
   onMoveStage: (lead: LeadListRow, targetEtapa: CrmFunilEtapaRow) => void;
   onDragStart: (e: React.DragEvent, lead: LeadListRow) => void;
   currentTime?: number | null;
@@ -181,7 +184,7 @@ export function CrmLeadCard({
       <div className="mt-2.5 space-y-1 border-t border-zinc-800/60 pt-2 text-[10px]">
         <div className="flex items-center gap-1.5 text-zinc-400">
           <User className="h-3 w-3 text-zinc-500" />
-          <span className="truncate">{lead.srd_responsavel_nome || "Sem responsável"}</span>
+          <span className="truncate">{cardLead.srd_responsavel_nome || "Sem responsável"}</span>
         </div>
 
         {lead.proxima_acao ? (
@@ -274,7 +277,7 @@ export function CrmLeadCard({
           </select>
         </div>
       </div>
-      {isEditing && <CrmLeadEditModal lead={cardLead} etapas={etapas} onClose={() => setIsEditing(false)} onSaved={(updated) => { setCardLead(updated); setIsEditing(false); router.refresh(); }} />}
+      {isEditing && <CrmLeadEditModal lead={cardLead} etapas={etapas} consultores={consultores} onClose={() => setIsEditing(false)} onSaved={(updated) => { setCardLead(updated); setIsEditing(false); router.refresh(); }} />}
     </article>
   );
 }

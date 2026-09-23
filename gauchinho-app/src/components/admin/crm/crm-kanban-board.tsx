@@ -639,8 +639,9 @@ export function CrmKanbanBoard({
                 {colLeads.map((lead) => (
                   <CrmLeadCard
                     key={lead.id}
-                    lead={lead}
-                    etapas={etapas}
+                      lead={lead}
+                      etapas={etapas}
+                      consultores={consultores}
                     currentTime={currentTime}
                     onMoveStage={(l, target) => setPendingMove({ lead: l, targetEtapa: target })}
                     onDragStart={handleDragStart}
