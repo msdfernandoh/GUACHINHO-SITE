@@ -1,5 +1,16 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
+### Evolução operacional 286 — Meus contatos e conversão segura em lead
+
+O painel administrativo inclui o menu tenant-aware **Meus contatos**. A tabela
+`contatos_usuario` preserva os telefones importados por usuário e empresa, com
+RLS e unicidade por telefone normalizado. CSV e VCF podem ser importados e os
+campos empresa/profissão editados. A conversão em lead resolve o vínculo ativo
+`empresa_usuarios` no servidor e chama a RPC canônica de upsert por telefone,
+atribuindo o usuário autenticado como responsável sem aceitar responsável ou
+empresa confiados ao navegador.
+
+Relatório: `docs/relatorios-fases/FASE-286-MEUS-CONTATOS-IMPORTACAO-LEAD.md`.
 ### Hotfix operacional 285 — Versões resumidas em arquivos independentes
 
 A escolha **Arquivos independentes** não remove mais a preferência pela versão

@@ -2,6 +2,7 @@
 export const ADMIN_MENU_ITEMS = [
   { key: "dashboard", label: "Dashboard", href: "/admin" },
   { key: "leads", label: "Leads", href: "/admin/leads" },
+  { key: "contatos", label: "Meus contatos", href: "/admin/contatos" },
   { key: "agenda", label: "Agenda", href: "/admin/agenda" },
   { key: "agenda_disponibilidade", label: "Disponibilidade", href: "/admin/agenda/disponibilidade" },
   { key: "eventos", label: "Eventos", href: "/admin/eventos" },
@@ -27,6 +28,7 @@ const DEFAULT_MENUS_BY_PERFIL: Record<string, AdminMenuKey[]> = {
   srd: [
     "dashboard",
     "leads",
+    "contatos",
     "agenda",
     "agenda_disponibilidade",
     "eventos",
@@ -43,6 +45,7 @@ const DEFAULT_MENUS_BY_PERFIL: Record<string, AdminMenuKey[]> = {
   visualizador: [
     "dashboard",
     "leads",
+    "contatos",
     "agenda",
     "agenda_disponibilidade",
     "relatorios",

@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
   Users,
+  ContactRound,
   UserCircle,
   FileText,
   Layers,
@@ -41,6 +42,7 @@ const NAV: Array<{
   { key: "leads", href: "/admin/crm", label: "CRM — Vendas", icon: Kanban },
   { key: "leads", href: "/admin/crm/pipeline", label: "Pipeline Funil", icon: Kanban },
   { key: "leads", href: "/admin/leads", label: "Lista de Leads", icon: Users },
+  { key: "contatos", href: "/admin/contatos", label: "Meus contatos", icon: ContactRound },
   { key: "leads", href: "/admin/crm/performance", label: "Performance CRM", icon: BarChart2, masterOnly: true },
   { key: "leads", href: "/admin/crm/materiais", label: "Materiais & Scripts", icon: BookOpen },
   { key: "agenda", href: "/admin/agenda", label: "Agenda", icon: CalendarDays },
