@@ -224,9 +224,16 @@ export function raconPartnerNavigation<
 >(menus: T[]): T[] {
   let partnerMenuFound = false;
   const normalized = menus.flatMap((menu) => {
-    const key = `${menu.id} ${menu.label} ${menu.rota}`.toLocaleLowerCase(
-      "pt-BR",
-    );
+    const key = `${menu.id} ${menu.label} ${menu.rota}`
+      .toLocaleLowerCase("pt-BR")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "");
+    // A entrada pública do programa substitui o antigo atalho de backoffice.
+    // O acesso autenticado continua disponível por URL, mas não concorre com
+    // o CTA comercial na navegação institucional.
+    if (menu.rota === "/area-parceiro" || key.includes("area do parceiro")) {
+      return [];
+    }
     if (menu.rota === "/parceiros" || key.includes("seja parceiro")) {
       if (partnerMenuFound) return [];
       partnerMenuFound = true;

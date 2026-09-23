@@ -124,4 +124,14 @@ describe("menus do modelo", () => {
     ]);
     expect(menus[3].rota).toBe("/parceiros");
   });
+  it("substitui Área do parceiro pelo CTA público Seja parceiro", () => {
+    const menus = raconPartnerNavigation([
+      { id: "home", label: "Início", rota: "/" },
+      { id: "login", label: "Área do parceiro", rota: "/area-parceiro" },
+    ]);
+    expect(menus).toEqual([
+      { id: "home", label: "Início", rota: "/" },
+      { id: "parceiros", label: "Seja parceiro", rota: "/parceiros", ativo: true },
+    ]);
+  });
 });

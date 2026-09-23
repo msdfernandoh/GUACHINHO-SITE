@@ -31,6 +31,11 @@ const raconLandingCss = `
   .racon-parceiros .racon-hero [class*="text-amber"] { color: #b9e0ff; }
   .racon-parceiros .racon-hero [class*="bg-amber"] { background-color: #ffffff; color: #0066cc; }
   .racon-parceiros .racon-hero [class*="bg-amber"] [class*="text-zinc-"] { color: #0066cc; }
+  .racon-parceiros .racon-hero .racon-hero-card { --visual-title: #0b2855; --visual-text: #385270; --visual-accent: #0066cc; background: #ffffff !important; color: #0b2855 !important; border-color: rgba(255,255,255,.75) !important; }
+  .racon-parceiros .racon-hero .racon-hero-card-kicker,
+  .racon-parceiros .racon-hero .racon-hero-card-link { color: #0066cc !important; }
+  .racon-parceiros .racon-hero .racon-hero-card-title { color: #0b2855 !important; }
+  .racon-parceiros .racon-hero .racon-hero-card-body { color: #385270 !important; }
   .racon-parceiros .racon-network { --visual-title: #ffffff; --visual-text: #eef8ff; --visual-accent: #ffffff; background: linear-gradient(135deg, #0055b8, #008fcf) !important; }
   .racon-parceiros .racon-network a { background: #ffffff !important; color: #005db8 !important; box-shadow: 0 8px 24px rgba(0, 48, 112, .2); }
   .racon-parceiros .racon-network a * { color: #005db8 !important; }
@@ -53,11 +58,11 @@ export function ParceirosLandingClient({ racon = false, brandName = "Gauchinho C
             <div className="mt-9 flex flex-wrap gap-3"><Cta href="#modelos">Conhecer os modelos de ganho</Cta><Cta href="/parceiros/cadastro?modelo=CONVERSAR_EQUIPE" secondary>Quero falar com a equipe</Cta></div>
             <div className="mt-7"><InstalarAppParceiroButton dark racon={racon} /></div>
           </div>
-          <div className="rounded-3xl border border-amber-300/30 bg-zinc-900/80 p-6 shadow-2xl shadow-amber-500/10">
-            <p className="text-sm font-bold text-amber-300">VOCÊ ESCOLHE O CAMINHO</p>
-            <p className="mt-4 text-3xl font-black">Indicar. Gerar. Construir.</p>
-            <p className="mt-3 text-sm leading-relaxed text-zinc-300">Sua participação é reconhecida conforme o modelo, a operação validada e as regras comerciais vigentes.</p>
-            <a href="#modelos" className="mt-6 inline-flex font-bold text-amber-300">Ver comparativo completo ↓</a>
+          <div className={`rounded-3xl border border-amber-300/30 bg-zinc-900/80 p-6 shadow-2xl shadow-amber-500/10 ${racon ? "racon-hero-card" : ""}`}>
+            <p className={`text-sm font-bold text-amber-300 ${racon ? "racon-hero-card-kicker" : ""}`}>VOCÊ ESCOLHE O CAMINHO</p>
+            <p className={`mt-4 text-3xl font-black ${racon ? "racon-hero-card-title" : ""}`}>Indicar. Gerar. Construir.</p>
+            <p className={`mt-3 text-sm leading-relaxed text-zinc-300 ${racon ? "racon-hero-card-body" : ""}`}>Sua participação é reconhecida conforme o modelo, a operação validada e as regras comerciais vigentes.</p>
+            <a href="#modelos" className={`mt-6 inline-flex font-bold text-amber-300 ${racon ? "racon-hero-card-link" : ""}`}>Ver comparativo completo ↓</a>
           </div>
         </div>
       </div>

@@ -3076,3 +3076,14 @@ financeira anterior gravada na simulação.
 
 Relatório:
 `docs/relatorios-fases/HOTFIX-272-PARIDADE-PARCELA-PROPOSTA-PDF.md`.
+
+### Hotfix operacional 273 — Navegação e contraste do programa de parceiros Racon
+
+A navegação institucional da família Racon passa a usar **Seja parceiro** como
+única entrada pública do programa, removendo do menu o antigo atalho **Área do
+parceiro**. A landing `/parceiros` também fixa contraste acessível no cartão
+branco do hero para impedir texto claro sobre fundo claro quando a identidade
+visual do tenant aplica cores por bloco.
+
+Relatório:
+`docs/relatorios-fases/HOTFIX-273-MENU-E-CONTRASTE-PARCEIROS-RACON.md`.
