@@ -555,7 +555,7 @@ export async function carregarDadosContaCorrenteSocios(
   ] = await Promise.all([
     admin
       .from("financeiro_contas_pagar")
-      .select("id, empresa_id, descricao, valor, status, vencimento, competencia, pago_em, pago_pessoalmente, socio_pagador_usuario_id, fornecedor, observacao")
+      .select("id, empresa_id, descricao, valor, status, vencimento, competencia, pago_em, pago_pessoalmente, socio_pagador_usuario_id, fornecedor, observacao, retirar_reserva_impostos")
       .eq("empresa_id", empresaAtiva.id)
       .neq("status", "cancelada")
       .order("vencimento"),
@@ -636,7 +636,7 @@ export async function carregarDadosContaCorrenteSocios(
       .order("data_transferencia", { ascending: true }),
     admin
       .from("comissao_previsoes_franquia")
-      .select("competencia, status, valor_previsto, valor_liquido, valor_pago, valor_imposto")
+      .select("competencia, status, valor_previsto, valor_liquidado, valor_liquido, valor_imposto")
       .eq("empresa_id", empresaAtiva.id)
       .neq("status", "cancelada"),
   ]);
@@ -1623,9 +1623,24 @@ export async function carregarDadosContaCorrenteSocios(
   const saldoPJObj = (caixaRes.data || []).find((c: any) => c.id === contaEmpresaPJ?.id);
   const saldoBancarioPJ = Number(saldoPJObj?.saldo_atual || 0);
 
-  const reservaImpostosValor = Number(reservasDb.filter((r: any) => r.categoria === "IMPOSTOS" && r.status === "ATIVA").reduce((s: number, r: any) => s + Number(r.valor_reservado), 0).toFixed(2));
+  // A reserva fiscal nasce somente quando a comissão do participante fica
+  // elegível (ou seja, após o recebimento da franquia). Previsão futura não é
+  // dinheiro disponível no caixa; em liquidação parcial, reserva-se a mesma
+  // proporção do imposto que foi efetivamente liberada.
+  const impostosRetidosRecebidos = Number(todasComissoesDb.reduce((s: number, row: any) => {
+    const fiscal = lerFiscalParticipante(row.snapshot_regra);
+    const previsto = Number(row.valor_previsto || 0);
+    const elegivel = Number(row.valor_elegivel || 0);
+    const proporcaoElegivel = previsto > 0 ? Math.min(1, elegivel / previsto) : 0;
+    return s + Number(fiscal?.imposto || 0) * proporcaoElegivel;
+  }, 0).toFixed(2));
+  const impostosPagosComReserva = Number(todasContas
+    .filter((conta: any) => conta.status === "paga" && conta.retirar_reserva_impostos)
+    .reduce((s: number, conta: any) => s + Number(conta.valor || 0), 0)
+    .toFixed(2));
+  const reservaImpostosValor = Number((impostosRetidosRecebidos - impostosPagosComReserva).toFixed(2));
   const outrasReservasValor = Number(reservasDb.filter((r: any) => r.categoria !== "IMPOSTOS" && r.status === "ATIVA").reduce((s: number, r: any) => s + Number(r.valor_reservado), 0).toFixed(2));
-  const caixaLivreReal = Number(Math.max(0, saldoBancarioPJ - reservaImpostosValor - outrasReservasValor).toFixed(2));
+  const caixaLivreReal = Number(Math.max(0, saldoBancarioPJ - Math.max(0, reservaImpostosValor) - outrasReservasValor).toFixed(2));
 
   const contasParticulares = (contasBancariasDb || [])
     .filter((cb: any) => cb.id !== contaEmpresaPJ?.id)
@@ -1639,7 +1654,7 @@ export async function carregarDadosContaCorrenteSocios(
     reservaImpostos: reservaImpostosValor,
     outrasReservas: outrasReservasValor,
     caixaLivreReal,
-    impostosRetidosEmComissoes: 0,
+    impostosRetidosEmComissoes: impostosRetidosRecebidos,
     impostosRetidosFernando: 0,
     impostosRetidosEroni: 0,
     impostosRetidosDemaisColaboradores: 0,
@@ -1766,11 +1781,11 @@ export async function carregarDadosContaCorrenteSocios(
     .reduce((s: number, c: any) => s + Number(c.valor), 0);
 
   const reservaImpostosControle: ReservaImpostosDTO = {
-    retidoDeComissoes: reservaImpostosValor,
-    impostosPagosComReserva: 0,
+    retidoDeComissoes: impostosRetidosRecebidos,
+    impostosPagosComReserva,
     saldoReserva: reservaImpostosValor,
     impostosLancadosAPagar: Number(impostosContasAbertas.toFixed(2)),
-    necessidadeAdicional: Number(Math.max(0, impostosContasAbertas - reservaImpostosValor).toFixed(2)),
+    necessidadeAdicional: Number(Math.max(0, Math.max(0, reservaImpostosValor) - Math.max(0, saldoBancarioPJ - outrasReservasValor)).toFixed(2)),
     previsaoImpostosFuturos: 0,
   };
 
@@ -1783,7 +1798,7 @@ export async function carregarDadosContaCorrenteSocios(
   );
   const fiscalPorTitular = new Map<string, ResumoFiscalTitularDTO>();
   todasComissoesDb
-    .filter((row: any) => periodo.isTodosPeriodos || (row.competencia >= compInicio && row.competencia <= compFim))
+    .filter((row: any) => Number(row.valor_elegivel || 0) > 0 && (periodo.isTodosPeriodos || (row.competencia >= compInicio && row.competencia <= compFim)))
     .forEach((row: any) => {
     const fiscal = lerFiscalParticipante(row.snapshot_regra);
     const titularSocio = socioPorParticipante.get(row.participante_comercial_id);
@@ -1827,7 +1842,12 @@ export async function carregarDadosContaCorrenteSocios(
   const franquiaNoPeriodo = comissoesFranquiaDb.filter((row: any) =>
     periodo.isTodosPeriodos || (row.competencia >= compInicio && row.competencia <= compFim),
   );
-  const comissaoLiquidaRecebida = Number(franquiaNoPeriodo.reduce((s: number, row: any) => s + Number(row.valor_pago || 0), 0).toFixed(2));
+  const comissaoLiquidaRecebida = Number(franquiaNoPeriodo.reduce((s: number, row: any) => {
+    const previsto = Number(row.valor_previsto || 0);
+    const liquidado = Number(row.valor_liquidado || 0);
+    const proporcaoLiquidada = previsto > 0 ? Math.min(1, liquidado / previsto) : 0;
+    return s + Number(row.valor_liquido ?? row.valor_previsto ?? 0) * proporcaoLiquidada;
+  }, 0).toFixed(2));
   const repassesPagosVendedores = Number(comissoesVendedoresEmpresa.reduce((s: number, row: any) => s + Number(row.valor_pago || 0), 0).toFixed(2));
   const comissaoLiquidaPrevista = Number(franquiaNoPeriodo.reduce((s: number, row: any) => s + Number(row.valor_liquido ?? row.valor_previsto ?? 0), 0).toFixed(2));
   const repassesPrevistosVendedores = Number(comissoesVendedoresEmpresa.reduce((s: number, row: any) => s + Number(row.valor_previsto || 0), 0).toFixed(2));
@@ -1843,9 +1863,7 @@ export async function carregarDadosContaCorrenteSocios(
   // O saldo bancário é um fato de caixa; esta composição mostra as fontes
   // comerciais já recebidas, sem assumir que todo o histórico permaneceu na
   // conta depois de despesas e transferências.
-  caixaEmpresa.impostosRetidosEmComissoes = Number(franquiaNoPeriodo
-    .reduce((s: number, row: any) => s + Number(row.valor_imposto || 0), 0)
-    .toFixed(2));
+  caixaEmpresa.impostosRetidosEmComissoes = impostosRetidosRecebidos;
   caixaEmpresa.comissoesRecebidasOutrosVendedores = repassesPagosVendedores;
   caixaEmpresa.repassesPagosOutrosVendedores = repassesPagosVendedores;
   caixaEmpresa.recursosOperacionaisDeComissoes = receitaEmpresaComissoes.receitaLiquidaAposRepasses;

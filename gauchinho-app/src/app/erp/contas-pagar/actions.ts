@@ -442,6 +442,7 @@ export async function criarConta(form: FormData): Promise<ContasActionResult> {
       pago_pessoalmente: pessoal,
       socio_pagador_usuario_id: pessoal ? socioId : null,
       descontado_comissao: descontadoComissao,
+      retirar_reserva_impostos: form.get("retirar_reserva_impostos") === "on",
       observacao: value(form, "obs") || null,
     };
 
@@ -511,6 +512,16 @@ export async function criarConta(form: FormData): Promise<ContasActionResult> {
       if (documentError) {
         await removeStoredDocument(admin, empresaId, uploadNf.url);
         throw new Error(`Contas criadas, mas o documento não pôde ser vinculado: ${documentError.message}`);
+      }
+    }
+    if (contasIds.length > 0) {
+      const { error: reservaError } = await admin
+        .from("financeiro_contas_pagar")
+        .update({ retirar_reserva_impostos: form.get("retirar_reserva_impostos") === "on" })
+        .eq("empresa_id", empresaId)
+        .in("id", contasIds);
+      if (reservaError) {
+        throw new Error(`Conta criada, mas não foi possível registrar o uso da reserva fiscal: ${reservaError.message}`);
       }
     }
     revalidatePath("/erp/contas-pagar");
@@ -591,6 +602,7 @@ export async function alterarConta(id: string, form: FormData): Promise<ContasAc
 
     const updates: Record<string, any> = {
       descontado_comissao: descontadoComissao,
+      retirar_reserva_impostos: form.get("retirar_reserva_impostos") === "on",
       updated_at: new Date().toISOString(),
     };
 

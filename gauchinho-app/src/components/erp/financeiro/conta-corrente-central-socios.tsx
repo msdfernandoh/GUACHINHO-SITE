@@ -436,7 +436,7 @@ export function ContaCorrenteCentralSocios({
               </span>
             </div>
             <p className="mt-0.5 text-[10px] text-slate-400">
-              Protegido para DAS / IRPJ
+              Impostos de comissões recebidas
             </p>
             <button
               type="button"
@@ -1290,7 +1290,7 @@ export function ContaCorrenteCentralSocios({
               BLOCO 5 — Reserva de Impostos (Controle Fiscal)
             </h3>
             <p className="text-xs text-slate-500">
-              Controle dos tributos retidos sobre as comissões faturadas para proteger a empresa de passivos fiscais.
+              Impostos das comissões efetivamente recebidas, menos as guias marcadas para retirada da reserva.
             </p>
           </div>
           <div className="text-right">
@@ -1311,7 +1311,7 @@ export function ContaCorrenteCentralSocios({
             <p className="text-xl font-black text-slate-900 mt-1">
               {brl(dados.reservaImpostosControle.retidoDeComissoes)}
             </p>
-            <p className="text-[10px] text-slate-400 mt-0.5">Retenções efetuadas</p>
+            <p className="text-[10px] text-slate-400 mt-0.5">Somente comissões recebidas</p>
           </div>
 
           <div className="rounded-2xl border border-slate-200 bg-slate-50/60 p-4">
@@ -1321,7 +1321,7 @@ export function ContaCorrenteCentralSocios({
             <p className="text-xl font-black text-slate-900 mt-1">
               {brl(dados.reservaImpostosControle.impostosPagosComReserva)}
             </p>
-            <p className="text-[10px] text-slate-400 mt-0.5">Guias liquidadas</p>
+            <p className="text-[10px] text-slate-400 mt-0.5">Marcadas para usar a reserva</p>
           </div>
 
           <div className="rounded-2xl border-2 border-amber-300 bg-amber-50/50 p-4">
@@ -1668,6 +1668,10 @@ export function ContaCorrenteCentralSocios({
                     <p className="font-bold text-amber-950">Demonstrativo da Reserva Tributária:</p>
                     <p>• Retido de Comissões: {brl(dados.reservaImpostosControle.retidoDeComissoes)}</p>
                     <p>• (-) Guias de Impostos Já Liquidadas: -{brl(dados.reservaImpostosControle.impostosPagosComReserva)}</p>
+                    <p>• Disponível no caixa PJ para cobrir a reserva: {brl(Math.max(0, dados.caixaEmpresa.saldoBancarioControladoPJ - dados.caixaEmpresa.outrasReservas))}</p>
+                    {dados.reservaImpostosControle.necessidadeAdicional > 0 ? (
+                      <p className="font-bold text-rose-700">• Déficit de cobertura da reserva: {brl(dados.reservaImpostosControle.necessidadeAdicional)}</p>
+                    ) : null}
                     <p className="text-sm font-black text-amber-950 pt-1">
                       • (=) Saldo Atual em Reserva: {brl(dados.reservaImpostosControle.saldoReserva)}
                     </p>

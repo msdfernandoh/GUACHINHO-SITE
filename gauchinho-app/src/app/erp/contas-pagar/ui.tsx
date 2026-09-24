@@ -73,6 +73,7 @@ type Conta = {
   pago_pessoalmente: boolean;
   socio_pagador_usuario_id: string | null;
   descontado_comissao?: boolean;
+  retirar_reserva_impostos?: boolean;
   responsavel_importado?: string | null;
   necessita_revisao?: boolean;
   centro_custo_id: string | null;
@@ -915,6 +916,10 @@ export function ContasPagarClient({
                 ))}
               </Select>
             ) : null}
+            <label className="flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-bold text-amber-950 md:col-span-3">
+              <input name="retirar_reserva_impostos" type="checkbox" className="h-4 w-4 rounded text-amber-600" />
+              Retirar da reserva de impostos da empresa ao pagar
+            </label>
             <Textarea name="obs" className="md:col-span-2" placeholder="Observação (opcional)" />
             <div className="rounded-xl border border-blue-200 bg-blue-50/60 p-3 md:col-span-3">
               <label className="flex items-center gap-2 text-sm font-bold text-blue-950">
@@ -2201,6 +2206,15 @@ export function ContasPagarClient({
                     className="h-4 w-4 text-amber-600 rounded"
                   />
                   Já descontado na comissão (Não duplicar)
+                </label>
+                <label className="flex items-center gap-2 rounded-xl bg-amber-50 border border-amber-300 p-2.5 font-bold text-amber-950 sm:col-span-2">
+                  <input
+                    name="retirar_reserva_impostos"
+                    type="checkbox"
+                    defaultChecked={Boolean(editando.retirar_reserva_impostos)}
+                    className="h-4 w-4 text-amber-600 rounded"
+                  />
+                  Retirar da reserva de impostos da empresa ao pagar
                 </label>
               </div>
               <div className="md:col-span-2">

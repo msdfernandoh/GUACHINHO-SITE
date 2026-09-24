@@ -3140,3 +3140,14 @@ que regras globais substituam cores e escondam textos de botões.
 
 Relatório:
 `docs/relatorios-fases/HOTFIX-275-ISOLAMENTO-VISUAL-LANDINGS-PARCEIROS.md`.
+
+### Hotfix operacional 285 — Reserva fiscal de comissões recebidas
+
+O controle fiscal separa fato de caixa de previsão: impostos persistidos nas
+comissões elegíveis formam a reserva, enquanto guias tributárias somente a
+reduzem quando o lançamento financeiro registra explicitamente esse consumo.
+O saldo bancário PJ permanece independente e o painel expõe eventual déficit
+de cobertura da reserva.
+
+Relatório:
+`docs/relatorios-fases/HOTFIX-285-RESERVA-FISCAL-COMISSOES.md`.
