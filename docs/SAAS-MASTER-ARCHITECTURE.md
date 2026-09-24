@@ -3151,3 +3151,12 @@ de cobertura da reserva.
 
 Relatório:
 `docs/relatorios-fases/HOTFIX-285-RESERVA-FISCAL-COMISSOES.md`.
+
+### Reconciliação operacional 24/09/2026 — Caixa PJ
+
+A consolidação de caixa preserva movimentos históricos append-only e registra
+transferências entre contas como fatos financeiros independentes. A
+reclassificação de contas a pagar não reescreve o extrato de origem.
+
+Relatório:
+`docs/relatorios-fases/RECONCILIACAO-2026-09-24-CONTAS-PARTICULARES-PJ.md`.
