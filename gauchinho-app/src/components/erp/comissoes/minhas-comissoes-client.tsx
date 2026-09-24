@@ -70,6 +70,9 @@ export function MinhasComissoesClient({
   podePagarEquipe,
   contasBancarias,
 }: MinhasComissoesClientProps) {
+  // O próprio beneficiário ou o master/responsável financeiro pode confirmar.
+  // A RPC registra o usuário que executou a conferência para auditoria.
+  const podeConferirRecebimento = participanteSelecionadoId === participanteProprioId || podePagarEquipe;
   const router = useRouter();
   const now = new Date();
   const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
@@ -547,7 +550,7 @@ export function MinhasComissoesClient({
                           <CheckCircle2 className="h-3.5 w-3.5" />
                           Conferido por mim
                         </span>
-                      ) : Number(row.valor_pago) > 0 ? (
+                      ) : Number(row.valor_pago) > 0 && podeConferirRecebimento ? (
                         <form action={conferirPagamentoAction}>
                           <input type="hidden" name="previsao_id" value={row.id} />
                           <button className="rounded-xl bg-blue-700 px-3 py-1 text-[11px] font-bold text-white shadow-2xs hover:bg-blue-800 cursor-pointer">

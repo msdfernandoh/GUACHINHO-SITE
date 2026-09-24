@@ -192,6 +192,13 @@ export interface CaixaEmpresaDTO {
   reservaImpostos: number;
   outrasReservas: number;
   caixaLivreReal: number;
+  impostosRetidosEmComissoes: number;
+  impostosRetidosFernando: number;
+  impostosRetidosEroni: number;
+  impostosRetidosDemaisColaboradores: number;
+  comissoesRecebidasOutrosVendedores: number;
+  repassesPagosOutrosVendedores: number;
+  recursosOperacionaisDeComissoes: number;
   contasParticulares: Array<{ id: string; nome: string; saldo: number }>;
 }
 
@@ -629,7 +636,7 @@ export async function carregarDadosContaCorrenteSocios(
       .order("data_transferencia", { ascending: true }),
     admin
       .from("comissao_previsoes_franquia")
-      .select("competencia, status, valor_previsto, valor_liquido, valor_pago")
+      .select("competencia, status, valor_previsto, valor_liquido, valor_pago, valor_imposto")
       .eq("empresa_id", empresaAtiva.id)
       .neq("status", "cancelada"),
   ]);
@@ -1632,6 +1639,13 @@ export async function carregarDadosContaCorrenteSocios(
     reservaImpostos: reservaImpostosValor,
     outrasReservas: outrasReservasValor,
     caixaLivreReal,
+    impostosRetidosEmComissoes: 0,
+    impostosRetidosFernando: 0,
+    impostosRetidosEroni: 0,
+    impostosRetidosDemaisColaboradores: 0,
+    comissoesRecebidasOutrosVendedores: 0,
+    repassesPagosOutrosVendedores: 0,
+    recursosOperacionaisDeComissoes: 0,
     contasParticulares,
   };
 
@@ -1793,6 +1807,15 @@ export async function carregarDadosContaCorrenteSocios(
     });
     });
   const resumoFiscalPorTitular = [...fiscalPorTitular.values()];
+  caixaEmpresa.impostosRetidosFernando = Number(resumoFiscalPorTitular
+    .filter((item) => item.tipo === "SOCIO" && item.titular.toLowerCase().includes("fernando"))
+    .reduce((soma, item) => soma + item.impostoRetido, 0).toFixed(2));
+  caixaEmpresa.impostosRetidosEroni = Number(resumoFiscalPorTitular
+    .filter((item) => item.tipo === "SOCIO" && item.titular.toLowerCase().includes("eroni"))
+    .reduce((soma, item) => soma + item.impostoRetido, 0).toFixed(2));
+  caixaEmpresa.impostosRetidosDemaisColaboradores = Number(resumoFiscalPorTitular
+    .filter((item) => item.tipo === "VENDEDOR_EMPRESA")
+    .reduce((soma, item) => soma + item.impostoRetido, 0).toFixed(2));
 
   // Receita da empresa não é a comissão do vendedor. É o que sobra para a PJ
   // depois de pagar todos os vendedores que não pertencem ao quadro societário.
@@ -1816,6 +1839,16 @@ export async function carregarDadosContaCorrenteSocios(
     repassesPrevistosVendedores,
     receitaProjetadaAposRepasses: Number((comissaoLiquidaPrevista - repassesPrevistosVendedores).toFixed(2)),
   };
+
+  // O saldo bancário é um fato de caixa; esta composição mostra as fontes
+  // comerciais já recebidas, sem assumir que todo o histórico permaneceu na
+  // conta depois de despesas e transferências.
+  caixaEmpresa.impostosRetidosEmComissoes = Number(franquiaNoPeriodo
+    .reduce((s: number, row: any) => s + Number(row.valor_imposto || 0), 0)
+    .toFixed(2));
+  caixaEmpresa.comissoesRecebidasOutrosVendedores = repassesPagosVendedores;
+  caixaEmpresa.repassesPagosOutrosVendedores = repassesPagosVendedores;
+  caixaEmpresa.recursosOperacionaisDeComissoes = receitaEmpresaComissoes.receitaLiquidaAposRepasses;
 
   // =========================================================================
   // BLOCO 6: PREVISÕES FUTURAS (30 / 60 / 90 DIAS)

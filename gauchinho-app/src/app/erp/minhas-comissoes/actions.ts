@@ -70,12 +70,12 @@ export async function pagarComissoesAgrupadasAction(formData: FormData) {
   if (!ids.length || !contaOrigemId || operacaoId.length < 8) throw new Error("Selecione comissões e a conta de saída.");
   const db = await createClient();
   const [{ data: conta }, { data: previsoes, error }] = await Promise.all([
-    db.from("financeiro_contas_bancarias").select("id").eq("id", contaOrigemId).eq("empresa_id", access.empresaAtiva.id).eq("ativo", true).maybeSingle(),
+    db.from("financeiro_contas_bancarias").select("id,participante_comercial_id").eq("id", contaOrigemId).eq("empresa_id", access.empresaAtiva.id).eq("ativo", true).maybeSingle(),
     db.from("comissao_previsoes_participantes")
       .select("id,participante_comercial_id,organizacao_parceira_id,competencia,valor_elegivel,valor_pago")
       .eq("empresa_id", access.empresaAtiva.id).eq("participante_comercial_id", participanteId).in("id", ids),
   ]);
-  if (!conta) throw new Error("Conta bancária de saída inválida.");
+  if (!conta || conta.participante_comercial_id) throw new Error("Selecione uma conta da empresa para pagar comissões; contas pessoais são somente destino.");
   if (error || (previsoes?.length ?? 0) !== ids.length) throw new Error("Uma ou mais comissões não pertencem ao beneficiário selecionado.");
   const porCompetencia = new Map<string, typeof previsoes>();
   for (const previsao of previsoes ?? []) {

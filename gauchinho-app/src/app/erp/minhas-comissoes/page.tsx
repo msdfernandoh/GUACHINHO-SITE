@@ -105,8 +105,8 @@ export default async function MinhasComissoesPage({
       .maybeSingle(),
     db.rpc("can_write_tenant_internal", { p_empresa_id: empresaAtiva.id }),
     podePagarEquipe
-      ? db.from("financeiro_contas_saldos").select("id,nome,banco,saldo_atual").eq("empresa_id", empresaAtiva.id).eq("ativo", true).order("nome")
-      : Promise.resolve({ data: [] as Array<{ id: string; nome: string; banco: string | null; saldo_atual: number }>, error: null }),
+      ? db.from("financeiro_contas_saldos").select("id,nome,banco,saldo_atual,participante_comercial_id").eq("empresa_id", empresaAtiva.id).eq("ativo", true).order("nome")
+      : Promise.resolve({ data: [] as Array<{ id: string; nome: string; banco: string | null; saldo_atual: number; participante_comercial_id: string | null }>, error: null }),
   ]);
   const franquiaMap = new Map((previsoesFranquia ?? []).map((item: any) => [item.id, item]));
   const mostrarDetalhesFiscais = Boolean(fiscal?.participante_exibe_detalhes_fiscais);
@@ -166,7 +166,9 @@ export default async function MinhasComissoesPage({
         participanteProprioId={participanteProprio?.id ?? null}
         podeGerenciarEquipe={podeGerenciarEquipe}
         podePagarEquipe={podePagarEquipe}
-        contasBancarias={(contasBancarias ?? []).map((conta) => ({ ...conta, saldo_atual: Number(conta.saldo_atual) }))}
+        contasBancarias={(contasBancarias ?? [])
+          .filter((conta) => !conta.participante_comercial_id)
+          .map((conta) => ({ id: conta.id, nome: conta.nome, banco: conta.banco, saldo_atual: Number(conta.saldo_atual) }))}
       />
     </main>
   );

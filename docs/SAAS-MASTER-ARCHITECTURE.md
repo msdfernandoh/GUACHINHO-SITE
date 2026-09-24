@@ -1,5 +1,17 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
+### Hotfix operacional 283 — Conferência financeira delegada e origem do Caixa PJ
+
+O usuário com responsabilidade financeira pode confirmar a baixa de comissões de qualquer participante da empresa, com autoria preservada na auditoria. O demonstrativo do Caixa PJ passa a expor a origem comercial dos recursos — impostos retidos e comissões/repasses de vendedores — sem confundir essa composição com o saldo bancário após movimentações. Relatório: `docs/relatorios-fases/HOTFIX-283-MASTER-CONFERENCIA-E-ORIGEM-CAIXA-PJ.md`.
+
+### Hotfix operacional 284 — Origem corporativa obrigatória para pagamentos de comissões
+
+Contas vinculadas a participantes não podem mais ser escolhidas como conta de saída de pagamento de comissão; o servidor valida a mesma regra. Isso evita que uma comissão seja marcada como paga sem ter saído do Caixa PJ. Relatório: `docs/relatorios-fases/HOTFIX-283-MASTER-CONFERENCIA-E-ORIGEM-CAIXA-PJ.md`.
+
+### Hotfix operacional 282 — Baixa canônica em vínculos de repasse
+
+Vínculos criados pelo relatório de repasse, inclusive em releituras posteriores ao recebimento, passam a acionar a baixa financeira canônica e a recalcular a elegibilidade das comissões participantes. A confirmação de recebimento continua sendo uma declaração exclusiva do próprio participante; gestores podem pagar, mas não confirmar em seu nome. Relatório: `docs/relatorios-fases/HOTFIX-282-REPASSE-BAIXA-E-CONFERENCIA-PROPRIA.md`.
+
 ### Hotfix operacional 287 — Rolagem superior do Pipeline CRM
 
 O quadro Kanban do Pipeline Comercial passa a apresentar uma barra horizontal

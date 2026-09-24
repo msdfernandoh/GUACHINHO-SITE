@@ -332,6 +332,19 @@ export function ContaCorrenteCentralSocios({
           </div>
 
           {/* Card 4: Contas Lançadas do Mês */}
+          <div className="group relative rounded-2xl border border-cyan-200/80 bg-white p-4 shadow-sm hover:shadow-md transition-all">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-black uppercase tracking-wider text-slate-500">Entradas da Empresa</span>
+              <span className="rounded-full bg-cyan-100 px-2 py-0.5 text-[9px] font-black uppercase text-cyan-800">Comissões</span>
+            </div>
+            <div className="mt-2"><span className="text-2xl font-black text-cyan-950">{brl(dados.caixaEmpresa.recursosOperacionaisDeComissoes)}</span></div>
+            <p className="mt-0.5 text-[10px] text-slate-400">Resultado das comissões após repasses</p>
+            <button type="button" onClick={() => setModalComposicaoTipo("caixa")} className="mt-3 flex w-full items-center justify-center gap-1 rounded-xl bg-slate-50 hover:bg-cyan-50 py-1.5 text-[10px] font-black text-cyan-900 border border-slate-200 transition-colors">
+              <Eye className="h-3 w-3" /> Ver fontes
+            </button>
+          </div>
+
+          {/* Card 5: Contas Lançadas do Mês */}
           <div className="group relative rounded-2xl border border-indigo-200/80 bg-white p-4 shadow-sm hover:shadow-md transition-all">
             <div className="flex items-center justify-between">
               <span className="text-[10px] font-black uppercase tracking-wider text-slate-500">
@@ -1612,6 +1625,16 @@ export function ContaCorrenteCentralSocios({
                   <div className="rounded-2xl border border-blue-200 bg-blue-50/50 p-4 space-y-2">
                     <p className="font-bold text-blue-950">Demonstrativo de Caixa PJ Real:</p>
                     <p>• Saldo em Conta Bancária PJ: {brl(dados.caixaEmpresa.saldoBancarioControladoPJ)}</p>
+                    <div className="rounded-xl border border-blue-200 bg-white/70 p-3 text-sm text-slate-700">
+                      <p className="font-bold text-blue-950">Fontes comerciais registradas no período:</p>
+                      <p>• Impostos retidos — Fernando: {brl(dados.caixaEmpresa.impostosRetidosFernando)}</p>
+                      <p>• Impostos retidos — Eroni: {brl(dados.caixaEmpresa.impostosRetidosEroni)}</p>
+                      <p>• Impostos retidos — demais colaboradores: {brl(dados.caixaEmpresa.impostosRetidosDemaisColaboradores)}</p>
+                      <p>• Total de impostos retidos nas comissões: {brl(dados.caixaEmpresa.impostosRetidosEmComissoes)}</p>
+                      <p>• Comissões de outros vendedores recebidas/repassadas: {brl(dados.caixaEmpresa.repassesPagosOutrosVendedores)}</p>
+                      <p>• Resultado operacional das comissões após repasses: {brl(dados.caixaEmpresa.recursosOperacionaisDeComissoes)}</p>
+                      <p className="mt-1 text-xs text-slate-500">O saldo bancário pode ser diferente destas fontes porque inclui pagamentos e movimentações posteriores.</p>
+                    </div>
                     <p>• (-) Reserva de Impostos: -{brl(dados.caixaEmpresa.reservaImpostos)}</p>
                     <p>• (-) Outras Reservas Operacionais: -{brl(dados.caixaEmpresa.outrasReservas)}</p>
                     <p className="text-sm font-black text-blue-950 pt-1">
