@@ -19,14 +19,13 @@ export default async function IndicarNoAppPage({
   if (!empresaAtiva || !usuario) redirect("/app-indicador/login");
   const [{ tipo }, tenant] = await Promise.all([searchParams, getResolvedTenant()]);
   const racon = isRaconModel(tenant?.siteModel);
+  const { participante, indicador } = await resolveIndicadorAppSession(empresaAtiva.id, usuario.id);
+  if (!participante || !indicador) redirect("/app-indicador");
 
   if (tipo === "contato") return <IndicacaoChat racon={racon} />;
 
   if (tipo === "evento") {
-    const [{ participante }, eventos] = await Promise.all([
-      resolveIndicadorAppSession(empresaAtiva.id, usuario.id),
-      fetchEventosDisponiveisParaIndicador(),
-    ]);
+    const eventos = await fetchEventosDisponiveisParaIndicador();
     return (
       <IndicacaoEventoForm
         racon={racon}

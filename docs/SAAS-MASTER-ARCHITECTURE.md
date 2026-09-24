@@ -1,5 +1,21 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
+### Hotfix operacional 290 — Contraste da landing de parceiros Racon
+
+Nos hosts Racon Sinop e Racon Sorriso, a landing pública de parceiros mantém as superfícies claras e ações azuis do modelo. O título do hero e o conteúdo do bloco Network passam a ter texto branco explícito sobre seus gradientes azuis, preservando o texto escuro dos cards brancos. Login, recuperação e cadastro seguem o tema Racon existente. Relatório: `docs/relatorios-fases/HOTFIX-290-CONTRASTE-LANDING-PARCEIROS-RACON.md`.
+
+### Validação operacional 24/09/2026 — Fluxo completo do app de indicação
+
+Após o Hotfix 288, o acesso real de uma conta existente e a criação de uma conta sintética confirmaram cadastro público, login inicial e repetido por CPF, painel, extrato, envio de indicação, listagem e logout em produção. O lead e os vínculos comerciais sintéticos foram removidos; identidade e vínculo técnico remanescentes ficaram inativos porque um gatilho legado impede a exclusão física de `empresa_usuarios`. Relatório: `docs/relatorios-fases/VALIDACAO-2026-09-24-FLUXO-APP-INDICADOR.md`.
+
+### Hotfix operacional 289 — Tema Racon claro na tabela pública de Grupos
+
+A camada de aparência operacional passa a cobrir todas as rotas públicas Racon, exceto a home, as landings de parceiros e o telão de sorteio ao vivo, que possuem composição própria. Ela resolve cores por domínio e aplica superfícies claras, tipografia escura de alto contraste, campos brancos, tags coerentes e botões na cor primária da marca. Relatório: `docs/relatorios-fases/HOTFIX-289-TEMA-RACON-TABELA-GRUPOS.md`.
+
+### Hotfix operacional 288 — Login do app de indicação com identidade Auth técnica
+
+O app apresenta o CPF como entrada principal e aceita e-mail de contato apenas por compatibilidade. Resolve a identidade Auth vinculada a `usuarios.auth_user_id` e autentica com a senha informada, inclusive para cadastros legados cujo Auth usa e-mail técnico baseado no CPF. A recuperação recebe CPF e envia um link ao e-mail de contato da identidade ativa do tenant, sem revelar a existência do cadastro. A resolução permanece restrita ao vínculo ativo `empresa_usuarios` da empresa do host e a participante e indicador ativos. Painel, indicação, comissões e convidados usam o resolvedor canônico do indicador; comissões seguem o participante selecionado por ele. Nenhuma credencial ou dado comercial é regravado no login. Relatório: `docs/relatorios-fases/HOTFIX-288-LOGIN-APP-INDICADOR-CREDENCIAL-TECNICA.md`.
+
 ### Hotfix operacional 283 — Conferência financeira delegada e origem do Caixa PJ
 
 O usuário com responsabilidade financeira pode confirmar a baixa de comissões de qualquer participante da empresa, com autoria preservada na auditoria. O demonstrativo do Caixa PJ passa a expor a origem comercial dos recursos — impostos retidos e comissões/repasses de vendedores — sem confundir essa composição com o saldo bancário após movimentações. Relatório: `docs/relatorios-fases/HOTFIX-283-MASTER-CONFERENCIA-E-ORIGEM-CAIXA-PJ.md`.

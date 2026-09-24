@@ -23,7 +23,8 @@ const raconLandingCss = `
   .racon-parceiros [class*="bg-amber"] { background-color: #0066cc; color: #ffffff; }
   .racon-parceiros [class*="bg-amber"] [class*="text-zinc-"] { color: #ffffff; }
   .racon-parceiros button[class*="bg-zinc-950"] { background-color: #0066cc !important; color: #ffffff !important; }
-  .racon-parceiros .racon-hero { --visual-title: #ffffff; --visual-text: #eaf5ff; --visual-accent: #ffffff; background: linear-gradient(125deg, #004ca8 0%, #006dcc 55%, #0099dd 100%); }
+  .racon-parceiros .racon-hero { --visual-title: #ffffff; --visual-text: #eaf5ff; --visual-accent: #ffffff; color: #ffffff; background: linear-gradient(125deg, #004ca8 0%, #006dcc 55%, #0099dd 100%); }
+  .racon-parceiros .racon-hero h1 { color: #ffffff !important; }
   .racon-parceiros .racon-hero > div > p { color: #ffffff !important; }
   .racon-parceiros .racon-hero [class*="bg-zinc-"] { background-color: rgba(5, 41, 94, .28); }
   .racon-parceiros .racon-hero [class*="text-white"] { color: #ffffff; }
@@ -36,7 +37,8 @@ const raconLandingCss = `
   .racon-parceiros .racon-hero .racon-hero-card-link { color: #0066cc !important; }
   .racon-parceiros .racon-hero .racon-hero-card-title { color: #0b2855 !important; }
   .racon-parceiros .racon-hero .racon-hero-card-body { color: #385270 !important; }
-  .racon-parceiros .racon-network { --visual-title: #ffffff; --visual-text: #eef8ff; --visual-accent: #ffffff; background: linear-gradient(135deg, #0055b8, #008fcf) !important; }
+  .racon-parceiros .racon-network { --visual-title: #ffffff; --visual-text: #eef8ff; --visual-accent: #ffffff; color: #ffffff !important; background: linear-gradient(135deg, #0055b8, #008fcf) !important; }
+  .racon-parceiros .racon-network h2 { color: #ffffff !important; }
   .racon-parceiros .racon-network .racon-network-cta { background: #ffffff !important; color: #005db8 !important; box-shadow: 0 8px 24px rgba(0, 48, 112, .2); }
   .racon-parceiros .racon-network .racon-network-cta > span { color: #005db8 !important; }
 `;

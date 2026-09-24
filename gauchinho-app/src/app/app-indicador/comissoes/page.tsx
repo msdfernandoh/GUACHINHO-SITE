@@ -4,6 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { ComissoesMobile, type ComissaoMobileItem } from "@/components/app-indicador/comissoes-mobile";
 import { getResolvedTenant } from "@/lib/tenant/get-resolved-empresa";
 import { isRaconModel } from "@/lib/tenant/model-family";
+import { resolveIndicadorAppSession } from "@/lib/parceiros/indicador-app-session";
 
 type ClienteDaVenda = { nome?: string | null };
 type VendaDaPrevisao = {
@@ -43,8 +44,8 @@ export default async function ComissoesDoAppPage() {
   // lê somente as previsões do próprio participante, mas pode exibir o
   // snapshot fiscal canônico da franqueadora vinculado à mesma venda.
   const db = createAdminClient({ noStore: true });
-  const { data: participante } = await db.from("participantes_comerciais").select("id,nome,nome_exibicao").eq("empresa_id", empresaAtiva.id).eq("usuario_id", usuario.id).eq("status", "ATIVO").maybeSingle();
-  if (!participante) redirect("/app-indicador");
+  const { participante, indicador } = await resolveIndicadorAppSession(empresaAtiva.id, usuario.id);
+  if (!participante || !indicador) redirect("/app-indicador");
   const { data } = await db
     .from("comissao_previsoes_participantes")
     .select("id,venda_id,ordem_etapa,nome_etapa,competencia,base_calculo_valor,percentual_aplicado,valor_previsto,valor_pago,status,conferido_por_participante,snapshot_regra,venda:vendas(valor_credito,data_venda,data_primeira_parcela,cliente:clientes(nome))")

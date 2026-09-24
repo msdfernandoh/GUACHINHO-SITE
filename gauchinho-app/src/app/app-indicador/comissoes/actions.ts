@@ -3,19 +3,14 @@
 import { revalidatePath } from "next/cache";
 import { getCurrentTenantContext } from "@/lib/tenant/context";
 import { createClient } from "@/lib/supabase/server";
+import { resolveIndicadorAppSession } from "@/lib/parceiros/indicador-app-session";
 
 export async function confirmarRecebimentoNoAppAction(previsaoId: string) {
   const { empresaAtiva, usuario } = await getCurrentTenantContext();
   if (!empresaAtiva || !usuario) return { ok: false, error: "Sua sessão expirou." };
   const db = await createClient();
-  const { data: participante } = await db
-    .from("participantes_comerciais")
-    .select("id")
-    .eq("empresa_id", empresaAtiva.id)
-    .eq("usuario_id", usuario.id)
-    .eq("status", "ATIVO")
-    .maybeSingle();
-  if (!participante) return { ok: false, error: "Participante não localizado." };
+  const { participante, indicador } = await resolveIndicadorAppSession(empresaAtiva.id, usuario.id);
+  if (!participante || !indicador) return { ok: false, error: "Participante não localizado." };
   const { data: previsao } = await db
     .from("comissao_previsoes_participantes")
     .select("id")

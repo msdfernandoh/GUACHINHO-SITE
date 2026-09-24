@@ -26,7 +26,7 @@ export default async function AppIndicadorPage() {
     empresaAtiva.id,
     usuario.id,
   );
-  if (!participante)
+  if (!participante || !indicador)
     return (
       <main className="p-6">
         Seu acesso ainda não está vinculado ao programa.

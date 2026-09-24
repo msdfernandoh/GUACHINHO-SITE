@@ -14,8 +14,8 @@ const statusLabel: Record<string, string> = { confirmado: "Confirmado", presente
 export default async function ListaConvidadosDoEventoPage() {
   const { empresaAtiva, usuario } = await getCurrentTenantContext();
   if (!empresaAtiva || !usuario) redirect("/app-indicador/login");
-  const [tenant, { participante }, eventos] = await Promise.all([getResolvedTenant(), resolveIndicadorAppSession(empresaAtiva.id, usuario.id), fetchEventosDisponiveisParaIndicador()]);
-  if (!participante) redirect("/app-indicador");
+  const [tenant, { participante, indicador }, eventos] = await Promise.all([getResolvedTenant(), resolveIndicadorAppSession(empresaAtiva.id, usuario.id), fetchEventosDisponiveisParaIndicador()]);
+  if (!participante || !indicador) redirect("/app-indicador");
   const evento = eventos[0];
   const admin = createAdminClient({ noStore: true });
   const { data: lista } = evento ? await admin.from("eventos_listas_convidados").select("id").eq("evento_id", evento.id).eq("consultor_usuario_id", usuario.id).maybeSingle() : { data: null };
