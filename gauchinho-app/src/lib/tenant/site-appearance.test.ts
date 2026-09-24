@@ -139,6 +139,24 @@ describe("menus do modelo", () => {
 });
 
 describe("isolamento da landing de parceiros", () => {
+  it("aplica a camada clara operacional às telas públicas Racon", () => {
+    const source = readFileSync(
+      resolve(process.cwd(), "src/components/public/site-appearance.tsx"),
+      "utf8",
+    );
+    expect(source).toContain('page !== "/" && !isPartnerLanding && !isStageDisplay');
+    expect(source).not.toContain('"/simulador"].includes(page)');
+  });
+
+  it("preserva o contraste do telão de sorteio, que é intencionalmente escuro", () => {
+    const source = readFileSync(
+      resolve(process.cwd(), "src/components/public/site-appearance.tsx"),
+      "utf8",
+    );
+    expect(source).toContain('^\\/eventos\\/[^/]+\\/telao$');
+    expect(source).toContain("!isStageDisplay");
+  });
+
   it("não aplica o tema operacional às rotas públicas do programa", () => {
     const source = readFileSync(
       resolve(process.cwd(), "src/components/public/site-appearance.tsx"),
