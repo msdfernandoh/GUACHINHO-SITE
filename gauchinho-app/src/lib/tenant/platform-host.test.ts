@@ -43,4 +43,13 @@ describe("Platform Host — autenticação e RBAC", () => {
       ).toBe("deny");
     },
   );
+
+  it("revisor acessa somente a consulta técnica", () => {
+    const input = { authenticated: true, platformSuperadmin: false, platformReviewer: true };
+    expect(decidePlatformHostAccess({ ...input, pathname: "/" })).toBe("redirect_master");
+    expect(decidePlatformHostAccess({ ...input, pathname: "/platform/revisao" })).toBe("allow_master");
+    expect(decidePlatformHostAccess({ ...input, pathname: "/platform/empresas" })).toBe("deny");
+    expect(decidePlatformHostAccess({ ...input, pathname: "/platform/acessos-cadastro" })).toBe("deny");
+    expect(decidePlatformHostAccess({ ...input, pathname: "/platform/empresas/nova" })).toBe("deny");
+  });
 });

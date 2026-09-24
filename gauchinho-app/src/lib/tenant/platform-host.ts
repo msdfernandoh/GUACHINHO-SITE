@@ -15,9 +15,16 @@ export function decidePlatformHostAccess(input: {
   pathname: string;
   authenticated: boolean;
   platformSuperadmin: boolean;
+  platformReviewer?: boolean;
 }): PlatformHostAccessDecision {
   if (!input.authenticated) {
     return input.pathname === "/login" ? "allow_login" : "redirect_login";
+  }
+  if (!input.platformSuperadmin && input.platformReviewer) {
+    if (input.pathname === "/login" || input.pathname === "/" || input.pathname === "/admin" || input.pathname === "/platform") {
+      return "redirect_master";
+    }
+    return input.pathname === "/platform/revisao" ? "allow_master" : "deny";
   }
   if (!input.platformSuperadmin) return "deny";
   if (input.pathname === "/login" || input.pathname === "/" || input.pathname === "/admin") {

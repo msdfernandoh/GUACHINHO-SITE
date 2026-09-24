@@ -264,16 +264,20 @@ export async function proxy(request: NextRequest) {
   }
 
   // O host da plataforma é uma fronteira de autorização própria. Não representa
-  // a Gauchinho nem qualquer outra empresa: somente PLATFORM_SUPERADMIN entra.
+  // a Gauchinho nem qualquer outra empresa. O revisor só alcança sua rota.
   if (platformHost) {
-    const { data: platformSuperadmin, error: platformRoleError } = user
-      ? await supabase.rpc("is_platform_superadmin")
-      : { data: false, error: null };
+    const [{ data: platformSuperadmin, error: platformRoleError }, { data: platformReviewer, error: reviewerError }] = user
+      ? await Promise.all([supabase.rpc("is_platform_superadmin"), supabase.rpc("is_platform_technical_reviewer")])
+      : [{ data: false, error: null }, { data: false, error: null }];
     const platformDecision = decidePlatformHostAccess({
       pathname: path,
       authenticated: Boolean(user),
       platformSuperadmin: !platformRoleError && Boolean(platformSuperadmin),
+      platformReviewer: !reviewerError && Boolean(platformReviewer),
     });
+    if (!platformSuperadmin && platformReviewer && !["GET", "HEAD"].includes(request.method)) {
+      return platformAccessDeniedResponse();
+    }
 
     if (platformDecision === "allow_login" || platformDecision === "allow_master") {
       return response;
@@ -287,7 +291,7 @@ export async function proxy(request: NextRequest) {
       return platformAccessDeniedResponse();
     }
     if (platformDecision === "redirect_master") {
-      return NextResponse.redirect(new URL("/platform", request.url));
+      return NextResponse.redirect(new URL(platformSuperadmin ? "/platform" : "/platform/revisao", request.url));
     }
     return platformRouteUnavailableResponse();
   }

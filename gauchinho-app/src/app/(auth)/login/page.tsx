@@ -26,7 +26,7 @@ export default async function LoginPage({
         <h1 className={isRacon ? "text-2xl font-bold text-slate-900" : "text-2xl font-bold text-zinc-900 dark:text-white"}>
           {platform ? "Plataforma SaaS" : `Acesso ${nome}`}
         </h1>
-        <p className="mt-1 text-sm text-zinc-500">{platform ? "Acesso exclusivo Platform Superadmin" : "Entre com e-mail e senha"}</p>
+        <p className="mt-1 text-sm text-zinc-500">{platform ? "Entre com seu acesso à plataforma" : "Entre com e-mail e senha"}</p>
         {error ? (
           <p className="mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
             {error}

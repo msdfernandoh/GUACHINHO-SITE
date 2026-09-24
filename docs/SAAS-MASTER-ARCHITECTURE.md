@@ -16,6 +16,10 @@ A camada de aparência operacional passa a cobrir todas as rotas públicas Racon
 
 O app apresenta o CPF como entrada principal e aceita e-mail de contato apenas por compatibilidade. Resolve a identidade Auth vinculada a `usuarios.auth_user_id` e autentica com a senha informada, inclusive para cadastros legados cujo Auth usa e-mail técnico baseado no CPF. A recuperação recebe CPF e envia um link ao e-mail de contato da identidade ativa do tenant, sem revelar a existência do cadastro. A resolução permanece restrita ao vínculo ativo `empresa_usuarios` da empresa do host e a participante e indicador ativos. Painel, indicação, comissões e convidados usam o resolvedor canônico do indicador; comissões seguem o participante selecionado por ele. Nenhuma credencial ou dado comercial é regravado no login. Relatório: `docs/relatorios-fases/HOTFIX-288-LOGIN-APP-INDICADOR-CREDENCIAL-TECNICA.md`.
 
+### Fase 286 — Revisão técnica temporária e somente leitura
+
+Para avaliação externa durante negociação, o host global admite um revisor em `plataforma_revisores_tecnicos`, sem vínculo `empresa_usuarios` e com expiração em 30 dias. O proxy autoriza somente `/platform/revisao` em requisições de leitura, e a página oferece consultas paginadas a dados existentes de empresas, usuários, leads, propostas, grupos e vendas. A identidade usa perfil técnico neutro `parceiro`; a migration 287 bloqueia `INSERT`, `UPDATE` e `DELETE` em tabelas públicas mesmo diante de políticas legadas permissivas. O superadmin provisiona conta exclusiva em `/platform/acessos-cadastro`. Relatório: `docs/relatorios-fases/FASE-286-REVISAO-TECNICA-SOMENTE-LEITURA.md`.
+
 ### Hotfix operacional 283 — Conferência financeira delegada e origem do Caixa PJ
 
 O usuário com responsabilidade financeira pode confirmar a baixa de comissões de qualquer participante da empresa, com autoria preservada na auditoria. O demonstrativo do Caixa PJ passa a expor a origem comercial dos recursos — impostos retidos e comissões/repasses de vendedores — sem confundir essa composição com o saldo bancário após movimentações. Relatório: `docs/relatorios-fases/HOTFIX-283-MASTER-CONFERENCIA-E-ORIGEM-CAIXA-PJ.md`.
