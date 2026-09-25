@@ -568,7 +568,7 @@ export function CrmKanbanBoard({
 
       {/* BANNER DE FILTRO DE FUNIL ATIVO */}
       {isFiltered && (
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-blue-500/40 bg-gradient-to-r from-blue-950/40 via-purple-950/30 to-zinc-900/90 p-4 shadow-lg backdrop-blur-xs">
+        <div data-racon-funnel-filter className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-blue-500/40 bg-gradient-to-r from-blue-950/40 via-purple-950/30 to-zinc-900/90 p-4 shadow-lg backdrop-blur-xs">
           <div className="flex flex-wrap items-center gap-3">
             <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-600/30 text-blue-300 ring-1 ring-blue-500/40">
               <Sparkles className="h-5 w-5 text-blue-400" />

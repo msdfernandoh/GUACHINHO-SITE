@@ -207,7 +207,7 @@ body.tenant-root-independent {
 }
 
 /* Tipografia de alto contraste */
-.tenant-admin-racon main :is([class*="text-zinc-100"], [class*="text-zinc-200"], [class*="text-slate-100"]):not(.racon-funnel-executive *):not([class*="bg-blue-600"] *):not([class*="bg-emerald-600"] *):not([class*="bg-red-600"] *):not([class*="bg-amber-600"] *):not([class*="bg-orange-600"] *):not([class*="bg-purple-600"] *) {
+.tenant-admin-racon main :is([class*="text-zinc-50"], [class*="text-zinc-100"], [class*="text-zinc-200"], [class*="text-slate-100"]):not(.racon-funnel-executive *):not([class*="bg-blue-600"] *):not([class*="bg-emerald-600"] *):not([class*="bg-red-600"] *):not([class*="bg-amber-600"] *):not([class*="bg-orange-600"] *):not([class*="bg-purple-600"] *) {
   color: #0f172a !important;
 }
 
@@ -248,6 +248,62 @@ body.tenant-root-independent {
 }
 
 .tenant-admin-racon main :is([class*="bg-zinc-800"], [class*="bg-slate-800"]):not(button):not(.racon-funnel-executive *) * {
+  color: #334155 !important;
+}
+
+/* Filtros compactos usam botões cinza no tema escuro original. No Racon,
+   mantê-los claros evita texto de baixo contraste sobre quase-preto. */
+.tenant-admin-racon main :is(button, a)[class*="bg-zinc-800"]:not(.racon-funnel-executive *) {
+  background-color: #e2e8f0 !important;
+  color: #334155 !important;
+}
+
+.tenant-admin-racon main :is(button, a)[class*="bg-zinc-800"]:not(.racon-funnel-executive *) * {
+  color: inherit !important;
+}
+
+.tenant-admin-racon main :is(button, a)[class*="bg-zinc-800"]:not(.racon-funnel-executive *):hover {
+  background-color: #cbd5e1 !important;
+  color: #0f172a !important;
+}
+
+/* O banner de foco do Kanban era um gradiente escuro específico e escapava
+   das regras de superfícies claras do tenant. */
+.tenant-admin-racon main [data-racon-funnel-filter] {
+  background: linear-gradient(90deg, #eff6ff 0%, #f5f3ff 52%, #f8fafc 100%) !important;
+  border-color: #bfdbfe !important;
+}
+
+.tenant-admin-racon main [data-racon-funnel-filter] :is([class*="text-zinc-100"], [class*="text-zinc-200"]) {
+  color: #0f172a !important;
+}
+
+.tenant-admin-racon main [data-racon-funnel-filter] [class*="text-zinc-400"] {
+  color: #475569 !important;
+}
+
+/* Dias da agenda têm preenchimentos pastel; a tipografia precisa acompanhar
+   cada estado, em vez de herdar os tons claros feitos para o tema escuro. */
+.tenant-admin-racon main [data-agenda-month-calendar] button[class*="bg-emerald"] {
+  background-color: #d1fae5 !important;
+  color: #065f46 !important;
+  --tw-ring-color: #6ee7b7 !important;
+}
+
+.tenant-admin-racon main [data-agenda-month-calendar] button[class*="bg-amber"] {
+  background-color: #fef3c7 !important;
+  color: #92400e !important;
+  --tw-ring-color: #fcd34d !important;
+}
+
+.tenant-admin-racon main [data-agenda-month-calendar] button[class*="bg-red"] {
+  background-color: #fee2e2 !important;
+  color: #991b1b !important;
+  --tw-ring-color: #fca5a5 !important;
+}
+
+.tenant-admin-racon main [data-agenda-month-calendar] button[class*="bg-zinc"] {
+  background-color: #f8fafc !important;
   color: #334155 !important;
 }
 

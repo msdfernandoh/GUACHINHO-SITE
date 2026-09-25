@@ -76,7 +76,7 @@ export function AgendaMonthCalendar({
     "inline-flex h-9 w-9 items-center justify-center rounded-lg border border-zinc-600 text-zinc-200 hover:border-amber-500/50 hover:text-amber-300";
 
   return (
-    <div className="space-y-3">
+    <div data-agenda-month-calendar className="space-y-3">
       <div className="flex items-center justify-between gap-2">
         {prevHref ? (
           <Link href={prevHref} className={navBtnClass} aria-label="Mês anterior">
