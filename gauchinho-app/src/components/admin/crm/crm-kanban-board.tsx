@@ -91,7 +91,7 @@ export function CrmKanbanBoard({
   }
 
   // Filtros locais em tempo real
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState(initialFilters?.q ?? "");
   const [selectedConsultor, setSelectedConsultor] = useState("");
   const [activeQuickFilter, setActiveQuickFilter] = useState<
     "todos" | "meus" | "sem_responsavel" | "sem_contato_24h" | "parados_7d" | "quentes" | "incompletos"
@@ -181,6 +181,7 @@ export function CrmKanbanBoard({
         (lead.whatsapp && lead.whatsapp.includes(q)) ||
         (lead.email && lead.email.toLowerCase().includes(q)) ||
         (lead.cidade && lead.cidade.toLowerCase().includes(q)) ||
+        (lead.evento_nome && lead.evento_nome.toLowerCase().includes(q)) ||
         (lead.origem && lead.origem.toLowerCase().includes(q));
       if (!match) return false;
     }
@@ -439,7 +440,7 @@ export function CrmKanbanBoard({
           <Search className="absolute left-3 top-2.5 h-4 w-4 text-zinc-500" />
           <input
             type="text"
-            placeholder="Buscar por nome, telefone, email ou cidade..."
+            placeholder="Buscar por cliente, evento, telefone, e-mail ou cidade..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full rounded-lg border border-zinc-700/80 bg-zinc-950/80 py-1.5 pl-9 pr-3 text-xs text-zinc-200 placeholder-zinc-500 focus:border-blue-500 focus:outline-hidden"

@@ -55,8 +55,18 @@ function applyLeadFilters(
 
   if (filters.q?.trim()) {
     const q = filters.q.trim();
+    const campos = [
+      `nome.ilike.%${q}%`,
+      `whatsapp.ilike.%${q}%`,
+      `email.ilike.%${q}%`,
+      `cidade.ilike.%${q}%`,
+      `produto_interesse.ilike.%${q}%`,
+      `origem.ilike.%${q}%`,
+    ];
+    // A seleção mínima é usada em bases antigas sem a coluna evento_nome.
+    if (!skipOptional) campos.push(`evento_nome.ilike.%${q}%`);
     query = query.or(
-      `nome.ilike.%${q}%,whatsapp.ilike.%${q}%,email.ilike.%${q}%,cidade.ilike.%${q}%,produto_interesse.ilike.%${q}%,origem.ilike.%${q}%`,
+      campos.join(","),
     );
   }
 

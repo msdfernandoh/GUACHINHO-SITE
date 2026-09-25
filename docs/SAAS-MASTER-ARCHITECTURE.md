@@ -3206,3 +3206,14 @@ aberta durante uma implantação envie um identificador obsoleto de Server Actio
 
 Relatório:
 `docs/relatorios-fases/HOTFIX-2026-09-25-LOGIN-SENHA-TEMPORARIA.md`.
+
+### Hotfix operacional 25/09/2026 — Busca de eventos no Pipeline Funil
+
+A busca textual do Pipeline Funil inclui o nome do evento associado ao lead,
+além dos campos de cliente e contato já pesquisados. O filtro local responde
+enquanto o usuário digita; a consulta de leads também aceita nome de evento
+quando o funil é aberto com parâmetro `q`. O escopo de acesso aos leads e os
+demais filtros permanecem aplicados.
+
+Relatório:
+`docs/relatorios-fases/HOTFIX-2026-09-25-BUSCA-EVENTO-PIPELINE.md`.
