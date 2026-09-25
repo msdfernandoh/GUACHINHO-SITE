@@ -11,4 +11,19 @@ describe("erp-modulos", () => {
     expect(config).toEqual({ habilitado: true, modulos: ["painel", "vendas"] });
     expect(ERP_MODULES.some((module) => module.id === "administradoras")).toBe(false);
   });
+
+  it("reconhece os módulos persistidos pelo onboarding SaaS", () => {
+    expect(getErpSistemaConfig({
+      erp_habilitado: true,
+      modulos_erp_selecionados: ["painel", "financeiro"],
+    })).toEqual({ habilitado: true, modulos: ["painel", "financeiro"] });
+  });
+
+  it("mantém a configuração explícita como prioritária", () => {
+    expect(getErpSistemaConfig({
+      erp_habilitado: true,
+      modulos_erp_selecionados: ["financeiro"],
+      erp_sistema: { habilitado: false, modulos: [] },
+    })).toEqual({ habilitado: false, modulos: [] });
+  });
 });

@@ -35,7 +35,15 @@ export function normalizeErpSistemaConfig(raw: unknown): ErpSistemaConfig {
 }
 
 export function getErpSistemaConfig(configuracoes: Record<string, unknown> | null | undefined) {
-  return normalizeErpSistemaConfig(configuracoes?.erp_sistema);
+  if (configuracoes?.erp_sistema != null) {
+    return normalizeErpSistemaConfig(configuracoes.erp_sistema);
+  }
+  // O onboarding SaaS anterior gravava estes campos fora de erp_sistema.
+  // Respeitamos a escolha da empresa até que sua configuração seja migrada.
+  return normalizeErpSistemaConfig({
+    habilitado: configuracoes?.erp_habilitado,
+    modulos: configuracoes?.modulos_erp_selecionados,
+  });
 }
 
 export function erpModuleEnabled(config: ErpSistemaConfig, module: string): module is ErpModuleId {
