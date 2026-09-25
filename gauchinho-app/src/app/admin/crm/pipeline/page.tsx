@@ -61,7 +61,7 @@ export default async function CrmPipelinePage({
   };
 
   const [rawLeads, etapas, consultores] = await Promise.all([
-    queryLeadsForKanban(filtersForKanbanQuery, empresaAtiva.id),
+    queryLeadsForKanban(filtersForKanbanQuery, empresaAtiva),
     fetchCrmFunilEtapas(empresaAtiva.id),
     fetchSrdOptions().catch(() => []),
   ]);

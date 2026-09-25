@@ -2,6 +2,9 @@ import { createClient } from "@/lib/supabase/server";
 import { isDbMissingColumnError } from "@/lib/comercial-eventos/db-ready";
 import type { CrmFunilEtapaRow, LeadFilters, LeadListRow } from "./types";
 import { CRM_12_ETAPAS } from "./constants";
+import { GAUCHINHO_SLUG } from "@/lib/tenant/constants";
+
+type LeadTenant = { id: string; slug: string };
 
 /** Colunas mínimas — inclui quem indicou para a coluna Origem. */
 const LIST_SELECT_MINIMAL =
@@ -169,11 +172,15 @@ export async function fetchCrmFunilEtapas(empresaId?: string): Promise<CrmFunilE
   return data as CrmFunilEtapaRow[];
 }
 
-export async function queryLeadsList(filters: LeadFilters, limit = 200): Promise<LeadListRow[]> {
+export async function queryLeadsList(filters: LeadFilters, tenant: LeadTenant, limit = 200): Promise<LeadListRow[]> {
   const supabase = await createClient();
   return selectLeads(async (select, skipOptional) => {
+    let base = supabase.from("leads").select(select);
+    base = tenant.slug === GAUCHINHO_SLUG
+      ? base.or(`empresa_id.eq.${tenant.id},empresa_id.is.null`)
+      : base.eq("empresa_id", tenant.id);
     const query = applyLeadFilters(
-      supabase.from("leads").select(select).order("created_at", { ascending: false }).limit(limit),
+      base.order("created_at", { ascending: false }).limit(limit),
       filters,
       { skipOptionalCrmFilters: skipOptional },
     );
@@ -182,22 +189,18 @@ export async function queryLeadsList(filters: LeadFilters, limit = 200): Promise
 }
 
 export async function queryLeadsForKanban(
-  filters?: LeadFilters,
-  empresaId?: string,
+  filters: LeadFilters,
+  tenant: LeadTenant,
 ): Promise<LeadListRow[]> {
   const supabase = await createClient();
   return selectLeads(async (select, skipOptional) => {
     let q = supabase.from("leads").select(select);
-    if (empresaId) {
-      if (empresaId === "7170f38e-15dd-4b19-8588-51e9a9cf0d4c") {
-        q = q.or(`empresa_id.eq.${empresaId},empresa_id.is.null`);
-      } else {
-        q = q.eq("empresa_id", empresaId);
-      }
-    }
+    q = tenant.slug === GAUCHINHO_SLUG
+      ? q.or(`empresa_id.eq.${tenant.id},empresa_id.is.null`)
+      : q.eq("empresa_id", tenant.id);
     const query = applyLeadFilters(
       q.order("created_at", { ascending: false }).limit(600),
-      filters ?? {},
+      filters,
       { skipOptionalCrmFilters: skipOptional },
     );
     return query;

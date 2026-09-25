@@ -45,7 +45,7 @@ export default async function ErpLeadsPage({
 
   try {
     const [rawLeads, srdsRes, eventosRes] = await Promise.all([
-      queryLeadsList(filters, 500),
+      empresaAtiva ? queryLeadsList(filters, empresaAtiva, 500) : Promise.resolve([] as LeadListRow[]),
       fetchSrdOptions().catch(() => [] as ConsultorOption[]),
       fetchEventosOptionsForFilter().catch(() => [] as { id: string; nome: string }[]),
     ]);

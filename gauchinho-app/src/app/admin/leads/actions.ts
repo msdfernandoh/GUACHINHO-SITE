@@ -19,8 +19,9 @@ import { buildLeadTimeline } from "@/lib/crm/timeline";
 import { MOTIVOS_PERDA } from "@/lib/crm/constants";
 import { isTipoSonhoSorteio, tipoSonhoParaCreditoLead } from "@/lib/eventos-sorteio/lead-map";
 import { isDbMissingColumnError } from "@/lib/comercial-eventos/db-ready";
-import { getCurrentTenantContext } from "@/lib/tenant/context";
+import { getCurrentTenantContext, requireCurrentTenantContext } from "@/lib/tenant/context";
 import { upsertLeadPorTelefone, normalizePhoneForLead } from "@/lib/crm/upsert-lead";
+import { requireLeadInCurrentTenant, requireLeadIdsInCurrentTenant } from "@/lib/crm/require-lead-tenant";
 
 async function touchInteracao(supabase: Awaited<ReturnType<typeof createClient>>, leadId: string) {
   await supabase
@@ -55,6 +56,7 @@ async function historico(
 }
 
 export async function createLeadManualAction(formData: FormData) {
+  const { empresaAtiva } = await requireCurrentTenantContext();
   const usuario = await requireUsuario();
   const leadsConfig = await getConfigJson("leads", DEFAULT_LEADS);
   if (!leadsConfig.permitirCriarLeadManual && usuario.perfil !== "master") {
@@ -97,6 +99,7 @@ export async function createLeadManualAction(formData: FormData) {
       : null;
 
   const payload = {
+    empresa_id: empresaAtiva.id,
     nome: String(formData.get("nome") ?? "").trim(),
     whatsapp: String(formData.get("whatsapp") ?? "").trim() || null,
     email: String(formData.get("email") ?? "").trim() || null,
@@ -143,6 +146,7 @@ export async function createIndicacoesFromLeadAction(
   indicadorLeadId: string,
   indicados: IndicacaoRapidaItem[],
 ): Promise<{ count: number; leadIds: string[] }> {
+  await requireLeadInCurrentTenant(indicadorLeadId);
   const usuario = await requireUsuario();
   const leadsConfig = await getConfigJson("leads", DEFAULT_LEADS);
   const supabase = await createClient();
@@ -255,6 +259,7 @@ export async function createIndicacoesFromLeadAction(
 }
 
 export async function updateLeadAction(leadId: string, formData: FormData) {
+  await requireLeadInCurrentTenant(leadId);
   const usuario = await requireUsuario();
   const supabase = await createClient();
 
@@ -395,6 +400,7 @@ export async function updateLeadAction(leadId: string, formData: FormData) {
 }
 
 export async function agendarRetornoAction(leadId: string, formData: FormData) {
+  await requireLeadInCurrentTenant(leadId);
   const usuario = await requireUsuario();
   const supabase = await createClient();
   const updates = {
@@ -409,6 +415,7 @@ export async function agendarRetornoAction(leadId: string, formData: FormData) {
 }
 
 export async function fecharLeadAction(leadId: string, formData: FormData) {
+  await requireLeadInCurrentTenant(leadId);
   const usuario = await requireUsuario();
   const supabase = await createClient();
   const fechado = formData.get("fechado") === "true";
@@ -460,6 +467,7 @@ export async function fecharLeadAction(leadId: string, formData: FormData) {
 }
 
 export async function deleteLeadAction(leadId: string) {
+  await requireLeadInCurrentTenant(leadId);
   const usuario = await requireUsuario();
   if (!canDeleteRecords(usuario.perfil)) {
     throw new Error("Sem permissão para excluir leads");
@@ -495,6 +503,7 @@ export async function bulkDeleteLeadsAction(
     }
     const ids = [...new Set(leadIds.map((id) => id.trim()).filter(Boolean))];
     if (!ids.length) return { ok: false, error: "Nenhum lead selecionado." };
+    await requireLeadIdsInCurrentTenant(ids);
 
     const supabase = await createClient();
 
@@ -545,6 +554,7 @@ export async function bulkUpdateLeadEtapaAction(
     const usuario = await requireUsuario();
     const ids = [...new Set(leadIds.map((id) => id.trim()).filter(Boolean))];
     if (!ids.length) return { ok: false, error: "Nenhum lead selecionado." };
+    await requireLeadIdsInCurrentTenant(ids);
     if (!etapaIdOrSlug) return { ok: false, error: "Selecione a nova etapa." };
 
     const supabase = await createClient();
@@ -617,9 +627,9 @@ export async function bulkUpdateLeadEtapaAction(
 }
 
 export async function fetchLeadsList(filters: LeadFilters) {
-  const usuario = await requireUsuario();
+  const { usuario, empresaAtiva } = await requireCurrentTenantContext();
   try {
-    const rows = await queryLeadsList(filters);
+    const rows = await queryLeadsList(filters, empresaAtiva);
     const scope = await loadLeadAccessScope(
       usuario.id,
       usuario.perfil,
@@ -634,8 +644,8 @@ export async function fetchLeadsList(filters: LeadFilters) {
 }
 
 export async function fetchLeadsKanban() {
-  const usuario = await requireUsuario();
-  const rows = await queryLeadsForKanban();
+  const { usuario, empresaAtiva } = await requireCurrentTenantContext();
+  const rows = await queryLeadsForKanban({}, empresaAtiva);
   const scope = await loadLeadAccessScope(
     usuario.id,
     usuario.perfil,
@@ -645,6 +655,7 @@ export async function fetchLeadsKanban() {
 }
 
 export async function updateLeadStatusAction(leadId: string, status: string) {
+  await requireLeadInCurrentTenant(leadId);
   const usuario = await requireUsuario();
   const supabase = await createClient();
   const { data: before } = await supabase.from("leads").select("status").eq("id", leadId).single();
@@ -667,6 +678,7 @@ export async function updateLeadStatusAction(leadId: string, status: string) {
 }
 
 export async function assignConsultorAction(leadId: string, srdId: string, srdNome: string) {
+  await requireLeadInCurrentTenant(leadId);
   const usuario = await requireUsuario();
   const supabase = await createClient();
   const { error } = await supabase
@@ -689,6 +701,7 @@ export async function assignConsultorAction(leadId: string, srdId: string, srdNo
 export async function bulkAssignConsultorAction(leadIds: string[], srdId: string) {
   const usuario = await requireUsuario();
   if (!leadIds.length) throw new Error("Selecione ao menos um lead.");
+  await requireLeadIdsInCurrentTenant(leadIds);
   const supabase = await createClient();
   const { data: srdUser } = await supabase.from("usuarios").select("nome").eq("id", srdId).maybeSingle();
   const srdNome = srdUser?.nome ?? "";
@@ -705,6 +718,7 @@ export async function bulkAssignConsultorAction(leadIds: string[], srdId: string
 }
 
 export async function createAtividadeAction(leadId: string, formData: FormData) {
+  await requireLeadInCurrentTenant(leadId);
   const usuario = await requireUsuario();
   const supabase = await createClient();
   const row = {
@@ -730,13 +744,15 @@ export async function createAtividadeAction(leadId: string, formData: FormData) 
 }
 
 export async function completeAtividadeAction(atividadeId: string, leadId: string) {
+  await requireLeadInCurrentTenant(leadId);
   const usuario = await requireUsuario();
   const supabase = await createClient();
   const now = new Date().toISOString();
   const { error } = await supabase
     .from("lead_atividades")
     .update({ status: "concluida", data_conclusao: now })
-    .eq("id", atividadeId);
+    .eq("id", atividadeId)
+    .eq("lead_id", leadId);
   if (error) throw new Error(error.message);
   await touchInteracao(supabase, leadId);
   await historico(leadId, usuario.id, "lead_followup_concluido", "Atividade concluída");
@@ -750,9 +766,10 @@ export async function completeAtividadeAction(atividadeId: string, leadId: strin
 }
 
 export async function cancelAtividadeAction(atividadeId: string, leadId: string) {
+  await requireLeadInCurrentTenant(leadId);
   const usuario = await requireUsuario();
   const supabase = await createClient();
-  const { error } = await supabase.from("lead_atividades").update({ status: "cancelada" }).eq("id", atividadeId);
+  const { error } = await supabase.from("lead_atividades").update({ status: "cancelada" }).eq("id", atividadeId).eq("lead_id", leadId);
   if (error) throw new Error(error.message);
   await historico(leadId, usuario.id, "lead_followup_cancelado", "Atividade cancelada");
   revalidatePath(`/admin/leads/${leadId}`);
@@ -760,6 +777,7 @@ export async function cancelAtividadeAction(atividadeId: string, leadId: string)
 
 
 export async function fetchLeadDetail(leadId: string) {
+  await requireLeadInCurrentTenant(leadId);
   const usuario = await requireUsuario();
   const supabase = await createClient();
   const { data: lead, error } = await supabase.from("leads").select("*").eq("id", leadId).single();
@@ -896,6 +914,7 @@ export async function updateLeadEtapaAction(
     temperatura?: string;
   },
 ) {
+  await requireLeadInCurrentTenant(leadId);
   const usuario = await requireUsuario();
   const supabase = await createClient();
   const { empresaAtiva } = await getCurrentTenantContext();
@@ -1124,6 +1143,7 @@ export async function createLeadRapidoAction(data: {
 }
 
 export async function converterLeadParaErpAction(leadId: string): Promise<{ ok: boolean; redirectUrl: string }> {
+  await requireLeadInCurrentTenant(leadId);
   const usuario = await requireUsuario();
   const supabase = await createClient();
   const { empresaAtiva } = await getCurrentTenantContext();
@@ -1185,10 +1205,13 @@ export async function converterLeadParaErpAction(leadId: string): Promise<{ ok: 
 }
 
 export async function fetchLeadArquivosAction(leadId: string): Promise<LeadArquivoRow[]> {
+  await requireLeadInCurrentTenant(leadId);
+  const { empresaAtiva } = await requireCurrentTenantContext();
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("lead_arquivos")
     .select("id, empresa_id, lead_id, arquivo_url, arquivo_nome, arquivo_tamanho, mime_type, criado_por_usuario_id, created_at")
+    .eq("empresa_id", empresaAtiva.id)
     .eq("lead_id", leadId)
     .order("created_at", { ascending: false });
 
@@ -1197,6 +1220,7 @@ export async function fetchLeadArquivosAction(leadId: string): Promise<LeadArqui
 }
 
 export async function uploadLeadArquivoAction(leadId: string, formData: FormData) {
+  await requireLeadInCurrentTenant(leadId);
   const usuario = await requireUsuario();
   const supabase = await createClient();
   const { empresaAtiva } = await getCurrentTenantContext();
@@ -1236,7 +1260,15 @@ export async function uploadLeadArquivoAction(leadId: string, formData: FormData
 }
 
 export async function getLeadArquivoSignedUrlAction(arquivoUrl: string) {
+  const { empresaAtiva } = await requireCurrentTenantContext();
   const supabase = await createClient();
+  const { data: arquivo } = await supabase.from("lead_arquivos")
+    .select("lead_id")
+    .eq("empresa_id", empresaAtiva.id)
+    .eq("arquivo_url", arquivoUrl)
+    .maybeSingle();
+  if (!arquivo) throw new Error("Arquivo não encontrado nesta empresa.");
+  await requireLeadInCurrentTenant(arquivo.lead_id);
   const { data, error } = await supabase.storage
     .from("contratacoes-documentos")
     .createSignedUrl(arquivoUrl, 60 * 15);
@@ -1250,6 +1282,7 @@ export async function getLeadArquivoSignedUrlAction(arquivoUrl: string) {
  * preservando o histórico consolidado e permitindo novo fluxo comercial.
  */
 export async function duplicarLeadParaNovaNegociacaoAction(leadId: string): Promise<{ ok: boolean; newLeadId: string }> {
+  await requireLeadInCurrentTenant(leadId);
   const usuario = await requireUsuario();
   const supabase = await createClient();
   const { empresaAtiva } = await getCurrentTenantContext();

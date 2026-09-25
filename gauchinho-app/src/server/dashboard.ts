@@ -1,5 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
-import { getUsuarioNegocio } from "@/lib/auth/get-usuario";
+import { requireCurrentTenantContext } from "@/lib/tenant/context";
+import { GAUCHINHO_SLUG } from "@/lib/tenant/constants";
+import { listGruposAutorizadosForEmpresa } from "@/lib/grupos/catalogo-autorizado-service";
 import {
   filterLeadsByScope,
   loadLeadAccessScope,
@@ -18,10 +20,16 @@ export type DashboardStats = {
 };
 
 export async function fetchDashboardStats(): Promise<DashboardStats> {
+  const { empresaAtiva, usuario } = await requireCurrentTenantContext();
   const supabase = await createClient();
   const today = new Date().toISOString().slice(0, 10);
-  const usuario = await getUsuarioNegocio();
   const srdId = usuario?.leads_apenas_proprios ? usuario.id : null;
+  const empresaId = empresaAtiva.id;
+  const isGauchinho = empresaAtiva.slug === GAUCHINHO_SLUG;
+  const gruposAutorizados = await listGruposAutorizadosForEmpresa(empresaId, { incluirInativos: true });
+  const gruposAtivosIds = gruposAutorizados
+    .filter((grupo) => grupo.ativo && grupo.status !== "Inativo")
+    .map((grupo) => grupo.id);
 
   const [
     leadsNovos,
@@ -35,6 +43,7 @@ export async function fetchDashboardStats(): Promise<DashboardStats> {
   ] = await Promise.all([
     (() => {
       let q = supabase.from("leads").select("id", { count: "exact", head: true }).eq("status", "Novo");
+      q = isGauchinho ? q.or(`empresa_id.eq.${empresaId},empresa_id.is.null`) : q.eq("empresa_id", empresaId);
       if (srdId) q = q.eq("srd_responsavel_id", srdId);
       return q;
     })(),
@@ -46,6 +55,7 @@ export async function fetchDashboardStats(): Promise<DashboardStats> {
         .neq("status", "Novo")
         .neq("status", "Perdido")
         .neq("status", "Arquivado");
+      q = isGauchinho ? q.or(`empresa_id.eq.${empresaId},empresa_id.is.null`) : q.eq("empresa_id", empresaId);
       if (srdId) q = q.eq("srd_responsavel_id", srdId);
       return q;
     })(),
@@ -56,32 +66,35 @@ export async function fetchDashboardStats(): Promise<DashboardStats> {
         .not("proximo_retorno_data", "is", null)
         .gte("proximo_retorno_data", today)
         .eq("fechado", false);
+      q = isGauchinho ? q.or(`empresa_id.eq.${empresaId},empresa_id.is.null`) : q.eq("empresa_id", empresaId);
       if (srdId) q = q.eq("srd_responsavel_id", srdId);
       return q;
     })(),
     (() => {
       let q = supabase.from("leads").select("id", { count: "exact", head: true }).eq("fechado", true);
+      q = isGauchinho ? q.or(`empresa_id.eq.${empresaId},empresa_id.is.null`) : q.eq("empresa_id", empresaId);
       if (srdId) q = q.eq("srd_responsavel_id", srdId);
       return q;
     })(),
     (() => {
       let q = supabase.from("leads").select("valor_fechado").eq("fechado", true);
+      q = isGauchinho ? q.or(`empresa_id.eq.${empresaId},empresa_id.is.null`) : q.eq("empresa_id", empresaId);
       if (srdId) q = q.eq("srd_responsavel_id", srdId);
       return q;
     })(),
-    supabase
-      .from("propostas")
-      .select("id", { count: "exact", head: true })
+    (isGauchinho
+      ? supabase.from("propostas").select("id", { count: "exact", head: true })
+        .or(`empresa_id.eq.${empresaId},empresa_id.is.null`)
+      : supabase.from("propostas").select("id", { count: "exact", head: true })
+        .eq("empresa_id", empresaId))
       .in("status", ["Gerada", "Enviada", "Em negociação"]),
-    supabase
-      .from("grupos_consorcio")
-      .select("id", { count: "exact", head: true })
-      .eq("ativo", true),
-    supabase
+    Promise.resolve({ count: gruposAtivosIds.length }),
+    gruposAtivosIds.length ? supabase
       .from("grupos_cotas")
       .select("id", { count: "exact", head: true })
+      .in("grupo_id", gruposAtivosIds)
       .eq("ativo", true)
-      .in("status", ["Disponível", "Últimas"]),
+      .in("status", ["Disponível", "Últimas"]) : Promise.resolve({ count: 0 }),
   ]);
 
   const valorTotal =
@@ -105,8 +118,7 @@ export async function fetchDashboardStats(): Promise<DashboardStats> {
 async function applyLeadListScope<
   T extends { srd_responsavel_id?: string | null; evento_id?: string | null },
 >(rows: T[]): Promise<T[]> {
-  const usuario = await getUsuarioNegocio();
-  if (!usuario) return [];
+  const { usuario } = await requireCurrentTenantContext();
   if (!usuario.leads_apenas_proprios) return rows;
   const scope = await loadLeadAccessScope(
     usuario.id,
@@ -117,12 +129,17 @@ async function applyLeadListScope<
 }
 
 export async function fetchUltimosLeads(limit = 10) {
+  const { empresaAtiva } = await requireCurrentTenantContext();
   const supabase = await createClient();
-  const { data } = await supabase
+  let query = supabase
     .from("leads")
     .select(
       "id, created_at, nome, whatsapp, origem, tipo_interesse, srd_responsavel_id, srd_responsavel_nome, status, proximo_retorno_data, proximo_retorno_hora, evento_id",
-    )
+    );
+  query = empresaAtiva.slug === GAUCHINHO_SLUG
+    ? query.or(`empresa_id.eq.${empresaAtiva.id},empresa_id.is.null`)
+    : query.eq("empresa_id", empresaAtiva.id);
+  const { data } = await query
     .order("created_at", { ascending: false })
     .limit(Math.max(limit * 5, 50));
   const filtered = await applyLeadListScope(data ?? []);
@@ -130,13 +147,18 @@ export async function fetchUltimosLeads(limit = 10) {
 }
 
 export async function fetchLeadsRetornoAgendado(limit = 10) {
+  const { empresaAtiva } = await requireCurrentTenantContext();
   const supabase = await createClient();
   const today = new Date().toISOString().slice(0, 10);
-  const { data } = await supabase
+  let query = supabase
     .from("leads")
     .select(
       "id, proximo_retorno_data, proximo_retorno_hora, nome, whatsapp, tipo_interesse, srd_responsavel_id, srd_responsavel_nome, status, evento_id",
-    )
+    );
+  query = empresaAtiva.slug === GAUCHINHO_SLUG
+    ? query.or(`empresa_id.eq.${empresaAtiva.id},empresa_id.is.null`)
+    : query.eq("empresa_id", empresaAtiva.id);
+  const { data } = await query
     .not("proximo_retorno_data", "is", null)
     .gte("proximo_retorno_data", today)
     .eq("fechado", false)
@@ -147,12 +169,17 @@ export async function fetchLeadsRetornoAgendado(limit = 10) {
 }
 
 export async function fetchUltimasPropostas(limit = 10) {
+  const { empresaAtiva } = await requireCurrentTenantContext();
   const supabase = await createClient();
-  const { data } = await supabase
+  let query = supabase
     .from("propostas")
     .select(
       "id, created_at, nome_cliente, tipo_proposta, valor_credito, consultor_nome, status",
-    )
+    );
+  query = empresaAtiva.slug === GAUCHINHO_SLUG
+    ? query.or(`empresa_id.eq.${empresaAtiva.id},empresa_id.is.null`)
+    : query.eq("empresa_id", empresaAtiva.id);
+  const { data } = await query
     .order("created_at", { ascending: false })
     .limit(limit);
   return data ?? [];

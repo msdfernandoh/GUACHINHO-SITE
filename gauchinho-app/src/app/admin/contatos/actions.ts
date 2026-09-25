@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { requireCurrentTenantContext } from "@/lib/tenant/context";
 
 export type ContactInput = { nome: string; telefone: string; email?: string; empresa?: string; profissao?: string; observacoes?: string };
@@ -32,7 +33,8 @@ export async function sendContactToLeadAction(id: string) {
   const supabase = await createClient();
   const { data: contact, error } = await supabase.from("contatos_usuario").select("*").eq("id", id).eq("empresa_id", empresaAtiva.id).eq("usuario_id", usuario.id).single();
   if (error || !contact) return { ok: false, error: "Contato não encontrado." };
-  const { data, error: rpcError } = await supabase.rpc("rpc_upsert_lead_por_telefone", { p_payload: { empresa_id: empresaAtiva.id, nome: contact.nome, whatsapp: contact.telefone, email: contact.email, origem: "contatos", origem_detalhe: "Meus contatos", observacoes: [contact.empresa, contact.profissao, contact.observacoes].filter(Boolean).join(" — "), srd_responsavel_id: usuario.id, srd_responsavel_nome: usuario.nome, participante_comercial_id: null } });
+  const admin = createAdminClient();
+  const { data, error: rpcError } = await admin.rpc("rpc_upsert_lead_por_telefone", { p_payload: { empresa_id: empresaAtiva.id, nome: contact.nome, whatsapp: contact.telefone, email: contact.email, origem: "contatos", origem_detalhe: "Meus contatos", observacoes: [contact.empresa, contact.profissao, contact.observacoes].filter(Boolean).join(" — "), srd_responsavel_id: usuario.id, srd_responsavel_nome: usuario.nome, participante_comercial_id: null } });
   if (rpcError || !data?.ok) return { ok: false, error: rpcError?.message ?? data?.error ?? "Não foi possível criar o lead." };
   return { ok: true, leadId: data.lead_id, action: data.action };
 }

@@ -6,6 +6,7 @@ import { queryLeadsList } from "@/lib/crm/leads-query";
 import { leadsToCsv } from "@/lib/crm/csv-export";
 import { filterLeadsByScope, loadLeadAccessScope } from "@/lib/crm/lead-access";
 import type { LeadFilters } from "@/lib/crm/types";
+import { requireCurrentTenantContext } from "@/lib/tenant/context";
 
 function filtersFromSearchParams(sp: URLSearchParams): LeadFilters {
   const get = (k: string) => sp.get(k) ?? undefined;
@@ -38,7 +39,8 @@ export async function GET(request: Request) {
 
   const sp = new URL(request.url).searchParams;
   const format = sp.get("format") === "xls" ? "xls" : "csv";
-  let rows = await queryLeadsList(filtersFromSearchParams(sp), 5000);
+  const { empresaAtiva } = await requireCurrentTenantContext();
+  let rows = await queryLeadsList(filtersFromSearchParams(sp), empresaAtiva, 5000);
   const scope = await loadLeadAccessScope(
     usuario.id,
     usuario.perfil,

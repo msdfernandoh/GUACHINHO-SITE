@@ -1,5 +1,9 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
+### Hotfix de segurança 25/09/2026 — Isolamento comercial entre masters
+
+Leads e propostas usam RLS com `can_read_tenant_internal(empresa_id)`; os registros históricos sem `empresa_id` pertencem apenas à Gauchinho. O dashboard, o pipeline, as listas, exportações e ações de leads exigem o tenant ativo do host. Grupos e cotas mostrados no dashboard seguem as concessões de administradoras da empresa. As RPCs `SECURITY DEFINER` de upsert de leads aceitam somente `service_role`, e a adoção de leads legados é exclusiva da Gauchinho. As migrations são `289_isolamento_rls_leads_propostas_por_empresa.sql` e `290_restringir_rpc_upsert_lead_tenant.sql`. Relatório: `docs/relatorios-fases/HOTFIX-2026-09-25-ISOLAMENTO-RACON-SORRISO.md`.
+
 ### Hotfix operacional 290 — Contraste da landing de parceiros Racon
 
 Nos hosts Racon Sinop e Racon Sorriso, a landing pública de parceiros mantém as superfícies claras e ações azuis do modelo. O título do hero e o conteúdo do bloco Network passam a ter texto branco explícito sobre seus gradientes azuis, preservando o texto escuro dos cards brancos. Login, recuperação e cadastro seguem o tema Racon existente. Relatório: `docs/relatorios-fases/HOTFIX-290-CONTRASTE-LANDING-PARCEIROS-RACON.md`.

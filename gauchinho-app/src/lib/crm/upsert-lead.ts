@@ -233,12 +233,15 @@ export async function upsertLeadPorTelefone(
   // O telefone pode pertencer a um lead legado, criado antes da tenantização.
   // Ele só é elegível como fallback quando está sem empresa; nunca misturamos
   // registros de outra empresa. A RPC cobre o caminho atômico em produção.
+  const includeLegacyGauchinho = payload.empresa_id === "7170f38e-15dd-4b19-8588-51e9a9cf0d4c";
   const phoneAndTenantFilter = payload.empresa_id
     ? [
         `and(telefone_normalizado.eq.${norm},empresa_id.eq.${payload.empresa_id})`,
-        `and(telefone_normalizado.eq.${norm},empresa_id.is.null)`,
         `and(whatsapp.ilike.%${norm.slice(-8)}%,empresa_id.eq.${payload.empresa_id})`,
-        `and(whatsapp.ilike.%${norm.slice(-8)}%,empresa_id.is.null)`,
+        ...(includeLegacyGauchinho ? [
+          `and(telefone_normalizado.eq.${norm},empresa_id.is.null)`,
+          `and(whatsapp.ilike.%${norm.slice(-8)}%,empresa_id.is.null)`,
+        ] : []),
       ].join(",")
     : [
         `and(telefone_normalizado.eq.${norm},empresa_id.is.null)`,

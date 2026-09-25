@@ -40,6 +40,30 @@ describe("upsert-lead - Normalização e Validação de Telefones", () => {
 });
 
 describe("upsertLeadPorTelefone - Fluxo RPC e Fallback", () => {
+  it("não busca lead legado de Gauchinho no fallback de outra master", async () => {
+    const or = vi.fn().mockReturnValue({
+      order: vi.fn().mockReturnValue({
+        limit: vi.fn().mockResolvedValue({ data: [], error: null }),
+      }),
+    });
+    const admin = {
+      rpc: vi.fn().mockResolvedValue({ data: null, error: { message: "function does not exist", code: "42883" } }),
+      from: vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({ or }),
+        insert: vi.fn().mockReturnValue({ select: vi.fn().mockReturnValue({ single: vi.fn().mockResolvedValue({ data: { id: "novo-lead" }, error: null }) }) }),
+      }),
+    } as any;
+
+    const result = await upsertLeadPorTelefone(admin, {
+      empresa_id: "3b5d14ec-6e0f-4f8e-952a-75adbfaa0949",
+      whatsapp: "(66) 99912-6120",
+    });
+
+    expect(result.action).toBe("created");
+    expect(or).toHaveBeenCalledOnce();
+    expect(or.mock.calls[0][0]).not.toContain("empresa_id.is.null");
+  });
+
   it("chama a RPC atômica quando disponível e retorna o lead_id", async () => {
     const mockRpc = vi.fn().mockResolvedValue({
       data: {
