@@ -28,6 +28,15 @@ O app apresenta o CPF como entrada principal e aceita e-mail de contato apenas p
 
 Para avaliação externa durante negociação, o host global admite um revisor em `plataforma_revisores_tecnicos`, sem vínculo `empresa_usuarios` e com expiração em 30 dias. O proxy autoriza somente `/platform/revisao` em requisições de leitura, e a página oferece consultas paginadas a dados existentes de empresas, usuários, leads, propostas, grupos e vendas. A identidade usa perfil técnico neutro `parceiro`; as migrations 287–288 bloqueiam `INSERT`, `UPDATE` e `DELETE` em tabelas públicas mesmo diante de políticas legadas permissivas, inclusive após expiração. O superadmin provisiona conta exclusiva em `/platform/acessos-cadastro`. Relatório: `docs/relatorios-fases/FASE-286-REVISAO-TECNICA-SOMENTE-LEITURA.md`.
 
+### Hotfix operacional 292 — Importação resiliente de contatos iCloud
+
+A importação de Meus contatos consolida telefones normalizados repetidos antes
+do `upsert` e grava arquivos grandes em lotes. O escopo continua limitado à
+empresa e ao usuário da sessão; assim, exportações VCF do iCloud com cartões
+repetidos não interrompem a importação nem criam contatos duplicados.
+
+Relatório: `docs/relatorios-fases/HOTFIX-292-IMPORTACAO-CONTATOS-ICLOUD.md`.
+
 ### Hotfix operacional 283 — Conferência financeira delegada e origem do Caixa PJ
 
 O usuário com responsabilidade financeira pode confirmar a baixa de comissões de qualquer participante da empresa, com autoria preservada na auditoria. O demonstrativo do Caixa PJ passa a expor a origem comercial dos recursos — impostos retidos e comissões/repasses de vendedores — sem confundir essa composição com o saldo bancário após movimentações. Relatório: `docs/relatorios-fases/HOTFIX-283-MASTER-CONFERENCIA-E-ORIGEM-CAIXA-PJ.md`.
