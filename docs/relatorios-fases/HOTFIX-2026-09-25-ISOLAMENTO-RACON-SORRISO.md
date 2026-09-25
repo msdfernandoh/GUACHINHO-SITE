@@ -20,7 +20,7 @@ O dashboard no host `raconsorriso.com.br` exibia totais e linhas de clientes de 
 3. O dashboard e consultas de CRM recebem escopo obrigatório da empresa ativa. Ações de leitura e escrita por ID verificam a propriedade do lead; ações em lote validam todos os IDs. O fallback de upsert não busca linhas legadas fora da Gauchinho.
 4. A conversão de contato em lead resolve usuário e empresa no servidor antes de usar a RPC privilegiada.
 
-Nenhum registro de cliente foi movido ou excluído. Racon Sinop permanece fora deste hotfix; sua relação comercial com Gauchinho deve ser avaliada na configuração de parceiro, sem misturá-la à master independente Sorriso.
+Nenhum registro de cliente foi movido ou excluído. Racon Sinop permanece fora deste hotfix: a Fase 209 registrou sua conversão para site parceiro da Gauchinho, com o tenant antigo suspenso e preservado para auditoria; a Fase 219 registrou o uso do ERP da Gauchinho nesse host. Racon Sorriso continua sendo uma master independente e sem fatos comerciais próprios.
 
 ## Validação
 
