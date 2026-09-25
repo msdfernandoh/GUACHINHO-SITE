@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { isRaconModel } from "@/lib/tenant/model-family";
-import { loginAction } from "./actions";
 import { Button, Input, Label } from "@/components/ui/form-primitives";
 import { headers } from "next/headers";
 import { isPlatformHost } from "@/lib/tenant/dominio";
@@ -32,7 +31,7 @@ export default async function LoginPage({
             {error}
           </p>
         ) : null}
-        <form action={loginAction} className="mt-6 space-y-4">
+        <form action="/auth/login" method="post" className="mt-6 space-y-4">
           <input type="hidden" name="next" value={next} />
           <div>
             <Label htmlFor="email">E-mail</Label>

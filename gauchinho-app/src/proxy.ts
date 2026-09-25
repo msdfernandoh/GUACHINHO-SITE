@@ -266,6 +266,11 @@ export async function proxy(request: NextRequest) {
   // O host da plataforma é uma fronteira de autorização própria. Não representa
   // a Gauchinho nem qualquer outra empresa. O revisor só alcança sua rota.
   if (platformHost) {
+    // O formulário usa uma rota POST estável; a própria rota autentica antes
+    // de encaminhar o usuário para a área autorizada da plataforma.
+    if (path === "/auth/login" && request.method === "POST") {
+      return response;
+    }
     const [{ data: platformSuperadmin, error: platformRoleError }, { data: platformReviewer, error: reviewerError }] = user
       ? await Promise.all([supabase.rpc("is_platform_superadmin"), supabase.rpc("is_platform_technical_reviewer")])
       : [{ data: false, error: null }, { data: false, error: null }];

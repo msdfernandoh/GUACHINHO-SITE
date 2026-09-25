@@ -3194,3 +3194,15 @@ aplicados no painel Auth do Supabase hospedado em 25/09/2026.
 
 Relatório:
 `docs/relatorios-fases/HOTFIX-2026-09-25-RECUPERACAO-SENHA.md`.
+
+### Hotfix operacional 25/09/2026 — Login após emissão de senha temporária
+
+O formulário de login dos domínios de empresa e da Plataforma envia POST para
+`/auth/login`, rota estável entre implantações. A rota autentica no Supabase,
+redireciona para `/definir-senha` quando há exigência de troca e conserva apenas
+destinos internos. O proxy admite esse POST no host da Plataforma e mantém a
+verificação de acesso às páginas administrativas. A mudança evita que uma aba
+aberta durante uma implantação envie um identificador obsoleto de Server Action.
+
+Relatório:
+`docs/relatorios-fases/HOTFIX-2026-09-25-LOGIN-SENHA-TEMPORARIA.md`.
