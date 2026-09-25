@@ -17,8 +17,9 @@ O modelo de e-mail e a URL de autenticação são configurações hospedadas no 
 
 ## Verificação
 
-- `vitest`: 17 testes passaram nos fluxos de recuperação, senha do responsável e definição de senha.
+- `vitest`: 18 testes passaram nos fluxos de recuperação, senha do responsável e definição de senha.
 - `tsc --noEmit`: passou.
+- Build Vercel de produção concluído e deploy `dpl_5Y15c6rDobLaGBuyovGzGfkfu78f` em estado Ready, incluindo os domínios público e administrativo.
 - Não houve redefinição de senha de uma conta real durante a verificação.
 
 ## Dados e limites
