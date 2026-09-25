@@ -72,4 +72,11 @@ describe("nova senha do responsável principal", () => {
     expect(result.status).toBe("ERROR");
     expect(result.data).toBeUndefined();
   });
+  it("retorna erro ao formulário quando o serviço de Auth lança exceção", async () => {
+    mocks.getIdentity.mockRejectedValue(new Error("serviço indisponível"));
+    const result = await gerarNovaSenhaPrincipalPlatformAction(initial, form());
+    expect(result.status).toBe("ERROR");
+    expect(result.message).toContain("Não foi possível concluir");
+    expect(mocks.update).not.toHaveBeenCalled();
+  });
 });

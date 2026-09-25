@@ -22,11 +22,6 @@ export async function trocarSenhaPrimeiroAcesso(senha: string): Promise<TrocaSen
     return { ok: false, message: "Sessão inválida ou expirada. Entre novamente com a senha inicial." };
   }
 
-  const { error: passwordError } = await supabase.auth.updateUser({ password: senha });
-  if (passwordError) {
-    return { ok: false, message: passwordError.message };
-  }
-
   const admin = createAdminClient();
   const { data: authUser, error: authUserError } = await admin.auth.admin.getUserById(user.id);
   if (authUserError || !authUser.user) {
@@ -38,18 +33,20 @@ export async function trocarSenhaPrimeiroAcesso(senha: string): Promise<TrocaSen
     exige_troca_senha: false,
   };
   const { error: metadataError } = await admin.auth.admin.updateUserById(user.id, {
+    password: senha,
     app_metadata: appMetadata,
   });
   if (metadataError) {
-    return { ok: false, message: "Senha alterada, mas não foi possível concluir a liberação do acesso. Tente novamente." };
+    return { ok: false, message: "Não foi possível definir a nova senha. Tente novamente." };
   }
 
   // Compatibilidade com convites antigos que ainda estejam pendentes.
   const { error: ativacaoError } = await supabase.rpc("rpc_ativar_meus_convites");
   if (ativacaoError) {
-    return { ok: false, message: `Senha alterada, mas a ativação de um vínculo antigo falhou: ${ativacaoError.message}` };
+    console.error("[definir-senha] Falha ao ativar convites legados:", ativacaoError);
   }
 
-  await supabase.auth.refreshSession();
+  const { error: refreshError } = await supabase.auth.refreshSession();
+  if (refreshError) console.error("[definir-senha] Falha ao atualizar sessão:", refreshError);
   return { ok: true, message: "Senha definida com sucesso." };
 }

@@ -95,7 +95,7 @@ async function provisionarAcessoDireto(linkId: string, nome: string, empresaId: 
     }
   }
 
-  const senhaTemporaria = "midiapormidia@123";
+  const senhaTemporaria = gerarSenhaTemporaria();
   let authUserId = usuario.auth_user_id;
   let criouIdentidade = false;
 
@@ -329,6 +329,7 @@ export async function gerarNovaSenhaPrincipalPlatformAction(
   _prev: PlatformFormState,
   formData: FormData,
 ): Promise<PlatformFormState> {
+  try {
   if (!(await isPlatformSuperadmin())) {
     return { status: "ERROR", message: "Acesso restrito ao Platform Superadmin." };
   }
@@ -367,13 +368,15 @@ export async function gerarNovaSenhaPrincipalPlatformAction(
     },
   });
   if (error) return { status: "ERROR", message: "Não foi possível redefinir a senha. Tente novamente." };
-  revalidatePath("/platform/usuarios");
-  revalidatePath(`/platform/empresas/${empresaId}`);
   return {
     status: "SUCCESS",
     message: "Nova senha temporária gerada. Copie agora e entregue ao responsável por um canal seguro. A troca será exigida no próximo login.",
     data: { email: usuario.email, senhaTemporaria, usuarioJaExistente: true, empresaAtivada: false },
   };
+  } catch (error) {
+    console.error("[platform/reset-principal-password] Falha inesperada:", error);
+    return { status: "ERROR", message: "Não foi possível concluir a redefinição. Atualize a página e tente novamente." };
+  }
 }
 
 export async function reenviarConvitePlatformAction(

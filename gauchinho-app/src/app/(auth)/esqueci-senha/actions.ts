@@ -1,5 +1,6 @@
 "use server";
 
+import { randomBytes } from "node:crypto";
 import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -24,7 +25,7 @@ export async function solicitarRecuperacaoSenhaAction(
 
   try {
     const headersList = await headers();
-    const host = headersList.get("host") || "localhost:3000";
+    const host = headersList.get("host") || new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://www.gauchinhoconsorcios.com.br").host;
     const proto = headersList.get("x-forwarded-proto") || (host.includes("localhost") ? "http" : "https");
     const origin = `${proto}://${host}`;
     const referer = headersList.get("referer") || "";
@@ -63,7 +64,7 @@ export async function solicitarRecuperacaoSenhaAction(
     if (!usuario.auth_user_id) {
       const { data: authCreated, error: createError } = await admin.auth.admin.createUser({
         email: usuario.email,
-        password: "midiapormidia@123",
+        password: randomBytes(24).toString("base64url"),
         email_confirm: true,
         app_metadata: { exige_troca_senha: true },
       });

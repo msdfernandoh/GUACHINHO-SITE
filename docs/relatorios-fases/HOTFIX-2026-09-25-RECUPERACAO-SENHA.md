@@ -1,0 +1,26 @@
+# Hotfix — Recuperação e redefinição de senha (25/09/2026)
+
+## Contexto
+
+O link enviado pelo Supabase estava levando o usuário a `localhost:3000`, e a mensagem usava o modelo padrão em inglês. A redefinição do responsável principal na Plataforma podia exibir uma página de erro após a confirmação. Contas legadas sem identidade Auth recebiam uma senha inicial fixa durante a recuperação.
+
+## Alterações no aplicativo
+
+- A redefinição pela Plataforma gera senha aleatória de 16 caracteres, mantém a exigência de troca no próximo acesso e retorna falhas inesperadas ao formulário, sem recarregar a página da empresa após a mutação.
+- O provisionamento de acesso direto e a recuperação de contas legadas deixam de usar senha fixa; ambos passam a gerar credenciais aleatórias.
+- A definição da senha pelo próprio usuário atualiza senha e `exige_troca_senha` numa operação de Auth. Uma falha de ativação de convite legado é registrada sem informar falsamente que a troca de senha falhou.
+- O modelo `supabase/templates/recovery.pt-BR.html` fornece assunto sugerido **Redefina sua senha — Gauchinho Consórcios** e texto em português, com link direto para `/auth/confirm` no domínio público de produção usando `TokenHash` de recuperação.
+
+## Configuração externa necessária
+
+O modelo de e-mail e a URL de autenticação são configurações hospedadas no projeto Supabase, fora das migrations SQL. Publicar o código, por si só, não altera o e-mail emitido pelo Auth. No projeto `eaeuoynprurmmulzhydt`, aplicar o modelo acima à mensagem **Reset Password** e definir **Site URL** como `https://www.gauchinhoconsorcios.com.br`. Conferir a lista de redirecionamento para os domínios de produção usados no login. Não aplicar `supabase config push` a partir do `config.toml` mínimo deste repositório sem conciliar as demais configurações remotas.
+
+## Verificação
+
+- `vitest`: 17 testes passaram nos fluxos de recuperação, senha do responsável e definição de senha.
+- `tsc --noEmit`: passou.
+- Não houve redefinição de senha de uma conta real durante a verificação.
+
+## Dados e limites
+
+Nenhuma migration nem alteração em tabelas de negócio. `usuarios`, `empresa_usuarios`, papéis e permissões são preservados. A aplicação do modelo hospedado e o teste de recebimento de um novo e-mail dependem de acesso autenticado ao painel Supabase.

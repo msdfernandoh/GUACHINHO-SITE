@@ -39,7 +39,6 @@ vi.mock("@/lib/supabase/admin", () => ({
 }));
 
 import { solicitarRecuperacaoSenhaAction } from "./actions";
-import { SENHA_PADRAO_CADASTRO } from "@/lib/auth/permissions";
 
 describe("solicitarRecuperacaoSenhaAction", () => {
   beforeEach(() => {
@@ -136,7 +135,7 @@ describe("solicitarRecuperacaoSenhaAction", () => {
     );
   });
 
-  it("provisiona auth_user com senha padrão e exige_troca_senha se usuário não possuía vínculo auth prévio", async () => {
+  it("provisiona identidade legada com senha aleatória antes de enviar o link", async () => {
     const updateMock = vi.fn().mockReturnValue({
       eq: vi.fn().mockResolvedValue({ error: null }),
     });
@@ -160,14 +159,13 @@ describe("solicitarRecuperacaoSenhaAction", () => {
     expect(res.ok).toBe(true);
     expect(mocks.adminCreateUser).toHaveBeenCalledWith({
       email: "legado@gauchinho.com.br",
-      password: "midiapormidia@123",
+      password: expect.any(String),
       email_confirm: true,
       app_metadata: { exige_troca_senha: true },
     });
+    const senha = mocks.adminCreateUser.mock.calls[0][0].password;
+    expect(senha.length).toBeGreaterThanOrEqual(32);
+    expect(senha).not.toBe("midiapormidia@123");
     expect(mocks.resetPasswordForEmail).toHaveBeenCalled();
-  });
-
-  it("garante que a senha inicial padrão é midiapormidia@123", () => {
-    expect(SENHA_PADRAO_CADASTRO).toBe("midiapormidia@123");
   });
 });

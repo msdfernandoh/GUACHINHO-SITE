@@ -3180,3 +3180,16 @@ reclassificação de contas a pagar não reescreve o extrato de origem.
 
 Relatório:
 `docs/relatorios-fases/RECONCILIACAO-2026-09-24-CONTAS-PARTICULARES-PJ.md`.
+
+### Hotfix operacional 25/09/2026 — Recuperação e redefinição de senha
+
+A Plataforma redefine a senha do responsável principal com credencial temporária
+aleatória e exigência de troca no próximo acesso, preservando seus vínculos e
+permissões. O primeiro acesso grava a nova senha e o sinal de troca concluída
+na mesma operação do Supabase Auth. A recuperação de contas legadas também usa
+senha aleatória. O modelo de recuperação em português usa um token de uso único
+e aponta para `/auth/confirm` no domínio público de produção; sua ativação e a
+configuração de URL são feitas no painel Auth do Supabase hospedado.
+
+Relatório:
+`docs/relatorios-fases/HOTFIX-2026-09-25-RECUPERACAO-SENHA.md`.
