@@ -18,7 +18,7 @@ O app apresenta o CPF como entrada principal e aceita e-mail de contato apenas p
 
 ### Fase 286 — Revisão técnica temporária e somente leitura
 
-Para avaliação externa durante negociação, o host global admite um revisor em `plataforma_revisores_tecnicos`, sem vínculo `empresa_usuarios` e com expiração em 30 dias. O proxy autoriza somente `/platform/revisao` em requisições de leitura, e a página oferece consultas paginadas a dados existentes de empresas, usuários, leads, propostas, grupos e vendas. A identidade usa perfil técnico neutro `parceiro`; a migration 287 bloqueia `INSERT`, `UPDATE` e `DELETE` em tabelas públicas mesmo diante de políticas legadas permissivas. O superadmin provisiona conta exclusiva em `/platform/acessos-cadastro`. Relatório: `docs/relatorios-fases/FASE-286-REVISAO-TECNICA-SOMENTE-LEITURA.md`.
+Para avaliação externa durante negociação, o host global admite um revisor em `plataforma_revisores_tecnicos`, sem vínculo `empresa_usuarios` e com expiração em 30 dias. O proxy autoriza somente `/platform/revisao` em requisições de leitura, e a página oferece consultas paginadas a dados existentes de empresas, usuários, leads, propostas, grupos e vendas. A identidade usa perfil técnico neutro `parceiro`; as migrations 287–288 bloqueiam `INSERT`, `UPDATE` e `DELETE` em tabelas públicas mesmo diante de políticas legadas permissivas, inclusive após expiração. O superadmin provisiona conta exclusiva em `/platform/acessos-cadastro`. Relatório: `docs/relatorios-fases/FASE-286-REVISAO-TECNICA-SOMENTE-LEITURA.md`.
 
 ### Hotfix operacional 283 — Conferência financeira delegada e origem do Caixa PJ
 
