@@ -3188,8 +3188,9 @@ aleatória e exigência de troca no próximo acesso, preservando seus vínculos 
 permissões. O primeiro acesso grava a nova senha e o sinal de troca concluída
 na mesma operação do Supabase Auth. A recuperação de contas legadas também usa
 senha aleatória. O modelo de recuperação em português usa um token de uso único
-e aponta para `/auth/confirm` no domínio público de produção; sua ativação e a
-configuração de URL são feitas no painel Auth do Supabase hospedado.
+e aponta para `/auth/confirm` no domínio público de produção. A Site URL,
+o modelo de e-mail em português e os callbacks dos domínios de produção foram
+aplicados no painel Auth do Supabase hospedado em 25/09/2026.
 
 Relatório:
 `docs/relatorios-fases/HOTFIX-2026-09-25-RECUPERACAO-SENHA.md`.
