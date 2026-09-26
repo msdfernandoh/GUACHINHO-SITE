@@ -10,20 +10,20 @@
 
 Apresentar a uma nova franqueadora uma **operação integrada, do primeiro contato com o cliente ao controle financeiro**, e demonstrar como essa integração pode ajudar a organizar a gestão da unidade, reduzir oportunidades sem acompanhamento, padronizar a venda e dar visibilidade a receitas, comissões e despesas. O produto oferecido inclui **sistema + treinamento guiado para a equipe**, com conteúdo atualizado junto às telas.
 
-O projeto tem duas experiências conectadas:
+O projeto tem duas experiências com o mesmo catálogo de conteúdo, mas públicos e objetivos diferentes:
 
-1. **Conhecer o potencial — demonstração comercial (7 a 9 minutos):** conta uma história que começa na captação por evento e termina na gestão da unidade; mostra uma tela real, traduz cada recurso em benefício e indicador acompanhável e oferece um próximo passo comercial claro.
-2. **Aprender a operar — treinamento prático por função:** depois da decisão de adoção, ensina diretor, gestor comercial, consultor e financeiro a executar seus trabalhos. Inclui microlições, exercícios seguros com dados fictícios, ajuda por página e retomada do progresso.
+1. **Antes do contrato — login demo único:** apresenta ao futuro dono da franquia a visão integrada do negócio. Um percurso executivo curto conta a história da prospecção à gestão; uma biblioteca de módulos permite explorar **tudo o que está realmente disponível na amostra**, com “o que entrega”, “o que controla”, “como usar” e “qual ganho operacional observar”. Itens restritos à Plataforma SaaS aparecem em apresentação explicativa, sem abrir a governança real.
+2. **Depois do contrato — implantação guiada por perfil:** o dono da nova franquia faz primeiro a trilha de direção na própria master. Cada usuário da unidade recebe automaticamente a trilha correspondente ao seu papel e aos módulos efetivamente liberados: gestor, consultor, financeiro, parceiro ou indicador. Inclui microlições, ajuda por página e retomada individual do progresso.
 
 O roteiro não deve prometer crescimento de vendas, redução de custos ou retorno financeiro em percentual sem medição. Na Racon Sorriso, os registros já usados no piloto são marcados `[DEMO]`; seus valores ilustram o fluxo e não representam resultados obtidos por uma unidade real. O ambiente de acesso externo terá somente dados fictícios próprios.
 
-**Aceite comercial:** ao final, a pessoa consegue explicar pelo menos três ganhos práticos da plataforma, reconhecer o caminho evento → check-in → lead → grupo → proposta → venda → comissão → caixa, identificar como a rede acompanha unidades e saber que o treinamento de sua equipe já está previsto no produto. **Aceite educacional:** cada função conclui suas tarefas simuladas sem assistência e sem enviar mensagens ou registrar operações reais.
+**Aceite comercial:** ao final, o futuro franqueado consegue explicar pelo menos três ganhos práticos da plataforma, reconhecer o caminho evento → check-in → lead → grupo → proposta → venda → comissão → caixa, localizar a gestão de parceiros, identificar como acompanha a unidade e saber que o treinamento da equipe faz parte da implantação. **Aceite de implantação:** o dono conclui a trilha executiva; cada função encontra apenas as lições de suas telas autorizadas e conclui tarefas seguras sem assistência.
 
 ## 2. Público e alcance
 
 | Público | Valor que precisa enxergar | Experiência prevista |
 | --- | --- | --- |
-| Dono/diretor da franqueadora | Visibilidade da operação, padrão entre unidades, indicadores e controle | Demonstração comercial; depois, trilha de direção |
+| Dono da franquia / decisor | Visibilidade da operação, padrão da unidade, indicadores, vendas e controle | Login demo único antes do contrato; depois, trilha executiva na própria master |
 | Gestor da unidade | Distribuição de oportunidades, rotina da equipe e previsibilidade | Demonstração; depois, treinamento de gestão |
 | Consultor comercial | Próxima ação clara, carteira, propostas e acompanhamento | Treinamento comercial conforme seu acesso |
 | Responsável financeiro | Despesas, caixa, comissões e conciliação sem confundir previsão com pagamento | Treinamento financeiro conforme seu acesso |
@@ -31,15 +31,33 @@ O roteiro não deve prometer crescimento de vendas, redução de custos ou retor
 | Revisor técnico | Arquitetura e leitura do sistema sem ações de edição | Orientação própria em `/platform/revisao` |
 | Parceiro e indicador | Seu papel no fluxo de indicação e acompanhamento | Trilhas próprias nas respectivas áreas |
 
-**Lançamento:** validar narrativa e conteúdo com a equipe na master Sorriso; entregar logins a interessados somente depois de provisionar um tenant exclusivo de demonstração. O componente e o catálogo de conteúdo serão reutilizáveis e não conterão nomes, IDs ou cores fixos da Sorriso. O site público entra na história apenas nas páginas reais ligadas ao evento; o catálogo completo do site, simulador e contratação pública ficam para fase posterior.
+**Lançamento:** validar narrativa e conteúdo com a equipe na master Sorriso; entregar **um login demo compartilhado** somente depois de provisionar um tenant exclusivo de demonstração e provar que ele é incapaz de gravar ou consultar dados de outras masters. Após cada contrato, habilitar o guia na master da nova franquia de acordo com o plano, papel e permissões existentes. O componente e o catálogo serão reutilizáveis, sem nomes, IDs ou cores fixos da Sorriso.
 
 ### Acesso de demonstração para interessados
 
 - Criar um **tenant de demonstração separado** das masters Gauchinho e Racon Sorriso, com domínio próprio, identidade demonstrativa e base exclusivamente fictícia. A Racon Sorriso continua como piloto interno; ser independente não a torna uma conta pública de demonstração. Nenhum dado da Gauchinho ou de parceiros pode ser copiado para a demo.
-- Emitir **um acesso individual por interessado**, com prazo de validade e revogação simples. Não compartilhar o login do Fernando nem usar uma senha coletiva. Registrar consentimento e contato comercial fora do tour; o acesso não autoriza comunicação automática.
+- Usar **uma única credencial demo compartilhável**, exclusiva deste tenant, divulgada pela equipe comercial. Ela pode ser trocada ou revogada sem afetar usuários reais; não é o login do Fernando nem de qualquer franqueado. Cada sessão começa com o tour disponível, sem mostrar o progresso de outra pessoa. O uso compartilhado impede atribuir comportamento a um interessado específico: o convite para conversa comercial deve pedir identificação voluntária em canal separado.
 - Criar papel **visitante_demo**, limitado à leitura das telas e registros autorizados. Esconder botões de escrita ajuda a experiência, mas a proibição deve ser aplicada nas actions, APIs e RLS; bloquear criação, edição, exclusão, exportação, download sensível, mensagens, contratação e qualquer operação financeira. O tour não pode ampliar esse papel.
 - Para demonstrar check-in e sorteio sem gravar dados ou enviar mensagens, usar **replay guiado com registros fictícios**. Se houver exercício interativo futuro, executá-lo somente em sandbox isolado, com reset e sem disparos externos. Resultado de sorteio na demo é simulado e não entrega prêmio real.
-- Exibir selo persistente **Ambiente de demonstração — dados fictícios**. Acompanhar apenas progresso e interesse agregados, sem expor dados pessoais de outros visitantes. Encerrar a sessão ou revogar o acesso ao fim do prazo.
+- Exibir selo persistente **Ambiente de demonstração — dados fictícios**. O progresso do login demo é **por sessão/navegador**, sem gravar avanço na linha compartilhada do usuário; uma pessoa não desloca o tour da outra. Bloquear também troca de senha e dados cadastrais pela credencial demo. Medir uso agregado sem atribuir ações a um interessado específico. A credencial pode ser renovada periodicamente ou revogada se for divulgada indevidamente.
+
+### Dois níveis de apresentação, sem alterar o trabalho atual
+
+| Nível | Para quem | Duração e conteúdo | Ação permitida |
+| --- | --- | --- | --- |
+| **Visão executiva** | Futuro dono usando o login demo | Percurso objetivo pelas 11 paradas; de evento e “Seja Parceiro” até CRM, grupos, propostas, vendas, comissões, caixa e indicadores. Cada parada mostra benefício, controle e prova fictícia. | Navegar, avançar, pular e abrir explicações. |
+| **Explorar por área** | Mesmo futuro dono, após a visão executiva | Catálogo das áreas Comercial, Eventos, Parceiros, ERP, Financeiro, Gestão e Site; para cada tela: **para que serve → como fazer → que informação controla → que decisão apoia**. Links levam apenas a páginas autorizadas do tenant demo; ações de escrita aparecem por replay/explicação. | Visitar a amostra em ordem livre; nenhuma gravação operacional. |
+| **Implantação da unidade** | Dono e equipe da master contratada | Trilha executiva inicial do dono e microlições por perfil nas páginas reais da própria unidade. O usuário pode voltar depois a “Ajuda desta página” e continuar a trilha. | Ações normais do sistema continuam condicionadas às permissões já concedidas ao usuário. |
+
+O guia é uma **camada adicional de orientação**. Não altera cadastros, regras de comissão, dados, menus, planos, permissões ou fluxos de trabalho existentes. Apenas ancora explicações nas telas e registra progresso próprio. Onde o produto ainda não tem painel ou ligação comprovada, o catálogo informa isso claramente e explica a rotina atual.
+
+### Implantação após o contrato
+
+1. A equipe SaaS ativa o guia para a nova master junto ao plano e aos módulos contratados. A trilha do dono é sugerida no primeiro acesso do responsável principal; ele pode iniciar depois, pular e reiniciar.
+2. O dono percorre **Direção e Gestão**: oportunidades, equipe, produção, propostas, vendas, comissões, caixa, relatórios e responsabilidades. Ao final recebe um mapa das rotinas de cada função e dos indicadores que deve acompanhar; não recebe permissão de superadministrador da Plataforma.
+3. Quando usuários da unidade já possuem papéis e módulos, o guia apresenta a cada um sua trilha adequada: gestor (equipe e funil), consultor (lead e proposta), financeiro (contas e comissões), parceiro/indicador (indicação e acompanhamento). Perfil sozinho não libera tela; o guia confere vínculo, plano e permissão efetiva antes de mostrar cada passo.
+4. O dono pode consultar **Progresso do treinamento da equipe** por função e conclusão, se tiver permissão de gestão. Esse painel acompanha aprendizado, sem revelar dados de clientes nem permitir mudar papéis; sua implementação pertence ao guia e ainda não existe no sistema atual.
+5. Mudanças de função, plano ou acesso recalculam as lições visíveis. O histórico de conclusão permanece por usuário e master; não vira autorização para entrar em módulo negado.
 
 ## 3. História comercial da demonstração
 
@@ -123,7 +141,7 @@ As fichas de **Plataforma**, **Parceiro**, **Indicador** e **Site público** ser
 
 ## 5. Experiência de uso
 
-- Entrada clara com duas escolhas: **Conhecer os benefícios** para a franqueadora e **Treinar minha equipe** para usuários operacionais. No login de interessado, a demonstração comercial é a sugestão inicial e o acesso aos menus permitidos continua disponível. Convite opcional no primeiro acesso, sem bloquear trabalho.
+- No login demo, entrada com **Conhecer o sistema em 11 passos** e **Explorar por área**. Na master contratada, entrada com **Minha trilha de implantação** e **Ajuda desta página**; o dono vê também o mapa das trilhas da equipe. Convite opcional no primeiro acesso, sem bloquear trabalho.
 - Cartão curto com **problema → recurso → benefício**, indicador quando houver, contador de etapas, **Voltar**, **Próximo**, **Pular** e **Encerrar**. Sem setas piscando nem animações obrigatórias.
 - **Ajuda desta página** abre a ficha do menu atual; busca por assunto oferece acesso às demais fichas autorizadas. **Reiniciar tour** permanece disponível.
 - O treinamento tem trilhas por função: direção (painéis, metas e relatórios), comercial (lead, contato, agenda e proposta), gestão (funil, equipe e acompanhamento) e financeiro (contas, comissões e caixa). Cada microlição termina com uma tarefa prática em ambiente demonstrativo ou uma verificação de entendimento; progresso independente por trilha.
@@ -137,10 +155,10 @@ As fichas de **Plataforma**, **Parceiro**, **Indicador** e **Site público** ser
 
 1. Montar o percurso no servidor a partir de `empresa_id` do host, vínculo ativo em `empresa_usuarios`, papel, permissões canônicas, plano e `allowedAccess` do ERP. A lista enviada ao navegador contém apenas etapas já autorizadas. O parâmetro de URL ou estado local não pode escolher outro tenant. O papel `visitante_demo` requer concessões mínimas e validação de leitura no servidor e no banco, inclusive nas rotas fora do tour.
 2. Manter fichas versionadas em código por `tourId`/`stepId` e `menuId`; adicionar `data-tour-id` estável a âncoras dos sidebars e blocos principais. Não depender de texto da interface, posição DOM ou classes CSS.
-3. Persistir progresso por **usuário + escopo + tour + versão** no banco, com RLS de leitura e escrita do próprio usuário. Escopo de master usa `empresa_id`; a trilha global da Plataforma usa um escopo global explícito, sem inventar vínculo com empresa. Concluir, pular e reiniciar são estados distintos. Não usar apenas `localStorage`, pois o usuário pode trocar de dispositivo.
+3. Para a **demo compartilhada**, guardar avanço por sessão/navegador e versão do tour, sem usar um registro único do usuário demo; expirar esse estado e permitir reinício imediato. Para **unidades contratadas**, persistir progresso por **usuário + empresa + tour + versão** no banco, com RLS de leitura e escrita do próprio usuário. A visão de conclusão da equipe pelo dono exige autorização separada e expõe apenas estado de treinamento. A trilha global da Plataforma tem escopo próprio. Concluir, pular e reiniciar são estados distintos.
 4. Revalidar a autorização a cada navegação. Se plano, papel, vínculo ou menu mudar, reconstruir o roteiro; nunca exibir conteúdo de outra empresa nem deixar um link de tour contornar `requireErpRouteAccess` ou guardas equivalentes.
 5. Os IDs de registros `[DEMO]` são apenas exemplos opcionais. Se forem removidos, a etapa mostra a explicação genérica. O roteiro externo usa só o tenant demo; nunca busca clientes reais da Sorriso ou da Gauchinho para completar uma etapa.
-6. Telemetria mínima: abertura, avanço, pulo, conclusão, falha de âncora e versão; somente IDs técnicos de etapa e tenant. Sem nome, e-mail, telefone, CPF, texto de proposta ou valores de clientes.
+6. Telemetria mínima: abertura, avanço, pulo, conclusão, falha de âncora e versão; somente IDs técnicos de etapa e tenant. Na demo, contar sessões e conclusões agregadas, sem tratar login compartilhado como identificação de interessado. Sem nome, e-mail, telefone, CPF, texto de proposta ou valores de clientes.
 7. Separar `tourId` comercial de `tourId` de treinamento. O primeiro mede entendimento e interesse; as trilhas medem lições concluídas. Uma mudança editorial versiona o conteúdo sem apagar o histórico anterior.
 8. Os exercícios nunca usam dados de clientes reais. A primeira versão usa modo de observação, replay do check-in/sorteio e perguntas de compreensão; tarefas que precisem gravar registros exigem sandbox isolado com reset documentado. Manter separado o sorteio promocional de eventos e o sorteio/assembleia de grupos de consórcio.
 
@@ -149,11 +167,11 @@ As fichas de **Plataforma**, **Parceiro**, **Indicador** e **Site público** ser
 | Fase | Entrega verificável | Condição para avançar |
 | --- | --- | --- |
 | 0. Narrativa e inventário | Proposta de valor, história evento → caixa + parceiro → indicação, catálogo de menus/rotas e matriz de papel, plano e tenant | Cada benefício tem demonstração fiel; nenhum menu visível sem ficha |
-| 1. Ambiente e acessos | Tenant demo isolado, registros inteiramente fictícios, evento com check-in/sorteio simulado, parceiro e indicação fictícios, papel `visitante_demo`, logins individuais com expiração | Auditoria de leitura/escrita e RLS confirma isolamento; nenhum disparo externo |
-| 2. Base do guia | Componente acessível, âncoras estáveis, progresso versionado e autorização no servidor | Retomar, pular, reiniciar e troca de tenant testados |
-| 3. Demonstração comercial | 11 paradas de valor, percursos rastreáveis evento → caixa e parceiro → indicação, resumo final e contato comercial explícito | Decisor entende três benefícios, os fluxos, a diferença entre modelo solicitado e comissão vigente e a oferta de treinamento |
+| 1. Ambiente e acessos | Tenant demo isolado, registros inteiramente fictícios, evento com check-in/sorteio simulado, parceiro e indicação fictícios, papel `visitante_demo` e uma credencial compartilhável | Auditoria de leitura/escrita e RLS confirma isolamento; duas sessões simultâneas não compartilham progresso; nenhum disparo externo |
+| 2. Base do guia | Componente acessível, âncoras estáveis, progresso por sessão demo e por usuário real, autorização no servidor | Retomar, pular, reiniciar, duas sessões demo simultâneas e troca de tenant testados |
+| 3. Demonstração comercial | 11 paradas de valor e biblioteca “Explorar por área”, com percursos evento → caixa e parceiro → indicação | Decisor entende benefícios, localiza “como fazer” nos módulos e distingue demonstração de operação real |
 | 3a. Gestão de parceiros | Ficha de Consultores, ficha de Regras de Comissão e painel de aquisição por master/período com fontes auditáveis | Gestor identifica cadastros da landing, modelos solicitados, primeira indicação e perfil vigente; painel separa visitantes, cadastros e resultados |
-| 4. Treinamento | Trilhas de direção, gestão, comercial e financeiro com microlições e verificação prática segura | Usuários de teste concluem tarefas de sua função sem assistência |
+| 4. Implantação por perfil | Trilha inicial do dono, mapa da equipe, trilhas de gestão, comercial, financeiro, parceiro e indicador, microlições e progresso individual | Dono conclui sua visão; cada usuário recebe só lições autorizadas por papel, plano e acesso; dono acompanha conclusão quando autorizado |
 | 5. Cobertura SaaS | Trilhas separadas de Plataforma, revisor, parceiro, indicador e site público | Cada público vê apenas suas páginas e benefícios correspondentes |
 | 6. Operação | Métricas de uso, revisão editorial e rotina para atualizar fichas quando surgirem menus | Checklist incorporado ao processo de release |
 
@@ -162,7 +180,7 @@ As fichas de **Plataforma**, **Parceiro**, **Indicador** e **Site público** ser
 - **Cobertura:** comparação automatizada entre IDs dos menus renderizáveis e catálogo; falha de CI se surgir menu sem ficha ou ficha órfã. A cobertura é por menu autorizado, não por todas as páginas internas.
 - **Permissões:** testar `admin_empresa`, gestor, consultor, visualizador, revisor técnico e parceiro; plano completo, plano parcial, módulo desligado e lista explícita vazia. Uma etapa nunca deve revelar nem abrir menu negado.
 - **Isolamento:** alternar Gauchinho e Sorriso com o mesmo usuário; progresso e exemplos permanecem separados por `empresa_id`. A Sorriso não pode mostrar clientes ou valores da Gauchinho.
-- **Acesso externo:** visitante demo não consulta Sorriso/Gauchinho nem por URL direta, API, exportação ou ID adivinhado; expiração e revogação encerram o acesso. Testar também POST/PATCH/DELETE diretamente contra actions e endpoints, não apenas botões ocultos.
+- **Acesso externo:** visitante demo não consulta Sorriso/Gauchinho nem por URL direta, API, exportação ou ID adivinhado; rotação/revogação da credencial encerra o acesso. Testar também POST/PATCH/DELETE diretamente contra actions e endpoints, não apenas botões ocultos. Duas pessoas com o mesmo login não veem o progresso uma da outra.
 - **Fluxo de prospecção:** um registro fictício mostra, na mesma história, evento, convite/QR, check-in com consentimento, código de sorteio promocional, origem do lead, etapa no CRM, grupo, proposta, venda e indicadores. Se uma ligação ainda não existir no produto, a parada fica pendente e não é anunciada como pronta.
 - **Programa de parceiros:** validar cadastro de cada modelo, vínculo inicial de 12,5% onde a regra homologada existir, primeira indicação e entrada em revisão; confirmar que “Concluir revisão” sem troca de perfil não é apresentado como promoção. Verificar vínculos novos e comissões futuras após mudança, sem recalcular histórico.
 - **Medição da rede:** contar cadastros distintos por `empresa_id`, período e `origem_cadastro`, distribuir por modelo solicitado e acompanhar primeira indicação, propostas e vendas atribuídas. “Visitantes alcançados” só aparece quando houver fonte de tráfego definida e deduplicação; não equiparar visitas a cadastros nem contabilizar consultores preexistentes duas vezes.
@@ -172,6 +190,7 @@ As fichas de **Plataforma**, **Parceiro**, **Indicador** e **Site público** ser
 - **Segurança de operação:** durante o tour, nenhum e-mail, WhatsApp, PDF, contrato, baixa, repasse ou estorno é disparado. O tour não amplia permissões.
 - **Homologação comercial:** entrevistas rápidas com um decisor de franqueadora e um gestor sem treinamento prévio. Ambos devem relatar três benefícios concretos, identificar o fluxo evento → lead → grupo → proposta → caixa e compreender que o treinamento acompanha o sistema, sem confundir valores fictícios com resultado comprovado.
 - **Homologação do treinamento:** uma pessoa de cada função encontra sua trilha, conclui a microlição e sabe executar ou explicar sua tarefa; a conclusão não depende de permissão que seu papel não possui.
+- **Implantação:** o responsável principal da nova master recebe a trilha executiva sem acesso à Plataforma SaaS; gestor, consultor, financeiro, parceiro e indicador recebem somente lições de módulos concedidos. Acompanhamento de conclusão pelo dono não concede acesso a dados ou telas adicionais.
 - **Medição pós-lançamento:** acompanhar início e conclusão da demonstração, abandono por etapa, abertura de trilhas, conclusão de lições e cliques voluntários no próximo passo comercial. Revisar pontos com abandono elevado; não usar esses eventos como prova de aumento de vendas da franqueadora.
 - **Homologação editorial:** cada texto descreve a página publicada e responde em linguagem simples “que problema resolve?”, “como ajuda minha unidade?” e “o que faço depois?”.
 
