@@ -14,5 +14,10 @@ describe("importação de Meus contatos", () => {
     expect(source).toContain("IMPORT_BATCH_SIZE = 500");
     expect(source).toContain("rows.slice(start, start + IMPORT_BATCH_SIZE)");
     expect(source).toContain("duplicatesIgnored: validItemsCount - rows.length");
+    expect(source).toContain("function normalizeTags(tags: string[] = [])");
+    expect(source).toContain('field: "empresa" | "profissao"');
+    expect(source).toContain("updateContactTagsAction");
+    expect(source).toContain("export async function discardContactAction(id: string)");
+    expect(source).toContain('.delete()');
   });
 });

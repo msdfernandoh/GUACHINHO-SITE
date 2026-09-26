@@ -5,9 +5,23 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireCurrentTenantContext } from "@/lib/tenant/context";
 
-export type ContactInput = { nome: string; telefone: string; email?: string; empresa?: string; profissao?: string; observacoes?: string };
+export type ContactInput = { nome: string; telefone: string; email?: string; empresa?: string; profissao?: string; observacoes?: string; tags?: string[] };
 const digits = (value: string) => { const raw = value.replace(/\D/g, ""); if (raw.startsWith("55") && (raw.length === 12 || raw.length === 13)) return raw.slice(2); if (raw.startsWith("0") && (raw.length === 13 || raw.length === 14)) return raw.slice(3); return raw; };
 const IMPORT_BATCH_SIZE = 500;
+const CONTACT_TAG_LIMIT = 20;
+
+function normalizeTags(tags: string[] = []) {
+  const seen = new Set<string>();
+  return tags.reduce<string[]>((normalized, tag) => {
+    const value = tag.replace(/^#/, "").trim().replace(/\s+/g, " ").slice(0, 50);
+    const key = value.toLocaleLowerCase("pt-BR");
+    if (value && !seen.has(key) && normalized.length < CONTACT_TAG_LIMIT) {
+      seen.add(key);
+      normalized.push(value);
+    }
+    return normalized;
+  }, []);
+}
 
 function contactScore(contact: ContactInput) {
   return [contact.nome, contact.email, contact.empresa, contact.profissao, contact.observacoes]
@@ -61,9 +75,55 @@ export async function saveContactsAction(items: ContactInput[]) {
 export async function updateContactAction(id: string, input: ContactInput) {
   const { usuario, empresaAtiva } = await requireCurrentTenantContext();
   const supabase = await createClient();
-  const { error } = await supabase.from("contatos_usuario").update({ ...input, telefone_normalizado: digits(input.telefone), updated_at: new Date().toISOString() }).eq("id", id).eq("empresa_id", empresaAtiva.id).eq("usuario_id", usuario.id);
+  const { error } = await supabase.from("contatos_usuario").update({ ...input, tags: normalizeTags(input.tags), telefone_normalizado: digits(input.telefone), updated_at: new Date().toISOString() }).eq("id", id).eq("empresa_id", empresaAtiva.id).eq("usuario_id", usuario.id);
   if (error) return { ok: false, error: error.message };
   revalidatePath("/admin/contatos"); return { ok: true };
+}
+
+export async function updateContactClassificationAction(
+  id: string,
+  field: "empresa" | "profissao",
+  value: string,
+) {
+  const { usuario, empresaAtiva } = await requireCurrentTenantContext();
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("contatos_usuario")
+    .update({ [field]: value.trim().slice(0, 160) || null, updated_at: new Date().toISOString() })
+    .eq("id", id)
+    .eq("empresa_id", empresaAtiva.id)
+    .eq("usuario_id", usuario.id);
+  if (error) return { ok: false, error: error.message };
+  revalidatePath("/admin/contatos");
+  return { ok: true };
+}
+
+export async function updateContactTagsAction(id: string, tags: string[]) {
+  const { usuario, empresaAtiva } = await requireCurrentTenantContext();
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("contatos_usuario")
+    .update({ tags: normalizeTags(tags), updated_at: new Date().toISOString() })
+    .eq("id", id)
+    .eq("empresa_id", empresaAtiva.id)
+    .eq("usuario_id", usuario.id);
+  if (error) return { ok: false, error: error.message };
+  revalidatePath("/admin/contatos");
+  return { ok: true, tags: normalizeTags(tags) };
+}
+
+export async function discardContactAction(id: string) {
+  const { usuario, empresaAtiva } = await requireCurrentTenantContext();
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("contatos_usuario")
+    .delete()
+    .eq("id", id)
+    .eq("empresa_id", empresaAtiva.id)
+    .eq("usuario_id", usuario.id);
+  if (error) return { ok: false, error: error.message };
+  revalidatePath("/admin/contatos");
+  return { ok: true };
 }
 
 export async function sendContactToLeadAction(id: string) {
@@ -72,7 +132,7 @@ export async function sendContactToLeadAction(id: string) {
   const { data: contact, error } = await supabase.from("contatos_usuario").select("*").eq("id", id).eq("empresa_id", empresaAtiva.id).eq("usuario_id", usuario.id).single();
   if (error || !contact) return { ok: false, error: "Contato não encontrado." };
   const admin = createAdminClient();
-  const { data, error: rpcError } = await admin.rpc("rpc_upsert_lead_por_telefone", { p_payload: { empresa_id: empresaAtiva.id, nome: contact.nome, whatsapp: contact.telefone, email: contact.email, origem: "contatos", origem_detalhe: "Meus contatos", observacoes: [contact.empresa, contact.profissao, contact.observacoes].filter(Boolean).join(" — "), srd_responsavel_id: usuario.id, srd_responsavel_nome: usuario.nome, participante_comercial_id: null } });
+  const { data, error: rpcError } = await admin.rpc("rpc_upsert_lead_por_telefone", { p_payload: { empresa_id: empresaAtiva.id, nome: contact.nome, whatsapp: contact.telefone, email: contact.email, origem: "contatos", origem_detalhe: "Meus contatos", observacoes: [contact.empresa, contact.profissao, ...(contact.tags?.length ? [`Tags: ${contact.tags.join(", ")}`] : []), contact.observacoes].filter(Boolean).join(" — "), srd_responsavel_id: usuario.id, srd_responsavel_nome: usuario.nome, participante_comercial_id: null } });
   if (rpcError || !data?.ok) return { ok: false, error: rpcError?.message ?? data?.error ?? "Não foi possível criar o lead." };
   return { ok: true, leadId: data.lead_id, action: data.action };
 }
