@@ -1,5 +1,14 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
+### Hotfix operacional 293 — Contraste de Meus contatos na Gauchinho
+
+A tabela de contatos importados usa cores explícitas sobre sua superfície clara
+mesmo dentro do painel escuro da Gauchinho. Cabeçalho, linhas, dados, ícones e
+ações permanecem legíveis após importações CSV ou VCF, sem alterar escopo de
+empresa, usuário ou dados dos contatos.
+
+Relatório: `docs/relatorios-fases/HOTFIX-293-CONTRASTE-MEUS-CONTATOS-GAUCHINHO.md`.
+
 ### Hotfix operacional 25/09/2026 — ERP e amostra fictícia da master Sorriso
 
 O onboarding SaaS pode persistir `erp_habilitado` e `modulos_erp_selecionados` antes da configuração canônica `erp_sistema`. O resolvedor do ERP usa esses campos como compatibilidade somente quando `erp_sistema` não existe; a configuração explícita continua prioritária. Na master Sorriso, `erp_sistema` foi alinhado aos 12 módulos da assinatura ativa do Plano Profissional e o responsável principal passou a herdar os módulos autorizados pelo tenant (`erp_modulos_visiveis = NULL`). A amostra usa IDs estáveis, nomes `[DEMO]`, nenhum contato real, uma venda sem efeito no faturamento e a baixa financeira transacional para três despesas fictícias. Os dados permanecem exclusivamente sob `empresa_id` da Sorriso. Relatório: `docs/relatorios-fases/HOTFIX-2026-09-25-ERP-AMOSTRA-SORRISO.md`.
