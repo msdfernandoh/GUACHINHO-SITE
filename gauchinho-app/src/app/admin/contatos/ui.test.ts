@@ -14,5 +14,8 @@ describe("aparência de Meus contatos", () => {
     expect(source).toContain("Adicionar tag");
     expect(source).toContain("Descartar");
     expect(source).toContain("discardContactAction");
+    expect(source).toContain("Exibindo {firstItem}–{lastItem} de {total} contatos");
+    expect(source).toContain("Página {page} de {totalPages}");
+    expect(source).toContain("navigate({ ...filters, page: page + 1 })");
   });
 });

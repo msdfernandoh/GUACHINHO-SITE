@@ -137,9 +137,56 @@ export async function sendContactToLeadAction(id: string) {
   return { ok: true, leadId: data.lead_id, action: data.action };
 }
 
-export async function listMyContacts() {
+export type ContactListFilters = {
+  page?: number;
+  empresa?: string;
+  profissao?: string;
+  tag?: string;
+};
+
+export async function listMyContacts(filters: ContactListFilters = {}) {
   const { usuario, empresaAtiva } = await requireCurrentTenantContext();
   const supabase = await createClient();
-  const { data, error } = await supabase.from("contatos_usuario").select("*").eq("empresa_id", empresaAtiva.id).eq("usuario_id", usuario.id).order("nome");
-  if (error) throw new Error(error.message); return data ?? [];
+  const pageSize = 100;
+  const page = Math.max(1, Math.floor(filters.page ?? 1));
+  let query = supabase
+    .from("contatos_usuario")
+    .select("*", { count: "exact" })
+    .eq("empresa_id", empresaAtiva.id)
+    .eq("usuario_id", usuario.id);
+  if (filters.empresa) query = query.eq("empresa", filters.empresa);
+  if (filters.profissao) query = query.eq("profissao", filters.profissao);
+  if (filters.tag) query = query.contains("tags", [filters.tag]);
+
+  const { data, error, count } = await query
+    .order("nome")
+    .range((page - 1) * pageSize, page * pageSize - 1);
+  if (error) throw new Error(error.message);
+  return { contacts: data ?? [], total: count ?? 0, page, pageSize };
+}
+
+export async function listMyContactFilterOptions() {
+  const { usuario, empresaAtiva } = await requireCurrentTenantContext();
+  const supabase = await createClient();
+  const rows: Array<{ empresa: string | null; profissao: string | null; tags: string[] | null }> = [];
+  const pageSize = 1000;
+
+  for (let from = 0; ; from += pageSize) {
+    const { data, error } = await supabase
+      .from("contatos_usuario")
+      .select("empresa,profissao,tags")
+      .eq("empresa_id", empresaAtiva.id)
+      .eq("usuario_id", usuario.id)
+      .range(from, from + pageSize - 1);
+    if (error) throw new Error(error.message);
+    rows.push(...(data ?? []));
+    if (!data || data.length < pageSize) break;
+  }
+
+  const unique = (values: Array<string | null | undefined>) => [...new Set(values.map((value) => value?.trim()).filter(Boolean) as string[])].sort((first, second) => first.localeCompare(second, "pt-BR"));
+  return {
+    empresas: unique(rows.map((row) => row.empresa)),
+    profissoes: unique(rows.map((row) => row.profissao)),
+    tags: unique(rows.flatMap((row) => row.tags ?? [])),
+  };
 }

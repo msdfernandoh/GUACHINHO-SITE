@@ -19,5 +19,8 @@ describe("importação de Meus contatos", () => {
     expect(source).toContain("updateContactTagsAction");
     expect(source).toContain("export async function discardContactAction(id: string)");
     expect(source).toContain('.delete()');
+    expect(source).toContain('select("*", { count: "exact" })');
+    expect(source).toContain(".range((page - 1) * pageSize, page * pageSize - 1)");
+    expect(source).toContain("export async function listMyContactFilterOptions()");
   });
 });

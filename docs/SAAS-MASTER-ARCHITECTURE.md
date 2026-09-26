@@ -8,9 +8,9 @@ O projeto do tour guiado estabelece um percurso comercial opcional de 10 paradas
 
 Contatos privados agora podem ser classificados diretamente por empresa e
 profissão, além de tags persistidas em `contatos_usuario`. A listagem oferece
-filtros combináveis e mantém as atualizações protegidas pelo mesmo escopo de
-empresa e usuário; as tags também acompanham o contexto ao enviar um contato
-para lead.
+filtros combináveis e paginação de 100 registros, evitando o teto de 1.000
+linhas da API; mantém as atualizações protegidas pelo mesmo escopo de empresa e
+usuário, e as tags também acompanham o contexto ao enviar um contato para lead.
 
 
 ### Hotfix operacional 293 — Contraste de Meus contatos na Gauchinho

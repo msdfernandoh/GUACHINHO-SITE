@@ -18,6 +18,9 @@ caixas de diálogo genéricas e sem precisar abrir outro cadastro.
   por GIN para consultas futuras eficientes.
 - Ao enviar o contato para lead, as tags são registradas junto às observações
   comerciais do lead.
+- A consulta de contatos agora é paginada em blocos de 100 itens, exibindo o
+  intervalo e o total real. Isso elimina o teto padrão de 1.000 linhas da API
+  e permite navegar por toda a importação VCF.
 
 ## Segurança e dados
 
@@ -25,6 +28,12 @@ A migration somente adiciona a coluna `tags` à tabela já protegida
 `contatos_usuario`. As atualizações continuam exigindo o usuário autenticado e
 a empresa ativa pelo vínculo `empresa_usuarios`; o descarte usa o mesmo escopo.
 RLS não foi alterada.
+
+## Aplicação no Supabase
+
+O script `293_contatos_usuario_tags_classificacao.sql` foi aplicado isoladamente
+no banco remoto e a coluna `public.contatos_usuario.tags` foi confirmada como
+`text[]`. Nenhuma migration pendente de outro escopo foi executada.
 
 ## Validação
 
