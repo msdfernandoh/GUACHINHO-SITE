@@ -1,5 +1,9 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
+### Projeto 26/09/2026 — Tour guiado do SaaS e ERP
+
+O projeto do tour guiado estabelece um percurso opcional de até 10 etapas para a master Sorriso e ajuda contextual por menu para cobrir portal administrativo, ERP e governança SaaS. O roteiro da master será montado com o vínculo `empresa_usuarios`, o plano e as permissões efetivas; progresso e exemplos serão isolados por usuário e `empresa_id`. A Plataforma terá escopo global próprio. O planejamento, as fases e os critérios de aceite estão em `docs/projetos/TOUR-GUIADO-SAAS-ERP.md`; registro desta fase em `docs/relatorios-fases/PROJETO-2026-09-26-TOUR-GUIADO-SAAS-ERP.md`.
+
 ### Hotfix operacional 294 — Classificação em Meus contatos
 
 Contatos privados agora podem ser classificados diretamente por empresa e
