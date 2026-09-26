@@ -1,51 +1,92 @@
-# Projeto — Tour guiado do SaaS e ERP
+# Projeto — Demonstração comercial e treinamento guiado do SaaS e ERP
 
 **Estado:** especificação para implementação
 
-**Piloto:** Racon Sorriso (`sorriso`)
+**Piloto interno:** Racon Sorriso (`sorriso`). **Entrega externa:** ambiente de demonstração próprio, ainda a provisionar.
 
 **Data:** 26/09/2026
 
-## 1. Objetivo e medida de sucesso
+## 1. Objetivo comercial e educacional
 
-Permitir que uma pessoa conheça o fluxo real do produto em poucos minutos, sem precisar receber treinamento oral nem alterar dados para entender o sistema. O tour apresenta **onde encontrar**, **para que serve** e **qual é o próximo passo** em cada área. Na Racon Sorriso, usa apenas registros marcados `[DEMO]`.
+Apresentar a uma nova franqueadora uma **operação integrada, do primeiro contato com o cliente ao controle financeiro**, e demonstrar como essa integração pode ajudar a organizar a gestão da unidade, reduzir oportunidades sem acompanhamento, padronizar a venda e dar visibilidade a receitas, comissões e despesas. O produto oferecido inclui **sistema + treinamento guiado para a equipe**, com conteúdo atualizado junto às telas.
 
-Uma sessão inicial deve caber em **4 minutos e até 10 etapas**. O conteúdo dos demais menus fica acessível sob demanda por um botão **Ajuda desta página**; a cobertura completa não transforma o primeiro acesso em uma sequência longa de telas.
+O projeto tem duas experiências conectadas:
 
-**Aceite de produto:** uma pessoa com acesso administrativo à Sorriso encontra clientes, funil, propostas, vendas, comissões e contas a pagar sem assistência; identifica os dados fictícios e entende que uma previsão de comissão não é pagamento recebido.
+1. **Conhecer o potencial — demonstração comercial (7 a 9 minutos):** conta uma história que começa na captação por evento e termina na gestão da unidade; mostra uma tela real, traduz cada recurso em benefício e indicador acompanhável e oferece um próximo passo comercial claro.
+2. **Aprender a operar — treinamento prático por função:** depois da decisão de adoção, ensina diretor, gestor comercial, consultor e financeiro a executar seus trabalhos. Inclui microlições, exercícios seguros com dados fictícios, ajuda por página e retomada do progresso.
+
+O roteiro não deve prometer crescimento de vendas, redução de custos ou retorno financeiro em percentual sem medição. Na Racon Sorriso, os registros já usados no piloto são marcados `[DEMO]`; seus valores ilustram o fluxo e não representam resultados obtidos por uma unidade real. O ambiente de acesso externo terá somente dados fictícios próprios.
+
+**Aceite comercial:** ao final, a pessoa consegue explicar pelo menos três ganhos práticos da plataforma, reconhecer o caminho evento → check-in → lead → grupo → proposta → venda → comissão → caixa, identificar como a rede acompanha unidades e saber que o treinamento de sua equipe já está previsto no produto. **Aceite educacional:** cada função conclui suas tarefas simuladas sem assistência e sem enviar mensagens ou registrar operações reais.
 
 ## 2. Público e alcance
 
-| Público | Experiência prevista | Entrada |
+| Público | Valor que precisa enxergar | Experiência prevista |
 | --- | --- | --- |
-| Administrador da master | Tour comercial e ERP completo, filtrado pelo plano e papel | `/admin` → `/erp` |
-| Gestor, consultor ou visualizador | Somente etapas e páginas autorizadas | Portal ou ERP, conforme vínculo |
-| Superadministrador SaaS | Tour separado de governança, empresas, planos e concessões | `/platform` |
-| Revisor técnico | Orientação curta de leitura na revisão técnica, sem ações de edição | `/platform/revisao` |
-| Parceiro e indicador | Trilhas próprias quando as respectivas áreas forem incluídas | `/area-parceiro`, `/app-indicador` |
+| Dono/diretor da franqueadora | Visibilidade da operação, padrão entre unidades, indicadores e controle | Demonstração comercial; depois, trilha de direção |
+| Gestor da unidade | Distribuição de oportunidades, rotina da equipe e previsibilidade | Demonstração; depois, treinamento de gestão |
+| Consultor comercial | Próxima ação clara, carteira, propostas e acompanhamento | Treinamento comercial conforme seu acesso |
+| Responsável financeiro | Despesas, caixa, comissões e conciliação sem confundir previsão com pagamento | Treinamento financeiro conforme seu acesso |
+| Superadministrador SaaS | Governança de masters, planos, módulos e concessões | Trilha própria em `/platform` |
+| Revisor técnico | Arquitetura e leitura do sistema sem ações de edição | Orientação própria em `/platform/revisao` |
+| Parceiro e indicador | Seu papel no fluxo de indicação e acompanhamento | Trilhas próprias nas respectivas áreas |
 
-**Lançamento:** piloto no tenant Sorriso, depois extensão para outras masters. O componente e o catálogo de conteúdo serão reutilizáveis e não conterão nomes, IDs ou cores fixos da Sorriso. Site público, simulador e contratação pública ficam fora do piloto; recebem projeto próprio de ajuda contextual se houver demanda.
+**Lançamento:** validar narrativa e conteúdo com a equipe na master Sorriso; entregar logins a interessados somente depois de provisionar um tenant exclusivo de demonstração. O componente e o catálogo de conteúdo serão reutilizáveis e não conterão nomes, IDs ou cores fixos da Sorriso. O site público entra na história apenas nas páginas reais ligadas ao evento; o catálogo completo do site, simulador e contratação pública ficam para fase posterior.
 
-## 3. Percurso principal do piloto
+### Acesso de demonstração para interessados
 
-| Etapa | Âncora/rota | Mensagem objetiva | Exemplo mostrado |
+- Criar um **tenant de demonstração separado** das masters Gauchinho e Racon Sorriso, com domínio próprio, identidade demonstrativa e base exclusivamente fictícia. A Racon Sorriso continua como piloto interno; ser independente não a torna uma conta pública de demonstração. Nenhum dado da Gauchinho ou de parceiros pode ser copiado para a demo.
+- Emitir **um acesso individual por interessado**, com prazo de validade e revogação simples. Não compartilhar o login do Fernando nem usar uma senha coletiva. Registrar consentimento e contato comercial fora do tour; o acesso não autoriza comunicação automática.
+- Criar papel **visitante_demo**, limitado à leitura das telas e registros autorizados. Esconder botões de escrita ajuda a experiência, mas a proibição deve ser aplicada nas actions, APIs e RLS; bloquear criação, edição, exclusão, exportação, download sensível, mensagens, contratação e qualquer operação financeira. O tour não pode ampliar esse papel.
+- Para demonstrar check-in e sorteio sem gravar dados ou enviar mensagens, usar **replay guiado com registros fictícios**. Se houver exercício interativo futuro, executá-lo somente em sandbox isolado, com reset e sem disparos externos. Resultado de sorteio na demo é simulado e não entrega prêmio real.
+- Exibir selo persistente **Ambiente de demonstração — dados fictícios**. Acompanhar apenas progresso e interesse agregados, sem expor dados pessoais de outros visitantes. Encerrar a sessão ou revogar o acesso ao fim do prazo.
+
+## 3. História comercial da demonstração
+
+**Mensagem central:** “Da oportunidade ao resultado, a franqueadora acompanha a operação em um só lugar e treina a equipe dentro do próprio sistema.” A ordem segue o trabalho real da unidade, não a ordem dos menus. Cada parada responde: **qual dificuldade existe? → o que a plataforma faz? → qual benefício isso permite acompanhar?**
+
+| Parada | Tela real | Benefício explicado | Evidência na demonstração |
 | --- | --- | --- | --- |
-| 1. Boas-vindas | `/admin` | Portal e ERP são áreas da mesma master; os dados `[DEMO]` são fictícios. | Aviso de demonstração |
-| 2. Visão geral | Dashboard admin | Indicadores resumem o comercial da empresa ativa. | 5 leads de exemplo |
-| 3. Funil | `/admin/crm/pipeline` | Cada oportunidade passa por etapas; filtros e busca ajudam a encontrá-la. | Lead `[DEMO]` |
-| 4. Propostas | `/admin/propostas` ou `/erp/propostas` | A proposta registra crédito, prazo e situação; um rascunho não é contrato. | Proposta `[DEMO]` |
-| 5. Entrada no ERP | Botão `ERP Sistema` | O ERP reúne operação, carteira e financeiro conforme o plano. | Menu ERP |
-| 6. Clientes | `/erp/clientes` | A carteira contém clientes da master ativa; abra um cadastro de exemplo. | Cliente `[DEMO]` |
-| 7. Vendas e cotas | `/erp/vendas` | Venda e cota formalizada têm estados próprios; a amostra não compõe faturamento real. | Venda fictícia |
-| 8. Comissões | `/erp/comissoes` | Diferenciar valor previsto, recebido, liquidado e repassado. | Previsão fictícia de R$ 1.200 |
-| 9. Contas a pagar | `/erp/contas-pagar` | Baixa de uma despesa gera movimento no caixa; os três pagamentos da amostra são simulados. | Contas `[DEMO]` |
-| 10. Encerramento | ERP | Mostrar onde reiniciar o tour e abrir ajuda contextual. | Botões Ajuda e Reiniciar |
+| 1. Cenário da unidade | `/admin` | O franqueado enxerga a operação sem juntar planilhas. | Painel e selo de dados fictícios |
+| 2. Evento que gera oportunidades | Página publicada do evento e `/admin/eventos` | Evento e convite dão origem rastreável à prospecção local. | Evento fictício, convite/QR e origem configurada, sem inscrição real |
+| 3. Check-in e engajamento | Formulário de check-in do evento e área de sorteio | Presença, respostas e participação em sorteio de prêmio criam uma experiência de captação; consentimento e regras do evento ficam visíveis. | Replay de check-in e sorteio fictícios; mostrar o código de participação e resultado simulado, sem prêmio real |
+| 4. Lead e acompanhamento | `/admin/crm/pipeline` | O registro captado entra no funil com origem do evento, responsável, etapa e próxima ação. | Seguir o mesmo lead fictício; mostrar filtro por evento e pendências |
+| 5. Cliente e grupos | `/erp/clientes` e `/erp/grupos` | A equipe conhece o perfil do cliente e consulta grupos, crédito, vagas e assembleia para selecionar alternativas. | Cliente e grupos fictícios; distinguir grupo de consórcio do sorteio promocional |
+| 6. Proposta e negociação | `/erp/propostas` | Alternativas, valores e status de proposta ficam registrados para retomar e formalizar a negociação. | Proposta ligada ao cliente da história, sem envio nem contratação |
+| 7. Venda e comissão | `/erp/vendas` e `/erp/comissoes` | A gestão diferencia proposta, venda, comissão prevista, recebida e paga. | Venda e comissão fictícias, fora de faturamento real |
+| 8. Controle financeiro | `/erp/contas-pagar` e `/erp/financeiro` | Despesas e caixa mostram obrigações e pagamentos da unidade. | Contas fictícias pagas, saldo simulado explicado |
+| 9. Gestão da rede | Painel ERP, relatórios e explicação da Plataforma | A direção acompanha oportunidades, produção, dinheiro e padrão de acesso por unidade. | Indicadores da demo; prospect não navega em governança privilegiada |
+| 10. Treinamento e próximo passo | Encerramento e microlição de exemplo | Além do sistema, cada função recebe treinamento no contexto do trabalho. | “Explorar trilhas” e “Solicitar conversa comercial” somente por ação voluntária |
 
-O roteiro é **descritivo**: não clica em botões de salvar, baixar, contratar, enviar PDF, estornar ou repassar. Se uma etapa não for autorizada ou sua âncora não existir, ela é omitida e a numeração se ajusta. A etapa inicial e o encerramento sempre permanecem acessíveis.
+**Indicadores que podem ser mostrados quando disponíveis:** convidados, check-ins, leads por evento, participantes do sorteio, tempo até o primeiro contato, leads sem próxima ação, avanço entre etapas do funil, propostas em andamento, vendas formalizadas, comissão prevista versus recebida e despesas abertas versus pagas. Não inventar gráficos ou percentuais: se o dado ainda não existir na tela, explicar o benefício como possibilidade de gestão e registrar a métrica como evolução do produto.
+
+**Demonstração de rede:** a Racon Sorriso é uma master independente. O tour precisa evidenciar que os registros da Sorriso pertencem apenas a ela; Racon Sinop é parceira vinculada à Gauchinho, portanto não deve ser apresentada como outra unidade da Sorriso. O tenant de demonstração será uma terceira fronteira de dados.
+
+O roteiro comercial é **narrado e demonstrativo**: destaca elementos reais, mas não clica em salvar, baixar, contratar, enviar PDF, estornar ou repassar. Se uma etapa não for autorizada ou sua âncora não existir, substitui a parada por explicação de benefício sem revelar dados nem rota restrita. A etapa inicial e o encerramento sempre permanecem acessíveis.
+
+**Exemplo de fala do guia:** “Neste evento, o convidado faz check-in com consentimento e recebe um código para participar do sorteio promocional. A equipe vê de qual evento veio a oportunidade, organiza o próximo contato, consulta grupos adequados e registra uma proposta. Se a negociação evoluir, venda, comissão e compromissos financeiros ficam visíveis para a gestão. Aqui você está vendo dados fictícios; no seu negócio, cada pessoa acessará somente sua unidade e sua função.” Cada trecho dessa fala só entra no produto depois de o fluxo correspondente ser verificado de ponta a ponta.
+
+**Preparação da amostra:** o piloto Sorriso já documenta clientes, leads, propostas, uma venda, comissão prevista e contas pagas fictícias. Ainda é necessário criar, no futuro tenant demo, um evento fictício com convite/QR, participantes de check-in, respostas de qualificação, consentimento, códigos e sorteio simulado, além de vínculos rastreáveis entre esse evento, um lead, cliente, grupo, proposta e venda. A ficha de cada parada marcará “verificado em produção”, “verificado na demo” ou “pendente de implementação”; etapas pendentes não serão anunciadas como recurso pronto.
+
+### Mapa de valor que a demonstração precisa provar
+
+| Necessidade da franqueadora | Recurso a mostrar | Ganho operacional a explicar | Evidência ou limite |
+| --- | --- | --- | --- |
+| Prospectar na praça | Eventos, convites, QR e formulário de check-in | Transformar participação presencial em oportunidade identificável, com origem e consentimento | Replay do evento fictício; conferir regras de coleta e vínculo real ao CRM |
+| Engajar convidados | Código de participação, sorteio promocional, NPS e indicação quando habilitados | Motivar participação e obter retorno para ações posteriores | Sorteio de prêmio simulado; não confundir com sorteio de grupo de consórcio nem prometer conversão |
+| Não perder oportunidades | CRM, funil, responsáveis, agenda e próximas ações | Equipe sabe quem atender e gestor identifica pendências | Mostrar filtros e etapas; medir tempo de resposta somente se disponível |
+| Vender com padrão | Grupos de consórcio, simulação, propostas e contratação | Comparar alternativas de crédito e manter a negociação documentada | Mostrar grupo e proposta fictícios; não afirmar taxa de conversão |
+| Conhecer a carteira | Clientes, histórico e vínculo com vendas | Continuidade do atendimento quando a equipe muda | Mostrar cliente `[DEMO]`; não expor dados de outra master |
+| Dar previsibilidade à gestão | Painéis, relatórios, metas e tarefas | Decisões baseadas no andamento visível da unidade | Usar indicadores publicados; metas e valores de amostra não são resultados reais |
+| Controlar dinheiro | Comissões, repasses, contas a pagar e caixa | Diferenciar expectativa de recebimento, despesa paga e saldo | Mostrar previsão e baixa fictícias; explicar saldo negativo da amostra |
+| Escalar a operação | Plano, módulos, permissões, identidade da master e parceiros | Implantar unidades com papéis e acesso definidos | A Plataforma só é navegada por superadministrador; para prospect, usar explicação sem dados internos |
+| Treinar e manter padrão | Trilhas por função e ajuda contextual | Novo colaborador encontra orientação no momento da tarefa | Mostrar uma microlição completa e a retomada do progresso |
+
+Cada benefício precisa de uma **prova de tela ou de fluxo** antes de entrar na narrativa comercial. A ficha editorial registra fonte, rota, condição de acesso e data de revisão; se o recurso mudar, a afirmação é revisada junto com a etapa. Assim a apresentação vende o que o sistema efetivamente entrega.
 
 ## 4. Cobertura integral por catálogo contextual
 
-O catálogo é indexado por **ID estável do menu**, rota, público, permissão, título, frase de função, exemplo e alerta quando houver impacto financeiro ou envio externo. A matriz abaixo deve ser usada como checklist de conteúdo; cada item visível precisa ter uma ficha de ajuda e cada ficha deve apontar para uma rota real. Menus ocultos por plano ou papel nunca aparecem no tour.
+O catálogo é indexado por **ID estável do menu**, rota, público, permissão, função, **benefício para a unidade**, indicador relacionado, exemplo, tarefa de treinamento e alerta quando houver impacto financeiro ou envio externo. A matriz abaixo é o checklist de conteúdo: cada item visível precisa de uma ficha curta e cada ficha deve apontar para uma rota real. Menus ocultos por plano ou papel nunca aparecem no tour.
 
 | Área | Menus a cobrir com ajuda contextual |
 | --- | --- |
@@ -62,9 +103,11 @@ As fichas de **Plataforma**, **Parceiro**, **Indicador** e **Site público** ser
 
 ## 5. Experiência de uso
 
-- Entrada discreta: botão **Conhecer o sistema** no portal e no ERP; convite opcional apenas no primeiro acesso após habilitação, sem bloquear trabalho.
-- Cartão curto com título, até duas frases, contador de etapas, **Voltar**, **Próximo**, **Pular** e **Encerrar**. Sem setas piscando nem animações obrigatórias.
+- Entrada clara com duas escolhas: **Conhecer os benefícios** para a franqueadora e **Treinar minha equipe** para usuários operacionais. No login de interessado, a demonstração comercial é a sugestão inicial e o acesso aos menus permitidos continua disponível. Convite opcional no primeiro acesso, sem bloquear trabalho.
+- Cartão curto com **problema → recurso → benefício**, indicador quando houver, contador de etapas, **Voltar**, **Próximo**, **Pular** e **Encerrar**. Sem setas piscando nem animações obrigatórias.
 - **Ajuda desta página** abre a ficha do menu atual; busca por assunto oferece acesso às demais fichas autorizadas. **Reiniciar tour** permanece disponível.
+- O treinamento tem trilhas por função: direção (painéis, metas e relatórios), comercial (lead, contato, agenda e proposta), gestão (funil, equipe e acompanhamento) e financeiro (contas, comissões e caixa). Cada microlição termina com uma tarefa prática em ambiente demonstrativo ou uma verificação de entendimento; progresso independente por trilha.
+- Um resumo final conecta os ganhos apresentados: mais visibilidade sobre oportunidades, rotina comercial padronizada, menos informação dispersa e controle de obrigações financeiras. A ação comercial abre um canal de contato explícito; o tour nunca envia solicitação automaticamente.
 - Âncora visual no elemento real. Em celular, o menu é aberto antes de posicionar a âncora; se o elemento não existir, usar destaque na página e texto de fallback.
 - Pausa ao sair da rota; ao voltar, oferecer **Continuar de onde parou**. Nunca reabrir automaticamente após o usuário encerrar.
 - Antes de mostrar dados de exemplo, selo visível **Demonstração — dados fictícios**. O saldo negativo da amostra financeira deve ser explicado como três saídas simuladas sem entrada simulada.
@@ -72,33 +115,42 @@ As fichas de **Plataforma**, **Parceiro**, **Indicador** e **Site público** ser
 
 ## 6. Desenho técnico e limites de acesso
 
-1. Montar o percurso no servidor a partir de `empresa_id` do host, vínculo ativo em `empresa_usuarios`, papel, permissões canônicas, plano e `allowedAccess` do ERP. A lista enviada ao navegador contém apenas etapas já autorizadas. O parâmetro de URL ou estado local não pode escolher outro tenant.
+1. Montar o percurso no servidor a partir de `empresa_id` do host, vínculo ativo em `empresa_usuarios`, papel, permissões canônicas, plano e `allowedAccess` do ERP. A lista enviada ao navegador contém apenas etapas já autorizadas. O parâmetro de URL ou estado local não pode escolher outro tenant. O papel `visitante_demo` requer concessões mínimas e validação de leitura no servidor e no banco, inclusive nas rotas fora do tour.
 2. Manter fichas versionadas em código por `tourId`/`stepId` e `menuId`; adicionar `data-tour-id` estável a âncoras dos sidebars e blocos principais. Não depender de texto da interface, posição DOM ou classes CSS.
 3. Persistir progresso por **usuário + escopo + tour + versão** no banco, com RLS de leitura e escrita do próprio usuário. Escopo de master usa `empresa_id`; a trilha global da Plataforma usa um escopo global explícito, sem inventar vínculo com empresa. Concluir, pular e reiniciar são estados distintos. Não usar apenas `localStorage`, pois o usuário pode trocar de dispositivo.
 4. Revalidar a autorização a cada navegação. Se plano, papel, vínculo ou menu mudar, reconstruir o roteiro; nunca exibir conteúdo de outra empresa nem deixar um link de tour contornar `requireErpRouteAccess` ou guardas equivalentes.
-5. Os IDs de registros `[DEMO]` são apenas exemplos opcionais. Se forem removidos, a etapa mostra a explicação genérica. Não criar, editar nem consultar clientes reais para completar o tour.
+5. Os IDs de registros `[DEMO]` são apenas exemplos opcionais. Se forem removidos, a etapa mostra a explicação genérica. O roteiro externo usa só o tenant demo; nunca busca clientes reais da Sorriso ou da Gauchinho para completar uma etapa.
 6. Telemetria mínima: abertura, avanço, pulo, conclusão, falha de âncora e versão; somente IDs técnicos de etapa e tenant. Sem nome, e-mail, telefone, CPF, texto de proposta ou valores de clientes.
+7. Separar `tourId` comercial de `tourId` de treinamento. O primeiro mede entendimento e interesse; as trilhas medem lições concluídas. Uma mudança editorial versiona o conteúdo sem apagar o histórico anterior.
+8. Os exercícios nunca usam dados de clientes reais. A primeira versão usa modo de observação, replay do check-in/sorteio e perguntas de compreensão; tarefas que precisem gravar registros exigem sandbox isolado com reset documentado. Manter separado o sorteio promocional de eventos e o sorteio/assembleia de grupos de consórcio.
 
 ## 7. Entregas e ordem de execução
 
 | Fase | Entrega verificável | Condição para avançar |
 | --- | --- | --- |
-| 0. Inventário | Catálogo de menus/rotas e matriz de papel, plano e tenant revisados contra a navegação renderizada | Nenhum menu visível sem ficha; nenhuma ficha aponta para rota inexistente |
-| 1. Base | Componente acessível, âncoras estáveis, progresso versionado e autorização no servidor | Retomar, pular, reiniciar e troca de tenant testados |
-| 2. Piloto Sorriso | 10 etapas do percurso, fichas contextuais de Admin e ERP, aviso `[DEMO]` | Homologação no desktop e celular com Fernando e um perfil limitado |
-| 3. Cobertura SaaS | Trilhas separadas de Plataforma, revisor, parceiro e indicador | Cada público vê apenas seus próprios menus |
-| 4. Operação | Métricas de uso, revisão editorial e rotina para atualização de fichas quando surgirem menus | Checklist incorporado ao processo de release |
+| 0. Narrativa e inventário | Proposta de valor, história evento → caixa, catálogo de menus/rotas e matriz de papel, plano e tenant | Cada benefício tem demonstração fiel; nenhum menu visível sem ficha |
+| 1. Ambiente e acessos | Tenant demo isolado, registros inteiramente fictícios, evento com check-in/sorteio simulado, papel `visitante_demo`, logins individuais com expiração | Auditoria de leitura/escrita e RLS confirma isolamento; nenhum disparo externo |
+| 2. Base do guia | Componente acessível, âncoras estáveis, progresso versionado e autorização no servidor | Retomar, pular, reiniciar e troca de tenant testados |
+| 3. Demonstração comercial | 10 paradas de valor, percurso rastreável evento → caixa, resumo final e contato comercial explícito | Decisor entende três benefícios, o fluxo completo e a oferta de treinamento |
+| 4. Treinamento | Trilhas de direção, gestão, comercial e financeiro com microlições e verificação prática segura | Usuários de teste concluem tarefas de sua função sem assistência |
+| 5. Cobertura SaaS | Trilhas separadas de Plataforma, revisor, parceiro, indicador e site público | Cada público vê apenas suas páginas e benefícios correspondentes |
+| 6. Operação | Métricas de uso, revisão editorial e rotina para atualizar fichas quando surgirem menus | Checklist incorporado ao processo de release |
 
 ## 8. Critérios de aceite e testes necessários
 
 - **Cobertura:** comparação automatizada entre IDs dos menus renderizáveis e catálogo; falha de CI se surgir menu sem ficha ou ficha órfã. A cobertura é por menu autorizado, não por todas as páginas internas.
 - **Permissões:** testar `admin_empresa`, gestor, consultor, visualizador, revisor técnico e parceiro; plano completo, plano parcial, módulo desligado e lista explícita vazia. Uma etapa nunca deve revelar nem abrir menu negado.
 - **Isolamento:** alternar Gauchinho e Sorriso com o mesmo usuário; progresso e exemplos permanecem separados por `empresa_id`. A Sorriso não pode mostrar clientes ou valores da Gauchinho.
+- **Acesso externo:** visitante demo não consulta Sorriso/Gauchinho nem por URL direta, API, exportação ou ID adivinhado; expiração e revogação encerram o acesso. Testar também POST/PATCH/DELETE diretamente contra actions e endpoints, não apenas botões ocultos.
+- **Fluxo de prospecção:** um registro fictício mostra, na mesma história, evento, convite/QR, check-in com consentimento, código de sorteio promocional, origem do lead, etapa no CRM, grupo, proposta, venda e indicadores. Se uma ligação ainda não existir no produto, a parada fica pendente e não é anunciada como pronta.
 - **Fluxo:** iniciar, voltar, avançar, pular, encerrar, retomar após recarga, reiniciar após conclusão e alterar versão do tour.
 - **Resiliência:** âncora ausente, página lenta, erro de carregamento, janela estreita, menu recolhido e remoção dos dados `[DEMO]` não travam a navegação.
 - **Acessibilidade:** teclado, foco visível, Escape, leitor de tela, contraste, zoom de 200% e preferência por movimento reduzido. A rolagem até a âncora não deve roubar o foco sem aviso.
 - **Segurança de operação:** durante o tour, nenhum e-mail, WhatsApp, PDF, contrato, baixa, repasse ou estorno é disparado. O tour não amplia permissões.
-- **Homologação editorial:** cada texto descreve a página publicada e responde em linguagem simples “o que vejo aqui?” e “o que faço depois?”.
+- **Homologação comercial:** entrevistas rápidas com um decisor de franqueadora e um gestor sem treinamento prévio. Ambos devem relatar três benefícios concretos, identificar o fluxo evento → lead → grupo → proposta → caixa e compreender que o treinamento acompanha o sistema, sem confundir valores fictícios com resultado comprovado.
+- **Homologação do treinamento:** uma pessoa de cada função encontra sua trilha, conclui a microlição e sabe executar ou explicar sua tarefa; a conclusão não depende de permissão que seu papel não possui.
+- **Medição pós-lançamento:** acompanhar início e conclusão da demonstração, abandono por etapa, abertura de trilhas, conclusão de lições e cliques voluntários no próximo passo comercial. Revisar pontos com abandono elevado; não usar esses eventos como prova de aumento de vendas da franqueadora.
+- **Homologação editorial:** cada texto descreve a página publicada e responde em linguagem simples “que problema resolve?”, “como ajuda minha unidade?” e “o que faço depois?”.
 
 ## 9. Fora do projeto de implementação inicial
 
