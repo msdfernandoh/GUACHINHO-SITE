@@ -643,6 +643,7 @@ export async function alterarConta(id: string, form: FormData): Promise<ContasAc
     }
 
     revalidatePath("/erp/contas-pagar");
+    revalidatePath("/erp/fechamento-socios");
     return { ok: true, message: "Despesa alterada com sucesso." };
   } catch (error) {
     return failure(error);
@@ -676,6 +677,7 @@ export async function excluirConta(id: string, motivo: string): Promise<ContasAc
     });
     if (error) throw new Error(error.message);
     revalidatePath("/erp/contas-pagar");
+    revalidatePath("/erp/fechamento-socios");
     return { ok: true, message: "Despesa excluída com histórico preservado." };
   } catch (error) {
     return failure(error);

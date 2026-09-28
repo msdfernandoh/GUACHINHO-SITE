@@ -106,3 +106,34 @@ export async function pagarComissoesAgrupadasAction(formData: FormData) {
   revalidatePath("/erp/financeiro");
   revalidatePath("/erp/contas-pagar");
 }
+
+export async function ajustarParcelamentoComissaoAction(formData: FormData) {
+  const access = await requireErpRouteAccess("minhas-comissoes");
+  if (access.vinculo.papel?.codigo !== "super_admin") throw new Error("Somente o Master pode alterar o modelo de uma comissão já gerada.");
+  const participanteId = String(formData.get("participante_id") || "");
+  const percentual = Number(formData.get("percentual_empresa") || 0);
+  const percentualEmpresa = Number(formData.get("percentual_empresa_total") || 0);
+  const modo = String(formData.get("modo") || "igual");
+  const ids = JSON.parse(String(formData.get("previsoes_ids") || "[]"));
+  if (!Array.isArray(ids) || ids.length < 4 || percentual <= 0) throw new Error("Selecione as parcelas da mesma venda e informe o percentual.");
+  const db = await createClient();
+  const { data: previsoes, error } = await db.from("comissao_previsoes_participantes")
+    .select("id,venda_id,competencia,nome_etapa,valor_pago,status").eq("empresa_id", access.empresaAtiva.id).eq("participante_comercial_id", participanteId).in("id", ids).order("competencia");
+  if (error || !previsoes || previsoes.length !== ids.length) throw new Error("Não foi possível localizar as parcelas selecionadas.");
+  if (new Set(previsoes.map((item) => item.venda_id)).size !== 1) throw new Error("Selecione somente parcelas da mesma venda.");
+  if (previsoes.some((item) => Number(item.valor_pago) > 0)) throw new Error("Parcelas já pagas não podem ser alteradas.");
+  const { data: venda } = await db.from("vendas").select("valor_credito").eq("id", previsoes[0].venda_id).eq("empresa_id", access.empresaAtiva.id).single();
+  const brutoTotal = Number(venda?.valor_credito || 0) * percentualEmpresa / 100 * percentual / 100;
+  if (!brutoTotal) throw new Error("Não foi possível calcular a comissão pelo crédito da venda.");
+  const valores = modo === "personalizada" ? [1,2,3,4].map((n) => Number(formData.get(`parcela_${n}`) || 0)) : Array(4).fill(Math.round(brutoTotal * 25) / 100);
+  valores[3] = Math.round((brutoTotal - valores.slice(0, 3).reduce((s, v) => s + v, 0)) * 100) / 100;
+  if (valores.some((valor) => valor < 0) || Math.abs(valores.reduce((s,v) => s + v, 0) - brutoTotal) > 0.01) throw new Error("A soma das quatro parcelas deve ser igual ao total da comissão.");
+  for (const [indice, previsao] of previsoes.entries()) {
+    const bruto = indice < 4 ? valores[indice] : 0;
+    const liquido = Math.round(bruto * 0.825 * 100) / 100;
+    const snapshot_regra = { ajuste_manual: { aplicado_em: new Date().toISOString(), percentual_sobre_empresa: percentual, percentual_empresa: percentualEmpresa, bruto, imposto: Math.round((bruto - liquido) * 100) / 100, modo } };
+    const { error: updateError } = await db.from("comissao_previsoes_participantes").update({ valor_previsto: liquido, valor_elegivel: previsao.status === "elegivel" ? liquido : 0, percentual_aplicado: percentual, status: bruto ? previsao.status : "suspensa", snapshot_regra }).eq("id", previsao.id).eq("empresa_id", access.empresaAtiva.id);
+    if (updateError) throw new Error(updateError.message);
+  }
+  revalidatePath("/erp/minhas-comissoes");
+}

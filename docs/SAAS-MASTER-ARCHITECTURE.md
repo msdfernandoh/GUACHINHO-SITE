@@ -1,5 +1,13 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
+### Ajuste manual de parcelas de comissão (28/09/2026)
+
+O Master pode redistribuir parcelas não pagas de uma venda, mantendo parcelas pagas protegidas. A distribuição pode ser igual ou personalizada nas quatro primeiras parcelas. Relatório: `docs/relatorios-fases/AJUSTE-MANUAL-PARCELAS-COMISSAO-2026-09-28.md`.
+
+### Ações nas listas de contas do fechamento (28/09/2026)
+
+As tabelas de contas abertas no fechamento permitem editar dados cadastrais e excluir com motivo obrigatório, reutilizando as regras e a auditoria de Contas a Pagar. Relatório: `docs/relatorios-fases/ACOES-EDITAR-EXCLUIR-LISTAS-FECHAMENTO-2026-09-28.md`.
+
 ### Cards expansíveis no fechamento (28/09/2026)
 
 Os cards do resumo no painel de fechamento abrem os lançamentos correspondentes na própria página: despesas, impostos, repasses, receitas de evento, movimentos de caixa e comissões. Cada card de sócio também permite abrir todos os lançamentos da comissão guardada, além da visão mensal. Relatório: `docs/relatorios-fases/CARDS-EXPANSIVEIS-FECHAMENTO-2026-09-28.md`.

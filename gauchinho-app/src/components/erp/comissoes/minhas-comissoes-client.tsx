@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { Calendar, CircleDollarSign, Clock, CheckCircle2, Layers3, Search, User, X } from "lucide-react";
-import { conferirPagamentoAction, pagarComissoesAgrupadasAction } from "@/app/erp/minhas-comissoes/actions";
+import { ajustarParcelamentoComissaoAction, conferirPagamentoAction, pagarComissoesAgrupadasAction } from "@/app/erp/minhas-comissoes/actions";
 import type { ResumoVendasMes } from "@/lib/erp/minhas-comissoes-vendas";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -85,6 +85,7 @@ export function MinhasComissoesClient({
   const [clienteSelecionado, setClienteSelecionado] = useState<string>("");
   const [filtroConferencia, setFiltroConferencia] = useState<FiltroConferencia>("TODAS");
   const [selecionadasPagamento, setSelecionadasPagamento] = useState<Set<string>>(new Set());
+  const [selecionadasAjuste, setSelecionadasAjuste] = useState<Set<string>>(new Set());
   const [operacaoPagamento, setOperacaoPagamento] = useState(() => crypto.randomUUID());
 
   async function pagarSelecionadas(formData: FormData) {
@@ -92,6 +93,7 @@ export function MinhasComissoesClient({
     setSelecionadasPagamento(new Set());
     setOperacaoPagamento(crypto.randomUUID());
   }
+  async function ajustarSelecionadas(formData: FormData) { await ajustarParcelamentoComissaoAction(formData); setSelecionadasAjuste(new Set()); router.refresh(); }
 
   // Clientes únicos disponíveis
   const clientesDisponiveis = useMemo(() => {
@@ -260,6 +262,8 @@ export function MinhasComissoesClient({
           </div>
         </form>
       ) : null}
+
+      {podeGerenciarEquipe && selecionadasAjuste.size >= 4 ? <form action={ajustarSelecionadas} className="rounded-2xl border border-amber-300 bg-amber-50 p-4 text-xs"><input type="hidden" name="participante_id" value={participanteSelecionadoId} /><input type="hidden" name="previsoes_ids" value={JSON.stringify([...selecionadasAjuste])} /><p className="font-black text-amber-950">Ajustar modelo e parcelamento selecionado</p><p className="mt-1 text-amber-900">Parcelas pagas ficam bloqueadas. O total será concentrado nas quatro primeiras parcelas selecionadas.</p><div className="mt-3 grid gap-3 md:grid-cols-4"><label>Comissão da empresa (%)<input name="percentual_empresa_total" type="number" step="0.01" defaultValue="4" className="mt-1 w-full rounded border p-2" /></label><label>Participante recebe (%)<input name="percentual_empresa" type="number" step="0.01" defaultValue="25" className="mt-1 w-full rounded border p-2" /></label><label>Divisão<select name="modo" className="mt-1 w-full rounded border p-2"><option value="igual">Igual automática</option><option value="personalizada">Personalizada</option></select></label><button className="self-end rounded bg-amber-800 p-2 font-black text-white">Aplicar nas 4 primeiras</button></div><p className="mt-2 text-amber-900">Na opção personalizada, informe os quatro valores brutos abaixo.</p><div className="mt-2 grid gap-2 md:grid-cols-4">{[1,2,3,4].map((n) => <input key={n} name={`parcela_${n}`} type="number" step="0.01" min="0" placeholder={`${n}ª parcela`} className="rounded border p-2" />)}</div></form> : null}
 
       {/* Barra de Filtros: Cliente + Competência */}
       <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-2xs dark:border-slate-800 dark:bg-slate-900 space-y-3">
@@ -512,7 +516,7 @@ export function MinhasComissoesClient({
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                 {previsoesFiltradas.map((row) => (
                   <tr key={row.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition">
-                    {podePagarEquipe ? <td className="p-3">{Number(row.valor_elegivel) > Number(row.valor_pago) ? <input type="checkbox" aria-label={`Selecionar comissão de ${row.cliente_nome || row.id}`} checked={selecionadasPagamento.has(row.id)} onChange={(event) => setSelecionadasPagamento((atual) => { const proximo = new Set(atual); if (event.target.checked) proximo.add(row.id); else proximo.delete(row.id); return proximo; })} /> : null}</td> : null}
+                    {podePagarEquipe ? <td className="p-3">{Number(row.valor_pago) === 0 ? <div className="flex gap-2"><input type="checkbox" title="Selecionar para pagamento" aria-label={`Selecionar comissão para pagamento de ${row.cliente_nome || row.id}`} checked={selecionadasPagamento.has(row.id)} onChange={(event) => setSelecionadasPagamento((atual) => { const proximo = new Set(atual); if (event.target.checked) proximo.add(row.id); else proximo.delete(row.id); return proximo; })} />{podeGerenciarEquipe && <input type="checkbox" title="Selecionar para ajustar modelo ou parcelamento" aria-label={`Selecionar comissão para ajuste de ${row.cliente_nome || row.id}`} checked={selecionadasAjuste.has(row.id)} onChange={(event) => setSelecionadasAjuste((atual) => { const proximo = new Set(atual); if (event.target.checked) proximo.add(row.id); else proximo.delete(row.id); return proximo; })} />}</div> : null}</td> : null}
                     <td className="p-3 font-mono font-bold text-blue-700 dark:text-blue-400">
                       {row.competencia}
                     </td>
