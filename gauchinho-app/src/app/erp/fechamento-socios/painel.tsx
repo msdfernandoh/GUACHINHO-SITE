@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, CheckCircle2, LockKeyhole, ShieldAlert } from "lucide-react";
 import { calcularFechamentoSocios } from "@/lib/gestao/fechamento-socios";
-import { registrarFechamentoSocios, type PainelFechamento } from "./actions";
+import { registrarAporteProprioSocio, registrarFechamentoSocios, type PainelFechamento } from "./actions";
 
 const brl = (valor: number) => valor.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const ler = (valor: string) => Number(valor.replace(",", ".")) || 0;
@@ -13,10 +13,12 @@ const ler = (valor: string) => Number(valor.replace(",", ".")) || 0;
 export function PainelFechamentoSocios({ dados }: { dados: PainelFechamento }) {
   const router = useRouter();
   const [pendente, iniciar] = useTransition();
-  const [lucro, setLucro] = useState("0");
+  const lucroAutomatico = dados.margemConsultores + dados.receitasEventos;
+  const [lucro] = useState(String(lucroAutomatico));
   const [saldoExtrato, setSaldoExtrato] = useState(String(dados.bancoEmpresa?.saldoSistema || 0));
   const [retiradas, setRetiradas] = useState<Record<string, string>>({});
   const [erro, setErro] = useState("");
+  const [erroAporte, setErroAporte] = useState("");
   const calculo = useMemo(() => {
     try {
       return calcularFechamentoSocios({
@@ -41,6 +43,18 @@ export function PainelFechamentoSocios({ dados }: { dados: PainelFechamento }) {
     });
   }
 
+  function enviarAporte(form: FormData) {
+    setErroAporte("");
+    iniciar(async () => {
+      try {
+        await registrarAporteProprioSocio(form);
+        router.refresh();
+      } catch (e) {
+        setErroAporte(e instanceof Error ? e.message : "Não foi possível registrar o aporte.");
+      }
+    });
+  }
+
   return (
     <div className="space-y-6">
       <header className="rounded-3xl bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 p-6 text-white shadow-xl md:p-8">
@@ -61,23 +75,28 @@ export function PainelFechamentoSocios({ dados }: { dados: PainelFechamento }) {
         <section className="rounded-2xl border border-emerald-300 bg-emerald-50 p-4 text-sm font-semibold text-emerald-950"><CheckCircle2 className="mr-2 inline h-5 w-5" /> As verificações automáticas passaram. Confira os valores manuais e o extrato antes de lacrar.</section>
       )}
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {[
           ["Contas já pagas", brl(dados.despesasPagas), `${dados.quantidadePagas} contas; sem abertas e sem guias fiscais`],
+          ["Repasses recebidos", brl(dados.repassesRecebidos), "Entradas da Racon que já estão no caixa da empresa"],
+          ["Comissões de consultores", brl(dados.comissoesConsultores), "Direito dos consultores e microfranqueados; não é dinheiro livre"],
+          ["Margem dos consultores", brl(dados.margemConsultores), "Abate as despesas dos sócios automaticamente"],
+          ["Receitas de eventos", brl(dados.receitasEventos), "Entrada sem reserva de imposto; também abate despesas"],
           ["Impostos já pagos", brl(dados.impostosPagos), "Saíram da reserva, não entram na divisão"],
           ["Guardado para impostos", brl(dados.reservaImpostos), "Saldo fiscal calculado até hoje"],
           ["Conta da empresa", brl(dados.bancoEmpresa?.saldoSistema || 0), dados.bancoEmpresa?.nome || "Conta não identificada"],
         ].map(([titulo, valor, legenda]) => <div key={titulo} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"><p className="text-xs font-bold text-slate-600">{titulo}</p><p className="mt-2 text-2xl font-black text-slate-950">{valor}</p><p className="mt-1 text-xs text-slate-500">{legenda}</p></div>)}
       </div>
 
+      <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm"><div className="border-b border-slate-200 p-5"><h2 className="text-xl font-black text-slate-950">Comissões separadas por pessoa</h2><p className="mt-1 text-sm text-slate-600">“No caixa” é comissão já recebida e mantida na empresa. “Reservada” é comissão de consultor vinculada ao repasse, ainda destinada a ele.</p></div><div className="overflow-auto"><table className="min-w-full text-left text-sm"><thead className="bg-slate-50 text-xs font-black uppercase text-slate-500"><tr><th className="px-5 py-3">Pessoa</th><th className="px-5 py-3">Tipo</th><th className="px-5 py-3 text-right">No caixa</th><th className="px-5 py-3 text-right">Reservada</th></tr></thead><tbody>{dados.comissoesPorPessoa.map((item) => <tr key={`${item.papel}:${item.nome}`} className="border-t border-slate-100"><td className="px-5 py-3 font-bold text-slate-950">{item.nome}</td><td className="px-5 py-3 text-slate-600">{item.papel === "SOCIO" ? "Sócio" : "Consultor"}</td><td className="px-5 py-3 text-right font-bold text-indigo-900">{brl(item.recebidaNoCaixa)}</td><td className="px-5 py-3 text-right font-bold text-amber-800">{brl(item.reservada)}</td></tr>)}{!dados.comissoesPorPessoa.length && <tr><td colSpan={4} className="px-5 py-6 text-center text-slate-500">Nenhuma comissão recebida ou reservada neste período.</td></tr>}</tbody></table></div></section>
+
       <form action={enviar} className="space-y-5">
         <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm md:p-6">
-          <h2 className="text-xl font-black text-slate-950">1. Quanto os outros consultores renderam?</h2>
-          <p className="mt-1 text-sm text-slate-600">Digite o lucro já conferido da empresa depois de pagar as comissões dos consultores e microfranquias. Esse lucro paga as despesas primeiro; só o restante é dividido entre os sócios.</p>
-          <div className="mt-4 grid gap-4 md:grid-cols-2">
-            <label className="text-xs font-bold text-slate-700">Lucro conferido (R$)<input name="lucro_consultores" type="number" min="0" step="0.01" required value={lucro} onChange={(e) => setLucro(e.target.value)} className="mt-1 w-full rounded-xl border border-slate-300 p-3 text-lg font-bold text-slate-950" /></label>
-            <label className="text-xs font-bold text-slate-700">De onde saiu esse valor?<input name="fonte_lucro" required minLength={20} placeholder="Ex.: relatório de repasses e comissões conferido em..." className="mt-1 w-full rounded-xl border border-slate-300 p-3 text-sm text-slate-950" /></label>
-          </div>
+          <h2 className="text-xl font-black text-slate-950">1. O que a empresa ganhou antes de dividir despesas?</h2>
+          <p className="mt-1 text-sm text-slate-600">O cálculo vem dos repasses já registrados: tira o imposto e a comissão dos consultores, e usa apenas a margem da empresa. Receitas de eventos sem imposto entram junto.</p>
+          <input type="hidden" name="lucro_consultores" value={lucro} />
+          <input type="hidden" name="fonte_lucro" value="Cálculo automático pelos repasses confirmados, comissões de consultores e receitas de eventos." />
+          <div className="mt-4 grid gap-3 md:grid-cols-3"><div className="rounded-xl bg-slate-50 p-3"><p className="text-xs font-bold text-slate-600">Margem dos consultores</p><p className="mt-1 text-xl font-black text-slate-950">{brl(dados.margemConsultores)}</p></div><div className="rounded-xl bg-slate-50 p-3"><p className="text-xs font-bold text-slate-600">Receitas de eventos</p><p className="mt-1 text-xl font-black text-slate-950">{brl(dados.receitasEventos)}</p></div><div className="rounded-xl bg-indigo-50 p-3"><p className="text-xs font-bold text-indigo-700">Total que abate despesas</p><p className="mt-1 text-xl font-black text-indigo-950">{brl(lucroAutomatico)}</p></div></div>
           <div className="mt-4 rounded-2xl bg-indigo-50 p-4 text-sm text-indigo-950">{brl(dados.despesasPagas)} em contas pagas − {brl(calculo?.lucroUsadoNasDespesas || 0)} de lucro usado = <strong>{brl(calculo?.despesasDivididas || 0)} para dividir</strong>. {calculo && calculo.lucroRestanteNaEmpresa > 0 && <span> Sobram {brl(calculo.lucroRestanteNaEmpresa)} de lucro na empresa.</span>}</div>
         </section>
 
@@ -116,6 +135,21 @@ export function PainelFechamentoSocios({ dados }: { dados: PainelFechamento }) {
           {erro && <p role="alert" className="mt-3 rounded-xl bg-rose-50 p-3 text-sm font-semibold text-rose-900">{erro}</p>}
           <button type="submit" disabled={pendente || dados.bloqueios.length > 0 || !calculo || calculo.cobertura < 0} className="mt-5 rounded-xl bg-slate-950 px-5 py-3 text-sm font-black text-white hover:bg-indigo-950 disabled:cursor-not-allowed disabled:opacity-50">{pendente ? "Registrando..." : "Registrar fechamento e lacrar até hoje"}</button>
         </section>
+      </form>
+
+      <form action={enviarAporte} className="rounded-3xl border border-blue-200 bg-blue-50 p-5 shadow-sm md:p-6">
+        <h2 className="text-xl font-black text-blue-950">Entrada de dinheiro próprio</h2>
+        <p className="mt-1 text-sm text-blue-900">Use somente quando o sócio realmente depositar dinheiro na conta da empresa. Comissão que já está no caixa não entra aqui.</p>
+        <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+          <select name="aporte_socio_id" required className="rounded-xl border border-blue-200 bg-white p-3 text-sm text-slate-950"><option value="">Quem colocou o dinheiro?</option>{dados.socios.map((socio) => <option key={socio.id} value={socio.id}>{socio.nome}</option>)}</select>
+          <select name="aporte_conta_id" required className="rounded-xl border border-blue-200 bg-white p-3 text-sm text-slate-950"><option value="">Conta que recebeu</option>{dados.contasEmpresa.map((conta) => <option key={conta.id} value={conta.id}>{conta.nome}</option>)}</select>
+          <input name="aporte_valor" required inputMode="decimal" placeholder="Valor depositado" className="rounded-xl border border-blue-200 bg-white p-3 text-sm text-slate-950" />
+          <input name="aporte_data" required type="date" defaultValue={dados.hoje} className="rounded-xl border border-blue-200 bg-white p-3 text-sm text-slate-950" />
+          <input name="aporte_comprovante" required minLength={5} placeholder="Comprovante / PIX" className="rounded-xl border border-blue-200 bg-white p-3 text-sm text-slate-950" />
+        </div>
+        <input name="aporte_descricao" required minLength={3} placeholder="Ex.: Eroni cobriu a parte que faltou nas despesas de setembro" className="mt-3 w-full rounded-xl border border-blue-200 bg-white p-3 text-sm text-slate-950" />
+        {erroAporte && <p role="alert" className="mt-3 rounded-xl bg-rose-50 p-3 text-sm font-semibold text-rose-900">{erroAporte}</p>}
+        <button type="submit" disabled={pendente} className="mt-3 rounded-xl bg-blue-800 px-5 py-3 text-sm font-black text-white disabled:opacity-50">Registrar dinheiro próprio</button>
       </form>
 
       <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm md:p-6"><h2 className="text-xl font-black text-slate-950">Fechamentos registrados</h2>{dados.fechamentos.length === 0 ? <p className="mt-2 text-sm text-slate-600">Ainda não houve fechamento entre os sócios.</p> : <div className="mt-4 space-y-3">{dados.fechamentos.map((f) => <div key={f.id} className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm"><p className="font-black text-emerald-950">Lacrado: {f.periodo_inicio} a {f.periodo_fim}</p><p className="mt-1 text-emerald-900">Despesas divididas: {brl(f.demonstrativo.despesasDivididas)} · Impostos guardados: {brl(f.demonstrativo.reservaImpostos)} · Sócios deixaram: {brl(f.demonstrativo.totalDeixadoPelosSocios)}</p><p className="mt-1 text-xs text-emerald-800">Registro {f.id}</p></div>)}</div>}</section>

@@ -3383,3 +3383,16 @@ demais filtros permanecem aplicados.
 
 Relatório:
 `docs/relatorios-fases/HOTFIX-2026-09-25-BUSCA-EVENTO-PIPELINE.md`.
+
+### Acerto inicial dos sócios — caixa, repasses e aportes
+
+O fechamento societário separa quatro naturezas econômicas: receita da
+empresa, reserva fiscal, obrigação de comissões e crédito de sócio. Repasses
+Racon entram na conta empresarial; a margem das vendas de participantes que
+não são sócios reduz o rateio de despesas. Receitas de eventos sem imposto usam
+`RECEITA_EVENTO`. Aportes pessoais e pagamentos diretos de fornecedor preservam
+o crédito do sócio, sem se confundirem com comissão retida. As correções de
+histórico são auditáveis e usam estorno lógico, sem apagar lançamentos.
+
+Relatório:
+`docs/relatorios-fases/ACERTO-INICIAL-SOCIOS-2026-09-28.md`.
