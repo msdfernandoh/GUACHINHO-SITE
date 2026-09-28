@@ -1,5 +1,9 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
+### Painel de fechamento: despesas, consultores e metas (28/09/2026)
+
+O painel de fechamento societário também apresenta uma visão mensal simples: despesas pagas por centro de custo, teto configurado, comparação com o mês anterior e alerta de excesso; e evolução comercial de consultores ativos/novos, vendas, crédito vendido e repasses recebidos. Contas abertas, futuras e guias fiscais continuam fora da despesa partilhada. As metas mensais de consultores, vendas e crédito usam a tabela multiempresa `metas_comerciais`, incluindo o novo indicador `consultores_cadastrados`, e são gravadas apenas por action autorizada. Migration 300 aplicada no Supabase. Relatório: `docs/relatorios-fases/PAINEL-FECHAMENTO-DESPESAS-CONSULTORES-METAS-2026-09-28.md`.
+
 ### Fase 297 — RPC de fechamento restrita ao servidor (28/09/2026)
 
 O fechamento antigo em Contas a Pagar foi desativado e sua RPC deixou de ser

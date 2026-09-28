@@ -5,10 +5,11 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, CheckCircle2, LockKeyhole, ShieldAlert } from "lucide-react";
 import { calcularFechamentoSocios } from "@/lib/gestao/fechamento-socios";
-import { registrarAporteProprioSocio, registrarFechamentoSocios, type PainelFechamento } from "./actions";
+import { registrarAporteProprioSocio, registrarFechamentoSocios, salvarMetasComerciaisFechamento, type PainelFechamento } from "./actions";
 
 const brl = (valor: number) => valor.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const ler = (valor: string) => Number(valor.replace(",", ".")) || 0;
+const mesLegivel = (mes: string) => new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric" }).format(new Date(`${mes}-02T12:00:00`));
 
 export function PainelFechamentoSocios({ dados }: { dados: PainelFechamento }) {
   const router = useRouter();
@@ -19,6 +20,8 @@ export function PainelFechamentoSocios({ dados }: { dados: PainelFechamento }) {
   const [retiradas, setRetiradas] = useState<Record<string, string>>({});
   const [erro, setErro] = useState("");
   const [erroAporte, setErroAporte] = useState("");
+  const [erroMetas, setErroMetas] = useState("");
+  const [aba, setAba] = useState<"despesas" | "vendas">("despesas");
   const calculo = useMemo(() => {
     try {
       return calcularFechamentoSocios({
@@ -55,6 +58,14 @@ export function PainelFechamentoSocios({ dados }: { dados: PainelFechamento }) {
     });
   }
 
+  function salvarMetas(form: FormData) {
+    setErroMetas("");
+    iniciar(async () => {
+      try { await salvarMetasComerciaisFechamento(form); router.refresh(); }
+      catch (e) { setErroMetas(e instanceof Error ? e.message : "Não foi possível salvar as metas."); }
+    });
+  }
+
   return (
     <div className="space-y-6">
       <header className="rounded-3xl bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 p-6 text-white shadow-xl md:p-8">
@@ -87,6 +98,35 @@ export function PainelFechamentoSocios({ dados }: { dados: PainelFechamento }) {
           ["Conta da empresa", brl(dados.bancoEmpresa?.saldoSistema || 0), dados.bancoEmpresa?.nome || "Conta não identificada"],
         ].map(([titulo, valor, legenda]) => <div key={titulo} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"><p className="text-xs font-bold text-slate-600">{titulo}</p><p className="mt-2 text-2xl font-black text-slate-950">{valor}</p><p className="mt-1 text-xs text-slate-500">{legenda}</p></div>)}
       </div>
+
+      <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+        <div className="border-b border-slate-200 p-5">
+          <p className="text-xs font-black uppercase tracking-widest text-indigo-700">Olhar mês a mês</p>
+          <h2 className="mt-1 text-xl font-black text-slate-950">Onde gastamos e como as vendas crescem</h2>
+          <p className="mt-1 text-sm text-slate-600">Só usa contas já pagas e vendas registradas. Assim, promessa futura não parece dinheiro ou gasto de hoje.</p>
+          <div className="mt-4 flex gap-2 rounded-xl bg-slate-100 p-1">
+            <button type="button" onClick={() => setAba("despesas")} className={`flex-1 rounded-lg px-3 py-2 text-sm font-black ${aba === "despesas" ? "bg-white text-indigo-950 shadow-sm" : "text-slate-600"}`}>Despesas por categoria</button>
+            <button type="button" onClick={() => setAba("vendas")} className={`flex-1 rounded-lg px-3 py-2 text-sm font-black ${aba === "vendas" ? "bg-white text-indigo-950 shadow-sm" : "text-slate-600"}`}>Consultores e vendas</button>
+          </div>
+        </div>
+
+        {aba === "despesas" ? <div className="p-5">
+          <div className="mb-4 rounded-xl bg-indigo-50 p-3 text-sm text-indigo-950"><strong>Como ler:</strong> vermelho significa que o gasto passou do teto; amarelo mostra aumento contra o mês anterior. Impostos ficam fora deste quadro.</div>
+          <div className="space-y-5">{dados.despesasPorMes.map((mes) => <div key={mes.mes} className="rounded-2xl border border-slate-200">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 bg-slate-50 px-4 py-3"><h3 className="font-black capitalize text-slate-950">{mesLegivel(mes.mes)}</h3><span className="font-black text-slate-950">Total pago: {brl(mes.total)}</span></div>
+            <div className="overflow-auto"><table className="min-w-full text-left text-sm"><thead className="text-xs font-black uppercase text-slate-500"><tr><th className="px-4 py-3">Onde gastamos</th><th className="px-4 py-3 text-right">Pago</th><th className="px-4 py-3 text-right">Teto</th><th className="px-4 py-3 text-right">Mudou</th><th className="px-4 py-3">Aviso</th></tr></thead><tbody>{mes.categorias.map((categoria) => {
+              const acimaTeto = categoria.teto !== null && categoria.gasto > categoria.teto;
+              const aumentou = categoria.variacao !== null && categoria.variacao > 0;
+              return <tr key={categoria.nome} className="border-t border-slate-100"><td className="px-4 py-3 font-bold text-slate-950">{categoria.nome}</td><td className="px-4 py-3 text-right font-bold">{brl(categoria.gasto)}</td><td className="px-4 py-3 text-right">{categoria.teto === null ? "Sem teto" : brl(categoria.teto)}</td><td className={`px-4 py-3 text-right font-bold ${aumentou ? "text-amber-700" : "text-slate-600"}`}>{categoria.variacao === null ? "Primeiro mês" : `${categoria.variacao >= 0 ? "+" : ""}${brl(categoria.variacao)}`}</td><td className="px-4 py-3">{acimaTeto ? <span className="rounded-full bg-rose-100 px-2 py-1 text-xs font-black text-rose-800">Passou do teto</span> : aumentou ? <span className="rounded-full bg-amber-100 px-2 py-1 text-xs font-black text-amber-800">Gastou mais</span> : <span className="text-xs font-bold text-emerald-700">Dentro do previsto</span>}</td></tr>;
+            })}</tbody></table></div>
+          </div>)}{!dados.despesasPorMes.length && <p className="text-sm text-slate-500">Ainda não há contas pagas para comparar.</p>}</div>
+          <Link href="/erp/contas-pagar" className="mt-5 inline-flex rounded-xl bg-slate-950 px-4 py-2 text-sm font-black text-white">Editar teto das categorias</Link>
+        </div> : <div className="p-5">
+          <div className="mb-4 rounded-xl bg-emerald-50 p-3 text-sm text-emerald-950"><strong>Como ler:</strong> venda é contrato confirmado e crédito vendido é o valor vendido. Repasses mostram o que entrou da Racon. Eles não são o lucro livre, pois ainda há imposto e comissão.</div>
+          <div className="overflow-auto"><table className="min-w-full text-left text-sm"><thead className="bg-slate-50 text-xs font-black uppercase text-slate-500"><tr><th className="px-4 py-3">Mês</th><th className="px-4 py-3 text-right">Consultores ativos</th><th className="px-4 py-3 text-right">Novos</th><th className="px-4 py-3 text-right">Vendas</th><th className="px-4 py-3 text-right">Crédito vendido</th><th className="px-4 py-3 text-right">Repasses recebidos</th></tr></thead><tbody>{dados.desempenhoConsultores.map((item) => <tr key={item.mes} className="border-t border-slate-100"><td className="px-4 py-3 font-black capitalize text-slate-950">{mesLegivel(item.mes)}</td><td className="px-4 py-3 text-right font-bold">{item.consultoresAtivos}</td><td className="px-4 py-3 text-right">{item.novosConsultores}</td><td className="px-4 py-3 text-right font-bold">{item.vendas}</td><td className="px-4 py-3 text-right font-bold">{brl(item.creditoVendido)}</td><td className="px-4 py-3 text-right font-bold text-emerald-800">{brl(item.repassesGerados)}</td></tr>)}{!dados.desempenhoConsultores.length && <tr><td colSpan={6} className="px-4 py-6 text-center text-slate-500">Ainda não há vendas ou consultores registrados.</td></tr>}</tbody></table></div>
+          <form action={salvarMetas} className="mt-5 rounded-2xl border border-indigo-200 bg-indigo-50 p-4"><h3 className="font-black text-indigo-950">Meta deste mês</h3><p className="mt-1 text-sm text-indigo-900">Defina o alvo simples para a equipe. Pode alterar quando a estratégia mudar.</p><div className="mt-3 grid gap-3 md:grid-cols-3"><label className="text-xs font-bold text-slate-700">Consultores ativos<input name="meta_consultores" type="number" min="0" step="1" defaultValue={dados.metasComerciais.consultores} className="mt-1 w-full rounded-xl border border-indigo-200 bg-white p-2.5 text-sm text-slate-950" /></label><label className="text-xs font-bold text-slate-700">Vendas realizadas<input name="meta_vendas" type="number" min="0" step="1" defaultValue={dados.metasComerciais.vendas} className="mt-1 w-full rounded-xl border border-indigo-200 bg-white p-2.5 text-sm text-slate-950" /></label><label className="text-xs font-bold text-slate-700">Crédito vendido (R$)<input name="meta_credito" type="number" min="0" step="0.01" defaultValue={dados.metasComerciais.credito} className="mt-1 w-full rounded-xl border border-indigo-200 bg-white p-2.5 text-sm text-slate-950" /></label></div>{erroMetas && <p role="alert" className="mt-3 text-sm font-bold text-rose-800">{erroMetas}</p>}<button type="submit" disabled={pendente} className="mt-3 rounded-xl bg-indigo-800 px-4 py-2 text-sm font-black text-white disabled:opacity-50">Salvar meta do mês</button></form>
+        </div>}
+      </section>
 
       <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm"><div className="border-b border-slate-200 p-5"><h2 className="text-xl font-black text-slate-950">Comissões separadas por pessoa</h2><p className="mt-1 text-sm text-slate-600">“No caixa” é comissão já recebida e mantida na empresa. “Reservada” é comissão de consultor vinculada ao repasse, ainda destinada a ele.</p></div><div className="overflow-auto"><table className="min-w-full text-left text-sm"><thead className="bg-slate-50 text-xs font-black uppercase text-slate-500"><tr><th className="px-5 py-3">Pessoa</th><th className="px-5 py-3">Tipo</th><th className="px-5 py-3 text-right">No caixa</th><th className="px-5 py-3 text-right">Reservada</th></tr></thead><tbody>{dados.comissoesPorPessoa.map((item) => <tr key={`${item.papel}:${item.nome}`} className="border-t border-slate-100"><td className="px-5 py-3 font-bold text-slate-950">{item.nome}</td><td className="px-5 py-3 text-slate-600">{item.papel === "SOCIO" ? "Sócio" : "Consultor"}</td><td className="px-5 py-3 text-right font-bold text-indigo-900">{brl(item.recebidaNoCaixa)}</td><td className="px-5 py-3 text-right font-bold text-amber-800">{brl(item.reservada)}</td></tr>)}{!dados.comissoesPorPessoa.length && <tr><td colSpan={4} className="px-5 py-6 text-center text-slate-500">Nenhuma comissão recebida ou reservada neste período.</td></tr>}</tbody></table></div></section>
 
