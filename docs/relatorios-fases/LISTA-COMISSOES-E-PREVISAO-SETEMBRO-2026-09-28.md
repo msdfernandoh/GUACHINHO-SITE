@@ -11,7 +11,7 @@ As listas mensais de comissão no card de cada sócio agora são expansíveis na
 
 Previsões com competência no mês atual passam a ser exibidas em “Aguardando liberação”. Antes, a condição considerava apenas meses posteriores ao atual e escondia uma previsão ainda pendente em setembro.
 
-A auditoria encontrou 14 previsões idênticas para a mesma venda da cliente Daiana Caruline Tasso, competência setembro/2026, etapa `1ª parcela`, no valor de R$ 1.237,50. A apresentação agrupa duplicidades comerciais idênticas para não inflar o valor mostrado; uma única previsão de R$ 1.237,50 aparece para conferência. Os registros brutos não foram apagados.
+As 14 previsões da cliente Daiana Caruline Tasso para setembro/2026 representam cotas reais e independentes. Elas são exibidas individualmente na lista e somadas normalmente; não há agrupamento ou descarte desses lançamentos.
 
 ## Validação
 

@@ -137,12 +137,8 @@ async function lerPainel(): Promise<PainelFechamento> {
     }
     socio.comissaoGuardadaMensal = Array.from(porMesGuardado, ([competencia, item]) => ({ competencia, valor: arredondar(item.valor), itens: item.itens })).sort((a, b) => a.competencia.localeCompare(b.competencia));
     const porMesFuturo = new Map<string, { valor: number; itens: Array<{ descricao: string; cliente: string; valor: number; status: string }> }>();
-    const previsoesJaContadas = new Set<string>();
     for (const previsao of previsoesParticipantesRes.data || []) {
       if (previsao.competencia < competenciaAtual || participantes.get(previsao.participante_comercial_id) !== (sociosRes.data || []).find((item) => item.id === socio.id)?.usuario_id) continue;
-      const chaveComercial = [previsao.venda_id, previsao.participante_comercial_id, previsao.competencia, previsao.nome_etapa, numero(previsao.valor_previsto)].join(":");
-      if (previsoesJaContadas.has(chaveComercial)) continue;
-      previsoesJaContadas.add(chaveComercial);
       const disponivel = Math.max(0, numero(previsao.valor_previsto) - numero(previsao.valor_pago));
       if (disponivel > 0) {
         const atual = porMesFuturo.get(previsao.competencia) || { valor: 0, itens: [] };

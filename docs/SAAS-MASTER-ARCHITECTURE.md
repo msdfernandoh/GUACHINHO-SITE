@@ -2,7 +2,7 @@
 
 ### Lista expansível de comissões e previsão do mês atual (28/09/2026)
 
-Os quadros de comissão guardada e aguardando liberação abrem o detalhamento por mês dentro do fechamento. Previsões pendentes da competência atual também são exibidas. O leitor agrupa previsões comerciais idênticas para impedir que registros duplicados alterem a projeção visual, preservando os registros brutos para auditoria. Relatório: `docs/relatorios-fases/LISTA-COMISSOES-E-PREVISAO-SETEMBRO-2026-09-28.md`.
+Os quadros de comissão guardada e aguardando liberação abrem o detalhamento por mês dentro do fechamento. Previsões pendentes da competência atual também são exibidas, individualmente por cota, inclusive quando possuem mesmo cliente, etapa e valor. Relatório: `docs/relatorios-fases/LISTA-COMISSOES-E-PREVISAO-SETEMBRO-2026-09-28.md`.
 
 ### Lista expansível de despesas no fechamento (28/09/2026)
 
