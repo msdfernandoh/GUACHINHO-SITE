@@ -3,6 +3,7 @@ import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getResumoCaixaEmpresa } from "@/lib/financeiro/financeiro-service";
 import { calcularApuracaoMeta } from "@/lib/gestao/metas-service";
+import { calcularTetosMensais, type TetoMensalCentro } from "@/lib/gestao/tetos-centros-custo";
 
 export type ResumoExecutivoDTO = {
   total_credito_vendido: number;
@@ -339,6 +340,7 @@ export type ErpDashboardFullDTO = {
   clientesCotas: ErpDashboardCardClientesCotas;
   metas?: ErpDashboardCardMetas;
   alertas: ErpDashboardAlertaItem[];
+  tetosCentros: TetoMensalCentro[];
   proximasAssembleias: ErpDashboardProximaAssembleia[];
   administradorasDisponiveis: Array<{ id: string; nome: string }>;
 };
@@ -487,7 +489,9 @@ export async function getErpDashboardCompleto(
   }
 
   // 3. Comissões da Franquia & Participantes
-  const [prevFranquiaRes, prevPartRes, caixaResumo, contasPagarRes] = await Promise.all([
+  const mesSeguinteDate = new Date(anoAtual, mesAtualNum, 1);
+  const mesSeguinteIso = `${mesSeguinteDate.getFullYear()}-${String(mesSeguinteDate.getMonth() + 1).padStart(2, "0")}-01`;
+  const [prevFranquiaRes, prevPartRes, caixaResumo, contasPagarRes, centrosTetoRes, contasTetoRes] = await Promise.all([
     admin
       .from("comissao_previsoes_franquia")
       .select("id, valor_previsto, valor_liquidado, status, competencia, created_at")
@@ -499,9 +503,30 @@ export async function getErpDashboardCompleto(
     getResumoCaixaEmpresa(empresaId),
     admin
       .from("financeiro_contas_pagar")
-      .select("id, valor, status, data_vencimento")
+      .select("id, valor, status, vencimento, excluida_em")
       .eq("empresa_id", empresaId),
+    admin
+      .from("financeiro_centros_custo")
+      .select("id, nome, ativo, limite_mensal")
+      .eq("empresa_id", empresaId),
+    admin
+      .from("financeiro_contas_pagar")
+      .select("centro_custo_id, valor, status, pago_em, excluida_em, retirar_reserva_impostos")
+      .eq("empresa_id", empresaId)
+      .eq("status", "paga")
+      .gte("pago_em", `${mesAtualIso}-01`)
+      .lt("pago_em", mesSeguinteIso)
+      .is("excluida_em", null),
   ]);
+
+  if (centrosTetoRes.error || contasTetoRes.error) {
+    throw new Error("Não foi possível calcular os tetos mensais dos centros de custo.");
+  }
+  const tetosCentros = calcularTetosMensais(
+    centrosTetoRes.data || [],
+    contasTetoRes.data || [],
+    mesAtualIso,
+  );
 
   const previsoesFranquia = prevFranquiaRes.data || [];
   const comissaoFranquiaGerada = previsoesFranquia.reduce((acc, p) => acc + Number(p.valor_previsto || 0), 0);
@@ -542,10 +567,12 @@ export async function getErpDashboardCompleto(
   // 4. Financeiro & Contas a Pagar
   const hojeIso = now.toISOString().slice(0, 10);
   const contasPagar = contasPagarRes.data || [];
-  const contasPagarAbertas = contasPagar.filter((c) => c.status === "aberto" || c.status === "pendente");
-  const contasPagarVencidas = contasPagarAbertas.filter((c) => c.data_vencimento && c.data_vencimento < hojeIso);
+  const contasPagarAbertas = contasPagar.filter((c) => c.status === "aberta" && !c.excluida_em);
+  const contasPagarVencidas = contasPagarAbertas.filter((c) => c.vencimento && c.vencimento < hojeIso);
   const totalContasPagarVencidas = contasPagarVencidas.reduce((acc, c) => acc + Number(c.valor || 0), 0);
-  const totalContasPagarMes = contasPagarAbertas.reduce((acc, c) => acc + Number(c.valor || 0), 0);
+  const totalContasPagarMes = contasPagarAbertas
+    .filter((c) => c.vencimento?.startsWith(`${mesAtualIso}-`))
+    .reduce((acc, c) => acc + Number(c.valor || 0), 0);
 
   // 5. Comercial & CRM
   const [leadsRes, propostasRes, contratacoesRes, clientesRes, gruposRes, metasRes] = await Promise.all([
@@ -619,6 +646,24 @@ export async function getErpDashboardCompleto(
 
   // 8. Alertas Operacionais Reais
   const alertas: ErpDashboardAlertaItem[] = [];
+
+  for (const teto of tetosCentros) {
+    if (teto.situacao === "dentro") continue;
+    const moeda = (valor: number) => valor.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+    alertas.push({
+      id: `teto-centro-${teto.centroId}`,
+      prioridade: teto.situacao === "ultrapassado" ? "alta" : "media",
+      titulo: teto.situacao === "ultrapassado"
+        ? `Teto ultrapassado: ${teto.nome}`
+        : `Perto do teto: ${teto.nome}`,
+      descricao: teto.situacao === "ultrapassado"
+        ? `Pagas no mês: ${moeda(teto.gasto)}. Teto: ${moeda(teto.limite)}. Excesso: ${moeda(teto.gasto - teto.limite)}.`
+        : `Pagas no mês: ${moeda(teto.gasto)} de ${moeda(teto.limite)}. Restam ${moeda(teto.restante)}.`,
+      quantidade: 1,
+      href: "/erp/contas-pagar",
+      moduloId: "contas-pagar",
+    });
+  }
 
   if (contratosAssinadosFormalizacao > 0) {
     alertas.push({
@@ -757,6 +802,7 @@ export async function getErpDashboardCompleto(
     },
     metas: metasData,
     alertas,
+    tetosCentros,
     proximasAssembleias,
     administradorasDisponiveis: administradorasRes.data || [],
   };

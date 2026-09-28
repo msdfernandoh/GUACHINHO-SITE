@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import {
   AlertCircle,
   Building2,
@@ -22,6 +23,7 @@ import type {
   ContaCorrenteResumoDTO,
   ItemContaLancadaDTO,
 } from "@/app/erp/conta-corrente-socios/actions";
+import type { DespesaPagaMensal } from "@/lib/gestao/historico-despesas-pagas";
 import {
   classificarOrigemHistoricaAction,
   deixarComissaoNaEmpresaAction,
@@ -41,6 +43,104 @@ const formatDataBr = (val: string) => {
   const [ano, mes, dia] = val.split("-");
   return dia ? `${dia}/${mes}/${ano}` : `${mes}/${ano}`;
 };
+
+const rotuloMes = (mes: string) => {
+  const [ano, numeroMes] = mes.split("-").map(Number);
+  const nome = new Intl.DateTimeFormat("pt-BR", { month: "long" }).format(new Date(Date.UTC(ano, numeroMes - 1, 1)));
+  return `${nome.charAt(0).toUpperCase()}${nome.slice(1)} de ${ano}`;
+};
+
+function ResumoMensalDespesas({ meses }: { meses: DespesaPagaMensal[] }) {
+  const totalPago = meses.reduce((soma, mes) => soma + mes.totalPago, 0);
+  const maiorMes = meses.reduce<DespesaPagaMensal | null>(
+    (maior, mes) => !maior || mes.totalPago > maior.totalPago ? mes : maior,
+    null,
+  );
+  const totaisPorTipo = new Map<string, { nome: string; valor: number }>();
+  for (const mes of meses) {
+    for (const tipo of mes.tipos) {
+      const chave = tipo.centroId || "sem-centro";
+      const anterior = totaisPorTipo.get(chave);
+      totaisPorTipo.set(chave, { nome: tipo.nome, valor: (anterior?.valor || 0) + tipo.pago });
+    }
+  }
+  const maiorTipo = [...totaisPorTipo.values()].sort((a, b) => b.valor - a.valor)[0];
+
+  return (
+    <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm md:p-6">
+      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-100 pb-4">
+        <div>
+          <h2 className="text-lg font-black text-slate-900">Onde gastamos, mês por mês</h2>
+          <p className="mt-1 text-xs text-slate-600">Só contas pagas. Contas em aberto e impostos pagos com a reserva ficam fora.</p>
+        </div>
+        <Link href="/erp/contas-pagar?aba=centro" className="rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-bold text-blue-800 hover:bg-blue-100">
+          Editar tetos de despesas
+        </Link>
+      </div>
+
+      <div className="mt-4 grid gap-3 sm:grid-cols-3">
+        <div className="rounded-xl bg-slate-50 p-3">
+          <p className="text-[11px] font-bold text-slate-600">Total pago até hoje</p>
+          <p className="mt-1 text-lg font-black text-slate-950">{brl(totalPago)}</p>
+        </div>
+        <div className="rounded-xl bg-slate-50 p-3">
+          <p className="text-[11px] font-bold text-slate-600">Mês em que mais gastamos</p>
+          <p className="mt-1 text-sm font-black text-slate-950">{maiorMes ? `${rotuloMes(maiorMes.mes)} · ${brl(maiorMes.totalPago)}` : "Sem pagamentos"}</p>
+        </div>
+        <div className="rounded-xl bg-slate-50 p-3">
+          <p className="text-[11px] font-bold text-slate-600">Tipo em que mais gastamos</p>
+          <p className="mt-1 text-sm font-black text-slate-950">{maiorTipo ? `${maiorTipo.nome} · ${brl(maiorTipo.valor)}` : "Sem pagamentos"}</p>
+        </div>
+      </div>
+
+      {meses.length === 0 ? (
+        <p className="mt-4 text-sm text-slate-600">Ainda não há contas operacionais pagas.</p>
+      ) : (
+        <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {[...meses].reverse().map((mes) => {
+            const tiposPagos = mes.tipos.filter((tipo) => tipo.pago > 0).sort((a, b) => b.pago - a.pago);
+            const maiorDoMes = tiposPagos[0];
+            return (
+              <article key={mes.mes} className={`rounded-2xl border p-4 ${mes.totalExcedente > 0 ? "border-rose-300 bg-rose-50/60" : "border-slate-200 bg-slate-50/60"}`}>
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <h3 className="text-sm font-black text-slate-900">{rotuloMes(mes.mes)}</h3>
+                    <p className="mt-1 text-xl font-black text-slate-950">{brl(mes.totalPago)}</p>
+                    <p className="text-[11px] text-slate-600">{maiorDoMes ? `Maior gasto: ${maiorDoMes.nome}` : "Sem contas pagas"}</p>
+                  </div>
+                  {mes.totalExcedente > 0 && (
+                    <span className="rounded-full bg-rose-200 px-2 py-1 text-[10px] font-black text-rose-900">Extra {brl(mes.totalExcedente)}</span>
+                  )}
+                </div>
+                <div className="mt-3 space-y-1 border-t border-slate-200 pt-3">
+                  {tiposPagos.map((tipo) => (
+                    <div key={tipo.centroId || "sem-centro"} className={`rounded-lg px-2 py-1.5 ${tipo.excesso > 0 ? "bg-rose-100 text-rose-950" : "text-slate-700"}`}>
+                      <div className="flex justify-between gap-2 text-xs"><span className="font-semibold">{tipo.nome}</span><strong>{brl(tipo.pago)}</strong></div>
+                      {tipo.excesso > 0 && <p className="text-[10px] font-bold">{brl(tipo.excesso)} acima do teto</p>}
+                      {tipo.centroId && tipo.teto !== null && <p className="text-[10px]">Teto {brl(tipo.teto)}</p>}
+                    </div>
+                  ))}
+                </div>
+                <Link href={maiorDoMes?.centroId ? `/erp/contas-pagar?aba=centro&editar=${maiorDoMes.centroId}` : "/erp/contas-pagar?aba=centro"} className="mt-3 inline-flex text-xs font-bold text-blue-800 hover:underline">
+                  Editar teto{maiorDoMes?.centroId ? ` de ${maiorDoMes.nome}` : "s"}
+                </Link>
+                {mes.despesas.length > 0 && (
+                  <details className="mt-3 border-t border-slate-200 pt-3">
+                    <summary className="cursor-pointer text-xs font-bold text-slate-800">Ver as {mes.despesas.length} contas pagas</summary>
+                    <div className="mt-2 max-h-64 space-y-1 overflow-y-auto">
+                      {mes.despesas.map((despesa) => <div key={despesa.id} className="flex justify-between gap-2 rounded-lg bg-white px-2 py-1.5 text-[11px] text-slate-700"><span><strong>{despesa.descricao}</strong><br />{despesa.tipo} · {formatDataBr(despesa.pagoEm)}</span><strong className="shrink-0">{brl(despesa.valor)}</strong></div>)}
+                    </div>
+                  </details>
+                )}
+              </article>
+            );
+          })}
+        </div>
+      )}
+      <p className="mt-4 text-[11px] text-slate-500">Os meses anteriores são comparados com os tetos configurados hoje. Alterar um teto muda a comparação histórica.</p>
+    </section>
+  );
+}
 
 export function ContaCorrenteCentralSocios({
   dados,
@@ -181,9 +281,75 @@ export function ContaCorrenteCentralSocios({
   // eventual transferência entre os sócios.
   const valorTransferirParaFernando = Math.max(0, dados.acertoSocios.socioFernando.saldoAcerto);
   const valorTransferirParaEroni = Math.max(0, dados.acertoSocios.socioEroni.saldoAcerto);
+  const fechamentoEmConciliacao = dados.historicoClassificacao.classificadoFernandoComissao > 0
+    && dados.reservaImpostosControle.impostosPagosComReserva > 0;
+
+  if (fechamentoEmConciliacao) {
+    const totalOperacionalPago = dados.historicoDespesasPagas.reduce((soma, mes) => soma + mes.totalPago, 0);
+    return (
+      <div className="space-y-5">
+        <section className="rounded-3xl border-2 border-amber-400 bg-amber-50 p-5 text-amber-950" role="status">
+          <h2 className="text-xl font-black">Fechamento de hoje: em conferência</h2>
+          <p className="mt-2 text-sm">Já sabemos quanto foi pago e quanto Fernando adiantou do próprio bolso. Ainda falta conciliar o dinheiro usado nas contas atribuídas a Eroni e a margem dos consultores. Por isso, <strong>não há valor de transferência ou saque confirmado entre os sócios</strong>.</p>
+        </section>
+
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="rounded-2xl border border-slate-200 bg-white p-4">
+            <p className="text-xs font-bold text-slate-600">Despesas operacionais pagas</p>
+            <p className="mt-2 text-2xl font-black text-slate-950">{brl(totalOperacionalPago)}</p>
+            <p className="mt-1 text-xs text-slate-600">Todos os meses até hoje. Sem contas abertas e sem impostos da reserva.</p>
+          </div>
+          <div className="rounded-2xl border border-emerald-200 bg-white p-4">
+            <p className="text-xs font-bold text-slate-600">Fernando pagou do bolso</p>
+            <p className="mt-2 text-2xl font-black text-emerald-900">{brl(dados.desembolsoFernandoHistorico)}</p>
+            <p className="mt-1 text-xs text-slate-600">Adiantamento pessoal informado. Não somar a comissão histórica de R$ 9.300 novamente.</p>
+          </div>
+          <div className="rounded-2xl border border-amber-200 bg-white p-4">
+            <p className="text-xs font-bold text-slate-600">Impostos pagos pela reserva</p>
+            <p className="mt-2 text-2xl font-black text-amber-900">{brl(dados.reservaImpostosControle.impostosPagosComReserva)}</p>
+            <p className="mt-1 text-xs text-slate-600">Saldo fiscal calculado: {brl(dados.reservaImpostosControle.saldoReserva)}.</p>
+          </div>
+          <div className="rounded-2xl border border-blue-200 bg-white p-4">
+            <p className="text-xs font-bold text-slate-600">Comissões dos sócios</p>
+            <p className="mt-2 text-lg font-black text-blue-950">Guardadas na empresa</p>
+            <p className="mt-1 text-xs text-slate-600">A baixa no sistema não foi retirada em dinheiro. Valor individual em conciliação.</p>
+          </div>
+        </div>
+
+        <ResumoMensalDespesas meses={dados.historicoDespesasPagas} />
+
+        <section className="rounded-2xl border border-slate-200 bg-white p-5">
+          <h2 className="text-base font-black text-slate-900">O que falta para fechar entre Fernando e Eroni?</h2>
+          <ol className="mt-3 space-y-2 text-sm text-slate-700">
+            <li>1. Confirmar quais contas foram pagas com o dinheiro da empresa.</li>
+            <li>2. Calcular o lucro dos consultores e microfranqueados que reduz as despesas a dividir.</li>
+            <li>3. Separar as comissões de cada sócio que continuam guardadas na empresa.</li>
+            <li>4. Dividir o restante das despesas em 50% para cada sócio e mostrar o acerto.</li>
+          </ol>
+          <Link href="/erp/fechamento-socios" className="mt-4 inline-flex rounded-xl bg-slate-950 px-4 py-2 text-xs font-black text-white hover:bg-indigo-950">Abrir painel do fechamento</Link>
+          {onNavegarParaAba && <button type="button" onClick={() => onNavegarParaAba("ledger")} className="mt-4 text-xs font-bold text-blue-800 hover:underline">Ver histórico dos lançamentos</button>}
+        </section>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
+      {fechamentoEmConciliacao && (
+        <section className="rounded-2xl border-2 border-amber-400 bg-amber-50 p-5 text-amber-950" role="alert">
+          <h2 className="text-lg font-black">Primeiro fechamento em conferência</h2>
+          <p className="mt-2 text-sm font-medium">
+            As comissões dos sócios estão guardadas na empresa. O valor pago do bolso por Fernando
+            e as contas atribuídas a Eroni ainda precisam ser conciliados com o caixa e com a margem
+            dos consultores. Os valores de acerto e saque abaixo seguem o cálculo antigo: não use
+            esses números para transferir dinheiro ou fechar o período.
+          </p>
+          <p className="mt-2 text-sm">
+            Guias já abatidas da reserva fiscal: <strong>{brl(dados.reservaImpostosControle.impostosPagosComReserva)}</strong>.
+            Saldo fiscal calculado: <strong>{brl(dados.reservaImpostosControle.saldoReserva)}</strong>.
+          </p>
+        </section>
+      )}
       {/* Toast de Feedback */}
       {feedback && (
         <div
@@ -449,6 +615,8 @@ export function ContaCorrenteCentralSocios({
           </div>
         </div>
       </section>
+
+      <ResumoMensalDespesas meses={dados.historicoDespesasPagas} />
 
       {/* ========================================================= */}
       {/* BANNER DE NOTIFICAÇÃO: CLASSIFICAÇÃO HISTÓRICA (R$ 9.300) */}

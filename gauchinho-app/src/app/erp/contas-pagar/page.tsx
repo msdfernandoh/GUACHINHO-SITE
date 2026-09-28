@@ -3,7 +3,10 @@ import { getCurrentTenantContext } from "@/lib/tenant/context";
 import { ContasPagarClient } from "./ui";
 import { consultarContasPagar, consultarProjecaoCaixa } from "./actions";
 
-export default async function ContasPagarPage() {
+export default async function ContasPagarPage({ searchParams }: {
+  searchParams?: Promise<{ aba?: string; editar?: string }>;
+}) {
+  const params = await searchParams;
   const { empresaAtiva, vinculos: vinculosContexto } = await getCurrentTenantContext();
   if (!empresaAtiva) return null;
   const db = createAdminClient();
@@ -79,6 +82,8 @@ export default async function ContasPagarPage() {
       socios={usuarios.filter((usuario) => usuario.socioPagador)}
       master={isMaster}
       podeEstornar={podeEstornar}
+      abaInicial={params?.aba === "centro" ? "centro" : "conta"}
+      centroEditarInicial={params?.aba === "centro" ? params.editar : undefined}
     />
   );
 }

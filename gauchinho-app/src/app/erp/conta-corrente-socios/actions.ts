@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireErpRouteAccess } from "@/lib/erp/erp-acesso-server";
 import { lerFiscalParticipante } from "@/lib/erp/comissoes-fiscal-extrato";
+import { montarHistoricoDespesasPagas, type DespesaPagaMensal } from "@/lib/gestao/historico-despesas-pagas";
 import {
   type TipoFiltroPeriodo,
   type TipoRegimePeriodo,
@@ -301,6 +302,8 @@ export interface ContaCorrenteResumoDTO {
   receitaEmpresaComissoes: ReceitaEmpresaComissoesDTO;
   previsoesFuturas: PrevisoesFuturasDTO;
   historicoClassificacao: HistoricoClassificacaoDTO;
+  historicoDespesasPagas: DespesaPagaMensal[];
+  desembolsoFernandoHistorico: number;
 
   // Informações de Período e Regime
   tipoPeriodo: TipoFiltroPeriodo;
@@ -552,12 +555,14 @@ export async function carregarDadosContaCorrenteSocios(
     contasBancariasRes,
     transferenciasSociosRes,
     comissoesFranquiaRes,
+    centrosHistoricoRes,
   ] = await Promise.all([
     admin
       .from("financeiro_contas_pagar")
-      .select("id, empresa_id, descricao, valor, status, vencimento, competencia, pago_em, pago_pessoalmente, socio_pagador_usuario_id, fornecedor, observacao, retirar_reserva_impostos")
+      .select("id, empresa_id, descricao, valor, status, vencimento, competencia, pago_em, pago_pessoalmente, socio_pagador_usuario_id, fornecedor, observacao, retirar_reserva_impostos, centro_custo_id, excluida_em")
       .eq("empresa_id", empresaAtiva.id)
       .neq("status", "cancelada")
+      .is("excluida_em", null)
       .order("vencimento"),
     admin
       .from("financeiro_despesa_rateios")
@@ -639,9 +644,30 @@ export async function carregarDadosContaCorrenteSocios(
       .select("competencia, status, valor_previsto, valor_liquidado, valor_liquido, valor_imposto")
       .eq("empresa_id", empresaAtiva.id)
       .neq("status", "cancelada"),
+    admin
+      .from("financeiro_centros_custo")
+      .select("id, nome, limite_mensal, descontado_comissao")
+      .eq("empresa_id", empresaAtiva.id)
+      .order("nome"),
   ]);
 
+  if (contasRes.error || centrosHistoricoRes.error) {
+    throw new Error("Não foi possível carregar o histórico das despesas pagas.");
+  }
+
   const todasContas = contasRes.data ?? [];
+  const historicoDespesasPagas = montarHistoricoDespesasPagas(
+    centrosHistoricoRes.data ?? [],
+    todasContas,
+    obterHojeCuiaba(),
+  );
+  const desembolsoFernandoHistorico = Number(todasContas
+    .filter((conta) => conta.status === "paga"
+      && conta.pago_pessoalmente
+      && conta.socio_pagador_usuario_id === socioFernando?.usuarioId
+      && !conta.retirar_reserva_impostos)
+    .reduce((soma, conta) => soma + Number(conta.valor), 0)
+    .toFixed(2));
   const rateiosDb = rateiosRes.data ?? [];
   const reservasDb = reservasRes.data ?? [];
   const orcamentoDb = orcamentoRes.data ?? [];
@@ -738,17 +764,20 @@ export async function carregarDadosContaCorrenteSocios(
     };
   }
 
-  const todasDespesasRateadas = todasContas.map(mapearDespesaRateio);
+  const todasDespesasRateadas = todasContas
+    .filter((conta: any) => !conta.retirar_reserva_impostos)
+    .map(mapearDespesaRateio);
 
-  // Filtragem de Despesas conforme Regime (CAIXA vs COMPETÊNCIA)
+  // O acerto entre sócios considera somente contas já baixadas. Contas
+  // futuras ou em aberto continuam no contas a pagar, fora deste rateio.
   const compInicio = periodo.dataInicio.slice(0, 7);
   const compFim = periodo.dataFim.slice(0, 7);
 
   const despesasRateadas = todasDespesasRateadas.filter((d) => {
+    if (d.status !== "paga") return false;
     if (periodo.isTodosPeriodos) return true;
     if (periodo.regime === "CAIXA") {
       // Regime Caixa: apenas despesas efetivamente pagas no intervalo
-      if (d.status !== "paga") return false;
       const dtPag = d.data; // conta.pago_em || conta.vencimento
       return Boolean(dtPag && dtPag >= periodo.dataInicio && dtPag <= periodo.dataFim);
     } else {
@@ -1503,7 +1532,7 @@ export async function carregarDadosContaCorrenteSocios(
 
   // Despesas efetivamente pagas no escopo
   const contasPagasEscopo = todasContas.filter((c: any) => {
-    if (c.status !== "paga") return false;
+    if (c.status !== "paga" || c.retirar_reserva_impostos) return false;
     if (periodo.isTodosPeriodos) return true;
     const dt = c.pago_em || c.vencimento;
     return Boolean(dt && dt >= periodo.dataInicio && dt <= periodo.dataFim);
@@ -2020,12 +2049,19 @@ export async function carregarDadosContaCorrenteSocios(
     receitaEmpresaComissoes,
     previsoesFuturas,
     historicoClassificacao,
+    historicoDespesasPagas,
+    desembolsoFernandoHistorico,
   };
 }
 
 export async function usarComissaoCompensarAction(formData: FormData) {
   const { empresaAtiva, usuario } = await requireErpRouteAccess("financeiro");
   if (!empresaAtiva?.id) throw new Error("Empresa ativa não encontrada.");
+  const demonstrativo = await carregarDadosContaCorrenteSocios({ socioId: "todos" });
+  if (demonstrativo.historicoClassificacao.classificadoFernandoComissao > 0
+    && demonstrativo.reservaImpostosControle.impostosPagosComReserva > 0) {
+    throw new Error("O primeiro fechamento ainda está em conciliação. Não é seguro compensar comissões pelo cálculo antigo.");
+  }
 
   const socioId = String(formData.get("socio_id") ?? "");
   const tipoDestino = String(formData.get("tipo_destino") ?? "TRANSFERENCIA_SOCIO") as "TRANSFERENCIA_SOCIO" | "CONTA_EMPRESA";
@@ -2582,120 +2618,9 @@ export async function estornarMovimentoLedgerAction(movimentoId: string, motivo:
  * Permite ao Master confirmar a alocação de R$ 9.300 de comissões de Fernando
  * utilizadas em pagamentos operacionais executados por Eroni.
  */
-export async function classificarOrigemHistoricaAction(formData?: FormData) {
-  const { empresaAtiva, usuario } = await requireErpRouteAccess("financeiro");
-  if (!empresaAtiva?.id) throw new Error("Empresa ativa não encontrada.");
-
-  const socioBeneficiarioId = String(formData?.get("socio_beneficiario_id") ?? "");
-  const socioOperacionalId = String(formData?.get("socio_operacional_id") ?? "");
-  const valor = Number(String(formData?.get("valor") ?? "9300").replace(",", "."));
-  const descricao = String(formData?.get("descricao") ?? "").trim() || "Classificação histórica: comissão de Fernando utilizada em pagamentos operacionais por Eroni";
-
-  const admin = createAdminClient();
-
-  let sBenId = socioBeneficiarioId;
-  let sOpId = socioOperacionalId;
-
-  if (!sBenId) {
-    const { data: todosSocios } = await admin
-      .from("empresa_socios")
-      .select("id, usuario_id, nome")
-      .eq("empresa_id", empresaAtiva.id);
-    const f = todosSocios?.find((s) => s.nome.toLowerCase().includes("fernando"));
-    const e = todosSocios?.find((s) => s.nome.toLowerCase().includes("eroni"));
-    if (f) sBenId = f.id;
-    if (e && !sOpId) sOpId = e.id;
-  }
-
-  if (!sBenId || isNaN(valor) || valor <= 0) {
-    throw new Error("Dados inválidos para classificação histórica.");
-  }
-
-  const { data: socioBen } = await admin
-    .from("empresa_socios")
-    .select("id, usuario_id, nome")
-    .eq("id", sBenId)
-    .eq("empresa_id", empresaAtiva.id)
-    .single();
-
-  const { data: socioOp } = sOpId
-    ? await admin
-        .from("empresa_socios")
-        .select("id, usuario_id, nome")
-        .eq("id", sOpId)
-        .eq("empresa_id", empresaAtiva.id)
-        .single()
-    : { data: null };
-
-  if (!socioBen) throw new Error("Sócio beneficiário não encontrado.");
-
-  const dataHoje = new Date().toISOString().slice(0, 10);
-  const compAtual = new Date().toISOString().slice(0, 7);
-  const timestamp = Date.now();
-  const idempKey = `classif_hist:${empresaAtiva.id}:${timestamp}`;
-
-  // 1. Inserir no Ledger: Crédito para Fernando (recurso fornecido)
-  await admin.from("socio_conta_corrente_movimentos").insert({
-    empresa_id: empresaAtiva.id,
-    socio_id: socioBen.id,
-    usuario_id: socioBen.usuario_id,
-    data_movimento: dataHoje,
-    competencia: compAtual,
-    natureza: "CREDITO",
-    tipo_movimento: "COMISSAO_RETIDA",
-    valor: valor,
-    saldo_apos: 0,
-    descricao: `Recurso originário de comissão mantido e utilizado na operação (${descricao})`,
-    origem_tipo: "classificacao_historica",
-    origem_id: socioOp?.id || null,
-    idempotency_key: `ledger:cred:${idempKey}`,
-    criado_por: usuario?.id ?? null,
-  });
-
-  // 2. Se houver sócio operacional (Eroni), debitar para compensação simétrica
-  if (socioOp) {
-    await admin.from("socio_conta_corrente_movimentos").insert({
-      empresa_id: empresaAtiva.id,
-      socio_id: socioOp.id,
-      usuario_id: socioOp.usuario_id,
-      data_movimento: dataHoje,
-      competencia: compAtual,
-      natureza: "DEBITO",
-      tipo_movimento: "COMPENSACAO_COMISSAO",
-      valor: valor,
-      saldo_apos: 0,
-      descricao: `Reclassificação de pagamentos executados (recurso econômico fornecido por ${socioBen.nome})`,
-      origem_tipo: "classificacao_historica",
-      origem_id: socioBen.id,
-      idempotency_key: `ledger:deb:${idempKey}`,
-      criado_por: usuario?.id ?? null,
-    });
-  }
-
-  // 3. Tentar gravar na tabela de classificação histórica se existir
-  try {
-    await admin.from("financeiro_ajustes_classificacao_historica").insert({
-      empresa_id: empresaAtiva.id,
-      socio_beneficiario_id: socioBen.id,
-      socio_operacional_id: socioOp?.id || null,
-      tipo_classificacao: "COMISSAO_RETIDA_UTILIZADA",
-      valor: valor,
-      descricao,
-      competencia: compAtual,
-      data_ajuste: dataHoje,
-      idempotency_key: idempKey,
-      aprovado_por: usuario?.id ?? null,
-    });
-  } catch {
-    // Tabela pode ainda estar em processo de migração
-  }
-
-  revalidatePath("/erp/conta-corrente-socios");
-  revalidatePath("/erp/financeiro");
-  return {
-    success: true,
-    mensagem: "Classificação histórica de R$ 9.300 de comissão de Fernando aplicada com sucesso!",
-  };
+export async function classificarOrigemHistoricaAction(formData?: FormData): Promise<{ success: boolean; mensagem: string }> {
+  void formData;
+  throw new Error("A classificação histórica de R$ 9.300 foi encerrada para evitar duplicidade. Confira a comissão já registrada e o adiantamento pessoal separadamente.");
 }
 
 /**

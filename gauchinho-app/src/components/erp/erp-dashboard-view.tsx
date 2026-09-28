@@ -128,6 +128,7 @@ export function ErpDashboardView({ initialData }: ErpDashboardViewProps) {
     clientesCotas,
     metas,
     alertas,
+    tetosCentros = [],
     proximasAssembleias,
     administradorasDisponiveis = [],
   } = data;
@@ -579,6 +580,37 @@ export function ErpDashboardView({ initialData }: ErpDashboardViewProps) {
           </div>
         </div>
       </section>
+
+      {hasModulo("contas-pagar") && (
+        <section className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-2xs dark:border-slate-800 dark:bg-slate-900 space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-3 dark:border-slate-800">
+            <div>
+              <h3 className="text-sm font-black text-slate-900 dark:text-white">Teto mensal de despesas</h3>
+              <p className="text-xs text-slate-500">Contas pagas em {data.periodo.mesAtual} por centro de custo. Contas abertas não entram.</p>
+            </div>
+            <Link href="/erp/contas-pagar" className="text-xs font-bold text-blue-700 hover:underline dark:text-blue-300">Cadastrar ou mudar tetos</Link>
+          </div>
+          {tetosCentros.length === 0 ? (
+            <p className="text-xs text-slate-600 dark:text-slate-300">Nenhum teto cadastrado. Defina o valor mensal em Contas a pagar → Centros de custo.</p>
+          ) : (
+            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+              {tetosCentros.map((teto) => (
+                <div key={teto.centroId} className={`rounded-xl border p-4 ${teto.situacao === "ultrapassado" ? "border-rose-300 bg-rose-50 dark:bg-rose-950/30" : teto.situacao === "atencao" ? "border-amber-300 bg-amber-50 dark:bg-amber-950/30" : "border-emerald-200 bg-emerald-50 dark:bg-emerald-950/30"}`}>
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="text-sm font-black text-slate-900 dark:text-white">{teto.nome}</p>
+                    <span className="text-[10px] font-black uppercase text-slate-700 dark:text-slate-200">{teto.situacao === "ultrapassado" ? "Passou do teto" : teto.situacao === "atencao" ? "Perto do teto" : "Dentro do teto"}</span>
+                  </div>
+                  <p className="mt-3 text-xs text-slate-700 dark:text-slate-200">Pago: <strong>{formatCurrency(teto.gasto)}</strong> de {formatCurrency(teto.limite)}</p>
+                  <div className="mt-2 h-2 overflow-hidden rounded-full bg-white/80 dark:bg-slate-800" role="progressbar" aria-label={`Uso do teto de ${teto.nome}`} aria-valuenow={Math.min(100, teto.percentual)} aria-valuemin={0} aria-valuemax={100}>
+                    <div className={`h-full rounded-full ${teto.situacao === "ultrapassado" ? "bg-rose-600" : teto.situacao === "atencao" ? "bg-amber-500" : "bg-emerald-600"}`} style={{ width: `${Math.min(100, teto.percentual)}%` }} />
+                  </div>
+                  <p className="mt-2 text-xs font-bold text-slate-800 dark:text-slate-100">{teto.situacao === "ultrapassado" ? `Passou ${formatCurrency(teto.gasto - teto.limite)}` : `Ainda pode gastar ${formatCurrency(teto.restante)}`}</p>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
 
       {/* ───────────────────────────────────────────────────────────
           5. SEÇÃO: ATENÇÃO NECESSÁRIA / ALERTAS OPERACIONAIS

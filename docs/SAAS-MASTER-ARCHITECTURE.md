@@ -1,5 +1,94 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
+### Fase 297 — RPC de fechamento restrita ao servidor (28/09/2026)
+
+O fechamento antigo em Contas a Pagar foi desativado e sua RPC deixou de ser
+executável pelo cliente autenticado. A RPC de corte também não é acessível
+diretamente pelo navegador: somente a action autorizada no servidor, após
+verificar o tenant ativo e `gerenciar_financeiro`, chama o wrapper reservado à
+`service_role`. O wrapper valida o vínculo N:N ativo em `empresa_usuarios` e
+repassa a identidade Auth à RPC transacional. A migration 297 foi aplicada no
+Supabase; a Gauchinho segue sem fechamento registrado. As migrations 294–297
+foram marcadas como aplicadas no histórico após conferência dos objetos; 289–293
+permanecem pendentes. Relatório:
+`docs/relatorios-fases/FASE-297-RPC-FECHAMENTO-SOMENTE-SERVIDOR.md`.
+
+### Fases 295–296 — Corte societário lacrado e retirada comprovada (28/09/2026)
+
+O painel `/erp/fechamento-socios` reúne o primeiro acerto acumulado em quatro
+passos: lucro comum dos consultores abate somente despesas operacionais pagas,
+o restante segue o percentual societário, comissões individuais e adiantamentos
+pessoais compõem o direito de cada sócio, e o caixa mostra separadamente a
+reserva fiscal, o lucro remanescente e o valor deixado pelos sócios para gastos
+futuros. O lucro e o extrato exigem referências de conferência. Retiradas
+positivas exigem comprovante de transferência e geram saída bancária junto ao
+registro do corte, atomicamente. O saldo individual remanescente é transportado
+para o período seguinte.
+
+O novo corte é imutável, contínuo por empresa e protegido por idempotência e
+trava transacional. Gatilhos por `empresa_id` rejeitam receitas, despesas
+pagas, comissões e movimentos retroativos até a data lacrada; contas abertas
+anteriores podem ser pagas depois, sem alterar seus valores originais. Ajustes
+posteriores pertencem ao período seguinte. As migrations 295 e 296 foram
+executadas por SQL direto no banco ligado e registradas no histórico; nenhum fechamento foi criado para a
+Gauchinho. O primeiro corte continua bloqueado pelas conciliações de repasse,
+origem das despesas atribuídas a Eroni e ajuste histórico de R$ 9.300. A
+interface ainda não foi implantada em produção. Relatórios:
+`docs/relatorios-fases/FASE-295-REGISTRO-E-LACRE-FECHAMENTO-SOCIOS.md` e
+`docs/relatorios-fases/FASE-296-RETIRADAS-ATOMICA-FECHAMENTO-SOCIOS.md`.
+
+### Fase 294 — Teto mensal de despesas por centro de custo (28/09/2026)
+
+O centro de custo passa a aceitar `limite_mensal` opcional, validado no banco e
+na action do tenant. O painel principal apura, por `empresa_id` e centro, apenas
+contas pagas no mês de `pago_em`, excluindo abertas, excluídas e guias já
+cobertas pela reserva fiscal. Mostra gasto, teto e sobra ou excesso em linguagem
+simples. Acima de 80% gera atenção; acima de 100% gera alerta alto. É alerta
+informativo, sem bloquear pagamento. A Central dos Sócios apresenta cards para
+todos os meses do histórico, com tipos de despesas pagas e destaque do excesso
+por tipo, usando o teto atual como referência. A estrutura da migration 294
+foi executada no banco por SQL direto com autorização do titular e registrada
+no histórico de migrations; a Gauchinho
+recebeu tetos iniciais pela média dos meses com pagamentos em cada centro:
+Administrativo R$ 10.921,33, Eventos R$ 6.108,95, Investimento R$ 3.869,75 e
+Salário R$ 2.225,00. Impostos permanece sem teto. A aplicação foi compilada em
+um preview Vercel em estado Ready, sem alteração do domínio de produção.
+Produção também tem migrations 289–293 pendentes no histórico. Relatório:
+`docs/relatorios-fases/FASE-294-TETO-MENSAL-CENTROS-CUSTO-DASHBOARD.md`.
+
+### Complemento 28/09/2026 — Somente contas pagas no primeiro acerto
+
+O titular definiu que o primeiro acerto entre sócios considera somente contas
+efetivamente pagas; lançamentos futuros e em aberto ficam fora do rateio. A
+auditoria encontrou 14 contas de Eroni, R$ 21.773,01, baixadas em sequência
+em 24/09 embora vençam de 30/09 a 07/11, sem comprovantes ou movimento de
+caixa vinculado. O titular autorizou estornar as 12 com vencimento após 30/09,
+somando R$ 16.473,01. A transação usou a RPC auditada, com pré e pós-conferência;
+12 logs de estorno foram verificados. As contas pagas passaram a 126, total de
+R$ 84.838,29. As duas contas de 30/09 ficaram pagas. Outra conta de R$ 79 de
+Fernando tem vencimento em 2029, provável erro de data a revisar separadamente. No
+código local, contas em aberto e guias fiscais saem do rateio e a baixa antes
+do vencimento exige confirmação explícita na interface e no servidor.
+Relatório: `docs/relatorios-fases/ANALISE-2026-09-28-FECHAMENTO-SOCIOS-EMPRESA.md`.
+
+### Análise 28/09/2026 — Primeiro fechamento dos sócios com caixa centralizado
+
+A análise somente leitura da Gauchinho identificou que o acerto atual usa
+despesas pagas sem descontar previamente a margem comum dos consultores,
+atribui recursos pessoais pelo pagador registrado e inclui guias fiscais no
+rateio operacional. A proposta separa guarda das comissões na PJ, titularidade
+individual, margem comercial comum, adiantamentos pessoais e reserva fiscal.
+O usuário confirmou que comissões dos sócios ficam sob guarda da empresa, que
+as baixas anteriores não foram saques reais, que Fernando adiantou R$ 9.790,61
+do bolso, que duas guias consomem a reserva e que o primeiro corte acumula o
+histórico até 28/09. As duas guias foram marcadas para abater R$ 9.680,25 da
+reserva fiscal; saldo pela fórmula atual: R$ 669,45. A conciliação identificou
+um repasse confirmado de R$ 17.961,66 sem entrada no extrato auxiliar e contas
+pagas sem saídas nesse extrato. O código local bloqueia o fechamento antigo
+quando há imposto reservado ou comissão elegível e mostra um aviso na Central.
+Não houve migration, novo movimento de caixa, fechamento ou implantação.
+Relatório: `docs/relatorios-fases/ANALISE-2026-09-28-FECHAMENTO-SOCIOS-EMPRESA.md`.
+
 ### Projeto 26/09/2026 — Tour guiado do SaaS e ERP
 
 O projeto do tour guiado estabelece um percurso comercial opcional de 10 paradas, do evento com check-in e sorteio promocional simulado ao lead, grupo, proposta, venda, comissão e caixa, seguido de treinamento por função e ajuda contextual por menu. A master Sorriso serve ao piloto interno; interessados externos receberão acessos individuais e temporários em tenant de demonstração separado, com dados fictícios e papel somente leitura validado em servidor/RLS. O roteiro será montado com o vínculo `empresa_usuarios`, o plano e as permissões efetivas; progresso e exemplos serão isolados por usuário e `empresa_id`. A Plataforma terá escopo global próprio. O planejamento, as fases e os critérios de aceite estão em `docs/projetos/TOUR-GUIADO-SAAS-ERP.md`; registro desta fase em `docs/relatorios-fases/PROJETO-2026-09-26-TOUR-GUIADO-SAAS-ERP.md`.
@@ -12,6 +101,7 @@ filtros combináveis e paginação de 100 registros, evitando o teto de 1.000
 linhas da API; mantém as atualizações protegidas pelo mesmo escopo de empresa e
 usuário, e as tags também acompanham o contexto ao enviar um contato para lead.
 
+Relatório: `docs/relatorios-fases/HOTFIX-294-CLASSIFICACAO-MEUS-CONTATOS.md`.
 
 ### Hotfix operacional 293 — Contraste de Meus contatos na Gauchinho
 
@@ -58,6 +148,43 @@ empresa e ao usuário da sessão; assim, exportações VCF do iCloud com cartõe
 repetidos não interrompem a importação nem criam contatos duplicados.
 
 Relatório: `docs/relatorios-fases/HOTFIX-292-IMPORTACAO-CONTATOS-ICLOUD.md`.
+
+### Hotfix operacional 291 — Contraste do CRM e Agenda Racon
+
+No painel administrativo dos tenants Racon, os filtros rápidos e o banner de
+foco do Pipeline/Funil passam a ter superfície clara e texto escuro legível. O
+calendário da Agenda também define pares explícitos de fundo e texto para dias
+livres, com compromisso, bloqueados e sem horário. A regra é limitada a
+`.tenant-admin-racon`, sem modificar processos comerciais, disponibilidade,
+permissões ou dados. Relatório:
+`docs/relatorios-fases/HOTFIX-291-CONTRASTE-CRM-AGENDA-RACON.md`.
+
+### Hotfix operacional 290 — Contraste da landing de parceiros Racon
+
+Nos hosts Racon Sinop e Racon Sorriso, a landing pública de parceiros mantém as superfícies claras e ações azuis do modelo. O título do hero e o conteúdo do bloco Network passam a ter texto branco explícito sobre seus gradientes azuis, preservando o texto escuro dos cards brancos. Login, recuperação e cadastro seguem o tema Racon existente. Relatório: `docs/relatorios-fases/HOTFIX-290-CONTRASTE-LANDING-PARCEIROS-RACON.md`.
+
+### Validação operacional 24/09/2026 — Fluxo completo do app de indicação
+
+Após o Hotfix 288, o acesso real de uma conta existente e a criação de uma conta sintética confirmaram cadastro público, login inicial e repetido por CPF, painel, extrato, envio de indicação, listagem e logout em produção. O lead e os vínculos comerciais sintéticos foram removidos; identidade e vínculo técnico remanescentes ficaram inativos porque um gatilho legado impede a exclusão física de `empresa_usuarios`. Relatório: `docs/relatorios-fases/VALIDACAO-2026-09-24-FLUXO-APP-INDICADOR.md`.
+
+### Hotfix operacional 289 — Tema Racon claro na tabela pública de Grupos
+
+A camada de aparência operacional passa a cobrir todas as rotas públicas Racon,
+exceto a home, as landings de parceiros e o telão de sorteio ao vivo, que
+possuem composição própria. Ela resolve cores por domínio e aplica superfícies
+claras, tipografia escura de alto contraste, campos brancos, tags coerentes e
+botões na cor primária da marca. A correção remove somente o vazamento visual
+do gradiente escuro legado da Gauchinho Consórcios; catálogo, cálculos,
+autorização e dados multiempresa permanecem inalterados. Relatório:
+`docs/relatorios-fases/HOTFIX-289-TEMA-RACON-TABELA-GRUPOS.md`.
+
+### Hotfix operacional 288 — Login do app de indicação com identidade Auth técnica
+
+O app apresenta o CPF como entrada principal e aceita e-mail de contato apenas por compatibilidade. Resolve a identidade Auth vinculada a `usuarios.auth_user_id` e autentica com a senha informada, inclusive para cadastros legados cujo Auth usa e-mail técnico baseado no CPF. A recuperação recebe CPF e envia um link ao e-mail de contato da identidade ativa do tenant, sem revelar a existência do cadastro. A resolução permanece restrita ao vínculo ativo `empresa_usuarios` da empresa do host e a participante e indicador ativos. Painel, indicação, comissões e convidados usam o resolvedor canônico do indicador; comissões seguem o participante selecionado por ele. Nenhuma credencial ou dado comercial é regravado no login. Relatório: `docs/relatorios-fases/HOTFIX-288-LOGIN-APP-INDICADOR-CREDENCIAL-TECNICA.md`.
+
+### Fase 286 — Revisão técnica temporária e somente leitura
+
+Para avaliação externa durante negociação, o host global admite um revisor em `plataforma_revisores_tecnicos`, sem vínculo `empresa_usuarios` e com expiração em 30 dias. O proxy autoriza somente `/platform/revisao` em requisições de leitura, e a página oferece consultas paginadas a dados existentes de empresas, usuários, leads, propostas, grupos e vendas. A identidade usa perfil técnico neutro `parceiro`; as migrations 287–288 bloqueiam `INSERT`, `UPDATE` e `DELETE` em tabelas públicas mesmo diante de políticas legadas permissivas, inclusive após expiração. O superadmin provisiona conta exclusiva em `/platform/acessos-cadastro`. Relatório: `docs/relatorios-fases/FASE-286-REVISAO-TECNICA-SOMENTE-LEITURA.md`.
 
 ### Hotfix operacional 283 — Conferência financeira delegada e origem do Caixa PJ
 

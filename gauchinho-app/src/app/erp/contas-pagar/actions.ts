@@ -149,6 +149,16 @@ function value(form: FormData, name: string) {
   return String(form.get(name) ?? "").trim();
 }
 
+function limiteMensalCentro(form: FormData): number | null {
+  const bruto = value(form, "limite_mensal");
+  if (!bruto) return null;
+  const limite = Number(bruto);
+  if (!Number.isFinite(limite) || limite <= 0 || !/^\d+(\.\d{1,2})?$/.test(bruto)) {
+    throw new Error("Informe um teto mensal maior que zero, com até duas casas decimais.");
+  }
+  return limite;
+}
+
 
 async function ensureContasBucket(admin: ReturnType<typeof createAdminClient>) {
   try {
@@ -169,29 +179,9 @@ async function ensureContasBucket(admin: ReturnType<typeof createAdminClient>) {
 }
 
 export async function fecharSociosPeriodo(inicio: string, fim: string): Promise<ContasActionResult> {
-  try {
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(inicio) || !/^\d{4}-\d{2}-\d{2}$/.test(fim) || fim < inicio) {
-      throw new Error("Informe um período inicial e final válido para fechar os sócios.");
-    }
-    const { empresaId, session } = await requireFinanceWrite();
-    const { data, error } = await session.rpc("rpc_fechar_socios", {
-      p_empresa_id: empresaId,
-      p_periodo_inicio: inicio,
-      p_periodo_fim: fim,
-      p_idempotency_key: `fechamento-socios:${inicio}:${fim}`,
-    });
-    if (error) throw new Error(error.message);
-    revalidatePath("/erp/contas-pagar");
-    return {
-      ok: true,
-      message: data?.reused
-        ? "Este período já estava fechado. O documento imutável existente foi reutilizado."
-        : "Fechamento societário criado e congelado com sucesso.",
-      fechamento: data as ContasActionResult["fechamento"],
-    };
-  } catch (error) {
-    return failure(error);
-  }
+  void inicio;
+  void fim;
+  return { ok: false, message: "Use o Painel de Fechamento dos Sócios. O fechamento antigo foi desativado para proteger o rateio, as comissões e a reserva de impostos." };
 }
 
 const CONTAS_BUCKET = "contas-pagar-documentos";
@@ -335,6 +325,7 @@ export async function criarCentro(form: FormData): Promise<ContasActionResult> {
     const payload: Record<string, any> = {
       empresa_id: empresaId,
       nome,
+      limite_mensal: limiteMensalCentro(form),
       codigo: value(form, "codigo") || null,
       departamento: value(form, "departamento") || null,
       descricao: value(form, "descricao") || null,
@@ -354,6 +345,7 @@ export async function criarCentro(form: FormData): Promise<ContasActionResult> {
       throw new Error(error.message);
     }
     revalidatePath("/erp/contas-pagar");
+    revalidatePath("/erp");
     return { ok: true, message: "Centro de custo salvo com sucesso." };
   } catch (error) {
     return failure(error);
@@ -537,13 +529,25 @@ export async function criarConta(form: FormData): Promise<ContasActionResult> {
   }
 }
 
-export async function baixarConta(id: string, dataPagamento?: string | null): Promise<ContasActionResult> {
+export async function baixarConta(id: string, dataPagamento?: string | null, pagamentoAntecipadoConfirmado = false): Promise<ContasActionResult> {
   try {
     const { empresaId, session } = await requireFinanceWrite();
     const dataEfetiva =
       dataPagamento && /^\d{4}-\d{2}-\d{2}$/.test(dataPagamento)
         ? dataPagamento
         : new Date().toISOString().slice(0, 10);
+
+    const { data: conta, error: contaError } = await session
+      .from("financeiro_contas_pagar")
+      .select("vencimento, status")
+      .eq("empresa_id", empresaId)
+      .eq("id", id)
+      .single();
+    if (contaError || !conta) throw new Error("Conta não encontrada.");
+    if (conta.status !== "aberta") throw new Error("Somente contas em aberto podem ser baixadas.");
+    if (dataEfetiva < conta.vencimento && !pagamentoAntecipadoConfirmado) {
+      throw new Error("O vencimento ainda não chegou. Confirme que o dinheiro já saiu antes de dar baixa.");
+    }
 
     const { error } = await session.rpc("rpc_baixar_conta_pagar", {
       p_empresa_id: empresaId,
@@ -552,6 +556,7 @@ export async function baixarConta(id: string, dataPagamento?: string | null): Pr
     });
     if (error) throw new Error(error.message);
     revalidatePath("/erp/contas-pagar");
+    revalidatePath("/erp");
     return { ok: true, message: "Conta marcada como paga." };
   } catch (error) {
     return failure(error);
@@ -654,6 +659,7 @@ export async function estornarConta(id: string, motivo: string): Promise<ContasA
     });
     if (error) throw new Error(error.message);
     revalidatePath("/erp/contas-pagar");
+    revalidatePath("/erp");
     return { ok: true, message: "Pagamento estornado e despesa reaberta." };
   } catch (error) {
     return failure(error);
@@ -878,6 +884,7 @@ export async function alterarCentro(id: string, form: FormData): Promise<ContasA
     const descontadoComissao = form.get("descontado_comissao") === "on";
     const updates: Record<string, any> = {
       nome,
+      limite_mensal: limiteMensalCentro(form),
       codigo: value(form, "codigo") || null,
       departamento: value(form, "departamento") || null,
       descricao: value(form, "descricao") || null,
@@ -902,6 +909,7 @@ export async function alterarCentro(id: string, form: FormData): Promise<ContasA
     }
     if (error) throw new Error(error.message);
     revalidatePath("/erp/contas-pagar");
+    revalidatePath("/erp");
     return { ok: true, message: "Centro de custo atualizado." };
   } catch (error) {
     return failure(error);

@@ -1,0 +1,22 @@
+# O projeto Vercel usa gauchinho-app como Root Directory.
+# Enviar apenas a aplicação; documentos e arquivos locais da raiz não fazem parte do site.
+.claude/
+.codex-main-test/
+.codex-worktrees/
+.git/
+.vercel/
+analise/
+docs/
+GUACHINHO-SITE/
+node_modules/
+/supabase/
+tmp/
+.env*
+*.docx
+*.md
+!gauchinho-app/**/*.md
+gauchinho-app/.env
+gauchinho-app/.env.*
+gauchinho-app/.next/
+gauchinho-app/node_modules/
+gauchinho-app/.vercel/

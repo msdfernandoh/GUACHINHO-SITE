@@ -174,6 +174,8 @@ export function ContaCorrenteSociosView({
 
   const socioAtivo = dados.socioSelecionado;
   const isVisaoTodos = !socioAtivo;
+  const primeiroFechamentoEmConferencia = dados.historicoClassificacao.classificadoFernandoComissao > 0
+    && dados.reservaImpostosControle.impostosPagosComReserva > 0;
 
   // Base de Cálculo da Equalização: TOTAL PAGO (Desembolsado) vs TOTAL LANÇADO (Geral / Previsto)
   const [baseCalculoDivida, setBaseCalculoDivida] = useState<"PAGO" | "LANCADO">("PAGO");
@@ -624,13 +626,17 @@ export function ContaCorrenteSociosView({
 
           {/* Botões de Ação Rápida */}
           <div className="flex flex-wrap items-center gap-2">
-            <button
+            {!primeiroFechamentoEmConferencia && <button
               onClick={() => abrirModalCompensar(null)}
               className="flex items-center gap-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 px-3.5 py-2 text-xs font-black shadow-lg transition-all active:scale-95"
             >
               <Zap className="h-3.5 w-3.5" />
               Usar Comissão p/ Compensar
-            </button>
+            </button>}
+
+            <Link href="/erp/fechamento-socios" className="flex items-center gap-1.5 rounded-xl bg-amber-400 px-3.5 py-2 text-xs font-black text-slate-950 hover:bg-amber-300">
+              <Lock className="h-3.5 w-3.5" /> Painel de fechamento
+            </Link>
 
             <button
               onClick={() => setModalReservaAberto(true)}
@@ -662,6 +668,13 @@ export function ContaCorrenteSociosView({
           </div>
         </div>
       </header>
+
+      {primeiroFechamentoEmConferencia && (
+        <div role="alert" className="mb-4 rounded-2xl border-2 border-amber-300 bg-amber-50 p-4 text-sm font-semibold text-amber-950">
+          O primeiro acerto ainda está em conferência. Os números de crédito, dívida e saque das abas antigas não são valores aprovados para transferência.
+          <Link href="/erp/fechamento-socios" className="ml-2 font-black underline">Abrir painel de fechamento</Link>
+        </div>
+      )}
 
       {/* Navegação de Abas Principal */}
       <div className="flex items-center gap-2 overflow-x-auto border-b border-slate-200 pb-2">
@@ -2397,7 +2410,7 @@ export function ContaCorrenteSociosView({
                         </td>
 
                         <td className="p-3 text-right whitespace-nowrap">
-                          {podeCompensar ? (
+                          {podeCompensar && !primeiroFechamentoEmConferencia ? (
                             <button
                               onClick={() => abrirModalCompensar(c)}
                               className="rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white px-2.5 py-1 text-[11px] font-black shadow-sm transition-all"

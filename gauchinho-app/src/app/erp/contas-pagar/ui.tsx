@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import {
   AlertCircle,
   Banknote,
@@ -43,7 +44,6 @@ import {
   consultarContasPagar,
   duplicarContaMeses,
   estornarConta,
-  fecharSociosPeriodo,
   excluirConta,
   importarContasCsv,
   obterUrlNotaFiscalConta,
@@ -114,6 +114,7 @@ export type Banco = {
 export type Centro = {
   id: string;
   nome: string;
+  limite_mensal?: number | null;
   codigo?: string | null;
   departamento?: string | null;
   descricao?: string | null;
@@ -287,6 +288,8 @@ export function ContasPagarClient({
   socios,
   master,
   podeEstornar,
+  abaInicial = "conta",
+  centroEditarInicial,
 }: {
   consultaInicial: ConsultaContasPagarResult;
   projecaoCaixa: ProjecaoCaixaResult;
@@ -296,12 +299,14 @@ export function ContasPagarClient({
   socios: Usuario[];
   master: boolean;
   podeEstornar: boolean;
+  abaInicial?: Tab;
+  centroEditarInicial?: string;
 }) {
   const router = useRouter();
   const [consulta, setConsulta] = useState(consultaInicial);
   const contas = consulta.contas as Conta[];
   const logs = consulta.logs as Log[];
-  const [tab, setTab] = useState<Tab>("conta");
+  const [tab, setTab] = useState<Tab>(abaInicial);
   const [filtro, setFiltro] = useState<Filtro>("todas");
   const [pessoal, setPessoal] = useState(false);
   const [recorrente, setRecorrente] = useState(false);
@@ -333,7 +338,9 @@ export function ContasPagarClient({
   const [editando, setEditando] = useState<Conta | null>(null);
   const [editandoFornecedor, setEditandoFornecedor] = useState<Fornecedor | null>(null);
   const [editandoBanco, setEditandoBanco] = useState<Banco | null>(null);
-  const [editandoCentro, setEditandoCentro] = useState<Centro | null>(null);
+  const [editandoCentro, setEditandoCentro] = useState<Centro | null>(
+    centros.find((centro) => centro.id === centroEditarInicial) ?? null
+  );
   const [buscaFornecedor, setBuscaFornecedor] = useState("");
   const [fornecedoresSelecionados, setFornecedoresSelecionados] = useState<Set<string>>(new Set());
   const [modalUnificar, setModalUnificar] = useState(false);
@@ -341,6 +348,7 @@ export function ContasPagarClient({
   const [baixandoConta, setBaixandoConta] = useState<Conta | null>(null);
   const [dataBaixaCustom, setDataBaixaCustom] = useState<string>(new Date().toISOString().slice(0, 10));
   const [usarDataHojeBaixa, setUsarDataHojeBaixa] = useState<boolean>(true);
+  const [pagamentoAntecipadoConfirmado, setPagamentoAntecipadoConfirmado] = useState(false);
   const [estornando, setEstornando] = useState<Conta | null>(null);
   const [excluindo, setExcluindo] = useState<Conta | null>(null);
   const [motivoInput, setMotivoInput] = useState("");
@@ -686,19 +694,11 @@ export function ContasPagarClient({
               <span className="rounded-full bg-emerald-100 px-3 py-0.5 text-xs font-bold text-emerald-800">
                 Cálculo baseado exclusivamente em contas liquidadas/pagas
               </span>
-              <button
-                type="button"
-                disabled={!inicio || !fim || pending}
-                onClick={() => execute(() => fecharSociosPeriodo(inicio, fim))}
-                className="rounded-lg bg-slate-950 px-3 py-1.5 text-xs font-bold text-white shadow disabled:cursor-not-allowed disabled:opacity-40"
-                title={!inicio || !fim ? "Defina as datas inicial e final nos filtros" : "Gera um fechamento histórico que não pode ser editado"}
-              >
-                Fechar período selecionado
-              </button>
+              <Link href="/erp/fechamento-socios" className="rounded-lg bg-slate-950 px-3 py-1.5 text-xs font-bold text-white shadow">Abrir painel de fechamento</Link>
             </div>
           </div>
           <p className="text-xs text-slate-500 mt-0.5">
-            A prévia acompanha os filtros. Para congelar percentuais, valores, contas de recebimento e instruções de transferência, defina início/fim e feche o período.
+            A prévia acompanha os filtros. O fechamento definitivo é feito no painel próprio, após a conferência de receitas, impostos, comissões e caixa.
           </p>
         </div>
 
@@ -1257,6 +1257,10 @@ export function ContasPagarClient({
                 <Input name="nome" required placeholder="Nome do centro de custo *" />
                 <Input name="codigo" placeholder="Código identificador (ex: CC-001)" />
                 <Input name="departamento" placeholder="Departamento (ex: Vendas, Adm, TI)" />
+                <label className="text-xs font-bold text-slate-700">
+                  Teto mensal de despesas (R$)
+                  <Input name="limite_mensal" type="number" min="0.01" step="0.01" placeholder="Sem teto" className="mt-1" />
+                </label>
                 <Textarea name="descricao" className="md:col-span-3" placeholder="Descrição / finalidade..." />
                 <div className="md:col-span-3">
                   <label className="flex items-center gap-2 rounded-xl bg-amber-50 border border-amber-200 p-2.5 text-xs font-bold text-amber-900 cursor-pointer">
@@ -1281,6 +1285,7 @@ export function ContasPagarClient({
                       <th className="p-3">Código</th>
                       <th className="p-3">Nome</th>
                       <th className="p-3">Departamento</th>
+                      <th className="p-3">Teto mensal</th>
                       <th className="p-3">Status</th>
                       <th className="p-3 text-right">Ações</th>
                     </tr>
@@ -1300,6 +1305,7 @@ export function ContasPagarClient({
                           </div>
                         </td>
                         <td className="p-3 text-slate-600">{c.departamento || "—"}</td>
+                        <td className="p-3 font-semibold text-slate-700">{c.limite_mensal ? brl(Number(c.limite_mensal)) : "Sem teto"}</td>
                         <td className="p-3">
                           <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${c.ativo !== false ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-600"}`}>
                             {c.ativo !== false ? "Ativo" : "Inativo"}
@@ -1713,6 +1719,7 @@ export function ContasPagarClient({
                               setBaixandoConta(conta);
                               setDataBaixaCustom(new Date().toISOString().slice(0, 10));
                               setUsarDataHojeBaixa(true);
+                              setPagamentoAntecipadoConfirmado(false);
                             }}
                             className="bg-emerald-600 hover:bg-emerald-700 text-xs font-bold cursor-pointer"
                           >
@@ -2382,6 +2389,10 @@ export function ContasPagarClient({
                 <Textarea name="descricao" defaultValue={editandoCentro.descricao || ""} className="mt-1" />
               </div>
               <div>
+                <label className="font-bold text-slate-700">Teto mensal de despesas (R$)</label>
+                <Input name="limite_mensal" type="number" min="0.01" step="0.01" defaultValue={editandoCentro.limite_mensal ?? ""} placeholder="Sem teto" className="mt-1" />
+              </div>
+              <div>
                 <label className="flex items-center gap-2 rounded-xl bg-amber-50 border border-amber-200 p-2.5 font-bold text-amber-900 cursor-pointer">
                   <input
                     name="descontado_comissao"
@@ -2867,6 +2878,17 @@ export function ContasPagarClient({
                   )}
                 </label>
               </div>
+              {(usarDataHojeBaixa ? new Date().toISOString().slice(0, 10) : dataBaixaCustom) < baixandoConta.vencimento && (
+                <label className="flex items-start gap-2 rounded-xl border border-amber-300 bg-amber-50 p-3 text-xs font-semibold text-amber-950">
+                  <input
+                    type="checkbox"
+                    checked={pagamentoAntecipadoConfirmado}
+                    onChange={(e) => setPagamentoAntecipadoConfirmado(e.target.checked)}
+                    className="mt-0.5"
+                  />
+                  Confirmo que esta conta já foi paga, mesmo antes do vencimento. O dinheiro realmente saiu.
+                </label>
+              )}
             </div>
 
             <div className="flex justify-end gap-2 border-t pt-3">
@@ -2882,13 +2904,13 @@ export function ContasPagarClient({
               <Button
                 type="button"
                 size="sm"
-                disabled={pending || (!usarDataHojeBaixa && !dataBaixaCustom)}
+                disabled={pending || (!usarDataHojeBaixa && !dataBaixaCustom) || ((usarDataHojeBaixa ? new Date().toISOString().slice(0, 10) : dataBaixaCustom) < baixandoConta.vencimento && !pagamentoAntecipadoConfirmado)}
                 onClick={() => {
                   const dataPagamento = usarDataHojeBaixa
                     ? new Date().toISOString().slice(0, 10)
                     : dataBaixaCustom;
                   execute(
-                    () => baixarConta(baixandoConta.id, dataPagamento),
+                    () => baixarConta(baixandoConta.id, dataPagamento, pagamentoAntecipadoConfirmado),
                     () => setBaixandoConta(null)
                   );
                 }}
