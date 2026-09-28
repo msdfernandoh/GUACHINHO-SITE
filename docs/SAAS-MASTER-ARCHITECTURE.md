@@ -1,5 +1,9 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
+### Tela única de fechamento dos sócios (28/09/2026)
+
+Para não haver dois demonstrativos concorrentes, `/erp/fechamento-socios` é a única interface de conferência e decisão societária. A rota histórica `/erp/conta-corrente-socios` apenas redireciona para ela; seus dados e actions permanecem preservados para cálculo e auditoria. Menu e links financeiros usam o painel único. Relatório: `docs/relatorios-fases/TELA-UNICA-FECHAMENTO-SOCIOS-2026-09-28.md`.
+
 ### Painel de fechamento: despesas, consultores e metas (28/09/2026)
 
 O painel de fechamento societário também apresenta uma visão mensal simples: despesas pagas por centro de custo, teto configurado, comparação com o mês anterior e alerta de excesso; e evolução comercial de consultores ativos/novos, vendas, crédito vendido e repasses recebidos. Contas abertas, futuras e guias fiscais continuam fora da despesa partilhada. As metas mensais de consultores, vendas e crédito usam a tabela multiempresa `metas_comerciais`, incluindo o novo indicador `consultores_cadastrados`, e são gravadas apenas por action autorizada. Migration 300 aplicada no Supabase. Relatório: `docs/relatorios-fases/PAINEL-FECHAMENTO-DESPESAS-CONSULTORES-METAS-2026-09-28.md`.

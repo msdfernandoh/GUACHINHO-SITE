@@ -69,7 +69,7 @@ export function PainelFechamentoSocios({ dados }: { dados: PainelFechamento }) {
   return (
     <div className="space-y-6">
       <header className="rounded-3xl bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 p-6 text-white shadow-xl md:p-8">
-        <Link href="/erp/conta-corrente-socios" className="inline-flex items-center gap-2 text-xs font-bold text-slate-300 hover:text-white"><ArrowLeft className="h-4 w-4" /> Voltar à conta dos sócios</Link>
+        <Link href="/erp/financeiro" className="inline-flex items-center gap-2 text-xs font-bold text-slate-300 hover:text-white"><ArrowLeft className="h-4 w-4" /> Voltar ao financeiro</Link>
         <div className="mt-5 flex flex-wrap items-start justify-between gap-4">
           <div><p className="text-xs font-black uppercase tracking-widest text-amber-300">Acerto entre os sócios</p><h1 className="mt-2 text-3xl font-black md:text-4xl">Fechar as contas com clareza</h1><p className="mt-2 max-w-2xl text-sm text-slate-300">Veja o que entrou, o que foi gasto, quanto cabe a cada sócio e o que continua guardado na empresa.</p></div>
           <span className="rounded-full border border-white/20 bg-white/10 px-4 py-2 text-xs font-bold">{dados.inicio} até {dados.hoje}</span>
