@@ -17,6 +17,9 @@ export type PainelFechamento = {
   hoje: string;
   despesasPagas: number;
   quantidadePagas: number;
+  despesasEmpresaSemSaida: number;
+  quantidadeDespesasSemSaida: number;
+  saldoAposDespesasPendentes: number;
   impostosPagos: number;
   reservaImpostos: number;
   contasEmpresa: Array<{ id: string; nome: string }>;
@@ -25,7 +28,7 @@ export type PainelFechamento = {
   receitasEventos: number;
   comissoesConsultores: number;
   comissoesPorPessoa: Array<{ nome: string; papel: "SOCIO" | "CONSULTOR"; recebidaNoCaixa: number; reservada: number }>;
-  despesasPorMes: Array<{ mes: string; total: number; categorias: Array<{ nome: string; gasto: number; teto: number | null; variacao: number | null }> }>;
+  despesasPorMes: Array<{ mes: string; total: number; categorias: Array<{ centroId: string | null; nome: string; gasto: number; teto: number | null; variacao: number | null }> }>;
   desempenhoConsultores: Array<{ mes: string; consultoresAtivos: number; novosConsultores: number; vendas: number; creditoVendido: number; repassesGerados: number }>;
   metasComerciais: { consultores: number; vendas: number; credito: number };
   bancoEmpresa: { id: string; nome: string; saldoSistema: number } | null;
@@ -41,7 +44,7 @@ async function lerPainel(): Promise<PainelFechamento> {
     movimentosRes, bancosRes, saldosRes, cortesRes, dadosSocios, ledgerRes, recebimentoItensRes,
     previsoesFranquiaRes, previsoesParticipantesRes, vendasRes, metasRes] = await Promise.all([
     admin.from("empresa_socios").select("id,usuario_id,nome,percentual_participacao,ativo").eq("empresa_id", empresaAtiva.id).eq("ativo", true),
-    admin.from("financeiro_contas_pagar").select("id,valor,status,pago_em,pago_pessoalmente,socio_pagador_usuario_id,retirar_reserva_impostos,centro_custo_id,excluida_em").eq("empresa_id", empresaAtiva.id).is("excluida_em", null),
+    admin.from("financeiro_contas_pagar").select("id,valor,status,pago_em,pago_pessoalmente,socio_pagador_usuario_id,retirar_reserva_impostos,centro_custo_id,caixa_movimento_id,excluida_em").eq("empresa_id", empresaAtiva.id).is("excluida_em", null),
     admin.from("financeiro_centros_custo").select("id,nome,descontado_comissao,limite_mensal").eq("empresa_id", empresaAtiva.id),
     admin.from("financeiro_pagamentos").select("id,participante_comercial_id,valor_liquido,data_pagamento,status").eq("empresa_id", empresaAtiva.id).eq("status", "confirmado"),
     admin.from("participantes_comerciais").select("id,usuario_id,nome,status,data_entrada,created_at").eq("empresa_id", empresaAtiva.id),
@@ -77,6 +80,7 @@ async function lerPainel(): Promise<PainelFechamento> {
   const centros = new Map((centrosRes.data || []).map((c) => [c.id, { nome: c.nome || "Sem categoria", teto: c.limite_mensal === null ? null : numero(c.limite_mensal) }]));
   const contasPeriodo = (contasRes.data || []).filter((c) => c.status === "paga" && c.pago_em && c.pago_em >= inicioProximo && c.pago_em <= hoje);
   const operacionais = contasPeriodo.filter((c) => !c.retirar_reserva_impostos && !centrosFiscal.has(c.centro_custo_id));
+  const despesasEmpresaSemSaida = contasPeriodo.filter((c) => !c.pago_pessoalmente && !c.caixa_movimento_id);
   const participantes = new Map((participantesRes.data || []).map((p) => [p.id, p.usuario_id]));
   const socios = (sociosRes.data || []).map((s) => {
     const nome = String(s.nome);
@@ -102,6 +106,9 @@ async function lerPainel(): Promise<PainelFechamento> {
   if (!banco) bloqueios.push("Identificar a conta bancária da empresa.");
   if (dadosSocios.reservaImpostosControle.saldoReserva < 0) bloqueios.push("A reserva de impostos está negativa; concilie as guias e retenções.");
   if (Math.abs(recebidos - entradas) > 0.01) bloqueios.push(`Conciliar repasses: recebimentos ${arredondar(recebidos)} e entradas na conta ${arredondar(entradas)} não batem.`);
+  const saldoSistemaBanco = numero(saldoBanco?.saldo_atual);
+  const totalSemSaida = arredondar(despesasEmpresaSemSaida.reduce((soma, conta) => soma + numero(conta.valor), 0));
+  if (despesasEmpresaSemSaida.length) bloqueios.push(`Conciliar ${despesasEmpresaSemSaida.length} contas pagas pela empresa (${totalSemSaida}) sem saída vinculada no caixa. O saldo bancário exibido ainda não é confiável.`);
   const outrosPessoais = socios.filter((s) => /eroni/i.test(s.nome) && s.adiantamentoPessoal > 0);
   if (outrosPessoais.length) bloqueios.push("Corrigir as contas lançadas como dinheiro pessoal de Eroni; o titular informou que saíram da empresa.");
   if (dadosSocios.historicoClassificacao.classificadoFernandoComissao > 0 && !ultimo) bloqueios.push("Reverter a classificação histórica de R$ 9.300 para não duplicar o direito de Fernando.");
@@ -156,20 +163,21 @@ async function lerPainel(): Promise<PainelFechamento> {
   const receitasEventos = (movimentosRes.data || [])
     .filter((m) => m.tipo === "ENTRADA" && m.categoria === "RECEITA_EVENTO" && m.data_movimento >= inicioProximo && m.data_movimento <= hoje)
     .reduce((soma, m) => soma + numero(m.valor), 0);
-  const porMes = new Map<string, Map<string, number>>();
+  const porMes = new Map<string, Map<string, { centroId: string | null; gasto: number }>>();
   for (const conta of (contasRes.data || []).filter((c) => c.status === "paga" && c.pago_em && !c.retirar_reserva_impostos && !centrosFiscal.has(c.centro_custo_id))) {
     const mes = conta.pago_em!.slice(0, 7);
-    const categorias = porMes.get(mes) || new Map<string, number>();
+    const categorias = porMes.get(mes) || new Map<string, { centroId: string | null; gasto: number }>();
     const centro = centros.get(conta.centro_custo_id)?.nome || "Sem categoria";
-    categorias.set(centro, numero(categorias.get(centro)) + numero(conta.valor));
+    const atual = categorias.get(centro);
+    categorias.set(centro, { centroId: conta.centro_custo_id || null, gasto: numero(atual?.gasto) + numero(conta.valor) });
     porMes.set(mes, categorias);
   }
   const mesesDespesa = Array.from(porMes.keys()).sort();
   const despesasPorMes = mesesDespesa.map((mes, indice) => {
     const anterior = indice ? porMes.get(mesesDespesa[indice - 1]) : undefined;
-    const categorias = Array.from(porMes.get(mes) || []).map(([nome, gasto]) => {
-      const anteriorGasto = numero(anterior?.get(nome));
-      return { nome, gasto: arredondar(gasto), teto: Array.from(centros.values()).find((c) => c.nome === nome)?.teto ?? null, variacao: indice ? arredondar(gasto - anteriorGasto) : null };
+    const categorias = Array.from(porMes.get(mes) || []).map(([nome, item]) => {
+      const anteriorGasto = numero(anterior?.get(nome)?.gasto);
+      return { centroId: item.centroId, nome, gasto: arredondar(item.gasto), teto: Array.from(centros.values()).find((c) => c.nome === nome)?.teto ?? null, variacao: indice ? arredondar(item.gasto - anteriorGasto) : null };
     }).sort((a, b) => b.gasto - a.gasto);
     return { mes, total: arredondar(categorias.reduce((soma, categoria) => soma + categoria.gasto, 0)), categorias };
   });
@@ -194,6 +202,9 @@ async function lerPainel(): Promise<PainelFechamento> {
     inicio: inicioProximo, hoje,
     despesasPagas: arredondar(operacionais.reduce((soma, c) => soma + numero(c.valor), 0)),
     quantidadePagas: operacionais.length,
+    despesasEmpresaSemSaida: totalSemSaida,
+    quantidadeDespesasSemSaida: despesasEmpresaSemSaida.length,
+    saldoAposDespesasPendentes: arredondar(saldoSistemaBanco - totalSemSaida),
     impostosPagos: arredondar(contasPeriodo.filter((c) => c.retirar_reserva_impostos).reduce((soma, c) => soma + numero(c.valor), 0)),
     reservaImpostos: dadosSocios.reservaImpostosControle.saldoReserva,
     contasEmpresa: (bancosRes.data || []).map((b) => ({ id: b.id, nome: b.nome })),
@@ -205,7 +216,7 @@ async function lerPainel(): Promise<PainelFechamento> {
     despesasPorMes,
     desempenhoConsultores,
     metasComerciais: { consultores: meta("consultores_cadastrados"), vendas: meta("quantidade_vendas"), credito: meta("valor_credito_vendido") },
-    bancoEmpresa: banco ? { id: banco.id, nome: banco.nome, saldoSistema: numero(saldoBanco?.saldo_atual) } : null,
+    bancoEmpresa: banco ? { id: banco.id, nome: banco.nome, saldoSistema: saldoSistemaBanco } : null,
     socios,
     bloqueios,
     fechamentos: cortes,

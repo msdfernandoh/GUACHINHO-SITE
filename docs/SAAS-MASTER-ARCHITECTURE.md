@@ -1,5 +1,9 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
+### Navegação e conciliação do fechamento (28/09/2026)
+
+Cards, meses e categorias do painel de fechamento são navegáveis e encaminham, em nova aba, à lista correspondente de lançamentos. A lista de contas recebe filtros de URL por pagamento e centro de custo; “Sem categoria” encaminha ao cadastro de centros. O saldo bancário é tratado como posição de movimentos registrados: contas pagas pela empresa sem saída vinculada passam a ser uma pendência explícita que bloqueia o lacre até conciliação por conta e comprovante reais. Relatório: `docs/relatorios-fases/NAVEGACAO-E-CONCILIACAO-FECHAMENTO-2026-09-28.md`.
+
 ### Tela única de fechamento dos sócios (28/09/2026)
 
 Para não haver dois demonstrativos concorrentes, `/erp/fechamento-socios` é a única interface de conferência e decisão societária. A rota histórica `/erp/conta-corrente-socios` apenas redireciona para ela; seus dados e actions permanecem preservados para cálculo e auditoria. Menu e links financeiros usam o painel único. Relatório: `docs/relatorios-fases/TELA-UNICA-FECHAMENTO-SOCIOS-2026-09-28.md`.

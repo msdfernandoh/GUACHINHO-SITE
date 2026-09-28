@@ -4,7 +4,7 @@ import { ContasPagarClient } from "./ui";
 import { consultarContasPagar, consultarProjecaoCaixa } from "./actions";
 
 export default async function ContasPagarPage({ searchParams }: {
-  searchParams?: Promise<{ aba?: string; editar?: string }>;
+  searchParams?: Promise<{ aba?: string; editar?: string; status?: string; data?: string; inicio?: string; fim?: string; centro?: string }>;
 }) {
   const params = await searchParams;
   const { empresaAtiva, vinculos: vinculosContexto } = await getCurrentTenantContext();
@@ -84,6 +84,11 @@ export default async function ContasPagarPage({ searchParams }: {
       podeEstornar={podeEstornar}
       abaInicial={params?.aba === "centro" ? "centro" : "conta"}
       centroEditarInicial={params?.aba === "centro" ? params.editar : undefined}
+      filtroInicial={params?.status === "pagas" ? "pagas" : "todas"}
+      dataTipoInicial={params?.data === "pagamento" ? "pagamento" : "vencimento"}
+      inicioInicial={/^\d{4}-\d{2}-\d{2}$/.test(params?.inicio ?? "") ? params!.inicio : ""}
+      fimInicial={/^\d{4}-\d{2}-\d{2}$/.test(params?.fim ?? "") ? params!.fim : ""}
+      centroFiltroInicial={/^[0-9a-f-]{36}$/i.test(params?.centro ?? "") ? params!.centro : ""}
     />
   );
 }

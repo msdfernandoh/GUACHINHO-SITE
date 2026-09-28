@@ -290,6 +290,11 @@ export function ContasPagarClient({
   podeEstornar,
   abaInicial = "conta",
   centroEditarInicial,
+  filtroInicial = "todas",
+  dataTipoInicial = "vencimento",
+  inicioInicial = "",
+  fimInicial = "",
+  centroFiltroInicial = "",
 }: {
   consultaInicial: ConsultaContasPagarResult;
   projecaoCaixa: ProjecaoCaixaResult;
@@ -301,13 +306,18 @@ export function ContasPagarClient({
   podeEstornar: boolean;
   abaInicial?: Tab;
   centroEditarInicial?: string;
+  filtroInicial?: Filtro;
+  dataTipoInicial?: "vencimento" | "pagamento";
+  inicioInicial?: string;
+  fimInicial?: string;
+  centroFiltroInicial?: string;
 }) {
   const router = useRouter();
   const [consulta, setConsulta] = useState(consultaInicial);
   const contas = consulta.contas as Conta[];
   const logs = consulta.logs as Log[];
   const [tab, setTab] = useState<Tab>(abaInicial);
-  const [filtro, setFiltro] = useState<Filtro>("todas");
+  const [filtro, setFiltro] = useState<Filtro>(filtroInicial);
   const [pessoal, setPessoal] = useState(false);
   const [recorrente, setRecorrente] = useState(false);
   const [repeticoes, setRepeticoes] = useState(6);
@@ -316,11 +326,11 @@ export function ContasPagarClient({
   const [feedback, setFeedback] = useState<ContasActionResult | null>(null);
   const [pending, startTransition] = useTransition();
   const [visao, setVisao] = useState<"despesas" | "logs">("despesas");
-  const [dataTipo, setDataTipo] = useState<"vencimento" | "pagamento">("vencimento");
-  const [inicio, setInicio] = useState("");
-  const [fim, setFim] = useState("");
+  const [dataTipo, setDataTipo] = useState<"vencimento" | "pagamento">(dataTipoInicial);
+  const [inicio, setInicio] = useState(inicioInicial);
+  const [fim, setFim] = useState(fimInicial);
   const [bancoFiltro, setBancoFiltro] = useState("");
-  const [centroFiltro, setCentroFiltro] = useState("");
+  const [centroFiltro, setCentroFiltro] = useState(centroFiltroInicial);
   const [socioFiltro, setSocioFiltro] = useState("");
   const [cardFiltro, setCardFiltro] = useState<CardFiltro | null>(null);
   const [buscaLivre, setBuscaLivre] = useState("");
