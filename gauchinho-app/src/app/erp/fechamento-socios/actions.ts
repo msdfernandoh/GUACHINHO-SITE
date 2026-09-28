@@ -32,7 +32,7 @@ export type PainelFechamento = {
   desempenhoConsultores: Array<{ mes: string; consultoresAtivos: number; novosConsultores: number; vendas: number; creditoVendido: number; repassesGerados: number }>;
   metasComerciais: { consultores: number; vendas: number; credito: number };
   bancoEmpresa: { id: string; nome: string; saldoSistema: number } | null;
-  socios: Array<{ id: string; nome: string; percentual: number; comissaoGuardada: number; adiantamentoPessoal: number; saldoAnterior: number }>;
+  socios: Array<{ id: string; nome: string; percentual: number; comissaoGuardada: number; comissaoGuardadaMensal: Array<{ competencia: string; valor: number }>; comissaoFuturaMensal: Array<{ competencia: string; valor: number }>; adiantamentoPessoal: number; saldoAnterior: number }>;
   bloqueios: string[];
   fechamentos: Array<{ id: string; periodo_inicio: string; periodo_fim: string; created_at: string; demonstrativo: FechamentoCalculado }>;
 };
@@ -57,7 +57,7 @@ async function lerPainel(): Promise<PainelFechamento> {
     admin.from("socio_conta_corrente_movimentos").select("socio_id,valor,origem_tipo,estornado,data_movimento").eq("empresa_id", empresaAtiva.id),
     admin.from("financeiro_recebimento_itens").select("recebimento_id,previsao_franquia_id,valor_liquidado"),
     admin.from("comissao_previsoes_franquia").select("id,venda_id,valor_previsto,valor_imposto").eq("empresa_id", empresaAtiva.id),
-    admin.from("comissao_previsoes_participantes").select("previsao_franquia_id,participante_comercial_id,valor_previsto").eq("empresa_id", empresaAtiva.id).neq("status", "cancelada"),
+    admin.from("comissao_previsoes_participantes").select("previsao_franquia_id,participante_comercial_id,competencia,valor_previsto,valor_pago,status").eq("empresa_id", empresaAtiva.id).neq("status", "cancelada"),
     admin.from("vendas").select("id,participante_comercial_id,valor_credito,status,data_venda").eq("empresa_id", empresaAtiva.id),
     admin.from("metas_comerciais").select("indicador,valor_meta,data_inicio,data_fim").eq("empresa_id", empresaAtiva.id).eq("alvo_tipo", "empresa"),
   ]);
@@ -94,7 +94,7 @@ async function lerPainel(): Promise<PainelFechamento> {
         .reduce((soma, m) => soma + numero(m.valor), 0);
     const anterior = ultimo?.demonstrativo?.socios?.find((item) => item.id === s.id);
     const saldoAnterior = arredondar(numero(anterior?.ficouNaEmpresa) - numero(anterior?.faltaCobrir));
-    return { id: s.id, nome, percentual: numero(s.percentual_participacao), comissaoGuardada: arredondar(comissaoGuardada), adiantamentoPessoal: arredondar(adiantamentoPessoal), saldoAnterior };
+    return { id: s.id, nome, percentual: numero(s.percentual_participacao), comissaoGuardada: arredondar(comissaoGuardada), comissaoGuardadaMensal: [] as Array<{ competencia: string; valor: number }>, comissaoFuturaMensal: [] as Array<{ competencia: string; valor: number }>, adiantamentoPessoal: arredondar(adiantamentoPessoal), saldoAnterior };
   });
   const banco = (bancosRes.data || []).find((b) => /empresa/i.test(b.nome)) || null;
   const saldoBanco = (saldosRes.data || []).find((s) => s.id === banco?.id);
@@ -123,6 +123,23 @@ async function lerPainel(): Promise<PainelFechamento> {
     const itens = previsoesParticipantes.get(previsao.previsao_franquia_id) || [];
     itens.push({ participante_comercial_id: previsao.participante_comercial_id, valor_previsto: numero(previsao.valor_previsto) });
     previsoesParticipantes.set(previsao.previsao_franquia_id, itens);
+  }
+  const competenciaAtual = hoje.slice(0, 7);
+  for (const socio of socios) {
+    const porMesGuardado = new Map<string, number>();
+    for (const pagamento of pagamentosRes.data || []) {
+      if (pagamento.data_pagamento < inicioProximo || pagamento.data_pagamento > hoje || participantes.get(pagamento.participante_comercial_id) !== (sociosRes.data || []).find((item) => item.id === socio.id)?.usuario_id) continue;
+      const competencia = pagamento.data_pagamento.slice(0, 7);
+      porMesGuardado.set(competencia, numero(porMesGuardado.get(competencia)) + numero(pagamento.valor_liquido));
+    }
+    socio.comissaoGuardadaMensal = Array.from(porMesGuardado, ([competencia, valor]) => ({ competencia, valor: arredondar(valor) })).sort((a, b) => a.competencia.localeCompare(b.competencia));
+    const porMesFuturo = new Map<string, number>();
+    for (const previsao of previsoesParticipantesRes.data || []) {
+      if (previsao.competencia <= competenciaAtual || participantes.get(previsao.participante_comercial_id) !== (sociosRes.data || []).find((item) => item.id === socio.id)?.usuario_id) continue;
+      const disponivel = Math.max(0, numero(previsao.valor_previsto) - numero(previsao.valor_pago));
+      if (disponivel > 0) porMesFuturo.set(previsao.competencia, numero(porMesFuturo.get(previsao.competencia)) + disponivel);
+    }
+    socio.comissaoFuturaMensal = Array.from(porMesFuturo, ([competencia, valor]) => ({ competencia, valor: arredondar(valor) })).sort((a, b) => a.competencia.localeCompare(b.competencia));
   }
   let margemConsultores = 0;
   let comissoesConsultores = 0;

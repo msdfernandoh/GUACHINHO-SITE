@@ -1,5 +1,9 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
+### Comissões guardadas e futuras no fechamento (28/09/2026)
+
+Os cards individuais do fechamento mostram a origem mensal da comissão já guardada e, separadamente, as previsões futuras aguardando liberação. A comissão futura é calculada pelo saldo ainda não pago de previsões não canceladas posteriores ao mês atual e permanece fora do acerto presente. Relatório: `docs/relatorios-fases/COMISSOES-GUARDADAS-E-FUTURAS-FECHAMENTO-2026-09-28.md`.
+
 ### Navegação e conciliação do fechamento (28/09/2026)
 
 Cards, meses e categorias do painel de fechamento são navegáveis e encaminham, em nova aba, à lista correspondente de lançamentos. A lista de contas recebe filtros de URL por pagamento e centro de custo; “Sem categoria” encaminha ao cadastro de centros. O saldo bancário é tratado como posição de movimentos registrados: contas pagas pela empresa sem saída vinculada passam a ser uma pendência explícita que bloqueia o lacre até conciliação por conta e comprovante reais. Relatório: `docs/relatorios-fases/NAVEGACAO-E-CONCILIACAO-FECHAMENTO-2026-09-28.md`.
