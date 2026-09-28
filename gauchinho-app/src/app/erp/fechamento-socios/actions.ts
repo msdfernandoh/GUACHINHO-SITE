@@ -28,7 +28,7 @@ export type PainelFechamento = {
   receitasEventos: number;
   comissoesConsultores: number;
   comissoesPorPessoa: Array<{ nome: string; papel: "SOCIO" | "CONSULTOR"; recebidaNoCaixa: number; reservada: number }>;
-  despesasPorMes: Array<{ mes: string; total: number; categorias: Array<{ centroId: string | null; nome: string; gasto: number; teto: number | null; variacao: number | null }> }>;
+  despesasPorMes: Array<{ mes: string; total: number; itens: Array<{ id: string; descricao: string; fornecedor: string | null; pagoEm: string; centroId: string | null; centroNome: string; valor: number }>; categorias: Array<{ centroId: string | null; nome: string; gasto: number; teto: number | null; variacao: number | null }> }>;
   desempenhoConsultores: Array<{ mes: string; consultoresAtivos: number; novosConsultores: number; vendas: number; creditoVendido: number; repassesGerados: number }>;
   metasComerciais: { consultores: number; vendas: number; credito: number };
   bancoEmpresa: { id: string; nome: string; saldoSistema: number } | null;
@@ -44,7 +44,7 @@ async function lerPainel(): Promise<PainelFechamento> {
     movimentosRes, bancosRes, saldosRes, cortesRes, dadosSocios, ledgerRes, recebimentoItensRes,
     previsoesFranquiaRes, previsoesParticipantesRes, vendasRes, metasRes] = await Promise.all([
     admin.from("empresa_socios").select("id,usuario_id,nome,percentual_participacao,ativo").eq("empresa_id", empresaAtiva.id).eq("ativo", true),
-    admin.from("financeiro_contas_pagar").select("id,valor,status,pago_em,pago_pessoalmente,socio_pagador_usuario_id,retirar_reserva_impostos,centro_custo_id,caixa_movimento_id,excluida_em").eq("empresa_id", empresaAtiva.id).is("excluida_em", null),
+    admin.from("financeiro_contas_pagar").select("id,descricao,fornecedor,valor,status,pago_em,pago_pessoalmente,socio_pagador_usuario_id,retirar_reserva_impostos,centro_custo_id,caixa_movimento_id,excluida_em").eq("empresa_id", empresaAtiva.id).is("excluida_em", null),
     admin.from("financeiro_centros_custo").select("id,nome,descontado_comissao,limite_mensal").eq("empresa_id", empresaAtiva.id),
     admin.from("financeiro_pagamentos").select("id,participante_comercial_id,valor_liquido,data_pagamento,status").eq("empresa_id", empresaAtiva.id).eq("status", "confirmado"),
     admin.from("participantes_comerciais").select("id,usuario_id,nome,status,data_entrada,created_at").eq("empresa_id", empresaAtiva.id),
@@ -196,7 +196,8 @@ async function lerPainel(): Promise<PainelFechamento> {
       const anteriorGasto = numero(anterior?.get(nome)?.gasto);
       return { centroId: item.centroId, nome, gasto: arredondar(item.gasto), teto: Array.from(centros.values()).find((c) => c.nome === nome)?.teto ?? null, variacao: indice ? arredondar(item.gasto - anteriorGasto) : null };
     }).sort((a, b) => b.gasto - a.gasto);
-    return { mes, total: arredondar(categorias.reduce((soma, categoria) => soma + categoria.gasto, 0)), categorias };
+    const itens = operacionais.filter((conta) => conta.pago_em?.slice(0, 7) === mes).map((conta) => ({ id: conta.id, descricao: conta.descricao, fornecedor: conta.fornecedor || null, pagoEm: conta.pago_em!, centroId: conta.centro_custo_id || null, centroNome: centros.get(conta.centro_custo_id)?.nome || "Sem categoria", valor: arredondar(numero(conta.valor)) })).sort((a, b) => a.pagoEm.localeCompare(b.pagoEm) || a.descricao.localeCompare(b.descricao));
+    return { mes, total: arredondar(categorias.reduce((soma, categoria) => soma + categoria.gasto, 0)), itens, categorias };
   });
   const mesesComercial = new Set<string>();
   const mesEntrada = (participante: { data_entrada: string | null; created_at: string | null }) => String(participante.data_entrada || participante.created_at || "").slice(0, 7);

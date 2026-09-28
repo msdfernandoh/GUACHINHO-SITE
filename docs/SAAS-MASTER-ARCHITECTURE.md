@@ -1,5 +1,9 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
+### Lista expansível de despesas no fechamento (28/09/2026)
+
+O demonstrativo mensal de despesas no fechamento permite abrir, na própria página, as contas pagas do mês ou de um centro de custo. A lista mostra data de baixa, descrição, fornecedor, centro e valor, usando somente o mesmo conjunto operacional já usado no rateio. Relatório: `docs/relatorios-fases/LISTA-EXPANSIVEL-DESPESAS-FECHAMENTO-2026-09-28.md`.
+
 ### Comissões guardadas e futuras no fechamento (28/09/2026)
 
 Os cards individuais do fechamento mostram a origem mensal da comissão já guardada e, separadamente, as previsões futuras aguardando liberação. A comissão futura é calculada pelo saldo ainda não pago de previsões não canceladas posteriores ao mês atual e permanece fora do acerto presente. Relatório: `docs/relatorios-fases/COMISSOES-GUARDADAS-E-FUTURAS-FECHAMENTO-2026-09-28.md`.
