@@ -1,5 +1,9 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
+### Cards expansíveis no fechamento (28/09/2026)
+
+Os cards do resumo no painel de fechamento abrem os lançamentos correspondentes na própria página: despesas, impostos, repasses, receitas de evento, movimentos de caixa e comissões. Cada card de sócio também permite abrir todos os lançamentos da comissão guardada, além da visão mensal. Relatório: `docs/relatorios-fases/CARDS-EXPANSIVEIS-FECHAMENTO-2026-09-28.md`.
+
 ### Lista expansível de comissões e previsão do mês atual (28/09/2026)
 
 Os quadros de comissão guardada e aguardando liberação abrem o detalhamento por mês dentro do fechamento. Previsões pendentes da competência atual também são exibidas, individualmente por cota, inclusive quando possuem mesmo cliente, etapa e valor. Relatório: `docs/relatorios-fases/LISTA-COMISSOES-E-PREVISAO-SETEMBRO-2026-09-28.md`.

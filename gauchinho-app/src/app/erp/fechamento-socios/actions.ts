@@ -21,14 +21,18 @@ export type PainelFechamento = {
   quantidadeDespesasSemSaida: number;
   saldoAposDespesasPendentes: number;
   impostosPagos: number;
+  impostosPagosDetalhes: Array<{ id: string; descricao: string; fornecedor: string | null; pagoEm: string; centroNome: string; valor: number }>;
   reservaImpostos: number;
   contasEmpresa: Array<{ id: string; nome: string }>;
   repassesRecebidos: number;
+  repassesDetalhes: Array<{ id: string; data: string; descricao: string; valor: number }>;
   margemConsultores: number;
   receitasEventos: number;
+  receitasEventosDetalhes: Array<{ id: string; data: string; descricao: string; valor: number }>;
+  movimentosEmpresa: Array<{ id: string; data: string; descricao: string; categoria: string; tipo: "ENTRADA" | "SAIDA"; valor: number }>;
   comissoesConsultores: number;
   comissoesPorPessoa: Array<{ nome: string; papel: "SOCIO" | "CONSULTOR"; recebidaNoCaixa: number; reservada: number }>;
-  despesasPorMes: Array<{ mes: string; total: number; itens: Array<{ id: string; descricao: string; fornecedor: string | null; pagoEm: string; centroId: string | null; centroNome: string; valor: number }>; categorias: Array<{ centroId: string | null; nome: string; gasto: number; teto: number | null; variacao: number | null }> }>;
+  despesasPorMes: Array<{ mes: string; total: number; itens: Array<{ id: string; descricao: string; fornecedor: string | null; pagoEm: string; centroId: string | null; centroNome: string; valor: number; semSaida: boolean }>; categorias: Array<{ centroId: string | null; nome: string; gasto: number; teto: number | null; variacao: number | null }> }>;
   desempenhoConsultores: Array<{ mes: string; consultoresAtivos: number; novosConsultores: number; vendas: number; creditoVendido: number; repassesGerados: number }>;
   metasComerciais: { consultores: number; vendas: number; credito: number };
   bancoEmpresa: { id: string; nome: string; saldoSistema: number } | null;
@@ -48,8 +52,8 @@ async function lerPainel(): Promise<PainelFechamento> {
     admin.from("financeiro_centros_custo").select("id,nome,descontado_comissao,limite_mensal").eq("empresa_id", empresaAtiva.id),
     admin.from("financeiro_pagamentos").select("id,participante_comercial_id,valor_liquido,data_pagamento,status").eq("empresa_id", empresaAtiva.id).eq("status", "confirmado"),
     admin.from("participantes_comerciais").select("id,usuario_id,nome,status,data_entrada,created_at").eq("empresa_id", empresaAtiva.id),
-    admin.from("financeiro_recebimentos").select("id,valor_total,data_recebimento,status").eq("empresa_id", empresaAtiva.id).eq("status", "confirmado"),
-    admin.from("financeiro_conta_movimentos").select("id,valor,data_movimento,tipo,categoria").eq("empresa_id", empresaAtiva.id),
+    admin.from("financeiro_recebimentos").select("id,valor_total,data_recebimento,status,observacoes").eq("empresa_id", empresaAtiva.id).eq("status", "confirmado"),
+    admin.from("financeiro_conta_movimentos").select("id,valor,data_movimento,tipo,categoria,descricao").eq("empresa_id", empresaAtiva.id),
     admin.from("financeiro_contas_bancarias").select("id,nome,ativo").eq("empresa_id", empresaAtiva.id).eq("ativo", true),
     admin.from("financeiro_contas_saldos").select("id,saldo_atual").eq("empresa_id", empresaAtiva.id),
     admin.from("financeiro_fechamentos_socios_cortes").select("id,periodo_inicio,periodo_fim,created_at,demonstrativo").eq("empresa_id", empresaAtiva.id).order("periodo_fim", { ascending: false }).limit(24),
@@ -80,6 +84,14 @@ async function lerPainel(): Promise<PainelFechamento> {
   const centros = new Map((centrosRes.data || []).map((c) => [c.id, { nome: c.nome || "Sem categoria", teto: c.limite_mensal === null ? null : numero(c.limite_mensal) }]));
   const contasPeriodo = (contasRes.data || []).filter((c) => c.status === "paga" && c.pago_em && c.pago_em >= inicioProximo && c.pago_em <= hoje);
   const operacionais = contasPeriodo.filter((c) => !c.retirar_reserva_impostos && !centrosFiscal.has(c.centro_custo_id));
+  const impostosPagosDetalhes = contasPeriodo.filter((c) => c.retirar_reserva_impostos).map((conta) => ({
+    id: conta.id,
+    descricao: conta.descricao,
+    fornecedor: conta.fornecedor || null,
+    pagoEm: conta.pago_em!,
+    centroNome: centros.get(conta.centro_custo_id)?.nome || "Impostos",
+    valor: arredondar(numero(conta.valor)),
+  })).sort((a, b) => a.pagoEm.localeCompare(b.pagoEm));
   const despesasEmpresaSemSaida = contasPeriodo.filter((c) => !c.pago_pessoalmente && !c.caixa_movimento_id);
   const participantes = new Map((participantesRes.data || []).map((p) => [p.id, p.usuario_id]));
   const socios = (sociosRes.data || []).map((s) => {
@@ -189,6 +201,20 @@ async function lerPainel(): Promise<PainelFechamento> {
   const receitasEventos = (movimentosRes.data || [])
     .filter((m) => m.tipo === "ENTRADA" && m.categoria === "RECEITA_EVENTO" && m.data_movimento >= inicioProximo && m.data_movimento <= hoje)
     .reduce((soma, m) => soma + numero(m.valor), 0);
+  const repassesDetalhes = recebimentosConfirmados.map((recebimento) => ({
+    id: recebimento.id,
+    data: recebimento.data_recebimento,
+    descricao: recebimento.observacoes || "Repasse recebido da Racon",
+    valor: arredondar(numero(recebimento.valor_total)),
+  })).sort((a, b) => a.data.localeCompare(b.data));
+  const receitasEventosDetalhes = (movimentosRes.data || [])
+    .filter((movimento) => movimento.tipo === "ENTRADA" && movimento.categoria === "RECEITA_EVENTO" && movimento.data_movimento >= inicioProximo && movimento.data_movimento <= hoje)
+    .map((movimento) => ({ id: movimento.id, data: movimento.data_movimento, descricao: movimento.descricao || "Receita de evento", valor: arredondar(numero(movimento.valor)) }))
+    .sort((a, b) => a.data.localeCompare(b.data));
+  const movimentosEmpresa = (movimentosRes.data || [])
+    .filter((movimento) => movimento.data_movimento >= inicioProximo && movimento.data_movimento <= hoje)
+    .map((movimento) => ({ id: movimento.id, data: movimento.data_movimento, descricao: movimento.descricao || movimento.categoria.replaceAll("_", " "), categoria: movimento.categoria, tipo: movimento.tipo as "ENTRADA" | "SAIDA", valor: arredondar(numero(movimento.valor)) }))
+    .sort((a, b) => a.data.localeCompare(b.data));
   const porMes = new Map<string, Map<string, { centroId: string | null; gasto: number }>>();
   for (const conta of (contasRes.data || []).filter((c) => c.status === "paga" && c.pago_em && !c.retirar_reserva_impostos && !centrosFiscal.has(c.centro_custo_id))) {
     const mes = conta.pago_em!.slice(0, 7);
@@ -205,7 +231,7 @@ async function lerPainel(): Promise<PainelFechamento> {
       const anteriorGasto = numero(anterior?.get(nome)?.gasto);
       return { centroId: item.centroId, nome, gasto: arredondar(item.gasto), teto: Array.from(centros.values()).find((c) => c.nome === nome)?.teto ?? null, variacao: indice ? arredondar(item.gasto - anteriorGasto) : null };
     }).sort((a, b) => b.gasto - a.gasto);
-    const itens = operacionais.filter((conta) => conta.pago_em?.slice(0, 7) === mes).map((conta) => ({ id: conta.id, descricao: conta.descricao, fornecedor: conta.fornecedor || null, pagoEm: conta.pago_em!, centroId: conta.centro_custo_id || null, centroNome: centros.get(conta.centro_custo_id)?.nome || "Sem categoria", valor: arredondar(numero(conta.valor)) })).sort((a, b) => a.pagoEm.localeCompare(b.pagoEm) || a.descricao.localeCompare(b.descricao));
+    const itens = operacionais.filter((conta) => conta.pago_em?.slice(0, 7) === mes).map((conta) => ({ id: conta.id, descricao: conta.descricao, fornecedor: conta.fornecedor || null, pagoEm: conta.pago_em!, centroId: conta.centro_custo_id || null, centroNome: centros.get(conta.centro_custo_id)?.nome || "Sem categoria", valor: arredondar(numero(conta.valor)), semSaida: !conta.pago_pessoalmente && !conta.caixa_movimento_id })).sort((a, b) => a.pagoEm.localeCompare(b.pagoEm) || a.descricao.localeCompare(b.descricao));
     return { mes, total: arredondar(categorias.reduce((soma, categoria) => soma + categoria.gasto, 0)), itens, categorias };
   });
   const mesesComercial = new Set<string>();
@@ -233,11 +259,15 @@ async function lerPainel(): Promise<PainelFechamento> {
     quantidadeDespesasSemSaida: despesasEmpresaSemSaida.length,
     saldoAposDespesasPendentes: arredondar(saldoSistemaBanco - totalSemSaida),
     impostosPagos: arredondar(contasPeriodo.filter((c) => c.retirar_reserva_impostos).reduce((soma, c) => soma + numero(c.valor), 0)),
+    impostosPagosDetalhes,
     reservaImpostos: dadosSocios.reservaImpostosControle.saldoReserva,
     contasEmpresa: (bancosRes.data || []).map((b) => ({ id: b.id, nome: b.nome })),
     repassesRecebidos: arredondar(recebidos),
+    repassesDetalhes,
     margemConsultores: arredondar(margemConsultores),
     receitasEventos: arredondar(receitasEventos),
+    receitasEventosDetalhes,
+    movimentosEmpresa,
     comissoesConsultores: arredondar(comissoesConsultores),
     comissoesPorPessoa: Array.from(comissoesPorPessoa.values()).map((item) => ({ ...item, recebidaNoCaixa: arredondar(item.recebidaNoCaixa), reservada: arredondar(item.reservada) })).sort((a, b) => a.papel.localeCompare(b.papel) || a.nome.localeCompare(b.nome)),
     despesasPorMes,
