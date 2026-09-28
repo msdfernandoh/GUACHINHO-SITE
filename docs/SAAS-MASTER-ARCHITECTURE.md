@@ -1,5 +1,9 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
+### Lista expansível de comissões e previsão do mês atual (28/09/2026)
+
+Os quadros de comissão guardada e aguardando liberação abrem o detalhamento por mês dentro do fechamento. Previsões pendentes da competência atual também são exibidas. O leitor agrupa previsões comerciais idênticas para impedir que registros duplicados alterem a projeção visual, preservando os registros brutos para auditoria. Relatório: `docs/relatorios-fases/LISTA-COMISSOES-E-PREVISAO-SETEMBRO-2026-09-28.md`.
+
 ### Lista expansível de despesas no fechamento (28/09/2026)
 
 O demonstrativo mensal de despesas no fechamento permite abrir, na própria página, as contas pagas do mês ou de um centro de custo. A lista mostra data de baixa, descrição, fornecedor, centro e valor, usando somente o mesmo conjunto operacional já usado no rateio. Relatório: `docs/relatorios-fases/LISTA-EXPANSIVEL-DESPESAS-FECHAMENTO-2026-09-28.md`.

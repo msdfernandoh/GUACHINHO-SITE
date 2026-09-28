@@ -32,7 +32,7 @@ export type PainelFechamento = {
   desempenhoConsultores: Array<{ mes: string; consultoresAtivos: number; novosConsultores: number; vendas: number; creditoVendido: number; repassesGerados: number }>;
   metasComerciais: { consultores: number; vendas: number; credito: number };
   bancoEmpresa: { id: string; nome: string; saldoSistema: number } | null;
-  socios: Array<{ id: string; nome: string; percentual: number; comissaoGuardada: number; comissaoGuardadaMensal: Array<{ competencia: string; valor: number }>; comissaoFuturaMensal: Array<{ competencia: string; valor: number }>; adiantamentoPessoal: number; saldoAnterior: number }>;
+  socios: Array<{ id: string; nome: string; percentual: number; comissaoGuardada: number; comissaoGuardadaMensal: Array<{ competencia: string; valor: number; itens: Array<{ descricao: string; cliente: string; valor: number; status: string }> }>; comissaoFuturaMensal: Array<{ competencia: string; valor: number; itens: Array<{ descricao: string; cliente: string; valor: number; status: string }> }>; adiantamentoPessoal: number; saldoAnterior: number }>;
   bloqueios: string[];
   fechamentos: Array<{ id: string; periodo_inicio: string; periodo_fim: string; created_at: string; demonstrativo: FechamentoCalculado }>;
 };
@@ -57,8 +57,8 @@ async function lerPainel(): Promise<PainelFechamento> {
     admin.from("socio_conta_corrente_movimentos").select("socio_id,valor,origem_tipo,estornado,data_movimento").eq("empresa_id", empresaAtiva.id),
     admin.from("financeiro_recebimento_itens").select("recebimento_id,previsao_franquia_id,valor_liquidado"),
     admin.from("comissao_previsoes_franquia").select("id,venda_id,valor_previsto,valor_imposto").eq("empresa_id", empresaAtiva.id),
-    admin.from("comissao_previsoes_participantes").select("previsao_franquia_id,participante_comercial_id,competencia,valor_previsto,valor_pago,status").eq("empresa_id", empresaAtiva.id).neq("status", "cancelada"),
-    admin.from("vendas").select("id,participante_comercial_id,valor_credito,status,data_venda").eq("empresa_id", empresaAtiva.id),
+    admin.from("comissao_previsoes_participantes").select("id,venda_id,previsao_franquia_id,participante_comercial_id,competencia,nome_etapa,valor_previsto,valor_pago,status").eq("empresa_id", empresaAtiva.id).neq("status", "cancelada"),
+    admin.from("vendas").select("id,participante_comercial_id,cliente_nome,valor_credito,status,data_venda").eq("empresa_id", empresaAtiva.id),
     admin.from("metas_comerciais").select("indicador,valor_meta,data_inicio,data_fim").eq("empresa_id", empresaAtiva.id).eq("alvo_tipo", "empresa"),
   ]);
   const erro = [sociosRes, contasRes, centrosRes, pagamentosRes, participantesRes,
@@ -94,7 +94,7 @@ async function lerPainel(): Promise<PainelFechamento> {
         .reduce((soma, m) => soma + numero(m.valor), 0);
     const anterior = ultimo?.demonstrativo?.socios?.find((item) => item.id === s.id);
     const saldoAnterior = arredondar(numero(anterior?.ficouNaEmpresa) - numero(anterior?.faltaCobrir));
-    return { id: s.id, nome, percentual: numero(s.percentual_participacao), comissaoGuardada: arredondar(comissaoGuardada), comissaoGuardadaMensal: [] as Array<{ competencia: string; valor: number }>, comissaoFuturaMensal: [] as Array<{ competencia: string; valor: number }>, adiantamentoPessoal: arredondar(adiantamentoPessoal), saldoAnterior };
+    return { id: s.id, nome, percentual: numero(s.percentual_participacao), comissaoGuardada: arredondar(comissaoGuardada), comissaoGuardadaMensal: [] as Array<{ competencia: string; valor: number; itens: Array<{ descricao: string; cliente: string; valor: number; status: string }> }>, comissaoFuturaMensal: [] as Array<{ competencia: string; valor: number; itens: Array<{ descricao: string; cliente: string; valor: number; status: string }> }>, adiantamentoPessoal: arredondar(adiantamentoPessoal), saldoAnterior };
   });
   const banco = (bancosRes.data || []).find((b) => /empresa/i.test(b.nome)) || null;
   const saldoBanco = (saldosRes.data || []).find((s) => s.id === banco?.id);
@@ -116,7 +116,7 @@ async function lerPainel(): Promise<PainelFechamento> {
   const recebimentosConfirmados = (recebimentosRes.data || []).filter((r) => r.data_recebimento >= inicioProximo && r.data_recebimento <= hoje);
   const idsRecebimentos = new Set(recebimentosConfirmados.map((r) => r.id));
   const previsoesFranquia = new Map((previsoesFranquiaRes.data || []).map((p) => [p.id, p]));
-  const vendas = new Map((vendasRes.data || []).map((v) => [v.id, v.participante_comercial_id]));
+  const vendas = new Map((vendasRes.data || []).map((v) => [v.id, v]));
   const sociosUsuarios = new Set((sociosRes.data || []).map((s) => s.usuario_id));
   const previsoesParticipantes = new Map<string, Array<{ participante_comercial_id: string; valor_previsto: number }>>();
   for (const previsao of previsoesParticipantesRes.data || []) {
@@ -126,20 +126,33 @@ async function lerPainel(): Promise<PainelFechamento> {
   }
   const competenciaAtual = hoje.slice(0, 7);
   for (const socio of socios) {
-    const porMesGuardado = new Map<string, number>();
+    const porMesGuardado = new Map<string, { valor: number; itens: Array<{ descricao: string; cliente: string; valor: number; status: string }> }>();
     for (const pagamento of pagamentosRes.data || []) {
       if (pagamento.data_pagamento < inicioProximo || pagamento.data_pagamento > hoje || participantes.get(pagamento.participante_comercial_id) !== (sociosRes.data || []).find((item) => item.id === socio.id)?.usuario_id) continue;
       const competencia = pagamento.data_pagamento.slice(0, 7);
-      porMesGuardado.set(competencia, numero(porMesGuardado.get(competencia)) + numero(pagamento.valor_liquido));
+      const atual = porMesGuardado.get(competencia) || { valor: 0, itens: [] };
+      atual.valor += numero(pagamento.valor_liquido);
+      atual.itens.push({ descricao: `Pagamento confirmado em ${pagamento.data_pagamento.split("-").reverse().join("/")}`, cliente: "Comissão mantida no caixa", valor: numero(pagamento.valor_liquido), status: "guardada" });
+      porMesGuardado.set(competencia, atual);
     }
-    socio.comissaoGuardadaMensal = Array.from(porMesGuardado, ([competencia, valor]) => ({ competencia, valor: arredondar(valor) })).sort((a, b) => a.competencia.localeCompare(b.competencia));
-    const porMesFuturo = new Map<string, number>();
+    socio.comissaoGuardadaMensal = Array.from(porMesGuardado, ([competencia, item]) => ({ competencia, valor: arredondar(item.valor), itens: item.itens })).sort((a, b) => a.competencia.localeCompare(b.competencia));
+    const porMesFuturo = new Map<string, { valor: number; itens: Array<{ descricao: string; cliente: string; valor: number; status: string }> }>();
+    const previsoesJaContadas = new Set<string>();
     for (const previsao of previsoesParticipantesRes.data || []) {
-      if (previsao.competencia <= competenciaAtual || participantes.get(previsao.participante_comercial_id) !== (sociosRes.data || []).find((item) => item.id === socio.id)?.usuario_id) continue;
+      if (previsao.competencia < competenciaAtual || participantes.get(previsao.participante_comercial_id) !== (sociosRes.data || []).find((item) => item.id === socio.id)?.usuario_id) continue;
+      const chaveComercial = [previsao.venda_id, previsao.participante_comercial_id, previsao.competencia, previsao.nome_etapa, numero(previsao.valor_previsto)].join(":");
+      if (previsoesJaContadas.has(chaveComercial)) continue;
+      previsoesJaContadas.add(chaveComercial);
       const disponivel = Math.max(0, numero(previsao.valor_previsto) - numero(previsao.valor_pago));
-      if (disponivel > 0) porMesFuturo.set(previsao.competencia, numero(porMesFuturo.get(previsao.competencia)) + disponivel);
+      if (disponivel > 0) {
+        const atual = porMesFuturo.get(previsao.competencia) || { valor: 0, itens: [] };
+        atual.valor += disponivel;
+        const venda = vendas.get(previsao.venda_id);
+        atual.itens.push({ descricao: previsao.nome_etapa || "Etapa da comissão", cliente: venda?.cliente_nome || "Cliente não informado", valor: arredondar(disponivel), status: previsao.status });
+        porMesFuturo.set(previsao.competencia, atual);
+      }
     }
-    socio.comissaoFuturaMensal = Array.from(porMesFuturo, ([competencia, valor]) => ({ competencia, valor: arredondar(valor) })).sort((a, b) => a.competencia.localeCompare(b.competencia));
+    socio.comissaoFuturaMensal = Array.from(porMesFuturo, ([competencia, item]) => ({ competencia, valor: arredondar(item.valor), itens: item.itens })).sort((a, b) => a.competencia.localeCompare(b.competencia));
   }
   let margemConsultores = 0;
   let comissoesConsultores = 0;
@@ -162,7 +175,7 @@ async function lerPainel(): Promise<PainelFechamento> {
     if (!idsRecebimentos.has(item.recebimento_id)) continue;
     const previsao = previsoesFranquia.get(item.previsao_franquia_id);
     if (!previsao) continue;
-    const participanteVenda = vendas.get(previsao.venda_id);
+    const participanteVenda = vendas.get(previsao.venda_id)?.participante_comercial_id;
     const usuarioVenda = participanteVenda ? participantes.get(participanteVenda) : null;
     if (usuarioVenda && sociosUsuarios.has(usuarioVenda)) continue;
     const valorItem = numero(item.valor_liquidado);
