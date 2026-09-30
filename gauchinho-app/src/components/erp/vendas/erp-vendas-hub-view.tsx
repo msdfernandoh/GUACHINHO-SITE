@@ -255,6 +255,9 @@ export function ErpVendasHubView({
     return programaEditId ? 2.0 : 4.0;
   }, [programaEditId, modalidades, regrasFranquia, editTipoVenda]);
 
+  const normalizarBusca = (texto: string) => texto.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  const palavrasBusca = normalizarBusca(termoBusca).trim().split(/\s+/).filter(Boolean);
+  const cotasFiltradas = cotas.filter((c) => palavrasBusca.every((palavra) => normalizarBusca(`${c.cliente_nome || ""} ${c.consultor_nome || ""} ${c.numero_grupo} ${c.numero_cota || ""} ${c.status}`).includes(palavra)));
   // Filtragem de vendas
   const vendasFiltradas = vendas.filter((v) => {
     if (competencia !== "todos" && (v.data_primeira_parcela||v.data_venda).slice(0,7) !== competencia) return false;
@@ -538,7 +541,7 @@ export function ErpVendasHubView({
       <section className="space-y-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-2xs dark:border-slate-800 dark:bg-slate-900">
         <div className="flex items-center justify-between border-b pb-3">
           <h2 className="text-base font-black text-slate-900 dark:text-white">
-            Cotas Definitivas ({cotas.length})
+            Cotas Definitivas ({cotasFiltradas.length})
           </h2>
         </div>
 
@@ -558,7 +561,7 @@ export function ErpVendasHubView({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                {cotas.map((c) => (
+                {cotasFiltradas.map((c) => (
                   <tr key={c.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition">
                     <td className="p-3 font-mono font-bold text-slate-900 dark:text-white">Grupo {c.numero_grupo}</td>
                     <td className="p-3">
@@ -621,6 +624,13 @@ export function ErpVendasHubView({
                     </td>
                   </tr>
                 ))}
+                {!cotasFiltradas.length && (
+                  <tr>
+                    <td colSpan={6} className="p-6 text-center text-sm text-slate-500">
+                      Nenhuma cota encontrada para esta busca.
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>

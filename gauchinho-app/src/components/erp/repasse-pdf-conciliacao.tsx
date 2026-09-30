@@ -126,48 +126,19 @@ function SearchablePrevisaoSelect({ previsoes, defaultValue = "", placeholder = 
     setSelectedId(defaultValue);
   }, [defaultValue]);
 
-  const normalizado = termo.trim().toLocaleLowerCase("pt-BR");
-  const filtradas = normalizado
-    ? previsoes.filter((p) => {
-        const full = `${p.competencia} ${p.cliente_nome} ${p.numero_grupo ?? ""} ${p.numero_cota ?? ""} ${p.ordem_cota ?? ""} ${p.ordem_etapa}`.toLocaleLowerCase("pt-BR");
-        return full.includes(normalizado) || previsaoLabel(p).toLocaleLowerCase("pt-BR").includes(normalizado);
-      })
-    : previsoes;
-  const atual = selectedId ? previsoes.find((p) => p.id === selectedId) : null;
-  const opcoes = atual && !filtradas.some((p) => p.id === atual.id) ? [atual, ...filtradas] : filtradas;
-
-  return <div className="min-w-72 flex-1 space-y-1">
-    <input
-      type="search"
-      value={termo}
-      onChange={(event) => {
-        const val = event.target.value;
-        setTermo(val);
-        const norm = val.trim().toLocaleLowerCase("pt-BR");
-        if (norm) {
-          const matches = previsoes.filter((p) => {
-            const full = `${p.competencia} ${p.cliente_nome} ${p.numero_grupo ?? ""} ${p.numero_cota ?? ""} ${p.ordem_cota ?? ""} ${p.ordem_etapa}`.toLocaleLowerCase("pt-BR");
-            return full.includes(norm) || previsaoLabel(p).toLocaleLowerCase("pt-BR").includes(norm);
-          });
-          if (matches.length === 1) {
-            setSelectedId(matches[0].id);
-          }
-        }
-      }}
-      placeholder={placeholder}
-      className="w-full rounded-lg border bg-white p-1.5 font-normal dark:bg-slate-900"
-    />
-    <select
-      name="previsao_franquia_id"
-      required
-      value={selectedId}
-      onChange={(event) => setSelectedId(event.target.value)}
-      className="w-full rounded-lg border bg-white p-1.5 dark:bg-slate-900"
-    >
-      <option value="">Selecione uma comissão aberta, em qualquer competência ({opcoes.length} encontrada(s))</option>
-      {opcoes.map((p) => <option key={p.id} value={p.id}>{previsaoLabel(p)}</option>)}
-    </select>
-  </div>;
+  const normalizar = (texto: string) => texto.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("pt-BR");
+  const palavras = normalizar(termo).trim().split(/\s+/).filter(Boolean);
+  const filtradas = previsoes.filter((p) => palavras.every((palavra) => normalizar(previsaoLabel(p)).includes(palavra)));
+  const atual = previsoes.find((p) => p.id === selectedId);
+  return <details className="relative min-w-72 flex-1 rounded-lg border bg-white text-slate-950">
+    <summary className="cursor-pointer p-2">{atual ? previsaoLabel(atual) : "Selecione uma comissão aberta"}</summary>
+    <input type="hidden" name="previsao_franquia_id" value={selectedId} />
+    <div className="rounded-lg border-t bg-white p-2 shadow-lg">
+      <input type="search" aria-label="Buscar comissão para vínculo" value={termo} onChange={(event) => setTermo(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") event.preventDefault(); }} placeholder={`${placeholder}, grupo, cota ou competência`} className="mb-2 w-full rounded-lg border p-2 text-slate-950" />
+      <p className="mb-1 text-xs text-slate-500">{filtradas.length} comissão(ões) encontrada(s)</p>
+      <div className="max-h-64 overflow-auto">{filtradas.map((p) => <button type="button" key={p.id} onClick={(event) => { setSelectedId(p.id); event.currentTarget.closest("details")?.removeAttribute("open"); }} className={`block w-full rounded p-2 text-left text-xs hover:bg-blue-50 ${p.id === selectedId ? "bg-blue-100 font-bold" : ""}`}>{previsaoLabel(p)}</button>)}{!filtradas.length && <p className="p-2 text-sm text-slate-500">Nenhuma comissão encontrada.</p>}</div>
+    </div>
+  </details>;
 }
 
 export function RepassePdfConciliacao({
