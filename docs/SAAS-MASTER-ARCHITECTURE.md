@@ -1,5 +1,17 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
+### Hotfix — criação de usuário com menu Fechamento dos Sócios (30/09/2026)
+
+A constraint de `empresa_usuarios.erp_modulos_visiveis` passa a aceitar o ID
+canônico `conta-corrente-socios`, usado pelo menu exibido como “Fechamento dos
+Sócios”. A correção elimina a rejeição da inserção de um novo vínculo quando o
+tenant possui o módulo Financeiro habilitado. A migration 301 é forward-only,
+não altera vínculos existentes e não concede novos acessos por si só. Relatório:
+`docs/relatorios-fases/HOTFIX-CRIACAO-USUARIO-FECHAMENTO-SOCIOS-2026-09-30.md`.
+Até a aplicação isolada da migration no histórico remoto reconciliado, a action
+repete exclusivamente essa gravação sem o atalho rejeitado, preservando a
+criação do vínculo N:N sem retornar erro 500.
+
 ### Edição auditada da data do pagamento (30/09/2026)
 
 O modal de edição de contas pagas no Fechamento dos Sócios e em Contas a Pagar

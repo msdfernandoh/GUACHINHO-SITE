@@ -10,6 +10,12 @@ import { requireTenantPermission } from "@/lib/tenant/context";
 import { normalizeErpAccessIds } from "@/lib/erp/erp-acesso";
 import { isMissingErpUserLinkColumns } from "@/lib/erp/migration-077-compat";
 
+function isLegacyErpClosingMenuConstraint(error: unknown): boolean {
+  const candidate = error as { code?: unknown; message?: unknown } | null | undefined;
+  const details = `${String(candidate?.code ?? "")} ${String(candidate?.message ?? "")}`;
+  return details.includes("23514") && /empresa_usuarios_erp_modulos_visiveis_check/i.test(details);
+}
+
 function redirectUsuarios(codigo: string): never {
   redirect(`/admin/usuarios?flash=${encodeURIComponent(codigo)}`);
 }
@@ -228,6 +234,12 @@ export async function createUsuarioAction(formData: FormData) {
       google_agenda_sync: googleAgendaSync && isGmailAddress(email),
       admin_menus: adminMenus,
     };
+    const vinculoSemFechamentoSocios = {
+      ...vinculoBase,
+      // Compatibilidade temporária para bases cujo check da migration 077
+      // ainda não conhece este ID. A migration 301 elimina este fallback.
+      erp_modulos_visiveis: erpMenus.filter((menu) => menu !== "conta-corrente-socios"),
+    };
     let vinculoQuery = vinculoExistente
       ? admin.from("empresa_usuarios").update(vinculoBase).eq("id", vinculoExistente.id)
       : admin.from("empresa_usuarios").insert(vinculoBase);
@@ -239,6 +251,11 @@ export async function createUsuarioAction(formData: FormData) {
       vinculoQuery = vinculoExistente
         ? admin.from("empresa_usuarios").update(vinculoLegado).eq("id", vinculoExistente.id)
         : admin.from("empresa_usuarios").insert(vinculoLegado);
+      ({ error: vinculoErr } = await vinculoQuery);
+    } else if (vinculoErr && isLegacyErpClosingMenuConstraint(vinculoErr)) {
+      vinculoQuery = vinculoExistente
+        ? admin.from("empresa_usuarios").update(vinculoSemFechamentoSocios).eq("id", vinculoExistente.id)
+        : admin.from("empresa_usuarios").insert(vinculoSemFechamentoSocios);
       ({ error: vinculoErr } = await vinculoQuery);
     }
     if (vinculoErr) throw new Error(vinculoErr.message);

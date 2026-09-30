@@ -12,6 +12,18 @@ describe("relações de empresa_usuarios com usuarios", () => {
     expect(actions).toContain('parceiro: "parceiro_comercial"');
   });
 
+  it("mantém o menu de fechamento entre os IDs aceitos pelo vínculo ERP", () => {
+    const migration = source("../supabase/migrations/301_permitir_fechamento_socios_acesso_erp.sql");
+    expect(migration).toContain("'conta-corrente-socios'");
+    expect(migration).toContain("empresa_usuarios_erp_modulos_visiveis_check");
+  });
+
+  it("mantém a criação compatível enquanto a constraint antiga estiver no banco", () => {
+    const actions = source("src/app/admin/usuarios/actions.ts");
+    expect(actions).toContain("isLegacyErpClosingMenuConstraint");
+    expect(actions).toContain('menu !== "conta-corrente-socios"');
+  });
+
   it("escolhe usuario_id explicitamente quando convidado_por também referencia usuarios", () => {
     const relationFiles = [
       "src/app/admin/usuarios/actions.ts",
