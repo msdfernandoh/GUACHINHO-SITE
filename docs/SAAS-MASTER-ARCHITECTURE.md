@@ -1,5 +1,9 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
+### Buscas operacionais em repasse, cotas e fechamento (30/09/2026)
+
+O seletor de vínculo do repasse permite pesquisar a comissão aberta por cliente, grupo, cota, competência e parcela. A busca de Vendas e Cotas filtra tanto as vendas quanto as cotas definitivas. As listas abertas de despesas do fechamento possuem filtro local por descrição, fornecedor, centro de custo, data ou valor. As pesquisas ignoram acentos e aceitam palavras combinadas. Relatório: `docs/relatorios-fases/BUSCAS-REPASSE-COTAS-DESPESAS-2026-09-30.md`.
+
 ### Ajuste manual de parcelas de comissão (28/09/2026)
 
 O Master pode redistribuir parcelas não pagas de uma venda, mantendo parcelas pagas protegidas. A distribuição pode ser igual ou personalizada nas quatro primeiras parcelas. Relatório: `docs/relatorios-fases/AJUSTE-MANUAL-PARCELAS-COMISSAO-2026-09-28.md`.
