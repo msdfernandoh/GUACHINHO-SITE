@@ -19,6 +19,7 @@ const PERFIL_PARA_PAPEL = {
   srd: "consultor",
   imobiliaria: "parceiro_imobiliaria",
   visualizador: "visualizador",
+  parceiro: "parceiro_comercial",
 } as const;
 
 async function resolvePapelId(
@@ -208,13 +209,16 @@ export async function createUsuarioAction(formData: FormData) {
     if (vinculoLoadErr) throw new Error(vinculoLoadErr.message);
     if (vinculoExistente?.ativo) throw new Error("Usuário já possui vínculo ativo com esta empresa");
 
-    const vinculoBase = {
+    const vinculoLegado = {
       empresa_id: empresaAtiva.id,
       usuario_id: usuarioCriadoId,
       papel_id: papelId,
       ativo: true,
       convidado_por: usuario.id,
       origem: "ERP_USUARIOS",
+    };
+    const vinculoBase = {
+      ...vinculoLegado,
       socio_pagador: socioPagador,
       pode_estornar_contas: podeEstornarContas,
       erp_modulos_visiveis: erpMenus,
@@ -224,10 +228,19 @@ export async function createUsuarioAction(formData: FormData) {
       google_agenda_sync: googleAgendaSync && isGmailAddress(email),
       admin_menus: adminMenus,
     };
-    const vinculoQuery = vinculoExistente
+    let vinculoQuery = vinculoExistente
       ? admin.from("empresa_usuarios").update(vinculoBase).eq("id", vinculoExistente.id)
       : admin.from("empresa_usuarios").insert(vinculoBase);
-    const { error: vinculoErr } = await vinculoQuery;
+    let { error: vinculoErr } = await vinculoQuery;
+    // O cadastro da identidade e do vínculo N:N não depende das permissões
+    // operacionais adicionadas nas migrations posteriores. Em uma base que
+    // ainda não as recebeu, grava o vínculo canônico sem esses extras.
+    if (vinculoErr && isMissingErpUserLinkColumns(vinculoErr)) {
+      vinculoQuery = vinculoExistente
+        ? admin.from("empresa_usuarios").update(vinculoLegado).eq("id", vinculoExistente.id)
+        : admin.from("empresa_usuarios").insert(vinculoLegado);
+      ({ error: vinculoErr } = await vinculoQuery);
+    }
     if (vinculoErr) throw new Error(vinculoErr.message);
   } catch (error) {
     if (criouIdentidade && usuarioCriadoId && authUserId) {

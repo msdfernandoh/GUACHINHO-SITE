@@ -1,5 +1,21 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
+### Crédito de comissões de sócios e preservação do caixa para despesas (30/09/2026)
+
+Em `/erp/minhas-comissoes`, participantes identificados como sócios em `empresa_socios` possuem fluxo específico para preservar a dinâmica societária real: ao creditar ou conferir a comissão gerada, o sistema realiza a baixa contábil da previsão gerando o crédito do sócio (`financeiro_pagamentos`), porém **sem gerar movimentação de saída bancária** (`financeiro_conta_movimentos`). Com isso, os recursos continuam 100% disponíveis na conta bancária da empresa no ERP para pagamento de despesas operacionais do negócio. A saída bancária no ERP fica restrita ao momento em que a **transferência de retirada** for efetivamente realizada (registrada no Fechamento dos Sócios em `/erp/fechamento-socios` ou transferência de equalização). Relatório: `docs/relatorios-fases/AJUSTE-COMISSOES-SOCIOS-CREDITO-TRANSFERENCIA-2026-09-30.md`.
+
+### Hotfix — cadastro e edição de usuários resilientes a schema pendente (30/09/2026)
+
+O Admin de Usuários resolve o perfil técnico `parceiro` para o papel N:N
+`parceiro_comercial`, sem conceder permissões de equipe. Também identifica a
+ausência de `empresa_usuarios.pode_estornar_contas`, introduzida pela migration
+101. Em ambientes que ainda não possuem essa coluna, a listagem não falha após
+salvar e o cadastro mantém o vínculo canônico N:N com `empresa_id`,
+`usuario_id` e `papel_id`; apenas configurações operacionais posteriores ficam
+indisponíveis até a migration ser aplicada. Nenhuma identidade, vínculo ou dado
+existente é alterado pelo fallback. Relatório:
+`docs/relatorios-fases/HOTFIX-USUARIOS-SCHEMA-PENDENTE-2026-09-30.md`.
+
 ### Buscas operacionais em repasse, cotas e fechamento (30/09/2026)
 
 O seletor de vínculo do repasse permite pesquisar a comissão aberta por cliente, grupo, cota, competência e parcela. A busca de Vendas e Cotas filtra tanto as vendas quanto as cotas definitivas. As listas abertas de despesas do fechamento possuem filtro local por descrição, fornecedor, centro de custo, data ou valor. As pesquisas ignoram acentos e aceitam palavras combinadas. Relatório: `docs/relatorios-fases/BUSCAS-REPASSE-COTAS-DESPESAS-2026-09-30.md`.

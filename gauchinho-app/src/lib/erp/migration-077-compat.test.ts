@@ -14,6 +14,12 @@ describe("compatibilidade antes da migration 077", () => {
         message: "Could not find the 'erp_modulos_visiveis' column in the schema cache",
       }),
     ).toBe(true);
+    expect(
+      isMissingErpUserLinkColumns({
+        code: "42703",
+        message: "column empresa_usuarios.pode_estornar_contas does not exist",
+      }),
+    ).toBe(true);
   });
 
   it("não oculta falhas de outras colunas ou permissões", () => {
