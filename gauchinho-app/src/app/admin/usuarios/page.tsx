@@ -9,7 +9,7 @@ import { AdminFormSubmitButton } from "@/components/admin/admin-form-submit-butt
 import { UsuarioEdicaoForm } from "@/components/admin/usuarios/usuario-edicao-form";
 import { UsuarioAdminFlashBanner } from "@/components/admin/usuarios/usuario-admin-flash-banner";
 import { Button, Input, Label, Select } from "@/components/ui/form-primitives";
-import { PERFIS } from "@/lib/auth/permissions";
+import { PERFIS, PERFIS_USUARIOS_INTERNOS } from "@/lib/auth/permissions";
 import { formatDate } from "@/lib/utils/format";
 import { ADMIN_MENU_ITEMS, resolveAdminMenus, type AdminMenuKey } from "@/lib/admin/admin-menus";
 import { getCurrentTenantContext } from "@/lib/tenant/context";
@@ -104,7 +104,7 @@ export default async function UsuariosPage({
         <div>
           <Label>Perfil</Label>
           <Select name="perfil" defaultValue="srd">
-            {PERFIS.map((p) => (
+            {PERFIS_USUARIOS_INTERNOS.map((p) => (
               <option key={p} value={p}>
                 {p}
               </option>

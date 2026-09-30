@@ -24,10 +24,21 @@ describe("relações de empresa_usuarios com usuarios", () => {
     expect(actions).toContain('menu !== "conta-corrente-socios"');
   });
 
-  it("leva parceiro comercial à área própria, sem conceder acesso ao Admin", () => {
+  it("leva parceiro comercial ao app atual de indicação, sem conceder acesso ao Admin", () => {
     const adminLayout = source("src/app/admin/layout.tsx");
     expect(adminLayout).toContain('vinculoAtivo.papel?.codigo === "parceiro_comercial"');
-    expect(adminLayout).toContain('redirect("/area-parceiro")');
+    expect(adminLayout).toContain('redirect("/app-indicador")');
+    expect(adminLayout).not.toContain('redirect("/area-parceiro")');
+  });
+
+  it("não cria parceiro incompleto pelo formulário interno de usuários", () => {
+    const permissions = source("src/lib/auth/permissions.ts");
+    const actions = source("src/app/admin/usuarios/actions.ts");
+    const page = source("src/app/admin/usuarios/page.tsx");
+    expect(permissions).toContain("PERFIS_USUARIOS_INTERNOS");
+    expect(permissions).toContain('perfil !== "parceiro"');
+    expect(actions).toContain("Indicadores devem usar o cadastro público");
+    expect(page).toContain("PERFIS_USUARIOS_INTERNOS.map");
   });
 
   it("escolhe usuario_id explicitamente quando convidado_por também referencia usuarios", () => {

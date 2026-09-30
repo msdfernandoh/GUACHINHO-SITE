@@ -3,7 +3,11 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { PERFIS, SENHA_PADRAO_CADASTRO } from "@/lib/auth/permissions";
+import {
+  PERFIS,
+  PERFIS_USUARIOS_INTERNOS,
+  SENHA_PADRAO_CADASTRO,
+} from "@/lib/auth/permissions";
 import type { AdminMenuKey } from "@/lib/admin/admin-menus";
 import { isGmailAddress } from "@/lib/google-calendar/config";
 import { requireTenantPermission } from "@/lib/tenant/context";
@@ -144,7 +148,11 @@ export async function createUsuarioAction(formData: FormData) {
   if (!nome || !email.includes("@") || password.length < 8) {
     throw new Error("Nome, e-mail válido e senha de pelo menos 8 caracteres são obrigatórios");
   }
-  if (!PERFIS.includes(perfil as (typeof PERFIS)[number])) throw new Error("Perfil inválido");
+  if (!PERFIS_USUARIOS_INTERNOS.includes(perfil as (typeof PERFIS_USUARIOS_INTERNOS)[number])) {
+    throw new Error(
+      "Perfil inválido para o ERP. Indicadores devem usar o cadastro público do programa de indicação.",
+    );
+  }
 
   const admin = createAdminClient();
   const papelId = await resolvePapelId(

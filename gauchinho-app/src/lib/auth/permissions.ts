@@ -11,6 +11,13 @@ export const PERFIS = [
   "parceiro",
 ] as const;
 
+// O cadastro interno do ERP não coleta CPF, PIX nem adesão ao programa de
+// indicação. Parceiros devem entrar exclusivamente pelo fluxo público, que
+// cria esses vínculos obrigatórios de forma tenant-aware.
+export const PERFIS_USUARIOS_INTERNOS = PERFIS.filter(
+  (perfil) => perfil !== "parceiro",
+);
+
 export const SENHA_PADRAO_CADASTRO = "midiapormidia@123";
 
 export type Perfil = (typeof PERFIS)[number];

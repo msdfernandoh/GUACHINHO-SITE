@@ -3482,3 +3482,15 @@ Relatório:
 ### Arquivos de despesas no fechamento (30/09/2026)
 
 As listas expansíveis de despesas permitem incluir comprovante ou nota fiscal e visualizar o documento por URL assinada. Reutilizam autorização financeira e armazenamento privado de Contas a Pagar. Relatório: docs/relatorios-fases/ARQUIVOS-DESPESAS-FECHAMENTO-2026-09-30.md.
+
+### Hotfix operacional 30/09/2026 — acesso ERP e indicação Racon Sorriso
+
+O cadastro interno de usuários não cria mais identidades `parceiro`, pois CPF,
+PIX e adesão ao programa pertencem ao fluxo público tenant-aware. Vínculos
+`parceiro_comercial` usam o app vigente `/app-indicador`, nunca o portal legado
+`/area-parceiro`. O tenant Racon Sorriso possui os perfis funcionais canônicos
+`Indicador` e `Gerador de Oportunidades`, sem copiar percentuais ou regras
+financeiras de outra empresa; regras de pagamento exigem homologação própria.
+
+Relatório:
+`docs/relatorios-fases/HOTFIX-2026-09-30-ACESSO-ERP-E-INDICADORES-SORRISO.md`.
