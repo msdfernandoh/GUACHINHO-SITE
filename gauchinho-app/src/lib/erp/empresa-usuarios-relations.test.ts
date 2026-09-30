@@ -41,6 +41,15 @@ describe("relações de empresa_usuarios com usuarios", () => {
     expect(page).toContain("PERFIS_USUARIOS_INTERNOS.map");
   });
 
+  it("faz o administrador de Sorriso herdar o ERP completo do plano", () => {
+    const migration = source("../supabase/migrations/303_sorriso_admin_herda_erp_completo.sql");
+    expect(migration).toContain("p.codigo = 'plano_profissional'");
+    expect(migration).toContain("join public.saas_plano_modulos");
+    expect(migration).toContain("set perfil = 'master'");
+    expect(migration).toContain("papel_id = v_papel_admin_id");
+    expect(migration).toContain("erp_modulos_visiveis = null");
+  });
+
   it("escolhe usuario_id explicitamente quando convidado_por também referencia usuarios", () => {
     const relationFiles = [
       "src/app/admin/usuarios/actions.ts",

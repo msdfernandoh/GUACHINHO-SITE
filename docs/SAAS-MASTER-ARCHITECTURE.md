@@ -3494,3 +3494,15 @@ financeiras de outra empresa; regras de pagamento exigem homologação própria.
 
 Relatório:
 `docs/relatorios-fases/HOTFIX-2026-09-30-ACESSO-ERP-E-INDICADORES-SORRISO.md`.
+
+### Hotfix operacional 30/09/2026 — paridade funcional do ERP Sorriso
+
+Racon Sorriso e Gauchinho permanecem empresas independentes e isoladas, mas a
+assinatura ERP completa disponibiliza o mesmo catálogo funcional às duas. A
+configuração do tenant é derivada de `saas_assinaturas` e
+`saas_plano_modulos`; administradores `admin_empresa` herdam esse catálogo com
+`empresa_usuarios.erp_modulos_visiveis = NULL`. Listas individuais continuam
+restringindo consultores e demais papéis, nunca ampliando permissões.
+
+Relatório:
+`docs/relatorios-fases/HOTFIX-2026-09-30-PARIDADE-ERP-SORRISO.md`.
