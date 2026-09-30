@@ -2166,6 +2166,24 @@ export function ContasPagarClient({
                 <label className="font-bold text-slate-700">Vencimento *</label>
                 <Input name="vencimento" type="date" required defaultValue={editando.vencimento} className="mt-1" />
               </div>
+              {editando.status === "paga" && (
+                <div>
+                  <label className="font-bold text-slate-700">Data do pagamento *</label>
+                  <Input
+                    name="pago_em"
+                    type="date"
+                    required
+                    defaultValue={editando.pago_em || ""}
+                    readOnly={!master}
+                    className={`mt-1 ${!master ? "bg-slate-100 font-semibold cursor-not-allowed" : ""}`}
+                  />
+                  {!master && (
+                    <p className="mt-0.5 text-[10px] text-slate-500">
+                      Somente usuário master pode alterar a data já registrada.
+                    </p>
+                  )}
+                </div>
+              )}
               <div>
                 <label className="font-bold text-slate-700">Centro de custo</label>
                 <Select name="centro" defaultValue={editando.centro_custo_id || ""} className="mt-1">

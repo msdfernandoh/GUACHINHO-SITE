@@ -566,6 +566,10 @@ export async function baixarConta(id: string, dataPagamento?: string | null, pag
 export async function alterarConta(id: string, form: FormData): Promise<ContasActionResult> {
   try {
     const { empresaId, session, admin } = await requireFinanceWrite();
+    const pagoEm = value(form, "pago_em") || null;
+    if (pagoEm && !/^\d{4}-\d{2}-\d{2}$/.test(pagoEm)) {
+      throw new Error("Informe uma data de pagamento válida.");
+    }
     const pessoal = form.get("pessoal") === "on";
     const socioId = pessoal ? value(form, "socio") || null : null;
     const centroId = value(form, "centro") || null;
@@ -588,6 +592,7 @@ export async function alterarConta(id: string, form: FormData): Promise<ContasAc
       p_observacao: value(form, "obs"),
       p_pago_pessoalmente: pessoal,
       p_socio_pagador_usuario_id: socioId,
+      p_pago_em: pagoEm,
     });
     if (error) throw new Error(error.message);
 

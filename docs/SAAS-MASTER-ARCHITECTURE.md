@@ -1,5 +1,15 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
+### Edição auditada da data do pagamento (30/09/2026)
+
+O modal de edição de contas pagas no Fechamento dos Sócios e em Contas a Pagar
+permite ao usuário Master corrigir `pago_em`. A alteração é tenant-aware,
+auditada e rejeita datas futuras ou pertencentes a períodos societários já
+lacrados. Quando existe saída de caixa vinculada, a correção preserva o livro
+append-only por lançamentos compensatórios, sem alterar ou excluir o movimento
+original. Relatório:
+`docs/relatorios-fases/HOTFIX-2026-09-30-EDITAR-DATA-PAGAMENTO-CONTA.md`.
+
 ### Ajuste manual de parcelas de comissão (28/09/2026)
 
 O Master pode redistribuir parcelas não pagas de uma venda, mantendo parcelas pagas protegidas. A distribuição pode ser igual ou personalizada nas quatro primeiras parcelas. Relatório: `docs/relatorios-fases/AJUSTE-MANUAL-PARCELAS-COMISSAO-2026-09-28.md`.
