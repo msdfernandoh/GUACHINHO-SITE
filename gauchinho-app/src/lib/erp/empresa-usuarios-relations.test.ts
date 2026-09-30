@@ -7,6 +7,11 @@ function source(path: string) {
 }
 
 describe("relações de empresa_usuarios com usuarios", () => {
+  it("mapeia o perfil parceiro ao papel N:N de parceiro comercial", () => {
+    const actions = source("src/app/admin/usuarios/actions.ts");
+    expect(actions).toContain('parceiro: "parceiro_comercial"');
+  });
+
   it("escolhe usuario_id explicitamente quando convidado_por também referencia usuarios", () => {
     const relationFiles = [
       "src/app/admin/usuarios/actions.ts",
