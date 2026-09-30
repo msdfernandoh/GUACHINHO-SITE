@@ -1,5 +1,13 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
+### Hotfix — destino do primeiro acesso de parceiro comercial (30/09/2026)
+
+O parceiro comercial autenticado não recebe permissões de backoffice. Quando o
+login padrão chega a `/admin`, o layout resolve o papel do vínculo N:N ativo e
+redireciona `parceiro_comercial` à `/area-parceiro`, sem ampliar acessos nem
+usar `usuarios.perfil` como autorização. Relatório:
+`docs/relatorios-fases/HOTFIX-DESTINO-PARCEIRO-COMERCIAL-2026-09-30.md`.
+
 ### Hotfix — criação de usuário com menu Fechamento dos Sócios (30/09/2026)
 
 A constraint de `empresa_usuarios.erp_modulos_visiveis` passa a aceitar o ID

@@ -24,6 +24,12 @@ describe("relações de empresa_usuarios com usuarios", () => {
     expect(actions).toContain('menu !== "conta-corrente-socios"');
   });
 
+  it("leva parceiro comercial à área própria, sem conceder acesso ao Admin", () => {
+    const adminLayout = source("src/app/admin/layout.tsx");
+    expect(adminLayout).toContain('vinculoAtivo.papel?.codigo === "parceiro_comercial"');
+    expect(adminLayout).toContain('redirect("/area-parceiro")');
+  });
+
   it("escolhe usuario_id explicitamente quando convidado_por também referencia usuarios", () => {
     const relationFiles = [
       "src/app/admin/usuarios/actions.ts",

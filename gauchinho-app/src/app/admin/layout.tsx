@@ -30,6 +30,12 @@ export default async function AdminLayout({
   if (!empresaAtiva || !vinculoAtivo) {
     redirect("/?acesso=empresa_negado");
   }
+  // Parceiros comerciais pertencem ao tenant, mas não recebem permissões do
+  // backoffice. O login padrão aponta para /admin; encaminhá-los à área
+  // própria evita que o primeiro acesso termine em uma página de erro.
+  if (vinculoAtivo.papel?.codigo === "parceiro_comercial") {
+    redirect("/area-parceiro");
+  }
 
   const erpConfig = getErpSistemaConfig(empresaAtiva.configuracoes);
   const erpAccess = resolveAuthorizedErpUserAccess(
