@@ -3530,3 +3530,13 @@ continua tenant-aware.
 
 Relatório:
 `docs/relatorios-fases/HOTFIX-2026-09-30-VALIDACAO-CADASTRO-INDICADOR.md`.
+
+### Hotfix visual 01/10/2026 — contraste do app indicador Racon
+
+As superfícies azuis do app compartilhado pela família Racon exibem textos
+secundários e ícones em branco. Campos de formulário continuam brancos com
+texto azul-escuro, preservando legibilidade e acessibilidade sem alterar dados,
+permissões ou o isolamento tenant-aware.
+
+Relatório:
+`docs/relatorios-fases/HOTFIX-2026-10-01-CONTRASTE-APP-RACON.md`.
