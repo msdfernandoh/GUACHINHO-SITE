@@ -3518,3 +3518,15 @@ isolados por `empresa_id`.
 
 Relatório:
 `docs/relatorios-fases/HOTFIX-2026-09-30-MENU-PARCEIROS-FAMILIA-RACON.md`.
+
+### Hotfix operacional 30/09/2026 — validação do cadastro de indicador
+
+A etapa de criação de acesso do programa de parceiros diferencia explicitamente
+CPF e e-mail e não solicita senha escolhida. A senha inicial é derivada no
+servidor dos últimos seis dígitos do CPF, enquanto a interface impede a
+confusão causada por gerenciadores de senha e informa individualmente o campo
+inválido. O formulário permanece compartilhado pela família Racon e o cadastro
+continua tenant-aware.
+
+Relatório:
+`docs/relatorios-fases/HOTFIX-2026-09-30-VALIDACAO-CADASTRO-INDICADOR.md`.
