@@ -3506,3 +3506,15 @@ restringindo consultores e demais papéis, nunca ampliando permissões.
 
 Relatório:
 `docs/relatorios-fases/HOTFIX-2026-09-30-PARIDADE-ERP-SORRISO.md`.
+
+### Hotfix operacional 30/09/2026 — menu de parceiros da família Racon
+
+Todo site derivado do modelo compartilhado `racon_inspired` oferece juntos o
+cadastro público **Seja parceiro** (`/parceiros`) e a **Área do Parceiro** no
+app vigente (`/app-indicador/login`), além do Programa de Indicação. A rota
+legada `/area-parceiro` não integra essa navegação. O compartilhamento ocorre
+na camada de modelo SaaS; os dados operacionais de cada franquia permanecem
+isolados por `empresa_id`.
+
+Relatório:
+`docs/relatorios-fases/HOTFIX-2026-09-30-MENU-PARCEIROS-FAMILIA-RACON.md`.

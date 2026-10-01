@@ -218,44 +218,71 @@ export function visibleModelMenus<
   );
 }
 
-/** Ajusta a navegação da família Racon para o programa público de parceiros. */
+/**
+ * Navegação canônica da família Racon.
+ *
+ * O programa público e o app autenticado são destinos diferentes e devem
+ * coexistir em todo site que herda o modelo Racon. O nome histórico "Área do
+ * Parceiro" é preservado, mas aponta para o app vigente — nunca para o portal
+ * legado `/area-parceiro`.
+ */
 export function raconPartnerNavigation<
   T extends { id: string; label: string; rota: string; ativo?: boolean },
 >(menus: T[]): T[] {
-  let partnerMenuFound = false;
+  let areaSource: T | undefined;
+  let joinSource: T | undefined;
   const normalized = menus.flatMap((menu) => {
     const key = `${menu.id} ${menu.label} ${menu.rota}`
       .toLocaleLowerCase("pt-BR")
       .normalize("NFD")
       .replace(/[\u0300-\u036f]/g, "");
-    // A entrada pública do programa substitui o antigo atalho de backoffice.
-    // O acesso autenticado continua disponível por URL, mas não concorre com
-    // o CTA comercial na navegação institucional.
-    if (menu.rota === "/area-parceiro" || key.includes("area do parceiro")) {
+    if (
+      menu.rota === "/area-parceiro" ||
+      menu.rota.startsWith("/app-indicador") ||
+      key.includes("area do parceiro")
+    ) {
+      areaSource ??= menu;
       return [];
     }
     if (menu.rota === "/parceiros" || key.includes("seja parceiro")) {
-      if (partnerMenuFound) return [];
-      partnerMenuFound = true;
-      return [
-        { ...menu, label: "Seja parceiro", rota: "/parceiros", ativo: true },
-      ];
+      joinSource ??= menu;
+      return [];
     }
     return [menu];
   });
-  if (partnerMenuFound) return normalized;
-  const item = {
+
+  const areaItem = {
+    ...(areaSource ?? {}),
+    id: "area_parceiro",
+    label: "Área do Parceiro",
+    rota: "/app-indicador/login",
+    ativo: true,
+  } as T;
+  const joinItem = {
+    ...(joinSource ?? {}),
     id: "parceiros",
     label: "Seja parceiro",
     rota: "/parceiros",
     ativo: true,
   } as T;
+
+  const programIndex = normalized.findIndex((menu) => {
+    const key = `${menu.id} ${menu.label} ${menu.rota}`
+      .toLocaleLowerCase("pt-BR")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "");
+    return menu.rota === "/indicar" || key.includes("programa de indicacao");
+  });
   const loginIndex = normalized.findIndex((menu) => menu.id === "login");
-  return loginIndex < 0
-    ? [...normalized, item]
-    : [
-        ...normalized.slice(0, loginIndex),
-        item,
-        ...normalized.slice(loginIndex),
-      ];
+  const insertionIndex = programIndex >= 0
+    ? programIndex + 1
+    : loginIndex >= 0
+      ? loginIndex
+      : normalized.length;
+  return [
+    ...normalized.slice(0, insertionIndex),
+    areaItem,
+    joinItem,
+    ...normalized.slice(insertionIndex),
+  ];
 }

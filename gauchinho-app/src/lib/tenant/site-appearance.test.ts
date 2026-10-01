@@ -110,7 +110,7 @@ describe("menus do modelo", () => {
       ),
     ).toEqual([]);
   });
-  it("mantém os destinos de parceiros e cria Seja parceiro na família Racon", () => {
+  it("mantém cadastro público e app do parceiro juntos na família Racon", () => {
     const menus = raconPartnerNavigation([
       { id: "home", label: "Início", rota: "/" },
       { id: "seguradoras", label: "Seguradoras", rota: "/seguradoras" },
@@ -121,20 +121,39 @@ describe("menus do modelo", () => {
       "Início",
       "Seguradoras",
       "Programa de Indicação",
+      "Área do Parceiro",
       "Seja parceiro",
       "Login",
     ]);
-    expect(menus[3].rota).toBe("/parceiros");
+    expect(menus[3].rota).toBe("/app-indicador/login");
+    expect(menus[4].rota).toBe("/parceiros");
   });
-  it("substitui Área do parceiro pelo CTA público Seja parceiro", () => {
+  it("migra a Área do Parceiro legada para o app e também inclui Seja parceiro", () => {
     const menus = raconPartnerNavigation([
       { id: "home", label: "Início", rota: "/" },
       { id: "login", label: "Área do parceiro", rota: "/area-parceiro" },
     ]);
     expect(menus).toEqual([
       { id: "home", label: "Início", rota: "/" },
+      { id: "area_parceiro", label: "Área do Parceiro", rota: "/app-indicador/login", ativo: true },
       { id: "parceiros", label: "Seja parceiro", rota: "/parceiros", ativo: true },
     ]);
+  });
+
+  it("não duplica os dois atalhos quando o catálogo já os contém", () => {
+    const menus = raconPartnerNavigation([
+      { id: "programa_indicacao", label: "Programa de Indicação", rota: "/indicar" },
+      { id: "area_parceiro", label: "Área do Parceiro", rota: "/area-parceiro" },
+      { id: "parceiros", label: "Seja parceiro", rota: "/parceiros" },
+      { id: "login", label: "Login", rota: "/login" },
+    ]);
+    expect(menus.map((menu) => menu.id)).toEqual([
+      "programa_indicacao",
+      "area_parceiro",
+      "parceiros",
+      "login",
+    ]);
+    expect(menus[1].rota).toBe("/app-indicador/login");
   });
 });
 
