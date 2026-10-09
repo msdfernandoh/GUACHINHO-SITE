@@ -23,7 +23,7 @@ export default async function AdminVendasPage() {
 
   const admin = createAdminClient({ noStore: true });
 
-  const [vendasRes, cotasRes, participantesRes, vinculosRes, modalidadesRes, regrasPartRes, regrasFranqRes, prevFranqRes, prevPartRes, metasRes] = await Promise.all([
+  const [vendasRes, cotasRes, participantesRes, vinculosRes, modalidadesRes, regrasPartRes, regrasFranqRes, prevFranqRes, prevPartRes, metasRes, boletosEnviosRes] = await Promise.all([
     admin
       .from("vendas")
       .select(`
@@ -69,6 +69,7 @@ export default async function AdminVendasPage() {
     admin.from("comissao_previsoes_franquia").select("venda_id,valor_bruto,valor_previsto").eq("empresa_id",empresaId).neq("status","cancelada"),
     admin.from("comissao_previsoes_participantes").select("venda_id,valor_previsto").eq("empresa_id",empresaId).neq("status","cancelada"),
     admin.from("metas_comerciais").select("id,indicador,valor_meta,data_inicio,data_fim,alvo_tipo").eq("empresa_id",empresaId).eq("indicador","valor_credito_vendido").eq("alvo_tipo","empresa"),
+    admin.from("vendas_boletos_envios").select("*").eq("empresa_id", empresaId).order("created_at", { ascending: false }),
   ]);
 
   const participantes = (participantesRes.data ?? []) as ParticipanteSimples[];
@@ -208,6 +209,7 @@ export default async function AdminVendasPage() {
         empresaNome={empresaNome}
         isMaster={isMaster}
         metas={(metasRes.data ?? []).map((meta) => ({ valor: Number(meta.valor_meta), inicio: meta.data_inicio, fim: meta.data_fim }))}
+        boletosEnvios={(boletosEnviosRes?.data ?? []) as any}
       />
     </main>
   );

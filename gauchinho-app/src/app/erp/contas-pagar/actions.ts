@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/server";
 import { requireTenantPermission } from "@/lib/tenant/context";
 import { parseContasPagarCsv } from "@/lib/financeiro/contas-pagar-csv";
 import { requireErpRouteAccess } from "@/lib/erp/erp-acesso-server";
+import { obterHojeCuiaba } from "@/lib/erp/conta-corrente-periodos";
 
 export type ContasActionResult = {
   ok: boolean;
@@ -566,9 +567,14 @@ export async function baixarConta(id: string, dataPagamento?: string | null, pag
 export async function alterarConta(id: string, form: FormData): Promise<ContasActionResult> {
   try {
     const { empresaId, session, admin } = await requireFinanceWrite();
-    const pagoEm = value(form, "pago_em") || null;
-    if (pagoEm && !/^\d{4}-\d{2}-\d{2}$/.test(pagoEm)) {
-      throw new Error("Informe uma data de pagamento válida.");
+    const pagoEm = value(form, "pago_em") || value(form, "data_pagamento") || null;
+    if (pagoEm) {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(pagoEm)) {
+        throw new Error("Informe uma data de pagamento válida.");
+      }
+      if (pagoEm > obterHojeCuiaba()) {
+        throw new Error("A data de pagamento não pode ficar no futuro.");
+      }
     }
     const pessoal = form.get("pessoal") === "on";
     const socioId = pessoal ? value(form, "socio") || null : null;
@@ -615,6 +621,7 @@ export async function alterarConta(id: string, form: FormData): Promise<ContasAc
       retirar_reserva_impostos: form.get("retirar_reserva_impostos") === "on",
       updated_at: new Date().toISOString(),
     };
+    if (pagoEm) updates.pago_em = pagoEm;
 
     if (removerNf) {
       updates.comprovante_url = null;
@@ -635,17 +642,20 @@ export async function alterarConta(id: string, form: FormData): Promise<ContasAc
       .eq("id", id)
       .eq("empresa_id", empresaId);
 
+    let erroFinal = updateError;
     if (updateError && /fornecedor_id|descontado_comissao|comprovante_url|nota_fiscal/i.test(updateError.message)) {
       delete updates.descontado_comissao;
       delete updates.comprovante_url;
       delete updates.nota_fiscal_nome;
       delete updates.nota_fiscal_uploaded_at;
-      await admin
+      const { error: retryError } = await admin
         .from("financeiro_contas_pagar")
         .update(updates)
         .eq("id", id)
         .eq("empresa_id", empresaId);
+      erroFinal = retryError;
     }
+    if (erroFinal) throw new Error(erroFinal.message);
 
     revalidatePath("/erp/contas-pagar");
     revalidatePath("/erp/fechamento-socios");

@@ -49,7 +49,6 @@ describe("relações de empresa_usuarios com usuarios", () => {
     expect(migration).toContain("papel_id = v_papel_admin_id");
     expect(migration).toContain("erp_modulos_visiveis = null");
   });
-
   it("escolhe usuario_id explicitamente quando convidado_por também referencia usuarios", () => {
     const relationFiles = [
       "src/app/admin/usuarios/actions.ts",
