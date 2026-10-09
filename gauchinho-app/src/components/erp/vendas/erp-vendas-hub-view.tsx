@@ -405,6 +405,25 @@ export function ErpVendasHubView({
     });
   }, [vendas, cotas, competencia, filtroConsultor, filtroGrupo, termoCotaLimpo, palavrasBusca]);
 
+  const cotasFiltradas = useMemo(() => {
+    return cotas.filter((c) => {
+      if (filtroConsultor !== "todos") {
+        const v = vendas.find((venda) => venda.id === c.venda_id);
+        const matchPrincipal = v?.participante_comercial_id === filtroConsultor;
+        const matchSecundario = v?.participante_secundario_id === filtroConsultor;
+        const matchNome = normalizarBusca(c.consultor_nome || "") === normalizarBusca(filtroConsultor);
+        if (!matchPrincipal && !matchSecundario && !matchNome) return false;
+      }
+      if (filtroGrupo !== "todos" && c.numero_grupo?.trim() !== filtroGrupo) return false;
+      if (termoCotaLimpo && !(c.numero_cota && normalizarBusca(c.numero_cota).includes(termoCotaLimpo))) return false;
+      if (palavrasBusca.length > 0) {
+        const texto = normalizarBusca(`${c.cliente_nome || ""} ${c.consultor_nome || ""} ${c.numero_grupo} ${c.numero_cota || ""} ${c.status}`);
+        if (!palavrasBusca.every((p) => texto.includes(p))) return false;
+      }
+      return true;
+    });
+  }, [cotas, vendas, filtroConsultor, filtroGrupo, termoCotaLimpo, palavrasBusca]);
+
   const valorVendido = vendasFiltradas.filter((v) => !["cancelada", "suspensa"].includes(v.status)).reduce((s, v) => s + Number(v.valor_credito), 0);
   const metaPeriodo = competencia === "todos" ? metas.reduce((s, m) => s + m.valor, 0) : metas.filter((m) => m.inicio.slice(0, 7) <= competencia && m.fim.slice(0, 7) >= competencia).reduce((s, m) => s + m.valor, 0);
   const comissoesGeradas = vendasFiltradas.reduce((s, v) => s + Number(v.comissoes_geradas ?? 0), 0);

@@ -3510,7 +3510,6 @@ Relatório:
 ### Arquivos de despesas no fechamento (30/09/2026)
 
 As listas expansíveis de despesas permitem incluir comprovante ou nota fiscal e visualizar o documento por URL assinada. Reutilizam autorização financeira e armazenamento privado de Contas a Pagar. Relatório: docs/relatorios-fases/ARQUIVOS-DESPESAS-FECHAMENTO-2026-09-30.md.
-<<<<<<< HEAD
 
 ### Hotfix operacional 30/09/2026 — acesso ERP e indicação Racon Sorriso
 
@@ -3569,5 +3568,3 @@ permissões ou o isolamento tenant-aware.
 
 Relatório:
 `docs/relatorios-fases/HOTFIX-2026-10-01-CONTRASTE-APP-RACON.md`.
-=======
->>>>>>> codex/programa-indicacao-final

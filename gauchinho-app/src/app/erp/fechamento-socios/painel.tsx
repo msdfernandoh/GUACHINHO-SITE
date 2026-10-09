@@ -3,12 +3,6 @@
 import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-<<<<<<< HEAD
-import { ArrowLeft, CheckCircle2, FileText, LockKeyhole, Paperclip, ShieldAlert, X } from "lucide-react";
-import { calcularFechamentoSocios } from "@/lib/gestao/fechamento-socios";
-import { registrarAporteProprioSocio, registrarFechamentoSocios, salvarMetasComerciaisFechamento, type PainelFechamento } from "./actions";
-import { alterarConta, anexarNotaFiscalConta, excluirConta, obterUrlNotaFiscalConta } from "@/app/erp/contas-pagar/actions";
-=======
 import {
   ArrowLeft,
   CheckCircle2,
@@ -31,7 +25,6 @@ import {
   excluirConta,
   obterUrlNotaFiscalConta,
 } from "@/app/erp/contas-pagar/actions";
->>>>>>> codex/programa-indicacao-final
 
 const brl = (valor: number) =>
   valor.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
