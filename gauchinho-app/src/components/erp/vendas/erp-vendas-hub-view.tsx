@@ -248,22 +248,81 @@ export function ErpVendasHubView({
   const [competencia,setCompetencia]=useState(competencias[0]??"todos");
 
   const consultoresDisponiveis = useMemo(() => {
-    const map = new Map<string, string>();
-    for (const p of participantes) {
-      map.set(p.id, p.nome_exibicao || p.nome);
-    }
+    // Agrupa e deduplica apenas consultores que possuem vendas ou cotas reais
+    const map = new Map<string, { id: string; nome: string; ids: Set<string>; nomes: Set<string> }>();
+
     for (const v of vendas) {
-      if (v.participante_comercial_id && v.consultor_nome) {
-        map.set(v.participante_comercial_id, v.consultor_nome);
+      // 1. Consultor / SDR Principal
+      const nomePrincipal = (
+        v.consultor_nome ||
+        (v.participante_comercial_id ? participantes.find((p) => p.id === v.participante_comercial_id)?.nome_exibicao : null) ||
+        (v.participante_comercial_id ? participantes.find((p) => p.id === v.participante_comercial_id)?.nome : null)
+      )?.trim();
+
+      if (nomePrincipal) {
+        const key = normalizarBusca(nomePrincipal);
+        if (!map.has(key)) {
+          map.set(key, {
+            id: key,
+            nome: nomePrincipal,
+            ids: new Set<string>(),
+            nomes: new Set<string>(),
+          });
+        }
+        const item = map.get(key)!;
+        if (v.participante_comercial_id) item.ids.add(v.participante_comercial_id);
+        item.nomes.add(nomePrincipal);
       }
-      if (v.participante_secundario_id && v.secundario_nome) {
-        map.set(v.participante_secundario_id, v.secundario_nome);
+
+      // 2. Participante Secundário
+      const nomeSecundario = (
+        v.secundario_nome ||
+        (v.participante_secundario_id ? participantes.find((p) => p.id === v.participante_secundario_id)?.nome_exibicao : null) ||
+        (v.participante_secundario_id ? participantes.find((p) => p.id === v.participante_secundario_id)?.nome : null)
+      )?.trim();
+
+      if (nomeSecundario) {
+        const key = normalizarBusca(nomeSecundario);
+        if (!map.has(key)) {
+          map.set(key, {
+            id: key,
+            nome: nomeSecundario,
+            ids: new Set<string>(),
+            nomes: new Set<string>(),
+          });
+        }
+        const item = map.get(key)!;
+        if (v.participante_secundario_id) item.ids.add(v.participante_secundario_id);
+        item.nomes.add(nomeSecundario);
       }
     }
-    return Array.from(map.entries())
-      .map(([id, nome]) => ({ id, nome }))
-      .sort((a, b) => a.nome.localeCompare(b.nome));
-  }, [participantes, vendas]);
+
+    // 3. Checar também em cotas
+    for (const c of cotas) {
+      if (c.consultor_nome?.trim()) {
+        const nome = c.consultor_nome.trim();
+        const key = normalizarBusca(nome);
+        if (!map.has(key)) {
+          map.set(key, {
+            id: key,
+            nome,
+            ids: new Set<string>(),
+            nomes: new Set<string>(),
+          });
+        }
+        map.get(key)!.nomes.add(nome);
+      }
+    }
+
+    return Array.from(map.values())
+      .map((item) => ({
+        id: item.id,
+        nome: item.nome,
+        ids: Array.from(item.ids),
+        nomes: Array.from(item.nomes),
+      }))
+      .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR", { sensitivity: "base" }));
+  }, [vendas, cotas, participantes]);
 
   const gruposDisponiveis = useMemo(() => {
     const set = new Set<string>();
@@ -367,11 +426,21 @@ export function ErpVendasHubView({
         return false;
       }
 
-      // 2. Filtro por Consultor / SDR
+      // 2. Filtro por Consultor / SDR (Apenas quem tem vendas)
       if (filtroConsultor !== "todos") {
-        const matchPrincipal = v.participante_comercial_id === filtroConsultor;
-        const matchSecundario = v.participante_secundario_id === filtroConsultor;
-        const matchNome = normalizarBusca(v.consultor_nome || "") === normalizarBusca(filtroConsultor);
+        const consultorSelecionado = consultoresDisponiveis.find((c) => c.id === filtroConsultor);
+        const matchPrincipalId = v.participante_comercial_id === filtroConsultor;
+        const matchSecundarioId = v.participante_secundario_id === filtroConsultor;
+        const matchPrincipal = matchPrincipalId || (consultorSelecionado?.ids.includes(v.participante_comercial_id || "") ?? false);
+        const matchSecundario = matchSecundarioId || (consultorSelecionado?.ids.includes(v.participante_secundario_id || "") ?? false);
+        const matchNome = (
+          (v.consultor_nome && normalizarBusca(v.consultor_nome) === filtroConsultor) ||
+          (v.secundario_nome && normalizarBusca(v.secundario_nome) === filtroConsultor) ||
+          (consultorSelecionado?.nomes.some((n) =>
+            (v.consultor_nome && normalizarBusca(v.consultor_nome) === normalizarBusca(n)) ||
+            (v.secundario_nome && normalizarBusca(v.secundario_nome) === normalizarBusca(n))
+          ) ?? false)
+        );
         if (!matchPrincipal && !matchSecundario && !matchNome) return false;
       }
 
@@ -403,16 +472,27 @@ export function ErpVendasHubView({
 
       return true;
     });
-  }, [vendas, cotas, competencia, filtroConsultor, filtroGrupo, termoCotaLimpo, palavrasBusca]);
+  }, [vendas, cotas, competencia, filtroConsultor, consultoresDisponiveis, filtroGrupo, termoCotaLimpo, palavrasBusca]);
 
   const cotasFiltradas = useMemo(() => {
     return cotas.filter((c) => {
       if (filtroConsultor !== "todos") {
+        const consultorSelecionado = consultoresDisponiveis.find((cons) => cons.id === filtroConsultor);
         const v = vendas.find((venda) => venda.id === c.venda_id);
-        const matchPrincipal = v?.participante_comercial_id === filtroConsultor;
-        const matchSecundario = v?.participante_secundario_id === filtroConsultor;
-        const matchNome = normalizarBusca(c.consultor_nome || "") === normalizarBusca(filtroConsultor);
-        if (!matchPrincipal && !matchSecundario && !matchNome) return false;
+        const matchId = (consultorSelecionado && v) ? consultorSelecionado.ids.some(
+          (id) => id === v.participante_comercial_id || id === v.participante_secundario_id
+        ) : false;
+        const matchNome = (
+          (c.consultor_nome && normalizarBusca(c.consultor_nome) === filtroConsultor) ||
+          (v?.consultor_nome && normalizarBusca(v.consultor_nome) === filtroConsultor) ||
+          (v?.secundario_nome && normalizarBusca(v.secundario_nome) === filtroConsultor) ||
+          (consultorSelecionado?.nomes.some((n) =>
+            (c.consultor_nome && normalizarBusca(c.consultor_nome) === normalizarBusca(n)) ||
+            (v?.consultor_nome && normalizarBusca(v.consultor_nome) === normalizarBusca(n)) ||
+            (v?.secundario_nome && normalizarBusca(v.secundario_nome) === normalizarBusca(n))
+          ) ?? false)
+        );
+        if (!matchId && !matchNome) return false;
       }
       if (filtroGrupo !== "todos" && c.numero_grupo?.trim() !== filtroGrupo) return false;
       if (termoCotaLimpo && !(c.numero_cota && normalizarBusca(c.numero_cota).includes(termoCotaLimpo))) return false;
@@ -422,7 +502,7 @@ export function ErpVendasHubView({
       }
       return true;
     });
-  }, [cotas, vendas, filtroConsultor, filtroGrupo, termoCotaLimpo, palavrasBusca]);
+  }, [cotas, vendas, filtroConsultor, consultoresDisponiveis, filtroGrupo, termoCotaLimpo, palavrasBusca]);
 
   const valorVendido = vendasFiltradas.filter((v) => !["cancelada", "suspensa"].includes(v.status)).reduce((s, v) => s + Number(v.valor_credito), 0);
   const metaPeriodo = competencia === "todos" ? metas.reduce((s, m) => s + m.valor, 0) : metas.filter((m) => m.inicio.slice(0, 7) <= competencia && m.fim.slice(0, 7) >= competencia).reduce((s, m) => s + m.valor, 0);
