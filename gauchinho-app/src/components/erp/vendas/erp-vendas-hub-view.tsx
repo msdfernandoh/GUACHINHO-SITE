@@ -180,20 +180,22 @@ function formatarDataHoraBR(dataStr?: string | null) {
   }
 }
 
-function gerarLinkWhatsAppBoleto(clienteNome: string, telefone: string | null, grupo: string, cota: string | null, competenciaStr: string) {
+function gerarLinkWhatsAppBoleto(clienteNome: string, telefone: string | null, grupo: string, cota: string | null, competenciaStr?: string) {
   if (!telefone) return null;
-  const telLimpo = telefone.replace(/\D/g, "");
+  const telLimpo = String(telefone).replace(/\D/g, "");
   if (!telLimpo) return null;
-  const [ano, mes] = competenciaStr.split("-");
-  const mesExtenso = `${mes}/${ano}`;
+  const parts = String(competenciaStr || "").split("-");
+  const ano = parts[0] || "";
+  const mes = parts[1] || "";
+  const mesExtenso = mes && ano ? `${mes}/${ano}` : String(competenciaStr || "");
   const cotaTexto = cota ? `#${cota}` : "em processamento";
-  const texto = `Olá, ${clienteNome}! Tudo bem? Segue o boleto do seu consórcio Racon (Grupo ${grupo} - Cota ${cotaTexto}) referente à competência de ${mesExtenso}. Qualquer dúvida, estamos à total disposição!`;
+  const texto = `Olá, ${clienteNome || "Cliente"}! Tudo bem? Segue o boleto do seu consórcio Racon (Grupo ${grupo || ""} - Cota ${cotaTexto}) referente à competência de ${mesExtenso}. Qualquer dúvida, estamos à total disposição!`;
   return `https://wa.me/55${telLimpo}?text=${encodeURIComponent(texto)}`;
 }
 
 function formatarDataBR(dataStr?: string | null) {
   if (!dataStr) return "—";
-  const clean = dataStr.trim();
+  const clean = String(dataStr).trim();
   if (/^\d{4}-\d{2}$/.test(clean)) {
     const [ano, mes] = clean.split("-");
     return `${mes}/${ano}`;
@@ -224,16 +226,16 @@ function obterInfoPerfilPrincipal(v: VendaItem, vinculosPerfis: VinculoPerfilSim
 }
 
 export function ErpVendasHubView({
-  vendas,
-  cotas,
-  participantes,
-  vinculosPerfis,
+  vendas = [],
+  cotas = [],
+  participantes = [],
+  vinculosPerfis = [],
   modalidades = [],
   regrasParticipantes = [],
   regrasFranquia = [],
   empresaNome,
   isMaster,
-  metas,
+  metas = [],
   boletosEnvios = [],
 }: ErpVendasHubViewProps) {
   const [isPending, startTransition] = useTransition();
@@ -244,8 +246,12 @@ export function ErpVendasHubView({
   const [filtroConsultor, setFiltroConsultor] = useState("todos");
   const [filtroGrupo, setFiltroGrupo] = useState("todos");
   const [filtroCota, setFiltroCota] = useState("");
-  const competencias = useMemo(()=>[...new Set(vendas.map((v)=>(v.data_primeira_parcela||v.data_venda).slice(0,7)))].sort().reverse(),[vendas]);
-  const [competencia,setCompetencia]=useState(competencias[0]??"todos");
+  const competencias = useMemo(() => {
+    return [...new Set(
+      (vendas || []).map((v) => (v.data_primeira_parcela || v.data_venda || v.created_at || "").slice(0, 7))
+    )].filter((c) => c && c.length === 7).sort().reverse();
+  }, [vendas]);
+  const [competencia, setCompetencia] = useState(competencias[0] ?? "todos");
 
   const consultoresDisponiveis = useMemo(() => {
     // Agrupa e deduplica apenas consultores que possuem vendas ou cotas reais
@@ -422,7 +428,7 @@ export function ErpVendasHubView({
   const vendasFiltradas = useMemo(() => {
     return vendas.filter((v) => {
       // 1. Mês de referência (Competência)
-      if (competencia !== "todos" && (v.data_primeira_parcela || v.data_venda).slice(0, 7) !== competencia) {
+      if (competencia !== "todos" && (v.data_primeira_parcela || v.data_venda || v.created_at || "").slice(0, 7) !== competencia) {
         return false;
       }
 
@@ -505,7 +511,7 @@ export function ErpVendasHubView({
   }, [cotas, vendas, filtroConsultor, consultoresDisponiveis, filtroGrupo, termoCotaLimpo, palavrasBusca]);
 
   const valorVendido = vendasFiltradas.filter((v) => !["cancelada", "suspensa"].includes(v.status)).reduce((s, v) => s + Number(v.valor_credito), 0);
-  const metaPeriodo = competencia === "todos" ? metas.reduce((s, m) => s + m.valor, 0) : metas.filter((m) => m.inicio.slice(0, 7) <= competencia && m.fim.slice(0, 7) >= competencia).reduce((s, m) => s + m.valor, 0);
+  const metaPeriodo = competencia === "todos" ? metas.reduce((s, m) => s + m.valor, 0) : metas.filter((m) => (m.inicio || "").slice(0, 7) <= competencia && (m.fim || "").slice(0, 7) >= competencia).reduce((s, m) => s + m.valor, 0);
   const comissoesGeradas = vendasFiltradas.reduce((s, v) => s + Number(v.comissoes_geradas ?? 0), 0);
   const valorEmpresa = vendasFiltradas.reduce((s, v) => s + Number(v.valor_empresa ?? 0), 0);
 
@@ -559,7 +565,7 @@ export function ErpVendasHubView({
       );
       const historico = boletosEnvios
         .filter((b) => b.venda_id === op.venda.id && (op.cota?.id ? b.cota_id === op.cota.id : true))
-        .sort((a, b) => b.competencia.localeCompare(a.competencia) || (b.enviado_em || "").localeCompare(a.enviado_em || ""));
+        .sort((a, b) => (b.competencia || "").localeCompare(a.competencia || "") || (b.enviado_em || "").localeCompare(a.enviado_em || ""));
 
       return {
         ...op,
@@ -643,7 +649,7 @@ export function ErpVendasHubView({
     setEditSecundarioId(v.participante_secundario_id || "");
     setEditPerfilSecundarioId(v.perfil_secundario_id || (v.snapshot_venda as any)?.perfil_secundario_id || "");
     setEditFracaoSec(v.participante_secundario_fracao_percentual ? Number(v.participante_secundario_fracao_percentual) : 20);
-    setEditData1(v.data_primeira_parcela || v.data_venda.slice(0, 10));
+    setEditData1(v.data_primeira_parcela || (v.data_venda ? v.data_venda.slice(0, 10) : ""));
     setEditData2(v.data_segunda_parcela || "");
     setEditRecalcular(true);
     setModalErro(null);
@@ -1442,7 +1448,7 @@ export function ErpVendasHubView({
                     b.venda_id === cotaHistoricoBoleto.venda.id &&
                     (cotaHistoricoBoleto.cota?.id ? b.cota_id === cotaHistoricoBoleto.cota.id : true)
                 )
-                .sort((a, b) => b.competencia.localeCompare(a.competencia) || (b.enviado_em || "").localeCompare(a.enviado_em || "")).length === 0 ? (
+                .sort((a, b) => (b.competencia || "").localeCompare(a.competencia || "") || (b.enviado_em || "").localeCompare(a.enviado_em || "")).length === 0 ? (
                 <p className="p-8 text-center text-xs text-slate-500">
                   Nenhum registro de boleto realizado para esta cota até o momento.
                 </p>
@@ -1454,7 +1460,7 @@ export function ErpVendasHubView({
                         b.venda_id === cotaHistoricoBoleto.venda.id &&
                         (cotaHistoricoBoleto.cota?.id ? b.cota_id === cotaHistoricoBoleto.cota.id : true)
                     )
-                    .sort((a, b) => b.competencia.localeCompare(a.competencia) || (b.enviado_em || "").localeCompare(a.enviado_em || ""))
+                    .sort((a, b) => (b.competencia || "").localeCompare(a.competencia || "") || (b.enviado_em || "").localeCompare(a.enviado_em || ""))
                     .map((item) => (
                       <div key={item.id} className="p-3 text-xs flex items-center justify-between gap-3 hover:bg-slate-50 dark:hover:bg-slate-800/40">
                         <div>
@@ -2074,7 +2080,7 @@ export function ErpVendasHubView({
             <div className="flex items-center justify-between border-b pb-3">
               <div className="flex items-center gap-2 text-rose-700">
                 <ShieldAlert className="h-5 w-5" />
-                <h3 className="font-black">Ação Administrativa Master: Venda #{excluindoVenda.id.slice(0, 8)}</h3>
+                <h3 className="font-black">Ação Administrativa Master: Venda #{excluindoVenda.id ? excluindoVenda.id.slice(0, 8) : ""}</h3>
               </div>
               <button type="button" onClick={() => setExcluindoVenda(null)} className="text-slate-400 hover:text-slate-600">✕</button>
             </div>
