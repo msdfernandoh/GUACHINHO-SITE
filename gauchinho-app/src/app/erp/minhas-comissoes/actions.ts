@@ -52,6 +52,68 @@ export async function pagarComissaoEquipeAction(formData: FormData) {
   revalidatePath("/erp/minhas-comissoes");
 }
 
+export async function creditarEConferirComissaoAction(formData: FormData) {
+  const access = await requireErpRouteAccess("minhas-comissoes");
+  const podeGerenciar =
+    access.vinculo.papel?.codigo === "super_admin" ||
+    access.permissoes.has("gerenciar_financeiro") ||
+    access.permissoes.has("gerenciar_comissoes");
+
+  const previsaoId = String(formData.get("previsao_id") ?? "");
+  const db = await createClient();
+
+  const { data: previsao, error } = await db
+    .from("comissao_previsoes_participantes")
+    .select("id,participante_comercial_id,organizacao_parceira_id,competencia,valor_elegivel,valor_pago,status")
+    .eq("id", previsaoId)
+    .eq("empresa_id", access.empresaAtiva.id)
+    .maybeSingle();
+
+  if (error || !previsao) throw new Error("Previsão não encontrada.");
+
+  const { data: participante } = await db
+    .from("participantes_comerciais")
+    .select("id, usuario_id")
+    .eq("id", previsao.participante_comercial_id)
+    .eq("empresa_id", access.empresaAtiva.id)
+    .maybeSingle();
+
+  const proprioBeneficiario = participante?.usuario_id === access.usuario.id;
+  if (!proprioBeneficiario && !podeGerenciar) {
+    throw new Error("Sem permissão para creditar esta comissão.");
+  }
+
+  const saldo = Number(previsao.valor_elegivel) - Number(previsao.valor_pago);
+  if (saldo > 0) {
+    // Registra o pagamento contábil sem conta bancária de saída (o dinheiro continua no caixa da empresa para despesas)
+    await registrarPagamentoParticipante({
+      empresaId: access.empresaAtiva.id,
+      participanteComercialId: previsao.participante_comercial_id,
+      organizacaoParceiraId: previsao.organizacao_parceira_id,
+      competencia: previsao.competencia,
+      valorBruto: saldo.toFixed(2),
+      observacoes: "Crédito de comissão do sócio mantido na empresa para despesas",
+      idempotencyKey: `credito-socio:${previsao.id}:${saldo.toFixed(2)}`,
+      itens: [{ previsaoParticipanteId: previsao.id, valorLiquidado: saldo.toFixed(2) }],
+    });
+  }
+
+  // Marca como conferido pelo usuário
+  await db
+    .from("comissao_previsoes_participantes")
+    .update({
+      conferido_por_participante: true,
+      conferido_em: new Date().toISOString(),
+      conferido_por_usuario_id: access.usuario.id,
+    })
+    .eq("id", previsao.id)
+    .eq("empresa_id", access.empresaAtiva.id);
+
+  revalidatePath("/erp/minhas-comissoes");
+  revalidatePath("/erp/financeiro");
+  revalidatePath("/erp/fechamento-socios");
+}
+
 export async function pagarComissoesAgrupadasAction(formData: FormData) {
   const access = await requireErpRouteAccess("minhas-comissoes");
   if (!(access.vinculo.papel?.codigo === "super_admin" || access.permissoes.has("gerenciar_financeiro"))) {
@@ -67,15 +129,29 @@ export async function pagarComissoesAgrupadasAction(formData: FormData) {
     throw new Error("Seleção de comissões inválida.");
   }
   ids = [...new Set(ids.filter((id) => typeof id === "string" && id.length > 0))];
-  if (!ids.length || !contaOrigemId || operacaoId.length < 8) throw new Error("Selecione comissões e a conta de saída.");
+  if (!ids.length || operacaoId.length < 8) throw new Error("Selecione comissões e a operação.");
   const db = await createClient();
-  const [{ data: conta }, { data: previsoes, error }] = await Promise.all([
-    db.from("financeiro_contas_bancarias").select("id,participante_comercial_id").eq("id", contaOrigemId).eq("empresa_id", access.empresaAtiva.id).eq("ativo", true).maybeSingle(),
+  const [{ data: participante }, { data: previsoes, error }] = await Promise.all([
+    db.from("participantes_comerciais").select("id, usuario_id").eq("id", participanteId).eq("empresa_id", access.empresaAtiva.id).maybeSingle(),
     db.from("comissao_previsoes_participantes")
       .select("id,participante_comercial_id,organizacao_parceira_id,competencia,valor_elegivel,valor_pago")
       .eq("empresa_id", access.empresaAtiva.id).eq("participante_comercial_id", participanteId).in("id", ids),
   ]);
-  if (!conta || conta.participante_comercial_id) throw new Error("Selecione uma conta da empresa para pagar comissões; contas pessoais são somente destino.");
+
+  const { data: socio } = participante?.usuario_id
+    ? await db.from("empresa_socios").select("id,nome").eq("empresa_id", access.empresaAtiva.id).eq("usuario_id", participante.usuario_id).eq("ativo", true).maybeSingle()
+    : { data: null };
+
+  const manterNaEmpresa = contaOrigemId === "manter_empresa" || (!contaOrigemId && Boolean(socio));
+
+  let contaIdParaBaixa: string | null = null;
+  if (!manterNaEmpresa) {
+    if (!contaOrigemId) throw new Error("Selecione a conta bancária de saída.");
+    const { data: conta } = await db.from("financeiro_contas_bancarias").select("id,participante_comercial_id").eq("id", contaOrigemId).eq("empresa_id", access.empresaAtiva.id).eq("ativo", true).maybeSingle();
+    if (!conta || conta.participante_comercial_id) throw new Error("Selecione uma conta da empresa para pagar comissões; contas pessoais são somente destino.");
+    contaIdParaBaixa = conta.id;
+  }
+
   if (error || (previsoes?.length ?? 0) !== ids.length) throw new Error("Uma ou mais comissões não pertencem ao beneficiário selecionado.");
   const porCompetencia = new Map<string, typeof previsoes>();
   for (const previsao of previsoes ?? []) {
@@ -95,15 +171,31 @@ export async function pagarComissoesAgrupadasAction(formData: FormData) {
       organizacaoParceiraId: grupo[0].organizacao_parceira_id,
       competencia,
       valorBruto: total.toFixed(2),
-      contaBancariaOrigemId: contaOrigemId,
-      observacoes: "Pagamento agrupado de comissões",
+      ...(contaIdParaBaixa ? { contaBancariaOrigemId: contaIdParaBaixa } : {}),
+      observacoes: manterNaEmpresa
+        ? "Crédito de comissão do sócio mantido na empresa para despesas operacionais"
+        : "Pagamento agrupado de comissões",
       referenciaDocumento: `Lote ${operacaoId}`,
       idempotencyKey: `pagamento-agrupado:${operacaoId}:${competencia}`,
       itens,
     });
   }
+
+  if (manterNaEmpresa) {
+    await db
+      .from("comissao_previsoes_participantes")
+      .update({
+        conferido_por_participante: true,
+        conferido_em: new Date().toISOString(),
+        conferido_por_usuario_id: access.usuario.id,
+      })
+      .in("id", ids)
+      .eq("empresa_id", access.empresaAtiva.id);
+  }
+
   revalidatePath("/erp/minhas-comissoes");
   revalidatePath("/erp/financeiro");
+  revalidatePath("/erp/fechamento-socios");
   revalidatePath("/erp/contas-pagar");
 }
 

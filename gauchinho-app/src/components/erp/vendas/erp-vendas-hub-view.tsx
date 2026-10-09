@@ -14,6 +14,18 @@ import {
   Calendar,
   UserCheck,
   Tag,
+  Filter,
+  RotateCcw,
+  FileText,
+  Send,
+  Download,
+  CheckCheck,
+  Clock,
+  History,
+  MessageSquare,
+  ExternalLink,
+  Layers,
+  Undo2,
 } from "lucide-react";
 import {
   masterAtualizarVendaAction,
@@ -21,7 +33,27 @@ import {
   masterExcluirOuEstornarVendaAction,
   atualizarNumeroCotaAction,
   registrarContemplacaoAction,
+  registrarStatusBoletoAction,
 } from "@/app/erp/vendas/actions";
+
+export type BoletoEnvioItem = {
+  id: string;
+  empresa_id: string;
+  venda_id: string;
+  cota_id: string | null;
+  competencia: string;
+  status_boleto: "aguardando" | "baixado" | "enviado";
+  baixado_em: string | null;
+  baixado_por_id: string | null;
+  baixado_por_nome: string | null;
+  enviado_em: string | null;
+  enviado_por_id: string | null;
+  enviado_por_nome: string | null;
+  canal: string;
+  observacao: string | null;
+  created_at: string;
+  updated_at?: string;
+};
 
 export type ModalidadeSimples = {
   id: string;
@@ -125,10 +157,39 @@ interface ErpVendasHubViewProps {
   empresaNome: string;
   isMaster: boolean;
   metas: Array<{ valor:number;inicio:string;fim:string }>;
+  boletosEnvios?: BoletoEnvioItem[];
 }
 
 const brl = (v: number) =>
   v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+
+function formatarDataHoraBR(dataStr?: string | null) {
+  if (!dataStr) return "—";
+  try {
+    const d = new Date(dataStr);
+    if (isNaN(d.getTime())) return dataStr;
+    return d.toLocaleString("pt-BR", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  } catch {
+    return dataStr;
+  }
+}
+
+function gerarLinkWhatsAppBoleto(clienteNome: string, telefone: string | null, grupo: string, cota: string | null, competenciaStr: string) {
+  if (!telefone) return null;
+  const telLimpo = telefone.replace(/\D/g, "");
+  if (!telLimpo) return null;
+  const [ano, mes] = competenciaStr.split("-");
+  const mesExtenso = `${mes}/${ano}`;
+  const cotaTexto = cota ? `#${cota}` : "em processamento";
+  const texto = `Olá, ${clienteNome}! Tudo bem? Segue o boleto do seu consórcio Racon (Grupo ${grupo} - Cota ${cotaTexto}) referente à competência de ${mesExtenso}. Qualquer dúvida, estamos à total disposição!`;
+  return `https://wa.me/55${telLimpo}?text=${encodeURIComponent(texto)}`;
+}
 
 function formatarDataBR(dataStr?: string | null) {
   if (!dataStr) return "—";
@@ -173,11 +234,49 @@ export function ErpVendasHubView({
   empresaNome,
   isMaster,
   metas,
+  boletosEnvios = [],
 }: ErpVendasHubViewProps) {
   const [isPending, startTransition] = useTransition();
+  const [abaAtiva, setAbaAtiva] = useState<"vendas" | "boletos">("vendas");
+  const [filtroStatusBoleto, setFiltroStatusBoleto] = useState<"todos" | "aguardando" | "baixado" | "enviado">("todos");
+  const [cotaHistoricoBoleto, setCotaHistoricoBoleto] = useState<{ venda: VendaItem; cota: CotaItem | null } | null>(null);
   const [termoBusca, setTermoBusca] = useState("");
+  const [filtroConsultor, setFiltroConsultor] = useState("todos");
+  const [filtroGrupo, setFiltroGrupo] = useState("todos");
+  const [filtroCota, setFiltroCota] = useState("");
   const competencias = useMemo(()=>[...new Set(vendas.map((v)=>(v.data_primeira_parcela||v.data_venda).slice(0,7)))].sort().reverse(),[vendas]);
   const [competencia,setCompetencia]=useState(competencias[0]??"todos");
+
+  const consultoresDisponiveis = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const p of participantes) {
+      map.set(p.id, p.nome_exibicao || p.nome);
+    }
+    for (const v of vendas) {
+      if (v.participante_comercial_id && v.consultor_nome) {
+        map.set(v.participante_comercial_id, v.consultor_nome);
+      }
+      if (v.participante_secundario_id && v.secundario_nome) {
+        map.set(v.participante_secundario_id, v.secundario_nome);
+      }
+    }
+    return Array.from(map.entries())
+      .map(([id, nome]) => ({ id, nome }))
+      .sort((a, b) => a.nome.localeCompare(b.nome));
+  }, [participantes, vendas]);
+
+  const gruposDisponiveis = useMemo(() => {
+    const set = new Set<string>();
+    for (const v of vendas) {
+      if (v.grupo_codigo) set.add(v.grupo_codigo.trim());
+    }
+    for (const c of cotas) {
+      if (c.numero_grupo) set.add(c.numero_grupo.trim());
+    }
+    return Array.from(set)
+      .filter(Boolean)
+      .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+  }, [vendas, cotas]);
 
   // Modais
   const [editandoVenda, setEditandoVenda] = useState<VendaItem | null>(null);
@@ -255,39 +354,176 @@ export function ErpVendasHubView({
     return programaEditId ? 2.0 : 4.0;
   }, [programaEditId, modalidades, regrasFranquia, editTipoVenda]);
 
-  const normalizarBusca = (texto: string) => texto.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  const normalizarBusca = (texto: string) =>
+    texto.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
   const palavrasBusca = normalizarBusca(termoBusca).trim().split(/\s+/).filter(Boolean);
-  const cotasFiltradas = cotas.filter((c) => palavrasBusca.every((palavra) => normalizarBusca(`${c.cliente_nome || ""} ${c.consultor_nome || ""} ${c.numero_grupo} ${c.numero_cota || ""} ${c.status}`).includes(palavra)));
-  // Filtragem de vendas
-  const vendasFiltradas = vendas.filter((v) => {
-    if (competencia !== "todos" && (v.data_primeira_parcela||v.data_venda).slice(0,7) !== competencia) return false;
-    if (!termoBusca) return true;
-    const t = termoBusca.toLowerCase();
-    const cotasDaVenda = cotas.filter((c) => c.venda_id === v.id);
-    return (
-      v.cliente_nome.toLowerCase().includes(t) ||
-      (v.cliente_cpf_cnpj && v.cliente_cpf_cnpj.includes(t)) ||
-      (v.grupo_codigo && v.grupo_codigo.includes(t)) ||
-      cotasDaVenda.some((c) => c.numero_cota?.toLowerCase().includes(t) || c.numero_grupo.toLowerCase().includes(t))
-    );
-  });
-  const valorVendido=vendasFiltradas.filter((v)=>!["cancelada","suspensa"].includes(v.status)).reduce((s,v)=>s+Number(v.valor_credito),0);
-  const metaPeriodo=competencia === "todos" ? metas.reduce((s,m)=>s+m.valor,0) : metas.filter((m)=>m.inicio.slice(0,7)<=competencia&&m.fim.slice(0,7)>=competencia).reduce((s,m)=>s+m.valor,0);
-  const comissoesGeradas=vendasFiltradas.reduce((s,v)=>s+Number(v.comissoes_geradas??0),0);
-  const valorEmpresa=vendasFiltradas.reduce((s,v)=>s+Number(v.valor_empresa??0),0);
-  const operacoesPorCota = vendasFiltradas.flatMap<{
-    venda: VendaItem;
-    cota: CotaItem | null;
-    indice: number;
-    total: number;
-  }>((v) => {
-    const cotasDaVenda = cotas
-      .filter((c) => c.venda_id === v.id)
-      .sort((a, b) => (a.ordem_cota || 1) - (b.ordem_cota || 1));
-    return cotasDaVenda.length > 0
-      ? cotasDaVenda.map((cota, indice) => ({ venda: v, cota, indice, total: cotasDaVenda.length }))
-      : [{ venda: v, cota: null, indice: 0, total: 1 }];
-  });
+  const termoCotaLimpo = normalizarBusca(filtroCota).trim();
+
+  // Filtragem de vendas com suporte a consultor, grupo, cota, mês e busca livre
+  const vendasFiltradas = useMemo(() => {
+    return vendas.filter((v) => {
+      // 1. Mês de referência (Competência)
+      if (competencia !== "todos" && (v.data_primeira_parcela || v.data_venda).slice(0, 7) !== competencia) {
+        return false;
+      }
+
+      // 2. Filtro por Consultor / SDR
+      if (filtroConsultor !== "todos") {
+        const matchPrincipal = v.participante_comercial_id === filtroConsultor;
+        const matchSecundario = v.participante_secundario_id === filtroConsultor;
+        const matchNome = normalizarBusca(v.consultor_nome || "") === normalizarBusca(filtroConsultor);
+        if (!matchPrincipal && !matchSecundario && !matchNome) return false;
+      }
+
+      // 3. Filtro por Grupo
+      const cotasDaVenda = cotas.filter((c) => c.venda_id === v.id);
+      if (filtroGrupo !== "todos") {
+        const matchGrupoVenda = v.grupo_codigo?.trim() === filtroGrupo;
+        const matchGrupoCota = cotasDaVenda.some((c) => c.numero_grupo?.trim() === filtroGrupo);
+        if (!matchGrupoVenda && !matchGrupoCota) return false;
+      }
+
+      // 4. Filtro por Cota
+      if (termoCotaLimpo) {
+        const matchCotaVenda = v.cota_numero && normalizarBusca(v.cota_numero).includes(termoCotaLimpo);
+        const matchCotaDef = cotasDaVenda.some((c) => c.numero_cota && normalizarBusca(c.numero_cota).includes(termoCotaLimpo));
+        if (!matchCotaVenda && !matchCotaDef) return false;
+      }
+
+      // 5. Busca Geral / Livre
+      if (palavrasBusca.length > 0) {
+        const textoVenda = normalizarBusca(
+          `${v.cliente_nome} ${v.cliente_cpf_cnpj || ""} ${v.cliente_email || ""} ${v.cliente_telefone || ""} ${v.grupo_codigo || ""} ${v.cota_numero || ""} ${v.consultor_nome || ""} ${v.secundario_nome || ""} ${v.tipo_negociacao || ""}`
+        );
+        const textoCotas = cotasDaVenda.map((c) => normalizarBusca(`${c.numero_grupo} ${c.numero_cota || ""} ${c.status}`)).join(" ");
+        const combinacao = `${textoVenda} ${textoCotas}`;
+        const match = palavrasBusca.every((p) => combinacao.includes(p));
+        if (!match) return false;
+      }
+
+      return true;
+    });
+  }, [vendas, cotas, competencia, filtroConsultor, filtroGrupo, termoCotaLimpo, palavrasBusca]);
+
+  const valorVendido = vendasFiltradas.filter((v) => !["cancelada", "suspensa"].includes(v.status)).reduce((s, v) => s + Number(v.valor_credito), 0);
+  const metaPeriodo = competencia === "todos" ? metas.reduce((s, m) => s + m.valor, 0) : metas.filter((m) => m.inicio.slice(0, 7) <= competencia && m.fim.slice(0, 7) >= competencia).reduce((s, m) => s + m.valor, 0);
+  const comissoesGeradas = vendasFiltradas.reduce((s, v) => s + Number(v.comissoes_geradas ?? 0), 0);
+  const valorEmpresa = vendasFiltradas.reduce((s, v) => s + Number(v.valor_empresa ?? 0), 0);
+
+  const operacoesPorCota = useMemo(() => {
+    return vendasFiltradas.flatMap<{
+      venda: VendaItem;
+      cota: CotaItem | null;
+      indice: number;
+      total: number;
+    }>((v) => {
+      const cotasDaVenda = cotas
+        .filter((c) => c.venda_id === v.id)
+        .sort((a, b) => (a.ordem_cota || 1) - (b.ordem_cota || 1));
+
+      let cotasExibidas = cotasDaVenda;
+      if (filtroGrupo !== "todos") {
+        cotasExibidas = cotasExibidas.filter((c) => c.numero_grupo?.trim() === filtroGrupo || v.grupo_codigo?.trim() === filtroGrupo);
+      }
+      if (termoCotaLimpo) {
+        cotasExibidas = cotasExibidas.filter((c) => (c.numero_cota && normalizarBusca(c.numero_cota).includes(termoCotaLimpo)) || (v.cota_numero && normalizarBusca(v.cota_numero).includes(termoCotaLimpo)));
+      }
+
+      if (cotasExibidas.length > 0) {
+        return cotasExibidas.map((cota, indice) => ({
+          venda: v,
+          cota,
+          indice,
+          total: cotasDaVenda.length,
+        }));
+      }
+
+      if (cotasDaVenda.length === 0) {
+        return [{ venda: v, cota: null, indice: 0, total: 1 }];
+      }
+
+      return [];
+    });
+  }, [vendasFiltradas, cotas, filtroGrupo, termoCotaLimpo]);
+
+
+  // Cálculos e dados para a aba de Controle de Boletos
+  const competenciaBoletoAtual = competencia !== "todos" ? competencia : (competencias[0] || new Date().toISOString().slice(0, 7));
+
+  const operacoesBoletos = useMemo(() => {
+    return operacoesPorCota.map((op) => {
+      const envio = boletosEnvios.find(
+        (b) =>
+          b.venda_id === op.venda.id &&
+          (op.cota?.id ? b.cota_id === op.cota.id : true) &&
+          b.competencia === competenciaBoletoAtual
+      );
+      const historico = boletosEnvios
+        .filter((b) => b.venda_id === op.venda.id && (op.cota?.id ? b.cota_id === op.cota.id : true))
+        .sort((a, b) => b.competencia.localeCompare(a.competencia) || (b.enviado_em || "").localeCompare(a.enviado_em || ""));
+
+      return {
+        ...op,
+        competencia: competenciaBoletoAtual,
+        envio,
+        historico,
+        statusBoleto: envio?.status_boleto || "aguardando",
+      };
+    });
+  }, [operacoesPorCota, boletosEnvios, competenciaBoletoAtual]);
+
+  const operacoesBoletosFiltradas = useMemo(() => {
+    if (filtroStatusBoleto === "todos") return operacoesBoletos;
+    return operacoesBoletos.filter((op) => op.statusBoleto === filtroStatusBoleto);
+  }, [operacoesBoletos, filtroStatusBoleto]);
+
+  const totalBoletosMes = operacoesBoletos.length;
+  const totalBoletosAguardando = operacoesBoletos.filter((op) => op.statusBoleto === "aguardando").length;
+  const totalBoletosBaixados = operacoesBoletos.filter((op) => op.statusBoleto === "baixado").length;
+  const totalBoletosEnviados = operacoesBoletos.filter((op) => op.statusBoleto === "enviado").length;
+  const taxaConclusaoBoletos = totalBoletosMes > 0 ? Math.round((totalBoletosEnviados / totalBoletosMes) * 100) : 0;
+
+  function handleRegistrarBoleto(
+    vendaId: string,
+    cotaId: string | null,
+    comp: string,
+    acao: "BAIXAR" | "ENVIAR" | "DESFAZER",
+    canal = "whatsapp",
+    observacao = ""
+  ) {
+    startTransition(async () => {
+      try {
+        const fd = new FormData();
+        fd.append("venda_id", vendaId);
+        if (cotaId) fd.append("cota_id", cotaId);
+        fd.append("competencia", comp);
+        fd.append("acao", acao);
+        fd.append("canal", canal);
+        if (observacao) fd.append("observacao", observacao);
+
+        await registrarStatusBoletoAction(fd);
+        setModalSucesso(
+          acao === "BAIXAR"
+            ? "Boleto registrado como Baixado com sucesso!"
+            : acao === "ENVIAR"
+            ? "Boleto registrado como Enviado ao cliente!"
+            : "Status de boleto desfeito com sucesso!"
+        );
+      } catch (err: any) {
+        setModalErro(err.message || "Erro ao registrar status do boleto.");
+      }
+    });
+  }
+
+  const temFiltroAtivo = competencia !== "todos" || filtroConsultor !== "todos" || filtroGrupo !== "todos" || filtroCota.trim() !== "" || termoBusca.trim() !== "";
+
+  function limparFiltros() {
+    setCompetencia("todos");
+    setFiltroConsultor("todos");
+    setFiltroGrupo("todos");
+    setFiltroCota("");
+    setTermoBusca("");
+  }
 
   function abrirEditarVenda(v: VendaItem) {
     setEditandoVenda(v);
@@ -350,8 +586,229 @@ export function ErpVendasHubView({
         )}
       </header>
 
-      <div className="flex flex-wrap items-end justify-between gap-3 rounded-2xl border bg-white p-4"><label className="text-xs font-black uppercase text-slate-600">Mês de referência<select value={competencia} onChange={(event)=>setCompetencia(event.target.value)} className="mt-1 block rounded-xl border px-4 py-2 text-sm normal-case"><option value="todos">Todos</option>{competencias.map((mes)=><option key={mes} value={mes}>{mes}</option>)}</select></label><p className="text-xs font-bold text-slate-500">Competência pela primeira parcela; data da venda apenas para legado.</p></div>
+      {/* Seletor de Abas: Vendas & Cotas vs Controle de Boletos */}
+      <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800">
+        <button
+          type="button"
+          onClick={() => setAbaAtiva("vendas")}
+          className={`flex items-center gap-2 px-5 py-3 border-b-2 text-xs font-black uppercase tracking-wider transition cursor-pointer ${
+            abaAtiva === "vendas"
+              ? "border-blue-600 text-blue-700 dark:text-blue-400 bg-blue-50/50 dark:bg-blue-950/20"
+              : "border-transparent text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
+          }`}
+        >
+          <Layers className="h-4 w-4" />
+          Vendas &amp; Cotas ({operacoesPorCota.length})
+        </button>
+        <button
+          type="button"
+          onClick={() => setAbaAtiva("boletos")}
+          className={`flex items-center gap-2 px-5 py-3 border-b-2 text-xs font-black uppercase tracking-wider transition cursor-pointer ${
+            abaAtiva === "boletos"
+              ? "border-blue-600 text-blue-700 dark:text-blue-400 bg-blue-50/50 dark:bg-blue-950/20"
+              : "border-transparent text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
+          }`}
+        >
+          <FileText className="h-4 w-4" />
+          Controle de Boletos ({operacoesBoletosFiltradas.length})
+          {totalBoletosEnviados > 0 && (
+            <span className="ml-1 rounded-full bg-emerald-100 text-emerald-800 px-2 py-0.5 text-[10px] font-bold dark:bg-emerald-950 dark:text-emerald-300">
+              {totalBoletosEnviados}/{totalBoletosMes} ({taxaConclusaoBoletos}%)
+            </span>
+          )}
+        </button>
+      </div>
 
+      {/* Painel Unificado de Filtros Operacionais */}
+      <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-2xs dark:border-slate-800 dark:bg-slate-900 space-y-3">
+        <div className="flex items-center justify-between gap-2 border-b border-slate-100 pb-2.5 dark:border-slate-800">
+          <div className="flex items-center gap-2">
+            <Filter className="h-4 w-4 text-blue-600" />
+            <span className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-slate-200">
+              Filtros de Vendas &amp; Cotas
+            </span>
+            {temFiltroAtivo && (
+              <span className="inline-flex items-center rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-bold text-blue-800 dark:bg-blue-900/60 dark:text-blue-200">
+                Filtros ativos
+              </span>
+            )}
+          </div>
+          {temFiltroAtivo && (
+            <button
+              type="button"
+              onClick={limparFiltros}
+              className="inline-flex items-center gap-1 text-[11px] font-bold text-rose-600 hover:text-rose-700 dark:text-rose-400 hover:underline cursor-pointer"
+            >
+              <RotateCcw className="h-3 w-3" />
+              Limpar filtros
+            </button>
+          )}
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+          {/* 1. Mês de Referência */}
+          <div>
+            <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400 mb-1">
+              <Calendar className="inline h-3 w-3 mr-1 text-slate-400" />
+              Mês de Referência
+            </label>
+            <select
+              value={competencia}
+              onChange={(e) => setCompetencia(e.target.value)}
+              className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3 py-2 text-xs font-semibold text-slate-800 focus:border-blue-600 focus:bg-white focus:ring-2 focus:ring-blue-600/20 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+            >
+              <option value="todos">Todos</option>
+              {competencias.map((mes) => (
+                <option key={mes} value={mes}>
+                  {formatarDataBR(mes)} ({mes})
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* 2. Filtro por Consultor */}
+          <div>
+            <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400 mb-1">
+              <UserCheck className="inline h-3 w-3 mr-1 text-slate-400" />
+              Consultor / SDR
+            </label>
+            <select
+              value={filtroConsultor}
+              onChange={(e) => setFiltroConsultor(e.target.value)}
+              className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3 py-2 text-xs font-semibold text-slate-800 focus:border-blue-600 focus:bg-white focus:ring-2 focus:ring-blue-600/20 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+            >
+              <option value="todos">Todos os consultores</option>
+              {consultoresDisponiveis.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.nome}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* 3. Filtro por Grupo */}
+          <div>
+            <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400 mb-1">
+              <Tag className="inline h-3 w-3 mr-1 text-slate-400" />
+              Grupo
+            </label>
+            <select
+              value={filtroGrupo}
+              onChange={(e) => setFiltroGrupo(e.target.value)}
+              className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3 py-2 text-xs font-semibold text-slate-800 focus:border-blue-600 focus:bg-white focus:ring-2 focus:ring-blue-600/20 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 font-mono"
+            >
+              <option value="todos" className="font-sans">Todos os grupos</option>
+              {gruposDisponiveis.map((grp) => (
+                <option key={grp} value={grp}>
+                  Grupo {grp}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* 4. Filtro por Cota */}
+          <div>
+            <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400 mb-1">
+              <Hash className="inline h-3 w-3 mr-1 text-slate-400" />
+              Número da Cota
+            </label>
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="Ex: 1337, 0032..."
+                value={filtroCota}
+                onChange={(e) => setFiltroCota(e.target.value)}
+                className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3 py-2 text-xs font-mono font-semibold text-slate-800 placeholder:font-sans placeholder:text-slate-400 focus:border-blue-600 focus:bg-white focus:ring-2 focus:ring-blue-600/20 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+              />
+              {filtroCota && (
+                <button
+                  type="button"
+                  onClick={() => setFiltroCota("")}
+                  className="absolute right-2.5 top-2 text-slate-400 hover:text-slate-600 text-xs"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* 5. Busca Geral (Cliente, CPF, etc.) */}
+          <div>
+            <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400 mb-1">
+              <Search className="inline h-3 w-3 mr-1 text-slate-400" />
+              Busca Livre
+            </label>
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="Cliente, CPF..."
+                value={termoBusca}
+                onChange={(e) => setTermoBusca(e.target.value)}
+                className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3 py-2 text-xs font-semibold text-slate-800 placeholder:text-slate-400 focus:border-blue-600 focus:bg-white focus:ring-2 focus:ring-blue-600/20 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+              />
+              {termoBusca && (
+                <button
+                  type="button"
+                  onClick={() => setTermoBusca("")}
+                  className="absolute right-2.5 top-2 text-slate-400 hover:text-slate-600 text-xs"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Filtro específico de status do boleto quando na aba de boletos */}
+        {abaAtiva === "boletos" && (
+          <div className="flex flex-wrap items-center justify-between gap-2 pt-2.5 border-t border-slate-100 dark:border-slate-800">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400 mr-1">
+                Status do Boleto:
+              </span>
+              {[
+                { id: "todos", label: "Todos os status", count: totalBoletosMes },
+                { id: "aguardando", label: "⏳ Aguardando Baixa", count: totalBoletosAguardando },
+                { id: "baixado", label: "📥 Baixado (Aguardando Envio)", count: totalBoletosBaixados },
+                { id: "enviado", label: "✅ Boleto Enviado", count: totalBoletosEnviados },
+              ].map((st) => (
+                <button
+                  key={st.id}
+                  type="button"
+                  onClick={() => setFiltroStatusBoleto(st.id as any)}
+                  className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-1 text-xs font-bold transition cursor-pointer ${
+                    filtroStatusBoleto === st.id
+                      ? "bg-blue-600 text-white shadow-xs"
+                      : "bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300"
+                  }`}
+                >
+                  <span>{st.label}</span>
+                  <span className={`rounded-full px-1.5 py-0.2 text-[10px] ${
+                    filtroStatusBoleto === st.id ? "bg-white/20 text-white" : "bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200"
+                  }`}>
+                    {st.count}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div className="flex flex-wrap items-center justify-between gap-2 pt-1 text-[11px] text-slate-500 border-t border-slate-100 dark:border-slate-800">
+          <span>
+            Exibindo <strong>{operacoesPorCota.length}</strong> {operacoesPorCota.length === 1 ? "operação" : "operações"} ({vendasFiltradas.length} {vendasFiltradas.length === 1 ? "venda" : "vendas"})
+          </span>
+          <div className="flex items-center gap-3 font-semibold">
+            <span>Ativas: <strong className="text-emerald-700 dark:text-emerald-400">{operacoesPorCota.filter(({ cota, venda }) => (cota?.status || venda.status) === "ativa").length}</strong></span>
+            <span>·</span>
+            <span>Contempladas: <strong className="text-blue-700 dark:text-blue-400">{operacoesPorCota.filter(({ cota }) => cota?.status === "contemplada").length}</strong></span>
+            <span>·</span>
+            <span>Canceladas: <strong className="text-rose-700 dark:text-rose-400">{operacoesPorCota.filter(({ cota, venda }) => (cota?.status || venda.status) === "cancelada").length}</strong></span>
+          </div>
+        </div>
+      </div>
+
+{abaAtiva === "vendas" ? (
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">{[
         ["Valor vendido",valorVendido,"border-blue-200 bg-blue-50 text-blue-950"],
         ["Meta",metaPeriodo,"border-violet-200 bg-violet-50 text-violet-950"],
@@ -359,6 +816,33 @@ export function ErpVendasHubView({
         ["Comissões geradas",comissoesGeradas,"border-emerald-200 bg-emerald-50 text-emerald-950"],
         ["Valor para empresa",valorEmpresa,"border-cyan-200 bg-cyan-50 text-cyan-950"],
       ].map(([titulo,valor,classe])=><div key={String(titulo)} className={`rounded-2xl border p-5 ${classe}`}><p className="text-xs font-black uppercase">{titulo}</p><p className="mt-2 text-2xl font-black">{brl(Number(valor))}</p></div>)}</section>
+      ) : (
+      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-2xs dark:border-slate-800 dark:bg-slate-900">
+          <p className="text-xs font-black uppercase text-slate-500">Total de Cotas no Mês ({formatarDataBR(competenciaBoletoAtual)})</p>
+          <p className="mt-2 text-3xl font-black text-slate-900 dark:text-white">{totalBoletosMes}</p>
+          <p className="mt-1 text-[11px] text-slate-400">Cotas elegíveis na competência</p>
+        </div>
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5 shadow-2xs text-amber-950 dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-200">
+          <p className="text-xs font-black uppercase">⏳ Aguardando Baixa</p>
+          <p className="mt-2 text-3xl font-black">{totalBoletosAguardando}</p>
+          <p className="mt-1 text-[11px] text-amber-800/80 dark:text-amber-300/80">Pendentes de emissão/baixa</p>
+        </div>
+        <div className="rounded-2xl border border-blue-200 bg-blue-50 p-5 shadow-2xs text-blue-950 dark:border-blue-900/40 dark:bg-blue-950/20 dark:text-blue-200">
+          <p className="text-xs font-black uppercase">📥 Baixados (Aguardando Envio)</p>
+          <p className="mt-2 text-3xl font-black">{totalBoletosBaixados}</p>
+          <p className="mt-1 text-[11px] text-blue-800/80 dark:text-blue-300/80">Prontos para envio ao cliente</p>
+        </div>
+        <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5 shadow-2xs text-emerald-950 dark:border-emerald-900/40 dark:bg-emerald-950/20 dark:text-emerald-200">
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-black uppercase">✅ Boletos Enviados</p>
+            <span className="rounded-full bg-emerald-200/80 px-2 py-0.5 text-[10px] font-black text-emerald-900">{taxaConclusaoBoletos}%</span>
+          </div>
+          <p className="mt-2 text-3xl font-black">{totalBoletosEnviados}</p>
+          <p className="mt-1 text-[11px] text-emerald-800/80 dark:text-emerald-300/80">Entregues aos clientes no mês</p>
+        </div>
+      </section>
+      )}
 
       {modalSucesso && (
         <div className="flex items-center justify-between rounded-xl bg-emerald-50 p-4 text-xs font-bold text-emerald-900 border border-emerald-300">
@@ -367,34 +851,17 @@ export function ErpVendasHubView({
         </div>
       )}
 
-      {/* Barra de Busca e Indicadores */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="relative w-full max-w-md">
-          <Search className="absolute left-3.5 top-2.5 h-4 w-4 text-slate-400" />
-          <input
-            type="text"
-            placeholder="Buscar por cliente, CPF, cota ou grupo..."
-            value={termoBusca}
-            onChange={(e) => setTermoBusca(e.target.value)}
-            className="w-full rounded-xl border border-slate-300 bg-white pl-10 pr-4 py-2 text-xs font-semibold shadow-2xs focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-          />
-        </div>
-        <div className="flex items-center gap-2 text-xs font-bold text-slate-600 dark:text-slate-300">
-          <span>Operações de venda: <strong>{cotas.length}</strong></span>
-          <span>·</span>
-          <span>Cotas Ativas: <strong>{cotas.filter((c) => c.status === "ativa").length}</strong></span>
-          <span>·</span>
-          <span>Contempladas: <strong className="text-blue-600">{cotas.filter((c) => c.status === "contemplada").length}</strong></span>
-        </div>
-      </div>
 
-      {/* SEÇÃO 1: Vendas Efetivadas */}
-      <section className="space-y-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-2xs dark:border-slate-800 dark:bg-slate-900">
-        <div className="flex items-center justify-between border-b pb-3">
-          <h2 className="text-base font-black text-slate-900 dark:text-white">
-            Vendas individualizadas por cota ({operacoesPorCota.length})
-          </h2>
-        </div>
+
+      {/* SEÇÃO DA TABELA DE ACORDO COM A ABA ATIVA */}
+      {abaAtiva === "vendas" ? (
+      <div className="space-y-6">
+        <section className="space-y-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-2xs dark:border-slate-800 dark:bg-slate-900">
+          <div className="flex items-center justify-between border-b pb-3">
+            <h2 className="text-base font-black text-slate-900 dark:text-white">
+              Vendas individualizadas por cota ({operacoesPorCota.length})
+            </h2>
+          </div>
 
         {operacoesPorCota.length === 0 ? (
           <p className="p-8 text-center text-xs text-slate-500">Nenhuma venda encontrada para os filtros aplicados.</p>
@@ -636,6 +1103,313 @@ export function ErpVendasHubView({
           </div>
         )}
       </section>
+      </div>
+      ) : (
+        <section className="space-y-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-2xs dark:border-slate-800 dark:bg-slate-900">
+          <div className="flex flex-wrap items-center justify-between border-b pb-3 gap-2">
+            <div>
+              <h2 className="text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
+                <FileText className="h-5 w-5 text-blue-600" />
+                Controle de Boletos — Competência {formatarDataBR(competenciaBoletoAtual)} ({operacoesBoletosFiltradas.length})
+              </h2>
+              <p className="text-xs text-slate-500">
+                Registre com 1 clique a baixa e o envio aos clientes com gravação de data, horário e responsável.
+              </p>
+            </div>
+            <div className="text-xs font-bold text-slate-600 dark:text-slate-300">
+              Conclusão: <strong className="text-emerald-600">{totalBoletosEnviados} de {totalBoletosMes} ({taxaConclusaoBoletos}%)</strong>
+            </div>
+          </div>
+
+          {operacoesBoletosFiltradas.length === 0 ? (
+            <p className="p-8 text-center text-xs text-slate-500">Nenhum boleto encontrado para os filtros aplicados.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-slate-50 text-[11px] font-bold uppercase text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+                  <tr>
+                    <th className="p-3">Cliente</th>
+                    <th className="p-3">Grupo &amp; Cota</th>
+                    <th className="p-3">Consultor / SDR</th>
+                    <th className="p-3 text-center">Status do Boleto</th>
+                    <th className="p-3">Data/Hora Baixa</th>
+                    <th className="p-3">Data/Hora Envio</th>
+                    <th className="p-3 text-right">Ações Rápidas (1 Clique)</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                  {operacoesBoletosFiltradas.map(({ venda: v, cota, indice, total, envio, historico, statusBoleto }) => {
+                    const zapLink = gerarLinkWhatsAppBoleto(
+                      v.cliente_nome,
+                      v.cliente_telefone,
+                      cota?.numero_grupo || v.grupo_codigo || "1463",
+                      cota?.numero_cota || v.cota_numero || null,
+                      competenciaBoletoAtual
+                    );
+
+                    return (
+                      <tr key={`boleto-${v.id}-${cota?.id || "sem-cota"}`} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition">
+                        <td className="p-3 font-semibold text-slate-900 dark:text-white">
+                          <div className="font-bold">{v.cliente_nome}</div>
+                          {v.cliente_cpf_cnpj && <div className="text-[10px] text-slate-400 font-mono">{v.cliente_cpf_cnpj}</div>}
+                          {v.cliente_telefone && (
+                            <div className="text-[11px] text-slate-500 flex items-center gap-1 mt-0.5 font-mono">
+                              <span>📱 {v.cliente_telefone}</span>
+                            </div>
+                          )}
+                        </td>
+                        <td className="p-3">
+                          <div className="flex items-center gap-1.5">
+                            <span className="rounded-md bg-blue-50 px-2 py-0.5 text-[11px] font-extrabold text-blue-900 dark:bg-blue-950/60 dark:text-blue-200 border border-blue-200 dark:border-blue-800 font-mono">
+                              Grupo {cota?.numero_grupo || v.grupo_codigo || "1463"}
+                            </span>
+                          </div>
+                          <div className="mt-1">
+                            {cota?.numero_cota ? (
+                              <span className="font-mono font-bold text-emerald-700 dark:text-emerald-400 text-xs">🎯 Cota {cota.ordem_cota || indice + 1}: #{cota.numero_cota}</span>
+                            ) : (
+                              <span className="inline-flex items-center rounded-md bg-amber-50 px-1.5 py-0.5 text-[10px] font-bold text-amber-800 dark:bg-amber-950/50 dark:text-amber-200 border border-amber-200 dark:border-amber-800">⏳ Cota {cota?.ordem_cota || indice + 1}: SIF pendente</span>
+                            )}
+                          </div>
+                          <div className="text-[11px] font-mono text-slate-500 mt-0.5">
+                            Parcela: <strong>{brl(cota?.parcela ?? v.parcela)}</strong>
+                          </div>
+                        </td>
+                        <td className="p-3">
+                          <div className="font-bold text-slate-900 dark:text-white">
+                            {v.consultor_nome || "Consultor Principal"}
+                          </div>
+                          <div className="text-[10px] text-slate-500">
+                            {obterInfoPerfilPrincipal(v, vinculosPerfis)}
+                          </div>
+                        </td>
+                        <td className="p-3 text-center">
+                          {statusBoleto === "enviado" ? (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-3 py-1 text-[11px] font-black uppercase text-emerald-900 dark:bg-emerald-950/80 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-800">
+                              <CheckCheck className="h-3.5 w-3.5 text-emerald-600" />
+                              Boleto Enviado
+                            </span>
+                          ) : statusBoleto === "baixado" ? (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-blue-100 px-3 py-1 text-[11px] font-black uppercase text-blue-900 dark:bg-blue-950/80 dark:text-blue-200 border border-blue-300 dark:border-blue-800">
+                              <Download className="h-3.5 w-3.5 text-blue-600" />
+                              Baixado
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-3 py-1 text-[11px] font-black uppercase text-amber-900 dark:bg-amber-950/80 dark:text-amber-200 border border-amber-300 dark:border-amber-800">
+                              <Clock className="h-3.5 w-3.5 text-amber-600" />
+                              Aguardando Baixa
+                            </span>
+                          )}
+                        </td>
+                        <td className="p-3 font-mono text-[11px]">
+                          {envio?.baixado_em ? (
+                            <div>
+                              <div className="font-bold text-slate-800 dark:text-slate-200">
+                                {formatarDataHoraBR(envio.baixado_em)}
+                              </div>
+                              <div className="text-[10px] text-slate-400">
+                                Por: {envio.baixado_por_nome || "Consultor"}
+                              </div>
+                            </div>
+                          ) : (
+                            <span className="text-slate-400">—</span>
+                          )}
+                        </td>
+                        <td className="p-3 font-mono text-[11px]">
+                          {envio?.enviado_em ? (
+                            <div>
+                              <div className="font-bold text-emerald-700 dark:text-emerald-400">
+                                {formatarDataHoraBR(envio.enviado_em)}
+                              </div>
+                              <div className="text-[10px] text-slate-400">
+                                Via {envio.canal || "whatsapp"} por: {envio.enviado_por_nome || "Consultor"}
+                              </div>
+                            </div>
+                          ) : (
+                            <span className="text-slate-400">—</span>
+                          )}
+                        </td>
+                        <td className="p-3 text-right">
+                          <div className="flex flex-col items-end gap-1.5 min-w-[200px]">
+                            <div className="flex items-center gap-1 w-full justify-end">
+                              {/* Botão Baixado */}
+                              <button
+                                type="button"
+                                onClick={() => handleRegistrarBoleto(v.id, cota?.id || null, competenciaBoletoAtual, "BAIXAR")}
+                                disabled={isPending}
+                                title="Registrar que o boleto foi baixado da administradora"
+                                className={`rounded-lg px-2.5 py-1 text-[11px] font-bold transition cursor-pointer flex items-center gap-1 ${
+                                  statusBoleto === "baixado" || statusBoleto === "enviado"
+                                    ? "bg-blue-100 text-blue-900 border border-blue-200 dark:bg-blue-950 dark:text-blue-300"
+                                    : "bg-slate-100 hover:bg-blue-50 hover:text-blue-700 text-slate-700 border border-slate-200 dark:bg-slate-800 dark:text-slate-300"
+                                }`}
+                              >
+                                <Download className="h-3 w-3" />
+                                {statusBoleto === "baixado" || statusBoleto === "enviado" ? "Baixado ✓" : "Baixar"}
+                              </button>
+
+                              {/* Botão Enviado */}
+                              <button
+                                type="button"
+                                onClick={() => handleRegistrarBoleto(v.id, cota?.id || null, competenciaBoletoAtual, "ENVIAR")}
+                                disabled={isPending}
+                                title="Registrar que o boleto foi enviado ao cliente (marca baixado + enviado)"
+                                className={`rounded-lg px-2.5 py-1 text-[11px] font-bold transition cursor-pointer flex items-center gap-1 ${
+                                  statusBoleto === "enviado"
+                                    ? "bg-emerald-600 text-white shadow-xs"
+                                    : "bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300"
+                                }`}
+                              >
+                                <Send className="h-3 w-3" />
+                                {statusBoleto === "enviado" ? "Enviado ✓" : "Enviar"}
+                              </button>
+
+                              {/* Botão WhatsApp */}
+                              {zapLink && (
+                                <a
+                                  href={zapLink}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  onClick={() => handleRegistrarBoleto(v.id, cota?.id || null, competenciaBoletoAtual, "ENVIAR", "whatsapp")}
+                                  title="Abrir WhatsApp com mensagem pronta do boleto e registrar envio automático"
+                                  className="rounded-lg bg-emerald-100 text-emerald-900 hover:bg-emerald-200 dark:bg-emerald-950/80 dark:text-emerald-200 px-2.5 py-1 text-[11px] font-bold transition flex items-center gap-1 border border-emerald-300"
+                                >
+                                  <MessageSquare className="h-3 w-3 text-emerald-700 dark:text-emerald-400" />
+                                  WhatsApp
+                                </a>
+                              )}
+                            </div>
+
+                            <div className="flex items-center gap-2 text-[10px]">
+                              {/* Histórico Geral */}
+                              <button
+                                type="button"
+                                onClick={() => setCotaHistoricoBoleto({ venda: v, cota })}
+                                className="text-blue-600 hover:underline flex items-center gap-0.5 cursor-pointer font-semibold"
+                              >
+                                <History className="h-3 w-3" />
+                                Histórico ({historico.length})
+                              </button>
+
+                              {/* Desfazer */}
+                              {envio && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleRegistrarBoleto(v.id, cota?.id || null, competenciaBoletoAtual, "DESFAZER")}
+                                  disabled={isPending}
+                                  className="text-slate-400 hover:text-rose-600 flex items-center gap-0.5 cursor-pointer"
+                                  title="Desfazer envio/baixa deste mês"
+                                >
+                                  <Undo2 className="h-3 w-3" />
+                                  Desfazer
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+      )}
+
+      {/* MODAL 5: HISTÓRICO GERAL DE BOLETOS DA COTA */}
+      {cotaHistoricoBoleto && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-xs">
+          <div className="w-full max-w-2xl rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-slate-800 dark:bg-slate-900 space-y-4 max-h-[85vh] flex flex-col">
+            <div className="flex items-center justify-between border-b pb-3">
+              <div className="flex items-center gap-2">
+                <History className="h-5 w-5 text-blue-700" />
+                <div>
+                  <h3 className="font-black text-slate-900 dark:text-white">
+                    Histórico Geral de Boletos — {cotaHistoricoBoleto.venda.cliente_nome}
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Grupo {cotaHistoricoBoleto.cota?.numero_grupo || cotaHistoricoBoleto.venda.grupo_codigo} · Cota {cotaHistoricoBoleto.cota?.numero_cota ? `#${cotaHistoricoBoleto.cota.numero_cota}` : "SIF pendente"}
+                  </p>
+                </div>
+              </div>
+              <button type="button" onClick={() => setCotaHistoricoBoleto(null)} className="text-slate-400 hover:text-slate-600">✕</button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto space-y-3">
+              {boletosEnvios
+                .filter(
+                  (b) =>
+                    b.venda_id === cotaHistoricoBoleto.venda.id &&
+                    (cotaHistoricoBoleto.cota?.id ? b.cota_id === cotaHistoricoBoleto.cota.id : true)
+                )
+                .sort((a, b) => b.competencia.localeCompare(a.competencia) || (b.enviado_em || "").localeCompare(a.enviado_em || "")).length === 0 ? (
+                <p className="p-8 text-center text-xs text-slate-500">
+                  Nenhum registro de boleto realizado para esta cota até o momento.
+                </p>
+              ) : (
+                <div className="divide-y divide-slate-100 dark:divide-slate-800 border rounded-xl overflow-hidden">
+                  {boletosEnvios
+                    .filter(
+                      (b) =>
+                        b.venda_id === cotaHistoricoBoleto.venda.id &&
+                        (cotaHistoricoBoleto.cota?.id ? b.cota_id === cotaHistoricoBoleto.cota.id : true)
+                    )
+                    .sort((a, b) => b.competencia.localeCompare(a.competencia) || (b.enviado_em || "").localeCompare(a.enviado_em || ""))
+                    .map((item) => (
+                      <div key={item.id} className="p-3 text-xs flex items-center justify-between gap-3 hover:bg-slate-50 dark:hover:bg-slate-800/40">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono font-black text-slate-900 dark:text-white bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded">
+                              {formatarDataBR(item.competencia)}
+                            </span>
+                            <span
+                              className={`rounded-full px-2 py-0.5 text-[10px] font-black uppercase ${
+                                item.status_boleto === "enviado"
+                                  ? "bg-emerald-100 text-emerald-800"
+                                  : "bg-blue-100 text-blue-800"
+                              }`}
+                            >
+                              {item.status_boleto === "enviado" ? "Enviado" : "Baixado"}
+                            </span>
+                          </div>
+                          <div className="mt-1 text-[11px] text-slate-600 dark:text-slate-300 space-y-0.5">
+                            {item.baixado_em && (
+                              <div>📥 Baixado em: <strong>{formatarDataHoraBR(item.baixado_em)}</strong> por {item.baixado_por_nome || "Consultor"}</div>
+                            )}
+                            {item.enviado_em && (
+                              <div>🚀 Enviado em: <strong>{formatarDataHoraBR(item.enviado_em)}</strong> ({item.canal}) por {item.enviado_por_nome || "Consultor"}</div>
+                            )}
+                          </div>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            handleRegistrarBoleto(item.venda_id, item.cota_id, item.competencia, "DESFAZER");
+                          }}
+                          className="text-[11px] text-rose-600 hover:text-rose-800 hover:underline cursor-pointer"
+                        >
+                          Excluir registro
+                        </button>
+                      </div>
+                    ))}
+                </div>
+              )}
+            </div>
+
+            <div className="flex justify-end border-t pt-3">
+              <button
+                type="button"
+                onClick={() => setCotaHistoricoBoleto(null)}
+                className="rounded-xl bg-slate-100 px-4 py-2 font-bold text-slate-700 hover:bg-slate-200 cursor-pointer"
+              >
+                Fechar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* MODAL 0: REGISTRAR CONTEMPLAÇÃO & ANTECIPAÇÃO DE COMISSÕES */}
       {contemplandoCota && (

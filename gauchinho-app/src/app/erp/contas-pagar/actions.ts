@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/server";
 import { requireTenantPermission } from "@/lib/tenant/context";
 import { parseContasPagarCsv } from "@/lib/financeiro/contas-pagar-csv";
 import { requireErpRouteAccess } from "@/lib/erp/erp-acesso-server";
+import { obterHojeCuiaba } from "@/lib/erp/conta-corrente-periodos";
 
 export type ContasActionResult = {
   ok: boolean;
@@ -566,6 +567,19 @@ export async function baixarConta(id: string, dataPagamento?: string | null, pag
 export async function alterarConta(id: string, form: FormData): Promise<ContasActionResult> {
   try {
     const { empresaId, session, admin } = await requireFinanceWrite();
+    const dataPagamento = value(form, "data_pagamento");
+    const { data: contaAtual, error: contaAtualError } = await admin
+      .from("financeiro_contas_pagar")
+      .select("id,status,pago_em")
+      .eq("id", id)
+      .eq("empresa_id", empresaId)
+      .maybeSingle();
+    if (contaAtualError || !contaAtual) throw new Error("Conta não encontrada na empresa ativa.");
+    if (dataPagamento) {
+      if (contaAtual.status !== "paga") throw new Error("A data de pagamento só pode ser alterada em uma conta paga.");
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(dataPagamento)) throw new Error("Informe uma data de pagamento válida.");
+      if (dataPagamento > obterHojeCuiaba()) throw new Error("A data de pagamento não pode ficar no futuro.");
+    }
     const pessoal = form.get("pessoal") === "on";
     const socioId = pessoal ? value(form, "socio") || null : null;
     const centroId = value(form, "centro") || null;
@@ -610,6 +624,7 @@ export async function alterarConta(id: string, form: FormData): Promise<ContasAc
       retirar_reserva_impostos: form.get("retirar_reserva_impostos") === "on",
       updated_at: new Date().toISOString(),
     };
+    if (dataPagamento) updates.pago_em = dataPagamento;
 
     if (removerNf) {
       updates.comprovante_url = null;
@@ -630,17 +645,20 @@ export async function alterarConta(id: string, form: FormData): Promise<ContasAc
       .eq("id", id)
       .eq("empresa_id", empresaId);
 
+    let erroFinal = updateError;
     if (updateError && /fornecedor_id|descontado_comissao|comprovante_url|nota_fiscal/i.test(updateError.message)) {
       delete updates.descontado_comissao;
       delete updates.comprovante_url;
       delete updates.nota_fiscal_nome;
       delete updates.nota_fiscal_uploaded_at;
-      await admin
+      const { error: retryError } = await admin
         .from("financeiro_contas_pagar")
         .update(updates)
         .eq("id", id)
         .eq("empresa_id", empresaId);
+      erroFinal = retryError;
     }
+    if (erroFinal) throw new Error(erroFinal.message);
 
     revalidatePath("/erp/contas-pagar");
     revalidatePath("/erp/fechamento-socios");

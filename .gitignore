@@ -24,4 +24,7 @@ supabase/.temp/
 .codex-worktrees/
 .claude/
 analise/
+tmp/
+.worktrees/
+*.docx
 

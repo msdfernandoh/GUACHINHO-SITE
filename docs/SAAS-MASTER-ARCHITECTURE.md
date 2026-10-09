@@ -1,5 +1,29 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
+### Aba "Controle de Boletos" em Vendas e Cotas (09/10/2026)
+
+A tela `/erp/vendas` passa a disponibilizar duas abas operacionais:
+1. **Vendas & Cotas:** Visualização financeira e gerencial das vendas e cotas definitivas.
+2. **Controle de Boletos:** Gestão do ciclo de boletos por competência (mês):
+   - **Filtros Operacionais:** Mês de referência, Consultor, Grupo, Cota, Busca livre e Status do Boleto (*Aguardando Baixa*, *Baixado*, *Enviado*).
+   - **Ações em 1 Clique:** Botão "Baixar" (registra baixa da administradora), botão "Enviar" (marca enviado e baixado direto), botão "WhatsApp" (abre mensagem pronta e registra envio) e botão "Desfazer".
+   - **Histórico Geral:** Modal que consolida todos os meses passados de envio/baixa daquela cota.
+   - **Banco e Schema:** Tabela `vendas_boletos_envios` com RLS por `empresa_id` (Migration 301).
+Relatório: `docs/relatorios-fases/ABA-CONTROLE-BOLETOS-ERP-VENDAS-2026-10-09.md`.
+
+### Filtros por Consultor, Grupo e Cota no ERP Vendas (09/10/2026)
+
+A tela `/erp/vendas` (Vendas & Cotas Definitivas) passa a contar com um painel unificado de filtros operacionais combináveis:
+- **Consultor / SDR:** Filtro por participante comercial principal ou secundário.
+- **Grupo:** Filtro por código de grupo de consórcio cadastrado ou referenciado.
+- **Cota:** Busca específica por número da cota.
+- **Mês de Referência & Busca Geral:** Preservados e integrados com botão de limpeza rápida ("Limpar filtros").
+O valor vendido, comissões geradas e valor para empresa recalculam em tempo real com base nos filtros ativos. Relatório: `docs/relatorios-fases/FILTROS-CONSULTOR-GRUPO-COTA-ERP-VENDAS-2026-10-09.md`.
+
+### Edição da data de pagamento no fechamento (30/09/2026)
+
+A lista de despesas do fechamento permite corrigir a data efetiva de pagamento dentro do formulário de edição da conta. A alteração move a despesa para o mês correspondente, exige conta paga, bloqueia datas futuras e respeita o lacre de períodos já fechados. Relatório: `docs/relatorios-fases/EDICAO-DATA-PAGAMENTO-FECHAMENTO-2026-09-30.md`.
+
 ### Crédito de comissões de sócios e preservação do caixa para despesas (30/09/2026)
 
 Em `/erp/minhas-comissoes`, participantes identificados como sócios em `empresa_socios` possuem fluxo específico para preservar a dinâmica societária real: ao creditar ou conferir a comissão gerada, o sistema realiza a baixa contábil da previsão gerando o crédito do sócio (`financeiro_pagamentos`), porém **sem gerar movimentação de saída bancária** (`financeiro_conta_movimentos`). Com isso, os recursos continuam 100% disponíveis na conta bancária da empresa no ERP para pagamento de despesas operacionais do negócio. A saída bancária no ERP fica restrita ao momento em que a **transferência de retirada** for efetivamente realizada (registrada no Fechamento dos Sócios em `/erp/fechamento-socios` ou transferência de equalização). Relatório: `docs/relatorios-fases/AJUSTE-COMISSOES-SOCIOS-CREDITO-TRANSFERENCIA-2026-09-30.md`.

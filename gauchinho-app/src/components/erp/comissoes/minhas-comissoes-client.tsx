@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { Calendar, CircleDollarSign, Clock, CheckCircle2, Layers3, Search, User, X } from "lucide-react";
-import { ajustarParcelamentoComissaoAction, conferirPagamentoAction, pagarComissoesAgrupadasAction } from "@/app/erp/minhas-comissoes/actions";
+import { ajustarParcelamentoComissaoAction, conferirPagamentoAction, creditarEConferirComissaoAction, pagarComissoesAgrupadasAction } from "@/app/erp/minhas-comissoes/actions";
 import type { ResumoVendasMes } from "@/lib/erp/minhas-comissoes-vendas";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -51,6 +51,7 @@ interface MinhasComissoesClientProps {
   participanteProprioId: string | null;
   podeGerenciarEquipe: boolean;
   podePagarEquipe: boolean;
+  ehSocio?: boolean;
   contasBancarias: Array<{ id: string; nome: string; banco: string | null; saldo_atual: number }>;
 }
 
@@ -68,6 +69,7 @@ export function MinhasComissoesClient({
   participanteProprioId,
   podeGerenciarEquipe,
   podePagarEquipe,
+  ehSocio,
   contasBancarias,
 }: MinhasComissoesClientProps) {
   // O próprio beneficiário ou o master/responsável financeiro pode confirmar.
@@ -243,23 +245,60 @@ export function MinhasComissoesClient({
       )}
 
       {podePagarEquipe && elegiveisPagamento.length ? (
-        <form action={pagarSelecionadas} className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 shadow-sm">
+        <form action={pagarSelecionadas} className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 shadow-sm space-y-3">
           <input type="hidden" name="participante_id" value={participanteSelecionadoId} />
           <input type="hidden" name="operacao_id" value={operacaoPagamento} />
           <input type="hidden" name="previsoes_ids" value={JSON.stringify([...selecionadasPagamento])} />
           <div className="flex flex-wrap items-end justify-between gap-4">
             <div>
-              <p className="text-xs font-black uppercase tracking-wide text-emerald-900">Pagamento agrupado</p>
+              <p className="text-xs font-black uppercase tracking-wide text-emerald-900">
+                {ehSocio ? "Creditar comissões do sócio no caixa da empresa" : "Pagamento agrupado"}
+              </p>
               <p className="mt-1 text-sm text-emerald-800">{selecionadasPagamento.size} parcela(s) · {brl(totalSelecionado)}</p>
             </div>
-            <label className="min-w-72 text-xs font-bold text-emerald-950">Conta da empresa
-              <select name="conta_origem_id" required className="mt-1 w-full rounded-xl border border-emerald-300 bg-white px-3 py-2 text-sm">
-                <option value="">Selecione a conta de saída</option>
-                {contasBancarias.map((conta) => <option key={conta.id} value={conta.id}>{conta.nome} · saldo {brl(conta.saldo_atual)}</option>)}
+            <label className="min-w-72 text-xs font-bold text-emerald-950">
+              {ehSocio ? "Destino das comissões" : "Conta da empresa"}
+              <select
+                name="conta_origem_id"
+                required={!ehSocio}
+                defaultValue={ehSocio ? "manter_empresa" : ""}
+                className="mt-1 w-full rounded-xl border border-emerald-300 bg-white px-3 py-2 text-sm"
+              >
+                {ehSocio ? (
+                  <>
+                    <option value="manter_empresa">
+                      Manter no caixa da empresa (Crédito do sócio para cobrir despesas)
+                    </option>
+                    <optgroup label="Ou saída bancária imediata (Transferência agora)">
+                      {contasBancarias.map((conta) => (
+                        <option key={conta.id} value={conta.id}>
+                          Transferir via {conta.nome} · saldo {brl(conta.saldo_atual)}
+                        </option>
+                      ))}
+                    </optgroup>
+                  </>
+                ) : (
+                  <>
+                    <option value="">Selecione a conta de saída</option>
+                    <option value="manter_empresa">Creditar sem saída bancária imediata</option>
+                    {contasBancarias.map((conta) => (
+                      <option key={conta.id} value={conta.id}>
+                        {conta.nome} · saldo {brl(conta.saldo_atual)}
+                      </option>
+                    ))}
+                  </>
+                )}
               </select>
             </label>
-            <button disabled={!selecionadasPagamento.size} className="rounded-xl bg-emerald-800 px-5 py-2.5 text-xs font-black text-white disabled:opacity-40">Pagar selecionadas</button>
+            <button disabled={!selecionadasPagamento.size} className="rounded-xl bg-emerald-800 px-5 py-2.5 text-xs font-black text-white disabled:opacity-40 cursor-pointer">
+              {ehSocio ? "Creditar selecionadas (Mantém na Empresa)" : "Pagar selecionadas"}
+            </button>
           </div>
+          {ehSocio && (
+            <p className="text-[11px] text-emerald-800 font-medium">
+              💡 O valor gera o crédito societário e o dinheiro continua integralmente na conta da empresa para pagar despesas operacionais. A baixa no banco do ERP só ocorrerá no momento da transferência de retirada.
+            </p>
+          )}
         </form>
       ) : null}
 
@@ -547,9 +586,7 @@ export function MinhasComissoesClient({
                     <td className="p-3 font-mono text-slate-700 dark:text-slate-300">{brl(Number(row.valor_elegivel))}</td>
                     <td className="p-3 font-mono text-emerald-700 dark:text-emerald-400 font-bold">{brl(Number(row.valor_pago))}</td>
                     <td className="p-3 text-right">
-                      {podePagarEquipe && Number(row.valor_elegivel) > Number(row.valor_pago) ? (
-                        <span className="text-[11px] font-bold text-emerald-700">Selecione para pagar</span>
-                      ) : row.conferido_por_participante ? (
+                      {row.conferido_por_participante ? (
                         <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-bold text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300">
                           <CheckCircle2 className="h-3.5 w-3.5" />
                           Conferido por mim
@@ -561,6 +598,18 @@ export function MinhasComissoesClient({
                             Conferir / recebido
                           </button>
                         </form>
+                      ) : ehSocio && Number(row.valor_elegivel) > Number(row.valor_pago) && podeConferirRecebimento ? (
+                        <form action={creditarEConferirComissaoAction}>
+                          <input type="hidden" name="previsao_id" value={row.id} />
+                          <button
+                            title="Gera o crédito do sócio mantendo o valor no caixa da empresa para despesas operacionais"
+                            className="rounded-xl bg-emerald-700 px-3 py-1 text-[11px] font-bold text-white shadow-2xs hover:bg-emerald-800 cursor-pointer whitespace-nowrap"
+                          >
+                            Creditar e conferir
+                          </button>
+                        </form>
+                      ) : podePagarEquipe && Number(row.valor_elegivel) > Number(row.valor_pago) ? (
+                        <span className="text-[11px] font-bold text-emerald-700">Selecione para pagar</span>
                       ) : (
                         <span className="text-[11px] font-medium text-slate-400">
                           {row.status === "cancelada" ? "Cancelada (Estorno)" : "Aguardando liberação"}

@@ -26,7 +26,7 @@ export default async function MinhasComissoesPage({
 
   const { data: participanteProprio } = await db
     .from("participantes_comerciais")
-    .select("id,nome,nome_exibicao")
+    .select("id,nome,nome_exibicao,usuario_id")
     .eq("empresa_id", empresaAtiva.id)
     .eq("usuario_id", usuario.id)
     .ilike("status", "ativo")
@@ -35,7 +35,7 @@ export default async function MinhasComissoesPage({
   const { data: participantesEquipe, error: participantesError } = podeGerenciarEquipe
     ? await db
         .from("participantes_comerciais")
-        .select("id,nome,nome_exibicao")
+        .select("id,nome,nome_exibicao,usuario_id")
         .eq("empresa_id", empresaAtiva.id)
         .ilike("status", "ativo")
         .order("nome")
@@ -85,7 +85,7 @@ export default async function MinhasComissoesPage({
       .map((row: any) => row.previsao_franquia_id)
       .filter((id: unknown): id is string => typeof id === "string" && id.length > 0),
   )];
-  const [{ data: previsoesFranquia }, { data: fiscal }, { data: podeGerenciarFiscal }, { data: contasBancarias }] = await Promise.all([
+  const [{ data: previsoesFranquia }, { data: fiscal }, { data: podeGerenciarFiscal }, { data: contasBancarias }, { data: sociosEmpresa }] = await Promise.all([
     previsaoFranquiaIds.length
       ? admin
           .from("comissao_previsoes_franquia")
@@ -107,11 +107,20 @@ export default async function MinhasComissoesPage({
     podePagarEquipe
       ? db.from("financeiro_contas_saldos").select("id,nome,banco,saldo_atual,participante_comercial_id").eq("empresa_id", empresaAtiva.id).eq("ativo", true).order("nome")
       : Promise.resolve({ data: [] as Array<{ id: string; nome: string; banco: string | null; saldo_atual: number; participante_comercial_id: string | null }>, error: null }),
+    admin
+      .from("empresa_socios")
+      .select("id,usuario_id,nome")
+      .eq("empresa_id", empresaAtiva.id)
+      .eq("ativo", true),
   ]);
   const franquiaMap = new Map((previsoesFranquia ?? []).map((item: any) => [item.id, item]));
   const mostrarDetalhesFiscais = Boolean(fiscal?.participante_exibe_detalhes_fiscais);
   const competenciaVendasMes = mesAtualEmCuiaba();
   const resumoVendasMes = await carregarResumoVendasMes(empresaAtiva.id, participante.id, competenciaVendasMes);
+  const ehSocio = Boolean(
+    participante?.usuario_id &&
+    sociosEmpresa?.some((s: any) => s.usuario_id === participante.usuario_id),
+  );
 
   const previsoes: PrevisaoParticipanteItem[] = (data ?? []).map((row: any) => {
     const venda = Array.isArray(row.venda) ? row.venda[0] : row.venda;
@@ -166,6 +175,7 @@ export default async function MinhasComissoesPage({
         participanteProprioId={participanteProprio?.id ?? null}
         podeGerenciarEquipe={podeGerenciarEquipe}
         podePagarEquipe={podePagarEquipe}
+        ehSocio={ehSocio}
         contasBancarias={(contasBancarias ?? [])
           .filter((conta) => !conta.participante_comercial_id)
           .map((conta) => ({ id: conta.id, nome: conta.nome, banco: conta.banco, saldo_atual: Number(conta.saldo_atual) }))}
