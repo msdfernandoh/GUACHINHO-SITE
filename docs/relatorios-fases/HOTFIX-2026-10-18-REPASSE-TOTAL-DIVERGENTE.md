@@ -86,3 +86,25 @@ presentes. A rotina canônica 203 mantém a exceção específica de falta de sa
 Os 14 testes e TypeScript foram novamente aprovados antes do envio. Somente os
 arquivos deste hotfix são incluídos no commit; alterações paralelas de
 Assembleias, Robôs, tipos e outras migrations permanecem fora desta entrega.
+
+## Publicação concluída
+
+- Commit `b695b65af762cb160059eb5eb7f6fa22472a06c6` enviado a `origin/main`.
+  O hash remoto foi conferido após o push.
+- Deploy automático da integração GitHub/Vercel, com clone do commit correto,
+  build Next.js e TypeScript concluídos: `dpl_Ca2TndfkReUViGdY8ZiiuYbovpTw`,
+  estado READY, target production. URL de evidência:
+  `https://guachinho-site-4e6egn249-hugo-8097s-projects.vercel.app`.
+- Domínio `www.gauchinhoconsorcios.com.br` confirmado entre os aliases desse
+  deployment. Nenhum deploy do workspace com alterações paralelas foi feito.
+- Smoke autenticado de produção em `/erp/repasse-franquia`: HTTP 200,
+  416.568 bytes, com importador PDF, relatório em conferência, histórico e
+  Central de atenção presentes. Sessão temporária criada sem envio de e-mail
+  e encerrada com escopo local; sessões existentes preservadas.
+- Migration 313 confirmada aplicada e funções idênticas ao arquivo local,
+  conforme a seção anterior. Não houve reaplicação nem escrita em fatos de
+  negócio durante esta retomada.
+
+O sistema publicado contém a correção. O upload do PDF real do erro não foi
+executado porque foi fornecida somente a captura de tela. Esse caso poderá ser
+reenviado pelo operador; não foi criado recebimento fictício para homologação.

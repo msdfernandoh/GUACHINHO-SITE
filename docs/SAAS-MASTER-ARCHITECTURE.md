@@ -17,7 +17,10 @@ nem alteração de fatos financeiros históricos. Implementação e testes locai
 concluídos. Na retomada autorizada de publicação, a migration 313 já constava
 aplicada no Supabase canônico; os corpos das três funções foram confirmados
 idênticos ao arquivo local por MD5, com execução pública/autenticada bloqueada
-para o helper privado. O envio à main e a publicação são registrados no relatório.
+para o helper privado. Código enviado à main em `b695b65a`, deployment
+`dpl_Ca2TndfkReUViGdY8ZiiuYbovpTw` READY e rota de Repasse homologada com
+HTTP 200 autenticado em produção. O PDF original ainda depende de reenvio pelo
+operador para validação dos seus dados específicos.
 Relatório: `docs/relatorios-fases/HOTFIX-2026-10-18-REPASSE-TOTAL-DIVERGENTE.md`.
 
 ### Fase 310 — WhatsApp Cloud API multiempresa / coexistência (18/10/2026)
