@@ -84,7 +84,8 @@ export function decryptCredential(encryptedPayload: string): string {
 export function sanitizarLogs(raw: string): string {
   if (!raw) return ''
   return raw
-    .replace(/(password|senha|secret|token|api_key|authorization|bearer)\s*[:=]\s*["']?([^"'\s,;]+)["']?/gi, '$1: [REDACTED]')
+    .replace(/(authorization\s*:\s*bearer\s+)[a-zA-Z0-9._-]+/gi, '$1[REDACTED]')
     .replace(/bearer\s+[a-zA-Z0-9._-]+/gi, 'Bearer [REDACTED]')
     .replace(/Basic\s+[a-zA-Z0-9+/=]+/gi, 'Basic [REDACTED]')
+    .replace(/(password|senha|secret|token|api_key)\s*[:=]\s*["']?([^"'\s,;]+)["']?/gi, '$1: [REDACTED]')
 }
