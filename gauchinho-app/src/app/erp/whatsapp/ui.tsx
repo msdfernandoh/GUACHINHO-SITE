@@ -53,6 +53,7 @@ function useFacebookSdk(meta: Meta) {
     window.fbAsyncInit = function () {
       window.FB?.init({
         appId: meta.appId,
+        cookie: true,
         autoLogAppEvents: true,
         xfbml: true,
         version: meta.graphVersion,
@@ -123,45 +124,56 @@ export default function WhatsappClient({
       setErro("Configuração do app (config_id) ausente. Verifique as variáveis de ambiente.");
       return;
     }
-    window.FB.login(
-      async (resp: unknown) => {
-        const r = resp as { authResponse?: { code?: string } };
-        const code = r?.authResponse?.code;
-        if (!code) {
-          setErro("Conexão cancelada ou sem autorização.");
-          return;
-        }
-        setConectando(true);
-        try {
-          const res = await fetch("/api/erp/whatsapp/conectar", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              code,
-              waba_id: wabaRef.current,
-              phone_number_id: phoneRef.current,
-            }),
-          });
-          const json = await res.json();
-          if (!res.ok) throw new Error(json?.error ?? "Falha ao conectar");
-          router.refresh();
-        } catch (e) {
-          setErro(e instanceof Error ? e.message : "Falha ao conectar");
-        } finally {
-          setConectando(false);
-        }
-      },
-      {
-        config_id: meta.configId,
-        response_type: "code",
-        override_default_response_type: true,
-        extras: {
-          setup: {},
-          featureType: "whatsapp_business_app_onboarding",
-          sessionInfoVersion: "3",
+
+    setConectando(true);
+
+    try {
+      // O SDK da Meta exige função síncrona como callback (rejeita AsyncFunction).
+      window.FB.login(
+        (resp: unknown) => {
+          const r = resp as { authResponse?: { code?: string } };
+          const code = r?.authResponse?.code;
+          if (!code) {
+            setConectando(false);
+            setErro("Conexão cancelada ou sem autorização.");
+            return;
+          }
+          void (async () => {
+            try {
+              const res = await fetch("/api/erp/whatsapp/conectar", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  code,
+                  waba_id: wabaRef.current,
+                  phone_number_id: phoneRef.current,
+                }),
+              });
+              const json = await res.json();
+              if (!res.ok) throw new Error(json?.error ?? "Falha ao conectar");
+              router.refresh();
+            } catch (e) {
+              setErro(e instanceof Error ? e.message : "Falha ao conectar");
+            } finally {
+              setConectando(false);
+            }
+          })();
         },
-      },
-    );
+        {
+          config_id: meta.configId,
+          response_type: "code",
+          override_default_response_type: true,
+          extras: {
+            setup: {},
+            featureType: "whatsapp_business_app_onboarding",
+            sessionInfoVersion: "3",
+          },
+        },
+      );
+    } catch (e) {
+      setConectando(false);
+      setErro(e instanceof Error ? e.message : "Falha ao iniciar conexão.");
+    }
   }, [meta.configId, router]);
 
   const conectado = conexao && conexao.status === "conectado";

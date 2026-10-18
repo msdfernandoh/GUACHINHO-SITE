@@ -144,3 +144,19 @@ Esta seção atualiza as pendências históricas da seção 6.
 - Nenhuma migration ou manutenção de dados de negócio foi executada nesta retomada.
 
 **Próxima validação:** titular acessar `/erp/whatsapp`, clicar em **Conectar WhatsApp** e concluir o Embedded Signup/QR. O QR, a conexão real do número, a assinatura da WABA conectada e o envio/recebimento de mensagens reais ainda dependem desse fluxo e não foram considerados homologados por estes testes de infraestrutura.
+
+## 8. Diagnóstico e Correção do Botão "Conectar WhatsApp" — 18/10/2026
+
+- **Problema relatado:** Ao clicar em "Conectar WhatsApp" em `/erp/whatsapp`, o botão não abria o popup e parecia não responder.
+- **Diagnóstico detalhado via Playwright:**
+  - O SDK da Meta carregava normalmente (`window.FB` inicializado e botão ativo).
+  - Ao disparar o clique no botão, o listener capturou o seguinte erro síncrono no browser:
+    `[WINDOW ERROR EVENT]: Uncaught Error: Expression is of type asyncfunction, not function`
+  - **Causa raiz:** O SDK do Facebook (`FB.login`) valida a assinatura do callback e rejeita objetos do tipo `AsyncFunction` (`async (resp) => { ... }`). Com a rejeição síncrona, a execução abortava antes de invocar o `window.open` do diálogo OAuth da Meta, sem exibir mensagem na interface.
+- **Correções implementadas em `gauchinho-app/src/app/erp/whatsapp/ui.tsx`:**
+  1. Callback de `FB.login` convertido para função síncrona padrão `(resp: unknown) => { void (async () => { ... })(); }`.
+  2. Inclusão de `setConectando(true)` imediato ao clique, fornecendo feedback visual com spinner e desabilitando o botão durante a abertura.
+  3. Tratamento de exceções com `try/catch` ao redor de `window.FB.login`, capturando falhas de abertura e exibindo alerta amigável na tela.
+  4. Adição de `cookie: true` na inicialização do `FB.init`.
+- **Validação:**
+  - Teste automatizado via Playwright confirmou que a chamada síncrona dispara `window.open` com a URL completa do diálogo OAuth (`https://www.facebook.com/v23.0/dialog/oauth?...`) e detecta a abertura correta do popup da Meta sem erros de tipo.
