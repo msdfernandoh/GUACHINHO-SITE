@@ -65,6 +65,7 @@ const ERP_PAPEIS = new Set<ErpPapelCodigo>([
 const ERP_ROUTE_PERMISSIONS: Record<ErpAccessId, string[]> = {
   painel: [],
   leads: ["gerenciar_leads"],
+  whatsapp: ["gerenciar_leads"],
   propostas: ["gerenciar_propostas"],
   contratacoes: ["gerenciar_propostas", "formalizar_vendas"],
   vendas: ["gerenciar_propostas", "formalizar_vendas"],

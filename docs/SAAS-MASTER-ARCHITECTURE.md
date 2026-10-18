@@ -1,5 +1,30 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
+### Fase 310 — WhatsApp Cloud API multiempresa / coexistência (18/10/2026)
+
+Integração oficial do WhatsApp (Cloud API) sob app único da Meta
+`MENSAGENS GAUCHINHO` (App ID 1412730744263214), modelo BSP: cada franquia
+conecta o PRÓPRIO número por Embedded Signup (config_id 1582891326394697,
+featureType `whatsapp_business_app_onboarding`, coexistência via QR). Dados por
+`empresa_id` com RLS (`can_read/can_write_tenant_internal`); token cifrado em
+AES-256-GCM reutilizando `src/lib/automacoes/robos/cryptoService`. Webhook único
+`/api/whatsapp/webhook` (assinatura X-Hub-Signature-256) roteado por
+`phone_number_id` → empresa. Tabelas `empresa_whatsapp_conexoes` e
+`whatsapp_mensagens` (migração `310_whatsapp_cloud_api_multiempresa.sql`).
+Módulo ERP `whatsapp` (`/erp/whatsapp`): conectar, atendimento 1:1, campanhas por
+template e histórico. Rotas `/api/erp/whatsapp/conectar` e `/api/erp/whatsapp/enviar`.
+Migração 310 aplicada sob transação atômica (BEGIN/COMMIT) no Supabase canônico
+(`eaeuoynprurmmulzhydt`), tabelas criadas com RLS e policies ativas, pgcrypto/gen_random_uuid()
+confirmado, módulo ERP `whatsapp` habilitado para a empresa Gauchinho e smoke HTTP 200
+autenticado homologado em `/erp/whatsapp`.
+Relatório completo de publicação: `docs/relatorios-fases/FASE-310-WHATSAPP-CLOUD-API-HOMOLOGACAO.md`.
+O smoke autenticado acima foi local. Em 18/10/2026, TypeScript e lint dos arquivos
+WhatsApp foram aprovados; a publicação da aplicação está em andamento. O App Secret
+ainda precisa ser fornecido para cadastro na Vercel (Production e Preview) e assinatura
+do webhook na Meta. A disponibilidade integral em produção permanece pendente de
+deploy e validações externas registradas no relatório.
+
+
 ### Fase 308 — Central de Robôs de Importação Multiportal (18/10/2026)
 
 A arquitetura de Robôs de Automação & Importação Multiportal com Playwright,

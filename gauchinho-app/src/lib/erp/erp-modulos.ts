@@ -1,6 +1,7 @@
 export const ERP_MODULES = [
   { id: "painel", label: "Painel", href: "/erp" },
   { id: "leads", label: "Leads / CRM", href: "/erp/leads" },
+  { id: "whatsapp", label: "WhatsApp", href: "/erp/whatsapp" },
   { id: "propostas", label: "Propostas", href: "/erp/propostas" },
   { id: "contratacoes", label: "Contratações", href: "/erp/contratacoes" },
   { id: "vendas", label: "Vendas e Cotas", href: "/erp/vendas" },
