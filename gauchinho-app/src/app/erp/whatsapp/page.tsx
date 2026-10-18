@@ -1,6 +1,7 @@
 import { requireErpRouteAccess } from "@/lib/erp/erp-acesso-server";
 import { getConexaoPorEmpresa } from "@/lib/whatsapp/cloud-api/conexoes";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { WHATSAPP_GRAPH_VERSION } from "@/lib/whatsapp/cloud-api/config";
 import WhatsappClient, { type MensagemView } from "./ui";
 
 export const dynamic = "force-dynamic";
@@ -22,8 +23,7 @@ export default async function ErpWhatsappPage() {
 
   const appId = process.env.NEXT_PUBLIC_WHATSAPP_APP_ID ?? process.env.WHATSAPP_APP_ID ?? "";
   const configId = process.env.NEXT_PUBLIC_WHATSAPP_CONFIG_ID ?? process.env.WHATSAPP_CONFIG_ID ?? "";
-  const graphVersion =
-    process.env.NEXT_PUBLIC_WHATSAPP_GRAPH_VERSION ?? process.env.WHATSAPP_GRAPH_VERSION ?? "v23.0";
+  const graphVersion = WHATSAPP_GRAPH_VERSION;
 
   return (
     <WhatsappClient

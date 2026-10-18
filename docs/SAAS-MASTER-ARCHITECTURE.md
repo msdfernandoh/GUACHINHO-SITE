@@ -1,5 +1,18 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
+### Hotfix — versão única da API WhatsApp/Meta (18/10/2026)
+
+O SDK do Embedded Signup em `/erp/whatsapp` recebe a mesma versão usada nas
+chamadas Graph do servidor, derivada exclusivamente de `WHATSAPP_GRAPH_VERSION`
+com padrão `v26.0`. A variável pública histórica de versão não sobrescreve mais
+o SDK. URLs internas dos popups da Meta não são construídas pela aplicação.
+O titular informou ter salvo os domínios no painel; consulta Graph v26.0
+confirmou app_domains com apex e www. Hotfix publicado na Vercel com build e
+TypeScript aprovados; smoke autenticado confirmou HTTP 200 e SDK v26.0,
+webhook respondeu ao desafio com HTTP 200. A geração real do QR ainda exige
+validação interativa do Embedded Signup. Não há migration nem alteração de dados.
+Validação e publicação: `docs/relatorios-fases/HOTFIX-2026-10-18-WHATSAPP-VERSAO-META.md`.
+
 ### Hotfix — importação de repasse com diferença de total (18/10/2026)
 
 O parser preserva todas as linhas do PDF quando sua soma difere do total do

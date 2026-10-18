@@ -4,7 +4,9 @@ import "server-only";
  * Configuração global da integração WhatsApp Cloud API (app único da Meta,
  * multiempresa via Embedded Signup). Valores sensíveis só no servidor.
  */
-export const WHATSAPP_GRAPH_VERSION = process.env.WHATSAPP_GRAPH_VERSION || "v23.0";
+// A página repassa esta mesma versão ao SDK: cliente e servidor não divergem
+// quando uma variável NEXT_PUBLIC antiga permanece congelada no build.
+export const WHATSAPP_GRAPH_VERSION = process.env.WHATSAPP_GRAPH_VERSION || "v26.0";
 export const WHATSAPP_GRAPH_BASE = `https://graph.facebook.com/${WHATSAPP_GRAPH_VERSION}`;
 
 export function getMetaAppId(): string {
