@@ -245,6 +245,7 @@ export default async function ClienteDetalhePage({
               <h1 className="mt-1.5 text-2xl sm:text-3xl font-black text-slate-950 dark:text-white">
                 {cliente.nome}
               </h1>
+              {cliente.cadastro_antigo && <p className="mt-2 text-sm font-bold text-violet-700">Antigos · cadastro para controle de contemplações e boletos</p>}
 
               {Array.isArray(cliente.pendencias_cadastro) && cliente.pendencias_cadastro.length > 0 && (
                 <div className="mt-2 flex flex-wrap gap-2">

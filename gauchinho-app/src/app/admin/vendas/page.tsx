@@ -125,6 +125,7 @@ export default async function AdminVendasPage() {
 
     return {
       id: v.id,
+      grupo_id: v.grupo_id || null,
       cliente_nome: cliente?.nome || v.cliente_nome || "Cliente",
       cliente_cpf_cnpj: cliente?.cpf_cnpj || v.cliente_cpf_cnpj || null,
       cliente_email: cliente?.email || v.cliente_email || null,
@@ -145,7 +146,7 @@ export default async function AdminVendasPage() {
       participante_secundario_fracao_percentual: v.participante_secundario_fracao_percentual ? Number(v.participante_secundario_fracao_percentual) : null,
       perfil_principal_id: v.perfil_principal_id || (v.snapshot_venda as any)?.perfil_principal_id || null,
       perfil_secundario_id: v.perfil_secundario_id || (v.snapshot_venda as any)?.perfil_secundario_id || null,
-      snapshot_venda: v.snapshot_venda,
+      snapshot_venda: { ...v.snapshot_venda, somente_controle: v.somente_controle === true },
       consultor_nome: participante?.nome_exibicao || participante?.nome || (v.participante_comercial_id ? participantesMap.get(v.participante_comercial_id) : undefined),
       secundario_nome: v.participante_secundario_id ? participantesMap.get(v.participante_secundario_id) : undefined,
       cota_numero: cotaPrincipal?.numero_cota || v.snapshot_venda?.numero_cota || null,
@@ -163,8 +164,9 @@ export default async function AdminVendasPage() {
 
     return {
       id: c.id,
+      grupo_id: c.grupo_id || venda?.grupo_id || null,
       venda_id: c.venda_id,
-      numero_grupo: c.numero_grupo || venda?.grupo_codigo || "1463",
+      numero_grupo: venda?.grupo_codigo || c.numero_grupo || "1463",
       numero_cota: c.numero_cota || null,
       valor_credito: Number(c.valor_credito),
       prazo: Number(c.prazo),
@@ -182,6 +184,7 @@ export default async function AdminVendasPage() {
     if (!cotasMap.has(v.id)) {
       cotas.push({
         id: v.cota_id || `venda-cota-${v.id}`,
+        grupo_id: v.grupo_id,
         venda_id: v.id,
         numero_grupo: v.grupo_codigo || "1463",
         numero_cota: v.cota_numero || null,

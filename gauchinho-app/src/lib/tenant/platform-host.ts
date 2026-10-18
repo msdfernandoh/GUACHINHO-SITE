@@ -30,7 +30,9 @@ export function decidePlatformHostAccess(input: {
   if (input.pathname === "/login" || input.pathname === "/" || input.pathname === "/admin") {
     return "redirect_master";
   }
-  return input.pathname === "/platform" || input.pathname.startsWith("/platform/")
+  return input.pathname === "/platform" ||
+    input.pathname.startsWith("/platform/") ||
+    input.pathname.startsWith("/api/automacoes/")
     ? "allow_master"
     : "unavailable";
 }

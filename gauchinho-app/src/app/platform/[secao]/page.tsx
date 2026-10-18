@@ -242,6 +242,19 @@ export default async function PlatformSectionPage({
           </Link>
         ) : null}
       </div>
+      {secao === "configuracoes" ? (
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <Link
+            href="/platform/robos-importacao"
+            className="block rounded-xl border border-cyan-500/30 bg-cyan-500/5 px-4 py-3 text-sm transition hover:bg-cyan-500/10 dark:border-cyan-500/20"
+          >
+            <span className="font-semibold text-cyan-700 dark:text-cyan-400">Robôs de Importação (Playwright)</span>
+            <span className="mt-0.5 block text-slate-500">
+              Automações de login, captura de dados e tarefas de administradoras →
+            </span>
+          </Link>
+        </div>
+      ) : null}
       {error ? (
         <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
           Estrutura disponível após migration 070 no ambiente isolado.

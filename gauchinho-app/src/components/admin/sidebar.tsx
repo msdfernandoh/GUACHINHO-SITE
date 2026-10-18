@@ -24,6 +24,7 @@ import {
   Landmark,
   MonitorCog,
   Kanban,
+  Bot,
 } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import type { AdminMenuKey } from "@/lib/admin/admin-menus";
@@ -68,6 +69,7 @@ const NAV: Array<{
   { key: "indices", href: "/admin/indices-financeiros", label: "Índices financeiros", icon: TrendingUp, masterOnly: true },
   { key: "configuracoes", href: "/admin/configuracoes", label: "Configurações", icon: Settings, masterOnly: true },
   { key: "configuracoes", href: "/admin/configuracoes/qr-codes", label: "QR Codes únicos", icon: QrCode, masterOnly: true },
+  { key: "configuracoes", href: "/admin/configuracoes/robos-importacao", label: "Robôs de Importação", icon: Bot, masterOnly: true },
 ];
 
 const imobiliariaNav = [

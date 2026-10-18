@@ -150,6 +150,7 @@ export function RepassePdfConciliacao({
   regras,
   grupos,
   resolucoes,
+  relatoriosAntigos = [],
 }: {
   administradoras: { id: string; nome: string }[];
   contas: { id: string; nome: string }[];
@@ -159,7 +160,9 @@ export function RepassePdfConciliacao({
   regras: RepasseRegraParticipante[];
   grupos: RepasseGrupo[];
   resolucoes: RepasseAtencaoResolucao[];
+  relatoriosAntigos?: { id: string; arquivo_nome: string; competencia: string; consultor_nome: string; resultado: { novos?: number; reutilizados?: number; vinculos?: { cota_id: string; cliente_nome: string; grupo: string; cota: string; data_venda: string }[] } }[];
 }) {
+  const [relatorioAntigo, setRelatorioAntigo] = useState(false);
   const [importState, importAction, importing] = useActionState(importarRelatorioRepasseRaconAction, initialState);
   const [linkState, linkAction, linking] = useActionState(vincularItemRepasseManualAction, initialState);
   const [legacyState, legacyAction, launchingLegacy] = useActionState(lancarItemRepasseLegadoAction, initialState);
@@ -237,14 +240,25 @@ export function RepassePdfConciliacao({
         <div>
           <p className="text-xs font-extrabold uppercase tracking-widest text-blue-700">Conciliação do repasse</p>
           <h2 className="text-xl font-bold text-slate-950 dark:text-white">Importar relatório PDF da administradora</h2>
-          <p className="text-xs text-slate-500">O total entra como repasse bruto. Impostos permanecem separados e são abatidos ao pagar consultores e sócios.</p>
+          <p className="text-xs text-slate-500">{relatorioAntigo ? "Relatórios antigos cadastram clientes e cotas apenas para controle, sem receita ou comissões." : "O total entra como repasse bruto. Impostos permanecem separados e são abatidos ao pagar consultores e sócios."}</p>
         </div>
       </div>
 
       <form action={importAction} className="grid gap-3 rounded-xl border bg-white p-4 text-xs dark:border-slate-800 dark:bg-slate-900 md:grid-cols-6">
+        <div className="md:col-span-6 rounded-lg border border-violet-200 bg-violet-50 p-3 text-slate-950">
+          <label className="flex items-center gap-2 font-bold"><input type="checkbox" name="relatorio_antigo" checked={relatorioAntigo} onChange={(event) => setRelatorioAntigo(event.target.checked)} />Incluir relatório antigo — somente cadastro e controle</label>
+          {relatorioAntigo && <div className="mt-3 space-y-2">
+            <p>Todos os clientes serão vinculados ao consultor selecionado e identificados como Antigos, com cadastro incompleto. A data da venda será a primeira data de comissão encontrada para a cota nos relatórios importados. Não registra entrada financeira nem gera comissões.</p>
+            <label className="block font-bold">Consultor responsável por todos os clientes
+              <select name="consultor_antigo_id" required className="mt-1 block w-full rounded-lg border bg-white p-2"><option value="">Selecione o consultor</option>{participantes.map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}</select>
+            </label>
+            <p>Cotas existentes são conferidas e preservadas. Complete os dados de contato antes de enviar boletos.</p>
+            <p>Grupos não cadastrados serão criados inativos, com configuração pendente. Crédito, parcela e prazo ficam pendentes de conferência.</p>
+          </div>}
+        </div>
         <label className="md:col-span-2 font-bold">PDF de Pedidos de Compras Racon
           <input name="arquivo_pdf" type="file" accept="application/pdf" required className="mt-1 block w-full rounded-lg border p-2 font-normal" />
-          <span className="mt-1 block font-normal text-slate-500">Pode reenviar o mesmo PDF: a leitura será atualizada sem duplicar o recebimento.</span>
+          <span className="mt-1 block font-normal text-slate-500">{relatorioAntigo ? "Reenviar o mesmo PDF não duplica clientes ou cotas." : "Pode reenviar o mesmo PDF: a leitura será atualizada sem duplicar o recebimento."}</span>
         </label>
         <label className="font-bold">Competência
           <input name="competencia" type="month" required defaultValue="2026-08" className="mt-1 block w-full rounded-lg border p-2" />
@@ -255,21 +269,29 @@ export function RepassePdfConciliacao({
             {administradoras.map((a) => <option key={a.id} value={a.id}>{a.nome}</option>)}
           </select>
         </label>
-        <label className="font-bold">Data da entrada
+        {!relatorioAntigo && <label className="font-bold">Data da entrada
           <input name="data_recebimento" type="date" required defaultValue={new Date().toISOString().slice(0, 10)} className="mt-1 block w-full rounded-lg border p-2" />
-        </label>
-        <label className="font-bold">Conta bancária
+        </label>}
+        {!relatorioAntigo && <label className="font-bold">Conta bancária
           <select name="conta_bancaria_id" className="mt-1 block w-full rounded-lg border p-2 dark:bg-slate-900">
             <option value="">Caixa geral</option>
             {contas.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
           </select>
           <input type="hidden" name="conta_entrada" value="Caixa geral" />
-        </label>
+        </label>}
         <div className="md:col-span-6 flex items-center justify-between gap-3">
           {importState.message ? <p role="status" className={importState.ok ? "font-bold text-emerald-700" : "font-bold text-rose-700"}>{importState.message}</p> : <span />}
-          <button disabled={importing} className="rounded-xl bg-blue-700 px-5 py-2.5 font-bold text-white disabled:opacity-50">{importing ? "Lendo e conciliando..." : "Importar, registrar entrada e conciliar"}</button>
+          <button disabled={importing} className="rounded-xl bg-blue-700 px-5 py-2.5 font-bold text-white disabled:opacity-50">{importing ? "Importando relatório..." : relatorioAntigo ? "Importar antigos sem receita e comissões" : "Importar, registrar entrada e conciliar"}</button>
         </div>
       </form>
+
+      {relatoriosAntigos.length > 0 && <div className="rounded-xl border border-violet-200 bg-white p-4 text-xs dark:bg-slate-900">
+        <h3 className="text-sm font-bold">Relatórios antigos — somente controle</h3>
+        {relatoriosAntigos.map((r) => <details key={r.id} className="mt-2 rounded-lg border p-3">
+          <summary className="cursor-pointer font-semibold">{r.competencia} · {r.arquivo_nome} · {r.consultor_nome} · {r.resultado.novos ?? 0} nova(s) cota(s), {r.resultado.reutilizados ?? 0} existente(s)</summary>
+          <div className="mt-2 max-h-64 overflow-auto"><table className="w-full text-left"><thead><tr><th>Cliente · Antigos</th><th>Grupo</th><th>Cota</th><th>Primeira comissão no relatório</th></tr></thead><tbody>{r.resultado.vinculos?.map((v) => <tr key={v.cota_id}><td className="py-2">{v.cliente_nome}</td><td>{v.grupo}</td><td>{v.cota}</td><td>{v.data_venda.split("-").reverse().join("/")}</td></tr>)}</tbody></table></div>
+        </details>)}
+      </div>}
 
       <div className="rounded-xl border bg-white p-4 text-xs dark:border-slate-800 dark:bg-slate-900">
         <div className="flex flex-wrap items-center justify-between gap-2">

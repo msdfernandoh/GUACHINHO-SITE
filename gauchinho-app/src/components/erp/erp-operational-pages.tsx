@@ -763,7 +763,7 @@ export async function ErpRepasseFranquiaPage() {
   if (!empresaAtiva) notFound();
   const empresaId = empresaAtiva.id;
   const db = await createClient();
-  const [grants, contas, recebimentos, previsoes, solicitacoesRes, importacoesRes, participantesRes, perfisParticipantesRes, regrasRes, gruposRes, resolucoesRes] = await Promise.all([
+  const [grants, contas, recebimentos, previsoes, solicitacoesRes, importacoesRes, participantesRes, perfisParticipantesRes, regrasRes, gruposRes, resolucoesRes, antigosRes] = await Promise.all([
     db
       .from("empresa_administradoras")
       .select("administradora:administradoras(id,nome)")
@@ -835,6 +835,8 @@ export async function ErpRepasseFranquiaPage() {
       .eq("empresa_id", empresaId)
       .order("created_at", { ascending: false })
       .limit(500),
+    db.from("repasse_relatorios_antigos").select("id,arquivo_nome,competencia,participante_comercial_id,resultado")
+      .eq("empresa_id", empresaId).order("created_at", { ascending: false }).limit(100),
   ]);
 
   const hoje = new Date().toISOString().slice(0, 10);
@@ -1048,6 +1050,7 @@ export async function ErpRepasseFranquiaPage() {
           local: row.origem_governanca === "LOCAL",
         } satisfies RepasseGrupo))}
         resolucoes={(resolucoesRes.data ?? []) as RepasseAtencaoResolucao[]}
+        relatoriosAntigos={(antigosRes.data ?? []).map((r) => ({ ...r, consultor_nome: participantesBase.find((p) => p.id === r.participante_comercial_id)?.nome ?? "Consultor responsável" }))}
       />
 
       <RepasseFranquiaView

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition, useMemo } from "react";
+import { chaveGrupoFiltro, listarGruposFiltro } from "@/lib/erp/vendas-filtro-grupos";
 import {
   Pencil,
   Trash2,
@@ -64,6 +65,7 @@ export type ModalidadeSimples = {
 };
 
 export type VendaItem = {
+  grupo_id?: string | null;
   id: string;
   cliente_nome: string;
   cliente_cpf_cnpj: string | null;
@@ -97,6 +99,7 @@ export type VendaItem = {
 };
 
 export type CotaItem = {
+  grupo_id?: string | null;
   id: string;
   venda_id: string;
   numero_grupo: string;
@@ -331,16 +334,10 @@ export function ErpVendasHubView({
   }, [vendas, cotas, participantes]);
 
   const gruposDisponiveis = useMemo(() => {
-    const set = new Set<string>();
-    for (const v of vendas) {
-      if (v.grupo_codigo) set.add(v.grupo_codigo.trim());
-    }
-    for (const c of cotas) {
-      if (c.numero_grupo) set.add(c.numero_grupo.trim());
-    }
-    return Array.from(set)
-      .filter(Boolean)
-      .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+    return listarGruposFiltro([
+      ...vendas.map((v) => ({ grupo_id: v.grupo_id, codigo: v.grupo_codigo })),
+      ...cotas.map((c) => ({ grupo_id: c.grupo_id, codigo: c.numero_grupo })),
+    ]);
   }, [vendas, cotas]);
 
   // Modais
@@ -419,8 +416,9 @@ export function ErpVendasHubView({
     return programaEditId ? 2.0 : 4.0;
   }, [programaEditId, modalidades, regrasFranquia, editTipoVenda]);
 
-  const normalizarBusca = (texto: string) =>
-    texto.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  function normalizarBusca(texto: string) {
+    return texto.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  }
   const palavrasBusca = normalizarBusca(termoBusca).trim().split(/\s+/).filter(Boolean);
   const termoCotaLimpo = normalizarBusca(filtroCota).trim();
 
@@ -428,7 +426,7 @@ export function ErpVendasHubView({
   const vendasFiltradas = useMemo(() => {
     return vendas.filter((v) => {
       // 1. Mês de referência (Competência)
-      if (competencia !== "todos" && (v.data_primeira_parcela || v.data_venda || v.created_at || "").slice(0, 7) !== competencia) {
+      if (!(abaAtiva === "boletos" && v.snapshot_venda?.somente_controle) && competencia !== "todos" && (v.data_primeira_parcela || v.data_venda || v.created_at || "").slice(0, 7) !== competencia) {
         return false;
       }
 
@@ -453,8 +451,8 @@ export function ErpVendasHubView({
       // 3. Filtro por Grupo
       const cotasDaVenda = cotas.filter((c) => c.venda_id === v.id);
       if (filtroGrupo !== "todos") {
-        const matchGrupoVenda = v.grupo_codigo?.trim() === filtroGrupo;
-        const matchGrupoCota = cotasDaVenda.some((c) => c.numero_grupo?.trim() === filtroGrupo);
+        const matchGrupoVenda = chaveGrupoFiltro(v.grupo_id, v.grupo_codigo) === filtroGrupo;
+        const matchGrupoCota = cotasDaVenda.some((c) => chaveGrupoFiltro(c.grupo_id, c.numero_grupo) === filtroGrupo);
         if (!matchGrupoVenda && !matchGrupoCota) return false;
       }
 
@@ -478,7 +476,7 @@ export function ErpVendasHubView({
 
       return true;
     });
-  }, [vendas, cotas, competencia, filtroConsultor, consultoresDisponiveis, filtroGrupo, termoCotaLimpo, palavrasBusca]);
+  }, [vendas, cotas, competencia, abaAtiva, filtroConsultor, consultoresDisponiveis, filtroGrupo, termoCotaLimpo, palavrasBusca]);
 
   const cotasFiltradas = useMemo(() => {
     return cotas.filter((c) => {
@@ -500,7 +498,7 @@ export function ErpVendasHubView({
         );
         if (!matchId && !matchNome) return false;
       }
-      if (filtroGrupo !== "todos" && c.numero_grupo?.trim() !== filtroGrupo) return false;
+      if (filtroGrupo !== "todos" && chaveGrupoFiltro(c.grupo_id, c.numero_grupo) !== filtroGrupo) return false;
       if (termoCotaLimpo && !(c.numero_cota && normalizarBusca(c.numero_cota).includes(termoCotaLimpo))) return false;
       if (palavrasBusca.length > 0) {
         const texto = normalizarBusca(`${c.cliente_nome || ""} ${c.consultor_nome || ""} ${c.numero_grupo} ${c.numero_cota || ""} ${c.status}`);
@@ -510,7 +508,7 @@ export function ErpVendasHubView({
     });
   }, [cotas, vendas, filtroConsultor, consultoresDisponiveis, filtroGrupo, termoCotaLimpo, palavrasBusca]);
 
-  const valorVendido = vendasFiltradas.filter((v) => !["cancelada", "suspensa"].includes(v.status)).reduce((s, v) => s + Number(v.valor_credito), 0);
+  const valorVendido = vendasFiltradas.filter((v) => !v.snapshot_venda?.somente_controle && !["cancelada", "suspensa"].includes(v.status)).reduce((s, v) => s + Number(v.valor_credito), 0);
   const metaPeriodo = competencia === "todos" ? metas.reduce((s, m) => s + m.valor, 0) : metas.filter((m) => (m.inicio || "").slice(0, 7) <= competencia && (m.fim || "").slice(0, 7) >= competencia).reduce((s, m) => s + m.valor, 0);
   const comissoesGeradas = vendasFiltradas.reduce((s, v) => s + Number(v.comissoes_geradas ?? 0), 0);
   const valorEmpresa = vendasFiltradas.reduce((s, v) => s + Number(v.valor_empresa ?? 0), 0);
@@ -528,7 +526,7 @@ export function ErpVendasHubView({
 
       let cotasExibidas = cotasDaVenda;
       if (filtroGrupo !== "todos") {
-        cotasExibidas = cotasExibidas.filter((c) => c.numero_grupo?.trim() === filtroGrupo || v.grupo_codigo?.trim() === filtroGrupo);
+        cotasExibidas = cotasExibidas.filter((c) => chaveGrupoFiltro(c.grupo_id, c.numero_grupo) === filtroGrupo);
       }
       if (termoCotaLimpo) {
         cotasExibidas = cotasExibidas.filter((c) => (c.numero_cota && normalizarBusca(c.numero_cota).includes(termoCotaLimpo)) || (v.cota_numero && normalizarBusca(v.cota_numero).includes(termoCotaLimpo)));
@@ -804,8 +802,8 @@ export function ErpVendasHubView({
             >
               <option value="todos" className="font-sans">Todos os grupos</option>
               {gruposDisponiveis.map((grp) => (
-                <option key={grp} value={grp}>
-                  Grupo {grp}
+                <option key={grp.id} value={grp.id}>
+                  Grupo {grp.nome}
                 </option>
               ))}
             </select>
@@ -992,6 +990,7 @@ export function ErpVendasHubView({
                     <tr key={`${v.id}-${cota?.id || "sem-cota"}`} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition">
                       <td className="p-3 font-semibold text-slate-900 dark:text-white">
                         <div className="font-bold">{v.cliente_nome}</div>
+                        {v.snapshot_venda?.somente_controle && <span className="text-xs font-bold text-violet-700">Antigos · cadastro incompleto · sem receita/comissões</span>}
                         {v.cliente_cpf_cnpj && <div className="text-[10px] text-slate-400 font-mono">{v.cliente_cpf_cnpj}</div>}
                       </td>
                       <td className="p-3">
@@ -1149,6 +1148,7 @@ export function ErpVendasHubView({
                         )}
                         <div className="mt-1 text-[10px] leading-4 text-slate-600 dark:text-slate-300">
                           <span className="block font-bold">{c.cliente_nome || "Cliente não identificado"}</span>
+                          {vendas.find((v) => v.id === c.venda_id)?.snapshot_venda?.somente_controle && <span className="text-xs font-bold text-violet-700">Antigos · somente controle</span>}
                           <span className="block">Consultor: {c.consultor_nome || "Não informado"}</span>
                         </div>
                       </div>
@@ -1256,6 +1256,7 @@ export function ErpVendasHubView({
                       <tr key={`boleto-${v.id}-${cota?.id || "sem-cota"}`} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition">
                         <td className="p-3 font-semibold text-slate-900 dark:text-white">
                           <div className="font-bold">{v.cliente_nome}</div>
+                          {v.snapshot_venda?.somente_controle && <span className="text-xs font-bold text-violet-700">Antigos · cadastro incompleto</span>}
                           {v.cliente_cpf_cnpj && <div className="text-[10px] text-slate-400 font-mono">{v.cliente_cpf_cnpj}</div>}
                           {v.cliente_telefone && (
                             <div className="text-[11px] text-slate-500 flex items-center gap-1 mt-0.5 font-mono">

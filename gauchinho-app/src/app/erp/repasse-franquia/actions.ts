@@ -43,6 +43,8 @@ export async function importarRelatorioRepasseRaconAction(
     const file = formData.get("arquivo_pdf") as File | null;
     const competencia = String(formData.get("competencia") ?? "");
     const administradoraId = String(formData.get("administradora_id") ?? "");
+    const relatorioAntigo = formData.get("relatorio_antigo") === "on";
+    const consultorId = String(formData.get("consultor_antigo_id") ?? "");
     const dataRecebimento = String(formData.get("data_recebimento") ?? "");
     const contaEntrada = String(formData.get("conta_entrada") ?? "Caixa geral").trim();
     const contaBancariaId = String(formData.get("conta_bancaria_id") ?? "").trim() || null;
@@ -50,22 +52,49 @@ export async function importarRelatorioRepasseRaconAction(
     if (file.type !== "application/pdf") throw new Error("O relatório de repasse deve ser um arquivo PDF.");
     if (file.size > MAX_REPASSE_FILE_SIZE) throw new Error("O PDF deve ter no máximo 15 MB.");
     if (!administradoraId) throw new Error("Selecione a administradora.");
-    if (!dataRecebimento) throw new Error("Informe a data da entrada do repasse.");
-    if (contaEntrada.length < 2) throw new Error("Informe a conta/caixa de entrada.");
+    if (relatorioAntigo && !consultorId) throw new Error("Selecione o consultor responsável pelos clientes antigos.");
+    if (!relatorioAntigo && !dataRecebimento) throw new Error("Informe a data da entrada do repasse.");
+    if (!relatorioAntigo && contaEntrada.length < 2) throw new Error("Informe a conta/caixa de entrada.");
 
     const bytes = new Uint8Array(await file.arrayBuffer());
     const hash = createHash("sha256").update(bytes).digest("hex");
+    if (!relatorioAntigo) {
+      const { data: antigo, error: consultaError } = await db.from("repasse_relatorios_antigos")
+        .select("id").eq("empresa_id", empresaId).eq("administradora_id", administradoraId)
+        .eq("arquivo_hash", hash).maybeSingle();
+      if (consultaError) throw new Error("Não foi possível conferir se o PDF já está registrado como antigo.");
+      if (antigo) throw new Error("Este PDF está registrado como antigo e não pode gerar entrada financeira. Marque Incluir relatório antigo.");
+    }
     const pdf = await getDocumentProxy(bytes);
     const extracted = await extractText(pdf, { mergePages: true });
     const parsed = parseRepasseRaconText(String(extracted.text), competencia);
 
-    storagePath = `${empresaId}/conciliacoes/${competencia}/${hash}.pdf`;
+    storagePath = `${empresaId}/${relatorioAntigo ? "antigos" : "conciliacoes"}/${competencia}/${hash}.pdf`;
     const { error: uploadError } = await db.storage.from("repasse-documentos").upload(storagePath, bytes, {
       contentType: "application/pdf",
       upsert: false,
     });
     if (uploadError && !/already exists|duplicate/i.test(uploadError.message)) {
       throw new Error(`Falha ao guardar o PDF: ${uploadError.message}`);
+    }
+
+    if (relatorioAntigo) {
+      const { data, error } = await db.rpc("rpc_importar_repasse_antigo", {
+        p_empresa_id: empresaId,
+        p_administradora_id: administradoraId,
+        p_participante_comercial_id: consultorId,
+        p_competencia: competencia,
+        p_arquivo_nome: file.name.slice(0, 255),
+        p_arquivo_path: storagePath,
+        p_arquivo_hash: hash,
+        p_relatorio: parsed,
+      });
+      if (error) throw new Error(error.message);
+      const result = data as { idempotente?: boolean; novos?: number; novos_clientes?: number; grupos_criados?: number; reutilizados?: number };
+      for (const path of ["/erp/repasse-franquia", "/erp/vendas", "/admin/vendas", "/erp/clientes"]) revalidatePath(path);
+      return { ok: true, message: result.idempotente
+        ? "Este relatório antigo já foi importado. Cadastros preservados, sem duplicações."
+        : `Relatório antigo importado: ${result.novos_clientes ?? 0} cliente(s) com cadastro incompleto, ${result.novos ?? 0} nova(s) cota(s), ${result.reutilizados ?? 0} cota(s) já cadastrada(s) e ${result.grupos_criados ?? 0} grupo(s) criado(s) inativo(s). Sem receita e sem comissões.` };
     }
 
     const { data, error } = await db.rpc("rpc_importar_repasse_racon", {

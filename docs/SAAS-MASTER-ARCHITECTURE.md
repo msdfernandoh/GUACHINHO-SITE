@@ -1,5 +1,75 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
+### Fase 308 — Central de Robôs de Importação Multiportal (18/10/2026)
+
+A arquitetura de Robôs de Automação & Importação Multiportal com Playwright,
+runner desacoplado em background e coordenação atômica por leasing transacional
+foi implantada e homologada em produção no Supabase canônico (`eaeuoynprurmmulzhydt`).
+Tabelas criadas: `robo_configuracoes`, `robo_execucoes`, `robo_mapeamentos`,
+`robo_runner_lease`, com índices e funções RPC `robo_runner_adquirir`, `robo_runner_liberar`
+e `reivindicar_proxima_execucao_robo` (com `FOR UPDATE SKIP LOCKED`, `SET search_path = public`
+e isolamento RLS). Credenciais cifradas via AES-256-GCM. Gestão administrativa
+disponível em `/admin/configuracoes/robos-importacao`.
+Relatório: `docs/relatorios-fases/FASE-308-CENTRAL-ROBOS-IMPORTACAO.md`.
+
+### Hotfix — recuperação e preservação do Superadmin (18/10/2026)
+
+A migration 307 foi aplicada ao Supabase canônico e a autoridade global da
+identidade original do titular foi recuperada por manutenção identificada,
+autorizada e auditada. A validação de vínculos preserva o papel PLATFORM
+preexistente quando o formulário legado envia master como admin_empresa;
+promoção pela API e remoção/inativação/transferência pelo fluxo tenant continuam
+bloqueadas. SQL direto não pode remover o último vínculo Superadmin ativo.
+Alterações de autoridade em empresa_usuarios registram antes/depois e autoria.
+Contagens e hashes de 30 tabelas foram preservados; painel Platform, Empresas,
+Usuários e ERP/Vendas responderam HTTP 200 em smoke autenticado. A correção
+funciona no deployment existente, sem alteração de senha nem deploy de frontend.
+Relatório: `docs/relatorios-fases/HOTFIX-2026-10-18-RECUPERACAO-SUPERADMIN.md`.
+
+### Diagnóstico — acesso do Superadmin à Plataforma (18/10/2026)
+
+A análise somente leitura da conta do titular confirmou identidade e vínculo
+ativos, porém com papel `admin_empresa`/`COMPANY`, incompatível com o host
+global. Nenhum vínculo `super_admin` foi encontrado; o papel global permanece
+ativo. A edição tenant de usuários pode regravar o papel a partir do perfil
+legado master, mas a autoria e a data da troca não foram comprovadas pela
+auditoria consultada. A recuperação precisa conciliar a autorização global
+com o guard de papéis tenant da migration 145 e preservar os administradores
+empresariais. Nenhuma correção ou alteração em produção foi executada.
+Relatório: `docs/relatorios-fases/ANALISE-2026-10-18-ACESSO-SUPERADMIN.md`.
+
+### Fase 306 — Relatórios antigos sem receita e comissões (09/10/2026)
+
+O importador de repasse tem modo Antigos com consultor obrigatório, clientes
+incompletos, vendas somente_controle/afeta_faturamento=false e cotas definitivas.
+Relatórios ficam em repasse_relatorios_antigos, separados da conciliação financeira.
+Previsões de comissão e conversão de venda para faturamento são bloqueadas no banco.
+Grupos ausentes são locais, inativos e pendentes; não se inventam prazo ou assembleia.
+Relatórios repetidos reutilizam cotas e preservam os vínculos existentes.
+Data da venda: menor data de alocação da cota encontrada nos PDFs importados.
+Relatório: docs/relatorios-fases/FASE-306-REPASSE-ANTIGOS-CONTROLE.md.
+
+
+### Hotfix — Grupos únicos no filtro de Vendas (09/10/2026)
+
+O filtro de grupos de Vendas, Cotas e Boletos utiliza `grupo_id` como identidade,
+reunindo variações históricas de código do mesmo grupo. O nome do catálogo da
+venda prevalece na apresentação; snapshots das cotas permanecem preservados.
+Grupos com UUIDs diferentes continuam separados mesmo com número igual.
+Relatório: `docs/relatorios-fases/HOTFIX-2026-10-09-FILTRO-GRUPOS-VENDAS.md`.
+
+### Hotfix — renderização de Vendas para o master (09/10/2026)
+
+O seletor de consultores de Vendas usa uma declaração de função para normalizar
+buscas, evitando acesso antes da inicialização na primeira renderização com
+dados. A rota física `/erp/vendas` revalida o módulo pelo guard canônico, assim
+como a rota dinâmica anterior. O diagnóstico autenticado encontrou HTTP 500
+em Vendas e HTTP 200 em Minhas Comissões; identidade e vínculo administrativo
+estavam ativos. Após publicação, ambas as rotas retornaram HTTP 200 no smoke
+autenticado da conta informada. Não há alteração de dados, permissões ou regras financeiras.
+Validação e publicação registradas em
+`docs/relatorios-fases/HOTFIX-2026-10-09-RENDERIZACAO-VENDAS-MASTER.md`.
+
 ### Aba "Controle de Boletos" em Vendas e Cotas (09/10/2026)
 
 A tela `/erp/vendas` passa a disponibilizar duas abas operacionais:

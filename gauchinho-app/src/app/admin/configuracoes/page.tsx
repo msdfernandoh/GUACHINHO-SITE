@@ -21,15 +21,26 @@ export default async function ConfiguracoesPage() {
         <h1 className="text-2xl font-bold">Configurações gerais</h1>
         <p className="text-sm text-zinc-500">Master — chaves JSON em configuracoes_sistema</p>
       </div>
-      <Link
-        href="/admin/configuracoes/qr-codes"
-        className="block rounded-xl border border-amber-500/30 bg-amber-500/5 px-4 py-3 text-sm transition hover:bg-amber-500/10 dark:border-amber-500/20"
-      >
-        <span className="font-semibold text-amber-700 dark:text-amber-400">QR Codes únicos</span>
-        <span className="mt-0.5 block text-zinc-500">
-          Gerencie QR Codes reutilizáveis para eventos e materiais impressos →
-        </span>
-      </Link>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <Link
+          href="/admin/configuracoes/qr-codes"
+          className="block rounded-xl border border-amber-500/30 bg-amber-500/5 px-4 py-3 text-sm transition hover:bg-amber-500/10 dark:border-amber-500/20"
+        >
+          <span className="font-semibold text-amber-700 dark:text-amber-400">QR Codes únicos</span>
+          <span className="mt-0.5 block text-zinc-500">
+            Gerencie QR Codes reutilizáveis para eventos e materiais impressos →
+          </span>
+        </Link>
+        <Link
+          href="/admin/configuracoes/robos-importacao"
+          className="block rounded-xl border border-amber-500/30 bg-amber-500/5 px-4 py-3 text-sm transition hover:bg-amber-500/10 dark:border-amber-500/20"
+        >
+          <span className="font-semibold text-amber-700 dark:text-amber-400">Robôs de Importação (Playwright)</span>
+          <span className="mt-0.5 block text-zinc-500">
+            Automações de login, captura de dados e tarefas de administradoras →
+          </span>
+        </Link>
+      </div>
       <ConfigTabs
         configs={configs}
         whatsapp={whatsapp as Array<Record<string, unknown>>}

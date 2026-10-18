@@ -29,6 +29,20 @@ describe("Platform Host — autenticação e RBAC", () => {
         platformSuperadmin: true,
       }),
     ).toBe("allow_master");
+    expect(
+      decidePlatformHostAccess({
+        pathname: "/platform/robos-importacao",
+        authenticated: true,
+        platformSuperadmin: true,
+      }),
+    ).toBe("allow_master");
+    expect(
+      decidePlatformHostAccess({
+        pathname: "/api/automacoes/robos",
+        authenticated: true,
+        platformSuperadmin: true,
+      }),
+    ).toBe("allow_master");
   });
 
   it.each(["admin_empresa", "gestor", "consultor", "visualizador"])(

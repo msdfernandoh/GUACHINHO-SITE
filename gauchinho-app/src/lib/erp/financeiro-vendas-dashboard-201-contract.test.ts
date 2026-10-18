@@ -18,7 +18,7 @@ describe("filtros financeiros, vendas e navegação do painel",()=>{
   });
 
   it("vendas filtra pela competência canônica e mostra os cinco indicadores",()=>{
-    expect(vendas).toContain('(v.data_primeira_parcela||v.data_venda).slice(0,7)');
+    expect(vendas.replace(/\s/g, "")).toContain('(v.data_primeira_parcela||v.data_venda||v.created_at||"").slice(0,7)');
     for(const label of ["Valor vendido","Meta","Falta para meta","Comissões geradas","Valor para empresa"]) expect(vendas).toContain(label);
     expect(vendas).toContain('<option value="todos">Todos</option>');
   });
