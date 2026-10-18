@@ -26,6 +26,18 @@ local foi recusado pela Meta (HTTP 401/OAuth 190). Sua correção, cadastro na V
 (Production e Preview), novo deploy e assinatura do webhook na Meta permanecem
 pendentes. O QR ainda não foi homologado em produção; evidências estão no relatório.
 
+Atualização de 18/10/2026: o App Secret original foi validado pela Meta (HTTP 200,
+App ID confirmado) e cadastrado na Vercel em Production e Preview. Novo deployment
+`dpl_6fVq43Zdphnk6jm8DRpzaoJXPLJ2` publicado com build e TypeScript aprovados.
+POST de assinatura Meta retornou `success: true`; consulta posterior confirmou
+`active: true`, callback de produção e os campos `messages`, `smb_message_echoes`
+e `smb_app_state_sync` (a Meta informou versão efetiva `v26.0`). Em produção,
+GET retornou 200/`123`, verify token inválido 403, POST vazio com HMAC válido 200
+e assinatura inválida 401. Smoke autenticado de `/erp/whatsapp` retornou 200,
+com botão de conexão e App ID/config ID esperados. Infraestrutura pronta para
+o titular iniciar o QR; conexão real do número e troca de mensagens dependem
+da conclusão do Embedded Signup e ainda não foram homologadas.
+
 
 ### Fase 308 — Central de Robôs de Importação Multiportal (18/10/2026)
 

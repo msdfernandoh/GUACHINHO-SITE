@@ -1,7 +1,7 @@
 # Relatório de Fase — Homologação da Migration 310 (WhatsApp Cloud API Multiempresa)
 
 **Data:** 18 de Outubro de 2026  
-**Status:** Aplicação publicada e GET do webhook validado; App Secret e assinatura Meta pendentes
+**Status:** Deploy publicado, App Secret configurado e assinatura Meta ativa; pronto para teste do QR pelo titular
 **Supabase Canônico:** `eaeuoynprurmmulzhydt` (Gauchinho-Site)  
 **Arquivos de Referência:**
 - `supabase/migrations/310_whatsapp_cloud_api_multiempresa.sql`
@@ -124,3 +124,23 @@ O teste automatizado `scripts/smoke-whatsapp-http.mjs` executou o seguinte fluxo
 - GET anônimo em `/erp/whatsapp`: **HTTP 307** para `/login?next=%2Ferp%2Fwhatsapp`, confirmando a proteção de autenticação. Não constitui smoke autenticado de produção nem validação do QR.
 - O valor posteriormente salvo em `.env.local` tinha 16 caracteres e foi recusado pela Meta em consulta de autenticação somente leitura: **HTTP 401**, OAuthException **190**, `Invalid OAuth access token signature.` O segredo não foi registrado no relatório nem cadastrado na Vercel.
 - Pendências: fornecer o App Secret original válido, cadastrá-lo em Production e Preview, fazer novo deploy para incorporá-lo, executar POST `/1412730744263214/subscriptions` e confirmar `success: true` para os três campos solicitados. A integração ainda não está 100% ativa para homologação do QR.
+
+## 7. Conclusão da ativação de infraestrutura — 18/10/2026
+
+Esta seção atualiza as pendências históricas da seção 6.
+
+- App Secret original fornecido pelo titular em arquivo local ignorado pelo Git. Consulta autenticada à Meta retornou HTTP 200 e ID `1412730744263214`. Nenhum segredo foi incluído no relatório ou commit.
+- `WHATSAPP_APP_SECRET` cadastrado como variável cifrada na Vercel em **Production** e **Preview**, este último sem restrição de branch. Production foi cadastrado pelo CLI; Preview pela API autenticada do CLI após o comando `env add` exigir indevidamente uma branch mesmo sem argumento de branch.
+- Aplicação já estava commitada em `558f70db` e enviada à main; documentação anterior em `91006cc6`. Nenhuma alteração de código WhatsApp era necessária nesta retomada. Alterações locais de robôs e migrations de grupos continuam fora desta publicação de código.
+- `vercel --prod --yes`: exit code 0, build Next.js e TypeScript aprovados. Deployment `dpl_6fVq43Zdphnk6jm8DRpzaoJXPLJ2`, URL `https://guachinho-site-68tw9gx94-hugo-8097s-projects.vercel.app`.
+- POST `https://graph.facebook.com/v23.0/1412730744263214/subscriptions`: HTTP 200, resposta `{"success":true}` para `whatsapp_business_account`, callback `https://www.gauchinhoconsorcios.com.br/api/whatsapp/webhook` e campos `messages,smb_message_echoes,smb_app_state_sync`.
+- GET posterior da assinatura: HTTP 200, `active: true`, callback correto e os três campos presentes. Embora a requisição tenha usado `v23.0`, a Meta informou `v26.0` como versão efetiva dos três campos. Nenhuma variável de versão foi alterada nesta etapa.
+- Verificações no domínio público após o novo deploy:
+  - GET com verify token correto: HTTP 200, corpo exato `123`.
+  - GET com token inválido: HTTP 403, `Forbidden`.
+  - POST de evento vazio (`entry: []`) com HMAC-SHA256 da chave original: HTTP 200, `{"ok":true}`. Comprova uso da chave no runtime sem inserir mensagens.
+  - POST com HMAC inválido: HTTP 401, `Invalid signature`.
+- Smoke autenticado **em produção**: `/erp/whatsapp` retornou HTTP 200, 30.163 caracteres de HTML, com `WhatsApp`, `Conectar WhatsApp`, App ID `1412730744263214` e config ID `1582891326394697`. Sessão temporária gerada sem envio de e-mail e encerrada ao final com escopo local. Esse smoke foi executado durante a compilação do novo deploy; os testes de assinatura acima ocorreram após sua publicação.
+- Nenhuma migration ou manutenção de dados de negócio foi executada nesta retomada.
+
+**Próxima validação:** titular acessar `/erp/whatsapp`, clicar em **Conectar WhatsApp** e concluir o Embedded Signup/QR. O QR, a conexão real do número, a assinatura da WABA conectada e o envio/recebimento de mensagens reais ainda dependem desse fluxo e não foram considerados homologados por estes testes de infraestrutura.
