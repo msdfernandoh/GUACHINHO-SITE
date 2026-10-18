@@ -1,7 +1,7 @@
 # Relatório de Fase — Homologação da Migration 310 (WhatsApp Cloud API Multiempresa)
 
 **Data:** 18 de Outubro de 2026  
-**Status:** Migração homologada; publicação da aplicação e assinatura Meta em andamento  
+**Status:** Aplicação publicada e GET do webhook validado; App Secret e assinatura Meta pendentes
 **Supabase Canônico:** `eaeuoynprurmmulzhydt` (Gauchinho-Site)  
 **Arquivos de Referência:**
 - `supabase/migrations/310_whatsapp_cloud_api_multiempresa.sql`
@@ -117,4 +117,10 @@ O teste automatizado `scripts/smoke-whatsapp-http.mjs` executou o seguinte fluxo
 - O smoke da seção 5 foi executado em localhost; não comprova homologação de produção.
 - As variáveis WhatsApp existentes na Vercel foram confirmadas em Production. `WHATSAPP_APP_SECRET` ainda ausente em Production e Preview, aguardando o segredo real do titular em arquivo local ignorado pelo Git.
 - Commit desta publicação inclui exclusivamente os arquivos da Fase 310; alterações locais de robôs e migrations de grupos pertencem a outro escopo.
-- Deploy, GET de desafio em produção e assinatura Graph API serão registrados após execução. A integração não é considerada integralmente ativa antes dessas confirmações.
+- Commit da aplicação: `558f70db`, enviado para `origin/main` com a mensagem solicitada pelo titular.
+- `vercel --prod --yes`: concluído com exit code 0. Deployment `dpl_8VuDJxPfDxtmuAcjwHZo4SvP8qGu`, URL `https://guachinho-site-dls2x1dbx-hugo-8097s-projects.vercel.app`. Build Next.js e TypeScript aprovados.
+- GET de produção em `https://www.gauchinhoconsorcios.com.br/api/whatsapp/webhook`, com os parâmetros `hub.mode=subscribe`, token informado pelo titular e `hub.challenge=123`: **HTTP 200**, corpo exato **`123`**.
+- GET com verify token inválido: **HTTP 403**.
+- GET anônimo em `/erp/whatsapp`: **HTTP 307** para `/login?next=%2Ferp%2Fwhatsapp`, confirmando a proteção de autenticação. Não constitui smoke autenticado de produção nem validação do QR.
+- O valor posteriormente salvo em `.env.local` tinha 16 caracteres e foi recusado pela Meta em consulta de autenticação somente leitura: **HTTP 401**, OAuthException **190**, `Invalid OAuth access token signature.` O segredo não foi registrado no relatório nem cadastrado na Vercel.
+- Pendências: fornecer o App Secret original válido, cadastrá-lo em Production e Preview, fazer novo deploy para incorporá-lo, executar POST `/1412730744263214/subscriptions` e confirmar `success: true` para os três campos solicitados. A integração ainda não está 100% ativa para homologação do QR.

@@ -18,11 +18,13 @@ Migração 310 aplicada sob transação atômica (BEGIN/COMMIT) no Supabase can�
 confirmado, módulo ERP `whatsapp` habilitado para a empresa Gauchinho e smoke HTTP 200
 autenticado homologado em `/erp/whatsapp`.
 Relatório completo de publicação: `docs/relatorios-fases/FASE-310-WHATSAPP-CLOUD-API-HOMOLOGACAO.md`.
-O smoke autenticado acima foi local. Em 18/10/2026, TypeScript e lint dos arquivos
-WhatsApp foram aprovados; a publicação da aplicação está em andamento. O App Secret
-ainda precisa ser fornecido para cadastro na Vercel (Production e Preview) e assinatura
-do webhook na Meta. A disponibilidade integral em produção permanece pendente de
-deploy e validações externas registradas no relatório.
+O smoke autenticado acima foi local. Em 18/10/2026, o commit `558f70db` foi enviado
+à main e publicado no deployment `dpl_8VuDJxPfDxtmuAcjwHZo4SvP8qGu`, com build,
+TypeScript e lint direcionado aprovados. O GET do webhook no domínio de produção
+retornou HTTP 200 e corpo exato `123`; token inválido retornou 403. O App Secret
+local foi recusado pela Meta (HTTP 401/OAuth 190). Sua correção, cadastro na Vercel
+(Production e Preview), novo deploy e assinatura do webhook na Meta permanecem
+pendentes. O QR ainda não foi homologado em produção; evidências estão no relatório.
 
 
 ### Fase 308 — Central de Robôs de Importação Multiportal (18/10/2026)
