@@ -1,5 +1,25 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
+### Hotfix — importação de repasse com diferença de total (18/10/2026)
+
+O parser preserva todas as linhas do PDF quando sua soma difere do total do
+documento, registrando alerta em vez de bloquear o upload. A entrada continua
+usando exclusivamente o total do PDF. A conferência exibe soma das linhas,
+total recebido e diferença, inclusive após reabrir o relatório. Arquivos
+distintos na mesma competência continuam independentes, com idempotência por
+empresa e hash do arquivo.
+
+A migration forward-only `313_repasse_divergencia_total_nao_bloqueante.sql`
+mantém a sincronização canônica e transforma exclusivamente a falta de saldo
+para completar uma linha em pendência persistida, sem reverter o relatório e
+sem criar baixa excedente. Outros erros continuam abortivos. Não há backfill
+nem alteração de fatos financeiros históricos. Implementação e testes locais
+concluídos. Na retomada autorizada de publicação, a migration 313 já constava
+aplicada no Supabase canônico; os corpos das três funções foram confirmados
+idênticos ao arquivo local por MD5, com execução pública/autenticada bloqueada
+para o helper privado. O envio à main e a publicação são registrados no relatório.
+Relatório: `docs/relatorios-fases/HOTFIX-2026-10-18-REPASSE-TOTAL-DIVERGENTE.md`.
+
 ### Fase 310 — WhatsApp Cloud API multiempresa / coexistência (18/10/2026)
 
 Integração oficial do WhatsApp (Cloud API) sob app único da Meta

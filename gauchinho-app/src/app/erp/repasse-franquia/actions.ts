@@ -15,7 +15,7 @@ import { parseRepasseRaconText } from "@/lib/erp/repasse-racon-parser";
 
 export type ReceiptState = { ok: boolean; message: string; receiptId?: string };
 export type SolicitacaoState = { ok: boolean; message: string; solicitacaoId?: string; codigo?: string };
-export type ImportacaoRepasseState = { ok: boolean; message: string; importacaoId?: string };
+export type ImportacaoRepasseState = { ok: boolean; message: string; importacaoId?: string; alertas?: string[] };
 export type AtencaoRepasseState = { ok: boolean; message: string };
 
 async function context() {
@@ -92,7 +92,7 @@ export async function importarRelatorioRepasseRaconAction(
       if (error) throw new Error(error.message);
       const result = data as { idempotente?: boolean; novos?: number; novos_clientes?: number; grupos_criados?: number; reutilizados?: number };
       for (const path of ["/erp/repasse-franquia", "/erp/vendas", "/admin/vendas", "/erp/clientes"]) revalidatePath(path);
-      return { ok: true, message: result.idempotente
+      return { ok: true, alertas: parsed.alertas, message: result.idempotente
         ? "Este relatório antigo já foi importado. Cadastros preservados, sem duplicações."
         : `Relatório antigo importado: ${result.novos_clientes ?? 0} cliente(s) com cadastro incompleto, ${result.novos ?? 0} nova(s) cota(s), ${result.reutilizados ?? 0} cota(s) já cadastrada(s) e ${result.grupos_criados ?? 0} grupo(s) criado(s) inativo(s). Sem receita e sem comissões.` };
     }
@@ -131,9 +131,12 @@ export async function importarRelatorioRepasseRaconAction(
     return {
       ok: true,
       importacaoId: result.importacao_id,
+      alertas: parsed.alertas,
       message: result.idempotente
         ? `Este PDF já estava salvo. A leitura foi atualizada sem duplicar a entrada: ${leituraAtualizada?.vinculados_auto ?? 0} novo(s) vínculo(s), ${leituraAtualizada?.atencao ?? 0} atenção(ões) e ${leituraAtualizada?.nao_encontrados ?? 0} não encontrado(s).`
-        : `Repasse importado. ${result.vinculados_auto ?? 0} linhas vinculadas e baixadas automaticamente, ${result.atencao ?? 0} com atenção e ${result.nao_encontrados ?? 0} antigas/não encontradas.`,
+        : Math.abs(parsed.itens.reduce((soma, item) => soma + item.valor_comissao, 0) - parsed.valor_total) > 0.02
+          ? "Repasse importado com todas as cotas e valores. Entrada registrada pelo total do PDF; diferença mantida para conferência. Baixas limitadas ao saldo recebido."
+          : `Repasse importado. ${result.vinculados_auto ?? 0} linhas vinculadas e baixadas automaticamente, ${result.atencao ?? 0} com atenção e ${result.nao_encontrados ?? 0} antigas/não encontradas.`,
     };
   } catch (error) {
     return { ok: false, message: error instanceof Error ? error.message : "Erro ao importar o PDF de repasse." };

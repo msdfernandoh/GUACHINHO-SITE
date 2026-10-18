@@ -60,6 +60,7 @@ export type RepassePdfImportacao = {
   ponto_venda: string | null;
   comissionado_nome: string | null;
   pedidos: { numero: string; data_aprovacao: string | null }[];
+  alertas?: string[];
   status: string;
   recebimento_id: string | null;
   created_at: string;
@@ -194,6 +195,9 @@ export function RepassePdfConciliacao({
     abrirImportacao(importState.importacaoId);
   }, [abrirImportacao, importState.importacaoId, importState.ok]);
   const atual = importacoes.find((item) => item.id === importacaoSelecionadaId) ?? importacoes[0] ?? null;
+  const totalLinhas = (atual?.itens ?? []).reduce((soma, item) => soma + Math.round(Number(item.valor_comissao) * 100), 0) / 100;
+  const diferencaTotal = Math.round((totalLinhas - Number(atual?.valor_total_bruto ?? 0)) * 100) / 100;
+  const totalDivergente = Math.abs(diferencaTotal) > 0.02;
   const termoTitulo = buscaTitulo.trim().toLocaleLowerCase("pt-BR");
   const previsoesPesquisadas = termoTitulo ? previsoes.filter((p) => `${p.competencia} ${p.cliente_nome} ${p.numero_grupo ?? ""} ${p.numero_cota ?? ""} ${p.ordem_etapa} ${p.nome_etapa}`.toLocaleLowerCase("pt-BR").includes(termoTitulo)) : previsoes;
   const usados = new Set((atual?.itens ?? []).map((item) => item.previsao_franquia_id).filter(Boolean));
@@ -285,6 +289,8 @@ export function RepassePdfConciliacao({
         </div>
       </form>
 
+      {importState.ok && Boolean(importState.alertas?.length) && <div role="status" className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-xs text-amber-950">{importState.alertas?.map((alerta, index) => <p key={index}>{alerta}</p>)}</div>}
+
       {relatoriosAntigos.length > 0 && <div className="rounded-xl border border-violet-200 bg-white p-4 text-xs dark:bg-slate-900">
         <h3 className="text-sm font-bold">Relatórios antigos — somente controle</h3>
         {relatoriosAntigos.map((r) => <details key={r.id} className="mt-2 rounded-lg border p-3">
@@ -316,7 +322,7 @@ export function RepassePdfConciliacao({
                     <td className="whitespace-nowrap font-semibold">{item.competencia}</td>
                     <td className="max-w-64 truncate" title={item.arquivo_nome}>{item.arquivo_nome}</td>
                     <td className="whitespace-nowrap text-right font-mono">{money(Number(item.valor_total_bruto))}</td>
-                    <td className="pl-3"><span className="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-bold text-slate-700 dark:bg-slate-800 dark:text-slate-200">{item.status === "PENDENTE" ? "RECEBIDO · ATENÇÕES ABERTAS" : item.status.replaceAll("_", " ")}</span></td>
+                    <td className="pl-3"><span className="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-bold text-slate-700 dark:bg-slate-800 dark:text-slate-200">{item.status === "PENDENTE" || Math.abs(item.itens.reduce((soma, linha) => soma + Math.round(Number(linha.valor_comissao) * 100), 0) - Math.round(Number(item.valor_total_bruto) * 100)) > 2 ? "RECEBIDO · ATENÇÕES ABERTAS" : item.status.replaceAll("_", " ")}</span></td>
                     <td className="px-3 py-2 text-right"><div className="flex justify-end gap-3"><button type="button" onClick={() => abrirImportacao(item.id)} className="whitespace-nowrap font-bold text-blue-700 hover:underline">{item.id === atual?.id ? "Em conferência" : "Abrir conferência"}</button><form action={refreshAction}><input type="hidden" name="importacao_id" value={item.id}/><button disabled={refreshing} className="whitespace-nowrap font-bold text-violet-700 hover:underline disabled:opacity-50">Atualizar leitura</button></form></div></td>
                   </tr>
                 ))}
@@ -334,6 +340,12 @@ export function RepassePdfConciliacao({
               {importacoes.map((item) => <option key={item.id} value={item.id}>{item.competencia} · {item.arquivo_nome} · {money(Number(item.valor_total_bruto))} · {item.status}</option>)}
             </select>
           </label>
+          {totalDivergente && <div role="status" className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950">
+            <p className="font-bold">Diferença de {money(Math.abs(diferencaTotal))} para conferência</p>
+            <p>Total das linhas: {money(totalLinhas)} · Total do PDF / entrada: {money(Number(atual.valor_total_bruto))}.</p>
+            <p className="mt-1">Todas as cotas e valores foram importados. Confira os outros repasses da mesma competência, inclusive o do dia 15. É possível importar vários relatórios no mesmo mês. As baixas ficam limitadas ao valor recebido; a diferença permanece para conferência.</p>
+          </div>}
+          {Boolean(atual.alertas?.length) && <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-950">{atual.alertas?.map((alerta, index) => <p key={index}>{alerta}</p>)}</div>}
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5 text-xs">
             <Summary label="Entrada bruta do PDF" value={money(Number(atual.valor_total_bruto))} color="text-emerald-700" />
             <button type="button" onClick={() => setMostrarVinculados((value) => !value)} aria-expanded={mostrarVinculados} className="rounded-xl text-left focus:outline-none focus:ring-2 focus:ring-blue-600">

@@ -60,4 +60,27 @@ describe("importação antiga sem movimentação financeira", () => {
     expect(result.message).toContain("não pode gerar entrada financeira");
     expect(mocks.rpc).not.toHaveBeenCalled();
   });
+
+  it("envia todas as cotas e o total divergente à importação financeira e abre conferência", async () => {
+    const parsed = { valor_total: 8352.58, itens: [{ valor_comissao: 8000 }, { valor_comissao: 1318 }], alertas: ["Diferença de R$ 965,42 para conferência"] };
+    mocks.parse.mockReturnValue(parsed);
+    mocks.rpc.mockResolvedValue({ data: { importacao_id: "relatorio-teste", vinculados_auto: 2 }, error: null });
+    const result = await importarRelatorioRepasseRaconAction({ ok: false, message: "" }, formulario(false));
+    expect(result).toMatchObject({ ok: true, importacaoId: "relatorio-teste", alertas: parsed.alertas });
+    expect(result.message).toContain("diferença mantida para conferência");
+    expect(mocks.rpc).toHaveBeenCalledWith("rpc_importar_repasse_racon", expect.objectContaining({ p_relatorio: parsed }));
+  });
+
+  it("permite três arquivos distintos na mesma competência com hashes independentes", async () => {
+    mocks.parse.mockReturnValue({ valor_total: 10, itens: [{ valor_comissao: 10 }], alertas: [] });
+    for (const dia of [5, 15, 25]) {
+      const form = formulario(false);
+      form.set("arquivo_pdf", new File([`PDF do dia ${dia}`], `${dia}.pdf`, { type: "application/pdf" }));
+      expect((await importarRelatorioRepasseRaconAction({ ok: false, message: "" }, form)).ok).toBe(true);
+    }
+    const chamadas = mocks.rpc.mock.calls.map(([, parametros]) => parametros);
+    expect(chamadas).toHaveLength(3);
+    expect(new Set(chamadas.map((p) => p.p_competencia)).size).toBe(1);
+    expect(new Set(chamadas.map((p) => p.p_arquivo_hash)).size).toBe(3);
+  });
 });

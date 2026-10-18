@@ -22,7 +22,24 @@ describe("parser do relatório de repasse Racon", () => {
     expect(result.alertas).toEqual([]);
   });
 
-  it("recusa relatório cujo total não fecha", () => {
-    expect(() => parseRepasseRaconText(sample.replace("2.014,00", "2.015,00"), "2026-08")).toThrow(/não confere/);
+  it.each(["2.015,00", "1.500,00"])("preserva todas as linhas e avisa quando o total do PDF é %s", (total) => {
+    const result = parseRepasseRaconText(sample.replace("2.014,00", total), "2026-08");
+    expect(result.itens).toEqual(parseRepasseRaconText(sample, "2026-08").itens);
+    expect(result.alertas).toHaveLength(1);
+    expect(result.alertas[0]).toContain("não confere");
+    expect(result.alertas[0]).toContain("para conferência");
+    expect(result.valor_total).toBe(total === "2.015,00" ? 2015 : 1500);
+  });
+
+  it("aceita o caso informado: linhas de 9318 e PDF de 8352,58", () => {
+    const text = sample.replace("2.014,00", "8.352,58").replace("954,00127200,00", "8.258,001101066,67");
+    const result = parseRepasseRaconText(text, "2026-08");
+    expect(result.valor_total).toBe(8352.58);
+    expect(result.itens.reduce((soma, item) => soma + item.valor_comissao, 0)).toBe(9318);
+    expect(result.alertas.join(" ")).toContain("965,42");
+  });
+
+  it("continua rejeitando PDF sem linhas reconhecidas", () => {
+    expect(() => parseRepasseRaconText(sample.split("Produto:")[0], "2026-08")).toThrow(/Nenhuma linha/);
   });
 });

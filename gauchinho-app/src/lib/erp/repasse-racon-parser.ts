@@ -90,9 +90,11 @@ export function parseRepasseRaconText(text: string, competencia: string): Repass
 
   if (itens.length === 0) throw new Error("Nenhuma linha de comissão foi identificada no PDF.");
   const valorTotal = brNumber(totalMatch[1]);
-  const soma = itens.reduce((acc, item) => acc + item.valor_comissao, 0);
-  if (Math.abs(soma - valorTotal) > 0.02) {
-    throw new Error(`O total das linhas (${soma.toFixed(2)}) não confere com o total do PDF (${valorTotal.toFixed(2)}).`);
+  const soma = itens.reduce((acc, item) => acc + Math.round(item.valor_comissao * 100), 0) / 100;
+  const diferenca = Math.round((soma - valorTotal) * 100) / 100;
+  if (Math.abs(diferenca) > 0.02) {
+    const moeda = (valor: number) => valor.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+    alertas.push(`O total das linhas (${moeda(soma)}) não confere com o total do PDF (${moeda(valorTotal)}). Diferença de ${moeda(Math.abs(diferenca))} para conferência. Todas as linhas foram preservadas; confira também os outros repasses da mesma competência.`);
   }
 
   return {
