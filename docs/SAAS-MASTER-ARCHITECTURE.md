@@ -3638,3 +3638,26 @@ permissões ou o isolamento tenant-aware.
 
 Relatório:
 `docs/relatorios-fases/HOTFIX-2026-10-01-CONTRASTE-APP-RACON.md`.
+
+
+### Fase 308 (18/10/2026) — Central de Robôs de Importação & Automação Racon Newcon
+
+Implantada a infraestrutura completa de Robôs de Importação e Automação Multiportal para o ecossistema Gauchinho Consórcios / Platform Host:
+1. **Banco de Dados Supabase (Schema 308):**
+   - Criação das tabelas transacionais: `public.robo_configuracoes`, `public.robo_execucoes`, `public.robo_mapeamentos`, `public.robo_runner_lease`.
+   - RPC transacional com lock atômico: `reivindicar_proxima_execucao_robo` utilizando `FOR UPDATE SKIP LOCKED`.
+   - Coordenação distribuída via lease heartbeat `robo_runner_lease`.
+2. **Segurança de Credenciais:**
+   - Criptografia simétrica autenticada AES-256-GCM com IV de 12 bytes e Auth Tag de 16 bytes.
+   - Derivação segura via `ROBO_CREDENTIALS_ENCRYPTION_KEY` ou `SUPABASE_SERVICE_ROLE_KEY`.
+   - Nenhuma credencial em texto claro trafega para o frontend ou é gravada no banco.
+3. **Interface e Platform Host:**
+   - Rotas administrativas habilitadas em `/admin/configuracoes/robos-importacao`, `/platform/robos-importacao` e `/platform/configuracoes/robos-importacao`.
+   - Integração na barra lateral do Platform Host sob a seção "Automações & Robôs".
+4. **Motor de Automação Headless (Playwright Chromium):**
+   - Execução via `scripts/robo-worker-daemon.mjs` e `scripts/robo-execucao-child.mjs`.
+   - Fluxo completo mapeado para Racon / Randon Consórcios: autenticação SSO Microsoft Online, navegação até o card Newcon Web, aceite de consentimento de aplicativo, acesso ao menu *Venda -> Venda de Proposta -> Reserva de Cotas*, filtro *Grupo*, abertura do popup via botão `...`, extração da listagem de grupos e cálculo de vagas (`vagas = quantidade_cotas - cotas_ativas`) e data de cadastro.
+   - Sincronização atômica direta na tabela `public.grupos_consorcio`.
+
+Relatório de Fase:
+`docs/relatorios-fases/FASE-308-CENTRAL-ROBOS-IMPORTACAO-RACON-NEWCON.md`.
