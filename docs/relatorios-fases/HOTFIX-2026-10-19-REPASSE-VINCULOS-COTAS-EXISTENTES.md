@@ -97,6 +97,13 @@ três divergências reais de valor. Foram resolvidos dez vínculos adicionais.
 divergência de Franciomar. DUO: R$ 750,00 brutos, R$ 131,25 de imposto e
 R$ 618,75 líquidos elegíveis para Eroni; nenhum pagamento foi criado.
 Build, TypeScript, lint e os 22 testes direcionados aprovados.
-Publicação da interface será confirmada após o deploy.
+Interface publicada pelo commit `ed4c1f029a10c34229f09cd7938fdc9afefb3ed8`
+na main. Deployment `dpl_FU9Xyns9HGhEgnzqBrs5aaxGj2nD` confirmado READY,
+com alias `www.gauchinhoconsorcios.com.br`. Smoke autenticado de
+`/erp/repasse-franquia`: HTTP 200, importador, conferência, histórico e central
+de atenção presentes. O bundle servido no domínio contém a mensagem exclusiva
+do seletor corrigido 322. Sessão temporária de smoke encerrada localmente,
+sem alterar senha ou sessões anteriores. As alterações paralelas dos scripts
+do robô de lances ficaram fora do commit e do deploy desta correção.
 Uma correção de dados posteriores deve usar compensações e migration
 forward-only; não excluir previsões, autorizações ou baixas históricas.

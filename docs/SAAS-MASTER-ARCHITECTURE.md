@@ -16,7 +16,9 @@ de venda; suas parcelas reais são destinadas a Eroni. Outros cadastros de
 controle continuam bloqueados e não se projetam comissões hipotéticas.
 Migration 322 aplicada no Supabase canônico com conciliação assistida: dez
 novos vínculos em 15/10 e continuidade de Pedro em 05/10, sem novos cadastros
-de cliente/venda/cota ou alterações de caixa e pagamentos. Implantação registrada no
+de cliente/venda/cota ou alterações de caixa e pagamentos. Interface publicada
+na main em `ed4c1f02`, deployment `dpl_FU9Xyns9HGhEgnzqBrs5aaxGj2nD`
+READY e smoke autenticado HTTP 200 com bundle corrigido. Implantação registrada no
 relatório `docs/relatorios-fases/HOTFIX-2026-10-19-REPASSE-VINCULOS-COTAS-EXISTENTES.md`.
 
 ### Importação assistida — antigos do Eroni (19/10/2026)
