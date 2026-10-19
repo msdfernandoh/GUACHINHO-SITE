@@ -542,22 +542,35 @@ export function ErpLancesView({
                     )}
                   </div>
 
-                  <div className="mt-2.5 flex flex-wrap items-center justify-between text-[10px] text-slate-500 border-t border-blue-200/40 pt-2 dark:border-blue-900/30">
-                    {selectedCota.estrategia.assembleiaNumero && (
-                      <span>
-                        Assembleia Referência:{" "}
-                        <strong>Nº {selectedCota.estrategia.assembleiaNumero}</strong>
-                      </span>
-                    )}
-                    {selectedCota.estrategia.ultimoLanceOfertadoEm && (
-                      <span>
-                        Última Oferta:{" "}
-                        <strong>
-                          {new Date(
-                            selectedCota.estrategia.ultimoLanceOfertadoEm
-                          ).toLocaleString("pt-BR")}
-                        </strong>
-                      </span>
+                  <div className="mt-2.5 flex flex-wrap items-center justify-between gap-2 text-[10px] text-slate-500 border-t border-blue-200/40 pt-2 dark:border-blue-900/30">
+                    <div className="flex flex-wrap items-center gap-3">
+                      {selectedCota.estrategia.assembleiaNumero && (
+                        <span>
+                          Assembleia Referência:{" "}
+                          <strong>Nº {selectedCota.estrategia.assembleiaNumero}</strong>
+                        </span>
+                      )}
+                      {selectedCota.estrategia.ultimoLanceOfertadoEm && (
+                        <span>
+                          Última Oferta:{" "}
+                          <strong>
+                            {new Date(
+                              selectedCota.estrategia.ultimoLanceOfertadoEm
+                            ).toLocaleString("pt-BR")}
+                          </strong>
+                        </span>
+                      )}
+                    </div>
+                    {selectedCota.estrategia.comprovanteUrl && (
+                      <a
+                        href={selectedCota.estrategia.comprovanteUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1 text-[11px] font-bold text-white hover:bg-blue-700 shadow-2xs transition-colors"
+                      >
+                        <FileText className="h-3.5 w-3.5" />
+                        Ver Comprovante Oficial
+                      </a>
                     )}
                   </div>
                 </div>

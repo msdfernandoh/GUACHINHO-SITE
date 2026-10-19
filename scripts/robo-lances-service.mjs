@@ -329,6 +329,10 @@ export async function executarRoboLances({
       let protocoloFixo = null
       let protocoloSegundoFixo = null
 
+      let compLivre = null
+      let compFixo = null
+      let compSegundoFixo = null
+
       // Função auxiliar para aguardar o alerta do navegador com o número do protocolo
       const aguardarProtocoloAlert = () => {
         return new Promise((resolve) => {
@@ -344,13 +348,50 @@ export async function executarRoboLances({
         })
       }
 
-      // Função auxiliar para retornar da tela de relatório
-      const voltarDoRelatorio = async () => {
+      // Função auxiliar para capturar o comprovante, salvar no Supabase Storage e retornar da tela de relatório
+      const voltarDoRelatorio = async (tipoLance = 'LIVRE') => {
         await page.waitForTimeout(3000)
-        log('Verificando se abriu tela de comprovante (frmConCmNewconReports.aspx)...')
+        log(`Verificando se abriu tela de comprovante (frmConCmNewconReports.aspx) para ${tipoLance}...`)
+        let infoComprovante = null
+
         if (page.url().includes('frmConCmNewconReports') || page.url().includes('Reports')) {
-          log('Tela de comprovante aberta. Localizando e clicando no botão [Voltar]...')
-          await page.screenshot({ path: path.join(screenshotsDir, `comprovante-lance-${item.numero_grupo}-${item.numero_cota}-${Date.now()}.png`) }).catch(() => {})
+          log(`Tela de comprovante aberta. Capturando comprovante oficial de ${tipoLance}...`)
+          const nomeArquivo = `comprovante_${tipoLance.toLowerCase()}_g${item.numero_grupo}_c${item.numero_cota}_${Date.now()}.png`
+          const localPath = path.join(screenshotsDir, nomeArquivo)
+
+          // 1. Salva screenshot local
+          const imgBuffer = await page.screenshot({ path: localPath, fullPage: false }).catch(() => null)
+
+          // 2. Upload para o bucket lances-comprovantes no Supabase Storage
+          if (imgBuffer && admin && targetEmpresaId) {
+            try {
+              const storagePath = `${targetEmpresaId}/${item.cota_definitiva_id || item.numero_cota}/${nomeArquivo}`
+              log(`Fazendo upload do comprovante para o Storage (lances-comprovantes): ${storagePath}...`)
+
+              const { error: upErr } = await admin.storage
+                .from('lances-comprovantes')
+                .upload(storagePath, imgBuffer, { contentType: 'image/png', upsert: true })
+
+              if (!upErr) {
+                const { data: signData } = await admin.storage
+                  .from('lances-comprovantes')
+                  .createSignedUrl(storagePath, 60 * 60 * 24 * 365) // 1 ano
+
+                infoComprovante = {
+                  storagePath,
+                  url: signData?.signedUrl || null,
+                  nome: `Comprovante ${tipoLance} - Grupo ${item.numero_grupo} / Cota ${item.numero_cota}.png`,
+                }
+                log(`Comprovante de ${tipoLance} salvo com sucesso no Storage!`)
+              } else {
+                log(`Aviso ao subir comprovante para Storage: ${upErr.message}`)
+              }
+            } catch (errUpload) {
+              log(`Erro no upload do comprovante: ${errUpload.message}`)
+            }
+          }
+
+          // 3. Localiza e clica no botão [Voltar]
           const btnVoltar = page.locator('input[value="Voltar"], button:has-text("Voltar"), a:has-text("Voltar"), #btnVoltar').first()
           if (await btnVoltar.isVisible({ timeout: 5000 }).catch(() => false)) {
             await btnVoltar.click()
@@ -362,6 +403,7 @@ export async function executarRoboLances({
             await page.waitForTimeout(2000)
           }
         }
+        return infoComprovante
       }
 
       // =========================================================================
@@ -431,7 +473,7 @@ export async function executarRoboLances({
       log(`Protocolo do Lance Livre capturado: ${protocoloLivre || 'Confirmado via Web'}`)
 
       // 9. Aguarda relatório e clica em Voltar
-      await voltarDoRelatorio()
+      compLivre = await voltarDoRelatorio('LIVRE')
       totalLancesOfertados++
 
       // =========================================================================
@@ -508,7 +550,7 @@ export async function executarRoboLances({
         protocoloFixo = await promiseDialogFixo
         log(`Protocolo do Lance Fixo capturado: ${protocoloFixo || 'Confirmado via Web'}`)
 
-        await voltarDoRelatorio()
+        compFixo = await voltarDoRelatorio('FIXO')
         totalLancesOfertados++
       }
 
@@ -575,7 +617,7 @@ export async function executarRoboLances({
           protocoloSegundoFixo = await promiseDialog2Fixo
           log(`Protocolo do 2º Lance Fixo capturado: ${protocoloSegundoFixo || 'Confirmado via Web'}`)
 
-          await voltarDoRelatorio()
+          compSegundoFixo = await voltarDoRelatorio('SEGUNDO_FIXO')
           totalLancesOfertados++
         }
       }
@@ -586,6 +628,7 @@ export async function executarRoboLances({
       log(`Gravando estratégia e confirmação no ERP para Cota ${item.numero_grupo}/${item.numero_cota}...`)
 
       if (item.cota_definitiva_id) {
+        const compPrincipal = compLivre || compFixo || compSegundoFixo
         const payloadEstrategia = {
           empresa_id: targetEmpresaId,
           cota_definitiva_id: item.cota_definitiva_id,
@@ -608,6 +651,9 @@ export async function executarRoboLances({
           assembleia_numero: dadosTelaLance.assembleia || null,
           ultimo_lance_ofertado_em: new Date().toISOString(),
           oferta_origem: 'ROBO_NEWCON',
+          comprovante_storage_path: compPrincipal?.storagePath || null,
+          comprovante_url: compPrincipal?.url || null,
+          comprovante_nome: compPrincipal?.nome || null,
           ativa: true,
           updated_at: new Date().toISOString(),
         }
@@ -638,6 +684,8 @@ export async function executarRoboLances({
             percentual_lance: livrePctCalculado,
             percentual_embutido: embutidoMaximoPct,
             protocolo: protocoloLivre,
+            comprovante_storage_path: compLivre?.storagePath || null,
+            comprovante_url: compLivre?.url || null,
             repetir_seis_assembleias: true,
             status: 'CONFIRMADO',
           })
@@ -654,6 +702,8 @@ export async function executarRoboLances({
             percentual_lance: dadosTelaLance.lanceFixoPct || 25.0,
             percentual_embutido: Math.min(dadosTelaLance.lanceFixoPct || 25.0, embutidoMaximoPct),
             protocolo: protocoloFixo,
+            comprovante_storage_path: compFixo?.storagePath || null,
+            comprovante_url: compFixo?.url || null,
             repetir_seis_assembleias: true,
             status: 'CONFIRMADO',
           })
@@ -670,6 +720,8 @@ export async function executarRoboLances({
             percentual_lance: dadosTelaLance.segundoLanceFixoPct || 40.0,
             percentual_embutido: embutidoMaximoPct,
             protocolo: protocoloSegundoFixo,
+            comprovante_storage_path: compSegundoFixo?.storagePath || null,
+            comprovante_url: compSegundoFixo?.url || null,
             repetir_seis_assembleias: true,
             status: 'CONFIRMADO',
           })

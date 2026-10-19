@@ -30,8 +30,11 @@ Conforme solicitação e especificações operacionais fornecidas, foi implement
    - Ao submeter a oferta (`[Confirmar]`), o Newcon exibe um `dialog` nativo do navegador:  
      `"Anote os números dos protocolos: Lance Livre: 5735314"`.
    - O robô escuta o evento de diálogo via Playwright (`page.once('dialog')`), extrai o número do protocolo via regex, confirma com `OK` (`dialog.accept()`) e aguarda o comprovante.
-6. **Retorno do Comprovante:**
-   - Na tela de relatório de comprovante (`CONCM/frmConCmNewconReports.aspx`), o robô localiza e clica no botão `[Voltar]`, permitindo ofertar em seguida o Lance Fixo sem recarregar o sistema.
+6. **Captura e Armazenamento do Comprovante Oficial (Supabase Storage):**
+   - Na tela de relatório (`CONCM/frmConCmNewconReports.aspx`), o robô captura o comprovante oficial de lance em alta resolução e realiza o upload imediato para o bucket `lances-comprovantes` no Supabase Storage (`${empresa_id}/${cota_id}/comprovante_${tipo}_...png`).
+   - Gera URL assinada de longa duração (1 ano) e vincula `comprovante_storage_path`, `comprovante_url` e `comprovante_nome` em `cota_estrategias_lance` e em `cota_lances_ofertados`.
+   - Na interface do ERP (`/erp/lances`), o link `Ver` na tabela e o botão `Ver Comprovante Oficial` no Drawer lateral abrem diretamente o comprovante capturado.
+   - Localiza e clica no botão `[Voltar]`, permitindo ofertar em seguida o Lance Fixo sem recarregar o sistema.
 7. **Sincronização e Auditoria no ERP (`/erp/lances`):**
    - Atualiza `cota_estrategias_lance` com status `confirmado = true`, preenche `protocolo_lance_livre`, `protocolo_lance_fixo`, `protocolo_segundo_lance_fixo`, `assembleia_numero`, `ultimo_lance_ofertado_em` e `repetir_seis_assembleias = true`.
    - Grava cada oferta individualizada na tabela canônica `cota_lances_ofertados`.

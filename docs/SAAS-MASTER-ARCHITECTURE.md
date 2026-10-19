@@ -1,5 +1,17 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
+### Importação assistida — antigos do Eroni (19/10/2026)
+
+Três PDFs foram arquivados em `repasse_relatorios_antigos`, sem conciliação
+financeira: 23 clientes incompletos e 44 cotas novas para o Eroni. As 37
+chaves grupo/cota preexistentes, inclusive Fernando e demais consultores,
+permaneceram integralmente preservadas. Não houve novas comissões, receita
+ou alteração financeira. Duas cotas contempladas receberam data 19/10/2026 e
+crédito provisório R$ 1,00 por autorização expressa do titular, com observação
+para correção posterior. Operação transacional assistida, sem alterar schema,
+RPC pública, RLS ou código de aplicação. Relatório:
+`docs/relatorios-fases/IMPORTACAO-2026-10-19-ERONI-ANTIGOS-CONTROLE.md`.
+
 ### Página pública de privacidade (19/10/2026)
 
 A rota `/privacidade` usa `gauchinho-app/src/app/privacidade/page.tsx`, conforme
@@ -3791,11 +3803,13 @@ Implantada a automação completa de oferta de lances para todas as cotas ativas
    - Consulta cota a cota no módulo de Atendimento ao Consorciado (`CONAT/frmConAtSrcConsorciado.aspx`).
    - Abertura de "Oferta de Lance" no menu Operações de `CONAT/frmConAtCnsAtendimento.aspx`.
    - Regra do Lance Livre: cálculo estrito `lance embutido + 1,1234` (ex: 25% embutido -> livre 26,1234%), com opção `Reduzir Parcela` e repetição por 6 assembleias.
-   - Captura do alerta nativo do navegador (`dialog`) contendo o número do protocolo da oferta, confirmação com `OK`, clique em `[Voltar]` na tela de comprovante (`CONCM/frmConCmNewconReports.aspx`), e oferta subsequente do Lance Fixo e 2º Lance Fixo (respeitando o teto de embutido permitido).
+   - Captura do alerta nativo do navegador (`dialog`) contendo o número do protocolo da oferta, confirmação com `OK`.
+   - Na tela de comprovante (`CONCM/frmConCmNewconReports.aspx`), captura o comprovante oficial de lance em alta resolução e realiza o upload imediato para o bucket `lances-comprovantes` no Supabase Storage com URL assinada de 1 ano, vinculando `comprovante_storage_path` e `comprovante_url`.
+   - Clique em `[Voltar]` para oferta subsequente do Lance Fixo e 2º Lance Fixo (respeitando o teto de embutido permitido).
 3. **Interface e Gestão ERP (`/erp/lances`):**
-   - Exibição dos protocolos no grid operacional de cotas.
+   - Exibição dos protocolos no grid operacional de cotas e link `[Ver]` para abrir o comprovante oficial armazenado no Storage.
    - Badge visual `🤖 Robô Newcon` nas cotas sincronizadas com ofertas automatizadas.
-   - Painel de Protocolos Newcon no Drawer de detalhes da cota, exibindo cards individuais dos protocolos, números de assembleia e status de repetição por 6 assembleias.
+   - Painel de Protocolos Newcon no Drawer de detalhes da cota, exibindo cards individuais dos protocolos, números de assembleia, repetição por 6 assembleias e botão direto `[Ver Comprovante Oficial]`.
 4. **Agendamento Operacional:**
    - Robô configurado para execução automática **todo dia 10 de cada mês** (`dia_corte: 10`).
 
