@@ -318,6 +318,11 @@ export function ErpLancesView({
                                 Livre {est.lanceLivrePercentual ? `${est.lanceLivrePercentual}%` : ""}
                               </span>
                             )}
+                            {(est.protocoloLanceLivre || est.ofertaOrigem === "ROBO_NEWCON") && (
+                              <span className="inline-block ml-1 rounded bg-blue-100 px-1 py-0.2 text-[9px] font-extrabold text-blue-800 dark:bg-blue-900/60 dark:text-blue-200">
+                                🤖 Robô Newcon
+                              </span>
+                            )}
                           </div>
                         ) : (
                           <span className="text-[11px] text-slate-400 italic">Sem lance registrado</span>
@@ -399,6 +404,16 @@ export function ErpLancesView({
                                 {new Date(est.confirmadoEm).toLocaleDateString("pt-BR")}
                               </span>
                             )}
+                            {est.protocoloLanceLivre && (
+                              <span className="block text-[9px] font-mono font-bold text-blue-600 dark:text-blue-400">
+                                Prot. Livre: #{est.protocoloLanceLivre}
+                              </span>
+                            )}
+                            {est.protocoloLanceFixo && (
+                              <span className="block text-[9px] font-mono font-bold text-indigo-600 dark:text-indigo-400">
+                                Prot. Fixo: #{est.protocoloLanceFixo}
+                              </span>
+                            )}
                           </div>
                         ) : (
                           <span className="text-[10px] text-slate-400">Pendente</span>
@@ -446,6 +461,107 @@ export function ErpLancesView({
                 <X className="h-5 w-5" />
               </button>
             </div>
+
+            {/* PAINEL DE PROTOCOLOS NEWCON (OFERTADOS PELO ROBÔ) */}
+            {selectedCota.estrategia &&
+              (selectedCota.estrategia.protocoloLanceLivre ||
+                selectedCota.estrategia.protocoloLanceFixo ||
+                selectedCota.estrategia.protocoloSegundoLanceFixo) && (
+                <div className="rounded-xl border border-blue-200 bg-gradient-to-br from-blue-50 to-indigo-50/40 p-4 text-xs dark:border-blue-900/50 dark:from-blue-950/40 dark:to-indigo-950/20">
+                  <div className="flex items-center justify-between pb-2 border-b border-blue-200/60 dark:border-blue-900/40 mb-3">
+                    <div className="flex items-center gap-2">
+                      <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-blue-600 text-white font-bold text-[11px]">
+                        🤖
+                      </span>
+                      <div>
+                        <h4 className="font-bold text-blue-950 dark:text-blue-100">
+                          Oferta Automatizada Newcon (Robô da Franquia)
+                        </h4>
+                        <p className="text-[10px] text-blue-700/80 dark:text-blue-300/80">
+                          Lances submetidos com sucesso no sistema da administradora
+                        </p>
+                      </div>
+                    </div>
+                    {selectedCota.estrategia.repetirSeisAssembleias && (
+                      <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-black text-blue-800 dark:bg-blue-900/60 dark:text-blue-200">
+                        Repetir por 6 Assembleias
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                    {selectedCota.estrategia.protocoloLanceLivre && (
+                      <div className="rounded-lg bg-white/80 p-2.5 border border-blue-100 shadow-2xs dark:bg-slate-900/80 dark:border-blue-900/40">
+                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
+                          Lance Livre
+                        </span>
+                        <p className="font-mono text-sm font-black text-blue-700 dark:text-blue-300">
+                          #{selectedCota.estrategia.protocoloLanceLivre}
+                        </p>
+                        <span className="text-[10px] text-slate-500">
+                          {selectedCota.estrategia.lanceLivrePercentual
+                            ? `${selectedCota.estrategia.lanceLivrePercentual}%`
+                            : ""}{" "}
+                          (Opção: Reduzir Parcela)
+                        </span>
+                      </div>
+                    )}
+
+                    {selectedCota.estrategia.protocoloLanceFixo && (
+                      <div className="rounded-lg bg-white/80 p-2.5 border border-blue-100 shadow-2xs dark:bg-slate-900/80 dark:border-blue-900/40">
+                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
+                          Lance Fixo
+                        </span>
+                        <p className="font-mono text-sm font-black text-indigo-700 dark:text-indigo-300">
+                          #{selectedCota.estrategia.protocoloLanceFixo}
+                        </p>
+                        <span className="text-[10px] text-slate-500">
+                          {selectedCota.estrategia.lanceFixoPercentual
+                            ? `${selectedCota.estrategia.lanceFixoPercentual}%`
+                            : ""}{" "}
+                          (Opção: Reduzir Parcela)
+                        </span>
+                      </div>
+                    )}
+
+                    {selectedCota.estrategia.protocoloSegundoLanceFixo && (
+                      <div className="rounded-lg bg-white/80 p-2.5 border border-blue-100 shadow-2xs dark:bg-slate-900/80 dark:border-blue-900/40">
+                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
+                          2º Lance Fixo
+                        </span>
+                        <p className="font-mono text-sm font-black text-purple-700 dark:text-purple-300">
+                          #{selectedCota.estrategia.protocoloSegundoLanceFixo}
+                        </p>
+                        <span className="text-[10px] text-slate-500">
+                          {selectedCota.estrategia.segundoLanceFixoPercentual
+                            ? `${selectedCota.estrategia.segundoLanceFixoPercentual}%`
+                            : ""}{" "}
+                          (Opção: Reduzir Parcela)
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="mt-2.5 flex flex-wrap items-center justify-between text-[10px] text-slate-500 border-t border-blue-200/40 pt-2 dark:border-blue-900/30">
+                    {selectedCota.estrategia.assembleiaNumero && (
+                      <span>
+                        Assembleia Referência:{" "}
+                        <strong>Nº {selectedCota.estrategia.assembleiaNumero}</strong>
+                      </span>
+                    )}
+                    {selectedCota.estrategia.ultimoLanceOfertadoEm && (
+                      <span>
+                        Última Oferta:{" "}
+                        <strong>
+                          {new Date(
+                            selectedCota.estrategia.ultimoLanceOfertadoEm
+                          ).toLocaleString("pt-BR")}
+                        </strong>
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )}
 
             {/* PAINEL DE CONTEXTO DO GRUPO (INFORMATIVO OPERACIONAL) */}
             <div className="rounded-xl border border-blue-100 bg-blue-50/50 p-3 text-xs text-blue-950 dark:border-blue-900/40 dark:bg-blue-950/20 dark:text-blue-200 flex items-start gap-2">

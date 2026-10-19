@@ -73,6 +73,14 @@ export type CotaLanceOperacionalDTO = {
     confirmadoObservacao: string | null;
     revogadoEm: string | null;
     revogadoMotivo: string | null;
+    protocoloLanceLivre: string | null;
+    protocoloLanceFixo: string | null;
+    protocoloSegundoLanceFixo: string | null;
+    assembleiaNumero: string | null;
+    assembleiaData: string | null;
+    repetirSeisAssembleias: boolean;
+    ultimoLanceOfertadoEm: string | null;
+    ofertaOrigem: string | null;
   } | null;
   situacaoOperacional:
     | "SEM_ESTRATEGIA"
@@ -334,6 +342,14 @@ export async function fetchCotasComLancesOperacional(filters?: {
               confirmadoObservacao: est.confirmado_observacao || null,
               revogadoEm: est.revogado_em || null,
               revogadoMotivo: est.revogado_motivo || null,
+              protocoloLanceLivre: est.protocolo_lance_livre || null,
+              protocoloLanceFixo: est.protocolo_lance_fixo || null,
+              protocoloSegundoLanceFixo: est.protocolo_segundo_lance_fixo || null,
+              assembleiaNumero: est.assembleia_numero || null,
+              assembleiaData: est.assembleia_data || null,
+              repetirSeisAssembleias: Boolean(est.repetir_seis_assembleias),
+              ultimoLanceOfertadoEm: est.ultimo_lance_ofertado_em || null,
+              ofertaOrigem: est.oferta_origem || null,
             }
           : null,
         situacaoOperacional: situacao,

@@ -3780,3 +3780,26 @@ Implantada a automação completa de download e armazenamento de boletos bancár
 Relatório de Fase:
 `docs/relatorios-fases/RELATORIO-2026-10-19-ROBO-BOLETOS-STORAGE-ERP.md`.
 
+### Fase 321 (19/10/2026) — Robô de Oferta de Lances da Franquia (Newcon Web & ERP)
+
+Implantada a automação completa de oferta de lances para todas as cotas ativas não contempladas da franquia no Newcon Web, conectada à tela de Lances e Estratégia do ERP (`/erp/lances`):
+1. **Banco de Dados (Migration 321):**
+   - Enriquecimento da tabela `public.cota_estrategias_lance` com colunas de protocolo do Newcon (`protocolo_lance_livre`, `protocolo_lance_fixo`, `protocolo_segundo_lance_fixo`), assembleia (`assembleia_numero`, `assembleia_data`), repetição automática (`repetir_seis_assembleias`), data da oferta (`ultimo_lance_ofertado_em`) e origem (`oferta_origem`).
+   - Criação da tabela canônica `public.cota_lances_ofertados` para histórico individualizado de cada oferta submetida, com tipo de lance (`LIVRE`, `FIXO`, `SEGUNDO_FIXO`, etc.), opção de redução (`REDUZIR_PARCELA`), percentuais, valores e protocolo extraído do Newcon.
+2. **Serviço de Automação Headless Newcon (`scripts/robo-lances-service.mjs`):**
+   - Entrada automatizada via SSO Microsoft / Portal Randon e seleção de `0101 Randon Administradora`.
+   - Consulta cota a cota no módulo de Atendimento ao Consorciado (`CONAT/frmConAtSrcConsorciado.aspx`).
+   - Abertura de "Oferta de Lance" no menu Operações de `CONAT/frmConAtCnsAtendimento.aspx`.
+   - Regra do Lance Livre: cálculo estrito `lance embutido + 1,1234` (ex: 25% embutido -> livre 26,1234%), com opção `Reduzir Parcela` e repetição por 6 assembleias.
+   - Captura do alerta nativo do navegador (`dialog`) contendo o número do protocolo da oferta, confirmação com `OK`, clique em `[Voltar]` na tela de comprovante (`CONCM/frmConCmNewconReports.aspx`), e oferta subsequente do Lance Fixo e 2º Lance Fixo (respeitando o teto de embutido permitido).
+3. **Interface e Gestão ERP (`/erp/lances`):**
+   - Exibição dos protocolos no grid operacional de cotas.
+   - Badge visual `🤖 Robô Newcon` nas cotas sincronizadas com ofertas automatizadas.
+   - Painel de Protocolos Newcon no Drawer de detalhes da cota, exibindo cards individuais dos protocolos, números de assembleia e status de repetição por 6 assembleias.
+4. **Agendamento Operacional:**
+   - Robô configurado para execução automática **todo dia 10 de cada mês** (`dia_corte: 10`).
+
+Relatório de Fase:
+`docs/relatorios-fases/RELATORIO-2026-10-19-ROBO-LANCES-NEWCON-ERP.md`.
+
+

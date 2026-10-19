@@ -7,6 +7,7 @@ import fs from 'node:fs'
 import crypto from 'node:crypto'
 import { executarRobo3Simulador } from './robo-simulador-service.mjs'
 import { executarRoboBoletos } from './robo-boletos-service.mjs'
+import { executarRoboLances } from './robo-lances-service.mjs'
 
 // Carrega .env.local
 const envCandidates = [
@@ -483,10 +484,14 @@ async function run() {
         await activePage.screenshot({ path: path.join(screenshotsDir, `racon-04b-pos-selecionar-empresa-${Date.now()}.png`) }).catch(() => {})
       }
 
-      // Identifica se a execução é do Robô de Boletos, Robô 2 (Contemplações) ou Robô 1 (Grupos & Vagas)
+      // Identifica se a execução é do Robô de Boletos, Robô de Lances, Robô 2 (Contemplações) ou Robô 1 (Grupos & Vagas)
       const isBoletos = 
         config.configuracao_tarefas?.tipo_rotina === 'FRANQUIA_DOWNLOAD_BOLETOS' ||
         (config.nome && config.nome.toLowerCase().includes('boleto'))
+
+      const isLancesFranquia = 
+        config.configuracao_tarefas?.tipo_rotina === 'FRANQUIA_LANCES_AUTOMATICOS' ||
+        (config.nome && config.nome.toLowerCase().includes('lances'))
 
       const isContemplacao = 
         config.id === '06619f9e-1688-49f2-9d7b-f0429906476a' || 
@@ -505,6 +510,18 @@ async function run() {
         })
         totalGruposAtualizados = bolRes.totalBoletosArmazenados
         totalCotadasContempladas = bolRes.cotasProcessadas
+      } else if (isLancesFranquia) {
+        log('--- EXECUTANDO ROBÔ DE LANCES AUTOMÁTICOS DA FRANQUIA ---')
+        const lancesRes = await executarRoboLances({
+          page: activePage,
+          context,
+          config,
+          admin,
+          log,
+          screenshotsDir,
+        })
+        totalGruposAtualizados = lancesRes.lancesOfertados
+        totalCotadasContempladas = lancesRes.cotasProcessadas
       } else if (!isContemplacao) {
         // =========================================================================
         // ROBÔ 1: ATUALIZAÇÃO DE GRUPOS, VAGAS E DATA DE INÍCIO
