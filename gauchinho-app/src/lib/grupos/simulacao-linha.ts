@@ -86,6 +86,7 @@ export type ConfigLinhaSimulacaoGrupo = {
   recursoProprioModo: RecursoProprioModo;
   recursoProprioInput: number;
   usaSeguro: boolean;
+  tipoTranscorrido?: "PRORROGADA" | "DILUIDA";
 };
 
 export function listarPercentuaisParcelaReduzida(
@@ -577,5 +578,6 @@ export function defaultConfigLinha(
     recursoProprioModo: "percentual",
     recursoProprioInput: num(grupo.percentual_recurso_proprio_sugerido),
     usaSeguro: grupoUsaSeguroNaParcela(grupo),
+    tipoTranscorrido: "PRORROGADA",
   };
 }

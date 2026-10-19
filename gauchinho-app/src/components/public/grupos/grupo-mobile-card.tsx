@@ -32,6 +32,18 @@ export function GrupoMobileCard({ grupo, cotas, modalidades, config, onChange }:
   });
   const pctMinRecurso = modAtiva ? Number(modAtiva.percentual_recurso_proprio_minimo) : 0;
   const handlers = createGrupoLinhaHandlers(config, onChange, mods, pctMinRecurso);
+  const tipoTranscorridoAtivo = config.tipoTranscorrido || "PRORROGADA";
+  const temTranscorrido = cotas.some(
+    (c) => c.tipo_transcorrido === "PRORROGADA" || c.tipo_transcorrido === "DILUIDA",
+  );
+  const cotasExibidas = temTranscorrido
+    ? cotas.filter(
+        (c) =>
+          !c.tipo_transcorrido ||
+          
+          c.tipo_transcorrido === tipoTranscorridoAtivo,
+      )
+    : cotas;
   const emFormacao = grupoEmFormacao(grupo.data_primeira_assembleia);
 
   return (
@@ -72,7 +84,7 @@ export function GrupoMobileCard({ grupo, cotas, modalidades, config, onChange }:
               onChange={(e) => handlers.onCotaChange(e.target.value)}
             >
               <option value="">Cota…</option>
-              {cotas.map((c) => (
+              {cotasExibidas.map((c) => (
                 <option key={c.id} value={c.id}>
                   {formatCurrency(Number(c.valor_credito))}
                 </option>
@@ -83,6 +95,33 @@ export function GrupoMobileCard({ grupo, cotas, modalidades, config, onChange }:
               value={config.quantidadeCotas || ""}
               onChange={(e) => handlers.onQtyChange(e.target.value)}
             />
+            {temTranscorrido && (
+              <button
+                type="button"
+                onClick={() => {
+                  const nextMod = tipoTranscorridoAtivo === "PRORROGADA" ? "DILUIDA" : "PRORROGADA";
+                  const curCota = cotas.find((c) => c.id === config.cotaId);
+                  let nextCotaId = config.cotaId;
+                  if (curCota) {
+                    const matching = cotas.find(
+                      (c) =>
+                        c.id !== curCota.id &&
+                        Number(c.valor_credito) === Number(curCota.valor_credito) &&
+                        c.tipo_transcorrido === nextMod,
+                    );
+                    if (matching) nextCotaId = matching.id;
+                  }
+                  onChange({
+                    ...config,
+                    tipoTranscorrido: nextMod,
+                    cotaId: nextCotaId,
+                  });
+                }}
+                className="rounded bg-zinc-800 px-2 py-1 text-[10px] font-semibold text-amber-300 transition hover:bg-zinc-700"
+              >
+                {tipoTranscorridoAtivo === "PRORROGADA" ? "Prorrogada" : "Diluída"} ⇄
+              </button>
+            )}
           </div>
           {resultado.ativo && mods.length > 0 ? (
             <div className="mt-3 grid gap-3 sm:grid-cols-2">

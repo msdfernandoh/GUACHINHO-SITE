@@ -146,3 +146,60 @@ export async function toggleAtencaoAssembleiaAction(formData: FormData) {
   }
   revalidatePath("/erp/assembleias");
 }
+
+export async function fetchContemplacoesGrupoAction(grupoId: string) {
+  const { supabase } = await requireAssembleias(false);
+  if (!grupoId) throw new Error("Grupo não informado.");
+
+  const [resGrupo, resContemp] = await Promise.all([
+    supabase
+      .from("grupos_consorcio")
+      .select("id, codigo_grupo, modalidade, administradora, media_lance_1m, media_lance_3m, media_lance_6m, media_lance_12m, ultima_assembleia_numero, ultima_assembleia_data, proxima_assembleia_numero, proxima_assembleia_data, contemplacoes_atualizado_em, contemplacoes_resumo")
+      .eq("id", grupoId)
+      .maybeSingle(),
+    supabase
+      .from("grupo_assembleias_contemplacoes")
+      .select("id, assembleia_numero, assembleia_data, cota, modalidade, percentual_lance, situacao_cota, criado_em")
+      .eq("grupo_id", grupoId)
+      .order("assembleia_numero", { ascending: false })
+      .order("percentual_lance", { ascending: false }),
+  ]);
+
+  if (resGrupo.error) throw new Error(resGrupo.error.message);
+  if (resContemp.error) throw new Error(resContemp.error.message);
+
+  return {
+    grupo: resGrupo.data,
+    contemplacoes: resContemp.data ?? [],
+  };
+}
+
+export async function fetchContemplacoesMesAction(mesAno: string) {
+  const { supabase } = await requireAssembleias(false);
+  if (!mesAno) throw new Error("Mês/ano não informado.");
+
+  const { data, error } = await supabase
+    .from("grupo_assembleias_contemplacoes")
+    .select(`
+      id,
+      grupo_id,
+      assembleia_numero,
+      assembleia_data,
+      cota,
+      modalidade,
+      percentual_lance,
+      situacao_cota,
+      grupo:grupos_consorcio(id, codigo_grupo, modalidade, administradora, media_lance_1m, media_lance_3m)
+    `)
+    .ilike("assembleia_data", `${mesAno}%`)
+    .order("assembleia_numero", { ascending: false })
+    .order("percentual_lance", { ascending: false });
+
+  if (error) throw new Error(error.message);
+  const rows = (data ?? []).map((item: any) => ({
+    ...item,
+    grupo: Array.isArray(item.grupo) ? item.grupo[0] : item.grupo,
+  }));
+  return rows;
+}
+

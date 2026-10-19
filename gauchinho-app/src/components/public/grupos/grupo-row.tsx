@@ -51,6 +51,18 @@ export function GrupoRow({
     config,
   });
   const temSeguro = grupoUsaSeguroNaParcela(grupo);
+  const tipoTranscorridoAtivo = config.tipoTranscorrido || "PRORROGADA";
+  const temTranscorrido = cotas.some(
+    (c) => c.tipo_transcorrido === "PRORROGADA" || c.tipo_transcorrido === "DILUIDA",
+  );
+  const cotasExibidas = temTranscorrido
+    ? cotas.filter(
+        (c) =>
+          !c.tipo_transcorrido ||
+          
+          c.tipo_transcorrido === tipoTranscorridoAtivo,
+      )
+    : cotas;
   const pctMinRecurso = modAtiva ? Number(modAtiva.percentual_recurso_proprio_minimo) : 0;
   const handlers = createGrupoLinhaHandlers(config, onChange, mods, pctMinRecurso);
   const ativo = resultado.ativo;
@@ -110,7 +122,7 @@ export function GrupoRow({
             onChange={(e) => handlers.onCotaChange(e.target.value)}
           >
             <option value="">Cota…</option>
-            {cotas.map((c) => (
+            {cotasExibidas.map((c) => (
               <option key={c.id} value={c.id}>
                 {Number(c.valor_credito).toLocaleString("pt-BR", {
                   style: "currency",
@@ -120,6 +132,35 @@ export function GrupoRow({
               </option>
             ))}
           </CompactSelect>
+          {temTranscorrido && (
+            <button
+              type="button"
+              onClick={() => {
+                const nextMod = tipoTranscorridoAtivo === "PRORROGADA" ? "DILUIDA" : "PRORROGADA";
+                const curCota = cotas.find((c) => c.id === config.cotaId);
+                let nextCotaId = config.cotaId;
+                if (curCota) {
+                  const matching = cotas.find(
+                    (c) =>
+                      c.id !== curCota.id &&
+                      Number(c.valor_credito) === Number(curCota.valor_credito) &&
+                      c.tipo_transcorrido === nextMod,
+                  );
+                  if (matching) nextCotaId = matching.id;
+                }
+                onChange({
+                  ...config,
+                  tipoTranscorrido: nextMod,
+                  cotaId: nextCotaId,
+                });
+              }}
+              title="Clique para alternar entre Prorrogada e Diluída"
+              className="mt-1 flex items-center justify-center gap-1 rounded bg-zinc-800/90 px-1.5 py-0.5 text-[9px] font-semibold text-amber-300 transition hover:bg-zinc-700 w-full"
+            >
+              <span>{tipoTranscorridoAtivo === "PRORROGADA" ? "Prorrogada" : "Diluída"}</span>
+              <span className="text-zinc-400">⇄</span>
+            </button>
+          )}
         </Td>
 
         <Td>

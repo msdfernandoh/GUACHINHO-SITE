@@ -111,6 +111,18 @@ export type GrupoConsorcio = {
   alteracao_catalogo_status?: string | null;
   observacoes: string | null;
   quantidade_cotas_sorteio?: number | null;
+  parcela_minima?: number | null;
+  tipo_pro_rata?: string | null;
+  vencimento_dia?: string | null;
+  regras_contemplacao?: Array<Record<string, unknown>> | null;
+  media_lance_1m?: number | null;
+  media_lance_3m?: number | null;
+  media_lance_6m?: number | null;
+  media_lance_12m?: number | null;
+  ultima_assembleia_numero?: number | null;
+  ultima_assembleia_data?: string | null;
+  proxima_assembleia_numero?: number | null;
+  proxima_assembleia_data?: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -176,6 +188,13 @@ export type GrupoCota = {
   status: string;
   ativo: boolean;
   ordem: number;
+  tipo_transcorrido?: "PRORROGADA" | "DILUIDA";
+  valor_transcorrido?: number | null;
+  parcela_reduzida_50?: number | null;
+  parcela_reduzida_60?: number | null;
+  parcela_reduzida_70?: number | null;
+  parcelas_reduzidas?: Record<string, number> | null;
+  dados_simulacao?: Record<string, unknown> | null;
 };
 
 export type CotaComGrupo = GrupoCota & {

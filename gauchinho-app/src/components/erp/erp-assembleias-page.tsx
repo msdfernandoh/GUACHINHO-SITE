@@ -6,6 +6,7 @@ import { createAssembleiaAction, toggleAtencaoAssembleiaAction } from "@/app/erp
 import { listGruposAutorizadosForEmpresa } from "@/lib/grupos/catalogo-autorizado-service";
 
 import { ErpAssembleiasForm } from "@/components/erp/assembleias/erp-assembleias-form";
+import { ErpContemplacoesPanel } from "@/components/erp/assembleias/erp-contemplacoes-panel";
 
 type Assembleia = {
   id: string;
@@ -185,19 +186,49 @@ export async function ErpAssembleiasPage({
       ? gruposApurados.filter((g) => g.grupoId === grupoFiltro)
       : gruposApurados;
 
+  const abaAtiva = params?.aba === "contemplacoes" ? "contemplacoes" : "pedras";
+
   return (
     <div className="space-y-6">
       <header>
         <p className="text-xs font-bold uppercase tracking-widest text-blue-700">Operação de consórcio</p>
         <h1 className="text-3xl font-bold">Assembleias / Pedras</h1>
         <p className="mt-1 text-slate-500">
-          Histórico operacional por grupo e proximidade das cotas reais. A atenção não altera contemplação nem resultado oficial.
+          Histórico operacional de apuração, conferência das pedras da Loteria Federal e resultados oficiais com médias de lance importadas da Racon.
         </p>
       </header>
 
-      {canWrite === true && <ErpAssembleiasForm grupos={grupos} />}
+      {/* Navegação entre Abas */}
+      <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 dark:border-zinc-800 pb-3">
+        <Link
+          href="/erp/assembleias?aba=pedras"
+          className={`px-4 py-2 text-sm font-semibold rounded-lg transition ${
+            abaAtiva === "pedras"
+              ? "bg-blue-600 text-white shadow-sm"
+              : "text-slate-600 dark:text-zinc-400 hover:bg-slate-100 dark:hover:bg-zinc-800"
+          }`}
+        >
+          🎯 Pedras da Loteria & Aproximação
+        </Link>
+        <Link
+          href="/erp/assembleias?aba=contemplacoes"
+          className={`px-4 py-2 text-sm font-semibold rounded-lg transition ${
+            abaAtiva === "contemplacoes"
+              ? "bg-blue-600 text-white shadow-sm"
+              : "text-slate-600 dark:text-zinc-400 hover:bg-slate-100 dark:hover:bg-zinc-800"
+          }`}
+        >
+          🏆 Resultado de Assembleias & Contemplações (Robô Racon)
+        </Link>
+      </div>
 
-      <div className="grid gap-5 xl:grid-cols-[320px_1fr]">
+      {abaAtiva === "contemplacoes" ? (
+        <ErpContemplacoesPanel grupos={grupos} />
+      ) : (
+        <>
+          {canWrite === true && <ErpAssembleiasForm grupos={grupos} />}
+
+          <div className="grid gap-5 xl:grid-cols-[320px_1fr]">
         <section className="rounded-xl border bg-white">
           <div className="border-b px-4 py-3">
             <h2 className="font-semibold text-slate-900">Histórico de Assembleias</h2>
@@ -447,6 +478,8 @@ export async function ErpAssembleiasPage({
           )}
         </section>
       </div>
+        </>
+      )}
     </div>
   );
 }
