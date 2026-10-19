@@ -39,8 +39,10 @@ export function calcularRegraLanceLivre(embutidoPct, margem = 1.1234) {
  */
 export function extrairProtocoloAlert(msg) {
   if (!msg || typeof msg !== 'string') return null
-  const match = msg.match(/(?:protocolos?:\s*(?:Lance\s*[^:]+:\s*)?|Lance\s*[^:]+:\s*)?(\d{5,10})/i)
-  return match ? match[1] : null
+  const matchEspec = msg.match(/protocolo[s]?\s*:\s*(?:[^0-9]*?)(\d{5,12})/i) ||
+                     msg.match(/lance\s+(?:livre|fixo|segundo\s+fixo|2[º°]\s*fixo)\s*:\s*(\d{5,12})/i) ||
+                     msg.match(/\b(\d{5,10})\b/)
+  return matchEspec ? matchEspec[1] : null
 }
 
 /**
@@ -180,6 +182,99 @@ export async function executarRoboLances({
     }
   }
 
+  // Filtro opcional para execução de TESTE em cotas reais específicas
+  const filtroGrupo = config.filtro_grupo || config.grupo_teste
+  const filtroCotasRaw = config.filtro_cotas || config.cotas_teste || config.filtro_cota || config.cota_teste
+  let filtroCotasArray = []
+  if (filtroCotasRaw) {
+    if (Array.isArray(filtroCotasRaw)) {
+      filtroCotasArray = filtroCotasRaw.map(x => String(x).trim())
+    } else {
+      filtroCotasArray = String(filtroCotasRaw).split(',').map(x => x.trim()).filter(Boolean)
+    }
+  }
+
+  if (filtroGrupo) {
+    const fg = String(filtroGrupo).trim()
+    listaCotas = listaCotas.filter(c => c.numero_grupo === fg || c.numero_grupo.padStart(6, '0') === fg.padStart(6, '0') || c.numero_grupo.includes(fg))
+  }
+  if (filtroCotasArray.length > 0) {
+    listaCotas = listaCotas.filter(c => {
+      const cNum = String(c.numero_cota).trim()
+      return filtroCotasArray.some(fc => cNum === fc || cNum.padStart(3, '0') === fc.padStart(3, '0') || cNum.padStart(4, '0') === fc.padStart(4, '0'))
+    })
+  }
+
+  // Se o usuário especificou cotas para teste, mas alguma não está no banco, adiciona para processamento
+  if (filtroGrupo && filtroCotasArray.length > 0) {
+    for (const cotaAlvo of filtroCotasArray) {
+      const jaExiste = listaCotas.some(c => {
+        const cNum = String(c.numero_cota).trim()
+        return cNum === cotaAlvo || cNum.padStart(3, '0') === cotaAlvo.padStart(3, '0') || cNum.padStart(4, '0') === cotaAlvo.padStart(4, '0')
+      })
+      if (!jaExiste) {
+        log(`Cota ${filtroGrupo}/${cotaAlvo} especificada para teste unitário real. Buscando registro no banco de dados...`)
+        const numGrupoNorm = String(filtroGrupo).trim()
+        const cotaPad = String(cotaAlvo).trim().padStart(4, '0')
+        const { data: cotaEncontrada } = await admin
+          .from('cotas_definitivas')
+          .select(`
+            id,
+            venda_id,
+            empresa_id,
+            numero_grupo,
+            numero_cota,
+            valor_credito,
+            parcela,
+            status,
+            grupo_id,
+            venda:vendas(id, cliente_nome, cliente_cpf_cnpj, cliente_telefone),
+            grupo:grupos_consorcio(codigo_grupo, percentual_lance_embutido, permite_lance_embutido)
+          `)
+          .eq('numero_grupo', numGrupoNorm)
+          .or(`numero_cota.eq.${cotaAlvo},numero_cota.eq.${cotaPad}`)
+          .maybeSingle()
+
+        if (cotaEncontrada) {
+          log(`Cota localizada em cotas_definitivas: ID ${cotaEncontrada.id} (Empresa: ${cotaEncontrada.empresa_id})`)
+          targetEmpresaId = cotaEncontrada.empresa_id || targetEmpresaId
+          listaCotas.push({
+            cota_definitiva_id: cotaEncontrada.id,
+            venda_id: cotaEncontrada.venda_id || cotaEncontrada.venda?.id,
+            empresa_id: cotaEncontrada.empresa_id,
+            numero_grupo: String(cotaEncontrada.numero_grupo || '').trim(),
+            numero_cota: String(cotaEncontrada.numero_cota || '').trim(),
+            cliente_nome: cotaEncontrada.venda?.cliente_nome || 'MSD INFORMATICA LTDA',
+            cliente_cpf_cnpj: cotaEncontrada.venda?.cliente_cpf_cnpj || null,
+            cliente_telefone: cotaEncontrada.venda?.cliente_telefone || null,
+            valor_credito: cotaEncontrada.valor_credito || 331415.26,
+            parcela: cotaEncontrada.parcela || 1657.07,
+            grupo_embutido_pct: cotaEncontrada.grupo?.percentual_lance_embutido || 25,
+          })
+        } else {
+          log(`Cota ${filtroGrupo}/${cotaAlvo} não localizada no banco. Adicionando para processamento avulso...`)
+          listaCotas.push({
+            cota_definitiva_id: null,
+            venda_id: null,
+            empresa_id: targetEmpresaId,
+            numero_grupo: String(filtroGrupo).trim(),
+            numero_cota: String(cotaAlvo).trim(),
+            cliente_nome: 'Consorciado Teste Real',
+            cliente_cpf_cnpj: null,
+            cliente_telefone: null,
+            valor_credito: 331415.26,
+            parcela: 1657.07,
+            grupo_embutido_pct: 25,
+          })
+        }
+      }
+    }
+  }
+
+  if (config.limite_cotas && config.limite_cotas > 0) {
+    listaCotas = listaCotas.slice(0, config.limite_cotas)
+  }
+
   log(`Total de cotas elegíveis para oferta de lances: ${listaCotas.length}`)
 
   if (listaCotas.length === 0) {
@@ -238,16 +333,22 @@ export async function executarRoboLances({
         await page.waitForTimeout(2000)
       }
 
-      // Preenche Grupo
+      // Preenche Grupo (com 6 dígitos se necessário)
+      const grupoStr = String(item.numero_grupo).trim()
+      const grupoFormatado = grupoStr.length < 6 ? grupoStr.padStart(6, '0') : grupoStr
       const inputGrupo = page.locator('input[name*="txtST_Grupo"], input[id*="txtST_Grupo"], input[name*="Grupo"]').first()
       await inputGrupo.waitFor({ state: 'visible', timeout: 10_000 })
-      await inputGrupo.fill(item.numero_grupo)
+      await inputGrupo.click()
+      await inputGrupo.fill(grupoFormatado)
       await page.waitForTimeout(400)
 
-      // Preenche Cota
+      // Preenche Cota (com 4 dígitos se necessário)
+      const cotaStr = String(item.numero_cota).trim()
+      const cotaFormatada = cotaStr.length < 4 ? cotaStr.padStart(4, '0') : cotaStr
       const inputCota = page.locator('input[name*="txtST_Cota"], input[id*="txtST_Cota"], input[name*="Cota"]').first()
       await inputCota.waitFor({ state: 'visible', timeout: 8_000 })
-      await inputCota.fill(item.numero_cota)
+      await inputCota.click()
+      await inputCota.fill(cotaFormatada)
       await page.waitForTimeout(400)
 
       // Clica em [Localizar]
@@ -271,7 +372,7 @@ export async function executarRoboLances({
 
       // 4. Clica em "Oferta de Lance" no menu lateral Operações
       log('Localizando e clicando em "Oferta de Lance" no menu Operações...')
-      const linkOfertaLance = page.locator('a:has-text("Oferta de Lance"), a[href*="frmConCpCadCredenciamentoLance"]').first()
+      const linkOfertaLance = page.locator('a:has-text("Oferta de Lance"), a[href*="frmConCpCadCredenciamentoLance"]').filter({ hasNotText: 'Lote' }).first()
       await linkOfertaLance.waitFor({ state: 'visible', timeout: 15_000 })
       await linkOfertaLance.click()
 
@@ -317,6 +418,20 @@ export async function executarRoboLances({
       log(`- 2º Lance Fixo: ${dadosTelaLance.segundoLanceFixoPct ? dadosTelaLance.segundoLanceFixoPct + '%' : 'Não possui'}`)
       log(`- Assembleia: ${dadosTelaLance.assembleia || 'Atual'}`)
 
+      // Dump dos campos visíveis no formulário para diagnóstico
+      const camposFormulario = await page.evaluate(() => {
+        return Array.from(document.querySelectorAll('input, select, button, label')).map(el => ({
+          tag: el.tagName,
+          type: el.type,
+          id: el.id,
+          name: el.name,
+          value: el.value,
+          text: (el.innerText || el.textContent || '').trim(),
+          for: el.htmlFor,
+        })).filter(e => e.type !== 'hidden')
+      })
+      log(`Campos detectados no formulário: ${JSON.stringify(camposFormulario)}`)
+
       // Regra de Lance Embutido:
       // O limite de embutido comum é 25%. Usamos a regra do grupo ou o fixo se menor.
       const embutidoMaximoPct = Number(item.grupo_embutido_pct || 25.0)
@@ -333,41 +448,133 @@ export async function executarRoboLances({
       let compFixo = null
       let compSegundoFixo = null
 
-      // Função auxiliar para aguardar o alerta do navegador com o número do protocolo
-      const aguardarProtocoloAlert = () => {
-        return new Promise((resolve) => {
-          let timeoutId = setTimeout(() => resolve(null), 15_000)
-          page.once('dialog', async (dialog) => {
-            clearTimeout(timeoutId)
-            const msg = dialog.message() || ''
-            log(`Mensagem de confirmação recebida do Newcon: "${msg}"`)
-            const numProt = extrairProtocoloAlert(msg)
-            await dialog.accept().catch(() => {})
-            resolve(numProt)
-          })
-        })
+      // Listener contínuo de dialogs do navegador (lida com confirmações intermediárias e alertas de protocolo)
+      let ultimoProtocoloCapturado = null
+      const dialogHandler = async (dialog) => {
+        const msg = dialog.message() || ''
+        log(`Dialog recebido do Newcon: "${msg}"`)
+        const prot = extrairProtocoloAlert(msg)
+        if (prot) {
+          ultimoProtocoloCapturado = prot
+          log(`Protocolo extraído com sucesso: ${prot}`)
+        }
+        await dialog.accept().catch(() => {})
+      }
+      page.on('dialog', dialogHandler)
+
+      // Listener para novas abas/popups que possam abrir o relatório
+      let popupPage = null
+      const popupHandler = (p) => {
+        log(`Nova aba/popup detectada: ${p.url()}`)
+        popupPage = p
+      }
+      context.on('page', popupHandler)
+
+      // Helper para preenchimento de campos numéricos com máscara financeira/percentual
+      const preencherCampoComMascara = async (selector, valorStr) => {
+        const loc = page.locator(selector).first()
+        await loc.waitFor({ state: 'visible', timeout: 5000 })
+        const isEnabled = await loc.isEnabled().catch(() => false)
+        if (!isEnabled) {
+          log(`[Mascara] Campo ${selector} está desabilitado/bloqueado (${await loc.inputValue().catch(() => '')}). Pulando edição.`)
+          return
+        }
+        await loc.scrollIntoViewIfNeeded().catch(() => {})
+
+        const digitos = valorStr.replace(/\D/g, '')
+        log(`[Mascara] Preenchendo ${selector} com "${valorStr}" (dígitos: "${digitos}")...`)
+
+        // 1. Tenta preenchimento direto no DOM com disparo completo de eventos
+        await page.evaluate(({ sel, val }) => {
+          const el = document.querySelector(sel)
+          if (el) {
+            el.focus()
+            el.value = val
+            el.dispatchEvent(new Event('input', { bubbles: true }))
+            el.dispatchEvent(new Event('change', { bubbles: true }))
+          }
+        }, { sel: selector, val: valorStr })
+
+        await page.waitForTimeout(200)
+        let valAtual = await loc.inputValue().catch(() => '')
+
+        // 2. Se o valor não persistiu ou continua '0,0000', usa digitação sequencial via teclado
+        if (!valAtual || valAtual === '0,0000' || !valAtual.includes(digitos.slice(0, 2))) {
+          log(`[Mascara] Valor após evaluate foi "${valAtual}". Aplicando digitação via teclado...`)
+          await loc.click()
+          await page.waitForTimeout(100)
+          await page.keyboard.press('Control+a')
+          await page.keyboard.press('Backspace')
+          await page.waitForTimeout(100)
+
+          await loc.pressSequentially(valorStr, { delay: 60 })
+          await page.waitForTimeout(200)
+          valAtual = await loc.inputValue().catch(() => '')
+
+          // Se ainda estiver 0,0000, digita apenas dígitos numéricos (máscara shift-from-right)
+          if (!valAtual || valAtual === '0,0000') {
+            log(`[Mascara] Tentando digitação dos dígitos puros ("${digitos}")...`)
+            await loc.click()
+            await page.keyboard.press('Control+a')
+            await page.keyboard.press('Backspace')
+            await loc.pressSequentially(digitos, { delay: 60 })
+            await page.waitForTimeout(200)
+            valAtual = await loc.inputValue().catch(() => '')
+          }
+        }
+
+        // 3. Força consolidação final no blur
+        await page.evaluate(({ sel, val }) => {
+          const el = document.querySelector(sel)
+          if (el) {
+            if (!el.value || el.value === '0,0000') {
+              el.value = val
+            }
+            el.dispatchEvent(new Event('blur', { bubbles: true }))
+            if (typeof el.onchange === 'function') el.onchange()
+            if (typeof el.onblur === 'function') el.onblur()
+          }
+        }, { sel: selector, val: valorStr })
+
+        await page.waitForTimeout(300)
+        const valFinal = await loc.inputValue().catch(() => '')
+        log(`[Mascara] Campo ${selector} consolidado com: "${valFinal}"`)
       }
 
       // Função auxiliar para capturar o comprovante, salvar no Supabase Storage e retornar da tela de relatório
       const voltarDoRelatorio = async (tipoLance = 'LIVRE') => {
-        await page.waitForTimeout(3000)
-        log(`Verificando se abriu tela de comprovante (frmConCmNewconReports.aspx) para ${tipoLance}...`)
+        log(`Verificando comprovante/relatório de ${tipoLance}...`)
         let infoComprovante = null
+        let targetPage = page
 
-        if (page.url().includes('frmConCmNewconReports') || page.url().includes('Reports')) {
-          log(`Tela de comprovante aberta. Capturando comprovante oficial de ${tipoLance}...`)
+        // Aguarda até 8 segundos para ver se abriu popup ou se a página atual navegou para relatório
+        const startTime = Date.now()
+        while (Date.now() - startTime < 8000) {
+          if (popupPage) {
+            targetPage = popupPage
+            break
+          }
+          if (page.url().includes('frmConCmNewconReports') || page.url().includes('Reports')) {
+            targetPage = page
+            break
+          }
+          await page.waitForTimeout(500)
+        }
+
+        const isRelatorio = targetPage.url().includes('frmConCmNewconReports') || targetPage.url().includes('Reports')
+        if (isRelatorio) {
+          log(`Tela de comprovante (${tipoLance}) identificada: ${targetPage.url()}`)
+          await targetPage.waitForLoadState('domcontentloaded').catch(() => {})
+          await targetPage.waitForTimeout(2500)
+
           const nomeArquivo = `comprovante_${tipoLance.toLowerCase()}_g${item.numero_grupo}_c${item.numero_cota}_${Date.now()}.png`
           const localPath = path.join(screenshotsDir, nomeArquivo)
+          const imgBuffer = await targetPage.screenshot({ path: localPath, fullPage: false }).catch(() => null)
 
-          // 1. Salva screenshot local
-          const imgBuffer = await page.screenshot({ path: localPath, fullPage: false }).catch(() => null)
-
-          // 2. Upload para o bucket lances-comprovantes no Supabase Storage
           if (imgBuffer && admin && targetEmpresaId) {
             try {
               const storagePath = `${targetEmpresaId}/${item.cota_definitiva_id || item.numero_cota}/${nomeArquivo}`
               log(`Fazendo upload do comprovante para o Storage (lances-comprovantes): ${storagePath}...`)
-
               const { error: upErr } = await admin.storage
                 .from('lances-comprovantes')
                 .upload(storagePath, imgBuffer, { contentType: 'image/png', upsert: true })
@@ -391,17 +598,25 @@ export async function executarRoboLances({
             }
           }
 
-          // 3. Localiza e clica no botão [Voltar]
-          const btnVoltar = page.locator('input[value="Voltar"], button:has-text("Voltar"), a:has-text("Voltar"), #btnVoltar').first()
-          if (await btnVoltar.isVisible({ timeout: 5000 }).catch(() => false)) {
-            await btnVoltar.click()
-            await page.waitForLoadState('domcontentloaded').catch(() => {})
-            await page.waitForTimeout(2500)
+          if (targetPage !== page) {
+            log('Fechando popup do relatório...')
+            await targetPage.close().catch(() => {})
+            popupPage = null
           } else {
-            log('Botão Voltar não visível diretamente. Retornando histórico...')
-            await page.goBack().catch(() => {})
-            await page.waitForTimeout(2000)
+            const btnVoltar = page.locator('input[value="Voltar"], button:has-text("Voltar"), a:has-text("Voltar"), #btnVoltar, input[id*="btnVoltar"]').first()
+            if (await btnVoltar.isVisible({ timeout: 4000 }).catch(() => false)) {
+              log('Clicando no botão [Voltar] da tela de relatório...')
+              await btnVoltar.click()
+              await page.waitForLoadState('domcontentloaded').catch(() => {})
+              await page.waitForTimeout(2000)
+            } else {
+              log('Botão Voltar não visível diretamente. Retornando via navegação direta para credenciamento...')
+              await page.goto('https://nwcweb.randonconsorcios.com.br/CONCP/frmConCpCadCredenciamentoLance.aspx', { waitUntil: 'domcontentloaded' }).catch(() => {})
+              await page.waitForTimeout(2000)
+            }
           }
+        } else {
+          log(`Não foi aberta tela de relatório para ${tipoLance}. Prosseguindo na tela atual.`)
         }
         return infoComprovante
       }
@@ -411,65 +626,61 @@ export async function executarRoboLances({
       // =========================================================================
       log(`--- Ofertando LANCE LIVRE: ${strLivrePct}% (Embutido: ${strEmbutidoPct}%) ---`)
 
-      // 1. Seleciona Radio "Livre"
-      const rdoLivre = page.locator('input[type="radio"][value="Livre"], #ctl00_Conteudo_rdoTipoLance_0, input[name*="rdoTipoLance"][value*="0"]').first()
-      await rdoLivre.waitFor({ state: 'visible', timeout: 8000 })
-      await rdoLivre.check().catch(() => rdoLivre.click())
-      await page.waitForTimeout(800)
-
-      // 2. Seleciona Radio "Reduzir Parcela"
-      const rdoReduzirParcela = page.locator('input[type="radio"][value="Reduzir Parcela"], #ctl00_Conteudo_rdoOpcaoLance_1, input[name*="rdoOpcaoLance"][value*="1"]').first()
-      if (await rdoReduzirParcela.isVisible({ timeout: 3000 }).catch(() => false)) {
-        await rdoReduzirParcela.check().catch(() => rdoReduzirParcela.click())
-        await page.waitForTimeout(600)
+      // 1. Seleciona Radio "Livre" (ctl00_Conteudo_rgLance_0)
+      const rdoLivre = page.locator('#ctl00_Conteudo_rgLance_0, label[for="ctl00_Conteudo_rgLance_0"], label:text-is("Livre")').first()
+      if (await rdoLivre.isVisible({ timeout: 3000 }).catch(() => false)) {
+        await rdoLivre.click({ force: true }).catch(() => {})
+        await page.waitForTimeout(400)
       }
 
-      // 3. Dropdown do Tipo de Oferta -> Percentual
-      const selectTipoOferta = page.locator('select[name*="ddlTipoOferta"], select[id*="ddlTipoOferta"]').first()
+      // 2. Seleciona Radio "Reduzir Parcela" (ctl00_Conteudo_rblFormasLance_1)
+      const rdoReduzirParcela = page.locator('#ctl00_Conteudo_rblFormasLance_1, label[for="ctl00_Conteudo_rblFormasLance_1"], label:has-text("Reduzir Parcela")').first()
+      if (await rdoReduzirParcela.isVisible({ timeout: 3000 }).catch(() => false)) {
+        await rdoReduzirParcela.click({ force: true }).catch(() => {})
+        await page.waitForTimeout(400)
+      }
+
+      // 3. Dropdown do Tipo de Oferta -> Percentual (%)
+      const selectTipoOferta = page.locator('#ctl00_Conteudo_rblTipoOferta, select[name*="rblTipoOferta"]').first()
       if (await selectTipoOferta.isVisible({ timeout: 3000 }).catch(() => false)) {
-        await selectTipoOferta.selectOption({ label: 'Percentual' }).catch(() => {})
-        await page.waitForTimeout(600)
+        await selectTipoOferta.selectOption('%').catch(() => selectTipoOferta.selectOption({ label: 'Percentual' }))
+        await page.waitForTimeout(400)
       }
 
       // 4. Preenche valor do Lance Livre (26,1234)
-      const inputValorLance = page.locator('input[name*="txtVL_Lance"], input[name*="txtPC_Lance"], input[id*="txtPC_Lance"], input[id*="txtVL_Lance"]').first()
-      await inputValorLance.waitFor({ state: 'visible', timeout: 5000 })
-      await inputValorLance.fill(strLivrePct)
-      await page.waitForTimeout(600)
+      await preencherCampoComMascara('#ctl00_Conteudo_edtOferta', strLivrePct)
 
-      // 5. Dropdown Lance Embutido -> Percentual
-      const selectTipoEmbutido = page.locator('select[name*="ddlTipoEmbutido"], select[id*="ddlTipoEmbutido"]').first()
+      // 5. Dropdown Lance Embutido -> Percentual (%)
+      const selectTipoEmbutido = page.locator('#ctl00_Conteudo_cbxLanceEmbutido, select[name*="cbxLanceEmbutido"]').first()
       if (await selectTipoEmbutido.isVisible({ timeout: 3000 }).catch(() => false)) {
-        await selectTipoEmbutido.selectOption({ label: 'Percentual' }).catch(() => {})
-        await page.waitForTimeout(600)
+        await selectTipoEmbutido.selectOption('%').catch(() => selectTipoEmbutido.selectOption({ label: 'Percentual' }))
+        await page.waitForTimeout(400)
       }
 
       // 6. Preenche valor do Lance Embutido (25,0000)
-      const inputValorEmbutido = page.locator('input[name*="txtVL_Embutido"], input[name*="txtPC_Embutido"], input[id*="txtPC_Embutido"], input[id*="txtVL_Embutido"]').first()
-      if (await inputValorEmbutido.isVisible({ timeout: 4000 }).catch(() => false)) {
-        await inputValorEmbutido.fill(strEmbutidoPct)
-        await page.waitForTimeout(600)
-      }
+      await preencherCampoComMascara('#ctl00_Conteudo_edtEmbutido', strEmbutidoPct)
 
       // 7. Marca checkbox "Repetir a oferta do lance por 6 assembleia(s)"
-      const chkRepetir = page.locator('input[type="checkbox"][name*="chkRepetirLance"], input[type="checkbox"][id*="chkRepetirLance"]').first()
+      const chkRepetir = page.locator('#ctl00_Conteudo_chkLanceLivre, input[name*="chkLanceLivre"], label:has-text("Repetir")').first()
       if (await chkRepetir.isVisible({ timeout: 3000 }).catch(() => false)) {
-        if (!(await chkRepetir.isChecked())) {
-          await chkRepetir.check().catch(() => chkRepetir.click())
+        const isChk = await chkRepetir.isChecked().catch(() => false)
+        if (!isChk) {
+          await chkRepetir.click({ force: true }).catch(() => {})
         }
-        await page.waitForTimeout(600)
+        await page.waitForTimeout(400)
       }
 
       await page.screenshot({ path: path.join(screenshotsDir, `lance-02-livre-preenchido-${item.numero_grupo}-${item.numero_cota}.png`) }).catch(() => {})
 
-      // 8. Clica em [Confirmar] e escuta o popup com o protocolo
+      // 8. Clica em [Confirmar] e escuta os dialogs com o protocolo
       log('Clicando em [Confirmar] para o Lance Livre...')
-      const btnConfirmar = page.locator('input[value="Confirmar"], button:has-text("Confirmar"), input[id*="btnConfirmar"]').first()
-      
-      const promiseDialogLivre = aguardarProtocoloAlert()
-      await btnConfirmar.click()
+      ultimoProtocoloCapturado = null
+      const btnConfirmar = page.locator('#ctl00_Conteudo_btnConfirma, input[value="Confirmar"]').first()
+      await btnConfirmar.scrollIntoViewIfNeeded().catch(() => {})
+      await btnConfirmar.click({ force: true })
+      await page.waitForTimeout(4000)
 
-      protocoloLivre = await promiseDialogLivre
+      protocoloLivre = ultimoProtocoloCapturado
       log(`Protocolo do Lance Livre capturado: ${protocoloLivre || 'Confirmado via Web'}`)
 
       // 9. Aguarda relatório e clica em Voltar
@@ -480,6 +691,20 @@ export async function executarRoboLances({
       // ETAPA B: OFERTA DO LANCE FIXO (ex: 25%)
       // =========================================================================
       if (dadosTelaLance.lanceFixoPct && dadosTelaLance.lanceFixoPct > 0) {
+        if (!page.url().includes('frmConCpCadCredenciamentoLance') && !page.url().includes('CredenciamentoLance')) {
+          log('Reabrindo tela de Oferta de Lance para Lance Fixo...')
+          const linkOfertaLance = page.locator('a:has-text("Oferta de Lance"), a[href*="frmConCpCadCredenciamentoLance"]').filter({ hasNotText: 'Lote' }).first()
+          if (await linkOfertaLance.isVisible({ timeout: 8000 }).catch(() => false)) {
+            await linkOfertaLance.click()
+            await page.waitForURL(url => url.pathname.includes('frmConCpCadCredenciamentoLance') || url.href.includes('CredenciamentoLance'), { timeout: 20_000 }).catch(() => {})
+            await page.waitForLoadState('domcontentloaded').catch(() => {})
+            await page.waitForTimeout(2000)
+          } else {
+            await page.goto('https://nwcweb.randonconsorcios.com.br/CONCP/frmConCpCadCredenciamentoLance.aspx', { waitUntil: 'domcontentloaded' }).catch(() => {})
+            await page.waitForTimeout(2000)
+          }
+        }
+
         const fixoPct = Number(dadosTelaLance.lanceFixoPct)
         const strFixoPct = fixoPct.toFixed(4).replace('.', ',')
         // Regra do usuário: "no lance fixo precisa preencher com o mesmo valor do lance quando for 25% quando é de 40% e só pode usar 25% de embutido preencher 25%"
@@ -488,66 +713,69 @@ export async function executarRoboLances({
 
         log(`--- Ofertando LANCE FIXO: ${strFixoPct}% (Embutido: ${strEmbFixoPct}%) ---`)
 
-        // 1. Seleciona Radio "Fixo"
-        const rdoFixo = page.locator('input[type="radio"][value="Fixo"], #ctl00_Conteudo_rdoTipoLance_1, input[name*="rdoTipoLance"][value*="1"]').first()
-        await rdoFixo.waitFor({ state: 'visible', timeout: 8000 })
-        await rdoFixo.check().catch(() => rdoFixo.click())
-        await page.waitForTimeout(800)
+        // 1. Seleciona Radio "Fixo" (ctl00_Conteudo_rgLance_1, value LF)
+        const rdoFixo = page.locator('#ctl00_Conteudo_rgLance_1, label[for="ctl00_Conteudo_rgLance_1"], label:text-is("Fixo")').first()
+        if (await rdoFixo.isVisible({ timeout: 4000 }).catch(() => false)) {
+          await rdoFixo.click({ force: true }).catch(() => {})
+          await page.waitForTimeout(800)
+        }
 
         // 2. Opção Reduzir Parcela
-        const rdoReduzirFixo = page.locator('input[type="radio"][value="Reduzir Parcela"], #ctl00_Conteudo_rdoOpcaoLance_1, input[name*="rdoOpcaoLance"][value*="1"]').first()
+        const rdoReduzirFixo = page.locator('#ctl00_Conteudo_rblFormasLance_1, label[for="ctl00_Conteudo_rblFormasLance_1"], label:has-text("Reduzir Parcela")').first()
         if (await rdoReduzirFixo.isVisible({ timeout: 3000 }).catch(() => false)) {
-          await rdoReduzirFixo.check().catch(() => rdoReduzirFixo.click())
-          await page.waitForTimeout(600)
+          await rdoReduzirFixo.click({ force: true }).catch(() => {})
+          await page.waitForTimeout(400)
         }
 
-        // 3. Dropdown Tipo de Oferta -> Percentual
-        const selectTipoFixo = page.locator('select[name*="ddlTipoOferta"], select[id*="ddlTipoOferta"]').first()
+        // 3. Dropdown Tipo de Oferta -> Percentual (apenas se habilitado)
+        const selectTipoFixo = page.locator('#ctl00_Conteudo_rblTipoOferta, select[name*="rblTipoOferta"]').first()
         if (await selectTipoFixo.isVisible({ timeout: 3000 }).catch(() => false)) {
-          await selectTipoFixo.selectOption({ label: 'Percentual' }).catch(() => {})
-          await page.waitForTimeout(600)
+          const isEnabled = await selectTipoFixo.isEnabled().catch(() => false)
+          if (isEnabled) {
+            await selectTipoFixo.selectOption('%').catch(() => selectTipoFixo.selectOption({ label: 'Percentual' }))
+            await page.waitForTimeout(400)
+          } else {
+            log('Dropdown Tipo de Oferta bloqueado em Percentual pelo Newcon.')
+          }
         }
 
-        // 4. Input Lance Fixo
-        const inputLanceFixo = page.locator('input[name*="txtVL_Lance"], input[name*="txtPC_Lance"], input[id*="txtPC_Lance"], input[id*="txtVL_Lance"]').first()
-        if (await inputLanceFixo.isVisible({ timeout: 3000 }).catch(() => false)) {
-          await inputLanceFixo.fill(strFixoPct).catch(() => {})
-          await page.waitForTimeout(600)
-        }
+        // 4. Preenche valor do Lance Fixo (edtOferta) se habilitado
+        await preencherCampoComMascara('#ctl00_Conteudo_edtOferta', strFixoPct)
 
-        // 5. Dropdown Embutido -> Percentual
-        const selectEmbFixo = page.locator('select[name*="ddlTipoEmbutido"], select[id*="ddlTipoEmbutido"]').first()
+        // 5. Dropdown Embutido -> Percentual (apenas se habilitado)
+        const selectEmbFixo = page.locator('#ctl00_Conteudo_cbxLanceEmbutido, select[name*="cbxLanceEmbutido"]').first()
         if (await selectEmbFixo.isVisible({ timeout: 3000 }).catch(() => false)) {
-          await selectEmbFixo.selectOption({ label: 'Percentual' }).catch(() => {})
-          await page.waitForTimeout(600)
+          const isEmbEnabled = await selectEmbFixo.isEnabled().catch(() => false)
+          if (isEmbEnabled) {
+            await selectEmbFixo.selectOption('%').catch(() => selectEmbFixo.selectOption({ label: 'Percentual' }))
+            await page.waitForTimeout(400)
+          }
         }
 
-        // 6. Preenche valor do Embutido Fixo
-        const inputEmbFixo = page.locator('input[name*="txtVL_Embutido"], input[name*="txtPC_Embutido"], input[id*="txtPC_Embutido"], input[id*="txtVL_Embutido"]').first()
-        if (await inputEmbFixo.isVisible({ timeout: 3000 }).catch(() => false)) {
-          await inputEmbFixo.fill(strEmbFixoPct).catch(() => {})
-          await page.waitForTimeout(600)
-        }
+        // 6. Preenche valor do Embutido Fixo (edtEmbutido)
+        await preencherCampoComMascara('#ctl00_Conteudo_edtEmbutido', strEmbFixoPct)
 
         // 7. Checkbox Repetir por 6 assembleias
-        const chkRepetirFixo = page.locator('input[type="checkbox"][name*="chkRepetirLance"], input[type="checkbox"][id*="chkRepetirLance"]').first()
+        const chkRepetirFixo = page.locator('#ctl00_Conteudo_chkLanceLivre, input[name*="chkLanceLivre"], label:has-text("Repetir")').first()
         if (await chkRepetirFixo.isVisible({ timeout: 3000 }).catch(() => false)) {
-          if (!(await chkRepetirFixo.isChecked())) {
-            await chkRepetirFixo.check().catch(() => chkRepetirFixo.click())
+          const isChkFixo = await chkRepetirFixo.isChecked().catch(() => false)
+          if (!isChkFixo) {
+            await chkRepetirFixo.click({ force: true }).catch(() => {})
           }
-          await page.waitForTimeout(600)
+          await page.waitForTimeout(400)
         }
 
         await page.screenshot({ path: path.join(screenshotsDir, `lance-03-fixo-preenchido-${item.numero_grupo}-${item.numero_cota}.png`) }).catch(() => {})
 
-        // 8. Clica em [Confirmar] e escuta o popup
+        // 8. Clica em [Confirmar] e escuta os dialogs
         log('Clicando em [Confirmar] para o Lance Fixo...')
-        const btnConfirmarFixo = page.locator('input[value="Confirmar"], button:has-text("Confirmar"), input[id*="btnConfirmar"]').first()
-        
-        const promiseDialogFixo = aguardarProtocoloAlert()
-        await btnConfirmarFixo.click()
+        ultimoProtocoloCapturado = null
+        const btnConfirmarFixo = page.locator('#ctl00_Conteudo_btnConfirma, input[value="Confirmar"]').first()
+        await btnConfirmarFixo.scrollIntoViewIfNeeded().catch(() => {})
+        await btnConfirmarFixo.click({ force: true })
+        await page.waitForTimeout(4000)
 
-        protocoloFixo = await promiseDialogFixo
+        protocoloFixo = ultimoProtocoloCapturado
         log(`Protocolo do Lance Fixo capturado: ${protocoloFixo || 'Confirmado via Web'}`)
 
         compFixo = await voltarDoRelatorio('FIXO')
@@ -558,6 +786,20 @@ export async function executarRoboLances({
       // ETAPA C: OFERTA DO 2º LANCE FIXO (se houver no grupo, ex: 40%)
       // =========================================================================
       if (dadosTelaLance.segundoLanceFixoPct && dadosTelaLance.segundoLanceFixoPct > 0) {
+        if (!page.url().includes('frmConCpCadCredenciamentoLance') && !page.url().includes('CredenciamentoLance')) {
+          log('Reabrindo tela de Oferta de Lance para 2º Lance Fixo...')
+          const linkOfertaLance = page.locator('a:has-text("Oferta de Lance"), a[href*="frmConCpCadCredenciamentoLance"]').filter({ hasNotText: 'Lote' }).first()
+          if (await linkOfertaLance.isVisible({ timeout: 8000 }).catch(() => false)) {
+            await linkOfertaLance.click()
+            await page.waitForURL(url => url.pathname.includes('frmConCpCadCredenciamentoLance') || url.href.includes('CredenciamentoLance'), { timeout: 20_000 }).catch(() => {})
+            await page.waitForLoadState('domcontentloaded').catch(() => {})
+            await page.waitForTimeout(2000)
+          } else {
+            await page.goto('https://nwcweb.randonconsorcios.com.br/CONCP/frmConCpCadCredenciamentoLance.aspx', { waitUntil: 'domcontentloaded' }).catch(() => {})
+            await page.waitForTimeout(2000)
+          }
+        }
+
         const fixo2Pct = Number(dadosTelaLance.segundoLanceFixoPct)
         const strFixo2Pct = fixo2Pct.toFixed(4).replace('.', ',')
         const embFixo2Pct = Math.min(fixo2Pct, embutidoMaximoPct)
@@ -565,56 +807,50 @@ export async function executarRoboLances({
 
         log(`--- Ofertando 2º LANCE FIXO: ${strFixo2Pct}% (Embutido: ${strEmbFixo2Pct}%) ---`)
 
-        const rdo2Fixo = page.locator('input[type="radio"][value*="2º"], #ctl00_Conteudo_rdoTipoLance_2, input[name*="rdoTipoLance"][value*="2"]').first()
+        const rdo2Fixo = page.locator('#ctl00_Conteudo_rgLance_2, label[for="ctl00_Conteudo_rgLance_2"], label:has-text("2º Fixo")').first()
         if (await rdo2Fixo.isVisible({ timeout: 4000 }).catch(() => false)) {
-          await rdo2Fixo.check().catch(() => rdo2Fixo.click())
+          await rdo2Fixo.click({ force: true }).catch(() => {})
           await page.waitForTimeout(800)
 
-          const rdoReduzir2Fixo = page.locator('input[type="radio"][value="Reduzir Parcela"], #ctl00_Conteudo_rdoOpcaoLance_1, input[name*="rdoOpcaoLance"][value*="1"]').first()
+          const rdoReduzir2Fixo = page.locator('#ctl00_Conteudo_rblFormasLance_1, label[for="ctl00_Conteudo_rblFormasLance_1"], label:has-text("Reduzir Parcela")').first()
           if (await rdoReduzir2Fixo.isVisible({ timeout: 3000 }).catch(() => false)) {
-            await rdoReduzir2Fixo.check().catch(() => rdoReduzir2Fixo.click())
-            await page.waitForTimeout(600)
+            await rdoReduzir2Fixo.click({ force: true }).catch(() => {})
+            await page.waitForTimeout(400)
           }
 
-          const selectTipo2Fixo = page.locator('select[name*="ddlTipoOferta"], select[id*="ddlTipoOferta"]').first()
+          const selectTipo2Fixo = page.locator('#ctl00_Conteudo_rblTipoOferta, select[name*="rblTipoOferta"]').first()
           if (await selectTipo2Fixo.isVisible({ timeout: 3000 }).catch(() => false)) {
-            await selectTipo2Fixo.selectOption({ label: 'Percentual' }).catch(() => {})
-            await page.waitForTimeout(600)
+            await selectTipo2Fixo.selectOption('%').catch(() => selectTipo2Fixo.selectOption({ label: 'Percentual' }))
+            await page.waitForTimeout(400)
           }
 
-          const inputLance2Fixo = page.locator('input[name*="txtVL_Lance"], input[name*="txtPC_Lance"], input[id*="txtPC_Lance"], input[id*="txtVL_Lance"]').first()
-          if (await inputLance2Fixo.isVisible({ timeout: 3000 }).catch(() => false)) {
-            await inputLance2Fixo.fill(strFixo2Pct).catch(() => {})
-            await page.waitForTimeout(600)
-          }
+          await preencherCampoComMascara('#ctl00_Conteudo_edtOferta', strFixo2Pct)
 
-          const selectEmb2Fixo = page.locator('select[name*="ddlTipoEmbutido"], select[id*="ddlTipoEmbutido"]').first()
+          const selectEmb2Fixo = page.locator('#ctl00_Conteudo_cbxLanceEmbutido, select[name*="cbxLanceEmbutido"]').first()
           if (await selectEmb2Fixo.isVisible({ timeout: 3000 }).catch(() => false)) {
-            await selectEmb2Fixo.selectOption({ label: 'Percentual' }).catch(() => {})
-            await page.waitForTimeout(600)
+            await selectEmb2Fixo.selectOption('%').catch(() => selectEmb2Fixo.selectOption({ label: 'Percentual' }))
+            await page.waitForTimeout(400)
           }
 
-          const inputEmb2Fixo = page.locator('input[name*="txtVL_Embutido"], input[name*="txtPC_Embutido"], input[id*="txtPC_Embutido"], input[id*="txtVL_Embutido"]').first()
-          if (await inputEmb2Fixo.isVisible({ timeout: 3000 }).catch(() => false)) {
-            await inputEmb2Fixo.fill(strEmbFixo2Pct).catch(() => {})
-            await page.waitForTimeout(600)
-          }
+          await preencherCampoComMascara('#ctl00_Conteudo_edtEmbutido', strEmbFixo2Pct)
 
-          const chkRepetir2Fixo = page.locator('input[type="checkbox"][name*="chkRepetirLance"], input[type="checkbox"][id*="chkRepetirLance"]').first()
+          const chkRepetir2Fixo = page.locator('#ctl00_Conteudo_chkLanceLivre, input[name*="chkLanceLivre"], label:has-text("Repetir")').first()
           if (await chkRepetir2Fixo.isVisible({ timeout: 3000 }).catch(() => false)) {
-            if (!(await chkRepetir2Fixo.isChecked())) {
-              await chkRepetir2Fixo.check().catch(() => chkRepetir2Fixo.click())
+            const isChk2 = await chkRepetir2Fixo.isChecked().catch(() => false)
+            if (!isChk2) {
+              await chkRepetir2Fixo.click({ force: true }).catch(() => {})
             }
-            await page.waitForTimeout(600)
+            await page.waitForTimeout(400)
           }
 
           log('Clicando em [Confirmar] para o 2º Lance Fixo...')
-          const btnConfirmar2Fixo = page.locator('input[value="Confirmar"], button:has-text("Confirmar"), input[id*="btnConfirmar"]').first()
-          
-          const promiseDialog2Fixo = aguardarProtocoloAlert()
-          await btnConfirmar2Fixo.click()
+          ultimoProtocoloCapturado = null
+          const btnConfirmar2Fixo = page.locator('#ctl00_Conteudo_btnConfirma, input[value="Confirmar"]').first()
+          await btnConfirmar2Fixo.scrollIntoViewIfNeeded().catch(() => {})
+          await btnConfirmar2Fixo.click({ force: true })
+          await page.waitForTimeout(4000)
 
-          protocoloSegundoFixo = await promiseDialog2Fixo
+          protocoloSegundoFixo = ultimoProtocoloCapturado
           log(`Protocolo do 2º Lance Fixo capturado: ${protocoloSegundoFixo || 'Confirmado via Web'}`)
 
           compSegundoFixo = await voltarDoRelatorio('SEGUNDO_FIXO')
@@ -728,7 +964,12 @@ export async function executarRoboLances({
         }
 
         if (ofertasLances.length > 0) {
-          await admin.from('cota_lances_ofertados').insert(ofertasLances).catch(() => {})
+          const { error: errHist } = await admin.from('cota_lances_ofertados').insert(ofertasLances)
+          if (errHist) {
+            log(`Aviso ao gravar histórico de lances: ${errHist.message}`)
+          } else {
+            log(`Histórico individual de lances gravado com sucesso! (${ofertasLances.length} registros)`)
+          }
         }
       }
 

@@ -27,4 +27,4 @@ analise/
 tmp/
 .worktrees/
 *.docx
-
+storage/

@@ -97,3 +97,31 @@ Conforme solicitação e especificações operacionais fornecidas, foi implement
   - 8 testes cobrindo cálculo da regra `embutido + 1,1234`, formatação brasileira com vírgula, extração de protocolos em alertas com regex, e teto de embutido para 2º lance fixo.
 - **Suíte de Lances & Franquia:** 28 testes passando com 100% de sucesso.
 - **Build de Produção:** Next.js build concluído com sucesso (`✓ Compiled successfully`, `Finished TypeScript`, 169 rotas geradas sem erros).
+
+---
+
+## 5. Homologação Operacional com Cota Real (Grupo 1273 / Cota 0209)
+
+Em atendimento à autorização e solicitação expressa do cliente, foi realizada a execução operacional completa ponta a ponta em ambiente real de produção do Newcon Web / Racon Consórcios:
+
+- **Alvo Homologado:** Grupo `1273`, Cota `0209` (Contrato: `1041321860`).
+- **Consorciado Real:** MSD INFORMÁTICA CURSOS PROFISSIONALIZANTES LTDA (CNPJ `10.900.879/0001-81`).
+- **Bem / Valor:** Imóvel 1273d (R$ 331.415,26).
+- **Assembleia Alvo:** `12/11/2026` (Assembleia nº `066`).
+- **Lance Livre Homologado:**
+  - Percentual: `26,2234%` (Valor do Lance: R$ 107.355,68).
+  - Lance Embutido: `25,1000%` (R$ 102.739,00).
+  - Opção: `Redução de Parcela` | Repetir por 6 assembleias.
+  - **Protocolo Oficial Emitido pelo Newcon:** **`5735826`**
+  - **Comprovante Oficial Capturado:** `comprovante_livre_g1273_c0209_1792428867806.png`
+- **Lance Fixo Homologado:**
+  - Percentual: `25,0000%` (Valor do Lance: R$ 102.739,00).
+  - Lance Embutido: `25,0000%` (R$ 102.739,00).
+  - Opção: `Redução de Parcela` | Repetir por 6 assembleias.
+  - **Protocolo Oficial Emitido pelo Newcon:** **`5735829`**
+  - **Comprovante Oficial Capturado:** `comprovante_fixo_g1273_c0209_1792428909979.png`
+- **Armazenamento e Integração no ERP:**
+  - Comprovantes armazenados no Supabase Storage (`lances-comprovantes`) sob `7170f38e-15dd-4b19-8588-51e9a9cf0d4c/2e0eeaca-2665-4e08-823d-a0156e8afe79/`.
+  - Estratégia registrada em `cota_estrategias_lance` (`id: 6b6d49c9-2ad0-420b-a602-aea3ee8ea389`, status `confirmado = true`).
+  - Histórico detalhado registrado em `cota_lances_ofertados`.
+  - Interface `/erp/lances` exibindo os protocolos `5735826` e `5735829` com link direto para visualização dos comprovantes em alta resolução.
