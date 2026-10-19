@@ -1,5 +1,24 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
+### Hotfix 322 — Repasse em competência diferente e parcelas de cotas existentes (19/10/2026)
+
+Importação e releitura identificam parcela única por empresa, administradora,
+grupo/cota, titular, etapa e saldo, mesmo quando a competência prevista difere
+do recebimento. Cadastros mínimos pelo PDF continuam novas parcelas na cota
+existente, preservando beneficiário/percentual comprovados e parcelas pagas.
+O vínculo manual mantém pendência quando falta saldo, sem reverter a seleção
+nem liquidar valor excedente. Seletores restringem opções ao grupo/cota.
+
+Exceção autorizada pelo titular: cotas antigas de controle podem reconhecer
+exclusivamente parcelas reais de PDF com recebimento, mediante autorização
+append-only por cota, empresa e participante. DUO permanece sem faturamento
+de venda; suas parcelas reais são destinadas a Eroni. Outros cadastros de
+controle continuam bloqueados e não se projetam comissões hipotéticas.
+Migration 322 aplicada no Supabase canônico com conciliação assistida: dez
+novos vínculos em 15/10 e continuidade de Pedro em 05/10, sem novos cadastros
+de cliente/venda/cota ou alterações de caixa e pagamentos. Implantação registrada no
+relatório `docs/relatorios-fases/HOTFIX-2026-10-19-REPASSE-VINCULOS-COTAS-EXISTENTES.md`.
+
 ### Importação assistida — antigos do Eroni (19/10/2026)
 
 Três PDFs foram arquivados em `repasse_relatorios_antigos`, sem conciliação

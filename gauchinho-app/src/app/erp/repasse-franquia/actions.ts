@@ -162,10 +162,12 @@ export async function vincularItemRepasseManualAction(
     revalidatePath("/erp/repasse-franquia");
     revalidatePath("/erp/comissoes");
     revalidatePath("/erp/minhas-comissoes");
-    const result = data as { valor_vinculado?: number; valor_relatorio?: number } | null;
+    const result = data as { valor_vinculado?: number; valor_relatorio?: number; baixa_pendente?: boolean } | null;
     return {
       ok: true,
-      message: `Vínculo, baixa e comissões sincronizados. Total desta linha: ${Number(result?.valor_vinculado ?? result?.valor_relatorio ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}.`,
+      message: result?.baixa_pendente
+        ? "Vínculo salvo. A baixa desta linha aguarda saldo do recebimento; confira a diferença entre o total das linhas e o total recebido no PDF."
+        : `Vínculo, baixa e comissões sincronizados. Total desta linha: ${Number(result?.valor_vinculado ?? result?.valor_relatorio ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}.`,
     };
   } catch (error) {
     return { ok: false, message: error instanceof Error ? error.message : "Erro ao vincular a linha." };
