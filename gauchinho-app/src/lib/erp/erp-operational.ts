@@ -18,6 +18,7 @@ export const ERP_OPERATIONAL_ROUTES: ErpOperationalRoute[] = [
   { id: "minhas-comissoes", label: "Minhas comissões", href: "/erp/minhas-comissoes", section: "Comissoes e financeiro", requiresAny: ["comissoes"] },
   { id: "contas-pagar", label: "Contas a pagar", href: "/erp/contas-pagar", section: "Comissoes e financeiro", requiresAny: ["financeiro"] },
   { id: "conta-corrente-socios", label: "Fechamento dos sócios", href: "/erp/fechamento-socios", section: "Comissoes e financeiro", requiresAny: ["financeiro"] },
+  { id: "robos", label: "Robôs e Automações", href: "/erp/robos", section: "Consorcio", requiresAny: ["vendas", "grupos"] },
 ];
 
 export function erpOperationalRouteEnabled(config: ErpSistemaConfig, routeId: string) {

@@ -1,5 +1,14 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
+### Módulo Operacional — Robôs e Automações no ERP das Franquias (19/10/2026)
+
+Implementado o módulo canônico `/erp/robos` dedicado às automações inteligentes da franquia:
+1. **Robô de Lances Automáticos (Newcon / Racon):** Aplica ofertas de lance automáticas a cada nova venda uma vez por mês e reavalia/atualiza os lances da carteira a cada 6 meses, refletindo em tempo real na tela de Lances do ERP (`/erp/lances`).
+2. **Robô de Boletos Mensais (Download & Armazenamento):** Baixa e salva automaticamente os boletos em PDF de todas as parcelas ativas da franquia no portal Newcon/Racon e os vincula diretamente à carteira do cliente no ERP (`/erp/clientes`), habilitando envio automático via WhatsApp.
+
+A navegação foi integrada em `ERP_OPERATIONAL_ROUTES` (`id: "robos"` com dependência em `vendas` ou `grupos`), com ícone `Bot` no menu da franquia e guard canônico em `requireErpRouteAccess("robos")`. A interface reúne cards com KPIs operacionais, aba de mapeamento de telas Newcon, histórico de execuções com logs em tempo real e modal de configuração de credenciais protegidas com criptografia AES-256-GCM.
+Relatório de fase: `docs/relatorios-fases/RELATORIO-2026-10-19-MENU-ROBOS-ERP-FRANQUIA.md`.
+
 ### Hotfix — versão única da API WhatsApp/Meta (18/10/2026)
 
 O SDK do Embedded Signup em `/erp/whatsapp` recebe a mesma versão usada nas
