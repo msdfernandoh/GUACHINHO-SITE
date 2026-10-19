@@ -27,7 +27,11 @@ import {
   ExternalLink,
   Layers,
   Undo2,
+  QrCode,
+  Copy,
+  FileDown,
 } from "lucide-react";
+import QRCode from "react-qr-code";
 import {
   masterAtualizarVendaAction,
   cancelarCotaEstornoAction,
@@ -54,6 +58,15 @@ export type BoletoEnvioItem = {
   observacao: string | null;
   created_at: string;
   updated_at?: string;
+  arquivo_storage_path?: string | null;
+  arquivo_url?: string | null;
+  qr_code_pix?: string | null;
+  linha_digitavel?: string | null;
+  valor?: number | null;
+  vencimento?: string | null;
+  numero_grupo?: string | null;
+  numero_cota?: string | null;
+  origem?: string | null;
 };
 
 export type ModalidadeSimples = {
@@ -183,7 +196,15 @@ function formatarDataHoraBR(dataStr?: string | null) {
   }
 }
 
-function gerarLinkWhatsAppBoleto(clienteNome: string, telefone: string | null, grupo: string, cota: string | null, competenciaStr?: string) {
+function gerarLinkWhatsAppBoleto(
+  clienteNome: string,
+  telefone: string | null,
+  grupo: string,
+  cota: string | null,
+  competenciaStr?: string,
+  qrCodePix?: string | null,
+  arquivoUrl?: string | null
+) {
   if (!telefone) return null;
   const telLimpo = String(telefone).replace(/\D/g, "");
   if (!telLimpo) return null;
@@ -192,7 +213,14 @@ function gerarLinkWhatsAppBoleto(clienteNome: string, telefone: string | null, g
   const mes = parts[1] || "";
   const mesExtenso = mes && ano ? `${mes}/${ano}` : String(competenciaStr || "");
   const cotaTexto = cota ? `#${cota}` : "em processamento";
-  const texto = `Olá, ${clienteNome || "Cliente"}! Tudo bem? Segue o boleto do seu consórcio Racon (Grupo ${grupo || ""} - Cota ${cotaTexto}) referente à competência de ${mesExtenso}. Qualquer dúvida, estamos à total disposição!`;
+  let texto = `Olá, ${clienteNome || "Cliente"}! Tudo bem? Segue o boleto do seu consórcio Racon (Grupo ${grupo || ""} - Cota ${cotaTexto}) referente à competência de ${mesExtenso}.`;
+  if (qrCodePix) {
+    texto += `\n\n🔑 *Pix Copia e Cola:*\n\`\`\`${qrCodePix}\`\`\``;
+  }
+  if (arquivoUrl) {
+    texto += `\n\n📄 *Download do Boleto (PDF):*\n${arquivoUrl}`;
+  }
+  texto += `\n\nQualquer dúvida, estamos à total disposição!`;
   return `https://wa.me/55${telLimpo}?text=${encodeURIComponent(texto)}`;
 }
 
@@ -382,6 +410,18 @@ export function ErpVendasHubView({
   const [dataContemplacao, setDataContemplacao] = useState(new Date().toISOString().slice(0, 10));
   const [anteciparComissoes, setAnteciparComissoes] = useState(true);
   const [competenciaAntecipada, setCompetenciaAntecipada] = useState(new Date().toISOString().slice(0, 7));
+
+  // Estados para Modal de QR Code Pix e cópia
+  const [qrCodeModal, setQrCodeModal] = useState<{ clienteNome: string; grupo: string; cota: string; qrCodePix: string; valor?: number | null } | null>(null);
+  const [copiadoPix, setCopiadoPix] = useState<string | null>(null);
+
+  function handleCopiarPix(pixText: string, id: string) {
+    if (typeof navigator !== "undefined" && navigator.clipboard) {
+      navigator.clipboard.writeText(pixText);
+      setCopiadoPix(id);
+      setTimeout(() => setCopiadoPix(null), 3000);
+    }
+  }
 
   // Perfis do consultor selecionado no modal de edição
   const perfisDoPrincipal = useMemo(() => {
@@ -1249,7 +1289,9 @@ export function ErpVendasHubView({
                       v.cliente_telefone,
                       cota?.numero_grupo || v.grupo_codigo || "1463",
                       cota?.numero_cota || v.cota_numero || null,
-                      competenciaBoletoAtual
+                      competenciaBoletoAtual,
+                      envio?.qr_code_pix,
+                      envio?.arquivo_url
                     );
 
                     return (
@@ -1280,6 +1322,48 @@ export function ErpVendasHubView({
                           <div className="text-[11px] font-mono text-slate-500 mt-0.5">
                             Parcela: <strong>{brl(cota?.parcela ?? v.parcela)}</strong>
                           </div>
+                          {envio?.arquivo_url && (
+                            <div className="mt-1.5">
+                              <a
+                                href={envio.arquivo_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 rounded bg-blue-50 px-2 py-0.5 text-[10px] font-bold text-blue-800 dark:bg-blue-950/60 dark:text-blue-300 border border-blue-200 dark:border-blue-800 hover:bg-blue-100 transition"
+                                title="Abrir / Baixar PDF salvo no Storage"
+                              >
+                                <FileDown className="h-3 w-3 text-blue-600 dark:text-blue-400" />
+                                Baixar Boleto PDF
+                              </a>
+                            </div>
+                          )}
+                          {envio?.qr_code_pix && (
+                            <div className="flex items-center gap-1.5 mt-1">
+                              <button
+                                type="button"
+                                onClick={() => handleCopiarPix(envio.qr_code_pix!, `pix-${v.id}-${cota?.id || "sem-cota"}`)}
+                                className="inline-flex items-center gap-1 rounded bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 transition cursor-pointer"
+                                title="Copiar código Pix Copia e Cola"
+                              >
+                                <Copy className="h-3 w-3 text-emerald-600 dark:text-emerald-400" />
+                                {copiadoPix === `pix-${v.id}-${cota?.id || "sem-cota"}` ? "Pix Copiado! ✓" : "Copiar Pix"}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setQrCodeModal({
+                                  clienteNome: v.cliente_nome,
+                                  grupo: cota?.numero_grupo || v.grupo_codigo || "1463",
+                                  cota: cota?.numero_cota || v.cota_numero || "",
+                                  qrCodePix: envio.qr_code_pix!,
+                                  valor: envio.valor || cota?.parcela || v.parcela,
+                                })}
+                                className="inline-flex items-center gap-1 rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold text-slate-700 dark:bg-slate-800 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-200 transition cursor-pointer"
+                                title="Visualizar QR Code na tela"
+                              >
+                                <QrCode className="h-3 w-3" />
+                                QR Code
+                              </button>
+                            </div>
+                          )}
                         </td>
                         <td className="p-3">
                           <div className="font-bold text-slate-900 dark:text-white">
@@ -2265,6 +2349,82 @@ export function ErpVendasHubView({
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 6: VISUALIZAÇÃO E CÓPIA DO QR CODE PIX DO BOLETO */}
+      {qrCodeModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-xs">
+          <div className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-slate-800 dark:bg-slate-900 space-y-4">
+            <div className="flex items-center justify-between border-b pb-3">
+              <div className="flex items-center gap-2">
+                <QrCode className="h-5 w-5 text-emerald-600" />
+                <h3 className="font-black text-slate-900 dark:text-white">QR Code Pix do Boleto</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setQrCodeModal(null)}
+                className="text-slate-400 hover:text-slate-600 cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="text-center space-y-1">
+              <p className="text-sm font-bold text-slate-900 dark:text-white">{qrCodeModal.clienteNome}</p>
+              <p className="text-xs text-slate-500 font-mono">
+                Grupo {qrCodeModal.grupo} · Cota {qrCodeModal.cota ? `#${qrCodeModal.cota}` : "SIF"}
+              </p>
+              {qrCodeModal.valor && (
+                <p className="text-base font-black text-emerald-600 dark:text-emerald-400 font-mono mt-1">
+                  {brl(qrCodeModal.valor)}
+                </p>
+              )}
+            </div>
+
+            <div className="flex justify-center p-4 bg-white rounded-xl border border-slate-200 shadow-inner">
+              <div style={{ height: "auto", margin: "0 auto", maxWidth: 200, width: "100%" }}>
+                <QRCode
+                  size={256}
+                  style={{ height: "auto", maxWidth: "100%", width: "100%" }}
+                  value={qrCodeModal.qrCodePix}
+                  viewBox={`0 0 256 256`}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-[11px] font-bold text-slate-600 dark:text-slate-300">
+                Código Pix Copia e Cola:
+              </label>
+              <div className="relative">
+                <textarea
+                  readOnly
+                  value={qrCodeModal.qrCodePix}
+                  rows={3}
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 p-2.5 font-mono text-[10px] text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                />
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => handleCopiarPix(qrCodeModal.qrCodePix, "modal")}
+                  className="flex-1 rounded-xl bg-emerald-600 hover:bg-emerald-700 px-4 py-2.5 text-xs font-bold text-white transition shadow-sm flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <Copy className="h-4 w-4" />
+                  {copiadoPix === "modal" ? "Chave Copiada! ✓" : "Copiar Código Pix"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setQrCodeModal(null)}
+                  className="rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 px-4 py-2.5 text-xs font-bold text-slate-700 dark:text-slate-300 transition cursor-pointer"
+                >
+                  Fechar
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

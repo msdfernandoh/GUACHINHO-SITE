@@ -100,25 +100,29 @@ const TEMPLATE_ROBO_BOLETOS = {
   modo: "PRODUCAO" as const,
   configuracao_tarefas: {
     tipo_rotina: "FRANQUIA_DOWNLOAD_BOLETOS",
-    descricao: "Baixar e salvar os boletos mês a mês das parcelas de todas as cotas ativas da franquia, vinculando-os ao histórico financeiro do cliente e permitindo envio automático via WhatsApp.",
+    descricao: "Acessa o Newcon Web pelo ícone de consorciados, localiza cada grupo e cota da franquia, entra em Emissão de Cobrança, emite e baixa o boleto em PDF, extrai a chave Pix Copia e Cola em texto e salva no Supabase Storage vinculado ao ERP.",
     frequencias: [
-      { tipo: "MENSAL", descricao: "Download após fechamento da fatura", dia_corte: 5 },
+      { tipo: "MENSAL", descricao: "Download e captura no fechamento de cada competência", dia_corte: 5 },
     ],
-    modulo_erp_alvo: "/erp/clientes",
+    modulo_erp_alvo: "/erp/vendas",
     rotas_portal: {
       login_sso: "https://e.randonconsorcios.com.br/",
       newcon_web: "https://nwcweb.randonconsorcios.com.br/frmMain.aspx",
-      segunda_via: "CONCP/frmConCpPrc2ViaBoleto.aspx",
-      extrato_cota: "CONCP/frmConCpCnsExtratoCota.aspx",
+      localizar_consorciado: "CONAT/frmConAtSrcConsorciado.aspx",
+      atendimento_consorciado: "CONAT/frmConAtCnsAtendimento.aspx",
+      emissao_cobranca: "CONCO/frmConCoRelBoletoAvulso.aspx",
     },
     etapas_mapeamento: [
       "1. Autenticação SSO Microsoft / Racon",
-      "2. Acesso ao Newcon Web e seleção do Ponto de Venda da Franquia",
-      "3. Navegação: Financeiro > 2ª Via de Boleto / Extrato de Cotas",
-      "4. Consulta por Grupo e Cota de cada cliente ativo",
-      "5. Download do boleto bancário da competência em formato PDF",
-      "6. Armazenamento seguro no Supabase Storage vinculado à cota",
-      "7. Disponibilização do link direto para consulta e disparo via WhatsApp",
+      "2. Acesso ao Newcon Web (frmMain.aspx) e seleção de empresa 0101 Randon Administradora",
+      "3. Clicar no ícone de dois bonequinhos (Consorciado / Atendimento - frmConAtSrcConsorciado.aspx)",
+      "4. Preencher Grupo e Cota do consorciado e clicar em Localizar",
+      "5. No menu lateral Operações, clicar em 'Emissão de Cobrança'",
+      "6. Na tela de Boleto Avulso (frmConCoRelBoletoAvulso.aspx), marcar a cobrança pendente e clicar em [Emitir Cobrança]",
+      "7. Realizar o download do arquivo PDF do boleto",
+      "8. Extrair o código QR Code Pix (chave Copia e Cola em texto) e linha digitável",
+      "9. Fazer o upload do PDF no Supabase Storage (bucket boletos-cotas)",
+      "10. Atualizar e vincular na tabela de boletos do ERP em Vendas & Cotas para disparo de WhatsApp",
     ],
   },
 };
@@ -132,7 +136,7 @@ export async function fetchFranquiaRobosAction() {
   // 1. Busca robôs configurados especificamente para esta franquia
   const { data: dbConfigs, error: errConfigs } = await admin
     .from("robo_configuracoes")
-    .select("id, empresa_id, nome, portal_tipo, site_url, login_url, usuario_login, senha_encrypted, ativo, modo, ultima_execucao_em, ultimo_sucesso_em, ultimo_erro, configuracao_tarefas")
+    .select("id, empresa_id, administradora_id, nome, portal_tipo, site_url, login_url, usuario_login, senha_encrypted, ativo, modo, ultima_execucao_em, ultimo_sucesso_em, ultimo_erro, configuracao_tarefas")
     .eq("empresa_id", empresaId);
 
   let configs = dbConfigs || [];
@@ -145,6 +149,15 @@ export async function fetchFranquiaRobosAction() {
     (c) => c.configuracao_tarefas?.tipo_rotina === "FRANQUIA_DOWNLOAD_BOLETOS"
   );
 
+  // Busca credenciais globais da Racon para reaproveitar na franquia caso necessário
+  const { data: globalRacon } = await admin
+    .from("robo_configuracoes")
+    .select("usuario_login, senha_encrypted, administradora_id")
+    .ilike("nome", "%Racon%")
+    .not("senha_encrypted", "is", null)
+    .limit(1)
+    .maybeSingle();
+
   if (!temRoboLances) {
     const { data: newLances } = await admin
       .from("robo_configuracoes")
@@ -154,7 +167,9 @@ export async function fetchFranquiaRobosAction() {
         portal_tipo: TEMPLATE_ROBO_LANCES.portal_tipo,
         site_url: TEMPLATE_ROBO_LANCES.site_url,
         login_url: TEMPLATE_ROBO_LANCES.login_url,
-        usuario_login: TEMPLATE_ROBO_LANCES.usuario_login,
+        usuario_login: globalRacon?.usuario_login || TEMPLATE_ROBO_LANCES.usuario_login,
+        senha_encrypted: globalRacon?.senha_encrypted || null,
+        administradora_id: globalRacon?.administradora_id || null,
         ativo: TEMPLATE_ROBO_LANCES.ativo,
         modo: TEMPLATE_ROBO_LANCES.modo,
         configuracao_tarefas: TEMPLATE_ROBO_LANCES.configuracao_tarefas,
@@ -175,7 +190,9 @@ export async function fetchFranquiaRobosAction() {
         portal_tipo: TEMPLATE_ROBO_BOLETOS.portal_tipo,
         site_url: TEMPLATE_ROBO_BOLETOS.site_url,
         login_url: TEMPLATE_ROBO_BOLETOS.login_url,
-        usuario_login: TEMPLATE_ROBO_BOLETOS.usuario_login,
+        usuario_login: globalRacon?.usuario_login || TEMPLATE_ROBO_BOLETOS.usuario_login,
+        senha_encrypted: globalRacon?.senha_encrypted || null,
+        administradora_id: globalRacon?.administradora_id || null,
         ativo: TEMPLATE_ROBO_BOLETOS.ativo,
         modo: TEMPLATE_ROBO_BOLETOS.modo,
         configuracao_tarefas: TEMPLATE_ROBO_BOLETOS.configuracao_tarefas,
@@ -185,6 +202,24 @@ export async function fetchFranquiaRobosAction() {
       .single();
 
     if (newBoletos) configs.push(newBoletos);
+  }
+
+  // Se algum robô da franquia estiver sem senha mas existir a global, preenche automaticamente
+  if (globalRacon?.senha_encrypted) {
+    for (const c of configs) {
+      if (!c.senha_encrypted) {
+        await admin
+          .from("robo_configuracoes")
+          .update({
+            senha_encrypted: globalRacon.senha_encrypted,
+            usuario_login: c.usuario_login || globalRacon.usuario_login,
+            administradora_id: c.administradora_id || globalRacon.administradora_id,
+          })
+          .eq("id", c.id);
+        c.senha_encrypted = globalRacon.senha_encrypted;
+        c.usuario_login = c.usuario_login || globalRacon.usuario_login;
+      }
+    }
   }
 
   // 2. Transforma para DTO

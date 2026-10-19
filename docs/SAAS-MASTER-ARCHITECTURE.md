@@ -1,5 +1,17 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
+### Página pública de privacidade (19/10/2026)
+
+A rota `/privacidade` usa `gauchinho-app/src/app/privacidade/page.tsx`, conforme
+a estrutura App Router existente em `src/app`. O conteúdo foi fornecido pelo
+titular em `pagep.tsx` e preservado integralmente, incluindo informações sobre
+WhatsApp/Meta, contato e a âncora `#exclusao`. A página não grava dados nem
+altera autenticação, permissões, RLS ou schema. A resolução de domínio existente
+continua aplicável. Deploy de produção concluído na Vercel; GET anônimo no
+domínio `www.gauchinhoconsorcios.com.br/privacidade` confirmou HTTP 200 e as
+onze seções da política em 19/10/2026. Publicação e evidências:
+`docs/relatorios-fases/PUBLICACAO-2026-10-19-PAGINA-PRIVACIDADE.md`.
+
 ### Módulo Operacional — Robôs e Automações no ERP das Franquias (19/10/2026)
 
 Implementado o módulo canônico `/erp/robos` dedicado às automações inteligentes da franquia:
@@ -3745,3 +3757,26 @@ Implantada a infraestrutura completa de Robôs de Importação e Automação Mul
 
 Relatório de Fase:
 `docs/relatorios-fases/FASE-308-CENTRAL-ROBOS-IMPORTACAO-RACON-NEWCON.md`.
+
+### Fase 320 (19/10/2026) — Robô de Boletos da Franquia, Storage e Automação de WhatsApp
+
+Implantada a automação completa de download e armazenamento de boletos bancários das cotas ativas da franquia no Newcon Web, com persistência em Supabase Storage e integração direta na tela de Vendas & Cotas do ERP:
+1. **Banco de Dados & Storage (Migration 320):**
+   - Criação do bucket Supabase Storage `boletos-cotas` com políticas RLS para leitura pública/controlada de arquivos PDF gerados.
+   - Enriquecimento da tabela `public.vendas_boletos_envios` com colunas de arquivo (`arquivo_storage_path`, `arquivo_url`), chaves Pix (`qr_code_pix`, `linha_digitavel`) e dados financeiros (`valor`, `vencimento`, `numero_grupo`, `numero_cota`, `origem`).
+   - Criação da tabela canônica pública `public.cotas_boletos` com chave única por `(empresa_id, numero_grupo, numero_cota, competencia)` para registro histórico de boletos mês a mês por cota.
+2. **Serviço de Automação Headless Newcon (`scripts/robo-boletos-service.mjs`):**
+   - Entrada automatizada via SSO Microsoft / Portal Randon e acesso à Administradora Randon em `frmMain.aspx`.
+   - Clique no ícone de dois bonequinhos (Consorciado / Atendimento) direcionando para `CONAT/frmConAtSrcConsorciado.aspx`.
+   - Itera cota a cota: preenchimento de `Grupo` e `Cota`, clique em `[Localizar]`, navegação para `CONAT/frmConAtCnsAtendimento.aspx`, clique em "Emissão de Cobrança" no menu Operações, seleção da pendência e clique em `[Emitir Cobrança]`.
+   - Captura do PDF / HTML do boleto e extração inteligente da chave Pix Copia e Cola (padrão EMV `000201...6304XXXX` aceitando espaços em nomes/cidades), linha digitável, vencimento e valor.
+   - Upload do PDF no bucket `boletos-cotas` e persistência nas tabelas `cotas_boletos` e `vendas_boletos_envios`.
+3. **Interface ERP em Vendas & Cotas (`/erp/vendas` — Aba Boletos):**
+   - Botão direto para download do PDF gravado no Storage.
+   - Botão "Copiar Pix" com 1 clique para copiar o Pix Copia e Cola para a área de transferência.
+   - Botão "QR Code" que abre modal interativo renderizando o QR Code visual (`react-qr-code`) e a chave em texto.
+   - Disparo via WhatsApp contendo mensagem formatada com a chave Pix Copia e Cola e o link direto para download do PDF.
+
+Relatório de Fase:
+`docs/relatorios-fases/RELATORIO-2026-10-19-ROBO-BOLETOS-STORAGE-ERP.md`.
+

@@ -23,7 +23,7 @@ export default async function AdminVendasPage() {
 
   const admin = createAdminClient({ noStore: true });
 
-  const [vendasRes, cotasRes, participantesRes, vinculosRes, modalidadesRes, regrasPartRes, regrasFranqRes, prevFranqRes, prevPartRes, metasRes, boletosEnviosRes] = await Promise.all([
+  const [vendasRes, cotasRes, participantesRes, vinculosRes, modalidadesRes, regrasPartRes, regrasFranqRes, prevFranqRes, prevPartRes, metasRes, boletosEnviosRes, cotasBoletosRes] = await Promise.all([
     admin
       .from("vendas")
       .select(`
@@ -70,6 +70,7 @@ export default async function AdminVendasPage() {
     admin.from("comissao_previsoes_participantes").select("venda_id,valor_previsto").eq("empresa_id",empresaId).neq("status","cancelada"),
     admin.from("metas_comerciais").select("id,indicador,valor_meta,data_inicio,data_fim,alvo_tipo").eq("empresa_id",empresaId).eq("indicador","valor_credito_vendido").eq("alvo_tipo","empresa"),
     admin.from("vendas_boletos_envios").select("*").eq("empresa_id", empresaId).order("created_at", { ascending: false }),
+    admin.from("cotas_boletos").select("*").eq("empresa_id", empresaId).order("created_at", { ascending: false }),
   ]);
 
   const participantes = (participantesRes.data ?? []) as ParticipanteSimples[];
@@ -199,6 +200,52 @@ export default async function AdminVendasPage() {
     }
   });
 
+  // Consolidação de boletos das tabelas vendas_boletos_envios e cotas_boletos
+  const boletosMap = new Map<string, any>();
+  for (const b of (boletosEnviosRes?.data ?? [])) {
+    const key = `${b.venda_id}_${b.cota_id || "sem-cota"}_${b.competencia}`;
+    boletosMap.set(key, { ...b });
+  }
+
+  for (const cb of (cotasBoletosRes?.data ?? [])) {
+    const compIso = cb.competencia?.includes("/")
+      ? `${cb.competencia.split("/")[1]}-${cb.competencia.split("/")[0]}`
+      : cb.competencia;
+
+    const key = `${cb.venda_id}_${cb.cota_definitiva_id || "sem-cota"}_${compIso}`;
+    const existing = boletosMap.get(key);
+    if (existing) {
+      if (!existing.arquivo_url && cb.arquivo_url) existing.arquivo_url = cb.arquivo_url;
+      if (!existing.qr_code_pix && cb.qr_code_pix) existing.qr_code_pix = cb.qr_code_pix;
+      if (!existing.linha_digitavel && cb.linha_digitavel) existing.linha_digitavel = cb.linha_digitavel;
+      if (!existing.arquivo_storage_path && cb.arquivo_storage_path) existing.arquivo_storage_path = cb.arquivo_storage_path;
+    } else {
+      boletosMap.set(key, {
+        id: cb.id,
+        empresa_id: cb.empresa_id,
+        venda_id: cb.venda_id,
+        cota_id: cb.cota_definitiva_id,
+        competencia: compIso,
+        status_boleto: cb.status === "ENVIADO_WHATSAPP" ? "enviado" : "baixado",
+        baixado_em: cb.created_at,
+        baixado_por_nome: "Robô Newcon Franquia",
+        arquivo_storage_path: cb.arquivo_storage_path,
+        arquivo_url: cb.arquivo_url,
+        qr_code_pix: cb.qr_code_pix,
+        linha_digitavel: cb.linha_digitavel,
+        valor: cb.valor,
+        vencimento: cb.vencimento,
+        numero_grupo: cb.numero_grupo,
+        numero_cota: cb.numero_cota,
+        origem: cb.origem,
+        canal: "whatsapp",
+        created_at: cb.created_at,
+      });
+    }
+  }
+
+  const boletosConsolidados = Array.from(boletosMap.values());
+
   return (
     <main className="p-6">
       <ErpVendasHubView
@@ -212,7 +259,7 @@ export default async function AdminVendasPage() {
         empresaNome={empresaNome}
         isMaster={isMaster}
         metas={(metasRes.data ?? []).map((meta) => ({ valor: Number(meta.valor_meta), inicio: meta.data_inicio, fim: meta.data_fim }))}
-        boletosEnvios={(boletosEnviosRes?.data ?? []) as any}
+        boletosEnvios={boletosConsolidados as any}
       />
     </main>
   );

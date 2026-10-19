@@ -346,6 +346,21 @@ export async function registrarStatusBoletoAction(formData: FormData) {
     }
   }
 
+  // Sincroniza status em cotas_boletos se existir
+  if (acao === "ENVIAR") {
+    await admin
+      .from("cotas_boletos")
+      .update({
+        status: "ENVIADO_WHATSAPP",
+        enviado_em: agora,
+        enviado_por_id: usuario?.id || null,
+        enviado_por_nome: usuarioNome,
+        updated_at: agora,
+      })
+      .eq("empresa_id", empresaAtiva.id)
+      .eq("venda_id", vendaId);
+  }
+
   revalidatePath("/erp/vendas");
   revalidatePath("/admin/vendas");
   return { ok: true };

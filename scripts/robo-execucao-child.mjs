@@ -6,6 +6,7 @@ import path from 'node:path'
 import fs from 'node:fs'
 import crypto from 'node:crypto'
 import { executarRobo3Simulador } from './robo-simulador-service.mjs'
+import { executarRoboBoletos } from './robo-boletos-service.mjs'
 
 // Carrega .env.local
 const envCandidates = [
@@ -482,12 +483,29 @@ async function run() {
         await activePage.screenshot({ path: path.join(screenshotsDir, `racon-04b-pos-selecionar-empresa-${Date.now()}.png`) }).catch(() => {})
       }
 
-      // Identifica se a execução é do Robô 2 (Contemplações) ou Robô 1 (Grupos & Vagas)
+      // Identifica se a execução é do Robô de Boletos, Robô 2 (Contemplações) ou Robô 1 (Grupos & Vagas)
+      const isBoletos = 
+        config.configuracao_tarefas?.tipo_rotina === 'FRANQUIA_DOWNLOAD_BOLETOS' ||
+        (config.nome && config.nome.toLowerCase().includes('boleto'))
+
       const isContemplacao = 
         config.id === '06619f9e-1688-49f2-9d7b-f0429906476a' || 
         (config.nome && config.nome.toLowerCase().includes('contempla'))
 
-      if (!isContemplacao) {
+      if (isBoletos) {
+        log('--- EXECUTANDO ROBÔ DE BOLETOS DA FRANQUIA (DOWNLOAD & STORAGE) ---')
+        const bolRes = await executarRoboBoletos({
+          page: activePage,
+          context,
+          config,
+          admin,
+          log,
+          screenshotsDir,
+          downloadDir,
+        })
+        totalGruposAtualizados = bolRes.totalBoletosArmazenados
+        totalCotadasContempladas = bolRes.cotasProcessadas
+      } else if (!isContemplacao) {
         // =========================================================================
         // ROBÔ 1: ATUALIZAÇÃO DE GRUPOS, VAGAS E DATA DE INÍCIO
         // Menu: Venda -> Venda de Proposta -> Reserva de Cotas
