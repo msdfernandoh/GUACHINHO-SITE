@@ -347,6 +347,8 @@ export function ErpLancesView({
                               >
                                 {cota.diasParaVencimento < 0
                                   ? "Vencido"
+                                  : est?.repetirSeisAssembleias
+                                  ? `Válido 6 meses (${cota.diasParaVencimento}d)`
                                   : `Renovar em ${cota.diasParaVencimento}d`}
                               </span>
                             )}

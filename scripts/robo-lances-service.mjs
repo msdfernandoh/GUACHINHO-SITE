@@ -139,19 +139,55 @@ export async function executarRoboLances({
     .order('numero_grupo', { ascending: true })
 
   if (cotasDb && cotasDb.length > 0) {
-    listaCotas = cotasDb.map((c) => ({
-      cota_definitiva_id: c.id,
-      venda_id: c.venda_id || c.venda?.id,
-      empresa_id: c.empresa_id,
-      numero_grupo: String(c.numero_grupo || '').trim(),
-      numero_cota: String(c.numero_cota || '').trim(),
-      cliente_nome: c.venda?.cliente_nome || 'Consorciado',
-      cliente_cpf_cnpj: c.venda?.cliente_cpf_cnpj || null,
-      cliente_telefone: c.venda?.cliente_telefone || null,
-      valor_credito: c.valor_credito,
-      parcela: c.parcela,
-      grupo_embutido_pct: c.grupo?.percentual_lance_embutido || 25,
-    }))
+    // 1.1. Verifica cotas que já possuem lance ativo com repetição por 6 assembleias
+    const isManualTest = Boolean(config.filtro_grupo || config.grupo_teste || config.filtro_cotas || config.cotas_teste)
+    const cotasBloqueadas6Meses = new Set()
+
+    if (!isManualTest) {
+      const cotaIds = cotasDb.map(c => c.id)
+      const { data: estsAtivas } = await admin
+        .from('cota_estrategias_lance')
+        .select('cota_definitiva_id, repetir_seis_assembleias, ultimo_lance_ofertado_em, confirmado')
+        .in('cota_definitiva_id', cotaIds)
+        .eq('confirmado', true)
+        .eq('repetir_seis_assembleias', true)
+
+      if (estsAtivas && estsAtivas.length > 0) {
+        const agoraMs = Date.now()
+        for (const est of estsAtivas) {
+          if (est.ultimo_lance_ofertado_em) {
+            const dataOfertadaMs = new Date(est.ultimo_lance_ofertado_em).getTime()
+            const diasDecorridos = Math.floor((agoraMs - dataOfertadaMs) / (1000 * 60 * 60 * 24))
+            // 6 meses / 6 assembleias = aproximadamente 170 dias
+            if (diasDecorridos < 170) {
+              cotasBloqueadas6Meses.add(est.cota_definitiva_id)
+            }
+          }
+        }
+      }
+    }
+
+    listaCotas = cotasDb
+      .filter(c => {
+        if (cotasBloqueadas6Meses.has(c.id)) {
+          log(`[LANCE ATIVO 6 MESES] Cota Grupo ${c.numero_grupo} / Cota ${c.numero_cota} possui lance confirmado com repetição por 6 assembleias ativa. Próximo lance em 6 meses. Ignorando na rodada mensal.`)
+          return false
+        }
+        return true
+      })
+      .map((c) => ({
+        cota_definitiva_id: c.id,
+        venda_id: c.venda_id || c.venda?.id,
+        empresa_id: c.empresa_id,
+        numero_grupo: String(c.numero_grupo || '').trim(),
+        numero_cota: String(c.numero_cota || '').trim(),
+        cliente_nome: c.venda?.cliente_nome || 'Consorciado',
+        cliente_cpf_cnpj: c.venda?.cliente_cpf_cnpj || null,
+        cliente_telefone: c.venda?.cliente_telefone || null,
+        valor_credito: c.valor_credito,
+        parcela: c.parcela,
+        grupo_embutido_pct: c.grupo?.percentual_lance_embutido || 25,
+      }))
   } else {
     // Fallback: cotas de vendas confirmadas não contempladas
     const { data: vendasDb } = await admin
@@ -877,10 +913,16 @@ export async function executarRoboLances({
           lance_embutido_percentual: embutidoMaximoPct,
           parcela_reduzida_ativa: true,
           repetir_seis_assembleias: true,
+          data_lance: new Date().toISOString().split('T')[0],
+          data_vencimento: (() => {
+            const d = new Date()
+            d.setMonth(d.getMonth() + 6)
+            return d.toISOString().split('T')[0]
+          })(),
           confirmado: true,
           confirmado_em: new Date().toISOString(),
           confirmado_por_nome: 'Robô Newcon Franquia',
-          confirmado_observacao: `Ofertado via Robô Newcon. Protocolo Livre: ${protocoloLivre || 'N/A'}${protocoloFixo ? ` | Fixo: ${protocoloFixo}` : ''}${protocoloSegundoFixo ? ` | 2º Fixo: ${protocoloSegundoFixo}` : ''}`,
+          confirmado_observacao: `Ofertado via Robô Newcon. Protocolo Livre: ${protocoloLivre || 'N/A'}${protocoloFixo ? ` | Fixo: ${protocoloFixo}` : ''}${protocoloSegundoFixo ? ` | 2º Fixo: ${protocoloSegundoFixo}` : ''} (Repetir por 6 assembleias ativo)`,
           protocolo_lance_livre: protocoloLivre,
           protocolo_lance_fixo: protocoloFixo,
           protocolo_segundo_lance_fixo: protocoloSegundoFixo,

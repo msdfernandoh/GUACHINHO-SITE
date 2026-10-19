@@ -247,23 +247,25 @@ export async function fetchCotasComLancesOperacional(filters?: {
       let diasParaVencimento: number | null = null;
 
       if (est && est.ativa !== false) {
-        if (est.confirmado) {
-          situacao = "CONFIRMADO";
-        } else if (est.data_vencimento) {
+        if (est.data_vencimento) {
           try {
             const [y, m, d] = String(est.data_vencimento).split("-").map(Number);
             const dataVenc = new Date(y, m - 1, d);
             const diffTime = dataVenc.getTime() - hoje.getTime();
             diasParaVencimento = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-            if (diasParaVencimento < 0) {
-              situacao = "VENCIDO";
-            } else if (diasParaVencimento <= 30) {
-              situacao = "VENCENDO";
-            } else {
-              situacao = "ATIVO";
-            }
           } catch {
+            diasParaVencimento = null;
+          }
+        }
+
+        if (est.confirmado) {
+          situacao = "CONFIRMADO";
+        } else if (diasParaVencimento !== null) {
+          if (diasParaVencimento < 0) {
+            situacao = "VENCIDO";
+          } else if (diasParaVencimento <= 30) {
+            situacao = "VENCENDO";
+          } else {
             situacao = "ATIVO";
           }
         } else {
