@@ -104,7 +104,7 @@ export function GrupoRow({
               className={cn(
                 "mt-1 inline-block rounded px-1.5 py-px text-[9px] font-semibold",
                 grupo.vagas_disponiveis > 0
-                  ? "border border-emerald-500/30 bg-emerald-500/15 text-emerald-300"
+                  ? "border border-[#1e3a5f] bg-[#0c2340] text-white"
                   : "border border-red-500/30 bg-red-500/15 text-red-300",
               )}
             >

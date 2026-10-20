@@ -64,7 +64,7 @@ export function GrupoMobileCard({ grupo, cotas, modalidades, config, onChange }:
                 className={cn(
                   "inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold",
                   grupo.vagas_disponiveis > 0
-                    ? "border border-emerald-500/30 bg-emerald-500/15 text-emerald-300"
+                    ? "border border-[#1e3a5f] bg-[#0c2340] text-white"
                     : "border border-red-500/30 bg-red-500/15 text-red-300",
                 )}
               >
