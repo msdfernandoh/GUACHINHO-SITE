@@ -114,6 +114,7 @@ export default async function EditarEventoPage({ params }: { params: Promise<{ i
               slug: evento.slug,
               checkinInterativoAtivo: evento.checkin_interativo_ativo,
               publicado: evento.publicado,
+              tipoCheckin: evento.tipo_checkin,
             }}
             qrVinculo={
               qrVinculo

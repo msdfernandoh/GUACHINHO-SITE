@@ -12,6 +12,7 @@ type EventoItem = {
   publicado: boolean;
   recorrencia_ativa?: boolean;
   checkin_interativo_ativo?: boolean;
+  tipo_checkin?: string | null;
 };
 
 type Props = {
@@ -72,6 +73,7 @@ export function EventoAcoesMenu({ evento, qrVinculo = null }: Props) {
           slug: evento.slug,
           checkinInterativoAtivo: evento.checkin_interativo_ativo,
           publicado: evento.publicado,
+          tipoCheckin: evento.tipo_checkin,
         }}
         qrVinculo={qrVinculo}
         label="QR Check-in"
