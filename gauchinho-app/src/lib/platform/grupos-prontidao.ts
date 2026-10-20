@@ -159,6 +159,7 @@ export type GrupoRecord = {
   assembleia_limite_parcela_reduzida?: number | null;
   origem_governanca?: string;
   status_governanca?: string;
+  visivel_franquia?: boolean;
   observacoes?: string | null;
     updated_at?: string;
     credito_reajustado_ate_meses?: number | null;

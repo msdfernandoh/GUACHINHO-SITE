@@ -1,5 +1,13 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
+### Atualização 323 — Visibilidade de Grupos por Franquia e Reajuste em Lote (20/10/2026)
+
+Implementada a separação e controle em lote de grupos do catálogo entre o SaaS e as Franquias:
+1. Controle de Visibilidade: Coluna `visivel_franquia` em `grupos_consorcio` e sincronização N:N com `empresa_grupos_config`. Grupos não enviados ou marcados como ausentes pelo SaaS deixam de ser listados no ERP da franquia (`/erp/grupos`), eliminando a exibição de grupos históricos/desativados sem cotas.
+2. Ações em Lote no SaaS (`/platform/grupos`): Seleção múltipla via checkboxes na tabela, permitindo em um único clique "Não Enviar / Deixar Ausente da Franquia", "Liberar para Franquia" e "Marcar Valor / Reajuste Atualizado".
+3. Atualização Automática de Valores e Prontidão: Grupos com cotas sincronizadas passam a ter seu reajuste anual e valor marcados como atualizados no ano corrente (`ano_ultimo_reajuste = 2026`), com amarração das modalidades padrão e tipo oficial, atingindo 100% de prontidão ("Disponível para Venda").
+4. Migration 323 aplicada com sucesso no Supabase e homologada. Relatório em `docs/relatorios-fases/RELATORIO-2026-10-20-CATALOGO-GRUPOS-VISIBILIDADE-FRANQUIA-E-REAJUSTE.md`.
+
 ### Hotfix 322 — Repasse em competência diferente e parcelas de cotas existentes (19/10/2026)
 
 Importação e releitura identificam parcela única por empresa, administradora,

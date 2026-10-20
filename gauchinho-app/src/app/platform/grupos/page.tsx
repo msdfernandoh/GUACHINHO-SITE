@@ -20,7 +20,7 @@ export default async function PlatformGruposListingPage({
   let query = db
     .from("grupos_consorcio")
     .select(
-      "id,codigo_grupo,administradora_id,tipo_administradora_id,modalidade,status,ativo,prazo_total,data_primeira_assembleia,parcelas_realizadas,prazo_restante,taxa_administrativa_percentual,fundo_reserva_percentual,seguro_percentual,capacidade_total,vagas_disponiveis,vagas_atualizado_em,dados_estatisticos,origem_governanca,status_governanca,updated_at,tipo_reajuste_anual,reajuste_anual_percentual,reajuste_anual_indice,ano_ultimo_reajuste,data_ultimo_reajuste,credito_reajustado_ate_meses,administradora:administradoras(id,nome),tipo:administradora_tipos(id,nome,codigo),modalidades:grupos_modalidades_disponiveis(id,administradora_modalidade_id,ativo,modalidade:administradora_modalidades_comissao(id,nome,codigo)),produtos:grupos_cotas(id,valor_credito,status,ativo)",
+      "id,codigo_grupo,administradora_id,tipo_administradora_id,modalidade,status,ativo,prazo_total,data_primeira_assembleia,parcelas_realizadas,prazo_restante,taxa_administrativa_percentual,fundo_reserva_percentual,seguro_percentual,capacidade_total,vagas_disponiveis,vagas_atualizado_em,dados_estatisticos,origem_governanca,status_governanca,updated_at,tipo_reajuste_anual,reajuste_anual_percentual,reajuste_anual_indice,ano_ultimo_reajuste,data_ultimo_reajuste,credito_reajustado_ate_meses,visivel_franquia,administradora:administradoras(id,nome),tipo:administradora_tipos(id,nome,codigo),modalidades:grupos_modalidades_disponiveis(id,administradora_modalidade_id,ativo,modalidade:administradora_modalidades_comissao(id,nome,codigo)),produtos:grupos_cotas(id,valor_credito,status,ativo)",
     )
     .order("codigo_grupo");
 

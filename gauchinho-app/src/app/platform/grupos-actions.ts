@@ -543,3 +543,101 @@ export async function atualizarVagasGruposLotePlatformAction(
     };
   }
 }
+
+
+export async function setVisibilidadeFranquiaLotePlatformAction(
+  grupoIds: string[],
+  visivel: boolean,
+): Promise<{ ok: true; atualizados: number } | { ok: false; error: string }> {
+  try {
+    if (!(await isPlatformSuperadmin())) {
+      return { ok: false, error: "Somente Platform Superadmin pode alterar visibilidade na franquia." };
+    }
+    const cleanIds = (grupoIds || []).map((id) => String(id).trim()).filter(Boolean);
+    if (!cleanIds.length) {
+      return { ok: false, error: "Nenhum grupo selecionado." };
+    }
+
+    const db = await createClient();
+    const { data, error } = await db.rpc("rpc_platform_set_grupos_visibilidade_franquia", {
+      p_grupo_ids: cleanIds,
+      p_visivel: visivel,
+    });
+
+    if (error) {
+      const agora = new Date().toISOString();
+      const { error: updErr } = await db
+        .from("grupos_consorcio")
+        .update({ visivel_franquia: visivel, updated_at: agora })
+        .in("id", cleanIds);
+      if (updErr) throw new Error(updErr.message);
+    }
+
+    revalidatePath("/platform/grupos");
+    revalidatePath("/admin/grupos");
+    revalidatePath("/erp/grupos");
+    revalidatePath("/grupos");
+    for (const gid of cleanIds) {
+      revalidatePath(`/platform/grupos/${gid}`);
+    }
+
+    const count = Number((data as { total_atualizados?: number } | null)?.total_atualizados ?? cleanIds.length);
+    return { ok: true, atualizados: count };
+  } catch (error) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : "Falha ao atualizar visibilidade na franquia.",
+    };
+  }
+}
+
+export async function marcarReajusteLotePlatformAction(
+  grupoIds: string[],
+  ano?: number,
+): Promise<{ ok: true; atualizados: number } | { ok: false; error: string }> {
+  try {
+    if (!(await isPlatformSuperadmin())) {
+      return { ok: false, error: "Somente Platform Superadmin pode marcar reajustes em lote." };
+    }
+    const cleanIds = (grupoIds || []).map((id) => String(id).trim()).filter(Boolean);
+    if (!cleanIds.length) {
+      return { ok: false, error: "Nenhum grupo selecionado." };
+    }
+
+    const targetYear = ano ?? new Date().getFullYear();
+    const db = await createClient();
+    const { data, error } = await db.rpc("rpc_platform_marcar_reajuste_lote", {
+      p_grupo_ids: cleanIds,
+      p_ano: targetYear,
+    });
+
+    if (error) {
+      const agora = new Date().toISOString();
+      const { error: updErr } = await db
+        .from("grupos_consorcio")
+        .update({
+          ano_ultimo_reajuste: targetYear,
+          data_ultimo_reajuste: agora,
+          updated_at: agora,
+        })
+        .in("id", cleanIds);
+      if (updErr) throw new Error(updErr.message);
+    }
+
+    revalidatePath("/platform/grupos");
+    revalidatePath("/admin/grupos");
+    revalidatePath("/erp/grupos");
+    revalidatePath("/grupos");
+    for (const gid of cleanIds) {
+      revalidatePath(`/platform/grupos/${gid}`);
+    }
+
+    const count = Number((data as { total_atualizados?: number } | null)?.total_atualizados ?? cleanIds.length);
+    return { ok: true, atualizados: count };
+  } catch (error) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : "Falha ao marcar reajuste dos grupos em lote.",
+    };
+  }
+}

@@ -22,8 +22,9 @@ export default async function ErpGruposPage({
   let q = db
     .from("grupos_consorcio")
     .select(
-      "id,codigo_grupo,status,ativo,prazo_total,vagas_disponiveis,data_primeira_assembleia,origem_governanca,status_governanca,empresa_origem_id,administradora:administradoras(nome),tipo:administradora_tipos(nome),modalidade_comissao:administradora_modalidades_comissao(nome),cotas:grupos_cotas(id,valor_credito,ativo,status)"
+      "id,codigo_grupo,status,ativo,prazo_total,vagas_disponiveis,data_primeira_assembleia,origem_governanca,status_governanca,empresa_origem_id,visivel_franquia,administradora:administradoras(nome),tipo:administradora_tipos(nome),modalidade_comissao:administradora_modalidades_comissao(nome),cotas:grupos_cotas(id,valor_credito,ativo,status)"
     )
+    .neq("visivel_franquia", false)
     .in("administradora_id", administradoraIds.length ? administradoraIds : ["00000000-0000-0000-0000-000000000000"])
     .order("codigo_grupo");
 
@@ -33,9 +34,10 @@ export default async function ErpGruposPage({
   const { data: rawData, error } = await q;
   const data = (rawData ?? []).filter(
     (g) =>
-      g.origem_governanca !== "LOCAL" ||
+      (g as Record<string, unknown>).visivel_franquia !== false &&
+      (g.origem_governanca !== "LOCAL" ||
       g.empresa_origem_id === empresaAtiva?.id ||
-      !g.empresa_origem_id
+      !g.empresa_origem_id)
   );
   const tabelas = await listarTabelasGrupos(data.map((grupo) => grupo.id));
 

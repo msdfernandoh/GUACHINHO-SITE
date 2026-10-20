@@ -168,16 +168,27 @@ export async function executarRobo3Simulador({ page, config, admin, log, screens
 
           // Localiza ou cria o grupo no banco Supabase
           let dbGrupo = mapDbGrupos.get(numGrupo)
+          const isImovelProd = produto.toLowerCase().includes('imóv') || produto.toLowerCase().includes('imov')
+          const tipoIdProd = isImovelProd
+            ? '57295700-5e68-498c-8882-2ef4ccc8c08d'
+            : '877a793f-21b3-4ea8-b3c3-b1e56dc216c9'
+
           if (!dbGrupo) {
             log(`Grupo ${numGrupo} não encontrado no banco. Criando novo grupo global...`)
             const { data: newGrupo, error: errNewG } = await admin
               .from('grupos_consorcio')
               .insert({
-                empresa_origem_id: config.empresa_id,
+                empresa_origem_id: null,
                 administradora_id: raconAdminId,
                 codigo_grupo: `${numGrupo} ${produto.toUpperCase()}`,
-                modalidade: produto.toLowerCase().includes('imóv') || produto.toLowerCase().includes('imov') ? 'Imóvel' : 'Veículos',
+                modalidade: isImovelProd ? 'Imóvel' : 'Veículos',
+                tipo_administradora_id: tipoIdProd,
                 origem_governanca: 'GLOBAL',
+                status_governanca: 'GLOBAL',
+                visivel_franquia: true,
+                ano_ultimo_reajuste: new Date().getFullYear(),
+                data_ultimo_reajuste: new Date().toISOString(),
+                status: 'Disponível',
                 ativo: true,
               })
               .select('id, codigo_grupo, modalidade')
@@ -299,7 +310,15 @@ export async function executarRobo3Simulador({ page, config, admin, log, screens
           }
 
           // Atualiza dados técnicos no grupos_consorcio se coletados
-          const updateGrupoPayload = {}
+          const updateGrupoPayload = {
+            tipo_administradora_id: tipoIdProd,
+            ano_ultimo_reajuste: new Date().getFullYear(),
+            data_ultimo_reajuste: new Date().toISOString(),
+            visivel_franquia: true,
+            status: 'Disponível',
+            ativo: true,
+            updated_at: new Date().toISOString(),
+          }
           const firstCota = porCredito.values().next().value
           if (firstCota?.taxaAdm) updateGrupoPayload.taxa_administrativa_percentual = firstCota.taxaAdm
           if (firstCota?.fundoReserva) updateGrupoPayload.fundo_reserva_percentual = firstCota.fundoReserva
@@ -331,6 +350,21 @@ export async function executarRobo3Simulador({ page, config, admin, log, screens
 
           if (Object.keys(updateGrupoPayload).length > 0) {
             await admin.from('grupos_consorcio').update(updateGrupoPayload).eq('id', dbGrupo.id)
+          }
+
+          // Garante modalidades de comissão ativas no grupo
+          const modalidadesRacon = [
+            '05b2d9fd-d552-47b5-b5c7-7e99e6cb773e', // INTEGRAL
+            '84a6a781-ba3a-49cd-ac41-857ceaa63478', // REDUZIDA_ABAIXO_59
+            '0e8c6d88-9e17-4be5-b41c-a6e6826751ae', // REDUZIDA_60_99
+          ]
+          for (const mId of modalidadesRacon) {
+            await admin.from('grupos_modalidades_disponiveis').upsert({
+              grupo_id: dbGrupo.id,
+              administradora_modalidade_id: mId,
+              ativo: true,
+              configuracao: { modo_reduzido: 'padrao', origem: 'ADMINISTRADORA_PADRAO' },
+            }, { onConflict: 'grupo_id,administradora_modalidade_id' })
           }
 
           // Grava cada cota no Supabase public.grupos_cotas
