@@ -1,5 +1,13 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
+### Atualização 324 — Parcela Reduzida 50% e 60%, Cotas Oficiais e Scroll no Robô Simulador (20/10/2026)
+
+Implementada a flexibilização e integridade comercial completa das parcelas reduzidas e cotas do catálogo:
+1. **Suporte a Parcela Reduzida 50% e 60%:** Grupos ativos com parcelas reduzidas agora suportam nativamente as opções de 50% e 60% da integral. A linha da tabela pública (`/grupos`) oferece seletor instantâneo na coluna de 1ª parcela, e o painel de ajustes exibe menu direto e discriminado com os centavos exatos de cada modalidade.
+2. **Homologação das Tabelas Oficiais:** Grupos 5488 e 1563 atualizados com base nos PDFs oficiais da Racon. Inativadas cotas residuais de números redondos (seed de junho/2026) e sincronizadas as grades completas (8 créditos distintos em Prorrogada e Diluída para o 5488; 6 créditos oficiais para o 1563).
+3. **Correção do Robô Simulador:** Adicionada rotina de scroll suave para carregar 100% dos cards de cotas via lazy-load no simulador Newcon, extração dinâmica de múltiplos percentuais reduzidos (`tem_parcela_reduzida` e `percentuais_parcela_reduzida`) e inativação automática de cotas obsoletas.
+4. **Backfill em Lote no Supabase:** 20 grupos ativos atualizados com `percentuais_parcela_reduzida = [50, 60]` e 256 cotas ativas populadas com `parcela_reduzida_50` e `parcela_reduzida_60`. Relatório em `docs/relatorios-fases/RELATORIO-PARCELAS-REDUZIDAS-COTAS-OFICIAIS-E-ROBO.md`.
+
 ### Atualização 323 — Visibilidade de Grupos por Franquia e Reajuste em Lote (20/10/2026)
 
 Implementada a separação e controle em lote de grupos do catálogo entre o SaaS e as Franquias:
