@@ -22,6 +22,7 @@ type Props = {
   items: QrCodeUnicoAdmin[];
   eventos: { id: string; nome: string; slug: string; ativo: boolean }[];
   historicoSite?: QrCodeDestinoHistoricoRow[];
+  eventoExternoAtivo?: { id: string; nome: string; slug: string } | null;
   publicBaseUrl: string;
 };
 
@@ -29,24 +30,74 @@ export function QrCodesAdminClient({
   items,
   eventos,
   historicoSite = [],
+  eventoExternoAtivo,
   publicBaseUrl,
 }: Props) {
   const [pending, startTransition] = useTransition();
   const base = publicBaseUrl.replace(/\/$/, "");
 
-  // Localizar o QR Institucional (slug 'site')
+  // Localizar o QR Institucional (slug 'site') e QR Fixo Externo ('externo')
   const siteQr = items.find((q) => q.slug === "site");
-  const outrosQrs = items.filter((q) => q.slug !== "site");
+  const externoQr = items.find((q) => q.slug === "externo");
+  const outrosQrs = items.filter((q) => q.slug !== "site" && q.slug !== "externo");
 
   // Estado para o seletor de destino do QR Institucional
   const [tipoDestino, setTipoDestino] = useState<QrCodeTipoDestino>(
     siteQr?.tipo_destino || "site"
   );
   const [copied, setCopied] = useState(false);
+  const [copiedExterno, setCopiedExterno] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
 
   const siteSvgId = `qr-site-svg-${useId().replace(/:/g, "")}`;
   const siteUrl = `${base}/qr/site`;
+
+  const externoSvgId = `qr-externo-svg-${useId().replace(/:/g, "")}`;
+  const externoUrl = `${base}/qr/externo`;
+
+  const copyExternoUrl = async () => {
+    try {
+      await navigator.clipboard.writeText(externoUrl);
+      setCopiedExterno(true);
+      setTimeout(() => setCopiedExterno(false), 2000);
+    } catch {
+      /* ignore */
+    }
+  };
+
+  const downloadExternoSvg = () => {
+    const svg = document.getElementById(externoSvgId)?.querySelector("svg");
+    if (!svg) return;
+    const blob = new Blob([svg.outerHTML], { type: "image/svg+xml" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "qr-trabalho-externo-panfletos.svg";
+    a.click();
+    URL.revokeObjectURL(a.href);
+  };
+
+  const downloadExternoPng1200 = () => {
+    const svg = document.getElementById(externoSvgId)?.querySelector("svg");
+    if (!svg) return;
+    const svgData = new XMLSerializer().serializeToString(svg);
+    const canvas = document.createElement("canvas");
+    canvas.width = 1200;
+    canvas.height = 1200;
+    const ctx = canvas.getContext("2d");
+    const img = new Image();
+    img.onload = () => {
+      if (!ctx) return;
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, 1200, 1200);
+      ctx.drawImage(img, 100, 100, 1000, 1000);
+      const pngUrl = canvas.toDataURL("image/png");
+      const a = document.createElement("a");
+      a.href = pngUrl;
+      a.download = "qr-trabalho-externo-panfletos-1200px.png";
+      a.click();
+    };
+    img.src = "data:image/svg+xml;base64," + btoa(unescape(encodeURIComponent(svgData)));
+  };
 
   const copySiteUrl = async () => {
     try {
@@ -315,7 +366,137 @@ export function QrCodesAdminClient({
         </section>
       )}
 
-      {/* 2. CRIAÇÃO DE QR CODES ESPECÍFICOS */}
+      {/* 2. SEÇÃO EM DESTAQUE: QR FIXO TRABALHO EXTERNO / PANFLETOS */}
+      {externoQr && (
+        <section className="relative overflow-hidden rounded-2xl border-2 border-emerald-500/40 bg-linear-to-br from-emerald-50/50 via-white to-emerald-50/20 p-6 shadow-sm dark:from-zinc-900/80 dark:via-zinc-900 dark:to-zinc-900/50 dark:border-emerald-500/30">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-emerald-200/60 pb-4 dark:border-zinc-800">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/15 px-3 py-1 text-xs font-semibold text-emerald-800 dark:text-emerald-300">
+                  <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                  QR Fixo Permanente — Panfletos & Empresas
+                </span>
+                <span className="text-xs text-zinc-500">Gráfica / Folhetos / Rua</span>
+              </div>
+              <h2 className="mt-2 text-xl font-bold text-zinc-900 dark:text-zinc-100">
+                {externoQr.nome}
+              </h2>
+              <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+                O QR Code impresso no panfleto <strong className="font-semibold text-zinc-800 dark:text-zinc-200">nunca muda</strong> ({externoUrl}). Ele aponta automaticamente para o evento de trabalho externo ativo.
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={copyExternoUrl}
+                className="font-mono text-xs"
+              >
+                {copiedExterno ? "✓ Copiado!" : "Copiar Link"}
+              </Button>
+              <a
+                href={externoUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center justify-center rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white shadow-xs hover:bg-emerald-700"
+              >
+                Testar Destino ↗
+              </a>
+            </div>
+          </div>
+
+          <div className="mt-6 grid gap-8 lg:grid-cols-12">
+            {/* Bloco Visual do QR */}
+            <div className="flex flex-col items-center justify-center rounded-xl border border-zinc-200 bg-white/80 p-6 text-center shadow-xs dark:border-zinc-800 dark:bg-zinc-950/60 lg:col-span-4">
+              <div id={externoSvgId} className="rounded-xl bg-white p-4 shadow-sm">
+                <QRCode value={externoUrl} size={220} level="H" />
+              </div>
+              <p className="mt-3 font-mono text-xs text-zinc-500">{externoUrl}</p>
+              <div className="mt-4 flex flex-wrap justify-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={downloadExternoPng1200}
+                  className="text-xs"
+                >
+                  Baixar PNG (1200px)
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={downloadExternoSvg}
+                  className="text-xs"
+                >
+                  Baixar SVG
+                </Button>
+              </div>
+            </div>
+
+            {/* Painel de Status do Evento Externo Vinculado */}
+            <div className="flex flex-col justify-between rounded-xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-950/40 lg:col-span-8">
+              <div className="space-y-4">
+                <h3 className="text-sm font-bold uppercase tracking-wider text-zinc-500">
+                  Status da Campanha Atual
+                </h3>
+
+                {eventoExternoAtivo ? (
+                  <div className="space-y-3 rounded-xl border border-emerald-500/30 bg-emerald-50/50 p-4 dark:border-emerald-500/20 dark:bg-emerald-950/20">
+                    <div className="flex items-center gap-2">
+                      <span className="flex h-3 w-3 rounded-full bg-emerald-500 animate-ping" />
+                      <span className="text-xs font-bold uppercase tracking-wider text-emerald-800 dark:text-emerald-300">
+                        Evento Externo Ativo Conectado
+                      </span>
+                    </div>
+                    <h4 className="text-lg font-bold text-zinc-900 dark:text-white">
+                      {eventoExternoAtivo.nome}
+                    </h4>
+                    <p className="text-xs text-zinc-600 dark:text-zinc-400">
+                      Todos os panfletos escaneados agora abrem diretamente este evento com as perguntas de Trabalho Externo e Simulação no WhatsApp.
+                    </p>
+                    <div className="pt-2">
+                      <Link
+                        href={`/admin/eventos/${eventoExternoAtivo.id}`}
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-600/30 bg-white px-3 py-1.5 text-xs font-bold text-emerald-700 shadow-xs hover:bg-emerald-50 dark:bg-zinc-900 dark:text-emerald-300"
+                      >
+                        Gerenciar este evento externo →
+                      </Link>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-3 rounded-xl border border-amber-500/30 bg-amber-50/50 p-4 dark:border-amber-500/20 dark:bg-amber-950/20">
+                    <div className="flex items-center gap-2">
+                      <span className="flex h-3 w-3 rounded-full bg-amber-500" />
+                      <span className="text-xs font-bold uppercase tracking-wider text-amber-800 dark:text-amber-300">
+                        Nenhum evento externo ativo no momento
+                      </span>
+                    </div>
+                    <p className="text-xs text-zinc-600 dark:text-zinc-400">
+                      Para que o QR Code fixo dos panfletos funcione, crie ou ative um evento marcando a opção <strong>&quot;Trabalho Externo / Panfletos&quot;</strong> no módulo de eventos.
+                    </p>
+                    <div className="pt-2">
+                      <Link
+                        href="/admin/eventos/novo"
+                        className="inline-flex items-center gap-1.5 rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-bold text-white shadow-xs hover:bg-amber-700"
+                      >
+                        + Criar Novo Evento Externo
+                      </Link>
+                    </div>
+                  </div>
+                )}
+
+                <div className="rounded-lg bg-zinc-50 p-3 text-xs leading-relaxed text-zinc-600 dark:bg-zinc-900/60 dark:text-zinc-400">
+                  💡 <strong>Dica para a Gráfica:</strong> Baixe o PNG em 1200px ou SVG acima e insira na arte do panfleto. Como o link é permanente, você pode imprimir milhares de cópias sem se preocupar em trocar a arte gráfica a cada mês ou ação.
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* 3. CRIAÇÃO DE QR CODES ESPECÍFICOS */}
       <form action={createQrCodeUnicoAction} className="max-w-xl space-y-3 rounded-xl border p-4 dark:border-zinc-800">
         <h2 className="text-lg font-semibold">Novo QR Code específico</h2>
         <p className="text-sm text-zinc-500">

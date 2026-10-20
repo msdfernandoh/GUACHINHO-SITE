@@ -138,11 +138,13 @@ export async function executarCheckinConversacional(params: {
   // 2.1 Verifica evento
   const { data: ev, error: evErr } = await admin
     .from("eventos")
-    .select("id, nome, slug, ativo, prefixo_codigo_sorteio")
+    .select("id, nome, slug, ativo, prefixo_codigo_sorteio, tipo_checkin")
     .eq("id", params.eventoId)
     .maybeSingle();
   if (evErr || !ev) return { ok: false, error: "Evento não encontrado ou indisponível." };
   if (!ev.ativo) return { ok: false, error: "Este evento não está mais ativo." };
+
+  const isExterno = ev.tipo_checkin === "externo";
 
   // 2.2 Duplicidade
   const check = await consultarCheckinExistente(params.eventoId, params.whatsapp);
@@ -180,13 +182,14 @@ export async function executarCheckinConversacional(params: {
   const upsertRes = await upsertLeadPorTelefone(admin, {
     nome,
     whatsapp: telFmt,
-    origem: "evento_checkin",
+    origem: isExterno ? "panfleto_externo" : "evento_checkin",
     origem_detalhe: ev.slug,
     evento_id: params.eventoId,
     evento_nome: ev.nome,
     status: "Novo",
     dados_simulacao: {
-      origem: "qr_checkin_conversacional",
+      origem: isExterno ? "qr_externo_panfleto" : "qr_checkin_conversacional",
+      tipo_checkin: isExterno ? "externo" : "evento",
       evento_id: params.eventoId,
       evento_nome: ev.nome,
       qualificacao,
@@ -221,7 +224,9 @@ export async function executarCheckinConversacional(params: {
       status: "presente",
       checkin_at: now,
       quantidade_vagas: 1,
-      observacao: "Check-in automático via QR Code interativo",
+      observacao: isExterno
+        ? "Cadastro via QR Code externo (panfleto)"
+        : "Check-in automático via QR Code interativo",
     })
     .select("id")
     .single();
@@ -243,7 +248,7 @@ export async function executarCheckinConversacional(params: {
     fase_cadastro: "completo",
     origem_cupom: "cadastro",
     qualificacao_respostas: qualificacao,
-    lgpd_termo_versao: params.lgpdVersao ?? "v1_checkin_evento",
+    lgpd_termo_versao: params.lgpdVersao ?? (isExterno ? "v1_panfleto_externo" : "v1_checkin_evento"),
     lgpd_consentimento_at: now,
     qr_code_unico_id: params.qrCodeUnicoId ?? null,
   };

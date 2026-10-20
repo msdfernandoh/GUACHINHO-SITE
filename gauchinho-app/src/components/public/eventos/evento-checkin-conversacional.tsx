@@ -11,11 +11,15 @@ import {
   OPCOES_CAPACIDADE_MENSAL,
   OPCOES_AVALIACAO_ENCONTRO,
   OPCOES_MOMENTO_OPORTUNIDADE,
+  OPCOES_INTERESSE_MATERIAL,
+  OPCOES_PROXIMO_PASSO_EXTERNO,
   OPCOES_MORADIA,
   OPCOES_VEICULO,
   type AvaliacaoEncontro,
   type CapacidadeMensalQualificacao,
   type MomentoOportunidade,
+  type InteresseMaterialQualificacao,
+  type ProximoPassoExternoQualificacao,
   type MoradiaQualificacao,
   type VeiculoQualificacao,
 } from "@/lib/eventos-sorteio/checkin-conversacional-types";
@@ -26,6 +30,7 @@ type EventoBrandProps = {
   id: string;
   nome: string;
   slug: string;
+  tipoCheckin?: "evento" | "externo" | null;
   corPrimaria?: string | null;
   corSecundaria?: string | null;
   logoPersonalizadoUrl?: string | null;
@@ -54,6 +59,11 @@ export function EventoCheckinConversacional({
   const [avaliacao, setAvaliacao] = useState<AvaliacaoEncontro | "">("");
   const [avaliacaoMelhoria, setAvaliacaoMelhoria] = useState("");
   const [momentoOportunidade, setMomentoOportunidade] = useState<MomentoOportunidade | "">("");
+  const [interesseMaterial, setInteresseMaterial] = useState<InteresseMaterialQualificacao | "">("");
+  const [proximoPasso, setProximoPasso] = useState<ProximoPassoExternoQualificacao | "">("");
+
+  const isExterno = evento.tipoCheckin === "externo";
+  const waFullPhone = "5566999126120";
 
   const [codigoSorte, setCodigoSorte] = useState<string>("");
   const [jaEstavaCadastrado, setJaEstavaCadastrado] = useState(false);
@@ -194,6 +204,59 @@ export function EventoCheckinConversacional({
     });
   };
 
+  // Pergunta 4 (Trabalho Externo): seleção com avanço de 1 toque
+  const handleSelecionarInteresseMaterial = (i: InteresseMaterialQualificacao) => {
+    setInteresseMaterial(i);
+    setErro(null);
+    setStep(7);
+  };
+
+  // Pergunta 5 (Trabalho Externo): seleção final e submissão atômica
+  const handleSelecionarProximoPassoExterno = (passo: ProximoPassoExternoQualificacao) => {
+    setProximoPasso(passo);
+    setErro(null);
+
+    if (!veiculo || !moradia || !capacidade || !interesseMaterial) {
+      setErro("Responda todas as perguntas para concluir.");
+      return;
+    }
+
+    if (isPreview) {
+      setCodigoSorte("DEMO-027");
+      setJaEstavaCadastrado(false);
+      setStep("final");
+      return;
+    }
+
+    startTransition(async () => {
+      const res = await submeterCheckinConversacionalAction({
+        eventoId: evento.id,
+        nome: nome.trim(),
+        whatsapp: formatWhatsappBrInput(whatsapp),
+        qualificacao: {
+          tipo_checkin: "externo",
+          veiculo,
+          moradia,
+          capacidade_mensal: capacidade,
+          interesse_material: interesseMaterial,
+          proximo_passo: passo,
+        },
+        qrCodeUnicoId,
+        lgpdVersao: "v1_panfleto_externo",
+      });
+
+      if (!res.ok) {
+        setErro(res.error);
+        return;
+      }
+
+      setCodigoSorte(res.codigo);
+      if (res.nome) setNome(res.nome);
+      setJaEstavaCadastrado(res.jaCadastrado);
+      setStep("final");
+    });
+  };
+
   return (
     <div
       className="mx-auto w-full max-w-md min-h-[75vh] flex flex-col justify-between rounded-3xl border border-zinc-200/80 bg-white/95 p-6 text-zinc-900 shadow-2xl backdrop-blur-md dark:border-zinc-800 dark:bg-zinc-950/90 dark:text-zinc-100 sm:p-8"
@@ -257,7 +320,9 @@ export function EventoCheckinConversacional({
                 Olá! Que bom ter você aqui.
               </h1>
               <p className="text-base text-zinc-600 dark:text-zinc-300">
-                Vamos confirmar sua presença para você concorrer aos sorteios de prêmios de hoje.
+                {isExterno
+                  ? "Vamos cadastrar seus dados para você concorrer aos sorteios de prêmios e conhecer oportunidades exclusivas."
+                  : "Vamos confirmar sua presença para você concorrer aos sorteios de prêmios de hoje."}
               </p>
               <p className="text-sm font-medium text-emerald-600 dark:text-emerald-400">
                 É bem rapidinho 😊
@@ -445,127 +510,217 @@ export function EventoCheckinConversacional({
           </div>
         ) : null}
 
-        {/* TELA 6 — Pergunta 4: Avaliação do encontro */}
+        {/* TELA 6 — Pergunta 4: Avaliação do encontro OU O que chamou atenção no material */}
         {step === 6 ? (
-          <div className="space-y-5">
-            <div className="space-y-2">
-              <span className="text-xs font-bold uppercase tracking-widest text-[var(--theme-primary)]">
-                Pergunta 4 de 5
-              </span>
-              <h1 className="text-xl font-bold tracking-tight text-zinc-900 dark:text-white sm:text-2xl">
-                Como você avalia o conteúdo e as oportunidades apresentadas no encontro?
-              </h1>
-            </div>
-
-            <div className="grid gap-2.5">
-              {OPCOES_AVALIACAO_ENCONTRO.map((opcao) => (
-                <button
-                  key={opcao.id}
-                  type="button"
-                  onClick={() => {
-                    setAvaliacao(opcao.id);
-                    if (opcao.id !== "pode_melhorar") setAvaliacaoMelhoria("");
-                    setErro(null);
-                  }}
-                  className={`min-h-14 w-full rounded-2xl border-2 px-4 py-3 text-left text-sm font-bold transition active:scale-[0.98] ${
-                    avaliacao === opcao.id
-                      ? "border-[var(--theme-primary)] bg-[var(--theme-primary)]/10 text-zinc-950 dark:text-white"
-                      : "border-zinc-200 bg-white text-zinc-900 hover:border-[var(--theme-primary)] dark:border-zinc-800 dark:bg-zinc-900 dark:text-white"
-                  }`}
-                >
-                  {opcao.label}
-                </button>
-              ))}
-            </div>
-
-            {avaliacao === "pode_melhorar" ? (
+          isExterno ? (
+            <div className="space-y-6">
               <div className="space-y-2">
-                <label htmlFor="avaliacao-melhoria" className="block text-sm font-semibold text-zinc-700 dark:text-zinc-200">
-                  Se marcou “Pode melhorar”, conte pra gente o que poderíamos fazer melhor:
-                </label>
-                <textarea
-                  id="avaliacao-melhoria"
-                  autoFocus
-                  rows={4}
-                  maxLength={1000}
-                  value={avaliacaoMelhoria}
-                  onChange={(e) => {
-                    setAvaliacaoMelhoria(e.target.value);
-                    setErro(null);
-                  }}
-                  placeholder="Escreva sua sugestão"
-                  className="w-full resize-none rounded-2xl border-2 border-zinc-300 bg-white px-4 py-3 text-base text-zinc-950 placeholder-zinc-400 outline-none transition focus:border-[var(--theme-primary)] focus:ring-4 focus:ring-[var(--theme-primary)]/15 dark:border-zinc-700 dark:bg-zinc-900 dark:text-white"
-                />
-                <p className="text-right text-xs text-zinc-400">{avaliacaoMelhoria.length}/1000</p>
+                <span className="text-xs font-bold uppercase tracking-widest text-[var(--theme-primary)]">
+                  Pergunta 4 de 5
+                </span>
+                <h1 className="text-xl font-bold tracking-tight text-zinc-900 dark:text-white sm:text-2xl">
+                  {primeiroNome}, o que mais chamou sua atenção no nosso material?
+                </h1>
+                <p className="text-sm text-zinc-500 dark:text-zinc-400">
+                  Toque na opção para avançar:
+                </p>
               </div>
-            ) : null}
 
-            {erro ? <p className="text-sm font-medium text-red-500">{erro}</p> : null}
-            <button
-              type="button"
-              disabled={!avaliacao || (avaliacao === "pode_melhorar" && avaliacaoMelhoria.trim().length < 3)}
-              onClick={handleAvancarAvaliacao}
-              className="flex min-h-14 w-full items-center justify-center rounded-2xl bg-[var(--theme-primary)] px-6 text-lg font-bold text-white shadow-lg transition active:scale-[0.98] disabled:opacity-50"
-            >
-              Continuar →
-            </button>
-          </div>
+              <div className="grid gap-3 pt-1">
+                {OPCOES_INTERESSE_MATERIAL.map((opcao) => (
+                  <button
+                    key={opcao.id}
+                    type="button"
+                    onClick={() => handleSelecionarInteresseMaterial(opcao.id)}
+                    className="flex min-h-16 w-full items-center justify-between rounded-2xl border-2 border-zinc-200 bg-white px-5 py-4 text-left shadow-sm transition hover:border-[var(--theme-primary)] hover:bg-[var(--theme-primary)]/5 active:scale-[0.98] dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-[var(--theme-primary)]"
+                  >
+                    <span className="text-sm font-bold text-zinc-900 dark:text-white pr-2">
+                      {opcao.label}
+                    </span>
+                    <span className="text-2xl shrink-0">{opcao.emoji}</span>
+                  </button>
+                ))}
+              </div>
+
+              {erro ? <p className="text-sm font-medium text-red-500">{erro}</p> : null}
+            </div>
+          ) : (
+            <div className="space-y-5">
+              <div className="space-y-2">
+                <span className="text-xs font-bold uppercase tracking-widest text-[var(--theme-primary)]">
+                  Pergunta 4 de 5
+                </span>
+                <h1 className="text-xl font-bold tracking-tight text-zinc-900 dark:text-white sm:text-2xl">
+                  Como você avalia o conteúdo e as oportunidades apresentadas no encontro?
+                </h1>
+              </div>
+
+              <div className="grid gap-2.5">
+                {OPCOES_AVALIACAO_ENCONTRO.map((opcao) => (
+                  <button
+                    key={opcao.id}
+                    type="button"
+                    onClick={() => {
+                      setAvaliacao(opcao.id);
+                      if (opcao.id !== "pode_melhorar") setAvaliacaoMelhoria("");
+                      setErro(null);
+                    }}
+                    className={`min-h-14 w-full rounded-2xl border-2 px-4 py-3 text-left text-sm font-bold transition active:scale-[0.98] ${
+                      avaliacao === opcao.id
+                        ? "border-[var(--theme-primary)] bg-[var(--theme-primary)]/10 text-zinc-950 dark:text-white"
+                        : "border-zinc-200 bg-white text-zinc-900 hover:border-[var(--theme-primary)] dark:border-zinc-800 dark:bg-zinc-900 dark:text-white"
+                    }`}
+                  >
+                    {opcao.label}
+                  </button>
+                ))}
+              </div>
+
+              {avaliacao === "pode_melhorar" ? (
+                <div className="space-y-2">
+                  <label htmlFor="avaliacao-melhoria" className="block text-sm font-semibold text-zinc-700 dark:text-zinc-200">
+                    Se marcou “Pode melhorar”, conte pra gente o que poderíamos fazer melhor:
+                  </label>
+                  <textarea
+                    id="avaliacao-melhoria"
+                    autoFocus
+                    rows={4}
+                    maxLength={1000}
+                    value={avaliacaoMelhoria}
+                    onChange={(e) => {
+                      setAvaliacaoMelhoria(e.target.value);
+                      setErro(null);
+                    }}
+                    placeholder="Escreva sua sugestão"
+                    className="w-full resize-none rounded-2xl border-2 border-zinc-300 bg-white px-4 py-3 text-base text-zinc-950 placeholder-zinc-400 outline-none transition focus:border-[var(--theme-primary)] focus:ring-4 focus:ring-[var(--theme-primary)]/15 dark:border-zinc-700 dark:bg-zinc-900 dark:text-white"
+                  />
+                  <p className="text-right text-xs text-zinc-400">{avaliacaoMelhoria.length}/1000</p>
+                </div>
+              ) : null}
+
+              {erro ? <p className="text-sm font-medium text-red-500">{erro}</p> : null}
+              <button
+                type="button"
+                disabled={!avaliacao || (avaliacao === "pode_melhorar" && avaliacaoMelhoria.trim().length < 3)}
+                onClick={handleAvancarAvaliacao}
+                className="flex min-h-14 w-full items-center justify-center rounded-2xl bg-[var(--theme-primary)] px-6 text-lg font-bold text-white shadow-lg transition active:scale-[0.98] disabled:opacity-50"
+              >
+                Continuar →
+              </button>
+            </div>
+          )
         ) : null}
 
         {/* TELA 7 — Pergunta 5: Próximo passo + LGPD + submissão */}
         {step === 7 ? (
-          <div className="space-y-5">
-            <div className="space-y-2">
-              <span className="text-xs font-bold uppercase tracking-widest text-[var(--theme-primary)]">
-                Pergunta 5 de 5
-              </span>
-              <h1 className="text-xl font-bold tracking-tight text-zinc-900 dark:text-white sm:text-2xl">
-                Pensando nas oportunidades apresentadas, qual dessas opções mais combina com o seu momento atual?
-              </h1>
-              <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                Toque para confirmar sua presença e gerar seu número da sorte:
-              </p>
-            </div>
+          isExterno ? (
+            <div className="space-y-5">
+              <div className="space-y-2">
+                <span className="text-xs font-bold uppercase tracking-widest text-[var(--theme-primary)]">
+                  Pergunta 5 de 5
+                </span>
+                <h1 className="text-xl font-bold tracking-tight text-zinc-900 dark:text-white sm:text-2xl">
+                  Pensando nos seus planos, como você prefere dar o próximo passo?
+                </h1>
+                <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                  Toque para confirmar seu cadastro e gerar seu número da sorte:
+                </p>
+              </div>
 
-            <div className="grid gap-2.5">
-              {OPCOES_MOMENTO_OPORTUNIDADE.map((opcao) => (
+              <div className="grid gap-2.5">
+                {OPCOES_PROXIMO_PASSO_EXTERNO.map((opcao) => (
+                  <button
+                    key={opcao.id}
+                    type="button"
+                    disabled={pending}
+                    onClick={() => handleSelecionarProximoPassoExterno(opcao.id)}
+                    className={`min-h-14 w-full rounded-2xl border-2 px-4 py-3 text-left text-sm font-bold transition active:scale-[0.98] disabled:opacity-50 flex items-center justify-between ${
+                      proximoPasso === opcao.id
+                        ? "border-[var(--theme-primary)] bg-[var(--theme-primary)]/10 text-zinc-950 dark:text-white"
+                        : "border-zinc-200 bg-white text-zinc-900 hover:border-[var(--theme-primary)] dark:border-zinc-800 dark:bg-zinc-900 dark:text-white"
+                    }`}
+                  >
+                    <span className="pr-2">{opcao.label}</span>
+                    <span className="text-xl shrink-0">{opcao.emoji}</span>
+                  </button>
+                ))}
+              </div>
+
+              <div className="rounded-xl bg-zinc-100 p-3 text-xs leading-relaxed text-zinc-600 dark:bg-zinc-900/60 dark:text-zinc-400">
+                <p>
+                  Ao continuar, confirmo meu cadastro e concordo com o tratamento dos meus dados
+                  para emissão do número da sorte e contato sobre oportunidades de consórcios.
+                </p>
                 <button
-                  key={opcao.id}
                   type="button"
-                  disabled={pending}
-                  onClick={() => handleSelecionarMomento(opcao.id)}
-                  className={`min-h-14 w-full rounded-2xl border-2 px-4 py-3 text-left text-sm font-bold transition active:scale-[0.98] disabled:opacity-50 ${
-                    momentoOportunidade === opcao.id
-                      ? "border-[var(--theme-primary)] bg-[var(--theme-primary)]/10 text-zinc-950 dark:text-white"
-                      : "border-zinc-200 bg-white text-zinc-900 hover:border-[var(--theme-primary)] dark:border-zinc-800 dark:bg-zinc-900 dark:text-white"
-                  }`}
+                  onClick={() => setModalLgpdAberto(true)}
+                  className="mt-1 font-semibold underline hover:text-[var(--theme-primary)]"
                 >
-                  {opcao.label}
+                  Ler Política de Privacidade
                 </button>
-              ))}
-            </div>
+              </div>
 
-            <div className="rounded-xl bg-zinc-100 p-3 text-xs leading-relaxed text-zinc-600 dark:bg-zinc-900/60 dark:text-zinc-400">
-              <p>
-                Ao continuar, confirmo minha presença no evento e concordo com o tratamento dos meus dados
-                para organização do evento e contato sobre oportunidades apresentadas.
-              </p>
-              <button
-                type="button"
-                onClick={() => setModalLgpdAberto(true)}
-                className="mt-1 font-semibold underline hover:text-[var(--theme-primary)]"
-              >
-                Ler Política de Privacidade
-              </button>
+              {erro ? <p className="text-sm font-medium text-red-500">{erro}</p> : null}
+              {pending ? (
+                <p className="text-center text-sm font-semibold text-[var(--theme-primary)] animate-pulse">
+                  Confirmando seu cadastro e emitindo número da sorte…
+                </p>
+              ) : null}
             </div>
+          ) : (
+            <div className="space-y-5">
+              <div className="space-y-2">
+                <span className="text-xs font-bold uppercase tracking-widest text-[var(--theme-primary)]">
+                  Pergunta 5 de 5
+                </span>
+                <h1 className="text-xl font-bold tracking-tight text-zinc-900 dark:text-white sm:text-2xl">
+                  Pensando nas oportunidades apresentadas, qual dessas opções mais combina com o seu momento atual?
+                </h1>
+                <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                  Toque para confirmar sua presença e gerar seu número da sorte:
+                </p>
+              </div>
 
-            {erro ? <p className="text-sm font-medium text-red-500">{erro}</p> : null}
-            {pending ? (
-              <p className="text-center text-sm font-semibold text-[var(--theme-primary)] animate-pulse">
-                Confirmando sua presença e emitindo número da sorte…
-              </p>
-            ) : null}
-          </div>
+              <div className="grid gap-2.5">
+                {OPCOES_MOMENTO_OPORTUNIDADE.map((opcao) => (
+                  <button
+                    key={opcao.id}
+                    type="button"
+                    disabled={pending}
+                    onClick={() => handleSelecionarMomento(opcao.id)}
+                    className={`min-h-14 w-full rounded-2xl border-2 px-4 py-3 text-left text-sm font-bold transition active:scale-[0.98] disabled:opacity-50 ${
+                      momentoOportunidade === opcao.id
+                        ? "border-[var(--theme-primary)] bg-[var(--theme-primary)]/10 text-zinc-950 dark:text-white"
+                        : "border-zinc-200 bg-white text-zinc-900 hover:border-[var(--theme-primary)] dark:border-zinc-800 dark:bg-zinc-900 dark:text-white"
+                    }`}
+                  >
+                    {opcao.label}
+                  </button>
+                ))}
+              </div>
+
+              <div className="rounded-xl bg-zinc-100 p-3 text-xs leading-relaxed text-zinc-600 dark:bg-zinc-900/60 dark:text-zinc-400">
+                <p>
+                  Ao continuar, confirmo minha presença no evento e concordo com o tratamento dos meus dados
+                  para organização do evento e contato sobre oportunidades apresentadas.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setModalLgpdAberto(true)}
+                  className="mt-1 font-semibold underline hover:text-[var(--theme-primary)]"
+                >
+                  Ler Política de Privacidade
+                </button>
+              </div>
+
+              {erro ? <p className="text-sm font-medium text-red-500">{erro}</p> : null}
+              {pending ? (
+                <p className="text-center text-sm font-semibold text-[var(--theme-primary)] animate-pulse">
+                  Confirmando sua presença e emitindo número da sorte…
+                </p>
+              ) : null}
+            </div>
+          )
         ) : null}
 
         {/* TELA FINAL — Confirmação e Número da Sorte */}
@@ -581,10 +736,10 @@ export function EventoCheckinConversacional({
               </h1>
               <p className="text-base font-semibold text-emerald-600 dark:text-emerald-400">
                 {isPreview
-                  ? "Presença simulada com sucesso (modo teste)."
+                  ? isExterno ? "Cadastro simulado com sucesso (modo teste)." : "Presença simulada com sucesso (modo teste)."
                   : jaEstavaCadastrado
-                    ? "Sua presença já está confirmada."
-                    : "Sua presença foi confirmada."}
+                    ? isExterno ? "Seu cadastro já está confirmado." : "Sua presença já está confirmada."
+                    : isExterno ? "Seu cadastro foi confirmado com sucesso." : "Sua presença foi confirmada."}
               </p>
             </div>
 
@@ -597,22 +752,53 @@ export function EventoCheckinConversacional({
                 {codigoSorte}
               </p>
               <p className="mt-3 text-xs font-medium text-zinc-500 dark:text-zinc-400">
-                Guarde este número com você
+                Guarde este número com você 🍀
               </p>
             </div>
 
-            <div className="space-y-2 text-sm text-zinc-600 dark:text-zinc-300">
-              <p>Teremos sorteios de prêmios hoje durante o evento. 🎁</p>
-              <p>Obrigado por participar e aproveite o evento. Boa sorte! 🍀</p>
-            </div>
+            {isExterno ? (
+              <div className="space-y-2 text-sm text-zinc-600 dark:text-zinc-300">
+                <p>
+                  Nossa equipe entrará em contato pelo seu WhatsApp para divulgar o resultado dos sorteios e apresentar oportunidades exclusivas que cabem no seu bolso. 🎁📲
+                </p>
+                <p>Obrigado por participar e boa sorte! ✨</p>
+              </div>
+            ) : (
+              <div className="space-y-2 text-sm text-zinc-600 dark:text-zinc-300">
+                <p>Teremos sorteios de prêmios hoje durante o evento. 🎁</p>
+                <p>Obrigado por participar e aproveite o evento. Boa sorte! 🍀</p>
+              </div>
+            )}
 
-            <div className="pt-2">
-              <Link
-                href={`/eventos/${evento.slug}`}
-                className="inline-flex min-h-12 w-full items-center justify-center rounded-2xl border border-zinc-300 px-4 text-sm font-semibold text-zinc-700 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
-              >
-                Ver informações do evento
-              </Link>
+            <div className="space-y-2 pt-2">
+              {isExterno ? (
+                <>
+                  <a
+                    href={`https://wa.me/${waFullPhone}?text=${encodeURIComponent(
+                      `Olá! Me cadastrei no sorteio pelo material impresso e meu número da sorte é ${codigoSorte}. Gostaria de conhecer as oportunidades.`
+                    )}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-4 text-sm font-bold text-white shadow-md hover:bg-emerald-700 active:scale-[0.98] transition"
+                  >
+                    <span>Falar com nossa equipe no WhatsApp</span>
+                    <span>💬</span>
+                  </a>
+                  <Link
+                    href="/"
+                    className="inline-flex min-h-11 w-full items-center justify-center rounded-2xl border border-zinc-300 px-4 text-xs font-semibold text-zinc-700 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                  >
+                    Conhecer a Racon Consórcios
+                  </Link>
+                </>
+              ) : (
+                <Link
+                  href={`/eventos/${evento.slug}`}
+                  className="inline-flex min-h-12 w-full items-center justify-center rounded-2xl border border-zinc-300 px-4 text-sm font-semibold text-zinc-700 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                >
+                  Ver informações do evento
+                </Link>
+              )}
             </div>
           </div>
         ) : null}

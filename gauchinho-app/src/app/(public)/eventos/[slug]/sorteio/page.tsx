@@ -77,6 +77,7 @@ export default async function EventoSorteioPublicPage({ params, searchParams }: 
             id: sorteio.eventoId,
             nome: sorteio.eventoNome,
             slug: sorteio.eventoSlug,
+            tipoCheckin: sorteio.tipoCheckin,
             corPrimaria: sorteio.corPrimaria,
             corSecundaria: sorteio.corSecundaria,
             logoPersonalizadoUrl: sorteio.logoPersonalizadoUrl,

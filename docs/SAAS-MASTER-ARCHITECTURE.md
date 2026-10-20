@@ -1,5 +1,19 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
+### Atualização 325 — Check-in de Trabalho Externo / Panfletos & QR Code Fixo Permanente (20/10/2026)
+
+Implementada a separação oficial entre Check-in de Evento Presencial e Check-in de Trabalho Externo (Panfletagem na rua e em empresas sem explicação verbal prévia):
+1. **Diferenciação por Tipo de Ação (`tipo_checkin`):** Coluna adicionada em `public.eventos` com valores `'evento'` ou `'externo'`.
+   - **Evento Presencial / Reunião:** Preserva o fluxo existente de avaliação do encontro (conteúdo apresentado) e confirmação de presença com sorteios durante o evento.
+   - **Trabalho Externo / Panfletos:** Substitui as perguntas 4 e 5 pelas opções comerciais selecionadas:
+     - *Pergunta 4:* "[Nome], o que mais chamou sua atenção no nosso material?" (Opção 4B: sorteio de prêmios, parcelas no bolso, consórcio, curiosidade).
+     - *Pergunta 5:* "Pensando nos seus planos, como você prefere dar o próximo passo?" (Opção 5A: simulação gratuita no WhatsApp, tirar dúvidas com consultor, em até 3 meses, apenas sorteio).
+     - *Tela Final:* Confirmação de cadastro com Número da Sorte e mensagem informando que a equipe entrará em contato pelo WhatsApp para divulgar o resultado dos sorteios e apresentar oportunidades exclusivas, com botão direto para o WhatsApp da equipe (`wa.me`).
+2. **Regra de Unicidade e Exclusividade de Evento Externo Ativo:** Só pode haver 1 evento externo ativo simultaneamente no sistema. Trigger e Server Action garantem que ao salvar ou ativar um evento externo, qualquer evento externo anterior é automaticamente desativado.
+3. **QR Code Fixo Permanente (`/qr/externo`):** Criado QR Code fixo permanente para gráficas e materiais impressos. O link físico impresso nunca muda (`/qr/externo`) e sempre resolve em tempo real para a ação externa ativa.
+4. **Painel de QR Codes (`/admin/configuracoes/qr-codes`):** Card em destaque com visualização do QR Code dos panfletos, status do evento externo ativo conectado, botões de copiar link, testar e download em SVG e PNG de alta resolução (1200px) para a gráfica.
+5. **Relatório e Migration:** Migration `324_eventos_checkin_externo_panfletos_qr_fixo.sql` e relatório em `docs/relatorios-fases/CHECKIN-EXTERNO-PANFLETOS-E-QR-FIXO.md`.
+
 ### Atualização 324 — Parcela Reduzida 50% e 60%, Cotas Oficiais e Scroll no Robô Simulador (20/10/2026)
 
 Implementada a flexibilização e integridade comercial completa das parcelas reduzidas e cotas do catálogo:

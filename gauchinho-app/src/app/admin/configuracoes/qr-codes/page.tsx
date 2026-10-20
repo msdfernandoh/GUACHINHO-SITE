@@ -17,16 +17,22 @@ export default async function QrCodesUnicosAdminPage() {
   let migrationHint: string | null = null;
   let eventos: { id: string; nome: string; slug: string; ativo: boolean }[] = [];
   let historicoSite: any[] = [];
+  let eventoExternoAtivo: { id: string; nome: string; slug: string } | null = null;
 
   try {
     const admin = (await import("@/lib/supabase/admin")).createAdminClient();
-    const { garantirQrInstitucionalSite, buscarHistoricoDestinosQrCode } = await import(
-      "@/lib/eventos-sorteio/qr-unico"
-    );
+    const {
+      garantirQrInstitucionalSite,
+      garantirQrInstitucionalExterno,
+      fetchEventoExternoAtivo,
+      buscarHistoricoDestinosQrCode,
+    } = await import("@/lib/eventos-sorteio/qr-unico");
     const siteQr = await garantirQrInstitucionalSite();
     if (siteQr?.id) {
       historicoSite = await buscarHistoricoDestinosQrCode(siteQr.id);
     }
+    await garantirQrInstitucionalExterno();
+    eventoExternoAtivo = await fetchEventoExternoAtivo();
     const { data: evs } = await admin
       .from("eventos")
       .select("id, nome, slug, ativo")
@@ -68,6 +74,7 @@ export default async function QrCodesUnicosAdminPage() {
           items={items}
           eventos={eventos}
           historicoSite={historicoSite}
+          eventoExternoAtivo={eventoExternoAtivo}
           publicBaseUrl={publicBaseUrl}
         />
       )}

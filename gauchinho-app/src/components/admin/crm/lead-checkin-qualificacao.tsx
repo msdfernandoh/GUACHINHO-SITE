@@ -6,6 +6,8 @@ import {
   labelCapacidade,
   labelAvaliacaoEncontro,
   labelMomentoOportunidade,
+  labelInteresseMaterial,
+  labelProximoPassoExterno,
 } from "@/lib/eventos-sorteio/checkin-conversacional";
 
 export type QualificacaoEventoItem = {
@@ -44,6 +46,8 @@ export function LeadCheckinQualificacao({
     avaliacao_encontro?: string;
     avaliacao_melhoria?: string;
     momento_oportunidade?: string;
+    interesse_material?: string;
+    proximo_passo?: string;
   };
 
   return (
@@ -76,7 +80,28 @@ export function LeadCheckinQualificacao({
         ) : null}
       </div>
 
-      {(respRecente.avaliacao_encontro || respRecente.momento_oportunidade) ? (
+      {respRecente.interesse_material || respRecente.proximo_passo ? (
+        <div className="mt-3 grid gap-3 sm:grid-cols-2">
+          <div className="rounded-lg border border-amber-500/25 bg-amber-500/10 p-3.5">
+            <div className="flex items-center gap-2 text-xs font-medium text-amber-300">
+              <span>🎁</span>
+              <span>O que chamou atenção no material</span>
+            </div>
+            <p className="mt-2 text-sm font-semibold text-zinc-100">
+              {labelInteresseMaterial(respRecente.interesse_material)}
+            </p>
+          </div>
+          <div className="rounded-lg border border-emerald-500/25 bg-emerald-500/10 p-3.5">
+            <div className="flex items-center gap-2 text-xs font-medium text-emerald-300">
+              <span>📲</span>
+              <span>Próximo passo / Contato</span>
+            </div>
+            <p className="mt-2 text-sm font-semibold text-zinc-100">
+              {labelProximoPassoExterno(respRecente.proximo_passo)}
+            </p>
+          </div>
+        </div>
+      ) : (respRecente.avaliacao_encontro || respRecente.momento_oportunidade) ? (
         <div className="mt-3 grid gap-3 sm:grid-cols-2">
           <div className="rounded-lg border border-sky-500/25 bg-sky-500/10 p-3.5">
             <div className="flex items-center gap-2 text-xs font-medium text-sky-300">

@@ -3,11 +3,15 @@ import {
   labelCapacidade,
   labelAvaliacaoEncontro,
   labelMomentoOportunidade,
+  labelInteresseMaterial,
+  labelProximoPassoExterno,
   labelMoradia,
   labelVeiculo,
   OPCOES_AVALIACAO_ENCONTRO,
   OPCOES_CAPACIDADE_MENSAL,
   OPCOES_MOMENTO_OPORTUNIDADE,
+  OPCOES_INTERESSE_MATERIAL,
+  OPCOES_PROXIMO_PASSO_EXTERNO,
   OPCOES_MORADIA,
   OPCOES_VEICULO,
   type QualificacaoRespostasPayload,
@@ -49,6 +53,23 @@ describe("checkin-conversacional labels e opções", () => {
     ]);
     expect(labelAvaliacaoEncontro("gostei_bastante")).toBe("Gostei bastante e fez sentido para mim");
     expect(labelMomentoOportunidade("atendimento_presencial")).toBe("Quero agendar um atendimento presencial para os próximos dias");
+  });
+
+  it("contém as opções de trabalho externo / panfletagem (Pergunta 4 e Pergunta 5)", () => {
+    expect(OPCOES_INTERESSE_MATERIAL.map((o) => o.id)).toEqual([
+      "sorteio_premios",
+      "parcelas_bolso",
+      "entender_consorcio",
+      "apenas_curiosidade",
+    ]);
+    expect(OPCOES_PROXIMO_PASSO_EXTERNO.map((o) => o.id)).toEqual([
+      "simulacao_whatsapp",
+      "duvidas_consultor",
+      "iniciar_ate_3_meses",
+      "apenas_sorteio",
+    ]);
+    expect(labelInteresseMaterial("sorteio_premios")).toBe("A oportunidade de concorrer aos prêmios e sorteios");
+    expect(labelProximoPassoExterno("simulacao_whatsapp")).toBe("Quero receber uma simulação gratuita pelo meu WhatsApp");
   });
 });
 
@@ -127,5 +148,38 @@ describe("isolamento entre qualificação comercial e NPS", () => {
       ok: true,
       value: { avaliacao_melhoria: "Mais tempo para perguntas." },
     });
+  });
+
+  it("valida corretamente respostas de trabalho externo / panfletos", () => {
+    const valida = validarQualificacaoRespostas({
+      tipo_checkin: "externo",
+      veiculo: "moto",
+      moradia: "propria_quitada",
+      capacidade_mensal: "500_1000",
+      interesse_material: "parcelas_bolso",
+      proximo_passo: "simulacao_whatsapp",
+    });
+
+    expect(valida).toMatchObject({
+      ok: true,
+      value: {
+        tipo_checkin: "externo",
+        veiculo: "moto",
+        moradia: "propria_quitada",
+        capacidade_mensal: "500_1000",
+        interesse_material: "parcelas_bolso",
+        proximo_passo: "simulacao_whatsapp",
+      },
+    });
+
+    const invalida = validarQualificacaoRespostas({
+      tipo_checkin: "externo",
+      veiculo: "moto",
+      moradia: "propria_quitada",
+      capacidade_mensal: "500_1000",
+      interesse_material: "opcao_inexistente",
+      proximo_passo: "simulacao_whatsapp",
+    });
+    expect(invalida.ok).toBe(false);
   });
 });

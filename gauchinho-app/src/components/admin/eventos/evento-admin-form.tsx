@@ -79,6 +79,9 @@ export function EventoAdminForm({
   const [inscricaoTipo, setInscricaoTipo] = useState<"interno" | "externo">(
     evento?.inscricao_tipo === "externo" ? "externo" : "interno",
   );
+  const [tipoCheckin, setTipoCheckin] = useState<"evento" | "externo">(
+    evento?.tipo_checkin === "externo" ? "externo" : "evento",
+  );
   const [formError, setFormError] = useState<string | null>(null);
   const [formOk, setFormOk] = useState(false);
 
@@ -147,6 +150,7 @@ export function EventoAdminForm({
           : 30,
       );
       setCheckinInterativo(Boolean(evento.checkin_interativo_ativo));
+      setTipoCheckin(evento.tipo_checkin === "externo" ? "externo" : "evento");
       setRecorrenciaAtiva(Boolean(evento.recorrencia_ativa));
       const dl = eventoIsoToDatetimeLocal(evento.data_evento);
       setDataEventoInput(dl);
@@ -227,6 +231,7 @@ export function EventoAdminForm({
         formData.set("qr_code_unico_id", qrSelecionado.id);
       }
       // Garante que campos visuais e de sorteio sejam persistidos
+      formData.set("tipo_checkin", tipoCheckin);
       formData.set("cor_primaria", corPrimaria);
       formData.set("cor_secundaria", corSecundaria);
       formData.set("logo_personalizado_url", logoPersonalizadoUrl);
@@ -384,6 +389,72 @@ export function EventoAdminForm({
           </div>
         </div>
       ) : null}
+
+      <FormSection title="Finalidade e Tipo do Check-in">
+        <div className="grid gap-3 sm:grid-cols-2">
+          <label
+            className={`flex cursor-pointer flex-col justify-between rounded-xl border-2 p-4 transition ${
+              tipoCheckin === "evento"
+                ? "border-emerald-600 bg-emerald-50/50 shadow-sm dark:border-emerald-500 dark:bg-emerald-950/20"
+                : "border-zinc-200 bg-white hover:border-zinc-300 dark:border-zinc-800 dark:bg-zinc-900"
+            }`}
+          >
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <span className="text-base font-bold text-zinc-900 dark:text-white flex items-center gap-2">
+                  <span>🏛️</span>
+                  <span>Evento Presencial</span>
+                </span>
+                <input
+                  type="radio"
+                  name="tipo_checkin_radio"
+                  value="evento"
+                  checked={tipoCheckin === "evento"}
+                  onChange={() => setTipoCheckin("evento")}
+                  className="h-4 w-4 text-emerald-600 focus:ring-emerald-500"
+                />
+              </div>
+              <p className="text-xs text-zinc-600 dark:text-zinc-400">
+                Check-in com avaliação do encontro, sorteios presenciais durante o evento e presença confirmada.
+              </p>
+            </div>
+          </label>
+
+          <label
+            className={`flex cursor-pointer flex-col justify-between rounded-xl border-2 p-4 transition ${
+              tipoCheckin === "externo"
+                ? "border-amber-600 bg-amber-50/50 shadow-sm dark:border-amber-500 dark:bg-amber-950/20"
+                : "border-zinc-200 bg-white hover:border-zinc-300 dark:border-zinc-800 dark:bg-zinc-900"
+            }`}
+          >
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <span className="text-base font-bold text-zinc-900 dark:text-white flex items-center gap-2">
+                  <span>📢</span>
+                  <span>Trabalho Externo / Panfletos</span>
+                </span>
+                <input
+                  type="radio"
+                  name="tipo_checkin_radio"
+                  value="externo"
+                  checked={tipoCheckin === "externo"}
+                  onChange={() => setTipoCheckin("externo")}
+                  className="h-4 w-4 text-amber-600 focus:ring-amber-500"
+                />
+              </div>
+              <p className="text-xs text-zinc-600 dark:text-zinc-400">
+                Entrega de panfletos na rua ou empresas sem explicação. Pergunta sobre o material e simulação, avisando que a equipe chamará no WhatsApp.
+              </p>
+            </div>
+          </label>
+        </div>
+
+        {tipoCheckin === "externo" ? (
+          <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-3 text-xs leading-relaxed text-amber-800 dark:text-amber-300">
+            <strong>⚡ QR Code Fixo Automático:</strong> O QR Code fixo permanente (<strong>/qr/externo</strong>) apontará automaticamente para este evento enquanto ele estiver <strong>Ativo</strong>. Apenas um evento externo pode ficar ativo por vez.
+          </div>
+        ) : null}
+      </FormSection>
 
       <FormSection title="Informações básicas">
         <div>

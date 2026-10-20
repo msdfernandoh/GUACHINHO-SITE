@@ -22,7 +22,11 @@ export default async function QrUnicoPublicPage({ params }: { params: Promise<{ 
     redirect(resolved.url);
   }
 
-  if (resolved.mode === "evento" && resolved.sorteio.checkinInterativoAtivo) {
+  if (
+    resolved.mode === "evento" &&
+    resolved.sorteio.checkinInterativoAtivo &&
+    resolved.sorteio.tipoCheckin !== "externo"
+  ) {
     const disp = resolverStatusCheckinEvento({
       ativo: true,
       checkin_interativo_ativo: true,
@@ -60,6 +64,7 @@ export default async function QrUnicoPublicPage({ params }: { params: Promise<{ 
               id: resolved.sorteio.eventoId,
               nome: resolved.sorteio.eventoNome,
               slug: resolved.sorteio.eventoSlug,
+              tipoCheckin: resolved.sorteio.tipoCheckin,
               corPrimaria: resolved.sorteio.corPrimaria,
               corSecundaria: resolved.sorteio.corSecundaria,
               logoPersonalizadoUrl: resolved.sorteio.logoPersonalizadoUrl,

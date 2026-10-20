@@ -112,6 +112,10 @@ function eventoFromForm(
       if (raw === "on" || raw === "true" || raw === "1") return true;
       return false;
     })(),
+    tipo_checkin: (() => {
+      const raw = strForm(formData, "tipo_checkin");
+      return raw === "externo" ? "externo" : "evento";
+    })(),
     checkin_interativo_ativo: boolForm(formData, "checkin_interativo_ativo"),
     checkin_modo: (() => {
       const raw = strForm(formData, "checkin_modo");
@@ -270,6 +274,7 @@ export async function fetchEventoLeadsUsuariosIds(
 type EventoPayload = ReturnType<typeof eventoFromForm>;
 
 const EVENTO_OPTIONAL_COLUMNS = [
+  "tipo_checkin",
   "checkin_modo",
   "checkin_abertura_antecipada_minutos",
   "checkin_ativo_manual_at",
@@ -496,6 +501,13 @@ export async function createEventoAction(
     }
     const admin = createAdminClient();
     const data = await persistEventoInsert(admin, payload);
+    if (payload.tipo_checkin === "externo" && payload.ativo) {
+      await admin
+        .from("eventos")
+        .update({ ativo: false })
+        .eq("tipo_checkin", "externo")
+        .neq("id", data.id);
+    }
     if (payload.recorrencia_ativa) {
       await persistEventoUpdate(admin, data.id, {
         ...payload,
@@ -575,6 +587,13 @@ export async function updateEventoAction(
         ? (existing.recorrencia_raiz_id ?? id)
         : null,
     });
+    if (payload.tipo_checkin === "externo" && payload.ativo) {
+      await admin
+        .from("eventos")
+        .update({ ativo: false })
+        .eq("tipo_checkin", "externo")
+        .neq("id", id);
+    }
     await syncEventoDestaque(admin, id, payload.evento_destaque);
     await syncEventoLeadsUsuarios(
       admin,

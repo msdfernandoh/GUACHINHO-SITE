@@ -28,6 +28,7 @@ function mapPublicView(
     cor_secundaria?: string | null;
     logo_personalizado_url?: string | null;
     prefixo_codigo_sorteio?: string | null;
+    tipo_checkin?: string | null;
   },
   npsPerguntas?: NpsPerguntaPublica[],
 ): PublicSorteioView {
@@ -44,6 +45,7 @@ function mapPublicView(
     status: sorteio.status === "encerrado" ? "encerrado" : "aberto",
     npsPerguntas:
       npsPerguntas ?? resolverPerguntasNpsPublicas(parseNpsConfig(sorteio.nps_config)),
+    tipoCheckin: (evento.tipo_checkin === "externo" ? "externo" : "evento") as "evento" | "externo",
     checkinInterativoAtivo: Boolean(evento.checkin_interativo_ativo),
     checkinModo: evento.checkin_modo ?? "agendado",
     checkinAberturaAntecipadaMinutos: evento.checkin_abertura_antecipada_minutos ?? 30,
@@ -99,7 +101,7 @@ export async function fetchPublicSorteioByEventoId(
   const admin = createAdminClient();
   let evQuery = admin
     .from("eventos")
-    .select("id, nome, slug, data_evento, ativo, publicado, checkin_interativo_ativo, checkin_modo, checkin_abertura_antecipada_minutos, cor_primaria, cor_secundaria, logo_personalizado_url, prefixo_codigo_sorteio")
+    .select("id, nome, slug, data_evento, ativo, publicado, checkin_interativo_ativo, checkin_modo, checkin_abertura_antecipada_minutos, cor_primaria, cor_secundaria, logo_personalizado_url, prefixo_codigo_sorteio, tipo_checkin")
     .eq("id", eventoId)
     .eq("ativo", true);
   if (requirePublicado) {
@@ -125,6 +127,7 @@ export async function fetchPublicSorteioByEventoId(
           cor_secundaria: null,
           logo_personalizado_url: null,
           prefixo_codigo_sorteio: "",
+          tipo_checkin: "evento",
         }
       : null;
     evErr = retry.error;

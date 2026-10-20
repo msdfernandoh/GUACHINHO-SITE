@@ -6,6 +6,7 @@ import type { NpsPerguntaPublica } from "./nps";
 
 export type QrCodeTipoDestino =
   | "site"
+  | "externo"
   | "evento"
   | "checkin_evento"
   | "whatsapp"
@@ -223,6 +224,58 @@ export async function resolveQrPublicBySlug(slug: string): Promise<ResolveQrPubl
 
   const tipoDestino = qrRow.tipo_destino || "evento";
 
+  if (qrRow.slug === "externo" || tipoDestino === "externo") {
+    // Busca o único evento externo ativo (trabalho externo / panfletagem)
+    const { data: evExterno, error: evExtErr } = await admin
+      .from("eventos")
+      .select("id, nome, slug, ativo, checkin_interativo_ativo")
+      .eq("tipo_checkin", "externo")
+      .eq("ativo", true)
+      .order("updated_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (evExtErr || !evExterno) {
+      return {
+        mode: "sem_evento",
+        qr: qrRow,
+        motivo: "sem_vinculo",
+        eventoNome: "Nenhuma ação externa ou panfletagem ativa no momento.",
+      };
+    }
+
+    const sorteio = await fetchPublicSorteioByEventoId(evExterno.id, { requirePublicado: false });
+    if (!sorteio) {
+      return {
+        mode: "sem_evento",
+        qr: qrRow,
+        motivo: "sorteio_indisponivel",
+        eventoNome: evExterno.nome,
+      };
+    }
+
+    return {
+      mode: "evento",
+      qr: qrRow,
+      sorteio: {
+        ...sorteio,
+        checkinInterativoAtivo: true,
+        tipoCheckin: "externo",
+      },
+      npsPerguntas: sorteio.npsPerguntas,
+      vinculo: {
+        id: "vinculo-fixo-externo",
+        qr_code_id: qrRow.id,
+        evento_id: evExterno.id,
+        periodo_inicio: new Date(0).toISOString(),
+        periodo_fim: new Date(Date.now() + 1000 * 60 * 60 * 24 * 365 * 10).toISOString(),
+        ativo: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      },
+    };
+  }
+
   if (tipoDestino === "site") {
     return { mode: "redirect", qr: qrRow, url: qrRow.destino_url || "/" };
   }
@@ -420,6 +473,53 @@ export async function garantirQrInstitucionalSite(): Promise<QrCodeUnicoRow> {
   }
 
   return created as QrCodeUnicoRow;
+}
+
+export async function garantirQrInstitucionalExterno(): Promise<QrCodeUnicoRow> {
+  const admin = createAdminClient();
+  const { data: existing } = await admin
+    .from("qr_codes_unicos")
+    .select("*")
+    .eq("slug", "externo")
+    .maybeSingle();
+
+  if (existing) {
+    return existing as QrCodeUnicoRow;
+  }
+
+  const { data: created, error } = await admin
+    .from("qr_codes_unicos")
+    .insert({
+      nome: "QR Fixo — Trabalho Externo (Panfletos / Empresas)",
+      slug: "externo",
+      tipo_destino: "externo",
+      ativo: true,
+    })
+    .select("*")
+    .single();
+
+  if (error || !created) {
+    throw new Error(`Falha ao inicializar QR Externo: ${error?.message}`);
+  }
+
+  return created as QrCodeUnicoRow;
+}
+
+export async function fetchEventoExternoAtivo(): Promise<{ id: string; nome: string; slug: string } | null> {
+  try {
+    const admin = createAdminClient();
+    const { data } = await admin
+      .from("eventos")
+      .select("id, nome, slug")
+      .eq("tipo_checkin", "externo")
+      .eq("ativo", true)
+      .order("updated_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    return data ?? null;
+  } catch {
+    return null;
+  }
 }
 
 export async function atualizarDestinoQrCodeUnico(params: {

@@ -23,6 +23,7 @@ export const OPCOES_CAPACIDADE_MENSAL = [
 ] as const;
 export type CapacidadeMensalQualificacao = (typeof OPCOES_CAPACIDADE_MENSAL)[number]["id"];
 
+// Pergunta 4 (Evento Presencial)
 export const OPCOES_AVALIACAO_ENCONTRO = [
   { id: "gostei_bastante", label: "Gostei bastante e fez sentido para mim" },
   { id: "gostei_entender_melhor", label: "Gostei, mas ainda quero entender melhor alguns pontos" },
@@ -30,6 +31,7 @@ export const OPCOES_AVALIACAO_ENCONTRO = [
 ] as const;
 export type AvaliacaoEncontro = (typeof OPCOES_AVALIACAO_ENCONTRO)[number]["id"];
 
+// Pergunta 5 (Evento Presencial)
 export const OPCOES_MOMENTO_OPORTUNIDADE = [
   { id: "simulacao_agora", label: "Quero fazer uma simulação agora, de acordo com meus objetivos e necessidades" },
   { id: "atendimento_presencial", label: "Quero agendar um atendimento presencial para os próximos dias" },
@@ -39,13 +41,38 @@ export const OPCOES_MOMENTO_OPORTUNIDADE = [
 ] as const;
 export type MomentoOportunidade = (typeof OPCOES_MOMENTO_OPORTUNIDADE)[number]["id"];
 
+// Pergunta 4 (Trabalho Externo / Panfletos na rua ou empresas — Opção 4B)
+export const OPCOES_INTERESSE_MATERIAL = [
+  { id: "sorteio_premios", label: "A oportunidade de concorrer aos prêmios e sorteios", emoji: "🎁" },
+  { id: "parcelas_bolso", label: "Poder comprar carro, moto ou casa com parcelas que cabem no bolso", emoji: "🔑" },
+  { id: "entender_consorcio", label: "Quero saber mais sobre como funciona o consórcio", emoji: "🤝" },
+  { id: "apenas_curiosidade", label: "Apenas curiosidade por enquanto", emoji: "✨" },
+] as const;
+export type InteresseMaterialQualificacao = (typeof OPCOES_INTERESSE_MATERIAL)[number]["id"];
+
+// Pergunta 5 (Trabalho Externo / Panfletos na rua ou empresas — Opção 5A)
+export const OPCOES_PROXIMO_PASSO_EXTERNO = [
+  { id: "simulacao_whatsapp", label: "Quero receber uma simulação gratuita pelo meu WhatsApp", emoji: "📲" },
+  { id: "duvidas_consultor", label: "Quero tirar dúvidas com um consultor pelo WhatsApp", emoji: "💬" },
+  { id: "iniciar_ate_3_meses", label: "Tenho interesse, mas pretendo iniciar em até 3 meses", emoji: "⏳" },
+  { id: "apenas_sorteio", label: "Por enquanto, apenas concorrer ao sorteio", emoji: "🍀" },
+] as const;
+export type ProximoPassoExternoQualificacao = (typeof OPCOES_PROXIMO_PASSO_EXTERNO)[number]["id"];
+
+export type TipoCheckin = "evento" | "externo";
+
 export type QualificacaoRespostasPayload = {
+  tipo_checkin?: TipoCheckin;
   veiculo: VeiculoQualificacao;
   moradia: MoradiaQualificacao;
   capacidade_mensal: CapacidadeMensalQualificacao;
-  avaliacao_encontro: AvaliacaoEncontro;
+  // Pergunta 4 (evento ou externo)
+  avaliacao_encontro?: AvaliacaoEncontro | null;
   avaliacao_melhoria?: string | null;
-  momento_oportunidade: MomentoOportunidade;
+  interesse_material?: InteresseMaterialQualificacao | null;
+  // Pergunta 5 (evento ou externo)
+  momento_oportunidade?: MomentoOportunidade | null;
+  proximo_passo?: ProximoPassoExternoQualificacao | null;
 };
 
 export type QualificacaoValidationResult =
@@ -58,12 +85,10 @@ export function validarQualificacaoRespostas(input: unknown): QualificacaoValida
   }
 
   const raw = input as Record<string, unknown>;
+  const tipoCheckin: TipoCheckin = raw.tipo_checkin === "externo" ? "externo" : "evento";
   const veiculo = String(raw.veiculo ?? "");
   const moradia = String(raw.moradia ?? "");
   const capacidade = String(raw.capacidade_mensal ?? "");
-  const avaliacao = String(raw.avaliacao_encontro ?? "");
-  const momento = String(raw.momento_oportunidade ?? "");
-  const melhoria = String(raw.avaliacao_melhoria ?? "").trim();
 
   if (!OPCOES_VEICULO.some((opcao) => opcao.id === veiculo)) {
     return { ok: false, error: "Selecione uma opção válida sobre veículo." };
@@ -74,6 +99,36 @@ export function validarQualificacaoRespostas(input: unknown): QualificacaoValida
   if (!OPCOES_CAPACIDADE_MENSAL.some((opcao) => opcao.id === capacidade)) {
     return { ok: false, error: "Selecione uma faixa de investimento válida." };
   }
+
+  if (tipoCheckin === "externo") {
+    const interesse = String(raw.interesse_material ?? "");
+    const proximoPasso = String(raw.proximo_passo ?? "");
+
+    if (!OPCOES_INTERESSE_MATERIAL.some((opcao) => opcao.id === interesse)) {
+      return { ok: false, error: "Informe o que mais chamou sua atenção no nosso material." };
+    }
+    if (!OPCOES_PROXIMO_PASSO_EXTERNO.some((opcao) => opcao.id === proximoPasso)) {
+      return { ok: false, error: "Selecione como prefere dar o próximo passo." };
+    }
+
+    return {
+      ok: true,
+      value: {
+        tipo_checkin: "externo",
+        veiculo: veiculo as VeiculoQualificacao,
+        moradia: moradia as MoradiaQualificacao,
+        capacidade_mensal: capacidade as CapacidadeMensalQualificacao,
+        interesse_material: interesse as InteresseMaterialQualificacao,
+        proximo_passo: proximoPasso as ProximoPassoExternoQualificacao,
+      },
+    };
+  }
+
+  // Fluxo Padrão: Evento Presencial
+  const avaliacao = String(raw.avaliacao_encontro ?? "");
+  const momento = String(raw.momento_oportunidade ?? "");
+  const melhoria = String(raw.avaliacao_melhoria ?? "").trim();
+
   if (!OPCOES_AVALIACAO_ENCONTRO.some((opcao) => opcao.id === avaliacao)) {
     return { ok: false, error: "Avalie o conteúdo e as oportunidades do encontro." };
   }
@@ -90,6 +145,7 @@ export function validarQualificacaoRespostas(input: unknown): QualificacaoValida
   return {
     ok: true,
     value: {
+      tipo_checkin: "evento",
       veiculo: veiculo as VeiculoQualificacao,
       moradia: moradia as MoradiaQualificacao,
       capacidade_mensal: capacidade as CapacidadeMensalQualificacao,
@@ -132,4 +188,12 @@ export function labelAvaliacaoEncontro(a: string | null | undefined): string {
 
 export function labelMomentoOportunidade(m: string | null | undefined): string {
   return OPCOES_MOMENTO_OPORTUNIDADE.find((o) => o.id === m)?.label ?? m ?? "Não informado";
+}
+
+export function labelInteresseMaterial(i: string | null | undefined): string {
+  return OPCOES_INTERESSE_MATERIAL.find((o) => o.id === i)?.label ?? i ?? "Não informado";
+}
+
+export function labelProximoPassoExterno(p: string | null | undefined): string {
+  return OPCOES_PROXIMO_PASSO_EXTERNO.find((o) => o.id === p)?.label ?? p ?? "Não informado";
 }

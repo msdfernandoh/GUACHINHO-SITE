@@ -79,6 +79,7 @@ export type PublicSorteioView = {
   textoAgradecimento: string;
   status: SorteioStatus;
   npsPerguntas: NpsPerguntaPublica[];
+  tipoCheckin?: "evento" | "externo" | null;
   checkinInterativoAtivo?: boolean;
   checkinModo?: string | null;
   checkinAberturaAntecipadaMinutos?: number | null;
