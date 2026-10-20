@@ -6,6 +6,7 @@ export type SocioFechamentoEntrada = {
   adiantamentoPessoal: number;
   saldoAnterior: number;
   retirada: number;
+  transferenciasRealizadas?: number;
 };
 
 export type FechamentoCalculado = {
@@ -40,7 +41,7 @@ export function calcularFechamentoSocios(input: {
 }): FechamentoCalculado {
   const numeros = [input.despesasPagas, input.lucroConsultores, input.reservaImpostos, input.caixaAntes,
     ...input.socios.flatMap((socio) => [socio.percentual, socio.comissaoGuardada,
-      socio.adiantamentoPessoal, socio.saldoAnterior, socio.retirada])];
+      socio.adiantamentoPessoal, socio.saldoAnterior, socio.retirada, socio.transferenciasRealizadas ?? 0])];
   if (numeros.some((numero) => !Number.isFinite(numero))) throw new Error("Há valor inválido no fechamento.");
   if (input.socios.length < 2 || Math.abs(input.socios.reduce((soma, socio) => soma + socio.percentual, 0) - 100) > 0.0001) {
     throw new Error("O quadro societário deve somar 100%.");
@@ -59,7 +60,7 @@ export function calcularFechamentoSocios(input: {
     }
     const parte = indice === input.socios.length - 1 ? base - rateado : Math.round(base * socio.percentual / 100);
     rateado += parte;
-    const direito = cents(socio.saldoAnterior) + cents(socio.comissaoGuardada) + cents(socio.adiantamentoPessoal) - parte;
+    const direito = cents(socio.saldoAnterior) + cents(socio.comissaoGuardada) + cents(socio.adiantamentoPessoal) - parte - cents(socio.transferenciasRealizadas ?? 0);
     const retirada = cents(socio.retirada);
     if (retirada > Math.max(0, direito)) throw new Error(`A retirada de ${socio.nome} supera seu saldo positivo.`);
     return {

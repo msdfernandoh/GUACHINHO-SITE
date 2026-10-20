@@ -7,6 +7,8 @@ import { requireErpRouteAccess } from "@/lib/erp/erp-acesso-server";
 import { requireTenantPermission } from "@/lib/tenant/context";
 import { carregarDadosContaCorrenteSocios } from "@/app/erp/conta-corrente-socios/actions";
 import { calcularFechamentoSocios, type FechamentoCalculado } from "@/lib/gestao/fechamento-socios";
+import { calcularComissaoRecebida, calcularTransferenciasSocio } from "@/lib/gestao/comissao-recebida-socio";
+import { lerFiscalParticipante } from "@/lib/erp/comissoes-fiscal-extrato";
 import { obterHojeCuiaba } from "@/lib/erp/conta-corrente-periodos";
 
 const numero = (valor: unknown) => Number(valor || 0);
@@ -37,7 +39,7 @@ export type PainelFechamento = {
   desempenhoConsultores: Array<{ mes: string; consultoresAtivos: number; novosConsultores: number; vendas: number; creditoVendido: number; repassesGerados: number }>;
   metasComerciais: { consultores: number; vendas: number; credito: number };
   bancoEmpresa: { id: string; nome: string; saldoSistema: number } | null;
-  socios: Array<{ id: string; nome: string; percentual: number; comissaoGuardada: number; comissaoGuardadaMensal: Array<{ competencia: string; valor: number; itens: Array<{ descricao: string; cliente: string; valor: number; status: string }> }>; comissaoFuturaMensal: Array<{ competencia: string; valor: number; itens: Array<{ descricao: string; cliente: string; valor: number; status: string }> }>; adiantamentoPessoal: number; saldoAnterior: number }>;
+  socios: Array<{ id: string; nome: string; percentual: number; comissaoGuardada: number; transferenciasRealizadas: number; impostoGerado: number; comissaoGuardadaMensal: Array<{ competencia: string; valor: number; itens: Array<{ descricao: string; cliente: string; valor: number; status: string }> }>; comissaoFuturaMensal: Array<{ competencia: string; valor: number; itens: Array<{ descricao: string; cliente: string; valor: number; status: string }> }>; adiantamentoPessoal: number; saldoAnterior: number }>;
   bloqueios: string[];
   fechamentos: Array<{ id: string; periodo_inicio: string; periodo_fim: string; created_at: string; demonstrativo: FechamentoCalculado }>;
 };
@@ -51,18 +53,18 @@ async function lerPainel(): Promise<PainelFechamento> {
     admin.from("empresa_socios").select("id,usuario_id,nome,percentual_participacao,ativo").eq("empresa_id", empresaAtiva.id).eq("ativo", true),
     admin.from("financeiro_contas_pagar").select("id,descricao,fornecedor,valor,status,pago_em,vencimento,pago_pessoalmente,socio_pagador_usuario_id,observacao,retirar_reserva_impostos,centro_custo_id,conta_bancaria_id,caixa_movimento_id,comprovante_url,nota_fiscal_nome,excluida_em").eq("empresa_id", empresaAtiva.id).is("excluida_em", null),
     admin.from("financeiro_centros_custo").select("id,nome,descontado_comissao,limite_mensal").eq("empresa_id", empresaAtiva.id),
-    admin.from("financeiro_pagamentos").select("id,participante_comercial_id,valor_liquido,data_pagamento,status").eq("empresa_id", empresaAtiva.id).eq("status", "confirmado"),
+    admin.from("financeiro_pagamentos").select("id,participante_comercial_id,valor_liquido,data_pagamento,status").eq("empresa_id", empresaAtiva.id),
     admin.from("participantes_comerciais").select("id,usuario_id,nome,status,data_entrada,created_at").eq("empresa_id", empresaAtiva.id),
     admin.from("financeiro_recebimentos").select("id,valor_total,data_recebimento,status,observacoes").eq("empresa_id", empresaAtiva.id).eq("status", "confirmado"),
-    admin.from("financeiro_conta_movimentos").select("id,valor,data_movimento,tipo,categoria,descricao").eq("empresa_id", empresaAtiva.id),
-    admin.from("financeiro_contas_bancarias").select("id,nome,ativo").eq("empresa_id", empresaAtiva.id).eq("ativo", true),
+    admin.from("financeiro_conta_movimentos").select("id,valor,data_movimento,tipo,categoria,descricao,conta_bancaria_id,pagamento_id,transferencia_conta_id").eq("empresa_id", empresaAtiva.id),
+    admin.from("financeiro_contas_bancarias").select("id,nome,ativo,participante_comercial_id").eq("empresa_id", empresaAtiva.id),
     admin.from("financeiro_contas_saldos").select("id,saldo_atual").eq("empresa_id", empresaAtiva.id),
     admin.from("financeiro_fechamentos_socios_cortes").select("id,periodo_inicio,periodo_fim,created_at,demonstrativo").eq("empresa_id", empresaAtiva.id).order("periodo_fim", { ascending: false }).limit(24),
     carregarDadosContaCorrenteSocios({ socioId: "todos" }),
     admin.from("socio_conta_corrente_movimentos").select("socio_id,valor,origem_tipo,estornado,data_movimento").eq("empresa_id", empresaAtiva.id),
-    admin.from("financeiro_recebimento_itens").select("recebimento_id,previsao_franquia_id,valor_liquidado"),
+    admin.from("financeiro_recebimento_itens").select("recebimento_id,previsao_franquia_id,valor_liquidado").eq("empresa_id", empresaAtiva.id),
     admin.from("comissao_previsoes_franquia").select("id,venda_id,valor_previsto,valor_imposto").eq("empresa_id", empresaAtiva.id),
-    admin.from("comissao_previsoes_participantes").select("id,venda_id,previsao_franquia_id,participante_comercial_id,competencia,nome_etapa,valor_previsto,valor_pago,status").eq("empresa_id", empresaAtiva.id).neq("status", "cancelada"),
+    admin.from("comissao_previsoes_participantes").select("id,venda_id,previsao_franquia_id,participante_comercial_id,competencia,nome_etapa,valor_previsto,valor_pago,status,snapshot_regra").eq("empresa_id", empresaAtiva.id).neq("status", "cancelada"),
     admin.from("vendas").select("id,participante_comercial_id,cliente_nome,valor_credito,status,data_venda").eq("empresa_id", empresaAtiva.id),
     admin.from("metas_comerciais").select("indicador,valor_meta,data_inicio,data_fim").eq("empresa_id", empresaAtiva.id).eq("alvo_tipo", "empresa"),
   ]);
@@ -71,13 +73,14 @@ async function lerPainel(): Promise<PainelFechamento> {
     previsoesFranquiaRes, previsoesParticipantesRes, vendasRes, metasRes].find((res) => res.error);
   if (erro?.error) throw new Error(`Não foi possível conferir o fechamento: ${erro.error.message}`);
 
+  const pagamentosConfirmados = (pagamentosRes.data || []).filter((p) => p.status === "confirmado");
   const hoje = obterHojeCuiaba();
   const cortes = (cortesRes.data || []) as Array<{ id: string; periodo_inicio: string; periodo_fim: string; created_at: string; demonstrativo: FechamentoCalculado }>;
   const ultimo = cortes[0];
   const datas = [
     ...(contasRes.data || []).filter((c) => c.status === "paga" && c.pago_em).map((c) => c.pago_em!),
     ...(recebimentosRes.data || []).map((r) => r.data_recebimento),
-    ...(pagamentosRes.data || []).map((p) => p.data_pagamento),
+    ...pagamentosConfirmados.map((p) => p.data_pagamento),
     ...(movimentosRes.data || []).map((m) => m.data_movimento),
   ].filter(Boolean).sort();
   const inicioProximo = ultimo ? new Date(Date.parse(`${ultimo.periodo_fim}T12:00:00Z`) + 86400000).toISOString().slice(0, 10) : (datas[0] || hoje);
@@ -105,9 +108,15 @@ async function lerPainel(): Promise<PainelFechamento> {
   const participantes = new Map((participantesRes.data || []).map((p) => [p.id, p.usuario_id]));
   const socios = (sociosRes.data || []).map((s) => {
     const nome = String(s.nome);
-    const comissaoGuardada = (pagamentosRes.data || [])
-      .filter((p) => p.data_pagamento >= inicioProximo && p.data_pagamento <= hoje && participantes.get(p.participante_comercial_id) === s.usuario_id)
-      .reduce((soma, p) => soma + numero(p.valor_liquido), 0);
+    // Crédito nasce do recebimento vinculado, independentemente de baixa/conferência.
+    const comissaoGuardada = 0;
+    const contasDoSocio = new Set((bancosRes.data || []).filter((b) => b.participante_comercial_id && participantes.get(b.participante_comercial_id) === s.usuario_id).map((b) => b.id));
+    const contasEmpresa = new Set((bancosRes.data || []).filter((b) => !b.participante_comercial_id && /empresa/i.test(b.nome)).map((b) => b.id));
+    const transferenciasRealizadas = calcularTransferenciasSocio({
+      inicio: inicioProximo, fim: hoje, contasDoSocio, contasEmpresa,
+      pagamentosDoSocio: new Set((pagamentosRes.data || []).filter((p) => s.usuario_id && participantes.get(p.participante_comercial_id) === s.usuario_id).map((p) => p.id)),
+      movimentos: movimentosRes.data || [],
+    });
     const adiantamentoPessoal = operacionais
       .filter((c) => c.pago_pessoalmente && c.socio_pagador_usuario_id === s.usuario_id)
       .reduce((soma, c) => soma + numero(c.valor), 0)
@@ -115,9 +124,9 @@ async function lerPainel(): Promise<PainelFechamento> {
         .reduce((soma, m) => soma + numero(m.valor), 0);
     const anterior = ultimo?.demonstrativo?.socios?.find((item) => item.id === s.id);
     const saldoAnterior = arredondar(numero(anterior?.ficouNaEmpresa) - numero(anterior?.faltaCobrir));
-    return { id: s.id, nome, percentual: numero(s.percentual_participacao), comissaoGuardada: arredondar(comissaoGuardada), comissaoGuardadaMensal: [] as Array<{ competencia: string; valor: number; itens: Array<{ descricao: string; cliente: string; valor: number; status: string }> }>, comissaoFuturaMensal: [] as Array<{ competencia: string; valor: number; itens: Array<{ descricao: string; cliente: string; valor: number; status: string }> }>, adiantamentoPessoal: arredondar(adiantamentoPessoal), saldoAnterior };
+    return { id: s.id, nome, impostoGerado: 0, percentual: numero(s.percentual_participacao), transferenciasRealizadas: arredondar(transferenciasRealizadas), comissaoGuardada: arredondar(comissaoGuardada), comissaoGuardadaMensal: [] as Array<{ competencia: string; valor: number; itens: Array<{ descricao: string; cliente: string; valor: number; status: string }> }>, comissaoFuturaMensal: [] as Array<{ competencia: string; valor: number; itens: Array<{ descricao: string; cliente: string; valor: number; status: string }> }>, adiantamentoPessoal: arredondar(adiantamentoPessoal), saldoAnterior };
   });
-  const banco = (bancosRes.data || []).find((b) => /empresa/i.test(b.nome)) || null;
+  const banco = (bancosRes.data || []).find((b) => b.ativo && /empresa/i.test(b.nome)) || null;
   const saldoBanco = (saldosRes.data || []).find((s) => s.id === banco?.id);
   const recebidos = (recebimentosRes.data || []).filter((r) => r.data_recebimento >= inicioProximo && r.data_recebimento <= hoje)
     .reduce((soma, r) => soma + numero(r.valor_total), 0);
@@ -148,19 +157,33 @@ async function lerPainel(): Promise<PainelFechamento> {
   const competenciaAtual = hoje.slice(0, 7);
   for (const socio of socios) {
     const porMesGuardado = new Map<string, { valor: number; itens: Array<{ descricao: string; cliente: string; valor: number; status: string }> }>();
-    for (const pagamento of pagamentosRes.data || []) {
-      if (pagamento.data_pagamento < inicioProximo || pagamento.data_pagamento > hoje || participantes.get(pagamento.participante_comercial_id) !== (sociosRes.data || []).find((item) => item.id === socio.id)?.usuario_id) continue;
-      const competencia = pagamento.data_pagamento.slice(0, 7);
-      const atual = porMesGuardado.get(competencia) || { valor: 0, itens: [] };
-      atual.valor += numero(pagamento.valor_liquido);
-      atual.itens.push({ descricao: `Pagamento confirmado em ${pagamento.data_pagamento.split("-").reverse().join("/")}`, cliente: "Comissão mantida no caixa", valor: numero(pagamento.valor_liquido), status: "guardada" });
-      porMesGuardado.set(competencia, atual);
+    const usuarioSocio = (sociosRes.data || []).find((item) => item.id === socio.id)?.usuario_id;
+    for (const item of recebimentoItensRes.data || []) {
+      const recebimento = recebimentosConfirmados.find((r) => r.id === item.recebimento_id);
+      const franquia = previsoesFranquia.get(item.previsao_franquia_id);
+      if (!recebimento || !franquia) continue;
+      for (const previsao of previsoesParticipantesRes.data || []) {
+        if (previsao.previsao_franquia_id !== franquia.id || !usuarioSocio || participantes.get(previsao.participante_comercial_id) !== usuarioSocio) continue;
+        const valor = calcularComissaoRecebida(numero(previsao.valor_previsto), numero(franquia.valor_previsto), numero(item.valor_liquidado));
+        const fiscal = lerFiscalParticipante(previsao.snapshot_regra);
+        socio.impostoGerado += calcularComissaoRecebida(numero(fiscal?.imposto), numero(franquia.valor_previsto), numero(item.valor_liquidado));
+        const competencia = recebimento.data_recebimento.slice(0, 7);
+        const atual = porMesGuardado.get(competencia) || { valor: 0, itens: [] };
+        atual.valor += valor;
+        atual.itens.push({ descricao: previsao.nome_etapa || "Comissão de repasse recebido", cliente: vendas.get(previsao.venda_id)?.cliente_nome || "Cliente não informado", valor, status: "recebida na empresa, conferida ou não" });
+        porMesGuardado.set(competencia, atual);
+      }
     }
+    socio.impostoGerado = arredondar(socio.impostoGerado);
+    socio.comissaoGuardada = arredondar(Array.from(porMesGuardado.values()).reduce((soma, mes) => soma + mes.valor, 0));
     socio.comissaoGuardadaMensal = Array.from(porMesGuardado, ([competencia, item]) => ({ competencia, valor: arredondar(item.valor), itens: item.itens })).sort((a, b) => a.competencia.localeCompare(b.competencia));
     const porMesFuturo = new Map<string, { valor: number; itens: Array<{ descricao: string; cliente: string; valor: number; status: string }> }>();
     for (const previsao of previsoesParticipantesRes.data || []) {
       if (previsao.competencia < competenciaAtual || participantes.get(previsao.participante_comercial_id) !== (sociosRes.data || []).find((item) => item.id === socio.id)?.usuario_id) continue;
-      const disponivel = Math.max(0, numero(previsao.valor_previsto) - numero(previsao.valor_pago));
+      const franquia = previsoesFranquia.get(previsao.previsao_franquia_id);
+      const idsConfirmados = new Set((recebimentosRes.data || []).filter((r) => r.data_recebimento <= hoje).map((r) => r.id));
+      const recebido = (recebimentoItensRes.data || []).filter((i) => i.previsao_franquia_id === previsao.previsao_franquia_id && idsConfirmados.has(i.recebimento_id)).reduce((soma, i) => soma + numero(i.valor_liquidado), 0);
+      const disponivel = Math.max(0, numero(previsao.valor_previsto) - Math.max(numero(previsao.valor_pago), calcularComissaoRecebida(numero(previsao.valor_previsto), numero(franquia?.valor_previsto), recebido)));
       if (disponivel > 0) {
         const atual = porMesFuturo.get(previsao.competencia) || { valor: 0, itens: [] };
         atual.valor += disponivel;
@@ -183,8 +206,8 @@ async function lerPainel(): Promise<PainelFechamento> {
     atual.reservada += reservada;
     comissoesPorPessoa.set(participanteId, atual);
   };
-  for (const pagamento of pagamentosRes.data || []) {
-    if (pagamento.data_pagamento >= inicioProximo && pagamento.data_pagamento <= hoje) {
+  for (const pagamento of pagamentosConfirmados) {
+    if (pagamento.data_pagamento >= inicioProximo && pagamento.data_pagamento <= hoje && !sociosUsuarios.has(participantes.get(pagamento.participante_comercial_id)!)) {
       adicionarComissao(pagamento.participante_comercial_id, numero(pagamento.valor_liquido), 0);
     }
   }
@@ -194,7 +217,12 @@ async function lerPainel(): Promise<PainelFechamento> {
     if (!previsao) continue;
     const participanteVenda = vendas.get(previsao.venda_id)?.participante_comercial_id;
     const usuarioVenda = participanteVenda ? participantes.get(participanteVenda) : null;
-    if (usuarioVenda && sociosUsuarios.has(usuarioVenda)) continue;
+    if (usuarioVenda && sociosUsuarios.has(usuarioVenda)) {
+      for (const p of previsoesParticipantes.get(previsao.id) || []) {
+        adicionarComissao(p.participante_comercial_id, calcularComissaoRecebida(p.valor_previsto, numero(previsao.valor_previsto), numero(item.valor_liquidado)), 0);
+      }
+      continue;
+    }
     const valorItem = numero(item.valor_liquidado);
     const base = numero(previsao.valor_previsto) || valorItem;
     const proporcao = base > 0 ? valorItem / base : 1;
@@ -270,7 +298,7 @@ async function lerPainel(): Promise<PainelFechamento> {
     impostosPagos: arredondar(contasPeriodo.filter((c) => c.retirar_reserva_impostos).reduce((soma, c) => soma + numero(c.valor), 0)),
     impostosPagosDetalhes,
     reservaImpostos: dadosSocios.reservaImpostosControle.saldoReserva,
-    contasEmpresa: (bancosRes.data || []).map((b) => ({ id: b.id, nome: b.nome })),
+    contasEmpresa: (bancosRes.data || []).filter((b) => b.ativo).map((b) => ({ id: b.id, nome: b.nome })),
     centrosCusto: (centrosRes.data || []).map((centro) => ({ id: centro.id, nome: centro.nome || "Sem categoria" })),
     repassesRecebidos: arredondar(recebidos),
     repassesDetalhes,

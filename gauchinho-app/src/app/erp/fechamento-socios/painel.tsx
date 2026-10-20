@@ -615,6 +615,15 @@ export function PainelFechamentoSocios({
     }
   }, [dados, lucro, saldoExtrato, retiradas]);
 
+  const posicao = useMemo(() => {
+    try {
+      return calcularFechamentoSocios({ despesasPagas: dados.despesasPagas,
+        lucroConsultores: dados.margemConsultores + dados.receitasEventos,
+        reservaImpostos: dados.reservaImpostos, caixaAntes: Math.max(0, dados.bancoEmpresa?.saldoSistema || 0),
+        socios: dados.socios.map((socio) => ({ ...socio, retirada: 0 })) });
+    } catch { return null; }
+  }, [dados]);
+
   function enviar(form: FormData) {
     setErro("");
     iniciar(async () => {
@@ -686,6 +695,33 @@ export function PainelFechamentoSocios({
           </span>
         </div>
       </header>
+
+      <section className="rounded-3xl border border-indigo-200 bg-white p-6 shadow-sm">
+        <h2 className="text-xl font-black text-slate-950">Posição da empresa e dos sócios</h2>
+        <p className="mt-2 text-sm text-slate-600">Toda comissão vinculada a repasse recebido entra como crédito do sócio, conferida ou não. O dinheiro permanece na empresa até a transferência efetiva.</p>
+        <div className="mt-4 grid gap-4 md:grid-cols-2">
+          <div className="rounded-xl bg-slate-50 p-4 text-slate-950">
+            <p>Empresa gastou: <strong>{brl(dados.despesasPagas)}</strong></p>
+            <p>Impostos gerados pelos sócios neste período: <strong>{brl(dados.socios.reduce((total, socio) => total + socio.impostoGerado, 0))}</strong></p>
+            <p>Reserva atual para impostos, já incluída no caixa: <strong>{brl(dados.reservaImpostos)}</strong></p>
+            <p>Saldo registrado da empresa: <strong>{brl(dados.bancoEmpresa?.saldoSistema || 0)}</strong></p>
+            {dados.quantidadeDespesasSemSaida > 0 && <p className="mt-2 text-sm text-amber-800">Após descontar contas pagas sem saída registrada: {brl(dados.saldoAposDespesasPendentes)}. Saldo sujeito à conciliação.</p>}
+          </div>
+          {dados.socios.map((socio) => {
+            const conta = posicao?.socios.find((item) => item.id === socio.id);
+            const saldo = conta ? conta.direitoAntesRetirada : null;
+            return <div key={socio.id} className="rounded-xl bg-indigo-50 p-4 text-slate-950">
+              <h3 className="font-black">{socio.nome}</h3>
+              <p>Deixou de comissão recebida: <strong>{brl(socio.comissaoGuardada)}</strong></p>
+              <p>Imposto gerado para a reserva da empresa: <strong>{brl(socio.impostoGerado)}</strong></p>
+              <p>Total gerado no caixa (comissão + imposto): <strong>{brl(socio.comissaoGuardada + socio.impostoGerado)}</strong></p>
+              <p>Transferências efetivas, líquidas de devoluções: <strong>{brl(socio.transferenciasRealizadas)}</strong></p>
+              {saldo !== null && <p className="mt-2 font-black">{saldo >= 0 ? "Crédito na empresa" : "Débito com a empresa"}: {brl(Math.abs(saldo))}</p>}
+            </div>;
+          })}
+        </div>
+        <p className="mt-3 text-xs text-slate-600">Crédito ou débito = saldo anterior + comissão recebida + recursos próprios − parte das despesas − transferências efetivas. O imposto fica separado na reserva da empresa e não aumenta o crédito disponível do sócio. Previsões sem recebimento ficam fora desta posição.</p>
+      </section>
 
       {dados.bloqueios.length > 0 ? (
         <section
@@ -1333,12 +1369,15 @@ export function PainelFechamentoSocios({
                         }
                         className="text-left hover:text-indigo-700 hover:underline"
                       >
-                        Comissão guardada:{" "}
+                        Comissão recebida na empresa:{" "}
                         <strong>{brl(socio.comissaoGuardada)}</strong>{" "}
                         <span className="text-xs font-black text-indigo-700">
                           ver lançamentos ↓
                         </span>
                       </button>
+                    </p>
+                    <p>
+                      Transferências já realizadas: <strong>− {brl(socio.transferenciasRealizadas)}</strong>
                     </p>
                     <p>
                       Pagou do próprio bolso:{" "}

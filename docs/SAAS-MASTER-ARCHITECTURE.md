@@ -1,5 +1,23 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
+### Crédito dos sócios por repasse recebido (20/10/2026)
+
+O fechamento passa a reconhecer a comissão líquida proporcional aos itens de
+recebimentos confirmados vinculados à previsão do participante sócio, pela data
+do recebimento, independentemente da baixa ou conferência da comissão. Não soma
+novamente financeiro_pagamentos ao crédito. Reversões de classificação permanecem
+compensatórias; previsões sem recebimento não integram a posição presente.
+Transferências efetivas da empresa para o sócio reduzem seu direito; devoluções
+e estornos bancários o recompõem. Créditos internos sem saída PJ não são retiradas.
+O resumo apresenta despesas, saldo registrado e saldo após pendências de caixa,
+comissão recebida e crédito/débito individual após rateio, aportes e transferências.
+Cortes históricos permanecem imutáveis. Implementação local, sem alteração do
+banco. Envio à main autorizado em 20/10/2026 após testes direcionados,
+TypeScript, lint e build aprovados; suíte global com falhas também observadas
+no baseline, detalhadas no relatório. Implantação não homologada. Relatório:
+`docs/relatorios-fases/CREDITO-SOCIOS-REPASSE-RECEBIDO-2026-10-20.md`.
+
+
 ### Atualização 325 — Check-in de Trabalho Externo / Panfletos & QR Code Fixo Permanente (20/10/2026)
 
 Implementada a separação oficial entre Check-in de Evento Presencial e Check-in de Trabalho Externo (Panfletagem na rua e em empresas sem explicação verbal prévia):
@@ -3868,3 +3886,10 @@ Relatório de Fase:
 `docs/relatorios-fases/RELATORIO-2026-10-19-ROBO-LANCES-NEWCON-ERP.md`.
 
 
+
+Atualização do pedido de impostos: o resumo identifica por sócio o imposto
+persistido no snapshot fiscal, proporcional ao repasse recebido no período.
+Exibe comissão líquida, imposto separado e soma dos dois como origem do caixa.
+A reserva fiscal atual continua sendo o controle canônico acumulado, já líquido
+das guias pagas com reserva; impostos gerados no período não são somados
+novamente ao saldo bancário nem ao crédito disponível para retirada do sócio.
