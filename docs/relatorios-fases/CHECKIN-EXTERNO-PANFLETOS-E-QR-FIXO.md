@@ -55,3 +55,20 @@ Atender à demanda de diferenciação entre:
 
 - Testes automatizados executados via Vitest (`src/lib/eventos-sorteio/`): **17 arquivos e 116 testes aprovados com 100% de sucesso**.
 - Build de produção (`next build`): **169 rotas compiladas sem nenhum erro de tipagem**.
+
+---
+
+## 4. Ajustes Operacionais e Usabilidade (Hotfix)
+
+1. **Painel Fixo de "Salvar alterações" no Final da Tela:**
+   - Adicionada barra de ação fixa e destacada no final do formulário (`evento-admin-form.tsx`) com botão proeminente em âmbar: **"Salvar alterações"** (ou "Criar evento").
+   - Mensagens de feedback imediato inline ("✅ Alterações salvas com sucesso!" / "❌ Erro") e botões diretos de "Ver check-in" e "Testar check-in".
+   - Botão rápido adicional no topo da seção "Check-in & Acesso" para evitar rolagem longa.
+   - Divisor e cabeçalho claros separando o formulário principal do evento da seção de posts sociais na página do admin.
+
+2. **Resolução de Erro 404 ao Ver ou Testar Check-in:**
+   - Adicionado `export const dynamic = "force-dynamic"` em `(public)/eventos/[slug]/sorteio/page.tsx`.
+   - Normalização e `decodeURIComponent` do slug em `fetchPublicSorteioByEventoSlug`.
+   - Usuários com perfil de equipe (master/srd/visualizador) e modo preview (`?preview=1`) agora conseguem visualizar e testar o check-in mesmo que o evento esteja em rascunho (`publicado = false`).
+   - Eventos de panfleto (`tipo_checkin = 'externo'`) ficam sempre abertos sem bloqueio de horário agendado.
+   - Invalidação de cache via `revalidatePath` para `/eventos/${slug}/sorteio` e `/qr/externo` ao salvar.
