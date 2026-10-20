@@ -3893,3 +3893,12 @@ Exibe comissão líquida, imposto separado e soma dos dois como origem do caixa.
 A reserva fiscal atual continua sendo o controle canônico acumulado, já líquido
 das guias pagas com reserva; impostos gerados no período não são somados
 novamente ao saldo bancário nem ao crédito disponível para retirada do sócio.
+
+
+### Demonstrativo explícito do crédito por sócio (20/10/2026)
+O resumo mostra comissão recebida antes dos impostos, imposto separado,
+comissão líquida, parte das despesas e crédito para receber em transferência.
+Exemplo de regressão: 20.000 - 2.000 - 10.000 = 8.000. Ajustes anteriores,
+aportes e transferências são discriminados quando presentes. O motor recebe
+comissão líquida e não desconta imposto duas vezes. Diagnóstico das falhas
+históricas registrado em CREDITO-SOCIOS-REPASSE-RECEBIDO-2026-10-20.md.

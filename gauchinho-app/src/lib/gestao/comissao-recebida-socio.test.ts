@@ -43,3 +43,16 @@ it("separa imposto proporcional do crédito líquido do sócio", () => {
   expect(imposto).toBe(60);
   expect(liquido + imposto).toBe(400);
 });
+
+it("exemplo do titular: 20 mil recebidos menos 2 mil de impostos e 10 mil de despesas deixam 8 mil", () => {
+  const imposto = calcularComissaoRecebida(2000, 20000, 20000);
+  const liquido = calcularComissaoRecebida(18000, 20000, 20000);
+  const resultado = calcularFechamentoSocios({ despesasPagas: 20000, lucroConsultores: 0,
+    reservaImpostos: imposto, caixaAntes: 20000, socios: [
+      { id: "f", nome: "Fernando", percentual: 50, comissaoGuardada: liquido, adiantamentoPessoal: 0, saldoAnterior: 0, retirada: 0 },
+      { id: "e", nome: "Eroni", percentual: 50, comissaoGuardada: 0, adiantamentoPessoal: 0, saldoAnterior: 0, retirada: 0 },
+    ] });
+  expect(liquido + imposto).toBe(20000);
+  expect(resultado.socios[0].parteDespesas).toBe(10000);
+  expect(resultado.socios[0].direitoAntesRetirada).toBe(8000);
+});

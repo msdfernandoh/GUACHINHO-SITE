@@ -54,3 +54,31 @@ novamente ao saldo bancário nem ao crédito disponível para retirada do sócio
   de contrato de repasse que não ocorreu na execução completa.
 - Não foram alterados módulos alheios para corrigir a suíte histórica.
 - Build não substitui homologação autenticada nem confirma implantação Vercel.
+
+## Refinamento do demonstrativo por solicitação do titular
+O card mostra comissão antes de impostos, imposto separado, comissão líquida,
+parte das despesas e crédito para receber em transferência. Saldo anterior,
+aportes e transferências efetivas aparecem quando existentes. Teste do exemplo
+R$ 20.000 recebidos - R$ 2.000 impostos - R$ 10.000 despesas = R$ 8.000 crédito
+aprovado. O imposto não é descontado novamente da comissão já líquida usada no motor.
+
+## Diagnóstico das falhas gerais (sem alteração de regras alheias)
+1. Seis divergências numéricas em calcular-linha-grupo.test.ts (3) e
+   simulacao-linha.test.ts (3). Prioridade de investigação: comparar catálogo
+   oficial e fixtures com a precedência de parcela persistida. Exemplo: fixture
+   informa parcela_integral 4772,73 mas espera cálculo 5918,18; motor atual
+   prioriza a parcela persistida. Não foi comprovado erro de produção.
+2. grupos-cadastro-completo-154-contract espera [60], enquanto código retorna
+   [50,60], coerente com a atualização documentada de modalidades de 20/10.
+3. empresa-usuarios-relations referencia migration 301 inexistente; arquivo
+   canônico é 314_permitir_fechamento_socios_acesso_erp.sql.
+4. Contratos textuais de assembleias, repasse, formalização, login e menus:
+   falham procurando frases, chamadas ou trechos exatos ausentes/refatorados.
+   Precisam verificar comportamento atual antes de atualizar expectativas.
+   Ausência de um trecho literal não comprova ausência funcional.
+5. SEO: timeout de 5 segundos. Homologação de eventos: timeout no hook de
+   10 segundos. Ambos passaram no recorte baseline e precisam isolamento de
+   dependências/ambiente, sem apenas aumentar timeout indiscriminadamente.
+
+Essas pendências são independentes do demonstrativo societário; não foram
+silenciadas nem alteradas regras comerciais para obter suíte verde.

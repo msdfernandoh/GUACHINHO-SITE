@@ -712,15 +712,19 @@ export function PainelFechamentoSocios({
             const saldo = conta ? conta.direitoAntesRetirada : null;
             return <div key={socio.id} className="rounded-xl bg-indigo-50 p-4 text-slate-950">
               <h3 className="font-black">{socio.nome}</h3>
-              <p>Deixou de comissão recebida: <strong>{brl(socio.comissaoGuardada)}</strong></p>
-              <p>Imposto gerado para a reserva da empresa: <strong>{brl(socio.impostoGerado)}</strong></p>
-              <p>Total gerado no caixa (comissão + imposto): <strong>{brl(socio.comissaoGuardada + socio.impostoGerado)}</strong></p>
-              <p>Transferências efetivas, líquidas de devoluções: <strong>{brl(socio.transferenciasRealizadas)}</strong></p>
-              {saldo !== null && <p className="mt-2 font-black">{saldo >= 0 ? "Crédito na empresa" : "Débito com a empresa"}: {brl(Math.abs(saldo))}</p>}
+              <p className="mt-3">Recebeu de comissão, antes dos impostos: <strong>{brl(socio.comissaoGuardada + socio.impostoGerado)}</strong></p>
+              <p>Deixou separado para impostos: <strong>− {brl(socio.impostoGerado)}</strong></p>
+              <p>Comissão líquida na empresa: <strong>{brl(socio.comissaoGuardada)}</strong></p>
+              {socio.saldoAnterior !== 0 && <p>Saldo do fechamento anterior: <strong>{brl(socio.saldoAnterior)}</strong></p>}
+              {socio.adiantamentoPessoal > 0 && <p>Acrescentou de recursos próprios: <strong>+ {brl(socio.adiantamentoPessoal)}</strong></p>}
+              {conta && <p>Sua parte nas despesas: <strong>− {brl(conta.parteDespesas)}</strong></p>}
+              {socio.transferenciasRealizadas !== 0 && <p>Já recebeu em transferências, descontadas devoluções: <strong>{brl(socio.transferenciasRealizadas)}</strong></p>}
+              {saldo !== null && <p className="mt-3 border-t border-indigo-200 pt-3 text-lg font-black">{saldo >= 0 ? "Crédito para receber em transferência" : "Débito com a empresa"}: {brl(Math.abs(saldo))}</p>}
+
             </div>;
           })}
         </div>
-        <p className="mt-3 text-xs text-slate-600">Crédito ou débito = saldo anterior + comissão recebida + recursos próprios − parte das despesas − transferências efetivas. O imposto fica separado na reserva da empresa e não aumenta o crédito disponível do sócio. Previsões sem recebimento ficam fora desta posição.</p>
+        <p className="mt-3 text-xs text-slate-600">Crédito ou débito = comissão recebida antes dos impostos − impostos separados − sua parte nas despesas − transferências já recebidas + saldo anterior + recursos próprios. O imposto fica separado na reserva da empresa e não aumenta o crédito disponível do sócio. Previsões sem recebimento ficam fora desta posição.</p>
       </section>
 
       {dados.bloqueios.length > 0 ? (
