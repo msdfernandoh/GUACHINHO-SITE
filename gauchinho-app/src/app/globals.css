@@ -165,7 +165,7 @@ body.tenant-root-independent {
 .tenant-operational [class*="text-slate-100"],
 .tenant-operational [class*="text-slate-200"],
 .tenant-operational [class*="text-slate-300"],
-.tenant-operational [class~="text-white"] {
+.tenant-operational [class~="text-white"]:not(.grupo-tag-vagas):not(.grupo-em-formacao) {
   color: #0f172a !important;
 }
 
@@ -519,7 +519,10 @@ body.tenant-root-independent {
   background-color: color-mix(in srgb, var(--visual-button), white 94%) !important;
   color: var(--visual-text) !important;
 }
-.tenant-racon .grupos-workspace .grupo-em-formacao {
+.tenant-racon .grupos-workspace .grupo-em-formacao,
+.tenant-racon .grupos-workspace .grupo-tag-vagas,
+.tenant-operational .grupo-tag-vagas,
+.grupo-tag-vagas {
   background-color: var(--tenant-secondary, #0c2340) !important;
   color: #ffffff !important;
 }

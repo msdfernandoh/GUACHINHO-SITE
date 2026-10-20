@@ -61,10 +61,11 @@ export function GrupoMobileCard({ grupo, cotas, modalidades, config, onChange }:
             {emFormacao ? <span className="grupo-em-formacao inline-flex rounded-full bg-[var(--tenant-secondary,#0c2340)] px-2 py-0.5 text-[10px] font-semibold text-white">Em Formação</span> : null}
             {grupo.vagas_disponiveis != null ? (
               <span
+                style={grupo.vagas_disponiveis > 0 ? { color: "#ffffff", backgroundColor: "#0c2340" } : undefined}
                 className={cn(
                   "inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold",
                   grupo.vagas_disponiveis > 0
-                    ? "border border-[#1e3a5f] bg-[#0c2340] text-white"
+                    ? "grupo-tag-vagas border border-[#1e3a5f] bg-[#0c2340] !text-white text-white"
                     : "border border-red-500/30 bg-red-500/15 text-red-300",
                 )}
               >

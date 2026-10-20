@@ -101,10 +101,11 @@ export function GrupoRow({
           {emFormacao ? <span className="grupo-em-formacao mt-1 block w-fit rounded bg-[var(--tenant-secondary,#0c2340)] px-1.5 py-px text-[9px] font-semibold text-white">Em Formação</span> : null}
           {grupo.vagas_disponiveis != null ? (
             <span
+              style={grupo.vagas_disponiveis > 0 ? { color: "#ffffff", backgroundColor: "#0c2340" } : undefined}
               className={cn(
                 "mt-1 inline-block rounded px-1.5 py-px text-[9px] font-semibold",
                 grupo.vagas_disponiveis > 0
-                  ? "border border-[#1e3a5f] bg-[#0c2340] text-white"
+                  ? "grupo-tag-vagas border border-[#1e3a5f] bg-[#0c2340] !text-white text-white"
                   : "border border-red-500/30 bg-red-500/15 text-red-300",
               )}
             >
