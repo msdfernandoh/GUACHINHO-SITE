@@ -48,12 +48,20 @@ create trigger trg_garantir_unico_evento_externo_ativo
   for each row
   execute function public.fn_garantir_unico_evento_externo_ativo();
 
--- 3. Garantir o QR Code Fixo permanente de trabalho externo (/qr/externo)
+-- 3. Atualizar check constraint de tipo_destino em qr_codes_unicos para aceitar 'externo'
+alter table public.qr_codes_unicos
+  drop constraint if exists qr_codes_unicos_tipo_destino_check;
+
+alter table public.qr_codes_unicos
+  add constraint qr_codes_unicos_tipo_destino_check
+  check (tipo_destino in ('site', 'externo', 'evento', 'checkin_evento', 'whatsapp', 'pagina_interna', 'custom'));
+
+-- 4. Garantir o QR Code Fixo permanente de trabalho externo (/qr/externo)
 insert into public.qr_codes_unicos (nome, slug, tipo_destino, ativo)
 values ('QR Fixo — Trabalho Externo (Panfletos / Empresas)', 'externo', 'externo', true)
-on conflict (slug) do nothing;
+on conflict (slug) do update set tipo_destino = 'externo', ativo = true, updated_at = now();
 
--- 4. Atualizar RPC de Check-in Conversacional para lidar com evento e externo
+-- 5. Atualizar RPC de Check-in Conversacional para lidar com evento e externo
 create or replace function public.rpc_realizar_checkin_conversacional(
   p_evento_id uuid,
   p_nome text,
