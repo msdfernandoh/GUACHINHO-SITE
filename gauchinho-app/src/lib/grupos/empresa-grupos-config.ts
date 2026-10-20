@@ -173,7 +173,8 @@ export function resolveEmpresaGrupoPresentation(
       (config?.status_vagas_local !== "DISPONIVEL" && Number(localCatalog.vagas_disponiveis ?? grupo.vagas_disponiveis ?? 0) <= 0),
     alteracao_catalogo_status: config?.alteracao_catalogo_status ?? null,
   };
-  const globalElegivel = grupoEfetivo.ativo && grupoEfetivo.status === "Disponível";
+  const statusElegivel = ["Disponível", "ATIVO", "Ativo", "Em Andamento"].includes(grupoEfetivo.status ?? "") || !grupoEfetivo.status;
+  const globalElegivel = Boolean(grupoEfetivo.ativo) && statusElegivel && (grupoEfetivo as Record<string, unknown>).visivel_franquia !== false;
   const visivelConfig = config ? config.visivel : true;
 
   // A visibilidade final exige elegibilidade global E visibilidade local

@@ -72,6 +72,7 @@ export type GrupoConsorcio = {
   reajuste_anual_percentual?: number | null;
   reajuste_anual_indice?: string | null;
   ano_ultimo_reajuste?: number | null;
+  visivel_franquia?: boolean;
   data_ultimo_reajuste?: string | null;
   seguro_habilitado: boolean;
   seguro_percentual: number | null;
