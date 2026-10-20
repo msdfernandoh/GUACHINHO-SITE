@@ -20,7 +20,7 @@ describe("repasse — central de atenção e releitura idempotente", () => {
   });
 
   it("oferece vínculo, cadastro, próximo relatório, crédito, ajuste e cancelamento", () => {
-    expect(ui).toContain("Cadastrar cliente, grupo/cota e comissão");
+    expect(ui).toContain("Cadastrar ou reutilizar cliente e cota · lançar comissão");
     expect(ui).toContain("Manter para o próximo relatório");
     expect(ui).toContain("Manter sistema e gerar crédito");
     expect(ui).toContain("Dar por ajustado · manter como está");

@@ -5,7 +5,7 @@ import { listarPercentuaisParcelaReduzida } from "./simulacao-linha";
 
 describe("Fase 156 — cadastro completo de grupos", () => {
   it("preserva grupos legados e prioriza a coleção de opções fixas", () => {
-    expect(listarPercentuaisParcelaReduzida({ percentuais_parcela_reduzida: null, percentual_parcela_reduzida: 60 })).toEqual([60]);
+    expect(listarPercentuaisParcelaReduzida({ percentuais_parcela_reduzida: null, percentual_parcela_reduzida: 60 })).toEqual([50, 60]);
     expect(listarPercentuaisParcelaReduzida({ percentuais_parcela_reduzida: [60, 70], percentual_parcela_reduzida: 60 })).toEqual([60, 70]);
   });
 

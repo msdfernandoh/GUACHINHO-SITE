@@ -7,11 +7,14 @@ const read = (file: string) => fs.readFileSync(path.join(root, file), "utf8");
 
 describe("repasse — correção de vínculo já baixado", () => {
   const migration = read("../supabase/migrations/198_corrigir_vinculo_repasse_com_baixa.sql");
+  const wrapper = read("../supabase/migrations/242_repasse_identificacao_cotas_apos_upload.sql");
+  const atual = read("../supabase/migrations/322_repasse_cotas_existentes_e_competencia.sql");
   const action = read("src/app/erp/repasse-franquia/actions.ts");
   const ui = read("src/components/erp/repasse-pdf-conciliacao.tsx");
 
   it("usa uma operação transacional e auditada para corrigir", () => {
-    expect(action).toContain('rpc("rpc_corrigir_vinculo_item_repasse"');
+    expect(action).toContain('rpc("rpc_vincular_item_repasse_com_cota"');
+    expect(wrapper).toContain("public.rpc_corrigir_vinculo_item_repasse(");
     expect(migration).toContain("CREATE TABLE IF NOT EXISTS public.erp_repasse_vinculo_correcoes");
     expect(migration).toContain("UNIQUE (empresa_id, idempotency_key)");
     expect(migration).toContain("public.has_company_permission(p_empresa_id,'gerenciar_financeiro')");
@@ -28,6 +31,10 @@ describe("repasse — correção de vínculo já baixado", () => {
   it("protege comissão paga e mostra o resultado perto da conferência", () => {
     expect(migration).toContain("Estorne o pagamento antes de corrigir o vínculo");
     expect(ui).toContain('role="alert"');
-    expect(action).toContain("Vínculo corrigido. Baixa de");
+    expect(action).toContain("Vínculo, baixa e comissões sincronizados.");
+    expect(atual).toContain("Nao e permitido trocar previsao com comissao ja paga");
+    expect(atual).toContain("INSERT INTO public.financeiro_recebimento_itens");
+    expect(atual).toContain("-v_alocacao");
+    expect(atual).not.toContain("UPDATE public.financeiro_recebimento_itens");
   });
 });

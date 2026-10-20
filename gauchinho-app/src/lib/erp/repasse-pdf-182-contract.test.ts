@@ -10,7 +10,8 @@ const page = fs.readFileSync(path.join(process.cwd(), "src/components/erp/erp-op
 describe("Fase 185 — repasse com cadastro mínimo", () => {
   it("lista qualquer competência da mesma administradora", () => {
     expect(view).toContain("p.administradora_id === atual.administradora_id");
-    expect(view).toContain("qualquer competência");
+    expect(view).toContain("previsoesPesquisadas.filter((p) => p.administradora_id === atual.administradora_id)");
+    expect(view).not.toMatch(/previsoesPesquisadas\.filter\([^;]*p\.competencia === atual\.competencia/);
     expect(view).not.toContain("previsoes.filter((p) => p.competencia === atual.competencia)");
   });
 

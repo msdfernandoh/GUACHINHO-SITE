@@ -397,9 +397,12 @@ export function calcularLinhaSimulacaoGrupo(args: {
     grupo,
     cota ? [cota] : undefined,
   );
+  const padraoReduzido = grupo.percentual_parcela_reduzida != null && percentuaisDisponiveis.includes(Number(grupo.percentual_parcela_reduzida))
+    ? Number(grupo.percentual_parcela_reduzida)
+    : percentuaisDisponiveis.includes(60) ? 60 : percentuaisDisponiveis[0];
   const pctRedEscolhido =
     parcelaTipoLinha === "reduzida"
-      ? num(config.percentualParcelaReduzida ?? percentuaisDisponiveis[0], 60)
+      ? num(config.percentualParcelaReduzida ?? padraoReduzido, 60)
       : null;
 
   const parcelasCalc = calcularParcelasLinhaGrupo({

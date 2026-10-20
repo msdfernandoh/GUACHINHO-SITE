@@ -12,8 +12,8 @@ describe("rotas públicas do catálogo Racon", () => {
   const migration = read("supabase/migrations/161_corrige_rotas_catalogo_racon.sql");
 
   it("mantém Início no menu desktop e oferece destinos para Sobre e Contato", () => {
-    expect(chrome).toContain('activeMenus.filter((menu) => menu.id !== "login")');
-    expect(chrome).toContain('<footer id="contato"');
+    expect(chrome).toMatch(/activeMenus\s*\.filter\(\(menu\) => menu\.id !== "login"\)/);
+    expect(chrome).toMatch(/<footer\s+id="contato"/);
     expect(home).toMatch(/<section[^>]*id="sobre"/);
   });
 

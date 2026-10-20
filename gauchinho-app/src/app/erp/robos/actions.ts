@@ -145,7 +145,7 @@ export async function fetchFranquiaRobosAction() {
     .select("id, empresa_id, administradora_id, nome, portal_tipo, site_url, login_url, usuario_login, senha_encrypted, ativo, modo, ultima_execucao_em, ultimo_sucesso_em, ultimo_erro, configuracao_tarefas")
     .eq("empresa_id", empresaId);
 
-  let configs = dbConfigs || [];
+  const configs = dbConfigs || [];
 
   // Se a franquia ainda não tiver os 2 robôs criados, provisiona os templates iniciais
   const temRoboLances = configs.some(

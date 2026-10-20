@@ -62,7 +62,7 @@ async function lerPainel(): Promise<PainelFechamento> {
     admin.from("financeiro_fechamentos_socios_cortes").select("id,periodo_inicio,periodo_fim,created_at,demonstrativo").eq("empresa_id", empresaAtiva.id).order("periodo_fim", { ascending: false }).limit(24),
     carregarDadosContaCorrenteSocios({ socioId: "todos" }),
     admin.from("socio_conta_corrente_movimentos").select("socio_id,valor,origem_tipo,estornado,data_movimento").eq("empresa_id", empresaAtiva.id),
-    admin.from("financeiro_recebimento_itens").select("recebimento_id,previsao_franquia_id,valor_liquidado").eq("empresa_id", empresaAtiva.id),
+    admin.from("financeiro_recebimento_itens").select("recebimento_id,previsao_franquia_id,valor_liquidado,recebimento:financeiro_recebimentos!inner(empresa_id)").eq("recebimento.empresa_id", empresaAtiva.id),
     admin.from("comissao_previsoes_franquia").select("id,venda_id,valor_previsto,valor_imposto").eq("empresa_id", empresaAtiva.id),
     admin.from("comissao_previsoes_participantes").select("id,venda_id,previsao_franquia_id,participante_comercial_id,competencia,nome_etapa,valor_previsto,valor_pago,status,snapshot_regra").eq("empresa_id", empresaAtiva.id).neq("status", "cancelada"),
     admin.from("vendas").select("id,participante_comercial_id,cliente_nome,valor_credito,status,data_venda").eq("empresa_id", empresaAtiva.id),

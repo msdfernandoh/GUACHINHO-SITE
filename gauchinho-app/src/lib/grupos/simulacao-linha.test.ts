@@ -276,6 +276,8 @@ describe("simulacao linha grupo", () => {
     const cota15: GrupoCota = {
       ...cota,
       id: "c15",
+      parcela_integral: null,
+      parcela_reduzida: null,
       valor_credito: 1_500_000,
       saldo_devedor: null as unknown as number,
     };
@@ -339,6 +341,8 @@ describe("simulacao linha grupo", () => {
     const cota15: GrupoCota = {
       ...cota,
       id: "c15b",
+      parcela_integral: null,
+      parcela_reduzida: null,
       valor_credito: 1_500_000,
       saldo_devedor: null as unknown as number,
     };

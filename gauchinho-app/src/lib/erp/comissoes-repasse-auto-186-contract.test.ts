@@ -29,7 +29,8 @@ describe("Fase 191 — conferência prática e baixa automática do repasse", ()
   it("remove os seletores em massa e prioriza pendências que não vieram no relatório", () => {
     expect(page).not.toContain("CommissionBulkSelector");
     expect(dashboard).toContain("Não veio no relatório");
-    expect(dashboard).toContain("Baixa automática");
+    expect(dashboard).toContain('i.situacao==="recebido"');
+    expect(dashboard).toContain("Recebido e conciliado");
     expect(dashboard).toContain("Ajustar manualmente");
   });
 

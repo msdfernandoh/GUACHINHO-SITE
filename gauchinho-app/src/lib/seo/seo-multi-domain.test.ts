@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   CANONICAL_GAUCHINHO_ORIGIN,
   CANONICAL_RACON_ORIGIN,
@@ -8,6 +8,14 @@ import {
 import robots from "@/app/robots";
 import { GET as getLlmsTxt } from "@/app/llms.txt/route";
 import { GET as getLlmsFullTxt } from "@/app/llms-full.txt/route";
+
+// O contrato de URLs usa dados controlados; chamadas reais ao banco pertencem à homologação.
+vi.mock("@/app/admin/imobiliarias/actions", () => ({ fetchPublicImobiliariasParceiras: vi.fn().mockResolvedValue([]) }));
+vi.mock("@/app/admin/imoveis/actions", () => ({ fetchPublicImoveis: vi.fn().mockResolvedValue([]) }));
+vi.mock("@/lib/comercial-eventos/public", () => ({ fetchPublicEventosList: vi.fn().mockResolvedValue([]) }));
+vi.mock("@/lib/conteudo/fetch-public", () => ({
+  fetchPublicCasosSucesso: vi.fn().mockResolvedValue([]), fetchPublicDicas: vi.fn().mockResolvedValue([]),
+}));
 
 describe("SEO Multi-Domain & GEO (Google + AI) Test Suite", () => {
   describe("resolveOriginFromHost e isRaconHost", () => {

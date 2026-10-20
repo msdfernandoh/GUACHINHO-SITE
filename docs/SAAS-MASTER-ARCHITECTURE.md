@@ -1,5 +1,24 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
+### Correção da seleção de parcela reduzida e suíte de regressão (20/10/2026)
+O motor de simulação sem percentual explícito preserva o padrão cadastrado do
+grupo, alinhado a defaultConfigLinha, em vez de escolher 50% pela ordem da lista
+[50,60]. Valores oficiais por cota e escolhas explícitas continuam prevalecendo.
+Fixtures teóricas deixam de fornecer parcelas oficiais contraditórias. Contratos
+atualizados para migrations 314/242/322 e interfaces atuais, preservando testes
+de auditoria, comissão paga e livro append-only. SEO isolado de rede e workers
+limitados para reduzir disputa de PGlite/WASM. Login compartilhado identifica
+CPF ou e-mail quando aceita ambos, preservando modo somente CPF.
+O filtro tenant dos itens de recebimento usa join interno ao recebimento pai,
+pois financeiro_recebimento_itens não possui empresa_id. Incluído contrato de
+schema. Erro prefer-const de Robôs corrigido. Lint global ainda excede o teto
+histórico devido a 669 avisos; regras e limite não foram relaxados.
+Suíte final: 1.813 aprovados, 37 opt-in ignorados, nenhuma falha. Lint:errors
+aprovado e consulta de schema do fechamento validada por HTTP 200 sem registros. Sem migration
+nem alteração de dados. Relatório:
+`docs/relatorios-fases/CORRECAO-SUITE-E-PARCELA-REDUZIDA-2026-10-20.md`.
+
+
 ### Crédito dos sócios por repasse recebido (20/10/2026)
 
 O fechamento passa a reconhecer a comissão líquida proporcional aos itens de

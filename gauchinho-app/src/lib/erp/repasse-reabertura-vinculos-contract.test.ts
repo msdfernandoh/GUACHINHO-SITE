@@ -36,7 +36,13 @@ describe("repasse da franquia — reabertura e conferência dos vínculos", () =
   });
 
   it("não troca silenciosamente um vínculo que já virou fato financeiro", () => {
-    expect(actions).toContain('from("financeiro_recebimento_itens")');
-    expect(actions).toContain("Estorne o recebimento antes de trocar a previsão");
+    const wrapper = read("../supabase/migrations/242_repasse_identificacao_cotas_apos_upload.sql");
+    const atual = read("../supabase/migrations/322_repasse_cotas_existentes_e_competencia.sql");
+    expect(actions).toContain('await db.rpc("rpc_vincular_item_repasse_com_cota"');
+    expect(wrapper).toContain("public.rpc_corrigir_vinculo_item_repasse(");
+    expect(atual).toContain("Nao e permitido trocar previsao com comissao ja paga");
+    expect(atual).toContain("INSERT INTO public.erp_repasse_vinculo_correcoes");
+    expect(atual).toContain("'REVERSAO'");
+    expect(atual).not.toContain("UPDATE public.financeiro_recebimentos");
   });
 });

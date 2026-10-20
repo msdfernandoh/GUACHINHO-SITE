@@ -13,7 +13,7 @@ describe("repasse — cadastro não bloqueante e decisões explícitas", () => {
   it("limita CPF e telefone ao aviso cadastral", () => {
     expect(ui).toContain("Não bloqueiam o vínculo nem a comissão");
     expect(ui).toContain("cliente, cota, comissão e vínculo serão criados");
-    expect(actions).toContain("A linha foi resolvida");
+    expect(actions).toContain("Cliente, cota, comissão da empresa, comissão do vendedor e vínculo foram recriados com os valores informados.");
     expect(migration).toContain("Dados cadastrais incompletos do cliente não participam desta validação");
   });
 

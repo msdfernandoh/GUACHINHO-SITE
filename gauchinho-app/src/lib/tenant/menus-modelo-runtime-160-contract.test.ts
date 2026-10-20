@@ -28,7 +28,8 @@ describe("menus e identidade efetivos do modelo no runtime", () => {
   it("usa um único chrome Racon no layout e não injeta CTAs fora do catálogo", () => {
     expect(layout).toContain("<RaconInspiredHeader");
     expect(layout).toContain("<RaconInspiredFooter");
-    expect(chrome).toContain("activeMenus.map");
+    expect(chrome).toContain("menus.filter((menu) => menu.ativo !== false)");
+    expect(chrome).toContain("navegacao.map");
     expect(chrome).not.toContain("Seja um Franqueado");
     expect(chrome).not.toContain("Simule seu Consórcio");
   });

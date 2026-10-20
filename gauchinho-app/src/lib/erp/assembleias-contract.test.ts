@@ -21,7 +21,9 @@ describe("contrato Assembleias/Pedras ERP", () => {
     expect(migration).toContain("FROM PUBLIC, anon, authenticated");
     expect(migration).toContain("erp_assembleias_append_only");
     expect(migration).not.toMatch(/UPDATE public\.cotas_definitivas/i);
-    expect(page).toContain("A atenção não altera contemplação nem resultado oficial");
+    expect(page).toContain("action={toggleAtencaoAssembleiaAction}");
+    expect(page).toContain('name="marcada"');
+    expect(page).not.toMatch(/\.from\("cotas_definitivas"\)\.update\(/);
   });
 
   it("usa cotas definitivas e mantém sorteios do Portal fora do ERP", () => {

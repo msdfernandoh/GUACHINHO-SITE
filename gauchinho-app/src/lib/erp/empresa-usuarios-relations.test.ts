@@ -13,7 +13,7 @@ describe("relações de empresa_usuarios com usuarios", () => {
   });
 
   it("mantém o menu de fechamento entre os IDs aceitos pelo vínculo ERP", () => {
-    const migration = source("../supabase/migrations/301_permitir_fechamento_socios_acesso_erp.sql");
+    const migration = source("../supabase/migrations/314_permitir_fechamento_socios_acesso_erp.sql");
     expect(migration).toContain("'conta-corrente-socios'");
     expect(migration).toContain("empresa_usuarios_erp_modulos_visiveis_check");
   });

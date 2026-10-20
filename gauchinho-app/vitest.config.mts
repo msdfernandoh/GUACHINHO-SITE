@@ -7,6 +7,7 @@ const projectRoot = path.dirname(fileURLToPath(import.meta.url));
 export default defineConfig({
   test: {
     environment: "node",
+    maxWorkers: 4, // Instâncias WASM/PGlite não devem disputar todos os núcleos do host.
     include: ["src/**/*.test.ts"],
   },
   resolve: {

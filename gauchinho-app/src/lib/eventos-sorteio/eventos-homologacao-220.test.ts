@@ -1,5 +1,5 @@
 import { PGlite } from "@electric-sql/pglite";
-import { describe, it, expect, beforeAll } from "vitest";
+import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { formatCodigoParticipacao, proximoCodigoFromExisting } from "./codigo";
 import {
   labelCapacidade,
@@ -11,6 +11,7 @@ import { filtrarElegiveisSorteio } from "./sorteio";
 
 describe("Homologação Completa — Migration 220 & Check-in / Sorteio / Prêmios", () => {
   let db: PGlite;
+  afterAll(async () => { if (db) await db.close(); });
 
   const eventoAId = "11111111-1111-4000-8000-000000000001";
   const eventoBId = "11111111-1111-4000-8000-000000000002";

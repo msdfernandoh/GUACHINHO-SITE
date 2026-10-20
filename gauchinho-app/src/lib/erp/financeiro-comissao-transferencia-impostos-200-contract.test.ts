@@ -28,7 +28,8 @@ describe("financeiro — transferência de comissão e crédito fiscal", () => {
   });
 
   it("mostra o imposto descontado no mês sem criar entrada bancária", () => {
-    expect(page).toContain('from("comissao_previsoes_franquia").select("valor_imposto")');
+    expect(page).toMatch(/from\("comissao_previsoes_franquia"\)\.select\("competencia,valor_imposto"\)/);
+    expect(page).toContain('impostosQuery.eq("competencia", mes)');
     expect(page).toContain("Crédito para impostos");
     expect(page).toContain("creditoFiscalMes");
   });

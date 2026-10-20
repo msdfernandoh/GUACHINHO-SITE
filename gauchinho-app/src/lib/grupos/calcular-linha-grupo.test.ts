@@ -43,9 +43,9 @@ function cotaFixture(overrides: Partial<GrupoCota> = {}): GrupoCota {
     id: "c1",
     grupo_id: "g-test",
     valor_credito: 1_050_000,
-    valor_parcela: 2863.64,
-    parcela_integral: 4772.73,
-    parcela_reduzida: 2863.64,
+    valor_parcela: null,
+    parcela_integral: null,
+    parcela_reduzida: null,
     parcela_com_seguro: null,
     parcela_sem_seguro: null,
     saldo_devedor: 1_050_000,
@@ -181,5 +181,35 @@ describe("calcularLinhaSimulacaoGrupo — saldo e parcelas", () => {
     expect(r.parcelaIntegral).toBeCloseTo(5918.18, 1);
     expect(r.parcelaPersonalizada).toBeCloseTo(2367.27, 1);
     expect(r.parcelaBase).toBeCloseTo(2367.27, 1);
+  });
+});
+
+describe("parcela oficial e seleção de percentual reduzido", () => {
+  it("preserva 60% como padrão do grupo mesmo oferecendo também 50%", () => {
+    const resultado = calcularLinhaSimulacaoGrupo({ grupo: grupoFixture(),
+      cota: cotaFixture(), modalidades: [], config: configBase() });
+    expect(resultado.parcelaReduzida).toBeCloseTo(1302000 / 220 * 0.6, 1);
+  });
+
+  it("respeita a escolha explícita de 50% sem trocar o padrão cadastrado", () => {
+    const resultado = calcularLinhaSimulacaoGrupo({ grupo: grupoFixture(),
+      cota: cotaFixture(), modalidades: [], config: configBase({ percentualParcelaReduzida: 50 }) });
+    expect(resultado.parcelaReduzida).toBeCloseTo(1302000 / 220 * 0.5, 1);
+  });
+
+  it("usa o valor oficial específico da modalidade quando cadastrado", () => {
+    const resultado = calcularLinhaSimulacaoGrupo({ grupo: grupoFixture(),
+      cota: cotaFixture({ parcela_reduzida_50: 2900.12, parcela_reduzida_60: 3500.34 }),
+      modalidades: [], config: configBase({ percentualParcelaReduzida: 50 }) });
+    expect(resultado.parcelaReduzida).toBe(2900.12);
+    expect(resultado.primeiraParcela).toBe(2900.12);
+  });
+
+  it("a parcela integral oficial prevalece sobre a fórmula, sem seguro duplicado", () => {
+    const resultado = calcularLinhaSimulacaoGrupo({ grupo: grupoFixture(),
+      cota: cotaFixture({ parcela_integral: 5900.12 }), modalidades: [],
+      config: configBase({ modalidadeParcela: "integral", quantidadeCotas: 2 }) });
+    expect(resultado.parcelaIntegral).toBe(5900.12);
+    expect(resultado.primeiraParcela).toBe(11800.24);
   });
 });
