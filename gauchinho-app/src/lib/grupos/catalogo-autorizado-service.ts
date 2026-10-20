@@ -259,9 +259,39 @@ export async function fetchPublicGruposAggregatesForEmpresa(
     const config = configMap.get(g.id);
     const presentation = resolveEmpresaGrupoPresentation(g, config);
 
+    const cotasComReduzida = list.some(
+      (c) =>
+        c.parcela_reduzida != null ||
+        c.parcela_reduzida_50 != null ||
+        c.parcela_reduzida_60 != null ||
+        (c.parcelas_reduzidas && Object.keys(c.parcelas_reduzidas).length > 0),
+    );
+    let percs = Array.isArray(g.percentuais_parcela_reduzida) && g.percentuais_parcela_reduzida.length > 0
+      ? g.percentuais_parcela_reduzida
+      : [];
+    if (percs.length === 0 && (g.tem_parcela_reduzida || cotasComReduzida)) {
+      const cotaPercs = new Set<number>();
+      for (const c of list) {
+        if (c.parcela_reduzida_50 != null) cotaPercs.add(50);
+        if (c.parcela_reduzida_60 != null) cotaPercs.add(60);
+        if (c.parcela_reduzida_70 != null) cotaPercs.add(70);
+        if (c.parcelas_reduzidas && typeof c.parcelas_reduzidas === "object") {
+          Object.keys(c.parcelas_reduzidas).forEach((k) => {
+            const n = Number(k);
+            if (Number.isFinite(n) && n > 0 && n < 100) cotaPercs.add(n);
+          });
+        }
+      }
+      percs = cotaPercs.size > 0 ? Array.from(cotaPercs).sort((a, b) => a - b) : [50, 60];
+    }
+    const temReduzidaEfetiva = Boolean(g.tem_parcela_reduzida || cotasComReduzida || percs.length > 0);
+
     aggregates.push({
       grupo: {
         ...g,
+        tem_parcela_reduzida: temReduzidaEfetiva,
+        percentuais_parcela_reduzida: percs.length > 0 ? percs : (temReduzidaEfetiva ? [50, 60] : null),
+        percentual_parcela_reduzida: g.percentual_parcela_reduzida ?? (percs.includes(60) ? 60 : percs[0] ?? 60),
         categorias_publicacao:
           categoriasByGrupo.get(g.id) ?? (g.modalidade ? [g.modalidade] : []),
         ...(presentation.tituloComercial ? { titulo_comercial: presentation.tituloComercial } : {}),

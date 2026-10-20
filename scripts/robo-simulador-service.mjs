@@ -206,6 +206,17 @@ export async function executarRobo3Simulador({ page, config, admin, log, screens
             continue
           }
 
+          // Rola suavemente até o final da página para disparar lazy-load de todos os cards de cotas
+          await page.evaluate(async () => {
+            const distance = 400
+            for (let i = 0; i < 20; i++) {
+              window.scrollBy(0, distance)
+              await new Promise(r => setTimeout(r, 150))
+            }
+            window.scrollTo(0, 0)
+          }).catch(() => {})
+          await page.waitForTimeout(800)
+
           // Extrai os planos listados
           const planosList = await page.evaluate(() => {
             const items = []
@@ -217,7 +228,7 @@ export async function executarRobo3Simulador({ page, config, admin, log, screens
             for (const pc of planCards) {
               const text = pc.innerText || ''
               const credMatch = text.match(/Cr[eé]dito\s+R\$\s*([\d.,]+)/i)
-              const parcMatch = text.match(/Parcela[\s\S]*?R\$\s*([\d.,]+)\s*\/\s*m[eê]s/i)
+              const parcMatch = text.match(/R\$\s*([\d.,]+)\s*\/\s*m[eê]s/i) || text.match(/Parcela[\s\S]*?R\$\s*([\d.,]+)\s*\/\s*m[eê]s/i)
               const taxaAdmMatch = text.match(/Taxa\s+administrativa[\s\S]*?([\d.,]+)%/i)
               const fundoMatch = text.match(/Fundo\s+reserva[\s\S]*?([\d.,]+)%/i)
               const isReduzida70 = text.includes('Reduzida 70%') || text.includes('70%')
@@ -225,13 +236,17 @@ export async function executarRobo3Simulador({ page, config, admin, log, screens
               const isReduzida50 = text.includes('Reduzida 50%') || text.includes('50%')
 
               if (credMatch && parcMatch) {
-                items.push({
-                  creditoStr: credMatch[1],
-                  parcelaStr: parcMatch[1],
-                  taxaAdm: taxaAdmMatch ? parseFloat(taxaAdmMatch[1].replace(',', '.')) : 12,
-                  fundoReserva: fundoMatch ? parseFloat(fundoMatch[1].replace(',', '.')) : 0.5,
-                  tipoReducao: isReduzida70 ? '70' : isReduzida60 ? '60' : isReduzida50 ? '50' : 'INTEGRAL',
-                })
+                const credNum = parseFloat(credMatch[1].replace(/\./g, '').replace(',', '.'))
+                const parcNum = parseFloat(parcMatch[1].replace(/\./g, '').replace(',', '.'))
+                if (parcNum > 0 && credNum > 0 && parcNum < credNum * 0.25) {
+                  items.push({
+                    creditoStr: credMatch[1],
+                    parcelaStr: parcMatch[1],
+                    taxaAdm: taxaAdmMatch ? parseFloat(taxaAdmMatch[1].replace(',', '.')) : 12,
+                    fundoReserva: fundoMatch ? parseFloat(fundoMatch[1].replace(',', '.')) : 0.5,
+                    tipoReducao: isReduzida70 ? '70' : isReduzida60 ? '60' : isReduzida50 ? '50' : 'INTEGRAL',
+                  })
+                }
               }
             }
             return items
@@ -348,6 +363,22 @@ export async function executarRobo3Simulador({ page, config, admin, log, screens
             }
           }
 
+          const percentuaisEncontrados = new Set()
+          for (const [, cotaData] of porCredito) {
+            if (cotaData.parcelasReduzidas) {
+              Object.keys(cotaData.parcelasReduzidas).forEach(p => {
+                const n = Number(p)
+                if (Number.isFinite(n) && n > 0 && n < 100) percentuaisEncontrados.add(n)
+              })
+            }
+          }
+          if (percentuaisEncontrados.size > 0) {
+            const pList = Array.from(percentuaisEncontrados).sort((a, b) => a - b)
+            updateGrupoPayload.tem_parcela_reduzida = true
+            updateGrupoPayload.percentuais_parcela_reduzida = pList
+            updateGrupoPayload.percentual_parcela_reduzida = pList.includes(60) ? 60 : pList[0]
+          }
+
           if (Object.keys(updateGrupoPayload).length > 0) {
             await admin.from('grupos_consorcio').update(updateGrupoPayload).eq('id', dbGrupo.id)
           }
@@ -395,6 +426,16 @@ export async function executarRobo3Simulador({ page, config, admin, log, screens
             } else {
               log(`Aviso ao gravar cota R$ ${credVal} (${modUpper}): ${cotaErr.message}`)
             }
+          }
+
+          // Inativa cotas antigas/obsoletas deste grupo e modalidade que não vieram na extração atual
+          const creditosAtuais = Array.from(porCredito.keys())
+          if (creditosAtuais.length > 0) {
+            await admin.from('grupos_cotas')
+              .update({ ativo: false, status: 'Inativo' })
+              .eq('grupo_id', dbGrupo.id)
+              .eq('tipo_transcorrido', modUpper)
+              .not('valor_credito', 'in', `(${creditosAtuais.join(',')})`)
           }
 
           totalGruposProcessados++

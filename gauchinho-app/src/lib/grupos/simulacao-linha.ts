@@ -90,14 +90,54 @@ export type ConfigLinhaSimulacaoGrupo = {
 };
 
 export function listarPercentuaisParcelaReduzida(
-  grupo: Pick<GrupoConsorcio, "percentuais_parcela_reduzida" | "percentual_parcela_reduzida">,
+  grupo: Pick<
+    GrupoConsorcio,
+    "percentuais_parcela_reduzida" | "percentual_parcela_reduzida" | "tem_parcela_reduzida"
+  >,
+  cotas?: GrupoCota[],
 ): number[] {
   const cadastrados = Array.isArray(grupo.percentuais_parcela_reduzida)
     ? grupo.percentuais_parcela_reduzida
     : [];
   const legado = grupo.percentual_parcela_reduzida;
-  const valores = cadastrados.length > 0 ? cadastrados : legado != null ? [legado] : [];
-  return [...new Set(valores.map((valor) => Number(valor)).filter((valor) => Number.isFinite(valor) && valor > 0 && valor < 100))];
+  let valores: (number | null | undefined)[] =
+    cadastrados.length > 0 ? cadastrados : legado != null ? [legado] : [];
+
+  if (cotas && cotas.length > 0 && valores.length <= 1) {
+    const cotaPercs = new Set<number>();
+    for (const c of cotas) {
+      if (c.parcela_reduzida_50 != null) cotaPercs.add(50);
+      if (c.parcela_reduzida_60 != null) cotaPercs.add(60);
+      if (c.parcela_reduzida_70 != null) cotaPercs.add(70);
+      if (c.parcelas_reduzidas && typeof c.parcelas_reduzidas === "object") {
+        Object.keys(c.parcelas_reduzidas).forEach((k) => {
+          const n = Number(k);
+          if (Number.isFinite(n) && n > 0 && n < 100) cotaPercs.add(n);
+        });
+      }
+    }
+    if (cotaPercs.size > 0) {
+      valores = Array.from(cotaPercs);
+    }
+  }
+
+  if (grupo.tem_parcela_reduzida || valores.length > 0) {
+    if (valores.length === 0) {
+      valores = [50, 60];
+    } else if (valores.length === 1 && (Number(valores[0]) === 60 || Number(valores[0]) === 50)) {
+      valores = [50, 60];
+    }
+  }
+
+  const result = [
+    ...new Set(
+      valores
+        .map((valor) => Number(valor))
+        .filter((valor) => Number.isFinite(valor) && valor > 0 && valor < 100),
+    ),
+  ].sort((a, b) => a - b);
+
+  return result.length > 0 ? result : (grupo.tem_parcela_reduzida ? [50, 60] : []);
 }
 
 export type ResultadoLinhaSimulacaoGrupo = {
@@ -353,24 +393,57 @@ export function calcularLinhaSimulacaoGrupo(args: {
         )
       : null;
 
+  const percentuaisDisponiveis = listarPercentuaisParcelaReduzida(
+    grupo,
+    cota ? [cota] : undefined,
+  );
+  const pctRedEscolhido =
+    parcelaTipoLinha === "reduzida"
+      ? num(config.percentualParcelaReduzida ?? percentuaisDisponiveis[0], 60)
+      : null;
+
   const parcelasCalc = calcularParcelasLinhaGrupo({
     saldoDevedor: saldoDevedorInicial,
     prazoTotal: params.prazoTotal,
     quantidadeCotas: qty,
     temParcelaReduzida: !!grupo.tem_parcela_reduzida,
-    percentualParcelaReduzida:
-      parcelaTipoLinha === "reduzida"
-        ? num(config.percentualParcelaReduzida ?? listarPercentuaisParcelaReduzida(grupo)[0], 100)
-        : num(grupo.percentual_parcela_reduzida, 100),
+    percentualParcelaReduzida: pctRedEscolhido ?? num(grupo.percentual_parcela_reduzida, 100),
     modalidadeParcela: parcelaTipoLinha,
     percentualParcelaPersonalizada: pctPersonalLinha,
   });
+
+  let parcelaExataCota: number | null = null;
+  if (cota) {
+    if (parcelaTipoLinha === "integral" && cota.parcela_integral != null && num(cota.parcela_integral) > 0) {
+      parcelaExataCota = num(cota.parcela_integral);
+    } else if (parcelaTipoLinha === "reduzida" && pctRedEscolhido != null) {
+      if (pctRedEscolhido === 50 && cota.parcela_reduzida_50 != null && num(cota.parcela_reduzida_50) > 0) {
+        parcelaExataCota = num(cota.parcela_reduzida_50);
+      } else if (pctRedEscolhido === 60 && cota.parcela_reduzida_60 != null && num(cota.parcela_reduzida_60) > 0) {
+        parcelaExataCota = num(cota.parcela_reduzida_60);
+      } else if (pctRedEscolhido === 70 && cota.parcela_reduzida_70 != null && num(cota.parcela_reduzida_70) > 0) {
+        parcelaExataCota = num(cota.parcela_reduzida_70);
+      } else if (cota.parcelas_reduzidas && typeof cota.parcelas_reduzidas === "object") {
+        const val = (cota.parcelas_reduzidas as Record<string, number>)[String(pctRedEscolhido)];
+        if (val != null && num(val) > 0) {
+          parcelaExataCota = num(val);
+        }
+      } else if (cota.parcela_reduzida != null && num(cota.parcela_reduzida) > 0 && pctRedEscolhido === 60) {
+        parcelaExataCota = num(cota.parcela_reduzida);
+      }
+    }
+
+    // Proteção de integridade: a parcela mensal de um consórcio nunca excede 20% do crédito unitário
+    if (parcelaExataCota != null && cota.valor_credito != null && parcelaExataCota > num(cota.valor_credito) * 0.2) {
+      parcelaExataCota = null;
+    }
+  }
 
   const fatorSeg = fatorSeguroGrupo(grupo.seguro_percentual);
   const temSeguroGrupo = fatorSeg > 0;
 
   // Planilha: parcelaSemSeguro = (saldo / prazoTotal) * fatorParcela
-  const parcelaSemSeguroUnit = parcelasCalc.parcelaExibida;
+  const parcelaSemSeguroUnit = parcelaExataCota ?? parcelasCalc.parcelaExibida;
   const parcelaSemSeguroTotal = Math.round(parcelaSemSeguroUnit * qty * 100) / 100;
 
   // Planilha: seguro = saldoDevedor * 0,0004 (sobre o saldo cheio, antes do lance)
@@ -439,8 +512,14 @@ export function calcularLinhaSimulacaoGrupo(args: {
     saldoDevedorFinal,
     primeiraParcela,
     parcelaBase: Math.round(parcelaBase * 100) / 100,
-    parcelaIntegral: parcelasCalc.parcelaIntegral,
-    parcelaReduzida: parcelasCalc.parcelaReduzida,
+    parcelaIntegral:
+      cota && cota.parcela_integral != null && num(cota.parcela_integral) > 0
+        ? num(cota.parcela_integral)
+        : parcelasCalc.parcelaIntegral,
+    parcelaReduzida:
+      parcelaTipoLinha === "reduzida" && parcelaExataCota != null
+        ? parcelaExataCota
+        : parcelasCalc.parcelaReduzida,
     parcelaPersonalizada: parcelasCalc.parcelaPersonalizada,
     parcelaPosContemplacao,
     prazoRestanteAposContemplacao,
@@ -561,13 +640,18 @@ export function defaultConfigLinha(
   const umaMod = mods.length === 1 ? mods[0]! : null;
   const parcelaTipo = umaMod ? parcelaTipoFromModalidade(umaMod) : null;
   const pctEmb = umaMod ? num(umaMod.percentual_lance_embutido) : 0;
-  const percentuaisReduzidos = listarPercentuaisParcelaReduzida(grupo);
+  const percentuaisReduzidos = listarPercentuaisParcelaReduzida(grupo, cotas);
+  const defaultPctReduzido =
+    grupo.percentual_parcela_reduzida != null &&
+    percentuaisReduzidos.includes(Number(grupo.percentual_parcela_reduzida))
+      ? Number(grupo.percentual_parcela_reduzida)
+      : (percentuaisReduzidos.includes(60) ? 60 : percentuaisReduzidos[0] ?? null);
   return {
     cotaId: cotas[0]?.id ?? null,
     quantidadeCotas: 0,
     modalidadeParcela:
       parcelaTipo ?? (grupo.tem_parcela_reduzida ? "reduzida" : "integral"),
-    percentualParcelaReduzida: percentuaisReduzidos[0] ?? null,
+    percentualParcelaReduzida: defaultPctReduzido,
     percentualParcelaPersonalizada:
       grupo.percentual_parcela_reduzida_personalizada != null
         ? num(grupo.percentual_parcela_reduzida_personalizada)

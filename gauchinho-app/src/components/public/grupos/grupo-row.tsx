@@ -3,7 +3,12 @@
 import { Settings2 } from "lucide-react";
 import type { GrupoConsorcio, GrupoCota, GrupoModalidadeLance } from "@/lib/types";
 import { grupoUsaSeguroNaParcela } from "@/lib/grupos/calculos";
-import { formatPrazoGrupo, labelModalidadeParcelaLinha, type ConfigLinhaSimulacaoGrupo } from "@/lib/grupos/simulacao-linha";
+import {
+  formatPrazoGrupo,
+  labelModalidadeParcelaLinha,
+  listarPercentuaisParcelaReduzida,
+  type ConfigLinhaSimulacaoGrupo,
+} from "@/lib/grupos/simulacao-linha";
 import { tooltipPrazoAutomatico } from "@/lib/grupos/prazos";
 import { cn } from "@/lib/utils/cn";
 import { Button } from "@/components/ui/form-primitives";
@@ -51,6 +56,9 @@ export function GrupoRow({
     config,
   });
   const temSeguro = grupoUsaSeguroNaParcela(grupo);
+  const temReduzida = grupo.tem_parcela_reduzida;
+  const percentuaisReduzidos = listarPercentuaisParcelaReduzida(grupo, cotas);
+  const permitePersonalizada = !!grupo.permite_parcela_reduzida_personalizada;
   const tipoTranscorridoAtivo = config.tipoTranscorrido || "PRORROGADA";
   const temTranscorrido = cotas.some(
     (c) => c.tipo_transcorrido === "PRORROGADA" || c.tipo_transcorrido === "DILUIDA",
@@ -188,12 +196,44 @@ export function GrupoRow({
           )}
         </Td>
 
-        <Td className="min-w-[88px] !whitespace-normal">
+        <Td className="min-w-[100px] !whitespace-normal">
           {ativo ? (
             <div className="flex flex-col leading-tight">
-              <span className="block text-[10px] text-zinc-500">
-                {ativo ? labelModalidadeParcelaLinha(config, grupo) : ""}
-              </span>
+              {temReduzida && percentuaisReduzidos.length > 0 ? (
+                <CompactSelect
+                  className="h-6 text-[10px] py-0 px-1 mb-1 font-semibold bg-zinc-800/90 border-zinc-700 text-amber-300 max-w-[108px]"
+                  value={
+                    config.modalidadeParcela === "reduzida"
+                      ? `reduzida-${config.percentualParcelaReduzida ?? percentuaisReduzidos[0] ?? 60}`
+                      : config.modalidadeParcela
+                  }
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (val.startsWith("reduzida-")) {
+                      const pct = Number(val.replace("reduzida-", ""));
+                      handlers.patch({ modalidadeParcela: "reduzida", percentualParcelaReduzida: pct });
+                    } else if (val === "personalizada") {
+                      handlers.patch({ modalidadeParcela: "personalizada" });
+                    } else {
+                      handlers.patch({ modalidadeParcela: "integral" });
+                    }
+                  }}
+                >
+                  <option value="integral">Integral</option>
+                  {percentuaisReduzidos.map((pct) => (
+                    <option key={pct} value={`reduzida-${pct}`}>
+                      Red. {pct}%
+                    </option>
+                  ))}
+                  {permitePersonalizada ? (
+                    <option value="personalizada">Personalizada</option>
+                  ) : null}
+                </CompactSelect>
+              ) : (
+                <span className="block text-[10px] text-zinc-500">
+                  {ativo ? labelModalidadeParcelaLinha(config, grupo) : ""}
+                </span>
+              )}
               <MoneyValue value={resultado.primeiraParcela} compact className="mt-0.5" />
             </div>
           ) : (

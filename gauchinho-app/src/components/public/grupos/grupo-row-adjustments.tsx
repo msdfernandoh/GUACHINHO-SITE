@@ -38,7 +38,7 @@ export function GrupoRowAdjustments({ grupo, cotas, modalidades, config, onChang
   const temSeguro = grupoUsaSeguroNaParcela(grupo);
   const temReduzida = grupo.tem_parcela_reduzida;
   const permitePersonalizada = !!grupo.permite_parcela_reduzida_personalizada;
-  const percentuaisReduzidos = listarPercentuaisParcelaReduzida(grupo);
+  const percentuaisReduzidos = listarPercentuaisParcelaReduzida(grupo, cotas);
   const exibeTipoParcela = temReduzida || permitePersonalizada;
   const exibeEstrategias = mods.length > 0;
   const pctMinRecurso = modAtiva ? Number(modAtiva.percentual_recurso_proprio_minimo) : 0;
@@ -106,43 +106,44 @@ export function GrupoRowAdjustments({ grupo, cotas, modalidades, config, onChang
                   </p>
                 ) : null}
                 <CompactSelect
-                  className="max-w-[160px]"
-                  value={config.modalidadeParcela}
+                  className="max-w-[200px]"
+                  value={
+                    config.modalidadeParcela === "reduzida"
+                      ? `reduzida-${config.percentualParcelaReduzida ?? percentuaisReduzidos[0] ?? 60}`
+                      : config.modalidadeParcela
+                  }
                   onChange={(e) => {
-                    const v = e.target.value as "reduzida" | "integral" | "personalizada";
-                    const next: Partial<ConfigLinhaSimulacaoGrupo> = { modalidadeParcela: v };
-                    if (v === "reduzida" && config.percentualParcelaReduzida == null) {
-                      next.percentualParcelaReduzida = percentuaisReduzidos[0] ?? null;
+                    const val = e.target.value;
+                    if (val.startsWith("reduzida-")) {
+                      const pct = Number(val.replace("reduzida-", ""));
+                      handlers.patch({ modalidadeParcela: "reduzida", percentualParcelaReduzida: pct });
+                    } else if (val === "personalizada") {
+                      handlers.patch({
+                        modalidadeParcela: "personalizada",
+                        percentualParcelaPersonalizada:
+                          config.percentualParcelaPersonalizada ??
+                          (grupo.percentual_parcela_reduzida_personalizada != null
+                            ? Number(grupo.percentual_parcela_reduzida_personalizada)
+                            : 40),
+                      });
+                    } else {
+                      handlers.patch({ modalidadeParcela: "integral" });
                     }
-                    if (v === "personalizada" && config.percentualParcelaPersonalizada == null) {
-                      next.percentualParcelaPersonalizada =
-                        grupo.percentual_parcela_reduzida_personalizada != null
-                          ? Number(grupo.percentual_parcela_reduzida_personalizada)
-                          : 40;
-                    }
-                    handlers.patch(next);
                   }}
                 >
-                  {grupo.permite_parcela_integral !== false ? <option value="integral">Integral</option> : null}
-                  {temReduzida ? <option value="reduzida">Reduzida</option> : null}
+                  {grupo.permite_parcela_integral !== false ? (
+                    <option value="integral">Integral (100%)</option>
+                  ) : null}
+                  {temReduzida &&
+                    percentuaisReduzidos.map((pct) => (
+                      <option key={pct} value={`reduzida-${pct}`}>
+                        Reduzida ({pct}%)
+                      </option>
+                    ))}
                   {permitePersonalizada ? (
                     <option value="personalizada">Personalizada</option>
                   ) : null}
                 </CompactSelect>
-                {config.modalidadeParcela === "reduzida" && percentuaisReduzidos.length > 1 ? (
-                  <div>
-                    <p className="mb-1 text-[10px] uppercase text-zinc-500">Opção reduzida</p>
-                    <CompactSelect
-                      className="max-w-[160px]"
-                      value={String(config.percentualParcelaReduzida ?? percentuaisReduzidos[0])}
-                      onChange={(event) => handlers.patch({ percentualParcelaReduzida: Number(event.target.value) })}
-                    >
-                      {percentuaisReduzidos.map((percentual) => (
-                        <option key={percentual} value={percentual}>{percentual}% da integral</option>
-                      ))}
-                    </CompactSelect>
-                  </div>
-                ) : null}
                 {config.modalidadeParcela === "personalizada" && permitePersonalizada ? (
                   <div>
                     <p className="mb-1 text-[10px] uppercase text-zinc-500">% da integral</p>
@@ -178,15 +179,34 @@ export function GrupoRowAdjustments({ grupo, cotas, modalidades, config, onChang
                     {formatCurrency(resultado.parcelaIntegral)}
                   </span>
                 </p>
-                {temReduzida && resultado.parcelaReduzida != null ? (
-                  <p>
-                    Reduzida ({normalizarPercentualGrupo(config.percentualParcelaReduzida ?? grupo.percentual_parcela_reduzida) || 60}
-                    %):{" "}
-                    <span className="text-zinc-300">
-                      {formatCurrency(resultado.parcelaReduzida)}
-                    </span>
-                  </p>
-                ) : null}
+                {temReduzida &&
+                  percentuaisReduzidos.map((pct) => {
+                    let val = Math.round(resultado.parcelaIntegral * (pct / 100) * 100) / 100;
+                    const cotaAtiva = cotas.find((c) => c.id === config.cotaId);
+                    if (cotaAtiva) {
+                      if (pct === 50 && cotaAtiva.parcela_reduzida_50 != null && Number(cotaAtiva.parcela_reduzida_50) > 0) {
+                        val = Number(cotaAtiva.parcela_reduzida_50);
+                      } else if (pct === 60 && cotaAtiva.parcela_reduzida_60 != null && Number(cotaAtiva.parcela_reduzida_60) > 0) {
+                        val = Number(cotaAtiva.parcela_reduzida_60);
+                      } else if (pct === 70 && cotaAtiva.parcela_reduzida_70 != null && Number(cotaAtiva.parcela_reduzida_70) > 0) {
+                        val = Number(cotaAtiva.parcela_reduzida_70);
+                      } else if (cotaAtiva.parcelas_reduzidas && typeof cotaAtiva.parcelas_reduzidas === "object") {
+                        const jsonVal = (cotaAtiva.parcelas_reduzidas as Record<string, number>)[String(pct)];
+                        if (jsonVal != null && Number(jsonVal) > 0) val = Number(jsonVal);
+                      }
+                    }
+                    const isSel =
+                      config.modalidadeParcela === "reduzida" &&
+                      (config.percentualParcelaReduzida ?? percentuaisReduzidos[0]) === pct;
+                    return (
+                      <p key={pct} className={isSel ? "font-semibold text-amber-300" : ""}>
+                        Reduzida ({pct}%):{" "}
+                        <span className={isSel ? "text-amber-200" : "text-zinc-300"}>
+                          {formatCurrency(val)}
+                        </span>
+                      </p>
+                    );
+                  })}
                 {permitePersonalizada && resultado.parcelaPersonalizada != null ? (
                   <p>
                     Personalizada (

@@ -163,7 +163,10 @@ export function resolveEmpresaGrupoPresentation(
     ...localCatalog,
     permite_parcela_integral: config?.modalidade_integral_habilitada ?? true,
     tem_parcela_reduzida:
-      grupo.tem_parcela_reduzida && (config?.modalidade_reduzida_habilitada ?? true),
+      Boolean(
+        grupo.tem_parcela_reduzida ||
+        (Array.isArray(grupo.percentuais_parcela_reduzida) && grupo.percentuais_parcela_reduzida.length > 0)
+      ) && (config?.modalidade_reduzida_habilitada ?? true),
     permite_parcela_reduzida_personalizada:
       Boolean(grupo.permite_parcela_reduzida_personalizada) &&
       (config?.modalidade_reduzida_habilitada ?? true) &&
