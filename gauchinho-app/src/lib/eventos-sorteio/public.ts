@@ -60,7 +60,12 @@ export async function fetchPublicSorteioByEventoSlug(
   slug: string,
   options?: { requirePublicado?: boolean; allowFallback?: boolean },
 ): Promise<PublicSorteioView | null> {
-  const normalized = slug.trim().toLowerCase();
+  let normalized = slug;
+  try {
+    normalized = decodeURIComponent(slug).trim().toLowerCase();
+  } catch {
+    normalized = slug.trim().toLowerCase();
+  }
   if (!normalized) return null;
 
   const admin = createAdminClient();
@@ -83,7 +88,7 @@ export async function fetchPublicSorteioByEventoSlug(
 
   return fetchPublicSorteioByEventoId(evento.id as string, {
     requirePublicado: options?.requirePublicado !== false,
-    allowFallback: options?.allowFallback,
+    allowFallback: options?.allowFallback ?? true,
   });
 }
 
@@ -108,7 +113,7 @@ export async function fetchPublicSorteioByEventoId(
     evQuery = evQuery.eq("publicado", true);
   }
   let { data: evento, error: evErr } = await evQuery.maybeSingle();
-  if (evErr && /checkin_interativo_ativo|checkin_modo|checkin_abertura_antecipada_minutos|cor_primaria|prefixo_codigo_sorteio|Could not find/i.test(evErr.message)) {
+  if (evErr && /checkin_interativo_ativo|checkin_modo|checkin_abertura_antecipada_minutos|cor_primaria|prefixo_codigo_sorteio|tipo_checkin|Could not find/i.test(evErr.message)) {
     // Fallback para schema sem as colunas novas
     let retryQuery = admin
       .from("eventos")
@@ -168,20 +173,17 @@ export async function fetchPublicSorteioByEventoId(
   };
 
   if (!sorteio?.id) {
-    if (evento.checkin_interativo_ativo || options?.allowFallback) {
-      return mapPublicView(
-        {
-          id: evento.id,
-          titulo: DEFAULTS_SORTEIO.titulo,
-          descricao: DEFAULTS_SORTEIO.descricao,
-          texto_agradecimento: DEFAULTS_SORTEIO.texto_agradecimento,
-          status: "aberto",
-          nps_config: {},
-        },
-        evento as EvType,
-      );
-    }
-    return null;
+    return mapPublicView(
+      {
+        id: evento.id,
+        titulo: DEFAULTS_SORTEIO.titulo,
+        descricao: DEFAULTS_SORTEIO.descricao,
+        texto_agradecimento: DEFAULTS_SORTEIO.texto_agradecimento,
+        status: "aberto",
+        nps_config: {},
+      },
+      evento as EvType,
+    );
   }
 
   return mapPublicView(sorteio, evento as EvType);

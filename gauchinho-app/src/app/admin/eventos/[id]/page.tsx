@@ -104,7 +104,7 @@ export default async function EditarEventoPage({ params }: { params: Promise<{ i
             className="inline-flex items-center gap-1 rounded-xl border border-emerald-600/40 bg-white px-3 py-1.5 text-xs font-bold text-emerald-800 hover:bg-emerald-50 dark:bg-zinc-900 dark:text-emerald-200 dark:hover:bg-zinc-800 transition"
             title="Navegar pelas telas sem gravar dados reais"
           >
-            <span>Testar check-in (Preview)</span>
+            <span>Testar check-in</span>
             <span className="text-[10px]">↗</span>
           </a>
           <EventoQrCheckinModal
@@ -165,8 +165,17 @@ export default async function EditarEventoPage({ params }: { params: Promise<{ i
         isMaster={master}
       />
 
-      <section className="max-w-2xl space-y-4 rounded-xl border p-4 dark:border-zinc-800">
-        <h2 className="text-lg font-semibold">Posts / fotos (página social)</h2>
+      <div className="my-10 border-t border-zinc-200 dark:border-zinc-800" />
+
+      <section className="max-w-2xl space-y-4 rounded-xl border border-zinc-200 bg-zinc-50/50 p-5 dark:border-zinc-800 dark:bg-zinc-900/50">
+        <div>
+          <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-100">
+            Posts / fotos do evento (página pública)
+          </h2>
+          <p className="text-xs text-zinc-500">
+            Opcional: publique fotos e atualizações que aparecem na página de detalhes do evento.
+          </p>
+        </div>
         <ul className="space-y-3">
           {posts.map((p) => {
             const del = deleteEventoPostAction.bind(null, id, p.id);

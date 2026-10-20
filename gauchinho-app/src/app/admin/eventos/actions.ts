@@ -533,6 +533,8 @@ export async function createEventoAction(
     revalidatePath("/eventos");
     revalidatePath(`/admin/eventos/${data.id}`);
     revalidatePath(`/eventos/${payload.slug}`);
+    revalidatePath(`/eventos/${payload.slug}/sorteio`);
+    revalidatePath("/qr/externo");
     revalidatePath("/admin/configuracoes/qr-codes");
     return { ok: true, id: data.id as string };
   } catch (e) {
@@ -613,8 +615,12 @@ export async function updateEventoAction(
     revalidatePath(`/admin/eventos/${id}`);
     revalidatePath("/eventos");
     revalidatePath(`/eventos/${payload.slug}`);
-    if (existing.slug !== payload.slug)
+    revalidatePath(`/eventos/${payload.slug}/sorteio`);
+    if (existing.slug !== payload.slug) {
       revalidatePath(`/eventos/${existing.slug}`);
+      revalidatePath(`/eventos/${existing.slug}/sorteio`);
+    }
+    revalidatePath("/qr/externo");
     revalidatePath("/admin/configuracoes/qr-codes");
     return { ok: true };
   } catch (e) {

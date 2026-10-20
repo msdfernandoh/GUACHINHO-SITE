@@ -6,7 +6,9 @@ import { EventoCheckinFechado } from "@/components/public/eventos/evento-checkin
 import { fetchPublicSorteioByEventoSlug } from "@/lib/eventos-sorteio/public";
 import { resolverStatusCheckinEvento } from "@/lib/eventos-sorteio/disponibilidade";
 import { getUsuarioNegocio } from "@/lib/auth/get-usuario";
-import { canManageImobiliarias } from "@/lib/auth/permissions";
+import { isStaff } from "@/lib/auth/permissions";
+
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   robots: { index: false, follow: false },
@@ -21,27 +23,32 @@ export default async function EventoSorteioPublicPage({ params, searchParams }: 
   const { slug } = await params;
   const { preview } = await searchParams;
 
+  let isStaffUser = false;
   let isPreview = false;
-  if (preview === "1" || preview === "true") {
-    try {
-      const u = await getUsuarioNegocio();
-      if (canManageImobiliarias(u?.perfil)) {
+  try {
+    const u = await getUsuarioNegocio();
+    if (isStaff(u?.perfil)) {
+      isStaffUser = true;
+      if (preview === "1" || preview === "true") {
         isPreview = true;
       }
-    } catch {
-      isPreview = false;
     }
+  } catch {
+    isStaffUser = false;
+    isPreview = false;
   }
 
+  // Admins e usuários staff podem testar ou visualizar check-in mesmo que ainda não publicado
   const sorteio = await fetchPublicSorteioByEventoSlug(slug, {
-    allowFallback: isPreview,
-    requirePublicado: !isPreview,
+    allowFallback: true,
+    requirePublicado: !isPreview && !isStaffUser,
   });
   if (!sorteio) notFound();
 
   const usarCheckinConversacional = Boolean(sorteio.checkinInterativoAtivo || isPreview);
 
-  if (usarCheckinConversacional && !isPreview) {
+  // Check-in externo (panfletos) fica sempre disponível sem bloqueio por data/horário
+  if (usarCheckinConversacional && !isPreview && sorteio.tipoCheckin !== "externo") {
     const disp = resolverStatusCheckinEvento({
       ativo: true,
       checkin_interativo_ativo: true,

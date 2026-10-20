@@ -356,6 +356,12 @@ export function EventoAdminForm({
               )
             ) : null}
 
+            <AdminFormSubmitButton
+              creating={!evento}
+              label="Salvar alterações"
+              pendingLabel="Salvando…"
+              className="inline-flex items-center gap-1 rounded-xl bg-amber-600 px-3 py-1.5 text-xs font-bold text-white shadow-sm hover:bg-amber-700 transition"
+            />
             <a
               href={`/eventos/${encodeURIComponent(evento.slug)}/sorteio`}
               target="_blank"
@@ -373,7 +379,7 @@ export function EventoAdminForm({
               className="inline-flex items-center gap-1 rounded-xl border border-emerald-600/40 bg-white px-3 py-1.5 text-xs font-bold text-emerald-800 hover:bg-emerald-50 dark:bg-zinc-900 dark:text-emerald-200 dark:hover:bg-zinc-800 transition"
               title="Testar check-in em modo seguro sem salvar leads ou queimar números"
             >
-              <span>Testar sem gravar (Preview)</span>
+              <span>Testar check-in</span>
               <span className="text-[10px]">↗</span>
             </a>
             <a
@@ -1320,12 +1326,66 @@ export function EventoAdminForm({
         </div>
       </FormSection>
 
-      <AdminFormSubmitButton
-        creating={!evento}
-        label="Salvar evento"
-        createLabel="Criar evento"
-        className="min-h-11 min-w-[10rem]"
-      />
+      {/* Painel de Salvar Alterações no Final da Tela */}
+      <div className="sticky bottom-4 z-20 mt-8 rounded-2xl border-2 border-amber-500/40 bg-white/95 p-5 shadow-2xl backdrop-blur-md dark:border-amber-500/30 dark:bg-zinc-900/95">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div>
+            <h4 className="text-base font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
+              <span className="text-lg">💾</span>
+              <span>{evento ? "Salvar alterações deste evento" : "Cadastrar novo evento"}</span>
+            </h4>
+            <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
+              {evento
+                ? "Grava status, data, check-in, visual, perguntas e regras de acesso."
+                : "Preencha os campos obrigatórios e confirme o cadastro."}
+            </p>
+            {formError ? (
+              <p className="mt-2 text-xs font-semibold text-red-600 dark:text-red-400">
+                ❌ {formError}
+              </p>
+            ) : null}
+            {formOk ? (
+              <p className="mt-2 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+                ✅ Alterações salvas com sucesso!
+              </p>
+            ) : null}
+          </div>
+          <div className="flex flex-wrap items-center gap-2.5 w-full sm:w-auto justify-end">
+            {evento?.slug ? (
+              <>
+                <a
+                  href={`/eventos/${encodeURIComponent(evento.slug)}/sorteio`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-3.5 py-2.5 text-xs font-bold text-white shadow-sm hover:bg-emerald-700 transition"
+                  title="Ver check-in real no celular ou computador"
+                >
+                  <span>Ver check-in</span>
+                  <span className="text-[10px]">↗</span>
+                </a>
+                <a
+                  href={`/eventos/${encodeURIComponent(evento.slug)}/sorteio?preview=1`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-600/40 bg-emerald-50 px-3.5 py-2.5 text-xs font-bold text-emerald-800 hover:bg-emerald-100 dark:bg-zinc-800 dark:text-emerald-200 transition"
+                  title="Testar check-in sem salvar lead nem queimar número"
+                >
+                  <span>Testar check-in</span>
+                  <span className="text-[10px]">↗</span>
+                </a>
+              </>
+            ) : null}
+            <AdminFormSubmitButton
+              creating={!evento}
+              label="Salvar alterações"
+              pendingLabel="Salvando alterações…"
+              createLabel="Criar evento"
+              createPendingLabel="Criando evento…"
+              className="min-h-11 min-w-[12rem] bg-amber-600 hover:bg-amber-700 text-white font-bold text-sm shadow-md"
+            />
+          </div>
+        </div>
+      </div>
     </form>
   );
 }
