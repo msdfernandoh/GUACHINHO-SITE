@@ -145,7 +145,7 @@ export async function calcularApuracaoMeta(
       }
 
       const { data: vendas } = await query;
-      realizado = (vendas || []).reduce((acc: number, v: any) => acc + Number(v.valor_credito || 0), 0);
+      realizado = (vendas || []).reduce((acc: number, v) => acc + Number(v.valor_credito || 0), 0);
       break;
     }
 
@@ -195,7 +195,7 @@ export async function calcularApuracaoMeta(
         .gte("created_at", startIso)
         .lte("created_at", endIso);
 
-      realizado = (previsoes || []).reduce((acc: number, p: any) => acc + Number(p.valor_previsto || 0), 0);
+      realizado = (previsoes || []).reduce((acc: number, p) => acc + Number(p.valor_previsto || 0), 0);
       break;
     }
 
@@ -207,7 +207,7 @@ export async function calcularApuracaoMeta(
         .gte("data_recebimento", meta.data_inicio)
         .lte("data_recebimento", meta.data_fim);
 
-      realizado = (recebimentos || []).reduce((acc: number, r: any) => acc + Number(r.valor_total || 0), 0);
+      realizado = (recebimentos || []).reduce((acc: number, r) => acc + Number(r.valor_total || 0), 0);
       break;
     }
 

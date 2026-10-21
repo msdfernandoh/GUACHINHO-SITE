@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createClient } from "@/lib/supabase/server";
+
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireErpRouteAccess } from "@/lib/erp/erp-acesso-server";
 import { encryptCredential } from "@/lib/automacoes/robos/cryptoService";
@@ -140,7 +140,7 @@ export async function fetchFranquiaRobosAction() {
   const empresaId = empresaAtiva.id;
 
   // 1. Busca robôs configurados especificamente para esta franquia
-  const { data: dbConfigs, error: errConfigs } = await admin
+  const { data: dbConfigs } = await admin
     .from("robo_configuracoes")
     .select("id, empresa_id, administradora_id, nome, portal_tipo, site_url, login_url, usuario_login, senha_encrypted, ativo, modo, ultima_execucao_em, ultimo_sucesso_em, ultimo_erro, configuracao_tarefas")
     .eq("empresa_id", empresaId);

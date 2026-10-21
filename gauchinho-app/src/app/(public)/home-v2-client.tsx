@@ -179,7 +179,7 @@ const CAROUSEL_INTERVAL_MS = 6000;
 function ObjetivosSection() {
   const shouldReduce = useReducedMotion();
   const [active, setActive] = useState(0);
-  const [prev, setPrev] = useState<number | null>(null);
+  const [, setPrev] = useState<number | null>(null);
   const [dir, setDir] = useState(1);
   const [paused, setPaused] = useState(false);
 

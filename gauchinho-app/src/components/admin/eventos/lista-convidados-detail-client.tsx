@@ -12,7 +12,6 @@ import {
 import type {
   EventoListaConvidadosItemRow,
   EventoListaConvidadosRow,
-  ListaConvidadoResultado,
   ListaConvidadoStatus,
 } from "@/lib/comercial-eventos/listas-convidados-types";
 import {
@@ -131,7 +130,7 @@ export function ListaConvidadosDetailClient({ lista, itens, eventos }: Props) {
   const [eventoLabel, setEventoLabel] = useState(lista.evento_nome);
   const [consultorNome, setConsultorNome] = useState(lista.consultor_nome);
   const [savedConsultor, setSavedConsultor] = useState(lista.consultor_nome);
-  const [savedEventoId, setSavedEventoId] = useState(lista.evento_id);
+  const [, setSavedEventoId] = useState(lista.evento_id);
   const [metaSaved, setMetaSaved] = useState(true);
   const [quickNome, setQuickNome] = useState("");
   const [quickEmpresa, setQuickEmpresa] = useState("");

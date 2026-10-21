@@ -110,7 +110,7 @@ export function AssinaturasListingClient({
 
   const [stateCreate, actionCreate, isPendingCreate] = useActionState(criarAssinaturaPlatformAction, initial);
   const [stateSave, actionSave, isPendingSave] = useActionState(salvarAssinaturaPlatformAction, initial);
-  const [stateStatus, actionStatus, isPendingStatus] = useActionState(alterarStatusAssinaturaPlatformAction, initial);
+  const [stateStatus] = useActionState(alterarStatusAssinaturaPlatformAction, initial);
 
   const handleOpenCreate = () => {
     const defaultPlano = planosDisponiveis[0];

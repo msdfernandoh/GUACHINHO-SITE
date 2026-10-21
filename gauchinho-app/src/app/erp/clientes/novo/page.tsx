@@ -42,7 +42,7 @@ export default async function NovoClientePage() {
             <Field name="telefone" label="Telefone principal" />
             <Field name="telefone_secundario" label="Telefone secundário / WhatsApp" />
             <Field name="email" label="E-mail" />
-            <Field name="participante_comercial_id" label="Consultor responsável" select options={[["", "Não atribuído"], ...(consultores ?? []).map((c: any) => [c.id, c.nome_exibicao || c.nome])]} />
+            <Field name="participante_comercial_id" label="Consultor responsável" select options={[["", "Não atribuído"], ...(consultores ?? []).map((c) => [c.id, c.nome_exibicao || c.nome])]} />
           </div>
         </div>
 

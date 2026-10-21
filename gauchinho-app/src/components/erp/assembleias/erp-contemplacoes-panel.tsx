@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { formatCurrency } from "@/lib/utils/format";
+
 import { fetchContemplacoesGrupoAction, fetchContemplacoesMesAction } from "@/app/erp/assembleias/actions";
 
 type GrupoOption = {

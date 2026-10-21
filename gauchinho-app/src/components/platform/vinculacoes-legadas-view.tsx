@@ -7,16 +7,13 @@ import {
   CheckCircle2,
   AlertTriangle,
   RefreshCw,
-  ArrowRight,
   ShieldCheck,
-  Building2,
   Layers,
   History,
   Check,
   AlertCircle,
   Globe,
-  Sparkles,
-  ExternalLink
+  ExternalLink,
 } from "lucide-react";
 import {
   vincularGrupoLegadoAction,
@@ -30,14 +27,7 @@ import type {
 
 const money = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 
-export function VinculacoesLegadasView({
-  empresaId,
-  itens,
-  historico,
-  totalPendentes,
-  totalSugestoes,
-  gruposSaasDisponiveis
-}: {
+export function VinculacoesLegadasView({ empresaId, itens, historico, gruposSaasDisponiveis }: {
   empresaId: string;
   itens: GrupoLegadoItem[];
   historico: HistoricoVinculacao[];

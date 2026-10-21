@@ -1,14 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { FileText, Download, ExternalLink, Loader2 } from "lucide-react";
+import { ExternalLink, Loader2 } from "lucide-react";
 import { obterUrlDocumentoContratacaoAction } from "@/app/erp/clientes/actions";
 
-export function ClienteDocumentoBtn({
-  arquivoUrl,
-  arquivoNome,
-  tipoDocumento,
-}: {
+export function ClienteDocumentoBtn({ arquivoUrl }: {
   arquivoUrl: string;
   arquivoNome: string;
   tipoDocumento?: string;

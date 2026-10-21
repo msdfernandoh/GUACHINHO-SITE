@@ -55,7 +55,7 @@ export async function getResumoExecutivo(empresaId: string): Promise<ResumoExecu
     .eq("status", "confirmada")
     .eq("afeta_faturamento", true);
 
-  const totalCredito = (vendas || []).reduce((acc: number, v: any) => acc + Number(v.valor_credito || 0), 0);
+  const totalCredito = (vendas || []).reduce((acc: number, v) => acc + Number(v.valor_credito || 0), 0);
   const vendasCount = (vendas || []).length;
   const ticketMedio = vendasCount > 0 ? Number((totalCredito / vendasCount).toFixed(2)) : 0;
 
@@ -64,13 +64,13 @@ export async function getResumoExecutivo(empresaId: string): Promise<ResumoExecu
     .from("comissao_previsoes_franquia")
     .select("valor_previsto")
     .eq("empresa_id", empresaId);
-  const recPrevFranquia = (prevFranquia || []).reduce((acc: number, p: any) => acc + Number(p.valor_previsto || 0), 0);
+  const recPrevFranquia = (prevFranquia || []).reduce((acc: number, p) => acc + Number(p.valor_previsto || 0), 0);
 
   const { data: prevPart } = await admin
     .from("comissao_previsoes_participantes")
     .select("valor_previsto")
     .eq("empresa_id", empresaId);
-  const repPrevPart = (prevPart || []).reduce((acc: number, p: any) => acc + Number(p.valor_previsto || 0), 0);
+  const repPrevPart = (prevPart || []).reduce((acc: number, p) => acc + Number(p.valor_previsto || 0), 0);
 
   // 3. Recebimentos & Pagamentos Reais & Caixa
   const caixaResumo = await getResumoCaixaEmpresa(empresaId);
@@ -159,7 +159,7 @@ export async function getResumoComercial(empresaId: string): Promise<ResumoComer
     .eq("afeta_faturamento", true);
 
   const vendasTotais = (vendas || []).length;
-  const creditoTotal = (vendas || []).reduce((acc: number, v: any) => acc + Number(v.valor_credito || 0), 0);
+  const creditoTotal = (vendas || []).reduce((acc: number, v) => acc + Number(v.valor_credito || 0), 0);
 
   const taxaConversao =
     leadsTotais && leadsTotais > 0 ? Number(((vendasTotais / leadsTotais) * 100).toFixed(2)) : 0;
@@ -189,13 +189,13 @@ export async function getResumoFinanceiroDash(empresaId: string): Promise<Resumo
     .from("comissao_previsoes_franquia")
     .select("valor_previsto")
     .eq("empresa_id", empresaId);
-  const recPrevFranquia = (prevFranquia || []).reduce((acc: number, p: any) => acc + Number(p.valor_previsto || 0), 0);
+  const recPrevFranquia = (prevFranquia || []).reduce((acc: number, p) => acc + Number(p.valor_previsto || 0), 0);
 
   const { data: prevPart } = await admin
     .from("comissao_previsoes_participantes")
     .select("valor_previsto")
     .eq("empresa_id", empresaId);
-  const repPrevPart = (prevPart || []).reduce((acc: number, p: any) => acc + Number(p.valor_previsto || 0), 0);
+  const repPrevPart = (prevPart || []).reduce((acc: number, p) => acc + Number(p.valor_previsto || 0), 0);
 
   return {
     receita_prevista_franquia: Number(recPrevFranquia.toFixed(2)),

@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
+
 import { cn } from "@/lib/utils/cn";
 import { PUBLIC_LOGO_MASCOT_SRC } from "@/lib/brand/public-logo-text";
 

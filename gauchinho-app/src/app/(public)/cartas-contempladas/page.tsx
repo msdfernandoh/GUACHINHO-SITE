@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { CartasPublicClient } from "@/components/public/cartas-public-client";
-import type { CartaContemplada } from "@/lib/cartas/types";
+
 import { getCatalogEmpresaIdFromHeaders } from "@/lib/grupos/resolve-catalog-empresa";
 import { fetchPublicCartasAutorizadasForEmpresa } from "@/lib/cartas/catalogo-autorizado-cartas";
 

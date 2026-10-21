@@ -120,7 +120,7 @@ export function formatDisponibilidadeResumo(
     .sort((a, b) => String(a.data_especifica).localeCompare(String(b.data_especifica)));
   if (especificas.length) {
     const sample = especificas.slice(0, 4).map((s) => {
-      const [y, m, d] = String(s.data_especifica).split("-");
+      const [, m, d] = String(s.data_especifica).split("-");
       return `${d}/${m} ${timeLabel(s.hora_inicio)}–${timeLabel(s.hora_fim)}`;
     });
     const extra = especificas.length > 4 ? ` (+${especificas.length - 4})` : "";

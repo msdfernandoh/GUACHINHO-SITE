@@ -663,6 +663,10 @@ export async function homologateFranchiseRuleAction(formData: FormData): Promise
   const ruleId = String(formData.get("regra_id") ?? "").trim();
   if (!empresaId || !ruleId) throw new Error("Empresa e regra são obrigatórias.");
   const supabase = await assertCanWrite(empresaId);
+  if (!(await isPlatformSuperadmin())) {
+    throw new Error("Somente Platform Superadmin pode homologar regras da franquia.");
+  }
+
 
   const { data: target, error: targetError } = await supabase
     .from("comissao_regras_franquia")

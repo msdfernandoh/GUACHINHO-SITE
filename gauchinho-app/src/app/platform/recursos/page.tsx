@@ -9,7 +9,7 @@ import {
 export default async function PlatformRecursosOverridesPage() {
   const db = await createClient();
 
-  const [overridesRes, empresasRes, modulosRes, assinaturasRes, quotasRes] = await Promise.all([
+  const [overridesRes, empresasRes, modulosRes, assinaturasRes] = await Promise.all([
     db
       .from("saas_empresa_overrides")
       .select(

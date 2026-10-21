@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import type { CotaLanceOperacionalDTO, LancesDashboardStats } from "@/app/erp/lances/actions";
+import type { CotaLanceOperacionalDTO } from "@/app/erp/lances/actions";
 
 describe("Fase Conjunta: Participantes Comerciais e Lances de Cotas (Fase 098/099)", () => {
   describe("A. Participantes Comerciais & Governança", () => {

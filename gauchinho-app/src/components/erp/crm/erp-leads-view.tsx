@@ -5,13 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { LeadListRow, LeadFilters } from "@/lib/crm/types";
 import type { ConsultorOption } from "@/lib/admin/consultores";
-import {
-  updateLeadAction,
-  deleteLeadAction,
-  bulkDeleteLeadsAction,
-  fecharLeadAction,
-  createLeadManualAction,
-} from "@/app/admin/leads/actions";
+import { updateLeadAction, bulkDeleteLeadsAction, createLeadManualAction } from "@/app/admin/leads/actions";
 
 const money = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 
@@ -114,13 +108,7 @@ function getStatusBadge(statusRaw: string | null | undefined) {
   };
 }
 
-export function ErpLeadsView({
-  initialLeads,
-  consultores,
-  eventos,
-  currentFilters,
-  canDelete,
-}: {
+export function ErpLeadsView({ initialLeads, consultores, currentFilters, canDelete }: {
   initialLeads: LeadListRow[];
   consultores: ConsultorOption[];
   eventos: { id: string; nome: string }[];
@@ -144,10 +132,10 @@ export function ErpLeadsView({
 
   // Selected leads for bulk actions
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const [bulkActionOpen, setBulkActionOpen] = useState(false);
+  const [, setBulkActionOpen] = useState(false);
   const [bulkResponsavelId, setBulkResponsavelId] = useState("");
   const [bulkStatus, setBulkStatus] = useState("");
-  const [bulkMessage, setBulkMessage] = useState<string | null>(null);
+  const [, setBulkMessage] = useState<string | null>(null);
 
   // Drawer / Modal for Lead Details
   const [activeLead, setActiveLead] = useState<LeadListRow | null>(null);

@@ -7,8 +7,6 @@ import { ContaCorrenteCentralSocios } from "./conta-corrente-central-socios";
 import {
   AlertCircle,
   ArrowDownLeft,
-  ArrowUpRight,
-  BadgePercent,
   Building2,
   Calculator,
   Calendar,
@@ -20,21 +18,15 @@ import {
   Clock,
   Coins,
   DollarSign,
-  Download,
   Eye,
-  EyeOff,
-  FileSpreadsheet,
-  FileText,
   Filter,
   HelpCircle,
   History,
-  Layers,
   ListFilter,
   Lock,
   PieChart,
   Plus,
   Printer,
-  RefreshCw,
   RotateCcw,
   Scale,
   Search,
@@ -43,8 +35,6 @@ import {
   Sparkles,
   Square,
   TrendingDown,
-  TrendingUp,
-  Unlock,
   User,
   Users,
   Wallet,
@@ -56,27 +46,18 @@ import type {
   TipoFiltroPeriodo,
   TipoRegimePeriodo,
   ConferenciaMensalDTO,
-  LancamentoConferenciaDTO,
-  FechamentoGeralDTO,
-  PainelConferenciaDespesasDTO,
-  PainelConferenciaComissoesDTO,
-  QuadroComparativoGeralDTO,
   ItemConferenciaDespesaDTO,
   ItemConferenciaComissaoDTO,
   DespesaRateioDTO,
   ComissaoSocioDTO,
   MovimentoLedgerDTO,
-  ReservaFuturaDTO,
-  PrevisaoOrcamentoDTO,
   MetaSocioDTO,
-  SocioDTO,
 } from "@/app/erp/conta-corrente-socios/actions";
 import {
   usarComissaoCompensarAction,
   salvarRateioDespesaAction,
   salvarReservaFuturaAction,
   liberarReservaAction,
-  salvarPrevisaoOrcamentoAction,
   salvarMetasSociosAction,
   estornarMovimentoLedgerAction,
 } from "@/app/erp/conta-corrente-socios/actions";
@@ -103,15 +84,7 @@ const formatDataBr = (val: string) => {
   return dia ? `${dia}/${mes}/${ano}` : `${mes}/${ano}`;
 };
 
-export function ContaCorrenteSociosView({
-  dados,
-  competencia,
-  socioSelecionadoId,
-  tipoPeriodoInicial,
-  dataInicioInicial,
-  dataFimInicial,
-  regimeInicial,
-}: ContaCorrenteSociosViewProps) {
+export function ContaCorrenteSociosView({ dados, competencia, socioSelecionadoId }: ContaCorrenteSociosViewProps) {
   const [drillDownConferencia, setDrillDownConferencia] = useState<{
     titulo: string;
     subtitulo: string;
@@ -145,7 +118,7 @@ export function ContaCorrenteSociosView({
 
   // Modais
   const [modalCompensarAberto, setModalCompensarAberto] = useState(false);
-  const [comissaoParaCompensar, setComissaoParaCompensar] = useState<ComissaoSocioDTO | null>(null);
+  const [, setComissaoParaCompensar] = useState<ComissaoSocioDTO | null>(null);
   const [socioModalId, setSocioModalId] = useState<string>("");
   const [tipoDestinoModal, setTipoDestinoModal] = useState<"TRANSFERENCIA_SOCIO" | "CONTA_EMPRESA">("TRANSFERENCIA_SOCIO");
   const [socioDestinoModalId, setSocioDestinoModalId] = useState<string>("");

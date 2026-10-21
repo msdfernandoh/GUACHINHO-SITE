@@ -3,7 +3,7 @@
 import type { GrupoConsorcio } from "@/lib/types";
 import { calcularCicloGrupoDatas, formatDataBr } from "@/lib/grupos/prazos";
 import { descricaoReajusteAnual } from "@/lib/grupos/reajuste-anual";
-import { cn } from "@/lib/utils/cn";
+
 
 export function GrupoCicloDetalhes({ grupo }: { grupo: GrupoConsorcio }) {
   const ciclo = calcularCicloGrupoDatas(grupo);

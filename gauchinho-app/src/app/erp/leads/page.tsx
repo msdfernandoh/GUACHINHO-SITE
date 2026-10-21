@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-import { createClient } from "@/lib/supabase/server";
+
 import { getCurrentTenantContext } from "@/lib/tenant/context";
 import { getUsuarioNegocio } from "@/lib/auth/get-usuario";
 import { canDeleteRecords } from "@/lib/auth/permissions";

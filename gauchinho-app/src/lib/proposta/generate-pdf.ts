@@ -10,7 +10,7 @@ import {
 import { createAdminClient } from "@/lib/supabase/admin";
 import { registrarEvento } from "@/lib/eventos/registrar";
 import { gerarProjecaoAnoAno } from "@/lib/simulador/projecao";
-import type { EntradaConsorcio } from "@/lib/simulador/consorcio";
+
 import type { GrupoPdfBlock, PropostaPdfData, SegmentoPdf } from "@/lib/proposta/pdf/types";
 import { randomUUID } from "node:crypto";
 

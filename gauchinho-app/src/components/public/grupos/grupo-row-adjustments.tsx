@@ -2,8 +2,13 @@
 
 import type { GrupoConsorcio, GrupoCota, GrupoModalidadeLance } from "@/lib/types";
 import { grupoUsaSeguroNaParcela } from "@/lib/grupos/calculos";
-import { formatPrazoGrupo, labelModalidadeParcelaLinha, listarPercentuaisParcelaReduzida, type ConfigLinhaSimulacaoGrupo } from "@/lib/grupos/simulacao-linha";
-import { normalizarPercentualGrupo } from "@/lib/grupos/percentual";
+import {
+  formatPrazoGrupo,
+  labelModalidadeParcelaLinha,
+  listarPercentuaisParcelaReduzida,
+  type ConfigLinhaSimulacaoGrupo,
+} from "@/lib/grupos/simulacao-linha";
+
 import { parcelaTipoFromModalidade } from "@/lib/grupos/modalidades-admin";
 import { formatCurrency } from "@/lib/utils/format";
 import { cn } from "@/lib/utils/cn";

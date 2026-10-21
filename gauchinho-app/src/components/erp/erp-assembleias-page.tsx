@@ -2,7 +2,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentTenantContext } from "@/lib/tenant/context";
 import { agruparCotasPorGrupo, CotaAssembleia } from "@/lib/erp/assembleias";
-import { createAssembleiaAction, toggleAtencaoAssembleiaAction } from "@/app/erp/assembleias/actions";
+import { toggleAtencaoAssembleiaAction } from "@/app/erp/assembleias/actions";
 import { listGruposAutorizadosForEmpresa } from "@/lib/grupos/catalogo-autorizado-service";
 
 import { ErpAssembleiasForm } from "@/components/erp/assembleias/erp-assembleias-form";

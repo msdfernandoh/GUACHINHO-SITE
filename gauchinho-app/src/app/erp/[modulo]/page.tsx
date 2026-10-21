@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { erpModuleEnabled, getErpSistemaConfig } from "@/lib/erp/erp-modulos";
+import { erpModuleEnabled } from "@/lib/erp/erp-modulos";
 import { erpOperationalRouteEnabled } from "@/lib/erp/erp-operational";
 import Leads from "@/app/erp/leads/page";
 import Propostas from "@/app/admin/propostas/page";

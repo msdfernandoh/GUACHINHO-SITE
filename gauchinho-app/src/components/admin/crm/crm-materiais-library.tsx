@@ -1,18 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import {
-  BookOpen,
-  Copy,
-  Check,
-  FileText,
-  Video,
-  ExternalLink,
-  MessageSquare,
-  Sparkles,
-  Users,
-  Calendar,
-} from "lucide-react";
+import { Copy, Check, Calendar } from "lucide-react";
 
 interface ScriptItem {
   id: string;

@@ -1,19 +1,7 @@
 "use client";
 
 import React, { startTransition, useState, useEffect, useRef } from "react";
-import {
-  Upload,
-  Link as LinkIcon,
-  Image as ImageIcon,
-  CheckCircle2,
-  AlertTriangle,
-  Sparkles,
-  Layers,
-  Eye,
-  Trash2,
-  RefreshCw,
-  FolderOpen,
-} from "lucide-react";
+import { Upload, Link as LinkIcon, AlertTriangle, RefreshCw, FolderOpen } from "lucide-react";
 import { uploadTemplateMediaPlatformAction } from "@/app/platform/templates-actions";
 
 export type ImageObjectFit = "cover" | "contain";

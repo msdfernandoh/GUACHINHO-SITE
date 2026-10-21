@@ -4,22 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { formatCurrency } from "@/lib/utils/format";
 import type { CrmDashboardData } from "@/lib/crm/dashboard-query";
-import {
-  Users,
-  Flame,
-  CalendarCheck,
-  CalendarClock,
-  Briefcase,
-  Trophy,
-  Target,
-  Percent,
-  AlertTriangle,
-  Clock,
-  ArrowRight,
-  UserPlus,
-  Kanban,
-  FileCheck2,
-} from "lucide-react";
+import { Users, CalendarCheck, CalendarClock, Briefcase, Trophy, Target, Percent, AlertTriangle } from "lucide-react";
 import { CrmFunnel3dVisual } from "./crm-funnel-3d-visual";
 import { CrmVendasFechadasModal } from "./crm-vendas-fechadas-modal";
 

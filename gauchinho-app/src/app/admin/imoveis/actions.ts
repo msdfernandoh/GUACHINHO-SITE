@@ -11,7 +11,7 @@ import {
   isImobiliaria,
   isMaster,
 } from "@/lib/auth/permissions";
-import { slugify, uniqueSlug } from "@/lib/utils/slug";
+import { uniqueSlug } from "@/lib/utils/slug";
 import { parseBrazilianNumber } from "@/lib/utils/format";
 import { uploadImagemPublica } from "@/lib/storage/imagens";
 import type { ImovelPublic, ImovelRow, ImobiliariaRow } from "@/lib/imoveis/types";

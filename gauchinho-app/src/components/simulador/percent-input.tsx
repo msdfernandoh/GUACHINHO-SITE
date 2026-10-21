@@ -1,6 +1,6 @@
 "use client";
 
-import { cn } from "@/lib/utils/cn";
+
 import { Input, Label } from "@/components/ui/form-primitives";
 import { fieldHelpClass } from "./simulador-ui";
 

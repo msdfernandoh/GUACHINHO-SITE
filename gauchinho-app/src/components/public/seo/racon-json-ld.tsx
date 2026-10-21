@@ -7,7 +7,7 @@ type Props = {
   whatsapp?: string | null;
 };
 
-export function RaconJsonLd({ url = "https://www.raconsinop.com.br", logoUrl, telefone, whatsapp }: Props) {
+export function RaconJsonLd({ url = "https://www.raconsinop.com.br", logoUrl, telefone }: Props) {
   const siteUrl = url.replace(/\/$/, "");
   const logo = logoUrl || `${siteUrl}/analise/logoracon.jpg`;
 

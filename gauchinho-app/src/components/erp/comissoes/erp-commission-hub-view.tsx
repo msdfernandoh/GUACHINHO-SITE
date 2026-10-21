@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { ProfileRulePaymentFields } from "./profile-rule-payment-fields";
 import type { CommissionStage } from "@/lib/erp/commission-rule-input";
-import Link from "next/link";
+
 import { useRouter, useSearchParams } from "next/navigation";
 import { AplicarImpostoLote } from "./aplicar-imposto-lote";
 import {
@@ -518,7 +518,7 @@ export function ErpCommissionHubView({
                       <td colSpan={8} className="p-12 text-center text-slate-500">
                         <p className="font-semibold">Nenhuma regra cadastrada para este perfil.</p>
                         <p className="mt-1 text-xs text-slate-400">
-                          Clique em "+ Nova Regra para Perfil" para configurar o repasse.
+                          Clique em &quot;+ Nova Regra para Perfil&quot; para configurar o repasse.
                         </p>
                       </td>
                     </tr>
@@ -825,7 +825,7 @@ export function ErpCommissionHubView({
                 <span className="font-extrabold text-blue-600 dark:text-blue-400 text-xs">PASSO 2</span>
                 <h4 className="mt-1 font-bold text-xs text-slate-900 dark:text-white">Configurar a Regra (Aba 1)</h4>
                 <p className="mt-1 text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed">
-                  Na aba <strong>"Regras dos Perfis"</strong>, cadastre quanto o perfil ganha (ex: <em>25% da Comissão Líquida da Franqueadora</em>), o cronograma e a curva de estorno.
+                  Na aba <strong>&quot;Regras dos Perfis&quot;</strong>, cadastre quanto o perfil ganha (ex: <em>25% da Comissão Líquida da Franqueadora</em>), o cronograma e a curva de estorno.
                 </p>
               </div>
 
@@ -833,14 +833,14 @@ export function ErpCommissionHubView({
                 <span className="font-extrabold text-blue-600 dark:text-blue-400 text-xs">PASSO 3</span>
                 <h4 className="mt-1 font-bold text-xs text-slate-900 dark:text-white">Vincular a Equipe (Aba 3)</h4>
                 <p className="mt-1 text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed">
-                  Na aba <strong>"Participantes & Perfis"</strong>, associe cada vendedor/consultor ao seu perfil. Automaticamente, todas as novas vendas calcularão os repasses dele!
+                  Na aba <strong>&quot;Participantes & Perfis&quot;</strong>, associe cada vendedor/consultor ao seu perfil. Automaticamente, todas as novas vendas calcularão os repasses dele!
                 </p>
               </div>
             </div>
 
             <div className="mt-4 flex items-center gap-2 rounded-xl bg-blue-100/60 px-4 py-2.5 text-[11px] font-medium text-blue-900 dark:bg-blue-950/60 dark:text-blue-300">
               <span>⚡</span>
-              <span><strong>Dica:</strong> Perfis que estão com <em>0 regra(s)</em> precisam de ao menos 1 regra cadastrada na aba <strong>"Regras dos Perfis"</strong> para poderem gerar comissões automáticas nas vendas.</span>
+              <span><strong>Dica:</strong> Perfis que estão com <em>0 regra(s)</em> precisam de ao menos 1 regra cadastrada na aba <strong>&quot;Regras dos Perfis&quot;</strong> para poderem gerar comissões automáticas nas vendas.</span>
             </div>
           </div>
         </section>
@@ -1315,7 +1315,7 @@ export function ErpCommissionHubView({
                       </td>
                     </tr>
                   ) : (
-                    fiscais.map((f: any) => (
+                    fiscais.map((f) => (
                       <tr key={f.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40">
                         <td className="p-3.5 font-mono font-bold text-blue-700 dark:text-blue-400 text-sm">
                           {f.percentual_imposto}%

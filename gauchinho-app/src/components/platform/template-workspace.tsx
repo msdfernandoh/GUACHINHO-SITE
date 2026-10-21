@@ -12,14 +12,7 @@ import { sanitizeTemplateCode } from "@/lib/platform/html-sanitizer";
 import { RaconInspiredHome } from "@/components/public/templates/racon-inspired-home";
 import { PageBlockAppearanceEditor } from "./page-block-appearance-editor";
 import { RACON_LOGO, type SitePagesAppearance } from "@/lib/tenant/site-appearance";
-import {
-  MediaFieldControl,
-  type ImageObjectFit,
-  type ImageObjectPosition,
-  type MediaLibraryItem,
-  type MediaSlotSpec,
-  SYSTEM_MEDIA_PRESETS,
-} from "./media-field-control";
+import { MediaFieldControl, type ImageObjectFit, type ImageObjectPosition } from "./media-field-control";
 
 export type MenuItem = {
   id: string;
@@ -572,14 +565,14 @@ export function TemplateWorkspace({
                   onClick={() => setIdentidade({ ...identidade, ...RACON_PRESET_IDENTIDADE })}
                   className="rounded-lg border border-sky-300 bg-sky-50 px-3 py-1.5 text-xs font-bold text-sky-800 hover:bg-sky-100 dark:border-sky-800 dark:bg-sky-950 dark:text-sky-300"
                 >
-                  ⚡ Preset "Racon Inspired"
+                  ⚡ Preset &quot;Racon Inspired&quot;
                 </button>
                 <button
                   type="button"
                   onClick={() => setIdentidade({ ...identidade, ...GAUCHINHO_PRESET_IDENTIDADE })}
                   className="rounded-lg border border-cyan-300 bg-cyan-50 px-3 py-1.5 text-xs font-bold text-cyan-800 hover:bg-cyan-100 dark:border-cyan-800 dark:bg-cyan-950 dark:text-cyan-300"
                 >
-                  ⚡ Preset "Gauchinho Default"
+                  ⚡ Preset &quot;Gauchinho Default&quot;
                 </button>
               </div>
             </div>

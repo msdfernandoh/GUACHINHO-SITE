@@ -7,7 +7,6 @@ import {
   Trash2,
   Ban,
   ShieldAlert,
-  CheckCircle2,
   Trophy,
   Zap,
   Hash,
@@ -24,7 +23,6 @@ import {
   Clock,
   History,
   MessageSquare,
-  ExternalLink,
   Layers,
   Undo2,
   QrCode,
@@ -382,7 +380,7 @@ export function ErpVendasHubView({
   const [textoConfirmacao, setTextoConfirmacao] = useState("");
   const [acaoMaster, setAcaoMaster] = useState<"EXCLUIR" | "ESTORNAR">("ESTORNAR");
   const [cancelarPagas, setCancelarPagas] = useState(false);
-  const [motivoMaster, setMotivoMaster] = useState("");
+  const [, setMotivoMaster] = useState("");
 
   // Estados para Modal de Cancelamento com Estorno
   const [motivoCancelamento, setMotivoCancelamento] = useState("Cancelamento formal solicitado pelo cliente.");
@@ -1283,7 +1281,7 @@ export function ErpVendasHubView({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                  {operacoesBoletosFiltradas.map(({ venda: v, cota, indice, total, envio, historico, statusBoleto }) => {
+                  {operacoesBoletosFiltradas.map(({ venda: v, cota, indice, envio, historico, statusBoleto }) => {
                     const zapLink = gerarLinkWhatsAppBoleto(
                       v.cliente_nome,
                       v.cliente_telefone,
@@ -1959,7 +1957,7 @@ export function ErpVendasHubView({
                     onChange={(e) => setEditPerfilPrincipalId(e.target.value)}
                     className="w-full rounded-lg border border-blue-300 bg-white p-2 font-bold text-slate-900 shadow-2xs dark:border-slate-700 dark:bg-slate-800 dark:text-white"
                   >
-                    {perfisDoPrincipal.map((p: any) => (
+                    {perfisDoPrincipal.map((p) => (
                       <option key={p.id} value={p.perfil_id}>
                         {p.perfil?.nome} ({p.papel_tipo}) {p.override_percentual !== null ? "— " + p.override_percentual + "%" : ""}
                       </option>
@@ -2014,7 +2012,7 @@ export function ErpVendasHubView({
                     onChange={(e) => setEditPerfilSecundarioId(e.target.value)}
                     className="mt-1 w-full rounded-lg border border-amber-300 bg-white p-1.5 font-semibold dark:border-slate-700 dark:bg-slate-800"
                   >
-                    {perfisDoSecundario.map((p: any) => (
+                    {perfisDoSecundario.map((p) => (
                       <option key={p.id} value={p.perfil_id}>
                         {p.perfil?.nome} ({p.papel_tipo})
                       </option>
@@ -2256,7 +2254,7 @@ export function ErpVendasHubView({
               {acaoMaster === "EXCLUIR" && (
                 <div className="space-y-1.5 rounded-xl border border-rose-300 bg-rose-50 p-3">
                   <label className="font-bold text-rose-900">
-                    Digite "EXCLUIR" para confirmar esta ação irreversível:
+                    Digite &quot;EXCLUIR&quot; para confirmar esta ação irreversível:
                   </label>
                   <input
                     type="text"

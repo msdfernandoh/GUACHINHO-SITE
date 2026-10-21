@@ -9,17 +9,12 @@ import {
   Clock,
   CheckCircle2,
   AlertTriangle,
-  FileText,
   Calendar,
   Layers,
-  ShieldCheck,
-  TrendingUp,
   RefreshCw,
-  ExternalLink,
   ChevronRight,
   Download,
   TicketCheck,
-  KeyRound,
   X,
   Loader2,
   Sparkles,
@@ -40,15 +35,9 @@ interface ErpRobosHubProps {
   initialHistorico: RoboExecucaoItemDTO[];
 }
 
-export function ErpRobosHub({
-  empresaId,
-  empresaNome,
-  initialRobos,
-  initialStats,
-  initialHistorico,
-}: ErpRobosHubProps) {
+export function ErpRobosHub({ empresaNome, initialRobos, initialStats, initialHistorico }: ErpRobosHubProps) {
   const [robos, setRobos] = useState<FranquiaRoboDTO[]>(initialRobos);
-  const [stats, setStats] = useState<RobosDashboardStats>(initialStats);
+  const [stats] = useState<RobosDashboardStats>(initialStats);
   const [historico, setHistorico] = useState<RoboExecucaoItemDTO[]>(initialHistorico);
   const [abaAtiva, setAbaAtiva] = useState<"robos" | "mapeamento" | "historico">("robos");
 
@@ -589,7 +578,7 @@ export function ErpRobosHub({
               <Bot className="mx-auto h-8 w-8 text-slate-400" />
               <p className="mt-2 text-sm font-semibold">Nenhuma execução registrada ainda.</p>
               <p className="mt-1 text-xs text-slate-400">
-                Clique em "Executar Agora" em um dos robôs acima para iniciar.
+                Clique em &quot;Executar Agora&quot; em um dos robôs acima para iniciar.
               </p>
             </div>
           ) : (

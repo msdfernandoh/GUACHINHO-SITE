@@ -2,7 +2,7 @@
 
 import { formatCurrency } from "@/lib/utils/format";
 import type { CrmConsultorPerformance } from "@/lib/crm/dashboard-query";
-import { Trophy, TrendingUp, Users, CalendarCheck, Award, Flame, ArrowUpRight } from "lucide-react";
+import { Trophy, TrendingUp, Users, CalendarCheck, ArrowUpRight } from "lucide-react";
 import Link from "next/link";
 
 export function CrmPerformancePanel({

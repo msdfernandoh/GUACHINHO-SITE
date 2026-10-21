@@ -2,29 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import {
-  TrendingUp,
-  Clock,
-  CheckCircle2,
-  AlertTriangle,
-  XCircle,
-  Search,
-  Filter,
-  FileText,
-  Upload,
-  Calendar,
-  Layers,
-  ChevronRight,
-  X,
-  History,
-  ShieldCheck,
-  UserCheck,
-  ExternalLink,
-  Loader2,
-  Info,
-  DollarSign,
-  Percent,
-} from "lucide-react";
+import { CheckCircle2, AlertTriangle, Search, FileText, X, History, Loader2, Info } from "lucide-react";
 import {
   salvarEstrategiaLanceCompletaAction,
   confirmarLanceOperacionalAction,
@@ -39,13 +17,9 @@ interface ErpLancesViewProps {
   initialRows: CotaLanceOperacionalDTO[];
 }
 
-export function ErpLancesView({
-  empresaId,
-  initialStats,
-  initialRows,
-}: ErpLancesViewProps) {
-  const [rows, setRows] = useState<CotaLanceOperacionalDTO[]>(initialRows);
-  const [stats, setStats] = useState<LancesDashboardStats>(initialStats);
+export function ErpLancesView({ initialStats, initialRows }: ErpLancesViewProps) {
+  const [rows] = useState<CotaLanceOperacionalDTO[]>(initialRows);
+  const [stats] = useState<LancesDashboardStats>(initialStats);
   const [busca, setBusca] = useState("");
   const [filtroAdministradora, setFiltroAdministradora] = useState("");
   const [filtroSituacao, setFiltroSituacao] = useState("");
@@ -939,7 +913,7 @@ export function ErpLancesView({
                       </p>
                     )}
                     {selectedCota.estrategia.confirmadoObservacao && (
-                      <p className="mt-1 text-[11px] italic">"{selectedCota.estrategia.confirmadoObservacao}"</p>
+                      <p className="mt-1 text-[11px] italic">&quot;{selectedCota.estrategia.confirmadoObservacao}&quot;</p>
                     )}
                   </div>
                 )}

@@ -1,5 +1,20 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
+### Redução da dívida de lint e guard da homologação de franquia (20/10/2026)
+A limpeza de importações/bindings sem uso, callbacks com inferência e texto JSX
+reduz os avisos de 669 para 342, com zero erros e sem alterar o teto de 353.
+Hooks e chamadas existentes são preservados; os 342 avisos restantes continuam
+visíveis como dívida técnica, sem relaxar regras.
+A ação homologateFranchiseRuleAction passa a consultar isPlatformSuperadmin
+antes de ler ou homologar a regra, conforme a governança documentada, mantendo
+tenant ativo e autorização de escrita. O teste antigo somente encontrava uma
+importação ociosa; novos testes exercitam a recusa tenant e o escopo da Platform.
+Suíte final: 1.816 testes aprovados, 37 skips existentes, zero falhas;
+TypeScript, build e npm run lint aprovados (342 avisos sob teto original 353).
+Sem migration, alteração de dados ou revisão completa das policies de banco.
+Relatório: `docs/relatorios-fases/REDUCAO-AVISOS-LINT-E-HOMOLOGACAO-FRANQUIA-2026-10-20.md`.
+
+
 ### Correção da seleção de parcela reduzida e suíte de regressão (20/10/2026)
 O motor de simulação sem percentual explícito preserva o padrão cadastrado do
 grupo, alinhado a defaultConfigLinha, em vez de escolher 50% pela ordem da lista

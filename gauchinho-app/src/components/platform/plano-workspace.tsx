@@ -75,7 +75,7 @@ export function PlanoWorkspace({
 
   const [stateSave, actionSave, isPendingSave] = useActionState(salvarPlanoPlatformAction, initial);
   const [stateStatus, actionStatus, isPendingStatus] = useActionState(statusPlanoPlatformAction, initial);
-  const [stateDuplicar, actionDuplicar, isPendingDuplicar] = useActionState(duplicarPlanoPlatformAction, initial);
+  const [, actionDuplicar, isPendingDuplicar] = useActionState(duplicarPlanoPlatformAction, initial);
 
   // States
   const [nome, setNome] = useState(plano.nome);

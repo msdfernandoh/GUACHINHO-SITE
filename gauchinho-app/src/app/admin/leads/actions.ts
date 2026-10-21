@@ -16,9 +16,9 @@ import {
 import { enrichLeadsWithTipoSonho } from "@/lib/crm/lead-tipo-sonho";
 import type { IndicacaoRapidaItem, LeadFilters } from "@/lib/crm/types";
 import { buildLeadTimeline } from "@/lib/crm/timeline";
-import { MOTIVOS_PERDA } from "@/lib/crm/constants";
+
 import { isTipoSonhoSorteio, tipoSonhoParaCreditoLead } from "@/lib/eventos-sorteio/lead-map";
-import { isDbMissingColumnError } from "@/lib/comercial-eventos/db-ready";
+
 import { getCurrentTenantContext, requireCurrentTenantContext } from "@/lib/tenant/context";
 import { upsertLeadPorTelefone, normalizePhoneForLead } from "@/lib/crm/upsert-lead";
 import { requireLeadInCurrentTenant, requireLeadIdsInCurrentTenant } from "@/lib/crm/require-lead-tenant";

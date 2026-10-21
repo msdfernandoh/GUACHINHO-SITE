@@ -196,7 +196,7 @@ export async function fetchContemplacoesMesAction(mesAno: string) {
     .order("percentual_lance", { ascending: false });
 
   if (error) throw new Error(error.message);
-  const rows = (data ?? []).map((item: any) => ({
+  const rows = (data ?? []).map((item) => ({
     ...item,
     grupo: Array.isArray(item.grupo) ? item.grupo[0] : item.grupo,
   }));

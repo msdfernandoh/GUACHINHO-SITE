@@ -5,11 +5,7 @@ import {
   resolveWhatsappCta,
   sanitizePublicText,
 } from "./public-site-data";
-import {
-  computeCanonicalRedirect,
-  evaluatePublicServeGate,
-  robotsForPartnerStatus,
-} from "./public-site-gates";
+import { evaluatePublicServeGate } from "./public-site-gates";
 import {
   resolvePartnerSiteFromFacts,
   type PartnerResolveFacts,

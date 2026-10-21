@@ -4,22 +4,8 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { formatCurrency } from "@/lib/utils/format";
-import type { CrmDashboardData, CrmFunilMacroTier, CrmFunilEtapaStats } from "@/lib/crm/dashboard-query";
-import {
-  Eye,
-  Mail,
-  Magnet,
-  Handshake,
-  Trophy,
-  Sparkles,
-  ArrowRight,
-  Layers,
-  Flame,
-  CalendarCheck,
-  TrendingDown,
-  RotateCcw,
-  Zap,
-} from "lucide-react";
+import type { CrmDashboardData } from "@/lib/crm/dashboard-query";
+import { Eye, Mail, Magnet, Handshake, Trophy, Sparkles, ArrowRight, Layers, Flame, RotateCcw, Zap } from "lucide-react";
 import { CrmVendasFechadasModal } from "./crm-vendas-fechadas-modal";
 
 export function CrmFunnel3dVisual({

@@ -13,7 +13,6 @@ import {
   Play,
   Compass,
   Settings2,
-  Clock,
   Eye,
   EyeOff,
   Building2,
@@ -22,10 +21,8 @@ import {
   X,
   History,
   Terminal,
-  FileCode,
-  Check,
   AlertTriangle,
-} from 'lucide-react'
+} from 'lucide-react';
 import {
   RoboConfigOutput,
   PortalTipo,
@@ -824,7 +821,7 @@ export function RobosImportacaoContent({
             </div>
 
             <div className="mt-4 flex-1 overflow-y-auto rounded-xl bg-black p-4 font-mono text-xs text-emerald-400 shadow-inner">
-              {(execucaoAtual?.detalhes?.logs || execucaoAtual?.logs || []).map((l: any, i: number) => (
+              {(execucaoAtual?.detalhes?.logs || execucaoAtual?.logs || []).map((l: { ts?: string; msg?: string }, i: number) => (
                 <div key={i} className="mb-1 leading-relaxed">
                   <span className="text-zinc-500">[{l.ts ? new Date(l.ts).toLocaleTimeString() : 'LOG'}]</span>{' '}
                   <span className="text-zinc-200">{l.msg || JSON.stringify(l)}</span>
@@ -876,7 +873,7 @@ export function RobosImportacaoContent({
                 <div>
                   <h4 className="text-sm font-bold text-zinc-700 dark:text-zinc-300">Capturas de Tela Inspecionadas:</h4>
                   <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2">
-                    {(mapResult.screenshots || []).map((s: any, idx: number) => (
+                    {(mapResult.screenshots || []).map((s: { titulo: string; base64: string }, idx: number) => (
                       <div key={idx} className="rounded-xl border border-zinc-200 overflow-hidden dark:border-zinc-800">
                         <div className="bg-zinc-100 p-2 text-xs font-semibold text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
                           {s.titulo}
@@ -892,14 +889,14 @@ export function RobosImportacaoContent({
                   <div>
                     <h4 className="text-sm font-bold text-zinc-700 dark:text-zinc-300">Elementos Detectados na Página:</h4>
                     <div className="mt-2 max-h-48 overflow-y-auto rounded-xl border border-zinc-200 bg-zinc-50 p-3 text-xs dark:border-zinc-800 dark:bg-zinc-950 font-mono">
-                      {mapResult.camposDetectados.map((c: any, i: number) => (
+                      {mapResult.camposDetectados.map((c: { tag: string; id?: string; name?: string; type?: string; placeholder?: string; texto?: string }, i: number) => (
                         <div key={i} className="mb-1">
                           <span className="text-amber-600 font-bold">&lt;{c.tag}&gt;</span>{' '}
-                          {c.id && <span className="text-emerald-600">id="#{c.id}"</span>}{' '}
-                          {c.name && <span className="text-cyan-600">name="{c.name}"</span>}{' '}
-                          {c.type && <span className="text-zinc-500">type="{c.type}"</span>}{' '}
-                          {c.placeholder && <span className="text-zinc-400">placeholder="{c.placeholder}"</span>}{' '}
-                          {c.texto && <span className="text-zinc-700 dark:text-zinc-300">"{c.texto}"</span>}
+                          {c.id && <span className="text-emerald-600">id=&quot;#{c.id}&quot;</span>}{' '}
+                          {c.name && <span className="text-cyan-600">name=&quot;{c.name}&quot;</span>}{' '}
+                          {c.type && <span className="text-zinc-500">type=&quot;{c.type}&quot;</span>}{' '}
+                          {c.placeholder && <span className="text-zinc-400">placeholder=&quot;{c.placeholder}&quot;</span>}{' '}
+                          {c.texto && <span className="text-zinc-700 dark:text-zinc-300">&quot;{c.texto}&quot;</span>}
                         </div>
                       ))}
                     </div>

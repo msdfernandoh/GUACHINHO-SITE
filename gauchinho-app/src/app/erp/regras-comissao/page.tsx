@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentTenantContext } from "@/lib/tenant/context";
-import { ErpCommissionHubView } from "@/components/erp/comissoes/erp-commission-hub-view";
+import { ErpCommissionHubView, type CurvaEstornoRow } from "@/components/erp/comissoes/erp-commission-hub-view";
 
 export const dynamic = "force-dynamic";
 
@@ -60,7 +60,7 @@ export default async function ErpRegrasComissaoPage() {
   const canWrite = Boolean(canWriteRes.data);
   const perfis = perfisRes.data ?? [];
 
-  const regrasFranquia = (regrasFranquiaRes.data ?? []).map((rf: any) => ({
+  const regrasFranquia = (regrasFranquiaRes.data ?? []).map((rf) => ({
     id: rf.id,
     programa_id: rf.programa_id,
     programa_nome: rf.programa?.nome,
@@ -85,7 +85,7 @@ export default async function ErpRegrasComissaoPage() {
     etapas_cronograma: rf.etapas_cronograma ?? [],
   }));
 
-  const regrasPerfis = (regrasPerfisRes.data ?? []).map((rp: any) => ({
+  const regrasPerfis = (regrasPerfisRes.data ?? []).map((rp) => ({
     id: rp.id,
     perfil_id: rp.perfil_id,
     perfil_nome: rp.perfil?.nome,
@@ -117,7 +117,7 @@ export default async function ErpRegrasComissaoPage() {
     observacoes: rp.observacoes,
   }));
 
-  const vinculos = (vinculosRes.data ?? []).map((v: any) => ({
+  const vinculos = (vinculosRes.data ?? []).map((v) => ({
     id: v.id,
     participante_id: v.participante_id,
     participante_nome: v.participante?.nome || "Participante",
@@ -132,13 +132,13 @@ export default async function ErpRegrasComissaoPage() {
     observacoes: v.observacoes,
   }));
 
-  const participantes = (participantesRes.data ?? []).map((p: any) => ({
+  const participantes = (participantesRes.data ?? []).map((p) => ({
     id: p.id,
     nome: p.nome,
-    tipos: (p.participante_tipos ?? []).map((t: any) => t.tipo_codigo),
+    tipos: (p.participante_tipos ?? []).map((t) => t.tipo_codigo),
   }));
 
-  const curvasEstorno = (curvasRes.data ?? []).map((c: any) => ({
+  const curvasEstorno = (curvasRes.data ?? []).map((c) => ({
     id: c.id,
     nome: c.nome,
     descricao: c.descricao,
@@ -149,7 +149,7 @@ export default async function ErpRegrasComissaoPage() {
     vigencia_fim: c.vigencia_fim,
     ativa: c.ativa,
     encerra_na_contemplacao: c.encerra_na_contemplacao,
-    faixas: (c.faixas ?? []).sort((a: any, b: any) => a.mes_relativo - b.mes_relativo),
+    faixas: ((c.faixas ?? []) as CurvaEstornoRow["faixas"]).sort((a, b) => a.mes_relativo - b.mes_relativo),
   }));
 
   return (

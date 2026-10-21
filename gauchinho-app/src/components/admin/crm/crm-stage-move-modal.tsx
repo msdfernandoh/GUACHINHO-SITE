@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { MOTIVOS_PERDA, LEAD_TEMPERATURES } from "@/lib/crm/constants";
-import { X, ArrowRight, CheckCircle2, AlertTriangle, Clock } from "lucide-react";
+import { X, ArrowRight, CheckCircle2, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/form-primitives";
 import type { LeadListRow, CrmFunilEtapaRow } from "@/lib/crm/types";
 

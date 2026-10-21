@@ -297,7 +297,7 @@ export function EventoQrCheckinModal({
                 Destino direto: <code>/eventos/{evento.slug}/sorteio</code>
               </p>
               <p className="mt-1 text-amber-700 dark:text-amber-400 font-medium">
-                ⚠️ <strong>Atenção:</strong> Use este QR apenas no telão ou banner físico temporário desta reunião. <strong>NÃO imprima em 10.000 panfletos</strong>, pois ele fica fixo só neste evento. Para panfletos em massa, use a aba acima <em>"QR Fixo Panfletos"</em>.
+                ⚠️ <strong>Atenção:</strong> Use este QR apenas no telão ou banner físico temporário desta reunião. <strong>NÃO imprima em 10.000 panfletos</strong>, pois ele fica fixo só neste evento. Para panfletos em massa, use a aba acima <em>&quot;QR Fixo Panfletos&quot;</em>.
               </p>
             </div>
           ) : (

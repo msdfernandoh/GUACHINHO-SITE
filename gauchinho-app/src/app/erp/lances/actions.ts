@@ -219,7 +219,7 @@ export async function fetchCotasComLancesOperacional(filters?: {
     const gruposMap = new Map((gruposRes.data ?? []).map((g) => [g.id, g]));
     const tiposMap = new Map((tiposRes.data ?? []).map((t) => [t.id, t]));
     const partMap = new Map((partRes.data ?? []).map((p) => [p.id, p]));
-    const estMap = new Map((estrategiasRes.data ?? []).map((e: any) => [e.cota_definitiva_id, e]));
+    const estMap = new Map((estrategiasRes.data ?? []).map((e) => [e.cota_definitiva_id, e]));
 
     // Agrupar histórico por cota
     const histByCota = new Map<string, any[]>();
@@ -356,7 +356,7 @@ export async function fetchCotasComLancesOperacional(filters?: {
           : null,
         situacaoOperacional: situacao,
         diasParaVencimento,
-        historico: hist.map((h: any) => ({
+        historico: hist.map((h) => ({
           id: h.id,
           createdAt: h.created_at,
           motivo: h.motivo,

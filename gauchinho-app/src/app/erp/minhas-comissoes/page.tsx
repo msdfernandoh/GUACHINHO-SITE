@@ -82,7 +82,7 @@ export default async function MinhasComissoesPage({
   const admin = createAdminClient();
   const previsaoFranquiaIds = [...new Set(
     (data ?? [])
-      .map((row: any) => row.previsao_franquia_id)
+      .map((row) => row.previsao_franquia_id)
       .filter((id: unknown): id is string => typeof id === "string" && id.length > 0),
   )];
   const [{ data: previsoesFranquia }, { data: fiscal }, { data: podeGerenciarFiscal }, { data: contasBancarias }, { data: sociosEmpresa }] = await Promise.all([
@@ -113,16 +113,16 @@ export default async function MinhasComissoesPage({
       .eq("empresa_id", empresaAtiva.id)
       .eq("ativo", true),
   ]);
-  const franquiaMap = new Map((previsoesFranquia ?? []).map((item: any) => [item.id, item]));
+  const franquiaMap = new Map((previsoesFranquia ?? []).map((item) => [item.id, item]));
   const mostrarDetalhesFiscais = Boolean(fiscal?.participante_exibe_detalhes_fiscais);
   const competenciaVendasMes = mesAtualEmCuiaba();
   const resumoVendasMes = await carregarResumoVendasMes(empresaAtiva.id, participante.id, competenciaVendasMes);
   const ehSocio = Boolean(
     participante?.usuario_id &&
-    sociosEmpresa?.some((s: any) => s.usuario_id === participante.usuario_id),
+    sociosEmpresa?.some((s) => s.usuario_id === participante.usuario_id),
   );
 
-  const previsoes: PrevisaoParticipanteItem[] = (data ?? []).map((row: any) => {
+  const previsoes: PrevisaoParticipanteItem[] = (data ?? []).map((row) => {
     const venda = Array.isArray(row.venda) ? row.venda[0] : row.venda;
     const cliente = Array.isArray(venda?.cliente) ? venda?.cliente[0] : venda?.cliente;
     const cota = Array.isArray(venda?.cota) ? venda?.cota[0] : venda?.cota;

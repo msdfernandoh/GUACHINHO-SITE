@@ -10,7 +10,7 @@ import {
   isMaster,
 } from "@/lib/auth/permissions";
 import { slugify } from "@/lib/utils/slug";
-import { parseBrazilianNumber } from "@/lib/utils/format";
+
 import { uploadImagemPublica } from "@/lib/storage/imagens";
 import type { ImobiliariaRow } from "@/lib/imoveis/types";
 import { requireTenantPermission } from "@/lib/tenant/context";
@@ -91,7 +91,7 @@ export async function fetchImobiliariasList(filters?: {
       console.error("[fetchImobiliariasList] Erro no fallback:", fallbackError);
       return [];
     }
-    return (fallbackData ?? []).map((row: any) => ({ ...row, imoveis: [{ count: 0 }] }));
+    return (fallbackData ?? []).map((row) => ({ ...row, imoveis: [{ count: 0 }] }));
   }
   return data ?? [];
 }

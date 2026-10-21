@@ -4,7 +4,7 @@ import { fetchPublicImobiliariasParceiras } from "@/app/admin/imobiliarias/actio
 import { fetchPublicImoveis } from "@/app/admin/imoveis/actions";
 import { fetchPublicEventosList } from "@/lib/comercial-eventos/public";
 import { fetchPublicCasosSucesso, fetchPublicDicas } from "@/lib/conteudo/fetch-public";
-import { isRaconHost, resolveOriginFromHost, resolvePublicSiteUrl } from "@/lib/seo/site-url";
+import { isRaconHost, resolveOriginFromHost } from "@/lib/seo/site-url";
 import { CONSORCIO_SEO_SEGMENTS } from "@/lib/seo/consorcio-segments";
 
 export const dynamic = "force-dynamic";

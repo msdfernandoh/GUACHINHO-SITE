@@ -32,7 +32,7 @@ export async function acompanharExecucaoRobo(opcoes: {
       )
       const data = await resposta.json()
       if (!resposta.ok) throw new Error(data.error || `Consulta de execução indisponível (HTTP ${resposta.status})`)
-      const atual = (data.execucoes ?? []).find((e: any) => e.id === opcoes.execucaoId)
+      const atual = (data.execucoes ?? []).find((e: { id: string; status: string }) => e.id === opcoes.execucaoId)
       if (!atual) throw new Error('A execução solicitada não foi encontrada no acompanhamento.')
       execucao = atual
       falhas = 0

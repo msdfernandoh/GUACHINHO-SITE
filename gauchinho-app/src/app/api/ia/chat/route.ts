@@ -7,11 +7,7 @@ import { DEFAULT_IA_CONFIG, resolveIaAssistantMode, type IaConfig } from "@/lib/
 import { buildIaSystemPrompt } from "@/lib/ia/system-prompt";
 import { chatWithIaProvider } from "@/lib/ia/provider";
 import { extrairLeadDaConversa } from "@/lib/ia/extrair-lead";
-import {
-  buildFallbackReply,
-  isOpenAiConfigured,
-  logIaDiagnostics,
-} from "@/lib/ia/fallback-engine";
+import { isOpenAiConfigured, logIaDiagnostics } from "@/lib/ia/fallback-engine";
 import {
   buildGuidedReply,
   stripGuidedMarker,

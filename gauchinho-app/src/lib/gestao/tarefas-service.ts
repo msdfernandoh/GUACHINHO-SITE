@@ -63,7 +63,7 @@ export async function listTarefasForEmpresa(
   }
 
   const nowIso = new Date().toISOString();
-  return (tarefas || []).map((t: any) => ({
+  return (tarefas || []).map((t) => ({
     ...t,
     is_atrasada:
       t.status !== "concluida" &&

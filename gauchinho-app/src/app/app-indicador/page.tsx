@@ -53,11 +53,11 @@ export default async function AppIndicadorPage() {
     fetchEventoAtivoParaPainelIndicador(),
   ]);
   const total = (previsoes ?? []).reduce(
-    (s: any, p: any) => s + Number(p.valor_previsto ?? 0),
+    (s, p) => s + Number(p.valor_previsto ?? 0),
     0,
   );
   const pago = (previsoes ?? []).reduce(
-    (s: any, p: any) => s + Number(p.valor_pago ?? 0),
+    (s, p) => s + Number(p.valor_pago ?? 0),
     0,
   );
   const requestHeaders = await headers();
@@ -170,7 +170,7 @@ export default async function AppIndicadorPage() {
             Acompanhe a negociação sem expor informações sensíveis.
           </p>
           <div className="mt-3 space-y-3">
-            {(indicacoes ?? []).map((i: any) => {
+            {(indicacoes ?? []).map((i) => {
               const lead = Array.isArray(i.lead) ? i.lead[0] : i.lead;
               const venda = Array.isArray(i.venda) ? i.venda[0] : i.venda;
               return (

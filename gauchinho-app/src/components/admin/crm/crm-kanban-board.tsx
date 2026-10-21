@@ -15,21 +15,7 @@ import { CrmLeadCard } from "./crm-lead-card";
 import { CrmStageMoveModal } from "./crm-stage-move-modal";
 import { updateLeadEtapaAction } from "@/app/admin/leads/actions";
 import { isLeadGanho } from "@/lib/crm/upsert-lead";
-import {
-  Search,
-  Filter,
-  Kanban,
-  Sparkles,
-  UserCheck,
-  AlertTriangle,
-  Clock,
-  Flame,
-  UserX,
-  FileQuestion,
-  Layers,
-  Eye,
-  X,
-} from "lucide-react";
+import { Search, Sparkles, UserCheck, Clock, Flame, UserX, FileQuestion, Layers, Eye, X } from "lucide-react";
 import type { ConsultorOption } from "@/lib/admin/consultores";
 
 export function CrmKanbanBoard({

@@ -587,7 +587,7 @@ export async function buscarHistoricoDestinosQrCode(
 
     if (error) return [];
 
-    return (data ?? []).map((row: any) => ({
+    return (data ?? []).map((row) => ({
       id: row.id,
       qr_code_id: row.qr_code_id,
       tipo_destino_anterior: row.tipo_destino_anterior,

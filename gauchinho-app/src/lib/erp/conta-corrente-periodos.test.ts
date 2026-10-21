@@ -3,7 +3,6 @@ import {
   resolverIntervaloPeriodo,
   encadearConferenciaMensal,
   reconciliarLedgerComDashboard,
-  formatarRotuloMes,
   type LancamentoConferenciaDTO,
 } from "./conta-corrente-periodos";
 

@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { CRM_12_ETAPAS, CRM_MACRO_TIERS, mapLegacyStatusToEtapaSlug } from "./constants";
+import { CRM_MACRO_TIERS, mapLegacyStatusToEtapaSlug } from "./constants";
 import type { CrmFunilEtapaRow } from "./types";
 import { fetchCrmFunilEtapas } from "./leads-query";
 export { extrairValorParcelaLead } from "./lead-metrics";

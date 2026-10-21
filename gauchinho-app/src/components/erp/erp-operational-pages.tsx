@@ -21,11 +21,16 @@ import { FiscalCommissionConfig } from "@/components/erp/fiscal-commission-confi
 import { ConfirmSubmitButton } from "@/components/erp/confirm-submit-button";
 import { ReceiptManager } from "@/components/erp/receipt-manager";
 import { RepasseFranquiaView, type SolicitacaoRepasseItem } from "@/components/erp/repasse-franquia-view";
-import { RepassePdfConciliacao, type RepassePdfImportacao, type RepassePrevisaoAberta, type RepasseParticipante, type RepasseRegraParticipante, type RepasseGrupo, type RepasseAtencaoResolucao } from "@/components/erp/repasse-pdf-conciliacao";
 import {
-  BidStrategyTable,
-  type BidRow,
-} from "@/components/erp/bid-strategy-table";
+  RepassePdfConciliacao,
+  type RepassePdfImportacao,
+  type RepassePrevisaoAberta,
+  type RepasseParticipante,
+  type RepasseRegraParticipante,
+  type RepasseGrupo,
+  type RepasseAtencaoResolucao,
+} from "@/components/erp/repasse-pdf-conciliacao";
+
 
 const cardClass =
   "rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-blue-300 hover:shadow";
@@ -1013,7 +1018,7 @@ export async function ErpRepasseFranquiaPage() {
         administradoras={administradoras}
         contas={contas.data ?? []}
         importacoes={importacoesComValores as unknown as RepassePdfImportacao[]}
-        previsoes={(previsoes.data ?? []).map((row: any) => {
+        previsoes={(previsoes.data ?? []).map((row) => {
           const cota = Array.isArray(row.cota) ? row.cota[0] : row.cota;
           const venda = Array.isArray(row.venda) ? row.venda[0] : row.venda;
           const cliente = Array.isArray(venda?.cliente) ? venda?.cliente[0] : venda?.cliente;
@@ -1034,7 +1039,7 @@ export async function ErpRepasseFranquiaPage() {
           } satisfies RepassePrevisaoAberta;
         })}
         participantes={participantesRepasse}
-        regras={(regrasRes.data ?? []).map((row: any) => {
+        regras={(regrasRes.data ?? []).map((row) => {
           const perfil = Array.isArray(row.perfil) ? row.perfil[0] : row.perfil;
           return {
             id: row.id,

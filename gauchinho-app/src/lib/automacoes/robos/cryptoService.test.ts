@@ -1,10 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest'
-import {
-  encryptCredential,
-  decryptCredential,
-  sanitizarLogs,
-  getMasterEncryptionKey,
-} from './cryptoService'
+import { encryptCredential, decryptCredential, sanitizarLogs } from './cryptoService';
 
 describe('Robo Crypto Service', () => {
   beforeEach(() => {

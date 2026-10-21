@@ -1,8 +1,5 @@
 import { describe, it, expect } from "vitest";
-import type {
-  ErpDashboardFullDTO,
-  ErpDashboardPeriodFilter,
-} from "@/lib/gestao/dashboards-service";
+import type { ErpDashboardFullDTO } from "@/lib/gestao/dashboards-service";
 
 describe("Fase 098: ERP Dashboard Operacional — Contratos de Negócio e Governança", () => {
   const mockDashboardCompleto: ErpDashboardFullDTO = {

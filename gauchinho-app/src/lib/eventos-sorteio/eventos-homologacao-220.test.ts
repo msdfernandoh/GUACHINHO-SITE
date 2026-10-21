@@ -1,12 +1,7 @@
 import { PGlite } from "@electric-sql/pglite";
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { formatCodigoParticipacao, proximoCodigoFromExisting } from "./codigo";
-import {
-  labelCapacidade,
-  labelMoradia,
-  labelVeiculo,
-  type QualificacaoRespostasPayload,
-} from "./checkin-conversacional";
+import { type QualificacaoRespostasPayload } from "./checkin-conversacional";
 import { filtrarElegiveisSorteio } from "./sorteio";
 
 describe("Homologação Completa — Migration 220 & Check-in / Sorteio / Prêmios", () => {

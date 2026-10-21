@@ -1,4 +1,4 @@
-import { calcularParcelaFinanciamento } from "@/lib/simulador/financiamento";
+
 
 export type EntradaTaxaReal = {
   valorFinanciado: number;

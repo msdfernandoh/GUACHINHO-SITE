@@ -47,7 +47,7 @@ export async function listEquipesForEmpresa(empresaId: string): Promise<EquipeRo
     throw new Error(`Erro ao listar equipes: ${error.message}`);
   }
 
-  return (equipes || []).map((e: any) => ({
+  return (equipes || []).map((e) => ({
     ...e,
     membros_count: e.membros?.[0]?.count || 0,
   }));

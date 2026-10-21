@@ -1,4 +1,4 @@
-import { brandingMinimoOk, validateSiteBranding, type SiteBranding } from "./branding";
+import { validateSiteBranding, type SiteBranding } from "./branding";
 import {
   PARCEIRO_CANAIS,
   PARCEIRO_DOMINIO_TIPOS,

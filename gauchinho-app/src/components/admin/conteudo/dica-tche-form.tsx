@@ -2,7 +2,7 @@ import type { DicaTche } from "@/lib/conteudo/types";
 import { DICA_CATEGORIAS } from "@/lib/conteudo/types";
 import { ConteudoImageField } from "./conteudo-image-field";
 import { AdminFormSubmitButton } from "@/components/admin/admin-form-submit-button";
-import { Button, Input, Label, Textarea } from "@/components/ui/form-primitives";
+import { Input, Label, Textarea } from "@/components/ui/form-primitives";
 import { slugify } from "@/lib/utils/slug";
 
 type Props = {

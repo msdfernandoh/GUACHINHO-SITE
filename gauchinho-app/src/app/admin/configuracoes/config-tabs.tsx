@@ -15,7 +15,7 @@ import {
   saveCalculadorasConfigAction,
 } from "./actions";
 import { AdminFormSubmitButton } from "@/components/admin/admin-form-submit-button";
-import { Button, Input, Label, Textarea } from "@/components/ui/form-primitives";
+import { Input, Label, Textarea } from "@/components/ui/form-primitives";
 import { cn } from "@/lib/utils/cn";
 import {
   FinanciamentoConfigForm,
@@ -207,7 +207,7 @@ export function ConfigTabs({ configs, whatsapp, iaEnv }: Props) {
 
           <fieldset className="space-y-2 rounded-lg border border-zinc-200 p-3 dark:border-zinc-800">
             <legend className="px-1 text-xs font-semibold uppercase tracking-wide text-zinc-500">
-              Linhas de "Dados do grupo"
+              Linhas de &quot;Dados do grupo&quot;
             </legend>
             {([
               ["linha_administradora", "Administradora", propostas.linhasGrupo.administradora],

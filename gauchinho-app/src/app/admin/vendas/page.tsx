@@ -91,7 +91,7 @@ export default async function AdminVendasPage() {
   if (vendasRes.error) throw new Error("Não foi possível carregar as vendas da empresa.");
   if (cotasRes.error) throw new Error("Não foi possível carregar as cotas definitivas da empresa.");
 
-  const vendas: VendaItem[] = (vendasRes.data ?? []).map((v: any) => {
+  const vendas: VendaItem[] = (vendasRes.data ?? []).map((v) => {
     const cotasDaVenda = Array.isArray(v.cotas_definitivas) ? v.cotas_definitivas : v.cotas_definitivas ? [v.cotas_definitivas] : [];
     const cotaPrincipal = cotasDaVenda[0] || null;
     const cliente = Array.isArray(v.cliente) ? v.cliente[0] : v.cliente;
@@ -159,8 +159,8 @@ export default async function AdminVendasPage() {
   });
 
   const vendasMap = new Map(vendas.map((v) => [v.id, v]));
-  const cotasMap = new Set((cotasRes.data ?? []).map((c: any) => c.venda_id));
-  const cotas: CotaItem[] = (cotasRes.data ?? []).map((c: any) => {
+  const cotasMap = new Set((cotasRes.data ?? []).map((c) => c.venda_id));
+  const cotas: CotaItem[] = (cotasRes.data ?? []).map((c) => {
     const venda = vendasMap.get(c.venda_id);
 
     return {

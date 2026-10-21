@@ -51,15 +51,7 @@ type Group = {
   observacoes?: string | null;
 };
 
-export function GroupCatalogForm({
-  action,
-  administradoras,
-  tipos,
-  modalidades: _modalidades,
-  grupo,
-  readonly = false,
-  scope,
-}: {
+export function GroupCatalogForm({ action, administradoras, tipos, grupo, readonly = false, scope }: {
   action: (state: GroupActionState, data: FormData) => Promise<GroupActionState>;
   administradoras: Admin[];
   tipos: Item[];

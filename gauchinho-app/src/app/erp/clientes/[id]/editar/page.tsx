@@ -50,7 +50,7 @@ export default async function EditarClientePage({ params }: { params: Promise<{ 
             <Field name="telefone" label="Telefone principal" value={cliente.telefone} />
             <Field name="telefone_secundario" label="Telefone secundário / WhatsApp" value={cliente.telefone_secundario} />
             <Field name="email" label="E-mail" value={cliente.email} />
-            <Field name="participante_comercial_id" label="Consultor responsável" value={cliente.participante_comercial_id} select options={[["", "Não atribuído"], ...(consultores ?? []).map((c: any) => [c.id, c.nome_exibicao || c.nome])]} />
+            <Field name="participante_comercial_id" label="Consultor responsável" value={cliente.participante_comercial_id} select options={[["", "Não atribuído"], ...(consultores ?? []).map((c) => [c.id, c.nome_exibicao || c.nome])]} />
           </div>
         </div>
 

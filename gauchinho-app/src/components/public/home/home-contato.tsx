@@ -1,5 +1,5 @@
 import type { ContatoConfig } from "@/lib/config/defaults";
-import { cn } from "@/lib/utils/cn";
+
 import { HomeSection } from "./home-section";
 
 const ctaClass = {

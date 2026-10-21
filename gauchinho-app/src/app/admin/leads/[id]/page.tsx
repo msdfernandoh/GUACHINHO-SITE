@@ -42,7 +42,7 @@ import { CrmNovaNegociacaoButton } from "@/components/admin/crm/crm-nova-negocia
 import { CrmLeadArquivos } from "@/components/admin/crm/crm-lead-arquivos";
 import { LeadHistoricoCadastros } from "@/components/admin/crm/lead-historico-cadastros";
 import { isLeadGanho } from "@/lib/crm/upsert-lead";
-import { Users, Calendar, AlertTriangle } from "lucide-react";
+import { Calendar, AlertTriangle } from "lucide-react";
 
 
 export default async function LeadDetailPage({

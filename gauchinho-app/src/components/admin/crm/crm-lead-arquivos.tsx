@@ -6,17 +6,9 @@ import {
   uploadLeadArquivoAction,
   getLeadArquivoSignedUrlAction,
 } from "@/app/admin/leads/actions";
-import {
-  FileText,
-  Upload,
-  Download,
-  Loader2,
-  File,
-  CheckCircle,
-  AlertCircle,
-} from "lucide-react";
+import { Upload, Download, Loader2, File, AlertCircle } from "lucide-react";
 import { formatDate } from "@/lib/utils/format";
-import { Button } from "@/components/ui/form-primitives";
+
 
 export function CrmLeadArquivos({
   leadId,

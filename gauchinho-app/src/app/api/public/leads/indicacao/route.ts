@@ -5,7 +5,7 @@ import { registrarEvento } from "@/lib/eventos/registrar";
 import { DEFAULT_LEADS, getConfigJsonPublic } from "@/server/config";
 import { TIPOS_CREDITO_PUBLICO, type TipoCreditoPublico } from "@/lib/leads/tipo-credito";
 import { digitsOnlyPhone } from "@/lib/utils/format";
-import { isDbMissingColumnError } from "@/lib/comercial-eventos/db-ready";
+
 import { resolverConsultorPorId } from "@/lib/admin/consultores";
 import { upsertLeadPorTelefone } from "@/lib/crm/upsert-lead";
 

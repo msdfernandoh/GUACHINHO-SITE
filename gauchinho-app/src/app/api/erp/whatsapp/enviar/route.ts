@@ -22,7 +22,7 @@ export async function POST(request: Request) {
   } catch {
     return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
   }
-  const { usuario, empresaAtiva } = ctx;
+  const { empresaAtiva } = ctx;
 
   let body: EnviarBody;
   try {

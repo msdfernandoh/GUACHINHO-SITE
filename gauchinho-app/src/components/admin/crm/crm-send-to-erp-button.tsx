@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { converterLeadParaErpAction } from "@/app/admin/leads/actions";
-import { Send, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
+import { Send, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/form-primitives";
 
 export function CrmSendToErpButton({

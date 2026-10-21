@@ -14,7 +14,11 @@ import {
   type ModoLanceInput,
 } from "@/lib/simulador/consorcio";
 import { simularFinanciamento } from "@/lib/simulador/financiamento";
-import { compararConsorcioFinanciamento, detalharAlternativaConsorcio, montarEntradaFinanciamentoComparativo } from "@/lib/simulador/comparativo";
+import {
+  compararConsorcioFinanciamento,
+  detalharAlternativaConsorcio,
+  montarEntradaFinanciamentoComparativo,
+} from "@/lib/simulador/comparativo";
 import { gerarProjecaoAnoAno } from "@/lib/simulador/projecao";
 import { digitsOnlyPhone } from "@/lib/utils/format";
 import { Button } from "@/components/ui/form-primitives";
@@ -51,11 +55,7 @@ import {
   snapPrazoToLista,
   resolveFinanciamentoCfg,
 } from "@/lib/simulador/simulador-shared";
-import {
-  clampValorCreditoTipo,
-  parseTipoBemFromQuery,
-  resolveBemConfigSimulador,
-} from "@/lib/simulador/tipos-credito";
+import { clampValorCreditoTipo, resolveBemConfigSimulador } from "@/lib/simulador/tipos-credito";
 import {
   entradaFinanciamentoParaCalculo,
   entradaPadraoFinanciamento,

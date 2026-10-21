@@ -78,7 +78,7 @@ export async function fetchParticipantesList(filters?: {
       .eq("empresa_id", empresaId);
 
     const euMap = new Map<string, string[]>();
-    (euData ?? []).forEach((eu: any) => {
+    (euData ?? []).forEach((eu) => {
       if (eu.usuario_id && Array.isArray(eu.erp_modulos_visiveis)) {
         euMap.set(eu.usuario_id, eu.erp_modulos_visiveis);
       }

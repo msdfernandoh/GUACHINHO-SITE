@@ -82,15 +82,15 @@ export async function executarMapeamentoPortal(
 
     // 2. Inspecao de campos de entrada
     camposDetectados = await session.page.evaluate(() => {
-      const inputs = Array.from(document.querySelectorAll('input, button, select, a'))
-      return inputs.slice(0, 30).map((el: any) => ({
+      const inputs = Array.from(document.querySelectorAll<HTMLInputElement | HTMLButtonElement | HTMLSelectElement | HTMLAnchorElement>('input, button, select, a'))
+      return inputs.slice(0, 30).map((el) => ({
         tag: el.tagName.toLowerCase(),
         id: el.id || undefined,
-        name: el.name || undefined,
-        type: el.type || undefined,
-        placeholder: el.placeholder || undefined,
+        name: 'name' in el ? el.name || undefined : undefined,
+        type: 'type' in el ? el.type || undefined : undefined,
+        placeholder: 'placeholder' in el ? el.placeholder || undefined : undefined,
         texto: el.innerText ? el.innerText.trim().slice(0, 50) : undefined,
-        href: el.href || undefined,
+        href: 'href' in el ? el.href || undefined : undefined,
       }))
     })
 

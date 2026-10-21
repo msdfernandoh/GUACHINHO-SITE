@@ -4,7 +4,7 @@ import { getUsuarioNegocio } from '@/lib/auth/get-usuario'
 import { isMaster } from '@/lib/auth/permissions'
 import { isPlatformSuperadmin } from '@/lib/auth/is-superadmin'
 import { obterRoboConfigPorId } from '@/lib/automacoes/robos/roboConfigService'
-import { inicioDiaCuiaba, execucaoCobreRobo } from '@/lib/automacoes/robos/roboSchedule.mjs'
+import { inicioDiaCuiaba } from '@/lib/automacoes/robos/roboSchedule.mjs';
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60

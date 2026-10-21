@@ -1,6 +1,6 @@
 "use client";
 
-import { History, Calendar, DollarSign, Tag, MapPin, Sparkles, HelpCircle } from "lucide-react";
+import { History, Calendar, DollarSign, Tag, MapPin, Sparkles } from "lucide-react";
 
 export function LeadHistoricoCadastros({
   historicoTexto,

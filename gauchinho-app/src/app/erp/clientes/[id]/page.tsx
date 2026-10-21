@@ -499,7 +499,7 @@ export default async function ClienteDetalhePage({
           </p>
 
           {vendas.length ? (
-            vendas.map((v: any) => {
+            vendas.map((v) => {
               const cota = Array.isArray(v.cotas_definitivas) ? v.cotas_definitivas[0] : v.cotas_definitivas;
               return (
                 <div
@@ -579,7 +579,7 @@ export default async function ClienteDetalhePage({
 
             {/* Documentos anexos */}
             {todosDocumentos.length ? (
-              todosDocumentos.map((doc: any) => (
+              todosDocumentos.map((doc) => (
                 <div
                   key={doc.id}
                   className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50 p-3 text-xs dark:border-slate-800 dark:bg-slate-800/40"
@@ -613,7 +613,7 @@ export default async function ClienteDetalhePage({
       <section className="grid gap-4 lg:grid-cols-2">
         <Card title={`Propostas Relacionadas (${propostas.length})`}>
           {propostas.length ? (
-            propostas.map((p: any) => (
+            propostas.map((p) => (
               <div
                 key={p.id}
                 className="border-b border-slate-100 py-3 last:border-0 dark:border-slate-800 flex items-center justify-between text-xs"
@@ -640,7 +640,7 @@ export default async function ClienteDetalhePage({
         <Card title="Linha do Tempo & Histórico">
           {historico.length ? (
             <div className="space-y-2 max-h-52 overflow-y-auto">
-              {historico.map((h: any) => (
+              {historico.map((h) => (
                 <div
                   key={h.id}
                   className="border-b border-slate-100 pb-2 last:border-0 dark:border-slate-800 text-xs"

@@ -4,30 +4,14 @@ import React, { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { RaconInspiredHeader, RaconInspiredFooter } from "./racon-inspired-chrome";
-import { blockImage, pageAppearanceCss, normalizePageAppearance, visualDefaults, type SitePagesAppearance } from "@/lib/tenant/site-appearance";
 import {
-  Home,
-  Car,
-  TrendingUp,
-  Truck,
-  CheckCircle2,
-  ShieldCheck,
-  Percent,
-  Clock,
-  ArrowRight,
-  Phone,
-  MessageCircle,
-  Award,
-  Users,
-  Building2,
-  Lock,
-  ChevronRight,
-  HelpCircle,
-  Sparkles,
-  MapPin,
-  Briefcase,
-  Layers,
-} from "lucide-react";
+  blockImage,
+  pageAppearanceCss,
+  normalizePageAppearance,
+  visualDefaults,
+  type SitePagesAppearance,
+} from "@/lib/tenant/site-appearance";
+import { Home, Car, TrendingUp, ShieldCheck, Percent, Clock, ArrowRight, Award } from "lucide-react";
 
 export type ImageObjectFit = "cover" | "contain";
 export type ImageObjectPosition =

@@ -3,11 +3,7 @@
 import { saveHomeModulosConfigAction } from "./actions";
 import { AdminFormSubmitButton } from "@/components/admin/admin-form-submit-button";
 import { Input } from "@/components/ui/form-primitives";
-import {
-  DEFAULT_HOME_MODULOS,
-  normalizeHomeModulosConfig,
-  type HomeModulosConfig,
-} from "@/lib/config/home-modulos";
+import { normalizeHomeModulosConfig, type HomeModulosConfig } from "@/lib/config/home-modulos";
 
 type Props = {
   stored: unknown;

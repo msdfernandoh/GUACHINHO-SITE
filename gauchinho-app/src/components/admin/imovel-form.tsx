@@ -1,7 +1,7 @@
 import type { ImovelRow } from "@/lib/imoveis/types";
 import { IMOVEL_STATUS, IMOVEL_TIPOS } from "@/lib/imoveis/types";
 import { AdminFormSubmitButton } from "@/components/admin/admin-form-submit-button";
-import { Button, Input, Label, Select, Textarea } from "@/components/ui/form-primitives";
+import { Input, Label, Select, Textarea } from "@/components/ui/form-primitives";
 
 type ImobOption = { id: string; nome: string };
 

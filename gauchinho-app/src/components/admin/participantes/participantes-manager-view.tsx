@@ -1,27 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useTransition } from "react";
-import {
-  Users,
-  UserPlus,
-  Edit,
-  Trash2,
-  Shield,
-  Phone,
-  Mail,
-  CheckCircle2,
-  XCircle,
-  AlertTriangle,
-  Lock,
-  Search,
-  Filter,
-  Eye,
-  Key,
-  ChevronRight,
-  X,
-  Loader2,
-} from "lucide-react";
+import { useState } from "react";
+import { UserPlus, Edit, Trash2, Shield, Phone, Mail, AlertTriangle, Lock, Search, Key, X, Loader2 } from "lucide-react";
 import {
   createParticipanteAction,
   updateParticipanteAction,
@@ -78,7 +59,7 @@ export function ParticipantesManagerView({
   initialRows,
   modulosDisponiveis = MODULOS_ERP_CATALOGO.map((m) => m.id),
 }: ParticipantesManagerViewProps) {
-  const [rows, setRows] = useState<ParticipanteComTipos[]>(initialRows);
+  const [rows] = useState<ParticipanteComTipos[]>(initialRows);
   const [busca, setBusca] = useState("");
   const [filtroStatus, setFiltroStatus] = useState("");
   const [filtroTipo, setFiltroTipo] = useState("");
@@ -105,7 +86,7 @@ export function ParticipantesManagerView({
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [createSelectedModulos, setCreateSelectedModulos] = useState<string[]>([]);
   const [createError, setCreateError] = useState<string | null>(null);
-  const [isSavingCreate, setIsSavingCreate] = useState(false);
+  const [, setIsSavingCreate] = useState(false);
   const [senhaPart, setSenhaPart] = useState<ParticipanteComTipos | null>(null);
   const [novaSenha, setNovaSenha] = useState("");
   const [senhaError, setSenhaError] = useState<string | null>(null);

@@ -96,7 +96,7 @@ export async function criarCurvaEstornoAction(
         message: "As faixas da curva são inválidas.",
       };
     }
-    const faixas = (Array.isArray(rawFaixas) ? rawFaixas : []).map((f: any) => {
+    const faixas = (Array.isArray(rawFaixas) ? rawFaixas : []).map((f) => {
       const mes = typeof f.mes === "number" ? f.mes : parseInt(String(f.mes || "").replace(/\D/g, ""), 10) || 1;
       const pctStr = String(f.percentual ?? "").replace("%", "").replace(",", ".").trim();
       const pctNum = parseFloat(pctStr);
