@@ -2,20 +2,17 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentTenantContext } from "@/lib/tenant/context";
 import { ContasPagarClient } from "./ui";
 import { consultarContasPagar, consultarProjecaoCaixa } from "./actions";
+import { getContasPagarPermissoes } from "@/lib/erp/contas-pagar-permissoes";
 
 export default async function ContasPagarPage({ searchParams }: {
   searchParams?: Promise<{ aba?: string; editar?: string; status?: string; data?: string; inicio?: string; fim?: string; centro?: string }>;
 }) {
   const params = await searchParams;
-  const { empresaAtiva, vinculos: vinculosContexto } = await getCurrentTenantContext();
+  const { empresaAtiva } = await getCurrentTenantContext();
   if (!empresaAtiva) return null;
   const db = createAdminClient();
   const empresaId = empresaAtiva.id;
-  const vinculoAtivo = vinculosContexto?.find((vinculo) => vinculo.empresa_id === empresaId);
-  const isMaster = vinculoAtivo?.papel?.codigo === "admin_empresa";
-  const podeEstornar = Boolean(
-    isMaster || vinculoAtivo?.pode_estornar_contas
-  );
+  const { master: isMaster, podeEstornar } = await getContasPagarPermissoes(empresaId);
 
   const [consulta, projecaoCaixa, bancos, centros, fornecedores, vinculos] = await Promise.all([
     consultarContasPagar(),

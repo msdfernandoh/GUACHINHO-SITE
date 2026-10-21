@@ -206,7 +206,7 @@ function nowIso() {
 
 export async function resolveQrPublicBySlug(slug: string): Promise<ResolveQrPublicResult | null> {
   const normalized = normalizeQrSlug(slug);
-  const admin = createAdminClient();
+  const admin = createAdminClient({ noStore: true });
   const { data: qr, error } = await admin
     .from("qr_codes_unicos")
     .select("*")
@@ -224,14 +224,18 @@ export async function resolveQrPublicBySlug(slug: string): Promise<ResolveQrPubl
 
   const tipoDestino = qrRow.tipo_destino || "evento";
 
-  if (qrRow.slug === "externo" || tipoDestino === "externo") {
-    // Busca o único evento externo ativo (trabalho externo / panfletagem)
+  if (qrRow.slug === "externo" || tipoDestino === "externo" || qrRow.slug === "network") {
+    const externo = qrRow.slug === "externo" || tipoDestino === "externo";
+    // Os dois endereços impressos resolvem a modalidade, sem depender do slug
+    // ou de um vínculo temporário da edição anterior. As palestras usam a
+    // edição ativa de data mais recente; externos usam a última ação ativada.
     const { data: evExterno, error: evExtErr } = await admin
       .from("eventos")
       .select("id, nome, slug, ativo, checkin_interativo_ativo")
-      .eq("tipo_checkin", "externo")
+      .eq("tipo_checkin", externo ? "externo" : "evento")
       .eq("ativo", true)
-      .order("updated_at", { ascending: false })
+      .order(externo ? "updated_at" : "data_evento", { ascending: false, nullsFirst: false })
+      .order("id", { ascending: true })
       .limit(1)
       .maybeSingle();
 
@@ -240,7 +244,9 @@ export async function resolveQrPublicBySlug(slug: string): Promise<ResolveQrPubl
         mode: "sem_evento",
         qr: qrRow,
         motivo: "sem_vinculo",
-        eventoNome: "Nenhuma ação externa ou panfletagem ativa no momento.",
+        eventoNome: externo
+          ? "Nenhuma ação externa ou panfletagem ativa no momento."
+          : "Nenhuma palestra ou evento presencial ativo no momento.",
       };
     }
 
@@ -259,12 +265,12 @@ export async function resolveQrPublicBySlug(slug: string): Promise<ResolveQrPubl
       qr: qrRow,
       sorteio: {
         ...sorteio,
-        checkinInterativoAtivo: true,
-        tipoCheckin: "externo",
+        checkinInterativoAtivo: externo || sorteio.checkinInterativoAtivo,
+        tipoCheckin: externo ? "externo" : "evento",
       },
       npsPerguntas: sorteio.npsPerguntas,
       vinculo: {
-        id: "vinculo-fixo-externo",
+        id: externo ? "vinculo-fixo-externo" : "vinculo-fixo-network",
         qr_code_id: qrRow.id,
         evento_id: evExterno.id,
         periodo_inicio: new Date(0).toISOString(),

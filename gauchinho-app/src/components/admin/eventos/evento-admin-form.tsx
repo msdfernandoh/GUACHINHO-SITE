@@ -459,7 +459,12 @@ export function EventoAdminForm({
           <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-3 text-xs leading-relaxed text-amber-800 dark:text-amber-300">
             <strong>⚡ QR Code Fixo Automático:</strong> O QR Code fixo permanente (<strong>/qr/externo</strong>) apontará automaticamente para este evento enquanto ele estiver <strong>Ativo</strong>. Apenas um evento externo pode ficar ativo por vez.
           </div>
-        ) : null}
+        ) : (
+          <p className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 p-3 text-xs leading-relaxed">
+            <strong>QR Code fixo de palestras: /qr/network.</strong> O endereço impresso permanece o mesmo
+            e abre o evento presencial ativo de data mais recente, respeitando seu horário de check-in.
+          </p>
+        )}
       </FormSection>
 
       <FormSection title="Informações básicas">

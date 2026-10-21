@@ -12,6 +12,7 @@ describe("fase 271: evento público no domínio parceiro Racon", () => {
       proxy.indexOf("const isOperationalPath"),
     );
     expect(operationalPaths).toContain('"/eventos"');
+    expect(operationalPaths).toContain('"/qr"');
   });
 
   it("mantém a rota pública de check-in dentro do layout temático", () => {

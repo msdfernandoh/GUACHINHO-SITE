@@ -163,6 +163,7 @@ export async function proxy(request: NextRequest) {
             "/app-indicador",
             "/parceiros",
             "/eventos",
+            "/qr",
             "/manifest.webmanifest",
             "/manifest.json",
           ];

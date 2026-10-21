@@ -1,5 +1,25 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
+### Master/Superadmin no Contas a Pagar (21/10/2026)
+A página consulta `is_financeiro_tenant_master` e `pode_estornar_conta_pagar`
+com sessão autenticada e empresa ativa, substituindo a comparação exclusiva
+com `admin_empresa` que bloqueava Fernando com papel `super_admin`.
+Data e valor de conta paga seguem a autorização canônica da RPC existente;
+estorno delegado não concede Master. Sem migration, alteração de identidade
+ou escrita financeira. Envio à main autorizado; homologação de produção pendente. Relatório:
+`docs/relatorios-fases/CONTAS-PAGAR-MASTER-SUPERADMIN-2026-10-21.md`.
+
+### QR fixo por modalidade e acesso no domínio parceiro (21/10/2026)
+O modal de check-in passa a oferecer apenas o QR permanente da modalidade:
+`/qr/externo` para ações externas e `/qr/network`, já cadastrado, para palestras.
+Cópia e arquivos PNG/SVG usam o mesmo endereço, sem QR por edição. O proxy
+preserva `/qr` nos sites parceiros, corrigindo o rewrite para a home.
+O externo resolve a ação ativa pela atualização mais recente; network resolve
+a palestra ativa de data mais recente, mantendo a disponibilidade de check-in.
+Vínculos/dados históricos preservados; sem migration ou escrita remota.
+Implementação e validação locais; envio à main autorizado, homologação de produção pendente. Relatório:
+`docs/relatorios-fases/QR-FIXOS-EXTERNO-E-PALESTRAS-2026-10-21.md`.
+
 ### Sugestões de água, telefone e internet (21/10/2026)
 Por definição do titular, lista de outubro/novembro recebeu água R$ 150,00 e
 telefone R$ 50,00; internet ajustada de R$ 180,00 para R$ 200,00. Contas e

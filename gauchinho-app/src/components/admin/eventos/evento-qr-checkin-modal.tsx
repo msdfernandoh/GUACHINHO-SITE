@@ -2,7 +2,7 @@
 
 import { useId, useRef, useState } from "react";
 import QRCode from "react-qr-code";
-import Link from "next/link";
+import { getEventoQrFixoPath } from "@/lib/eventos-sorteio/qr-fixo";
 import { Button } from "@/components/ui/form-primitives";
 
 type EventoInfo = {
@@ -31,7 +31,6 @@ type Props = {
 
 export function EventoQrCheckinModal({
   evento,
-  qrVinculo = null,
   buttonVariant = "outline",
   buttonSize = "sm",
   buttonClassName,
@@ -41,35 +40,13 @@ export function EventoQrCheckinModal({
   const qrRef = useRef<HTMLDivElement>(null);
   const titleId = useId();
 
-  const [abaAtiva, setAbaAtiva] = useState<"externo" | "evento" | "permanente">(
-    evento.tipoCheckin === "externo" ? "externo" : "evento",
-  );
+  const [urlAtiva, setUrlAtiva] = useState("");
+  const externo = evento.tipoCheckin === "externo";
   const [status, setStatus] = useState("");
   const [baixando, setBaixando] = useState(false);
 
-  function getCheckinUrl() {
-    return new URL(`/eventos/${encodeURIComponent(evento.slug)}/sorteio`, window.location.origin).href;
-  }
-
-  function getExternoUrl() {
-    return new URL("/qr/externo", window.location.origin).href;
-  }
-
-  function getPermanenteUrl() {
-    if (!qrVinculo?.qrSlug) return "";
-    return new URL(`/qr/${encodeURIComponent(qrVinculo.qrSlug)}`, window.location.origin).href;
-  }
-
-  const urlAtiva =
-    abaAtiva === "externo"
-      ? getExternoUrl()
-      : abaAtiva === "permanente" && qrVinculo
-        ? getPermanenteUrl()
-        : getCheckinUrl();
-
   function abrir() {
-    const defaultTab = evento.tipoCheckin === "externo" ? "externo" : "evento";
-    setAbaAtiva(defaultTab);
+    setUrlAtiva(new URL(getEventoQrFixoPath(evento.tipoCheckin), window.location.origin).href);
     setStatus("");
     dialog.current?.showModal();
   }
@@ -114,12 +91,9 @@ export function EventoQrCheckinModal({
       context.fillRect(0, 0, 1200, 1200);
       context.drawImage(img, 80, 80, 1040, 1040);
 
-      const filename =
-        abaAtiva === "externo"
-          ? "qr-fixo-panfletos-externo-1200px.png"
-          : abaAtiva === "permanente"
-            ? `qr-permanente-${qrVinculo?.qrSlug || "totem"}.png`
-            : `qr-checkin-${evento.slug.replace(/[^a-z0-9_-]/gi, "-")}.png`;
+      const filename = externo
+        ? "qr-fixo-panfletos-externo-1200px.png"
+        : "qr-fixo-palestras-network-1200px.png";
 
       const a = document.createElement("a");
       a.href = canvas.toDataURL("image/png");
@@ -141,16 +115,22 @@ export function EventoQrCheckinModal({
     exportedSvg.removeAttribute("style");
     exportedSvg.setAttribute("width", "1200");
     exportedSvg.setAttribute("height", "1200");
+    // Zona branca de impressão também no arquivo vetorial (4+ módulos).
+    exportedSvg.setAttribute("viewBox", "-16 -16 252 252");
+    const fundo = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+    fundo.setAttribute("x", "-16");
+    fundo.setAttribute("y", "-16");
+    fundo.setAttribute("width", "252");
+    fundo.setAttribute("height", "252");
+    fundo.setAttribute("fill", "#ffffff");
+    exportedSvg.prepend(fundo);
     const svgBlob = new Blob([new XMLSerializer().serializeToString(exportedSvg)], {
       type: "image/svg+xml;charset=utf-8",
     });
     const url = URL.createObjectURL(svgBlob);
-    const filename =
-      abaAtiva === "externo"
-        ? "qr-fixo-panfletos-externo.svg"
-        : abaAtiva === "permanente"
-          ? `qr-permanente-${qrVinculo?.qrSlug || "totem"}.svg`
-          : `qr-checkin-${evento.slug.replace(/[^a-z0-9_-]/gi, "-")}.svg`;
+    const filename = externo
+      ? "qr-fixo-panfletos-externo.svg"
+      : "qr-fixo-palestras-network.svg";
 
     const a = document.createElement("a");
     a.href = url;
@@ -222,117 +202,35 @@ export function EventoQrCheckinModal({
             </button>
           </div>
 
-          {/* Abas para alternar entre QR Fixo de Panfletos, QR do Evento e Totem */}
-          <div className="flex flex-wrap gap-1 rounded-xl bg-zinc-100 p-1 dark:bg-zinc-900">
-            <button
-              type="button"
-              onClick={() => {
-                setAbaAtiva("externo");
-                setStatus("");
-              }}
-              className={`flex-1 rounded-lg px-3 py-2 text-xs font-bold transition flex items-center justify-center gap-1.5 ${
-                abaAtiva === "externo"
-                  ? "bg-amber-500 text-white shadow-sm"
-                  : "text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white"
-              }`}
-            >
-              <span>📄 QR Fixo Panfletos</span>
-              <span className="rounded bg-black/20 px-1 py-0.5 text-[9px] font-extrabold uppercase">Gráfica</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                setAbaAtiva("evento");
-                setStatus("");
-              }}
-              className={`flex-1 rounded-lg px-3 py-2 text-xs font-bold transition flex items-center justify-center gap-1.5 ${
-                abaAtiva === "evento"
-                  ? "bg-white text-zinc-900 shadow-sm dark:bg-zinc-800 dark:text-white"
-                  : "text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white"
-              }`}
-            >
-              <span>🎯 QR Deste Evento</span>
-            </button>
-
-            {qrVinculo ? (
-              <button
-                type="button"
-                onClick={() => {
-                  setAbaAtiva("permanente");
-                  setStatus("");
-                }}
-                className={`flex-1 rounded-lg px-3 py-2 text-xs font-bold transition ${
-                  abaAtiva === "permanente"
-                    ? "bg-white text-zinc-900 shadow-sm dark:bg-zinc-800 dark:text-white"
-                    : "text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white"
-                }`}
-              >
-                Totem ({qrVinculo.qrNome})
-              </button>
-            ) : null}
+          <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-3.5 text-xs text-amber-950 dark:text-amber-100">
+            <p className="font-bold">
+              {externo ? "QR fixo — Trabalho externo / Panfletos" : "QR fixo — Palestras / Eventos presenciais"}
+            </p>
+            <p className="mt-2 leading-relaxed">
+              Este QR Code é permanente e pode ser impresso uma única vez.
+              {externo
+                ? " O mesmo endereço abre automaticamente a ação externa ativa."
+                : " O mesmo endereço abre automaticamente o evento presencial ativo de data mais recente, respeitando seu horário de check-in."}
+            </p>
+            <p className="mt-2 font-semibold">Ao trocar de evento, reutilize este mesmo QR Code.</p>
           </div>
-
-          {/* Descrição e Orientações do QR ativo */}
-          {abaAtiva === "externo" ? (
-            <div className="rounded-xl border-2 border-amber-500/50 bg-amber-500/10 p-3.5 text-xs text-amber-950 dark:border-amber-500/40 dark:bg-amber-950/40 dark:text-amber-100">
-              <div className="flex items-center gap-2 font-bold text-amber-900 dark:text-amber-200">
-                <span className="text-base">📢</span>
-                <span>QR CODE PERMANENTE PARA GRÁFICA (10.000+ PANFLETOS)</span>
-              </div>
-              <p className="mt-1 leading-relaxed">
-                Destino fixo impresso: <strong>https://www.raconsinop.com.br/qr/externo</strong>
-              </p>
-              <p className="mt-1 text-emerald-800 dark:text-emerald-300 font-semibold">
-                ✅ <strong>Este QR NUNCA MUDA.</strong> Imprima na gráfica uma única vez. Quando você criar novos eventos externos no futuro, o panfleto impresso redirecionará automaticamente para o novo evento ativo!
-              </p>
-            </div>
-          ) : abaAtiva === "evento" ? (
-            <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3.5 text-xs text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900/60 dark:text-zinc-400">
-              <div className="flex items-center gap-2 font-bold text-zinc-900 dark:text-zinc-200">
-                <span className="text-base">🎯</span>
-                <span>QR Code Exclusivo Deste Evento Individual</span>
-              </div>
-              <p className="mt-1 leading-relaxed">
-                Destino direto: <code>/eventos/{evento.slug}/sorteio</code>
-              </p>
-              <p className="mt-1 text-amber-700 dark:text-amber-400 font-medium">
-                ⚠️ <strong>Atenção:</strong> Use este QR apenas no telão ou banner físico temporário desta reunião. <strong>NÃO imprima em 10.000 panfletos</strong>, pois ele fica fixo só neste evento. Para panfletos em massa, use a aba acima <em>&quot;QR Fixo Panfletos&quot;</em>.
-              </p>
-            </div>
-          ) : (
-            <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3.5 text-xs text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900/60 dark:text-zinc-400">
-              <div className="flex items-center gap-2 font-bold text-zinc-900 dark:text-zinc-200">
-                <span className="text-base">🏷️</span>
-                <span>Totem Permanente Vinculado ({qrVinculo?.qrNome})</span>
-              </div>
-              <p className="mt-1 leading-relaxed">
-                Destino: <code>/qr/{qrVinculo?.qrSlug}</code>
-              </p>
-              <p className="mt-1 text-zinc-500">
-                O material físico permanece o mesmo e pode ser redirecionado para futuros eventos na tela de edição.
-              </p>
-            </div>
-          )}
 
           {/* Renderização do QR Code */}
           <div className="flex flex-col items-center justify-center">
             <div ref={qrRef} className="rounded-2xl border-4 border-white bg-white p-5 shadow-md">
-              <QRCode
+              {urlAtiva && <QRCode
                 value={urlAtiva}
                 size={220}
                 level="M"
                 style={{ width: "100%", height: "auto", maxWidth: "220px" }}
-              />
+              />}
             </div>
           </div>
 
           {/* URL para cópia */}
           <div>
             <label className="text-xs font-semibold text-zinc-500">
-              {abaAtiva === "externo"
-                ? "URL Fixa Permanente (Envie este link para a Gráfica):"
-                : "URL do Check-in:"}
+              URL fixa permanente (envie este link para a gráfica):
             </label>
             <input
               aria-label="Link público de check-in do evento"
@@ -386,23 +284,7 @@ export function EventoQrCheckinModal({
             </Button>
           </div>
 
-          {/* Informação sobre QR Permanente de Totem caso NÃO esteja vinculado */}
-          {!qrVinculo && abaAtiva !== "externo" ? (
-            <div className="mt-4 rounded-xl border border-dashed border-zinc-300 p-3 text-xs dark:border-zinc-700">
-              <p className="font-semibold text-zinc-700 dark:text-zinc-300">
-                Totens ou Materiais Impressos de Mesa?
-              </p>
-              <p className="mt-1 text-zinc-500">
-                Nenhum QR permanente vinculado a este evento. Para vincular um totem físico reutilizável, use as configurações do evento.
-              </p>
-              <Link
-                href={`/admin/eventos/${evento.id}`}
-                className="mt-2 inline-block font-semibold text-amber-600 hover:underline"
-              >
-                Vincular QR permanente na edição do evento →
-              </Link>
-            </div>
-          ) : null}
+
         </div>
       </dialog>
     </>
