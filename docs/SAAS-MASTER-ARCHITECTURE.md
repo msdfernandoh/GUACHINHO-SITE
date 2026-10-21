@@ -1,5 +1,16 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
+### Cancelamento de transferências não realizadas aos sócios (20/10/2026)
+Por ordem expressa do titular, anulados no Supabase os movimentos bancários de
+R$ 8.856,98 para Eroni e R$ 5.391,75 para Fernando, associados a pagamentos de
+comissão de 28/09. Quatro lançamentos compensatórios append-only recompõem
+R$ 14.248,73 na conta empresarial; posição passa de R$ 83.577,79 a R$ 97.826,52,
+com entradas pessoais líquidas zeradas. Baixas contábeis e 21 itens de comissão
+preservados, mantendo crédito dos sócios na empresa; nenhum pagamento/repasse
+foi apagado. Saldo permanece sujeito às conciliações de despesas preexistentes.
+Relatório: `docs/relatorios-fases/CANCELAMENTO-TRANSFERENCIAS-NAO-REALIZADAS-2026-10-20.md`.
+
+
 ### Auditoria dos 342 avisos e concorrência do dashboard (20/10/2026)
 Inventário individual classifica os 342 avisos por regra, arquivo e prioridade.
 Corrigidos 14; permanecem 328 (208 any, 65 unused, 42 efeitos, 12 imagens e
