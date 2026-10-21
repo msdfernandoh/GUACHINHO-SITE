@@ -1,5 +1,22 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
+### Duas vendas de Luiz e vínculos por cota (21/10/2026)
+Concluída a pendência descrita abaixo: cliente e proposta preenchidos a partir
+dos documentos fornecidos, com duas vendas de Fernando no grupo 1553: três cotas
+de R$ 200 mil (0467/0515/0656) e duas de R$ 250 mil (0137/0308).
+Cada venda tem proposta/contratação própria; a simulação anterior permanece no
+histórico. Modalidade comercial 60%, cálculo efetivo 70% preservado. Documentos
+privados referenciados nas duas operações. O desdobramento administrativo não
+atribui nova assinatura à contratação complementar: a assinatura registrada
+pertence à contratação original e sua origem fica auditada.
+Cinco linhas vinculadas ao lote de 05/10; R$ 7.284,58 alocados a Luiz. Cota 0656
+recebeu R$ 534,58 de R$ 1.500,00, mantendo R$ 965,42 de diferença para consulta.
+Não criar recebimento para cobrir divergência entre soma das linhas e total do lote.
+Migration 327 consulta existência da venda sob lock, antes do conversor canônico,
+para impedir reconstrução de previsões já recebidas quando a resposta append-only
+antiga conserva reused=false. Permissões e limites de empresa preservados.
+Relatório: `docs/relatorios-fases/LUIZ-DUAS-VENDAS-VINCULOS-2026-10-21.md`.
+
 ### Identificação de Luiz na proposta (21/10/2026)
 Proposta LUIZ localizada e vinculada ao cliente/participante Fernando, com nome
 completo confirmado pelo titular. Contratação já existente permanece pendente
