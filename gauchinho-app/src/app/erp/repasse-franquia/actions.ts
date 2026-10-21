@@ -65,16 +65,20 @@ export async function importarRelatorioRepasseRaconAction(
       if (consultaError) throw new Error("Não foi possível conferir se o PDF já está registrado como antigo.");
       if (antigo) throw new Error("Este PDF está registrado como antigo e não pode gerar entrada financeira. Marque Incluir relatório antigo.");
     }
-    const pdf = await getDocumentProxy(bytes);
+    // O PDF.js transfere o buffer para o worker e o destaca da thread atual.
+    // Entregar uma cópia preserva o original para o upload e seu hash.
+    const pdf = await getDocumentProxy(bytes.slice());
     const extracted = await extractText(pdf, { mergePages: true });
     const parsed = parseRepasseRaconText(String(extracted.text), competencia);
 
     storagePath = `${empresaId}/${relatorioAntigo ? "antigos" : "conciliacoes"}/${competencia}/${hash}.pdf`;
     const { error: uploadError } = await db.storage.from("repasse-documentos").upload(storagePath, bytes, {
       contentType: "application/pdf",
-      upsert: false,
+      // O caminho contém o SHA-256: reenviar os mesmos bytes também recupera
+      // arquivos vazios gravados pela versão que reutilizava o buffer destacado.
+      upsert: true,
     });
-    if (uploadError && !/already exists|duplicate/i.test(uploadError.message)) {
+    if (uploadError) {
       throw new Error(`Falha ao guardar o PDF: ${uploadError.message}`);
     }
 
@@ -135,7 +139,7 @@ export async function importarRelatorioRepasseRaconAction(
       message: result.idempotente
         ? `Este PDF já estava salvo. A leitura foi atualizada sem duplicar a entrada: ${leituraAtualizada?.vinculados_auto ?? 0} novo(s) vínculo(s), ${leituraAtualizada?.atencao ?? 0} atenção(ões) e ${leituraAtualizada?.nao_encontrados ?? 0} não encontrado(s).`
         : Math.abs(parsed.itens.reduce((soma, item) => soma + item.valor_comissao, 0) - parsed.valor_total) > 0.02
-          ? "Repasse importado com todas as cotas e valores. Entrada registrada pelo total do PDF; diferença mantida para conferência. Baixas limitadas ao saldo recebido."
+          ? "Repasse importado com todas as cotas e valores. Comissões baixadas pelo valor de cada linha do relatório; diferença mantida para conferência do total importado."
           : `Repasse importado. ${result.vinculados_auto ?? 0} linhas vinculadas e baixadas automaticamente, ${result.atencao ?? 0} com atenção e ${result.nao_encontrados ?? 0} antigas/não encontradas.`,
     };
   } catch (error) {
@@ -166,7 +170,7 @@ export async function vincularItemRepasseManualAction(
     return {
       ok: true,
       message: result?.baixa_pendente
-        ? "Vínculo salvo. A baixa desta linha aguarda saldo do recebimento; confira a diferença entre o total das linhas e o total recebido no PDF."
+        ? "Vínculo salvo. Salve novamente para sincronizar a baixa pelo valor integral da linha do relatório."
         : `Vínculo, baixa e comissões sincronizados. Total desta linha: ${Number(result?.valor_vinculado ?? result?.valor_relatorio ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}.`,
     };
   } catch (error) {

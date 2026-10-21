@@ -345,9 +345,9 @@ export function RepassePdfConciliacao({
             </select>
           </label>
           {totalDivergente && <div role="status" className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950">
-            <p className="font-bold">Diferença de {money(Math.abs(diferencaTotal))} para conferência</p>
+            <p className="font-bold">Conferir o total importado do lote</p>
             <p>Total das linhas: {money(totalLinhas)} · Total do PDF / entrada: {money(Number(atual.valor_total_bruto))}.</p>
-            <p className="mt-1">Todas as cotas e valores foram importados. Confira os outros repasses da mesma competência, inclusive o do dia 15. É possível importar vários relatórios no mesmo mês. As baixas ficam limitadas ao valor recebido; a diferença permanece para conferência.</p>
+            <p className="mt-1">Cada comissão é baixada pelo valor integral da sua linha no relatório. A divergência entre os totais importados é de {money(Math.abs(diferencaTotal))}; confira a leitura do PDF e a entrada financeira. Ela não representa comissão pendente do cliente.</p>
           </div>}
           {Boolean(atual.alertas?.length) && <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-950">{atual.alertas?.map((alerta, index) => <p key={index}>{alerta}</p>)}</div>}
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5 text-xs">
@@ -460,7 +460,7 @@ function LinkedItemsTable({ items, resolucoes, previsoes, action, disabled }: { 
           <span className="block">Previsão anterior: {money(Number(ajuste.valor_sistema))} · Relatório: {money(Number(ajuste.valor_relatorio))}.</span>
           <span className="block">Valor ajustado conforme relatório; diferença preservada no histórico.</span>
         </p>}
-        {valorVinculado + 0.01 < Number(item.valor_comissao) && <p className="mt-1 max-w-72 text-xs font-semibold text-red-700 dark:text-red-400">Vínculo salvo. Baixa pendente de {money(Number(item.valor_comissao) - valorVinculado)} por limite do saldo recebido.</p>}
+        {valorVinculado + 0.01 < Number(item.valor_comissao) && <p className="mt-1 max-w-72 text-xs font-semibold text-red-700 dark:text-red-400">Baixa a sincronizar: {money(Number(item.valor_comissao) - valorVinculado)}. Salve o vínculo para aplicar o valor integral do relatório.</p>}
       </td><td>{item.numero_grupo} / {item.numero_cota}</td><td>{item.parcela_numero}/{item.parcela_total}</td><td className="text-right font-mono">{money(Number(item.valor_comissao))}</td><td className="text-right font-mono font-bold text-blue-700">{money(valorVinculado)}</td><td className="pl-3"><form action={action} className="flex items-end gap-2"><input type="hidden" name="item_id" value={item.id}/><SearchablePrevisaoSelect item={item} previsoes={options} defaultValue={item.previsao_franquia_id ?? ""}/><button disabled={disabled} className="rounded-lg bg-blue-700 px-3 py-1.5 font-bold text-white disabled:opacity-50">Salvar alteração</button></form></td></tr>;
     })}</tbody></table></div>}
   </div>;

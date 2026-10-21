@@ -1,5 +1,17 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
+### Baixa integral por linha e recuperação de PDF de repasse (21/10/2026)
+Migration 328 substitui o teto do recebimento pela linha do relatório como fonte
+do valor baixado da comissão. A cota Luiz 1553/0656 foi completada para R$ 1.500,00,
+sem gerar ingresso bancário. Totais importados inconsistentes são conferidos no
+lote e não representam comissão em aberto do cliente. Esta regra substitui o
+corte parcial registrado na fase de duas vendas abaixo.
+Confirmado defeito de buffer: PDF.js destacava o Uint8Array original antes do
+upload, produzindo PDFs de zero bytes. Leitura agora recebe cópia; reenvio pelo
+mesmo SHA-256 recupera o objeto. O original de 05/10 precisa ser reenviado para
+validar a origem do total importado R$ 8.352,58; diferença real não confirmada.
+Relatório: `docs/relatorios-fases/REPASSE-BAIXA-INTEGRAL-E-PDF-2026-10-21.md`.
+
 ### Consultores consolidados e visão Todos em Minhas comissões (21/10/2026)
 O seletor agrupa cadastros históricos pelo nome completo normalizado, preservando
 IDs, contas de acesso, perfis e fatos financeiros. Documentos divergentes mantêm

@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const mocks = vi.hoisted(() => ({ rpc: vi.fn(), upload: vi.fn(), lookup: vi.fn(), parse: vi.fn() }));
+const mocks = vi.hoisted(() => ({ rpc: vi.fn(), upload: vi.fn(), lookup: vi.fn(), parse: vi.fn(), pdf: vi.fn() }));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("@/lib/erp/erp-acesso-server", () => ({ requireErpRouteAccess: vi.fn() }));
 vi.mock("@/lib/tenant/context", () => ({ requireTenantPermission: async () => ({ empresaAtiva: { id: "empresa-teste" } }) }));
-vi.mock("unpdf", () => ({ getDocumentProxy: vi.fn(), extractText: async () => ({ text: "pdf teste" }) }));
+vi.mock("unpdf", () => ({ getDocumentProxy: mocks.pdf, extractText: async () => ({ text: "pdf teste" }) }));
 vi.mock("@/lib/erp/repasse-racon-parser", () => ({ parseRepasseRaconText: mocks.parse }));
 vi.mock("@/lib/supabase/server", () => ({ createClient: async () => ({
   rpc: mocks.rpc, storage: { from: () => ({ upload: mocks.upload }) },
@@ -29,6 +29,10 @@ describe("importação antiga sem movimentação financeira", () => {
     mocks.parse.mockReturnValue({ itens: [{ cliente_nome: "Teste" }] });
     mocks.rpc.mockResolvedValue({ data: { novos: 1, reutilizados: 0 }, error: null });
     mocks.lookup.mockResolvedValue({ data: null, error: null });
+    mocks.pdf.mockImplementation(async (bytes: Uint8Array) => {
+      structuredClone(bytes, { transfer: [bytes.buffer] });
+      return {};
+    });
   });
   it("envia o PDF e o consultor apenas à RPC de controle, dispensando data e conta de entrada", async () => {
     const result = await importarRelatorioRepasseRaconAction({ ok: false, message: "" }, formulario());
@@ -46,6 +50,14 @@ describe("importação antiga sem movimentação financeira", () => {
     const result = await importarRelatorioRepasseRaconAction({ ok: false, message: "" }, formulario());
     expect(result.message).toContain("sem duplicações");
     expect(mocks.rpc).toHaveBeenCalledTimes(1);
+  });
+  it("preserva o PDF no upload mesmo quando o parser transfere o buffer", async () => {
+    const result = await importarRelatorioRepasseRaconAction({ ok: false, message: "" }, formulario());
+    expect(result.ok).toBe(true);
+    const [, bytes, options] = mocks.upload.mock.calls[0];
+    expect(new TextDecoder().decode(bytes)).toBe("PDF teste");
+    expect(bytes.byteLength).toBe(9);
+    expect(options.upsert).toBe(true);
   });
   it("exige consultor antes de enviar ou gravar dados", async () => {
     const form = formulario(); form.delete("consultor_antigo_id");
