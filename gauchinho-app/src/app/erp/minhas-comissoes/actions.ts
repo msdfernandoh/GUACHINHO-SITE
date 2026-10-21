@@ -1,4 +1,5 @@
 "use server";
+import { agruparConsultoresComissoes } from "@/lib/erp/comissoes-consultores";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { requireErpRouteAccess } from "@/lib/erp/erp-acesso-server";
@@ -131,12 +132,16 @@ export async function pagarComissoesAgrupadasAction(formData: FormData) {
   ids = [...new Set(ids.filter((id) => typeof id === "string" && id.length > 0))];
   if (!ids.length || operacaoId.length < 8) throw new Error("Selecione comissões e a operação.");
   const db = await createClient();
-  const [{ data: participante }, { data: previsoes, error }] = await Promise.all([
-    db.from("participantes_comerciais").select("id, usuario_id").eq("id", participanteId).eq("empresa_id", access.empresaAtiva.id).maybeSingle(),
-    db.from("comissao_previsoes_participantes")
-      .select("id,participante_comercial_id,organizacao_parceira_id,competencia,valor_elegivel,valor_pago")
-      .eq("empresa_id", access.empresaAtiva.id).eq("participante_comercial_id", participanteId).in("id", ids),
-  ]);
+  const { data: equipe, error: equipeError } = await db.from("participantes_comerciais")
+    .select("id,nome,nome_exibicao,usuario_id,cpf").eq("empresa_id", access.empresaAtiva.id).ilike("status", "ativo");
+  if (equipeError) throw new Error("Não foi possível validar o beneficiário.");
+  const grupoConsultor = agruparConsultoresComissoes(equipe ?? [], access.usuario.id)
+    .find((p) => p.ids.includes(participanteId));
+  if (!grupoConsultor) throw new Error("Consultor não encontrado nesta empresa.");
+  const participante = equipe?.find((p) => p.id === participanteId);
+  const { data: previsoes, error } = await db.from("comissao_previsoes_participantes")
+    .select("id,participante_comercial_id,organizacao_parceira_id,competencia,valor_elegivel,valor_pago")
+    .eq("empresa_id", access.empresaAtiva.id).in("participante_comercial_id", grupoConsultor.ids).in("id", ids);
 
   const { data: socio } = participante?.usuario_id
     ? await db.from("empresa_socios").select("id,nome").eq("empresa_id", access.empresaAtiva.id).eq("usuario_id", participante.usuario_id).eq("ativo", true).maybeSingle()
@@ -157,9 +162,11 @@ export async function pagarComissoesAgrupadasAction(formData: FormData) {
   for (const previsao of previsoes ?? []) {
     const saldo = Number(previsao.valor_elegivel) - Number(previsao.valor_pago);
     if (saldo <= 0) throw new Error("Uma das comissões já foi paga ou deixou de estar elegível.");
-    porCompetencia.set(previsao.competencia, [...(porCompetencia.get(previsao.competencia) ?? []), previsao]);
+    const chave = `${previsao.participante_comercial_id}:${previsao.organizacao_parceira_id ?? "direto"}:${previsao.competencia}`;
+    porCompetencia.set(chave, [...(porCompetencia.get(chave) ?? []), previsao]);
   }
-  for (const [competencia, grupo] of porCompetencia) {
+  for (const [chave, grupo] of porCompetencia) {
+    const competencia = grupo[0].competencia;
     const itens = grupo.map((previsao) => ({
       previsaoParticipanteId: previsao.id,
       valorLiquidado: (Number(previsao.valor_elegivel) - Number(previsao.valor_pago)).toFixed(2),
@@ -176,7 +183,7 @@ export async function pagarComissoesAgrupadasAction(formData: FormData) {
         ? "Crédito de comissão do sócio mantido na empresa para despesas operacionais"
         : "Pagamento agrupado de comissões",
       referenciaDocumento: `Lote ${operacaoId}`,
-      idempotencyKey: `pagamento-agrupado:${operacaoId}:${competencia}`,
+      idempotencyKey: `pagamento-agrupado:${operacaoId}:${chave}`,
       itens,
     });
   }

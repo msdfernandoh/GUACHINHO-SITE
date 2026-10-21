@@ -14,7 +14,10 @@ describe("Minhas comissões — visão e pagamento da equipe", () => {
     expect(page).toContain('permissoes.has("gerenciar_comissoes")');
     expect(page).toContain('.eq("empresa_id", empresaAtiva.id)');
     expect(page).toContain('.ilike("status", "ativo")');
-    expect(page).toContain("participanteSelecionado ?? participanteProprio");
+    expect(page).toContain("participanteSelecionado ?? participantes.find");
+    expect(page).toContain('const verTodos = podeGerenciarEquipe && participanteSolicitado === "todos"');
+    expect(page).toContain('.in("participante_comercial_id", idsConsulta)');
+    expect(client).toContain('<option value="todos">Todos os consultores</option>');
     expect(client).toContain("Consultor da equipe");
     expect(client).toContain("Minhas comissões");
   });

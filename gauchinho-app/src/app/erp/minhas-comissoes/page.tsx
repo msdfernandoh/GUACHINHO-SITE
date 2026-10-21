@@ -1,3 +1,4 @@
+import { agruparConsultoresComissoes } from "@/lib/erp/comissoes-consultores";
 import { lerComissaoAtrasada } from "@/lib/erp/comissao-atrasada";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -25,29 +26,34 @@ export default async function MinhasComissoesPage({
     (papelCodigo === "super_admin" || permissoes.has("gerenciar_financeiro"));
   const { participante: participanteSolicitado } = await searchParams;
 
-  const { data: participanteProprio } = await db
+  const { data: participantesProprios, error: proprioError } = await db
     .from("participantes_comerciais")
-    .select("id,nome,nome_exibicao,usuario_id")
+    .select("id,nome,nome_exibicao,usuario_id,cpf")
     .eq("empresa_id", empresaAtiva.id)
     .eq("usuario_id", usuario.id)
     .ilike("status", "ativo")
-    .maybeSingle();
+    .order("id");
+
+  if (proprioError) throw new Error("Não foi possível carregar sua identidade comercial.");
+  const participanteProprio = participantesProprios?.[0] ?? null;
 
   const { data: participantesEquipe, error: participantesError } = podeGerenciarEquipe
     ? await db
         .from("participantes_comerciais")
-        .select("id,nome,nome_exibicao,usuario_id")
+        .select("id,nome,nome_exibicao,usuario_id,cpf")
         .eq("empresa_id", empresaAtiva.id)
         .ilike("status", "ativo")
         .order("nome")
-    : { data: participanteProprio ? [participanteProprio] : [], error: null };
+    : { data: participantesProprios ?? [], error: null };
   if (participantesError) throw new Error("Não foi possível carregar os consultores da empresa.");
 
-  const participantes = participantesEquipe ?? [];
+  const participantes = agruparConsultoresComissoes(participantesEquipe ?? [], usuario.id);
+  const verTodos = podeGerenciarEquipe && participanteSolicitado === "todos";
   const participanteSelecionado = podeGerenciarEquipe && participanteSolicitado
-    ? participantes.find((item) => item.id === participanteSolicitado) ?? null
+    ? participantes.find((item) => item.ids.includes(participanteSolicitado)) ?? null
     : null;
-  const participante = participanteSelecionado ?? participanteProprio ?? participantes[0] ?? null;
+  const participante = participanteSelecionado ?? participantes.find((p) => p.ids.includes(participanteProprio?.id ?? "")) ?? participantes[0] ?? null;
+  const idsConsulta = verTodos ? (participantesEquipe ?? []).map((p) => p.id) : participante?.ids ?? [];
 
   if (!participante) {
     return (
@@ -57,10 +63,11 @@ export default async function MinhasComissoesPage({
     );
   }
 
-  const { data } = await db
+  const consultarPrevisoes = (offset: number) => db
     .from("comissao_previsoes_participantes")
     .select(`
       id,
+      participante_comercial_id,
       nome_etapa,
       competencia,
       valor_previsto,
@@ -76,10 +83,17 @@ export default async function MinhasComissoesPage({
       venda:vendas(id, valor_credito, cliente:clientes(nome), cota:cotas_definitivas(numero_cota, numero_grupo))
     `)
     .eq("empresa_id", empresaAtiva.id)
-    .eq("participante_comercial_id", participante.id)
+    .in("participante_comercial_id", idsConsulta)
     .neq("status", "cancelada")
-    .order("competencia");
+    .order("competencia").order("id").range(offset, offset + 499);
 
+  const data: NonNullable<Awaited<ReturnType<typeof consultarPrevisoes>>["data"]> = [];
+  for (let offset = 0; ; offset += 500) {
+    const pagina = await consultarPrevisoes(offset);
+    if (pagina.error) throw new Error("Não foi possível carregar as comissões.");
+    data.push(...(pagina.data ?? []));
+    if ((pagina.data?.length ?? 0) < 500) break;
+  }
   const admin = createAdminClient();
   const previsaoFranquiaIds = [...new Set(
     (data ?? [])
@@ -117,9 +131,9 @@ export default async function MinhasComissoesPage({
   const franquiaMap = new Map((previsoesFranquia ?? []).map((item) => [item.id, item]));
   const mostrarDetalhesFiscais = Boolean(fiscal?.participante_exibe_detalhes_fiscais);
   const competenciaVendasMes = mesAtualEmCuiaba();
-  const resumoVendasMes = await carregarResumoVendasMes(empresaAtiva.id, participante.id, competenciaVendasMes);
+  const resumoVendasMes = await carregarResumoVendasMes(empresaAtiva.id, idsConsulta, competenciaVendasMes);
   const ehSocio = Boolean(
-    participante?.usuario_id &&
+    !verTodos && participante?.usuario_id &&
     sociosEmpresa?.some((s) => s.usuario_id === participante.usuario_id),
   );
 
@@ -143,6 +157,8 @@ export default async function MinhasComissoesPage({
 
     return {
       id: row.id,
+      participante_id: row.participante_comercial_id,
+      participante_nome: participantes.find((p) => p.ids.includes(row.participante_comercial_id))?.nome ?? "Consultor",
       nome_etapa: row.nome_etapa,
       competencia: row.competencia,
       valor_previsto: Number(row.valor_previsto),
@@ -166,17 +182,17 @@ export default async function MinhasComissoesPage({
   return (
     <main className="p-6">
       <MinhasComissoesClient
-        key={participanteSelecionado?.id ?? "sem-participante"}
-        participanteNome={participante.nome_exibicao || participante.nome}
+        key={verTodos ? "todos" : participante.id}
+        participanteNome={verTodos ? "Todos os consultores" : participante.nome_exibicao || participante.nome}
         previsoes={previsoes}
         mostrarDetalhesFiscais={mostrarDetalhesFiscais}
         resumoVendasMes={resumoVendasMes}
         podeGerenciarFiscal={Boolean(podeGerenciarFiscal)}
-        participantesEquipe={participantes}
-        participanteSelecionadoId={participante.id}
-        participanteProprioId={participanteProprio?.id ?? null}
+        participantesEquipe={participantes.map((p) => ({ id: p.id, nome: p.nome, nome_exibicao: p.nome_exibicao }))}
+        participanteSelecionadoId={verTodos ? "todos" : participante.id}
+        participanteProprioId={participantes.find((p) => p.ids.includes(participanteProprio?.id ?? ""))?.id ?? null}
         podeGerenciarEquipe={podeGerenciarEquipe}
-        podePagarEquipe={podePagarEquipe}
+        podePagarEquipe={podePagarEquipe && !verTodos}
         ehSocio={ehSocio}
         contasBancarias={(contasBancarias ?? [])
           .filter((conta) => !conta.participante_comercial_id)

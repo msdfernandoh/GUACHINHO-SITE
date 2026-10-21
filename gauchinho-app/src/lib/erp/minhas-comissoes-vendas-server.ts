@@ -3,7 +3,9 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { calcularResumoVendasMes, type VendaParaResumoMensal } from "./minhas-comissoes-vendas";
 
 /** IDs devem vir exclusivamente da identidade/empresa resolvidas no servidor. */
-export async function carregarResumoVendasMes(empresaId: string, participanteId: string, competencia: string) {
+export async function carregarResumoVendasMes(empresaId: string, participanteId: string | string[], competencia: string) {
+  const ids = Array.isArray(participanteId) ? participanteId : [participanteId];
+  if (!ids.length) return calcularResumoVendasMes([], competencia);
   const db = createAdminClient();
   const [ano, mes] = competencia.split("-").map(Number);
   const proximoMes = new Date(Date.UTC(ano, mes, 1)).toISOString().slice(0, 10);
@@ -13,7 +15,7 @@ export async function carregarResumoVendasMes(empresaId: string, participanteId:
   // Não depender de previsões: uma venda também conta antes de gerar comissões.
   for (let offset = 0; ; offset += 500) {
     const { data, error } = await db.from("vendas").select(campos)
-      .eq("empresa_id", empresaId).eq("participante_comercial_id", participanteId)
+      .eq("empresa_id", empresaId).in("participante_comercial_id", ids)
       .eq("status", "confirmada").eq("afeta_faturamento", true)
       .or(filtroCompetencia)
       .order("id").range(offset, offset + 499);
@@ -24,7 +26,7 @@ export async function carregarResumoVendasMes(empresaId: string, participanteId:
   for (let offset = 0; ; offset += 500) {
     const { data, error } = await db.from("venda_participantes")
       .select(`id,venda:vendas!inner(${campos})`)
-      .eq("empresa_id", empresaId).eq("participante_comercial_id", participanteId)
+      .eq("empresa_id", empresaId).in("participante_comercial_id", ids)
       .eq("venda.empresa_id", empresaId).eq("venda.status", "confirmada").eq("venda.afeta_faturamento", true)
       .or(filtroCompetencia, { referencedTable: "venda" })
       .order("id").range(offset, offset + 499);

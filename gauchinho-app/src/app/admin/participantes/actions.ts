@@ -1,4 +1,5 @@
 "use server";
+import { normalizarNomeConsultor } from "@/lib/erp/comissoes-consultores";
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
@@ -186,6 +187,15 @@ export async function createParticipanteAction(formData: FormData): Promise<{ ok
     if (!validated.ok) return { ok: false, success: false, error: validated.error };
 
     const supabase = await createClient();
+    const { data: cadastrados, error: cadastroError } = await supabase.from("participantes_comerciais")
+      .select("id,nome,cpf,usuario_id").eq("empresa_id", empresaId);
+    if (cadastroError) throw new Error("Não foi possível verificar cadastros existentes.");
+    const repetido = cadastrados?.some((p) =>
+      normalizarNomeConsultor(p.nome) === normalizarNomeConsultor(input.nome)
+      || (input.usuarioId && p.usuario_id === input.usuarioId)
+      || (normalizeCpf(input.cpf) && normalizeCpf(p.cpf) === normalizeCpf(input.cpf)));
+    if (repetido) return { ok: false, success: false, error: "Consultor já cadastrado nesta empresa. Edite o cadastro existente e adicione os modelos de comissão nos vínculos de perfil; escolha o modelo adequado na venda." };
+
 
     if (input.usuarioId && input.status === "ATIVO") {
       const { data: existing } = await supabase

@@ -9,6 +9,8 @@ import { useRouter } from "next/navigation";
 
 export type PrevisaoParticipanteItem = {
   id: string;
+  participante_id?: string;
+  participante_nome?: string;
   nome_etapa: string;
   competencia: string;
   valor_previsto: number;
@@ -224,6 +226,7 @@ export function MinhasComissoesClient({
                 onChange={(event) => router.push(`/erp/minhas-comissoes?participante=${encodeURIComponent(event.target.value)}`)}
                 className="mt-2 w-full rounded-xl border border-slate-600 bg-slate-900 px-3 py-2.5 text-sm font-bold text-white"
               >
+                <option value="todos">Todos os consultores</option>
                 {participantesEquipe.map((item) => (
                   <option key={item.id} value={item.id}>
                     {item.nome_exibicao || item.nome}{item.id === participanteProprioId ? " — Minhas comissões" : ""}
@@ -237,6 +240,8 @@ export function MinhasComissoesClient({
           Acompanhe suas previsões mês a mês, valores elegíveis e repasses liberados por cliente e competência.
         </p>
       </header>
+
+      {participanteSelecionadoId === "todos" && <p className="rounded-xl bg-blue-50 p-4 text-sm text-blue-900">Visão consolidada da equipe. Selecione um consultor para registrar pagamentos ou ajustar parcelas.</p>}
 
       {podeGerenciarFiscal && (
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-blue-200 bg-blue-50 p-4 dark:border-blue-900 dark:bg-blue-950/20">
@@ -305,7 +310,7 @@ export function MinhasComissoesClient({
         </form>
       ) : null}
 
-      {podeGerenciarEquipe && selecionadasAjuste.size >= 4 ? <form action={ajustarSelecionadas} className="rounded-2xl border border-amber-300 bg-amber-50 p-4 text-xs"><input type="hidden" name="participante_id" value={participanteSelecionadoId} /><input type="hidden" name="previsoes_ids" value={JSON.stringify([...selecionadasAjuste])} /><p className="font-black text-amber-950">Ajustar modelo e parcelamento selecionado</p><p className="mt-1 text-amber-900">Parcelas pagas ficam bloqueadas. O total será concentrado nas quatro primeiras parcelas selecionadas.</p><div className="mt-3 grid gap-3 md:grid-cols-4"><label>Comissão da empresa (%)<input name="percentual_empresa_total" type="number" step="0.01" defaultValue="4" className="mt-1 w-full rounded border p-2" /></label><label>Participante recebe (%)<input name="percentual_empresa" type="number" step="0.01" defaultValue="25" className="mt-1 w-full rounded border p-2" /></label><label>Divisão<select name="modo" className="mt-1 w-full rounded border p-2"><option value="igual">Igual automática</option><option value="personalizada">Personalizada</option></select></label><button className="self-end rounded bg-amber-800 p-2 font-black text-white">Aplicar nas 4 primeiras</button></div><p className="mt-2 text-amber-900">Na opção personalizada, informe os quatro valores brutos abaixo.</p><div className="mt-2 grid gap-2 md:grid-cols-4">{[1,2,3,4].map((n) => <input key={n} name={`parcela_${n}`} type="number" step="0.01" min="0" placeholder={`${n}ª parcela`} className="rounded border p-2" />)}</div></form> : null}
+      {podeGerenciarEquipe && selecionadasAjuste.size >= 4 ? <form action={ajustarSelecionadas} className="rounded-2xl border border-amber-300 bg-amber-50 p-4 text-xs"><input type="hidden" name="participante_id" value={previsoes.find((p) => selecionadasAjuste.has(p.id))?.participante_id ?? participanteSelecionadoId} /><input type="hidden" name="previsoes_ids" value={JSON.stringify([...selecionadasAjuste])} /><p className="font-black text-amber-950">Ajustar modelo e parcelamento selecionado</p><p className="mt-1 text-amber-900">Parcelas pagas ficam bloqueadas. O total será concentrado nas quatro primeiras parcelas selecionadas.</p><div className="mt-3 grid gap-3 md:grid-cols-4"><label>Comissão da empresa (%)<input name="percentual_empresa_total" type="number" step="0.01" defaultValue="4" className="mt-1 w-full rounded border p-2" /></label><label>Participante recebe (%)<input name="percentual_empresa" type="number" step="0.01" defaultValue="25" className="mt-1 w-full rounded border p-2" /></label><label>Divisão<select name="modo" className="mt-1 w-full rounded border p-2"><option value="igual">Igual automática</option><option value="personalizada">Personalizada</option></select></label><button className="self-end rounded bg-amber-800 p-2 font-black text-white">Aplicar nas 4 primeiras</button></div><p className="mt-2 text-amber-900">Na opção personalizada, informe os quatro valores brutos abaixo.</p><div className="mt-2 grid gap-2 md:grid-cols-4">{[1,2,3,4].map((n) => <input key={n} name={`parcela_${n}`} type="number" step="0.01" min="0" placeholder={`${n}ª parcela`} className="rounded border p-2" />)}</div></form> : null}
 
       {/* Barra de Filtros: Cliente + Competência */}
       <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-2xs dark:border-slate-800 dark:bg-slate-900 space-y-3">
@@ -545,6 +550,7 @@ export function MinhasComissoesClient({
                 <tr>
                   {podePagarEquipe ? <th className="p-3"><span className="sr-only">Selecionar</span></th> : null}
                   <th className="p-3">Competência</th>
+                  <th className="p-3">Consultor</th>
                   <th className="p-3">Cliente / Cota</th>
                   <th className="p-3">Etapa / Parcela</th>
                   {mostrarDetalhesFiscais ? <th className="p-3">Bruto proporcional</th> : null}
@@ -562,6 +568,7 @@ export function MinhasComissoesClient({
                     <td className="p-3 font-mono font-bold text-blue-700 dark:text-blue-400">
                       {row.competencia}
                     </td>
+                    <td className="p-3 font-bold">{row.participante_nome || participanteNome}</td>
                     <td className="p-3">
                       <div className="font-bold text-slate-900 dark:text-white">
                         {row.cliente_nome || "Venda Consórcio"}
@@ -593,7 +600,7 @@ export function MinhasComissoesClient({
                       {row.conferido_por_participante ? (
                         <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-bold text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300">
                           <CheckCircle2 className="h-3.5 w-3.5" />
-                          Conferido por mim
+                          Conferido
                         </span>
                       ) : Number(row.valor_pago) > 0 && podeConferirRecebimento ? (
                         <form action={conferirPagamentoAction}>

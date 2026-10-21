@@ -1,5 +1,20 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
+### Consultores consolidados e visão Todos em Minhas comissões (21/10/2026)
+O seletor agrupa cadastros históricos pelo nome completo normalizado, preservando
+IDs, contas de acesso, perfis e fatos financeiros. Documentos divergentes mantêm
+homônimos separados; nomes abreviados e testes não são associados por aproximação.
+A visão autorizada da equipe oferece Todos os consultores, com beneficiário por
+parcela, totais e produção mensal deduplicada por venda. Consultores comuns
+continuam limitados aos participantes vinculados ao próprio usuario_id.
+Pagamentos agrupados revalidam o grupo no tenant e mantêm operações separadas por
+participante original, organização e competência. A visão Todos é de consulta;
+pagamentos e ajustes exigem selecionar consultor. O cadastro manual recusa
+repetição de nome normalizado, CPF ou usuário e orienta adicionar perfis ao
+cadastro existente, escolhendo a regra na venda. Sem migration ou escrita remota.
+Relatório: `docs/relatorios-fases/CONSULTORES-UNICOS-E-TODOS-COMISSOES-2026-10-21.md`.
+
+
 ### Duas vendas de Luiz e vínculos por cota (21/10/2026)
 Concluída a pendência descrita abaixo: cliente e proposta preenchidos a partir
 dos documentos fornecidos, com duas vendas de Fernando no grupo 1553: três cotas
