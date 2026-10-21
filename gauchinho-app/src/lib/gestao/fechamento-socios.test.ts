@@ -37,3 +37,14 @@ describe("fechamento societário", () => {
     })).toThrow(/supera seu saldo positivo/);
   });
 });
+
+
+it("a retirada digitada é previsão e mantém os centavos do crédito", () => {
+  const resultado = calcularFechamentoSocios({ despesasPagas: 66200.20, lucroConsultores: 0,
+    reservaImpostos: 0, caixaAntes: 50000, socios: [
+      { id: "f", nome: "Fernando", percentual: 50, comissaoGuardada: 34462.18, adiantamentoPessoal: 9790.61, saldoAnterior: 0, retirada: 8928.73 },
+      { id: "e", nome: "Eroni", percentual: 50, comissaoGuardada: 40000, adiantamentoPessoal: 0, saldoAnterior: 0, retirada: 0 },
+    ] });
+  expect(resultado.socios[0].direitoAntesRetirada).toBe(11152.69);
+  expect(resultado.socios[0].ficouNaEmpresa).toBe(2223.96);
+});

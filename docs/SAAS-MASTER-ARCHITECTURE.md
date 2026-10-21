@@ -1,5 +1,14 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
+### Mensagens de transferência preservadas em produção (20/10/2026)
+A action de transferência retorna resultado discriminado `{ok, mensagem}` para
+validações de negócio, evitando que exceções sejam ocultadas pelo React em
+produção como erro #441. A UI só limpa retirada/confirmação após `ok: true`;
+em falha preserva os campos, exibe alerta e identifica o saldo digitado como previsão.
+Erros inesperados recebem referência de diagnóstico com detalhes restritos ao servidor.
+Consulta somente leitura não encontrou retiradas com chave `retirada-socio:%`.
+Relatório: `docs/relatorios-fases/CORRECAO-ERRO-441-TRANSFERENCIA-SOCIOS-2026-10-20.md`.
+
 ### Transferência individual no cartão do sócio (20/10/2026)
 O cartão de cada sócio em `/erp/fechamento-socios` oferece “Efetivar transferência”,
 com valor, referência de comprovante e confirmação do PIX/TED já realizado.

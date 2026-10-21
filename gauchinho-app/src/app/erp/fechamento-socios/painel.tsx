@@ -655,6 +655,11 @@ export function PainelFechamentoSocios({
     iniciar(async () => {
       try {
         const resultado = await efetivarTransferenciaSocio(pedido);
+        if (!resultado.ok) {
+          setRetornoTransferencia((anteriores) => ({ ...anteriores,
+            [socioId]: { ok: false, mensagem: resultado.mensagem } }));
+          return;
+        }
         setRetiradas((anteriores) => ({ ...anteriores, [socioId]: "0" }));
         setSaldoExtrato(String(resultado.saldoSistema));
         const confirmacao = formulario.elements.namedItem(`confirmo_transferencia_${socioId}`);
@@ -662,9 +667,9 @@ export function PainelFechamentoSocios({
         setRetornoTransferencia((anteriores) => ({ ...anteriores,
           [socioId]: { ok: true, mensagem: "Transferência registrada. Saída da empresa e crédito do sócio atualizados." } }));
         router.refresh();
-      } catch (e) {
+      } catch {
         setRetornoTransferencia((anteriores) => ({ ...anteriores,
-          [socioId]: { ok: false, mensagem: e instanceof Error ? e.message : "Não foi possível registrar a transferência." } }));
+          [socioId]: { ok: false, mensagem: "Não foi possível comunicar com o servidor. Atualize o painel para conferir antes de tentar novamente." } }));
       }
     });
   }
@@ -1713,12 +1718,14 @@ export function PainelFechamentoSocios({
                     {pendente ? "Processando…" : "Efetivar transferência"}
                   </button>
                   {retornoTransferencia[socio.id] && (
-                    <p role="status" className={`mt-2 text-xs font-bold ${retornoTransferencia[socio.id].ok ? "text-emerald-800" : "text-rose-800"}`}>
+                    <p role={retornoTransferencia[socio.id].ok ? "status" : "alert"} className={`mt-2 text-xs font-bold ${retornoTransferencia[socio.id].ok ? "text-emerald-800" : "text-rose-800"}`}>
                       {retornoTransferencia[socio.id].mensagem}
                     </p>
                   )}
                   <p className="mt-2 text-xs font-semibold text-indigo-900">
-                    Fica na empresa para despesas futuras:{" "}
+                    {ler(retiradas[socio.id] || "0") > 0
+                      ? "Previsão após efetivar a retirada: "
+                      : "Fica na empresa para despesas futuras: "}
                     {brl(conta?.ficouNaEmpresa || 0)}
                   </p>
                 </div>
