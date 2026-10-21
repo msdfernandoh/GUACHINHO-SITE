@@ -1,5 +1,12 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
+### Identificação de Luiz na proposta (21/10/2026)
+Proposta LUIZ localizada e vinculada ao cliente/participante Fernando, com nome
+completo confirmado pelo titular. Contratação já existente permanece pendente
+de documento e e-mail, sem formalizar venda ou inventar dados. Composição solicitada
+de R$ 1,1 milhão ainda depende de atualização canônica da simulação/contratação.
+Relatório: `docs/relatorios-fases/LUIZ-IDENTIFICACAO-PENDENCIAS-2026-10-21.md`.
+
 ### Acompanhamento de comissões atrasadas e projeto de inadimplência (21/10/2026)
 As três quartas parcelas SNP de outubro, R$ 983,45 brutos previstos, receberam
 marca operacional em snapshot_regra.acompanhamento_inadimplencia, propagada às

@@ -1,0 +1,6 @@
+# Identificação de Luiz na proposta — 21/10/2026
+Localizada proposta 422d7143-dcf6-44de-a22e-6184b5a6626d, nome LUIZ, lead com grafia FRIGONESE e telefone 66999850386, contratação cf24fa5d-df59-4832-aa32-63e388147496 e cliente vinculado 84385663-4165-47cf-af14-dd7af49a013c. A contratação já foi iniciada pelo titular, mas permanece com DOCUMENTO_OBRIGATORIO_AUSENTE. Não há venda confirmada desta contratação.
+
+Autorização atual identifica o cliente como Luiz Carlos Fregonese Filho e vendedor Fernando. Atualizados nome e participante no cliente vinculado, proposta e contratação, em transação, tenant explícito. Preservados telefone e dados de simulação. O cadastro mínimo separado criado anteriormente não foi excluído ou fundido automaticamente, pois não tinha documento; deve ser reconciliado após confirmação cadastral.
+
+CPF, e-mail, endereço e nascimento inexistentes nas fontes pesquisadas. Necessário solicitar ao titular, sem inventar dados. Configuração comercial solicitada: três cotas 200 mil e duas 250 mil no grupo 1553, total 1,1 milhão, opção comercial 60% com cálculo efetivo 70% do grupo preservado. A proposta atual ainda tem cinco cotas de 200 mil (1 milhão); alteração quantitativa/financeira e confirmação da venda ainda pendentes, não concluídas por esta fase.
