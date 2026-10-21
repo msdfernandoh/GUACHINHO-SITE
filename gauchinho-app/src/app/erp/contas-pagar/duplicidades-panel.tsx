@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { consultarContasDuplicadas, decidirContaDuplicada } from "./duplicidades-actions";
 
@@ -10,7 +10,7 @@ const data = (v: string | null) => v ? v.split("-").reverse().join("/") : "—";
 
 export function DuplicidadesPanel({ onDecisao }: { onDecisao: () => void }) {
   const router = useRouter();
-  const [aberto, setAberto] = useState(false);
+  const [aberto, setAberto] = useState(true);
   const [resultado, setResultado] = useState<Resultado | null>(null);
   const [incluirConferidas, setIncluirConferidas] = useState(false);
   const [mensagem, setMensagem] = useState("");
@@ -18,6 +18,15 @@ export function DuplicidadesPanel({ onDecisao }: { onDecisao: () => void }) {
   const [pendente, iniciar] = useTransition();
   const [exclusao, setExclusao] = useState<{ contaId: string; revisao: string; descricao: string; paga: boolean } | null>(null);
   const [motivo, setMotivo] = useState("");
+  useEffect(() => {
+    let ativo = true;
+    consultarContasDuplicadas().then((dados) => {
+      if (ativo) setResultado(dados);
+    }).catch((e) => {
+      if (ativo) setErro(e instanceof Error ? e.message : "Não foi possível analisar as contas.");
+    });
+    return () => { ativo = false; };
+  }, []);
 
   function analisar(pagina = 1, conferir = incluirConferidas) {
     setAberto(true); setErro(""); setMensagem("");
@@ -42,11 +51,11 @@ export function DuplicidadesPanel({ onDecisao }: { onDecisao: () => void }) {
   return <section id="possiveis-repetidas" className="scroll-mt-24 rounded-2xl border border-amber-200 bg-white p-5 shadow-sm" aria-busy={pendente}>
     <div className="flex flex-wrap items-center justify-between gap-3">
       <div><h2 className="text-lg font-black text-slate-950">Possíveis contas repetidas</h2>
-        <p className="mt-1 text-sm text-slate-600">Mesmo fornecedor, mesmo valor e mesmo mês de ocorrência. Nenhuma conta é excluída automaticamente.</p></div>
+        <p className="mt-1 text-sm text-slate-600">Mesmo valor, fornecedor ou descrição relacionada e mesmo mês de ocorrência ou pagamento. Nenhuma conta é excluída automaticamente.</p></div>
       <button type="button" disabled={pendente} onClick={() => analisar()} className="rounded-xl bg-amber-400 px-4 py-2 text-sm font-black text-slate-950 disabled:opacity-50">{pendente ? "Analisando…" : "Analisar contas"}</button>
     </div>
     {aberto && <div className="mt-4 space-y-4">
-      <p className="text-xs text-slate-600">Mês de ocorrência = competência da conta; na ausência dela, mês do vencimento. A análise inclui contas abertas e pagas de todo o histórico, além da página atual. Contas canceladas ou sem fornecedor ficam fora.</p>
+      <p className="text-xs text-slate-600">A checagem cruza competência/vencimento e mês do pagamento, inclusive com fornecedores diferentes quando há descrição ou nome em comum. Competências diferentes podem representar pagamentos legítimos: confira antes de excluir. Inclui contas abertas e pagas de todo o histórico.</p>
       <div className="flex flex-wrap items-center gap-4">
         <label className="text-sm text-slate-700"><input type="checkbox" checked={incluirConferidas} disabled={pendente} onChange={(e) => { setIncluirConferidas(e.target.checked); analisar(1, e.target.checked); }} className="mr-2"/>Mostrar grupos já conferidos</label>
         <button type="button" disabled={pendente} onClick={() => setAberto(false)} className="text-sm font-bold text-slate-600 underline">Recolher</button>
@@ -58,9 +67,10 @@ export function DuplicidadesPanel({ onDecisao }: { onDecisao: () => void }) {
         {!resultado.totalGrupos && <p className="rounded-xl bg-slate-50 p-4 text-sm text-slate-600">Nenhum grupo {incluirConferidas ? "de possíveis contas repetidas" : "pendente de checagem"} encontrado.</p>}
         {resultado.grupos.map((g) => <article key={g.revisao} className="overflow-hidden rounded-xl border border-slate-200">
           <h3 className="bg-amber-50 px-4 py-3 font-bold text-slate-950">{g.fornecedor} · {g.mes.split("-").reverse().join("/")} · {brl(g.valor)} por conta · {g.contas.length} ocorrências</h3>
+          <p className="px-4 py-2 text-sm font-semibold text-red-700">{g.motivos.join(" ")}</p>
           <div className="overflow-x-auto"><table className="w-full min-w-[740px] text-left text-sm"><thead className="bg-slate-50 text-xs text-slate-600"><tr><th className="p-3">Conta / descrição</th><th className="p-3">Vencimento</th><th className="p-3">Situação</th><th className="p-3">Valor</th><th className="p-3">Decisão</th></tr></thead>
             <tbody>{g.contas.map((c) => <tr key={c.id} className="border-t border-slate-100 text-slate-800">
-              <td className="p-3"><p className="font-bold">{c.descricao}</p><p className="text-xs text-slate-500">{c.id}</p>{c.observacao && <p className="max-w-sm text-xs text-slate-600">{c.observacao}</p>}</td>
+              <td className="p-3"><p className="font-bold">{c.descricao}</p><p className="text-xs">Fornecedor: {c.fornecedor} · Competência: {c.competencia || "não informada"}</p><p className="text-xs text-slate-500">{c.id}</p>{c.observacao && <p className="max-w-sm text-xs text-slate-600">{c.observacao}</p>}</td>
               <td className="p-3">{data(c.vencimento)}</td><td className="p-3">{c.status === "paga" ? `Paga em ${data(c.pago_em)}` : "Aberta"}{c.pago_pessoalmente && <p className="text-xs">Paga pessoalmente por sócio</p>}</td><td className="p-3 font-bold">{brl(c.valor)}</td>
               <td className="p-3"><div className="flex gap-2"><button disabled={pendente || c.mantida} type="button" onClick={() => decidir(c.id, g.revisao, "manter")} className="rounded-lg border border-emerald-300 px-3 py-2 font-bold text-emerald-800 disabled:opacity-50">{c.mantida ? "Mantida ✓" : "Manter"}</button>
               <button disabled={pendente} type="button" onClick={() => { setExclusao({ contaId: c.id, revisao: g.revisao, descricao: c.descricao, paga: c.status === "paga" }); setMotivo(""); setErro(""); }} className="rounded-lg border border-rose-300 px-3 py-2 font-bold text-rose-800 disabled:opacity-50">Excluir</button></div></td>

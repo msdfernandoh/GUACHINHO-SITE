@@ -1,5 +1,15 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
+### Duplicidades por descrição e pagamento no fechamento (21/10/2026)
+Checagem de contas preserva fornecedor/valor/competência e acrescenta valor com
+descrição ou nome significativo em comum, na mesma competência ou mês de
+pagamento. Detecta fornecedores diferentes e pagamentos com competências
+distintas, que são indícios sujeitos a conferência. Serviço paginado por empresa
+é compartilhado entre Contas a pagar e Fechamento dos sócios, incluindo decisões
+de manter por snapshot. Lista carrega automaticamente; fechamento exibe alerta e
+linhas suspeitas em vermelho, sem excluir despesas ou alterar saldo por suposição.
+Relatório: `docs/relatorios-fases/DUPLICIDADES-DESCRICAO-PAGAMENTO-2026-10-21.md`.
+
 ### Conferência das baixas de impostos (21/10/2026)
 Auditoria somente leitura confirmou duas guias pagas em 24/09, R$ 4.928,84 e
 R$ 4.751,41, ambas com saída de caixa, débito único no Gauchinho Empresa e

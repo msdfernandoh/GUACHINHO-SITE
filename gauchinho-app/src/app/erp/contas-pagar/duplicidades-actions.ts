@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireErpRouteAccess } from "@/lib/erp/erp-acesso-server";
 import { requireTenantPermission } from "@/lib/tenant/context";
-import { agruparContasPossivelmenteDuplicadas, type ContaParaChecagem, type DecisaoDuplicidade } from "@/lib/financeiro/contas-duplicadas";
+import { carregarDuplicidadesEmpresa } from "@/lib/financeiro/contas-duplicadas-server";
 import { excluirConta } from "./actions";
 
 async function contexto() {
@@ -18,29 +18,7 @@ async function contexto() {
 // Consulta sob demanda no servidor, em lotes: nunca depende da página corrente da lista normal.
 async function analisar() {
   const ctx = await contexto();
-  const contas: ContaParaChecagem[] = [];
-  const decisoes: DecisaoDuplicidade[] = [];
-  const lote = 500;
-  for (let inicio = 0; ; inicio += lote) {
-    const { data, error } = await ctx.session.from("financeiro_contas_pagar")
-      .select("id,descricao,fornecedor,valor,competencia,vencimento,status,pago_em,pago_pessoalmente,observacao")
-      .eq("empresa_id", ctx.empresaId).is("excluida_em", null).in("status", ["aberta", "paga"])
-      .order("id").range(inicio, inicio + lote - 1);
-    if (error) throw new Error(error.message);
-    contas.push(...(data || []).map((c) => ({ ...c, valor: Number(c.valor) })));
-    if ((data || []).length < lote) break;
-    if (inicio >= 100000) throw new Error("Volume excede a análise desta tela. Nenhum resultado parcial foi apresentado.");
-  }
-  for (let inicio = 0; ; inicio += lote) {
-    const { data, error } = await ctx.session.from("financeiro_contas_pagar_logs").select("conta_id,detalhes")
-      .eq("empresa_id", ctx.empresaId).eq("acao", "ALTERACAO")
-      .contains("detalhes", { tipo: "CONFERENCIA_DUPLICIDADE_MANTER" }).order("id").range(inicio, inicio + lote - 1);
-    if (error) throw new Error(error.message);
-    decisoes.push(...(data || []));
-    if ((data || []).length < lote) break;
-    if (inicio >= 100000) throw new Error("Histórico excede a análise desta tela; tente novamente após revisão técnica.");
-  }
-  return { ...ctx, grupos: agruparContasPossivelmenteDuplicadas(contas, decisoes), totalAnalisadas: contas.length };
+  return { ...ctx, ...await carregarDuplicidadesEmpresa(ctx.session, ctx.empresaId) };
 }
 
 export async function consultarContasDuplicadas(pagina = 1, incluirConferidas = false) {
@@ -74,6 +52,7 @@ export async function decidirContaDuplicada(input: { contaId: string; revisao: s
     });
     if (error) throw new Error(error.message);
     revalidatePath("/erp/contas-pagar");
+    revalidatePath("/erp/fechamento-socios");
     return { ok: true, message: "Conta mantida e conferência registrada no histórico." };
   } catch (error) {
     return { ok: false, message: error instanceof Error ? error.message : "Não foi possível registrar a decisão." };

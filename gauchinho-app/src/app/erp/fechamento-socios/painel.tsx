@@ -57,11 +57,13 @@ function TabelaContas({
   vazio,
   centros = [],
   bancos = [],
+  duplicadasIds = [],
 }: {
   itens: ContaResumo[];
   vazio: string;
   centros?: PainelFechamento["centrosCusto"];
   bancos?: PainelFechamento["contasEmpresa"];
+  duplicadasIds?: string[];
 }) {
   const router = useRouter();
   const [editando, setEditando] = useState<ContaResumo | null>(null);
@@ -132,18 +134,19 @@ function TabelaContas({
           </thead>
           <tbody>
             {filtrados.map((item) => (
-              <tr key={item.id} className="border-t border-slate-100">
+              <tr key={item.id} className={duplicadasIds.includes(item.id) ? "border-t border-red-200 bg-red-50 text-red-800" : "border-t border-slate-100"}>
                 <td className="px-3 py-2 whitespace-nowrap">
                   {item.pagoEm.split("-").reverse().join("/")}
                 </td>
-                <td className="px-3 py-2 font-bold text-slate-950">
+                <td className={`px-3 py-2 font-bold ${duplicadasIds.includes(item.id) ? "text-red-800" : "text-slate-950"}`}>
                   {item.descricao}
+                  {duplicadasIds.includes(item.id) && <a href="/erp/contas-pagar#possiveis-repetidas" className="mt-1 block text-xs font-bold text-red-700 underline">Possível duplicidade — conferir</a>}
                 </td>
                 <td className="px-3 py-2 text-slate-600">
                   {item.fornecedor || "Não informado"}
                 </td>
                 <td className="px-3 py-2">{item.centroNome}</td>
-                <td className="px-3 py-2 text-right font-black text-slate-950">
+                <td className={`px-3 py-2 text-right font-black ${duplicadasIds.includes(item.id) ? "text-red-800" : "text-slate-950"}`}>
                   {brl(item.valor)}
                 </td>
                 <td className="px-3 py-2 text-right whitespace-nowrap">
@@ -732,6 +735,11 @@ export function PainelFechamentoSocios({
         </div>
       </header>
 
+      {!!dados.duplicidades?.grupos && <aside role="alert" className="rounded-2xl border-2 border-red-400 bg-red-50 p-5 text-red-800">
+        <p className="font-black">Possíveis contas duplicadas: {dados.duplicidades.grupos} grupo(s) para conferir</p>
+        <p className="mt-1 text-sm">Os lançamentos suspeitos aparecem em vermelho. Os valores continuam no cálculo até a decisão de manter ou excluir.</p>
+        <a href="/erp/contas-pagar#possiveis-repetidas" className="mt-2 inline-block font-bold underline">Conferir em Contas a pagar</a>
+      </aside>}
       <section className="rounded-3xl border border-indigo-200 bg-white p-6 shadow-sm">
         <h2 className="text-xl font-black text-slate-950">Posição da empresa e dos sócios</h2>
         <p className="mt-2 text-sm text-slate-600">Toda comissão vinculada a repasse recebido entra como crédito do sócio, conferida ou não. O dinheiro permanece na empresa até a transferência efetiva.</p>
@@ -885,6 +893,7 @@ export function PainelFechamentoSocios({
               vazio="Nenhuma conta nesta seleção."
               centros={dados.centrosCusto}
               bancos={dados.contasEmpresa}
+              duplicadasIds={dados.duplicidades?.contasIds}
             />
           )}
           {resumoAberto === "impostos" && (
@@ -896,6 +905,7 @@ export function PainelFechamentoSocios({
               vazio="Nenhum imposto pago neste período."
               centros={dados.centrosCusto}
               bancos={dados.contasEmpresa}
+              duplicadasIds={dados.duplicidades?.contasIds}
             />
           )}
           {resumoAberto === "repasses" && (
@@ -1116,6 +1126,7 @@ export function PainelFechamentoSocios({
                               vazio="Nenhuma conta nesta seleção."
                               centros={dados.centrosCusto}
                               bancos={dados.contasEmpresa}
+                              duplicadasIds={dados.duplicidades?.contasIds}
                             />
                             {itens.some((item) => !item.centroId) && (
                               <p className="mt-3 text-xs font-bold text-amber-800">

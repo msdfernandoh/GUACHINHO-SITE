@@ -10,11 +10,13 @@ import { calcularFechamentoSocios, type FechamentoCalculado } from "@/lib/gestao
 import { calcularComissaoRecebida, calcularTransferenciasSocio } from "@/lib/gestao/comissao-recebida-socio";
 import { lerFiscalParticipante } from "@/lib/erp/comissoes-fiscal-extrato";
 import { obterHojeCuiaba } from "@/lib/erp/conta-corrente-periodos";
+import { carregarDuplicidadesEmpresa } from "@/lib/financeiro/contas-duplicadas-server";
 
 const numero = (valor: unknown) => Number(valor || 0);
 const arredondar = (valor: number) => Math.round(valor * 100) / 100;
 
 export type PainelFechamento = {
+  duplicidades?: { contasIds: string[]; grupos: number };
   inicio: string;
   hoje: string;
   despesasPagas: number;
@@ -49,7 +51,7 @@ async function lerPainel(): Promise<PainelFechamento> {
   const admin = createAdminClient();
   const [sociosRes, contasRes, centrosRes, pagamentosRes, participantesRes, recebimentosRes,
     movimentosRes, bancosRes, saldosRes, cortesRes, dadosSocios, ledgerRes, recebimentoItensRes,
-    previsoesFranquiaRes, previsoesParticipantesRes, vendasRes, metasRes] = await Promise.all([
+    previsoesFranquiaRes, previsoesParticipantesRes, vendasRes, metasRes, duplicidades] = await Promise.all([
     admin.from("empresa_socios").select("id,usuario_id,nome,percentual_participacao,ativo").eq("empresa_id", empresaAtiva.id).eq("ativo", true),
     admin.from("financeiro_contas_pagar").select("id,descricao,fornecedor,valor,status,pago_em,vencimento,pago_pessoalmente,socio_pagador_usuario_id,observacao,retirar_reserva_impostos,centro_custo_id,conta_bancaria_id,caixa_movimento_id,comprovante_url,nota_fiscal_nome,excluida_em").eq("empresa_id", empresaAtiva.id).is("excluida_em", null),
     admin.from("financeiro_centros_custo").select("id,nome,descontado_comissao,limite_mensal").eq("empresa_id", empresaAtiva.id),
@@ -67,6 +69,7 @@ async function lerPainel(): Promise<PainelFechamento> {
     admin.from("comissao_previsoes_participantes").select("id,venda_id,previsao_franquia_id,participante_comercial_id,competencia,nome_etapa,valor_previsto,valor_pago,status,snapshot_regra").eq("empresa_id", empresaAtiva.id).neq("status", "cancelada"),
     admin.from("vendas").select("id,participante_comercial_id,cliente_nome,valor_credito,status,data_venda").eq("empresa_id", empresaAtiva.id),
     admin.from("metas_comerciais").select("indicador,valor_meta,data_inicio,data_fim").eq("empresa_id", empresaAtiva.id).eq("alvo_tipo", "empresa"),
+    carregarDuplicidadesEmpresa(admin, empresaAtiva.id),
   ]);
   const erro = [sociosRes, contasRes, centrosRes, pagamentosRes, participantesRes,
     recebimentosRes, movimentosRes, bancosRes, saldosRes, cortesRes, ledgerRes, recebimentoItensRes,
@@ -295,6 +298,10 @@ async function lerPainel(): Promise<PainelFechamento> {
     despesasEmpresaSemSaida: totalSemSaida,
     quantidadeDespesasSemSaida: despesasEmpresaSemSaida.length,
     saldoAposDespesasPendentes: arredondar(saldoSistemaBanco - totalSemSaida),
+    duplicidades: {
+      grupos: duplicidades.grupos.filter((g) => g.contas.some((c) => !c.mantida)).length,
+      contasIds: [...new Set(duplicidades.grupos.flatMap((g) => g.contas.filter((c) => !c.mantida).map((c) => c.id)))],
+    },
     impostosPagos: arredondar(contasPeriodo.filter((c) => c.retirar_reserva_impostos).reduce((soma, c) => soma + numero(c.valor), 0)),
     impostosPagosDetalhes,
     reservaImpostos: dadosSocios.reservaImpostosControle.saldoReserva,
