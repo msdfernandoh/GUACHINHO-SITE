@@ -80,6 +80,11 @@ export function extrairDadosBoletoTexto(rawText) {
   return { qrCodePix, linhaDigitavel, vencimento, valor }
 }
 
+export function normalizarNumeroPortal(valor, tamanho) {
+  const numero = String(valor || '').match(/\d+/)?.[0]
+  return numero ? numero.padStart(tamanho, '0') : ''
+}
+
 /**
  * Funcao principal de execucao do Robo de Boletos
  */
@@ -182,6 +187,13 @@ export async function executarRoboBoletos({
     }
   }
 
+  const cotasAlvo = config.configuracao_tarefas?.cotas_alvo_ids
+  if (Array.isArray(cotasAlvo)) {
+    // Escopo explícito: lista vazia não deve executar a carteira inteira.
+    const permitidas = new Set(cotasAlvo)
+    listaCotas = listaCotas.filter((cota) => permitidas.has(cota.cota_definitiva_id))
+  }
+
   log(`Total de cotas localizadas para download de boletos: ${listaCotas.length}`)
 
   if (listaCotas.length === 0) {
@@ -250,13 +262,13 @@ export async function executarRoboBoletos({
       // Preenche Grupo
       const inputGrupo = page.locator('input[name*="txtST_Grupo"], input[id*="txtST_Grupo"], input[name*="Grupo"]').first()
       await inputGrupo.waitFor({ state: 'visible', timeout: 10_000 })
-      await inputGrupo.fill(item.numero_grupo)
+      await inputGrupo.fill(normalizarNumeroPortal(item.numero_grupo, 6))
       await page.waitForTimeout(400)
 
       // Preenche Cota
       const inputCota = page.locator('input[name*="txtST_Cota"], input[id*="txtST_Cota"], input[name*="Cota"]').first()
       await inputCota.waitFor({ state: 'visible', timeout: 8_000 })
-      await inputCota.fill(item.numero_cota)
+      await inputCota.fill(normalizarNumeroPortal(item.numero_cota, 4))
       await page.waitForTimeout(400)
 
       // Clica em [Localizar]
@@ -265,6 +277,10 @@ export async function executarRoboBoletos({
       await btnLocalizar.click()
       await page.waitForLoadState('domcontentloaded').catch(() => {})
       await page.waitForTimeout(3000)
+
+      if (await page.getByText('Consorciado inválido.', { exact: true }).isVisible().catch(() => false)) {
+        throw new Error('Portal retornou Consorciado inválido para o grupo/cota informado; situação financeira não comprovada.')
+      }
 
       // Verifica se abriu a tela de atendimento ou se houve resultado
       const telaAtendimentoCarregada = page.url().includes('frmConAtCnsAtendimento') ||
@@ -288,7 +304,7 @@ export async function executarRoboBoletos({
 
       // 5. Clica em "Emissão de Cobrança" no menu lateral Operações
       log('Localizando e clicando em "Emissão de Cobrança" no menu Operações...')
-      const linkEmissao = page.locator('a:has-text("Emissão de Cobrança"), a[href*="frmConCoRelBoletoAvulso"]').first()
+      const linkEmissao = page.locator('a:has-text("Emissão de Cobrança"):visible, a[href*="frmConCoRelBoletoAvulso"]:visible').first()
       await linkEmissao.waitFor({ state: 'visible', timeout: 15_000 })
       await linkEmissao.click()
 

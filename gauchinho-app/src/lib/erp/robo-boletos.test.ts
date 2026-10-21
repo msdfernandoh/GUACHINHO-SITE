@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { extrairDadosBoletoTexto } from "../../../../scripts/robo-boletos-service.mjs";
+import { extrairDadosBoletoTexto, normalizarNumeroPortal } from "../../../../scripts/robo-boletos-service.mjs";
 
 describe("Robô de Boletos - Extração de Dados e Chave Pix", () => {
   it("deve extrair chave Pix Copia e Cola no padrão EMV QRCode", () => {
@@ -46,4 +46,11 @@ describe("Robô de Boletos - Extração de Dados e Chave Pix", () => {
     expect(dados.vencimento).toBe("2026-12-10");
     expect(dados.valor).toBe(1250.5);
   });
+});
+
+it("envia somente o código numérico do grupo ao portal sem truncar o sufixo no campo", () => {
+  expect(normalizarNumeroPortal("5288 VEÍCULO", 6)).toBe("005288");
+  expect(normalizarNumeroPortal("005288", 6)).toBe("005288");
+  expect(normalizarNumeroPortal("67", 4)).toBe("0067");
+  expect(normalizarNumeroPortal("sem código", 6)).toBe("");
 });

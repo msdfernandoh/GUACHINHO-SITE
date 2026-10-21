@@ -175,13 +175,13 @@ export function RepassePdfConciliacao({
   const [attentionState, attentionAction, resolvingAttention] = useActionState(resolverAtencaoRepasseAction, initialState);
   const [alreadyPaidState, alreadyPaidAction, resolvingAlreadyPaid] = useActionState(resolverTituloJaBaixadoAction, initialState);
   const [importacaoSelecionadaId, setImportacaoSelecionadaId] = useState(importacoes[0]?.id ?? "");
-  const [mostrarVinculados, setMostrarVinculados] = useState(false);
+  const [mostrarVinculados, setMostrarVinculados] = useState(true);
   const [buscaTitulo, setBuscaTitulo] = useState("");
   const [abaAtencao, setAbaAtencao] = useState<"SEM_VINCULO" | "SISTEMA_AUSENTE" | "DIVERGENTES">("SEM_VINCULO");
   const abrirImportacao = useCallback((id: string) => {
     if (!importacoes.some((item) => item.id === id)) return;
     setImportacaoSelecionadaId(id);
-    setMostrarVinculados(false);
+    setMostrarVinculados(true);
     window.requestAnimationFrame(() => {
       document.getElementById("conferencia-relatorio-repasse")?.scrollIntoView({ behavior: "smooth", block: "start" });
     });
@@ -365,7 +365,7 @@ export function RepassePdfConciliacao({
             <span className="mt-1 block font-normal text-slate-500">{previsoesPesquisadas.length} título(s) encontrado(s). A busca filtra os seletores abaixo.</span>
           </label>
 
-          {mostrarVinculados && <LinkedItemsTable items={vinculados} previsoes={previsoesPesquisadas.filter((p) => p.administradora_id === atual.administradora_id)} action={linkAction} disabled={linking} />}
+          {mostrarVinculados && <LinkedItemsTable items={vinculados} resolucoes={resolucoes} previsoes={previsoesPesquisadas.filter((p) => p.administradora_id === atual.administradora_id)} action={linkAction} disabled={linking} />}
           <div className="rounded-xl border bg-white p-3 text-xs dark:border-slate-800 dark:bg-slate-900">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div><p className="font-bold">{atual.arquivo_nome} · {atual.competencia} · {atual.comissionado_nome || "Comissionado não identificado"}</p>
@@ -442,16 +442,26 @@ function ReconciliationTable({ title, items, previsoes, action, disabled, legacy
   return <div className="overflow-hidden rounded-xl border bg-white dark:border-slate-800 dark:bg-slate-900"><h3 className="border-b p-3 text-sm font-bold">{title} ({items.length})</h3><div className="overflow-x-auto"><table className="w-full text-xs"><thead className="bg-slate-50 text-left"><tr><th className="p-2">Linha</th><th>Cliente</th><th>Grupo / Cota</th><th>Parcela</th><th>Comissão</th><th>Atenção</th><th className="min-w-80">Vínculo manual</th></tr></thead><tbody className="divide-y">{items.map((item) => <tr key={item.id}><td className="p-2">{item.linha}</td><td className="font-bold">{item.cliente_nome}</td><td>{item.numero_grupo} / {item.numero_cota}</td><td>{item.parcela_numero}/{item.parcela_total}</td><td className="font-mono">{money(Number(item.valor_comissao))}</td><td><span className={`rounded-full px-2 py-1 text-[10px] font-bold ${statusStyle[item.status_conciliacao]}`}>{item.status_conciliacao}</span><p className="mt-1 max-w-56 text-[10px] text-amber-700">{item.alertas.join(" · ")}</p></td><td className="space-y-2"><form action={action} className="flex items-end gap-2"><input type="hidden" name="item_id" value={item.id}/><SearchablePrevisaoSelect item={item} previsoes={previsoes} defaultValue={item.previsao_sugerida_id ?? ""}/><button disabled={disabled} className="rounded-lg bg-slate-900 px-3 py-1.5 font-bold text-white">Vincular</button></form>{legacyAction && <MissingRegistrationForm item={item} action={legacyAction} disabled={Boolean(legacyDisabled)} participantes={participantes} regras={regras} grupos={grupos} />}</td></tr>)}</tbody></table></div></div>;
 }
 
-function LinkedItemsTable({ items, previsoes, action, disabled }: { items: RepassePdfItem[]; previsoes: RepassePrevisaoAberta[]; action: (payload: FormData) => void; disabled: boolean }) {
+function LinkedItemsTable({ items, resolucoes, previsoes, action, disabled }: { items: RepassePdfItem[]; resolucoes: RepasseAtencaoResolucao[]; previsoes: RepassePrevisaoAberta[]; action: (payload: FormData) => void; disabled: boolean }) {
   return <div className="overflow-hidden rounded-xl border border-blue-200 bg-white dark:border-blue-900 dark:bg-slate-900">
     <h3 className="border-b p-3 text-sm font-bold text-blue-800">Vínculos do relatório ({items.length})</h3>
     {!items.length ? <p className="p-4 text-xs text-slate-500">Nenhuma linha vinculada neste relatório.</p> : <div className="overflow-x-auto"><table className="w-full text-xs"><thead className="bg-slate-50 text-left"><tr><th className="p-2">Linha</th><th>Cliente</th><th>Grupo / Cota</th><th>Parcela</th><th className="text-right">Valor do relatório</th><th className="text-right">Valor vinculado</th><th className="min-w-96 pl-3">Conferir ou alterar vínculo</th></tr></thead><tbody className="divide-y">{items.map((item) => {
+      const ajuste = resolucoes.find((resolucao) => resolucao.item_importacao_id === item.id
+        && resolucao.decisao === "AJUSTAR_DIFERENCA"
+        && Math.abs(Number(resolucao.valor_diferenca)) >= 0.01);
       const current = item.previsao;
       const valorVinculado = Number(item.valor_vinculado ?? 0);
       const options = current && item.previsao_franquia_id && !previsoes.some((p) => p.id === item.previsao_franquia_id)
         ? [{ id: item.previsao_franquia_id, administradora_id: "", competencia: current.competencia, ordem_etapa: current.ordem_etapa, nome_etapa: current.nome_etapa, valor_previsto: current.valor_previsto, valor_liquidado: current.valor_liquidado, numero_grupo: item.numero_grupo, numero_cota: item.numero_cota, ordem_cota: null, cliente_nome: item.cliente_nome, cota_definitiva_id: null, status: "liquidada" }, ...previsoes]
         : previsoes;
-      return <tr key={item.id}><td className="p-2">{item.linha}</td><td className="font-bold">{item.cliente_nome}</td><td>{item.numero_grupo} / {item.numero_cota}</td><td>{item.parcela_numero}/{item.parcela_total}</td><td className="text-right font-mono">{money(Number(item.valor_comissao))}</td><td className="text-right font-mono font-bold text-blue-700">{money(valorVinculado)}</td><td className="pl-3"><form action={action} className="flex items-end gap-2"><input type="hidden" name="item_id" value={item.id}/><SearchablePrevisaoSelect item={item} previsoes={options} defaultValue={item.previsao_franquia_id ?? ""}/><button disabled={disabled} className="rounded-lg bg-blue-700 px-3 py-1.5 font-bold text-white disabled:opacity-50">Salvar alteração</button></form></td></tr>;
+      return <tr key={item.id}><td className="p-2">{item.linha}</td><td className="font-bold">{item.cliente_nome}
+        {ajuste && <p className="mt-1 max-w-72 text-xs font-semibold text-red-700 dark:text-red-400">
+          Diferença para consulta: {money(Math.abs(Number(ajuste.valor_diferenca)))} {Number(ajuste.valor_relatorio) > Number(ajuste.valor_sistema) ? "a maior" : "a menor"} no relatório.
+          <span className="block">Previsão anterior: {money(Number(ajuste.valor_sistema))} · Relatório: {money(Number(ajuste.valor_relatorio))}.</span>
+          <span className="block">Valor ajustado conforme relatório; diferença preservada no histórico.</span>
+        </p>}
+        {valorVinculado + 0.01 < Number(item.valor_comissao) && <p className="mt-1 max-w-72 text-xs font-semibold text-red-700 dark:text-red-400">Vínculo salvo. Baixa pendente de {money(Number(item.valor_comissao) - valorVinculado)} por limite do saldo recebido.</p>}
+      </td><td>{item.numero_grupo} / {item.numero_cota}</td><td>{item.parcela_numero}/{item.parcela_total}</td><td className="text-right font-mono">{money(Number(item.valor_comissao))}</td><td className="text-right font-mono font-bold text-blue-700">{money(valorVinculado)}</td><td className="pl-3"><form action={action} className="flex items-end gap-2"><input type="hidden" name="item_id" value={item.id}/><SearchablePrevisaoSelect item={item} previsoes={options} defaultValue={item.previsao_franquia_id ?? ""}/><button disabled={disabled} className="rounded-lg bg-blue-700 px-3 py-1.5 font-bold text-white disabled:opacity-50">Salvar alteração</button></form></td></tr>;
     })}</tbody></table></div>}
   </div>;
 }

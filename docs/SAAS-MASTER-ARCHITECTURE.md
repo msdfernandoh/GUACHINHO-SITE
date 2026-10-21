@@ -1,5 +1,20 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
+### Ajustes de repasse com diferença histórica e consulta SNP (21/10/2026)
+Por autorização do titular, Orlei/Ramon/Ivani vinculados e liquidados em R$ 1.332,60
+cada; Franciomar em R$ 318,00. Quatro decisões append-only preservam comparação
+anterior/relatório, exibida em vermelho abaixo do lançamento na tabela de vínculos.
+Migration 326 preserva razão de rateio original entre sincronizações e atualiza
+previsão/elegibilidade juntas, evitando deriva de um centavo e violação de saldo.
+Aplicada em transação com as quatro baixas, após testes sob rollback e repetição;
+movimentos bancários, pagamentos e comissões já pagas preservados por hashes.
+Luiz Carlos: cadastro mínimo criado; cotas/comissões ainda dependem de responsável
+comercial e regra/valor de comissão, ausentes nas fontes pesquisadas.
+Consulta pontual SNP restrita às cotas 1176/1552/1617: portal mostra atraso de
+uma parcela de R$ 799,54 por cota. Download de boleto não concluído por falha de
+menu; capturas de atendimento comprovam situação ATRASO, sem presumir quitação.
+Relatório: `docs/relatorios-fases/AJUSTES-REPASSE-E-CONSULTA-SNP-2026-10-21.md`.
+
 ### Auditoria somente leitura de repasses, lotes e comissões (21/10/2026)
 Confrontados oito lotes, cem linhas, 318 previsões da franquia, 315 dos
 participantes, cotas e livro de recebimentos, com empresa explícita e paginação.
