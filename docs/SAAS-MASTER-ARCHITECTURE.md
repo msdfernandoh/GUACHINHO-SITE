@@ -1,5 +1,16 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
+### Lista autorizada de fixas em Contas a pagar e Metas (21/10/2026)
+Criadas 14 contas abertas de outubro/novembro: aluguel, zeladora, piscineiro,
+energia, internet, outros R$ 800 e contador OST R$ 488,30, usando último cadastro.
+Parcelas existentes reutilizadas. Cada mês soma dez itens/R$ 8.461,31 em contas
+e no orçamento canônico financeiro_previsoes_orcamento, sem duplicar obrigação.
+Metas exibe seção mensal de orçamento através de endpoint paginado por tenant,
+com permissão financeira e cache privado. Metas comerciais preservadas.
+Água, condomínio e duas linhas de telefone identificados e apenas sugeridos para
+confirmação, sem novos lançamentos. Caixa e contas anteriores preservados.
+Relatório: `docs/relatorios-fases/LISTA-FIXAS-CONTAS-E-METAS-2026-10-21.md`.
+
 ### Exclusão autorizada das recorrências abertas (21/10/2026)
 Após autorização do titular para todos os meses, excluídas logicamente 27 contas
 abertas de salário, energia, piscineiro, internet, eventos, limpeza/despesas

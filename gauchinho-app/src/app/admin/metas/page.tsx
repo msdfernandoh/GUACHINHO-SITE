@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import type { MetaCommercialRow } from "@/lib/gestao/metas-service";
+import { MetasOrcamento } from "@/components/erp/metas-orcamento";
 
 export default function AdminMetasPage() {
   const [metas, setMetas] = useState<MetaCommercialRow[]>([]);
@@ -72,6 +73,7 @@ export default function AdminMetasPage() {
         <p className="text-slate-500 mt-1">Configuração de objetivos por empresa, equipe, participante ou parceiro com apuração dinâmica.</p>
       </div>
 
+      <MetasOrcamento />
       {/* FORM NOVA META */}
       <form onSubmit={handleCreate} className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-4">
         <h2 className="text-lg font-semibold text-slate-900">Nova Meta Comercial</h2>
