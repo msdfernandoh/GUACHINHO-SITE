@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { DuplicidadesPanel } from "./duplicidades-panel";
 import {
   AlertCircle,
   Banknote,
@@ -632,6 +633,8 @@ export function ContasPagarClient({
           )}
         </div>
       </header>
+
+      <DuplicidadesPanel onDecisao={() => setRefreshKey((atual) => atual + 1)} />
 
       <section className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-blue-200 bg-blue-50/60 px-4 py-3 shadow-sm">
         <div>

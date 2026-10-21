@@ -1,5 +1,22 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
+### Checagem de contas possivelmente repetidas (20/10/2026)
+Contas a Pagar oferece análise sob demanda de mesmo fornecedor normalizado,
+valor em centavos e mês de competência (fallback vencimento), incluindo abertas
+e pagas. Lista paginada permite manter com auditoria ou excluir mediante motivo
+pela action/RPC canônica, sem excluir automaticamente ou contornar lacres.
+Conferências Manter reutilizam financeiro_contas_pagar_logs, ação ALTERACAO e
+tipo CONFERENCIA_DUPLICIDADE_MANTER; assinatura do grupo exige nova checagem
+quando dados/membros mudam. Nenhuma migration ou alteração de schema.
+Leituras tenant-aware no servidor em lotes de 500; dez grupos por página, sem
+carregar histórico no primeiro render nem depender da paginação da lista normal.
+Diagnóstico real somente leitura: 171 contas, 1 grupo com 2 suspeitas em 2026-09;
+nenhuma decisão ou exclusão remota automática. Suíte: 1.834 aprovados,
+37 opt-in ignorados, zero falhas; build, TypeScript e lint global aprovados,
+sem novos avisos (328 preexistentes). Implantação ainda não homologada. Relatório:
+`docs/relatorios-fases/CONTAS-POSSIVELMENTE-REPETIDAS-2026-10-20.md`.
+
+
 ### Cancelamento de transferências não realizadas aos sócios (20/10/2026)
 Por ordem expressa do titular, anulados no Supabase os movimentos bancários de
 R$ 8.856,98 para Eroni e R$ 5.391,75 para Fernando, associados a pagamentos de
