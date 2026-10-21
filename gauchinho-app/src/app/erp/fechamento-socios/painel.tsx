@@ -12,6 +12,7 @@ import {
   ShieldAlert,
   X,
 } from "lucide-react";
+import { efetivarTransferenciaSocio } from "./transferencia-actions";
 import { calcularFechamentoSocios } from "@/lib/gestao/fechamento-socios";
 import {
   registrarAporteProprioSocio,
@@ -591,6 +592,7 @@ export function PainelFechamentoSocios({
   );
   const [retiradas, setRetiradas] = useState<Record<string, string>>({});
   const [erro, setErro] = useState("");
+  const [retornoTransferencia, setRetornoTransferencia] = useState<Record<string, { ok: boolean; mensagem: string }>>({});
   const [erroAporte, setErroAporte] = useState("");
   const [erroMetas, setErroMetas] = useState("");
   const [aba, setAba] = useState<"despesas" | "vendas">(abaInicial);
@@ -634,6 +636,35 @@ export function PainelFechamentoSocios({
         setErro(
           e instanceof Error ? e.message : "Não foi possível lacrar o período.",
         );
+      }
+    });
+  }
+
+  function transferirSocio(socioId: string, formulario: HTMLFormElement | null) {
+    if (!formulario || pendente) return;
+    const socio = dados.socios.find((item) => item.id === socioId);
+    if (!socio) return;
+    const campos = new FormData(formulario);
+    const pedido = new FormData();
+    pedido.set("socio_id", socioId);
+    pedido.set("inicio", dados.inicio);
+    pedido.set("transferencias_base", String(socio.transferenciasRealizadas));
+    pedido.set("valor", retiradas[socioId] || "0");
+    pedido.set("comprovante", String(campos.get(`comprovante_${socioId}`) || ""));
+    pedido.set("confirmo_transferencia", String(campos.get(`confirmo_transferencia_${socioId}`) || ""));
+    iniciar(async () => {
+      try {
+        const resultado = await efetivarTransferenciaSocio(pedido);
+        setRetiradas((anteriores) => ({ ...anteriores, [socioId]: "0" }));
+        setSaldoExtrato(String(resultado.saldoSistema));
+        const confirmacao = formulario.elements.namedItem(`confirmo_transferencia_${socioId}`);
+        if (confirmacao instanceof HTMLInputElement) confirmacao.checked = false;
+        setRetornoTransferencia((anteriores) => ({ ...anteriores,
+          [socioId]: { ok: true, mensagem: "Transferência registrada. Saída da empresa e crédito do sócio atualizados." } }));
+        router.refresh();
+      } catch (e) {
+        setRetornoTransferencia((anteriores) => ({ ...anteriores,
+          [socioId]: { ok: false, mensagem: e instanceof Error ? e.message : "Não foi possível registrar a transferência." } }));
       }
     });
   }
@@ -1642,6 +1673,7 @@ export function PainelFechamentoSocios({
                     Quanto vai retirar agora? (R$)
                     <input
                       name={`retirada_${socio.id}`}
+                      disabled={pendente}
                       type="number"
                       min="0"
                       step="0.01"
@@ -1655,17 +1687,35 @@ export function PainelFechamentoSocios({
                       className="mt-1 w-full rounded-xl border border-slate-300 bg-white p-2.5 text-sm text-slate-950"
                     />
                   </label>
-                  {(conta?.retirada || 0) > 0 && (
+                  {ler(retiradas[socio.id] || "0") > 0 && (
                     <label className="mt-3 block text-xs font-bold text-slate-700">
                       Comprovante da transferência
                       <input
                         name={`comprovante_${socio.id}`}
+                        disabled={pendente}
                         required
                         minLength={8}
                         placeholder="Identificação da transferência realizada"
                         className="mt-1 w-full rounded-xl border border-slate-300 bg-white p-2.5 text-sm text-slate-950"
                       />
                     </label>
+                  )}
+                  <label className="mt-3 flex items-start gap-2 text-xs font-medium text-slate-700">
+                    <input type="checkbox" name={`confirmo_transferencia_${socio.id}`} value="sim" disabled={pendente} />
+                    Confirmo que o PIX/TED já foi realizado no banco para este sócio.
+                  </label>
+                  <button
+                    type="button"
+                    disabled={pendente || !(ler(retiradas[socio.id] || "0") > 0)}
+                    onClick={(event) => transferirSocio(socio.id, event.currentTarget.form)}
+                    className="mt-3 w-full rounded-xl bg-indigo-700 px-4 py-3 text-sm font-black text-white disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {pendente ? "Processando…" : "Efetivar transferência"}
+                  </button>
+                  {retornoTransferencia[socio.id] && (
+                    <p role="status" className={`mt-2 text-xs font-bold ${retornoTransferencia[socio.id].ok ? "text-emerald-800" : "text-rose-800"}`}>
+                      {retornoTransferencia[socio.id].mensagem}
+                    </p>
                   )}
                   <p className="mt-2 text-xs font-semibold text-indigo-900">
                     Fica na empresa para despesas futuras:{" "}
@@ -1676,8 +1726,8 @@ export function PainelFechamentoSocios({
             })}
           </div>
           <p className="mt-4 text-xs text-amber-800">
-            Informe retirada somente depois da transferência real. Ao lacrar, o
-            sistema registrará a saída bancária junto com o comprovante.
+            Depois de realizar o PIX/TED no banco, informe o valor e o comprovante e clique em “Efetivar transferência”.
+            O botão registra a saída no sistema; não envia dinheiro pelo banco. O lacre é uma etapa separada.
           </p>
         </section>
 

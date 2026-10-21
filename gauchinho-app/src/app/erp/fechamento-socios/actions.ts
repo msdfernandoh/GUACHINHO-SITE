@@ -400,6 +400,9 @@ export async function registrarFechamentoSocios(form: FormData): Promise<{ id: s
     throw new Error("O saldo conferido no extrato deve bater com a conta da empresa no sistema.");
   }
   const retirada = painel.socios.map((socio) => ({ ...socio, retirada: dinheiro(form, `retirada_${socio.id}`) }));
+  if (retirada.some((socio) => socio.retirada > 0)) {
+    throw new Error("Efetive cada transferência no cartão do sócio antes de lacrar. O lacre não registra novas retiradas.");
+  }
   const recursoAutomatico = arredondar(painel.margemConsultores + painel.receitasEventos);
   if (Math.abs(dinheiro(form, "lucro_consultores") - recursoAutomatico) > 0.01) {
     throw new Error("O valor que abate as despesas é calculado pelos repasses e pelas receitas de eventos; atualize a tela antes de fechar.");

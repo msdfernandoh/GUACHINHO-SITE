@@ -1,5 +1,19 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
+### Transferência individual no cartão do sócio (20/10/2026)
+O cartão de cada sócio em `/erp/fechamento-socios` oferece “Efetivar transferência”,
+com valor, referência de comprovante e confirmação do PIX/TED já realizado.
+A action valida acesso ERP, permissão financeira, tenant, crédito e reservas;
+resolve a conta financeira do sócio por empresa_socios → usuario_id →
+participantes_comerciais → financeiro_contas_bancarias, sem assumir auth.uid.
+Reutiliza rpc_transferir_entre_contas com sessão autenticada para débito/crédito
+atômicos e auditados. Chave por posição evita repetir a retirada com saldo obsoleto;
+o painel passa a deduzir os movimentos da posição do sócio. Nenhuma baixa nova
+de comissão ou lacre automático. O lacre pela action exige retiradas pendentes zeradas.
+Pendências de conciliação e conta de destino ausente/ambígua impedem registrar.
+Sem migration ou movimentação real durante desenvolvimento. Relatório:
+`docs/relatorios-fases/TRANSFERENCIA-INDIVIDUAL-CARTAO-SOCIO-2026-10-20.md`.
+
 ### Remoção da prévia antiga de equalização em Contas a Pagar (20/10/2026)
 Removido o quadro escuro “Fechamento & Equalização entre Sócios”, incluindo
 as sugestões de transferência baseadas somente nas despesas pessoais.
