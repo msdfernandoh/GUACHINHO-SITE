@@ -1,5 +1,17 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
+### Conciliação autorizada das saídas de Gauchinho Empresa (21/10/2026)
+Titular confirmou Gauchinho Empresa como origem das saídas, exceto recurso
+próprio de Fernando. Conciliadas 103 despesas pagas, R$ 67.244,03: 98 novas
+saídas de caixa, cinco saídas existentes reaproveitadas, 103 débitos bancários
+vinculados por caixa_movimento_id e 103 logs ALTERACAO com autor e motivo.
+Saldo empresarial no sistema: R$ 97.826,52 → R$ 30.582,49. Zero contas pagas
+pela empresa sem vínculo. Preservadas integralmente as vinte despesas pessoais
+de Fernando, R$ 9.790,61, e todos os movimentos/ledger anteriores. Nenhuma
+transferência ao sócio, aporte novo ou migration. Verificação posterior conferiu
+cada vínculo, valor, unicidade, auditoria e conservação do histórico.
+Relatório: `docs/relatorios-fases/CONCILIACAO-SAIDAS-GAUCHINHO-EMPRESA-2026-10-21.md`.
+
 ### Homologação do deploy e diagnóstico da transferência bloqueada (20/10/2026)
 Vercel confirma deploy de produção READY do commit 27d581e nos domínios
 raconsinop.com.br e www.raconsinop.com.br. Log da tentativa às 23:50:17 confirma
