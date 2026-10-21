@@ -152,17 +152,21 @@ export async function fetchFranquiaRobosAction() {
     (c) => c.configuracao_tarefas?.tipo_rotina === "FRANQUIA_LANCES_AUTOMATICOS"
   );
   const temRoboBoletos = configs.some(
-    (c) => c.configuracao_tarefas?.tipo_rotina === "FRANQUIA_DOWNLOAD_BOLETOS"
+    (c) => c.configuracao_tarefas?.tipo_rotina === "FRANQUIA_DOWNLOAD_BOLETOS" &&
+      !Array.isArray(c.configuracao_tarefas?.cotas_alvo_ids)
   );
 
   // Busca credenciais globais da Racon para reaproveitar na franquia caso necessário
-  const { data: globalRacon } = await admin
+  const { data: credencialGlobalRacon } = await admin
     .from("robo_configuracoes")
     .select("usuario_login, senha_encrypted, administradora_id")
+    .is("empresa_id", null)
     .ilike("nome", "%Racon%")
     .not("senha_encrypted", "is", null)
     .limit(1)
     .maybeSingle();
+
+  const globalRacon = configs.find(c => c.portal_tipo === "RACON" && c.senha_encrypted) ?? credencialGlobalRacon;
 
   if (!temRoboLances) {
     const { data: newLances } = await admin
@@ -297,15 +301,26 @@ export async function fetchFranquiaRobosAction() {
   }
 
   const roboLances = robos.find((r) => r.tipoRotina === "FRANQUIA_LANCES_AUTOMATICOS");
-  const roboBoletos = robos.find((r) => r.tipoRotina === "FRANQUIA_DOWNLOAD_BOLETOS");
+  const roboBoletos = robos.find((r) => r.tipoRotina === "FRANQUIA_DOWNLOAD_BOLETOS" &&
+    !Array.isArray(r.configuracaoTarefas.cotas_alvo_ids));
+  const competenciaBoletos = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Cuiaba", year: "numeric", month: "2-digit",
+  }).formatToParts(new Date());
+  const competenciaAtual = `${competenciaBoletos.find(p => p.type === "year")?.value}-${competenciaBoletos.find(p => p.type === "month")?.value}`;
+  const { data: boletosSalvos, error: erroBoletos } = await admin.from("vendas_boletos_envios")
+    .select("cota_id,arquivo_storage_path")
+    .eq("empresa_id", empresaId).eq("competencia", competenciaAtual)
+    .not("arquivo_storage_path", "is", null);
+  if (erroBoletos) throw new Error(`Não foi possível consultar boletos armazenados: ${erroBoletos.message}`);
+  const totalBoletosSalvos = new Set((boletosSalvos ?? []).filter(b => b.arquivo_storage_path && b.cota_id).map(b => b.cota_id)).size;
 
   const stats: RobosDashboardStats = {
     totalCotasCarteira: totalCotas || 0,
     cotasComLanceDefinido: cotasComLance,
     cotasAguardandoLance: cotasPendentesLance,
     boletosCompetenciaTotal: totalCotas || 0,
-    boletosBaixadosSucesso: 0,
-    boletosPendentes: totalCotas || 0,
+    boletosBaixadosSucesso: totalBoletosSalvos,
+    boletosPendentes: Math.max(0, (totalCotas || 0) - totalBoletosSalvos),
     ultimaExecucaoLances: roboLances?.ultimaExecucaoEm || null,
     ultimaExecucaoBoletos: roboBoletos?.ultimaExecucaoEm || null,
   };

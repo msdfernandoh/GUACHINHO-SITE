@@ -13,8 +13,10 @@
  */
 
 import path from 'node:path'
+import { capturarPdfBoleto } from './robo-boletos-captura.mjs'
 import fs from 'node:fs'
 import { createRequire } from 'node:module'
+import { carregarCotasBoletos, competenciaBoletos, salvarBoletoCota, selecionarPendenciaBoleto } from './robo-boletos-dados.mjs'
 
 const req = createRequire(new URL('../gauchinho-app/package.json', import.meta.url))
 
@@ -60,7 +62,7 @@ export function extrairDadosBoletoTexto(rawText) {
 
   // 3. Vencimento
   const vencRegex = /(?:vencimento|venc)[\s:]*([0-3]?\d\/[0-1]?\d\/\d{4})/i
-  const matchVenc = cleanText.match(vencRegex)
+  const matchVenc = cleanText.match(vencRegex) || rawText.match(/PAG[ÁA]VEL[^\r\n]*?(\d{2}\/\d{2}\/\d{4})/i)
   if (matchVenc) {
     const parts = matchVenc[1].split('/')
     if (parts.length === 3) {
@@ -75,6 +77,14 @@ export function extrairDadosBoletoTexto(rawText) {
     const limpo = matchVal[1].replace(/\./g, '').replace(',', '.')
     const parsed = parseFloat(limpo)
     if (!isNaN(parsed) && parsed > 0) valor = parsed
+  }
+
+  // No PDF bancário os rótulos podem vir antes de todos os valores. A linha
+  // de 47 dígitos contém o valor nominal em centavos nos últimos dez dígitos.
+  const linhaNumerica = linhaDigitavel?.replace(/\D/g, '')
+  if (valor === null && linhaNumerica?.length === 47) {
+    const nominal = Number(linhaNumerica.slice(-10)) / 100
+    if (nominal > 0) valor = nominal
   }
 
   return { qrCodePix, linhaDigitavel, vencimento, valor }
@@ -99,99 +109,13 @@ export async function executarRoboBoletos({
 }) {
   log('=== INICIANDO ROBÔ DE BOLETOS DA FRANQUIA (DOWNLOAD & STORAGE) ===')
 
-  const empresaId = config.empresa_id
-  if (!empresaId) {
-    log('Aviso: Robô sem empresa_id explícito. Buscando empresa padrão da franquia...')
-  }
-
-  // 1. Identifica a empresa alvo
-  let targetEmpresaId = empresaId
-  if (!targetEmpresaId) {
-    const { data: emp } = await admin
-      .from('empresas')
-      .select('id, nome_fantasia')
-      .eq('ativo', true)
-      .limit(1)
-      .single()
-    targetEmpresaId = emp?.id
-  }
-
-  // Determina competencia atual (formato YYYY-MM e MM/YYYY)
-  const agora = new Date()
-  const compMes = String(agora.getMonth() + 1).padStart(2, '0')
-  const compAno = agora.getFullYear()
-  const competenciaAtual = `${compMes}/${compAno}`
-  const competenciaIso = `${compAno}-${compMes}`
-
+  const competencia = competenciaBoletos()
+  const competenciaAtual = competencia.brasileira
+  const listaCotas = await carregarCotasBoletos(admin, config)
   log(`Competência de processamento: ${competenciaAtual}`)
-
-  // 2. Busca cotas a processar
-  let listaCotas = []
-
-  const { data: cotasDb, error: errCotas } = await admin
-    .from('cotas_definitivas')
-    .select(`
-      id,
-      venda_id,
-      empresa_id,
-      numero_grupo,
-      numero_cota,
-      valor_credito,
-      parcela,
-      status,
-      venda:vendas(id, cliente_nome, cliente_cpf_cnpj, cliente_telefone)
-    `)
-    .eq('empresa_id', targetEmpresaId)
-    .neq('status', 'cancelada')
-    .not('numero_cota', 'is', null)
-    .order('numero_grupo', { ascending: true })
-
-  if (cotasDb && cotasDb.length > 0) {
-    listaCotas = cotasDb.map((c) => ({
-      cota_definitiva_id: c.id,
-      venda_id: c.venda_id || c.venda?.id,
-      empresa_id: c.empresa_id,
-      numero_grupo: String(c.numero_grupo || '').trim(),
-      numero_cota: String(c.numero_cota || '').trim(),
-      cliente_nome: c.venda?.cliente_nome || 'Consorciado',
-      cliente_cpf_cnpj: c.venda?.cliente_cpf_cnpj || null,
-      cliente_telefone: c.venda?.cliente_telefone || null,
-      parcela: c.parcela,
-    }))
-  } else {
-    // Fallback para vendas que tenham cota preenchida
-    log('Buscando cotas na tabela vendas como fallback...')
-    const { data: vendasDb } = await admin
-      .from('vendas')
-      .select('id, numero_grupo, cliente_nome, cliente_cpf_cnpj, cliente_telefone, parcela, snapshot_venda')
-      .eq('empresa_id', targetEmpresaId)
-      .neq('status', 'cancelada')
-
-    if (vendasDb && vendasDb.length > 0) {
-      for (const v of vendasDb) {
-        const numCota = v.snapshot_venda?.numero_cota || v.snapshot_venda?.cota
-        if (numCota && v.numero_grupo) {
-          listaCotas.push({
-            cota_definitiva_id: null,
-            venda_id: v.id,
-            empresa_id: targetEmpresaId,
-            numero_grupo: String(v.numero_grupo).trim(),
-            numero_cota: String(numCota).trim(),
-            cliente_nome: v.cliente_nome,
-            cliente_cpf_cnpj: v.cliente_cpf_cnpj,
-            cliente_telefone: v.cliente_telefone,
-            parcela: v.parcela,
-          })
-        }
-      }
-    }
-  }
-
-  const cotasAlvo = config.configuracao_tarefas?.cotas_alvo_ids
-  if (Array.isArray(cotasAlvo)) {
-    // Escopo explícito: lista vazia não deve executar a carteira inteira.
-    const permitidas = new Set(cotasAlvo)
-    listaCotas = listaCotas.filter((cota) => permitidas.has(cota.cota_definitiva_id))
+  if (config.modo === 'DRY_RUN') {
+    log('DRY_RUN: carteira consultada; emissão e armazenamento não executados.')
+    return { cotasProcessadas: 0, cotasEncontradas: listaCotas.length, totalBoletosBaixados: 0, totalBoletosArmazenados: 0 }
   }
 
   log(`Total de cotas localizadas para download de boletos: ${listaCotas.length}`)
@@ -203,6 +127,8 @@ export async function executarRoboBoletos({
 
   let totalBoletosBaixados = 0
   let totalBoletosArmazenados = 0
+  let totalErros = 0
+  let semCobranca = 0
 
   // 3. Navegação inicial para Atendimento / Consorciado
   // O usuário solicitou: "DEPOIS QUE ENTROU CLICA NOS BONECOS (CLIENTE)"
@@ -296,7 +222,7 @@ export async function executarRoboBoletos({
         } else {
           log(`Cota ${item.numero_grupo}/${item.numero_cota} não localizada no Newcon. Pulando...`)
           await page.screenshot({ path: path.join(screenshotsDir, `cota-nao-encontrada-${item.numero_grupo}-${item.numero_cota}.png`) }).catch(() => {})
-          continue
+          throw new Error('Cota não localizada no portal; boleto não baixado.')
         }
       }
 
@@ -304,7 +230,7 @@ export async function executarRoboBoletos({
 
       // 5. Clica em "Emissão de Cobrança" no menu lateral Operações
       log('Localizando e clicando em "Emissão de Cobrança" no menu Operações...')
-      const linkEmissao = page.locator('a:has-text("Emissão de Cobrança"):visible, a[href*="frmConCoRelBoletoAvulso"]:visible').first()
+      const linkEmissao = page.getByRole('link', { name: /^Emiss[ãa]o de Cobran[çc]a$/i }).filter({ visible: true }).first()
       await linkEmissao.waitFor({ state: 'visible', timeout: 15_000 })
       await linkEmissao.click()
 
@@ -317,81 +243,39 @@ export async function executarRoboBoletos({
 
       // 6. Na tela de Boleto Avulso: seleciona a cobrança pendente
       log('Selecionando pendência de cobrança...')
-      const btnSelTodas = page.locator('input[value="Selecionar Todas"], input[id*="btnSelecionarTodas"]').first()
-      const chkPendencia = page.locator('input[type="checkbox"][name*="chk"], input[type="checkbox"][id*="chk"]').first()
-
-      if (await btnSelTodas.isVisible({ timeout: 3000 }).catch(() => false)) {
-        log('Clicando em [Selecionar Todas]...')
-        await btnSelTodas.click()
-        await page.waitForTimeout(1000)
-      } else if (await chkPendencia.isVisible({ timeout: 3000 }).catch(() => false)) {
-        log('Marcando checkbox da pendência...')
-        await chkPendencia.check().catch(() => chkPendencia.click())
-        await page.waitForTimeout(1000)
-      } else {
+      // Não selecionar diferenças negativas nem reunir parcelas de meses distintos.
+      const pendencias = await page.locator('tr').evaluateAll(rows => rows.flatMap(row => {
+        const checkbox = row.querySelector('input[type="image"][id*="imgEmite_Boleto"], input[type="checkbox"]')
+        if (checkbox?.closest('tr') !== row) return []
+        if (!checkbox) return []
+        return [{ id: checkbox.id, desabilitado: checkbox.disabled, texto: [row.innerText, ...Array.from(row.querySelectorAll('input:not([type="checkbox"])')).map(el => el.value)].join(" ") }]
+      }))
+      const pendencia = selecionarPendenciaBoleto(pendencias, competencia.iso)
+      if (!pendencia) {
         log(`Nenhuma cobrança pendente encontrada para a cota ${item.numero_grupo}/${item.numero_cota}.`)
+        semCobranca++
         continue
       }
+      const seletorPendencia = page.locator(`[id="${pendencia.id}"]`)
+      if (await seletorPendencia.getAttribute("type") === "image") await seletorPendencia.click()
+      else await seletorPendencia.check()
+      await page.waitForLoadState("domcontentloaded").catch(() => {})
+      await page.waitForTimeout(1000)
 
       // 7. Clica em [Emitir Cobrança] e captura o boleto (PDF ou Popup)
       log('Clicando no botão [Emitir Cobrança] e aguardando geração do boleto...')
-      const btnEmitir = page.locator('input[value="Emitir Cobrança"], input[id*="btnEmitirCobranca"], input[id*="btnEmitir"]').first()
+      const btnEmitir = page.getByRole('button', { name: /^Emitir Cobrança$/i }).filter({ visible: true }).and(page.locator(':enabled')).first()
       await btnEmitir.waitFor({ state: 'visible', timeout: 10_000 })
 
-      // Prepara listeners para popup e download
-      const popupPromise = context.waitForEvent('page', { timeout: 20_000 }).catch(() => null)
-      const downloadPromise = page.waitForEvent('download', { timeout: 20_000 }).catch(() => null)
-
-      await btnEmitir.click()
-
-      const [popupPage, download] = await Promise.all([popupPromise, downloadPromise])
-
-      let pdfBuffer = null
-      let textoBoleto = ''
-
-      if (download) {
-        log('Download direto de boleto disparado pelo portal!')
-        const downloadPath = path.join(downloadDir, `boleto_${item.numero_grupo}_${item.numero_cota}_${Date.now()}.pdf`)
-        await download.saveAs(downloadPath)
-        pdfBuffer = fs.readFileSync(downloadPath)
-      } else if (popupPage) {
-        log(`Popup de boleto aberto: ${popupPage.url()}`)
-        await popupPage.waitForLoadState('domcontentloaded').catch(() => {})
-        await popupPage.waitForTimeout(3000)
-
-        // Se for PDF direto na URL do popup
-        if (popupPage.url().endsWith('.pdf') || popupPage.url().includes('pdf')) {
-          log('Popup carregou PDF diretamente.')
-          const response = await popupPage.goto(popupPage.url())
-          pdfBuffer = await response.body()
-        } else {
-          // Se for página HTML de boleto, extrai o texto do DOM e gera PDF
-          log('Boleto aberto em formato HTML. Extraindo texto do DOM e gerando PDF...')
-          textoBoleto = await popupPage.evaluate(() => document.body.innerText || '')
-          pdfBuffer = await popupPage.pdf({ format: 'A4', printBackground: true }).catch(() => null)
-        }
-
-        await popupPage.close().catch(() => {})
-      } else {
-        // Se abriu na mesma página
-        log('Verificando se o boleto abriu na própria página...')
-        await page.waitForTimeout(3000)
-        textoBoleto = await page.evaluate(() => document.body.innerText || '')
-        pdfBuffer = await page.pdf({ format: 'A4', printBackground: true }).catch(() => null)
-      }
-
-      if (!pdfBuffer && !textoBoleto) {
-        log(`Aviso: Não foi possível capturar o boleto da cota ${item.numero_grupo}/${item.numero_cota}.`)
-        continue
-      }
-
-      totalBoletosBaixados++
+      let { pdfBuffer, textoBoleto } = await capturarPdfBoleto({
+        page, context, log, emitir: () => btnEmitir.click({ timeout: 15000 }),
+      })
 
       // 8. Extração de texto via unpdf se tivermos o buffer de PDF
       if (pdfBuffer && (!textoBoleto || textoBoleto.length < 50)) {
         try {
           if (unpdf && unpdf.extractText) {
-            const { text } = await unpdf.extractText(pdfBuffer)
+            const { text } = await unpdf.extractText(new Uint8Array(pdfBuffer))
             if (Array.isArray(text)) textoBoleto = text.join('\n')
             else if (typeof text === 'string') textoBoleto = text
           }
@@ -400,120 +284,43 @@ export async function executarRoboBoletos({
         }
       }
 
+      const identidadePdf = textoBoleto.match(/Grupo\s*\/\s*Cota\s*\/\s*Vers[aã]o\s*:\s*(\d+)[-\/]([0-9]+)/i)
+      if (identidadePdf && (Number(identidadePdf[1]) !== Number(normalizarNumeroPortal(item.numero_grupo, 6)) || Number(identidadePdf[2]) !== Number(normalizarNumeroPortal(item.numero_cota, 4)))) {
+        throw new Error('O PDF retornado pertence a outro grupo/cota; documento não será vinculado.')
+      }
+
       // 9. Extrai QR Code Pix Copia e Cola e Linha Digitável
       const dadosExtraidos = extrairDadosBoletoTexto(textoBoleto)
       log(`Dados extraídos da cota ${item.numero_grupo}/${item.numero_cota}:`)
       log(`- Pix Copia e Cola detectado: ${dadosExtraidos.qrCodePix ? 'SIM (' + dadosExtraidos.qrCodePix.substring(0, 30) + '...)' : 'NÃO'}`)
       log(`- Linha Digitável: ${dadosExtraidos.linhaDigitavel || 'NÃO DETECTADA'}`)
-      log(`- Vencimento: ${dadosExtraidos.vencimento || 'NÃO DETECTADO'} | Valor: ${dadosExtraidos.valor || item.parcela}`)
+      log(`- Vencimento: ${dadosExtraidos.vencimento || 'NÃO DETECTADO'} | Valor: ${dadosExtraidos.valor ?? "NÃO DETECTADO"}`)
 
-      // 10. Salva o PDF no Supabase Storage (bucket 'boletos-cotas')
-      let storagePath = null
-      let storageUrl = null
-
-      if (pdfBuffer) {
-        const fileName = `boletos/${targetEmpresaId}/${compAno}-${compMes}/${item.numero_grupo}_${item.numero_cota}_${Date.now()}.pdf`
-        log(`Realizando upload do PDF no bucket 'boletos-cotas' (${fileName})...`)
-
-        const { data: uploadData, error: uploadErr } = await admin.storage
-          .from('boletos-cotas')
-          .upload(fileName, pdfBuffer, {
-            contentType: 'application/pdf',
-            upsert: true,
-          })
-
-        if (uploadErr) {
-          log(`Erro no upload do storage: ${uploadErr.message}`)
-        } else {
-          storagePath = uploadData.path
-          const { data: publicData } = admin.storage
-            .from('boletos-cotas')
-            .getPublicUrl(storagePath)
-          storageUrl = publicData?.publicUrl || null
-          log(`Boleto salvo com sucesso no Storage! URL: ${storageUrl}`)
-          totalBoletosArmazenados++
-        }
-      }
-
-      // 11. Grava na tabela cotas_boletos
-      const payloadCotasBoletos = {
-        empresa_id: targetEmpresaId,
-        venda_id: item.venda_id,
-        cota_definitiva_id: item.cota_definitiva_id,
-        numero_grupo: item.numero_grupo,
-        numero_cota: item.numero_cota,
-        cliente_nome: item.cliente_nome,
-        cliente_documento: item.cliente_cpf_cnpj,
-        cliente_telefone: item.cliente_telefone,
-        competencia: competenciaAtual,
-        vencimento: dadosExtraidos.vencimento || null,
-        valor: dadosExtraidos.valor || item.parcela,
-        arquivo_storage_path: storagePath,
-        arquivo_url: storageUrl,
-        qr_code_pix: dadosExtraidos.qrCodePix,
-        linha_digitavel: dadosExtraidos.linhaDigitavel,
-        status: 'BAIXADO',
-        origem: 'ROBO_NEWCON',
-        updated_at: new Date().toISOString(),
-      }
-
-      const { error: errUpsertCotasBoletos } = await admin
-        .from('cotas_boletos')
-        .upsert(payloadCotasBoletos, {
-          onConflict: 'empresa_id,numero_grupo,numero_cota,competencia',
-        })
-
-      if (errUpsertCotasBoletos) {
-        log(`Erro ao gravar em cotas_boletos: ${errUpsertCotasBoletos.message}`)
-      } else {
-        log(`Registro de boleto gravado com sucesso em cotas_boletos para Grupo ${item.numero_grupo} / Cota ${item.numero_cota}!`)
-      }
-
-      // 12. Sincroniza também em vendas_boletos_envios para a interface do ERP
-      if (item.venda_id) {
-        const payloadVendasEnvio = {
-          empresa_id: targetEmpresaId,
-          venda_id: item.venda_id,
-          cota_id: item.cota_definitiva_id,
-          competencia: competenciaIso,
-          status_boleto: 'baixado',
-          baixado_em: new Date().toISOString(),
-          baixado_por_nome: 'Robô Newcon Franquia',
-          arquivo_storage_path: storagePath,
-          arquivo_url: storageUrl,
-          qr_code_pix: dadosExtraidos.qrCodePix,
-          linha_digitavel: dadosExtraidos.linhaDigitavel,
-          valor: dadosExtraidos.valor || item.parcela,
-          vencimento: dadosExtraidos.vencimento || null,
-          numero_grupo: item.numero_grupo,
-          numero_cota: item.numero_cota,
-          origem: 'ROBO_NEWCON',
-          updated_at: new Date().toISOString(),
-        }
-
-        await admin
-          .from('vendas_boletos_envios')
-          .upsert(payloadVendasEnvio, {
-            onConflict: 'empresa_id,venda_id,competencia',
-          })
-          .catch((err) => {
-            log(`Aviso sync vendas_boletos_envios: ${err.message}`)
-          })
-      }
+      await salvarBoletoCota({ admin, item, competencia, pdfBuffer, dados: dadosExtraidos })
+      totalBoletosBaixados++
+      totalBoletosArmazenados++
+      log(`Boleto da cota ${item.numero_grupo}/${item.numero_cota} salvo e vinculado em Vendas & Cotas.`)
 
       await page.waitForTimeout(1500)
     } catch (cotaErr) {
+      totalErros++
       log(`Erro no processamento da cota ${item.numero_grupo}/${item.numero_cota}: ${cotaErr.message}`)
       await page.screenshot({ path: path.join(screenshotsDir, `erro-cota-${item.numero_grupo}-${item.numero_cota}-${Date.now()}.png`) }).catch(() => {})
     }
   }
 
-  log('=== EXECUÇÃO DO ROBÔ DE BOLETOS FINALIZADA COM SUCESSO ===')
+  log('=== EXECUÇÃO DO ROBÔ DE BOLETOS FINALIZADA ===')
   log(`Total de cotas analisadas: ${listaCotas.length}`)
   log(`Total de boletos baixados: ${totalBoletosBaixados}`)
   log(`Total de boletos armazenados no Storage: ${totalBoletosArmazenados}`)
 
+  if (totalErros) {
+    throw new Error(`Boletos: ${totalBoletosArmazenados}/${listaCotas.length} salvos; ${totalErros} cotas com erro; ${semCobranca} sem cobrança disponível. Confira os logs por cota.`)
+  }
+
   return {
+    totalErros,
+    semCobranca,
     cotasProcessadas: listaCotas.length,
     totalBoletosBaixados,
     totalBoletosArmazenados,

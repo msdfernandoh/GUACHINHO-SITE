@@ -1,5 +1,16 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
+### Análise e teste de boletos ERP por cota (21/10/2026)
+Identificados falso sucesso com zero PDFs, seletor de emissão desabilitado,
+seleção incorreta de pendência e conflito de gravação sem chave por cota.
+Correções locais incluem carteira paginada por empresa, captura de PDF em popup,
+persistência por cota/competência e propagação de erros. Consulta SNP restrita
+não substitui o robô completo; dados preservados. Teste real baixou e vinculou três PDFs SNP nas cotas 1176/1552/1617, com
+identidade e conteúdo conferidos no Storage. Carteira completa e UI publicada
+não homologadas; sem migration. Envio à main autorizado pelo titular, sem
+confirmação de deploy nesta fase. Relatório:
+`docs/relatorios-fases/ROBO-BOLETOS-ANALISE-TESTES-2026-10-21.md`.
+
 ### Master/Superadmin no Contas a Pagar (21/10/2026)
 A página consulta `is_financeiro_tenant_master` e `pode_estornar_conta_pagar`
 com sessão autenticada e empresa ativa, substituindo a comparação exclusiva

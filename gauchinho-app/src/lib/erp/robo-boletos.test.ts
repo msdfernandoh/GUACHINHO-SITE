@@ -2,6 +2,15 @@ import { describe, it, expect } from "vitest";
 import { extrairDadosBoletoTexto, normalizarNumeroPortal } from "../../../../scripts/robo-boletos-service.mjs";
 
 describe("Robô de Boletos - Extração de Dados e Chave Pix", () => {
+  it("extrai o PDF Newcon com rótulos separados e valor nominal na linha bancária", () => {
+    const dados = extrairDadosBoletoTexto(`Local de Pagamento Vencimento
+Uso do Banco Carteira Moeda Quantidade Valor (=) Valor do Documento
+23792.02803 90479.371560 68004.654601 6 16060000079954
+PAGÁVEL PREFERENCIALMENTE EM QUALQUER AGÊNCIA BRADESCO 21/10/2026
+09 R$ 0 0,00 799,54`);
+    expect(dados.valor).toBe(799.54);
+    expect(dados.vencimento).toBe("2026-10-21");
+  });
   it("deve extrair chave Pix Copia e Cola no padrão EMV QRCode", () => {
     const rawText = `
       BANCO SANTANDER (BRASIL) S.A. | 033-7 | 03399.70293 84600.000000 00000.000000 1 90000000000000

@@ -131,6 +131,7 @@ async function run() {
   let totalGruposNovos = 0
   let totalGruposContemplados = 0
   let totalCotadasContempladas = 0
+  let resultadoBoletos = null
   const gruposProcessados = []
 
   try {
@@ -510,6 +511,7 @@ async function run() {
         })
         totalGruposAtualizados = bolRes.totalBoletosArmazenados
         totalCotadasContempladas = bolRes.cotasProcessadas
+        resultadoBoletos = bolRes
       } else if (isLancesFranquia) {
         log('--- EXECUTANDO ROBÔ DE LANCES AUTOMÁTICOS DA FRANQUIA ---')
         const lancesRes = await executarRoboLances({
@@ -1310,6 +1312,7 @@ async function run() {
       status: 'SUCESSO',
       finalizado_em: new Date().toISOString(),
       resultado: {
+        ...(resultadoBoletos ? { boletos: resultadoBoletos } : {}),
         grupos_extraidos: gruposProcessados.length,
         grupos_atualizados: totalGruposAtualizados,
         grupos_novos: totalGruposNovos,
