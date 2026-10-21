@@ -77,6 +77,8 @@ export function MinhasComissoesClient({
   const podeConferirRecebimento = participanteSelecionadoId === participanteProprioId || podePagarEquipe;
   const router = useRouter();
   const now = new Date();
+  const anoAtual = now.getFullYear();
+  const indiceMesAtual = now.getMonth();
   const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
   const nextMonthDate = new Date(now.getFullYear(), now.getMonth() + 1, 1);
   const nextMonth = `${nextMonthDate.getFullYear()}-${String(nextMonthDate.getMonth() + 1).padStart(2, "0")}`;
@@ -135,12 +137,12 @@ export function MinhasComissoesClient({
         return p.competencia === nextMonth;
       }
       if (filtroPeriodo === "PROXIMOS_3_MESES") {
-        const m3 = new Date(now.getFullYear(), now.getMonth() + 3, 1);
+        const m3 = new Date(anoAtual, indiceMesAtual + 3, 1);
         const m3Str = `${m3.getFullYear()}-${String(m3.getMonth() + 1).padStart(2, "0")}`;
         return p.competencia >= currentMonth && p.competencia <= m3Str;
       }
       if (filtroPeriodo === "PROXIMOS_6_MESES") {
-        const m6 = new Date(now.getFullYear(), now.getMonth() + 6, 1);
+        const m6 = new Date(anoAtual, indiceMesAtual + 6, 1);
         const m6Str = `${m6.getFullYear()}-${String(m6.getMonth() + 1).padStart(2, "0")}`;
         return p.competencia >= currentMonth && p.competencia <= m6Str;
       }
@@ -149,7 +151,7 @@ export function MinhasComissoesClient({
       }
       return true;
     });
-  }, [previsoes, clienteSelecionado, buscaCliente, filtroConferencia, filtroPeriodo, mesEspecifico, currentMonth, nextMonth, now]);
+  }, [previsoes, clienteSelecionado, buscaCliente, filtroConferencia, filtroPeriodo, mesEspecifico, currentMonth, nextMonth, anoAtual, indiceMesAtual]);
 
   // Métricas do período filtrado
   const metricas = useMemo(() => {

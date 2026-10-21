@@ -15,7 +15,7 @@ import { ensureFonts, FONT_DISPLAY, FONT_MONO } from "./fonts";
 import { pdfImage } from "./assets";
 import {
   Document,
-  Image,
+  Image as PdfImage,
   Page,
   StyleSheet,
   Text,
@@ -201,12 +201,12 @@ function CapaPadrao({ data }: { data: PropostaPdfData }) {
   return (
     <Page size="A4" style={[s.page, { padding: 0 }]}>
       <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}>
-        <Image src={pdfImage("grad-padrao.png")} style={{ width: "100%", height: "100%" }} />
+        <PdfImage src={pdfImage("grad-padrao.png")} style={{ width: "100%", height: "100%" }} />
       </View>
       <View style={{ padding: 46, flexGrow: 1, color: "#eef1ff" }}>
         <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" }}>
           <View style={{ backgroundColor: "#fff", borderRadius: 10, padding: 10, flexDirection: "row", alignItems: "center" }}>
-            <Image src={pdfImage("racon-logo.png")} style={{ width: 84, height: 30, objectFit: "contain" }} />
+            <PdfImage src={pdfImage("racon-logo.png")} style={{ width: 84, height: 30, objectFit: "contain" }} />
             <Text style={{ fontFamily: FONT_DISPLAY, fontWeight: 700, fontSize: 8, color: NAVY, borderLeftWidth: 1, borderColor: "#d5d9ee", paddingLeft: 10, marginLeft: 10, lineHeight: 1.3 }}>
               Administradora{"\n"}{MARCA_ADMINISTRADORA}
             </Text>
@@ -263,10 +263,10 @@ function CapaCampanha({ data }: { data: PropostaPdfData }) {
   return (
     <Page size="A4" style={[s.page, { padding: 0 }]}>
       <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}>
-        <Image src={pdfImage("grad-campanha.png")} style={{ width: "100%", height: "100%" }} />
+        <PdfImage src={pdfImage("grad-campanha.png")} style={{ width: "100%", height: "100%" }} />
       </View>
       <View style={{ position: "absolute", top: 0, left: 0, right: 0, height: 300, opacity: 0.28 }}>
-        <Image src={pdfImage("cena-casa.jpg")} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+        <PdfImage src={pdfImage("cena-casa.jpg")} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
       </View>
 
       <View style={{ padding: 46, flexGrow: 1, color: "#fff" }}>
@@ -284,7 +284,7 @@ function CapaCampanha({ data }: { data: PropostaPdfData }) {
             </Text>
           </View>
           <View style={{ backgroundColor: "#fff", borderRadius: 10, padding: 10, flexDirection: "row", alignItems: "center" }}>
-            <Image src={pdfImage("racon-logo.png")} style={{ width: 78, height: 28, objectFit: "contain" }} />
+            <PdfImage src={pdfImage("racon-logo.png")} style={{ width: 78, height: 28, objectFit: "contain" }} />
             <Text style={{ fontFamily: FONT_DISPLAY, fontWeight: 700, fontSize: 7.5, color: NAVY, borderLeftWidth: 1, borderColor: "#d5d9ee", paddingLeft: 9, marginLeft: 9, lineHeight: 1.3 }}>
               Administradora{"\n"}{MARCA_ADMINISTRADORA}
             </Text>
@@ -331,7 +331,7 @@ function CapaCampanha({ data }: { data: PropostaPdfData }) {
       </View>
 
       <View style={{ position: "absolute", right: 40, bottom: 120, alignItems: "center" }}>
-        <Image
+        <PdfImage
           src={pdfImage("rubinho.png")}
           style={{ width: 92, height: 92, borderRadius: 46, borderWidth: 3, borderColor: "rgba(255,255,255,0.85)" }}
         />

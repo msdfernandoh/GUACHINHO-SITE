@@ -39,7 +39,6 @@ export default async function EventoSlugPage({ params }: Props) {
   return (
     <ConteudoPageShell>
       {evento.banner_url ? (
-        // eslint-disable-next-line @next/next/no-img-element
         <div className="relative h-48 w-full overflow-hidden sm:h-64">
           <img src={evento.banner_url} alt="" className="h-full w-full object-cover" />
         </div>

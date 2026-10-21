@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useCallback, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { GrupoRecord } from "@/lib/platform/grupos-prontidao";
 import { atualizarVagasGruposLotePlatformAction } from "@/app/platform/grupos-actions";
@@ -11,6 +11,10 @@ type Props = {
 };
 
 type FiltroAba = "TODOS" | "COM_VAGAS" | "SEM_VAGAS" | "ALTERADOS";
+
+function getVagasOriginais(g: GrupoRecord): number {
+  return Math.max(0, Number(g.vagas_disponiveis) || 0);
+}
 
 export function GrupoVagasEmLoteModal({ grupos, onClose }: Props) {
   const router = useRouter();
@@ -25,21 +29,17 @@ export function GrupoVagasEmLoteModal({ grupos, onClose }: Props) {
   const [busca, setBusca] = useState("");
   const [aba, setAba] = useState<FiltroAba>("TODOS");
 
-  function getVagasOriginais(g: GrupoRecord): number {
-    return Math.max(0, Number(g.vagas_disponiveis) || 0);
-  }
-
-  function getVagasAtuais(g: GrupoRecord): number {
+  const getVagasAtuais = useCallback((g: GrupoRecord): number => {
     if (vagasEditadas.has(g.id)) {
       return vagasEditadas.get(g.id)!;
     }
     return getVagasOriginais(g);
-  }
+  }, [vagasEditadas]);
 
-  function isAlterado(g: GrupoRecord): boolean {
+  const isAlterado = useCallback((g: GrupoRecord): boolean => {
     if (!vagasEditadas.has(g.id)) return false;
     return vagasEditadas.get(g.id) !== getVagasOriginais(g);
-  }
+  }, [vagasEditadas]);
 
   function handleSetVagas(grupoId: string, valor: number) {
     const limpo = Math.max(0, Math.floor(valor || 0));
@@ -109,7 +109,7 @@ export function GrupoVagasEmLoteModal({ grupos, onClose }: Props) {
       if (aba === "ALTERADOS") return isAlterado(g);
       return true;
     });
-  }, [grupos, busca, aba, vagasEditadas]);
+  }, [grupos, busca, aba, getVagasAtuais, isAlterado]);
 
   function handleSalvar() {
     if (listaAlterados.length === 0) return;

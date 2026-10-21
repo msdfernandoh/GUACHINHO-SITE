@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
   TrendingUp,
@@ -30,6 +30,8 @@ import type {
   ErpDashboardPeriodFilter,
 } from "@/lib/gestao/dashboards-service";
 
+import { consultarDashboard } from "@/lib/gestao/dashboard-consulta";
+
 interface ErpDashboardViewProps {
   initialData?: ErpDashboardFullDTO | null;
 }
@@ -38,45 +40,43 @@ export function ErpDashboardView({ initialData }: ErpDashboardViewProps) {
   const [data, setData] = useState<ErpDashboardFullDTO | null>(initialData || null);
   const [periodo, setPeriodo] = useState<ErpDashboardPeriodFilter>("mes_atual");
   const [administradoraId, setAdministradoraId] = useState<string>("");
-  const [isPending, startTransition] = useTransition();
+  const [carregarInicial] = useState(!initialData);
+  const [revisaoConsulta, setRevisaoConsulta] = useState(0);
   const [loading, setLoading] = useState(!initialData);
-
-  const fetchData = async (p: ErpDashboardPeriodFilter, adm: string) => {
-    setLoading(true);
-    try {
-      const params = new URLSearchParams();
-      params.set("periodo", p);
-      if (adm) params.set("administradoraId", adm);
-      const res = await fetch(`/api/admin/gestao/dashboard?${params.toString()}`);
-      if (res.ok) {
-        const json = await res.json();
-        setData(json);
-      }
-    } catch (err) {
-      console.error("Erro ao carregar Dashboard ERP:", err);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const [erroConsulta, setErroConsulta] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!initialData) {
-      fetchData(periodo, administradoraId);
-    }
-  }, []);
+    if (!carregarInicial && revisaoConsulta === 0) return;
+    const controller = new AbortController();
+    void consultarDashboard({ periodo, administradoraId, signal: controller.signal })
+      .then((resultado) => {
+        if (!controller.signal.aborted) setData(resultado);
+      })
+      .catch((erro: unknown) => {
+        if (!controller.signal.aborted) {
+          setErroConsulta(erro instanceof Error ? erro.message : "Não foi possível carregar o dashboard.");
+        }
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setLoading(false);
+      });
+    return () => controller.abort();
+  }, [carregarInicial, revisaoConsulta, periodo, administradoraId]);
+
+  const solicitarAtualizacao = () => {
+    setLoading(true);
+    setErroConsulta(null);
+    setRevisaoConsulta((revisao) => revisao + 1);
+  };
 
   const handlePeriodoChange = (newPeriodo: ErpDashboardPeriodFilter) => {
     setPeriodo(newPeriodo);
-    startTransition(() => {
-      fetchData(newPeriodo, administradoraId);
-    });
+    solicitarAtualizacao();
   };
 
   const handleAdmChange = (newAdm: string) => {
     setAdministradoraId(newAdm);
-    startTransition(() => {
-      fetchData(periodo, newAdm);
-    });
+    solicitarAtualizacao();
   };
 
   const formatCurrency = (val: number) =>
@@ -105,9 +105,9 @@ export function ErpDashboardView({ initialData }: ErpDashboardViewProps) {
       <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center">
         <AlertCircle className="mx-auto h-10 w-10 text-rose-500" />
         <h3 className="mt-3 text-base font-bold text-slate-900">Não foi possível carregar o Dashboard</h3>
-        <p className="mt-1 text-xs text-slate-500">Verifique sua conexão ou tente novamente.</p>
+        <p className="mt-1 text-xs text-slate-500">{erroConsulta || "Verifique sua conexão ou tente novamente."}</p>
         <button
-          onClick={() => fetchData(periodo, administradoraId)}
+          onClick={solicitarAtualizacao}
           className="mt-4 inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-xs font-bold text-white hover:bg-blue-700"
         >
           <RefreshCw className="h-3.5 w-3.5" />
@@ -140,7 +140,8 @@ export function ErpDashboardView({ initialData }: ErpDashboardViewProps) {
   const maxComissao = Math.max(...comissaoFranquia.historicoMensal.map((h) => Math.max(h.gerada, h.recebida)), 100);
 
   return (
-    <div className="space-y-7">
+    <div className="space-y-7" aria-busy={loading}>
+      {erroConsulta && <p role="alert" className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950">{erroConsulta} Os números exibidos são da última consulta concluída.</p>}
       {/* ───────────────────────────────────────────────────────────
           1. CABEÇALHO EXECUTIVO E FILTROS
       ─────────────────────────────────────────────────────────── */}
@@ -207,8 +208,8 @@ export function ErpDashboardView({ initialData }: ErpDashboardViewProps) {
           {/* Botão Atualizar */}
           <button
             type="button"
-            onClick={() => fetchData(periodo, administradoraId)}
-            disabled={isPending || loading}
+            onClick={solicitarAtualizacao}
+            disabled={loading}
             title="Atualizar dados do Dashboard"
             className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 shadow-2xs hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-800 dark:text-slate-300"
           >

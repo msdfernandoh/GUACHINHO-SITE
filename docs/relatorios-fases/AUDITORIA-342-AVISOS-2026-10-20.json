@@ -1,0 +1,3102 @@
+{
+  "data": "2026-10-20",
+  "commit_base": "9a42fc101996c0b2d202fb9138e345bf0124d4a4",
+  "escopo": "Classificação estática de cada aviso; não representa homologação funcional completa dos módulos pendentes. Linhas referem-se ao relatório original anterior às correções desta fase.",
+  "total_original": 342,
+  "situacoes": {
+    "corrigido": 14,
+    "revisao_contextual_pendente": 328
+  },
+  "avisos": [
+    {
+      "arquivo": "gauchinho-app/src/app/(public)/eventos/[slug]/page.tsx",
+      "linha_no_levantamento_original": 42,
+      "regra": "diretiva-eslint-sem-efeito",
+      "mensagem": "Unused eslint-disable directive (no problems were reported from '@next/next/no-img-element').",
+      "prioridade_de_revisao": "P2",
+      "situacao": "corrigido",
+      "avaliacao": "Removida diretiva que não correspondia ao elemento img analisado; aviso de otimização permanece visível."
+    },
+    {
+      "arquivo": "gauchinho-app/src/app/(public)/eventos/[slug]/page.tsx",
+      "linha_no_levantamento_original": 44,
+      "regra": "@next/next/no-img-element",
+      "mensagem": "Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element",
+      "prioridade_de_revisao": "P3",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Recomendação de otimização de imagem, não erro de acessibilidade. Verificar URL remota/data URL, dimensões e recorte antes de migrar para next/image."
+    },
+    {
+      "arquivo": "gauchinho-app/src/app/(public)/home-v2-client.tsx",
+      "linha_no_levantamento_original": 250,
+      "regra": "@next/next/no-img-element",
+      "mensagem": "Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element",
+      "prioridade_de_revisao": "P3",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Recomendação de otimização de imagem, não erro de acessibilidade. Verificar URL remota/data URL, dimensões e recorte antes de migrar para next/image."
+    },
+    {
+      "arquivo": "gauchinho-app/src/app/(public)/home-v2-client.tsx",
+      "linha_no_levantamento_original": 548,
+      "regra": "react-hooks/set-state-in-effect",
+      "mensagem": "Error: Calling setState synchronously within an effect can trigger cascading renders",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Atualização síncrona em efeito pode causar render adicional; não prova loop. Refatorar com teste de ciclo de vida, preservando SSR, rascunho e seleção financeira."
+    },
+    {
+      "arquivo": "gauchinho-app/src/app/(public)/home-v2-client.tsx",
+      "linha_no_levantamento_original": 552,
+      "regra": "react-hooks/set-state-in-effect",
+      "mensagem": "Error: Calling setState synchronously within an effect can trigger cascading renders",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Atualização síncrona em efeito pode causar render adicional; não prova loop. Refatorar com teste de ciclo de vida, preservando SSR, rascunho e seleção financeira."
+    },
+    {
+      "arquivo": "gauchinho-app/src/app/(public)/home-v2-client.tsx",
+      "linha_no_levantamento_original": 759,
+      "regra": "@next/next/no-img-element",
+      "mensagem": "Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element",
+      "prioridade_de_revisao": "P3",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Recomendação de otimização de imagem, não erro de acessibilidade. Verificar URL remota/data URL, dimensões e recorte antes de migrar para next/image."
+    },
+    {
+      "arquivo": "gauchinho-app/src/app/(public)/home-v2/page.tsx",
+      "linha_no_levantamento_original": 223,
+      "regra": "@next/next/no-img-element",
+      "mensagem": "Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element",
+      "prioridade_de_revisao": "P3",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Recomendação de otimização de imagem, não erro de acessibilidade. Verificar URL remota/data URL, dimensões e recorte antes de migrar para next/image."
+    },
+    {
+      "arquivo": "gauchinho-app/src/app/(public)/home-v2/page.tsx",
+      "linha_no_levantamento_original": 637,
+      "regra": "@next/next/no-img-element",
+      "mensagem": "Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element",
+      "prioridade_de_revisao": "P3",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Recomendação de otimização de imagem, não erro de acessibilidade. Verificar URL remota/data URL, dimensões e recorte antes de migrar para next/image."
+    },
+    {
+      "arquivo": "gauchinho-app/src/app/admin/configuracoes/qr-codes/page.tsx",
+      "linha_no_levantamento_original": 19,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/app/admin/configuracoes/qr-codes/page.tsx",
+      "linha_no_levantamento_original": 40,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/app/admin/configuracoes/robos-importacao/RobosImportacaoContent.tsx",
+      "linha_no_levantamento_original": 71,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/app/admin/configuracoes/robos-importacao/RobosImportacaoContent.tsx",
+      "linha_no_levantamento_original": 78,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/app/admin/configuracoes/robos-importacao/RobosImportacaoContent.tsx",
+      "linha_no_levantamento_original": 98,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/app/admin/configuracoes/robos-importacao/RobosImportacaoContent.tsx",
+      "linha_no_levantamento_original": 189,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/app/admin/configuracoes/robos-importacao/RobosImportacaoContent.tsx",
+      "linha_no_levantamento_original": 220,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/app/admin/configuracoes/robos-importacao/RobosImportacaoContent.tsx",
+      "linha_no_levantamento_original": 239,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/app/admin/configuracoes/robos-importacao/RobosImportacaoContent.tsx",
+      "linha_no_levantamento_original": 263,
+      "regra": "@typescript-eslint/no-unused-vars",
+      "mensagem": "'res' is defined but never used.",
+      "prioridade_de_revisao": "P3",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Identificador sem leitura. Verificar se é omissão intencional de campo com rest, valor de hook, código morto ou informação que deveria ser utilizada; preservar efeitos e exclusões de campos."
+    },
+    {
+      "arquivo": "gauchinho-app/src/app/admin/configuracoes/robos-importacao/RobosImportacaoContent.tsx",
+      "linha_no_levantamento_original": 267,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/app/admin/configuracoes/robos-importacao/RobosImportacaoContent.tsx",
+      "linha_no_levantamento_original": 268,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/app/admin/configuracoes/robos-importacao/RobosImportacaoContent.tsx",
+      "linha_no_levantamento_original": 295,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/app/admin/configuracoes/robos-importacao/RobosImportacaoContent.tsx",
+      "linha_no_levantamento_original": 768,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/app/admin/configuracoes/robos-importacao/RobosImportacaoContent.tsx",
+      "linha_no_levantamento_original": 881,
+      "regra": "@next/next/no-img-element",
+      "mensagem": "Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element",
+      "prioridade_de_revisao": "P3",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Recomendação de otimização de imagem, não erro de acessibilidade. Verificar URL remota/data URL, dimensões e recorte antes de migrar para next/image."
+    },
+    {
+      "arquivo": "gauchinho-app/src/app/admin/eventos/[id]/participantes/page.tsx",
+      "linha_no_levantamento_original": 40,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/app/admin/eventos/[id]/sorteio/page.tsx",
+      "linha_no_levantamento_original": 62,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/app/admin/eventos/listas-convidados/actions.ts",
+      "linha_no_levantamento_original": 149,
+      "regra": "@typescript-eslint/no-unused-vars",
+      "mensagem": "'_itens' is assigned a value but never used.",
+      "prioridade_de_revisao": "P3",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Identificador sem leitura. Verificar se é omissão intencional de campo com rest, valor de hook, código morto ou informação que deveria ser utilizada; preservar efeitos e exclusões de campos."
+    },
+    {
+      "arquivo": "gauchinho-app/src/app/admin/leads/actions.ts",
+      "linha_no_levantamento_original": 127,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/app/admin/leads/actions.ts",
+      "linha_no_levantamento_original": 219,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/app/admin/participantes/actions.ts",
+      "linha_no_levantamento_original": 103,
+      "regra": "@typescript-eslint/no-unused-vars",
+      "mensagem": "'_t' is assigned a value but never used.",
+      "prioridade_de_revisao": "P3",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Identificador sem leitura. Verificar se é omissão intencional de campo com rest, valor de hook, código morto ou informação que deveria ser utilizada; preservar efeitos e exclusões de campos."
+    },
+    {
+      "arquivo": "gauchinho-app/src/app/admin/vendas/page.tsx",
+      "linha_no_levantamento_original": 144,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/app/admin/vendas/page.tsx",
+      "linha_no_levantamento_original": 148,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/app/admin/vendas/page.tsx",
+      "linha_no_levantamento_original": 149,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/app/admin/vendas/page.tsx",
+      "linha_no_levantamento_original": 204,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/app/admin/vendas/page.tsx",
+      "linha_no_levantamento_original": 256,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/app/admin/vendas/page.tsx",
+      "linha_no_levantamento_original": 257,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/app/admin/vendas/page.tsx",
+      "linha_no_levantamento_original": 258,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/app/admin/vendas/page.tsx",
+      "linha_no_levantamento_original": 262,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/app/api/admin/eventos/[id]/participantes/export-xlsx/route.ts",
+      "linha_no_levantamento_original": 39,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/app/api/admin/eventos/[id]/participantes/export-xlsx/route.ts",
+      "linha_no_levantamento_original": 150,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/app/api/admin/gestao/dashboard/route.ts",
+      "linha_no_levantamento_original": 11,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "corrigido",
+      "avaliacao": "Período vindo da URL é validado por lista permitida com fallback, sem coerção any."
+    },
+    {
+      "arquivo": "gauchinho-app/src/app/api/automacoes/robos/[id]/executar/route.ts",
+      "linha_no_levantamento_original": 56,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/app/api/automacoes/robos/[id]/executar/route.ts",
+      "linha_no_levantamento_original": 165,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/app/api/automacoes/robos/[id]/mapear/route.ts",
+      "linha_no_levantamento_original": 42,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/app/api/automacoes/robos/[id]/mapear/route.ts",
+      "linha_no_levantamento_original": 69,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/app/api/automacoes/robos/[id]/route.ts",
+      "linha_no_levantamento_original": 44,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/app/api/automacoes/robos/[id]/route.ts",
+      "linha_no_levantamento_original": 69,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/app/api/automacoes/robos/[id]/route.ts",
+      "linha_no_levantamento_original": 97,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/app/api/automacoes/robos/[id]/route.ts",
+      "linha_no_levantamento_original": 120,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/app/api/automacoes/robos/[id]/testar/route.ts",
+      "linha_no_levantamento_original": 35,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/app/api/automacoes/robos/route.ts",
+      "linha_no_levantamento_original": 25,
+      "regra": "@typescript-eslint/no-unused-vars",
+      "mensagem": "'req' is defined but never used.",
+      "prioridade_de_revisao": "P3",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Identificador sem leitura. Verificar se é omissão intencional de campo com rest, valor de hook, código morto ou informação que deveria ser utilizada; preservar efeitos e exclusões de campos."
+    },
+    {
+      "arquivo": "gauchinho-app/src/app/api/automacoes/robos/route.ts",
+      "linha_no_levantamento_original": 37,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/app/api/automacoes/robos/route.ts",
+      "linha_no_levantamento_original": 59,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/app/api/public/leads/indicacao/route.ts",
+      "linha_no_levantamento_original": 98,
+      "regra": "@typescript-eslint/no-unused-vars",
+      "mensagem": "'baseRow' is assigned a value but never used.",
+      "prioridade_de_revisao": "P3",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Identificador sem leitura. Verificar se é omissão intencional de campo com rest, valor de hook, código morto ou informação que deveria ser utilizada; preservar efeitos e exclusões de campos."
+    },
+    {
+      "arquivo": "gauchinho-app/src/app/area-parceiro/actions.ts",
+      "linha_no_levantamento_original": 125,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/app/erp/clientes/[id]/page.tsx",
+      "linha_no_levantamento_original": 108,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/app/erp/clientes/[id]/page.tsx",
+      "linha_no_levantamento_original": 109,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/app/erp/clientes/[id]/page.tsx",
+      "linha_no_levantamento_original": 122,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/app/erp/clientes/[id]/page.tsx",
+      "linha_no_levantamento_original": 133,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/app/erp/clientes/[id]/page.tsx",
+      "linha_no_levantamento_original": 136,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/app/erp/clientes/[id]/page.tsx",
+      "linha_no_levantamento_original": 142,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/app/erp/conta-corrente-socios/actions.ts",
+      "linha_no_levantamento_original": 500,
+      "regra": "@typescript-eslint/no-unused-vars",
+      "mensagem": "'usuarioIds' is assigned a value but never used.",
+      "prioridade_de_revisao": "P3",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Identificador sem leitura. Verificar se é omissão intencional de campo com rest, valor de hook, código morto ou informação que deveria ser utilizada; preservar efeitos e exclusões de campos."
+    },
+    {
+      "arquivo": "gauchinho-app/src/app/erp/conta-corrente-socios/actions.ts",
+      "linha_no_levantamento_original": 696,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/app/erp/conta-corrente-socios/actions.ts",
+      "linha_no_levantamento_original": 704,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/app/erp/conta-corrente-socios/actions.ts",
+      "linha_no_levantamento_original": 1256,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/app/erp/conta-corrente-socios/actions.ts",
+      "linha_no_levantamento_original": 2391,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/app/erp/conta-corrente-socios/actions.ts",
+      "linha_no_levantamento_original": 2439,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/app/erp/conta-corrente-socios/actions.ts",
+      "linha_no_levantamento_original": 2492,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/app/erp/conta-corrente-socios/actions.ts",
+      "linha_no_levantamento_original": 2757,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/app/erp/contas-pagar/actions.ts",
+      "linha_no_levantamento_original": 326,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/app/erp/contas-pagar/actions.ts",
+      "linha_no_levantamento_original": 423,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/app/erp/contas-pagar/actions.ts",
+      "linha_no_levantamento_original": 619,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/app/erp/contas-pagar/actions.ts",
+      "linha_no_levantamento_original": 845,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/app/erp/contas-pagar/actions.ts",
+      "linha_no_levantamento_original": 902,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/app/erp/contas-pagar/actions.ts",
+      "linha_no_levantamento_original": 1222,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/app/erp/contas-pagar/actions.ts",
+      "linha_no_levantamento_original": 1239,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/app/erp/contas-pagar/page.tsx",
+      "linha_no_levantamento_original": 38,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/app/erp/contas-pagar/page.tsx",
+      "linha_no_levantamento_original": 41,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/app/erp/contas-pagar/page.tsx",
+      "linha_no_levantamento_original": 79,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/app/erp/contas-pagar/page.tsx",
+      "linha_no_levantamento_original": 80,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/app/erp/contratacoes/[id]/page.tsx",
+      "linha_no_levantamento_original": 226,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/app/erp/contratacoes/[id]/page.tsx",
+      "linha_no_levantamento_original": 227,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/app/erp/contratacoes/[id]/page.tsx",
+      "linha_no_levantamento_original": 230,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/app/erp/contratacoes/[id]/page.tsx",
+      "linha_no_levantamento_original": 240,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/app/erp/contratacoes/[id]/page.tsx",
+      "linha_no_levantamento_original": 306,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/app/erp/contratacoes/[id]/page.tsx",
+      "linha_no_levantamento_original": 313,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/app/erp/contratacoes/[id]/page.tsx",
+      "linha_no_levantamento_original": 317,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/app/erp/contratacoes/[id]/page.tsx",
+      "linha_no_levantamento_original": 321,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/app/erp/contratacoes/[id]/page.tsx",
+      "linha_no_levantamento_original": 482,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/app/erp/contratacoes/[id]/page.tsx",
+      "linha_no_levantamento_original": 488,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/app/erp/contratacoes/[id]/page.tsx",
+      "linha_no_levantamento_original": 489,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/app/erp/contratacoes/[id]/page.tsx",
+      "linha_no_levantamento_original": 490,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/app/erp/contratacoes/[id]/page.tsx",
+      "linha_no_levantamento_original": 491,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/app/erp/contratacoes/[id]/page.tsx",
+      "linha_no_levantamento_original": 495,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/app/erp/contratacoes/[id]/page.tsx",
+      "linha_no_levantamento_original": 496,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/app/erp/lances/actions.ts",
+      "linha_no_levantamento_original": 225,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/app/erp/lances/actions.ts",
+      "linha_no_levantamento_original": 226,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/app/erp/lances/actions.ts",
+      "linha_no_levantamento_original": 573,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/app/erp/minhas-comissoes/page.tsx",
+      "linha_no_levantamento_original": 95,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/app/erp/regras-comissao/actions.ts",
+      "linha_no_levantamento_original": 10,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/app/erp/regras-comissao/actions.ts",
+      "linha_no_levantamento_original": 326,
+      "regra": "@typescript-eslint/no-unused-vars",
+      "mensagem": "'_oldId' is assigned a value but never used.",
+      "prioridade_de_revisao": "P3",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Identificador sem leitura. Verificar se é omissão intencional de campo com rest, valor de hook, código morto ou informação que deveria ser utilizada; preservar efeitos e exclusões de campos."
+    },
+    {
+      "arquivo": "gauchinho-app/src/app/erp/regras-comissao/actions.ts",
+      "linha_no_levantamento_original": 326,
+      "regra": "@typescript-eslint/no-unused-vars",
+      "mensagem": "'_c' is assigned a value but never used.",
+      "prioridade_de_revisao": "P3",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Identificador sem leitura. Verificar se é omissão intencional de campo com rest, valor de hook, código morto ou informação que deveria ser utilizada; preservar efeitos e exclusões de campos."
+    },
+    {
+      "arquivo": "gauchinho-app/src/app/erp/regras-comissao/actions.ts",
+      "linha_no_levantamento_original": 326,
+      "regra": "@typescript-eslint/no-unused-vars",
+      "mensagem": "'_u' is assigned a value but never used.",
+      "prioridade_de_revisao": "P3",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Identificador sem leitura. Verificar se é omissão intencional de campo com rest, valor de hook, código morto ou informação que deveria ser utilizada; preservar efeitos e exclusões de campos."
+    },
+    {
+      "arquivo": "gauchinho-app/src/app/erp/regras-comissao/actions.ts",
+      "linha_no_levantamento_original": 692,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/app/erp/regras-comissao/actions.ts",
+      "linha_no_levantamento_original": 736,
+      "regra": "@typescript-eslint/no-unused-vars",
+      "mensagem": "'_i' is assigned a value but never used.",
+      "prioridade_de_revisao": "P3",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Identificador sem leitura. Verificar se é omissão intencional de campo com rest, valor de hook, código morto ou informação que deveria ser utilizada; preservar efeitos e exclusões de campos."
+    },
+    {
+      "arquivo": "gauchinho-app/src/app/erp/regras-comissao/actions.ts",
+      "linha_no_levantamento_original": 736,
+      "regra": "@typescript-eslint/no-unused-vars",
+      "mensagem": "'_c' is assigned a value but never used.",
+      "prioridade_de_revisao": "P3",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Identificador sem leitura. Verificar se é omissão intencional de campo com rest, valor de hook, código morto ou informação que deveria ser utilizada; preservar efeitos e exclusões de campos."
+    },
+    {
+      "arquivo": "gauchinho-app/src/app/erp/regras-comissao/actions.ts",
+      "linha_no_levantamento_original": 736,
+      "regra": "@typescript-eslint/no-unused-vars",
+      "mensagem": "'_u' is assigned a value but never used.",
+      "prioridade_de_revisao": "P3",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Identificador sem leitura. Verificar se é omissão intencional de campo com rest, valor de hook, código morto ou informação que deveria ser utilizada; preservar efeitos e exclusões de campos."
+    },
+    {
+      "arquivo": "gauchinho-app/src/app/erp/regras-comissao/page.tsx",
+      "linha_no_levantamento_original": 111,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/app/erp/robos/actions.ts",
+      "linha_no_levantamento_original": 233,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/app/erp/robos/actions.ts",
+      "linha_no_levantamento_original": 245,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/app/erp/robos/actions.ts",
+      "linha_no_levantamento_original": 266,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/app/erp/robos/actions.ts",
+      "linha_no_levantamento_original": 290,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/app/erp/whatsapp/ui.tsx",
+      "linha_no_levantamento_original": 50,
+      "regra": "react-hooks/set-state-in-effect",
+      "mensagem": "Error: Calling setState synchronously within an effect can trigger cascading renders",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Atualização síncrona em efeito pode causar render adicional; não prova loop. Refatorar com teste de ciclo de vida, preservando SSR, rascunho e seleção financeira."
+    },
+    {
+      "arquivo": "gauchinho-app/src/app/platform/administradoras-actions.ts",
+      "linha_no_levantamento_original": 90,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/app/platform/dominios/client.tsx",
+      "linha_no_levantamento_original": 70,
+      "regra": "react-hooks/set-state-in-effect",
+      "mensagem": "Error: Calling setState synchronously within an effect can trigger cascading renders",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Atualização síncrona em efeito pode causar render adicional; não prova loop. Refatorar com teste de ciclo de vida, preservando SSR, rascunho e seleção financeira."
+    },
+    {
+      "arquivo": "gauchinho-app/src/app/platform/dominios/client.tsx",
+      "linha_no_levantamento_original": 73,
+      "regra": "react-hooks/set-state-in-effect",
+      "mensagem": "Error: Calling setState synchronously within an effect can trigger cascading renders",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Atualização síncrona em efeito pode causar render adicional; não prova loop. Refatorar com teste de ciclo de vida, preservando SSR, rascunho e seleção financeira."
+    },
+    {
+      "arquivo": "gauchinho-app/src/app/platform/dominios/client.tsx",
+      "linha_no_levantamento_original": 77,
+      "regra": "react-hooks/set-state-in-effect",
+      "mensagem": "Error: Calling setState synchronously within an effect can trigger cascading renders",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Atualização síncrona em efeito pode causar render adicional; não prova loop. Refatorar com teste de ciclo de vida, preservando SSR, rascunho e seleção financeira."
+    },
+    {
+      "arquivo": "gauchinho-app/src/app/platform/empresas/client.tsx",
+      "linha_no_levantamento_original": 72,
+      "regra": "@typescript-eslint/no-unused-vars",
+      "mensagem": "'totalSuspensas' is assigned a value but never used.",
+      "prioridade_de_revisao": "P3",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Identificador sem leitura. Verificar se é omissão intencional de campo com rest, valor de hook, código morto ou informação que deveria ser utilizada; preservar efeitos e exclusões de campos."
+    },
+    {
+      "arquivo": "gauchinho-app/src/app/platform/grupos/vinculacoes/actions.ts",
+      "linha_no_levantamento_original": 32,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/app/platform/grupos/vinculacoes/actions.ts",
+      "linha_no_levantamento_original": 92,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/app/platform/grupos/vinculacoes/page.tsx",
+      "linha_no_levantamento_original": 32,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/app/platform/grupos/vinculacoes/page.tsx",
+      "linha_no_levantamento_original": 41,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/app/platform/usuarios/client.tsx",
+      "linha_no_levantamento_original": 121,
+      "regra": "react-hooks/set-state-in-effect",
+      "mensagem": "Error: Calling setState synchronously within an effect can trigger cascading renders",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Atualização síncrona em efeito pode causar render adicional; não prova loop. Refatorar com teste de ciclo de vida, preservando SSR, rascunho e seleção financeira."
+    },
+    {
+      "arquivo": "gauchinho-app/src/components/admin/crm/crm-kanban-board.tsx",
+      "linha_no_levantamento_original": 49,
+      "regra": "react-hooks/set-state-in-effect",
+      "mensagem": "Error: Calling setState synchronously within an effect can trigger cascading renders",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Atualização síncrona em efeito pode causar render adicional; não prova loop. Refatorar com teste de ciclo de vida, preservando SSR, rascunho e seleção financeira."
+    },
+    {
+      "arquivo": "gauchinho-app/src/components/admin/crm/crm-lead-arquivos.tsx",
+      "linha_no_levantamento_original": 64,
+      "regra": "@typescript-eslint/no-unused-vars",
+      "mensagem": "'err' is defined but never used.",
+      "prioridade_de_revisao": "P3",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Identificador sem leitura. Verificar se é omissão intencional de campo com rest, valor de hook, código morto ou informação que deveria ser utilizada; preservar efeitos e exclusões de campos."
+    },
+    {
+      "arquivo": "gauchinho-app/src/components/admin/crm/crm-lead-edit-modal.tsx",
+      "linha_no_levantamento_original": 11,
+      "regra": "react-hooks/set-state-in-effect",
+      "mensagem": "Error: Calling setState synchronously within an effect can trigger cascading renders",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Hidratação/portal ou troca de rota. Necessita preservar HTML inicial consistente; mover para inicializador dependente de window pode quebrar SSR."
+    },
+    {
+      "arquivo": "gauchinho-app/src/components/admin/crm/crm-lead-propostas-modal.tsx",
+      "linha_no_levantamento_original": 57,
+      "regra": "react-hooks/set-state-in-effect",
+      "mensagem": "Error: Calling setState synchronously within an effect can trigger cascading renders",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Atualização síncrona em efeito pode causar render adicional; não prova loop. Refatorar com teste de ciclo de vida, preservando SSR, rascunho e seleção financeira."
+    },
+    {
+      "arquivo": "gauchinho-app/src/components/admin/crm/crm-stage-move-modal.tsx",
+      "linha_no_levantamento_original": 40,
+      "regra": "react-hooks/set-state-in-effect",
+      "mensagem": "Error: Calling setState synchronously within an effect can trigger cascading renders",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Atualização síncrona em efeito pode causar render adicional; não prova loop. Refatorar com teste de ciclo de vida, preservando SSR, rascunho e seleção financeira."
+    },
+    {
+      "arquivo": "gauchinho-app/src/components/admin/eventos/lista-convidados-detail-client.tsx",
+      "linha_no_levantamento_original": 107,
+      "regra": "react-hooks/set-state-in-effect",
+      "mensagem": "Error: Calling setState synchronously within an effect can trigger cascading renders",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Sincronização de edição local com valor externo. Não adicionar dependências ou remover efeito sem preservar digitação parcial, blur, reset e mudanças vindas do servidor."
+    },
+    {
+      "arquivo": "gauchinho-app/src/components/admin/grupo-modalidades-editor.tsx",
+      "linha_no_levantamento_original": 99,
+      "regra": "@typescript-eslint/no-unused-vars",
+      "mensagem": "'_k' is defined but never used.",
+      "prioridade_de_revisao": "P3",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Identificador sem leitura. Verificar se é omissão intencional de campo com rest, valor de hook, código morto ou informação que deveria ser utilizada; preservar efeitos e exclusões de campos."
+    },
+    {
+      "arquivo": "gauchinho-app/src/components/admin/grupo-reajuste-cotas-dialog.tsx",
+      "linha_no_levantamento_original": 61,
+      "regra": "react-hooks/set-state-in-effect",
+      "mensagem": "Error: Calling setState synchronously within an effect can trigger cascading renders",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Atualização síncrona em efeito pode causar render adicional; não prova loop. Refatorar com teste de ciclo de vida, preservando SSR, rascunho e seleção financeira."
+    },
+    {
+      "arquivo": "gauchinho-app/src/components/admin/participantes/participantes-manager-view.tsx",
+      "linha_no_levantamento_original": 60,
+      "regra": "@typescript-eslint/no-unused-vars",
+      "mensagem": "'modulosDisponiveis' is assigned a value but never used.",
+      "prioridade_de_revisao": "P3",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Identificador sem leitura. Verificar se é omissão intencional de campo com rest, valor de hook, código morto ou informação que deveria ser utilizada; preservar efeitos e exclusões de campos."
+    },
+    {
+      "arquivo": "gauchinho-app/src/components/admin/participantes/participantes-manager-view.tsx",
+      "linha_no_levantamento_original": 124,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/components/app-indicador/indicacao-chat.tsx",
+      "linha_no_levantamento_original": 110,
+      "regra": "react-hooks/set-state-in-effect",
+      "mensagem": "Error: Calling setState synchronously within an effect can trigger cascading renders",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Estado derivado de armazenamento do navegador. Revisar assinatura de armazenamento/SSR; não tratar acesso a localStorage como dado disponível no servidor."
+    },
+    {
+      "arquivo": "gauchinho-app/src/components/contratacao/contratacao-endereco-fields.tsx",
+      "linha_no_levantamento_original": 41,
+      "regra": "react-hooks/set-state-in-effect",
+      "mensagem": "Error: Calling setState synchronously within an effect can trigger cascading renders",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Atualização síncrona em efeito pode causar render adicional; não prova loop. Refatorar com teste de ciclo de vida, preservando SSR, rascunho e seleção financeira."
+    },
+    {
+      "arquivo": "gauchinho-app/src/components/contratacao/contratacao-wizard.tsx",
+      "linha_no_levantamento_original": 292,
+      "regra": "react-hooks/set-state-in-effect",
+      "mensagem": "Error: Calling setState synchronously within an effect can trigger cascading renders",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Atualização síncrona em efeito pode causar render adicional; não prova loop. Refatorar com teste de ciclo de vida, preservando SSR, rascunho e seleção financeira."
+    },
+    {
+      "arquivo": "gauchinho-app/src/components/contratacao/proposta-link-modal.tsx",
+      "linha_no_levantamento_original": 208,
+      "regra": "jsx-a11y/alt-text",
+      "mensagem": "Image elements must have an alt prop, either with meaningful text, or an empty string for decorative images.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "corrigido",
+      "avaliacao": "Falso positivo: Image era ícone lucide ou componente de @react-pdf/renderer. Alias ImageIcon/PdfImage esclarece sem adicionar alt sem sentido nem alterar imagem HTML."
+    },
+    {
+      "arquivo": "gauchinho-app/src/components/erp/assembleias/erp-assembleias-form.tsx",
+      "linha_no_levantamento_original": 34,
+      "regra": "@typescript-eslint/no-unused-vars",
+      "mensagem": "'idModoFederal' is assigned a value but never used.",
+      "prioridade_de_revisao": "P3",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Identificador sem leitura. Verificar se é omissão intencional de campo com rest, valor de hook, código morto ou informação que deveria ser utilizada; preservar efeitos e exclusões de campos."
+    },
+    {
+      "arquivo": "gauchinho-app/src/components/erp/assembleias/erp-assembleias-form.tsx",
+      "linha_no_levantamento_original": 35,
+      "regra": "@typescript-eslint/no-unused-vars",
+      "mensagem": "'idModoManual' is assigned a value but never used.",
+      "prioridade_de_revisao": "P3",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Identificador sem leitura. Verificar se é omissão intencional de campo com rest, valor de hook, código morto ou informação que deveria ser utilizada; preservar efeitos e exclusões de campos."
+    },
+    {
+      "arquivo": "gauchinho-app/src/components/erp/assembleias/erp-contemplacoes-panel.tsx",
+      "linha_no_levantamento_original": 47,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/components/erp/assembleias/erp-contemplacoes-panel.tsx",
+      "linha_no_levantamento_original": 82,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/components/erp/assembleias/erp-contemplacoes-panel.tsx",
+      "linha_no_levantamento_original": 96,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/components/erp/comissoes/company-commissions-dashboard.tsx",
+      "linha_no_levantamento_original": 12,
+      "regra": "@typescript-eslint/no-unused-expressions",
+      "mensagem": "Expected an assignment or function call and instead saw an expression.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "corrigido",
+      "avaliacao": "Ternário de add/delete substituído por if/else explícito, preservando seleção."
+    },
+    {
+      "arquivo": "gauchinho-app/src/components/erp/comissoes/erp-commission-hub-view.tsx",
+      "linha_no_levantamento_original": 63,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/components/erp/comissoes/erp-commission-hub-view.tsx",
+      "linha_no_levantamento_original": 159,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/components/erp/comissoes/minhas-comissoes-client.tsx",
+      "linha_no_levantamento_original": 79,
+      "regra": "react-hooks/exhaustive-deps",
+      "mensagem": "The 'now' object construction makes the dependencies of useMemo Hook (at line 152) change on every render. To fix this, wrap the initialization of 'now' in its own useMemo() Hook.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "corrigido",
+      "avaliacao": "Dependências agora representam filtros/dados usados e possuem identidades estáveis ou valores primitivos; dashboard tem cancelamento por troca de filtro."
+    },
+    {
+      "arquivo": "gauchinho-app/src/components/erp/contratacoes/formalizacao-venda-form.tsx",
+      "linha_no_levantamento_original": 192,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/components/erp/contratacoes/formalizacao-venda-form.tsx",
+      "linha_no_levantamento_original": 273,
+      "regra": "react-hooks/set-state-in-effect",
+      "mensagem": "Error: Calling setState synchronously within an effect can trigger cascading renders",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Seleção recalculada conforme regras/perfis elegíveis. Refatoração exige testar vínculo e troca de cotas/perfis; não remover atualização sem preservar elegibilidade financeira."
+    },
+    {
+      "arquivo": "gauchinho-app/src/components/erp/contratacoes/formalizacao-venda-form.tsx",
+      "linha_no_levantamento_original": 340,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/components/erp/contratacoes/formalizacao-venda-form.tsx",
+      "linha_no_levantamento_original": 340,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/components/erp/contratacoes/formalizacao-venda-form.tsx",
+      "linha_no_levantamento_original": 341,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/components/erp/contratacoes/formalizacao-venda-form.tsx",
+      "linha_no_levantamento_original": 383,
+      "regra": "react-hooks/set-state-in-effect",
+      "mensagem": "Error: Calling setState synchronously within an effect can trigger cascading renders",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Seleção recalculada conforme regras/perfis elegíveis. Refatoração exige testar vínculo e troca de cotas/perfis; não remover atualização sem preservar elegibilidade financeira."
+    },
+    {
+      "arquivo": "gauchinho-app/src/components/erp/contratacoes/formalizacao-venda-form.tsx",
+      "linha_no_levantamento_original": 392,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/components/erp/contratacoes/formalizacao-venda-form.tsx",
+      "linha_no_levantamento_original": 392,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/components/erp/contratacoes/formalizacao-venda-form.tsx",
+      "linha_no_levantamento_original": 399,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/components/erp/contratacoes/formalizacao-venda-form.tsx",
+      "linha_no_levantamento_original": 400,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/components/erp/contratacoes/formalizacao-venda-form.tsx",
+      "linha_no_levantamento_original": 401,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/components/erp/contratacoes/formalizacao-venda-form.tsx",
+      "linha_no_levantamento_original": 401,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/components/erp/contratacoes/formalizacao-venda-form.tsx",
+      "linha_no_levantamento_original": 406,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/components/erp/contratacoes/formalizacao-venda-form.tsx",
+      "linha_no_levantamento_original": 407,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/components/erp/contratacoes/formalizacao-venda-form.tsx",
+      "linha_no_levantamento_original": 420,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/components/erp/contratacoes/formalizacao-venda-form.tsx",
+      "linha_no_levantamento_original": 426,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/components/erp/contratacoes/formalizacao-venda-form.tsx",
+      "linha_no_levantamento_original": 473,
+      "regra": "react-hooks/set-state-in-effect",
+      "mensagem": "Error: Calling setState synchronously within an effect can trigger cascading renders",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Seleção recalculada conforme regras/perfis elegíveis. Refatoração exige testar vínculo e troca de cotas/perfis; não remover atualização sem preservar elegibilidade financeira."
+    },
+    {
+      "arquivo": "gauchinho-app/src/components/erp/contratacoes/formalizacao-venda-form.tsx",
+      "linha_no_levantamento_original": 577,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/components/erp/contratacoes/formalizacao-venda-form.tsx",
+      "linha_no_levantamento_original": 577,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/components/erp/crm/erp-leads-view.tsx",
+      "linha_no_levantamento_original": 119,
+      "regra": "@typescript-eslint/no-unused-vars",
+      "mensagem": "'isPending' is assigned a value but never used.",
+      "prioridade_de_revisao": "P3",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Identificador sem leitura. Verificar se é omissão intencional de campo com rest, valor de hook, código morto ou informação que deveria ser utilizada; preservar efeitos e exclusões de campos."
+    },
+    {
+      "arquivo": "gauchinho-app/src/components/erp/crm/erp-leads-view.tsx",
+      "linha_no_levantamento_original": 119,
+      "regra": "@typescript-eslint/no-unused-vars",
+      "mensagem": "'startTransition' is assigned a value but never used.",
+      "prioridade_de_revisao": "P3",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Identificador sem leitura. Verificar se é omissão intencional de campo com rest, valor de hook, código morto ou informação que deveria ser utilizada; preservar efeitos e exclusões de campos."
+    },
+    {
+      "arquivo": "gauchinho-app/src/components/erp/crm/erp-leads-view.tsx",
+      "linha_no_levantamento_original": 125,
+      "regra": "react-hooks/set-state-in-effect",
+      "mensagem": "Error: Calling setState synchronously within an effect can trigger cascading renders",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Estado derivado de armazenamento do navegador. Revisar assinatura de armazenamento/SSR; não tratar acesso a localStorage como dado disponível no servidor."
+    },
+    {
+      "arquivo": "gauchinho-app/src/components/erp/crm/erp-leads-view.tsx",
+      "linha_no_levantamento_original": 161,
+      "regra": "@typescript-eslint/no-unused-vars",
+      "mensagem": "'periodoFilter' is assigned a value but never used.",
+      "prioridade_de_revisao": "P3",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Identificador sem leitura. Verificar se é omissão intencional de campo com rest, valor de hook, código morto ou informação que deveria ser utilizada; preservar efeitos e exclusões de campos."
+    },
+    {
+      "arquivo": "gauchinho-app/src/components/erp/crm/erp-leads-view.tsx",
+      "linha_no_levantamento_original": 161,
+      "regra": "@typescript-eslint/no-unused-vars",
+      "mensagem": "'setPeriodoFilter' is assigned a value but never used.",
+      "prioridade_de_revisao": "P3",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Identificador sem leitura. Verificar se é omissão intencional de campo com rest, valor de hook, código morto ou informação que deveria ser utilizada; preservar efeitos e exclusões de campos."
+    },
+    {
+      "arquivo": "gauchinho-app/src/components/erp/erp-dashboard-view.tsx",
+      "linha_no_levantamento_original": 64,
+      "regra": "react-hooks/set-state-in-effect",
+      "mensagem": "Error: Calling setState synchronously within an effect can trigger cascading renders",
+      "prioridade_de_revisao": "P2",
+      "situacao": "corrigido",
+      "avaliacao": "Consulta agora reage aos filtros, cancela requisição anterior e impede resposta antiga após cancelamento; estado de carga inicia nos eventos."
+    },
+    {
+      "arquivo": "gauchinho-app/src/components/erp/erp-dashboard-view.tsx",
+      "linha_no_levantamento_original": 66,
+      "regra": "react-hooks/exhaustive-deps",
+      "mensagem": "React Hook useEffect has missing dependencies: 'administradoraId', 'initialData', and 'periodo'. Either include them or remove the dependency array.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "corrigido",
+      "avaliacao": "Dependências agora representam filtros/dados usados e possuem identidades estáveis ou valores primitivos; dashboard tem cancelamento por troca de filtro."
+    },
+    {
+      "arquivo": "gauchinho-app/src/components/erp/erp-lances-view.tsx",
+      "linha_no_levantamento_original": 28,
+      "regra": "@typescript-eslint/no-unused-vars",
+      "mensagem": "'isPending' is assigned a value but never used.",
+      "prioridade_de_revisao": "P3",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Identificador sem leitura. Verificar se é omissão intencional de campo com rest, valor de hook, código morto ou informação que deveria ser utilizada; preservar efeitos e exclusões de campos."
+    },
+    {
+      "arquivo": "gauchinho-app/src/components/erp/erp-lances-view.tsx",
+      "linha_no_levantamento_original": 28,
+      "regra": "@typescript-eslint/no-unused-vars",
+      "mensagem": "'startTransition' is assigned a value but never used.",
+      "prioridade_de_revisao": "P3",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Identificador sem leitura. Verificar se é omissão intencional de campo com rest, valor de hook, código morto ou informação que deveria ser utilizada; preservar efeitos e exclusões de campos."
+    },
+    {
+      "arquivo": "gauchinho-app/src/components/erp/erp-lances-view.tsx",
+      "linha_no_levantamento_original": 594,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/components/erp/erp-lances-view.tsx",
+      "linha_no_levantamento_original": 991,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/components/erp/erp-lances-view.tsx",
+      "linha_no_levantamento_original": 1054,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/components/erp/erp-operational-pages.tsx",
+      "linha_no_levantamento_original": 116,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/components/erp/financeiro/conta-corrente-central-socios.tsx",
+      "linha_no_levantamento_original": 190,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/components/erp/financeiro/conta-corrente-central-socios.tsx",
+      "linha_no_levantamento_original": 217,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/components/erp/financeiro/conta-corrente-central-socios.tsx",
+      "linha_no_levantamento_original": 248,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/components/erp/financeiro/conta-corrente-central-socios.tsx",
+      "linha_no_levantamento_original": 2023,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/components/erp/financeiro/conta-corrente-socios-view.tsx",
+      "linha_no_levantamento_original": 161,
+      "regra": "@typescript-eslint/no-unused-vars",
+      "mensagem": "'saldoDiferencaAtivo' is assigned a value but never used.",
+      "prioridade_de_revisao": "P3",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Identificador sem leitura. Verificar se é omissão intencional de campo com rest, valor de hook, código morto ou informação que deveria ser utilizada; preservar efeitos e exclusões de campos."
+    },
+    {
+      "arquivo": "gauchinho-app/src/components/erp/financeiro/conta-corrente-socios-view.tsx",
+      "linha_no_levantamento_original": 223,
+      "regra": "@typescript-eslint/no-unused-vars",
+      "mensagem": "'alterarFiltrosLegado' is defined but never used.",
+      "prioridade_de_revisao": "P3",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Identificador sem leitura. Verificar se é omissão intencional de campo com rest, valor de hook, código morto ou informação que deveria ser utilizada; preservar efeitos e exclusões de campos."
+    },
+    {
+      "arquivo": "gauchinho-app/src/components/erp/financeiro/conta-corrente-socios-view.tsx",
+      "linha_no_levantamento_original": 295,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/components/erp/financeiro/conta-corrente-socios-view.tsx",
+      "linha_no_levantamento_original": 315,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/components/erp/financeiro/conta-corrente-socios-view.tsx",
+      "linha_no_levantamento_original": 334,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/components/erp/financeiro/conta-corrente-socios-view.tsx",
+      "linha_no_levantamento_original": 351,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/components/erp/financeiro/conta-corrente-socios-view.tsx",
+      "linha_no_levantamento_original": 370,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/components/erp/financeiro/conta-corrente-socios-view.tsx",
+      "linha_no_levantamento_original": 390,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/components/erp/financeiro/conta-corrente-socios-view.tsx",
+      "linha_no_levantamento_original": 519,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/components/erp/financeiro/conta-corrente-socios-view.tsx",
+      "linha_no_levantamento_original": 685,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/components/erp/financeiro/conta-corrente-socios-view.tsx",
+      "linha_no_levantamento_original": 707,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/components/erp/financeiro/conta-corrente-socios-view.tsx",
+      "linha_no_levantamento_original": 3040,
+      "regra": "@typescript-eslint/no-unused-vars",
+      "mensagem": "'abatimentoDivida' is assigned a value but never used.",
+      "prioridade_de_revisao": "P3",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Identificador sem leitura. Verificar se é omissão intencional de campo com rest, valor de hook, código morto ou informação que deveria ser utilizada; preservar efeitos e exclusões de campos."
+    },
+    {
+      "arquivo": "gauchinho-app/src/components/erp/group-catalog-form.tsx",
+      "linha_no_levantamento_original": 107,
+      "regra": "react-hooks/set-state-in-effect",
+      "mensagem": "Error: Calling setState synchronously within an effect can trigger cascading renders",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Atualização síncrona em efeito pode causar render adicional; não prova loop. Refatorar com teste de ciclo de vida, preservando SSR, rascunho e seleção financeira."
+    },
+    {
+      "arquivo": "gauchinho-app/src/components/erp/repasse-pdf-conciliacao.tsx",
+      "linha_no_levantamento_original": 131,
+      "regra": "react-hooks/set-state-in-effect",
+      "mensagem": "Error: Calling setState synchronously within an effect can trigger cascading renders",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Atualização síncrona em efeito pode causar render adicional; não prova loop. Refatorar com teste de ciclo de vida, preservando SSR, rascunho e seleção financeira."
+    },
+    {
+      "arquivo": "gauchinho-app/src/components/erp/repasse-pdf-conciliacao.tsx",
+      "linha_no_levantamento_original": 199,
+      "regra": "react-hooks/set-state-in-effect",
+      "mensagem": "Error: Calling setState synchronously within an effect can trigger cascading renders",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Atualização síncrona em efeito pode causar render adicional; não prova loop. Refatorar com teste de ciclo de vida, preservando SSR, rascunho e seleção financeira."
+    },
+    {
+      "arquivo": "gauchinho-app/src/components/erp/robos/erp-robos-hub.tsx",
+      "linha_no_levantamento_original": 109,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/components/erp/robos/erp-robos-hub.tsx",
+      "linha_no_levantamento_original": 142,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/components/erp/robos/erp-robos-hub.tsx",
+      "linha_no_levantamento_original": 697,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/components/erp/vendas/erp-vendas-hub-view.tsx",
+      "linha_no_levantamento_original": 101,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/components/erp/vendas/erp-vendas-hub-view.tsx",
+      "linha_no_levantamento_original": 653,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/components/erp/vendas/erp-vendas-hub-view.tsx",
+      "linha_no_levantamento_original": 678,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/components/erp/vendas/erp-vendas-hub-view.tsx",
+      "linha_no_levantamento_original": 680,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/components/erp/vendas/erp-vendas-hub-view.tsx",
+      "linha_no_levantamento_original": 681,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/components/erp/vendas/erp-vendas-hub-view.tsx",
+      "linha_no_levantamento_original": 686,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/components/erp/vendas/erp-vendas-hub-view.tsx",
+      "linha_no_levantamento_original": 919,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/components/erp/vendas/erp-vendas-hub-view.tsx",
+      "linha_no_levantamento_original": 1625,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/components/erp/vendas/erp-vendas-hub-view.tsx",
+      "linha_no_levantamento_original": 1777,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/components/erp/vendas/erp-vendas-hub-view.tsx",
+      "linha_no_levantamento_original": 2105,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/components/erp/vendas/erp-vendas-hub-view.tsx",
+      "linha_no_levantamento_original": 2180,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/components/erp/vendas/erp-vendas-hub-view.tsx",
+      "linha_no_levantamento_original": 2311,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/components/grupos-sorteio/grupos-sorteio-panel.tsx",
+      "linha_no_levantamento_original": 166,
+      "regra": "react-hooks/set-state-in-effect",
+      "mensagem": "Error: Calling setState synchronously within an effect can trigger cascading renders",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Atualização síncrona em efeito pode causar render adicional; não prova loop. Refatorar com teste de ciclo de vida, preservando SSR, rascunho e seleção financeira."
+    },
+    {
+      "arquivo": "gauchinho-app/src/components/grupos-sorteio/grupos-sorteio-panel.tsx",
+      "linha_no_levantamento_original": 188,
+      "regra": "react-hooks/set-state-in-effect",
+      "mensagem": "Error: Calling setState synchronously within an effect can trigger cascading renders",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Atualização síncrona em efeito pode causar render adicional; não prova loop. Refatorar com teste de ciclo de vida, preservando SSR, rascunho e seleção financeira."
+    },
+    {
+      "arquivo": "gauchinho-app/src/components/platform/grupo-operational-workspace.tsx",
+      "linha_no_levantamento_original": 234,
+      "regra": "@typescript-eslint/no-unused-vars",
+      "mensagem": "'reajustePendente' is assigned a value but never used.",
+      "prioridade_de_revisao": "P3",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Identificador sem leitura. Verificar se é omissão intencional de campo com rest, valor de hook, código morto ou informação que deveria ser utilizada; preservar efeitos e exclusões de campos."
+    },
+    {
+      "arquivo": "gauchinho-app/src/components/platform/grupo-vagas-lote-modal.tsx",
+      "linha_no_levantamento_original": 112,
+      "regra": "react-hooks/exhaustive-deps",
+      "mensagem": "React Hook useMemo has missing dependencies: 'getVagasAtuais' and 'isAlterado'. Either include them or remove the dependency array.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "corrigido",
+      "avaliacao": "Dependências agora representam filtros/dados usados e possuem identidades estáveis ou valores primitivos; dashboard tem cancelamento por troca de filtro."
+    },
+    {
+      "arquivo": "gauchinho-app/src/components/platform/master-franquia-hub.tsx",
+      "linha_no_levantamento_original": 418,
+      "regra": "@typescript-eslint/no-unused-vars",
+      "mensagem": "'maxParceirosPlano' is assigned a value but never used.",
+      "prioridade_de_revisao": "P3",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Identificador sem leitura. Verificar se é omissão intencional de campo com rest, valor de hook, código morto ou informação que deveria ser utilizada; preservar efeitos e exclusões de campos."
+    },
+    {
+      "arquivo": "gauchinho-app/src/components/platform/media-field-control.tsx",
+      "linha_no_levantamento_original": 148,
+      "regra": "react-hooks/set-state-in-effect",
+      "mensagem": "Error: Calling setState synchronously within an effect can trigger cascading renders",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Atualização síncrona em efeito pode causar render adicional; não prova loop. Refatorar com teste de ciclo de vida, preservando SSR, rascunho e seleção financeira."
+    },
+    {
+      "arquivo": "gauchinho-app/src/components/platform/media-field-control.tsx",
+      "linha_no_levantamento_original": 407,
+      "regra": "@next/next/no-img-element",
+      "mensagem": "Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element",
+      "prioridade_de_revisao": "P3",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Recomendação de otimização de imagem, não erro de acessibilidade. Verificar URL remota/data URL, dimensões e recorte antes de migrar para next/image."
+    },
+    {
+      "arquivo": "gauchinho-app/src/components/platform/media-field-control.tsx",
+      "linha_no_levantamento_original": 459,
+      "regra": "@next/next/no-img-element",
+      "mensagem": "Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element",
+      "prioridade_de_revisao": "P3",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Recomendação de otimização de imagem, não erro de acessibilidade. Verificar URL remota/data URL, dimensões e recorte antes de migrar para next/image."
+    },
+    {
+      "arquivo": "gauchinho-app/src/components/platform/template-workspace.tsx",
+      "linha_no_levantamento_original": 541,
+      "regra": "@next/next/no-img-element",
+      "mensagem": "Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element",
+      "prioridade_de_revisao": "P3",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Recomendação de otimização de imagem, não erro de acessibilidade. Verificar URL remota/data URL, dimensões e recorte antes de migrar para next/image."
+    },
+    {
+      "arquivo": "gauchinho-app/src/components/platform/vinculacoes-legadas-view.tsx",
+      "linha_no_levantamento_original": 137,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/components/public/especialista-lead-modal.tsx",
+      "linha_no_levantamento_original": 51,
+      "regra": "react-hooks/set-state-in-effect",
+      "mensagem": "Error: Calling setState synchronously within an effect can trigger cascading renders",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Hidratação/portal ou troca de rota. Necessita preservar HTML inicial consistente; mover para inicializador dependente de window pode quebrar SSR."
+    },
+    {
+      "arquivo": "gauchinho-app/src/components/public/gauchinho-mascot-inline.tsx",
+      "linha_no_levantamento_original": 46,
+      "regra": "react-hooks/set-state-in-effect",
+      "mensagem": "Error: Calling setState synchronously within an effect can trigger cascading renders",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Estado derivado de armazenamento do navegador. Revisar assinatura de armazenamento/SSR; não tratar acesso a localStorage como dado disponível no servidor."
+    },
+    {
+      "arquivo": "gauchinho-app/src/components/public/grupos/grupos-primitives.tsx",
+      "linha_no_levantamento_original": 100,
+      "regra": "react-hooks/set-state-in-effect",
+      "mensagem": "Error: Calling setState synchronously within an effect can trigger cascading renders",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Sincronização de edição local com valor externo. Não adicionar dependências ou remover efeito sem preservar digitação parcial, blur, reset e mudanças vindas do servidor."
+    },
+    {
+      "arquivo": "gauchinho-app/src/components/public/grupos/grupos-primitives.tsx",
+      "linha_no_levantamento_original": 155,
+      "regra": "react-hooks/set-state-in-effect",
+      "mensagem": "Error: Calling setState synchronously within an effect can trigger cascading renders",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Sincronização de edição local com valor externo. Não adicionar dependências ou remover efeito sem preservar digitação parcial, blur, reset e mudanças vindas do servidor."
+    },
+    {
+      "arquivo": "gauchinho-app/src/components/public/grupos/grupos-primitives.tsx",
+      "linha_no_levantamento_original": 156,
+      "regra": "react-hooks/exhaustive-deps",
+      "mensagem": "React Hook useEffect has a missing dependency: 'display'. Either include it or remove the dependency array.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "O efeito lê rascunho percentual mas reage só a mudanças externas de value. Adicionar display sem ajustar desenho pode apagar digitação parcial; precisa teste de edição."
+    },
+    {
+      "arquivo": "gauchinho-app/src/components/public/grupos/use-grupo-linha.ts",
+      "linha_no_levantamento_original": 61,
+      "regra": "@typescript-eslint/no-unused-vars",
+      "mensagem": "'mods' is defined but never used.",
+      "prioridade_de_revisao": "P3",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Identificador sem leitura. Verificar se é omissão intencional de campo com rest, valor de hook, código morto ou informação que deveria ser utilizada; preservar efeitos e exclusões de campos."
+    },
+    {
+      "arquivo": "gauchinho-app/src/components/public/grupos/use-grupo-linha.ts",
+      "linha_no_levantamento_original": 62,
+      "regra": "@typescript-eslint/no-unused-vars",
+      "mensagem": "'pctMinRecurso' is defined but never used.",
+      "prioridade_de_revisao": "P3",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Identificador sem leitura. Verificar se é omissão intencional de campo com rest, valor de hook, código morto ou informação que deveria ser utilizada; preservar efeitos e exclusões de campos."
+    },
+    {
+      "arquivo": "gauchinho-app/src/components/public/home/hero-mascote.tsx",
+      "linha_no_levantamento_original": 28,
+      "regra": "react-hooks/set-state-in-effect",
+      "mensagem": "Error: Calling setState synchronously within an effect can trigger cascading renders",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Hidratação/portal ou troca de rota. Necessita preservar HTML inicial consistente; mover para inicializador dependente de window pode quebrar SSR."
+    },
+    {
+      "arquivo": "gauchinho-app/src/components/public/home/hero-mascote.tsx",
+      "linha_no_levantamento_original": 236,
+      "regra": "@next/next/no-img-element",
+      "mensagem": "Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element",
+      "prioridade_de_revisao": "P3",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Recomendação de otimização de imagem, não erro de acessibilidade. Verificar URL remota/data URL, dimensões e recorte antes de migrar para next/image."
+    },
+    {
+      "arquivo": "gauchinho-app/src/components/public/home/hero-title-animated.tsx",
+      "linha_no_levantamento_original": 12,
+      "regra": "react-hooks/set-state-in-effect",
+      "mensagem": "Error: Calling setState synchronously within an effect can trigger cascading renders",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Hidratação/portal ou troca de rota. Necessita preservar HTML inicial consistente; mover para inicializador dependente de window pode quebrar SSR."
+    },
+    {
+      "arquivo": "gauchinho-app/src/components/public/ia-chat/ia-chat-widget.tsx",
+      "linha_no_levantamento_original": 52,
+      "regra": "react-hooks/set-state-in-effect",
+      "mensagem": "Error: Calling setState synchronously within an effect can trigger cascading renders",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Atualização síncrona em efeito pode causar render adicional; não prova loop. Refatorar com teste de ciclo de vida, preservando SSR, rascunho e seleção financeira."
+    },
+    {
+      "arquivo": "gauchinho-app/src/components/public/public-header-nav.tsx",
+      "linha_no_levantamento_original": 49,
+      "regra": "react-hooks/set-state-in-effect",
+      "mensagem": "Error: Calling setState synchronously within an effect can trigger cascading renders",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Hidratação/portal ou troca de rota. Necessita preservar HTML inicial consistente; mover para inicializador dependente de window pode quebrar SSR."
+    },
+    {
+      "arquivo": "gauchinho-app/src/components/public/public-header-nav.tsx",
+      "linha_no_levantamento_original": 53,
+      "regra": "react-hooks/set-state-in-effect",
+      "mensagem": "Error: Calling setState synchronously within an effect can trigger cascading renders",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Hidratação/portal ou troca de rota. Necessita preservar HTML inicial consistente; mover para inicializador dependente de window pode quebrar SSR."
+    },
+    {
+      "arquivo": "gauchinho-app/src/components/public/site-appearance.tsx",
+      "linha_no_levantamento_original": 22,
+      "regra": "@next/next/no-img-element",
+      "mensagem": "Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element",
+      "prioridade_de_revisao": "P3",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Recomendação de otimização de imagem, não erro de acessibilidade. Verificar URL remota/data URL, dimensões e recorte antes de migrar para next/image."
+    },
+    {
+      "arquivo": "gauchinho-app/src/components/public/templates/racon-inspired-home.tsx",
+      "linha_no_levantamento_original": 131,
+      "regra": "@typescript-eslint/no-unused-vars",
+      "mensagem": "'secoes' is assigned a value but never used.",
+      "prioridade_de_revisao": "P3",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Identificador sem leitura. Verificar se é omissão intencional de campo com rest, valor de hook, código morto ou informação que deveria ser utilizada; preservar efeitos e exclusões de campos."
+    },
+    {
+      "arquivo": "gauchinho-app/src/components/public/templates/racon-inspired-home.tsx",
+      "linha_no_levantamento_original": 135,
+      "regra": "@typescript-eslint/no-unused-vars",
+      "mensagem": "'isInteractive' is assigned a value but never used.",
+      "prioridade_de_revisao": "P3",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Identificador sem leitura. Verificar se é omissão intencional de campo com rest, valor de hook, código morto ou informação que deveria ser utilizada; preservar efeitos e exclusões de campos."
+    },
+    {
+      "arquivo": "gauchinho-app/src/components/public/templates/racon-inspired-home.tsx",
+      "linha_no_levantamento_original": 141,
+      "regra": "@typescript-eslint/no-unused-vars",
+      "mensagem": "'primary' is assigned a value but never used.",
+      "prioridade_de_revisao": "P3",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Identificador sem leitura. Verificar se é omissão intencional de campo com rest, valor de hook, código morto ou informação que deveria ser utilizada; preservar efeitos e exclusões de campos."
+    },
+    {
+      "arquivo": "gauchinho-app/src/components/public/templates/racon-inspired-home.tsx",
+      "linha_no_levantamento_original": 142,
+      "regra": "@typescript-eslint/no-unused-vars",
+      "mensagem": "'secondary' is assigned a value but never used.",
+      "prioridade_de_revisao": "P3",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Identificador sem leitura. Verificar se é omissão intencional de campo com rest, valor de hook, código morto ou informação que deveria ser utilizada; preservar efeitos e exclusões de campos."
+    },
+    {
+      "arquivo": "gauchinho-app/src/components/public/templates/racon-inspired-home.tsx",
+      "linha_no_levantamento_original": 143,
+      "regra": "@typescript-eslint/no-unused-vars",
+      "mensagem": "'accent' is assigned a value but never used.",
+      "prioridade_de_revisao": "P3",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Identificador sem leitura. Verificar se é omissão intencional de campo com rest, valor de hook, código morto ou informação que deveria ser utilizada; preservar efeitos e exclusões de campos."
+    },
+    {
+      "arquivo": "gauchinho-app/src/components/public/templates/racon-inspired-home.tsx",
+      "linha_no_levantamento_original": 146,
+      "regra": "@typescript-eslint/no-unused-vars",
+      "mensagem": "'borderRadius' is assigned a value but never used.",
+      "prioridade_de_revisao": "P3",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Identificador sem leitura. Verificar se é omissão intencional de campo com rest, valor de hook, código morto ou informação que deveria ser utilizada; preservar efeitos e exclusões de campos."
+    },
+    {
+      "arquivo": "gauchinho-app/src/components/simulador/currency-input.tsx",
+      "linha_no_levantamento_original": 34,
+      "regra": "react-hooks/set-state-in-effect",
+      "mensagem": "Error: Calling setState synchronously within an effect can trigger cascading renders",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Sincronização de edição local com valor externo. Não adicionar dependências ou remover efeito sem preservar digitação parcial, blur, reset e mudanças vindas do servidor."
+    },
+    {
+      "arquivo": "gauchinho-app/src/components/simulador/simulador-app.tsx",
+      "linha_no_levantamento_original": 251,
+      "regra": "react-hooks/set-state-in-effect",
+      "mensagem": "Error: Calling setState synchronously within an effect can trigger cascading renders",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Atualização síncrona em efeito pode causar render adicional; não prova loop. Refatorar com teste de ciclo de vida, preservando SSR, rascunho e seleção financeira."
+    },
+    {
+      "arquivo": "gauchinho-app/src/components/simulador/simulador-app.tsx",
+      "linha_no_levantamento_original": 259,
+      "regra": "react-hooks/set-state-in-effect",
+      "mensagem": "Error: Calling setState synchronously within an effect can trigger cascading renders",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Atualização síncrona em efeito pode causar render adicional; não prova loop. Refatorar com teste de ciclo de vida, preservando SSR, rascunho e seleção financeira."
+    },
+    {
+      "arquivo": "gauchinho-app/src/components/simulador/simulador-app.tsx",
+      "linha_no_levantamento_original": 265,
+      "regra": "@typescript-eslint/no-unused-vars",
+      "mensagem": "'cfgBem' is assigned a value but never used.",
+      "prioridade_de_revisao": "P3",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Identificador sem leitura. Verificar se é omissão intencional de campo com rest, valor de hook, código morto ou informação que deveria ser utilizada; preservar efeitos e exclusões de campos."
+    },
+    {
+      "arquivo": "gauchinho-app/src/components/simulador/simulador-app.tsx",
+      "linha_no_levantamento_original": 287,
+      "regra": "react-hooks/set-state-in-effect",
+      "mensagem": "Error: Calling setState synchronously within an effect can trigger cascading renders",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Atualização síncrona em efeito pode causar render adicional; não prova loop. Refatorar com teste de ciclo de vida, preservando SSR, rascunho e seleção financeira."
+    },
+    {
+      "arquivo": "gauchinho-app/src/components/simulador/simulador-app.tsx",
+      "linha_no_levantamento_original": 319,
+      "regra": "react-hooks/set-state-in-effect",
+      "mensagem": "Error: Calling setState synchronously within an effect can trigger cascading renders",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Atualização síncrona em efeito pode causar render adicional; não prova loop. Refatorar com teste de ciclo de vida, preservando SSR, rascunho e seleção financeira."
+    },
+    {
+      "arquivo": "gauchinho-app/src/components/ui/card-stack.tsx",
+      "linha_no_levantamento_original": 92,
+      "regra": "react-hooks/set-state-in-effect",
+      "mensagem": "Error: Calling setState synchronously within an effect can trigger cascading renders",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Atualização síncrona em efeito pode causar render adicional; não prova loop. Refatorar com teste de ciclo de vida, preservando SSR, rascunho e seleção financeira."
+    },
+    {
+      "arquivo": "gauchinho-app/src/components/ui/card-stack.tsx",
+      "linha_no_levantamento_original": 270,
+      "regra": "@next/next/no-img-element",
+      "mensagem": "Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element",
+      "prioridade_de_revisao": "P3",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Recomendação de otimização de imagem, não erro de acessibilidade. Verificar URL remota/data URL, dimensões e recorte antes de migrar para next/image."
+    },
+    {
+      "arquivo": "gauchinho-app/src/components/ui/money-input.tsx",
+      "linha_no_levantamento_original": 35,
+      "regra": "react-hooks/set-state-in-effect",
+      "mensagem": "Error: Calling setState synchronously within an effect can trigger cascading renders",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Sincronização de edição local com valor externo. Não adicionar dependências ou remover efeito sem preservar digitação parcial, blur, reset e mudanças vindas do servidor."
+    },
+    {
+      "arquivo": "gauchinho-app/src/lib/automacoes/robos/adapters/genericConsorcioAdapter.ts",
+      "linha_no_levantamento_original": 103,
+      "regra": "@typescript-eslint/no-unused-vars",
+      "mensagem": "'currentUrl' is assigned a value but never used.",
+      "prioridade_de_revisao": "P3",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Identificador sem leitura. Verificar se é omissão intencional de campo com rest, valor de hook, código morto ou informação que deveria ser utilizada; preservar efeitos e exclusões de campos."
+    },
+    {
+      "arquivo": "gauchinho-app/src/lib/automacoes/robos/adapters/genericConsorcioAdapter.ts",
+      "linha_no_levantamento_original": 115,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/lib/automacoes/robos/adapters/genericConsorcioAdapter.ts",
+      "linha_no_levantamento_original": 122,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/lib/automacoes/robos/adapters/genericConsorcioAdapter.ts",
+      "linha_no_levantamento_original": 125,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/lib/automacoes/robos/adapters/genericConsorcioAdapter.ts",
+      "linha_no_levantamento_original": 164,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/lib/automacoes/robos/adapters/raconAdapter.ts",
+      "linha_no_levantamento_original": 90,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/lib/automacoes/robos/browser.ts",
+      "linha_no_levantamento_original": 21,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/lib/automacoes/robos/browser.ts",
+      "linha_no_levantamento_original": 22,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/lib/automacoes/robos/browser.ts",
+      "linha_no_levantamento_original": 37,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/lib/automacoes/robos/cryptoService.ts",
+      "linha_no_levantamento_original": 10,
+      "regra": "@typescript-eslint/no-unused-vars",
+      "mensagem": "'AUTH_TAG_LENGTH_BYTES' is assigned a value but never used.",
+      "prioridade_de_revisao": "P3",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Identificador sem leitura. Verificar se é omissão intencional de campo com rest, valor de hook, código morto ou informação que deveria ser utilizada; preservar efeitos e exclusões de campos."
+    },
+    {
+      "arquivo": "gauchinho-app/src/lib/automacoes/robos/roboConfigService.ts",
+      "linha_no_levantamento_original": 24,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/lib/automacoes/robos/roboConfigService.ts",
+      "linha_no_levantamento_original": 151,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/lib/automacoes/robos/roboConfigService.ts",
+      "linha_no_levantamento_original": 235,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/lib/automacoes/robos/roboConfigService.ts",
+      "linha_no_levantamento_original": 258,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/lib/automacoes/robos/roboConfigService.ts",
+      "linha_no_levantamento_original": 275,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/lib/automacoes/robos/roboConfigService.ts",
+      "linha_no_levantamento_original": 347,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/lib/automacoes/robos/roboMapeamentoService.ts",
+      "linha_no_levantamento_original": 44,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/lib/automacoes/robos/roboMapeamentoService.ts",
+      "linha_no_levantamento_original": 70,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/lib/automacoes/robos/roboMapeamentoService.ts",
+      "linha_no_levantamento_original": 140,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/lib/automacoes/robos/roboPolling.ts",
+      "linha_no_levantamento_original": 4,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/lib/automacoes/robos/roboPolling.ts",
+      "linha_no_levantamento_original": 12,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/lib/automacoes/robos/roboPolling.ts",
+      "linha_no_levantamento_original": 23,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/lib/brand/public-logo-text.ts",
+      "linha_no_levantamento_original": 9,
+      "regra": "@typescript-eslint/no-unused-vars",
+      "mensagem": "'_subtitulo' is defined but never used.",
+      "prioridade_de_revisao": "P3",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Identificador sem leitura. Verificar se é omissão intencional de campo com rest, valor de hook, código morto ou informação que deveria ser utilizada; preservar efeitos e exclusões de campos."
+    },
+    {
+      "arquivo": "gauchinho-app/src/lib/cartas/administradora.ts",
+      "linha_no_levantamento_original": 58,
+      "regra": "@typescript-eslint/no-unused-vars",
+      "mensagem": "'_ignored' is assigned a value but never used.",
+      "prioridade_de_revisao": "P3",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Identificador sem leitura. Verificar se é omissão intencional de campo com rest, valor de hook, código morto ou informação que deveria ser utilizada; preservar efeitos e exclusões de campos."
+    },
+    {
+      "arquivo": "gauchinho-app/src/lib/cartas/contract-051-simulation.test.ts",
+      "linha_no_levantamento_original": 70,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P3",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipagem de fixture/retorno de teste; reforçar o contrato para que o teste também detecte erros de estrutura."
+    },
+    {
+      "arquivo": "gauchinho-app/src/lib/comercial-eventos/participantes-enriquecidos.ts",
+      "linha_no_levantamento_original": 89,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/lib/comercial-eventos/participantes-enriquecidos.ts",
+      "linha_no_levantamento_original": 90,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/lib/contratacoes-online/quantidade-cotas.ts",
+      "linha_no_levantamento_original": 14,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/lib/crm/dashboard-query.ts",
+      "linha_no_levantamento_original": 376,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/lib/crm/upsert-lead.test.ts",
+      "linha_no_levantamento_original": 55,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P3",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipagem de fixture/retorno de teste; reforçar o contrato para que o teste também detecte erros de estrutura."
+    },
+    {
+      "arquivo": "gauchinho-app/src/lib/crm/upsert-lead.test.ts",
+      "linha_no_levantamento_original": 80,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P3",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipagem de fixture/retorno de teste; reforçar o contrato para que o teste também detecte erros de estrutura."
+    },
+    {
+      "arquivo": "gauchinho-app/src/lib/crm/upsert-lead.test.ts",
+      "linha_no_levantamento_original": 136,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P3",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipagem de fixture/retorno de teste; reforçar o contrato para que o teste também detecte erros de estrutura."
+    },
+    {
+      "arquivo": "gauchinho-app/src/lib/crm/upsert-lead.test.ts",
+      "linha_no_levantamento_original": 197,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P3",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipagem de fixture/retorno de teste; reforçar o contrato para que o teste também detecte erros de estrutura."
+    },
+    {
+      "arquivo": "gauchinho-app/src/lib/crm/upsert-lead.test.ts",
+      "linha_no_levantamento_original": 275,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P3",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipagem de fixture/retorno de teste; reforçar o contrato para que o teste também detecte erros de estrutura."
+    },
+    {
+      "arquivo": "gauchinho-app/src/lib/crm/upsert-lead.test.ts",
+      "linha_no_levantamento_original": 350,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P3",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipagem de fixture/retorno de teste; reforçar o contrato para que o teste também detecte erros de estrutura."
+    },
+    {
+      "arquivo": "gauchinho-app/src/lib/crm/upsert-lead.test.ts",
+      "linha_no_levantamento_original": 422,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P3",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipagem de fixture/retorno de teste; reforçar o contrato para que o teste também detecte erros de estrutura."
+    },
+    {
+      "arquivo": "gauchinho-app/src/lib/erp/conta-corrente-socios.test.ts",
+      "linha_no_levantamento_original": 19,
+      "regra": "@typescript-eslint/no-unused-vars",
+      "mensagem": "'valorTotal' is assigned a value but never used.",
+      "prioridade_de_revisao": "P3",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Identificador sem leitura. Verificar se é omissão intencional de campo com rest, valor de hook, código morto ou informação que deveria ser utilizada; preservar efeitos e exclusões de campos."
+    },
+    {
+      "arquivo": "gauchinho-app/src/lib/erp/conta-corrente-socios.test.ts",
+      "linha_no_levantamento_original": 48,
+      "regra": "@typescript-eslint/no-unused-vars",
+      "mensagem": "'socioTitularId' is assigned a value but never used.",
+      "prioridade_de_revisao": "P3",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Identificador sem leitura. Verificar se é omissão intencional de campo com rest, valor de hook, código morto ou informação que deveria ser utilizada; preservar efeitos e exclusões de campos."
+    },
+    {
+      "arquivo": "gauchinho-app/src/lib/erp/conta-corrente-socios.test.ts",
+      "linha_no_levantamento_original": 49,
+      "regra": "@typescript-eslint/no-unused-vars",
+      "mensagem": "'socioParceiroId' is assigned a value but never used.",
+      "prioridade_de_revisao": "P3",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Identificador sem leitura. Verificar se é omissão intencional de campo com rest, valor de hook, código morto ou informação que deveria ser utilizada; preservar efeitos e exclusões de campos."
+    },
+    {
+      "arquivo": "gauchinho-app/src/lib/erp/conta-corrente-socios.test.ts",
+      "linha_no_levantamento_original": 219,
+      "regra": "@typescript-eslint/no-unused-vars",
+      "mensagem": "'totalComissoes' is assigned a value but never used.",
+      "prioridade_de_revisao": "P3",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Identificador sem leitura. Verificar se é omissão intencional de campo com rest, valor de hook, código morto ou informação que deveria ser utilizada; preservar efeitos e exclusões de campos."
+    },
+    {
+      "arquivo": "gauchinho-app/src/lib/erp/conta-corrente-socios.test.ts",
+      "linha_no_levantamento_original": 220,
+      "regra": "@typescript-eslint/no-unused-vars",
+      "mensagem": "'totalDespesasResponsabilidade' is assigned a value but never used.",
+      "prioridade_de_revisao": "P3",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Identificador sem leitura. Verificar se é omissão intencional de campo com rest, valor de hook, código morto ou informação que deveria ser utilizada; preservar efeitos e exclusões de campos."
+    },
+    {
+      "arquivo": "gauchinho-app/src/lib/erp/conta-corrente-socios.test.ts",
+      "linha_no_levantamento_original": 221,
+      "regra": "@typescript-eslint/no-unused-vars",
+      "mensagem": "'totalPagoProprioBolso' is assigned a value but never used.",
+      "prioridade_de_revisao": "P3",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Identificador sem leitura. Verificar se é omissão intencional de campo com rest, valor de hook, código morto ou informação que deveria ser utilizada; preservar efeitos e exclusões de campos."
+    },
+    {
+      "arquivo": "gauchinho-app/src/lib/erp/conta-corrente-socios.test.ts",
+      "linha_no_levantamento_original": 222,
+      "regra": "@typescript-eslint/no-unused-vars",
+      "mensagem": "'totalCompensacoes' is assigned a value but never used.",
+      "prioridade_de_revisao": "P3",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Identificador sem leitura. Verificar se é omissão intencional de campo com rest, valor de hook, código morto ou informação que deveria ser utilizada; preservar efeitos e exclusões de campos."
+    },
+    {
+      "arquivo": "gauchinho-app/src/lib/erp/conta-corrente-socios.test.ts",
+      "linha_no_levantamento_original": 223,
+      "regra": "@typescript-eslint/no-unused-vars",
+      "mensagem": "'totalSaques' is assigned a value but never used.",
+      "prioridade_de_revisao": "P3",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Identificador sem leitura. Verificar se é omissão intencional de campo com rest, valor de hook, código morto ou informação que deveria ser utilizada; preservar efeitos e exclusões de campos."
+    },
+    {
+      "arquivo": "gauchinho-app/src/lib/erp/contratacoes-ajuste-promo-detalhes.test.ts",
+      "linha_no_levantamento_original": 12,
+      "regra": "@typescript-eslint/no-unused-vars",
+      "mensagem": "'detailPage' is assigned a value but never used.",
+      "prioridade_de_revisao": "P3",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Identificador sem leitura. Verificar se é omissão intencional de campo com rest, valor de hook, código morto ou informação que deveria ser utilizada; preservar efeitos e exclusões de campos."
+    },
+    {
+      "arquivo": "gauchinho-app/src/lib/erp/robo-lances.test.ts",
+      "linha_no_levantamento_original": 49,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P3",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipagem de fixture/retorno de teste; reforçar o contrato para que o teste também detecte erros de estrutura."
+    },
+    {
+      "arquivo": "gauchinho-app/src/lib/eventos-sorteio/cadastro.ts",
+      "linha_no_levantamento_original": 176,
+      "regra": "@typescript-eslint/no-unused-vars",
+      "mensagem": "'_f' is assigned a value but never used.",
+      "prioridade_de_revisao": "P3",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Identificador sem leitura. Verificar se é omissão intencional de campo com rest, valor de hook, código morto ou informação que deveria ser utilizada; preservar efeitos e exclusões de campos."
+    },
+    {
+      "arquivo": "gauchinho-app/src/lib/eventos-sorteio/cadastro.ts",
+      "linha_no_levantamento_original": 176,
+      "regra": "@typescript-eslint/no-unused-vars",
+      "mensagem": "'_o' is assigned a value but never used.",
+      "prioridade_de_revisao": "P3",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Identificador sem leitura. Verificar se é omissão intencional de campo com rest, valor de hook, código morto ou informação que deveria ser utilizada; preservar efeitos e exclusões de campos."
+    },
+    {
+      "arquivo": "gauchinho-app/src/lib/eventos-sorteio/cadastro.ts",
+      "linha_no_levantamento_original": 176,
+      "regra": "@typescript-eslint/no-unused-vars",
+      "mensagem": "'_q' is assigned a value but never used.",
+      "prioridade_de_revisao": "P3",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Identificador sem leitura. Verificar se é omissão intencional de campo com rest, valor de hook, código morto ou informação que deveria ser utilizada; preservar efeitos e exclusões de campos."
+    },
+    {
+      "arquivo": "gauchinho-app/src/lib/eventos-sorteio/eventos-homologacao-220.test.ts",
+      "linha_no_levantamento_original": 538,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P3",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipagem de fixture/retorno de teste; reforçar o contrato para que o teste também detecte erros de estrutura."
+    },
+    {
+      "arquivo": "gauchinho-app/src/lib/eventos-sorteio/eventos-homologacao-220.test.ts",
+      "linha_no_levantamento_original": 590,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P3",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipagem de fixture/retorno de teste; reforçar o contrato para que o teste também detecte erros de estrutura."
+    },
+    {
+      "arquivo": "gauchinho-app/src/lib/eventos-sorteio/eventos-homologacao-220.test.ts",
+      "linha_no_levantamento_original": 625,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P3",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipagem de fixture/retorno de teste; reforçar o contrato para que o teste também detecte erros de estrutura."
+    },
+    {
+      "arquivo": "gauchinho-app/src/lib/eventos-sorteio/eventos-homologacao-220.test.ts",
+      "linha_no_levantamento_original": 644,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P3",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipagem de fixture/retorno de teste; reforçar o contrato para que o teste também detecte erros de estrutura."
+    },
+    {
+      "arquivo": "gauchinho-app/src/lib/eventos-sorteio/eventos-homologacao-220.test.ts",
+      "linha_no_levantamento_original": 665,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P3",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipagem de fixture/retorno de teste; reforçar o contrato para que o teste também detecte erros de estrutura."
+    },
+    {
+      "arquivo": "gauchinho-app/src/lib/eventos-sorteio/eventos-homologacao-220.test.ts",
+      "linha_no_levantamento_original": 691,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P3",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipagem de fixture/retorno de teste; reforçar o contrato para que o teste também detecte erros de estrutura."
+    },
+    {
+      "arquivo": "gauchinho-app/src/lib/eventos-sorteio/eventos-homologacao-220.test.ts",
+      "linha_no_levantamento_original": 703,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P3",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipagem de fixture/retorno de teste; reforçar o contrato para que o teste também detecte erros de estrutura."
+    },
+    {
+      "arquivo": "gauchinho-app/src/lib/eventos-sorteio/eventos-homologacao-220.test.ts",
+      "linha_no_levantamento_original": 736,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P3",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipagem de fixture/retorno de teste; reforçar o contrato para que o teste também detecte erros de estrutura."
+    },
+    {
+      "arquivo": "gauchinho-app/src/lib/eventos-sorteio/eventos-homologacao-220.test.ts",
+      "linha_no_levantamento_original": 736,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P3",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipagem de fixture/retorno de teste; reforçar o contrato para que o teste também detecte erros de estrutura."
+    },
+    {
+      "arquivo": "gauchinho-app/src/lib/eventos-sorteio/eventos-homologacao-220.test.ts",
+      "linha_no_levantamento_original": 836,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P3",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipagem de fixture/retorno de teste; reforçar o contrato para que o teste também detecte erros de estrutura."
+    },
+    {
+      "arquivo": "gauchinho-app/src/lib/eventos-sorteio/eventos-homologacao-220.test.ts",
+      "linha_no_levantamento_original": 856,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P3",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipagem de fixture/retorno de teste; reforçar o contrato para que o teste também detecte erros de estrutura."
+    },
+    {
+      "arquivo": "gauchinho-app/src/lib/eventos-sorteio/eventos-homologacao-220.test.ts",
+      "linha_no_levantamento_original": 932,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P3",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipagem de fixture/retorno de teste; reforçar o contrato para que o teste também detecte erros de estrutura."
+    },
+    {
+      "arquivo": "gauchinho-app/src/lib/eventos-sorteio/eventos-homologacao-220.test.ts",
+      "linha_no_levantamento_original": 944,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P3",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipagem de fixture/retorno de teste; reforçar o contrato para que o teste também detecte erros de estrutura."
+    },
+    {
+      "arquivo": "gauchinho-app/src/lib/eventos-sorteio/eventos-homologacao-220.test.ts",
+      "linha_no_levantamento_original": 988,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P3",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipagem de fixture/retorno de teste; reforçar o contrato para que o teste também detecte erros de estrutura."
+    },
+    {
+      "arquivo": "gauchinho-app/src/lib/eventos-sorteio/eventos-homologacao-220.test.ts",
+      "linha_no_levantamento_original": 1017,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P3",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipagem de fixture/retorno de teste; reforçar o contrato para que o teste também detecte erros de estrutura."
+    },
+    {
+      "arquivo": "gauchinho-app/src/lib/eventos-sorteio/eventos-homologacao-220.test.ts",
+      "linha_no_levantamento_original": 1055,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P3",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipagem de fixture/retorno de teste; reforçar o contrato para que o teste também detecte erros de estrutura."
+    },
+    {
+      "arquivo": "gauchinho-app/src/lib/eventos-sorteio/eventos-homologacao-220.test.ts",
+      "linha_no_levantamento_original": 1062,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P3",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipagem de fixture/retorno de teste; reforçar o contrato para que o teste também detecte erros de estrutura."
+    },
+    {
+      "arquivo": "gauchinho-app/src/lib/eventos-sorteio/eventos-homologacao-220.test.ts",
+      "linha_no_levantamento_original": 1091,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P3",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipagem de fixture/retorno de teste; reforçar o contrato para que o teste também detecte erros de estrutura."
+    },
+    {
+      "arquivo": "gauchinho-app/src/lib/gestao/dashboards-service.ts",
+      "linha_no_levantamento_original": 169,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/lib/gestao/dashboards-service.ts",
+      "linha_no_levantamento_original": 419,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/lib/gestao/dashboards-service.ts",
+      "linha_no_levantamento_original": 748,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/lib/grupos/administradora-repository.ts",
+      "linha_no_levantamento_original": 119,
+      "regra": "@typescript-eslint/no-unused-vars",
+      "mensagem": "'_drop' is assigned a value but never used.",
+      "prioridade_de_revisao": "P3",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Identificador sem leitura. Verificar se é omissão intencional de campo com rest, valor de hook, código morto ou informação que deveria ser utilizada; preservar efeitos e exclusões de campos."
+    },
+    {
+      "arquivo": "gauchinho-app/src/lib/grupos/administradora-repository.ts",
+      "linha_no_levantamento_original": 166,
+      "regra": "@typescript-eslint/no-unused-vars",
+      "mensagem": "'_drop' is assigned a value but never used.",
+      "prioridade_de_revisao": "P3",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Identificador sem leitura. Verificar se é omissão intencional de campo com rest, valor de hook, código morto ou informação que deveria ser utilizada; preservar efeitos e exclusões de campos."
+    },
+    {
+      "arquivo": "gauchinho-app/src/lib/grupos/empresa-grupos-config.test.ts",
+      "linha_no_levantamento_original": 12,
+      "regra": "@typescript-eslint/no-unused-vars",
+      "mensagem": "'OUTRA_ADMIN_UUID' is assigned a value but never used.",
+      "prioridade_de_revisao": "P3",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Identificador sem leitura. Verificar se é omissão intencional de campo com rest, valor de hook, código morto ou informação que deveria ser utilizada; preservar efeitos e exclusões de campos."
+    },
+    {
+      "arquivo": "gauchinho-app/src/lib/grupos/gerador-modo-demonstracao-offline.test.ts",
+      "linha_no_levantamento_original": 269,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P3",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipagem de fixture/retorno de teste; reforçar o contrato para que o teste também detecte erros de estrutura."
+    },
+    {
+      "arquivo": "gauchinho-app/src/lib/grupos/simulacao-linha.ts",
+      "linha_no_levantamento_original": 204,
+      "regra": "@typescript-eslint/no-unused-vars",
+      "mensagem": "'parcelaMensalDaCota' is defined but never used.",
+      "prioridade_de_revisao": "P3",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Identificador sem leitura. Verificar se é omissão intencional de campo com rest, valor de hook, código morto ou informação que deveria ser utilizada; preservar efeitos e exclusões de campos."
+    },
+    {
+      "arquivo": "gauchinho-app/src/lib/grupos/simulacao-linha.ts",
+      "linha_no_levantamento_original": 450,
+      "regra": "@typescript-eslint/no-unused-vars",
+      "mensagem": "'parcelaSemSeguroTotal' is assigned a value but never used.",
+      "prioridade_de_revisao": "P3",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Identificador sem leitura. Verificar se é omissão intencional de campo com rest, valor de hook, código morto ou informação que deveria ser utilizada; preservar efeitos e exclusões de campos."
+    },
+    {
+      "arquivo": "gauchinho-app/src/lib/parceiros/indicacao-evento-app-264-contract.test.ts",
+      "linha_no_levantamento_original": 17,
+      "regra": "@typescript-eslint/no-unused-vars",
+      "mensagem": "'page' is assigned a value but never used.",
+      "prioridade_de_revisao": "P3",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Identificador sem leitura. Verificar se é omissão intencional de campo com rest, valor de hook, código morto ou informação que deveria ser utilizada; preservar efeitos e exclusões de campos."
+    },
+    {
+      "arquivo": "gauchinho-app/src/lib/platform/vinculacoes-legadas-service.ts",
+      "linha_no_levantamento_original": 78,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/lib/platform/vinculacoes-legadas-service.ts",
+      "linha_no_levantamento_original": 79,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/lib/platform/vinculacoes-legadas-service.ts",
+      "linha_no_levantamento_original": 82,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/lib/platform/vinculacoes-legadas-service.ts",
+      "linha_no_levantamento_original": 238,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/lib/proposta/load-pdf-data.ts",
+      "linha_no_levantamento_original": 229,
+      "regra": "@typescript-eslint/no-explicit-any",
+      "mensagem": "Unexpected any. Specify a different type.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Tipo permissivo: revisar contrato na origem. Não substituir por unknown/cast sem validação ou por um tipo genérico para apenas retirar o aviso."
+    },
+    {
+      "arquivo": "gauchinho-app/src/lib/proposta/pdf/proposta-pdf-document.tsx",
+      "linha_no_levantamento_original": 204,
+      "regra": "jsx-a11y/alt-text",
+      "mensagem": "Image elements must have an alt prop, either with meaningful text, or an empty string for decorative images.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "corrigido",
+      "avaliacao": "Falso positivo: Image era ícone lucide ou componente de @react-pdf/renderer. Alias ImageIcon/PdfImage esclarece sem adicionar alt sem sentido nem alterar imagem HTML."
+    },
+    {
+      "arquivo": "gauchinho-app/src/lib/proposta/pdf/proposta-pdf-document.tsx",
+      "linha_no_levantamento_original": 209,
+      "regra": "jsx-a11y/alt-text",
+      "mensagem": "Image elements must have an alt prop, either with meaningful text, or an empty string for decorative images.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "corrigido",
+      "avaliacao": "Falso positivo: Image era ícone lucide ou componente de @react-pdf/renderer. Alias ImageIcon/PdfImage esclarece sem adicionar alt sem sentido nem alterar imagem HTML."
+    },
+    {
+      "arquivo": "gauchinho-app/src/lib/proposta/pdf/proposta-pdf-document.tsx",
+      "linha_no_levantamento_original": 266,
+      "regra": "jsx-a11y/alt-text",
+      "mensagem": "Image elements must have an alt prop, either with meaningful text, or an empty string for decorative images.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "corrigido",
+      "avaliacao": "Falso positivo: Image era ícone lucide ou componente de @react-pdf/renderer. Alias ImageIcon/PdfImage esclarece sem adicionar alt sem sentido nem alterar imagem HTML."
+    },
+    {
+      "arquivo": "gauchinho-app/src/lib/proposta/pdf/proposta-pdf-document.tsx",
+      "linha_no_levantamento_original": 269,
+      "regra": "jsx-a11y/alt-text",
+      "mensagem": "Image elements must have an alt prop, either with meaningful text, or an empty string for decorative images.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "corrigido",
+      "avaliacao": "Falso positivo: Image era ícone lucide ou componente de @react-pdf/renderer. Alias ImageIcon/PdfImage esclarece sem adicionar alt sem sentido nem alterar imagem HTML."
+    },
+    {
+      "arquivo": "gauchinho-app/src/lib/proposta/pdf/proposta-pdf-document.tsx",
+      "linha_no_levantamento_original": 287,
+      "regra": "jsx-a11y/alt-text",
+      "mensagem": "Image elements must have an alt prop, either with meaningful text, or an empty string for decorative images.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "corrigido",
+      "avaliacao": "Falso positivo: Image era ícone lucide ou componente de @react-pdf/renderer. Alias ImageIcon/PdfImage esclarece sem adicionar alt sem sentido nem alterar imagem HTML."
+    },
+    {
+      "arquivo": "gauchinho-app/src/lib/proposta/pdf/proposta-pdf-document.tsx",
+      "linha_no_levantamento_original": 334,
+      "regra": "jsx-a11y/alt-text",
+      "mensagem": "Image elements must have an alt prop, either with meaningful text, or an empty string for decorative images.",
+      "prioridade_de_revisao": "P2",
+      "situacao": "corrigido",
+      "avaliacao": "Falso positivo: Image era ícone lucide ou componente de @react-pdf/renderer. Alias ImageIcon/PdfImage esclarece sem adicionar alt sem sentido nem alterar imagem HTML."
+    },
+    {
+      "arquivo": "gauchinho-app/src/lib/proposta/pdf/proposta-pdf-document.tsx",
+      "linha_no_levantamento_original": 1019,
+      "regra": "@typescript-eslint/no-unused-vars",
+      "mensagem": "'LegacyDocument' is defined but never used.",
+      "prioridade_de_revisao": "P3",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Identificador sem leitura. Verificar se é omissão intencional de campo com rest, valor de hook, código morto ou informação que deveria ser utilizada; preservar efeitos e exclusões de campos."
+    },
+    {
+      "arquivo": "gauchinho-app/src/lib/simulador/consorcio.ts",
+      "linha_no_levantamento_original": 595,
+      "regra": "@typescript-eslint/no-unused-vars",
+      "mensagem": "'parcelaNoMesSimulacao' is defined but never used.",
+      "prioridade_de_revisao": "P3",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Identificador sem leitura. Verificar se é omissão intencional de campo com rest, valor de hook, código morto ou informação que deveria ser utilizada; preservar efeitos e exclusões de campos."
+    },
+    {
+      "arquivo": "gauchinho-app/src/lib/storage/imagens.ts",
+      "linha_no_levantamento_original": 4,
+      "regra": "@typescript-eslint/no-unused-vars",
+      "mensagem": "'BUCKET_IMOB' is assigned a value but only used as a type.",
+      "prioridade_de_revisao": "P3",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Identificador sem leitura. Verificar se é omissão intencional de campo com rest, valor de hook, código morto ou informação que deveria ser utilizada; preservar efeitos e exclusões de campos."
+    },
+    {
+      "arquivo": "gauchinho-app/src/lib/storage/imagens.ts",
+      "linha_no_levantamento_original": 5,
+      "regra": "@typescript-eslint/no-unused-vars",
+      "mensagem": "'BUCKET_IMOVEIS' is assigned a value but only used as a type.",
+      "prioridade_de_revisao": "P3",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Identificador sem leitura. Verificar se é omissão intencional de campo com rest, valor de hook, código morto ou informação que deveria ser utilizada; preservar efeitos e exclusões de campos."
+    },
+    {
+      "arquivo": "gauchinho-app/src/lib/tenant/resolve-by-host.ts",
+      "linha_no_levantamento_original": 90,
+      "regra": "@typescript-eslint/no-unused-vars",
+      "mensagem": "'empresa' is defined but never used.",
+      "prioridade_de_revisao": "P3",
+      "situacao": "revisao_contextual_pendente",
+      "avaliacao": "Identificador sem leitura. Verificar se é omissão intencional de campo com rest, valor de hook, código morto ou informação que deveria ser utilizada; preservar efeitos e exclusões de campos."
+    }
+  ],
+  "validacao_final": {
+    "total_avisos": 328,
+    "total_erros": 0,
+    "distribuicao": {
+      "@next/next/no-img-element": 12,
+      "react-hooks/set-state-in-effect": 42,
+      "@typescript-eslint/no-explicit-any": 208,
+      "@typescript-eslint/no-unused-vars": 65,
+      "react-hooks/exhaustive-deps": 1
+    },
+    "metodo": "ESLint completo com teto original 353 aprovado; arquivo de eventos revalidado após preservar diretiva de imagem preexistente, sem nova supressão. Resultado final consolidado por arquivo."
+  }
+}

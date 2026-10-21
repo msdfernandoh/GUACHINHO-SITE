@@ -1,6 +1,6 @@
 "use client";
 
-import { Copy, ExternalLink, Image, MessageCircle, X } from "lucide-react";
+import { Copy, ExternalLink, Image as ImageIcon, MessageCircle, X } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/form-primitives";
 import { formatCurrency } from "@/lib/utils/format";
@@ -205,7 +205,7 @@ export function PropostaLinkModal({
             {copied ? "Copiado!" : "Copiar link"}
           </Button>
           <Button type="button" variant="outlineGold" onClick={() => void copyProposalImage()} className="border-zinc-600 bg-zinc-900">
-            <Image className="mr-2 h-4 w-4" />
+            <ImageIcon className="mr-2 h-4 w-4" />
             {imageStatus === "copied" ? "Imagem copiada!" : imageStatus === "error" ? "Não foi possível copiar" : "Copiar imagem"}
           </Button>
           <a href={waHref} target="_blank" rel="noreferrer">

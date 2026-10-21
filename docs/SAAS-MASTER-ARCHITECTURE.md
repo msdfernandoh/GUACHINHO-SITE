@@ -1,5 +1,20 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
+### Auditoria dos 342 avisos e concorrência do dashboard (20/10/2026)
+Inventário individual classifica os 342 avisos por regra, arquivo e prioridade.
+Corrigidos 14; permanecem 328 (208 any, 65 unused, 42 efeitos, 12 imagens e
+1 dependência), sem relaxar regras ou teto de lint.
+O dashboard cancela consultas substituídas/desmontadas e impede resposta antiga
+após mudança de filtros, inclusive durante leitura JSON. Falhas HTTP expõem a
+última consulta concluída. API valida período por lista permitida, mantendo tenant
+e autorização canônicos. Dependências de comissão/vagas corrigidas; ícone e
+imagens PDF usam aliases para eliminar falsos positivos HTML de alt.
+Suíte: 1.821 testes aprovados, 37 opt-in ignorados, zero falhas. TypeScript e
+build aprovados, lint abaixo de 353, sem migration ou alteração de dados.
+Relatório e inventário: `docs/relatorios-fases/AUDITORIA-342-AVISOS-E-DASHBOARD-2026-10-20.md`
+e `docs/relatorios-fases/AUDITORIA-342-AVISOS-2026-10-20.json`.
+
+
 ### Redução da dívida de lint e guard da homologação de franquia (20/10/2026)
 A limpeza de importações/bindings sem uso, callbacks com inferência e texto JSX
 reduz os avisos de 669 para 342, com zero erros e sem alterar o teto de 353.
