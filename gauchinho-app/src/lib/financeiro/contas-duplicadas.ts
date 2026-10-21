@@ -22,8 +22,9 @@ export function agruparContasPossivelmenteDuplicadas(contas: ContaParaChecagem[]
   const raiz = (i: number): number => pais[i] === i ? i : (pais[i] = raiz(pais[i]));
   const ligacoes: Array<{ a: number; motivo: string }> = [];
   const genericas = new Set(["salario", "salarios", "pagamento", "servico", "servicos", "prestador", "produto", "produtos", "limpeza", "manutencao", "parcela", "compra", "empresa", "maria", "escritorio", "administrativo", "financeiro", "material"]);
-  const termos = (c: ContaParaChecagem) => normalizar(c.descricao).split(/[^a-z0-9]+/).filter((t) => t.length >= 5 && !genericas.has(t));
-  const texto = (c: ContaParaChecagem) => new Set(normalizar(`${c.descricao} ${c.fornecedor || ""}`).split(/[^a-z0-9]+/));
+  const palavras = (valor: string) => normalizar(valor).split(/[^a-z0-9]+/).map((t) => t.length > 4 && t.endsWith("s") ? t.slice(0, -1) : t);
+  const termos = (c: ContaParaChecagem) => palavras(c.descricao).filter((t) => t.length >= 5 && !genericas.has(t));
+  const texto = (c: ContaParaChecagem) => new Set(palavras(`${c.descricao} ${c.fornecedor || ""}`));
   const porValor = new Map<number, number[]>();
   for (let a = 0; a < validas.length; a++) {
     const atual = validas[a];

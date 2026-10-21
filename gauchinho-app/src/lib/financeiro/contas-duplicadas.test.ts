@@ -5,6 +5,14 @@ const conta = (id: string, extra: Partial<ContaParaChecagem> = {}): ContaParaChe
   status: "aberta", pago_em: null, pago_pessoalmente: false, observacao: null, ...extra,
 });
 describe("checagem de contas possivelmente repetidas", () => {
+  it("detecta mesa e cadeira com singular/plural e fornecedores distintos", () => {
+    const grupos = agruparContasPossivelmenteDuplicadas([
+      conta("a", { descricao: "15 JOGOS DE MESA E CADEIRA", fornecedor: "KI LEGAL", valor: 225, competencia: "2026-07" }),
+      conta("b", { descricao: "Conta – Mesa e Cadeiras", fornecedor: "Mesa e Cadeiras", valor: 225, competencia: "2026-07" }),
+    ]);
+    expect(grupos).toHaveLength(1);
+    expect(grupos[0].contas).toHaveLength(2);
+  });
   it("detecta piscineiro e salário pagos no mesmo mês com fornecedor e competência diferentes", () => {
     for (const descricao of ["Piscineiro", "Salario"]) {
       const grupos = agruparContasPossivelmenteDuplicadas([

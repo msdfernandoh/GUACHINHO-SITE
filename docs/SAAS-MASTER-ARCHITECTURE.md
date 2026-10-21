@@ -1,5 +1,13 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
+### Revisão integral das possíveis duplicidades (21/10/2026)
+Revisadas 169 contas abertas/pagas. Normalização de singular/plural acrescenta
+o par Mesa/Cadeiras de julho (R$ 225,00 cada) aos quatro grupos anteriores.
+Detector compartilhado retorna cinco grupos/dez lançamentos para revisão, com
+destaque vermelho no fechamento. Preço igual sem relação de descrição/fornecedor
+não basta para agrupar. Nenhuma exclusão ou alteração financeira automática.
+Relatório: `docs/relatorios-fases/REVISAO-TODAS-DUPLICIDADES-2026-10-21.md`.
+
 ### Duplicidades por descrição e pagamento no fechamento (21/10/2026)
 Checagem de contas preserva fornecedor/valor/competência e acrescenta valor com
 descrição ou nome significativo em comum, na mesma competência ou mês de
