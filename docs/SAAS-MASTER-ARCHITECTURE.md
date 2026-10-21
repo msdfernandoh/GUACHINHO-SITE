@@ -1,5 +1,14 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
+### Revisão de recorrências futuras para sugestão de exclusão (21/10/2026)
+Auditoria somente leitura identificou 45 contas abertas: 27 recorrentes geradas
+em séries e 18 parcelas de compras. Sugeridas para revisão 14 recorrências com
+vencimento após 21/10, R$ 23.360,00; oito aluguéis futuros, R$ 28.000,00, dependem
+de confirmação contratual. Cinco recorrências já vencidas em outubro requerem
+checagem de quitação. Sem exclusão, baixa ou ajuste financeiro; pedido é de
+sugestão. Relatório com IDs e valores:
+`docs/relatorios-fases/SUGESTAO-EXCLUSAO-CONTAS-FUTURAS-2026-10-21.md`.
+
 ### Revisão integral das possíveis duplicidades (21/10/2026)
 Revisadas 169 contas abertas/pagas. Normalização de singular/plural acrescenta
 o par Mesa/Cadeiras de julho (R$ 225,00 cada) aos quatro grupos anteriores.
