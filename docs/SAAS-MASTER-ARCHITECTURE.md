@@ -1,5 +1,13 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
+### Exclusão autorizada das recorrências abertas (21/10/2026)
+Após autorização do titular para todos os meses, excluídas logicamente 27 contas
+abertas de salário, energia, piscineiro, internet, eventos, limpeza/despesas
+diversas e aluguel, R$ 58.590,00. RPC canônica com autor, motivo e 27 logs;
+caixa, banco, pagamentos e contas fora do escopo preservados por hashes.
+Restam 18 parcelas de compras abertas, R$ 5.400,06. Sem estorno ou DELETE físico.
+Relatório: `docs/relatorios-fases/EXCLUSAO-RECORRENTES-AUTORIZADA-2026-10-21.md`.
+
 ### Revisão de recorrências futuras para sugestão de exclusão (21/10/2026)
 Auditoria somente leitura identificou 45 contas abertas: 27 recorrentes geradas
 em séries e 18 parcelas de compras. Sugeridas para revisão 14 recorrências com
