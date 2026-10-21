@@ -389,7 +389,6 @@ export function ContasPagarClient({
       Number(consulta.balanco.pago_empresa) + equalizacaoPreview.totalPago,
     totalImpostosDescontados: Number(consulta.balanco.impostos_descontados),
     totalContasDescontadas: Number(consulta.balanco.contas_descontadas),
-    totalContasPagas: sociosBalanco.reduce((total, socio) => total + Number(socio.contas_pagas), 0),
   };
   const contasAbertasSocios = {
     totalAberto: sociosBalanco.reduce((total, socio) => total + Number(socio.aberto), 0),
@@ -783,67 +782,6 @@ export function ContasPagarClient({
             </div>
           </div>
         )}
-      </section>
-
-      {/* ─────────────────────────────────────────────────────────────
-          DEMONSTRATIVO HORIZONTAL: FECHAMENTO E ACERTO ENTRE SÓCIOS
-      ───────────────────────────────────────────────────────────── */}
-      <section className="rounded-2xl bg-slate-950 p-5 text-white shadow-xl space-y-4">
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/10 pb-3">
-          <div className="flex items-center gap-2.5">
-            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-600 text-sm font-bold">⚖️</span>
-            <div>
-              <h3 className="text-base font-bold text-white">Fechamento & Equalização entre Sócios</h3>
-              <p className="text-xs text-slate-400">Prévia conforme os percentuais societários vigentes cadastrados no SaaS.</p>
-            </div>
-          </div>
-          <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-slate-300">
-            {balancoSocios.totalContasPagas} conta(s) pessoalmente paga(s)
-          </span>
-        </div>
-
-        <div className="grid gap-4 lg:grid-cols-[0.8fr_1.2fr_1.3fr]">
-          <div className="rounded-xl bg-white/5 p-3.5 space-y-2 border border-white/5">
-            <p className="text-xs font-bold uppercase tracking-wider text-slate-400">1. Total do período</p>
-            <div className="flex justify-between items-center text-xs">
-              <span className="text-slate-300">Total Gasto Sócios:</span>
-              <strong className="text-white text-sm">{brl(balancoSocios.totalGastoSocios)}</strong>
-            </div>
-            <p className="border-t border-white/10 pt-2 text-[11px] text-slate-400">O sistema divide esse total pelos percentuais individuais, nunca por nomes ou quantidade fixa.</p>
-            {balancoSocios.totalPagoEmpresa > 0 && (
-              <div className="flex justify-between items-center text-[11px] text-teal-300 border-t border-white/10 pt-1.5">
-                <span>Pago pela Empresa:</span>
-                <span className="font-bold">{brl(balancoSocios.totalPagoEmpresa)}</span>
-              </div>
-            )}
-          </div>
-
-          <div className="rounded-xl bg-white/5 p-3.5 space-y-2 border border-white/5 text-xs">
-            <p className="text-xs font-bold uppercase tracking-wider text-slate-400">2. Demonstrativo por Sócio</p>
-            {equalizacaoPreview.socios.map((socio) => (
-              <div key={socio.id} className="rounded-lg bg-black/30 p-2 space-y-0.5">
-                <div className="flex justify-between font-semibold text-blue-300"><span>{socio.nome} · {socio.percentual.toFixed(2)}%</span><span>Pagou {brl(socio.pago)}</span></div>
-                <p className="text-[11px] text-slate-300">Responsabilidade: {brl(socio.responsabilidade)} · {socio.saldo >= 0 ? <strong className="text-emerald-400">Tem a receber {brl(socio.saldo)}</strong> : <strong className="text-rose-300">Precisa compensar {brl(-socio.saldo)}</strong>}</p>
-              </div>
-            ))}
-          </div>
-
-          <div className="rounded-xl border border-amber-400/40 bg-amber-400/15 p-3.5 space-y-2 flex flex-col justify-center">
-            <p className="text-xs font-bold uppercase tracking-wider text-amber-300">3. Como Equalizar</p>
-            {balancoSocios.totalGastoSocios === 0 ? (
-              <p className="text-xs text-slate-300">Nenhuma despesa pessoal paga no período selecionado.</p>
-            ) : equalizacaoPreview.instrucoes.length === 0 ? (
-              <p className="text-xs font-bold text-emerald-200">Todos pagaram exatamente a responsabilidade configurada. Contas 100% equilibradas.</p>
-            ) : (
-              <div className="space-y-3">{equalizacaoPreview.instrucoes.map((instrucao) => (
-                <div key={`${instrucao.devedorId}-${instrucao.credorId}`} className="rounded-lg border border-amber-300/20 bg-black/20 p-2.5">
-                  <p className="text-sm text-white"><strong>{instrucao.devedorNome}</strong> deve transferir <strong className="text-amber-200">{brl(instrucao.valorTransferencia)}</strong> para <strong>{instrucao.credorNome}</strong>.</p>
-                  <p className="mt-1 text-[10px] text-slate-300">Isso reduz o valor adiantado por {instrucao.credorNome} e aumenta o valor efetivamente assumido por {instrucao.devedorNome}. Alternativa: {instrucao.devedorNome} pagar {brl(instrucao.valorContasAlternativo)} em próximas contas.</p>
-                </div>
-              ))}</div>
-            )}
-          </div>
-        </div>
       </section>
 
       <div className="flex gap-2 overflow-x-auto pb-1">

@@ -1,5 +1,12 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
+### Remoção da prévia antiga de equalização em Contas a Pagar (20/10/2026)
+Removido o quadro escuro “Fechamento & Equalização entre Sócios”, incluindo
+as sugestões de transferência baseadas somente nas despesas pessoais.
+A tela própria `/erp/fechamento-socios` permanece como acesso ao fechamento.
+Alteração exclusivamente visual, sem migration ou escrita em dados financeiros.
+Relatório: `docs/relatorios-fases/REMOCAO-QUADRO-EQUALIZACAO-CONTAS-PAGAR-2026-10-20.md`.
+
 ### Checagem de contas possivelmente repetidas (20/10/2026)
 Contas a Pagar oferece análise sob demanda de mesmo fornecedor normalizado,
 valor em centavos e mês de competência (fallback vencimento), incluindo abertas
