@@ -19,6 +19,7 @@ export type PrevisaoParticipanteItem = {
   valor_liquido: number;
   percentual_imposto: number | null;
   status: string;
+  atraso?: string;
   tipo_gatilho: string;
   conferido_por_participante: boolean;
   cliente_nome?: string;
@@ -572,6 +573,7 @@ export function MinhasComissoesClient({
                     </td>
                     <td className="p-3 font-bold text-slate-800 dark:text-slate-200">
                       {row.tipo_gatilho === "CONTEMPLACAO" ? "CONTEMPLAÇÃO" : row.nome_etapa}
+                      {row.atraso && <p className="mt-1 text-xs font-bold text-red-700" title={row.atraso}>Comissão atrasada · atraso confirmado no portal</p>}
                     </td>
                     {mostrarDetalhesFiscais ? (
                       <td className="p-3 font-mono text-slate-700 dark:text-slate-300">

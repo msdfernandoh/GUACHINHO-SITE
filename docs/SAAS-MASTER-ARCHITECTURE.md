@@ -1,5 +1,18 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
+### Acompanhamento de comissões atrasadas e projeto de inadimplência (21/10/2026)
+As três quartas parcelas SNP de outubro, R$ 983,45 brutos previstos, receberam
+marca operacional em snapshot_regra.acompanhamento_inadimplencia, propagada às
+previsões de participantes. Evidência de portal: uma parcela atrasada R$ 799,54
+por cota; mês do boleto não confirmado. Nenhuma alteração de valor, liquidação,
+elegibilidade, pagamento ou banco. Comissões e Minhas comissões exibem alerta
+vermelho enquanto houver saldo pendente; marca financeira não substitui status.
+Projeto `docs/PROJETO-TELA-INADIMPLENCIA-REPASSES.md` especifica tela, máquina de
+estados, cruzamento e fechamento mensal após lote final do dia 25 conferido.
+Ausência confirma repasse não recebido; inadimplência do cliente exige evidência.
+Automação mensal e nova rota ainda não implantadas. Relatório:
+`docs/relatorios-fases/COMISSOES-ATRASADAS-E-PROJETO-INADIMPLENCIA-2026-10-21.md`.
+
 ### Ajustes de repasse com diferença histórica e consulta SNP (21/10/2026)
 Por autorização do titular, Orlei/Ramon/Ivani vinculados e liquidados em R$ 1.332,60
 cada; Franciomar em R$ 318,00. Quatro decisões append-only preservam comparação

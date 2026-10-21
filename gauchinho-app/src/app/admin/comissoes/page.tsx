@@ -1,3 +1,4 @@
+import { lerComissaoAtrasada } from "@/lib/erp/comissao-atrasada";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentTenantContext } from "@/lib/tenant/context";
@@ -32,7 +33,7 @@ export default async function AdminComissoesPage() {
     const vinculo = vinculos.get(item.id); const relatorioImportado = relatoriosPorCompetencia.has(`${item.administradora_id}:${item.competencia}`);
     let situacao: CompanyCommissionLine["situacao"] = "aguardando";
     if (saldo <= 0) situacao = "recebido"; else if (vinculo) situacao = "atencao"; else if (relatorioImportado && item.competencia <= competenciaAtual) situacao = "ausente";
-    return { id:item.id,vendaId:item.venda_id,cotaId:item.cota_definitiva_id,competencia:item.competencia,clienteNome:venda?.cliente_nome||"Cliente não identificado",numeroGrupo:cota?.numero_grupo||null,numeroCota:cota?.numero_cota||null,nomeEtapa:item.tipo_gatilho==="CONTEMPLACAO"?"Contemplação":item.nome_etapa,valorGerado:Number(item.valor_bruto??item.valor_previsto),valorPrevisto:Number(item.valor_previsto),valorLiquidado:Number(item.valor_liquidado),saldo,status:item.status,situacao,arquivoRelatorio:vinculo?.arquivo };
+    return { id:item.id,vendaId:item.venda_id,cotaId:item.cota_definitiva_id,competencia:item.competencia,clienteNome:venda?.cliente_nome||"Cliente não identificado",numeroGrupo:cota?.numero_grupo||null,numeroCota:cota?.numero_cota||null,nomeEtapa:item.tipo_gatilho==="CONTEMPLACAO"?"Contemplação":item.nome_etapa,valorGerado:Number(item.valor_bruto??item.valor_previsto),valorPrevisto:Number(item.valor_previsto),valorLiquidado:Number(item.valor_liquidado),saldo,status:item.status,situacao,atraso:lerComissaoAtrasada(item.snapshot_regra,saldo)??undefined,arquivoRelatorio:vinculo?.arquivo };
   });
   const todosParticipantes = (participantesRes.data ?? []).map((item) => ({ id:item.id,nome:item.nome_exibicao||item.nome,cargo:item.cargo||null,status:item.status }));
   const participantes = todosParticipantes.filter((item) => item.status?.toLowerCase() === "ativo").map(({ id,nome,cargo }) => ({ id,nome,cargo }));

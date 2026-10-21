@@ -1,3 +1,4 @@
+import { lerComissaoAtrasada } from "@/lib/erp/comissao-atrasada";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentTenantContext } from "@/lib/tenant/context";
@@ -152,6 +153,7 @@ export default async function MinhasComissoesPage({
       valor_liquido: liquidoParticipante,
       percentual_imposto: fiscalParticipante?.aliquota ?? (franquia?.percentual_imposto != null ? Number(franquia.percentual_imposto) : null),
       status: row.status,
+      atraso: lerComissaoAtrasada(row.snapshot_regra, Number(row.valor_previsto) - Number(row.valor_elegivel)) ?? undefined,
       tipo_gatilho: row.tipo_gatilho,
       conferido_por_participante: Boolean(row.conferido_por_participante),
       cliente_nome: cliente?.nome || undefined,
