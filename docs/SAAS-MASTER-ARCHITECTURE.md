@@ -1,5 +1,18 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
+### Auditoria somente leitura de repasses, lotes e comissões (21/10/2026)
+Confrontados oito lotes, cem linhas, 318 previsões da franquia, 315 dos
+participantes, cotas e livro de recebimentos, com empresa explícita e paginação.
+Total recebido R$ 97.826,52; alocado R$ 86.226,14; R$ 11.600,38 sem classificação
+nos lotes 05/10 e 15/10. Sem erro estrutural identificado nos 91 vínculos atuais;
+Orlei/Ramon/Ivani e Franciomar aparecem com divergência de valor, cinco cotas
+de Luiz Carlos sem cadastro; SNP tem três etapas de outubro sem linha localizada.
+Identificados rótulos derivados desatualizados, datas suspeitas e cinco etapas
+previstas para novembro recebidas em outubro. Os oito objetos PDF referenciados
+retornaram zero bytes; comparação independente dos originais permanece pendente.
+Sem migration, mudança de regra ou escrita financeira. Relatório:
+`docs/relatorios-fases/AUDITORIA-REPASSES-LOTES-VINCULOS-2026-10-21.md`.
+
 ### Conciliação autorizada das saídas de Gauchinho Empresa (21/10/2026)
 Titular confirmou Gauchinho Empresa como origem das saídas, exceto recurso
 próprio de Fernando. Conciliadas 103 despesas pagas, R$ 67.244,03: 98 novas
