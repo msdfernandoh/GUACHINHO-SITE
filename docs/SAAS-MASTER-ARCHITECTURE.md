@@ -1,5 +1,13 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
+### Sugestões de água, telefone e internet (21/10/2026)
+Por definição do titular, lista de outubro/novembro recebeu água R$ 150,00 e
+telefone R$ 50,00; internet ajustada de R$ 180,00 para R$ 200,00. Contas e
+orçamento de Metas coincidem em 12 itens/R$ 8.681,31 por mês. Novas contas são
+previsões, com datas de referência sujeitas à fatura real. Sem pagamento ou
+alteração bancária. Relatório:
+`docs/relatorios-fases/AJUSTE-AGUA-TELEFONE-INTERNET-2026-10-21.md`.
+
 ### Lista autorizada de fixas em Contas a pagar e Metas (21/10/2026)
 Criadas 14 contas abertas de outubro/novembro: aluguel, zeladora, piscineiro,
 energia, internet, outros R$ 800 e contador OST R$ 488,30, usando último cadastro.
