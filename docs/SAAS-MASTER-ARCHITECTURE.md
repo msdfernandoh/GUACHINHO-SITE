@@ -1,5 +1,15 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
+### Homologação do deploy e diagnóstico da transferência bloqueada (20/10/2026)
+Vercel confirma deploy de produção READY do commit 27d581e nos domínios
+raconsinop.com.br e www.raconsinop.com.br. Log da tentativa às 23:50:17 confirma
+bloqueio por 98 contas pagas sem saída vinculada, R$ 64.272,53 (digest 1205604008).
+Leitura tenant-aware confirma zero movimentos de caixa por origem exata dessas
+contas, treze sem banco cadastrado e nenhuma retirada pelo novo fluxo.
+Não há evidência suficiente para lançar automaticamente as saídas: conciliação
+exige conferir extrato e movimentos sem referência, evitando duplicação.
+Relatório: `docs/relatorios-fases/DIAGNOSTICO-PRODUCAO-TRANSFERENCIA-2026-10-20.md`.
+
 ### Mensagens de transferência preservadas em produção (20/10/2026)
 A action de transferência retorna resultado discriminado `{ok, mensagem}` para
 validações de negócio, evitando que exceções sejam ocultadas pelo React em
