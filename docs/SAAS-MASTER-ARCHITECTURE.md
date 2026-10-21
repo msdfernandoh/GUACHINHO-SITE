@@ -1,5 +1,13 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
+### Conferência das baixas de impostos (21/10/2026)
+Auditoria somente leitura confirmou duas guias pagas em 24/09, R$ 4.928,84 e
+R$ 4.751,41, ambas com saída de caixa, débito único no Gauchinho Empresa e
+marcador de abatimento da reserva. Nenhuma baixa faltante encontrada nas contas
+tributárias cadastradas. Reserva calculada na conferência: R$ 17.754,37 gerados
+menos R$ 9.680,25 pagos = R$ 8.074,12. Sem nova baixa ou ajuste financeiro.
+Relatório: `docs/relatorios-fases/AUDITORIA-BAIXAS-IMPOSTOS-2026-10-21.md`.
+
 ### Baixa integral por linha e recuperação de PDF de repasse (21/10/2026)
 Migration 328 substitui o teto do recebimento pela linha do relatório como fonte
 do valor baixado da comissão. A cota Luiz 1553/0656 foi completada para R$ 1.500,00,
