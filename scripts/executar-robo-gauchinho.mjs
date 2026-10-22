@@ -62,9 +62,10 @@ async function main() {
     portal_tipo: config.portal_tipo,
     status: 'PROCESSANDO',
     iniciado_em: new Date().toISOString(),
-    dry_run: config.modo === 'DRY_RUN',
+    dry_run: process.argv.includes('--dry-run') || config.modo === 'DRY_RUN',
     detalhes: {
       origem: 'CLI_DIRETO',
+      grupos: process.argv.find(a=>a.startsWith('--grupos='))?.split('=')[1].split(','),
       logs: [{ ts: new Date().toISOString(), msg: 'Iniciado via terminal CLI' }],
     },
   }).select('*').single()

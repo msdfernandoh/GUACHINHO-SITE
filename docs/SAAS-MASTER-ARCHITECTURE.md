@@ -1,5 +1,21 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
+### Correção de contemplações e médias (22/10/2026)
+Parser das três abas por grade visível/cabeçalhos; média somente de lances
+livres confirmados de ativas. Canceladas e desclassificadas são informativas.
+Snapshots imutáveis de resultados (migrations 329/330 aplicadas; 330 autorizada
+expressamente) preservam 19.166 linhas legadas por hash. Leitura paginada com
+concessão tenant, contagens ativas e cards entregues/a entregar; histórico
+incompleto não gera total cumulativo. 1473 validado de 11 a 1, sem duplicação
+de 0645/0657-01. Escopo confirmado pelo titular: 28 grupos usados no ERP. Conferência concluída:
+25 históricos completos desde 1, 1.174 assembleias, e três grupos sem realizadas
+(1553/1563/5618). Outubro: 161 ativas, 32 canceladas e 42 desclassificadas separadas.
+Quatro médias por grupo conferidas por SQL independente; 5.710 entregues e
+22.072 a entregar. Consulta direta recupera sete omitidos da lista por ponto
+de venda. Banco atualizado; frontend validado localmente, sem publicação confirmada.
+Relatório: `docs/relatorios-fases/CONTEMPLACOES-MEDIAS-HISTORICO-2026-10-22.md`.
+Cobertura: `docs/relatorios-fases/CONTEMPLACOES-COBERTURA-2026-10-22.md`.
+
 ### Análise e teste de boletos ERP por cota (21/10/2026)
 Identificados falso sucesso com zero PDFs, seletor de emissão desabilitado,
 seleção incorreta de pendência e conflito de gravação sem chave por cota.

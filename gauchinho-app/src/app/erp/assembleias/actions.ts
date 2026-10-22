@@ -3,12 +3,14 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { requireErpRouteAccess } from "@/lib/erp/erp-acesso-server";
-import { listGruposAutorizadosForEmpresa } from "@/lib/grupos/catalogo-autorizado-service";
+import { listGruposAutorizadosForEmpresa, assertEmpresaPodeAcessarGrupo } from "@/lib/grupos/catalogo-autorizado-service";
 import { buscarPrimeiroPremioFederalPorData } from "@/lib/grupos-sorteio/buscar-resultado-federal";
 import {
   calcularPedraPorLoteriaFederal,
   validarPrimeiroPremioFederal,
 } from "@/lib/erp/assembleias";
+
+import { indicadoresContemplacoes, resultadosVigentes, cotasUnicas, contempladasAtivas, type ResultadoAssembleia } from "@/lib/erp/contemplacoes";
 
 async function requireAssembleias(write = false) {
   const { usuario, empresaAtiva } = await requireErpRouteAccess("assembleias");
@@ -147,59 +149,71 @@ export async function toggleAtencaoAssembleiaAction(formData: FormData) {
   revalidatePath("/erp/assembleias");
 }
 
+
+async function carregarResultados(supabase: Awaited<ReturnType<typeof createClient>>, grupoIds: string[], mesAno?: string) {
+  const rows: ResultadoAssembleia[] = [];
+  if (!grupoIds.length) return rows;
+  for (let offset = 0; ; offset += 500) {
+    let query = supabase.from("grupo_assembleias_resultados")
+      .select("id, grupo_id, assembleia_numero, assembleia_data, criado_em, cotas")
+      .in("grupo_id", grupoIds).order("id").range(offset, offset + 499);
+    if (mesAno) {
+      const [ano, mes] = mesAno.split("-").map(Number);
+      const fim = new Date(Date.UTC(ano, mes, 1)).toISOString().slice(0, 10);
+      query = query.gte("assembleia_data", mesAno + "-01").lt("assembleia_data", fim);
+    }
+    const { data, error } = await query;
+    if (error) throw new Error("Resultados verificados indisponíveis. A importação corrigida precisa estar instalada. " + error.message);
+    rows.push(...(data ?? []) as ResultadoAssembleia[]);
+    if ((data ?? []).length < 500) break;
+  }
+  return resultadosVigentes(rows);
+}
+
+function linhasResultado(rows: ResultadoAssembleia[]) {
+  return rows.flatMap(a => cotasUnicas(a.cotas).map((c, i) => ({
+    ...c, id: a.id + ":" + i, grupo_id: a.grupo_id,
+    assembleia_numero: a.assembleia_numero, assembleia_data: a.assembleia_data,
+  })));
+}
+
 export async function fetchContemplacoesGrupoAction(grupoId: string) {
-  const { supabase } = await requireAssembleias(false);
-  if (!grupoId) throw new Error("Grupo não informado.");
-
-  const [resGrupo, resContemp] = await Promise.all([
-    supabase
-      .from("grupos_consorcio")
-      .select("id, codigo_grupo, modalidade, administradora, media_lance_1m, media_lance_3m, media_lance_6m, media_lance_12m, ultima_assembleia_numero, ultima_assembleia_data, proxima_assembleia_numero, proxima_assembleia_data, contemplacoes_atualizado_em, contemplacoes_resumo")
-      .eq("id", grupoId)
-      .maybeSingle(),
-    supabase
-      .from("grupo_assembleias_contemplacoes")
-      .select("id, assembleia_numero, assembleia_data, cota, modalidade, percentual_lance, situacao_cota, criado_em")
-      .eq("grupo_id", grupoId)
-      .order("assembleia_numero", { ascending: false })
-      .order("percentual_lance", { ascending: false }),
-  ]);
-
-  if (resGrupo.error) throw new Error(resGrupo.error.message);
-  if (resContemp.error) throw new Error(resContemp.error.message);
-
+  const { supabase, empresaId } = await requireAssembleias(false);
+  await assertEmpresaPodeAcessarGrupo(empresaId, grupoId);
+  const { data: grupo, error } = await supabase.from("grupos_consorcio")
+    .select("id, codigo_grupo, modalidade, administradora, ultima_assembleia_numero, ultima_assembleia_data, proxima_assembleia_numero, proxima_assembleia_data, contemplacoes_atualizado_em, dados_estatisticos, contemplacoes_resumo, data_primeira_assembleia")
+    .eq("id", grupoId).single();
+  if (error) throw new Error(error.message);
+  const resultados = await carregarResultados(supabase, [grupoId]);
+  const ultima = Math.max(Number(grupo.ultima_assembleia_numero) || 0, ...resultados.map(a => a.assembleia_numero));
+  const estatisticas = grupo.dados_estatisticos as { cotas_ativas?: number } | null;
+  const ativas = estatisticas?.cotas_ativas;
+  const resumo = grupo.contemplacoes_resumo as { versao?: number; sem_assembleias_realizadas?: boolean } | null;
   return {
-    grupo: resGrupo.data,
-    contemplacoes: resContemp.data ?? [],
+    grupo: { ...grupo, sem_assembleias_realizadas: resumo?.versao === 2 && resumo.sem_assembleias_realizadas === true, ...indicadoresContemplacoes(resultados, ultima, ativas == null ? null : Number(ativas), resumo?.versao === 2 && resumo.sem_assembleias_realizadas === true) },
+    assembleias: resultados.map(({ cotas, ...a }) => ({ ...a, total_ativas: contempladasAtivas(cotas) })),
+    contemplacoes: linhasResultado(resultados),
   };
 }
 
 export async function fetchContemplacoesMesAction(mesAno: string) {
-  const { supabase } = await requireAssembleias(false);
-  if (!mesAno) throw new Error("Mês/ano não informado.");
-
-  const { data, error } = await supabase
-    .from("grupo_assembleias_contemplacoes")
-    .select(`
-      id,
-      grupo_id,
-      assembleia_numero,
-      assembleia_data,
-      cota,
-      modalidade,
-      percentual_lance,
-      situacao_cota,
-      grupo:grupos_consorcio(id, codigo_grupo, modalidade, administradora, media_lance_1m, media_lance_3m)
-    `)
-    .ilike("assembleia_data", `${mesAno}%`)
-    .order("assembleia_numero", { ascending: false })
-    .order("percentual_lance", { ascending: false });
-
-  if (error) throw new Error(error.message);
-  const rows = (data ?? []).map((item) => ({
-    ...item,
-    grupo: Array.isArray(item.grupo) ? item.grupo[0] : item.grupo,
-  }));
-  return rows;
+  const { supabase, empresaId } = await requireAssembleias(false);
+  if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(mesAno)) throw new Error("Mês/ano inválido.");
+  const grupos = await listGruposAutorizadosForEmpresa(empresaId);
+  const resultados = await carregarResultados(supabase, grupos.map(g => g.id), mesAno);
+  return {
+    contemplacoes: linhasResultado(resultados).map(c => ({ ...c, grupo: grupos.find(g => g.id === c.grupo_id) })),
+    grupos_sem_resultado: grupos.filter(g => {
+      if (resultados.some(a => a.grupo_id === g.id)) return false;
+      const dados = g as typeof g & {
+        contemplacoes_resumo?: { versao?: number; sem_assembleias_realizadas?: boolean } | null;
+        data_primeira_assembleia?: string | null;
+      };
+      // Zero confirmado antes da primeira assembleia não é uma falha de coleta.
+      return !(dados.contemplacoes_resumo?.versao === 2
+        && dados.contemplacoes_resumo.sem_assembleias_realizadas === true
+        && dados.data_primeira_assembleia
+        && dados.data_primeira_assembleia.slice(0, 7) > mesAno);
+    }).map(g => g.codigo_grupo),
+  };
 }
-

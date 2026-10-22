@@ -8,6 +8,7 @@ import crypto from 'node:crypto'
 import { executarRobo3Simulador } from './robo-simulador-service.mjs'
 import { executarRoboBoletos } from './robo-boletos-service.mjs'
 import { executarRoboLances } from './robo-lances-service.mjs'
+import { coletarAbasResultado } from './robo-contemplacoes-parser.mjs'
 
 // Carrega .env.local
 const envCandidates = [
@@ -85,6 +86,7 @@ async function run() {
   let atualizacao = Promise.resolve()
 
   const log = (msg) => {
+    msg = msg.replace(/https?:\/\/[^\s"<>]+/g, raw => {try{const url=new URL(raw);return url.origin+url.pathname}catch{return '[URL]'}})
     console.log(`[Robô ${config.nome}] ${msg}`)
     logs.push({ ts: new Date().toISOString(), msg })
     if (Date.now() - ultimoLog < 1500) return
@@ -692,7 +694,8 @@ async function run() {
           log(`Total de grupos extraídos e mapeados: ${gruposProcessados.length}`)
 
           // Atualização / Inserção no Supabase (grupos_consorcio)
-          const raconAdminId = config.administradora_id || 'c5f8ecb4-cb5a-5014-b567-50484719b404'
+          const raconAdminId = config.administradora_id
+          if (!raconAdminId) throw new Error('Administradora do robô não configurada.')
 
           for (const g of gruposProcessados) {
             const { data: existentes } = await admin
@@ -954,24 +957,37 @@ async function run() {
         log(`Grupos encontrados na listagem (${gruposLista.length}): ${gruposLista.map(g => g.grupo).join(', ')}`)
 
         // Carrega catálogo de grupos do Supabase para correlação
-        const raconAdminId = config.administradora_id || 'c5f8ecb4-cb5a-5014-b567-50484719b404'
-        const { data: dbGrupos } = await admin
+        const raconAdminId = config.administradora_id
+        if (!raconAdminId) throw new Error('Administradora do robô não configurada.')
+        const { data: dbGrupos, error: dbGruposError } = await admin
           .from('grupos_consorcio')
-          .select('id, codigo_grupo, contemplacoes_atualizado_em')
+          .select('id, codigo_grupo, contemplacoes_atualizado_em, ativo, status, visivel_franquia')
           .eq('administradora_id', raconAdminId)
+        if (dbGruposError) throw new Error('Falha ao carregar catálogo: '+dbGruposError.message)
 
         const mapDbGrupos = new Map()
-        const mapDbAtualizado = new Map()
         for (const dbg of dbGrupos || []) {
           const num = dbg.codigo_grupo.replace(/\D/g, '').replace(/^0+/, '')
           if (num) {
+            if(mapDbGrupos.has(num) && mapDbGrupos.get(num)!==dbg.id) throw new Error('Código de grupo ambíguo na administradora: '+num)
             mapDbGrupos.set(num, dbg.id)
-            if (dbg.contemplacoes_atualizado_em) {
-              mapDbAtualizado.set(num, true)
-            }
           }
         }
 
+        const gruposEscopo = new Set(e.detalhes?.grupos || (dbGrupos || [])
+          .filter(g => g.ativo && g.visivel_franquia !== false && (!g.status || ['Disponível','ATIVO','Ativo','Em Andamento'].includes(g.status)))
+          .map(g => g.codigo_grupo.replace(/\D/g, '').replace(/^0+/, '')))
+        // Inclui grupos usados no ERP mesmo quando ausentes da lista por ponto de venda.
+        for (const numero of gruposEscopo) {
+          if (mapDbGrupos.has(numero) && !gruposLista.some(g => g.grupo.replace(/\D/g, '').replace(/^0+/, '') === numero)) {
+            gruposLista.push({ grupo: numero.padStart(6, '0') })
+          }
+        }
+        const pendenciasGrupos = []
+        fs.writeFileSync(path.join(downloadDir, 'grupos-assembleias-'+execucaoId+'.json'), JSON.stringify({
+          disponiveis: gruposLista.map(g=>g.grupo),
+          ausentes_no_portal: [...mapDbGrupos.keys()].filter(n=>!gruposLista.some(g=>g.grupo.replace(/\D/g,'').replace(/^0+/,'')===n)),
+        }, null, 2))
         // 7. Itera sobre cada grupo para extrair contemplações e histórico de lances
         for (let gIdx = 0; gIdx < gruposLista.length; gIdx++) {
           const itemGrupo = gruposLista[gIdx]
@@ -979,11 +995,10 @@ async function run() {
           log(`\n-----------------------------------------------------------`)
           log(`Processando Grupo [${gIdx + 1}/${gruposLista.length}]: ${itemGrupo.grupo} (Código Numérico: ${numGrupo})...`)
 
-          if (mapDbAtualizado.get(numGrupo)) {
-            log(`[Grupo ${numGrupo}] Já possui contemplações e médias calculadas (${itemGrupo.grupo}). Pulando para o próximo...`)
-            continue
-          }
+          if (!gruposEscopo.has(numGrupo)) continue
+          if (!mapDbGrupos.has(numGrupo)) { log('Grupo fora do catálogo da administradora: '+numGrupo); continue }
 
+          try {
           // Garante que está na tela de filtro para acessar o grupo
           let acessou = false
           for (let attempt = 1; attempt <= 3; attempt++) {
@@ -1012,7 +1027,7 @@ async function run() {
 
           if (!acessou) {
             log(`[Grupo ${itemGrupo.grupo}] Não foi possível abrir o detalhe de assembleia. Pulando para o próximo...`)
-            continue
+            throw new Error('Grupo indisponível no portal: '+numGrupo)
           }
 
           log(`Página de resultado de assembleia carregada: ${activePage.url()}`)
@@ -1021,7 +1036,9 @@ async function run() {
           // Função de extração do cabeçalho da assembleia na tela atual
           const extrairCabecalhoAssembleia = async () => {
             return await activePage.evaluate(() => {
-              const bodyText = document.body ? document.body.innerText : ''
+              const clone = document.body.cloneNode(true)
+              for (const el of clone.querySelectorAll('input')) el.replaceWith(document.createTextNode(' '+el.value+' '))
+              const bodyText = clone.textContent.replace(/\s+/g, ' ')
               
               // "Assembleia: 138 - 15/10/2026"
               const matchAss = bodyText.match(/Assembleia:\s*(\d+)\s*-\s*(\d{2}\/\d{2}\/\d{4})/i)
@@ -1059,6 +1076,8 @@ async function run() {
               }
 
               return {
+                assembleiasRealizadas: bodyText.match(/Assembleias\s+realizadas:\s*(\d+)/i) ? Number(bodyText.match(/Assembleias\s+realizadas:\s*(\d+)/i)[1]) : null,
+                grupoNumero: (bodyText.match(/Grupo:\s*(\d+)/i)?.[1] || '').replace(/^0+/, ''),
                 assembleiaNumero: assNum,
                 assembleiaData: assData,
                 proximaAssembleiaNumero: proxAssNum,
@@ -1076,34 +1095,6 @@ async function run() {
             }).catch(err => ({ erro: err.message }))
           }
 
-          // Função de extração da grade de cotas contempladas visível
-          const extrairTabelaCotas = async (situacao) => {
-            return await activePage.evaluate((sit) => {
-              const rows = Array.from(document.querySelectorAll('tr'))
-              const cotas = []
-              for (const tr of rows) {
-                const tds = Array.from(tr.querySelectorAll('td'))
-                if (tds.length < 6) continue
-                const cotaText = (tds[0]?.innerText || '').trim()
-                if (!/^\d{3,5}(-\d{2})?$/.test(cotaText)) continue
-
-                const modalidade = (tds[1]?.innerText || '').trim()
-                const rawPercent = (tds[7]?.innerText || tds[6]?.innerText || '0').trim()
-                const percentVal = parseFloat(rawPercent.replace(',', '.')) || 0
-                const pagoText = (tds[8]?.innerText || tds[7]?.innerText || '').trim()
-
-                cotas.push({
-                  cota: cotaText,
-                  modalidade: modalidade,
-                  percentualLance: percentVal,
-                  pago: pagoText.toLowerCase().includes('sim'),
-                  situacao: sit,
-                })
-              }
-              return cotas
-            }, situacao).catch(() => [])
-          }
-
           // Coleta histórica retrocedendo assembleias (desde a atual até a assembleia 1)
           const historicoLances = []
           const assembleiasVisitadas = new Set()
@@ -1111,15 +1102,32 @@ async function run() {
           let totalAssembleiasGrupo = 0
           const dbGrupoId = mapDbGrupos.get(numGrupo)
 
+          const cacheAss = new Map()
+          for (let offset=0; ; offset+=500) {
+            const {data,error}=await admin.from('grupo_assembleias_resultados')
+              .select('assembleia_numero,assembleia_data,cotas,criado_em').eq('grupo_id',dbGrupoId)
+              .order('id').range(offset,offset+499)
+            if(error) throw new Error('Histórico verificado indisponível: '+error.message)
+            for(const row of data) {
+              const anterior=cacheAss.get(row.assembleia_numero)
+              if(!anterior||row.criado_em>anterior.criado_em)cacheAss.set(row.assembleia_numero,row)
+            }
+            if(data.length<500)break
+          }
           log(`Iniciando varredura retroativa completa de assembleias para o grupo ${numGrupo}...`)
 
           while (true) {
             const headerAss = await extrairCabecalhoAssembleia()
+            if (headerAss.grupoNumero !== numGrupo) throw new Error('Grupo retornado pelo portal não corresponde à consulta: '+numGrupo)
+            if (headerAss.assembleiasRealizadas === 0) {
+              dadosMaisRecente = headerAss
+              break
+            }
             const assNum = headerAss.assembleiaNumero
 
             if (!assNum || assembleiasVisitadas.has(assNum)) {
               log(`[Grupo ${numGrupo}] Parada: Assembleia ${assNum || 'não identificada'} já processada ou fim do histórico.`)
-              break
+              throw new Error('Histórico interrompido antes da assembleia 1: '+numGrupo)
             }
             assembleiasVisitadas.add(assNum)
 
@@ -1129,79 +1137,41 @@ async function run() {
 
             totalAssembleiasGrupo++
 
-            // 1. Aba: Confirmadas (Ativas)
-            const cotasAtivas = await extrairTabelaCotas('ATIVA')
-
-            // 2. Aba: Confirmadas (Canceladas)
-            let cotasCanceladas = []
-            const tabCanceladas = activePage.locator('a:has-text("Confirmadas (Canceladas)"), span:has-text("Confirmadas (Canceladas)"), td:has-text("Confirmadas (Canceladas)")').first()
-            if (await tabCanceladas.isVisible({ timeout: 1500 }).catch(() => false)) {
-              await tabCanceladas.click().catch(() => {})
-              await activePage.waitForTimeout(250)
-              cotasCanceladas = await extrairTabelaCotas('CANCELADA')
-
-              // Retorna para Confirmadas (Ativas)
-              const tabAtivas = activePage.locator('a:has-text("Confirmadas (Ativas)"), span:has-text("Confirmadas (Ativas)")').first()
-              if (await tabAtivas.isVisible().catch(() => false)) {
-                await tabAtivas.click().catch(() => {})
-                await activePage.waitForTimeout(200)
+            // Reutiliza somente snapshots verificados e contíguos até a assembleia 1.
+            // A assembleia mais recente é sempre relida para capturar confirmações novas.
+            if(assNum < dadosMaisRecente.assembleiaNumero && Array.from({length:assNum},(_,i)=>i+1).every(n=>cacheAss.has(n))) {
+              for(let n=assNum;n>=1;n--) {
+                const s=cacheAss.get(n);assembleiasVisitadas.add(n)
+                historicoLances.push({assembleia:n,data:s.assembleia_data,
+                  lances:s.cotas.filter(c=>c.situacao_cota==='ATIVA'&&c.modalidade==='LANCE_LIVRE'&&c.percentual_lance>0).map(c=>c.percentual_lance),
+                  totalContempladas:new Set(s.cotas.filter(c=>c.situacao_cota==='ATIVA').map(c=>c.cota)).size})
               }
+              log('[Grupo '+numGrupo+'] Reutilizado histórico verificado de 1 a '+assNum)
+              break
             }
-
-            const todasCotasDestaAss = [...cotasAtivas, ...cotasCanceladas]
+            const todasCotasDestaAss = await coletarAbasResultado(activePage)
             const lancesDestaAss = todasCotasDestaAss
-              .filter(c => c.percentualLance > 0 && /lance/i.test(c.modalidade))
-              .map(c => c.percentualLance)
-
-            historicoLances.push({
-              assembleia: assNum,
-              data: headerAss.assembleiaData,
-              lances: lancesDestaAss,
-              totalContempladas: todasCotasDestaAss.length,
-            })
-
-            // Grava cotas no Supabase imediatamente em grupo_assembleias_contemplacoes em lote (alta performance)
-            if (dbGrupoId && todasCotasDestaAss.length > 0) {
-              const payloads = todasCotasDestaAss.map(cotaItem => {
-                let modNorm = 'LANCE_LIVRE'
-                const modLower = cotaItem.modalidade.toLowerCase()
-                if (modLower.includes('sorteio') && cotaItem.situacao === 'CANCELADA') modNorm = 'SORTEIO_CANCELADAS'
-                else if (modLower.includes('sorteio')) modNorm = 'SORTEIO'
-                else if (modLower.includes('fixo')) modNorm = 'LANCE_FIXO'
-                else if (modLower.includes('livre')) modNorm = 'LANCE_LIVRE'
-
-                return {
-                  grupo_id: dbGrupoId,
-                  codigo_grupo: itemGrupo.grupo,
-                  assembleia_numero: assNum,
-                  assembleia_data: headerAss.assembleiaData,
-                  cota: cotaItem.cota,
-                  modalidade: modNorm,
-                  percentual_lance: cotaItem.percentualLance,
-                  situacao_cota: cotaItem.situacao,
-                }
-              })
-
-              // Deduplicação em memória para evitar erro do PostgreSQL: ON CONFLICT DO UPDATE cannot affect row a second time
-              const mapUnique = new Map()
-              for (const p of payloads) {
-                const k = `${p.grupo_id}_${p.assembleia_numero}_${p.cota}_${p.modalidade}`
-                mapUnique.set(k, p)
-              }
-              const uniquePayloads = Array.from(mapUnique.values())
-
-              const { error: cotaErr } = await admin
-                .from('grupo_assembleias_contemplacoes')
-                .upsert(uniquePayloads, { onConflict: 'grupo_id,assembleia_numero,cota,modalidade' })
-
-              if (cotaErr) {
-                log(`Aviso ao gravar cotas da ass ${assNum}: ${cotaErr.message}`)
-              } else {
-                totalCotadasContempladas += uniquePayloads.length
-              }
+              .filter(c => c.situacao_cota === 'ATIVA' && c.modalidade === 'LANCE_LIVRE' && c.percentual_lance > 0)
+              .map(c => c.percentual_lance)
+            if (!headerAss.assembleiaData) throw new Error('Data da assembleia não identificada')
+            const snapshot = {
+              grupo_id: dbGrupoId, assembleia_numero: assNum,
+              assembleia_data: headerAss.assembleiaData, execucao_id: execucaoId,
+              versao: 2, cotas: todasCotasDestaAss,
             }
-
-            log(`[Grupo ${numGrupo}] Assembleia ${assNum} (${headerAss.assembleiaData || 'S/D'}): ${todasCotasDestaAss.length} cotas contempladas (${lancesDestaAss.length} lances) registradas.`)
+            const backupDir = path.resolve(downloadDir, 'contemplacoes-v2', execucaoId)
+            fs.mkdirSync(backupDir, { recursive: true })
+            fs.writeFileSync(path.join(backupDir, numGrupo+'-'+assNum+'.json'), JSON.stringify(snapshot, null, 2))
+            if (!e.dry_run) {
+              const { error } = await admin.from('grupo_assembleias_resultados').insert(snapshot)
+              if (error) throw new Error('Falha ao persistir resultado verificado: '+error.message)
+            }
+            historicoLances.push({
+              assembleia: assNum, data: headerAss.assembleiaData, lances: lancesDestaAss,
+              totalContempladas: new Set(todasCotasDestaAss.filter(c=>c.situacao_cota==='ATIVA').map(c=>c.cota)).size,
+            })
+            totalCotadasContempladas += historicoLances.at(-1).totalContempladas
+            log('[Grupo '+numGrupo+'] Assembleia '+assNum+': '+historicoLances.at(-1).totalContempladas+' contempladas ativas; '+lancesDestaAss.length+' lances livres válidos.')
 
             // Se for a assembleia 1, alcançamos o início do grupo!
             if (assNum <= 1) {
@@ -1213,7 +1183,7 @@ async function run() {
             const btnRetorna = activePage.locator('input[value*="Retorna"], button:has-text("Retorna"), a:has-text("Retorna")').first()
             if (!(await btnRetorna.isVisible({ timeout: 2500 }).catch(() => false))) {
               log(`[Grupo ${numGrupo}] Botão "Retorna uma Assembleia" não disponível. Fim do histórico do grupo.`)
-              break
+              throw new Error('Botão de retorno ausente antes da assembleia 1: '+numGrupo)
             }
 
             const assAtual = assNum
@@ -1228,13 +1198,36 @@ async function run() {
             }
           }
 
+          if (dadosMaisRecente?.assembleiasRealizadas === 0) {
+            const zeroDir = path.resolve(downloadDir, 'contemplacoes-sem-assembleias', execucaoId)
+            fs.mkdirSync(zeroDir, {recursive:true})
+            fs.writeFileSync(path.join(zeroDir, numGrupo+'.json'), JSON.stringify({grupo_id:dbGrupoId,execucao_id:execucaoId,cabecalho:dadosMaisRecente},null,2))
+            if (!e.dry_run) {
+              const {error}=await admin.from('grupos_consorcio').update({
+                ultima_assembleia_numero:0, ultima_assembleia_data:null,
+                media_lance_1m:null,media_lance_3m:null,media_lance_6m:null,media_lance_12m:null,
+                ...(dadosMaisRecente.primeiraAssembleiaData ? {data_primeira_assembleia:dadosMaisRecente.primeiraAssembleiaData} : {}),
+                proxima_assembleia_numero:dadosMaisRecente.proximaAssembleiaNumero || null,
+                proxima_assembleia_data:dadosMaisRecente.proximaAssembleiaData,
+                contemplacoes_atualizado_em:new Date().toISOString(),
+                contemplacoes_resumo:{versao:2,historico_completo:true,sem_assembleias_realizadas:true,execucao_id:execucaoId,ultima_assembleia:dadosMaisRecente},
+              }).eq('id',dbGrupoId).eq('administradora_id',raconAdminId)
+              if(error)throw error
+            }
+            totalGruposContemplados++
+            log('[Grupo '+numGrupo+'] Portal confirma zero assembleias realizadas.')
+            continue
+          }
+          if (historicoLances.length !== dadosMaisRecente.assembleiaNumero || !assembleiasVisitadas.has(1)) {
+            throw new Error('Histórico incompleto para o grupo '+numGrupo)
+          }
           // Cálculo das médias móveis a partir do histórico completo coletado
           // historicoLances está ordenado da mais recente para a mais antiga
           const calcMedia = (numMeses) => {
             const amostras = historicoLances.slice(0, numMeses).flatMap(h => h.lances)
             if (amostras.length === 0) return null
-            const soma = amostras.reduce((acc, v) => acc + v, 0)
-            return parseFloat((soma / amostras.length).toFixed(4))
+            const soma = amostras.reduce((acc, v) => acc + Math.round(v * 10000), 0)
+            return Math.round(soma / amostras.length) / 10000
           }
 
           const media1m = calcMedia(1)
@@ -1246,7 +1239,7 @@ async function run() {
           log(`Médias de Lance Calculadas [Grupo ${numGrupo}]: 1m=${media1m}%, 3m=${media3m}%, 6m=${media6m}%, 12m=${media12m}%, Geral=${mediaHistoricaGeral}% (em ${historicoLances.length} assembleias processadas)`)
 
           // Atualização da tabela grupos_consorcio com as médias e histórico
-          if (dbGrupoId && dadosMaisRecente) {
+          if (dbGrupoId && dadosMaisRecente && !e.dry_run) {
             const updateGrupoPayload = {
               media_lance_1m: media1m,
               media_lance_3m: media3m,
@@ -1258,6 +1251,9 @@ async function run() {
               proxima_assembleia_data: dadosMaisRecente.proximaAssembleiaData,
               contemplacoes_atualizado_em: new Date().toISOString(),
               contemplacoes_resumo: {
+                versao: 2,
+                historico_completo: true,
+                assembleias_verificadas: [...assembleiasVisitadas],
                 ultima_assembleia: dadosMaisRecente,
                 total_assembleias_historicas: historicoLances.length,
                 medias_lance: {
@@ -1277,11 +1273,14 @@ async function run() {
 
             const { error: updErr } = await admin.from('grupos_consorcio').update(updateGrupoPayload).eq('id', dbGrupoId)
             if (updErr) {
-              log(`Erro ao atualizar dados de contemplação do grupo ${numGrupo}: ${updErr.message}`)
+              throw new Error(`Erro ao atualizar dados de contemplação do grupo ${numGrupo}: ${updErr.message}`)
             } else {
               log(`Dados de contemplação e médias atualizados com sucesso para o grupo ${numGrupo}!`)
               totalGruposContemplados++
             }
+          } else if (e.dry_run) {
+            totalGruposContemplados++
+            log(`Grupo ${numGrupo} validado sem escrita de catálogo.`)
           } else {
             log(`Aviso: Grupo ${numGrupo} não associado a registro prévio na tabela grupos_consorcio.`)
           }
@@ -1290,7 +1289,14 @@ async function run() {
           log('Retornando para tela de filtro de assembleias...')
           await activePage.goto(urlFiltro, { waitUntil: 'domcontentloaded' }).catch(() => {})
           await activePage.waitForTimeout(2000)
+          } catch (error) {
+            pendenciasGrupos.push({ grupo: numGrupo, erro: error.message })
+            log('[Grupo '+numGrupo+'] PENDENTE: '+error.message)
+            await activePage.goto(urlFiltro, {waitUntil:'domcontentloaded'}).catch(()=>{})
+          }
         }
+        fs.writeFileSync(path.join(downloadDir, 'pendencias-assembleias-'+execucaoId+'.json'), JSON.stringify(pendenciasGrupos,null,2))
+        if (pendenciasGrupos.length) throw new Error('Histórico incompleto em '+pendenciasGrupos.length+' grupo(s): '+pendenciasGrupos.map(p=>p.grupo).join(', '))
 
         log(`=== PROCESSAMENTO ROBÔ 2 FINALIZADO ===`)
         log(`Grupos analisados: ${totalGruposContemplados}`)

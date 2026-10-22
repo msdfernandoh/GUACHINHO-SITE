@@ -167,6 +167,8 @@ async function registrarFalha(id, mensagem) {
 async function processar(execucao) {
   console.log(`Processando execução ${execucao.id} (${execucao.portal_tipo})...`)
   let expirou = false
+  const { data: config } = await admin.from("robo_configuracoes").select("nome, configuracao_tarefas").eq("id", execucao.robo_config_id).single()
+  const limiteMs = (config?.configuracao_tarefas?.tipo_rotina === "CONTEMPLACAO_ASSEMBLEIAS" || /contempla|médias de lance/i.test(config?.nome || "")) ? 6 * 60 * 60_000 : MAX_EXECUCAO_MS
 
   const exitCode = await new Promise((resolve, reject) => {
     filho = fork(fileURLToPath(new URL('./robo-execucao-child.mjs', import.meta.url)), [execucao.id], {
@@ -174,7 +176,7 @@ async function processar(execucao) {
       stdio: ['ignore', 'inherit', 'inherit', 'ipc'],
     })
 
-    const timer = setTimeout(() => { expirou = true; pararFilho() }, MAX_EXECUCAO_MS)
+    const timer = setTimeout(() => { expirou = true; pararFilho() }, limiteMs)
     const heartbeat = setInterval(() => {
       admin.from('robo_execucoes').update({ heartbeat_em: new Date().toISOString() })
         .eq('id', execucao.id).eq('status', 'PROCESSANDO')
@@ -187,7 +189,7 @@ async function processar(execucao) {
   })
 
   if (exitCode !== 0) {
-    await registrarFalha(execucao.id, expirou ? 'Tempo limite de execução excedido (10 minutos).' : 'Processo interrompido.')
+    await registrarFalha(execucao.id, expirou ? 'Tempo limite de execução excedido ('+(limiteMs / 60_000)+' minutos).' : 'Processo interrompido.')
   }
 
   const { data } = await admin.from('robo_execucoes').select('status').eq('id', execucao.id).single()
