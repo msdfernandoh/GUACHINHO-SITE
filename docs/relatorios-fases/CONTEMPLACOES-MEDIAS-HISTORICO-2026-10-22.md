@@ -28,7 +28,7 @@ As 19.166 linhas antigas mantêm MD5 df846efb9530ec2896bb5758933b4891 antes e ap
 
 Conferidos os 28 grupos usados no ERP: 25 com histórico integral de 1 até a última, 1.174 assembleias distintas; três com zero realizadas (1553/1563/5618). Outubro/2026: 161 contempladas ativas, 32 canceladas e 42 desclassificadas, separadas. Total acumulado: 5.710 entregues e 22.072 a entregar. Todas as quatro médias de cada grupo coincidem com recálculo SQL independente. Ajustados três arredondamentos de 0,0001 ponto percentual; código usa unidades inteiras de quatro casas para evitar deriva binária. O hash das 19.166 linhas legadas permanece idêntico.
 
-Coleta final de produção db68a380-0b59-4f6f-a6ef-0c525887c026 concluída com 28 grupos e sem pendências; complementar 1f9678ae-1fcf-4d2c-aa66-8193bd14f438. Coletas exploratórias repartidas e encerradas mantêm snapshots já obtidos; não representam lacunas no resultado final. Banco atualizado, frontend ainda sem publicação confirmada.
+Coleta final de produção db68a380-0b59-4f6f-a6ef-0c525887c026 concluída com 28 grupos e sem pendências; complementar 1f9678ae-1fcf-4d2c-aa66-8193bd14f438. Coletas exploratórias repartidas e encerradas mantêm snapshots já obtidos; não representam lacunas no resultado final. Banco atualizado. Frontend publicado e homologado em produção em 23/10/2026, após autorização explícita do titular para envio à main. Commit funcional 4cbca7206c2eb723f4301ffcd922242873f97354; deployment Vercel dpl_84wfbXHFgSddZt9zMQkudDJ1ez8T, READY.
 
 ## Evidências e recuperação
 Auditoria detalhada: tmp/contemplacoes/auditoria-2026-10-22.json. Snapshots: tmp/robo-downloads/contemplacoes-v2/{execucao}. Ausências/pendências em tmp/robo-downloads/. Arquivos ignorados pelo Git. Inventário de todos os grupos no relatório CONTEMPLACOES-COBERTURA-2026-10-22.md.
@@ -39,3 +39,6 @@ Conferência visual final local: superfícies claras/contraste corrigidos, HTTP 
 
 ## Grupo sem assembleias realizadas
 Evidência oficial do 1563: zero realizadas; primeira em 14/12/2026. Snapshot visual local racon-detalhe-grupo-001563-1792701128291.png. O código diferencia esse caso de lacuna, mantém médias nulas, zero entregues e 218 a entregar quando a confirmação do portal está persistida. A data cadastral anterior não substitui a primeira assembleia oficial.
+
+## Publicação e homologação — 23/10/2026
+Envio à main inicialmente bloqueado pela revisão automática por exigir autorização explícita, concedida pelo titular em 23/10. Push sem força, com main remota conferida. Deployment de produção READY e aliases oficiais atualizados. Smoke autenticado no domínio www.gauchinhoconsorcios.com.br retornou HTTP 200: grupo 1473 com 12 entregues/1.010 a entregar e cotas 0645-00/0657-01; grupo 1563 zero/218; outubro com 161 ativas, sem alerta indevido para primeira assembleia futura e sem erros JavaScript. A rota sem sessão retorna 307 para login. Evidências ignoradas pelo Git em tmp/contemplacoes/producao-1473.png, producao-mes.png e deploy-producao.json. Nenhuma nova migration ou escrita em dados de negócio nesta publicação.

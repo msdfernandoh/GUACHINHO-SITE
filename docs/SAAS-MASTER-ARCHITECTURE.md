@@ -12,7 +12,10 @@ de 0645/0657-01. Escopo confirmado pelo titular: 28 grupos usados no ERP. Confer
 (1553/1563/5618). Outubro: 161 ativas, 32 canceladas e 42 desclassificadas separadas.
 Quatro médias por grupo conferidas por SQL independente; 5.710 entregues e
 22.072 a entregar. Consulta direta recupera sete omitidos da lista por ponto
-de venda. Banco atualizado; frontend validado localmente, sem publicação confirmada.
+de venda. Banco atualizado; frontend publicado e homologado em produção em
+23/10/2026 após autorização explícita, commit 4cbca720, deployment READY
+dpl_84wfbXHFgSddZt9zMQkudDJ1ez8T. Smoke autenticado: 1473 12/1010,
+1563 0/218, mês 161, HTTP 200 e sem erros JavaScript.
 Relatório: `docs/relatorios-fases/CONTEMPLACOES-MEDIAS-HISTORICO-2026-10-22.md`.
 Cobertura: `docs/relatorios-fases/CONTEMPLACOES-COBERTURA-2026-10-22.md`.
 

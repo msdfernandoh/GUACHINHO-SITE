@@ -39,4 +39,4 @@ Os sete grupos ausentes da lista por ponto de venda foram consultados diretament
 
 Execução final: db68a380-0b59-4f6f-a6ef-0c525887c026, 28 grupos, sucesso. Complementar: 1f9678ae-1fcf-4d2c-aa66-8193bd14f438. Snapshots e auditoria detalhada preservados em tmp/contemplacoes e tmp/robo-downloads/contemplacoes-v2 (ignorados pelo Git).
 
-Dados e migrations aplicados no banco; interface validada localmente, ainda sem publicação confirmada.
+Dados e migrations aplicados no banco. Interface publicada e homologada em produção em 23/10/2026, commit funcional 4cbca720, deployment READY dpl_84wfbXHFgSddZt9zMQkudDJ1ez8T. Smoke autenticado confirmou cards de 1473 e 1563 e total mensal 161.
