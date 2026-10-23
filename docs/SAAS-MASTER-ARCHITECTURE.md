@@ -1,5 +1,11 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
+### Quantidade contemplada em destaque (23/10/2026)
+Histórico e consulta mensal exibem total ativo em selo verde com número grande,
+separado de canceladas e desclassificadas. Contagem por cota distinta preservada;
+sem migration ou escrita. Build aprovado, publicação ainda não confirmada.
+Relatório: docs/relatorios-fases/DESTAQUE-QUANTIDADE-CONTEMPLADAS-2026-10-23.md.
+
 ### Estatística automática de contemplação e contraste (23/10/2026)
 Estimativa média por cota elegível usa todas as assembleias verificadas, atraso
 inicial 30% editável e comparação sorteio/fixo/segundo fixo com e sem livre no

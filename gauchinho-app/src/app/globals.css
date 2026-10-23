@@ -573,3 +573,11 @@ body.tenant-root-independent {
   font-size: 0.7rem;
   font-weight: 600;
 }
+.erp-contemplacoes .contemplacoes-quantidade {
+  background-color: #ecfdf5 !important;
+  border-color: #6ee7b7 !important;
+  color: #065f46 !important;
+}
+.erp-contemplacoes .contemplacoes-quantidade :is(strong, span) {
+  color: #065f46 !important;
+}

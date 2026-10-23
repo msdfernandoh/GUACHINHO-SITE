@@ -55,6 +55,21 @@ type GrupoDetalhe = {
   cotas_a_entregar?: number | null;
 };
 
+function QuantidadeContempladas({ cotas }: { cotas: ContemplacaoRow[] }) {
+  return (
+    <div className="flex flex-col items-start gap-2 sm:items-end">
+      <div className="contemplacoes-quantidade inline-flex items-center gap-3 rounded-xl border-2 px-4 py-2">
+        <strong data-total-contempladas className="text-3xl font-extrabold leading-none tabular-nums">{contempladasAtivas(cotas)}</strong>
+        <span className="text-xs font-semibold leading-tight">cotas contempladas<br />ativas</span>
+      </div>
+      <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-slate-600">
+        <span>{cotas.filter(c => c.situacao_cota === "CANCELADA").length} cancelada(s)</span>
+        <span>{cotas.filter(c => c.situacao_cota === "DESCLASSIFICADA").length} desclassificada(s)</span>
+      </div>
+    </div>
+  );
+}
+
 export function ErpContemplacoesPanel({ grupos }: { grupos: GrupoOption[] }) {
   const [modo, setModo] = useState<"grupo" | "mes">("grupo");
   const [grupoId, setGrupoId] = useState<string>("");
@@ -349,7 +364,7 @@ export function ErpContemplacoesPanel({ grupos }: { grupos: GrupoOption[] }) {
                       .sort((a, b) => b.numero - a.numero)
                       .map((ass) => (
                         <div key={ass.numero} className="p-4 space-y-3">
-                          <div className="flex items-center justify-between">
+                          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                             <div className="flex items-center gap-2">
                               <span className="font-semibold text-sm text-slate-900">
                                 Assembleia Nº {ass.numero}
@@ -360,9 +375,7 @@ export function ErpContemplacoesPanel({ grupos }: { grupos: GrupoOption[] }) {
                                 </span>
                               )}
                             </div>
-                            <span className="text-xs text-slate-600">
-                              {contempladasAtivas(ass.cotas)} contemplada(s) ativa(s) · {ass.cotas.filter(c => c.situacao_cota === "CANCELADA").length} cancelada(s) · {ass.cotas.filter(c => c.situacao_cota === "DESCLASSIFICADA").length} desclassificada(s)
-                            </span>
+                            <QuantidadeContempladas cotas={ass.cotas} />
                           </div>
 
                           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
@@ -434,8 +447,9 @@ export function ErpContemplacoesPanel({ grupos }: { grupos: GrupoOption[] }) {
                         {item.modalidade}
                       </span>
                     </div>
-                    <div className="text-xs text-slate-600">
-                      Assembleia Nº {item.assembleiaNumero} {item.data ? `· ${new Date(item.data + "T12:00:00").toLocaleDateString("pt-BR")}` : ""} · {contempladasAtivas(item.cotas)} contempladas ativas
+                    <div className="space-y-2">
+                      <div className="text-xs text-slate-600 sm:text-right">Assembleia Nº {item.assembleiaNumero} {item.data ? `· ${new Date(item.data + "T12:00:00").toLocaleDateString("pt-BR")}` : ""}</div>
+                      <QuantidadeContempladas cotas={item.cotas} />
                     </div>
                   </div>
 
