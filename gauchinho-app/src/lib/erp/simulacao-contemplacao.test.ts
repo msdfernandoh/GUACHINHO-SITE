@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { classificarSimulacoes, simularContemplacao, type BaseSimulacao } from "./simulacao-contemplacao";
+import { classificarSimulacoes, simularContemplacao, projetarChanceCotas, type BaseSimulacao } from "./simulacao-contemplacao";
 import type { ResultadoCota } from "./contemplacoes";
 const c = (cota: string, modalidade: string, situacao_cota = "ATIVA"): ResultadoCota => ({ cota, modalidade, situacao_cota, percentual_lance: 50 });
 const base = (): BaseSimulacao => ({ ultimaAssembleia: 2, historicoCompleto: true, cotasAEntregar: 1000, assembleias: [
@@ -39,5 +39,18 @@ describe("chance média por cota elegível", () => {
   });
   it("cenário saturado não recebe tag de maior probabilidade", () => {
     expect(classificarSimulacoes([{ ...base(), id: 'fim', codigo: 'Fim', cotasAEntregar: 1 }], 30)).toEqual([]);
+  });
+  it("projeta proporcionalmente a quantidade de cotas sem mudar a chance por cota", () => {
+    expect(projetarChanceCotas(0.25, 4, 100)).toEqual({ percentual: 1, limitada: false });
+    expect(projetarChanceCotas(0.25, 1, 100)).toEqual({ percentual: 0.25, limitada: false });
+    expect(projetarChanceCotas(0, 4, 100)).toEqual({ percentual: 0, limitada: false });
+  });
+  it("soma proporcional limitada a 100 não se apresenta como probabilidade exata", () => {
+    expect(projetarChanceCotas(30, 4, 100)).toEqual({ percentual: 100, limitada: true });
+  });
+  it("recusa quantidade fracionária, vazia, maior que saldo e cenário indisponível", () => {
+    for (const quantidade of [0, -1, 1.5, NaN, 101]) expect(projetarChanceCotas(0.25, quantidade, 100)).toBeNull();
+    expect(projetarChanceCotas(null, 2, 100)).toBeNull();
+    expect(projetarChanceCotas(0.25, 2, null)).toBeNull();
   });
 });

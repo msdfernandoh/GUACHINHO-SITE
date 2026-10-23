@@ -256,7 +256,7 @@ export function ErpContemplacoesPanel({ grupos }: { grupos: GrupoOption[] }) {
               id="grupo-contemplacoes"
               value={grupoId}
               onChange={(e) => carregarPorGrupo(e.target.value)}
-              className="w-full sm:w-96 px-3 py-2 rounded-lg bg-white border border-slate-300 text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600"
+              className="w-full min-w-0 sm:flex-1 px-3 py-2 rounded-lg bg-white border border-slate-300 text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600"
             >
               <option value="">-- Escolha um grupo para ver o histórico --</option>
               {grupos.map((g) => (

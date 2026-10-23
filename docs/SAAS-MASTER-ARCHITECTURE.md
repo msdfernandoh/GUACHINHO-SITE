@@ -1,5 +1,13 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
+### Cotas do cliente e seletor ampliado (23/10/2026)
+Campo de cotas ao lado do atraso inicia em 1 e atualiza a projeção proporcional
+com/sem livre, mantendo a chance por cota explícita. Não representa probabilidade
+conjunta exata; teto exibe Até 100%, sem garantia. Quantidade por grupo validada
+e mantida só na sessão da tela. Seletor usa toda a largura livre da linha.
+34 testes aprovados, sem migration ou escrita; publicação ainda não confirmada.
+Relatório: docs/relatorios-fases/COTAS-CLIENTE-E-SELETOR-AMPLIADO-2026-10-23.md.
+
 ### Quantidade contemplada em destaque (23/10/2026)
 Histórico e consulta mensal exibem total ativo em selo verde com número grande,
 separado de canceladas e desclassificadas. Contagem por cota distinta preservada;

@@ -12,6 +12,16 @@ export function percentualAtrasoValido(valor: number) {
   return Number.isFinite(valor) && valor >= 0 && valor <= 100;
 }
 
+/** Soma proporcional das chances médias, um limite superior para ao menos uma
+ * contemplação, não uma probabilidade conjunta exata das cotas do cliente. */
+export function projetarChanceCotas(chancePorCota: number | null, quantidade: number, cotasAEntregar: number | null) {
+  if (chancePorCota == null || !Number.isFinite(chancePorCota) || chancePorCota < 0 || chancePorCota > 100
+    || !Number.isSafeInteger(quantidade) || quantidade < 1 || cotasAEntregar == null
+    || !Number.isSafeInteger(cotasAEntregar) || quantidade > cotasAEntregar) return null;
+  const soma = chancePorCota * quantidade;
+  return { percentual: Math.min(100, soma), limitada: soma >= 100 };
+}
+
 /** Média por cota elegível, não probabilidade individual por posição na pedra.
  * Todas as assembleias, inclusive as sem vencedores, compõem o denominador.
  * O cenário com livre assume oferta no teto e participação de todas as elegíveis.
