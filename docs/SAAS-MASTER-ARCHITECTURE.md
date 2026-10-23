@@ -5,13 +5,16 @@ Campo de cotas ao lado do atraso inicia em 1 e atualiza a projeção proporciona
 com/sem livre, mantendo a chance por cota explícita. Não representa probabilidade
 conjunta exata; teto exibe Até 100%, sem garantia. Quantidade por grupo validada
 e mantida só na sessão da tela. Seletor usa toda a largura livre da linha.
-34 testes aprovados, sem migration ou escrita; publicação ainda não confirmada.
+34 testes aprovados, sem migration ou escrita; publicado/homologado em 23/10/2026,
+commit 46f47088, deployment READY dpl_42rXD1coLC9sDDBavLXzDwbfjKvB.
+Smoke de produção: quatro cotas 0,6172%, seletor 916 px sem corte, HTTP 200.
 Relatório: docs/relatorios-fases/COTAS-CLIENTE-E-SELETOR-AMPLIADO-2026-10-23.md.
 
 ### Quantidade contemplada em destaque (23/10/2026)
 Histórico e consulta mensal exibem total ativo em selo verde com número grande,
 separado de canceladas e desclassificadas. Contagem por cota distinta preservada;
-sem migration ou escrita. Build aprovado, publicação ainda não confirmada.
+sem migration ou escrita. Build/lint aprovados; publicado pelo commit 4c3dbbc8,
+homologado no deployment consolidado dpl_42rXD1coLC9sDDBavLXzDwbfjKvB em 23/10/2026.
 Relatório: docs/relatorios-fases/DESTAQUE-QUANTIDADE-CONTEMPLADAS-2026-10-23.md.
 
 ### Estatística automática de contemplação e contraste (23/10/2026)
