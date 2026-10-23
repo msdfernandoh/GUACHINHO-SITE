@@ -7,7 +7,10 @@ teto. Hipóteses de participação e limite de chance individual por posição s
 visíveis; cenário saturado não inventa 100%. Classificação separa chance e volume,
 preserva empates e restringe-se aos grupos concedidos, com RLS e paginação.
 Filtros claros, tags Top 3 e atualização automática; sem migration ou escrita
-em dados. 31 testes aprovados; validação local, publicação ainda não confirmada.
+em dados. 31 testes aprovados; publicado/homologado em produção em 23/10/2026,
+commit funcional 76f4e643, deployment READY dpl_Fmq2oZEkF77ToKUrNXfoW23YoP2n.
+Smoke autenticado: HTTP 200, cálculo 30→50 automático, tags/contraste,
+cenários indisponíveis sem percentual artificial e sem erros JavaScript.
 Relatório: docs/relatorios-fases/ESTATISTICA-CONTEMPLACAO-AUTOMATICA-2026-10-23.md.
 
 ### Correção de contemplações e médias (22/10/2026)
