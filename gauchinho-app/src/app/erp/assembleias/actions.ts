@@ -11,6 +11,7 @@ import {
 } from "@/lib/erp/assembleias";
 
 import { indicadoresContemplacoes, resultadosVigentes, cotasUnicas, contempladasAtivas, type ResultadoAssembleia } from "@/lib/erp/contemplacoes";
+import { classificarSimulacoes, percentualAtrasoValido } from "@/lib/erp/simulacao-contemplacao";
 
 async function requireAssembleias(write = false) {
   const { usuario, empresaAtiva } = await requireErpRouteAccess("assembleias");
@@ -216,4 +217,22 @@ export async function fetchContemplacoesMesAction(mesAno: string) {
         && dados.data_primeira_assembleia.slice(0, 7) > mesAno);
     }).map(g => g.codigo_grupo),
   };
+}
+
+export async function fetchRankingContemplacaoAction(percentualAtraso = 30) {
+  const { supabase, empresaId } = await requireAssembleias(false);
+  if (!percentualAtrasoValido(percentualAtraso)) throw new Error("Percentual de atraso inválido.");
+  const grupos = await listGruposAutorizadosForEmpresa(empresaId);
+  const resultados = await carregarResultados(supabase, grupos.map(g => g.id));
+  const ranking = classificarSimulacoes(grupos.map(g => {
+    const dados = g as typeof g & { ultima_assembleia_numero?: number | null; dados_estatisticos?: { cotas_ativas?: number } | null };
+    const rows = resultados.filter(a => a.grupo_id === g.id);
+    const ultima = Math.max(Number(dados.ultima_assembleia_numero) || 0, ...rows.map(a => a.assembleia_numero));
+    const ativas = dados.dados_estatisticos?.cotas_ativas;
+    const indicadores = indicadoresContemplacoes(rows, ultima, ativas == null ? null : Number(ativas));
+    return { id: g.id, codigo: g.codigo_grupo, ultimaAssembleia: ultima,
+      assembleias: rows.map(a => ({ numero: a.assembleia_numero, cotas: a.cotas })),
+      historicoCompleto: indicadores.historico_completo, cotasAEntregar: indicadores.cotas_a_entregar };
+  }), percentualAtraso);
+  return { ranking, percentualAtraso, gruposSemEstimativa: grupos.length - ranking.length };
 }

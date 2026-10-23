@@ -1,5 +1,15 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
+### Estatística automática de contemplação e contraste (23/10/2026)
+Estimativa média por cota elegível usa todas as assembleias verificadas, atraso
+inicial 30% editável e comparação sorteio/fixo/segundo fixo com e sem livre no
+teto. Hipóteses de participação e limite de chance individual por posição são
+visíveis; cenário saturado não inventa 100%. Classificação separa chance e volume,
+preserva empates e restringe-se aos grupos concedidos, com RLS e paginação.
+Filtros claros, tags Top 3 e atualização automática; sem migration ou escrita
+em dados. 31 testes aprovados; validação local, publicação ainda não confirmada.
+Relatório: docs/relatorios-fases/ESTATISTICA-CONTEMPLACAO-AUTOMATICA-2026-10-23.md.
+
 ### Correção de contemplações e médias (22/10/2026)
 Parser das três abas por grade visível/cabeçalhos; média somente de lances
 livres confirmados de ativas. Canceladas e desclassificadas são informativas.

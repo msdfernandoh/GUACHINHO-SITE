@@ -5,6 +5,7 @@ import { useRef, useState, useTransition } from "react";
 import { fetchContemplacoesGrupoAction, fetchContemplacoesMesAction } from "@/app/erp/assembleias/actions";
 
 import { contempladasAtivas, situacaoContemplacao } from "@/lib/erp/contemplacoes";
+import { ErpEstatisticaContemplacao, type RankingContemplacao } from "./erp-estatistica-contemplacao";
 
 type GrupoOption = {
   id: string;
@@ -74,6 +75,7 @@ export function ErpContemplacoesPanel({ grupos }: { grupos: GrupoOption[] }) {
   // Dados do modo Mês
   const [gruposSemResultadoMes, setGruposSemResultadoMes] = useState<string[]>([]);
   const [contemplacoesMes, setContemplacoesMes] = useState<ContemplacaoRow[]>([]);
+  const [ranking, setRanking] = useState<RankingContemplacao>([]);
 
   function carregarPorGrupo(id: string) {
     const requestId = ++requisicao.current;
@@ -175,7 +177,7 @@ export function ErpContemplacoesPanel({ grupos }: { grupos: GrupoOption[] }) {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="erp-contemplacoes space-y-6 rounded-2xl bg-slate-50 p-4 text-slate-900 sm:p-6">
       {/* Seletor de Modo de Visualização */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl bg-white border border-slate-200">
         <div>
@@ -188,13 +190,14 @@ export function ErpContemplacoesPanel({ grupos }: { grupos: GrupoOption[] }) {
         <div className="flex items-center bg-slate-50 p-1 rounded-lg border border-slate-200 self-start sm:self-auto">
           <button
             type="button"
+            aria-pressed={modo === "grupo"}
             onClick={() => {
               setModo("grupo");
               if (grupoId) carregarPorGrupo(grupoId);
             }}
             className={`px-3 py-1.5 text-xs font-medium rounded-md transition ${
               modo === "grupo"
-                ? "bg-blue-100 text-slate-900 shadow"
+                ? "bg-blue-600 text-white shadow"
                 : "text-slate-600 hover:text-slate-800"
             }`}
           >
@@ -202,13 +205,14 @@ export function ErpContemplacoesPanel({ grupos }: { grupos: GrupoOption[] }) {
           </button>
           <button
             type="button"
+            aria-pressed={modo === "mes"}
             onClick={() => {
               setModo("mes");
               carregarPorMes(mesAno);
             }}
             className={`px-3 py-1.5 text-xs font-medium rounded-md transition ${
               modo === "mes"
-                ? "bg-blue-100 text-slate-900 shadow"
+                ? "bg-blue-600 text-white shadow"
                 : "text-slate-600 hover:text-slate-800"
             }`}
           >
@@ -228,24 +232,34 @@ export function ErpContemplacoesPanel({ grupos }: { grupos: GrupoOption[] }) {
       {/* ========================================================================= */}
       {modo === "grupo" && (
         <div className="space-y-6">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-            <label className="text-sm font-medium text-slate-700 whitespace-nowrap">
+
+          <div className="contemplacoes-filtros flex flex-col sm:flex-row items-start sm:items-center gap-4 rounded-xl border border-slate-200 bg-white p-4">
+            <label htmlFor="grupo-contemplacoes" className="text-sm font-medium text-slate-700 whitespace-nowrap">
               Selecione o Grupo:
             </label>
             <select
+              id="grupo-contemplacoes"
               value={grupoId}
               onChange={(e) => carregarPorGrupo(e.target.value)}
-              className="w-full sm:w-96 px-3 py-2 rounded-lg bg-slate-100 border border-slate-300 text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              className="w-full sm:w-96 px-3 py-2 rounded-lg bg-white border border-slate-300 text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600"
             >
               <option value="">-- Escolha um grupo para ver o histórico --</option>
               {grupos.map((g) => (
                 <option key={g.id} value={g.id}>
-                  {g.codigo_grupo} · {g.modalidade} {g.administradora ? `(${g.administradora})` : ""}
+                  {g.codigo_grupo} · {g.modalidade} {g.administradora ? `(${g.administradora})` : ""}{ranking.some(r => r.id === g.id && r.posicaoChance <= 3 && r.chanceComLivre > 0) ? " · ★ Top 3 em chance com livre" : ""}{ranking.some(r => r.id === g.id && r.posicaoVolume <= 3 && r.mediaContemplacoes > 0) ? " · ↑ Top 3 em contemplações" : ""}
                 </option>
               ))}
             </select>
             {isPending && <span className="text-xs text-slate-600 animate-pulse">Carregando dados...</span>}
           </div>
+
+          <ErpEstatisticaContemplacao grupoId={grupoId} onSelecionar={carregarPorGrupo} onRanking={setRanking}
+            base={grupoDetalhe ? {
+              assembleias: Object.values(assembleiasAgrupadas).map(a => ({ numero: a.numero, cotas: a.cotas })),
+              ultimaAssembleia: grupoDetalhe.ultima_assembleia_numero || 0,
+              historicoCompleto: grupoDetalhe.historico_completo === true,
+              cotasAEntregar: grupoDetalhe.cotas_a_entregar ?? null,
+            } : null} />
 
           {grupoDetalhe && (
             <div className="space-y-6">
@@ -389,11 +403,12 @@ export function ErpContemplacoesPanel({ grupos }: { grupos: GrupoOption[] }) {
       {/* ========================================================================= */}
       {modo === "mes" && (
         <div className="space-y-6">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-            <label className="text-sm font-medium text-slate-700 whitespace-nowrap">
+          <div className="contemplacoes-filtros flex flex-col sm:flex-row items-start sm:items-center gap-4 rounded-xl border border-slate-200 bg-white p-4">
+            <label htmlFor="mes-contemplacoes" className="text-sm font-medium text-slate-700 whitespace-nowrap">
               Selecione o Mês da Assembleia:
             </label>
             <input
+              id="mes-contemplacoes"
               type="month"
               value={mesAno}
               onChange={(e) => carregarPorMes(e.target.value)}

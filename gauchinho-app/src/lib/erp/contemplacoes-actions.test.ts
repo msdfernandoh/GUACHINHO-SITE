@@ -5,7 +5,7 @@ vi.mock('@/lib/supabase/server',()=>({createClient:async()=>({from:mocks.from})}
 vi.mock('@/lib/grupos/catalogo-autorizado-service',()=>({assertEmpresaPodeAcessarGrupo:mocks.allowed,listGruposAutorizadosForEmpresa:mocks.list}));
 vi.mock('next/cache',()=>({revalidatePath:vi.fn()}));
 vi.mock('@/lib/grupos-sorteio/buscar-resultado-federal',()=>({buscarPrimeiroPremioFederalPorData:vi.fn()}));
-import { fetchContemplacoesGrupoAction, fetchContemplacoesMesAction } from '@/app/erp/assembleias/actions';
+import { fetchContemplacoesGrupoAction, fetchContemplacoesMesAction, fetchRankingContemplacaoAction } from '@/app/erp/assembleias/actions';
 const ranges:number[]=[];
 beforeEach(()=>{
  vi.clearAllMocks();ranges.length=0;
@@ -40,5 +40,17 @@ describe('consultas de contemplações',()=>{
   ]);
   const res=await fetchContemplacoesMesAction('2026-10');
   expect(res.grupos_sem_resultado).toEqual(['9999']);
+ });
+ it('ranking usa só grupos concedidos, histórico paginado e saldo atual',async()=>{
+  mocks.list.mockResolvedValueOnce([{id:'grupo',codigo_grupo:'1473',ultima_assembleia_numero:1001,dados_estatisticos:{cotas_ativas:2000}}]);
+  const res=await fetchRankingContemplacaoAction(30);
+  expect(ranges).toEqual([0,500,1000]);expect(res.ranking).toHaveLength(1);
+  expect(res.ranking[0]).toMatchObject({id:'grupo',assembleias:1001,posicaoChance:1});
+  expect(res.ranking[0].elegiveis).toBeCloseTo(999*0.7);
+ });
+ it('ranking valida hipótese e não consulta resultados sem concessões',async()=>{
+  await expect(fetchRankingContemplacaoAction(101)).rejects.toThrow('inválido');
+  mocks.list.mockResolvedValueOnce([]);expect((await fetchRankingContemplacaoAction()).ranking).toEqual([]);
+  expect(mocks.from).not.toHaveBeenCalled();
  });
 });

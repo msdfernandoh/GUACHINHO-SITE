@@ -540,3 +540,36 @@ body.tenant-root-independent {
 .tenant-racon .grupos-workspace [data-site-block="totais"] button[class*="bg-amber"] {
   border: 1px solid currentColor;
 }
+
+/* Contraste próprio dos filtros e da estatística de assembleias em qualquer tenant. */
+.erp-contemplacoes .contemplacoes-filtros :is(input, select, option, optgroup) {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border-color: #94a3b8 !important;
+  color-scheme: light !important;
+}
+.erp-contemplacoes .contemplacoes-filtros label {
+  color: #0f172a !important;
+}
+.erp-contemplacoes button[aria-pressed="true"][class*="bg-blue-600"] {
+  background-color: #1d4ed8 !important;
+  color: #ffffff !important;
+}
+.erp-contemplacoes button.contemplacao-destaque {
+  background-color: #eff6ff !important;
+  color: #0f172a !important;
+  border-color: #bfdbfe !important;
+}
+.erp-contemplacoes button.contemplacao-destaque[aria-pressed="true"] {
+  border-color: #1d4ed8 !important;
+  box-shadow: 0 0 0 1px #1d4ed8;
+}
+.erp-contemplacoes .contemplacao-tag {
+  display: inline-flex;
+  border-radius: 999px;
+  padding: 0.2rem 0.6rem;
+  background-color: #dbeafe !important;
+  color: #1e40af !important;
+  font-size: 0.7rem;
+  font-weight: 600;
+}
