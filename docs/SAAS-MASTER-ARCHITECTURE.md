@@ -1,5 +1,16 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
+### Robôs: última execução e agendamento individual (27/10/2026)
+Cards exibem data/hora real da última execução, programação e próxima ocorrência
+em America/Cuiaba. Configuração manual, diária, semanal ou mensal com múltiplos
+dias/horários em `configuracao_tarefas.agendamento`, sem migration/backfill.
+Daemon compartilha calendário, validação e deduplicação por ocorrência; robôs sem
+agenda explícita preservam janelas 04h/20h. Histórico limitado por robô e dia local
+corrigido; dados, credenciais e controles de acesso preservados. Nove testes de
+agenda, TypeScript e build aprovados; lint direcionado sem erros. Envio à main
+autorizado pelo titular; publicação, homologação e atualização do daemon pendentes. Relatório:
+`docs/relatorios-fases/ROBOS-AGENDAMENTO-E-ULTIMA-EXECUCAO-2026-10-27.md`.
+
 ### Cotas do cliente e seletor ampliado (23/10/2026)
 Campo de cotas ao lado do atraso inicia em 1 e atualiza a projeção proporcional
 com/sem livre, mantendo a chance por cota explícita. Não representa probabilidade

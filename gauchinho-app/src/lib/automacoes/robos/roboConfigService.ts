@@ -15,6 +15,8 @@ import { encryptCredential, decryptCredential } from './cryptoService'
 import { createManagedBrowserSession } from './browser'
 import { RaconAdapter } from './adapters/raconAdapter'
 import { GenericConsorcioAdapter } from './adapters/genericConsorcioAdapter'
+import { horarioCuiaba } from './roboSchedule.mjs'
+import { validarAgendamento, descreverAgendamento, proximaExecucao } from './agendamento.mjs'
 
 export function getAdapterForPortal(portalTipo: string) {
   switch (portalTipo) {
@@ -92,16 +94,17 @@ export async function listarRobosConfig(
 
   if (!rows || rows.length === 0) return []
 
-  // Busca ultimas 5 execucoes de cada robo para resumo
-  const roboIds = rows.map((r) => r.id)
-  const { data: execucoes } = await supabase
-    .from('robo_execucoes')
-    .select('id, robo_config_id, status, iniciado_em, finalizado_em, erro_mensagem, erro_sanitizado, origem, resultado')
-    .in('robo_config_id', roboIds)
-    .order('iniciado_em', { ascending: false })
-    .limit(50)
-
-  const hojeStr = new Date().toISOString().split('T')[0]
+  // Limite por robô: um histórico movimentado não pode ocultar os demais.
+  const historicos = await Promise.all(rows.map(async row => {
+    const { data, error } = await supabase.from('robo_execucoes')
+      .select('id, robo_config_id, status, iniciado_em, finalizado_em, erro_mensagem, erro_sanitizado, origem, resultado')
+      .eq('robo_config_id', row.id).order('iniciado_em', { ascending: false }).limit(5)
+    if (error) throw new Error(`Falha ao consultar histórico dos robôs: ${error.message}`)
+    return data || []
+  }))
+  const execucoes = historicos.flat()
+  const agora = new Date()
+  const hojeStr = horarioCuiaba(agora).dia
 
   return rows.map((row) => {
     const statusVisual = calcularStatusVisual(row)
@@ -114,6 +117,7 @@ export async function listarRobosConfig(
         timeZone: 'America/Cuiaba',
         day: '2-digit',
         month: '2-digit',
+        year: 'numeric',
         hour: '2-digit',
         minute: '2-digit',
       }),
@@ -123,7 +127,7 @@ export async function listarRobosConfig(
       resultado: e.resultado,
     }))
 
-    const execHoje = execsDoRobo.find((e) => e.iniciado_em.startsWith(hojeStr))
+    const execHoje = execsDoRobo.find((e) => horarioCuiaba(new Date(e.iniciado_em)).dia === hojeStr)
     const statusHoje = execHoje ? execHoje.status : 'NAO_EXECUTADO'
 
     return {
@@ -141,7 +145,9 @@ export async function listarRobosConfig(
       modo: row.modo,
       configuracao_tarefas: row.configuracao_tarefas || {},
       status_visual: statusVisual,
-      ultima_execucao_em: row.ultima_execucao_em,
+      ultima_execucao_em: execsDoRobo.find(e => e.status !== 'PENDENTE')?.iniciado_em || row.ultima_execucao_em,
+      agendamento_descricao: descreverAgendamento(row.configuracao_tarefas || {}),
+      proxima_execucao_em: row.ativo ? proximaExecucao(row.configuracao_tarefas || {}, agora) : null,
       ultimo_sucesso_em: row.ultimo_sucesso_em,
       ultimo_erro: row.ultimo_erro,
       created_at: row.created_at,
@@ -178,6 +184,7 @@ export async function salvarRoboConfig(
   userId?: string | null
 ): Promise<{ ok: boolean; id?: string; erro?: string }> {
   try {
+    validarAgendamento(input.configuracao_tarefas?.agendamento)
     const payload: Partial<RoboConfigRow> = {
       nome: input.nome.trim(),
       portal_tipo: input.portal_tipo,

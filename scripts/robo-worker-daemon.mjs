@@ -6,7 +6,8 @@ import { fork, execFile } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
 import fs from 'node:fs'
-import { inicioDiaCuiaba, inicioCicloColeta, janelaDiaria, planejarAgendamento } from './roboSchedule.mjs'
+import { inicioDiaCuiaba, inicioCicloColeta, janelaDiaria } from './roboSchedule.mjs'
+import { planejarExecucoes } from '../gauchinho-app/src/lib/automacoes/robos/agendamento.mjs'
 
 // Carrega .env.local de gauchinho-app ou da raiz
 const envCandidates = [
@@ -97,20 +98,21 @@ async function renovarLease() {
 }
 
 async function enfileirarAgendamento() {
-  const chaveJanela = janelaDiaria()
-  if (!chaveJanela) return
+  const agora = new Date()
+  const inicioConsulta = [inicioDiaCuiaba(agora), inicioCicloColeta(agora)].sort()[0]
   const [rs, es] = await Promise.all([
     admin.from('robo_configuracoes').select('*').eq('ativo', true).order('created_at'),
-    admin.from('robo_execucoes').select('*').or(`iniciado_em.gte.${inicioCicloColeta()},status.in.(PENDENTE,PROCESSANDO)`),
+    listarExecucoesAgendamento(inicioConsulta),
   ])
   if (rs.error || es.error) throw new Error(rs.error?.message || es.error?.message)
 
-  for (const job of planejarAgendamento(rs.data, es.data, chaveJanela)) {
+  for (const job of planejarExecucoes(rs.data, es.data, agora)) {
     const { error } = await admin.from('robo_execucoes').insert({
       empresa_id: job.robo.empresa_id,
       robo_config_id: job.robo.id,
       portal_tipo: job.robo.portal_tipo,
       status: 'PENDENTE',
+      origem: 'CRON_TERMINAL',
       dry_run: job.robo.modo === 'DRY_RUN',
       iniciado_em: new Date().toISOString(),
       detalhes: {
@@ -120,11 +122,24 @@ async function enfileirarAgendamento() {
           robosCobertos: job.robosCobertos,
           dryRun: job.robo.modo === 'DRY_RUN',
         },
-        logs: [{ ts: new Date().toISOString(), msg: `Rotina diária agendada: ${job.robo.nome} (${chaveJanela})` }],
+        logs: [{ ts: new Date().toISOString(), msg: `Rotina agendada: ${job.robo.nome} (${job.instante})` }],
       },
     })
     if (error && error.code !== '23505') throw new Error(error.message)
-    if (!error) console.log(`Agendado com sucesso: ${job.robo.nome} (${chaveJanela})`)
+    if (!error) console.log(`Agendado com sucesso: ${job.robo.nome} (${job.instante})`)
+  }
+}
+
+async function listarExecucoesAgendamento(inicio) {
+  const execucoes = []
+  for (let offset = 0; ; offset += 500) {
+    const { data, error } = await admin.from('robo_execucoes')
+      .select('robo_config_id,portal_tipo,dry_run,status,iniciado_em,detalhes')
+      .or(`iniciado_em.gte.${inicio},status.in.(PENDENTE,PROCESSANDO)`)
+      .order('id').range(offset, offset + 499)
+    if (error) return { data: null, error }
+    execucoes.push(...data)
+    if (data.length < 500) return { data: execucoes, error: null }
   }
 }
 
@@ -231,7 +246,7 @@ async function iniciar() {
             continue
           }
           falhasConsecutivasLease = 0
-          console.log(`Gauchinho Runner ativo: ${workerId}. Monitorando fila (04:00 / 20:00)...`)
+          console.log(`Gauchinho Runner ativo: ${workerId}. Monitorando fila e agendamentos individuais...`)
         }
 
         if (!alvo && (!umaVez || agendarUmaVez) && Date.now() - ultimoAgendamento > 60_000) {

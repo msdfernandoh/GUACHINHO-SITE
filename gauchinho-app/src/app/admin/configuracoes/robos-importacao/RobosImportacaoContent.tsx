@@ -30,6 +30,13 @@ import {
   ResumoExecucoesDia,
 } from '@/lib/automacoes/robos/types'
 import { acompanharExecucaoRobo } from '@/lib/automacoes/robos/roboPolling'
+import { obterAgendamento, validarAgendamento, type AgendamentoRobo } from '@/lib/automacoes/robos/agendamento.mjs'
+import { AgendamentoEditor } from './AgendamentoEditor'
+
+function formatarDataExecucao(data?: string | null) {
+  if (!data) return 'Nenhuma execução registrada'
+  return new Date(data).toLocaleString('pt-BR', { timeZone: 'America/Cuiaba', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+}
 
 export type RobosImportacaoContentProps = {
   empresas: { id: string; nome: string }[]
@@ -65,6 +72,8 @@ export function RobosImportacaoContent({
   const [ativo, setAtivo] = useState(false)
   const [modo, setModo] = useState<'DRY_RUN' | 'PRODUCAO'>('DRY_RUN')
   const [tarefasJson, setTarefasJson] = useState('{\n  "passos": []\n}')
+  const [agendamento, setAgendamento] = useState<AgendamentoRobo>({ frequencia: 'MANUAL', horarios: [] })
+  const [agendamentoAlterado, setAgendamentoAlterado] = useState(false)
 
   // Modal de Logs e Execução em Tempo Real
   const [logModalOpen, setLogModalOpen] = useState(false)
@@ -107,6 +116,8 @@ export function RobosImportacaoContent({
   }, [])
 
   const abrirModalCriacao = () => {
+    setAgendamento({ frequencia: 'MANUAL', horarios: [] })
+    setAgendamentoAlterado(true)
     setEditandoRobo(null)
     setNome('')
     setPortalTipo('RACON')
@@ -124,6 +135,8 @@ export function RobosImportacaoContent({
   }
 
   const abrirModalEdicao = (robo: RoboConfigOutput) => {
+    setAgendamento(obterAgendamento(robo.configuracao_tarefas))
+    setAgendamentoAlterado(false)
     setEditandoRobo(robo)
     setNome(robo.nome)
     setPortalTipo(robo.portal_tipo)
@@ -136,7 +149,7 @@ export function RobosImportacaoContent({
     setSenhaSecundaria('')
     setAtivo(robo.ativo)
     setModo(robo.modo)
-    setTarefasJson(JSON.stringify(robo.configuracao_tarefas || { passos: [] }, null, 2))
+    setTarefasJson(JSON.stringify(Object.fromEntries(Object.entries(robo.configuracao_tarefas || { passos: [] }).filter(([chave]) => chave !== 'agendamento')), null, 2))
     setModalOpen(true)
   }
 
@@ -144,11 +157,15 @@ export function RobosImportacaoContent({
     e.preventDefault()
     setSalvando(true)
 
-    let parsedTarefas = {}
+    let parsedTarefas: Record<string, unknown> = {}
     try {
       parsedTarefas = JSON.parse(tarefasJson)
-    } catch {
-      setNotificacao({ tipo: 'erro', texto: 'JSON de tarefas inválido. Verifique a sintaxe.' })
+      if (!parsedTarefas || Array.isArray(parsedTarefas) || typeof parsedTarefas !== 'object') throw new Error('Informe um objeto JSON de tarefas válido.')
+      if (agendamentoAlterado) parsedTarefas.agendamento = { ...agendamento, definido_em: new Date().toISOString() }
+      else if (editandoRobo?.configuracao_tarefas?.agendamento !== undefined) parsedTarefas.agendamento = editandoRobo.configuracao_tarefas.agendamento
+      validarAgendamento(parsedTarefas.agendamento)
+    } catch (erro) {
+      setNotificacao({ tipo: 'erro', texto: erro instanceof Error ? erro.message : 'JSON de tarefas inválido.' })
       setSalvando(false)
       return
     }
@@ -202,6 +219,7 @@ export function RobosImportacaoContent({
       })
       if (res.ok) {
         setRobos(prev => prev.map(r => r.id === id ? { ...r, ativo: novoAtivo, status_visual: novoAtivo ? 'ATIVO' : 'INATIVO' } : r))
+        await carregarRobos()
       }
     } catch {}
   }
@@ -493,6 +511,13 @@ export function RobosImportacaoContent({
                 </div>
 
                 {/* Status da Execução Hoje */}
+                <div className="space-y-2 rounded-xl border border-zinc-200 p-3 text-xs dark:border-zinc-700">
+                  <div className="flex flex-wrap justify-between gap-1"><span className="text-zinc-500">Última execução:</span><strong>{formatarDataExecucao(robo.ultima_execucao_em)}</strong></div>
+                  <div className="flex flex-wrap justify-between gap-1"><span className="text-zinc-500">Programação:</span><span className="font-medium">{robo.agendamento_descricao}</span></div>
+                  <div className="flex flex-wrap justify-between gap-1"><span className="text-zinc-500">Próxima execução:</span><span className="font-medium">{!robo.ativo ? 'Robô inativo' : robo.proxima_execucao_em ? formatarDataExecucao(robo.proxima_execucao_em) : 'Sem agendamento automático'}</span></div>
+                  <p className="text-zinc-500">Horário de Cuiabá (MT)</p>
+                  <button type="button" onClick={() => abrirModalEdicao(robo)} className="font-semibold text-amber-700 dark:text-amber-400">Configurar dias e horários</button>
+                </div>
                 <div className="flex items-center justify-between text-xs">
                   <span className="text-zinc-500">Execução Hoje:</span>
                   {robo.status_hoje === 'SUCESSO' || robo.status_hoje === 'JA_IMPORTADO' ? (
@@ -511,7 +536,7 @@ export function RobosImportacaoContent({
                       Em Execução
                     </span>
                   ) : (
-                    <span className="text-zinc-400">Aguardando janela diária (04:00 / 20:00)</span>
+                    <span className="text-zinc-500">{robo.status_hoje === 'PENDENTE' ? 'Na fila de execução' : 'Sem execução hoje'}</span>
                   )}
                 </div>
               </div>
@@ -582,6 +607,7 @@ export function RobosImportacaoContent({
             </div>
 
             <form onSubmit={salvarConfig} className="mt-4 space-y-4">
+              <AgendamentoEditor valor={agendamento} onChange={valor => { setAgendamento(valor); setAgendamentoAlterado(true) }} />
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
                   <label className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">Nome do Robô</label>

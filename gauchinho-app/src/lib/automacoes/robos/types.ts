@@ -99,6 +99,8 @@ export type UltimaExecucaoItem = {
 }
 
 export type RoboConfigOutput = {
+  agendamento_descricao?: string
+  proxima_execucao_em?: string | null
   id: string
   empresa_id?: string | null
   administradora?: { id: string; nome: string; slug?: string } | null
