@@ -1,5 +1,15 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
+### Robô: login Microsoft sem repetição de seleção (27/10/2026)
+Login inicial diferencia etapas visíveis, conta exata configurada, senha, confirmação
+de sessão, erro e verificação humana. Elimina clique por textos de conta fixa ou
+seletor oculto; aguarda transição real por até 12s e limita autenticação a 90s.
+Seletor intermediário Newcon compartilha correspondência e espera. Oito testes
+Chromium com páginas simuladas aprovados; portal real ainda não homologado.
+Sem migration ou escrita operacional. Runner carrega correção na próxima execução
+do processo-filho; máquinas externas precisam atualizar checkout. Relatório:
+`docs/relatorios-fases/ROBO-LOGIN-MICROSOFT-SEM-AVANCO-2026-10-27.md`.
+
 ### Robôs: última execução e agendamento individual (27/10/2026)
 Cards exibem data/hora real da última execução, programação e próxima ocorrência
 em America/Cuiaba. Configuração manual, diária, semanal ou mensal com múltiplos

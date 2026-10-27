@@ -8,6 +8,7 @@ import crypto from 'node:crypto'
 import { executarRobo3Simulador } from './robo-simulador-service.mjs'
 import { executarRoboBoletos } from './robo-boletos-service.mjs'
 import { executarRoboLances } from './robo-lances-service.mjs'
+import { autenticarMicrosoft, selecionarContaMicrosoft, aguardarTransicaoMicrosoft, estadoLoginMicrosoft } from './robo-microsoft-login.mjs'
 import { coletarAbasResultado } from './robo-contemplacoes-parser.mjs'
 
 // Carrega .env.local
@@ -152,91 +153,7 @@ async function run() {
         log('Detectada tela de autenticação Microsoft Online SSO inicial.')
         await page.screenshot({ path: path.join(screenshotsDir, `racon-01-login-ms-start-${Date.now()}.png`) }).catch(() => {})
 
-        let initialLoginAttempts = 0
-        while (page.url().includes('login.microsoftonline.com') && initialLoginAttempts < 20) {
-          initialLoginAttempts++
-          await page.waitForLoadState('domcontentloaded').catch(() => {})
-          await page.waitForTimeout(1200)
-
-          // Passo 1: Campo de Senha (prioridade máxima se já estiver na tela de senha)
-          const passInput = page.locator('input[name="passwd"]:not(.moveOffScreen):not([aria-hidden="true"]):visible, input[type="password"]:not(.moveOffScreen):not([aria-hidden="true"]):visible').first()
-          if (await passInput.isVisible().catch(() => false)) {
-            log('Preenchendo senha Microsoft no campo visível...')
-            await passInput.fill(senha)
-            await page.waitForTimeout(600)
-            const signBtn = page.locator('#idSIButton9:visible, input[type="submit"]:visible, button:has-text("Entrar"):visible').first()
-            if (await signBtn.isVisible().catch(() => false)) {
-              log('Clicando em Entrar no login Microsoft...')
-              await signBtn.click()
-              await page.waitForTimeout(3500)
-              continue
-            }
-          }
-
-          // Passo 2: Campo de Usuário / Email
-          const emailInput = page.locator('input[name="loginfmt"]:visible, input[type="email"]:visible, #i0116:visible').first()
-          if (await emailInput.isVisible().catch(() => false)) {
-            log(`Preenchendo usuário Microsoft: ${config.usuario_login}`)
-            await emailInput.fill(config.usuario_login.trim())
-            await page.waitForTimeout(600)
-            const nextBtn = page.locator('#idSIButton9:visible, input[type="submit"]:visible, button:has-text("Avançar"):visible').first()
-            if (await nextBtn.isVisible().catch(() => false)) {
-              log('Clicando em Avançar no login Microsoft...')
-              await nextBtn.click()
-              await page.waitForTimeout(3000)
-              continue
-            }
-          }
-
-          // Passo 3: Seletor de conta ("Escolha uma conta") — somente se realmente for tela de escolha de conta
-          const isPickerScreen = await page.evaluate(() => {
-            const txt = (document.body?.innerText || '').toLowerCase()
-            return txt.includes('escolha uma conta') || txt.includes('pick an account') || !!document.querySelector('#tilesHolder')
-          }).catch(() => false)
-
-          if (isPickerScreen) {
-            const clickedAccount = await page.evaluate(() => {
-              const els = Array.from(document.querySelectorAll('*'))
-              const target = els.find(e => 
-                e.children.length === 0 && 
-                ((e.innerText || '').includes('CX45617665') || (e.innerText || '').includes('ERONI BOLFE') || (e.innerText || '').includes('rdmz.com.br'))
-              )
-              if (target) {
-                const btn = target.closest('[role="button"], .table, .tile, div[data-test-id], a, button') || target
-                btn.click()
-                return true
-              }
-              return false
-            }).catch(() => false)
-
-            if (clickedAccount) {
-              log('Conta selecionada na lista inicial de contas. Aguardando...')
-              await page.waitForTimeout(3000)
-              continue
-            }
-          }
-
-          // Passo 4: Erro de senha incorreta
-          const passError = page.locator('#passwordError:visible, span:has-text("Sua conta ou senha"):visible').first()
-          if (await passError.isVisible().catch(() => false)) {
-            const errMsg = await passError.innerText().catch(() => 'Erro desconhecido na validação da senha.')
-            log(`Erro no login Microsoft: ${errMsg}`)
-            throw new Error(`Falha no login Microsoft: ${errMsg}`)
-          }
-
-          // Passo 5: "Continuar conectado?" (KMSI)
-          const stayBtn = page.locator('#idSIButton9:visible, input[value="Sim"]:visible, button:has-text("Sim"):visible').first()
-          if (await stayBtn.isVisible().catch(() => false)) {
-            log('Confirmando "Mantenha-se conectado"...')
-            await stayBtn.click()
-            await page.waitForTimeout(3000)
-            continue
-          }
-
-          if (!page.url().includes('login.microsoftonline.com')) {
-            break
-          }
-        }
+        await autenticarMicrosoft({ page, usuario: config.usuario_login, senha, log })
       }
 
       // 2. Aguarda retorno ao portal Randon / Racon
@@ -403,47 +320,15 @@ async function run() {
         }
 
         // 3. Seleção de conta ("Escolha uma conta")
-        const isPickerScreen = await activePage.evaluate(() => {
-          const txt = (document.body?.innerText || '').toLowerCase()
-          return txt.includes('escolha uma conta') || txt.includes('pick an account') || !!document.querySelector('#tilesHolder')
-        }).catch(() => false)
+        const isPickerScreen = await estadoLoginMicrosoft(activePage) === 'CONTAS'
 
         if (isPickerScreen) {
           log('Tela de escolha de conta identificada no Newcon SSO.')
-          const accountClicked = await activePage.evaluate(() => {
-            const els = Array.from(document.querySelectorAll('*'))
-            const target = els.find(e => {
-              const t = (e.innerText || e.textContent || '').trim()
-              return e.children.length === 0 && (
-                t.includes('CX45617665') || 
-                t.includes('ERONI BOLFE') || 
-                t.includes('rdmz.com.br')
-              )
-            })
-            if (target) {
-              const btn = target.closest('[role="button"], .table, .tile, div[data-test-id], a, button') || target
-              btn.click()
-              return true
-            }
-            return false
-          }).catch(() => false)
-
-          if (accountClicked) {
-            log('Conta Microsoft clicada na lista de contas. Disparando tecla Enter...')
-            await activePage.keyboard.press('Enter').catch(() => {})
-            await activePage.waitForTimeout(3000)
-            continue
+          if (!await selecionarContaMicrosoft(activePage, config.usuario_login)) {
+            throw new Error('A conta configurada não foi encontrada na seleção Microsoft do Newcon.')
           }
-
-          // Fallback para locator de conta
-          const accountLocator = activePage.locator('[role="button"]:has-text("ERONI BOLFE"), [role="button"]:has-text("CX45617665"), [data-test-id*="CX45617665"], text="ERONI BOLFE"').first()
-          if (await accountLocator.isVisible().catch(() => false)) {
-            log('Clicando na conta Microsoft via locator...')
-            await accountLocator.click({ force: true })
-            await activePage.keyboard.press('Enter').catch(() => {})
-            await activePage.waitForTimeout(3000)
-            continue
-          }
+          await aguardarTransicaoMicrosoft(activePage, 'CONTAS')
+          continue
         }
 
         // 4. "Continuar conectado?" (KMSI)
