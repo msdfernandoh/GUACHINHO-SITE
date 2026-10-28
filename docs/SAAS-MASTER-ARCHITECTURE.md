@@ -4351,3 +4351,18 @@ Removida do código a inativação por ausência; leitura que omita créditos at
 agora aborta o grupo antes de gravar. Treze testes aprovados. A sincronização dos
 valores continua pendente de homologação do carregamento completo do portal.
 Relatório: `docs/relatorios-fases/RECUPERACAO-COTAS-ROBO-2026-10-28.md`.
+
+### Robô: Mais e reparação de parcelas oficiais (28/10/2026)
+Simulador clica Mais até carregar os planos, exige progresso e separa
+Prorrogada/Diluída por cartão. Seleção exata de produto, recolhimento em finally,
+dry-run propagado e erro explícito em captura falha. Homologação real com 29
+fontes grupo/modalidade; corrigidos 77 registros de 13 grupos por valores
+oficiais, mantendo IDs e 322 cotas ativas. 5388/36.561,63: parcela 60% Prorrogada
+353,44 e Diluída 530,11, antes do seguro. Sites entregam o dado atualizado.
+21 testes aprovados. Há 171 cotas sem correspondência comprovada nesta consulta;
+não inferir suas parcelas. Por orientação final do titular, grupos antigos sem
+vagas continuam ativos porque possuem clientes; ausência de oferta não inativa
+grupo/cota nem vínculos operacionais. Após confirmação do titular, sete grupos
+sem vagas (1041, 1193, 1253, 1270, 1273, 1283, 1503) receberam vagas=0, mantendo
+ativo=true para os clientes existentes e apresentação sem vagas nos sites.
+Relatório: `docs/relatorios-fases/ROBO-MAIS-E-CORRECAO-PARCELAS-2026-10-28.md`.

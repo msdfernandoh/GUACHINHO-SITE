@@ -1,5 +1,5 @@
 /** Função autocontida: também executada no contexto do navegador via page.evaluate. */
-export function extrairPlanosSimulador({ grupoEsperado }) {
+export function extrairPlanosSimulador({ grupoEsperado, transcorridoEsperado }) {
   const normalizarGrupo = value => String(value).replace(/^0+/, '');
   const esperado = normalizarGrupo(grupoEsperado);
   const money = value => Number(value.replace(/\./g, '').replace(',', '.'));
@@ -30,6 +30,11 @@ export function extrairPlanosSimulador({ grupoEsperado }) {
     // Ancestrais agregadores não são planos: usar somente a unidade completa mais interna.
     if ([...card.querySelectorAll('div, article')].some(el => el.getClientRects().length && completo(el))) continue;
     const text = card.innerText;
+    if (transcorridoEsperado) {
+      const modos = new Set([...text.matchAll(/\b(prorrogada|dilu[ií]da)\b/gi)].map(m => /prorrogada/i.test(m[1]) ? 'PRORROGADA' : 'DILUIDA'));
+      if (modos.size !== 1) throw new Error('Modalidade de transcorrido ausente ou ambígua no cartão; dados preservados.');
+      if (!modos.has(transcorridoEsperado)) continue;
+    }
     const creditos = [...text.matchAll(creditoRegex)];
     const parcelas = [...text.matchAll(parcelaRegex)];
     const tipos = modalidade(text);
@@ -39,7 +44,8 @@ export function extrairPlanosSimulador({ grupoEsperado }) {
     }
     const credito = money(creditos[0][1]);
     const parcela = money(parcelas[0][1]);
-    if (!(credito > 0 && parcela > 0 && parcela < credito * 0.25)) {
+    // Grupos no fim do prazo podem ter mensalidade superior a 25% do crédito.
+    if (!(Number.isFinite(credito) && Number.isFinite(parcela) && credito > 0 && parcela > 0)) {
       throw new Error('Plano com valor inválido: importação interrompida.');
     }
     const taxa = text.match(/Taxa\s+administrativa\s*:?\s*([\d.,]+)\s*%/i);

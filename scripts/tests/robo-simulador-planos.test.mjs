@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import vm from 'node:vm';
 import { extrairPlanosSimulador, agruparPlanosSimulador, resolverGrupoSimulador } from '../robo-simulador-planos.mjs';
+import { marcarAreaPlanos } from '../robo-simulador-carregamento.mjs';
 
 class Element {
   constructor(text='', children=[], visible=true) {
@@ -13,9 +14,9 @@ class Element {
   getClientRects() { return this.visible ? [{}] : []; }
 }
 const card=(credito, parcela, modo='Reduzida 60%', extra='')=>new Element(`Crédito R$ ${credito}\nParcela R$ ${parcela} / mês\n${modo}\n${extra}\nSimular`);
-function extract(root,grupoEsperado='5388') {
+function extract(root,grupoEsperado='5388',transcorridoEsperado) {
   // Mesmo isolamento de page.evaluate: a função não pode depender de imports/closures.
-  return vm.runInNewContext(`(${extrairPlanosSimulador.toString()})({grupoEsperado:${JSON.stringify(grupoEsperado)}})`,{
+  return vm.runInNewContext(`(${extrairPlanosSimulador.toString()})({grupoEsperado:${JSON.stringify(grupoEsperado)},transcorridoEsperado:${JSON.stringify(transcorridoEsperado)}})`,{
     document: {querySelectorAll:()=>[root,...root.querySelectorAll()]},
   });
 }
@@ -26,6 +27,18 @@ test('ignora ancestral com múltiplos planos; preserva crédito e parcela das me
   const grupos=agruparPlanosSimulador(planos);
   assert.equal(grupos.get(36561.63).parcelasReduzidas['60'],353.43);
   assert.equal(grupos.get(57453.99).parcelasReduzidas['60'],555.39);
+});
+
+test('separa Prorrogada de Diluída mesmo quando o portal mostra ambas',()=>{
+ const root=new Element('Grupo 5388',[card('36.561,63','353,43','Reduzida 60%','Prorrogada'),card('36.561,63','400,00','Reduzida 60%','Diluída')]);
+ assert.equal(agruparPlanosSimulador(extract(root,'5388','PRORROGADA')).get(36561.63).parcelasReduzidas['60'],353.43);
+ assert.equal(agruparPlanosSimulador(extract(root,'5388','DILUIDA')).get(36561.63).parcelasReduzidas['60'],400);
+ assert.throws(()=>extract(new Element('Grupo 5388',[card('36.561,63','353,43')]),'5388','DILUIDA'),/transcorrido/);
+});
+
+test('mensalidade oficial de grupo no fim do prazo não é rejeitada por teto de 25%',()=>{
+ const root=new Element('Grupo 4088',[card('111.542,58','41.828,47','Integral','Diluída')]);
+ assert.equal(extract(root,'4088','DILUIDA')[0].parcelaStr,'41.828,47');
 });
 test('não associa cabeçalho de crédito à parcela de outro cartão',()=>{
   const root=new Element('Grupo 5388',[new Element('Crédito R$ 36.561,63',[card('57.453,99','925,65','Integral')]),card('36.561,63','353,43')]);
@@ -89,8 +102,9 @@ test('serviço não grava nem inativa dados quando a extração é ambígua',asy
   const mutations=[];
   const root=new Element('Grupo 5388',[card('36.561,63','353,43','Integral Reduzida 60%')]);
   const locator=selector=>({
+    locator(){return {filter(){return {async count(){return 0;}};}};},
     first(){return this;},last(){return this;},nth(){return this;},
-    async isVisible(){return selector.includes('Mostrar planos');},
+    async isVisible(){return selector.includes('Mostrar planos') || selector.includes('button:text-is("Veículos")');},
     async count(){return selector.includes('Mostrar planos')?1:0;},
     async click(){},async evaluate(){return 'Grupo 5388';},
   });
@@ -98,6 +112,7 @@ test('serviço não grava nem inativa dados quando a extração é ambígua',asy
     async goto(){},async waitForTimeout(){},async waitForFunction(){},async screenshot(){},
     url(){return 'https://example.test/simulador';},locator,
     async evaluate(fn,args){
+      if(fn===marcarAreaPlanos)return 1;
       if(fn===extrairPlanosSimulador)return extract(root,args.grupoEsperado);
       if(fn.toString().includes('pvAtual')||fn.toString().includes('939509'))return '939509';
     },
@@ -108,9 +123,8 @@ test('serviço não grava nem inativa dados quando a extração é ambígua',asy
     upsert(){mutations.push('upsert');throw new Error('Mutação inesperada');},
     update(){mutations.push('update');throw new Error('Mutação inesperada');},
   };
-  const result=await executarRobo3Simulador({page,config:{administradora_id:'fixture-admin'},admin:{from(){return query;}},log:m=>logs.push(m),screenshotsDir:'.'});
+  await assert.rejects(executarRobo3Simulador({page,config:{administradora_id:'fixture-admin'},admin:{from(){return query;}},log:m=>logs.push(m),screenshotsDir:'.'}),/ambíguo/);
   assert.equal(mutations.length,0);
-  assert.equal(result.totalCotasCadastradas,0);
   assert.ok(logs.some(m=>m.includes('ambíguo')));
 });
 

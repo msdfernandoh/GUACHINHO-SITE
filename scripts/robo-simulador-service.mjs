@@ -1,4 +1,6 @@
 import path from 'node:path'
+import fs from 'node:fs'
+import { carregarTodosPlanos } from './robo-simulador-carregamento.mjs'
 import { extrairPlanosSimulador, agruparPlanosSimulador, resolverGrupoSimulador } from './robo-simulador-planos.mjs'
 
 /**
@@ -6,7 +8,7 @@ import { extrairPlanosSimulador, agruparPlanosSimulador, resolverGrupoSimulador 
  * Extrai grupos, cotas (PRORROGADA e DILUÍDA), parcelas integrais e reduzidas (50%, 60%, 70%)
  * e regras de contemplação, sincronizando com origem_governanca = GLOBAL.
  */
-export async function executarRobo3Simulador({ page, config, admin, log, screenshotsDir }) {
+export async function executarRobo3Simulador({ page, config, admin, log, screenshotsDir, dryRun = false, grupos }) {
   log('--- INICIANDO ROBÔ 3: PLATAFORMA DE VENDAS & SIMULADOR RACON ---')
 
   const targetUrl = 'https://e.randonconsorcios.com.br/simulador?etapa=filtros'
@@ -94,6 +96,7 @@ export async function executarRobo3Simulador({ page, config, admin, log, screens
   let totalGruposProcessados = 0
   let totalGruposNovos = 0
   let totalGruposAtualizados = 0
+  const erros = []
 
   for (const produto of produtos) {
     log(`\n===========================================================`)
@@ -101,15 +104,15 @@ export async function executarRobo3Simulador({ page, config, admin, log, screens
     log(`===========================================================`)
 
     // Clica no botão do produto
-    const btnProduto = page.locator(`button:has-text("${produto}"), div[role="button"]:has-text("${produto}"), span:text-is("${produto}")`).first()
+    const btnProduto = page.locator(`button:text-is("${produto}"), div[role="button"]:text-is("${produto}"), span:text-is("${produto}")`).first()
     if (await btnProduto.isVisible({ timeout: 5000 }).catch(() => false)) {
       await btnProduto.click()
       log(`Filtro de produto "${produto}" selecionado. Aguardando carregamento dos dados...`)
       await aguardarSkeletons()
       await page.screenshot({ path: path.join(screenshotsDir, `racon-sim-prod-${produto.replace(/\s+/g, '_')}-${Date.now()}.png`) }).catch(() => {})
     } else {
-      log(`Botão do produto "${produto}" já ativo ou estilizado como selecionado.`)
-      await aguardarSkeletons()
+      log(`Produto "${produto}" indisponível; ignorado sem reutilizar outro filtro.`)
+      continue
     }
 
     // Modalidades de transcorrido: Prorrogada e Diluída
@@ -151,7 +154,7 @@ export async function executarRobo3Simulador({ page, config, admin, log, screens
 
           // Obtém texto do card do grupo
           const cardText = await btnExp.evaluate(el => {
-            const card = el.closest('div[class*="card"], div[class*="Card"], article, div')
+            const card = el.closest('[class*="card"], [class*="Card"], article, section, div')
             return card ? card.innerText : ''
           }).catch(() => '')
 
@@ -159,6 +162,7 @@ export async function executarRobo3Simulador({ page, config, admin, log, screens
           if (!matchGrupo) continue
           const codGrupoRaw = matchGrupo[1]
           const numGrupo = codGrupoRaw.replace(/^0+/, '')
+          if (grupos?.length && !grupos.map(g => String(g).replace(/^0+/, '')).includes(numGrupo)) continue
 
           log(`\n[${produto} | ${modUpper}] Grupo ${codGrupoRaw} (Num: ${numGrupo}) - Expandindo planos...`)
 
@@ -176,29 +180,29 @@ export async function executarRobo3Simulador({ page, config, admin, log, screens
 
           let dbGrupo = resolverGrupoSimulador(mapDbGrupos.get(numGrupo) || [], tipoIdProd)
 
-          // Rola suavemente até o final da página para disparar lazy-load de todos os cards de cotas
-          await page.evaluate(async () => {
-            const distance = 400
-            for (let i = 0; i < 20; i++) {
-              window.scrollBy(0, distance)
-              await new Promise(r => setTimeout(r, 150))
-            }
-            window.scrollTo(0, 0)
-          }).catch(() => {})
-          await page.waitForTimeout(800)
+          await carregarTodosPlanos({ page, grupoEsperado: numGrupo, log })
 
           // Falha fechada: validar todos os cartões antes de qualquer gravação.
-          const planosList = await page.evaluate(extrairPlanosSimulador, { grupoEsperado: numGrupo })
+          const planosList = await page.evaluate(extrairPlanosSimulador, { grupoEsperado: numGrupo, transcorridoEsperado: modUpper })
           const porCredito = agruparPlanosSimulador(planosList)
+          fs.mkdirSync(screenshotsDir, { recursive: true })
+          fs.writeFileSync(path.join(screenshotsDir, `planos-g${numGrupo}-${modUpper}-${Date.now()}.json`),
+            JSON.stringify({ grupo: numGrupo, produto, modalidade: modUpper, dryRun, planos: planosList }, null, 2))
           if (dbGrupo) {
             const { data: cotasExistentes, error: coberturaErr } = await admin.from('grupos_cotas')
               .select('valor_credito').eq('grupo_id', dbGrupo.id)
               .eq('tipo_transcorrido', modUpper).eq('ativo', true)
             if (coberturaErr) throw new Error(`Não foi possível conferir cobertura: ${coberturaErr.message}`)
             const ausentes = (cotasExistentes || []).filter(c => !porCredito.has(Number(c.valor_credito)))
-            if (ausentes.length) throw new Error(`Leitura incompleta: ${ausentes.length} créditos ativos ausentes; grupo preservado.`)
+            if (ausentes.length && !dryRun) throw new Error(`Leitura incompleta: ${ausentes.length} créditos ativos ausentes; grupo preservado.`)
+            if (ausentes.length) log(`[Grupo ${numGrupo}] Conferência: ${ausentes.length} créditos cadastrados não encontrados exatamente no portal.`)
           }
           log(`[Grupo ${numGrupo} | ${modUpper}] Planos validados: ${planosList.length}`)
+          if (dryRun) {
+            totalGruposProcessados++
+            log(`[Grupo ${numGrupo} | ${modUpper}] Conferência sem gravação: ${porCredito.size} créditos.`)
+            continue
+          }
           if (!dbGrupo) {
             log(`Grupo ${numGrupo} não encontrado no banco. Criando novo grupo global...`)
             const { data: newGrupo, error: errNewG } = await admin
@@ -391,15 +395,17 @@ export async function executarRobo3Simulador({ page, config, admin, log, screens
           totalGruposAtualizados++
           log(`[Grupo ${numGrupo} | ${modUpper}] Sincronizado com sucesso! ${porCredito.size} cotas gravadas.`)
 
-          // Oculta planos se ainda visível para manter listagem limpa
+        } catch (grpErr) {
+          erros.push(grpErr.message)
+          log(`Erro ao processar card de grupo ${i}: ${grpErr.message}`)
+        } finally {
+          // Recolhe também em erro/dry-run para não misturar modalidades ou pular grupos.
           const btnOcultar = page.locator('button:has-text("Ocultar planos"), div[role="button"]:has-text("Ocultar planos")').first()
           if (await btnOcultar.isVisible({ timeout: 1500 }).catch(() => false)) {
             await btnOcultar.click().catch(() => {})
             await page.waitForTimeout(600)
           }
 
-        } catch (grpErr) {
-          log(`Erro ao processar card de grupo ${i}: ${grpErr.message}`)
         }
       }
     }
@@ -410,6 +416,7 @@ export async function executarRobo3Simulador({ page, config, admin, log, screens
   log(`Novos grupos criados: ${totalGruposNovos}`)
   log(`Grupos atualizados: ${totalGruposAtualizados}`)
   log(`Total de cotas cadastradas: ${totalCotasCadastradas}`)
+  if (erros.length) throw new Error(`${erros.length} grupos não puderam ser conferidos/sincronizados: ${erros.join('; ')}`)
 
   return {
     totalGruposProcessados,

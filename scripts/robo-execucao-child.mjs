@@ -203,6 +203,8 @@ async function run() {
           admin,
           log,
           screenshotsDir,
+          dryRun: e.dry_run,
+          grupos: e.detalhes?.grupos,
         })
         totalGruposNovos = simRes.totalGruposNovos
         totalGruposAtualizados = simRes.totalGruposAtualizados
