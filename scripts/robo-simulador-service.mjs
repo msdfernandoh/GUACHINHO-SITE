@@ -190,6 +190,14 @@ export async function executarRobo3Simulador({ page, config, admin, log, screens
           // Falha fechada: validar todos os cartões antes de qualquer gravação.
           const planosList = await page.evaluate(extrairPlanosSimulador, { grupoEsperado: numGrupo })
           const porCredito = agruparPlanosSimulador(planosList)
+          if (dbGrupo) {
+            const { data: cotasExistentes, error: coberturaErr } = await admin.from('grupos_cotas')
+              .select('valor_credito').eq('grupo_id', dbGrupo.id)
+              .eq('tipo_transcorrido', modUpper).eq('ativo', true)
+            if (coberturaErr) throw new Error(`Não foi possível conferir cobertura: ${coberturaErr.message}`)
+            const ausentes = (cotasExistentes || []).filter(c => !porCredito.has(Number(c.valor_credito)))
+            if (ausentes.length) throw new Error(`Leitura incompleta: ${ausentes.length} créditos ativos ausentes; grupo preservado.`)
+          }
           log(`[Grupo ${numGrupo} | ${modUpper}] Planos validados: ${planosList.length}`)
           if (!dbGrupo) {
             log(`Grupo ${numGrupo} não encontrado no banco. Criando novo grupo global...`)
@@ -376,15 +384,8 @@ export async function executarRobo3Simulador({ page, config, admin, log, screens
             }
           }
 
-          // Inativa cotas antigas/obsoletas deste grupo e modalidade que não vieram na extração atual
-          const creditosAtuais = Array.from(porCredito.keys())
-          if (creditosAtuais.length > 0) {
-            await admin.from('grupos_cotas')
-              .update({ ativo: false, status: 'Inativo' })
-              .eq('grupo_id', dbGrupo.id)
-              .eq('tipo_transcorrido', modUpper)
-              .not('valor_credito', 'in', `(${creditosAtuais.join(',')})`)
-          }
+          // A ausência em uma leitura do portal não comprova indisponibilidade.
+          // Preserva cotas existentes: paginação/rolagem incompleta não pode inativá-las.
 
           totalGruposProcessados++
           totalGruposAtualizados++

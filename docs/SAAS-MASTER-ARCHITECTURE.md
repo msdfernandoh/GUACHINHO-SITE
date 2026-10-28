@@ -4341,3 +4341,13 @@ com 294 testes de grupos/tenant, 12 do robô, build/TypeScript e lint aprovados.
 Envio à main autorizado; homologação de produção e reparação dos valores
 existentes por tabela oficial permanecem pendentes. Relatório:
 `docs/relatorios-fases/CONFERENCIA-ENVIO-MAIN-RACON-2026-10-28.md`.
+
+### Recuperação de cotas após execução parcial do robô (28/10/2026)
+A execução autorizada do simulador leu planos parcialmente e inativou 18 cotas
+ausentes da captura. Foi interrompida; a disponibilidade foi restaurada por IDs
+e timestamps a partir da cópia anterior. SELECT posterior confirmou 322 cotas
+ativas e nenhum ID ativo anterior ausente; 5388 PRORROGADA voltou a oito créditos.
+Removida do código a inativação por ausência; leitura que omita créditos ativos
+agora aborta o grupo antes de gravar. Treze testes aprovados. A sincronização dos
+valores continua pendente de homologação do carregamento completo do portal.
+Relatório: `docs/relatorios-fases/RECUPERACAO-COTAS-ROBO-2026-10-28.md`.

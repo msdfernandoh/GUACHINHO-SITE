@@ -113,3 +113,8 @@ test('serviço não grava nem inativa dados quando a extração é ambígua',asy
   assert.equal(result.totalCotasCadastradas,0);
   assert.ok(logs.some(m=>m.includes('ambíguo')));
 });
+
+test('cartão real repete o mesmo crédito no título e no corpo sem misturar planos',()=>{
+ const root=new Element('Grupo 1081',[new Element('Crédito R$ 700.000,00\nIntegral\nProrrogada\nSimular\nCrédito\nR$ 700.000,00\nParcela\nR$ 6.562,50/mês\nTaxa administrativa\n12% total\nFundo reserva\n0,5% total')]);
+ const planos=extract(root,'1081');assert.equal(planos.length,1);assert.equal(planos[0].parcelaStr,'6.562,50');assert.equal(planos[0].taxaAdm,12);
+});

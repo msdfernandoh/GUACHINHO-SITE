@@ -33,7 +33,8 @@ export function extrairPlanosSimulador({ grupoEsperado }) {
     const creditos = [...text.matchAll(creditoRegex)];
     const parcelas = [...text.matchAll(parcelaRegex)];
     const tipos = modalidade(text);
-    if (creditos.length !== 1 || parcelas.length !== 1 || tipos.size !== 1) {
+    const creditosUnicos = new Set(creditos.map(m => money(m[1])));
+    if (creditosUnicos.size !== 1 || parcelas.length !== 1 || tipos.size !== 1) {
       throw new Error('Plano ambíguo: crédito, parcela e modalidade devem pertencer ao mesmo cartão.');
     }
     const credito = money(creditos[0][1]);
