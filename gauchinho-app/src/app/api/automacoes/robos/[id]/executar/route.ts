@@ -78,21 +78,52 @@ export async function POST(
     const body = await req.json().catch(() => ({}))
     const dryRun = body?.dryRun !== undefined ? Boolean(body.dryRun) : config.modo === 'DRY_RUN'
 
-    // Verifica se já há execução em processamento
-    const { data: emAndamento } = await admin
+    // Verifica se já há execução em processamento e limpa execuções órfãs/expiradas
+    const { data: emAndamentoLista } = await admin
       .from('robo_execucoes')
       .select('*')
       .eq('robo_config_id', id)
       .in('status', ['PENDENTE', 'PROCESSANDO'])
-      .limit(1)
+      .order('iniciado_em', { ascending: false })
 
-    if (emAndamento && emAndamento.length > 0) {
+    const agoraMs = Date.now()
+    const ativasValidas = []
+    for (const item of emAndamentoLista || []) {
+      const refIso = item.status === 'PROCESSANDO' ? (item.heartbeat_em || item.iniciado_em) : item.iniciado_em
+      const refMs = Date.parse(refIso || '')
+      const limiteMs = item.status === 'PROCESSANDO' ? 5 * 60_000 : 15 * 60_000
+      const expirou = !Number.isFinite(refMs) || agoraMs - refMs > limiteMs
+
+      if (expirou || body?.forcarReexecucao) {
+        const msg = expirou
+          ? 'Execução órfã encerrada automaticamente por inatividade de heartbeat.'
+          : 'Execução anterior substituída por solicitação de reexecução forçada.'
+        await admin
+          .from('robo_execucoes')
+          .update({
+            status: 'CANCELADO',
+            finalizado_em: new Date().toISOString(),
+            erro_mensagem: msg,
+            erro_sanitizado: msg,
+            detalhes: {
+              ...(item.detalhes || {}),
+              erro: msg,
+              logs: [...(item.detalhes?.logs || []), { ts: new Date().toISOString(), msg }],
+            },
+          })
+          .eq('id', item.id)
+      } else {
+        ativasValidas.push(item)
+      }
+    }
+
+    if (ativasValidas.length > 0) {
       return NextResponse.json(
         {
           ok: true,
           modo: 'FILA_TERMINAL',
-          execucao: emAndamento[0],
-          mensagem: 'Já existe uma execução em processamento pelo Runner. Acompanhando execução existente...',
+          execucao: ativasValidas[0],
+          mensagem: 'Já existe uma execução ativa pelo Runner. Acompanhando execução existente...',
         },
         { status: 202 }
       )

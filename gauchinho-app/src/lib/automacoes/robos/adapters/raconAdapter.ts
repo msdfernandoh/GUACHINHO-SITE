@@ -17,7 +17,13 @@ export class RaconAdapter extends GenericConsorcioAdapter {
 
     try {
       await page.goto(targetUrl, { waitUntil: 'domcontentloaded', timeout: 45_000 })
+      await page.waitForURL(url => url.hostname.includes('login.microsoftonline.com'), { timeout: 15_000 }).catch(() => {})
       await page.waitForTimeout(2000)
+
+      const textoInicial = await page.evaluate(() => (document.body?.innerText || '').trim()).catch(() => '')
+      if (/acesso bloqueado|bloqueado pelo sistema de seguran/i.test(textoInicial)) {
+        return { ok: false, erro: 'Acesso bloqueado pelo sistema de segurança (WAF) do portal Randon.' }
+      }
 
       // 1. Tratamento da autenticação Microsoft Online SSO
       if (page.url().includes('login.microsoftonline.com')) {
@@ -29,29 +35,24 @@ export class RaconAdapter extends GenericConsorcioAdapter {
         }
 
         // Email
-        const emailInput = page.locator('input[name="loginfmt"], #i0116, input[type="email"]').first()
+        const emailInput = page.locator('input[name="loginfmt"]:visible, #i0116:visible, input[type="email"]:visible').first()
         if (await emailInput.isVisible({ timeout: 15_000 }).catch(() => false)) {
           await emailInput.click()
           await emailInput.fill(creds.usuario.trim())
           await page.waitForTimeout(600)
-          const nextBtn = page.locator('#idSIButton9, input[type="submit"], button:has-text("Avançar"), button:has-text("Next")').first()
+          const nextBtn = page.locator('#idSIButton9:visible, input[type="submit"]:visible, button:has-text("Avançar"):visible, button:has-text("Next"):visible').first()
           await nextBtn.click()
           await page.waitForTimeout(2500)
         }
 
         // Senha
-        const passInput = page.locator('input[name="passwd"], #i0118, input[type="password"]').first()
+        const passInput = page.locator('input[name="passwd"]:not(.moveOffScreen):not([aria-hidden="true"]):visible, input[type="password"]:not(.moveOffScreen):not([aria-hidden="true"]):visible').first()
         await passInput.waitFor({ state: 'visible', timeout: 30_000 })
-        await page.waitForTimeout(1000)
-        await passInput.click({ delay: 100 })
+        await page.waitForTimeout(600)
         await passInput.fill(creds.senha)
-        const val = await passInput.inputValue().catch(() => '')
-        if (!val) {
-          await passInput.pressSequentially(creds.senha, { delay: 60 })
-        }
-        await page.waitForTimeout(1000)
+        await page.waitForTimeout(600)
 
-        const signBtn = page.locator('#idSIButton9, input[type="submit"], button:has-text("Entrar"), button:has-text("Sign in")').first()
+        const signBtn = page.locator('#idSIButton9:visible, input[type="submit"]:visible, button:has-text("Entrar"):visible, button:has-text("Sign in"):visible').first()
         await signBtn.click()
         await page.waitForTimeout(3500)
 

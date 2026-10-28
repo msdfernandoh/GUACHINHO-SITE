@@ -143,7 +143,36 @@ async function listarExecucoesAgendamento(inicio) {
   }
 }
 
+async function expirarExecucoesOrfas() {
+  const agora = Date.now()
+  const limiteHeartbeatMs = 5 * 60_000
+  const { data: emProc } = await admin
+    .from('robo_execucoes')
+    .select('id, status, iniciado_em, heartbeat_em, detalhes')
+    .eq('status', 'PROCESSANDO')
+
+  for (const row of emProc || []) {
+    const refTs = Date.parse(row.heartbeat_em || row.iniciado_em || '')
+    if (!Number.isFinite(refTs) || agora - refTs > limiteHeartbeatMs) {
+      const msg = 'Execução órfã encerrada automaticamente (timeout de heartbeat do worker).'
+      await admin.from('robo_execucoes').update({
+        status: 'ERRO',
+        finalizado_em: new Date().toISOString(),
+        erro_mensagem: msg,
+        erro_sanitizado: msg,
+        detalhes: {
+          ...(row.detalhes || {}),
+          erro: msg,
+          logs: [...(row.detalhes?.logs || []), { ts: new Date().toISOString(), msg }],
+        },
+      }).eq('id', row.id).eq('status', 'PROCESSANDO')
+      console.log(`Execução órfã limpa automaticamente: ${row.id}`)
+    }
+  }
+}
+
 async function reivindicar() {
+  await expirarExecucoesOrfas().catch(() => {})
   let consulta = admin.from('robo_execucoes').select('*').eq('status', 'PENDENTE').order('iniciado_em').limit(1)
   if (alvo) consulta = consulta.eq('id', alvo)
   const { data, error } = await consulta.maybeSingle()

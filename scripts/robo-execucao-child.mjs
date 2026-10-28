@@ -110,10 +110,18 @@ async function run() {
   const senhaSecundaria = config.senha_secundaria_encrypted ? decryptCredential(config.senha_secundaria_encrypted) : undefined
 
   log('Iniciando instância do Chromium Playwright...')
+  const isWin = process.platform === 'win32'
   const browser = await chromium.launch({
-    headless: true,
-    channel: process.platform === 'win32' ? 'chrome' : undefined,
-    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu'],
+    headless: !isWin,
+    channel: isWin ? 'chrome' : undefined,
+    args: [
+      ...(isWin ? ['--window-position=-32000,-32000'] : []),
+      '--disable-blink-features=AutomationControlled',
+      '--no-sandbox',
+      '--disable-setuid-sandbox',
+      '--disable-dev-shm-usage',
+      '--disable-gpu',
+    ],
   })
 
   const downloadDir = path.resolve(process.cwd(), 'tmp/robo-downloads')
@@ -124,7 +132,9 @@ async function run() {
   const context = await browser.newContext({
     acceptDownloads: true,
     viewport: { width: 1440, height: 900 },
-    userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
+  })
+  await context.addInitScript(() => {
+    Object.defineProperty(navigator, 'webdriver', { get: () => undefined })
   })
 
   const page = await context.newPage()
@@ -145,10 +155,15 @@ async function run() {
       const targetUrl = config.login_url || config.site_url || 'https://e.randonconsorcios.com.br/'
       log(`Navegando para URL inicial: ${targetUrl}`)
       await page.goto(targetUrl, { waitUntil: 'domcontentloaded', timeout: 60_000 })
-      await page.waitForTimeout(3000)
+      await page.waitForURL(url => url.hostname.includes('login.microsoftonline.com'), { timeout: 15_000 }).catch(() => {})
+      await page.waitForTimeout(2000)
+
+      const textoInicial = await page.evaluate(() => (document.body?.innerText || '').trim()).catch(() => '')
+      if (/acesso bloqueado|bloqueado pelo sistema de seguran/i.test(textoInicial)) {
+        throw new Error('O sistema de segurança WAF do portal Randon bloqueou a sessão inicial do navegador.')
+      }
 
       // 1. Tratamento da autenticação Microsoft Online SSO
-      await page.waitForTimeout(2000)
       if (page.url().includes('login.microsoftonline.com')) {
         log('Detectada tela de autenticação Microsoft Online SSO inicial.')
         await page.screenshot({ path: path.join(screenshotsDir, `racon-01-login-ms-start-${Date.now()}.png`) }).catch(() => {})
@@ -177,7 +192,9 @@ async function run() {
 
       const isSimulador = 
         config.id === '69f080e2-5181-4d30-9ca0-37cc2755f75f' || 
-        (config.nome && config.nome.toLowerCase().includes('simulador'))
+        config.id === '64fa1c86-0494-4cd1-98c7-c867f7a23e11' ||
+        config.configuracao_tarefas?.tipo_rotina === 'COTAS_SIMULADOR' ||
+        (config.nome && /simulador|cotas/i.test(config.nome))
 
       if (isSimulador) {
         const simRes = await executarRobo3Simulador({
@@ -1256,7 +1273,9 @@ async function run() {
   }
 }
 
-run().catch(err => {
-  console.error('Falha no processo-filho do robô:', err)
-  process.exit(1)
-})
+run()
+  .then(() => process.exit(0))
+  .catch(err => {
+    console.error('Falha no processo-filho do robô:', err)
+    process.exit(1)
+  })

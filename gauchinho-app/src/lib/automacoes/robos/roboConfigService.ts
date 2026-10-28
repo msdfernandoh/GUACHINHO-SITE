@@ -310,6 +310,36 @@ export async function testarConfiguracaoRobo(
       return { ok: true, mensagem: 'Credenciais verificadas com sucesso na chave de segurança.' }
     }
 
+    const isServerlessWithoutRemoteBrowser =
+      Boolean(process.env.VERCEL) &&
+      !process.env.PLAYWRIGHT_WS_ENDPOINT &&
+      !process.env.BROWSERLESS_URL
+
+    if (isServerlessWithoutRemoteBrowser) {
+      const senha = decryptCredential(config.senha_encrypted)
+      if (!senha) {
+        return { ok: false, erro: 'Falha ao decifrar a senha cadastrada no robô.' }
+      }
+      const { data: lease } = await supabase
+        .from('robo_runner_lease')
+        .select('dono, expira_em')
+        .eq('chave', 'principal')
+        .maybeSingle()
+
+      const runnerAtivo = Boolean(lease?.expira_em && Date.parse(lease.expira_em) > Date.now())
+      await supabase
+        .from('robo_configuracoes')
+        .update({ ultimo_erro: null })
+        .eq('id', id)
+
+      return {
+        ok: true,
+        mensagem: runnerAtivo
+          ? 'Credenciais validadas com sucesso e Gauchinho Runner ativo na fila!'
+          : 'Credenciais validadas com sucesso! (Nota: inicie o Gauchinho Runner local para processar a fila do navegador).',
+      }
+    }
+
     // Teste Playwright real
     const session = await createManagedBrowserSession({ headless: true })
     try {

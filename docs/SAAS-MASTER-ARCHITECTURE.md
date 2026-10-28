@@ -1,5 +1,8 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
+### Robôs SaaS: desbloqueio WAF Randon, limpeza de execuções órfãs e ativação do Runner (27/10/2026)
+Portal Randon (`e.randonconsorcios.com.br`) ativou WAF que bloqueava sessões `headless: true` com *"Acesso Bloqueado!"*, fazendo o robô pular o SSO Microsoft e travar sem acessar o Newcon. Sessão Playwright passa a iniciar Chrome nativo em modo oculto (`--window-position=-32000,-32000`, `--disable-blink-features=AutomationControlled`, `navigator.webdriver` oculto), aguardando o redirecionamento `login.microsoftonline.com`. Seis execuções órfãs travadas em `PROCESSANDO` desde 18-19/10 foram encerradas e tanto `POST /api/automacoes/robos/[id]/executar` quanto `robo-worker-daemon.mjs` passam a expirar automaticamente execuções sem heartbeat (>5 min). Processo-filho (`robo-execucao-child.mjs`) agora encerra explicitamente com `process.exit(0)` após finalizar. Atalho `Gauchinho-Robo-Worker.lnk` instalado no Startup do Windows e daemon ativo. Teste real sincronizou 191 grupos com sucesso. Relatório: `docs/relatorios-fases/ROBOS-SAAS-DESBLOQUEIO-WAF-FILA-E-RUNNER-2026-10-27.md`.
+
 ### Robô: login Microsoft sem repetição de seleção (27/10/2026)
 Login inicial diferencia etapas visíveis, conta exata configurada, senha, confirmação
 de sessão, erro e verificação humana. Elimina clique por textos de conta fixa ou

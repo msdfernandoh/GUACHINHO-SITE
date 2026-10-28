@@ -40,10 +40,13 @@ export async function launchRoboBrowser(options?: {
     }
   }
 
+  const isWin = process.platform === 'win32'
   return await chromium.launch({
-    headless: options?.headless ?? true,
-    channel: process.platform === 'win32' ? 'chrome' : undefined,
+    headless: isWin ? false : (options?.headless ?? true),
+    channel: isWin ? 'chrome' : undefined,
     args: [
+      ...(isWin ? ['--window-position=-32000,-32000'] : []),
+      '--disable-blink-features=AutomationControlled',
       '--no-sandbox',
       '--disable-setuid-sandbox',
       '--disable-dev-shm-usage',
@@ -68,8 +71,9 @@ export async function createManagedBrowserSession(options?: {
   const context = await browser.newContext({
     acceptDownloads: true,
     viewport: { width: 1440, height: 900 },
-    userAgent:
-      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
+  })
+  await context.addInitScript(() => {
+    Object.defineProperty(navigator, 'webdriver', { get: () => undefined })
   })
 
   const page = await context.newPage()
