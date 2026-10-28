@@ -22,7 +22,15 @@ export async function saveClienteAction(formData: FormData) {
   if (!nome || !["PF", "PJ"].includes(tipo)) throw new Error("Informe tipo de pessoa e nome.");
   if (documento && ![11, 14].includes(documento.length)) throw new Error("CPF ou CNPJ inválido.");
 
-  const payload = {
+  const controleAutomacaoPresente = text(formData.get("controle_automacao_presente")) === "1";
+  const naoExecutarLance =
+    formData.get("nao_executar_lance_automatico") === "on" ||
+    formData.get("nao_executar_lance_automatico") === "true";
+  const naoExecutarBoleto =
+    formData.get("nao_executar_boleto_automatico") === "on" ||
+    formData.get("nao_executar_boleto_automatico") === "true";
+
+  const payload: Record<string, unknown> = {
     empresa_id: empresaAtiva.id,
     tipo_pessoa: tipo,
     nome,
@@ -50,6 +58,11 @@ export async function saveClienteAction(formData: FormData) {
     status: text(formData.get("status")) || "ativo",
     origem: text(formData.get("origem")) || "manual",
   };
+
+  if (controleAutomacaoPresente || !id) {
+    payload.nao_executar_lance_automatico = naoExecutarLance;
+    payload.nao_executar_boleto_automatico = naoExecutarBoleto;
+  }
 
   if (documento) {
     const { data: duplicate } = await supabase
@@ -92,9 +105,73 @@ export async function saveClienteAction(formData: FormData) {
   revalidatePath("/erp/clientes");
   revalidatePath(`/erp/clientes/${result.data.id}`);
   revalidatePath("/erp/vendas");
+  revalidatePath("/erp/lances");
+  revalidatePath("/erp/robos");
   revalidatePath("/erp/repasse-franquia");
   revalidatePath("/erp/comissoes");
   redirect(`/erp/clientes/${result.data.id}`);
+}
+
+export async function salvarAutomacaoClienteAction(formData: FormData) {
+  const { empresaAtiva } = await requireErpRouteAccess("clientes");
+  if (!empresaAtiva) throw new Error("Empresa ativa não encontrada.");
+
+  const id = text(formData.get("id"));
+  if (!id) throw new Error("Cliente não informado.");
+
+  const acaoRapida = text(formData.get("acao_rapida"));
+  let naoExecutarLance =
+    formData.get("nao_executar_lance_automatico") === "on" ||
+    formData.get("nao_executar_lance_automatico") === "true";
+  let naoExecutarBoleto =
+    formData.get("nao_executar_boleto_automatico") === "on" ||
+    formData.get("nao_executar_boleto_automatico") === "true";
+
+  if (acaoRapida === "bloquear_ambos") {
+    naoExecutarLance = true;
+    naoExecutarBoleto = true;
+  } else if (acaoRapida === "liberar_ambos") {
+    naoExecutarLance = false;
+    naoExecutarBoleto = false;
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("clientes")
+    .update({
+      nao_executar_lance_automatico: naoExecutarLance,
+      nao_executar_boleto_automatico: naoExecutarBoleto,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", id)
+    .eq("empresa_id", empresaAtiva.id);
+
+  if (error) throw new Error(error.message);
+
+  const partesDescricao: string[] = [];
+  partesDescricao.push(
+    naoExecutarLance
+      ? "Lances automáticos: NÃO EXECUTAR"
+      : "Lances automáticos: EXECUÇÃO AUTOMÁTICA LIBERADA"
+  );
+  partesDescricao.push(
+    naoExecutarBoleto
+      ? "Baixa de boletos: NÃO EXECUTAR"
+      : "Baixa de boletos: EXECUÇÃO AUTOMÁTICA LIBERADA"
+  );
+
+  await supabase.from("clientes_historico").insert({
+    empresa_id: empresaAtiva.id,
+    cliente_id: id,
+    tipo_evento: "automacao_robo_atualizada",
+    descricao: `Configuração de robôs atualizada no cliente (${partesDescricao.join(" | ")}).`,
+  });
+
+  revalidatePath("/erp/clientes");
+  revalidatePath(`/erp/clientes/${id}`);
+  revalidatePath("/erp/lances");
+  revalidatePath("/erp/robos");
+  revalidatePath("/erp/vendas");
 }
 
 export async function inativarClienteAction(formData: FormData) {

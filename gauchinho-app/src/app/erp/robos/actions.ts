@@ -40,6 +40,8 @@ export type RobosDashboardStats = {
   boletosCompetenciaTotal: number;
   boletosBaixadosSucesso: number;
   boletosPendentes: number;
+  clientesSemLanceAutomatico?: number;
+  clientesSemBoletoAutomatico?: number;
   ultimaExecucaoLances: string | null;
   ultimaExecucaoBoletos: string | null;
 };
@@ -67,7 +69,7 @@ const TEMPLATE_ROBO_LANCES = {
   modo: "PRODUCAO" as const,
   configuracao_tarefas: {
     tipo_rotina: "FRANQUIA_LANCES_AUTOMATICOS",
-    descricao: "Realiza a oferta de lance livre (lance embutido + 1,1234), lance fixo e 2º lance fixo no Newcon Web para todas as cotas ativas não contempladas da franquia com opção Reduzir Parcela e repetição por 6 assembleias, capturando os números de protocolo e sincronizando a tela de Lances do ERP.",
+    descricao: "Realiza a oferta de lance livre (lance embutido + 1,1234), lance fixo e 2º lance fixo no Newcon Web para todas as cotas ativas não contempladas da franquia (exceto clientes marcados para não executar automático), capturando os números de protocolo e sincronizando a tela de Lances do ERP.",
     frequencias: [
       { tipo: "MENSAL", descricao: "Oferta de lances para todas as cotas não contempladas", dia_corte: 10 },
       { tipo: "SEMESTRAL", descricao: "Reavaliação e atualização estratégica a cada 6 meses", intervalo_meses: 6 },
@@ -84,7 +86,7 @@ const TEMPLATE_ROBO_LANCES = {
     etapas_mapeamento: [
       "1. Autenticação SSO Microsoft / Racon e seleção de empresa 0101 Randon Administradora",
       "2. Clique no ícone de dois bonequinhos (Consorciado / Atendimento - frmConAtSrcConsorciado.aspx)",
-      "3. Localização por Grupo e Cota de cada cliente ativo não contemplado",
+      "3. Localização por Grupo e Cota de cada cliente ativo não contemplado (ignorando clientes marcados para não executar automático)",
       "4. Acesso a 'Oferta de Lance' no menu Operações (frmConCpCadCredenciamentoLance.aspx)",
       "5. Oferta Lance Livre: valor = Lance Embutido + 1,1234 (ex: 26,1234 com embutido 25,0000), Reduzir Parcela, Repetir por 6 assembleias",
       "6. Confirmação do Lance Livre, captura do número do protocolo no alert do navegador e retorno pelo botão [Voltar]",
@@ -106,7 +108,7 @@ const TEMPLATE_ROBO_BOLETOS = {
   modo: "PRODUCAO" as const,
   configuracao_tarefas: {
     tipo_rotina: "FRANQUIA_DOWNLOAD_BOLETOS",
-    descricao: "Acessa o Newcon Web pelo ícone de consorciados, localiza cada grupo e cota da franquia, entra em Emissão de Cobrança, emite e baixa o boleto em PDF, extrai a chave Pix Copia e Cola em texto e salva no Supabase Storage vinculado ao ERP.",
+    descricao: "Acessa o Newcon Web pelo ícone de consorciados, localiza cada grupo e cota da franquia (exceto clientes marcados para não executar automático), entra em Emissão de Cobrança, emite e baixa o boleto em PDF, extrai a chave Pix Copia e Cola em texto e salva no Supabase Storage vinculado ao ERP.",
     frequencias: [
       { tipo: "MENSAL", descricao: "Download e captura no dia 1 de cada mês (após fechamento do dia 30)", dia_corte: 1 },
     ],
@@ -122,7 +124,7 @@ const TEMPLATE_ROBO_BOLETOS = {
       "1. Autenticação SSO Microsoft / Racon",
       "2. Acesso ao Newcon Web (frmMain.aspx) e seleção de empresa 0101 Randon Administradora",
       "3. Clicar no ícone de dois bonequinhos (Consorciado / Atendimento - frmConAtSrcConsorciado.aspx)",
-      "4. Preencher Grupo e Cota do consorciado e clicar em Localizar",
+      "4. Preencher Grupo e Cota do consorciado (ignorando clientes marcados para não executar automático) e clicar em Localizar",
       "5. No menu lateral Operações, clicar em 'Emissão de Cobrança'",
       "6. Na tela de Boleto Avulso (frmConCoRelBoletoAvulso.aspx), marcar a cobrança pendente e clicar em [Emitir Cobrança]",
       "7. Realizar o download do arquivo PDF do boleto",
@@ -138,6 +140,7 @@ export async function fetchFranquiaRobosAction() {
   const admin = createAdminClient();
 
   const empresaId = empresaAtiva.id;
+  const empresaNome = empresaAtiva.nome_fantasia || "Franquia";
 
   // 1. Busca robôs configurados especificamente para esta franquia
   const { data: dbConfigs } = await admin
@@ -156,30 +159,30 @@ export async function fetchFranquiaRobosAction() {
       !Array.isArray(c.configuracao_tarefas?.cotas_alvo_ids)
   );
 
-  // Busca credenciais globais da Racon para reaproveitar na franquia caso necessário
-  const { data: credencialGlobalRacon } = await admin
-    .from("robo_configuracoes")
-    .select("usuario_login, senha_encrypted, administradora_id")
-    .is("empresa_id", null)
+  // Credencial existente apenas DENTRO da própria empresa (para que cada franquia como Racon Sinop tenha seu próprio login independente)
+  const credencialMesmaEmpresa = configs.find((c) => c.portal_tipo === "RACON" && c.senha_encrypted);
+
+  const { data: adminRacon } = await admin
+    .from("administradoras")
+    .select("id")
     .ilike("nome", "%Racon%")
-    .not("senha_encrypted", "is", null)
     .limit(1)
     .maybeSingle();
 
-  const globalRacon = configs.find(c => c.portal_tipo === "RACON" && c.senha_encrypted) ?? credencialGlobalRacon;
+  const sufixoEmpresa = empresaNome.toLowerCase().includes("gauchinho") ? "" : ` ${empresaNome}`;
 
   if (!temRoboLances) {
     const { data: newLances } = await admin
       .from("robo_configuracoes")
       .insert({
         empresa_id: empresaId,
-        nome: TEMPLATE_ROBO_LANCES.nome,
+        nome: `Robô Racon${sufixoEmpresa} — Lances Automáticos (Franquia)`,
         portal_tipo: TEMPLATE_ROBO_LANCES.portal_tipo,
         site_url: TEMPLATE_ROBO_LANCES.site_url,
         login_url: TEMPLATE_ROBO_LANCES.login_url,
-        usuario_login: globalRacon?.usuario_login || TEMPLATE_ROBO_LANCES.usuario_login,
-        senha_encrypted: globalRacon?.senha_encrypted || null,
-        administradora_id: globalRacon?.administradora_id || null,
+        usuario_login: credencialMesmaEmpresa?.usuario_login || TEMPLATE_ROBO_LANCES.usuario_login,
+        senha_encrypted: credencialMesmaEmpresa?.senha_encrypted || null,
+        administradora_id: credencialMesmaEmpresa?.administradora_id || adminRacon?.id || null,
         ativo: TEMPLATE_ROBO_LANCES.ativo,
         modo: TEMPLATE_ROBO_LANCES.modo,
         configuracao_tarefas: TEMPLATE_ROBO_LANCES.configuracao_tarefas,
@@ -196,13 +199,13 @@ export async function fetchFranquiaRobosAction() {
       .from("robo_configuracoes")
       .insert({
         empresa_id: empresaId,
-        nome: TEMPLATE_ROBO_BOLETOS.nome,
+        nome: `Robô Racon${sufixoEmpresa} — Boletos Mensais (Download & Armazenamento)`,
         portal_tipo: TEMPLATE_ROBO_BOLETOS.portal_tipo,
         site_url: TEMPLATE_ROBO_BOLETOS.site_url,
         login_url: TEMPLATE_ROBO_BOLETOS.login_url,
-        usuario_login: globalRacon?.usuario_login || TEMPLATE_ROBO_BOLETOS.usuario_login,
-        senha_encrypted: globalRacon?.senha_encrypted || null,
-        administradora_id: globalRacon?.administradora_id || null,
+        usuario_login: credencialMesmaEmpresa?.usuario_login || TEMPLATE_ROBO_BOLETOS.usuario_login,
+        senha_encrypted: credencialMesmaEmpresa?.senha_encrypted || null,
+        administradora_id: credencialMesmaEmpresa?.administradora_id || adminRacon?.id || null,
         ativo: TEMPLATE_ROBO_BOLETOS.ativo,
         modo: TEMPLATE_ROBO_BOLETOS.modo,
         configuracao_tarefas: TEMPLATE_ROBO_BOLETOS.configuracao_tarefas,
@@ -212,24 +215,6 @@ export async function fetchFranquiaRobosAction() {
       .single();
 
     if (newBoletos) configs.push(newBoletos);
-  }
-
-  // Se algum robô da franquia estiver sem senha mas existir a global, preenche automaticamente
-  if (globalRacon?.senha_encrypted) {
-    for (const c of configs) {
-      if (!c.senha_encrypted) {
-        await admin
-          .from("robo_configuracoes")
-          .update({
-            senha_encrypted: globalRacon.senha_encrypted,
-            usuario_login: c.usuario_login || globalRacon.usuario_login,
-            administradora_id: c.administradora_id || globalRacon.administradora_id,
-          })
-          .eq("id", c.id);
-        c.senha_encrypted = globalRacon.senha_encrypted;
-        c.usuario_login = c.usuario_login || globalRacon.usuario_login;
-      }
-    }
   }
 
   // 2. Transforma para DTO
@@ -254,26 +239,47 @@ export async function fetchFranquiaRobosAction() {
     };
   });
 
-  // 3. Estatísticas da carteira de cotas e lances da franquia
-  const { count: totalCotas } = await admin
-    .from("cotas_definitivas")
-    .select("*", { count: "exact", head: true })
-    .eq("empresa_id", empresaId);
+  // 3. Estatísticas da carteira de cotas e lances da franquia (descontando clientes marcados para não executar automático)
+  const [{ data: cotasCarteira }, { data: clientesBloqueados }] = await Promise.all([
+    admin
+      .from("cotas_definitivas")
+      .select("id, status, venda:vendas(id, cliente_id, cliente:clientes(id, nao_executar_lance_automatico, nao_executar_boleto_automatico)), cotas_lances_estrategias:cota_estrategias_lance(id, lance_livre_ativo, lance_fixo_ativo, segundo_lance_fixo_ativo)")
+      .eq("empresa_id", empresaId)
+      .neq("status", "cancelada"),
+    admin
+      .from("clientes")
+      .select("id, nao_executar_lance_automatico, nao_executar_boleto_automatico")
+      .eq("empresa_id", empresaId),
+  ]);
 
-  const { data: cotasEstrategias } = await admin
-    .from("cotas_definitivas")
-    .select("id, cotas_lances_estrategias(id, lance_livre_ativo, lance_fixo_ativo, segundo_lance_fixo_ativo)")
-    .eq("empresa_id", empresaId);
-
+  const todasCotas = cotasCarteira || [];
+  let cotasElegiveisLance = 0;
   let cotasComLance = 0;
-  for (const c of cotasEstrategias || []) {
-    const est = (c as any).cotas_lances_estrategias?.[0];
-    if (est && (est.lance_livre_ativo || est.lance_fixo_ativo || est.segundo_lance_fixo_ativo)) {
-      cotasComLance++;
+  let cotasElegiveisBoleto = 0;
+
+  for (const c of todasCotas as any[]) {
+    const venda = Array.isArray(c.venda) ? c.venda[0] : c.venda;
+    const cli = Array.isArray(venda?.cliente) ? venda.cliente[0] : venda?.cliente;
+    const bloqLance = Boolean(cli?.nao_executar_lance_automatico);
+    const bloqBoleto = Boolean(cli?.nao_executar_boleto_automatico);
+
+    if (!bloqBoleto) {
+      cotasElegiveisBoleto++;
+    }
+    if (!bloqLance && c.status !== "contemplada") {
+      cotasElegiveisLance++;
+      const est = Array.isArray(c.cotas_lances_estrategias)
+        ? c.cotas_lances_estrategias[0]
+        : c.cotas_lances_estrategias;
+      if (est && (est.lance_livre_ativo || est.lance_fixo_ativo || est.segundo_lance_fixo_ativo)) {
+        cotasComLance++;
+      }
     }
   }
 
-  const cotasPendentesLance = Math.max(0, (totalCotas || 0) - cotasComLance);
+  const cotasPendentesLance = Math.max(0, cotasElegiveisLance - cotasComLance);
+  const clientesSemLanceAutomatico = (clientesBloqueados || []).filter((c) => c.nao_executar_lance_automatico).length;
+  const clientesSemBoletoAutomatico = (clientesBloqueados || []).filter((c) => c.nao_executar_boleto_automatico).length;
 
   // 4. Histórico recente de execuções
   const roboIds = configs.map((c) => c.id);
@@ -301,33 +307,44 @@ export async function fetchFranquiaRobosAction() {
   }
 
   const roboLances = robos.find((r) => r.tipoRotina === "FRANQUIA_LANCES_AUTOMATICOS");
-  const roboBoletos = robos.find((r) => r.tipoRotina === "FRANQUIA_DOWNLOAD_BOLETOS" &&
-    !Array.isArray(r.configuracaoTarefas.cotas_alvo_ids));
+  const roboBoletos = robos.find(
+    (r) =>
+      r.tipoRotina === "FRANQUIA_DOWNLOAD_BOLETOS" &&
+      !Array.isArray(r.configuracaoTarefas.cotas_alvo_ids)
+  );
   const competenciaBoletos = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "America/Cuiaba", year: "numeric", month: "2-digit",
+    timeZone: "America/Cuiaba",
+    year: "numeric",
+    month: "2-digit",
   }).formatToParts(new Date());
-  const competenciaAtual = `${competenciaBoletos.find(p => p.type === "year")?.value}-${competenciaBoletos.find(p => p.type === "month")?.value}`;
-  const { data: boletosSalvos, error: erroBoletos } = await admin.from("vendas_boletos_envios")
+  const competenciaAtual = `${competenciaBoletos.find((p) => p.type === "year")?.value}-${competenciaBoletos.find((p) => p.type === "month")?.value}`;
+  const { data: boletosSalvos, error: erroBoletos } = await admin
+    .from("vendas_boletos_envios")
     .select("cota_id,arquivo_storage_path")
-    .eq("empresa_id", empresaId).eq("competencia", competenciaAtual)
+    .eq("empresa_id", empresaId)
+    .eq("competencia", competenciaAtual)
     .not("arquivo_storage_path", "is", null);
   if (erroBoletos) throw new Error(`Não foi possível consultar boletos armazenados: ${erroBoletos.message}`);
-  const totalBoletosSalvos = new Set((boletosSalvos ?? []).filter(b => b.arquivo_storage_path && b.cota_id).map(b => b.cota_id)).size;
+  const totalBoletosSalvos = new Set(
+    (boletosSalvos ?? []).filter((b) => b.arquivo_storage_path && b.cota_id).map((b) => b.cota_id)
+  ).size;
 
   const stats: RobosDashboardStats = {
-    totalCotasCarteira: totalCotas || 0,
+    totalCotasCarteira: todasCotas.length,
     cotasComLanceDefinido: cotasComLance,
     cotasAguardandoLance: cotasPendentesLance,
-    boletosCompetenciaTotal: totalCotas || 0,
+    boletosCompetenciaTotal: cotasElegiveisBoleto,
     boletosBaixadosSucesso: totalBoletosSalvos,
-    boletosPendentes: Math.max(0, (totalCotas || 0) - totalBoletosSalvos),
+    boletosPendentes: Math.max(0, cotasElegiveisBoleto - totalBoletosSalvos),
+    clientesSemLanceAutomatico,
+    clientesSemBoletoAutomatico,
     ultimaExecucaoLances: roboLances?.ultimaExecucaoEm || null,
     ultimaExecucaoBoletos: roboBoletos?.ultimaExecucaoEm || null,
   };
 
   return {
     empresaId,
-    empresaNome: empresaAtiva.nome_fantasia || "Franquia",
+    empresaNome,
     robos,
     stats,
     historico,
@@ -342,6 +359,7 @@ export async function salvarConfiguracaoRoboFranquiaAction(input: {
   modo: "DRY_RUN" | "PRODUCAO";
   pontoVenda?: string;
   diaCorte?: number;
+  aplicarNosDoisRobosDaFranquia?: boolean;
 }) {
   const { usuario, empresaAtiva } = await requireErpRouteAccess("robos");
   const admin = createAdminClient();
@@ -382,7 +400,27 @@ export async function salvarConfiguracaoRoboFranquiaAction(input: {
     throw new Error(`Falha ao salvar configuração do robô: ${error.message}`);
   }
 
+  // Se marcado para sincronizar o mesmo login/senha nos 2 robôs (Lances e Boletos) da franquia ativa
+  if (input.aplicarNosDoisRobosDaFranquia) {
+    const syncPayload: Record<string, unknown> = {
+      usuario_login: input.usuarioLogin.trim(),
+      updated_by: usuario.id,
+      updated_at: new Date().toISOString(),
+    };
+    if (updateData.senha_encrypted) {
+      syncPayload.senha_encrypted = updateData.senha_encrypted;
+      syncPayload.senha_updated_at = updateData.senha_updated_at;
+    }
+    await admin
+      .from("robo_configuracoes")
+      .update(syncPayload)
+      .eq("empresa_id", empresaAtiva.id)
+      .eq("portal_tipo", "RACON")
+      .neq("id", input.id);
+  }
+
   revalidatePath("/erp/robos");
+  revalidatePath("/platform/robos-importacao");
   return { success: true };
 }
 

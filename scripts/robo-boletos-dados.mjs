@@ -20,7 +20,7 @@ export async function carregarCotasBoletos(admin, config) {
   for (let offset = 0; ; offset += 500) {
     let query = admin.from('cotas_definitivas').select(`
       id, venda_id, empresa_id, numero_grupo, numero_cota, parcela, status,
-      venda:vendas!inner(id, cliente_nome, cliente_cpf_cnpj, cliente_telefone, administradora_id, status)
+      venda:vendas!inner(id, cliente_id, cliente_nome, cliente_cpf_cnpj, cliente_telefone, administradora_id, status, cliente:clientes(id, nao_executar_boleto_automatico))
     `).eq('empresa_id', config.empresa_id).neq('status', 'cancelada')
       .neq('venda.status', 'cancelada').not('numero_cota', 'is', null)
       .order('id', { ascending: true }).range(offset, offset + 499)
@@ -31,6 +31,10 @@ export async function carregarCotasBoletos(admin, config) {
     for (const c of data || []) {
       const venda = Array.isArray(c.venda) ? c.venda[0] : c.venda
       if (!c.numero_grupo?.trim() || !c.numero_cota?.trim() || !venda) continue
+      const clienteRel = Array.isArray(venda.cliente) ? venda.cliente[0] : venda.cliente
+      if (clienteRel?.nao_executar_boleto_automatico === true || venda.nao_executar_boleto_automatico === true) {
+        continue
+      }
       cotas.push({
         cota_definitiva_id: c.id, venda_id: c.venda_id, empresa_id: c.empresa_id,
         numero_grupo: c.numero_grupo.trim(), numero_cota: c.numero_cota.trim(),

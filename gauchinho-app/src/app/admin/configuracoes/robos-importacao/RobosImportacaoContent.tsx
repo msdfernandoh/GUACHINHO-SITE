@@ -317,11 +317,16 @@ export function RobosImportacaoContent({
     }
   }
 
-  const robosFiltrados = robos.filter(r =>
-    r.nome.toLowerCase().includes(busca.toLowerCase()) ||
-    r.portal_tipo.toLowerCase().includes(busca.toLowerCase()) ||
-    (r.administradora?.nome || '').toLowerCase().includes(busca.toLowerCase())
-  )
+  const empresasMap = new Map(empresas.map(e => [e.id, e.nome]))
+  const robosFiltrados = robos.filter(r => {
+    const empNome = (r.empresa_id && empresasMap.get(r.empresa_id)) || ''
+    return (
+      r.nome.toLowerCase().includes(busca.toLowerCase()) ||
+      r.portal_tipo.toLowerCase().includes(busca.toLowerCase()) ||
+      (r.administradora?.nome || '').toLowerCase().includes(busca.toLowerCase()) ||
+      empNome.toLowerCase().includes(busca.toLowerCase())
+    )
+  })
 
   return (
     <div className="space-y-6">
@@ -454,12 +459,17 @@ export function RobosImportacaoContent({
                         {robo.modo}
                       </span>
                     </div>
-                    {robo.administradora && (
-                      <p className="mt-1 flex items-center gap-1 text-xs text-zinc-500">
-                        <Building2 className="h-3 w-3" />
-                        Administradora: <span className="font-medium text-zinc-700 dark:text-zinc-300">{robo.administradora.nome}</span>
-                      </p>
-                    )}
+                    <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-zinc-500">
+                      <span className="inline-flex items-center gap-1 rounded-md bg-blue-500/10 px-2 py-0.5 font-semibold text-blue-700 dark:bg-blue-500/20 dark:text-blue-300">
+                        Empresa: {(robo.empresa_id && empresasMap.get(robo.empresa_id)) || 'Global'}
+                      </span>
+                      {robo.administradora && (
+                        <span className="flex items-center gap-1">
+                          <Building2 className="h-3 w-3" />
+                          Administradora: <span className="font-medium text-zinc-700 dark:text-zinc-300">{robo.administradora.nome}</span>
+                        </span>
+                      )}
+                    </div>
                   </div>
 
                   <div className="flex items-center gap-2">

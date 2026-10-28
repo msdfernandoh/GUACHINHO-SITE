@@ -1,8 +1,8 @@
 import Link from "next/link";
-import { ArrowLeft, FileText, Pencil, Plus, UserRound, CheckCircle2, AlertCircle, ShieldCheck, MapPin } from "lucide-react";
+import { ArrowLeft, Bot, Ban, FileText, Pencil, Plus, UserRound, CheckCircle2, AlertCircle, ShieldCheck, MapPin } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentTenantContext } from "@/lib/tenant/context";
-import { inativarClienteAction, gerarCotaRealClienteAction } from "../actions";
+import { inativarClienteAction, gerarCotaRealClienteAction, salvarAutomacaoClienteAction } from "../actions";
 import { CotaContemplacaoForm } from "@/components/erp/cota-contemplacao-form";
 import { ClienteDocumentoBtn } from "@/components/erp/cliente-documento-btn";
 
@@ -235,6 +235,16 @@ export default async function ClienteDetalhePage({
                 >
                   {cliente.status === "ativo" ? "Ativo" : "Inativo"}
                 </span>
+                {cliente.nao_executar_lance_automatico && (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-0.5 text-[11px] font-bold text-amber-900 dark:bg-amber-950 dark:text-amber-300">
+                    <Ban size={11} /> Não executar Lances Automáticos
+                  </span>
+                )}
+                {cliente.nao_executar_boleto_automatico && (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-rose-100 px-2.5 py-0.5 text-[11px] font-bold text-rose-900 dark:bg-rose-950 dark:text-rose-300">
+                    <Ban size={11} /> Não executar Baixa de Boletos
+                  </span>
+                )}
                 {cliente.origem === "contratacao_assinada" && (
                   <span className="rounded-full bg-cyan-100 px-2.5 py-0.5 text-[11px] font-bold text-cyan-800 dark:bg-cyan-950 dark:text-cyan-300">
                     Origem: Contratação assinada no site
@@ -296,6 +306,182 @@ export default async function ClienteDetalhePage({
             </Link>
           </div>
         </div>
+      </section>
+
+      {/* ─────────────────────────────────────────────────────────────
+          AUTOMAÇÃO DE ROBÔS (LANCES AUTOMÁTICOS E BAIXA DE BOLETOS)
+      ───────────────────────────────────────────────────────────── */}
+      <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs dark:border-slate-800 dark:bg-slate-900">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300">
+                <Bot size={18} />
+              </span>
+              <h2 className="text-base font-black text-slate-900 dark:text-white">
+                Automação de Robôs (Lances Automáticos e Baixa de Boletos)
+              </h2>
+            </div>
+            <p className="mt-1 text-xs text-slate-600 dark:text-slate-400">
+              Deixe marcado abaixo caso <strong>não queira que o robô execute automaticamente</strong> os lances ou a baixa de boletos para este cliente. O robô pega apenas a lista dos clientes que não estão marcados.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            {(cliente.nao_executar_lance_automatico || cliente.nao_executar_boleto_automatico) ? (
+              <form action={salvarAutomacaoClienteAction}>
+                <input type="hidden" name="id" value={id} />
+                <input type="hidden" name="acao_rapida" value="liberar_ambos" />
+                <button
+                  type="submit"
+                  className="inline-flex min-h-9 items-center gap-1.5 rounded-xl border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-800 hover:bg-emerald-100 transition"
+                >
+                  <CheckCircle2 size={14} /> Liberar execução automática
+                </button>
+              </form>
+            ) : (
+              <form action={salvarAutomacaoClienteAction}>
+                <input type="hidden" name="id" value={id} />
+                <input type="hidden" name="acao_rapida" value="bloquear_ambos" />
+                <button
+                  type="submit"
+                  className="inline-flex min-h-9 items-center gap-1.5 rounded-xl border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-bold text-amber-900 hover:bg-amber-100 transition"
+                >
+                  <Ban size={14} /> Marcar ambos para não executar
+                </button>
+              </form>
+            )}
+          </div>
+        </div>
+
+        <form action={salvarAutomacaoClienteAction} className="mt-4 grid gap-3 border-t border-slate-100 pt-4 sm:grid-cols-[1fr_1fr_auto] sm:items-center dark:border-slate-800">
+          <input type="hidden" name="id" value={id} />
+
+          <label className="flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50/70 p-3 text-xs cursor-pointer hover:border-amber-400 dark:border-slate-700 dark:bg-slate-800/50">
+            <input
+              type="checkbox"
+              name="nao_executar_lance_automatico"
+              defaultChecked={Boolean(cliente.nao_executar_lance_automatico)}
+              className="mt-0.5 h-4 w-4 rounded border-slate-300 text-amber-600 focus:ring-amber-500"
+            />
+            <div>
+              <p className="font-bold text-slate-900 dark:text-white">Não executar Lances Automáticos</p>
+              <p className="mt-0.5 text-[11px] text-slate-500">
+                Quando marcado, o robô de lances ignora todas as cotas deste cliente.
+              </p>
+            </div>
+          </label>
+
+          <label className="flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50/70 p-3 text-xs cursor-pointer hover:border-amber-400 dark:border-slate-700 dark:bg-slate-800/50">
+            <input
+              type="checkbox"
+              name="nao_executar_boleto_automatico"
+              defaultChecked={Boolean(cliente.nao_executar_boleto_automatico)}
+              className="mt-0.5 h-4 w-4 rounded border-slate-300 text-amber-600 focus:ring-amber-500"
+            />
+            <div>
+              <p className="font-bold text-slate-900 dark:text-white">Não executar Baixa de Boletos Automática</p>
+              <p className="mt-0.5 text-[11px] text-slate-500">
+                Quando marcado, o robô de boletos ignora todas as cotas deste cliente.
+              </p>
+            </div>
+          </label>
+
+          <button
+            type="submit"
+            className="inline-flex min-h-11 items-center justify-center rounded-xl bg-slate-900 px-4 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-slate-800 transition dark:bg-blue-600 dark:hover:bg-blue-700"
+          >
+            Salvar opção do robô
+          </button>
+        </form>
+      </section>
+
+      {/* ─────────────────────────────────────────────────────────────
+          AUTOMAÇÃO DE ROBÔS (LANCES AUTOMÁTICOS E BAIXA DE BOLETOS)
+      ───────────────────────────────────────────────────────────── */}
+      <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs dark:border-slate-800 dark:bg-slate-900">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300">
+                <Bot size={18} />
+              </span>
+              <h2 className="text-base font-black text-slate-900 dark:text-white">
+                Automação de Robôs (Lances Automáticos e Baixa de Boletos)
+              </h2>
+            </div>
+            <p className="mt-1 text-xs text-slate-600 dark:text-slate-400">
+              Deixe marcado abaixo caso <strong>não queira que o robô execute automaticamente</strong> os lances ou a baixa de boletos para este cliente. O robô pega apenas a lista dos clientes que não estão marcados.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            {(cliente.nao_executar_lance_automatico || cliente.nao_executar_boleto_automatico) ? (
+              <form action={salvarAutomacaoClienteAction}>
+                <input type="hidden" name="id" value={id} />
+                <input type="hidden" name="acao_rapida" value="liberar_ambos" />
+                <button
+                  type="submit"
+                  className="inline-flex min-h-9 items-center gap-1.5 rounded-xl border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-800 hover:bg-emerald-100 transition"
+                >
+                  <CheckCircle2 size={14} /> Liberar execução automática
+                </button>
+              </form>
+            ) : (
+              <form action={salvarAutomacaoClienteAction}>
+                <input type="hidden" name="id" value={id} />
+                <input type="hidden" name="acao_rapida" value="bloquear_ambos" />
+                <button
+                  type="submit"
+                  className="inline-flex min-h-9 items-center gap-1.5 rounded-xl border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-bold text-amber-900 hover:bg-amber-100 transition"
+                >
+                  <Ban size={14} /> Marcar ambos para não executar
+                </button>
+              </form>
+            )}
+          </div>
+        </div>
+
+        <form action={salvarAutomacaoClienteAction} className="mt-4 grid gap-3 border-t border-slate-100 pt-4 sm:grid-cols-[1fr_1fr_auto] sm:items-center dark:border-slate-800">
+          <input type="hidden" name="id" value={id} />
+
+          <label className="flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50/70 p-3 text-xs cursor-pointer hover:border-amber-400 dark:border-slate-700 dark:bg-slate-800/50">
+            <input
+              type="checkbox"
+              name="nao_executar_lance_automatico"
+              defaultChecked={Boolean(cliente.nao_executar_lance_automatico)}
+              className="mt-0.5 h-4 w-4 rounded border-slate-300 text-amber-600 focus:ring-amber-500"
+            />
+            <div>
+              <p className="font-bold text-slate-900 dark:text-white">Não executar Lances Automáticos</p>
+              <p className="mt-0.5 text-[11px] text-slate-500">
+                Quando marcado, o robô de lances ignora todas as cotas deste cliente.
+              </p>
+            </div>
+          </label>
+
+          <label className="flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50/70 p-3 text-xs cursor-pointer hover:border-amber-400 dark:border-slate-700 dark:bg-slate-800/50">
+            <input
+              type="checkbox"
+              name="nao_executar_boleto_automatico"
+              defaultChecked={Boolean(cliente.nao_executar_boleto_automatico)}
+              className="mt-0.5 h-4 w-4 rounded border-slate-300 text-amber-600 focus:ring-amber-500"
+            />
+            <div>
+              <p className="font-bold text-slate-900 dark:text-white">Não executar Baixa de Boletos Automática</p>
+              <p className="mt-0.5 text-[11px] text-slate-500">
+                Quando marcado, o robô de boletos ignora todas as cotas deste cliente.
+              </p>
+            </div>
+          </label>
+
+          <button
+            type="submit"
+            className="inline-flex min-h-11 items-center justify-center rounded-xl bg-slate-900 px-4 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-slate-800 transition dark:bg-blue-600 dark:hover:bg-blue-700"
+          >
+            Salvar opção do robô
+          </button>
+        </form>
       </section>
 
       {/* ─────────────────────────────────────────────────────────────

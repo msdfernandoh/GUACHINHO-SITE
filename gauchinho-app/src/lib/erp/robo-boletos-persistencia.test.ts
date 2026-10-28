@@ -88,6 +88,27 @@ describe("boletos por cota e competência", () => {
     falhar = true;
     await expect(carregarCotasBoletos(admin, { empresa_id: "a" })).rejects.toThrow("schema indisponível");
   });
+  it("ignora cotas de clientes marcados com nao_executar_boleto_automatico = true", async () => {
+    const q = {
+      select: () => q, neq: () => q, not: () => q, order: () => q, eq: () => q, range: () => q,
+      then: (resolve: (value: unknown) => void) => Promise.resolve({
+        data: [
+          {
+            id: "cota-liberada", empresa_id: "a", venda_id: "v1", numero_grupo: "1553", numero_cota: "10",
+            venda: { id: "v1", cliente_nome: "Cliente Liberado", cliente: { id: "cli-1", nao_executar_boleto_automatico: false } },
+          },
+          {
+            id: "cota-bloqueada", empresa_id: "a", venda_id: "v2", numero_grupo: "1553", numero_cota: "20",
+            venda: { id: "v2", cliente_nome: "Cliente Bloqueado", cliente: { id: "cli-2", nao_executar_boleto_automatico: true } },
+          },
+        ],
+        error: null,
+      }).then(resolve),
+    };
+    const resultado = await carregarCotasBoletos({ from: () => q }, { empresa_id: "a" });
+    expect(resultado).toHaveLength(1);
+    expect(resultado[0].cota_definitiva_id).toBe("cota-liberada");
+  });
   it("salva duas cotas da mesma venda separadamente e reexecução não duplica", async () => {
     const b = banco();
     for (const cota of ["cota-1", "cota-2", "cota-1"]) {

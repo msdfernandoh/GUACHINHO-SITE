@@ -115,6 +115,38 @@ export async function executarRoboLances({
   // 1. Busca cotas elegíveis para lance (ativas e não contempladas)
   log('Buscando cotas ativas não contempladas da franquia no banco de dados...')
 
+  const { data: clientesBloqueadosDb } = await admin
+    .from('clientes')
+    .select('id, nome, cpf_cnpj, documento_normalizado')
+    .eq('empresa_id', targetEmpresaId)
+    .eq('nao_executar_lance_automatico', true)
+
+  const clientesBloqueadosIds = new Set(
+    (clientesBloqueadosDb || []).map((cli) => cli.id).filter(Boolean)
+  )
+  const clientesBloqueadosDocs = new Set(
+    (clientesBloqueadosDb || [])
+      .flatMap((cli) => [cli.cpf_cnpj, cli.documento_normalizado])
+      .map((doc) => String(doc || '').replace(/\D/g, ''))
+      .filter((doc) => doc.length >= 11)
+  )
+  const clientesBloqueadosNomes = new Set(
+    (clientesBloqueadosDb || [])
+      .map((cli) => String(cli.nome || '').trim().toUpperCase())
+      .filter(Boolean)
+  )
+
+  const clienteEstaBloqueadoParaLance = (vendaObj) => {
+    if (!vendaObj) return false
+    if (vendaObj.cliente?.nao_executar_lance_automatico === true) return true
+    if (vendaObj.cliente_id && clientesBloqueadosIds.has(vendaObj.cliente_id)) return true
+    const doc = String(vendaObj.cliente_cpf_cnpj || '').replace(/\D/g, '')
+    if (doc.length >= 11 && clientesBloqueadosDocs.has(doc)) return true
+    const nome = String(vendaObj.cliente_nome || '').trim().toUpperCase()
+    if (!doc && nome && clientesBloqueadosNomes.has(nome)) return true
+    return false
+  }
+
   let listaCotas = []
 
   const { data: cotasDb, error: errCotas } = await admin
@@ -129,7 +161,7 @@ export async function executarRoboLances({
       parcela,
       status,
       grupo_id,
-      venda:vendas(id, cliente_nome, cliente_cpf_cnpj, cliente_telefone),
+      venda:vendas(id, cliente_id, cliente_nome, cliente_cpf_cnpj, cliente_telefone, cliente:clientes(id, nao_executar_lance_automatico)),
       grupo:grupos_consorcio(codigo_grupo, percentual_lance_embutido, permite_lance_embutido)
     `)
     .eq('empresa_id', targetEmpresaId)
@@ -169,6 +201,10 @@ export async function executarRoboLances({
 
     listaCotas = cotasDb
       .filter(c => {
+        if (clienteEstaBloqueadoParaLance(c.venda)) {
+          log(`[CLIENTE MARCADO NÃO EXECUTAR] Ignorando Grupo ${c.numero_grupo} / Cota ${c.numero_cota} (${c.venda?.cliente_nome || 'Consorciado'}) — cliente marcado para não executar lance automático.`)
+          return false
+        }
         if (cotasBloqueadas6Meses.has(c.id)) {
           log(`[LANCE ATIVO 6 MESES] Cota Grupo ${c.numero_grupo} / Cota ${c.numero_cota} possui lance confirmado com repetição por 6 assembleias ativa. Próximo lance em 6 meses. Ignorando na rodada mensal.`)
           return false
@@ -192,12 +228,15 @@ export async function executarRoboLances({
     // Fallback: cotas de vendas confirmadas não contempladas
     const { data: vendasDb } = await admin
       .from('vendas')
-      .select('id, numero_grupo, cliente_nome, cliente_cpf_cnpj, cliente_telefone, parcela, valor_credito, snapshot_venda')
+      .select('id, cliente_id, numero_grupo, cliente_nome, cliente_cpf_cnpj, cliente_telefone, parcela, valor_credito, snapshot_venda, cliente:clientes(id, nao_executar_lance_automatico)')
       .eq('empresa_id', targetEmpresaId)
       .neq('status', 'cancelada')
 
     if (vendasDb && vendasDb.length > 0) {
       for (const v of vendasDb) {
+        if (clienteEstaBloqueadoParaLance(v)) {
+          continue
+        }
         const numCota = v.snapshot_venda?.numero_cota || v.snapshot_venda?.cota
         if (numCota && v.numero_grupo) {
           listaCotas.push({

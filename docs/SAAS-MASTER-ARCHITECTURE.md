@@ -4289,3 +4289,17 @@ Exemplo de regressão: 20.000 - 2.000 - 10.000 = 8.000. Ajustes anteriores,
 aportes e transferências são discriminados quando presentes. O motor recebe
 comissão líquida e não desconta imposto duas vezes. Diagnóstico das falhas
 históricas registrado em CREDITO-SOCIOS-REPASSE-RECEBIDO-2026-10-20.md.
+
+
+### Fase 331 (27/10/2026) — Opção no Cliente para Não Executar Automático (Lances e Boletos) + Cópia dos Robôs em Racon Sinop ERP
+
+1. **Bloqueio de Execução Automática por Cliente (`public.clientes`):**
+   - Adicionadas as colunas `nao_executar_lance_automatico` e `nao_executar_boleto_automatico` (`DEFAULT false`) na migration `331_clientes_bloqueio_automacao_robos_e_racon_sinop.sql`.
+   - Controles rápidos adicionados na ficha do cliente (`/erp/clientes/[id]`), nas telas de criação/edição (`/erp/clientes/novo`, `/erp/clientes/[id]/editar`) e badges na carteira (`/erp/clientes`).
+   - Os motores `scripts/robo-lances-service.mjs` e `scripts/robo-boletos-dados.mjs` filtram a carteira da empresa e executam exclusivamente os clientes que **não** estão marcados para não executar automático.
+2. **Cópias Dedicadas dos Robôs de Lances e Boletos para Racon Sinop ERP:**
+   - Provisionados em `public.robo_configuracoes` para a empresa **Racon Sinop** (`87df83a8-1d22-4bd1-9712-5cb08915c4a0`) os robôs `Robô Racon Sinop — Lances Automáticos (Franquia)` e `Robô Racon Sinop — Boletos Mensais (Download & Armazenamento)`.
+   - Isolamento de credenciais por `empresa_id` em `/erp/robos`, permitindo configurar login e senha próprios na Racon Sinop sem interferir no login da Gauchinho Consórcios.
+
+Relatório de Fase:
+`docs/relatorios-fases/CLIENTES-BLOQUEIO-AUTOMACAO-E-ROBOS-RACON-SINOP-2026-10-27.md`.

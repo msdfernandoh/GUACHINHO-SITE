@@ -53,12 +53,18 @@ export function ErpRobosHub({ empresaNome, initialRobos, initialStats, initialHi
   const [formPontoVenda, setFormPontoVenda] = useState("");
   const [formModo, setFormModo] = useState<"DRY_RUN" | "PRODUCAO">("PRODUCAO");
   const [formAtivo, setFormAtivo] = useState(true);
+  const [formSincronizarAmbos, setFormSincronizarAmbos] = useState(true);
 
   // Modal de Mapeamento
   const [roboMapeamentoModal, setRoboMapeamentoModal] = useState<FranquiaRoboDTO | null>(null);
 
   const roboLances = robos.find((r) => r.tipoRotina === "FRANQUIA_LANCES_AUTOMATICOS");
-  const roboBoletos = robos.find((r) => r.tipoRotina === "FRANQUIA_DOWNLOAD_BOLETOS");
+  const roboBoletos =
+    robos.find(
+      (r) =>
+        r.tipoRotina === "FRANQUIA_DOWNLOAD_BOLETOS" &&
+        !Array.isArray(r.configuracaoTarefas?.cotas_alvo_ids)
+    ) || robos.find((r) => r.tipoRotina === "FRANQUIA_DOWNLOAD_BOLETOS");
 
   function abrirModalConfig(robo: FranquiaRoboDTO) {
     setRoboEditando(robo);
@@ -67,6 +73,7 @@ export function ErpRobosHub({ empresaNome, initialRobos, initialStats, initialHi
     setFormPontoVenda((robo.configuracaoTarefas.ponto_venda as string) || "939509");
     setFormModo(robo.modo);
     setFormAtivo(robo.ativo);
+    setFormSincronizarAmbos(true);
     setMensagemErro(null);
     setMensagemSucesso(null);
   }
@@ -84,24 +91,33 @@ export function ErpRobosHub({ empresaNome, initialRobos, initialStats, initialHi
           ativo: formAtivo,
           modo: formModo,
           pontoVenda: formPontoVenda,
+          aplicarNosDoisRobosDaFranquia: formSincronizarAmbos,
         });
 
         setRobos((prev) =>
-          prev.map((r) =>
-            r.id === roboEditando.id
-              ? {
-                  ...r,
-                  usuarioLogin: formUsuario,
-                  temSenha: Boolean(formSenha || r.temSenha),
-                  ativo: formAtivo,
-                  modo: formModo,
-                  configuracaoTarefas: {
-                    ...r.configuracaoTarefas,
-                    ponto_venda: formPontoVenda,
-                  },
-                }
-              : r
-          )
+          prev.map((r) => {
+            if (r.id === roboEditando.id) {
+              return {
+                ...r,
+                usuarioLogin: formUsuario,
+                temSenha: Boolean(formSenha || r.temSenha),
+                ativo: formAtivo,
+                modo: formModo,
+                configuracaoTarefas: {
+                  ...r.configuracaoTarefas,
+                  ponto_venda: formPontoVenda,
+                },
+              };
+            }
+            if (formSincronizarAmbos && r.portalTipo === "RACON") {
+              return {
+                ...r,
+                usuarioLogin: formUsuario,
+                temSenha: Boolean(formSenha || r.temSenha),
+              };
+            }
+            return r;
+          })
         );
 
         setMensagemSucesso("Configuração do robô salva com sucesso!");
@@ -330,16 +346,31 @@ export function ErpRobosHub({ empresaNome, initialRobos, initialStats, initialHi
               {/* Informações Operacionais */}
               <div className="mt-5 space-y-2.5 rounded-xl bg-slate-50 p-4 text-xs text-slate-700">
                 <div className="flex items-center justify-between">
+                  <span className="font-semibold text-slate-500">Login Racon Configurado:</span>
+                  <span className="font-mono font-bold text-slate-900">
+                    {roboLances?.usuarioLogin || "Pendente (clique em Configurar)"}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="font-semibold text-slate-500">Senha Cifrada:</span>
+                  <span className={`font-bold ${roboLances?.temSenha ? "text-emerald-700" : "text-amber-600"}`}>
+                    {roboLances?.temSenha ? "Salva (AES-256-GCM)" : "Sem senha salva"}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="font-semibold text-slate-500">Filtro de Clientes:</span>
+                  <span className="font-bold text-emerald-700">
+                    Somente clientes não marcados para bloquear
+                    {stats.clientesSemLanceAutomatico ? ` (${stats.clientesSemLanceAutomatico} ignorados)` : ""}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
                   <span className="font-semibold text-slate-500">Destino no ERP:</span>
                   <span className="font-bold text-blue-700">Módulo /erp/lances</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="font-semibold text-slate-500">Periodicidade 1:</span>
-                  <span className="font-bold text-slate-900">Mensal (Novas vendas - todo dia 10)</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="font-semibold text-slate-500">Periodicidade 2:</span>
-                  <span className="font-bold text-slate-900">Semestral (Reavaliação a cada 6 meses)</span>
+                  <span className="font-semibold text-slate-500">Periodicidade:</span>
+                  <span className="font-bold text-slate-900">Mensal + Semestral (6 em 6 meses)</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="font-semibold text-slate-500">Ponto de Venda:</span>
@@ -430,16 +461,31 @@ export function ErpRobosHub({ empresaNome, initialRobos, initialStats, initialHi
               {/* Informações Operacionais */}
               <div className="mt-5 space-y-2.5 rounded-xl bg-slate-50 p-4 text-xs text-slate-700">
                 <div className="flex items-center justify-between">
+                  <span className="font-semibold text-slate-500">Login Racon Configurado:</span>
+                  <span className="font-mono font-bold text-slate-900">
+                    {roboBoletos?.usuarioLogin || "Pendente (clique em Configurar)"}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="font-semibold text-slate-500">Senha Cifrada:</span>
+                  <span className={`font-bold ${roboBoletos?.temSenha ? "text-emerald-700" : "text-amber-600"}`}>
+                    {roboBoletos?.temSenha ? "Salva (AES-256-GCM)" : "Sem senha salva"}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="font-semibold text-slate-500">Filtro de Clientes:</span>
+                  <span className="font-bold text-emerald-700">
+                    Somente clientes não marcados para bloquear
+                    {stats.clientesSemBoletoAutomatico ? ` (${stats.clientesSemBoletoAutomatico} ignorados)` : ""}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
                   <span className="font-semibold text-slate-500">Destino no ERP:</span>
                   <span className="font-bold text-indigo-700">Carteira de Clientes & Financeiro</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="font-semibold text-slate-500">Periodicidade:</span>
                   <span className="font-bold text-slate-900">Mensal (após fechamento da fatura)</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="font-semibold text-slate-500">Armazenamento:</span>
-                  <span className="font-bold text-slate-900">Supabase Storage Seguro</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="font-semibold text-slate-500">Ponto de Venda:</span>
@@ -712,6 +758,19 @@ export function ErpRobosHub({ empresaNome, initialRobos, initialStats, initialHi
                 />
                 <label htmlFor="chkAtivo" className="font-semibold text-slate-700">
                   Robô Ativo para execuções e agendamentos
+                </label>
+              </div>
+
+              <div className="flex items-center gap-2 rounded-lg border border-blue-100 bg-blue-50/60 p-2.5">
+                <input
+                  type="checkbox"
+                  id="chkSincronizarAmbos"
+                  checked={formSincronizarAmbos}
+                  onChange={(e) => setFormSincronizarAmbos(e.target.checked)}
+                  className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                />
+                <label htmlFor="chkSincronizarAmbos" className="font-semibold text-blue-900">
+                  Aplicar este mesmo login e senha nos 2 robôs desta franquia (Lances e Boletos)
                 </label>
               </div>
 
