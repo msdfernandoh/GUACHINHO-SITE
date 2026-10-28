@@ -13,6 +13,7 @@ import { createGrupoLinhaHandlers, useGrupoLinhaCalculo } from "@/components/pub
 import { GrupoEmbutidoSelect, GrupoRecursoProprioCell } from "@/components/public/grupos/grupo-lance-cells";
 import { grupoEmFormacao } from "@/lib/grupos/em-formacao";
 import { descricaoReajusteAnual } from "@/lib/grupos/reajuste-anual";
+import { grupoUsaSeguroNaParcela } from "@/lib/grupos/calculos";
 
 type Props = {
   grupo: GrupoConsorcio;
@@ -45,6 +46,7 @@ export function GrupoMobileCard({ grupo, cotas, modalidades, config, onChange }:
       )
     : cotas;
   const emFormacao = grupoEmFormacao(grupo.data_primeira_assembleia);
+  const temSeguro = grupoUsaSeguroNaParcela(grupo);
 
   return (
     <article
@@ -157,6 +159,41 @@ export function GrupoMobileCard({ grupo, cotas, modalidades, config, onChange }:
           <GrupoPrazoCell grupo={grupo} />
         )}
       </div>
+
+      {resultado.ativo ? (
+        <div className="space-y-3 border-t border-zinc-800 px-4 py-3">
+          <div className="flex items-center justify-between gap-3 text-sm">
+            <span className="text-zinc-400">1ª parcela</span>
+            <strong className="text-amber-300">{formatCurrency(resultado.primeiraParcela)}</strong>
+          </div>
+          {temSeguro ? (
+            <fieldset>
+              <legend className="mb-2 text-xs font-semibold text-zinc-400">Seguro na 1ª parcela</legend>
+              <div className="grid grid-cols-2 gap-2">
+                {[true, false].map((usaSeguro) => (
+                  <button
+                    key={String(usaSeguro)}
+                    type="button"
+                    aria-pressed={config.usaSeguro === usaSeguro}
+                    className={cn(
+                      "min-h-11 rounded-lg border px-3 py-2 text-sm font-semibold",
+                      config.usaSeguro === usaSeguro
+                        ? "border-amber-500 bg-amber-500 text-zinc-950"
+                        : "border-zinc-600 text-zinc-300",
+                    )}
+                    onClick={() => handlers.patch({ usaSeguro })}
+                  >
+                    {usaSeguro ? "Com seguro" : "Sem seguro"}
+                  </button>
+                ))}
+              </div>
+              <p className="mt-2 text-[11px] text-zinc-500">
+                Após a contemplação, o seguro é obrigatório e está incluído na parcela pós-contemplação.
+              </p>
+            </fieldset>
+          ) : null}
+        </div>
+      ) : null}
 
       <div className="border-t border-zinc-800 px-4 py-2">
         <button

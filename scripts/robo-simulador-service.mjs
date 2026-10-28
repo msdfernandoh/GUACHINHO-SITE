@@ -1,4 +1,5 @@
 import path from 'node:path'
+import { extrairPlanosSimulador, agruparPlanosSimulador, resolverGrupoSimulador } from './robo-simulador-planos.mjs'
 
 /**
  * Módulo de automação do Robô 3: Plataforma de Vendas / Simulador Racon
@@ -71,13 +72,13 @@ export async function executarRobo3Simulador({ page, config, admin, log, screens
   const raconAdminId = config.administradora_id || 'c5f8ecb4-cb5a-5014-b567-50484719b404'
   const { data: dbGrupos } = await admin
     .from('grupos_consorcio')
-    .select('id, codigo_grupo, modalidade')
+    .select('id, codigo_grupo, modalidade, tipo_administradora_id')
     .eq('administradora_id', raconAdminId)
 
   const mapDbGrupos = new Map()
   for (const dbg of dbGrupos || []) {
     const num = dbg.codigo_grupo.replace(/\D/g, '').replace(/^0+/, '')
-    if (num) mapDbGrupos.set(num, dbg)
+    if (num) mapDbGrupos.set(num, [...(mapDbGrupos.get(num) || []), dbg])
   }
 
   // 3. Produtos a percorrer no Simulador
@@ -167,12 +168,29 @@ export async function executarRobo3Simulador({ page, config, admin, log, screens
           await aguardarSkeletons()
 
           // Localiza ou cria o grupo no banco Supabase
-          let dbGrupo = mapDbGrupos.get(numGrupo)
+
           const isImovelProd = produto.toLowerCase().includes('imóv') || produto.toLowerCase().includes('imov')
           const tipoIdProd = isImovelProd
             ? '57295700-5e68-498c-8882-2ef4ccc8c08d'
             : '877a793f-21b3-4ea8-b3c3-b1e56dc216c9'
 
+          let dbGrupo = resolverGrupoSimulador(mapDbGrupos.get(numGrupo) || [], tipoIdProd)
+
+          // Rola suavemente até o final da página para disparar lazy-load de todos os cards de cotas
+          await page.evaluate(async () => {
+            const distance = 400
+            for (let i = 0; i < 20; i++) {
+              window.scrollBy(0, distance)
+              await new Promise(r => setTimeout(r, 150))
+            }
+            window.scrollTo(0, 0)
+          }).catch(() => {})
+          await page.waitForTimeout(800)
+
+          // Falha fechada: validar todos os cartões antes de qualquer gravação.
+          const planosList = await page.evaluate(extrairPlanosSimulador, { grupoEsperado: numGrupo })
+          const porCredito = agruparPlanosSimulador(planosList)
+          log(`[Grupo ${numGrupo} | ${modUpper}] Planos validados: ${planosList.length}`)
           if (!dbGrupo) {
             log(`Grupo ${numGrupo} não encontrado no banco. Criando novo grupo global...`)
             const { data: newGrupo, error: errNewG } = await admin
@@ -191,12 +209,12 @@ export async function executarRobo3Simulador({ page, config, admin, log, screens
                 status: 'Disponível',
                 ativo: true,
               })
-              .select('id, codigo_grupo, modalidade')
+              .select('id, codigo_grupo, modalidade, tipo_administradora_id')
               .single()
 
             if (!errNewG && newGrupo) {
               dbGrupo = newGrupo
-              mapDbGrupos.set(numGrupo, newGrupo)
+              mapDbGrupos.set(numGrupo, [...(mapDbGrupos.get(numGrupo) || []), newGrupo])
               totalGruposNovos++
             }
           }
@@ -204,76 +222,6 @@ export async function executarRobo3Simulador({ page, config, admin, log, screens
           if (!dbGrupo) {
             log(`Aviso: Não foi possível obter ID do grupo ${numGrupo}. Pulando...`)
             continue
-          }
-
-          // Rola suavemente até o final da página para disparar lazy-load de todos os cards de cotas
-          await page.evaluate(async () => {
-            const distance = 400
-            for (let i = 0; i < 20; i++) {
-              window.scrollBy(0, distance)
-              await new Promise(r => setTimeout(r, 150))
-            }
-            window.scrollTo(0, 0)
-          }).catch(() => {})
-          await page.waitForTimeout(800)
-
-          // Extrai os planos listados
-          const planosList = await page.evaluate(() => {
-            const items = []
-            const planCards = Array.from(document.querySelectorAll('div, article')).filter(el => {
-              const t = el.innerText || ''
-              return t.includes('Crédito R$') && t.includes('Simular') && !t.includes('Mostrar planos')
-            })
-
-            for (const pc of planCards) {
-              const text = pc.innerText || ''
-              const credMatch = text.match(/Cr[eé]dito\s+R\$\s*([\d.,]+)/i)
-              const parcMatch = text.match(/R\$\s*([\d.,]+)\s*\/\s*m[eê]s/i) || text.match(/Parcela[\s\S]*?R\$\s*([\d.,]+)\s*\/\s*m[eê]s/i)
-              const taxaAdmMatch = text.match(/Taxa\s+administrativa[\s\S]*?([\d.,]+)%/i)
-              const fundoMatch = text.match(/Fundo\s+reserva[\s\S]*?([\d.,]+)%/i)
-              const isReduzida70 = text.includes('Reduzida 70%') || text.includes('70%')
-              const isReduzida60 = text.includes('Reduzida 60%') || text.includes('60%')
-              const isReduzida50 = text.includes('Reduzida 50%') || text.includes('50%')
-
-              if (credMatch && parcMatch) {
-                const credNum = parseFloat(credMatch[1].replace(/\./g, '').replace(',', '.'))
-                const parcNum = parseFloat(parcMatch[1].replace(/\./g, '').replace(',', '.'))
-                if (parcNum > 0 && credNum > 0 && parcNum < credNum * 0.25) {
-                  items.push({
-                    creditoStr: credMatch[1],
-                    parcelaStr: parcMatch[1],
-                    taxaAdm: taxaAdmMatch ? parseFloat(taxaAdmMatch[1].replace(',', '.')) : 12,
-                    fundoReserva: fundoMatch ? parseFloat(fundoMatch[1].replace(',', '.')) : 0.5,
-                    tipoReducao: isReduzida70 ? '70' : isReduzida60 ? '60' : isReduzida50 ? '50' : 'INTEGRAL',
-                  })
-                }
-              }
-            }
-            return items
-          }).catch(() => [])
-
-          log(`[Grupo ${numGrupo} | ${modUpper}] Planos extraídos: ${planosList.length}`)
-
-          // Agrupa por crédito para unir integral e reduções flexíveis
-          const porCredito = new Map()
-          for (const pl of planosList) {
-            const cred = parseFloat(pl.creditoStr.replace(/\./g, '').replace(',', '.'))
-            const parc = parseFloat(pl.parcelaStr.replace(/\./g, '').replace(',', '.'))
-            if (!porCredito.has(cred)) {
-              porCredito.set(cred, {
-                credito: cred,
-                taxaAdm: pl.taxaAdm,
-                fundoReserva: pl.fundoReserva,
-                parcelaIntegral: pl.tipoReducao === 'INTEGRAL' ? parc : 0,
-                parcelasReduzidas: {},
-              })
-            }
-            const entry = porCredito.get(cred)
-            if (pl.tipoReducao === 'INTEGRAL') {
-              entry.parcelaIntegral = parc
-            } else {
-              entry.parcelasReduzidas[pl.tipoReducao] = parc
-            }
           }
 
           // Clica em "Simular" no primeiro plano para capturar características técnicas do grupo
@@ -335,8 +283,8 @@ export async function executarRobo3Simulador({ page, config, admin, log, screens
             updated_at: new Date().toISOString(),
           }
           const firstCota = porCredito.values().next().value
-          if (firstCota?.taxaAdm) updateGrupoPayload.taxa_administrativa_percentual = firstCota.taxaAdm
-          if (firstCota?.fundoReserva) updateGrupoPayload.fundo_reserva_percentual = firstCota.fundoReserva
+          if (firstCota?.taxaAdm != null) updateGrupoPayload.taxa_administrativa_percentual = firstCota.taxaAdm
+          if (firstCota?.fundoReserva != null) updateGrupoPayload.fundo_reserva_percentual = firstCota.fundoReserva
 
           if (dadosSimulacaoTecnica) {
             if (dadosSimulacaoTecnica.parcelaMinima) updateGrupoPayload.parcela_minima = dadosSimulacaoTecnica.parcelaMinima

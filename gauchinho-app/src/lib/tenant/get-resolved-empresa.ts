@@ -1,5 +1,6 @@
 import "server-only";
 
+import { cache } from "react";
 import { headers } from "next/headers";
 import { getEmpresaBrandingPublic, type EmpresaBranding } from "./branding";
 import {
@@ -27,7 +28,9 @@ export type ResolvedTenant = {
  * NÃO faz fallback genérico para a Gauchinho quando o header está ausente —
  * isso evitava vazamento e mascarava falhas de resolução.
  */
-export async function getResolvedTenant(): Promise<ResolvedTenant | null> {
+// Deduplica layout, metadata e página apenas dentro do mesmo render RSC.
+// Não mantém identidade ou permissões em cache entre requisições/domínios.
+export const getResolvedTenant = cache(async function getResolvedTenant(): Promise<ResolvedTenant | null> {
   const headerList = await headers();
   const empresaId = headerList.get(TENANT_EMPRESA_ID_HEADER);
   const slug = headerList.get(TENANT_SLUG_HEADER);
@@ -92,7 +95,7 @@ export async function getResolvedTenant(): Promise<ResolvedTenant | null> {
     allowsLegacyOperationalData: tenantAllowsLegacyOperationalData(operationalEnabled),
     parceiroSiteId: parceiroSiteId || null,
   };
-}
+});
 
 /** Atalho tipado: true somente para slug gauchinho sem parceiro ativo. */
 export function isGauchinhoTenant(tenant: { slug: string; parceiroSiteId?: string | null } | null | undefined): boolean {

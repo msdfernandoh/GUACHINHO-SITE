@@ -1,0 +1,217 @@
+[
+  {
+    "cotas_ativas": 322,
+    "grupos": 28,
+    "combinacoes_grupo_modalidade": 50,
+    "menores_com_inversao": [
+      {
+        "grupo": "1041 RODOVIÁRIO",
+        "cota_id": "586e1155-7a93-41b4-8d33-6104eb1bd1b5",
+        "credito": 218603.45,
+        "proxima": 4113.51,
+        "modalidade": "DILUIDA",
+        "reduzida_60": 5027.88
+      },
+      {
+        "grupo": "1041 RODOVIÁRIO",
+        "cota_id": "0f369871-3fd8-425b-9fca-34c897e520c7",
+        "credito": 218603.45,
+        "proxima": 2111.71,
+        "modalidade": "PRORROGADA",
+        "reduzida_60": 5027.88
+      },
+      {
+        "grupo": "1071 VEÍCULO",
+        "cota_id": "de1e5c58-cd66-4c04-bd03-6f317fdd3947",
+        "credito": 200000,
+        "proxima": 2913.46,
+        "modalidade": "DILUIDA",
+        "reduzida_60": 4600
+      },
+      {
+        "grupo": "1071 VEÍCULO",
+        "cota_id": "f2d86891-1903-4e42-9575-0202845f48a9",
+        "credito": 200000,
+        "proxima": 1518,
+        "modalidade": "PRORROGADA",
+        "reduzida_60": 4600
+      },
+      {
+        "grupo": "1081 VEÍCULO",
+        "cota_id": "5c555ec7-2749-46bb-bf14-17c6c6950207",
+        "credito": 500000,
+        "proxima": 3749.85,
+        "modalidade": "DILUIDA",
+        "reduzida_60": 6562.5
+      },
+      {
+        "grupo": "1081 VEÍCULO",
+        "cota_id": "30d49760-ea16-42d5-9331-cbdb61de8337",
+        "credito": 500000,
+        "proxima": 3093.75,
+        "modalidade": "PRORROGADA",
+        "reduzida_60": 6562.5
+      },
+      {
+        "grupo": "1193 IMÓVEL",
+        "cota_id": "e035e202-67e3-404e-b14d-d7c18a8cc376",
+        "credito": 152719.38,
+        "proxima": 673.32,
+        "modalidade": "PRORROGADA",
+        "reduzida_60": 1267.63
+      },
+      {
+        "grupo": "1253",
+        "cota_id": "7628ff29-f348-4537-a96c-4ab6491d6bd4",
+        "credito": 264356,
+        "proxima": 1478.24,
+        "modalidade": "PRORROGADA",
+        "reduzida_60": 2064.62
+      },
+      {
+        "grupo": "1270 IMÓVEL",
+        "cota_id": "8ff94efd-4454-41d9-ad7a-fbd9cabf6601",
+        "credito": 368722.84,
+        "proxima": 2194.64,
+        "modalidade": "PRORROGADA",
+        "reduzida_60": 3978.09
+      },
+      {
+        "grupo": "1273 IMÓVEL",
+        "cota_id": "649df287-5650-41fa-8ad5-91f56475ab5f",
+        "credito": 276179.38,
+        "proxima": 2967.95,
+        "modalidade": "DILUIDA",
+        "reduzida_60": 3424.63
+      },
+      {
+        "grupo": "1273 IMÓVEL",
+        "cota_id": "d97f4c28-0202-4ff7-a513-9a844c10fd39",
+        "credito": 276179.38,
+        "proxima": 1078.76,
+        "modalidade": "PRORROGADA",
+        "reduzida_60": 3424.63
+      },
+      {
+        "grupo": "1283 IMÓVEL",
+        "cota_id": "8eea764f-877d-47ed-b3a9-199687cfb47b",
+        "credito": 87808.1,
+        "proxima": 821.29,
+        "modalidade": "DILUIDA",
+        "reduzida_60": 1045.26
+      },
+      {
+        "grupo": "1283 IMÓVEL",
+        "cota_id": "9f3dd742-73dc-4eab-a9ea-be2df6b73d3d",
+        "credito": 87808.1,
+        "proxima": 522.7,
+        "modalidade": "PRORROGADA",
+        "reduzida_60": 1045.26
+      },
+      {
+        "grupo": "1453 IMÓVEL",
+        "cota_id": "4c04f081-fee6-467a-8bcd-a840877313dd",
+        "credito": 127200,
+        "proxima": 970.81,
+        "modalidade": "DILUIDA",
+        "reduzida_60": 1615.44
+      },
+      {
+        "grupo": "1453 IMÓVEL",
+        "cota_id": "2afb987a-2ece-4604-8c30-7deae1bc8e41",
+        "credito": 127200,
+        "proxima": 565.4,
+        "modalidade": "PRORROGADA",
+        "reduzida_60": 1615.44
+      },
+      {
+        "grupo": "1463 IMÓVEL",
+        "cota_id": "0d7ce692-2732-4cd3-af94-0224fc289551",
+        "credito": 506386.58,
+        "proxima": 2242.33,
+        "modalidade": "DILUIDA",
+        "reduzida_60": 3634.47
+      },
+      {
+        "grupo": "1473 IMÓVEL",
+        "cota_id": "39de0f39-c23a-4b1f-bdcb-a48a9c0b763f",
+        "credito": 300000,
+        "proxima": 1446.72,
+        "modalidade": "DILUIDA",
+        "reduzida_60": 2577.15
+      },
+      {
+        "grupo": "1473 IMÓVEL",
+        "cota_id": "9e6a5418-9af4-4afa-bf23-803c8c2e2b36",
+        "credito": 300000,
+        "proxima": 1116.82,
+        "modalidade": "PRORROGADA",
+        "reduzida_60": 2577.15
+      },
+      {
+        "grupo": "1503 IMÓVEL",
+        "cota_id": "77683c36-7074-42f1-a54f-11d4209b35b5",
+        "credito": 771750,
+        "proxima": 3480.02,
+        "modalidade": "DILUIDA",
+        "reduzida_60": 6063.75
+      },
+      {
+        "grupo": "1533 IMÓVEL",
+        "cota_id": "49bc99db-a6dd-44ea-b60d-fe39dfd21b54",
+        "credito": 1060000,
+        "proxima": 5358.72,
+        "modalidade": "DILUIDA",
+        "reduzida_60": 8962.83
+      },
+      {
+        "grupo": "1543 IMÓVEL",
+        "cota_id": "e1cd96a8-f328-4d8d-bce2-c2782768c436",
+        "credito": 750000,
+        "proxima": 2765.28,
+        "modalidade": "DILUIDA",
+        "reduzida_60": 5682
+      },
+      {
+        "grupo": "4088 VEÍCULO",
+        "cota_id": "d30ba6ad-617b-46f6-a86a-4ee06c588d8a",
+        "credito": 111542.58,
+        "proxima": 1084.55,
+        "modalidade": "DILUIDA",
+        "reduzida_60": 1518.38
+      },
+      {
+        "grupo": "5388 VEÍCULO",
+        "cota_id": "d0ad99b6-1af6-4ded-94b1-90cdcb804ad3",
+        "credito": 36561.63,
+        "proxima": 984.53,
+        "modalidade": "DILUIDA",
+        "reduzida_60": 1178.09
+      },
+      {
+        "grupo": "5388 VEÍCULO",
+        "cota_id": "e6ea6e70-6465-4d82-8577-aeb5ff5452b9",
+        "credito": 36561.63,
+        "proxima": 403.92,
+        "modalidade": "PRORROGADA",
+        "reduzida_60": 1178.09
+      },
+      {
+        "grupo": "5588 VEÍCULO",
+        "cota_id": "5ada4e49-5017-42ea-b14e-b903be8f25af",
+        "credito": 100000,
+        "proxima": 1085.45,
+        "modalidade": "DILUIDA",
+        "reduzida_60": 1740.06
+      },
+      {
+        "grupo": "5588 VEÍCULO",
+        "cota_id": "4077be34-195c-495a-907d-983aa0123801",
+        "credito": 100000,
+        "proxima": 638,
+        "modalidade": "PRORROGADA",
+        "reduzida_60": 1740.06
+      }
+    ]
+  }
+]

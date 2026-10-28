@@ -4303,3 +4303,41 @@ históricas registrado em CREDITO-SOCIOS-REPASSE-RECEBIDO-2026-10-20.md.
 
 Relatório de Fase:
 `docs/relatorios-fases/CLIENTES-BLOQUEIO-AUTOMACAO-E-ROBOS-RACON-SINOP-2026-10-27.md`.
+
+### Desempenho Racon e seguro no mobile (28/10/2026)
+Análise das homes e de Grupos em Sinop/Sorriso confirmou HTTP 200 e múltiplas
+antecipações de rotas. Ajustes locais deduplicam a identidade apenas por render
+RSC, paralelizam leituras independentes de Grupos e acrescentam loading público.
+Cartão mobile oferece Com seguro/Sem seguro e primeira parcela, preservando o
+motor e o seguro obrigatório após contemplação. Sem migration, escrita operacional
+ou publicação. TypeScript, build, lint e 146 testes aprovados; smoke mobile local
+validou troca do seguro e atualização da primeira parcela. Evidências no relatório:
+`docs/relatorios-fases/DESEMPENHO-RACON-E-SEGURO-MOBILE-2026-10-28.md`.
+
+### Diagnóstico de menores cotas e parcelas (28/10/2026)
+Imagens do 5388 mostram Soma coerente e inversão da primeira parcela na menor
+cota. Reprodução isolada comprovou contaminação do extrator do robô por
+contêineres com vários planos e classificação por percentuais soltos. O motor
+prioriza parcelas persistidas e o guard de 20% não detecta esse desvio.
+Sem alteração da aplicação ou de dados; causa histórica e extensão remota
+pendentes porque a revisão automática da consulta falhou por limite de uso.
+Relatório: `docs/relatorios-fases/DIAGNOSTICO-MENORES-COTAS-PARCELAS-2026-10-28.md`.
+
+### Correção local do extrator de planos (28/10/2026)
+Robô do simulador valida cartões individuais visíveis do grupo, exige modalidade
+explícita e rejeita parcelas/taxas conflitantes antes de gravar. Taxas ausentes
+não são presumidas; grupos de mesmo número são resolvidos por tipo canônico.
+Doze testes aprovados, incluindo serviço sem gravações diante de ambiguidade.
+Sem execução remota, migration ou publicação. Reparação dos valores existentes
+e homologação do portal pendentes: conector SQL indisponível. Relatório:
+`docs/relatorios-fases/CORRECAO-EXTRATOR-PLANOS-MENORES-COTAS-2026-10-28.md`.
+
+### Conferência final Racon e envio autorizado à main (28/10/2026)
+Conector restabelecido: SELECT no catálogo canônico encontrou 322 cotas/28 grupos,
+50 combinações de modalidade e 26 inversões nas menores cotas de 17 grupos.
+5388 confirmou parcela reduzida persistida R$ 1.178,09 na cota R$ 36.561,63,
+explicando a imagem com seguro. Sem alteração remota dos dados. Correções locais
+com 294 testes de grupos/tenant, 12 do robô, build/TypeScript e lint aprovados.
+Envio à main autorizado; homologação de produção e reparação dos valores
+existentes por tabela oficial permanecem pendentes. Relatório:
+`docs/relatorios-fases/CONFERENCIA-ENVIO-MAIN-RACON-2026-10-28.md`.

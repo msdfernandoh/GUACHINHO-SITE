@@ -39,18 +39,20 @@ export default async function GruposPublicPage({
 }: {
   searchParams: Promise<Record<string, string | undefined>>;
 }) {
-  const sp = await searchParams;
-  const aggregates = await fetchPublicGruposAggregates();
-  const usuario = await getUsuarioNegocio();
+  const [sp, aggregates, usuario, tenantContext, leadsConfig, empresaId] = await Promise.all([
+    searchParams,
+    fetchPublicGruposAggregates(),
+    getUsuarioNegocio(),
+    getCurrentTenantContext(),
+    getConfigJson("leads", DEFAULT_LEADS),
+    getCatalogEmpresaIdFromHeaders(),
+  ]);
   const staff = isStaff(usuario?.perfil);
-  const tenantContext = await getCurrentTenantContext();
-  const leadsConfig = await getConfigJson("leads", DEFAULT_LEADS);
   const canManageSorteios = canManageGruposSorteios(
     usuario?.perfil,
     leadsConfig.srdPodeEditarGrupos,
   );
 
-  const empresaId = await getCatalogEmpresaIdFromHeaders();
   // Mesmo vínculo e permissão exigidos pela API, independentemente do modelo.
   const isConsultor = Boolean(usuario && empresaId &&
     tenantContext.empresaAtiva?.id === empresaId &&
