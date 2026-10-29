@@ -4376,5 +4376,8 @@ de proposta anterior. Lista interna exige sessão/permissão/empresa, consolida
 papéis da mesma identidade e exclui usuários/participantes inativos. Sem fusão
 ou exclusão de cadastros. 92 testes, TypeScript, lint e build aprovados; Chrome
 local validou modal, rascunho sem vendedor e lista protegida por 401 no host
-oficial. Homologação dos domínios parceiros publicados ainda não realizada.
+oficial. Publicado no commit de9ec9e2, deployment dpl_7Y8rcdkwpjPKa9LHsUfTu35yQAbF
+READY. Smoke público aprovado em Sinop e Sorriso: modal sem lista, início 200,
+rascunho sem vendedor, lista protegida por 401 e zero erros JavaScript. Nenhum
+cadastro de cliente ou proposta real foi criado na homologação.
 Relatório: `docs/relatorios-fases/GRUPOS-CONTRATAR-SEM-LISTA-USUARIOS-2026-10-29.md`.
