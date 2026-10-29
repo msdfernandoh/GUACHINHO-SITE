@@ -4394,3 +4394,11 @@ Migration aditiva 20261029211116 aplicada e registrada no projeto vinculado:
 com contato por evento nos três domínios públicos. Nenhum telefone real foi
 alterado para teste. Relatório:
 `docs/relatorios-fases/EVENTO-EXTERNO-WHATSAPP-POR-EVENTO-2026-10-29.md`.
+
+### Dashboard: leads recebidos dia/semana/mês (29/10/2026)
+Primeiro card de /admin exibe três contagens por created_at: Dia, Semana e Mês,
+independentes do status atual. Calendário America/Cuiaba, semana segunda-feira,
+mês dia 1 e teto no instante da consulta. Consultas head/count em paralelo com
+escopo de empresa e restrição de responsável existentes. Sem migration ou
+escrita em leads. Testes de datas, TypeScript e lint aprovados. Relatório:
+`docs/relatorios-fases/DASHBOARD-LEADS-DIA-SEMANA-MES-2026-10-29.md`.

@@ -7,9 +7,13 @@ import {
   loadLeadAccessScope,
 } from "@/lib/crm/lead-access";
 import type { LeadListRow } from "@/lib/crm/types";
+import { periodosLeadsDashboard } from "@/lib/crm/dashboard-periodos";
 
 export type DashboardStats = {
   leadsNovos: number;
+  leadsRecebidosDia: number;
+  leadsRecebidosSemana: number;
+  leadsRecebidosMes: number;
   leadsEmAtendimento: number;
   leadsRetornoAgendado: number;
   leadsFechados: number;
@@ -26,6 +30,14 @@ export async function fetchDashboardStats(): Promise<DashboardStats> {
   const srdId = usuario?.leads_apenas_proprios ? usuario.id : null;
   const empresaId = empresaAtiva.id;
   const isGauchinho = empresaAtiva.slug === GAUCHINHO_SLUG;
+  const periodos = periodosLeadsDashboard();
+  const contarRecebidos = (desde: string) => {
+    let query = supabase.from("leads").select("id", { count: "exact", head: true })
+      .gte("created_at", desde).lte("created_at", periodos.ate);
+    query = isGauchinho ? query.or(`empresa_id.eq.${empresaId},empresa_id.is.null`) : query.eq("empresa_id", empresaId);
+    if (srdId) query = query.eq("srd_responsavel_id", srdId);
+    return query;
+  };
   const gruposAutorizados = await listGruposAutorizadosForEmpresa(empresaId, { incluirInativos: true });
   const gruposAtivosIds = gruposAutorizados
     .filter((grupo) => grupo.ativo && grupo.status !== "Inativo")
@@ -40,6 +52,9 @@ export async function fetchDashboardStats(): Promise<DashboardStats> {
     propostas,
     grupos,
     cotas,
+    recebidosDia,
+    recebidosSemana,
+    recebidosMes,
   ] = await Promise.all([
     (() => {
       let q = supabase.from("leads").select("id", { count: "exact", head: true }).eq("status", "Novo");
@@ -95,6 +110,9 @@ export async function fetchDashboardStats(): Promise<DashboardStats> {
       .in("grupo_id", gruposAtivosIds)
       .eq("ativo", true)
       .in("status", ["Disponível", "Últimas"]) : Promise.resolve({ count: 0 }),
+    contarRecebidos(periodos.dia),
+    contarRecebidos(periodos.semana),
+    contarRecebidos(periodos.mes),
   ]);
 
   const valorTotal =
@@ -105,6 +123,9 @@ export async function fetchDashboardStats(): Promise<DashboardStats> {
 
   return {
     leadsNovos: leadsNovos.count ?? 0,
+    leadsRecebidosDia: recebidosDia.count ?? 0,
+    leadsRecebidosSemana: recebidosSemana.count ?? 0,
+    leadsRecebidosMes: recebidosMes.count ?? 0,
     leadsEmAtendimento: leadsEmAtendimento.count ?? 0,
     leadsRetornoAgendado: leadsRetorno.count ?? 0,
     leadsFechados: leadsFechados.count ?? 0,

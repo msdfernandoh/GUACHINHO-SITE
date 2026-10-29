@@ -10,7 +10,6 @@ import { formatCurrency, formatDate, formatDateTime } from "@/lib/utils/format";
 import { requireStaffAdmin } from "@/lib/auth/require-staff-admin";
 
 const cards = [
-  { key: "leadsNovos", label: "Leads novos" },
   { key: "leadsEmAtendimento", label: "Em atendimento" },
   { key: "leadsRetornoAgendado", label: "Retorno agendado" },
   { key: "leadsFechados", label: "Leads fechados" },
@@ -41,6 +40,21 @@ export default async function AdminDashboardPage() {
         </p>
       </div>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <Card>
+          <p className="text-xs font-medium uppercase text-zinc-500">Leads novos — dia / semana / mês</p>
+          <div className="mt-2 grid grid-cols-3 gap-2" title="Leads recebidos por data de cadastro. Semana a partir de segunda-feira, horário de Cuiabá.">
+            {[
+              { label: "Dia", valor: stats.leadsRecebidosDia },
+              { label: "Semana", valor: stats.leadsRecebidosSemana },
+              { label: "Mês", valor: stats.leadsRecebidosMes },
+            ].map(({ label, valor }) => (
+              <div key={label}>
+                <p className="text-2xl font-bold tabular-nums">{valor.toLocaleString("pt-BR")}</p>
+                <p className="text-xs text-zinc-500">{label}</p>
+              </div>
+            ))}
+          </div>
+        </Card>
         {cards.map((c) => {
           const raw = stats[c.key];
           const value =
