@@ -25,12 +25,14 @@ import {
 } from "@/lib/eventos-sorteio/checkin-conversacional-types";
 import { useTenantBrand } from "@/components/tenant/tenant-brand-context";
 import { formatWhatsappBrInput, digitsOnlyPhone } from "@/lib/utils/format";
+import { resolverWhatsappEquipeEvento } from "@/lib/eventos-sorteio/whatsapp-equipe";
 
 type EventoBrandProps = {
   id: string;
   nome: string;
   slug: string;
   tipoCheckin?: "evento" | "externo" | null;
+  whatsappEquipe?: string | null;
   corPrimaria?: string | null;
   corSecundaria?: string | null;
   logoPersonalizadoUrl?: string | null;
@@ -63,7 +65,7 @@ export function EventoCheckinConversacional({
   const [proximoPasso, setProximoPasso] = useState<ProximoPassoExternoQualificacao | "">("");
 
   const isExterno = evento.tipoCheckin === "externo";
-  const waFullPhone = "5566999126120";
+  const waFullPhone = resolverWhatsappEquipeEvento(evento.whatsappEquipe);
 
   const [codigoSorte, setCodigoSorte] = useState<string>("");
   const [jaEstavaCadastrado, setJaEstavaCadastrado] = useState(false);

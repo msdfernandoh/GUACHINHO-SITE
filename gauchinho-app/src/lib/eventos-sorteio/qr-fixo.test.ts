@@ -42,6 +42,7 @@ vi.mock("@/lib/supabase/admin", () => ({
 vi.mock("./public", () => ({
   fetchPublicSorteioByEventoId: async (id: string) => state.falhaSorteio ? null : ({
     eventoId: id, npsPerguntas: [], checkinInterativoAtivo: true,
+    whatsappEquipe: state.eventos.find(evento => evento.id === id)?.whatsapp_equipe ?? null,
   }),
 }));
 
@@ -87,6 +88,16 @@ describe("QR fixo por modalidade", () => {
     const result = await resolveQrPublicBySlug("externo");
     expect(result?.mode === "evento" && result.sorteio.eventoId).toBe("novo-externo");
     expect(result?.qr.slug).toBe("externo");
+  });
+
+  it("o mesmo QR usa o telefone da edição ativa, sem herdar o contato anterior", async () => {
+    state.eventos.find(e => e.id === "externo-atual")!.whatsapp_equipe = "66999991234";
+    const primeiro = await resolveQrPublicBySlug("externo");
+    expect(primeiro?.mode === "evento" && primeiro.sorteio.whatsappEquipe).toBe("66999991234");
+    state.eventos.push({ id: "outra-edicao", tipo_checkin: "externo", ativo: true, updated_at: "2026-10-29", whatsapp_equipe: "11988887777" });
+    const segundo = await resolveQrPublicBySlug("externo");
+    expect(segundo?.qr.slug).toBe("externo");
+    expect(segundo?.mode === "evento" && segundo.sorteio.whatsappEquipe).toBe("11988887777");
   });
 
   it("reutiliza network para a palestra ativa mais recente sem vínculo manual", async () => {

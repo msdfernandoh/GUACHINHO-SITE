@@ -80,6 +80,7 @@ export type PublicSorteioView = {
   status: SorteioStatus;
   npsPerguntas: NpsPerguntaPublica[];
   tipoCheckin?: "evento" | "externo" | null;
+  whatsappEquipe?: string | null;
   checkinInterativoAtivo?: boolean;
   checkinModo?: string | null;
   checkinAberturaAntecipadaMinutos?: number | null;

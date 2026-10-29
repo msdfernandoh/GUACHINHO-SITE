@@ -17,6 +17,8 @@ import {
   formatarExemploPrefixo,
 } from "@/lib/eventos-sorteio/modelos-identidade";
 import { EventoImageField } from "./evento-image-field";
+import { formatWhatsappBrInput } from "@/lib/utils/format";
+import { normalizarWhatsappEquipeEvento } from "@/lib/eventos-sorteio/whatsapp-equipe";
 
 import {
   eventoIsoToDatetimeLocal,
@@ -71,6 +73,7 @@ export function EventoAdminForm({
   const dataLocal = eventoIsoToDatetimeLocal(evento?.data_evento);
 
   const [nome, setNome] = useState(evento?.nome ?? "");
+  const [whatsappEquipe, setWhatsappEquipe] = useState(() => formatWhatsappBrInput(evento?.whatsapp_equipe ?? ""));
   const [slug, setSlug] = useState(evento?.slug ?? "");
   const [local, setLocal] = useState(evento?.local ?? "");
   const [cidade, setCidade] = useState(evento?.cidade ?? "");
@@ -152,6 +155,7 @@ export function EventoAdminForm({
       setCheckinInterativo(Boolean(evento.checkin_interativo_ativo));
       setTipoCheckin(evento.tipo_checkin === "externo" ? "externo" : "evento");
       setRecorrenciaAtiva(Boolean(evento.recorrencia_ativa));
+      setWhatsappEquipe(formatWhatsappBrInput(evento.whatsapp_equipe ?? ""));
       const dl = eventoIsoToDatetimeLocal(evento.data_evento);
       setDataEventoInput(dl);
     }
@@ -163,6 +167,7 @@ export function EventoAdminForm({
     evento?.checkin_abertura_antecipada_minutos,
     evento?.checkin_interativo_ativo,
     evento?.recorrencia_ativa,
+    evento?.whatsapp_equipe,
   ]);
 
   useEffect(() => {
@@ -269,6 +274,26 @@ export function EventoAdminForm({
     <form action={onSubmit} className="max-w-2xl space-y-6">
       {evento?.id ? (
         <input type="hidden" name="evento_id" value={evento.id} />
+      ) : null}
+
+      {tipoCheckin === "externo" ? (
+        <FormSection title="WhatsApp da equipe neste evento">
+          <div>
+            <Label htmlFor="evento-whatsapp-equipe">Telefone do botão final do check-in</Label>
+            <Input id="evento-whatsapp-equipe" name="whatsapp_equipe" type="tel" inputMode="tel"
+              autoComplete="tel-national" placeholder="(66) 99999-9999" value={whatsappEquipe}
+              onChange={(e) => {
+                const raw = e.target.value;
+                let numero = raw;
+                try { numero = normalizarWhatsappEquipeEvento(raw) ?? ""; } catch { /* Permite digitação parcial. */ }
+                setWhatsappEquipe(formatWhatsappBrInput(numero));
+              }} aria-describedby="evento-whatsapp-equipe-ajuda" />
+            <p id="evento-whatsapp-equipe-ajuda" className="mt-1 text-xs text-zinc-500">
+              Usado em “Falar com nossa equipe” ao final deste evento. O QR Code único permanece igual.
+              Deixe vazio para usar o contato padrão: (66) 99912-6120.
+            </p>
+          </div>
+        </FormSection>
       ) : null}
 
       {formError ? (

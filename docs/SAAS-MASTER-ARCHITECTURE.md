@@ -4381,3 +4381,13 @@ READY. Smoke público aprovado em Sinop e Sorriso: modal sem lista, início 200,
 rascunho sem vendedor, lista protegida por 401 e zero erros JavaScript. Nenhum
 cadastro de cliente ou proposta real foi criado na homologação.
 Relatório: `docs/relatorios-fases/GRUPOS-CONTRATAR-SEM-LISTA-USUARIOS-2026-10-29.md`.
+
+### Evento externo: WhatsApp da equipe por evento (29/10/2026)
+Campo opcional mascarado no topo do cadastro externo persiste em
+eventos.whatsapp_equipe; QR único e link direto carregam o telefone do evento
+resolvido para o botão final. Vazio mantém contato anterior (66) 99912-6120.
+QR permanente preservado; não confundir ausência de contato com desativação.
+Migration aditiva 20261029211116 aplicada e registrada no projeto vinculado:
+13 eventos preservados, sem alterar telefones, participantes ou clientes.
+155 testes aprovados, build/TypeScript e lint aprovados. Relatório:
+`docs/relatorios-fases/EVENTO-EXTERNO-WHATSAPP-POR-EVENTO-2026-10-29.md`.

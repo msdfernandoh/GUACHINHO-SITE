@@ -23,6 +23,7 @@ import {
 } from "@/lib/comercial-eventos/db-ready";
 import { normalizarPrefixoSorteio } from "@/lib/eventos-sorteio/modelos-identidade";
 import { eventoLocalDateTimeToIso } from "@/lib/eventos-sorteio/timezone";
+import { normalizarWhatsappEquipeEvento } from "@/lib/eventos-sorteio/whatsapp-equipe";
 
 function boolForm(formData: FormData, name: string): boolean {
   return formData.get(name) === "on";
@@ -82,6 +83,7 @@ function eventoFromForm(
   return {
     nome,
     slug,
+    ...(formData.has("whatsapp_equipe") ? { whatsapp_equipe: normalizarWhatsappEquipeEvento(strForm(formData, "whatsapp_equipe")) } : {}),
     descricao_curta:
       String(formData.get("descricao_curta") ?? "").trim() || null,
     descricao: String(formData.get("descricao") ?? "").trim() || null,
@@ -312,6 +314,7 @@ async function persistEventoInsert(
     if (!error) throw new Error("Falha ao criar evento.");
     if (!isDbMissingColumnError(error)) throw new Error(dbErrorMessage(error));
     const msg = dbErrorMessage(error);
+    if (msg.includes("whatsapp_equipe")) throw new Error("O campo WhatsApp da equipe precisa da atualização do banco antes de salvar. Contato não alterado.");
     const stripped = { ...row };
     let removed = false;
     for (const key of Object.keys(stripped)) {
@@ -348,6 +351,7 @@ async function persistEventoUpdate(
     if (!error) return;
     if (!isDbMissingColumnError(error)) throw new Error(dbErrorMessage(error));
     const msg = dbErrorMessage(error);
+    if (msg.includes("whatsapp_equipe")) throw new Error("O campo WhatsApp da equipe precisa da atualização do banco antes de salvar. Contato não alterado.");
     const stripped = { ...row };
     let removed = false;
     for (const key of Object.keys(stripped)) {

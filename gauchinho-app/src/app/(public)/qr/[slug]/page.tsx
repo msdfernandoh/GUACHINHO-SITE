@@ -65,6 +65,7 @@ export default async function QrUnicoPublicPage({ params }: { params: Promise<{ 
               nome: resolved.sorteio.eventoNome,
               slug: resolved.sorteio.eventoSlug,
               tipoCheckin: resolved.sorteio.tipoCheckin,
+              whatsappEquipe: resolved.sorteio.whatsappEquipe,
               corPrimaria: resolved.sorteio.corPrimaria,
               corSecundaria: resolved.sorteio.corSecundaria,
               logoPersonalizadoUrl: resolved.sorteio.logoPersonalizadoUrl,

@@ -34,6 +34,7 @@ export type EventoRow = {
   inscricao_tipo?: "interno" | "externo";
   inscricao_url_externa?: string | null;
   tipo_checkin?: "evento" | "externo" | null;
+  whatsapp_equipe?: string | null;
   leads_acesso_todos?: boolean;
   checkin_interativo_ativo?: boolean;
   checkin_modo?: "agendado" | "ativo_agora" | "encerrado" | string | null;

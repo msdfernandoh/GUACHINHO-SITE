@@ -85,6 +85,7 @@ export default async function EventoSorteioPublicPage({ params, searchParams }: 
             nome: sorteio.eventoNome,
             slug: sorteio.eventoSlug,
             tipoCheckin: sorteio.tipoCheckin,
+            whatsappEquipe: sorteio.whatsappEquipe,
             corPrimaria: sorteio.corPrimaria,
             corSecundaria: sorteio.corSecundaria,
             logoPersonalizadoUrl: sorteio.logoPersonalizadoUrl,

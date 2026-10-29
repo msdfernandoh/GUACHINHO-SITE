@@ -29,6 +29,7 @@ function mapPublicView(
     logo_personalizado_url?: string | null;
     prefixo_codigo_sorteio?: string | null;
     tipo_checkin?: string | null;
+    whatsapp_equipe?: string | null;
   },
   npsPerguntas?: NpsPerguntaPublica[],
 ): PublicSorteioView {
@@ -38,6 +39,7 @@ function mapPublicView(
     eventoNome: evento.nome,
     eventoSlug: evento.slug,
     eventoData: evento.data_evento,
+    whatsappEquipe: evento.whatsapp_equipe ?? null,
     titulo: sorteio.titulo?.trim() || DEFAULTS_SORTEIO.titulo,
     descricao: sorteio.descricao?.trim() || DEFAULTS_SORTEIO.descricao,
     textoAgradecimento:
@@ -106,7 +108,7 @@ export async function fetchPublicSorteioByEventoId(
   const admin = createAdminClient();
   let evQuery = admin
     .from("eventos")
-    .select("id, nome, slug, data_evento, ativo, publicado, checkin_interativo_ativo, checkin_modo, checkin_abertura_antecipada_minutos, cor_primaria, cor_secundaria, logo_personalizado_url, prefixo_codigo_sorteio, tipo_checkin")
+    .select("id, nome, slug, data_evento, ativo, publicado, checkin_interativo_ativo, checkin_modo, checkin_abertura_antecipada_minutos, cor_primaria, cor_secundaria, logo_personalizado_url, prefixo_codigo_sorteio, tipo_checkin, whatsapp_equipe")
     .eq("id", eventoId)
     .eq("ativo", true);
   if (requirePublicado) {
@@ -133,6 +135,7 @@ export async function fetchPublicSorteioByEventoId(
           logo_personalizado_url: null,
           prefixo_codigo_sorteio: "",
           tipo_checkin: "evento",
+          whatsapp_equipe: null,
         }
       : null;
     evErr = retry.error;
