@@ -4389,5 +4389,8 @@ resolvido para o botão final. Vazio mantém contato anterior (66) 99912-6120.
 QR permanente preservado; não confundir ausência de contato com desativação.
 Migration aditiva 20261029211116 aplicada e registrada no projeto vinculado:
 13 eventos preservados, sem alterar telefones, participantes ou clientes.
-155 testes aprovados, build/TypeScript e lint aprovados. Relatório:
+155 testes aprovados, build/TypeScript e lint aprovados. Publicado no commit
+83f24cf7, deployment dpl_6H7zcx8ViScxDiZCGEFMof3aG9NL READY; /qr/externo 200
+com contato por evento nos três domínios públicos. Nenhum telefone real foi
+alterado para teste. Relatório:
 `docs/relatorios-fases/EVENTO-EXTERNO-WHATSAPP-POR-EVENTO-2026-10-29.md`.

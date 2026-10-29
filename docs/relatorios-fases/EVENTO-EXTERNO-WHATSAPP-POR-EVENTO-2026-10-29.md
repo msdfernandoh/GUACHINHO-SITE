@@ -22,4 +22,8 @@ SELECT antes/depois confirmou 13 eventos preservados e zero contatos personaliza
 
 Uso: abrir Eventos → editar/criar evento → escolher Evento externo → preencher o WhatsApp da equipe no topo → salvar. O botão final passa a usar esse número quando o QR abrir aquele evento. Não é preciso gerar ou reimprimir o QR.
 
-Publicação e conferência do deployment devem ser registradas pelo resultado efetivo; esta versão documenta implementação e banco aplicados.
+## Publicação e conferência final
+
+Enviado à main no commit 83f24cf762c57094ea83602c354c6cb0db4ffc2a. Deployment automático de produção dpl_6H7zcx8ViScxDiZCGEFMof3aG9NL confirmado READY (guachinho-site-pw7l4rcj7-hugo-8097s-projects.vercel.app). Após a publicação, /qr/externo respondeu HTTP 200 e entregou a propriedade whatsappEquipe nos três domínios: gauchinhoconsorcios.com.br, raconsinop.com.br e raconsorriso.com.br.
+
+Não foi alterado um telefone de evento real para homologação. A troca de valores foi comprovada nos testes de cadastro, leitura e renderização; a conferência pública confirmou a integração publicada com o evento resolvido. O administrador pode preencher e salvar o número desejado de cada evento externo. Nenhuma outra ação é necessária para concluir a implementação.
