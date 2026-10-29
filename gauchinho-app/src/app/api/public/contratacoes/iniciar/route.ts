@@ -10,6 +10,8 @@ import {
 import { assertDadosSimulacaoGruposAutorizadosForEmpresa } from "@/lib/grupos/catalogo-autorizado-service";
 import { getCatalogEmpresaIdFromRequest } from "@/lib/grupos/resolve-catalog-empresa";
 import { criarContratacaoDraftLink } from "@/lib/contratacoes-online/draft-link";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { resolverConsultorPorId } from "@/lib/admin/consultores";
 
 export async function POST(request: Request) {
   const ingress = await authorizePublicIngress(request, "contratacao_iniciar", { limit: 30 });
@@ -62,11 +64,16 @@ export async function POST(request: Request) {
     }
 
     if (body.modo === "cliente_site" || body.modo === "sdr_link") {
-      const consultorId = body.consultor_id?.trim() || usuario?.id || "";
-      if (!consultorId) {
+      // A identidade comercial vem da sessão do tenant, nunca do seletor público.
+      const podeAtribuir = usuario && tenantContext.empresaAtiva?.id === ingress.empresaId &&
+        tenantContext.permissoes.has("gerenciar_propostas");
+      const consultor = podeAtribuir
+        ? await resolverConsultorPorId(createAdminClient(), usuario.id, ingress.empresaId)
+        : null;
+      if (body.modo === "sdr_link" && !consultor) {
         return NextResponse.json(
-          { error: "Selecione o consultor responsável pela proposta." },
-          { status: 400 },
+          { error: "Usuário sem vínculo comercial ativo nesta empresa." },
+          { status: 403 },
         );
       }
       const draftPayload = {
@@ -75,8 +82,8 @@ export async function POST(request: Request) {
         origem: body.origem,
         dados_simulacao: body.dados_simulacao,
         createdAt: new Date().toISOString(),
-        consultor_id: body.consultor_id?.trim() || usuario?.id || undefined,
-        consultor_nome: body.consultor_nome?.trim() || usuario?.nome || undefined,
+        consultor_id: consultor?.id,
+        consultor_nome: consultor?.nome,
         cliente_pre_nome: body.cliente_pre_nome?.trim() || undefined,
         cliente_pre_telefone: body.cliente_pre_telefone?.trim() || undefined,
         cliente_pre_email: body.cliente_pre_email?.trim() || undefined,

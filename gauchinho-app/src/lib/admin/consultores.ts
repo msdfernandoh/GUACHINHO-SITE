@@ -10,6 +10,32 @@ function isMissingColumn(error: { message?: string } | null, col: string): boole
 
 type ConsultorRow = ConsultorOption & { is_consultor?: boolean };
 
+type TenantConsultorLink = {
+  is_consultor?: boolean | null;
+  papel?: { codigo?: string } | { codigo?: string }[] | null;
+  usuario?: (ConsultorOption & { ativo?: boolean; auth_user_id?: string | null }) | (ConsultorOption & { ativo?: boolean; auth_user_id?: string | null })[] | null;
+};
+
+/** Um usuário pode ter vários papéis. Nome igual, sozinho, não comprova identidade. */
+export function consultoresDosVinculos(links: TenantConsultorLink[]) {
+  const usuarios = new Map<string, ConsultorRow>();
+  for (const link of links) {
+    const papel = Array.isArray(link.papel) ? link.papel[0] : link.papel;
+    const usuario = Array.isArray(link.usuario) ? link.usuario[0] : link.usuario;
+    const elegivel = link.is_consultor === true || ["super_admin", "admin_empresa", "gestor", "consultor"].includes(papel?.codigo ?? "");
+    if (usuario?.ativo !== true || !elegivel) continue;
+    const key = usuario.auth_user_id ? `auth:${usuario.auth_user_id}` : `id:${usuario.id}`;
+    const anterior = usuarios.get(key);
+    usuarios.set(key, {
+      id: anterior?.id ?? usuario.id,
+      nome: anterior?.nome ?? usuario.nome,
+      email: anterior?.email ?? usuario.email ?? null,
+      is_consultor: Boolean(anterior?.is_consultor || link.is_consultor === true || papel?.codigo === "consultor"),
+    });
+  }
+  return [...usuarios.values()];
+}
+
 /** Usuários ativos elegíveis como consultor responsável em leads. */
 export async function listarConsultores(
   supabase: SupabaseClient,
@@ -18,39 +44,26 @@ export async function listarConsultores(
   if (opts?.empresaId) {
     const { data, error } = await supabase
       .from("empresa_usuarios")
-      .select("is_consultor,papel:papeis(codigo),usuario:usuarios!empresa_usuarios_usuario_id_fkey(id,nome,email,ativo)")
+      .select("is_consultor,papel:papeis(codigo),usuario:usuarios!empresa_usuarios_usuario_id_fkey(id,nome,email,ativo,auth_user_id)")
       .eq("empresa_id", opts.empresaId)
       .eq("ativo", true);
     if (error) {
       console.warn("[consultores] listar tenant:", error.message);
       return [];
     }
-    const tenantRows = (data ?? []).flatMap((link) => {
-      const papel = (Array.isArray(link.papel) ? link.papel[0] : link.papel) as { codigo?: string } | null;
-      const usuario = (Array.isArray(link.usuario) ? link.usuario[0] : link.usuario) as
-        | { id: string; nome: string; email?: string | null; ativo?: boolean }
-        | null;
-      const elegivel =
-        link.is_consultor === true ||
-        ["super_admin", "admin_empresa", "gestor", "consultor"].includes(papel?.codigo ?? "");
-      if (!usuario?.ativo || !elegivel) return [];
-      return [{
-        id: usuario.id,
-        nome: usuario.nome,
-        email: usuario.email ?? null,
-        is_consultor: link.is_consultor ?? papel?.codigo === "consultor",
-      }];
-    });
+    let tenantRows = consultoresDosVinculos((data ?? []) as TenantConsultorLink[]);
     const ids = tenantRows.map((row) => row.id);
-    const { data: participantes } = ids.length
+    const { data: participantes, error: participantesError } = ids.length
       ? await supabase
           .from("participantes_comerciais")
-          .select("id,usuario_id")
+          .select("id,usuario_id,status")
           .eq("empresa_id", opts.empresaId)
           .in("usuario_id", ids)
-          .ilike("status", "ativo")
-      : { data: [] };
-    const participanteIds = (participantes ?? []).map((participante) => participante.id);
+      : { data: [], error: null };
+    if (participantesError) return [];
+    const ativos = (participantes ?? []).filter(p => String(p.status).toUpperCase() === "ATIVO");
+    tenantRows = tenantRows.filter(row => !(participantes ?? []).some(p => p.usuario_id === row.id) || ativos.some(p => p.usuario_id === row.id));
+    const participanteIds = ativos.map((participante) => participante.id);
     const hoje = new Date().toISOString().slice(0, 10);
     const { data: perfisComissao } = participanteIds.length
       ? await supabase
@@ -132,18 +145,14 @@ export async function resolverConsultorPorId(
       .select("is_consultor,papel:papeis(codigo),usuario:usuarios!empresa_usuarios_usuario_id_fkey(id,nome,email,ativo)")
       .eq("empresa_id", empresaId)
       .eq("usuario_id", id)
-      .eq("ativo", true)
-      .maybeSingle();
-    const papel = (Array.isArray(data?.papel) ? data.papel[0] : data?.papel) as { codigo?: string } | null;
-    const usuario = (Array.isArray(data?.usuario) ? data.usuario[0] : data?.usuario) as
-      | { id: string; nome: string; email?: string | null; ativo?: boolean }
-      | null;
-    const elegivel =
-      data?.is_consultor === true ||
-      ["super_admin", "admin_empresa", "gestor", "consultor"].includes(papel?.codigo ?? "");
-    if (error || !usuario?.ativo || !elegivel) {
+      .eq("ativo", true);
+    const usuario = consultoresDosVinculos((data ?? []) as TenantConsultorLink[])[0];
+    if (error || !usuario) {
       return null;
     }
+    const participantes = await supabase.from("participantes_comerciais").select("status")
+      .eq("empresa_id", empresaId).eq("usuario_id", id);
+    if (participantes.error || (participantes.data?.length && !participantes.data.some(p => String(p.status).toUpperCase() === "ATIVO"))) return null;
     return { id: usuario.id, nome: usuario.nome, email: usuario.email ?? null };
   }
   const { data, error } = await supabase

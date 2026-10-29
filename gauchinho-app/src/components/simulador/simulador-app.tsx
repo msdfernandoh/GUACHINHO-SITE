@@ -148,8 +148,6 @@ export function SimuladorApp({
   const [waLink, setWaLink] = useState<string | null>(null);
   const [pdfLink, setPdfLink] = useState<string | null>(null);
   const [contratarEscolhaOpen, setContratarEscolhaOpen] = useState(false);
-  const [consultores, setConsultores] = useState<{ id: string; nome: string }[]>([]);
-  const [consultorId, setConsultorId] = useState("");
   const [linkModal, setLinkModal] = useState<{
     protocolo: string;
     url: string;
@@ -159,19 +157,6 @@ export function SimuladorApp({
   } | null>(null);
   const { iniciar: iniciarContratacao, loading: contratacaoLoading } = useIniciarContratacao();
 
-  useEffect(() => {
-    let cancelled = false;
-    fetch("/api/public/consultores")
-      .then((r) => r.json())
-      .then((data) => {
-        if (cancelled || !data?.consultores) return;
-        setConsultores(data.consultores as { id: string; nome: string }[]);
-      })
-      .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   const bemCfg = useMemo(
     () => resolveBemConfigSimulador(tipoBem, configs),
@@ -564,20 +549,12 @@ export function SimuladorApp({
 
   async function executarContratacao(modoContrat: "cliente_site" | "sdr_link") {
     setMsg(null);
-    const consultor = consultores.find((c) => c.id === consultorId);
-    if (!isConsultor && !consultor) {
-      setMsg("Selecione o consultor responsável pela proposta.");
-      setContratarEscolhaOpen(true);
-      return;
-    }
     try {
       const result = await iniciarContratacao({
         modo: modoContrat,
         origem: "simulador",
         dados_simulacao: buildDadosSimulacaoPayload(),
         redirectCliente: modoContrat === "cliente_site",
-        consultor_id: consultor?.id,
-        consultor_nome: consultor?.nome,
       });
       if (modoContrat === "sdr_link" && result) {
         setLinkModal({
@@ -940,41 +917,24 @@ export function SimuladorApp({
 
       {contratarEscolhaOpen ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-          <div className="w-full max-w-md space-y-4 rounded-2xl border border-slate-700 bg-slate-900 p-6">
-            <h2 className="text-lg font-semibold text-white">Contratar agora</h2>
+          <div role="dialog" aria-modal="true" aria-labelledby="simulador-contratar-titulo" className="w-full max-w-md space-y-4 rounded-2xl border border-slate-700 bg-slate-900 p-6">
+            <h2 id="simulador-contratar-titulo" className="text-lg font-semibold text-white">Contratar agora</h2>
             <p className="text-sm text-slate-400">
               {isConsultor
                 ? "Escolha como deseja prosseguir com esta simulação."
-                : "Selecione o consultor responsável para continuar."}
+                : "Entre com seu acesso ou continue sem vendedor."}
             </p>
             {!isConsultor ? (
-              <div>
-                <label className="mb-1 block text-sm font-medium text-slate-300">
-                  Consultor responsável *
-                </label>
-                <select
-                  value={consultorId}
-                  onChange={(e) => setConsultorId(e.target.value)}
-                  className="w-full rounded-md border border-slate-600 bg-slate-950 px-3 py-2 text-sm text-white"
-                  required
-                >
-                  <option value="">Selecione…</option>
-                  {consultores.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.nome}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <Link href="/login?next=%2Fsimulador" className="block rounded-lg border border-slate-500 px-4 py-2 text-center font-semibold text-white">Entrar</Link>
             ) : null}
             <Button
               type="button"
               variant="gold"
               className="w-full"
-              disabled={contratacaoLoading || (!isConsultor && !consultorId)}
+              disabled={contratacaoLoading}
               onClick={() => void executarContratacao("cliente_site")}
             >
-              {isConsultor ? "Continuar como cliente" : "Continuar"}
+              {isConsultor ? "Continuar como cliente" : "Continuar sem vendedor"}
             </Button>
             {isConsultor ? (
               <Button

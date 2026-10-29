@@ -61,6 +61,7 @@ async function assertConsultorDoTenant(admin: SupabaseClient, empresaId: string,
     .eq("empresa_id", empresaId)
     .eq("usuario_id", usuarioId)
     .eq("ativo", true)
+    .limit(1)
     .maybeSingle();
   if (error || !data) throw new Error("Consultor responsável não pertence a este tenant.");
 }
@@ -130,22 +131,23 @@ export async function criarPropostaDoFluxo(input: {
   if (email && !validarEmail(email)) throw new Error("E-mail inválido.");
 
   const admin = createAdminClient();
-  let consultorId = input.gerador?.id ?? input.draft.consultor_id?.trim() ?? "";
-  let consultorNome = input.gerador?.nome ?? input.draft.consultor_nome?.trim() ?? null;
-  let consultorEmail = input.gerador?.email ?? null;
-  if (input.draft.consultor_id?.trim()) {
+  let consultorId: string | null = null;
+  let consultorNome: string | null = null;
+  let consultorEmail: string | null = null;
+  const responsavelId = input.draft.consultor_id?.trim();
+  if (responsavelId) {
     const consultor = await resolverConsultorPorId(
       admin,
-      input.draft.consultor_id.trim(),
+      responsavelId,
       input.empresaId,
     );
     if (!consultor) throw new Error("Consultor responsável inválido.");
     consultorId = consultor.id;
-    consultorNome = input.draft.consultor_nome?.trim() || consultor.nome;
+    consultorNome = consultor.nome;
     consultorEmail = consultor.email ?? null;
   }
-  if (!consultorId) throw new Error("Selecione o consultor responsável pela proposta.");
-  await assertConsultorDoTenant(admin, input.empresaId, consultorId);
+  if (!consultorId && input.draft.modo === "sdr_link") throw new Error("Link comercial sem responsável válido.");
+  if (consultorId) await assertConsultorDoTenant(admin, input.empresaId, consultorId);
 
   const dadosSimulacao =
     input.draft.origem === "grupos"
@@ -165,7 +167,7 @@ export async function criarPropostaDoFluxo(input: {
     const updatedPreenchimento = {
       ...preenchimentoAtual,
       etapa_status: "dados_preenchidos",
-      gerado_por_usuario_id: consultorId,
+      gerado_por_usuario_id: consultorId || preenchimentoAtual.gerado_por_usuario_id || null,
       email: email || preenchimentoAtual.email || null,
       grupo_id: flat.grupo_id,
       grupo_nome: flat.grupo_nome,
@@ -186,8 +188,8 @@ export async function criarPropostaDoFluxo(input: {
         valor_parcela: flat.parcela_estimada,
         prazo: flat.prazo,
         dados_simulacao: dadosSimulacao,
-        consultor_nome: consultorNome,
-        consultor_email: consultorEmail,
+        consultor_nome: consultorNome || propostaExistenteHoje.consultor_nome || null,
+        consultor_email: consultorEmail || propostaExistenteHoje.consultor_email || null,
         pdf_url: null,
         status: "Gerada",
         preenchimento_contratacao: updatedPreenchimento,

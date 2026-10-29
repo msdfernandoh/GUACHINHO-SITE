@@ -4366,3 +4366,15 @@ grupo/cota nem vínculos operacionais. Após confirmação do titular, sete grup
 sem vagas (1041, 1193, 1253, 1270, 1273, 1283, 1503) receberam vagas=0, mantendo
 ativo=true para os clientes existentes e apresentação sem vagas nos sites.
 Relatório: `docs/relatorios-fases/ROBO-MAIS-E-CORRECAO-PARCELAS-2026-10-28.md`.
+
+### Grupos: contratar sem expor usuários (29/10/2026)
+Modal público oferece Entrar/Continuar sem vendedor, sem lista ou consulta de
+usuários; Simulador acompanha o fluxo compartilhado. Backend inicial usa somente
+identidade comercial validada da sessão do tenant e permite cliente_site sem
+responsável. Materialização aceita ausência de vendedor e preserva atribuição
+de proposta anterior. Lista interna exige sessão/permissão/empresa, consolida
+papéis da mesma identidade e exclui usuários/participantes inativos. Sem fusão
+ou exclusão de cadastros. 92 testes, TypeScript, lint e build aprovados; Chrome
+local validou modal, rascunho sem vendedor e lista protegida por 401 no host
+oficial. Homologação dos domínios parceiros publicados ainda não realizada.
+Relatório: `docs/relatorios-fases/GRUPOS-CONTRATAR-SEM-LISTA-USUARIOS-2026-10-29.md`.

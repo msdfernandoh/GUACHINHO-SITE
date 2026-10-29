@@ -114,7 +114,7 @@ export async function buscarPropostaAtivaDoDia(
     telefone: string;
     nome?: string | null;
   },
-): Promise<{ id: string; public_token: string; status: string; preenchimento_contratacao: Record<string, unknown> } | null> {
+): Promise<{ id: string; public_token: string; status: string; preenchimento_contratacao: Record<string, unknown>; consultor_nome: string | null; consultor_email: string | null } | null> {
   const tel = sanitizeTelefone(input.telefone);
   if (!tel || tel.length < 10) return null;
 
@@ -123,7 +123,7 @@ export async function buscarPropostaAtivaDoDia(
   // Consulta por telefone na data de hoje que não esteja excluída nem finalizada
   const { data, error } = await admin
     .from("propostas")
-    .select("id, public_token, status, preenchimento_contratacao, created_at")
+    .select("id, public_token, status, preenchimento_contratacao, created_at, consultor_nome, consultor_email")
     .eq("empresa_id", input.empresaId)
     .eq("whatsapp_cliente", tel)
     .gte("created_at", inicioDoDia)
