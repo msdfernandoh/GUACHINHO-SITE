@@ -4402,3 +4402,7 @@ mês dia 1 e teto no instante da consulta. Consultas head/count em paralelo com
 escopo de empresa e restrição de responsável existentes. Sem migration ou
 escrita em leads. Testes de datas, TypeScript e lint aprovados. Relatório:
 `docs/relatorios-fases/DASHBOARD-LEADS-DIA-SEMANA-MES-2026-10-29.md`.
+
+Publicação conferida em 30/10/2026: commit 53c2f4dc, deployment de produção
+guachinho-site-mag7gyqxk-hugo-8097s-projects.vercel.app READY. Build aprovado;
+contagens privadas não foram acessadas por sessão de usuário na homologação.
