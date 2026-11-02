@@ -1,109 +1,43 @@
 import "server-only";
-import { WHATSAPP_GRAPH_BASE, getMetaAppId, getMetaAppSecret } from "./config";
-
-function soDigitos(v: string): string {
-  return (v || "").replace(/\D/g, "");
+import { graphBase, type MetaAppConfig } from "./config";
+// Erros da Meta podem ecoar credenciais. Expor apenas código/subcódigo, nunca payload bruto.
+export async function graph<T>(app: MetaAppConfig, path: string, token: string, body?: object): Promise<T> {
+    const res = await fetch(graphBase(app) + "/" + path, { method: body ? "POST" : "GET", headers: { Authorization: "Bearer " + token, "Content-Type": "application/json" }, ...(body ? { body: JSON.stringify(body) } : {}), cache: "no-store", signal: AbortSignal.timeout(20000) });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok || json.error)
+        throw new Error("Meta: falha na operação (código " + (Number(json.error?.code) || res.status) + ", subcódigo " + (Number(json.error?.error_subcode) || 0) + "). Confira token, permissões e ativos no painel da Meta.");
+    return json as T;
 }
-
-/**
- * Troca o `code` do Embedded Signup por um token de usuário do sistema.
- * Retorna { access_token, expires_in? }.
- */
-export async function trocarCodePorToken(code: string): Promise<{ access_token: string; expires_in?: number }> {
-  const url = new URL(`${WHATSAPP_GRAPH_BASE}/oauth/access_token`);
-  url.searchParams.set("client_id", getMetaAppId());
-  url.searchParams.set("client_secret", getMetaAppSecret());
-  url.searchParams.set("code", code);
-  const res = await fetch(url.toString(), { method: "GET", cache: "no-store" });
-  const json = await res.json();
-  if (!res.ok || !json?.access_token) {
-    throw new Error(`Falha ao trocar code por token: ${JSON.stringify(json?.error ?? json)}`);
-  }
-  return { access_token: json.access_token, expires_in: json.expires_in };
-}
-
-type GraphSendResult = {
-  ok: boolean;
-  waMessageId?: string;
-  raw: unknown;
-  error?: string;
+export async function trocarCodePorToken(code: string, app: MetaAppConfig) { if (!app.appId || !app.appSecret || !app.configId)
+    throw new Error("App da Meta incompleto no SaaS."); return graph<{
+    access_token: string;
+    expires_in?: number;
+}>(app, "oauth/access_token", app.appId + "|" + app.appSecret, { client_id: app.appId, client_secret: app.appSecret, code }); }
+export type TelefoneMeta = {
+    id: string;
+    display_phone_number: string;
+    verified_name?: string;
+    quality_rating?: string;
 };
-
-async function postMensagem(
-  phoneNumberId: string,
-  token: string,
-  body: Record<string, unknown>,
-): Promise<GraphSendResult> {
-  const res = await fetch(`${WHATSAPP_GRAPH_BASE}/${phoneNumberId}/messages`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ messaging_product: "whatsapp", ...body }),
-    cache: "no-store",
-  });
-  const json = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    return { ok: false, raw: json, error: JSON.stringify(json?.error ?? json) };
-  }
-  const waMessageId = json?.messages?.[0]?.id as string | undefined;
-  return { ok: true, waMessageId, raw: json };
+export async function validarAtivos(app: MetaAppConfig, waba: string, phone: string, token: string) {
+    const dados = await graph<{
+        data: TelefoneMeta[];
+    }>(app, waba + "/phone_numbers?fields=id,display_phone_number,verified_name&limit=100", token);
+    // Só aceitar ID comprovadamente pertencente à WABA autorizada. Não seguir URLs arbitrárias.
+    const telefone = dados.data?.find(p => p.id === phone);
+    if (!telefone?.display_phone_number)
+        throw new Error("Número não encontrado na WABA informada. Confira os IDs na Meta.");
+    return telefone;
 }
-
-/** Atendimento 1:1 — texto livre (dentro da janela de 24h). */
-export async function enviarTexto(params: {
-  phoneNumberId: string;
-  token: string;
-  para: string;
-  texto: string;
-  previewUrl?: boolean;
-}): Promise<GraphSendResult> {
-  return postMensagem(params.phoneNumberId, params.token, {
-    to: soDigitos(params.para),
-    type: "text",
-    text: { preview_url: params.previewUrl ?? false, body: params.texto },
-  });
-}
-
-/** Campanhas — template aprovado. components opcional (variáveis/botões). */
-export async function enviarTemplate(params: {
-  phoneNumberId: string;
-  token: string;
-  para: string;
-  templateNome: string;
-  idiomaCodigo?: string;
-  components?: unknown[];
-}): Promise<GraphSendResult> {
-  return postMensagem(params.phoneNumberId, params.token, {
-    to: soDigitos(params.para),
-    type: "template",
-    template: {
-      name: params.templateNome,
-      language: { code: params.idiomaCodigo ?? "pt_BR" },
-      ...(params.components ? { components: params.components } : {}),
-    },
-  });
-}
-
-/** Lista os templates aprovados de uma WABA (para a tela de campanhas). */
-export async function listarTemplates(params: {
-  wabaId: string;
-  token: string;
-}): Promise<Array<{ name: string; language: string; status: string; category: string }>> {
-  const url = new URL(`${WHATSAPP_GRAPH_BASE}/${params.wabaId}/message_templates`);
-  url.searchParams.set("fields", "name,language,status,category");
-  url.searchParams.set("limit", "200");
-  const res = await fetch(url.toString(), {
-    headers: { Authorization: `Bearer ${params.token}` },
-    cache: "no-store",
-  });
-  const json = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(`Falha ao listar templates: ${JSON.stringify(json?.error ?? json)}`);
-  return (json?.data ?? []).map((t: Record<string, unknown>) => ({
-    name: String(t.name),
-    language: String(t.language),
-    status: String(t.status),
-    category: String(t.category ?? ""),
-  }));
-}
+export async function assinarWaba(app: MetaAppConfig, waba: string, token: string) { const r = await graph<{
+    success: boolean;
+}>(app, waba + "/subscribed_apps", token, {}); if (r.success !== true)
+    throw new Error("A Meta não confirmou a assinatura da WABA."); }
+export async function sincronizarCoexistencia(app: MetaAppConfig, phone: string, token: string) { for (const sync_type of ["smb_app_state_sync", "history"])
+    await graph(app, phone + "/smb_app_data", token, { messaging_product: "whatsapp", sync_type }); }
+export async function enviarMensagem(app: MetaAppConfig, phone: string, token: string, body: object) { const r = await graph<{
+    messages?: {
+        id: string;
+    }[];
+}>(app, phone + "/messages", token, { messaging_product: "whatsapp", ...body }); const id = r.messages?.[0]?.id; if (!id)
+    throw new Error("A Meta não confirmou o identificador da mensagem."); return id; }

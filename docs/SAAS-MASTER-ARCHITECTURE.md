@@ -4406,3 +4406,16 @@ escrita em leads. Testes de datas, TypeScript e lint aprovados. Relatório:
 Publicação conferida em 30/10/2026: commit 53c2f4dc, deployment de produção
 guachinho-site-mag7gyqxk-hugo-8097s-projects.vercel.app READY. Build aprovado;
 contagens privadas não foram acessadas por sessão de usuário na homologação.
+
+### WhatsApp SaaS: Apps, modelos e instâncias por franquia (02/11/2026)
+Configuração central em /platform/whatsapp e instâncias N por empresa, com
+modelos Coexistência, Cloud API e Teste Meta. ERP conecta pelo fluxo oficial
+central da Meta e opera mensagens com histórico/status reais. Migration aditiva
+332 aplicada com RLS, segredos cifrados e ocultos por coluna, links assinados
+de uso único, reserva idempotente e cota mensal. Dez tabelas operacionais
+conferidas por contagem/hash sem alteração. Identidade segue usuarios.auth_user_id
+e empresa_usuarios. Por escolha expressa do titular, a instância vazia
+“Teste Meta — Racon Sinop” pertence à Gauchinho, cujo ERP compartilhado atende
+raconsinop.com.br; dados de teste serão cadastrados pelo titular após o deploy.
+48 testes focados aprovados; publicação e homologação registradas no relatório:
+`docs/relatorios-fases/WHATSAPP-SAAS-INSTANCIAS-2026-11-02.md`.

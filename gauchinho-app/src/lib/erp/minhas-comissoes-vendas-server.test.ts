@@ -4,8 +4,8 @@ vi.mock("@/lib/supabase/admin", () => ({ createAdminClient: () => ({ from }) }))
 import { carregarResumoVendasMes } from "./minhas-comissoes-vendas-server";
 
 function consulta(data: unknown[], error: unknown = null) {
-  const query = { select: vi.fn(), eq: vi.fn(), or: vi.fn(), order: vi.fn(), range: vi.fn() };
-  for (const method of [query.select, query.eq, query.or, query.order]) method.mockReturnValue(query);
+  const query = { select: vi.fn(), eq: vi.fn(), or: vi.fn(), in: vi.fn(), order: vi.fn(), range: vi.fn() };
+  for (const method of [query.select, query.eq, query.or, query.in, query.order]) method.mockReturnValue(query);
   query.range.mockResolvedValue({ data, error });
   return query;
 }
@@ -20,10 +20,10 @@ describe("consulta de vendas mensais por participante", () => {
     expect(await carregarResumoVendasMes("empresa", "participante", "2026-08"))
       .toMatchObject({ valorVendido: 400000, quantidadeCotas: 2, quantidadeVendas: 1 });
     expect(principal.eq).toHaveBeenCalledWith("empresa_id", "empresa");
-    expect(principal.eq).toHaveBeenCalledWith("participante_comercial_id", "participante");
+    expect(principal.in).toHaveBeenCalledWith("participante_comercial_id", ["participante"]);
     expect(participacoes.eq).toHaveBeenCalledWith("empresa_id", "empresa");
     expect(participacoes.eq).toHaveBeenCalledWith("venda.empresa_id", "empresa");
-    expect(participacoes.eq).toHaveBeenCalledWith("participante_comercial_id", "participante");
+    expect(participacoes.in).toHaveBeenCalledWith("participante_comercial_id", ["participante"]);
     expect(principal.select).toHaveBeenCalledWith(expect.stringContaining("data_primeira_parcela"));
     expect(principal.or).toHaveBeenCalledWith(expect.stringContaining("data_primeira_parcela.gte.2026-08-01"));
     expect(participacoes.or).toHaveBeenCalledWith(expect.stringContaining("data_primeira_parcela.gte.2026-08-01"), { referencedTable: "venda" });

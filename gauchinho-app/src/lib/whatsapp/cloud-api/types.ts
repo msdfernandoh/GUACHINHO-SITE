@@ -1,0 +1,47 @@
+export type ModoInstancia = "coexistencia" | "cloud_api" | "meta_teste";
+export type ModeloInstancia = {
+    id: string;
+    nome: string;
+    descricao: string | null;
+    modo: ModoInstancia;
+    coexistencia: boolean;
+    permite_templates: boolean;
+    permite_atendimento: boolean;
+    limite_mensagens_mes: number | null;
+    ativo: boolean;
+};
+export type InstanciaView = {
+    id: string;
+    empresa_id: string;
+    app_meta_id: string | null;
+    modelo_id: string;
+    nome: string;
+    numero_celular: string | null;
+    numero_exibicao: string | null;
+    verified_name: string | null;
+    waba_id: string | null;
+    phone_number_id: string | null;
+    coexistencia: boolean;
+    status: string;
+    ultimo_erro: string | null;
+    alerta_numero: string | null;
+    conectado_em: string | null;
+    token_expira_em: string | null;
+    ativo: boolean;
+    modelo?: ModeloInstancia;
+};
+export const INSTANCIA_COLUNAS = "id,empresa_id,app_meta_id,modelo_id,nome,numero_celular,numero_exibicao,verified_name,waba_id,phone_number_id,coexistencia,status,ultimo_erro,alerta_numero,conectado_em,token_expira_em,ativo";
+export type MensagemView = {
+    id: string;
+    instancia_id: string | null;
+    direcao: "enviada" | "recebida";
+    contato_numero: string;
+    contato_nome: string | null;
+    tipo: string;
+    conteudo: string | null;
+    template_nome: string | null;
+    status: string | null;
+    erro: string | null;
+    wa_message_id: string | null;
+    criada_em: string;
+};

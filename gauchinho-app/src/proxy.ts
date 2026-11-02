@@ -25,7 +25,12 @@ import { resolveHostContextForRequest } from "@/lib/tenant/resolve-by-host";
  * Rotas que não exigem resolução de tenant publicada
  * (cron, OAuth callback, health). Auth própria quando aplicável.
  */
+function isWhatsappPublicPath(pathname: string): boolean {
+  return ["/conectar-whatsapp", "/api/erp/whatsapp/conectar", "/api/whatsapp/webhook", "/privacidade", "/termos", "/exclusao-de-dados"].includes(pathname);
+}
+
 function skipsTenantGate(pathname: string): boolean {
+  if (isWhatsappPublicPath(pathname)) return true;
   if (pathname.startsWith("/api/cron")) return true;
   if (pathname.startsWith("/api/auth/google-calendar/callback")) return true;
   if (pathname === "/api/health" || pathname === "/health") return true;
@@ -102,6 +107,10 @@ export async function proxy(request: NextRequest) {
   // Cron jobs não usam sessão de usuário. Cada rota /api/cron valida o segredo
   // Bearer antes de executar; portanto ela precisa chegar à própria route handler
   // inclusive no host da Platform, sem ser desviada para /login.
+  if (isWhatsappPublicPath(path)) {
+    return NextResponse.next({ request: { headers: requestHeaders } });
+  }
+
   if (path.startsWith("/api/cron")) {
     return NextResponse.next({ request: { headers: requestHeaders } });
   }

@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+
 import { useEffect, useState } from "react";
 
 type Item = { id: string; competencia: string; categoria: string; tipo: string; valor_previsto_admin: number; observacoes: string | null };
@@ -36,6 +38,6 @@ export function MetasOrcamento() {
         </table>
       </details>;
     })}
-    <a href="/erp/contas-pagar" className="inline-block text-sm font-bold text-blue-700 underline">Conferir títulos em Contas a pagar</a>
+    <Link href="/erp/contas-pagar" className="inline-block text-sm font-bold text-blue-700 underline">Conferir títulos em Contas a pagar</Link>
   </section>;
 }

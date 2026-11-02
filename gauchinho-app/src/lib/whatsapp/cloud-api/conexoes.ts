@@ -1,106 +1,47 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { encryptCredential, decryptCredential } from "@/lib/automacoes/robos/cryptoService";
-
-export type WhatsappConexao = {
-  id: string;
-  empresa_id: string;
-  waba_id: string;
-  phone_number_id: string;
-  numero_exibicao: string | null;
-  verified_name: string | null;
-  token_tipo: string;
-  token_expira_em: string | null;
-  coexistencia: boolean;
-  status: string;
-  ultimo_erro: string | null;
-};
-
-const PUBLIC_COLS =
-  "id,empresa_id,waba_id,phone_number_id,numero_exibicao,verified_name,token_tipo,token_expira_em,coexistencia,status,ultimo_erro";
-
-/** Conexão da franquia (sem token). */
-export async function getConexaoPorEmpresa(empresaId: string): Promise<WhatsappConexao | null> {
-  const admin = createAdminClient();
-  const { data } = await admin
-    .from("empresa_whatsapp_conexoes")
-    .select(PUBLIC_COLS)
-    .eq("empresa_id", empresaId)
-    .maybeSingle();
-  return (data as WhatsappConexao) ?? null;
+import { INSTANCIA_COLUNAS, type InstanciaView } from "./types";
+import { numerosConferem } from "./validation";
+export async function listarInstancias(empresa: string): Promise<InstanciaView[]> {
+    const { data, error } = await createAdminClient().from("whatsapp_instancias").select(INSTANCIA_COLUNAS + ",modelo:whatsapp_instancia_modelos(*)").eq("empresa_id", empresa).eq("ativo", true).order("created_at");
+    if (error)
+        throw new Error("Não foi possível carregar instâncias. Confira a migration 332 no Supabase.");
+    return (data || []) as unknown as InstanciaView[];
 }
-
-/** Resolve a empresa dona de um phone_number_id (usado no webhook). */
-export async function getConexaoPorPhoneNumberId(phoneNumberId: string): Promise<WhatsappConexao | null> {
-  const admin = createAdminClient();
-  const { data } = await admin
-    .from("empresa_whatsapp_conexoes")
-    .select(PUBLIC_COLS)
-    .eq("phone_number_id", phoneNumberId)
-    .maybeSingle();
-  return (data as WhatsappConexao) ?? null;
+export async function getInstancia(empresa: string, id: string) {
+    const { data, error } = await createAdminClient().from("whatsapp_instancias").select("*,modelo:whatsapp_instancia_modelos(*)").eq("empresa_id", empresa).eq("id", id).maybeSingle();
+    if (error || !data || !data.ativo)
+        throw new Error("Instância indisponível para esta empresa.");
+    return data as InstanciaView & {
+        token_cifrado: string | null;
+        destinatarios_teste: string[];
+        revisao: number;
+    };
 }
-
-/** Token descriptografado — somente servidor, nunca enviar ao client. */
-export async function getTokenDaConexao(empresaId: string): Promise<string | null> {
-  const admin = createAdminClient();
-  const { data } = await admin
-    .from("empresa_whatsapp_conexoes")
-    .select("token_cifrado")
-    .eq("empresa_id", empresaId)
-    .maybeSingle();
-  if (!data?.token_cifrado) return null;
-  return decryptCredential(data.token_cifrado);
+export function tokenDaInstancia(i: {
+    token_cifrado: string | null;
+    token_expira_em: string | null;
+}) {
+    if (!i.token_cifrado || (i.token_expira_em && Date.parse(i.token_expira_em) <= Date.now()))
+        throw new Error("Token ausente ou expirado. Solicite configuração ao administrador SaaS.");
+    return decryptCredential(i.token_cifrado);
 }
-
-export async function getTokenPorPhoneNumberId(phoneNumberId: string): Promise<string | null> {
-  const admin = createAdminClient();
-  const { data } = await admin
-    .from("empresa_whatsapp_conexoes")
-    .select("token_cifrado")
-    .eq("phone_number_id", phoneNumberId)
-    .maybeSingle();
-  if (!data?.token_cifrado) return null;
-  return decryptCredential(data.token_cifrado);
-}
-
-export type SalvarConexaoInput = {
-  empresaId: string;
-  wabaId: string;
-  phoneNumberId: string;
-  token: string;
-  numeroExibicao?: string | null;
-  verifiedName?: string | null;
-  tokenExpiraEm?: string | null;
-  conectadoPorId?: string | null;
-};
-
-/** Cria/atualiza a conexão da franquia (upsert por empresa_id), token cifrado. */
-export async function salvarConexao(input: SalvarConexaoInput): Promise<void> {
-  const admin = createAdminClient();
-  const { error } = await admin.from("empresa_whatsapp_conexoes").upsert(
-    {
-      empresa_id: input.empresaId,
-      waba_id: input.wabaId,
-      phone_number_id: input.phoneNumberId,
-      numero_exibicao: input.numeroExibicao ?? null,
-      verified_name: input.verifiedName ?? null,
-      token_cifrado: encryptCredential(input.token),
-      token_expira_em: input.tokenExpiraEm ?? null,
-      conectado_por_id: input.conectadoPorId ?? null,
-      status: "conectado",
-      ultimo_erro: null,
-      updated_at: new Date().toISOString(),
-    },
-    { onConflict: "empresa_id" },
-  );
-  if (error) throw new Error(`Falha ao salvar conexão WhatsApp: ${error.message}`);
-}
-
-export async function marcarErroConexao(empresaId: string, erro: string): Promise<void> {
-  const admin = createAdminClient();
-  await admin
-    .from("empresa_whatsapp_conexoes")
-    .update({ status: "erro", ultimo_erro: erro, updated_at: new Date().toISOString() })
-    .eq("empresa_id", empresaId);
+export async function salvarConexao(input: {
+    instancia: Awaited<ReturnType<typeof getInstancia>>;
+    waba: string;
+    phone: string;
+    token: string;
+    numero: string;
+    nome?: string;
+    expira?: string | null;
+    usuario: string;
+    aviso?: string | null;
+}) {
+    const i = input.instancia;
+    const alerta = numerosConferem(i.numero_celular, input.numero) ? null : "O número conectado pela Meta difere do número cadastrado pelo SaaS. Confira antes de usar.";
+    const { data, error } = await createAdminClient().from("whatsapp_instancias").update({ waba_id: input.waba, phone_number_id: input.phone, token_cifrado: encryptCredential(input.token), numero_exibicao: input.numero, verified_name: input.nome || null, token_expira_em: input.expira || null, alerta_numero: alerta, ultimo_erro: input.aviso || null, status: "conectado", conectado_por_id: input.usuario, conectado_em: new Date().toISOString(), updated_at: new Date().toISOString(), revisao: i.revisao + 1 }).eq("id", i.id).eq("empresa_id", i.empresa_id).eq("revisao", i.revisao).neq("status", "suspenso").eq("ativo", true).select("id");
+    if (error || !data?.length)
+        throw new Error("A instância foi alterada pelo SaaS ou o número já está em uso. Atualize a tela e tente novamente.");
+    return alerta;
 }

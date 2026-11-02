@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Building2, Boxes, CreditCard, FileStack, Globe2, LayoutDashboard, Landmark, Layers3, ScrollText, Settings2, Users, Bot } from "lucide-react";
+import { Building2, Boxes, CreditCard, FileStack, Globe2, LayoutDashboard, Landmark, Layers3, ScrollText, Settings2, Users, Bot, MessageCircle } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 
 const sections = [
@@ -10,7 +10,7 @@ const sections = [
   ["Franquias / Empresas", [["/platform/empresas", "Master Franquias", Building2], ["/platform/revisao", "Revisão técnica", FileStack], ["/platform/acessos-cadastro", "Acesso de revisão", Users], ["/platform/usuarios", "Usuários / Responsáveis", Users], ["/platform/dominios", "Domínios", Globe2]]],
   ["Catálogo global", [["/platform/administradoras", "Administradoras", Landmark], ["/platform/grupos", "Grupos e créditos", Layers3]]],
   ["Sites & Portais", [["/platform/sites", "Sites / Portais", Globe2], ["/platform/templates", "Modelos de Site", FileStack]]],
-  ["ERP / Recursos", [["/platform/erp-modulos", "Catálogo de módulos", Settings2], ["/platform/recursos", "Liberações e overrides", Boxes]]],
+  ["ERP / Recursos", [["/platform/whatsapp", "WhatsApp das franquias", MessageCircle], ["/platform/erp-modulos", "Catálogo de módulos", Settings2], ["/platform/recursos", "Liberações e overrides", Boxes]]],
   ["Planos SaaS", [["/platform/planos", "Planos", CreditCard], ["/platform/assinaturas", "Assinaturas SaaS", ScrollText]]],
   ["Automações & Robôs", [["/platform/robos-importacao", "Robôs de Importação", Bot]]],
   ["Governança", [["/platform/auditoria", "Auditoria", ScrollText], ["/platform/configuracoes", "Configurações", Settings2]]],

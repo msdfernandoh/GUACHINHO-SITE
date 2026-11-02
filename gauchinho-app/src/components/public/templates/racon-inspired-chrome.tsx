@@ -305,6 +305,7 @@ export function RaconInspiredFooter({
           {footerCopyright || "Todos os direitos reservados."}
         </div>
       </div>
+      <nav aria-label="Privacidade e termos" className="mx-auto flex max-w-7xl flex-wrap gap-5 px-6 pb-6 text-sm"><Link href="/privacidade">Privacidade</Link><Link href="/termos">Termos de uso</Link><Link href="/exclusao-de-dados">Exclusão de dados</Link></nav>
     </footer>
   );
 }

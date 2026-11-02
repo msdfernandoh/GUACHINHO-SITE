@@ -1,18 +1,4 @@
 import "server-only";
-import crypto from "crypto";
-import { getMetaAppSecret } from "./config";
-
-/**
- * Valida a assinatura X-Hub-Signature-256 enviada pela Meta no webhook.
- * Compara HMAC-SHA256(appSecret, rawBody) com o header. Timing-safe.
- */
-export function verifyWebhookSignature(rawBody: string, signatureHeader: string | null): boolean {
-  if (!signatureHeader) return false;
-  const expected =
-    "sha256=" +
-    crypto.createHmac("sha256", getMetaAppSecret()).update(rawBody, "utf8").digest("hex");
-  const a = Buffer.from(signatureHeader);
-  const b = Buffer.from(expected);
-  if (a.length !== b.length) return false;
-  return crypto.timingSafeEqual(a, b);
-}
+import { createHmac, timingSafeEqual } from "node:crypto";
+export function verifyWebhookSignature(rawBody: string, signatureHeader: string | null, secret: string): boolean { if (!secret || !signatureHeader || !/^sha256=[a-f0-9]{64}$/.test(signatureHeader))
+    return false; const a = Buffer.from(signatureHeader); const b = Buffer.from("sha256=" + createHmac("sha256", secret).update(rawBody, "utf8").digest("hex")); return a.length === b.length && timingSafeEqual(a, b); }

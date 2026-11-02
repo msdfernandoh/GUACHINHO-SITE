@@ -1,115 +1,114 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getMetaApps } from "@/lib/whatsapp/cloud-api/config";
 import { verifyWebhookSignature } from "@/lib/whatsapp/cloud-api/signature";
-import { getWebhookVerifyToken } from "@/lib/whatsapp/cloud-api/config";
-import { getConexaoPorPhoneNumberId } from "@/lib/whatsapp/cloud-api/conexoes";
-
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-
-// Verificação do webhook (Meta chama com hub.* na configuração).
-export async function GET(request: NextRequest) {
-  const sp = request.nextUrl.searchParams;
-  const mode = sp.get("hub.mode");
-  const token = sp.get("hub.verify_token");
-  const challenge = sp.get("hub.challenge");
-  try {
-    if (mode === "subscribe" && token === getWebhookVerifyToken() && challenge) {
-      return new NextResponse(challenge, { status: 200 });
-    }
-  } catch {
-    // token não configurado
-  }
-  return new NextResponse("Forbidden", { status: 403 });
+export async function GET(request: NextRequest) { try {
+    const p = request.nextUrl.searchParams;
+    if (p.get("hub.mode") === "subscribe" && p.get("hub.challenge") && (await getMetaApps()).some(a => a.verifyToken && a.verifyToken === p.get("hub.verify_token")))
+        return new NextResponse(p.get("hub.challenge"), { status: 200 });
 }
-
-// Recebimento de mensagens e status. Roteia por phone_number_id -> empresa.
+catch { } return new NextResponse("Forbidden", { status: 403 }); }
+type Msg = {
+    id?: string;
+    from?: string;
+    to?: string;
+    type?: string;
+    text?: {
+        body?: string;
+    };
+    timestamp?: string;
+};
+type Valor = {
+    metadata?: {
+        phone_number_id?: string;
+    };
+    messages?: Msg[];
+    message_echoes?: Msg[];
+    contacts?: {
+        wa_id?: string;
+        profile?: {
+            name?: string;
+        };
+    }[];
+    statuses?: {
+        id?: string;
+        status?: string;
+        recipient_id?: string;
+        errors?: {
+            code?: number;
+        }[];
+    }[];
+};
 export async function POST(request: NextRequest) {
-  const raw = await request.text();
-  if (!verifyWebhookSignature(raw, request.headers.get("x-hub-signature-256"))) {
-    return new NextResponse("Invalid signature", { status: 401 });
-  }
-
-  let body: Record<string, unknown>;
-  try {
-    body = JSON.parse(raw);
-  } catch {
-    return NextResponse.json({ ok: true });
-  }
-
-  const admin = createAdminClient();
-
-  try {
-    const entries = (body?.entry as unknown[]) ?? [];
-    for (const entry of entries) {
-      const changes = ((entry as Record<string, unknown>)?.changes as unknown[]) ?? [];
-      for (const change of changes) {
-        const value = (change as Record<string, unknown>)?.value as Record<string, unknown> | undefined;
-        if (!value) continue;
-        const metadata = value.metadata as Record<string, unknown> | undefined;
-        const phoneNumberId = metadata?.phone_number_id as string | undefined;
-        if (!phoneNumberId) continue;
-
-        const conexao = await getConexaoPorPhoneNumberId(phoneNumberId);
-        if (!conexao) continue; // número não pertence a nenhuma franquia
-
-        const contatos = (value.contacts as Array<Record<string, unknown>>) ?? [];
-        const nomePorWa: Record<string, string> = {};
-        for (const c of contatos) {
-          const waId = c.wa_id as string | undefined;
-          const nome = (c.profile as Record<string, unknown> | undefined)?.name as string | undefined;
-          if (waId && nome) nomePorWa[waId] = nome;
-        }
-
-        // Mensagens recebidas
-        const mensagens = (value.messages as Array<Record<string, unknown>>) ?? [];
-        for (const m of mensagens) {
-          const from = m.from as string | undefined;
-          const waMessageId = m.id as string | undefined;
-          const tipo = (m.type as string) ?? "text";
-          const texto =
-            tipo === "text"
-              ? ((m.text as Record<string, unknown>)?.body as string) ?? null
-              : null;
-          await admin.from("whatsapp_mensagens").upsert(
-            {
-              empresa_id: conexao.empresa_id,
-              conexao_id: conexao.id,
-              direcao: "recebida",
-              wa_message_id: waMessageId ?? null,
-              contato_numero: from ?? "",
-              contato_nome: from ? nomePorWa[from] ?? null : null,
-              tipo,
-              conteudo: texto,
-              status: "received",
-              payload: m,
-            },
-            { onConflict: "wa_message_id", ignoreDuplicates: true },
-          );
-        }
-
-        // Atualizações de status (sent/delivered/read/failed)
-        const statuses = (value.statuses as Array<Record<string, unknown>>) ?? [];
-        for (const s of statuses) {
-          const waMessageId = s.id as string | undefined;
-          const status = s.status as string | undefined;
-          if (!waMessageId || !status) continue;
-          const erro =
-            status === "failed"
-              ? JSON.stringify((s.errors as unknown) ?? null)
-              : null;
-          await admin
-            .from("whatsapp_mensagens")
-            .update({ status, ...(erro ? { erro } : {}) })
-            .eq("wa_message_id", waMessageId)
-            .eq("empresa_id", conexao.empresa_id);
-        }
-      }
+    const raw = await request.text();
+    if (raw.length > 2000000)
+        return new NextResponse("Payload too large", { status: 413 });
+    let apps;
+    try {
+        apps = (await getMetaApps()).filter(a => verifyWebhookSignature(raw, request.headers.get("x-hub-signature-256"), a.appSecret));
     }
-  } catch (e) {
-    // Nunca derrubar o webhook: logar e responder 200 p/ evitar reenvio em loop.
-    console.error("[whatsapp webhook]", e);
-  }
-
-  return NextResponse.json({ ok: true });
+    catch {
+        return new NextResponse("Configuration unavailable", { status: 503 });
+    }
+    if (!apps.length)
+        return new NextResponse("Invalid signature", { status: 401 });
+    let body: {
+        object?: string;
+        entry?: {
+            changes?: {
+                field?: string;
+                value?: Valor;
+            }[];
+        }[];
+    };
+    try {
+        body = JSON.parse(raw);
+    }
+    catch {
+        return new NextResponse("Invalid JSON", { status: 400 });
+    }
+    if (body.object && body.object !== "whatsapp_business_account")
+        return NextResponse.json({ ok: true });
+    const db = createAdminClient();
+    try {
+        for (const entry of body.entry || []) {
+            for (const change of entry.changes || []) {
+                const v = change.value;
+                const phone = v?.metadata?.phone_number_id;
+                if (!v || !phone)
+                    continue;
+                const { data: i, error } = await db.from("whatsapp_instancias").select("id,empresa_id,app_meta_id").eq("phone_number_id", phone).maybeSingle();
+                if (error)
+                    throw new Error("lookup");
+                if (!i || !apps.some(a => i.app_meta_id ? a.id === i.app_meta_id : (a.id === null || a.appId === process.env.WHATSAPP_APP_ID)))
+                    continue;
+                for (const [direcao, mensagens] of [["recebida", v.messages || []], ["enviada", v.message_echoes || []]] as const) {
+                    for (const m of mensagens) {
+                        if (!m.id || !(direcao === "recebida" ? m.from : m.to))
+                            continue;
+                        const contato = direcao === "recebida" ? m.from! : m.to!;
+                        const { error } = await db.from("whatsapp_mensagens").upsert({ empresa_id: i.empresa_id, instancia_id: i.id, direcao, wa_message_id: m.id, contato_numero: contato, contato_nome: v.contacts?.find(c => c.wa_id === contato)?.profile?.name || null, tipo: m.type || "text", conteudo: m.text?.body || null, status: direcao === "recebida" ? "received" : "sent" }, { onConflict: "wa_message_id", ignoreDuplicates: true });
+                        if (error)
+                            throw new Error("persist");
+                    }
+                }
+                for (const s of v.statuses || []) {
+                    if (!s.id || !s.status || !["sent", "delivered", "read", "failed"].includes(s.status))
+                        continue;
+                    const { error } = await db.from("whatsapp_mensagens").upsert({ empresa_id: i.empresa_id, instancia_id: i.id, wa_message_id: s.id, direcao: "enviada", contato_numero: s.recipient_id || "", tipo: "text", status: "accepted" }, { onConflict: "wa_message_id", ignoreDuplicates: true });
+                    if (error)
+                        throw new Error("status insert");
+                    const update = await db.rpc("whatsapp_atualizar_status", { p_empresa: i.empresa_id, p_instancia: i.id, p_wamid: s.id, p_status: s.status, p_erro: s.status === "failed" ? "Meta: falha de entrega (código " + (Number(s.errors?.[0]?.code) || 0) + ")." : null });
+                    if (update.error)
+                        throw new Error("status update");
+                }
+            }
+        }
+    }
+    catch {
+        return new NextResponse("Temporary processing failure", { status: 503 });
+    }
+    return NextResponse.json({ ok: true });
 }

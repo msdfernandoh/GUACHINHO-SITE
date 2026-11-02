@@ -140,7 +140,7 @@ function TabelaContas({
                 </td>
                 <td className={`px-3 py-2 font-bold ${duplicadasIds.includes(item.id) ? "text-red-800" : "text-slate-950"}`}>
                   {item.descricao}
-                  {duplicadasIds.includes(item.id) && <a href="/erp/contas-pagar#possiveis-repetidas" className="mt-1 block text-xs font-bold text-red-700 underline">Possível duplicidade — conferir</a>}
+                  {duplicadasIds.includes(item.id) && <Link href="/erp/contas-pagar#possiveis-repetidas" className="mt-1 block text-xs font-bold text-red-700 underline">Possível duplicidade — conferir</Link>}
                 </td>
                 <td className="px-3 py-2 text-slate-600">
                   {item.fornecedor || "Não informado"}
@@ -738,7 +738,7 @@ export function PainelFechamentoSocios({
       {!!dados.duplicidades?.grupos && <aside role="alert" className="rounded-2xl border-2 border-red-400 bg-red-50 p-5 text-red-800">
         <p className="font-black">Possíveis contas duplicadas: {dados.duplicidades.grupos} grupo(s) para conferir</p>
         <p className="mt-1 text-sm">Os lançamentos suspeitos aparecem em vermelho. Os valores continuam no cálculo até a decisão de manter ou excluir.</p>
-        <a href="/erp/contas-pagar#possiveis-repetidas" className="mt-2 inline-block font-bold underline">Conferir em Contas a pagar</a>
+        <Link href="/erp/contas-pagar#possiveis-repetidas" className="mt-2 inline-block font-bold underline">Conferir em Contas a pagar</Link>
       </aside>}
       <section className="rounded-3xl border border-indigo-200 bg-white p-6 shadow-sm">
         <h2 className="text-xl font-black text-slate-950">Posição da empresa e dos sócios</h2>

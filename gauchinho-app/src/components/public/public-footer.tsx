@@ -48,6 +48,7 @@ export async function PublicFooter() {
           </nav>
         )}
       </div>
+      <nav aria-label="Privacidade e termos" className="mx-auto flex max-w-7xl flex-wrap gap-5 px-6 pb-6 text-sm text-zinc-400"><Link href="/privacidade">Privacidade</Link><Link href="/termos">Termos de uso</Link><Link href="/exclusao-de-dados">Exclusão de dados</Link></nav>
     </footer>
   );
 }

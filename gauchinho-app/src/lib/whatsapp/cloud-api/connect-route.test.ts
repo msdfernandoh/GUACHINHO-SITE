@@ -1,0 +1,21 @@
+import {beforeEach,describe,expect,it,vi} from "vitest";
+const m=vi.hoisted(()=>({guard:vi.fn(),link:vi.fn(),code:vi.fn(),assets:vi.fn(),sub:vi.fn(),sync:vi.fn(),save:vi.fn(),update:vi.fn(),from:vi.fn()}));
+vi.mock("next/headers",()=>({headers:async()=>new Headers({host:"admin.example"})}));
+vi.mock("@/lib/erp/erp-acesso-server",()=>({requireErpRouteAccess:m.guard}));
+vi.mock("@/lib/whatsapp/cloud-api/conexoes",()=>({getInstancia:vi.fn(),salvarConexao:m.save}));
+vi.mock("@/lib/whatsapp/cloud-api/config",()=>({getMetaAppConfig:vi.fn()}));
+vi.mock("@/lib/whatsapp/cloud-api/connection-access",()=>({autorizarLinkConexao:m.link}));
+vi.mock("@/lib/whatsapp/cloud-api/client",()=>({trocarCodePorToken:m.code,validarAtivos:m.assets,assinarWaba:m.sub,sincronizarCoexistencia:m.sync}));
+vi.mock("@/lib/supabase/admin",()=>({createAdminClient:()=>({from:m.from})}));
+import {POST} from "@/app/api/erp/whatsapp/conectar/route";
+const empresa="11111111-1111-4111-8111-111111111111",id="22222222-2222-4222-8222-222222222222",usuario="33333333-3333-4333-8333-333333333333";
+let instancia:Record<string,unknown>;
+beforeEach(()=>{vi.clearAllMocks();instancia={id,empresa_id:empresa,revisao:1,status:"aguardando_conexao",coexistencia:true,modelo:{ativo:true,modo:"coexistencia"}};m.link.mockImplementation(async()=>({instancia,app:{id:"app"},claims:{usuario_id:usuario,jti:"tentativa"}}));m.code.mockResolvedValue({access_token:"fixture-token"});m.assets.mockResolvedValue({display_phone_number:"+5566999991234",verified_name:"Teste"});m.sub.mockResolvedValue(undefined);m.sync.mockResolvedValue(undefined);m.save.mockResolvedValue(null);m.from.mockImplementation(()=>{const chain={update:m.update,eq:vi.fn(),is:vi.fn(),gt:vi.fn(),neq:vi.fn(),select:vi.fn(),then:(r:(x:object)=>unknown)=>r({data:[{id:"tentativa"}],error:null})};for(const f of [m.update,chain.eq,chain.is,chain.gt,chain.neq,chain.select])f.mockReturnValue(chain);return chain;});});
+const request=()=>new Request("https://admin.example/api/erp/whatsapp/conectar",{method:"POST",body:JSON.stringify({t:"fixture-signed",instancia_id:id,code:"fixture-code",waba_id:"555555",phone_number_id:"777777"})});
+describe("conclusão da conexão",()=>{
+ it("assina WABA antes de sincronizar coexistência e salvar",async()=>{expect((await POST(request())).status).toBe(200);expect(m.sub).toHaveBeenCalledWith({id:"app"},"555555","fixture-token");expect(m.sub.mock.invocationCallOrder[0]).toBeLessThan(m.sync.mock.invocationCallOrder[0]);expect(m.sync.mock.invocationCallOrder[0]).toBeLessThan(m.save.mock.invocationCallOrder[0]);expect(m.save.mock.calls[0][0]).toMatchObject({usuario,instancia:{empresa_id:empresa,id}});});
+ it("não troca code para link de outra empresa ou inválido",async()=>{m.link.mockRejectedValue(new Error("Link inválido"));expect((await POST(request())).status).toBe(400);expect(m.code).not.toHaveBeenCalled();expect(m.update).not.toHaveBeenCalled();});
+ it("suspensão bloqueia troca de credenciais",async()=>{instancia.status="suspenso";expect((await POST(request())).status).toBe(400);expect(m.code).not.toHaveBeenCalled();});
+ it("não salva conexão sem assinatura da WABA e registra erro seguro",async()=>{m.sub.mockRejectedValue(new Error("Meta indisponível"));expect((await POST(request())).status).toBe(400);expect(m.save).not.toHaveBeenCalled();expect(m.update).toHaveBeenCalledWith(expect.objectContaining({status:"erro",revisao:2}));expect(JSON.stringify(m.update.mock.calls)).not.toContain("fixture-token");});
+ it("falha de sincronização preserva conexão com aviso visível",async()=>{m.sync.mockRejectedValue(new Error("Histórico não compartilhado"));expect((await POST(request())).status).toBe(200);expect(m.save.mock.calls[0][0].aviso).toContain("sincronização");});
+});

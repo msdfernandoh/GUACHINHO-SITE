@@ -999,6 +999,7 @@ export function MasterFranquiaHub({
       {tab === "erp" && (
         <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900 space-y-4 text-xs">
           <div>
+            <Link href={"/platform/whatsapp?empresa_id="+empresa.id} className="mb-4 inline-block rounded-lg bg-emerald-700 px-4 py-2 text-sm font-bold text-white">Configurar WhatsApp desta franquia</Link>
             <h3 className="text-base font-bold text-slate-900 dark:text-white">Matriz de Módulos ERP Efetivos</h3>
             <p className="text-slate-500">
               Módulos liberados pelo Plano SaaS e por Overrides individuais para esta empresa.
