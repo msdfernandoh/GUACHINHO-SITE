@@ -4419,3 +4419,11 @@ e empresa_usuarios. Por escolha expressa do titular, a instância vazia
 raconsinop.com.br; dados de teste serão cadastrados pelo titular após o deploy.
 48 testes focados aprovados; publicação e homologação registradas no relatório:
 `docs/relatorios-fases/WHATSAPP-SAAS-INSTANCIAS-2026-11-02.md`.
+
+Homologação desta entrega: 1.998 testes aprovados, 37 ignorados e zero falhas;
+build/TypeScript e lint aprovados. Commit 52524fc6 publicado na main, deployment
+dpl_FQ7sErTnvkXFLLwRhopRKhRnWJ7n READY. Dez verificações HTTP em produção
+aprovadas, incluindo SaaS autenticado e ERP compartilhado em www.raconsinop.com.br.
+Sessões temporárias autorizadas encerradas; nenhuma mensagem real enviada.
+Revisão final converte validade local do token de teste para UTC antes do envio.
+Inspeção visual indisponível por configuração do navegador Work; detalhes no relatório.

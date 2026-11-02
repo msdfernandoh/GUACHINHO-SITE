@@ -161,7 +161,7 @@ export async function configurarTesteMeta(_s: WhatsappFormState, f: FormData) {
         const para = str(f, "destinatarios").split(/[;,\n]+/).map(v => numeroE164(v.trim()).slice(1));
         if (!para.length || para.length > 5)
             throw new Error("Informe de um a cinco destinatários autorizados no painel da Meta.");
-        const expira = new Date(str(f, "token_expira_em"));
+        const expira = new Date(z.iso.datetime({ offset: true }).parse(str(f, "token_expira_em")));
         if (!Number.isFinite(expira.getTime()) || expira.getTime() <= Date.now())
             throw new Error("Informe a validade futura do token de teste.");
         const t = await validarAtivos(app, waba, phone, token);
