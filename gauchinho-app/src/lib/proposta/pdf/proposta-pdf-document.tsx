@@ -920,9 +920,52 @@ function fallbackSegmentoFromData(data: PropostaPdfData): SegmentoPdf {
   };
 }
 
+function ComparacaoGrupos({ data }: { data: PropostaPdfData }) {
+  const segmentos = separarSegmentosPorGrupo(data.segmentos);
+  const grupos = segmentos.flatMap(seg => seg.grupos);
+  const lotes = Array.from({ length: Math.ceil(grupos.length / 3) }, (_, i) => grupos.slice(i * 3, i * 3 + 3));
+  return <Document title="Comparação de grupos" author={MARCA_PRINCIPAL}>
+    {segmentos.map((seg, i) => <Page key={i} size="A4" style={s.page}>
+      <Cabecalho direito={`Opção ${i + 1} · Grupo ${seg.grupos[0].codigoGrupo}`} />
+      <Text style={s.h2}>{data.cliente.nome} · Alternativa {i + 1}</Text>
+      <Text style={{ marginVertical: 12 }}>Opção independente para sua escolha. Os créditos e parcelas dos grupos não são somados.</Text>
+      <SegBlock data={data} segmento={seg} />
+      <Rodape pagina={`Opção ${i + 1} de ${grupos.length}`} />
+    </Page>)}
+    {lotes.map((lote, index) => <Page key={index} size="A4" style={s.page}>
+      <Cabecalho direito="Análise comparativa" />
+      <Text style={s.h2}>Compare e escolha seu grupo</Text>
+      <Text style={{ marginTop: 8, marginBottom: 20 }}>Alternativas independentes para {data.cliente.nome}.</Text>
+      <View style={{ flexDirection: "row", gap: 10 }}>
+        {lote.map((g, i) => <View key={i} style={{ flex: 1, borderWidth: 1, borderColor: "#bfdbfe", padding: 12, backgroundColor: "#f8fafc" }}>
+          <Text style={{ fontSize: 13, fontWeight: "bold", marginBottom: 16 }}>Grupo {g.codigoGrupo}</Text>
+          {[
+            ["Crédito", fmtMoney(g.credito)],
+            ["1ª parcela", fmtMoney(g.primeiraParcela)],
+            ["Lance embutido", fmtMoney(g.lanceEmbutido)],
+            ["Recurso próprio", fmtMoney(g.recursoProprio)],
+            ["Crédito líquido", fmtMoney(g.creditoLiquido)],
+            ["Parcela após contemplação", fmtMoney(g.parcelaPosContemplacao)],
+            ["Prazo restante do grupo", `${g.prazoRestante} meses`],
+            ["Cotas nesta alternativa", String(g.quantidadeCotas)],
+          ].map(([label, value], row) => <View key={label} style={{ marginBottom: 18 }}>
+            <Text style={{ fontSize: 9, color: "#475569", marginBottom: 5 }}>{label}</Text>
+            <Text style={{ fontSize: row < 2 ? 16 : 12, fontWeight: "bold", color: row < 2 ? "#0055aa" : "#0f172a" }}>{value}</Text>
+          </View>)}
+        </View>)}
+      </View>
+      <Text style={{ marginTop: 18, fontSize: 9, lineHeight: 1.5 }}>Parcela após contemplação estimada conforme o lance simulado. O prazo restante é o prazo atual do grupo. Valores e prazo após contemplação dependem da assembleia e das condições do plano.</Text>
+      {data.observacaoConsultor && <Text style={{ marginTop: 16 }}>{data.observacaoConsultor}</Text>}
+      <Rodape pagina={`Comparativo ${index + 1} / ${lotes.length}`} />
+    </Page>)}
+  </Document>;
+}
+
 export function PropostaPdfDocument({ data }: { data: PropostaPdfData }) {
   const segmentos = data.segmentos.length > 0 ? data.segmentos : [fallbackSegmentoFromData(data)];
   const docData = data.segmentos.length > 0 ? data : { ...data, segmentos };
+
+  if (docData.compararGruposPdf && docData.modoAgrupamentoGrupos === "separado" && segmentos.flatMap(seg => seg.grupos).length > 1) return <ComparacaoGrupos data={docData} />;
 
   if (docData.visualizacao === "resumida") {
     return (

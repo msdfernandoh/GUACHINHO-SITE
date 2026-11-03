@@ -107,6 +107,22 @@ function baseData(overrides: Partial<PropostaPdfData>): PropostaPdfData {
 }
 
 describe("PDF de proposta — nova geração", () => {
+  it("compara três grupos sem totalizar créditos", async () => {
+    const seg = segmento("veiculo", "Veículo");
+    seg.grupos = ["1553", "1554", "1555"].map(codigo => grupo("veiculo", codigo));
+    const buf = await renderPropostaPdfBuffer(baseData({ segmentos: [seg], consolidado: consolidadoDe([seg]), modoAgrupamentoGrupos: "separado", compararGruposPdf: true }));
+    if (process.env.PDF_COMPARACAO_PREVIEW) {
+      const fs = await import("node:fs");
+      fs.writeFileSync(process.env.PDF_COMPARACAO_PREVIEW, buf);
+    }
+    const { extractText } = await import("unpdf");
+    const result = await extractText(new Uint8Array(buf), { mergePages: true });
+    expect(result.text).toContain("Compare e escolha seu grupo");
+    expect(result.text).toContain("1555");
+    expect(result.text).not.toContain("360.000");
+    expect(result.text).toContain("Crédito líquido");
+  }, 30000);
+
   it("renderiza proposta só de imóvel (capa padrão)", async () => {
     const seg = segmento("imovel", "Imóvel");
     const buf = await renderPropostaPdfBuffer(baseData({ segmentos: [seg], consolidado: consolidadoDe([seg]) }));

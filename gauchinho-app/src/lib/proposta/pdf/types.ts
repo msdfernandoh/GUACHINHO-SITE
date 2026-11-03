@@ -213,6 +213,7 @@ export type PropostaPdfData = {
   blocos: PropostaBlocosPdf;
   linhasGrupo: PropostaLinhasGrupoPdf;
   /** Quando separado, preserva capa única e detalha um grupo por folha. */
+  compararGruposPdf?: boolean;
   modoAgrupamentoGrupos: "unificado" | "separado";
   /** Versão completa ou o mesmo recorte exibido no link público resumido. */
   visualizacao: "completa" | "resumida";

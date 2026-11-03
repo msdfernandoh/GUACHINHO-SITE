@@ -38,6 +38,7 @@ type Body = {
   observacao?: string;
   consultor_nome?: string;
   consultor_telefone?: string;
+  comparar_grupos_pdf?: boolean;
   visualizacao_pdf?: "completa" | "resumida";
   modo_agrupamento_grupos?: "unificado" | "separado" | "independentes";
 };
@@ -235,6 +236,7 @@ export async function POST(request: Request) {
               ...buildSnapshotLanceLinha(s.config, s.resultado, mod),
             };
           }),
+          comparar_grupos_pdf: body.comparar_grupos_pdf === true && modoAgrupamentoGrupos === "separado",
           modo_agrupamento_grupos: modoAgrupamentoGrupos,
         },
         status: "Gerada",

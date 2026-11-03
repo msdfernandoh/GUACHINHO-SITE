@@ -4435,3 +4435,13 @@ Tags ganham destaque e o texto ainda digitado é incluído ao salvar.
 Sem migration ou alteração de dados operacionais. Validação local TypeScript.
 Publicação e homologação visual pendentes.
 Relatório: docs/relatorios-fases/PIPELINE-RESPONSAVEIS-TAGS-2026-11-03.md.
+
+### Comparação de alternativas somente no PDF (03/11/2026)
+Checkbox em Separar por grupo ativa comparar_grupos_pdf nos dados da proposta.
+PDF apresenta páginas independentes e quadro final com crédito/parcela destacados,
+lance embutido, recurso próprio, líquido, pós-contemplação e prazo do grupo.
+Não soma alternativas; links públicos e modos anteriores preservados.
+Seis testes e inspeção visual do PDF aprovados. Sem migration ou publicação.
+Relatório: docs/relatorios-fases/PDF-COMPARACAO-GRUPOS-2026-11-03.md.
+
+Continuação e envio à main autorizados pelo titular; TypeScript e lint aprovados.

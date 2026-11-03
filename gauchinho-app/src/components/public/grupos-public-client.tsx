@@ -245,6 +245,8 @@ export function GruposPublicClient({
     }
   }
 
+  const [compararPdf, setCompararPdf] = useState(false);
+
   function openPropostaModal() {
     if (!hasSelection) {
       setToastMsg("Informe cota e quantidade (mín. 1) em ao menos um grupo.");
@@ -254,6 +256,7 @@ export function GruposPublicClient({
     // separado. O consultor pode optar por unificar explicitamente no modal.
     setModoAgrupamentoGrupos(temMaisDeUmGrupo ? "separado" : "unificado");
     setPdfResumido(false);
+    setCompararPdf(false);
     setModalOpen(true);
     setResultMsg(null);
     setPdfLink(null);
@@ -278,6 +281,7 @@ export function GruposPublicClient({
           consultor_nome: consultorNomePdf.trim() || undefined,
           consultor_telefone: consultorTelPdf.trim() || undefined,
           visualizacao_pdf: pdfResumido && modoAgrupamentoGrupos === "unificado" ? "resumida" : "completa",
+          comparar_grupos_pdf: compararPdf && temMaisDeUmGrupo && modoAgrupamentoGrupos === "separado",
           modo_agrupamento_grupos: temMaisDeUmGrupo ? modoAgrupamentoGrupos : "unificado",
           selecoes: linhasAtivas.map((s) => ({
             grupoId: s.grupoId,
@@ -535,6 +539,7 @@ export function GruposPublicClient({
                       <span><strong>Arquivos independentes</strong><span className="block text-xs text-zinc-400">Gera um PDF para cada grupo; cotas do mesmo grupo ficam no mesmo arquivo.</span></span>
                     </label>
                     {modoAgrupamentoGrupos === "independentes" && pdfResumido ? <p className="mt-2 text-[11px] text-amber-100">Será gerado um PDF resumido independente para cada grupo.</p> : null}
+                    {modoAgrupamentoGrupos === "separado" && <label className="mt-3 flex items-start gap-2 rounded-lg border border-blue-400/40 p-3 text-sm"><input type="checkbox" checked={compararPdf} onChange={e => setCompararPdf(e.target.checked)} /><span><strong>Comparar grupos (somente no PDF)</strong><span className="block text-xs">Alternativas sem somar valores, com comparação na última página.</span></span></label>}
                   </fieldset>
                 ) : null}
                 <div>
