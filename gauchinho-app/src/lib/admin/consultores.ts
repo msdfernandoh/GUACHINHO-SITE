@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { nomeComTipoComissao } from "@/lib/participantes/nome-com-parceria";
 
-export type ConsultorOption = { id: string; nome: string; email?: string | null };
+export type ConsultorOption = { id: string; nome: string; email?: string | null; usuarioIds?: string[] };
 
 function isMissingColumn(error: { message?: string } | null, col: string): boolean {
   const msg = error?.message ?? "";
@@ -28,6 +28,7 @@ export function consultoresDosVinculos(links: TenantConsultorLink[]) {
     const anterior = usuarios.get(key);
     usuarios.set(key, {
       id: anterior?.id ?? usuario.id,
+      usuarioIds: [...new Set([...(anterior?.usuarioIds ?? []), usuario.id])],
       nome: anterior?.nome ?? usuario.nome,
       email: anterior?.email ?? usuario.email ?? null,
       is_consultor: Boolean(anterior?.is_consultor || link.is_consultor === true || papel?.codigo === "consultor"),
@@ -84,7 +85,7 @@ export async function listarConsultores(
     const preferidos = opts.preferirMarcados ? tenantRows.filter((row) => row.is_consultor) : tenantRows;
     return (preferidos.length ? preferidos : tenantRows)
       .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"))
-      .map(({ id, nome, email }) => ({ id, nome: nomeComTipoComissao(nome, tiposPorUsuario.get(id)), email }));
+      .map(({ id, nome, email, usuarioIds }) => ({ id, usuarioIds, nome: nomeComTipoComissao(nome, tiposPorUsuario.get(id)), email }));
   }
 
   const staff = await supabase

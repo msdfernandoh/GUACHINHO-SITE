@@ -17,6 +17,7 @@ import { updateLeadEtapaAction } from "@/app/admin/leads/actions";
 import { isLeadGanho } from "@/lib/crm/upsert-lead";
 import { Search, Sparkles, UserCheck, Clock, Flame, UserX, FileQuestion, Layers, Eye, X } from "lucide-react";
 import type { ConsultorOption } from "@/lib/admin/consultores";
+import { matchesConsultor, consultoresParaFiltro } from "@/lib/crm/consultor-filter";
 
 export function CrmKanbanBoard({
   initialLeads,
@@ -174,6 +175,7 @@ export function CrmKanbanBoard({
 
   // Filtro em tempo real
   const now = currentTime ?? 0;
+  const filterConsultores = consultoresParaFiltro(consultores, leads);
   const filteredLeads = leads.filter((lead) => {
     // 1. Busca textual
     if (searchQuery.trim()) {
@@ -189,7 +191,7 @@ export function CrmKanbanBoard({
     }
 
     // 2. Filtro de consultor
-    if (selectedConsultor && lead.srd_responsavel_id !== selectedConsultor) {
+    if (!matchesConsultor(lead, selectedConsultor, filterConsultores)) {
       return false;
     }
 
@@ -458,7 +460,7 @@ export function CrmKanbanBoard({
             className="rounded-lg border border-zinc-700/80 bg-zinc-950/80 px-2.5 py-1.5 text-xs text-zinc-300 focus:border-blue-500 focus:outline-hidden"
           >
             <option value="">Todos os Consultores / SDRs</option>
-            {consultores.map((c) => (
+            {filterConsultores.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.nome}
               </option>

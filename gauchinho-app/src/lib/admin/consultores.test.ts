@@ -48,6 +48,7 @@ describe("consultores por vínculo ativo no tenant", () => {
     ]);
     expect(rows).toHaveLength(1);
     expect(rows[0].is_consultor).toBe(true);
+    expect(rows[0].usuarioIds).toEqual(["u1", "legado"]);
   });
   it("exclui usuários inativos e perfis sem elegibilidade sem juntar homônimos", () => {
     const rows = consultoresDosVinculos([

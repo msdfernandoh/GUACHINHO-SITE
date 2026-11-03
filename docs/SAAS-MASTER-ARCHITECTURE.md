@@ -4474,3 +4474,10 @@ e etapa exige linha retornada, evitando falso sucesso sem gravação. Retorno à
 reconsulta o servidor. Sem mudança de tenant/RLS ou migration; homologação remota
 de persistência pendente. Relatório:
 docs/relatorios-fases/PIPELINE-SINCRONIZACAO-PORTAIS-2026-11-03.md.
+
+### Pipeline Gauchinho: filtro de responsáveis históricos (03/11/2026)
+Filtro reconhece IDs de usuários consolidados por identidade comprovada e oferece
+responsáveis históricos dos leads autorizados. Homônimos separados; opções
+históricas não habilitam nova atribuição. Sem migration ou alterações operacionais.
+Sete testes e TypeScript aprovados; homologação autenticada pendente.
+Relatório: docs/relatorios-fases/PIPELINE-FILTRO-RESPONSAVEL-GAUCHINHO-2026-11-03.md.
