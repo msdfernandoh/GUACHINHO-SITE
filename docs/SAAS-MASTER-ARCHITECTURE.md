@@ -4466,3 +4466,11 @@ TypeScript/lint aprovados. Envio à main autorizado com tags e PDF pendentes.
 Relatório: docs/relatorios-fases/PIPELINE-OCULTAR-RECOLHER-FASES-2026-11-03.md.
 
 Comparativo também exibe cliente e consultor responsável ao final, inclusive no modo compacto, usando fallback institucional da proposta normal.
+
+### Pipeline: sincronização de edição e retorno ao portal (03/11/2026)
+Board e card reconciliam dados do servidor após refresh. Modal usa retorno da
+gravação, inclusive etapa/status; edição invalida rotas do CRM. UPDATE de edição
+e etapa exige linha retornada, evitando falso sucesso sem gravação. Retorno à aba
+reconsulta o servidor. Sem mudança de tenant/RLS ou migration; homologação remota
+de persistência pendente. Relatório:
+docs/relatorios-fases/PIPELINE-SINCRONIZACAO-PORTAIS-2026-11-03.md.

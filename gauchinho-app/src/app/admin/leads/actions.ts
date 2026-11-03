@@ -358,8 +358,8 @@ export async function updateLeadAction(leadId: string, formData: FormData) {
     };
   }
 
-  const { error } = await supabase.from("leads").update(updates).eq("id", leadId);
-  if (error) throw new Error(error.message);
+  const { data: gravado, error } = await supabase.from("leads").update(updates).eq("id", leadId).select("*").single();
+  if (error || !gravado) throw new Error(error?.message ?? "Não foi possível salvar o lead. Atualize a página e tente novamente.");
 
   if (updates.srd_responsavel_id) {
     const { data: srdUser } = await supabase
@@ -397,6 +397,9 @@ export async function updateLeadAction(leadId: string, formData: FormData) {
   }
   revalidatePath(`/admin/leads/${leadId}`);
   revalidatePath("/admin/leads");
+  revalidatePath("/admin/crm");
+  revalidatePath("/admin/crm/pipeline");
+  return { ...gravado, srd_responsavel_nome: updates.srd_responsavel_nome };
 }
 
 export async function agendarRetornoAction(leadId: string, formData: FormData) {
@@ -989,8 +992,8 @@ export async function updateLeadEtapaAction(
     updatePayload.perdido_at = null;
   }
 
-  const { error } = await supabase.from("leads").update(updatePayload).eq("id", leadId);
-  if (error) throw new Error(error.message);
+  const { data: gravado, error } = await supabase.from("leads").update(updatePayload).eq("id", leadId).select("id").single();
+  if (error || !gravado) throw new Error(error?.message ?? "Não foi possível salvar a etapa do lead.");
 
   const descHistorico = extra?.observacao
     ? `Etapa alterada para “${etapaNome}”. Obs: ${extra.observacao}`

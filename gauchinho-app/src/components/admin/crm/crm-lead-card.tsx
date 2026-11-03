@@ -15,7 +15,7 @@ import {
   FilePlus2,
   Files,
 } from "lucide-react";
-import { useState, useTransition } from "react";
+import { useState, useTransition, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { converterLeadParaErpAction } from "@/app/admin/leads/actions";
 import { CrmLeadEditModal } from "./crm-lead-edit-modal";
@@ -41,6 +41,7 @@ export function CrmLeadCard({
   const [isEditing, setIsEditing] = useState(false);
   const [isPropostasOpen, setIsPropostasOpen] = useState(false);
   const [cardLead, setCardLead] = useState(lead);
+  useEffect(() => { setCardLead(lead); }, [lead]);
   const router = useRouter();
 
   const credito = valorEstimadoLead(lead);

@@ -38,6 +38,13 @@ export function CrmKanbanBoard({
   const searchParams = useSearchParams();
 
   const [leads, setLeads] = useState<LeadListRow[]>(initialLeads);
+  useEffect(() => { setLeads(initialLeads); }, [initialLeads]);
+  useEffect(() => {
+    const refresh = () => { if (document.visibilityState === "visible") router.refresh(); };
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", refresh);
+    return () => { window.removeEventListener("focus", refresh); document.removeEventListener("visibilitychange", refresh); };
+  }, [router]);
   const [hideEmptyStages, setHideEmptyStages] = useState(false);
   const [collapsedStages, setCollapsedStages] = useState<Set<string>>(new Set());
   function toggleStage(id: string) {
