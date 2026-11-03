@@ -4481,3 +4481,10 @@ responsáveis históricos dos leads autorizados. Homônimos separados; opções
 históricas não habilitam nova atribuição. Sem migration ou alterações operacionais.
 Sete testes e TypeScript aprovados; homologação autenticada pendente.
 Relatório: docs/relatorios-fases/PIPELINE-FILTRO-RESPONSAVEL-GAUCHINHO-2026-11-03.md.
+
+### Lista: aplicar consultor aos selecionados (03/11/2026)
+Botão explícito e destacado com contagem; seleção total da lista por botão e
+seleção individual existentes. Backend valida consultor/tenant e quantidade
+realmente gravada, informa aplicação parcial e invalida Lista/CRM/Pipeline.
+Sem migration. TypeScript aprovado; homologação autenticada pendente.
+Relatório: docs/relatorios-fases/LISTA-LEADS-ATRIBUIR-CONSULTOR-LOTE-2026-11-03.md.

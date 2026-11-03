@@ -703,21 +703,27 @@ export async function assignConsultorAction(leadId: string, srdId: string, srdNo
 
 export async function bulkAssignConsultorAction(leadIds: string[], srdId: string) {
   const usuario = await requireUsuario();
-  if (!leadIds.length) throw new Error("Selecione ao menos um lead.");
-  await requireLeadIdsInCurrentTenant(leadIds);
+  const ids = [...new Set(leadIds)];
+  if (!ids.length) throw new Error("Selecione ao menos um lead.");
+  await requireLeadIdsInCurrentTenant(ids);
+  const consultor = (await fetchSrdOptions()).find(c => c.id === srdId);
+  if (!consultor) throw new Error("Escolha um consultor ativo desta empresa.");
   const supabase = await createClient();
-  const { data: srdUser } = await supabase.from("usuarios").select("nome").eq("id", srdId).maybeSingle();
-  const srdNome = srdUser?.nome ?? "";
-  const { error } = await supabase
+  const srdNome = consultor.nome;
+  const { data, error } = await supabase
     .from("leads")
     .update({ srd_responsavel_id: srdId, srd_responsavel_nome: srdNome })
-    .in("id", leadIds);
+    .in("id", ids).select("id");
   if (error) throw new Error(error.message);
-  for (const leadId of leadIds) {
-    await touchInteracao(supabase, leadId);
-    await historico(leadId, usuario.id, "lead_consultor_atribuido", srdNome || "Consultor atribuído em lote");
+  for (const lead of data ?? []) {
+    await touchInteracao(supabase, lead.id);
+    await historico(lead.id, usuario.id, "lead_consultor_atribuido", srdNome || "Consultor atribuído em lote");
   }
   revalidatePath("/admin/leads");
+  revalidatePath("/admin/crm");
+  revalidatePath("/admin/crm/pipeline");
+  if (data?.length !== ids.length) throw new Error(`Consultor aplicado a ${data?.length ?? 0} de ${ids.length} leads. Atualize a lista e confira suas permissões para os demais.`);
+  return { count: data.length };
 }
 
 export async function createAtividadeAction(leadId: string, formData: FormData) {

@@ -2,6 +2,7 @@
 
 import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import type { LeadListRow, CrmFunilEtapaRow } from "@/lib/crm/types";
 import type { ConsultorOption } from "@/lib/admin/consultores";
 import { labelOrigem, valorEstimadoLead } from "@/lib/crm/constants";
@@ -28,6 +29,7 @@ type Props = {
 };
 
 export function LeadListWithBulk({ leads, consultores, etapas = [], canDelete = false }: Props) {
+  const router = useRouter();
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [consultorId, setConsultorId] = useState("");
   const [targetEtapaId, setTargetEtapaId] = useState("");
@@ -61,9 +63,10 @@ export function LeadListWithBulk({ leads, consultores, etapas = [], canDelete = 
     const ids = [...selected];
     startTransition(async () => {
       try {
-        await bulkAssignConsultorAction(ids, consultorId);
+        const result = await bulkAssignConsultorAction(ids, consultorId);
+        router.refresh();
         setSelected(new Set());
-        setMsg(`${ids.length} lead(s) atualizado(s).`);
+        setMsg(`Consultor aplicado a ${result.count} lead(s) selecionado(s).`);
       } catch (e) {
         setMsg(e instanceof Error ? e.message : "Erro ao atribuir consultor.");
       }
@@ -126,6 +129,10 @@ export function LeadListWithBulk({ leads, consultores, etapas = [], canDelete = 
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-end gap-3 rounded-xl border border-zinc-700 bg-zinc-900/60 p-3">
+        <div className="flex w-full flex-wrap items-center gap-3 text-xs text-zinc-300">
+          <Button type="button" variant="outline" disabled={pending || leads.length === 0} onClick={toggleAll}>{allSelected ? "Desmarcar todos" : "Selecionar todos desta lista"}</Button>
+          <span>{selected.size} lead(s) selecionado(s). Escolha o consultor e clique em aplicar.</span>
+        </div>
         {/* Atribuição de Consultor */}
         <div className="min-w-[180px] flex-1">
           <label className="mb-1 block text-xs font-semibold text-zinc-300">Consultor para selecionados</label>
@@ -138,8 +145,8 @@ export function LeadListWithBulk({ leads, consultores, etapas = [], canDelete = 
             ))}
           </Select>
         </div>
-        <Button type="button" disabled={pending || selected.size === 0} onClick={aplicarConsultor}>
-          {pending ? "Salvando…" : `Atribuir (${selected.size})`}
+        <Button type="button" variant="outline" className="border-blue-600 bg-blue-600 text-white hover:bg-blue-700" disabled={pending || selected.size === 0 || !consultorId} onClick={aplicarConsultor}>
+          {pending ? "Aplicando consultor…" : `Aplicar consultor aos selecionados (${selected.size})`}
         </Button>
 
         {/* Mudança Rápida de Etapa em Lote */}
