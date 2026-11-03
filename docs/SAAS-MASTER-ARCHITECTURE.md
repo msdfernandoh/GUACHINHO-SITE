@@ -4445,3 +4445,24 @@ Seis testes e inspeção visual do PDF aprovados. Sem migration ou publicação.
 Relatório: docs/relatorios-fases/PDF-COMPARACAO-GRUPOS-2026-11-03.md.
 
 Continuação e envio à main autorizados pelo titular; TypeScript e lint aprovados.
+
+### Contraste das tags no Pipeline (03/11/2026)
+Tag usa texto cyan-950 sobre fundo sólido cyan-100 e borda cyan-300,
+corrigindo baixa legibilidade no tema claro. Somente apresentação, sem dados.
+Relatório: docs/relatorios-fases/PIPELINE-CONTRASTE-TAGS-2026-11-03.md.
+
+### Capa e comparação compacta no PDF (03/11/2026)
+Comparativo inclui capa sem somar alternativas. Checkbox Somente capa e comparação
+omite folhas específicas; preferência somente_capa_comparacao_pdf restrita ao PDF.
+Sete testes e TypeScript aprovados; capa/comparação inspecionadas visualmente.
+Sem migration ou publicação. Relatório:
+docs/relatorios-fases/PDF-CAPA-E-COMPARACAO-COMPACTA-2026-11-03.md.
+
+### Organização de fases do Pipeline (03/11/2026)
+Checkbox oculta fases vazias nos filtros atuais. Colunas podem ser recolhidas
+manualmente em faixa com nome/contagem e expandidas individualmente ou em conjunto.
+Drop mantém transição existente. Estado apenas na sessão, sem escrita operacional.
+TypeScript/lint aprovados. Envio à main autorizado com tags e PDF pendentes.
+Relatório: docs/relatorios-fases/PIPELINE-OCULTAR-RECOLHER-FASES-2026-11-03.md.
+
+Comparativo também exibe cliente e consultor responsável ao final, inclusive no modo compacto, usando fallback institucional da proposta normal.

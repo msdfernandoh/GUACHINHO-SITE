@@ -197,7 +197,7 @@ function Cabecalho({ direito }: { direito: string }) {
 /* ---------- capa padrão ---------- */
 
 function CapaPadrao({ data }: { data: PropostaPdfData }) {
-  const chips = data.segmentos.map((seg) => `${seg.label} ${fmtMoney(seg.totais.credito)}`);
+  const chips = data.compararGruposPdf ? data.segmentos.flatMap(seg => seg.grupos.map(g => `Grupo ${g.codigoGrupo} · ${fmtMoney(g.credito)}`)) : data.segmentos.map((seg) => `${seg.label} ${fmtMoney(seg.totais.credito)}`);
   return (
     <Page size="A4" style={[s.page, { padding: 0 }]}>
       <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}>
@@ -310,7 +310,7 @@ function CapaCampanha({ data }: { data: PropostaPdfData }) {
 
         <View style={{ borderWidth: 1, borderColor: "rgba(255,255,255,0.4)", backgroundColor: "rgba(255,255,255,0.13)", borderRadius: 18, padding: 14, maxWidth: 330 }}>
           <Text style={{ fontFamily: FONT_MONO, fontSize: 7.5, letterSpacing: 1.4, color: "#d7effb", textTransform: "uppercase", marginBottom: 3 }}>
-            Crédito contratado
+            {data.compararGruposPdf ? "Comparação de grupos" : "Crédito contratado"}
           </Text>
           <Text style={{ fontFamily: FONT_DISPLAY, fontWeight: 700, fontStyle: "italic", fontSize: 20, color: "#fff", marginBottom: 6 }}>
             {ofertaCapaLabel(data)}
@@ -364,6 +364,7 @@ function MetaCapa({ data, claro }: { data: PropostaPdfData; claro?: boolean }) {
 }
 
 function tituloCapa(data: PropostaPdfData): string {
+  if (data.compararGruposPdf) return "Compare as opções para sua próxima conquista.";
   const tipos = data.segmentos.map((seg) => seg.tipo);
   if (tipos.length === 1 && tipos[0] === "imovel") return "Seu plano para conquistar o imóvel";
   if (tipos.length === 1 && tipos[0] === "veiculo") return "Seu plano para conquistar o veículo";
@@ -372,6 +373,7 @@ function tituloCapa(data: PropostaPdfData): string {
 }
 
 function ofertaCapaLabel(data: PropostaPdfData): string {
+  if (data.compararGruposPdf) return "Alternativas para sua escolha";
   const total = data.consolidado?.credito ?? 0;
   const labels = data.segmentos.map((seg) => seg.label.toLowerCase()).join(" + ");
   return labels ? `${fmtMoney(total)} · ${labels}` : fmtMoney(total);
@@ -921,11 +923,15 @@ function fallbackSegmentoFromData(data: PropostaPdfData): SegmentoPdf {
 }
 
 function ComparacaoGrupos({ data }: { data: PropostaPdfData }) {
+  const contato = data.consultor.usarConsultor && data.consultor.nome
+    ? { nome: data.consultor.nome, tel: data.consultor.telefone, email: data.consultor.email }
+    : { nome: data.contatoGauchinho.nomeEmpresa, tel: data.contatoGauchinho.whatsapp, email: data.contatoGauchinho.email };
   const segmentos = separarSegmentosPorGrupo(data.segmentos);
   const grupos = segmentos.flatMap(seg => seg.grupos);
   const lotes = Array.from({ length: Math.ceil(grupos.length / 3) }, (_, i) => grupos.slice(i * 3, i * 3 + 3));
   return <Document title="Comparação de grupos" author={MARCA_PRINCIPAL}>
-    {segmentos.map((seg, i) => <Page key={i} size="A4" style={s.page}>
+    {data.capaEstilo === "campanha" ? <CapaCampanha data={data} /> : <CapaPadrao data={data} />}
+    {!data.somenteCapaComparacaoPdf && segmentos.map((seg, i) => <Page key={i} size="A4" style={s.page}>
       <Cabecalho direito={`Opção ${i + 1} · Grupo ${seg.grupos[0].codigoGrupo}`} />
       <Text style={s.h2}>{data.cliente.nome} · Alternativa {i + 1}</Text>
       <Text style={{ marginVertical: 12 }}>Opção independente para sua escolha. Os créditos e parcelas dos grupos não são somados.</Text>
@@ -956,6 +962,20 @@ function ComparacaoGrupos({ data }: { data: PropostaPdfData }) {
       </View>
       <Text style={{ marginTop: 18, fontSize: 9, lineHeight: 1.5 }}>Parcela após contemplação estimada conforme o lance simulado. O prazo restante é o prazo atual do grupo. Valores e prazo após contemplação dependem da assembleia e das condições do plano.</Text>
       {data.observacaoConsultor && <Text style={{ marginTop: 16 }}>{data.observacaoConsultor}</Text>}
+      {index === lotes.length - 1 && <View style={[s.ccardRow, { marginTop: 16 }]} wrap={false}>
+        <View style={s.ccard}>
+          <Text style={s.ccardL}>Cliente</Text>
+          <Text style={s.ccardNm}>{data.cliente.nome}</Text>
+          {data.cliente.whatsapp && <Text style={s.ccardLi}>{data.cliente.whatsapp}</Text>}
+          {data.cliente.email && <Text style={s.ccardLi}>{data.cliente.email}</Text>}
+        </View>
+        <View style={s.ccard}>
+          <Text style={s.ccardL}>Consultor responsável</Text>
+          <Text style={s.ccardNm}>{contato.nome}</Text>
+          {contato.tel && <Text style={s.ccardLi}>{contato.tel}</Text>}
+          {contato.email && <Text style={s.ccardLi}>{contato.email}</Text>}
+        </View>
+      </View>}
       <Rodape pagina={`Comparativo ${index + 1} / ${lotes.length}`} />
     </Page>)}
   </Document>;

@@ -599,6 +599,7 @@ export async function buildPropostaPdfData(
     consolidado,
     blocos: propostasFull.blocos,
     linhasGrupo: propostasFull.linhasGrupo,
+    somenteCapaComparacaoPdf: dadosSim.somente_capa_comparacao_pdf === true,
     compararGruposPdf: dadosSim.comparar_grupos_pdf === true && modoAgrupamentoGrupos === "separado",
     modoAgrupamentoGrupos,
     visualizacao: overrides?.visualizacao === "resumida" ? "resumida" : "completa",

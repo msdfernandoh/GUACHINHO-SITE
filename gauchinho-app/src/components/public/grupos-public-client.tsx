@@ -245,6 +245,7 @@ export function GruposPublicClient({
     }
   }
 
+  const [somenteComparacaoPdf, setSomenteComparacaoPdf] = useState(false);
   const [compararPdf, setCompararPdf] = useState(false);
 
   function openPropostaModal() {
@@ -257,6 +258,7 @@ export function GruposPublicClient({
     setModoAgrupamentoGrupos(temMaisDeUmGrupo ? "separado" : "unificado");
     setPdfResumido(false);
     setCompararPdf(false);
+    setSomenteComparacaoPdf(false);
     setModalOpen(true);
     setResultMsg(null);
     setPdfLink(null);
@@ -281,6 +283,7 @@ export function GruposPublicClient({
           consultor_nome: consultorNomePdf.trim() || undefined,
           consultor_telefone: consultorTelPdf.trim() || undefined,
           visualizacao_pdf: pdfResumido && modoAgrupamentoGrupos === "unificado" ? "resumida" : "completa",
+          somente_capa_comparacao_pdf: compararPdf && somenteComparacaoPdf && modoAgrupamentoGrupos === "separado",
           comparar_grupos_pdf: compararPdf && temMaisDeUmGrupo && modoAgrupamentoGrupos === "separado",
           modo_agrupamento_grupos: temMaisDeUmGrupo ? modoAgrupamentoGrupos : "unificado",
           selecoes: linhasAtivas.map((s) => ({
@@ -540,6 +543,7 @@ export function GruposPublicClient({
                     </label>
                     {modoAgrupamentoGrupos === "independentes" && pdfResumido ? <p className="mt-2 text-[11px] text-amber-100">Será gerado um PDF resumido independente para cada grupo.</p> : null}
                     {modoAgrupamentoGrupos === "separado" && <label className="mt-3 flex items-start gap-2 rounded-lg border border-blue-400/40 p-3 text-sm"><input type="checkbox" checked={compararPdf} onChange={e => setCompararPdf(e.target.checked)} /><span><strong>Comparar grupos (somente no PDF)</strong><span className="block text-xs">Alternativas sem somar valores, com comparação na última página.</span></span></label>}
+                    {modoAgrupamentoGrupos === "separado" && compararPdf && <label className="mt-2 flex items-start gap-2 rounded-lg border border-blue-400/40 p-3 text-sm"><input type="checkbox" checked={somenteComparacaoPdf} onChange={e => setSomenteComparacaoPdf(e.target.checked)} /><span><strong>Somente capa e comparação</strong><span className="block text-xs">Omite as páginas com os detalhes específicos de cada grupo.</span></span></label>}
                   </fieldset>
                 ) : null}
                 <div>

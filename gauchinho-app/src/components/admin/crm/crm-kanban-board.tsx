@@ -38,6 +38,15 @@ export function CrmKanbanBoard({
   const searchParams = useSearchParams();
 
   const [leads, setLeads] = useState<LeadListRow[]>(initialLeads);
+  const [hideEmptyStages, setHideEmptyStages] = useState(false);
+  const [collapsedStages, setCollapsedStages] = useState<Set<string>>(new Set());
+  function toggleStage(id: string) {
+    setCollapsedStages(previous => {
+      const next = new Set(previous);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
   const [isPending, startTransition] = useTransition();
 
   // Drag & Drop State
@@ -281,7 +290,8 @@ export function CrmKanbanBoard({
       )
     : null;
 
-  const visibleEtapas = focusMode && isFiltered ? activeEtapas : etapas;
+  const visibleEtapas = (focusMode && isFiltered ? activeEtapas : etapas)
+    .filter(col => !hideEmptyStages || (leadsByEtapa.get(col.id)?.length ?? 0) > 0);
   const hasKanbanHorizontalOverflow =
     kanbanScrollMetrics.contentWidth > kanbanScrollMetrics.viewportWidth + 1;
 
@@ -552,6 +562,11 @@ export function CrmKanbanBoard({
         </div>
       </div>
 
+      <div className="flex flex-wrap items-center gap-4 text-xs text-zinc-300">
+        <label className="flex cursor-pointer items-center gap-2"><input type="checkbox" checked={hideEmptyStages} onChange={e => setHideEmptyStages(e.target.checked)} />Esconder fases sem leads (nos filtros atuais)</label>
+        {collapsedStages.size > 0 && <button type="button" onClick={() => setCollapsedStages(new Set())} className="rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-1.5">Expandir todas as fases</button>}
+        {visibleEtapas.length === 0 && <span>Nenhuma fase com leads nos filtros atuais. Desmarque a opção para mostrar todas.</span>}
+      </div>
       {/* BANNER DE FILTRO DE FUNIL ATIVO */}
       {isFiltered && (
         <div data-racon-funnel-filter className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-blue-500/40 bg-gradient-to-r from-blue-950/40 via-purple-950/30 to-zinc-900/90 p-4 shadow-lg backdrop-blur-xs">
@@ -640,6 +655,19 @@ export function CrmKanbanBoard({
           const isColMatchingFilter = isEtapaInActiveFilter(col, selectedStageFilter);
           const isFirstMatchingCol = isFiltered && isColMatchingFilter && activeEtapas[0]?.id === col.id;
 
+          if (collapsedStages.has(col.id)) return (
+            <div key={col.id} ref={isFirstMatchingCol ? firstFilteredColRef : null}
+              onDragOver={e => handleDragOver(e, col.id)} onDragLeave={e => handleDragLeave(e, col.id)} onDrop={e => handleDrop(e, col)}
+              className={`flex w-16 shrink-0 flex-col items-center rounded-2xl border p-2 ${isOver ? "border-blue-500 bg-blue-950/20" : "border-zinc-800 bg-zinc-950/60"}`}>
+              <button type="button" aria-expanded={false} aria-label={`Expandir fase ${col.nome}`} title={`Expandir ${col.nome}`} onClick={() => toggleStage(col.id)} className="flex flex-col items-center gap-3 text-zinc-200">
+                <span aria-hidden="true">↔</span>
+                <span className="rounded-full bg-zinc-800 px-2 py-1 text-xs font-bold">{colLeads.length}</span>
+                <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: col.cor }} />
+                <span className="text-xs font-bold" style={{ writingMode: "vertical-rl" }}>{col.nome}</span>
+              </button>
+            </div>
+          );
+
           return (
             <div
               key={col.id}
@@ -672,6 +700,7 @@ export function CrmKanbanBoard({
                     </h3>
                   </div>
                   <div className="flex items-center gap-1.5">
+                    <button type="button" aria-expanded={true} aria-label={`Recolher fase ${col.nome}`} title="Recolher fase" onClick={() => toggleStage(col.id)} className="rounded p-1 text-zinc-400 hover:bg-zinc-800">↔</button>
                     {isFiltered && isColMatchingFilter && !focusMode && (
                       <span className="rounded-md border border-blue-500/40 bg-blue-950/60 px-1.5 py-0.5 text-[9px] font-black uppercase text-blue-300">
                         Ativa

@@ -107,20 +107,27 @@ function baseData(overrides: Partial<PropostaPdfData>): PropostaPdfData {
 }
 
 describe("PDF de proposta — nova geração", () => {
-  it("compara três grupos sem totalizar créditos", async () => {
+  it.each([false, true])("compara três grupos com capa, versão compacta: %s", async (compacta) => {
     const seg = segmento("veiculo", "Veículo");
     seg.grupos = ["1553", "1554", "1555"].map(codigo => grupo("veiculo", codigo));
-    const buf = await renderPropostaPdfBuffer(baseData({ segmentos: [seg], consolidado: consolidadoDe([seg]), modoAgrupamentoGrupos: "separado", compararGruposPdf: true }));
+    const buf = await renderPropostaPdfBuffer(baseData({ segmentos: [seg], consolidado: consolidadoDe([seg]), modoAgrupamentoGrupos: "separado", compararGruposPdf: true, somenteCapaComparacaoPdf: compacta }));
     if (process.env.PDF_COMPARACAO_PREVIEW) {
       const fs = await import("node:fs");
       fs.writeFileSync(process.env.PDF_COMPARACAO_PREVIEW, buf);
     }
     const { extractText } = await import("unpdf");
     const result = await extractText(new Uint8Array(buf), { mergePages: true });
+    expect(result.totalPages).toBe(compacta ? 2 : 5);
+    expect(result.text).toContain("Compare as opções para");
+    expect(result.text.includes("Saldo devedor inicial")).toBe(!compacta);
     expect(result.text).toContain("Compare e escolha seu grupo");
     expect(result.text).toContain("1555");
     expect(result.text).not.toContain("360.000");
     expect(result.text).toContain("Crédito líquido");
+    const comparativo = result.text.slice(result.text.indexOf("Compare e escolha seu grupo"));
+    expect(comparativo).toContain("Carlos Eduardo Menezes");
+    expect(comparativo).toContain("(66) 99961-0000");
+    expect(comparativo).toContain("Joana Ribeiro Mendes");
   }, 30000);
 
   it("renderiza proposta só de imóvel (capa padrão)", async () => {
