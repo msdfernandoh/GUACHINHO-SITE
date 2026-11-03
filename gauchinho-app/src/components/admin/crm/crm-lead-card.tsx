@@ -148,7 +148,7 @@ export function CrmLeadCard({
           )}
         </div>
       </div>
-      {cardLead.tags?.length ? <div className="mt-2 flex flex-wrap gap-1">{cardLead.tags.map((tag) => <span key={tag} className="rounded-full bg-cyan-500/10 px-1.5 py-0.5 text-[9px] text-cyan-300">#{tag}</span>)}</div> : null}
+      {cardLead.tags?.length ? <div className="mt-2 flex flex-wrap gap-1">{cardLead.tags.map((tag) => <span key={tag} className="max-w-full break-words rounded-md border border-cyan-400/50 bg-cyan-400/20 px-2 py-1 text-xs font-bold text-cyan-100">#{tag}</span>)}</div> : null}
 
       {/* 2. VALOR DE CRÉDITO E PARCELA MENSAL */}
       <div className="mt-2 space-y-1">

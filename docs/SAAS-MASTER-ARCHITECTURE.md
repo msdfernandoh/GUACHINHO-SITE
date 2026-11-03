@@ -4427,3 +4427,11 @@ aprovadas, incluindo SaaS autenticado e ERP compartilhado em www.raconsinop.com.
 Sessões temporárias autorizadas encerradas; nenhuma mensagem real enviada.
 Revisão final converte validade local do token de teste para UTC antes do envio.
 Inspeção visual indisponível por configuração do navegador Work; detalhes no relatório.
+### Pipeline: responsáveis por evento e tags visíveis (03/11/2026)
+Modal consulta os vínculos eventos_leads_usuarios do evento do lead após validar
+acesso ao lead no tenant. Lista geral permanece para leads sem evento; falhas de
+consulta bloqueiam salvar. Responsável anterior fora da equipe é preservado.
+Tags ganham destaque e o texto ainda digitado é incluído ao salvar.
+Sem migration ou alteração de dados operacionais. Validação local TypeScript.
+Publicação e homologação visual pendentes.
+Relatório: docs/relatorios-fases/PIPELINE-RESPONSAVEIS-TAGS-2026-11-03.md.

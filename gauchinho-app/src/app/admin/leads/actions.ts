@@ -891,6 +891,19 @@ import { fetchCrmFunilEtapas } from "@/lib/crm/leads-query";
 import { randomUUID } from "node:crypto";
 import type { CrmFunilEtapaRow, LeadArquivoRow } from "@/lib/crm/types";
 
+export async function fetchLeadResponsaveisOptions(leadId: string) {
+  await requireLeadInCurrentTenant(leadId);
+  const supabase = await createClient();
+  const { data: lead, error } = await supabase.from("leads").select("evento_id").eq("id", leadId).single();
+  if (error) throw new Error("Erro ao carregar responsáveis");
+  const options = await fetchSrdOptions();
+  if (!lead.evento_id) return options;
+  const { data, error: erro } = await supabase.from("eventos_leads_usuarios").select("usuario_id").eq("evento_id", lead.evento_id);
+  if (erro) throw new Error("Erro ao carregar equipe do evento");
+  const ids = new Set((data ?? []).map(v => v.usuario_id));
+  return options.filter(c => ids.has(c.id));
+}
+
 export async function fetchSrdOptions() {
   const { empresaAtiva } = await getCurrentTenantContext();
   if (!empresaAtiva) return [];
