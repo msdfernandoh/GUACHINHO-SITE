@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
+import { redirect, unstable_rethrow } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
   PERFIS,
@@ -129,6 +129,16 @@ export async function fetchUsuarios() {
 }
 
 export async function createUsuarioAction(formData: FormData) {
+  try {
+    await criarUsuario(formData);
+  } catch (error) {
+    unstable_rethrow(error);
+    console.error("[usuarios] Falha no cadastro:", error instanceof Error ? error.message : "Erro desconhecido");
+    redirectUsuarios("cadastro_falhou");
+  }
+}
+
+async function criarUsuario(formData: FormData) {
   const { usuario, empresaAtiva } = await requireTenantPermission("gerenciar_usuarios");
   const nome = String(formData.get("nome") ?? "").trim();
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
@@ -276,6 +286,7 @@ export async function createUsuarioAction(formData: FormData) {
   }
 
   revalidatePath("/admin/usuarios");
+  revalidatePath("/erp/usuarios");
   redirect("/admin/usuarios");
 }
 

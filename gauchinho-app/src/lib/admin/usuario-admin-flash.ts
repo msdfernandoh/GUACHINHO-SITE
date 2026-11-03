@@ -1,4 +1,5 @@
 export const USUARIO_ADMIN_FLASH: Record<string, string> = {
+  cadastro_falhou: "Não foi possível concluir o cadastro. Confira se o e-mail já está cadastrado e tente novamente. Se persistir, contate o administrador.",
   salvo: "Usuário atualizado com sucesso.",
   sem_gmail: "Google Agenda só pode ser habilitado para e-mails @gmail.com.",
   sem_permissao: "Sem permissão para editar usuários.",

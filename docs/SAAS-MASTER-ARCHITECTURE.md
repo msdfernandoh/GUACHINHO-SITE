@@ -4488,3 +4488,11 @@ seleção individual existentes. Backend valida consultor/tenant e quantidade
 realmente gravada, informa aplicação parcial e invalida Lista/CRM/Pipeline.
 Sem migration. TypeScript aprovado; homologação autenticada pendente.
 Relatório: docs/relatorios-fases/LISTA-LEADS-ATRIBUIR-CONSULTOR-LOTE-2026-11-03.md.
+
+### Cadastro de usuários Racon: catálogo de menus (03/11/2026)
+Log de produção confirmou CHECK desatualizado rejeitando whatsapp/robos.
+Migration 20261103213453 aplicada: catálogo alinhado sem conceder menus ou alterar
+linhas/RLS. 22 vínculos preservados por hash; expressão real aceita IDs válidos
+e rejeita inválido. Código retorna mensagem de cadastro em falhas, sem página fatal.
+Oito testes e TypeScript aprovados; cadastro real pelo titular pendente.
+Relatório: docs/relatorios-fases/USUARIOS-RACON-ERRO-CATALOGO-MENUS-2026-11-03.md.
