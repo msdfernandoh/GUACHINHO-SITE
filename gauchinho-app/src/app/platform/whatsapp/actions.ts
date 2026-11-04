@@ -130,25 +130,12 @@ export async function acaoInstancia(_s: WhatsappFormState, f: FormData) {
         const empresa = uuid.parse(str(f, "empresa_id"));
         const id = uuid.parse(str(f, "id"));
         const i = await getInstancia(empresa, id);
-        const acao = z.enum(["suspender", "desconectar", "reativar", "testar", "sincronizar_meta", "inativar"]).parse(str(f, "acao"));
-        if (acao === "sincronizar_meta") {
-            const app = await getMetaAppConfig(i.app_meta_id);
-            if (!i.phone_number_id || !i.waba_id || !i.token_cifrado)
-                throw new Error("Não há credencial armazenada para reconfirmar este número. Inicie novamente a conexão pela Meta.");
-            const token = tokenDaInstancia(i);
-            const telefone = await graph<TelefoneMeta & { status?: string }>(app, i.phone_number_id + "?fields=display_phone_number,verified_name,quality_rating,status", token);
-            const alerta = await salvarConexao({ instancia: i, waba: i.waba_id, phone: i.phone_number_id, token, numero: telefone.display_phone_number, nome: telefone.verified_name, usuario: u.id, aviso: null });
-            return alerta ? "Meta confirmou o número e a instância foi ativada. Aviso: " + alerta : "Meta confirmou o número e a instância foi ativada no sistema.";
-        }
+        const acao = z.enum(["suspender", "desconectar", "reativar", "testar", "inativar"]).parse(str(f, "acao"));
         if (acao === "testar") {
             const app = await getMetaAppConfig(i.app_meta_id);
             if (!i.phone_number_id)
                 throw new Error("Conecte ou configure o número antes de testar.");
             const t = await graph<TelefoneMeta>(app, i.phone_number_id + "?fields=display_phone_number,quality_rating", tokenDaInstancia(i));
-            if (i.waba_id && i.token_cifrado) {
-                await salvarConexao({ instancia: i, waba: i.waba_id, phone: i.phone_number_id, token: tokenDaInstancia(i), numero: t.display_phone_number, nome: t.verified_name, usuario: u.id, aviso: null });
-                return "A Meta confirmou o número " + t.display_phone_number + " e a instância foi ativada no sistema. Qualidade: " + (t.quality_rating || "não informada") + ".";
-            }
             return "A Meta confirmou o número " + t.display_phone_number + ". Qualidade: " + (t.quality_rating || "não informada") + ". Isso não confirma entrega de mensagens.";
         }
         const patch = acao === "suspender" ? { status: "suspenso" } : acao === "inativar" ? { status: "desconectado", ativo: false, token_cifrado: null, waba_id: null, phone_number_id: null } : acao === "reativar" ? { status: i.token_cifrado ? "conectado" : "aguardando_conexao" } : { status: "desconectado", token_cifrado: null, token_expira_em: null, waba_id: null, phone_number_id: null, numero_exibicao: null, verified_name: null, conectado_em: null, conectado_por_id: null, ultimo_erro: null, alerta_numero: null, destinatarios_teste: [] };

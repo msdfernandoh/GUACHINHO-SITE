@@ -13,10 +13,6 @@ import { resolveAuthorizedErpUserAccess, resolveErpLandingHref } from "@/lib/erp
 import { getResolvedTenant } from "@/lib/tenant/get-resolved-empresa";
 import { TenantBrandProvider } from "@/components/tenant/tenant-brand-context";
 import { GAUCHINHO_SLUG } from "@/lib/tenant/constants";
-import { listarInstancias } from "@/lib/whatsapp/cloud-api/conexoes";
-import { createAdminClient } from "@/lib/supabase/admin";
-import type { MensagemView } from "@/lib/whatsapp/cloud-api/types";
-import { WhatsappFloatingDock } from "@/components/whatsapp/whatsapp-floating-dock";
 
 export const metadata: Metadata = {
   robots: { index: false, follow: false },
@@ -56,19 +52,6 @@ export default async function AdminLayout({
   const brandLogo = tenant?.branding.logo_url || tenant?.siteModel?.logoPadraoUrl || null;
   const brandSecondary = tenant?.branding.cor_secundaria || String(tenant?.siteModel?.identidadeVisual.cor_secundaria || "#0c2340");
   const brandAccent = tenant?.branding.cor_destaque || String(tenant?.siteModel?.identidadeVisual.cor_destaque || primary);
-  let whatsappDock: { instancia: Awaited<ReturnType<typeof listarInstancias>>[number]; mensagens: MensagemView[] } | null = null;
-  if (erpAccess.includes("whatsapp")) {
-    try {
-      const instancias = await listarInstancias(empresaAtiva.id);
-      const instancia = instancias.find((item) => item.status === "conectado") || instancias[0];
-      if (instancia) {
-        const historico = await createAdminClient().from("whatsapp_mensagens").select("id,instancia_id,direcao,contato_numero,contato_nome,tipo,conteudo,template_nome,status,erro,wa_message_id,criada_em").eq("empresa_id", empresaAtiva.id).eq("instancia_id", instancia.id).order("criada_em", { ascending: false }).limit(40);
-        whatsappDock = { instancia, mensagens: (historico.data || []) as MensagemView[] };
-      }
-    } catch {
-      whatsappDock = null;
-    }
-  }
 
   return (
     <TenantBrandProvider value={{ nome: brandName, slug: tenant?.slug || "", logoUrl: brandLogo, corPrimaria: primary, corSecundaria: brandSecondary, corDestaque: brandAccent, isGauchinho: !tenant?.parceiroSiteId && tenant?.slug === GAUCHINHO_SLUG, isRacon }}>
@@ -91,7 +74,6 @@ export default async function AdminLayout({
         <AgendaCompromissosAlert />
         <main className={isRacon ? "flex-1 overflow-auto bg-slate-50 p-6 text-slate-900" : "flex-1 overflow-auto bg-zinc-950 p-6 text-zinc-100"}>{children}</main>
       </div>
-      {whatsappDock && <WhatsappFloatingDock instancia={whatsappDock.instancia} mensagens={whatsappDock.mensagens} />}
     </div>
     </TenantBrandProvider>
   );

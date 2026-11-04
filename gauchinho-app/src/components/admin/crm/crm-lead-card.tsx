@@ -53,7 +53,9 @@ export function CrmLeadCard({
     : phoneDigits;
   const displayPhone = displayPhoneDigits ? formatWhatsappBrInput(displayPhoneDigits) : null;
   const whatsappUrl = phoneDigits
-    ? `/erp/whatsapp?lead_phone=${encodeURIComponent(phoneDigits.startsWith("55") ? phoneDigits : `55${phoneDigits}`)}&lead_name=${encodeURIComponent(lead.nome)}`
+    ? `https://wa.me/${phoneDigits.startsWith("55") ? phoneDigits : `55${phoneDigits}`}?text=${encodeURIComponent(
+        `Olá ${lead.nome}, tudo bem? Sou da Gauchinho Consórcios | Racon e estou retornando seu contato!`,
+      )}`
     : null;
 
   // Cálculo de inatividade (usando currentTime injetado para pureza de render)
@@ -232,7 +234,7 @@ export function CrmLeadCard({
               href={whatsappUrl}
               target="_blank"
               rel="noopener noreferrer"
-              title="Abrir conversa WhatsApp no CRM"
+              title="Chamar no WhatsApp"
               onClick={(e) => e.stopPropagation()}
               className="inline-flex h-7 w-7 items-center justify-center rounded-md bg-emerald-500/10 text-emerald-400 transition hover:bg-emerald-500/20 hover:text-emerald-300"
             >

@@ -4496,31 +4496,3 @@ linhas/RLS. 22 vínculos preservados por hash; expressão real aceita IDs válid
 e rejeita inválido. Código retorna mensagem de cadastro em falhas, sem página fatal.
 Oito testes e TypeScript aprovados; cadastro real pelo titular pendente.
 Relatório: docs/relatorios-fases/USUARIOS-RACON-ERRO-CATALOGO-MENUS-2026-11-03.md.
-
-### WhatsApp: conversas unificadas, dock estável e disparo filtrado no Kanban (04/11/2026)
-
-O painel de conversas agora é um componente único reutilizado na página ERP,
-no atalho de WhatsApp do card CRM e no dock flutuante. O dock limita a altura à
-viewport, mantém as áreas internas roláveis e fixa o composer no rodapé, sem
-perder os controles quando aberto sobre CRM/gerencial. O atalho do lead não
-abre mais `wa.me`: leva à conversa interna com o contato selecionado.
-
-O Kanban oferece envio de template na fase filtrada pelo vendedor. A API valida
-sessão, empresa, leads e instância, reserva cada mensagem pela RPC canônica e
-envia sequencialmente pela Cloud API, registrando sucesso/falha por contato.
-Não há teto artificial de quantidade; somente o conjunto filtrado e as regras
-de segurança/cota já existentes são aplicados. Sem migration e sem alteração de
-dados operacionais ou RLS. TypeScript, testes direcionados (12) e ESLint
-direcionado aprovados. Relatório:
-`docs/relatorios-fases/WHATSAPP-CONVERSAS-CRM-DISPARO-SEQUENCIAL-2026-11-04.md`.
-
-### WhatsApp: reconciliação de telefone ativo na Meta e pendência de pagamento (04/11/2026)
-
-O fluxo Embedded Signup não transforma mais uma falha posterior de cobrança,
-assinatura ou sincronização em `erro` local quando a Graph API já confirma o
-`phone_number_id`. O servidor reconfirma o telefone com o token recém obtido e
-persiste a instância como `conectado`; somente a falha da reconciliação mantém
-`erro`. A tela de Platform continua tenant-aware e a ação de reconciliação usa
-as credenciais já armazenadas quando disponíveis. Sem migration, alteração de
-RLS ou envio real. TypeScript aprovado. Relatório:
-`docs/relatorios-fases/WHATSAPP-RECONCILIACAO-META-PAGAMENTO-2026-11-04.md`.

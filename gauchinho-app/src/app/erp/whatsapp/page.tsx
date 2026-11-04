@@ -9,8 +9,6 @@ export const revalidate = 0;
 export default async function ErpWhatsappPage({ searchParams }: {
     searchParams: Promise<{
         instancia_id?: string;
-        lead_phone?: string;
-        lead_name?: string;
     }>;
 }) {
     const access = await requireErpRouteAccess("whatsapp");
@@ -27,5 +25,5 @@ export default async function ErpWhatsappPage({ searchParams }: {
         else
             mensagens = r.data as MensagemView[];
     }
-    return <WhatsappClient instancias={instancias} selecionadaId={selecionada?.id || ""} mensagens={mensagens} erroHistorico={erro} leadPhone={sp.lead_phone} leadName={sp.lead_name}/>;
+    return <WhatsappClient instancias={instancias} selecionadaId={selecionada?.id || ""} mensagens={mensagens} erroHistorico={erro}/>;
 }
