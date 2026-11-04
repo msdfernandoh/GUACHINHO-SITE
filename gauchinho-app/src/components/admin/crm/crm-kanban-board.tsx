@@ -18,6 +18,7 @@ import { isLeadGanho } from "@/lib/crm/upsert-lead";
 import { Search, Sparkles, UserCheck, Clock, Flame, UserX, FileQuestion, Layers, Eye, X } from "lucide-react";
 import type { ConsultorOption } from "@/lib/admin/consultores";
 import { matchesConsultor, consultoresParaFiltro } from "@/lib/crm/consultor-filter";
+import { CrmStageWhatsappBulk } from "./crm-stage-whatsapp-bulk";
 
 export function CrmKanbanBoard({
   initialLeads,
@@ -709,6 +710,7 @@ export function CrmKanbanBoard({
                     </h3>
                   </div>
                   <div className="flex items-center gap-1.5">
+                    <CrmStageWhatsappBulk leads={colLeads} />
                     <button type="button" aria-expanded={true} aria-label={`Recolher fase ${col.nome}`} title="Recolher fase" onClick={() => toggleStage(col.id)} className="rounded p-1 text-zinc-400 hover:bg-zinc-800">↔</button>
                     {isFiltered && isColMatchingFilter && !focusMode && (
                       <span className="rounded-md border border-blue-500/40 bg-blue-950/60 px-1.5 py-0.5 text-[9px] font-black uppercase text-blue-300">
