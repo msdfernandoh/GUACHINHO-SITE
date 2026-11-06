@@ -289,9 +289,12 @@ export function ErpVendasHubView({
   const [filtroCota, setFiltroCota] = useState("");
   const competencias = useMemo(() => {
     return [...new Set(
-      (vendas || []).map((v) => (v.data_primeira_parcela || v.data_venda || v.created_at || "").slice(0, 7))
+      [
+        ...(vendas || []).map((v) => (v.data_primeira_parcela || v.data_venda || v.created_at || "").slice(0, 7)),
+        ...(boletosEnvios || []).map((b) => String(b.competencia || "").slice(0, 7)),
+      ]
     )].filter((c) => c && c.length === 7).sort().reverse();
-  }, [vendas]);
+  }, [vendas, boletosEnvios]);
   const [competencia, setCompetencia] = useState(competencias[0] ?? "todos");
 
   const consultoresDisponiveis = useMemo(() => {
@@ -621,7 +624,7 @@ export function ErpVendasHubView({
         envio,
         historico,
         statusBoleto: envio?.status_boleto || "aguardando",
-        temArquivoBoleto: Boolean(envio?.arquivo_url),
+        temArquivoBoleto: Boolean(envio?.arquivo_url || envio?.arquivo_storage_path),
       };
     });
   }, [operacoesPorCota, boletosEnvios, competenciaBoletoAtual]);

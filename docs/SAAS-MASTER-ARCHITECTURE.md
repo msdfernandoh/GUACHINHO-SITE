@@ -4548,3 +4548,11 @@ fixo e segundo fixo, incluindo o percentual de lance embutido de cada modalidade
 respeitando as modalidades cadastradas no grupo. A validade operacional da repetição
 de seis assembleias é encerrada uma assembleia antes do ciclo real, para preservar
 folga de processamento. Migration: `334_lances_por_cota_e_login.sql`.
+
+### Correção de visibilidade dos boletos por competência (06/11/2026)
+O ERP agora inclui nas competências os registros de `vendas_boletos_envios`, e não
+somente as datas das vendas. Assim, boletos gerados pelo robô aparecem mesmo quando
+o mês do boleto é diferente do mês da venda. A consolidação também recompõe a URL
+pública do bucket `boletos-cotas` quando existe apenas `arquivo_storage_path`, e os
+filtros “Com boleto” e “Sem boleto” consideram ambas as formas de armazenamento.
+Relatório: `docs/relatorios-fases/CORRECAO-VISIBILIDADE-BOLETOS-COMPETENCIA-2026-11-06.md`.

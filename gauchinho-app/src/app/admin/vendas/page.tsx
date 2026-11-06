@@ -212,10 +212,16 @@ export default async function AdminVendasPage() {
 
   // Consolidação de boletos das tabelas vendas_boletos_envios e cotas_boletos
   const boletosMap = new Map<string, any>();
+  const urlPublicaBoleto = (path: string | null | undefined) =>
+    path ? admin.storage.from("boletos-cotas").getPublicUrl(path).data.publicUrl : null;
   for (const b of (boletosEnviosRes?.data ?? [])) {
     const competenciaNormalizada = normalizarCompetenciaBoleto(b.competencia);
     const key = `${b.venda_id}_${b.cota_id || "sem-cota"}_${competenciaNormalizada}`;
-    boletosMap.set(key, { ...b, competencia: competenciaNormalizada });
+    boletosMap.set(key, {
+      ...b,
+      competencia: competenciaNormalizada,
+      arquivo_url: b.arquivo_url || urlPublicaBoleto(b.arquivo_storage_path),
+    });
   }
 
   for (const cb of (cotasBoletosRes?.data ?? [])) {
@@ -224,7 +230,9 @@ export default async function AdminVendasPage() {
     const key = `${cb.venda_id}_${cb.cota_definitiva_id || "sem-cota"}_${compIso}`;
     const existing = boletosMap.get(key);
     if (existing) {
-      if (!existing.arquivo_url && cb.arquivo_url) existing.arquivo_url = cb.arquivo_url;
+      if (!existing.arquivo_url && (cb.arquivo_url || cb.arquivo_storage_path)) {
+        existing.arquivo_url = cb.arquivo_url || urlPublicaBoleto(cb.arquivo_storage_path);
+      }
       if (!existing.qr_code_pix && cb.qr_code_pix) existing.qr_code_pix = cb.qr_code_pix;
       if (!existing.linha_digitavel && cb.linha_digitavel) existing.linha_digitavel = cb.linha_digitavel;
       if (!existing.arquivo_storage_path && cb.arquivo_storage_path) existing.arquivo_storage_path = cb.arquivo_storage_path;
@@ -239,7 +247,7 @@ export default async function AdminVendasPage() {
         baixado_em: cb.created_at,
         baixado_por_nome: "Robô Newcon Franquia",
         arquivo_storage_path: cb.arquivo_storage_path,
-        arquivo_url: cb.arquivo_url,
+        arquivo_url: cb.arquivo_url || urlPublicaBoleto(cb.arquivo_storage_path),
         qr_code_pix: cb.qr_code_pix,
         linha_digitavel: cb.linha_digitavel,
         valor: cb.valor,
