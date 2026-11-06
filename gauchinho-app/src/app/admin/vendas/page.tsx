@@ -28,7 +28,7 @@ export default async function AdminVendasPage() {
       .from("vendas")
       .select(`
         *,
-        cliente:clientes(nome,cpf_cnpj,email,telefone),
+        cliente:clientes(nome,cpf_cnpj,email,telefone,retirar_boleto_automatico),
         grupo:grupos_consorcio(codigo_grupo,modalidade:administradora_modalidades_comissao(codigo,nome)),
         cotas_definitivas(id,numero_cota,status),
         participante:participantes_comerciais!vendas_participante_comercial_id_fkey(id,nome,nome_exibicao)

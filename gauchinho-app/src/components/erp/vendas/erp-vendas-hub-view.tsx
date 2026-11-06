@@ -276,6 +276,7 @@ export function ErpVendasHubView({
   const [abaAtiva, setAbaAtiva] = useState<"vendas" | "boletos">("vendas");
   const [filtroStatusBoleto, setFiltroStatusBoleto] = useState<"todos" | "aguardando" | "baixado" | "enviado">("todos");
   const [cotaHistoricoBoleto, setCotaHistoricoBoleto] = useState<{ venda: VendaItem; cota: CotaItem | null } | null>(null);
+  const [controleCotas, setControleCotas] = useState<Record<string, { login: CotaItem["robo_boleto_login"]; retirar: boolean }>>({});
   const [termoBusca, setTermoBusca] = useState("");
   const [filtroConsultor, setFiltroConsultor] = useState("todos");
   const [filtroGrupo, setFiltroGrupo] = useState("todos");
@@ -663,12 +664,16 @@ export function ErpVendasHubView({
 
   function handleControleBoleto(cotaId: string, login: string, retirar: boolean) {
     startTransition(async () => {
-      const fd = new FormData();
-      fd.append("cota_id", cotaId);
-      fd.append("robo_boleto_login", login);
-      fd.append("retirar_boleto_automatico", String(retirar));
-      await atualizarControleBoletoCotaAction(fd);
-      window.location.reload();
+      try {
+        const fd = new FormData();
+        fd.append("cota_id", cotaId);
+        fd.append("robo_boleto_login", login);
+        fd.append("retirar_boleto_automatico", String(retirar));
+        await atualizarControleBoletoCotaAction(fd);
+        setControleCotas((atual) => ({ ...atual, [cotaId]: { login: login as CotaItem["robo_boleto_login"], retirar } }));
+      } catch (err: any) {
+        setModalErro(err?.message || "Não foi possível salvar o controle do boleto.");
+      }
     });
   }
 
@@ -1449,9 +1454,16 @@ export function ErpVendasHubView({
                         <td className="p-3">
                           {cota?.id && !String(cota.id).startsWith("venda-cota-") ? (
                             <div className="flex min-w-[260px] flex-col gap-1.5">
+                              {(() => {
+                                const controle = controleCotas[cota.id] || { login: cota.robo_boleto_login || "", retirar: cota.retirar_boleto_automatico === true };
+                                return <>
                               <select
-                                value={cota.robo_boleto_login || ""}
-                                onChange={(e) => handleControleBoleto(cota.id, e.target.value, cota.retirar_boleto_automatico === true)}
+                                value={controle.login || ""}
+                                onChange={(e) => {
+                                  const login = e.target.value as CotaItem["robo_boleto_login"];
+                                  setControleCotas((atual) => ({ ...atual, [cota.id]: { login, retirar: controle.retirar } }));
+                                  handleControleBoleto(cota.id, login || "", controle.retirar);
+                                }}
                                 disabled={isPending}
                                 className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] font-semibold"
                               >
@@ -1461,16 +1473,22 @@ export function ErpVendasHubView({
                               </select>
                               <button
                                 type="button"
-                                onClick={() => handleControleBoleto(cota.id, cota.robo_boleto_login || "", cota.retirar_boleto_automatico !== true)}
-                                disabled={isPending || !cota.robo_boleto_login}
+                                onClick={() => {
+                                  const retirar = !controle.retirar;
+                                  setControleCotas((atual) => ({ ...atual, [cota.id]: { login: controle.login, retirar } }));
+                                  handleControleBoleto(cota.id, controle.login || "", retirar);
+                                }}
+                                disabled={isPending || !controle.login}
                                 className={`rounded-lg px-2 py-1 text-[11px] font-bold ${cota.retirar_boleto_automatico ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-700"}`}
                               >
-                                {cota.retirar_boleto_automatico ? "✓ Sim, retirar boleto" : "Marcar: Sim, retirar boleto"}
+                                {controle.retirar ? "✓ Sim, retirar boleto" : "Marcar: Sim, retirar boleto"}
                               </button>
                               <label className="cursor-pointer rounded-lg border border-blue-200 bg-blue-50 px-2 py-1 text-[11px] font-bold text-blue-800 hover:bg-blue-100">
                                 Incluir boleto PDF
                                 <input type="file" accept="application/pdf" className="hidden" disabled={isPending} onChange={(e) => { const file = e.target.files?.[0]; if (file) handleAnexarBoleto(v.id, cota.id, file); e.currentTarget.value = ""; }} />
                               </label>
+                                </>;
+                              })()}
                             </div>
                           ) : <span className="text-[11px] text-slate-400">Cota ainda não vinculada</span>}
                         </td>
