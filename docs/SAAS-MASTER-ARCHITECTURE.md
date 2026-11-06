@@ -4539,3 +4539,12 @@ consolidar os registros do robô e da tabela legada, evitando que um PDF existen
 fique invisível na cota correta. A tela oferece filtros independentes para cotas
 com boleto e sem boleto, baseados na existência do arquivo no Storage, abrangendo
 downloads do robô e uploads manuais.
+
+### Estratégias de lance por cota e roteamento por conta (06/11/2026)
+O robô de lances passou a usar a mesma vinculação operacional de login já existente
+em `cotas_definitivas.robo_boleto_login`, mantendo Eroni/Gauchinho e Fernando/Racon
+isolados. A estratégia da cota agora permite configurar separadamente lance livre,
+fixo e segundo fixo, incluindo o percentual de lance embutido de cada modalidade,
+respeitando as modalidades cadastradas no grupo. A validade operacional da repetição
+de seis assembleias é encerrada uma assembleia antes do ciclo real, para preservar
+folga de processamento. Migration: `334_lances_por_cota_e_login.sql`.

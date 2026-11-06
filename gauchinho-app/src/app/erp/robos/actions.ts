@@ -380,7 +380,7 @@ export async function salvarConfiguracaoRoboFranquiaAction(input: {
   // Atualiza tarefas / ponto de venda
   const { data: current } = await admin
     .from("robo_configuracoes")
-    .select("configuracao_tarefas")
+    .select("configuracao_tarefas, portal_tipo")
     .eq("id", input.id)
     .eq("empresa_id", empresaAtiva.id)
     .single();
@@ -400,7 +400,8 @@ export async function salvarConfiguracaoRoboFranquiaAction(input: {
     throw new Error(`Falha ao salvar configuração do robô: ${error.message}`);
   }
 
-  // Se marcado para sincronizar o mesmo login/senha nos 2 robôs (Lances e Boletos) da franquia ativa
+  // Sincroniza apenas o par de robôs que usa a mesma conta operacional.
+  // Eroni e Fernando são contas distintas e nunca podem sobrescrever uma à outra.
   if (input.aplicarNosDoisRobosDaFranquia) {
     const syncPayload: Record<string, unknown> = {
       usuario_login: input.usuarioLogin.trim(),
@@ -411,12 +412,30 @@ export async function salvarConfiguracaoRoboFranquiaAction(input: {
       syncPayload.senha_encrypted = updateData.senha_encrypted;
       syncPayload.senha_updated_at = updateData.senha_updated_at;
     }
-    await admin
+    const loginOperacional = cfgTarefas.robo_boleto_login;
+    const { data: robosDaEmpresa } = await admin
       .from("robo_configuracoes")
-      .update(syncPayload)
+      .select("id, portal_tipo, configuracao_tarefas")
       .eq("empresa_id", empresaAtiva.id)
       .eq("portal_tipo", "RACON")
       .neq("id", input.id);
+
+    const idsParaSincronizar = (robosDaEmpresa || [])
+      .filter((robo) => {
+        const loginDoRobo = robo.configuracao_tarefas?.robo_boleto_login;
+        return loginOperacional
+          ? loginDoRobo === loginOperacional
+          : !loginDoRobo;
+      })
+      .map((robo) => robo.id);
+
+    if (idsParaSincronizar.length > 0) {
+      await admin
+        .from("robo_configuracoes")
+        .update(syncPayload)
+        .eq("empresa_id", empresaAtiva.id)
+        .in("id", idsParaSincronizar);
+    }
   }
 
   revalidatePath("/erp/robos");

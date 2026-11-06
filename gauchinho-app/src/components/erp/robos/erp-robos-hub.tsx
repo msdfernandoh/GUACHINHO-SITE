@@ -53,7 +53,7 @@ export function ErpRobosHub({ empresaNome, initialRobos, initialStats, initialHi
   const [formPontoVenda, setFormPontoVenda] = useState("");
   const [formModo, setFormModo] = useState<"DRY_RUN" | "PRODUCAO">("PRODUCAO");
   const [formAtivo, setFormAtivo] = useState(true);
-  const [formSincronizarAmbos, setFormSincronizarAmbos] = useState(true);
+  const [formSincronizarAmbos, setFormSincronizarAmbos] = useState(false);
 
   // Modal de Mapeamento
   const [roboMapeamentoModal, setRoboMapeamentoModal] = useState<FranquiaRoboDTO | null>(null);
@@ -109,7 +109,12 @@ export function ErpRobosHub({ empresaNome, initialRobos, initialStats, initialHi
                 },
               };
             }
-            if (formSincronizarAmbos && r.portalTipo === "RACON") {
+            if (
+              formSincronizarAmbos &&
+              r.portalTipo === "RACON" &&
+              r.configuracaoTarefas?.robo_boleto_login ===
+                roboEditando.configuracaoTarefas?.robo_boleto_login
+            ) {
               return {
                 ...r,
                 usuarioLogin: formUsuario,
@@ -540,6 +545,26 @@ export function ErpRobosHub({ empresaNome, initialRobos, initialStats, initialHi
         </div>
       )}
 
+      {abaAtiva === "robos" && robos.length > 2 && (
+        <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <h3 className="text-sm font-black uppercase tracking-wide text-slate-700">Robôs adicionais por conta</h3>
+          <div className="mt-3 grid gap-2 md:grid-cols-2">
+            {robos.slice(2).map((robo) => (
+              <div key={robo.id} className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 p-3">
+                <div>
+                  <p className="text-xs font-black text-slate-800">{robo.nome}</p>
+                  <p className="text-[11px] text-slate-500">{robo.usuarioLogin || "Login pendente"}</p>
+                </div>
+                <div className="flex gap-2">
+                  <button type="button" onClick={() => handleDispararExecucao(robo.id)} className="rounded-lg bg-blue-600 px-2.5 py-1.5 text-[11px] font-bold text-white">Executar</button>
+                  <button type="button" onClick={() => abrirModalConfig(robo)} className="rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-[11px] font-bold text-slate-700">Configurar</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* ABA 2: MAPEAMENTO DE ROTAS & TELAS */}
       {abaAtiva === "mapeamento" && (
         <div className="space-y-6">
@@ -770,7 +795,7 @@ export function ErpRobosHub({ empresaNome, initialRobos, initialStats, initialHi
                   className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
                 />
                 <label htmlFor="chkSincronizarAmbos" className="font-semibold text-blue-900">
-                  Aplicar este mesmo login e senha nos 2 robôs desta franquia (Lances e Boletos)
+                  Aplicar este mesmo login e senha nos 2 robôs da mesma conta operacional
                 </label>
               </div>
 

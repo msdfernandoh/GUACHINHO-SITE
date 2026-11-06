@@ -36,6 +36,12 @@ export type CotaLanceOperacionalDTO = {
     mediaLanceLivre: number | null;
     proximaAssembleiaData: string | null;
     tipoNome: string;
+    modalidades: Array<{
+      tipo: "LIVRE" | "FIXO" | "SEGUNDO_FIXO";
+      percentual: number | null;
+      embutidoMaximo: number;
+      nome: string;
+    }>;
   };
   consultor: {
     id: string | null;
@@ -60,6 +66,9 @@ export type CotaLanceOperacionalDTO = {
     lanceLivrePercentual: number | null;
     recursoProprioValor: number | null;
     lanceEmbutidoPercentual: number | null;
+    lanceLivreEmbutidoPercentual: number | null;
+    lanceFixoEmbutidoPercentual: number | null;
+    segundoLanceFixoEmbutidoPercentual: number | null;
     lanceEmbutidoValor: number | null;
     parcelaReduzidaAtiva: boolean;
     observacoes: string | null;
@@ -97,6 +106,18 @@ export type CotaLanceOperacionalDTO = {
     estadoNovo: Record<string, unknown>;
   }>;
 };
+
+function inferirModalidadeLance(nome: unknown): "LIVRE" | "FIXO" | "SEGUNDO_FIXO" {
+  const texto = String(nome ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
+  if (texto.includes("LIVRE")) return "LIVRE";
+  if (texto.includes("2") || texto.includes("SEGUNDO")) return "SEGUNDO_FIXO";
+  return "FIXO";
+}
+
+function percentualNoNome(nome: unknown): number | null {
+  const match = String(nome ?? "").replace(",", ".").match(/(?:^|\s)(\d+(?:\.\d+)?)\s*%?/);
+  return match ? Number(match[1]) : null;
+}
 
 export type LancesDashboardStats = {
   totalCotas: number;
@@ -187,6 +208,7 @@ export async function fetchCotasComLancesOperacional(filters?: {
       vendasRes,
       adminsRes,
       gruposRes,
+      modalidadesRes,
       tiposRes,
       partRes,
       estrategiasRes,
@@ -200,6 +222,9 @@ export async function fetchCotasComLancesOperacional(filters?: {
         : Promise.resolve({ data: [] }),
       grupoIds.length > 0
         ? supabase.from("grupos_consorcio").select("id, codigo_grupo, permite_lance_embutido, percentual_lance_embutido, tipo_administradora_id").in("id", grupoIds)
+        : Promise.resolve({ data: [] }),
+      grupoIds.length > 0
+        ? supabase.from("grupos_modalidades_lance").select("id, grupo_id, nome, percentual_lance_embutido, ativo, ordem").in("grupo_id", grupoIds).eq("ativo", true).order("ordem", { ascending: true })
         : Promise.resolve({ data: [] }),
       supabase.from("administradora_tipos").select("id, nome"),
       participanteIds.length > 0
@@ -217,6 +242,12 @@ export async function fetchCotasComLancesOperacional(filters?: {
     const vendasMap = new Map((vendasRes.data ?? []).map((v) => [v.id, v]));
     const adminsMap = new Map((adminsRes.data ?? []).map((a) => [a.id, a]));
     const gruposMap = new Map((gruposRes.data ?? []).map((g) => [g.id, g]));
+    const modalidadesByGrupo = new Map<string, any[]>();
+    for (const modalidade of (modalidadesRes.data ?? []) as any[]) {
+      const lista = modalidadesByGrupo.get(modalidade.grupo_id) ?? [];
+      lista.push(modalidade);
+      modalidadesByGrupo.set(modalidade.grupo_id, lista);
+    }
     const tiposMap = new Map((tiposRes.data ?? []).map((t) => [t.id, t]));
     const partMap = new Map((partRes.data ?? []).map((p) => [p.id, p]));
     const estMap = new Map((estrategiasRes.data ?? []).map((e) => [e.cota_definitiva_id, e]));
@@ -241,6 +272,14 @@ export async function fetchCotasComLancesOperacional(filters?: {
       const consultorId = c.participante_comercial_id || venda?.participante_comercial_id;
       const consultor = consultorId ? partMap.get(consultorId) : null;
       const est = estMap.get(c.id);
+      const modalidades = (modalidadesByGrupo.get(c.grupo_id) ?? []).map((m) => ({
+        tipo: inferirModalidadeLance(m.nome),
+        percentual: percentualNoNome(m.nome),
+        embutidoMaximo: Number(m.percentual_lance_embutido || grupo?.percentual_lance_embutido || 0),
+        nome: String(m.nome || "Modalidade"),
+      }));
+      const primeiroFixo = modalidades.find((m) => m.tipo === "FIXO");
+      const segundoFixo = modalidades.find((m) => m.tipo === "SEGUNDO_FIXO");
       const hist = histByCota.get(c.id) ?? [];
 
       let situacao: CotaLanceOperacionalDTO["situacaoOperacional"] = "SEM_ESTRATEGIA";
@@ -298,14 +337,15 @@ export async function fetchCotasComLancesOperacional(filters?: {
         grupo: {
           id: grupo?.id || null,
           codigoGrupo: grupo?.codigo_grupo || c.numero_grupo || "—",
-          lanceFixoPercentual: null,
-          segundoLanceFixoPercentual: null,
+          lanceFixoPercentual: primeiroFixo?.percentual ?? null,
+          segundoLanceFixoPercentual: segundoFixo?.percentual ?? null,
           lanceEmbutidoPermitido: Boolean(grupo?.permite_lance_embutido),
           lanceEmbutidoPercentual: grupo?.percentual_lance_embutido ? Number(grupo.percentual_lance_embutido) : null,
           lanceFidelidadePermitido: true,
           mediaLanceLivre: null,
           proximaAssembleiaData: null,
           tipoNome: tipo?.nome || "Consórcio",
+          modalidades,
         },
         consultor: {
           id: consultor?.id || null,
@@ -331,6 +371,9 @@ export async function fetchCotasComLancesOperacional(filters?: {
               lanceLivrePercentual: est.lance_livre_percentual ? Number(est.lance_livre_percentual) : null,
               recursoProprioValor: est.recurso_proprio_valor ? Number(est.recurso_proprio_valor) : null,
               lanceEmbutidoPercentual: est.lance_embutido_percentual ? Number(est.lance_embutido_percentual) : null,
+              lanceLivreEmbutidoPercentual: est.lance_livre_embutido_percentual == null ? null : Number(est.lance_livre_embutido_percentual),
+              lanceFixoEmbutidoPercentual: est.lance_fixo_embutido_percentual == null ? null : Number(est.lance_fixo_embutido_percentual),
+              segundoLanceFixoEmbutidoPercentual: est.segundo_lance_fixo_embutido_percentual == null ? null : Number(est.segundo_lance_fixo_embutido_percentual),
               lanceEmbutidoValor: est.lance_embutido_valor ? Number(est.lance_embutido_valor) : null,
               parcelaReduzidaAtiva: Boolean(est.parcela_reduzida_ativa),
               observacoes: est.observacoes || null,
@@ -471,6 +514,9 @@ export async function salvarEstrategiaLanceCompletaAction(formData: FormData) {
   const lanceFidelidadeObservacao = String(formData.get("lance_fidelidade_observacao") ?? "").trim() || null;
   const lanceLivrePercentual = num("lance_livre_percentual");
   const lanceLivreValor = num("lance_livre_valor");
+  const lanceLivreEmbutidoPercentual = num("lance_livre_embutido_percentual");
+  const lanceFixoEmbutidoPercentual = num("lance_fixo_embutido_percentual");
+  const segundoLanceFixoEmbutidoPercentual = num("segundo_lance_fixo_embutido_percentual");
   const recursoProprioValor = num("recurso_proprio_valor");
   const lanceEmbutidoPercentual = num("lance_embutido_percentual");
   const observacoes = String(formData.get("observacoes") ?? "").trim() || null;
@@ -537,6 +583,9 @@ export async function salvarEstrategiaLanceCompletaAction(formData: FormData) {
     recurso_proprio_valor: recursoProprioValor,
     lance_embutido_percentual: lanceEmbutidoPercentual,
     lance_embutido_valor: lanceEmbutidoValorCalculado,
+    lance_livre_embutido_percentual: lanceLivreEmbutidoPercentual,
+    lance_fixo_embutido_percentual: lanceFixoEmbutidoPercentual,
+    segundo_lance_fixo_embutido_percentual: segundoLanceFixoEmbutidoPercentual,
     parcela_reduzida_ativa: parcelaReduzidaAtiva,
     observacoes,
     ativa: true,

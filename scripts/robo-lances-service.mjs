@@ -149,7 +149,7 @@ export async function executarRoboLances({
 
   let listaCotas = []
 
-  const { data: cotasDb, error: errCotas } = await admin
+  let cotasQuery = admin
     .from('cotas_definitivas')
     .select(`
       id,
@@ -157,6 +157,7 @@ export async function executarRoboLances({
       empresa_id,
       numero_grupo,
       numero_cota,
+      robo_boleto_login,
       valor_credito,
       parcela,
       status,
@@ -170,16 +171,29 @@ export async function executarRoboLances({
     .not('numero_cota', 'is', null)
     .order('numero_grupo', { ascending: true })
 
+  const loginLance = config.configuracao_tarefas?.robo_boleto_login || null
+  if (loginLance) {
+    // O mesmo vínculo operacional usado pelo robô de boletos escolhe o robô de lances.
+    cotasQuery = cotasQuery.eq('robo_boleto_login', loginLance)
+  }
+
+  const { data: cotasDb, error: errCotas } = await cotasQuery
+
   if (cotasDb && cotasDb.length > 0) {
     // 1.1. Verifica cotas que já possuem lance ativo com repetição por 6 assembleias
     const isManualTest = Boolean(config.filtro_grupo || config.grupo_teste || config.filtro_cotas || config.cotas_teste)
     const cotasBloqueadas6Meses = new Set()
 
+    const cotaIds = cotasDb.map(c => c.id)
+    const { data: estrategiasCotas } = await admin
+      .from('cota_estrategias_lance')
+      .select('cota_definitiva_id, ativa, lance_livre_ativo, lance_livre_percentual, lance_livre_embutido_percentual, lance_fixo_ativo, lance_fixo_percentual, lance_fixo_embutido_percentual, segundo_lance_fixo_ativo, segundo_lance_fixo_percentual, segundo_lance_fixo_embutido_percentual, repetir_seis_assembleias, ultimo_lance_ofertado_em, data_vencimento, confirmado')
+      .in('cota_definitiva_id', cotaIds)
+    const estrategiasMap = new Map((estrategiasCotas || []).map(e => [e.cota_definitiva_id, e]))
     if (!isManualTest) {
-      const cotaIds = cotasDb.map(c => c.id)
       const { data: estsAtivas } = await admin
         .from('cota_estrategias_lance')
-        .select('cota_definitiva_id, repetir_seis_assembleias, ultimo_lance_ofertado_em, confirmado')
+        .select('cota_definitiva_id, repetir_seis_assembleias, ultimo_lance_ofertado_em, data_vencimento, confirmado')
         .in('cota_definitiva_id', cotaIds)
         .eq('confirmado', true)
         .eq('repetir_seis_assembleias', true)
@@ -189,9 +203,12 @@ export async function executarRoboLances({
         for (const est of estsAtivas) {
           if (est.ultimo_lance_ofertado_em) {
             const dataOfertadaMs = new Date(est.ultimo_lance_ofertado_em).getTime()
-            const diasDecorridos = Math.floor((agoraMs - dataOfertadaMs) / (1000 * 60 * 60 * 24))
-            // 6 meses / 6 assembleias = aproximadamente 170 dias
-            if (diasDecorridos < 170) {
+            const dataVencimento = est.data_vencimento ? new Date(`${est.data_vencimento}T12:00:00`) : null
+            if (dataVencimento && !Number.isNaN(dataVencimento.getTime())) {
+              if (new Date(agoraMs) < dataVencimento) {
+                cotasBloqueadas6Meses.add(est.cota_definitiva_id)
+              }
+            } else if (Math.floor((agoraMs - dataOfertadaMs) / (1000 * 60 * 60 * 24)) < 170) {
               cotasBloqueadas6Meses.add(est.cota_definitiva_id)
             }
           }
@@ -206,7 +223,14 @@ export async function executarRoboLances({
           return false
         }
         if (cotasBloqueadas6Meses.has(c.id)) {
-          log(`[LANCE ATIVO 6 MESES] Cota Grupo ${c.numero_grupo} / Cota ${c.numero_cota} possui lance confirmado com repetição por 6 assembleias ativa. Próximo lance em 6 meses. Ignorando na rodada mensal.`)
+          log(`[LANCE ATIVO 6 ASSEMBLEIAS] Cota Grupo ${c.numero_grupo} / Cota ${c.numero_cota} permanece protegida até uma assembleia antes do vencimento configurado.`)
+          return false
+        }
+        const estrategia = estrategiasMap.get(c.id)
+        if (!estrategia || estrategia.confirmado !== true || estrategia.ativa === false || !(
+          estrategia.lance_livre_ativo || estrategia.lance_fixo_ativo || estrategia.segundo_lance_fixo_ativo
+        )) {
+          log(`[SEM ESTRATÉGIA] Ignorando Grupo ${c.numero_grupo} / Cota ${c.numero_cota}: configure a participação em /erp/lances antes da execução.`)
           return false
         }
         return true
@@ -223,6 +247,7 @@ export async function executarRoboLances({
         valor_credito: c.valor_credito,
         parcela: c.parcela,
         grupo_embutido_pct: c.grupo?.percentual_lance_embutido || 25,
+        estrategia: estrategiasMap.get(c.id) || null,
       }))
   } else {
     // Fallback: cotas de vendas confirmadas não contempladas
@@ -488,6 +513,16 @@ export async function executarRoboLances({
         }
       })
 
+      const estrategiaCota = item.estrategia || null
+      if (estrategiaCota) {
+        dadosTelaLance.lanceFixoPct = estrategiaCota.lance_fixo_ativo
+          ? Number(estrategiaCota.lance_fixo_percentual || dadosTelaLance.lanceFixoPct || 0)
+          : null
+        dadosTelaLance.segundoLanceFixoPct = estrategiaCota.segundo_lance_fixo_ativo
+          ? Number(estrategiaCota.segundo_lance_fixo_percentual || dadosTelaLance.segundoLanceFixoPct || 0)
+          : null
+      }
+
       log(`Dados do grupo/cota extraídos na tela:`)
       log(`- Lance Fixo: ${dadosTelaLance.lanceFixoPct}%`)
       log(`- 2º Lance Fixo: ${dadosTelaLance.segundoLanceFixoPct ? dadosTelaLance.segundoLanceFixoPct + '%' : 'Não possui'}`)
@@ -510,10 +545,22 @@ export async function executarRoboLances({
       // Regra de Lance Embutido:
       // O limite de embutido comum é 25%. Usamos a regra do grupo ou o fixo se menor.
       const embutidoMaximoPct = Number(item.grupo_embutido_pct || 25.0)
+      const embutidoLivrePct = estrategiaCota?.lance_livre_embutido_percentual == null
+        ? embutidoMaximoPct
+        : Math.min(Number(estrategiaCota.lance_livre_embutido_percentual), embutidoMaximoPct)
+      const embutidoFixoPct = estrategiaCota?.lance_fixo_embutido_percentual == null
+        ? Math.min(Number(dadosTelaLance.lanceFixoPct || 0), embutidoMaximoPct)
+        : Math.min(Number(estrategiaCota.lance_fixo_embutido_percentual), embutidoMaximoPct)
+      const embutidoSegundoFixoPct = estrategiaCota?.segundo_lance_fixo_embutido_percentual == null
+        ? Math.min(Number(dadosTelaLance.segundoLanceFixoPct || 0), embutidoMaximoPct)
+        : Math.min(Number(estrategiaCota.segundo_lance_fixo_embutido_percentual), embutidoMaximoPct)
 
       // Regra do Usuário:
       // "lance fixo sempre 1,1234 + que o lance embutido para todos clientes. Exemplo desse grupo 1273 cota 209: embutido maximo de 25% ai o livre 26,1234"
-      const { livrePct: livrePctCalculado, strLivrePct, strEmbutidoPct } = calcularRegraLanceLivre(embutidoMaximoPct)
+      const livrePctConfigurado = estrategiaCota?.lance_livre_percentual == null ? null : Number(estrategiaCota.lance_livre_percentual)
+      const livrePctCalculado = livrePctConfigurado ?? calcularRegraLanceLivre(embutidoLivrePct).livrePct
+      const strLivrePct = livrePctCalculado.toFixed(4).replace('.', ',')
+      const strEmbutidoPct = embutidoLivrePct.toFixed(4).replace('.', ',')
 
       let protocoloLivre = null
       let protocoloFixo = null
@@ -699,6 +746,8 @@ export async function executarRoboLances({
       // =========================================================================
       // ETAPA A: OFERTA DO LANCE LIVRE (1,1234 + embutido)
       // =========================================================================
+      const deveOfertarLivre = estrategiaCota ? estrategiaCota.lance_livre_ativo === true : true
+      if (deveOfertarLivre) {
       log(`--- Ofertando LANCE LIVRE: ${strLivrePct}% (Embutido: ${strEmbutidoPct}%) ---`)
 
       // 1. Seleciona Radio "Livre" (ctl00_Conteudo_rgLance_0)
@@ -761,6 +810,9 @@ export async function executarRoboLances({
       // 9. Aguarda relatório e clica em Voltar
       compLivre = await voltarDoRelatorio('LIVRE')
       totalLancesOfertados++
+      } else {
+        log('Lance livre não configurado para esta cota; seguindo somente as modalidades selecionadas.')
+      }
 
       // =========================================================================
       // ETAPA B: OFERTA DO LANCE FIXO (ex: 25%)
@@ -943,19 +995,23 @@ export async function executarRoboLances({
         const payloadEstrategia = {
           empresa_id: targetEmpresaId,
           cota_definitiva_id: item.cota_definitiva_id,
-          lance_livre_ativo: true,
+          lance_livre_ativo: estrategiaCota ? estrategiaCota.lance_livre_ativo === true : true,
           lance_livre_percentual: livrePctCalculado,
+          lance_livre_embutido_percentual: embutidoLivrePct,
           lance_fixo_ativo: Boolean(dadosTelaLance.lanceFixoPct),
           lance_fixo_percentual: dadosTelaLance.lanceFixoPct || 25.0,
+          lance_fixo_embutido_percentual: embutidoFixoPct,
           segundo_lance_fixo_ativo: Boolean(dadosTelaLance.segundoLanceFixoPct),
           segundo_lance_fixo_percentual: dadosTelaLance.segundoLanceFixoPct || null,
+          segundo_lance_fixo_embutido_percentual: embutidoSegundoFixoPct,
           lance_embutido_percentual: embutidoMaximoPct,
           parcela_reduzida_ativa: true,
           repetir_seis_assembleias: true,
           data_lance: new Date().toISOString().split('T')[0],
           data_vencimento: (() => {
             const d = new Date()
-            d.setMonth(d.getMonth() + 6)
+            // Vigência operacional termina uma assembleia antes do ciclo real de 6.
+            d.setMonth(d.getMonth() + 5)
             return d.toISOString().split('T')[0]
           })(),
           confirmado: true,
@@ -999,7 +1055,7 @@ export async function executarRoboLances({
             tipo_lance: 'LIVRE',
             opcao_reducao: 'REDUZIR_PARCELA',
             percentual_lance: livrePctCalculado,
-            percentual_embutido: embutidoMaximoPct,
+            percentual_embutido: embutidoLivrePct,
             protocolo: protocoloLivre,
             comprovante_storage_path: compLivre?.storagePath || null,
             comprovante_url: compLivre?.url || null,
@@ -1017,7 +1073,7 @@ export async function executarRoboLances({
             tipo_lance: 'FIXO',
             opcao_reducao: 'REDUZIR_PARCELA',
             percentual_lance: dadosTelaLance.lanceFixoPct || 25.0,
-            percentual_embutido: Math.min(dadosTelaLance.lanceFixoPct || 25.0, embutidoMaximoPct),
+            percentual_embutido: embutidoFixoPct,
             protocolo: protocoloFixo,
             comprovante_storage_path: compFixo?.storagePath || null,
             comprovante_url: compFixo?.url || null,
@@ -1035,7 +1091,7 @@ export async function executarRoboLances({
             tipo_lance: 'SEGUNDO_FIXO',
             opcao_reducao: 'REDUZIR_PARCELA',
             percentual_lance: dadosTelaLance.segundoLanceFixoPct || 40.0,
-            percentual_embutido: embutidoMaximoPct,
+            percentual_embutido: embutidoSegundoFixoPct,
             protocolo: protocoloSegundoFixo,
             comprovante_storage_path: compSegundoFixo?.storagePath || null,
             comprovante_url: compSegundoFixo?.url || null,
