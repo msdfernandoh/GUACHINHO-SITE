@@ -179,15 +179,29 @@ async function run() {
       log(`Portal Randon acessado: ${page.url()}`)
       await page.screenshot({ path: path.join(screenshotsDir, `racon-02-portal-dashboard-${Date.now()}.png`) }).catch(() => {})
 
-      // 3. Tratar modal de aviso/comunicado de segurança se estiver aberto
+      // 3. Tratar modal de aviso/comunicado de segurança se estiver aberto.
+      // Alguns acessos exibem um aviso para não compartilhar a senha antes de
+      // liberar o dashboard; fechar o controle visível é mais seguro do que
+      // remover o DOM sem disparar os eventos da aplicação.
       log('Verificando se há modal de aviso ou comunicado na tela...')
       await page.waitForTimeout(2000)
-      await page.evaluate(() => {
-        const overlay = document.getElementById('modal-overlay')
-        if (overlay) overlay.remove()
-        const dialogs = document.querySelectorAll('div[role="dialog"]')
-        dialogs.forEach(d => d.remove())
-      }).catch(() => {})
+      const aviso = page.locator('[role="dialog"]:visible, #modal-overlay:visible, .modal:visible').last()
+      if (await aviso.isVisible({ timeout: 1500 }).catch(() => false)) {
+        const fecharAviso = aviso.locator('button:visible, input[type="button"]:visible, input[type="submit"]:visible, a:visible')
+          .filter({ hasText: /entendi|ok|fechar|continuar|prosseguir|aceitar|close|continue|got it/i })
+          .first()
+        if (await fecharAviso.isVisible({ timeout: 1500 }).catch(() => false)) {
+          await fecharAviso.click({ timeout: 5000 }).catch(() => {})
+          log('Popup de segurança confirmado/fechado.')
+        } else {
+          await page.evaluate(() => {
+            const overlay = document.getElementById('modal-overlay')
+            if (overlay) overlay.remove()
+            document.querySelectorAll('div[role="dialog"], .modal').forEach(d => d.remove())
+          }).catch(() => {})
+          log('Popup de segurança removido após não apresentar botão interativo.')
+        }
+      }
       await page.waitForTimeout(800)
 
       const isSimulador = 
