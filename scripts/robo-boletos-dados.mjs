@@ -14,17 +14,21 @@ export function competenciaBoletos(agora = new Date()) {
 
 export async function carregarCotasBoletos(admin, config) {
   if (!config.empresa_id) throw new Error('Robô de boletos exige empresa_id explícito; nenhuma empresa padrão é permitida.')
+  const empresaDadosId = config.configuracao_tarefas?.empresa_dados_id || config.empresa_id
+  const loginBoleto = config.configuracao_tarefas?.robo_boleto_login || null
   const alvos = config.configuracao_tarefas?.cotas_alvo_ids
   if (Array.isArray(alvos) && !alvos.length) return []
   const cotas = []
   for (let offset = 0; ; offset += 500) {
     let query = admin.from('cotas_definitivas').select(`
       id, venda_id, empresa_id, numero_grupo, numero_cota, parcela, status,
-      venda:vendas!inner(id, cliente_id, cliente_nome, cliente_cpf_cnpj, cliente_telefone, administradora_id, status, cliente:clientes(id, nao_executar_boleto_automatico))
-    `).eq('empresa_id', config.empresa_id).neq('status', 'cancelada')
+      robo_boleto_login,
+      venda:vendas!inner(id, empresa_id, cliente_id, cliente_nome, cliente_cpf_cnpj, cliente_telefone, administradora_id, status, cliente:clientes(id, nao_executar_boleto_automatico, retirar_boleto_automatico))
+    `).eq('empresa_id', empresaDadosId).neq('status', 'cancelada')
       .neq('venda.status', 'cancelada').not('numero_cota', 'is', null)
       .order('id', { ascending: true }).range(offset, offset + 499)
     if (config.administradora_id) query = query.eq('venda.administradora_id', config.administradora_id)
+    if (loginBoleto) query = query.eq('robo_boleto_login', loginBoleto)
     if (Array.isArray(alvos)) query = query.in('id', alvos)
     const { data, error } = await query
     if (error) throw new Error(`Falha ao consultar cotas da empresa: ${error.message}`)
@@ -32,6 +36,7 @@ export async function carregarCotasBoletos(admin, config) {
       const venda = Array.isArray(c.venda) ? c.venda[0] : c.venda
       if (!c.numero_grupo?.trim() || !c.numero_cota?.trim() || !venda) continue
       const clienteRel = Array.isArray(venda.cliente) ? venda.cliente[0] : venda.cliente
+      if (clienteRel?.retirar_boleto_automatico !== true) continue
       if (clienteRel?.nao_executar_boleto_automatico === true || venda.nao_executar_boleto_automatico === true) {
         continue
       }

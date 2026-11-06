@@ -1,5 +1,17 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
+### Auditoria e Atualização das Taxas Promocionais Racon (05/11/2026)
+Auditoria automatizada via Robô Playwright autenticado por SSO Corporativo Microsoft (`CX45617665@rdmz.com.br`) no portal oficial da Racon Consórcios (`e.randonconsorcios.com.br`) varreu os 16 grupos comerciais ativos no Simulador do Ponto de Venda Sinop (939509). Foram identificadas promoções e atualizações de taxas de administração:
+- **Grupo 1563 IMÓVEL:** Taxa de administração reduzida de 23% para **22%** (Lançamento / Promoção Grande Prêmio Racon), com recálculo das 6 cotas ativas (ex.: parcela de R$ 200k caiu de R$ 1.250 para R$ 1.240 integral e R$ 744 reduzida).
+- **Grupo 1553 IMÓVEL:** Taxa de administração reduzida de 23% para **21%** (-2% promocional), com recálculo das 10 cotas ativas (ex.: parcela de R$ 200k caiu de R$ 1.562,60 para R$ 1.537,50 integral e R$ 1.076,25 reduzida).
+- **Grupo 5618 VEÍCULO:** Taxa oficial Racon ajustada de 14% para **15%**, com recálculo das 8 cotas ativas (ex.: parcela de R$ 200k ajustada de R$ 2.875 para R$ 2.900 integral e R$ 2.030 reduzida).
+- **Grupo 1293 IMÓVEL:** Taxa cadastral no banco regularizada de 0% para **22%** (FR 2%).
+- **Demais 12 grupos ativos confirmados idênticos:** 1081 (12%), 1071 (14%), 4088 (14%), 5588 (15%), 5388 (14%), 5188 (14%), 5488 (15%), 1533 (22%), 1543 (23%), 1463 (23%), 1473 (24%), 1453 (25%).
+Todas as cotas em `grupos_cotas` tiveram `parcela_integral`, `valor_parcela`, `parcela_reduzida`, reduções por percentual e `parcelas_reduzidas` rigorosamente recalculadas no Supabase Postgres. Suíte de testes automatizados com 384 arquivos e 2003 testes aprovados com zero falhas. Relatório: `docs/relatorios-fases/ATUALIZACAO-TAXAS-PROMOCIONAIS-RACON-2026-11-05.md`.
+
+### Correção e Alinhamento das Cotas do Grupo 1463 IMÓVEL (05/11/2026)
+Auditoria do Grupo 1463 IMÓVEL (`id: 3e3fbaa4-05ed-4f4b-940c-e1845b2d3050`) identificou cota com parcela zerada (R$ 475k com `valor_parcela: 0`), divergência de conceito entre cotas pré-reajuste (com reduzida no campo integral) e pós-reajuste, cotas em duplicidade no catálogo público e ausência de opções vigentes em DILUÍDA (R$ 533k e R$ 586k). Foi aplicado alinhamento rigoroso com os dados extraídos do Simulador oficial da Racon: 5 cotas ativas em PRORROGADA (R$ 506.386,58 a R$ 639.646,20) e 5 em DILUÍDA com parcelas integral, 60% e 50% exatas; as 11 cotas legadas pré-reajuste tiveram seus campos normalizados e foram marcadas como `Inativo` mantendo integridade com vendas passadas. Suíte automatizada com 384 arquivos e 2003 testes aprovada com zero falhas. Relatório: `docs/relatorios-fases/CORRECAO-COTAS-GRUPO-1463-2026-11-05.md`.
+
 ### Robôs SaaS: desbloqueio WAF Randon, limpeza de execuções órfãs e ativação do Runner (27/10/2026)
 Portal Randon (`e.randonconsorcios.com.br`) ativou WAF que bloqueava sessões `headless: true` com *"Acesso Bloqueado!"*, fazendo o robô pular o SSO Microsoft e travar sem acessar o Newcon. Sessão Playwright passa a iniciar Chrome nativo em modo oculto (`--window-position=-32000,-32000`, `--disable-blink-features=AutomationControlled`, `navigator.webdriver` oculto), aguardando o redirecionamento `login.microsoftonline.com`. Seis execuções órfãs travadas em `PROCESSANDO` desde 18-19/10 foram encerradas e tanto `POST /api/automacoes/robos/[id]/executar` quanto `robo-worker-daemon.mjs` passam a expirar automaticamente execuções sem heartbeat (>5 min). Processo-filho (`robo-execucao-child.mjs`) agora encerra explicitamente com `process.exit(0)` após finalizar. Atalho `Gauchinho-Robo-Worker.lnk` instalado no Startup do Windows e daemon ativo. Teste real sincronizou 191 grupos com sucesso. Relatório: `docs/relatorios-fases/ROBOS-SAAS-DESBLOQUEIO-WAF-FILA-E-RUNNER-2026-10-27.md`.
 
@@ -4496,3 +4508,15 @@ linhas/RLS. 22 vínculos preservados por hash; expressão real aceita IDs válid
 e rejeita inválido. Código retorna mensagem de cadastro em falhas, sem página fatal.
 Oito testes e TypeScript aprovados; cadastro real pelo titular pendente.
 Relatório: docs/relatorios-fases/USUARIOS-RACON-ERRO-CATALOGO-MENUS-2026-11-03.md.
+
+### Controle de cotas de boletos por login, autorização e Storage (06/11/2026)
+Foi criada a fase 333 para o cenário em que Racon Sinop espelha a carteira
+canônica da Gauchinho Consórcios. `clientes.retirar_boleto_automatico` exige
+marcação explícita antes de o robô emitir boleto. `cotas_definitivas.robo_boleto_login`
+separa por cota os logins `GAUCHINHO_ERONI` e `RACON_FERNANDO`, sem duplicar
+clientes ou vendas. O robô Racon mantém sua credencial, mas usa
+`configuracao_tarefas.empresa_dados_id` apontando para a Gauchinho e filtra o
+login selecionado. A aba Controle de Boletos permite a marcação rápida e o
+upload manual de PDF para o bucket `boletos-cotas`, sincronizando o histórico e
+o controle de envio. A próxima fase mapeará os seletores de busca do Newcon.
+Relatório: `docs/relatorios-fases/CONTROLE-COTAS-BOLETOS-LOGINS-E-STORAGE-2026-11-06.md`.

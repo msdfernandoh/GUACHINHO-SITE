@@ -76,7 +76,7 @@ describe("boletos por cota e competência", () => {
       then: (resolve: (value: unknown) => void) => Promise.resolve({
         data: falhar ? null : Array.from({ length: offset === 0 ? 500 : 1 }, (_, i) => ({
           id: `cota-${offset + i}`, empresa_id: "a", venda_id: "v", numero_grupo: "1553", numero_cota: String(offset + i),
-          venda: { id: "v", cliente_nome: "Cliente" },
+          venda: { id: "v", cliente_nome: "Cliente", cliente: { retirar_boleto_automatico: true } },
         })), error: falhar ? { message: "schema indisponível" } : null,
       }).then(resolve),
     };
@@ -95,7 +95,7 @@ describe("boletos por cota e competência", () => {
         data: [
           {
             id: "cota-liberada", empresa_id: "a", venda_id: "v1", numero_grupo: "1553", numero_cota: "10",
-            venda: { id: "v1", cliente_nome: "Cliente Liberado", cliente: { id: "cli-1", nao_executar_boleto_automatico: false } },
+            venda: { id: "v1", cliente_nome: "Cliente Liberado", cliente: { id: "cli-1", nao_executar_boleto_automatico: false, retirar_boleto_automatico: true } },
           },
           {
             id: "cota-bloqueada", empresa_id: "a", venda_id: "v2", numero_grupo: "1553", numero_cota: "20",

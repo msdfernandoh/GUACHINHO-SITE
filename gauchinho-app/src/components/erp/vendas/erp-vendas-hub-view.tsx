@@ -37,6 +37,8 @@ import {
   atualizarNumeroCotaAction,
   registrarContemplacaoAction,
   registrarStatusBoletoAction,
+  atualizarControleBoletoCotaAction,
+  anexarBoletoStorageAction,
 } from "@/app/erp/vendas/actions";
 
 export type BoletoEnvioItem = {
@@ -82,6 +84,7 @@ export type VendaItem = {
   cliente_cpf_cnpj: string | null;
   cliente_email: string | null;
   cliente_telefone: string | null;
+  retirar_boleto_automatico?: boolean;
   valor_credito: number;
   prazo: number;
   parcela: number;
@@ -123,6 +126,8 @@ export type CotaItem = {
   cliente_nome?: string;
   consultor_nome?: string;
   ordem_cota?: number;
+  robo_boleto_login?: "GAUCHINHO_ERONI" | "RACON_FERNANDO" | null;
+  retirar_boleto_automatico?: boolean;
 };
 
 export type ParticipanteSimples = {
@@ -653,6 +658,29 @@ export function ErpVendasHubView({
       } catch (err: any) {
         setModalErro(err.message || "Erro ao registrar status do boleto.");
       }
+    });
+  }
+
+  function handleControleBoleto(cotaId: string, login: string, retirar: boolean) {
+    startTransition(async () => {
+      const fd = new FormData();
+      fd.append("cota_id", cotaId);
+      fd.append("robo_boleto_login", login);
+      fd.append("retirar_boleto_automatico", String(retirar));
+      await atualizarControleBoletoCotaAction(fd);
+      window.location.reload();
+    });
+  }
+
+  function handleAnexarBoleto(vendaId: string, cotaId: string, arquivo: File) {
+    startTransition(async () => {
+      const fd = new FormData();
+      fd.append("venda_id", vendaId);
+      fd.append("cota_id", cotaId);
+      fd.append("competencia", competenciaBoletoAtual);
+      fd.append("arquivo", arquivo);
+      await anexarBoletoStorageAction(fd);
+      window.location.reload();
     });
   }
 
@@ -1277,6 +1305,7 @@ export function ErpVendasHubView({
                     <th className="p-3 text-center">Status do Boleto</th>
                     <th className="p-3">Data/Hora Baixa</th>
                     <th className="p-3">Data/Hora Envio</th>
+                    <th className="p-3">Robô de Boletos</th>
                     <th className="p-3 text-right">Ações Rápidas (1 Clique)</th>
                   </tr>
                 </thead>
@@ -1416,6 +1445,34 @@ export function ErpVendasHubView({
                           ) : (
                             <span className="text-slate-400">—</span>
                           )}
+                        </td>
+                        <td className="p-3">
+                          {cota?.id && !String(cota.id).startsWith("venda-cota-") ? (
+                            <div className="flex min-w-[260px] flex-col gap-1.5">
+                              <select
+                                value={cota.robo_boleto_login || ""}
+                                onChange={(e) => handleControleBoleto(cota.id, e.target.value, cota.retirar_boleto_automatico === true)}
+                                disabled={isPending}
+                                className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] font-semibold"
+                              >
+                                <option value="">Login não definido</option>
+                                <option value="GAUCHINHO_ERONI">1 · Gauchinho / Eroni</option>
+                                <option value="RACON_FERNANDO">2 · Racon / Fernando</option>
+                              </select>
+                              <button
+                                type="button"
+                                onClick={() => handleControleBoleto(cota.id, cota.robo_boleto_login || "", cota.retirar_boleto_automatico !== true)}
+                                disabled={isPending || !cota.robo_boleto_login}
+                                className={`rounded-lg px-2 py-1 text-[11px] font-bold ${cota.retirar_boleto_automatico ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-700"}`}
+                              >
+                                {cota.retirar_boleto_automatico ? "✓ Sim, retirar boleto" : "Marcar: Sim, retirar boleto"}
+                              </button>
+                              <label className="cursor-pointer rounded-lg border border-blue-200 bg-blue-50 px-2 py-1 text-[11px] font-bold text-blue-800 hover:bg-blue-100">
+                                Incluir boleto PDF
+                                <input type="file" accept="application/pdf" className="hidden" disabled={isPending} onChange={(e) => { const file = e.target.files?.[0]; if (file) handleAnexarBoleto(v.id, cota.id, file); e.currentTarget.value = ""; }} />
+                              </label>
+                            </div>
+                          ) : <span className="text-[11px] text-slate-400">Cota ainda não vinculada</span>}
                         </td>
                         <td className="p-3 text-right">
                           <div className="flex flex-col items-end gap-1.5 min-w-[200px]">

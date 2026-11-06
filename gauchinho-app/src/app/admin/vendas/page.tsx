@@ -28,7 +28,7 @@ export default async function AdminVendasPage() {
       .from("vendas")
       .select(`
         *,
-        cliente:clientes(nome,cpf_cnpj,email,telefone),
+        cliente:clientes(nome,cpf_cnpj,email,telefone,retirar_boleto_automatico),
         grupo:grupos_consorcio(codigo_grupo,modalidade:administradora_modalidades_comissao(codigo,nome)),
         cotas_definitivas(id,numero_cota,status),
         participante:participantes_comerciais!vendas_participante_comercial_id_fkey(id,nome,nome_exibicao)
@@ -130,7 +130,8 @@ export default async function AdminVendasPage() {
       cliente_nome: cliente?.nome || v.cliente_nome || "Cliente",
       cliente_cpf_cnpj: cliente?.cpf_cnpj || v.cliente_cpf_cnpj || null,
       cliente_email: cliente?.email || v.cliente_email || null,
-      cliente_telefone: cliente?.telefone || v.cliente_telefone || null,
+       cliente_telefone: cliente?.telefone || v.cliente_telefone || null,
+       retirar_boleto_automatico: cliente?.retirar_boleto_automatico === true,
       valor_credito: Number(v.valor_credito),
       prazo: Number(v.prazo),
       parcela: Number(v.parcela),
@@ -176,7 +177,9 @@ export default async function AdminVendasPage() {
       ordem_cota: Number(c.ordem_cota || 1),
       contemplada: c.status === "contemplada",
       cliente_nome: venda?.cliente_nome || c.snapshot_cota?.cliente_nome || undefined,
-      consultor_nome: venda?.consultor_nome,
+       consultor_nome: venda?.consultor_nome,
+       robo_boleto_login: c.robo_boleto_login || null,
+       retirar_boleto_automatico: venda?.retirar_boleto_automatico === true,
     };
   });
 

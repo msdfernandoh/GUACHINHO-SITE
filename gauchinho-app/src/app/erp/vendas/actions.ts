@@ -6,6 +6,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { requireTenantPermission } from "@/lib/tenant/context";
 import { isPlatformSuperadmin } from "@/lib/auth/is-superadmin";
+import { createHash } from "node:crypto";
 
 function val(formData: FormData, key: string) {
   return String(formData.get(key) ?? "").trim();
@@ -213,6 +214,82 @@ export async function atualizarNumeroCotaAction(formData: FormData) {
 
   revalidatePath("/erp/vendas");
   return { ok: true };
+}
+
+export async function atualizarControleBoletoCotaAction(formData: FormData) {
+  const { empresaAtiva } = await requireVendaWrite();
+  if (!empresaAtiva) throw new Error("Tenant não identificado.");
+
+  const cotaId = val(formData, "cota_id");
+  const login = val(formData, "robo_boleto_login") || null;
+  const retirar = formData.get("retirar_boleto_automatico") === "true";
+  if (!cotaId) throw new Error("Cota obrigatória.");
+  if (login && !["GAUCHINHO_ERONI", "RACON_FERNANDO"].includes(login)) {
+    throw new Error("Login de boleto inválido.");
+  }
+
+  const admin = createAdminClient();
+  const { data: cota, error: cotaError } = await admin
+    .from("cotas_definitivas")
+    .select("id, venda_id, empresa_id")
+    .eq("id", cotaId)
+    .eq("empresa_id", empresaAtiva.id)
+    .maybeSingle();
+  if (cotaError) throw new Error(cotaError.message);
+  if (!cota) throw new Error("Cota não encontrada na empresa ativa.");
+
+  const { error } = await admin
+    .from("cotas_definitivas")
+    .update({ robo_boleto_login: login, updated_at: new Date().toISOString() })
+    .eq("id", cotaId)
+    .eq("empresa_id", empresaAtiva.id);
+  if (error) throw new Error(error.message);
+
+  if (cota.venda_id) {
+    const { data: venda } = await admin.from("vendas").select("cliente_id").eq("id", cota.venda_id).eq("empresa_id", empresaAtiva.id).maybeSingle();
+    if (venda?.cliente_id) {
+      const { error: clienteError } = await admin.from("clientes").update({ retirar_boleto_automatico: retirar, updated_at: new Date().toISOString() }).eq("id", venda.cliente_id).eq("empresa_id", empresaAtiva.id);
+      if (clienteError) throw new Error(clienteError.message);
+    }
+  }
+
+  revalidatePath("/erp/vendas");
+  revalidatePath("/admin/vendas");
+  return { ok: true };
+}
+
+export async function anexarBoletoStorageAction(formData: FormData) {
+  const { empresaAtiva } = await requireVendaWrite();
+  if (!empresaAtiva) throw new Error("Tenant não identificado.");
+  const cotaId = val(formData, "cota_id");
+  const vendaId = val(formData, "venda_id");
+  const competencia = val(formData, "competencia");
+  const arquivo = formData.get("arquivo");
+  if (!cotaId || !vendaId || !/^\d{4}-\d{2}$/.test(competencia)) throw new Error("Cota, venda e competência são obrigatórios.");
+  if (!(arquivo instanceof File) || arquivo.size === 0) throw new Error("Selecione um PDF de boleto.");
+  if (arquivo.size > 10 * 1024 * 1024 || arquivo.type !== "application/pdf") throw new Error("O boleto deve ser um PDF de até 10 MB.");
+
+  const admin = createAdminClient();
+  const { data: cota } = await admin.from("cotas_definitivas").select("id,numero_grupo,numero_cota").eq("id", cotaId).eq("venda_id", vendaId).eq("empresa_id", empresaAtiva.id).maybeSingle();
+  if (!cota) throw new Error("Cota não encontrada na empresa ativa.");
+  const bytes = Buffer.from(await arquivo.arrayBuffer());
+  if (bytes.subarray(0, 5).toString() !== "%PDF-") throw new Error("O arquivo selecionado não é um PDF válido.");
+  const hash = createHash("sha256").update(bytes).digest("hex");
+  const path = `boletos/${empresaAtiva.id}/${competencia}/${cotaId}/${hash}.pdf`;
+  const bucket = admin.storage.from("boletos-cotas");
+  const { error: uploadError } = await bucket.upload(path, bytes, { contentType: "application/pdf", upsert: true });
+  if (uploadError) throw new Error(`Falha no upload: ${uploadError.message}`);
+  const arquivoUrl = bucket.getPublicUrl(path).data.publicUrl;
+  const competenciaBr = `${competencia.slice(5)}/${competencia.slice(0, 4)}`;
+  const { error: historicoError } = await admin.from("cotas_boletos").upsert({ empresa_id: empresaAtiva.id, venda_id: vendaId, cota_definitiva_id: cotaId, numero_grupo: cota.numero_grupo, numero_cota: cota.numero_cota, competencia: competenciaBr, arquivo_storage_path: path, arquivo_url: arquivoUrl, origem: "UPLOAD_MANUAL", status: "BAIXADO", updated_at: new Date().toISOString() }, { onConflict: "empresa_id,numero_grupo,numero_cota,competencia" });
+  if (historicoError) throw new Error(`Falha ao registrar boleto: ${historicoError.message}`);
+  const { data: envio } = await admin.from("vendas_boletos_envios").select("id").eq("empresa_id", empresaAtiva.id).eq("venda_id", vendaId).eq("cota_id", cotaId).eq("competencia", competencia).maybeSingle();
+  const controle = { arquivo_storage_path: path, arquivo_url: arquivoUrl, origem: "UPLOAD_MANUAL", status_boleto: "baixado", baixado_em: new Date().toISOString(), updated_at: new Date().toISOString(), numero_grupo: cota.numero_grupo, numero_cota: cota.numero_cota };
+  const { error: envioError } = envio?.id ? await admin.from("vendas_boletos_envios").update(controle).eq("id", envio.id) : await admin.from("vendas_boletos_envios").insert({ ...controle, empresa_id: empresaAtiva.id, venda_id: vendaId, cota_id: cotaId, competencia });
+  if (envioError) throw new Error(`Falha ao sincronizar controle: ${envioError.message}`);
+  revalidatePath("/erp/vendas");
+  revalidatePath("/admin/vendas");
+  return { ok: true, arquivoUrl };
 }
 
 export async function registrarContemplacaoAction(formData: FormData) {
