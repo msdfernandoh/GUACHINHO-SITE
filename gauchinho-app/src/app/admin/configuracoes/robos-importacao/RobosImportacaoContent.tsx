@@ -38,6 +38,33 @@ function formatarDataExecucao(data?: string | null) {
   return new Date(data).toLocaleString('pt-BR', { timeZone: 'America/Cuiaba', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
 }
 
+function formatarDuracaoExecucao(execucao: any) {
+  const inicio = execucao?.iniciado_em ? new Date(execucao.iniciado_em).getTime() : 0
+  const fim = execucao?.finalizado_em ? new Date(execucao.finalizado_em).getTime() : Date.now()
+  if (!inicio || !Number.isFinite(inicio)) return '—'
+  const segundos = Math.max(0, Math.floor((fim - inicio) / 1000))
+  return `${Math.floor(segundos / 60)}m ${String(segundos % 60).padStart(2, '0')}s`
+}
+
+function resumoExecucao(execucao: any, falhasRobo: any[]) {
+  const logs = execucao?.detalhes?.logs || execucao?.logs || []
+  const sucessos = (logs as any[])
+    .map((l) => String(l.msg || '').match(/Boleto da cota\s+([^/]+)\/([^ ]+) salvo/))
+    .filter(Boolean)
+    .map((m: any) => ({ grupo: m[1], cota: m[2] }))
+  const falhasLog = (logs as any[])
+    .map((l) => String(l.msg || '').match(/Erro no processamento da cota\s+([^/]+)\/([^:]+):\s*(.*)$/))
+    .filter(Boolean)
+    .map((m: any) => ({ grupo: m[1], cota: m[2], erro: m[3] }))
+  const atual = [...(logs as any[])].reverse().find((l) => /\[\d+\/\d+\]/.test(l.msg || ''))?.msg?.match(/\[(\d+)\/(\d+)\]/)
+  return {
+    total: Number(execucao?.resultado?.boletos?.cotasProcessadas || atual?.[2] || 0),
+    processadas: Number(execucao?.resultado?.boletos?.totalBoletosArmazenados || sucessos.length) + Number(execucao?.resultado?.boletos?.totalErros || falhasLog.length || falhasRobo.length),
+    sucessos: execucao?.resultado?.boletos?.sucessos?.length ? execucao.resultado.boletos.sucessos : sucessos,
+    falhas: execucao?.resultado?.boletos?.falhas?.length ? execucao.resultado.boletos.falhas : (falhasLog.length ? falhasLog : falhasRobo),
+  }
+}
+
 export type RobosImportacaoContentProps = {
   empresas: { id: string; nome: string }[]
   administradoras: { id: string; nome: string; slug?: string }[]
@@ -80,6 +107,8 @@ export function RobosImportacaoContent({
   const [execucaoAtual, setExecucaoAtual] = useState<any>(null)
   const [executando, setExecutando] = useState(false)
   const [roboPodeForcar, setRoboPodeForcar] = useState<RoboConfigOutput | null>(null)
+  const [roboEmExecucao, setRoboEmExecucao] = useState<RoboConfigOutput | null>(null)
+  const [falhasRobo, setFalhasRobo] = useState<any[]>([])
 
   // Modal de Mapeamento de Tarefas
   const [mapModalOpen, setMapModalOpen] = useState(false)
@@ -241,8 +270,10 @@ export function RobosImportacaoContent({
     }
   }
 
-  const executarRobo = async (robo: RoboConfigOutput, forcar = false) => {
+  const executarRobo = async (robo: RoboConfigOutput, forcar = false, cotasAlvoIds?: string[]) => {
     setRoboPodeForcar(null)
+    setRoboEmExecucao(robo)
+    setFalhasRobo([])
     setLogModalOpen(true)
     setExecutando(true)
     setExecucaoAtual({ status: 'PENDENTE', logs: [{ ts: new Date().toISOString(), msg: 'Solicitando execução...' }] })
@@ -251,7 +282,7 @@ export function RobosImportacaoContent({
       const res = await fetch(`/api/automacoes/robos/${robo.id}/executar`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ forcarReexecucao: forcar }),
+        body: JSON.stringify({ forcarReexecucao: forcar, ...(cotasAlvoIds ? { cotasAlvoIds } : {}) }),
       })
       const data = await res.json()
 
@@ -280,6 +311,7 @@ export function RobosImportacaoContent({
         execucaoId,
         onUpdate: (atualizada) => {
           setExecucaoAtual(atualizada)
+          setFalhasRobo(resumoExecucao(atualizada, []).falhas)
         },
       }).then((res) => {
         setExecutando(false)
@@ -839,11 +871,11 @@ export function RobosImportacaoContent({
       {/* MODAL DE LOGS EM TEMPO REAL */}
       {logModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
-          <div className="flex max-h-[85vh] w-full max-w-3xl flex-col rounded-2xl border border-zinc-800 bg-zinc-950 p-6 text-zinc-100 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-zinc-800 pb-4">
+          <div className="flex max-h-[90vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white p-6 text-slate-900 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-200 pb-4">
               <div className="flex items-center gap-2">
                 <Terminal className="h-5 w-5 text-amber-500" />
-                <h3 className="font-bold text-base">Terminal de Execução do Robô</h3>
+                <h3 className="font-bold text-base text-slate-900">Terminal de Execução do Robô</h3>
                 <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
                   execucaoAtual?.status === 'SUCESSO'
                     ? 'bg-emerald-500/20 text-emerald-400'
@@ -855,15 +887,38 @@ export function RobosImportacaoContent({
                 </span>
               </div>
               <button onClick={() => setLogModalOpen(false)}>
-                <X className="h-5 w-5 text-zinc-400 hover:text-white" />
+                <X className="h-5 w-5 text-slate-400 hover:text-slate-900" />
               </button>
             </div>
 
-            <div className="mt-4 flex-1 overflow-y-auto rounded-xl bg-black p-4 font-mono text-xs text-emerald-400 shadow-inner">
+            <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
+              {(() => {
+                const resumo = resumoExecucao(execucaoAtual, falhasRobo)
+                return <>
+                  <div className="rounded-lg border border-slate-200 bg-slate-50 p-2 text-center"><div className="text-[10px] font-bold uppercase text-slate-500">Progresso</div><div className="text-lg font-black text-slate-900">{Math.min(resumo.total, resumo.processadas)}/{resumo.total || '—'}</div></div>
+                  <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-2 text-center"><div className="text-[10px] font-bold uppercase text-emerald-700">Sucessos</div><div className="text-lg font-black text-emerald-800">{resumo.sucessos.length}</div></div>
+                  <div className="rounded-lg border border-rose-200 bg-rose-50 p-2 text-center"><div className="text-[10px] font-bold uppercase text-rose-700">Falhas</div><div className="text-lg font-black text-rose-800">{resumo.falhas.length}</div></div>
+                  <div className="rounded-lg border border-slate-200 bg-slate-50 p-2 text-center"><div className="text-[10px] font-bold uppercase text-slate-500">Duração</div><div className="text-sm font-black text-slate-900">{formatarDuracaoExecucao(execucaoAtual)}</div></div>
+                </>
+              })()}
+            </div>
+
+            <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
+              <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-900">
+                <div className="mb-2 font-black">Boletos concluídos</div>
+                <div className="max-h-24 space-y-1 overflow-y-auto">{resumoExecucao(execucaoAtual, falhasRobo).sucessos.map((item: any) => <div key={`${item.grupo}-${item.cota}`}>✓ Grupo {item.grupo} / Cota {item.cota}{item.cliente ? ` — ${item.cliente}` : ''}</div>)}{!resumoExecucao(execucaoAtual, falhasRobo).sucessos.length && <span className="text-emerald-700/70">Aguardando conclusão...</span>}</div>
+              </div>
+              <div className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs text-rose-900">
+                <div className="mb-2 font-black">Cotas com falha</div>
+                <div className="max-h-24 space-y-1 overflow-y-auto">{resumoExecucao(execucaoAtual, falhasRobo).falhas.map((item: any) => <div key={`${item.grupo}-${item.cota}`}>! Grupo {item.grupo} / Cota {item.cota} — {item.erro}</div>)}{!resumoExecucao(execucaoAtual, falhasRobo).falhas.length && <span className="text-rose-700/70">Nenhuma falha registrada.</span>}</div>
+              </div>
+            </div>
+
+            <div className="mt-4 flex-1 overflow-y-auto rounded-xl border border-slate-200 bg-slate-50 p-4 font-mono text-xs text-slate-800 shadow-inner">
               {(execucaoAtual?.detalhes?.logs || execucaoAtual?.logs || []).map((l: { ts?: string; msg?: string }, i: number) => (
                 <div key={i} className="mb-1 leading-relaxed">
-                  <span className="text-zinc-500">[{l.ts ? new Date(l.ts).toLocaleTimeString() : 'LOG'}]</span>{' '}
-                  <span className="text-zinc-200">{l.msg || JSON.stringify(l)}</span>
+                  <span className="text-slate-500">[{l.ts ? new Date(l.ts).toLocaleTimeString() : 'LOG'}]</span>{' '}
+                  <span className="text-slate-800">{l.msg || JSON.stringify(l)}</span>
                 </div>
               ))}
               {executando && (
@@ -874,8 +929,11 @@ export function RobosImportacaoContent({
               )}
             </div>
 
-            <div className="mt-4 flex items-center justify-between border-t border-zinc-800 pt-4 text-xs text-zinc-400">
-              <span>Execução ID: {execucaoAtual?.id || '—'}</span>
+            <div className="mt-4 flex items-center justify-between border-t border-slate-200 pt-4 text-xs text-slate-500">
+              <span className="space-y-0.5">
+                <span className="block">Execução ID: {execucaoAtual?.id || '—'}</span>
+                <span className="block">Início: {formatarDataExecucao(execucaoAtual?.iniciado_em)} · Fim: {execucaoAtual?.finalizado_em ? formatarDataExecucao(execucaoAtual.finalizado_em) : 'em andamento'}</span>
+              </span>
               <button
                 onClick={() => setLogModalOpen(false)}
                 className="rounded-lg bg-zinc-800 px-4 py-2 font-medium text-white hover:bg-zinc-700"

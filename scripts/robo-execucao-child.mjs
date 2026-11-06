@@ -74,13 +74,24 @@ async function run() {
 
   if (errExec || !e) throw new Error(`Execução ${execucaoId} não encontrada em PROCESSANDO.`)
 
-  const { data: config, error: errConf } = await admin
+  let { data: config, error: errConf } = await admin
     .from('robo_configuracoes')
     .select('*')
     .eq('id', e.robo_config_id)
     .single()
 
   if (errConf || !config) throw new Error(`Configuração do robô ${e.robo_config_id} não encontrada.`)
+
+  const cotasAlvoExecucao = e.detalhes?.cotas_alvo_ids
+  if (Array.isArray(cotasAlvoExecucao)) {
+    config = {
+      ...config,
+      configuracao_tarefas: {
+        ...(config.configuracao_tarefas || {}),
+        cotas_alvo_ids: cotasAlvoExecucao,
+      },
+    }
+  }
 
   const logs = [...(e.detalhes?.logs || [])]
   let ultimoLog = 0
@@ -1235,11 +1246,12 @@ async function run() {
       log('Conexão inicial validada.')
     }
 
-    log('Processamento do robô finalizado com sucesso!')
+    const execucaoParcial = Boolean(resultadoBoletos?.totalErros)
+    log(execucaoParcial ? 'Processamento finalizado com sucesso parcial; existem cotas para tentar novamente.' : 'Processamento do robô finalizado com sucesso!')
     await atualizacao
 
     await admin.from('robo_execucoes').update({
-      status: 'SUCESSO',
+      status: execucaoParcial ? 'SUCESSO_PARCIAL' : 'SUCESSO',
       finalizado_em: new Date().toISOString(),
       resultado: {
         ...(resultadoBoletos ? { boletos: resultadoBoletos } : {}),

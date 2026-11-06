@@ -46,7 +46,9 @@ const umaVez = process.argv.includes('--once')
 const agendarUmaVez = process.argv.includes('--force-run')
 const verificar = process.argv.includes('--check')
 const alvo = process.argv.find(a => a.startsWith('--execucao-id='))?.split('=')[1] || process.env.EXECUCAO_ID
-const MAX_EXECUCAO_MS = 10 * 60_000
+// A rotina de boletos navega por várias telas do Newcon para cada cota.
+// Dez minutos interrompia filas válidas depois de vários boletos já salvos.
+const MAX_EXECUCAO_MS = 45 * 60_000
 
 let encerrar = false
 let filho = null

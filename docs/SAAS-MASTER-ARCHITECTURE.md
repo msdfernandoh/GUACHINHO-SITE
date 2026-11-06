@@ -4526,3 +4526,10 @@ como erro de conexão inicial (`ERR_CONNECTION_RESET`) antes do Newcon; a cota
 ser selecionada pelo filtro do robô até essa marcação ser feita. A próxima fase
 mapeará os seletores de busca do Newcon.
 Relatório: `docs/relatorios-fases/CONTROLE-COTAS-BOLETOS-EXECUCAO-E-STORAGE-2026-11-06.md`.
+
+### Terminal do robô de boletos: progresso e recuperação (06/11/2026)
+Execuções longas não são mais encerradas no limite de dez minutos; o worker comum
+aceita até 45 minutos. O processamento registra sucessos e falhas por cota, mantém
+os boletos já armazenados e a interface exibe progresso, início, fim, duração,
+sucessos e falhas com repetição seletiva. Relatório:
+`docs/relatorios-fases/ROBO-BOLETOS-PROGRESSO-SUCESSOS-E-FALHAS-2026-11-06.md`.

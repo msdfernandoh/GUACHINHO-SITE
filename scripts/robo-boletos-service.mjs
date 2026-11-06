@@ -129,6 +129,8 @@ export async function executarRoboBoletos({
   let totalBoletosArmazenados = 0
   let totalErros = 0
   let semCobranca = 0
+  const sucessos = []
+  const falhas = []
 
   // 3. Navegação inicial para Atendimento / Consorciado
   // O usuário solicitou: "DEPOIS QUE ENTROU CLICA NOS BONECOS (CLIENTE)"
@@ -299,11 +301,24 @@ export async function executarRoboBoletos({
       await salvarBoletoCota({ admin, item, competencia, pdfBuffer, dados: dadosExtraidos })
       totalBoletosBaixados++
       totalBoletosArmazenados++
+      sucessos.push({
+        cota_id: item.cota_definitiva_id,
+        grupo: item.numero_grupo,
+        cota: item.numero_cota,
+        cliente: item.cliente_nome,
+      })
       log(`Boleto da cota ${item.numero_grupo}/${item.numero_cota} salvo e vinculado em Vendas & Cotas.`)
 
       await page.waitForTimeout(1500)
     } catch (cotaErr) {
       totalErros++
+      falhas.push({
+        cota_id: item.cota_definitiva_id,
+        grupo: item.numero_grupo,
+        cota: item.numero_cota,
+        cliente: item.cliente_nome,
+        erro: cotaErr.message,
+      })
       log(`Erro no processamento da cota ${item.numero_grupo}/${item.numero_cota}: ${cotaErr.message}`)
       await page.screenshot({ path: path.join(screenshotsDir, `erro-cota-${item.numero_grupo}-${item.numero_cota}-${Date.now()}.png`) }).catch(() => {})
     }
@@ -314,10 +329,6 @@ export async function executarRoboBoletos({
   log(`Total de boletos baixados: ${totalBoletosBaixados}`)
   log(`Total de boletos armazenados no Storage: ${totalBoletosArmazenados}`)
 
-  if (totalErros) {
-    throw new Error(`Boletos: ${totalBoletosArmazenados}/${listaCotas.length} salvos; ${totalErros} cotas com erro; ${semCobranca} sem cobrança disponível. Confira os logs por cota.`)
-  }
-
   return {
     totalErros,
     semCobranca,
@@ -325,5 +336,7 @@ export async function executarRoboBoletos({
     totalBoletosBaixados,
     totalBoletosArmazenados,
     competencia: competenciaAtual,
+    sucessos,
+    falhas,
   }
 }

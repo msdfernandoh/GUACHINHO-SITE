@@ -37,7 +37,7 @@ export async function acompanharExecucaoRobo(opcoes: {
       execucao = atual
       falhas = 0
       opcoes.onUpdate?.(atual)
-      if (['SUCESSO', 'JA_IMPORTADO', 'CONCLUIDO', 'ERRO', 'FALHA', 'CANCELADO'].includes(atual.status)) {
+      if (['SUCESSO', 'SUCESSO_PARCIAL', 'JA_IMPORTADO', 'CONCLUIDO', 'ERRO', 'FALHA', 'CANCELADO'].includes(atual.status)) {
         return { execucao, motivo: 'FINALIZADO' }
       }
     } catch (e) {
