@@ -79,6 +79,7 @@ export function RobosImportacaoContent({
   const [logModalOpen, setLogModalOpen] = useState(false)
   const [execucaoAtual, setExecucaoAtual] = useState<any>(null)
   const [executando, setExecutando] = useState(false)
+  const [roboPodeForcar, setRoboPodeForcar] = useState<RoboConfigOutput | null>(null)
 
   // Modal de Mapeamento de Tarefas
   const [mapModalOpen, setMapModalOpen] = useState(false)
@@ -241,6 +242,7 @@ export function RobosImportacaoContent({
   }
 
   const executarRobo = async (robo: RoboConfigOutput, forcar = false) => {
+    setRoboPodeForcar(null)
     setLogModalOpen(true)
     setExecutando(true)
     setExecucaoAtual({ status: 'PENDENTE', logs: [{ ts: new Date().toISOString(), msg: 'Solicitando execução...' }] })
@@ -254,6 +256,7 @@ export function RobosImportacaoContent({
       const data = await res.json()
 
       if (!res.ok) {
+        if (data.ja_executado_hoje) setRoboPodeForcar(robo)
         setExecucaoAtual((prev: any) => ({
           ...prev,
           status: 'ERRO',
@@ -876,9 +879,15 @@ export function RobosImportacaoContent({
               <button
                 onClick={() => setLogModalOpen(false)}
                 className="rounded-lg bg-zinc-800 px-4 py-2 font-medium text-white hover:bg-zinc-700"
-              >
-                Fechar
-              </button>
+              >Fechar</button>
+              {roboPodeForcar && !executando && (
+                <button
+                  onClick={() => executarRobo(roboPodeForcar, true)}
+                  className="rounded-lg bg-amber-600 px-4 py-2 font-semibold text-white hover:bg-amber-700"
+                >
+                  Forçar reexecução
+                </button>
+              )}
             </div>
           </div>
         </div>
