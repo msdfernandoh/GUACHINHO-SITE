@@ -284,12 +284,21 @@ export async function anexarBoletoStorageAction(formData: FormData) {
   const { error: historicoError } = await admin.from("cotas_boletos").upsert({ empresa_id: empresaAtiva.id, venda_id: vendaId, cota_definitiva_id: cotaId, numero_grupo: cota.numero_grupo, numero_cota: cota.numero_cota, competencia: competenciaBr, arquivo_storage_path: path, arquivo_url: arquivoUrl, origem: "UPLOAD_MANUAL", status: "BAIXADO", updated_at: new Date().toISOString() }, { onConflict: "empresa_id,numero_grupo,numero_cota,competencia" });
   if (historicoError) throw new Error(`Falha ao registrar boleto: ${historicoError.message}`);
   const { data: envio } = await admin.from("vendas_boletos_envios").select("id").eq("empresa_id", empresaAtiva.id).eq("venda_id", vendaId).eq("cota_id", cotaId).eq("competencia", competencia).maybeSingle();
-  const controle = { arquivo_storage_path: path, arquivo_url: arquivoUrl, origem: "UPLOAD_MANUAL", status_boleto: "baixado", baixado_em: new Date().toISOString(), updated_at: new Date().toISOString(), numero_grupo: cota.numero_grupo, numero_cota: cota.numero_cota };
-  const { error: envioError } = envio?.id ? await admin.from("vendas_boletos_envios").update(controle).eq("id", envio.id) : await admin.from("vendas_boletos_envios").insert({ ...controle, empresa_id: empresaAtiva.id, venda_id: vendaId, cota_id: cotaId, competencia });
+  const agora = new Date().toISOString();
+  const controle = { arquivo_storage_path: path, arquivo_url: arquivoUrl, origem: "UPLOAD_MANUAL", status_boleto: "baixado", baixado_em: agora, updated_at: agora, numero_grupo: cota.numero_grupo, numero_cota: cota.numero_cota };
+  let envioId = envio?.id || null;
+  let envioError;
+  if (envioId) {
+    ({ error: envioError } = await admin.from("vendas_boletos_envios").update(controle).eq("id", envioId));
+  } else {
+    const { data: novoEnvio, error } = await admin.from("vendas_boletos_envios").insert({ ...controle, empresa_id: empresaAtiva.id, venda_id: vendaId, cota_id: cotaId, competencia }).select("id").single();
+    envioId = novoEnvio?.id || null;
+    envioError = error;
+  }
   if (envioError) throw new Error(`Falha ao sincronizar controle: ${envioError.message}`);
   revalidatePath("/erp/vendas");
   revalidatePath("/admin/vendas");
-  return { ok: true, arquivoUrl };
+  return { ok: true, id: envioId, arquivoUrl, arquivoStoragePath: path };
 }
 
 export async function registrarContemplacaoAction(formData: FormData) {

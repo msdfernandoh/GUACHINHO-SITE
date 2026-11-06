@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, useMemo } from "react";
+import { useState, useTransition, useMemo, useEffect } from "react";
 import { chaveGrupoFiltro, listarGruposFiltro } from "@/lib/erp/vendas-filtro-grupos";
 import {
   Pencil,
@@ -19,6 +19,7 @@ import {
   FileText,
   Send,
   Download,
+  Eye,
   CheckCheck,
   Clock,
   History,
@@ -270,13 +271,17 @@ export function ErpVendasHubView({
   empresaNome,
   isMaster,
   metas = [],
-  boletosEnvios = [],
+  boletosEnvios: boletosEnviosIniciais = [],
 }: ErpVendasHubViewProps) {
   const [isPending, startTransition] = useTransition();
   const [abaAtiva, setAbaAtiva] = useState<"vendas" | "boletos">("vendas");
   const [filtroStatusBoleto, setFiltroStatusBoleto] = useState<"todos" | "aguardando" | "baixado" | "enviado">("todos");
   const [cotaHistoricoBoleto, setCotaHistoricoBoleto] = useState<{ venda: VendaItem; cota: CotaItem | null } | null>(null);
   const [controleCotas, setControleCotas] = useState<Record<string, { login: CotaItem["robo_boleto_login"]; retirar: boolean }>>({});
+  const [boletosEnvios, setBoletosEnvios] = useState<BoletoEnvioItem[]>(boletosEnviosIniciais);
+  useEffect(() => {
+    setBoletosEnvios(boletosEnviosIniciais);
+  }, [boletosEnviosIniciais]);
   const [termoBusca, setTermoBusca] = useState("");
   const [filtroConsultor, setFiltroConsultor] = useState("todos");
   const [filtroGrupo, setFiltroGrupo] = useState("todos");
@@ -679,13 +684,39 @@ export function ErpVendasHubView({
 
   function handleAnexarBoleto(vendaId: string, cotaId: string, arquivo: File) {
     startTransition(async () => {
-      const fd = new FormData();
-      fd.append("venda_id", vendaId);
-      fd.append("cota_id", cotaId);
-      fd.append("competencia", competenciaBoletoAtual);
-      fd.append("arquivo", arquivo);
-      await anexarBoletoStorageAction(fd);
-      window.location.reload();
+      try {
+        const fd = new FormData();
+        fd.append("venda_id", vendaId);
+        fd.append("cota_id", cotaId);
+        fd.append("competencia", competenciaBoletoAtual);
+        fd.append("arquivo", arquivo);
+        const resultado = await anexarBoletoStorageAction(fd);
+        const agora = new Date().toISOString();
+        setBoletosEnvios((atuais) => {
+          const indice = atuais.findIndex((item) => item.venda_id === vendaId && item.cota_id === cotaId && item.competencia === competenciaBoletoAtual);
+          const anterior = indice >= 0 ? atuais[indice] : null;
+          const atualizado: BoletoEnvioItem = {
+            ...(anterior || {}),
+            id: resultado.id || anterior?.id || `upload-${cotaId}-${competenciaBoletoAtual}`,
+            venda_id: vendaId,
+            cota_id: cotaId,
+            competencia: competenciaBoletoAtual,
+            status_boleto: "baixado",
+            baixado_em: agora,
+            enviado_em: anterior?.enviado_em || null,
+            arquivo_url: resultado.arquivoUrl,
+            arquivo_storage_path: resultado.arquivoStoragePath,
+            origem: "UPLOAD_MANUAL",
+            updated_at: agora,
+          } as BoletoEnvioItem;
+          if (indice >= 0) return atuais.map((item, i) => (i === indice ? atualizado : item));
+          return [atualizado, ...atuais];
+        });
+        setAbaAtiva("boletos");
+        setModalSucesso("Boleto incluído no Storage. Agora você pode visualizar, baixar ou enviar.");
+      } catch (err: any) {
+        setModalErro(err?.message || "Não foi possível incluir o boleto.");
+      }
     });
   }
 
@@ -1487,6 +1518,16 @@ export function ErpVendasHubView({
                                 Incluir boleto PDF
                                 <input type="file" accept="application/pdf" className="hidden" disabled={isPending} onChange={(e) => { const file = e.target.files?.[0]; if (file) handleAnexarBoleto(v.id, cota.id, file); e.currentTarget.value = ""; }} />
                               </label>
+                              {envio?.arquivo_url && (
+                                <div className="flex items-center gap-2 text-[11px] font-semibold text-blue-700">
+                                  <a href={envio.arquivo_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 hover:underline">
+                                    <Eye className="h-3 w-3" /> Visualizar
+                                  </a>
+                                  <a href={envio.arquivo_url} download className="inline-flex items-center gap-1 hover:underline">
+                                    <Download className="h-3 w-3" /> Baixar PDF
+                                  </a>
+                                </div>
+                              )}
                                 </>;
                               })()}
                             </div>

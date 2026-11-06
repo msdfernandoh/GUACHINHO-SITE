@@ -4518,5 +4518,11 @@ clientes ou vendas. O robô Racon mantém sua credencial, mas usa
 `configuracao_tarefas.empresa_dados_id` apontando para a Gauchinho e filtra o
 login selecionado. A aba Controle de Boletos permite a marcação rápida e o
 upload manual de PDF para o bucket `boletos-cotas`, sincronizando o histórico e
-o controle de envio. A próxima fase mapeará os seletores de busca do Newcon.
-Relatório: `docs/relatorios-fases/CONTROLE-COTAS-BOLETOS-LOGINS-E-STORAGE-2026-11-06.md`.
+o controle de envio. O upload manual permanece na aba Controle de Boletos,
+atualiza a lista localmente e oferece visualização, download e envio sem recarregar
+a página. A execução de diagnóstico do robô Fernando em 06/11/2026 foi registrada
+como erro de conexão inicial (`ERR_CONNECTION_RESET`) antes do Newcon; a cota
+5088/1268 também está sem a autorização explícita de retirada e, portanto, não deve
+ser selecionada pelo filtro do robô até essa marcação ser feita. A próxima fase
+mapeará os seletores de busca do Newcon.
+Relatório: `docs/relatorios-fases/CONTROLE-COTAS-BOLETOS-EXECUCAO-E-STORAGE-2026-11-06.md`.
