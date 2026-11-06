@@ -259,8 +259,8 @@ export function RobosImportacaoContent({
         if (data.ja_executado_hoje) setRoboPodeForcar(robo)
         setExecucaoAtual((prev: any) => ({
           ...prev,
-          status: 'ERRO',
-          logs: [...(prev?.logs || []), { ts: new Date().toISOString(), msg: `Erro: ${data.error}` }],
+          status: data.ja_executado_hoje ? 'AVISO' : 'ERRO',
+          logs: [...(prev?.logs || []), { ts: new Date().toISOString(), msg: `${data.ja_executado_hoje ? 'Atenção' : 'Erro'}: ${data.error}` }],
         }))
         setExecutando(false)
         return
@@ -851,7 +851,7 @@ export function RobosImportacaoContent({
                     ? 'bg-rose-500/20 text-rose-400'
                     : 'bg-amber-500/20 text-amber-400'
                 }`}>
-                  {execucaoAtual?.status || 'PROCESSANDO'}
+                  {execucaoAtual?.status === 'AVISO' ? 'ATENÇÃO' : execucaoAtual?.status || 'PROCESSANDO'}
                 </span>
               </div>
               <button onClick={() => setLogModalOpen(false)}>
