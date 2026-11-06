@@ -1386,16 +1386,25 @@ export function ErpVendasHubView({
                             Parcela: <strong>{brl(cota?.parcela ?? v.parcela)}</strong>
                           </div>
                           {envio?.arquivo_url && (
-                            <div className="mt-1.5">
+                            <div className="mt-1.5 flex items-center gap-2">
                               <a
                                 href={envio.arquivo_url}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="inline-flex items-center gap-1 rounded bg-blue-50 px-2 py-0.5 text-[10px] font-bold text-blue-800 dark:bg-blue-950/60 dark:text-blue-300 border border-blue-200 dark:border-blue-800 hover:bg-blue-100 transition"
-                                title="Abrir / Baixar PDF salvo no Storage"
+                                title="Visualizar o PDF salvo no Storage"
                               >
-                                <FileDown className="h-3 w-3 text-blue-600 dark:text-blue-400" />
-                                Baixar Boleto PDF
+                                <Eye className="h-3 w-3 text-blue-600 dark:text-blue-400" />
+                                Abrir PDF
+                              </a>
+                              <a
+                                href={envio.arquivo_url}
+                                download
+                                className="inline-flex items-center gap-1 rounded bg-indigo-50 px-2 py-0.5 text-[10px] font-bold text-indigo-800 dark:bg-indigo-950/60 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 hover:bg-indigo-100 transition"
+                                title="Baixar o PDF salvo no Storage"
+                              >
+                                <FileDown className="h-3 w-3 text-indigo-600 dark:text-indigo-400" />
+                                Baixar PDF
                               </a>
                             </div>
                           )}
@@ -1541,7 +1550,7 @@ export function ErpVendasHubView({
                                 type="button"
                                 onClick={() => handleRegistrarBoleto(v.id, cota?.id || null, competenciaBoletoAtual, "BAIXAR")}
                                 disabled={isPending}
-                                title="Registrar que o boleto foi baixado da administradora"
+                                title="Registrar manualmente que o boleto foi baixado da administradora"
                                 className={`rounded-lg px-2.5 py-1 text-[11px] font-bold transition cursor-pointer flex items-center gap-1 ${
                                   statusBoleto === "baixado" || statusBoleto === "enviado"
                                     ? "bg-blue-100 text-blue-900 border border-blue-200 dark:bg-blue-950 dark:text-blue-300"
@@ -1549,7 +1558,7 @@ export function ErpVendasHubView({
                                 }`}
                               >
                                 <Download className="h-3 w-3" />
-                                {statusBoleto === "baixado" || statusBoleto === "enviado" ? "Baixado ✓" : "Baixar"}
+                                {statusBoleto === "baixado" || statusBoleto === "enviado" ? "Baixado ✓" : "Registrar baixa"}
                               </button>
 
                               {/* Botão Enviado */}
