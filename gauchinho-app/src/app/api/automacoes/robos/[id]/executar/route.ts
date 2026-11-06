@@ -77,6 +77,9 @@ export async function POST(
 
     const body = await req.json().catch(() => ({}))
     const dryRun = body?.dryRun !== undefined ? Boolean(body.dryRun) : config.modo === 'DRY_RUN'
+    const cotasAlvoIds = Array.isArray(body?.cotasAlvoIds)
+      ? body.cotasAlvoIds.filter((valor: unknown): valor is string => typeof valor === 'string' && /^[0-9a-f-]{36}$/i.test(valor)).slice(0, 500)
+      : undefined
 
     // Verifica se já há execução em processamento e limpa execuções órfãs/expiradas
     const { data: emAndamentoLista } = await admin
@@ -170,6 +173,7 @@ export async function POST(
           forcarReexecucao: Boolean(body?.forcarReexecucao),
           ...(body?.parametros || {}),
         },
+        ...(cotasAlvoIds ? { cotas_alvo_ids: cotasAlvoIds } : {}),
         logs: [{ ts: new Date().toISOString(), msg: 'Solicitação registrada na fila de automação pelo usuário' }],
       },
     }

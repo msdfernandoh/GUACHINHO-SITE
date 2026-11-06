@@ -4533,3 +4533,9 @@ aceita até 45 minutos. O processamento registra sucessos e falhas por cota, man
 os boletos já armazenados e a interface exibe progresso, início, fim, duração,
 sucessos e falhas com repetição seletiva. Relatório:
 `docs/relatorios-fases/ROBO-BOLETOS-PROGRESSO-SUCESSOS-E-FALHAS-2026-11-06.md`.
+
+O Controle de Boletos também normaliza a competência (`YYYY-MM` e `MM/YYYY`) ao
+consolidar os registros do robô e da tabela legada, evitando que um PDF existente
+fique invisível na cota correta. A tela oferece filtros independentes para cotas
+com boleto e sem boleto, baseados na existência do arquivo no Storage, abrangendo
+downloads do robô e uploads manuais.

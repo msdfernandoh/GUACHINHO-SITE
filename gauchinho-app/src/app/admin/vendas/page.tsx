@@ -10,6 +10,13 @@ import {
   type VinculoPerfilSimples,
 } from "@/components/erp/vendas/erp-vendas-hub-view";
 
+function normalizarCompetenciaBoleto(valor: unknown) {
+  const texto = String(valor ?? "").trim();
+  if (/^\d{4}-\d{2}$/.test(texto)) return texto;
+  const brasileira = texto.match(/^(\d{2})\/(\d{4})$/);
+  return brasileira ? `${brasileira[2]}-${brasileira[1]}` : texto;
+}
+
 export default async function AdminVendasPage() {
   noStore();
   const { empresaAtiva, vinculos } = await getCurrentTenantContext();
@@ -206,14 +213,13 @@ export default async function AdminVendasPage() {
   // Consolidação de boletos das tabelas vendas_boletos_envios e cotas_boletos
   const boletosMap = new Map<string, any>();
   for (const b of (boletosEnviosRes?.data ?? [])) {
-    const key = `${b.venda_id}_${b.cota_id || "sem-cota"}_${b.competencia}`;
-    boletosMap.set(key, { ...b });
+    const competenciaNormalizada = normalizarCompetenciaBoleto(b.competencia);
+    const key = `${b.venda_id}_${b.cota_id || "sem-cota"}_${competenciaNormalizada}`;
+    boletosMap.set(key, { ...b, competencia: competenciaNormalizada });
   }
 
   for (const cb of (cotasBoletosRes?.data ?? [])) {
-    const compIso = cb.competencia?.includes("/")
-      ? `${cb.competencia.split("/")[1]}-${cb.competencia.split("/")[0]}`
-      : cb.competencia;
+    const compIso = normalizarCompetenciaBoleto(cb.competencia);
 
     const key = `${cb.venda_id}_${cb.cota_definitiva_id || "sem-cota"}_${compIso}`;
     const existing = boletosMap.get(key);

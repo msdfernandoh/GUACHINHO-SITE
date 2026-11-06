@@ -276,6 +276,7 @@ export function ErpVendasHubView({
   const [isPending, startTransition] = useTransition();
   const [abaAtiva, setAbaAtiva] = useState<"vendas" | "boletos">("vendas");
   const [filtroStatusBoleto, setFiltroStatusBoleto] = useState<"todos" | "aguardando" | "baixado" | "enviado">("todos");
+  const [filtroArquivoBoleto, setFiltroArquivoBoleto] = useState<"todos" | "com_boleto" | "sem_boleto">("todos");
   const [cotaHistoricoBoleto, setCotaHistoricoBoleto] = useState<{ venda: VendaItem; cota: CotaItem | null } | null>(null);
   const [controleCotas, setControleCotas] = useState<Record<string, { login: CotaItem["robo_boleto_login"]; retirar: boolean }>>({});
   const [boletosEnvios, setBoletosEnvios] = useState<BoletoEnvioItem[]>(boletosEnviosIniciais);
@@ -620,19 +621,26 @@ export function ErpVendasHubView({
         envio,
         historico,
         statusBoleto: envio?.status_boleto || "aguardando",
+        temArquivoBoleto: Boolean(envio?.arquivo_url),
       };
     });
   }, [operacoesPorCota, boletosEnvios, competenciaBoletoAtual]);
 
   const operacoesBoletosFiltradas = useMemo(() => {
-    if (filtroStatusBoleto === "todos") return operacoesBoletos;
-    return operacoesBoletos.filter((op) => op.statusBoleto === filtroStatusBoleto);
-  }, [operacoesBoletos, filtroStatusBoleto]);
+    return operacoesBoletos.filter((op) => {
+      const passaStatus = filtroStatusBoleto === "todos" || op.statusBoleto === filtroStatusBoleto;
+      const passaArquivo = filtroArquivoBoleto === "todos"
+        || (filtroArquivoBoleto === "com_boleto" ? op.temArquivoBoleto : !op.temArquivoBoleto);
+      return passaStatus && passaArquivo;
+    });
+  }, [operacoesBoletos, filtroStatusBoleto, filtroArquivoBoleto]);
 
   const totalBoletosMes = operacoesBoletos.length;
   const totalBoletosAguardando = operacoesBoletos.filter((op) => op.statusBoleto === "aguardando").length;
   const totalBoletosBaixados = operacoesBoletos.filter((op) => op.statusBoleto === "baixado").length;
   const totalBoletosEnviados = operacoesBoletos.filter((op) => op.statusBoleto === "enviado").length;
+  const totalBoletosComArquivo = operacoesBoletos.filter((op) => op.temArquivoBoleto).length;
+  const totalBoletosSemArquivo = totalBoletosMes - totalBoletosComArquivo;
   const taxaConclusaoBoletos = totalBoletosMes > 0 ? Math.round((totalBoletosEnviados / totalBoletosMes) * 100) : 0;
 
   function handleRegistrarBoleto(
@@ -990,6 +998,28 @@ export function ErpVendasHubView({
                   <span>{st.label}</span>
                   <span className={`rounded-full px-1.5 py-0.2 text-[10px] ${
                     filtroStatusBoleto === st.id ? "bg-white/20 text-white" : "bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200"
+                  }`}>
+                    {st.count}
+                  </span>
+                </button>
+              ))}
+              {[ 
+                { id: "com_boleto", label: "📄 Com boleto", count: totalBoletosComArquivo },
+                { id: "sem_boleto", label: "⚠️ Sem boleto", count: totalBoletosSemArquivo },
+              ].map((st) => (
+                <button
+                  key={st.id}
+                  type="button"
+                  onClick={() => setFiltroArquivoBoleto(st.id as "com_boleto" | "sem_boleto")}
+                  className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-1 text-xs font-bold transition cursor-pointer ${
+                    filtroArquivoBoleto === st.id
+                      ? "bg-indigo-600 text-white shadow-xs"
+                      : "bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300"
+                  }`}
+                >
+                  <span>{st.label}</span>
+                  <span className={`rounded-full px-1.5 py-0.2 text-[10px] ${
+                    filtroArquivoBoleto === st.id ? "bg-white/20 text-white" : "bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200"
                   }`}>
                     {st.count}
                   </span>
