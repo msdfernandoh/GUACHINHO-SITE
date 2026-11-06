@@ -115,7 +115,6 @@ async function run() {
     headless: !isWin,
     channel: isWin ? 'chrome' : undefined,
     args: [
-      ...(isWin ? ['--window-position=-32000,-32000'] : []),
       '--disable-blink-features=AutomationControlled',
       '--no-sandbox',
       '--disable-setuid-sandbox',
@@ -132,6 +131,7 @@ async function run() {
   const context = await browser.newContext({
     acceptDownloads: true,
     viewport: { width: 1440, height: 900 },
+    userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
   })
   await context.addInitScript(() => {
     Object.defineProperty(navigator, 'webdriver', { get: () => undefined })
@@ -154,7 +154,13 @@ async function run() {
       log('--- INICIANDO FLUXO AUTOMATIZADO RACON / NEWCON ---')
       const targetUrl = config.login_url || config.site_url || 'https://e.randonconsorcios.com.br/'
       log(`Navegando para URL inicial: ${targetUrl}`)
-      await page.goto(targetUrl, { waitUntil: 'domcontentloaded', timeout: 60_000 })
+      // O portal pode concluir o commit da navegação e resetar uma requisição
+      // secundária antes do evento domcontentloaded. O fluxo precisa continuar
+      // a partir da página já aberta para que o redirect Microsoft aconteça.
+      await page.goto(targetUrl, { waitUntil: 'commit', timeout: 60_000 })
+      await page.waitForLoadState('domcontentloaded', { timeout: 20_000 }).catch(() => {
+        log('Portal aberto; carregamento complementar não concluiu, seguindo para o redirecionamento Microsoft.')
+      })
       await page.waitForURL(url => url.hostname.includes('login.microsoftonline.com'), { timeout: 15_000 }).catch(() => {})
       await page.waitForTimeout(2000)
 
