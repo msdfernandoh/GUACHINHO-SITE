@@ -129,9 +129,32 @@ function percentualNoNome(nome: unknown): number | null {
   return match ? Number(match[1]) : null;
 }
 
+function classificarModalidades(modalidades: Array<{ nome?: string | null; percentual?: number | null }>) {
+  const classificadas = modalidades.map((modalidade) => ({
+    ...modalidade,
+    tipo: inferirModalidadeLance(modalidade.nome),
+    percentual: modalidade.percentual ?? percentualNoNome(modalidade.nome),
+  }));
+
+  // O cadastro legado registra as alternativas de embutido, não o rótulo
+  // "fixo/2º fixo". Quando há duas alternativas sem tipo explícito, a maior
+  // percentual é o Lance Fixo e a menor é o 2º Lance Fixo.
+  if (classificadas.length > 1 && classificadas.every((modalidade) => modalidade.tipo === "FIXO")) {
+    const ordenadas = [...classificadas].sort((a, b) => (b.percentual ?? 0) - (a.percentual ?? 0));
+    ordenadas.forEach((modalidade, index) => {
+      modalidade.tipo = index === 0 ? "FIXO" : "SEGUNDO_FIXO";
+    });
+    return classificadas.map((modalidade) => ordenadas.find((item) => item === modalidade) ?? modalidade);
+  }
+
+  return classificadas;
+}
+
 function modalidadeHabilitada(modalidades: Array<{ nome?: string | null }> | null | undefined, tipo: "LIVRE" | "FIXO" | "SEGUNDO_FIXO" | "FIDELIDADE") {
-  const normalizadas = (modalidades ?? []).map((modalidade) => inferirModalidadeLance(modalidade.nome));
-  return normalizadas.length === 0 || normalizadas.includes(tipo);
+  const normalizadas = classificarModalidades(modalidades ?? []).map((modalidade) => modalidade.tipo);
+  // Lance Livre é padrão operacional de todos os grupos; o cadastro
+  // personalizado controla apenas as modalidades adicionais.
+  return tipo === "LIVRE" || normalizadas.length === 0 || normalizadas.includes(tipo);
 }
 
 export type LancesDashboardStats = {
@@ -297,10 +320,10 @@ export async function fetchCotasComLancesOperacional(filters?: {
       const consultorId = c.participante_comercial_id || venda?.participante_comercial_id;
       const consultor = consultorId ? partMap.get(consultorId) : null;
       const est = estMap.get(c.id);
-      const modalidades = (modalidadesByGrupo.get(c.grupo_id) ?? []).map((m) => ({
-        tipo: inferirModalidadeLance(m.nome),
-        percentual: percentualNoNome(m.nome),
-        embutidoMaximo: Number(m.percentual_lance_embutido || grupo?.percentual_lance_embutido || 0),
+      const modalidades = classificarModalidades(modalidadesByGrupo.get(c.grupo_id) ?? []).map((m) => ({
+        tipo: m.tipo,
+        percentual: m.percentual,
+        embutidoMaximo: Number((m as any).percentual_lance_embutido || grupo?.percentual_lance_embutido || 0),
         nome: String(m.nome || "Modalidade"),
       }));
       const primeiroFixo = modalidades.find((m) => m.tipo === "FIXO");

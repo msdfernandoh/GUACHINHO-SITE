@@ -4585,3 +4585,20 @@ um grupo ainda não possui linhas de modalidade, o fallback seguro continua
 sendo somente Lance Livre. A validação server-side usa a mesma classificação
 e impede persistência incompatível. Relatório:
 `docs/relatorios-fases/MODALIDADES-LANCE-POR-GRUPO-2026-11-07.md`.
+
+### Lance Livre padrão e Lance Fixo do grupo 1253 (07/11/2026)
+Lance Livre é uma modalidade operacional padrão de todos os grupos e não
+depende de uma linha explícita em `grupos_modalidades_lance`. O grupo 1253 foi
+corrigido com a modalidade ativa Lance Fixo 25%, embutido máximo de 25%, após
+auditoria confirmar que seu cadastro estava vazio. Para alternativas legadas
+sem tipo textual, a maior percentual é classificada como Lance Fixo e a menor
+como 2º Lance Fixo. Percentual/valor total e embutido continuam separados por
+modalidade no formulário e no servidor. Relatório:
+`docs/relatorios-fases/LANCE-LIVRE-PADRAO-E-FIXO-1253-2026-11-07.md`.
+
+### Filtro operacional por consultor em Lances e Estratégias (07/11/2026)
+O ERP `/erp/lances` possui filtro independente por consultor, usando o ID do
+consultor para preservar a precisão em nomes duplicados. Cotas sem consultor
+ficam disponíveis na opção `Sem consultor`, sem alterar o escopo multiempresa
+ou os demais filtros operacionais. Relatório:
+`docs/relatorios-fases/FILTRO-CONSULTOR-LANCES-2026-11-07.md`.

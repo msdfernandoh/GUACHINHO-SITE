@@ -22,6 +22,7 @@ export function ErpLancesView({ initialStats, initialRows }: ErpLancesViewProps)
   const [stats] = useState<LancesDashboardStats>(initialStats);
   const [busca, setBusca] = useState("");
   const [filtroAdministradora, setFiltroAdministradora] = useState("");
+  const [filtroConsultor, setFiltroConsultor] = useState("");
   const [filtroSituacao, setFiltroSituacao] = useState("");
   const [filtroStatusCota, setFiltroStatusCota] = useState("");
   const [selectedCota, setSelectedCota] = useState<CotaLanceOperacionalDTO | null>(null);
@@ -46,10 +47,14 @@ export function ErpLancesView({ initialStats, initialRows }: ErpLancesViewProps)
 
   // Administradoras únicas
   const administradoras = Array.from(new Set(rows.map((r) => r.administradora.nome).filter(Boolean)));
+  const consultores = Array.from(
+    new Map(rows.map((r) => [r.consultor.id ?? "sem-consultor", r.consultor])).values(),
+  ).sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
 
   // Filtragem em memória
   const filteredRows = rows.filter((r) => {
     if (filtroAdministradora && r.administradora.nome !== filtroAdministradora) return false;
+    if (filtroConsultor && (r.consultor.id ?? "sem-consultor") !== filtroConsultor) return false;
     if (filtroSituacao && r.situacaoOperacional !== filtroSituacao) return false;
     if (filtroStatusCota && r.statusCota !== filtroStatusCota) return false;
     if (busca) {
@@ -106,9 +111,9 @@ export function ErpLancesView({ initialStats, initialRows }: ErpLancesViewProps)
   const modalidadePermitida = (tipo: "LIVRE" | "FIXO" | "SEGUNDO_FIXO" | "FIDELIDADE") => {
     if (!selectedCota) return false;
     const modalidades = selectedCota.grupo.modalidades;
-    return modalidades.length === 0
-      ? tipo === "LIVRE"
-      : modalidades.some((modalidade) => modalidade.tipo === tipo);
+    // Lance Livre é padrão operacional de todos os grupos, mesmo quando o
+    // cadastro personalizado só contém as modalidades fixas.
+    return tipo === "LIVRE" || modalidades.some((modalidade) => modalidade.tipo === tipo);
   };
 
   return (
@@ -177,6 +182,20 @@ export function ErpLancesView({ initialStats, initialRows }: ErpLancesViewProps)
           {administradoras.map((adm) => (
             <option key={adm} value={adm}>
               {adm}
+            </option>
+          ))}
+        </select>
+
+        <select
+          value={filtroConsultor}
+          onChange={(e) => setFiltroConsultor(e.target.value)}
+          aria-label="Filtrar por consultor"
+          className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+        >
+          <option value="">Todos Consultores</option>
+          {consultores.map((consultor) => (
+            <option key={consultor.id ?? "sem-consultor"} value={consultor.id ?? "sem-consultor"}>
+              {consultor.nome === "—" ? "Sem consultor" : consultor.nome}
             </option>
           ))}
         </select>
@@ -676,7 +695,12 @@ export function ErpLancesView({ initialStats, initialRows }: ErpLancesViewProps)
                   Modalidades Habilitadas para a Assembleia:
                 </span>
                 <div className="flex flex-wrap gap-1.5">
-                  {(selectedCota.grupo.modalidades.length > 0 ? selectedCota.grupo.modalidades : [{ tipo: "LIVRE", percentual: null, embutidoMaximo: selectedCota.grupo.lanceEmbutidoPercentual ?? 0, nome: "Lance Livre" }]).map((modalidade, index) => (
+                  {[
+                    ...(selectedCota.grupo.modalidades.some((modalidade) => modalidade.tipo === "LIVRE")
+                      ? []
+                      : [{ tipo: "LIVRE" as const, percentual: null, embutidoMaximo: selectedCota.grupo.lanceEmbutidoPercentual ?? 0, nome: "Lance Livre" }]),
+                    ...selectedCota.grupo.modalidades,
+                  ].map((modalidade, index) => (
                     <span key={`${modalidade.tipo}-${index}`} className="rounded-full bg-white px-2 py-1 text-[10px] font-bold text-slate-600 ring-1 ring-slate-200 dark:bg-slate-900 dark:text-slate-300 dark:ring-slate-700">
                       {modalidade.nome} · embutido até {modalidade.embutidoMaximo}%
                     </span>
@@ -698,22 +722,29 @@ export function ErpLancesView({ initialStats, initialRows }: ErpLancesViewProps)
                   </label>
                   {formLanceFixo && (
                     <div className="grid grid-cols-2 gap-2 pl-6">
-                      <input
-                        name="lance_fixo_percentual"
-                        placeholder="% Fixo (Ex: 25)"
-                        defaultValue={selectedCota.estrategia?.lanceFixoPercentual ?? selectedCota.grupo.lanceFixoPercentual ?? ""}
-                        className="rounded-lg border border-slate-300 p-1.5 font-mono text-xs dark:border-slate-700 dark:bg-slate-800"
-                      />
-                      <input
-                        name="lance_fixo_embutido_percentual"
-                        placeholder={`Embutido até ${selectedCota.grupo.modalidades.find((m) => m.tipo === "FIXO")?.embutidoMaximo ?? selectedCota.grupo.lanceEmbutidoPercentual ?? 0}%`}
-                        defaultValue={selectedCota.estrategia?.lanceFixoEmbutidoPercentual ?? ""}
-                        max={selectedCota.grupo.modalidades.find((m) => m.tipo === "FIXO")?.embutidoMaximo ?? selectedCota.grupo.lanceEmbutidoPercentual ?? undefined}
-                        className="rounded-lg border border-slate-300 p-1.5 font-mono text-xs dark:border-slate-700 dark:bg-slate-800"
-                      />
+                      <label className="text-[10px] font-bold text-slate-600 dark:text-slate-300">
+                        Percentual total do lance (%)
+                        <input
+                          name="lance_fixo_percentual"
+                          placeholder="Ex.: 25"
+                          defaultValue={selectedCota.estrategia?.lanceFixoPercentual ?? selectedCota.grupo.lanceFixoPercentual ?? ""}
+                          className="mt-1 w-full rounded-lg border border-slate-300 p-1.5 font-mono text-xs dark:border-slate-700 dark:bg-slate-800"
+                        />
+                      </label>
+                      <label className="text-[10px] font-bold text-slate-600 dark:text-slate-300">
+                        Lance embutido usado (%)
+                        <input
+                          name="lance_fixo_embutido_percentual"
+                          placeholder={`Máximo: ${selectedCota.grupo.modalidades.find((m) => m.tipo === "FIXO")?.embutidoMaximo ?? selectedCota.grupo.lanceEmbutidoPercentual ?? 0}%`}
+                          defaultValue={selectedCota.estrategia?.lanceFixoEmbutidoPercentual ?? ""}
+                          max={selectedCota.grupo.modalidades.find((m) => m.tipo === "FIXO")?.embutidoMaximo ?? selectedCota.grupo.lanceEmbutidoPercentual ?? undefined}
+                          className="mt-1 w-full rounded-lg border border-slate-300 p-1.5 font-mono text-xs dark:border-slate-700 dark:bg-slate-800"
+                        />
+                      </label>
                       <input
                         name="lance_fixo_valor"
-                        placeholder="Valor R$ (Opcional)"
+                        aria-label="Valor total do lance fixo em reais, opcional"
+                        placeholder="Valor total R$ (opcional)"
                         defaultValue={selectedCota.estrategia?.lanceFixoValor ?? ""}
                         className="rounded-lg border border-slate-300 p-1.5 font-mono text-xs dark:border-slate-700 dark:bg-slate-800"
                       />
@@ -736,22 +767,29 @@ export function ErpLancesView({ initialStats, initialRows }: ErpLancesViewProps)
                   </label>
                   {formSegundoFixo && (
                     <div className="grid grid-cols-2 gap-2 pl-6">
-                      <input
-                        name="segundo_lance_fixo_percentual"
-                        placeholder="% 2º Fixo (Ex: 50)"
-                        defaultValue={selectedCota.estrategia?.segundoLanceFixoPercentual ?? selectedCota.grupo.segundoLanceFixoPercentual ?? ""}
-                        className="rounded-lg border border-slate-300 p-1.5 font-mono text-xs dark:border-slate-700 dark:bg-slate-800"
-                      />
-                      <input
-                        name="segundo_lance_fixo_embutido_percentual"
-                        placeholder={`Embutido até ${selectedCota.grupo.modalidades.find((m) => m.tipo === "SEGUNDO_FIXO")?.embutidoMaximo ?? selectedCota.grupo.lanceEmbutidoPercentual ?? 0}%`}
-                        defaultValue={selectedCota.estrategia?.segundoLanceFixoEmbutidoPercentual ?? ""}
-                        max={selectedCota.grupo.modalidades.find((m) => m.tipo === "SEGUNDO_FIXO")?.embutidoMaximo ?? selectedCota.grupo.lanceEmbutidoPercentual ?? undefined}
-                        className="rounded-lg border border-slate-300 p-1.5 font-mono text-xs dark:border-slate-700 dark:bg-slate-800"
-                      />
+                      <label className="text-[10px] font-bold text-slate-600 dark:text-slate-300">
+                        Percentual total do 2º lance (%)
+                        <input
+                          name="segundo_lance_fixo_percentual"
+                          placeholder="Ex.: 50"
+                          defaultValue={selectedCota.estrategia?.segundoLanceFixoPercentual ?? selectedCota.grupo.segundoLanceFixoPercentual ?? ""}
+                          className="mt-1 w-full rounded-lg border border-slate-300 p-1.5 font-mono text-xs dark:border-slate-700 dark:bg-slate-800"
+                        />
+                      </label>
+                      <label className="text-[10px] font-bold text-slate-600 dark:text-slate-300">
+                        Lance embutido usado (%)
+                        <input
+                          name="segundo_lance_fixo_embutido_percentual"
+                          placeholder={`Máximo: ${selectedCota.grupo.modalidades.find((m) => m.tipo === "SEGUNDO_FIXO")?.embutidoMaximo ?? selectedCota.grupo.lanceEmbutidoPercentual ?? 0}%`}
+                          defaultValue={selectedCota.estrategia?.segundoLanceFixoEmbutidoPercentual ?? ""}
+                          max={selectedCota.grupo.modalidades.find((m) => m.tipo === "SEGUNDO_FIXO")?.embutidoMaximo ?? selectedCota.grupo.lanceEmbutidoPercentual ?? undefined}
+                          className="mt-1 w-full rounded-lg border border-slate-300 p-1.5 font-mono text-xs dark:border-slate-700 dark:bg-slate-800"
+                        />
+                      </label>
                       <input
                         name="segundo_lance_fixo_valor"
-                        placeholder="Valor R$ (Opcional)"
+                        aria-label="Valor total do segundo lance fixo em reais, opcional"
+                        placeholder="Valor total R$ (opcional)"
                         defaultValue={selectedCota.estrategia?.segundoLanceFixoValor ?? ""}
                         className="rounded-lg border border-slate-300 p-1.5 font-mono text-xs dark:border-slate-700 dark:bg-slate-800"
                       />
@@ -814,31 +852,31 @@ export function ErpLancesView({ initialStats, initialRows }: ErpLancesViewProps)
                     <div className="space-y-1.5 pl-6">
                       <div className="grid grid-cols-2 gap-2">
                         <div>
-                          <span className="text-[10px] text-slate-500 font-bold">Percentual Ofertado (%)</span>
+                            <span className="text-[10px] text-slate-500 font-bold">Percentual total do lance livre (%)</span>
                           <input
                             name="lance_livre_percentual"
                             value={formLivrePercentual}
                             onChange={(e) =>
                               handleLivrePercentualChange(e.target.value, selectedCota.valorCredito)
                             }
-                            placeholder="Ex: 42.50"
+                            placeholder="Ex.: 26"
                             className="w-full rounded-lg border border-slate-300 p-1.5 font-mono text-xs dark:border-slate-700 dark:bg-slate-800"
                           />
                         </div>
                         <div>
-                          <span className="text-[10px] text-slate-500 font-bold">Valor Ofertado (R$)</span>
+                          <span className="text-[10px] text-slate-500 font-bold">Valor total do lance livre (R$)</span>
                           <input
                             name="lance_livre_valor"
                             value={formLivreValor}
                             onChange={(e) =>
                               handleLivreValorChange(e.target.value, selectedCota.valorCredito)
                             }
-                            placeholder="Ex: 85000.00"
+                            placeholder="Opcional se informar o percentual"
                             className="w-full rounded-lg border border-slate-300 p-1.5 font-mono text-xs dark:border-slate-700 dark:bg-slate-800"
                           />
                         </div>
                         <div className="col-span-2">
-                          <span className="text-[10px] text-slate-500 font-bold">Embutido usado nesta cota (%)</span>
+                          <span className="text-[10px] text-slate-500 font-bold">Lance embutido usado nesta cota (%)</span>
                           <input
                             name="lance_livre_embutido_percentual"
                             defaultValue={selectedCota.estrategia?.lanceLivreEmbutidoPercentual ?? ""}
