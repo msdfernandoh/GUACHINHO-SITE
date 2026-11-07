@@ -4575,3 +4575,13 @@ quando a impressão do navegador não estiver disponível. O ERP consulta essas
 linhas individuais e exibe modalidade, protocolo e visualização de cada arquivo;
 o comprovante único de `cota_estrategias_lance` permanece apenas para
 compatibilidade legada. Relatório: `docs/relatorios-fases/COMPROVANTES-LANCES-POR-MODALIDADE-2026-11-06.md`.
+
+### Modalidades de lance personalizadas por grupo (07/11/2026)
+O formulário de Lances & Estratégias renderiza exclusivamente as modalidades
+ativas cadastradas em `grupos_modalidades_lance` para o grupo da cota. Não há
+mais quatro opções genéricas exibidas para todos os grupos: um grupo como o
+5388, sem Fidelidade, não apresenta nem permite marcar essa modalidade. Quando
+um grupo ainda não possui linhas de modalidade, o fallback seguro continua
+sendo somente Lance Livre. A validação server-side usa a mesma classificação
+e impede persistência incompatível. Relatório:
+`docs/relatorios-fases/MODALIDADES-LANCE-POR-GRUPO-2026-11-07.md`.

@@ -101,6 +101,16 @@ export function ErpLancesView({ initialStats, initialRows }: ErpLancesViewProps)
     return d.toISOString().slice(0, 10);
   })();
 
+  // Sem cadastro de modalidades, o único padrão seguro é Lance Livre.
+  // Nunca apresentar modalidades genéricas que não estejam ativas no grupo.
+  const modalidadePermitida = (tipo: "LIVRE" | "FIXO" | "SEGUNDO_FIXO" | "FIDELIDADE") => {
+    if (!selectedCota) return false;
+    const modalidades = selectedCota.grupo.modalidades;
+    return modalidades.length === 0
+      ? tipo === "LIVRE"
+      : modalidades.some((modalidade) => modalidade.tipo === tipo);
+  };
+
   return (
     <div className="space-y-6">
       {/* ───────────────────────────────────────────────────────────
@@ -674,7 +684,7 @@ export function ErpLancesView({ initialStats, initialRows }: ErpLancesViewProps)
                 </div>
 
                 {/* 1. Lance Fixo */}
-                <div className="space-y-2 border-b pb-2.5 dark:border-slate-700">
+                {modalidadePermitida("FIXO") && <div className="space-y-2 border-b pb-2.5 dark:border-slate-700">
                   <label className="flex items-center gap-2 font-bold cursor-pointer">
                     <input
                       type="checkbox"
@@ -709,10 +719,10 @@ export function ErpLancesView({ initialStats, initialRows }: ErpLancesViewProps)
                       />
                     </div>
                   )}
-                </div>
+                </div>}
 
                 {/* 2. Segundo Lance Fixo */}
-                <div className="space-y-2 border-b pb-2.5 dark:border-slate-700">
+                {modalidadePermitida("SEGUNDO_FIXO") && <div className="space-y-2 border-b pb-2.5 dark:border-slate-700">
                   <label className="flex items-center gap-2 font-bold cursor-pointer">
                     <input
                       type="checkbox"
@@ -747,10 +757,10 @@ export function ErpLancesView({ initialStats, initialRows }: ErpLancesViewProps)
                       />
                     </div>
                   )}
-                </div>
+                </div>}
 
                 {/* 3. Lance Fidelidade */}
-                <div className="space-y-2 border-b pb-2.5 dark:border-slate-700">
+                {modalidadePermitida("FIDELIDADE") && <div className="space-y-2 border-b pb-2.5 dark:border-slate-700">
                   <label className="flex items-center gap-2 font-bold cursor-pointer">
                     <input
                       type="checkbox"
@@ -786,10 +796,10 @@ export function ErpLancesView({ initialStats, initialRows }: ErpLancesViewProps)
                       />
                     </div>
                   )}
-                </div>
+                </div>}
 
                 {/* 4. Lance Livre com Cálculo Auxiliar */}
-                <div className="space-y-2 border-b pb-2.5 dark:border-slate-700">
+                {modalidadePermitida("LIVRE") && <div className="space-y-2 border-b pb-2.5 dark:border-slate-700">
                   <label className="flex items-center gap-2 font-bold cursor-pointer">
                     <input
                       type="checkbox"
@@ -840,7 +850,7 @@ export function ErpLancesView({ initialStats, initialRows }: ErpLancesViewProps)
                       </div>
                     </div>
                   )}
-                </div>
+                </div>}
 
                 {/* 5. Lance Embutido & Recursos Próprios */}
                 <div className="grid grid-cols-2 gap-3 pt-1">
