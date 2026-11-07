@@ -4602,3 +4602,20 @@ consultor para preservar a precisão em nomes duplicados. Cotas sem consultor
 ficam disponíveis na opção `Sem consultor`, sem alterar o escopo multiempresa
 ou os demais filtros operacionais. Relatório:
 `docs/relatorios-fases/FILTRO-CONSULTOR-LANCES-2026-11-07.md`.
+
+### Correção de atualização da estratégia e modalidade 1553 (07/11/2026)
+Após salvar uma estratégia de lance, a tela deve refletir os dados retornados
+no refresh do servidor, sem reutilizar uma cópia inicial obsoleta. A inferência
+de modalidades também exige token isolado para reconhecer o 2º lance, evitando
+que percentuais como 25% sejam classificados incorretamente. O cadastro legado
+do grupo 1553 foi normalizado para Lance Fixo 25%. Relatório:
+`docs/relatorios-fases/CORRECAO-ESTRATEGIA-COTA-0656-2026-11-07.md`.
+
+### Valor individual da cota em Lances e Estratégias (07/11/2026)
+O módulo de lances não deve exibir o total contratado quando uma venda possui
+várias cotas. Para legados em que o total foi repetido em cada linha, o valor
+operacional é derivado do snapshot somente quando há confirmação de
+`valor_credito_total_venda` e `quantidade_cotas`; registros já individualizados
+não são alterados. O valor derivado é usado tanto na visualização quanto nos
+cálculos de lance. Relatório:
+`docs/relatorios-fases/VALOR-CREDITO-POR-COTA-LANCES-2026-11-07.md`.

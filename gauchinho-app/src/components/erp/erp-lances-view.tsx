@@ -18,8 +18,10 @@ interface ErpLancesViewProps {
 }
 
 export function ErpLancesView({ initialStats, initialRows }: ErpLancesViewProps) {
-  const [rows] = useState<CotaLanceOperacionalDTO[]>(initialRows);
-  const [stats] = useState<LancesDashboardStats>(initialStats);
+  // Consumir as props diretamente permite que router.refresh() reflita a
+  // estratégia recém-salva, sem manter uma cópia obsoleta no estado local.
+  const rows = initialRows;
+  const stats = initialStats;
   const [busca, setBusca] = useState("");
   const [filtroAdministradora, setFiltroAdministradora] = useState("");
   const [filtroConsultor, setFiltroConsultor] = useState("");

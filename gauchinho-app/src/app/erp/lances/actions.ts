@@ -116,11 +116,30 @@ export type CotaLanceOperacionalDTO = {
   }>;
 };
 
+function valorCreditoPorCota(cota: { valor_credito?: unknown; snapshot_cota?: unknown }): number {
+  const valorRegistrado = Number(cota.valor_credito || 0);
+  const snapshot = cota.snapshot_cota && typeof cota.snapshot_cota === "object"
+    ? (cota.snapshot_cota as Record<string, unknown>)
+    : null;
+  const quantidadeCotas = Number(snapshot?.quantidade_cotas || 1);
+  const valorTotalVenda = Number(snapshot?.valor_credito_total_venda || 0);
+
+  // Alguns legados gravaram o total da venda em cada linha de cota. Só divide
+  // quando o snapshot comprova que o valor repetido é o total contratado.
+  if (quantidadeCotas > 1 && valorTotalVenda > 0 && Math.abs(valorRegistrado - valorTotalVenda) < 0.01) {
+    return Number((valorTotalVenda / quantidadeCotas).toFixed(2));
+  }
+
+  return valorRegistrado;
+}
+
 function inferirModalidadeLance(nome: unknown): "LIVRE" | "FIXO" | "SEGUNDO_FIXO" | "FIDELIDADE" {
   const texto = String(nome ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
   if (texto.includes("LIVRE")) return "LIVRE";
   if (texto.includes("FIDELIDADE")) return "FIDELIDADE";
-  if (texto.includes("2") || texto.includes("SEGUNDO")) return "SEGUNDO_FIXO";
+  // Não usar apenas includes("2"): nomes como "LANCE FIXO 25%" contêm o
+  // dígito 2, mas continuam sendo Lance Fixo, não 2º Lance Fixo.
+  if (texto.includes("SEGUNDO") || /(?:^|\s)2(?:º|°|O)?(?:\s|$)/.test(texto)) return "SEGUNDO_FIXO";
   return "FIXO";
 }
 
@@ -222,7 +241,7 @@ export async function fetchCotasComLancesOperacional(filters?: {
     // 2. Buscar cotas_definitivas do tenant
     let cotasQuery = supabase
       .from("cotas_definitivas")
-      .select("id, empresa_id, numero_grupo, numero_cota, valor_credito, prazo, parcela, status, participante_comercial_id, venda_id, administradora_id, grupo_id, created_at")
+      .select("id, empresa_id, numero_grupo, numero_cota, valor_credito, snapshot_cota, prazo, parcela, status, participante_comercial_id, venda_id, administradora_id, grupo_id, created_at")
       .eq("empresa_id", empresaAtiva.id)
       .order("created_at", { ascending: false });
 
@@ -366,7 +385,7 @@ export async function fetchCotasComLancesOperacional(filters?: {
         id: c.id,
         numeroGrupo: c.numero_grupo || "—",
         numeroCota: c.numero_cota || null,
-        valorCredito: Number(c.valor_credito || 0),
+        valorCredito: valorCreditoPorCota(c),
         prazo: Number(c.prazo || 0),
         parcela: Number(c.parcela || 0),
         statusCota: c.status || "ativa",
@@ -609,7 +628,7 @@ export async function salvarEstrategiaLanceCompletaAction(formData: FormData) {
   // Buscar cota para validação de crédito e regras de grupo
   const { data: cota, error: cotaErr } = await adminSupabase
     .from("cotas_definitivas")
-    .select("valor_credito, grupo_id, grupo:grupos_consorcio(modalidades:grupos_modalidades_lance(nome,ativo))")
+    .select("valor_credito, snapshot_cota, grupo_id, grupo:grupos_consorcio(modalidades:grupos_modalidades_lance(nome,ativo))")
     .eq("id", cotaId)
     .eq("empresa_id", empresaAtiva.id)
     .single();
@@ -623,7 +642,7 @@ export async function salvarEstrategiaLanceCompletaAction(formData: FormData) {
   if (lanceFidelidadeAtivo && !modalidadeHabilitada(modalidadesDoGrupo, "FIDELIDADE")) throw new Error("Este grupo não possui lance fidelidade habilitado.");
   if (lanceLivreAtivo && !modalidadeHabilitada(modalidadesDoGrupo, "LIVRE")) throw new Error("Este grupo não possui lance livre habilitado.");
 
-  const valorCredito = Number(cota.valor_credito);
+  const valorCredito = valorCreditoPorCota(cota);
   const lanceEmbutidoValorCalculado =
     lanceEmbutidoPercentual && valorCredito > 0 ? Number(((valorCredito * lanceEmbutidoPercentual) / 100).toFixed(2)) : null;
 
