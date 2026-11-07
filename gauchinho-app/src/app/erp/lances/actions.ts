@@ -37,7 +37,7 @@ export type CotaLanceOperacionalDTO = {
     proximaAssembleiaData: string | null;
     tipoNome: string;
     modalidades: Array<{
-      tipo: "LIVRE" | "FIXO" | "SEGUNDO_FIXO";
+      tipo: "LIVRE" | "FIXO" | "SEGUNDO_FIXO" | "FIDELIDADE";
       percentual: number | null;
       embutidoMaximo: number;
       nome: string;
@@ -76,6 +76,15 @@ export type CotaLanceOperacionalDTO = {
     comprovanteUrl: string | null;
     comprovanteStoragePath: string | null;
     comprovanteNome: string | null;
+    comprovantes: Array<{
+      id: string;
+      tipoLance: string;
+      protocolo: string | null;
+      comprovanteUrl: string | null;
+      comprovanteStoragePath: string | null;
+      ofertadoEm: string | null;
+      status: string;
+    }>;
     confirmado: boolean;
     confirmadoEm: string | null;
     confirmadoPorNome: string | null;
@@ -107,9 +116,10 @@ export type CotaLanceOperacionalDTO = {
   }>;
 };
 
-function inferirModalidadeLance(nome: unknown): "LIVRE" | "FIXO" | "SEGUNDO_FIXO" {
+function inferirModalidadeLance(nome: unknown): "LIVRE" | "FIXO" | "SEGUNDO_FIXO" | "FIDELIDADE" {
   const texto = String(nome ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
   if (texto.includes("LIVRE")) return "LIVRE";
+  if (texto.includes("FIDELIDADE")) return "FIDELIDADE";
   if (texto.includes("2") || texto.includes("SEGUNDO")) return "SEGUNDO_FIXO";
   return "FIXO";
 }
@@ -117,6 +127,11 @@ function inferirModalidadeLance(nome: unknown): "LIVRE" | "FIXO" | "SEGUNDO_FIXO
 function percentualNoNome(nome: unknown): number | null {
   const match = String(nome ?? "").replace(",", ".").match(/(?:^|\s)(\d+(?:\.\d+)?)\s*%?/);
   return match ? Number(match[1]) : null;
+}
+
+function modalidadeHabilitada(modalidades: Array<{ nome?: string | null }> | null | undefined, tipo: "LIVRE" | "FIXO" | "SEGUNDO_FIXO" | "FIDELIDADE") {
+  const normalizadas = (modalidades ?? []).map((modalidade) => inferirModalidadeLance(modalidade.nome));
+  return normalizadas.length === 0 || normalizadas.includes(tipo);
 }
 
 export type LancesDashboardStats = {
@@ -213,6 +228,7 @@ export async function fetchCotasComLancesOperacional(filters?: {
       partRes,
       estrategiasRes,
       historicoRes,
+      ofertasRes,
     ] = await Promise.all([
       vendaIds.length > 0
         ? supabase.from("vendas").select("id, cliente_nome, cliente_cpf_cnpj, cliente_telefone, cliente_email, participante_comercial_id, cliente_id").in("id", vendaIds)
@@ -236,6 +252,9 @@ export async function fetchCotasComLancesOperacional(filters?: {
       cotaIds.length > 0
         ? supabase.from("cota_estrategias_lance_historico").select("*").in("cota_definitiva_id", cotaIds).order("created_at", { ascending: false })
         : Promise.resolve({ data: [] }),
+      cotaIds.length > 0
+        ? supabase.from("cota_lances_ofertados").select("id, cota_definitiva_id, tipo_lance, protocolo, comprovante_storage_path, comprovante_url, ofertado_em, status").in("cota_definitiva_id", cotaIds).order("ofertado_em", { ascending: false })
+        : Promise.resolve({ data: [] }),
     ]);
 
     // Mapas para lookup O(1)
@@ -251,6 +270,12 @@ export async function fetchCotasComLancesOperacional(filters?: {
     const tiposMap = new Map((tiposRes.data ?? []).map((t) => [t.id, t]));
     const partMap = new Map((partRes.data ?? []).map((p) => [p.id, p]));
     const estMap = new Map((estrategiasRes.data ?? []).map((e) => [e.cota_definitiva_id, e]));
+    const ofertasByCota = new Map<string, any[]>();
+    for (const oferta of (ofertasRes.data ?? []) as any[]) {
+      const lista = ofertasByCota.get(oferta.cota_definitiva_id) ?? [];
+      lista.push(oferta);
+      ofertasByCota.set(oferta.cota_definitiva_id, lista);
+    }
 
     // Agrupar histórico por cota
     const histByCota = new Map<string, any[]>();
@@ -341,7 +366,7 @@ export async function fetchCotasComLancesOperacional(filters?: {
           segundoLanceFixoPercentual: segundoFixo?.percentual ?? null,
           lanceEmbutidoPermitido: Boolean(grupo?.permite_lance_embutido),
           lanceEmbutidoPercentual: grupo?.percentual_lance_embutido ? Number(grupo.percentual_lance_embutido) : null,
-          lanceFidelidadePermitido: true,
+          lanceFidelidadePermitido: modalidades.some((m) => m.tipo === "FIDELIDADE"),
           mediaLanceLivre: null,
           proximaAssembleiaData: null,
           tipoNome: tipo?.nome || "Consórcio",
@@ -381,6 +406,15 @@ export async function fetchCotasComLancesOperacional(filters?: {
               comprovanteUrl: est.comprovante_url || null,
               comprovanteStoragePath: est.comprovante_storage_path || null,
               comprovanteNome: est.comprovante_nome || null,
+              comprovantes: (ofertasByCota.get(c.id) ?? []).map((oferta) => ({
+                id: oferta.id,
+                tipoLance: oferta.tipo_lance,
+                protocolo: oferta.protocolo || null,
+                comprovanteUrl: oferta.comprovante_url || null,
+                comprovanteStoragePath: oferta.comprovante_storage_path || null,
+                ofertadoEm: oferta.ofertado_em || null,
+                status: oferta.status || "CONFIRMADO",
+              })),
               confirmado: Boolean(est.confirmado),
               confirmadoEm: est.confirmado_em || null,
               confirmadoPorNome: est.confirmado_por_nome || null,
@@ -552,11 +586,19 @@ export async function salvarEstrategiaLanceCompletaAction(formData: FormData) {
   // Buscar cota para validação de crédito e regras de grupo
   const { data: cota, error: cotaErr } = await adminSupabase
     .from("cotas_definitivas")
-    .select("valor_credito, grupo_id")
+    .select("valor_credito, grupo_id, grupo:grupos_consorcio(modalidades:grupos_modalidades_lance(nome,ativo))")
     .eq("id", cotaId)
     .eq("empresa_id", empresaAtiva.id)
     .single();
   if (cotaErr || !cota) throw new Error("Cota não encontrada nesta empresa.");
+
+  const grupo = Array.isArray(cota.grupo) ? cota.grupo[0] : cota.grupo;
+  const modalidadesDoGrupo = (Array.isArray(grupo?.modalidades) ? grupo.modalidades : grupo?.modalidades ? [grupo.modalidades] : [])
+    .filter((modalidade: any) => modalidade?.ativo !== false);
+  if (lanceFixoAtivo && !modalidadeHabilitada(modalidadesDoGrupo, "FIXO")) throw new Error("Este grupo não possui lance fixo habilitado.");
+  if (segundoLanceFixoAtivo && !modalidadeHabilitada(modalidadesDoGrupo, "SEGUNDO_FIXO")) throw new Error("Este grupo não possui segundo lance fixo habilitado.");
+  if (lanceFidelidadeAtivo && !modalidadeHabilitada(modalidadesDoGrupo, "FIDELIDADE")) throw new Error("Este grupo não possui lance fidelidade habilitado.");
+  if (lanceLivreAtivo && !modalidadeHabilitada(modalidadesDoGrupo, "LIVRE")) throw new Error("Este grupo não possui lance livre habilitado.");
 
   const valorCredito = Number(cota.valor_credito);
   const lanceEmbutidoValorCalculado =

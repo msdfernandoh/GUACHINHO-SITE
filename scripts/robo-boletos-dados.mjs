@@ -17,7 +17,19 @@ export async function carregarCotasBoletos(admin, config) {
   const empresaDadosId = config.configuracao_tarefas?.empresa_dados_id || config.empresa_id
   const loginBoleto = config.configuracao_tarefas?.robo_boleto_login || null
   const alvos = config.configuracao_tarefas?.cotas_alvo_ids
+  const reprocessarExistentes = config.configuracao_tarefas?.reprocessar_boletos_existentes === true
   if (Array.isArray(alvos) && !alvos.length) return []
+  const competencia = competenciaBoletos()
+  const [enviosRes, historicoRes] = await Promise.all([
+    admin.from('vendas_boletos_envios').select('cota_id').eq('empresa_id', empresaDadosId).eq('competencia', competencia.iso).not('arquivo_storage_path', 'is', null),
+    admin.from('cotas_boletos').select('cota_definitiva_id').eq('empresa_id', empresaDadosId).eq('competencia', competencia.brasileira).not('arquivo_storage_path', 'is', null),
+  ])
+  if (enviosRes.error) throw new Error(`Falha ao consultar boletos já armazenados: ${enviosRes.error.message}`)
+  if (historicoRes.error) throw new Error(`Falha ao consultar histórico de boletos: ${historicoRes.error.message}`)
+  const cotasComBoleto = new Set([
+    ...(enviosRes.data || []).map(item => item.cota_id).filter(Boolean),
+    ...(historicoRes.data || []).map(item => item.cota_definitiva_id).filter(Boolean),
+  ])
   const cotas = []
   for (let offset = 0; ; offset += 500) {
     let query = admin.from('cotas_definitivas').select(`
@@ -40,6 +52,7 @@ export async function carregarCotasBoletos(admin, config) {
       if (clienteRel?.nao_executar_boleto_automatico === true || venda.nao_executar_boleto_automatico === true) {
         continue
       }
+      if (!reprocessarExistentes && cotasComBoleto.has(c.id)) continue
       cotas.push({
         cota_definitiva_id: c.id, venda_id: c.venda_id, empresa_id: c.empresa_id,
         numero_grupo: c.numero_grupo.trim(), numero_cota: c.numero_cota.trim(),

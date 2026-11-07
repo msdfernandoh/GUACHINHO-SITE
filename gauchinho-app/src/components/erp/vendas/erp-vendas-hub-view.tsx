@@ -178,6 +178,7 @@ interface ErpVendasHubViewProps {
   isMaster: boolean;
   metas: Array<{ valor:number;inicio:string;fim:string }>;
   boletosEnvios?: BoletoEnvioItem[];
+  roboBoletosId?: string | null;
 }
 
 const brl = (v: number) =>
@@ -272,6 +273,7 @@ export function ErpVendasHubView({
   isMaster,
   metas = [],
   boletosEnvios: boletosEnviosIniciais = [],
+  roboBoletosId = null,
 }: ErpVendasHubViewProps) {
   const [isPending, startTransition] = useTransition();
   const [abaAtiva, setAbaAtiva] = useState<"vendas" | "boletos">("vendas");
@@ -280,6 +282,7 @@ export function ErpVendasHubView({
   const [cotaHistoricoBoleto, setCotaHistoricoBoleto] = useState<{ venda: VendaItem; cota: CotaItem | null } | null>(null);
   const [controleCotas, setControleCotas] = useState<Record<string, { login: CotaItem["robo_boleto_login"]; retirar: boolean }>>({});
   const [boletosEnvios, setBoletosEnvios] = useState<BoletoEnvioItem[]>(boletosEnviosIniciais);
+  const [buscandoBoletoCotaId, setBuscandoBoletoCotaId] = useState<string | null>(null);
   useEffect(() => {
     setBoletosEnvios(boletosEnviosIniciais);
   }, [boletosEnviosIniciais]);
@@ -645,6 +648,28 @@ export function ErpVendasHubView({
   const totalBoletosComArquivo = operacoesBoletos.filter((op) => op.temArquivoBoleto).length;
   const totalBoletosSemArquivo = totalBoletosMes - totalBoletosComArquivo;
   const taxaConclusaoBoletos = totalBoletosMes > 0 ? Math.round((totalBoletosEnviados / totalBoletosMes) * 100) : 0;
+
+  async function buscarBoletoCota(cotaId: string) {
+    if (!roboBoletosId) {
+      setModalErro("Robô de boletos não está configurado para esta empresa.");
+      return;
+    }
+    setBuscandoBoletoCotaId(cotaId);
+    try {
+      const response = await fetch(`/api/automacoes/robos/${roboBoletosId}/executar`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ forcarReexecucao: true, cotasAlvoIds: [cotaId] }),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.error || "Não foi possível enfileirar a busca do boleto.");
+      setModalSucesso("Busca do boleto enfileirada para esta cota. Os boletos já baixados serão ignorados.");
+    } catch (error: any) {
+      setModalErro(error?.message || "Erro ao enfileirar a busca do boleto.");
+    } finally {
+      setBuscandoBoletoCotaId(null);
+    }
+  }
 
   function handleRegistrarBoleto(
     vendaId: string,
@@ -1578,6 +1603,17 @@ export function ErpVendasHubView({
                         <td className="p-3 text-right">
                           <div className="flex flex-col items-end gap-1.5 min-w-[200px]">
                             <div className="flex items-center gap-1 w-full justify-end">
+                              {cota?.id && !envio?.arquivo_url && (
+                                <button
+                                  type="button"
+                                  onClick={() => buscarBoletoCota(cota.id)}
+                                  disabled={isPending || buscandoBoletoCotaId === cota.id}
+                                  title="Enfileirar o robô para buscar somente o boleto desta cota"
+                                  className="rounded-lg border border-violet-200 bg-violet-50 px-2.5 py-1 text-[11px] font-bold text-violet-800 hover:bg-violet-100 disabled:opacity-60"
+                                >
+                                  {buscandoBoletoCotaId === cota.id ? "Enfileirando..." : "Buscar boleto"}
+                                </button>
+                              )}
                               {/* Botão Baixado */}
                               <button
                                 type="button"

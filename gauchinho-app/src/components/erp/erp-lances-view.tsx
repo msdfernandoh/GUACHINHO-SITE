@@ -287,7 +287,7 @@ export function ErpLancesView({ initialStats, initialRows }: ErpLancesViewProps)
                                 Fidelidade
                               </span>
                             )}
-                            {est.lanceLivreAtivo && (
+                             {est.lanceLivreAtivo && (
                               <span className="inline-block rounded bg-amber-50 px-1 py-0.2 text-[10px] font-bold text-amber-700">
                                 Livre {est.lanceLivrePercentual ? `${est.lanceLivrePercentual}%` : ""}
                               </span>
@@ -299,8 +299,11 @@ export function ErpLancesView({ initialStats, initialRows }: ErpLancesViewProps)
                             )}
                           </div>
                         ) : (
-                          <span className="text-[11px] text-slate-400 italic">Sem lance registrado</span>
+                           <span className="text-[11px] text-slate-400 italic">Sem lance registrado</span>
                         )}
+                         <span className={`mt-1 inline-flex rounded-full px-2 py-0.5 text-[10px] font-black uppercase ${est?.ativa && (est.lanceLivreAtivo || est.lanceFixoAtivo || est.segundoLanceFixoAtivo || est.lanceFidelidadeAtivo) ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-600"}`}>
+                           Lance automático: {est?.ativa && (est.lanceLivreAtivo || est.lanceFixoAtivo || est.segundoLanceFixoAtivo || est.lanceFidelidadeAtivo) ? "Ativo" : "Inativo"}
+                         </span>
                       </td>
 
                       <td className="px-4 py-3">
@@ -549,6 +552,34 @@ export function ErpLancesView({ initialStats, initialRows }: ErpLancesViewProps)
                       </a>
                     )}
                   </div>
+                  {selectedCota.estrategia.comprovantes.length > 0 && (
+                    <div className="mt-3 border-t border-blue-200/60 pt-3 dark:border-blue-900/40">
+                      <p className="mb-2 text-[10px] font-black uppercase tracking-wider text-blue-900 dark:text-blue-200">
+                        Comprovantes individuais por lance ({selectedCota.estrategia.comprovantes.length})
+                      </p>
+                      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                        {selectedCota.estrategia.comprovantes.map((comprovante) => (
+                          <div key={comprovante.id} className="flex items-center justify-between gap-2 rounded-lg border border-blue-100 bg-white/80 px-3 py-2 dark:border-blue-900/40 dark:bg-slate-900/80">
+                            <div className="min-w-0">
+                              <p className="truncate text-[11px] font-bold text-slate-800 dark:text-slate-100">
+                                {comprovante.tipoLance.replace("SEGUNDO_FIXO", "2º FIXO")}
+                              </p>
+                              <p className="text-[10px] text-slate-500">
+                                {comprovante.protocolo ? `Protocolo #${comprovante.protocolo}` : "Comprovante sem protocolo informado"}
+                              </p>
+                            </div>
+                            {comprovante.comprovanteUrl ? (
+                              <a href={comprovante.comprovanteUrl} target="_blank" rel="noopener noreferrer" className="shrink-0 rounded-md bg-blue-600 px-2 py-1 text-[10px] font-bold text-white hover:bg-blue-700">
+                                Visualizar PDF
+                              </a>
+                            ) : (
+                              <span className="shrink-0 text-[10px] font-semibold text-amber-700">Sem arquivo</span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -726,6 +757,7 @@ export function ErpLancesView({ initialStats, initialRows }: ErpLancesViewProps)
                       name="lance_fidelidade_ativo"
                       checked={formFidelidade}
                       onChange={(e) => setFormFidelidade(e.target.checked)}
+                        disabled={selectedCota.grupo.modalidades.length > 0 && !selectedCota.grupo.modalidades.some((m) => m.tipo === "FIDELIDADE")}
                       className="h-4 w-4 rounded text-blue-600"
                     />
                     <span>Lance Fidelidade</span>

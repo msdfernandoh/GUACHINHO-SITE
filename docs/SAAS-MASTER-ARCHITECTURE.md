@@ -4556,3 +4556,22 @@ o mês do boleto é diferente do mês da venda. A consolidação também recomp�
 pública do bucket `boletos-cotas` quando existe apenas `arquivo_storage_path`, e os
 filtros “Com boleto” e “Sem boleto” consideram ambas as formas de armazenamento.
 Relatório: `docs/relatorios-fases/CORRECAO-VISIBILIDADE-BOLETOS-COMPETENCIA-2026-11-06.md`.
+
+### Modalidades por grupo e reprocessamento seletivo de boletos (06/11/2026)
+O ERP classifica cada modalidade de lance pelo nome cadastrado no grupo, incluindo
+Fixo, 2º Fixo, Livre e Fidelidade, sem transformar Fidelidade em Fixo por fallback.
+As opções da estratégia são validadas no servidor contra as modalidades ativas do
+grupo e cada cota exibe a tag visual de lance automático ativo/inativo. O controle
+de boletos oferece busca individual e o robô ignora PDFs já armazenados na
+competência atual durante reexecuções.
+
+### Comprovantes de lances por modalidade (06/11/2026)
+As ofertas individuais registradas em `cota_lances_ofertados` são a fonte de
+auditoria dos lances realizados pelo robô. Cada modalidade ofertada na mesma
+cota (lance livre, fixo e segundo fixo) recebe seu próprio arquivo no bucket
+privado `lances-comprovantes`, sem sobrescrever os demais. A captura preferencial
+é PDF da tela de relatório do Newcon, com PNG preservado somente como fallback
+quando a impressão do navegador não estiver disponível. O ERP consulta essas
+linhas individuais e exibe modalidade, protocolo e visualização de cada arquivo;
+o comprovante único de `cota_estrategias_lance` permanece apenas para
+compatibilidade legada. Relatório: `docs/relatorios-fases/COMPROVANTES-LANCES-POR-MODALIDADE-2026-11-06.md`.

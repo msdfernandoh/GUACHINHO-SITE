@@ -689,17 +689,41 @@ export async function executarRoboLances({
           await targetPage.waitForLoadState('domcontentloaded').catch(() => {})
           await targetPage.waitForTimeout(2500)
 
-          const nomeArquivo = `comprovante_${tipoLance.toLowerCase()}_g${item.numero_grupo}_c${item.numero_cota}_${Date.now()}.png`
-          const localPath = path.join(screenshotsDir, nomeArquivo)
-          const imgBuffer = await targetPage.screenshot({ path: localPath, fullPage: false }).catch(() => null)
+          // Cada modalidade recebe seu próprio PDF. O CDP funciona também no Chrome
+          // visível/oculto usado pelo robô; o fallback PNG só ocorre se o portal
+          // bloquear a impressão e mantém a evidência, sem sobrescrever outra.
+          const baseNome = `comprovante_${tipoLance.toLowerCase()}_g${item.numero_grupo}_c${item.numero_cota}_${Date.now()}`
+          let arquivoBuffer = null
+          let contentType = 'application/pdf'
+          let extensao = 'pdf'
+          try {
+            const cdp = await targetPage.context().newCDPSession(targetPage)
+            const pdfResult = await cdp.send('Page.printToPDF', {
+              printBackground: true,
+              preferCSSPageSize: true,
+              landscape: false,
+            })
+            arquivoBuffer = Buffer.from(pdfResult.data, 'base64')
+          } catch (pdfErr) {
+            log(`Aviso: PDF do ${tipoLance} indisponível (${pdfErr.message}); salvando captura PNG como evidência.`)
+            contentType = 'image/png'
+            extensao = 'png'
+            arquivoBuffer = await targetPage.screenshot({ fullPage: true }).catch(() => null)
+          }
 
-          if (imgBuffer && admin && targetEmpresaId) {
+          const nomeArquivo = `${baseNome}.${extensao}`
+          const localPath = path.join(screenshotsDir, nomeArquivo)
+          if (arquivoBuffer) {
+            await fs.promises.writeFile(localPath, arquivoBuffer).catch(() => {})
+          }
+
+          if (arquivoBuffer && admin && targetEmpresaId) {
             try {
               const storagePath = `${targetEmpresaId}/${item.cota_definitiva_id || item.numero_cota}/${nomeArquivo}`
               log(`Fazendo upload do comprovante para o Storage (lances-comprovantes): ${storagePath}...`)
               const { error: upErr } = await admin.storage
                 .from('lances-comprovantes')
-                .upload(storagePath, imgBuffer, { contentType: 'image/png', upsert: true })
+                .upload(storagePath, arquivoBuffer, { contentType, upsert: false })
 
               if (!upErr) {
                 const { data: signData } = await admin.storage
@@ -1045,7 +1069,7 @@ export async function executarRoboLances({
 
         // Grava no histórico individual de ofertas
         const ofertasLances = []
-        if (protocoloLivre) {
+        if (protocoloLivre || compLivre) {
           ofertasLances.push({
             empresa_id: targetEmpresaId,
             cota_definitiva_id: item.cota_definitiva_id,
@@ -1056,14 +1080,14 @@ export async function executarRoboLances({
             opcao_reducao: 'REDUZIR_PARCELA',
             percentual_lance: livrePctCalculado,
             percentual_embutido: embutidoLivrePct,
-            protocolo: protocoloLivre,
+            protocolo: protocoloLivre || null,
             comprovante_storage_path: compLivre?.storagePath || null,
             comprovante_url: compLivre?.url || null,
             repetir_seis_assembleias: true,
             status: 'CONFIRMADO',
           })
         }
-        if (protocoloFixo) {
+        if (protocoloFixo || compFixo) {
           ofertasLances.push({
             empresa_id: targetEmpresaId,
             cota_definitiva_id: item.cota_definitiva_id,
@@ -1074,14 +1098,14 @@ export async function executarRoboLances({
             opcao_reducao: 'REDUZIR_PARCELA',
             percentual_lance: dadosTelaLance.lanceFixoPct || 25.0,
             percentual_embutido: embutidoFixoPct,
-            protocolo: protocoloFixo,
+            protocolo: protocoloFixo || null,
             comprovante_storage_path: compFixo?.storagePath || null,
             comprovante_url: compFixo?.url || null,
             repetir_seis_assembleias: true,
             status: 'CONFIRMADO',
           })
         }
-        if (protocoloSegundoFixo) {
+        if (protocoloSegundoFixo || compSegundoFixo) {
           ofertasLances.push({
             empresa_id: targetEmpresaId,
             cota_definitiva_id: item.cota_definitiva_id,
@@ -1092,7 +1116,7 @@ export async function executarRoboLances({
             opcao_reducao: 'REDUZIR_PARCELA',
             percentual_lance: dadosTelaLance.segundoLanceFixoPct || 40.0,
             percentual_embutido: embutidoSegundoFixoPct,
-            protocolo: protocoloSegundoFixo,
+            protocolo: protocoloSegundoFixo || null,
             comprovante_storage_path: compSegundoFixo?.storagePath || null,
             comprovante_url: compSegundoFixo?.url || null,
             repetir_seis_assembleias: true,
