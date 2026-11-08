@@ -23,10 +23,10 @@ como máximo do lance livre.
 - A validação do servidor impede ultrapassar o máximo apenas quando ele é fixo.
 - O valor continua editável para lançar abaixo do máximo.
 
-Quando o teto fixo estiver caracterizado e a modalidade Lance Livre estiver
-ativa, o salvamento força o percentual do teto e o maior percentual de lance
-embutido permitido pelo grupo. Isso evita que o robô envie uma oferta abaixo da
-regra operacional definida.
+Quando o teto fixo estiver caracterizado, a tela exibe um checkbox para o
+operador escolher usar o teto e o maior percentual de lance embutido permitido.
+Somente com essa opção marcada o salvamento aplica os dois máximos; os demais
+clientes podem informar outro lance dentro do limite.
 
 O valor em reais do lance livre é convertido usando o `saldo_devedor` da opção
 da cota (`grupos_cotas`), e não o valor do crédito contratado. A conversão é

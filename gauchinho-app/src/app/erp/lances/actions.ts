@@ -629,6 +629,7 @@ export async function salvarEstrategiaLanceCompletaAction(formData: FormData) {
   const segundoLanceFixoAtivo = formData.get("segundo_lance_fixo_ativo") === "on";
   const lanceFidelidadeAtivo = formData.get("lance_fidelidade_ativo") === "on";
   const lanceLivreAtivo = formData.get("lance_livre_ativo") === "on";
+  const lanceLivreUsarMaximo = formData.get("lance_livre_usar_maximo") === "on";
   const parcelaReduzidaAtiva = formData.get("parcela_reduzida_ativa") === "on";
 
   const lanceFixoPercentual = num("lance_fixo_percentual");
@@ -706,10 +707,9 @@ export async function salvarEstrategiaLanceCompletaAction(formData: FormData) {
       .filter((modalidade: any) => String(modalidade?.nome ?? "").toUpperCase().includes("LIVRE"))
       .map((modalidade: any) => Number(modalidade?.percentual_lance_embutido || 0)),
   );
-  // Quando a última assembleia caracteriza um teto fixo de Lance Livre, a
-  // operação deve levar sempre o teto e o máximo de embutido permitido.
-  const lanceLivrePercentualEfetivo = lanceLivreAtivo && maxLanceLivre ? maxLanceLivre : lanceLivrePercentual;
-  const lanceLivreEmbutidoPercentualEfetivo = lanceLivreAtivo && maxLanceLivre && maxEmbutidoLivre > 0
+  // Só usa automaticamente o teto quando o operador marca essa opção.
+  const lanceLivrePercentualEfetivo = lanceLivreAtivo && lanceLivreUsarMaximo && maxLanceLivre ? maxLanceLivre : lanceLivrePercentual;
+  const lanceLivreEmbutidoPercentualEfetivo = lanceLivreAtivo && lanceLivreUsarMaximo && maxLanceLivre && maxEmbutidoLivre > 0
     ? maxEmbutidoLivre
     : lanceLivreEmbutidoPercentual;
 

@@ -38,6 +38,7 @@ export function ErpLancesView({ initialStats, initialRows }: ErpLancesViewProps)
   const [formSegundoFixo, setFormSegundoFixo] = useState(false);
   const [formFidelidade, setFormFidelidade] = useState(false);
   const [formLivre, setFormLivre] = useState(false);
+  const [formLivreUsarMaximo, setFormLivreUsarMaximo] = useState(false);
   const [formLivrePercentual, setFormLivrePercentual] = useState<string>("");
   const [formLivreValor, setFormLivreValor] = useState<string>("");
 
@@ -80,6 +81,7 @@ export function ErpLancesView({ initialStats, initialRows }: ErpLancesViewProps)
     setFormFidelidade(cota.estrategia?.lanceFidelidadeAtivo ?? false);
     setFormLivre(cota.estrategia?.lanceLivreAtivo ?? false);
     const percentualLivre = cota.estrategia?.lanceLivrePercentual ?? cota.grupo.lanceLivreMaximoPercentual;
+    setFormLivreUsarMaximo(Boolean(cota.grupo.lanceLivreMaximoPercentual && cota.estrategia?.lanceLivrePercentual && Math.abs(cota.estrategia.lanceLivrePercentual - cota.grupo.lanceLivreMaximoPercentual) <= 0.0001));
     setFormLivrePercentual(percentualLivre?.toString() ?? "");
     setFormLivreValor(
       cota.estrategia?.lanceLivreValor?.toString() ??
@@ -113,6 +115,13 @@ export function ErpLancesView({ initialStats, initialRows }: ErpLancesViewProps)
     // cadastro personalizado só contém as modalidades fixas.
     return tipo === "LIVRE" || modalidades.some((modalidade) => modalidade.tipo === tipo);
   };
+
+  const maxEmbutidoLivre = selectedCota
+    ? Math.max(
+        selectedCota.grupo.lanceEmbutidoPercentual ?? 0,
+        selectedCota.grupo.modalidades.find((modalidade) => modalidade.tipo === "LIVRE")?.embutidoMaximo ?? 0,
+      )
+    : 0;
 
   return (
     <div className="space-y-6">
@@ -851,11 +860,37 @@ export function ErpLancesView({ initialStats, initialRows }: ErpLancesViewProps)
                   </label>
                   {formLivre && (
                     <div className="space-y-1.5 pl-6">
+                      {selectedCota.grupo.lanceLivreMaximoPercentual && (
+                        <div className="rounded-lg border border-amber-200 bg-amber-50 p-2 text-[11px] text-amber-900">
+                          <div className="font-black">Teto máximo do Lance Livre da última assembleia</div>
+                          <div className="mt-0.5 font-mono">
+                            {selectedCota.grupo.lanceLivreMaximoPercentual.toFixed(4)}% = {((selectedCota.saldoDevedor * selectedCota.grupo.lanceLivreMaximoPercentual) / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                          </div>
+                          <label className="mt-2 flex items-center gap-2 font-bold">
+                            <input
+                              type="checkbox"
+                              name="lance_livre_usar_maximo"
+                              checked={formLivreUsarMaximo}
+                              onChange={(e) => {
+                                const usar = e.target.checked;
+                                setFormLivreUsarMaximo(usar);
+                                if (usar) {
+                                  const maximo = selectedCota.grupo.lanceLivreMaximoPercentual!;
+                                  setFormLivrePercentual(maximo.toFixed(4));
+                                  setFormLivreValor(((selectedCota.saldoDevedor * maximo) / 100).toFixed(2));
+                                }
+                              }}
+                              className="h-4 w-4 rounded text-blue-600"
+                            />
+                            Usar teto máximo e máximo de embutido ({maxEmbutidoLivre.toFixed(2)}%)
+                          </label>
+                        </div>
+                      )}
                       <div className="grid grid-cols-2 gap-2">
                         <div>
                             <div className="flex items-center justify-between gap-2">
                               <span className="text-[10px] text-slate-500 font-bold">Percentual total do lance livre (%)</span>
-                              {selectedCota.grupo.lanceLivreMaximoPercentual && (
+                              {selectedCota.grupo.lanceLivreMaximoPercentual && !formLivreUsarMaximo && (
                                 <button
                                   type="button"
                                   onClick={() => {
@@ -904,7 +939,7 @@ export function ErpLancesView({ initialStats, initialRows }: ErpLancesViewProps)
                           <span className="text-[10px] text-slate-500 font-bold">Lance embutido usado nesta cota (%)</span>
                           <input
                             name="lance_livre_embutido_percentual"
-                            defaultValue={selectedCota.estrategia?.lanceLivreEmbutidoPercentual ?? (selectedCota.grupo.lanceLivreMaximoPercentual ? (selectedCota.grupo.modalidades.find((m) => m.tipo === "LIVRE")?.embutidoMaximo ?? selectedCota.grupo.lanceEmbutidoPercentual ?? "") : "")}
+                            defaultValue={selectedCota.estrategia?.lanceLivreEmbutidoPercentual ?? ""}
                             placeholder={`Máximo permitido: ${selectedCota.grupo.modalidades.find((m) => m.tipo === "LIVRE")?.embutidoMaximo ?? selectedCota.grupo.lanceEmbutidoPercentual ?? 0}%`}
                             max={selectedCota.grupo.modalidades.find((m) => m.tipo === "LIVRE")?.embutidoMaximo ?? selectedCota.grupo.lanceEmbutidoPercentual ?? undefined}
                             className="w-full rounded-lg border border-slate-300 p-1.5 font-mono text-xs dark:border-slate-700 dark:bg-slate-800"
