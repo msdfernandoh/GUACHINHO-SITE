@@ -33,6 +33,14 @@ export function calcularRegraLanceLivre(embutidoPct, margem = 1.1234) {
   }
 }
 
+// O Newcon recebe somente a parte numérica do grupo/cota, com largura fixa.
+// Mantemos a mesma normalização usada pelo robô de boletos (ex.: "1553 IMÓVEL"
+// vira "001553") para que a busca direcionada encontre o consorciado.
+export function normalizarNumeroPortal(valor, tamanho) {
+  const numero = String(valor || '').match(/\d+/)?.[0]
+  return numero ? numero.padStart(tamanho, '0') : ''
+}
+
 /**
  * Extrai número do protocolo de mensagem de alert/dialog do Newcon
  * Ex: "Anote os números dos protocolos: Lance Livre: 5735314" -> "5735314"
@@ -487,8 +495,7 @@ export async function executarRoboLances({
       }
 
       // Preenche Grupo (com 6 dígitos se necessário)
-      const grupoStr = String(item.numero_grupo).trim()
-      const grupoFormatado = grupoStr.length < 6 ? grupoStr.padStart(6, '0') : grupoStr
+      const grupoFormatado = normalizarNumeroPortal(item.numero_grupo, 6)
       const inputGrupo = page.locator('input[name*="txtST_Grupo"], input[id*="txtST_Grupo"], input[name*="Grupo"]').first()
       await inputGrupo.waitFor({ state: 'visible', timeout: 10_000 })
       await inputGrupo.click()
@@ -496,8 +503,7 @@ export async function executarRoboLances({
       await page.waitForTimeout(400)
 
       // Preenche Cota (com 4 dígitos se necessário)
-      const cotaStr = String(item.numero_cota).trim()
-      const cotaFormatada = cotaStr.length < 4 ? cotaStr.padStart(4, '0') : cotaStr
+      const cotaFormatada = normalizarNumeroPortal(item.numero_cota, 4)
       const inputCota = page.locator('input[name*="txtST_Cota"], input[id*="txtST_Cota"], input[name*="Cota"]').first()
       await inputCota.waitFor({ state: 'visible', timeout: 8_000 })
       await inputCota.click()
