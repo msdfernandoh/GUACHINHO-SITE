@@ -36,6 +36,23 @@ for (const envPath of envCandidates) {
 const admin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY)
 const execucaoId = process.argv[2]
 
+class RoboCanceladoError extends Error {
+  constructor() {
+    super('Execução cancelada pelo usuário.')
+    this.name = 'RoboCanceladoError'
+    this.code = 'ROBO_CANCELADO'
+  }
+}
+
+async function verificarCancelamento() {
+  const { data, error } = await admin
+    .from('robo_execucoes')
+    .select('status')
+    .eq('id', execucaoId)
+    .maybeSingle()
+  if (!error && data?.status === 'CANCELADO') throw new RoboCanceladoError()
+}
+
 process.on('disconnect', () => process.exit(1))
 
 function getMasterKey() {
@@ -81,6 +98,8 @@ async function run() {
     .single()
 
   if (errConf || !config) throw new Error(`Configuração do robô ${e.robo_config_id} não encontrada.`)
+
+  await verificarCancelamento()
 
   const cotasAlvoExecucao = e.detalhes?.cotas_alvo_ids
   if (Array.isArray(cotasAlvoExecucao)) {
@@ -427,13 +446,17 @@ async function run() {
         config.configuracao_tarefas?.tipo_rotina === 'FRANQUIA_DOWNLOAD_BOLETOS' ||
         (config.nome && config.nome.toLowerCase().includes('boleto'))
 
-      const isLancesFranquia = 
-        config.configuracao_tarefas?.tipo_rotina === 'FRANQUIA_LANCES_AUTOMATICOS' ||
-        (config.nome && config.nome.toLowerCase().includes('lances'))
-
       const isContemplacao = 
         config.id === '06619f9e-1688-49f2-9d7b-f0429906476a' || 
         (config.nome && config.nome.toLowerCase().includes('contempla'))
+
+      // "Contemplações e Médias de Lance" contém a palavra "lance" no nome,
+      // mas é uma rotina diferente. A classificação de contemplação precisa
+      // ter precedência para impedir que o robô entre no fluxo de ofertas.
+      const isLancesFranquia = !isContemplacao && (
+        config.configuracao_tarefas?.tipo_rotina === 'FRANQUIA_LANCES_AUTOMATICOS' ||
+        (config.nome && config.nome.toLowerCase().includes('lances'))
+      )
 
       if (isBoletos) {
         log('--- EXECUTANDO ROBÔ DE BOLETOS DA FRANQUIA (DOWNLOAD & STORAGE) ---')
@@ -458,6 +481,7 @@ async function run() {
           admin,
           log,
           screenshotsDir,
+          verificarCancelamento,
         })
         totalGruposAtualizados = lancesRes.lancesOfertados
         totalCotadasContempladas = lancesRes.cotasProcessadas
@@ -1246,6 +1270,7 @@ async function run() {
       log('Conexão inicial validada.')
     }
 
+    await verificarCancelamento()
     const execucaoParcial = Boolean(resultadoBoletos?.totalErros)
     log(execucaoParcial ? 'Processamento finalizado com sucesso parcial; existem cotas para tentar novamente.' : 'Processamento do robô finalizado com sucesso!')
     await atualizacao
@@ -1274,6 +1299,15 @@ async function run() {
     }).eq('id', config.id)
 
   } catch (err) {
+    if (err?.code === 'ROBO_CANCELADO' || err?.name === 'RoboCanceladoError') {
+      log('Execução cancelada pelo usuário. Nenhuma nova etapa será iniciada.')
+      await atualizacao
+      await admin.from('robo_execucoes').update({
+        finalizado_em: new Date().toISOString(),
+        detalhes: { ...e.detalhes, cancelamento: true, logs: logs.slice(-300) },
+      }).eq('id', execucaoId).eq('status', 'CANCELADO')
+      return
+    }
     log(`ERRO na execução: ${err.message}`)
     await atualizacao
 

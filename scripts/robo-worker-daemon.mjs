@@ -229,7 +229,19 @@ async function processar(execucao) {
         .then(({ error }) => { if (error) console.error('Erro de heartbeat:', error.message) })
     }, 20_000)
 
-    const limpar = () => { clearTimeout(timer); clearInterval(heartbeat); filho = null }
+    const cancelamento = setInterval(() => {
+      admin.from('robo_execucoes').select('status').eq('id', execucao.id).maybeSingle()
+        .then(({ data, error }) => {
+          if (error) return
+          if (data?.status === 'CANCELADO') {
+            console.log(`Execução ${execucao.id} cancelada pelo usuário. Encerrando processo filho...`)
+            pararFilho()
+          }
+        })
+        .catch(() => {})
+    }, 2_000)
+
+    const limpar = () => { clearTimeout(timer); clearInterval(heartbeat); clearInterval(cancelamento); filho = null }
     filho.once('error', e => { limpar(); reject(e) })
     filho.once('exit', code => { limpar(); resolve(code) })
   })

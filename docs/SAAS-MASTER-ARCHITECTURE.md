@@ -4666,3 +4666,18 @@ progresso, sucessos, falhas, início, fim e duração. Cards com execução ativ
 exibem `Visualizar execução`, enquanto execuções concluídas continuam
 disponíveis pelo histórico sem iniciar novo processamento.
 
+# Cancelamento seguro e identificação da rotina (08/11/2026)
+
+O terminal permite interromper uma execução `PENDENTE` ou `PROCESSANDO` pelo
+botão `Parar robô`. A API registra o status `CANCELADO`, o horário e o motivo
+da interrupção na execução vinculada ao robô; não é necessário criar um novo
+status ou migration para essa operação. O daemon verifica o cancelamento a
+cada 2 segundos e encerra o processo filho, enquanto os fluxos de lances e
+boletos verificam o status antes de iniciar a próxima etapa. Uma execução
+cancelada não é sobrescrita por `SUCESSO` ou `ERRO` ao finalizar o processo.
+
+A identificação visual do terminal prioriza a rotina de contemplações antes
+da palavra “lance”, pois “Contemplações e Médias de Lance” contém ambas. Com
+isso, a rotina de contemplações não é apresentada ao operador como robô de
+lances e o fluxo específico permanece separado.
+

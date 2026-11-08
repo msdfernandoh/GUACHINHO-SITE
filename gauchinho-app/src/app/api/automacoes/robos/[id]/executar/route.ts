@@ -201,3 +201,61 @@ export async function POST(
     return NextResponse.json({ error: err?.message || 'Erro ao processar solicitação de execução' }, { status: 500 })
   }
 }
+
+export async function DELETE(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const perm = await verificarPermissao()
+    if (!perm.autorizado) return NextResponse.json({ error: 'Não autorizado' }, { status: 403 })
+
+    const { id } = await params
+    const execucaoId = req.nextUrl.searchParams.get('execucaoId')
+    if (!execucaoId || !/^[0-9a-f-]{36}$/i.test(execucaoId)) {
+      return NextResponse.json({ error: 'Informe uma execução válida para cancelar.' }, { status: 400 })
+    }
+
+    const admin = createAdminClient()
+    const { data: execucao, error: consultaError } = await admin
+      .from('robo_execucoes')
+      .select('id, robo_config_id, status, detalhes')
+      .eq('id', execucaoId)
+      .eq('robo_config_id', id)
+      .maybeSingle()
+    if (consultaError) return NextResponse.json({ error: consultaError.message }, { status: 500 })
+    if (!execucao) return NextResponse.json({ error: 'Execução não encontrada para este robô.' }, { status: 404 })
+    if (!['PENDENTE', 'PROCESSANDO'].includes(execucao.status)) {
+      return NextResponse.json({ ok: true, execucao, mensagem: `A execução já está finalizada com status ${execucao.status}.` })
+    }
+
+    const agora = new Date().toISOString()
+    const mensagem = 'Execução cancelada pelo usuário.'
+    const { data: cancelada, error: cancelamentoError } = await admin
+      .from('robo_execucoes')
+      .update({
+        status: 'CANCELADO',
+        finalizado_em: agora,
+        erro_mensagem: null,
+        erro_sanitizado: null,
+        detalhes: {
+          ...(execucao.detalhes || {}),
+          cancelamento: { motivo: mensagem, em: agora, por: perm.userId || null },
+          logs: [...(execucao.detalhes?.logs || []), { ts: agora, msg: mensagem }],
+        },
+      })
+      .eq('id', execucaoId)
+      .in('status', ['PENDENTE', 'PROCESSANDO'])
+      .select('*')
+      .maybeSingle()
+    if (cancelamentoError) return NextResponse.json({ error: cancelamentoError.message }, { status: 500 })
+
+    return NextResponse.json({
+      ok: true,
+      execucao: cancelada || { ...execucao, status: 'CANCELADO', finalizado_em: agora },
+      mensagem,
+    })
+  } catch (err: any) {
+    return NextResponse.json({ error: err?.message || 'Erro ao cancelar execução' }, { status: 500 })
+  }
+}

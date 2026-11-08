@@ -96,6 +96,7 @@ export async function executarRoboLances({
   admin,
   log,
   screenshotsDir,
+  verificarCancelamento,
 }) {
   log('=== INICIANDO ROBÔ DE OFERTA DE LANCES AUTOMÁTICOS DA FRANQUIA ===')
 
@@ -452,6 +453,7 @@ export async function executarRoboLances({
 
   // 3. Itera sobre cada cota
   for (let i = 0; i < listaCotas.length; i++) {
+    await verificarCancelamento?.()
     const item = listaCotas[i]
     log(`[${i + 1}/${listaCotas.length}] Processando ofertas da Cota Grupo ${item.numero_grupo} / Cota ${item.numero_cota} (${item.cliente_nome})...`)
 

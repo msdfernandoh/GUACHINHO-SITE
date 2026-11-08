@@ -22,6 +22,7 @@ import {
   History,
   Terminal,
   AlertTriangle,
+  StopCircle,
 } from 'lucide-react';
 import {
   RoboConfigOutput,
@@ -67,6 +68,9 @@ function resumoExecucao(execucao: any, falhasRobo: any[]) {
 
 function contextoExecucaoRobo(robo?: RoboConfigOutput | null) {
   const texto = `${robo?.nome || ''} ${JSON.stringify(robo?.configuracao_tarefas || {})}`.toLowerCase()
+  if (texto.includes('contempla')) {
+    return { tipo: 'CONTEMPLAÇÃO', titulo: 'Robô de Contemplações e Médias de Lance', concluidos: 'Grupos concluídos' }
+  }
   if (texto.includes('lance')) {
     return { tipo: 'LANCE', titulo: 'Robô de Lances', concluidos: 'Lances concluídos' }
   }
@@ -117,6 +121,7 @@ export function RobosImportacaoContent({
   const [logModalOpen, setLogModalOpen] = useState(false)
   const [execucaoAtual, setExecucaoAtual] = useState<any>(null)
   const [executando, setExecutando] = useState(false)
+  const [cancelando, setCancelando] = useState(false)
   const [roboPodeForcar, setRoboPodeForcar] = useState<RoboConfigOutput | null>(null)
   const [roboEmExecucao, setRoboEmExecucao] = useState<RoboConfigOutput | null>(null)
   const [falhasRobo, setFalhasRobo] = useState<any[]>([])
@@ -378,6 +383,26 @@ export function RobosImportacaoContent({
       }
     } catch {
       setNotificacao({ tipo: 'erro', texto: 'Não foi possível abrir o acompanhamento desta execução.' })
+    }
+  }
+
+  const cancelarExecucao = async () => {
+    if (!roboEmExecucao?.id || !execucaoAtual?.id || !['PENDENTE', 'PROCESSANDO'].includes(execucaoAtual.status)) return
+    if (!window.confirm('Parar este robô agora? O processamento será interrompido e ficará registrado como cancelado.')) return
+
+    setCancelando(true)
+    try {
+      const res = await fetch(`/api/automacoes/robos/${roboEmExecucao.id}/executar?execucaoId=${encodeURIComponent(execucaoAtual.id)}`, { method: 'DELETE' })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Não foi possível cancelar a execução.')
+      setExecucaoAtual(data.execucao)
+      setExecutando(false)
+      setNotificacao({ tipo: 'info', texto: 'Robô cancelado. Nenhuma nova etapa será iniciada.' })
+      carregarRobos()
+    } catch (err: any) {
+      setNotificacao({ tipo: 'erro', texto: err.message || 'Não foi possível cancelar o robô.' })
+    } finally {
+      setCancelando(false)
     }
   }
 
@@ -940,9 +965,11 @@ export function RobosImportacaoContent({
                 <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
                   execucaoAtual?.status === 'SUCESSO'
                     ? 'bg-emerald-500/20 text-emerald-400'
-                    : execucaoAtual?.status === 'ERRO'
-                    ? 'bg-rose-500/20 text-rose-400'
-                    : 'bg-amber-500/20 text-amber-400'
+                     : execucaoAtual?.status === 'ERRO'
+                     ? 'bg-rose-500/20 text-rose-400'
+                     : execucaoAtual?.status === 'CANCELADO'
+                     ? 'bg-slate-500/20 text-slate-600'
+                     : 'bg-amber-500/20 text-amber-400'
                 }`}>
                   {execucaoAtual?.status === 'AVISO' ? 'ATENÇÃO' : execucaoAtual?.status || 'PROCESSANDO'}
                 </span>
@@ -995,10 +1022,22 @@ export function RobosImportacaoContent({
                 <span className="block">Execução ID: {execucaoAtual?.id || '—'}</span>
                 <span className="block">Início: {formatarDataExecucao(execucaoAtual?.iniciado_em)} · Fim: {execucaoAtual?.finalizado_em ? formatarDataExecucao(execucaoAtual.finalizado_em) : 'em andamento'}</span>
               </span>
-              <button
-                onClick={() => setLogModalOpen(false)}
-                className="rounded-lg bg-zinc-800 px-4 py-2 font-medium text-white hover:bg-zinc-700"
-              >Fechar</button>
+              <div className="flex items-center gap-2">
+                {executando && ['PENDENTE', 'PROCESSANDO'].includes(execucaoAtual?.status) && (
+                  <button
+                    onClick={() => void cancelarExecucao()}
+                    disabled={cancelando}
+                    className="inline-flex items-center gap-2 rounded-lg bg-rose-600 px-4 py-2 font-semibold text-white hover:bg-rose-700 disabled:cursor-wait disabled:opacity-60"
+                  >
+                    {cancelando ? <Loader2 className="h-4 w-4 animate-spin" /> : <StopCircle className="h-4 w-4" />}
+                    {cancelando ? 'Parando...' : 'Parar robô'}
+                  </button>
+                )}
+                <button
+                  onClick={() => setLogModalOpen(false)}
+                  className="rounded-lg bg-zinc-800 px-4 py-2 font-medium text-white hover:bg-zinc-700"
+                >Fechar</button>
+              </div>
               {roboPodeForcar && !executando && (
                 <button
                   onClick={() => executarRobo(roboPodeForcar, true)}
