@@ -512,18 +512,34 @@ export async function executarRoboLances({
         throw new Error(`Campo ${descricao} visível não encontrado na tela de localização.`)
       }
 
-      const inputGrupo = await localizarCampoVisivel(/^\d{6}$/, 0, 'Grupo')
-      await inputGrupo.waitFor({ state: 'visible', timeout: 10_000 })
-      await inputGrupo.click()
-      await inputGrupo.fill(grupoFormatado)
+      let preenchimentoPorCoordenadas = false
+      let inputGrupo
+      try {
+        inputGrupo = await localizarCampoVisivel(/^\d{6}$/, 0, 'Grupo')
+        await inputGrupo.waitFor({ state: 'visible', timeout: 10_000 })
+        await inputGrupo.click()
+        await inputGrupo.fill(grupoFormatado)
+      } catch (erroCampoGrupo) {
+        log(`Aviso: DOM do Grupo não exposto pelo Newcon (${erroCampoGrupo.message}); usando fallback visual do formulário legado.`)
+        preenchimentoPorCoordenadas = true
+        await page.mouse.click(560, 250)
+        await page.keyboard.press('Control+A')
+        await page.keyboard.type(grupoFormatado)
+      }
       await page.waitForTimeout(400)
 
       // Preenche Cota (com 4 dígitos se necessário)
       const cotaFormatada = normalizarNumeroPortal(item.numero_cota, 4)
-      const inputCota = await localizarCampoVisivel(/^\d{4}$/, 1, 'Cota')
-      await inputCota.waitFor({ state: 'visible', timeout: 8_000 })
-      await inputCota.click()
-      await inputCota.fill(cotaFormatada)
+      if (preenchimentoPorCoordenadas) {
+        await page.mouse.click(625, 250)
+        await page.keyboard.press('Control+A')
+        await page.keyboard.type(cotaFormatada)
+      } else {
+        const inputCota = await localizarCampoVisivel(/^\d{4}$/, 1, 'Cota')
+        await inputCota.waitFor({ state: 'visible', timeout: 8_000 })
+        await inputCota.click()
+        await inputCota.fill(cotaFormatada)
+      }
       await page.waitForTimeout(400)
 
       // Clica em [Localizar]
