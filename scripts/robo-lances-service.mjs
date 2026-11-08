@@ -204,7 +204,10 @@ export async function executarRoboLances({
 
   if (cotasDbProcessaveis && cotasDbProcessaveis.length > 0) {
     // 1.1. Verifica cotas que já possuem lance ativo com repetição por 6 assembleias
-    const isManualTest = Boolean(config.filtro_grupo || config.grupo_teste || config.filtro_cotas || config.cotas_teste)
+    const isManualTest = Boolean(
+      config.filtro_grupo || config.grupo_teste || config.filtro_cotas || config.cotas_teste
+      || (cotasAlvoIds && cotasAlvoIds.size > 0),
+    )
     const cotasBloqueadas6Meses = new Set()
 
     const cotaIds = cotasDbProcessaveis.map(c => c.id)
