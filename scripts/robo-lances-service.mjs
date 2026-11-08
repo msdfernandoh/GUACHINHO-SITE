@@ -425,12 +425,16 @@ export async function executarRoboLances({
   if (!telaConsorciadoAberta) {
     log('Navegando diretamente para CONAT/frmConAtSrcConsorciado.aspx...')
     await page.goto('https://nwcweb.randonconsorcios.com.br/CONAT/frmConAtSrcConsorciado.aspx', {
-      waitUntil: 'domcontentloaded',
+      // O Newcon pode manter requisições abertas e nunca emitir o evento
+      // domcontentloaded, embora o formulário já esteja utilizável.
+      waitUntil: 'commit',
       timeout: 30_000,
     })
   }
 
-  await page.waitForLoadState('domcontentloaded').catch(() => {})
+  await page.waitForLoadState('domcontentloaded', { timeout: 10_000 }).catch(() => {
+    log('Aviso: o Newcon não sinalizou domcontentloaded; continuando com o formulário da tela de Consorciados.')
+  })
   await page.waitForTimeout(3000)
 
   // O menu do Newcon faz postback em alguns acessos e navegação completa em
@@ -451,8 +455,11 @@ export async function executarRoboLances({
       if (!resultado && !(await campoOferta.isVisible().catch(() => false))) {
         log('A tela não respondeu ao clique do menu. Abrindo diretamente a rota de Oferta de Lance...')
         await page.goto('https://nwcweb.randonconsorcios.com.br/CONCP/frmConCpCadCredenciamentoLance.aspx', {
-          waitUntil: 'domcontentloaded',
+          waitUntil: 'commit',
           timeout: 30_000,
+        })
+        await page.waitForLoadState('domcontentloaded', { timeout: 10_000 }).catch(() => {
+          log('Aviso: a tela de Oferta de Lance não sinalizou domcontentloaded; aguardando os campos do formulário.')
         })
       }
     }
@@ -470,8 +477,11 @@ export async function executarRoboLances({
     try {
       if (!page.url().includes('frmConAtSrcConsorciado')) {
         await page.goto('https://nwcweb.randonconsorcios.com.br/CONAT/frmConAtSrcConsorciado.aspx', {
-          waitUntil: 'domcontentloaded',
+          waitUntil: 'commit',
           timeout: 25_000,
+        })
+        await page.waitForLoadState('domcontentloaded', { timeout: 10_000 }).catch(() => {
+          log('Aviso: a tela de localização não sinalizou domcontentloaded; continuando com a busca por grupo e cota.')
         })
         await page.waitForTimeout(2000)
       }
