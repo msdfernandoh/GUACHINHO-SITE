@@ -496,7 +496,21 @@ export async function executarRoboLances({
 
       // Preenche Grupo (com 6 dígitos se necessário)
       const grupoFormatado = normalizarNumeroPortal(item.numero_grupo, 6)
-      const inputGrupo = page.locator('input[name*="txtST_Grupo"], input[id*="txtST_Grupo"], input[name*="Grupo"]').first()
+      let inputGrupo = page.locator('input[name*="txtST_Grupo"], input[id*="txtST_Grupo"], input[name*="Grupo"]').first()
+      // Algumas versões do Newcon renderizam os campos sem name/id semântico.
+      // Nessa tela, os três campos visíveis são Grupo (6 dígitos), Cota (4)
+      // e complemento (2); localizar pelo valor evita depender de IDs legados.
+      if (!(await inputGrupo.isVisible().catch(() => false))) {
+        const inputsVisiveis = page.locator('input:visible')
+        const totalInputs = await inputsVisiveis.count()
+        for (let inputIndex = 0; inputIndex < totalInputs; inputIndex++) {
+          const valorInput = await inputsVisiveis.nth(inputIndex).inputValue().catch(() => '')
+          if (/^\d{6}$/.test(valorInput)) {
+            inputGrupo = inputsVisiveis.nth(inputIndex)
+            break
+          }
+        }
+      }
       await inputGrupo.waitFor({ state: 'visible', timeout: 10_000 })
       await inputGrupo.click()
       await inputGrupo.fill(grupoFormatado)
@@ -504,7 +518,18 @@ export async function executarRoboLances({
 
       // Preenche Cota (com 4 dígitos se necessário)
       const cotaFormatada = normalizarNumeroPortal(item.numero_cota, 4)
-      const inputCota = page.locator('input[name*="txtST_Cota"], input[id*="txtST_Cota"], input[name*="Cota"]').first()
+      let inputCota = page.locator('input[name*="txtST_Cota"], input[id*="txtST_Cota"], input[name*="Cota"]').first()
+      if (!(await inputCota.isVisible().catch(() => false))) {
+        const inputsVisiveis = page.locator('input:visible')
+        const totalInputs = await inputsVisiveis.count()
+        for (let inputIndex = 0; inputIndex < totalInputs; inputIndex++) {
+          const valorInput = await inputsVisiveis.nth(inputIndex).inputValue().catch(() => '')
+          if (/^\d{4}$/.test(valorInput)) {
+            inputCota = inputsVisiveis.nth(inputIndex)
+            break
+          }
+        }
+      }
       await inputCota.waitFor({ state: 'visible', timeout: 8_000 })
       await inputCota.click()
       await inputCota.fill(cotaFormatada)
@@ -1199,6 +1224,10 @@ export async function executarRoboLances({
   log('=== PROCESSAMENTO DO ROBÔ DE LANCES FINALIZADO COM SUCESSO ===')
   log(`Total de cotas analisadas: ${totalCotasProcessadas}`)
   log(`Total de lances ofertados com confirmação: ${totalLancesOfertados}`)
+
+  if (listaCotas.length > 0 && totalCotasProcessadas === 0) {
+    throw new Error(`Nenhuma cota foi processada: ${listaCotas.length} cota(s) elegível(is), 0 concluída(s).`)
+  }
 
   return {
     cotasProcessadas: totalCotasProcessadas,
