@@ -770,7 +770,16 @@ export async function executarRoboLances({
           // Cada modalidade recebe seu próprio PDF. O CDP funciona também no Chrome
           // visível/oculto usado pelo robô; o fallback PNG só ocorre se o portal
           // bloquear a impressão e mantém a evidência, sem sobrescrever outra.
-          const baseNome = `comprovante_${tipoLance.toLowerCase()}_g${item.numero_grupo}_c${item.numero_cota}_${Date.now()}`
+          // O Storage rejeita chaves com espaços, acentos e outros caracteres
+          // vindos da descrição do grupo/cota. A chave precisa ser estável e
+          // segura mesmo quando o grupo contém texto como "1553 IMÓVEL".
+          const normalizarNomeStorage = (valor) => String(valor ?? '')
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .replace(/[^a-zA-Z0-9_-]+/g, '_')
+            .replace(/^_+|_+$/g, '')
+            .toLowerCase()
+          const baseNome = `comprovante_${normalizarNomeStorage(tipoLance)}_g${normalizarNomeStorage(item.numero_grupo)}_c${normalizarNomeStorage(item.numero_cota)}_${Date.now()}`
           let arquivoBuffer = null
           let contentType = 'application/pdf'
           let extensao = 'pdf'
