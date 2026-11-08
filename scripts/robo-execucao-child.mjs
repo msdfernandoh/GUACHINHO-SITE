@@ -139,7 +139,7 @@ async function run() {
   const senha = decryptCredential(config.senha_encrypted)
   const senhaSecundaria = config.senha_secundaria_encrypted ? decryptCredential(config.senha_secundaria_encrypted) : undefined
 
-  log('Iniciando instância do Chromium Playwright...')
+  log(`Iniciando instância anônima do Chromium para a conta ${config.usuario_login}...`)
   const isWin = process.platform === 'win32'
   const browser = await chromium.launch({
     headless: !isWin,
@@ -150,6 +150,13 @@ async function run() {
       '--disable-setuid-sandbox',
       '--disable-dev-shm-usage',
       '--disable-gpu',
+      // Cada robô deve iniciar sem qualquer sessão Microsoft/NEWCON anterior.
+      // Isso evita que o robô Fernando reutilize a conta/cookies do Eroni.
+      '--incognito',
+      '--no-first-run',
+      '--no-default-browser-check',
+      '--disable-session-crashed-bubble',
+      '--disable-sync',
     ],
   })
 
