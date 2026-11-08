@@ -404,8 +404,18 @@ async function run() {
         const stayBtn = activePage.locator('#idSIButton9:visible, input[value="Sim"]:visible, button:has-text("Sim"):visible').first()
         if (await stayBtn.isVisible().catch(() => false)) {
           log('Confirmando "Continuar conectado"...')
-          await stayBtn.click()
+          const urlAntesContinuar = activePage.url()
+          await stayBtn.click({ force: true })
           await activePage.waitForTimeout(3000)
+          if (activePage.url() === urlAntesContinuar) {
+            // Algumas versões do SSO não disparam a navegação pelo locator;
+            // repetir o evento DOM no botão Microsoft exato evita o loop.
+            await activePage.evaluate(() => {
+              const botao = document.querySelector('#idSIButton9')
+              if (botao) botao.click()
+            }).catch(() => {})
+            await activePage.waitForTimeout(3000)
+          }
           continue
         }
 
