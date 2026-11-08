@@ -100,14 +100,6 @@ export function ErpLancesView({ initialStats, initialRows }: ErpLancesViewProps)
     }
   };
 
-  // Sugestão de datas: Hoje e Hoje + 5 meses
-  const hojeStr = new Date().toISOString().slice(0, 10);
-  const dataMais5Meses = (() => {
-    const d = new Date();
-    d.setMonth(d.getMonth() + 5);
-    return d.toISOString().slice(0, 10);
-  })();
-
   // Sem cadastro de modalidades, o único padrão seguro é Lance Livre.
   // Nunca apresentar modalidades genéricas que não estejam ativas no grupo.
   const modalidadePermitida = (tipo: "LIVRE" | "FIXO" | "SEGUNDO_FIXO" | "FIDELIDADE") => {
@@ -332,8 +324,8 @@ export function ErpLancesView({ initialStats, initialRows }: ErpLancesViewProps)
                         ) : (
                            <span className="text-[11px] text-slate-400 italic">Sem lance registrado</span>
                         )}
-                         <span className={`mt-1 inline-flex rounded-full px-2 py-0.5 text-[10px] font-black uppercase ${est?.ativa && (est.lanceLivreAtivo || est.lanceFixoAtivo || est.segundoLanceFixoAtivo || est.lanceFidelidadeAtivo) ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-600"}`}>
-                           Lance automático: {est?.ativa && (est.lanceLivreAtivo || est.lanceFixoAtivo || est.segundoLanceFixoAtivo || est.lanceFidelidadeAtivo) ? "Ativo" : "Inativo"}
+                         <span className={`mt-1 inline-flex rounded-full px-2 py-0.5 text-[10px] font-black uppercase ${est?.ativa && (est.lanceLivreAtivo || est.lanceFixoAtivo || est.segundoLanceFixoAtivo || est.lanceFidelidadeAtivo) ? (est.ultimoLanceOfertadoEm || est.protocoloLanceLivre || est.protocoloLanceFixo || est.protocoloSegundoLanceFixo || est.confirmado ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800") : "bg-slate-100 text-slate-600"}`}>
+                           Lance automático: {est?.ativa && (est.lanceLivreAtivo || est.lanceFixoAtivo || est.segundoLanceFixoAtivo || est.lanceFidelidadeAtivo) ? (est.ultimoLanceOfertadoEm || est.protocoloLanceLivre || est.protocoloLanceFixo || est.protocoloSegundoLanceFixo || est.confirmado ? "Executado" : "Aguardando robô") : "Inativo"}
                          </span>
                       </td>
 
@@ -666,12 +658,12 @@ export function ErpLancesView({ initialStats, initialRows }: ErpLancesViewProps)
               <div className="grid gap-3 sm:grid-cols-2">
                 {/* Data do Lance */}
                 <div>
-                  <label className="font-bold text-slate-700 dark:text-slate-300">Data do Lance *</label>
+                  <label className="font-bold text-slate-700 dark:text-slate-300">Data do lance (preenchida após execução)</label>
                   <input
                     type="date"
                     name="data_lance"
-                    defaultValue={selectedCota.estrategia?.dataLance || hojeStr}
-                    required
+                    defaultValue={selectedCota.estrategia?.dataLance || ""}
+                    readOnly={Boolean(selectedCota.estrategia?.dataLance)}
                     className="mt-1 w-full rounded-lg border border-slate-300 p-2 font-mono text-xs dark:border-slate-700 dark:bg-slate-800"
                   />
                 </div>
@@ -679,15 +671,18 @@ export function ErpLancesView({ initialStats, initialRows }: ErpLancesViewProps)
                 {/* Validade / Vencimento */}
                 <div>
                   <label className="font-bold text-slate-700 dark:text-slate-300">
-                    Vencimento Sugerido (Padrão: +5 Meses) *
+                    Validade do lance (preenchida após execução do robô)
                   </label>
                   <input
                     type="date"
                     name="data_vencimento"
-                    defaultValue={selectedCota.estrategia?.dataVencimento || dataMais5Meses}
-                    required
+                    defaultValue={selectedCota.estrategia?.dataVencimento || ""}
+                    readOnly={Boolean(selectedCota.estrategia?.dataVencimento)}
                     className="mt-1 w-full rounded-lg border border-slate-300 p-2 font-mono text-xs dark:border-slate-700 dark:bg-slate-800"
                   />
+                  <p className="mt-1 text-[10px] text-slate-500">
+                    Salvar a estratégia não realiza o lance. A validade aparecerá somente após o robô enviar a oferta e registrar o protocolo.
+                  </p>
                 </div>
               </div>
 

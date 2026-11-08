@@ -4619,3 +4619,14 @@ operacional é derivado do snapshot somente quando há confirmação de
 não são alterados. O valor derivado é usado tanto na visualização quanto nos
 cálculos de lance. Relatório:
 `docs/relatorios-fases/VALOR-CREDITO-POR-COTA-LANCES-2026-11-07.md`.
+# Estratégias de lance: configuração versus execução (07/11/2026)
+
+Em `cota_estrategias_lance`, `ativa` indica somente que a estratégia está
+habilitada para o robô localizar e processar a cota. Não é evidência de que o
+lance foi enviado. `data_lance` e `data_vencimento` só devem representar uma
+oferta efetiva quando houver protocolo, horário de oferta ou confirmação
+auditável. A interface diferencia `Aguardando robô` de `Executado` e não exibe
+validade para uma estratégia ainda não processada. A limpeza de dados de
+07/11/2026 removeu somente datas sem essas evidências, mantendo as estratégias
+ativas e preservando protocolos/comprovantes já registrados.
+

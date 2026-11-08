@@ -339,6 +339,16 @@ export async function fetchCotasComLancesOperacional(filters?: {
       const consultorId = c.participante_comercial_id || venda?.participante_comercial_id;
       const consultor = consultorId ? partMap.get(consultorId) : null;
       const est = estMap.get(c.id);
+      // A estratégia pode estar habilitada para o robô antes de qualquer oferta.
+      // Datas e validade só representam um lance efetivamente enviado quando
+      // existe protocolo, horário de oferta ou confirmação auditável.
+      const lanceEfetivado = Boolean(
+        est?.ultimo_lance_ofertado_em ||
+          est?.protocolo_lance_livre ||
+          est?.protocolo_lance_fixo ||
+          est?.protocolo_segundo_lance_fixo ||
+          est?.confirmado,
+      );
       const modalidades = classificarModalidades(modalidadesByGrupo.get(c.grupo_id) ?? []).map((m) => ({
         tipo: m.tipo,
         percentual: m.percentual,
@@ -353,7 +363,7 @@ export async function fetchCotasComLancesOperacional(filters?: {
       let diasParaVencimento: number | null = null;
 
       if (est && est.ativa !== false) {
-        if (est.data_vencimento) {
+        if (lanceEfetivado && est.data_vencimento) {
           try {
             const [y, m, d] = String(est.data_vencimento).split("-").map(Number);
             const dataVenc = new Date(y, m - 1, d);
@@ -421,8 +431,8 @@ export async function fetchCotasComLancesOperacional(filters?: {
         estrategia: est
           ? {
               id: est.id,
-              dataLance: est.data_lance || null,
-              dataVencimento: est.data_vencimento || null,
+              dataLance: lanceEfetivado ? est.data_lance || null : null,
+              dataVencimento: lanceEfetivado ? est.data_vencimento || null : null,
               lanceFixoAtivo: Boolean(est.lance_fixo_ativo),
               lanceFixoPercentual: est.lance_fixo_percentual ? Number(est.lance_fixo_percentual) : null,
               lanceFixoValor: est.lance_fixo_valor ? Number(est.lance_fixo_valor) : null,
@@ -566,14 +576,10 @@ export async function salvarEstrategiaLanceCompletaAction(formData: FormData) {
     return s;
   };
 
-  // Datas com regra operacional: se não informada validade, sugere data do lance + 5 meses
-  const dataLance = normalizeDate(String(formData.get("data_lance") ?? "").trim()) || new Date().toISOString().slice(0, 10);
-  let dataVencimento = normalizeDate(String(formData.get("data_vencimento") ?? "").trim());
-  if (!dataVencimento) {
-    const [y, m, d] = dataLance.split("-").map(Number);
-    const dObj = new Date(y, (m || 1) - 1 + 5, d || 1);
-    dataVencimento = dObj.toISOString().slice(0, 10);
-  }
+  // A configuração não é um lance realizado. As datas só devem ser
+  // preenchidas pelo retorno do robô/confirmador após a oferta efetiva.
+  const dataLance = normalizeDate(String(formData.get("data_lance") ?? "").trim());
+  const dataVencimento = normalizeDate(String(formData.get("data_vencimento") ?? "").trim());
 
   const lanceFixoAtivo = formData.get("lance_fixo_ativo") === "on";
   const segundoLanceFixoAtivo = formData.get("segundo_lance_fixo_ativo") === "on";
