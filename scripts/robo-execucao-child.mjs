@@ -424,7 +424,12 @@ async function run() {
       if (!isFinalNewconReady()) {
         await activePage.waitForURL(url => isFinalNewconReady(), { timeout: 45_000 })
       }
-      await activePage.waitForLoadState('domcontentloaded')
+      // O Newcon pode manter requisições abertas depois de concluir o redirect.
+      // Se a URL final já foi alcançada, o timeout de carregamento não deve
+      // abortar a execução antes da seleção da empresa e do fluxo operacional.
+      await activePage.waitForLoadState('domcontentloaded', { timeout: 10_000 }).catch(() => {
+        log('Newcon acessível; carregamento complementar não concluiu, seguindo para a seleção da empresa.')
+      })
       await activePage.waitForTimeout(3000)
       log(`Newcon Web carregado com sucesso: ${activePage.url()}`)
       await activePage.screenshot({ path: path.join(screenshotsDir, `racon-04-newcon-main-${Date.now()}.png`) }).catch(() => {})
