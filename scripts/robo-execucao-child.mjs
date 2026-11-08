@@ -99,6 +99,30 @@ async function run() {
 
   if (errConf || !config) throw new Error(`Configuração do robô ${e.robo_config_id} não encontrada.`)
 
+  // Robôs de lance e de boleto compartilham a mesma conta operacional. O
+  // usuário/senha cadastrados no robô de lance podem estar antigos; sempre que
+  // houver o vínculo RACON_FERNANDO/GAUCHINHO_ERONI, reutilizamos a credencial
+  // vigente do robô de boletos correspondente.
+  const loginOperacional = config.configuracao_tarefas?.robo_boleto_login
+  if (loginOperacional && config.configuracao_tarefas?.tipo_rotina === 'FRANQUIA_LANCES_AUTOMATICOS') {
+    const { data: configsBoletos } = await admin
+      .from('robo_configuracoes')
+      .select('id, nome, usuario_login, senha_encrypted, senha_secundaria_encrypted, configuracao_tarefas')
+      .eq('ativo', true)
+    const configBoleto = (configsBoletos || []).find((item) =>
+      item.configuracao_tarefas?.tipo_rotina === 'FRANQUIA_DOWNLOAD_BOLETOS'
+      && item.configuracao_tarefas?.robo_boleto_login === loginOperacional,
+    )
+    if (configBoleto?.usuario_login && configBoleto?.senha_encrypted) {
+      config = {
+        ...config,
+        usuario_login: configBoleto.usuario_login,
+        senha_encrypted: configBoleto.senha_encrypted,
+        senha_secundaria_encrypted: configBoleto.senha_secundaria_encrypted,
+      }
+    }
+  }
+
   await verificarCancelamento()
 
   const cotasAlvoExecucao = e.detalhes?.cotas_alvo_ids
