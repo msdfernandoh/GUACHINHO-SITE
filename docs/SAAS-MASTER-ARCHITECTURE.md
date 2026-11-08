@@ -1,5 +1,12 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
+### Contagem por fluxo no terminal de robôs (08/11/2026)
+O terminal identifica o tipo do robô e calcula progresso com base nos eventos
+de grupos/cotas concluídos e nas falhas registradas, mantendo a contagem durante
+o polling e ao reabrir uma execução. Robôs de lances também persistem o resumo
+de cotas elegíveis e processadas em `resultado.lances`. Relatório:
+`docs/relatorios-fases/CORRECAO-CONTAGEM-TERMINAL-ROBOS-2026-11-08.md`.
+
 ### Robôs de lances por login e busca direcionada de grupo/cota (08/11/2026)
 O robô de lances da Gauchinho possui configurações independentes para
 `RACON_FERNANDO` e `GAUCHINHO_ERONI`, respeitando o login definido em cada

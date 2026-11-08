@@ -408,7 +408,7 @@ export async function executarRoboLances({
 
   if (listaCotas.length === 0) {
     log('Nenhuma cota ativa elegível encontrada para oferta de lances. Processamento concluído.')
-    return { cotasProcessadas: 0, lancesOfertados: 0 }
+    return { cotasElegiveis: 0, cotasProcessadas: 0, lancesOfertados: 0 }
   }
 
   let totalLancesOfertados = 0
@@ -1282,6 +1282,7 @@ export async function executarRoboLances({
   }
 
   return {
+    cotasElegiveis: listaCotas.length,
     cotasProcessadas: totalCotasProcessadas,
     lancesOfertados: totalLancesOfertados,
   }

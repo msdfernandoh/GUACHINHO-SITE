@@ -206,6 +206,7 @@ async function run() {
   let totalGruposContemplados = 0
   let totalCotadasContempladas = 0
   let resultadoBoletos = null
+  let resultadoLances = null
   const gruposProcessados = []
 
   try {
@@ -531,6 +532,10 @@ async function run() {
         })
         totalGruposAtualizados = lancesRes.lancesOfertados
         totalCotadasContempladas = lancesRes.cotasProcessadas
+        resultadoLances = {
+          ...lancesRes,
+          cotasElegiveis: lancesRes.cotasElegiveis ?? lancesRes.cotasProcessadas,
+        }
       } else if (!isContemplacao) {
         // =========================================================================
         // ROBÔ 1: ATUALIZAÇÃO DE GRUPOS, VAGAS E DATA DE INÍCIO
@@ -1326,6 +1331,7 @@ async function run() {
       finalizado_em: new Date().toISOString(),
       resultado: {
         ...(resultadoBoletos ? { boletos: resultadoBoletos } : {}),
+        ...(resultadoLances ? { lances: resultadoLances } : {}),
         grupos_extraidos: gruposProcessados.length,
         grupos_atualizados: totalGruposAtualizados,
         grupos_novos: totalGruposNovos,

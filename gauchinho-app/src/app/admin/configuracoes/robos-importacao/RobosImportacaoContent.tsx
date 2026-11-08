@@ -47,20 +47,59 @@ function formatarDuracaoExecucao(execucao: any) {
   return `${Math.floor(segundos / 60)}m ${String(segundos % 60).padStart(2, '0')}s`
 }
 
-function resumoExecucao(execucao: any, falhasRobo: any[]) {
+function resumoExecucao(execucao: any, falhasRobo: any[], tipoRobo?: string) {
   const logs = execucao?.detalhes?.logs || execucao?.logs || []
-  const sucessos = (logs as any[])
-    .map((l) => String(l.msg || '').match(/Boleto da cota\s+([^/]+)\/([^ ]+) salvo/))
-    .filter(Boolean)
-    .map((m: any) => ({ grupo: m[1], cota: m[2] }))
-  const falhasLog = (logs as any[])
-    .map((l) => String(l.msg || '').match(/Erro no processamento da cota\s+([^/]+)\/([^:]+):\s*(.*)$/))
-    .filter(Boolean)
-    .map((m: any) => ({ grupo: m[1], cota: m[2], erro: m[3] }))
-  const atual = [...(logs as any[])].reverse().find((l) => /\[\d+\/\d+\]/.test(l.msg || ''))?.msg?.match(/\[(\d+)\/(\d+)\]/)
+  const mensagens = (logs as any[]).map((l) => String(l.msg || ''))
+  const sucessos: any[] = []
+  const falhasLog: any[] = []
+  let itemAtual: any = null
+
+  for (const msg of mensagens) {
+    const boleto = msg.match(/Boleto da cota\s+([^/]+)\/([^ ]+) salvo/)
+    const lance = msg.match(/Processando ofertas da Cota Grupo\s+([^/]+?)\s*\/\s*Cota\s+([^ (]+)/)
+    const grupo = msg.match(/Processando Grupo \[\d+\/\d+\]:\s*([^ (]+)/)
+    const erroBoleto = msg.match(/Erro no processamento da cota\s+([^/]+)\/([^:]+):\s*(.*)$/)
+    const erroLance = msg.match(/Erro no processamento de lances da cota\s+([^/]+)\/([^:]+):\s*(.*)$/)
+    const erroGrupo = msg.match(/\[Grupo\s+([^\]]+)\]\s+PENDENTE:\s*(.*)$/)
+
+    if (boleto) {
+      itemAtual = { grupo: boleto[1], cota: boleto[2] }
+      if (!sucessos.some((item) => item.grupo === itemAtual.grupo && item.cota === itemAtual.cota)) sucessos.push(itemAtual)
+    } else if (lance) {
+      itemAtual = { grupo: lance[1], cota: lance[2] }
+    } else if (grupo) {
+      itemAtual = { grupo: grupo[1], cota: '—' }
+    }
+
+    if (erroBoleto || erroLance) {
+      const match = erroBoleto || erroLance
+      falhasLog.push({ grupo: match[1], cota: match[2], erro: match[3] })
+      continue
+    }
+    if (erroGrupo) falhasLog.push({ grupo: erroGrupo[1], cota: '—', erro: erroGrupo[2] })
+
+    const concluiuLance = /Histórico individual de lances gravado com sucesso|Total de lances ofertados com confirmação/.test(msg)
+    const concluiuGrupo = /Dados de contemplação e médias atualizados com sucesso|Grupo .* validado sem escrita de catálogo|Portal confirma zero assembleias realizadas/.test(msg)
+    if ((concluiuLance || concluiuGrupo) && itemAtual && !sucessos.some((item) => item.grupo === itemAtual.grupo && item.cota === itemAtual.cota)) {
+      sucessos.push({ ...itemAtual })
+    }
+  }
+
+  const fluxo = String(tipoRobo || '').toUpperCase()
+  const padraoProgresso = fluxo === 'CONTEMPLAÇÃO'
+    ? /Processando Grupo \[(\d+)\/(\d+)\]/g
+    : fluxo === 'LANCE'
+      ? /\[(\d+)\/(\d+)\] Processando ofertas da Cota/g
+      : /\[(\d+)\/(\d+)\] Processando cota/g
+  const progressos = mensagens.flatMap((msg) => [...msg.matchAll(padraoProgresso)].map((m) => ({ atual: Number(m[1]), total: Number(m[2]) })))
+  const atual = progressos.length ? progressos[progressos.length - 1] : null
+  const maiorTotal = progressos.reduce((maior, item) => Math.max(maior, item.total), 0)
+  const resultadoFluxo = fluxo === 'LANCE' ? execucao?.resultado?.lances : undefined
+  const totalResultado = Number(resultadoFluxo?.cotasElegiveis || resultadoFluxo?.cotasProcessadas || 0)
+  const processadasResultado = Number(resultadoFluxo?.cotasProcessadas || 0)
   return {
-    total: Number(execucao?.resultado?.boletos?.cotasProcessadas || atual?.[2] || 0),
-    processadas: Number(execucao?.resultado?.boletos?.totalBoletosArmazenados || sucessos.length) + Number(execucao?.resultado?.boletos?.totalErros || falhasLog.length || falhasRobo.length),
+    total: Number(execucao?.resultado?.boletos?.cotasProcessadas || totalResultado || maiorTotal || 0),
+    processadas: processadasResultado || sucessos.length + falhasLog.length || (atual ? Math.max(0, atual.atual - 1) : 0),
     sucessos: execucao?.resultado?.boletos?.sucessos?.length ? execucao.resultado.boletos.sucessos : sucessos,
     falhas: execucao?.resultado?.boletos?.falhas?.length ? execucao.resultado.boletos.falhas : (falhasLog.length ? falhasLog : falhasRobo),
   }
@@ -335,7 +374,7 @@ export function RobosImportacaoContent({
         execucaoId,
         onUpdate: (atualizada) => {
           setExecucaoAtual(atualizada)
-          setFalhasRobo(resumoExecucao(atualizada, []).falhas)
+          setFalhasRobo(resumoExecucao(atualizada, [], contextoExecucaoRobo(robo).tipo).falhas)
         },
       }).then((res) => {
         execucaoReabertaRef.current = null
@@ -373,7 +412,7 @@ export function RobosImportacaoContent({
           execucaoId,
           onUpdate: (atualizada) => {
             setExecucaoAtual(atualizada)
-            setFalhasRobo(resumoExecucao(atualizada, []).falhas)
+            setFalhasRobo(resumoExecucao(atualizada, [], contextoExecucaoRobo(robo).tipo).falhas)
           },
         }).then(() => {
           execucaoReabertaRef.current = null
@@ -981,7 +1020,7 @@ export function RobosImportacaoContent({
 
             <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
               {(() => {
-                const resumo = resumoExecucao(execucaoAtual, falhasRobo)
+                const resumo = resumoExecucao(execucaoAtual, falhasRobo, contextoExecucaoRobo(roboEmExecucao).tipo)
                 return <>
                   <div className="rounded-lg border border-slate-200 bg-slate-50 p-2 text-center"><div className="text-[10px] font-bold uppercase text-slate-500">Progresso</div><div className="text-lg font-black text-slate-900">{Math.min(resumo.total, resumo.processadas)}/{resumo.total || '—'}</div></div>
                   <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-2 text-center"><div className="text-[10px] font-bold uppercase text-emerald-700">Sucessos</div><div className="text-lg font-black text-emerald-800">{resumo.sucessos.length}</div></div>
@@ -994,11 +1033,11 @@ export function RobosImportacaoContent({
             <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
               <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-900">
                  <div className="mb-2 font-black">{contextoExecucaoRobo(roboEmExecucao).concluidos}</div>
-                <div className="max-h-24 space-y-1 overflow-y-auto">{resumoExecucao(execucaoAtual, falhasRobo).sucessos.map((item: any) => <div key={`${item.grupo}-${item.cota}`}>✓ Grupo {item.grupo} / Cota {item.cota}{item.cliente ? ` — ${item.cliente}` : ''}</div>)}{!resumoExecucao(execucaoAtual, falhasRobo).sucessos.length && <span className="text-emerald-700/70">Aguardando conclusão...</span>}</div>
+                <div className="max-h-24 space-y-1 overflow-y-auto">{resumoExecucao(execucaoAtual, falhasRobo, contextoExecucaoRobo(roboEmExecucao).tipo).sucessos.map((item: any) => <div key={`${item.grupo}-${item.cota}`}>✓ Grupo {item.grupo} / Cota {item.cota}{item.cliente ? ` — ${item.cliente}` : ''}</div>)}{!resumoExecucao(execucaoAtual, falhasRobo, contextoExecucaoRobo(roboEmExecucao).tipo).sucessos.length && <span className="text-emerald-700/70">Aguardando conclusão...</span>}</div>
               </div>
               <div className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs text-rose-900">
                 <div className="mb-2 font-black">Cotas com falha</div>
-                <div className="max-h-24 space-y-1 overflow-y-auto">{resumoExecucao(execucaoAtual, falhasRobo).falhas.map((item: any) => <div key={`${item.grupo}-${item.cota}`}>! Grupo {item.grupo} / Cota {item.cota} — {item.erro}</div>)}{!resumoExecucao(execucaoAtual, falhasRobo).falhas.length && <span className="text-rose-700/70">Nenhuma falha registrada.</span>}</div>
+                <div className="max-h-24 space-y-1 overflow-y-auto">{resumoExecucao(execucaoAtual, falhasRobo, contextoExecucaoRobo(roboEmExecucao).tipo).falhas.map((item: any) => <div key={`${item.grupo}-${item.cota}`}>! Grupo {item.grupo} / Cota {item.cota} — {item.erro}</div>)}{!resumoExecucao(execucaoAtual, falhasRobo, contextoExecucaoRobo(roboEmExecucao).tipo).falhas.length && <span className="text-rose-700/70">Nenhuma falha registrada.</span>}</div>
               </div>
             </div>
 
