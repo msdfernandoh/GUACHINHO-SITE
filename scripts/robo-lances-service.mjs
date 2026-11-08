@@ -227,10 +227,13 @@ export async function executarRoboLances({
           return false
         }
         const estrategia = estrategiasMap.get(c.id)
-        if (!estrategia || estrategia.confirmado !== true || estrategia.ativa === false || !(
+        // A confirmação é o registro posterior de um lance já enviado. Ela não
+        // pode ser pré-requisito para a execução: a estratégia salva e ativa é
+        // justamente a autorização para o robô ofertar o lance configurado.
+        if (!estrategia || estrategia.ativa === false || !(
           estrategia.lance_livre_ativo || estrategia.lance_fixo_ativo || estrategia.segundo_lance_fixo_ativo
         )) {
-          log(`[SEM ESTRATÉGIA] Ignorando Grupo ${c.numero_grupo} / Cota ${c.numero_cota}: configure a participação em /erp/lances antes da execução.`)
+          log(`[SEM ESTRATÉGIA] Ignorando Grupo ${c.numero_grupo} / Cota ${c.numero_cota}: nenhuma estratégia ativa configurada em /erp/lances.`)
           return false
         }
         return true

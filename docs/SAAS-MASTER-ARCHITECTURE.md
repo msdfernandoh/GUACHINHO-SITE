@@ -4649,6 +4649,14 @@ alteração no histórico operacional da estratégia. Esses status não entram n
 contagens de cotas sem estratégia, lance ativo, vencimento ou vencidas; o filtro
 de status continua permitindo localizar os registros marcados.
 
+# Execução de estratégias de lance configuradas (08/11/2026)
+
+O robô de lances considera elegível a cota que possui estratégia ativa e pelo
+menos uma modalidade de lance habilitada. O campo `confirmado` representa o
+registro posterior de uma oferta já realizada e não é pré-requisito para iniciar
+a execução automatizada; exigir esse campo fazia o robô descartar todas as
+estratégias recém-configuradas como `SEM ESTRATÉGIA`.
+
 # Acompanhamento persistente dos robôs (08/11/2026)
 
 O terminal de execução da Central de Robôs identifica o tipo e o nome do robô
