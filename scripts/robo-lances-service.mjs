@@ -496,19 +496,17 @@ export async function executarRoboLances({
 
       // Preenche Grupo (com 6 dígitos se necessário)
       const grupoFormatado = normalizarNumeroPortal(item.numero_grupo, 6)
-      let inputGrupo = page.locator('input[name*="txtST_Grupo"], input[id*="txtST_Grupo"], input[name*="Grupo"]').first()
       // Algumas versões do Newcon renderizam os campos sem name/id semântico.
-      // Nessa tela, os três campos visíveis são Grupo (6 dígitos), Cota (4)
-      // e complemento (2); localizar pelo valor evita depender de IDs legados.
-      if (!(await inputGrupo.isVisible().catch(() => false))) {
-        const camposRenderizados = await page.locator('input').evaluateAll((inputs) => inputs.map((el, index) => {
-          const rect = el.getBoundingClientRect()
-          const estilo = window.getComputedStyle(el)
-          return { index, type: el.type, value: (el.value || '').trim(), visivel: rect.width > 0 && rect.height > 0 && estilo.visibility !== 'hidden' && estilo.display !== 'none' }
-        }).filter((campo) => campo.visivel && campo.type !== 'hidden'))
-        const grupoMeta = camposRenderizados.find((campo) => /^\d{6}$/.test(campo.value)) || camposRenderizados[0]
-        if (grupoMeta) inputGrupo = page.locator('input').nth(grupoMeta.index)
-      }
+      // Sempre escolhemos os campos visíveis do formulário: Grupo (6 dígitos),
+      // Cota (4) e complemento (2). Isso evita selecionar inputs legados ocultos.
+      const camposRenderizados = await page.locator('input').evaluateAll((inputs) => inputs.map((el, index) => {
+        const rect = el.getBoundingClientRect()
+        const estilo = window.getComputedStyle(el)
+        return { index, type: el.type, value: (el.value || '').trim(), visivel: rect.width > 0 && rect.height > 0 && estilo.visibility !== 'hidden' && estilo.display !== 'none' }
+      }).filter((campo) => campo.visivel && campo.type !== 'hidden'))
+      const grupoMeta = camposRenderizados.find((campo) => /^\d{6}$/.test(campo.value)) || camposRenderizados[0]
+      if (!grupoMeta) throw new Error('Campo Grupo visível não encontrado na tela de localização.')
+      const inputGrupo = page.locator('input').nth(grupoMeta.index)
       await inputGrupo.waitFor({ state: 'visible', timeout: 10_000 })
       await inputGrupo.click()
       await inputGrupo.fill(grupoFormatado)
@@ -516,16 +514,14 @@ export async function executarRoboLances({
 
       // Preenche Cota (com 4 dígitos se necessário)
       const cotaFormatada = normalizarNumeroPortal(item.numero_cota, 4)
-      let inputCota = page.locator('input[name*="txtST_Cota"], input[id*="txtST_Cota"], input[name*="Cota"]').first()
-      if (!(await inputCota.isVisible().catch(() => false))) {
-        const camposRenderizados = await page.locator('input').evaluateAll((inputs) => inputs.map((el, index) => {
-          const rect = el.getBoundingClientRect()
-          const estilo = window.getComputedStyle(el)
-          return { index, type: el.type, value: (el.value || '').trim(), visivel: rect.width > 0 && rect.height > 0 && estilo.visibility !== 'hidden' && estilo.display !== 'none' }
-        }).filter((campo) => campo.visivel && campo.type !== 'hidden'))
-        const cotaMeta = camposRenderizados.find((campo) => /^\d{4}$/.test(campo.value)) || camposRenderizados[1]
-        if (cotaMeta) inputCota = page.locator('input').nth(cotaMeta.index)
-      }
+      const camposCotaRenderizados = await page.locator('input').evaluateAll((inputs) => inputs.map((el, index) => {
+        const rect = el.getBoundingClientRect()
+        const estilo = window.getComputedStyle(el)
+        return { index, type: el.type, value: (el.value || '').trim(), visivel: rect.width > 0 && rect.height > 0 && estilo.visibility !== 'hidden' && estilo.display !== 'none' }
+      }).filter((campo) => campo.visivel && campo.type !== 'hidden'))
+      const cotaMeta = camposCotaRenderizados.find((campo) => /^\d{4}$/.test(campo.value)) || camposCotaRenderizados[1]
+      if (!cotaMeta) throw new Error('Campo Cota visível não encontrado na tela de localização.')
+      const inputCota = page.locator('input').nth(cotaMeta.index)
       await inputCota.waitFor({ state: 'visible', timeout: 8_000 })
       await inputCota.click()
       await inputCota.fill(cotaFormatada)
