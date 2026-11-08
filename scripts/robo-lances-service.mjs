@@ -48,9 +48,13 @@ export function normalizarNumeroPortal(valor, tamanho) {
 export function extrairProtocoloAlert(msg) {
   if (!msg || typeof msg !== 'string') return null
   const matchEspec = msg.match(/protocolo[s]?\s*:\s*(?:[^0-9]*?)(\d{5,12})/i) ||
-                     msg.match(/lance\s+(?:livre|fixo|segundo\s+fixo|2[º°]\s*fixo)\s*:\s*(\d{5,12})/i) ||
-                     msg.match(/\b(\d{5,10})\b/)
+                     msg.match(/lance\s+(?:livre|fixo|segundo\s+fixo|2[º°]\s*fixo)\s*:\s*(\d{5,12})/i)
   return matchEspec ? matchEspec[1] : null
+}
+
+function normalizarPercentualEmbutido(valor, fallback = 25) {
+  const numero = Number(valor)
+  return Number.isFinite(numero) ? Math.max(0, Math.floor(numero + 1e-9)) : fallback
 }
 
 /**
@@ -605,6 +609,10 @@ export async function executarRoboLances({
         return {
           lanceFixoPct: fixoTexto ? parseFloat(fixoTexto.replace(',', '.')) : 25.0,
           segundoLanceFixoPct: fixo2Texto ? parseFloat(fixo2Texto.replace(',', '.')) : null,
+          lanceMaximoPct: (() => {
+            const match = (document.body?.innerText || '').match(/lance\s+m[aá]ximo\s*:\s*([\d.,]+)\s*%/i)
+            return match ? parseFloat(match[1].replace('.', '').replace(',', '.')) : null
+          })(),
           assembleia: assTexto,
           valorBem: bemTexto,
         }
@@ -641,21 +649,24 @@ export async function executarRoboLances({
 
       // Regra de Lance Embutido:
       // O limite de embutido comum é 25%. Usamos a regra do grupo ou o fixo se menor.
-      const embutidoMaximoPct = Number(item.grupo_embutido_pct || 25.0)
+      const embutidoMaximoPct = normalizarPercentualEmbutido(item.grupo_embutido_pct || 25.0)
       const embutidoLivrePct = estrategiaCota?.lance_livre_embutido_percentual == null
         ? embutidoMaximoPct
-        : Math.min(Number(estrategiaCota.lance_livre_embutido_percentual), embutidoMaximoPct)
+        : Math.min(normalizarPercentualEmbutido(estrategiaCota.lance_livre_embutido_percentual), embutidoMaximoPct)
       const embutidoFixoPct = estrategiaCota?.lance_fixo_embutido_percentual == null
         ? Math.min(Number(dadosTelaLance.lanceFixoPct || 0), embutidoMaximoPct)
-        : Math.min(Number(estrategiaCota.lance_fixo_embutido_percentual), embutidoMaximoPct)
+        : Math.min(normalizarPercentualEmbutido(estrategiaCota.lance_fixo_embutido_percentual), embutidoMaximoPct)
       const embutidoSegundoFixoPct = estrategiaCota?.segundo_lance_fixo_embutido_percentual == null
         ? Math.min(Number(dadosTelaLance.segundoLanceFixoPct || 0), embutidoMaximoPct)
-        : Math.min(Number(estrategiaCota.segundo_lance_fixo_embutido_percentual), embutidoMaximoPct)
+        : Math.min(normalizarPercentualEmbutido(estrategiaCota.segundo_lance_fixo_embutido_percentual), embutidoMaximoPct)
 
       // Regra do Usuário:
       // "lance fixo sempre 1,1234 + que o lance embutido para todos clientes. Exemplo desse grupo 1273 cota 209: embutido maximo de 25% ai o livre 26,1234"
       const livrePctConfigurado = estrategiaCota?.lance_livre_percentual == null ? null : Number(estrategiaCota.lance_livre_percentual)
-      const livrePctCalculado = livrePctConfigurado ?? calcularRegraLanceLivre(embutidoLivrePct).livrePct
+      const livrePctSolicitado = livrePctConfigurado ?? calcularRegraLanceLivre(embutidoLivrePct).livrePct
+      const livrePctCalculado = dadosTelaLance.lanceMaximoPct
+        ? Math.min(livrePctSolicitado, dadosTelaLance.lanceMaximoPct)
+        : livrePctSolicitado
       const strLivrePct = livrePctCalculado.toFixed(4).replace('.', ',')
       const strEmbutidoPct = embutidoLivrePct.toFixed(4).replace('.', ',')
 
@@ -669,9 +680,13 @@ export async function executarRoboLances({
 
       // Listener contínuo de dialogs do navegador (lida com confirmações intermediárias e alertas de protocolo)
       let ultimoProtocoloCapturado = null
+      let erroLancePortal = null
       const dialogHandler = async (dialog) => {
         const msg = dialog.message() || ''
         log(`Dialog recebido do Newcon: "${msg}"`)
+        if (/maior que o máximo permitido|máximo permitido|não permitido|nao permitido/i.test(msg)) {
+          erroLancePortal = msg
+        }
         const prot = extrairProtocoloAlert(msg)
         if (prot) {
           ultimoProtocoloCapturado = prot
@@ -829,7 +844,7 @@ export async function executarRoboLances({
               log(`Fazendo upload do comprovante para o Storage (lances-comprovantes): ${storagePath}...`)
               const { error: upErr } = await admin.storage
                 .from('lances-comprovantes')
-                .upload(storagePath, arquivoBuffer, { contentType, upsert: false })
+                .upload(storagePath, arquivoBuffer, { contentType, upsert: true })
 
               if (!upErr) {
                 const { data: signData } = await admin.storage
@@ -839,15 +854,19 @@ export async function executarRoboLances({
                 infoComprovante = {
                   storagePath,
                   url: signData?.signedUrl || null,
-                  nome: `Comprovante ${tipoLance} - Grupo ${item.numero_grupo} / Cota ${item.numero_cota}.png`,
+                  nome: `Comprovante ${tipoLance} - Grupo ${item.numero_grupo} / Cota ${item.numero_cota}.${extensao}`,
                 }
                 log(`Comprovante de ${tipoLance} salvo com sucesso no Storage!`)
               } else {
-                log(`Aviso ao subir comprovante para Storage: ${upErr.message}`)
+                throw new Error(`Falha ao subir comprovante de ${tipoLance} para o Storage: ${upErr.message}`)
               }
             } catch (errUpload) {
-              log(`Erro no upload do comprovante: ${errUpload.message}`)
+              throw new Error(`Erro no upload do comprovante de ${tipoLance}: ${errUpload.message}`)
             }
+          }
+
+          if (!infoComprovante?.storagePath || !infoComprovante?.url) {
+            throw new Error(`Comprovante de ${tipoLance} não foi salvo no Storage; o lance não será registrado como concluído.`)
           }
 
           if (targetPage !== page) {
@@ -868,7 +887,7 @@ export async function executarRoboLances({
             }
           }
         } else {
-          log(`Não foi aberta tela de relatório para ${tipoLance}. Prosseguindo na tela atual.`)
+          throw new Error(`A tela de comprovante do Lance ${tipoLance} não foi aberta; o lance não será registrado como concluído.`)
         }
         return infoComprovante
       }
@@ -933,6 +952,8 @@ export async function executarRoboLances({
       await btnConfirmar.scrollIntoViewIfNeeded().catch(() => {})
       await btnConfirmar.click({ force: true })
       await page.waitForTimeout(4000)
+
+      if (erroLancePortal) throw new Error(`Newcon rejeitou o Lance Livre: ${erroLancePortal}`)
 
       protocoloLivre = ultimoProtocoloCapturado
       log(`Protocolo do Lance Livre capturado: ${protocoloLivre || 'Confirmado via Web'}`)
@@ -1030,6 +1051,8 @@ export async function executarRoboLances({
         await btnConfirmarFixo.click({ force: true })
         await page.waitForTimeout(4000)
 
+        if (erroLancePortal) throw new Error(`Newcon rejeitou o Lance Fixo: ${erroLancePortal}`)
+
         protocoloFixo = ultimoProtocoloCapturado
         log(`Protocolo do Lance Fixo capturado: ${protocoloFixo || 'Confirmado via Web'}`)
 
@@ -1102,6 +1125,8 @@ export async function executarRoboLances({
           await btnConfirmar2Fixo.scrollIntoViewIfNeeded().catch(() => {})
           await btnConfirmar2Fixo.click({ force: true })
           await page.waitForTimeout(4000)
+
+          if (erroLancePortal) throw new Error(`Newcon rejeitou o 2º Lance Fixo: ${erroLancePortal}`)
 
           protocoloSegundoFixo = ultimoProtocoloCapturado
           log(`Protocolo do 2º Lance Fixo capturado: ${protocoloSegundoFixo || 'Confirmado via Web'}`)
