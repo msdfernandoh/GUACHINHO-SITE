@@ -422,6 +422,34 @@ export async function executarRoboLances({
   await page.waitForLoadState('domcontentloaded').catch(() => {})
   await page.waitForTimeout(3000)
 
+  // O menu do Newcon faz postback em alguns acessos e navegação completa em
+  // outros. Esperar somente pela URL deixa o robô parado até o timeout mesmo
+  // quando o formulário de Oferta de Lance já foi carregado no documento.
+  const aguardarTelaOfertaLance = async () => {
+    const urlOferta = (url) => url.pathname.includes('frmConCpCadCredenciamentoLance') || url.href.includes('CredenciamentoLance')
+    const campoOferta = page.locator(
+      '#ctl00_Conteudo_edtOferta, #ctl00_Conteudo_rgLance_0, #ctl00_Conteudo_btnConfirma, input[value="Confirmar"]',
+    ).first()
+
+    if (!urlOferta(new URL(page.url())) || !(await campoOferta.isVisible().catch(() => false))) {
+      const resultado = await Promise.race([
+        page.waitForURL(urlOferta, { timeout: 25_000 }).then(() => 'url').catch(() => null),
+        campoOferta.waitFor({ state: 'visible', timeout: 25_000 }).then(() => 'formulario').catch(() => null),
+      ])
+
+      if (!resultado && !(await campoOferta.isVisible().catch(() => false))) {
+        log('A tela não respondeu ao clique do menu. Abrindo diretamente a rota de Oferta de Lance...')
+        await page.goto('https://nwcweb.randonconsorcios.com.br/CONCP/frmConCpCadCredenciamentoLance.aspx', {
+          waitUntil: 'domcontentloaded',
+          timeout: 30_000,
+        })
+      }
+    }
+
+    await campoOferta.waitFor({ state: 'visible', timeout: 15_000 })
+    await page.waitForTimeout(1500)
+  }
+
   // 3. Itera sobre cada cota
   for (let i = 0; i < listaCotas.length; i++) {
     const item = listaCotas[i]
@@ -479,9 +507,7 @@ export async function executarRoboLances({
       await linkOfertaLance.waitFor({ state: 'visible', timeout: 15_000 })
       await linkOfertaLance.click()
 
-      await page.waitForURL(url => url.pathname.includes('frmConCpCadCredenciamentoLance') || url.href.includes('CredenciamentoLance'), { timeout: 25_000 })
-      await page.waitForLoadState('domcontentloaded').catch(() => {})
-      await page.waitForTimeout(3000)
+      await aguardarTelaOfertaLance()
       log(`Tela de Oferta de Lance carregada com sucesso: ${page.url()}`)
       await page.screenshot({ path: path.join(screenshotsDir, `lance-01-tela-${item.numero_grupo}-${item.numero_cota}-${Date.now()}.png`) }).catch(() => {})
 
@@ -850,9 +876,7 @@ export async function executarRoboLances({
           const linkOfertaLance = page.locator('a:has-text("Oferta de Lance"), a[href*="frmConCpCadCredenciamentoLance"]').filter({ hasNotText: 'Lote' }).first()
           if (await linkOfertaLance.isVisible({ timeout: 8000 }).catch(() => false)) {
             await linkOfertaLance.click()
-            await page.waitForURL(url => url.pathname.includes('frmConCpCadCredenciamentoLance') || url.href.includes('CredenciamentoLance'), { timeout: 20_000 }).catch(() => {})
-            await page.waitForLoadState('domcontentloaded').catch(() => {})
-            await page.waitForTimeout(2000)
+            await aguardarTelaOfertaLance()
           } else {
             await page.goto('https://nwcweb.randonconsorcios.com.br/CONCP/frmConCpCadCredenciamentoLance.aspx', { waitUntil: 'domcontentloaded' }).catch(() => {})
             await page.waitForTimeout(2000)
@@ -945,9 +969,7 @@ export async function executarRoboLances({
           const linkOfertaLance = page.locator('a:has-text("Oferta de Lance"), a[href*="frmConCpCadCredenciamentoLance"]').filter({ hasNotText: 'Lote' }).first()
           if (await linkOfertaLance.isVisible({ timeout: 8000 }).catch(() => false)) {
             await linkOfertaLance.click()
-            await page.waitForURL(url => url.pathname.includes('frmConCpCadCredenciamentoLance') || url.href.includes('CredenciamentoLance'), { timeout: 20_000 }).catch(() => {})
-            await page.waitForLoadState('domcontentloaded').catch(() => {})
-            await page.waitForTimeout(2000)
+            await aguardarTelaOfertaLance()
           } else {
             await page.goto('https://nwcweb.randonconsorcios.com.br/CONCP/frmConCpCadCredenciamentoLance.aspx', { waitUntil: 'domcontentloaded' }).catch(() => {})
             await page.waitForTimeout(2000)
