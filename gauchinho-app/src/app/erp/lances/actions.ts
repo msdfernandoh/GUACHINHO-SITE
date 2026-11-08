@@ -10,6 +10,7 @@ export type CotaLanceOperacionalDTO = {
   numeroGrupo: string;
   numeroCota: string | null;
   valorCredito: number;
+  saldoDevedor: number;
   prazo: number;
   parcela: number;
   statusCota: string;
@@ -34,6 +35,7 @@ export type CotaLanceOperacionalDTO = {
     lanceEmbutidoPercentual: number | null;
     lanceFidelidadePermitido: boolean;
     mediaLanceLivre: number | null;
+    lanceLivreMaximoPercentual: number | null;
     proximaAssembleiaData: string | null;
     tipoNome: string;
     modalidades: Array<{
@@ -131,6 +133,25 @@ function valorCreditoPorCota(cota: { valor_credito?: unknown; snapshot_cota?: un
   }
 
   return valorRegistrado;
+}
+
+function maxLanceLivreUltimaAssembleia(resultados: Array<{ assembleia_numero?: number | null; cotas?: unknown }> | null | undefined): number | null {
+  const linhas = (resultados ?? []).filter((resultado) => Array.isArray(resultado.cotas));
+  if (!linhas.length) return null;
+  const maiorAssembleia = Math.max(...linhas.map((resultado) => Number(resultado.assembleia_numero || 0)));
+  const valores = linhas
+    .filter((resultado) => Number(resultado.assembleia_numero || 0) === maiorAssembleia)
+    .flatMap((resultado) => (resultado.cotas as unknown[]))
+    .filter((cota): cota is Record<string, unknown> => Boolean(cota && typeof cota === "object"))
+    .filter((cota) => String(cota.modalidade ?? "").toUpperCase().includes("LIVRE"))
+    .filter((cota) => !cota.situacao_cota || ["ATIVA", "CONFIRMADA"].includes(String(cota.situacao_cota).toUpperCase()))
+    .map((cota) => Number(cota.percentual_lance))
+    .filter((valor) => Number.isFinite(valor) && valor > 0);
+  if (!valores.length) return null;
+  const primeiro = valores[0];
+  // Só é um máximo fixo quando a última assembleia inteira praticou o mesmo
+  // percentual. Havendo dispersão, não inventamos um teto para a próxima oferta.
+  return valores.every((valor) => Math.abs(valor - primeiro) <= 0.0001) ? primeiro : null;
 }
 
 function inferirModalidadeLance(nome: unknown): "LIVRE" | "FIXO" | "SEGUNDO_FIXO" | "FIDELIDADE" {
@@ -258,6 +279,10 @@ export async function fetchCotasComLancesOperacional(filters?: {
     const vendaIds = Array.from(new Set(cotasData.map((c) => c.venda_id).filter(Boolean)));
     const adminIds = Array.from(new Set(cotasData.map((c) => c.administradora_id).filter(Boolean)));
     const grupoIds = Array.from(new Set(cotasData.map((c) => c.grupo_id).filter(Boolean)));
+    const opcaoCotaIds = Array.from(new Set(cotasData.map((c) => {
+      const snapshot = c.snapshot_cota && typeof c.snapshot_cota === "object" ? (c.snapshot_cota as Record<string, unknown>) : null;
+      return typeof snapshot?.opcao_cota_id === "string" ? snapshot.opcao_cota_id : null;
+    }).filter(Boolean)));
     const participanteIds = Array.from(new Set(cotasData.map((c) => c.participante_comercial_id).filter(Boolean)));
 
     // 3. Consultas paralelas auxiliares
@@ -265,7 +290,9 @@ export async function fetchCotasComLancesOperacional(filters?: {
       vendasRes,
       adminsRes,
       gruposRes,
+      cotasOpcoesRes,
       modalidadesRes,
+      resultadosRes,
       tiposRes,
       partRes,
       estrategiasRes,
@@ -281,8 +308,14 @@ export async function fetchCotasComLancesOperacional(filters?: {
       grupoIds.length > 0
         ? supabase.from("grupos_consorcio").select("id, codigo_grupo, permite_lance_embutido, percentual_lance_embutido, tipo_administradora_id").in("id", grupoIds)
         : Promise.resolve({ data: [] }),
+      opcaoCotaIds.length > 0
+        ? supabase.from("grupos_cotas").select("id, saldo_devedor").in("id", opcaoCotaIds)
+        : Promise.resolve({ data: [] }),
       grupoIds.length > 0
         ? supabase.from("grupos_modalidades_lance").select("id, grupo_id, nome, percentual_lance_embutido, ativo, ordem").in("grupo_id", grupoIds).eq("ativo", true).order("ordem", { ascending: true })
+        : Promise.resolve({ data: [] }),
+      grupoIds.length > 0
+        ? supabase.from("grupo_assembleias_resultados").select("grupo_id, assembleia_numero, cotas").in("grupo_id", grupoIds).order("assembleia_numero", { ascending: false })
         : Promise.resolve({ data: [] }),
       supabase.from("administradora_tipos").select("id, nome"),
       participanteIds.length > 0
@@ -303,11 +336,18 @@ export async function fetchCotasComLancesOperacional(filters?: {
     const vendasMap = new Map((vendasRes.data ?? []).map((v) => [v.id, v]));
     const adminsMap = new Map((adminsRes.data ?? []).map((a) => [a.id, a]));
     const gruposMap = new Map((gruposRes.data ?? []).map((g) => [g.id, g]));
+    const opcoesCotasMap = new Map((cotasOpcoesRes.data ?? []).map((opcao) => [opcao.id, opcao]));
     const modalidadesByGrupo = new Map<string, any[]>();
     for (const modalidade of (modalidadesRes.data ?? []) as any[]) {
       const lista = modalidadesByGrupo.get(modalidade.grupo_id) ?? [];
       lista.push(modalidade);
       modalidadesByGrupo.set(modalidade.grupo_id, lista);
+    }
+    const resultadosByGrupo = new Map<string, any[]>();
+    for (const resultado of (resultadosRes.data ?? []) as any[]) {
+      const lista = resultadosByGrupo.get(resultado.grupo_id) ?? [];
+      lista.push(resultado);
+      resultadosByGrupo.set(resultado.grupo_id, lista);
     }
     const tiposMap = new Map((tiposRes.data ?? []).map((t) => [t.id, t]));
     const partMap = new Map((partRes.data ?? []).map((p) => [p.id, p]));
@@ -339,6 +379,8 @@ export async function fetchCotasComLancesOperacional(filters?: {
       const consultorId = c.participante_comercial_id || venda?.participante_comercial_id;
       const consultor = consultorId ? partMap.get(consultorId) : null;
       const est = estMap.get(c.id);
+      const snapshot = c.snapshot_cota && typeof c.snapshot_cota === "object" ? (c.snapshot_cota as Record<string, unknown>) : null;
+      const opcaoCota = typeof snapshot?.opcao_cota_id === "string" ? opcoesCotasMap.get(snapshot.opcao_cota_id) : null;
       // A estratégia pode estar habilitada para o robô antes de qualquer oferta.
       // Datas e validade só representam um lance efetivamente enviado quando
       // existe protocolo, horário de oferta ou confirmação auditável.
@@ -396,6 +438,7 @@ export async function fetchCotasComLancesOperacional(filters?: {
         numeroGrupo: c.numero_grupo || "—",
         numeroCota: c.numero_cota || null,
         valorCredito: valorCreditoPorCota(c),
+        saldoDevedor: Number(opcaoCota?.saldo_devedor || valorCreditoPorCota(c)),
         prazo: Number(c.prazo || 0),
         parcela: Number(c.parcela || 0),
         statusCota: c.status || "ativa",
@@ -420,6 +463,7 @@ export async function fetchCotasComLancesOperacional(filters?: {
           lanceEmbutidoPercentual: grupo?.percentual_lance_embutido ? Number(grupo.percentual_lance_embutido) : null,
           lanceFidelidadePermitido: modalidades.some((m) => m.tipo === "FIDELIDADE"),
           mediaLanceLivre: null,
+          lanceLivreMaximoPercentual: maxLanceLivreUltimaAssembleia(resultadosByGrupo.get(c.grupo_id)),
           proximaAssembleiaData: null,
           tipoNome: tipo?.nome || "Consórcio",
           modalidades,
@@ -634,7 +678,7 @@ export async function salvarEstrategiaLanceCompletaAction(formData: FormData) {
   // Buscar cota para validação de crédito e regras de grupo
   const { data: cota, error: cotaErr } = await adminSupabase
     .from("cotas_definitivas")
-    .select("valor_credito, snapshot_cota, grupo_id, grupo:grupos_consorcio(modalidades:grupos_modalidades_lance(nome,ativo))")
+    .select("valor_credito, snapshot_cota, grupo_id, grupo:grupos_consorcio(percentual_lance_embutido, modalidades:grupos_modalidades_lance(nome,ativo,percentual_lance_embutido))")
     .eq("id", cotaId)
     .eq("empresa_id", empresaAtiva.id)
     .single();
@@ -648,9 +692,42 @@ export async function salvarEstrategiaLanceCompletaAction(formData: FormData) {
   if (lanceFidelidadeAtivo && !modalidadeHabilitada(modalidadesDoGrupo, "FIDELIDADE")) throw new Error("Este grupo não possui lance fidelidade habilitado.");
   if (lanceLivreAtivo && !modalidadeHabilitada(modalidadesDoGrupo, "LIVRE")) throw new Error("Este grupo não possui lance livre habilitado.");
 
+  const { data: resultadosGrupo } = cota.grupo_id
+    ? await adminSupabase.from("grupo_assembleias_resultados").select("assembleia_numero, cotas").eq("grupo_id", cota.grupo_id).order("assembleia_numero", { ascending: false })
+    : { data: [] };
+  const maxLanceLivre = maxLanceLivreUltimaAssembleia(resultadosGrupo as Array<{ assembleia_numero?: number | null; cotas?: unknown }>);
+  if (lanceLivrePercentual && maxLanceLivre && lanceLivrePercentual > maxLanceLivre + 0.0001) {
+    throw new Error(`O lance livre informado (${lanceLivrePercentual}%) ultrapassa o máximo registrado na última assembleia (${maxLanceLivre.toFixed(4)}%).`);
+  }
+
+  const maxEmbutidoLivre = Math.max(
+    Number(grupo?.percentual_lance_embutido || 0),
+    ...modalidadesDoGrupo
+      .filter((modalidade: any) => String(modalidade?.nome ?? "").toUpperCase().includes("LIVRE"))
+      .map((modalidade: any) => Number(modalidade?.percentual_lance_embutido || 0)),
+  );
+  // Quando a última assembleia caracteriza um teto fixo de Lance Livre, a
+  // operação deve levar sempre o teto e o máximo de embutido permitido.
+  const lanceLivrePercentualEfetivo = lanceLivreAtivo && maxLanceLivre ? maxLanceLivre : lanceLivrePercentual;
+  const lanceLivreEmbutidoPercentualEfetivo = lanceLivreAtivo && maxLanceLivre && maxEmbutidoLivre > 0
+    ? maxEmbutidoLivre
+    : lanceLivreEmbutidoPercentual;
+
   const valorCredito = valorCreditoPorCota(cota);
+  const snapshotCota = cota.snapshot_cota && typeof cota.snapshot_cota === "object" ? (cota.snapshot_cota as Record<string, unknown>) : null;
+  const opcaoCotaId = typeof snapshotCota?.opcao_cota_id === "string" ? snapshotCota.opcao_cota_id : null;
+  const { data: opcaoCota } = opcaoCotaId
+    ? await adminSupabase.from("grupos_cotas").select("saldo_devedor").eq("id", opcaoCotaId).maybeSingle()
+    : { data: null };
+  const saldoDevedor = Number(opcaoCota?.saldo_devedor || valorCredito);
+  const lanceLivrePercentualCalculado = lanceLivrePercentualEfetivo ?? (
+    lanceLivreValor && saldoDevedor > 0 ? Number(((lanceLivreValor / saldoDevedor) * 100).toFixed(4)) : null
+  );
+  const lanceLivreValorEfetivo = lanceLivrePercentualCalculado && saldoDevedor > 0
+    ? Number(((saldoDevedor * lanceLivrePercentualCalculado) / 100).toFixed(2))
+    : lanceLivreValor;
   const lanceEmbutidoValorCalculado =
-    lanceEmbutidoPercentual && valorCredito > 0 ? Number(((valorCredito * lanceEmbutidoPercentual) / 100).toFixed(2)) : null;
+    lanceEmbutidoPercentual && saldoDevedor > 0 ? Number(((saldoDevedor * lanceEmbutidoPercentual) / 100).toFixed(2)) : null;
 
   const dadosUpsert: Record<string, unknown> = {
     empresa_id: empresaAtiva.id,
@@ -668,12 +745,12 @@ export async function salvarEstrategiaLanceCompletaAction(formData: FormData) {
     lance_fidelidade_valor: lanceFidelidadeValor,
     lance_fidelidade_observacao: lanceFidelidadeObservacao,
     lance_livre_ativo: lanceLivreAtivo,
-    lance_livre_percentual: lanceLivrePercentual,
-    lance_livre_valor: lanceLivreValor,
+    lance_livre_percentual: lanceLivrePercentualCalculado,
+    lance_livre_valor: lanceLivreValorEfetivo,
     recurso_proprio_valor: recursoProprioValor,
     lance_embutido_percentual: lanceEmbutidoPercentual,
     lance_embutido_valor: lanceEmbutidoValorCalculado,
-    lance_livre_embutido_percentual: lanceLivreEmbutidoPercentual,
+    lance_livre_embutido_percentual: lanceLivreEmbutidoPercentualEfetivo,
     lance_fixo_embutido_percentual: lanceFixoEmbutidoPercentual,
     segundo_lance_fixo_embutido_percentual: segundoLanceFixoEmbutidoPercentual,
     parcela_reduzida_ativa: parcelaReduzidaAtiva,

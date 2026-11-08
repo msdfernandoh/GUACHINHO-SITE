@@ -79,8 +79,12 @@ export function ErpLancesView({ initialStats, initialRows }: ErpLancesViewProps)
     setFormSegundoFixo(cota.estrategia?.segundoLanceFixoAtivo ?? false);
     setFormFidelidade(cota.estrategia?.lanceFidelidadeAtivo ?? false);
     setFormLivre(cota.estrategia?.lanceLivreAtivo ?? false);
-    setFormLivrePercentual(cota.estrategia?.lanceLivrePercentual?.toString() ?? "");
-    setFormLivreValor(cota.estrategia?.lanceLivreValor?.toString() ?? "");
+    const percentualLivre = cota.estrategia?.lanceLivrePercentual ?? cota.grupo.lanceLivreMaximoPercentual;
+    setFormLivrePercentual(percentualLivre?.toString() ?? "");
+    setFormLivreValor(
+      cota.estrategia?.lanceLivreValor?.toString() ??
+        (percentualLivre && cota.saldoDevedor > 0 ? ((cota.saldoDevedor * percentualLivre) / 100).toFixed(2) : ""),
+    );
   };
 
   // Cálculo auxiliar de Lance Livre (Percentual <-> Valor)
@@ -849,16 +853,37 @@ export function ErpLancesView({ initialStats, initialRows }: ErpLancesViewProps)
                     <div className="space-y-1.5 pl-6">
                       <div className="grid grid-cols-2 gap-2">
                         <div>
-                            <span className="text-[10px] text-slate-500 font-bold">Percentual total do lance livre (%)</span>
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="text-[10px] text-slate-500 font-bold">Percentual total do lance livre (%)</span>
+                              {selectedCota.grupo.lanceLivreMaximoPercentual && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const maximo = selectedCota.grupo.lanceLivreMaximoPercentual!;
+                                    setFormLivrePercentual(maximo.toFixed(4));
+                                    setFormLivreValor(((selectedCota.saldoDevedor * maximo) / 100).toFixed(2));
+                                  }}
+                                  className="text-[10px] font-black text-blue-700 hover:underline"
+                                >
+                                  Usar máximo fixo ({selectedCota.grupo.lanceLivreMaximoPercentual.toFixed(4)}%)
+                                </button>
+                              )}
+                            </div>
                           <input
                             name="lance_livre_percentual"
                             value={formLivrePercentual}
                             onChange={(e) =>
-                              handleLivrePercentualChange(e.target.value, selectedCota.valorCredito)
+                              handleLivrePercentualChange(e.target.value, selectedCota.saldoDevedor)
                             }
-                            placeholder="Ex.: 26"
+                            placeholder={selectedCota.grupo.lanceLivreMaximoPercentual ? `Máximo: ${selectedCota.grupo.lanceLivreMaximoPercentual.toFixed(4)}%` : "Ex.: 26"}
+                            max={selectedCota.grupo.lanceLivreMaximoPercentual ?? undefined}
                             className="w-full rounded-lg border border-slate-300 p-1.5 font-mono text-xs dark:border-slate-700 dark:bg-slate-800"
                           />
+                          {selectedCota.grupo.lanceLivreMaximoPercentual && (
+                            <span className="text-[10px] text-slate-500">
+                              Máximo fixo da última assembleia: {selectedCota.grupo.lanceLivreMaximoPercentual.toFixed(4)}%
+                            </span>
+                          )}
                         </div>
                         <div>
                           <span className="text-[10px] text-slate-500 font-bold">Valor total do lance livre (R$)</span>
@@ -866,21 +891,29 @@ export function ErpLancesView({ initialStats, initialRows }: ErpLancesViewProps)
                             name="lance_livre_valor"
                             value={formLivreValor}
                             onChange={(e) =>
-                              handleLivreValorChange(e.target.value, selectedCota.valorCredito)
+                              handleLivreValorChange(e.target.value, selectedCota.saldoDevedor)
                             }
                             placeholder="Opcional se informar o percentual"
                             className="w-full rounded-lg border border-slate-300 p-1.5 font-mono text-xs dark:border-slate-700 dark:bg-slate-800"
                           />
+                          <span className="text-[10px] text-slate-500">
+                            Base do cálculo: saldo devedor {selectedCota.saldoDevedor.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                          </span>
                         </div>
                         <div className="col-span-2">
                           <span className="text-[10px] text-slate-500 font-bold">Lance embutido usado nesta cota (%)</span>
                           <input
                             name="lance_livre_embutido_percentual"
-                            defaultValue={selectedCota.estrategia?.lanceLivreEmbutidoPercentual ?? ""}
+                            defaultValue={selectedCota.estrategia?.lanceLivreEmbutidoPercentual ?? (selectedCota.grupo.lanceLivreMaximoPercentual ? (selectedCota.grupo.modalidades.find((m) => m.tipo === "LIVRE")?.embutidoMaximo ?? selectedCota.grupo.lanceEmbutidoPercentual ?? "") : "")}
                             placeholder={`Máximo permitido: ${selectedCota.grupo.modalidades.find((m) => m.tipo === "LIVRE")?.embutidoMaximo ?? selectedCota.grupo.lanceEmbutidoPercentual ?? 0}%`}
                             max={selectedCota.grupo.modalidades.find((m) => m.tipo === "LIVRE")?.embutidoMaximo ?? selectedCota.grupo.lanceEmbutidoPercentual ?? undefined}
                             className="w-full rounded-lg border border-slate-300 p-1.5 font-mono text-xs dark:border-slate-700 dark:bg-slate-800"
                           />
+                          {selectedCota.grupo.lanceLivreMaximoPercentual && (
+                            <span className="text-[10px] text-slate-500">
+                              Para este teto fixo, o robô usará também o máximo de embutido permitido.
+                            </span>
+                          )}
                         </div>
                       </div>
                     </div>

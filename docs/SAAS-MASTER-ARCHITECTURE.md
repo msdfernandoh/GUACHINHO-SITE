@@ -4630,3 +4630,13 @@ validade para uma estratégia ainda não processada. A limpeza de dados de
 07/11/2026 removeu somente datas sem essas evidências, mantendo as estratégias
 ativas e preservando protocolos/comprovantes já registrados.
 
+# Lance livre máximo por grupo (08/11/2026)
+
+Na tela ERP de Lances e Estratégias, o máximo fixo sugerido do Lance Livre é
+calculado por grupo somente quando todos os percentuais livres válidos da última
+assembleia preservada em `grupo_assembleias_resultados` são iguais. Para os
+grupos 1193 IMÓVEL e 1253, a leitura atual resulta em 23,3352% e 47,7816%,
+respectivamente. Esse valor é distinto do limite de lance embutido
+(`percentual_lance_embutido`). Havendo percentuais diferentes, a tela não
+preenche um máximo fixo nem impõe um teto artificial.
+
