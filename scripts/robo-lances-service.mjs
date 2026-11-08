@@ -456,19 +456,12 @@ export async function executarRoboLances({
 
     if (!urlOferta(new URL(page.url())) || !(await campoOferta.isVisible().catch(() => false))) {
       const resultado = await Promise.race([
-        page.waitForURL(urlOferta, { timeout: 25_000 }).then(() => 'url').catch(() => null),
-        campoOferta.waitFor({ state: 'visible', timeout: 25_000 }).then(() => 'formulario').catch(() => null),
+        page.waitForURL(urlOferta, { timeout: 45_000 }).then(() => 'url').catch(() => null),
+        campoOferta.waitFor({ state: 'visible', timeout: 45_000 }).then(() => 'formulario').catch(() => null),
       ])
 
       if (!resultado && !(await campoOferta.isVisible().catch(() => false))) {
-        log('A tela não respondeu ao clique do menu. Abrindo diretamente a rota de Oferta de Lance...')
-        await page.goto('https://nwcweb.randonconsorcios.com.br/CONCP/frmConCpCadCredenciamentoLance.aspx', {
-          waitUntil: 'commit',
-          timeout: 30_000,
-        })
-        await page.waitForLoadState('domcontentloaded', { timeout: 10_000 }).catch(() => {
-          log('Aviso: a tela de Oferta de Lance não sinalizou domcontentloaded; aguardando os campos do formulário.')
-        })
+        throw new Error(`O postback do menu Oferta de Lance não carregou o formulário (URL atual: ${page.url()}).`)
       }
     }
 
@@ -563,9 +556,17 @@ export async function executarRoboLances({
 
       // 4. Clica em "Oferta de Lance" no menu lateral Operações
       log('Localizando e clicando em "Oferta de Lance" no menu Operações...')
-      const linkOfertaLance = page.locator('a:has-text("Oferta de Lance"), a[href*="frmConCpCadCredenciamentoLance"]').filter({ hasNotText: 'Lote' }).first()
-      await linkOfertaLance.waitFor({ state: 'visible', timeout: 15_000 })
-      await linkOfertaLance.click()
+      const linksOferta = page.locator('a:has-text("Oferta de Lance"), a[href*="frmConCpCadCredenciamentoLance"]').filter({ hasNotText: 'Lote' })
+      let linkOfertaLance = null
+      for (const candidato of await linksOferta.all()) {
+        if (await candidato.isVisible().catch(() => false)) {
+          linkOfertaLance = candidato
+          break
+        }
+      }
+      if (!linkOfertaLance) throw new Error('Link visível de Oferta de Lance não encontrado no menu Operações.')
+      await linkOfertaLance.scrollIntoViewIfNeeded().catch(() => {})
+      await linkOfertaLance.click({ noWaitAfter: true })
 
       await aguardarTelaOfertaLance()
       log(`Tela de Oferta de Lance carregada com sucesso: ${page.url()}`)
