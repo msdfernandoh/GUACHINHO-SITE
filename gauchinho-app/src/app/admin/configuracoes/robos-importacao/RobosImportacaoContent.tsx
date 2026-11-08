@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import {
   Bot,
   Plus,
@@ -120,6 +120,7 @@ export function RobosImportacaoContent({
   const [roboPodeForcar, setRoboPodeForcar] = useState<RoboConfigOutput | null>(null)
   const [roboEmExecucao, setRoboEmExecucao] = useState<RoboConfigOutput | null>(null)
   const [falhasRobo, setFalhasRobo] = useState<any[]>([])
+  const execucaoReabertaRef = useRef<string | null>(null)
 
   // Modal de Mapeamento de Tarefas
   const [mapModalOpen, setMapModalOpen] = useState(false)
@@ -140,8 +141,15 @@ export function RobosImportacaoContent({
       const res = await fetch('/api/automacoes/robos', { cache: 'no-store' })
       const data = await res.json()
       if (res.ok && data.ok) {
-        setRobos(data.robos || [])
+        const robosAtualizados = data.robos || []
+        setRobos(robosAtualizados)
         setResumoDia(data.resumo_dia || null)
+        const roboEmAndamento = robosAtualizados.find((robo: RoboConfigOutput) => ['PENDENTE', 'PROCESSANDO'].includes(robo.status_hoje || ''))
+        const execucaoEmAndamento = roboEmAndamento?.ultimas_execucoes?.find((item: any) => ['PENDENTE', 'PROCESSANDO'].includes(item.status))
+        if (roboEmAndamento && execucaoEmAndamento && execucaoReabertaRef.current !== execucaoEmAndamento.id) {
+          execucaoReabertaRef.current = execucaoEmAndamento.id
+          void visualizarExecucao(roboEmAndamento, execucaoEmAndamento.id)
+        }
       } else {
         setNotificacao({ tipo: 'erro', texto: data.error || 'Falha ao carregar robôs' })
       }
@@ -325,6 +333,7 @@ export function RobosImportacaoContent({
           setFalhasRobo(resumoExecucao(atualizada, []).falhas)
         },
       }).then((res) => {
+        execucaoReabertaRef.current = null
         setExecutando(false)
         carregarRobos()
       })
@@ -335,6 +344,40 @@ export function RobosImportacaoContent({
         logs: [...(prev?.logs || []), { ts: new Date().toISOString(), msg: `Falha: ${err.message}` }],
       }))
       setExecutando(false)
+    }
+  }
+
+  const visualizarExecucao = async (robo: RoboConfigOutput, execucaoId: string) => {
+    try {
+      const res = await fetch(`/api/automacoes/robos/${robo.id}/executar?execucaoId=${encodeURIComponent(execucaoId)}`)
+      const data = await res.json()
+      const execucao = (data.execucoes || []).find((item: any) => item.id === execucaoId) || data.execucoes?.[0]
+      if (!execucao) return
+
+      setRoboPodeForcar(null)
+      setRoboEmExecucao(robo)
+      setFalhasRobo([])
+      setExecucaoAtual(execucao)
+      setLogModalOpen(true)
+      const emAndamento = ['PENDENTE', 'PROCESSANDO'].includes(execucao.status)
+      setExecutando(emAndamento)
+
+      if (emAndamento) {
+        acompanharExecucaoRobo({
+          roboId: robo.id,
+          execucaoId,
+          onUpdate: (atualizada) => {
+            setExecucaoAtual(atualizada)
+            setFalhasRobo(resumoExecucao(atualizada, []).falhas)
+          },
+        }).then(() => {
+          execucaoReabertaRef.current = null
+          setExecutando(false)
+          carregarRobos()
+        })
+      }
+    } catch {
+      setNotificacao({ tipo: 'erro', texto: 'Não foi possível abrir o acompanhamento desta execução.' })
     }
   }
 
@@ -599,12 +642,16 @@ export function RobosImportacaoContent({
 
               {/* Ações do Robô */}
               <div className="mt-6 flex flex-wrap items-center gap-2 border-t border-zinc-100 pt-4 dark:border-zinc-800">
-                <button
-                  onClick={() => executarRobo(robo)}
+                  <button
+                    onClick={() => {
+                      const execucaoAtiva = robo.ultimas_execucoes?.find((item) => ['PENDENTE', 'PROCESSANDO'].includes(item.status))
+                      if (execucaoAtiva) void visualizarExecucao(robo, execucaoAtiva.id)
+                      else void executarRobo(robo)
+                    }}
                   className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-amber-600 px-3 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-amber-700"
                 >
-                  <Play className="h-3.5 w-3.5" />
-                  Executar Agora
+                    {robo.status_hoje === 'PROCESSANDO' || robo.status_hoje === 'PENDENTE' ? <Eye className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
+                    {robo.status_hoje === 'PROCESSANDO' || robo.status_hoje === 'PENDENTE' ? 'Visualizar execução' : 'Executar Agora'}
                 </button>
 
                 <button
@@ -1081,14 +1128,7 @@ export function RobosImportacaoContent({
                     </div>
 
                     <button
-                      onClick={async () => {
-                        const res = await fetch(`/api/automacoes/robos/${roboHistorico.id}/executar?execucaoId=${item.id}`)
-                        const data = await res.json()
-                        if (data.execucoes?.[0]) {
-                          setExecucaoAtual(data.execucoes[0])
-                          setLogModalOpen(true)
-                        }
-                      }}
+                       onClick={() => void visualizarExecucao(roboHistorico, item.id)}
                       className="rounded-lg border border-zinc-200 px-3 py-1.5 text-xs font-medium hover:bg-zinc-50 dark:border-zinc-800 dark:hover:bg-zinc-800"
                     >
                       Ver Logs

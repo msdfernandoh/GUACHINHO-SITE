@@ -4640,3 +4640,12 @@ respectivamente. Esse valor é distinto do limite de lance embutido
 (`percentual_lance_embutido`). Havendo percentuais diferentes, a tela não
 preenche um máximo fixo nem impõe um teto artificial.
 
+# Acompanhamento persistente dos robôs (08/11/2026)
+
+O terminal de execução da Central de Robôs identifica o tipo e o nome do robô
+executado. Ao reabrir a página, execuções `PENDENTE` ou `PROCESSANDO` são
+reassociadas ao card correspondente e o acompanhamento é reaberto com
+progresso, sucessos, falhas, início, fim e duração. Cards com execução ativa
+exibem `Visualizar execução`, enquanto execuções concluídas continuam
+disponíveis pelo histórico sem iniciar novo processamento.
+
