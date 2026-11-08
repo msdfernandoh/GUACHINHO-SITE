@@ -135,6 +135,13 @@ function valorCreditoPorCota(cota: { valor_credito?: unknown; snapshot_cota?: un
   return valorRegistrado;
 }
 
+function saldoDevedorPorCota(cota: { valor_credito?: unknown; snapshot_cota?: unknown }, saldoOpcao?: unknown): number {
+  const snapshot = cota.snapshot_cota && typeof cota.snapshot_cota === "object"
+    ? (cota.snapshot_cota as Record<string, unknown>)
+    : null;
+  return Number(saldoOpcao || snapshot?.saldo_devedor || valorCreditoPorCota(cota) || snapshot?.valor_base_relatorio || 0);
+}
+
 function maxLanceLivreUltimaAssembleia(resultados: Array<{ assembleia_numero?: number | null; cotas?: unknown }> | null | undefined): number | null {
   const linhas = (resultados ?? []).filter((resultado) => Array.isArray(resultado.cotas));
   if (!linhas.length) return null;
@@ -394,7 +401,7 @@ export async function fetchCotasComLancesOperacional(filters?: {
       const modalidades = classificarModalidades(modalidadesByGrupo.get(c.grupo_id) ?? []).map((m) => ({
         tipo: m.tipo,
         percentual: m.percentual,
-        embutidoMaximo: Number((m as any).percentual_lance_embutido || grupo?.percentual_lance_embutido || 0),
+        embutidoMaximo: Math.round(Number((m as any).percentual_lance_embutido || grupo?.percentual_lance_embutido || 0)),
         nome: String(m.nome || "Modalidade"),
       }));
       const primeiroFixo = modalidades.find((m) => m.tipo === "FIXO");
@@ -438,7 +445,7 @@ export async function fetchCotasComLancesOperacional(filters?: {
         numeroGrupo: c.numero_grupo || "—",
         numeroCota: c.numero_cota || null,
         valorCredito: valorCreditoPorCota(c),
-        saldoDevedor: Number(opcaoCota?.saldo_devedor || valorCreditoPorCota(c)),
+        saldoDevedor: saldoDevedorPorCota(c, opcaoCota?.saldo_devedor),
         prazo: Number(c.prazo || 0),
         parcela: Number(c.parcela || 0),
         statusCota: c.status || "ativa",
@@ -460,7 +467,7 @@ export async function fetchCotasComLancesOperacional(filters?: {
           lanceFixoPercentual: primeiroFixo?.percentual ?? null,
           segundoLanceFixoPercentual: segundoFixo?.percentual ?? null,
           lanceEmbutidoPermitido: Boolean(grupo?.permite_lance_embutido),
-          lanceEmbutidoPercentual: grupo?.percentual_lance_embutido ? Number(grupo.percentual_lance_embutido) : null,
+          lanceEmbutidoPercentual: grupo?.percentual_lance_embutido ? Math.round(Number(grupo.percentual_lance_embutido)) : null,
           lanceFidelidadePermitido: modalidades.some((m) => m.tipo === "FIDELIDADE"),
           mediaLanceLivre: null,
           lanceLivreMaximoPercentual: maxLanceLivreUltimaAssembleia(resultadosByGrupo.get(c.grupo_id)),
@@ -491,7 +498,7 @@ export async function fetchCotasComLancesOperacional(filters?: {
               lanceLivreValor: est.lance_livre_valor ? Number(est.lance_livre_valor) : null,
               lanceLivrePercentual: est.lance_livre_percentual ? Number(est.lance_livre_percentual) : null,
               recursoProprioValor: est.recurso_proprio_valor ? Number(est.recurso_proprio_valor) : null,
-              lanceEmbutidoPercentual: est.lance_embutido_percentual ? Number(est.lance_embutido_percentual) : null,
+              lanceEmbutidoPercentual: est.lance_embutido_percentual ? Math.round(Number(est.lance_embutido_percentual)) : null,
               lanceLivreEmbutidoPercentual: est.lance_livre_embutido_percentual == null ? null : Number(est.lance_livre_embutido_percentual),
               lanceFixoEmbutidoPercentual: est.lance_fixo_embutido_percentual == null ? null : Number(est.lance_fixo_embutido_percentual),
               segundoLanceFixoEmbutidoPercentual: est.segundo_lance_fixo_embutido_percentual == null ? null : Number(est.segundo_lance_fixo_embutido_percentual),
@@ -701,12 +708,12 @@ export async function salvarEstrategiaLanceCompletaAction(formData: FormData) {
     throw new Error(`O lance livre informado (${lanceLivrePercentual}%) ultrapassa o máximo registrado na última assembleia (${maxLanceLivre.toFixed(4)}%).`);
   }
 
-  const maxEmbutidoLivre = Math.max(
+  const maxEmbutidoLivre = Math.round(Math.max(
     Number(grupo?.percentual_lance_embutido || 0),
     ...modalidadesDoGrupo
       .filter((modalidade: any) => String(modalidade?.nome ?? "").toUpperCase().includes("LIVRE"))
       .map((modalidade: any) => Number(modalidade?.percentual_lance_embutido || 0)),
-  );
+  ));
   // Só usa automaticamente o teto quando o operador marca essa opção.
   const lanceLivrePercentualEfetivo = lanceLivreAtivo && lanceLivreUsarMaximo && maxLanceLivre ? maxLanceLivre : lanceLivrePercentual;
   const lanceLivreEmbutidoPercentualEfetivo = lanceLivreAtivo && lanceLivreUsarMaximo && maxLanceLivre && maxEmbutidoLivre > 0
@@ -719,13 +726,16 @@ export async function salvarEstrategiaLanceCompletaAction(formData: FormData) {
   const { data: opcaoCota } = opcaoCotaId
     ? await adminSupabase.from("grupos_cotas").select("saldo_devedor").eq("id", opcaoCotaId).maybeSingle()
     : { data: null };
-  const saldoDevedor = Number(opcaoCota?.saldo_devedor || valorCredito);
+  const saldoDevedor = saldoDevedorPorCota(cota, opcaoCota?.saldo_devedor);
   const lanceLivrePercentualCalculado = lanceLivrePercentualEfetivo ?? (
     lanceLivreValor && saldoDevedor > 0 ? Number(((lanceLivreValor / saldoDevedor) * 100).toFixed(4)) : null
   );
   const lanceLivreValorEfetivo = lanceLivrePercentualCalculado && saldoDevedor > 0
     ? Number(((saldoDevedor * lanceLivrePercentualCalculado) / 100).toFixed(2))
     : lanceLivreValor;
+  const recursoProprioValorEfetivo = lanceLivreAtivo && lanceLivreUsarMaximo && maxLanceLivre && saldoDevedor > 0
+    ? Number((saldoDevedor * Math.max(lanceLivrePercentualCalculado! - lanceLivreEmbutidoPercentualEfetivo!, 0) / 100).toFixed(2))
+    : recursoProprioValor;
   const lanceEmbutidoValorCalculado =
     lanceEmbutidoPercentual && saldoDevedor > 0 ? Number(((saldoDevedor * lanceEmbutidoPercentual) / 100).toFixed(2)) : null;
 
@@ -747,7 +757,7 @@ export async function salvarEstrategiaLanceCompletaAction(formData: FormData) {
     lance_livre_ativo: lanceLivreAtivo,
     lance_livre_percentual: lanceLivrePercentualCalculado,
     lance_livre_valor: lanceLivreValorEfetivo,
-    recurso_proprio_valor: recursoProprioValor,
+    recurso_proprio_valor: recursoProprioValorEfetivo,
     lance_embutido_percentual: lanceEmbutidoPercentual,
     lance_embutido_valor: lanceEmbutidoValorCalculado,
     lance_livre_embutido_percentual: lanceLivreEmbutidoPercentualEfetivo,

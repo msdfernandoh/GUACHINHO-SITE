@@ -117,10 +117,22 @@ export function ErpLancesView({ initialStats, initialRows }: ErpLancesViewProps)
   };
 
   const maxEmbutidoLivre = selectedCota
-    ? Math.max(
+    ? Math.round(Math.max(
         selectedCota.grupo.lanceEmbutidoPercentual ?? 0,
         selectedCota.grupo.modalidades.find((modalidade) => modalidade.tipo === "LIVRE")?.embutidoMaximo ?? 0,
-      )
+      ))
+    : 0;
+  const valorTetoLivre = selectedCota?.grupo.lanceLivreMaximoPercentual && selectedCota.saldoDevedor > 0
+    ? (selectedCota.saldoDevedor * selectedCota.grupo.lanceLivreMaximoPercentual) / 100
+    : 0;
+  const valorEmbutidoMaximo = selectedCota && maxEmbutidoLivre > 0
+    ? (selectedCota.saldoDevedor * maxEmbutidoLivre) / 100
+    : 0;
+  const percentualRecursoProprioTeto = selectedCota?.grupo.lanceLivreMaximoPercentual
+    ? Math.max(selectedCota.grupo.lanceLivreMaximoPercentual - maxEmbutidoLivre, 0)
+    : 0;
+  const valorRecursoProprioTeto = selectedCota && selectedCota.saldoDevedor > 0
+    ? (selectedCota.saldoDevedor * percentualRecursoProprioTeto) / 100
     : 0;
 
   return (
@@ -864,7 +876,13 @@ export function ErpLancesView({ initialStats, initialRows }: ErpLancesViewProps)
                         <div className="rounded-lg border border-amber-200 bg-amber-50 p-2 text-[11px] text-amber-900">
                           <div className="font-black">Teto máximo do Lance Livre da última assembleia</div>
                           <div className="mt-0.5 font-mono">
-                            {selectedCota.grupo.lanceLivreMaximoPercentual.toFixed(4)}% = {((selectedCota.saldoDevedor * selectedCota.grupo.lanceLivreMaximoPercentual) / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                            {selectedCota.grupo.lanceLivreMaximoPercentual.toFixed(4)}% = {valorTetoLivre.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                          </div>
+                          <div className="mt-1 font-mono">
+                            Recurso próprio: {percentualRecursoProprioTeto.toFixed(4)}% = {valorRecursoProprioTeto.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                          </div>
+                          <div className="text-[10px]">
+                            Embutido máximo: {maxEmbutidoLivre}% = {valorEmbutidoMaximo.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
                           </div>
                           <label className="mt-2 flex items-center gap-2 font-bold">
                             <input
@@ -882,7 +900,7 @@ export function ErpLancesView({ initialStats, initialRows }: ErpLancesViewProps)
                               }}
                               className="h-4 w-4 rounded text-blue-600"
                             />
-                            Usar teto máximo e máximo de embutido ({maxEmbutidoLivre.toFixed(2)}%)
+                            Usar teto máximo e máximo de embutido ({maxEmbutidoLivre}%)
                           </label>
                         </div>
                       )}
