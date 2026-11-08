@@ -1,5 +1,14 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
+### Robôs de lances por login e busca direcionada de grupo/cota (08/11/2026)
+O robô de lances da Gauchinho possui configurações independentes para
+`RACON_FERNANDO` e `GAUCHINHO_ERONI`, respeitando o login definido em cada
+cota. A execução direcionada filtra `cotas_alvo_ids` antes de iniciar o
+processamento e segue no Newcon o fluxo Consorciados → Grupo/Cota → Localizar
+→ Oferta de Lance. A navegação não depende exclusivamente de
+`domcontentloaded`, pois o Newcon pode manter requisições abertas. Relatório:
+`docs/relatorios-fases/ROBOS-LANCES-GRUPO-COTA-LOGIN-ERONI-2026-11-08.md`.
+
 ### Auditoria e Atualização das Taxas Promocionais Racon (05/11/2026)
 Auditoria automatizada via Robô Playwright autenticado por SSO Corporativo Microsoft (`CX45617665@rdmz.com.br`) no portal oficial da Racon Consórcios (`e.randonconsorcios.com.br`) varreu os 16 grupos comerciais ativos no Simulador do Ponto de Venda Sinop (939509). Foram identificadas promoções e atualizações de taxas de administração:
 - **Grupo 1563 IMÓVEL:** Taxa de administração reduzida de 23% para **22%** (Lançamento / Promoção Grande Prêmio Racon), com recálculo das 6 cotas ativas (ex.: parcela de R$ 200k caiu de R$ 1.250 para R$ 1.240 integral e R$ 744 reduzida).
