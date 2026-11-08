@@ -501,15 +501,13 @@ export async function executarRoboLances({
       // Nessa tela, os três campos visíveis são Grupo (6 dígitos), Cota (4)
       // e complemento (2); localizar pelo valor evita depender de IDs legados.
       if (!(await inputGrupo.isVisible().catch(() => false))) {
-        const inputsVisiveis = page.locator('input:visible')
-        const totalInputs = await inputsVisiveis.count()
-        for (let inputIndex = 0; inputIndex < totalInputs; inputIndex++) {
-          const valorInput = await inputsVisiveis.nth(inputIndex).inputValue().catch(() => '')
-          if (/^\d{6}$/.test(valorInput)) {
-            inputGrupo = inputsVisiveis.nth(inputIndex)
-            break
-          }
-        }
+        const camposRenderizados = await page.locator('input').evaluateAll((inputs) => inputs.map((el, index) => {
+          const rect = el.getBoundingClientRect()
+          const estilo = window.getComputedStyle(el)
+          return { index, type: el.type, value: (el.value || '').trim(), visivel: rect.width > 0 && rect.height > 0 && estilo.visibility !== 'hidden' && estilo.display !== 'none' }
+        }).filter((campo) => campo.visivel && campo.type !== 'hidden'))
+        const grupoMeta = camposRenderizados.find((campo) => /^\d{6}$/.test(campo.value)) || camposRenderizados[0]
+        if (grupoMeta) inputGrupo = page.locator('input').nth(grupoMeta.index)
       }
       await inputGrupo.waitFor({ state: 'visible', timeout: 10_000 })
       await inputGrupo.click()
@@ -520,15 +518,13 @@ export async function executarRoboLances({
       const cotaFormatada = normalizarNumeroPortal(item.numero_cota, 4)
       let inputCota = page.locator('input[name*="txtST_Cota"], input[id*="txtST_Cota"], input[name*="Cota"]').first()
       if (!(await inputCota.isVisible().catch(() => false))) {
-        const inputsVisiveis = page.locator('input:visible')
-        const totalInputs = await inputsVisiveis.count()
-        for (let inputIndex = 0; inputIndex < totalInputs; inputIndex++) {
-          const valorInput = await inputsVisiveis.nth(inputIndex).inputValue().catch(() => '')
-          if (/^\d{4}$/.test(valorInput)) {
-            inputCota = inputsVisiveis.nth(inputIndex)
-            break
-          }
-        }
+        const camposRenderizados = await page.locator('input').evaluateAll((inputs) => inputs.map((el, index) => {
+          const rect = el.getBoundingClientRect()
+          const estilo = window.getComputedStyle(el)
+          return { index, type: el.type, value: (el.value || '').trim(), visivel: rect.width > 0 && rect.height > 0 && estilo.visibility !== 'hidden' && estilo.display !== 'none' }
+        }).filter((campo) => campo.visivel && campo.type !== 'hidden'))
+        const cotaMeta = camposRenderizados.find((campo) => /^\d{4}$/.test(campo.value)) || camposRenderizados[1]
+        if (cotaMeta) inputCota = page.locator('input').nth(cotaMeta.index)
       }
       await inputCota.waitFor({ state: 'visible', timeout: 8_000 })
       await inputCota.click()
