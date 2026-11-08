@@ -537,14 +537,18 @@ export async function executarRoboLances({
 
       // Clica em [Localizar]
       const btnLocalizar = page.locator('input[value="Localizar"], input[id*="btnLocalizar"], button:has-text("Localizar")').first()
-      await btnLocalizar.click()
-      await page.waitForLoadState('domcontentloaded').catch(() => {})
-      await page.waitForTimeout(3000)
+      await btnLocalizar.click({ noWaitAfter: true })
+      await Promise.race([
+        page.waitForURL((url) => url.pathname.includes('frmConAtCnsAtendimento'), { timeout: 45_000 }).catch(() => null),
+        page.locator('a[href*="frmConAtCnsAtendimento"]').first().waitFor({ state: 'visible', timeout: 45_000 }).catch(() => null),
+      ])
+      await page.waitForLoadState('domcontentloaded', { timeout: 10_000 }).catch(() => {})
+      await page.waitForTimeout(2000)
 
       // Se abriu lista de resultados, clica no primeiro link correspondente
       if (!page.url().includes('frmConAtCnsAtendimento')) {
-        const linkResultado = page.locator('table a:has-text("' + item.numero_cota + '"), table tr td a').first()
-        if (await linkResultado.isVisible({ timeout: 3000 }).catch(() => false)) {
+        const linkResultado = page.locator('a[href*="frmConAtCnsAtendimento"], a:has-text("' + item.numero_cota + '")').first()
+        if (await linkResultado.isVisible({ timeout: 5000 }).catch(() => false)) {
           await linkResultado.click()
           await page.waitForLoadState('domcontentloaded').catch(() => {})
           await page.waitForTimeout(3000)
@@ -552,6 +556,9 @@ export async function executarRoboLances({
           log(`Cota ${item.numero_grupo}/${item.numero_cota} não localizada no Newcon. Pulando...`)
           continue
         }
+      }
+      if (!page.url().includes('frmConAtCnsAtendimento')) {
+        throw new Error(`A localização não abriu a tela de Atendimento da cota (URL atual: ${page.url()}).`)
       }
 
       // 4. Clica em "Oferta de Lance" no menu lateral Operações
