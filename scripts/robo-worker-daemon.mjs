@@ -215,7 +215,12 @@ async function processar(execucao) {
   let expirou = false
   const { data: config } = await admin.from("robo_configuracoes").select("nome, configuracao_tarefas").eq("id", execucao.robo_config_id).single()
   const tipoRotina = config?.configuracao_tarefas?.tipo_rotina || ''
-  const limiteMs = (tipoRotina === "CONTEMPLACAO_ASSEMBLEIAS" || /contempla|médias de lance/i.test(config?.nome || ""))
+  // A rotina persistida é a fonte de verdade. O nome do robô de lances pode
+  // conter “Contemplações e Médias de Lance” por compatibilidade histórica;
+  // usar o nome aqui classificava lances como contemplação e aplicava o limite
+  // errado ao processo.
+  const contemplacaoPorNome = !tipoRotina && /contempla|médias de lance/i.test(config?.nome || "")
+  const limiteMs = (tipoRotina === "CONTEMPLACAO_ASSEMBLEIAS" || contemplacaoPorNome)
     ? 6 * 60 * 60_000
     : tipoRotina === 'FRANQUIA_LANCES_AUTOMATICOS'
       ? 3 * 60 * 60_000

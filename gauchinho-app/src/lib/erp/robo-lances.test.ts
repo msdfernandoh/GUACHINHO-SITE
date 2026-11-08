@@ -29,6 +29,12 @@ describe("Robô de Oferta de Lances - Regras de Lance e Extração de Protocolos
       expect(calcCustom.livrePct).toBe(27.0);
       expect(calcCustom.strLivrePct).toBe("27,0000");
     });
+
+    it("deve preservar 40% de embutido no lance livre quando o grupo permite 40%", () => {
+      const calc40 = calcularRegraLanceLivre(40);
+      expect(calc40.livrePct).toBe(41.1234);
+      expect(calc40.strEmbutidoPct).toBe("40,0000");
+    });
   });
 
   describe("Extração de Protocolo do Alert do Newcon", () => {

@@ -4677,7 +4677,9 @@ nome também menciona médias de lance. O robô de lances captura o saldo devedo
 da cota e limita o embutido ao valor monetário da oferta, calculada sobre esse
 saldo, preservando o percentual inteiro permitido pelo grupo. Rejeições do
 Newcon por embutido superior à oferta interrompem a cota sem registrar falso
-sucesso. Relatório:
+sucesso. O worker também aplica o limite de três horas diretamente pela rotina
+persistida, sem deixar o nome histórico do robô selecionar o limite de
+contemplação. Relatório:
 `docs/relatorios-fases/CORRECAO-PROGRESSO-E-EMBUTIDO-LANCES-2026-11-08.md`.
 
 # Status operacional de cotas em Lances e Estratégias (08/11/2026)

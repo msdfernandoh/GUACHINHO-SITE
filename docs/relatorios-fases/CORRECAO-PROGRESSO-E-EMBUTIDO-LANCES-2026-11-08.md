@@ -24,6 +24,9 @@ era aceita pelo listener como um alerta comum e o fluxo podia registrar um
 - Mensagens do Newcon no formato “valor do Lance Embutido ... maior que o valor
   gerado pela oferta” agora são falhas bloqueantes. O protocolo/comprovante não é
   tratado como sucesso quando o portal rejeita a operação.
+- O limite do worker também prioriza `tipo_rotina`; o nome histórico do robô não
+  pode transformar a rotina de lances em contemplação nem selecionar o limite
+  legado de dez minutos.
 
 ## Validação
 
