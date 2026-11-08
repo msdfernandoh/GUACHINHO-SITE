@@ -4640,6 +4640,15 @@ respectivamente. Esse valor é distinto do limite de lance embutido
 (`percentual_lance_embutido`). Havendo percentuais diferentes, a tela não
 preenche um máximo fixo nem impõe um teto artificial.
 
+# Status operacional de cotas em Lances e Estratégias (08/11/2026)
+
+A tela de Lances e Estratégias permite marcar uma cota como `contemplada` ou
+`cancelada` por uma ação limitada à empresa ativa. A alteração mantém a cota
+visível para auditoria, desativa a estratégia de lance vinculada e registra a
+alteração no histórico operacional da estratégia. Esses status não entram nas
+contagens de cotas sem estratégia, lance ativo, vencimento ou vencidas; o filtro
+de status continua permitindo localizar os registros marcados.
+
 # Acompanhamento persistente dos robôs (08/11/2026)
 
 O terminal de execução da Central de Robôs identifica o tipo e o nome do robô

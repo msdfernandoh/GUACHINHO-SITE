@@ -545,12 +545,15 @@ export async function fetchCotasComLancesOperacional(filters?: {
       };
     });
 
+    const statusNaoOperacional = (row: CotaLanceOperacionalDTO) =>
+      row.contemplada || ["contemplada", "cancelada"].includes(row.statusCota.toLowerCase());
+
     const stats: LancesDashboardStats = {
       totalCotas: allRows.length,
-      comLanceAtivo: allRows.filter((r) => r.estrategia?.ativa && r.situacaoOperacional !== "SEM_ESTRATEGIA").length,
-      semEstrategia: allRows.filter((r) => r.situacaoOperacional === "SEM_ESTRATEGIA").length,
-      vencendoTrintaDias: allRows.filter((r) => r.situacaoOperacional === "VENCENDO").length,
-      vencidos: allRows.filter((r) => r.situacaoOperacional === "VENCIDO").length,
+      comLanceAtivo: allRows.filter((r) => !statusNaoOperacional(r) && r.estrategia?.ativa && r.situacaoOperacional !== "SEM_ESTRATEGIA").length,
+      semEstrategia: allRows.filter((r) => !statusNaoOperacional(r) && r.situacaoOperacional === "SEM_ESTRATEGIA").length,
+      vencendoTrintaDias: allRows.filter((r) => !statusNaoOperacional(r) && r.situacaoOperacional === "VENCENDO").length,
+      vencidos: allRows.filter((r) => !statusNaoOperacional(r) && r.situacaoOperacional === "VENCIDO").length,
       contempladas: allRows.filter((r) => r.contemplada).length,
     };
 
@@ -834,6 +837,66 @@ export async function revogarConfirmacaoLanceOperacionalAction(cotaId: string, m
   });
 
   if (error) throw new Error(error.message);
+  revalidatePath("/erp/lances");
+  revalidatePath("/erp");
+}
+
+export async function alterarStatusCotaLanceAction(
+  cotaId: string,
+  status: "contemplada" | "cancelada",
+) {
+  const { empresaAtiva, usuario } = await requireErpRouteAccess("lances");
+  if (!empresaAtiva?.id) throw new Error("Empresa ativa não encontrada.");
+
+  const adminSupabase = createAdminClient();
+  const { data: cota, error: cotaError } = await adminSupabase
+    .from("cotas_definitivas")
+    .select("id, empresa_id, status, contemplada")
+    .eq("id", cotaId)
+    .eq("empresa_id", empresaAtiva.id)
+    .maybeSingle();
+
+  if (cotaError) throw new Error(cotaError.message);
+  if (!cota) throw new Error("Cota não encontrada para a empresa ativa.");
+
+  const novoStatus = status === "contemplada" ? "contemplada" : "cancelada";
+  const { error: updateCotaError } = await adminSupabase
+    .from("cotas_definitivas")
+    .update({ status: novoStatus, contemplada: status === "contemplada" })
+    .eq("id", cotaId)
+    .eq("empresa_id", empresaAtiva.id);
+
+  if (updateCotaError) throw new Error(updateCotaError.message);
+
+  const { data: estrategia, error: estrategiaError } = await adminSupabase
+    .from("cota_estrategias_lance")
+    .select("id, ativa")
+    .eq("cota_definitiva_id", cotaId)
+    .maybeSingle();
+
+  if (estrategiaError) throw new Error(estrategiaError.message);
+
+  if (estrategia) {
+    const { error: estrategiaUpdateError } = await adminSupabase
+      .from("cota_estrategias_lance")
+      .update({ ativa: false })
+      .eq("id", estrategia.id);
+
+    if (estrategiaUpdateError) throw new Error(estrategiaUpdateError.message);
+
+    const { error: historicoError } = await adminSupabase.from("cota_estrategias_lance_historico").insert({
+      empresa_id: empresaAtiva.id,
+      estrategia_id: estrategia.id,
+      cota_definitiva_id: cotaId,
+      estado_anterior: { ativa: estrategia.ativa },
+      estado_novo: { ativa: false, status_cota: novoStatus },
+      motivo: `Cota marcada como ${status} na tela de Lances e Estratégias`,
+      usuario_id: usuario?.id || null,
+    });
+
+    if (historicoError) throw new Error(historicoError.message);
+  }
+
   revalidatePath("/erp/lances");
   revalidatePath("/erp");
 }

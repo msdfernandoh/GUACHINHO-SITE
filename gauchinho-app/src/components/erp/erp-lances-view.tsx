@@ -2,9 +2,10 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { CheckCircle2, AlertTriangle, Search, FileText, X, History, Loader2, Info } from "lucide-react";
+import { CheckCircle2, AlertTriangle, Search, FileText, X, History, Loader2, Info, Ban, Trophy } from "lucide-react";
 import {
   salvarEstrategiaLanceCompletaAction,
+  alterarStatusCotaLanceAction,
   confirmarLanceOperacionalAction,
   revogarConfirmacaoLanceOperacionalAction,
   type CotaLanceOperacionalDTO,
@@ -31,6 +32,7 @@ export function ErpLancesView({ initialStats, initialRows }: ErpLancesViewProps)
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [statusUpdating, setStatusUpdating] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
 
   // Estados do Formulário de Lance
@@ -87,6 +89,25 @@ export function ErpLancesView({ initialStats, initialRows }: ErpLancesViewProps)
       cota.estrategia?.lanceLivreValor?.toString() ??
         (percentualLivre && cota.saldoDevedor > 0 ? ((cota.saldoDevedor * percentualLivre) / 100).toFixed(2) : ""),
     );
+  };
+
+  const handleAlterarStatusCota = (cota: CotaLanceOperacionalDTO, status: "contemplada" | "cancelada") => {
+    const descricao = status === "contemplada" ? "contemplada" : "cancelada";
+    if (!window.confirm(`Marcar a cota ${cota.numeroGrupo}/${cota.numeroCota} como ${descricao}? O lance será inativado.`)) return;
+
+    setStatusUpdating(cota.id);
+    setActionError(null);
+    startTransition(async () => {
+      try {
+        await alterarStatusCotaLanceAction(cota.id, status);
+        if (selectedCota?.id === cota.id) setSelectedCota(null);
+        router.refresh();
+      } catch (error) {
+        setActionError(error instanceof Error ? error.message : "Não foi possível atualizar o status da cota.");
+      } finally {
+        setStatusUpdating(null);
+      }
+    });
   };
 
   // Cálculo auxiliar de Lance Livre (Percentual <-> Valor)
@@ -308,12 +329,14 @@ export function ErpLancesView({ initialStats, initialRows }: ErpLancesViewProps)
                           className={`rounded-full px-2 py-0.5 text-[10px] font-black uppercase ${
                             cota.statusCota === "contemplada"
                               ? "bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300"
+                              : cota.statusCota === "cancelada"
+                              ? "bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300"
                               : cota.statusCota === "ativa"
                               ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
                               : "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300"
                           }`}
                         >
-                          {cota.statusCota}
+                          {cota.statusCota === "contemplada" ? "CONTEMPLADA" : cota.statusCota === "cancelada" ? "CANCELADA" : cota.statusCota}
                         </span>
                       </td>
 
@@ -386,7 +409,11 @@ export function ErpLancesView({ initialStats, initialRows }: ErpLancesViewProps)
                       <td className="px-4 py-3">
                         <span
                           className={`rounded-full px-2 py-0.5 text-[10px] font-black uppercase ${
-                            cota.situacaoOperacional === "CONFIRMADO"
+                            cota.statusCota === "contemplada"
+                              ? "bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300"
+                              : cota.statusCota === "cancelada"
+                              ? "bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300"
+                              : cota.situacaoOperacional === "CONFIRMADO"
                               ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
                               : cota.situacaoOperacional === "VENCENDO"
                               ? "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300"
@@ -397,7 +424,11 @@ export function ErpLancesView({ initialStats, initialRows }: ErpLancesViewProps)
                               : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400"
                           }`}
                         >
-                          {cota.situacaoOperacional === "SEM_ESTRATEGIA"
+                          {cota.statusCota === "contemplada"
+                            ? "CONTEMPLADA"
+                            : cota.statusCota === "cancelada"
+                            ? "CANCELADA"
+                            : cota.situacaoOperacional === "SEM_ESTRATEGIA"
                             ? "SEM LANCE"
                             : cota.situacaoOperacional}
                         </span>
@@ -448,13 +479,35 @@ export function ErpLancesView({ initialStats, initialRows }: ErpLancesViewProps)
                       </td>
 
                       <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
-                        <button
-                          type="button"
-                          onClick={() => handleOpenCota(cota)}
-                          className="rounded-lg bg-blue-50 px-2.5 py-1 text-xs font-bold text-blue-700 hover:bg-blue-100 dark:bg-blue-950 dark:text-blue-300"
-                        >
-                          Detalhes / Lance
-                        </button>
+                        <div className="flex flex-wrap justify-end gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => handleOpenCota(cota)}
+                            className="rounded-lg bg-blue-50 px-2.5 py-1 text-xs font-bold text-blue-700 hover:bg-blue-100 dark:bg-blue-950 dark:text-blue-300"
+                          >
+                            Detalhes / Lance
+                          </button>
+                          {!['contemplada', 'cancelada'].includes(cota.statusCota.toLowerCase()) && (
+                            <>
+                              <button
+                                type="button"
+                                disabled={statusUpdating === cota.id}
+                                onClick={() => handleAlterarStatusCota(cota, "contemplada")}
+                                className="inline-flex items-center gap-1 rounded-lg border border-indigo-200 bg-indigo-50 px-2 py-1 text-[10px] font-bold text-indigo-700 hover:bg-indigo-100 disabled:opacity-50 dark:border-indigo-900 dark:bg-indigo-950/40 dark:text-indigo-300"
+                              >
+                                <Trophy className="h-3 w-3" /> Contemplada
+                              </button>
+                              <button
+                                type="button"
+                                disabled={statusUpdating === cota.id}
+                                onClick={() => handleAlterarStatusCota(cota, "cancelada")}
+                                className="inline-flex items-center gap-1 rounded-lg border border-rose-200 bg-rose-50 px-2 py-1 text-[10px] font-bold text-rose-700 hover:bg-rose-100 disabled:opacity-50 dark:border-rose-900 dark:bg-rose-950/40 dark:text-rose-300"
+                              >
+                                <Ban className="h-3 w-3" /> Cancelada
+                              </button>
+                            </>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   );
