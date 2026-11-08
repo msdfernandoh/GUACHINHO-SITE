@@ -4669,6 +4669,17 @@ respectivamente. Esse valor é distinto do limite de lance embutido
 (`percentual_lance_embutido`). Havendo percentuais diferentes, a tela não
 preenche um máximo fixo nem impõe um teto artificial.
 
+# Progresso do terminal e validação do embutido dos lances (08/11/2026)
+
+O terminal identifica a rotina pelo `tipo_rotina` da execução e pelos eventos
+efetivamente registrados, evitando classificar como contemplação um robô cujo
+nome também menciona médias de lance. O robô de lances captura o saldo devedor
+da cota e limita o embutido ao valor monetário da oferta, calculada sobre esse
+saldo, preservando o percentual inteiro permitido pelo grupo. Rejeições do
+Newcon por embutido superior à oferta interrompem a cota sem registrar falso
+sucesso. Relatório:
+`docs/relatorios-fases/CORRECAO-PROGRESSO-E-EMBUTIDO-LANCES-2026-11-08.md`.
+
 # Status operacional de cotas em Lances e Estratégias (08/11/2026)
 
 A tela de Lances e Estratégias permite marcar uma cota como `contemplada` ou

@@ -106,7 +106,29 @@ function resumoExecucao(execucao: any, falhasRobo: any[], tipoRobo?: string) {
   }
 }
 
-function contextoExecucaoRobo(robo?: RoboConfigOutput | null) {
+function contextoExecucaoRobo(robo?: RoboConfigOutput | null, execucao?: any | null) {
+  const rotina = String(
+    execucao?.detalhes?.tipo_rotina
+      || execucao?.resultado?.tipo_rotina
+      || robo?.configuracao_tarefas?.tipo_rotina
+      || '',
+  ).toUpperCase()
+  if (rotina === 'FRANQUIA_LANCES_AUTOMATICOS') {
+    return { tipo: 'LANCE', titulo: 'Robô de Lances', concluidos: 'Lances concluídos' }
+  }
+  if (rotina === 'FRANQUIA_DOWNLOAD_BOLETOS') {
+    return { tipo: 'BOLETO', titulo: 'Robô de Boletos', concluidos: 'Boletos concluídos' }
+  }
+  if (rotina === 'CONTEMPLACAO_ASSEMBLEIAS') {
+    return { tipo: 'CONTEMPLAÇÃO', titulo: 'Robô de Contemplações e Médias de Lance', concluidos: 'Grupos concluídos' }
+  }
+  const logTexto = JSON.stringify(execucao?.detalhes?.logs || execucao?.logs || []).toLowerCase()
+  if (/processando ofertas da cota|rob[oô].*lance|ofertando lance/.test(logTexto)) {
+    return { tipo: 'LANCE', titulo: 'Robô de Lances', concluidos: 'Lances concluídos' }
+  }
+  if (/processando grupo \[\d+\/\d+\]/.test(logTexto)) {
+    return { tipo: 'CONTEMPLAÇÃO', titulo: 'Robô de Contemplações e Médias de Lance', concluidos: 'Grupos concluídos' }
+  }
   const texto = `${robo?.nome || ''} ${JSON.stringify(robo?.configuracao_tarefas || {})}`.toLowerCase()
   if (texto.includes('contempla')) {
     return { tipo: 'CONTEMPLAÇÃO', titulo: 'Robô de Contemplações e Médias de Lance', concluidos: 'Grupos concluídos' }
@@ -375,7 +397,7 @@ export function RobosImportacaoContent({
         execucaoId,
         onUpdate: (atualizada) => {
           setExecucaoAtual(atualizada)
-          setFalhasRobo(resumoExecucao(atualizada, [], contextoExecucaoRobo(robo).tipo).falhas)
+          setFalhasRobo(resumoExecucao(atualizada, [], contextoExecucaoRobo(robo, atualizada).tipo).falhas)
         },
       }).then((res) => {
         execucaoReabertaRef.current = null
@@ -413,7 +435,7 @@ export function RobosImportacaoContent({
           execucaoId,
           onUpdate: (atualizada) => {
             setExecucaoAtual(atualizada)
-            setFalhasRobo(resumoExecucao(atualizada, [], contextoExecucaoRobo(robo).tipo).falhas)
+            setFalhasRobo(resumoExecucao(atualizada, [], contextoExecucaoRobo(robo, atualizada).tipo).falhas)
           },
         }).then(() => {
           execucaoReabertaRef.current = null
@@ -998,9 +1020,9 @@ export function RobosImportacaoContent({
             <div className="flex items-center justify-between border-b border-slate-200 pb-4">
               <div className="flex items-center gap-2">
                 <Terminal className="h-5 w-5 text-amber-500" />
-                <h3 className="font-bold text-base text-slate-900">{contextoExecucaoRobo(roboEmExecucao).titulo} — Terminal de Execução</h3>
+                <h3 className="font-bold text-base text-slate-900">{contextoExecucaoRobo(roboEmExecucao, execucaoAtual).titulo} — Terminal de Execução</h3>
                 <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-slate-600">
-                  {contextoExecucaoRobo(roboEmExecucao).tipo}
+                  {contextoExecucaoRobo(roboEmExecucao, execucaoAtual).tipo}
                 </span>
                 <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
                   execucaoAtual?.status === 'SUCESSO'
@@ -1021,7 +1043,7 @@ export function RobosImportacaoContent({
 
             <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
               {(() => {
-                const resumo = resumoExecucao(execucaoAtual, falhasRobo, contextoExecucaoRobo(roboEmExecucao).tipo)
+                const resumo = resumoExecucao(execucaoAtual, falhasRobo, contextoExecucaoRobo(roboEmExecucao, execucaoAtual).tipo)
                 return <>
                   <div className="rounded-lg border border-slate-200 bg-slate-50 p-2 text-center"><div className="text-[10px] font-bold uppercase text-slate-500">Progresso</div><div className="text-lg font-black text-slate-900">{Math.min(resumo.total, resumo.processadas)}/{resumo.total || '—'}</div></div>
                   <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-2 text-center"><div className="text-[10px] font-bold uppercase text-emerald-700">Sucessos</div><div className="text-lg font-black text-emerald-800">{resumo.sucessos.length}</div></div>
@@ -1033,12 +1055,12 @@ export function RobosImportacaoContent({
 
             <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
               <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-900">
-                 <div className="mb-2 font-black">{contextoExecucaoRobo(roboEmExecucao).concluidos}</div>
-                <div className="max-h-24 space-y-1 overflow-y-auto">{resumoExecucao(execucaoAtual, falhasRobo, contextoExecucaoRobo(roboEmExecucao).tipo).sucessos.map((item: any) => <div key={`${item.grupo}-${item.cota}`}>✓ Grupo {item.grupo} / Cota {item.cota}{item.cliente ? ` — ${item.cliente}` : ''}</div>)}{!resumoExecucao(execucaoAtual, falhasRobo, contextoExecucaoRobo(roboEmExecucao).tipo).sucessos.length && <span className="text-emerald-700/70">Aguardando conclusão...</span>}</div>
+                 <div className="mb-2 font-black">{contextoExecucaoRobo(roboEmExecucao, execucaoAtual).concluidos}</div>
+                <div className="max-h-24 space-y-1 overflow-y-auto">{resumoExecucao(execucaoAtual, falhasRobo, contextoExecucaoRobo(roboEmExecucao, execucaoAtual).tipo).sucessos.map((item: any) => <div key={`${item.grupo}-${item.cota}`}>✓ Grupo {item.grupo} / Cota {item.cota}{item.cliente ? ` — ${item.cliente}` : ''}</div>)}{!resumoExecucao(execucaoAtual, falhasRobo, contextoExecucaoRobo(roboEmExecucao, execucaoAtual).tipo).sucessos.length && <span className="text-emerald-700/70">Aguardando conclusão...</span>}</div>
               </div>
               <div className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs text-rose-900">
                 <div className="mb-2 font-black">Cotas com falha</div>
-                <div className="max-h-24 space-y-1 overflow-y-auto">{resumoExecucao(execucaoAtual, falhasRobo, contextoExecucaoRobo(roboEmExecucao).tipo).falhas.map((item: any) => <div key={`${item.grupo}-${item.cota}`}>! Grupo {item.grupo} / Cota {item.cota} — {item.erro}</div>)}{!resumoExecucao(execucaoAtual, falhasRobo, contextoExecucaoRobo(roboEmExecucao).tipo).falhas.length && <span className="text-rose-700/70">Nenhuma falha registrada.</span>}</div>
+                <div className="max-h-24 space-y-1 overflow-y-auto">{resumoExecucao(execucaoAtual, falhasRobo, contextoExecucaoRobo(roboEmExecucao, execucaoAtual).tipo).falhas.map((item: any) => <div key={`${item.grupo}-${item.cota}`}>! Grupo {item.grupo} / Cota {item.cota} — {item.erro}</div>)}{!resumoExecucao(execucaoAtual, falhasRobo, contextoExecucaoRobo(roboEmExecucao, execucaoAtual).tipo).falhas.length && <span className="text-rose-700/70">Nenhuma falha registrada.</span>}</div>
               </div>
             </div>
 
