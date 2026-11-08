@@ -180,12 +180,22 @@ export async function executarRoboLances({
 
   const { data: cotasDb, error: errCotas } = await cotasQuery
 
-  if (cotasDb && cotasDb.length > 0) {
+  // Execuções direcionadas (por exemplo, o botão "processar esta cota")
+  // devem limitar o robô aos IDs explicitamente enviados na fila. Sem esse
+  // recorte, o robô continuava elegendo todas as cotas do login configurado.
+  const cotasAlvoIds = Array.isArray(config.configuracao_tarefas?.cotas_alvo_ids)
+    ? new Set(config.configuracao_tarefas.cotas_alvo_ids.filter(Boolean))
+    : null
+  const cotasDbProcessaveis = cotasAlvoIds && cotasAlvoIds.size > 0
+    ? (cotasDb || []).filter((cota) => cotasAlvoIds.has(cota.id))
+    : cotasDb
+
+  if (cotasDbProcessaveis && cotasDbProcessaveis.length > 0) {
     // 1.1. Verifica cotas que já possuem lance ativo com repetição por 6 assembleias
     const isManualTest = Boolean(config.filtro_grupo || config.grupo_teste || config.filtro_cotas || config.cotas_teste)
     const cotasBloqueadas6Meses = new Set()
 
-    const cotaIds = cotasDb.map(c => c.id)
+    const cotaIds = cotasDbProcessaveis.map(c => c.id)
     const { data: estrategiasCotas } = await admin
       .from('cota_estrategias_lance')
       .select('cota_definitiva_id, ativa, lance_livre_ativo, lance_livre_percentual, lance_livre_embutido_percentual, lance_fixo_ativo, lance_fixo_percentual, lance_fixo_embutido_percentual, segundo_lance_fixo_ativo, segundo_lance_fixo_percentual, segundo_lance_fixo_embutido_percentual, repetir_seis_assembleias, ultimo_lance_ofertado_em, data_vencimento, confirmado')
@@ -217,7 +227,7 @@ export async function executarRoboLances({
       }
     }
 
-    listaCotas = cotasDb
+    listaCotas = cotasDbProcessaveis
       .filter(c => {
         if (clienteEstaBloqueadoParaLance(c.venda)) {
           log(`[CLIENTE MARCADO NÃO EXECUTAR] Ignorando Grupo ${c.numero_grupo} / Cota ${c.numero_cota} (${c.venda?.cliente_nome || 'Consorciado'}) — cliente marcado para não executar lance automático.`)
