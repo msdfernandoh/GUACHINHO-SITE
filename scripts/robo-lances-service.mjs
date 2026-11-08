@@ -499,14 +499,20 @@ export async function executarRoboLances({
       // Algumas versões do Newcon renderizam os campos sem name/id semântico.
       // Sempre escolhemos os campos visíveis do formulário: Grupo (6 dígitos),
       // Cota (4) e complemento (2). Isso evita selecionar inputs legados ocultos.
-      const camposRenderizados = await page.locator('input').evaluateAll((inputs) => inputs.map((el, index) => {
-        const rect = el.getBoundingClientRect()
-        const estilo = window.getComputedStyle(el)
-        return { index, type: el.type, value: (el.value || '').trim(), visivel: rect.width > 0 && rect.height > 0 && estilo.visibility !== 'hidden' && estilo.display !== 'none' }
-      }).filter((campo) => campo.visivel && campo.type !== 'hidden'))
-      const grupoMeta = camposRenderizados.find((campo) => /^\d{6}$/.test(campo.value)) || camposRenderizados[0]
-      if (!grupoMeta) throw new Error('Campo Grupo visível não encontrado na tela de localização.')
-      const inputGrupo = page.locator('input').nth(grupoMeta.index)
+      const localizarCampoVisivel = async (padrao, fallbackIndex, descricao) => {
+        for (const frame of page.frames()) {
+          const campos = await frame.locator('input').evaluateAll((inputs) => inputs.map((el, index) => {
+            const rect = el.getBoundingClientRect()
+            const estilo = window.getComputedStyle(el)
+            return { index, type: el.type, value: (el.value || '').trim(), visivel: rect.width > 0 && rect.height > 0 && estilo.visibility !== 'hidden' && estilo.display !== 'none' }
+          }).filter((campo) => campo.visivel && campo.type !== 'hidden')).catch(() => [])
+          const encontrado = campos.find((campo) => padrao.test(campo.value)) || campos[fallbackIndex]
+          if (encontrado) return frame.locator('input').nth(encontrado.index)
+        }
+        throw new Error(`Campo ${descricao} visível não encontrado na tela de localização.`)
+      }
+
+      const inputGrupo = await localizarCampoVisivel(/^\d{6}$/, 0, 'Grupo')
       await inputGrupo.waitFor({ state: 'visible', timeout: 10_000 })
       await inputGrupo.click()
       await inputGrupo.fill(grupoFormatado)
@@ -514,14 +520,7 @@ export async function executarRoboLances({
 
       // Preenche Cota (com 4 dígitos se necessário)
       const cotaFormatada = normalizarNumeroPortal(item.numero_cota, 4)
-      const camposCotaRenderizados = await page.locator('input').evaluateAll((inputs) => inputs.map((el, index) => {
-        const rect = el.getBoundingClientRect()
-        const estilo = window.getComputedStyle(el)
-        return { index, type: el.type, value: (el.value || '').trim(), visivel: rect.width > 0 && rect.height > 0 && estilo.visibility !== 'hidden' && estilo.display !== 'none' }
-      }).filter((campo) => campo.visivel && campo.type !== 'hidden'))
-      const cotaMeta = camposCotaRenderizados.find((campo) => /^\d{4}$/.test(campo.value)) || camposCotaRenderizados[1]
-      if (!cotaMeta) throw new Error('Campo Cota visível não encontrado na tela de localização.')
-      const inputCota = page.locator('input').nth(cotaMeta.index)
+      const inputCota = await localizarCampoVisivel(/^\d{4}$/, 1, 'Cota')
       await inputCota.waitFor({ state: 'visible', timeout: 8_000 })
       await inputCota.click()
       await inputCota.fill(cotaFormatada)
