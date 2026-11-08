@@ -1,5 +1,11 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
+### Comprovantes múltiplos por cota de lance (08/11/2026)
+Cada registro de `cota_lances_ofertados` permanece disponível no detalhe da
+cota. A interface exibe a quantidade, permite navegar pelos comprovantes,
+visualizar e baixar cada arquivo individualmente. Relatório:
+`docs/relatorios-fases/COMPROVANTES-MULTIPLOS-LANCE-2026-11-08.md`.
+
 ### Contagem por fluxo no terminal de robôs (08/11/2026)
 O terminal identifica o tipo do robô e calcula progresso com base nos eventos
 de grupos/cotas concluídos e nas falhas registradas, mantendo a contagem durante

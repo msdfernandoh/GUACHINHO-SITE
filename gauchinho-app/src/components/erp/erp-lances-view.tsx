@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { CheckCircle2, AlertTriangle, Search, FileText, X, History, Loader2, Info, Ban, Trophy } from "lucide-react";
+import { CheckCircle2, AlertTriangle, Search, FileText, X, History, Loader2, Info, Ban, Trophy, Download, ChevronLeft, ChevronRight } from "lucide-react";
 import {
   salvarEstrategiaLanceCompletaAction,
   alterarStatusCotaLanceAction,
@@ -29,6 +29,7 @@ export function ErpLancesView({ initialStats, initialRows }: ErpLancesViewProps)
   const [filtroSituacao, setFiltroSituacao] = useState("");
   const [filtroStatusCota, setFiltroStatusCota] = useState("");
   const [selectedCota, setSelectedCota] = useState<CotaLanceOperacionalDTO | null>(null);
+  const [comprovanteIndex, setComprovanteIndex] = useState(0);
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -78,6 +79,7 @@ export function ErpLancesView({ initialStats, initialRows }: ErpLancesViewProps)
   const handleOpenCota = (cota: CotaLanceOperacionalDTO) => {
     setActionError(null);
     setSelectedCota(cota);
+    setComprovanteIndex(0);
     setFormLanceFixo(cota.estrategia?.lanceFixoAtivo ?? false);
     setFormSegundoFixo(cota.estrategia?.segundoLanceFixoAtivo ?? false);
     setFormFidelidade(cota.estrategia?.lanceFidelidadeAtivo ?? false);
@@ -435,15 +437,18 @@ export function ErpLancesView({ initialStats, initialRows }: ErpLancesViewProps)
                       </td>
 
                       <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
-                        {est?.comprovanteUrl ? (
-                          <a
-                            href={est.comprovanteUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
+                        {est?.comprovantes?.length ? (
+                          <button
+                            type="button"
+                            onClick={() => handleOpenCota(cota)}
                             className="inline-flex items-center gap-1 text-[11px] font-bold text-blue-600 hover:underline"
                           >
                             <FileText className="h-3.5 w-3.5" />
-                            Ver
+                            Ver {est.comprovantes.length > 1 ? `(${est.comprovantes.length})` : ""}
+                          </button>
+                        ) : est?.comprovanteUrl ? (
+                          <a href={est.comprovanteUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-[11px] font-bold text-blue-600 hover:underline">
+                            <FileText className="h-3.5 w-3.5" /> Ver
                           </a>
                         ) : (
                           <span className="text-[11px] text-slate-400">Sem arq.</span>
@@ -658,27 +663,37 @@ export function ErpLancesView({ initialStats, initialRows }: ErpLancesViewProps)
                       <p className="mb-2 text-[10px] font-black uppercase tracking-wider text-blue-900 dark:text-blue-200">
                         Comprovantes individuais por lance ({selectedCota.estrategia.comprovantes.length})
                       </p>
-                      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                        {selectedCota.estrategia.comprovantes.map((comprovante) => (
-                          <div key={comprovante.id} className="flex items-center justify-between gap-2 rounded-lg border border-blue-100 bg-white/80 px-3 py-2 dark:border-blue-900/40 dark:bg-slate-900/80">
-                            <div className="min-w-0">
-                              <p className="truncate text-[11px] font-bold text-slate-800 dark:text-slate-100">
-                                {comprovante.tipoLance.replace("SEGUNDO_FIXO", "2º FIXO")}
-                              </p>
-                              <p className="text-[10px] text-slate-500">
-                                {comprovante.protocolo ? `Protocolo #${comprovante.protocolo}` : "Comprovante sem protocolo informado"}
-                              </p>
+                      {(() => {
+                        const comprovantes = selectedCota.estrategia.comprovantes;
+                        const indice = Math.min(comprovanteIndex, Math.max(0, comprovantes.length - 1));
+                        const comprovante = comprovantes[indice];
+                        return comprovante ? (
+                          <div className="rounded-lg border border-blue-100 bg-white/80 p-3 dark:border-blue-900/40 dark:bg-slate-900/80">
+                            <div className="flex items-center justify-between gap-2">
+                              <div>
+                                <p className="text-[11px] font-bold text-slate-800 dark:text-slate-100">
+                                  {comprovante.tipoLance.replace("SEGUNDO_FIXO", "2º FIXO")} · arquivo {indice + 1} de {comprovantes.length}
+                                </p>
+                                <p className="text-[10px] text-slate-500">
+                                  {comprovante.protocolo ? `Protocolo #${comprovante.protocolo}` : "Comprovante sem protocolo informado"}
+                                </p>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <button type="button" onClick={() => setComprovanteIndex((valor) => Math.max(0, valor - 1))} disabled={indice === 0} className="rounded-md border border-slate-200 p-1.5 text-slate-600 hover:bg-slate-50 disabled:opacity-40" title="Comprovante anterior"><ChevronLeft className="h-4 w-4" /></button>
+                                <button type="button" onClick={() => setComprovanteIndex((valor) => Math.min(comprovantes.length - 1, valor + 1))} disabled={indice === comprovantes.length - 1} className="rounded-md border border-slate-200 p-1.5 text-slate-600 hover:bg-slate-50 disabled:opacity-40" title="Próximo comprovante"><ChevronRight className="h-4 w-4" /></button>
+                              </div>
                             </div>
-                            {comprovante.comprovanteUrl ? (
-                              <a href={comprovante.comprovanteUrl} target="_blank" rel="noopener noreferrer" className="shrink-0 rounded-md bg-blue-600 px-2 py-1 text-[10px] font-bold text-white hover:bg-blue-700">
-                                Visualizar PDF
-                              </a>
-                            ) : (
-                              <span className="shrink-0 text-[10px] font-semibold text-amber-700">Sem arquivo</span>
-                            )}
+                            <div className="mt-2 flex flex-wrap gap-2">
+                              {comprovante.comprovanteUrl ? (
+                                <>
+                                  <a href={comprovante.comprovanteUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 rounded-md bg-blue-600 px-2 py-1 text-[10px] font-bold text-white hover:bg-blue-700"><FileText className="h-3 w-3" /> Visualizar arquivo</a>
+                                  <a href={comprovante.comprovanteUrl} download={`comprovante-${comprovante.tipoLance.toLowerCase()}-${comprovante.protocolo || indice + 1}.pdf`} className="inline-flex items-center gap-1 rounded-md border border-blue-200 px-2 py-1 text-[10px] font-bold text-blue-700 hover:bg-blue-50"><Download className="h-3 w-3" /> Baixar arquivo</a>
+                                </>
+                              ) : <span className="text-[10px] font-semibold text-amber-700">Arquivo não encontrado no Storage</span>}
+                            </div>
                           </div>
-                        ))}
-                      </div>
+                        ) : null;
+                      })()}
                     </div>
                   )}
                 </div>
