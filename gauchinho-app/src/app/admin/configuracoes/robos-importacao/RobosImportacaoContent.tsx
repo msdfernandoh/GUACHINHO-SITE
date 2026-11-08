@@ -65,6 +65,17 @@ function resumoExecucao(execucao: any, falhasRobo: any[]) {
   }
 }
 
+function contextoExecucaoRobo(robo?: RoboConfigOutput | null) {
+  const texto = `${robo?.nome || ''} ${JSON.stringify(robo?.configuracao_tarefas || {})}`.toLowerCase()
+  if (texto.includes('lance')) {
+    return { tipo: 'LANCE', titulo: 'Robô de Lances', concluidos: 'Lances concluídos' }
+  }
+  if (texto.includes('boleto') || texto.includes('cobrança') || texto.includes('cobranca')) {
+    return { tipo: 'BOLETO', titulo: 'Robô de Boletos', concluidos: 'Boletos concluídos' }
+  }
+  return { tipo: 'ROBÔ', titulo: robo?.nome || 'Robô', concluidos: 'Itens concluídos' }
+}
+
 export type RobosImportacaoContentProps = {
   empresas: { id: string; nome: string }[]
   administradoras: { id: string; nome: string; slug?: string }[]
@@ -875,7 +886,10 @@ export function RobosImportacaoContent({
             <div className="flex items-center justify-between border-b border-slate-200 pb-4">
               <div className="flex items-center gap-2">
                 <Terminal className="h-5 w-5 text-amber-500" />
-                <h3 className="font-bold text-base text-slate-900">Terminal de Execução do Robô</h3>
+                <h3 className="font-bold text-base text-slate-900">{contextoExecucaoRobo(roboEmExecucao).titulo} — Terminal de Execução</h3>
+                <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-slate-600">
+                  {contextoExecucaoRobo(roboEmExecucao).tipo}
+                </span>
                 <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
                   execucaoAtual?.status === 'SUCESSO'
                     ? 'bg-emerald-500/20 text-emerald-400'
@@ -905,7 +919,7 @@ export function RobosImportacaoContent({
 
             <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
               <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-900">
-                <div className="mb-2 font-black">Boletos concluídos</div>
+                 <div className="mb-2 font-black">{contextoExecucaoRobo(roboEmExecucao).concluidos}</div>
                 <div className="max-h-24 space-y-1 overflow-y-auto">{resumoExecucao(execucaoAtual, falhasRobo).sucessos.map((item: any) => <div key={`${item.grupo}-${item.cota}`}>✓ Grupo {item.grupo} / Cota {item.cota}{item.cliente ? ` — ${item.cliente}` : ''}</div>)}{!resumoExecucao(execucaoAtual, falhasRobo).sucessos.length && <span className="text-emerald-700/70">Aguardando conclusão...</span>}</div>
               </div>
               <div className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs text-rose-900">
