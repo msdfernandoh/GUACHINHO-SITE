@@ -1,5 +1,12 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
+### Limites de execução por rotina Newcon (08/11/2026)
+O worker utiliza limites compatíveis com o volume de navegação: 3 horas para
+lances, 2 horas para boletos e 6 horas para contemplações. O polling do
+terminal acompanha execuções por até 3 horas sem cancelar o processo ao fechar
+a janela. Relatório:
+`docs/relatorios-fases/AUMENTO-TEMPO-ROBOS-NEWCON-2026-11-08.md`.
+
 ### Comprovantes múltiplos por cota de lance (08/11/2026)
 Cada registro de `cota_lances_ofertados` permanece disponível no detalhe da
 cota. A interface exibe a quantidade, permite navegar pelos comprovantes,

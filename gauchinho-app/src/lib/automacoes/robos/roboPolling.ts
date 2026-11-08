@@ -1,4 +1,7 @@
-export const ROBO_POLL_TIMEOUT_MS = 15 * 60_000
+// Lances e boletos percorrem várias telas do Newcon por cota. Acompanhar por
+// apenas 15 minutos fazia o terminal abandonar a tela enquanto o runner ainda
+// estava trabalhando; a execução continua registrada mesmo se a janela fechar.
+export const ROBO_POLL_TIMEOUT_MS = 3 * 60 * 60_000
 
 export type ResultadoAcompanhamento = {
   execucao: any | null

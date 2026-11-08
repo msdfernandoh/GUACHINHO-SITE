@@ -214,7 +214,14 @@ async function processar(execucao) {
   console.log(`Processando execução ${execucao.id} (${execucao.portal_tipo})...`)
   let expirou = false
   const { data: config } = await admin.from("robo_configuracoes").select("nome, configuracao_tarefas").eq("id", execucao.robo_config_id).single()
-  const limiteMs = (config?.configuracao_tarefas?.tipo_rotina === "CONTEMPLACAO_ASSEMBLEIAS" || /contempla|médias de lance/i.test(config?.nome || "")) ? 6 * 60 * 60_000 : MAX_EXECUCAO_MS
+  const tipoRotina = config?.configuracao_tarefas?.tipo_rotina || ''
+  const limiteMs = (tipoRotina === "CONTEMPLACAO_ASSEMBLEIAS" || /contempla|médias de lance/i.test(config?.nome || ""))
+    ? 6 * 60 * 60_000
+    : tipoRotina === 'FRANQUIA_LANCES_AUTOMATICOS'
+      ? 3 * 60 * 60_000
+      : tipoRotina === 'FRANQUIA_DOWNLOAD_BOLETOS'
+        ? 2 * 60 * 60_000
+        : MAX_EXECUCAO_MS
 
   const exitCode = await new Promise((resolve, reject) => {
     filho = fork(fileURLToPath(new URL('./robo-execucao-child.mjs', import.meta.url)), [execucao.id], {

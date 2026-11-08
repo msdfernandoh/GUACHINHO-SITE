@@ -72,7 +72,8 @@ function resumoExecucao(execucao: any, falhasRobo: any[], tipoRobo?: string) {
     }
 
     if (erroBoleto || erroLance) {
-      const match = erroBoleto || erroLance
+      const match = erroBoleto ?? erroLance
+      if (!match) continue
       falhasLog.push({ grupo: match[1], cota: match[2], erro: match[3] })
       continue
     }
