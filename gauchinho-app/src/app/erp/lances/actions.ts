@@ -139,7 +139,10 @@ function saldoDevedorPorCota(cota: { valor_credito?: unknown; snapshot_cota?: un
   const snapshot = cota.snapshot_cota && typeof cota.snapshot_cota === "object"
     ? (cota.snapshot_cota as Record<string, unknown>)
     : null;
-  return Number(saldoOpcao || snapshot?.saldo_devedor || valorCreditoPorCota(cota) || snapshot?.valor_base_relatorio || 0);
+  // O saldo retornado pela Racon/Newcon e persistido no snapshot da cota é a
+  // fonte de verdade para o lance. A opção do catálogo é apenas um fallback;
+  // ela não representa o saldo individual atualizado do consorciado.
+  return Number(snapshot?.saldo_devedor || saldoOpcao || valorCreditoPorCota(cota) || snapshot?.valor_base_relatorio || 0);
 }
 
 function maxLanceLivreUltimaAssembleia(resultados: Array<{ assembleia_numero?: number | null; cotas?: unknown }> | null | undefined): number | null {

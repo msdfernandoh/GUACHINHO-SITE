@@ -196,6 +196,7 @@ export async function executarRoboLances({
       numero_cota,
       robo_boleto_login,
       valor_credito,
+      snapshot_cota,
       parcela,
       status,
       grupo_id,
@@ -298,6 +299,7 @@ export async function executarRoboLances({
         cliente_cpf_cnpj: c.venda?.cliente_cpf_cnpj || null,
         cliente_telefone: c.venda?.cliente_telefone || null,
         valor_credito: c.valor_credito,
+        snapshot_cota: c.snapshot_cota,
         parcela: c.parcela,
         grupo_embutido_pct: c.grupo?.percentual_lance_embutido || 25,
         estrategia: estrategiasMap.get(c.id) || null,
@@ -684,7 +686,34 @@ export async function executarRoboLances({
       // O limite de embutido comum é 25%. Usamos a regra do grupo ou o fixo se menor.
       const embutidoMaximoPct = normalizarPercentualEmbutido(item.grupo_embutido_pct || 25.0)
       const saldoDevedor = parseValorMonetario(saldoDevedorTela) || Number(item.saldo_devedor) || Number(item.snapshot_venda?.saldo_devedor) || null
-      const creditoContratado = Number(item.valor_credito) || parseValorMonetario(dadosTelaLance.valorBem) || null
+      // O Newcon calcula o embutido sobre o valor do bem exibido na tela,
+      // que pode ser diferente do snapshot de crédito armazenado no ERP.
+      // A tela do portal é a fonte de verdade para evitar rejeições monetárias.
+      const creditoContratado = parseValorMonetario(dadosTelaLance.valorBem) || Number(item.valor_credito) || null
+      if (!saldoDevedor) {
+        throw new Error('Newcon não apresentou o saldo devedor da cota; nenhum lance foi enviado e o ERP não foi atualizado com valor estimado.')
+      }
+
+      if (item.cota_definitiva_id) {
+        const snapshotAtual = item.snapshot_cota && typeof item.snapshot_cota === 'object' ? item.snapshot_cota : {}
+        const snapshotRacon = {
+          ...snapshotAtual,
+          saldo_devedor: Number(saldoDevedor.toFixed(2)),
+          valor_bem_racon: creditoContratado ? Number(creditoContratado.toFixed(2)) : null,
+          fonte_dados_racon: 'NEWCON',
+          dados_racon_atualizados_em: new Date().toISOString(),
+        }
+        const { error: snapshotError } = await admin
+          .from('cotas_definitivas')
+          .update({ snapshot_cota: snapshotRacon, updated_at: new Date().toISOString() })
+          .eq('id', item.cota_definitiva_id)
+          .eq('empresa_id', item.empresa_id)
+        if (snapshotError) {
+          log(`Aviso: não foi possível atualizar o saldo da Racon no ERP para ${item.numero_grupo}/${item.numero_cota}: ${snapshotError.message}`)
+        } else {
+          log(`ERP atualizado com dados da Racon: saldo devedor R$ ${saldoDevedor.toFixed(2)}${creditoContratado ? ` | valor do bem R$ ${creditoContratado.toFixed(2)}` : ''}`)
+        }
+      }
       const embutidoLivreConfigurado = estrategiaCota?.lance_livre_embutido_percentual == null
         ? embutidoMaximoPct
         : Math.min(normalizarPercentualEmbutido(estrategiaCota.lance_livre_embutido_percentual), embutidoMaximoPct)
@@ -814,6 +843,28 @@ export async function executarRoboLances({
         await page.waitForTimeout(300)
         const valFinal = await loc.inputValue().catch(() => '')
         log(`[Mascara] Campo ${selector} consolidado com: "${valFinal}"`)
+      }
+
+      const lerPercentualCampo = async (selector) => {
+        const valor = await page.locator(selector).first().inputValue().catch(() => '')
+        const numero = Number(String(valor).replace(/\./g, '').replace(',', '.').replace(/[^0-9.-]/g, ''))
+        return Number.isFinite(numero) ? numero : null
+      }
+
+      const validarPercentualOferta = async (percentualEsperado, modalidade) => {
+        const percentualAtual = await lerPercentualCampo('#ctl00_Conteudo_edtOferta')
+        if (percentualAtual == null || Math.abs(percentualAtual - percentualEsperado) > 0.001) {
+          throw new Error(`Newcon não aplicou o Lance ${modalidade} corretamente: tela=${percentualAtual == null ? 'vazio' : percentualAtual.toFixed(4)}%, esperado=${percentualEsperado.toFixed(4)}%. Oferta não enviada.`)
+        }
+        log(`Valor conferido na tela para ${modalidade}: ${percentualAtual.toFixed(4)}%`)
+      }
+
+      const validarPercentualCampo = async (selector, percentualEsperado, campo) => {
+        const percentualAtual = await lerPercentualCampo(selector)
+        if (percentualAtual == null || Math.abs(percentualAtual - percentualEsperado) > 0.001) {
+          throw new Error(`Newcon não aplicou ${campo} corretamente: tela=${percentualAtual == null ? 'vazio' : percentualAtual.toFixed(4)}%, esperado=${percentualEsperado.toFixed(4)}%. Oferta não enviada.`)
+        }
+        log(`Valor conferido na tela para ${campo}: ${percentualAtual.toFixed(4)}%`)
       }
 
       // Função auxiliar para capturar o comprovante, salvar no Supabase Storage e retornar da tela de relatório
@@ -963,6 +1014,7 @@ export async function executarRoboLances({
 
       // 4. Preenche valor do Lance Livre (26,1234)
       await preencherCampoComMascara('#ctl00_Conteudo_edtOferta', strLivrePct)
+      await validarPercentualOferta(livrePctCalculado, 'Livre')
 
       // 5. Dropdown Lance Embutido -> Percentual (%)
       const selectTipoEmbutido = page.locator('#ctl00_Conteudo_cbxLanceEmbutido, select[name*="cbxLanceEmbutido"]').first()
@@ -973,6 +1025,7 @@ export async function executarRoboLances({
 
       // 6. Preenche valor do Lance Embutido (25,0000)
       await preencherCampoComMascara('#ctl00_Conteudo_edtEmbutido', strEmbutidoPct)
+      await validarPercentualCampo('#ctl00_Conteudo_edtEmbutido', embutidoLivrePct, 'embutido do Lance Livre')
 
       // 7. Marca checkbox "Repetir a oferta do lance por 6 assembleia(s)"
       const chkRepetir = page.locator('#ctl00_Conteudo_chkLanceLivre, input[name*="chkLanceLivre"], label:has-text("Repetir")').first()
@@ -1034,7 +1087,8 @@ export async function executarRoboLances({
         const rdoFixo = page.locator('#ctl00_Conteudo_rgLance_1, label[for="ctl00_Conteudo_rgLance_1"], label:text-is("Fixo")').first()
         if (await rdoFixo.isVisible({ timeout: 4000 }).catch(() => false)) {
           await rdoFixo.click({ force: true }).catch(() => {})
-          await page.waitForTimeout(800)
+          await page.locator('#ctl00_Conteudo_rgLance_1').check({ force: true }).catch(() => {})
+          await page.waitForTimeout(1800)
         }
 
         // 2. Opção Reduzir Parcela
@@ -1058,6 +1112,7 @@ export async function executarRoboLances({
 
         // 4. Preenche valor do Lance Fixo (edtOferta) se habilitado
         await preencherCampoComMascara('#ctl00_Conteudo_edtOferta', strFixoPct)
+        await validarPercentualOferta(fixoPct, 'Fixo')
 
         // 5. Dropdown Embutido -> Percentual (apenas se habilitado)
         const selectEmbFixo = page.locator('#ctl00_Conteudo_cbxLanceEmbutido, select[name*="cbxLanceEmbutido"]').first()
@@ -1071,6 +1126,7 @@ export async function executarRoboLances({
 
         // 6. Preenche valor do Embutido Fixo (edtEmbutido)
         await preencherCampoComMascara('#ctl00_Conteudo_edtEmbutido', strEmbFixoPct)
+        await validarPercentualCampo('#ctl00_Conteudo_edtEmbutido', embFixoPct, 'embutido do Lance Fixo')
 
         // 7. Checkbox Repetir por 6 assembleias
         const chkRepetirFixo = page.locator('#ctl00_Conteudo_chkLanceLivre, input[name*="chkLanceLivre"], label:has-text("Repetir")').first()
@@ -1127,7 +1183,8 @@ export async function executarRoboLances({
         const rdo2Fixo = page.locator('#ctl00_Conteudo_rgLance_2, label[for="ctl00_Conteudo_rgLance_2"], label:has-text("2º Fixo")').first()
         if (await rdo2Fixo.isVisible({ timeout: 4000 }).catch(() => false)) {
           await rdo2Fixo.click({ force: true }).catch(() => {})
-          await page.waitForTimeout(800)
+          await page.locator('#ctl00_Conteudo_rgLance_2').check({ force: true }).catch(() => {})
+          await page.waitForTimeout(1800)
 
           const rdoReduzir2Fixo = page.locator('#ctl00_Conteudo_rblFormasLance_1, label[for="ctl00_Conteudo_rblFormasLance_1"], label:has-text("Reduzir Parcela")').first()
           if (await rdoReduzir2Fixo.isVisible({ timeout: 3000 }).catch(() => false)) {
@@ -1142,6 +1199,7 @@ export async function executarRoboLances({
           }
 
           await preencherCampoComMascara('#ctl00_Conteudo_edtOferta', strFixo2Pct)
+          await validarPercentualOferta(fixo2Pct, '2º Fixo')
 
           const selectEmb2Fixo = page.locator('#ctl00_Conteudo_cbxLanceEmbutido, select[name*="cbxLanceEmbutido"]').first()
           if (await selectEmb2Fixo.isVisible({ timeout: 3000 }).catch(() => false)) {
@@ -1150,6 +1208,7 @@ export async function executarRoboLances({
           }
 
           await preencherCampoComMascara('#ctl00_Conteudo_edtEmbutido', strEmbFixo2Pct)
+          await validarPercentualCampo('#ctl00_Conteudo_edtEmbutido', embFixo2Pct, 'embutido do 2º Lance Fixo')
 
           const chkRepetir2Fixo = page.locator('#ctl00_Conteudo_chkLanceLivre, input[name*="chkLanceLivre"], label:has-text("Repetir")').first()
           if (await chkRepetir2Fixo.isVisible({ timeout: 3000 }).catch(() => false)) {

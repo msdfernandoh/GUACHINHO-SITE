@@ -4682,6 +4682,8 @@ persistida, sem deixar o nome histórico do robô selecionar o limite de
 contemplação. Relatório:
 `docs/relatorios-fases/CORRECAO-PROGRESSO-E-EMBUTIDO-LANCES-2026-11-08.md`.
 
+Em 08/11/2026, o robô de lances passou a sincronizar no `snapshot_cota` o saldo devedor e o valor-base exibidos pelo Newcon após localizar cada cota. O ERP prioriza esse saldo individual atualizado, mantendo o crédito contratado apenas como fallback, e o robô valida o percentual efetivamente aplicado na tela antes de confirmar. Relatório: `docs/relatorios-fases/SINCRONIZACAO-SALDO-RACON-LANCES-2026-11-08.md`.
+
 # Status operacional de cotas em Lances e Estratégias (08/11/2026)
 
 A tela de Lances e Estratégias permite marcar uma cota como `contemplada` ou
