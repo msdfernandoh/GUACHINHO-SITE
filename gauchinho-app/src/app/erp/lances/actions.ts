@@ -123,6 +123,10 @@ function valorCreditoPorCota(cota: { valor_credito?: unknown; snapshot_cota?: un
   const snapshot = cota.snapshot_cota && typeof cota.snapshot_cota === "object"
     ? (cota.snapshot_cota as Record<string, unknown>)
     : null;
+  const valorRacon = Number(snapshot?.valor_bem_racon);
+  if (snapshot?.fonte_dados_racon === "NEWCON" && Number.isFinite(valorRacon) && valorRacon > 0) {
+    return valorRacon;
+  }
   const quantidadeCotas = Number(snapshot?.quantidade_cotas || 1);
   const valorTotalVenda = Number(snapshot?.valor_credito_total_venda || 0);
 
@@ -132,17 +136,21 @@ function valorCreditoPorCota(cota: { valor_credito?: unknown; snapshot_cota?: un
     return Number((valorTotalVenda / quantidadeCotas).toFixed(2));
   }
 
-  return valorRegistrado;
+  if (Number.isFinite(valorRegistrado) && valorRegistrado > 0) return valorRegistrado;
+
+  // Na importação legada este campo foi gravado individualmente por cota.
+  const valorLegado = Number(snapshot?.valor_credito_contratado);
+  return snapshot?.origem === "IMPORTACAO_LEGADO" && Number.isFinite(valorLegado) && valorLegado > 0 ? valorLegado : 0;
 }
 
-function saldoDevedorPorCota(cota: { valor_credito?: unknown; snapshot_cota?: unknown }, saldoOpcao?: unknown): number {
+function saldoDevedorPorCota(cota: { snapshot_cota?: unknown }, saldoOpcao?: unknown): number {
   const snapshot = cota.snapshot_cota && typeof cota.snapshot_cota === "object"
     ? (cota.snapshot_cota as Record<string, unknown>)
     : null;
   // O saldo retornado pela Racon/Newcon e persistido no snapshot da cota é a
   // fonte de verdade para o lance. A opção do catálogo é apenas um fallback;
   // ela não representa o saldo individual atualizado do consorciado.
-  return Number(snapshot?.saldo_devedor || saldoOpcao || valorCreditoPorCota(cota) || snapshot?.valor_base_relatorio || 0);
+  return Number(snapshot?.saldo_devedor ?? saldoOpcao ?? 0);
 }
 
 function maxLanceLivreUltimaAssembleia(resultados: Array<{ assembleia_numero?: number | null; cotas?: unknown }> | null | undefined): number | null {
@@ -726,7 +734,6 @@ export async function salvarEstrategiaLanceCompletaAction(formData: FormData) {
     ? maxEmbutidoLivre
     : lanceLivreEmbutidoPercentual;
 
-  const valorCredito = valorCreditoPorCota(cota);
   const snapshotCota = cota.snapshot_cota && typeof cota.snapshot_cota === "object" ? (cota.snapshot_cota as Record<string, unknown>) : null;
   const opcaoCotaId = typeof snapshotCota?.opcao_cota_id === "string" ? snapshotCota.opcao_cota_id : null;
   const { data: opcaoCota } = opcaoCotaId

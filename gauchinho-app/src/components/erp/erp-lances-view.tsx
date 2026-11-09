@@ -323,7 +323,7 @@ export function ErpLancesView({ initialStats, initialRows }: ErpLancesViewProps)
                       </td>
 
                       <td className="px-4 py-3 font-mono font-bold text-slate-900 dark:text-white">
-                        {cota.valorCredito.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                        {cota.valorCredito > 0 ? cota.valorCredito.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }) : "Não informado"}
                       </td>
 
                       <td className="px-4 py-3">
@@ -538,7 +538,7 @@ export function ErpLancesView({ initialStats, initialRows }: ErpLancesViewProps)
                 <p className="text-xs text-slate-500">
                   {selectedCota.administradora.nome} • Crédito:{" "}
                   <strong className="font-mono text-slate-800 dark:text-slate-200">
-                    {selectedCota.valorCredito.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                    {selectedCota.valorCredito > 0 ? selectedCota.valorCredito.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }) : "Não informado"}
                   </strong>
                 </p>
               </div>

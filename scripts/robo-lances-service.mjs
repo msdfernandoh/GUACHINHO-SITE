@@ -133,6 +133,7 @@ export async function executarRoboLances({
   log,
   screenshotsDir,
   verificarCancelamento,
+  dryRun = false,
 }) {
   log('=== INICIANDO ROBÔ DE OFERTA DE LANCES AUTOMÁTICOS DA FRANQUIA ===')
 
@@ -216,6 +217,8 @@ export async function executarRoboLances({
   }
 
   const { data: cotasDb, error: errCotas } = await cotasQuery
+  if (errCotas) throw new Error(`Falha ao consultar cotas autorizadas: ${errCotas.message}`)
+  if (!dryRun && !loginLance) throw new Error('Defina o login operacional para executar lances.')
 
   // Execuções direcionadas (por exemplo, o botão "processar esta cota")
   // devem limitar o robô aos IDs explicitamente enviados na fila. Sem esse
@@ -227,9 +230,13 @@ export async function executarRoboLances({
     ? (cotasDb || []).filter((cota) => cotasAlvoIds.has(cota.id))
     : cotasDb
 
+  if (!dryRun && !cotasDbProcessaveis?.length) {
+    log('Nenhuma cota autorizada para o login selecionado.')
+    return { cotasElegiveis: 0, cotasProcessadas: 0, lancesOfertados: 0 }
+  }
   if (cotasDbProcessaveis && cotasDbProcessaveis.length > 0) {
     // 1.1. Verifica cotas que já possuem lance ativo com repetição por 6 assembleias
-    const isManualTest = Boolean(
+    const isManualTest = dryRun && Boolean(
       config.filtro_grupo || config.grupo_teste || config.filtro_cotas || config.cotas_teste
       || (cotasAlvoIds && cotasAlvoIds.size > 0),
     )
@@ -361,7 +368,7 @@ export async function executarRoboLances({
   }
 
   // Se o usuário especificou cotas para teste, mas alguma não está no banco, adiciona para processamento
-  if (filtroGrupo && filtroCotasArray.length > 0) {
+  if (dryRun && filtroGrupo && filtroCotasArray.length > 0) {
     for (const cotaAlvo of filtroCotasArray) {
       const jaExiste = listaCotas.some(c => {
         const cNum = String(c.numero_cota).trim()
@@ -439,6 +446,7 @@ export async function executarRoboLances({
 
   let totalLancesOfertados = 0
   let totalCotasProcessadas = 0
+  let totalErros = 0
 
   // 2. Navegação para tela de Consorciados
   log('Acessando Atendimento / Consorciados no Newcon Web...')
@@ -506,6 +514,8 @@ export async function executarRoboLances({
   for (let i = 0; i < listaCotas.length; i++) {
     await verificarCancelamento?.()
     const item = listaCotas[i]
+    let dialogHandler
+    let popupHandler
     log(`[${i + 1}/${listaCotas.length}] Processando ofertas da Cota Grupo ${item.numero_grupo} / Cota ${item.numero_cota} (${item.cliente_nome})...`)
 
     try {
@@ -685,21 +695,19 @@ export async function executarRoboLances({
       // Regra de Lance Embutido:
       // O limite de embutido comum é 25%. Usamos a regra do grupo ou o fixo se menor.
       const embutidoMaximoPct = normalizarPercentualEmbutido(item.grupo_embutido_pct || 25.0)
-      const saldoDevedor = parseValorMonetario(saldoDevedorTela) || Number(item.saldo_devedor) || Number(item.snapshot_venda?.saldo_devedor) || null
+      const saldoDevedor = parseValorMonetario(saldoDevedorTela)
       // O Newcon calcula o embutido sobre o valor do bem exibido na tela,
       // que pode ser diferente do snapshot de crédito armazenado no ERP.
       // A tela do portal é a fonte de verdade para evitar rejeições monetárias.
-      const creditoContratado = parseValorMonetario(dadosTelaLance.valorBem) || Number(item.valor_credito) || null
-      if (!saldoDevedor) {
-        throw new Error('Newcon não apresentou o saldo devedor da cota; nenhum lance foi enviado e o ERP não foi atualizado com valor estimado.')
-      }
+      const valorBemRacon = parseValorMonetario(dadosTelaLance.valorBem)
+      const creditoContratado = valorBemRacon || Number(item.valor_credito) || null
 
-      if (item.cota_definitiva_id) {
+      if (!dryRun && item.cota_definitiva_id && (saldoDevedor > 0 || valorBemRacon > 0)) {
         const snapshotAtual = item.snapshot_cota && typeof item.snapshot_cota === 'object' ? item.snapshot_cota : {}
         const snapshotRacon = {
           ...snapshotAtual,
-          saldo_devedor: Number(saldoDevedor.toFixed(2)),
-          valor_bem_racon: creditoContratado ? Number(creditoContratado.toFixed(2)) : null,
+          ...(saldoDevedor > 0 ? { saldo_devedor: Number(saldoDevedor.toFixed(2)) } : {}),
+          ...(valorBemRacon > 0 ? { valor_bem_racon: Number(valorBemRacon.toFixed(2)) } : {}),
           fonte_dados_racon: 'NEWCON',
           dados_racon_atualizados_em: new Date().toISOString(),
         }
@@ -711,8 +719,11 @@ export async function executarRoboLances({
         if (snapshotError) {
           log(`Aviso: não foi possível atualizar o saldo da Racon no ERP para ${item.numero_grupo}/${item.numero_cota}: ${snapshotError.message}`)
         } else {
-          log(`ERP atualizado com dados da Racon: saldo devedor R$ ${saldoDevedor.toFixed(2)}${creditoContratado ? ` | valor do bem R$ ${creditoContratado.toFixed(2)}` : ''}`)
+          log(`ERP atualizado com os dados lidos na Racon para ${item.numero_grupo}/${item.numero_cota}.`)
         }
+      }
+      if (!(saldoDevedor > 0)) {
+        throw new Error('Newcon não apresentou um saldo devedor positivo para a cota. Oferta não enviada.')
       }
       const embutidoLivreConfigurado = estrategiaCota?.lance_livre_embutido_percentual == null
         ? embutidoMaximoPct
@@ -729,11 +740,16 @@ export async function executarRoboLances({
       // Regra do Usuário:
       // "lance fixo sempre 1,1234 + que o lance embutido para todos clientes. Exemplo desse grupo 1273 cota 209: embutido maximo de 25% ai o livre 26,1234"
       const livrePctConfigurado = estrategiaCota?.lance_livre_percentual == null ? null : Number(estrategiaCota.lance_livre_percentual)
-      const livrePctSolicitado = livrePctConfigurado ?? calcularRegraLanceLivre(embutidoLivrePct).livrePct
+      const livrePctSolicitado = livrePctConfigurado ?? calcularRegraLanceLivre(embutidoLivreConfigurado).livrePct
       const livrePctCalculado = dadosTelaLance.lanceMaximoPct
         ? Math.min(livrePctSolicitado, dadosTelaLance.lanceMaximoPct)
         : livrePctSolicitado
       const embutidoLivrePct = calcularEmbutidoValido(livrePctCalculado, embutidoLivreConfigurado, saldoDevedor, creditoContratado)
+      if (dryRun) {
+        log(`[TESTE] Grupo ${item.numero_grupo} / Cota ${item.numero_cota}: tela de oferta carregada e parâmetros lidos. Nenhuma oferta confirmada.`)
+        totalCotasProcessadas++
+        continue
+      }
       if (saldoDevedor && creditoContratado) {
         log(`Embutidos limitados pelo valor da oferta: livre ${embutidoLivrePct}%, fixo ${embutidoFixoPct}%, 2º fixo ${embutidoSegundoFixoPct}% (saldo R$ ${saldoDevedor.toFixed(2)}, crédito R$ ${creditoContratado.toFixed(2)})`)
       }
@@ -751,9 +767,24 @@ export async function executarRoboLances({
       // Listener contínuo de dialogs do navegador (lida com confirmações intermediárias e alertas de protocolo)
       let ultimoProtocoloCapturado = null
       let erroLancePortal = null
-      const dialogHandler = async (dialog) => {
+      let modalidadeEmConfirmacao = null
+      dialogHandler = async (dialog) => {
         const msg = dialog.message() || ''
         log(`Dialog recebido do Newcon: "${msg}"`)
+        if (dialog.type() === 'confirm' && /j[aá]\s+credenciado/i.test(msg)) {
+          const modalidades = msg.match(/modalidades?\s+(.+?)(?:\.\s*Deseja|$)/i)?.[1] ?? ''
+          const segundo = /(?:segundo|2[º°o])\s+lance\s+fixo/i
+          const modalidadesIdentificadas = {
+            LIVRE: /\blance\s+livre\b/i.test(modalidades),
+            FIXO: /\blance\s+fixo\b/i.test(modalidades.replace(segundo, '')),
+            SEGUNDO_FIXO: segundo.test(modalidades),
+          }
+          if (!modalidadeEmConfirmacao || !Object.values(modalidadesIdentificadas).some(Boolean) || modalidadesIdentificadas[modalidadeEmConfirmacao]) {
+            erroLancePortal = `Oferta anterior identificada pelo Newcon. ${msg}`
+            await dialog.dismiss().catch(() => {})
+            return
+          }
+        }
         if (/maior que o máximo permitido|máximo permitido|não permitido|nao permitido|maior que o valor gerado pela oferta|valor do lance embutido.*maior/i.test(msg)) {
           erroLancePortal = msg
         }
@@ -768,7 +799,7 @@ export async function executarRoboLances({
 
       // Listener para novas abas/popups que possam abrir o relatório
       let popupPage = null
-      const popupHandler = (p) => {
+      popupHandler = (p) => {
         log(`Nova aba/popup detectada: ${p.url()}`)
         popupPage = p
       }
@@ -868,7 +899,7 @@ export async function executarRoboLances({
       }
 
       // Função auxiliar para capturar o comprovante, salvar no Supabase Storage e retornar da tela de relatório
-      const voltarDoRelatorio = async (tipoLance = 'LIVRE') => {
+      const voltarDoRelatorio = async (tipoLance, protocolo, percentualLance, percentualEmbutido) => {
         log(`Verificando comprovante/relatório de ${tipoLance}...`)
         let infoComprovante = null
         let targetPage = page
@@ -961,6 +992,27 @@ export async function executarRoboLances({
             throw new Error(`Comprovante de ${tipoLance} não foi salvo no Storage; o lance não será registrado como concluído.`)
           }
 
+          if (item.cota_definitiva_id) {
+            const { error } = await admin.from('cota_lances_ofertados').insert({
+              empresa_id: targetEmpresaId,
+              cota_definitiva_id: item.cota_definitiva_id,
+              numero_grupo: item.numero_grupo,
+              numero_cota: item.numero_cota,
+              assembleia_numero: dadosTelaLance.assembleia || null,
+              tipo_lance: tipoLance,
+              opcao_reducao: 'REDUZIR_PARCELA',
+              percentual_lance: percentualLance,
+              percentual_embutido: percentualEmbutido,
+              protocolo,
+              comprovante_storage_path: infoComprovante.storagePath,
+              comprovante_url: infoComprovante.url,
+              repetir_seis_assembleias: true,
+              status: 'CONFIRMADO',
+            })
+            if (error) throw new Error(`Comprovante ${tipoLance} enviado ao Storage, mas o vínculo com a cota falhou: ${error.message}`)
+            log(`Comprovante ${tipoLance} vinculado no ERP para ${item.numero_grupo}/${item.numero_cota}.`)
+          }
+
           if (targetPage !== page) {
             log('Fechando popup do relatório...')
             await targetPage.close().catch(() => {})
@@ -1041,6 +1093,7 @@ export async function executarRoboLances({
 
       // 8. Clica em [Confirmar] e escuta os dialogs com o protocolo
       log('Clicando em [Confirmar] para o Lance Livre...')
+      modalidadeEmConfirmacao = 'LIVRE'
       ultimoProtocoloCapturado = null
       const btnConfirmar = page.locator('#ctl00_Conteudo_btnConfirma, input[value="Confirmar"]').first()
       await btnConfirmar.scrollIntoViewIfNeeded().catch(() => {})
@@ -1053,7 +1106,7 @@ export async function executarRoboLances({
       log(`Protocolo do Lance Livre capturado: ${protocoloLivre || 'Confirmado via Web'}`)
 
       // 9. Aguarda relatório e clica em Voltar
-      compLivre = await voltarDoRelatorio('LIVRE')
+      compLivre = await voltarDoRelatorio('LIVRE', protocoloLivre, livrePctCalculado, embutidoLivrePct)
       totalLancesOfertados++
       } else {
         log('Lance livre não configurado para esta cota; seguindo somente as modalidades selecionadas.')
@@ -1142,6 +1195,7 @@ export async function executarRoboLances({
 
         // 8. Clica em [Confirmar] e escuta os dialogs
         log('Clicando em [Confirmar] para o Lance Fixo...')
+        modalidadeEmConfirmacao = 'FIXO'
         ultimoProtocoloCapturado = null
         const btnConfirmarFixo = page.locator('#ctl00_Conteudo_btnConfirma, input[value="Confirmar"]').first()
         await btnConfirmarFixo.scrollIntoViewIfNeeded().catch(() => {})
@@ -1153,7 +1207,7 @@ export async function executarRoboLances({
         protocoloFixo = ultimoProtocoloCapturado
         log(`Protocolo do Lance Fixo capturado: ${protocoloFixo || 'Confirmado via Web'}`)
 
-        compFixo = await voltarDoRelatorio('FIXO')
+        compFixo = await voltarDoRelatorio('FIXO', protocoloFixo, fixoPct, embFixoPct)
         totalLancesOfertados++
       }
 
@@ -1193,7 +1247,7 @@ export async function executarRoboLances({
           }
 
           const selectTipo2Fixo = page.locator('#ctl00_Conteudo_rblTipoOferta, select[name*="rblTipoOferta"]').first()
-          if (await selectTipo2Fixo.isVisible({ timeout: 3000 }).catch(() => false)) {
+          if (await selectTipo2Fixo.isVisible({ timeout: 3000 }).catch(() => false) && await selectTipo2Fixo.isEnabled()) {
             await selectTipo2Fixo.selectOption('%').catch(() => selectTipo2Fixo.selectOption({ label: 'Percentual' }))
             await page.waitForTimeout(400)
           }
@@ -1202,7 +1256,7 @@ export async function executarRoboLances({
           await validarPercentualOferta(fixo2Pct, '2º Fixo')
 
           const selectEmb2Fixo = page.locator('#ctl00_Conteudo_cbxLanceEmbutido, select[name*="cbxLanceEmbutido"]').first()
-          if (await selectEmb2Fixo.isVisible({ timeout: 3000 }).catch(() => false)) {
+          if (await selectEmb2Fixo.isVisible({ timeout: 3000 }).catch(() => false) && await selectEmb2Fixo.isEnabled()) {
             await selectEmb2Fixo.selectOption('%').catch(() => selectEmb2Fixo.selectOption({ label: 'Percentual' }))
             await page.waitForTimeout(400)
           }
@@ -1220,6 +1274,7 @@ export async function executarRoboLances({
           }
 
           log('Clicando em [Confirmar] para o 2º Lance Fixo...')
+          modalidadeEmConfirmacao = 'SEGUNDO_FIXO'
           ultimoProtocoloCapturado = null
           const btnConfirmar2Fixo = page.locator('#ctl00_Conteudo_btnConfirma, input[value="Confirmar"]').first()
           await btnConfirmar2Fixo.scrollIntoViewIfNeeded().catch(() => {})
@@ -1231,7 +1286,7 @@ export async function executarRoboLances({
           protocoloSegundoFixo = ultimoProtocoloCapturado
           log(`Protocolo do 2º Lance Fixo capturado: ${protocoloSegundoFixo || 'Confirmado via Web'}`)
 
-          compSegundoFixo = await voltarDoRelatorio('SEGUNDO_FIXO')
+          compSegundoFixo = await voltarDoRelatorio('SEGUNDO_FIXO', protocoloSegundoFixo, fixo2Pct, embFixo2Pct)
           totalLancesOfertados++
         }
       }
@@ -1289,84 +1344,23 @@ export async function executarRoboLances({
           .single()
 
         if (errEst) {
-          log(`Erro ao sincronizar cota_estrategias_lance: ${errEst.message}`)
+          throw new Error(`Comprovantes vinculados, mas a confirmação da estratégia falhou: ${errEst.message}`)
         } else {
           log(`Estratégia e Confirmação de Lance registradas com sucesso no ERP! ID: ${estSalva?.id}`)
         }
 
-        // Grava no histórico individual de ofertas
-        const ofertasLances = []
-        if (protocoloLivre || compLivre) {
-          ofertasLances.push({
-            empresa_id: targetEmpresaId,
-            cota_definitiva_id: item.cota_definitiva_id,
-            numero_grupo: item.numero_grupo,
-            numero_cota: item.numero_cota,
-            assembleia_numero: dadosTelaLance.assembleia || null,
-            tipo_lance: 'LIVRE',
-            opcao_reducao: 'REDUZIR_PARCELA',
-            percentual_lance: livrePctCalculado,
-            percentual_embutido: embutidoLivrePct,
-            protocolo: protocoloLivre || null,
-            comprovante_storage_path: compLivre?.storagePath || null,
-            comprovante_url: compLivre?.url || null,
-            repetir_seis_assembleias: true,
-            status: 'CONFIRMADO',
-          })
-        }
-        if (protocoloFixo || compFixo) {
-          ofertasLances.push({
-            empresa_id: targetEmpresaId,
-            cota_definitiva_id: item.cota_definitiva_id,
-            numero_grupo: item.numero_grupo,
-            numero_cota: item.numero_cota,
-            assembleia_numero: dadosTelaLance.assembleia || null,
-            tipo_lance: 'FIXO',
-            opcao_reducao: 'REDUZIR_PARCELA',
-            percentual_lance: dadosTelaLance.lanceFixoPct || 25.0,
-            percentual_embutido: embutidoFixoPct,
-            protocolo: protocoloFixo || null,
-            comprovante_storage_path: compFixo?.storagePath || null,
-            comprovante_url: compFixo?.url || null,
-            repetir_seis_assembleias: true,
-            status: 'CONFIRMADO',
-          })
-        }
-        if (protocoloSegundoFixo || compSegundoFixo) {
-          ofertasLances.push({
-            empresa_id: targetEmpresaId,
-            cota_definitiva_id: item.cota_definitiva_id,
-            numero_grupo: item.numero_grupo,
-            numero_cota: item.numero_cota,
-            assembleia_numero: dadosTelaLance.assembleia || null,
-            tipo_lance: 'SEGUNDO_FIXO',
-            opcao_reducao: 'REDUZIR_PARCELA',
-            percentual_lance: dadosTelaLance.segundoLanceFixoPct || 40.0,
-            percentual_embutido: embutidoSegundoFixoPct,
-            protocolo: protocoloSegundoFixo || null,
-            comprovante_storage_path: compSegundoFixo?.storagePath || null,
-            comprovante_url: compSegundoFixo?.url || null,
-            repetir_seis_assembleias: true,
-            status: 'CONFIRMADO',
-          })
-        }
-
-        if (ofertasLances.length > 0) {
-          const { error: errHist } = await admin.from('cota_lances_ofertados').insert(ofertasLances)
-          if (errHist) {
-            log(`Aviso ao gravar histórico de lances: ${errHist.message}`)
-          } else {
-            log(`Histórico individual de lances gravado com sucesso! (${ofertasLances.length} registros)`)
-          }
-        }
       }
 
       totalCotasProcessadas++
       await page.waitForTimeout(1500)
 
     } catch (cotaErr) {
+      totalErros++
       log(`Erro no processamento de lances da cota ${item.numero_grupo}/${item.numero_cota}: ${cotaErr.message}`)
       await page.screenshot({ path: path.join(screenshotsDir, `erro-lance-${item.numero_grupo}-${item.numero_cota}-${Date.now()}.png`) }).catch(() => {})
+    } finally {
+      if (dialogHandler) page.off('dialog', dialogHandler)
+      if (popupHandler) context.off('page', popupHandler)
     }
   }
 
@@ -1382,5 +1376,6 @@ export async function executarRoboLances({
     cotasElegiveis: listaCotas.length,
     cotasProcessadas: totalCotasProcessadas,
     lancesOfertados: totalLancesOfertados,
+    totalErros,
   }
 }

@@ -522,6 +522,7 @@ async function run() {
       } else if (isLancesFranquia) {
         log('--- EXECUTANDO ROBÔ DE LANCES AUTOMÁTICOS DA FRANQUIA ---')
         const lancesRes = await executarRoboLances({
+          dryRun: e.dry_run === true,
           page: activePage,
           context,
           config,
@@ -1322,7 +1323,7 @@ async function run() {
     }
 
     await verificarCancelamento()
-    const execucaoParcial = Boolean(resultadoBoletos?.totalErros)
+    const execucaoParcial = Boolean(resultadoBoletos?.totalErros || resultadoLances?.totalErros)
     log(execucaoParcial ? 'Processamento finalizado com sucesso parcial; existem cotas para tentar novamente.' : 'Processamento do robô finalizado com sucesso!')
     await atualizacao
 
