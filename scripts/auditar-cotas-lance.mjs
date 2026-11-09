@@ -4,7 +4,8 @@ import fs from 'node:fs'
 import path from 'node:path'
 
 const grupo = process.argv.find((arg) => arg.startsWith('--grupo='))?.split('=')[1]
-if (!grupo) throw new Error('Informe --grupo=1553')
+const listarRobos = process.argv.includes('--robos-lance')
+if (!grupo && !listarRobos) throw new Error('Informe --grupo=1553 ou --robos-lance')
 const corrigirEmbutido = process.argv.includes('--corrigir-embutido-25')
 const cotasParaCorrigir = new Set((process.argv.find((arg) => arg.startsWith('--cotas='))?.split('=')[1] || '').split(',').map((valor) => valor.trim()).filter(Boolean))
 
@@ -23,6 +24,21 @@ for (const envPath of [path.resolve(process.cwd(), 'gauchinho-app/.env.local'), 
 }
 
 const admin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY)
+if (listarRobos) {
+  const { data, error: robosError } = await admin
+    .from('robo_configuracoes')
+    .select('id,nome,ativo,empresa_id,configuracao_tarefas')
+    .eq('ativo', true)
+  if (robosError) throw robosError
+  const robosLance = (data || []).filter((robo) => robo.configuracao_tarefas?.tipo_rotina === 'FRANQUIA_LANCES_AUTOMATICOS')
+  console.log(JSON.stringify(robosLance.map((robo) => ({
+    id: robo.id,
+    nome: robo.nome,
+    empresa_id: robo.empresa_id,
+    robo_boleto_login: robo.configuracao_tarefas?.robo_boleto_login,
+  })), null, 2))
+  process.exit(0)
+}
 const { data: cotas, error } = await admin
   .from('cotas_definitivas')
   .select('id, numero_grupo, numero_cota, robo_boleto_login, valor_credito, status')
