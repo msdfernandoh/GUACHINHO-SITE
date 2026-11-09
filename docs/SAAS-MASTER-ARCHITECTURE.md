@@ -4746,3 +4746,8 @@ de fixo/2º fixo oferecidas no Newcon antes da confirmação. Foram preenchidos 
 os cálculos de lance permanecem baseados no saldo devedor. Relatório:
 `docs/relatorios-fases/ROBOS-LANCES-ESCOPO-E-VALOR-COTA-2026-11-09.md`.
 
+### PDF de boletos em nova aba (09/11/2026)
+Os dois downloads do Controle de Boletos usam resposta PDF inline autenticada, com nome GRUPO-COTA-CLIENTE-MM-AAAA e mês atual em America/Cuiaba. Sem escrita operacional. Relatório: docs/relatorios-fases/BOLETOS-PDF-NOVA-ABA-2026-11-09.md.
+
+### Linha digitável do PDF de boleto (09/11/2026)
+Os dois botões individuais oferecem cópia da linha digitável extraída do PDF atual, validada por módulos 10/11. Leitura ausente, inválida ou ambígua bloqueia a cópia. Sem OCR, escrita operacional ou envio automático. Relatório: docs/relatorios-fases/BOLETOS-COPIAR-CODIGO-2026-11-09.md.

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition, useMemo, useEffect } from "react";
+import { CopiarCodigoBoleto } from "./copiar-codigo-boleto";
 import { chaveGrupoFiltro, listarGruposFiltro } from "@/lib/erp/vendas-filtro-grupos";
 import {
   Pencil,
@@ -41,6 +42,13 @@ import {
   atualizarControleBoletoCotaAction,
   anexarBoletoStorageAction,
 } from "@/app/erp/vendas/actions";
+
+function linkBoletoPdf(url: string, grupo: string, cota: string, cliente: string) {
+  const limpar = (valor: string) => valor.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9\s_]/g, "").trim().replace(/\s+/g, "_");
+  const mes = new Intl.DateTimeFormat("pt-BR", { timeZone: "America/Cuiaba", month: "2-digit", year: "numeric" }).format(new Date()).replace("/", "-");
+  const nome = `${limpar(grupo)}-${limpar(cota)}-${limpar(cliente)}-${mes}.pdf`;
+  return `/api/erp/boletos/pdf?${new URLSearchParams({ url, nome })}`;
+}
 
 export type BoletoEnvioItem = {
   id: string;
@@ -1456,14 +1464,14 @@ export function ErpVendasHubView({
                                 Abrir PDF
                               </a>
                               <a
-                                href={envio.arquivo_url}
-                                download
+                                href={linkBoletoPdf(envio.arquivo_url, cota?.numero_grupo || v.grupo_codigo || "", cota?.numero_cota || v.cota_numero || "", cota?.cliente_nome || v.cliente_nome)} target="_blank" rel="noopener noreferrer"
                                 className="inline-flex items-center gap-1 rounded bg-indigo-50 px-2 py-0.5 text-[10px] font-bold text-indigo-800 dark:bg-indigo-950/60 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 hover:bg-indigo-100 transition"
                                 title="Baixar o PDF salvo no Storage"
                               >
                                 <FileDown className="h-3 w-3 text-indigo-600 dark:text-indigo-400" />
                                 Baixar PDF
                               </a>
+                              <CopiarCodigoBoleto pdfUrl={linkBoletoPdf(envio.arquivo_url, cota?.numero_grupo || v.grupo_codigo || "", cota?.numero_cota || v.cota_numero || "", cota?.cliente_nome || v.cliente_nome)} />
                             </div>
                           )}
                           {envio?.qr_code_pix && (
@@ -1590,9 +1598,10 @@ export function ErpVendasHubView({
                                   <a href={envio.arquivo_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 hover:underline">
                                     <Eye className="h-3 w-3" /> Visualizar
                                   </a>
-                                  <a href={envio.arquivo_url} download className="inline-flex items-center gap-1 hover:underline">
+                                  <a href={linkBoletoPdf(envio.arquivo_url, cota?.numero_grupo || v.grupo_codigo || "", cota?.numero_cota || v.cota_numero || "", cota?.cliente_nome || v.cliente_nome)} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 hover:underline">
                                     <Download className="h-3 w-3" /> Baixar PDF
                                   </a>
+                              <CopiarCodigoBoleto pdfUrl={linkBoletoPdf(envio.arquivo_url, cota?.numero_grupo || v.grupo_codigo || "", cota?.numero_cota || v.cota_numero || "", cota?.cliente_nome || v.cliente_nome)} />
                                 </div>
                               )}
                                 </>;
