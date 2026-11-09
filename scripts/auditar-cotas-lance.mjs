@@ -6,7 +6,8 @@ import path from 'node:path'
 const grupo = process.argv.find((arg) => arg.startsWith('--grupo='))?.split('=')[1]
 const listarRobos = process.argv.includes('--robos-lance')
 const execucaoParaCancelar = process.argv.find((arg) => arg.startsWith('--cancelar-execucao='))?.split('=')[1]
-if (!grupo && !listarRobos && !execucaoParaCancelar) throw new Error('Informe --grupo=1553, --robos-lance ou --cancelar-execucao=UUID')
+const cotasComprovantes = (process.argv.find((arg) => arg.startsWith('--comprovantes-cotas='))?.split('=')[1] || '').split(',').filter(Boolean)
+if (!grupo && !listarRobos && !execucaoParaCancelar && cotasComprovantes.length === 0) throw new Error('Informe --grupo=1553, --robos-lance, --cancelar-execucao=UUID ou --comprovantes-cotas=id,id')
 const corrigirEmbutido = process.argv.includes('--corrigir-embutido-25')
 const cotasParaCorrigir = new Set((process.argv.find((arg) => arg.startsWith('--cotas='))?.split('=')[1] || '').split(',').map((valor) => valor.trim()).filter(Boolean))
 
@@ -52,6 +53,16 @@ if (execucaoParaCancelar) {
     .eq('status', 'PROCESSANDO')
   if (cancelamentoError) throw cancelamentoError
   console.log(`Execução ${execucaoParaCancelar} marcada como CANCELADA.`)
+  process.exit(0)
+}
+if (cotasComprovantes.length > 0) {
+  const { data, error: comprovantesError } = await admin
+    .from('cota_lances_ofertados')
+    .select('cota_definitiva_id,tipo_lance,percentual_lance,percentual_embutido,protocolo,comprovante_storage_path,status,created_at')
+    .in('cota_definitiva_id', cotasComprovantes)
+    .order('created_at', { ascending: false })
+  if (comprovantesError) throw comprovantesError
+  console.log(JSON.stringify(data || [], null, 2))
   process.exit(0)
 }
 const { data: cotas, error } = await admin

@@ -43,3 +43,14 @@ auditoria confirmou o valor persistido antes de qualquer reoferta pelo robô.
   `empresa_id`.
 - Não houve migration estrutural nem remoção de dados.
 - Testes automatizados e build da aplicação acompanham a publicação desta fase.
+
+## Validação operacional direcionada
+
+Após a correção, o robô **ERONI** foi executado em uma instância anônima,
+somente para as cotas 1553 IMÓVEL / 0195 e 1553 IMÓVEL / 0067. A execução
+`dd18b636-07b7-47bb-b56c-a12ab21d612d` foi concluída com duas cotas, quatro
+lances confirmados e zero falhas. Os registros novos comprovam que o embutido
+foi enviado como 25% nas modalidades livre e fixa: protocolos 5772655 e
+5772658 para a cota 0195; 5772659 e 5772661 para a cota 0067. Cada modalidade
+possui seu próprio PDF no bucket privado `lances-comprovantes` e vínculo na
+tabela `cota_lances_ofertados`.

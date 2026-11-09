@@ -4688,6 +4688,14 @@ Em 08/11/2026, o robô de lances passou a sincronizar no `snapshot_cota` o saldo
 
 A validação do robô de lances em modo de teste acessa o formulário da cota e termina antes de confirmar ofertas. Na execução real, o histórico vincula cada comprovante logo após o upload e antes de fechar o relatório no Newcon. A coluna Crédito usa o valor individual identificado no Newcon quando disponível. Relatório em `docs/relatorios-fases/VALIDACAO-ROBOS-LANCES-2026-11-09.md`.
 
+Em 09/11/2026, o cálculo do lance embutido foi consolidado para considerar
+somente o saldo devedor e o percentual permitido pela modalidade no Newcon. O
+crédito contratado, inclusive qualquer valor legado, não pode reduzir o
+embutido configurado de 25% ou 40%. A reoferta direcionada registra cada
+modalidade e seu PDF em `cota_lances_ofertados`; as execuções em lote permitem
+escolher entre cotas sem lance vencido e todas as cotas marcadas. Relatório:
+`docs/relatorios-fases/ROBOS-LANCES-ESCOPO-E-VALOR-COTA-2026-11-09.md`.
+
 A tela de Lances e Estratégias permite marcar uma cota como `contemplada` ou
 `cancelada` por uma ação limitada à empresa ativa. A alteração mantém a cota
 visível para auditoria, desativa a estratégia de lance vinculada e registra a
