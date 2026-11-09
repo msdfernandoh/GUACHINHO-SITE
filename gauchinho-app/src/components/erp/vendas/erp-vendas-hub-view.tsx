@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition, useMemo, useEffect } from "react";
+import JSZip from "jszip";
 import { chaveGrupoFiltro, listarGruposFiltro } from "@/lib/erp/vendas-filtro-grupos";
 import {
   Pencil,
@@ -41,6 +42,19 @@ import {
   atualizarControleBoletoCotaAction,
   anexarBoletoStorageAction,
 } from "@/app/erp/vendas/actions";
+
+function limparNomeArquivo(valor: string) {
+  return valor.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9\s_]/g, "").trim().replace(/\s+/g, "_");
+}
+
+export function nomeArquivoBoleto(cliente: string, grupo: string, cota: string, competencia?: string) {
+  const mes = competencia || new Intl.DateTimeFormat("pt-BR", { timeZone: "America/Cuiaba", month: "2-digit", year: "numeric" }).format(new Date()).replace("/", "-");
+  return limparNomeArquivo(cliente) + "_Grupo_" + limparNomeArquivo(grupo) + "_Cota_" + limparNomeArquivo(cota) + "_" + mes + ".pdf";
+}
+
+export function linkBoletoPdf(url: string, grupo: string, cota: string, cliente: string, competencia?: string) {
+  return "/api/erp/boletos/pdf?" + new URLSearchParams({ url, nome: nomeArquivoBoleto(cliente, grupo, cota, competencia) });
+}
 
 export type BoletoEnvioItem = {
   id: string;
@@ -283,6 +297,7 @@ export function ErpVendasHubView({
   const [controleCotas, setControleCotas] = useState<Record<string, { login: CotaItem["robo_boleto_login"]; retirar: boolean }>>({});
   const [boletosEnvios, setBoletosEnvios] = useState<BoletoEnvioItem[]>(boletosEnviosIniciais);
   const [buscandoBoletoCotaId, setBuscandoBoletoCotaId] = useState<string | null>(null);
+  const [baixandoBoletosFiltrados, setBaixandoBoletosFiltrados] = useState(false);
   useEffect(() => {
     setBoletosEnvios(boletosEnviosIniciais);
   }, [boletosEnviosIniciais]);
@@ -648,6 +663,49 @@ export function ErpVendasHubView({
   const totalBoletosComArquivo = operacoesBoletos.filter((op) => op.temArquivoBoleto).length;
   const totalBoletosSemArquivo = totalBoletosMes - totalBoletosComArquivo;
   const taxaConclusaoBoletos = totalBoletosMes > 0 ? Math.round((totalBoletosEnviados / totalBoletosMes) * 100) : 0;
+
+  const boletosFiltradosComArquivo = operacoesBoletosFiltradas.filter((op) => Boolean(op.envio?.arquivo_url));
+
+  async function baixarTodosBoletosFiltrados() {
+    if (boletosFiltradosComArquivo.length === 0) {
+      setModalErro("Nenhum boleto com PDF foi encontrado para os filtros aplicados.");
+      return;
+    }
+    setBaixandoBoletosFiltrados(true);
+    try {
+      const zip = new JSZip();
+      const falhas: string[] = [];
+      for (const { venda, cota, envio } of boletosFiltradosComArquivo) {
+        if (!envio?.arquivo_url) continue;
+        const grupo = cota?.numero_grupo || venda.grupo_codigo || "grupo";
+        const numeroCota = cota?.numero_cota || venda.cota_numero || "cota";
+        const cliente = cota?.cliente_nome || venda.cliente_nome || "cliente";
+        const nome = nomeArquivoBoleto(cliente, grupo, numeroCota, competenciaBoletoAtual);
+        try {
+          const resposta = await fetch(linkBoletoPdf(envio.arquivo_url, grupo, numeroCota, cliente, competenciaBoletoAtual));
+          if (!resposta.ok) throw new Error("PDF indisponível (" + resposta.status + ")");
+          zip.file(nome, await resposta.arrayBuffer());
+        } catch {
+          falhas.push(cliente + " — " + grupo + "/" + numeroCota);
+        }
+      }
+      if (Object.keys(zip.files).length === 0) throw new Error("Não foi possível baixar os PDFs filtrados.");
+      const arquivoZip = await zip.generateAsync({ type: "blob", compression: "DEFLATE", compressionOptions: { level: 6 } });
+      const url = URL.createObjectURL(arquivoZip);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "boletos_filtrados_" + competenciaBoletoAtual + ".zip";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+      setModalSucesso(falhas.length ? "ZIP baixado com " + Object.keys(zip.files).length + " boleto(s). " + falhas.length + " arquivo(s) não estavam disponíveis." : "ZIP baixado com " + Object.keys(zip.files).length + " boleto(s) filtrado(s).");
+    } catch (error: any) {
+      setModalErro(error?.message || "Não foi possível gerar o ZIP dos boletos.");
+    } finally {
+      setBaixandoBoletosFiltrados(false);
+    }
+  }
 
   async function buscarBoletoCota(cotaId: string) {
     if (!roboBoletosId) {
@@ -1381,8 +1439,14 @@ export function ErpVendasHubView({
                 Registre com 1 clique a baixa e o envio aos clientes com gravação de data, horário e responsável.
               </p>
             </div>
-            <div className="text-xs font-bold text-slate-600 dark:text-slate-300">
-              Conclusão: <strong className="text-emerald-600">{totalBoletosEnviados} de {totalBoletosMes} ({taxaConclusaoBoletos}%)</strong>
+            <div className="flex flex-wrap items-center justify-end gap-3">
+              <button type="button" onClick={baixarTodosBoletosFiltrados} disabled={baixandoBoletosFiltrados || boletosFiltradosComArquivo.length === 0} className="inline-flex items-center gap-1.5 rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-xs font-black text-indigo-800 transition hover:bg-indigo-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-indigo-800 dark:bg-indigo-950/50 dark:text-indigo-200" title="Baixar em um ZIP todos os PDFs que possuem boleto dentro dos filtros atuais">
+                <FileDown className="h-3.5 w-3.5" />
+                {baixandoBoletosFiltrados ? "Gerando ZIP..." : "Baixar " + boletosFiltradosComArquivo.length + " filtrado(s) (ZIP)"}
+              </button>
+              <div className="text-xs font-bold text-slate-600 dark:text-slate-300">
+                Conclusão: <strong className="text-emerald-600">{totalBoletosEnviados} de {totalBoletosMes} ({taxaConclusaoBoletos}%)</strong>
+              </div>
             </div>
           </div>
 
