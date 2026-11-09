@@ -4696,6 +4696,12 @@ modalidade e seu PDF em `cota_lances_ofertados`; as execuções em lote permitem
 escolher entre cotas sem lance vencido e todas as cotas marcadas. Relatório:
 `docs/relatorios-fases/ROBOS-LANCES-ESCOPO-E-VALOR-COTA-2026-11-09.md`.
 
+Na operação de boletos, a aba Controle de Boletos suporta o download em ZIP
+dos PDFs que já existem dentro dos filtros ativos. A composição do arquivo é
+feita no navegador a partir da rota autenticada de download e mantém nomes
+com cliente, grupo, cota e competência, sem alterar o acesso privado ao
+Storage. Relatório: `docs/relatorios-fases/BOLETOS-ZIP-FILTRADOS-2026-11-09.md`.
+
 A tela de Lances e Estratégias permite marcar uma cota como `contemplada` ou
 `cancelada` por uma ação limitada à empresa ativa. A alteração mantém a cota
 visível para auditoria, desativa a estratégia de lance vinculada e registra a
