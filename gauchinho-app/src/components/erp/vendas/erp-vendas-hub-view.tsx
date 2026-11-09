@@ -301,6 +301,7 @@ export function ErpVendasHubView({
   const [filtroConsultor, setFiltroConsultor] = useState("todos");
   const [retornoBuscaBoleto, setRetornoBuscaBoleto] = useState<Record<string, string>>({});
   const router = useRouter();
+  const [filtroContaRacon, setFiltroContaRacon] = useState<"todos" | "GAUCHINHO_ERONI" | "RACON_FERNANDO">("todos");
   const [filtroGrupo, setFiltroGrupo] = useState("todos");
   const [filtroCota, setFiltroCota] = useState("");
   const competencias = useMemo(() => {
@@ -490,12 +491,24 @@ export function ErpVendasHubView({
   }
   const palavrasBusca = normalizarBusca(termoBusca).trim().split(/\s+/).filter(Boolean);
   const termoCotaLimpo = normalizarBusca(filtroCota).trim();
+  const contasRaconDisponiveis = useMemo(
+    () => [...new Set(cotas.map((c) => c.robo_boleto_login).filter(Boolean))] as NonNullable<CotaItem["robo_boleto_login"]>[],
+    [cotas],
+  );
 
   // Filtragem de vendas com suporte a consultor, grupo, cota, mês e busca livre
   const vendasFiltradas = useMemo(() => {
     return vendas.filter((v) => {
       // 1. Mês de referência (Competência)
-      if (!(abaAtiva === "boletos" && v.snapshot_venda?.somente_controle) && competencia !== "todos" && (v.data_primeira_parcela || v.data_venda || v.created_at || "").slice(0, 7) !== competencia) {
+      const referenciaVenda = (v.data_primeira_parcela || v.data_venda || v.created_at || "").slice(0, 7);
+      const temBoletoNaCompetencia = competencia !== "todos" && boletosEnvios.some(
+        (boleto) => boleto.venda_id === v.id && boleto.competencia === competencia,
+      );
+      if (
+        competencia !== "todos" &&
+        referenciaVenda !== competencia &&
+        !(abaAtiva === "boletos" && (v.snapshot_venda?.somente_controle || temBoletoNaCompetencia))
+      ) {
         return false;
       }
 
@@ -519,6 +532,11 @@ export function ErpVendasHubView({
 
       // 3. Filtro por Grupo
       const cotasDaVenda = cotas.filter((c) => c.venda_id === v.id);
+      if (
+        abaAtiva === "boletos" &&
+        filtroContaRacon !== "todos" &&
+        !cotasDaVenda.some((c) => c.robo_boleto_login === filtroContaRacon)
+      ) return false;
       if (filtroGrupo !== "todos") {
         const matchGrupoVenda = chaveGrupoFiltro(v.grupo_id, v.grupo_codigo) === filtroGrupo;
         const matchGrupoCota = cotasDaVenda.some((c) => chaveGrupoFiltro(c.grupo_id, c.numero_grupo) === filtroGrupo);
@@ -545,10 +563,11 @@ export function ErpVendasHubView({
 
       return true;
     });
-  }, [vendas, cotas, competencia, abaAtiva, filtroConsultor, consultoresDisponiveis, filtroGrupo, termoCotaLimpo, palavrasBusca]);
+  }, [vendas, cotas, boletosEnvios, competencia, abaAtiva, filtroConsultor, filtroContaRacon, consultoresDisponiveis, filtroGrupo, termoCotaLimpo, palavrasBusca]);
 
   const cotasFiltradas = useMemo(() => {
     return cotas.filter((c) => {
+      if (abaAtiva === "boletos" && filtroContaRacon !== "todos" && c.robo_boleto_login !== filtroContaRacon) return false;
       if (filtroConsultor !== "todos") {
         const consultorSelecionado = consultoresDisponiveis.find((cons) => cons.id === filtroConsultor);
         const v = vendas.find((venda) => venda.id === c.venda_id);
@@ -575,7 +594,7 @@ export function ErpVendasHubView({
       }
       return true;
     });
-  }, [cotas, vendas, filtroConsultor, consultoresDisponiveis, filtroGrupo, termoCotaLimpo, palavrasBusca]);
+  }, [cotas, vendas, abaAtiva, filtroContaRacon, filtroConsultor, consultoresDisponiveis, filtroGrupo, termoCotaLimpo, palavrasBusca]);
 
   const valorVendido = vendasFiltradas.filter((v) => !v.snapshot_venda?.somente_controle && !["cancelada", "suspensa"].includes(v.status)).reduce((s, v) => s + Number(v.valor_credito), 0);
   const metaPeriodo = competencia === "todos" ? metas.reduce((s, m) => s + m.valor, 0) : metas.filter((m) => (m.inicio || "").slice(0, 7) <= competencia && (m.fim || "").slice(0, 7) >= competencia).reduce((s, m) => s + m.valor, 0);
@@ -827,11 +846,12 @@ export function ErpVendasHubView({
     });
   }
 
-  const temFiltroAtivo = competencia !== "todos" || filtroConsultor !== "todos" || filtroGrupo !== "todos" || filtroCota.trim() !== "" || termoBusca.trim() !== "";
+  const temFiltroAtivo = competencia !== "todos" || filtroConsultor !== "todos" || filtroContaRacon !== "todos" || filtroGrupo !== "todos" || filtroCota.trim() !== "" || termoBusca.trim() !== "";
 
   function limparFiltros() {
     setCompetencia("todos");
     setFiltroConsultor("todos");
+    setFiltroContaRacon("todos");
     setFiltroGrupo("todos");
     setFiltroCota("");
     setTermoBusca("");
@@ -957,7 +977,7 @@ export function ErpVendasHubView({
           )}
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
           {/* 1. Mês de Referência */}
           <div>
             <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400 mb-1">
@@ -998,7 +1018,28 @@ export function ErpVendasHubView({
             </select>
           </div>
 
-          {/* 3. Filtro por Grupo */}
+          {/* 3. Conta usada no portal Racon, independente do consultor comercial. */}
+          <div>
+            <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400 mb-1">
+              <UserCheck className="inline h-3 w-3 mr-1 text-slate-400" />
+              Conta Racon
+            </label>
+            <select
+              value={filtroContaRacon}
+              onChange={(e) => setFiltroContaRacon(e.target.value as "todos" | "GAUCHINHO_ERONI" | "RACON_FERNANDO")}
+              disabled={abaAtiva !== "boletos"}
+              className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3 py-2 text-xs font-semibold text-slate-800 focus:border-blue-600 focus:bg-white focus:ring-2 focus:ring-blue-600/20 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+            >
+              <option value="todos">Todas as contas</option>
+              {contasRaconDisponiveis.map((conta) => (
+                <option key={conta} value={conta}>
+                  {conta === "GAUCHINHO_ERONI" ? "1 · Gauchinho / Eroni" : "2 · Racon / Fernando"}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* 4. Filtro por Grupo */}
           <div>
             <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400 mb-1">
               <Tag className="inline h-3 w-3 mr-1 text-slate-400" />
