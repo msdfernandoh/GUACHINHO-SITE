@@ -72,14 +72,15 @@ function resumoExecucao(execucao: any, falhasRobo: any[], tipoRobo?: string) {
     }
 
     if (erroBoleto || erroLance) {
-      const match = erroBoleto ?? erroLance
-      if (!match) continue
-      falhasLog.push({ grupo: match[1], cota: match[2], erro: match[3] })
+      const erroEncontrado = erroBoleto || erroLance
+      if (erroEncontrado) {
+        falhasLog.push({ grupo: erroEncontrado[1], cota: erroEncontrado[2], erro: erroEncontrado[3] })
+      }
       continue
     }
     if (erroGrupo) falhasLog.push({ grupo: erroGrupo[1], cota: '—', erro: erroGrupo[2] })
 
-    const concluiuLance = /Histórico individual de lances gravado com sucesso|Total de lances ofertados com confirmação/.test(msg)
+    const concluiuLance = /Histórico individual de lances gravado com sucesso|Estratégia e Confirmação de Lance registradas com sucesso|Total de lances ofertados com confirmação/.test(msg)
     const concluiuGrupo = /Dados de contemplação e médias atualizados com sucesso|Grupo .* validado sem escrita de catálogo|Portal confirma zero assembleias realizadas/.test(msg)
     if ((concluiuLance || concluiuGrupo) && itemAtual && !sucessos.some((item) => item.grupo === itemAtual.grupo && item.cota === itemAtual.cota)) {
       sucessos.push({ ...itemAtual })
@@ -100,7 +101,14 @@ function resumoExecucao(execucao: any, falhasRobo: any[], tipoRobo?: string) {
   const processadasResultado = Number(resultadoFluxo?.cotasProcessadas || 0)
   return {
     total: Number(execucao?.resultado?.boletos?.cotasProcessadas || totalResultado || maiorTotal || 0),
-    processadas: processadasResultado || sucessos.length + falhasLog.length || (atual ? Math.max(0, atual.atual - 1) : 0),
+    // Enquanto a execução está aberta o resultado ainda não existe. Nesse caso
+    // o índice emitido pelo próprio robô é a fonte de progresso, sem apagar os
+    // sucessos/falhas já encontrados no log.
+    processadas: Math.max(
+      processadasResultado,
+      sucessos.length + falhasLog.length,
+      atual?.atual || 0,
+    ),
     sucessos: execucao?.resultado?.boletos?.sucessos?.length ? execucao.resultado.boletos.sucessos : sucessos,
     falhas: execucao?.resultado?.boletos?.falhas?.length ? execucao.resultado.boletos.falhas : (falhasLog.length ? falhasLog : falhasRobo),
   }

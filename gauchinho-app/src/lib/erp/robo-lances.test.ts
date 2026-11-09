@@ -5,6 +5,7 @@ import {
   calcularEstrategiaGrupo,
   alinharFixosComPortal,
   calcularEmbutidoValido,
+  calcularVencimentoSeisAssembleias,
   devePularLanceVencido,
 } from "../../../../scripts/robo-lances-service.mjs";
 
@@ -19,8 +20,20 @@ describe("Robô de Oferta de Lances - Regras de Lance e Extração de Protocolos
     expect(estrategia.lance_fixo_ativo).toBe(true);
   });
 
-  it("bloqueia percentual fixo ausente no portal antes de ofertar", () => {
-    expect(() => alinharFixosComPortal({ lance_fixo_ativo: true, lance_fixo_percentual: 50 }, { lanceFixoPct: 25, segundoLanceFixoPct: null })).toThrow(/indisponível/);
+  it("desativa fixo ausente no portal sem impedir as demais modalidades", () => {
+    const alinhada = alinharFixosComPortal(
+      { lance_livre_ativo: true, lance_fixo_ativo: true, lance_fixo_percentual: 50 },
+      { lanceFixoPct: 25, segundoLanceFixoPct: null },
+    );
+    expect(alinhada.lance_livre_ativo).toBe(true);
+    expect(alinhada.lance_fixo_ativo).toBe(false);
+    expect(alinhada.modalidades_indisponiveis).toEqual(["50%"]);
+  });
+
+  it("calcula seis assembleias pelo ciclo, sem antecipar a validade", () => {
+    expect(calcularVencimentoSeisAssembleias("2026-10-09", "12/11/2026")).toBe("2027-03-09");
+    expect(calcularVencimentoSeisAssembleias("2026-10-30", "12/11/2026")).toBe("2027-04-30");
+    expect(calcularVencimentoSeisAssembleias("2026-11-09", "12/11/2026")).toBe("2027-04-09");
   });
 
   it("inclui lance vencido somente na execução que solicitou todas as cotas", () => {

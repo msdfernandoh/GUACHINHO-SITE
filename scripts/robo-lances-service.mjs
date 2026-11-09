@@ -123,20 +123,74 @@ export function calcularEstrategiaGrupo({ embutidoMaximoPct = 25, fixoPct = null
 }
 
 export function alinharFixosComPortal(estrategia, portal) {
-  const resultado = { ...estrategia, lance_fixo_ativo: false, segundo_lance_fixo_ativo: false }
+  // A configuração salva é uma intenção operacional; a tela da cota no
+  // Newcon é a fonte de verdade para as modalidades que podem ser ofertadas.
+  // Nunca "rebaixamos" um fixo de 50% para 25%: se ele não existir na cota,
+  // apenas o desativamos nesta execução e preservamos as demais modalidades.
+  const resultado = {
+    ...estrategia,
+    lance_fixo_ativo: false,
+    segundo_lance_fixo_ativo: false,
+    modalidades_indisponiveis: [],
+  }
   const campos = ['lance_fixo', 'segundo_lance_fixo']
   const percentuais = [portal.lanceFixoPct, portal.segundoLanceFixoPct]
   for (const origem of campos) {
     if (!estrategia[`${origem}_ativo`]) continue
     const percentual = Number(estrategia[`${origem}_percentual`] || percentuais[campos.indexOf(origem)])
     const indice = percentuais.findIndex(valor => Number(valor) > 0 && Math.abs(Number(valor) - percentual) < 0.0001)
-    if (indice < 0) throw new Error(`Lance fixo configurado em ${percentual}% indisponível nesta cota no Newcon.`)
+    if (indice < 0) {
+      resultado.modalidades_indisponiveis.push(`${percentual}%`)
+      continue
+    }
     const destino = campos[indice]
     resultado[`${destino}_ativo`] = true
     resultado[`${destino}_percentual`] = percentual
     resultado[`${destino}_embutido_percentual`] = estrategia[`${origem}_embutido_percentual`]
   }
   return resultado
+}
+
+function dataLocalValida(valor) {
+  if (!valor) return null
+  const texto = String(valor).trim()
+  const br = texto.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/)
+  if (br) return new Date(Number(br[3]), Number(br[2]) - 1, Number(br[1]), 12)
+  const iso = texto.match(/(\d{4})-(\d{1,2})-(\d{1,2})/)
+  if (iso) return new Date(Number(iso[1]), Number(iso[2]) - 1, Number(iso[3]), 12)
+  const data = new Date(texto)
+  return Number.isNaN(data.getTime()) ? null : data
+}
+
+/**
+ * O checkbox do Newcon repete a oferta em seis assembleias. A validade não é
+ * a data em que a estratégia foi salva: ela começa no ciclo de assembleia.
+ * Ex.: oferta até 09/10 (corte dia 10) termina em março; oferta em 30/10 ou
+ * no ciclo de novembro termina em abril. Mantemos o dia da oferta somente
+ * para a data exibida, avançando cinco meses para cobrir seis assembleias.
+ */
+export function calcularVencimentoSeisAssembleias(dataOferta, dataAssembleia = null, diaCorte = 10) {
+  const oferta = dataLocalValida(dataOferta)
+  if (!oferta) return null
+  const assembleia = dataLocalValida(dataAssembleia)
+  const inicio = new Date(oferta.getFullYear(), oferta.getMonth(), oferta.getDate(), 12)
+
+  if (assembleia) {
+    const mesAnterior = new Date(assembleia.getFullYear(), assembleia.getMonth() - 1, 1, 12)
+    const ofertaNoMesAnterior = oferta.getFullYear() === mesAnterior.getFullYear()
+      && oferta.getMonth() === mesAnterior.getMonth()
+    const ofertaNoMesDaAssembleia = oferta.getFullYear() === assembleia.getFullYear()
+      && oferta.getMonth() === assembleia.getMonth()
+
+    if (ofertaNoMesAnterior && oferta.getDate() >= diaCorte) {
+      inicio.setFullYear(assembleia.getFullYear(), assembleia.getMonth())
+    } else if (ofertaNoMesDaAssembleia) {
+      inicio.setFullYear(assembleia.getFullYear(), assembleia.getMonth())
+    }
+  }
+
+  inicio.setMonth(inicio.getMonth() + 5)
+  return `${inicio.getFullYear()}-${String(inicio.getMonth() + 1).padStart(2, '0')}-${String(inicio.getDate()).padStart(2, '0')}`
 }
 
 export function devePularLanceVencido(estrategia, incluirLancesVencidos, agora = new Date()) {
@@ -681,24 +735,35 @@ export async function executarRoboLances({
         // Assembleia
         const assInput = document.querySelector('input[name*="txtST_Assembleia"], input[id*="txtST_Assembleia"], span[id*="lblAssembleia"]')
         const assTexto = assInput ? (assInput.value || assInput.innerText || '') : ''
+        const dataAssInput = document.querySelector('input[name*="DataAssembleia"], input[id*="DataAssembleia"], input[name*="dtAssembleia"], input[id*="dtAssembleia"]')
+        const dataAssTexto = dataAssInput ? (dataAssInput.value || dataAssInput.innerText || '') : ''
+        const dataAssMatch = dataAssTexto.match(/\d{1,2}\/\d{1,2}\/\d{4}/)
+          || (document.body?.innerText || '').match(/assembleia\s*:\s*(\d{1,2}\/\d{1,2}\/\d{4})/i)
 
         // Bem / Valor
         const bemInput = document.querySelector('input[name*="txtVL_Bem"], span[id*="lblValorBem"]')
         const bemTexto = bemInput ? (bemInput.value || bemInput.innerText || '') : ''
 
         return {
-          lanceFixoPct: fixoTexto ? parseFloat(fixoTexto.replace(',', '.')) : 25.0,
+          // Não presumir 25%: alguns grupos possuem somente Lance Livre.
+          // Inventar esse valor fazia o robô tentar uma modalidade inexistente
+          // e classificava a cota inteira como falha.
+          lanceFixoPct: fixoTexto ? parseFloat(fixoTexto.replace(',', '.')) : null,
           segundoLanceFixoPct: fixo2Texto ? parseFloat(fixo2Texto.replace(',', '.')) : null,
           lanceMaximoPct: (() => {
             const match = (document.body?.innerText || '').match(/lance\s+m[aá]ximo\s*:\s*([\d.,]+)\s*%/i)
             return match ? parseFloat(match[1].replace('.', '').replace(',', '.')) : null
           })(),
           assembleia: assTexto,
+          dataAssembleia: dataAssMatch ? dataAssMatch[0] : null,
           valorBem: bemTexto,
         }
       })
 
       const estrategiaCota = item.estrategia ? alinharFixosComPortal(item.estrategia, dadosTelaLance) : null
+      if (estrategiaCota?.modalidades_indisponiveis?.length) {
+        log(`[MODALIDADE AJUSTADA] Fixo(s) ${estrategiaCota.modalidades_indisponiveis.join(', ')} não disponível(is) nesta cota no Newcon. A oferta seguirá apenas com as modalidades realmente habilitadas.`)
+      }
       if (estrategiaCota) {
         dadosTelaLance.lanceFixoPct = estrategiaCota.lance_fixo_ativo
           ? Number(estrategiaCota.lance_fixo_percentual || dadosTelaLance.lanceFixoPct || 0)
@@ -706,6 +771,29 @@ export async function executarRoboLances({
         dadosTelaLance.segundoLanceFixoPct = estrategiaCota.segundo_lance_fixo_ativo
           ? Number(estrategiaCota.segundo_lance_fixo_percentual || dadosTelaLance.segundoLanceFixoPct || 0)
           : null
+
+        const temModalidadeExecutavel = Boolean(
+          estrategiaCota.lance_livre_ativo
+          || estrategiaCota.lance_fixo_ativo
+          || estrategiaCota.segundo_lance_fixo_ativo,
+        )
+        if (!temModalidadeExecutavel) {
+          if (!dryRun && item.cota_definitiva_id) {
+            const { error: syncError } = await admin
+              .from('cota_estrategias_lance')
+              .update({
+                ativa: false,
+                lance_fixo_ativo: false,
+                segundo_lance_fixo_ativo: false,
+                updated_at: new Date().toISOString(),
+              })
+              .eq('cota_definitiva_id', item.cota_definitiva_id)
+            if (syncError) throw new Error(`Não foi possível sincronizar a estratégia sem modalidade do Newcon: ${syncError.message}`)
+          }
+          log(`[SEM MODALIDADE EXECUTÁVEL] Grupo ${item.numero_grupo} / Cota ${item.numero_cota}: estratégia foi inativada para revisão, sem oferta e sem falha do robô.`)
+          totalCotasProcessadas++
+          continue
+        }
       }
 
       log(`Dados do grupo/cota extraídos na tela:`)
@@ -748,7 +836,15 @@ export async function executarRoboLances({
         }
         const { error: snapshotError } = await admin
           .from('cotas_definitivas')
-          .update({ snapshot_cota: snapshotRacon, updated_at: new Date().toISOString() })
+          .update({
+            snapshot_cota: snapshotRacon,
+            // Corrige cotas antigas/importadas que ainda mostram R$ 0,00 no
+            // ERP. O valor exibido pelo Newcon é a origem auditável.
+            ...(Number(item.valor_credito || 0) <= 0 && valorBemRacon > 0
+              ? { valor_credito: Number(valorBemRacon.toFixed(2)) }
+              : {}),
+            updated_at: new Date().toISOString(),
+          })
           .eq('id', item.cota_definitiva_id)
           .eq('empresa_id', item.empresa_id)
         if (snapshotError) {
@@ -1331,12 +1427,10 @@ export async function executarRoboLances({
           parcela_reduzida_ativa: true,
           repetir_seis_assembleias: true,
           data_lance: new Date().toISOString().split('T')[0],
-          data_vencimento: (() => {
-            const d = new Date()
-            // Vigência operacional termina uma assembleia antes do ciclo real de 6.
-            d.setMonth(d.getMonth() + 5)
-            return d.toISOString().split('T')[0]
-          })(),
+          data_vencimento: calcularVencimentoSeisAssembleias(
+            new Date(),
+            dadosTelaLance.dataAssembleia || null,
+          ),
           confirmado: true,
           confirmado_em: new Date().toISOString(),
           confirmado_por_nome: 'Robô Newcon Franquia',

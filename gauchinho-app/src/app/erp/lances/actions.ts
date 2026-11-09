@@ -877,13 +877,18 @@ export async function alterarStatusCotaLanceAction(
   if (!cota) throw new Error("Cota não encontrada para a empresa ativa.");
 
   const novoStatus = status === "contemplada" ? "contemplada" : "cancelada";
-  const { error: updateCotaError } = await adminSupabase
+  const { data: cotaAtualizada, error: updateCotaError } = await adminSupabase
     .from("cotas_definitivas")
     .update({ status: novoStatus, contemplada: status === "contemplada" })
     .eq("id", cotaId)
-    .eq("empresa_id", empresaAtiva.id);
+    .eq("empresa_id", empresaAtiva.id)
+    .select("id,status,contemplada")
+    .maybeSingle();
 
   if (updateCotaError) throw new Error(updateCotaError.message);
+  if (!cotaAtualizada || cotaAtualizada.status !== novoStatus) {
+    throw new Error("O status da cota não foi confirmado após a atualização.");
+  }
 
   const { data: estrategia, error: estrategiaError } = await adminSupabase
     .from("cota_estrategias_lance")
@@ -915,6 +920,8 @@ export async function alterarStatusCotaLanceAction(
   }
 
   revalidatePath("/erp/lances");
+  revalidatePath("/erp/lances", "page");
+  revalidatePath("/erp/vendas");
   revalidatePath("/erp");
 }
 
