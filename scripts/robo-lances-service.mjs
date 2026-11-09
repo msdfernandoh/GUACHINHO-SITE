@@ -767,24 +767,9 @@ export async function executarRoboLances({
       // Listener contínuo de dialogs do navegador (lida com confirmações intermediárias e alertas de protocolo)
       let ultimoProtocoloCapturado = null
       let erroLancePortal = null
-      let modalidadeEmConfirmacao = null
       dialogHandler = async (dialog) => {
         const msg = dialog.message() || ''
         log(`Dialog recebido do Newcon: "${msg}"`)
-        if (dialog.type() === 'confirm' && /j[aá]\s+credenciado/i.test(msg)) {
-          const modalidades = msg.match(/modalidades?\s+(.+?)(?:\.\s*Deseja|$)/i)?.[1] ?? ''
-          const segundo = /(?:segundo|2[º°o])\s+lance\s+fixo/i
-          const modalidadesIdentificadas = {
-            LIVRE: /\blance\s+livre\b/i.test(modalidades),
-            FIXO: /\blance\s+fixo\b/i.test(modalidades.replace(segundo, '')),
-            SEGUNDO_FIXO: segundo.test(modalidades),
-          }
-          if (!modalidadeEmConfirmacao || !Object.values(modalidadesIdentificadas).some(Boolean) || modalidadesIdentificadas[modalidadeEmConfirmacao]) {
-            erroLancePortal = `Oferta anterior identificada pelo Newcon. ${msg}`
-            await dialog.dismiss().catch(() => {})
-            return
-          }
-        }
         if (/maior que o máximo permitido|máximo permitido|não permitido|nao permitido|maior que o valor gerado pela oferta|valor do lance embutido.*maior/i.test(msg)) {
           erroLancePortal = msg
         }
@@ -1093,7 +1078,6 @@ export async function executarRoboLances({
 
       // 8. Clica em [Confirmar] e escuta os dialogs com o protocolo
       log('Clicando em [Confirmar] para o Lance Livre...')
-      modalidadeEmConfirmacao = 'LIVRE'
       ultimoProtocoloCapturado = null
       const btnConfirmar = page.locator('#ctl00_Conteudo_btnConfirma, input[value="Confirmar"]').first()
       await btnConfirmar.scrollIntoViewIfNeeded().catch(() => {})
@@ -1195,7 +1179,6 @@ export async function executarRoboLances({
 
         // 8. Clica em [Confirmar] e escuta os dialogs
         log('Clicando em [Confirmar] para o Lance Fixo...')
-        modalidadeEmConfirmacao = 'FIXO'
         ultimoProtocoloCapturado = null
         const btnConfirmarFixo = page.locator('#ctl00_Conteudo_btnConfirma, input[value="Confirmar"]').first()
         await btnConfirmarFixo.scrollIntoViewIfNeeded().catch(() => {})
@@ -1274,7 +1257,6 @@ export async function executarRoboLances({
           }
 
           log('Clicando em [Confirmar] para o 2º Lance Fixo...')
-          modalidadeEmConfirmacao = 'SEGUNDO_FIXO'
           ultimoProtocoloCapturado = null
           const btnConfirmar2Fixo = page.locator('#ctl00_Conteudo_btnConfirma, input[value="Confirmar"]').first()
           await btnConfirmar2Fixo.scrollIntoViewIfNeeded().catch(() => {})
