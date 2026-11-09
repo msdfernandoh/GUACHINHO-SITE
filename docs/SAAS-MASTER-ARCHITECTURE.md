@@ -1,5 +1,11 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
+### Busca individual de boleto por login (09/11/2026)
+O Controle de Boletos seleciona o robô ativo pelo login da cota e pela
+carteira atendida, incluindo o vínculo explícito por empresa_dados_id.
+A confirmação exige que a execução retornada inclua a cota solicitada.
+Relatório: `docs/relatorios-fases/BOLETOS-BUSCA-POR-LOGIN-2026-11-09.md`.
+
 ### Limites de execução por rotina Newcon (08/11/2026)
 O worker utiliza limites compatíveis com o volume de navegação: 3 horas para
 lances, 2 horas para boletos e 6 horas para contemplações. O polling do

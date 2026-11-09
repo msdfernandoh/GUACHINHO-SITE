@@ -78,7 +78,9 @@ export default async function AdminVendasPage() {
     admin.from("metas_comerciais").select("id,indicador,valor_meta,data_inicio,data_fim,alvo_tipo").eq("empresa_id",empresaId).eq("indicador","valor_credito_vendido").eq("alvo_tipo","empresa"),
     admin.from("vendas_boletos_envios").select("*").eq("empresa_id", empresaId).order("created_at", { ascending: false }),
     admin.from("cotas_boletos").select("*").eq("empresa_id", empresaId).order("created_at", { ascending: false }),
-    admin.from("robo_configuracoes").select("id,configuracao_tarefas,ativo").eq("empresa_id", empresaId),
+    admin.from("robo_configuracoes").select("id,configuracao_tarefas,ativo")
+      .or(`empresa_id.eq.${empresaId},configuracao_tarefas->>empresa_dados_id.eq.${empresaId}`)
+      .order("id"),
   ]);
 
   const participantes = (participantesRes.data ?? []) as ParticipanteSimples[];
@@ -263,10 +265,17 @@ export default async function AdminVendasPage() {
   }
 
   const boletosConsolidados = Array.from(boletosMap.values());
-  const roboBoletosId = (roboConfigsRes.data ?? []).find((robo) =>
-    robo.ativo !== false && robo.configuracao_tarefas?.tipo_rotina === "FRANQUIA_DOWNLOAD_BOLETOS" &&
-    !Array.isArray(robo.configuracao_tarefas?.cotas_alvo_ids)
-  )?.id ?? null;
+  const robosBoletosPorLogin: Record<string, string> = {};
+  for (const robo of roboConfigsRes.data ?? []) {
+    const tarefas = robo.configuracao_tarefas;
+    const login = tarefas?.robo_boleto_login;
+    if (robo.ativo === true && tarefas?.tipo_rotina === "FRANQUIA_DOWNLOAD_BOLETOS" &&
+        (!tarefas.empresa_dados_id || tarefas.empresa_dados_id === empresaId) &&
+        !Array.isArray(tarefas.cotas_alvo_ids) &&
+        (login === "RACON_FERNANDO" || login === "GAUCHINHO_ERONI")) {
+      robosBoletosPorLogin[login] ??= robo.id;
+    }
+  }
 
   return (
     <main className="p-6">
@@ -282,7 +291,7 @@ export default async function AdminVendasPage() {
         isMaster={isMaster}
         metas={(metasRes.data ?? []).map((meta) => ({ valor: Number(meta.valor_meta), inicio: meta.data_inicio, fim: meta.data_fim }))}
         boletosEnvios={boletosConsolidados as any}
-        roboBoletosId={roboBoletosId}
+        robosBoletosPorLogin={robosBoletosPorLogin}
       />
     </main>
   );

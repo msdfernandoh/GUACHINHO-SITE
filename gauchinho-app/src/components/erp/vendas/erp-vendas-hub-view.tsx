@@ -187,7 +187,7 @@ interface ErpVendasHubViewProps {
   isMaster: boolean;
   metas: Array<{ valor:number;inicio:string;fim:string }>;
   boletosEnvios?: BoletoEnvioItem[];
-  roboBoletosId?: string | null;
+  robosBoletosPorLogin?: Record<string, string>;
 }
 
 const brl = (v: number) =>
@@ -282,7 +282,7 @@ export function ErpVendasHubView({
   isMaster,
   metas = [],
   boletosEnvios: boletosEnviosIniciais = [],
-  roboBoletosId = null,
+  robosBoletosPorLogin = {},
 }: ErpVendasHubViewProps) {
   const [isPending, startTransition] = useTransition();
   const [abaAtiva, setAbaAtiva] = useState<"vendas" | "boletos">("vendas");
@@ -679,9 +679,16 @@ export function ErpVendasHubView({
     } catch (error: any) { setModalErro(error?.message || "Não foi possível gerar o ZIP dos boletos."); } finally { setBaixandoBoletosFiltrados(false); }
   }
 
-  async function buscarBoletoCota(cotaId: string) {
+  async function buscarBoletoCota(cota: CotaItem) {
+    const cotaId = cota.id;
+    const login = controleCotas[cotaId]?.login ?? cota.robo_boleto_login;
+    if (!login) {
+      setModalErro("Selecione o login do robô para esta cota antes de buscar o boleto.");
+      return;
+    }
+    const roboBoletosId = robosBoletosPorLogin[login];
     if (!roboBoletosId) {
-      setModalErro("Robô de boletos não está configurado para esta empresa.");
+      setModalErro("Nenhum robô de boletos ativo foi encontrado para o login desta cota.");
       return;
     }
     setBuscandoBoletoCotaId(cotaId);
@@ -694,6 +701,10 @@ export function ErpVendasHubView({
       const result = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(result.error || "Não foi possível enfileirar a busca do boleto.");
       setModalSucesso("Busca do boleto enfileirada para esta cota. Os boletos já baixados serão ignorados.");
+      const alvos = result.execucao?.detalhes?.cotas_alvo_ids;
+      if (!Array.isArray(alvos) || !alvos.includes(cotaId)) {
+        throw new Error("O robô está ocupado com outra execução. Tente buscar este boleto novamente quando ela terminar.");
+      }
     } catch (error: any) {
       setModalErro(error?.message || "Erro ao enfileirar a busca do boleto.");
     } finally {
@@ -1643,7 +1654,7 @@ export function ErpVendasHubView({
                               {cota?.id && !envio?.arquivo_url && (
                                 <button
                                   type="button"
-                                  onClick={() => buscarBoletoCota(cota.id)}
+                                  onClick={() => buscarBoletoCota(cota)}
                                   disabled={isPending || buscandoBoletoCotaId === cota.id}
                                   title="Enfileirar o robô para buscar somente o boleto desta cota"
                                   className="rounded-lg border border-violet-200 bg-violet-50 px-2.5 py-1 text-[11px] font-bold text-violet-800 hover:bg-violet-100 disabled:opacity-60"
