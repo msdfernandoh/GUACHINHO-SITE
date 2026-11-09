@@ -1,5 +1,16 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
+### Regularização do vínculo da cota 1273/0209 (09/11/2026)
+A cota 1273/0209 possui venda própria de controle, vinculada a Eroni Bolfe,
+sem faturamento ou comissão. Relatório:
+`docs/relatorios-fases/VINCULO-COTA-1273-0209-2026-11-09.md`.
+
+### Retorno da busca de boleto na cota (09/11/2026)
+A linha da cota mostra o andamento e o resultado da busca individual e
+atualiza a lista após a conclusão. Relatório:
+`docs/relatorios-fases/BOLETOS-RETORNO-BUSCA-2026-11-09.md`.
+
+
 ### Busca individual de boleto por login (09/11/2026)
 O Controle de Boletos seleciona o robô ativo pelo login da cota e pela
 carteira atendida, incluindo o vínculo explícito por empresa_dados_id.
