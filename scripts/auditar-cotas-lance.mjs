@@ -5,7 +5,8 @@ import path from 'node:path'
 
 const grupo = process.argv.find((arg) => arg.startsWith('--grupo='))?.split('=')[1]
 const listarRobos = process.argv.includes('--robos-lance')
-if (!grupo && !listarRobos) throw new Error('Informe --grupo=1553 ou --robos-lance')
+const execucaoParaCancelar = process.argv.find((arg) => arg.startsWith('--cancelar-execucao='))?.split('=')[1]
+if (!grupo && !listarRobos && !execucaoParaCancelar) throw new Error('Informe --grupo=1553, --robos-lance ou --cancelar-execucao=UUID')
 const corrigirEmbutido = process.argv.includes('--corrigir-embutido-25')
 const cotasParaCorrigir = new Set((process.argv.find((arg) => arg.startsWith('--cotas='))?.split('=')[1] || '').split(',').map((valor) => valor.trim()).filter(Boolean))
 
@@ -37,6 +38,20 @@ if (listarRobos) {
     empresa_id: robo.empresa_id,
     robo_boleto_login: robo.configuracao_tarefas?.robo_boleto_login,
   })), null, 2))
+  process.exit(0)
+}
+if (execucaoParaCancelar) {
+  const { error: cancelamentoError } = await admin
+    .from('robo_execucoes')
+    .update({
+      status: 'CANCELADO',
+      finalizado_em: new Date().toISOString(),
+      erro_mensagem: 'Execução interrompida antes de nova oferta: embutido do lance livre divergente, aguardando correção.',
+    })
+    .eq('id', execucaoParaCancelar)
+    .eq('status', 'PROCESSANDO')
+  if (cancelamentoError) throw cancelamentoError
+  console.log(`Execução ${execucaoParaCancelar} marcada como CANCELADA.`)
   process.exit(0)
 }
 const { data: cotas, error } = await admin

@@ -67,18 +67,15 @@ function parseValorMonetario(valor) {
   return Number.isFinite(numero) && numero > 0 ? numero : null
 }
 
-function calcularEmbutidoValido(percentualOferta, percentualGrupo, saldoDevedor, credito) {
+export function calcularEmbutidoValido(percentualOferta, percentualGrupo) {
   const ofertaPct = Number(percentualOferta)
-  const saldo = Number(saldoDevedor)
-  const creditoBase = Number(credito)
-  if (!Number.isFinite(ofertaPct) || ofertaPct <= 0 || !Number.isFinite(saldo) || saldo <= 0 || !Number.isFinite(creditoBase) || creditoBase <= 0) {
-    return percentualGrupo
-  }
-  // O Newcon calcula a oferta sobre o saldo devedor, mas valida o embutido
-  // contra o valor total dessa oferta. O campo de embutido, por sua vez, é
-  // percentual do crédito contratado.
-  const tetoPorValorDaOferta = (saldo * ofertaPct / creditoBase)
-  return Math.max(0, Math.min(percentualGrupo, Math.floor(tetoPorValorDaOferta + 1e-9)))
+  const embutidoPct = normalizarPercentualEmbutido(percentualGrupo)
+  if (!Number.isFinite(ofertaPct) || ofertaPct <= 0) return embutidoPct
+  // Tanto o lance quanto o embutido são percentuais do saldo devedor lido no
+  // Newcon. Nunca use o crédito contratado para reduzir o embutido: um valor
+  // legado de crédito pode transformar 25% em 3%, mesmo quando a estratégia e
+  // a modalidade permitem 25%. O único teto operacional é o próprio lance.
+  return Math.max(0, Math.min(embutidoPct, Math.floor(ofertaPct + 1e-9)))
 }
 
 /**
@@ -772,8 +769,8 @@ export async function executarRoboLances({
       const embutidoSegundoFixoConfigurado = estrategiaCota?.segundo_lance_fixo_embutido_percentual == null
         ? Math.min(Number(dadosTelaLance.segundoLanceFixoPct || 0), embutidoMaximoPct)
         : Math.min(normalizarPercentualEmbutido(estrategiaCota.segundo_lance_fixo_embutido_percentual), embutidoMaximoPct)
-      const embutidoFixoPct = calcularEmbutidoValido(dadosTelaLance.lanceFixoPct || 0, embutidoFixoConfigurado, saldoDevedor, creditoContratado)
-      const embutidoSegundoFixoPct = calcularEmbutidoValido(dadosTelaLance.segundoLanceFixoPct || 0, embutidoSegundoFixoConfigurado, saldoDevedor, creditoContratado)
+      const embutidoFixoPct = calcularEmbutidoValido(dadosTelaLance.lanceFixoPct || 0, embutidoFixoConfigurado)
+      const embutidoSegundoFixoPct = calcularEmbutidoValido(dadosTelaLance.segundoLanceFixoPct || 0, embutidoSegundoFixoConfigurado)
 
       // Regra do Usuário:
       // "lance fixo sempre 1,1234 + que o lance embutido para todos clientes. Exemplo desse grupo 1273 cota 209: embutido maximo de 25% ai o livre 26,1234"
@@ -782,7 +779,7 @@ export async function executarRoboLances({
       const livrePctCalculado = dadosTelaLance.lanceMaximoPct
         ? Math.min(livrePctSolicitado, dadosTelaLance.lanceMaximoPct)
         : livrePctSolicitado
-      const embutidoLivrePct = calcularEmbutidoValido(livrePctCalculado, embutidoLivreConfigurado, saldoDevedor, creditoContratado)
+      const embutidoLivrePct = calcularEmbutidoValido(livrePctCalculado, embutidoLivreConfigurado)
       if (dryRun) {
         log(`[TESTE] Grupo ${item.numero_grupo} / Cota ${item.numero_cota}: tela de oferta carregada e parâmetros lidos. Nenhuma oferta confirmada.`)
         totalCotasProcessadas++

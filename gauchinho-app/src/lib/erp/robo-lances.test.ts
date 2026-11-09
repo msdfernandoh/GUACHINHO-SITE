@@ -4,6 +4,7 @@ import {
   extrairProtocoloAlert,
   calcularEstrategiaGrupo,
   alinharFixosComPortal,
+  calcularEmbutidoValido,
   devePularLanceVencido,
 } from "../../../../scripts/robo-lances-service.mjs";
 
@@ -27,6 +28,12 @@ describe("Robô de Oferta de Lances - Regras de Lance e Extração de Protocolos
     const agora = new Date("2026-11-09T12:00:00");
     expect(devePularLanceVencido(estrategia, false, agora)).toBe(true);
     expect(devePularLanceVencido(estrategia, true, agora)).toBe(false);
+  });
+
+  it("preserva o embutido autorizado sem usar o crédito legado como base", () => {
+    expect(calcularEmbutidoValido(44.59, 25)).toBe(25);
+    expect(calcularEmbutidoValido(50, 40)).toBe(40);
+    expect(calcularEmbutidoValido(25, 40)).toBe(25);
   });
   describe("Regra do Lance Livre: embutido + 1,1234", () => {
     it("deve calcular exatamente 26,1234% para grupo com embutido padrão de 25%", () => {
