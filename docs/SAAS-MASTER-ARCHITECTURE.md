@@ -4727,3 +4727,14 @@ da palavra “lance”, pois “Contemplações e Médias de Lance” contém am
 isso, a rotina de contemplações não é apresentada ao operador como robô de
 lances e o fluxo específico permanece separado.
 
+# Execução direcionada e valores individuais nos lances (09/11/2026)
+
+O operador escolhe, antes de uma execução em lote do robô de lances, entre
+processar somente estratégias sem lance vencido ou todas as cotas marcadas. A
+execução direcionada por cota serve para correção operacional e não sofre o
+bloqueio geral de seis assembleias. A estratégia é alinhada às posições reais
+de fixo/2º fixo oferecidas no Newcon antes da confirmação. Foram preenchidos os
+65 `valor_credito` zerados cujos snapshots individuais já continham valor válido;
+os cálculos de lance permanecem baseados no saldo devedor. Relatório:
+`docs/relatorios-fases/ROBOS-LANCES-ESCOPO-E-VALOR-COTA-2026-11-09.md`.
+

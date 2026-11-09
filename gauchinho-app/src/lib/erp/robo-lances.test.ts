@@ -3,9 +3,31 @@ import {
   calcularRegraLanceLivre,
   extrairProtocoloAlert,
   calcularEstrategiaGrupo,
+  alinharFixosComPortal,
+  devePularLanceVencido,
 } from "../../../../scripts/robo-lances-service.mjs";
 
 describe("Robô de Oferta de Lances - Regras de Lance e Extração de Protocolos", () => {
+  it("seleciona o segundo fixo para uma estratégia de 25% quando o primeiro é 40%", () => {
+    const estrategia = { lance_fixo_ativo: true, lance_fixo_percentual: 25, lance_fixo_embutido_percentual: 25 };
+    const alinhada = alinharFixosComPortal(estrategia, { lanceFixoPct: 40, segundoLanceFixoPct: 25 });
+    expect(alinhada.lance_fixo_ativo).toBe(false);
+    expect(alinhada.segundo_lance_fixo_ativo).toBe(true);
+    expect(alinhada.segundo_lance_fixo_percentual).toBe(25);
+    expect(alinhada.segundo_lance_fixo_embutido_percentual).toBe(25);
+    expect(estrategia.lance_fixo_ativo).toBe(true);
+  });
+
+  it("bloqueia percentual fixo ausente no portal antes de ofertar", () => {
+    expect(() => alinharFixosComPortal({ lance_fixo_ativo: true, lance_fixo_percentual: 50 }, { lanceFixoPct: 25, segundoLanceFixoPct: null })).toThrow(/indisponível/);
+  });
+
+  it("inclui lance vencido somente na execução que solicitou todas as cotas", () => {
+    const estrategia = { data_vencimento: "2026-11-01" };
+    const agora = new Date("2026-11-09T12:00:00");
+    expect(devePularLanceVencido(estrategia, false, agora)).toBe(true);
+    expect(devePularLanceVencido(estrategia, true, agora)).toBe(false);
+  });
   describe("Regra do Lance Livre: embutido + 1,1234", () => {
     it("deve calcular exatamente 26,1234% para grupo com embutido padrão de 25%", () => {
       const calc = calcularRegraLanceLivre(25);

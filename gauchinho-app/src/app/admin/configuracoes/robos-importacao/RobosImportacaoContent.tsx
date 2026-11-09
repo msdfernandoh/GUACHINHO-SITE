@@ -188,6 +188,7 @@ export function RobosImportacaoContent({
   const [roboEmExecucao, setRoboEmExecucao] = useState<RoboConfigOutput | null>(null)
   const [falhasRobo, setFalhasRobo] = useState<any[]>([])
   const execucaoReabertaRef = useRef<string | null>(null)
+  const [roboParaEscolherEscopo, setRoboParaEscolherEscopo] = useState<{ robo: RoboConfigOutput; forcar: boolean } | null>(null)
 
   // Modal de Mapeamento de Tarefas
   const [mapModalOpen, setMapModalOpen] = useState(false)
@@ -356,7 +357,7 @@ export function RobosImportacaoContent({
     }
   }
 
-  const executarRobo = async (robo: RoboConfigOutput, forcar = false, cotasAlvoIds?: string[]) => {
+  const executarRobo = async (robo: RoboConfigOutput, forcar = false, cotasAlvoIds?: string[], modoExecucaoLances: 'SEM_VENCIDOS' | 'TODOS' = 'SEM_VENCIDOS') => {
     setRoboPodeForcar(null)
     setRoboEmExecucao(robo)
     setFalhasRobo([])
@@ -368,7 +369,7 @@ export function RobosImportacaoContent({
       const res = await fetch(`/api/automacoes/robos/${robo.id}/executar`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ forcarReexecucao: forcar, ...(cotasAlvoIds ? { cotasAlvoIds } : {}) }),
+        body: JSON.stringify({ forcarReexecucao: forcar, modoExecucaoLances, ...(cotasAlvoIds ? { cotasAlvoIds } : {}) }),
       })
       const data = await res.json()
 
@@ -412,6 +413,16 @@ export function RobosImportacaoContent({
       }))
       setExecutando(false)
     }
+  }
+
+  const ehRoboDeLances = (robo: RoboConfigOutput) => String(robo.configuracao_tarefas?.tipo_rotina || '').toUpperCase() === 'FRANQUIA_LANCES_AUTOMATICOS'
+
+  const solicitarExecucao = (robo: RoboConfigOutput, forcar = false) => {
+    if (ehRoboDeLances(robo)) {
+      setRoboParaEscolherEscopo({ robo, forcar })
+      return
+    }
+    void executarRobo(robo, forcar)
   }
 
   const visualizarExecucao = async (robo: RoboConfigOutput, execucaoId: string) => {
@@ -733,7 +744,7 @@ export function RobosImportacaoContent({
                     onClick={() => {
                       const execucaoAtiva = robo.ultimas_execucoes?.find((item) => ['PENDENTE', 'PROCESSANDO'].includes(item.status))
                       if (execucaoAtiva) void visualizarExecucao(robo, execucaoAtiva.id)
-                      else void executarRobo(robo)
+                       else solicitarExecucao(robo)
                     }}
                   className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-amber-600 px-3 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-amber-700"
                 >
@@ -1102,13 +1113,48 @@ export function RobosImportacaoContent({
               </div>
               {roboPodeForcar && !executando && (
                 <button
-                  onClick={() => executarRobo(roboPodeForcar, true)}
+                  onClick={() => solicitarExecucao(roboPodeForcar, true)}
                   className="rounded-lg bg-amber-600 px-4 py-2 font-semibold text-white hover:bg-amber-700"
                 >
                   Forçar reexecução
                 </button>
               )}
             </div>
+          </div>
+        </div>
+      )}
+
+      {roboParaEscolherEscopo && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-lg rounded-2xl border border-zinc-200 bg-white p-6 shadow-2xl dark:border-zinc-800 dark:bg-zinc-900">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h3 className="text-lg font-black text-zinc-900 dark:text-zinc-100">Escopo do robô de lances</h3>
+                <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-300">Escolha quais estratégias marcadas este robô deverá processar.</p>
+              </div>
+              <button type="button" aria-label="Fechar" onClick={() => setRoboParaEscolherEscopo(null)}><X className="h-5 w-5 text-zinc-500" /></button>
+            </div>
+            <div className="mt-5 space-y-3">
+              <button type="button" onClick={() => {
+                const escolha = roboParaEscolherEscopo
+                if (!escolha) return
+                setRoboParaEscolherEscopo(null)
+                void executarRobo(escolha.robo, escolha.forcar, undefined, 'SEM_VENCIDOS')
+              }} className="w-full rounded-xl border-2 border-blue-200 bg-blue-50 p-4 text-left transition hover:border-blue-500 dark:border-blue-900 dark:bg-blue-950/30">
+                <span className="block font-bold text-blue-950 dark:text-blue-100">Executar somente sem lance vencido</span>
+                <span className="mt-1 block text-xs text-blue-800 dark:text-blue-200">Mantém fora do lote as cotas cuja estratégia já venceu. É a opção mais segura.</span>
+              </button>
+              <button type="button" onClick={() => {
+                const escolha = roboParaEscolherEscopo
+                if (!escolha) return
+                setRoboParaEscolherEscopo(null)
+                void executarRobo(escolha.robo, escolha.forcar, undefined, 'TODOS')
+              }} className="w-full rounded-xl border-2 border-amber-200 bg-amber-50 p-4 text-left transition hover:border-amber-500 dark:border-amber-900 dark:bg-amber-950/30">
+                <span className="block font-bold text-amber-950 dark:text-amber-100">Executar todas as cotas marcadas</span>
+                <span className="mt-1 block text-xs text-amber-800 dark:text-amber-200">Inclui também estratégias com lance vencido para renovação no Newcon.</span>
+              </button>
+            </div>
+            <button type="button" onClick={() => setRoboParaEscolherEscopo(null)} className="mt-5 w-full rounded-lg border border-zinc-200 px-4 py-2 text-sm font-semibold text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-200">Cancelar</button>
           </div>
         </div>
       )}

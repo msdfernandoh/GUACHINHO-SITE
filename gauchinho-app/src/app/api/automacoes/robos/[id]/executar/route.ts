@@ -80,6 +80,7 @@ export async function POST(
     const cotasAlvoIds = Array.isArray(body?.cotasAlvoIds)
       ? body.cotasAlvoIds.filter((valor: unknown): valor is string => typeof valor === 'string' && /^[0-9a-f-]{36}$/i.test(valor)).slice(0, 500)
       : undefined
+    const modoExecucaoLances = body?.modoExecucaoLances === 'TODOS' ? 'TODOS' : 'SEM_VENCIDOS'
 
     // Verifica se já há execução em processamento e limpa execuções órfãs/expiradas
     const { data: emAndamentoLista } = await admin
@@ -171,6 +172,7 @@ export async function POST(
         parametros: {
           dryRun,
           forcarReexecucao: Boolean(body?.forcarReexecucao),
+          modo_execucao_lances: modoExecucaoLances,
           ...(body?.parametros || {}),
         },
         ...(cotasAlvoIds ? { cotas_alvo_ids: cotasAlvoIds } : {}),

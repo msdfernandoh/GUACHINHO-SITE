@@ -125,6 +125,29 @@ export function calcularEstrategiaGrupo({ embutidoMaximoPct = 25, fixoPct = null
   return resultado
 }
 
+export function alinharFixosComPortal(estrategia, portal) {
+  const resultado = { ...estrategia, lance_fixo_ativo: false, segundo_lance_fixo_ativo: false }
+  const campos = ['lance_fixo', 'segundo_lance_fixo']
+  const percentuais = [portal.lanceFixoPct, portal.segundoLanceFixoPct]
+  for (const origem of campos) {
+    if (!estrategia[`${origem}_ativo`]) continue
+    const percentual = Number(estrategia[`${origem}_percentual`] || percentuais[campos.indexOf(origem)])
+    const indice = percentuais.findIndex(valor => Number(valor) > 0 && Math.abs(Number(valor) - percentual) < 0.0001)
+    if (indice < 0) throw new Error(`Lance fixo configurado em ${percentual}% indisponível nesta cota no Newcon.`)
+    const destino = campos[indice]
+    resultado[`${destino}_ativo`] = true
+    resultado[`${destino}_percentual`] = percentual
+    resultado[`${destino}_embutido_percentual`] = estrategia[`${origem}_embutido_percentual`]
+  }
+  return resultado
+}
+
+export function devePularLanceVencido(estrategia, incluirLancesVencidos, agora = new Date()) {
+  if (incluirLancesVencidos || !estrategia?.data_vencimento) return false
+  const vencimento = new Date(`${estrategia.data_vencimento}T23:59:59`)
+  return !Number.isNaN(vencimento.getTime()) && vencimento < agora
+}
+
 export async function executarRoboLances({
   page,
   context,
@@ -136,6 +159,10 @@ export async function executarRoboLances({
   dryRun = false,
 }) {
   log('=== INICIANDO ROBÔ DE OFERTA DE LANCES AUTOMÁTICOS DA FRANQUIA ===')
+  const incluirLancesVencidos = config.configuracao_tarefas?.modo_execucao_lances === 'TODOS'
+  log(incluirLancesVencidos
+    ? 'Modo de execução: todas as cotas marcadas, incluindo estratégias com lance vencido.'
+    : 'Modo de execução: somente cotas sem lance vencido.')
 
   const empresaId = config.empresa_id
   let targetEmpresaId = empresaId
@@ -236,10 +263,14 @@ export async function executarRoboLances({
   }
   if (cotasDbProcessaveis && cotasDbProcessaveis.length > 0) {
     // 1.1. Verifica cotas que já possuem lance ativo com repetição por 6 assembleias
+    const isExecucaoDirecionada = Boolean(cotasAlvoIds && cotasAlvoIds.size > 0)
     const isManualTest = dryRun && Boolean(
       config.filtro_grupo || config.grupo_teste || config.filtro_cotas || config.cotas_teste
-      || (cotasAlvoIds && cotasAlvoIds.size > 0),
+      || isExecucaoDirecionada,
     )
+    if (isExecucaoDirecionada) {
+      log('Execução direcionada: somente as cotas escolhidas serão processadas; o bloqueio geral de repetição não será aplicado.')
+    }
     const cotasBloqueadas6Meses = new Set()
 
     const cotaIds = cotasDbProcessaveis.map(c => c.id)
@@ -248,7 +279,10 @@ export async function executarRoboLances({
       .select('cota_definitiva_id, ativa, lance_livre_ativo, lance_livre_percentual, lance_livre_embutido_percentual, lance_fixo_ativo, lance_fixo_percentual, lance_fixo_embutido_percentual, segundo_lance_fixo_ativo, segundo_lance_fixo_percentual, segundo_lance_fixo_embutido_percentual, repetir_seis_assembleias, ultimo_lance_ofertado_em, data_vencimento, confirmado')
       .in('cota_definitiva_id', cotaIds)
     const estrategiasMap = new Map((estrategiasCotas || []).map(e => [e.cota_definitiva_id, e]))
-    if (!isManualTest) {
+    // Uma reoferta direcionada é uma correção operacional explícita da cota
+    // escolhida. Ela não pode ser descartada pelo bloqueio geral de seis
+    // assembleias, que continua obrigatório nas execuções em lote.
+    if (!isManualTest && !isExecucaoDirecionada) {
       const { data: estsAtivas } = await admin
         .from('cota_estrategias_lance')
         .select('cota_definitiva_id, repetir_seis_assembleias, ultimo_lance_ofertado_em, data_vencimento, confirmado')
@@ -292,6 +326,10 @@ export async function executarRoboLances({
           estrategia.lance_livre_ativo || estrategia.lance_fixo_ativo || estrategia.segundo_lance_fixo_ativo
         )) {
           log(`[SEM ESTRATÉGIA] Ignorando Grupo ${c.numero_grupo} / Cota ${c.numero_cota}: nenhuma estratégia ativa configurada em /erp/lances.`)
+          return false
+        }
+        if (!isManualTest && !isExecucaoDirecionada && devePularLanceVencido(estrategia, incluirLancesVencidos)) {
+          log(`[LANCE VENCIDO] Ignorando Grupo ${c.numero_grupo} / Cota ${c.numero_cota}: selecione “Executar todas” para renovar uma estratégia vencida.`)
           return false
         }
         return true
@@ -663,7 +701,7 @@ export async function executarRoboLances({
         }
       })
 
-      const estrategiaCota = item.estrategia || null
+      const estrategiaCota = item.estrategia ? alinharFixosComPortal(item.estrategia, dadosTelaLance) : null
       if (estrategiaCota) {
         dadosTelaLance.lanceFixoPct = estrategiaCota.lance_fixo_ativo
           ? Number(estrategiaCota.lance_fixo_percentual || dadosTelaLance.lanceFixoPct || 0)

@@ -138,6 +138,13 @@ function valorCreditoPorCota(cota: { valor_credito?: unknown; snapshot_cota?: un
 
   if (Number.isFinite(valorRegistrado) && valorRegistrado > 0) return valorRegistrado;
 
+  // Cotas importadas pelo Controle de Vendas preservam o valor individual
+  // conferido no relatório como valor_base_relatorio. Enquanto o backfill
+  // operacional não preenche valor_credito, a tela ainda deve exibir o valor
+  // real da cota, nunca "Não informado".
+  const valorBaseRelatorio = Number(snapshot?.valor_bem_racon ?? snapshot?.valor_base_relatorio);
+  if (Number.isFinite(valorBaseRelatorio) && valorBaseRelatorio > 0) return valorBaseRelatorio;
+
   // Na importação legada este campo foi gravado individualmente por cota.
   const valorLegado = Number(snapshot?.valor_credito_contratado);
   return snapshot?.origem === "IMPORTACAO_LEGADO" && Number.isFinite(valorLegado) && valorLegado > 0 ? valorLegado : 0;

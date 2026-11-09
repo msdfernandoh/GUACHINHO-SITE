@@ -1,6 +1,6 @@
 /**
  * Script CLI para executar um Robô de Importação do Gauchinho diretamente pelo terminal.
- * Uso: node scripts/executar-robo-gauchinho.mjs [robo_id] [--forcar] [--cotas-ids=id1,id2]
+ * Uso: node scripts/executar-robo-gauchinho.mjs [robo_id] [--forcar] [--cotas-ids=id1,id2] [--todos-lances]
  */
 
 import { createRequire } from 'node:module'
@@ -36,6 +36,7 @@ const admin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUP
 const roboId = process.argv[2]
 const forcar = process.argv.includes('--forcar')
 const cotasAlvoIds = process.argv.find(a => a.startsWith('--cotas-ids='))?.split('=')[1].split(',').filter(Boolean) || []
+const todosLances = process.argv.includes('--todos-lances')
 
 async function main() {
   console.log('--- EXECUTOR CLI: ROBÔ DE IMPORTAÇÃO GAUCHINHO ---')
@@ -68,6 +69,7 @@ async function main() {
       origem: 'CLI_DIRETO',
       grupos: process.argv.find(a=>a.startsWith('--grupos='))?.split('=')[1].split(','),
       cotas_alvo_ids: cotasAlvoIds.length > 0 ? cotasAlvoIds : undefined,
+      parametros: todosLances ? { modo_execucao_lances: 'TODOS' } : { modo_execucao_lances: 'SEM_VENCIDOS' },
       logs: [{ ts: new Date().toISOString(), msg: 'Iniciado via terminal CLI' }],
     },
   }).select('*').single()

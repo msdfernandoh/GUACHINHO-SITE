@@ -126,12 +126,14 @@ async function run() {
   await verificarCancelamento()
 
   const cotasAlvoExecucao = e.detalhes?.cotas_alvo_ids
-  if (Array.isArray(cotasAlvoExecucao)) {
+  const parametrosExecucao = e.detalhes?.parametros
+  if (Array.isArray(cotasAlvoExecucao) || (parametrosExecucao && typeof parametrosExecucao === 'object')) {
     config = {
       ...config,
       configuracao_tarefas: {
         ...(config.configuracao_tarefas || {}),
-        cotas_alvo_ids: cotasAlvoExecucao,
+        ...(parametrosExecucao || {}),
+        ...(Array.isArray(cotasAlvoExecucao) ? { cotas_alvo_ids: cotasAlvoExecucao } : {}),
       },
     }
   }
