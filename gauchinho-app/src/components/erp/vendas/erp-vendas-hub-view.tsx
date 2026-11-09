@@ -501,13 +501,10 @@ export function ErpVendasHubView({
     return vendas.filter((v) => {
       // 1. Mês de referência (Competência)
       const referenciaVenda = (v.data_primeira_parcela || v.data_venda || v.created_at || "").slice(0, 7);
-      const temBoletoNaCompetencia = competencia !== "todos" && boletosEnvios.some(
-        (boleto) => boleto.venda_id === v.id && boleto.competencia === competencia,
-      );
       if (
         competencia !== "todos" &&
         referenciaVenda !== competencia &&
-        !(abaAtiva === "boletos" && (v.snapshot_venda?.somente_controle || temBoletoNaCompetencia))
+        abaAtiva !== "boletos"
       ) {
         return false;
       }
