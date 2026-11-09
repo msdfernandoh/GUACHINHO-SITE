@@ -499,12 +499,20 @@ export function ErpVendasHubView({
   // Filtragem de vendas com suporte a consultor, grupo, cota, mês e busca livre
   const vendasFiltradas = useMemo(() => {
     return vendas.filter((v) => {
+      const cotasDaVenda = cotas.filter((c) => c.venda_id === v.id);
       // 1. Mês de referência (Competência)
       const referenciaVenda = (v.data_primeira_parcela || v.data_venda || v.created_at || "").slice(0, 7);
+      const temBoletoNaCompetencia = competencia !== "todos" && boletosEnvios.some(
+        (boleto) => boleto.venda_id === v.id && boleto.competencia === competencia
+      );
+      // A carteira de boletos inclui cotas de vendas anteriores que já estavam
+      // na carteira no mês, mesmo enquanto o PDF da competência está pendente.
+      const carteiraDoMes = Boolean(referenciaVenda && referenciaVenda <= competencia) &&
+        cotasDaVenda.some((c) => c.status === "ativa" || c.status === "contemplada");
       if (
         competencia !== "todos" &&
         referenciaVenda !== competencia &&
-        abaAtiva !== "boletos"
+        !(abaAtiva === "boletos" && (v.snapshot_venda?.somente_controle || temBoletoNaCompetencia || carteiraDoMes))
       ) {
         return false;
       }
@@ -528,12 +536,11 @@ export function ErpVendasHubView({
       }
 
       // 3. Filtro por Grupo
-      const cotasDaVenda = cotas.filter((c) => c.venda_id === v.id);
-      if (
-        abaAtiva === "boletos" &&
-        filtroContaRacon !== "todos" &&
-        !cotasDaVenda.some((c) => c.robo_boleto_login === filtroContaRacon)
-      ) return false;
+      // Nunca reaproveitar o filtro de consultor como se fosse o login Racon.
+      // A conta é uma propriedade da cota e só limita a operação de boletos.
+      if (abaAtiva === "boletos" && filtroContaRacon !== "todos" && !cotasDaVenda.some((c) => c.robo_boleto_login === filtroContaRacon)) {
+        return false;
+      }
       if (filtroGrupo !== "todos") {
         const matchGrupoVenda = chaveGrupoFiltro(v.grupo_id, v.grupo_codigo) === filtroGrupo;
         const matchGrupoCota = cotasDaVenda.some((c) => chaveGrupoFiltro(c.grupo_id, c.numero_grupo) === filtroGrupo);

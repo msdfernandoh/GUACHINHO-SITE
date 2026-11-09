@@ -1,5 +1,10 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
+### Carteira no filtro mensal de boletos (09/11/2026)
+O Controle de Boletos inclui vendas anteriores com cotas ativas ou
+contempladas na competência selecionada, mesmo com PDF pendente.
+Relatório: `docs/relatorios-fases/BOLETOS-CARTEIRA-POR-MES-2026-11-09.md`.
+
 ### Regularização do vínculo da cota 1273/0209 (09/11/2026)
 A cota 1273/0209 possui venda própria de controle, vinculada a Eroni Bolfe,
 sem faturamento ou comissão. Relatório:
