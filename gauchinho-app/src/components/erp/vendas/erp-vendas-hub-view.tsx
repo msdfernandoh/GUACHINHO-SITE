@@ -502,12 +502,27 @@ export function ErpVendasHubView({
       const cotasDaVenda = cotas.filter((c) => c.venda_id === v.id);
       // 1. Mês de referência (Competência)
       const referenciaVenda = (v.data_primeira_parcela || v.data_venda || v.created_at || "").slice(0, 7);
-      const temBoletoNaCompetencia = competencia !== "todos" && boletosEnvios.some(
+      // Quando a primeira parcela já foi quitada antes da competência do boleto,
+      // a próxima cobrança só pode entrar a partir da segunda parcela. Isso evita
+      // recolocar em novembro uma cota cujo primeiro vencimento já foi pago.
+      const primeiraParcelaJaPaga = v.snapshot_venda?.primeira_parcela_ja_paga === true;
+      const competenciaInicialBoletos = String(
+        primeiraParcelaJaPaga
+          ? (v.snapshot_venda?.competencia_inicial_boletos || v.data_segunda_parcela || referenciaVenda)
+          : referenciaVenda,
+      ).slice(0, 7);
+      const antesDaProximaCobranca = Boolean(
+        primeiraParcelaJaPaga &&
+        competencia !== "todos" &&
+        competenciaInicialBoletos &&
+        competencia < competenciaInicialBoletos,
+      );
+      const temBoletoNaCompetencia = !antesDaProximaCobranca && competencia !== "todos" && boletosEnvios.some(
         (boleto) => boleto.venda_id === v.id && boleto.competencia === competencia
       );
       // A carteira de boletos inclui cotas de vendas anteriores que já estavam
       // na carteira no mês, mesmo enquanto o PDF da competência está pendente.
-      const carteiraDoMes = Boolean(referenciaVenda && referenciaVenda <= competencia) &&
+      const carteiraDoMes = !antesDaProximaCobranca && Boolean(competenciaInicialBoletos && competenciaInicialBoletos <= competencia) &&
         cotasDaVenda.some((c) => c.status === "ativa" || c.status === "contemplada");
       if (
         competencia !== "todos" &&
@@ -598,7 +613,7 @@ export function ErpVendasHubView({
       }
       return true;
     });
-  }, [cotas, vendas, abaAtiva, filtroContaRacon, filtroConsultor, consultoresDisponiveis, filtroGrupo, termoCotaLimpo, palavrasBusca]);
+  }, [cotas, vendas, boletosEnvios, competencia, abaAtiva, filtroContaRacon, filtroConsultor, consultoresDisponiveis, filtroGrupo, termoCotaLimpo, palavrasBusca]);
 
   const valorVendido = vendasFiltradas.filter((v) => !v.snapshot_venda?.somente_controle && !["cancelada", "suspensa"].includes(v.status)).reduce((s, v) => s + Number(v.valor_credito), 0);
   const metaPeriodo = competencia === "todos" ? metas.reduce((s, m) => s + m.valor, 0) : metas.filter((m) => (m.inicio || "").slice(0, 7) <= competencia && (m.fim || "").slice(0, 7) >= competencia).reduce((s, m) => s + m.valor, 0);
