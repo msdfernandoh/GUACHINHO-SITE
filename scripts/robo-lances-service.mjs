@@ -330,6 +330,28 @@ export async function executarRoboLances({
       .select('cota_definitiva_id, ativa, lance_livre_ativo, lance_livre_percentual, lance_livre_embutido_percentual, lance_fixo_ativo, lance_fixo_percentual, lance_fixo_embutido_percentual, segundo_lance_fixo_ativo, segundo_lance_fixo_percentual, segundo_lance_fixo_embutido_percentual, repetir_seis_assembleias, ultimo_lance_ofertado_em, data_vencimento, confirmado')
       .in('cota_definitiva_id', cotaIds)
     const estrategiasMap = new Map((estrategiasCotas || []).map(e => [e.cota_definitiva_id, e]))
+
+    // Um protocolo ou comprovante individual é evidência de que uma oferta já
+    // chegou ao Newcon, ainda que a confirmação consolidada da estratégia tenha
+    // falhado depois. Nunca reenviar automaticamente nesses casos: a cota precisa
+    // ser conciliada para não duplicar uma oferta financeira real.
+    const { data: ofertasJaRegistradas, error: errOfertasJaRegistradas } = await admin
+      .from('cota_lances_ofertados')
+      .select('cota_definitiva_id, protocolo, comprovante_storage_path, comprovante_url')
+      .in('cota_definitiva_id', cotaIds)
+    if (errOfertasJaRegistradas) {
+      throw new Error(`Falha ao verificar ofertas já registradas: ${errOfertasJaRegistradas.message}`)
+    }
+    const cotasComOfertaRegistrada = new Set(
+      (ofertasJaRegistradas || [])
+        .filter((oferta) => Boolean(
+          String(oferta.protocolo || '').trim()
+          || String(oferta.comprovante_storage_path || '').trim()
+          || String(oferta.comprovante_url || '').trim(),
+        ))
+        .map((oferta) => oferta.cota_definitiva_id)
+        .filter(Boolean),
+    )
     // Uma reoferta direcionada é uma correção operacional explícita da cota
     // escolhida. Ela não pode ser descartada pelo bloqueio geral de seis
     // assembleias, que continua obrigatório nas execuções em lote.
@@ -370,6 +392,10 @@ export async function executarRoboLances({
           return false
         }
         const estrategia = estrategiasMap.get(c.id)
+        if (cotasComOfertaRegistrada.has(c.id)) {
+          log(`[OFERTA JÁ REGISTRADA] Ignorando Grupo ${c.numero_grupo} / Cota ${c.numero_cota}: há protocolo ou comprovante salvo sem confirmação consolidada. Concilie a cota antes de uma nova oferta para evitar duplicidade.`)
+          return false
+        }
         // A confirmação é o registro posterior de um lance já enviado. Ela não
         // pode ser pré-requisito para a execução: a estratégia salva e ativa é
         // justamente a autorização para o robô ofertar o lance configurado.
