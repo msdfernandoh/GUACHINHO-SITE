@@ -707,6 +707,8 @@ export function ErpVendasHubView({
 
   async function buscarBoletoCota(cota: CotaItem) {
     const cotaId = cota.id;
+    const informar = (mensagem: string) =>
+      setRetornoBuscaBoleto((atual) => ({ ...atual, [cotaId]: mensagem }));
     const login = controleCotas[cotaId]?.login ?? cota.robo_boleto_login;
     if (!login) {
       informar("Selecione o login do robô para esta cota antes de buscar o boleto.");
@@ -731,14 +733,13 @@ export function ErpVendasHubView({
       if (!Array.isArray(alvos) || !alvos.includes(cotaId)) {
         throw new Error("O robô está ocupado com outra execução. Tente buscar este boleto novamente quando ela terminar.");
       }
+      informar("Busca registrada. Acompanhe o andamento na Central de Robôs.");
     } catch (error: any) {
       informar(error?.message || "Erro ao enfileirar a busca do boleto.");
     } finally {
       setBuscandoBoletoCotaId(null);
     }
   }
-    const informar = (mensagem: string) =>
-      setRetornoBuscaBoleto((atual) => ({ ...atual, [cotaId]: mensagem }));
 
   function handleRegistrarBoleto(
     vendaId: string,
@@ -750,7 +751,6 @@ export function ErpVendasHubView({
   ) {
     startTransition(async () => {
       try {
-    informar("Enviando pedido de busca…");
         const fd = new FormData();
         fd.append("venda_id", vendaId);
         if (cotaId) fd.append("cota_id", cotaId);
@@ -764,30 +764,6 @@ export function ErpVendasHubView({
           acao === "BAIXAR"
             ? "Boleto registrado como Baixado com sucesso!"
             : acao === "ENVIAR"
-      const execucaoId = result.execucao.id;
-      informar("Busca na fila. Aguardando o robô…");
-      for (let tentativa = 0; tentativa < 60; tentativa++) {
-        await new Promise((resolve) => setTimeout(resolve, 5000));
-        const consulta = await fetch(`${url}?execucaoId=${encodeURIComponent(execucaoId)}`, { cache: "no-store" });
-        if (!consulta.ok) throw new Error("Busca registrada, mas não foi possível consultar o andamento. Veja o histórico na Central de Robôs.");
-        const { execucoes } = await consulta.json();
-        const execucao = execucoes?.[0];
-        if (!execucao) throw new Error("Busca registrada. Consulte o histórico na Central de Robôs.");
-        if (execucao.status === "PENDENTE") continue;
-        if (execucao.status === "PROCESSANDO") {
-          informar("Robô buscando o boleto no Newcon…");
-          continue;
-        }
-        if (execucao.status === "SUCESSO") {
-          const salvou = Number(execucao.resultado?.boletos?.totalBoletosArmazenados) > 0;
-          informar(salvou ? "Boleto disponível. Atualizando a linha…" : "Busca concluída sem baixar um novo PDF.");
-          router.refresh();
-        } else {
-          informar(execucao.status === "CANCELADO" ? "Busca cancelada." : "Falha ao buscar o boleto. Consulte o histórico na Central de Robôs.");
-        }
-        return;
-      }
-      informar("Busca registrada. Acompanhe o restante na Central de Robôs.");
             ? "Boleto registrado como Enviado ao cliente!"
             : "Status de boleto desfeito com sucesso!"
         );
@@ -1759,11 +1735,6 @@ export function ErpVendasHubView({
                                 onClick={() => handleRegistrarBoleto(v.id, cota?.id || null, competenciaBoletoAtual, "ENVIAR")}
                                 disabled={isPending}
                                 title="Registrar que o boleto foi enviado ao cliente (marca baixado + enviado)"
-                            {cota?.id && retornoBuscaBoleto[cota.id] && (
-                              <p role="status" className="mb-1 rounded-md bg-violet-50 px-2 py-1 text-xs font-semibold text-violet-900">
-                                {retornoBuscaBoleto[cota.id]}
-                              </p>
-                            )}
                                 className={`rounded-lg px-2.5 py-1 text-[11px] font-bold transition cursor-pointer flex items-center gap-1 ${
                                   statusBoleto === "enviado"
                                     ? "bg-emerald-600 text-white shadow-xs"
@@ -1789,6 +1760,11 @@ export function ErpVendasHubView({
                                 </a>
                               )}
                             </div>
+                            {cota?.id && retornoBuscaBoleto[cota.id] && (
+                              <p role="status" className="rounded-md bg-violet-50 px-2 py-1 text-xs font-semibold text-violet-900">
+                                {retornoBuscaBoleto[cota.id]}
+                              </p>
+                            )}
 
                             <div className="flex items-center gap-2 text-[10px]">
                               {/* Histórico Geral */}
