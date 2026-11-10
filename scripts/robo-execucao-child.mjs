@@ -8,6 +8,7 @@ import crypto from 'node:crypto'
 import { executarRobo3Simulador } from './robo-simulador-service.mjs'
 import { executarRoboBoletos } from './robo-boletos-service.mjs'
 import { executarRoboLances } from './robo-lances-service.mjs'
+import { salvarResultadoExecucao } from './robo-finalizacao.mjs'
 import { autenticarMicrosoft, selecionarContaMicrosoft, aguardarTransicaoMicrosoft, estadoLoginMicrosoft } from './robo-microsoft-login.mjs'
 import { coletarAbasResultado } from './robo-contemplacoes-parser.mjs'
 
@@ -1329,7 +1330,7 @@ async function run() {
     log(execucaoParcial ? 'Processamento finalizado com sucesso parcial; existem cotas para tentar novamente.' : 'Processamento do robô finalizado com sucesso!')
     await atualizacao
 
-    await admin.from('robo_execucoes').update({
+    await salvarResultadoExecucao(admin, execucaoId, {
       status: execucaoParcial ? 'SUCESSO_PARCIAL' : 'SUCESSO',
       finalizado_em: new Date().toISOString(),
       resultado: {
@@ -1345,10 +1346,10 @@ async function run() {
         ...e.detalhes,
         logs: logs.slice(-300),
       },
-    }).eq('id', execucaoId)
+    })
 
     await admin.from('robo_configuracoes').update({
-      ultimo_sucesso_em: new Date().toISOString(),
+      ...(!execucaoParcial ? { ultimo_sucesso_em: new Date().toISOString() } : {}),
       ultima_execucao_em: new Date().toISOString(),
       ultimo_erro: null,
     }).eq('id', config.id)

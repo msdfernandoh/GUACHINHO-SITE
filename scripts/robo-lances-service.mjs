@@ -17,6 +17,9 @@
 
 import path from 'node:path'
 import fs from 'node:fs'
+import { encontrarOfertaComprovada, conferirTextoComprovante } from './robo-lances-retomada.mjs'
+import { createRequire } from 'node:module'
+const requireApp = createRequire(new URL('../gauchinho-app/package.json', import.meta.url))
 
 /**
  * Calcula regra de lance livre: sempre 1,1234 + embutido
@@ -47,7 +50,7 @@ export function normalizarNumeroPortal(valor, tamanho) {
  */
 export function extrairProtocoloAlert(msg) {
   if (!msg || typeof msg !== 'string') return null
-  const matchEspec = msg.match(/protocolo[s]?\s*:\s*(?:[^0-9]*?)(\d{5,12})/i) ||
+  const matchEspec = (/protocolo/i.test(msg) && msg.match(/:\s*(\d{5,12})\b/)) || msg.match(/protocolo[s]?\s*:\s*(?:[^0-9]*?)(\d{5,12})/i) ||
                      msg.match(/lance\s+(?:livre|fixo|segundo\s+fixo|2[º°]\s*fixo)\s*:\s*(\d{5,12})/i)
   return matchEspec ? matchEspec[1] : null
 }
@@ -331,13 +334,11 @@ export async function executarRoboLances({
       .in('cota_definitiva_id', cotaIds)
     const estrategiasMap = new Map((estrategiasCotas || []).map(e => [e.cota_definitiva_id, e]))
 
-    // Um protocolo ou comprovante individual é evidência de que uma oferta já
-    // chegou ao Newcon, ainda que a confirmação consolidada da estratégia tenha
-    // falhado depois. Nunca reenviar automaticamente nesses casos: a cota precisa
-    // ser conciliada para não duplicar uma oferta financeira real.
+    // Carrega as ofertas individuais para retomar somente as modalidades pendentes.
+    // PDFs duplicados de uma modalidade não comprovam as outras modalidades.
     const { data: ofertasJaRegistradas, error: errOfertasJaRegistradas } = await admin
       .from('cota_lances_ofertados')
-      .select('cota_definitiva_id, protocolo, comprovante_storage_path, comprovante_url')
+      .select('*')
       .in('cota_definitiva_id', cotaIds)
     if (errOfertasJaRegistradas) {
       throw new Error(`Falha ao verificar ofertas já registradas: ${errOfertasJaRegistradas.message}`)
@@ -392,7 +393,7 @@ export async function executarRoboLances({
           return false
         }
         const estrategia = estrategiasMap.get(c.id)
-        if (cotasComOfertaRegistrada.has(c.id)) {
+        if (cotasComOfertaRegistrada.has(c.id) && config.configuracao_tarefas?.retomar_modalidades_pendentes === false) {
           log(`[OFERTA JÁ REGISTRADA] Ignorando Grupo ${c.numero_grupo} / Cota ${c.numero_cota}: há protocolo ou comprovante salvo sem confirmação consolidada. Concilie a cota antes de uma nova oferta para evitar duplicidade.`)
           return false
         }
@@ -425,6 +426,7 @@ export async function executarRoboLances({
         parcela: c.parcela,
         grupo_embutido_pct: c.grupo?.percentual_lance_embutido || 25,
         estrategia: estrategiasMap.get(c.id) || null,
+        ofertas_registradas: (ofertasJaRegistradas || []).filter(o => o.cota_definitiva_id === c.id),
       }))
   } else {
     // Fallback: cotas de vendas confirmadas não contempladas
@@ -749,19 +751,30 @@ export async function executarRoboLances({
           const el = document.querySelector(selector)
           return el ? (el.value || el.innerText || '').trim() : ''
         }
+        const lerRotulo = (texto) => {
+          const el = [...document.querySelectorAll('span,label,td')].find(e => e.children.length === 0 && (e.innerText || '').trim().replace(/:$/, '').trim() === texto)
+          if (!el) return ''
+          let atual = el
+          for (let nivel = 0; nivel < 3 && atual; nivel++, atual = atual.parentElement) {
+            const proximo = atual.nextElementSibling
+            const valor = proximo ? (proximo.value || proximo.innerText || '').trim() : ''
+            if (/^[\d.,]+\s*%?$/.test(valor)) return valor
+          }
+          return ''
+        }
 
         // Lance Fixo
         const fixoInput = document.querySelector('input[name*="txtPC_LanceFixo"], input[id*="txtPC_LanceFixo"]')
-        const fixoTexto = fixoInput ? fixoInput.value : ''
+        const fixoTexto = fixoInput ? fixoInput.value : getText('[id$="lblPC_Lance_Fixo"], [id$="lblPC_LanceFixo"]') || lerRotulo('Lance Fixo')
 
         // 2º Lance Fixo
         const fixo2Input = document.querySelector('input[name*="txtPC_SegundoLanceFixo"], input[id*="txtPC_SegundoLanceFixo"]')
-        const fixo2Texto = fixo2Input ? fixo2Input.value : ''
+        const fixo2Texto = fixo2Input ? fixo2Input.value : getText('[id$="lblPC_Segundo_Lance_Fixo"], [id$="lblPC_SegundoLanceFixo"]') || lerRotulo('2º Lance Fixo') || lerRotulo('2° Lance Fixo')
 
         // Assembleia
         const assInput = document.querySelector('input[name*="txtST_Assembleia"], input[id*="txtST_Assembleia"], span[id*="lblAssembleia"]')
         const assTexto = assInput ? (assInput.value || assInput.innerText || '') : ''
-        const dataAssInput = document.querySelector('input[name*="DataAssembleia"], input[id*="DataAssembleia"], input[name*="dtAssembleia"], input[id*="dtAssembleia"]')
+        const dataAssInput = document.querySelector('#ctl00_Conteudo_edtDT_Assembleia, input[name*="DataAssembleia"], input[id*="DataAssembleia"], input[name*="dtAssembleia"], input[id*="dtAssembleia"]')
         const dataAssTexto = dataAssInput ? (dataAssInput.value || dataAssInput.innerText || '') : ''
         const dataAssMatch = dataAssTexto.match(/\d{1,2}\/\d{1,2}\/\d{4}/)
           || (document.body?.innerText || '').match(/assembleia\s*:\s*(\d{1,2}\/\d{1,2}\/\d{4})/i)
@@ -777,8 +790,8 @@ export async function executarRoboLances({
           lanceFixoPct: fixoTexto ? parseFloat(fixoTexto.replace(',', '.')) : null,
           segundoLanceFixoPct: fixo2Texto ? parseFloat(fixo2Texto.replace(',', '.')) : null,
           lanceMaximoPct: (() => {
-            const match = (document.body?.innerText || '').match(/lance\s+m[aá]ximo\s*:\s*([\d.,]+)\s*%/i)
-            return match ? parseFloat(match[1].replace('.', '').replace(',', '.')) : null
+            const texto = lerRotulo('Lance Máximo') || (document.body?.innerText || '').match(/lance\s+m[aá]ximo\s*:\s*([\d.,]+)\s*%/i)?.[1]
+            return texto ? Number(texto.replace(/%/g, '').replace(/\.(?=\d{3}(?:\D|$))/g, '').replace(',', '.')) : null
           })(),
           assembleia: assTexto,
           dataAssembleia: dataAssMatch ? dataAssMatch[0] : null,
@@ -788,6 +801,7 @@ export async function executarRoboLances({
 
       const estrategiaCota = item.estrategia ? alinharFixosComPortal(item.estrategia, dadosTelaLance) : null
       if (estrategiaCota?.modalidades_indisponiveis?.length) {
+        if (!dryRun) throw new Error(`Modalidades configuradas não conferem com o Newcon: ${estrategiaCota.modalidades_indisponiveis.join(', ')}. Confira o cadastro antes da oferta.`)
         log(`[MODALIDADE AJUSTADA] Fixo(s) ${estrategiaCota.modalidades_indisponiveis.join(', ')} não disponível(is) nesta cota no Newcon. A oferta seguirá apenas com as modalidades realmente habilitadas.`)
       }
       if (estrategiaCota) {
@@ -920,6 +934,27 @@ export async function executarRoboLances({
       let compLivre = null
       let compFixo = null
       let compSegundoFixo = null
+
+      const recuperarOferta = async (tipo, percentual, embutido) => {
+        if (config.configuracao_tarefas?.retomar_modalidades_pendentes === false) return null
+        const dataAss = dadosTelaLance.dataAssembleia?.split('/').reverse().join('-') || null
+        const oferta = encontrarOfertaComprovada(item.ofertas_registradas || [], tipo, percentual, embutido, dataAss)
+        if (!oferta) return null
+        const { data, error } = await admin.storage.from('lances-comprovantes').download(oferta.comprovante_storage_path)
+        if (error || !data || data.size < 100) throw new Error(`PDF da oferta ${oferta.protocolo} não disponível; interrompendo conciliação.`)
+        if (!(await data.slice(0, 5).text()).startsWith('%PDF-')) throw new Error('Arquivo salvo não é PDF válido.')
+        const { extractText } = requireApp('unpdf')
+        const { text: textoPdf } = await extractText(new Uint8Array(await data.arrayBuffer()), { mergePages: true })
+        conferirTextoComprovante(textoPdf, { grupo: item.numero_grupo, cota: item.numero_cota, tipo, percentual, protocolo: oferta.protocolo })
+        log(`[OFERTA CONCILIADA] ${tipo}: protocolo ${oferta.protocolo}; PDF conferido. Oferta já registrada será preservada.`)
+        return { protocolo: oferta.protocolo, storagePath: oferta.comprovante_storage_path, url: oferta.comprovante_url, nome: oferta.comprovante_storage_path.split('/').at(-1) }
+      }
+      compLivre = await recuperarOferta('LIVRE', livrePctCalculado, embutidoLivrePct)
+      compFixo = await recuperarOferta('FIXO', dadosTelaLance.lanceFixoPct, embutidoFixoPct)
+      compSegundoFixo = await recuperarOferta('SEGUNDO_FIXO', dadosTelaLance.segundoLanceFixoPct, embutidoSegundoFixoPct)
+      protocoloLivre = compLivre?.protocolo || null
+      protocoloFixo = compFixo?.protocolo || null
+      protocoloSegundoFixo = compSegundoFixo?.protocolo || null
 
       // Listener contínuo de dialogs do navegador (lida com confirmações intermediárias e alertas de protocolo)
       let ultimoProtocoloCapturado = null
@@ -1097,6 +1132,11 @@ export async function executarRoboLances({
             arquivoBuffer = await targetPage.screenshot({ fullPage: true }).catch(() => null)
           }
 
+          if (extensao !== 'pdf' || !arquivoBuffer) throw new Error('PDF oficial indisponível; captura de tela não confirma a oferta.')
+          const { extractText } = requireApp('unpdf')
+          const { text: textoPdf } = await extractText(new Uint8Array(arquivoBuffer), { mergePages: true })
+          const dadosPdf = conferirTextoComprovante(textoPdf, { grupo: item.numero_grupo, cota: item.numero_cota, tipo: tipoLance, percentual: percentualLance, protocolo })
+          protocolo = dadosPdf.protocolo
           const nomeArquivo = `${baseNome}.${extensao}`
           const localPath = path.join(screenshotsDir, nomeArquivo)
           if (arquivoBuffer) {
@@ -1117,6 +1157,7 @@ export async function executarRoboLances({
                   .createSignedUrl(storagePath, 60 * 60 * 24 * 365) // 1 ano
 
                 infoComprovante = {
+                  protocolo,
                   storagePath,
                   url: signData?.signedUrl || null,
                   nome: `Comprovante ${tipoLance} - Grupo ${item.numero_grupo} / Cota ${item.numero_cota}.${extensao}`,
@@ -1141,10 +1182,12 @@ export async function executarRoboLances({
               numero_grupo: item.numero_grupo,
               numero_cota: item.numero_cota,
               assembleia_numero: dadosTelaLance.assembleia || null,
+              assembleia_data: dadosTelaLance.dataAssembleia?.split('/').reverse().join('-') || null,
               tipo_lance: tipoLance,
               opcao_reducao: 'REDUZIR_PARCELA',
               percentual_lance: percentualLance,
               percentual_embutido: percentualEmbutido,
+              valor_lance: dadosPdf.valorLance,
               protocolo,
               comprovante_storage_path: infoComprovante.storagePath,
               comprovante_url: infoComprovante.url,
@@ -1182,7 +1225,7 @@ export async function executarRoboLances({
       // ETAPA A: OFERTA DO LANCE LIVRE (1,1234 + embutido)
       // =========================================================================
       const deveOfertarLivre = estrategiaCota ? estrategiaCota.lance_livre_ativo === true : true
-      if (deveOfertarLivre) {
+      if (deveOfertarLivre && !compLivre) {
       log(`--- Ofertando LANCE LIVRE: ${strLivrePct}% (Embutido: ${strEmbutidoPct}%) ---`)
 
       // 1. Seleciona Radio "Livre" (ctl00_Conteudo_rgLance_0)
@@ -1248,7 +1291,10 @@ export async function executarRoboLances({
 
       // 9. Aguarda relatório e clica em Voltar
       compLivre = await voltarDoRelatorio('LIVRE', protocoloLivre, livrePctCalculado, embutidoLivrePct)
+      protocoloLivre = compLivre.protocolo
       totalLancesOfertados++
+      } else if (compLivre) {
+        log('Lance livre já comprovado; retomando as demais modalidades selecionadas.')
       } else {
         log('Lance livre não configurado para esta cota; seguindo somente as modalidades selecionadas.')
       }
@@ -1256,7 +1302,7 @@ export async function executarRoboLances({
       // =========================================================================
       // ETAPA B: OFERTA DO LANCE FIXO (ex: 25%)
       // =========================================================================
-      if (dadosTelaLance.lanceFixoPct && dadosTelaLance.lanceFixoPct > 0) {
+      if (dadosTelaLance.lanceFixoPct && dadosTelaLance.lanceFixoPct > 0 && !compFixo) {
         if (!page.url().includes('frmConCpCadCredenciamentoLance') && !page.url().includes('CredenciamentoLance')) {
           log('Reabrindo tela de Oferta de Lance para Lance Fixo...')
           const linkOfertaLance = page.locator('a:has-text("Oferta de Lance"), a[href*="frmConCpCadCredenciamentoLance"]').filter({ hasNotText: 'Lote' }).first()
@@ -1348,13 +1394,14 @@ export async function executarRoboLances({
         log(`Protocolo do Lance Fixo capturado: ${protocoloFixo || 'Confirmado via Web'}`)
 
         compFixo = await voltarDoRelatorio('FIXO', protocoloFixo, fixoPct, embFixoPct)
+        protocoloFixo = compFixo.protocolo
         totalLancesOfertados++
       }
 
       // =========================================================================
       // ETAPA C: OFERTA DO 2º LANCE FIXO (se houver no grupo, ex: 40%)
       // =========================================================================
-      if (dadosTelaLance.segundoLanceFixoPct && dadosTelaLance.segundoLanceFixoPct > 0) {
+      if (dadosTelaLance.segundoLanceFixoPct && dadosTelaLance.segundoLanceFixoPct > 0 && !compSegundoFixo) {
         if (!page.url().includes('frmConCpCadCredenciamentoLance') && !page.url().includes('CredenciamentoLance')) {
           log('Reabrindo tela de Oferta de Lance para 2º Lance Fixo...')
           const linkOfertaLance = page.locator('a:has-text("Oferta de Lance"), a[href*="frmConCpCadCredenciamentoLance"]').filter({ hasNotText: 'Lote' }).first()
@@ -1426,6 +1473,7 @@ export async function executarRoboLances({
           log(`Protocolo do 2º Lance Fixo capturado: ${protocoloSegundoFixo || 'Confirmado via Web'}`)
 
           compSegundoFixo = await voltarDoRelatorio('SEGUNDO_FIXO', protocoloSegundoFixo, fixo2Pct, embFixo2Pct)
+          protocoloSegundoFixo = compSegundoFixo.protocolo
           totalLancesOfertados++
         }
       }
@@ -1434,6 +1482,12 @@ export async function executarRoboLances({
       // ETAPA D: GRAVAÇÃO E SINCRONIZAÇÃO NA TELA DE LANCES DO ERP
       // =========================================================================
       log(`Gravando estratégia e confirmação no ERP para Cota ${item.numero_grupo}/${item.numero_cota}...`)
+
+      if ((deveOfertarLivre && (!compLivre || !protocoloLivre))
+        || (dadosTelaLance.lanceFixoPct && (!compFixo || !protocoloFixo))
+        || (dadosTelaLance.segundoLanceFixoPct && (!compSegundoFixo || !protocoloSegundoFixo))) {
+        throw new Error('Confirmação incompleta: todas as modalidades selecionadas precisam de protocolo e PDF.')
+      }
 
       if (item.cota_definitiva_id) {
         const compPrincipal = compLivre || compFixo || compSegundoFixo
