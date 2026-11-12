@@ -4787,3 +4787,7 @@ Relatório em docs/relatorios-fases/SORTEIOS-CAPACIDADE-GRUPOS-2026-11-12.md.
 ### Conferência dos sorteios dos grupos 5618, 1553 e 1253 (12/11/2026)
 
 O ERP corrige a leitura de sete assembleias conferidas sem regravar as linhas originais. A lista agrupa as pedras diferentes do mesmo lote da Federal. O histórico do site recebeu sete resultados revisados. Relatório em docs/relatorios-fases/SORTEIOS-5618-1553-1253-2026-11-12.md.
+
+### Revisão completa das pedras por grupo no ERP (12/11/2026)
+
+Revisados 70 registros em três lotes da Loteria Federal. Os 22 registros com quantidade divergente recebem correção de leitura por ID. A quantidade registrada em cada sorteio orienta a pedra e a distância das cotas. Relatório em docs/relatorios-fases/PEDRAS-ERP-POR-GRUPO-2026-11-12.md.

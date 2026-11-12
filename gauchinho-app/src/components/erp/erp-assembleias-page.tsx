@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentTenantContext } from "@/lib/tenant/context";
 import { agruparCotasPorGrupo, CotaAssembleia } from "@/lib/erp/assembleias";
 import { toggleAtencaoAssembleiaAction } from "@/app/erp/assembleias/actions";
-import { aplicarCorrecaoPedra, chaveEvento } from "@/lib/erp/assembleias-pedras-historico";
+import { aplicarCorrecaoPedra, chaveEvento, quantidadeCotasRegistrada } from "@/lib/erp/assembleias-pedras-historico";
 import { listGruposAutorizadosForEmpresa } from "@/lib/grupos/catalogo-autorizado-service";
 
 import { ErpAssembleiasForm } from "@/components/erp/assembleias/erp-assembleias-form";
@@ -152,14 +152,16 @@ export async function ErpAssembleiasPage({
   }
 
   // Monta lista de grupos do evento reconciliados com os metadados dos grupos
+  const assembleiaPorGrupo = new Map(assembleiasDoEvento.map((a) => [a.grupo_id, a]));
   const gruposDoEvento = grupoIdsDoEvento.map((gid) => {
+    const assembleia = assembleiaPorGrupo.get(gid);
     const g = grupoById.get(gid);
     return {
       id: gid,
       codigo_grupo: g?.codigo_grupo ?? gid.slice(0, 8),
       modalidade: g?.modalidade ?? "Consórcio",
       administradora: g?.administradora ?? null,
-      capacidade_total: g?.capacidade_total ?? null,
+      capacidade_total: (assembleia && quantidadeCotasRegistrada(assembleia)) ?? g?.capacidade_total ?? null,
       quantidade_cotas_sorteio: g?.quantidade_cotas_sorteio ?? null,
     };
   });
