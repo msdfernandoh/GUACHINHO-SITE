@@ -64,19 +64,25 @@ export function indicadoresContemplacoes(rows: ResultadoAssembleia[], ultima: nu
   };
 }
 
-type CotaCarteiraContemplacao = {
+export type CotaCarteiraContemplacao = {
   grupo_id: string;
   numero_cota: string;
   cliente_id: string;
   cliente_nome: string;
   data_venda: string | null;
+  valor_credito?: number | null;
+  data_contemplacao?: string | null;
 };
+
+export function normalizarCotaContemplacao(numero: string) {
+  return numero.trim().replace(/^(\d+)-0+$/, "$1").replace(/^0+(?=\d)/, "");
+}
 
 export function identificarContemplacoesDaCarteira<T extends ResultadoCota & {
   grupo_id: string;
   assembleia_data: string;
 }>(linhas: T[], carteira: CotaCarteiraContemplacao[]) {
-  const chaveCota = (grupo: string, numero: string) => `${grupo}:${numero.trim().replace(/^(\d+)-0+$/, "$1").replace(/^0+(?=\d)/, "")}`;
+  const chaveCota = (grupo: string, numero: string) => `${grupo}:${normalizarCotaContemplacao(numero)}`;
   const chaveMes = (linha: T) => `${linha.grupo_id}:${linha.assembleia_data.slice(0, 7)}`;
   const cotas = new Map<string, CotaCarteiraContemplacao[]>();
   for (const cota of carteira) {
@@ -88,23 +94,25 @@ export function identificarContemplacoesDaCarteira<T extends ResultadoCota & {
 
   const clientesPorMes = new Map<string, Set<string>>();
   const identificadas = linhas.map((linha) => {
-    if (linha.situacao_cota !== "ATIVA") return { linha, clienteNome: null };
+    if (linha.situacao_cota !== "ATIVA") return { linha, titular: null };
     const titulares = new Map((cotas.get(chaveCota(linha.grupo_id, linha.cota)) ?? [])
       .filter((cota) => cota.data_venda && cota.data_venda.slice(0, 10) <= linha.assembleia_data.slice(0, 10))
-      .map((cota) => [cota.cliente_id, cota.cliente_nome]));
-    if (titulares.size !== 1) return { linha, clienteNome: null };
+      .map((cota) => [cota.cliente_id, cota]));
+    if (titulares.size !== 1) return { linha, titular: null };
 
-    const [[clienteId, clienteNome]] = [...titulares];
+    const [[clienteId, titular]] = [...titulares];
     const mes = chaveMes(linha);
     const clientes = clientesPorMes.get(mes) ?? new Set<string>();
     clientes.add(clienteId);
     clientesPorMes.set(mes, clientes);
-    return { linha, clienteNome };
+    return { linha, titular };
   });
 
-  return identificadas.map(({ linha, clienteNome }) => ({
+  return identificadas.map(({ linha, titular }) => ({
     ...linha,
-    cliente_nosso_nome: clienteNome,
+    cliente_nosso_nome: titular?.cliente_nome ?? null,
+    contratacao_da_cota: titular?.data_venda ?? null,
+    credito_da_cota: titular?.valor_credito ?? null,
     clientes_nossos_no_mes: clientesPorMes.get(chaveMes(linha))?.size ?? 0,
   }));
 }

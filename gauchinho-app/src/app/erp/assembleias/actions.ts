@@ -5,6 +5,7 @@ import { refresh, revalidatePath } from "next/cache";
 import { registrarStatusOperacionalCota } from "@/lib/erp/status-operacional-cota";
 import { createClient } from "@/lib/supabase/server";
 import { requireErpRouteAccess } from "@/lib/erp/erp-acesso-server";
+import { valorCreditoPorCota } from "@/lib/erp/valor-credito-cota";
 import { listarGruposParaAssembleias } from "@/lib/erp/grupos-assembleias";
 import { listGruposAutorizadosForEmpresa, assertEmpresaPodeAcessarGrupo } from "@/lib/grupos/catalogo-autorizado-service";
 import { buscarPrimeiroPremioFederalPorData } from "@/lib/grupos-sorteio/buscar-resultado-federal";
@@ -13,7 +14,7 @@ import {
   validarPrimeiroPremioFederal,
 } from "@/lib/erp/assembleias";
 
-import { indicadoresContemplacoes, identificarContemplacoesDaCarteira, resultadosVigentes, cotasUnicas, contempladasAtivas, type ResultadoAssembleia } from "@/lib/erp/contemplacoes";
+import { indicadoresContemplacoes, identificarContemplacoesDaCarteira, normalizarCotaContemplacao, type CotaCarteiraContemplacao, resultadosVigentes, cotasUnicas, contempladasAtivas, type ResultadoAssembleia } from "@/lib/erp/contemplacoes";
 import { classificarSimulacoes, percentualAtrasoValido } from "@/lib/erp/simulacao-contemplacao";
 
 async function requireAssembleias(write = false) {
@@ -204,19 +205,17 @@ function linhasResultado(rows: ResultadoAssembleia[]) {
   })));
 }
 
-async function linhasResultadoComCarteira(
+async function carregarCarteiraContemplacoes(
   supabase: Awaited<ReturnType<typeof createClient>>,
   empresaId: string,
-  resultados: ResultadoAssembleia[],
+  grupoIds: string[],
 ) {
-  const linhas = linhasResultado(resultados);
-  if (!linhas.length) return identificarContemplacoesDaCarteira(linhas, []);
-  const grupoIds = [...new Set(linhas.map((linha) => linha.grupo_id))];
-  const carteira: Parameters<typeof identificarContemplacoesDaCarteira>[1] = [];
+  const carteira: CotaCarteiraContemplacao[] = [];
+  if (!grupoIds.length) return carteira;
 
   for (let offset = 0; ; offset += 500) {
     const { data, error } = await supabase.from("cotas_definitivas")
-      .select("grupo_id,numero_cota,venda:vendas(cliente_id,cliente_nome,data_venda,cliente:clientes(nome))")
+      .select("grupo_id,numero_cota,valor_credito,snapshot_cota,contemplada,data_contemplacao,venda:vendas(cliente_id,cliente_nome,data_venda,cliente:clientes(nome))")
       .eq("empresa_id", empresaId).in("grupo_id", grupoIds)
       .neq("status", "cancelada").order("id").range(offset, offset + 499);
     if (error) throw new Error("Não foi possível cruzar os resultados com a carteira.");
@@ -228,12 +227,65 @@ async function linhasResultadoComCarteira(
       carteira.push({
         grupo_id: cota.grupo_id, numero_cota: cota.numero_cota, cliente_id: venda.cliente_id,
         cliente_nome: nome, data_venda: venda.data_venda,
+        valor_credito: valorCreditoPorCota(cota) || null,
+        data_contemplacao: cota.contemplada ? cota.data_contemplacao : null,
       });
     }
     if ((data?.length ?? 0) < 500) break;
   }
 
-  return identificarContemplacoesDaCarteira(linhas, carteira);
+  return carteira;
+}
+
+async function linhasResultadoComCarteira(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  empresaId: string,
+  resultados: ResultadoAssembleia[],
+) {
+  const carteira = await carregarCarteiraContemplacoes(supabase, empresaId, [...new Set(resultados.map((a) => a.grupo_id))]);
+  return identificarContemplacoesDaCarteira(linhasResultado(resultados), carteira);
+}
+
+export async function listarClientesContempladosAction() {
+  const { supabase, empresaId } = await requireAssembleias(false);
+  const grupos = await listarGruposParaAssembleias(supabase, empresaId);
+  const ids = grupos.map((grupo) => grupo.id);
+  const [carteira, resultados] = await Promise.all([
+    carregarCarteiraContemplacoes(supabase, empresaId, ids),
+    carregarResultados(supabase, ids),
+  ]);
+
+  const codigoPorGrupo = new Map(grupos.map((grupo) => [grupo.id, grupo.codigo_grupo]));
+  const porCota = new Map<string, {
+    cliente: string; grupo: string; cota: string; contratacao: string | null;
+    credito: number | null; contemplacao: string;
+  }>();
+
+  for (const linha of identificarContemplacoesDaCarteira(linhasResultado(resultados), carteira)) {
+    if (!linha.cliente_nosso_nome) continue;
+    const cota = normalizarCotaContemplacao(linha.cota);
+    const chave = `${linha.grupo_id}:${cota}`;
+    const anterior = porCota.get(chave);
+    if (anterior && anterior.contemplacao >= linha.assembleia_data) continue;
+    porCota.set(chave, {
+      cliente: linha.cliente_nosso_nome, grupo: codigoPorGrupo.get(linha.grupo_id) ?? "—",
+      cota, contratacao: linha.contratacao_da_cota, credito: linha.credito_da_cota,
+      contemplacao: linha.assembleia_data,
+    });
+  }
+  for (const cota of carteira) {
+    if (!cota.data_contemplacao) continue;
+    const numero = normalizarCotaContemplacao(cota.numero_cota);
+    porCota.set(`${cota.grupo_id}:${numero}`, {
+      cliente: cota.cliente_nome, grupo: codigoPorGrupo.get(cota.grupo_id) ?? "—",
+      cota: numero, contratacao: cota.data_venda, credito: cota.valor_credito ?? null,
+      contemplacao: cota.data_contemplacao,
+    });
+  }
+
+  return [...porCota].map(([id, cota]) => ({ id, ...cota })).sort((a, b) =>
+    b.contemplacao.localeCompare(a.contemplacao) || a.cliente.localeCompare(b.cliente, "pt-BR"),
+  );
 }
 
 export async function fetchContemplacoesGrupoAction(grupoId: string) {

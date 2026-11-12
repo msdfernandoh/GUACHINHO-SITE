@@ -4817,3 +4817,7 @@ A aba Pedras mostra o crédito individual ao lado do cliente, sugere esse valor 
 ### Clientes da empresa nos resultados de contemplação (12/11/2026)
 
 O ERP identifica cotas contempladas ativas pelo grupo, número e carteira da empresa, com venda registrada até a data da assembleia. O resultado destaca o nome e conta clientes distintos no grupo e mês. Relatório em docs/relatorios-fases/CONTEMPLACOES-CLIENTES-DA-CARTEIRA-2026-11-12.md.
+
+### Aba Clientes Contemplados em Assembleias e Pedras (12/11/2026)
+
+A aba consolida as cotas contempladas da carteira com contratação, crédito individual e data da contemplação. O registro formal do ERP prevalece sobre a correspondência com o resultado oficial. Relatório em docs/relatorios-fases/ASSEMBLEIAS-CLIENTES-CONTEMPLADOS-2026-11-12.md.

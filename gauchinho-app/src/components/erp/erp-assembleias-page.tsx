@@ -11,6 +11,7 @@ import { aplicarCorrecaoPedra, chaveEvento, quantidadeCotasRegistrada } from "@/
 import { listarGruposParaAssembleias } from "@/lib/erp/grupos-assembleias";
 
 import { ErpAssembleiasForm } from "@/components/erp/assembleias/erp-assembleias-form";
+import { ErpClientesContempladosPanel } from "@/components/erp/assembleias/erp-clientes-contemplados-panel";
 import { ErpContemplacoesPanel } from "@/components/erp/assembleias/erp-contemplacoes-panel";
 
 type Assembleia = {
@@ -209,7 +210,7 @@ export async function ErpAssembleiasPage({
       ? gruposApurados.filter((g) => g.grupoId === grupoFiltro)
       : gruposApurados;
 
-  const abaAtiva = params?.aba === "contemplacoes" ? "contemplacoes" : "pedras";
+  const abaAtiva = params?.aba === "contemplacoes" || params?.aba === "clientes-contemplados" ? params.aba : "pedras";
   const resumoPorGrupo = abaAtiva === "pedras" && gruposExibidos.length
     ? await fetchResumoGruposAssembleiaAction(gruposExibidos.map((grupo) => grupo.grupoId)).catch((error) => {
         console.error("Indicadores das assembleias indisponíveis", error);
@@ -249,9 +250,21 @@ export async function ErpAssembleiasPage({
         >
           🏆 Resultado de Assembleias & Contemplações (Robô Racon)
         </Link>
+        <Link
+          href="/erp/assembleias?aba=clientes-contemplados"
+          className={`rounded-lg px-4 py-2 text-sm font-semibold transition ${
+            abaAtiva === "clientes-contemplados"
+              ? "bg-blue-600 text-white shadow-sm"
+              : "text-slate-600 hover:bg-slate-100 dark:text-zinc-400 dark:hover:bg-zinc-800"
+          }`}
+        >
+          Clientes Contemplados
+        </Link>
       </div>
 
-      {abaAtiva === "contemplacoes" ? (
+      {abaAtiva === "clientes-contemplados" ? (
+        <ErpClientesContempladosPanel />
+      ) : abaAtiva === "contemplacoes" ? (
         <ErpContemplacoesPanel grupos={grupos} />
       ) : (
         <>
