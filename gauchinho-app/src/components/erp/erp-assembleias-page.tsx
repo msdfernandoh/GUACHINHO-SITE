@@ -60,7 +60,10 @@ export async function ErpAssembleiasPage({
 
   if (assembleiasError) throw new Error("Módulo Assembleias/Pedras ainda não está disponível neste ambiente.");
 
-  const grupos = gruposAutorizados as Grupo[];
+  const ordemNumerica = new Intl.Collator("pt-BR", { numeric: true });
+  const grupos = [...gruposAutorizados].sort((a, b) =>
+    ordemNumerica.compare(a.codigo_grupo, b.codigo_grupo),
+  ) as Grupo[];
   const lista = ((assembleias ?? []) as Assembleia[]).map(aplicarCorrecaoPedra);
   const grupoById = new Map(grupos.map((g) => [g.id, g]));
 
@@ -173,7 +176,7 @@ export async function ErpAssembleiasPage({
         selecionada.pedra_sorteada,
         assembleiaIdPorGrupo,
         pedraPorGrupoId,
-      )
+      ).sort((a, b) => ordemNumerica.compare(a.codigoGrupo, b.codigoGrupo))
     : [];
 
   const totalCotasApuradas = gruposApurados.reduce((acc, g) => acc + g.cotas.length, 0);
@@ -445,15 +448,17 @@ export async function ErpAssembleiasPage({
                                         <form action={toggleAtencaoAssembleiaAction}>
                                           <input type="hidden" name="assembleia_id" value={assembleiaIdDoGrupo} />
                                           <input type="hidden" name="cota_id" value={c.id} />
-                                          <input type="hidden" name="marcada" value={String(marcada)} />
                                           <button
+                                            type="submit"
+                                            name="marcada"
+                                            value={String(marcada)}
                                             className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
                                               marcada
                                                 ? "bg-amber-500 text-white hover:bg-amber-600"
                                                 : "border border-amber-300 text-amber-800 hover:bg-amber-100"
                                             }`}
                                           >
-                                            {marcada ? "Em atenção" : "Marcar atenção"}
+                                            {marcada ? "Desmarcar atenção" : "Marcar atenção"}
                                           </button>
                                         </form>
                                       ) : marcada ? (

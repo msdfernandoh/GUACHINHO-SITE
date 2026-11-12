@@ -4791,3 +4791,7 @@ O ERP corrige a leitura de sete assembleias conferidas sem regravar as linhas or
 ### Revisão completa das pedras por grupo no ERP (12/11/2026)
 
 Revisados 70 registros em três lotes da Loteria Federal. Os 22 registros com quantidade divergente recebem correção de leitura por ID. A quantidade registrada em cada sorteio orienta a pedra e a distância das cotas. Relatório em docs/relatorios-fases/PEDRAS-ERP-POR-GRUPO-2026-11-12.md.
+
+### Atenção e ordem numérica em Assembleias e Pedras (12/11/2026)
+
+O botão de atenção indica a ação de marcar ou desmarcar e atualiza a tela após gravar. Os grupos aparecem em ordem numérica no formulário, nos filtros e nos cartões. Relatório em docs/relatorios-fases/ASSEMBLEIAS-ATENCAO-ORDEM-2026-11-12.md.

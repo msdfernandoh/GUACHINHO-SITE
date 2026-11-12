@@ -1,7 +1,7 @@
 "use server";
 
 import { resolverQuantidadeCotasGrupo } from "@/lib/grupos-sorteio/calcular-palavra-chave";
-import { revalidatePath } from "next/cache";
+import { refresh, revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { requireErpRouteAccess } from "@/lib/erp/erp-acesso-server";
 import { listGruposAutorizadosForEmpresa, assertEmpresaPodeAcessarGrupo } from "@/lib/grupos/catalogo-autorizado-service";
@@ -138,6 +138,7 @@ export async function toggleAtencaoAssembleiaAction(formData: FormData) {
     if (error) throw new Error(error.message);
   }
   revalidatePath("/erp/assembleias");
+  refresh();
 }
 
 
