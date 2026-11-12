@@ -17,3 +17,13 @@ export function calcularPalavraChave(primeiroPremio: string, quantidadeCotas: nu
 
   return Number(primeiroPremio) % quantidadeCotas;
 }
+
+export function resolverQuantidadeCotasGrupo(grupo: {
+  capacidade_total?: number | null;
+  quantidade_cotas_sorteio?: number | null;
+}): number | null {
+  for (const valor of [grupo.capacidade_total, grupo.quantidade_cotas_sorteio]) {
+    if (valor != null && validarQuantidadeCotas(Number(valor))) return Number(valor);
+  }
+  return null;
+}

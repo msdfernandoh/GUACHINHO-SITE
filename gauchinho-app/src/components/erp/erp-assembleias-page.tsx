@@ -23,6 +23,7 @@ type Grupo = {
   codigo_grupo: string;
   modalidade: string;
   administradora: string | null;
+  capacidade_total?: number | null;
   quantidade_cotas_sorteio?: number | null;
 };
 
@@ -163,6 +164,7 @@ export async function ErpAssembleiasPage({
       codigo_grupo: g?.codigo_grupo ?? gid.slice(0, 8),
       modalidade: g?.modalidade ?? "Consórcio",
       administradora: g?.administradora ?? null,
+      capacidade_total: g?.capacidade_total ?? null,
       quantidade_cotas_sorteio: g?.quantidade_cotas_sorteio ?? null,
     };
   });
@@ -357,7 +359,7 @@ export async function ErpAssembleiasPage({
                             Pedra {g.pedraSorteada}
                           </span>
                           <span className="text-xs text-slate-500">
-                            ({g.quantidadeCotas} cotas)
+                            {g.quantidadeCotas == null ? "(sem total cadastrado)" : `(${g.quantidadeCotas} cotas)`}
                           </span>
                           {g.possuiContempladaPedra && (
                             <span className="rounded bg-emerald-500 px-2 py-0.5 text-xs font-bold text-white">

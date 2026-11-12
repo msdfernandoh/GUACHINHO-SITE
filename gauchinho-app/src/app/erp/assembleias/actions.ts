@@ -1,5 +1,6 @@
 "use server";
 
+import { resolverQuantidadeCotasGrupo } from "@/lib/grupos-sorteio/calcular-palavra-chave";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { requireErpRouteAccess } from "@/lib/erp/erp-acesso-server";
@@ -57,12 +58,8 @@ export async function createAssembleiaAction(formData: FormData) {
 
     if (isTodos) {
       const rows = gruposAutorizados.map((g) => {
-        const cotas =
-          g.quantidade_cotas_sorteio && Number(g.quantidade_cotas_sorteio) > 0
-            ? Number(g.quantidade_cotas_sorteio)
-            : g.modalidade?.toLowerCase().includes("imov")
-            ? 999
-            : 2000;
+        const cotas = resolverQuantidadeCotasGrupo(g);
+        if (cotas == null) throw new Error(`Cadastre a quantidade de cotas do grupo ${g.codigo_grupo}.`);
         const pedraCalculada = calcularPedraPorLoteriaFederal(primeiroPremio, cotas);
         return {
           empresa_id: empresaId,
@@ -80,12 +77,9 @@ export async function createAssembleiaAction(formData: FormData) {
       if (error) throw new Error(error.message);
     } else {
       const g = gruposAutorizados.find((x) => x.id === grupoId);
-      const cotas =
-        g?.quantidade_cotas_sorteio && Number(g.quantidade_cotas_sorteio) > 0
-          ? Number(g.quantidade_cotas_sorteio)
-          : g?.modalidade?.toLowerCase().includes("imov")
-          ? 999
-          : 2000;
+      if (!g) throw new Error("Grupo não autorizado para esta empresa.");
+      const cotas = resolverQuantidadeCotasGrupo(g);
+      if (cotas == null) throw new Error(`Cadastre a quantidade de cotas do grupo ${g.codigo_grupo}.`);
       const pedraCalculada = calcularPedraPorLoteriaFederal(primeiroPremio, cotas);
       const { error } = await supabase.from("erp_assembleias_grupo").insert({
         empresa_id: empresaId,

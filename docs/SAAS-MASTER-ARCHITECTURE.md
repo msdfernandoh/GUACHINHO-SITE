@@ -4779,3 +4779,7 @@ Os dois downloads do Controle de Boletos usam resposta PDF inline autenticada, c
 
 ### Linha digitável do PDF de boleto (09/11/2026)
 Os dois botões individuais oferecem cópia da linha digitável extraída do PDF atual, validada por módulos 10/11. Leitura ausente, inválida ou ambígua bloqueia a cópia. Sem OCR, escrita operacional ou envio automático. Relatório: docs/relatorios-fases/BOLETOS-COPIAR-CODIGO-2026-11-09.md.
+
+### Quantidade de cotas em Sorteio e Assembleias e Pedras (12/11/2026)
+A prévia do site e a prévia e gravação do ERP priorizam a capacidade total do grupo. O campo legado serve para cadastros sem capacidade válida. O ERP exige uma quantidade cadastrada para calcular a pedra.
+Relatório em docs/relatorios-fases/SORTEIOS-CAPACIDADE-GRUPOS-2026-11-12.md.

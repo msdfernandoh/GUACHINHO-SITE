@@ -1,3 +1,4 @@
+import { resolverQuantidadeCotasGrupo } from "@/lib/grupos-sorteio/calcular-palavra-chave";
 import type { Metadata } from "next";
 import { fetchPublicGruposAggregates } from "@/app/admin/grupos/actions";
 import { GruposPublicClient } from "@/components/public/grupos-public-client";
@@ -64,7 +65,7 @@ export default async function GruposPublicPage({
     id: g.id,
     codigo_grupo: g.codigo_grupo,
     modalidade: g.modalidade,
-    quantidade_cotas_sorteio: g.quantidade_cotas_sorteio ?? null,
+    quantidade_cotas_sorteio: resolverQuantidadeCotasGrupo(g),
   }));
   const leadId = sp.lead_id;
   const isUuid = Boolean(leadId && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(leadId));

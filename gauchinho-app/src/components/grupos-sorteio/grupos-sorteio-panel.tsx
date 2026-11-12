@@ -38,7 +38,6 @@ type Props = {
     grupoId: string;
     periodo: string;
     primeiroPremio: string;
-    quantidadeCotas: number;
     dataSorteio: string | null;
     fonteResultado: string | null;
     buscadoAutomaticamente: boolean;
@@ -162,9 +161,7 @@ export function GruposSorteioPanel({
   useEffect(() => {
     if (!grupoId) return;
     const g = grupos.find((x) => x.id === grupoId);
-    if (g?.quantidade_cotas_sorteio != null) {
-      setQuantidadeCotas(String(g.quantidade_cotas_sorteio));
-    }
+    setQuantidadeCotas(String(g?.quantidade_cotas_sorteio ?? ""));
   }, [grupoId, grupos]);
 
   const loadHistorico = useCallback(async () => {
@@ -252,7 +249,6 @@ export function GruposSorteioPanel({
           grupoId,
           periodo,
           primeiroPremio,
-          quantidadeCotas: cotasNum,
           dataSorteio: dataSorteio || null,
           fonteResultado,
           buscadoAutomaticamente: buscadoAuto,
@@ -690,6 +686,7 @@ export function GruposSorteioPanel({
                     min={1}
                     step={1}
                     value={quantidadeCotas}
+                    readOnly={!!grupoSel}
                     onChange={(e) => setQuantidadeCotas(e.target.value)}
                     className={cn(isDark && surfaceInputDark)}
                   />

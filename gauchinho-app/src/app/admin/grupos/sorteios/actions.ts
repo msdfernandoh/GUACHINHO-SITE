@@ -1,5 +1,6 @@
 "use server";
 
+import { resolverQuantidadeCotasGrupo } from "@/lib/grupos-sorteio/calcular-palavra-chave";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { requireUsuario } from "@/lib/auth/get-usuario";
@@ -8,7 +9,6 @@ import { DEFAULT_LEADS, getConfigJson } from "@/server/config";
 import {
   calcularPalavraChave,
   validarPrimeiroPremio,
-  validarQuantidadeCotas,
 } from "@/lib/grupos-sorteio/calcular-palavra-chave";
 import { periodoFromInput } from "@/lib/grupos-sorteio/periodo";
 import type { GrupoSorteioLoteriaRow } from "@/lib/types";
@@ -26,7 +26,6 @@ export type SalvarSorteioInput = {
   grupoId: string;
   periodo: string;
   primeiroPremio: string;
-  quantidadeCotas: number;
   dataSorteio?: string | null;
   fonteResultado?: string | null;
   buscadoAutomaticamente?: boolean;
@@ -39,14 +38,20 @@ export async function salvarSorteioGrupoAction(input: SalvarSorteioInput) {
   if (!validarPrimeiroPremio(premio)) {
     throw new Error("O 1º Prêmio deve conter exatamente 5 dígitos.");
   }
-  if (!validarQuantidadeCotas(input.quantidadeCotas)) {
-    throw new Error("A quantidade de cotas deve ser um número inteiro maior que zero.");
-  }
+  const supabase = await createClient();
+  const { data: grupo, error: grupoError } = await supabase
+    .from("grupos_consorcio")
+    .select("capacidade_total, quantidade_cotas_sorteio")
+    .eq("id", input.grupoId)
+    .eq("ativo", true)
+    .maybeSingle();
+  if (grupoError) throw new Error(grupoError.message);
+  if (!grupo) throw new Error("Grupo ativo não encontrado.");
+  const quantidadeCotas = resolverQuantidadeCotasGrupo(grupo);
+  if (quantidadeCotas == null) throw new Error("Cadastre a quantidade de cotas do grupo.");
 
   const { ano, mes, periodoRef } = periodoFromInput(input.periodo);
-  const palavra_chave = calcularPalavraChave(premio, input.quantidadeCotas);
-
-  const supabase = await createClient();
+  const palavra_chave = calcularPalavraChave(premio, quantidadeCotas);
   const { data: existente } = await supabase
     .from("grupos_sorteios_loteria")
     .select("id")
@@ -65,7 +70,7 @@ export async function salvarSorteioGrupoAction(input: SalvarSorteioInput) {
     ano,
     mes,
     primeiro_premio: premio,
-    quantidade_cotas: input.quantidadeCotas,
+    quantidade_cotas: quantidadeCotas,
     palavra_chave,
     data_sorteio: input.dataSorteio?.trim() || null,
     fonte_resultado:
@@ -113,15 +118,12 @@ export async function salvarSorteioTodosGruposAction(input: SalvarTodosInput) {
   const supabase = await createClient();
   const { data: grupos, error: gErr } = await supabase
     .from("grupos_consorcio")
-    .select("id, codigo_grupo, quantidade_cotas_sorteio")
-    .eq("ativo", true)
-    .not("quantidade_cotas_sorteio", "is", null);
+    .select("id, codigo_grupo, capacidade_total, quantidade_cotas_sorteio")
+    .eq("ativo", true);
   if (gErr) throw new Error(gErr.message);
 
   const comCotas = (grupos ?? []).filter(
-    (g) =>
-      g.quantidade_cotas_sorteio != null &&
-      validarQuantidadeCotas(Number(g.quantidade_cotas_sorteio)),
+    (g) => resolverQuantidadeCotasGrupo(g) != null,
   );
 
   let salvos = 0;
@@ -130,7 +132,6 @@ export async function salvarSorteioTodosGruposAction(input: SalvarTodosInput) {
       grupoId: g.id,
       periodo: input.periodo,
       primeiroPremio: premio,
-      quantidadeCotas: Number(g.quantidade_cotas_sorteio),
       dataSorteio: input.dataSorteio,
       fonteResultado: input.fonteResultado,
       buscadoAutomaticamente: input.buscadoAutomaticamente,
@@ -171,11 +172,11 @@ export async function fetchGruposParaSorteioAction() {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("grupos_consorcio")
-    .select("id, codigo_grupo, modalidade, quantidade_cotas_sorteio, ativo")
+    .select("id, codigo_grupo, modalidade, capacidade_total, quantidade_cotas_sorteio, ativo")
     .eq("ativo", true)
     .order("codigo_grupo");
   if (error) throw new Error(error.message);
-  return data ?? [];
+  return (data ?? []).map((g) => ({ ...g, quantidade_cotas_sorteio: resolverQuantidadeCotasGrupo(g) }));
 }
 
 export async function excluirSorteioAction(id: string) {

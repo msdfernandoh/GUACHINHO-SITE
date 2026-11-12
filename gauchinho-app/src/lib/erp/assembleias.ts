@@ -1,3 +1,5 @@
+import { resolverQuantidadeCotasGrupo } from "../grupos-sorteio/calcular-palavra-chave";
+
 export type CotaAssembleia = {
   id: string;
   numero_cota: string | null;
@@ -20,6 +22,7 @@ export type GrupoItemRef = {
   codigo_grupo: string;
   modalidade: string;
   administradora?: string | null;
+  capacidade_total?: number | null;
   quantidade_cotas_sorteio?: number | null;
 };
 
@@ -28,7 +31,7 @@ export type GrupoComCotasProximas = {
   codigoGrupo: string;
   modalidade: string;
   administradora?: string | null;
-  quantidadeCotas: number;
+  quantidadeCotas: number | null;
   assembleiaId?: string;
   pedraSorteada: number;
   cotas: CotaProxima[];
@@ -133,15 +136,10 @@ export function agruparCotasPorGrupo(
 
   const resultado: GrupoComCotasProximas[] = grupos.map((g) => {
     const cotasDoGrupo = cotasPorGrupo.get(g.id) ?? [];
-    const cotasMax =
-      g.quantidade_cotas_sorteio && Number(g.quantidade_cotas_sorteio) > 0
-        ? Number(g.quantidade_cotas_sorteio)
-        : g.modalidade?.toLowerCase().includes("imov")
-        ? 999
-        : 2000;
+    const cotasMax = resolverQuantidadeCotasGrupo(g);
 
     const pedraDoGrupo = pedraPorGrupoId?.get(g.id) ?? pedraOuPadrao;
-    const proximas = ordenarCotasPorProximidade(cotasDoGrupo, pedraDoGrupo, cotasMax);
+    const proximas = cotasMax == null ? [] : ordenarCotasPorProximidade(cotasDoGrupo, pedraDoGrupo, cotasMax);
     const menorDistancia = proximas.length > 0 ? proximas[0].distancia : null;
     const possuiContempladaPedra = proximas.some((c) => c.distancia === 0);
 

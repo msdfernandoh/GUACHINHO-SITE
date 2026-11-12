@@ -1,5 +1,6 @@
 "use client";
 
+import { resolverQuantidadeCotasGrupo } from "@/lib/grupos-sorteio/calcular-palavra-chave";
 import { useId, useMemo, useState, useTransition } from "react";
 import {
   buscarResultadoFederalAction,
@@ -14,6 +15,7 @@ export type GrupoFormOption = {
   id: string;
   codigo_grupo: string;
   modalidade: string;
+  capacidade_total?: number | null;
   quantidade_cotas_sorteio?: number | null;
 };
 
@@ -40,12 +42,8 @@ export function ErpAssembleiasForm({ grupos }: { grupos: GrupoFormOption[] }) {
       return [];
     }
     return grupos.map((g) => {
-      const cotas =
-        g.quantidade_cotas_sorteio && Number(g.quantidade_cotas_sorteio) > 0
-          ? Number(g.quantidade_cotas_sorteio)
-          : g.modalidade?.toLowerCase().includes("imov")
-          ? 999
-          : 2000;
+      const cotas = resolverQuantidadeCotasGrupo(g);
+      if (cotas == null) return null;
       try {
         const pedra = calcularPedraPorLoteriaFederal(primeiroPremio, cotas);
         return {
@@ -194,7 +192,7 @@ export function ErpAssembleiasForm({ grupos }: { grupos: GrupoFormOption[] }) {
               {grupos.map((g) => (
                 <option key={g.id} value={g.id}>
                   Grupo {g.codigo_grupo} · {g.modalidade}
-                  {g.quantidade_cotas_sorteio ? ` (${g.quantidade_cotas_sorteio} cotas)` : ""}
+                  {resolverQuantidadeCotasGrupo(g) != null ? ` (${resolverQuantidadeCotasGrupo(g)} cotas)` : " (sem total cadastrado)"}
                 </option>
               ))}
             </select>
