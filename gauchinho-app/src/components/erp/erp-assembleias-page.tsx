@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentTenantContext } from "@/lib/tenant/context";
 import { agruparCotasPorGrupo, CotaAssembleia } from "@/lib/erp/assembleias";
 import { toggleAtencaoAssembleiaAction } from "@/app/erp/assembleias/actions";
+import { aplicarCorrecaoPedra, chaveEvento } from "@/lib/erp/assembleias-pedras-historico";
 import { listGruposAutorizadosForEmpresa } from "@/lib/grupos/catalogo-autorizado-service";
 
 import { ErpAssembleiasForm } from "@/components/erp/assembleias/erp-assembleias-form";
@@ -60,10 +61,10 @@ export async function ErpAssembleiasPage({
   if (assembleiasError) throw new Error("Módulo Assembleias/Pedras ainda não está disponível neste ambiente.");
 
   const grupos = gruposAutorizados as Grupo[];
-  const lista = (assembleias ?? []) as Assembleia[];
+  const lista = ((assembleias ?? []) as Assembleia[]).map(aplicarCorrecaoPedra);
   const grupoById = new Map(grupos.map((g) => [g.id, g]));
 
-  // Agrupa o histórico por evento operacional (data + pedra + numero) para evitar cards repetidos
+  // Uma gravação em lote pode produzir pedras diferentes na mesma assembleia.
   const eventosMap = new Map<
     string,
     {
@@ -71,19 +72,20 @@ export async function ErpAssembleiasPage({
       id: string;
       data_assembleia: string;
       numero_assembleia: number | null;
-      pedra_sorteada: number;
+      pedras: Set<number>;
       gruposNomes: string[];
       totalGrupos: number;
     }
   >();
 
   for (const a of lista) {
-    const chave = `${a.data_assembleia}:${a.pedra_sorteada}:${a.numero_assembleia ?? ""}`;
+    const chave = chaveEvento(a);
     const g = grupoById.get(a.grupo_id);
     const gNome = g ? `${g.codigo_grupo}` : a.grupo_id.slice(0, 6);
     const existente = eventosMap.get(chave);
     if (existente) {
       existente.totalGrupos += 1;
+      existente.pedras.add(a.pedra_sorteada);
       if (existente.gruposNomes.length < 3 && !existente.gruposNomes.includes(gNome)) {
         existente.gruposNomes.push(gNome);
       }
@@ -93,7 +95,7 @@ export async function ErpAssembleiasPage({
         id: a.id,
         data_assembleia: a.data_assembleia,
         numero_assembleia: a.numero_assembleia,
-        pedra_sorteada: a.pedra_sorteada,
+        pedras: new Set([a.pedra_sorteada]),
         gruposNomes: [gNome],
         totalGrupos: 1,
       });
@@ -103,15 +105,8 @@ export async function ErpAssembleiasPage({
 
   const selecionada = lista.find((a) => a.id === params?.assembleia) ?? lista[0] ?? null;
 
-  // Reúne todas as assembleias que pertencem ao mesmo evento de data/assembleia
   const assembleiasDoEvento = selecionada
-    ? lista.filter(
-        (a) =>
-          a.data_assembleia === selecionada.data_assembleia &&
-          (a.numero_assembleia != null && selecionada.numero_assembleia != null
-            ? a.numero_assembleia === selecionada.numero_assembleia
-            : a.pedra_sorteada === selecionada.pedra_sorteada),
-      )
+    ? lista.filter((a) => chaveEvento(a) === chaveEvento(selecionada))
     : [];
 
   const grupoIdsDoEvento = [...new Set(assembleiasDoEvento.map((a) => a.grupo_id))];
@@ -241,7 +236,7 @@ export async function ErpAssembleiasPage({
               <p className="p-5 text-sm text-slate-500">Nenhuma assembleia registrada.</p>
             ) : (
               eventos.map((e) => {
-                const isSelected = selecionada && e.data_assembleia === selecionada.data_assembleia && e.pedra_sorteada === selecionada.pedra_sorteada && e.numero_assembleia === selecionada.numero_assembleia;
+                const isSelected = selecionada && e.chave === chaveEvento(selecionada);
                 return (
                   <Link
                     key={e.chave}
@@ -255,7 +250,7 @@ export async function ErpAssembleiasPage({
                         {e.totalGrupos > 1 ? `Todos os grupos (${e.totalGrupos})` : `Grupo ${e.gruposNomes[0]}`}
                       </p>
                       <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[11px] font-semibold text-slate-700">
-                        Pedra {e.pedra_sorteada}
+                        {e.pedras.size === 1 ? `Pedra ${[...e.pedras][0]}` : "Pedras por grupo"}
                       </span>
                     </div>
                     <p className="mt-0.5 text-xs text-slate-500">
@@ -281,7 +276,7 @@ export async function ErpAssembleiasPage({
                 <div className="flex flex-wrap items-center justify-between gap-3 border-b pb-4">
                   <div>
                     <h2 className="text-xl font-bold text-slate-900">
-                      Cotas mais próximas da pedra {selecionada.pedra_sorteada}
+                      Cotas mais próximas da pedra por grupo
                     </h2>
                     <p className="text-xs text-slate-500">
                       Data: {selecionada.data_assembleia}

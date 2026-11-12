@@ -67,9 +67,7 @@ export async function createAssembleiaAction(formData: FormData) {
           data_assembleia: dataAssembleia,
           numero_assembleia: numero,
           pedra_sorteada: pedraCalculada,
-          observacao:
-            observacao ||
-            `Loteria Federal (1º Prêmio ${primeiroPremio}) · ${g.codigo_grupo} (${cotas} cotas)`,
+          observacao: `Loteria Federal (1º Prêmio ${primeiroPremio}) · ${g.codigo_grupo} (${cotas} cotas)${observacao ? ` · ${observacao}` : ""}`,
           criado_por_usuario_id: usuarioId,
         };
       });
@@ -87,9 +85,7 @@ export async function createAssembleiaAction(formData: FormData) {
         data_assembleia: dataAssembleia,
         numero_assembleia: numero,
         pedra_sorteada: pedraCalculada,
-        observacao:
-          observacao ||
-          `Loteria Federal (1º Prêmio ${primeiroPremio}) · ${g?.codigo_grupo ?? ""} (${cotas} cotas)`,
+        observacao: `Loteria Federal (1º Prêmio ${primeiroPremio}) · ${g?.codigo_grupo ?? ""} (${cotas} cotas)${observacao ? ` · ${observacao}` : ""}`,
         criado_por_usuario_id: usuarioId,
       });
       if (error) throw new Error(error.message);

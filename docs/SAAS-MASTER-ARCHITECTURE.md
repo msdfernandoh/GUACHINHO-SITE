@@ -4783,3 +4783,7 @@ Os dois botões individuais oferecem cópia da linha digitável extraída do PDF
 ### Quantidade de cotas em Sorteio e Assembleias e Pedras (12/11/2026)
 A prévia do site e a prévia e gravação do ERP priorizam a capacidade total do grupo. O campo legado serve para cadastros sem capacidade válida. O ERP exige uma quantidade cadastrada para calcular a pedra.
 Relatório em docs/relatorios-fases/SORTEIOS-CAPACIDADE-GRUPOS-2026-11-12.md.
+
+### Conferência dos sorteios dos grupos 5618, 1553 e 1253 (12/11/2026)
+
+O ERP corrige a leitura de sete assembleias conferidas sem regravar as linhas originais. A lista agrupa as pedras diferentes do mesmo lote da Federal. O histórico do site recebeu sete resultados revisados. Relatório em docs/relatorios-fases/SORTEIOS-5618-1553-1253-2026-11-12.md.
