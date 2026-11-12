@@ -5,7 +5,7 @@ import { getCurrentTenantContext } from "@/lib/tenant/context";
 import { agruparCotasPorGrupo, numeroCotaParaPedra, CotaAssembleia } from "@/lib/erp/assembleias";
 import { toggleAtencaoAssembleiaAction } from "@/app/erp/assembleias/actions";
 import { aplicarCorrecaoPedra, chaveEvento, quantidadeCotasRegistrada } from "@/lib/erp/assembleias-pedras-historico";
-import { listGruposAutorizadosForEmpresa } from "@/lib/grupos/catalogo-autorizado-service";
+import { listarGruposParaAssembleias } from "@/lib/erp/grupos-assembleias";
 
 import { ErpAssembleiasForm } from "@/components/erp/assembleias/erp-assembleias-form";
 import { ErpContemplacoesPanel } from "@/components/erp/assembleias/erp-contemplacoes-panel";
@@ -50,7 +50,7 @@ export async function ErpAssembleiasPage({
 
   const [gruposAutorizados, { data: assembleias, error: assembleiasError }, { data: canWrite }] =
     await Promise.all([
-      listGruposAutorizadosForEmpresa(empresaId),
+      listarGruposParaAssembleias(supabase, empresaId),
       supabase
         .from("erp_assembleias_grupo")
         .select("id,grupo_id,data_assembleia,numero_assembleia,pedra_sorteada,observacao,created_at")
@@ -152,7 +152,7 @@ export async function ErpAssembleiasPage({
       const chave = v?.cliente_id && numero != null
         ? `${c.grupo_id}:${numero}:${v.cliente_id}`
         : c.id;
-      if (c.status === "cancelada" || c.status === "contemplada" || c.contemplada) {
+      if (c.status === "cancelada") {
         foraDaFila.add(chave);
         continue;
       }
@@ -162,7 +162,7 @@ export async function ErpAssembleiasPage({
         id: c.id,
         grupo_id: c.grupo_id,
         numero_cota: c.numero_cota,
-        status: c.status,
+        status: c.contemplada ? "contemplada" : c.status,
         cliente_nome: clienteNome,
       });
     }
@@ -477,7 +477,7 @@ export async function ErpAssembleiasPage({
                                             {marcada ? "Desmarcar atenção" : "Marcar atenção"}
                                           </button>
                                         </form>
-                                          {assembleiaIdDoGrupo && <StatusCotaAssembleiaButtons assembleiaId={assembleiaIdDoGrupo} cotaId={c.id} numero={c.numero} />}
+                                          {assembleiaIdDoGrupo && c.status !== "contemplada" && <StatusCotaAssembleiaButtons assembleiaId={assembleiaIdDoGrupo} cotaId={c.id} numero={c.numero} />}
                                         </div>
                                       ) : marcada ? (
                                         <span className="font-semibold text-amber-700">Em atenção</span>

@@ -4803,3 +4803,9 @@ A lista exibe o número sem zeros à esquerda e reúne entradas com o mesmo grup
 ### Situação da cota em Assembleias e Pedras (12/11/2026)
 
 As ações Cancelada e Contemplada registram a situação operacional da cota no mesmo fluxo de Lances e Estratégias. A lista de proximidade exclui essas cotas antes de calcular totais e distâncias. Relatório em docs/relatorios-fases/ASSEMBLEIAS-STATUS-COTAS-2026-11-12.md.
+
+### Grupos da carteira em Assembleias e Pedras (12/11/2026)
+
+O ERP inclui grupos concedidos com cotas na carteira, mesmo fora do catálogo comercial. A lista omite canceladas e mostra contempladas. Os grupos 1061 e 1203 foram incluídos na assembleia de 11/11. Relatório em docs/relatorios-fases/ASSEMBLEIAS-GRUPOS-CARTEIRA-2026-11-12.md.
+
+A ação Contemplada usa o registro oficial de contemplação, com data da assembleia, modalidade Sorteio e valor atualizado informado pelo operador. O banco rejeitava a atualização anterior porque faltavam esses dados.

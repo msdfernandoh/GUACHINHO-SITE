@@ -5,6 +5,7 @@ import { refresh, revalidatePath } from "next/cache";
 import { registrarStatusOperacionalCota } from "@/lib/erp/status-operacional-cota";
 import { createClient } from "@/lib/supabase/server";
 import { requireErpRouteAccess } from "@/lib/erp/erp-acesso-server";
+import { listarGruposParaAssembleias } from "@/lib/erp/grupos-assembleias";
 import { listGruposAutorizadosForEmpresa, assertEmpresaPodeAcessarGrupo } from "@/lib/grupos/catalogo-autorizado-service";
 import { buscarPrimeiroPremioFederalPorData } from "@/lib/grupos-sorteio/buscar-resultado-federal";
 import {
@@ -45,7 +46,7 @@ export async function createAssembleiaAction(formData: FormData) {
   if (numero != null && (!Number.isSafeInteger(numero) || numero <= 0)) throw new Error("Número da assembleia inválido.");
   const observacao = String(formData.get("observacao") ?? "").trim() || null;
 
-  const gruposAutorizados = await listGruposAutorizadosForEmpresa(empresaId);
+  const gruposAutorizados = await listarGruposParaAssembleias(supabase, empresaId);
   if (!gruposAutorizados || gruposAutorizados.length === 0) {
     throw new Error("Nenhum grupo autorizado disponível para este tenant.");
   }
@@ -233,15 +234,19 @@ export async function marcarStatusCotaAssembleiaAction(
   assembleiaId: string,
   cotaId: string,
   status: "cancelada" | "contemplada",
+  valorCredito?: number,
 ) {
   if (status !== "cancelada" && status !== "contemplada") throw new Error("Situação inválida.");
   const { supabase, empresaId, usuarioId } = await requireAssembleias(true);
   const { data: assembleia, error: erroAssembleia } = await supabase
-    .from("erp_assembleias_grupo").select("grupo_id")
+    .from("erp_assembleias_grupo").select("grupo_id,data_assembleia")
     .eq("empresa_id", empresaId).eq("id", assembleiaId).maybeSingle();
   if (erroAssembleia) throw new Error(erroAssembleia.message);
   if (!assembleia) throw new Error("Assembleia não encontrada.");
-  await assertEmpresaPodeAcessarGrupo(empresaId, assembleia.grupo_id);
+  const concedidos = await listGruposAutorizadosForEmpresa(empresaId, { incluirInativos: true });
+  if (!concedidos.some((grupo) => grupo.id === assembleia.grupo_id)) {
+    throw new Error("Grupo não autorizado para a empresa.");
+  }
   const { data: cota, error: erroCota } = await supabase
     .from("cotas_definitivas").select("id,status,contemplada")
     .eq("empresa_id", empresaId).eq("grupo_id", assembleia.grupo_id).eq("id", cotaId).maybeSingle();
@@ -251,9 +256,31 @@ export async function marcarStatusCotaAssembleiaAction(
     throw new Error("A cota já está cancelada ou contemplada.");
   }
 
-  await registrarStatusOperacionalCota({ empresaId, usuarioId, cotaId, status, tela: "Assembleias e Pedras", statusAnterior: cota.status });
+  if (status === "contemplada") {
+    if (valorCredito == null || !Number.isFinite(valorCredito) || valorCredito <= 0) {
+      return { ok: false, mensagem: "Informe o valor atualizado do crédito." };
+    }
+    const { error } = await supabase.rpc("rpc_marcar_cota_contemplada", {
+      p_empresa_id: empresaId,
+      p_cota_id: cotaId,
+      p_data: assembleia.data_assembleia,
+      p_tipo: "SORTEIO",
+      p_valor_credito: valorCredito,
+      p_observacao: "Registrada em Assembleias e Pedras",
+      p_idempotency_key: `contemplacao:${cotaId}`,
+    });
+    if (error) {
+      console.error("Erro ao registrar contemplação da assembleia", error.code, error.message);
+      return { ok: false, mensagem: "O ERP não conseguiu registrar a contemplação. Confira os dados da cota e tente novamente." };
+    }
+    revalidatePath("/erp/clientes");
+    revalidatePath("/erp/comissoes");
+  } else {
+    await registrarStatusOperacionalCota({ empresaId, usuarioId, cotaId, status, tela: "Assembleias e Pedras", statusAnterior: cota.status });
+  }
   revalidatePath("/erp/assembleias");
   revalidatePath("/erp/lances");
   revalidatePath("/erp/vendas");
   refresh();
+  return { ok: true };
 }
