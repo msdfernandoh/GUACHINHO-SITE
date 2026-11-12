@@ -4821,3 +4821,7 @@ O ERP identifica cotas contempladas ativas pelo grupo, número e carteira da emp
 ### Aba Clientes Contemplados em Assembleias e Pedras (12/11/2026)
 
 A aba consolida as cotas contempladas da carteira com contratação, crédito individual e data da contemplação. O registro formal do ERP prevalece sobre a correspondência com o resultado oficial. Relatório em docs/relatorios-fases/ASSEMBLEIAS-CLIENTES-CONTEMPLADOS-2026-11-12.md.
+
+### Destaque da carteira nas visões por grupo e competência (12/11/2026)
+
+Os resultados da carteira aparecem no início da assembleia nas duas visões, com nome, identificação e total de cotas na assembleia. O contador mensal continua por cliente distinto. Na visão por competência, os grupos seguem a ordem numérica. Relatório em docs/relatorios-fases/CONTEMPLACOES-CARTEIRA-POR-COMPETENCIA-2026-11-12.md.

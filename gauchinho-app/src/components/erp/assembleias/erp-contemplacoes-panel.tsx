@@ -59,8 +59,16 @@ type GrupoDetalhe = {
   cotas_a_entregar?: number | null;
 };
 
+function priorizarCotasDaCarteira(cotas: ContemplacaoRow[]) {
+  return [
+    ...cotas.filter((cota) => cota.cliente_nosso_nome),
+    ...cotas.filter((cota) => !cota.cliente_nosso_nome),
+  ];
+}
+
 function QuantidadeContempladas({ cotas, clientesNoMes }: { cotas: ContemplacaoRow[]; clientesNoMes?: number }) {
   const clientesNossos = clientesNoMes ?? cotas[0]?.clientes_nossos_no_mes ?? 0;
+  const cotasNossas = new Set(cotas.filter((cota) => cota.cliente_nosso_nome).map((cota) => cota.cota)).size;
   return (
     <div className="flex flex-col items-start gap-2 sm:items-end">
       <div className="contemplacoes-quantidade inline-flex items-center gap-3 rounded-xl border-2 px-4 py-2">
@@ -70,6 +78,7 @@ function QuantidadeContempladas({ cotas, clientesNoMes }: { cotas: ContemplacaoR
       <span className="rounded-md bg-blue-100 px-2 py-1 text-xs font-semibold text-blue-900">
         {clientesNossos} {clientesNossos === 1 ? "cliente nosso contemplado" : "clientes nossos contemplados"} no mês
       </span>
+      {cotasNossas > 0 && <span className="text-xs font-semibold text-blue-900">{cotasNossas} {cotasNossas === 1 ? "cota da nossa carteira" : "cotas da nossa carteira"} nesta assembleia</span>}
       <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-slate-600">
         <span>{cotas.filter(c => c.situacao_cota === "CANCELADA").length} cancelada(s)</span>
         <span>{cotas.filter(c => c.situacao_cota === "DESCLASSIFICADA").length} desclassificada(s)</span>
@@ -394,7 +403,7 @@ export function ErpContemplacoesPanel({ grupos }: { grupos: GrupoOption[] }) {
                           </div>
 
                           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
-                            {ass.cotas.map((c) => (
+                            {priorizarCotasDaCarteira(ass.cotas).map((c) => (
                               <div
                                 key={c.id}
                                 className={`flex items-center justify-between gap-2 rounded-lg border p-2.5 text-xs ${c.cliente_nosso_nome ? "border-blue-300 bg-blue-50" : "border-slate-200 bg-white"}`}
@@ -403,7 +412,7 @@ export function ErpContemplacoesPanel({ grupos }: { grupos: GrupoOption[] }) {
                                   <div className="font-mono font-semibold text-slate-800">
                                     Cota {c.cota}
                                   </div>
-                                  {c.cliente_nosso_nome && <div className="break-words font-semibold text-blue-900">{c.cliente_nosso_nome}</div>}
+                                  {c.cliente_nosso_nome && <div className="break-words font-semibold text-blue-900"><span className="block text-[10px] font-medium">Nossa carteira</span>{c.cliente_nosso_nome}</div>}
                                   <div>{getModalidadeBadge(c.modalidade, c.situacao_cota)}</div>
                                 </div>
                                 <div className="text-right">
@@ -454,8 +463,13 @@ export function ErpContemplacoesPanel({ grupos }: { grupos: GrupoOption[] }) {
                 Nenhuma assembleia ou contemplação registrada no mês {mesAno}.
               </div>
             ) : (
-              Object.values(gruposNoMesAgrupados).map((item) => (
-                <div key={`${item.grupoNome}:${item.assembleiaNumero}`} className="rounded-xl border border-slate-200 bg-white p-4 space-y-3">
+              Object.entries(gruposNoMesAgrupados)
+                .sort(([, a], [, b]) =>
+                  a.grupoNome.localeCompare(b.grupoNome, "pt-BR", { numeric: true }) ||
+                  b.assembleiaNumero - a.assembleiaNumero,
+                )
+                .map(([chave, item]) => (
+                <div key={chave} className="rounded-xl border border-slate-200 bg-white p-4 space-y-3">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 border-b border-slate-200 pb-2">
                     <div className="flex items-center gap-2">
                       <span className="font-bold text-base text-slate-900">{item.grupoNome}</span>
@@ -470,14 +484,14 @@ export function ErpContemplacoesPanel({ grupos }: { grupos: GrupoOption[] }) {
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
-                    {item.cotas.map((c) => (
+                    {priorizarCotasDaCarteira(item.cotas).map((c) => (
                       <div
                         key={c.id}
                         className={`flex items-center justify-between gap-2 rounded-lg border p-2.5 text-xs ${c.cliente_nosso_nome ? "border-blue-300 bg-blue-50" : "border-slate-200 bg-white"}`}
                       >
                         <div className="space-y-0.5">
                           <div className="font-mono font-semibold text-slate-800">Cota {c.cota}</div>
-                          {c.cliente_nosso_nome && <div className="break-words font-semibold text-blue-900">{c.cliente_nosso_nome}</div>}
+                          {c.cliente_nosso_nome && <div className="break-words font-semibold text-blue-900"><span className="block text-[10px] font-medium">Nossa carteira</span>{c.cliente_nosso_nome}</div>}
                           <div>{getModalidadeBadge(c.modalidade, c.situacao_cota)}</div>
                         </div>
                         <div className="text-right">
