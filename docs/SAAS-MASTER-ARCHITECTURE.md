@@ -4813,3 +4813,7 @@ A ação Contemplada usa o registro oficial de contemplação, com data da assem
 ### Crédito da cota e indicadores em Assembleias e Pedras (12/11/2026)
 
 A aba Pedras mostra o crédito individual ao lado do cliente, sugere esse valor na contemplação e empilha as ações. Os indicadores do grupo usam o histórico verificado. A aba Resultado mostra a capacidade e o número da assembleia sobre o prazo total. Relatório em docs/relatorios-fases/ASSEMBLEIAS-CREDITO-INDICADORES-2026-11-12.md.
+
+### Clientes da empresa nos resultados de contemplação (12/11/2026)
+
+O ERP identifica cotas contempladas ativas pelo grupo, número e carteira da empresa, com venda registrada até a data da assembleia. O resultado destaca o nome e conta clientes distintos no grupo e mês. Relatório em docs/relatorios-fases/CONTEMPLACOES-CLIENTES-DA-CARTEIRA-2026-11-12.md.

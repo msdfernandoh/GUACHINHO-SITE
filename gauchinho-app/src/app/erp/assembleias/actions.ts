@@ -13,7 +13,7 @@ import {
   validarPrimeiroPremioFederal,
 } from "@/lib/erp/assembleias";
 
-import { indicadoresContemplacoes, resultadosVigentes, cotasUnicas, contempladasAtivas, type ResultadoAssembleia } from "@/lib/erp/contemplacoes";
+import { indicadoresContemplacoes, identificarContemplacoesDaCarteira, resultadosVigentes, cotasUnicas, contempladasAtivas, type ResultadoAssembleia } from "@/lib/erp/contemplacoes";
 import { classificarSimulacoes, percentualAtrasoValido } from "@/lib/erp/simulacao-contemplacao";
 
 async function requireAssembleias(write = false) {
@@ -204,6 +204,38 @@ function linhasResultado(rows: ResultadoAssembleia[]) {
   })));
 }
 
+async function linhasResultadoComCarteira(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  empresaId: string,
+  resultados: ResultadoAssembleia[],
+) {
+  const linhas = linhasResultado(resultados);
+  if (!linhas.length) return identificarContemplacoesDaCarteira(linhas, []);
+  const grupoIds = [...new Set(linhas.map((linha) => linha.grupo_id))];
+  const carteira: Parameters<typeof identificarContemplacoesDaCarteira>[1] = [];
+
+  for (let offset = 0; ; offset += 500) {
+    const { data, error } = await supabase.from("cotas_definitivas")
+      .select("grupo_id,numero_cota,venda:vendas(cliente_id,cliente_nome,data_venda,cliente:clientes(nome))")
+      .eq("empresa_id", empresaId).in("grupo_id", grupoIds)
+      .neq("status", "cancelada").order("id").range(offset, offset + 499);
+    if (error) throw new Error("Não foi possível cruzar os resultados com a carteira.");
+    for (const cota of data ?? []) {
+      const venda = Array.isArray(cota.venda) ? cota.venda[0] : cota.venda;
+      const cliente = Array.isArray(venda?.cliente) ? venda.cliente[0] : venda?.cliente;
+      const nome = cliente?.nome || venda?.cliente_nome;
+      if (!cota.grupo_id || !cota.numero_cota || !venda?.cliente_id || !nome) continue;
+      carteira.push({
+        grupo_id: cota.grupo_id, numero_cota: cota.numero_cota, cliente_id: venda.cliente_id,
+        cliente_nome: nome, data_venda: venda.data_venda,
+      });
+    }
+    if ((data?.length ?? 0) < 500) break;
+  }
+
+  return identificarContemplacoesDaCarteira(linhas, carteira);
+}
+
 export async function fetchContemplacoesGrupoAction(grupoId: string) {
   const { supabase, empresaId } = await requireAssembleias(false);
   await assertEmpresaPodeAcessarGrupo(empresaId, grupoId);
@@ -219,7 +251,7 @@ export async function fetchContemplacoesGrupoAction(grupoId: string) {
   return {
     grupo: { ...grupo, total_cotas: resolverQuantidadeCotasGrupo(grupo), ultima_assembleia_numero: ultima, sem_assembleias_realizadas: resumo?.versao === 2 && resumo.sem_assembleias_realizadas === true, ...indicadoresContemplacoes(resultados, ultima, ativas == null ? null : Number(ativas), resumo?.versao === 2 && resumo.sem_assembleias_realizadas === true) },
     assembleias: resultados.map(({ cotas, ...a }) => ({ ...a, total_ativas: contempladasAtivas(cotas) })),
-    contemplacoes: linhasResultado(resultados),
+    contemplacoes: await linhasResultadoComCarteira(supabase, empresaId, resultados),
   };
 }
 
@@ -229,7 +261,7 @@ export async function fetchContemplacoesMesAction(mesAno: string) {
   const grupos = await listGruposAutorizadosForEmpresa(empresaId);
   const resultados = await carregarResultados(supabase, grupos.map(g => g.id), mesAno);
   return {
-    contemplacoes: linhasResultado(resultados).map(c => ({ ...c, grupo: grupos.find(g => g.id === c.grupo_id) })),
+    contemplacoes: (await linhasResultadoComCarteira(supabase, empresaId, resultados)).map(c => ({ ...c, grupo: grupos.find(g => g.id === c.grupo_id) })),
     grupos_sem_resultado: grupos.filter(g => {
       if (resultados.some(a => a.grupo_id === g.id)) return false;
       const dados = g as typeof g & {

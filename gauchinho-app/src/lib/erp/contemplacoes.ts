@@ -63,3 +63,48 @@ export function indicadoresContemplacoes(rows: ResultadoAssembleia[], ultima: nu
     cotas_a_entregar: entregues != null && ativas != null && ativas >= entregues ? ativas - entregues : null,
   };
 }
+
+type CotaCarteiraContemplacao = {
+  grupo_id: string;
+  numero_cota: string;
+  cliente_id: string;
+  cliente_nome: string;
+  data_venda: string | null;
+};
+
+export function identificarContemplacoesDaCarteira<T extends ResultadoCota & {
+  grupo_id: string;
+  assembleia_data: string;
+}>(linhas: T[], carteira: CotaCarteiraContemplacao[]) {
+  const chaveCota = (grupo: string, numero: string) => `${grupo}:${numero.trim().replace(/^(\d+)-0+$/, "$1").replace(/^0+(?=\d)/, "")}`;
+  const chaveMes = (linha: T) => `${linha.grupo_id}:${linha.assembleia_data.slice(0, 7)}`;
+  const cotas = new Map<string, CotaCarteiraContemplacao[]>();
+  for (const cota of carteira) {
+    const chave = chaveCota(cota.grupo_id, cota.numero_cota);
+    const registros = cotas.get(chave) ?? [];
+    registros.push(cota);
+    cotas.set(chave, registros);
+  }
+
+  const clientesPorMes = new Map<string, Set<string>>();
+  const identificadas = linhas.map((linha) => {
+    if (linha.situacao_cota !== "ATIVA") return { linha, clienteNome: null };
+    const titulares = new Map((cotas.get(chaveCota(linha.grupo_id, linha.cota)) ?? [])
+      .filter((cota) => cota.data_venda && cota.data_venda.slice(0, 10) <= linha.assembleia_data.slice(0, 10))
+      .map((cota) => [cota.cliente_id, cota.cliente_nome]));
+    if (titulares.size !== 1) return { linha, clienteNome: null };
+
+    const [[clienteId, clienteNome]] = [...titulares];
+    const mes = chaveMes(linha);
+    const clientes = clientesPorMes.get(mes) ?? new Set<string>();
+    clientes.add(clienteId);
+    clientesPorMes.set(mes, clientes);
+    return { linha, clienteNome };
+  });
+
+  return identificadas.map(({ linha, clienteNome }) => ({
+    ...linha,
+    cliente_nosso_nome: clienteNome,
+    clientes_nossos_no_mes: clientesPorMes.get(chaveMes(linha))?.size ?? 0,
+  }));
+}

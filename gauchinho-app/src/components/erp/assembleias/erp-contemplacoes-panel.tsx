@@ -23,6 +23,8 @@ type ContemplacaoRow = {
   percentual_lance: number;
   situacao_cota: string;
   criado_em?: string;
+  cliente_nosso_nome?: string | null;
+  clientes_nossos_no_mes?: number;
   grupo?: {
     id: string;
     codigo_grupo: string;
@@ -57,13 +59,17 @@ type GrupoDetalhe = {
   cotas_a_entregar?: number | null;
 };
 
-function QuantidadeContempladas({ cotas }: { cotas: ContemplacaoRow[] }) {
+function QuantidadeContempladas({ cotas, clientesNoMes }: { cotas: ContemplacaoRow[]; clientesNoMes?: number }) {
+  const clientesNossos = clientesNoMes ?? cotas[0]?.clientes_nossos_no_mes ?? 0;
   return (
     <div className="flex flex-col items-start gap-2 sm:items-end">
       <div className="contemplacoes-quantidade inline-flex items-center gap-3 rounded-xl border-2 px-4 py-2">
         <strong data-total-contempladas className="text-3xl font-extrabold leading-none tabular-nums">{contempladasAtivas(cotas)}</strong>
         <span className="text-xs font-semibold leading-tight">cotas contempladas<br />ativas</span>
       </div>
+      <span className="rounded-md bg-blue-100 px-2 py-1 text-xs font-semibold text-blue-900">
+        {clientesNossos} {clientesNossos === 1 ? "cliente nosso contemplado" : "clientes nossos contemplados"} no mês
+      </span>
       <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-slate-600">
         <span>{cotas.filter(c => c.situacao_cota === "CANCELADA").length} cancelada(s)</span>
         <span>{cotas.filter(c => c.situacao_cota === "DESCLASSIFICADA").length} desclassificada(s)</span>
@@ -139,6 +145,8 @@ export function ErpContemplacoesPanel({ grupos }: { grupos: GrupoOption[] }) {
       }
     });
   }
+
+  const clientesNoMes = new Map(contemplacoesGrupo.map((linha) => [linha.assembleia_data?.slice(0, 7), linha.clientes_nossos_no_mes]));
 
   // Agrupa cotas por assembleia no modo Grupo
   const assembleiasAgrupadas = contemplacoesGrupo.reduce((acc, item) => {
@@ -382,19 +390,20 @@ export function ErpContemplacoesPanel({ grupos }: { grupos: GrupoOption[] }) {
                                 </span>
                               )}
                             </div>
-                            <QuantidadeContempladas cotas={ass.cotas} />
+                            <QuantidadeContempladas cotas={ass.cotas} clientesNoMes={clientesNoMes.get(ass.data?.slice(0, 7))} />
                           </div>
 
                           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
                             {ass.cotas.map((c) => (
                               <div
                                 key={c.id}
-                                className="flex items-center justify-between p-2.5 rounded-lg bg-white border border-slate-200 text-xs"
+                                className={`flex items-center justify-between gap-2 rounded-lg border p-2.5 text-xs ${c.cliente_nosso_nome ? "border-blue-300 bg-blue-50" : "border-slate-200 bg-white"}`}
                               >
                                 <div className="space-y-0.5">
                                   <div className="font-mono font-semibold text-slate-800">
                                     Cota {c.cota}
                                   </div>
+                                  {c.cliente_nosso_nome && <div className="break-words font-semibold text-blue-900">{c.cliente_nosso_nome}</div>}
                                   <div>{getModalidadeBadge(c.modalidade, c.situacao_cota)}</div>
                                 </div>
                                 <div className="text-right">
@@ -446,7 +455,7 @@ export function ErpContemplacoesPanel({ grupos }: { grupos: GrupoOption[] }) {
               </div>
             ) : (
               Object.values(gruposNoMesAgrupados).map((item) => (
-                <div key={item.grupoNome} className="rounded-xl border border-slate-200 bg-white p-4 space-y-3">
+                <div key={`${item.grupoNome}:${item.assembleiaNumero}`} className="rounded-xl border border-slate-200 bg-white p-4 space-y-3">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 border-b border-slate-200 pb-2">
                     <div className="flex items-center gap-2">
                       <span className="font-bold text-base text-slate-900">{item.grupoNome}</span>
@@ -464,10 +473,11 @@ export function ErpContemplacoesPanel({ grupos }: { grupos: GrupoOption[] }) {
                     {item.cotas.map((c) => (
                       <div
                         key={c.id}
-                        className="flex items-center justify-between p-2.5 rounded-lg bg-white border border-slate-200 text-xs"
+                        className={`flex items-center justify-between gap-2 rounded-lg border p-2.5 text-xs ${c.cliente_nosso_nome ? "border-blue-300 bg-blue-50" : "border-slate-200 bg-white"}`}
                       >
                         <div className="space-y-0.5">
                           <div className="font-mono font-semibold text-slate-800">Cota {c.cota}</div>
+                          {c.cliente_nosso_nome && <div className="break-words font-semibold text-blue-900">{c.cliente_nosso_nome}</div>}
                           <div>{getModalidadeBadge(c.modalidade, c.situacao_cota)}</div>
                         </div>
                         <div className="text-right">
