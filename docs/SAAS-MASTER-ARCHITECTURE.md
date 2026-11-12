@@ -4799,3 +4799,7 @@ O botão de atenção indica a ação de marcar ou desmarcar e atualiza a tela a
 ### Exibição das cotas em Assembleias e Pedras (12/11/2026)
 
 A lista exibe o número sem zeros à esquerda e reúne entradas com o mesmo grupo, número, cliente e status. Relatório em docs/relatorios-fases/ASSEMBLEIAS-COTAS-DUPLICADAS-2026-11-12.md.
+
+### Situação da cota em Assembleias e Pedras (12/11/2026)
+
+As ações Cancelada e Contemplada registram a situação operacional da cota no mesmo fluxo de Lances e Estratégias. A lista de proximidade exclui essas cotas antes de calcular totais e distâncias. Relatório em docs/relatorios-fases/ASSEMBLEIAS-STATUS-COTAS-2026-11-12.md.

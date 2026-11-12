@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { registrarStatusOperacionalCota } from "@/lib/erp/status-operacional-cota";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireErpRouteAccess } from "@/lib/erp/erp-acesso-server";
@@ -865,59 +866,9 @@ export async function alterarStatusCotaLanceAction(
   const { empresaAtiva, usuario } = await requireErpRouteAccess("lances");
   if (!empresaAtiva?.id) throw new Error("Empresa ativa não encontrada.");
 
-  const adminSupabase = createAdminClient();
-  const { data: cota, error: cotaError } = await adminSupabase
-    .from("cotas_definitivas")
-    .select("id, empresa_id, status, contemplada")
-    .eq("id", cotaId)
-    .eq("empresa_id", empresaAtiva.id)
-    .maybeSingle();
-
-  if (cotaError) throw new Error(cotaError.message);
-  if (!cota) throw new Error("Cota não encontrada para a empresa ativa.");
-
-  const novoStatus = status === "contemplada" ? "contemplada" : "cancelada";
-  const { data: cotaAtualizada, error: updateCotaError } = await adminSupabase
-    .from("cotas_definitivas")
-    .update({ status: novoStatus, contemplada: status === "contemplada" })
-    .eq("id", cotaId)
-    .eq("empresa_id", empresaAtiva.id)
-    .select("id,status,contemplada")
-    .maybeSingle();
-
-  if (updateCotaError) throw new Error(updateCotaError.message);
-  if (!cotaAtualizada || cotaAtualizada.status !== novoStatus) {
-    throw new Error("O status da cota não foi confirmado após a atualização.");
-  }
-
-  const { data: estrategia, error: estrategiaError } = await adminSupabase
-    .from("cota_estrategias_lance")
-    .select("id, ativa")
-    .eq("cota_definitiva_id", cotaId)
-    .maybeSingle();
-
-  if (estrategiaError) throw new Error(estrategiaError.message);
-
-  if (estrategia) {
-    const { error: estrategiaUpdateError } = await adminSupabase
-      .from("cota_estrategias_lance")
-      .update({ ativa: false })
-      .eq("id", estrategia.id);
-
-    if (estrategiaUpdateError) throw new Error(estrategiaUpdateError.message);
-
-    const { error: historicoError } = await adminSupabase.from("cota_estrategias_lance_historico").insert({
-      empresa_id: empresaAtiva.id,
-      estrategia_id: estrategia.id,
-      cota_definitiva_id: cotaId,
-      estado_anterior: { ativa: estrategia.ativa },
-      estado_novo: { ativa: false, status_cota: novoStatus },
-      motivo: `Cota marcada como ${status} na tela de Lances e Estratégias`,
-      usuario_id: usuario?.id || null,
-    });
-
-    if (historicoError) throw new Error(historicoError.message);
-  }
+  await registrarStatusOperacionalCota({
+    empresaId: empresaAtiva.id, usuarioId: usuario.id, cotaId, status, tela: "Lances e Estratégias",
+  });
 
   revalidatePath("/erp/lances");
   revalidatePath("/erp/lances", "page");

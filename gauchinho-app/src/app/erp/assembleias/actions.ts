@@ -2,6 +2,7 @@
 
 import { resolverQuantidadeCotasGrupo } from "@/lib/grupos-sorteio/calcular-palavra-chave";
 import { refresh, revalidatePath } from "next/cache";
+import { registrarStatusOperacionalCota } from "@/lib/erp/status-operacional-cota";
 import { createClient } from "@/lib/supabase/server";
 import { requireErpRouteAccess } from "@/lib/erp/erp-acesso-server";
 import { listGruposAutorizadosForEmpresa, assertEmpresaPodeAcessarGrupo } from "@/lib/grupos/catalogo-autorizado-service";
@@ -226,4 +227,33 @@ export async function fetchRankingContemplacaoAction(percentualAtraso = 30) {
       historicoCompleto: indicadores.historico_completo, cotasAEntregar: indicadores.cotas_a_entregar };
   }), percentualAtraso);
   return { ranking, percentualAtraso, gruposSemEstimativa: grupos.length - ranking.length };
+}
+
+export async function marcarStatusCotaAssembleiaAction(
+  assembleiaId: string,
+  cotaId: string,
+  status: "cancelada" | "contemplada",
+) {
+  if (status !== "cancelada" && status !== "contemplada") throw new Error("Situação inválida.");
+  const { supabase, empresaId, usuarioId } = await requireAssembleias(true);
+  const { data: assembleia, error: erroAssembleia } = await supabase
+    .from("erp_assembleias_grupo").select("grupo_id")
+    .eq("empresa_id", empresaId).eq("id", assembleiaId).maybeSingle();
+  if (erroAssembleia) throw new Error(erroAssembleia.message);
+  if (!assembleia) throw new Error("Assembleia não encontrada.");
+  await assertEmpresaPodeAcessarGrupo(empresaId, assembleia.grupo_id);
+  const { data: cota, error: erroCota } = await supabase
+    .from("cotas_definitivas").select("id,status,contemplada")
+    .eq("empresa_id", empresaId).eq("grupo_id", assembleia.grupo_id).eq("id", cotaId).maybeSingle();
+  if (erroCota) throw new Error(erroCota.message);
+  if (!cota) throw new Error("Cota não encontrada para este grupo.");
+  if (cota.status === "cancelada" || cota.status === "contemplada" || cota.contemplada) {
+    throw new Error("A cota já está cancelada ou contemplada.");
+  }
+
+  await registrarStatusOperacionalCota({ empresaId, usuarioId, cotaId, status, tela: "Assembleias e Pedras", statusAnterior: cota.status });
+  revalidatePath("/erp/assembleias");
+  revalidatePath("/erp/lances");
+  revalidatePath("/erp/vendas");
+  refresh();
 }

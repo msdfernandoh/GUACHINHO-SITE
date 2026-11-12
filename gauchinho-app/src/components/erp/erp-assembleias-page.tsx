@@ -1,3 +1,4 @@
+import { StatusCotaAssembleiaButtons } from "@/components/erp/assembleias/status-cota-assembleia-buttons";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentTenantContext } from "@/lib/tenant/context";
@@ -33,6 +34,7 @@ type CotaRow = {
   grupo_id: string;
   numero_cota: string | null;
   status: string;
+  contemplada: boolean | null;
   venda: unknown;
 };
 
@@ -124,7 +126,7 @@ export async function ErpAssembleiasPage({
     const [{ data: cotas }, { data: marcadas }] = await Promise.all([
       supabase
         .from("cotas_definitivas")
-        .select("id,grupo_id,numero_cota,status,venda:vendas(cliente_id,cliente_nome,cliente:clientes(nome))")
+        .select("id,grupo_id,numero_cota,status,contemplada,venda:vendas(cliente_id,cliente_nome,cliente:clientes(nome))")
         .eq("empresa_id", empresaId)
         .in("grupo_id", grupoIdsDoEvento)
         .order("id"),
@@ -136,6 +138,7 @@ export async function ErpAssembleiasPage({
     ]);
 
     atencoes = new Set((marcadas ?? []).map((x) => `${x.assembleia_id}:${x.cota_definitiva_id}`));
+    const foraDaFila = new Set<string>();
     const cotasPorChave = new Map<string, (typeof cotasMapeadas)[number]>();
     for (const c of (cotas ?? []) as unknown as CotaRow[]) {
       const v = (Array.isArray(c.venda) ? c.venda[0] : c.venda) as
@@ -147,8 +150,12 @@ export async function ErpAssembleiasPage({
         "Cliente";
       const numero = numeroCotaParaPedra(c.numero_cota);
       const chave = v?.cliente_id && numero != null
-        ? `${c.grupo_id}:${numero}:${v.cliente_id}:${c.status}`
+        ? `${c.grupo_id}:${numero}:${v.cliente_id}`
         : c.id;
+      if (c.status === "cancelada" || c.status === "contemplada" || c.contemplada) {
+        foraDaFila.add(chave);
+        continue;
+      }
       const assembleiaId = assembleiaIdPorGrupo.get(c.grupo_id);
       if (cotasPorChave.has(chave) && !atencoes.has(`${assembleiaId}:${c.id}`)) continue;
       cotasPorChave.set(chave, {
@@ -159,7 +166,7 @@ export async function ErpAssembleiasPage({
         cliente_nome: clienteNome,
       });
     }
-    cotasMapeadas = [...cotasPorChave.values()];
+    cotasMapeadas = [...cotasPorChave].filter(([chave]) => !foraDaFila.has(chave)).map(([, cota]) => cota);
   }
 
   // Monta lista de grupos do evento reconciliados com os metadados dos grupos
@@ -453,6 +460,7 @@ export async function ErpAssembleiasPage({
                                     </td>
                                     <td className="px-4 py-3">
                                       {canWrite === true ? (
+                                        <div className="flex flex-wrap items-start gap-2">
                                         <form action={toggleAtencaoAssembleiaAction}>
                                           <input type="hidden" name="assembleia_id" value={assembleiaIdDoGrupo} />
                                           <input type="hidden" name="cota_id" value={c.id} />
@@ -469,6 +477,8 @@ export async function ErpAssembleiasPage({
                                             {marcada ? "Desmarcar atenção" : "Marcar atenção"}
                                           </button>
                                         </form>
+                                          {assembleiaIdDoGrupo && <StatusCotaAssembleiaButtons assembleiaId={assembleiaIdDoGrupo} cotaId={c.id} numero={c.numero} />}
+                                        </div>
                                       ) : marcada ? (
                                         <span className="font-semibold text-amber-700">Em atenção</span>
                                       ) : (
