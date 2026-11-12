@@ -3,10 +3,11 @@
 import { useState, useTransition } from "react";
 import { marcarStatusCotaAssembleiaAction } from "@/app/erp/assembleias/actions";
 
-export function StatusCotaAssembleiaButtons({ assembleiaId, cotaId, numero }: {
+export function StatusCotaAssembleiaButtons({ assembleiaId, cotaId, numero, valorCreditoCadastrado }: {
   assembleiaId: string;
   cotaId: string;
   numero: number;
+  valorCreditoCadastrado?: number | null;
 }) {
   const [pendente, iniciar] = useTransition();
   const [erro, setErro] = useState<string | null>(null);
@@ -14,7 +15,8 @@ export function StatusCotaAssembleiaButtons({ assembleiaId, cotaId, numero }: {
   function marcar(status: "cancelada" | "contemplada") {
     let valorCredito: number | undefined;
     if (status === "contemplada") {
-      const valor = window.prompt(`Informe o valor atualizado do crédito da cota ${numero} (ex.: 100.000,00).`);
+      const sugerido = valorCreditoCadastrado?.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) ?? "";
+      const valor = window.prompt(`Confirme ou edite o valor atualizado do crédito da cota ${numero}.`, sugerido);
       if (valor === null) return;
       const texto = valor.trim();
       const formatoValido = /^(?:\d+|\d{1,3}(?:\.\d{3})+)(?:,\d{1,2})?$/.test(texto);
@@ -40,7 +42,7 @@ export function StatusCotaAssembleiaButtons({ assembleiaId, cotaId, numero }: {
   }
 
   return (
-    <div className="flex flex-wrap gap-2">
+    <div className="flex flex-col items-start gap-1.5">
       <button type="button" disabled={pendente} onClick={() => marcar("cancelada")} className="rounded-lg border border-red-300 px-3 py-1.5 text-xs font-semibold text-red-800 hover:bg-red-50 disabled:opacity-50">
         Cancelada
       </button>

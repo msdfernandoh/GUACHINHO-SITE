@@ -164,6 +164,39 @@ async function carregarResultados(supabase: Awaited<ReturnType<typeof createClie
   return resultadosVigentes(rows);
 }
 
+export async function fetchResumoGruposAssembleiaAction(grupoIds: string[]) {
+  const { supabase, empresaId } = await requireAssembleias(false);
+  const solicitados = new Set(grupoIds);
+  const grupos = (await listarGruposParaAssembleias(supabase, empresaId)).filter((g) => solicitados.has(g.id));
+  const resultados = await carregarResultados(supabase, grupos.map((g) => g.id));
+  const porGrupo = new Map<string, ResultadoAssembleia[]>();
+  for (const resultado of resultados) {
+    const grupo = porGrupo.get(resultado.grupo_id) ?? [];
+    grupo.push(resultado);
+    porGrupo.set(resultado.grupo_id, grupo);
+  }
+
+  return Object.fromEntries(grupos.map((grupo) => {
+    const dados = grupo as typeof grupo & {
+      ultima_assembleia_numero?: number | null;
+      dados_estatisticos?: { cotas_ativas?: number } | null;
+      contemplacoes_resumo?: { versao?: number; sem_assembleias_realizadas?: boolean } | null;
+    };
+    const rows = porGrupo.get(grupo.id) ?? [];
+    const ultima = Math.max(Number(dados.ultima_assembleia_numero) || 0, ...rows.map((row) => row.assembleia_numero));
+    const ativas = dados.dados_estatisticos?.cotas_ativas;
+    const semAssembleias = dados.contemplacoes_resumo?.versao === 2 && dados.contemplacoes_resumo.sem_assembleias_realizadas === true;
+    const indicadores = indicadoresContemplacoes(rows, ultima, ativas == null ? null : Number(ativas), semAssembleias);
+    return [grupo.id, {
+      media3m: indicadores.media_lance_3m,
+      contempladas: indicadores.cotas_entregues,
+      aContemplar: indicadores.cotas_a_entregar,
+      ultima: ultima > 0 || semAssembleias ? ultima : null,
+      totalAssembleias: grupo.prazo_total,
+    }] as const;
+  }));
+}
+
 function linhasResultado(rows: ResultadoAssembleia[]) {
   return rows.flatMap(a => cotasUnicas(a.cotas).map((c, i) => ({
     ...c, id: a.id + ":" + i, grupo_id: a.grupo_id,
@@ -175,7 +208,7 @@ export async function fetchContemplacoesGrupoAction(grupoId: string) {
   const { supabase, empresaId } = await requireAssembleias(false);
   await assertEmpresaPodeAcessarGrupo(empresaId, grupoId);
   const { data: grupo, error } = await supabase.from("grupos_consorcio")
-    .select("id, codigo_grupo, modalidade, administradora, ultima_assembleia_numero, ultima_assembleia_data, proxima_assembleia_numero, proxima_assembleia_data, contemplacoes_atualizado_em, dados_estatisticos, contemplacoes_resumo, data_primeira_assembleia")
+    .select("id, codigo_grupo, modalidade, administradora, ultima_assembleia_numero, ultima_assembleia_data, proxima_assembleia_numero, proxima_assembleia_data, contemplacoes_atualizado_em, dados_estatisticos, contemplacoes_resumo, data_primeira_assembleia, capacidade_total, quantidade_cotas_sorteio, prazo_total")
     .eq("id", grupoId).single();
   if (error) throw new Error(error.message);
   const resultados = await carregarResultados(supabase, [grupoId]);
@@ -184,7 +217,7 @@ export async function fetchContemplacoesGrupoAction(grupoId: string) {
   const ativas = estatisticas?.cotas_ativas;
   const resumo = grupo.contemplacoes_resumo as { versao?: number; sem_assembleias_realizadas?: boolean } | null;
   return {
-    grupo: { ...grupo, sem_assembleias_realizadas: resumo?.versao === 2 && resumo.sem_assembleias_realizadas === true, ...indicadoresContemplacoes(resultados, ultima, ativas == null ? null : Number(ativas), resumo?.versao === 2 && resumo.sem_assembleias_realizadas === true) },
+    grupo: { ...grupo, total_cotas: resolverQuantidadeCotasGrupo(grupo), ultima_assembleia_numero: ultima, sem_assembleias_realizadas: resumo?.versao === 2 && resumo.sem_assembleias_realizadas === true, ...indicadoresContemplacoes(resultados, ultima, ativas == null ? null : Number(ativas), resumo?.versao === 2 && resumo.sem_assembleias_realizadas === true) },
     assembleias: resultados.map(({ cotas, ...a }) => ({ ...a, total_ativas: contempladasAtivas(cotas) })),
     contemplacoes: linhasResultado(resultados),
   };

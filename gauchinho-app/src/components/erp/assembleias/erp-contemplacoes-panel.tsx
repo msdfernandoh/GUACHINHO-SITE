@@ -34,6 +34,8 @@ type ContemplacaoRow = {
 };
 
 type GrupoDetalhe = {
+  total_cotas?: number | null;
+  prazo_total?: number | null;
   id: string;
   codigo_grupo: string;
   modalidade: string;
@@ -319,9 +321,14 @@ export function ErpContemplacoesPanel({ grupos }: { grupos: GrupoOption[] }) {
                 </div>
 
                 <div className="p-3.5 rounded-xl bg-white border border-slate-200">
+                  <div className="text-[11px] font-medium text-slate-600">Cotas do grupo</div>
+                  <div className="mt-1 text-base font-bold text-slate-900">{grupoDetalhe.total_cotas?.toLocaleString("pt-BR") ?? "—"}</div>
+                </div>
+
+                <div className="p-3.5 rounded-xl bg-white border border-slate-200">
                   <div className="text-[11px] font-medium text-slate-600">Última Assembleia</div>
                   <div className="text-base font-bold text-slate-900 mt-1">
-                    Nº {grupoDetalhe.ultima_assembleia_numero || "—"}
+                    Nº {grupoDetalhe.ultima_assembleia_numero || "—"}{grupoDetalhe.prazo_total ? `/${grupoDetalhe.prazo_total}` : ""}
                   </div>
                   <div className="text-[10px] text-slate-600 mt-0.5">
                     {grupoDetalhe.ultima_assembleia_data
@@ -333,7 +340,7 @@ export function ErpContemplacoesPanel({ grupos }: { grupos: GrupoOption[] }) {
                 <div className="p-3.5 rounded-xl bg-white border border-slate-200">
                   <div className="text-[11px] font-medium text-slate-600">Próxima Assembleia</div>
                   <div className="text-base font-bold text-blue-700 mt-1">
-                    {grupoDetalhe.proxima_assembleia_numero ? `Nº ${grupoDetalhe.proxima_assembleia_numero}` : "—"}
+                    {grupoDetalhe.proxima_assembleia_numero ? `Nº ${grupoDetalhe.proxima_assembleia_numero}${grupoDetalhe.prazo_total ? `/${grupoDetalhe.prazo_total}` : ""}` : "—"}
                   </div>
                   <div className="text-[10px] text-slate-600 mt-0.5">
                     {grupoDetalhe.proxima_assembleia_data
@@ -367,7 +374,7 @@ export function ErpContemplacoesPanel({ grupos }: { grupos: GrupoOption[] }) {
                           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                             <div className="flex items-center gap-2">
                               <span className="font-semibold text-sm text-slate-900">
-                                Assembleia Nº {ass.numero}
+                                Assembleia Nº {ass.numero}{grupoDetalhe.prazo_total ? `/${grupoDetalhe.prazo_total}` : ""}
                               </span>
                               {ass.data && (
                                 <span className="text-xs text-slate-600">

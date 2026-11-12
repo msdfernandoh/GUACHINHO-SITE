@@ -4,6 +4,7 @@ export type CotaAssembleia = {
   id: string;
   numero_cota: string | null;
   cliente_nome: string;
+  valor_credito?: number | null;
   status: string;
   grupo_id?: string;
   numero_grupo?: string;

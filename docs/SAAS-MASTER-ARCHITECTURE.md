@@ -4809,3 +4809,7 @@ As ações Cancelada e Contemplada registram a situação operacional da cota no
 O ERP inclui grupos concedidos com cotas na carteira, mesmo fora do catálogo comercial. A lista omite canceladas e mostra contempladas. Os grupos 1061 e 1203 foram incluídos na assembleia de 11/11. Relatório em docs/relatorios-fases/ASSEMBLEIAS-GRUPOS-CARTEIRA-2026-11-12.md.
 
 A ação Contemplada usa o registro oficial de contemplação, com data da assembleia, modalidade Sorteio e valor atualizado informado pelo operador. O banco rejeitava a atualização anterior porque faltavam esses dados.
+
+### Crédito da cota e indicadores em Assembleias e Pedras (12/11/2026)
+
+A aba Pedras mostra o crédito individual ao lado do cliente, sugere esse valor na contemplação e empilha as ações. Os indicadores do grupo usam o histórico verificado. A aba Resultado mostra a capacidade e o número da assembleia sobre o prazo total. Relatório em docs/relatorios-fases/ASSEMBLEIAS-CREDITO-INDICADORES-2026-11-12.md.

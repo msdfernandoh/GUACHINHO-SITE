@@ -1,3 +1,6 @@
+import { formatBRL } from "@/lib/formatters/money";
+import { valorCreditoPorCota } from "@/lib/erp/valor-credito-cota";
+import { fetchResumoGruposAssembleiaAction } from "@/app/erp/assembleias/actions";
 import { StatusCotaAssembleiaButtons } from "@/components/erp/assembleias/status-cota-assembleia-buttons";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
@@ -35,6 +38,8 @@ type CotaRow = {
   numero_cota: string | null;
   status: string;
   contemplada: boolean | null;
+  valor_credito: number | null;
+  snapshot_cota: unknown;
   venda: unknown;
 };
 
@@ -126,7 +131,7 @@ export async function ErpAssembleiasPage({
     const [{ data: cotas }, { data: marcadas }] = await Promise.all([
       supabase
         .from("cotas_definitivas")
-        .select("id,grupo_id,numero_cota,status,contemplada,venda:vendas(cliente_id,cliente_nome,cliente:clientes(nome))")
+        .select("id,grupo_id,numero_cota,status,contemplada,valor_credito,snapshot_cota,venda:vendas(cliente_id,cliente_nome,cliente:clientes(nome))")
         .eq("empresa_id", empresaId)
         .in("grupo_id", grupoIdsDoEvento)
         .order("id"),
@@ -164,6 +169,7 @@ export async function ErpAssembleiasPage({
         numero_cota: c.numero_cota,
         status: c.contemplada ? "contemplada" : c.status,
         cliente_nome: clienteNome,
+        valor_credito: valorCreditoPorCota(c) || null,
       });
     }
     cotasMapeadas = [...cotasPorChave].filter(([chave]) => !foraDaFila.has(chave)).map(([, cota]) => cota);
@@ -204,6 +210,12 @@ export async function ErpAssembleiasPage({
       : gruposApurados;
 
   const abaAtiva = params?.aba === "contemplacoes" ? "contemplacoes" : "pedras";
+  const resumoPorGrupo = abaAtiva === "pedras" && gruposExibidos.length
+    ? await fetchResumoGruposAssembleiaAction(gruposExibidos.map((grupo) => grupo.grupoId)).catch((error) => {
+        console.error("Indicadores das assembleias indisponíveis", error);
+        return null;
+      })
+    : null;
 
   return (
     <div className="space-y-6">
@@ -245,7 +257,7 @@ export async function ErpAssembleiasPage({
         <>
           {canWrite === true && <ErpAssembleiasForm grupos={grupos} />}
 
-          <div className="grid gap-5 xl:grid-cols-[320px_1fr]">
+          <div className="grid gap-5 xl:grid-cols-[320px_minmax(0,1fr)]">
         <section className="rounded-xl border bg-white">
           <div className="border-b px-4 py-3">
             <h2 className="font-semibold text-slate-900">Histórico de Assembleias</h2>
@@ -284,7 +296,7 @@ export async function ErpAssembleiasPage({
           </div>
         </section>
 
-        <section className="space-y-4">
+        <section className="min-w-0 space-y-4">
           {!selecionada ? (
             <div className="rounded-xl border bg-white p-12 text-center text-slate-500">
               <p className="font-semibold">Nenhuma assembleia selecionada</p>
@@ -362,6 +374,7 @@ export async function ErpAssembleiasPage({
                 </div>
               ) : (
                 gruposExibidos.map((g) => {
+                  const resumo = resumoPorGrupo?.[g.grupoId];
                   const assembleiaIdDoGrupo = g.assembleiaId ?? selecionada.id;
                   return (
                     <article key={g.grupoId} className="overflow-hidden rounded-xl border bg-white shadow-sm">
@@ -382,7 +395,7 @@ export async function ErpAssembleiasPage({
                             </span>
                           )}
                         </div>
-                        <div className="flex items-center gap-2 text-xs">
+                        <div className="flex flex-wrap items-center gap-2 text-xs">
                           {g.cotas.length > 0 ? (
                             <>
                               <span className="font-semibold text-slate-600">
@@ -400,18 +413,23 @@ export async function ErpAssembleiasPage({
                         </div>
                       </div>
 
-                      <div className="overflow-x-auto">
-                        <table className="min-w-full text-sm">
-                          <thead className="bg-slate-50 text-left text-xs uppercase text-slate-500">
+                      <div className="flex flex-wrap gap-x-5 gap-y-1 border-b bg-slate-50 px-5 py-2 text-xs text-slate-700">
+                        <span>Média de lance livre (3 meses) <strong>{resumo?.media3m == null ? "—" : `${resumo.media3m.toLocaleString("pt-BR", { maximumFractionDigits: 2 })}%`}</strong></span>
+                        <span>Contempladas / a contemplar <strong>{resumo?.contempladas ?? "—"}/{resumo?.aContemplar ?? "—"}</strong></span>
+                        <span>Assembleias <strong>{resumo?.ultima ?? "—"}/{resumo?.totalAssembleias || "—"}</strong></span>
+                      </div>
+                      <div>
+                        <table className="w-full table-fixed break-words text-sm max-sm:block">
+                          <thead className="bg-slate-50 text-left text-xs uppercase text-slate-500 max-sm:hidden">
                             <tr>
-                              <th className="px-4 py-3">Cota</th>
-                              <th className="px-4 py-3">Cliente</th>
-                              <th className="px-4 py-3">Diferença da pedra</th>
-                              <th className="px-4 py-3">Status real</th>
-                              <th className="px-4 py-3">Atenção</th>
+                              <th className="w-[10%] px-2 py-3">Cota</th>
+                              <th className="px-2 py-2">Cliente</th>
+                              <th className="w-[19%] px-2 py-3">Diferença da pedra</th>
+                              <th className="w-[14%] px-2 py-3">Status real</th>
+                              <th className="w-[22%] px-2 py-3">Ações</th>
                             </tr>
                           </thead>
-                          <tbody className="divide-y">
+                          <tbody className="divide-y max-sm:block">
                             {g.cotas.length === 0 ? (
                               <tr>
                                 <td colSpan={5} className="p-8 text-center text-slate-500">
@@ -427,7 +445,7 @@ export async function ErpAssembleiasPage({
                                 return (
                                   <tr
                                     key={c.id}
-                                    className={`transition-colors ${
+                                    className={`transition-colors max-sm:grid max-sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] max-sm:p-2 ${
                                       isPedraExata
                                         ? "bg-emerald-50/80 font-medium hover:bg-emerald-100/70"
                                         : marcada
@@ -435,7 +453,7 @@ export async function ErpAssembleiasPage({
                                         : "hover:bg-slate-50"
                                     }`}
                                   >
-                                    <td className="px-4 py-3">
+                                    <td className="px-2 py-2">
                                       <span className="font-bold text-slate-900">{c.numero}</span>
                                       {isPedraExata && (
                                         <span className="ml-2 rounded bg-emerald-600 px-1.5 py-0.5 text-[10px] font-bold text-white">
@@ -443,8 +461,10 @@ export async function ErpAssembleiasPage({
                                         </span>
                                       )}
                                     </td>
-                                    <td className="px-4 py-3 font-medium text-slate-800">{c.cliente_nome}</td>
-                                    <td className="px-4 py-3">
+                                                                        <td className="px-2 py-3 font-medium text-slate-800 max-sm:col-span-2 max-sm:order-first">
+                                      {c.cliente_nome} <span className="font-semibold text-slate-600">{c.valor_credito ? formatBRL(c.valor_credito) : "· Crédito não informado"}</span>
+                                    </td>
+                                    <td className="px-2 py-2">
                                       {isPedraExata ? (
                                         <span className="font-black text-emerald-700">0 (Sorteada!)</span>
                                       ) : c.posicaoFila === "SUPERIOR" ? (
@@ -453,14 +473,14 @@ export async function ErpAssembleiasPage({
                                         <span className="font-medium text-slate-500">+{c.distancia} (Após giro)</span>
                                       )}
                                     </td>
-                                    <td className="px-4 py-3">
+                                    <td className="px-2 py-2">
                                       <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-700">
                                         {c.status}
                                       </span>
                                     </td>
-                                    <td className="px-4 py-3">
+                                    <td className="px-2 py-2">
                                       {canWrite === true ? (
-                                        <div className="flex flex-wrap items-start gap-2">
+                                        <div className="flex flex-col items-start gap-1.5">
                                         <form action={toggleAtencaoAssembleiaAction}>
                                           <input type="hidden" name="assembleia_id" value={assembleiaIdDoGrupo} />
                                           <input type="hidden" name="cota_id" value={c.id} />
@@ -477,7 +497,7 @@ export async function ErpAssembleiasPage({
                                             {marcada ? "Desmarcar atenção" : "Marcar atenção"}
                                           </button>
                                         </form>
-                                          {assembleiaIdDoGrupo && c.status !== "contemplada" && <StatusCotaAssembleiaButtons assembleiaId={assembleiaIdDoGrupo} cotaId={c.id} numero={c.numero} />}
+                                          {assembleiaIdDoGrupo && c.status !== "contemplada" && <StatusCotaAssembleiaButtons assembleiaId={assembleiaIdDoGrupo} cotaId={c.id} numero={c.numero} valorCreditoCadastrado={c.valor_credito} />}
                                         </div>
                                       ) : marcada ? (
                                         <span className="font-semibold text-amber-700">Em atenção</span>
