@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentTenantContext } from "@/lib/tenant/context";
-import { agruparCotasPorGrupo, CotaAssembleia } from "@/lib/erp/assembleias";
+import { agruparCotasPorGrupo, numeroCotaParaPedra, CotaAssembleia } from "@/lib/erp/assembleias";
 import { toggleAtencaoAssembleiaAction } from "@/app/erp/assembleias/actions";
 import { aplicarCorrecaoPedra, chaveEvento, quantidadeCotasRegistrada } from "@/lib/erp/assembleias-pedras-historico";
 import { listGruposAutorizadosForEmpresa } from "@/lib/grupos/catalogo-autorizado-service";
@@ -124,9 +124,10 @@ export async function ErpAssembleiasPage({
     const [{ data: cotas }, { data: marcadas }] = await Promise.all([
       supabase
         .from("cotas_definitivas")
-        .select("id,grupo_id,numero_cota,status,venda:vendas(cliente_nome,cliente:clientes(nome))")
+        .select("id,grupo_id,numero_cota,status,venda:vendas(cliente_id,cliente_nome,cliente:clientes(nome))")
         .eq("empresa_id", empresaId)
-        .in("grupo_id", grupoIdsDoEvento),
+        .in("grupo_id", grupoIdsDoEvento)
+        .order("id"),
       supabase
         .from("erp_assembleia_atencoes")
         .select("cota_definitiva_id,assembleia_id")
@@ -134,24 +135,31 @@ export async function ErpAssembleiasPage({
         .in("assembleia_id", assembleiaIdsDoEvento),
     ]);
 
-    cotasMapeadas = ((cotas ?? []) as unknown as CotaRow[]).map((c) => {
+    atencoes = new Set((marcadas ?? []).map((x) => `${x.assembleia_id}:${x.cota_definitiva_id}`));
+    const cotasPorChave = new Map<string, (typeof cotasMapeadas)[number]>();
+    for (const c of (cotas ?? []) as unknown as CotaRow[]) {
       const v = (Array.isArray(c.venda) ? c.venda[0] : c.venda) as
-        | { cliente_nome?: string; cliente?: { nome?: string } | Array<{ nome?: string }> }
+        | { cliente_id?: string | null; cliente_nome?: string; cliente?: { nome?: string } | Array<{ nome?: string }> }
         | undefined;
       const clienteNome =
         (Array.isArray(v?.cliente) ? v.cliente[0]?.nome : v?.cliente?.nome) ||
         v?.cliente_nome ||
         "Cliente";
-      return {
+      const numero = numeroCotaParaPedra(c.numero_cota);
+      const chave = v?.cliente_id && numero != null
+        ? `${c.grupo_id}:${numero}:${v.cliente_id}:${c.status}`
+        : c.id;
+      const assembleiaId = assembleiaIdPorGrupo.get(c.grupo_id);
+      if (cotasPorChave.has(chave) && !atencoes.has(`${assembleiaId}:${c.id}`)) continue;
+      cotasPorChave.set(chave, {
         id: c.id,
         grupo_id: c.grupo_id,
         numero_cota: c.numero_cota,
         status: c.status,
         cliente_nome: clienteNome,
-      };
-    });
-
-    atencoes = new Set((marcadas ?? []).map((x) => `${x.assembleia_id}:${x.cota_definitiva_id}`));
+      });
+    }
+    cotasMapeadas = [...cotasPorChave.values()];
   }
 
   // Monta lista de grupos do evento reconciliados com os metadados dos grupos
@@ -421,7 +429,7 @@ export async function ErpAssembleiasPage({
                                     }`}
                                   >
                                     <td className="px-4 py-3">
-                                      <span className="font-bold text-slate-900">{c.numero_cota}</span>
+                                      <span className="font-bold text-slate-900">{c.numero}</span>
                                       {isPedraExata && (
                                         <span className="ml-2 rounded bg-emerald-600 px-1.5 py-0.5 text-[10px] font-bold text-white">
                                           Sorteada!

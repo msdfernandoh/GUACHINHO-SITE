@@ -4795,3 +4795,7 @@ Revisados 70 registros em três lotes da Loteria Federal. Os 22 registros com qu
 ### Atenção e ordem numérica em Assembleias e Pedras (12/11/2026)
 
 O botão de atenção indica a ação de marcar ou desmarcar e atualiza a tela após gravar. Os grupos aparecem em ordem numérica no formulário, nos filtros e nos cartões. Relatório em docs/relatorios-fases/ASSEMBLEIAS-ATENCAO-ORDEM-2026-11-12.md.
+
+### Exibição das cotas em Assembleias e Pedras (12/11/2026)
+
+A lista exibe o número sem zeros à esquerda e reúne entradas com o mesmo grupo, número, cliente e status. Relatório em docs/relatorios-fases/ASSEMBLEIAS-COTAS-DUPLICADAS-2026-11-12.md.
