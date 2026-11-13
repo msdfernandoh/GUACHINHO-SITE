@@ -420,7 +420,10 @@ export function calcularLinhaSimulacaoGrupo(args: {
     if (parcelaTipoLinha === "integral" && cota.parcela_integral != null && num(cota.parcela_integral) > 0) {
       parcelaExataCota = num(cota.parcela_integral);
     } else if (parcelaTipoLinha === "reduzida" && pctRedEscolhido != null) {
-      if (pctRedEscolhido === 50 && cota.parcela_reduzida_50 != null && num(cota.parcela_reduzida_50) > 0) {
+      const parcelaAtual = cota.parcelas_reduzidas?.[String(pctRedEscolhido)];
+      if (parcelaAtual != null && num(parcelaAtual) > 0) {
+        parcelaExataCota = num(parcelaAtual);
+      } else if (pctRedEscolhido === 50 && cota.parcela_reduzida_50 != null && num(cota.parcela_reduzida_50) > 0) {
         parcelaExataCota = num(cota.parcela_reduzida_50);
       } else if (pctRedEscolhido === 60 && cota.parcela_reduzida_60 != null && num(cota.parcela_reduzida_60) > 0) {
         parcelaExataCota = num(cota.parcela_reduzida_60);

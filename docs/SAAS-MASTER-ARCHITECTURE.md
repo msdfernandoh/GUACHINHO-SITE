@@ -4836,3 +4836,7 @@ A aba consolida as cotas contempladas da carteira com contratação, crédito in
 ### Destaque da carteira nas visões por grupo e competência (12/11/2026)
 
 Os resultados da carteira aparecem no início da assembleia nas duas visões, com nome, identificação e total de cotas na assembleia. O contador mensal continua por cliente distinto. Na visão por competência, os grupos seguem a ordem numérica. Relatório em docs/relatorios-fases/CONTEMPLACOES-CARTEIRA-POR-COMPETENCIA-2026-11-12.md.
+
+### Parcela reduzida após atualização da taxa (13/11/2026)
+
+A simulação e as opções de parcela priorizam os valores atualizados de parcelas_reduzidas. Campos legados por percentual são usados quando falta o valor atual. Relatório em docs/relatorios-fases/PARCELA-TAXA-ATUALIZADA-2026-11-13.md.

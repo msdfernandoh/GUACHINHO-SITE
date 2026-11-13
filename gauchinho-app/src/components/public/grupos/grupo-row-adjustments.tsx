@@ -189,7 +189,10 @@ export function GrupoRowAdjustments({ grupo, cotas, modalidades, config, onChang
                     let val = Math.round(resultado.parcelaIntegral * (pct / 100) * 100) / 100;
                     const cotaAtiva = cotas.find((c) => c.id === config.cotaId);
                     if (cotaAtiva) {
-                      if (pct === 50 && cotaAtiva.parcela_reduzida_50 != null && Number(cotaAtiva.parcela_reduzida_50) > 0) {
+                      const parcelaAtual = cotaAtiva.parcelas_reduzidas?.[String(pct)];
+                      if (parcelaAtual != null && Number(parcelaAtual) > 0) {
+                        val = Number(parcelaAtual);
+                      } else if (pct === 50 && cotaAtiva.parcela_reduzida_50 != null && Number(cotaAtiva.parcela_reduzida_50) > 0) {
                         val = Number(cotaAtiva.parcela_reduzida_50);
                       } else if (pct === 60 && cotaAtiva.parcela_reduzida_60 != null && Number(cotaAtiva.parcela_reduzida_60) > 0) {
                         val = Number(cotaAtiva.parcela_reduzida_60);
