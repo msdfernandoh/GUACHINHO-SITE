@@ -6,10 +6,11 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, CheckCircle2, Copy, Download, FileText } from "lucide-react";
 import { Button, Input, Label, Textarea } from "@/components/ui/form-primitives";
+import { sanitizeTelefone } from "@/lib/contratacoes-online/validacao";
 import { sectionCardClass, simuladorShell } from "@/components/simulador/simulador-ui";
 import {
   formatCurrency,
-  formatWhatsappBrInput,
+  formatWhatsappIntlInput,
   formatCpfBrInput,
   formatCnpjBrInput,
   digitsOnlyPhone,
@@ -179,7 +180,7 @@ export function ContratacaoWizard({
 
   const hydrateFromContratacao = useCallback((c: ContratacaoOnlineRow) => {
     setNome(c.nome ?? "");
-    setTelefone(c.telefone ? formatWhatsappBrInput(c.telefone) : "");
+    setTelefone(c.telefone ? formatWhatsappIntlInput(c.telefone) : "");
     setEmail(c.email ?? "");
     if (c.cpf) setCpf(formatCpfBrInput(c.cpf));
     if (c.cnpj) setCnpj(formatCnpjBrInput(c.cnpj));
@@ -391,7 +392,7 @@ export function ContratacaoWizard({
         const res = await fetch("/api/public/contratacoes/rascunho/materializar", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ draft, nome, telefone: digitsOnlyPhone(telefone), email }),
+          body: JSON.stringify({ draft, nome, telefone: sanitizeTelefone(telefone), email }),
         });
         const json = await res.json() as { error?: string; public_token?: string; proposta?: ContratacaoOnlineRow };
         if (!res.ok || !json.public_token) throw new Error(json.error ?? "Falha ao criar proposta.");
@@ -406,7 +407,7 @@ export function ContratacaoWizard({
       await patch({
         etapa: "dados",
         nome,
-        telefone: digitsOnlyPhone(telefone),
+        telefone: sanitizeTelefone(telefone),
         email,
       });
       setStep("pessoa");
@@ -431,7 +432,7 @@ export function ContratacaoWizard({
           body: JSON.stringify({
             draft,
             nome,
-            telefone: digitsOnlyPhone(telefone),
+            telefone: sanitizeTelefone(telefone),
             email,
             tipo_pessoa: tipoPessoa,
             cpf: tipoPessoa === "cpf" ? cpf : undefined,
@@ -806,7 +807,7 @@ export function ContratacaoWizard({
               <Input
                 required
                 value={telefone}
-                onChange={(e) => setTelefone(formatWhatsappBrInput(e.target.value))}
+                onChange={(e) => setTelefone(formatWhatsappIntlInput(e.target.value))}
                 className="mt-1"
               />
             </div>
