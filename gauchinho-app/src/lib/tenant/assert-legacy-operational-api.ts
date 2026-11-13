@@ -3,6 +3,7 @@ import { FASE3_PARCEIRO_PUBLIC_SITE_ENABLED } from "@/lib/parceiros/constants";
 import { resolvePartnerPublicRequest } from "@/lib/parceiros/public-site-loader";
 import { resolveTenantForRequest } from "./resolve-by-host";
 import { TENANT_EMPRESA_ID_HEADER, TENANT_SLUG_HEADER } from "./constants";
+import { hostParaResolucaoTenant } from "@/lib/eua-landing/host";
 
 export type OperationalApiGuardResult =
   | {
@@ -24,8 +25,9 @@ export async function evaluateLegacyOperationalApiAccess(input: {
   url?: string;
 }): Promise<OperationalApiGuardResult> {
   const searchParams = input.url ? new URL(input.url).searchParams : undefined;
+  const hostHeader = hostParaResolucaoTenant(input.hostHeader);
   const resolved = await resolveTenantForRequest({
-    hostHeader: input.hostHeader,
+    hostHeader,
     searchParams,
   });
 
@@ -36,7 +38,7 @@ export async function evaluateLegacyOperationalApiAccess(input: {
     // para o recorte da área do parceiro.
     if (FASE3_PARCEIRO_PUBLIC_SITE_ENABLED) {
       const partner = await resolvePartnerPublicRequest({
-        hostHeader: input.hostHeader,
+        hostHeader,
         pathname: "/",
         searchParams,
         mode: "public",

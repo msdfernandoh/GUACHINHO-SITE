@@ -17,6 +17,14 @@ export function euaParentHost(rawHost: string | null | undefined): string | null
   return parent.includes(".") ? parent : null;
 }
 
+/**
+ * Host usado para resolver o tenant: o subdomínio EUA vale como o domínio pai.
+ * Usado no proxy e nas re-resoluções server-side das APIs públicas.
+ */
+export function hostParaResolucaoTenant(rawHost: string | null): string | null {
+  return euaParentHost(rawHost) ?? rawHost;
+}
+
 /** No subdomínio EUA a raiz exibe a página de vendas; demais rotas seguem normais. */
 export function euaLandingRewritePath(pathname: string): string | null {
   return pathname === "/" || pathname === "" ? EUA_LANDING_PATH : null;

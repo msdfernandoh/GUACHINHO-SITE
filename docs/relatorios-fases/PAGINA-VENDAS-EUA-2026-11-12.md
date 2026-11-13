@@ -66,6 +66,12 @@ O layout foi aprovado a partir do protótipo `docs/prototipos/eua-landing-protot
   EUA usa uma consulta própria em duas etapas. A função original não foi
   alterada.
 
+- **APIs no subdomínio.** As re-resoluções server-side de tenant das APIs
+  públicas (`evaluateLegacyOperationalApiAccess` e
+  `getCatalogEmpresaIdFromRequest`) usam `hostParaResolucaoTenant`. Assim
+  `eua.<domínio>` vale como o domínio pai. Sem isso, os formulários do
+  subdomínio recebiam 404 "Site não configurado" em produção.
+
 ## Testes
 
 - Novos: `host.test.ts`, `calculos.test.ts`, `lead.test.ts`, `eua-proxy.test.ts`
